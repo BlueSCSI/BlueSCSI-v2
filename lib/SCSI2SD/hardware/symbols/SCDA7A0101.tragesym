@@ -1,0 +1,74 @@
+# This is the template file for creating symbols with tragesym
+# every line starting with '#' is a comment line.
+
+[options]
+# wordswap swaps labels if the pin is on the right side an looks like this:
+#   "PB1 (CLK)". That's useful for micro controller port labels
+# rotate_labels rotates the pintext of top and bottom pins
+#   this is useful for large symbols like FPGAs with more than 100 pins
+# sort_labels will sort the pins by it's labels
+#   useful for address ports, busses, ...
+wordswap=yes
+rotate_labels=yes
+sort_labels=no
+generate_pinseq=yes
+sym_width=1000
+pinwidthvertical=400
+pinwidthhorizontal=400
+
+[geda_attr]
+# name will be printed in the top of the symbol
+# name is only some graphical text, not an attribute
+# version specifies a gschem version.
+# if you have a device with slots, you'll have to use slot= and slotdef=
+# use comment= if there are special information you want to add
+version=20060113 1
+name=SCDA7A0101
+device=SCDA7A0101
+refdes=J?
+footprint=SCDA7A0101
+description=SD Memory Card Connector
+documentation=http://www.alps.com/WebObjects/catalog.woa/E/HTML/Connector/SDMemoryCard/SCDA/SCDA7A0101.html
+author=Michael McMaster <michael@codesrc.com>
+dist-license=gpl3+
+use-license=gpl3+
+numslots=0
+#slot=1
+#slotdef=1:
+#slotdef=2:
+#slotdef=3:
+#slotdef=4:
+#comment=
+#comment=
+#comment=
+
+[pins]
+# tabseparated list of pin descriptions
+# ----------------------------------------
+# pinnr is the physical number of the pin
+# seq is the pinseq= attribute, leave it blank if it doesn't matter
+# type can be (in, out, io, oc, oe, pas, tp, tri, clk, pwr)
+# style can be (line,dot,clk,dotclk,spacer,none). none if only want to add a net
+# posit. can be (l,r,t,b) or empty for nets.
+# net specifies the name of the net. Vcc or GND for example.
+# label represents the pinlabel.
+#	negation lines can be added with "\_" example: \_enable\_ 
+#	if you want to write a "\" use "\\" as escape sequence
+#-----------------------------------------------------
+#pinnr	seq	type	style	posit.	net	label	
+#-----------------------------------------------------
+9		io	line	l		DAT2
+1		io	line	l		DAT3,\_CS\_
+2		io	line	l		CMD/DI,MOSI
+3		PWR	line	l	GND	GND
+4		io	line	l		Vcc
+5		io	line	l		SCK
+6		PWR	line	l	GND	GND
+7		io	line	l		DAT0/DO,MISO
+8		io	line	l		DAT1/IRQ
+10		out	line	l		\_CD\_
+11		pwr	line	l	GND	GND
+12		out	line	l		\_WP\_
+13		pwr	none	r	GND	GND
+14		pwr	none	r	GND	GND
+

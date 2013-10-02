@@ -1,0 +1,51 @@
+v 20070818 1
+T 100 100 0 1 0 0 0 0 1
+gedasymbols::url=http://www.gedasymbols.org/user/sean_depagnier/symbols/usbmini.sym
+T 700 1600 8 10 1 1 0 0 1
+refdes=CONN?
+T 100 1600 9 10 1 1 0 0 1
+device=USB
+T 400 12650 8 10 0 0 0 0 1
+footprint=usbminib
+B 100 0 800 1500 3 0 0 0 -1 -1 0 -1 -1 -1 -1 -1
+P 1300 400 900 400 1 0 0
+{
+T 1100 490 5 10 1 1 0 0 1
+pinnumber=4
+T 600 380 5 10 1 1 0 0 1
+pinlabel=ID
+}
+P 1300 700 900 700 1 0 0
+{
+T 1100 730 5 10 1 1 0 0 1
+pinnumber=3
+T 600 720 5 10 1 1 0 0 1
+pinlabel=D+
+}
+P 1300 1000 900 1000 1 0 0
+{
+T 1100 1070 5 10 1 1 0 0 1
+pinnumber=2
+T 600 1060 5 10 1 1 0 0 1
+pinlabel=D-
+}
+P 1300 1300 900 1300 1 0 0
+{
+T 1100 1310 5 10 1 1 0 0 1
+pinnumber=1
+T 400 1300 5 10 1 1 0 0 1
+pinlabel=VCC
+}
+T 400 12450 8 10 0 0 0 0 1
+T 400 13650 8 10 0 0 0 0 1
+T 400 13850 8 10 0 0 0 0 1
+numslots=0
+T 400 14050 8 10 0 0 0 0 1
+author=Sean D'Epagnier
+P 1300 100 900 100 1 0 0
+{
+T 1100 190 5 10 1 1 0 0 1
+pinnumber=5
+T 400 80 5 10 1 1 0 0 1
+pinlabel=GND
+}

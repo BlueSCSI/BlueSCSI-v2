@@ -1,0 +1,55 @@
+v 20060113 1
+P 900 100 900 400 1 0 0
+{
+T 850 300 5 8 1 1 90 6 1
+pinnumber=1
+T 950 300 5 8 0 1 90 8 1
+pinseq=1
+T 900 450 9 8 1 1 90 0 1
+pinlabel=GND
+T 900 450 5 8 0 1 90 2 1
+pintype=pwr
+}
+P 1700 800 1400 800 1 0 0
+{
+T 1500 850 5 8 1 1 0 0 1
+pinnumber=2
+T 1500 750 5 8 0 1 0 2 1
+pinseq=2
+T 1350 800 9 8 1 1 0 6 1
+pinlabel=OUT
+T 1350 800 5 8 0 1 0 8 1
+pintype=pwr
+}
+P 100 800 400 800 1 0 0
+{
+T 300 850 5 8 1 1 0 6 1
+pinnumber=3
+T 300 750 5 8 0 1 0 8 1
+pinseq=3
+T 450 800 9 8 1 1 0 0 1
+pinlabel=IN
+T 450 800 5 8 0 1 0 2 1
+pintype=pwr
+}
+B 400 400 1000 800 3 0 0 0 -1 -1 0 -1 -1 -1 -1 -1
+T 1400 1300 8 10 1 1 0 6 1
+refdes=U?
+T 400 1300 9 10 1 0 0 0 1
+LD1117
+T 400 1500 5 10 0 0 0 0 1
+device=LD1117
+T 400 1700 5 10 0 0 0 0 1
+footprint=DPAK
+T 400 1900 5 10 0 0 0 0 1
+author=Michael McMaster <michael@codesrc.com>
+T 400 2100 5 10 0 0 0 0 1
+documentation=http://www.st.com/web/en/resource/technical/document/datasheet/CD00000544.pdf
+T 400 2300 5 10 0 0 0 0 1
+description=LDO Regulator, fixed
+T 400 2500 5 10 0 0 0 0 1
+numslots=0
+T 400 2700 5 10 0 0 0 0 1
+dist-license=gpl3+
+T 400 2900 5 10 0 0 0 0 1
+use-license=gpl3+

@@ -1,0 +1,7 @@
+(component-library "./symbols")
+
+(load (string-append geda-data-path "/scheme/auto-uref.scm")) ; load the autonumbering script
+(add-hook! add-component-hook auto-uref)       ; autonumber when adding a component
+(add-hook! copy-component-hook auto-uref)      ; autonumber when copying a component
+
+(output-color "enabled")
