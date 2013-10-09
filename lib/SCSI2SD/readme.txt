@@ -1,33 +1,55 @@
 SCSI2SD, The SCSI Hard Drive Emulator for retro computing.
 
+Traditional hard drives last 5 years*. Maybe, if you're luckly, you'll get 10
+years of service from a particular drive. The lubricants wear out, the spindles
+rust. SCSI2SD is a modern replacement for failed drives. It allows the use of
+vintage computer hardware long after their mechanical drives fail. The use of
+SD memory cards solves the problem of transferring data between the vintage
+computer and a modern PC (who still has access to a working floppy drive ?)
 
-Traditional hard drives last X years. Maybe, if you're luckly, you'll get X years of
-service from a particular drive. The lubricants wear out, the spindles rust.
-SCSI2SD is a modern replacement for failed drives.  It allows the use ofvintage 
-computer hardware long after their mechanical drives fail. The use of SD memory cards
-solves the problem of transferring data between the retro computer and a
-modern PC (who still has access to a working floppy drive ?)
+*All statistics are made up.
 
-Features:
-	Terminator, termpwr, firmware upgradable (via the SD card)
-	Selectable SCSI ID (via jumpers)
-	Emulates a non-removable hard drive (does not present as a removable memory card reader) for maximum compatibility.
-	Unit attention configurability.
 
-Technical Specifications:
-SCSI Interface: SCSI-2 Narrow 8-bit 50-pin connector.
-SD Card Support:
-	(state max size)
-	Currently SD standard (1GB), no SDHC/SDXC support.
-Power:
-Dimensions:
+Features
 
-Performance:
-Sequential read/write:  250kb/sec, 50kb/sec. Add some results of some SCSI hard drives
-for comparison. 160Mb, 250Mb, 1Gb.
+    In-built active terminator.
+    Can optional supply terminator power back to the SCSI bus
+    Emulates a non-removable hard drive for maximum compatibility.
+    Firmware updatable over USB (TODO software not yet implemented)
+    Highly configurable over USB (TODO software not yet implemented)
+        Selectable SCSI ID
+        Selectable parity support
+        Enable/disable Unit Attention Condition
+        Artificial limits on the SCSI disk size (eg. limit size to 4G to avoid OS bugs) 
 
-Compatibility:
-Tested with Linux, Apple Macintosh System 7.5 on LC-II, LC-III, and LC-475 hardware.
-Love to hear your success stories on other platforms.
 
+Technical Specifications
+
+SCSI Interface
+	SCSI-2 Narrow 8-bit 50-pin connector. Supports asynchronous transfers only.
+SD Card Interface
+	Standard SDSC (1GB maximum size)
+	SDHC (32GB maximum size)
+	SDXC cards are untested. Donations welcome.
+	Communication is via the SPI protocol at 25MHz.
+Power
+	5V via standard molex drive connector.
+Dimensions
+	10cm x 10cm x 1.5cm
+	A 3D-printable bracket is in testing to suit a standard 3.5" hard disk bay.
+
+
+Performance
+
+As currently implemented:
+Sequential read: 250kb/sec Sequential write: 50kb/sec
+
+These numbers are dreadful. I am working on updating the slow polling SD card
+communication to use DMA. I expect the performance to reach 1.8Mb/sec.
+
+
+Compatibility
+
+Tested with Linux (current), Apple Macintosh System 7.5.3 on LC-III, and LC-475
+hardware. 
 
