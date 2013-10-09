@@ -32,6 +32,8 @@ $fs = 0.1; // 0.1mm accuracy
 	m3HoleRadius=2.667/2; // M3x0.50 minimum hole size (aluminium or softer material)
 	holeBulk=4; // Extra around holes
 	tmp = 10;
+	// NOTE: PCB width (3860mils) must be less than 101.6 -  (2 * wall width)
+	// Max width is about 1.5mm.
 	wallWidth = 1.3;
 	screwWidth = 3;
 	foo = 6;
