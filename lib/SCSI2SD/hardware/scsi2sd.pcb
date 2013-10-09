@@ -6,7 +6,7 @@ FileVersion[20070407]
 PCB["" 386000 393500]
 
 Grid[500.0 0 0 1]
-Cursor[4000 234000 0.000000]
+Cursor[85500 251000 0.000000]
 PolyArea[200000000.000000]
 Thermal[0.500000]
 DRC[600 100 600 600 1200 600]
@@ -1668,7 +1668,7 @@ Element["" "wurth-microsd" "J6" "unknown" 245000 355000 22500 -33000 0 100 ""]
 
 	)
 
-Element["" "FTSH-105-01-L-DV-K" "J4" "unknown" 134300 287000 -14800 -20300 0 100 ""]
+Element["" "FTSH-105-01-L-DV-K" "J4" "unknown" 134300 287000 -2300 -11800 0 100 ""]
 (
 	Pad[-8456 20550 -356 20550 2900 2400 4100 "10" "10" "edge2"]
 	Pad[-8456 15550 -356 15550 2900 2400 4100 "8" "8" "edge2"]
@@ -2605,6 +2605,10 @@ Layer(1 "component")
 	Line[358000 60500 358000 49000 1000 1600 "clearline"]
 	Line[358000 49000 358500 48500 1000 1600 "clearline"]
 	Line[311500 107000 299500 107000 1000 1600 "clearline"]
+	Line[159941 293153 149347 293153 1000 1600 "clearline"]
+	Line[149347 293153 140000 302500 1000 1600 "clearline"]
+	Line[140000 302500 129944 302500 1000 1600 "clearline"]
+	Line[129944 302500 129894 302550 1000 1600 "clearline"]
 	Polygon("clearpoly")
 	(
 		[227000 233000] [216500 233000] [216500 188000] [227000 188000] 
@@ -3294,7 +3298,7 @@ Layer(10 "silk")
 	Line[17500 95000 500 95000 1000 1600 "clearline"]
 	Line[500 95000 500 500 1000 1600 "clearline"]
 	Line[500 500 385500 500 1000 1600 "clearline"]
-	Text[103500 278000 0 100 "5V" "clearline"]
+	Text[94500 284000 0 100 "5V" "clearline"]
 	Text[137000 286000 0 50 "SWDIO" "clearline"]
 	Text[137000 291000 0 50 "SWDCK" "clearline"]
 	Text[138000 306500 0 50 "XRES" "clearline"]
@@ -3307,6 +3311,8 @@ Layer(10 "silk")
 	Text[29000 312500 0 100 "Michael McMaster" "clearline"]
 	Text[340500 123500 0 100 "2.85V" "clearline"]
 	Text[172500 357500 0 100 "~ 500mA" "clearline"]
+	Text[108500 275500 0 100 "1" "clearline"]
+	Text[108500 268000 0 100 "JTAG/SWD" "clearline"]
 	Polygon("clearpoly")
 	(
 		[307500 152500] [310000 152500] [310000 161000] [307500 161000] 
@@ -3772,6 +3778,7 @@ NetList()
 	Net("unnamed_net8" "(unknown)")
 	(
 		Connect("J4-8")
+		Connect("U1-24")
 	)
 	Net("unnamed_net9" "(unknown)")
 	(
@@ -3809,31 +3816,27 @@ NetList()
 	)
 	Net("unnamed_net16" "(unknown)")
 	(
-		Connect("U1-24")
-	)
-	Net("unnamed_net17" "(unknown)")
-	(
 		Connect("U1-25")
 	)
-	Net("unnamed_net18" "(unknown)")
+	Net("unnamed_net17" "(unknown)")
 	(
 		Connect("R4-2")
 		Connect("U1-35")
 	)
-	Net("unnamed_net19" "(unknown)")
+	Net("unnamed_net18" "(unknown)")
 	(
 		Connect("R5-2")
 		Connect("U1-36")
 	)
-	Net("unnamed_net20" "(unknown)")
+	Net("unnamed_net19" "(unknown)")
 	(
 		Connect("U1-42")
 	)
-	Net("unnamed_net21" "(unknown)")
+	Net("unnamed_net20" "(unknown)")
 	(
 		Connect("U1-55")
 	)
-	Net("unnamed_net22" "(unknown)")
+	Net("unnamed_net21" "(unknown)")
 	(
 		Connect("C7-2")
 		Connect("C14-2")
@@ -3841,31 +3844,31 @@ NetList()
 		Connect("R2-1")
 		Connect("U2-2")
 	)
-	Net("unnamed_net23" "(unknown)")
+	Net("unnamed_net22" "(unknown)")
 	(
 		Connect("D1-2")
 		Connect("J3-1")
 	)
-	Net("unnamed_net24" "(unknown)")
+	Net("unnamed_net23" "(unknown)")
 	(
 		Connect("F2-1")
 		Connect("J5-1")
 	)
-	Net("unnamed_net25" "(unknown)")
+	Net("unnamed_net24" "(unknown)")
 	(
 		Connect("D3-2")
 		Connect("F2-2")
 	)
-	Net("unnamed_net26" "(unknown)")
+	Net("unnamed_net25" "(unknown)")
 	(
 		Connect("J5-4")
 	)
-	Net("unnamed_net27" "(unknown)")
+	Net("unnamed_net26" "(unknown)")
 	(
 		Connect("J5-3")
 		Connect("R4-1")
 	)
-	Net("unnamed_net28" "(unknown)")
+	Net("unnamed_net27" "(unknown)")
 	(
 		Connect("J5-2")
 		Connect("R5-1")

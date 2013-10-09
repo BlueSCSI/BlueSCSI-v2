@@ -76,12 +76,12 @@ numslots=0
 17		io	line	l		P5[1]
 18		io	line	l		P5[2]
 19		io	line	l		P5[3]
-20		io	line	l		SWDIO,P1[0]
-21		io	line	l		SWDCK,P1[1]
+20		io	line	l		SWDIO,TMS,P1[0]
+21		io	line	l		SWDCK,TCK,P1[1]
 22		io	line	l		P1[2]
-23		io	line	l		SWV,P1[3]
-24		io	line	l		P1[4]
-25		io	line	l		P1[5]
+23		io	line	l		SWV,TDO,P1[3]
+24		io	line	l		TDI,P1[4]
+25		io	line	l		NTRST,P1[5]
 
 
 26		pwr	line	b		VDDIO1

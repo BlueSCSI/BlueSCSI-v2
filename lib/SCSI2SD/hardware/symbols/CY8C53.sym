@@ -215,7 +215,7 @@ pinnumber=20
 T 300 4550 5 8 0 1 0 8 1
 pinseq=20
 T 450 4600 9 8 1 1 0 0 1
-pinlabel=SWDIO,P1[0]
+pinlabel=SWDIO,TMS,P1[0]
 T 450 4600 5 8 0 1 0 2 1
 pintype=io
 }
@@ -226,7 +226,7 @@ pinnumber=21
 T 300 3850 5 8 0 1 0 8 1
 pinseq=21
 T 450 3900 9 8 1 1 0 0 1
-pinlabel=SWDCK,P1[1]
+pinlabel=SWDCK,TCK,P1[1]
 T 450 3900 5 8 0 1 0 2 1
 pintype=io
 }
@@ -248,7 +248,7 @@ pinnumber=23
 T 300 2450 5 8 0 1 0 8 1
 pinseq=23
 T 450 2500 9 8 1 1 0 0 1
-pinlabel=SWV,P1[3]
+pinlabel=SWV,TDO,P1[3]
 T 450 2500 5 8 0 1 0 2 1
 pintype=io
 }
@@ -259,7 +259,7 @@ pinnumber=24
 T 300 1750 5 8 0 1 0 8 1
 pinseq=24
 T 450 1800 9 8 1 1 0 0 1
-pinlabel=P1[4]
+pinlabel=TDI,P1[4]
 T 450 1800 5 8 0 1 0 2 1
 pintype=io
 }
@@ -270,7 +270,7 @@ pinnumber=25
 T 300 1050 5 8 0 1 0 8 1
 pinseq=25
 T 450 1100 9 8 1 1 0 0 1
-pinlabel=P1[5]
+pinlabel=NTRST,P1[5]
 T 450 1100 5 8 0 1 0 2 1
 pintype=io
 }

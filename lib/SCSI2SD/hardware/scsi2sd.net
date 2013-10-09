@@ -1,17 +1,16 @@
-unnamed_net28	R5-1 J5-2 
-unnamed_net27	R4-1 J5-3 
-unnamed_net26	J5-4 
-unnamed_net25	D3-2 F2-2 
-unnamed_net24	J5-1 F2-1 
-unnamed_net23	D1-2 J3-1 
+unnamed_net27	R5-1 J5-2 
+unnamed_net26	R4-1 J5-3 
+unnamed_net25	J5-4 
+unnamed_net24	D3-2 F2-2 
+unnamed_net23	J5-1 F2-1 
+unnamed_net22	D1-2 J3-1 
 drive_5V	F1-2 D2-2 J3-2 
-unnamed_net22	R1-1 R2-1 C14-2 C7-2 U2-2 
-unnamed_net21	U1-55 
-unnamed_net20	U1-42 
-unnamed_net19	R5-2 U1-36 
-unnamed_net18	R4-2 U1-35 
-unnamed_net17	U1-25 
-unnamed_net16	U1-24 
+unnamed_net21	R1-1 R2-1 C14-2 C7-2 U2-2 
+unnamed_net20	U1-55 
+unnamed_net19	U1-42 
+unnamed_net18	R5-2 U1-36 
+unnamed_net17	R4-2 U1-35 
+unnamed_net16	U1-25 
 unnamed_net15	U1-22 
 unnamed_net14	U1-11 
 SD_DAT2	J6-1 U1-49 R12-1 
@@ -26,7 +25,7 @@ unnamed_net12	U1-63 C27-2
 unnamed_net11	U1-68 LED1-2 
 unnamed_net10	R3-1 LED1-1 
 unnamed_net9	U1-23 J4-6 
-unnamed_net8	J4-8 
+unnamed_net8	U1-24 J4-8 
 unnamed_net7	U1-15 J4-10 
 unnamed_net6	U1-21 J4-4 
 unnamed_net5	U1-20 J4-2 
