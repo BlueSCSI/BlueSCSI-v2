@@ -7,7 +7,7 @@
   <block name="SCSI_ID" BASE="0x0" SIZE="0x0" desc="" visible="true" />
   <block name="SD_Clk_mux" BASE="0x0" SIZE="0x0" desc="" visible="true" />
   <block name="SD_Clk_Ctl" BASE="0x0" SIZE="0x0" desc="" visible="true">
-    <register name="SD_Clk_Ctl_CONTROL_REG" address="0x40006575" bitWidth="8" desc="" />
+    <register name="SD_Clk_Ctl_CONTROL_REG" address="0x40006476" bitWidth="8" desc="" />
   </block>
   <block name="SD_Data_Clk" BASE="0x0" SIZE="0x0" desc="" visible="true" />
   <block name="LED1" BASE="0x0" SIZE="0x0" desc="" visible="true" />

@@ -18,6 +18,7 @@
 #include "device.h"
 #include "scsi.h"
 #include "disk.h"
+#include "sd.h"
 
 #include <string.h>
 
@@ -25,8 +26,19 @@
 BlockDevice blockDev;
 Transfer transfer;
 
-static void startRead(int nextBlock);
-static int sdInit();
+static int doSdInit()
+{
+	int result = sdInit();
+	if (result)
+	{
+		blockDev.state = blockDev.state | DISK_INITIALISED;
+		
+		// TODO artificially limit this value according to EEPROM config.
+		blockDev.capacity = sdDev.capacity;
+	}
+	return result;
+}
+
 
 static void doFormatUnit()
 {
@@ -85,7 +97,7 @@ static void doWrite(uint32 lba, uint32 blocks)
 		scsiDev.status = CHECK_CONDITION;
 		scsiDev.sense.code = ILLEGAL_REQUEST;
 		scsiDev.sense.asc = WRITE_PROTECTED;
-		scsiDev.phase = STATUS;	
+		scsiDev.phase = STATUS;
 	}
 	else if (((uint64) lba) + blocks > blockDev.capacity)
 	{
@@ -102,6 +114,8 @@ static void doWrite(uint32 lba, uint32 blocks)
 		transfer.currentBlock = 0;
 		scsiDev.phase = DATA_OUT;
 		scsiDev.dataLen = SCSI_BLOCK_SIZE;
+
+		sdPrepareWrite();
 	}
 }
 
@@ -123,7 +137,7 @@ static void doRead(uint32 lba, uint32 blocks)
 		transfer.currentBlock = 0;
 		scsiDev.phase = DATA_IN;
 		scsiDev.dataLen = 0; // No data yet
-		startRead(0);
+		sdPrepareRead(0);
 	}
 }
 
@@ -187,15 +201,12 @@ int scsiDiskCommand()
 			blockDev.state = blockDev.state | DISK_STARTED;
 			if (!(blockDev.state & DISK_INITIALISED))
 			{
-				if (sdInit())
-				{
-					blockDev.state = blockDev.state | DISK_INITIALISED;
-				}
+				doSdInit();
 			}
 		}
 		else
 		{
-			blockDev.state = blockDev.state & (-1 ^ DISK_STARTED);
+			blockDev.state &= ~DISK_STARTED;
 		}
 	}
 	else if (command == 0x00)
@@ -331,285 +342,6 @@ int scsiDiskCommand()
 	return commandHandled;
 }
 
-
-static uint8 sdCrc7(uint8* chr, uint8 cnt, uint8 crc)
-{
-	uint8 a;
-	for(a = 0; a < cnt; a++)
-	{
-		uint8 Data = chr[a];
-		uint8 i;
-		for(i = 0; i < 8; i++)
-		{
-			crc <<= 1;
-			if( (Data & 0x80) ^ (crc & 0x80) ) {crc ^= 0x09;}
-			Data <<= 1;
-		}
-	}
-	return crc & 0x7F;
-}
-
-// Read and write 1 byte.
-static uint8 sdSpiByte(uint8 value)
-{
-	SDCard_WriteTxData(value);
-	while(!(SDCard_ReadTxStatus() & SDCard_STS_SPI_DONE))
-	{}
-	while (!SDCard_GetRxBufferSize()) {}
-	return SDCard_ReadRxData();
-}
-
-static void sdSendCommand(uint8 cmd, uint32 param)
-{
-	uint8 send[6];
-
-	send[0] = cmd | 0x40;
-	send[1] = param >> 24;
-	send[2] = param >> 16;
-	send[3] = param >> 8;
-	send[4] = param;
-	send[5] = (sdCrc7(send, 5, 0) << 1) | 1;
-
-	for(cmd = 0; cmd < sizeof(send); cmd++)
-	{
-		sdSpiByte(send[cmd]);
-	}
-}
-
-static uint8 sdReadResp()
-{
-	uint8 v;
-	uint8 i = 128;
-	do
-	{
-		v = sdSpiByte(0xFF);
-	} while(i-- && (v == 0xFF));
-	return v;
-}
-
-static uint8 sdWaitResp()
-{
-	uint8 v;
-	uint8 i = 255;
-	do
-	{
-		v = sdSpiByte(0xFF);
-	} while(i-- && (v != 0xFE));
-	return v;
-}
-
-
-static uint8 sdCommandAndResponse(uint8 cmd, uint32 param)
-{
-	SDCard_ClearRxBuffer();
-	sdSpiByte(0xFF);
-	sdSendCommand(cmd, param);
-	return sdReadResp();
-}
-
-
-static int sdInit()
-{
-	int result = 0;
-	SD_CS_Write(1); // Set CS inactive (active low)
-	SD_Init_Clk_Start(); // Turn on the slow 400KHz clock
-	SD_Clk_Ctl_Write(0); // Select the 400KHz clock source.
-	SDCard_Start(); // Enable SPI hardware
-	
-	// Power on sequence. 74 clock cycles of a "1" while CS unasserted.
-	int i;
-	for (i = 0; i < 10; ++i)
-	{
-		sdSpiByte(0xFF);
-	}
-
-	SD_CS_Write(0); // Set CS active (active low)
-	CyDelayUs(1);
-
-	uint8 v = sdCommandAndResponse(0, 0);
-	if(v != 1){goto bad;}
-
-	// TODO CMD8 + valid CC for ver2 + cards. arg 0x00..01AA
-
-
-	// TODO SDv2 support: ACMD41, fallback to CMD1
-
-	v = sdCommandAndResponse(1, 0);
-     for(i=0;v != 0 && i<50;++i){
-          CyDelay(50);
-          v = sdCommandAndResponse(1, 0);
-     }
-     if(v){goto bad;}
-     
-	v = sdCommandAndResponse(16, SCSI_BLOCK_SIZE); //Force sector size
-	if(v){goto bad;}
-	v = sdCommandAndResponse(59, 0); //crc off
-	if(v){goto bad;}
-
-	// now set the sd card up for full speed
-	SD_Data_Clk_Start(); // Turn on the fast clock
-	SD_Clk_Ctl_Write(1); // Select the fast clock source.
-	SD_Init_Clk_Stop(); // Stop the slow clock.
-	
-	v = sdCommandAndResponse(0x9, 0);
-	if(v){goto bad;}
-	v = sdWaitResp();
-	if (v != 0xFE) { goto bad; }
-	uint8 buf[16];
-	for (i = 0; i < 16; ++i)
-	{
-		buf[i] = sdSpiByte(0xFF);
-	}
-	sdSpiByte(0xFF); // CRC 
-	sdSpiByte(0xFF); // CRC
-	uint32 c_size = (((((uint32)buf[6]) & 0x3) << 16) | (((uint32)buf[7]) << 8) | buf[8]) >> 6;
-	uint32 c_mult = (((((uint32)buf[9]) & 0x3) << 8) | ((uint32)buf[0xa])) >> 7;
-	uint32 sectorSize = buf[5] & 0x0F;
-	blockDev.capacity = ((c_size+1) * ((uint64)1 << (c_mult+2)) * ((uint64)1 << sectorSize)) / SCSI_BLOCK_SIZE;
-	result = 1;
-	goto out;
-	
-bad:
-	blockDev.capacity = 0;
-	
-out:
-	return result;
-
-}
-
-static void startRead(int nextBlock)
-{
-// TODO 4Gb limit
-// NOTE: CMD17 is NOT in hex. decimal 17.
-	uint8 v = sdCommandAndResponse(17, ((uint32)SCSI_BLOCK_SIZE) * (transfer.lba + transfer.currentBlock + nextBlock));
-	if (v)
-	{
-		scsiDiskReset();
-
-		scsiDev.status = CHECK_CONDITION;
-		scsiDev.sense.code = HARDWARE_ERROR;
-		scsiDev.sense.asc = LOGICAL_UNIT_COMMUNICATION_FAILURE;
-		scsiDev.phase = STATUS;
-	}
-}
-
-static int readReady()
-{
-	uint8 v = sdWaitResp();
-	if (v == 0xFF)
-	{
-		return 0;
-	}
-	else if (v == 0xFE)
-	{
-		return 1;
-	}
-	else
-	{
-		scsiDiskReset();
-		scsiDev.status = CHECK_CONDITION;
-		scsiDev.sense.code = HARDWARE_ERROR;
-		scsiDev.sense.asc = LOGICAL_UNIT_COMMUNICATION_FAILURE;
-		scsiDev.phase = STATUS;
-		return 0;
-	}
-}
-static void readSector()
-{
-// TODO this is slow. Really slow.
-// Even if we don't use DMA, we still want to read/write multiple bytes
-// at a time.
-/*
-	int i;
-	for (i = 0; i < SCSI_BLOCK_SIZE; ++i)
-	{
-		scsiDev.data[i] = sdSpiByte(0xFF);
-	}
-*/
-
-	// We have a spi FIFO of 4 bytes. use it.
-	// This is much better, byut after 4 bytes we're still
-	// blocking a bit.
-	int i;
-	for (i = 0; i < SCSI_BLOCK_SIZE; i+=4)
-	{
-		SDCard_WriteTxData(0xFF);
-		SDCard_WriteTxData(0xFF);
-		SDCard_WriteTxData(0xFF);
-		SDCard_WriteTxData(0xFF);
-
-		while(!(SDCard_ReadTxStatus() & SDCard_STS_SPI_DONE))
-		{}
-		scsiDev.data[i] = SDCard_ReadRxData();
-		scsiDev.data[i+1] = SDCard_ReadRxData();
-		scsiDev.data[i+2] = SDCard_ReadRxData();
-		scsiDev.data[i+3] = SDCard_ReadRxData();
-
-	}
-
-
-	sdSpiByte(0xFF); // CRC
-	sdSpiByte(0xFF); // CRC
-	scsiDev.dataLen = SCSI_BLOCK_SIZE;
-	scsiDev.dataPtr = 0;
-}
-
-static void writeSector()
-{
-	uint8 v = sdCommandAndResponse(24, ((uint32)SCSI_BLOCK_SIZE) * (transfer.lba + transfer.currentBlock));
-	if (v)
-	{
-		scsiDiskReset();
-
-		scsiDev.status = CHECK_CONDITION;
-		scsiDev.sense.code = HARDWARE_ERROR;
-		scsiDev.sense.asc = LOGICAL_UNIT_COMMUNICATION_FAILURE;
-		scsiDev.phase = STATUS;
-	}
-	else
-	{
-		SDCard_WriteTxData(0xFE);
-		int i;
-		for (i = 0; i < SCSI_BLOCK_SIZE; ++i)
-		{
-			SDCard_WriteTxData(scsiDev.data[i]);
-		}
-		while(!(SDCard_ReadTxStatus() & SDCard_STS_SPI_DONE))
-		{}
-		sdSpiByte(0x00); // CRC
-		sdSpiByte(0x00); // CRC
-		SDCard_ClearRxBuffer();		
-		v = sdSpiByte(0x00); // Response
-		if (((v & 0x1F) >> 1) != 0x2) // Accepted.
-		{
-			scsiDiskReset();
-
-			scsiDev.status = CHECK_CONDITION;
-			scsiDev.sense.code = HARDWARE_ERROR;
-			scsiDev.sense.asc = LOGICAL_UNIT_COMMUNICATION_FAILURE;
-			scsiDev.phase = STATUS;
-		}
-		else
-		{
-			// Wait for the card to come out of busy.
-			v = sdSpiByte(0xFF);
-			while (v == 0)
-			{
-				v = sdSpiByte(0xFF);
-			}
-			uint8 r1 = sdCommandAndResponse(13, 0); // send status
-			uint8 r2 = sdSpiByte(0xFF);
-			if (r1 || r2)
-			{
-				scsiDev.status = CHECK_CONDITION;
-				scsiDev.sense.code = HARDWARE_ERROR;
-				scsiDev.sense.asc = WRITE_ERROR_AUTO_REALLOCATION_FAILED;
-				scsiDev.phase = STATUS;			
-			}
-		}
-	}
-}
-
 void scsiDiskPoll()
 {
 	if (scsiDev.phase == DATA_IN &&
@@ -617,12 +349,12 @@ void scsiDiskPoll()
 	{
 		if (scsiDev.dataLen == 0)
 		{
-			if (readReady())
+			if (sdIsReadReady())
 			{
-				readSector();
+				sdReadSector();
 				if ((transfer.currentBlock + 1) < transfer.blocks)
 				{
-					startRead(1); // Tell SD card to grab data while we send
+					sdPrepareRead(1); // Tell SD card to grab data while we send
 									// buffer to SCSI.
 				}
 			}
@@ -644,17 +376,23 @@ void scsiDiskPoll()
 	{
 		if (scsiDev.dataPtr == SCSI_BLOCK_SIZE)
 		{
-			writeSector();
+			int writeOk = sdWriteSector();
 			scsiDev.dataPtr = 0;
 			transfer.currentBlock++;
 			if (transfer.currentBlock >= transfer.blocks)
+				
 			{
 				scsiDev.dataLen = 0;
 				scsiDev.phase = STATUS;
 				scsiDiskReset();
+				
+				if (writeOk)
+				{
+					sdCompleteWrite();
+				}
 			}
 		}
-	}	
+	}
 }
 
 void scsiDiskReset()
@@ -685,12 +423,18 @@ void scsiDiskInit()
 	{
 		blockDev.state = blockDev.state | DISK_PRESENT;
 
-// todo IF FAILS, TRY AGAIN LATER.
-// 5000 works well with the Mac.
-		CyDelay(5000); // allow the card to wake up.
-		if (sdInit())
+		// Wait up to 5 seconds for the SD card to wake up.
+		int retry;
+		for (retry = 0; retry < 5; ++retry)
 		{
-			blockDev.state = blockDev.state | DISK_INITIALISED;
+			if (doSdInit())
+			{
+				break;
+			}
+			else
+			{
+				CyDelay(1000);
+			}
 		}
 	}
 }

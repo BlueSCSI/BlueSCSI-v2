@@ -38,7 +38,7 @@ static const uint8 DisconnectReconnectPage[] =
 
 static const uint8 FormatDevicePage[] =
 {
-x03, // Page code 
+0x03, // Page code 
 0x16, // Page length
 0x00, 0x00, // Single zone
 0x00, 0x00, // No alternate sectors
