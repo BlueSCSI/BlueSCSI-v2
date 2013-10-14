@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: CyLib.c
-* Version 3.40
+* Version 4.0
 *
 *  Description:
 *   Provides system API for the clocking, interrupts and watchdog timer.
@@ -21,21 +21,20 @@
 
 /*******************************************************************************
 * The CyResetStatus variable is used to obtain value of RESET_SR0 register after
-* a device reset.
+* a device reset. It is set from initialize_psoc() at the early initialization
+* stage. In case of IAR EW IDE, initialize_psoc() is executed before the data
+* sections are initialized. To avoid zeroing, CyResetStatus should be placed
+* to the .noinit section.
 *******************************************************************************/
-uint8 CYXDATA CyResetStatus;
+CY_NOINIT uint8 CYXDATA CyResetStatus;
 
 
-#if(!CY_PSOC5A)
+/* Variable Vdda */
+#if(CYDEV_VARIABLE_VDDA == 1)
 
-    /* Variable Vdda */
-    #if(CYDEV_VARIABLE_VDDA == 1)
+    uint8 CyScPumpEnabled = (uint8)(CYDEV_VDDA_MV < 2700);
 
-        uint8 CyScPumpEnabled = (uint8)(CYDEV_VDDA_MV < 2700);
-
-    #endif  /* (CYDEV_VARIABLE_VDDA == 1) */
-
-#endif /* (!CY_PSOC5A) */
+#endif  /* (CYDEV_VARIABLE_VDDA == 1) */
 
 
 /* Do not use these definitions directly in your application */
@@ -102,16 +101,15 @@ cystatus CyPLL_OUT_Start(uint8 wait)
     if(wait != 0u)
     {
         /* Save 100 KHz ILO, FTW interval, enable and interrupt enable */
-        iloEnableState = SLOWCLK_ILO_CR0;
-        pmTwCfg0State = CY_PM_TW_CFG0_REG;
-        pmTwCfg2State = CY_PM_TW_CFG2_REG;
+        iloEnableState = CY_LIB_SLOWCLK_ILO_CR0_REG & CY_LIB_SLOWCLK_ILO_CR0_EN_100KHZ;
+        pmTwCfg0State = CY_LIB_PM_TW_CFG0_REG;
+        pmTwCfg2State = CY_LIB_PM_TW_CFG2_REG;
 
         CyPmFtwSetInterval(CY_CLK_PLL_FTW_INTERVAL);
 
         status = CYRET_TIMEOUT;
 
-
-        while(CyPmReadStatus(CY_PM_FTW_INT) != CY_PM_FTW_INT)
+        while(0u == (CY_PM_FTW_INT & CyPmReadStatus(CY_PM_FTW_INT)))
         {
             /* Wait for the interrupt status */
             if(0u != (CY_CLK_PLL_SR_REG & CY_CLK_PLL_LOCK_STATUS))
@@ -124,14 +122,14 @@ cystatus CyPLL_OUT_Start(uint8 wait)
             }
         }
 
-
         /* Restore 100 KHz ILO, FTW interval, enable and interrupt enable */
-        if(0u == (iloEnableState & ILO_CONTROL_100KHZ_ON))
+        if(0u == iloEnableState)
         {
             CyILO_Stop100K();
         }
-        CY_PM_TW_CFG0_REG = pmTwCfg0State;
-        CY_PM_TW_CFG2_REG = pmTwCfg2State;
+
+        CY_LIB_PM_TW_CFG0_REG = pmTwCfg0State;
+        CY_LIB_PM_TW_CFG2_REG = pmTwCfg2State;
     }
 
     return(status);
@@ -229,9 +227,9 @@ void CyPLL_OUT_SetPQ(uint8 pDiv, uint8 qDiv, uint8 current)
 *
 * Parameters:
 *   source: One of the three available PLL clock sources
-*            0 :        IMO
-*            1 :        MHz Crystal
-*            2 :        DSI
+*    CY_PLL_SOURCE_IMO  :   IMO
+*    CY_PLL_SOURCE_XTAL :   MHz Crystal
+*    CY_PLL_SOURCE_DSI  :   DSI
 *
 * Return:
 *  None
@@ -299,51 +297,33 @@ void CyIMO_Start(uint8 wait)
 {
     uint8 pmFtwCfg2Reg;
     uint8 pmFtwCfg0Reg;
-    uint8 iloControlReg;
+    uint8 ilo100KhzEnable;
 
-    /* Set the bit to enable the clock. */
-    PM_ACT_CFG0 |= IMO_PM_ENABLE;
 
-    /* Wait for 6 us */
+    CY_LIB_PM_ACT_CFG0_REG  |= CY_LIB_PM_ACT_CFG0_IMO_EN;
+    CY_LIB_PM_STBY_CFG0_REG |= CY_LIB_PM_STBY_CFG0_IMO_EN;
+
     if(0u != wait)
     {
         /* Need to turn on the 100KHz ILO if it happens to not already be running.*/
-        iloControlReg = SLOWCLK_ILO_CR0;
+        ilo100KhzEnable = CY_LIB_SLOWCLK_ILO_CR0_REG & CY_LIB_SLOWCLK_ILO_CR0_EN_100KHZ;
+        pmFtwCfg0Reg = CY_LIB_PM_TW_CFG0_REG;
+        pmFtwCfg2Reg = CY_LIB_PM_TW_CFG2_REG;
 
-        if(0u == (iloControlReg & ILO_CONTROL_100KHZ_ON))
-        {
-            CyILO_Start100K();
-        }
+        CyPmFtwSetInterval(CY_LIB_CLK_IMO_FTW_TIMEOUT);
 
-        /* Use ILO 100 KHz */
-        pmFtwCfg2Reg = PM_TW_CFG2;
-        pmFtwCfg0Reg = PM_TW_CFG0;
-
-        /* FTW_EN (bit 0) must be clear to change the period*/
-        PM_TW_CFG2 &= FTW_CLEAR_FTW_BITS;
-
-        /* Set the FTW interval of 1 100KHz ILO clocks
-        Should result in status getting set at a (100/1)KHz rate*/
-        PM_TW_CFG0 = 0u;
-
-        /* Enable FTW, but not the interrupt */
-        PM_TW_CFG2 = FTW_ENABLE;
-
-        /* Read FTW value */
-        while (CyPmReadStatus(CY_PM_FTW_INT) == 0u)
+        while (0u == (CY_PM_FTW_INT & CyPmReadStatus(CY_PM_FTW_INT)))
         {
             /* Wait for the interrupt status */
         }
 
-        /* Reset the clock */
-        if(0u == (iloControlReg & ILO_CONTROL_100KHZ_ON))
+        if(0u == ilo100KhzEnable)
         {
             CyILO_Stop100K();
         }
 
-        /* Restore the FTW */
-        PM_TW_CFG0 = pmFtwCfg0Reg;
-        PM_TW_CFG2 = pmFtwCfg2Reg;
+        CY_LIB_PM_TW_CFG0_REG = pmFtwCfg0Reg;
+        CY_LIB_PM_TW_CFG2_REG = pmFtwCfg2Reg;
     }
 }
 
@@ -364,8 +344,8 @@ void CyIMO_Start(uint8 wait)
 *******************************************************************************/
 void CyIMO_Stop(void) 
 {
-    /* Clear the bit to disable the clock. */
-    PM_ACT_CFG0 &= ((uint8)(~IMO_PM_ENABLE));
+    CY_LIB_PM_ACT_CFG0_REG  &= ((uint8) (~CY_LIB_PM_ACT_CFG0_IMO_EN));
+    CY_LIB_PM_STBY_CFG0_REG &= ((uint8) (~CY_LIB_PM_STBY_CFG0_IMO_EN));
 }
 
 
@@ -389,9 +369,9 @@ static uint8 CyUSB_PowerOnCheck(void)
 
     /* Check whether device is in Active or AltActiv and if USB is powered on */
     if((((CY_PM_MODE_CSR_REG & CY_PM_MODE_CSR_MASK) == CY_PM_MODE_CSR_ACTIVE ) &&
-       (0u != (CY_PM_ACT_CFG5_REG & CY_ACT_USB_ENABLED     )))  ||
+       (0u != (CY_LIB_PM_ACT_CFG5_REG & CY_ACT_USB_ENABLED     )))  ||
        (((CY_PM_MODE_CSR_REG & CY_PM_MODE_CSR_MASK) == CY_PM_MODE_CSR_ALT_ACT) &&
-       (0u != (CY_PM_STBY_CFG5_REG & CY_ALT_ACT_USB_ENABLED))))
+       (0u != (CY_LIB_PM_STBY_CFG5_REG & CY_ALT_ACT_USB_ENABLED))))
     {
         poweredOn = 1u;
     }
@@ -416,53 +396,54 @@ static uint8 CyUSB_PowerOnCheck(void)
 *******************************************************************************/
 static void CyIMO_SetTrimValue(uint8 freq) 
 {
-    uint8 usb_power_on = CyUSB_PowerOnCheck();
+    uint8 usbPowerOn = CyUSB_PowerOnCheck();
 
     /* If USB is powered */
-    if(usb_power_on == 1u)
+    if(usbPowerOn == 1u)
     {
         /* Unlock USB write */
-        CY_USB_CR1 &= ((uint8)(~CLOCK_USB_ENABLE));
+        CY_LIB_USB_CR1_REG &= ((uint8)(~CY_LIB_USB_CLK_EN));
     }
     switch(freq)
     {
     case CY_IMO_FREQ_3MHZ:
-        IMO_TR1 = CY_GET_XTND_REG8(FLSHID_CUST_TABLES_IMO_3MHZ_PTR);
+        CY_LIB_IMO_TR1_REG = CY_GET_XTND_REG8(CY_LIB_TRIM_IMO_3MHZ_PTR);
         break;
 
     case CY_IMO_FREQ_6MHZ:
-        IMO_TR1 = CY_GET_XTND_REG8(FLSHID_CUST_TABLES_IMO_6MHZ_PTR);
+        CY_LIB_IMO_TR1_REG = CY_GET_XTND_REG8(CY_LIB_TRIM_IMO_6MHZ_PTR);
         break;
 
     case CY_IMO_FREQ_12MHZ:
-        IMO_TR1 = CY_GET_XTND_REG8(FLSHID_CUST_TABLES_IMO_12MHZ_PTR);
+        CY_LIB_IMO_TR1_REG = CY_GET_XTND_REG8(CY_LIB_TRIM_IMO_12MHZ_PTR);
         break;
 
     case CY_IMO_FREQ_24MHZ:
-        IMO_TR1 = CY_GET_XTND_REG8(FLSHID_CUST_TABLES_IMO_24MHZ_PTR);
+        CY_LIB_IMO_TR1_REG = CY_GET_XTND_REG8(CY_LIB_TRIM_IMO_24MHZ_PTR);
         break;
 
     case CY_IMO_FREQ_48MHZ:
-        IMO_TR1 = CY_GET_XTND_REG8(FLSHID_MFG_CFG_IMO_TR1_PTR);
+        CY_LIB_IMO_TR1_REG = CY_GET_XTND_REG8(CY_LIB_TRIM_IMO_TR1_PTR);
         break;
 
-    /* The IMO frequencies above 48 MHz are not supported by PSoC5 */
-    #if(!CY_PSOC5A)
+    case CY_IMO_FREQ_62MHZ:
+        CY_LIB_IMO_TR1_REG = CY_GET_XTND_REG8(CY_LIB_TRIM_IMO_67MHZ_PTR);
+        break;
 
-        case CY_IMO_FREQ_62MHZ:
-            IMO_TR1 = CY_GET_XTND_REG8(FLSHID_CUST_TABLES_IMO_67MHZ_PTR);
-            break;
-
-    #endif  /* (!CY_PSOC5A) */
+#if(CY_PSOC5)
+    case CY_IMO_FREQ_74MHZ:
+        CY_LIB_IMO_TR1_REG = CY_GET_XTND_REG8(CY_LIB_TRIM_IMO_80MHZ_PTR);
+        break;
+#endif  /* (CY_PSOC5) */
 
     case CY_IMO_FREQ_USB:
-        IMO_TR1 = CY_GET_XTND_REG8(FLSHID_CUST_TABLES_IMO_USB_PTR);
+        CY_LIB_IMO_TR1_REG = CY_GET_XTND_REG8(CY_LIB_TRIM_IMO_USB_PTR);
 
         /* If USB is powered */
-        if(usb_power_on == 1u)
+        if(usbPowerOn == 1u)
         {
             /* Lock the USB Oscillator */
-            CY_USB_CR1 |= CLOCK_USB_ENABLE;
+            CY_LIB_USB_CR1_REG |= CY_LIB_USB_CLK_EN;
         }
         break;
 
@@ -488,7 +469,8 @@ static void CyIMO_SetTrimValue(uint8 freq)
 *       CY_IMO_FREQ_12MHZ to set 12   MHz
 *       CY_IMO_FREQ_24MHZ to set 24   MHz
 *       CY_IMO_FREQ_48MHZ to set 48   MHz
-*       CY_IMO_FREQ_62MHZ to set 62 MHz (unsupported by PSoC 5)
+*       CY_IMO_FREQ_62MHZ to set 62.6 MHz
+*       CY_IMO_FREQ_74MHZ to set 74.7 MHz (not applicable for PSoC 3)
 *       CY_IMO_FREQ_USB   to set 24   MHz (Trimmed for USB operation)
 *
 * Return:
@@ -546,14 +528,15 @@ void CyIMO_SetFreq(uint8 freq)
         currentFreq = CY_IMO_FREQ_48MHZ;
         break;
 
-    /* The IMO frequencies above 48 MHz are not supported by PSoC5 */
-    #if(!CY_PSOC5A)
+    case 5u:
+        currentFreq = CY_IMO_FREQ_62MHZ;
+        break;
 
-        case 5u:
-            currentFreq = CY_IMO_FREQ_62MHZ;
-            break;
-
-    #endif  /* (!CY_PSOC5A) */
+#if(CY_PSOC5)
+    case 6u:
+        currentFreq = CY_IMO_FREQ_74MHZ;
+        break;
+#endif  /* (CY_PSOC5) */
 
     default:
         CYASSERT(0u != 0u);
@@ -571,42 +554,44 @@ void CyIMO_SetFreq(uint8 freq)
     {
     case CY_IMO_FREQ_3MHZ:
         CY_LIB_FASTCLK_IMO_CR_REG = ((CY_LIB_FASTCLK_IMO_CR_REG & CY_LIB_FASTCLK_IMO_CR_RANGE_MASK) |
-            CLOCK_IMO_3MHZ_VALUE) & ((uint8)(~FASTCLK_IMO_USBCLK_ON_SET));
+            CY_LIB_IMO_3MHZ_VALUE) & ((uint8)(~CY_LIB_IMO_USBCLK_ON_SET));
         break;
 
     case CY_IMO_FREQ_6MHZ:
         CY_LIB_FASTCLK_IMO_CR_REG = ((CY_LIB_FASTCLK_IMO_CR_REG & CY_LIB_FASTCLK_IMO_CR_RANGE_MASK) |
-            CLOCK_IMO_6MHZ_VALUE) & ((uint8)(~FASTCLK_IMO_USBCLK_ON_SET));
+            CY_LIB_IMO_6MHZ_VALUE) & ((uint8)(~CY_LIB_IMO_USBCLK_ON_SET));
         break;
 
     case CY_IMO_FREQ_12MHZ:
         CY_LIB_FASTCLK_IMO_CR_REG = ((CY_LIB_FASTCLK_IMO_CR_REG & CY_LIB_FASTCLK_IMO_CR_RANGE_MASK) |
-            CLOCK_IMO_12MHZ_VALUE) & ((uint8)(~FASTCLK_IMO_USBCLK_ON_SET));
+            CY_LIB_IMO_12MHZ_VALUE) & ((uint8)(~CY_LIB_IMO_USBCLK_ON_SET));
         break;
 
     case CY_IMO_FREQ_24MHZ:
         CY_LIB_FASTCLK_IMO_CR_REG = ((CY_LIB_FASTCLK_IMO_CR_REG & CY_LIB_FASTCLK_IMO_CR_RANGE_MASK) |
-            CLOCK_IMO_24MHZ_VALUE) & ((uint8)(~FASTCLK_IMO_USBCLK_ON_SET));
+            CY_LIB_IMO_24MHZ_VALUE) & ((uint8)(~CY_LIB_IMO_USBCLK_ON_SET));
         break;
 
     case CY_IMO_FREQ_48MHZ:
         CY_LIB_FASTCLK_IMO_CR_REG = ((CY_LIB_FASTCLK_IMO_CR_REG & CY_LIB_FASTCLK_IMO_CR_RANGE_MASK) |
-            CLOCK_IMO_48MHZ_VALUE) & ((uint8)(~FASTCLK_IMO_USBCLK_ON_SET));
+            CY_LIB_IMO_48MHZ_VALUE) & ((uint8)(~CY_LIB_IMO_USBCLK_ON_SET));
         break;
-
-    /* The IMO frequencies above 48 MHz are not supported by PSoC5 */
-    #if(!CY_PSOC5A)
 
     case CY_IMO_FREQ_62MHZ:
         CY_LIB_FASTCLK_IMO_CR_REG = ((CY_LIB_FASTCLK_IMO_CR_REG & CY_LIB_FASTCLK_IMO_CR_RANGE_MASK) |
-            CLOCK_IMO_62MHZ_VALUE) & ((uint8)(~FASTCLK_IMO_USBCLK_ON_SET));
+            CY_LIB_IMO_62MHZ_VALUE) & ((uint8)(~CY_LIB_IMO_USBCLK_ON_SET));
         break;
 
-    #endif  /* (!CY_PSOC5A) */
+#if(CY_PSOC5)
+    case CY_IMO_FREQ_74MHZ:
+        CY_LIB_FASTCLK_IMO_CR_REG = ((CY_LIB_FASTCLK_IMO_CR_REG & CY_LIB_FASTCLK_IMO_CR_RANGE_MASK) |
+            CY_LIB_IMO_74MHZ_VALUE) & ((uint8)(~CY_LIB_IMO_USBCLK_ON_SET));
+        break;
+#endif  /* (CY_PSOC5) */
 
     case CY_IMO_FREQ_USB:
         CY_LIB_FASTCLK_IMO_CR_REG = ((CY_LIB_FASTCLK_IMO_CR_REG & CY_LIB_FASTCLK_IMO_CR_RANGE_MASK) |
-            CLOCK_IMO_24MHZ_VALUE) | FASTCLK_IMO_USBCLK_ON_SET;
+            CY_LIB_IMO_24MHZ_VALUE) | CY_LIB_IMO_USBCLK_ON_SET;
         break;
 
     default:
@@ -643,7 +628,7 @@ void CyIMO_SetFreq(uint8 freq)
 *  Crystal or a DSI input can be the source of the IMO output instead.
 *
 * Parameters:
-*   source, CY_IMO_SOURCE_DSI to set the DSI as source.
+*   source: CY_IMO_SOURCE_DSI to set the DSI as source.
 *           CY_IMO_SOURCE_XTAL to set the MHz as source.
 *           CY_IMO_SOURCE_IMO to set the IMO itself.
 *
@@ -758,33 +743,8 @@ void CyIMO_DisableDoubler(void)
 *******************************************************************************/
 void CyMasterClk_SetSource(uint8 source) 
 {
-    #if(CY_PSOC5A)
-
-        uint8 masterReg0;
-
-        /* Read the current setting */
-        masterReg0 = CY_LIB_CLKDIST_MSTR0_REG;
-
-        /* Write a non-zero period to the master mux clock divider */
-        if (masterReg0 == 0x00u)
-        {
-            CY_LIB_CLKDIST_MSTR0_REG = 3u;
-        }
-
-    #endif  /* (CY_PSOC5A) */
-
     CY_LIB_CLKDIST_MSTR1_REG = (CY_LIB_CLKDIST_MSTR1_REG & MASTER_CLK_SRC_CLEAR) |
                                 (source & ((uint8)(~MASTER_CLK_SRC_CLEAR)));
-
-    #if(CY_PSOC5A)
-
-        /* Restore zero period (if desired) to the master mux clock divider */
-        if (masterReg0 == 0x00u)
-        {
-            CY_LIB_CLKDIST_MSTR0_REG = 0u;
-        }
-
-    #endif  /* (CY_PSOC5A) */
 }
 
 
@@ -894,7 +854,8 @@ void CyBusClk_SetDivider(uint16 divider)
     interruptState = CyEnterCriticalSection();
 
     /* Work around to set the bus clock divider value */
-    busClkDiv = ((uint16)(((uint16)(CY_LIB_CLKDIST_BCFG_MSB_REG)) << 8u)) | CY_LIB_CLKDIST_BCFG_LSB_REG;
+    busClkDiv = (uint16)((uint16)CY_LIB_CLKDIST_BCFG_MSB_REG << 8u);
+    busClkDiv |= CY_LIB_CLKDIST_BCFG_LSB_REG;
 
     if ((divider == 0u) || (busClkDiv == 0u))
     {
@@ -959,8 +920,8 @@ void CyBusClk_SetDivider(uint16 divider)
     *******************************************************************************/
     void CyCpuClk_SetDivider(uint8 divider) 
     {
-            CLKDIST_MSTR1 = (CLKDIST_MSTR1 & CLKDIST_MSTR1_DIV_CLEAR) |
-                                ((uint8)(divider << CLKDIST_DIV_POSITION));
+            CY_LIB_CLKDIST_MSTR1_REG = (CY_LIB_CLKDIST_MSTR1_REG & CY_LIB_CLKDIST_MSTR1_DIV_MASK) |
+                                ((uint8)(divider << CY_LIB_CLKDIST_DIV_POSITION));
     }
 
 #endif /* (CY_PSOC3) */
@@ -975,10 +936,10 @@ void CyBusClk_SetDivider(uint16 divider)
 *
 * Parameters:
 *  source: One of the four available USB clock sources
-*             USB_CLK_IMO2X     - IMO 2x
-*             USB_CLK_IMO       - IMO
-*             USB_CLK_PLL       - PLL
-*             USB_CLK_DSI       - DSI
+*    CY_LIB_USB_CLK_IMO2X     - IMO 2x
+*    CY_LIB_USB_CLK_IMO       - IMO
+*    CY_LIB_USB_CLK_PLL       - PLL
+*    CY_LIB_USB_CLK_DSI       - DSI
 *
 * Return:
 *  None
@@ -986,8 +947,8 @@ void CyBusClk_SetDivider(uint16 divider)
 *******************************************************************************/
 void CyUsbClk_SetSource(uint8 source) 
 {
-    CLKDIST_UCFG = (CLKDIST_UCFG & ((uint8)(~USB_CLKDIST_CONFIG_MASK))) |
-                        (USB_CLKDIST_CONFIG_MASK & source);
+    CY_LIB_CLKDIST_UCFG_REG = (CY_LIB_CLKDIST_UCFG_REG & ((uint8)(~CY_LIB_CLKDIST_UCFG_SRC_SEL_MASK))) |
+                        (CY_LIB_CLKDIST_UCFG_SRC_SEL_MASK & source);
 }
 
 
@@ -1012,7 +973,7 @@ void CyUsbClk_SetSource(uint8 source)
 void CyILO_Start1K(void) 
 {
     /* Set the bit 1 of ILO RS */
-    SLOWCLK_ILO_CR0 |= ILO_CONTROL_1KHZ_ON;
+    CY_LIB_SLOWCLK_ILO_CR0_REG |= CY_LIB_SLOWCLK_ILO_CR0_EN_1KHZ;
 }
 
 
@@ -1040,7 +1001,7 @@ void CyILO_Start1K(void)
 void CyILO_Stop1K(void) 
 {
     /* Clear the bit 1 of ILO RS */
-    SLOWCLK_ILO_CR0 &= ((uint8)(~ILO_CONTROL_1KHZ_ON));
+    CY_LIB_SLOWCLK_ILO_CR0_REG &= ((uint8)(~CY_LIB_SLOWCLK_ILO_CR0_EN_1KHZ));
 }
 
 
@@ -1060,8 +1021,7 @@ void CyILO_Stop1K(void)
 *******************************************************************************/
 void CyILO_Start100K(void) 
 {
-    /* Set the bit 2 of ILO RS */
-    SLOWCLK_ILO_CR0 |= ILO_CONTROL_100KHZ_ON;
+    CY_LIB_SLOWCLK_ILO_CR0_REG |= CY_LIB_SLOWCLK_ILO_CR0_EN_100KHZ;
 }
 
 
@@ -1081,8 +1041,7 @@ void CyILO_Start100K(void)
 *******************************************************************************/
 void CyILO_Stop100K(void) 
 {
-    /* Clear the bit 2 of ILO RS */
-    SLOWCLK_ILO_CR0 &= ((uint8)(~ILO_CONTROL_100KHZ_ON));
+    CY_LIB_SLOWCLK_ILO_CR0_REG &= ((uint8)(~CY_LIB_SLOWCLK_ILO_CR0_EN_100KHZ));
 }
 
 
@@ -1106,7 +1065,7 @@ void CyILO_Stop100K(void)
 void CyILO_Enable33K(void) 
 {
     /* Set the bit 5 of ILO RS */
-    SLOWCLK_ILO_CR0 |= ILO_CONTROL_33KHZ_ON;
+    CY_LIB_SLOWCLK_ILO_CR0_REG |= CY_LIB_SLOWCLK_ILO_CR0_EN_33KHZ;
 }
 
 
@@ -1129,8 +1088,7 @@ void CyILO_Enable33K(void)
 *******************************************************************************/
 void CyILO_Disable33K(void) 
 {
-    /* Clear the bit 5 of ILO RS */
-    SLOWCLK_ILO_CR0 &= ((uint8)(~ILO_CONTROL_33KHZ_ON));
+    CY_LIB_SLOWCLK_ILO_CR0_REG &= ((uint8)(~CY_LIB_SLOWCLK_ILO_CR0_EN_33KHZ));
 }
 
 
@@ -1154,7 +1112,7 @@ void CyILO_Disable33K(void)
 *******************************************************************************/
 void CyILO_SetSource(uint8 source) 
 {
-    CLKDIST_CR = (CLKDIST_CR & CY_ILO_SOURCE_BITS_CLEAR) |
+    CY_LIB_CLKDIST_CR_REG = (CY_LIB_CLKDIST_CR_REG & CY_ILO_SOURCE_BITS_CLEAR) |
                     (((uint8) (source << 2u)) & ((uint8)(~CY_ILO_SOURCE_BITS_CLEAR)));
 }
 
@@ -1181,20 +1139,20 @@ uint8 CyILO_SetPowerMode(uint8 mode)
     uint8 state;
 
     /* Get current state. */
-    state = SLOWCLK_ILO_CR0;
+    state = CY_LIB_SLOWCLK_ILO_CR0_REG;
 
     /* Set the the oscillator power mode. */
     if(mode != CY_ILO_FAST_START)
     {
-        SLOWCLK_ILO_CR0 = (state | ILO_CONTROL_PD_MODE);
+        CY_LIB_SLOWCLK_ILO_CR0_REG = (state | CY_ILO_CONTROL_PD_MODE);
     }
     else
     {
-        SLOWCLK_ILO_CR0 = (state & ((uint8)(~ILO_CONTROL_PD_MODE)));
+        CY_LIB_SLOWCLK_ILO_CR0_REG = (state & ((uint8)(~CY_ILO_CONTROL_PD_MODE)));
     }
 
     /* Return the old mode. */
-    return ((state & ILO_CONTROL_PD_MODE) >> ILO_CONTROL_PD_POSITION);
+    return ((state & CY_ILO_CONTROL_PD_MODE) >> CY_ILO_CONTROL_PD_POSITION);
 }
 
 
@@ -1260,7 +1218,8 @@ void CyXTAL_32KHZ_Stop(void)
 {
     CY_CLK_XTAL32_TST_REG  = CY_CLK_XTAL32_TST_DEFAULT;
     CY_CLK_XTAL32_TR_REG   = CY_CLK_XTAL32_TR_POWERDOWN;
-    CY_CLK_XTAL32_CFG_REG = (CY_CLK_XTAL32_CFG_REG & ((uint8)(~CY_CLK_XTAL32_CFG_LP_MASK))) | CY_CLK_XTAL32_CFG_LP_DEFAULT;
+    CY_CLK_XTAL32_CFG_REG = (CY_CLK_XTAL32_CFG_REG & ((uint8)(~CY_CLK_XTAL32_CFG_LP_MASK))) |
+                             CY_CLK_XTAL32_CFG_LP_DEFAULT;
     CY_CLK_XTAL32_CR_REG &= ((uint8)(~(CY_CLK_XTAL32_CR_EN | CY_CLK_XTAL32_CR_LPM)));
 
     #if(CY_PSOC3)
@@ -1321,7 +1280,8 @@ uint8 CyXTAL_32KHZ_SetPowerMode(uint8 mode)
         /* Low power mode during Sleep */
         CY_CLK_XTAL32_TR_REG  = CY_CLK_XTAL32_TR_LOW_POWER;
         CyDelayUs(10u);
-        CY_CLK_XTAL32_CFG_REG = (CY_CLK_XTAL32_CFG_REG & ((uint8)(~CY_CLK_XTAL32_CFG_LP_MASK))) | CY_CLK_XTAL32_CFG_LP_LOWPOWER;
+        CY_CLK_XTAL32_CFG_REG = (CY_CLK_XTAL32_CFG_REG & ((uint8)(~CY_CLK_XTAL32_CFG_LP_MASK))) |
+                                CY_CLK_XTAL32_CFG_LP_LOWPOWER;
         CyDelayUs(20u);
         CY_CLK_XTAL32_CR_REG |= CY_CLK_XTAL32_CR_LPM;
     }
@@ -1330,7 +1290,8 @@ uint8 CyXTAL_32KHZ_SetPowerMode(uint8 mode)
         /* High power mode */
         CY_CLK_XTAL32_TR_REG  = CY_CLK_XTAL32_TR_HIGH_POWER;
         CyDelayUs(10u);
-        CY_CLK_XTAL32_CFG_REG = (CY_CLK_XTAL32_CFG_REG & ((uint8)(~CY_CLK_XTAL32_CFG_LP_MASK))) | CY_CLK_XTAL32_CFG_LP_DEFAULT;
+        CY_CLK_XTAL32_CFG_REG = (CY_CLK_XTAL32_CFG_REG & ((uint8)(~CY_CLK_XTAL32_CFG_LP_MASK))) |
+                                CY_CLK_XTAL32_CFG_LP_DEFAULT;
         CY_CLK_XTAL32_CR_REG &= ((uint8)(~CY_CLK_XTAL32_CR_LPM));
     }
 
@@ -1345,14 +1306,9 @@ uint8 CyXTAL_32KHZ_SetPowerMode(uint8 mode)
 * Summary:
 *  Enables the megahertz crystal.
 *
-*  PSoC3:
+*  PSoC 3:
 *  Waits until the XERR bit is low (no error) for a millisecond or until the
 *  number of milliseconds specified by the wait parameter has expired.
-*
-*  PSoC5:
-*  Waits for CY_CLK_XMHZ_MIN_TIMEOUT milliseconds (or number of milliseconds
-*  specified by parameter if it is greater than CY_CLK_XMHZ_MIN_TIMEOUT. The
-*  XERR bit status is not checked.
 *
 * Parameters:
 *   wait: Valid range [0-255].
@@ -1382,13 +1338,7 @@ uint8 CyXTAL_32KHZ_SetPowerMode(uint8 mode)
 cystatus CyXTAL_Start(uint8 wait) 
 {
     cystatus status = CYRET_SUCCESS;
-
-    #if(CY_PSOC5A)
-        volatile uint8  timeout = (wait < CY_CLK_XMHZ_MIN_TIMEOUT) ? CY_CLK_XMHZ_MIN_TIMEOUT : wait;
-    #else
-        volatile uint8  timeout = wait;
-    #endif  /* (CY_PSOC5A) */
-
+    volatile uint8  timeout = wait;
     volatile uint8 count;
     uint8 iloEnableState;
     uint8 pmTwCfg0Tmp;
@@ -1402,9 +1352,9 @@ cystatus CyXTAL_Start(uint8 wait)
     if(wait > 0u)
     {
         /* Save 100 KHz ILO, FTW interval, enable and interrupt enable */
-        iloEnableState = SLOWCLK_ILO_CR0;
-        pmTwCfg0Tmp = CY_PM_TW_CFG0_REG;
-        pmTwCfg2Tmp = CY_PM_TW_CFG2_REG;
+        iloEnableState = CY_LIB_SLOWCLK_ILO_CR0_REG;
+        pmTwCfg0Tmp = CY_LIB_PM_TW_CFG0_REG;
+        pmTwCfg2Tmp = CY_LIB_PM_TW_CFG2_REG;
 
         /* Set 250 us interval */
         CyPmFtwSetInterval(CY_CLK_XMHZ_FTW_INTERVAL);
@@ -1413,47 +1363,38 @@ cystatus CyXTAL_Start(uint8 wait)
 
         for( ; timeout > 0u; timeout--)
         {
-            #if(!CY_PSOC5A)
-
-                /* Read XERR bit to clear it */
-                (void) CY_CLK_XMHZ_CSR_REG;
-
-            #endif  /* (!CY_PSOC5A) */
-
+            /* Read XERR bit to clear it */
+            (void) CY_CLK_XMHZ_CSR_REG;
 
             /* Wait for a millisecond - 4 x 250 us */
             for(count = 4u; count > 0u; count--)
             {
-                while(!(CY_PM_FTW_INT == CyPmReadStatus(CY_PM_FTW_INT)))
+                while(0u == (CY_PM_FTW_INT & CyPmReadStatus(CY_PM_FTW_INT)))
                 {
                     /* Wait for the FTW interrupt event */
                 }
             }
 
 
-            #if(!CY_PSOC5A)
-
-                /*******************************************************************
-                * High output indicates oscillator failure.
-                * Only can be used after start-up interval (1 ms) is completed.
-                *******************************************************************/
-                if(0u == (CY_CLK_XMHZ_CSR_REG & CY_CLK_XMHZ_CSR_XERR))
-                {
-                    status = CYRET_SUCCESS;
-                    break;
-                }
-
-            #endif  /* (!CY_PSOC5A) */
+            /*******************************************************************
+            * High output indicates oscillator failure.
+            * Only can be used after start-up interval (1 ms) is completed.
+            *******************************************************************/
+            if(0u == (CY_CLK_XMHZ_CSR_REG & CY_CLK_XMHZ_CSR_XERR))
+            {
+                status = CYRET_SUCCESS;
+                break;
+            }
         }
 
 
         /* Restore 100 KHz ILO, FTW interval, enable and interrupt enable */
-        if(0u == (iloEnableState & ILO_CONTROL_100KHZ_ON))
+        if(0u == (iloEnableState & CY_LIB_SLOWCLK_ILO_CR0_EN_100KHZ))
         {
             CyILO_Stop100K();
         }
-        CY_PM_TW_CFG0_REG = pmTwCfg0Tmp;
-        CY_PM_TW_CFG2_REG = pmTwCfg2Tmp;
+        CY_LIB_PM_TW_CFG0_REG = pmTwCfg0Tmp;
+        CY_LIB_PM_TW_CFG2_REG = pmTwCfg2Tmp;
     }
 
     return(status);
@@ -1481,124 +1422,121 @@ void CyXTAL_Stop(void)
 }
 
 
-#if(!CY_PSOC5A)
-
-    /*******************************************************************************
-    * Function Name: CyXTAL_EnableErrStatus
-    ********************************************************************************
-    *
-    * Summary:
-    *  Enables the generation of the XERR status bit for the megahertz crystal.
-    *  This function is not available for PSoC5.
-    *
-    * Parameters:
-    *  None
-    *
-    * Return:
-    *  None
-    *
-    *******************************************************************************/
-    void CyXTAL_EnableErrStatus(void) 
-    {
-        /* If oscillator has insufficient amplitude, XERR bit will be high. */
-        CY_CLK_XMHZ_CSR_REG &= ((uint8)(~CY_CLK_XMHZ_CSR_XFB));
-    }
+/*******************************************************************************
+* Function Name: CyXTAL_EnableErrStatus
+********************************************************************************
+*
+* Summary:
+*  Enables the generation of the XERR status bit for the megahertz crystal.
+*  This function is not available for PSoC5.
+*
+* Parameters:
+*  None
+*
+* Return:
+*  None
+*
+*******************************************************************************/
+void CyXTAL_EnableErrStatus(void) 
+{
+    /* If oscillator has insufficient amplitude, XERR bit will be high. */
+    CY_CLK_XMHZ_CSR_REG &= ((uint8)(~CY_CLK_XMHZ_CSR_XFB));
+}
 
 
-    /*******************************************************************************
-    * Function Name: CyXTAL_DisableErrStatus
-    ********************************************************************************
-    *
-    * Summary:
-    *  Disables the generation of the XERR status bit for the megahertz crystal.
-    *  This function is not available for PSoC5.
-    *
-    * Parameters:
-    *  None
-    *
-    * Return:
-    *  None
-    *
-    *******************************************************************************/
-    void CyXTAL_DisableErrStatus(void) 
-    {
-        /* If oscillator has insufficient amplitude, XERR bit will be high. */
-        CY_CLK_XMHZ_CSR_REG |= CY_CLK_XMHZ_CSR_XFB;
-    }
+/*******************************************************************************
+* Function Name: CyXTAL_DisableErrStatus
+********************************************************************************
+*
+* Summary:
+*  Disables the generation of the XERR status bit for the megahertz crystal.
+*  This function is not available for PSoC5.
+*
+* Parameters:
+*  None
+*
+* Return:
+*  None
+*
+*******************************************************************************/
+void CyXTAL_DisableErrStatus(void) 
+{
+    /* If oscillator has insufficient amplitude, XERR bit will be high. */
+    CY_CLK_XMHZ_CSR_REG |= CY_CLK_XMHZ_CSR_XFB;
+}
 
 
-    /*******************************************************************************
-    * Function Name: CyXTAL_ReadStatus
-    ********************************************************************************
-    *
-    * Summary:
-    *  Reads the XERR status bit for the megahertz crystal. This status bit is a
-    *  sticky clear on read value. This function is not available for PSoC5.
-    *
-    * Parameters:
-    *  None
-    *
-    * Return:
-    *   Status
-    *    0: No error
-    *    1: Error
-    *
-    *******************************************************************************/
-    uint8 CyXTAL_ReadStatus(void) 
-    {
-        /***************************************************************************
-        * High output indicates oscillator failure. Only use this after start-up
-        * interval is completed. This can be used for status and failure recovery.
-        ***************************************************************************/
-        return((0u != (CY_CLK_XMHZ_CSR_REG & CY_CLK_XMHZ_CSR_XERR)) ? 1u : 0u);
-    }
+/*******************************************************************************
+* Function Name: CyXTAL_ReadStatus
+********************************************************************************
+*
+* Summary:
+*  Reads the XERR status bit for the megahertz crystal. This status bit is a
+*  sticky clear on read value. This function is not available for PSoC5.
+*
+* Parameters:
+*  None
+*
+* Return:
+*   Status
+*    0: No error
+*    1: Error
+*
+*******************************************************************************/
+uint8 CyXTAL_ReadStatus(void) 
+{
+    /***************************************************************************
+    * High output indicates oscillator failure. Only use this after start-up
+    * interval is completed. This can be used for status and failure recovery.
+    ***************************************************************************/
+    return((0u != (CY_CLK_XMHZ_CSR_REG & CY_CLK_XMHZ_CSR_XERR)) ? 1u : 0u);
+}
 
 
-    /*******************************************************************************
-    * Function Name: CyXTAL_EnableFaultRecovery
-    ********************************************************************************
-    *
-    * Summary:
-    *  Enables the fault recovery circuit which will switch to the IMO in the case
-    *  of a fault in the megahertz crystal circuit. The crystal must be up and
-    *  running with the XERR bit at 0, before calling this function to prevent
-    *  immediate fault switchover. This function is not available for PSoC5.
-    *
-    * Parameters:
-    *  None
-    *
-    * Return:
-    *  None
-    *
-    *******************************************************************************/
-    void CyXTAL_EnableFaultRecovery(void) 
-    {
-        CY_CLK_XMHZ_CSR_REG |= CY_CLK_XMHZ_CSR_XPROT;
-    }
+/*******************************************************************************
+* Function Name: CyXTAL_EnableFaultRecovery
+********************************************************************************
+*
+* Summary:
+*  Enables the fault recovery circuit which will switch to the IMO in the case
+*  of a fault in the megahertz crystal circuit. The crystal must be up and
+*  running with the XERR bit at 0, before calling this function to prevent
+*  immediate fault switchover. This function is not available for PSoC5.
+*
+* Parameters:
+*  None
+*
+* Return:
+*  None
+*
+*******************************************************************************/
+void CyXTAL_EnableFaultRecovery(void) 
+{
+    CY_CLK_XMHZ_CSR_REG |= CY_CLK_XMHZ_CSR_XPROT;
+}
 
 
-    /*******************************************************************************
-    * Function Name: CyXTAL_DisableFaultRecovery
-    ********************************************************************************
-    *
-    * Summary:
-    *  Disables the fault recovery circuit which will switch to the IMO in the case
-    *  of a fault in the megahertz crystal circuit. This function is not available
-    *  for PSoC5.
-    *
-    * Parameters:
-    *  None
-    *
-    * Return:
-    *  None
-    *
-    *******************************************************************************/
-    void CyXTAL_DisableFaultRecovery(void) 
-    {
-        CY_CLK_XMHZ_CSR_REG &= ((uint8)(~CY_CLK_XMHZ_CSR_XPROT));
-    }
+/*******************************************************************************
+* Function Name: CyXTAL_DisableFaultRecovery
+********************************************************************************
+*
+* Summary:
+*  Disables the fault recovery circuit which will switch to the IMO in the case
+*  of a fault in the megahertz crystal circuit. This function is not available
+*  for PSoC5.
+*
+* Parameters:
+*  None
+*
+* Return:
+*  None
+*
+*******************************************************************************/
+void CyXTAL_DisableFaultRecovery(void) 
+{
+    CY_CLK_XMHZ_CSR_REG &= ((uint8)(~CY_CLK_XMHZ_CSR_XPROT));
+}
 
-#endif  /* (!CY_PSOC5A) */
 
 /*******************************************************************************
 * Function Name: CyXTAL_SetStartup
@@ -1627,53 +1565,51 @@ void CyXTAL_SetStartup(uint8 setting)
 }
 
 
-#if(CY_PSOC3 || CY_PSOC5LP)
-    /*******************************************************************************
-    * Function Name: CyXTAL_SetFbVoltage
-    ********************************************************************************
-    *
-    * Summary:
-    *  Sets the feedback reference voltage to use for the crystal circuit.
-    *  This function is only available for PSoC3 and PSoC 5LP.
-    *
-    * Parameters:
-    *  setting: Valid range [0-15].
-    *  Refer to the device TRM and datasheet for more information.
-    *
-    * Return:
-    *  None
-    *
-    *******************************************************************************/
-    void CyXTAL_SetFbVoltage(uint8 setting) 
-    {
-        CY_CLK_XMHZ_CFG1_REG = ((CY_CLK_XMHZ_CFG1_REG & ((uint8)(~CY_CLK_XMHZ_CFG1_VREF_FB_MASK))) |
-                                (setting & CY_CLK_XMHZ_CFG1_VREF_FB_MASK));
-    }
+
+/*******************************************************************************
+* Function Name: CyXTAL_SetFbVoltage
+********************************************************************************
+*
+* Summary:
+*  Sets the feedback reference voltage to use for the crystal circuit.
+*  This function is only available for PSoC3 and PSoC 5LP.
+*
+* Parameters:
+*  setting: Valid range [0-15].
+*  Refer to the device TRM and datasheet for more information.
+*
+* Return:
+*  None
+*
+*******************************************************************************/
+void CyXTAL_SetFbVoltage(uint8 setting) 
+{
+    CY_CLK_XMHZ_CFG1_REG = ((CY_CLK_XMHZ_CFG1_REG & ((uint8)(~CY_CLK_XMHZ_CFG1_VREF_FB_MASK))) |
+                            (setting & CY_CLK_XMHZ_CFG1_VREF_FB_MASK));
+}
 
 
-    /*******************************************************************************
-    * Function Name: CyXTAL_SetWdVoltage
-    ********************************************************************************
-    *
-    * Summary:
-    *  Sets the reference voltage used by the watchdog to detect a failure in the
-    *  crystal circuit. This function is only available for PSoC3 and PSoC 5LP.
-    *
-    * Parameters:
-    *  setting: Valid range [0-7].
-    *  Refer to the device TRM and datasheet for more information.
-    *
-    * Return:
-    *  None
-    *
-    *******************************************************************************/
-    void CyXTAL_SetWdVoltage(uint8 setting) 
-    {
-        CY_CLK_XMHZ_CFG1_REG = ((CY_CLK_XMHZ_CFG1_REG & ((uint8)(~CY_CLK_XMHZ_CFG1_VREF_WD_MASK))) |
-                                (((uint8)(setting << 4u)) & CY_CLK_XMHZ_CFG1_VREF_WD_MASK));
-    }
-
-#endif /* (CY_PSOC3 || CY_PSOC5LP) */
+/*******************************************************************************
+* Function Name: CyXTAL_SetWdVoltage
+********************************************************************************
+*
+* Summary:
+*  Sets the reference voltage used by the watchdog to detect a failure in the
+*  crystal circuit. This function is only available for PSoC3 and PSoC 5LP.
+*
+* Parameters:
+*  setting: Valid range [0-7].
+*  Refer to the device TRM and datasheet for more information.
+*
+* Return:
+*  None
+*
+*******************************************************************************/
+void CyXTAL_SetWdVoltage(uint8 setting) 
+{
+    CY_CLK_XMHZ_CFG1_REG = ((CY_CLK_XMHZ_CFG1_REG & ((uint8)(~CY_CLK_XMHZ_CFG1_VREF_WD_MASK))) |
+                            (((uint8)(setting << 4u)) & CY_CLK_XMHZ_CFG1_VREF_WD_MASK));
+}
 
 
 /*******************************************************************************
@@ -1699,7 +1635,7 @@ void CyHalt(uint8 reason) CYREENTRANT
 
     #if defined (__ARMCC_VERSION)
         __breakpoint(0x0);
-    #elif defined(__GNUC__)
+    #elif defined(__GNUC__) || defined (__ICCARM__)
         __asm("    bkpt    1");
     #elif defined(__C51__)
         CYDEV_HALT_CPU;
@@ -1723,8 +1659,7 @@ void CyHalt(uint8 reason) CYREENTRANT
 *******************************************************************************/
 void CySoftwareReset(void) 
 {
-    /* Perform software reset */
-    *RESET_CR2 = 0x1u;
+    CY_LIB_RESET_CR2_REG |= CY_LIB_RESET_CR2_RESET;
 }
 
 
@@ -1884,10 +1819,6 @@ void CyDelayFreq(uint32 freq) CYREENTRANT
 *******************************************************************************/
 void CyWdtStart(uint8 ticks, uint8 lpMode) 
 {
-    #if(CY_PSOC5A)
-        CyILO_Start1K();
-    #endif  /* (CY_PSOC5A) */
-
     /* Set WDT interval */
     CY_WDT_CFG_REG = (CY_WDT_CFG_REG & ((uint8)(~CY_WDT_CFG_INTERVAL_MASK))) | (ticks & CY_WDT_CFG_INTERVAL_MASK);
 
@@ -1895,19 +1826,9 @@ void CyWdtStart(uint8 ticks, uint8 lpMode)
     CY_WDT_CFG_REG |= CY_WDT_CFG_CTW_RESET;
     CY_WDT_CFG_REG &= ((uint8)(~CY_WDT_CFG_CTW_RESET));
 
-    #if(!CY_PSOC5A)
-
-        /* Setting the low power mode */
-        CY_WDT_CFG_REG = (((uint8)(lpMode << CY_WDT_CFG_LPMODE_SHIFT)) & CY_WDT_CFG_LPMODE_MASK) |
-                          (CY_WDT_CFG_REG & ((uint8)(~CY_WDT_CFG_LPMODE_MASK)));
-    #else
-
-        if(0u != lpMode)
-        {
-            /* To remove unreferenced local variable warning */
-        }
-
-    #endif  /* (!CY_PSOC5A) */
+    /* Setting the low power mode */
+    CY_WDT_CFG_REG = (((uint8)(lpMode << CY_WDT_CFG_LPMODE_SHIFT)) & CY_WDT_CFG_LPMODE_MASK) |
+                       (CY_WDT_CFG_REG & ((uint8)(~CY_WDT_CFG_LPMODE_MASK)));
 
     /* Enables the watchdog reset */
     CY_WDT_CFG_REG |= CY_WDT_CFG_WDR_EN;
@@ -1930,19 +1851,7 @@ void CyWdtStart(uint8 ticks, uint8 lpMode)
 *******************************************************************************/
 void CyWdtClear(void) 
 {
-    #if(CY_PSOC5A)
-
-        /* PSoC5 ES1 watchdog time clear requires workaround */
-        uint8 wdtCfg = CY_WDT_CFG_REG;
-        CY_WDT_CR_REG  = CY_WDT_CR_FEED;
-        CY_WDT_CFG_REG = CY_WDT_CFG_CLEAR_ALL;
-        CY_WDT_CFG_REG = wdtCfg;
-
-    #else
-
-        CY_WDT_CR_REG = CY_WDT_CR_FEED;
-
-    #endif  /* (CY_PSOC5A) */
+    CY_WDT_CR_REG = CY_WDT_CR_FEED;
 }
 
 
@@ -1959,11 +1868,10 @@ void CyWdtClear(void)
 *  reset: Option to reset device at a specified Vddd threshold:
 *           0 - Device is not reset.
 *           1 - Device is reset.
-*         This option is applicable for PSoC 3/PSoC 5LP devices only.
 *
 *  threshold: Sets the trip level for the voltage monitor.
-*  Values from 1.70 V to 5.45 V(for PSoC 3/PSoC 5LP) and from 2.45 V to 5.45 V
-*  (for PSoC 5TM) are accepted with the approximately 250 mV interval.
+*  Values from 1.70 V to 5.45 V are accepted with the approximately 250 mV
+*  interval.
 *
 * Return:
 *  None
@@ -1973,9 +1881,7 @@ void CyVdLvDigitEnable(uint8 reset, uint8 threshold)
 {
     *CY_INT_CLEAR_PTR = 0x01u;
 
-    #if(!CY_PSOC5A)
-        CY_VD_PRES_CONTROL_REG &= ((uint8)(~CY_VD_PRESD_EN));
-    #endif /*(!CY_PSOC5A)*/
+    CY_VD_PRES_CONTROL_REG &= ((uint8)(~CY_VD_PRESD_EN));
 
     CY_VD_LVI_TRIP_REG = (threshold & CY_VD_LVI_TRIP_LVID_MASK) |
                             (CY_VD_LVI_TRIP_REG & ((uint8)(~CY_VD_LVI_TRIP_LVID_MASK)));
@@ -1984,25 +1890,16 @@ void CyVdLvDigitEnable(uint8 reset, uint8 threshold)
     /* Timeout to eliminate glitches on the LVI/HVI when enabling */
     CyDelayUs(1u);
 
-	(void)CY_VD_PERSISTENT_STATUS_REG;
+    (void)CY_VD_PERSISTENT_STATUS_REG;
 
-    #if(!CY_PSOC5A)
-        if(0u != reset)
-        {
-            CY_VD_PRES_CONTROL_REG |= CY_VD_PRESD_EN;
-        }
-        else
-        {
-            CY_VD_PRES_CONTROL_REG &= ((uint8)(~CY_VD_PRESD_EN));
-        }
-    #else
-
-        if(0u != reset)
-        {
-            /* To remove unreferenced local variable warning */
-        }
-
-    #endif /*(!CY_PSOC5A)*/
+    if(0u != reset)
+    {
+        CY_VD_PRES_CONTROL_REG |= CY_VD_PRESD_EN;
+    }
+    else
+    {
+        CY_VD_PRES_CONTROL_REG &= ((uint8)(~CY_VD_PRESD_EN));
+    }
 
     *CY_INT_CLR_PEND_PTR = 0x01u;
     *CY_INT_ENABLE_PTR   = 0x01u;
@@ -2021,11 +1918,10 @@ void CyVdLvDigitEnable(uint8 reset, uint8 threshold)
 *  reset: Option to reset device at a specified Vdda threshold:
 *           0 - Device is not reset.
 *           1 - Device is reset.
-*         This option is applicable for PSoC 3/PSoC 5LP devices only.
 *
 *  threshold: Sets the trip level for the voltage monitor.
-*  Values from 1.70 V to 5.45 V(for PSoC 3/PSoC 5LP) and from 2.45 V to 5.45 V
-*  (for PSoC 5TM) are accepted with the approximately 250 mV interval.
+*  Values from 1.70 V to 5.45 V are accepted with the approximately 250 mV
+*  interval.
 *
 * Return:
 *  None
@@ -2035,9 +1931,7 @@ void CyVdLvAnalogEnable(uint8 reset, uint8 threshold)
 {
     *CY_INT_CLEAR_PTR = 0x01u;
 
-    #if(!CY_PSOC5A)
-        CY_VD_PRES_CONTROL_REG &= ((uint8)(~CY_VD_PRESA_EN));
-    #endif /*(!CY_PSOC5A)*/
+    CY_VD_PRES_CONTROL_REG &= ((uint8)(~CY_VD_PRESA_EN));
 
     CY_VD_LVI_TRIP_REG = ((uint8)(threshold << 4u)) | (CY_VD_LVI_TRIP_REG & 0x0Fu);
     CY_VD_LVI_HVI_CONTROL_REG |= CY_VD_LVIA_EN;
@@ -2045,25 +1939,16 @@ void CyVdLvAnalogEnable(uint8 reset, uint8 threshold)
     /* Timeout to eliminate glitches on the LVI/HVI when enabling */
     CyDelayUs(1u);
 
-	(void)CY_VD_PERSISTENT_STATUS_REG;
+    (void)CY_VD_PERSISTENT_STATUS_REG;
 
-    #if(!CY_PSOC5A)
-        if(0u != reset)
-        {
-            CY_VD_PRES_CONTROL_REG |= CY_VD_PRESA_EN;
-        }
-        else
-        {
-            CY_VD_PRES_CONTROL_REG &= ((uint8)(~CY_VD_PRESA_EN));
-        }
-    #else
-
-        if(0u != reset)
-        {
-            /* To remove unreferenced local variable warning */
-        }
-
-    #endif /*(!CY_PSOC5A)*/
+    if(0u != reset)
+    {
+        CY_VD_PRES_CONTROL_REG |= CY_VD_PRESA_EN;
+    }
+    else
+    {
+        CY_VD_PRES_CONTROL_REG &= ((uint8)(~CY_VD_PRESA_EN));
+    }
 
     *CY_INT_CLR_PEND_PTR = 0x01u;
     *CY_INT_ENABLE_PTR   = 0x01u;
@@ -2089,9 +1974,7 @@ void CyVdLvDigitDisable(void)
 {
     CY_VD_LVI_HVI_CONTROL_REG &= ((uint8)(~CY_VD_LVID_EN));
 
-    #if(!CY_PSOC5A)
-        CY_VD_PRES_CONTROL_REG &= ((uint8)(~CY_VD_PRESD_EN));
-    #endif /*(!CY_PSOC5A)*/
+    CY_VD_PRES_CONTROL_REG &= ((uint8)(~CY_VD_PRESD_EN));
 
     while(0u != (CY_VD_PERSISTENT_STATUS_REG & 0x07u))
     {
@@ -2105,8 +1988,8 @@ void CyVdLvDigitDisable(void)
 ********************************************************************************
 *
 * Summary:
-*  Disables the analog low voltage monitor
-*  (interrupt and device reset are disabled).
+*  Disables the analog low voltage monitor (interrupt and device reset are
+*  disabled).
 *
 * Parameters:
 *  None
@@ -2119,9 +2002,7 @@ void CyVdLvAnalogDisable(void)
 {
     CY_VD_LVI_HVI_CONTROL_REG &= ((uint8)(~CY_VD_LVIA_EN));
 
-    #if(!CY_PSOC5A)
-        CY_VD_PRES_CONTROL_REG &= ((uint8)(~CY_VD_PRESA_EN));
-    #endif /*(!CY_PSOC5A)*/
+    CY_VD_PRES_CONTROL_REG &= ((uint8)(~CY_VD_PRESA_EN));
 
     while(0u != (CY_VD_PERSISTENT_STATUS_REG & 0x07u))
     {
@@ -2149,16 +2030,14 @@ void CyVdHvAnalogEnable(void)
 {
     *CY_INT_CLEAR_PTR = 0x01u;
 
-    #if(!CY_PSOC5A)
-        CY_VD_PRES_CONTROL_REG &= ((uint8)(~CY_VD_PRESA_EN));
-    #endif /*(!CY_PSOC5A)*/
+    CY_VD_PRES_CONTROL_REG &= ((uint8)(~CY_VD_PRESA_EN));
 
     CY_VD_LVI_HVI_CONTROL_REG |= CY_VD_HVIA_EN;
 
     /* Timeout to eliminate glitches on the LVI/HVI when enabling */
     CyDelayUs(1u);
 
-	(void) CY_VD_PERSISTENT_STATUS_REG;
+    (void) CY_VD_PERSISTENT_STATUS_REG;
 
     *CY_INT_CLR_PEND_PTR = 0x01u;
     *CY_INT_ENABLE_PTR   = 0x01u;
@@ -2197,10 +2076,10 @@ void CyVdHvAnalogDisable(void)
 *
 * Parameters:
 *  mask: Bits in the shadow register to clear.
-*       Value        Define                Bit To Clear
-*       0x01         CY_VD_LVID            LVID
-*       0x02         CY_VD_LVIA            LVIA
-*       0x04         CY_VD_HVIA            HVIA
+*   Define                  Definition
+*   CY_VD_LVID            Persistent status of digital LVI.
+*   CY_VD_LVIA            Persistent status of analog LVI.
+*   CY_VD_HVIA            Persistent status of analog HVI.
 *
 * Return:
 *  Status.  Same enumerated bit values as used for the mask parameter.
@@ -2228,7 +2107,11 @@ uint8 CyVdStickyStatus(uint8 mask)
 *  None
 *
 * Return:
-*  Status. Same enumerated bit values as used for the mask parameter.
+*  Status:
+*   Define                  Definition
+*   CY_VD_LVID            Persistent status of digital LVI.
+*   CY_VD_LVIA            Persistent status of analog LVI.
+*   CY_VD_HVIA            Persistent status of analog HVI.
 *
 *******************************************************************************/
 uint8 CyVdRealTimeStatus(void) 
@@ -2737,110 +2620,91 @@ void CyEnableInts(uint32 mask)
 #endif  /* (CY_PSOC5) */
 
 
-#if(!CY_PSOC5A)
+#if(CYDEV_VARIABLE_VDDA == 1)
 
-    #if(CYDEV_VARIABLE_VDDA == 1)
-
-
-        /*******************************************************************************
-        * Function Name: CySetScPumps
-        ********************************************************************************
-        *
-        * Summary:
-        *  If 1 is passed as a parameter:
-        *   - if any of the SC blocks are used - enable pumps for the SC blocks and
-        *     start boost clock.
-        *   - For the each enabled SC block set boost clock index and enable boost clock.
-        *
-        *  If non-1 value is passed as a parameter:
-        *   - If all SC blocks are not used - disable pumps for the SC blocks and
-        *     stop boost clock.
-        *   - For the each enabled SC block clear boost clock index and disable boost
-        *     clock.
-		*
-        *  The global variable CyScPumpEnabled is updated to be equal to passed
-        *  parameter.
-        *
-        * Parameters:
-        *   uint8 enable: Enable/disable SC pumps and boost clock for enabled SC block.
-        *                 1 - Enable
-        *                 0 - Disable
-        *
-        * Return:
-        *   None
-        *
-        *******************************************************************************/
-        void CySetScPumps(uint8 enable) 
+    /*******************************************************************************
+    * Function Name: CySetScPumps
+    ********************************************************************************
+    *
+    * Summary:
+    *  If 1 is passed as a parameter:
+    *   - if any of the SC blocks are used - enable pumps for the SC blocks and
+    *     start boost clock.
+    *   - For the each enabled SC block set boost clock index and enable boost
+    *     clock.
+    *
+    *  If non-1 value is passed as a parameter:
+    *   - If all SC blocks are not used - disable pumps for the SC blocks and
+    *     stop boost clock.
+    *   - For the each enabled SC block clear boost clock index and disable boost
+    *     clock.
+    *
+    *  The global variable CyScPumpEnabled is updated to be equal to passed
+    *  parameter.
+    *
+    * Parameters:
+    *   uint8 enable: Enable/disable SC pumps and boost clock for enabled SC block.
+    *                 1 - Enable
+    *                 0 - Disable
+    *
+    * Return:
+    *   None
+    *
+    *******************************************************************************/
+    void CySetScPumps(uint8 enable) 
+    {
+        if(1u == enable)
         {
-
-            if(1u == enable)
+            /* The SC pumps should be enabled */
+            CyScPumpEnabled = 1u;
+            /* Enable pumps if any of SC blocks are used */
+            if(0u != (CY_LIB_ACT_CFG9_REG & CY_LIB_ACT_CFG9_SWCAPS_MASK))
             {
-                /* The SC pumps should be enabled */
-                CyScPumpEnabled = 1u;
-
-
-                /* Enable pumps if any of SC blocks are used */
-                if(0u != (CY_LIB_ACT_CFG9_REG & CY_LIB_ACT_CFG9_SWCAPS_MASK))
-                {
-
-                    CY_LIB_SC_MISC_REG |= CY_LIB_SC_MISC_PUMP_FORCE;
-
-                    CyScBoostClk_Start();
-                }
-
-
-                /* Set positive pump for each enabled SC block: set clock index and enable it */
-                if(0u != (CY_LIB_ACT_CFG9_REG & CY_LIB_ACT_CFG9_SWCAP0_EN))
-                {
-                    CY_LIB_SC0_BST_REG = (CY_LIB_SC0_BST_REG & CY_LIB_SC_BST_CLK_INDEX_MASK) | CyScBoostClk__INDEX;
-                    CY_LIB_SC0_BST_REG |= CY_LIB_SC_BST_CLK_EN;
-                }
-
-                if(0u != (CY_LIB_ACT_CFG9_REG & CY_LIB_ACT_CFG9_SWCAP1_EN))
-                {
-                    CY_LIB_SC1_BST_REG = (CY_LIB_SC1_BST_REG & CY_LIB_SC_BST_CLK_INDEX_MASK) | CyScBoostClk__INDEX;
-                    CY_LIB_SC1_BST_REG |= CY_LIB_SC_BST_CLK_EN;
-                }
-
-                if(0u != (CY_LIB_ACT_CFG9_REG & CY_LIB_ACT_CFG9_SWCAP2_EN))
-                {
-                    CY_LIB_SC2_BST_REG = (CY_LIB_SC2_BST_REG & CY_LIB_SC_BST_CLK_INDEX_MASK) | CyScBoostClk__INDEX;
-                    CY_LIB_SC2_BST_REG |= CY_LIB_SC_BST_CLK_EN;
-                }
-
-                if(0u != (CY_LIB_ACT_CFG9_REG & CY_LIB_ACT_CFG9_SWCAP3_EN))
-                {
-                    CY_LIB_SC3_BST_REG = (CY_LIB_SC3_BST_REG & CY_LIB_SC_BST_CLK_INDEX_MASK) | CyScBoostClk__INDEX;
-                    CY_LIB_SC3_BST_REG |= CY_LIB_SC_BST_CLK_EN;
-                }
+                CY_LIB_SC_MISC_REG |= CY_LIB_SC_MISC_PUMP_FORCE;
+                CyScBoostClk_Start();
             }
-            else
+            /* Set positive pump for each enabled SC block: set clock index and enable it */
+            if(0u != (CY_LIB_ACT_CFG9_REG & CY_LIB_ACT_CFG9_SWCAP0_EN))
             {
-                /* The SC pumps should be disabled */
-                CyScPumpEnabled = 0u;
-
-                /* Disable pumps for all SC blocks and stop boost clock */
-                CY_LIB_SC_MISC_REG &= ((uint8)(~CY_LIB_SC_MISC_PUMP_FORCE));
-                CyScBoostClk_Stop();
-
-                /* Disable boost clock and clear clock index for each SC block */
-                CY_LIB_SC0_BST_REG &= ((uint8)(~CY_LIB_SC_BST_CLK_EN));
-                CY_LIB_SC0_BST_REG = CY_LIB_SC0_BST_REG & CY_LIB_SC_BST_CLK_INDEX_MASK;
-
-                CY_LIB_SC1_BST_REG &= ((uint8)(~CY_LIB_SC_BST_CLK_EN));
-                CY_LIB_SC1_BST_REG = CY_LIB_SC1_BST_REG & CY_LIB_SC_BST_CLK_INDEX_MASK;
-
-                CY_LIB_SC2_BST_REG &= ((uint8)(~CY_LIB_SC_BST_CLK_EN));
-                CY_LIB_SC2_BST_REG = CY_LIB_SC2_BST_REG & CY_LIB_SC_BST_CLK_INDEX_MASK;
-
-                CY_LIB_SC3_BST_REG &= ((uint8)(~CY_LIB_SC_BST_CLK_EN));
-                CY_LIB_SC3_BST_REG = CY_LIB_SC3_BST_REG & CY_LIB_SC_BST_CLK_INDEX_MASK;
+                CY_LIB_SC0_BST_REG = (CY_LIB_SC0_BST_REG & CY_LIB_SC_BST_CLK_INDEX_MASK) | CyScBoostClk__INDEX;
+                CY_LIB_SC0_BST_REG |= CY_LIB_SC_BST_CLK_EN;
+            }
+            if(0u != (CY_LIB_ACT_CFG9_REG & CY_LIB_ACT_CFG9_SWCAP1_EN))
+            {
+                CY_LIB_SC1_BST_REG = (CY_LIB_SC1_BST_REG & CY_LIB_SC_BST_CLK_INDEX_MASK) | CyScBoostClk__INDEX;
+                CY_LIB_SC1_BST_REG |= CY_LIB_SC_BST_CLK_EN;
+            }
+            if(0u != (CY_LIB_ACT_CFG9_REG & CY_LIB_ACT_CFG9_SWCAP2_EN))
+            {
+                CY_LIB_SC2_BST_REG = (CY_LIB_SC2_BST_REG & CY_LIB_SC_BST_CLK_INDEX_MASK) | CyScBoostClk__INDEX;
+                CY_LIB_SC2_BST_REG |= CY_LIB_SC_BST_CLK_EN;
+            }
+            if(0u != (CY_LIB_ACT_CFG9_REG & CY_LIB_ACT_CFG9_SWCAP3_EN))
+            {
+                CY_LIB_SC3_BST_REG = (CY_LIB_SC3_BST_REG & CY_LIB_SC_BST_CLK_INDEX_MASK) | CyScBoostClk__INDEX;
+                CY_LIB_SC3_BST_REG |= CY_LIB_SC_BST_CLK_EN;
             }
         }
+        else
+        {
+            /* The SC pumps should be disabled */
+            CyScPumpEnabled = 0u;
+            /* Disable pumps for all SC blocks and stop boost clock */
+            CY_LIB_SC_MISC_REG &= ((uint8)(~CY_LIB_SC_MISC_PUMP_FORCE));
+            CyScBoostClk_Stop();
+            /* Disable boost clock and clear clock index for each SC block */
+            CY_LIB_SC0_BST_REG &= ((uint8)(~CY_LIB_SC_BST_CLK_EN));
+            CY_LIB_SC0_BST_REG = CY_LIB_SC0_BST_REG & CY_LIB_SC_BST_CLK_INDEX_MASK;
+            CY_LIB_SC1_BST_REG &= ((uint8)(~CY_LIB_SC_BST_CLK_EN));
+            CY_LIB_SC1_BST_REG = CY_LIB_SC1_BST_REG & CY_LIB_SC_BST_CLK_INDEX_MASK;
+            CY_LIB_SC2_BST_REG &= ((uint8)(~CY_LIB_SC_BST_CLK_EN));
+            CY_LIB_SC2_BST_REG = CY_LIB_SC2_BST_REG & CY_LIB_SC_BST_CLK_INDEX_MASK;
+            CY_LIB_SC3_BST_REG &= ((uint8)(~CY_LIB_SC_BST_CLK_EN));
+            CY_LIB_SC3_BST_REG = CY_LIB_SC3_BST_REG & CY_LIB_SC_BST_CLK_INDEX_MASK;
+        }
+    }
 
-    #endif  /* (CYDEV_VARIABLE_VDDA == 1) */
-
-#endif /* (!CY_PSOC5A) */
+#endif  /* (CYDEV_VARIABLE_VDDA == 1) */
 
 
 /* [] END OF FILE */

@@ -1,6 +1,6 @@
 /*******************************************************************************
 * FILENAME: cytypes.h
-* Version 3.40
+* Version 4.0
 *
 *  Description:
 *  CyTypes provides register access macros and approved types for use in
@@ -38,6 +38,12 @@
 #include "cyfitter.h"
 
 
+#if defined( __ICCARM__ )
+    /* Suppress warning for multiple volatile variables in an expression. */
+    /* This is common in component code and the usage is not order dependent. */
+    #pragma diag_suppress=Pa082
+#endif  /* defined( __ICCARM__ ) */
+
 
 /***************************************
 * Conditional Compilation Parameters
@@ -55,12 +61,21 @@
 /*******************************************************************************
 * MEMBER encodes both the family and the detailed architecture
 *******************************************************************************/
+#define CY_PSOC4A  (CYDEV_CHIP_MEMBER_USED == CYDEV_CHIP_MEMBER_4A)
+#ifdef CYDEV_CHIP_MEMBER_4D
+    #define CY_PSOC4D   (CYDEV_CHIP_MEMBER_USED == CYDEV_CHIP_MEMBER_4D)
+    #define CY_PSOC4SF  (CY_PSOC4D)
+#else
+    #define CY_PSOC4D   (0u != 0u)
+    #define CY_PSOC4SF  (CY_PSOC4D)
+#endif  /* CYDEV_CHIP_MEMBER_4D */
+
 #define CY_PSOC5A  (CYDEV_CHIP_MEMBER_USED == CYDEV_CHIP_MEMBER_5A)
 #ifdef CYDEV_CHIP_MEMBER_5B
-    #define CY_PSOC5LP (CYDEV_CHIP_MEMBER_USED == CYDEV_CHIP_MEMBER_5B)
+    #define CY_PSOC5LP  (CYDEV_CHIP_MEMBER_USED == CYDEV_CHIP_MEMBER_5B)
 #else
-    #define CY_PSOC5LP 0
-#endif
+    #define CY_PSOC5LP  (0u != 0u)
+#endif  /* CYDEV_CHIP_MEMBER_5B */
 
 
 /*******************************************************************************
@@ -103,23 +118,23 @@ typedef          char   char8;
     * endian conversion. These functions should be called through the
     * CY_GET_XTND_REGxx and CY_SET_XTND_REGxx macros.
     ***************************************************************************/
-    extern uint8  cyread8       (volatile void far *addr);
+    extern uint8  cyread8       (const volatile void far *addr);
     extern void   cywrite8      (volatile void far *addr, uint8 value);
 
-    extern uint16 cyread16      (volatile void far *addr);
-    extern uint16 cyread16_nodpx(volatile void far *addr);
+    extern uint16 cyread16      (const volatile void far *addr);
+    extern uint16 cyread16_nodpx(const volatile void far *addr);
 
     extern void   cywrite16      (volatile void far *addr, uint16 value);
     extern void   cywrite16_nodpx(volatile void far *addr, uint16 value);
 
-    extern uint32 cyread24      (volatile void far *addr);
-    extern uint32 cyread24_nodpx(volatile void far *addr);
+    extern uint32 cyread24      (const volatile void far *addr);
+    extern uint32 cyread24_nodpx(const volatile void far *addr);
 
     extern void   cywrite24      (volatile void far *addr, uint32 value);
     extern void   cywrite24_nodpx(volatile void far *addr, uint32 value);
 
-    extern uint32 cyread32      (volatile void far *addr);
-    extern uint32 cyread32_nodpx(volatile void far *addr);
+    extern uint32 cyread32      (const volatile void far *addr);
+    extern uint32 cyread32_nodpx(const volatile void far *addr);
 
     extern void   cywrite32      (volatile void far *addr, uint32 value);
     extern void   cywrite32_nodpx(volatile void far *addr, uint32 value);
@@ -144,9 +159,9 @@ typedef          char   char8;
 
     #if(CY_PSOC4)
 
-        extern uint32 CyGetReg24(uint32 volatile * addr);
+        extern uint32 CyGetReg24(uint32 const volatile * addr);
 
-    #endif  /*(CY_PSOC4)*/
+    #endif  /* (CY_PSOC4) */
 
 #endif  /* (CY_PSOC3) */
 
@@ -169,7 +184,7 @@ typedef          char   char8;
     #define CYSMALL     small
     #define CYXDATA     xdata
     #define XDATA       xdata
-    
+
     #define CY_NOINIT
 
 #else
@@ -187,13 +202,21 @@ typedef          char   char8;
     #define CYSMALL
     #define CYXDATA
     #define XDATA
-    
-    #if defined(__ARMCC_VERSION)
-        #define CY_NOINIT __attribute__ ((section(".noinit"), zero_init))
-    #elif defined (__GNUC__)
-        #define CY_NOINIT __attribute__ ((section(".noinit")))
-    #endif  /* (__ARMCC_VERSION) */
 
+    #if defined(__ARMCC_VERSION)
+        #define CY_NOINIT           __attribute__ ((section(".noinit"), zero_init))
+        #define CY_NORETURN         __attribute__ ((noreturn))
+        #define CY_SECTION(name)    __attribute__ ((section(name)))
+        #define CY_ALIGN(align)     __align(align)
+    #elif defined (__GNUC__)
+        #define CY_NOINIT           __attribute__ ((section(".noinit")))
+        #define CY_NORETURN         __attribute__ ((noreturn))
+        #define CY_SECTION(name)    __attribute__ ((section(name)))
+        #define CY_ALIGN(align)     __attribute__ ((aligned(align)))
+    #elif defined (__ICCARM__)
+        #define CY_NOINIT           __no_init
+        #define CY_NORETURN         __noreturn
+    #endif  /* (__ARMCC_VERSION) */
 
 #endif  /* (CY_PSOC3) */
 
@@ -234,6 +257,10 @@ typedef volatile uint32 CYXDATA reg32;
     #define CY_ISR_PROTO(FuncName)  void FuncName (void)
     typedef void (* cyisraddress)(void);
 
+    #if defined (__ICCARM__)
+        typedef union { cyisraddress __fun; void * __ptr; } intvec_elem;
+    #endif  /* defined (__ICCARM__) */
+
 #endif  /* (CY_PSOC3) */
 
 
@@ -252,50 +279,50 @@ typedef volatile uint32 CYXDATA reg32;
 
     /* Access macros for 8, 16, 24 and 32-bit registers, IN THE FIRST 64K OF XDATA */
 
-    #define CY_GET_REG8(addr)               (*((reg8 *)(addr)))
+    #define CY_GET_REG8(addr)               (*((const reg8 *)(addr)))
     #define CY_SET_REG8(addr, value)        (*((reg8 *)(addr))  = (uint8)(value))
 
-    #define CY_GET_REG16(addr)              cyread16_nodpx ((volatile void far *)(reg16 *)(addr))
+    #define CY_GET_REG16(addr)              cyread16_nodpx ((const volatile void far *)(const reg16 *)(addr))
     #define CY_SET_REG16(addr, value)       cywrite16_nodpx((volatile void far *)(reg16 *)(addr), value)
 
-    #define CY_GET_REG24(addr)              cyread24_nodpx ((volatile void far *)(reg32 *)(addr))
+    #define CY_GET_REG24(addr)              cyread24_nodpx ((const volatile void far *)(const reg32 *)(addr))
     #define CY_SET_REG24(addr, value)       cywrite24_nodpx((volatile void far *)(reg32 *)(addr),value)
 
-    #define CY_GET_REG32(addr)              cyread32_nodpx ((volatile void far *)(reg32 *)(addr))
+    #define CY_GET_REG32(addr)              cyread32_nodpx ((const volatile void far *)(const reg32 *)(addr))
     #define CY_SET_REG32(addr, value)       cywrite32_nodpx((volatile void far *)(reg32 *)(addr), value)
 
     /* Access 8, 16, 24 and 32-bit registers, ABOVE THE FIRST 64K OF XDATA */
-    #define CY_GET_XTND_REG8(addr)          cyread8((volatile void far *)(addr))
+    #define CY_GET_XTND_REG8(addr)          cyread8((const volatile void far *)(addr))
     #define CY_SET_XTND_REG8(addr, value)   cywrite8((volatile void far *)(addr), value)
 
-    #define CY_GET_XTND_REG16(addr)         cyread16((volatile void far *)(addr))
+    #define CY_GET_XTND_REG16(addr)         cyread16((const volatile void far *)(addr))
     #define CY_SET_XTND_REG16(addr, value)  cywrite16((volatile void far *)(addr), value)
 
-    #define CY_GET_XTND_REG24(addr)         cyread24((volatile void far *)(addr))
+    #define CY_GET_XTND_REG24(addr)         cyread24((const volatile void far *)(addr))
     #define CY_SET_XTND_REG24(addr, value)  cywrite24((volatile void far *)(addr), value)
 
-    #define CY_GET_XTND_REG32(addr)         cyread32((volatile void far *)(addr))
+    #define CY_GET_XTND_REG32(addr)         cyread32((const volatile void far *)(addr))
     #define CY_SET_XTND_REG32(addr, value)  cywrite32((volatile void far *)(addr), value)
 
 #else
 
     /* 8, 16, 24 and 32-bit register access macros */
-    #define CY_GET_REG8(addr)               (*((reg8 *)(addr)))
+    #define CY_GET_REG8(addr)               (*((const reg8 *)(addr)))
     #define CY_SET_REG8(addr, value)        (*((reg8 *)(addr))  = (uint8)(value))
 
-    #define CY_GET_REG16(addr)              (*((reg16 *)(addr)))
+    #define CY_GET_REG16(addr)              (*((const reg16 *)(addr)))
     #define CY_SET_REG16(addr, value)       (*((reg16 *)(addr)) = (uint16)(value))
 
 
     #define CY_SET_REG24(addr, value)       CySetReg24((reg32 *) (addr), (value))
     #if(CY_PSOC4)
-        #define CY_GET_REG24(addr)          CyGetReg24((reg32 *) (addr))
+        #define CY_GET_REG24(addr)          CyGetReg24((const reg32 *) (addr))
     #else
-        #define CY_GET_REG24(addr)          (*((reg32 *)(addr)) & 0x00FFFFFFu)
+        #define CY_GET_REG24(addr)          (*((const reg32 *)(addr)) & 0x00FFFFFFu)
     #endif  /* (CY_PSOC4) */
 
 
-    #define CY_GET_REG32(addr)              (*((reg32 *)(addr)))
+    #define CY_GET_REG32(addr)              (*((const reg32 *)(addr)))
     #define CY_SET_REG32(addr, value)       (*((reg32 *)(addr)) = (uint32)(value))
 
 
@@ -321,11 +348,11 @@ typedef volatile uint32 CYXDATA reg32;
 *******************************************************************************/
 
 /* Get 8 bits of a 16 bit value. */
-#define LO8(x)                  ((uint8) (x))
-#define HI8(x)                  ((uint8) ((x) >> 8))
+#define LO8(x)                  ((uint8) ((x) & 0xFFu))
+#define HI8(x)                  ((uint8) ((uint16)(x) >> 8))
 
 /* Get 16 bits of a 32 bit value. */
-#define LO16(x)                 ((uint16) (x))
+#define LO16(x)                 ((uint16) ((x) & 0xFFFFu))
 #define HI16(x)                 ((uint16) ((uint32)(x) >> 16))
 
 /* Swap the byte ordering of a 32 bit value */

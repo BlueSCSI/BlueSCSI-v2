@@ -70,10 +70,10 @@ typedef struct
 
 	// Set to true (1) if the ATN flag was set, and we need to
 	// enter the MESSAGE_OUT phase.
-	int atnFlag;
+	volatile int atnFlag;
 
 	// Set to true (1) if the RST flag was set.
-	int resetFlag;
+	volatile int resetFlag;
 
 	// Set to true (1) if a parity error was observed.
 	int parityError;

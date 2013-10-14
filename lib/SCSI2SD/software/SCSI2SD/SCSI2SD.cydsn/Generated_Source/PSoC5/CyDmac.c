@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: CyDmac.c
-* Version 3.40
+* Version 4.0
 *
 * Description:
 *  Provides an API for the DMAC component. The API includes functions for the
@@ -29,9 +29,17 @@
 
 #include "CyDmac.h"
 
-static uint8  CyDmaTdCurrentNumber;                      /* Current Number of free elements in the list */
-static uint8  CyDmaTdFreeIndex;                          /* Index of the first available TD */
-static uint32 CyDmaChannels = DMA_CHANNELS_USED__MASK0;  /* Bit map of DMA channel ownership */
+
+/*******************************************************************************
+* The following variables are initialized from CyDmacConfigure() function that
+* is executed from initialize_psoc() at the early initialization stage.
+* In case of IAR EW IDE, initialize_psoc() is executed before the data sections
+* are initialized. To avoid zeroing, these variables should be initialized
+* properly during segments initialization as well.
+*******************************************************************************/
+static uint8  CyDmaTdCurrentNumber = CY_DMA_NUMBEROF_TDS;           /* Current Number of free elements in the list */
+static uint8  CyDmaTdFreeIndex = (uint8)(CY_DMA_NUMBEROF_TDS - 1u); /* Index of the first available TD */
+static uint32 CyDmaChannels = DMA_CHANNELS_USED__MASK0;              /* Bit map of DMA channel ownership */
 
 
 /*******************************************************************************
@@ -55,13 +63,13 @@ void CyDmacConfigure(void)
     uint8 dmaIndex;
 
     /* Set TD list variables. */
-    CyDmaTdFreeIndex     = ((uint8) (CY_DMA_NUMBEROF_TDS - 1u));
+    CyDmaTdFreeIndex     = (uint8)(CY_DMA_NUMBEROF_TDS - 1u);
     CyDmaTdCurrentNumber = CY_DMA_NUMBEROF_TDS;
 
     /* Make TD free list. */
-    for(dmaIndex = ((uint8)(CY_DMA_NUMBEROF_TDS - 1u)); dmaIndex != 0u; dmaIndex--)
+    for(dmaIndex = (uint8)(CY_DMA_NUMBEROF_TDS - 1u); dmaIndex != 0u; dmaIndex--)
     {
-        CY_DMA_TDMEM_STRUCT_PTR[dmaIndex].TD0[0u] = ((uint8)(dmaIndex - 1u));
+        CY_DMA_TDMEM_STRUCT_PTR[dmaIndex].TD0[0u] = (uint8)(dmaIndex - 1u);
     }
 
     /* Make the last one point to zero. */
@@ -299,8 +307,22 @@ cystatus CyDmaChEnable(uint8 chHandle, uint8 preserveTds)
 
     if(chHandle < CY_DMA_NUMBEROF_CHANNELS)
     {
-        CY_DMA_CH_STRUCT_PTR[chHandle].basic_cfg[0u] =
-                (CY_DMA_CH_STRUCT_PTR[chHandle].basic_cfg[0u] & ((uint8)(~0x20u))) | ((0u != preserveTds) ? 0x21u : 0x01u);
+        if (0u != preserveTds)
+        {
+            /* Store the intermediate TD states separately in CHn_SEP_TD0/1 to
+            *  preserve the original TD chain
+            */
+            CY_DMA_CH_STRUCT_PTR[chHandle].basic_cfg[0u] |= CY_DMA_CH_BASIC_CFG_WORK_SEP;
+        }
+        else
+        {
+            /* Store the intermediate and final TD states on top of the original TD chain */
+            CY_DMA_CH_STRUCT_PTR[chHandle].basic_cfg[0u] &= (uint8)(~CY_DMA_CH_BASIC_CFG_WORK_SEP);
+        }
+
+        /* Enable channel */
+        CY_DMA_CH_STRUCT_PTR[chHandle].basic_cfg[0u] |= CY_DMA_CH_BASIC_CFG_EN;
+
         status = CYRET_SUCCESS;
     }
 
@@ -335,7 +357,16 @@ cystatus CyDmaChDisable(uint8 chHandle)
 
     if(chHandle < CY_DMA_NUMBEROF_CHANNELS)
     {
-        CY_DMA_CH_STRUCT_PTR[chHandle].basic_cfg[0] &= ((uint8) (~0x21u));
+        /***********************************************************************
+        * Should not change configuration information of a DMA channel when it
+        * is active (or vulnerable to becoming active).
+        ***********************************************************************/
+
+        /* Disable channel */
+        CY_DMA_CH_STRUCT_PTR[chHandle].basic_cfg[0] &= ((uint8) (~CY_DMA_CH_BASIC_CFG_EN));
+
+        /* Store the intermediate and final TD states on top of the original TD chain */
+        CY_DMA_CH_STRUCT_PTR[chHandle].basic_cfg[0] &= ((uint8) (~CY_DMA_CH_BASIC_CFG_WORK_SEP));
         status = CYRET_SUCCESS;
     }
 
@@ -440,6 +471,7 @@ cystatus CyDmaChSetExtendedAddress(uint8 chHandle, uint16 source, uint16 destina
     
 {
     cystatus status = CYRET_BAD_PARAM;
+    reg16 *convert;
 
     #if(CY_PSOC5)
 
@@ -460,11 +492,12 @@ cystatus CyDmaChSetExtendedAddress(uint8 chHandle, uint16 source, uint16 destina
     if(chHandle < CY_DMA_NUMBEROF_CHANNELS)
     {
         /* Set source address */
-        reg16 *convert = (reg16 *) &CY_DMA_CFGMEM_STRUCT_PTR[chHandle].CFG1[0];
+        convert = (reg16 *) &CY_DMA_CFGMEM_STRUCT_PTR[chHandle].CFG1[0];
         CY_SET_REG16(convert, source);
 
         /* Set destination address */
-        CY_SET_REG16((reg16 *) &CY_DMA_CFGMEM_STRUCT_PTR[chHandle].CFG1[2], destination);
+        convert = (reg16 *) &CY_DMA_CFGMEM_STRUCT_PTR[chHandle].CFG1[2u];
+        CY_SET_REG16(convert, destination);
         status = CYRET_SUCCESS;
     }
 
@@ -570,7 +603,7 @@ cystatus CyDmaChGetRequest(uint8 chHandle)
 
     if(chHandle < CY_DMA_NUMBEROF_CHANNELS)
     {
-        status = (cystatus) ((uint32)CY_DMA_CH_STRUCT_PTR[chHandle].action[0u] & 
+        status = (cystatus) ((uint32)CY_DMA_CH_STRUCT_PTR[chHandle].action[0u] &
                             (uint32)(CY_DMA_CPU_REQ | CY_DMA_CPU_TERM_TD | CY_DMA_CPU_TERM_CHAIN));
     }
 
@@ -977,15 +1010,17 @@ cystatus CyDmaTdGetConfiguration(uint8 tdHandle, uint16 * transferCount, uint8 *
 cystatus CyDmaTdSetAddress(uint8 tdHandle, uint16 source, uint16 destination) 
 {
     cystatus status = CYRET_BAD_PARAM;
+    reg16 *convert;
 
     if(tdHandle < CY_DMA_NUMBEROF_TDS)
     {
         /* Set source address */
-        reg16 *convert = (reg16 *) &CY_DMA_TDMEM_STRUCT_PTR[tdHandle].TD1[0];
+        convert = (reg16 *) &CY_DMA_TDMEM_STRUCT_PTR[tdHandle].TD1[0u];
         CY_SET_REG16(convert, source);
 
         /* Set destination address */
-        CY_SET_REG16((reg16 *) &CY_DMA_TDMEM_STRUCT_PTR[tdHandle].TD1[2], destination);
+        convert = (reg16 *) &CY_DMA_TDMEM_STRUCT_PTR[tdHandle].TD1[2u];
+        CY_SET_REG16(convert, destination);
 
         status = CYRET_SUCCESS;
     }
@@ -1023,6 +1058,7 @@ cystatus CyDmaTdSetAddress(uint8 tdHandle, uint16 source, uint16 destination)
 cystatus CyDmaTdGetAddress(uint8 tdHandle, uint16 * source, uint16 * destination) 
 {
     cystatus status = CYRET_BAD_PARAM;
+    reg16 *convert;
 
     if(tdHandle < CY_DMA_NUMBEROF_TDS)
     {
@@ -1030,7 +1066,7 @@ cystatus CyDmaTdGetAddress(uint8 tdHandle, uint16 * source, uint16 * destination
         if(NULL != source)
         {
             /* Get source address */
-            reg16 *convert = (reg16 *) &CY_DMA_TDMEM_STRUCT_PTR[tdHandle].TD1[0];
+            convert = (reg16 *) &CY_DMA_TDMEM_STRUCT_PTR[tdHandle].TD1[0u];
             *source = CY_GET_REG16(convert);
         }
 
@@ -1038,7 +1074,8 @@ cystatus CyDmaTdGetAddress(uint8 tdHandle, uint16 * source, uint16 * destination
         if(NULL != destination)
         {
             /* Get Destination address. */
-            *destination = CY_GET_REG16((reg16 *) &CY_DMA_TDMEM_STRUCT_PTR[tdHandle].TD1[2]);
+            convert = (reg16 *) &CY_DMA_TDMEM_STRUCT_PTR[tdHandle].TD1[2u];
+            *destination = CY_GET_REG16(convert);
         }
 
         status = CYRET_SUCCESS;
@@ -1075,9 +1112,14 @@ cystatus CyDmaChRoundRobin(uint8 chHandle, uint8 enableRR)
 
     if(chHandle < CY_DMA_NUMBEROF_CHANNELS)
     {
-        CY_DMA_CH_STRUCT_PTR[chHandle].basic_cfg[0u] =
-                (CY_DMA_CH_STRUCT_PTR[chHandle].basic_cfg[0u] &  ((uint8)(~CY_DMA_ROUND_ROBIN_ENABLE))) |
-                ((0u != enableRR) ? CY_DMA_ROUND_ROBIN_ENABLE : ((uint8)(~CY_DMA_ROUND_ROBIN_ENABLE)));
+        if (0u != enableRR)
+        {
+            CY_DMA_CH_STRUCT_PTR[chHandle].basic_cfg[0u] |= (uint8)CY_DMA_ROUND_ROBIN_ENABLE;
+        }
+        else
+        {
+            CY_DMA_CH_STRUCT_PTR[chHandle].basic_cfg[0u] &= (uint8)(~CY_DMA_ROUND_ROBIN_ENABLE);
+        }
 
         status = CYRET_SUCCESS;
     }

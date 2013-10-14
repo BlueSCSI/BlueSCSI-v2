@@ -30,9 +30,14 @@ static const uint8 StandardResponse[] =
 31, // standard length
 0, 0, //Reserved
 0, // We don't support anything at all
+/* TODO testing Apple Drive Setup. Make configurable!
 'c','o','d','e','s','r','c',' ',
 'S','C','S','I','2','S','D',' ',' ',' ',' ',' ',' ',' ',' ',' ',
 '2','.','0','a'
+*/
+' ','S','E','A','G','A','T','E',
+' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','S','T','2','2','5','N',
+'1','.','0',' '
 };
 
 static const uint8 SupportedVitalPages[] =

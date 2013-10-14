@@ -34,14 +34,14 @@
 #define SCSI_In_DBx_6		SCSI_In_DBx__6__PC
 #define SCSI_In_DBx_7		SCSI_In_DBx__7__PC
 
-#define SCSI_In_DBx_SCSI_Out_DB0		SCSI_In_DBx__SCSI_Out_DB0__PC
-#define SCSI_In_DBx_SCSI_Out_DB1		SCSI_In_DBx__SCSI_Out_DB1__PC
-#define SCSI_In_DBx_SCSI_Out_DB2		SCSI_In_DBx__SCSI_Out_DB2__PC
-#define SCSI_In_DBx_SCSI_Out_DB3		SCSI_In_DBx__SCSI_Out_DB3__PC
-#define SCSI_In_DBx_SCSI_Out_DB4		SCSI_In_DBx__SCSI_Out_DB4__PC
-#define SCSI_In_DBx_SCSI_Out_DB5		SCSI_In_DBx__SCSI_Out_DB5__PC
-#define SCSI_In_DBx_SCSI_Out_DB6		SCSI_In_DBx__SCSI_Out_DB6__PC
-#define SCSI_In_DBx_SCSI_Out_DB7		SCSI_In_DBx__SCSI_Out_DB7__PC
+#define SCSI_In_DBx_DB0		SCSI_In_DBx__DB0__PC
+#define SCSI_In_DBx_DB1		SCSI_In_DBx__DB1__PC
+#define SCSI_In_DBx_DB2		SCSI_In_DBx__DB2__PC
+#define SCSI_In_DBx_DB3		SCSI_In_DBx__DB3__PC
+#define SCSI_In_DBx_DB4		SCSI_In_DBx__DB4__PC
+#define SCSI_In_DBx_DB5		SCSI_In_DBx__DB5__PC
+#define SCSI_In_DBx_DB6		SCSI_In_DBx__DB6__PC
+#define SCSI_In_DBx_DB7		SCSI_In_DBx__DB7__PC
 
 #endif /* End Pins SCSI_In_DBx_ALIASES_H */
 

@@ -16,6 +16,7 @@
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "loopback.h"
+#include "scsi.h"
 #include "device.h"
 
 // Return true if all inputs are un-asserted (1)
@@ -27,10 +28,10 @@ static int test_initial_inputs(void)
 	int result =
 		(dbx == 0xFF) &&
 		CyPins_ReadPin(SCSI_In_DBP) &&
-		CyPins_ReadPin(SCSI_In_ATN) &&
+		CyPins_ReadPin(SCSI_ATN_INT) &&
 		CyPins_ReadPin(SCSI_In_BSY)	&&
 		CyPins_ReadPin(SCSI_In_ACK) &&
-		CyPins_ReadPin(SCSI_In_RST) &&
+		CyPins_ReadPin(SCSI_RST_INT) &&
 		CyPins_ReadPin(SCSI_In_MSG) &&
 		CyPins_ReadPin(SCSI_In_SEL) &&
 		CyPins_ReadPin(SCSI_In_CD) &&
@@ -86,6 +87,25 @@ static int test_data_10MHz(void)
 	return result;
 }
 
+static int test_ATN_interrupt(void)
+{
+	int result = 1;
+	int i;
+	
+	scsiDev.atnFlag = 0;
+	for (i = 0; i < 100 && result; ++i)
+	{
+		// We write using Active High
+		CyPins_SetPin(SCSI_Out_ATN);
+		CyDelayCycles(2);
+		result &= scsiDev.atnFlag == 1;
+		scsiDev.atnFlag = 0;
+		CyPins_ClearPin(SCSI_Out_ATN);
+		result &= scsiDev.atnFlag == 0;
+	}
+	return result;
+}
+
 static void test_error(void)
 {
 	// Toggle LED.
@@ -111,7 +131,10 @@ static void test_success(void)
 }
 void scsi2sd_test_loopback(void)
 {
-	if (!test_initial_inputs() || !test_data_lines() || !test_data_10MHz())
+	if (!test_initial_inputs() ||
+		!test_data_lines() ||
+		!test_data_10MHz() ||
+		!test_ATN_interrupt())
 	{
 		test_error();
 	}

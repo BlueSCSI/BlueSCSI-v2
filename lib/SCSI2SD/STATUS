@@ -9,7 +9,5 @@ assignments are incorrect.
 	- Partity checking is on
 	- Unit Attention Condition is off
 
-- Write performance is not adequate
-	- Multi-sector SD commands are not yet supported.
-	- DMA is not used for SPI transfers
+- DMA is not used for SPI transfers
 

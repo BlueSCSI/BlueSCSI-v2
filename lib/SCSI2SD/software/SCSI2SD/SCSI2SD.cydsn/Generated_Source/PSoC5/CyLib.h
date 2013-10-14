@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: CyLib.h
-* Version 3.40
+* Version 4.0
 *
 * Description:
 *  Provides the function definitions for the system, clocking, interrupts and
@@ -34,31 +34,23 @@
 #endif  /* (CY_PSOC3) */
 
 
-#if(!CY_PSOC5A)
+#if(CYDEV_VARIABLE_VDDA == 1)
 
-    #if(CYDEV_VARIABLE_VDDA == 1)
+    #include "CyScBoostClk.h"
 
-        #include "CyScBoostClk.h"
-
-    #endif  /* (CYDEV_VARIABLE_VDDA == 1) */
-
-#endif /* (!CY_PSOC5A) */
+#endif  /* (CYDEV_VARIABLE_VDDA == 1) */
 
 
 /* Global variable with preserved reset status */
 extern uint8 CYXDATA CyResetStatus;
 
 
-#if(!CY_PSOC5A)
+/* Variable Vdda */
+#if(CYDEV_VARIABLE_VDDA == 1)
 
-    /* Variable Vdda */
-    #if(CYDEV_VARIABLE_VDDA == 1)
+    extern uint8 CyScPumpEnabled;
 
-        extern uint8 CyScPumpEnabled;
-
-    #endif  /* (CYDEV_VARIABLE_VDDA == 1) */
-
-#endif /* (!CY_PSOC5A) */
+#endif  /* (CYDEV_VARIABLE_VDDA == 1) */
 
 
 /* Do not use these definitions directly in your application */
@@ -110,18 +102,15 @@ void  CyXTAL_32KHZ_Stop(void) ;
 cystatus CyXTAL_Start(uint8 wait) ;
 void  CyXTAL_Stop(void) ;
 void  CyXTAL_SetStartup(uint8 setting) ;
-#if(!CY_PSOC5A)
-    void  CyXTAL_EnableErrStatus(void) ;
-    void  CyXTAL_DisableErrStatus(void) ;
-    uint8 CyXTAL_ReadStatus(void) ;
-    void  CyXTAL_EnableFaultRecovery(void) ;
-    void  CyXTAL_DisableFaultRecovery(void) ;
-#endif  /* (!CY_PSOC5A) */
 
-#if(CY_PSOC3 || CY_PSOC5LP)
-    void CyXTAL_SetFbVoltage(uint8 setting) ;
-    void CyXTAL_SetWdVoltage(uint8 setting) ;
-#endif  /* (CY_PSOC3 || CY_PSOC5LP) */
+void  CyXTAL_EnableErrStatus(void) ;
+void  CyXTAL_DisableErrStatus(void) ;
+uint8 CyXTAL_ReadStatus(void) ;
+void  CyXTAL_EnableFaultRecovery(void) ;
+void  CyXTAL_DisableFaultRecovery(void) ;
+
+void CyXTAL_SetFbVoltage(uint8 setting) ;
+void CyXTAL_SetWdVoltage(uint8 setting) ;
 
 void CyWdtStart(uint8 ticks, uint8 lpMode) ;
 void CyWdtClear(void) ;
@@ -172,11 +161,7 @@ void CyVdHvAnalogDisable(void) ;
 uint8 CyVdStickyStatus(uint8 mask) ;
 uint8 CyVdRealTimeStatus(void) ;
 
-#if(!CY_PSOC5A)
-
-    void CySetScPumps(uint8 enable) ;
-
-#endif /* (!CY_PSOC5A) */
+void CySetScPumps(uint8 enable) ;
 
 
 /***************************************
@@ -206,7 +191,6 @@ uint8 CyVdRealTimeStatus(void) ;
 * External 32kHz Crystal Oscillator API Constants
 *******************************************************************************/
 #define CY_XTAL32K_ANA_STAT             (0x20u)
-
 
 #define CY_CLK_XTAL32_CR_LPM            (0x02u)
 #define CY_CLK_XTAL32_CR_EN             (0x01u)
@@ -285,49 +269,48 @@ uint8 CyVdRealTimeStatus(void) ;
 
 
 /*******************************************************************************
-*    Variable VDDA
+*    Variable VDDA API Constants
 *******************************************************************************/
-#if(!CY_PSOC5A)
+#if(CYDEV_VARIABLE_VDDA == 1)
 
-    #if(CYDEV_VARIABLE_VDDA == 1)
+    /* Active Power Mode Configuration Register 9 */
+    #define CY_LIB_ACT_CFG9_SWCAP0_EN        (0x01u)
+    #define CY_LIB_ACT_CFG9_SWCAP1_EN        (0x02u)
+    #define CY_LIB_ACT_CFG9_SWCAP2_EN        (0x04u)
+    #define CY_LIB_ACT_CFG9_SWCAP3_EN        (0x08u)
+    #define CY_LIB_ACT_CFG9_SWCAPS_MASK      (0x0Fu)
 
-        /* Active Power Mode Configuration Register 9 */
-        #define CY_LIB_ACT_CFG9_SWCAP0_EN        (0x01u)
-        #define CY_LIB_ACT_CFG9_SWCAP1_EN        (0x02u)
-        #define CY_LIB_ACT_CFG9_SWCAP2_EN        (0x04u)
-        #define CY_LIB_ACT_CFG9_SWCAP3_EN        (0x08u)
-        #define CY_LIB_ACT_CFG9_SWCAPS_MASK      (0x0Fu)
+    /* Switched Cap Miscellaneous Control Register */
+    #define CY_LIB_SC_MISC_PUMP_FORCE        (0x20u)
 
-        /* Switched Cap Miscellaneous Control Register */
-        #define CY_LIB_SC_MISC_PUMP_FORCE        (0x20u)
+    /* Switched Capacitor 0 Boost Clock Selection Register */
+    #define CY_LIB_SC_BST_CLK_EN             (0x08u)
+    #define CY_LIB_SC_BST_CLK_INDEX_MASK     (0xF8u)
 
-        /* Switched Capacitor 0 Boost Clock Selection Register */
-        #define CY_LIB_SC_BST_CLK_EN             (0x08u)
-        #define CY_LIB_SC_BST_CLK_INDEX_MASK     (0xF8u)
-
-    #endif  /* (CYDEV_VARIABLE_VDDA == 1) */
-
-#endif /* (!CY_PSOC5A) */
+#endif  /* (CYDEV_VARIABLE_VDDA == 1) */
 
 
 /*******************************************************************************
-* Clock Distribution Constants
+* Clock Distribution API Constants
 *******************************************************************************/
 #define CY_LIB_CLKDIST_AMASK_MASK       (0xF0u)
 #define CY_LIB_CLKDIST_DMASK_MASK       (0x00u)
 #define CY_LIB_CLKDIST_LD_LOAD          (0x01u)
-#define CY_LIB_CLKDIST_BCFG2_MASK       (0x80u) /* Enable shadow loads */
+#define CY_LIB_CLKDIST_BCFG2_MASK       (0x80u)
 #define CY_LIB_CLKDIST_MASTERCLK_DIV    (7u)
-#define CY_LIB_CLKDIST_BCFG2_SSS        (0x40u) /* Sync source is same frequency */
+#define CY_LIB_CLKDIST_BCFG2_SSS        (0x40u)
 #define CY_LIB_CLKDIST_MSTR1_SRC_MASK   (0xFCu)
 #define CY_LIB_FASTCLK_IMO_DOUBLER      (0x10u)
 #define CY_LIB_FASTCLK_IMO_IMO          (0x20u)
 #define CY_LIB_CLKDIST_CR_IMO2X         (0x40u)
 #define CY_LIB_FASTCLK_IMO_CR_RANGE_MASK (0xF8u)
 
-#define CY_LIB_CLKDIST_CR_PLL_SCR_MASK   (0xFCu)
+#define CY_LIB_CLKDIST_CR_PLL_SCR_MASK  (0xFCu)
 
-#define ILO_CONTROL_PD_MODE             (0x10u)
+
+/* CyILO_SetPowerMode() */
+#define CY_ILO_CONTROL_PD_MODE          (0x10u)
+#define CY_ILO_CONTROL_PD_POSITION      (4u)
 
 #define CY_ILO_SOURCE_100K              (0u)
 #define CY_ILO_SOURCE_33K               (1u)
@@ -341,7 +324,6 @@ uint8 CyVdRealTimeStatus(void) ;
 #define CY_ILO_SOURCE_33K_SET           (0x04u)
 #define CY_ILO_SOURCE_100K_SET          (0x00u)
 
-
 #define CY_MASTER_SOURCE_IMO            (0u)
 #define CY_MASTER_SOURCE_PLL            (1u)
 #define CY_MASTER_SOURCE_XTAL           (2u)
@@ -350,16 +332,21 @@ uint8 CyVdRealTimeStatus(void) ;
 #define CY_IMO_SOURCE_IMO               (0u)
 #define CY_IMO_SOURCE_XTAL              (1u)
 #define CY_IMO_SOURCE_DSI               (2u)
-#define IMO_PM_ENABLE                   (0x10u)    /* Enable IMO clock source. */
-#define FASTCLK_IMO_USBCLK_ON_SET       (0x40u)
 
-#define CLOCK_IMO_3MHZ_VALUE            (0x03u)
-#define CLOCK_IMO_6MHZ_VALUE            (0x01u)
-#define CLOCK_IMO_12MHZ_VALUE           (0x00u)
-#define CLOCK_IMO_24MHZ_VALUE           (0x02u)
-#define CLOCK_IMO_48MHZ_VALUE           (0x04u)
-#define CLOCK_IMO_62MHZ_VALUE           (0x05u)
-#define CLOCK_IMO_74MHZ_VALUE           (0x06u)
+
+/* CyIMO_Start() */
+#define CY_LIB_PM_ACT_CFG0_IMO_EN       (0x10u)
+#define CY_LIB_PM_STBY_CFG0_IMO_EN      (0x10u)
+#define CY_LIB_CLK_IMO_FTW_TIMEOUT      (0x00u)
+
+#define CY_LIB_IMO_3MHZ_VALUE           (0x03u)
+#define CY_LIB_IMO_6MHZ_VALUE           (0x01u)
+#define CY_LIB_IMO_12MHZ_VALUE          (0x00u)
+#define CY_LIB_IMO_24MHZ_VALUE          (0x02u)
+#define CY_LIB_IMO_48MHZ_VALUE          (0x04u)
+#define CY_LIB_IMO_62MHZ_VALUE          (0x05u)
+#define CY_LIB_IMO_74MHZ_VALUE          (0x06u)
+
 
 /* CyIMO_SetFreq() */
 #define CY_IMO_FREQ_3MHZ                (0u)
@@ -367,42 +354,48 @@ uint8 CyVdRealTimeStatus(void) ;
 #define CY_IMO_FREQ_12MHZ               (2u)
 #define CY_IMO_FREQ_24MHZ               (3u)
 #define CY_IMO_FREQ_48MHZ               (4u)
-#if(!CY_PSOC5A)
-    #define CY_IMO_FREQ_62MHZ           (5u)
-#endif  /* (!CY_PSOC5A) */
+#define CY_IMO_FREQ_62MHZ               (5u)
+#if(CY_PSOC5)
+    #define CY_IMO_FREQ_74MHZ           (6u)
+#endif  /* (CY_PSOC5) */
 #define CY_IMO_FREQ_USB                 (8u)
 
+#define CY_LIB_IMO_USBCLK_ON_SET        (0x40u)
 
-#define SFR_USER_CPUCLK_DIV_MASK        (0x0Fu)
-#define CLKDIST_DIV_POSITION            (4u)
-#define CLKDIST_MSTR1_DIV_CLEAR         (0x0Fu)
-#define CLOCK_USB_ENABLE                (0x02u)
-#define CLOCK_IMO_OUT_X2                (0x10u)
-#define CLOCK_IMO_OUT_X1                ((uint8)(~CLOCK_IMO_OUT_X2))
+
+/* CyCpuClk_SetDivider() */
+#define CY_LIB_CLKDIST_DIV_POSITION     (4u)
+#define CY_LIB_CLKDIST_MSTR1_DIV_MASK   (0x0Fu)
+
+
+/* CyIMO_SetTrimValue() */
+#define CY_LIB_USB_CLK_EN               (0x02u)
+
+
+/* CyPLL_OUT_SetSource() - parameters */
 #define CY_PLL_SOURCE_IMO               (0u)
 #define CY_PLL_SOURCE_XTAL              (1u)
 #define CY_PLL_SOURCE_DSI               (2u)
 
-#define CLOCK_IMO2X_ECO                 ((uint8)(~CLOCK_IMO2X_DSI))
 
-#define ILO_CONTROL_PD_POSITION         (4u)
-#define ILO_CONTROL_1KHZ_ON             (0x02u)
-#define ILO_CONTROL_100KHZ_ON           (0x04u)
-#define ILO_CONTROL_33KHZ_ON            (0x20u)
+/* CyILO_[Start|Stop][1|100K](), CyILO_[Enable|Disable]33K() */
+#define CY_LIB_SLOWCLK_ILO_CR0_EN_1KHZ   (0x02u)
+#define CY_LIB_SLOWCLK_ILO_CR0_EN_33KHZ  (0x20u)
+#define CY_LIB_SLOWCLK_ILO_CR0_EN_100KHZ (0x04u)
 
-#define USB_CLKDIST_CONFIG_MASK         (0x03u)
-#define USB_CLK_IMO2X                   (0x00u)
-#define USB_CLK_IMO                     (0x01u)
-#define USB_CLK_PLL                     (0x02u)
-#define USB_CLK_DSI                     (0x03u)
-#define USB_CLK_DIV2_ON                 (0x04u)
-#define USB_CLK_STOP_FLAG               (0x00u)
-#define USB_CLK_START_FLAG              (0x01u)
 
-#define FTW_CLEAR_ALL_BITS              (0x00u) /* To clear all bits of PM_TW_CFG2 */
-#define FTW_CLEAR_FTW_BITS              (0xFCu) /* To clear FTW bits of PM_TW_CFG2 */
-#define FTW_ENABLE                      (0x01u) /* To enable FTW, no interrupt */
+/* CyUsbClk_SetSource() */
+#define CY_LIB_CLKDIST_UCFG_SRC_SEL_MASK (0x03u)
 
+
+/* CyUsbClk_SetSource() - parameters */
+#define CY_LIB_USB_CLK_IMO2X            (0x00u)
+#define CY_LIB_USB_CLK_IMO              (0x01u)
+#define CY_LIB_USB_CLK_PLL              (0x02u)
+#define CY_LIB_USB_CLK_DSI              (0x03u)
+
+
+/* CyUSB_PowerOnCheck() */
 #define CY_ACT_USB_ENABLED              (0x01u)
 #define CY_ALT_ACT_USB_ENABLED          (0x01u)
 
@@ -410,6 +403,72 @@ uint8 CyVdRealTimeStatus(void) ;
 /***************************************
 * Registers
 ***************************************/
+
+
+/*******************************************************************************
+* System Registers
+*******************************************************************************/
+
+/* Software Reset Control Register */
+#define CY_LIB_RESET_CR2_REG         (* (reg8 *) CYREG_RESET_CR2)
+#define CY_LIB_RESET_CR2_PTR         (  (reg8 *) CYREG_RESET_CR2)
+
+/* Timewheel Configuration Register 0 */
+#define CY_LIB_PM_TW_CFG0_REG           (*(reg8 *) CYREG_PM_TW_CFG0)
+#define CY_LIB_PM_TW_CFG0_PTR           ( (reg8 *) CYREG_PM_TW_CFG0)
+
+/* Timewheel Configuration Register 2 */
+#define CY_LIB_PM_TW_CFG2_REG           (*(reg8 *) CYREG_PM_TW_CFG2)
+#define CY_LIB_PM_TW_CFG2_PTR           ( (reg8 *) CYREG_PM_TW_CFG2)
+
+/* USB Configuration Register */
+#define CY_LIB_CLKDIST_UCFG_REG         (*(reg8 *) CYREG_CLKDIST_UCFG)
+#define CY_LIB_CLKDIST_UCFG_PTR         ( (reg8 *) CYREG_CLKDIST_UCFG)
+
+/* Internal Main Oscillator Trim Register 1 */
+#define CY_LIB_IMO_TR1_REG              (*(reg8 *) CYREG_IMO_TR1)
+#define CY_LIB_IMO_TR1_PTR              ( (reg8 *) CYREG_IMO_TR1)
+
+/* USB control 1 Register */
+#define CY_LIB_USB_CR1_REG              (*(reg8 *) CYREG_USB_CR1 )
+#define CY_LIB_USB_CR1_PTR              ( (reg8 *) CYREG_USB_CR1 )
+
+/* Active Power Mode Configuration Register 0 */
+#define CY_LIB_PM_ACT_CFG0_REG          (*(reg8 *) CYREG_PM_ACT_CFG0)
+#define CY_LIB_PM_ACT_CFG0_PTR          ( (reg8 *) CYREG_PM_ACT_CFG0)
+
+/* Standby Power Mode Configuration Register 0 */
+#define CY_LIB_PM_STBY_CFG0_REG          (*(reg8 *) CYREG_PM_STBY_CFG0)
+#define CY_LIB_PM_STBY_CFG0_PTR          ( (reg8 *) CYREG_PM_STBY_CFG0)
+
+/* Active Power Mode Configuration Register 5 */
+#define CY_LIB_PM_ACT_CFG5_REG              (* (reg8 *) CYREG_PM_ACT_CFG5 )
+#define CY_LIB_PM_ACT_CFG5_PTR              (  (reg8 *) CYREG_PM_ACT_CFG5 )
+
+/* Standby Power Mode Configuration Register 5 */
+#define CY_LIB_PM_STBY_CFG5_REG             (* (reg8 *) CYREG_PM_STBY_CFG5 )
+#define CY_LIB_PM_STBY_CFG5_PTR             (  (reg8 *) CYREG_PM_STBY_CFG5 )
+
+/* CyIMO_SetTrimValue() */
+#if(CY_PSOC3)
+    #define CY_LIB_TRIM_IMO_3MHZ_PTR         ((void far *) CYREG_FLSHID_CUST_TABLES_IMO_3MHZ)
+    #define CY_LIB_TRIM_IMO_6MHZ_PTR         ((void far *) CYREG_FLSHID_CUST_TABLES_IMO_6MHZ)
+    #define CY_LIB_TRIM_IMO_12MHZ_PTR        ((void far *) CYREG_FLSHID_CUST_TABLES_IMO_12MHZ)
+    #define CY_LIB_TRIM_IMO_24MHZ_PTR        ((void far *) CYREG_FLSHID_CUST_TABLES_IMO_24MHZ)
+    #define CY_LIB_TRIM_IMO_67MHZ_PTR        ((void far *) CYREG_FLSHID_CUST_TABLES_IMO_67MHZ)
+    #define CY_LIB_TRIM_IMO_80MHZ_PTR        ((void far *) CYREG_FLSHID_CUST_TABLES_IMO_80MHZ)
+    #define CY_LIB_TRIM_IMO_USB_PTR          ((void far *) CYREG_FLSHID_CUST_TABLES_IMO_USB)
+    #define CY_LIB_TRIM_IMO_TR1_PTR          ((void far *) (CYREG_FLSHID_MFG_CFG_IMO_TR1 + 1u))
+ #else
+    #define CY_LIB_TRIM_IMO_3MHZ_PTR         ((reg8 *) CYREG_FLSHID_CUST_TABLES_IMO_3MHZ)
+    #define CY_LIB_TRIM_IMO_6MHZ_PTR         ((reg8 *) CYREG_FLSHID_CUST_TABLES_IMO_6MHZ)
+    #define CY_LIB_TRIM_IMO_12MHZ_PTR        ((reg8 *) CYREG_FLSHID_CUST_TABLES_IMO_12MHZ)
+    #define CY_LIB_TRIM_IMO_24MHZ_PTR        ((reg8 *) CYREG_FLSHID_CUST_TABLES_IMO_24MHZ)
+    #define CY_LIB_TRIM_IMO_67MHZ_PTR        ((reg8 *) CYREG_FLSHID_CUST_TABLES_IMO_67MHZ)
+    #define CY_LIB_TRIM_IMO_80MHZ_PTR        ((reg8 *) CYREG_FLSHID_CUST_TABLES_IMO_80MHZ)
+    #define CY_LIB_TRIM_IMO_USB_PTR          ((reg8 *) CYREG_FLSHID_CUST_TABLES_IMO_USB)
+    #define CY_LIB_TRIM_IMO_TR1_PTR          ((reg8 *) (CYREG_FLSHID_MFG_CFG_IMO_TR1 + 1u))
+#endif  /* (CY_PSOC3) */
 
 
 /*******************************************************************************
@@ -442,16 +501,16 @@ uint8 CyVdRealTimeStatus(void) ;
 *******************************************************************************/
 
 /* External MHz Crystal Oscillator Status and Control Register */
-#define CY_CLK_XMHZ_CSR_REG           (*(reg8 *) CYREG_FASTCLK_XMHZ_CSR)
-#define CY_CLK_XMHZ_CSR_PTR           ( (reg8 *) CYREG_FASTCLK_XMHZ_CSR)
+#define CY_CLK_XMHZ_CSR_REG         (*(reg8 *) CYREG_FASTCLK_XMHZ_CSR)
+#define CY_CLK_XMHZ_CSR_PTR         ( (reg8 *) CYREG_FASTCLK_XMHZ_CSR)
 
 /* External MHz Crystal Oscillator Configuration Register 0 */
-#define CY_CLK_XMHZ_CFG0_REG           (*(reg8 *) CYREG_FASTCLK_XMHZ_CFG0)
-#define CY_CLK_XMHZ_CFG0_PTR           ( (reg8 *) CYREG_FASTCLK_XMHZ_CFG0)
+#define CY_CLK_XMHZ_CFG0_REG        (*(reg8 *) CYREG_FASTCLK_XMHZ_CFG0)
+#define CY_CLK_XMHZ_CFG0_PTR        ( (reg8 *) CYREG_FASTCLK_XMHZ_CFG0)
 
 /* External MHz Crystal Oscillator Configuration Register 1 */
-#define CY_CLK_XMHZ_CFG1_REG           (*(reg8 *) CYREG_FASTCLK_XMHZ_CFG1)
-#define CY_CLK_XMHZ_CFG1_PTR           ( (reg8 *) CYREG_FASTCLK_XMHZ_CFG1)
+#define CY_CLK_XMHZ_CFG1_REG        (*(reg8 *) CYREG_FASTCLK_XMHZ_CFG1)
+#define CY_CLK_XMHZ_CFG1_PTR        ( (reg8 *) CYREG_FASTCLK_XMHZ_CFG1)
 
 
 /*******************************************************************************
@@ -459,20 +518,20 @@ uint8 CyVdRealTimeStatus(void) ;
 *******************************************************************************/
 
 /* 32 kHz Watch Crystal Oscillator Trim Register */
-#define CY_CLK_XTAL32_TR_REG            (*(reg8 *) CYREG_X32_TR)
-#define CY_CLK_XTAL32_TR_PTR            ( (reg8 *) CYREG_X32_TR)
+#define CY_CLK_XTAL32_TR_REG        (*(reg8 *) CYREG_X32_TR)
+#define CY_CLK_XTAL32_TR_PTR        ( (reg8 *) CYREG_X32_TR)
 
 /* External 32kHz Crystal Oscillator Test Register */
-#define CY_CLK_XTAL32_TST_REG           (*(reg8 *) CYREG_SLOWCLK_X32_TST)
-#define CY_CLK_XTAL32_TST_PTR           ( (reg8 *) CYREG_SLOWCLK_X32_TST)
+#define CY_CLK_XTAL32_TST_REG       (*(reg8 *) CYREG_SLOWCLK_X32_TST)
+#define CY_CLK_XTAL32_TST_PTR       ( (reg8 *) CYREG_SLOWCLK_X32_TST)
 
 /* External 32kHz Crystal Oscillator Control Register */
-#define CY_CLK_XTAL32_CR_REG            (*(reg8 *) CYREG_SLOWCLK_X32_CR)
-#define CY_CLK_XTAL32_CR_PTR            ( (reg8 *) CYREG_SLOWCLK_X32_CR)
+#define CY_CLK_XTAL32_CR_REG        (*(reg8 *) CYREG_SLOWCLK_X32_CR)
+#define CY_CLK_XTAL32_CR_PTR        ( (reg8 *) CYREG_SLOWCLK_X32_CR)
 
 /* External 32kHz Crystal Oscillator Configuration Register */
-#define CY_CLK_XTAL32_CFG_REG           (*(reg8 *) CYREG_SLOWCLK_X32_CFG)
-#define CY_CLK_XTAL32_CFG_PTR           ( (reg8 *) CYREG_SLOWCLK_X32_CFG)
+#define CY_CLK_XTAL32_CFG_REG       (*(reg8 *) CYREG_SLOWCLK_X32_CFG)
+#define CY_CLK_XTAL32_CFG_PTR       ( (reg8 *) CYREG_SLOWCLK_X32_CFG)
 
 
 /*******************************************************************************
@@ -492,56 +551,52 @@ uint8 CyVdRealTimeStatus(void) ;
 *    LVI/HVI Registers
 *******************************************************************************/
 
-#define CY_VD_LVI_TRIP_REG             (* (reg8 *) CYDEV_RESET_CR0)
-#define CY_VD_LVI_TRIP_PTR             (  (reg8 *) CYDEV_RESET_CR0)
+#define CY_VD_LVI_TRIP_REG          (* (reg8 *) CYREG_RESET_CR0)
+#define CY_VD_LVI_TRIP_PTR          (  (reg8 *) CYREG_RESET_CR0)
 
-#define CY_VD_LVI_HVI_CONTROL_REG      (* (reg8 *) CYDEV_RESET_CR1)
-#define CY_VD_LVI_HVI_CONTROL_PTR      (  (reg8 *) CYDEV_RESET_CR1)
+#define CY_VD_LVI_HVI_CONTROL_REG   (* (reg8 *) CYREG_RESET_CR1)
+#define CY_VD_LVI_HVI_CONTROL_PTR   (  (reg8 *) CYREG_RESET_CR1)
 
-#define CY_VD_PRES_CONTROL_REG         (* (reg8 *) CYDEV_RESET_CR3)
-#define CY_VD_PRES_CONTROL_PTR         (  (reg8 *) CYDEV_RESET_CR3)
+#define CY_VD_PRES_CONTROL_REG      (* (reg8 *) CYREG_RESET_CR3)
+#define CY_VD_PRES_CONTROL_PTR      (  (reg8 *) CYREG_RESET_CR3)
 
-#define CY_VD_PERSISTENT_STATUS_REG    (* (reg8 *) CYDEV_RESET_SR0)
-#define CY_VD_PERSISTENT_STATUS_PTR    (  (reg8 *) CYDEV_RESET_SR0)
+#define CY_VD_PERSISTENT_STATUS_REG (* (reg8 *) CYREG_RESET_SR0)
+#define CY_VD_PERSISTENT_STATUS_PTR (  (reg8 *) CYREG_RESET_SR0)
 
-#define CY_VD_RT_STATUS_REG            (* (reg8 *) CYDEV_RESET_SR2)
-#define CY_VD_RT_STATUS_PTR            (  (reg8 *) CYDEV_RESET_SR2)
+#define CY_VD_RT_STATUS_REG         (* (reg8 *) CYREG_RESET_SR2)
+#define CY_VD_RT_STATUS_PTR         (  (reg8 *) CYREG_RESET_SR2)
 
 
 /*******************************************************************************
 *    Variable VDDA
 *******************************************************************************/
-#if(!CY_PSOC5A)
+#if(CYDEV_VARIABLE_VDDA == 1)
 
-    #if(CYDEV_VARIABLE_VDDA == 1)
+    /* Active Power Mode Configuration Register 9 */
+    #define CY_LIB_ACT_CFG9_REG            (* (reg8 *) CYREG_PM_ACT_CFG9 )
+    #define CY_LIB_ACT_CFG9_PTR            (  (reg8 *) CYREG_PM_ACT_CFG9 )
 
-        /* Active Power Mode Configuration Register 9 */
-        #define CY_LIB_ACT_CFG9_REG             (* (reg8 *) CYREG_PM_ACT_CFG9 )
-        #define CY_LIB_ACT_CFG9_PTR             (  (reg8 *) CYREG_PM_ACT_CFG9 )
+    /* Switched Capacitor 0 Boost Clock Selection Register */
+    #define CY_LIB_SC0_BST_REG             (* (reg8 *) CYREG_SC0_BST )
+    #define CY_LIB_SC0_BST_PTR             (  (reg8 *) CYREG_SC0_BST )
 
-        /* Switched Capacitor 0 Boost Clock Selection Register */
-        #define CY_LIB_SC0_BST_REG             (* (reg8 *) CYREG_SC0_BST )
-        #define CY_LIB_SC0_BST_PTR             (  (reg8 *) CYREG_SC0_BST )
+    /* Switched Capacitor 1 Boost Clock Selection Register */
+    #define CY_LIB_SC1_BST_REG             (* (reg8 *) CYREG_SC1_BST )
+    #define CY_LIB_SC1_BST_PTR             (  (reg8 *) CYREG_SC1_BST )
 
-        /* Switched Capacitor 1 Boost Clock Selection Register */
-        #define CY_LIB_SC1_BST_REG             (* (reg8 *) CYREG_SC1_BST )
-        #define CY_LIB_SC1_BST_PTR             (  (reg8 *) CYREG_SC1_BST )
+    /* Switched Capacitor 2 Boost Clock Selection Register */
+    #define CY_LIB_SC2_BST_REG             (* (reg8 *) CYREG_SC2_BST )
+    #define CY_LIB_SC2_BST_PTR             (  (reg8 *) CYREG_SC2_BST )
 
-        /* Switched Capacitor 2 Boost Clock Selection Register */
-        #define CY_LIB_SC2_BST_REG             (* (reg8 *) CYREG_SC2_BST )
-        #define CY_LIB_SC2_BST_PTR             (  (reg8 *) CYREG_SC2_BST )
+    /* Switched Capacitor 3 Boost Clock Selection Register */
+    #define CY_LIB_SC3_BST_REG             (* (reg8 *) CYREG_SC3_BST )
+    #define CY_LIB_SC3_BST_PTR             (  (reg8 *) CYREG_SC3_BST )
 
-        /* Switched Capacitor 3 Boost Clock Selection Register */
-        #define CY_LIB_SC3_BST_REG             (* (reg8 *) CYREG_SC3_BST )
-        #define CY_LIB_SC3_BST_PTR             (  (reg8 *) CYREG_SC3_BST )
+    /* Switched Cap Miscellaneous Control Register */
+    #define CY_LIB_SC_MISC_REG             (* (reg8 *) CYREG_SC_MISC )
+    #define CY_LIB_SC_MISC_PTR             (  (reg8 *) CYREG_SC_MISC )
 
-        /* Switched Cap Miscellaneous Control Register */
-        #define CY_LIB_SC_MISC_REG             (* (reg8 *) CYREG_SC_MISC )
-        #define CY_LIB_SC_MISC_PTR             (  (reg8 *) CYREG_SC_MISC )
-
-    #endif  /* (CYDEV_VARIABLE_VDDA == 1) */
-
-#endif /* (!CY_PSOC5A) */
+#endif  /* (CYDEV_VARIABLE_VDDA == 1) */
 
 
 /*******************************************************************************
@@ -596,71 +651,9 @@ uint8 CyVdRealTimeStatus(void) ;
 #define CY_LIB_CLKDIST_CR_REG           (*(reg8 *) CYREG_CLKDIST_CR)
 #define CY_LIB_CLKDIST_CR_PTR           ( (reg8 *) CYREG_CLKDIST_CR)
 
-
-#define SLOWCLK_ILO_CR0_PTR            ( (reg8 *) CYREG_SLOWCLK_ILO_CR0)
-#define SLOWCLK_ILO_CR0                (*(reg8 *) CYREG_SLOWCLK_ILO_CR0)
-#define CLKDIST_UCFG_PTR               ( (reg8 *) CYREG_CLKDIST_UCFG)
-#define CLKDIST_UCFG                   (*(reg8 *) CYREG_CLKDIST_UCFG)
-
-#define PM_TW_CFG0_PTR                 ( (reg8 *) CYREG_PM_TW_CFG0)
-#define PM_TW_CFG0                     (*(reg8 *) CYREG_PM_TW_CFG0)
-
-#define PM_TW_CFG2_PTR                 ( (reg8 *) CYREG_PM_TW_CFG2)
-#define PM_TW_CFG2                     (*(reg8 *) CYREG_PM_TW_CFG2)
-
-#define CLKDIST_MSTR1_PTR              ( (reg8 *) CYREG_CLKDIST_MSTR1)
-#define CLKDIST_MSTR1                  (*(reg8 *) CYREG_CLKDIST_MSTR1)
-
-
-
-#define SFR_USER_CPUCLK_DIV_PTR        ((void far *) CYREG_SFR_USER_CPUCLK_DIV)
-
-#define CLOCK_CONTROL                  ( (reg8 *) CYREG_CLKDIST_CR)
-#define IMO_TR1_PTR                    ( (reg8 *) CYREG_IMO_TR1)
-#define IMO_TR1                        (*(reg8 *) CYREG_IMO_TR1)
-#define CY_USB_CR1_PTR                 ( (reg8 *) CYREG_USB_CR1 )
-#define CY_USB_CR1                     (*(reg8 *) CYREG_USB_CR1 )
-
-#define PM_ACT_CFG0_PTR                ( (reg8 *) CYREG_PM_ACT_CFG0)
-#define PM_ACT_CFG0                    (*(reg8 *) CYREG_PM_ACT_CFG0)
-#define PM_STBY_CFG0_PTR               ( (reg8 *) CYREG_PM_STBY_CFG0)
-#define PM_STBY_CFG0                   (*(reg8 *) CYREG_PM_STBY_CFG0)
-#define PM_AVAIL_CR2_PTR               ( (reg8 *) CYREG_PM_AVAIL_CR2)
-#define PM_AVAIL_CR2                   (*(reg8 *) CYREG_PM_AVAIL_CR2)
-
-
-/* Active Power Mode Configuration Register 5 */
-#define CY_PM_ACT_CFG5_REG             (* (reg8 *) CYREG_PM_ACT_CFG5 )
-#define CY_PM_ACT_CFG5_PTR             (  (reg8 *) CYREG_PM_ACT_CFG5 )
-
-/* Standby Power Mode Configuration Register 5 */
-#define CY_PM_STBY_CFG5_REG             (* (reg8 *) CYREG_PM_STBY_CFG5 )
-#define CY_PM_STBY_CFG5_PTR             (  (reg8 *) CYREG_PM_STBY_CFG5 )
-
-
-#if(CY_PSOC3)
-    #define FLSHID_CUST_TABLES_IMO_3MHZ_PTR         ((void far *) CYREG_FLSHID_CUST_TABLES_IMO_3MHZ)
-    #define FLSHID_CUST_TABLES_IMO_6MHZ_PTR         ((void far *) CYREG_FLSHID_CUST_TABLES_IMO_6MHZ)
-    #define FLSHID_CUST_TABLES_IMO_12MHZ_PTR        ((void far *) CYREG_FLSHID_CUST_TABLES_IMO_12MHZ)
-    #define FLSHID_CUST_TABLES_IMO_24MHZ_PTR        ((void far *) CYREG_FLSHID_CUST_TABLES_IMO_24MHZ)
-    #define FLSHID_MFG_CFG_IMO_TR1_PTR              ((void far *) (CYREG_FLSHID_MFG_CFG_IMO_TR1 + 1u))
-    #define FLSHID_CUST_TABLES_IMO_67MHZ_PTR        ((void far *) CYREG_FLSHID_CUST_TABLES_IMO_67MHZ)
-    #define FLSHID_CUST_TABLES_IMO_80MHZ_PTR        ((void far *) CYREG_FLSHID_CUST_TABLES_IMO_80MHZ)
-    #define FLSHID_CUST_TABLES_IMO_USB_PTR          ((void far *) CYREG_FLSHID_CUST_TABLES_IMO_USB)
- #else
-    #define FLSHID_CUST_TABLES_IMO_3MHZ_PTR         ((reg8 *) CYREG_FLSHID_CUST_TABLES_IMO_3MHZ)
-    #define FLSHID_CUST_TABLES_IMO_6MHZ_PTR         ((reg8 *) CYREG_FLSHID_CUST_TABLES_IMO_6MHZ)
-    #define FLSHID_CUST_TABLES_IMO_12MHZ_PTR        ((reg8 *) CYREG_FLSHID_CUST_TABLES_IMO_12MHZ)
-    #define FLSHID_CUST_TABLES_IMO_24MHZ_PTR        ((reg8 *) CYREG_FLSHID_CUST_TABLES_IMO_24MHZ)
-    #define FLSHID_MFG_CFG_IMO_TR1_PTR              ((reg8 *) (CYREG_FLSHID_MFG_CFG_IMO_TR1 + 1u))
-    #define FLSHID_CUST_TABLES_IMO_67MHZ_PTR        ((reg8 *) CYREG_FLSHID_CUST_TABLES_IMO_67MHZ)
-    #define FLSHID_CUST_TABLES_IMO_80MHZ_PTR        ((reg8 *) CYREG_FLSHID_CUST_TABLES_IMO_80MHZ)
-    #define FLSHID_CUST_TABLES_IMO_USB_PTR          ((reg8 *) CYREG_FLSHID_CUST_TABLES_IMO_USB)
-#endif  /* (CY_PSOC3) */
-
-
-#define USB_CLKDIST_CONFIG_PTR         ( (reg8 *) CYREG_CLKDIST_UCFG)
-#define USB_CLKDIST_CONFIG             (*(reg8 *) CYREG_CLKDIST_UCFG)
+/* Internal Low-speed Oscillator Control Register 0 */
+#define CY_LIB_SLOWCLK_ILO_CR0_REG      (*(reg8 *) CYREG_SLOWCLK_ILO_CR0)
+#define CY_LIB_SLOWCLK_ILO_CR0_PTR      ( (reg8 *) CYREG_SLOWCLK_ILO_CR0)
 
 
 /*******************************************************************************
@@ -709,33 +702,33 @@ uint8 CyVdRealTimeStatus(void) ;
     #define CY_INT_ENABLE_REG           (* (reg8 *) CYREG_INTC_SET_EN0)
     #define CY_INT_ENABLE_PTR           (  (reg8 *) CYREG_INTC_SET_EN0)
 
-    #define CY_INT_SET_EN0_REG           (* (reg8 *) CYREG_INTC_SET_EN0)
-    #define CY_INT_SET_EN0_PTR           (  (reg8 *) CYREG_INTC_SET_EN0)
+    #define CY_INT_SET_EN0_REG          (* (reg8 *) CYREG_INTC_SET_EN0)
+    #define CY_INT_SET_EN0_PTR          (  (reg8 *) CYREG_INTC_SET_EN0)
 
-    #define CY_INT_SET_EN1_REG           (* (reg8 *) CYREG_INTC_SET_EN1)
-    #define CY_INT_SET_EN1_PTR           (  (reg8 *) CYREG_INTC_SET_EN1)
+    #define CY_INT_SET_EN1_REG          (* (reg8 *) CYREG_INTC_SET_EN1)
+    #define CY_INT_SET_EN1_PTR          (  (reg8 *) CYREG_INTC_SET_EN1)
 
-    #define CY_INT_SET_EN2_REG           (* (reg8 *) CYREG_INTC_SET_EN2)
-    #define CY_INT_SET_EN2_PTR           (  (reg8 *) CYREG_INTC_SET_EN2)
+    #define CY_INT_SET_EN2_REG          (* (reg8 *) CYREG_INTC_SET_EN2)
+    #define CY_INT_SET_EN2_PTR          (  (reg8 *) CYREG_INTC_SET_EN2)
 
-    #define CY_INT_SET_EN3_REG           (* (reg8 *) CYREG_INTC_SET_EN3)
-    #define CY_INT_SET_EN3_PTR           (  (reg8 *) CYREG_INTC_SET_EN3)
+    #define CY_INT_SET_EN3_REG          (* (reg8 *) CYREG_INTC_SET_EN3)
+    #define CY_INT_SET_EN3_PTR          (  (reg8 *) CYREG_INTC_SET_EN3)
 
     /* Interrrupt Controller Clear Enable Registers */
     #define CY_INT_CLEAR_REG            (* (reg8 *) CYREG_INTC_CLR_EN0)
     #define CY_INT_CLEAR_PTR            (  (reg8 *) CYREG_INTC_CLR_EN0)
 
-    #define CY_INT_CLR_EN0_REG            (* (reg8 *) CYREG_INTC_CLR_EN0)
-    #define CY_INT_CLR_EN0_PTR            (  (reg8 *) CYREG_INTC_CLR_EN0)
+    #define CY_INT_CLR_EN0_REG          (* (reg8 *) CYREG_INTC_CLR_EN0)
+    #define CY_INT_CLR_EN0_PTR          (  (reg8 *) CYREG_INTC_CLR_EN0)
 
-    #define CY_INT_CLR_EN1_REG            (* (reg8 *) CYREG_INTC_CLR_EN1)
-    #define CY_INT_CLR_EN1_PTR            (  (reg8 *) CYREG_INTC_CLR_EN1)
+    #define CY_INT_CLR_EN1_REG          (* (reg8 *) CYREG_INTC_CLR_EN1)
+    #define CY_INT_CLR_EN1_PTR          (  (reg8 *) CYREG_INTC_CLR_EN1)
 
-    #define CY_INT_CLR_EN2_REG            (* (reg8 *) CYREG_INTC_CLR_EN2)
-    #define CY_INT_CLR_EN2_PTR            (  (reg8 *) CYREG_INTC_CLR_EN2)
+    #define CY_INT_CLR_EN2_REG          (* (reg8 *) CYREG_INTC_CLR_EN2)
+    #define CY_INT_CLR_EN2_PTR          (  (reg8 *) CYREG_INTC_CLR_EN2)
 
-    #define CY_INT_CLR_EN3_REG            (* (reg8 *) CYREG_INTC_CLR_EN3)
-    #define CY_INT_CLR_EN3_PTR            (  (reg8 *) CYREG_INTC_CLR_EN3)
+    #define CY_INT_CLR_EN3_REG          (* (reg8 *) CYREG_INTC_CLR_EN3)
+    #define CY_INT_CLR_EN3_PTR          (  (reg8 *) CYREG_INTC_CLR_EN3)
 
 
     /* Interrrupt Controller Set Pend Registers */
@@ -810,7 +803,7 @@ uint8 CyVdRealTimeStatus(void) ;
 #if defined(__ARMCC_VERSION)
     #define CyGlobalIntEnable           {__enable_irq();}
     #define CyGlobalIntDisable          {__disable_irq();}
-#elif defined(__GNUC__)
+#elif defined(__GNUC__) || defined (__ICCARM__)
     #define CyGlobalIntEnable           {__asm("CPSIE   i");}
     #define CyGlobalIntDisable          {__asm("CPSID   i");}
 #elif defined(__C51__)
@@ -824,6 +817,10 @@ uint8 CyVdRealTimeStatus(void) ;
                                             CY_NOP; \
                                             EA = 0u;\
                                         }
+#else
+    #error No compiler toolchain defined
+    #define CyGlobalIntEnable
+    #define CyGlobalIntDisable
 #endif  /* (__ARMCC_VERSION) */
 
 
@@ -840,13 +837,12 @@ uint8 CyVdRealTimeStatus(void) ;
     #define CYDEV_CHIP_REV_ACTUAL       (CY_GET_REG8(CYREG_MLOGIC_REV_ID))
 #endif  /* (CYREG_MLOGIC_REV_ID_REV_ID) */
 
-#define RESET_CR2               ((reg8 *) CYREG_RESET_CR2)
-
 
 /*******************************************************************************
 * System API constants
 *******************************************************************************/
 #define CY_CACHE_CONTROL_FLUSH          (0x0004u)
+#define CY_LIB_RESET_CR2_RESET          (0x01u)
 
 
 /*******************************************************************************
@@ -1057,9 +1053,7 @@ uint8 CyVdRealTimeStatus(void) ;
 #define X32_CONTROL_LPM                 (CY_CLK_XTAL32_CR_LPM)
 #define X32_CONTROL_LPM_POSITION        (1u)
 #define X32_CONTROL_X32EN               (CY_CLK_XTAL32_CR_EN)
-#if(CY_PSOC3 || CY_PSOC5LP)
-    #define X32_CONTROL_PDBEN           (CY_CLK_XTAL32_CR_PDBEN)
-#endif  /* (CY_PSOC3 || CY_PSOC5LP) */
+#define X32_CONTROL_PDBEN           (CY_CLK_XTAL32_CR_PDBEN)
 #define X32_TR_DPMODE                   (CY_CLK_XTAL32_TR_STARTUP)
 #define X32_TR_CLEAR                    (CY_CLK_XTAL32_TR_POWERDOWN)
 #define X32_TR_HPMODE                   (CY_CLK_XTAL32_TR_HIGH_POWER)
@@ -1194,6 +1188,92 @@ uint8 CyVdRealTimeStatus(void) ;
 #define FASTCLK_IMO_CR                 (*(reg8 *) CYREG_FASTCLK_IMO_CR)
 #define CLKDIST_CR_PTR                 ( (reg8 *) CYREG_CLKDIST_CR)
 #define CLKDIST_CR                     (*(reg8 *) CYREG_CLKDIST_CR)
+
+
+/*******************************************************************************
+* Following code are OBSOLETE and must not be used starting from cy_boot 3.50
+*******************************************************************************/
+#define IMO_PM_ENABLE                   (0x10u)
+#define PM_ACT_CFG0_PTR                ( (reg8 *) CYREG_PM_ACT_CFG0)
+#define PM_ACT_CFG0                    (*(reg8 *) CYREG_PM_ACT_CFG0)
+#define SLOWCLK_ILO_CR0_PTR            ( (reg8 *) CYREG_SLOWCLK_ILO_CR0)
+#define SLOWCLK_ILO_CR0                (*(reg8 *) CYREG_SLOWCLK_ILO_CR0)
+#define ILO_CONTROL_PD_MODE             (0x10u)
+#define ILO_CONTROL_PD_POSITION         (4u)
+#define ILO_CONTROL_1KHZ_ON             (0x02u)
+#define ILO_CONTROL_100KHZ_ON           (0x04u)
+#define ILO_CONTROL_33KHZ_ON            (0x20u)
+#define PM_TW_CFG0_PTR                 ( (reg8 *) CYREG_PM_TW_CFG0)
+#define PM_TW_CFG0                     (*(reg8 *) CYREG_PM_TW_CFG0)
+#define PM_TW_CFG2_PTR                 ( (reg8 *) CYREG_PM_TW_CFG2)
+#define PM_TW_CFG2                     (*(reg8 *) CYREG_PM_TW_CFG2)
+#define RESET_CR2               ((reg8 *) CYREG_RESET_CR2)
+#define FASTCLK_IMO_USBCLK_ON_SET       (0x40u)
+#define CLOCK_IMO_3MHZ_VALUE            (0x03u)
+#define CLOCK_IMO_6MHZ_VALUE            (0x01u)
+#define CLOCK_IMO_12MHZ_VALUE           (0x00u)
+#define CLOCK_IMO_24MHZ_VALUE           (0x02u)
+#define CLOCK_IMO_48MHZ_VALUE           (0x04u)
+#define CLOCK_IMO_62MHZ_VALUE           (0x05u)
+#define CLOCK_IMO_74MHZ_VALUE           (0x06u)
+#define CLKDIST_DIV_POSITION            (4u)
+#define CLKDIST_MSTR1_DIV_CLEAR         (0x0Fu)
+#define SFR_USER_CPUCLK_DIV_MASK        (0x0Fu)
+#define CLOCK_USB_ENABLE                (0x02u)
+#define CLOCK_IMO_OUT_X2                (0x10u)
+#define CLOCK_IMO_OUT_X1                ((uint8)(~CLOCK_IMO_OUT_X2))
+#define CLOCK_IMO2X_ECO                 ((uint8)(~CLOCK_IMO2X_DSI))
+#define USB_CLKDIST_CONFIG_MASK         (0x03u)
+#define USB_CLK_IMO2X                   (0x00u)
+#define USB_CLK_IMO                     (0x01u)
+#define USB_CLK_PLL                     (0x02u)
+#define USB_CLK_DSI                     (0x03u)
+#define USB_CLK_DIV2_ON                 (0x04u)
+#define USB_CLK_STOP_FLAG               (0x00u)
+#define USB_CLK_START_FLAG              (0x01u)
+#define FTW_CLEAR_ALL_BITS              (0x00u)
+#define FTW_CLEAR_FTW_BITS              (0xFCu)
+#define FTW_ENABLE                      (0x01u)
+#define PM_STBY_CFG0_PTR               ( (reg8 *) CYREG_PM_STBY_CFG0)
+#define PM_STBY_CFG0                   (*(reg8 *) CYREG_PM_STBY_CFG0)
+#define PM_AVAIL_CR2_PTR               ( (reg8 *) CYREG_PM_AVAIL_CR2)
+#define PM_AVAIL_CR2                   (*(reg8 *) CYREG_PM_AVAIL_CR2)
+#define CLKDIST_UCFG_PTR               ( (reg8 *) CYREG_CLKDIST_UCFG)
+#define CLKDIST_UCFG                   (*(reg8 *) CYREG_CLKDIST_UCFG)
+#define CLKDIST_MSTR1_PTR              ( (reg8 *) CYREG_CLKDIST_MSTR1)
+#define CLKDIST_MSTR1                  (*(reg8 *) CYREG_CLKDIST_MSTR1)
+#define SFR_USER_CPUCLK_DIV_PTR        ((void far *) CYREG_SFR_USER_CPUCLK_DIV)
+#define IMO_TR1_PTR                    ( (reg8 *) CYREG_IMO_TR1)
+#define IMO_TR1                        (*(reg8 *) CYREG_IMO_TR1)
+#define CLOCK_CONTROL                  ( (reg8 *) CYREG_CLKDIST_CR)
+#define CY_USB_CR1_PTR                 ( (reg8 *) CYREG_USB_CR1 )
+#define CY_USB_CR1                     (*(reg8 *) CYREG_USB_CR1 )
+#define USB_CLKDIST_CONFIG_PTR         ( (reg8 *) CYREG_CLKDIST_UCFG)
+#define USB_CLKDIST_CONFIG             (*(reg8 *) CYREG_CLKDIST_UCFG)
+#define CY_PM_ACT_CFG5_REG              (* (reg8 *) CYREG_PM_ACT_CFG5 )
+#define CY_PM_ACT_CFG5_PTR              (  (reg8 *) CYREG_PM_ACT_CFG5 )
+#define CY_PM_STBY_CFG5_REG             (* (reg8 *) CYREG_PM_STBY_CFG5 )
+#define CY_PM_STBY_CFG5_PTR             (  (reg8 *) CYREG_PM_STBY_CFG5 )
+#if(CY_PSOC3)
+    #define FLSHID_CUST_TABLES_IMO_3MHZ_PTR         ((void far *) CYREG_FLSHID_CUST_TABLES_IMO_3MHZ)
+    #define FLSHID_CUST_TABLES_IMO_6MHZ_PTR         ((void far *) CYREG_FLSHID_CUST_TABLES_IMO_6MHZ)
+    #define FLSHID_CUST_TABLES_IMO_12MHZ_PTR        ((void far *) CYREG_FLSHID_CUST_TABLES_IMO_12MHZ)
+    #define FLSHID_CUST_TABLES_IMO_24MHZ_PTR        ((void far *) CYREG_FLSHID_CUST_TABLES_IMO_24MHZ)
+    #define FLSHID_CUST_TABLES_IMO_67MHZ_PTR        ((void far *) CYREG_FLSHID_CUST_TABLES_IMO_67MHZ)
+    #define FLSHID_CUST_TABLES_IMO_80MHZ_PTR        ((void far *) CYREG_FLSHID_CUST_TABLES_IMO_80MHZ)
+    #define FLSHID_CUST_TABLES_IMO_USB_PTR          ((void far *) CYREG_FLSHID_CUST_TABLES_IMO_USB)
+    #define FLSHID_MFG_CFG_IMO_TR1_PTR              ((void far *) (CYREG_FLSHID_MFG_CFG_IMO_TR1 + 1u))
+ #else
+    #define FLSHID_CUST_TABLES_IMO_3MHZ_PTR         ((reg8 *) CYREG_FLSHID_CUST_TABLES_IMO_3MHZ)
+    #define FLSHID_CUST_TABLES_IMO_6MHZ_PTR         ((reg8 *) CYREG_FLSHID_CUST_TABLES_IMO_6MHZ)
+    #define FLSHID_CUST_TABLES_IMO_12MHZ_PTR        ((reg8 *) CYREG_FLSHID_CUST_TABLES_IMO_12MHZ)
+    #define FLSHID_CUST_TABLES_IMO_24MHZ_PTR        ((reg8 *) CYREG_FLSHID_CUST_TABLES_IMO_24MHZ)
+    #define FLSHID_CUST_TABLES_IMO_67MHZ_PTR        ((reg8 *) CYREG_FLSHID_CUST_TABLES_IMO_67MHZ)
+    #define FLSHID_CUST_TABLES_IMO_80MHZ_PTR        ((reg8 *) CYREG_FLSHID_CUST_TABLES_IMO_80MHZ)
+    #define FLSHID_CUST_TABLES_IMO_USB_PTR          ((reg8 *) CYREG_FLSHID_CUST_TABLES_IMO_USB)
+    #define FLSHID_MFG_CFG_IMO_TR1_PTR              ((reg8 *) (CYREG_FLSHID_MFG_CFG_IMO_TR1 + 1u))
+#endif  /* (CY_PSOC3) */
+
 
 #endif  /* (CY_BOOT_CYLIB_H) */
 

@@ -42,10 +42,18 @@ Dimensions
 Performance
 
 As currently implemented:
-Sequential read: 250kb/sec Sequential write: 50kb/sec
 
-These numbers are dreadful. I am working on updating the slow polling SD card
-communication to use DMA. I expect the performance to reach 1.8Mb/sec.
+Sequential read: 250kb/sec Sequential write: 240kb/sec
+
+Tested with a 16GB class 10 SD card, via the commands:
+
+ # WRITE TEST
+ sudo dd bs=8192 count=100 if=/dev/zero of=/dev/sdX oflag=dsync
+
+ # READ TEST
+ sudo dd bs=8192 count=100 if=/dev/sdX of=/dev/null
+
+I am working on updating the slow polling SD card communication to use DMA. I expect the performance to reach 1Mb/sec. 
 
 
 Compatibility

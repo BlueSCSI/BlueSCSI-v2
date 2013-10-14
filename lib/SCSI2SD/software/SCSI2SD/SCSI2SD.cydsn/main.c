@@ -17,25 +17,30 @@
 
 #include "device.h"
 // #include "blinky.h"
-// #include "loopback.h"
+#include "loopback.h"
 #include "scsi.h"
+#include "scsiPhy.h"
 #include "disk.h"
 #include "led.h"
 
 const char* Notice = "Copyright (C) 2013 Michael McMaster <michael@codesrc.com>";
 
-void main()
+int main()
 {
 	// scsi2sd_test_blinky(); // Initial test. Will not return.
-	// scsi2sd_test_loopback(); // Second test. Will not return.
 	ledOff();
 
-	/* Uncomment this line to enable global interrupts. */
-	// MM: Try to avoid interrupts completely, as it will screw with our
-	// timing.
-	 CyGlobalIntEnable;
-	 
-	// TODO insert any initialisation code here.
+	// Enable global interrupts.
+	// Needed for RST and ATN interrupt handlers.
+	CyGlobalIntEnable;
+
+	// Set interrupt handlers.
+	scsiPhyInit();
+	
+	// Loopback test requires the interrupt handers.
+	// Will not return if uncommented.
+	// scsi2sd_test_loopback();
+	
 	scsiInit(0, 1); // ID 0 is mac boot disk
 	scsiDiskInit();
 
@@ -49,5 +54,6 @@ void main()
 		scsiPoll();
 		scsiDiskPoll();
 	}
+	return 0;
 }
 

@@ -48,8 +48,8 @@
 /* Internal interrupt handling */
 #define SDCard_TX_BUFFER_SIZE             (4u)
 #define SDCard_RX_BUFFER_SIZE             (4u)
-#define SDCard_INTERNAL_TX_INT_ENABLED    (1u)
-#define SDCard_INTERNAL_RX_INT_ENABLED    (1u)
+#define SDCard_INTERNAL_TX_INT_ENABLED    (0u)
+#define SDCard_INTERNAL_RX_INT_ENABLED    (0u)
 
 #define SDCard_SINGLE_REG_SIZE            (8u)
 #define SDCard_USE_SECOND_DATAPATH        (SDCard_DATA_WIDTH > SDCard_SINGLE_REG_SIZE)

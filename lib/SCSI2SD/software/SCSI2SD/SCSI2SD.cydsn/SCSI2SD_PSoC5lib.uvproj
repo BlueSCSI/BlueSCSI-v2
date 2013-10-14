@@ -697,6 +697,56 @@
               <FileType>5</FileType>
               <FilePath>.\Generated_Source\PSoC5\SDCard_PVT.h</FilePath>
             </File>
+            <File>
+              <FileName>SCSI_RST_aliases.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Generated_Source\PSoC5\SCSI_RST_aliases.h</FilePath>
+            </File>
+            <File>
+              <FileName>SCSI_RST.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Generated_Source\PSoC5\SCSI_RST.c</FilePath>
+            </File>
+            <File>
+              <FileName>SCSI_RST.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Generated_Source\PSoC5\SCSI_RST.h</FilePath>
+            </File>
+            <File>
+              <FileName>SCSI_ATN_aliases.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Generated_Source\PSoC5\SCSI_ATN_aliases.h</FilePath>
+            </File>
+            <File>
+              <FileName>SCSI_ATN.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Generated_Source\PSoC5\SCSI_ATN.c</FilePath>
+            </File>
+            <File>
+              <FileName>SCSI_ATN.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Generated_Source\PSoC5\SCSI_ATN.h</FilePath>
+            </File>
+            <File>
+              <FileName>SCSI_RST_ISR.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Generated_Source\PSoC5\SCSI_RST_ISR.c</FilePath>
+            </File>
+            <File>
+              <FileName>SCSI_RST_ISR.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Generated_Source\PSoC5\SCSI_RST_ISR.h</FilePath>
+            </File>
+            <File>
+              <FileName>SCSI_ATN_ISR.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Generated_Source\PSoC5\SCSI_ATN_ISR.c</FilePath>
+            </File>
+            <File>
+              <FileName>SCSI_ATN_ISR.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Generated_Source\PSoC5\SCSI_ATN_ISR.h</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>
@@ -1395,6 +1445,56 @@
               <FileName>SDCard_PVT.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\Generated_Source\PSoC5\SDCard_PVT.h</FilePath>
+            </File>
+            <File>
+              <FileName>SCSI_RST_aliases.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Generated_Source\PSoC5\SCSI_RST_aliases.h</FilePath>
+            </File>
+            <File>
+              <FileName>SCSI_RST.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Generated_Source\PSoC5\SCSI_RST.c</FilePath>
+            </File>
+            <File>
+              <FileName>SCSI_RST.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Generated_Source\PSoC5\SCSI_RST.h</FilePath>
+            </File>
+            <File>
+              <FileName>SCSI_ATN_aliases.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Generated_Source\PSoC5\SCSI_ATN_aliases.h</FilePath>
+            </File>
+            <File>
+              <FileName>SCSI_ATN.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Generated_Source\PSoC5\SCSI_ATN.c</FilePath>
+            </File>
+            <File>
+              <FileName>SCSI_ATN.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Generated_Source\PSoC5\SCSI_ATN.h</FilePath>
+            </File>
+            <File>
+              <FileName>SCSI_RST_ISR.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Generated_Source\PSoC5\SCSI_RST_ISR.c</FilePath>
+            </File>
+            <File>
+              <FileName>SCSI_RST_ISR.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Generated_Source\PSoC5\SCSI_RST_ISR.h</FilePath>
+            </File>
+            <File>
+              <FileName>SCSI_ATN_ISR.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Generated_Source\PSoC5\SCSI_ATN_ISR.c</FilePath>
+            </File>
+            <File>
+              <FileName>SCSI_ATN_ISR.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Generated_Source\PSoC5\SCSI_ATN_ISR.h</FilePath>
             </File>
           </Files>
         </Group>

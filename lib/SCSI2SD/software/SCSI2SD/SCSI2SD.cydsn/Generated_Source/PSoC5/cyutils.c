@@ -1,6 +1,6 @@
 /*******************************************************************************
 * FILENAME: cyutils.c
-* Version 3.40
+* Version 4.0
 *
 *  Description:
 *   CyUtils provides function to handle 24-bit value writes.
@@ -65,12 +65,12 @@
         *  No
         *
         ***************************************************************************/
-        uint32 CyGetReg24(uint32 volatile * addr)
+        uint32 CyGetReg24(uint32 const volatile * addr)
         {
-            uint8 volatile *tmpAddr;
+            uint8 const volatile *tmpAddr;
             uint32 value;
 
-            tmpAddr = (uint8 volatile *) addr;
+            tmpAddr = (uint8 const volatile *) addr;
 
             value  =  (uint32) tmpAddr[0u];
             value |= ((uint32) tmpAddr[1u] << 8u );

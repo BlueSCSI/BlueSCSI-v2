@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: CyDmac.h
-* Version 3.40
+* Version 4.0
 *
 *  Description:
 *   Provides the function definitions for the DMA Controller.
@@ -43,20 +43,24 @@ cystatus CyDmaChEnable(uint8 chHandle, uint8 preserveTds) ;
 cystatus CyDmaChDisable(uint8 chHandle) ;
 cystatus CyDmaClearPendingDrq(uint8 chHandle) ;
 cystatus CyDmaChPriority(uint8 chHandle, uint8 priority) ;
-cystatus CyDmaChSetExtendedAddress(uint8 chHandle, uint16 source, uint16 destination);
+cystatus CyDmaChSetExtendedAddress(uint8 chHandle, uint16 source, uint16 destination)\
+;
 cystatus CyDmaChSetInitialTd(uint8 chHandle, uint8 startTd) ;
 cystatus CyDmaChSetRequest(uint8 chHandle, uint8 request) ;
 cystatus CyDmaChGetRequest(uint8 chHandle) ;
 cystatus CyDmaChStatus(uint8 chHandle, uint8 * currentTd, uint8 * state) ;
-cystatus CyDmaChSetConfiguration(uint8 chHandle, uint8 burstCount, uint8 requestPerBurst, uint8 tdDone0, uint8 tdDone1, uint8 tdStop) ;
+cystatus CyDmaChSetConfiguration(uint8 chHandle, uint8 burstCount, uint8 requestPerBurst, uint8 tdDone0,
+                                 uint8 tdDone1, uint8 tdStop) ;
 cystatus CyDmaChRoundRobin(uint8 chHandle, uint8 enableRR) ;
 
 /* Transfer Descriptor functions. */
 uint8    CyDmaTdAllocate(void) ;
 void     CyDmaTdFree(uint8 tdHandle) ;
 uint8    CyDmaTdFreeCount(void) ;
-cystatus CyDmaTdSetConfiguration(uint8 tdHandle, uint16 transferCount, uint8 nextTd, uint8 configuration) ;
-cystatus CyDmaTdGetConfiguration(uint8 tdHandle, uint16 * transferCount, uint8 * nextTd, uint8 * configuration) ;
+cystatus CyDmaTdSetConfiguration(uint8 tdHandle, uint16 transferCount, uint8 nextTd, uint8 configuration)\
+;
+cystatus CyDmaTdGetConfiguration(uint8 tdHandle, uint16 * transferCount, uint8 * nextTd, uint8 * configuration)\
+;
 cystatus CyDmaTdSetAddress(uint8 tdHandle, uint16 source, uint16 destination) ;
 cystatus CyDmaTdGetAddress(uint8 tdHandle, uint16 * source, uint16 * destination) ;
 
@@ -108,10 +112,7 @@ typedef struct dmac_tdmem2_struct
 #define CY_DMA_INVALID_CHANNEL      0xFFu   /* Invalid Channel ID */
 #define CY_DMA_INVALID_TD           0xFFu   /* Invalid TD */
 #define CY_DMA_END_CHAIN_TD         0xFFu   /* End of chain TD */
-
-#if(CY_PSOC3 || CY_PSOC5LP)
-    #define CY_DMA_DISABLE_TD       0xFEu
-#endif  /* (CY_PSOC3 || CY_PSOC5LP) */
+#define CY_DMA_DISABLE_TD           0xFEu
 
 #define CY_DMA_TD_SIZE              0x08u
 
@@ -144,6 +145,13 @@ typedef struct dmac_tdmem2_struct
 
 /* Round robin bits */
 #define CY_DMA_ROUND_ROBIN_ENABLE   ((uint8)(1u << 4u))
+
+
+/*******************************************************************************
+* CyDmaChEnable() / CyDmaChDisable() API constants
+*******************************************************************************/
+#define CY_DMA_CH_BASIC_CFG_EN           (0x01u)
+#define CY_DMA_CH_BASIC_CFG_WORK_SEP     (0x20u)
 
 
 /***************************************
@@ -195,9 +203,7 @@ typedef struct dmac_tdmem2_struct
 #define DMAC_UNPOP_ACC              (CY_DMA_UNPOP_ACC)
 #define DMAC_PERIPH_ERR             (CY_DMA_PERIPH_ERR)
 #define ROUND_ROBIN_ENABLE          (CY_DMA_ROUND_ROBIN_ENABLE)
-#if(CY_PSOC3 || CY_PSOC5LP)
-    #define DMA_DISABLE_TD          (CY_DMA_DISABLE_TD)
-#endif  /* (CY_PSOC3 || CY_PSOC5LP) */
+#define DMA_DISABLE_TD              (CY_DMA_DISABLE_TD)
 
 #define DMAC_CFG                    (CY_DMA_CFG_PTR)
 #define DMAC_ERR                    (CY_DMA_ERR_PTR)

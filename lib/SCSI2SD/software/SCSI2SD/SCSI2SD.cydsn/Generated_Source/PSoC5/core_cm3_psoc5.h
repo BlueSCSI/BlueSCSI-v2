@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: core_cm3_psoc5.h
-* Version 3.40
+* Version 4.0
 *
 *  Description:
 *   Provides important type information for the PSoC5.  This includes types
@@ -38,6 +38,17 @@ typedef enum IRQn
   /* Not relevant.  All peripheral interrupts are defined by the user */
 } IRQn_Type;
 
+#include <cytypes.h>
+
+#define __CHECK_DEVICE_DEFINES
+
+#define __CM3_REV                 0x0201
+
+#define __MPU_PRESENT             0
+#define __NVIC_PRIO_BITS          3
+#define __Vendor_SysTickConfig    0
+
 #include <core_cm3.h>
+
 
 #endif /* __CORE_CM3_PSOC5_H__ */

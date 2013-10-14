@@ -93,6 +93,17 @@ static const uint8 ControlModePage[] =
 0x00, 0x00 // AEN holdoff period.
 };
 
+// Allow Apple 68k Drive Setup to format this drive.
+// Code
+// TODO make this string configurable.
+static const uint8 AppleVendorPage[] =
+{
+0x30, // Page code
+28, // Page length
+0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+'A','P','P','L','E',' ','C','O','M','P','U','T','E','R',',',' ','I','N','C','.'
+};
+
 static void pageIn(int pc, int dataIdx, const uint8* pageData, int pageLen)
 {
 	memcpy(&scsiDev.data[dataIdx], pageData, pageLen);
@@ -235,6 +246,11 @@ static void doModeSense(
 			idx += sizeof(ControlModePage);
 			break;
 
+		case 0x30:
+			pageIn(pc, idx, AppleVendorPage, sizeof(AppleVendorPage));
+			idx += sizeof(AppleVendorPage);
+			break;
+			
 		default:
 			// Unknown Page Code
 			pageFound = 0;

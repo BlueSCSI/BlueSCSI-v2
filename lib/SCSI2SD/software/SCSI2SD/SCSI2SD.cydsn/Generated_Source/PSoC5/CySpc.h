@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: CySpc.c
-* Version 3.40
+* Version 4.0
 *
 * Description:
 *  Provides definitions for the System Performance Component API.
@@ -34,18 +34,13 @@ extern uint8 SpcLockState;
 void     CySpcStart(void);
 void     CySpcStop(void);
 uint8    CySpcReadData(uint8 buffer[], uint8 size);
-cystatus CySpcLoadMultiByte(uint8 array, uint16 address, const uint8 buffer[], uint8 size) ;
+cystatus CySpcLoadMultiByte(uint8 array, uint16 address, const uint8 buffer[], uint8 size)\
+;
 cystatus CySpcLoadRow(uint8 array, const uint8 buffer[], uint16 size);
-cystatus CySpcWriteRow(uint8 array, uint16 address, uint8 tempPolarity, uint8 tempMagnitude) ;
+cystatus CySpcWriteRow(uint8 array, uint16 address, uint8 tempPolarity, uint8 tempMagnitude)\
+;
 cystatus CySpcEraseSector(uint8 array, uint8 sectorNumber);
-
-#if(CY_PSOC5A)
-    cystatus CySpcGetTemp(uint8 numSamples, uint16 timerPeriod, uint8 clkDivSelect);
-#else
-    cystatus CySpcGetTemp(uint8 numSamples);
-#endif  /* (CY_PSOC5A) */
-
-
+cystatus CySpcGetTemp(uint8 numSamples);
 cystatus CySpcLock(void);
 void     CySpcUnlock(void);
 
@@ -91,12 +86,12 @@ void     CySpcUnlock(void);
 #define CY_SPC_STATUS_TADC_INPUT            (0x0Du)   /* Invalid input value for Get Temp & Get ADC commands */
 #define CY_SPC_STATUS_BUSY                  (0xFFu)   /* SPC is busy */
 
-#if(CY_PSOC5LP)
+#if(CY_PSOC5)
 
     /* Wait-state pipeline */
     #define CY_SPC_CPU_WAITPIPE_BYPASS      ((uint32)0x01u)
 
-#endif  /* (CY_PSOC5LP) */
+#endif  /* (CY_PSOC5) */
 
 
 /***************************************
@@ -119,13 +114,13 @@ void     CySpcUnlock(void);
 #define CY_SPC_PM_STBY_REG          (* (reg8 *) CYREG_PM_STBY_CFG0 )
 #define CY_SPC_PM_STBY_PTR          (  (reg8 *) CYREG_PM_STBY_CFG0 )
 
-#if(CY_PSOC5LP)
+#if(CY_PSOC5)
 
     /* Wait State Pipeline */
     #define CY_SPC_CPU_WAITPIPE_REG     (* (reg32 *) CYREG_PANTHER_WAITPIPE )
     #define CY_SPC_CPU_WAITPIPE_PTR     (  (reg32 *) CYREG_PANTHER_WAITPIPE )
 
-#endif  /* (CY_PSOC5LP) */
+#endif  /* (CY_PSOC5) */
 
 
 /***************************************

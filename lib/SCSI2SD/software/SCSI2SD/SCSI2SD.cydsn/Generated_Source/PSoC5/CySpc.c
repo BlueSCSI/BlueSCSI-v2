@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: CySpc.c
-* Version 3.40
+* Version 4.0
 *
 *  Description:
 *   Provides an API for the System Performance Component.
@@ -48,7 +48,7 @@
 uint8 SpcLockState = CY_SPC_UNLOCKED;
 
 
-#if(CY_PSOC5LP)
+#if(CY_PSOC5)
 
     /***************************************************************************
     * The wait-state pipeline must be enabled prior to accessing the SPC
@@ -57,9 +57,9 @@ uint8 SpcLockState = CY_SPC_UNLOCKED;
     * function, which must be called after SPC transaction, restores original
     * state.
     ***************************************************************************/
-    static uint8 spcWaitPipeBypass = 0u;
+    static uint32 spcWaitPipeBypass = 0u;
 
-#endif  /* (CY_PSOC5LP) */
+#endif  /* (CY_PSOC5) */
 
 
 /*******************************************************************************
@@ -175,7 +175,8 @@ uint8 CySpcReadData(uint8 buffer[], uint8 size)
 *  CYRET_BAD_PARAM
 *
 *******************************************************************************/
-cystatus CySpcLoadMultiByte(uint8 array, uint16 address, const uint8 buffer[], uint8 size) 
+cystatus CySpcLoadMultiByte(uint8 array, uint16 address, const uint8 buffer[], uint8 size)\
+
 {
     cystatus status = CYRET_STARTED;
     uint8 i;
@@ -312,7 +313,8 @@ cystatus CySpcLoadRow(uint8 array, const uint8 buffer[], uint16 size)
 *  CYRET_LOCKED
 *
 *******************************************************************************/
-cystatus CySpcWriteRow(uint8 array, uint16 address, uint8 tempPolarity, uint8 tempMagnitude)
+cystatus CySpcWriteRow(uint8 array, uint16 address, uint8 tempPolarity, uint8 tempMagnitude)\
+
 {
     cystatus status = CYRET_STARTED;
 
@@ -420,11 +422,7 @@ cystatus CySpcEraseSector(uint8 array, uint8 sectorNumber)
 *  CYRET_LOCKED
 *
 *******************************************************************************/
-#if(CY_PSOC5A)
-cystatus CySpcGetTemp(uint8 numSamples, uint16 timerPeriod, uint8 clkDivSelect)
-#else
 cystatus CySpcGetTemp(uint8 numSamples)
-#endif  /* (CY_PSOC5A) */
 {
     cystatus status = CYRET_STARTED;
 
@@ -439,12 +437,6 @@ cystatus CySpcGetTemp(uint8 numSamples)
         if(CY_SPC_BUSY)
         {
             CY_SPC_CPU_DATA_REG = numSamples;
-
-            #if(CY_PSOC5A)
-                CY_SPC_CPU_DATA_REG = HI8(timerPeriod);
-                CY_SPC_CPU_DATA_REG = LO8(timerPeriod);
-                CY_SPC_CPU_DATA_REG = clkDivSelect;
-            #endif  /* (CY_PSOC5A) */
         }
         else
         {
@@ -488,7 +480,7 @@ cystatus CySpcLock(void)
         SpcLockState = CY_SPC_LOCKED;
         status = CYRET_SUCCESS;
 
-        #if(CY_PSOC5LP)
+        #if(CY_PSOC5)
 
             if(0u != (CY_SPC_CPU_WAITPIPE_REG & CY_SPC_CPU_WAITPIPE_BYPASS))
             {
@@ -503,7 +495,7 @@ cystatus CySpcLock(void)
                 spcWaitPipeBypass = CY_SPC_CPU_WAITPIPE_BYPASS;
             }
 
-        #endif  /* (CY_PSOC5LP) */
+        #endif  /* (CY_PSOC5) */
     }
 
     /* Exit critical section */
@@ -537,7 +529,7 @@ void CySpcUnlock(void)
     /* Release the SPC object */
     SpcLockState = CY_SPC_UNLOCKED;
 
-    #if(CY_PSOC5LP)
+    #if(CY_PSOC5)
 
         if(CY_SPC_CPU_WAITPIPE_BYPASS == spcWaitPipeBypass)
         {
@@ -552,7 +544,7 @@ void CySpcUnlock(void)
             spcWaitPipeBypass = 0u;
         }
 
-    #endif  /* (CY_PSOC5LP) */
+    #endif  /* (CY_PSOC5) */
 
     /* Exit critical section */
     CyExitCriticalSection(interruptState);

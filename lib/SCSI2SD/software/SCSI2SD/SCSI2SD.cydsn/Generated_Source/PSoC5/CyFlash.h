@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: CyFlash.h
-* Version 3.40
+* Version 4.0
 *
 *  Description:
 *   Provides the function definitions for the FLASH/EEPROM.
@@ -75,10 +75,8 @@ cystatus CyWriteRowData(uint8 arrayId, uint16 rowAddress, const uint8 * rowData)
 void CyFlash_SetWaitCycles(uint8 freq) ;
 
 /* EEPROM Functions */
-#if (CY_PSOC3 || CY_PSOC5LP)
-    void CyEEPROM_Start(void) ;
-    void CyEEPROM_Stop(void) ;
-#endif  /* (CY_PSOC3 || CY_PSOC5LP) */
+void CyEEPROM_Start(void) ;
+void CyEEPROM_Stop(void) ;
 
 void CyEEPROM_ReadReserve(void) ;
 void CyEEPROM_ReadRelease(void) ;
@@ -87,31 +85,13 @@ void CyEEPROM_ReadRelease(void) ;
 /***************************************
 *     Registers
 ***************************************/
+/* Active Power Mode Configuration Register 12 */
+#define CY_FLASH_PM_ACT_EEFLASH_REG         (* (reg8 *) CYREG_PM_ACT_CFG12)
+#define CY_FLASH_PM_ACT_EEFLASH_PTR         (  (reg8 *) CYREG_PM_ACT_CFG12)
 
-#if (CY_PSOC5A)
-
-    /* Active Power Mode Configuration Register 0 */
-    #define CY_FLASH_PM_ACT_EEFLASH_REG         (* (reg8 *) CYREG_PM_ACT_CFG0)
-    #define CY_FLASH_PM_ACT_EEFLASH_PTR         (  (reg8 *) CYREG_PM_ACT_CFG0)
-
-    /* Alternate Active Power Mode Configuration Register 0 */
-    #define CY_FLASH_PM_ALTACT_EEFLASH_REG      (* (reg8 *) CYREG_PM_STBY_CFG0)
-    #define CY_FLASH_PM_ALTACT_EEFLASH_PTR      (  (reg8 *) CYREG_PM_STBY_CFG0)
-
-#endif  /* (CY_PSOC5A) */
-
-
-#if (CY_PSOC3 || CY_PSOC5LP)
-
-    /* Active Power Mode Configuration Register 12 */
-    #define CY_FLASH_PM_ACT_EEFLASH_REG         (* (reg8 *) CYREG_PM_ACT_CFG12)
-    #define CY_FLASH_PM_ACT_EEFLASH_PTR         (  (reg8 *) CYREG_PM_ACT_CFG12)
-
-    /* Alternate Active Power Mode Configuration Register 12 */
-    #define CY_FLASH_PM_ALTACT_EEFLASH_REG      (* (reg8 *) CYREG_PM_STBY_CFG12)
-    #define CY_FLASH_PM_ALTACT_EEFLASH_PTR      (  (reg8 *) CYREG_PM_STBY_CFG12)
-
-#endif  /* (CY_PSOC3 || CY_PSOC5LP) */
+/* Alternate Active Power Mode Configuration Register 12 */
+#define CY_FLASH_PM_ALTACT_EEFLASH_REG      (* (reg8 *) CYREG_PM_STBY_CFG12)
+#define CY_FLASH_PM_ALTACT_EEFLASH_PTR      (  (reg8 *) CYREG_PM_STBY_CFG12)
 
 
 /* Cache Control Register */
@@ -139,19 +119,8 @@ void CyEEPROM_ReadRelease(void) ;
 ***************************************/
 
 /* Power Mode Masks */
-#if(CY_PSOC5A)
-
-    #define CY_FLASH_PM_FLASH_EE_MASK           (0x80u)
-
-#endif  /* (CY_PSOC5A) */
-
-#if (CY_PSOC3 || CY_PSOC5LP)
-
-    #define CY_FLASH_PM_EE_MASK                 (0x10u)
-    #define CY_FLASH_PM_FLASH_MASK              (0x01u)
-
-#endif  /* (CY_PSOC3 || CY_PSOC5LP) */
-
+#define CY_FLASH_PM_EE_MASK                 (0x10u)
+#define CY_FLASH_PM_FLASH_MASK              (0x01u)
 
 /* Frequency Constants */
 #if (CY_PSOC3)
@@ -162,23 +131,14 @@ void CyEEPROM_ReadRelease(void) ;
 
 #endif  /* (CY_PSOC3) */
 
-#if (CY_PSOC5A)
+#if (CY_PSOC5)
 
     #define CY_FLASH_LESSER_OR_EQUAL_16MHz      (0x01u)
     #define CY_FLASH_LESSER_OR_EQUAL_33MHz      (0x02u)
     #define CY_FLASH_LESSER_OR_EQUAL_50MHz      (0x03u)
     #define CY_FLASH_GREATER_51MHz              (0x00u)
 
-#endif  /* (CY_PSOC5A) */
-
-#if (CY_PSOC5LP)
-
-    #define CY_FLASH_LESSER_OR_EQUAL_16MHz      (0x01u)
-    #define CY_FLASH_LESSER_OR_EQUAL_33MHz      (0x02u)
-    #define CY_FLASH_LESSER_OR_EQUAL_50MHz      (0x03u)
-    #define CY_FLASH_GREATER_51MHz              (0x00u)
-
-#endif  /* (CY_PSOC5LP) */
+#endif  /* (CY_PSOC5) */
 
 #define CY_FLASH_CYCLES_MASK_SHIFT              (0x06u)
 #define CY_FLASH_CYCLES_MASK                    ((uint8)(0x03u << (CY_FLASH_CYCLES_MASK_SHIFT)))
@@ -238,37 +198,14 @@ void CyEEPROM_ReadRelease(void) ;
 #define ECC_ADDR                    (0x80u)
 
 
-#if (CY_PSOC5A)
+#define PM_ACT_EE_PTR           (CY_FLASH_PM_ACT_EEFLASH_PTR)
+#define PM_ACT_FLASH_PTR        (CY_FLASH_PM_ACT_EEFLASH_PTR)
 
-    #define PM_ACT_EEFLASH          (CY_FLASH_PM_ACT_EEFLASH_PTR)
-    #define PM_STBY_EEFLASH         (CY_FLASH_PM_ALTACT_EEFLASH_PTR)
+#define PM_STBY_EE_PTR          (CY_FLASH_PM_ALTACT_EEFLASH_PTR)
+#define PM_STBY_FLASH_PTR       (CY_FLASH_PM_ALTACT_EEFLASH_PTR)
 
-#endif  /* (CY_PSOC5A) */
-
-#if (CY_PSOC3 || CY_PSOC5LP)
-
-    #define PM_ACT_EE_PTR           (CY_FLASH_PM_ACT_EEFLASH_PTR)
-    #define PM_ACT_FLASH_PTR        (CY_FLASH_PM_ACT_EEFLASH_PTR)
-
-    #define PM_STBY_EE_PTR          (CY_FLASH_PM_ALTACT_EEFLASH_PTR)
-    #define PM_STBY_FLASH_PTR       (CY_FLASH_PM_ALTACT_EEFLASH_PTR)
-
-#endif  /* (CY_PSOC3 || CY_PSOC5LP) */
-
-
-#if(CY_PSOC5A)
-
-    #define PM_FLASH_EE_MASK        (CY_FLASH_PM_FLASH_EE_MASK)
-
-#endif  /* (CY_PSOC5A) */
-
-#if (CY_PSOC3 || CY_PSOC5LP)
-
-    #define PM_EE_MASK              (CY_FLASH_PM_EE_MASK)
-    #define PM_FLASH_MASK           (CY_FLASH_PM_FLASH_MASK)
-
-#endif  /* (CY_PSOC3 || CY_PSOC5LP) */
-
+#define PM_EE_MASK              (CY_FLASH_PM_EE_MASK)
+#define PM_FLASH_MASK           (CY_FLASH_PM_FLASH_MASK)
 
 #define FLASH_CYCLES_MASK_SHIFT     (CY_FLASH_CYCLES_MASK_SHIFT)
 #define FLASH_CYCLES_MASK           (CY_FLASH_CYCLES_MASK)
@@ -282,16 +219,7 @@ void CyEEPROM_ReadRelease(void) ;
 
 #endif  /* (CY_PSOC3) */
 
-#if (CY_PSOC5A)
-
-    #define LESSER_OR_EQUAL_16MHz   (CY_FLASH_LESSER_OR_EQUAL_16MHz)
-    #define LESSER_OR_EQUAL_33MHz   (CY_FLASH_LESSER_OR_EQUAL_33MHz)
-    #define LESSER_OR_EQUAL_50MHz   (CY_FLASH_LESSER_OR_EQUAL_50MHz)
-    #define GREATER_51MHz           (CY_FLASH_GREATER_51MHz)
-
-#endif  /* (CY_PSOC5A) */
-
-#if (CY_PSOC5LP)
+#if (CY_PSOC5)
 
     #define LESSER_OR_EQUAL_16MHz   (CY_FLASH_LESSER_OR_EQUAL_16MHz)
     #define LESSER_OR_EQUAL_33MHz   (CY_FLASH_LESSER_OR_EQUAL_33MHz)
@@ -300,7 +228,7 @@ void CyEEPROM_ReadRelease(void) ;
     #define GREATER_67MHz           (CY_FLASH_GREATER_67MHz)
     #define GREATER_51MHz           (CY_FLASH_GREATER_51MHz)
 
-#endif  /* (CY_PSOC5LP) */
+#endif  /* (CY_PSOC5) */
 
 #define AHUB_EE_REQ_ACK_PTR         (CY_FLASH_EE_SCR_PTR)
 

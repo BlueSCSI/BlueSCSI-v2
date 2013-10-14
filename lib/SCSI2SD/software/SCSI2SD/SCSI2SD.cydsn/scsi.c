@@ -66,9 +66,6 @@ static void process_MessageIn()
 	scsiEnterPhase(MESSAGE_IN);
 	scsiWrite(scsiDev.msgIn);
 
-	scsiDev.atnFlag = scsiDev.atnFlag || SCSI_ReadPin(SCSI_In_ATN);
-
-
 	if (scsiDev.atnFlag)
 	{
 		// If there was a parity error, we go
@@ -122,9 +119,6 @@ static void process_DataIn()
 	{
 		scsiWrite(scsiDev.data[scsiDev.dataPtr]);
 		++scsiDev.dataPtr;
-
-		// scsiWrite will update resetFlag.
-		scsiDev.atnFlag = scsiDev.atnFlag || SCSI_ReadPin(SCSI_In_ATN);
 	}
 
 	if ((scsiDev.dataPtr >= scsiDev.dataLen) &&
@@ -157,9 +151,6 @@ static void process_DataOut()
 			break;
 		}
 		++scsiDev.dataPtr;
-
-		// scsiRead will update resetFlag.
-		scsiDev.atnFlag = scsiDev.atnFlag || SCSI_ReadPin(SCSI_In_ATN);
 	}
 
 	if ((scsiDev.dataPtr >= scsiDev.dataLen) &&
@@ -268,8 +259,6 @@ static void process_Command()
 	{
 		enter_Status(GOOD);
 	}
-
-	scsiDev.atnFlag = scsiDev.atnFlag || SCSI_ReadPin(SCSI_In_ATN);
 }
 
 static void doReserveRelease()
@@ -342,8 +331,6 @@ static void scsiReset()
 	SCSI_ClearPin(SCSI_Out_CD);
 	SCSI_ClearPin(SCSI_Out_IO);
 
-	scsiDev.resetFlag = 0;
-	scsiDev.atnFlag = 0;
 	scsiDev.parityError = 0;
 	scsiDev.phase = BUS_FREE;
 	
@@ -365,14 +352,18 @@ static void scsiReset()
 	do
 	{
 		CyDelay(10); // 10ms.
-		reset = SCSI_ReadPin(SCSI_In_RST);
+		reset = SCSI_ReadPin(SCSI_RST_INT);
 	} while (reset);
+	
+	scsiDev.resetFlag = 0;
+	scsiDev.atnFlag = 0;	
 }
 
 static void enter_SelectionPhase()
 {
-
-	scsiDev.atnFlag = 0;
+	// Ignore stale versions of this flag, but ensure we know the
+	// current value if the flag is still set.
+	scsiDev.atnFlag = SCSI_ReadPin(SCSI_ATN_INT);
 	scsiDev.parityError = 0;
 	scsiDev.dataPtr = 0;
 	scsiDev.savedDataPtr = 0;
@@ -385,7 +376,6 @@ static void process_SelectionPhase()
 	uint8 mask = ~SCSI_In_DBx_Read();
 	int goodParity = (Lookup_OddParity[mask] == SCSI_ReadPin(SCSI_In_DBP));
 
-	scsiDev.atnFlag = scsiDev.atnFlag || SCSI_ReadPin(SCSI_In_ATN);
 	int sel = SCSI_ReadPin(SCSI_In_SEL);
 	int bsy = SCSI_ReadPin(SCSI_In_BSY);
 	if (!bsy && sel &&
@@ -402,16 +392,12 @@ static void process_SelectionPhase()
 		ledOn();
 
 		// Wait until the end of the selection phase.
-		// Keep checking the ATN flag, as the initiator may assert it at any
-		// time before releasing SEL.
 		while (!scsiDev.resetFlag)
 		{
-			scsiDev.atnFlag = scsiDev.atnFlag || SCSI_ReadPin(SCSI_In_ATN);
 			if (!SCSI_ReadPin(SCSI_In_SEL))
 			{
 				break;
 			}
-			scsiDev.resetFlag = SCSI_ReadPin(SCSI_In_RST);
 		}
 
 		// Save our initiator now that we're no longer in a time-critical
@@ -434,15 +420,13 @@ static void process_SelectionPhase()
 	{
 		scsiDev.phase = BUS_BUSY;
 	}
-
-	scsiDev.resetFlag = scsiDev.resetFlag || SCSI_ReadPin(SCSI_In_RST);
 }
 
 static void process_MessageOut()
 {
-	scsiDev.atnFlag = 0;
 	scsiEnterPhase(MESSAGE_OUT);
 
+	scsiDev.atnFlag = 0;
 	scsiDev.parityError = 0;
 	scsiDev.msgOut = scsiRead();
 
@@ -451,10 +435,9 @@ static void process_MessageOut()
 		// Skip the remaining message bytes, and then start the MESSAGE_OUT
 		// phase again from the start. The initiator will re-send the
 		// same set of messages.
-		while (SCSI_ReadPin(SCSI_In_ATN) && !scsiDev.resetFlag)
+		while (SCSI_ReadPin(SCSI_ATN_INT) && !scsiDev.resetFlag)
 		{
 			scsiRead();
-			scsiDev.resetFlag = scsiDev.resetFlag || SCSI_ReadPin(SCSI_In_RST);
 		}
 
 		// Go-back and try the message again.
@@ -559,15 +542,30 @@ static void process_MessageOut()
 	{
 		enter_MessageIn(MSG_REJECT);
 	}
-
-	// atnFlag will be forced to 1 if there was a parity error.
-	scsiDev.atnFlag = scsiDev.atnFlag || SCSI_ReadPin(SCSI_In_ATN);
+	
+	// Re-check the ATN flag. We won't get another interrupt if
+	// it stays asserted.
+	scsiDev.atnFlag |= SCSI_ReadPin(SCSI_ATN_INT);
 }
 
 
+// TODO remove.
+// This is a hack until I work out why the ATN ISR isn't
+// running when it should.
+static int atnErrCount = 0;
+static void checkATN()
+{
+	int atn = SCSI_ReadPin(SCSI_ATN_INT);
+	if (atn && !scsiDev.atnFlag)
+	{
+		atnErrCount++;
+		scsiDev.atnFlag = 1;
+	}
+}
+
 void scsiPoll(void)
 {
-	if (scsiDev.resetFlag || SCSI_ReadPin(SCSI_In_RST))
+	if (scsiDev.resetFlag)
 	{
 		scsiReset();
 	}
@@ -607,6 +605,7 @@ void scsiPoll(void)
 	break;
 
 	case COMMAND:
+		checkATN();
 		if (scsiDev.atnFlag)
 		{
 			process_MessageOut();
@@ -618,6 +617,7 @@ void scsiPoll(void)
 	break;
 
 	case DATA_IN:
+		checkATN();
 		if (scsiDev.atnFlag)
 		{
 			process_MessageOut();
@@ -629,6 +629,7 @@ void scsiPoll(void)
 	break;
 
 	case DATA_OUT:
+		checkATN();
 		if (scsiDev.atnFlag)
 		{
 			process_MessageOut();
@@ -636,10 +637,11 @@ void scsiPoll(void)
 		else
 		{
 			process_DataOut();
-		}	
+		}
 	break;
 
 	case STATUS:
+		checkATN();
 		if (scsiDev.atnFlag)
 		{
 			process_MessageOut();
@@ -651,6 +653,7 @@ void scsiPoll(void)
 	break;
 
 	case MESSAGE_IN:
+		checkATN();
 		if (scsiDev.atnFlag)
 		{
 			process_MessageOut();

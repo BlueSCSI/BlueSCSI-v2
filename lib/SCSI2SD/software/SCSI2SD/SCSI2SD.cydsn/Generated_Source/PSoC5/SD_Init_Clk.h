@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: SD_Init_Clk.h
-* Version 2.0
+* Version 2.10
 *
 *  Description:
 *   Provides the function and constant definitions for the clock component.
@@ -28,7 +28,7 @@
 /* Check to see if required defines such as CY_PSOC5LP are available */
 /* They are defined starting with cy_boot v3.0 */
 #if !defined (CY_PSOC5LP)
-    #error Component cy_clock_v2_0 requires cy_boot v3.0 or later
+    #error Component cy_clock_v2_10 requires cy_boot v3.0 or later
 #endif /* (CY_PSOC5LP) */
 
 
@@ -59,13 +59,13 @@ uint8 SD_Init_Clk_GetPhaseRegister(void) ;
 
 #define SD_Init_Clk_Enable()                       SD_Init_Clk_Start()
 #define SD_Init_Clk_Disable()                      SD_Init_Clk_Stop()
-#define SD_Init_Clk_SetDivider(clkDivider)         SD_Init_Clk_SetDividerRegister(clkDivider, 1)
-#define SD_Init_Clk_SetDividerValue(clkDivider)    SD_Init_Clk_SetDividerRegister((clkDivider) - 1, 1)
+#define SD_Init_Clk_SetDivider(clkDivider)         SD_Init_Clk_SetDividerRegister(clkDivider, 1u)
+#define SD_Init_Clk_SetDividerValue(clkDivider)    SD_Init_Clk_SetDividerRegister((clkDivider) - 1u, 1u)
 #define SD_Init_Clk_SetMode(clkMode)               SD_Init_Clk_SetModeRegister(clkMode)
 #define SD_Init_Clk_SetSource(clkSource)           SD_Init_Clk_SetSourceRegister(clkSource)
 #if defined(SD_Init_Clk__CFG3)
 #define SD_Init_Clk_SetPhase(clkPhase)             SD_Init_Clk_SetPhaseRegister(clkPhase)
-#define SD_Init_Clk_SetPhaseValue(clkPhase)        SD_Init_Clk_SetPhaseRegister((clkPhase) + 1)
+#define SD_Init_Clk_SetPhaseValue(clkPhase)        SD_Init_Clk_SetPhaseRegister((clkPhase) + 1u)
 #endif /* defined(SD_Init_Clk__CFG3) */
 
 

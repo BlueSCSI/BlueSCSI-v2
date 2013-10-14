@@ -33,14 +33,10 @@
 #define SCSI_In_5		SCSI_In__5__PC
 #define SCSI_In_6		SCSI_In__6__PC
 #define SCSI_In_7		SCSI_In__7__PC
-#define SCSI_In_8		SCSI_In__8__PC
-#define SCSI_In_9		SCSI_In__9__PC
 
 #define SCSI_In_DBP		SCSI_In__DBP__PC
-#define SCSI_In_ATN		SCSI_In__ATN__PC
 #define SCSI_In_BSY		SCSI_In__BSY__PC
 #define SCSI_In_ACK		SCSI_In__ACK__PC
-#define SCSI_In_RST		SCSI_In__RST__PC
 #define SCSI_In_MSG		SCSI_In__MSG__PC
 #define SCSI_In_SEL		SCSI_In__SEL__PC
 #define SCSI_In_CD		SCSI_In__CD__PC

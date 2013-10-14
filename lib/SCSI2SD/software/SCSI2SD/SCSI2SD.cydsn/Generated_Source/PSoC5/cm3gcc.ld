@@ -16,55 +16,84 @@
  * they apply.
  */
 OUTPUT_FORMAT ("elf32-littlearm", "elf32-bigarm", "elf32-littlearm")
-ENTRY(__cs3_reset)
+ENTRY(__cy_reset)
 SEARCH_DIR(.)
-GROUP(-lgcc -lc -lcs3 -lcs3unhosted -lcs3micro)
+GROUP(-lgcc -lc -lnosys)
+
 
 MEMORY
 {
-  rom (rx) : ORIGIN = 0, LENGTH = (262144 - 0)
-  ram (rwx) : ORIGIN = 0x20000000 - (65536 / 2), LENGTH = (65536 - 0x4000 - 0x1000)
+  rom (rx) : ORIGIN = 0x0, LENGTH = 262144
+  ram (rwx) : ORIGIN = 0x20000000 - (65536 / 2), LENGTH = 65536
 }
+
+
+CY_APPL_ORIGIN      = 0; 
+CY_FLASH_ROW_SIZE   = 256;
+CY_ECC_ROW_SIZE     = 32;
+CY_EE_IN_BTLDR      = 0x0;
+CY_APPL_LOADABLE    = 0;
+CY_EE_SIZE          = 2048;
+CY_APPL_NUM         = 1;
+CY_APPL_MAX         = 1;
+CY_METADATA_SIZE    = 64;
+
 
 /* These force the linker to search for particular symbols from
  * the start of the link process and thus ensure the user's
  * overrides are picked up
  */
-EXTERN(__cs3_reset Reset)
-EXTERN(__cs3_start_asm __cs3_start_asm_generic_m)
+EXTERN(Reset)
+
 /* Bring in the interrupt routines & vector */
-INCLUDE micro-names.inc
-EXTERN(__cs3_start_c main __cs3_stack __cs3_heap_end)
+EXTERN(main)
+
+/* Bring in the meta data */
+EXTERN(cy_meta_loader cy_bootloader cy_meta_loadable cy_meta_bootloader)
+EXTERN(cy_meta_custnvl cy_meta_wolatch cy_meta_flashprotect cy_metadata)
 
 /* Provide fall-back values */
-PROVIDE(__cs3_heap_start = _end);
-PROVIDE(__cs3_region_num = (__cs3_regions_end - __cs3_regions) / 20);
-PROVIDE(__cs3_stack = 0x20000000 + (65536 / 2));
-PROVIDE(__cs3_heap_end = __cs3_stack - 0x4000);
+PROVIDE(__cy_heap_start = _end);
+PROVIDE(__cy_region_num = (__cy_regions_end - __cy_regions) / 16);
+PROVIDE(__cy_stack = ORIGIN(ram) + LENGTH(ram));
+PROVIDE(__cy_heap_end = __cy_stack - 0x4000);
 
 
 SECTIONS
 {
+  /* The bootloader location */
+  .cybootloader 0x0 : { KEEP(*(.cybootloader)) } >rom
 
-  .text :
+  /* Calculate where the loadables should start */
+  appl1_start   = CY_APPL_ORIGIN ? CY_APPL_ORIGIN : ALIGN(CY_FLASH_ROW_SIZE);
+  appl2_start   = appl1_start + ALIGN((LENGTH(rom) - appl1_start - 2 * CY_FLASH_ROW_SIZE) / 2, CY_FLASH_ROW_SIZE);
+  appl_start    = (CY_APPL_NUM == 1) ? appl1_start : appl2_start;
+  ecc_offset    = (appl_start / CY_FLASH_ROW_SIZE) * CY_ECC_ROW_SIZE;
+  ee_offset     = (CY_APPL_LOADABLE && !CY_EE_IN_BTLDR) ? ((CY_EE_SIZE / CY_APPL_MAX) * (CY_APPL_NUM - 1)) : 0;
+  ee_size       = (CY_APPL_LOADABLE && !CY_EE_IN_BTLDR) ? (CY_EE_SIZE / CY_APPL_MAX) : CY_EE_SIZE;
+  PROVIDE(CY_ECC_OFFSET = ecc_offset);
+  
+  .text appl_start :
   {
     CREATE_OBJECT_SYMBOLS
-    PROVIDE(__cs3_interrupt_vector = RomVectors);
-    *(.romvectors)
-    *(.cs3.interrupt_vector)
-    /* Make sure we pulled in an interrupt vector.  */
-    ASSERT (. != __cs3_interrupt_vector, "No interrupt vector");
+    PROVIDE(__cy_interrupt_vector = RomVectors);
 
-    PROVIDE(__cs3_reset = Reset);
-    *(.cs3.reset)
+    *(.romvectors)
+
+    /* Make sure we pulled in an interrupt vector.  */
+    ASSERT (. != __cy_interrupt_vector, "No interrupt vector");
+
+    ASSERT (CY_APPL_ORIGIN ? (SIZEOF(.cybootloader) <= CY_APPL_ORIGIN) : 1, "Wrong image location");
+
+    PROVIDE(__cy_reset = Reset);
+    *(.text.Reset)
     /* Make sure we pulled in some reset code.  */
-    ASSERT (. != __cs3_reset, "No reset code");
+    ASSERT (. != __cy_reset, "No reset code");
 
 	/* Place the DMA initialization before text to ensure it gets placed in first 64K of flash */
     *(.dma_init)
-    ASSERT(0 + . <= 0x10000 || !0, "DMA Init must be within the first 64k of flash");
+    ASSERT(appl_start + . <= 0x10000 || !0, "DMA Init must be within the first 64k of flash");
 		
-    *(.text.cs3.init)
     *(.text .text.* .gnu.linkonce.t.*)
     *(.plt)
     *(.gnu.warning)
@@ -130,13 +159,12 @@ SECTIONS
     KEEP (*crtend.o(.dtors))
 
     . = ALIGN(4);
-    __cs3_regions = .;
-    LONG (0)
-    LONG (__cs3_region_init_ram)
-    LONG (__cs3_region_start_data)
-    LONG (__cs3_region_init_size_ram)
-    LONG (__cs3_region_zero_size_ram)
-    __cs3_regions_end = .;
+    __cy_regions = .;
+    LONG (__cy_region_init_ram)
+    LONG (__cy_region_start_data)
+    LONG (__cy_region_init_size_ram)
+    LONG (__cy_region_zero_size_ram)
+    __cy_regions_end = .;
 
     . = ALIGN (8);
     _etext = .;
@@ -144,9 +172,7 @@ SECTIONS
 
   .ramvectors (NOLOAD) : ALIGN(8)
   {
-    __cs3_region_start_ram = .;
-    *(.cs3.region-head.ram)
-    ASSERT (. == __cs3_region_start_ram, ".cs3.region-head.ram not permitted");
+    __cy_region_start_ram = .;
     KEEP(*(.ramvectors))
   }
 
@@ -157,7 +183,7 @@ SECTIONS
 
   .data : ALIGN(8)
   {
-    __cs3_region_start_data = .;
+    __cy_region_start_data = .;
 
     KEEP(*(.jcr))
     *(.got.plt) *(.got)
@@ -169,6 +195,7 @@ SECTIONS
   } >ram AT>rom
   .bss : ALIGN(8)
   {
+    PROVIDE(__bss_start__ = .);
     *(.shbss)
     *(.bss .bss.* .gnu.linkonce.b.*)
     *(COMMON)
@@ -177,13 +204,58 @@ SECTIONS
     _end = .;
     __end = .;
   } >ram AT>rom
+  PROVIDE(end = .);
+  PROVIDE(__bss_end__ = .);
   
-  __cs3_region_end_ram = __cs3_region_start_ram + LENGTH(ram);
-  __cs3_region_size_ram = LENGTH(ram);
-  __cs3_region_init_ram = LOADADDR (.data);
-  __cs3_region_init_size_ram = _edata - ADDR (.data);
-  __cs3_region_zero_size_ram = _end - _edata;
+  __cy_region_init_ram = LOADADDR (.data);
+  __cy_region_init_size_ram = _edata - ADDR (.data);
+  __cy_region_zero_size_ram = _end - _edata;
+  
+  /* The .stack and .heap sections don't contain any symbols. 
+   * They are only used for linker to calculate RAM utilization.
+   */
+  .heap (NOLOAD) :
+  {
+    . = _end;
+    . += 0x1000;
+    __cy_heap_limit = .;
+  } >ram
 
+  .stack (__cy_stack - 0x4000) (NOLOAD) :
+  {
+    __cy_stack_limit = .;
+    . += 0x4000;
+  } >ram
+  
+  /* Check if data + heap + stack exceeds RAM limit */
+  ASSERT(__cy_stack_limit >= __cy_heap_limit, "region RAM overflowed with stack")
+
+  .cyloadermeta ((appl_start == 0) ? (LENGTH(rom) - CY_METADATA_SIZE) : 0xF0000000) :
+  {
+    KEEP(*(.cyloadermeta))
+  } :NONE
+
+  .cyloadablemeta (LENGTH(rom) - CY_FLASH_ROW_SIZE * (CY_APPL_NUM - 1) - CY_METADATA_SIZE) :
+  {
+    KEEP(*(.cyloadablemeta))
+  } >rom
+
+  .cyconfigecc (0x80000000 + ecc_offset) : 
+  {
+    KEEP(*(.cyconfigecc))
+  } :NONE 
+
+  .cycustnvl      0x90000000 : { KEEP(*(.cycustnvl)) } :NONE 
+  .cywolatch      0x90100000 : { KEEP(*(.cywolatch)) } :NONE 
+
+  .cyeeprom (0x90200000 + ee_offset) : 
+  {
+    KEEP(*(.cyeeprom))
+    ASSERT(. <= (0x90200000 + ee_offset + ee_size), ".cyeeprom data will not fit in EEPROM");
+  } :NONE 
+
+  .cyflashprotect 0x90400000 : { KEEP(*(.cyflashprotect)) } :NONE 
+  .cymeta         0x90500000 : { KEEP(*(.cymeta)) } :NONE 
 
   .stab 0 (NOLOAD) : { *(.stab) }
   .stabstr 0 (NOLOAD) : { *(.stabstr) }

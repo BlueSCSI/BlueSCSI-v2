@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: cypins.h
-* Version 3.40
+* Version 4.0
 *
 *  Description:
 *   This file contains the function prototypes and constants used for port/pin

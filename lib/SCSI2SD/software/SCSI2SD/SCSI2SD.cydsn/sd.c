@@ -52,7 +52,7 @@ static uint8 sdSpiByte(uint8 value)
 	return SDCard_ReadRxData();
 }
 
-static void sdSendCommand(uint8 cmd, uint32 param)
+static void sdSendCRCCommand(uint8 cmd, uint32 param)
 {
 	uint8 send[6];
 
@@ -62,6 +62,23 @@ static void sdSendCommand(uint8 cmd, uint32 param)
 	send[3] = param >> 8;
 	send[4] = param;
 	send[5] = (sdCrc7(send, 5, 0) << 1) | 1;
+
+	for(cmd = 0; cmd < sizeof(send); cmd++)
+	{
+		sdSpiByte(send[cmd]);
+	}
+}
+
+static void sdSendCommand(uint8 cmd, uint32 param)
+{
+	uint8 send[6];
+
+	send[0] = cmd | 0x40;
+	send[1] = param >> 24;
+	send[2] = param >> 16;
+	send[3] = param >> 8;
+	send[4] = param;
+	send[5] = 0;
 
 	for(cmd = 0; cmd < sizeof(send); cmd++)
 	{
@@ -97,6 +114,14 @@ static uint8 sdCommandAndResponse(uint8 cmd, uint32 param)
 	SDCard_ClearRxBuffer();
 	sdSpiByte(0xFF);
 	sdSendCommand(cmd, param);
+	return sdReadResp();
+}
+
+static uint8 sdCRCCommandAndResponse(uint8 cmd, uint32 param)
+{
+	SDCard_ClearRxBuffer();
+	sdSpiByte(0xFF);
+	sdSendCRCCommand(cmd, param);
 	return sdReadResp();
 }
 
@@ -197,12 +222,12 @@ int sdWriteSector()
 
 			while(!(SDCard_ReadTxStatus() & SDCard_STS_SPI_DONE))
 			{}
-		
-			SDCard_ReadRxData();
-			SDCard_ReadRxData();
-			SDCard_ReadRxData();
-			SDCard_ReadRxData();
 		}
+				
+			SDCard_ReadRxData();
+			SDCard_ReadRxData();
+			SDCard_ReadRxData();
+			SDCard_ReadRxData();
 
 		sdSpiByte(0x00); // CRC
 		sdSpiByte(0x00); // CRC
@@ -260,7 +285,7 @@ static int sendIfCond()
 
 	do
 	{
-		uint8 status = sdCommandAndResponse(SD_SEND_IF_COND, 0x000001AA);
+		uint8 status = sdCRCCommandAndResponse(SD_SEND_IF_COND, 0x000001AA);
 
 		if (status == SD_R1_IDLE)
 		{
@@ -294,9 +319,9 @@ static int sdOpCond()
 	{
 		CyDelay(33); // Spec says to retry for 1 second.
 
-		sdCommandAndResponse(SD_APP_CMD, 0);
+		sdCRCCommandAndResponse(SD_APP_CMD, 0);
 		// Host Capacity Support = 1 (SDHC/SDXC supported)
-		status = sdCommandAndResponse(SD_APP_SEND_OP_COND, 0x40000000);
+		status = sdCRCCommandAndResponse(SD_APP_SEND_OP_COND, 0x40000000);
 	} while ((status != 0) && (--retries > 0));
 
 	return retries > 0;
@@ -304,7 +329,7 @@ static int sdOpCond()
 
 static int sdReadOCR()
 {
-	uint8 status = sdCommandAndResponse(SD_READ_OCR, 0);
+	uint8 status = sdCRCCommandAndResponse(SD_READ_OCR, 0);
 	if(status){goto bad;}
 
 	uint8 buf[4];
@@ -323,7 +348,7 @@ bad:
 
 static int sdReadCSD()
 {
-	uint8 status = sdCommandAndResponse(SD_SEND_CSD, 0);
+	uint8 status = sdCRCCommandAndResponse(SD_SEND_CSD, 0);
 	if(status){goto bad;}
 	status = sdWaitResp();
 	if (status != 0xFE) { goto bad; }
@@ -389,7 +414,7 @@ int sdInit()
 	SD_CS_Write(0); // Set CS active (active low)
 	CyDelayUs(1);
 
-	uint8 v = sdCommandAndResponse(SD_GO_IDLE_STATE, 0);
+	uint8 v = sdCRCCommandAndResponse(SD_GO_IDLE_STATE, 0);
 	if(v != 1){goto bad;}
 
 	if (!sendIfCond()) goto bad; // Sets V1 or V2 flag
@@ -398,9 +423,9 @@ int sdInit()
 
 	// This command will be ignored if sdDev.ccs is set.
 	// SDHC and SDXC are always 512bytes.
-	v = sdCommandAndResponse(SD_SET_BLOCKLEN, SCSI_BLOCK_SIZE); //Force sector size
+	v = sdCRCCommandAndResponse(SD_SET_BLOCKLEN, SCSI_BLOCK_SIZE); //Force sector size
 	if(v){goto bad;}
-	v = sdCommandAndResponse(SD_CRC_ON_OFF, 0); //crc off
+	v = sdCRCCommandAndResponse(SD_CRC_ON_OFF, 0); //crc off
 	if(v){goto bad;}
 
 	// now set the sd card up for full speed
