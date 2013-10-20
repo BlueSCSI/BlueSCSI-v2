@@ -23,7 +23,9 @@ typedef enum
 	SD_SEND_OP_COND = 1,
 	SD_SEND_IF_COND = 8, // SD V2
 	SD_SEND_CSD = 9,
+	SD_STOP_TRANSMISSION = 12,
 	SD_SET_BLOCKLEN = 16,
+	SD_READ_MULTIPLE_BLOCK = 18,
 	SD_APP_SET_WR_BLK_ERASE_COUNT = 23,
 	SD_APP_SEND_OP_COND = 41,
 	SD_APP_CMD = 55,
@@ -56,8 +58,8 @@ void sdPrepareWrite();
 int sdWriteSector();
 void sdCompleteWrite();
 
-void sdPrepareRead(int nextBlockOffset);
-int sdIsReadReady();
+void sdPrepareRead();
 void sdReadSector();
+void sdCompleteRead();
 
 #endif

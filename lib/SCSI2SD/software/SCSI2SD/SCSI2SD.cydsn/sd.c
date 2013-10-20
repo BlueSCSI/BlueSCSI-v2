@@ -127,14 +127,14 @@ static uint8 sdCRCCommandAndResponse(uint8 cmd, uint32 param)
 }
 
 
-void sdPrepareRead(int nextBlockOffset)
+void sdPrepareRead()
 {
-	uint32 len = (transfer.lba + transfer.currentBlock + nextBlockOffset);
+	uint32 len = (transfer.lba + transfer.currentBlock);
 	if (!sdDev.ccs)
 	{
 		len = len * SCSI_BLOCK_SIZE;
 	}
-	uint8 v = sdCommandAndResponse(17, len);
+	uint8 v = sdCommandAndResponse(SD_READ_MULTIPLE_BLOCK, len);
 	if (v)
 	{
 		scsiDiskReset();
@@ -146,30 +146,15 @@ void sdPrepareRead(int nextBlockOffset)
 	}
 }
 
-int sdIsReadReady()
-{
-	uint8 v = sdWaitResp();
-	if (v == 0xFF)
-	{
-		return 0;
-	}
-	else if (v == 0xFE)
-	{
-		return 1;
-	}
-	else
-	{
-		scsiDiskReset();
-		scsiDev.status = CHECK_CONDITION;
-		scsiDev.sense.code = HARDWARE_ERROR;
-		scsiDev.sense.asc = LOGICAL_UNIT_COMMUNICATION_FAILURE;
-		scsiDev.phase = STATUS;
-		return 0;
-	}
-}
-
 void sdReadSector()
 {
+	// Wait for a start-block token.
+	uint8 token;
+	do
+	{
+		token = sdSpiByte(0xFF);
+	} while(token != 0xFE); // TODO don't loop forever here in case of error!
+
 	int prep = 0;
 	int i = 0;
 	while (i < SCSI_BLOCK_SIZE)
@@ -192,6 +177,28 @@ void sdReadSector()
 	sdSpiByte(0xFF); // CRC
 	scsiDev.dataLen = SCSI_BLOCK_SIZE;
 	scsiDev.dataPtr = 0;
+}
+
+void sdCompleteRead()
+{
+	//uint8 r1b = sdCommandAndResponse(SD_STOP_TRANSMISSION, 0);
+	sdSendCommand(SD_STOP_TRANSMISSION, 0);
+	sdSpiByte(0xFF); // NEED STUFF BYTE for cmd12
+	uint8 r1b = sdReadResp();
+	if (r1b)
+	{
+		scsiDev.status = CHECK_CONDITION;
+		scsiDev.sense.code = HARDWARE_ERROR;
+		scsiDev.sense.asc = UNRECOVERED_READ_ERROR;
+		scsiDev.phase = STATUS;
+	}
+	
+	// R1b has an optional trailing "busy" signal.
+	uint8 busy;
+	do
+	{
+		busy = sdSpiByte(0xFF);
+	} while (busy == 0);
 }
 
 static void sdWaitWriteBusy()

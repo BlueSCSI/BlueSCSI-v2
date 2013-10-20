@@ -140,7 +140,7 @@ static void doRead(uint32 lba, uint32 blocks)
 		transfer.currentBlock = 0;
 		scsiDev.phase = DATA_IN;
 		scsiDev.dataLen = 0; // No data yet
-		sdPrepareRead(0);
+		sdPrepareRead();
 	}
 }
 
@@ -352,15 +352,7 @@ void scsiDiskPoll()
 	{
 		if (scsiDev.dataLen == 0)
 		{
-			if (sdIsReadReady())
-			{
-				sdReadSector();
-				if ((transfer.currentBlock + 1) < transfer.blocks)
-				{
-					sdPrepareRead(1); // Tell SD card to grab data while we send
-									// buffer to SCSI.
-				}
-			}
+			sdReadSector();
 		}
 		else if (scsiDev.dataPtr == scsiDev.dataLen)
 		{
@@ -371,6 +363,7 @@ void scsiDiskPoll()
 			{
 				scsiDev.phase = STATUS;
 				scsiDiskReset();
+				sdCompleteRead();
 			}
 		}
 	}
@@ -383,12 +376,11 @@ void scsiDiskPoll()
 			scsiDev.dataPtr = 0;
 			transfer.currentBlock++;
 			if (transfer.currentBlock >= transfer.blocks)
-				
 			{
 				scsiDev.dataLen = 0;
 				scsiDev.phase = STATUS;
 				scsiDiskReset();
-				
+
 				if (writeOk)
 				{
 					sdCompleteWrite();
