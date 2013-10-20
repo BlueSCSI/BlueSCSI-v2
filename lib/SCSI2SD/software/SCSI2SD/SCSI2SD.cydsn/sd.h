@@ -46,7 +46,7 @@ typedef struct
 {
 	int version; // SDHC = version 2.
 	int ccs; // Card Capacity Status. 1 = SDHC or SDXC
-	int capacity; // in 512 byte blocks
+	uint32 capacity; // in 512 byte blocks
 } SdDevice;
 
 extern SdDevice sdDev;

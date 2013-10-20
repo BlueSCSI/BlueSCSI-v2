@@ -18,6 +18,7 @@
 #include "device.h"
 #include "scsi.h"
 #include "scsiPhy.h"
+#include "config.h"
 #include "bits.h"
 #include "diagnostic.h"
 #include "disk.h"
@@ -64,7 +65,7 @@ static void enter_MessageIn(uint8 message)
 static void process_MessageIn()
 {
 	scsiEnterPhase(MESSAGE_IN);
-	scsiWrite(scsiDev.msgIn);
+	scsiWriteByte(scsiDev.msgIn);
 
 	if (scsiDev.atnFlag)
 	{
@@ -79,8 +80,15 @@ static void process_MessageIn()
 	else
 	{
 		// MESSAGE_REJECT. Go back to command phase
+		// TODO MESSAGE_REJECT moved to messageReject method.
 		scsiDev.phase = COMMAND;
 	}
+}
+
+static void messageReject()
+{
+	scsiEnterPhase(MESSAGE_IN);
+	scsiWriteByte(MSG_REJECT);
 }
 
 static void enter_Status(uint8 status)
@@ -92,7 +100,7 @@ static void enter_Status(uint8 status)
 static void process_Status()
 {
 	scsiEnterPhase(STATUS);
-	scsiWrite(scsiDev.status);
+	scsiWriteByte(scsiDev.status);
 
 	// Command Complete occurs AFTER a valid status has been
 	// sent. then we go bus-free.
@@ -113,13 +121,11 @@ static void process_DataIn()
 	}
 
 	scsiEnterPhase(DATA_IN);
-	while ((scsiDev.dataPtr < scsiDev.dataLen) &&
-		!scsiDev.resetFlag &&
-		!scsiDev.atnFlag)
-	{
-		scsiWrite(scsiDev.data[scsiDev.dataPtr]);
-		++scsiDev.dataPtr;
-	}
+
+	uint32 len = scsiDev.dataLen - scsiDev.dataPtr;
+	scsiWrite(scsiDev.data + scsiDev.dataPtr, len);
+	scsiDev.dataPtr += len;
+
 
 	if ((scsiDev.dataPtr >= scsiDev.dataLen) &&
 		(transfer.currentBlock == transfer.blocks))
@@ -136,21 +142,18 @@ static void process_DataOut()
 	}
 
 	scsiEnterPhase(DATA_OUT);
-	while ((scsiDev.dataPtr < scsiDev.dataLen) &&
-		!scsiDev.resetFlag &&
-		!scsiDev.atnFlag)
-	{
-		scsiDev.parityError = 0;
-		scsiDev.data[scsiDev.dataPtr] = scsiRead();
 
-		if (scsiDev.parityError)
-		{
-			scsiDev.sense.code = ABORTED_COMMAND;
-			scsiDev.sense.asc = SCSI_PARITY_ERROR;
-			enter_Status(CHECK_CONDITION);
-			break;
-		}
-		++scsiDev.dataPtr;
+	scsiDev.parityError = 0;
+	uint32 len = scsiDev.dataLen - scsiDev.dataPtr;
+	scsiRead(scsiDev.data + scsiDev.dataPtr, len);
+	scsiDev.dataPtr += len;
+
+	// TODO re-implement parity checking
+	if (0 && scsiDev.parityError && config->enableParity)
+	{
+		scsiDev.sense.code = ABORTED_COMMAND;
+		scsiDev.sense.asc = SCSI_PARITY_ERROR;
+		enter_Status(CHECK_CONDITION);
 	}
 
 	if ((scsiDev.dataPtr >= scsiDev.dataLen) &&
@@ -167,15 +170,11 @@ static void process_Command()
 	scsiDev.parityError = 0;
 
 	memset(scsiDev.cdb, 0, sizeof(scsiDev.cdb));
-	scsiDev.cdb[0] = scsiRead();
+	scsiDev.cdb[0] = scsiReadByte();
 
 	int group = scsiDev.cdb[0] >> 5;
 	int cmdSize = CmdGroupBytes[group];
-	int i;
-	for (i = 1; i < cmdSize; ++i)
-	{
-		scsiDev.cdb[i] = scsiRead();
-	}
+	scsiRead(scsiDev.cdb + 1, cmdSize - 1);
 
 	uint8 command = scsiDev.cdb[0];
 	uint8 lun = scsiDev.cdb[1] >> 5;
@@ -214,14 +213,13 @@ static void process_Command()
 	}
 	// Some old SCSI drivers do NOT properly support
 	// unitAttention. OTOH, Linux seems to require it
-	// TODO MAKE CONFIGURABLE.
-	/* confirmed LCIII with unknown scsi driver fials here.
-	else if (scsiDev.unitAttention)
+	// confirmed LCIII with unknown scsi driver fials here.
+	else if (scsiDev.unitAttention && config->enableUnitAttention)
 	{
 		scsiDev.sense.code = UNIT_ATTENTION;
 		scsiDev.sense.asc = scsiDev.unitAttention;
 		enter_Status(CHECK_CONDITION);
-	}*/
+	}
 	else if (lun)
 	{
 		scsiDev.sense.code = ILLEGAL_REQUEST;
@@ -319,8 +317,8 @@ static void doReserveRelease()
 static void scsiReset()
 {
 	ledOff();
-	SCSI_Out_DBx_Write(0);
-	SCSI_ClearPin(SCSI_Out_DBP);
+	// done in verilog SCSI_Out_DBx_Write(0);
+	SCSI_CTL_IO_Write(0);
 	SCSI_ClearPin(SCSI_Out_ATN);
 	SCSI_ClearPin(SCSI_Out_BSY);
 	SCSI_ClearPin(SCSI_Out_ACK);
@@ -329,11 +327,10 @@ static void scsiReset()
 	SCSI_ClearPin(SCSI_Out_REQ);
 	SCSI_ClearPin(SCSI_Out_MSG);
 	SCSI_ClearPin(SCSI_Out_CD);
-	SCSI_ClearPin(SCSI_Out_IO);
 
 	scsiDev.parityError = 0;
 	scsiDev.phase = BUS_FREE;
-	
+
 	if (scsiDev.unitAttention != POWER_ON_RESET)
 	{
 		scsiDev.unitAttention = SCSI_BUS_RESET;
@@ -354,9 +351,9 @@ static void scsiReset()
 		CyDelay(10); // 10ms.
 		reset = SCSI_ReadPin(SCSI_RST_INT);
 	} while (reset);
-	
+
 	scsiDev.resetFlag = 0;
-	scsiDev.atnFlag = 0;	
+	scsiDev.atnFlag = 0;
 }
 
 static void enter_SelectionPhase()
@@ -394,6 +391,7 @@ static void process_SelectionPhase()
 		// Wait until the end of the selection phase.
 		while (!scsiDev.resetFlag)
 		{
+			scsiDev.atnFlag |= SCSI_ReadPin(SCSI_ATN_INT);
 			if (!SCSI_ReadPin(SCSI_In_SEL))
 			{
 				break;
@@ -428,7 +426,7 @@ static void process_MessageOut()
 
 	scsiDev.atnFlag = 0;
 	scsiDev.parityError = 0;
-	scsiDev.msgOut = scsiRead();
+	scsiDev.msgOut = scsiReadByte();
 
 	if (scsiDev.parityError)
 	{
@@ -437,7 +435,7 @@ static void process_MessageOut()
 		// same set of messages.
 		while (SCSI_ReadPin(SCSI_ATN_INT) && !scsiDev.resetFlag)
 		{
-			scsiRead();
+			scsiReadByte();
 		}
 
 		// Go-back and try the message again.
@@ -515,18 +513,18 @@ static void process_MessageOut()
 	else if (scsiDev.msgOut >= 0x20 && scsiDev.msgOut <= 0x2F)
 	{
 		// Two byte message. We don't support these. read and discard.
-		scsiRead();
+		scsiReadByte();
 	}
 	else if (scsiDev.msgOut == 0x01)
 	{
 		// Extended message.
-		int msgLen = scsiRead();
+		int msgLen = scsiReadByte();
 		if (msgLen == 0) msgLen = 256;
 		int i;
 		for (i = 0; i < msgLen && !scsiDev.resetFlag; ++i)
 		{
 			// Discard bytes.
-			scsiRead();
+			scsiReadByte();
 		}
 
 		// We don't support ANY extended messages.
@@ -536,15 +534,16 @@ static void process_MessageOut()
 		// We don't support any 2-byte messages either.
 		// And we don't support any optional 1-byte messages.
 		// In each case, the correct response is MESSAGE REJECT.
-		enter_MessageIn(MSG_REJECT);
+		messageReject();
 	}
 	else
 	{
-		enter_MessageIn(MSG_REJECT);
+		messageReject();
 	}
 	
 	// Re-check the ATN flag. We won't get another interrupt if
 	// it stays asserted.
+	CyDelayUs(2); // DODGY HACK
 	scsiDev.atnFlag |= SCSI_ReadPin(SCSI_ATN_INT);
 }
 
@@ -553,6 +552,7 @@ static void process_MessageOut()
 // This is a hack until I work out why the ATN ISR isn't
 // running when it should.
 static int atnErrCount = 0;
+static int atnHitCount = 0;
 static void checkATN()
 {
 	int atn = SCSI_ReadPin(SCSI_ATN_INT);
@@ -560,6 +560,10 @@ static void checkATN()
 	{
 		atnErrCount++;
 		scsiDev.atnFlag = 1;
+	}
+	else if (atn && scsiDev.atnFlag)
+	{
+		atnHitCount++;
 	}
 }
 
@@ -671,10 +675,9 @@ void scsiPoll(void)
 	}
 }
 
-void scsiInit(int scsiId, int enableParity)
+void scsiInit()
 {
-	scsiDev.scsiIdMask = 1 << scsiId;
-	scsiDev.enableParity = enableParity;
+	scsiDev.scsiIdMask = 1 << (config->scsiId);
 
 	scsiDev.atnFlag = 0;
 	scsiDev.resetFlag = 1;

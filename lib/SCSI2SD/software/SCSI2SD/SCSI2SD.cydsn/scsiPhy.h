@@ -31,11 +31,10 @@
 extern const uint8 Lookup_OddParity[256];
 
 void scsiPhyInit();
-uint8 scsiRead(void);
-void scsiWrite(uint8 value);
-
-// Returns true if the ATN flag becomes set, indicating a parity error.
-int scsiWriteMsg(uint8 msg);
+uint8 scsiReadByte(void);
+void scsiRead(uint8* data, uint32 count);
+void scsiWriteByte(uint8 value);
+void scsiWrite(uint8* data, uint32 count);
 
 void scsiEnterPhase(int phase);
 

@@ -66,7 +66,6 @@ typedef enum
 typedef struct
 {
 	uint8_t scsiIdMask;
-	int enableParity;
 
 	// Set to true (1) if the ATN flag was set, and we need to
 	// enter the MESSAGE_OUT phase.
@@ -107,7 +106,7 @@ typedef struct
 
 extern ScsiDevice scsiDev;
 
-void scsiInit(int scsiId, int enableParity);
+void scsiInit();
 void scsiPoll(void);
 
 

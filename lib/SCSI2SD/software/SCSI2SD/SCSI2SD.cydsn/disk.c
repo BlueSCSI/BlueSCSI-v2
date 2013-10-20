@@ -17,6 +17,7 @@
 
 #include "device.h"
 #include "scsi.h"
+#include "config.h"
 #include "disk.h"
 #include "sd.h"
 
@@ -33,8 +34,10 @@ static int doSdInit()
 	{
 		blockDev.state = blockDev.state | DISK_INITIALISED;
 		
-		// TODO artificially limit this value according to EEPROM config.
-		blockDev.capacity = sdDev.capacity;
+		// artificially limit this value according to EEPROM config.
+		blockDev.capacity =
+			(config->maxBlocks && (sdDev.capacity > config->maxBlocks))
+				? config->maxBlocks : sdDev.capacity;
 	}
 	return result;
 }

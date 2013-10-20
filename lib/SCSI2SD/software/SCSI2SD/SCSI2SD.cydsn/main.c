@@ -20,6 +20,7 @@
 #include "loopback.h"
 #include "scsi.h"
 #include "scsiPhy.h"
+#include "config.h"
 #include "disk.h"
 #include "led.h"
 
@@ -40,6 +41,8 @@ int main()
 	// Loopback test requires the interrupt handers.
 	// Will not return if uncommented.
 	// scsi2sd_test_loopback();
+	
+	configInit();
 	
 	scsiInit(0, 1); // ID 0 is mac boot disk
 	scsiDiskInit();

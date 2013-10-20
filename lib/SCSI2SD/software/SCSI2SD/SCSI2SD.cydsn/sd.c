@@ -17,6 +17,7 @@
 
 #include "device.h"
 #include "scsi.h"
+#include "config.h"
 #include "disk.h"
 #include "sd.h"
 
@@ -169,24 +170,21 @@ int sdIsReadReady()
 
 void sdReadSector()
 {
-	// We have a spi FIFO of 4 bytes. use it.
-	// This is much better, byut after 4 bytes we're still
-	// blocking a bit.
-	int i;
-	for (i = 0; i < SCSI_BLOCK_SIZE; i+=4)
+	int prep = 0;
+	int i = 0;
+	while (i < SCSI_BLOCK_SIZE)
 	{
-		SDCard_WriteTxData(0xFF);
-		SDCard_WriteTxData(0xFF);
-		SDCard_WriteTxData(0xFF);
-		SDCard_WriteTxData(0xFF);
+		if (prep < SCSI_BLOCK_SIZE && (SDCard_ReadTxStatus() & SDCard_STS_TX_FIFO_NOT_FULL))
+		{
+			SDCard_WriteTxData(0xFF);
+			prep++;
+		}
 
-		while(!(SDCard_ReadTxStatus() & SDCard_STS_SPI_DONE))
-		{}
-		scsiDev.data[i] = SDCard_ReadRxData();
-		scsiDev.data[i+1] = SDCard_ReadRxData();
-		scsiDev.data[i+2] = SDCard_ReadRxData();
-		scsiDev.data[i+3] = SDCard_ReadRxData();
-
+		if(SDCard_ReadRxStatus() & SDCard_STS_RX_FIFO_NOT_EMPTY)
+		{
+			scsiDev.data[i] = SDCard_ReadRxData();
+			i++;
+		}
 	}
 
 
@@ -213,21 +211,18 @@ int sdWriteSector()
 
 		sdSpiByte(0xFC); // MULTIPLE byte start token
 		int i;
-		for (i = 0; i < SCSI_BLOCK_SIZE; i+=4)
+		for (i = 0; i < SCSI_BLOCK_SIZE; i++)
 		{
-			SDCard_WriteTxData(scsiDev.data[i]);
-			SDCard_WriteTxData(scsiDev.data[i+1]);
-			SDCard_WriteTxData(scsiDev.data[i+2]);
-			SDCard_WriteTxData(scsiDev.data[i+3]);
-
-			while(!(SDCard_ReadTxStatus() & SDCard_STS_SPI_DONE))
+			while(!(SDCard_ReadTxStatus() & SDCard_STS_TX_FIFO_NOT_FULL))
 			{}
+			SDCard_WriteTxData(scsiDev.data[i]);
 		}
-				
-			SDCard_ReadRxData();
-			SDCard_ReadRxData();
-			SDCard_ReadRxData();
-			SDCard_ReadRxData();
+		while(!(SDCard_ReadTxStatus() & SDCard_STS_SPI_DONE))
+		{}
+		SDCard_ReadRxData();
+		SDCard_ReadRxData();
+		SDCard_ReadRxData();
+		SDCard_ReadRxData();
 
 		sdSpiByte(0x00); // CRC
 		sdSpiByte(0x00); // CRC
@@ -430,7 +425,7 @@ int sdInit()
 
 	// now set the sd card up for full speed
 	SD_Data_Clk_Start(); // Turn on the fast clock
-	SD_Clk_Ctl_Write(1); // Select the fast clock source.
+	SD_Clk_Ctl_Write(config->overclockSPI ? 2 : 1); // Select the fast clock source.
 	SD_Init_Clk_Stop(); // Stop the slow clock.
 
 	if (!sdReadCSD()) goto bad;
@@ -445,7 +440,6 @@ out:
 	return result;
 
 }
-
 
 void sdPrepareWrite()
 {

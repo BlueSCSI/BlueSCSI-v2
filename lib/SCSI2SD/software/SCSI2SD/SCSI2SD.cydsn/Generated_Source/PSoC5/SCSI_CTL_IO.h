@@ -1,6 +1,6 @@
 /*******************************************************************************
-* File Name: PARITY_EN.h  
-* Version 1.90
+* File Name: SCSI_CTL_IO.h  
+* Version 1.70
 *
 * Description:
 *  This file containts Control Register function prototypes and register defines
@@ -14,19 +14,29 @@
 * the software package with which this file was provided.
 *******************************************************************************/
 
-#if !defined(CY_PINS_PARITY_EN_ALIASES_H) /* Pins PARITY_EN_ALIASES_H */
-#define CY_PINS_PARITY_EN_ALIASES_H
+#if !defined(CY_CONTROL_REG_SCSI_CTL_IO_H) /* CY_CONTROL_REG_SCSI_CTL_IO_H */
+#define CY_CONTROL_REG_SCSI_CTL_IO_H
 
 #include "cytypes.h"
-#include "cyfitter.h"
-
 
 
 /***************************************
-*              Constants        
+*         Function Prototypes 
 ***************************************/
-#define PARITY_EN_0		PARITY_EN__0__PC
 
-#endif /* End Pins PARITY_EN_ALIASES_H */
+void    SCSI_CTL_IO_Write(uint8 control) ;
+uint8   SCSI_CTL_IO_Read(void) ;
+
+
+/***************************************
+*            Registers        
+***************************************/
+
+/* Control Register */
+#define SCSI_CTL_IO_Control        (* (reg8 *) SCSI_CTL_IO_Sync_ctrl_reg__CONTROL_REG )
+#define SCSI_CTL_IO_Control_PTR    (  (reg8 *) SCSI_CTL_IO_Sync_ctrl_reg__CONTROL_REG )
+
+#endif /* End CY_CONTROL_REG_SCSI_CTL_IO_H */
+
 
 /* [] END OF FILE */

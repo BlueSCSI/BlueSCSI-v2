@@ -17,11 +17,12 @@
 
 #include "device.h"
 #include "scsi.h"
+#include "config.h"
 #include "inquiry.h"
 
 #include <string.h>
 
-static const uint8 StandardResponse[] =
+static uint8 StandardResponse[] =
 {
 0x00, // "Direct-access device". AKA standard hard disk
 0x00, // device type qualifier
@@ -29,16 +30,11 @@ static const uint8 StandardResponse[] =
 0x02, // SCSI-2 Inquiry response
 31, // standard length
 0, 0, //Reserved
-0, // We don't support anything at all
-/* TODO testing Apple Drive Setup. Make configurable!
-'c','o','d','e','s','r','c',' ',
-'S','C','S','I','2','S','D',' ',' ',' ',' ',' ',' ',' ',' ',' ',
-'2','.','0','a'
-*/
-' ','S','E','A','G','A','T','E',
-' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','S','T','2','2','5','N',
-'1','.','0',' '
+0 // We don't support anything at all
 };
+// Vendor set by config 'c','o','d','e','s','r','c',' ',
+// prodId set by config'S','C','S','I','2','S','D',' ',' ',' ',' ',' ',' ',' ',' ',' ',
+// Revision set by config'2','.','0','a'
 
 static const uint8 SupportedVitalPages[] =
 {
@@ -103,7 +99,14 @@ void scsiInquiry()
 		else
 		{
 			memcpy(scsiDev.data, StandardResponse, sizeof(StandardResponse));
-			scsiDev.dataLen = sizeof(StandardResponse);
+			uint8* out = scsiDev.data + sizeof(StandardResponse);
+			memcpy(out, config->vendor, sizeof(config->vendor));
+			out += sizeof(config->vendor);
+			memcpy(out, config->prodId, sizeof(config->prodId));
+			out += sizeof(config->prodId);
+			memcpy(out, config->revision, sizeof(config->revision));
+			out += sizeof(config->revision);			
+			scsiDev.dataLen = out - scsiDev.data;
 			scsiDev.phase = DATA_IN;
 			
 			if (!lun) scsiDev.unitAttention = 0;

@@ -36,7 +36,7 @@
 #define SCSI_Out_8		SCSI_Out__8__PC
 #define SCSI_Out_9		SCSI_Out__9__PC
 
-#define SCSI_Out_DBP		SCSI_Out__DBP__PC
+#define SCSI_Out_DBP_raw		SCSI_Out__DBP_raw__PC
 #define SCSI_Out_ATN		SCSI_Out__ATN__PC
 #define SCSI_Out_BSY		SCSI_Out__BSY__PC
 #define SCSI_Out_ACK		SCSI_Out__ACK__PC
@@ -45,7 +45,7 @@
 #define SCSI_Out_SEL		SCSI_Out__SEL__PC
 #define SCSI_Out_CD		SCSI_Out__CD__PC
 #define SCSI_Out_REQ		SCSI_Out__REQ__PC
-#define SCSI_Out_IO		SCSI_Out__IO__PC
+#define SCSI_Out_IO_raw		SCSI_Out__IO_raw__PC
 
 #endif /* End Pins SCSI_Out_ALIASES_H */
 

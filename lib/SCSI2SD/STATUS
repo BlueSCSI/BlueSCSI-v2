@@ -3,11 +3,12 @@ assignments are incorrect.
 
 - USB bootloader is not implemented yet.
 
-- Configuration options are not yet loaded from EEPROM.
 - Configuration options cannot be set via USB.
 	- SCSI ID hardcoded to 0
 	- Partity checking is on
 	- Unit Attention Condition is off
+	- SPI overclock to 32MHz off.
 
 - DMA is not used for SPI transfers
+- Parity checking not implemented for the PSoC Datapath implementation
 
