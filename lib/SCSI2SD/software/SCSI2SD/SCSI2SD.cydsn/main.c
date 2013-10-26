@@ -16,7 +16,7 @@
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "device.h"
-// #include "blinky.h"
+#include "blinky.h"
 #include "loopback.h"
 #include "scsi.h"
 #include "scsiPhy.h"
@@ -28,7 +28,7 @@ const char* Notice = "Copyright (C) 2013 Michael McMaster <michael@codesrc.com>"
 
 int main()
 {
-	// scsi2sd_test_blinky(); // Initial test. Will not return.
+	// scsi2sd_test_blink(); // Initial test. Will not return.
 	ledOff();
 
 	// Enable global interrupts.
@@ -44,7 +44,7 @@ int main()
 	
 	configInit();
 	
-	scsiInit(0, 1); // ID 0 is mac boot disk
+	scsiInit();
 	scsiDiskInit();
 
 	// Reading jumpers

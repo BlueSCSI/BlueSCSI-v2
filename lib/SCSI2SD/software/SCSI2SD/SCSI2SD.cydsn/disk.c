@@ -409,12 +409,16 @@ void scsiDiskInit()
 
 	// Don't require the host to send us a START STOP UNIT command
 	blockDev.state = DISK_STARTED;
+	// WP pin not available for micro-sd
+	// TODO read card WP register
+	#if 0
 	if (SD_WP_Read())
 	{
 		blockDev.state = blockDev.state | DISK_WP;
 	}
+	#endif
 
-	if (SD_CD_Read() == 0)
+	//if (SD_CD_Read() == 0)
 	{
 		blockDev.state = blockDev.state | DISK_PRESENT;
 

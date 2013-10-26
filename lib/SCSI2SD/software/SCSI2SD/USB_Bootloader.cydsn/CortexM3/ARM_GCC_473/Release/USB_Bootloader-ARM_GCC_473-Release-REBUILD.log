@@ -1,0 +1,89 @@
+--------------- Rebuild Started: 10/26/2013 18:55:02 Project: USB_Bootloader, Configuration: ARM GCC 4.7.3 Release ---------------
+Deleting file ".\CortexM3\ARM_GCC_473\Release\main.o"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\cyfitter_cfg.o"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\cymetadata.o"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\USBFS.o"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\USBFS_audio.o"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\USBFS_boot.o"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\USBFS_cdc.o"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\USBFS_cls.o"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\USBFS_descr.o"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\USBFS_drv.o"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\USBFS_episr.o"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\USBFS_hid.o"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\USBFS_pm.o"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\USBFS_std.o"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\USBFS_vnd.o"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\USBFS_midi.o"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\BL.o"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\USBFS_Dm.o"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\USBFS_Dp.o"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\Cm3Start.o"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\CyBootAsmGnu.o"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\CyDmac.o"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\CyFlash.o"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\CyLib.o"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\cyPm.o"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\CySpc.o"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\cyutils.o"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\USB_Bootloader.hex"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\USB_Bootloader.elf"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\USB_Bootloader.map"
+Deleting file ".\USB_Bootloader.cycdx"
+Deleting file ".\USB_Bootloader.svd"
+Deleting file ".\USB_Bootloader.rpt"
+Deleting file ".\USB_Bootloader_timing.html"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\.deps\C_FILE.P"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\.deps\ARM_C_FILE.P"
+Deleting file ".\CortexM3\ARM_GCC_473\Release\.deps\GNU_ARM_ASM_FILE.P"
+cydsfit.exe "-.appdatapath" "C:\Users\Micha_000\AppData\Local\Cypress Semiconductor\PSoC Creator\3.0" "-.fdsnotice" "-.fdswarpdepfile=warp_dependencies.txt" "-.fdselabdepfile=elab_dependencies.txt" "-.fdsbldfile=generated_files.txt" "-p" "W:\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj" "-d" "CY8C5267AXI-LP051" "-s" "W:\SCSI2SD\USB_Bootloader.cydsn\Generated_Source\PSoC5" "--" "-yv2" "-v3" "-ygs" "-q10" "-o2" "-.fftcfgtype=LE"
+Elaborating Design...
+HDL Generation ...
+Synthesis ...
+Place and Route ...
+Tech mapping ...
+Analog Placement ...
+Analog Routing ...
+Analog Code Generation ...
+Digital Placement ...
+Digital Routing ...
+Bitstream Generation ...
+Static timing analysis ...
+API Generation ...
+Dependency Generation ...
+Clean Temporary Files ...
+arm-none-eabi-gcc.exe -I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -Wall -g -D NDEBUG -Wa,-alh=.\CortexM3\ARM_GCC_473\Release\main.lst -Os -ffunction-sections -c .\main.c -o .\CortexM3\ARM_GCC_473\Release\main.o
+arm-none-eabi-gcc.exe -I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -Wall -g -D NDEBUG -Wa,-alh=.\CortexM3\ARM_GCC_473\Release\cyfitter_cfg.lst -Os -ffunction-sections -c .\Generated_Source\PSoC5\cyfitter_cfg.c -o .\CortexM3\ARM_GCC_473\Release\cyfitter_cfg.o
+arm-none-eabi-gcc.exe -I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -Wall -g -D NDEBUG -Wa,-alh=.\CortexM3\ARM_GCC_473\Release\cymetadata.lst -Os -ffunction-sections -c .\Generated_Source\PSoC5\cymetadata.c -o .\CortexM3\ARM_GCC_473\Release\cymetadata.o
+arm-none-eabi-gcc.exe -I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -Wall -g -D NDEBUG -Wa,-alh=.\CortexM3\ARM_GCC_473\Release\USBFS.lst -Os -ffunction-sections -c .\Generated_Source\PSoC5\USBFS.c -o .\CortexM3\ARM_GCC_473\Release\USBFS.o
+arm-none-eabi-gcc.exe -I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -Wall -g -D NDEBUG -Wa,-alh=.\CortexM3\ARM_GCC_473\Release\USBFS_audio.lst -Os -ffunction-sections -c .\Generated_Source\PSoC5\USBFS_audio.c -o .\CortexM3\ARM_GCC_473\Release\USBFS_audio.o
+arm-none-eabi-gcc.exe -I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -Wall -g -D NDEBUG -Wa,-alh=.\CortexM3\ARM_GCC_473\Release\USBFS_boot.lst -Os -ffunction-sections -c .\Generated_Source\PSoC5\USBFS_boot.c -o .\CortexM3\ARM_GCC_473\Release\USBFS_boot.o
+arm-none-eabi-gcc.exe -I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -Wall -g -D NDEBUG -Wa,-alh=.\CortexM3\ARM_GCC_473\Release\USBFS_cdc.lst -Os -ffunction-sections -c .\Generated_Source\PSoC5\USBFS_cdc.c -o .\CortexM3\ARM_GCC_473\Release\USBFS_cdc.o
+arm-none-eabi-gcc.exe -I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -Wall -g -D NDEBUG -Wa,-alh=.\CortexM3\ARM_GCC_473\Release\USBFS_cls.lst -Os -ffunction-sections -c .\Generated_Source\PSoC5\USBFS_cls.c -o .\CortexM3\ARM_GCC_473\Release\USBFS_cls.o
+arm-none-eabi-gcc.exe -I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -Wall -g -D NDEBUG -Wa,-alh=.\CortexM3\ARM_GCC_473\Release\USBFS_descr.lst -Os -ffunction-sections -c .\Generated_Source\PSoC5\USBFS_descr.c -o .\CortexM3\ARM_GCC_473\Release\USBFS_descr.o
+arm-none-eabi-gcc.exe -I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -Wall -g -D NDEBUG -Wa,-alh=.\CortexM3\ARM_GCC_473\Release\USBFS_drv.lst -Os -ffunction-sections -c .\Generated_Source\PSoC5\USBFS_drv.c -o .\CortexM3\ARM_GCC_473\Release\USBFS_drv.o
+arm-none-eabi-gcc.exe -I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -Wall -g -D NDEBUG -Wa,-alh=.\CortexM3\ARM_GCC_473\Release\USBFS_episr.lst -Os -ffunction-sections -c .\Generated_Source\PSoC5\USBFS_episr.c -o .\CortexM3\ARM_GCC_473\Release\USBFS_episr.o
+arm-none-eabi-gcc.exe -I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -Wall -g -D NDEBUG -Wa,-alh=.\CortexM3\ARM_GCC_473\Release\USBFS_hid.lst -Os -ffunction-sections -c .\Generated_Source\PSoC5\USBFS_hid.c -o .\CortexM3\ARM_GCC_473\Release\USBFS_hid.o
+arm-none-eabi-gcc.exe -I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -Wall -g -D NDEBUG -Wa,-alh=.\CortexM3\ARM_GCC_473\Release\USBFS_pm.lst -Os -ffunction-sections -c .\Generated_Source\PSoC5\USBFS_pm.c -o .\CortexM3\ARM_GCC_473\Release\USBFS_pm.o
+arm-none-eabi-gcc.exe -I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -Wall -g -D NDEBUG -Wa,-alh=.\CortexM3\ARM_GCC_473\Release\USBFS_std.lst -Os -ffunction-sections -c .\Generated_Source\PSoC5\USBFS_std.c -o .\CortexM3\ARM_GCC_473\Release\USBFS_std.o
+arm-none-eabi-gcc.exe -I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -Wall -g -D NDEBUG -Wa,-alh=.\CortexM3\ARM_GCC_473\Release\USBFS_vnd.lst -Os -ffunction-sections -c .\Generated_Source\PSoC5\USBFS_vnd.c -o .\CortexM3\ARM_GCC_473\Release\USBFS_vnd.o
+arm-none-eabi-gcc.exe -I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -Wall -g -D NDEBUG -Wa,-alh=.\CortexM3\ARM_GCC_473\Release\USBFS_midi.lst -Os -ffunction-sections -c .\Generated_Source\PSoC5\USBFS_midi.c -o .\CortexM3\ARM_GCC_473\Release\USBFS_midi.o
+arm-none-eabi-gcc.exe -I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -Wall -g -D NDEBUG -Wa,-alh=.\CortexM3\ARM_GCC_473\Release\BL.lst -Os -ffunction-sections -c .\Generated_Source\PSoC5\BL.c -o .\CortexM3\ARM_GCC_473\Release\BL.o
+arm-none-eabi-gcc.exe -I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -Wall -g -D NDEBUG -Wa,-alh=.\CortexM3\ARM_GCC_473\Release\USBFS_Dm.lst -Os -ffunction-sections -c .\Generated_Source\PSoC5\USBFS_Dm.c -o .\CortexM3\ARM_GCC_473\Release\USBFS_Dm.o
+arm-none-eabi-gcc.exe -I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -Wall -g -D NDEBUG -Wa,-alh=.\CortexM3\ARM_GCC_473\Release\USBFS_Dp.lst -Os -ffunction-sections -c .\Generated_Source\PSoC5\USBFS_Dp.c -o .\CortexM3\ARM_GCC_473\Release\USBFS_Dp.o
+arm-none-eabi-gcc.exe -I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -Wall -g -D NDEBUG -Wa,-alh=.\CortexM3\ARM_GCC_473\Release\Cm3Start.lst -Os -ffunction-sections -c .\Generated_Source\PSoC5\Cm3Start.c -o .\CortexM3\ARM_GCC_473\Release\Cm3Start.o
+arm-none-eabi-as.exe -I. -I./Generated_Source/PSoC5 -mcpu=cortex-m3 -mthumb -g -alh=.\CortexM3\ARM_GCC_473\Release/CyBootAsmGnu.lst -o .\CortexM3\ARM_GCC_473\Release\CyBootAsmGnu.o .\Generated_Source\PSoC5\CyBootAsmGnu.s
+arm-none-eabi-gcc.exe -I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -Wall -g -D NDEBUG -Wa,-alh=.\CortexM3\ARM_GCC_473\Release\CyDmac.lst -Os -ffunction-sections -c .\Generated_Source\PSoC5\CyDmac.c -o .\CortexM3\ARM_GCC_473\Release\CyDmac.o
+arm-none-eabi-gcc.exe -I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -Wall -g -D NDEBUG -Wa,-alh=.\CortexM3\ARM_GCC_473\Release\CyFlash.lst -Os -ffunction-sections -c .\Generated_Source\PSoC5\CyFlash.c -o .\CortexM3\ARM_GCC_473\Release\CyFlash.o
+arm-none-eabi-gcc.exe -I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -Wall -g -D NDEBUG -Wa,-alh=.\CortexM3\ARM_GCC_473\Release\CyLib.lst -Os -ffunction-sections -c .\Generated_Source\PSoC5\CyLib.c -o .\CortexM3\ARM_GCC_473\Release\CyLib.o
+arm-none-eabi-gcc.exe -I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -Wall -g -D NDEBUG -Wa,-alh=.\CortexM3\ARM_GCC_473\Release\cyPm.lst -Os -ffunction-sections -c .\Generated_Source\PSoC5\cyPm.c -o .\CortexM3\ARM_GCC_473\Release\cyPm.o
+arm-none-eabi-gcc.exe -I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -Wall -g -D NDEBUG -Wa,-alh=.\CortexM3\ARM_GCC_473\Release\CySpc.lst -Os -ffunction-sections -c .\Generated_Source\PSoC5\CySpc.c -o .\CortexM3\ARM_GCC_473\Release\CySpc.o
+arm-none-eabi-gcc.exe -I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -Wall -g -D NDEBUG -Wa,-alh=.\CortexM3\ARM_GCC_473\Release\cyutils.lst -Os -ffunction-sections -c .\Generated_Source\PSoC5\cyutils.c -o .\CortexM3\ARM_GCC_473\Release\cyutils.o
+arm-none-eabi-ar.exe -rs .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a .\CortexM3\ARM_GCC_473\Release\cyfitter_cfg.o .\CortexM3\ARM_GCC_473\Release\USBFS.o .\CortexM3\ARM_GCC_473\Release\USBFS_audio.o .\CortexM3\ARM_GCC_473\Release\USBFS_boot.o .\CortexM3\ARM_GCC_473\Release\USBFS_cdc.o .\CortexM3\ARM_GCC_473\Release\USBFS_cls.o .\CortexM3\ARM_GCC_473\Release\USBFS_descr.o .\CortexM3\ARM_GCC_473\Release\USBFS_drv.o .\CortexM3\ARM_GCC_473\Release\USBFS_episr.o .\CortexM3\ARM_GCC_473\Release\USBFS_hid.o .\CortexM3\ARM_GCC_473\Release\USBFS_pm.o .\CortexM3\ARM_GCC_473\Release\USBFS_std.o .\CortexM3\ARM_GCC_473\Release\USBFS_vnd.o .\CortexM3\ARM_GCC_473\Release\USBFS_midi.o .\CortexM3\ARM_GCC_473\Release\BL.o .\CortexM3\ARM_GCC_473\Release\USBFS_Dm.o .\CortexM3\ARM_GCC_473\Release\USBFS_Dp.o .\CortexM3\ARM_GCC_473\Release\CyBootAsmGnu.o .\CortexM3\ARM_GCC_473\Release\CyDmac.o .\CortexM3\ARM_GCC_473\Release\CyFlash.o .\CortexM3\ARM_GCC_473\Release\CyLib.o .\CortexM3\ARM_GCC_473\Release\cyPm.o .\CortexM3\ARM_GCC_473\Release\CySpc.o .\CortexM3\ARM_GCC_473\Release\cyutils.o
+arm-none-eabi-ar.exe: creating .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a
+arm-none-eabi-gcc.exe -mthumb -march=armv7-m -mfix-cortex-m3-ldrd -T .\Generated_Source\PSoC5\cm3gcc.ld -g -Wl,-Map,.\CortexM3\ARM_GCC_473\Release\USB_Bootloader.map -specs=nano.specs -Wl,--gc-sections -Wl,--start-group -o .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.elf .\CortexM3\ARM_GCC_473\Release\main.o .\CortexM3\ARM_GCC_473\Release\cymetadata.o .\CortexM3\ARM_GCC_473\Release\Cm3Start.o .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a "C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\psoc\content\cycomponentlibrary\CyComponentLibrary.cylib\CortexM3\ARM_GCC_473\Release\CyComponentLibrary.a" -Wl,--end-group
+cyelftool.exe -P W:\SCSI2SD\USB_Bootloader.cydsn\CortexM3\ARM_GCC_473\Release\USB_Bootloader.elf --flash_row_size 256 --flash_size 131072 --size_var_name BL_SizeBytes --checksum_var_name BL_Checksum
+cyelftool.exe -S W:\SCSI2SD\USB_Bootloader.cydsn\CortexM3\ARM_GCC_473\Release\USB_Bootloader.elf
+Flash used: 8856 of 131072 bytes (6.8 %).
+SRAM used: 10869 of 32768 bytes (33.2 %).
+--------------- Rebuild Succeeded: 10/26/2013 18:56:17 ---------------

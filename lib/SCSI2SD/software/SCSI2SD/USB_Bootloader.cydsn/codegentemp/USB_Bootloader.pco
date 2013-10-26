@@ -1,0 +1,53 @@
+# USB_Bootloader
+# 2013-10-26 08:55:21Z
+
+# IO_0@[IOP=(1)][IoId=(0)] is reserved: SWDDebugEnabled
+dont_use_io iocell 1 0
+# IO_1@[IOP=(1)][IoId=(1)] is reserved: SWDDebugEnabled
+dont_use_io iocell 1 1
+# IO_3@[IOP=(1)][IoId=(3)] is reserved: SWDDebugEnabled
+dont_use_io iocell 1 3
+dont_use_location comparatorcell -1 -1 1
+dont_use_location comparatorcell -1 -1 3
+dont_use_location sccell -1 -1 0
+dont_use_location sccell -1 -1 1
+dont_use_location sccell -1 -1 2
+dont_use_location sccell -1 -1 3
+dont_use_location vidaccell -1 -1 1
+dont_use_location vidaccell -1 -1 2
+dont_use_location vidaccell -1 -1 3
+dont_use_location sarcell -1 -1 1
+dont_use_location abufcell -1 -1 0
+dont_use_location abufcell -1 -1 2
+dont_use_location abufcell -1 -1 1
+dont_use_location abufcell -1 -1 3
+set_location "ClockBlock" clockblockcell -1 -1 0
+set_io "SCSI_Out(0)" iocell 4 3
+set_io "SCSI_Out(1)" iocell 4 2
+set_io "SCSI_Out(2)" iocell 0 7
+set_io "SCSI_Out(3)" iocell 0 6
+set_io "SCSI_Out(4)" iocell 0 5
+set_io "SCSI_Out(5)" iocell 0 4
+set_io "SCSI_Out(6)" iocell 0 3
+set_io "SCSI_Out(7)" iocell 0 2
+set_io "SCSI_Out(8)" iocell 0 1
+set_io "SCSI_Out(9)" iocell 0 0
+set_io "SCSI_Out_DBx(0)" iocell 6 3
+set_io "SCSI_Out_DBx(1)" iocell 6 2
+set_io "SCSI_Out_DBx(2)" iocell 6 1
+set_io "SCSI_Out_DBx(3)" iocell 6 0
+set_io "SCSI_Out_DBx(4)" iocell 4 7
+set_io "SCSI_Out_DBx(5)" iocell 4 6
+set_io "SCSI_Out_DBx(6)" iocell 4 5
+set_io "SCSI_Out_DBx(7)" iocell 4 4
+set_io "\USBFS:Dm(0)\" iocell 15 7
+set_io "\USBFS:Dp(0)\" iocell 15 6
+set_location "\USBFS:Dp\" logicalport -1 -1 15
+set_location "\USBFS:USB\" usbcell -1 -1 0
+set_location "\USBFS:arb_int\" interrupt -1 -1 22
+set_location "\USBFS:bus_reset\" interrupt -1 -1 23
+set_location "\USBFS:dp_int\" interrupt -1 -1 12
+set_location "\USBFS:ep_0\" interrupt -1 -1 24
+set_location "\USBFS:ep_1\" interrupt -1 -1 0
+set_location "\USBFS:ep_2\" interrupt -1 -1 1
+set_location "\USBFS:sof_int\" interrupt -1 -1 21

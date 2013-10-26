@@ -1,0 +1,3094 @@
+/*
+   Copyright Cypress Semiconductor Corporation, 2010-2011
+*/
+/*library (leopard) {
+
+	timescale : 1ns;
+*/
+
+	cell (clockblockcell) {
+		bundle (dclk) {
+			members (dclk_0, dclk_1, dclk_2, dclk_3, dclk_4, dclk_5, dclk_6, dclk_7);
+			direction : output;
+		}
+		bundle (dclk_glb) {
+			members (dclk_glb_0, dclk_glb_1, dclk_glb_2, dclk_glb_3, dclk_glb_4, dclk_glb_5, dclk_glb_6, dclk_glb_7);
+			direction : output;
+		}
+		bundle (aclk) {
+			members (aclk_0, aclk_1, aclk_2, aclk_3);
+			direction : output;
+		}
+		bundle (aclk_glb) {
+			members (aclk_glb_0, aclk_glb_1, aclk_glb_2, aclk_glb_3);
+			direction : output;
+		}
+		bundle (clk_a_dig) {
+			members (clk_a_dig_0, clk_a_dig_1, clk_a_dig_2, clk_a_dig_3);
+			direction : output;
+		}
+		bundle (clk_a_dig_glb) {
+			members (clk_a_dig_glb_0, clk_a_dig_glb_1, clk_a_dig_glb_2, clk_a_dig_glb_3);
+			direction : output;
+		}
+		pin (clk_bus) { direction : output; }
+		pin (clk_bus_glb) { direction : output; }
+		pin (clk_sync) { direction : output; }
+		pin (clk_32k_xtal) { direction : output; }
+		pin (clk_100k) { direction : output; }
+		pin (clk_32k) { direction : output; }
+		pin (clk_1k) { direction : output; }
+		pin (clk_usb) { direction : output; }
+		pin (imo) { direction : output; }
+		pin (ilo) { direction : output; }
+		pin (xtal) { direction : output; }
+		pin (pllout) { direction : output; }
+		pin (xmhz_xerr) { direction : output; }
+		pin (pll_lock_out) { direction : output; }
+		bundle (dsi_dig_div) {
+			members (dsi_dig_div_0, dsi_dig_div_1, dsi_dig_div_2, dsi_dig_div_3, dsi_dig_div_4, dsi_dig_div_5, dsi_dig_div_6, dsi_dig_div_7);
+			direction : input;
+		}
+		bundle (dsi_ana_div) {
+			members (dsi_ana_div_0, dsi_ana_div_1, dsi_ana_div_2, dsi_ana_div_3);
+			direction : input;
+		}
+		pin (dsi_glb_div) { direction : input; }
+		pin (dsi_clkin_div) { direction : input; }
+	}
+
+	cell (carrycell) {
+	}
+
+	cell (interrupt) {
+		pin (clock) {
+			direction : input;
+			clock : true;
+		}
+		pin (interrupt) {
+			direction : input;
+		}
+	}
+
+	cell (logicalport) {
+		pin (interrupt) {
+			direction : output;
+		}
+		pin (precharge) {
+			direction : input;
+		}
+	}
+
+	cell (iocell) {
+		pin (in_clock) {
+			direction : input;
+		}
+		pin (in_clock_en) {
+			direction : input;
+		}
+		pin (in_reset) {
+			direction : input;
+		}
+		pin (out_clock) {
+			direction : input;
+		}
+		pin (out_clock_en) {
+			direction : input;
+		}
+		pin (out_reset) {
+			direction : input;
+		}
+		pin (pin_input) {
+			direction : input;
+		}
+        pin (pa_out) {
+			direction : input;
+		}
+		pin (oe) {
+			direction : input;
+		}
+		pin (pad_in) {
+			direction : input;
+		}
+		pin (pad_out) {
+			direction : output;
+			timing() {
+				timing_type : combinational;
+				timing_sense : positive_unate;
+				related_pin : "pin_input";
+				intrinsic_rise : 16.2;
+				intrinsic_fall : 16.2;
+			}
+			timing() {
+				timing_type : three_state_enable;
+				timing_sense : positive_unate;
+				related_pin : "oe";
+				intrinsic_rise : 12.8;
+				intrinsic_fall : 12.8;
+			}
+			timing() {
+				timing_type : three_state_disable;
+				timing_sense : negative_unate;
+				related_pin : "oe";
+				intrinsic_rise : 12.8;
+				intrinsic_fall : 12.8;
+			}
+		}
+		pin (fb) {
+			direction : output;
+			function : "pad_in";
+			timing() {
+				timing_type : combinational;
+				timing_sense : positive_unate;
+				related_pin : "pad_in";
+				intrinsic_rise : 8.5;
+				intrinsic_fall : 8.5;
+			}
+		}
+	}
+
+	cell (iocell_ireg) {
+		pin (in_clock) {
+			direction : input;
+			clock : true;
+		}
+		pin (in_clock_en) {
+			direction : input;
+		}
+		pin (in_reset) {
+			direction : input;
+		}
+		pin (out_clock) {
+			direction : input;
+		}
+		pin (out_clock_en) {
+			direction : input;
+		}
+		pin (out_reset) {
+			direction : input;
+		}
+		pin (pin_input) {
+			direction : input;
+		}
+        pin (pa_out) {
+			direction : input;
+		}
+		pin (oe) {
+			direction : input;
+		}
+		pin (pad_in) {
+			direction : input;
+		}
+		pin (pad_out) {
+			direction : output;
+			timing() {
+				timing_type : combinational;
+				timing_sense : positive_unate;
+				related_pin : "pin_input";
+				intrinsic_rise : 16.2;
+				intrinsic_fall : 16.2;
+			}
+			timing() {
+				timing_type : three_state_enable;
+				timing_sense : positive_unate;
+				related_pin : "oe";
+				intrinsic_rise : 12.8;
+				intrinsic_fall : 12.8;
+			}
+			timing() {
+				timing_type : three_state_disable;
+				timing_sense : negative_unate;
+				related_pin : "oe";
+				intrinsic_rise : 12.8;
+				intrinsic_fall : 12.8;
+			}
+		}
+		pin (fb) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "in_clock";
+				intrinsic_rise : 6.16;
+				intrinsic_fall : 6.16;
+			}
+		}
+	}
+
+	cell (iocell_oreg) {
+		pin (in_clock) {
+			direction : input;
+		}
+		pin (in_clock_en) {
+			direction : input;
+		}
+		pin (in_reset) {
+			direction : input;
+		}
+		pin (out_clock) {
+			direction : input;
+			clock : true;
+		}
+		pin (out_clock_en) {
+			direction : input;
+		}
+		pin (out_reset) {
+			direction : input;
+		}
+		pin (pin_input) {
+			direction : input;
+			timing() {
+				timing_type : setup_rising;
+				related_pin : "out_clock";
+				intrinsic_rise : 5.83;
+				intrinsic_fall : 5.83;
+			}
+		}
+        pin (pa_out) {
+			direction : input;
+		}
+		pin (oe) {
+			direction : input;
+		}
+		pin (pad_in) {
+			direction : input;
+		}
+		pin (pad_out) {
+			direction : output;
+			timing() {
+				timing_type : three_state_enable;
+				timing_sense : positive_unate;
+				related_pin : "oe";
+				intrinsic_rise : 12.8;
+				intrinsic_fall : 12.8;
+			}
+			timing() {
+				timing_type : three_state_disable;
+				timing_sense : negative_unate;
+				related_pin : "oe";
+				intrinsic_rise : 12.8;
+				intrinsic_fall : 12.8;
+			}
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "out_clock";
+				intrinsic_rise : 16.5;
+				intrinsic_fall : 16.5;
+			}
+		}
+		pin (fb) {
+			direction : output;
+			function : "pad_in";
+			timing() {
+				timing_type : combinational;
+				timing_sense : positive_unate;
+				related_pin : "pad_in";
+				intrinsic_rise : 8.5;
+				intrinsic_fall : 8.5;
+			}
+		}
+	}
+
+	cell (iocell_ioreg) {
+		pin (in_clock) {
+			direction : input;
+			clock : true;
+		}
+		pin (in_clock_en) {
+			direction : input;
+		}
+		pin (in_reset) {
+			direction : input;
+		}
+		pin (out_clock) {
+			direction : input;
+			clock : true;
+		}
+		pin (out_clock_en) {
+			direction : input;
+		}
+		pin (out_reset) {
+			direction : input;
+		}
+		pin (pin_input) {
+			direction : input;
+			timing() {
+				timing_type : setup_rising;
+				related_pin : "out_clock";
+				intrinsic_rise : 5.83;
+				intrinsic_fall : 5.83;
+			}
+		}
+        pin (pa_out) {
+			direction : input;
+		}
+		pin (oe) {
+			direction : input;
+		}
+		pin (pad_in) {
+			direction : input;
+		}
+		pin (pad_out) {
+			direction : output;
+			timing() {
+				timing_type : three_state_enable;
+				timing_sense : positive_unate;
+				related_pin : "oe";
+				intrinsic_rise : 12.8;
+				intrinsic_fall : 12.8;
+			}
+			timing() {
+				timing_type : three_state_disable;
+				timing_sense : negative_unate;
+				related_pin : "oe";
+				intrinsic_rise : 12.8;
+				intrinsic_fall : 12.8;
+			}
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "out_clock";
+				intrinsic_rise : 16.5;
+				intrinsic_fall : 16.5;
+			}
+		}
+		pin (fb) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "in_clock";
+				intrinsic_rise : 6.16;
+				intrinsic_fall : 6.16;
+			}
+		}
+	}
+	
+	cell (iocell_lv) {
+		pin (in_clock) {
+			direction : input;
+		}
+		pin (in_clock_en) {
+			direction : input;
+		}
+		pin (in_reset) {
+			direction : input;
+		}
+		pin (out_clock) {
+			direction : input;
+		}
+		pin (out_clock_en) {
+			direction : input;
+		}
+		pin (out_reset) {
+			direction : input;
+		}
+		pin (pin_input) {
+			direction : input;
+		}
+        pin (pa_out) {
+			direction : input;
+		}
+		pin (oe) {
+			direction : input;
+		}
+		pin (pad_in) {
+			direction : input;
+		}
+		pin (pad_out) {
+			direction : output;
+			timing() {
+				timing_type : combinational;
+				timing_sense : positive_unate;
+				related_pin : "pin_input";
+				intrinsic_rise : 33.5;
+				intrinsic_fall : 33.5;
+			}
+			timing() {
+				timing_type : three_state_enable;
+				timing_sense : positive_unate;
+				related_pin : "oe";
+				intrinsic_rise : 14.8;
+				intrinsic_fall : 14.8;
+			}
+			timing() {
+				timing_type : three_state_disable;
+				timing_sense : negative_unate;
+				related_pin : "oe";
+				intrinsic_rise : 14.8;
+				intrinsic_fall : 14.8;
+			}
+		}
+		pin (fb) {
+			direction : output;
+			function : "pad_in";
+			timing() {
+				timing_type : combinational;
+				timing_sense : positive_unate;
+				related_pin : "pad_in";
+				intrinsic_rise : 11.83;
+				intrinsic_fall : 11.83;
+			}
+		}
+	}
+
+	cell (iocell_ireg_lv) {
+		pin (in_clock) {
+			direction : input;
+			clock : true;
+		}
+		pin (in_clock_en) {
+			direction : input;
+		}
+		pin (in_reset) {
+			direction : input;
+		}
+		pin (out_clock) {
+			direction : input;
+		}
+		pin (out_clock_en) {
+			direction : input;
+		}
+		pin (out_reset) {
+			direction : input;
+		}
+		pin (pin_input) {
+			direction : input;
+		}
+        pin (pa_out) {
+			direction : input;
+		}
+		pin (oe) {
+			direction : input;
+		}
+		pin (pad_in) {
+			direction : input;
+		}
+		pin (pad_out) {
+			direction : output;
+			timing() {
+				timing_type : combinational;
+				timing_sense : positive_unate;
+				related_pin : "pin_input";
+				intrinsic_rise : 33.5;
+				intrinsic_fall : 33.5;
+			}
+			timing() {
+				timing_type : three_state_enable;
+				timing_sense : positive_unate;
+				related_pin : "oe";
+				intrinsic_rise : 14.8;
+				intrinsic_fall : 14.8;
+			}
+			timing() {
+				timing_type : three_state_disable;
+				timing_sense : negative_unate;
+				related_pin : "oe";
+				intrinsic_rise : 14.8;
+				intrinsic_fall : 14.8;
+			}
+		}
+		pin (fb) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "in_clock";
+				intrinsic_rise : 6.16;
+				intrinsic_fall : 6.16;
+			}
+		}
+	}
+
+	cell (iocell_oreg_lv) {
+		pin (in_clock) {
+			direction : input;
+		}
+		pin (in_clock_en) {
+			direction : input;
+		}
+		pin (in_reset) {
+			direction : input;
+		}
+		pin (out_clock) {
+			direction : input;
+			clock : true;
+		}
+		pin (out_clock_en) {
+			direction : input;
+		}
+		pin (out_reset) {
+			direction : input;
+		}
+		pin (pin_input) {
+			direction : input;
+			timing() {
+				timing_type : setup_rising;
+				related_pin : "out_clock";
+				intrinsic_rise : 5.83;
+				intrinsic_fall : 5.83;
+			}
+		}
+        pin (pa_out) {
+			direction : input;
+		}
+		pin (oe) {
+			direction : input;
+		}
+		pin (pad_in) {
+			direction : input;
+		}
+		pin (pad_out) {
+			direction : output;
+			timing() {
+				timing_type : three_state_enable;
+				timing_sense : positive_unate;
+				related_pin : "oe";
+				intrinsic_rise : 14.8;
+				intrinsic_fall : 14.8;
+			}
+			timing() {
+				timing_type : three_state_disable;
+				timing_sense : negative_unate;
+				related_pin : "oe";
+				intrinsic_rise : 14.8;
+				intrinsic_fall : 14.8;
+			}
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "out_clock";
+				intrinsic_rise : 32.5;
+				intrinsic_fall : 32.5;
+			}
+		}
+		pin (fb) {
+			direction : output;
+			function : "pad_in";
+			timing() {
+				timing_type : combinational;
+				timing_sense : positive_unate;
+				related_pin : "pad_in";
+				intrinsic_rise : 11.83;
+				intrinsic_fall : 11.83;
+			}
+		}
+	}
+
+	cell (iocell_ioreg_lv) {
+		pin (in_clock) {
+			direction : input;
+			clock : true;
+		}
+		pin (in_clock_en) {
+			direction : input;
+		}
+		pin (in_reset) {
+			direction : input;
+		}
+		pin (out_clock) {
+			direction : input;
+			clock : true;
+		}
+		pin (out_clock_en) {
+			direction : input;
+		}
+		pin (out_reset) {
+			direction : input;
+		}
+		pin (pin_input) {
+			direction : input;
+			timing() {
+				timing_type : setup_rising;
+				related_pin : "out_clock";
+				intrinsic_rise : 5.83;
+				intrinsic_fall : 5.83;
+			}
+		}
+        pin (pa_out) {
+			direction : input;
+		}
+		pin (oe) {
+			direction : input;
+		}
+		pin (pad_in) {
+			direction : input;
+		}
+		pin (pad_out) {
+			direction : output;
+			timing() {
+				timing_type : three_state_enable;
+				timing_sense : positive_unate;
+				related_pin : "oe";
+				intrinsic_rise : 14.8;
+				intrinsic_fall : 14.8;
+			}
+			timing() {
+				timing_type : three_state_disable;
+				timing_sense : negative_unate;
+				related_pin : "oe";
+				intrinsic_rise : 14.8;
+				intrinsic_fall : 14.8;
+			}
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "out_clock";
+				intrinsic_rise : 32.5;
+				intrinsic_fall : 32.5;
+			}
+		}
+		pin (fb) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "in_clock";
+				intrinsic_rise : 6.16;
+				intrinsic_fall : 6.16;
+			}
+		}
+	}
+
+	cell (sio) {
+		pin (in_clock) {
+			direction : input;
+		}
+		pin (in_clock_en) {
+			direction : input;
+		}
+		pin (in_reset) {
+			direction : input;
+		}
+		pin (out_clock) {
+			direction : input;
+		}
+		pin (out_clock_en) {
+			direction : input;
+		}
+		pin (out_reset) {
+			direction : input;
+		}
+		pin (pin_input) {
+			direction : input;
+		}
+        pin (pa_out) {
+			direction : input;
+		}
+		pin (oe) {
+			direction : input;
+		}
+		pin (pad_in) {
+			direction : input;
+		}
+		pin (pad_out) {
+			direction : output;
+			timing() {
+				timing_type : combinational;
+				timing_sense : positive_unate;
+				related_pin : "pin_input";
+				intrinsic_rise : 17;
+				intrinsic_fall : 17;
+			}
+			timing() {
+				timing_type : three_state_enable;
+				timing_sense : positive_unate;
+				related_pin : "oe";
+				intrinsic_rise : 14.8;
+				intrinsic_fall : 14.8;
+			}
+			timing() {
+				timing_type : three_state_disable;
+				timing_sense : negative_unate;
+				related_pin : "oe";
+				intrinsic_rise : 14.8;
+				intrinsic_fall : 14.8;
+			}
+		}
+		pin (fb) {
+			direction : output;
+			function : "pad_in";
+			timing() {
+				timing_type : combinational;
+				timing_sense : positive_unate;
+				related_pin : "pad_in";
+				intrinsic_rise : 8.5;
+				intrinsic_fall : 8.5;
+			}
+		}
+	}
+
+	cell (sio_ireg) {
+		pin (in_clock) {
+			direction : input;
+			clock : true;
+		}
+		pin (in_clock_en) {
+			direction : input;
+		}
+		pin (in_reset) {
+			direction : input;
+		}
+		pin (out_clock) {
+			direction : input;
+		}
+		pin (out_clock_en) {
+			direction : input;
+		}
+		pin (out_reset) {
+			direction : input;
+		}
+		pin (pin_input) {
+			direction : input;
+		}
+        pin (pa_out) {
+			direction : input;
+		}
+		pin (oe) {
+			direction : input;
+		}
+		pin (pad_in) {
+			direction : input;
+		}
+		pin (pad_out) {
+			direction : output;
+			timing() {
+				timing_type : combinational;
+				timing_sense : positive_unate;
+				related_pin : "pin_input";
+				intrinsic_rise : 17;
+				intrinsic_fall : 17;
+			}
+			timing() {
+				timing_type : three_state_enable;
+				timing_sense : positive_unate;
+				related_pin : "oe";
+				intrinsic_rise : 14.8;
+				intrinsic_fall : 14.8;
+			}
+			timing() {
+				timing_type : three_state_disable;
+				timing_sense : negative_unate;
+				related_pin : "oe";
+				intrinsic_rise : 14.8;
+				intrinsic_fall : 14.8;
+			}
+		}
+		pin (fb) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "in_clock";
+				intrinsic_rise : 6.16;
+				intrinsic_fall : 6.16;
+			}
+		}
+	}
+
+	cell (sio_oreg) {
+		pin (in_clock) {
+			direction : input;
+		}
+		pin (in_clock_en) {
+			direction : input;
+		}
+		pin (in_reset) {
+			direction : input;
+		}
+		pin (out_clock) {
+			direction : input;
+			clock : true;
+		}
+		pin (out_clock_en) {
+			direction : input;
+		}
+		pin (out_reset) {
+			direction : input;
+		}
+		pin (pin_input) {
+			direction : input;
+			timing() {
+				timing_type : setup_rising;
+				related_pin : "out_clock";
+				intrinsic_rise : 5.83;
+				intrinsic_fall : 5.83;
+			}
+		}
+        pin (pa_out) {
+			direction : input;
+		}
+		pin (oe) {
+			direction : input;
+		}
+		pin (pad_in) {
+			direction : input;
+		}
+		pin (pad_out) {
+			direction : output;
+			timing() {
+				timing_type : three_state_enable;
+				timing_sense : positive_unate;
+				related_pin : "oe";
+				intrinsic_rise : 14.8;
+				intrinsic_fall : 14.8;
+			}
+			timing() {
+				timing_type : three_state_disable;
+				timing_sense : negative_unate;
+				related_pin : "oe";
+				intrinsic_rise : 14.8;
+				intrinsic_fall : 14.8;
+			}
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "out_clock";
+				intrinsic_rise : 16.5;
+				intrinsic_fall : 16.5;
+			}
+		}
+		pin (fb) {
+			direction : output;
+			function : "pad_in";
+			timing() {
+				timing_type : combinational;
+				timing_sense : positive_unate;
+				related_pin : "pad_in";
+				intrinsic_rise : 8.5;
+				intrinsic_fall : 8.5;
+			}
+		}
+	}
+
+	cell (sio_ioreg) {
+		pin (in_clock) {
+			direction : input;
+			clock : true;
+		}
+		pin (in_clock_en) {
+			direction : input;
+		}
+		pin (in_reset) {
+			direction : input;
+		}
+		pin (out_clock) {
+			direction : input;
+			clock : true;
+		}
+		pin (out_clock_en) {
+			direction : input;
+		}
+		pin (out_reset) {
+			direction : input;
+		}
+		pin (pin_input) {
+			direction : input;
+			timing() {
+				timing_type : setup_rising;
+				related_pin : "out_clock";
+				intrinsic_rise : 5.83;
+				intrinsic_fall : 5.83;
+			}
+		}
+        pin (pa_out) {
+			direction : input;
+		}
+		pin (oe) {
+			direction : input;
+		}
+		pin (pad_in) {
+			direction : input;
+		}
+		pin (pad_out) {
+			direction : output;
+			timing() {
+				timing_type : three_state_enable;
+				timing_sense : positive_unate;
+				related_pin : "oe";
+				intrinsic_rise : 14.8;
+				intrinsic_fall : 14.8;
+			}
+			timing() {
+				timing_type : three_state_disable;
+				timing_sense : negative_unate;
+				related_pin : "oe";
+				intrinsic_rise : 14.8;
+				intrinsic_fall : 14.8;
+			}
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "out_clock";
+				intrinsic_rise : 16.5;
+				intrinsic_fall : 16.5;
+			}
+		}
+		pin (fb) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "in_clock";
+				intrinsic_rise : 6.16;
+				intrinsic_fall : 6.16;
+			}
+		}
+	}
+
+	cell (sio_lv) {
+		pin (in_clock) {
+			direction : input;
+		}
+		pin (in_clock_en) {
+			direction : input;
+		}
+		pin (in_reset) {
+			direction : input;
+		}
+		pin (out_clock) {
+			direction : input;
+		}
+		pin (out_clock_en) {
+			direction : input;
+		}
+		pin (out_reset) {
+			direction : input;
+		}
+		pin (pin_input) {
+			direction : input;
+		}
+        pin (pa_out) {
+			direction : input;
+		}
+		pin (oe) {
+			direction : input;
+		}
+		pin (pad_in) {
+			direction : input;
+		}
+		pin (pad_out) {
+			direction : output;
+			timing() {
+				timing_type : combinational;
+				timing_sense : positive_unate;
+				related_pin : "pin_input";
+				intrinsic_rise : 30.9;
+				intrinsic_fall : 30.9;
+			}
+			timing() {
+				timing_type : three_state_enable;
+				timing_sense : positive_unate;
+				related_pin : "oe";
+				intrinsic_rise : 18.3;
+				intrinsic_fall : 18.3;
+			}
+			timing() {
+				timing_type : three_state_disable;
+				timing_sense : negative_unate;
+				related_pin : "oe";
+				intrinsic_rise : 18.3;
+				intrinsic_fall : 18.3;
+			}
+		}
+		pin (fb) {
+			direction : output;
+			function : "pad_in";
+			timing() {
+				timing_type : combinational;
+				timing_sense : positive_unate;
+				related_pin : "pad_in";
+				intrinsic_rise : 11.83;
+				intrinsic_fall : 11.83;
+			}
+		}
+	}
+
+	cell (sio_ireg_lv) {
+		pin (in_clock) {
+			direction : input;
+			clock : true;
+		}
+		pin (in_clock_en) {
+			direction : input;
+		}
+		pin (in_reset) {
+			direction : input;
+		}
+		pin (out_clock) {
+			direction : input;
+		}
+		pin (out_clock_en) {
+			direction : input;
+		}
+		pin (out_reset) {
+			direction : input;
+		}
+		pin (pin_input) {
+			direction : input;
+		}
+        pin (pa_out) {
+			direction : input;
+		}
+		pin (oe) {
+			direction : input;
+		}
+		pin (pad_in) {
+			direction : input;
+		}
+		pin (pad_out) {
+			direction : output;
+			timing() {
+				timing_type : combinational;
+				timing_sense : positive_unate;
+				related_pin : "pin_input";
+				intrinsic_rise : 30.9;
+				intrinsic_fall : 30.9;
+			}
+			timing() {
+				timing_type : three_state_enable;
+				timing_sense : positive_unate;
+				related_pin : "oe";
+				intrinsic_rise : 18.3;
+				intrinsic_fall : 18.3;
+			}
+			timing() {
+				timing_type : three_state_disable;
+				timing_sense : negative_unate;
+				related_pin : "oe";
+				intrinsic_rise : 18.3;
+				intrinsic_fall : 18.3;
+			}
+		}
+		pin (fb) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "in_clock";
+				intrinsic_rise : 6.16;
+				intrinsic_fall : 6.16;
+			}
+		}
+	}
+
+	cell (sio_oreg_lv) {
+		pin (in_clock) {
+			direction : input;
+		}
+		pin (in_clock_en) {
+			direction : input;
+		}
+		pin (in_reset) {
+			direction : input;
+		}
+		pin (out_clock) {
+			direction : input;
+			clock : true;
+		}
+		pin (out_clock_en) {
+			direction : input;
+		}
+		pin (out_reset) {
+			direction : input;
+		}
+		pin (pin_input) {
+			direction : input;
+			timing() {
+				timing_type : setup_rising;
+				related_pin : "out_clock";
+				intrinsic_rise : 5.83;
+				intrinsic_fall : 5.83;
+			}
+		}
+        pin (pa_out) {
+			direction : input;
+		}
+		pin (oe) {
+			direction : input;
+		}
+		pin (pad_in) {
+			direction : input;
+		}
+		pin (pad_out) {
+			direction : output;
+			timing() {
+				timing_type : three_state_enable;
+				timing_sense : positive_unate;
+				related_pin : "oe";
+				intrinsic_rise : 18.3;
+				intrinsic_fall : 18.3;
+			}
+			timing() {
+				timing_type : three_state_disable;
+				timing_sense : negative_unate;
+				related_pin : "oe";
+				intrinsic_rise : 18.3;
+				intrinsic_fall : 18.3;
+			}
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "out_clock";
+				intrinsic_rise : 32.5;
+				intrinsic_fall : 32.5;
+			}
+		}
+		pin (fb) {
+			direction : output;
+			function : "pad_in";
+			timing() {
+				timing_type : combinational;
+				timing_sense : positive_unate;
+				related_pin : "pad_in";
+				intrinsic_rise : 11.83;
+				intrinsic_fall : 11.83;
+			}
+		}
+	}
+
+	cell (sio_ioreg_lv) {
+		pin (in_clock) {
+			direction : input;
+			clock : true;
+		}
+		pin (in_clock_en) {
+			direction : input;
+		}
+		pin (in_reset) {
+			direction : input;
+		}
+		pin (out_clock) {
+			direction : input;
+			clock : true;
+		}
+		pin (out_clock_en) {
+			direction : input;
+		}
+		pin (out_reset) {
+			direction : input;
+		}
+		pin (pin_input) {
+			direction : input;
+			timing() {
+				timing_type : setup_rising;
+				related_pin : "out_clock";
+				intrinsic_rise : 5.83;
+				intrinsic_fall : 5.83;
+			}
+		}
+        pin (pa_out) {
+			direction : input;
+		}
+		pin (oe) {
+			direction : input;
+		}
+		pin (pad_in) {
+			direction : input;
+		}
+		pin (pad_out) {
+			direction : output;
+			timing() {
+				timing_type : three_state_enable;
+				timing_sense : positive_unate;
+				related_pin : "oe";
+				intrinsic_rise : 18.3;
+				intrinsic_fall : 18.3;
+			}
+			timing() {
+				timing_type : three_state_disable;
+				timing_sense : negative_unate;
+				related_pin : "oe";
+				intrinsic_rise : 18.3;
+				intrinsic_fall : 18.3;
+			}
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "out_clock";
+				intrinsic_rise : 32.5;
+				intrinsic_fall : 32.5;
+			}
+		}
+		pin (fb) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "in_clock";
+				intrinsic_rise : 6.16;
+				intrinsic_fall : 6.16;
+			}
+		}
+	}
+
+	cell (usbio) {
+		pin (in_clock) {
+			direction : input;
+		}
+		pin (in_clock_en) {
+			direction : input;
+		}
+		pin (in_reset) {
+			direction : input;
+		}
+		pin (out_clock) {
+			direction : input;
+		}
+		pin (out_clock_en) {
+			direction : input;
+		}
+		pin (out_reset) {
+			direction : input;
+		}
+		pin (pin_input) {
+			direction : input;
+		}
+        pin (pa_out) {
+			direction : input;
+		}
+		pin (oe) {
+			direction : input;
+		}
+		pin (pad_in) {
+			direction : input;
+		}
+		pin (pad_out) {
+			direction : output;
+			timing() {
+				timing_type : combinational;
+				timing_sense : positive_unate;
+				related_pin : "pin_input";
+				intrinsic_rise : 20;
+				intrinsic_fall : 20;
+			}
+			timing() {
+				timing_type : three_state_enable;
+				timing_sense : positive_unate;
+				related_pin : "oe";
+				intrinsic_rise : 22;
+				intrinsic_fall : 22;
+			}
+			timing() {
+				timing_type : three_state_disable;
+				timing_sense : negative_unate;
+				related_pin : "oe";
+				intrinsic_rise : 22;
+				intrinsic_fall : 22;
+			}
+		}
+		pin (fb) {
+			direction : output;
+			function : "pad_in";
+			timing() {
+				timing_type : combinational;
+				timing_sense : positive_unate;
+				related_pin : "pad_in";
+				intrinsic_rise : 8.5;
+				intrinsic_fall : 8.5;
+			}
+		}
+	}
+
+	cell (usbio_ireg) {
+		pin (in_clock) {
+			direction : input;
+			clock : true;
+		}
+		pin (in_clock_en) {
+			direction : input;
+		}
+		pin (in_reset) {
+			direction : input;
+		}
+		pin (out_clock) {
+			direction : input;
+		}
+		pin (out_clock_en) {
+			direction : input;
+		}
+		pin (out_reset) {
+			direction : input;
+		}
+		pin (pin_input) {
+			direction : input;
+		}
+        pin (pa_out) {
+			direction : input;
+		}
+		pin (oe) {
+			direction : input;
+		}
+		pin (pad_in) {
+			direction : input;
+		}
+		pin (pad_out) {
+			direction : output;
+			timing() {
+				timing_type : combinational;
+				timing_sense : positive_unate;
+				related_pin : "pin_input";
+				intrinsic_rise : 20;
+				intrinsic_fall : 20;
+			}
+			timing() {
+				timing_type : three_state_enable;
+				timing_sense : positive_unate;
+				related_pin : "oe";
+				intrinsic_rise : 22;
+				intrinsic_fall : 22;
+			}
+			timing() {
+				timing_type : three_state_disable;
+				timing_sense : negative_unate;
+				related_pin : "oe";
+				intrinsic_rise : 22;
+				intrinsic_fall : 22;
+			}
+		}
+		pin (fb) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "in_clock";
+				intrinsic_rise : 6.16;
+				intrinsic_fall : 6.16;
+			}
+		}
+	}
+
+	cell (usbio_oreg) {
+		pin (in_clock) {
+			direction : input;
+		}
+		pin (in_clock_en) {
+			direction : input;
+		}
+		pin (in_reset) {
+			direction : input;
+		}
+		pin (out_clock) {
+			direction : input;
+			clock : true;
+		}
+		pin (out_clock_en) {
+			direction : input;
+		}
+		pin (out_reset) {
+			direction : input;
+		}
+		pin (pin_input) {
+			direction : input;
+			timing() {
+				timing_type : setup_rising;
+				related_pin : "out_clock";
+				intrinsic_rise : 5.83;
+				intrinsic_fall : 5.83;
+			}
+		}
+        pin (pa_out) {
+			direction : input;
+		}
+		pin (oe) {
+			direction : input;
+		}
+		pin (pad_in) {
+			direction : input;
+		}
+		pin (pad_out) {
+			direction : output;
+			timing() {
+				timing_type : three_state_enable;
+				timing_sense : positive_unate;
+				related_pin : "oe";
+				intrinsic_rise : 22;
+				intrinsic_fall : 22;
+			}
+			timing() {
+				timing_type : three_state_disable;
+				timing_sense : negative_unate;
+				related_pin : "oe";
+				intrinsic_rise : 22;
+				intrinsic_fall : 22;
+			}
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "out_clock";
+				intrinsic_rise : 16.5;
+				intrinsic_fall : 16.5;
+			}
+		}
+		pin (fb) {
+			direction : output;
+			function : "pad_in";
+			timing() {
+				timing_type : combinational;
+				timing_sense : positive_unate;
+				related_pin : "pad_in";
+				intrinsic_rise : 8.5;
+				intrinsic_fall : 8.5;
+			}
+		}
+	}
+
+	cell (usbio_ioreg) {
+		pin (in_clock) {
+			direction : input;
+			clock : true;
+		}
+		pin (in_clock_en) {
+			direction : input;
+		}
+		pin (in_reset) {
+			direction : input;
+		}
+		pin (out_clock) {
+			direction : input;
+			clock : true;
+		}
+		pin (out_clock_en) {
+			direction : input;
+		}
+		pin (out_reset) {
+			direction : input;
+		}
+		pin (pin_input) {
+			direction : input;
+			timing() {
+				timing_type : setup_rising;
+				related_pin : "out_clock";
+				intrinsic_rise : 5.83;
+				intrinsic_fall : 5.83;
+			}
+		}
+        pin (pa_out) {
+			direction : input;
+		}
+		pin (oe) {
+			direction : input;
+		}
+		pin (pad_in) {
+			direction : input;
+		}
+		pin (pad_out) {
+			direction : output;
+			timing() {
+				timing_type : three_state_enable;
+				timing_sense : positive_unate;
+				related_pin : "oe";
+				intrinsic_rise : 22;
+				intrinsic_fall : 22;
+			}
+			timing() {
+				timing_type : three_state_disable;
+				timing_sense : negative_unate;
+				related_pin : "oe";
+				intrinsic_rise : 22;
+				intrinsic_fall : 22;
+			}
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "out_clock";
+				intrinsic_rise : 16.5;
+				intrinsic_fall : 16.5;
+			}
+		}
+		pin (fb) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "in_clock";
+				intrinsic_rise : 6.16;
+				intrinsic_fall : 6.16;
+			}
+		}
+	}
+
+	cell (usbio_lv) {
+		pin (in_clock) {
+			direction : input;
+		}
+		pin (in_clock_en) {
+			direction : input;
+		}
+		pin (in_reset) {
+			direction : input;
+		}
+		pin (out_clock) {
+			direction : input;
+		}
+		pin (out_clock_en) {
+			direction : input;
+		}
+		pin (out_reset) {
+			direction : input;
+		}
+		pin (pin_input) {
+			direction : input;
+		}
+        pin (pa_out) {
+			direction : input;
+		}
+		pin (oe) {
+			direction : input;
+		}
+		pin (pad_in) {
+			direction : input;
+		}
+		pin (pad_out) {
+			direction : output;
+			timing() {
+				timing_type : combinational;
+				timing_sense : positive_unate;
+				related_pin : "pin_input";
+				intrinsic_rise : 50;
+				intrinsic_fall : 50;
+			}
+			timing() {
+				timing_type : three_state_enable;
+				timing_sense : positive_unate;
+				related_pin : "oe";
+				intrinsic_rise : 52;
+				intrinsic_fall : 52;
+			}
+			timing() {
+				timing_type : three_state_disable;
+				timing_sense : negative_unate;
+				related_pin : "oe";
+				intrinsic_rise : 52;
+				intrinsic_fall : 52;
+			}
+		}
+		pin (fb) {
+			direction : output;
+			function : "pad_in";
+			timing() {
+				timing_type : combinational;
+				timing_sense : positive_unate;
+				related_pin : "pad_in";
+				intrinsic_rise : 11.83;
+				intrinsic_fall : 11.83;
+			}
+		}
+	}
+
+	cell (usbio_ireg_lv) {
+		pin (in_clock) {
+			direction : input;
+			clock : true;
+		}
+		pin (in_clock_en) {
+			direction : input;
+		}
+		pin (in_reset) {
+			direction : input;
+		}
+		pin (out_clock) {
+			direction : input;
+		}
+		pin (out_clock_en) {
+			direction : input;
+		}
+		pin (out_reset) {
+			direction : input;
+		}
+		pin (pin_input) {
+			direction : input;
+		}
+        pin (pa_out) {
+			direction : input;
+		}
+		pin (oe) {
+			direction : input;
+		}
+		pin (pad_in) {
+			direction : input;
+		}
+		pin (pad_out) {
+			direction : output;
+			timing() {
+				timing_type : combinational;
+				timing_sense : positive_unate;
+				related_pin : "pin_input";
+				intrinsic_rise : 50;
+				intrinsic_fall : 50;
+			}
+			timing() {
+				timing_type : three_state_enable;
+				timing_sense : positive_unate;
+				related_pin : "oe";
+				intrinsic_rise : 52;
+				intrinsic_fall : 52;
+			}
+			timing() {
+				timing_type : three_state_disable;
+				timing_sense : negative_unate;
+				related_pin : "oe";
+				intrinsic_rise : 52;
+				intrinsic_fall : 52;
+			}
+		}
+		pin (fb) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "in_clock";
+				intrinsic_rise : 6.16;
+				intrinsic_fall : 6.16;
+			}
+		}
+	}
+
+	cell (usbio_oreg_lv) {
+		pin (in_clock) {
+			direction : input;
+		}
+		pin (in_clock_en) {
+			direction : input;
+		}
+		pin (in_reset) {
+			direction : input;
+		}
+		pin (out_clock) {
+			direction : input;
+			clock : true;
+		}
+		pin (out_clock_en) {
+			direction : input;
+		}
+		pin (out_reset) {
+			direction : input;
+		}
+		pin (pin_input) {
+			direction : input;
+			timing() {
+				timing_type : setup_rising;
+				related_pin : "out_clock";
+				intrinsic_rise : 5.83;
+				intrinsic_fall : 5.83;
+			}
+		}
+        pin (pa_out) {
+			direction : input;
+		}
+		pin (oe) {
+			direction : input;
+		}
+		pin (pad_in) {
+			direction : input;
+		}
+		pin (pad_out) {
+			direction : output;
+			timing() {
+				timing_type : three_state_enable;
+				timing_sense : positive_unate;
+				related_pin : "oe";
+				intrinsic_rise : 52;
+				intrinsic_fall : 52;
+			}
+			timing() {
+				timing_type : three_state_disable;
+				timing_sense : negative_unate;
+				related_pin : "oe";
+				intrinsic_rise : 52;
+				intrinsic_fall : 52;
+			}
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "out_clock";
+				intrinsic_rise : 32.5;
+				intrinsic_fall : 32.5;
+			}
+		}
+		pin (fb) {
+			direction : output;
+			function : "pad_in";
+			timing() {
+				timing_type : combinational;
+				timing_sense : positive_unate;
+				related_pin : "pad_in";
+				intrinsic_rise : 11.83;
+				intrinsic_fall : 11.83;
+			}
+		}
+	}
+
+	cell (usbio_ioreg_lv) {
+		pin (in_clock) {
+			direction : input;
+			clock : true;
+		}
+		pin (in_clock_en) {
+			direction : input;
+		}
+		pin (in_reset) {
+			direction : input;
+		}
+		pin (out_clock) {
+			direction : input;
+			clock : true;
+		}
+		pin (out_clock_en) {
+			direction : input;
+		}
+		pin (out_reset) {
+			direction : input;
+		}
+		pin (pin_input) {
+			direction : input;
+			timing() {
+				timing_type : setup_rising;
+				related_pin : "out_clock";
+				intrinsic_rise : 5.83;
+				intrinsic_fall : 5.83;
+			}
+		}
+        pin (pa_out) {
+			direction : input;
+		}
+		pin (oe) {
+			direction : input;
+		}
+		pin (pad_in) {
+			direction : input;
+		}
+		pin (pad_out) {
+			direction : output;
+			timing() {
+				timing_type : three_state_enable;
+				timing_sense : positive_unate;
+				related_pin : "oe";
+				intrinsic_rise : 52;
+				intrinsic_fall : 52;
+			}
+			timing() {
+				timing_type : three_state_disable;
+				timing_sense : negative_unate;
+				related_pin : "oe";
+				intrinsic_rise : 52;
+				intrinsic_fall : 52;
+			}
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "out_clock";
+				intrinsic_rise : 32.5;
+				intrinsic_fall : 32.5;
+			}
+		}
+		pin (fb) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "in_clock";
+				intrinsic_rise : 6.16;
+				intrinsic_fall : 6.16;
+			}
+		}
+	}
+
+	cell (count7cell) {
+		pin (clock) {
+			direction : input;
+			clock : true;
+		}
+		pin (clock_n) {
+			direction : input;
+			clock : true;
+		}
+		pin (extclk) {
+			direction : input;
+			clock : true;
+		}
+		pin (extclk_n) {
+			direction : input;
+			clock : true;
+		}
+		pin (clk_en) {
+			direction : input;
+			timing() {
+				timing_type : setup_rising;
+				related_pin : "clock";
+				intrinsic_rise : 2.1;
+				intrinsic_fall : 2.1;
+			}
+			timing() {
+				timing_type : hold_rising;
+				related_pin : "clock";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : setup_falling;
+				related_pin : "clock_n";
+				intrinsic_rise : 2.1;
+				intrinsic_fall : 2.1;
+			}
+			timing() {
+				timing_type : hold_falling;
+				related_pin : "clock_n";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : setup_rising;
+				related_pin : "extclk";
+				intrinsic_rise : 0;
+				intrinsic_fall : 0;
+			}
+			timing() {
+				timing_type : hold_rising;
+				related_pin : "extclk";
+				intrinsic_rise : 0.6;
+				intrinsic_fall : 0.6;
+			}
+			timing() {
+				timing_type : setup_falling;
+				related_pin : "extclk_n";
+				intrinsic_rise : 0;
+				intrinsic_fall : 0;
+			}
+			timing() {
+				timing_type : hold_falling;
+				related_pin : "extclk_n";
+				intrinsic_rise : 0.6;
+				intrinsic_fall : 0.6;
+			}
+		}
+		pin (reset) {
+			direction : input;
+			timing() {
+				timing_type : recovery_rising;
+				related_pin : "clock";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : removal_rising;
+				related_pin : "clock";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : recovery_falling;
+				related_pin : "clock_n";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : removal_falling;
+				related_pin : "clock_n";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : recovery_rising;
+				related_pin : "extclk";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : removal_rising;
+				related_pin : "extclk";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : recovery_falling;
+				related_pin : "extclk_n";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : removal_falling;
+				related_pin : "extclk_n";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+		}
+		pin (load) {
+			direction : input;
+			timing() {
+				timing_type : setup_rising;
+				related_pin : "clock";
+				intrinsic_rise : 4.22;
+				intrinsic_fall : 4.22;
+			}
+			timing() {
+				timing_type : hold_rising;
+				related_pin : "clock";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : setup_falling;
+				related_pin : "clock_n";
+				intrinsic_rise : 4.22;
+				intrinsic_fall : 4.22;
+			}
+			timing() {
+				timing_type : hold_falling;
+				related_pin : "clock_n";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : setup_rising;
+				related_pin : "extclk";
+				intrinsic_rise : 6.22;
+				intrinsic_fall : 6.22;
+			}
+			timing() {
+				timing_type : hold_rising;
+				related_pin : "extclk";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : setup_falling;
+				related_pin : "extclk_n";
+				intrinsic_rise : 6.22;
+				intrinsic_fall : 6.22;
+			}
+			timing() {
+				timing_type : hold_falling;
+				related_pin : "extclk_n";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+		}
+		pin (enable) {
+			direction : input;
+			timing() {
+				timing_type : setup_rising;
+				related_pin : "clock";
+				intrinsic_rise : 3.34;
+				intrinsic_fall : 3.34;
+			}
+			timing() {
+				timing_type : hold_rising;
+				related_pin : "clock";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : setup_falling;
+				related_pin : "clock_n";
+				intrinsic_rise : 3.34;
+				intrinsic_fall : 3.34;
+			}
+			timing() {
+				timing_type : hold_falling;
+				related_pin : "clock_n";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : setup_rising;
+				related_pin : "extclk";
+				intrinsic_rise : 5.34;
+				intrinsic_fall : 5.34;
+			}
+			timing() {
+				timing_type : hold_rising;
+				related_pin : "extclk";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : setup_falling;
+				related_pin : "extclk_n";
+				intrinsic_rise : 5.34;
+				intrinsic_fall : 5.34;
+			}
+			timing() {
+				timing_type : hold_falling;
+				related_pin : "extclk_n";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+		}
+		bundle (count) {
+			members (count_0, count_1, count_2, count_3, count_4, count_5, count_6);
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "clock";
+				intrinsic_rise : 2.11;
+				intrinsic_fall : 2.11;
+			}
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "clock";
+				intrinsic_rise : 1.92;
+				intrinsic_fall : 1.92;
+			}
+			timing() {
+				timing_type : falling_edge;
+				related_pin : "clock_n";
+				intrinsic_rise : 2.11;
+				intrinsic_fall : 2.11;
+			}
+			timing() {
+				timing_type : falling_edge;
+				related_pin : "clock_n";
+				intrinsic_rise : 1.92;
+				intrinsic_fall : 1.92;
+			}
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "extclk";
+				intrinsic_rise : 4.11;
+				intrinsic_fall : 4.11;
+			}
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "extclk";
+				intrinsic_rise : 3.92;
+				intrinsic_fall : 3.92;
+			}
+			timing() {
+				timing_type : falling_edge;
+				related_pin : "extclk_n";
+				intrinsic_rise : 4.11;
+				intrinsic_fall : 4.11;
+			}
+			timing() {
+				timing_type : falling_edge;
+				related_pin : "extclk_n";
+				intrinsic_rise : 3.92;
+				intrinsic_fall : 3.92;
+			}
+			timing() {
+				timing_type : clear;
+				timing_sense : negative_unate;
+				related_pin : "reset";
+				intrinsic_rise : 7.57;
+				intrinsic_fall : 7.57;
+			}
+			timing() {
+				timing_type : clear;
+				timing_sense : negative_unate;
+				related_pin : "reset";
+				intrinsic_rise : 6.24;
+				intrinsic_fall : 6.24;
+			}
+		}
+		pin (tc) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "clock";
+				intrinsic_rise : 2.58;
+				intrinsic_fall : 2.58;
+			}
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "clock";
+				intrinsic_rise : 2.04;
+				intrinsic_fall : 2.04;
+			}
+			timing() {
+				timing_type : falling_edge;
+				related_pin : "clock_n";
+				intrinsic_rise : 2.58;
+				intrinsic_fall : 2.58;
+			}
+			timing() {
+				timing_type : falling_edge;
+				related_pin : "clock_n";
+				intrinsic_rise : 2.04;
+				intrinsic_fall : 2.04;
+			}
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "extclk";
+				intrinsic_rise : 4.58;
+				intrinsic_fall : 4.58;
+			}
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "extclk";
+				intrinsic_rise : 4.04;
+				intrinsic_fall : 4.04;
+			}
+			timing() {
+				timing_type : falling_edge;
+				related_pin : "extclk_n";
+				intrinsic_rise : 4.58;
+				intrinsic_fall : 4.58;
+			}
+			timing() {
+				timing_type : falling_edge;
+				related_pin : "extclk_n";
+				intrinsic_rise : 4.04;
+				intrinsic_fall : 4.04;
+			}
+			timing() {
+				timing_type : preset;
+				timing_sense : positive_unate;
+				related_pin : "reset";
+				intrinsic_rise : 8.02;
+				intrinsic_fall : 8.02;
+			}
+			timing() {
+				timing_type : preset;
+				timing_sense : positive_unate;
+				related_pin : "reset";
+				intrinsic_rise : 6.19;
+				intrinsic_fall : 6.19;
+			}
+		}
+	}
+
+	cell (count7cell_alt) {
+		pin (clock) {
+			direction : input;
+			clock : true;
+		}
+		pin (clock_n) {
+			direction : input;
+			clock : true;
+		}
+		pin (extclk) {
+			direction : input;
+			clock : true;
+		}
+		pin (extclk_n) {
+			direction : input;
+			clock : true;
+		}
+		pin (clk_en) {
+			direction : input;
+			timing() {
+				timing_type : setup_rising;
+				related_pin : "clock";
+				intrinsic_rise : 2.1;
+				intrinsic_fall : 2.1;
+			}
+			timing() {
+				timing_type : hold_rising;
+				related_pin : "clock";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : setup_falling;
+				related_pin : "clock_n";
+				intrinsic_rise : 2.1;
+				intrinsic_fall : 2.1;
+			}
+			timing() {
+				timing_type : hold_falling;
+				related_pin : "clock_n";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : setup_rising;
+				related_pin : "extclk";
+				intrinsic_rise : 0;
+				intrinsic_fall : 0;
+			}
+			timing() {
+				timing_type : hold_rising;
+				related_pin : "extclk";
+				intrinsic_rise : 0.6;
+				intrinsic_fall : 0.6;
+			}
+			timing() {
+				timing_type : setup_falling;
+				related_pin : "extclk_n";
+				intrinsic_rise : 0;
+				intrinsic_fall : 0;
+			}
+			timing() {
+				timing_type : hold_falling;
+				related_pin : "extclk_n";
+				intrinsic_rise : 0.6;
+				intrinsic_fall : 0.6;
+			}
+		}
+		pin (reset) {
+			direction : input;
+			timing() {
+				timing_type : recovery_rising;
+				related_pin : "clock";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : removal_rising;
+				related_pin : "clock";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : recovery_falling;
+				related_pin : "clock_n";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : removal_falling;
+				related_pin : "clock_n";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : recovery_rising;
+				related_pin : "extclk";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : removal_rising;
+				related_pin : "extclk";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : recovery_falling;
+				related_pin : "extclk_n";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : removal_falling;
+				related_pin : "extclk_n";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+		}
+		pin (load) {
+			direction : input;
+			timing() {
+				timing_type : setup_rising;
+				related_pin : "clock";
+				intrinsic_rise : 4.22;
+				intrinsic_fall : 4.22;
+			}
+			timing() {
+				timing_type : hold_rising;
+				related_pin : "clock";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : setup_falling;
+				related_pin : "clock_n";
+				intrinsic_rise : 4.22;
+				intrinsic_fall : 4.22;
+			}
+			timing() {
+				timing_type : hold_falling;
+				related_pin : "clock_n";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : setup_rising;
+				related_pin : "extclk";
+				intrinsic_rise : 6.22;
+				intrinsic_fall : 6.22;
+			}
+			timing() {
+				timing_type : hold_rising;
+				related_pin : "extclk";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : setup_falling;
+				related_pin : "extclk_n";
+				intrinsic_rise : 6.22;
+				intrinsic_fall : 6.22;
+			}
+			timing() {
+				timing_type : hold_falling;
+				related_pin : "extclk_n";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+		}
+		pin (enable) {
+			direction : input;
+			timing() {
+				timing_type : setup_rising;
+				related_pin : "clock";
+				intrinsic_rise : 3.34;
+				intrinsic_fall : 3.34;
+			}
+			timing() {
+				timing_type : hold_rising;
+				related_pin : "clock";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : setup_falling;
+				related_pin : "clock_n";
+				intrinsic_rise : 3.34;
+				intrinsic_fall : 3.34;
+			}
+			timing() {
+				timing_type : hold_falling;
+				related_pin : "clock_n";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : setup_rising;
+				related_pin : "extclk";
+				intrinsic_rise : 5.34;
+				intrinsic_fall : 5.34;
+			}
+			timing() {
+				timing_type : hold_rising;
+				related_pin : "extclk";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : setup_falling;
+				related_pin : "extclk_n";
+				intrinsic_rise : 5.34;
+				intrinsic_fall : 5.34;
+			}
+			timing() {
+				timing_type : hold_falling;
+				related_pin : "extclk_n";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+		}
+		bundle (count) {
+			members (count_0, count_1, count_2, count_3, count_4, count_5, count_6);
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "clock";
+				intrinsic_rise : 2.11;
+				intrinsic_fall : 2.11;
+			}
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "clock";
+				intrinsic_rise : 1.92;
+				intrinsic_fall : 1.92;
+			}
+			timing() {
+				timing_type : falling_edge;
+				related_pin : "clock_n";
+				intrinsic_rise : 2.11;
+				intrinsic_fall : 2.11;
+			}
+			timing() {
+				timing_type : falling_edge;
+				related_pin : "clock_n";
+				intrinsic_rise : 1.92;
+				intrinsic_fall : 1.92;
+			}
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "extclk";
+				intrinsic_rise : 4.11;
+				intrinsic_fall : 4.11;
+			}
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "extclk";
+				intrinsic_rise : 3.92;
+				intrinsic_fall : 3.92;
+			}
+			timing() {
+				timing_type : falling_edge;
+				related_pin : "extclk_n";
+				intrinsic_rise : 4.11;
+				intrinsic_fall : 4.11;
+			}
+			timing() {
+				timing_type : falling_edge;
+				related_pin : "extclk_n";
+				intrinsic_rise : 3.92;
+				intrinsic_fall : 3.92;
+			}
+			timing() {
+				timing_type : clear;
+				timing_sense : negative_unate;
+				related_pin : "reset";
+				intrinsic_rise : 7.57;
+				intrinsic_fall : 7.57;
+			}
+			timing() {
+				timing_type : clear;
+				timing_sense : negative_unate;
+				related_pin : "reset";
+				intrinsic_rise : 6.24;
+				intrinsic_fall : 6.24;
+			}
+		}
+		pin (tc) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "clock";
+				intrinsic_rise : 3.58;
+				intrinsic_fall : 3.58;
+			}
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "clock";
+				intrinsic_rise : 2.04;
+				intrinsic_fall : 2.04;
+			}
+			timing() {
+				timing_type : falling_edge;
+				related_pin : "clock_n";
+				intrinsic_rise : 3.58;
+				intrinsic_fall : 3.58;
+			}
+			timing() {
+				timing_type : falling_edge;
+				related_pin : "clock_n";
+				intrinsic_rise : 2.04;
+				intrinsic_fall : 2.04;
+			}
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "extclk";
+				intrinsic_rise : 5.58;
+				intrinsic_fall : 5.58;
+			}
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "extclk";
+				intrinsic_rise : 4.04;
+				intrinsic_fall : 4.04;
+			}
+			timing() {
+				timing_type : falling_edge;
+				related_pin : "extclk_n";
+				intrinsic_rise : 5.58;
+				intrinsic_fall : 5.58;
+			}
+			timing() {
+				timing_type : falling_edge;
+				related_pin : "extclk_n";
+				intrinsic_rise : 4.04;
+				intrinsic_fall : 4.04;
+			}
+			timing() {
+				timing_type : preset;
+				timing_sense : positive_unate;
+				related_pin : "reset";
+				intrinsic_rise : 8.02;
+				intrinsic_fall : 8.02;
+			}
+			timing() {
+				timing_type : preset;
+				timing_sense : positive_unate;
+				related_pin : "reset";
+				intrinsic_rise : 6.19;
+				intrinsic_fall : 6.19;
+			}
+		}
+	}
+
+	cell (synccell) {
+		pin (clock) {
+			direction : input;
+			clock : true;
+		}
+
+		pin (clock_n) {
+			direction : input;
+			clock : true;
+		}
+
+		pin (extclk) {
+			direction : input;
+			clock : true;
+		}
+
+		pin (extclk_n) {
+			direction : input;
+			clock : true;
+		}
+
+		pin (clk_en) {
+			direction : input;
+			timing() {
+				timing_type : setup_rising;
+				related_pin : "clock";
+				intrinsic_rise : 2.1;
+				intrinsic_fall : 2.1;
+			}
+			timing() {
+				timing_type : hold_rising;
+				related_pin : "clock";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : setup_falling;
+				related_pin : "clock_n";
+				intrinsic_rise : 2.1;
+				intrinsic_fall : 2.1;
+			}
+			timing() {
+				timing_type : hold_falling;
+				related_pin : "clock_n";
+				intrinsic_rise : 0.00;
+				intrinsic_fall : 0.00;
+			}
+			timing() {
+				timing_type : setup_rising;
+				related_pin : "extclk";
+				intrinsic_rise : 0;
+				intrinsic_fall : 0;
+			}
+			timing() {
+				timing_type : hold_rising;
+				related_pin : "extclk";
+				intrinsic_rise : 0.6;
+				intrinsic_fall : 0.6;
+			}
+			timing() {
+				timing_type : setup_falling;
+				related_pin : "extclk_n";
+				intrinsic_rise : 0;
+				intrinsic_fall : 0;
+			}
+			timing() {
+				timing_type : hold_falling;
+				related_pin : "extclk_n";
+				intrinsic_rise : 0.6;
+				intrinsic_fall : 0.6;
+			}
+		}
+
+		pin (in) {
+			direction : input;
+		}
+
+		pin (out) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "clock"
+				intrinsic_rise : 1.48;
+				intrinsic_fall : 1.48;
+			}
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "clock"
+				intrinsic_rise : 1;
+				intrinsic_fall : 1;
+			}
+			timing() {
+				timing_type : falling_edge;
+				related_pin : "clock_n"
+				intrinsic_rise : 1.48;
+				intrinsic_fall : 1.48;
+			}
+			timing() {
+				timing_type : falling_edge;
+				related_pin : "clock_n"
+				intrinsic_rise : 1;
+				intrinsic_fall : 1;
+			}
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "extclk"
+				intrinsic_rise : 3.48;
+				intrinsic_fall : 3.48;
+			}
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "extclk"
+				intrinsic_rise : 3;
+				intrinsic_fall : 3;
+			}
+			timing() {
+				timing_type : falling_edge;
+				related_pin : "extclk_n"
+				intrinsic_rise : 3.48;
+				intrinsic_fall : 3.48;
+			}
+			timing() {
+				timing_type : falling_edge;
+				related_pin : "extclk_n"
+				intrinsic_rise : 3;
+				intrinsic_fall : 3;
+			}
+		}
+	}
+
+	cell (boostcell) {
+		pin (interrupt) { direction : output; }
+	}
+	
+	cell (cancell) {
+		pin (clock) { direction : input; clock: true; }
+		pin (can_rx) { direction : input; }
+		pin (can_tx) { direction : output; }
+		pin (can_tx_en) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "clock";
+				intrinsic_rise : 1.0;
+				intrinsic_fall : 1.0;
+			}
+		}
+		pin (interrupt) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "clock";
+				intrinsic_rise : 1.0;
+				intrinsic_fall : 1.0;
+			}
+		}
+	}
+	
+	cell (comparatorcell) {
+		pin (out) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "clock";
+				intrinsic_rise : 1.0;
+				intrinsic_fall : 1.0;
+			}
+		}
+		pin (clk_udb) { direction : input; }
+		pin (clock) { direction : input; clock: true; }
+	}
+	
+	cell (capsensecell) {
+		pin (lft) { direction : input; }
+		pin (rt) { direction : input; }
+	}
+	
+	cell (csabufcell) {
+		pin (swon) { direction : input; }
+	}
+	
+	cell (decimatorcell) {
+		pin (aclock) { direction : input; clock: true; }
+		pin (mod_dat_0) { direction : input; }
+		pin (mod_dat_1) { direction : input; }
+		pin (mod_dat_2) { direction : input; }
+		pin (mod_dat_3) { direction : input; }
+		pin (ext_start) { direction : input; }
+		pin (modrst) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "aclock";
+				intrinsic_rise : 1.0;
+				intrinsic_fall : 1.0;
+			}
+		}
+		pin (interrupt) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "aclock";
+				intrinsic_rise : 1.0;
+				intrinsic_fall : 1.0;
+			}
+		}
+	}
+	
+	cell (dfbcell) {
+		pin (clock) { direction : input; clock: true; }
+		pin (in_1) { direction : input; }
+		pin (in_2) { direction : input; }
+		pin (out_1) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "clock";
+				intrinsic_rise : 1.0;
+				intrinsic_fall : 1.0;
+			}
+		}
+		pin (out_2) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "clock";
+				intrinsic_rise : 1.0;
+				intrinsic_fall : 1.0;
+			}
+		}
+		pin (dmareq_1) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "clock";
+				intrinsic_rise : 1.0;
+				intrinsic_fall : 1.0;
+			}
+		}
+		pin (dmareq_2) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "clock";
+				intrinsic_rise : 1.0;
+				intrinsic_fall : 1.0;
+			}
+		}
+		pin (interrupt) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "clock";
+				intrinsic_rise : 1.0;
+				intrinsic_fall : 1.0;
+			}
+		}
+	}
+	
+	cell (dsmodcell) {
+		pin (aclock) { direction : input; clock: true; }
+		pin (modbitin_udb) { direction : input; }
+		pin (reset_udb) { direction : input; }
+		pin (reset_dec) { direction : input; }
+		pin (dec_clock) { direction : output; }
+		pin (mod_dat_0) { direction : output; }
+		pin (mod_dat_1) { direction : output; }
+		pin (mod_dat_2) { direction : output; }
+		pin (mod_dat_3) { direction : output; }
+		pin (dout_udb_0) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "aclock";
+				intrinsic_rise : 1.0;
+				intrinsic_fall : 1.0;
+			}
+		}
+		pin (dout_udb_1) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "aclock";
+				intrinsic_rise : 1.0;
+				intrinsic_fall : 1.0;
+			}
+		}
+		pin (dout_udb_2) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "aclock";
+				intrinsic_rise : 1.0;
+				intrinsic_fall : 1.0;
+			}
+		}
+		pin (dout_udb_3) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "aclock";
+				intrinsic_rise : 1.0;
+				intrinsic_fall : 1.0;
+			}
+		}
+		pin (dout_udb_4) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "aclock";
+				intrinsic_rise : 1.0;
+				intrinsic_fall : 1.0;
+			}
+		}
+		pin (dout_udb_5) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "aclock";
+				intrinsic_rise : 1.0;
+				intrinsic_fall : 1.0;
+			}
+		}
+		pin (dout_udb_6) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "aclock";
+				intrinsic_rise : 1.0;
+				intrinsic_fall : 1.0;
+			}
+		}
+		pin (dout_udb_7) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "aclock";
+				intrinsic_rise : 1.0;
+				intrinsic_fall : 1.0;
+			}
+		}
+		pin (extclk_cp_udb) { direction : input; }
+		pin (clk_udb) { direction : input; }
+	}
+	
+	cell (emifcell) {
+		pin (busclk) { direction : input; clock: true; }
+		pin (EM_clock) { direction : output; }
+		pin (EM_CEn) { direction : output; }
+		pin (EM_OEn) { direction : output; }
+		pin (EM_ADSCn) { direction : output; }
+		pin (EM_sleep) { direction : output; }
+		pin (EM_WRn) { direction : output; }
+		pin (dataport_OE) { direction : output; }
+		pin (dataport_OEn) { direction : output; }
+		pin (wr) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "busclk";
+				intrinsic_rise : 6.83;
+				intrinsic_fall : 6.83;
+			}
+		}
+		pin (rd) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "busclk";
+				intrinsic_rise : 7.35;
+				intrinsic_fall : 7.35;
+			}
+		}
+		pin (udb_stall) { direction : input; }
+		pin (udb_ready) {
+			direction : input;
+			timing() {
+				timing_type : setup_rising;
+				related_pin : "busclk";
+				intrinsic_rise : 0;
+				intrinsic_fall : 0;
+			}
+			timing() {
+				timing_type : hold_rising;
+				related_pin : "busclk";
+				intrinsic_rise : 2.9;
+				intrinsic_fall : 2.9;
+			}
+		}
+	}
+
+	cell (i2ccell) {
+		pin (clock) { direction : input; clock: true; }
+		pin (scl_in) { direction : input; }
+		pin (sda_in) { direction : input; }
+		pin (scl_out) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "clock";
+				intrinsic_rise : 1.0;
+				intrinsic_fall : 1.0;
+			}
+		}
+		pin (sda_out) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "clock";
+				intrinsic_rise : 1.0;
+				intrinsic_fall : 1.0;
+			}
+		}
+		pin (interrupt) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "clock";
+				intrinsic_rise : 1.0;
+				intrinsic_fall : 1.0;
+			}
+		}
+	}
+	
+	cell (lcdctrlcell) {
+		pin (drive_en) { direction : input; }
+		pin (frame) { direction : input; }
+		pin (data_clk) { direction : input; }
+		pin (en_hi) { direction : input; }
+		pin (dac_dis) { direction : input; }
+		pin (chop_clk) { direction : input; }
+		pin (int_clr) { direction : input; }
+		pin (lp_ack_udb) { direction : input; }
+		pin (mode_1) { direction : input; }
+		pin (mode_2) { direction : input; }
+		pin (interrupt) { direction : output; }
+	}
+
+	cell (cachecell) {
+		pin (interrupt) { direction : output; }
+	}
+
+	cell (lvdcell) {
+		pin (interrupt) { direction : output; }
+	}
+	
+	cell (pmcell) {
+		pin (ctw_int) { direction : output; }
+		pin (ftw_int) { direction : output; }
+		pin (limact_int) { direction : output; }
+		pin (onepps_int) { direction : output; }
+		pin (pm_int) { direction : output; }
+	}
+
+	cell (sarcell) {
+		pin (clock) { direction : input; clock: true; }
+		pin (pump_clock) { direction : input; }
+		pin (clk_udb) { direction : input; }
+		pin (sof_udb) { direction : input; }
+		pin (vp_ctl_udb_0) { direction : input; }
+		pin (vp_ctl_udb_1) { direction : input; }
+		pin (vp_ctl_udb_2) { direction : input; }
+		pin (vp_ctl_udb_3) { direction : input; }
+		pin (vn_ctl_udb_0) { direction : input; }
+		pin (vn_ctl_udb_1) { direction : input; }
+		pin (vn_ctl_udb_2) { direction : input; }
+		pin (vn_ctl_udb_3) { direction : input; }
+		bundle (data_out_udb) {
+			members (data_out_udb_0, data_out_udb_1, data_out_udb_2, data_out_udb_3,
+				data_out_udb_4, data_out_udb_5, data_out_udb_6, data_out_udb_7,
+				data_out_udb_8, data_out_udb_9, data_out_udb_10, data_out_udb_11);
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "clock";
+				intrinsic_rise : 1.0;
+				intrinsic_fall : 1.0;
+			}
+		}
+		pin (eof_udb) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "clock";
+				intrinsic_rise : 1.0;
+				intrinsic_fall : 1.0;
+			}
+		}
+		pin (irq) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "clock";
+				intrinsic_rise : 1.0;
+				intrinsic_fall : 1.0;
+			}
+		}
+		pin (next) {
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "clock";
+				intrinsic_rise : 1.0;
+				intrinsic_fall : 1.0;
+			}
+		}
+	}
+
+	cell (sccell) {
+		pin (aclk) { direction : input; }
+		pin (bst_clk) { direction : input; }
+		pin (clk_udb) { direction : input; }
+		pin (modout) { direction : output; }
+		pin (dyn_cntl_udb) { direction : input; }
+	}
+
+	cell (spccell) {
+		pin (data_ready) { direction : output; }
+		pin (eeprom_fault_int) { direction : output; }
+		pin (idle) { direction : output; }
+	}
+
+	cell (ssccell) {
+		pin (rst_n) { direction : input; }
+		pin (scli) { direction : input; }
+		pin (sdai) { direction : input; }
+		pin (csel) { direction : input; }
+		pin (sclo) { direction : output; }
+		pin (sdao) { direction : output; }
+		pin (irq) { direction : output; }
+	}
+	
+	cell (tfaultcell) {
+		pin (tfault_dsi) { direction : output; }
+	}
+
+	cell (timercell) {
+		pin (clock) { direction : input; clock: true; }
+		pin (kill) { direction : input; }
+		pin (enable) { direction : input; }
+		pin (capture) { direction : input; }
+		pin (timer_reset) { direction : input; }
+		pin (tc){
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "clock";
+				intrinsic_rise : 1.0;
+				intrinsic_fall : 1.0;
+			}
+		}
+		pin (cmp){
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "clock";
+				intrinsic_rise : 1.0;
+				intrinsic_fall : 1.0;
+			}
+		}
+		pin (irq){
+			direction : output;
+			timing() {
+				timing_type : rising_edge;
+				related_pin : "clock";
+				intrinsic_rise : 1.0;
+				intrinsic_fall : 1.0;
+			}
+		}
+	}
+	
+	cell (usbcell) {
+		pin (sof_int) { direction : output; }
+		pin (arb_int) { direction : output; }
+		pin (usb_int) { direction : output; }
+		pin (ord_int) { direction : output; }
+		pin (ept_int_0) { direction : output; }
+		pin (ept_int_1) { direction : output; }
+		pin (ept_int_2) { direction : output; }
+		pin (ept_int_3) { direction : output; }
+		pin (ept_int_4) { direction : output; }
+		pin (ept_int_5) { direction : output; }
+		pin (ept_int_6) { direction : output; }
+		pin (ept_int_7) { direction : output; }
+		pin (ept_int_8) { direction : output; }
+		pin (dma_req_0) { direction : output; }
+		pin (dma_req_1) { direction : output; }
+		pin (dma_req_2) { direction : output; }
+		pin (dma_req_3) { direction : output; }
+		pin (dma_req_4) { direction : output; }
+		pin (dma_req_5) { direction : output; }
+		pin (dma_req_6) { direction : output; }
+		pin (dma_req_7) { direction : output; }
+		pin (dma_termin) { direction : output; }
+	}
+
+	cell (vidaccell) {
+		pin (data_0) { direction : input; }
+		pin (data_1) { direction : input; }
+		pin (data_2) { direction : input; }
+		pin (data_3) { direction : input; }
+		pin (data_4) { direction : input; }
+		pin (data_5) { direction : input; }
+		pin (data_6) { direction : input; }
+		pin (data_7) { direction : input; }
+		pin (strobe) { direction : input; }
+		pin (strobe_udb) { direction : input; }
+		pin (reset) { direction : input; }
+		pin (idir) { direction : input; }
+		pin (ioff) { direction : input; }
+	}
+
+/*}*/

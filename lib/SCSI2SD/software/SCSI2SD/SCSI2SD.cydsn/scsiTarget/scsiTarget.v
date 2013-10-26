@@ -202,49 +202,49 @@ cy_psoc3_dp #(.d1_init(3),
     `CS_ALU_OP_PASS, `CS_SRCA_A0, `CS_SRCB_D0,
     `CS_SHFT_OP_PASS, `CS_A0_SRC_NONE, `CS_A1_SRC_NONE,
     `CS_FEEDBACK_DSBL, `CS_CI_SEL_CFGA, `CS_SI_SEL_CFGA,
-    `CS_CMP_SEL_CFGA, /*CFGRAM0:       IDLE*/
+    `CS_CMP_SEL_CFGA, /*CFGRAM0:         IDLE*/
     `CS_ALU_OP_PASS, `CS_SRCA_A0, `CS_SRCB_D0,
     `CS_SHFT_OP_PASS, `CS_A0_SRC___F0, `CS_A1_SRC_NONE,
     `CS_FEEDBACK_DSBL, `CS_CI_SEL_CFGA, `CS_SI_SEL_CFGA,
-    `CS_CMP_SEL_CFGA, /*CFGRAM1:       FIFO Load*/
+    `CS_CMP_SEL_CFGA, /*CFGRAM1:         FIFO Load*/
     `CS_ALU_OP_PASS, `CS_SRCA_A0, `CS_SRCB_D0,
     `CS_SHFT_OP_PASS, `CS_A0_SRC_NONE, `CS_A1_SRC_NONE,
     `CS_FEEDBACK_DSBL, `CS_CI_SEL_CFGA, `CS_SI_SEL_CFGA,
-    `CS_CMP_SEL_CFGA, /*CFGRAM2:       TX*/
+    `CS_CMP_SEL_CFGA, /*CFGRAM2:         TX*/
     `CS_ALU_OP_PASS, `CS_SRCA_A0, `CS_SRCB_D0,
     `CS_SHFT_OP_PASS, `CS_A0_SRC___D0, `CS_A1_SRC_NONE,
     `CS_FEEDBACK_DSBL, `CS_CI_SEL_CFGA, `CS_SI_SEL_CFGA,
-    `CS_CMP_SEL_CFGA, /*CFGRAM3:       DESKEW INIT*/
+    `CS_CMP_SEL_CFGA, /*CFGRAM3:         DESKEW INIT*/
     `CS_ALU_OP__DEC, `CS_SRCA_A0, `CS_SRCB_D0,
     `CS_SHFT_OP_PASS, `CS_A0_SRC__ALU, `CS_A1_SRC_NONE,
     `CS_FEEDBACK_DSBL, `CS_CI_SEL_CFGA, `CS_SI_SEL_CFGA,
-    `CS_CMP_SEL_CFGA, /*CFGRAM4:       DESKEW*/
+    `CS_CMP_SEL_CFGA, /*CFGRAM4:         DESKEW*/
     `CS_ALU_OP_PASS, `CS_SRCA_A0, `CS_SRCB_D0,
     `CS_SHFT_OP_PASS, `CS_A0_SRC_NONE, `CS_A1_SRC_NONE,
     `CS_FEEDBACK_DSBL, `CS_CI_SEL_CFGA, `CS_SI_SEL_CFGA,
-    `CS_CMP_SEL_CFGA, /*CFGRAM5: Not used*/
+    `CS_CMP_SEL_CFGA, /*CFGRAM5:   Not used*/
     `CS_ALU_OP_PASS, `CS_SRCA_A0, `CS_SRCB_D0,
     `CS_SHFT_OP_PASS, `CS_A0_SRC_NONE, `CS_A1_SRC_NONE,
     `CS_FEEDBACK_DSBL, `CS_CI_SEL_CFGA, `CS_SI_SEL_CFGA,
-    `CS_CMP_SEL_CFGA, /*CFGRAM6:       READY*/
+    `CS_CMP_SEL_CFGA, /*CFGRAM6:         READY*/
     `CS_ALU_OP_PASS, `CS_SRCA_A0, `CS_SRCB_D0,
     `CS_SHFT_OP_PASS, `CS_A0_SRC_NONE, `CS_A1_SRC_NONE,
     `CS_FEEDBACK_ENBL, `CS_CI_SEL_CFGA, `CS_SI_SEL_CFGA,
-    `CS_CMP_SEL_CFGA, /*CFGRAM7:       RX*/
-    8'hFF, 8'h00,  /*CFG9:          */
-    8'hFF, 8'hFF,  /*CFG11-10:          */
+    `CS_CMP_SEL_CFGA, /*CFGRAM7:         RX*/
+    8'hFF, 8'h00,  /*CFG9:            */
+    8'hFF, 8'hFF,  /*CFG11-10:            */
     `SC_CMPB_A1_D1, `SC_CMPA_A1_D1, `SC_CI_B_ARITH,
     `SC_CI_A_ARITH, `SC_C1_MASK_DSBL, `SC_C0_MASK_DSBL,
     `SC_A_MASK_DSBL, `SC_DEF_SI_0, `SC_SI_B_DEFSI,
-    `SC_SI_A_DEFSI, /*CFG13-12:          */
+    `SC_SI_A_DEFSI, /*CFG13-12:            */
     `SC_A0_SRC_ACC, `SC_SHIFT_SL, `SC_PI_DYN_EN,
     1'h0, `SC_FIFO1_ALU, `SC_FIFO0_BUS,
     `SC_MSB_DSBL, `SC_MSB_BIT0, `SC_MSB_NOCHN,
     `SC_FB_NOCHN, `SC_CMP1_NOCHN,
-    `SC_CMP0_NOCHN, /*CFG15-14:          */
+    `SC_CMP0_NOCHN, /*CFG15-14:            */
     10'h00, `SC_FIFO_CLK__DP,`SC_FIFO_CAP_AX,
     `SC_FIFO_LEVEL,`SC_FIFO__SYNC,`SC_EXTCRC_DSBL,
-    `SC_WRK16CAT_DSBL /*CFG17-16:          */
+    `SC_WRK16CAT_DSBL /*CFG17-16:            */
 }
 )) datapath(
         /*  input                   */  .reset(1'b0),
@@ -300,6 +300,8 @@ cy_psoc3_dp #(.d1_init(3),
 endmodule
 //`#start footer` -- edit after this line, do not edit this line
 //`#end` -- edit above this line, do not edit this line
+
+
 
 
 

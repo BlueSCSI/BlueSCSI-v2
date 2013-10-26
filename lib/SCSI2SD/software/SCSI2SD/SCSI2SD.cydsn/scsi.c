@@ -370,14 +370,14 @@ static void enter_SelectionPhase()
 
 static void process_SelectionPhase()
 {
-	uint8 mask = ~SCSI_In_DBx_Read();
+	uint8 mask = scsiReadDBxPins();
 	int goodParity = (Lookup_OddParity[mask] == SCSI_ReadPin(SCSI_In_DBP));
 
 	int sel = SCSI_ReadPin(SCSI_In_SEL);
 	int bsy = SCSI_ReadPin(SCSI_In_BSY);
 	if (!bsy && sel &&
 		(mask & scsiDev.scsiIdMask) &&
-		goodParity && (countBits(mask) == 2))
+		(goodParity || !config->enableParity) && (countBits(mask) == 2))
 	{
 		// We've been selected!
 		// Assert BSY - Selection success!
@@ -413,6 +413,9 @@ static void process_SelectionPhase()
 		}
 
 		scsiDev.phase = COMMAND;
+		
+		CyDelayUs(2); // DODGY HACK
+		scsiDev.atnFlag |= SCSI_ReadPin(SCSI_ATN_INT);
 	}
 	else if (!sel)
 	{

@@ -36,6 +36,8 @@ void scsiRead(uint8* data, uint32 count);
 void scsiWriteByte(uint8 value);
 void scsiWrite(uint8* data, uint32 count);
 
+uint8 scsiReadDBxPins();
+
 void scsiEnterPhase(int phase);
 
 #endif

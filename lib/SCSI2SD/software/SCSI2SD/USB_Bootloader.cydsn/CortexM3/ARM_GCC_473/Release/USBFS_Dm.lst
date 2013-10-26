@@ -1,0 +1,775 @@
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 1
+
+
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 4
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.file	"USBFS_Dm.c"
+  15              		.text
+  16              	.Ltext0:
+  17              		.cfi_sections	.debug_frame
+  18              		.section	.text.USBFS_Dm_Write,"ax",%progbits
+  19              		.align	1
+  20              		.global	USBFS_Dm_Write
+  21              		.thumb
+  22              		.thumb_func
+  23              		.type	USBFS_Dm_Write, %function
+  24              	USBFS_Dm_Write:
+  25              	.LFB0:
+  26              		.file 1 ".\\Generated_Source\\PSoC5\\USBFS_Dm.c"
+   1:.\Generated_Source\PSoC5/USBFS_Dm.c **** /*******************************************************************************
+   2:.\Generated_Source\PSoC5/USBFS_Dm.c **** * File Name: USBFS_Dm.c  
+   3:.\Generated_Source\PSoC5/USBFS_Dm.c **** * Version 1.90
+   4:.\Generated_Source\PSoC5/USBFS_Dm.c **** *
+   5:.\Generated_Source\PSoC5/USBFS_Dm.c **** * Description:
+   6:.\Generated_Source\PSoC5/USBFS_Dm.c **** *  This file contains API to enable firmware control of a Pins component.
+   7:.\Generated_Source\PSoC5/USBFS_Dm.c **** *
+   8:.\Generated_Source\PSoC5/USBFS_Dm.c **** * Note:
+   9:.\Generated_Source\PSoC5/USBFS_Dm.c **** *
+  10:.\Generated_Source\PSoC5/USBFS_Dm.c **** ********************************************************************************
+  11:.\Generated_Source\PSoC5/USBFS_Dm.c **** * Copyright 2008-2012, Cypress Semiconductor Corporation.  All rights reserved.
+  12:.\Generated_Source\PSoC5/USBFS_Dm.c **** * You may use this file only in accordance with the license, terms, conditions, 
+  13:.\Generated_Source\PSoC5/USBFS_Dm.c **** * disclaimers, and limitations in the end user license agreement accompanying 
+  14:.\Generated_Source\PSoC5/USBFS_Dm.c **** * the software package with which this file was provided.
+  15:.\Generated_Source\PSoC5/USBFS_Dm.c **** *******************************************************************************/
+  16:.\Generated_Source\PSoC5/USBFS_Dm.c **** 
+  17:.\Generated_Source\PSoC5/USBFS_Dm.c **** #include "cytypes.h"
+  18:.\Generated_Source\PSoC5/USBFS_Dm.c **** #include "USBFS_Dm.h"
+  19:.\Generated_Source\PSoC5/USBFS_Dm.c **** 
+  20:.\Generated_Source\PSoC5/USBFS_Dm.c **** /* APIs are not generated for P15[7:6] on PSoC 5 */
+  21:.\Generated_Source\PSoC5/USBFS_Dm.c **** #if !(CY_PSOC5A &&\
+  22:.\Generated_Source\PSoC5/USBFS_Dm.c **** 	 USBFS_Dm__PORT == 15 && ((USBFS_Dm__MASK & 0xC0) != 0))
+  23:.\Generated_Source\PSoC5/USBFS_Dm.c **** 
+  24:.\Generated_Source\PSoC5/USBFS_Dm.c **** 
+  25:.\Generated_Source\PSoC5/USBFS_Dm.c **** /*******************************************************************************
+  26:.\Generated_Source\PSoC5/USBFS_Dm.c **** * Function Name: USBFS_Dm_Write
+  27:.\Generated_Source\PSoC5/USBFS_Dm.c **** ********************************************************************************
+  28:.\Generated_Source\PSoC5/USBFS_Dm.c **** *
+  29:.\Generated_Source\PSoC5/USBFS_Dm.c **** * Summary:
+  30:.\Generated_Source\PSoC5/USBFS_Dm.c **** *  Assign a new value to the digital port's data output register.  
+  31:.\Generated_Source\PSoC5/USBFS_Dm.c **** *
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 2
+
+
+  32:.\Generated_Source\PSoC5/USBFS_Dm.c **** * Parameters:  
+  33:.\Generated_Source\PSoC5/USBFS_Dm.c **** *  prtValue:  The value to be assigned to the Digital Port. 
+  34:.\Generated_Source\PSoC5/USBFS_Dm.c **** *
+  35:.\Generated_Source\PSoC5/USBFS_Dm.c **** * Return: 
+  36:.\Generated_Source\PSoC5/USBFS_Dm.c **** *  None
+  37:.\Generated_Source\PSoC5/USBFS_Dm.c **** *  
+  38:.\Generated_Source\PSoC5/USBFS_Dm.c **** *******************************************************************************/
+  39:.\Generated_Source\PSoC5/USBFS_Dm.c **** void USBFS_Dm_Write(uint8 value) 
+  40:.\Generated_Source\PSoC5/USBFS_Dm.c **** {
+  27              		.loc 1 40 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31              		@ link register save eliminated.
+  32              	.LVL0:
+  41:.\Generated_Source\PSoC5/USBFS_Dm.c ****     uint8 staticBits = (USBFS_Dm_DR & (uint8)(~USBFS_Dm_MASK));
+  33              		.loc 1 41 0
+  34 0000 044B     		ldr	r3, .L2
+  35 0002 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+  36              	.LVL1:
+  37 0004 02F07F01 		and	r1, r2, #127
+  42:.\Generated_Source\PSoC5/USBFS_Dm.c ****     USBFS_Dm_DR = staticBits | ((uint8)(value << USBFS_Dm_SHIFT) & USBFS_Dm_MASK);
+  38              		.loc 1 42 0
+  39 0008 41EAC010 		orr	r0, r1, r0, lsl #7
+  40              	.LVL2:
+  41 000c C2B2     		uxtb	r2, r0
+  42              	.LVL3:
+  43 000e 1A70     		strb	r2, [r3, #0]
+  44 0010 7047     		bx	lr
+  45              	.L3:
+  46 0012 00BF     		.align	2
+  47              	.L2:
+  48 0014 F0510040 		.word	1073762800
+  49              		.cfi_endproc
+  50              	.LFE0:
+  51              		.size	USBFS_Dm_Write, .-USBFS_Dm_Write
+  52              		.section	.text.USBFS_Dm_SetDriveMode,"ax",%progbits
+  53              		.align	1
+  54              		.global	USBFS_Dm_SetDriveMode
+  55              		.thumb
+  56              		.thumb_func
+  57              		.type	USBFS_Dm_SetDriveMode, %function
+  58              	USBFS_Dm_SetDriveMode:
+  59              	.LFB1:
+  43:.\Generated_Source\PSoC5/USBFS_Dm.c **** }
+  44:.\Generated_Source\PSoC5/USBFS_Dm.c **** 
+  45:.\Generated_Source\PSoC5/USBFS_Dm.c **** 
+  46:.\Generated_Source\PSoC5/USBFS_Dm.c **** /*******************************************************************************
+  47:.\Generated_Source\PSoC5/USBFS_Dm.c **** * Function Name: USBFS_Dm_SetDriveMode
+  48:.\Generated_Source\PSoC5/USBFS_Dm.c **** ********************************************************************************
+  49:.\Generated_Source\PSoC5/USBFS_Dm.c **** *
+  50:.\Generated_Source\PSoC5/USBFS_Dm.c **** * Summary:
+  51:.\Generated_Source\PSoC5/USBFS_Dm.c **** *  Change the drive mode on the pins of the port.
+  52:.\Generated_Source\PSoC5/USBFS_Dm.c **** * 
+  53:.\Generated_Source\PSoC5/USBFS_Dm.c **** * Parameters:  
+  54:.\Generated_Source\PSoC5/USBFS_Dm.c **** *  mode:  Change the pins to this drive mode.
+  55:.\Generated_Source\PSoC5/USBFS_Dm.c **** *
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 3
+
+
+  56:.\Generated_Source\PSoC5/USBFS_Dm.c **** * Return: 
+  57:.\Generated_Source\PSoC5/USBFS_Dm.c **** *  None
+  58:.\Generated_Source\PSoC5/USBFS_Dm.c **** *
+  59:.\Generated_Source\PSoC5/USBFS_Dm.c **** *******************************************************************************/
+  60:.\Generated_Source\PSoC5/USBFS_Dm.c **** void USBFS_Dm_SetDriveMode(uint8 mode) 
+  61:.\Generated_Source\PSoC5/USBFS_Dm.c **** {
+  60              		.loc 1 61 0
+  61              		.cfi_startproc
+  62              		@ args = 0, pretend = 0, frame = 0
+  63              		@ frame_needed = 0, uses_anonymous_args = 0
+  64              		@ link register save eliminated.
+  65              	.LVL4:
+  62:.\Generated_Source\PSoC5/USBFS_Dm.c **** 	CyPins_SetPinDriveMode(USBFS_Dm_0, mode);
+  66              		.loc 1 62 0
+  67 0000 044B     		ldr	r3, .L5
+  68 0002 00F00E00 		and	r0, r0, #14
+  69              	.LVL5:
+  70 0006 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+  71 0008 22F00E01 		bic	r1, r2, #14
+  72 000c 40EA0102 		orr	r2, r0, r1
+  73 0010 1A70     		strb	r2, [r3, #0]
+  74 0012 7047     		bx	lr
+  75              	.L6:
+  76              		.align	2
+  77              	.L5:
+  78 0014 7F500040 		.word	1073762431
+  79              		.cfi_endproc
+  80              	.LFE1:
+  81              		.size	USBFS_Dm_SetDriveMode, .-USBFS_Dm_SetDriveMode
+  82              		.section	.text.USBFS_Dm_Read,"ax",%progbits
+  83              		.align	1
+  84              		.global	USBFS_Dm_Read
+  85              		.thumb
+  86              		.thumb_func
+  87              		.type	USBFS_Dm_Read, %function
+  88              	USBFS_Dm_Read:
+  89              	.LFB2:
+  63:.\Generated_Source\PSoC5/USBFS_Dm.c **** }
+  64:.\Generated_Source\PSoC5/USBFS_Dm.c **** 
+  65:.\Generated_Source\PSoC5/USBFS_Dm.c **** 
+  66:.\Generated_Source\PSoC5/USBFS_Dm.c **** /*******************************************************************************
+  67:.\Generated_Source\PSoC5/USBFS_Dm.c **** * Function Name: USBFS_Dm_Read
+  68:.\Generated_Source\PSoC5/USBFS_Dm.c **** ********************************************************************************
+  69:.\Generated_Source\PSoC5/USBFS_Dm.c **** *
+  70:.\Generated_Source\PSoC5/USBFS_Dm.c **** * Summary:
+  71:.\Generated_Source\PSoC5/USBFS_Dm.c **** *  Read the current value on the pins of the Digital Port in right justified 
+  72:.\Generated_Source\PSoC5/USBFS_Dm.c **** *  form.
+  73:.\Generated_Source\PSoC5/USBFS_Dm.c **** *
+  74:.\Generated_Source\PSoC5/USBFS_Dm.c **** * Parameters:  
+  75:.\Generated_Source\PSoC5/USBFS_Dm.c **** *  None
+  76:.\Generated_Source\PSoC5/USBFS_Dm.c **** *
+  77:.\Generated_Source\PSoC5/USBFS_Dm.c **** * Return: 
+  78:.\Generated_Source\PSoC5/USBFS_Dm.c **** *  Returns the current value of the Digital Port as a right justified number
+  79:.\Generated_Source\PSoC5/USBFS_Dm.c **** *  
+  80:.\Generated_Source\PSoC5/USBFS_Dm.c **** * Note:
+  81:.\Generated_Source\PSoC5/USBFS_Dm.c **** *  Macro USBFS_Dm_ReadPS calls this function. 
+  82:.\Generated_Source\PSoC5/USBFS_Dm.c **** *  
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 4
+
+
+  83:.\Generated_Source\PSoC5/USBFS_Dm.c **** *******************************************************************************/
+  84:.\Generated_Source\PSoC5/USBFS_Dm.c **** uint8 USBFS_Dm_Read(void) 
+  85:.\Generated_Source\PSoC5/USBFS_Dm.c **** {
+  90              		.loc 1 85 0
+  91              		.cfi_startproc
+  92              		@ args = 0, pretend = 0, frame = 0
+  93              		@ frame_needed = 0, uses_anonymous_args = 0
+  94              		@ link register save eliminated.
+  86:.\Generated_Source\PSoC5/USBFS_Dm.c ****     return (USBFS_Dm_PS & USBFS_Dm_MASK) >> USBFS_Dm_SHIFT;
+  95              		.loc 1 86 0
+  96 0000 014B     		ldr	r3, .L8
+  97 0002 1878     		ldrb	r0, [r3, #0]	@ zero_extendqisi2
+  87:.\Generated_Source\PSoC5/USBFS_Dm.c **** }
+  98              		.loc 1 87 0
+  99 0004 C009     		lsrs	r0, r0, #7
+ 100 0006 7047     		bx	lr
+ 101              	.L9:
+ 102              		.align	2
+ 103              	.L8:
+ 104 0008 F1510040 		.word	1073762801
+ 105              		.cfi_endproc
+ 106              	.LFE2:
+ 107              		.size	USBFS_Dm_Read, .-USBFS_Dm_Read
+ 108              		.section	.text.USBFS_Dm_ReadDataReg,"ax",%progbits
+ 109              		.align	1
+ 110              		.global	USBFS_Dm_ReadDataReg
+ 111              		.thumb
+ 112              		.thumb_func
+ 113              		.type	USBFS_Dm_ReadDataReg, %function
+ 114              	USBFS_Dm_ReadDataReg:
+ 115              	.LFB3:
+  88:.\Generated_Source\PSoC5/USBFS_Dm.c **** 
+  89:.\Generated_Source\PSoC5/USBFS_Dm.c **** 
+  90:.\Generated_Source\PSoC5/USBFS_Dm.c **** /*******************************************************************************
+  91:.\Generated_Source\PSoC5/USBFS_Dm.c **** * Function Name: USBFS_Dm_ReadDataReg
+  92:.\Generated_Source\PSoC5/USBFS_Dm.c **** ********************************************************************************
+  93:.\Generated_Source\PSoC5/USBFS_Dm.c **** *
+  94:.\Generated_Source\PSoC5/USBFS_Dm.c **** * Summary:
+  95:.\Generated_Source\PSoC5/USBFS_Dm.c **** *  Read the current value assigned to a Digital Port's data output register
+  96:.\Generated_Source\PSoC5/USBFS_Dm.c **** *
+  97:.\Generated_Source\PSoC5/USBFS_Dm.c **** * Parameters:  
+  98:.\Generated_Source\PSoC5/USBFS_Dm.c **** *  None 
+  99:.\Generated_Source\PSoC5/USBFS_Dm.c **** *
+ 100:.\Generated_Source\PSoC5/USBFS_Dm.c **** * Return: 
+ 101:.\Generated_Source\PSoC5/USBFS_Dm.c **** *  Returns the current value assigned to the Digital Port's data output register
+ 102:.\Generated_Source\PSoC5/USBFS_Dm.c **** *  
+ 103:.\Generated_Source\PSoC5/USBFS_Dm.c **** *******************************************************************************/
+ 104:.\Generated_Source\PSoC5/USBFS_Dm.c **** uint8 USBFS_Dm_ReadDataReg(void) 
+ 105:.\Generated_Source\PSoC5/USBFS_Dm.c **** {
+ 116              		.loc 1 105 0
+ 117              		.cfi_startproc
+ 118              		@ args = 0, pretend = 0, frame = 0
+ 119              		@ frame_needed = 0, uses_anonymous_args = 0
+ 120              		@ link register save eliminated.
+ 106:.\Generated_Source\PSoC5/USBFS_Dm.c ****     return (USBFS_Dm_DR & USBFS_Dm_MASK) >> USBFS_Dm_SHIFT;
+ 121              		.loc 1 106 0
+ 122 0000 014B     		ldr	r3, .L11
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 5
+
+
+ 123 0002 1878     		ldrb	r0, [r3, #0]	@ zero_extendqisi2
+ 107:.\Generated_Source\PSoC5/USBFS_Dm.c **** }
+ 124              		.loc 1 107 0
+ 125 0004 C009     		lsrs	r0, r0, #7
+ 126 0006 7047     		bx	lr
+ 127              	.L12:
+ 128              		.align	2
+ 129              	.L11:
+ 130 0008 F0510040 		.word	1073762800
+ 131              		.cfi_endproc
+ 132              	.LFE3:
+ 133              		.size	USBFS_Dm_ReadDataReg, .-USBFS_Dm_ReadDataReg
+ 134              		.text
+ 135              	.Letext0:
+ 136              		.file 2 ".\\Generated_Source\\PSoC5\\cytypes.h"
+ 137              		.section	.debug_info,"",%progbits
+ 138              	.Ldebug_info0:
+ 139 0000 2F010000 		.4byte	0x12f
+ 140 0004 0200     		.2byte	0x2
+ 141 0006 00000000 		.4byte	.Ldebug_abbrev0
+ 142 000a 04       		.byte	0x4
+ 143 000b 01       		.uleb128 0x1
+ 144 000c 0E010000 		.4byte	.LASF20
+ 145 0010 01       		.byte	0x1
+ 146 0011 89000000 		.4byte	.LASF21
+ 147 0015 57010000 		.4byte	.LASF22
+ 148 0019 00000000 		.4byte	.Ldebug_ranges0+0
+ 149 001d 00000000 		.4byte	0
+ 150 0021 00000000 		.4byte	0
+ 151 0025 00000000 		.4byte	.Ldebug_line0
+ 152 0029 02       		.uleb128 0x2
+ 153 002a 01       		.byte	0x1
+ 154 002b 06       		.byte	0x6
+ 155 002c 80010000 		.4byte	.LASF0
+ 156 0030 02       		.uleb128 0x2
+ 157 0031 01       		.byte	0x1
+ 158 0032 08       		.byte	0x8
+ 159 0033 51000000 		.4byte	.LASF1
+ 160 0037 02       		.uleb128 0x2
+ 161 0038 02       		.byte	0x2
+ 162 0039 05       		.byte	0x5
+ 163 003a FE000000 		.4byte	.LASF2
+ 164 003e 02       		.uleb128 0x2
+ 165 003f 02       		.byte	0x2
+ 166 0040 07       		.byte	0x7
+ 167 0041 76000000 		.4byte	.LASF3
+ 168 0045 02       		.uleb128 0x2
+ 169 0046 04       		.byte	0x4
+ 170 0047 05       		.byte	0x5
+ 171 0048 77010000 		.4byte	.LASF4
+ 172 004c 02       		.uleb128 0x2
+ 173 004d 04       		.byte	0x4
+ 174 004e 07       		.byte	0x7
+ 175 004f 64000000 		.4byte	.LASF5
+ 176 0053 02       		.uleb128 0x2
+ 177 0054 08       		.byte	0x8
+ 178 0055 05       		.byte	0x5
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 6
+
+
+ 179 0056 EB000000 		.4byte	.LASF6
+ 180 005a 02       		.uleb128 0x2
+ 181 005b 08       		.byte	0x8
+ 182 005c 07       		.byte	0x7
+ 183 005d CF000000 		.4byte	.LASF7
+ 184 0061 03       		.uleb128 0x3
+ 185 0062 04       		.byte	0x4
+ 186 0063 05       		.byte	0x5
+ 187 0064 696E7400 		.ascii	"int\000"
+ 188 0068 02       		.uleb128 0x2
+ 189 0069 04       		.byte	0x4
+ 190 006a 07       		.byte	0x7
+ 191 006b C2000000 		.4byte	.LASF8
+ 192 006f 04       		.uleb128 0x4
+ 193 0070 08010000 		.4byte	.LASF12
+ 194 0074 02       		.byte	0x2
+ 195 0075 5B       		.byte	0x5b
+ 196 0076 30000000 		.4byte	0x30
+ 197 007a 02       		.uleb128 0x2
+ 198 007b 04       		.byte	0x4
+ 199 007c 04       		.byte	0x4
+ 200 007d 4B000000 		.4byte	.LASF9
+ 201 0081 02       		.uleb128 0x2
+ 202 0082 08       		.byte	0x8
+ 203 0083 04       		.byte	0x4
+ 204 0084 2E000000 		.4byte	.LASF10
+ 205 0088 02       		.uleb128 0x2
+ 206 0089 01       		.byte	0x1
+ 207 008a 08       		.byte	0x8
+ 208 008b F9000000 		.4byte	.LASF11
+ 209 008f 04       		.uleb128 0x4
+ 210 0090 5F000000 		.4byte	.LASF13
+ 211 0094 02       		.byte	0x2
+ 212 0095 F0       		.byte	0xf0
+ 213 0096 9A000000 		.4byte	0x9a
+ 214 009a 05       		.uleb128 0x5
+ 215 009b 6F000000 		.4byte	0x6f
+ 216 009f 06       		.uleb128 0x6
+ 217 00a0 01       		.byte	0x1
+ 218 00a1 00000000 		.4byte	.LASF14
+ 219 00a5 01       		.byte	0x1
+ 220 00a6 27       		.byte	0x27
+ 221 00a7 01       		.byte	0x1
+ 222 00a8 00000000 		.4byte	.LFB0
+ 223 00ac 18000000 		.4byte	.LFE0
+ 224 00b0 02       		.byte	0x2
+ 225 00b1 7D       		.byte	0x7d
+ 226 00b2 00       		.sleb128 0
+ 227 00b3 01       		.byte	0x1
+ 228 00b4 D7000000 		.4byte	0xd7
+ 229 00b8 07       		.uleb128 0x7
+ 230 00b9 1D000000 		.4byte	.LASF16
+ 231 00bd 01       		.byte	0x1
+ 232 00be 27       		.byte	0x27
+ 233 00bf 6F000000 		.4byte	0x6f
+ 234 00c3 00000000 		.4byte	.LLST0
+ 235 00c7 08       		.uleb128 0x8
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 7
+
+
+ 236 00c8 23000000 		.4byte	.LASF23
+ 237 00cc 01       		.byte	0x1
+ 238 00cd 29       		.byte	0x29
+ 239 00ce 6F000000 		.4byte	0x6f
+ 240 00d2 21000000 		.4byte	.LLST1
+ 241 00d6 00       		.byte	0
+ 242 00d7 06       		.uleb128 0x6
+ 243 00d8 01       		.byte	0x1
+ 244 00d9 35000000 		.4byte	.LASF15
+ 245 00dd 01       		.byte	0x1
+ 246 00de 3C       		.byte	0x3c
+ 247 00df 01       		.byte	0x1
+ 248 00e0 00000000 		.4byte	.LFB1
+ 249 00e4 18000000 		.4byte	.LFE1
+ 250 00e8 02       		.byte	0x2
+ 251 00e9 7D       		.byte	0x7d
+ 252 00ea 00       		.sleb128 0
+ 253 00eb 01       		.byte	0x1
+ 254 00ec 00010000 		.4byte	0x100
+ 255 00f0 07       		.uleb128 0x7
+ 256 00f1 E6000000 		.4byte	.LASF17
+ 257 00f5 01       		.byte	0x1
+ 258 00f6 3C       		.byte	0x3c
+ 259 00f7 6F000000 		.4byte	0x6f
+ 260 00fb 39000000 		.4byte	.LLST2
+ 261 00ff 00       		.byte	0
+ 262 0100 09       		.uleb128 0x9
+ 263 0101 01       		.byte	0x1
+ 264 0102 0F000000 		.4byte	.LASF18
+ 265 0106 01       		.byte	0x1
+ 266 0107 54       		.byte	0x54
+ 267 0108 01       		.byte	0x1
+ 268 0109 6F000000 		.4byte	0x6f
+ 269 010d 00000000 		.4byte	.LFB2
+ 270 0111 0C000000 		.4byte	.LFE2
+ 271 0115 02       		.byte	0x2
+ 272 0116 7D       		.byte	0x7d
+ 273 0117 00       		.sleb128 0
+ 274 0118 01       		.byte	0x1
+ 275 0119 09       		.uleb128 0x9
+ 276 011a 01       		.byte	0x1
+ 277 011b AD000000 		.4byte	.LASF19
+ 278 011f 01       		.byte	0x1
+ 279 0120 68       		.byte	0x68
+ 280 0121 01       		.byte	0x1
+ 281 0122 6F000000 		.4byte	0x6f
+ 282 0126 00000000 		.4byte	.LFB3
+ 283 012a 0C000000 		.4byte	.LFE3
+ 284 012e 02       		.byte	0x2
+ 285 012f 7D       		.byte	0x7d
+ 286 0130 00       		.sleb128 0
+ 287 0131 01       		.byte	0x1
+ 288 0132 00       		.byte	0
+ 289              		.section	.debug_abbrev,"",%progbits
+ 290              	.Ldebug_abbrev0:
+ 291 0000 01       		.uleb128 0x1
+ 292 0001 11       		.uleb128 0x11
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 8
+
+
+ 293 0002 01       		.byte	0x1
+ 294 0003 25       		.uleb128 0x25
+ 295 0004 0E       		.uleb128 0xe
+ 296 0005 13       		.uleb128 0x13
+ 297 0006 0B       		.uleb128 0xb
+ 298 0007 03       		.uleb128 0x3
+ 299 0008 0E       		.uleb128 0xe
+ 300 0009 1B       		.uleb128 0x1b
+ 301 000a 0E       		.uleb128 0xe
+ 302 000b 55       		.uleb128 0x55
+ 303 000c 06       		.uleb128 0x6
+ 304 000d 11       		.uleb128 0x11
+ 305 000e 01       		.uleb128 0x1
+ 306 000f 52       		.uleb128 0x52
+ 307 0010 01       		.uleb128 0x1
+ 308 0011 10       		.uleb128 0x10
+ 309 0012 06       		.uleb128 0x6
+ 310 0013 00       		.byte	0
+ 311 0014 00       		.byte	0
+ 312 0015 02       		.uleb128 0x2
+ 313 0016 24       		.uleb128 0x24
+ 314 0017 00       		.byte	0
+ 315 0018 0B       		.uleb128 0xb
+ 316 0019 0B       		.uleb128 0xb
+ 317 001a 3E       		.uleb128 0x3e
+ 318 001b 0B       		.uleb128 0xb
+ 319 001c 03       		.uleb128 0x3
+ 320 001d 0E       		.uleb128 0xe
+ 321 001e 00       		.byte	0
+ 322 001f 00       		.byte	0
+ 323 0020 03       		.uleb128 0x3
+ 324 0021 24       		.uleb128 0x24
+ 325 0022 00       		.byte	0
+ 326 0023 0B       		.uleb128 0xb
+ 327 0024 0B       		.uleb128 0xb
+ 328 0025 3E       		.uleb128 0x3e
+ 329 0026 0B       		.uleb128 0xb
+ 330 0027 03       		.uleb128 0x3
+ 331 0028 08       		.uleb128 0x8
+ 332 0029 00       		.byte	0
+ 333 002a 00       		.byte	0
+ 334 002b 04       		.uleb128 0x4
+ 335 002c 16       		.uleb128 0x16
+ 336 002d 00       		.byte	0
+ 337 002e 03       		.uleb128 0x3
+ 338 002f 0E       		.uleb128 0xe
+ 339 0030 3A       		.uleb128 0x3a
+ 340 0031 0B       		.uleb128 0xb
+ 341 0032 3B       		.uleb128 0x3b
+ 342 0033 0B       		.uleb128 0xb
+ 343 0034 49       		.uleb128 0x49
+ 344 0035 13       		.uleb128 0x13
+ 345 0036 00       		.byte	0
+ 346 0037 00       		.byte	0
+ 347 0038 05       		.uleb128 0x5
+ 348 0039 35       		.uleb128 0x35
+ 349 003a 00       		.byte	0
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 9
+
+
+ 350 003b 49       		.uleb128 0x49
+ 351 003c 13       		.uleb128 0x13
+ 352 003d 00       		.byte	0
+ 353 003e 00       		.byte	0
+ 354 003f 06       		.uleb128 0x6
+ 355 0040 2E       		.uleb128 0x2e
+ 356 0041 01       		.byte	0x1
+ 357 0042 3F       		.uleb128 0x3f
+ 358 0043 0C       		.uleb128 0xc
+ 359 0044 03       		.uleb128 0x3
+ 360 0045 0E       		.uleb128 0xe
+ 361 0046 3A       		.uleb128 0x3a
+ 362 0047 0B       		.uleb128 0xb
+ 363 0048 3B       		.uleb128 0x3b
+ 364 0049 0B       		.uleb128 0xb
+ 365 004a 27       		.uleb128 0x27
+ 366 004b 0C       		.uleb128 0xc
+ 367 004c 11       		.uleb128 0x11
+ 368 004d 01       		.uleb128 0x1
+ 369 004e 12       		.uleb128 0x12
+ 370 004f 01       		.uleb128 0x1
+ 371 0050 40       		.uleb128 0x40
+ 372 0051 0A       		.uleb128 0xa
+ 373 0052 9742     		.uleb128 0x2117
+ 374 0054 0C       		.uleb128 0xc
+ 375 0055 01       		.uleb128 0x1
+ 376 0056 13       		.uleb128 0x13
+ 377 0057 00       		.byte	0
+ 378 0058 00       		.byte	0
+ 379 0059 07       		.uleb128 0x7
+ 380 005a 05       		.uleb128 0x5
+ 381 005b 00       		.byte	0
+ 382 005c 03       		.uleb128 0x3
+ 383 005d 0E       		.uleb128 0xe
+ 384 005e 3A       		.uleb128 0x3a
+ 385 005f 0B       		.uleb128 0xb
+ 386 0060 3B       		.uleb128 0x3b
+ 387 0061 0B       		.uleb128 0xb
+ 388 0062 49       		.uleb128 0x49
+ 389 0063 13       		.uleb128 0x13
+ 390 0064 02       		.uleb128 0x2
+ 391 0065 06       		.uleb128 0x6
+ 392 0066 00       		.byte	0
+ 393 0067 00       		.byte	0
+ 394 0068 08       		.uleb128 0x8
+ 395 0069 34       		.uleb128 0x34
+ 396 006a 00       		.byte	0
+ 397 006b 03       		.uleb128 0x3
+ 398 006c 0E       		.uleb128 0xe
+ 399 006d 3A       		.uleb128 0x3a
+ 400 006e 0B       		.uleb128 0xb
+ 401 006f 3B       		.uleb128 0x3b
+ 402 0070 0B       		.uleb128 0xb
+ 403 0071 49       		.uleb128 0x49
+ 404 0072 13       		.uleb128 0x13
+ 405 0073 02       		.uleb128 0x2
+ 406 0074 06       		.uleb128 0x6
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 10
+
+
+ 407 0075 00       		.byte	0
+ 408 0076 00       		.byte	0
+ 409 0077 09       		.uleb128 0x9
+ 410 0078 2E       		.uleb128 0x2e
+ 411 0079 00       		.byte	0
+ 412 007a 3F       		.uleb128 0x3f
+ 413 007b 0C       		.uleb128 0xc
+ 414 007c 03       		.uleb128 0x3
+ 415 007d 0E       		.uleb128 0xe
+ 416 007e 3A       		.uleb128 0x3a
+ 417 007f 0B       		.uleb128 0xb
+ 418 0080 3B       		.uleb128 0x3b
+ 419 0081 0B       		.uleb128 0xb
+ 420 0082 27       		.uleb128 0x27
+ 421 0083 0C       		.uleb128 0xc
+ 422 0084 49       		.uleb128 0x49
+ 423 0085 13       		.uleb128 0x13
+ 424 0086 11       		.uleb128 0x11
+ 425 0087 01       		.uleb128 0x1
+ 426 0088 12       		.uleb128 0x12
+ 427 0089 01       		.uleb128 0x1
+ 428 008a 40       		.uleb128 0x40
+ 429 008b 0A       		.uleb128 0xa
+ 430 008c 9742     		.uleb128 0x2117
+ 431 008e 0C       		.uleb128 0xc
+ 432 008f 00       		.byte	0
+ 433 0090 00       		.byte	0
+ 434 0091 00       		.byte	0
+ 435              		.section	.debug_loc,"",%progbits
+ 436              	.Ldebug_loc0:
+ 437              	.LLST0:
+ 438 0000 00000000 		.4byte	.LVL0
+ 439 0004 0C000000 		.4byte	.LVL2
+ 440 0008 0100     		.2byte	0x1
+ 441 000a 50       		.byte	0x50
+ 442 000b 0C000000 		.4byte	.LVL2
+ 443 000f 18000000 		.4byte	.LFE0
+ 444 0013 0400     		.2byte	0x4
+ 445 0015 F3       		.byte	0xf3
+ 446 0016 01       		.uleb128 0x1
+ 447 0017 50       		.byte	0x50
+ 448 0018 9F       		.byte	0x9f
+ 449 0019 00000000 		.4byte	0
+ 450 001d 00000000 		.4byte	0
+ 451              	.LLST1:
+ 452 0021 04000000 		.4byte	.LVL1
+ 453 0025 0E000000 		.4byte	.LVL3
+ 454 0029 0600     		.2byte	0x6
+ 455 002b 72       		.byte	0x72
+ 456 002c 00       		.sleb128 0
+ 457 002d 08       		.byte	0x8
+ 458 002e 7F       		.byte	0x7f
+ 459 002f 1A       		.byte	0x1a
+ 460 0030 9F       		.byte	0x9f
+ 461 0031 00000000 		.4byte	0
+ 462 0035 00000000 		.4byte	0
+ 463              	.LLST2:
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 11
+
+
+ 464 0039 00000000 		.4byte	.LVL4
+ 465 003d 06000000 		.4byte	.LVL5
+ 466 0041 0100     		.2byte	0x1
+ 467 0043 50       		.byte	0x50
+ 468 0044 06000000 		.4byte	.LVL5
+ 469 0048 18000000 		.4byte	.LFE1
+ 470 004c 0400     		.2byte	0x4
+ 471 004e F3       		.byte	0xf3
+ 472 004f 01       		.uleb128 0x1
+ 473 0050 50       		.byte	0x50
+ 474 0051 9F       		.byte	0x9f
+ 475 0052 00000000 		.4byte	0
+ 476 0056 00000000 		.4byte	0
+ 477              		.section	.debug_aranges,"",%progbits
+ 478 0000 34000000 		.4byte	0x34
+ 479 0004 0200     		.2byte	0x2
+ 480 0006 00000000 		.4byte	.Ldebug_info0
+ 481 000a 04       		.byte	0x4
+ 482 000b 00       		.byte	0
+ 483 000c 0000     		.2byte	0
+ 484 000e 0000     		.2byte	0
+ 485 0010 00000000 		.4byte	.LFB0
+ 486 0014 18000000 		.4byte	.LFE0-.LFB0
+ 487 0018 00000000 		.4byte	.LFB1
+ 488 001c 18000000 		.4byte	.LFE1-.LFB1
+ 489 0020 00000000 		.4byte	.LFB2
+ 490 0024 0C000000 		.4byte	.LFE2-.LFB2
+ 491 0028 00000000 		.4byte	.LFB3
+ 492 002c 0C000000 		.4byte	.LFE3-.LFB3
+ 493 0030 00000000 		.4byte	0
+ 494 0034 00000000 		.4byte	0
+ 495              		.section	.debug_ranges,"",%progbits
+ 496              	.Ldebug_ranges0:
+ 497 0000 00000000 		.4byte	.LFB0
+ 498 0004 18000000 		.4byte	.LFE0
+ 499 0008 00000000 		.4byte	.LFB1
+ 500 000c 18000000 		.4byte	.LFE1
+ 501 0010 00000000 		.4byte	.LFB2
+ 502 0014 0C000000 		.4byte	.LFE2
+ 503 0018 00000000 		.4byte	.LFB3
+ 504 001c 0C000000 		.4byte	.LFE3
+ 505 0020 00000000 		.4byte	0
+ 506 0024 00000000 		.4byte	0
+ 507              		.section	.debug_line,"",%progbits
+ 508              	.Ldebug_line0:
+ 509 0000 92000000 		.section	.debug_str,"MS",%progbits,1
+ 509      02004700 
+ 509      00000201 
+ 509      FB0E0D00 
+ 509      01010101 
+ 510              	.LASF14:
+ 511 0000 55534246 		.ascii	"USBFS_Dm_Write\000"
+ 511      535F446D 
+ 511      5F577269 
+ 511      746500
+ 512              	.LASF18:
+ 513 000f 55534246 		.ascii	"USBFS_Dm_Read\000"
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 12
+
+
+ 513      535F446D 
+ 513      5F526561 
+ 513      6400
+ 514              	.LASF16:
+ 515 001d 76616C75 		.ascii	"value\000"
+ 515      6500
+ 516              	.LASF23:
+ 517 0023 73746174 		.ascii	"staticBits\000"
+ 517      69634269 
+ 517      747300
+ 518              	.LASF10:
+ 519 002e 646F7562 		.ascii	"double\000"
+ 519      6C6500
+ 520              	.LASF15:
+ 521 0035 55534246 		.ascii	"USBFS_Dm_SetDriveMode\000"
+ 521      535F446D 
+ 521      5F536574 
+ 521      44726976 
+ 521      654D6F64 
+ 522              	.LASF9:
+ 523 004b 666C6F61 		.ascii	"float\000"
+ 523      7400
+ 524              	.LASF1:
+ 525 0051 756E7369 		.ascii	"unsigned char\000"
+ 525      676E6564 
+ 525      20636861 
+ 525      7200
+ 526              	.LASF13:
+ 527 005f 72656738 		.ascii	"reg8\000"
+ 527      00
+ 528              	.LASF5:
+ 529 0064 6C6F6E67 		.ascii	"long unsigned int\000"
+ 529      20756E73 
+ 529      69676E65 
+ 529      6420696E 
+ 529      7400
+ 530              	.LASF3:
+ 531 0076 73686F72 		.ascii	"short unsigned int\000"
+ 531      7420756E 
+ 531      7369676E 
+ 531      65642069 
+ 531      6E7400
+ 532              	.LASF21:
+ 533 0089 2E5C4765 		.ascii	".\\Generated_Source\\PSoC5\\USBFS_Dm.c\000"
+ 533      6E657261 
+ 533      7465645F 
+ 533      536F7572 
+ 533      63655C50 
+ 534              	.LASF19:
+ 535 00ad 55534246 		.ascii	"USBFS_Dm_ReadDataReg\000"
+ 535      535F446D 
+ 535      5F526561 
+ 535      64446174 
+ 535      61526567 
+ 536              	.LASF8:
+ 537 00c2 756E7369 		.ascii	"unsigned int\000"
+ 537      676E6564 
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 13
+
+
+ 537      20696E74 
+ 537      00
+ 538              	.LASF7:
+ 539 00cf 6C6F6E67 		.ascii	"long long unsigned int\000"
+ 539      206C6F6E 
+ 539      6720756E 
+ 539      7369676E 
+ 539      65642069 
+ 540              	.LASF17:
+ 541 00e6 6D6F6465 		.ascii	"mode\000"
+ 541      00
+ 542              	.LASF6:
+ 543 00eb 6C6F6E67 		.ascii	"long long int\000"
+ 543      206C6F6E 
+ 543      6720696E 
+ 543      7400
+ 544              	.LASF11:
+ 545 00f9 63686172 		.ascii	"char\000"
+ 545      00
+ 546              	.LASF2:
+ 547 00fe 73686F72 		.ascii	"short int\000"
+ 547      7420696E 
+ 547      7400
+ 548              	.LASF12:
+ 549 0108 75696E74 		.ascii	"uint8\000"
+ 549      3800
+ 550              	.LASF20:
+ 551 010e 474E5520 		.ascii	"GNU C 4.7.3 20130312 (release) [ARM/embedded-4_7-br"
+ 551      4320342E 
+ 551      372E3320 
+ 551      32303133 
+ 551      30333132 
+ 552 0141 616E6368 		.ascii	"anch revision 196615]\000"
+ 552      20726576 
+ 552      6973696F 
+ 552      6E203139 
+ 552      36363135 
+ 553              	.LASF22:
+ 554 0157 573A5C53 		.ascii	"W:\\SCSI2SD\\USB_Bootloader.cydsn\000"
+ 554      43534932 
+ 554      53445C55 
+ 554      53425F42 
+ 554      6F6F746C 
+ 555              	.LASF4:
+ 556 0177 6C6F6E67 		.ascii	"long int\000"
+ 556      20696E74 
+ 556      00
+ 557              	.LASF0:
+ 558 0180 7369676E 		.ascii	"signed char\000"
+ 558      65642063 
+ 558      68617200 
+ 559              		.ident	"GCC: (GNU Tools for ARM Embedded Processors) 4.7.3 20130312 (release) [ARM/embedded-4_7-br

@@ -18,13 +18,14 @@
 #include "loopback.h"
 #include "scsi.h"
 #include "device.h"
+#include "scsiPhy.h"
 
 // Return true if all inputs are un-asserted (1)
 // Note that CyPins returns non-zero if pin is active. It does NOT
 // necessarily return 1.
 static int test_initial_inputs(void)
 {
-	uint8 dbx = SCSI_In_DBx_Read();
+	uint8 dbx = scsiReadDBxPins();
 	int result =
 		(dbx == 0xFF) &&
 		CyPins_ReadPin(SCSI_In_DBP) &&
@@ -41,6 +42,7 @@ static int test_initial_inputs(void)
 	return result;
 }
 
+/* Not currently possible to write directly to the output pins
 static int test_data_lines(void)
 {
 	int result = 1;
@@ -58,6 +60,7 @@ static int test_data_lines(void)
 	SCSI_Out_DBx_Write(0);
 	return result;
 }
+*/
 
 static int test_data_10MHz(void)
 {
@@ -132,7 +135,7 @@ static void test_success(void)
 void scsi2sd_test_loopback(void)
 {
 	if (!test_initial_inputs() ||
-		!test_data_lines() ||
+		//!test_data_lines() ||
 		!test_data_10MHz() ||
 		!test_ATN_interrupt())
 	{

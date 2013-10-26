@@ -68,6 +68,8 @@ static void sdSendCRCCommand(uint8 cmd, uint32 param)
 	{
 		sdSpiByte(send[cmd]);
 	}
+	// Allow command to process before reading result code.
+	sdSpiByte(0xFF);
 }
 
 static void sdSendCommand(uint8 cmd, uint32 param)
@@ -85,6 +87,8 @@ static void sdSendCommand(uint8 cmd, uint32 param)
 	{
 		sdSpiByte(send[cmd]);
 	}
+	// Allow command to process before reading result code.
+	sdSpiByte(0xFF);	
 }
 
 static uint8 sdReadResp()
@@ -149,11 +153,26 @@ void sdPrepareRead()
 void sdReadSector()
 {
 	// Wait for a start-block token.
-	uint8 token;
-	do
+	// Don't wait more than 200ms.
+	int maxWait = 200000;
+	uint8 token = sdSpiByte(0xFF);
+	while (token != 0xFE && (maxWait-- > 0))
 	{
+		CyDelayUs(1);
 		token = sdSpiByte(0xFF);
-	} while(token != 0xFE); // TODO don't loop forever here in case of error!
+	}
+	if (token != 0xFE)
+	{
+		sdCompleteRead();
+		if (scsiDev.status != CHECK_CONDITION)
+		{
+			scsiDev.status = CHECK_CONDITION;
+			scsiDev.sense.code = HARDWARE_ERROR;
+			scsiDev.sense.asc = UNRECOVERED_READ_ERROR;
+			scsiDev.phase = STATUS;
+		}
+		return;
+	}
 
 	int prep = 0;
 	int i = 0;
@@ -181,10 +200,12 @@ void sdReadSector()
 
 void sdCompleteRead()
 {
-	//uint8 r1b = sdCommandAndResponse(SD_STOP_TRANSMISSION, 0);
-	sdSendCommand(SD_STOP_TRANSMISSION, 0);
-	sdSpiByte(0xFF); // NEED STUFF BYTE for cmd12
-	uint8 r1b = sdReadResp();
+	int counter = 512;
+	uint8 r1b;
+	do
+	{
+		r1b = sdCommandAndResponse(SD_STOP_TRANSMISSION, 0);
+	} while (r1b && (counter-- > 0));
 	if (r1b)
 	{
 		scsiDev.status = CHECK_CONDITION;
@@ -230,14 +251,38 @@ int sdWriteSector()
 		SDCard_ReadRxData();
 		SDCard_ReadRxData();
 		SDCard_ReadRxData();
+		SDCard_ReadRxData();		
 
 		sdSpiByte(0x00); // CRC
 		sdSpiByte(0x00); // CRC
+		
+		// Don't wait more than 1000ms.
+		// My 2g Kingston micro-sd card doesn't respond immediately.
+		// My 16Gb card does.
+		int maxWait = 1000;
 		uint8 dataToken = sdSpiByte(0xFF); // Response
+		while (dataToken == 0xFF && maxWait-- > 0)
+		{
+			CyDelay(1); // 1ms.	
+			dataToken = sdSpiByte(0xFF);	
+		}
 		if (((dataToken & 0x1F) >> 1) != 0x2) // Accepted.
 		{
 			sdWaitWriteBusy();
-			sdSpiByte(0xFD); // STOP TOKEN
+			
+			int counter = 512;
+			uint8 r1b;
+			do
+			{
+				r1b = sdCommandAndResponse(SD_STOP_TRANSMISSION, 0);
+			} while (r1b && (counter-- > 0));
+			// R1b has an optional trailing "busy" signal.
+			uint8 busy;
+			do
+			{
+				busy = sdSpiByte(0xFF);
+			} while (busy == 0);			
+
 			// Wait for the card to come out of busy.
 			sdWaitWriteBusy();
 
@@ -432,7 +477,7 @@ int sdInit()
 
 	// now set the sd card up for full speed
 	SD_Data_Clk_Start(); // Turn on the fast clock
-	SD_Clk_Ctl_Write(config->overclockSPI ? 2 : 1); // Select the fast clock source.
+	SD_Clk_Ctl_Write(1); // Select the fast clock source.
 	SD_Init_Clk_Stop(); // Stop the slow clock.
 
 	if (!sdReadCSD()) goto bad;

@@ -1,0 +1,668 @@
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 1
+
+
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 4
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.file	"main.c"
+  15              		.text
+  16              	.Ltext0:
+  17              		.cfi_sections	.debug_frame
+  18              		.section	.text.startup.main,"ax",%progbits
+  19              		.align	1
+  20              		.global	main
+  21              		.thumb
+  22              		.thumb_func
+  23              		.type	main, %function
+  24              	main:
+  25              	.LFB57:
+  26              		.file 1 ".\\main.c"
+   1:.\main.c      **** //	Copyright (C) 2013 Michael McMaster <michael@codesrc.com>
+   2:.\main.c      **** //
+   3:.\main.c      **** //	This file is part of SCSI2SD.
+   4:.\main.c      **** //
+   5:.\main.c      **** //	SCSI2SD is free software: you can redistribute it and/or modify
+   6:.\main.c      **** //	it under the terms of the GNU General Public License as published by
+   7:.\main.c      **** //	the Free Software Foundation, either version 3 of the License, or
+   8:.\main.c      **** //	(at your option) any later version.
+   9:.\main.c      **** //
+  10:.\main.c      **** //	SCSI2SD is distributed in the hope that it will be useful,
+  11:.\main.c      **** //	but WITHOUT ANY WARRANTY; without even the implied warranty of
+  12:.\main.c      **** //	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  13:.\main.c      **** //	GNU General Public License for more details.
+  14:.\main.c      **** //
+  15:.\main.c      **** //	You should have received a copy of the GNU General Public License
+  16:.\main.c      **** //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
+  17:.\main.c      **** #include <project.h>
+  18:.\main.c      **** 
+  19:.\main.c      **** static void resetSCSI()
+  20:.\main.c      **** {
+  21:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_IO_raw);	
+  22:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_ATN);
+  23:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_BSY);
+  24:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_ACK);
+  25:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_RST);
+  26:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_SEL);
+  27:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_REQ);
+  28:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_MSG);
+  29:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_CD);
+  30:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_DBx_DB0);
+  31:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_DBx_DB1);
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 2
+
+
+  32:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_DBx_DB2);
+  33:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_DBx_DB3);
+  34:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_DBx_DB4);
+  35:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_DBx_DB5);
+  36:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_DBx_DB6);
+  37:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_DBx_DB7);
+  38:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_DBP_raw);
+  39:.\main.c      **** }
+  40:.\main.c      **** 
+  41:.\main.c      **** void main()
+  42:.\main.c      **** {
+  27              		.loc 1 42 0
+  28              		.cfi_startproc
+  29              		@ Volatile: function does not return.
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32 0000 08B5     		push	{r3, lr}
+  33              	.LCFI0:
+  34              		.cfi_def_cfa_offset 8
+  35              		.cfi_offset 3, -8
+  36              		.cfi_offset 14, -4
+  37              	.LBB4:
+  38              	.LBB5:
+  21:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_IO_raw);	
+  39              		.loc 1 21 0
+  40 0002 364B     		ldr	r3, .L4
+  41 0004 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+  42 0006 02F0FE00 		and	r0, r2, #254
+  43 000a 1870     		strb	r0, [r3, #0]
+  22:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_ATN);
+  44              		.loc 1 22 0
+  45 000c 93F82210 		ldrb	r1, [r3, #34]	@ zero_extendqisi2
+  46 0010 01F0FE02 		and	r2, r1, #254
+  47 0014 83F82220 		strb	r2, [r3, #34]
+  23:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_BSY);
+  48              		.loc 1 23 0
+  49 0018 0733     		adds	r3, r3, #7
+  50 001a 1878     		ldrb	r0, [r3, #0]	@ zero_extendqisi2
+  51 001c 00F0FE01 		and	r1, r0, #254
+  52 0020 1970     		strb	r1, [r3, #0]
+  24:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_ACK);
+  53              		.loc 1 24 0
+  54 0022 13F8012C 		ldrb	r2, [r3, #-1]	@ zero_extendqisi2
+  55 0026 02F0FE00 		and	r0, r2, #254
+  56 002a 03F8010C 		strb	r0, [r3, #-1]
+  25:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_RST);
+  57              		.loc 1 25 0
+  58 002e 13F8021C 		ldrb	r1, [r3, #-2]	@ zero_extendqisi2
+  59 0032 01F0FE02 		and	r2, r1, #254
+  60 0036 03F8022C 		strb	r2, [r3, #-2]
+  26:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_SEL);
+  61              		.loc 1 26 0
+  62 003a 13F8040C 		ldrb	r0, [r3, #-4]	@ zero_extendqisi2
+  63 003e 00F0FE01 		and	r1, r0, #254
+  64 0042 03F8041C 		strb	r1, [r3, #-4]
+  27:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_REQ);
+  65              		.loc 1 27 0
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 3
+
+
+  66 0046 13F8062C 		ldrb	r2, [r3, #-6]	@ zero_extendqisi2
+  67 004a 02F0FE00 		and	r0, r2, #254
+  68 004e 03F8060C 		strb	r0, [r3, #-6]
+  28:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_MSG);
+  69              		.loc 1 28 0
+  70 0052 13F8031C 		ldrb	r1, [r3, #-3]	@ zero_extendqisi2
+  71 0056 01F0FE02 		and	r2, r1, #254
+  72 005a 03F8032C 		strb	r2, [r3, #-3]
+  29:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_CD);
+  73              		.loc 1 29 0
+  74 005e 13F8050C 		ldrb	r0, [r3, #-5]	@ zero_extendqisi2
+  75 0062 00F0FE01 		and	r1, r0, #254
+  76 0066 03F8051C 		strb	r1, [r3, #-5]
+  30:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_DBx_DB0);
+  77              		.loc 1 30 0
+  78 006a 93F82C20 		ldrb	r2, [r3, #44]	@ zero_extendqisi2
+  79 006e 02F0FE00 		and	r0, r2, #254
+  80 0072 83F82C00 		strb	r0, [r3, #44]
+  31:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_DBx_DB1);
+  81              		.loc 1 31 0
+  82 0076 2B33     		adds	r3, r3, #43
+  83 0078 1978     		ldrb	r1, [r3, #0]	@ zero_extendqisi2
+  84 007a 01F0FE02 		and	r2, r1, #254
+  85 007e 1A70     		strb	r2, [r3, #0]
+  32:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_DBx_DB2);
+  86              		.loc 1 32 0
+  87 0080 13F8010C 		ldrb	r0, [r3, #-1]	@ zero_extendqisi2
+  88 0084 00F0FE01 		and	r1, r0, #254
+  89 0088 03F8011C 		strb	r1, [r3, #-1]
+  33:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_DBx_DB3);
+  90              		.loc 1 33 0
+  91 008c 13F8022C 		ldrb	r2, [r3, #-2]	@ zero_extendqisi2
+  92 0090 02F0FE00 		and	r0, r2, #254
+  93 0094 03F8020C 		strb	r0, [r3, #-2]
+  34:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_DBx_DB4);
+  94              		.loc 1 34 0
+  95 0098 13F80B1C 		ldrb	r1, [r3, #-11]	@ zero_extendqisi2
+  96 009c 01F0FE02 		and	r2, r1, #254
+  97 00a0 03F80B2C 		strb	r2, [r3, #-11]
+  35:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_DBx_DB5);
+  98              		.loc 1 35 0
+  99 00a4 13F80C0C 		ldrb	r0, [r3, #-12]	@ zero_extendqisi2
+ 100 00a8 00F0FE01 		and	r1, r0, #254
+ 101 00ac 03F80C1C 		strb	r1, [r3, #-12]
+  36:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_DBx_DB6);
+ 102              		.loc 1 36 0
+ 103 00b0 13F80D2C 		ldrb	r2, [r3, #-13]	@ zero_extendqisi2
+ 104 00b4 02F0FE00 		and	r0, r2, #254
+ 105 00b8 03F80D0C 		strb	r0, [r3, #-13]
+  37:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_DBx_DB7);
+ 106              		.loc 1 37 0
+ 107 00bc 13F80E1C 		ldrb	r1, [r3, #-14]	@ zero_extendqisi2
+ 108 00c0 01F0FE02 		and	r2, r1, #254
+ 109 00c4 03F80E2C 		strb	r2, [r3, #-14]
+  38:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_DBP_raw);
+ 110              		.loc 1 38 0
+ 111 00c8 13F80F0C 		ldrb	r0, [r3, #-15]	@ zero_extendqisi2
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 4
+
+
+ 112 00cc 00F0FE01 		and	r1, r0, #254
+ 113 00d0 03F80F1C 		strb	r1, [r3, #-15]
+ 114              	.LBE5:
+ 115              	.LBE4:
+  43:.\main.c      ****     resetSCSI();
+  44:.\main.c      **** 	
+  45:.\main.c      **** 	// The call to the bootloader should not return
+  46:.\main.c      ****     CyBtldr_Start();
+ 116              		.loc 1 46 0
+ 117 00d4 FFF7FEFF 		bl	BL_Start
+ 118              	.LVL0:
+ 119              	.L2:
+ 120 00d8 FEE7     		b	.L2
+ 121              	.L5:
+ 122 00da 00BF     		.align	2
+ 123              	.L4:
+ 124 00dc 00500040 		.word	1073762304
+ 125              		.cfi_endproc
+ 126              	.LFE57:
+ 127              		.size	main, .-main
+ 128              		.text
+ 129              	.Letext0:
+ 130              		.file 2 "c:\\program files (x86)\\cypress\\psoc creator\\3.0\\psoc creator\\import\\gnu_cs\\arm\\4
+ 131              		.file 3 "./Generated_Source/PSoC5/cytypes.h"
+ 132              		.file 4 "./Generated_Source/PSoC5/core_cm3.h"
+ 133              		.file 5 "./Generated_Source/PSoC5/BL.h"
+ 134              		.section	.debug_info,"",%progbits
+ 135              	.Ldebug_info0:
+ 136 0000 05010000 		.4byte	0x105
+ 137 0004 0200     		.2byte	0x2
+ 138 0006 00000000 		.4byte	.Ldebug_abbrev0
+ 139 000a 04       		.byte	0x4
+ 140 000b 01       		.uleb128 0x1
+ 141 000c 33000000 		.4byte	.LASF16
+ 142 0010 01       		.byte	0x1
+ 143 0011 C3000000 		.4byte	.LASF17
+ 144 0015 17010000 		.4byte	.LASF18
+ 145 0019 00000000 		.4byte	.Ldebug_ranges0+0
+ 146 001d 00000000 		.4byte	0
+ 147 0021 00000000 		.4byte	0
+ 148 0025 00000000 		.4byte	.Ldebug_line0
+ 149 0029 02       		.uleb128 0x2
+ 150 002a 01       		.byte	0x1
+ 151 002b 06       		.byte	0x6
+ 152 002c E9000000 		.4byte	.LASF0
+ 153 0030 02       		.uleb128 0x2
+ 154 0031 01       		.byte	0x1
+ 155 0032 08       		.byte	0x8
+ 156 0033 AB000000 		.4byte	.LASF1
+ 157 0037 02       		.uleb128 0x2
+ 158 0038 02       		.byte	0x2
+ 159 0039 05       		.byte	0x5
+ 160 003a 05010000 		.4byte	.LASF2
+ 161 003e 02       		.uleb128 0x2
+ 162 003f 02       		.byte	0x2
+ 163 0040 07       		.byte	0x7
+ 164 0041 0E000000 		.4byte	.LASF3
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 5
+
+
+ 165 0045 03       		.uleb128 0x3
+ 166 0046 0F010000 		.4byte	.LASF9
+ 167 004a 02       		.byte	0x2
+ 168 004b 4F       		.byte	0x4f
+ 169 004c 50000000 		.4byte	0x50
+ 170 0050 02       		.uleb128 0x2
+ 171 0051 04       		.byte	0x4
+ 172 0052 05       		.byte	0x5
+ 173 0053 D3000000 		.4byte	.LASF4
+ 174 0057 02       		.uleb128 0x2
+ 175 0058 04       		.byte	0x4
+ 176 0059 07       		.byte	0x7
+ 177 005a 82000000 		.4byte	.LASF5
+ 178 005e 02       		.uleb128 0x2
+ 179 005f 08       		.byte	0x8
+ 180 0060 05       		.byte	0x5
+ 181 0061 00000000 		.4byte	.LASF6
+ 182 0065 02       		.uleb128 0x2
+ 183 0066 08       		.byte	0x8
+ 184 0067 07       		.byte	0x7
+ 185 0068 94000000 		.4byte	.LASF7
+ 186 006c 04       		.uleb128 0x4
+ 187 006d 04       		.byte	0x4
+ 188 006e 05       		.byte	0x5
+ 189 006f 696E7400 		.ascii	"int\000"
+ 190 0073 02       		.uleb128 0x2
+ 191 0074 04       		.byte	0x4
+ 192 0075 07       		.byte	0x7
+ 193 0076 21000000 		.4byte	.LASF8
+ 194 007a 03       		.uleb128 0x3
+ 195 007b 7C000000 		.4byte	.LASF10
+ 196 007f 03       		.byte	0x3
+ 197 0080 5B       		.byte	0x5b
+ 198 0081 30000000 		.4byte	0x30
+ 199 0085 02       		.uleb128 0x2
+ 200 0086 04       		.byte	0x4
+ 201 0087 04       		.byte	0x4
+ 202 0088 FF000000 		.4byte	.LASF11
+ 203 008c 02       		.uleb128 0x2
+ 204 008d 08       		.byte	0x8
+ 205 008e 04       		.byte	0x4
+ 206 008f CC000000 		.4byte	.LASF12
+ 207 0093 02       		.uleb128 0x2
+ 208 0094 01       		.byte	0x1
+ 209 0095 08       		.byte	0x8
+ 210 0096 B9000000 		.4byte	.LASF13
+ 211 009a 03       		.uleb128 0x3
+ 212 009b BE000000 		.4byte	.LASF14
+ 213 009f 03       		.byte	0x3
+ 214 00a0 F0       		.byte	0xf0
+ 215 00a1 A5000000 		.4byte	0xa5
+ 216 00a5 05       		.uleb128 0x5
+ 217 00a6 7A000000 		.4byte	0x7a
+ 218 00aa 02       		.uleb128 0x2
+ 219 00ab 04       		.byte	0x4
+ 220 00ac 07       		.byte	0x7
+ 221 00ad 40010000 		.4byte	.LASF15
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 6
+
+
+ 222 00b1 06       		.uleb128 0x6
+ 223 00b2 F5000000 		.4byte	.LASF19
+ 224 00b6 01       		.byte	0x1
+ 225 00b7 13       		.byte	0x13
+ 226 00b8 01       		.byte	0x1
+ 227 00b9 07       		.uleb128 0x7
+ 228 00ba 01       		.byte	0x1
+ 229 00bb 2E000000 		.4byte	.LASF20
+ 230 00bf 01       		.byte	0x1
+ 231 00c0 29       		.byte	0x29
+ 232 00c1 00000000 		.4byte	.LFB57
+ 233 00c5 E0000000 		.4byte	.LFE57
+ 234 00c9 00000000 		.4byte	.LLST0
+ 235 00cd 01       		.byte	0x1
+ 236 00ce EB000000 		.4byte	0xeb
+ 237 00d2 08       		.uleb128 0x8
+ 238 00d3 B1000000 		.4byte	0xb1
+ 239 00d7 02000000 		.4byte	.LBB4
+ 240 00db D4000000 		.4byte	.LBE4
+ 241 00df 01       		.byte	0x1
+ 242 00e0 2B       		.byte	0x2b
+ 243 00e1 09       		.uleb128 0x9
+ 244 00e2 D8000000 		.4byte	.LVL0
+ 245 00e6 FE000000 		.4byte	0xfe
+ 246 00ea 00       		.byte	0
+ 247 00eb 0A       		.uleb128 0xa
+ 248 00ec DC000000 		.4byte	.LASF21
+ 249 00f0 04       		.byte	0x4
+ 250 00f1 1606     		.2byte	0x616
+ 251 00f3 F9000000 		.4byte	0xf9
+ 252 00f7 01       		.byte	0x1
+ 253 00f8 01       		.byte	0x1
+ 254 00f9 05       		.uleb128 0x5
+ 255 00fa 45000000 		.4byte	0x45
+ 256 00fe 0B       		.uleb128 0xb
+ 257 00ff 01       		.byte	0x1
+ 258 0100 37010000 		.4byte	.LASF22
+ 259 0104 05       		.byte	0x5
+ 260 0105 93       		.byte	0x93
+ 261 0106 01       		.byte	0x1
+ 262 0107 01       		.byte	0x1
+ 263 0108 00       		.byte	0
+ 264              		.section	.debug_abbrev,"",%progbits
+ 265              	.Ldebug_abbrev0:
+ 266 0000 01       		.uleb128 0x1
+ 267 0001 11       		.uleb128 0x11
+ 268 0002 01       		.byte	0x1
+ 269 0003 25       		.uleb128 0x25
+ 270 0004 0E       		.uleb128 0xe
+ 271 0005 13       		.uleb128 0x13
+ 272 0006 0B       		.uleb128 0xb
+ 273 0007 03       		.uleb128 0x3
+ 274 0008 0E       		.uleb128 0xe
+ 275 0009 1B       		.uleb128 0x1b
+ 276 000a 0E       		.uleb128 0xe
+ 277 000b 55       		.uleb128 0x55
+ 278 000c 06       		.uleb128 0x6
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 7
+
+
+ 279 000d 11       		.uleb128 0x11
+ 280 000e 01       		.uleb128 0x1
+ 281 000f 52       		.uleb128 0x52
+ 282 0010 01       		.uleb128 0x1
+ 283 0011 10       		.uleb128 0x10
+ 284 0012 06       		.uleb128 0x6
+ 285 0013 00       		.byte	0
+ 286 0014 00       		.byte	0
+ 287 0015 02       		.uleb128 0x2
+ 288 0016 24       		.uleb128 0x24
+ 289 0017 00       		.byte	0
+ 290 0018 0B       		.uleb128 0xb
+ 291 0019 0B       		.uleb128 0xb
+ 292 001a 3E       		.uleb128 0x3e
+ 293 001b 0B       		.uleb128 0xb
+ 294 001c 03       		.uleb128 0x3
+ 295 001d 0E       		.uleb128 0xe
+ 296 001e 00       		.byte	0
+ 297 001f 00       		.byte	0
+ 298 0020 03       		.uleb128 0x3
+ 299 0021 16       		.uleb128 0x16
+ 300 0022 00       		.byte	0
+ 301 0023 03       		.uleb128 0x3
+ 302 0024 0E       		.uleb128 0xe
+ 303 0025 3A       		.uleb128 0x3a
+ 304 0026 0B       		.uleb128 0xb
+ 305 0027 3B       		.uleb128 0x3b
+ 306 0028 0B       		.uleb128 0xb
+ 307 0029 49       		.uleb128 0x49
+ 308 002a 13       		.uleb128 0x13
+ 309 002b 00       		.byte	0
+ 310 002c 00       		.byte	0
+ 311 002d 04       		.uleb128 0x4
+ 312 002e 24       		.uleb128 0x24
+ 313 002f 00       		.byte	0
+ 314 0030 0B       		.uleb128 0xb
+ 315 0031 0B       		.uleb128 0xb
+ 316 0032 3E       		.uleb128 0x3e
+ 317 0033 0B       		.uleb128 0xb
+ 318 0034 03       		.uleb128 0x3
+ 319 0035 08       		.uleb128 0x8
+ 320 0036 00       		.byte	0
+ 321 0037 00       		.byte	0
+ 322 0038 05       		.uleb128 0x5
+ 323 0039 35       		.uleb128 0x35
+ 324 003a 00       		.byte	0
+ 325 003b 49       		.uleb128 0x49
+ 326 003c 13       		.uleb128 0x13
+ 327 003d 00       		.byte	0
+ 328 003e 00       		.byte	0
+ 329 003f 06       		.uleb128 0x6
+ 330 0040 2E       		.uleb128 0x2e
+ 331 0041 00       		.byte	0
+ 332 0042 03       		.uleb128 0x3
+ 333 0043 0E       		.uleb128 0xe
+ 334 0044 3A       		.uleb128 0x3a
+ 335 0045 0B       		.uleb128 0xb
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 8
+
+
+ 336 0046 3B       		.uleb128 0x3b
+ 337 0047 0B       		.uleb128 0xb
+ 338 0048 20       		.uleb128 0x20
+ 339 0049 0B       		.uleb128 0xb
+ 340 004a 00       		.byte	0
+ 341 004b 00       		.byte	0
+ 342 004c 07       		.uleb128 0x7
+ 343 004d 2E       		.uleb128 0x2e
+ 344 004e 01       		.byte	0x1
+ 345 004f 3F       		.uleb128 0x3f
+ 346 0050 0C       		.uleb128 0xc
+ 347 0051 03       		.uleb128 0x3
+ 348 0052 0E       		.uleb128 0xe
+ 349 0053 3A       		.uleb128 0x3a
+ 350 0054 0B       		.uleb128 0xb
+ 351 0055 3B       		.uleb128 0x3b
+ 352 0056 0B       		.uleb128 0xb
+ 353 0057 11       		.uleb128 0x11
+ 354 0058 01       		.uleb128 0x1
+ 355 0059 12       		.uleb128 0x12
+ 356 005a 01       		.uleb128 0x1
+ 357 005b 40       		.uleb128 0x40
+ 358 005c 06       		.uleb128 0x6
+ 359 005d 9742     		.uleb128 0x2117
+ 360 005f 0C       		.uleb128 0xc
+ 361 0060 01       		.uleb128 0x1
+ 362 0061 13       		.uleb128 0x13
+ 363 0062 00       		.byte	0
+ 364 0063 00       		.byte	0
+ 365 0064 08       		.uleb128 0x8
+ 366 0065 1D       		.uleb128 0x1d
+ 367 0066 00       		.byte	0
+ 368 0067 31       		.uleb128 0x31
+ 369 0068 13       		.uleb128 0x13
+ 370 0069 11       		.uleb128 0x11
+ 371 006a 01       		.uleb128 0x1
+ 372 006b 12       		.uleb128 0x12
+ 373 006c 01       		.uleb128 0x1
+ 374 006d 58       		.uleb128 0x58
+ 375 006e 0B       		.uleb128 0xb
+ 376 006f 59       		.uleb128 0x59
+ 377 0070 0B       		.uleb128 0xb
+ 378 0071 00       		.byte	0
+ 379 0072 00       		.byte	0
+ 380 0073 09       		.uleb128 0x9
+ 381 0074 898201   		.uleb128 0x4109
+ 382 0077 00       		.byte	0
+ 383 0078 11       		.uleb128 0x11
+ 384 0079 01       		.uleb128 0x1
+ 385 007a 31       		.uleb128 0x31
+ 386 007b 13       		.uleb128 0x13
+ 387 007c 00       		.byte	0
+ 388 007d 00       		.byte	0
+ 389 007e 0A       		.uleb128 0xa
+ 390 007f 34       		.uleb128 0x34
+ 391 0080 00       		.byte	0
+ 392 0081 03       		.uleb128 0x3
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 9
+
+
+ 393 0082 0E       		.uleb128 0xe
+ 394 0083 3A       		.uleb128 0x3a
+ 395 0084 0B       		.uleb128 0xb
+ 396 0085 3B       		.uleb128 0x3b
+ 397 0086 05       		.uleb128 0x5
+ 398 0087 49       		.uleb128 0x49
+ 399 0088 13       		.uleb128 0x13
+ 400 0089 3F       		.uleb128 0x3f
+ 401 008a 0C       		.uleb128 0xc
+ 402 008b 3C       		.uleb128 0x3c
+ 403 008c 0C       		.uleb128 0xc
+ 404 008d 00       		.byte	0
+ 405 008e 00       		.byte	0
+ 406 008f 0B       		.uleb128 0xb
+ 407 0090 2E       		.uleb128 0x2e
+ 408 0091 00       		.byte	0
+ 409 0092 3F       		.uleb128 0x3f
+ 410 0093 0C       		.uleb128 0xc
+ 411 0094 03       		.uleb128 0x3
+ 412 0095 0E       		.uleb128 0xe
+ 413 0096 3A       		.uleb128 0x3a
+ 414 0097 0B       		.uleb128 0xb
+ 415 0098 3B       		.uleb128 0x3b
+ 416 0099 0B       		.uleb128 0xb
+ 417 009a 27       		.uleb128 0x27
+ 418 009b 0C       		.uleb128 0xc
+ 419 009c 3C       		.uleb128 0x3c
+ 420 009d 0C       		.uleb128 0xc
+ 421 009e 00       		.byte	0
+ 422 009f 00       		.byte	0
+ 423 00a0 00       		.byte	0
+ 424              		.section	.debug_loc,"",%progbits
+ 425              	.Ldebug_loc0:
+ 426              	.LLST0:
+ 427 0000 00000000 		.4byte	.LFB57
+ 428 0004 02000000 		.4byte	.LCFI0
+ 429 0008 0200     		.2byte	0x2
+ 430 000a 7D       		.byte	0x7d
+ 431 000b 00       		.sleb128 0
+ 432 000c 02000000 		.4byte	.LCFI0
+ 433 0010 E0000000 		.4byte	.LFE57
+ 434 0014 0200     		.2byte	0x2
+ 435 0016 7D       		.byte	0x7d
+ 436 0017 08       		.sleb128 8
+ 437 0018 00000000 		.4byte	0
+ 438 001c 00000000 		.4byte	0
+ 439              		.section	.debug_aranges,"",%progbits
+ 440 0000 1C000000 		.4byte	0x1c
+ 441 0004 0200     		.2byte	0x2
+ 442 0006 00000000 		.4byte	.Ldebug_info0
+ 443 000a 04       		.byte	0x4
+ 444 000b 00       		.byte	0
+ 445 000c 0000     		.2byte	0
+ 446 000e 0000     		.2byte	0
+ 447 0010 00000000 		.4byte	.LFB57
+ 448 0014 E0000000 		.4byte	.LFE57-.LFB57
+ 449 0018 00000000 		.4byte	0
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 10
+
+
+ 450 001c 00000000 		.4byte	0
+ 451              		.section	.debug_ranges,"",%progbits
+ 452              	.Ldebug_ranges0:
+ 453 0000 00000000 		.4byte	.LFB57
+ 454 0004 E0000000 		.4byte	.LFE57
+ 455 0008 00000000 		.4byte	0
+ 456 000c 00000000 		.4byte	0
+ 457              		.section	.debug_line,"",%progbits
+ 458              	.Ldebug_line0:
+ 459 0000 2B010000 		.section	.debug_str,"MS",%progbits,1
+ 459      02000101 
+ 459      00000201 
+ 459      FB0E0D00 
+ 459      01010101 
+ 460              	.LASF6:
+ 461 0000 6C6F6E67 		.ascii	"long long int\000"
+ 461      206C6F6E 
+ 461      6720696E 
+ 461      7400
+ 462              	.LASF3:
+ 463 000e 73686F72 		.ascii	"short unsigned int\000"
+ 463      7420756E 
+ 463      7369676E 
+ 463      65642069 
+ 463      6E7400
+ 464              	.LASF8:
+ 465 0021 756E7369 		.ascii	"unsigned int\000"
+ 465      676E6564 
+ 465      20696E74 
+ 465      00
+ 466              	.LASF20:
+ 467 002e 6D61696E 		.ascii	"main\000"
+ 467      00
+ 468              	.LASF16:
+ 469 0033 474E5520 		.ascii	"GNU C 4.7.3 20130312 (release) [ARM/embedded-4_7-br"
+ 469      4320342E 
+ 469      372E3320 
+ 469      32303133 
+ 469      30333132 
+ 470 0066 616E6368 		.ascii	"anch revision 196615]\000"
+ 470      20726576 
+ 470      6973696F 
+ 470      6E203139 
+ 470      36363135 
+ 471              	.LASF10:
+ 472 007c 75696E74 		.ascii	"uint8\000"
+ 472      3800
+ 473              	.LASF5:
+ 474 0082 6C6F6E67 		.ascii	"long unsigned int\000"
+ 474      20756E73 
+ 474      69676E65 
+ 474      6420696E 
+ 474      7400
+ 475              	.LASF7:
+ 476 0094 6C6F6E67 		.ascii	"long long unsigned int\000"
+ 476      206C6F6E 
+ 476      6720756E 
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 11
+
+
+ 476      7369676E 
+ 476      65642069 
+ 477              	.LASF1:
+ 478 00ab 756E7369 		.ascii	"unsigned char\000"
+ 478      676E6564 
+ 478      20636861 
+ 478      7200
+ 479              	.LASF13:
+ 480 00b9 63686172 		.ascii	"char\000"
+ 480      00
+ 481              	.LASF14:
+ 482 00be 72656738 		.ascii	"reg8\000"
+ 482      00
+ 483              	.LASF17:
+ 484 00c3 2E5C6D61 		.ascii	".\\main.c\000"
+ 484      696E2E63 
+ 484      00
+ 485              	.LASF12:
+ 486 00cc 646F7562 		.ascii	"double\000"
+ 486      6C6500
+ 487              	.LASF4:
+ 488 00d3 6C6F6E67 		.ascii	"long int\000"
+ 488      20696E74 
+ 488      00
+ 489              	.LASF21:
+ 490 00dc 49544D5F 		.ascii	"ITM_RxBuffer\000"
+ 490      52784275 
+ 490      66666572 
+ 490      00
+ 491              	.LASF0:
+ 492 00e9 7369676E 		.ascii	"signed char\000"
+ 492      65642063 
+ 492      68617200 
+ 493              	.LASF19:
+ 494 00f5 72657365 		.ascii	"resetSCSI\000"
+ 494      74534353 
+ 494      4900
+ 495              	.LASF11:
+ 496 00ff 666C6F61 		.ascii	"float\000"
+ 496      7400
+ 497              	.LASF2:
+ 498 0105 73686F72 		.ascii	"short int\000"
+ 498      7420696E 
+ 498      7400
+ 499              	.LASF9:
+ 500 010f 696E7433 		.ascii	"int32_t\000"
+ 500      325F7400 
+ 501              	.LASF18:
+ 502 0117 573A5C53 		.ascii	"W:\\SCSI2SD\\USB_Bootloader.cydsn\000"
+ 502      43534932 
+ 502      53445C55 
+ 502      53425F42 
+ 502      6F6F746C 
+ 503              	.LASF22:
+ 504 0137 424C5F53 		.ascii	"BL_Start\000"
+ 504      74617274 
+ 504      00
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 12
+
+
+ 505              	.LASF15:
+ 506 0140 73697A65 		.ascii	"sizetype\000"
+ 506      74797065 
+ 506      00
+ 507              		.ident	"GCC: (GNU Tools for ARM Embedded Processors) 4.7.3 20130312 (release) [ARM/embedded-4_7-br

@@ -27,7 +27,6 @@ typedef struct
 	char revision[4];
 	uint8 enableParity;
 	uint8 enableUnitAttention;
-	uint8 overclockSPI;
 	uint32 maxBlocks;
 
 	// Pad to 64 bytes, which is what we can fit into a USB HID packet.

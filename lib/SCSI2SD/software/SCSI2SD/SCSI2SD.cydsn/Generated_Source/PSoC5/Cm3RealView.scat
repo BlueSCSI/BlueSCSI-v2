@@ -32,7 +32,7 @@
 ;********************************************************************************/
 #include "cyfitter.h"
 
-#define CY_FLASH_SIZE       262144
+#define CY_FLASH_SIZE       131072
 #define CY_APPL_ORIGIN      0
 #define CY_FLASH_ROW_SIZE   256
 #define CY_ECC_ROW_SIZE     32
@@ -44,7 +44,7 @@
 #if (CYDEV_PROJ_TYPE == CYDEV_PROJ_TYPE_LOADABLE)
     #define CY_APPL_NUM     1
     #define CY_APPL_MAX     1
-    #define CY_EE_IN_BTLDR  
+    #define CY_EE_IN_BTLDR  0
 
     #if CY_APPL_ORIGIN
         #define APPL1_START     CY_APPL_ORIGIN
@@ -97,7 +97,7 @@ APPLICATION APPL_START (CY_FLASH_SIZE - APPL_START)
         * (+RO)
     }
 
-    ISRVECTORS (0x20000000 - (65536 / 2)) UNINIT
+    ISRVECTORS (0x20000000 - (32768 / 2)) UNINIT
     {
         * (.ramvectors)
     }
@@ -112,11 +112,11 @@ APPLICATION APPL_START (CY_FLASH_SIZE - APPL_START)
         .ANY (+RW, +ZI)
     }
 
-    ARM_LIB_HEAP (0x20000000 + (65536 / 2) - 0x1000 - 0x4000) EMPTY 0x1000
+    ARM_LIB_HEAP (0x20000000 + (32768 / 2) - 0x1000 - 0x4000) EMPTY 0x1000
     {
     }
 
-    ARM_LIB_STACK (0x20000000 + (65536 / 2)) EMPTY -0x4000
+    ARM_LIB_STACK (0x20000000 + (32768 / 2)) EMPTY -0x4000
     {
     }
 }

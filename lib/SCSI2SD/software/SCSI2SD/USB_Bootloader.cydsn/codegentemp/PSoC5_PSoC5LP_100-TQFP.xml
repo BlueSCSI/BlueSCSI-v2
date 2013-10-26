@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="utf-8"?>
+<pindata xsi:schemaLocation="http://cypress.com/xsd/cypindata_v2 ../../dtd/cypindata_v2.xsd" family="PSoC5_PSoC5LP" package="100-TQFP" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://cypress.com/xsd/cypindata_v2">
+  <capabilities>
+    <capability name="DIGITAL" value="0x0000000000000001" />
+    <capability name="ANALOG" value="0x0000000000000002" />
+    <capability name="GPIO" value="0x0000000000000004" />
+    <capability name="SIO" value="0x0000000000000008" />
+    <capability name="DAC_HI_OUT" value="0x0000000000000010" />
+    <capability name="ABUF_POS" value="0x0000000000000020" />
+    <capability name="ABUF_OUT" value="0x0000000000000040" />
+    <capability name="ABUF_NEG" value="0x0000000000000080" />
+    <capability name="XRES" value="0x0000000000000100" />
+    <capability name="SWD_IO" value="0x0000000000000200" />
+    <capability name="SWD_CK" value="0x0000000000000400" />
+    <capability name="JTAG_NTRST" value="0x0000000000000800" />
+    <capability name="I2CWKUP_SDA" value="0x0000000000001000" />
+    <capability name="I2CWKUP_SCL" value="0x0000000000002000" />
+    <capability name="EXT_VREF" value="0x0000000000004000" />
+    <capability name="USB_D_PLUS" value="0x0000000000008000" />
+    <capability name="USB_D_MINUS" value="0x0000000000010000" />
+    <capability name="SWO" value="0x0000000000020000" />
+    <capability name="JTAG_TMS" value="0x0000000000040000" />
+    <capability name="JTAG_TDO" value="0x0000000000080000" />
+    <capability name="JTAG_TDI" value="0x0000000000100000" />
+    <capability name="JTAG_TCK" value="0x0000000000200000" />
+    <capability name="ECO_MHZ_XO" value="0x0000000000400000" />
+    <capability name="ECO_MHZ_XI" value="0x0000000000800000" />
+    <capability name="ECO_32KHZ_XO" value="0x0000000001000000" />
+    <capability name="ECO_32KHZ_XI" value="0x0000000002000000" />
+    <capability name="DSM_EXT_PIN_ONE" value="0x0000000004000000" />
+    <capability name="DSM_EXT_PIN_TWO" value="0x0000000008000000" />
+    <capability name="SAR_EXT_PIN" value="0x0000000010000000" />
+    <capability name="TRACE" value="0x0000000020000000" />
+    <capability name="SPI_MOSI" value="0x0000000040000000" />
+    <capability name="SPI_MISO" value="0x0000000080000000" />
+    <capability name="SPI_SS" value="0x0000000100000000" />
+    <capability name="SPI_SCLK" value="0x0000000200000000" />
+    <capability name="EXTSYNC" value="0x0000000400000000" />
+    <capability name="EXTREJECT" value="0x0000000800000000" />
+    <capability name="EXTCLK" value="0x0000001000000000" />
+    <capability name="TCPWM_P" value="0x0000002000000000" />
+    <capability name="TCPWM_N" value="0x0000004000000000" />
+    <capability name="SCB_UART_RX" value="0x0000008000000000" />
+    <capability name="SCB_UART_TX" value="0x0000010000000000" />
+    <capability name="ROUTABLE" value="0x0000020000000000" />
+    <capability name="TRUETOUCH" value="0x0000040000000000" />
+    <capability name="LCD_COM" value="0x0000080000000000" />
+    <capability name="LCD_SEG" value="0x0000100000000000" />
+    <capability name="WAKEUP" value="0x0000200000000000" />
+  </capabilities>
+  <pins>
+    <pin number="1" name="P2[5]" pinSide="WEST" padSide="WEST" portId="2" pinId="5" ioSupplyPin="Vio2" ioSupplyPinNo="100" capabilities="0x0000020020000007">
+      <function name="[TRACE_D1]" />
+    </pin>
+    <pin number="2" name="P2[6]" pinSide="WEST" padSide="SOUTH" portId="2" pinId="6" ioSupplyPin="Vio2" ioSupplyPinNo="100" capabilities="0x0000020020000007">
+      <function name="[TRACE_D2]" />
+    </pin>
+    <pin number="3" name="P2[7]" pinSide="WEST" padSide="SOUTH" portId="2" pinId="7" ioSupplyPin="Vio2" ioSupplyPinNo="100" capabilities="0x0000020020000007">
+      <function name="[TRACE_D3]" />
+    </pin>
+    <pin number="4" name="P12[4]" pinSide="WEST" padSide="SOUTH" portId="12" pinId="4" ioSupplyPin="Vio2" ioSupplyPinNo="100" capabilities="0x0000020000002009">
+      <ffbterm ffbtype="I2C" ffbid="0" term="scl_in" required="false" />
+      <function name="I2C0: SCL" />
+    </pin>
+    <pin number="5" name="P12[5]" pinSide="WEST" padSide="SOUTH" portId="12" pinId="5" ioSupplyPin="Vio2" ioSupplyPinNo="100" capabilities="0x0000020000001009">
+      <ffbterm ffbtype="I2C" ffbid="0" term="sda_in" required="false" />
+      <function name="I2C0: SDA" />
+    </pin>
+    <pin number="6" name="P6[4]" pinSide="WEST" padSide="SOUTH" portId="6" pinId="4" ioSupplyPin="Vio2" ioSupplyPinNo="100" capabilities="0x0000020000000007" />
+    <pin number="7" name="P6[5]" pinSide="WEST" padSide="SOUTH" portId="6" pinId="5" ioSupplyPin="Vio2" ioSupplyPinNo="100" capabilities="0x0000020000000007" />
+    <pin number="8" name="P6[6]" pinSide="WEST" padSide="SOUTH" portId="6" pinId="6" ioSupplyPin="Vio2" ioSupplyPinNo="100" capabilities="0x0000020000000007" />
+    <pin number="9" name="P6[7]" pinSide="WEST" padSide="SOUTH" portId="6" pinId="7" ioSupplyPin="Vio2" ioSupplyPinNo="100" capabilities="0x0000020000000007" />
+    <pin number="10" name="Vssb" pinSide="WEST" padSide="SOUTH" powerPadNames="Vssb" capabilities="0x0000000000000000" />
+    <pin number="11" name="Ind" pinSide="WEST" padSide="SOUTH" powerPadNames="Ind" capabilities="0x0000000000000000" />
+    <pin number="12" name="Vb" pinSide="WEST" padSide="SOUTH" powerPadNames="Vb" capabilities="0x0000000000000000" />
+    <pin number="13" name="Vbat" pinSide="WEST" padSide="SOUTH" powerPadNames="Vbat" capabilities="0x0000000000000000" />
+    <pin number="14" name="Vssd" pinSide="WEST" padSide="SOUTH" powerPadNames="Vssd" capabilities="0x0000000000000000" />
+    <pin number="15" name="XRES_N" pinSide="WEST" padSide="SOUTH" ioSupplyPin="Vio1" ioSupplyPinNo="26" powerPadNames="XRES_N" capabilities="0x0000000000000100">
+      <function name="XRES" />
+    </pin>
+    <pin number="16" name="P5[0]" pinSide="WEST" padSide="SOUTH" portId="5" pinId="0" ioSupplyPin="Vio1" ioSupplyPinNo="26" capabilities="0x0000020000000007" />
+    <pin number="17" name="P5[1]" pinSide="WEST" padSide="SOUTH" portId="5" pinId="1" ioSupplyPin="Vio1" ioSupplyPinNo="26" capabilities="0x0000020000000007" />
+    <pin number="18" name="P5[2]" pinSide="WEST" padSide="SOUTH" portId="5" pinId="2" ioSupplyPin="Vio1" ioSupplyPinNo="26" capabilities="0x0000020000000007" />
+    <pin number="19" name="P5[3]" pinSide="WEST" padSide="SOUTH" portId="5" pinId="3" ioSupplyPin="Vio1" ioSupplyPinNo="26" capabilities="0x0000020000000007" />
+    <pin number="20" name="P1[0]" pinSide="WEST" padSide="SOUTH" portId="1" pinId="0" ioSupplyPin="Vio1" ioSupplyPinNo="26" capabilities="0x0000020000040207">
+      <function name="TMS" />
+      <function name="SWDIO" />
+    </pin>
+    <pin number="21" name="P1[1]" pinSide="WEST" padSide="SOUTH" portId="1" pinId="1" ioSupplyPin="Vio1" ioSupplyPinNo="26" capabilities="0x0000020000200407">
+      <function name="TCK" />
+      <function name="SWDCK" />
+    </pin>
+    <pin number="22" name="P1[2]" pinSide="WEST" padSide="SOUTH" portId="1" pinId="2" ioSupplyPin="Vio1" ioSupplyPinNo="26" capabilities="0x0000020000000107">
+      <function name="XRES_N" />
+      <function name="TSTRST_N" />
+      <function name="GPIO" />
+    </pin>
+    <pin number="23" name="P1[3]" pinSide="WEST" padSide="SOUTH" portId="1" pinId="3" ioSupplyPin="Vio1" ioSupplyPinNo="26" capabilities="0x00000200000A0007">
+      <function name="TDO" />
+      <function name="SWV" />
+    </pin>
+    <pin number="24" name="P1[4]" pinSide="WEST" padSide="SOUTH" portId="1" pinId="4" ioSupplyPin="Vio1" ioSupplyPinNo="26" capabilities="0x0000020000100007">
+      <function name="TDI" />
+    </pin>
+    <pin number="25" name="P1[5]" pinSide="WEST" padSide="SOUTH" portId="1" pinId="5" ioSupplyPin="Vio1" ioSupplyPinNo="26" capabilities="0x0000020000000807">
+      <function name="NTRST" />
+    </pin>
+    <pin number="26" name="Vio1" pinSide="SOUTH" padSide="SOUTH" ioSupplyPin="Vio1" ioSupplyPinNo="26" powerPadNames="Vio1" capabilities="0x0000000000000000" />
+    <pin number="27" name="P1[6]" pinSide="SOUTH" padSide="EAST" portId="1" pinId="6" ioSupplyPin="Vio1" ioSupplyPinNo="26" capabilities="0x0000020000000007" />
+    <pin number="28" name="P1[7]" pinSide="SOUTH" padSide="EAST" portId="1" pinId="7" ioSupplyPin="Vio1" ioSupplyPinNo="26" capabilities="0x0000020000000007" />
+    <pin number="29" name="P12[6]" pinSide="SOUTH" padSide="EAST" portId="12" pinId="6" ioSupplyPin="Vio1" ioSupplyPinNo="26" capabilities="0x0000020000000009" />
+    <pin number="30" name="P12[7]" pinSide="SOUTH" padSide="EAST" portId="12" pinId="7" ioSupplyPin="Vio1" ioSupplyPinNo="26" capabilities="0x0000020000000009" />
+    <pin number="31" name="P5[4]" pinSide="SOUTH" padSide="EAST" portId="5" pinId="4" ioSupplyPin="Vio1" ioSupplyPinNo="26" capabilities="0x0000020000000007" />
+    <pin number="32" name="P5[5]" pinSide="SOUTH" padSide="EAST" portId="5" pinId="5" ioSupplyPin="Vio1" ioSupplyPinNo="26" capabilities="0x0000020000000007" />
+    <pin number="33" name="P5[6]" pinSide="SOUTH" padSide="EAST" portId="5" pinId="6" ioSupplyPin="Vio1" ioSupplyPinNo="26" capabilities="0x0000020000000007" />
+    <pin number="34" name="P5[7]" pinSide="SOUTH" padSide="EAST" portId="5" pinId="7" ioSupplyPin="Vio1" ioSupplyPinNo="26" capabilities="0x0000020000000007" />
+    <pin number="35" name="P15[6]" pinSide="SOUTH" padSide="EAST" portId="15" pinId="6" ioSupplyPin="Vusb" ioSupplyPinNo="37" capabilities="0x0000020000008201">
+      <ffbterm ffbtype="USB" ffbid="0" term="dp" required="true" />
+      <function name="USB: D+" />
+      <function name="SWDIO" />
+    </pin>
+    <pin number="36" name="P15[7]" pinSide="SOUTH" padSide="EAST" portId="15" pinId="7" ioSupplyPin="Vusb" ioSupplyPinNo="37" capabilities="0x0000020000010401">
+      <ffbterm ffbtype="USB" ffbid="0" term="dm" required="true" />
+      <function name="USB: D-" />
+      <function name="SWDCK" />
+    </pin>
+    <pin number="37" name="Vddd" pinSide="SOUTH" padSide="EAST" powerPadNames="Vusb;Vddd" capabilities="0x0000000000000000" />
+    <pin number="38" name="Vssd" pinSide="SOUTH" padSide="EAST" powerPadNames="Vssd" capabilities="0x0000000000000000" />
+    <pin number="39" name="Vccd" pinSide="SOUTH" padSide="EAST" powerPadNames="Vccd" capabilities="0x0000000000000000" />
+    <pin number="40" name="n/c" pinSide="SOUTH" padSide="NONE" capabilities="0x0000000000000000" />
+    <pin number="41" name="n/c" pinSide="SOUTH" padSide="NONE" capabilities="0x0000000000000000" />
+    <pin number="42" name="P15[0]" pinSide="SOUTH" padSide="EAST" portId="15" pinId="0" ioSupplyPin="Vio3" ioSupplyPinNo="50" capabilities="0x0000020000400007">
+      <function name="MHZ XTAL: XO" />
+    </pin>
+    <pin number="43" name="P15[1]" pinSide="SOUTH" padSide="EAST" portId="15" pinId="1" ioSupplyPin="Vio3" ioSupplyPinNo="50" capabilities="0x0000020000800007">
+      <function name="MHZ XTAL: XI" />
+    </pin>
+    <pin number="44" name="P3[0]" pinSide="SOUTH" padSide="EAST" portId="3" pinId="0" ioSupplyPin="Vio3" ioSupplyPinNo="50" capabilities="0x0000020000000007">
+      <function name="IDAC1" />
+    </pin>
+    <pin number="45" name="P3[1]" pinSide="SOUTH" padSide="EAST" portId="3" pinId="1" ioSupplyPin="Vio3" ioSupplyPinNo="50" capabilities="0x0000020000000007">
+      <function name="IDAC3" />
+    </pin>
+    <pin number="46" name="P3[2]" pinSide="SOUTH" padSide="EAST" portId="3" pinId="2" ioSupplyPin="Vio3" ioSupplyPinNo="50" capabilities="0x0000020008004007">
+      <ffbterm ffbtype="DSM" ffbid="0" term="ext_pin_2" required="true" />
+      <function name="OPAMP3-" />
+      <function name="EXTREF1" />
+    </pin>
+    <pin number="47" name="P3[3]" pinSide="SOUTH" padSide="EAST" portId="3" pinId="3" ioSupplyPin="Vio3" ioSupplyPinNo="50" capabilities="0x0000020000000007">
+      <function name="OPAMP3+" />
+    </pin>
+    <pin number="48" name="P3[4]" pinSide="SOUTH" padSide="EAST" portId="3" pinId="4" ioSupplyPin="Vio3" ioSupplyPinNo="50" capabilities="0x0000020000000007">
+      <function name="OPAMP1-" />
+    </pin>
+    <pin number="49" name="P3[5]" pinSide="SOUTH" padSide="EAST" portId="3" pinId="5" ioSupplyPin="Vio3" ioSupplyPinNo="50" capabilities="0x0000020000000007">
+      <function name="OPAMP1+" />
+    </pin>
+    <pin number="50" name="Vio3" pinSide="SOUTH" padSide="EAST" ioSupplyPin="Vio3" ioSupplyPinNo="50" powerPadNames="Vio3" capabilities="0x0000000000000000" />
+    <pin number="51" name="P3[6]" pinSide="EAST" padSide="NORTH" portId="3" pinId="6" ioSupplyPin="Vio3" ioSupplyPinNo="50" capabilities="0x0000020000000007">
+      <function name="OPAMP1OUT" />
+    </pin>
+    <pin number="52" name="P3[7]" pinSide="EAST" padSide="NORTH" portId="3" pinId="7" ioSupplyPin="Vio3" ioSupplyPinNo="50" capabilities="0x0000020000000007">
+      <function name="OPAMP3OUT" />
+    </pin>
+    <pin number="53" name="P12[0]" pinSide="EAST" padSide="NORTH" portId="12" pinId="0" ioSupplyPin="Vio3" ioSupplyPinNo="50" capabilities="0x0000020000002009">
+      <ffbterm ffbtype="I2C" ffbid="0" term="scl_in" alternative="1" required="false" />
+      <function name="I2C1: SCL" />
+    </pin>
+    <pin number="54" name="P12[1]" pinSide="EAST" padSide="NORTH" portId="12" pinId="1" ioSupplyPin="Vio3" ioSupplyPinNo="50" capabilities="0x0000020000001009">
+      <ffbterm ffbtype="I2C" ffbid="0" term="sda_in" alternative="1" required="false" />
+      <function name="I2C1: SDA" />
+    </pin>
+    <pin number="55" name="P15[2]" pinSide="EAST" padSide="NORTH" portId="15" pinId="2" ioSupplyPin="Vio3" ioSupplyPinNo="50" capabilities="0x0000020001000007">
+      <function name="KHZ XTAL: XO" />
+    </pin>
+    <pin number="56" name="P15[3]" pinSide="EAST" padSide="NORTH" portId="15" pinId="3" ioSupplyPin="Vio3" ioSupplyPinNo="50" capabilities="0x0000020002000007">
+      <function name="KHZ XTAL: XI" />
+    </pin>
+    <pin number="57" name="n/c" pinSide="EAST" padSide="NONE" capabilities="0x0000000000000000" />
+    <pin number="58" name="n/c" pinSide="EAST" padSide="NONE" capabilities="0x0000000000000000" />
+    <pin number="59" name="n/c" pinSide="EAST" padSide="NONE" capabilities="0x0000000000000000" />
+    <pin number="60" name="n/c" pinSide="EAST" padSide="NONE" capabilities="0x0000000000000000" />
+    <pin number="61" name="n/c" pinSide="EAST" padSide="NONE" capabilities="0x0000000000000000" />
+    <pin number="62" name="n/c" pinSide="EAST" padSide="NONE" capabilities="0x0000000000000000" />
+    <pin number="63" name="Vcca" pinSide="EAST" padSide="NORTH" powerPadNames="Vcca" capabilities="0x0000000000000000" />
+    <pin number="64" name="Vssa" pinSide="EAST" padSide="NORTH" powerPadNames="Vssabuf;Vssa" capabilities="0x0000000000000000" />
+    <pin number="65" name="Vdda" pinSide="EAST" padSide="NORTH" powerPadNames="Vdda" capabilities="0x0000000000000000" />
+    <pin number="66" name="Vssd" pinSide="EAST" padSide="NORTH" powerPadNames="Vssd" capabilities="0x0000000000000000" />
+    <pin number="67" name="P12[2]" pinSide="EAST" padSide="NORTH" portId="12" pinId="2" ioSupplyPin="Vio0" ioSupplyPinNo="75" capabilities="0x0000020000000009" />
+    <pin number="68" name="P12[3]" pinSide="EAST" padSide="NORTH" portId="12" pinId="3" ioSupplyPin="Vio0" ioSupplyPinNo="75" capabilities="0x0000020000000009" />
+    <pin number="69" name="P4[0]" pinSide="EAST" padSide="NORTH" portId="4" pinId="0" ioSupplyPin="Vio0" ioSupplyPinNo="75" capabilities="0x0000020000000007" />
+    <pin number="70" name="P4[1]" pinSide="EAST" padSide="NORTH" portId="4" pinId="1" ioSupplyPin="Vio0" ioSupplyPinNo="75" capabilities="0x0000020000000007" />
+    <pin number="71" name="P0[0]" pinSide="EAST" padSide="NORTH" portId="0" pinId="0" ioSupplyPin="Vio0" ioSupplyPinNo="75" capabilities="0x0000020000000007">
+      <function name="OPAMP2OUT" />
+    </pin>
+    <pin number="72" name="P0[1]" pinSide="EAST" padSide="NORTH" portId="0" pinId="1" ioSupplyPin="Vio0" ioSupplyPinNo="75" capabilities="0x0000020000000007">
+      <function name="OPAMP0OUT" />
+    </pin>
+    <pin number="73" name="P0[2]" pinSide="EAST" padSide="NORTH" portId="0" pinId="2" ioSupplyPin="Vio0" ioSupplyPinNo="75" capabilities="0x0000020000000007">
+      <function name="OPAMP0+" />
+      <function name="EXTSAR1" />
+    </pin>
+    <pin number="74" name="P0[3]" pinSide="EAST" padSide="NORTH" portId="0" pinId="3" ioSupplyPin="Vio0" ioSupplyPinNo="75" capabilities="0x0000020004004007">
+      <ffbterm ffbtype="DSM" ffbid="0" term="ext_pin_1" required="true" />
+      <function name="OPAMP0-" />
+      <function name="EXTREF0" />
+    </pin>
+    <pin number="75" name="Vio0" pinSide="EAST" padSide="WEST" ioSupplyPin="Vio0" ioSupplyPinNo="75" powerPadNames="Vio0" capabilities="0x0000000000000000" />
+    <pin number="76" name="P0[4]" pinSide="NORTH" padSide="WEST" portId="0" pinId="4" ioSupplyPin="Vio0" ioSupplyPinNo="75" capabilities="0x0000020010000007">
+      <ffbterm ffbtype="SAR" ffbid="0" term="ext_pin" required="true" />
+      <function name="OPAMP2+" />
+      <function name="EXTSAR0" />
+    </pin>
+    <pin number="77" name="P0[5]" pinSide="NORTH" padSide="WEST" portId="0" pinId="5" ioSupplyPin="Vio0" ioSupplyPinNo="75" capabilities="0x0000020000000007">
+      <function name="OPAMP2-" />
+    </pin>
+    <pin number="78" name="P0[6]" pinSide="NORTH" padSide="WEST" portId="0" pinId="6" ioSupplyPin="Vio0" ioSupplyPinNo="75" capabilities="0x0000020000000017">
+      <ffbterm ffbtype="VIDAC" ffbid="0" term="iout" required="false" />
+      <function name="IDAC0" />
+    </pin>
+    <pin number="79" name="P0[7]" pinSide="NORTH" padSide="WEST" portId="0" pinId="7" ioSupplyPin="Vio0" ioSupplyPinNo="75" capabilities="0x0000020000000007">
+      <function name="IDAC2" />
+    </pin>
+    <pin number="80" name="P4[2]" pinSide="NORTH" padSide="WEST" portId="4" pinId="2" ioSupplyPin="Vio0" ioSupplyPinNo="75" capabilities="0x0000020000000007" />
+    <pin number="81" name="P4[3]" pinSide="NORTH" padSide="WEST" portId="4" pinId="3" ioSupplyPin="Vio0" ioSupplyPinNo="75" capabilities="0x0000020000000007" />
+    <pin number="82" name="P4[4]" pinSide="NORTH" padSide="WEST" portId="4" pinId="4" ioSupplyPin="Vio0" ioSupplyPinNo="75" capabilities="0x0000020000000007" />
+    <pin number="83" name="P4[5]" pinSide="NORTH" padSide="WEST" portId="4" pinId="5" ioSupplyPin="Vio0" ioSupplyPinNo="75" capabilities="0x0000020000000007" />
+    <pin number="84" name="P4[6]" pinSide="NORTH" padSide="WEST" portId="4" pinId="6" ioSupplyPin="Vio0" ioSupplyPinNo="75" capabilities="0x0000020000000007" />
+    <pin number="85" name="P4[7]" pinSide="NORTH" padSide="WEST" portId="4" pinId="7" ioSupplyPin="Vio0" ioSupplyPinNo="75" capabilities="0x0000020000000007" />
+    <pin number="86" name="Vccd" pinSide="NORTH" padSide="WEST" powerPadNames="Vccd" capabilities="0x0000000000000000" />
+    <pin number="87" name="Vssd" pinSide="NORTH" padSide="WEST" powerPadNames="Vssd" capabilities="0x0000000000000000" />
+    <pin number="88" name="Vddd" pinSide="NORTH" padSide="WEST" powerPadNames="Vddd" capabilities="0x0000000000000000" />
+    <pin number="89" name="P6[0]" pinSide="NORTH" padSide="WEST" portId="6" pinId="0" ioSupplyPin="Vio2" ioSupplyPinNo="100" capabilities="0x0000020000000007" />
+    <pin number="90" name="P6[1]" pinSide="NORTH" padSide="WEST" portId="6" pinId="1" ioSupplyPin="Vio2" ioSupplyPinNo="100" capabilities="0x0000020000000007" />
+    <pin number="91" name="P6[2]" pinSide="NORTH" padSide="WEST" portId="6" pinId="2" ioSupplyPin="Vio2" ioSupplyPinNo="100" capabilities="0x0000020000000007" />
+    <pin number="92" name="P6[3]" pinSide="NORTH" padSide="WEST" portId="6" pinId="3" ioSupplyPin="Vio2" ioSupplyPinNo="100" capabilities="0x0000020000000007" />
+    <pin number="93" name="P15[4]" pinSide="NORTH" padSide="WEST" portId="15" pinId="4" ioSupplyPin="Vio2" ioSupplyPinNo="100" capabilities="0x0000020000000007" />
+    <pin number="94" name="P15[5]" pinSide="NORTH" padSide="WEST" portId="15" pinId="5" ioSupplyPin="Vio2" ioSupplyPinNo="100" capabilities="0x0000020000000007" />
+    <pin number="95" name="P2[0]" pinSide="NORTH" padSide="WEST" portId="2" pinId="0" ioSupplyPin="Vio2" ioSupplyPinNo="100" capabilities="0x0000020000000007" />
+    <pin number="96" name="P2[1]" pinSide="NORTH" padSide="WEST" portId="2" pinId="1" ioSupplyPin="Vio2" ioSupplyPinNo="100" capabilities="0x0000020000000007" />
+    <pin number="97" name="P2[2]" pinSide="NORTH" padSide="WEST" portId="2" pinId="2" ioSupplyPin="Vio2" ioSupplyPinNo="100" capabilities="0x0000020000000007" />
+    <pin number="98" name="P2[3]" pinSide="NORTH" padSide="WEST" portId="2" pinId="3" ioSupplyPin="Vio2" ioSupplyPinNo="100" capabilities="0x0000020020000007">
+      <function name="[TRACE_CLK]" />
+    </pin>
+    <pin number="99" name="P2[4]" pinSide="NORTH" padSide="WEST" portId="2" pinId="4" ioSupplyPin="Vio2" ioSupplyPinNo="100" capabilities="0x0000020020000007">
+      <function name="[TRACE_D0]" />
+    </pin>
+    <pin number="100" name="Vio2" pinSide="NORTH" padSide="WEST" ioSupplyPin="Vio2" ioSupplyPinNo="100" powerPadNames="Vio2" capabilities="0x0000000000000000" />
+  </pins>
+</pindata>

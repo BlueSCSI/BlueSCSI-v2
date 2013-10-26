@@ -34,6 +34,19 @@ CY_ISR(scsiAttentionISR)
 	SCSI_ATN_ClearInterrupt();
 }
 
+uint8 scsiReadDBxPins()
+{
+	return
+		(SCSI_ReadPin(SCSI_In_DBx_DB7) << 7) |
+		(SCSI_ReadPin(SCSI_In_DBx_DB6) << 6) |
+		(SCSI_ReadPin(SCSI_In_DBx_DB5) << 5) |
+		(SCSI_ReadPin(SCSI_In_DBx_DB4) << 4) |
+		(SCSI_ReadPin(SCSI_In_DBx_DB3) << 3) |
+		(SCSI_ReadPin(SCSI_In_DBx_DB2) << 2) |
+		(SCSI_ReadPin(SCSI_In_DBx_DB1) << 1) |
+		SCSI_ReadPin(SCSI_In_DBx_DB0);		
+}
+
 uint8 scsiReadByte(void)
 {
 	while (!(CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG) & 1)) {}

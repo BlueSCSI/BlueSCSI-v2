@@ -1,13 +1,8 @@
-- Software has not been updated for PCB rev 3.0. In particular, most of the pin
-assignments are incorrect.
-
-- USB bootloader is not implemented yet.
-
-- Configuration options cannot be set via USB.
+- Configuration options cannot be set via USB. Must use the USB bootloader to
+	load a new firmware instead.
 	- SCSI ID hardcoded to 0
 	- Partity checking is on
 	- Unit Attention Condition is off
-	- SPI overclock to 32MHz off.
 
 - DMA is not used for SPI transfers
 - Parity checking not implemented for the PSoC Datapath implementation

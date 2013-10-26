@@ -32,7 +32,6 @@ static Config shadow =
 	"2.0a", // revision (68k Apple Drive Setup: Set to "1.0 ")
 	1, // enable parity
 	0, // disable unit attention,
-	0, // overclock SPI
 	0, // Max blocks (0 == disabled)
 	"" // reserved
 };

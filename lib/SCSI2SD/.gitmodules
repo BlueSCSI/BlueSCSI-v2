@@ -1,0 +1,3 @@
+[submodule "software/bootloaderhost/hidapi"]
+	path = software/bootloaderhost/hidapi
+	url = git://github.com/signal11/hidapi.git

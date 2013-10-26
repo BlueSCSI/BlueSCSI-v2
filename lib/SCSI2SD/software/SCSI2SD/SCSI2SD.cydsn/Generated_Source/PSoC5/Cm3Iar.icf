@@ -5,9 +5,9 @@
 define symbol __ICFEDIT_intvec_start__ = 0x00000000;
 /*-Memory Regions-*/
 define symbol __ICFEDIT_region_ROM_start__ = 0x0;
-define symbol __ICFEDIT_region_ROM_end__   = 262144 - 1;
-define symbol __ICFEDIT_region_RAM_start__ = 0x20000000 - (65536 / 2);
-define symbol __ICFEDIT_region_RAM_end__   = 0x20000000 + (65536 / 2) - 1;
+define symbol __ICFEDIT_region_ROM_end__   = 131072 - 1;
+define symbol __ICFEDIT_region_RAM_start__ = 0x20000000 - (32768 / 2);
+define symbol __ICFEDIT_region_RAM_end__   = 0x20000000 + (32768 / 2) - 1;
 /*-Sizes-*/
 define symbol __ICFEDIT_size_cstack__ = 0x4000;
 define symbol __ICFEDIT_size_heap__   = 0x1000;
@@ -15,19 +15,19 @@ define symbol __ICFEDIT_size_heap__   = 0x1000;
 
 
 /******** Definitions ********/
-define symbol CY_APPL_LOADABLE  = 0;
+define symbol CY_APPL_LOADABLE  = 1;
 define symbol CY_APPL_LOADER    = 0;
 define symbol CY_APPL_NUM       = 1;
 define symbol CY_APPL_MAX       = 1;
 define symbol CY_METADATA_SIZE  = 64;
-define symbol CY_EE_IN_BTLDR    = 0x0;
+define symbol CY_EE_IN_BTLDR    = 0x00;
 define symbol CY_EE_SIZE        = 2048;
-
+include "cybootloader.icf";
 if (!CY_APPL_LOADABLE) {
     define symbol CYDEV_BTLDR_SIZE = 0;
 }
 
-define symbol CY_FLASH_SIZE     = 262144;
+define symbol CY_FLASH_SIZE     = 131072;
 define symbol CY_APPL_ORIGIN    = 0; 
 define symbol CY_FLASH_ROW_SIZE = 256;
 define symbol CY_ECC_ROW_SIZE   = 32;
