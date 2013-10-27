@@ -110,10 +110,10 @@ int main(int argc, char* argv[])
 		switch (c)
 		{
 		case 'v':
-			sscanf(optarg, "%x", &vendorId);
+			sscanf(optarg, "%hx", &vendorId);
 			break;
 		case 'p':
-			sscanf(optarg, "%x", &productId);
+			sscanf(optarg, "%hx", &productId);
 			break;
 		case '?':
 			usage();

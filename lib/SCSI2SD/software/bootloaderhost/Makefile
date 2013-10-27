@@ -6,6 +6,7 @@ CYAPI = \
 	cybootloaderutils/cybtldr_command.c \
 	cybootloaderutils/cybtldr_parse.c \
 
+CFLAGS += -Wall -Wno-pointer-sign
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
@@ -15,11 +16,12 @@ endif
 ifeq ($(UNAME_S),Darwin)
 	# Should match OSX
 	HID_C = hidapi/mac/hid.c
+	LDFLAGS += -framework IOKit -framework CoreFoundation
 endif
 
 
 bootloaderhost: main.c $(HID_C) $(CYAPI)
-	$(CC) $(CFLAGS) -g -I cybootloaderutils -I hidapi/hidapi $^ $(LDFLAGS) -o $@
+	$(CC) $(CFLAGS) -I cybootloaderutils -I hidapi/hidapi $^ $(LDFLAGS) -o $@
 
 clean:
 	rm bootloaderhost
