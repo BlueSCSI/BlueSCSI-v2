@@ -1,8 +1,11 @@
---------------- Build Started: 10/26/2013 23:47:14 Project: USB_Bootloader, Configuration: ARM GCC 4.7.3 Release ---------------
+--------------- Build Started: 10/27/2013 11:12:40 Project: USB_Bootloader, Configuration: ARM GCC 4.7.3 Release ---------------
 The code generation step is up to date.
-The compile step is up to date, no work needs to be done.
-The link step is up to date, no work needs to be done.
+arm-none-eabi-gcc.exe -I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -Wall -g -D NDEBUG -Wa,-alh=.\CortexM3\ARM_GCC_473\Release\BL.lst -Os -ffunction-sections -c .\Generated_Source\PSoC5\BL.c -o .\CortexM3\ARM_GCC_473\Release\BL.o
+arm-none-eabi-ar.exe -rs .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a .\CortexM3\ARM_GCC_473\Release\cyfitter_cfg.o .\CortexM3\ARM_GCC_473\Release\USBFS.o .\CortexM3\ARM_GCC_473\Release\USBFS_audio.o .\CortexM3\ARM_GCC_473\Release\USBFS_boot.o .\CortexM3\ARM_GCC_473\Release\USBFS_cdc.o .\CortexM3\ARM_GCC_473\Release\USBFS_cls.o .\CortexM3\ARM_GCC_473\Release\USBFS_descr.o .\CortexM3\ARM_GCC_473\Release\USBFS_drv.o .\CortexM3\ARM_GCC_473\Release\USBFS_episr.o .\CortexM3\ARM_GCC_473\Release\USBFS_hid.o .\CortexM3\ARM_GCC_473\Release\USBFS_pm.o .\CortexM3\ARM_GCC_473\Release\USBFS_std.o .\CortexM3\ARM_GCC_473\Release\USBFS_vnd.o .\CortexM3\ARM_GCC_473\Release\USBFS_midi.o .\CortexM3\ARM_GCC_473\Release\BL.o .\CortexM3\ARM_GCC_473\Release\USBFS_Dm.o .\CortexM3\ARM_GCC_473\Release\USBFS_Dp.o .\CortexM3\ARM_GCC_473\Release\CyBootAsmGnu.o .\CortexM3\ARM_GCC_473\Release\CyDmac.o .\CortexM3\ARM_GCC_473\Release\CyFlash.o .\CortexM3\ARM_GCC_473\Release\CyLib.o .\CortexM3\ARM_GCC_473\Release\cyPm.o .\CortexM3\ARM_GCC_473\Release\CySpc.o .\CortexM3\ARM_GCC_473\Release\cyutils.o
+arm-none-eabi-ar.exe: creating .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a
+arm-none-eabi-gcc.exe -mthumb -march=armv7-m -mfix-cortex-m3-ldrd -T .\Generated_Source\PSoC5\cm3gcc.ld -g -Wl,-Map,.\CortexM3\ARM_GCC_473\Release\USB_Bootloader.map -specs=nano.specs -Wl,--gc-sections -Wl,--start-group -o .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.elf .\CortexM3\ARM_GCC_473\Release\main.o .\CortexM3\ARM_GCC_473\Release\cymetadata.o .\CortexM3\ARM_GCC_473\Release\Cm3Start.o .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a "C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\psoc\content\cycomponentlibrary\CyComponentLibrary.cylib\CortexM3\ARM_GCC_473\Release\CyComponentLibrary.a" -Wl,--end-group
+cyelftool.exe -P W:\SCSI2SD\USB_Bootloader.cydsn\CortexM3\ARM_GCC_473\Release\USB_Bootloader.elf --flash_row_size 256 --flash_size 131072 --size_var_name BL_SizeBytes --checksum_var_name BL_Checksum
 cyelftool.exe -S W:\SCSI2SD\USB_Bootloader.cydsn\CortexM3\ARM_GCC_473\Release\USB_Bootloader.elf
 Flash used: 8856 of 131072 bytes (6.8 %).
 SRAM used: 10869 of 32768 bytes (33.2 %).
---------------- Build Succeeded: 10/26/2013 23:47:16 ---------------
+--------------- Build Succeeded: 10/27/2013 11:12:50 ---------------
