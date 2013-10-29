@@ -9,7 +9,7 @@ ifeq ($(UNAME_S),Linux)
 endif
 ifeq ($(UNAME_S),Darwin)
 	# Should match OSX
-	HID_C = ../bootloaderost/hidapi/mac/hid.c
+	HID_C = ../bootloaderhost/hidapi/mac/hid.c
 	LDFLAGS += -framework IOKit -framework CoreFoundation
 endif
 

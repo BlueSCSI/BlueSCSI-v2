@@ -15,8 +15,8 @@ Features
     In-built active terminator.
     Can optional supply terminator power back to the SCSI bus
     Emulates a non-removable hard drive for maximum compatibility.
-    Firmware updatable over USB (TODO software not yet implemented)
-    Highly configurable over USB (TODO software not yet implemented)
+    Firmware updatable over USB
+    Highly configurable over USB
         Selectable SCSI ID
         Selectable parity support
         Enable/disable Unit Attention Condition
