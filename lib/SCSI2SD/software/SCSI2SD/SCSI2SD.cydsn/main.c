@@ -56,6 +56,7 @@ int main()
 	{
 		scsiPoll();
 		scsiDiskPoll();
+		configPoll();
 	}
 	return 0;
 }

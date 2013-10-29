@@ -17,6 +17,8 @@
 
 #include "device.h"
 #include "config.h"
+#include "USBFS.h"
+#include "led.h"
 
 #include <string.h>
 
@@ -32,38 +34,77 @@ static Config shadow =
 	"2.0a", // revision (68k Apple Drive Setup: Set to "1.0 ")
 	1, // enable parity
 	0, // disable unit attention,
-	0, // Max blocks (0 == disabled)
-	"" // reserved
+	0 // Max blocks (0 == disabled)
+	// reserved bytes will be initialised to 0.
 };
+
+enum USB_ENDPOINTS
+{
+	USB_EP_OUT = 1,
+	USB_EP_IN = 2
+};
+enum USB_STATE
+{
+	USB_IDLE,
+	USB_DATA_SENT
+};
+int usbInEpState;
+
+int usbReady;
 
 // Global
 Config* config = NULL;
+
+// The PSoC 5LP compile to little-endian format.
+static uint32_t ntohl(uint32_t val)
+{
+	return
+		((val & 0xFF) << 24) |
+		((val & 0xFF00) << 8) |
+		((val >> 8) & 0xFF00) |
+		((val >> 24) & 0xFF);
+}
+static uint32_t htonl(uint32_t val)
+{
+	return
+		((val & 0xFF) << 24) |
+		((val & 0xFF00) << 8) |
+		((val >> 8) & 0xFF00) |
+		((val >> 24) & 0xFF);
+}
+
+static void saveConfig()
+{
+	int shadowRows = (sizeof(shadow) / CYDEV_EEPROM_ROW_SIZE) + 1;
+	int row;
+	int status = CYRET_SUCCESS;
+
+	CySetTemp();
+	for (row = 0; (row < shadowRows) && (status == CYRET_SUCCESS); ++row)
+	{
+		CFG_EEPROM_Write(((uint8*)&shadow) + (row * CYDEV_EEPROM_ROW_SIZE), row);
+	}
+	if (status == CYRET_SUCCESS)
+	{
+		CFG_EEPROM_Write((uint8*)magic, row);
+	}
+}
 
 void configInit()
 {
 	// We could map cfgPtr directly into the EEPROM memory,
 	// but that would waste power. Copy it to RAM then turn off
-	// the EEPROM. 	
+	// the EEPROM.
 	CFG_EEPROM_Start();
 	CyDelayUs(5); // 5us to start per datasheet.
-	
+
 	// Check magic
 	int shadowRows = (sizeof(shadow) / CYDEV_EEPROM_ROW_SIZE) + 1;
 	int shadowBytes = CYDEV_EEPROM_ROW_SIZE * shadowRows;
-	uint8* eeprom = (uint8*)CYDEV_EE_BASE;	
-	if (memcmp(eeprom + shadowBytes, magic, sizeof(magic))) 
+	uint8* eeprom = (uint8*)CYDEV_EE_BASE;
+	if (memcmp(eeprom + shadowBytes, magic, sizeof(magic)))
 	{
-		CySetTemp();
-		int row;
-		int status = CYRET_SUCCESS;
-		for (row = 0; (row < shadowRows) && (status == CYRET_SUCCESS); ++row)
-		{
-			CFG_EEPROM_Write(((uint8*)&shadow) + (row * CYDEV_EEPROM_ROW_SIZE), row);
-		}
-		if (status == CYRET_SUCCESS)
-		{
-			CFG_EEPROM_Write((uint8*)magic, row);
-		}
+		saveConfig();
 	}
 	else
 	{
@@ -71,4 +112,76 @@ void configInit()
 	}
 	config = &shadow;
 	CFG_EEPROM_Stop();
+
+	// The USB block will be powered by an internal 3.3V regulator.
+	// The PSoC must be operating between 4.6V and 5V for the regulator
+	// to work.
+	USBFS_Start(0, USBFS_5V_OPERATION);
+	usbInEpState = USB_IDLE;
+	usbReady = 0; // We don't know if host is connected yet.
 }
+
+void configPoll()
+{
+	int reset = 0;
+	if (!usbReady || USBFS_IsConfigurationChanged())
+	{
+		reset = 1;
+	}
+	usbReady = USBFS_bGetConfiguration();
+
+	if (!usbReady)
+	{
+		return;
+	}
+	
+	if (reset)
+	{
+		USBFS_EnableOutEP(USB_EP_OUT);
+		usbInEpState = USB_IDLE;
+	}	
+
+	if(USBFS_GetEPState(USB_EP_OUT) == USBFS_OUT_BUFFER_FULL)
+	{
+		ledOn();		
+		// The host sent us some data!
+		int byteCount = USBFS_GetEPCount(USB_EP_OUT);
+
+		// Assume that byteCount <= sizeof(shadow).
+		// shadow should be padded out to 64bytes, which is the largest
+		// possible HID transfer.
+		USBFS_ReadOutEP(USB_EP_OUT, (uint8 *)&shadow, byteCount);
+		shadow.maxBlocks = htonl(shadow.maxBlocks);
+
+		CFG_EEPROM_Start();
+		saveConfig(); // write to eeprom
+		CFG_EEPROM_Stop();
+		
+		// Send the updated data.
+		usbInEpState = USB_IDLE;
+
+		// Allow the host to send us another updated config.
+		USBFS_EnableOutEP(USB_EP_OUT);
+
+		ledOff();		
+	}
+
+	switch (usbInEpState)
+	{
+	case USB_IDLE:
+		shadow.maxBlocks = htonl(shadow.maxBlocks);
+		USBFS_LoadInEP(USB_EP_IN, (uint8 *)&shadow, sizeof(shadow));
+		shadow.maxBlocks = ntohl(shadow.maxBlocks);
+		usbInEpState = USB_DATA_SENT;
+		break;
+
+	case USB_DATA_SENT:
+		if (USBFS_bGetEPAckState(USB_EP_IN))
+		{
+			// Data accepted.
+			usbInEpState = USB_IDLE;
+		}
+		break;
+	}
+}
+

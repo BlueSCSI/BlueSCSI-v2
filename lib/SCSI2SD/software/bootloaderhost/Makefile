@@ -1,4 +1,4 @@
-all:  bootloaderhost
+all:  build/bootloaderhost
 
 CYAPI = \
 	cybootloaderutils/cybtldr_api2.c \
@@ -20,8 +20,9 @@ ifeq ($(UNAME_S),Darwin)
 endif
 
 
-bootloaderhost: main.c $(HID_C) $(CYAPI)
+build/bootloaderhost: main.c $(HID_C) $(CYAPI)
+	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -I cybootloaderutils -I hidapi/hidapi $^ $(LDFLAGS) -o $@
 
 clean:
-	rm bootloaderhost
+	rm build/bootloaderhost

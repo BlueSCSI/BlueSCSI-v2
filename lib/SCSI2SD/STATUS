@@ -1,9 +1,4 @@
-- Configuration options cannot be set via USB. Must use the USB bootloader to
-	load a new firmware instead.
-	- SCSI ID hardcoded to 0
-	- Partity checking is on
-	- Unit Attention Condition is off
-
 - DMA is not used for SPI transfers
+	- Potential for large performance improvement.
 - Parity checking not implemented for the PSoC Datapath implementation
 

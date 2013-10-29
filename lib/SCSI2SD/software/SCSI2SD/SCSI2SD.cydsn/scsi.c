@@ -345,14 +345,11 @@ static void scsiReset()
 	// We must be ready again within the "Reset to selection time" of
 	// 250ms.
 	// There is no guarantee that the RST line will be negated by then.
-	int reset;
-	do
-	{
-		CyDelay(10); // 10ms.
-		reset = SCSI_ReadPin(SCSI_RST_INT);
-	} while (reset);
-
-	scsiDev.resetFlag = 0;
+	// NOTE: We could be connected and powered by USB for configuration,
+	// in which case TERMPWR cannot be supplied, and reset will ALWAYS
+	// be true.
+	CyDelay(10); // 10ms.
+	scsiDev.resetFlag = SCSI_ReadPin(SCSI_RST_INT);
 	scsiDev.atnFlag = 0;
 }
 
