@@ -418,7 +418,7 @@ void scsiDiskInit()
 	}
 	#endif
 
-	//if (SD_CD_Read() == 0)
+	if (SD_CD_Read() == 1)
 	{
 		blockDev.state = blockDev.state | DISK_PRESENT;
 

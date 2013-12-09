@@ -1,7 +1,7 @@
 /*******************************************************************************
 * FILENAME: cymetadata.c
 * 
-* PSoC Creator 3.0
+* PSoC Creator 3.0 Component Pack 7
 *
 * DESCRIPTION:
 * This file defines all extra memory spaces that need to be included.

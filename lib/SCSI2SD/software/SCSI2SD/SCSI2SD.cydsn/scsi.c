@@ -73,15 +73,9 @@ static void process_MessageIn()
 		// back to MESSAGE_OUT first, get out parity error message, then come
 		// back here.
 	}
-	else if (scsiDev.msgIn == MSG_COMMAND_COMPLETE)
+	else /*if (scsiDev.msgIn == MSG_COMMAND_COMPLETE)*/
 	{
 		enter_BusFree();
-	}
-	else
-	{
-		// MESSAGE_REJECT. Go back to command phase
-		// TODO MESSAGE_REJECT moved to messageReject method.
-		scsiDev.phase = COMMAND;
 	}
 }
 
@@ -361,8 +355,12 @@ static void enter_SelectionPhase()
 	scsiDev.parityError = 0;
 	scsiDev.dataPtr = 0;
 	scsiDev.savedDataPtr = 0;
+	scsiDev.dataLen = 0;
 	scsiDev.status = GOOD;
 	scsiDev.phase = SELECTION;
+
+	transfer.blocks = 0;
+	transfer.currentBlock = 0;
 }
 
 static void process_SelectionPhase()
@@ -507,7 +505,7 @@ static void process_MessageOut()
 			(scsiDev.msgOut & 0x7) // We only support LUN 0!
 			)
 		{
-			enter_MessageIn(MSG_REJECT);
+			messageReject();
 		}
 	}
 	else if (scsiDev.msgOut >= 0x20 && scsiDev.msgOut <= 0x2F)

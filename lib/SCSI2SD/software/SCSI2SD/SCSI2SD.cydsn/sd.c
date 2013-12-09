@@ -20,6 +20,7 @@
 #include "config.h"
 #include "disk.h"
 #include "sd.h"
+#include "led.h"
 
 #include <string.h>
 
@@ -47,9 +48,7 @@ static uint8 sdCrc7(uint8* chr, uint8 cnt, uint8 crc)
 static uint8 sdSpiByte(uint8 value)
 {
 	SDCard_WriteTxData(value);
-	while(!(SDCard_ReadTxStatus() & SDCard_STS_SPI_DONE))
-	{}
-	while (!SDCard_GetRxBufferSize()) {}
+	while (!(SDCard_ReadRxStatus() & SDCard_STS_RX_FIFO_NOT_EMPTY)) {}
 	return SDCard_ReadRxData();
 }
 
@@ -88,7 +87,7 @@ static void sdSendCommand(uint8 cmd, uint32 param)
 		sdSpiByte(send[cmd]);
 	}
 	// Allow command to process before reading result code.
-	sdSpiByte(0xFF);	
+	sdSpiByte(0xFF);
 }
 
 static uint8 sdReadResp()
@@ -98,25 +97,12 @@ static uint8 sdReadResp()
 	do
 	{
 		v = sdSpiByte(0xFF);
-	} while(i-- && (v == 0xFF));
+	} while(i-- && (v & 0x80));
 	return v;
 }
-
-static uint8 sdWaitResp()
-{
-	uint8 v;
-	uint8 i = 255;
-	do
-	{
-		v = sdSpiByte(0xFF);
-	} while(i-- && (v != 0xFE));
-	return v;
-}
-
 
 static uint8 sdCommandAndResponse(uint8 cmd, uint32 param)
 {
-	SDCard_ClearRxBuffer();
 	sdSpiByte(0xFF);
 	sdSendCommand(cmd, param);
 	return sdReadResp();
@@ -124,10 +110,17 @@ static uint8 sdCommandAndResponse(uint8 cmd, uint32 param)
 
 static uint8 sdCRCCommandAndResponse(uint8 cmd, uint32 param)
 {
-	SDCard_ClearRxBuffer();
 	sdSpiByte(0xFF);
 	sdSendCRCCommand(cmd, param);
 	return sdReadResp();
+}
+
+// Clear the sticky status bits on error.
+static void sdClearStatus()
+{
+	uint8 r2hi = sdCRCCommandAndResponse(SD_SEND_STATUS, 0);
+	uint8 r2lo = sdSpiByte(0xFF);
+	(void) r2hi; (void) r2lo;
 }
 
 
@@ -142,6 +135,7 @@ void sdPrepareRead()
 	if (v)
 	{
 		scsiDiskReset();
+		sdClearStatus();
 
 		scsiDev.status = CHECK_CONDITION;
 		scsiDev.sense.code = HARDWARE_ERROR;
@@ -200,20 +194,31 @@ void sdReadSector()
 
 void sdCompleteRead()
 {
-	int counter = 512;
-	uint8 r1b;
-	do
-	{
-		r1b = sdCommandAndResponse(SD_STOP_TRANSMISSION, 0);
-	} while (r1b && (counter-- > 0));
+	// We cannot send even a single "padding" byte, as we normally would when
+	// sending a command.  If we've just finished reading the very last block
+	// on the card, then reading an additional dummy byte will just trigger
+	// an error condition as we're trying to read past-the-end of the storage
+	// device.
+	// ie. do not use sdCommandAndResponse here.
+	sdSendCommand(SD_STOP_TRANSMISSION, 0);
+	uint8 r1b = sdReadResp();
+
 	if (r1b)
 	{
+		// Try very hard to make sure the transmission stops
+		int retries = 255;
+		while (r1b && retries)
+		{
+			r1b = sdCommandAndResponse(SD_STOP_TRANSMISSION, 0);
+			retries--;
+		}
+		
 		scsiDev.status = CHECK_CONDITION;
 		scsiDev.sense.code = HARDWARE_ERROR;
 		scsiDev.sense.asc = UNRECOVERED_READ_ERROR;
 		scsiDev.phase = STATUS;
 	}
-	
+
 	// R1b has an optional trailing "busy" signal.
 	uint8 busy;
 	do
@@ -237,68 +242,62 @@ int sdWriteSector()
 	// Wait for a previously-written sector to complete.
 	sdWaitWriteBusy();
 
-		sdSpiByte(0xFC); // MULTIPLE byte start token
-		int i;
-		for (i = 0; i < SCSI_BLOCK_SIZE; i++)
-		{
-			while(!(SDCard_ReadTxStatus() & SDCard_STS_TX_FIFO_NOT_FULL))
-			{}
-			SDCard_WriteTxData(scsiDev.data[i]);
-		}
-		while(!(SDCard_ReadTxStatus() & SDCard_STS_SPI_DONE))
+	sdSpiByte(0xFC); // MULTIPLE byte start token
+	int i;
+	for (i = 0; i < SCSI_BLOCK_SIZE; i++)
+	{
+		while(!(SDCard_ReadTxStatus() & SDCard_STS_TX_FIFO_NOT_FULL))
 		{}
-		SDCard_ReadRxData();
-		SDCard_ReadRxData();
-		SDCard_ReadRxData();
-		SDCard_ReadRxData();
-		SDCard_ReadRxData();		
+		SDCard_WriteTxData(scsiDev.data[i]);
+	}
+	while(!(SDCard_ReadTxStatus() & SDCard_STS_SPI_DONE)) {}
+	SDCard_ClearFIFO();
+	
+	sdSpiByte(0x00); // CRC
+	sdSpiByte(0x00); // CRC
 
-		sdSpiByte(0x00); // CRC
-		sdSpiByte(0x00); // CRC
-		
-		// Don't wait more than 1000ms.
-		// My 2g Kingston micro-sd card doesn't respond immediately.
-		// My 16Gb card does.
-		int maxWait = 1000;
-		uint8 dataToken = sdSpiByte(0xFF); // Response
-		while (dataToken == 0xFF && maxWait-- > 0)
+	// Don't wait more than 1000ms.
+	// My 2g Kingston micro-sd card doesn't respond immediately.
+	// My 16Gb card does.
+	int maxWait = 1000;
+	uint8 dataToken = sdSpiByte(0xFF); // Response
+	while (dataToken == 0xFF && maxWait-- > 0)
+	{
+		CyDelay(1); // 1ms.	
+		dataToken = sdSpiByte(0xFF);
+	}
+	if (((dataToken & 0x1F) >> 1) != 0x2) // Accepted.
+	{
+		sdWaitWriteBusy();
+
+		uint8 r1b = sdCommandAndResponse(SD_STOP_TRANSMISSION, 0);
+		(void) r1b;
+		sdSpiByte(0xFF);
+
+		// R1b has an optional trailing "busy" signal.
+		uint8 busy;
+		do
 		{
-			CyDelay(1); // 1ms.	
-			dataToken = sdSpiByte(0xFF);	
-		}
-		if (((dataToken & 0x1F) >> 1) != 0x2) // Accepted.
-		{
-			sdWaitWriteBusy();
-			
-			int counter = 512;
-			uint8 r1b;
-			do
-			{
-				r1b = sdCommandAndResponse(SD_STOP_TRANSMISSION, 0);
-			} while (r1b && (counter-- > 0));
-			// R1b has an optional trailing "busy" signal.
-			uint8 busy;
-			do
-			{
-				busy = sdSpiByte(0xFF);
-			} while (busy == 0);			
+			busy = sdSpiByte(0xFF);
+		} while (busy == 0);
 
-			// Wait for the card to come out of busy.
-			sdWaitWriteBusy();
+		// Wait for the card to come out of busy.
+		sdWaitWriteBusy();
 
-			scsiDiskReset();
+		scsiDiskReset();
+		sdClearStatus();
 
-			scsiDev.status = CHECK_CONDITION;
-			scsiDev.sense.code = HARDWARE_ERROR;
-			scsiDev.sense.asc = LOGICAL_UNIT_COMMUNICATION_FAILURE;
-			scsiDev.phase = STATUS;
-			result = 0;
-		}
-		else
-		{
-			// The card is probably in the busy state.
-			// Don't wait, as we could read the SCSI interface instead.
-			result = 1;
+		scsiDev.status = CHECK_CONDITION;
+		scsiDev.sense.code = HARDWARE_ERROR;
+		scsiDev.sense.asc = LOGICAL_UNIT_COMMUNICATION_FAILURE;
+		scsiDev.phase = STATUS;
+		result = 0;
+	}
+	else
+	{
+		// The card is probably in the busy state.
+		// Don't wait, as we could read the SCSI interface instead.
+		result = 1;
 	}
 
 	return result;
@@ -312,11 +311,12 @@ void sdCompleteWrite()
 	sdSpiByte(0xFD); // STOP TOKEN
 	// Wait for the card to come out of busy.
 	sdWaitWriteBusy();
-	
+
 	uint8 r1 = sdCommandAndResponse(13, 0); // send status
 	uint8 r2 = sdSpiByte(0xFF);
 	if (r1 || r2)
 	{
+		sdClearStatus();
 		scsiDev.status = CHECK_CONDITION;
 		scsiDev.sense.code = HARDWARE_ERROR;
 		scsiDev.sense.asc = WRITE_ERROR_AUTO_REALLOCATION_FAILED;
@@ -350,8 +350,11 @@ static int sendIfCond()
 		{
 			// Version 1 card.
 			sdDev.version = 1;
+			sdClearStatus();
 			break;
 		}
+
+		sdClearStatus();
 	} while (--retries > 0);
 
 	return retries > 0;
@@ -369,6 +372,8 @@ static int sdOpCond()
 		sdCRCCommandAndResponse(SD_APP_CMD, 0);
 		// Host Capacity Support = 1 (SDHC/SDXC supported)
 		status = sdCRCCommandAndResponse(SD_APP_SEND_OP_COND, 0x40000000);
+
+		sdClearStatus();
 	} while ((status != 0) && (--retries > 0));
 
 	return retries > 0;
@@ -397,8 +402,14 @@ static int sdReadCSD()
 {
 	uint8 status = sdCRCCommandAndResponse(SD_SEND_CSD, 0);
 	if(status){goto bad;}
-	status = sdWaitResp();
-	if (status != 0xFE) { goto bad; }
+	
+	uint8 startToken;
+	int maxWait = 1023;
+	do
+	{
+		startToken = sdSpiByte(0xFF);
+	} while(maxWait-- && (startToken != 0xFE));
+	if (startToken != 0xFE) { goto bad; }
 
 	uint8 buf[16];
 	int i;
@@ -440,7 +451,7 @@ bad:
 }
 
 int sdInit()
-{	
+{
 	sdDev.version = 0;
 	sdDev.ccs = 0;
 	sdDev.capacity = 0;
@@ -464,6 +475,7 @@ int sdInit()
 	uint8 v = sdCRCCommandAndResponse(SD_GO_IDLE_STATE, 0);
 	if(v != 1){goto bad;}
 
+	ledOn();
 	if (!sendIfCond()) goto bad; // Sets V1 or V2 flag
 	if (!sdOpCond()) goto bad;
 	if (!sdReadOCR()) goto bad;
@@ -476,9 +488,25 @@ int sdInit()
 	if(v){goto bad;}
 
 	// now set the sd card up for full speed
+	// The SD Card spec says we can run SPI @ 25MHz
+	// But the PSoC 5LP SPIM datasheet says the most we can do is 18MHz.
+	// I've confirmed that no data is ever put into the RX FIFO when run at
+	// 20MHz or 25MHz.
+	// ... and then we get timing analysis failures if the BUS_CLK is over 62MHz.
+	// So we run the MASTER_CLK and BUS_CLK at 60MHz, and run the SPI clock at 30MHz
+	// (15MHz SPI transfer clock).
+	SDCard_Stop();
 	SD_Data_Clk_Start(); // Turn on the fast clock
 	SD_Clk_Ctl_Write(1); // Select the fast clock source.
 	SD_Init_Clk_Stop(); // Stop the slow clock.
+	CyDelayUs(1);
+	SDCard_Start();
+
+	// Clear out rubbish data through clock change
+	CyDelayUs(1);
+	SDCard_ReadRxStatus();
+	SDCard_ReadTxStatus();
+	SDCard_ClearFIFO();
 
 	if (!sdReadCSD()) goto bad;
 
@@ -489,6 +517,8 @@ bad:
 	sdDev.capacity = 0;
 
 out:
+	sdClearStatus();
+	ledOff();
 	return result;
 
 }
@@ -512,7 +542,7 @@ void sdPrepareWrite()
 	if (v)
 	{
 		scsiDiskReset();
-
+		sdClearStatus();
 		scsiDev.status = CHECK_CONDITION;
 		scsiDev.sense.code = HARDWARE_ERROR;
 		scsiDev.sense.asc = LOGICAL_UNIT_COMMUNICATION_FAILURE;
