@@ -327,6 +327,21 @@ int scsiModeCommand()
 			scsiDev.cdb[8];
 		doModeSense(0, dbd, pc, pageCode, allocLength);
 	}
+	else if (command == 0x15)
+	{
+		// MODE SELECT(6)
+		int len = scsiDev.cdb[4];
+		if (len == 0) len = 256;
+		scsiDev.dataLen = len;
+		scsiDev.phase = DATA_OUT;
+	}
+	else if (command == 0x55)
+	{
+		// MODE SELECT(10)
+		int allocLength = (((uint16) scsiDev.cdb[7]) << 8) + scsiDev.cdb[8];
+		scsiDev.dataLen = allocLength;
+		scsiDev.phase = DATA_OUT;
+	}
 	else
 	{
 		commandHandled = 0;
