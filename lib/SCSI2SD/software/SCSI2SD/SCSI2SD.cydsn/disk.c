@@ -33,7 +33,7 @@ static int doSdInit()
 	if (result)
 	{
 		blockDev.state = blockDev.state | DISK_INITIALISED;
-		
+
 		// artificially limit this value according to EEPROM config.
 		blockDev.capacity =
 			(config->maxBlocks && (sdDev.capacity > config->maxBlocks))
@@ -420,10 +420,10 @@ void scsiDiskInit()
 
 	if (SD_CD_Read() == 1)
 	{
+		int retry;
 		blockDev.state = blockDev.state | DISK_PRESENT;
 
 		// Wait up to 5 seconds for the SD card to wake up.
-		int retry;
 		for (retry = 0; retry < 5; ++retry)
 		{
 			if (doSdInit())

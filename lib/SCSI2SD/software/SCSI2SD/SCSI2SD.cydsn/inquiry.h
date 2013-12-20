@@ -17,6 +17,6 @@
 #ifndef INQUIRY_H
 #define INQUIRY_H
 
-void scsiInquiry();
+void scsiInquiry(void);
 
 #endif

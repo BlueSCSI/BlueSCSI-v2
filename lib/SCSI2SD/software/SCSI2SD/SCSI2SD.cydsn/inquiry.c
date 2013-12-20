@@ -98,8 +98,9 @@ void scsiInquiry()
 		}
 		else
 		{
+			uint8* out;
 			memcpy(scsiDev.data, StandardResponse, sizeof(StandardResponse));
-			uint8* out = scsiDev.data + sizeof(StandardResponse);
+			out = scsiDev.data + sizeof(StandardResponse);
 			memcpy(out, config->vendor, sizeof(config->vendor));
 			out += sizeof(config->vendor);
 			memcpy(out, config->prodId, sizeof(config->prodId));

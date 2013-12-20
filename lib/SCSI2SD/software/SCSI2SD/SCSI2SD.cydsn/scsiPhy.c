@@ -52,8 +52,7 @@ uint8 scsiReadByte(void)
 	while (!(CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG) & 1)) {}
 	CY_SET_REG8(scsiTarget_datapath__F0_REG, 0);
 	while (!(CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG) & 2)) {}
-	uint8 value = CY_GET_REG8(scsiTarget_datapath__F1_REG);
-	return value;
+	return CY_GET_REG8(scsiTarget_datapath__F1_REG);
 }
 
 void scsiRead(uint8* data, uint32 count)

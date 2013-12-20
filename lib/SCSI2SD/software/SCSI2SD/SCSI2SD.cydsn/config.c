@@ -92,6 +92,9 @@ static void saveConfig()
 
 void configInit()
 {
+	int shadowRows, shadowBytes;
+	uint8* eeprom = (uint8*)CYDEV_EE_BASE;
+	
 	// We could map cfgPtr directly into the EEPROM memory,
 	// but that would waste power. Copy it to RAM then turn off
 	// the EEPROM.
@@ -99,9 +102,9 @@ void configInit()
 	CyDelayUs(5); // 5us to start per datasheet.
 
 	// Check magic
-	int shadowRows = (sizeof(shadow) / CYDEV_EEPROM_ROW_SIZE) + 1;
-	int shadowBytes = CYDEV_EEPROM_ROW_SIZE * shadowRows;
-	uint8* eeprom = (uint8*)CYDEV_EE_BASE;
+	shadowRows = (sizeof(shadow) / CYDEV_EEPROM_ROW_SIZE) + 1;
+	shadowBytes = CYDEV_EEPROM_ROW_SIZE * shadowRows;
+
 	if (memcmp(eeprom + shadowBytes, magic, sizeof(magic)))
 	{
 		saveConfig();
@@ -143,9 +146,12 @@ void configPoll()
 
 	if(USBFS_GetEPState(USB_EP_OUT) == USBFS_OUT_BUFFER_FULL)
 	{
-		ledOn();		
+		int byteCount;
+		
+		ledOn();
+		
 		// The host sent us some data!
-		int byteCount = USBFS_GetEPCount(USB_EP_OUT);
+		 byteCount = USBFS_GetEPCount(USB_EP_OUT);
 
 		// Assume that byteCount <= sizeof(shadow).
 		// shadow should be padded out to 64bytes, which is the largest

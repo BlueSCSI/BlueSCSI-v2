@@ -22,6 +22,8 @@
 #include "sd.h"
 #include "led.h"
 
+#include "scsiPhy.h"
+
 #include <string.h>
 
 // Global
@@ -126,12 +128,13 @@ static void sdClearStatus()
 
 void sdPrepareRead()
 {
+	uint8 v;
 	uint32 len = (transfer.lba + transfer.currentBlock);
 	if (!sdDev.ccs)
 	{
 		len = len * SCSI_BLOCK_SIZE;
 	}
-	uint8 v = sdCommandAndResponse(SD_READ_MULTIPLE_BLOCK, len);
+	v = sdCommandAndResponse(SD_READ_MULTIPLE_BLOCK, len);
 	if (v)
 	{
 		scsiDiskReset();
@@ -146,13 +149,16 @@ void sdPrepareRead()
 
 void sdReadSector()
 {
+	int prep, i, guard;
+	
 	// Wait for a start-block token.
-	// Don't wait more than 200ms.
-	int maxWait = 200000;
+	// Don't wait more than 100ms, which is the timeout recommended
+	// in the standard.
+	//100ms @ 64Hz = 6400000
+	int maxWait = 6400000;
 	uint8 token = sdSpiByte(0xFF);
 	while (token != 0xFE && (maxWait-- > 0))
 	{
-		CyDelayUs(1);
 		token = sdSpiByte(0xFF);
 	}
 	if (token != 0xFE)
@@ -168,28 +174,65 @@ void sdReadSector()
 		return;
 	}
 
-	int prep = 0;
-	int i = 0;
+	// Don't do a bus settle delay if we're already in the correct phase.
+	if (transfer.currentBlock == 0)
+	{
+		scsiEnterPhase(DATA_IN);
+	}
+	
+	// Quickly seed the FIFO
+	prep = 4;
+	CY_SET_REG8(SDCard_TXDATA_PTR, 0xFF); // Put a byte in the FIFO
+	CY_SET_REG8(SDCard_TXDATA_PTR, 0xFF); // Put a byte in the FIFO
+	CY_SET_REG8(SDCard_TXDATA_PTR, 0xFF); // Put a byte in the FIFO
+	CY_SET_REG8(SDCard_TXDATA_PTR, 0xFF); // Put a byte in the FIFO
+
+	i = 0;
+	guard = 0;
+
+	// This loop is critically important for performance.
+	// We stream data straight from the SDCard fifos into the SCSI component
+	// FIFO's. If the loop isn't fast enough, the transmit FIFO's will empty,
+	// and performance will suffer. Every clock cycle counts.	
 	while (i < SCSI_BLOCK_SIZE)
 	{
-		if (prep < SCSI_BLOCK_SIZE && (SDCard_ReadTxStatus() & SDCard_STS_TX_FIFO_NOT_FULL))
+		uint8_t sdRxStatus = CY_GET_REG8(SDCard_RX_STATUS_PTR);
+		uint8_t scsiStatus = CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG);
+
+		// Read from the SPIM fifo if there is room to stream the byte to the
+		// SCSI fifos
+		if((sdRxStatus & SDCard_STS_RX_FIFO_NOT_EMPTY) &&
+			(scsiStatus & 1) // SCSI TX FIFO NOT FULL
+			)
 		{
-			SDCard_WriteTxData(0xFF);
+			uint8_t val = CY_GET_REG8(SDCard_RXDATA_PTR);
+			CY_SET_REG8(scsiTarget_datapath__F0_REG, val);
+			guard++;
+		}
+
+		// Byte has been sent out the SCSI interface.
+		if (scsiStatus & 2) // SCSI RX FIFO NOT EMPTY
+		{
+			CY_GET_REG8(scsiTarget_datapath__F1_REG);
+			++i;
+		}
+
+		// How many bytes are in a 4-byte FIFO ? 5.  4 FIFO bytes PLUS one byte
+		// being processed bit-by-bit. Artifically limit the number of bytes in the 
+		// "combined" SPIM TX and RX FIFOS to the individual FIFO size.
+		// Unlike the SCSI component, SPIM doesn't check if there's room in
+		// the output FIFO before starting to transmit.
+		if ((prep - guard < 4) && (prep < SCSI_BLOCK_SIZE))
+		{
+			CY_SET_REG8(SDCard_TXDATA_PTR, 0xFF); // Put a byte in the FIFO
 			prep++;
-		}
-
-		if(SDCard_ReadRxStatus() & SDCard_STS_RX_FIFO_NOT_EMPTY)
-		{
-			scsiDev.data[i] = SDCard_ReadRxData();
-			i++;
-		}
+		}		
 	}
-
 
 	sdSpiByte(0xFF); // CRC
 	sdSpiByte(0xFF); // CRC
 	scsiDev.dataLen = SCSI_BLOCK_SIZE;
-	scsiDev.dataPtr = 0;
+	scsiDev.dataPtr = SCSI_BLOCK_SIZE;
 }
 
 void sdCompleteRead()
@@ -200,8 +243,9 @@ void sdCompleteRead()
 	// an error condition as we're trying to read past-the-end of the storage
 	// device.
 	// ie. do not use sdCommandAndResponse here.
+	uint8 r1b;
 	sdSendCommand(SD_STOP_TRANSMISSION, 0);
-	uint8 r1b = sdReadResp();
+	r1b = sdReadResp();
 
 	if (r1b)
 	{
@@ -212,7 +256,7 @@ void sdCompleteRead()
 			r1b = sdCommandAndResponse(SD_STOP_TRANSMISSION, 0);
 			retries--;
 		}
-		
+
 		scsiDev.status = CHECK_CONDITION;
 		scsiDev.sense.code = HARDWARE_ERROR;
 		scsiDev.sense.asc = UNRECOVERED_READ_ERROR;
@@ -220,11 +264,13 @@ void sdCompleteRead()
 	}
 
 	// R1b has an optional trailing "busy" signal.
-	uint8 busy;
-	do
 	{
-		busy = sdSpiByte(0xFF);
-	} while (busy == 0);
+		uint8 busy;
+		do
+		{
+			busy = sdSpiByte(0xFF);
+		} while (busy == 0);
+	}
 }
 
 static void sdWaitWriteBusy()
@@ -238,12 +284,13 @@ static void sdWaitWriteBusy()
 
 int sdWriteSector()
 {
-	int result;
+	int result, i, maxWait;
+	uint8 dataToken;
+	
 	// Wait for a previously-written sector to complete.
 	sdWaitWriteBusy();
 
 	sdSpiByte(0xFC); // MULTIPLE byte start token
-	int i;
 	for (i = 0; i < SCSI_BLOCK_SIZE; i++)
 	{
 		while(!(SDCard_ReadTxStatus() & SDCard_STS_TX_FIFO_NOT_FULL))
@@ -252,30 +299,31 @@ int sdWriteSector()
 	}
 	while(!(SDCard_ReadTxStatus() & SDCard_STS_SPI_DONE)) {}
 	SDCard_ClearFIFO();
-	
+
 	sdSpiByte(0x00); // CRC
 	sdSpiByte(0x00); // CRC
 
-	// Don't wait more than 1000ms.
+	// Don't wait more than 1s.
 	// My 2g Kingston micro-sd card doesn't respond immediately.
 	// My 16Gb card does.
-	int maxWait = 1000;
-	uint8 dataToken = sdSpiByte(0xFF); // Response
+	maxWait = 1000000;
+	dataToken = sdSpiByte(0xFF); // Response
 	while (dataToken == 0xFF && maxWait-- > 0)
 	{
-		CyDelay(1); // 1ms.	
+		CyDelayUs(1);
 		dataToken = sdSpiByte(0xFF);
 	}
 	if (((dataToken & 0x1F) >> 1) != 0x2) // Accepted.
 	{
+		uint8 r1b, busy;
+		
 		sdWaitWriteBusy();
 
-		uint8 r1b = sdCommandAndResponse(SD_STOP_TRANSMISSION, 0);
+		r1b = sdCommandAndResponse(SD_STOP_TRANSMISSION, 0);
 		(void) r1b;
 		sdSpiByte(0xFF);
 
 		// R1b has an optional trailing "busy" signal.
-		uint8 busy;
 		do
 		{
 			busy = sdSpiByte(0xFF);
@@ -305,6 +353,8 @@ int sdWriteSector()
 
 void sdCompleteWrite()
 {
+	uint8 r1, r2;
+	
 	// Wait for a previously-written sector to complete.
 	sdWaitWriteBusy();
 
@@ -312,8 +362,8 @@ void sdCompleteWrite()
 	// Wait for the card to come out of busy.
 	sdWaitWriteBusy();
 
-	uint8 r1 = sdCommandAndResponse(13, 0); // send status
-	uint8 r2 = sdSpiByte(0xFF);
+	r1 = sdCommandAndResponse(13, 0); // send status
+	r2 = sdSpiByte(0xFF);
 	if (r1 || r2)
 	{
 		sdClearStatus();
@@ -381,11 +431,12 @@ static int sdOpCond()
 
 static int sdReadOCR()
 {
+	uint8 buf[4];
+	int i;
+	
 	uint8 status = sdCRCCommandAndResponse(SD_READ_OCR, 0);
 	if(status){goto bad;}
 
-	uint8 buf[4];
-	int i;
 	for (i = 0; i < 4; ++i)
 	{
 		buf[i] = sdSpiByte(0xFF);
@@ -400,19 +451,20 @@ bad:
 
 static int sdReadCSD()
 {
+	uint8 startToken;
+	int maxWait, i;
+	uint8 buf[16];
+	
 	uint8 status = sdCRCCommandAndResponse(SD_SEND_CSD, 0);
 	if(status){goto bad;}
-	
-	uint8 startToken;
-	int maxWait = 1023;
+
+	maxWait = 1023;
 	do
 	{
 		startToken = sdSpiByte(0xFF);
 	} while(maxWait-- && (startToken != 0xFE));
 	if (startToken != 0xFE) { goto bad; }
 
-	uint8 buf[16];
-	int i;
 	for (i = 0; i < 16; ++i)
 	{
 		buf[i] = sdSpiByte(0xFF);
@@ -452,18 +504,20 @@ bad:
 
 int sdInit()
 {
+	int result = 0;
+	int i;
+	uint8 v;
+	
 	sdDev.version = 0;
 	sdDev.ccs = 0;
 	sdDev.capacity = 0;
 
-	int result = 0;
 	SD_CS_Write(1); // Set CS inactive (active low)
 	SD_Init_Clk_Start(); // Turn on the slow 400KHz clock
 	SD_Clk_Ctl_Write(0); // Select the 400KHz clock source.
 	SDCard_Start(); // Enable SPI hardware
 
 	// Power on sequence. 74 clock cycles of a "1" while CS unasserted.
-	int i;
 	for (i = 0; i < 10; ++i)
 	{
 		sdSpiByte(0xFF);
@@ -472,7 +526,7 @@ int sdInit()
 	SD_CS_Write(0); // Set CS active (active low)
 	CyDelayUs(1);
 
-	uint8 v = sdCRCCommandAndResponse(SD_GO_IDLE_STATE, 0);
+	v = sdCRCCommandAndResponse(SD_GO_IDLE_STATE, 0);
 	if(v != 1){goto bad;}
 
 	ledOn();
@@ -525,6 +579,9 @@ out:
 
 void sdPrepareWrite()
 {
+	uint32 len;
+	uint8 v;
+	
 	// Set the number of blocks to pre-erase by the multiple block write command
 	// We don't care about the response - if the command is not accepted, writes
 	// will just be a bit slower.
@@ -533,12 +590,12 @@ void sdPrepareWrite()
 	sdCommandAndResponse(SD_APP_CMD, 0);
 	sdCommandAndResponse(SD_APP_SET_WR_BLK_ERASE_COUNT, blocks);
 
-	uint32 len = (transfer.lba + transfer.currentBlock);
+	len = (transfer.lba + transfer.currentBlock);
 	if (!sdDev.ccs)
 	{
 		len = len * SCSI_BLOCK_SIZE;
 	}
-	uint8 v = sdCommandAndResponse(25, len);
+	v = sdCommandAndResponse(25, len);
 	if (v)
 	{
 		scsiDiskReset();

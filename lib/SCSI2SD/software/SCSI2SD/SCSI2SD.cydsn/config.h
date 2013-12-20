@@ -36,7 +36,7 @@ typedef struct
 
 extern Config* config;
 
-void configInit();
-void configPoll();
+void configInit(void);
+void configPoll(void);
 
 #endif

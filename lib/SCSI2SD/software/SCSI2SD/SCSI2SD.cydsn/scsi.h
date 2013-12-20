@@ -89,8 +89,8 @@ typedef struct
 	// Only let the reserved initiator talk to us.
 	// A 3rd party may be sending the RESERVE/RELEASE commands
 	int initiatorId; // 0 -> 7. Set during the selection phase.
-	int reservedId;; // 0 -> 7 if reserved. -1 if not reserved.
-	int reserverId;; // 0 -> 7 if reserved. -1 if not reserved.
+	int reservedId; // 0 -> 7 if reserved. -1 if not reserved.
+	int reserverId; // 0 -> 7 if reserved. -1 if not reserved.
 
 	// SCSI_STATUS value.
 	// Change to SCSI_STATUS_CHECK_CONDITION when setting a SENSE value
@@ -106,7 +106,7 @@ typedef struct
 
 extern ScsiDevice scsiDev;
 
-void scsiInit();
+void scsiInit(void);
 void scsiPoll(void);
 
 

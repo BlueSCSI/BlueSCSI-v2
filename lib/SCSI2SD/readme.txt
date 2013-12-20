@@ -43,7 +43,7 @@ Performance
 
 As currently implemented:
 
-Sequential read: 424kb/sec Sequential write: 414kb/sec
+Sequential read: 930kb/sec Sequential write: 414kb/sec
 
 Tested with a 16GB class 10 SD card, via the commands:
 
@@ -52,9 +52,6 @@ Tested with a 16GB class 10 SD card, via the commands:
 
  # READ TEST
  sudo dd bs=8192 count=100 if=/dev/sdX of=/dev/null
-
-I am working on updating the SD card communication to use DMA, to allow simultaneous use of the SD and SCSI interfaces. I expect the performance to reach 1Mb/sec. 
-
 
 Compatibility
 

@@ -17,7 +17,7 @@
 #ifndef DIAGNOSTIC_H
 #define DIAGNOSTIC_H
 
-void scsiSendDiagnostic();
-void scsiReceiveDiagnostic();
+void scsiSendDiagnostic(void);
+void scsiReceiveDiagnostic(void);
 
 #endif

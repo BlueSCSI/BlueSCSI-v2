@@ -72,11 +72,12 @@ static int test_data_10MHz(void)
 	int i;
 	for (i = 0; i < 100; ++i)
 	{
+		uint8 dbx;
 		// We write using Active High
 		SCSI_Out_DBx_Write(0xFF);
 		CyDelayCycles(3);
 		// And expect an Active Low response.
-		uint8 dbx = SCSI_In_DBx_Read();
+		dbx = SCSI_In_DBx_Read();
 		result = result && (dbx == 0);
 		
 		// We write using Active High

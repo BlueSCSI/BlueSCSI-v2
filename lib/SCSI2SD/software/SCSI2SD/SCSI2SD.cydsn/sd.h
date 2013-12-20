@@ -54,13 +54,13 @@ typedef struct
 
 extern SdDevice sdDev;
 
-int sdInit();
-void sdPrepareWrite();
-int sdWriteSector();
-void sdCompleteWrite();
+int sdInit(void);
+void sdPrepareWrite(void);
+int sdWriteSector(void);
+void sdCompleteWrite(void);
 
-void sdPrepareRead();
-void sdReadSector();
-void sdCompleteRead();
+void sdPrepareRead(void);
+void sdReadSector(void);
+void sdCompleteRead(void);
 
 #endif

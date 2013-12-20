@@ -32,19 +32,19 @@
 // Global SCSI device state.
 ScsiDevice scsiDev;
 
-static void enter_SelectionPhase();
-static void process_SelectionPhase();
-static void enter_BusFree();
+static void enter_SelectionPhase(void);
+static void process_SelectionPhase(void);
+static void enter_BusFree(void);
 static void enter_MessageIn(uint8 message);
-static void process_MessageIn();
+static void process_MessageIn(void);
 static void enter_Status(uint8 status);
-static void process_Status();
+static void process_Status(void);
 static void enter_DataIn(int len);
-static void process_DataIn();
-static void process_DataOut();
-static void process_Command();
+static void process_DataIn(void);
+static void process_DataOut(void);
+static void process_Command(void);
 
-static void doReserveRelease();
+static void doReserveRelease(void);
 
 static void enter_BusFree()
 {
@@ -109,17 +109,20 @@ static void enter_DataIn(int len)
 
 static void process_DataIn()
 {
+	uint32 len;
+	
 	if (scsiDev.dataLen > sizeof(scsiDev.data))
 	{
 		scsiDev.dataLen = sizeof(scsiDev.data);
 	}
 
-	scsiEnterPhase(DATA_IN);
-
-	uint32 len = scsiDev.dataLen - scsiDev.dataPtr;
-	scsiWrite(scsiDev.data + scsiDev.dataPtr, len);
-	scsiDev.dataPtr += len;
-
+	len = scsiDev.dataLen - scsiDev.dataPtr;
+	if (len > 0)
+	{
+		scsiEnterPhase(DATA_IN);
+		scsiWrite(scsiDev.data + scsiDev.dataPtr, len);
+		scsiDev.dataPtr += len;
+	}
 
 	if ((scsiDev.dataPtr >= scsiDev.dataLen) &&
 		(transfer.currentBlock == transfer.blocks))
@@ -130,24 +133,29 @@ static void process_DataIn()
 
 static void process_DataOut()
 {
+	uint32 len;
+	
 	if (scsiDev.dataLen > sizeof(scsiDev.data))
 	{
 		scsiDev.dataLen = sizeof(scsiDev.data);
 	}
 
-	scsiEnterPhase(DATA_OUT);
-
 	scsiDev.parityError = 0;
-	uint32 len = scsiDev.dataLen - scsiDev.dataPtr;
-	scsiRead(scsiDev.data + scsiDev.dataPtr, len);
-	scsiDev.dataPtr += len;
-
-	// TODO re-implement parity checking
-	if (0 && scsiDev.parityError && config->enableParity)
+	len = scsiDev.dataLen - scsiDev.dataPtr;
+	if (len > 0)
 	{
-		scsiDev.sense.code = ABORTED_COMMAND;
-		scsiDev.sense.asc = SCSI_PARITY_ERROR;
-		enter_Status(CHECK_CONDITION);
+		scsiEnterPhase(DATA_OUT);
+
+		scsiRead(scsiDev.data + scsiDev.dataPtr, len);
+		scsiDev.dataPtr += len;
+
+		// TODO re-implement parity checking
+		if (0 && scsiDev.parityError && config->enableParity)
+		{
+			scsiDev.sense.code = ABORTED_COMMAND;
+			scsiDev.sense.asc = SCSI_PARITY_ERROR;
+			enter_Status(CHECK_CONDITION);
+		}
 	}
 
 	if ((scsiDev.dataPtr >= scsiDev.dataLen) &&
@@ -160,18 +168,23 @@ static void process_DataOut()
 static const uint8 CmdGroupBytes[8] = {6, 10, 10, 6, 6, 12, 6, 6};
 static void process_Command()
 {
+	int group;
+	int cmdSize;
+	uint8 command;
+	uint8 lun;
+	
 	scsiEnterPhase(COMMAND);
 	scsiDev.parityError = 0;
 
 	memset(scsiDev.cdb, 0, sizeof(scsiDev.cdb));
 	scsiDev.cdb[0] = scsiReadByte();
 
-	int group = scsiDev.cdb[0] >> 5;
-	int cmdSize = CmdGroupBytes[group];
+	group = scsiDev.cdb[0] >> 5;
+	cmdSize = CmdGroupBytes[group];
 	scsiRead(scsiDev.cdb + 1, cmdSize - 1);
 
-	uint8 command = scsiDev.cdb[0];
-	uint8 lun = scsiDev.cdb[1] >> 5;
+	command = scsiDev.cdb[0];
+	lun = scsiDev.cdb[1] >> 5;
 
 	if (scsiDev.parityError)
 	{
@@ -395,15 +408,17 @@ static void process_SelectionPhase()
 
 		// Save our initiator now that we're no longer in a time-critical
 		// section.
-		uint8 initiatorMask = mask ^ scsiDev.scsiIdMask;
-		scsiDev.initiatorId = 0;
-		int i;
-		for (i = 0; i < 8; ++i)
 		{
-			if (initiatorMask & (1 << i))
+			int i;
+			uint8 initiatorMask = mask ^ scsiDev.scsiIdMask;
+			scsiDev.initiatorId = 0;
+			for (i = 0; i < 8; ++i)
 			{
-				scsiDev.initiatorId = i;
-				break;
+				if (initiatorMask & (1 << i))
+				{
+					scsiDev.initiatorId = i;
+					break;
+				}
 			}
 		}
 
@@ -515,10 +530,11 @@ static void process_MessageOut()
 	}
 	else if (scsiDev.msgOut == 0x01)
 	{
+		int i;
+		
 		// Extended message.
 		int msgLen = scsiReadByte();
 		if (msgLen == 0) msgLen = 256;
-		int i;
 		for (i = 0; i < msgLen && !scsiDev.resetFlag; ++i)
 		{
 			// Discard bytes.

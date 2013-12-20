@@ -1,4 +1,2 @@
-- DMA is not used for SPI transfers
-	- Potential for large performance improvement.
 - Parity checking not implemented for the PSoC Datapath implementation
 

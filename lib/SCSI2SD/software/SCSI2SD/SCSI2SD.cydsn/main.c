@@ -17,7 +17,6 @@
 
 #include "device.h"
 #include "blinky.h"
-#include "loopback.h"
 #include "scsi.h"
 #include "scsiPhy.h"
 #include "config.h"
@@ -37,10 +36,6 @@ int main()
 
 	// Set interrupt handlers.
 	scsiPhyInit();
-	
-	// Loopback test requires the interrupt handers.
-	// Will not return if uncommented.
-	// scsi2sd_test_loopback();
 	
 	configInit();
 	

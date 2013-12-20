@@ -91,7 +91,7 @@ uint64 scsiByteAddress(int format, const uint8* addr)
 	} break;
 
 	default:
-		result = -1;
+		result = (uint64) -1;
 	}
 
 	return result;
@@ -123,10 +123,11 @@ void scsiSaveByteAddress(int format, uint64 byteAddr, uint8* buf)
 		uint32 cyl;
 		uint8 head;
 		uint32 sector;
+		uint32 bytes;
 
 		LBA2CHS(lba, &cyl, &head, &sector);
 
-		uint32 bytes = sector * SCSI_SECTOR_SIZE + byteOffset;
+		bytes = sector * SCSI_SECTOR_SIZE + byteOffset;
 
 		buf[0] = cyl >> 16;
 		buf[1] = cyl >> 8;

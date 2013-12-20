@@ -17,6 +17,6 @@
 #ifndef MODE_H
 #define MODE_H
 
-int scsiModeCommand();
+int scsiModeCommand(void);
 
 #endif

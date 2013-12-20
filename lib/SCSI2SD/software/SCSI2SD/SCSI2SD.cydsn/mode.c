@@ -133,6 +133,8 @@ static void doModeSense(
 	}
 	else
 	{
+		int pageFound = 1;
+		
 		////////////// Mode Parameter Header
 		////////////////////////////////////
 
@@ -194,8 +196,6 @@ static void doModeSense(
 			scsiDev.data[idx++] = SCSI_BLOCK_SIZE >> 8;
 			scsiDev.data[idx++] = SCSI_BLOCK_SIZE & 0xFF;
 		}
-
-		int pageFound = 1;
 
 		switch (pageCode)
 		{

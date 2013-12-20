@@ -51,9 +51,9 @@ typedef struct
 extern BlockDevice blockDev;
 extern Transfer transfer;
 
-void scsiDiskInit();
-void scsiDiskReset();
-void scsiDiskPoll();
-int scsiDiskCommand();
+void scsiDiskInit(void);
+void scsiDiskReset(void);
+void scsiDiskPoll(void);
+int scsiDiskCommand(void);
 
 #endif
