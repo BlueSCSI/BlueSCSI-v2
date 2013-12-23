@@ -118,6 +118,10 @@ static void doWrite(uint32 lba, uint32 blocks)
 		scsiDev.phase = DATA_OUT;
 		scsiDev.dataLen = SCSI_BLOCK_SIZE;
 		scsiDev.dataPtr = SCSI_BLOCK_SIZE; // TODO FIX scsiDiskPoll()
+		
+		// No need for single-block reads atm.  Overhead of the
+		// multi-block read is minimal.
+		transfer.multiBlock = 1;
 		sdPrepareWrite();
 	}
 }
@@ -140,7 +144,20 @@ static void doRead(uint32 lba, uint32 blocks)
 		transfer.currentBlock = 0;
 		scsiDev.phase = DATA_IN;
 		scsiDev.dataLen = 0; // No data yet
-		sdPrepareRead();
+		
+		if ((blocks == 1) ||
+			(((uint64) lba) + blocks == blockDev.capacity)
+			)
+		{
+			// We get errors on reading the last sector using a multi-sector
+			// read :-(
+			transfer.multiBlock = 0;	
+		}
+		else
+		{
+			transfer.multiBlock = 1;
+			sdPrepareRead();
+		}		
 	}
 }
 
@@ -352,7 +369,14 @@ void scsiDiskPoll()
 	{
 		if (scsiDev.dataLen == 0)
 		{
-			sdReadSector();
+			if (transfer.multiBlock)
+			{
+				sdReadSectorMulti();
+			}
+			else
+			{
+				sdReadSectorSingle();
+			}
 		}
 		else if (scsiDev.dataPtr == scsiDev.dataLen)
 		{
@@ -361,9 +385,13 @@ void scsiDiskPoll()
 			transfer.currentBlock++;
 			if (transfer.currentBlock >= transfer.blocks)
 			{
+				int needComplete = transfer.multiBlock;
 				scsiDev.phase = STATUS;
 				scsiDiskReset();
-				sdCompleteRead();
+				if (needComplete)
+				{
+					sdCompleteRead();
+				}
 			}
 		}
 	}
@@ -378,6 +406,7 @@ void scsiDiskPoll()
 			scsiDev.dataLen = 0;
 			scsiDev.dataPtr = 0;
 			scsiDev.phase = STATUS;
+			
 			scsiDiskReset();
 
 			if (writeOk)
@@ -397,6 +426,7 @@ void scsiDiskReset()
 	transfer.lba = 0;
 	transfer.blocks = 0;
 	transfer.currentBlock = 0;
+	transfer.multiBlock = 0;
 }
 
 void scsiDiskInit()

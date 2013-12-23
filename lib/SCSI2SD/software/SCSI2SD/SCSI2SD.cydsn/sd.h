@@ -26,6 +26,7 @@ typedef enum
 	SD_STOP_TRANSMISSION = 12,
 	SD_SEND_STATUS = 13,
 	SD_SET_BLOCKLEN = 16,
+	SD_READ_SINGLE_BLOCK = 17,
 	SD_READ_MULTIPLE_BLOCK = 18,
 	SD_APP_SET_WR_BLK_ERASE_COUNT = 23,
 	SD_APP_SEND_OP_COND = 41,
@@ -60,7 +61,8 @@ int sdWriteSector(void);
 void sdCompleteWrite(void);
 
 void sdPrepareRead(void);
-void sdReadSector(void);
+void sdReadSectorMulti(void);
+void sdReadSectorSingle(void);
 void sdCompleteRead(void);
 
 #endif

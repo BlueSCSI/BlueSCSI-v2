@@ -42,6 +42,7 @@ typedef struct
 typedef struct
 {
 	int dir;
+	int multiBlock; // True if we're using a multi-block SPI transfer.
 	uint32 lba;
 	uint32 blocks;
 

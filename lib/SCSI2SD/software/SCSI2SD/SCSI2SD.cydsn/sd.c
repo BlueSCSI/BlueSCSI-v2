@@ -147,7 +147,7 @@ void sdPrepareRead()
 	}
 }
 
-void sdReadSector()
+static void doReadSector()
 {
 	int prep, i, guard;
 	
@@ -163,7 +163,10 @@ void sdReadSector()
 	}
 	if (token != 0xFE)
 	{
-		sdCompleteRead();
+		if (transfer.multiBlock)
+		{
+			sdCompleteRead();
+		}
 		if (scsiDev.status != CHECK_CONDITION)
 		{
 			scsiDev.status = CHECK_CONDITION;
@@ -235,6 +238,39 @@ void sdReadSector()
 	scsiDev.dataPtr = SCSI_BLOCK_SIZE;
 }
 
+void sdReadSectorSingle()
+{
+	uint8 v;
+	uint32 len = (transfer.lba + transfer.currentBlock);
+	if (!sdDev.ccs)
+	{
+		len = len * SCSI_BLOCK_SIZE;
+	}	
+	v = sdCommandAndResponse(SD_READ_SINGLE_BLOCK, len);
+	if (v)
+	{
+		scsiDiskReset();
+		sdClearStatus();
+
+		scsiDev.status = CHECK_CONDITION;
+		scsiDev.sense.code = HARDWARE_ERROR;
+		scsiDev.sense.asc = LOGICAL_UNIT_COMMUNICATION_FAILURE;
+		scsiDev.phase = STATUS;
+	}
+	else
+	{
+		doReadSector();
+	}
+}
+
+void sdReadSectorMulti()
+{
+	// Pre: sdPrepareRead called.
+	
+	doReadSector();
+}
+
+
 void sdCompleteRead()
 {
 	// We cannot send even a single "padding" byte, as we normally would when
@@ -294,8 +330,6 @@ int sdWriteSector()
 		scsiEnterPhase(DATA_OUT);
 	}
 	
-	// Wait for a previously-written sector to complete.
-	sdWaitWriteBusy();
 	sdSpiByte(0xFC); // MULTIPLE byte start token
 	
 	prep = 0;
@@ -382,8 +416,7 @@ int sdWriteSector()
 	}
 	else
 	{
-		// The card is probably in the busy state.
-		// Don't wait, as we could read the SCSI interface instead.
+		sdWaitWriteBusy();
 		result = 1;
 	}
 
@@ -394,9 +427,6 @@ void sdCompleteWrite()
 {
 	uint8 r1, r2;
 	
-	// Wait for a previously-written sector to complete.
-	sdWaitWriteBusy();
-
 	sdSpiByte(0xFD); // STOP TOKEN
 	// Wait for the card to come out of busy.
 	sdWaitWriteBusy();
