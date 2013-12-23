@@ -284,22 +284,61 @@ static void sdWaitWriteBusy()
 
 int sdWriteSector()
 {
-	int result, i, maxWait;
+	int prep, i, guard;	
+	int result, maxWait;
 	uint8 dataToken;
+
+	// Don't do a bus settle delay if we're already in the correct phase.
+	if (transfer.currentBlock == 0)
+	{
+		scsiEnterPhase(DATA_OUT);
+	}
 	
 	// Wait for a previously-written sector to complete.
 	sdWaitWriteBusy();
-
 	sdSpiByte(0xFC); // MULTIPLE byte start token
-	for (i = 0; i < SCSI_BLOCK_SIZE; i++)
-	{
-		while(!(SDCard_ReadTxStatus() & SDCard_STS_TX_FIFO_NOT_FULL))
-		{}
-		SDCard_WriteTxData(scsiDev.data[i]);
-	}
-	while(!(SDCard_ReadTxStatus() & SDCard_STS_SPI_DONE)) {}
-	SDCard_ClearFIFO();
+	
+	prep = 0;
+	i = 0;
+	guard = 0;
 
+	// This loop is critically important for performance.
+	// We stream data straight from the SCSI fifos into the SPIM component
+	// FIFO's. If the loop isn't fast enough, the transmit FIFO's will empty,
+	// and performance will suffer. Every clock cycle counts.	
+	while (i < SCSI_BLOCK_SIZE)
+	{
+		uint8_t sdRxStatus = CY_GET_REG8(SDCard_RX_STATUS_PTR);
+		uint8_t scsiStatus = CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG);
+
+		// Read from the SCSI fifo if there is room to stream the byte to the
+		// SPIM fifos
+		// See sdReadSector for comment on guard (FIFO size is really 5)
+		if((guard - i < 4) &&
+			(scsiStatus & 2)) // SCSI RX FIFO NOT EMPTY
+		{
+			uint8_t val = CY_GET_REG8(scsiTarget_datapath__F1_REG);
+			CY_SET_REG8(SDCard_TXDATA_PTR, val);
+			guard++;
+		}
+	
+		// Byte has been sent out the SPIM interface.
+		if (sdRxStatus & SDCard_STS_RX_FIFO_NOT_EMPTY)
+		{
+			 CY_GET_REG8(SDCard_RXDATA_PTR);
+			++i;
+		}
+
+		if (prep < SCSI_BLOCK_SIZE &&
+			(scsiStatus & 1) // SCSI TX FIFO NOT FULL
+			)
+		{
+			// Trigger the SCSI component to read a byte
+			CY_SET_REG8(scsiTarget_datapath__F0_REG, 0xFF);
+			prep++;
+		}			
+	}
+	
 	sdSpiByte(0x00); // CRC
 	sdSpiByte(0x00); // CRC
 

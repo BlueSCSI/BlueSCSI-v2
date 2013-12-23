@@ -43,7 +43,7 @@ Performance
 
 As currently implemented:
 
-Sequential read: 930kb/sec Sequential write: 414kb/sec
+Sequential read: 930kb/sec Sequential write: 900kb/sec
 
 Tested with a 16GB class 10 SD card, via the commands:
 

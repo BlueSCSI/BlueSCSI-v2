@@ -117,7 +117,7 @@ static void doWrite(uint32 lba, uint32 blocks)
 		transfer.currentBlock = 0;
 		scsiDev.phase = DATA_OUT;
 		scsiDev.dataLen = SCSI_BLOCK_SIZE;
-
+		scsiDev.dataPtr = SCSI_BLOCK_SIZE; // TODO FIX scsiDiskPoll()
 		sdPrepareWrite();
 	}
 }
@@ -370,21 +370,19 @@ void scsiDiskPoll()
 	else if (scsiDev.phase == DATA_OUT &&
 		transfer.currentBlock != transfer.blocks)
 	{
-		if (scsiDev.dataPtr == SCSI_BLOCK_SIZE)
+		int writeOk = sdWriteSector();
+		// TODO FIX scsiDiskPoll() scsiDev.dataPtr = 0;
+		transfer.currentBlock++;
+		if (transfer.currentBlock >= transfer.blocks)
 		{
-			int writeOk = sdWriteSector();
+			scsiDev.dataLen = 0;
 			scsiDev.dataPtr = 0;
-			transfer.currentBlock++;
-			if (transfer.currentBlock >= transfer.blocks)
-			{
-				scsiDev.dataLen = 0;
-				scsiDev.phase = STATUS;
-				scsiDiskReset();
+			scsiDev.phase = STATUS;
+			scsiDiskReset();
 
-				if (writeOk)
-				{
-					sdCompleteWrite();
-				}
+			if (writeOk)
+			{
+				sdCompleteWrite();
 			}
 		}
 	}
