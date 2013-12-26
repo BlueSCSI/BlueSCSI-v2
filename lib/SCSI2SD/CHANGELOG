@@ -1,0 +1,15 @@
+20131227		3.1
+	- Fixes for better SCSI reset handling
+	- Fix for reading the last sector of the SD card.
+	- Performance improvements. 2.5x read, 2x write performance.
+
+20131209		3.0.1
+	- Bugfix release.
+	- Fixes to support formatting with Apple HD SC Setup. This is very slow,
+		Apple Drive Setup is preferred
+	- Reliability improvement for rejecting unknown SCSI messages.
+	- Reliability improvements for SD card initialisation and reading.
+
+
+20131027		3.0
+	- Initial public release.
