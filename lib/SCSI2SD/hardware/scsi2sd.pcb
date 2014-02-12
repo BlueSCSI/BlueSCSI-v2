@@ -6,7 +6,7 @@ FileVersion[20070407]
 PCB["" 386000 393500]
 
 Grid[500.0 0 0 1]
-Cursor[85500 251000 0.000000]
+Cursor[60000 146000 0.000000]
 PolyArea[200000000.000000]
 Thermal[0.500000]
 DRC[600 100 600 600 1200 600]
@@ -938,7 +938,6 @@ Element["" "SMD_DIODE-80-50" "LED1" "unknown" 288500 237000 5700 -3100 0 100 ""]
 	ElementLine [-11700 -4400 3700 -4400 800]
 	ElementLine [-11700 -4400 -11700 4400 800]
 	ElementLine [-11700 4400 3700 4400 800]
-	ElementLine [2700 -4400 2700 4400 800]
 
 	)
 
@@ -1735,13 +1734,6 @@ Element["" "diode-DO-214AA-SMB" "D3" "unknown" 128410 338091 -4500 10000 0 100 "
 	ElementLine [-394 9055 -394 5118 1000]
 	ElementLine [-394 5118 394 5118 1000]
 	ElementLine [394 5118 394 8268 1000]
-	ElementLine [10236 3937 7874 6299 1000]
-	ElementLine [7874 6299 10630 9055 1000]
-	ElementLine [10630 9055 10630 4331 1000]
-	ElementLine [10630 4331 10236 3937 1000]
-	ElementLine [10630 6299 16535 6299 1000]
-	ElementLine [7087 3543 7087 9055 1000]
-	ElementLine [4724 6299 7874 6299 1000]
 
 	)
 
@@ -1759,13 +1751,6 @@ Element["" "diode-DO-214AA-SMB" "D1" "unknown" 78090 83909 -2181 11182 0 100 ""]
 	ElementLine [394 -9055 394 -5118 1000]
 	ElementLine [-394 -5118 394 -5118 1000]
 	ElementLine [-394 -8268 -394 -5118 1000]
-	ElementLine [-10236 -3937 -7874 -6299 1000]
-	ElementLine [-7874 -6299 -10630 -9055 1000]
-	ElementLine [-10630 -9055 -10630 -4331 1000]
-	ElementLine [-10630 -4331 -10236 -3937 1000]
-	ElementLine [-16535 -6299 -10630 -6299 1000]
-	ElementLine [-7087 -9055 -7087 -3543 1000]
-	ElementLine [-7874 -6299 -4724 -6299 1000]
 
 	)
 
@@ -1783,13 +1768,6 @@ Element["" "diode-DO-214AA-SMB" "D2" "unknown" 22091 159590 -18000 -500 1 100 ""
 	ElementLine [5118 394 9055 394 1000]
 	ElementLine [5118 -394 5118 394 1000]
 	ElementLine [5118 -394 8268 -394 1000]
-	ElementLine [3937 -10236 6299 -7874 1000]
-	ElementLine [6299 -7874 9055 -10630 1000]
-	ElementLine [4331 -10630 9055 -10630 1000]
-	ElementLine [4331 -10630 3937 -10236 1000]
-	ElementLine [6299 -16535 6299 -10630 1000]
-	ElementLine [3543 -7087 9055 -7087 1000]
-	ElementLine [6299 -7874 6299 -4724 1000]
 
 	)
 Layer(1 "component")
@@ -3298,6 +3276,8 @@ Layer(10 "silk")
 	Line[17500 95000 500 95000 1000 1600 "clearline"]
 	Line[500 95000 500 500 1000 1600 "clearline"]
 	Line[500 500 385500 500 1000 1600 "clearline"]
+	Line[279500 232000 279500 233500 1000 1600 "clearline"]
+	Line[279500 240500 279500 242000 1000 1600 "clearline"]
 	Text[94500 284000 0 100 "5V" "clearline"]
 	Text[137000 286000 0 50 "SWDIO" "clearline"]
 	Text[137000 291000 0 50 "SWDCK" "clearline"]
