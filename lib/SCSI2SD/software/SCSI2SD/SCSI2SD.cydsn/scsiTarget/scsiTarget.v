@@ -133,7 +133,6 @@ reg[2:0] state;
 reg[7:0] data;
 
 // Set by the datapath zero detector (z1). High when A1 counts down to zero.
-// D1 set to constant by .d1_init_a(4) (55ns at 66MHz)
 wire deskewComplete;
 
 // Parallel input to the datapath SRCA.
@@ -185,8 +184,6 @@ always @(posedge op_clk) begin
 			else state <= STATE_DESKEW;
 
 		STATE_READY:
-			//if ((IO == IO_WRITE) & ~nACK) state <= STATE_IDLE;
-			//else if ((IO == IO_READ) & ~nACK) state <= STATE_RX;
 			if (~nACK) state <= STATE_RX;
 			else state <= STATE_READY;
 
@@ -196,6 +193,10 @@ always @(posedge op_clk) begin
 	endcase
 end
 
+// D1 is used for the deskew count.
+// The data output is valid during the DESKEW_INIT phase as well,
+// so we subtract 1.
+// D1 = [0.000000055 / (1 / clk)] - 1
 cy_psoc3_dp #(.d1_init(3), 
 .cy_dpconfig(
 {
@@ -300,23 +301,3 @@ cy_psoc3_dp #(.d1_init(3),
 endmodule
 //`#start footer` -- edit after this line, do not edit this line
 //`#end` -- edit above this line, do not edit this line
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

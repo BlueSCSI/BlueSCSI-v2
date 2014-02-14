@@ -25,6 +25,11 @@
 // Fixed 512 byte sector size.
 // 2TB limit, based on 32bit LBA (read16/write16 not supported)
 
+// Set this to true to log SCSI commands and status information via
+// USB HID packets.  The can be captured and viewed in wireshark.
+// For windows users, capture using USBPcap http://desowin.org/usbpcap/
+#define MM_DEBUG 0
+
 #include "geometry.h"
 #include "sense.h"
 
@@ -97,11 +102,20 @@ typedef struct
 	uint8 status;
 
 	ScsiSense sense;
-	
+
 	uint16 unitAttention; // Set to the sense qualifier key to be returned.
 
 	uint8 msgIn;
 	uint8 msgOut;
+
+#ifdef MM_DEBUG
+	uint8 selCount;
+	uint8 rstCount;
+	uint8 msgCount;
+	uint8 watchdogTick;
+	uint8 lastStatus;
+	uint8 lastSense;
+#endif
 } ScsiDevice;
 
 extern ScsiDevice scsiDev;

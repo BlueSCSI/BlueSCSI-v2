@@ -1,3 +1,13 @@
+20140214		3.2
+	- Remove hacks around ATN handling, and implement proper select-with-atn
+	support.  This fix is essential for communicating with some SCSI hosts.
+	All SCSI2SD users are urged to upgrade to this firmware version.
+	- More fixes to support Apple HD SC Setup (thanks to Doug Brown!)
+	- Fixes to support SCSI1 initiators
+		* Support non-arbitrating initiators.
+		* Support single-initiator option.
+		* Set CCS response format flag in INQUIRY response.
+
 20131227		3.1
 	- Fixes for better SCSI reset handling
 	- Fix for reading the last sector of the SD card.

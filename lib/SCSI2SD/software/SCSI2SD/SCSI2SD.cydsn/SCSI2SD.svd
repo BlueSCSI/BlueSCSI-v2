@@ -493,7 +493,7 @@
     <peripheral>
       <name>SD_Clk_Ctl</name>
       <description>No description available</description>
-      <baseAddress>0x40006471</baseAddress>
+      <baseAddress>0x40006475</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x1</size>
@@ -514,7 +514,7 @@
     <peripheral>
       <name>SCSI_CTL_IO</name>
       <description>No description available</description>
-      <baseAddress>0x40006472</baseAddress>
+      <baseAddress>0x40006470</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x1</size>

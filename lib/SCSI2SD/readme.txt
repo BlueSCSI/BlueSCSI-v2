@@ -55,6 +55,13 @@ Tested with a 16GB class 10 SD card, via the commands:
 
 Compatibility
 
-Tested with Linux (current), Apple Macintosh System 7.5.3 on LC-III, and LC-475
-hardware. 
+Tested with Linux (current), Apple Macintosh System 7.5.3 on LC-III, and LC-475 hardware.
+
+Users have reported success on these systems:
+
+    Mac II running System 6.0.8
+    Mac SE/30
+    Roland JS-30 Sampler
+    Akai S3200 Sampler
+    EMU Emulator E4X with EOS 3.00b 
 

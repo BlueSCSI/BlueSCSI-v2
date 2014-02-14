@@ -1,4 +1,5 @@
 //	Copyright (C) 2013 Michael McMaster <michael@codesrc.com>
+//	Copyright (C) 2014 Doug Brown <doug@downtowndougbrown.com>
 //
 //	This file is part of SCSI2SD.
 //
@@ -118,7 +119,7 @@ static void doWrite(uint32 lba, uint32 blocks)
 		scsiDev.phase = DATA_OUT;
 		scsiDev.dataLen = SCSI_BLOCK_SIZE;
 		scsiDev.dataPtr = SCSI_BLOCK_SIZE; // TODO FIX scsiDiskPoll()
-		
+
 		// No need for single-block reads atm.  Overhead of the
 		// multi-block read is minimal.
 		transfer.multiBlock = 1;
@@ -144,20 +145,20 @@ static void doRead(uint32 lba, uint32 blocks)
 		transfer.currentBlock = 0;
 		scsiDev.phase = DATA_IN;
 		scsiDev.dataLen = 0; // No data yet
-		
+
 		if ((blocks == 1) ||
 			(((uint64) lba) + blocks == blockDev.capacity)
 			)
 		{
 			// We get errors on reading the last sector using a multi-sector
 			// read :-(
-			transfer.multiBlock = 0;	
+			transfer.multiBlock = 0;
 		}
 		else
 		{
 			transfer.multiBlock = 1;
 			sdPrepareRead();
-		}		
+		}
 	}
 }
 
@@ -354,6 +355,26 @@ int scsiDiskCommand()
 		// SYNCHRONIZE CACHE
 		// We don't have a cache. do nothing.
 	}
+	else if (command == 0x2F)
+	{
+		// VERIFY
+		// TODO: When they supply data to verify, we should read the data and
+		// verify it. If they don't supply any data, just say success.
+		if ((scsiDev.cdb[1] & 0x02) == 0)
+		{
+			// They are asking us to do a medium verification with no data
+			// comparison. Assume success, do nothing.
+		}
+		else
+		{
+			// TODO. This means they are supplying data to verify against.
+			// Technically we should probably grab the data and compare it.
+			scsiDev.status = CHECK_CONDITION;
+			scsiDev.sense.code = ILLEGAL_REQUEST;
+			scsiDev.sense.asc = INVALID_FIELD_IN_CDB;
+			scsiDev.phase = STATUS;
+		}
+	}
 	else
 	{
 		commandHandled = 0;
@@ -406,7 +427,7 @@ void scsiDiskPoll()
 			scsiDev.dataLen = 0;
 			scsiDev.dataPtr = 0;
 			scsiDev.phase = STATUS;
-			
+
 			scsiDiskReset();
 
 			if (writeOk)

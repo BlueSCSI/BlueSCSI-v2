@@ -1,4 +1,4 @@
-//	Copyright (C) 2013 Michael McMaster <michael@codesrc.com>
+//	Copyright (C) 2014 Michael McMaster <michael@codesrc.com>
 //
 //	This file is part of SCSI2SD.
 //
@@ -16,18 +16,16 @@
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "device.h"
-#include "blinky.h"
 #include "scsi.h"
 #include "scsiPhy.h"
 #include "config.h"
 #include "disk.h"
 #include "led.h"
 
-const char* Notice = "Copyright (C) 2013 Michael McMaster <michael@codesrc.com>";
+const char* Notice = "Copyright (C) 2014 Michael McMaster <michael@codesrc.com>";
 
 int main()
 {
-	// scsi2sd_test_blink(); // Initial test. Will not return.
 	ledOff();
 
 	// Enable global interrupts.
@@ -36,19 +34,17 @@ int main()
 
 	// Set interrupt handlers.
 	scsiPhyInit();
-	
+
 	configInit();
-	
+
 	scsiInit();
 	scsiDiskInit();
 
-	// Reading jumpers
-	// Is SD card detect asserted ?
-
-	// TODO POST ?
-
 	while (1)
 	{
+#ifdef MM_DEBUG
+		scsiDev.watchdogTick++;
+#endif
 		scsiPoll();
 		scsiDiskPoll();
 		configPoll();

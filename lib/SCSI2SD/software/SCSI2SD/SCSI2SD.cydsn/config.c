@@ -1,4 +1,4 @@
-//	Copyright (C) 2013 Michael McMaster <michael@codesrc.com>
+//	Copyright (C) 2014 Michael McMaster <michael@codesrc.com>
 //
 //	This file is part of SCSI2SD.
 //
@@ -20,6 +20,9 @@
 #include "USBFS.h"
 #include "led.h"
 
+#include "scsi.h"
+#include "scsiPhy.h"
+
 #include <string.h>
 
 // CYDEV_EEPROM_ROW_SIZE == 16.
@@ -31,7 +34,7 @@ static Config shadow =
 	0, // SCSI ID
 	" codesrc", // vendor  (68k Apple Drive Setup: Set to " SEAGATE")
 	"         SCSI2SD", //prodId (68k Apple Drive Setup: Set to "          ST225N")
-	"2.0a", // revision (68k Apple Drive Setup: Set to "1.0 ")
+	" 3.2", // revision (68k Apple Drive Setup: Set to "1.0 ")
 	1, // enable parity
 	0, // disable unit attention,
 	0 // Max blocks (0 == disabled)
@@ -94,7 +97,7 @@ void configInit()
 {
 	int shadowRows, shadowBytes;
 	uint8* eeprom = (uint8*)CYDEV_EE_BASE;
-	
+
 	// We could map cfgPtr directly into the EEPROM memory,
 	// but that would waste power. Copy it to RAM then turn off
 	// the EEPROM.
@@ -137,21 +140,21 @@ void configPoll()
 	{
 		return;
 	}
-	
+
 	if (reset)
 	{
 		USBFS_EnableOutEP(USB_EP_OUT);
 		usbInEpState = USB_IDLE;
-	}	
+	}
 
 	if(USBFS_GetEPState(USB_EP_OUT) == USBFS_OUT_BUFFER_FULL)
 	{
 		int byteCount;
-		
+
 		ledOn();
-		
+
 		// The host sent us some data!
-		 byteCount = USBFS_GetEPCount(USB_EP_OUT);
+		byteCount = USBFS_GetEPCount(USB_EP_OUT);
 
 		// Assume that byteCount <= sizeof(shadow).
 		// shadow should be padded out to 64bytes, which is the largest
@@ -162,20 +165,38 @@ void configPoll()
 		CFG_EEPROM_Start();
 		saveConfig(); // write to eeprom
 		CFG_EEPROM_Stop();
-		
+
 		// Send the updated data.
 		usbInEpState = USB_IDLE;
 
 		// Allow the host to send us another updated config.
 		USBFS_EnableOutEP(USB_EP_OUT);
 
-		ledOff();		
+		ledOff();
 	}
 
 	switch (usbInEpState)
 	{
 	case USB_IDLE:
 		shadow.maxBlocks = htonl(shadow.maxBlocks);
+		
+		#ifdef MM_DEBUG
+		memcpy(&shadow.reserved, &scsiDev.cdb, 12);
+		shadow.reserved[12] = scsiDev.msgIn;
+		shadow.reserved[13] = scsiDev.msgOut;
+		shadow.reserved[14] = scsiDev.lastStatus;
+		shadow.reserved[15] = scsiDev.lastSense;
+		shadow.reserved[16] = scsiDev.phase;
+		shadow.reserved[17] = SCSI_ReadPin(SCSI_In_BSY);
+		shadow.reserved[18] = SCSI_ReadPin(SCSI_In_SEL);
+		shadow.reserved[19] = SCSI_ReadPin(SCSI_ATN_INT);
+		shadow.reserved[20] = SCSI_ReadPin(SCSI_RST_INT);
+		shadow.reserved[21] = scsiDev.rstCount;
+		shadow.reserved[22] = scsiDev.selCount;
+		shadow.reserved[23] = scsiDev.msgCount;
+		shadow.reserved[24] = scsiDev.watchdogTick++;
+		#endif
+
 		USBFS_LoadInEP(USB_EP_IN, (uint8 *)&shadow, sizeof(shadow));
 		shadow.maxBlocks = ntohl(shadow.maxBlocks);
 		usbInEpState = USB_DATA_SENT;

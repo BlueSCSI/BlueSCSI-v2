@@ -45,7 +45,6 @@
 #include <SCSI_ATN_aliases.h>
 #include <SCSI_ATN.h>
 #include <SCSI_RST_ISR.h>
-#include <SCSI_ATN_ISR.h>
 #include <LED1_aliases.h>
 #include <LED1.h>
 #include <SDCard.h>

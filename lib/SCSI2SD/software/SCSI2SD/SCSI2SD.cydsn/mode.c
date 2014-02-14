@@ -1,4 +1,5 @@
 //	Copyright (C) 2013 Michael McMaster <michael@codesrc.com>
+//  Copyright (C) 2014 Doug Brown <doug@downtowndougbrown.com>
 //
 //	This file is part of SCSI2SD.
 //
@@ -21,6 +22,21 @@
 #include "disk.h"
 
 #include <string.h>
+
+static const uint8 ReadWriteErrorRecoveryPage[] =
+{
+0x01, // Page code
+0x0A, // Page length
+0x00, // No error recovery options for now
+0x00, // Don't try recovery algorithm during reads
+0x00, // Correction span 0
+0x00, // Head offset count 0,
+0x00, // Data strobe offset count 0,
+0x00, // Reserved
+0x00, // Don't try recovery algorithm during writes
+0x00, // Reserved
+0x00, 0x00 // Recovery time limit 0 (use default)*/
+};
 
 static const uint8 DisconnectReconnectPage[] =
 {
@@ -117,13 +133,6 @@ static void pageIn(int pc, int dataIdx, const uint8* pageData, int pageLen)
 static void doModeSense(
 	int sixByteCmd, int dbd, int pc, int pageCode, int allocLength)
 {
-	// TODO Apple HD SC Drive Setup requests Page 3 (FormatDevicePage) with an
-	// allocLength of 0x20. We need 0x24 if we include a block descriptor, and
-	// thus return CHECK CONDITION. A block descriptor is optional, so we
-	// chose to ignore it.
-	// TODO make configurable
-	dbd = 1;
-	
 	if (pc == 0x03) // Saved Values not supported.
 	{
 		scsiDev.status = CHECK_CONDITION;
@@ -202,6 +211,11 @@ static void doModeSense(
 		case 0x3F:
 			// EVERYTHING
 
+		case 0x01:
+			pageIn(pc, idx, ReadWriteErrorRecoveryPage, sizeof(ReadWriteErrorRecoveryPage));
+			idx += sizeof(ReadWriteErrorRecoveryPage);
+			if (pageCode != 0x3f) break;
+
 		case 0x02:
 			pageIn(pc, idx, DisconnectReconnectPage, sizeof(DisconnectReconnectPage));
 			idx += sizeof(DisconnectReconnectPage);
@@ -250,7 +264,7 @@ static void doModeSense(
 			pageIn(pc, idx, AppleVendorPage, sizeof(AppleVendorPage));
 			idx += sizeof(AppleVendorPage);
 			break;
-			
+
 		default:
 			// Unknown Page Code
 			pageFound = 0;
@@ -263,13 +277,11 @@ static void doModeSense(
 
 		if (idx > allocLength)
 		{
-			// Initiator may not have space to receive results.
-			scsiDev.status = CHECK_CONDITION;
-			scsiDev.sense.code = ILLEGAL_REQUEST;
-			scsiDev.sense.asc = INVALID_FIELD_IN_CDB;
-			scsiDev.phase = STATUS;
+			// Chop the reply off early if shorter length is requested
+			idx = allocLength;
 		}
-		else if (pageFound)
+
+		if (pageFound)
 		{
 			// Go back and fill out the mode data length
 			if (sixByteCmd)
@@ -288,7 +300,7 @@ static void doModeSense(
 		}
 		else
 		{
-			// Initiator may not have space to receive results.
+			// Page not found
 			scsiDev.status = CHECK_CONDITION;
 			scsiDev.sense.code = ILLEGAL_REQUEST;
 			scsiDev.sense.asc = INVALID_FIELD_IN_CDB;

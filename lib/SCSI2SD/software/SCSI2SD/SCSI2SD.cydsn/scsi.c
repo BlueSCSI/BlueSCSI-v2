@@ -1,4 +1,4 @@
-//	Copyright (C) 2013 Michael McMaster <michael@codesrc.com>
+//	Copyright (C) 2014 Michael McMaster <michael@codesrc.com>
 //
 //	This file is part of SCSI2SD.
 //
@@ -95,6 +95,11 @@ static void process_Status()
 {
 	scsiEnterPhase(STATUS);
 	scsiWriteByte(scsiDev.status);
+	
+	#ifdef MM_DEBUG
+	scsiDev.lastStatus = scsiDev.status;
+	scsiDev.lastSense = scsiDev.sense.code;
+	#endif
 
 	// Command Complete occurs AFTER a valid status has been
 	// sent. then we go bus-free.
@@ -323,6 +328,9 @@ static void doReserveRelease()
 
 static void scsiReset()
 {
+#ifdef MM_DEBUG
+	scsiDev.rstCount++;
+#endif
 	ledOff();
 	// done in verilog SCSI_Out_DBx_Write(0);
 	SCSI_CTL_IO_Write(0);
@@ -364,7 +372,7 @@ static void enter_SelectionPhase()
 {
 	// Ignore stale versions of this flag, but ensure we know the
 	// current value if the flag is still set.
-	scsiDev.atnFlag = SCSI_ReadPin(SCSI_ATN_INT);
+	scsiDev.atnFlag = 0;
 	scsiDev.parityError = 0;
 	scsiDev.dataPtr = 0;
 	scsiDev.savedDataPtr = 0;
@@ -378,15 +386,24 @@ static void enter_SelectionPhase()
 
 static void process_SelectionPhase()
 {
-	uint8 mask = scsiReadDBxPins();
-	int goodParity = (Lookup_OddParity[mask] == SCSI_ReadPin(SCSI_In_DBP));
-
 	int sel = SCSI_ReadPin(SCSI_In_SEL);
 	int bsy = SCSI_ReadPin(SCSI_In_BSY);
+
+	// Only read these pins AFTER SEL and BSY - we don't want to catch them
+	// during a transition period.
+	uint8 mask = scsiReadDBxPins();
+	int maskBitCount = countBits(mask);
+	int goodParity = (Lookup_OddParity[mask] == SCSI_ReadPin(SCSI_In_DBP));
+
 	if (!bsy && sel &&
 		(mask & scsiDev.scsiIdMask) &&
-		(goodParity || !config->enableParity) && (countBits(mask) == 2))
+		(goodParity || !config->enableParity) && (maskBitCount <= 2))
 	{
+		// Do we enter MESSAGE OUT immediately ? SCSI 1 and 2 standards says
+		// move to MESSAGE OUT if ATN is true before we release BSY.
+		// The initiate should assert ATN with SEL.
+		scsiDev.atnFlag = SCSI_ReadPin(SCSI_ATN_INT);
+
 		// We've been selected!
 		// Assert BSY - Selection success!
 		// must happen within 200us (Selection abort time) of seeing our
@@ -396,18 +413,29 @@ static void process_SelectionPhase()
 		SCSI_SetPin(SCSI_Out_BSY);
 		ledOn();
 
+		#ifdef MM_DEBUG
+		scsiDev.selCount++;
+		#endif
+
 		// Wait until the end of the selection phase.
 		while (!scsiDev.resetFlag)
 		{
-			scsiDev.atnFlag |= SCSI_ReadPin(SCSI_ATN_INT);
 			if (!SCSI_ReadPin(SCSI_In_SEL))
 			{
 				break;
 			}
 		}
+		// Last chance for the ATN signal! The initiator should have set this
+		// previously, but we try and be a little tolerant. This is required
+		// for the LCIII to work. I assume ATN is being set before the
+		// initiator releases SEL.
+		scsiDev.atnFlag = SCSI_ReadPin(SCSI_ATN_INT);
+
 
 		// Save our initiator now that we're no longer in a time-critical
 		// section.
+		// SCSI1/SASI initiators may not set their own ID.
+		if (maskBitCount == 2)
 		{
 			int i;
 			uint8 initiatorMask = mask ^ scsiDev.scsiIdMask;
@@ -421,11 +449,12 @@ static void process_SelectionPhase()
 				}
 			}
 		}
+		else
+		{
+			scsiDev.initiatorId = -1;
+		}
 
 		scsiDev.phase = COMMAND;
-		
-		CyDelayUs(2); // DODGY HACK
-		scsiDev.atnFlag |= SCSI_ReadPin(SCSI_ATN_INT);
 	}
 	else if (!sel)
 	{
@@ -440,6 +469,9 @@ static void process_MessageOut()
 	scsiDev.atnFlag = 0;
 	scsiDev.parityError = 0;
 	scsiDev.msgOut = scsiReadByte();
+#ifdef MM_DEBUG
+	scsiDev.msgCount++;
+#endif
 
 	if (scsiDev.parityError)
 	{
@@ -531,7 +563,7 @@ static void process_MessageOut()
 	else if (scsiDev.msgOut == 0x01)
 	{
 		int i;
-		
+
 		// Extended message.
 		int msgLen = scsiReadByte();
 		if (msgLen == 0) msgLen = 256;
@@ -554,31 +586,9 @@ static void process_MessageOut()
 	{
 		messageReject();
 	}
-	
-	// Re-check the ATN flag. We won't get another interrupt if
-	// it stays asserted.
-	CyDelayUs(2); // DODGY HACK
+
+	// Re-check the ATN flag in case it stays asserted.
 	scsiDev.atnFlag |= SCSI_ReadPin(SCSI_ATN_INT);
-}
-
-
-// TODO remove.
-// This is a hack until I work out why the ATN ISR isn't
-// running when it should.
-static int atnErrCount = 0;
-static int atnHitCount = 0;
-static void checkATN()
-{
-	int atn = SCSI_ReadPin(SCSI_ATN_INT);
-	if (atn && !scsiDev.atnFlag)
-	{
-		atnErrCount++;
-		scsiDev.atnFlag = 1;
-	}
-	else if (atn && scsiDev.atnFlag)
-	{
-		atnHitCount++;
-	}
 }
 
 void scsiPoll(void)
@@ -594,6 +604,14 @@ void scsiPoll(void)
 		if (SCSI_ReadPin(SCSI_In_BSY))
 		{
 			scsiDev.phase = BUS_BUSY;
+		}
+		// The Arbitration phase is optional for SCSI1/SASI hosts if there is only
+		// one initiator in the chain. Support this by moving
+		// straight to selection if SEL is asserted.
+		// ie. the initiator won't assert BSY and it's own ID before moving to selection.
+		else if (SCSI_ReadPin(SCSI_In_SEL))
+		{
+			enter_SelectionPhase();
 		}
 	break;
 
@@ -623,7 +641,9 @@ void scsiPoll(void)
 	break;
 
 	case COMMAND:
-		checkATN();
+		// Do not check ATN here. SCSI 1 & 2 initiators must set ATN
+		// and SEL together upon entering the selection phase if they
+		// want to send a message (IDENTIFY) immediately.
 		if (scsiDev.atnFlag)
 		{
 			process_MessageOut();
@@ -635,7 +655,7 @@ void scsiPoll(void)
 	break;
 
 	case DATA_IN:
-		checkATN();
+		scsiDev.atnFlag |= SCSI_ReadPin(SCSI_ATN_INT);
 		if (scsiDev.atnFlag)
 		{
 			process_MessageOut();
@@ -647,7 +667,7 @@ void scsiPoll(void)
 	break;
 
 	case DATA_OUT:
-		checkATN();
+		scsiDev.atnFlag |= SCSI_ReadPin(SCSI_ATN_INT);
 		if (scsiDev.atnFlag)
 		{
 			process_MessageOut();
@@ -659,7 +679,7 @@ void scsiPoll(void)
 	break;
 
 	case STATUS:
-		checkATN();
+		scsiDev.atnFlag |= SCSI_ReadPin(SCSI_ATN_INT);
 		if (scsiDev.atnFlag)
 		{
 			process_MessageOut();
@@ -671,7 +691,7 @@ void scsiPoll(void)
 	break;
 
 	case MESSAGE_IN:
-		checkATN();
+		scsiDev.atnFlag |= SCSI_ReadPin(SCSI_ATN_INT);
 		if (scsiDev.atnFlag)
 		{
 			process_MessageOut();

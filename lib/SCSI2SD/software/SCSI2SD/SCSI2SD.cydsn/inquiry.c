@@ -27,14 +27,27 @@ static uint8 StandardResponse[] =
 0x00, // "Direct-access device". AKA standard hard disk
 0x00, // device type qualifier
 0x02, // Complies with ANSI SCSI-2.
-0x02, // SCSI-2 Inquiry response
-31, // standard length
+0x01, // Response format is compatible with the old CCS format.
+0x1f, // standard length.
 0, 0, //Reserved
 0 // We don't support anything at all
 };
 // Vendor set by config 'c','o','d','e','s','r','c',' ',
 // prodId set by config'S','C','S','I','2','S','D',' ',' ',' ',' ',' ',' ',' ',' ',' ',
 // Revision set by config'2','.','0','a'
+
+/* For reference, here's a dump from an Apple branded 500Mb drive from 1994.
+$ sudo sg_inq -H /dev/sdd --len 255
+standard INQUIRY:
+ 00     00 00 02 01 31 00 00 18  51 55 41 4e 54 55 4d 20    ....1...QUANTUM 
+ 10     4c 50 53 32 37 30 20 20  20 20 20 20 20 20 20 20    LPS270          
+ 20     30 39 30 30 00 00 00 d9  b0 27 34 01 04 b3 01 1b    0900.....'4.....
+ 30     07 00 a0 00 00 ff                                   ......
+ Vendor identification: QUANTUM 
+ Product identification: LPS270          
+ Product revision level: 0900
+*/
+
 
 static const uint8 SupportedVitalPages[] =
 {
@@ -85,7 +98,7 @@ void scsiInquiry()
 	uint8 lun = scsiDev.cdb[1] >> 5;
 	uint32 allocationLength = scsiDev.cdb[4];
 	if (allocationLength == 0) allocationLength = 256;
-
+	
 	if (!evpd)
 	{
 		if (pageCode)
@@ -98,16 +111,14 @@ void scsiInquiry()
 		}
 		else
 		{
-			uint8* out;
 			memcpy(scsiDev.data, StandardResponse, sizeof(StandardResponse));
-			out = scsiDev.data + sizeof(StandardResponse);
-			memcpy(out, config->vendor, sizeof(config->vendor));
-			out += sizeof(config->vendor);
-			memcpy(out, config->prodId, sizeof(config->prodId));
-			out += sizeof(config->prodId);
-			memcpy(out, config->revision, sizeof(config->revision));
-			out += sizeof(config->revision);			
-			scsiDev.dataLen = out - scsiDev.data;
+			memcpy(&scsiDev.data[8], config->vendor, sizeof(config->vendor));
+			memcpy(&scsiDev.data[16], config->prodId, sizeof(config->prodId));
+			memcpy(&scsiDev.data[32], config->revision, sizeof(config->revision));
+			scsiDev.dataLen = sizeof(StandardResponse) +
+				sizeof(config->vendor) +
+				sizeof(config->prodId) +
+				sizeof(config->revision);
 			scsiDev.phase = DATA_IN;
 			
 			if (!lun) scsiDev.unitAttention = 0;
@@ -153,12 +164,22 @@ void scsiInquiry()
 	}
 
 
-	if (scsiDev.phase == DATA_IN && scsiDev.dataLen > allocationLength)
+	if (scsiDev.phase == DATA_IN)
 	{
-		// Spec 8.2.5 requires us to simply truncate the response.
+		// "real" hard drives send back exactly allocationLenth bytes, padded
+		// with zeroes. This only seems to happen for Inquiry responses, and not
+		// other commands that also supply an allocation length such as Mode Sense or
+		// Request Sense.
+		if (scsiDev.dataLen < allocationLength)
+		{
+			memset(
+				&scsiDev.data[scsiDev.dataLen],
+				0,
+				allocationLength - scsiDev.dataLen);
+		}
+		// Spec 8.2.5 requires us to simply truncate the response if it's too big.
 		scsiDev.dataLen = allocationLength;
 	}
-
 
 	// Set the first byte to indicate LUN presence.
 	if (lun) // We only support lun 0
