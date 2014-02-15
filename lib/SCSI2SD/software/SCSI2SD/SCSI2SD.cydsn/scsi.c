@@ -425,12 +425,6 @@ static void process_SelectionPhase()
 				break;
 			}
 		}
-		// Last chance for the ATN signal! The initiator should have set this
-		// previously, but we try and be a little tolerant. This is required
-		// for the LCIII to work. I assume ATN is being set before the
-		// initiator releases SEL.
-		scsiDev.atnFlag = SCSI_ReadPin(SCSI_ATN_INT);
-
 
 		// Save our initiator now that we're no longer in a time-critical
 		// section.
