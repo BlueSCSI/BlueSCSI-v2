@@ -159,7 +159,8 @@ always @(posedge op_clk) begin
 			// Check that SCSI initiator is ready, and input FIFO is not empty,
 			// and output FIFO is not full.
 			// Note that output FIFO is unused in TX mode.
-			if (nACK & !f0_blk_stat && !f1_blk_stat)
+			if (!nRST) state <= STATE_IDLE;
+			else if (nACK & !f0_blk_stat && !f1_blk_stat)
 				state <= STATE_FIFOLOAD;
 			else
 				state <= STATE_IDLE;
@@ -169,22 +170,28 @@ always @(posedge op_clk) begin
 		end
 
 		STATE_FIFOLOAD:
-			state <= IO == IO_WRITE ? STATE_TX : STATE_READY;
+			if (!nRST) state <= STATE_IDLE;
+			else state <= IO == IO_WRITE ? STATE_TX : STATE_READY;
 
 		STATE_TX:
 		begin
-			state <= STATE_DESKEW_INIT;
+			if (!nRST) state <= STATE_IDLE;
+			else state <= STATE_DESKEW_INIT;
 			data <= po;
 		end
 
-		STATE_DESKEW_INIT: state <= STATE_DESKEW;
+		STATE_DESKEW_INIT:
+			if (!nRST) state <= STATE_IDLE;
+			else state <= STATE_DESKEW;
 
 		STATE_DESKEW:
-			if(deskewComplete) state <= STATE_READY;
+			if (!nRST) state <= STATE_IDLE;
+			else if(deskewComplete) state <= STATE_READY;
 			else state <= STATE_DESKEW;
 
 		STATE_READY:
-			if (~nACK) state <= STATE_RX;
+			if (!nRST) state <= STATE_IDLE;
+			else if (~nACK) state <= STATE_RX;
 			else state <= STATE_READY;
 
 		STATE_RX: state <= STATE_IDLE;

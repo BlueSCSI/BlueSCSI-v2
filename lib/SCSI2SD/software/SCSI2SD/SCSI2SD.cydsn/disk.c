@@ -406,20 +406,15 @@ void scsiDiskPoll()
 			transfer.currentBlock++;
 			if (transfer.currentBlock >= transfer.blocks)
 			{
-				int needComplete = transfer.multiBlock;
 				scsiDev.phase = STATUS;
 				scsiDiskReset();
-				if (needComplete)
-				{
-					sdCompleteRead();
-				}
 			}
 		}
 	}
 	else if (scsiDev.phase == DATA_OUT &&
 		transfer.currentBlock != transfer.blocks)
 	{
-		int writeOk = sdWriteSector();
+		sdWriteSector();
 		// TODO FIX scsiDiskPoll() scsiDev.dataPtr = 0;
 		transfer.currentBlock++;
 		if (transfer.currentBlock >= transfer.blocks)
@@ -429,24 +424,32 @@ void scsiDiskPoll()
 			scsiDev.phase = STATUS;
 
 			scsiDiskReset();
-
-			if (writeOk)
-			{
-				sdCompleteWrite();
-			}
 		}
 	}
 }
 
 void scsiDiskReset()
 {
- // todo if SPI command in progress, cancel it.
 	scsiDev.dataPtr = 0;
 	scsiDev.savedDataPtr = 0;
 	scsiDev.dataLen = 0;
-	transfer.lba = 0;
+	// transfer.lba = 0; // Needed in Request Sense to determine failure
 	transfer.blocks = 0;
 	transfer.currentBlock = 0;
+
+	// Cancel long running commands!
+	if (transfer.inProgress == 1)
+	{
+		if (transfer.dir == TRANSFER_WRITE)
+		{
+			sdCompleteWrite();
+		}
+		else
+		{
+			sdCompleteRead();
+		}
+	}
+	transfer.inProgress = 0;
 	transfer.multiBlock = 0;
 }
 
@@ -454,6 +457,7 @@ void scsiDiskInit()
 {
 	blockDev.bs = SCSI_BLOCK_SIZE;
 	blockDev.capacity = 0;
+	transfer.inProgress = 0;
 	scsiDiskReset();
 
 	// Don't require the host to send us a START STOP UNIT command

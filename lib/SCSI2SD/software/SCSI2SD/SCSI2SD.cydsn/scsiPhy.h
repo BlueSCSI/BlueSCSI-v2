@@ -30,6 +30,7 @@
 // Contains the odd-parity flag for a given 8-bit value.
 extern const uint8 Lookup_OddParity[256];
 
+void scsiPhyReset(void);
 void scsiPhyInit(void);
 uint8 scsiReadByte(void);
 void scsiRead(uint8* data, uint32 count);

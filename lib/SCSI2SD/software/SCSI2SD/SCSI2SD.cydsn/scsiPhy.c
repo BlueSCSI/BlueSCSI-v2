@@ -20,6 +20,8 @@
 #include "scsiPhy.h"
 #include "bits.h"
 
+#define scsiTarget_AUX_CTL (* (reg8 *) scsiTarget_datapath__DP_AUX_CTL_REG)
+
 CY_ISR_PROTO(scsiResetISR);
 CY_ISR(scsiResetISR)
 {
@@ -42,9 +44,11 @@ uint8 scsiReadDBxPins()
 
 uint8 scsiReadByte(void)
 {
-	while (!(CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG) & 1)) {}
+	while (!(CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG) & 1) &&
+		!scsiDev.resetFlag) {}
 	CY_SET_REG8(scsiTarget_datapath__F0_REG, 0);
-	while (!(CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG) & 2)) {}
+	while (!(CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG) & 2) &&
+		!scsiDev.resetFlag) {}
 	return CY_GET_REG8(scsiTarget_datapath__F1_REG);
 }
 
@@ -53,7 +57,7 @@ void scsiRead(uint8* data, uint32 count)
 	int prep = 0;
 	int i = 0;
 
-	while (i < count)
+	while (i < count && !scsiDev.resetFlag)
 	{
 		if (prep < count && (CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG) & 1))
 		{
@@ -70,12 +74,14 @@ void scsiRead(uint8* data, uint32 count)
 
 void scsiWriteByte(uint8 value)
 {
-	while (!(CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG) & 1)) {}
+	while (!(CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG) & 1) &&
+		!scsiDev.resetFlag) {}
 	CY_SET_REG8(scsiTarget_datapath__F0_REG, value);
 
 	// TODO maybe move this TX EMPTY check to scsiEnterPhase ?
 	//while (!(CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG) & 4)) {}
-	while (!(CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG) & 2)) {}
+	while (!(CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG) & 2) &&
+		!scsiDev.resetFlag) {}
 	value = CY_GET_REG8(scsiTarget_datapath__F1_REG);	
 }
 
@@ -84,7 +90,7 @@ void scsiWrite(uint8* data, uint32 count)
 	int prep = 0;
 	int i = 0;
 
-	while (i < count)
+	while (i < count && !scsiDev.resetFlag)
 	{
 		if (prep < count && (CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG) & 1))
 		{
@@ -137,6 +143,32 @@ void scsiEnterPhase(int phase)
 		SCSI_CTL_IO_Write(0);
 	}
 	busSettleDelay();
+}
+
+void scsiPhyReset()
+{
+	// Set the Clear bits for both SCSI device FIFOs
+	scsiTarget_AUX_CTL = scsiTarget_AUX_CTL | 0x03;
+
+	// Trigger RST outselves.  It is connected to the datapath and will
+	// ensure it returns to the idle state.  The datapath runs at the BUS clk
+	// speed (ie. same as the CPU), so we can be sure it is active for a sufficient
+	// duration.
+	SCSI_SetPin(SCSI_Out_RST);
+
+	SCSI_CTL_IO_Write(0);
+	SCSI_ClearPin(SCSI_Out_ATN);
+	SCSI_ClearPin(SCSI_Out_BSY);
+	SCSI_ClearPin(SCSI_Out_ACK);
+	SCSI_ClearPin(SCSI_Out_RST);
+	SCSI_ClearPin(SCSI_Out_SEL);
+	SCSI_ClearPin(SCSI_Out_REQ);
+	SCSI_ClearPin(SCSI_Out_MSG);
+	SCSI_ClearPin(SCSI_Out_CD);
+
+	// Allow the FIFOs to fill up again.
+	SCSI_ClearPin(SCSI_Out_RST);
+	scsiTarget_AUX_CTL = scsiTarget_AUX_CTL & ~(0x03);
 }
 
 void scsiPhyInit()

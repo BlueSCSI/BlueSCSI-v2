@@ -109,6 +109,7 @@ typedef struct
 	uint8 msgOut;
 
 #ifdef MM_DEBUG
+	uint8 cmdCount;
 	uint8 selCount;
 	uint8 rstCount;
 	uint8 msgCount;

@@ -22,6 +22,7 @@
 
 #include "scsi.h"
 #include "scsiPhy.h"
+#include "disk.h"
 
 #include <string.h>
 
@@ -34,9 +35,9 @@ static Config shadow =
 	0, // SCSI ID
 	" codesrc", // vendor  (68k Apple Drive Setup: Set to " SEAGATE")
 	"         SCSI2SD", //prodId (68k Apple Drive Setup: Set to "          ST225N")
-	" 3.2", // revision (68k Apple Drive Setup: Set to "1.0 ")
+	" 3.3", // revision (68k Apple Drive Setup: Set to "1.0 ")
 	1, // enable parity
-	0, // disable unit attention,
+	1, // enable unit attention,
 	0 // Max blocks (0 == disabled)
 	// reserved bytes will be initialised to 0.
 };
@@ -194,7 +195,10 @@ void configPoll()
 		shadow.reserved[21] = scsiDev.rstCount;
 		shadow.reserved[22] = scsiDev.selCount;
 		shadow.reserved[23] = scsiDev.msgCount;
-		shadow.reserved[24] = scsiDev.watchdogTick++;
+		shadow.reserved[24] = scsiDev.cmdCount;
+		shadow.reserved[25] = scsiDev.watchdogTick;
+		shadow.reserved[26] = blockDev.state;
+		shadow.reserved[27] = scsiReadDBxPins();
 		#endif
 
 		USBFS_LoadInEP(USB_EP_IN, (uint8 *)&shadow, sizeof(shadow));

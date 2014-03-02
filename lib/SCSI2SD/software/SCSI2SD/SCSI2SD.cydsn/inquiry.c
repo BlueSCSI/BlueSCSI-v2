@@ -120,8 +120,6 @@ void scsiInquiry()
 				sizeof(config->prodId) +
 				sizeof(config->revision);
 			scsiDev.phase = DATA_IN;
-			
-			if (!lun) scsiDev.unitAttention = 0;
 		}
 	}
 	else if (pageCode == 0x00)

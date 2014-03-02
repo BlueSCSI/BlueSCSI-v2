@@ -104,7 +104,7 @@ const uint8 CYCODE USBFS_DEVICE0_CONFIGURATION0_DESCR[41u] = {
 /*  bEndpointAddress                       */ 0x82u,
 /*  bmAttributes                           */ 0x03u,
 /*  wMaxPacketSize                         */ 0x40u, 0x00u,
-/*  bInterval                              */ 0x80u
+/*  bInterval                              */ 0x40u
 };
 
 /*********************************************************************

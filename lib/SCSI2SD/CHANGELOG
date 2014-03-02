@@ -1,3 +1,10 @@
+20140???		3.3
+	- Fix to SCSI Reset handling to avoid lockups
+	- Bug fixes to improve standards compatibility
+	- Bug fix for Unit Attention Condition, which is now enabled by default.
+		- scsi2sd-config can be used to disable it for those systems that
+		truely require it (eg. Mac Plus).
+
 20140214		3.2
 	- Remove hacks around ATN handling, and implement proper select-with-atn
 	support.  This fix is essential for communicating with some SCSI hosts.

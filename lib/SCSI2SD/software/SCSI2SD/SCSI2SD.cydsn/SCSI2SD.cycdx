@@ -103,7 +103,7 @@
   <block name="SCSI_In_DBx" BASE="0x0" SIZE="0x0" desc="" visible="true" />
   <block name="SCSI_Out_DBx" BASE="0x0" SIZE="0x0" desc="" visible="true" />
   <block name="SD_Clk_Ctl" BASE="0x0" SIZE="0x0" desc="" visible="true">
-    <register name="SD_Clk_Ctl_CONTROL_REG" address="0x40006475" bitWidth="8" desc="" />
+    <register name="SD_Clk_Ctl_CONTROL_REG" address="0x4000647A" bitWidth="8" desc="" />
   </block>
   <block name="SD_CD" BASE="0x0" SIZE="0x0" desc="" visible="true" />
   <block name="OddParityGen_1" BASE="0x0" SIZE="0x0" desc="" visible="true" />
@@ -112,6 +112,6 @@
   <block name="SD_DAT2" BASE="0x0" SIZE="0x0" desc="" visible="true" />
   <block name="SD_DAT1" BASE="0x0" SIZE="0x0" desc="" visible="true" />
   <block name="SCSI_CTL_IO" BASE="0x0" SIZE="0x0" desc="" visible="true">
-    <register name="SCSI_CTL_IO_CONTROL_REG" address="0x40006470" bitWidth="8" desc="" />
+    <register name="SCSI_CTL_IO_CONTROL_REG" address="0x4000647B" bitWidth="8" desc="" />
   </block>
 </blockRegMap>

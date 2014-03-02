@@ -48,12 +48,28 @@ static void doReserveRelease(void);
 
 static void enter_BusFree()
 {
-	scsiEnterPhase(BUS_FREE);
+	// TODO MPC3000 testing.
+	// 1,2us: Cannot see SCSI device.
+	// 5us: Can see SCSI device, format fails
+	// 10us: Format succeeds.
+	// 25us: Format fails.
+	CyDelayUs(10);
+
+
+
+
+	SCSI_ClearPin(SCSI_Out_BSY);
+	// We now have a Bus Clear Delay of 800ns to release remaining signals.
+	SCSI_ClearPin(SCSI_Out_MSG);
+	SCSI_ClearPin(SCSI_Out_CD);
+	SCSI_CTL_IO_Write(0);
+
+	// Wait for the initiator to cease driving signals
+	// Bus settle delay + bus clear delay = 1200ns
+	CyDelayUs(2);
 
 	ledOff();
-
 	scsiDev.phase = BUS_FREE;
-	SCSI_ClearPin(SCSI_Out_BSY);
 }
 
 static void enter_MessageIn(uint8 message)
@@ -89,13 +105,19 @@ static void enter_Status(uint8 status)
 {
 	scsiDev.status = status;
 	scsiDev.phase = STATUS;
+
+
+	#ifdef MM_DEBUG
+	scsiDev.lastStatus = scsiDev.status;
+	scsiDev.lastSense = scsiDev.sense.code;
+	#endif
 }
 
 static void process_Status()
 {
 	scsiEnterPhase(STATUS);
 	scsiWriteByte(scsiDev.status);
-	
+
 	#ifdef MM_DEBUG
 	scsiDev.lastStatus = scsiDev.status;
 	scsiDev.lastSense = scsiDev.sense.code;
@@ -115,7 +137,7 @@ static void enter_DataIn(int len)
 static void process_DataIn()
 {
 	uint32 len;
-	
+
 	if (scsiDev.dataLen > sizeof(scsiDev.data))
 	{
 		scsiDev.dataLen = sizeof(scsiDev.data);
@@ -139,7 +161,7 @@ static void process_DataIn()
 static void process_DataOut()
 {
 	uint32 len;
-	
+
 	if (scsiDev.dataLen > sizeof(scsiDev.data))
 	{
 		scsiDev.dataLen = sizeof(scsiDev.data);
@@ -177,7 +199,7 @@ static void process_Command()
 	int cmdSize;
 	uint8 command;
 	uint8 lun;
-	
+
 	scsiEnterPhase(COMMAND);
 	scsiDev.parityError = 0;
 
@@ -191,7 +213,20 @@ static void process_Command()
 	command = scsiDev.cdb[0];
 	lun = scsiDev.cdb[1] >> 5;
 
-	if (scsiDev.parityError)
+	#ifdef MM_DEBUG
+	scsiDev.cmdCount++;
+	#endif
+
+	if (scsiDev.resetFlag)
+	{
+#ifdef MM_DEBUG
+		// Don't log bogus commands
+		scsiDev.cmdCount--;
+		memset(scsiDev.cdb, 0xff, sizeof(scsiDev.cdb));
+#endif
+		return;
+	}
+	else if (scsiDev.parityError)
 	{
 		scsiDev.sense.code = ABORTED_COMMAND;
 		scsiDev.sense.asc = SCSI_PARITY_ERROR;
@@ -210,26 +245,47 @@ static void process_Command()
 		scsiDev.data[0] = 0xF0;
 		scsiDev.data[2] = scsiDev.sense.code & 0x0F;
 
-		// TODO populate "information" field with requested LBA.
-		// TODO support more detailed sense data ?
+		scsiDev.data[3] = transfer.lba >> 24;
+		scsiDev.data[4] = transfer.lba >> 16;
+		scsiDev.data[5] = transfer.lba >> 8;
+		scsiDev.data[6] = transfer.lba;
 
-		scsiDev.data[12] = scsiDev.sense.asc >> 8;
-		scsiDev.data[13] = scsiDev.sense.asc;
+		// Additional bytes if there are errors to report
+		int responseLength;
+		if (scsiDev.sense.code == NO_SENSE)
+		{
+			responseLength = 8;
+		}
+		else
+		{
+			responseLength = 18;
+			scsiDev.data[7] = 10; // additional length
+			scsiDev.data[12] = scsiDev.sense.asc >> 8;
+			scsiDev.data[13] = scsiDev.sense.asc;
+		}
 
 		// Silently truncate results. SCSI-2 spec 8.2.14.
-		enter_DataIn(allocLength < 18 ? allocLength : 18);
+		enter_DataIn(
+			(allocLength < responseLength) ? allocLength : responseLength
+			);
 
 		// This is a good time to clear out old sense information.
 		scsiDev.sense.code = NO_SENSE;
 		scsiDev.sense.asc = NO_ADDITIONAL_SENSE_INFORMATION;
 	}
 	// Some old SCSI drivers do NOT properly support
-	// unitAttention. OTOH, Linux seems to require it
-	// confirmed LCIII with unknown scsi driver fials here.
+	// unitAttention. eg. the Mac Plus would trigger a SCSI reset
+	// on receiving the unit attention response on boot, thus
+	// triggering another unit attention condition.
 	else if (scsiDev.unitAttention && config->enableUnitAttention)
 	{
 		scsiDev.sense.code = UNIT_ATTENTION;
 		scsiDev.sense.asc = scsiDev.unitAttention;
+
+		// If initiator doesn't do REQUEST SENSE for the next command, then
+		// data is lost.
+		scsiDev.unitAttention = 0;
+
 		enter_Status(CHECK_CONDITION);
 	}
 	else if (lun)
@@ -269,6 +325,7 @@ static void process_Command()
 	{
 		enter_Status(GOOD);
 	}
+
 }
 
 static void doReserveRelease()
@@ -332,19 +389,13 @@ static void scsiReset()
 	scsiDev.rstCount++;
 #endif
 	ledOff();
-	// done in verilog SCSI_Out_DBx_Write(0);
-	SCSI_CTL_IO_Write(0);
-	SCSI_ClearPin(SCSI_Out_ATN);
-	SCSI_ClearPin(SCSI_Out_BSY);
-	SCSI_ClearPin(SCSI_Out_ACK);
-	SCSI_ClearPin(SCSI_Out_RST);
-	SCSI_ClearPin(SCSI_Out_SEL);
-	SCSI_ClearPin(SCSI_Out_REQ);
-	SCSI_ClearPin(SCSI_Out_MSG);
-	SCSI_ClearPin(SCSI_Out_CD);
+
+	scsiPhyReset();
 
 	scsiDev.parityError = 0;
 	scsiDev.phase = BUS_FREE;
+	scsiDev.atnFlag = 0;
+	scsiDev.resetFlag = 0;
 
 	if (scsiDev.unitAttention != POWER_ON_RESET)
 	{
@@ -364,8 +415,6 @@ static void scsiReset()
 	// in which case TERMPWR cannot be supplied, and reset will ALWAYS
 	// be true.
 	CyDelay(10); // 10ms.
-	scsiDev.resetFlag = SCSI_ReadPin(SCSI_RST_INT);
-	scsiDev.atnFlag = 0;
 }
 
 static void enter_SelectionPhase()
@@ -590,6 +639,11 @@ void scsiPoll(void)
 	if (scsiDev.resetFlag)
 	{
 		scsiReset();
+		if ((scsiDev.resetFlag = SCSI_ReadPin(SCSI_RST_INT)))
+		{
+			// Still in reset phase. Do not try and process any commands.
+			return;
+		}
 	}
 
 	switch (scsiDev.phase)
