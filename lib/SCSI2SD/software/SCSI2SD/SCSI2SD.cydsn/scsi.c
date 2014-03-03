@@ -46,18 +46,23 @@ static void process_Command(void);
 
 static void doReserveRelease(void);
 
+static uint8_t CmdTimerComplete = 0;
+CY_ISR(CommandTimerISR)
+{
+	CmdTimerComplete = 1;
+}
+
 static void enter_BusFree()
 {
-	// TODO MPC3000 testing.
+	// Spin until the 10us timer has stopped.
+	// Required for Akai MPC3000, and possibly other broken controllers.
 	// 1,2us: Cannot see SCSI device.
 	// 5us: Can see SCSI device, format fails
 	// 10us: Format succeeds.
 	// 25us: Format fails.
-	CyDelayUs(10);
-
-
-
-
+	while (!CmdTimerComplete) {}
+	SCSI_CMD_TIMER_Stop();
+	
 	SCSI_ClearPin(SCSI_Out_BSY);
 	// We now have a Bus Clear Delay of 800ns to release remaining signals.
 	SCSI_ClearPin(SCSI_Out_MSG);
@@ -406,6 +411,8 @@ static void scsiReset()
 	scsiDev.sense.code = NO_SENSE;
 	scsiDev.sense.asc = NO_ADDITIONAL_SENSE_INFORMATION;
 	scsiDiskReset();
+	
+	SCSI_CMD_TIMER_Stop();
 
 	// Sleep to allow the bus to settle down a bit.
 	// We must be ready again within the "Reset to selection time" of
@@ -461,6 +468,11 @@ static void process_SelectionPhase()
 		// for our BSY response, which is actually a very generous 250ms)
 		SCSI_SetPin(SCSI_Out_BSY);
 		ledOn();
+		
+		// Used in enter_BusFree() to ensure each command takes at least 10us.
+		// as required by some old SCSI controllers (MPC3000).
+		CmdTimerComplete = 0;
+		SCSI_CMD_TIMER_Enable();
 
 		#ifdef MM_DEBUG
 		scsiDev.selCount++;
@@ -759,6 +771,9 @@ void scsiPoll(void)
 
 void scsiInit()
 {
+	SCSI_CMD_TIMER_Init(); // config but don't start the timeout counter
+    SCSI_CMD_TIMER_ISR_StartEx(CommandTimerISR); // setup timer interrupt sub-routine
+	
 	scsiDev.scsiIdMask = 1 << (config->scsiId);
 
 	scsiDev.atnFlag = 0;
