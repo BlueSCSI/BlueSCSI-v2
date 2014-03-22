@@ -1,10 +1,10 @@
-W:/SCSI2SD/USB_Bootloader.cydsn/CortexM3/ARM_GCC_473/Release/CyBootAsmGnu.o : W:/SCSI2SD/USB_Bootloader.cydsn/Generated_Source/PSoC5/cydevicegnu.inc W:/SCSI2SD/USB_Bootloader.cydsn/Generated_Source/PSoC5/cydevicegnu_trm.inc W:/SCSI2SD/USB_Bootloader.cydsn/Generated_Source/PSoC5/cyfittergnu.inc W:/SCSI2SD/USB_Bootloader.cydsn/Generated_Source/PSoC5/CyBootAsmGnu.s 
+W:/SCSI2SD/software/SCSI2SD/USB_Bootloader.cydsn/CortexM3/ARM_GCC_473/Release/CyBootAsmGnu.o : W:/SCSI2SD/software/SCSI2SD/USB_Bootloader.cydsn/Generated_Source/PSoC5/cydevicegnu.inc W:/SCSI2SD/software/SCSI2SD/USB_Bootloader.cydsn/Generated_Source/PSoC5/cydevicegnu_trm.inc W:/SCSI2SD/software/SCSI2SD/USB_Bootloader.cydsn/Generated_Source/PSoC5/cyfittergnu.inc W:/SCSI2SD/software/SCSI2SD/USB_Bootloader.cydsn/Generated_Source/PSoC5/CyBootAsmGnu.s 
 
-W:/SCSI2SD/USB_Bootloader.cydsn/Generated_Source/PSoC5/cydevicegnu.inc : 
+W:/SCSI2SD/software/SCSI2SD/USB_Bootloader.cydsn/Generated_Source/PSoC5/cydevicegnu.inc : 
 
-W:/SCSI2SD/USB_Bootloader.cydsn/Generated_Source/PSoC5/cydevicegnu_trm.inc : 
+W:/SCSI2SD/software/SCSI2SD/USB_Bootloader.cydsn/Generated_Source/PSoC5/cydevicegnu_trm.inc : 
 
-W:/SCSI2SD/USB_Bootloader.cydsn/Generated_Source/PSoC5/cyfittergnu.inc : 
+W:/SCSI2SD/software/SCSI2SD/USB_Bootloader.cydsn/Generated_Source/PSoC5/cyfittergnu.inc : 
 
-W:/SCSI2SD/USB_Bootloader.cydsn/Generated_Source/PSoC5/CyBootAsmGnu.s : 
+W:/SCSI2SD/software/SCSI2SD/USB_Bootloader.cydsn/Generated_Source/PSoC5/CyBootAsmGnu.s : 
 

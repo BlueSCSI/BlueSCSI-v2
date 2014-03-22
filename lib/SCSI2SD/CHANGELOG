@@ -4,6 +4,8 @@
 	- Bug fix for Unit Attention Condition, which is now enabled by default.
 		- scsi2sd-config can be used to disable it for those systems that
 		truely require it (eg. Mac Plus).
+	- Added Linked commands support.
+	- Powerbook firmware added
 
 20140214		3.2
 	- Remove hacks around ATN handling, and implement proper select-with-atn

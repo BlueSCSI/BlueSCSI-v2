@@ -58,8 +58,6 @@
 #include <USBFS_midi.h>
 #include <USBFS_pvt.h>
 #include <Bootloadable_1.h>
-#include <SCSI_CMD_TIMER.h>
-#include <SCSI_CMD_TIMER_ISR.h>
 #include <USBFS_Dm_aliases.h>
 #include <USBFS_Dm.h>
 #include <USBFS_Dp_aliases.h>

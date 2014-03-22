@@ -1,7 +1,7 @@
 ;
 ; FILENAME: cydeviceiar_trm.inc
 ; 
-; PSoC Creator 3.0
+; PSoC Creator 3.0 Component Pack 7
 ;
 ; DESCRIPTION:
 ; This file provides all of the address values for the entire PSoC device.

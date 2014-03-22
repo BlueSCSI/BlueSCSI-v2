@@ -1,5 +1,5 @@
 # USB_Bootloader
-# 2013-10-26 08:55:19Z
+# 2014-03-22 12:32:51Z
 
 # IO_0@[IOP=(1)][IoId=(0)] is reserved: SWDDebugEnabled
 dont_use_io iocell 1 0
@@ -39,6 +39,11 @@ set_io "SCSI_Out_DBx(4)" iocell 4 7
 set_io "SCSI_Out_DBx(5)" iocell 4 6
 set_io "SCSI_Out_DBx(6)" iocell 4 5
 set_io "SCSI_Out_DBx(7)" iocell 4 4
+set_io "SD_PULLUP(0)" iocell 3 1
+set_io "SD_PULLUP(1)" iocell 3 2
+set_io "SD_PULLUP(2)" iocell 3 3
+set_io "SD_PULLUP(3)" iocell 3 4
+set_io "SD_PULLUP(4)" iocell 3 5
 set_io "\USBFS:Dm(0)\" iocell 15 7
 set_io "\USBFS:Dp(0)\" iocell 15 6
 set_location "\USBFS:USB\" usbcell -1 -1 0

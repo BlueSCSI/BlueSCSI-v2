@@ -17,6 +17,7 @@ dont_use_location abufcell -1 -1 1
 dont_use_location abufcell -1 -1 3
 set_io "SCSI_Out(4)" iocell 0 5
 set_io "SCSI_Out_DBx(4)" iocell 4 7
+set_io "SD_PULLUP(2)" iocell 3 3
 set_io "SCSI_Out(7)" iocell 0 2
 set_io "SCSI_Out_DBx(7)" iocell 4 4
 set_location "\USBFS:ep_0\" interrupt -1 -1 24
@@ -34,8 +35,12 @@ set_io "SCSI_Out(2)" iocell 0 7
 set_io "SCSI_Out_DBx(2)" iocell 6 1
 set_io "SCSI_Out(8)" iocell 0 1
 set_location "\USBFS:USB\" usbcell -1 -1 0
+set_io "SD_PULLUP(0)" iocell 3 1
+set_io "SD_PULLUP(4)" iocell 3 5
 set_location "\USBFS:arb_int\" interrupt -1 -1 22
 set_location "\USBFS:sof_int\" interrupt -1 -1 21
+set_io "SD_PULLUP(1)" iocell 3 2
+set_io "SD_PULLUP(3)" iocell 3 4
 set_io "SCSI_Out(1)" iocell 4 2
 set_io "SCSI_Out_DBx(1)" iocell 6 2
 set_io "SCSI_Out(0)" iocell 4 3

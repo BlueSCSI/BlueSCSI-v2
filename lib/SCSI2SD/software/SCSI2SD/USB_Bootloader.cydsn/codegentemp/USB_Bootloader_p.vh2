@@ -1,5 +1,5 @@
 -- Project:   USB_Bootloader
--- Generated: 10/26/2013 18:55:19
+-- Generated: 03/22/2014 22:32:51
 -- 
 
 ENTITY USB_Bootloader IS
@@ -21,7 +21,12 @@ ENTITY USB_Bootloader IS
         SCSI_Out_DBx(4)_PAD : OUT std_ulogic;
         SCSI_Out_DBx(5)_PAD : OUT std_ulogic;
         SCSI_Out_DBx(6)_PAD : OUT std_ulogic;
-        SCSI_Out_DBx(7)_PAD : OUT std_ulogic);
+        SCSI_Out_DBx(7)_PAD : OUT std_ulogic;
+        SD_PULLUP(0)_PAD : IN std_ulogic;
+        SD_PULLUP(1)_PAD : IN std_ulogic;
+        SD_PULLUP(2)_PAD : IN std_ulogic;
+        SD_PULLUP(3)_PAD : IN std_ulogic;
+        SD_PULLUP(4)_PAD : IN std_ulogic);
     ATTRIBUTE voltage_Vio1 OF __DEFAULT__ : ENTITY IS 5e0;
     ATTRIBUTE voltage_Vusb OF __DEFAULT__ : ENTITY IS 5e0;
     ATTRIBUTE voltage_Vddd OF __DEFAULT__ : ENTITY IS 5e0;
@@ -63,6 +68,11 @@ ARCHITECTURE __DEFAULT__ OF USB_Bootloader IS
     SIGNAL SCSI_Out_DBx(5)__PA : bit;
     SIGNAL SCSI_Out_DBx(6)__PA : bit;
     SIGNAL SCSI_Out_DBx(7)__PA : bit;
+    SIGNAL SD_PULLUP(0)__PA : bit;
+    SIGNAL SD_PULLUP(1)__PA : bit;
+    SIGNAL SD_PULLUP(2)__PA : bit;
+    SIGNAL SD_PULLUP(3)__PA : bit;
+    SIGNAL SD_PULLUP(4)__PA : bit;
     SIGNAL \\\USBFS:Dm(0)\\__PA\ : bit;
     SIGNAL \\\USBFS:Dp(0)\\__PA\ : bit;
     SIGNAL \USBFS:Net_1010\ : bit;
@@ -131,9 +141,19 @@ ARCHITECTURE __DEFAULT__ OF USB_Bootloader IS
     ATTRIBUTE Location OF SCSI_Out_DBx(6) : LABEL IS "P4[5]";
     ATTRIBUTE lib_model OF SCSI_Out_DBx(7) : LABEL IS "iocell18";
     ATTRIBUTE Location OF SCSI_Out_DBx(7) : LABEL IS "P4[4]";
-    ATTRIBUTE lib_model OF \USBFS:Dm(0)\ : LABEL IS "iocell19";
+    ATTRIBUTE lib_model OF SD_PULLUP(0) : LABEL IS "iocell19";
+    ATTRIBUTE Location OF SD_PULLUP(0) : LABEL IS "P3[1]";
+    ATTRIBUTE lib_model OF SD_PULLUP(1) : LABEL IS "iocell20";
+    ATTRIBUTE Location OF SD_PULLUP(1) : LABEL IS "P3[2]";
+    ATTRIBUTE lib_model OF SD_PULLUP(2) : LABEL IS "iocell21";
+    ATTRIBUTE Location OF SD_PULLUP(2) : LABEL IS "P3[3]";
+    ATTRIBUTE lib_model OF SD_PULLUP(3) : LABEL IS "iocell22";
+    ATTRIBUTE Location OF SD_PULLUP(3) : LABEL IS "P3[4]";
+    ATTRIBUTE lib_model OF SD_PULLUP(4) : LABEL IS "iocell23";
+    ATTRIBUTE Location OF SD_PULLUP(4) : LABEL IS "P3[5]";
+    ATTRIBUTE lib_model OF \USBFS:Dm(0)\ : LABEL IS "iocell24";
     ATTRIBUTE Location OF \USBFS:Dm(0)\ : LABEL IS "P15[7]";
-    ATTRIBUTE lib_model OF \USBFS:Dp(0)\ : LABEL IS "iocell20";
+    ATTRIBUTE lib_model OF \USBFS:Dp(0)\ : LABEL IS "iocell25";
     ATTRIBUTE Location OF \USBFS:Dp(0)\ : LABEL IS "P15[6]";
     ATTRIBUTE Location OF \USBFS:USB\ : LABEL IS "F(USB,0)";
     COMPONENT abufcell
@@ -1553,6 +1573,168 @@ BEGIN
             oe => open,
             pad_in => SCSI_Out_DBx(7)_PAD,
             in_clock => open,
+            in_clock_en => '1',
+            in_reset => '0',
+            out_clock => open,
+            out_clock_en => '1',
+            out_reset => '0');
+
+    SD_PULLUP:logicalport
+        GENERIC MAP(
+            drive_mode => "010010010010010",
+            ibuf_enabled => "11111",
+            id => "4c15b41e-e284-4978-99e7-5aaee19bd0ce",
+            init_dr_st => "11111",
+            input_clk_en => 0,
+            input_sync => "11111",
+            input_sync_mode => "00000",
+            intr_mode => "0000000000",
+            invert_in_clock => 0,
+            invert_in_clock_en => 0,
+            invert_in_reset => 0,
+            invert_out_clock => 0,
+            invert_out_clock_en => 0,
+            invert_out_reset => 0,
+            io_voltage => "3.3, , , , ",
+            layout_mode => "CONTIGUOUS",
+            oe_conn => "00000",
+            oe_reset => 0,
+            oe_sync => "00000",
+            output_clk_en => 0,
+            output_clock_mode => "00000",
+            output_conn => "00000",
+            output_mode => "00000",
+            output_reset => 0,
+            output_sync => "00000",
+            pa_in_clock => -1,
+            pa_in_clock_en => -1,
+            pa_in_reset => -1,
+            pa_out_clock => -1,
+            pa_out_clock_en => -1,
+            pa_out_reset => -1,
+            pin_aliases => ",,,,",
+            pin_mode => "IIIII",
+            por_state => 2,
+            port_alias_group => "",
+            port_alias_required => 0,
+            sio_group_cnt => 0,
+            sio_hifreq => "",
+            sio_hyst => "00000",
+            sio_ibuf => "00000000",
+            sio_info => "0000000000",
+            sio_obuf => "00000000",
+            sio_refsel => "00000000",
+            sio_vtrip => "00000000",
+            slew_rate => "00000",
+            spanning => 0,
+            sw_only => 0,
+            use_annotation => "00000",
+            vtrip => "0000000000",
+            width => 5,
+            in_clk_inv => 0,
+            in_clken_inv => 0,
+            in_clken_mode => 1,
+            in_rst_inv => 0,
+            out_clk_inv => 0,
+            out_clken_inv => 0,
+            out_clken_mode => 1,
+            out_rst_inv => 0)
+        PORT MAP(
+            in_clock_en => open,
+            in_reset => open,
+            out_clock_en => open,
+            out_reset => open,
+            in_clock => open);
+
+    SD_PULLUP(0):iocell
+        GENERIC MAP(
+            in_sync_mode => 2,
+            out_sync_mode => 0,
+            oe_sync_mode => 0,
+            logicalport => "SD_PULLUP",
+            logicalport_pin_id => 0,
+            io_capabilities => "0000000000000000000000000000000000000000000000000000000000000001")
+        PORT MAP(
+            pa_out => SD_PULLUP(0)__PA,
+            oe => open,
+            pad_in => SD_PULLUP(0)_PAD,
+            in_clock => ClockBlock_BUS_CLK,
+            in_clock_en => '1',
+            in_reset => '0',
+            out_clock => open,
+            out_clock_en => '1',
+            out_reset => '0');
+
+    SD_PULLUP(1):iocell
+        GENERIC MAP(
+            in_sync_mode => 2,
+            out_sync_mode => 0,
+            oe_sync_mode => 0,
+            logicalport => "SD_PULLUP",
+            logicalport_pin_id => 1,
+            io_capabilities => "0000000000000000000000000000000000000000000000000000000000000001")
+        PORT MAP(
+            pa_out => SD_PULLUP(1)__PA,
+            oe => open,
+            pad_in => SD_PULLUP(1)_PAD,
+            in_clock => ClockBlock_BUS_CLK,
+            in_clock_en => '1',
+            in_reset => '0',
+            out_clock => open,
+            out_clock_en => '1',
+            out_reset => '0');
+
+    SD_PULLUP(2):iocell
+        GENERIC MAP(
+            in_sync_mode => 2,
+            out_sync_mode => 0,
+            oe_sync_mode => 0,
+            logicalport => "SD_PULLUP",
+            logicalport_pin_id => 2,
+            io_capabilities => "0000000000000000000000000000000000000000000000000000000000000001")
+        PORT MAP(
+            pa_out => SD_PULLUP(2)__PA,
+            oe => open,
+            pad_in => SD_PULLUP(2)_PAD,
+            in_clock => ClockBlock_BUS_CLK,
+            in_clock_en => '1',
+            in_reset => '0',
+            out_clock => open,
+            out_clock_en => '1',
+            out_reset => '0');
+
+    SD_PULLUP(3):iocell
+        GENERIC MAP(
+            in_sync_mode => 2,
+            out_sync_mode => 0,
+            oe_sync_mode => 0,
+            logicalport => "SD_PULLUP",
+            logicalport_pin_id => 3,
+            io_capabilities => "0000000000000000000000000000000000000000000000000000000000000001")
+        PORT MAP(
+            pa_out => SD_PULLUP(3)__PA,
+            oe => open,
+            pad_in => SD_PULLUP(3)_PAD,
+            in_clock => ClockBlock_BUS_CLK,
+            in_clock_en => '1',
+            in_reset => '0',
+            out_clock => open,
+            out_clock_en => '1',
+            out_reset => '0');
+
+    SD_PULLUP(4):iocell
+        GENERIC MAP(
+            in_sync_mode => 2,
+            out_sync_mode => 0,
+            oe_sync_mode => 0,
+            logicalport => "SD_PULLUP",
+            logicalport_pin_id => 4,
+            io_capabilities => "0000000000000000000000000000000000000000000000000000000000000001")
+        PORT MAP(
+            pa_out => SD_PULLUP(4)__PA,
+            oe => open,
+            pad_in => SD_PULLUP(4)_PAD,
+            in_clock => ClockBlock_BUS_CLK,
             in_clock_en => '1',
             in_reset => '0',
             out_clock => open,

@@ -1,6 +1,6 @@
 // ======================================================================
 // USB_Bootloader.v generated from TopDesign.cysch
-// 10/26/2013 at 18:55
+// 03/22/2014 at 22:32
 // This file is auto generated. ANY EDITS YOU MAKE MAY BE LOST WHEN THIS FILE IS REGENERATED!!!
 // ======================================================================
 
@@ -302,6 +302,11 @@ endmodule
 // top
 module top ;
 
+          wire  Net_88;
+          wire  Net_87;
+          wire  Net_86;
+          wire  Net_85;
+          wire  Net_84;
     electrical  Net_36;
     electrical  Net_35;
     electrical  Net_34;
@@ -459,6 +464,74 @@ module top ;
 		  .out_reset({1'b0}));
 
 	assign tmpOE__SCSI_Out_net = (`CYDEV_CHIP_MEMBER_USED == `CYDEV_CHIP_MEMBER_3A && `CYDEV_CHIP_REVISION_USED < `CYDEV_CHIP_REVISION_3A_ES3) ? ~{10'b1111111111} : {10'b1111111111};
+
+	wire [4:0] tmpOE__SD_PULLUP_net;
+	wire [4:0] tmpIO_4__SD_PULLUP_net;
+	wire [0:0] tmpINTERRUPT_0__SD_PULLUP_net;
+	electrical [0:0] tmpSIOVREF__SD_PULLUP_net;
+
+	cy_psoc3_pins_v1_10
+		#(.id("4c15b41e-e284-4978-99e7-5aaee19bd0ce"),
+		  .drive_mode(15'b010_010_010_010_010),
+		  .ibuf_enabled(5'b1_1_1_1_1),
+		  .init_dr_st(5'b1_1_1_1_1),
+		  .input_clk_en(0),
+		  .input_sync(5'b1_1_1_1_1),
+		  .input_sync_mode(5'b0_0_0_0_0),
+		  .intr_mode(10'b00_00_00_00_00),
+		  .invert_in_clock(0),
+		  .invert_in_clock_en(0),
+		  .invert_in_reset(0),
+		  .invert_out_clock(0),
+		  .invert_out_clock_en(0),
+		  .invert_out_reset(0),
+		  .io_voltage("3.3, , , , "),
+		  .layout_mode("CONTIGUOUS"),
+		  .oe_conn(5'b0_0_0_0_0),
+		  .oe_reset(0),
+		  .oe_sync(5'b0_0_0_0_0),
+		  .output_clk_en(0),
+		  .output_clock_mode(5'b0_0_0_0_0),
+		  .output_conn(5'b0_0_0_0_0),
+		  .output_mode(5'b0_0_0_0_0),
+		  .output_reset(0),
+		  .output_sync(5'b0_0_0_0_0),
+		  .pa_in_clock(-1),
+		  .pa_in_clock_en(-1),
+		  .pa_in_reset(-1),
+		  .pa_out_clock(-1),
+		  .pa_out_clock_en(-1),
+		  .pa_out_reset(-1),
+		  .pin_aliases(",,,,"),
+		  .pin_mode("IIIII"),
+		  .por_state(2),
+		  .use_annotation(5'b0_0_0_0_0),
+		  .sio_group_cnt(0),
+		  .sio_hyst(5'b0_0_0_0_0),
+		  .sio_ibuf(""),
+		  .sio_info(10'b00_00_00_00_00),
+		  .sio_obuf(""),
+		  .sio_refsel(""),
+		  .sio_vtrip(""),
+		  .slew_rate(5'b0_0_0_0_0),
+		  .spanning(0),
+		  .vtrip(10'b00_00_00_00_00),
+		  .width(5))
+		SD_PULLUP
+		 (.oe(tmpOE__SD_PULLUP_net),
+		  .y({5'b0}),
+		  .fb({Net_88, Net_87, Net_86, Net_85, Net_84}),
+		  .io({tmpIO_4__SD_PULLUP_net[4:0]}),
+		  .siovref(tmpSIOVREF__SD_PULLUP_net),
+		  .interrupt({tmpINTERRUPT_0__SD_PULLUP_net[0:0]}),
+		  .in_clock({1'b0}),
+		  .in_clock_en({1'b1}),
+		  .in_reset({1'b0}),
+		  .out_clock({1'b0}),
+		  .out_clock_en({1'b1}),
+		  .out_reset({1'b0}));
+
+	assign tmpOE__SD_PULLUP_net = (`CYDEV_CHIP_MEMBER_USED == `CYDEV_CHIP_MEMBER_3A && `CYDEV_CHIP_REVISION_USED < `CYDEV_CHIP_REVISION_3A_ES3) ? ~{5'b11111} : {5'b11111};
 
 
 

@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <blockRegMap version="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://cypress.com/xsd/cyblockregmap cyblockregmap.xsd" xmlns="http://cypress.com/xsd/cyblockregmap">
-  <block name="SCSI_Out_DBx" BASE="0x0" SIZE="0x0" desc="" visible="true" />
   <block name="SCSI_Out" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+  <block name="SD_PULLUP" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+  <block name="SCSI_Out_DBx" BASE="0x0" SIZE="0x0" desc="" visible="true" />
   <block name="USBFS" BASE="0x0" SIZE="0x0" desc="USBFS" visible="true">
     <block name="bus_reset" BASE="0x0" SIZE="0x0" desc="" visible="true" />
     <block name="ep_0" BASE="0x0" SIZE="0x0" desc="" visible="true" />

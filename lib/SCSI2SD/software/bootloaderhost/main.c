@@ -82,7 +82,8 @@ static void ProgressUpdate(unsigned char arrayId, unsigned short rowNum)
 
 static void usage()
 {
-	printf("Usage: bootloaderhost [-v UsbVendorId] [-p UsbProductId] /path/to/firmware.cyacd\n");
+	printf("Usage: bootloaderhost [-v UsbVendorId] [-p UsbProductId] [-f] /path/to/firmware.cyacd\n");
+	printf("\t-f\tForce, even if the firmware doesn't match the target board.\n");
 	printf("\n\n");
 }
 
@@ -102,10 +103,11 @@ int main(int argc, char* argv[])
 
 	uint16_t vendorId = 0x04B4; // Cypress
 	uint16_t productId = 0xB71D; // Default PSoC3/5LP Bootloader
+	int force = 0;
 
 	opterr = 0;
 	int c;
-	while ((c = getopt(argc, argv, "v:p:")) != -1)
+	while ((c = getopt(argc, argv, "v:p:f")) != -1)
 	{
 		switch (c)
 		{
@@ -114,6 +116,9 @@ int main(int argc, char* argv[])
 			break;
 		case 'p':
 			sscanf(optarg, "%hx", &productId);
+			break;
+		case 'f':
+			force = 1;
 			break;
 		case '?':
 			usage();
@@ -157,7 +162,43 @@ int main(int argc, char* argv[])
 	printf("\n");
 	printf("  Manufacturer: %ls\n", dev->manufacturer_string);
 	printf("  Product:      %ls\n", dev->product_string);
+
+	int fileMismatch = 0;
+	const char* expectedName = NULL;
+	switch (dev->release_number)
+	{
+	case 0x3001:
+		printf("  Release:      3.5\" SCSI2SD\n");
+		expectedName = "SCSI2SD.cyacd";
+		if (!strstr(filename, expectedName))
+		{
+			fileMismatch = 1;
+		}
+		break;
+	case 0x3002:
+		printf("  Release:      2.5\" SCSI2SD for Apple Powerbook\n");
+		expectedName = "pbook.cyacd";
+		if (!strstr(filename, expectedName))
+		{
+			fileMismatch = 1;
+		}
+		break;
+	default:
+		printf("  Release:      Unknown hardware\n");
+		expectedName = "unknown";
+		fileMismatch = 1;
+	}
 	printf("\n");
+
+	if (fileMismatch && !force)
+	{
+		fprintf(stderr, "ERROR: Unexpected firmware file. Expected: \"%s\"\n"
+			"Using firmware design for a different board may destroy your "
+			"hardware.\n"
+			"If you still wish to proceed, try again with the \"-f\" flag.\n",
+			expectedName);
+		exit(1);
+	}
 	//hid_free_enumeration(devs);
 
 	// Open the device using the VID, PID,

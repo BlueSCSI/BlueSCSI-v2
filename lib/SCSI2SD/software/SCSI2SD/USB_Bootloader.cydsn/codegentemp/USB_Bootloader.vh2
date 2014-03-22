@@ -2,7 +2,7 @@
 --	Conversion of USB_Bootloader.v to vh2:
 --
 --	Cypress Semiconductor - WARP Version 6.3 IR 41
---	Sat Oct 26 18:55:17 2013
+--	Sat Mar 22 22:32:48 2014
 --
 
 USE cypress.cypress.all;
@@ -125,6 +125,23 @@ TERMINAL Net_29 : bit;
 TERMINAL Net_28 : bit;
 TERMINAL Net_27 : bit;
 SIGNAL tmpINTERRUPT_0__SCSI_Out_net_0 : bit;
+SIGNAL tmpOE__SD_PULLUP_net_4 : bit;
+SIGNAL tmpOE__SD_PULLUP_net_3 : bit;
+SIGNAL tmpOE__SD_PULLUP_net_2 : bit;
+SIGNAL tmpOE__SD_PULLUP_net_1 : bit;
+SIGNAL tmpOE__SD_PULLUP_net_0 : bit;
+SIGNAL Net_88 : bit;
+SIGNAL Net_87 : bit;
+SIGNAL Net_86 : bit;
+SIGNAL Net_85 : bit;
+SIGNAL Net_84 : bit;
+SIGNAL tmpIO_4__SD_PULLUP_net_4 : bit;
+SIGNAL tmpIO_4__SD_PULLUP_net_3 : bit;
+SIGNAL tmpIO_4__SD_PULLUP_net_2 : bit;
+SIGNAL tmpIO_4__SD_PULLUP_net_1 : bit;
+SIGNAL tmpIO_4__SD_PULLUP_net_0 : bit;
+TERMINAL tmpSIOVREF__SD_PULLUP_net_0 : bit;
+SIGNAL tmpINTERRUPT_0__SD_PULLUP_net_0 : bit;
 BEGIN
 
 zero <=  ('0') ;
@@ -454,5 +471,76 @@ SCSI_Out:cy_psoc3_pins_v1_10
 		out_clock_en=>one,
 		out_reset=>zero,
 		interrupt=>tmpINTERRUPT_0__SCSI_Out_net_0);
+SD_PULLUP:cy_psoc3_pins_v1_10
+	GENERIC MAP(id=>"4c15b41e-e284-4978-99e7-5aaee19bd0ce",
+		drive_mode=>"010010010010010",
+		ibuf_enabled=>"11111",
+		init_dr_st=>"11111",
+		input_sync=>"11111",
+		input_clk_en=>'0',
+		input_sync_mode=>"00000",
+		intr_mode=>"0000000000",
+		invert_in_clock=>'0',
+		invert_in_clock_en=>'0',
+		invert_in_reset=>'0',
+		invert_out_clock=>'0',
+		invert_out_clock_en=>'0',
+		invert_out_reset=>'0',
+		io_voltage=>"3.3, , , , ",
+		layout_mode=>"CONTIGUOUS",
+		output_conn=>"00000",
+		output_sync=>"00000",
+		output_clk_en=>'0',
+		output_mode=>"00000",
+		output_reset=>'0',
+		output_clock_mode=>"00000",
+		oe_sync=>"00000",
+		oe_conn=>"00000",
+		oe_reset=>'0',
+		pin_aliases=>",,,,",
+		pin_mode=>"IIIII",
+		por_state=>2,
+		sio_group_cnt=>0,
+		sio_hifreq=>"",
+		sio_hyst=>"00000",
+		sio_ibuf=>"00000000",
+		sio_info=>"0000000000",
+		sio_obuf=>"00000000",
+		sio_refsel=>"00000000",
+		sio_vtrip=>"00000000",
+		slew_rate=>"00000",
+		spanning=>'0',
+		sw_only=>'0',
+		vtrip=>"0000000000",
+		width=>5,
+		port_alias_required=>'0',
+		port_alias_group=>"",
+		use_annotation=>"00000",
+		pa_in_clock=>-1,
+		pa_in_clock_en=>-1,
+		pa_in_reset=>-1,
+		pa_out_clock=>-1,
+		pa_out_clock_en=>-1,
+		pa_out_reset=>-1)
+	PORT MAP(oe=>(one, one, one, one,
+			one),
+		y=>(zero, zero, zero, zero,
+			zero),
+		fb=>(Net_88, Net_87, Net_86, Net_85,
+			Net_84),
+		analog=>(open, open, open, open,
+			open),
+		io=>(tmpIO_4__SD_PULLUP_net_4, tmpIO_4__SD_PULLUP_net_3, tmpIO_4__SD_PULLUP_net_2, tmpIO_4__SD_PULLUP_net_1,
+			tmpIO_4__SD_PULLUP_net_0),
+		siovref=>(tmpSIOVREF__SD_PULLUP_net_0),
+		annotation=>(open, open, open, open,
+			open),
+		in_clock=>zero,
+		in_clock_en=>one,
+		in_reset=>zero,
+		out_clock=>zero,
+		out_clock_en=>one,
+		out_reset=>zero,
+		interrupt=>tmpINTERRUPT_0__SD_PULLUP_net_0);
 
 END R_T_L;

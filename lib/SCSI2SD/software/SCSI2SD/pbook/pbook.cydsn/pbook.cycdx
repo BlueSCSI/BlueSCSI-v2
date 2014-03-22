@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<blockRegMap version="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://cypress.com/xsd/cyblockregmap cyblockregmap.xsd" xmlns="http://cypress.com/xsd/cyblockregmap">
+  <block name="SCSI_RST" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+  <block name="SCSI_ATN" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+  <block name="SCSI_RST_ISR" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+  <block name="SD_SCK" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+  <block name="SD_MOSI" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+  <block name="Clock_1" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+  <block name="SD_MISO" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+  <block name="USBFS" BASE="0x0" SIZE="0x0" desc="USBFS" visible="true">
+    <block name="bus_reset" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="ep_0" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="arb_int" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="USB" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="sof_int" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="ep_1" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="dp_int" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="Clock_vbus" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="Dp" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="ep_2" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="Dm" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <register name="USBFS_PM_USB_CR0" address="0x40004394" bitWidth="8" desc="USB Power Mode Control Register 0">
+      <field name="fsusbio_ref_en" from="0" to="0" access="RW" resetVal="" desc="" />
+      <field name="fsusbio_pd_n" from="1" to="1" access="RW" resetVal="" desc="" />
+      <field name="fsusbio_pd_pullup_n" from="2" to="2" access="RW" resetVal="" desc="" />
+    </register>
+    <register name="USBFS_PM_ACT_CFG" address="0x400043A5" bitWidth="8" desc="Active Power Mode Configuration Register" />
+    <register name="USBFS_PM_STBY_CFG" address="0x400043B5" bitWidth="8" desc="Standby Power Mode Configuration Register" />
+    <register name="USBFS_PRT.PS" address="0x400051F1" bitWidth="8" desc="Port Pin State Register">
+      <field name="PinState_DP" from="6" to="6" access="R" resetVal="" desc="" />
+      <field name="PinState_DM" from="7" to="7" access="R" resetVal="" desc="" />
+    </register>
+    <register name="USBFS_PRT_DM0" address="0x400051F2" bitWidth="8" desc="Port Drive Mode Register">
+      <field name="DriveMode_DP" from="6" to="6" access="RW" resetVal="" desc="" />
+      <field name="DriveMode_DM" from="7" to="7" access="RW" resetVal="" desc="" />
+    </register>
+    <register name="USBFS_PRT_DM1" address="0x400051F3" bitWidth="8" desc="Port Drive Mode Register">
+      <field name="PullUp_en_DP" from="6" to="6" access="RW" resetVal="" desc="" />
+      <field name="PullUp_en_DM" from="7" to="7" access="RW" resetVal="" desc="" />
+    </register>
+    <register name="USBFS_PRT.INP_DIS" address="0x400051F8" bitWidth="8" desc="Input buffer disable override">
+      <field name="seinput_dis_dp" from="6" to="6" access="RW" resetVal="" desc="" />
+      <field name="seinput_dis_dm" from="7" to="7" access="RW" resetVal="" desc="" />
+    </register>
+    <register name="USBFS_EP0_DR0" address="0x40006000" bitWidth="8" desc="bmRequestType" />
+    <register name="USBFS_EP0_DR1" address="0x40006001" bitWidth="8" desc="bRequest" />
+    <register name="USBFS_EP0_DR2" address="0x40006002" bitWidth="8" desc="wValueLo" />
+    <register name="USBFS_EP0_DR3" address="0x40006003" bitWidth="8" desc="wValueHi" />
+    <register name="USBFS_EP0_DR4" address="0x40006004" bitWidth="8" desc="wIndexLo" />
+    <register name="USBFS_EP0_DR5" address="0x40006005" bitWidth="8" desc="wIndexHi" />
+    <register name="USBFS_EP0_DR6" address="0x40006006" bitWidth="8" desc="lengthLo" />
+    <register name="USBFS_EP0_DR7" address="0x40006007" bitWidth="8" desc="lengthHi" />
+    <register name="USBFS_CR0" address="0x40006008" bitWidth="8" desc="USB Control Register 0">
+      <field name="device_address" from="0" to="6" access="R" resetVal="" desc="" />
+      <field name="usb_enable" from="7" to="7" access="RW" resetVal="" desc="" />
+    </register>
+    <register name="USBFS_CR1" address="0x40006009" bitWidth="8" desc="USB Control Register 1">
+      <field name="reg_enable" from="0" to="0" access="RW" resetVal="" desc="" />
+      <field name="enable_lock" from="1" to="1" access="RW" resetVal="" desc="" />
+      <field name="bus_activity" from="2" to="2" access="RW" resetVal="" desc="" />
+      <field name="trim_offset_msb" from="3" to="3" access="RW" resetVal="" desc="" />
+    </register>
+    <register name="USBFS_SIE_EP1_CR0" address="0x4000600E" bitWidth="8" desc="The Endpoint1 Control Register" />
+    <register name="USBFS_USBIO_CR0" address="0x40006010" bitWidth="8" desc="USBIO Control Register 0">
+      <field name="rd" from="0" to="0" access="R" resetVal="" desc="" />
+      <field name="td" from="5" to="5" access="RW" resetVal="" desc="" />
+      <field name="tse0" from="6" to="6" access="RW" resetVal="" desc="" />
+      <field name="ten" from="7" to="7" access="RW" resetVal="" desc="" />
+    </register>
+    <register name="USBFS_USBIO_CR1" address="0x40006012" bitWidth="8" desc="USBIO Control Register 1">
+      <field name="dmo" from="0" to="0" access="R" resetVal="" desc="" />
+      <field name="dpo" from="1" to="1" access="R" resetVal="" desc="" />
+      <field name="usbpuen" from="2" to="2" access="RW" resetVal="" desc="" />
+      <field name="iomode" from="5" to="5" access="RW" resetVal="" desc="" />
+    </register>
+    <register name="USBFS_SIE_EP2_CR0" address="0x4000601E" bitWidth="8" desc="The Endpoint2 Control Register" />
+    <register name="USBFS_SIE_EP3_CR0" address="0x4000602E" bitWidth="8" desc="The Endpoint3 Control Register" />
+    <register name="USBFS_SIE_EP4_CR0" address="0x4000603E" bitWidth="8" desc="The Endpoint4 Control Register" />
+    <register name="USBFS_SIE_EP5_CR0" address="0x4000604E" bitWidth="8" desc="The Endpoint5 Control Register" />
+    <register name="USBFS_SIE_EP6_CR0" address="0x4000605E" bitWidth="8" desc="The Endpoint6 Control Register" />
+    <register name="USBFS_SIE_EP7_CR0" address="0x4000606E" bitWidth="8" desc="The Endpoint7 Control Register" />
+    <register name="USBFS_SIE_EP8_CR0" address="0x4000607E" bitWidth="8" desc="The Endpoint8 Control Register" />
+    <register name="USBFS_BUF_SIZE" address="0x4000608C" bitWidth="8" desc="Dedicated Endpoint Buffer Size Register" />
+    <register name="USBFS_EP_ACTIVE" address="0x4000608E" bitWidth="8" desc="Endpoint Active Indication Register" />
+    <register name="USBFS_EP_TYPE" address="0x4000608F" bitWidth="8" desc="Endpoint Type (IN/OUT) Indication" />
+    <register name="USBFS_USB_CLK_EN" address="0x4000609D" bitWidth="8" desc="USB Block Clock Enable Register" />
+  </block>
+  <block name="Bootloadable_1" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+  <block name="scsiTarget" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+  <block name="LED1" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+  <block name="SDCard" BASE="0x0" SIZE="0x0" desc="" visible="true">
+    <block name="VirtualMux_3" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="ZeroTerminal_1" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="VirtualMux_2" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="VirtualMux_1" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="BSPIM" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+  </block>
+  <block name="SD_CS" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+  <block name="SD_Clk_mux" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+  <block name="SD_Data_Clk" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+  <block name="SD_Init_Clk" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+  <block name="SCSI_In_DBx" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+  <block name="SCSI_Out_DBx" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+  <block name="SD_Clk_Ctl" BASE="0x0" SIZE="0x0" desc="" visible="true">
+    <register name="SD_Clk_Ctl_CONTROL_REG" address="0x40006474" bitWidth="8" desc="" />
+  </block>
+  <block name="SCSI_In" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+  <block name="SCSI_Out" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+  <block name="CFG_EEPROM" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+  <block name="SD_CD" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+  <block name="SCSI_CTL_IO" BASE="0x0" SIZE="0x0" desc="" visible="true">
+    <register name="SCSI_CTL_IO_CONTROL_REG" address="0x4000647F" bitWidth="8" desc="" />
+  </block>
+  <block name="OddParityGen_1" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+</blockRegMap>

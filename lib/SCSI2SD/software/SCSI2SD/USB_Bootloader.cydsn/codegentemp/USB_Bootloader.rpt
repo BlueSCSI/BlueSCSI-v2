@@ -1,13 +1,13 @@
-Loading plugins phase: Elapsed time ==> 0s.499ms
-Initializing data phase: Elapsed time ==> 3s.765ms
+Loading plugins phase: Elapsed time ==> 0s.500ms
+Initializing data phase: Elapsed time ==> 3s.890ms
 <CYPRESSTAG name="CyDsfit arguments...">
-cydsfit arguments: -.fdsnotice -.fdswarpdepfile=warp_dependencies.txt -.fdselabdepfile=elab_dependencies.txt -.fdsbldfile=generated_files.txt -p W:\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -d CY8C5267AXI-LP051 -s W:\SCSI2SD\USB_Bootloader.cydsn\Generated_Source\PSoC5 -- -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE</CYPRESSTAG>
+cydsfit arguments: -.fdsnotice -.fdswarpdepfile=warp_dependencies.txt -.fdselabdepfile=elab_dependencies.txt -.fdsbldfile=generated_files.txt -p W:\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -d CY8C5267AXI-LP051 -s W:\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\Generated_Source\PSoC5 -- -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE</CYPRESSTAG>
 <CYPRESSTAG name="Design elaboration results...">
 </CYPRESSTAG>
-Elaboration phase: Elapsed time ==> 7s.219ms
+Elaboration phase: Elapsed time ==> 7s.406ms
 <CYPRESSTAG name="HDL generation results...">
 </CYPRESSTAG>
-HDL generation phase: Elapsed time ==> 0s.140ms
+HDL generation phase: Elapsed time ==> 0s.109ms
 <CYPRESSTAG name="Synthesis results...">
 
      | | | | | | |
@@ -25,23 +25,23 @@ HDL generation phase: Elapsed time ==> 0s.140ms
 ======================================================================
 Compiling:  USB_Bootloader.v
 Program  :   C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\bin/warp.exe
-Options  :    -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE -ya -.fftprj=W:\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -dcpsoc3 USB_Bootloader.v -verilog
+Options  :    -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE -ya -.fftprj=W:\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -dcpsoc3 USB_Bootloader.v -verilog
 ======================================================================
 
 ======================================================================
 Compiling:  USB_Bootloader.v
 Program  :   C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\bin/warp.exe
-Options  :    -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE -ya -.fftprj=W:\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -dcpsoc3 USB_Bootloader.v -verilog
+Options  :    -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE -ya -.fftprj=W:\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -dcpsoc3 USB_Bootloader.v -verilog
 ======================================================================
 
 ======================================================================
 Compiling:  USB_Bootloader.v
 Program  :   vlogfe
-Options  :    -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE -ya -.fftprj=W:\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -dcpsoc3 -verilog USB_Bootloader.v
+Options  :    -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE -ya -.fftprj=W:\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -dcpsoc3 -verilog USB_Bootloader.v
 ======================================================================
 
 vlogfe V6.3 IR 41:  Verilog parser
-Sat Oct 26 18:55:16 2013
+Sat Mar 22 22:32:47 2014
 
 
 ======================================================================
@@ -51,7 +51,7 @@ Options  :    -yv2 -q10 USB_Bootloader.v
 ======================================================================
 
 vpp V6.3 IR 41:  Verilog Pre-Processor
-Sat Oct 26 18:55:16 2013
+Sat Mar 22 22:32:47 2014
 
 
 vpp:  No errors.
@@ -76,11 +76,11 @@ vlogfe:  No errors.
 ======================================================================
 Compiling:  USB_Bootloader.v
 Program  :   tovif
-Options  :    -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE -ya -.fftprj=W:\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -dcpsoc3 -verilog USB_Bootloader.v
+Options  :    -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE -ya -.fftprj=W:\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -dcpsoc3 -verilog USB_Bootloader.v
 ======================================================================
 
 tovif V6.3 IR 41:  High-level synthesis
-Sat Oct 26 18:55:16 2013
+Sat Mar 22 22:32:47 2014
 
 Linking 'C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\lib\common\std.vhd'.
 Linking 'C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\lib\common\cypress.vhd'.
@@ -91,8 +91,8 @@ Linking 'C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\lib\c
 Linking 'C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\lib\common\stdlogic\mod_cnst.vif'.
 Linking 'C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\lib\common\stdlogic\mod_mthv.vif'.
 Linking 'C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\lib\common\stdlogic\mod_genv.vif'.
-Linking 'W:\SCSI2SD\USB_Bootloader.cydsn\codegentemp\USB_Bootloader.ctl'.
-Linking 'W:\SCSI2SD\USB_Bootloader.cydsn\codegentemp\USB_Bootloader.v'.
+Linking 'W:\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\codegentemp\USB_Bootloader.ctl'.
+Linking 'W:\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\codegentemp\USB_Bootloader.v'.
 
 tovif:  No errors.
 
@@ -100,11 +100,11 @@ tovif:  No errors.
 ======================================================================
 Compiling:  USB_Bootloader.v
 Program  :   topld
-Options  :    -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE -ya -.fftprj=W:\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -dcpsoc3 -verilog USB_Bootloader.v
+Options  :    -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE -ya -.fftprj=W:\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -dcpsoc3 -verilog USB_Bootloader.v
 ======================================================================
 
 topld V6.3 IR 41:  Synthesis and optimization
-Sat Oct 26 18:55:16 2013
+Sat Mar 22 22:32:48 2014
 
 Linking 'C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\lib\common\std.vhd'.
 Linking 'C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\lib\common\cypress.vhd'.
@@ -115,8 +115,8 @@ Linking 'C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\lib\c
 Linking 'C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\lib\common\stdlogic\mod_cnst.vif'.
 Linking 'C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\lib\common\stdlogic\mod_mthv.vif'.
 Linking 'C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\lib\common\stdlogic\mod_genv.vif'.
-Linking 'W:\SCSI2SD\USB_Bootloader.cydsn\codegentemp\USB_Bootloader.ctl'.
-Linking 'W:\SCSI2SD\USB_Bootloader.cydsn\codegentemp\USB_Bootloader.v'.
+Linking 'W:\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\codegentemp\USB_Bootloader.ctl'.
+Linking 'W:\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\codegentemp\USB_Bootloader.v'.
 Linking 'C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\lib\lcpsoc3\stdlogic\cpsoc3.vif'.
 
 ----------------------------------------------------------
@@ -148,6 +148,11 @@ Aliasing tmpOE__SCSI_Out_net_3 to \USBFS:tmpOE__Dm_net_0\
 Aliasing tmpOE__SCSI_Out_net_2 to \USBFS:tmpOE__Dm_net_0\
 Aliasing tmpOE__SCSI_Out_net_1 to \USBFS:tmpOE__Dm_net_0\
 Aliasing tmpOE__SCSI_Out_net_0 to \USBFS:tmpOE__Dm_net_0\
+Aliasing tmpOE__SD_PULLUP_net_4 to \USBFS:tmpOE__Dm_net_0\
+Aliasing tmpOE__SD_PULLUP_net_3 to \USBFS:tmpOE__Dm_net_0\
+Aliasing tmpOE__SD_PULLUP_net_2 to \USBFS:tmpOE__Dm_net_0\
+Aliasing tmpOE__SD_PULLUP_net_1 to \USBFS:tmpOE__Dm_net_0\
+Aliasing tmpOE__SD_PULLUP_net_0 to \USBFS:tmpOE__Dm_net_0\
 Removing Rhs of wire one[37] = \USBFS:tmpOE__Dm_net_0\[32]
 Removing Lhs of wire \USBFS:tmpOE__Dp_net_0\[40] = one[37]
 Removing Lhs of wire tmpOE__SCSI_Out_DBx_net_7[49] = one[37]
@@ -168,9 +173,14 @@ Removing Lhs of wire tmpOE__SCSI_Out_net_3[90] = one[37]
 Removing Lhs of wire tmpOE__SCSI_Out_net_2[91] = one[37]
 Removing Lhs of wire tmpOE__SCSI_Out_net_1[92] = one[37]
 Removing Lhs of wire tmpOE__SCSI_Out_net_0[93] = one[37]
+Removing Lhs of wire tmpOE__SD_PULLUP_net_4[127] = one[37]
+Removing Lhs of wire tmpOE__SD_PULLUP_net_3[128] = one[37]
+Removing Lhs of wire tmpOE__SD_PULLUP_net_2[129] = one[37]
+Removing Lhs of wire tmpOE__SD_PULLUP_net_1[130] = one[37]
+Removing Lhs of wire tmpOE__SD_PULLUP_net_0[131] = one[37]
 
 ------------------------------------------------------
-Aliased 0 equations, 20 wires.
+Aliased 0 equations, 25 wires.
 ------------------------------------------------------
 
 ----------------------------------------------------------
@@ -192,16 +202,16 @@ topld:  No errors.
 
 CYPRESS_DIR    : C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp
 Warp Program   : C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\bin/warp.exe
-Warp Arguments : -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE -ya -.fftprj=W:\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -dcpsoc3 USB_Bootloader.v -verilog
+Warp Arguments : -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE -ya -.fftprj=W:\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -dcpsoc3 USB_Bootloader.v -verilog
 </CYPRESSTAG>
-Warp synthesis phase: Elapsed time ==> 1s.359ms
+Warp synthesis phase: Elapsed time ==> 1s.468ms
 <CYPRESSTAG name="Fitter results...">
 <CYPRESSTAG name="Fitter startup details...">
-cyp3fit: V3.0.0.1539, Family: PSoC3, Started at: Saturday, 26 October 2013 18:55:17
-Options: -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE -ya -.fftprj=W:\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -d CY8C5267AXI-LP051 USB_Bootloader.v -verilog
+cyp3fit: V3.0.0.1539, Family: PSoC3, Started at: Saturday, 22 March 2014 22:32:48
+Options: -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE -ya -.fftprj=W:\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -d CY8C5267AXI-LP051 USB_Bootloader.v -verilog
 </CYPRESSTAG>
 <CYPRESSTAG name="Design parsing">
-Design parsing phase: Elapsed time ==> 0s.031ms
+Design parsing phase: Elapsed time ==> 0s.046ms
 </CYPRESSTAG>
 <CYPRESSTAG name="Tech mapping">
 <CYPRESSTAG name="Initial Mapping" icon="FILE_RPT_TECHM">
@@ -928,6 +938,196 @@ Design Equations
         {
         }
 
+    Pin : Name = SD_PULLUP(0)
+        Attributes:
+            In Group/Port: True
+            In Sync Option: SYNC
+            Out Sync Option: AUTO
+            Interrupt generated: False
+            Interrupt mode: NONE
+            Drive mode: RES_PULL_UP
+            VTrip: CMOS
+            Slew: FAST
+            Input Sync needed: True
+            Output Sync needed: False
+            SC shield enabled: False
+            POR State: INP_DIS_LO
+            LCD Mode: COMMON
+            Register Mode: RegComb
+            CaSense Mode: NEITHER
+            Treat as pin: False
+            Is OE Registered: False
+            Uses Analog: False
+            Can contain Digital: True
+            Is SIO: False
+            SIO Output Buf: NONREGULATED
+            SIO Input Buf: SINGLE_ENDED
+            SIO HiFreq: LOW
+            SIO Hyst: DISABLED
+            SIO Vtrip: MULTIPLIER_0_5
+            SIO RefSel: VCC_IO
+            Required Capabilitites: DIGITAL
+            Initial Value: 1
+            IO Voltage: 3.3
+        PORT MAP (
+            pa_out => SD_PULLUP(0)__PA ,
+            pad => SD_PULLUP(0)_PAD );
+        Properties:
+        {
+        }
+
+    Pin : Name = SD_PULLUP(1)
+        Attributes:
+            In Group/Port: True
+            In Sync Option: SYNC
+            Out Sync Option: AUTO
+            Interrupt generated: False
+            Interrupt mode: NONE
+            Drive mode: RES_PULL_UP
+            VTrip: CMOS
+            Slew: FAST
+            Input Sync needed: True
+            Output Sync needed: False
+            SC shield enabled: False
+            POR State: INP_DIS_LO
+            LCD Mode: COMMON
+            Register Mode: RegComb
+            CaSense Mode: NEITHER
+            Treat as pin: False
+            Is OE Registered: False
+            Uses Analog: False
+            Can contain Digital: True
+            Is SIO: False
+            SIO Output Buf: NONREGULATED
+            SIO Input Buf: SINGLE_ENDED
+            SIO HiFreq: LOW
+            SIO Hyst: DISABLED
+            SIO Vtrip: MULTIPLIER_0_5
+            SIO RefSel: VCC_IO
+            Required Capabilitites: DIGITAL
+            Initial Value: 1
+            IO Voltage: 0
+        PORT MAP (
+            pa_out => SD_PULLUP(1)__PA ,
+            pad => SD_PULLUP(1)_PAD );
+        Properties:
+        {
+        }
+
+    Pin : Name = SD_PULLUP(2)
+        Attributes:
+            In Group/Port: True
+            In Sync Option: SYNC
+            Out Sync Option: AUTO
+            Interrupt generated: False
+            Interrupt mode: NONE
+            Drive mode: RES_PULL_UP
+            VTrip: CMOS
+            Slew: FAST
+            Input Sync needed: True
+            Output Sync needed: False
+            SC shield enabled: False
+            POR State: INP_DIS_LO
+            LCD Mode: COMMON
+            Register Mode: RegComb
+            CaSense Mode: NEITHER
+            Treat as pin: False
+            Is OE Registered: False
+            Uses Analog: False
+            Can contain Digital: True
+            Is SIO: False
+            SIO Output Buf: NONREGULATED
+            SIO Input Buf: SINGLE_ENDED
+            SIO HiFreq: LOW
+            SIO Hyst: DISABLED
+            SIO Vtrip: MULTIPLIER_0_5
+            SIO RefSel: VCC_IO
+            Required Capabilitites: DIGITAL
+            Initial Value: 1
+            IO Voltage: 0
+        PORT MAP (
+            pa_out => SD_PULLUP(2)__PA ,
+            pad => SD_PULLUP(2)_PAD );
+        Properties:
+        {
+        }
+
+    Pin : Name = SD_PULLUP(3)
+        Attributes:
+            In Group/Port: True
+            In Sync Option: SYNC
+            Out Sync Option: AUTO
+            Interrupt generated: False
+            Interrupt mode: NONE
+            Drive mode: RES_PULL_UP
+            VTrip: CMOS
+            Slew: FAST
+            Input Sync needed: True
+            Output Sync needed: False
+            SC shield enabled: False
+            POR State: INP_DIS_LO
+            LCD Mode: COMMON
+            Register Mode: RegComb
+            CaSense Mode: NEITHER
+            Treat as pin: False
+            Is OE Registered: False
+            Uses Analog: False
+            Can contain Digital: True
+            Is SIO: False
+            SIO Output Buf: NONREGULATED
+            SIO Input Buf: SINGLE_ENDED
+            SIO HiFreq: LOW
+            SIO Hyst: DISABLED
+            SIO Vtrip: MULTIPLIER_0_5
+            SIO RefSel: VCC_IO
+            Required Capabilitites: DIGITAL
+            Initial Value: 1
+            IO Voltage: 0
+        PORT MAP (
+            pa_out => SD_PULLUP(3)__PA ,
+            pad => SD_PULLUP(3)_PAD );
+        Properties:
+        {
+        }
+
+    Pin : Name = SD_PULLUP(4)
+        Attributes:
+            In Group/Port: True
+            In Sync Option: SYNC
+            Out Sync Option: AUTO
+            Interrupt generated: False
+            Interrupt mode: NONE
+            Drive mode: RES_PULL_UP
+            VTrip: CMOS
+            Slew: FAST
+            Input Sync needed: True
+            Output Sync needed: False
+            SC shield enabled: False
+            POR State: INP_DIS_LO
+            LCD Mode: COMMON
+            Register Mode: RegComb
+            CaSense Mode: NEITHER
+            Treat as pin: False
+            Is OE Registered: False
+            Uses Analog: False
+            Can contain Digital: True
+            Is SIO: False
+            SIO Output Buf: NONREGULATED
+            SIO Input Buf: SINGLE_ENDED
+            SIO HiFreq: LOW
+            SIO Hyst: DISABLED
+            SIO Vtrip: MULTIPLIER_0_5
+            SIO RefSel: VCC_IO
+            Required Capabilitites: DIGITAL
+            Initial Value: 1
+            IO Voltage: 0
+        PORT MAP (
+            pa_out => SD_PULLUP(4)__PA ,
+            pad => SD_PULLUP(4)_PAD );
+        Properties:
+        {
+        }
+
     Pin : Name = \USBFS:Dm(0)\
         Attributes:
             In Group/Port: True
@@ -1095,7 +1295,7 @@ Resource Type                 : Used : Free :  Max :  % Used
 ============================================================
 Digital clock dividers        :    0 :    8 :    8 :   0.00%
 Analog clock dividers         :    0 :    4 :    4 :   0.00%
-Pins                          :   23 :   49 :   72 :  31.94%
+Pins                          :   28 :   44 :   72 :  38.89%
 UDB Macrocells                :    0 :  192 :  192 :   0.00%
 UDB Unique Pterms             :    0 :  384 :  384 :   0.00%
 UDB Datapath Cells            :    0 :   24 :   24 :   0.00%
@@ -1114,8 +1314,8 @@ EMIF Fixed Blocks             :    0 :    1 :    1 :   0.00%
 LPF Fixed Blocks              :    0 :    2 :    2 :   0.00%
 SAR Fixed Blocks              :    0 :    1 :    1 :   0.00%
 </CYPRESSTAG>
-Technology Mapping: Elapsed time ==> 0s.016ms
-Tech mapping phase: Elapsed time ==> 0s.281ms
+Technology Mapping: Elapsed time ==> 0s.030ms
+Tech mapping phase: Elapsed time ==> 0s.265ms
 </CYPRESSTAG>
 <CYPRESSTAG name="Analog Placement">
 Initial Analog Placement Results:
@@ -1137,10 +1337,15 @@ IO_7@[IOP=(4)][IoId=(7)] : SCSI_Out_DBx(4) (fixed)
 IO_6@[IOP=(4)][IoId=(6)] : SCSI_Out_DBx(5) (fixed)
 IO_5@[IOP=(4)][IoId=(5)] : SCSI_Out_DBx(6) (fixed)
 IO_4@[IOP=(4)][IoId=(4)] : SCSI_Out_DBx(7) (fixed)
+IO_1@[IOP=(3)][IoId=(1)] : SD_PULLUP(0) (fixed)
+IO_2@[IOP=(3)][IoId=(2)] : SD_PULLUP(1) (fixed)
+IO_3@[IOP=(3)][IoId=(3)] : SD_PULLUP(2) (fixed)
+IO_4@[IOP=(3)][IoId=(4)] : SD_PULLUP(3) (fixed)
+IO_5@[IOP=(3)][IoId=(5)] : SD_PULLUP(4) (fixed)
 IO_7@[IOP=(15)][IoId=(7)] : \USBFS:Dm(0)\ (fixed)
 IO_6@[IOP=(15)][IoId=(6)] : \USBFS:Dp(0)\ (fixed)
 USB[0]@[FFB(USB,0)] : \USBFS:USB\
-Analog Placement phase: Elapsed time ==> 0s.093ms
+Analog Placement phase: Elapsed time ==> 0s.109ms
 </CYPRESSTAG>
 <CYPRESSTAG name="Analog Routing">
 Analog Routing phase: Elapsed time ==> 0s.000ms
@@ -1158,12 +1363,12 @@ Dump of CyP35AnalogRoutingResultsDB
 IsVddaHalfUsedForComp = False
 IsVddaHalfUsedForSar0 = False
 IsVddaHalfUsedForSar1 = False
-Analog Code Generation phase: Elapsed time ==> 0s.984ms
+Analog Code Generation phase: Elapsed time ==> 1s.000ms
 </CYPRESSTAG>
 <CYPRESSTAG name="Digital Placement">
 <CYPRESSTAG name="Detailed placement messages">
 I2659: No Constrained paths were found. The placer will run in non-timing driven mode.
-I2076: Total run-time: 1.3 sec.
+I2076: Total run-time: 1.2 sec.
 
 </CYPRESSTAG>
 <CYPRESSTAG name="PLD Packing">
@@ -1177,7 +1382,7 @@ PLD Packing: Elapsed time ==> 0s.000ms
 Initial Partitioning Summary not displayed at this verbose level.</CYPRESSTAG>
 <CYPRESSTAG name="Final Partitioning Summary">
 Final Partitioning Summary not displayed at this verbose level.</CYPRESSTAG>
-Partitioning: Elapsed time ==> 0s.063ms
+Partitioning: Elapsed time ==> 0s.093ms
 </CYPRESSTAG>
 <CYPRESSTAG name="Simulated Annealing">
 Annealing: Elapsed time ==> 0s.000ms
@@ -1605,7 +1810,202 @@ Pin : Name = SCSI_Out(2)
 
 Port 1 is empty
 Port 2 is empty
-Port 3 is empty
+Port 3 contains the following IO cells:
+[IoId=1]: 
+Pin : Name = SD_PULLUP(0)
+    Attributes:
+        In Group/Port: True
+        In Sync Option: SYNC
+        Out Sync Option: AUTO
+        Interrupt generated: False
+        Interrupt mode: NONE
+        Drive mode: RES_PULL_UP
+        VTrip: CMOS
+        Slew: FAST
+        Input Sync needed: True
+        Output Sync needed: False
+        SC shield enabled: False
+        POR State: INP_DIS_LO
+        LCD Mode: COMMON
+        Register Mode: RegComb
+        CaSense Mode: NEITHER
+        Treat as pin: False
+        Is OE Registered: False
+        Uses Analog: False
+        Can contain Digital: True
+        Is SIO: False
+        SIO Output Buf: NONREGULATED
+        SIO Input Buf: SINGLE_ENDED
+        SIO HiFreq: LOW
+        SIO Hyst: DISABLED
+        SIO Vtrip: MULTIPLIER_0_5
+        SIO RefSel: VCC_IO
+        Required Capabilitites: DIGITAL
+        Initial Value: 1
+        IO Voltage: 3.3
+    PORT MAP (
+        pa_out => SD_PULLUP(0)__PA ,
+        pad => SD_PULLUP(0)_PAD );
+    Properties:
+    {
+    }
+
+[IoId=2]: 
+Pin : Name = SD_PULLUP(1)
+    Attributes:
+        In Group/Port: True
+        In Sync Option: SYNC
+        Out Sync Option: AUTO
+        Interrupt generated: False
+        Interrupt mode: NONE
+        Drive mode: RES_PULL_UP
+        VTrip: CMOS
+        Slew: FAST
+        Input Sync needed: True
+        Output Sync needed: False
+        SC shield enabled: False
+        POR State: INP_DIS_LO
+        LCD Mode: COMMON
+        Register Mode: RegComb
+        CaSense Mode: NEITHER
+        Treat as pin: False
+        Is OE Registered: False
+        Uses Analog: False
+        Can contain Digital: True
+        Is SIO: False
+        SIO Output Buf: NONREGULATED
+        SIO Input Buf: SINGLE_ENDED
+        SIO HiFreq: LOW
+        SIO Hyst: DISABLED
+        SIO Vtrip: MULTIPLIER_0_5
+        SIO RefSel: VCC_IO
+        Required Capabilitites: DIGITAL
+        Initial Value: 1
+        IO Voltage: 0
+    PORT MAP (
+        pa_out => SD_PULLUP(1)__PA ,
+        pad => SD_PULLUP(1)_PAD );
+    Properties:
+    {
+    }
+
+[IoId=3]: 
+Pin : Name = SD_PULLUP(2)
+    Attributes:
+        In Group/Port: True
+        In Sync Option: SYNC
+        Out Sync Option: AUTO
+        Interrupt generated: False
+        Interrupt mode: NONE
+        Drive mode: RES_PULL_UP
+        VTrip: CMOS
+        Slew: FAST
+        Input Sync needed: True
+        Output Sync needed: False
+        SC shield enabled: False
+        POR State: INP_DIS_LO
+        LCD Mode: COMMON
+        Register Mode: RegComb
+        CaSense Mode: NEITHER
+        Treat as pin: False
+        Is OE Registered: False
+        Uses Analog: False
+        Can contain Digital: True
+        Is SIO: False
+        SIO Output Buf: NONREGULATED
+        SIO Input Buf: SINGLE_ENDED
+        SIO HiFreq: LOW
+        SIO Hyst: DISABLED
+        SIO Vtrip: MULTIPLIER_0_5
+        SIO RefSel: VCC_IO
+        Required Capabilitites: DIGITAL
+        Initial Value: 1
+        IO Voltage: 0
+    PORT MAP (
+        pa_out => SD_PULLUP(2)__PA ,
+        pad => SD_PULLUP(2)_PAD );
+    Properties:
+    {
+    }
+
+[IoId=4]: 
+Pin : Name = SD_PULLUP(3)
+    Attributes:
+        In Group/Port: True
+        In Sync Option: SYNC
+        Out Sync Option: AUTO
+        Interrupt generated: False
+        Interrupt mode: NONE
+        Drive mode: RES_PULL_UP
+        VTrip: CMOS
+        Slew: FAST
+        Input Sync needed: True
+        Output Sync needed: False
+        SC shield enabled: False
+        POR State: INP_DIS_LO
+        LCD Mode: COMMON
+        Register Mode: RegComb
+        CaSense Mode: NEITHER
+        Treat as pin: False
+        Is OE Registered: False
+        Uses Analog: False
+        Can contain Digital: True
+        Is SIO: False
+        SIO Output Buf: NONREGULATED
+        SIO Input Buf: SINGLE_ENDED
+        SIO HiFreq: LOW
+        SIO Hyst: DISABLED
+        SIO Vtrip: MULTIPLIER_0_5
+        SIO RefSel: VCC_IO
+        Required Capabilitites: DIGITAL
+        Initial Value: 1
+        IO Voltage: 0
+    PORT MAP (
+        pa_out => SD_PULLUP(3)__PA ,
+        pad => SD_PULLUP(3)_PAD );
+    Properties:
+    {
+    }
+
+[IoId=5]: 
+Pin : Name = SD_PULLUP(4)
+    Attributes:
+        In Group/Port: True
+        In Sync Option: SYNC
+        Out Sync Option: AUTO
+        Interrupt generated: False
+        Interrupt mode: NONE
+        Drive mode: RES_PULL_UP
+        VTrip: CMOS
+        Slew: FAST
+        Input Sync needed: True
+        Output Sync needed: False
+        SC shield enabled: False
+        POR State: INP_DIS_LO
+        LCD Mode: COMMON
+        Register Mode: RegComb
+        CaSense Mode: NEITHER
+        Treat as pin: False
+        Is OE Registered: False
+        Uses Analog: False
+        Can contain Digital: True
+        Is SIO: False
+        SIO Output Buf: NONREGULATED
+        SIO Input Buf: SINGLE_ENDED
+        SIO HiFreq: LOW
+        SIO Hyst: DISABLED
+        SIO Vtrip: MULTIPLIER_0_5
+        SIO RefSel: VCC_IO
+        Required Capabilitites: DIGITAL
+        Initial Value: 1
+        IO Voltage: 0
+    PORT MAP (
+        pa_out => SD_PULLUP(4)__PA ,
+        pad => SD_PULLUP(4)_PAD );
+    Properties:
+    {
+    }
+
 Port 4 contains the following IO cells:
 [IoId=2]: 
 Pin : Name = SCSI_Out(1)
@@ -2240,6 +2640,12 @@ Port | Pin | Fixed |      Type |       Drive Mode |            Name | Connection
      |   6 |     * |      NONE |         CMOS_OUT |     SCSI_Out(3) | 
      |   7 |     * |      NONE |         CMOS_OUT |     SCSI_Out(2) | 
 -----+-----+-------+-----------+------------------+-----------------+-------------------------
+   3 |   1 |     * |      NONE |      RES_PULL_UP |    SD_PULLUP(0) | 
+     |   2 |     * |      NONE |      RES_PULL_UP |    SD_PULLUP(1) | 
+     |   3 |     * |      NONE |      RES_PULL_UP |    SD_PULLUP(2) | 
+     |   4 |     * |      NONE |      RES_PULL_UP |    SD_PULLUP(3) | 
+     |   5 |     * |      NONE |      RES_PULL_UP |    SD_PULLUP(4) | 
+-----+-----+-------+-----------+------------------+-----------------+-------------------------
    4 |   2 |     * |      NONE |         CMOS_OUT |     SCSI_Out(1) | 
      |   3 |     * |      NONE |         CMOS_OUT |     SCSI_Out(0) | 
      |   4 |     * |      NONE |         CMOS_OUT | SCSI_Out_DBx(7) | 
@@ -2259,31 +2665,31 @@ Port | Pin | Fixed |      Type |       Drive Mode |            Name | Connection
 </CYPRESSTAG>
 </CYPRESSTAG>
 Digital component placer commit/Report: Elapsed time ==> 0s.014ms
-Digital Placement phase: Elapsed time ==> 2s.140ms
+Digital Placement phase: Elapsed time ==> 2s.172ms
 </CYPRESSTAG>
 <CYPRESSTAG name="Digital Routing">
 Routing successful.
-Digital Routing phase: Elapsed time ==> 2s.955ms
+Digital Routing phase: Elapsed time ==> 3s.093ms
 </CYPRESSTAG>
 <CYPRESSTAG name="Bitstream and API generation">
-Bitstream and API generation phase: Elapsed time ==> 0s.732ms
+Bitstream and API generation phase: Elapsed time ==> 0s.702ms
 </CYPRESSTAG>
 <CYPRESSTAG name="Bitstream verification">
-Bitstream verification phase: Elapsed time ==> 0s.127ms
+Bitstream verification phase: Elapsed time ==> 0s.140ms
 </CYPRESSTAG>
 <CYPRESSTAG name="Static timing analysis">
 Timing report is in USB_Bootloader_timing.html.
-Static timing analysis phase: Elapsed time ==> 0s.638ms
+Static timing analysis phase: Elapsed time ==> 0s.719ms
 </CYPRESSTAG>
 <CYPRESSTAG name="Data reporting">
 Data reporting phase: Elapsed time ==> 0s.000ms
 </CYPRESSTAG>
 <CYPRESSTAG name="Database update...">
-Design database save phase: Elapsed time ==> 0s.609ms
+Design database save phase: Elapsed time ==> 0s.406ms
 </CYPRESSTAG>
-cydsfit: Elapsed time ==> 8s.672ms
+cydsfit: Elapsed time ==> 8s.765ms
 </CYPRESSTAG>
-Fitter phase: Elapsed time ==> 8s.750ms
-API generation phase: Elapsed time ==> 3s.081ms
-Dependency generation phase: Elapsed time ==> 0s.028ms
-Cleanup phase: Elapsed time ==> 0s.031ms
+Fitter phase: Elapsed time ==> 8s.859ms
+API generation phase: Elapsed time ==> 3s.296ms
+Dependency generation phase: Elapsed time ==> 0s.016ms
+Cleanup phase: Elapsed time ==> 0s.047ms

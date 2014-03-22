@@ -1,4 +1,4 @@
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 1
 
 
    1              		.syntax unified
@@ -58,7 +58,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
   29:.\Generated_Source\PSoC5/Cm3Start.c **** #define CY_NVIC_APINT_VECTKEY       (0x05FA0000u)  /* This key is required in order to write the NV
   30:.\Generated_Source\PSoC5/Cm3Start.c **** #define CY_NVIC_CFG_STACKALIGN      (0x00000200u)  /* This specifies that the exception stack must 
   31:.\Generated_Source\PSoC5/Cm3Start.c **** 
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 2
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 2
 
 
   32:.\Generated_Source\PSoC5/Cm3Start.c **** 
@@ -118,7 +118,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
   86:.\Generated_Source\PSoC5/Cm3Start.c **** *  None
   87:.\Generated_Source\PSoC5/Cm3Start.c **** *
   88:.\Generated_Source\PSoC5/Cm3Start.c **** * Theory:
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 3
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 3
 
 
   89:.\Generated_Source\PSoC5/Cm3Start.c **** *  Any value other than zero is acceptable.
@@ -178,7 +178,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  124:.\Generated_Source\PSoC5/Cm3Start.c **** * Summary:
  125:.\Generated_Source\PSoC5/Cm3Start.c **** *  This function handles the reset interrupt for the RVDS/MDK toolchains.
  126:.\Generated_Source\PSoC5/Cm3Start.c **** *  This is the first bit of code that is executed at startup.
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 4
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 4
 
 
  127:.\Generated_Source\PSoC5/Cm3Start.c **** *
@@ -238,7 +238,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  181:.\Generated_Source\PSoC5/Cm3Start.c ****     {
  182:.\Generated_Source\PSoC5/Cm3Start.c ****         /* If main returns it is undefined what we should do. */
  183:.\Generated_Source\PSoC5/Cm3Start.c ****     }
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 5
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 5
 
 
  184:.\Generated_Source\PSoC5/Cm3Start.c **** }
@@ -298,7 +298,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  238:.\Generated_Source\PSoC5/Cm3Start.c ****         /* Reset Status Register has Read-to-clear SW access mode.
  239:.\Generated_Source\PSoC5/Cm3Start.c ****         * Preserve current RESET_SR0 state to make it available for next reading.
  240:.\Generated_Source\PSoC5/Cm3Start.c ****         */
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 6
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 6
 
 
  241:.\Generated_Source\PSoC5/Cm3Start.c ****         *(reg32 *)(CYREG_PHUB_CFGMEM23_CFG1) = *(reg32 *)(CYREG_RESET_SR0);
@@ -358,7 +358,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  275:.\Generated_Source\PSoC5/Cm3Start.c **** *
  276:.\Generated_Source\PSoC5/Cm3Start.c **** * Return:
  277:.\Generated_Source\PSoC5/Cm3Start.c **** *  None
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 7
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 7
 
 
  278:.\Generated_Source\PSoC5/Cm3Start.c **** *
@@ -418,7 +418,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  102              		.loc 1 281 0 is_stmt 1 discriminator 1
  103 001a 00EB0204 		add	r4, r0, r2
  104              	.LVL7:
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 8
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 8
 
 
  105              		.loc 1 294 0 discriminator 1
@@ -478,7 +478,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  144              		.loc 1 307 0
  145 0044 FFF7FEFF 		bl	main
  146              	.LVL14:
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 9
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 9
 
 
  147              	.L12:
@@ -538,7 +538,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  197              		.thumb_func
  198              		.type	initialize_psoc, %function
  199              	initialize_psoc:
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 10
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 10
 
 
  200              	.LFB4:
@@ -598,7 +598,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  361:.\Generated_Source\PSoC5/Cm3Start.c **** 
  362:.\Generated_Source\PSoC5/Cm3Start.c ****     return 0;
  363:.\Generated_Source\PSoC5/Cm3Start.c **** }
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 11
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 11
 
 
  364:.\Generated_Source\PSoC5/Cm3Start.c **** 
@@ -658,7 +658,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  418:.\Generated_Source\PSoC5/Cm3Start.c **** void initialize_psoc(void)
  419:.\Generated_Source\PSoC5/Cm3Start.c **** {
  201              		.loc 1 419 0
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 12
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 12
 
 
  202              		.cfi_startproc
@@ -718,7 +718,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  439:.\Generated_Source\PSoC5/Cm3Start.c ****     CyResetStatus = CY_GET_REG8(CYREG_PHUB_CFGMEM23_CFG1);
  236              		.loc 1 439 0
  237 002a 0B49     		ldr	r1, .L27+20
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 13
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 13
 
 
  238 002c 0B4B     		ldr	r3, .L27+24
@@ -778,7 +778,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  274              		.global	CyRamVectors
  275              		.section	.romvectors,"a",%progbits
  276              		.align	2
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 14
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 14
 
 
  277              		.set	.LANCHOR0,. + 0
@@ -825,10 +825,10 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  310 0006 00000000 		.4byte	.Ldebug_abbrev0
  311 000a 04       		.byte	0x4
  312 000b 01       		.uleb128 0x1
- 313 000c BA010000 		.4byte	.LASF41
+ 313 000c E4010000 		.4byte	.LASF41
  314 0010 01       		.byte	0x1
  315 0011 00000000 		.4byte	.LASF42
- 316 0015 03020000 		.4byte	.LASF43
+ 316 0015 BB000000 		.4byte	.LASF43
  317 0019 00000000 		.4byte	.Ldebug_ranges0+0
  318 001d 00000000 		.4byte	0
  319 0021 00000000 		.4byte	0
@@ -836,18 +836,18 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  321 0029 02       		.uleb128 0x2
  322 002a 01       		.byte	0x1
  323 002b 06       		.byte	0x6
- 324 002c 4C020000 		.4byte	.LASF0
+ 324 002c 56020000 		.4byte	.LASF0
  325 0030 02       		.uleb128 0x2
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 15
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 15
 
 
  326 0031 01       		.byte	0x1
  327 0032 08       		.byte	0x8
- 328 0033 95000000 		.4byte	.LASF1
+ 328 0033 90000000 		.4byte	.LASF1
  329 0037 02       		.uleb128 0x2
  330 0038 02       		.byte	0x2
  331 0039 05       		.byte	0x5
- 332 003a B0010000 		.4byte	.LASF2
+ 332 003a C5010000 		.4byte	.LASF2
  333 003e 02       		.uleb128 0x2
  334 003f 02       		.byte	0x2
  335 0040 07       		.byte	0x7
@@ -855,19 +855,19 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  337 0045 02       		.uleb128 0x2
  338 0046 04       		.byte	0x4
  339 0047 05       		.byte	0x5
- 340 0048 35020000 		.4byte	.LASF4
+ 340 0048 3F020000 		.4byte	.LASF4
  341 004c 02       		.uleb128 0x2
  342 004d 04       		.byte	0x4
  343 004e 07       		.byte	0x7
- 344 004f AE000000 		.4byte	.LASF5
+ 344 004f A9000000 		.4byte	.LASF5
  345 0053 02       		.uleb128 0x2
  346 0054 08       		.byte	0x8
  347 0055 05       		.byte	0x5
- 348 0056 89010000 		.4byte	.LASF6
+ 348 0056 9E010000 		.4byte	.LASF6
  349 005a 02       		.uleb128 0x2
  350 005b 08       		.byte	0x8
  351 005c 07       		.byte	0x7
- 352 005d 36010000 		.4byte	.LASF7
+ 352 005d 4B010000 		.4byte	.LASF7
  353 0061 03       		.uleb128 0x3
  354 0062 04       		.byte	0x4
  355 0063 05       		.byte	0x5
@@ -875,34 +875,34 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  357 0068 02       		.uleb128 0x2
  358 0069 04       		.byte	0x4
  359 006a 07       		.byte	0x7
- 360 006b 1C010000 		.4byte	.LASF8
+ 360 006b 31010000 		.4byte	.LASF8
  361 006f 04       		.uleb128 0x4
- 362 0070 D5000000 		.4byte	.LASF9
+ 362 0070 EC000000 		.4byte	.LASF9
  363 0074 02       		.byte	0x2
  364 0075 5B       		.byte	0x5b
  365 0076 30000000 		.4byte	0x30
  366 007a 04       		.uleb128 0x4
- 367 007b 15010000 		.4byte	.LASF10
+ 367 007b 2A010000 		.4byte	.LASF10
  368 007f 02       		.byte	0x2
  369 0080 5D       		.byte	0x5d
  370 0081 4C000000 		.4byte	0x4c
  371 0085 02       		.uleb128 0x2
  372 0086 04       		.byte	0x4
  373 0087 04       		.byte	0x4
- 374 0088 8A000000 		.4byte	.LASF11
+ 374 0088 85000000 		.4byte	.LASF11
  375 008c 02       		.uleb128 0x2
  376 008d 08       		.byte	0x8
  377 008e 04       		.byte	0x4
- 378 008f F9000000 		.4byte	.LASF12
+ 378 008f 62020000 		.4byte	.LASF12
  379 0093 02       		.uleb128 0x2
  380 0094 01       		.byte	0x1
  381 0095 08       		.byte	0x8
- 382 0096 97010000 		.4byte	.LASF13
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 16
+ 382 0096 AC010000 		.4byte	.LASF13
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 16
 
 
  383 009a 04       		.uleb128 0x4
- 384 009b 7B010000 		.4byte	.LASF14
+ 384 009b 90010000 		.4byte	.LASF14
  385 009f 02       		.byte	0x2
  386 00a0 F0       		.byte	0xf0
  387 00a1 A5000000 		.4byte	0xa5
@@ -916,7 +916,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  395 00b5 05       		.uleb128 0x5
  396 00b6 7A000000 		.4byte	0x7a
  397 00ba 06       		.uleb128 0x6
- 398 00bb 53010000 		.4byte	.LASF16
+ 398 00bb 68010000 		.4byte	.LASF16
  399 00bf 02       		.byte	0x2
  400 00c0 0201     		.2byte	0x102
  401 00c2 C6000000 		.4byte	0xc6
@@ -928,7 +928,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  407 00ce 02       		.uleb128 0x2
  408 00cf 04       		.byte	0x4
  409 00d0 07       		.byte	0x7
- 410 00d1 80010000 		.4byte	.LASF17
+ 410 00d1 95010000 		.4byte	.LASF17
  411 00d5 09       		.uleb128 0x9
  412 00d6 93000000 		.4byte	0x93
  413 00da 04       		.uleb128 0x4
@@ -937,12 +937,12 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  416 00e0 D5       		.byte	0xd5
  417 00e1 68000000 		.4byte	0x68
  418 00e5 04       		.uleb128 0x4
- 419 00e6 6A010000 		.4byte	.LASF19
+ 419 00e6 7F010000 		.4byte	.LASF19
  420 00ea 01       		.byte	0x1
  421 00eb C7       		.byte	0xc7
  422 00ec 30000000 		.4byte	0x30
  423 00f0 0A       		.uleb128 0xa
- 424 00f1 6D020000 		.4byte	.LASF44
+ 424 00f1 7E020000 		.4byte	.LASF44
  425 00f5 10       		.byte	0x10
  426 00f6 01       		.byte	0x1
  427 00f7 C9       		.byte	0xc9
@@ -956,9 +956,9 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  435 0108 23       		.byte	0x23
  436 0109 00       		.uleb128 0
  437 010a 0B       		.uleb128 0xb
- 438 010b 90000000 		.4byte	.LASF21
+ 438 010b 8B000000 		.4byte	.LASF21
  439 010f 01       		.byte	0x1
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 17
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 17
 
 
  440 0110 CC       		.byte	0xcc
@@ -967,7 +967,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  443 0116 23       		.byte	0x23
  444 0117 04       		.uleb128 0x4
  445 0118 0B       		.uleb128 0xb
- 446 0119 60010000 		.4byte	.LASF22
+ 446 0119 75010000 		.4byte	.LASF22
  447 011d 01       		.byte	0x1
  448 011e CD       		.byte	0xcd
  449 011f DA000000 		.4byte	0xda
@@ -988,7 +988,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  464 0137 E5000000 		.4byte	0xe5
  465 013b 0C       		.uleb128 0xc
  466 013c 01       		.byte	0x1
- 467 013d E7000000 		.4byte	.LASF45
+ 467 013d FE000000 		.4byte	.LASF45
  468 0141 01       		.byte	0x1
  469 0142 5C       		.byte	0x5c
  470 0143 01       		.byte	0x1
@@ -1000,7 +1000,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  476 014f 01       		.byte	0x1
  477 0150 0D       		.uleb128 0xd
  478 0151 01       		.byte	0x1
- 479 0152 E1000000 		.4byte	.LASF24
+ 479 0152 F8000000 		.4byte	.LASF24
  480 0156 01       		.byte	0x1
  481 0157 FD       		.byte	0xfd
  482 0158 01       		.byte	0x1
@@ -1018,7 +1018,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  494 0170 61000000 		.4byte	0x61
  495 0174 01       		.byte	0x1
  496 0175 50       		.byte	0x50
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 18
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 18
 
 
  497 0176 0F       		.uleb128 0xf
@@ -1039,12 +1039,12 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  512 0197 01       		.byte	0x1
  513 0198 15020000 		.4byte	0x215
  514 019c 11       		.uleb128 0x11
- 515 019d 65020000 		.4byte	.LASF26
+ 515 019d 76020000 		.4byte	.LASF26
  516 01a1 01       		.byte	0x1
  517 01a2 1B01     		.2byte	0x11b
  518 01a4 68000000 		.4byte	0x68
  519 01a8 11       		.uleb128 0x11
- 520 01a9 85000000 		.4byte	.LASF27
+ 520 01a9 10010000 		.4byte	.LASF27
  521 01ad 01       		.byte	0x1
  522 01ae 1C01     		.2byte	0x11c
  523 01b0 15020000 		.4byte	0x215
@@ -1065,7 +1065,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  538 01d9 20020000 		.4byte	0x220
  539 01dd 33000000 		.4byte	.LLST2
  540 01e1 14       		.uleb128 0x14
- 541 01e2 4D010000 		.4byte	.LASF28
+ 541 01e2 62010000 		.4byte	.LASF28
  542 01e6 01       		.byte	0x1
  543 01e7 2301     		.2byte	0x123
  544 01e9 68000000 		.4byte	0x68
@@ -1078,7 +1078,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  551 01fd 64000000 		.4byte	.LLST4
  552 0201 00       		.byte	0
  553 0202 15       		.uleb128 0x15
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 19
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 19
 
 
  554 0203 44000000 		.4byte	.LVL13
@@ -1097,7 +1097,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  567 0222 7A000000 		.4byte	0x7a
  568 0226 16       		.uleb128 0x16
  569 0227 01       		.byte	0x1
- 570 0228 DB000000 		.4byte	.LASF30
+ 570 0228 F2000000 		.4byte	.LASF30
  571 022c 01       		.byte	0x1
  572 022d E5       		.byte	0xe5
  573 022e 01       		.byte	0x1
@@ -1115,7 +1115,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  585 0252 00       		.byte	0
  586 0253 10       		.uleb128 0x10
  587 0254 01       		.byte	0x1
- 588 0255 05010000 		.4byte	.LASF31
+ 588 0255 1A010000 		.4byte	.LASF31
  589 0259 01       		.byte	0x1
  590 025a A201     		.2byte	0x1a2
  591 025c 01       		.byte	0x1
@@ -1135,10 +1135,10 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  605 0281 3A030000 		.4byte	0x33a
  606 0285 00       		.byte	0
  607 0286 17       		.uleb128 0x17
- 608 0287 C0000000 		.4byte	.LASF32
+ 608 0287 CF010000 		.4byte	.LASF32
  609 028b 01       		.byte	0x1
  610 028c 39       		.byte	0x39
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 20
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 20
 
 
  611 028d 7A000000 		.4byte	0x7a
@@ -1146,7 +1146,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  613 0292 03       		.byte	0x3
  614 0293 00000000 		.4byte	cySysNoInitDataValid
  615 0297 18       		.uleb128 0x18
- 616 0298 3E020000 		.4byte	.LASF33
+ 616 0298 48020000 		.4byte	.LASF33
  617 029c 04       		.byte	0x4
  618 029d 2D       		.byte	0x2d
  619 029e 6F000000 		.4byte	0x6f
@@ -1174,7 +1174,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  641 02cf 1C       		.uleb128 0x1c
  642 02d0 00       		.byte	0
  643 02d1 18       		.uleb128 0x18
- 644 02d2 58020000 		.4byte	.LASF35
+ 644 02d2 69020000 		.4byte	.LASF35
  645 02d6 01       		.byte	0x1
  646 02d7 D1       		.byte	0xd1
  647 02d8 DE020000 		.4byte	0x2de
@@ -1197,8 +1197,8 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  664 02fe 03       		.byte	0x3
  665 02ff 00       		.byte	0
  666 0300 1D       		.uleb128 0x1d
- 667 0301 A3000000 		.4byte	.LASF37
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 21
+ 667 0301 9E000000 		.4byte	.LASF37
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 21
 
 
  668 0305 01       		.byte	0x1
@@ -1212,14 +1212,14 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  676 0314 F0020000 		.4byte	0x2f0
  677 0318 1E       		.uleb128 0x1e
  678 0319 01       		.byte	0x1
- 679 031a 23020000 		.4byte	.LASF38
+ 679 031a 2D020000 		.4byte	.LASF38
  680 031e 01       		.byte	0x1
  681 031f C5       		.byte	0xc5
  682 0320 01       		.byte	0x1
  683 0321 01       		.byte	0x1
  684 0322 1F       		.uleb128 0x1f
  685 0323 01       		.byte	0x1
- 686 0324 00010000 		.4byte	.LASF47
+ 686 0324 15010000 		.4byte	.LASF47
  687 0328 01       		.byte	0x1
  688 0329 C2       		.byte	0xc2
  689 032a 01       		.byte	0x1
@@ -1227,14 +1227,14 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  691 032f 01       		.byte	0x1
  692 0330 1E       		.uleb128 0x1e
  693 0331 01       		.byte	0x1
- 694 0332 9C010000 		.4byte	.LASF39
+ 694 0332 B1010000 		.4byte	.LASF39
  695 0336 01       		.byte	0x1
  696 0337 22       		.byte	0x22
  697 0338 01       		.byte	0x1
  698 0339 01       		.byte	0x1
  699 033a 1E       		.uleb128 0x1e
  700 033b 01       		.byte	0x1
- 701 033c 29010000 		.4byte	.LASF40
+ 701 033c 3E010000 		.4byte	.LASF40
  702 0340 05       		.byte	0x5
  703 0341 14       		.byte	0x14
  704 0342 01       		.byte	0x1
@@ -1258,7 +1258,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  722 000d 11       		.uleb128 0x11
  723 000e 01       		.uleb128 0x1
  724 000f 52       		.uleb128 0x52
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 22
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 22
 
 
  725 0010 01       		.uleb128 0x1
@@ -1318,7 +1318,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  779 0046 3B       		.uleb128 0x3b
  780 0047 05       		.uleb128 0x5
  781 0048 49       		.uleb128 0x49
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 23
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 23
 
 
  782 0049 13       		.uleb128 0x13
@@ -1378,7 +1378,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  836 007f 00       		.byte	0
  837 0080 00       		.byte	0
  838 0081 0C       		.uleb128 0xc
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 24
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 24
 
 
  839 0082 2E       		.uleb128 0x2e
@@ -1438,7 +1438,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  893 00ba 3B       		.uleb128 0x3b
  894 00bb 0B       		.uleb128 0xb
  895 00bc 49       		.uleb128 0x49
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 25
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 25
 
 
  896 00bd 13       		.uleb128 0x13
@@ -1498,7 +1498,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  950 00f4 00       		.byte	0
  951 00f5 00       		.byte	0
  952 00f6 12       		.uleb128 0x12
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 26
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 26
 
 
  953 00f7 0B       		.uleb128 0xb
@@ -1558,7 +1558,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  1007 012f 03       		.uleb128 0x3
  1008 0130 0E       		.uleb128 0xe
  1009 0131 3A       		.uleb128 0x3a
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 27
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 27
 
 
  1010 0132 0B       		.uleb128 0xb
@@ -1618,7 +1618,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  1064 0169 01       		.uleb128 0x1
  1065 016a 13       		.uleb128 0x13
  1066 016b 00       		.byte	0
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 28
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 28
 
 
  1067 016c 00       		.byte	0
@@ -1678,7 +1678,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  1121 01a2 03       		.uleb128 0x3
  1122 01a3 0E       		.uleb128 0xe
  1123 01a4 3A       		.uleb128 0x3a
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 29
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 29
 
 
  1124 01a5 0B       		.uleb128 0xb
@@ -1738,7 +1738,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  1178 003b 0100     		.2byte	0x1
  1179 003d 50       		.byte	0x50
  1180 003e 00000000 		.4byte	0
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 30
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 30
 
 
  1181 0042 00000000 		.4byte	0
@@ -1798,7 +1798,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  1235 00ce 0200     		.2byte	0x2
  1236 00d0 7D       		.byte	0x7d
  1237 00d1 08       		.sleb128 8
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 31
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 31
 
 
  1238 00d2 00000000 		.4byte	0
@@ -1858,7 +1858,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  1288      01010101 
  1289              	.LASF42:
  1290 0000 2E5C4765 		.ascii	".\\Generated_Source\\PSoC5\\Cm3Start.c\000"
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 32
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 32
 
 
  1290      6E657261 
@@ -1903,179 +1903,180 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 1
  1310 007b 7A65726F 		.ascii	"zero_size\000"
  1310      5F73697A 
  1310      6500
- 1311              	.LASF27:
- 1312 0085 72707472 		.ascii	"rptr\000"
- 1312      00
- 1313              	.LASF11:
- 1314 008a 666C6F61 		.ascii	"float\000"
- 1314      7400
- 1315              	.LASF21:
- 1316 0090 64617461 		.ascii	"data\000"
- 1316      00
- 1317              	.LASF1:
- 1318 0095 756E7369 		.ascii	"unsigned char\000"
- 1318      676E6564 
- 1318      20636861 
- 1318      7200
- 1319              	.LASF37:
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 33
+ 1311              	.LASF11:
+ 1312 0085 666C6F61 		.ascii	"float\000"
+ 1312      7400
+ 1313              	.LASF21:
+ 1314 008b 64617461 		.ascii	"data\000"
+ 1314      00
+ 1315              	.LASF1:
+ 1316 0090 756E7369 		.ascii	"unsigned char\000"
+ 1316      676E6564 
+ 1316      20636861 
+ 1316      7200
+ 1317              	.LASF37:
+ 1318 009e 526F6D56 		.ascii	"RomVectors\000"
+ 1318      6563746F 
+ 1318      727300
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 33
 
 
- 1320 00a3 526F6D56 		.ascii	"RomVectors\000"
- 1320      6563746F 
- 1320      727300
- 1321              	.LASF5:
- 1322 00ae 6C6F6E67 		.ascii	"long unsigned int\000"
- 1322      20756E73 
- 1322      69676E65 
- 1322      6420696E 
- 1322      7400
- 1323              	.LASF32:
- 1324 00c0 63795379 		.ascii	"cySysNoInitDataValid\000"
- 1324      734E6F49 
- 1324      6E697444 
- 1324      61746156 
- 1324      616C6964 
- 1325              	.LASF9:
- 1326 00d5 75696E74 		.ascii	"uint8\000"
- 1326      3800
- 1327              	.LASF30:
- 1328 00db 52657365 		.ascii	"Reset\000"
- 1328      7400
- 1329              	.LASF24:
- 1330 00e1 5F657869 		.ascii	"_exit\000"
- 1330      7400
- 1331              	.LASF45:
- 1332 00e7 496E7444 		.ascii	"IntDefaultHandler\000"
- 1332      65666175 
- 1332      6C744861 
- 1332      6E646C65 
- 1332      7200
- 1333              	.LASF12:
- 1334 00f9 646F7562 		.ascii	"double\000"
- 1334      6C6500
- 1335              	.LASF47:
- 1336 0100 6D61696E 		.ascii	"main\000"
- 1336      00
- 1337              	.LASF31:
- 1338 0105 696E6974 		.ascii	"initialize_psoc\000"
- 1338      69616C69 
- 1338      7A655F70 
- 1338      736F6300 
- 1339              	.LASF10:
- 1340 0115 75696E74 		.ascii	"uint32\000"
- 1340      333200
- 1341              	.LASF8:
- 1342 011c 756E7369 		.ascii	"unsigned int\000"
- 1342      676E6564 
- 1342      20696E74 
- 1342      00
- 1343              	.LASF40:
- 1344 0129 63796669 		.ascii	"cyfitter_cfg\000"
- 1344      74746572 
- 1344      5F636667 
- 1344      00
- 1345              	.LASF7:
- 1346 0136 6C6F6E67 		.ascii	"long long unsigned int\000"
- 1346      206C6F6E 
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 34
+ 1319              	.LASF5:
+ 1320 00a9 6C6F6E67 		.ascii	"long unsigned int\000"
+ 1320      20756E73 
+ 1320      69676E65 
+ 1320      6420696E 
+ 1320      7400
+ 1321              	.LASF43:
+ 1322 00bb 573A5C53 		.ascii	"W:\\SCSI2SD\\software\\SCSI2SD\\USB_Bootloader.cyds"
+ 1322      43534932 
+ 1322      53445C73 
+ 1322      6F667477 
+ 1322      6172655C 
+ 1323 00ea 6E00     		.ascii	"n\000"
+ 1324              	.LASF9:
+ 1325 00ec 75696E74 		.ascii	"uint8\000"
+ 1325      3800
+ 1326              	.LASF30:
+ 1327 00f2 52657365 		.ascii	"Reset\000"
+ 1327      7400
+ 1328              	.LASF24:
+ 1329 00f8 5F657869 		.ascii	"_exit\000"
+ 1329      7400
+ 1330              	.LASF45:
+ 1331 00fe 496E7444 		.ascii	"IntDefaultHandler\000"
+ 1331      65666175 
+ 1331      6C744861 
+ 1331      6E646C65 
+ 1331      7200
+ 1332              	.LASF27:
+ 1333 0110 72707472 		.ascii	"rptr\000"
+ 1333      00
+ 1334              	.LASF47:
+ 1335 0115 6D61696E 		.ascii	"main\000"
+ 1335      00
+ 1336              	.LASF31:
+ 1337 011a 696E6974 		.ascii	"initialize_psoc\000"
+ 1337      69616C69 
+ 1337      7A655F70 
+ 1337      736F6300 
+ 1338              	.LASF10:
+ 1339 012a 75696E74 		.ascii	"uint32\000"
+ 1339      333200
+ 1340              	.LASF8:
+ 1341 0131 756E7369 		.ascii	"unsigned int\000"
+ 1341      676E6564 
+ 1341      20696E74 
+ 1341      00
+ 1342              	.LASF40:
+ 1343 013e 63796669 		.ascii	"cyfitter_cfg\000"
+ 1343      74746572 
+ 1343      5F636667 
+ 1343      00
+ 1344              	.LASF7:
+ 1345 014b 6C6F6E67 		.ascii	"long long unsigned int\000"
+ 1345      206C6F6E 
+ 1345      6720756E 
+ 1345      7369676E 
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 34
 
 
- 1346      6720756E 
- 1346      7369676E 
- 1346      65642069 
- 1347              	.LASF28:
- 1348 014d 6C696D69 		.ascii	"limit\000"
- 1348      7400
- 1349              	.LASF16:
- 1350 0153 63796973 		.ascii	"cyisraddress\000"
- 1350      72616464 
- 1350      72657373 
- 1350      00
- 1351              	.LASF22:
- 1352 0160 696E6974 		.ascii	"init_size\000"
- 1352      5F73697A 
- 1352      6500
- 1353              	.LASF19:
- 1354 016a 5F5F6379 		.ascii	"__cy_byte_align8\000"
- 1354      5F627974 
- 1354      655F616C 
- 1354      69676E38 
- 1354      00
- 1355              	.LASF14:
- 1356 017b 72656738 		.ascii	"reg8\000"
- 1356      00
- 1357              	.LASF17:
- 1358 0180 73697A65 		.ascii	"sizetype\000"
- 1358      74797065 
- 1358      00
- 1359              	.LASF6:
- 1360 0189 6C6F6E67 		.ascii	"long long int\000"
- 1360      206C6F6E 
- 1360      6720696E 
- 1360      7400
- 1361              	.LASF13:
- 1362 0197 63686172 		.ascii	"char\000"
- 1362      00
- 1363              	.LASF39:
- 1364 019c 43794274 		.ascii	"CyBtldr_CheckLaunch\000"
- 1364      6C64725F 
- 1364      43686563 
- 1364      6B4C6175 
- 1364      6E636800 
- 1365              	.LASF2:
- 1366 01b0 73686F72 		.ascii	"short int\000"
- 1366      7420696E 
- 1366      7400
- 1367              	.LASF41:
- 1368 01ba 474E5520 		.ascii	"GNU C 4.7.3 20130312 (release) [ARM/embedded-4_7-br"
- 1368      4320342E 
- 1368      372E3320 
- 1368      32303133 
- 1368      30333132 
- 1369 01ed 616E6368 		.ascii	"anch revision 196615]\000"
- 1369      20726576 
- 1369      6973696F 
- 1369      6E203139 
- 1369      36363135 
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccD2Vkiv.s 			page 35
+ 1345      65642069 
+ 1346              	.LASF28:
+ 1347 0162 6C696D69 		.ascii	"limit\000"
+ 1347      7400
+ 1348              	.LASF16:
+ 1349 0168 63796973 		.ascii	"cyisraddress\000"
+ 1349      72616464 
+ 1349      72657373 
+ 1349      00
+ 1350              	.LASF22:
+ 1351 0175 696E6974 		.ascii	"init_size\000"
+ 1351      5F73697A 
+ 1351      6500
+ 1352              	.LASF19:
+ 1353 017f 5F5F6379 		.ascii	"__cy_byte_align8\000"
+ 1353      5F627974 
+ 1353      655F616C 
+ 1353      69676E38 
+ 1353      00
+ 1354              	.LASF14:
+ 1355 0190 72656738 		.ascii	"reg8\000"
+ 1355      00
+ 1356              	.LASF17:
+ 1357 0195 73697A65 		.ascii	"sizetype\000"
+ 1357      74797065 
+ 1357      00
+ 1358              	.LASF6:
+ 1359 019e 6C6F6E67 		.ascii	"long long int\000"
+ 1359      206C6F6E 
+ 1359      6720696E 
+ 1359      7400
+ 1360              	.LASF13:
+ 1361 01ac 63686172 		.ascii	"char\000"
+ 1361      00
+ 1362              	.LASF39:
+ 1363 01b1 43794274 		.ascii	"CyBtldr_CheckLaunch\000"
+ 1363      6C64725F 
+ 1363      43686563 
+ 1363      6B4C6175 
+ 1363      6E636800 
+ 1364              	.LASF2:
+ 1365 01c5 73686F72 		.ascii	"short int\000"
+ 1365      7420696E 
+ 1365      7400
+ 1366              	.LASF32:
+ 1367 01cf 63795379 		.ascii	"cySysNoInitDataValid\000"
+ 1367      734E6F49 
+ 1367      6E697444 
+ 1367      61746156 
+ 1367      616C6964 
+ 1368              	.LASF41:
+ 1369 01e4 474E5520 		.ascii	"GNU C 4.7.3 20130312 (release) [ARM/embedded-4_7-br"
+ 1369      4320342E 
+ 1369      372E3320 
+ 1369      32303133 
+ 1369      30333132 
+ 1370 0217 616E6368 		.ascii	"anch revision 196615]\000"
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccFLxuTR.s 			page 35
 
 
- 1370              	.LASF43:
- 1371 0203 573A5C53 		.ascii	"W:\\SCSI2SD\\USB_Bootloader.cydsn\000"
- 1371      43534932 
- 1371      53445C55 
- 1371      53425F42 
- 1371      6F6F746C 
- 1372              	.LASF38:
- 1373 0223 5F5F6C69 		.ascii	"__libc_init_array\000"
- 1373      62635F69 
- 1373      6E69745F 
- 1373      61727261 
- 1373      7900
- 1374              	.LASF4:
- 1375 0235 6C6F6E67 		.ascii	"long int\000"
- 1375      20696E74 
- 1375      00
- 1376              	.LASF33:
- 1377 023e 43795265 		.ascii	"CyResetStatus\000"
- 1377      73657453 
- 1377      74617475 
- 1377      7300
- 1378              	.LASF0:
- 1379 024c 7369676E 		.ascii	"signed char\000"
- 1379      65642063 
- 1379      68617200 
- 1380              	.LASF35:
- 1381 0258 5F5F6379 		.ascii	"__cy_regions\000"
- 1381      5F726567 
- 1381      696F6E73 
- 1381      00
- 1382              	.LASF26:
- 1383 0265 72656769 		.ascii	"regions\000"
- 1383      6F6E7300 
- 1384              	.LASF44:
- 1385 026d 5F5F6379 		.ascii	"__cy_region\000"
- 1385      5F726567 
- 1385      696F6E00 
- 1386              		.ident	"GCC: (GNU Tools for ARM Embedded Processors) 4.7.3 20130312 (release) [ARM/embedded-4_7-br
+ 1370      20726576 
+ 1370      6973696F 
+ 1370      6E203139 
+ 1370      36363135 
+ 1371              	.LASF38:
+ 1372 022d 5F5F6C69 		.ascii	"__libc_init_array\000"
+ 1372      62635F69 
+ 1372      6E69745F 
+ 1372      61727261 
+ 1372      7900
+ 1373              	.LASF4:
+ 1374 023f 6C6F6E67 		.ascii	"long int\000"
+ 1374      20696E74 
+ 1374      00
+ 1375              	.LASF33:
+ 1376 0248 43795265 		.ascii	"CyResetStatus\000"
+ 1376      73657453 
+ 1376      74617475 
+ 1376      7300
+ 1377              	.LASF0:
+ 1378 0256 7369676E 		.ascii	"signed char\000"
+ 1378      65642063 
+ 1378      68617200 
+ 1379              	.LASF12:
+ 1380 0262 646F7562 		.ascii	"double\000"
+ 1380      6C6500
+ 1381              	.LASF35:
+ 1382 0269 5F5F6379 		.ascii	"__cy_regions\000"
+ 1382      5F726567 
+ 1382      696F6E73 
+ 1382      00
+ 1383              	.LASF26:
+ 1384 0276 72656769 		.ascii	"regions\000"
+ 1384      6F6E7300 
+ 1385              	.LASF44:
+ 1386 027e 5F5F6379 		.ascii	"__cy_region\000"
+ 1386      5F726567 
+ 1386      696F6E00 
+ 1387              		.ident	"GCC: (GNU Tools for ARM Embedded Processors) 4.7.3 20130312 (release) [ARM/embedded-4_7-br

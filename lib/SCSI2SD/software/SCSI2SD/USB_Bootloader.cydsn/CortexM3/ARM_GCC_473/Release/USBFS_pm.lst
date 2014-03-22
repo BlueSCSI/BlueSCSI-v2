@@ -1,4 +1,4 @@
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 1
 
 
    1              		.syntax unified
@@ -58,7 +58,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
   29:.\Generated_Source\PSoC5/USBFS_pm.c **** 
   30:.\Generated_Source\PSoC5/USBFS_pm.c **** /***************************************
   31:.\Generated_Source\PSoC5/USBFS_pm.c **** * Local data allocation
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 2
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 2
 
 
   32:.\Generated_Source\PSoC5/USBFS_pm.c **** ***************************************/
@@ -118,7 +118,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
   50              	.LFB57:
   63:.\Generated_Source\PSoC5/USBFS_pm.c ****     }
   64:.\Generated_Source\PSoC5/USBFS_pm.c **** 
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 3
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 3
 
 
   65:.\Generated_Source\PSoC5/USBFS_pm.c **** #endif /* (USBFS_DP_ISR_REMOVE == 0u) */
@@ -178,7 +178,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  102:.\Generated_Source\PSoC5/USBFS_pm.c **** *  None.
  103:.\Generated_Source\PSoC5/USBFS_pm.c **** *
  104:.\Generated_Source\PSoC5/USBFS_pm.c **** * Reentrant:
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 4
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 4
 
 
  105:.\Generated_Source\PSoC5/USBFS_pm.c **** *  No.
@@ -238,7 +238,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  128:.\Generated_Source\PSoC5/USBFS_pm.c **** *   None.
  129:.\Generated_Source\PSoC5/USBFS_pm.c **** *
  130:.\Generated_Source\PSoC5/USBFS_pm.c **** * Global variables:
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 5
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 5
 
 
  131:.\Generated_Source\PSoC5/USBFS_pm.c **** *  USBFS_backup.enable:  modified.
@@ -298,7 +298,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  129 001a 2E70     		strb	r6, [r5, #0]
  130              		.loc 1 151 0
  131 001c 0A78     		ldrb	r2, [r1, #0]	@ zero_extendqisi2
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 6
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 6
 
 
  152:.\Generated_Source\PSoC5/USBFS_pm.c ****         CyDelayUs(0u);  /*~50ns delay */
@@ -358,7 +358,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  167 004e 01F0FE02 		and	r2, r1, #254
  168 0052 1A70     		strb	r2, [r3, #0]
  169              		.loc 1 166 0
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 7
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 7
 
 
  170 0054 FFF7FEFF 		bl	CyDelayUs
@@ -418,7 +418,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  183:.\Generated_Source\PSoC5/USBFS_pm.c ****     }
  184:.\Generated_Source\PSoC5/USBFS_pm.c ****     CyExitCriticalSection(enableInterrupts);
  206              		.loc 1 184 0
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 8
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 8
 
 
  207 0088 4046     		mov	r0, r8
@@ -478,7 +478,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  192:.\Generated_Source\PSoC5/USBFS_pm.c ****     #endif /* (USBFS_DP_ISR_REMOVE == 0u) */
  193:.\Generated_Source\PSoC5/USBFS_pm.c **** 
  194:.\Generated_Source\PSoC5/USBFS_pm.c **** }
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 9
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 9
 
 
  195:.\Generated_Source\PSoC5/USBFS_pm.c **** 
@@ -538,7 +538,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  225:.\Generated_Source\PSoC5/USBFS_pm.c ****             CyIntDisable(USBFS_DP_INTC_VECT_NUM);
  276              		.loc 1 225 0
  277 0010 2248     		ldr	r0, .L20+4
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 10
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 10
 
 
  278              	.LVL15:
@@ -598,7 +598,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  314              		.loc 1 241 0
  315 0050 0020     		movs	r0, #0
  316 0052 FFF7FEFF 		bl	CyDelayUs
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 11
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 11
 
 
  317              	.LVL17:
@@ -658,7 +658,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  344              		.loc 1 265 0
  345 007e 0120     		movs	r0, #1
  346 0080 FFF7FEFF 		bl	CyDelayCycles
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 12
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 12
 
 
  347              	.LVL19:
@@ -718,17 +718,17 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  391              		.section	.debug_info,"",%progbits
  392              	.Ldebug_info0:
  393 0000 7D030000 		.4byte	0x37d
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 13
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 13
 
 
  394 0004 0200     		.2byte	0x2
  395 0006 00000000 		.4byte	.Ldebug_abbrev0
  396 000a 04       		.byte	0x4
  397 000b 01       		.uleb128 0x1
- 398 000c E2010000 		.4byte	.LASF35
+ 398 000c FD010000 		.4byte	.LASF35
  399 0010 01       		.byte	0x1
- 400 0011 B8010000 		.4byte	.LASF36
- 401 0015 2B020000 		.4byte	.LASF37
+ 400 0011 D3010000 		.4byte	.LASF36
+ 401 0015 93000000 		.4byte	.LASF37
  402 0019 00000000 		.4byte	.Ldebug_ranges0+0
  403 001d 00000000 		.4byte	0
  404 0021 00000000 		.4byte	0
@@ -736,40 +736,40 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  406 0029 02       		.uleb128 0x2
  407 002a 01       		.byte	0x1
  408 002b 06       		.byte	0x6
- 409 002c 6D020000 		.4byte	.LASF0
+ 409 002c 7E020000 		.4byte	.LASF0
  410 0030 02       		.uleb128 0x2
  411 0031 01       		.byte	0x1
  412 0032 08       		.byte	0x8
- 413 0033 75000000 		.4byte	.LASF1
+ 413 0033 6E000000 		.4byte	.LASF1
  414 0037 02       		.uleb128 0x2
  415 0038 02       		.byte	0x2
  416 0039 05       		.byte	0x5
- 417 003a AE010000 		.4byte	.LASF2
+ 417 003a C9010000 		.4byte	.LASF2
  418 003e 02       		.uleb128 0x2
  419 003f 02       		.byte	0x2
  420 0040 07       		.byte	0x7
- 421 0041 38000000 		.4byte	.LASF3
+ 421 0041 31000000 		.4byte	.LASF3
  422 0045 03       		.uleb128 0x3
- 423 0046 76010000 		.4byte	.LASF9
+ 423 0046 91010000 		.4byte	.LASF9
  424 004a 02       		.byte	0x2
  425 004b 4F       		.byte	0x4f
  426 004c 50000000 		.4byte	0x50
  427 0050 02       		.uleb128 0x2
  428 0051 04       		.byte	0x4
  429 0052 05       		.byte	0x5
- 430 0053 58020000 		.4byte	.LASF4
+ 430 0053 69020000 		.4byte	.LASF4
  431 0057 02       		.uleb128 0x2
  432 0058 04       		.byte	0x4
  433 0059 07       		.byte	0x7
- 434 005a 88000000 		.4byte	.LASF5
+ 434 005a 81000000 		.4byte	.LASF5
  435 005e 02       		.uleb128 0x2
  436 005f 08       		.byte	0x8
  437 0060 05       		.byte	0x5
- 438 0061 87010000 		.4byte	.LASF6
+ 438 0061 A2010000 		.4byte	.LASF6
  439 0065 02       		.uleb128 0x2
  440 0066 08       		.byte	0x8
  441 0067 07       		.byte	0x7
- 442 0068 28010000 		.4byte	.LASF7
+ 442 0068 43010000 		.4byte	.LASF7
  443 006c 04       		.uleb128 0x4
  444 006d 04       		.byte	0x4
  445 006e 05       		.byte	0x5
@@ -777,39 +777,39 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  447 0073 02       		.uleb128 0x2
  448 0074 04       		.byte	0x4
  449 0075 07       		.byte	0x7
- 450 0076 1B010000 		.4byte	.LASF8
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 14
+ 450 0076 36010000 		.4byte	.LASF8
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 14
 
 
  451 007a 03       		.uleb128 0x3
- 452 007b DC010000 		.4byte	.LASF10
+ 452 007b F7010000 		.4byte	.LASF10
  453 007f 03       		.byte	0x3
  454 0080 5B       		.byte	0x5b
  455 0081 30000000 		.4byte	0x30
  456 0085 03       		.uleb128 0x3
- 457 0086 CC000000 		.4byte	.LASF11
+ 457 0086 F6000000 		.4byte	.LASF11
  458 008a 03       		.byte	0x3
  459 008b 5C       		.byte	0x5c
  460 008c 3E000000 		.4byte	0x3e
  461 0090 03       		.uleb128 0x3
- 462 0091 EE000000 		.4byte	.LASF12
+ 462 0091 18010000 		.4byte	.LASF12
  463 0095 03       		.byte	0x3
  464 0096 5D       		.byte	0x5d
  465 0097 57000000 		.4byte	0x57
  466 009b 02       		.uleb128 0x2
  467 009c 04       		.byte	0x4
  468 009d 04       		.byte	0x4
- 469 009e 5B000000 		.4byte	.LASF13
+ 469 009e 54000000 		.4byte	.LASF13
  470 00a2 02       		.uleb128 0x2
  471 00a3 08       		.byte	0x8
  472 00a4 04       		.byte	0x4
- 473 00a5 C5000000 		.4byte	.LASF14
+ 473 00a5 EF000000 		.4byte	.LASF14
  474 00a9 02       		.uleb128 0x2
  475 00aa 01       		.byte	0x1
  476 00ab 08       		.byte	0x8
- 477 00ac 95010000 		.4byte	.LASF15
+ 477 00ac B0010000 		.4byte	.LASF15
  478 00b0 03       		.uleb128 0x3
- 479 00b1 83000000 		.4byte	.LASF16
+ 479 00b1 7C000000 		.4byte	.LASF16
  480 00b5 03       		.byte	0x3
  481 00b6 F0       		.byte	0xf0
  482 00b7 BB000000 		.4byte	0xbb
@@ -823,7 +823,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  490 00cb 05       		.uleb128 0x5
  491 00cc 90000000 		.4byte	0x90
  492 00d0 06       		.uleb128 0x6
- 493 00d1 69010000 		.4byte	.LASF18
+ 493 00d1 84010000 		.4byte	.LASF18
  494 00d5 03       		.byte	0x3
  495 00d6 0201     		.2byte	0x102
  496 00d8 DC000000 		.4byte	0xdc
@@ -835,17 +835,17 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  502 00e4 02       		.uleb128 0x2
  503 00e5 04       		.byte	0x4
  504 00e6 07       		.byte	0x7
- 505 00e7 7E010000 		.4byte	.LASF19
+ 505 00e7 99010000 		.4byte	.LASF19
  506 00eb 09       		.uleb128 0x9
  507 00ec 02       		.byte	0x2
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 15
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 15
 
 
  508 00ed 04       		.byte	0x4
  509 00ee A5       		.byte	0xa5
  510 00ef 10010000 		.4byte	0x110
  511 00f3 0A       		.uleb128 0xa
- 512 00f4 61020000 		.4byte	.LASF20
+ 512 00f4 72020000 		.4byte	.LASF20
  513 00f8 04       		.byte	0x4
  514 00f9 A7       		.byte	0xa7
  515 00fa 7A000000 		.4byte	0x7a
@@ -853,7 +853,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  517 00ff 23       		.byte	0x23
  518 0100 00       		.uleb128 0
  519 0101 0A       		.uleb128 0xa
- 520 0102 50010000 		.4byte	.LASF21
+ 520 0102 6B010000 		.4byte	.LASF21
  521 0106 04       		.byte	0x4
  522 0107 A8       		.byte	0xa8
  523 0108 7A000000 		.4byte	0x7a
@@ -862,13 +862,13 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  526 010e 01       		.uleb128 0x1
  527 010f 00       		.byte	0
  528 0110 03       		.uleb128 0x3
- 529 0111 55010000 		.4byte	.LASF22
+ 529 0111 70010000 		.4byte	.LASF22
  530 0115 04       		.byte	0x4
  531 0116 A9       		.byte	0xa9
  532 0117 EB000000 		.4byte	0xeb
  533 011b 0B       		.uleb128 0xb
  534 011c 01       		.byte	0x1
- 535 011d 79020000 		.4byte	.LASF23
+ 535 011d 8A020000 		.4byte	.LASF23
  536 0121 01       		.byte	0x1
  537 0122 37       		.byte	0x37
  538 0123 01       		.byte	0x1
@@ -880,7 +880,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  544 012f 01       		.byte	0x1
  545 0130 0B       		.uleb128 0xb
  546 0131 01       		.byte	0x1
- 547 0132 D3000000 		.4byte	.LASF24
+ 547 0132 FD000000 		.4byte	.LASF24
  548 0136 01       		.byte	0x1
  549 0137 55       		.byte	0x55
  550 0138 01       		.byte	0x1
@@ -892,13 +892,13 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  556 0144 01       		.byte	0x1
  557 0145 0C       		.uleb128 0xc
  558 0146 01       		.byte	0x1
- 559 0147 9A010000 		.4byte	.LASF25
+ 559 0147 B5010000 		.4byte	.LASF25
  560 014b 01       		.byte	0x1
  561 014c 6C       		.byte	0x6c
  562 014d 01       		.byte	0x1
  563 014e 00000000 		.4byte	.LFB58
  564 0152 10000000 		.4byte	.LFE58
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 16
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 16
 
 
  565 0156 02       		.byte	0x2
@@ -923,7 +923,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  584 017e 01       		.byte	0x1
  585 017f 2E020000 		.4byte	0x22e
  586 0183 0F       		.uleb128 0xf
- 587 0184 B4000000 		.4byte	.LASF28
+ 587 0184 DE000000 		.4byte	.LASF28
  588 0188 01       		.byte	0x1
  589 0189 8B       		.byte	0x8b
  590 018a 7A000000 		.4byte	0x7a
@@ -958,7 +958,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  619 01ce 12       		.uleb128 0x12
  620 01cf 01       		.byte	0x1
  621 01d0 50       		.byte	0x50
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 17
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 17
 
 
  622 01d1 02       		.byte	0x2
@@ -1018,12 +1018,12 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  676 022b 3C       		.byte	0x3c
  677 022c 00       		.byte	0
  678 022d 00       		.byte	0
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 18
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 18
 
 
  679 022e 0E       		.uleb128 0xe
  680 022f 01       		.byte	0x1
- 681 0230 4B020000 		.4byte	.LASF27
+ 681 0230 5C020000 		.4byte	.LASF27
  682 0234 01       		.byte	0x1
  683 0235 D9       		.byte	0xd9
  684 0236 01       		.byte	0x1
@@ -1033,7 +1033,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  688 0243 01       		.byte	0x1
  689 0244 C8020000 		.4byte	0x2c8
  690 0248 0F       		.uleb128 0xf
- 691 0249 B4000000 		.4byte	.LASF28
+ 691 0249 DE000000 		.4byte	.LASF28
  692 024d 01       		.byte	0x1
  693 024e DB       		.byte	0xdb
  694 024f 7A000000 		.4byte	0x7a
@@ -1078,7 +1078,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  733 02a3 AD020000 		.4byte	0x2ad
  734 02a7 12       		.uleb128 0x12
  735 02a8 01       		.byte	0x1
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 19
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 19
 
 
  736 02a9 50       		.byte	0x50
@@ -1101,7 +1101,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  753 02c6 00       		.byte	0
  754 02c7 00       		.byte	0
  755 02c8 15       		.uleb128 0x15
- 756 02c9 9A000000 		.4byte	.LASF29
+ 756 02c9 C4000000 		.4byte	.LASF29
  757 02cd 01       		.byte	0x1
  758 02ce 22       		.byte	0x22
  759 02cf 10010000 		.4byte	0x110
@@ -1109,14 +1109,14 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  761 02d4 03       		.byte	0x3
  762 02d5 00000000 		.4byte	USBFS_backup
  763 02d9 16       		.uleb128 0x16
- 764 02da 61000000 		.4byte	.LASF30
+ 764 02da 5A000000 		.4byte	.LASF30
  765 02de 04       		.byte	0x4
  766 02df 1A02     		.2byte	0x21a
  767 02e1 BB000000 		.4byte	0xbb
  768 02e5 01       		.byte	0x1
  769 02e6 01       		.byte	0x1
  770 02e7 16       		.uleb128 0x16
- 771 02e8 A7000000 		.4byte	.LASF31
+ 771 02e8 D1000000 		.4byte	.LASF31
  772 02ec 05       		.byte	0x5
  773 02ed 1606     		.2byte	0x616
  774 02ef F5020000 		.4byte	0x2f5
@@ -1126,25 +1126,25 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  778 02f6 45000000 		.4byte	0x45
  779 02fa 17       		.uleb128 0x17
  780 02fb 01       		.byte	0x1
- 781 02fc 4B000000 		.4byte	.LASF38
+ 781 02fc 44000000 		.4byte	.LASF38
  782 0300 07       		.byte	0x7
  783 0301 6B       		.byte	0x6b
  784 0302 01       		.byte	0x1
  785 0303 01       		.byte	0x1
  786 0304 18       		.uleb128 0x18
  787 0305 01       		.byte	0x1
- 788 0306 F5000000 		.4byte	.LASF39
+ 788 0306 1F010000 		.4byte	.LASF39
  789 030a 06       		.byte	0x6
  790 030b 7E       		.byte	0x7e
  791 030c 01       		.byte	0x1
  792 030d 7A000000 		.4byte	0x7a
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 20
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 20
 
 
  793 0311 01       		.byte	0x1
  794 0312 19       		.uleb128 0x19
  795 0313 01       		.byte	0x1
- 796 0314 E4000000 		.4byte	.LASF32
+ 796 0314 0E010000 		.4byte	.LASF32
  797 0318 06       		.byte	0x6
  798 0319 78       		.byte	0x78
  799 031a 01       		.byte	0x1
@@ -1155,7 +1155,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  804 0325 00       		.byte	0
  805 0326 19       		.uleb128 0x19
  806 0327 01       		.byte	0x1
- 807 0328 22000000 		.4byte	.LASF33
+ 807 0328 46020000 		.4byte	.LASF33
  808 032c 06       		.byte	0x6
  809 032d 7F       		.byte	0x7f
  810 032e 01       		.byte	0x1
@@ -1166,7 +1166,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  815 0339 00       		.byte	0
  816 033a 1B       		.uleb128 0x1b
  817 033b 01       		.byte	0x1
- 818 033c 0C010000 		.4byte	.LASF40
+ 818 033c 22000000 		.4byte	.LASF40
  819 0340 06       		.byte	0x6
  820 0341 89       		.byte	0x89
  821 0342 01       		.byte	0x1
@@ -1180,7 +1180,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  829 0356 00       		.byte	0
  830 0357 19       		.uleb128 0x19
  831 0358 01       		.byte	0x1
- 832 0359 3F010000 		.4byte	.LASF34
+ 832 0359 5A010000 		.4byte	.LASF34
  833 035d 06       		.byte	0x6
  834 035e 8C       		.byte	0x8c
  835 035f 01       		.byte	0x1
@@ -1198,7 +1198,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  847 0377 7A       		.byte	0x7a
  848 0378 01       		.byte	0x1
  849 0379 01       		.byte	0x1
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 21
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 21
 
 
  850 037a 1A       		.uleb128 0x1a
@@ -1258,7 +1258,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  904 0030 0B       		.uleb128 0xb
  905 0031 0B       		.uleb128 0xb
  906 0032 3E       		.uleb128 0x3e
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 22
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 22
 
 
  907 0033 0B       		.uleb128 0xb
@@ -1318,7 +1318,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  961 0069 0A       		.uleb128 0xa
  962 006a 0D       		.uleb128 0xd
  963 006b 00       		.byte	0
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 23
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 23
 
 
  964 006c 03       		.uleb128 0x3
@@ -1378,7 +1378,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  1018 00a3 9742     		.uleb128 0x2117
  1019 00a5 0C       		.uleb128 0xc
  1020 00a6 01       		.uleb128 0x1
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 24
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 24
 
 
  1021 00a7 13       		.uleb128 0x13
@@ -1438,7 +1438,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  1075 00e1 10       		.uleb128 0x10
  1076 00e2 898201   		.uleb128 0x4109
  1077 00e5 00       		.byte	0
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 25
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 25
 
 
  1078 00e6 11       		.uleb128 0x11
@@ -1498,7 +1498,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  1132 0126 0B       		.uleb128 0xb
  1133 0127 49       		.uleb128 0x49
  1134 0128 13       		.uleb128 0x13
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 26
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 26
 
 
  1135 0129 02       		.uleb128 0x2
@@ -1558,7 +1558,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  1189 015f 0C       		.uleb128 0xc
  1190 0160 00       		.byte	0
  1191 0161 00       		.byte	0
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 27
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 27
 
 
  1192 0162 19       		.uleb128 0x19
@@ -1618,7 +1618,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  1246 0198 3A       		.uleb128 0x3a
  1247 0199 0B       		.uleb128 0xb
  1248 019a 3B       		.uleb128 0x3b
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 28
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 28
 
 
  1249 019b 0B       		.uleb128 0xb
@@ -1678,7 +1678,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  1303 0070 00000000 		.4byte	0
  1304              	.LLST3:
  1305 0074 0A000000 		.4byte	.LVL14
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 29
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 29
 
 
  1306 0078 12000000 		.4byte	.LVL15
@@ -1738,7 +1738,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  1353      7300
  1354              	.LASF17:
  1355 000e 72656733 		.ascii	"reg32\000"
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 30
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 30
 
 
  1355      3200
@@ -1747,203 +1747,204 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 1
  1357      535F5375 
  1357      7370656E 
  1357      6400
- 1358              	.LASF33:
- 1359 0022 43794578 		.ascii	"CyExitCriticalSection\000"
- 1359      69744372 
- 1359      69746963 
- 1359      616C5365 
- 1359      6374696F 
+ 1358              	.LASF40:
+ 1359 0022 4379496E 		.ascii	"CyIntSetVector\000"
+ 1359      74536574 
+ 1359      56656374 
+ 1359      6F7200
  1360              	.LASF3:
- 1361 0038 73686F72 		.ascii	"short unsigned int\000"
+ 1361 0031 73686F72 		.ascii	"short unsigned int\000"
  1361      7420756E 
  1361      7369676E 
  1361      65642069 
  1361      6E7400
  1362              	.LASF38:
- 1363 004b 55534246 		.ascii	"USBFS_ConfigReg\000"
+ 1363 0044 55534246 		.ascii	"USBFS_ConfigReg\000"
  1363      535F436F 
  1363      6E666967 
  1363      52656700 
  1364              	.LASF13:
- 1365 005b 666C6F61 		.ascii	"float\000"
+ 1365 0054 666C6F61 		.ascii	"float\000"
  1365      7400
  1366              	.LASF30:
- 1367 0061 55534246 		.ascii	"USBFS_configuration\000"
+ 1367 005a 55534246 		.ascii	"USBFS_configuration\000"
  1367      535F636F 
  1367      6E666967 
  1367      75726174 
  1367      696F6E00 
  1368              	.LASF1:
- 1369 0075 756E7369 		.ascii	"unsigned char\000"
+ 1369 006e 756E7369 		.ascii	"unsigned char\000"
  1369      676E6564 
  1369      20636861 
  1369      7200
  1370              	.LASF16:
- 1371 0083 72656738 		.ascii	"reg8\000"
+ 1371 007c 72656738 		.ascii	"reg8\000"
  1371      00
  1372              	.LASF5:
- 1373 0088 6C6F6E67 		.ascii	"long unsigned int\000"
+ 1373 0081 6C6F6E67 		.ascii	"long unsigned int\000"
  1373      20756E73 
  1373      69676E65 
  1373      6420696E 
  1373      7400
- 1374              	.LASF29:
- 1375 009a 55534246 		.ascii	"USBFS_backup\000"
- 1375      535F6261 
- 1375      636B7570 
- 1375      00
- 1376              	.LASF31:
- 1377 00a7 49544D5F 		.ascii	"ITM_RxBuffer\000"
- 1377      52784275 
- 1377      66666572 
- 1377      00
- 1378              	.LASF28:
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 31
+ 1374              	.LASF37:
+ 1375 0093 573A5C53 		.ascii	"W:\\SCSI2SD\\software\\SCSI2SD\\USB_Bootloader.cyds"
+ 1375      43534932 
+ 1375      53445C73 
+ 1375      6F667477 
+ 1375      6172655C 
+ 1376 00c2 6E00     		.ascii	"n\000"
+ 1377              	.LASF29:
+ 1378 00c4 55534246 		.ascii	"USBFS_backup\000"
+ 1378      535F6261 
+ 1378      636B7570 
+ 1378      00
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 31
 
 
- 1379 00b4 656E6162 		.ascii	"enableInterrupts\000"
- 1379      6C65496E 
- 1379      74657272 
- 1379      75707473 
- 1379      00
- 1380              	.LASF14:
- 1381 00c5 646F7562 		.ascii	"double\000"
- 1381      6C6500
- 1382              	.LASF11:
- 1383 00cc 75696E74 		.ascii	"uint16\000"
- 1383      313600
- 1384              	.LASF24:
- 1385 00d3 55534246 		.ascii	"USBFS_SaveConfig\000"
- 1385      535F5361 
- 1385      7665436F 
- 1385      6E666967 
- 1385      00
- 1386              	.LASF32:
- 1387 00e4 43794465 		.ascii	"CyDelayUs\000"
- 1387      6C617955 
- 1387      7300
- 1388              	.LASF12:
- 1389 00ee 75696E74 		.ascii	"uint32\000"
- 1389      333200
- 1390              	.LASF39:
- 1391 00f5 4379456E 		.ascii	"CyEnterCriticalSection\000"
- 1391      74657243 
- 1391      72697469 
- 1391      63616C53 
- 1391      65637469 
- 1392              	.LASF40:
- 1393 010c 4379496E 		.ascii	"CyIntSetVector\000"
- 1393      74536574 
- 1393      56656374 
- 1393      6F7200
- 1394              	.LASF8:
- 1395 011b 756E7369 		.ascii	"unsigned int\000"
- 1395      676E6564 
- 1395      20696E74 
- 1395      00
- 1396              	.LASF7:
- 1397 0128 6C6F6E67 		.ascii	"long long unsigned int\000"
- 1397      206C6F6E 
- 1397      6720756E 
- 1397      7369676E 
- 1397      65642069 
- 1398              	.LASF34:
- 1399 013f 4379496E 		.ascii	"CyIntSetPriority\000"
- 1399      74536574 
- 1399      5072696F 
- 1399      72697479 
- 1399      00
- 1400              	.LASF21:
- 1401 0150 6D6F6465 		.ascii	"mode\000"
- 1401      00
- 1402              	.LASF22:
- 1403 0155 55534246 		.ascii	"USBFS_BACKUP_STRUCT\000"
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 32
+ 1379              	.LASF31:
+ 1380 00d1 49544D5F 		.ascii	"ITM_RxBuffer\000"
+ 1380      52784275 
+ 1380      66666572 
+ 1380      00
+ 1381              	.LASF28:
+ 1382 00de 656E6162 		.ascii	"enableInterrupts\000"
+ 1382      6C65496E 
+ 1382      74657272 
+ 1382      75707473 
+ 1382      00
+ 1383              	.LASF14:
+ 1384 00ef 646F7562 		.ascii	"double\000"
+ 1384      6C6500
+ 1385              	.LASF11:
+ 1386 00f6 75696E74 		.ascii	"uint16\000"
+ 1386      313600
+ 1387              	.LASF24:
+ 1388 00fd 55534246 		.ascii	"USBFS_SaveConfig\000"
+ 1388      535F5361 
+ 1388      7665436F 
+ 1388      6E666967 
+ 1388      00
+ 1389              	.LASF32:
+ 1390 010e 43794465 		.ascii	"CyDelayUs\000"
+ 1390      6C617955 
+ 1390      7300
+ 1391              	.LASF12:
+ 1392 0118 75696E74 		.ascii	"uint32\000"
+ 1392      333200
+ 1393              	.LASF39:
+ 1394 011f 4379456E 		.ascii	"CyEnterCriticalSection\000"
+ 1394      74657243 
+ 1394      72697469 
+ 1394      63616C53 
+ 1394      65637469 
+ 1395              	.LASF8:
+ 1396 0136 756E7369 		.ascii	"unsigned int\000"
+ 1396      676E6564 
+ 1396      20696E74 
+ 1396      00
+ 1397              	.LASF7:
+ 1398 0143 6C6F6E67 		.ascii	"long long unsigned int\000"
+ 1398      206C6F6E 
+ 1398      6720756E 
+ 1398      7369676E 
+ 1398      65642069 
+ 1399              	.LASF34:
+ 1400 015a 4379496E 		.ascii	"CyIntSetPriority\000"
+ 1400      74536574 
+ 1400      5072696F 
+ 1400      72697479 
+ 1400      00
+ 1401              	.LASF21:
+ 1402 016b 6D6F6465 		.ascii	"mode\000"
+ 1402      00
+ 1403              	.LASF22:
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 32
 
 
- 1403      535F4241 
- 1403      434B5550 
- 1403      5F535452 
- 1403      55435400 
- 1404              	.LASF18:
- 1405 0169 63796973 		.ascii	"cyisraddress\000"
- 1405      72616464 
- 1405      72657373 
- 1405      00
- 1406              	.LASF9:
- 1407 0176 696E7433 		.ascii	"int32_t\000"
- 1407      325F7400 
- 1408              	.LASF19:
- 1409 017e 73697A65 		.ascii	"sizetype\000"
- 1409      74797065 
- 1409      00
- 1410              	.LASF6:
- 1411 0187 6C6F6E67 		.ascii	"long long int\000"
- 1411      206C6F6E 
- 1411      6720696E 
- 1411      7400
- 1412              	.LASF15:
- 1413 0195 63686172 		.ascii	"char\000"
- 1413      00
- 1414              	.LASF25:
- 1415 019a 55534246 		.ascii	"USBFS_RestoreConfig\000"
- 1415      535F5265 
- 1415      73746F72 
- 1415      65436F6E 
- 1415      66696700 
- 1416              	.LASF2:
- 1417 01ae 73686F72 		.ascii	"short int\000"
- 1417      7420696E 
- 1417      7400
- 1418              	.LASF36:
- 1419 01b8 2E5C4765 		.ascii	".\\Generated_Source\\PSoC5\\USBFS_pm.c\000"
- 1419      6E657261 
- 1419      7465645F 
- 1419      536F7572 
- 1419      63655C50 
- 1420              	.LASF10:
- 1421 01dc 75696E74 		.ascii	"uint8\000"
- 1421      3800
- 1422              	.LASF35:
- 1423 01e2 474E5520 		.ascii	"GNU C 4.7.3 20130312 (release) [ARM/embedded-4_7-br"
- 1423      4320342E 
- 1423      372E3320 
- 1423      32303133 
- 1423      30333132 
- 1424 0215 616E6368 		.ascii	"anch revision 196615]\000"
- 1424      20726576 
- 1424      6973696F 
- 1424      6E203139 
- 1424      36363135 
- 1425              	.LASF37:
- 1426 022b 573A5C53 		.ascii	"W:\\SCSI2SD\\USB_Bootloader.cydsn\000"
- 1426      43534932 
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccTOK9dp.s 			page 33
+ 1404 0170 55534246 		.ascii	"USBFS_BACKUP_STRUCT\000"
+ 1404      535F4241 
+ 1404      434B5550 
+ 1404      5F535452 
+ 1404      55435400 
+ 1405              	.LASF18:
+ 1406 0184 63796973 		.ascii	"cyisraddress\000"
+ 1406      72616464 
+ 1406      72657373 
+ 1406      00
+ 1407              	.LASF9:
+ 1408 0191 696E7433 		.ascii	"int32_t\000"
+ 1408      325F7400 
+ 1409              	.LASF19:
+ 1410 0199 73697A65 		.ascii	"sizetype\000"
+ 1410      74797065 
+ 1410      00
+ 1411              	.LASF6:
+ 1412 01a2 6C6F6E67 		.ascii	"long long int\000"
+ 1412      206C6F6E 
+ 1412      6720696E 
+ 1412      7400
+ 1413              	.LASF15:
+ 1414 01b0 63686172 		.ascii	"char\000"
+ 1414      00
+ 1415              	.LASF25:
+ 1416 01b5 55534246 		.ascii	"USBFS_RestoreConfig\000"
+ 1416      535F5265 
+ 1416      73746F72 
+ 1416      65436F6E 
+ 1416      66696700 
+ 1417              	.LASF2:
+ 1418 01c9 73686F72 		.ascii	"short int\000"
+ 1418      7420696E 
+ 1418      7400
+ 1419              	.LASF36:
+ 1420 01d3 2E5C4765 		.ascii	".\\Generated_Source\\PSoC5\\USBFS_pm.c\000"
+ 1420      6E657261 
+ 1420      7465645F 
+ 1420      536F7572 
+ 1420      63655C50 
+ 1421              	.LASF10:
+ 1422 01f7 75696E74 		.ascii	"uint8\000"
+ 1422      3800
+ 1423              	.LASF35:
+ 1424 01fd 474E5520 		.ascii	"GNU C 4.7.3 20130312 (release) [ARM/embedded-4_7-br"
+ 1424      4320342E 
+ 1424      372E3320 
+ 1424      32303133 
+ 1424      30333132 
+ 1425 0230 616E6368 		.ascii	"anch revision 196615]\000"
+ 1425      20726576 
+ 1425      6973696F 
+ 1425      6E203139 
+ 1425      36363135 
+ 1426              	.LASF33:
+ 1427 0246 43794578 		.ascii	"CyExitCriticalSection\000"
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccuoEjMf.s 			page 33
 
 
- 1426      53445C55 
- 1426      53425F42 
- 1426      6F6F746C 
- 1427              	.LASF27:
- 1428 024b 55534246 		.ascii	"USBFS_Resume\000"
- 1428      535F5265 
- 1428      73756D65 
- 1428      00
- 1429              	.LASF4:
- 1430 0258 6C6F6E67 		.ascii	"long int\000"
- 1430      20696E74 
- 1430      00
- 1431              	.LASF20:
- 1432 0261 656E6162 		.ascii	"enableState\000"
- 1432      6C655374 
- 1432      61746500 
- 1433              	.LASF0:
- 1434 026d 7369676E 		.ascii	"signed char\000"
- 1434      65642063 
- 1434      68617200 
- 1435              	.LASF23:
- 1436 0279 55534246 		.ascii	"USBFS_DP_ISR\000"
- 1436      535F4450 
- 1436      5F495352 
- 1436      00
- 1437              		.ident	"GCC: (GNU Tools for ARM Embedded Processors) 4.7.3 20130312 (release) [ARM/embedded-4_7-br
+ 1427      69744372 
+ 1427      69746963 
+ 1427      616C5365 
+ 1427      6374696F 
+ 1428              	.LASF27:
+ 1429 025c 55534246 		.ascii	"USBFS_Resume\000"
+ 1429      535F5265 
+ 1429      73756D65 
+ 1429      00
+ 1430              	.LASF4:
+ 1431 0269 6C6F6E67 		.ascii	"long int\000"
+ 1431      20696E74 
+ 1431      00
+ 1432              	.LASF20:
+ 1433 0272 656E6162 		.ascii	"enableState\000"
+ 1433      6C655374 
+ 1433      61746500 
+ 1434              	.LASF0:
+ 1435 027e 7369676E 		.ascii	"signed char\000"
+ 1435      65642063 
+ 1435      68617200 
+ 1436              	.LASF23:
+ 1437 028a 55534246 		.ascii	"USBFS_DP_ISR\000"
+ 1437      535F4450 
+ 1437      5F495352 
+ 1437      00
+ 1438              		.ident	"GCC: (GNU Tools for ARM Embedded Processors) 4.7.3 20130312 (release) [ARM/embedded-4_7-br

@@ -6,7 +6,7 @@
 
 #Build Date:         Mar 26 2013 14:54:34
 
-#File Generated:     Oct 26 2013 18:55:19
+#File Generated:     Mar 22 2014 22:32:51
 
 #Purpose:            
 
@@ -56,7 +56,7 @@ Design Statistics after Packing
 Device Utilization Summary after Packing
     Macrocells                  :	0/192
     UDBS                        :	0/24
-    IOs                         :	20/72
+    IOs                         :	25/72
 
 
 D2088: Phase 3, elapsed time : 0.0 (sec)
@@ -72,5 +72,5 @@ D2088: Phase 8, elapsed time : 0.0 (sec)
 
 D2054: Placement of the design completed successfully
 
-I2076: Total run-time: 1.3 sec.
+I2076: Total run-time: 1.2 sec.
 

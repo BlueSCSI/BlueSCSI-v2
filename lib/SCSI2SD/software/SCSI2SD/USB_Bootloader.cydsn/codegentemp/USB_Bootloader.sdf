@@ -1,6 +1,6 @@
 (DELAYFILE
  (SDFVERSION "IEEE 1497 4.0")
- (DATE "2013-10-26T08:55:25Z")
+ (DATE "2014-03-22T12:32:56Z")
  (DESIGN "USB_Bootloader")
  (VENDOR "Cypress Semiconductor")
  (PROGRAM "cydsfit")
@@ -12,7 +12,12 @@
   (INSTANCE *)
   (DELAY
    (ABSOLUTE
+    (INTERCONNECT ClockBlock.clk_bus_glb SD_PULLUP\(0\).in_clock (0.000:0.000:0.000))
     (INTERCONNECT ClockBlock.clk_bus_glb \\USBFS\:arb_int\\.clock (0.000:0.000:0.000))
+    (INTERCONNECT ClockBlock.clk_bus_glb SD_PULLUP\(1\).in_clock (0.000:0.000:0.000))
+    (INTERCONNECT ClockBlock.clk_bus_glb SD_PULLUP\(2\).in_clock (0.000:0.000:0.000))
+    (INTERCONNECT ClockBlock.clk_bus_glb SD_PULLUP\(3\).in_clock (0.000:0.000:0.000))
+    (INTERCONNECT ClockBlock.clk_bus_glb SD_PULLUP\(4\).in_clock (0.000:0.000:0.000))
     (INTERCONNECT ClockBlock.clk_bus_glb \\USBFS\:Dp\(0\)\\.in_clock (0.000:0.000:0.000))
     (INTERCONNECT ClockBlock.clk_bus_glb \\USBFS\:bus_reset\\.clock (0.000:0.000:0.000))
     (INTERCONNECT ClockBlock.clk_bus_glb \\USBFS\:dp_int\\.clock (0.000:0.000:0.000))
@@ -45,6 +50,11 @@
     (INTERCONNECT SCSI_Out_DBx\(5\)_PAD SCSI_Out_DBx\(5\).pad_in (0.000:0.000:0.000))
     (INTERCONNECT SCSI_Out_DBx\(6\)_PAD SCSI_Out_DBx\(6\).pad_in (0.000:0.000:0.000))
     (INTERCONNECT SCSI_Out_DBx\(7\)_PAD SCSI_Out_DBx\(7\).pad_in (0.000:0.000:0.000))
+    (INTERCONNECT SD_PULLUP\(0\)_PAD SD_PULLUP\(0\).pad_in (0.000:0.000:0.000))
+    (INTERCONNECT SD_PULLUP\(1\)_PAD SD_PULLUP\(1\).pad_in (0.000:0.000:0.000))
+    (INTERCONNECT SD_PULLUP\(2\)_PAD SD_PULLUP\(2\).pad_in (0.000:0.000:0.000))
+    (INTERCONNECT SD_PULLUP\(3\)_PAD SD_PULLUP\(3\).pad_in (0.000:0.000:0.000))
+    (INTERCONNECT SD_PULLUP\(4\)_PAD SD_PULLUP\(4\).pad_in (0.000:0.000:0.000))
    )
   )
  )

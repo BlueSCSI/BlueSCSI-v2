@@ -1,4 +1,4 @@
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 1
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccLNGxQg.s 			page 1
 
 
    1              		.syntax unified
@@ -58,7 +58,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 1
   29:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_CD);
   30:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_DBx_DB0);
   31:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_DBx_DB1);
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 2
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccLNGxQg.s 			page 2
 
 
   32:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_DBx_DB2);
@@ -118,7 +118,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 1
   64 0042 03F8041C 		strb	r1, [r3, #-4]
   27:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_REQ);
   65              		.loc 1 27 0
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 3
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccLNGxQg.s 			page 3
 
 
   66 0046 13F8062C 		ldrb	r2, [r3, #-6]	@ zero_extendqisi2
@@ -178,7 +178,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 1
   38:.\main.c      **** 	CyPins_ClearPin(SCSI_Out_DBP_raw);
  110              		.loc 1 38 0
  111 00c8 13F80F0C 		ldrb	r0, [r3, #-15]	@ zero_extendqisi2
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 4
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccLNGxQg.s 			page 4
 
 
  112 00cc 00F0FE01 		and	r1, r0, #254
@@ -217,7 +217,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 1
  141 000c 33000000 		.4byte	.LASF16
  142 0010 01       		.byte	0x1
  143 0011 C3000000 		.4byte	.LASF17
- 144 0015 17010000 		.4byte	.LASF18
+ 144 0015 0F010000 		.4byte	.LASF18
  145 0019 00000000 		.4byte	.Ldebug_ranges0+0
  146 001d 00000000 		.4byte	0
  147 0021 00000000 		.4byte	0
@@ -238,11 +238,11 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 1
  162 003f 02       		.byte	0x2
  163 0040 07       		.byte	0x7
  164 0041 0E000000 		.4byte	.LASF3
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 5
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccLNGxQg.s 			page 5
 
 
  165 0045 03       		.uleb128 0x3
- 166 0046 0F010000 		.4byte	.LASF9
+ 166 0046 40010000 		.4byte	.LASF9
  167 004a 02       		.byte	0x2
  168 004b 4F       		.byte	0x4f
  169 004c 50000000 		.4byte	0x50
@@ -297,8 +297,8 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 1
  218 00aa 02       		.uleb128 0x2
  219 00ab 04       		.byte	0x4
  220 00ac 07       		.byte	0x7
- 221 00ad 40010000 		.4byte	.LASF15
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 6
+ 221 00ad 51010000 		.4byte	.LASF15
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccLNGxQg.s 			page 6
 
 
  222 00b1 06       		.uleb128 0x6
@@ -337,7 +337,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 1
  255 00fa 45000000 		.4byte	0x45
  256 00fe 0B       		.uleb128 0xb
  257 00ff 01       		.byte	0x1
- 258 0100 37010000 		.4byte	.LASF22
+ 258 0100 48010000 		.4byte	.LASF22
  259 0104 05       		.byte	0x5
  260 0105 93       		.byte	0x93
  261 0106 01       		.byte	0x1
@@ -358,7 +358,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 1
  276 000a 0E       		.uleb128 0xe
  277 000b 55       		.uleb128 0x55
  278 000c 06       		.uleb128 0x6
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 7
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccLNGxQg.s 			page 7
 
 
  279 000d 11       		.uleb128 0x11
@@ -418,7 +418,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 1
  333 0043 0E       		.uleb128 0xe
  334 0044 3A       		.uleb128 0x3a
  335 0045 0B       		.uleb128 0xb
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 8
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccLNGxQg.s 			page 8
 
 
  336 0046 3B       		.uleb128 0x3b
@@ -478,7 +478,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 1
  390 007f 34       		.uleb128 0x34
  391 0080 00       		.byte	0
  392 0081 03       		.uleb128 0x3
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 9
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccLNGxQg.s 			page 9
 
 
  393 0082 0E       		.uleb128 0xe
@@ -538,7 +538,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 1
  447 0010 00000000 		.4byte	.LFB57
  448 0014 E0000000 		.4byte	.LFE57-.LFB57
  449 0018 00000000 		.4byte	0
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 10
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccLNGxQg.s 			page 10
 
 
  450 001c 00000000 		.4byte	0
@@ -598,7 +598,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 1
  476 0094 6C6F6E67 		.ascii	"long long unsigned int\000"
  476      206C6F6E 
  476      6720756E 
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 11
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccLNGxQg.s 			page 11
 
 
  476      7369676E 
@@ -645,24 +645,25 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 1
  498 0105 73686F72 		.ascii	"short int\000"
  498      7420696E 
  498      7400
- 499              	.LASF9:
- 500 010f 696E7433 		.ascii	"int32_t\000"
- 500      325F7400 
- 501              	.LASF18:
- 502 0117 573A5C53 		.ascii	"W:\\SCSI2SD\\USB_Bootloader.cydsn\000"
- 502      43534932 
- 502      53445C55 
- 502      53425F42 
- 502      6F6F746C 
- 503              	.LASF22:
- 504 0137 424C5F53 		.ascii	"BL_Start\000"
- 504      74617274 
- 504      00
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccoNPR8i.s 			page 12
+ 499              	.LASF18:
+ 500 010f 573A5C53 		.ascii	"W:\\SCSI2SD\\software\\SCSI2SD\\USB_Bootloader.cyds"
+ 500      43534932 
+ 500      53445C73 
+ 500      6F667477 
+ 500      6172655C 
+ 501 013e 6E00     		.ascii	"n\000"
+ 502              	.LASF9:
+ 503 0140 696E7433 		.ascii	"int32_t\000"
+ 503      325F7400 
+ 504              	.LASF22:
+ 505 0148 424C5F53 		.ascii	"BL_Start\000"
+ 505      74617274 
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccLNGxQg.s 			page 12
 
 
- 505              	.LASF15:
- 506 0140 73697A65 		.ascii	"sizetype\000"
- 506      74797065 
- 506      00
- 507              		.ident	"GCC: (GNU Tools for ARM Embedded Processors) 4.7.3 20130312 (release) [ARM/embedded-4_7-br
+ 505      00
+ 506              	.LASF15:
+ 507 0151 73697A65 		.ascii	"sizetype\000"
+ 507      74797065 
+ 507      00
+ 508              		.ident	"GCC: (GNU Tools for ARM Embedded Processors) 4.7.3 20130312 (release) [ARM/embedded-4_7-br

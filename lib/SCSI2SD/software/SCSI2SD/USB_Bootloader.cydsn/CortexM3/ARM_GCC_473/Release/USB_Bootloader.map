@@ -439,7 +439,7 @@ END GROUP
                 0x00000800                ee_size = (CY_APPL_LOADABLE && ! (CY_EE_IN_BTLDR))?(CY_EE_SIZE / CY_APPL_MAX):CY_EE_SIZE
                 0x00000000                PROVIDE (CY_ECC_OFFSET, ecc_offset)
 
-.text           0x00000000     0x1ff4
+.text           0x00000000     0x2004
  CREATE_OBJECT_SYMBOLS
                 0x00000000                PROVIDE (__cy_interrupt_vector, RomVectors)
  *(.romvectors)
@@ -469,234 +469,234 @@ END GROUP
                 0x000001b8       0x68 .\CortexM3\ARM_GCC_473\Release\Cm3Start.o
                 0x000001b8                initialize_psoc
  .text.cyfitter_cfg
-                0x00000220      0x1c8 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(cyfitter_cfg.o)
+                0x00000220      0x1d8 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(cyfitter_cfg.o)
                 0x00000220                cyfitter_cfg
  .text.BL_LaunchBootloadable
-                0x000003e8        0x2 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(BL.o)
- *fill*         0x000003ea        0x2 00
+                0x000003f8        0x2 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(BL.o)
+ *fill*         0x000003fa        0x2 00
  .text.BL_GetMetadata.constprop.1
-                0x000003ec       0x8c .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(BL.o)
+                0x000003fc       0x8c .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(BL.o)
  .text.BL_ValidateBootloadable.constprop.0
-                0x00000478       0x84 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(BL.o)
+                0x00000488       0x84 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(BL.o)
  .text.BL_HostLink
-                0x000004fc      0x384 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(BL.o)
+                0x0000050c      0x384 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(BL.o)
  .text.BL_Start
-                0x00000880       0x80 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(BL.o)
-                0x00000880                BL_Start
+                0x00000890       0x80 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(BL.o)
+                0x00000890                BL_Start
  .text.CyBtldr_CheckLaunch
-                0x00000900       0x30 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(BL.o)
-                0x00000900                CyBtldr_CheckLaunch
- .text          0x00000930       0x28 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyBootAsmGnu.o)
-                0x00000930                CyDelayCycles
-                0x00000944                CyEnterCriticalSection
-                0x0000094c                CyExitCriticalSection
+                0x00000910       0x30 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(BL.o)
+                0x00000910                CyBtldr_CheckLaunch
+ .text          0x00000940       0x28 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyBootAsmGnu.o)
+                0x00000940                CyDelayCycles
+                0x00000954                CyEnterCriticalSection
+                0x0000095c                CyExitCriticalSection
  .text.CySetTempInt.part.0
-                0x00000958       0x54 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyFlash.o)
+                0x00000968       0x54 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyFlash.o)
  .text.CySetTemp
-                0x000009ac       0x28 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyFlash.o)
-                0x000009ac                CySetTemp
+                0x000009bc       0x28 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyFlash.o)
+                0x000009bc                CySetTemp
  .text.CySetFlashEEBuffer
-                0x000009d4       0x2c .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyFlash.o)
-                0x000009d4                CySetFlashEEBuffer
+                0x000009e4       0x2c .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyFlash.o)
+                0x000009e4                CySetFlashEEBuffer
  .text.CyWriteRowFull
-                0x00000a00       0xa0 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyFlash.o)
-                0x00000a00                CyWriteRowFull
+                0x00000a10       0xa0 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyFlash.o)
+                0x00000a10                CyWriteRowFull
  .text.CyEEPROM_Start
-                0x00000aa0       0x18 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyFlash.o)
-                0x00000aa0                CyEEPROM_Start
- .text.CyHalt   0x00000ab8        0x4 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyLib.o)
-                0x00000ab8                CyHalt
+                0x00000ab0       0x18 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyFlash.o)
+                0x00000ab0                CyEEPROM_Start
+ .text.CyHalt   0x00000ac8        0x4 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyLib.o)
+                0x00000ac8                CyHalt
  .text.CySoftwareReset
-                0x00000abc       0x10 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyLib.o)
-                0x00000abc                CySoftwareReset
- .text.CyDelay  0x00000acc       0x28 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyLib.o)
-                0x00000acc                CyDelay
+                0x00000acc       0x10 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyLib.o)
+                0x00000acc                CySoftwareReset
+ .text.CyDelay  0x00000adc       0x28 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyLib.o)
+                0x00000adc                CyDelay
  .text.CyDelayUs
-                0x00000af4       0x10 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyLib.o)
-                0x00000af4                CyDelayUs
+                0x00000b04       0x10 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyLib.o)
+                0x00000b04                CyDelayUs
  .text.CyIntSetVector
-                0x00000b04       0x1c .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyLib.o)
-                0x00000b04                CyIntSetVector
+                0x00000b14       0x1c .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyLib.o)
+                0x00000b14                CyIntSetVector
  .text.CyIntSetPriority
-                0x00000b20       0x14 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyLib.o)
-                0x00000b20                CyIntSetPriority
+                0x00000b30       0x14 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyLib.o)
+                0x00000b30                CyIntSetPriority
  .text.CySpcStart
-                0x00000b34       0x24 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CySpc.o)
-                0x00000b34                CySpcStart
+                0x00000b44       0x24 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CySpc.o)
+                0x00000b44                CySpcStart
  .text.CySpcReadData
-                0x00000b58       0x34 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CySpc.o)
-                0x00000b58                CySpcReadData
+                0x00000b68       0x34 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CySpc.o)
+                0x00000b68                CySpcReadData
  .text.CySpcLoadRow
-                0x00000b8c       0x4c .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CySpc.o)
-                0x00000b8c                CySpcLoadRow
+                0x00000b9c       0x4c .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CySpc.o)
+                0x00000b9c                CySpcLoadRow
  .text.CySpcWriteRow
-                0x00000bd8       0x48 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CySpc.o)
-                0x00000bd8                CySpcWriteRow
+                0x00000be8       0x48 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CySpc.o)
+                0x00000be8                CySpcWriteRow
  .text.CySpcGetTemp
-                0x00000c20       0x3c .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CySpc.o)
-                0x00000c20                CySpcGetTemp
+                0x00000c30       0x3c .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CySpc.o)
+                0x00000c30                CySpcGetTemp
  .text.CySpcLock
-                0x00000c5c       0x40 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CySpc.o)
-                0x00000c5c                CySpcLock
+                0x00000c6c       0x40 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CySpc.o)
+                0x00000c6c                CySpcLock
  .text.CySpcUnlock
-                0x00000c9c       0x34 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CySpc.o)
-                0x00000c9c                CySpcUnlock
+                0x00000cac       0x34 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CySpc.o)
+                0x00000cac                CySpcUnlock
  .text.USBFS_CyBtldrCommStart
-                0x00000cd0       0x18 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_boot.o)
-                0x00000cd0                USBFS_CyBtldrCommStart
+                0x00000ce0       0x18 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_boot.o)
+                0x00000ce0                USBFS_CyBtldrCommStart
  .text.USBFS_CyBtldrCommReset
-                0x00000ce8        0x6 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_boot.o)
-                0x00000ce8                USBFS_CyBtldrCommReset
- *fill*         0x00000cee        0x2 00
+                0x00000cf8        0x6 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_boot.o)
+                0x00000cf8                USBFS_CyBtldrCommReset
+ *fill*         0x00000cfe        0x2 00
  .text.USBFS_CyBtldrCommWrite
-                0x00000cf0       0x54 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_boot.o)
-                0x00000cf0                USBFS_CyBtldrCommWrite
+                0x00000d00       0x54 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_boot.o)
+                0x00000d00                USBFS_CyBtldrCommWrite
  .text.USBFS_CyBtldrCommRead
-                0x00000d44       0xb0 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_boot.o)
-                0x00000d44                USBFS_CyBtldrCommRead
+                0x00000d54       0xb0 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_boot.o)
+                0x00000d54                USBFS_CyBtldrCommRead
  .text.USBFS_Init
-                0x00000df4      0x114 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS.o)
-                0x00000df4                USBFS_Init
+                0x00000e04      0x114 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS.o)
+                0x00000e04                USBFS_Init
  .text.USBFS_InitComponent
-                0x00000f08       0x98 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS.o)
-                0x00000f08                USBFS_InitComponent
+                0x00000f18       0x98 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS.o)
+                0x00000f18                USBFS_InitComponent
  .text.USBFS_Start
-                0x00000fa0       0x24 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS.o)
-                0x00000fa0                USBFS_Start
+                0x00000fb0       0x24 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS.o)
+                0x00000fb0                USBFS_Start
  .text.USBFS_ReInitComponent
-                0x00000fc4       0x58 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS.o)
-                0x00000fc4                USBFS_ReInitComponent
+                0x00000fd4       0x58 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS.o)
+                0x00000fd4                USBFS_ReInitComponent
  .text.USBFS_GetConfiguration
-                0x0000101c        0xc .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS.o)
-                0x0000101c                USBFS_GetConfiguration
+                0x0000102c        0xc .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS.o)
+                0x0000102c                USBFS_GetConfiguration
  .text.USBFS_IsConfigurationChanged
-                0x00001028       0x14 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS.o)
-                0x00001028                USBFS_IsConfigurationChanged
+                0x00001038       0x14 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS.o)
+                0x00001038                USBFS_IsConfigurationChanged
  .text.USBFS_GetEPState
-                0x0000103c       0x10 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS.o)
-                0x0000103c                USBFS_GetEPState
+                0x0000104c       0x10 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS.o)
+                0x0000104c                USBFS_GetEPState
  .text.USBFS_GetEPCount
-                0x0000104c       0x2c .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS.o)
-                0x0000104c                USBFS_GetEPCount
+                0x0000105c       0x2c .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS.o)
+                0x0000105c                USBFS_GetEPCount
  .text.USBFS_LoadInEP
-                0x00001078       0x7c .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS.o)
-                0x00001078                USBFS_LoadInEP
+                0x00001088       0x7c .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS.o)
+                0x00001088                USBFS_LoadInEP
  .text.USBFS_EnableOutEP
-                0x000010f4       0x28 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS.o)
-                0x000010f4                USBFS_EnableOutEP
+                0x00001104       0x28 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS.o)
+                0x00001104                USBFS_EnableOutEP
  .text.USBFS_ReadOutEP
-                0x0000111c       0x4c .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS.o)
-                0x0000111c                USBFS_ReadOutEP
+                0x0000112c       0x4c .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS.o)
+                0x0000112c                USBFS_ReadOutEP
  .text.USBFS_LoadEP0
-                0x00001168       0x94 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
-                0x00001168                USBFS_LoadEP0
+                0x00001178       0x94 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
+                0x00001178                USBFS_LoadEP0
  .text.USBFS_InitZeroLengthControlTransfer
-                0x000011fc       0x34 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
-                0x000011fc                USBFS_InitZeroLengthControlTransfer
+                0x0000120c       0x34 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
+                0x0000120c                USBFS_InitZeroLengthControlTransfer
  .text.USBFS_ControlWriteDataStage
-                0x00001230       0x74 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
-                0x00001230                USBFS_ControlWriteDataStage
+                0x00001240       0x74 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
+                0x00001240                USBFS_ControlWriteDataStage
  .text.USBFS_InitNoDataControlTransfer
-                0x000012a4       0x2c .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
-                0x000012a4                USBFS_InitNoDataControlTransfer
+                0x000012b4       0x2c .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
+                0x000012b4                USBFS_InitNoDataControlTransfer
  .text.USBFS_UpdateStatusBlock
-                0x000012d0       0x20 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
-                0x000012d0                USBFS_UpdateStatusBlock
+                0x000012e0       0x20 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
+                0x000012e0                USBFS_UpdateStatusBlock
  .text.USBFS_NoDataControlStatusStage
-                0x000012f0       0x3c .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
-                0x000012f0                USBFS_NoDataControlStatusStage
+                0x00001300       0x3c .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
+                0x00001300                USBFS_NoDataControlStatusStage
  .text.USBFS_ControlWriteStatusStage
-                0x0000132c       0x20 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
-                0x0000132c                USBFS_ControlWriteStatusStage
+                0x0000133c       0x20 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
+                0x0000133c                USBFS_ControlWriteStatusStage
  .text.USBFS_HandleIN
-                0x0000134c       0x24 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
-                0x0000134c                USBFS_HandleIN
+                0x0000135c       0x24 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
+                0x0000135c                USBFS_HandleIN
  .text.USBFS_ControlReadStatusStage
-                0x00001370       0x34 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
-                0x00001370                USBFS_ControlReadStatusStage
+                0x00001380       0x34 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
+                0x00001380                USBFS_ControlReadStatusStage
  .text.USBFS_HandleOUT
-                0x000013a4       0x38 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
-                0x000013a4                USBFS_HandleOUT
+                0x000013b4       0x38 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
+                0x000013b4                USBFS_HandleOUT
  .text.USBFS_HandleSetup
-                0x000013dc       0x54 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
-                0x000013dc                USBFS_HandleSetup
+                0x000013ec       0x54 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
+                0x000013ec                USBFS_HandleSetup
  .text.USBFS_EP_0_ISR
-                0x00001430       0xa0 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
-                0x00001430                USBFS_EP_0_ISR
+                0x00001440       0xa0 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
+                0x00001440                USBFS_EP_0_ISR
  .text.USBFS_InitializeStatusBlock
-                0x000014d0       0x20 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
-                0x000014d0                USBFS_InitializeStatusBlock
+                0x000014e0       0x20 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
+                0x000014e0                USBFS_InitializeStatusBlock
  .text.USBFS_InitControlWrite
-                0x000014f0       0x48 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
-                0x000014f0                USBFS_InitControlWrite
+                0x00001500       0x48 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
+                0x00001500                USBFS_InitControlWrite
  .text.USBFS_InitControlRead
-                0x00001538       0x50 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
-                0x00001538                USBFS_InitControlRead
+                0x00001548       0x50 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
+                0x00001548                USBFS_InitControlRead
  .text.USBFS_EP_1_ISR
-                0x00001588       0x34 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_episr.o)
-                0x00001588                USBFS_EP_1_ISR
+                0x00001598       0x34 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_episr.o)
+                0x00001598                USBFS_EP_1_ISR
  .text.USBFS_EP_2_ISR
-                0x000015bc       0x34 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_episr.o)
-                0x000015bc                USBFS_EP_2_ISR
+                0x000015cc       0x34 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_episr.o)
+                0x000015cc                USBFS_EP_2_ISR
  .text.USBFS_SOF_ISR
-                0x000015f0        0x2 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_episr.o)
-                0x000015f0                USBFS_SOF_ISR
+                0x00001600        0x2 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_episr.o)
+                0x00001600                USBFS_SOF_ISR
  .text.USBFS_BUS_RESET_ISR
-                0x000015f2        0x4 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_episr.o)
-                0x000015f2                USBFS_BUS_RESET_ISR
- *fill*         0x000015f6        0x2 00
+                0x00001602        0x4 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_episr.o)
+                0x00001602                USBFS_BUS_RESET_ISR
+ *fill*         0x00001606        0x2 00
  .text.USBFS_FindHidClassDecriptor
-                0x000015f8       0x40 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_hid.o)
-                0x000015f8                USBFS_FindHidClassDecriptor
+                0x00001608       0x40 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_hid.o)
+                0x00001608                USBFS_FindHidClassDecriptor
  .text.USBFS_FindReportDescriptor
-                0x00001638       0x48 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_hid.o)
-                0x00001638                USBFS_FindReportDescriptor
+                0x00001648       0x48 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_hid.o)
+                0x00001648                USBFS_FindReportDescriptor
  .text.USBFS_FindReport
-                0x00001680       0x74 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_hid.o)
-                0x00001680                USBFS_FindReport
+                0x00001690       0x74 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_hid.o)
+                0x00001690                USBFS_FindReport
  .text.USBFS_DispatchHIDClassRqst
-                0x000016f4      0x110 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_hid.o)
-                0x000016f4                USBFS_DispatchHIDClassRqst
+                0x00001704      0x110 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_hid.o)
+                0x00001704                USBFS_DispatchHIDClassRqst
  .text.USBFS_ConfigReg
-                0x00001804       0xb4 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_std.o)
-                0x00001804                USBFS_ConfigReg
+                0x00001814       0xb4 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_std.o)
+                0x00001814                USBFS_ConfigReg
  .text.USBFS_GetConfigTablePtr
-                0x000018b8       0x1c .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_std.o)
-                0x000018b8                USBFS_GetConfigTablePtr
+                0x000018c8       0x1c .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_std.o)
+                0x000018c8                USBFS_GetConfigTablePtr
  .text.USBFS_ConfigAltChanged
-                0x000018d4      0x128 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_std.o)
-                0x000018d4                USBFS_ConfigAltChanged
+                0x000018e4      0x128 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_std.o)
+                0x000018e4                USBFS_ConfigAltChanged
  .text.USBFS_GetInterfaceClassTablePtr
-                0x000019fc       0x20 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_std.o)
-                0x000019fc                USBFS_GetInterfaceClassTablePtr
+                0x00001a0c       0x20 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_std.o)
+                0x00001a0c                USBFS_GetInterfaceClassTablePtr
  .text.USBFS_Config
-                0x00001a1c      0x168 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_std.o)
-                0x00001a1c                USBFS_Config
+                0x00001a2c      0x168 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_std.o)
+                0x00001a2c                USBFS_Config
  .text.USBFS_SetEndpointHalt
-                0x00001b84       0x58 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_std.o)
-                0x00001b84                USBFS_SetEndpointHalt
+                0x00001b94       0x58 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_std.o)
+                0x00001b94                USBFS_SetEndpointHalt
  .text.USBFS_ClearEndpointHalt
-                0x00001bdc       0x7c .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_std.o)
-                0x00001bdc                USBFS_ClearEndpointHalt
+                0x00001bec       0x7c .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_std.o)
+                0x00001bec                USBFS_ClearEndpointHalt
  .text.USBFS_ValidateAlternateSetting
-                0x00001c58       0x48 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_std.o)
-                0x00001c58                USBFS_ValidateAlternateSetting
+                0x00001c68       0x48 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_std.o)
+                0x00001c68                USBFS_ValidateAlternateSetting
  .text.USBFS_HandleStandardRqst
-                0x00001ca0      0x274 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_std.o)
-                0x00001ca0                USBFS_HandleStandardRqst
+                0x00001cb0      0x274 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_std.o)
+                0x00001cb0                USBFS_HandleStandardRqst
  .text.USBFS_HandleVendorRqst
-                0x00001f14       0x18 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_vnd.o)
-                0x00001f14                USBFS_HandleVendorRqst
+                0x00001f24       0x18 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_vnd.o)
+                0x00001f24                USBFS_HandleVendorRqst
  .text.USBFS_DispatchClassRqst
-                0x00001f2c       0x50 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_cls.o)
-                0x00001f2c                USBFS_DispatchClassRqst
+                0x00001f3c       0x50 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_cls.o)
+                0x00001f3c                USBFS_DispatchClassRqst
  .text.__libc_init_array
-                0x00001f7c       0x4c c:/program files (x86)/cypress/psoc creator/3.0/psoc creator/import/gnu_cs/arm/4.7.3/bin/../lib/gcc/arm-none-eabi/4.7.3/../../../../arm-none-eabi/lib/armv7-m\libc_s.a(lib_a-init.o)
-                0x00001f7c                __libc_init_array
- .text.memcpy   0x00001fc8       0x12 c:/program files (x86)/cypress/psoc creator/3.0/psoc creator/import/gnu_cs/arm/4.7.3/bin/../lib/gcc/arm-none-eabi/4.7.3/../../../../arm-none-eabi/lib/armv7-m\libc_s.a(lib_a-memcpy.o)
-                0x00001fc8                memcpy
- .text.memset   0x00001fda       0x10 c:/program files (x86)/cypress/psoc creator/3.0/psoc creator/import/gnu_cs/arm/4.7.3/bin/../lib/gcc/arm-none-eabi/4.7.3/../../../../arm-none-eabi/lib/armv7-m\libc_s.a(lib_a-memset.o)
-                0x00001fda                memset
+                0x00001f8c       0x4c c:/program files (x86)/cypress/psoc creator/3.0/psoc creator/import/gnu_cs/arm/4.7.3/bin/../lib/gcc/arm-none-eabi/4.7.3/../../../../arm-none-eabi/lib/armv7-m\libc_s.a(lib_a-init.o)
+                0x00001f8c                __libc_init_array
+ .text.memcpy   0x00001fd8       0x12 c:/program files (x86)/cypress/psoc creator/3.0/psoc creator/import/gnu_cs/arm/4.7.3/bin/../lib/gcc/arm-none-eabi/4.7.3/../../../../arm-none-eabi/lib/armv7-m\libc_s.a(lib_a-memcpy.o)
+                0x00001fd8                memcpy
+ .text.memset   0x00001fea       0x10 c:/program files (x86)/cypress/psoc creator/3.0/psoc creator/import/gnu_cs/arm/4.7.3/bin/../lib/gcc/arm-none-eabi/4.7.3/../../../../arm-none-eabi/lib/armv7-m\libc_s.a(lib_a-memset.o)
+                0x00001fea                memset
  *(.plt)
  *(.gnu.warning)
  *(.glue_7t)
@@ -706,97 +706,97 @@ END GROUP
  *(.vfp11_veneer)
  .vfp11_veneer  0x00000000        0x0 linker stubs
  *(.bootloader)
- *fill*         0x00001fea        0x2 00
- .bootloader    0x00001fec        0x8 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(BL.o)
-                0x00001fec                BL_SizeBytes
-                0x00001ff0                BL_Checksum
+ *fill*         0x00001ffa        0x2 00
+ .bootloader    0x00001ffc        0x8 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(BL.o)
+                0x00001ffc                BL_SizeBytes
+                0x00002000                BL_Checksum
  *(.ARM.extab* .gnu.linkonce.armextab.*)
  *(.gcc_except_table)
 
-.v4_bx          0x00001ff4        0x0
+.v4_bx          0x00002004        0x0
  .v4_bx         0x00000000        0x0 linker stubs
 
-.iplt           0x00001ff4        0x0
+.iplt           0x00002004        0x0
  .iplt          0x00000000        0x0 c:/program files (x86)/cypress/psoc creator/3.0/psoc creator/import/gnu_cs/arm/4.7.3/bin/../lib/gcc/arm-none-eabi/4.7.3/armv7-m/crtbegin.o
 
 .eh_frame_hdr
  *(.eh_frame_hdr)
 
-.eh_frame       0x00001ff4        0x4
+.eh_frame       0x00002004        0x4
  *(.eh_frame)
- .eh_frame      0x00001ff4        0x0 c:/program files (x86)/cypress/psoc creator/3.0/psoc creator/import/gnu_cs/arm/4.7.3/bin/../lib/gcc/arm-none-eabi/4.7.3/armv7-m/crtbegin.o
- .eh_frame      0x00001ff4        0x4 c:/program files (x86)/cypress/psoc creator/3.0/psoc creator/import/gnu_cs/arm/4.7.3/bin/../lib/gcc/arm-none-eabi/4.7.3/armv7-m/crtend.o
-                0x00001ff8                PROVIDE (__exidx_start, .)
+ .eh_frame      0x00002004        0x0 c:/program files (x86)/cypress/psoc creator/3.0/psoc creator/import/gnu_cs/arm/4.7.3/bin/../lib/gcc/arm-none-eabi/4.7.3/armv7-m/crtbegin.o
+ .eh_frame      0x00002004        0x4 c:/program files (x86)/cypress/psoc creator/3.0/psoc creator/import/gnu_cs/arm/4.7.3/bin/../lib/gcc/arm-none-eabi/4.7.3/armv7-m/crtend.o
+                0x00002008                PROVIDE (__exidx_start, .)
 
 .ARM.exidx
  *(.ARM.exidx* .gnu.linkonce.armexidx.*)
-                0x00001ff8                __exidx_end = .
+                0x00002008                __exidx_end = .
 
-.rodata         0x00001ff8      0x240
+.rodata         0x00002008      0x248
  *(.rodata .rodata.* .gnu.linkonce.r.*)
- .rodata        0x00001ff8       0xb0 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(cyfitter_cfg.o)
- .rodata        0x000020a8        0x8 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(BL.o)
- .rodata        0x000020b0      0x154 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_descr.o)
-                0x000020b0                USBFS_TABLE
-                0x000020b8                USBFS_DEVICE0_TABLE
-                0x000020c8                USBFS_DEVICE0_CONFIGURATION0_TABLE
-                0x000020e8                USBFS_DEVICE0_CONFIGURATION0_INTERFACE_CLASS
-                0x000020ea                USBFS_DEVICE0_CONFIGURATION0_EP_SETTINGS_TABLE
-                0x000020fc                USBFS_DEVICE0_CONFIGURATION0_INTERFACE0_TABLE
-                0x00002104                USBFS_DEVICE0_CONFIGURATION0_INTERFACE0_ALTERNATE0_HID_TABLE
-                0x0000212c                USBFS_DEVICE0_CONFIGURATION0_INTERFACE0_ALTERNATE0_HID_OUT_RPT_TABLE
-                0x00002138                USBFS_DEVICE0_CONFIGURATION0_INTERFACE0_ALTERNATE0_HID_IN_RPT_TABLE
-                0x00002144                USBFS_HIDREPORT_DESCRIPTOR1
-                0x0000216c                USBFS_SN_STRING_DESCRIPTOR
-                0x00002176                USBFS_STRING_DESCRIPTORS
-                0x000021c9                USBFS_DEVICE0_CONFIGURATION0_DESCR
-                0x000021f2                USBFS_DEVICE0_DESCR
-                0x00002204                . = ALIGN (0x4)
+ .rodata        0x00002008       0xb8 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(cyfitter_cfg.o)
+ .rodata        0x000020c0        0x8 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(BL.o)
+ .rodata        0x000020c8      0x154 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_descr.o)
+                0x000020c8                USBFS_TABLE
+                0x000020d0                USBFS_DEVICE0_TABLE
+                0x000020e0                USBFS_DEVICE0_CONFIGURATION0_TABLE
+                0x00002100                USBFS_DEVICE0_CONFIGURATION0_INTERFACE_CLASS
+                0x00002102                USBFS_DEVICE0_CONFIGURATION0_EP_SETTINGS_TABLE
+                0x00002114                USBFS_DEVICE0_CONFIGURATION0_INTERFACE0_TABLE
+                0x0000211c                USBFS_DEVICE0_CONFIGURATION0_INTERFACE0_ALTERNATE0_HID_TABLE
+                0x00002144                USBFS_DEVICE0_CONFIGURATION0_INTERFACE0_ALTERNATE0_HID_OUT_RPT_TABLE
+                0x00002150                USBFS_DEVICE0_CONFIGURATION0_INTERFACE0_ALTERNATE0_HID_IN_RPT_TABLE
+                0x0000215c                USBFS_HIDREPORT_DESCRIPTOR1
+                0x00002184                USBFS_SN_STRING_DESCRIPTOR
+                0x0000218e                USBFS_STRING_DESCRIPTORS
+                0x000021e1                USBFS_DEVICE0_CONFIGURATION0_DESCR
+                0x0000220a                USBFS_DEVICE0_DESCR
+                0x0000221c                . = ALIGN (0x4)
  *(.init)
- .init          0x00002204        0x4 c:/program files (x86)/cypress/psoc creator/3.0/psoc creator/import/gnu_cs/arm/4.7.3/bin/../lib/gcc/arm-none-eabi/4.7.3/armv7-m/crti.o
-                0x00002204                _init
- .init          0x00002208        0x8 c:/program files (x86)/cypress/psoc creator/3.0/psoc creator/import/gnu_cs/arm/4.7.3/bin/../lib/gcc/arm-none-eabi/4.7.3/armv7-m/crtn.o
-                0x00002210                . = ALIGN (0x4)
-                0x00002210                __preinit_array_start = .
+ .init          0x0000221c        0x4 c:/program files (x86)/cypress/psoc creator/3.0/psoc creator/import/gnu_cs/arm/4.7.3/bin/../lib/gcc/arm-none-eabi/4.7.3/armv7-m/crti.o
+                0x0000221c                _init
+ .init          0x00002220        0x8 c:/program files (x86)/cypress/psoc creator/3.0/psoc creator/import/gnu_cs/arm/4.7.3/bin/../lib/gcc/arm-none-eabi/4.7.3/armv7-m/crtn.o
+                0x00002228                . = ALIGN (0x4)
+                0x00002228                __preinit_array_start = .
  *(.preinit_array)
-                0x00002210                __preinit_array_end = .
-                0x00002210                . = ALIGN (0x4)
-                0x00002210                __init_array_start = .
+                0x00002228                __preinit_array_end = .
+                0x00002228                . = ALIGN (0x4)
+                0x00002228                __init_array_start = .
  *(SORT(.init_array.*))
  *(.init_array)
- .init_array    0x00002210        0x4 c:/program files (x86)/cypress/psoc creator/3.0/psoc creator/import/gnu_cs/arm/4.7.3/bin/../lib/gcc/arm-none-eabi/4.7.3/armv7-m/crtbegin.o
- .init_array    0x00002214        0x4 .\CortexM3\ARM_GCC_473\Release\Cm3Start.o
-                0x00002218                __init_array_end = .
-                0x00002218                . = ALIGN (0x4)
+ .init_array    0x00002228        0x4 c:/program files (x86)/cypress/psoc creator/3.0/psoc creator/import/gnu_cs/arm/4.7.3/bin/../lib/gcc/arm-none-eabi/4.7.3/armv7-m/crtbegin.o
+ .init_array    0x0000222c        0x4 .\CortexM3\ARM_GCC_473\Release\Cm3Start.o
+                0x00002230                __init_array_end = .
+                0x00002230                . = ALIGN (0x4)
  *(.fini)
- .fini          0x00002218        0x4 c:/program files (x86)/cypress/psoc creator/3.0/psoc creator/import/gnu_cs/arm/4.7.3/bin/../lib/gcc/arm-none-eabi/4.7.3/armv7-m/crti.o
-                0x00002218                _fini
- .fini          0x0000221c        0x8 c:/program files (x86)/cypress/psoc creator/3.0/psoc creator/import/gnu_cs/arm/4.7.3/bin/../lib/gcc/arm-none-eabi/4.7.3/armv7-m/crtn.o
-                0x00002224                . = ALIGN (0x4)
-                0x00002224                __fini_array_start = .
+ .fini          0x00002230        0x4 c:/program files (x86)/cypress/psoc creator/3.0/psoc creator/import/gnu_cs/arm/4.7.3/bin/../lib/gcc/arm-none-eabi/4.7.3/armv7-m/crti.o
+                0x00002230                _fini
+ .fini          0x00002234        0x8 c:/program files (x86)/cypress/psoc creator/3.0/psoc creator/import/gnu_cs/arm/4.7.3/bin/../lib/gcc/arm-none-eabi/4.7.3/armv7-m/crtn.o
+                0x0000223c                . = ALIGN (0x4)
+                0x0000223c                __fini_array_start = .
  *(.fini_array)
- .fini_array    0x00002224        0x4 c:/program files (x86)/cypress/psoc creator/3.0/psoc creator/import/gnu_cs/arm/4.7.3/bin/../lib/gcc/arm-none-eabi/4.7.3/armv7-m/crtbegin.o
+ .fini_array    0x0000223c        0x4 c:/program files (x86)/cypress/psoc creator/3.0/psoc creator/import/gnu_cs/arm/4.7.3/bin/../lib/gcc/arm-none-eabi/4.7.3/armv7-m/crtbegin.o
  *(SORT(.fini_array.*))
-                0x00002228                __fini_array_end = .
-                0x00002228                . = ALIGN (0x4)
+                0x00002240                __fini_array_end = .
+                0x00002240                . = ALIGN (0x4)
  *crtbegin.o(.ctors)
  *(EXCLUDE_FILE(*crtend.o) .ctors)
  *(SORT(.ctors.*))
  *crtend.o(.ctors)
-                0x00002228                . = ALIGN (0x4)
+                0x00002240                . = ALIGN (0x4)
  *crtbegin.o(.dtors)
  *(EXCLUDE_FILE(*crtend.o) .dtors)
  *(SORT(.dtors.*))
  *crtend.o(.dtors)
-                0x00002228                . = ALIGN (0x4)
-                0x00002228                __cy_regions = .
-                0x00002228        0x4 LONG 0x2238 __cy_region_init_ram
-                0x0000222c        0x4 LONG 0x1fffc108 __cy_region_start_data
-                0x00002230        0x4 LONG 0x20 __cy_region_init_size_ram
-                0x00002234        0x4 LONG 0x150 __cy_region_zero_size_ram
-                0x00002238                __cy_regions_end = .
-                0x00002238                . = ALIGN (0x8)
-                0x00002238                _etext = .
+                0x00002240                . = ALIGN (0x4)
+                0x00002240                __cy_regions = .
+                0x00002240        0x4 LONG 0x2250 __cy_region_init_ram
+                0x00002244        0x4 LONG 0x1fffc108 __cy_region_start_data
+                0x00002248        0x4 LONG 0x20 __cy_region_init_size_ram
+                0x0000224c        0x4 LONG 0x150 __cy_region_zero_size_ram
+                0x00002250                __cy_regions_end = .
+                0x00002250                . = ALIGN (0x8)
+                0x00002250                _etext = .
 
 .ramvectors     0x1fffc000      0x100
                 0x1fffc000                __cy_region_start_ram = .
@@ -810,7 +810,7 @@ END GROUP
  .noinit        0x1fffc104        0x1 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyLib.o)
                 0x1fffc104                CyResetStatus
 
-.data           0x1fffc108       0x20 load address 0x00002238
+.data           0x1fffc108       0x20 load address 0x00002250
                 0x1fffc108                __cy_region_start_data = .
  *(.jcr)
  .jcr           0x1fffc108        0x0 c:/program files (x86)/cypress/psoc creator/3.0/psoc creator/import/gnu_cs/arm/4.7.3/bin/../lib/gcc/arm-none-eabi/4.7.3/armv7-m/crtbegin.o
@@ -832,10 +832,10 @@ END GROUP
  *(.ram)
                 0x1fffc128                _edata = .
 
-.igot.plt       0x1fffc128        0x0 load address 0x00002258
+.igot.plt       0x1fffc128        0x0 load address 0x00002270
  .igot.plt      0x00000000        0x0 c:/program files (x86)/cypress/psoc creator/3.0/psoc creator/import/gnu_cs/arm/4.7.3/bin/../lib/gcc/arm-none-eabi/4.7.3/armv7-m/crtbegin.o
 
-.bss            0x1fffc128      0x150 load address 0x00002258
+.bss            0x1fffc128      0x150 load address 0x00002270
                 0x1fffc128                PROVIDE (__bss_start__, .)
  *(.shbss)
  *(.bss .bss.* .gnu.linkonce.b.*)
@@ -886,11 +886,11 @@ END GROUP
                 0x1fffc278                __end = .
                 0x1fffc278                PROVIDE (end, .)
                 0x1fffc278                PROVIDE (__bss_end__, .)
-                0x00002238                __cy_region_init_ram = LOADADDR (.data)
+                0x00002250                __cy_region_init_ram = LOADADDR (.data)
                 0x00000020                __cy_region_init_size_ram = (_edata - ADDR (.data))
                 0x00000150                __cy_region_zero_size_ram = (_end - _edata)
 
-.heap           0x1fffc278      0x800 load address 0x00002258
+.heap           0x1fffc278      0x800 load address 0x00002270
                 0x1fffc278                . = _end
                 0x1fffca78                . = (. + 0x800)
  *fill*         0x1fffc278      0x800 00
@@ -941,7 +941,7 @@ END GROUP
  .cymeta        0x90500000        0xc .\CortexM3\ARM_GCC_473\Release\cymetadata.o
                 0x90500000                cy_metadata
 
-.rel.dyn        0x00002258        0x0 load address 0x9050000c
+.rel.dyn        0x00002270        0x0 load address 0x9050000c
  .rel.iplt      0x00000000        0x0 c:/program files (x86)/cypress/psoc creator/3.0/psoc creator/import/gnu_cs/arm/4.7.3/bin/../lib/gcc/arm-none-eabi/4.7.3/armv7-m/crtbegin.o
 
 .stab
@@ -1006,27 +1006,27 @@ END GROUP
 .debug_pubnames
  *(.debug_pubnames)
 
-.debug_info     0x00000000     0x658f
+.debug_info     0x00000000     0x65b7
  *(.debug_info .gnu.linkonce.wi.*)
  .debug_info    0x00000000      0x109 .\CortexM3\ARM_GCC_473\Release\main.o
  .debug_info    0x00000109      0x165 .\CortexM3\ARM_GCC_473\Release\cymetadata.o
  .debug_info    0x0000026e      0x345 .\CortexM3\ARM_GCC_473\Release\Cm3Start.o
- .debug_info    0x000005b3      0x532 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(cyfitter_cfg.o)
- .debug_info    0x00000ae5      0xbf2 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(BL.o)
- .debug_info    0x000016d7       0x70 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyBootAsmGnu.o)
- .debug_info    0x00001747      0x726 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyFlash.o)
- .debug_info    0x00001e6d      0xfc0 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyLib.o)
- .debug_info    0x00002e2d      0xa1c .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(cyPm.o)
- .debug_info    0x00003849      0x46f .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CySpc.o)
- .debug_info    0x00003cb8      0x40f .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_boot.o)
- .debug_info    0x000040c7      0x8c3 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS.o)
- .debug_info    0x0000498a      0x6b7 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
- .debug_info    0x00005041      0x1d5 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_episr.o)
- .debug_info    0x00005216      0x430 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_hid.o)
- .debug_info    0x00005646      0x89e .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_std.o)
- .debug_info    0x00005ee4       0xcd .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_vnd.o)
- .debug_info    0x00005fb1      0x1cf .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_cls.o)
- .debug_info    0x00006180      0x40f .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_descr.o)
+ .debug_info    0x000005b3      0x549 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(cyfitter_cfg.o)
+ .debug_info    0x00000afc      0xbf2 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(BL.o)
+ .debug_info    0x000016ee       0x81 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyBootAsmGnu.o)
+ .debug_info    0x0000176f      0x726 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyFlash.o)
+ .debug_info    0x00001e95      0xfc0 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyLib.o)
+ .debug_info    0x00002e55      0xa1c .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(cyPm.o)
+ .debug_info    0x00003871      0x46f .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CySpc.o)
+ .debug_info    0x00003ce0      0x40f .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_boot.o)
+ .debug_info    0x000040ef      0x8c3 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS.o)
+ .debug_info    0x000049b2      0x6b7 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
+ .debug_info    0x00005069      0x1d5 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_episr.o)
+ .debug_info    0x0000523e      0x430 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_hid.o)
+ .debug_info    0x0000566e      0x89e .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_std.o)
+ .debug_info    0x00005f0c       0xcd .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_vnd.o)
+ .debug_info    0x00005fd9      0x1cf .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_cls.o)
+ .debug_info    0x000061a8      0x40f .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_descr.o)
 
 .debug_abbrev   0x00000000     0x1eee
  *(.debug_abbrev)
@@ -1050,27 +1050,27 @@ END GROUP
  .debug_abbrev  0x00001d56       0xea .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_cls.o)
  .debug_abbrev  0x00001e40       0xae .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_descr.o)
 
-.debug_line     0x00000000     0x23f3
+.debug_line     0x00000000     0x23f4
  *(.debug_line)
  .debug_line    0x00000000      0x12f .\CortexM3\ARM_GCC_473\Release\main.o
  .debug_line    0x0000012f       0x53 .\CortexM3\ARM_GCC_473\Release\cymetadata.o
  .debug_line    0x00000182      0x19c .\CortexM3\ARM_GCC_473\Release\Cm3Start.o
- .debug_line    0x0000031e      0x1d5 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(cyfitter_cfg.o)
- .debug_line    0x000004f3      0x3d6 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(BL.o)
- .debug_line    0x000008c9       0x68 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyBootAsmGnu.o)
- .debug_line    0x00000931      0x201 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyFlash.o)
- .debug_line    0x00000b32      0x668 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyLib.o)
- .debug_line    0x0000119a      0x34a .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(cyPm.o)
- .debug_line    0x000014e4      0x1bd .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CySpc.o)
- .debug_line    0x000016a1      0x14b .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_boot.o)
- .debug_line    0x000017ec      0x2cc .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS.o)
- .debug_line    0x00001ab8      0x24d .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
- .debug_line    0x00001d05       0xc1 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_episr.o)
- .debug_line    0x00001dc6      0x172 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_hid.o)
- .debug_line    0x00001f38      0x360 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_std.o)
- .debug_line    0x00002298       0x66 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_vnd.o)
- .debug_line    0x000022fe       0x96 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_cls.o)
- .debug_line    0x00002394       0x5f .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_descr.o)
+ .debug_line    0x0000031e      0x1d6 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(cyfitter_cfg.o)
+ .debug_line    0x000004f4      0x3d6 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(BL.o)
+ .debug_line    0x000008ca       0x68 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyBootAsmGnu.o)
+ .debug_line    0x00000932      0x201 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyFlash.o)
+ .debug_line    0x00000b33      0x668 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyLib.o)
+ .debug_line    0x0000119b      0x34a .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(cyPm.o)
+ .debug_line    0x000014e5      0x1bd .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CySpc.o)
+ .debug_line    0x000016a2      0x14b .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_boot.o)
+ .debug_line    0x000017ed      0x2cc .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS.o)
+ .debug_line    0x00001ab9      0x24d .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
+ .debug_line    0x00001d06       0xc1 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_episr.o)
+ .debug_line    0x00001dc7      0x172 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_hid.o)
+ .debug_line    0x00001f39      0x360 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_std.o)
+ .debug_line    0x00002299       0x66 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_vnd.o)
+ .debug_line    0x000022ff       0x96 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_cls.o)
+ .debug_line    0x00002395       0x5f .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_descr.o)
 
 .debug_frame    0x00000000     0x11c4
  *(.debug_frame)
@@ -1097,44 +1097,44 @@ END GROUP
  .debug_frame   0x0000117c       0x28 c:/program files (x86)/cypress/psoc creator/3.0/psoc creator/import/gnu_cs/arm/4.7.3/bin/../lib/gcc/arm-none-eabi/4.7.3/../../../../arm-none-eabi/lib/armv7-m\libc_s.a(lib_a-memcpy.o)
  .debug_frame   0x000011a4       0x20 c:/program files (x86)/cypress/psoc creator/3.0/psoc creator/import/gnu_cs/arm/4.7.3/bin/../lib/gcc/arm-none-eabi/4.7.3/../../../../arm-none-eabi/lib/armv7-m\libc_s.a(lib_a-memset.o)
 
-.debug_str      0x00000000     0x20bb
+.debug_str      0x00000000     0x20dd
  *(.debug_str)
- .debug_str     0x00000000      0x110 .\CortexM3\ARM_GCC_473\Release\main.o
-                                0x149 (size before relaxing)
- .debug_str     0x00000110       0x86 .\CortexM3\ARM_GCC_473\Release\cymetadata.o
-                                0x194 (size before relaxing)
- .debug_str     0x00000196      0x147 .\CortexM3\ARM_GCC_473\Release\Cm3Start.o
-                                0x279 (size before relaxing)
- .debug_str     0x000002dd      0x1b8 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(cyfitter_cfg.o)
-                                0x30f (size before relaxing)
- .debug_str     0x00000495      0x368 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(BL.o)
-                                0x4df (size before relaxing)
- .debug_str     0x000007fd      0x189 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyFlash.o)
-                                0x329 (size before relaxing)
- .debug_str     0x00000986      0x626 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyLib.o)
-                                0x804 (size before relaxing)
- .debug_str     0x00000fac      0x345 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(cyPm.o)
-                                0x695 (size before relaxing)
- .debug_str     0x000012f1       0xa1 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CySpc.o)
-                                0x28f (size before relaxing)
- .debug_str     0x00001392      0x10d .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_boot.o)
-                                0x298 (size before relaxing)
- .debug_str     0x0000149f      0x274 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS.o)
-                                0x4c3 (size before relaxing)
- .debug_str     0x00001713      0x2f9 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
-                                0x568 (size before relaxing)
- .debug_str     0x00001a0c       0x67 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_episr.o)
-                                0x206 (size before relaxing)
- .debug_str     0x00001a73      0x126 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_hid.o)
-                                0x34f (size before relaxing)
- .debug_str     0x00001b99      0x1e9 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_std.o)
-                                0x562 (size before relaxing)
- .debug_str     0x00001d82       0x25 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_vnd.o)
-                                0x15e (size before relaxing)
- .debug_str     0x00001da7       0x25 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_cls.o)
-                                0x215 (size before relaxing)
- .debug_str     0x00001dcc      0x2ef .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_descr.o)
-                                0x507 (size before relaxing)
+ .debug_str     0x00000000      0x121 .\CortexM3\ARM_GCC_473\Release\main.o
+                                0x15a (size before relaxing)
+ .debug_str     0x00000121       0x86 .\CortexM3\ARM_GCC_473\Release\cymetadata.o
+                                0x1a5 (size before relaxing)
+ .debug_str     0x000001a7      0x147 .\CortexM3\ARM_GCC_473\Release\Cm3Start.o
+                                0x28a (size before relaxing)
+ .debug_str     0x000002ee      0x1c9 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(cyfitter_cfg.o)
+                                0x331 (size before relaxing)
+ .debug_str     0x000004b7      0x368 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(BL.o)
+                                0x4f0 (size before relaxing)
+ .debug_str     0x0000081f      0x189 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyFlash.o)
+                                0x33a (size before relaxing)
+ .debug_str     0x000009a8      0x626 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CyLib.o)
+                                0x815 (size before relaxing)
+ .debug_str     0x00000fce      0x345 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(cyPm.o)
+                                0x6a6 (size before relaxing)
+ .debug_str     0x00001313       0xa1 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(CySpc.o)
+                                0x2a0 (size before relaxing)
+ .debug_str     0x000013b4      0x10d .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_boot.o)
+                                0x2a9 (size before relaxing)
+ .debug_str     0x000014c1      0x274 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS.o)
+                                0x4d4 (size before relaxing)
+ .debug_str     0x00001735      0x2f9 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_drv.o)
+                                0x579 (size before relaxing)
+ .debug_str     0x00001a2e       0x67 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_episr.o)
+                                0x217 (size before relaxing)
+ .debug_str     0x00001a95      0x126 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_hid.o)
+                                0x360 (size before relaxing)
+ .debug_str     0x00001bbb      0x1e9 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_std.o)
+                                0x573 (size before relaxing)
+ .debug_str     0x00001da4       0x25 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_vnd.o)
+                                0x16f (size before relaxing)
+ .debug_str     0x00001dc9       0x25 .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_cls.o)
+                                0x226 (size before relaxing)
+ .debug_str     0x00001dee      0x2ef .\CortexM3\ARM_GCC_473\Release\USB_Bootloader.a(USBFS_descr.o)
+                                0x518 (size before relaxing)
 
 .debug_loc      0x00000000     0x3edd
  *(.debug_loc)

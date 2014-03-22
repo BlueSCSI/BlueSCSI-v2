@@ -1,4 +1,4 @@
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 1
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccmaaXQv.s 			page 1
 
 
    1              		.syntax unified
@@ -58,7 +58,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 1
   29:.\Generated_Source\PSoC5/USBFS_Dm.c **** * Summary:
   30:.\Generated_Source\PSoC5/USBFS_Dm.c **** *  Assign a new value to the digital port's data output register.  
   31:.\Generated_Source\PSoC5/USBFS_Dm.c **** *
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 2
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccmaaXQv.s 			page 2
 
 
   32:.\Generated_Source\PSoC5/USBFS_Dm.c **** * Parameters:  
@@ -118,7 +118,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 1
   53:.\Generated_Source\PSoC5/USBFS_Dm.c **** * Parameters:  
   54:.\Generated_Source\PSoC5/USBFS_Dm.c **** *  mode:  Change the pins to this drive mode.
   55:.\Generated_Source\PSoC5/USBFS_Dm.c **** *
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 3
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccmaaXQv.s 			page 3
 
 
   56:.\Generated_Source\PSoC5/USBFS_Dm.c **** * Return: 
@@ -178,7 +178,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 1
   80:.\Generated_Source\PSoC5/USBFS_Dm.c **** * Note:
   81:.\Generated_Source\PSoC5/USBFS_Dm.c **** *  Macro USBFS_Dm_ReadPS calls this function. 
   82:.\Generated_Source\PSoC5/USBFS_Dm.c **** *  
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 4
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccmaaXQv.s 			page 4
 
 
   83:.\Generated_Source\PSoC5/USBFS_Dm.c **** *******************************************************************************/
@@ -238,7 +238,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 1
  106:.\Generated_Source\PSoC5/USBFS_Dm.c ****     return (USBFS_Dm_DR & USBFS_Dm_MASK) >> USBFS_Dm_SHIFT;
  121              		.loc 1 106 0
  122 0000 014B     		ldr	r3, .L11
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 5
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccmaaXQv.s 			page 5
 
 
  123 0002 1878     		ldrb	r0, [r3, #0]	@ zero_extendqisi2
@@ -263,10 +263,10 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 1
  141 0006 00000000 		.4byte	.Ldebug_abbrev0
  142 000a 04       		.byte	0x4
  143 000b 01       		.uleb128 0x1
- 144 000c 0E010000 		.4byte	.LASF20
+ 144 000c 3F010000 		.4byte	.LASF20
  145 0010 01       		.byte	0x1
- 146 0011 89000000 		.4byte	.LASF21
- 147 0015 57010000 		.4byte	.LASF22
+ 146 0011 BA000000 		.4byte	.LASF21
+ 147 0015 76000000 		.4byte	.LASF22
  148 0019 00000000 		.4byte	.Ldebug_ranges0+0
  149 001d 00000000 		.4byte	0
  150 0021 00000000 		.4byte	0
@@ -274,7 +274,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 1
  152 0029 02       		.uleb128 0x2
  153 002a 01       		.byte	0x1
  154 002b 06       		.byte	0x6
- 155 002c 80010000 		.4byte	.LASF0
+ 155 002c 91010000 		.4byte	.LASF0
  156 0030 02       		.uleb128 0x2
  157 0031 01       		.byte	0x1
  158 0032 08       		.byte	0x8
@@ -282,15 +282,15 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 1
  160 0037 02       		.uleb128 0x2
  161 0038 02       		.byte	0x2
  162 0039 05       		.byte	0x5
- 163 003a FE000000 		.4byte	.LASF2
+ 163 003a 2F010000 		.4byte	.LASF2
  164 003e 02       		.uleb128 0x2
  165 003f 02       		.byte	0x2
  166 0040 07       		.byte	0x7
- 167 0041 76000000 		.4byte	.LASF3
+ 167 0041 A7000000 		.4byte	.LASF3
  168 0045 02       		.uleb128 0x2
  169 0046 04       		.byte	0x4
  170 0047 05       		.byte	0x5
- 171 0048 77010000 		.4byte	.LASF4
+ 171 0048 88010000 		.4byte	.LASF4
  172 004c 02       		.uleb128 0x2
  173 004d 04       		.byte	0x4
  174 004e 07       		.byte	0x7
@@ -298,14 +298,14 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 1
  176 0053 02       		.uleb128 0x2
  177 0054 08       		.byte	0x8
  178 0055 05       		.byte	0x5
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 6
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccmaaXQv.s 			page 6
 
 
- 179 0056 EB000000 		.4byte	.LASF6
+ 179 0056 1C010000 		.4byte	.LASF6
  180 005a 02       		.uleb128 0x2
  181 005b 08       		.byte	0x8
  182 005c 07       		.byte	0x7
- 183 005d CF000000 		.4byte	.LASF7
+ 183 005d 00010000 		.4byte	.LASF7
  184 0061 03       		.uleb128 0x3
  185 0062 04       		.byte	0x4
  186 0063 05       		.byte	0x5
@@ -313,9 +313,9 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 1
  188 0068 02       		.uleb128 0x2
  189 0069 04       		.byte	0x4
  190 006a 07       		.byte	0x7
- 191 006b C2000000 		.4byte	.LASF8
+ 191 006b F3000000 		.4byte	.LASF8
  192 006f 04       		.uleb128 0x4
- 193 0070 08010000 		.4byte	.LASF12
+ 193 0070 39010000 		.4byte	.LASF12
  194 0074 02       		.byte	0x2
  195 0075 5B       		.byte	0x5b
  196 0076 30000000 		.4byte	0x30
@@ -330,7 +330,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 1
  205 0088 02       		.uleb128 0x2
  206 0089 01       		.byte	0x1
  207 008a 08       		.byte	0x8
- 208 008b F9000000 		.4byte	.LASF11
+ 208 008b 2A010000 		.4byte	.LASF11
  209 008f 04       		.uleb128 0x4
  210 0090 5F000000 		.4byte	.LASF13
  211 0094 02       		.byte	0x2
@@ -358,7 +358,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 1
  233 00bf 6F000000 		.4byte	0x6f
  234 00c3 00000000 		.4byte	.LLST0
  235 00c7 08       		.uleb128 0x8
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 7
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccmaaXQv.s 			page 7
 
 
  236 00c8 23000000 		.4byte	.LASF23
@@ -381,7 +381,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 1
  253 00eb 01       		.byte	0x1
  254 00ec 00010000 		.4byte	0x100
  255 00f0 07       		.uleb128 0x7
- 256 00f1 E6000000 		.4byte	.LASF17
+ 256 00f1 17010000 		.4byte	.LASF17
  257 00f5 01       		.byte	0x1
  258 00f6 3C       		.byte	0x3c
  259 00f7 6F000000 		.4byte	0x6f
@@ -402,7 +402,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 1
  274 0118 01       		.byte	0x1
  275 0119 09       		.uleb128 0x9
  276 011a 01       		.byte	0x1
- 277 011b AD000000 		.4byte	.LASF19
+ 277 011b DE000000 		.4byte	.LASF19
  278 011f 01       		.byte	0x1
  279 0120 68       		.byte	0x68
  280 0121 01       		.byte	0x1
@@ -418,7 +418,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 1
  290              	.Ldebug_abbrev0:
  291 0000 01       		.uleb128 0x1
  292 0001 11       		.uleb128 0x11
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 8
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccmaaXQv.s 			page 8
 
 
  293 0002 01       		.byte	0x1
@@ -478,7 +478,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 1
  347 0038 05       		.uleb128 0x5
  348 0039 35       		.uleb128 0x35
  349 003a 00       		.byte	0
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 9
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccmaaXQv.s 			page 9
 
 
  350 003b 49       		.uleb128 0x49
@@ -538,7 +538,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 1
  404 0072 13       		.uleb128 0x13
  405 0073 02       		.uleb128 0x2
  406 0074 06       		.uleb128 0x6
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 10
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccmaaXQv.s 			page 10
 
 
  407 0075 00       		.byte	0
@@ -598,7 +598,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 1
  461 0031 00000000 		.4byte	0
  462 0035 00000000 		.4byte	0
  463              	.LLST2:
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 11
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccmaaXQv.s 			page 11
 
 
  464 0039 00000000 		.4byte	.LVL4
@@ -658,7 +658,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 1
  511      746500
  512              	.LASF18:
  513 000f 55534246 		.ascii	"USBFS_Dm_Read\000"
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 12
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccmaaXQv.s 			page 12
 
 
  513      535F446D 
@@ -697,79 +697,80 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 1
  529      69676E65 
  529      6420696E 
  529      7400
- 530              	.LASF3:
- 531 0076 73686F72 		.ascii	"short unsigned int\000"
- 531      7420756E 
- 531      7369676E 
- 531      65642069 
- 531      6E7400
- 532              	.LASF21:
- 533 0089 2E5C4765 		.ascii	".\\Generated_Source\\PSoC5\\USBFS_Dm.c\000"
- 533      6E657261 
- 533      7465645F 
- 533      536F7572 
- 533      63655C50 
- 534              	.LASF19:
- 535 00ad 55534246 		.ascii	"USBFS_Dm_ReadDataReg\000"
- 535      535F446D 
- 535      5F526561 
- 535      64446174 
- 535      61526567 
- 536              	.LASF8:
- 537 00c2 756E7369 		.ascii	"unsigned int\000"
- 537      676E6564 
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccc12yfW.s 			page 13
+ 530              	.LASF22:
+ 531 0076 573A5C53 		.ascii	"W:\\SCSI2SD\\software\\SCSI2SD\\USB_Bootloader.cyds"
+ 531      43534932 
+ 531      53445C73 
+ 531      6F667477 
+ 531      6172655C 
+ 532 00a5 6E00     		.ascii	"n\000"
+ 533              	.LASF3:
+ 534 00a7 73686F72 		.ascii	"short unsigned int\000"
+ 534      7420756E 
+ 534      7369676E 
+ 534      65642069 
+ 534      6E7400
+ 535              	.LASF21:
+ 536 00ba 2E5C4765 		.ascii	".\\Generated_Source\\PSoC5\\USBFS_Dm.c\000"
+ 536      6E657261 
+ 536      7465645F 
+ 536      536F7572 
+ 536      63655C50 
+ 537              	.LASF19:
+ 538 00de 55534246 		.ascii	"USBFS_Dm_ReadDataReg\000"
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccmaaXQv.s 			page 13
 
 
- 537      20696E74 
- 537      00
- 538              	.LASF7:
- 539 00cf 6C6F6E67 		.ascii	"long long unsigned int\000"
- 539      206C6F6E 
- 539      6720756E 
- 539      7369676E 
- 539      65642069 
- 540              	.LASF17:
- 541 00e6 6D6F6465 		.ascii	"mode\000"
- 541      00
- 542              	.LASF6:
- 543 00eb 6C6F6E67 		.ascii	"long long int\000"
- 543      206C6F6E 
- 543      6720696E 
- 543      7400
- 544              	.LASF11:
- 545 00f9 63686172 		.ascii	"char\000"
- 545      00
- 546              	.LASF2:
- 547 00fe 73686F72 		.ascii	"short int\000"
- 547      7420696E 
- 547      7400
- 548              	.LASF12:
- 549 0108 75696E74 		.ascii	"uint8\000"
- 549      3800
- 550              	.LASF20:
- 551 010e 474E5520 		.ascii	"GNU C 4.7.3 20130312 (release) [ARM/embedded-4_7-br"
- 551      4320342E 
- 551      372E3320 
- 551      32303133 
- 551      30333132 
- 552 0141 616E6368 		.ascii	"anch revision 196615]\000"
- 552      20726576 
- 552      6973696F 
- 552      6E203139 
- 552      36363135 
- 553              	.LASF22:
- 554 0157 573A5C53 		.ascii	"W:\\SCSI2SD\\USB_Bootloader.cydsn\000"
- 554      43534932 
- 554      53445C55 
- 554      53425F42 
- 554      6F6F746C 
- 555              	.LASF4:
- 556 0177 6C6F6E67 		.ascii	"long int\000"
- 556      20696E74 
- 556      00
- 557              	.LASF0:
- 558 0180 7369676E 		.ascii	"signed char\000"
- 558      65642063 
- 558      68617200 
- 559              		.ident	"GCC: (GNU Tools for ARM Embedded Processors) 4.7.3 20130312 (release) [ARM/embedded-4_7-br
+ 538      535F446D 
+ 538      5F526561 
+ 538      64446174 
+ 538      61526567 
+ 539              	.LASF8:
+ 540 00f3 756E7369 		.ascii	"unsigned int\000"
+ 540      676E6564 
+ 540      20696E74 
+ 540      00
+ 541              	.LASF7:
+ 542 0100 6C6F6E67 		.ascii	"long long unsigned int\000"
+ 542      206C6F6E 
+ 542      6720756E 
+ 542      7369676E 
+ 542      65642069 
+ 543              	.LASF17:
+ 544 0117 6D6F6465 		.ascii	"mode\000"
+ 544      00
+ 545              	.LASF6:
+ 546 011c 6C6F6E67 		.ascii	"long long int\000"
+ 546      206C6F6E 
+ 546      6720696E 
+ 546      7400
+ 547              	.LASF11:
+ 548 012a 63686172 		.ascii	"char\000"
+ 548      00
+ 549              	.LASF2:
+ 550 012f 73686F72 		.ascii	"short int\000"
+ 550      7420696E 
+ 550      7400
+ 551              	.LASF12:
+ 552 0139 75696E74 		.ascii	"uint8\000"
+ 552      3800
+ 553              	.LASF20:
+ 554 013f 474E5520 		.ascii	"GNU C 4.7.3 20130312 (release) [ARM/embedded-4_7-br"
+ 554      4320342E 
+ 554      372E3320 
+ 554      32303133 
+ 554      30333132 
+ 555 0172 616E6368 		.ascii	"anch revision 196615]\000"
+ 555      20726576 
+ 555      6973696F 
+ 555      6E203139 
+ 555      36363135 
+ 556              	.LASF4:
+ 557 0188 6C6F6E67 		.ascii	"long int\000"
+ 557      20696E74 
+ 557      00
+ 558              	.LASF0:
+ 559 0191 7369676E 		.ascii	"signed char\000"
+ 559      65642063 
+ 559      68617200 
+ 560              		.ident	"GCC: (GNU Tools for ARM Embedded Processors) 4.7.3 20130312 (release) [ARM/embedded-4_7-br

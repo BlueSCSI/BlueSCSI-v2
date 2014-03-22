@@ -1,4 +1,4 @@
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 1
 
 
    1              		.syntax unified
@@ -58,7 +58,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
   29:.\Generated_Source\PSoC5/CyDmac.c **** 
   30:.\Generated_Source\PSoC5/CyDmac.c **** #include "CyDmac.h"
   31:.\Generated_Source\PSoC5/CyDmac.c **** 
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 2
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 2
 
 
   32:.\Generated_Source\PSoC5/CyDmac.c **** 
@@ -118,7 +118,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
   44              	.LVL1:
   45              	.L2:
   46 000e 531E     		subs	r3, r2, #1
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 3
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 3
 
 
   68:.\Generated_Source\PSoC5/CyDmac.c **** 
@@ -178,7 +178,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
   93:.\Generated_Source\PSoC5/CyDmac.c **** *  DMAC_PERIPH_ERR:
   94:.\Generated_Source\PSoC5/CyDmac.c **** *   Set to 1 when a peripheral responds to a bus transaction with an error
   95:.\Generated_Source\PSoC5/CyDmac.c **** *   response.
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 4
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 4
 
 
   96:.\Generated_Source\PSoC5/CyDmac.c **** *
@@ -238,7 +238,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  124:.\Generated_Source\PSoC5/CyDmac.c **** *   Clears the error bits in the DMAC error register.
  125:.\Generated_Source\PSoC5/CyDmac.c **** *
  126:.\Generated_Source\PSoC5/CyDmac.c **** *  DMAC_PERIPH_ERR:
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 5
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 5
 
 
  127:.\Generated_Source\PSoC5/CyDmac.c **** *   Set to 1 when a peripheral responds to a bus transaction with an error
@@ -298,7 +298,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  154:.\Generated_Source\PSoC5/CyDmac.c **** *
  155:.\Generated_Source\PSoC5/CyDmac.c **** * Summary:
  156:.\Generated_Source\PSoC5/CyDmac.c **** *  When an DMAC_BUS_TIMEOUT, DMAC_UNPOP_ACC and DMAC_PERIPH_ERR occurs the
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 6
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 6
 
 
  157:.\Generated_Source\PSoC5/CyDmac.c **** *  address of the error is written to the error address register and can be read
@@ -358,7 +358,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  186:.\Generated_Source\PSoC5/CyDmac.c **** * Return:
  187:.\Generated_Source\PSoC5/CyDmac.c **** *  The allocated channel number. Zero is a valid channel number.
  188:.\Generated_Source\PSoC5/CyDmac.c **** *  DMA_INVALID_CHANNEL is returned if there are no channels available.
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 7
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 7
 
 
  189:.\Generated_Source\PSoC5/CyDmac.c **** *
@@ -418,7 +418,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  185              		.loc 1 202 0
  186 001c 0134     		adds	r4, r4, #1
  187 001e E4B2     		uxtb	r4, r4
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 8
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 8
 
 
  208:.\Generated_Source\PSoC5/CyDmac.c ****             break;
@@ -478,7 +478,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  230:.\Generated_Source\PSoC5/CyDmac.c **** * Summary:
  231:.\Generated_Source\PSoC5/CyDmac.c **** *  Frees a channel allocated by DmaChAlloc().
  232:.\Generated_Source\PSoC5/CyDmac.c **** *
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 9
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 9
 
 
  233:.\Generated_Source\PSoC5/CyDmac.c **** * Parameters:
@@ -538,7 +538,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  254:.\Generated_Source\PSoC5/CyDmac.c **** 
  255:.\Generated_Source\PSoC5/CyDmac.c ****         /* Exit critical section */
  256:.\Generated_Source\PSoC5/CyDmac.c ****         CyExitCriticalSection(interruptState);
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 10
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 10
 
 
  249              		.loc 1 256 0
@@ -598,7 +598,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  282:.\Generated_Source\PSoC5/CyDmac.c **** *
  283:.\Generated_Source\PSoC5/CyDmac.c **** *   1 - When a TD is completed, the DMAC restores the original configuration
  284:.\Generated_Source\PSoC5/CyDmac.c **** *   values of the TD.
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 11
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 11
 
 
  285:.\Generated_Source\PSoC5/CyDmac.c **** *
@@ -658,7 +658,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  319:.\Generated_Source\PSoC5/CyDmac.c ****             /* Store the intermediate and final TD states on top of the original TD chain */
  320:.\Generated_Source\PSoC5/CyDmac.c ****             CY_DMA_CH_STRUCT_PTR[chHandle].basic_cfg[0u] &= (uint8)(~CY_DMA_CH_BASIC_CFG_WORK_SEP);
  297              		.loc 1 320 0
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 12
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 12
 
 
  298 0012 D15C     		ldrb	r1, [r2, r3]	@ zero_extendqisi2
@@ -718,7 +718,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  336:.\Generated_Source\PSoC5/CyDmac.c **** *
  337:.\Generated_Source\PSoC5/CyDmac.c **** * Summary:
  338:.\Generated_Source\PSoC5/CyDmac.c **** *  Disables the DMA channel. Once this function is called, CyDmaChStatus() may
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 13
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 13
 
 
  339:.\Generated_Source\PSoC5/CyDmac.c **** *  be called to determine when the channel is disabled and which TDs were being
@@ -778,7 +778,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  358 0018 0020     		movs	r0, #0
  359 001a 7047     		bx	lr
  360              	.LVL26:
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 14
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 14
 
 
  361              	.L38:
@@ -838,7 +838,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  397:.\Generated_Source\PSoC5/CyDmac.c ****     if(chHandle < CY_DMA_NUMBEROF_CHANNELS)
  388              		.loc 1 397 0
  389 0000 1728     		cmp	r0, #23
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 15
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 15
 
 
  390 0002 0CD8     		bhi	.L43
@@ -898,7 +898,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  412:.\Generated_Source\PSoC5/CyDmac.c **** * Summary:
  413:.\Generated_Source\PSoC5/CyDmac.c **** *  Sets the priority of a DMA channel. You can use this function when you want
  414:.\Generated_Source\PSoC5/CyDmac.c **** *  to change the priority at run time. If the priority remains the same for a
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 16
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 16
 
 
  415:.\Generated_Source\PSoC5/CyDmac.c **** *  DMA channel, then you can configure the priority in the .cydwr file.
@@ -958,7 +958,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  456 001a 7047     		bx	lr
  457              	.LVL39:
  458              	.L48:
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 17
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 17
 
 
  432:.\Generated_Source\PSoC5/CyDmac.c ****     cystatus status = CYRET_BAD_PARAM;
@@ -1018,7 +1018,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  480              		.cfi_startproc
  481              		@ args = 0, pretend = 0, frame = 0
  482              		@ frame_needed = 0, uses_anonymous_args = 0
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 18
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 18
 
 
  483              		@ link register save eliminated.
@@ -1078,7 +1078,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  509              		.loc 1 500 0
  510 0024 C280     		strh	r2, [r0, #6]	@ movhi
  511              	.LVL47:
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 19
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 19
 
 
  501:.\Generated_Source\PSoC5/CyDmac.c ****         status = CYRET_SUCCESS;
@@ -1138,7 +1138,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  535              		.cfi_startproc
  536              		@ args = 0, pretend = 0, frame = 0
  537              		@ frame_needed = 0, uses_anonymous_args = 0
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 20
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 20
 
 
  538              		@ link register save eliminated.
@@ -1198,7 +1198,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  547:.\Generated_Source\PSoC5/CyDmac.c **** * Summary:
  548:.\Generated_Source\PSoC5/CyDmac.c **** *  Allows the caller to terminate a chain of TDs, terminate one TD, or create a
  549:.\Generated_Source\PSoC5/CyDmac.c **** *  direct request to start the DMA channel.
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 21
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 21
 
 
  550:.\Generated_Source\PSoC5/CyDmac.c **** *
@@ -1258,7 +1258,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  575:.\Generated_Source\PSoC5/CyDmac.c ****     }
  576:.\Generated_Source\PSoC5/CyDmac.c **** 
  577:.\Generated_Source\PSoC5/CyDmac.c ****     return(status);
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 22
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 22
 
 
  578:.\Generated_Source\PSoC5/CyDmac.c **** }
@@ -1318,7 +1318,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  606:.\Generated_Source\PSoC5/CyDmac.c ****         status = (cystatus) ((uint32)CY_DMA_CH_STRUCT_PTR[chHandle].action[0u] &
  629              		.loc 1 606 0
  630 0004 044B     		ldr	r3, .L71
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 23
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 23
 
 
  631 0006 0001     		lsls	r0, r0, #4
@@ -1378,7 +1378,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  631:.\Generated_Source\PSoC5/CyDmac.c **** *   not needed.
  632:.\Generated_Source\PSoC5/CyDmac.c **** *
  633:.\Generated_Source\PSoC5/CyDmac.c **** *   STATUS_TD_ACTIVE
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 24
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 24
 
 
  634:.\Generated_Source\PSoC5/CyDmac.c **** *    0: Channel is not currently being serviced by DMAC
@@ -1438,7 +1438,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  685              		.loc 1 661 0
  686 0016 22B1     		cbz	r2, .L81
  662:.\Generated_Source\PSoC5/CyDmac.c ****         {
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 25
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 25
 
 
  663:.\Generated_Source\PSoC5/CyDmac.c ****             *state= CY_DMA_CH_STRUCT_PTR[chHandle].basic_status[0];
@@ -1498,7 +1498,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  683:.\Generated_Source\PSoC5/CyDmac.c **** *
  684:.\Generated_Source\PSoC5/CyDmac.c **** *  uint8 burstCount:
  685:.\Generated_Source\PSoC5/CyDmac.c **** *   Specifies the size of bursts (1 to 127) the data transfer should be divided
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 26
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 26
 
 
  686:.\Generated_Source\PSoC5/CyDmac.c **** *   into. If this value is zero then the whole transfer is done in one burst.
@@ -1558,7 +1558,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  735              		.loc 1 723 0
  736 0006 01F07F01 		and	r1, r1, #127
  737              	.LVL73:
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 27
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 27
 
 
  738 000a C400     		lsls	r4, r0, #3
@@ -1618,7 +1618,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  777 003e 10BD     		pop	{r4, pc}
  778              		.cfi_endproc
  779              	.LFE15:
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 28
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 28
 
 
  780              		.size	CyDmaChSetConfiguration, .-CyDmaChSetConfiguration
@@ -1678,7 +1678,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  806 000c 0AD9     		bls	.L89
  761:.\Generated_Source\PSoC5/CyDmac.c ****     {
  762:.\Generated_Source\PSoC5/CyDmac.c ****         /* Get pointer to the Next available. */
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 29
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 29
 
 
  763:.\Generated_Source\PSoC5/CyDmac.c ****         element = CyDmaTdFreeIndex;
@@ -1738,7 +1738,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  845              		.thumb_func
  846              		.type	CyDmaTdFree, %function
  847              	CyDmaTdFree:
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 30
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 30
 
 
  848              	.LFB17:
@@ -1798,7 +1798,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  874 0014 01F5F042 		add	r2, r1, #30720
  875 0018 1978     		ldrb	r1, [r3, #0]	@ zero_extendqisi2
  803:.\Generated_Source\PSoC5/CyDmac.c **** 
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 31
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 31
 
 
  804:.\Generated_Source\PSoC5/CyDmac.c ****         /* Set new Next Available. */
@@ -1858,7 +1858,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  823:.\Generated_Source\PSoC5/CyDmac.c **** * Parameters:
  824:.\Generated_Source\PSoC5/CyDmac.c **** *  None
  825:.\Generated_Source\PSoC5/CyDmac.c **** *
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 32
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 32
 
 
  826:.\Generated_Source\PSoC5/CyDmac.c **** * Return:
@@ -1918,7 +1918,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  853:.\Generated_Source\PSoC5/CyDmac.c **** *   Zero based index of the next Transfer Descriptor in the TD chain. Zero is a
  854:.\Generated_Source\PSoC5/CyDmac.c **** *   valid pointer to the next TD; DMA_END_CHAIN_TD is the end of the chain.
  855:.\Generated_Source\PSoC5/CyDmac.c **** *   DMA_DISABLE_TD indicates an end to the chain and the DMA is disabled. No
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 33
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 33
 
 
  856:.\Generated_Source\PSoC5/CyDmac.c **** *   further TDs are fetched. DMA_DISABLE_TD is only supported on PSoC3 and
@@ -1978,7 +1978,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  948              		.cfi_offset 5, -8
  949              		.cfi_offset 14, -4
  950              		.loc 1 896 0
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 34
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 34
 
 
  951 0006 0CD1     		bne	.L102
@@ -2038,7 +2038,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  986              		.thumb
  987              		.thumb_func
  988              		.type	CyDmaTdGetConfiguration, %function
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 35
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 35
 
 
  989              	CyDmaTdGetConfiguration:
@@ -2098,7 +2098,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  998              		.loc 1 953 0
  999 0004 10B5     		push	{r4, lr}
  1000              	.LCFI7:
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 36
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 36
 
 
  1001              		.cfi_def_cfa_offset 8
@@ -2158,7 +2158,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1034              		.loc 1 977 0
  1035 002e C000     		lsls	r0, r0, #3
  1036              	.LVL100:
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 37
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 37
 
 
  1037 0030 00F18042 		add	r2, r0, #1073741824
@@ -2218,7 +2218,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
 1005:.\Generated_Source\PSoC5/CyDmac.c **** * Return:
 1006:.\Generated_Source\PSoC5/CyDmac.c **** *  CYRET_SUCCESS if successful.
 1007:.\Generated_Source\PSoC5/CyDmac.c **** *  CYRET_BAD_PARAM if tdHandle is invalid.
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 38
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 38
 
 
 1008:.\Generated_Source\PSoC5/CyDmac.c **** *
@@ -2278,7 +2278,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1094 0018 7047     		bx	lr
  1095              		.cfi_endproc
  1096              	.LFE21:
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 39
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 39
 
 
  1097              		.size	CyDmaTdSetAddress, .-CyDmaTdSetAddress
@@ -2338,7 +2338,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
 1066:.\Generated_Source\PSoC5/CyDmac.c ****         if(NULL != source)
  1115              		.loc 1 1066 0
  1116 0004 31B1     		cbz	r1, .L121
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 40
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 40
 
 
 1067:.\Generated_Source\PSoC5/CyDmac.c ****         {
@@ -2398,7 +2398,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1155              		.align	1
  1156              		.global	CyDmaChRoundRobin
  1157              		.thumb
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 41
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 41
 
 
  1158              		.thumb_func
@@ -2458,7 +2458,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1176 000a D05C     		ldrb	r0, [r2, r3]	@ zero_extendqisi2
  1177              	.LVL123:
  1178 000c 40F01001 		orr	r1, r0, #16
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 42
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 42
 
 
  1179              	.LVL124:
@@ -2518,7 +2518,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1220              		.set	.LANCHOR1,. + 0
  1221              		.type	CyDmaChannels, %object
  1222              		.size	CyDmaChannels, 4
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 43
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 43
 
 
  1223              	CyDmaChannels:
@@ -2535,10 +2535,10 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1234 0006 00000000 		.4byte	.Ldebug_abbrev0
  1235 000a 04       		.byte	0x4
  1236 000b 01       		.uleb128 0x1
- 1237 000c FA020000 		.4byte	.LASF85
+ 1237 000c 0B030000 		.4byte	.LASF85
  1238 0010 01       		.byte	0x1
- 1239 0011 CE010000 		.4byte	.LASF86
- 1240 0015 4A010000 		.4byte	.LASF87
+ 1239 0011 AE010000 		.4byte	.LASF86
+ 1240 0015 5E020000 		.4byte	.LASF87
  1241 0019 18000000 		.4byte	.Ldebug_ranges0+0x18
  1242 001d 00000000 		.4byte	0
  1243 0021 00000000 		.4byte	0
@@ -2550,15 +2550,15 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1249 0030 02       		.uleb128 0x2
  1250 0031 01       		.byte	0x1
  1251 0032 08       		.byte	0x8
- 1252 0033 83030000 		.4byte	.LASF1
+ 1252 0033 94030000 		.4byte	.LASF1
  1253 0037 02       		.uleb128 0x2
  1254 0038 02       		.byte	0x2
  1255 0039 05       		.byte	0x5
- 1256 003a 91030000 		.4byte	.LASF2
+ 1256 003a A2030000 		.4byte	.LASF2
  1257 003e 02       		.uleb128 0x2
  1258 003f 02       		.byte	0x2
  1259 0040 07       		.byte	0x7
- 1260 0041 29020000 		.4byte	.LASF3
+ 1260 0041 09020000 		.4byte	.LASF3
  1261 0045 02       		.uleb128 0x2
  1262 0046 04       		.byte	0x4
  1263 0047 05       		.byte	0x5
@@ -2566,7 +2566,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1265 004c 02       		.uleb128 0x2
  1266 004d 04       		.byte	0x4
  1267 004e 07       		.byte	0x7
- 1268 004f A9010000 		.4byte	.LASF5
+ 1268 004f 89010000 		.4byte	.LASF5
  1269 0053 02       		.uleb128 0x2
  1270 0054 08       		.byte	0x8
  1271 0055 05       		.byte	0x5
@@ -2578,14 +2578,14 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1277 0061 03       		.uleb128 0x3
  1278 0062 04       		.byte	0x4
  1279 0063 05       		.byte	0x5
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 44
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 44
 
 
  1280 0064 696E7400 		.ascii	"int\000"
  1281 0068 02       		.uleb128 0x2
  1282 0069 04       		.byte	0x4
  1283 006a 07       		.byte	0x7
- 1284 006b 9C010000 		.4byte	.LASF8
+ 1284 006b 7C010000 		.4byte	.LASF8
  1285 006f 04       		.uleb128 0x4
  1286 0070 28010000 		.4byte	.LASF9
  1287 0074 02       		.byte	0x2
@@ -2604,7 +2604,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1300 0090 02       		.uleb128 0x2
  1301 0091 04       		.byte	0x4
  1302 0092 04       		.byte	0x4
- 1303 0093 EE020000 		.4byte	.LASF12
+ 1303 0093 FF020000 		.4byte	.LASF12
  1304 0097 02       		.uleb128 0x2
  1305 0098 08       		.byte	0x8
  1306 0099 04       		.byte	0x4
@@ -2612,9 +2612,9 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1308 009e 02       		.uleb128 0x2
  1309 009f 01       		.byte	0x1
  1310 00a0 08       		.byte	0x8
- 1311 00a1 E7030000 		.4byte	.LASF14
+ 1311 00a1 F8030000 		.4byte	.LASF14
  1312 00a5 04       		.uleb128 0x4
- 1313 00a6 A4040000 		.4byte	.LASF15
+ 1313 00a6 B5040000 		.4byte	.LASF15
  1314 00aa 02       		.byte	0x2
  1315 00ab E8       		.byte	0xe8
  1316 00ac 4C000000 		.4byte	0x4c
@@ -2626,7 +2626,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1322 00bb 05       		.uleb128 0x5
  1323 00bc 7A000000 		.4byte	0x7a
  1324 00c0 04       		.uleb128 0x4
- 1325 00c1 7E020000 		.4byte	.LASF17
+ 1325 00c1 8F020000 		.4byte	.LASF17
  1326 00c5 02       		.byte	0x2
  1327 00c6 F2       		.byte	0xf2
  1328 00c7 CB000000 		.4byte	0xcb
@@ -2635,10 +2635,10 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1331 00d0 02       		.uleb128 0x2
  1332 00d1 04       		.byte	0x4
  1333 00d2 07       		.byte	0x7
- 1334 00d3 98020000 		.4byte	.LASF18
+ 1334 00d3 A9020000 		.4byte	.LASF18
  1335 00d7 06       		.uleb128 0x6
- 1336 00d8 74030000 		.4byte	.LASF24
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 45
+ 1336 00d8 85030000 		.4byte	.LASF24
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 45
 
 
  1337 00dc 10       		.byte	0x10
@@ -2646,7 +2646,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1339 00de 48       		.byte	0x48
  1340 00df 1C010000 		.4byte	0x11c
  1341 00e3 07       		.uleb128 0x7
- 1342 00e4 1F020000 		.4byte	.LASF19
+ 1342 00e4 FF010000 		.4byte	.LASF19
  1343 00e8 03       		.byte	0x3
  1344 00e9 4A       		.byte	0x4a
  1345 00ea 2C010000 		.4byte	0x12c
@@ -2654,7 +2654,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1347 00ef 23       		.byte	0x23
  1348 00f0 00       		.uleb128 0
  1349 00f1 07       		.uleb128 0x7
- 1350 00f2 6A010000 		.4byte	.LASF20
+ 1350 00f2 4A010000 		.4byte	.LASF20
  1351 00f6 03       		.byte	0x3
  1352 00f7 4B       		.byte	0x4b
  1353 00f8 31010000 		.4byte	0x131
@@ -2662,7 +2662,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1355 00fd 23       		.byte	0x23
  1356 00fe 04       		.uleb128 0x4
  1357 00ff 07       		.uleb128 0x7
- 1358 0100 8B020000 		.4byte	.LASF21
+ 1358 0100 9C020000 		.4byte	.LASF21
  1359 0104 03       		.byte	0x3
  1360 0105 4C       		.byte	0x4c
  1361 0106 36010000 		.4byte	0x136
@@ -2670,7 +2670,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1363 010b 23       		.byte	0x23
  1364 010c 08       		.uleb128 0x8
  1365 010d 07       		.uleb128 0x7
- 1366 010e 71010000 		.4byte	.LASF22
+ 1366 010e 51010000 		.4byte	.LASF22
  1367 0112 03       		.byte	0x3
  1368 0113 4D       		.byte	0x4d
  1369 0114 3B010000 		.4byte	0x13b
@@ -2694,21 +2694,21 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1387 013b 05       		.uleb128 0x5
  1388 013c 1C010000 		.4byte	0x11c
  1389 0140 04       		.uleb128 0x4
- 1390 0141 07040000 		.4byte	.LASF23
+ 1390 0141 18040000 		.4byte	.LASF23
  1391 0145 03       		.byte	0x3
  1392 0146 4F       		.byte	0x4f
  1393 0147 D7000000 		.4byte	0xd7
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 46
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 46
 
 
  1394 014b 06       		.uleb128 0x6
- 1395 014c BB010000 		.4byte	.LASF25
+ 1395 014c 9B010000 		.4byte	.LASF25
  1396 0150 08       		.byte	0x8
  1397 0151 03       		.byte	0x3
  1398 0152 52       		.byte	0x52
  1399 0153 74010000 		.4byte	0x174
  1400 0157 07       		.uleb128 0x7
- 1401 0158 65040000 		.4byte	.LASF26
+ 1401 0158 76040000 		.4byte	.LASF26
  1402 015c 03       		.byte	0x3
  1403 015d 54       		.byte	0x54
  1404 015e 74010000 		.4byte	0x174
@@ -2716,7 +2716,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1406 0163 23       		.byte	0x23
  1407 0164 00       		.uleb128 0
  1408 0165 07       		.uleb128 0x7
- 1409 0166 6A040000 		.4byte	.LASF27
+ 1409 0166 7B040000 		.4byte	.LASF27
  1410 016a 03       		.byte	0x3
  1411 016b 55       		.byte	0x55
  1412 016c 79010000 		.4byte	0x179
@@ -2758,13 +2758,13 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1448 01b1 00       		.byte	0
  1449 01b2 05       		.uleb128 0x5
  1450 01b3 1C010000 		.4byte	0x11c
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 47
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 47
 
 
  1451 01b7 05       		.uleb128 0x5
  1452 01b8 1C010000 		.4byte	0x11c
  1453 01bc 04       		.uleb128 0x4
- 1454 01bd 33040000 		.4byte	.LASF30
+ 1454 01bd 44040000 		.4byte	.LASF30
  1455 01c1 03       		.byte	0x3
  1456 01c2 5F       		.byte	0x5f
  1457 01c3 89010000 		.4byte	0x189
@@ -2782,7 +2782,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1469 01db 01       		.byte	0x1
  1470 01dc F0010000 		.4byte	0x1f0
  1471 01e0 0C       		.uleb128 0xc
- 1472 01e1 C5020000 		.4byte	.LASF35
+ 1472 01e1 D6020000 		.4byte	.LASF35
  1473 01e5 01       		.byte	0x1
  1474 01e6 3F       		.byte	0x3f
  1475 01e7 6F000000 		.4byte	0x6f
@@ -2790,7 +2790,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1477 01ef 00       		.byte	0
  1478 01f0 0D       		.uleb128 0xd
  1479 01f1 01       		.byte	0x1
- 1480 01f2 4A020000 		.4byte	.LASF33
+ 1480 01f2 2A020000 		.4byte	.LASF33
  1481 01f6 01       		.byte	0x1
  1482 01f7 6D       		.byte	0x6d
  1483 01f8 01       		.byte	0x1
@@ -2803,7 +2803,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1490 0208 01       		.byte	0x1
  1491 0209 0B       		.uleb128 0xb
  1492 020a 01       		.byte	0x1
- 1493 020b 6D020000 		.4byte	.LASF32
+ 1493 020b 4D020000 		.4byte	.LASF32
  1494 020f 01       		.byte	0x1
  1495 0210 91       		.byte	0x91
  1496 0211 01       		.byte	0x1
@@ -2815,10 +2815,10 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1502 021d 01       		.byte	0x1
  1503 021e 32020000 		.4byte	0x232
  1504 0222 0E       		.uleb128 0xe
- 1505 0223 F4020000 		.4byte	.LASF40
+ 1505 0223 05030000 		.4byte	.LASF40
  1506 0227 01       		.byte	0x1
  1507 0228 91       		.byte	0x91
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 48
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 48
 
 
  1508 0229 6F000000 		.4byte	0x6f
@@ -2839,7 +2839,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1523 024a 01       		.byte	0x1
  1524 024b 0F       		.uleb128 0xf
  1525 024c 01       		.byte	0x1
- 1526 024d D0030000 		.4byte	.LASF38
+ 1526 024d E1030000 		.4byte	.LASF38
  1527 0251 01       		.byte	0x1
  1528 0252 BF       		.byte	0xbf
  1529 0253 01       		.byte	0x1
@@ -2856,13 +2856,13 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1540 0270 6F000000 		.4byte	0x6f
  1541 0274 56000000 		.4byte	.LLST3
  1542 0278 0C       		.uleb128 0xc
- 1543 0279 C5020000 		.4byte	.LASF35
+ 1543 0279 D6020000 		.4byte	.LASF35
  1544 027d 01       		.byte	0x1
  1545 027e C2       		.byte	0xc2
  1546 027f 6F000000 		.4byte	0x6f
  1547 0283 69000000 		.4byte	.LLST4
  1548 0287 0C       		.uleb128 0xc
- 1549 0288 AB030000 		.4byte	.LASF37
+ 1549 0288 BC030000 		.4byte	.LASF37
  1550 028c 01       		.byte	0x1
  1551 028d C3       		.byte	0xc3
  1552 028e 85000000 		.4byte	0x85
@@ -2876,9 +2876,9 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1560 02a8 00       		.byte	0
  1561 02a9 0F       		.uleb128 0xf
  1562 02aa 01       		.byte	0x1
- 1563 02ab CD040000 		.4byte	.LASF39
+ 1563 02ab DE040000 		.4byte	.LASF39
  1564 02af 01       		.byte	0x1
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 49
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 49
 
 
  1565 02b0 F2       		.byte	0xf2
@@ -2890,13 +2890,13 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1571 02c2 01       		.byte	0x1
  1572 02c3 07030000 		.4byte	0x307
  1573 02c7 0E       		.uleb128 0xe
- 1574 02c8 A2030000 		.4byte	.LASF41
+ 1574 02c8 B3030000 		.4byte	.LASF41
  1575 02cc 01       		.byte	0x1
  1576 02cd F2       		.byte	0xf2
  1577 02ce 6F000000 		.4byte	0x6f
  1578 02d2 C7000000 		.4byte	.LLST7
  1579 02d6 0C       		.uleb128 0xc
- 1580 02d7 6F040000 		.4byte	.LASF42
+ 1580 02d7 80040000 		.4byte	.LASF42
  1581 02db 01       		.byte	0x1
  1582 02dc F4       		.byte	0xf4
  1583 02dd A5000000 		.4byte	0xa5
@@ -2929,22 +2929,22 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1610 0320 01       		.byte	0x1
  1611 0321 56030000 		.4byte	0x356
  1612 0325 12       		.uleb128 0x12
- 1613 0326 A2030000 		.4byte	.LASF41
+ 1613 0326 B3030000 		.4byte	.LASF41
  1614 032a 01       		.byte	0x1
  1615 032b 3001     		.2byte	0x130
  1616 032d 6F000000 		.4byte	0x6f
  1617 0331 4B010000 		.4byte	.LLST10
  1618 0335 12       		.uleb128 0x12
- 1619 0336 1F040000 		.4byte	.LASF44
+ 1619 0336 30040000 		.4byte	.LASF44
  1620 033a 01       		.byte	0x1
  1621 033b 3001     		.2byte	0x130
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 50
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 50
 
 
  1622 033d 6F000000 		.4byte	0x6f
  1623 0341 85010000 		.4byte	.LLST11
  1624 0345 13       		.uleb128 0x13
- 1625 0346 6F040000 		.4byte	.LASF42
+ 1625 0346 80040000 		.4byte	.LASF42
  1626 034a 01       		.byte	0x1
  1627 034b 3201     		.2byte	0x132
  1628 034d A5000000 		.4byte	0xa5
@@ -2952,7 +2952,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1630 0355 00       		.byte	0
  1631 0356 11       		.uleb128 0x11
  1632 0357 01       		.byte	0x1
- 1633 0358 C1030000 		.4byte	.LASF45
+ 1633 0358 D2030000 		.4byte	.LASF45
  1634 035c 01       		.byte	0x1
  1635 035d 6201     		.2byte	0x162
  1636 035f 01       		.byte	0x1
@@ -2965,13 +2965,13 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1643 036f 01       		.byte	0x1
  1644 0370 95030000 		.4byte	0x395
  1645 0374 12       		.uleb128 0x12
- 1646 0375 A2030000 		.4byte	.LASF41
+ 1646 0375 B3030000 		.4byte	.LASF41
  1647 0379 01       		.byte	0x1
  1648 037a 6201     		.2byte	0x162
  1649 037c 6F000000 		.4byte	0x6f
  1650 0380 01020000 		.4byte	.LLST13
  1651 0384 13       		.uleb128 0x13
- 1652 0385 6F040000 		.4byte	.LASF42
+ 1652 0385 80040000 		.4byte	.LASF42
  1653 0389 01       		.byte	0x1
  1654 038a 6401     		.2byte	0x164
  1655 038c A5000000 		.4byte	0xa5
@@ -2979,7 +2979,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1657 0394 00       		.byte	0
  1658 0395 11       		.uleb128 0x11
  1659 0396 01       		.byte	0x1
- 1660 0397 CE020000 		.4byte	.LASF46
+ 1660 0397 DF020000 		.4byte	.LASF46
  1661 039b 01       		.byte	0x1
  1662 039c 8901     		.2byte	0x189
  1663 039e 01       		.byte	0x1
@@ -2992,16 +2992,16 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1670 03ae 01       		.byte	0x1
  1671 03af D4030000 		.4byte	0x3d4
  1672 03b3 12       		.uleb128 0x12
- 1673 03b4 A2030000 		.4byte	.LASF41
+ 1673 03b4 B3030000 		.4byte	.LASF41
  1674 03b8 01       		.byte	0x1
  1675 03b9 8901     		.2byte	0x189
  1676 03bb 6F000000 		.4byte	0x6f
  1677 03bf 72020000 		.4byte	.LLST15
  1678 03c3 13       		.uleb128 0x13
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 51
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 51
 
 
- 1679 03c4 6F040000 		.4byte	.LASF42
+ 1679 03c4 80040000 		.4byte	.LASF42
  1680 03c8 01       		.byte	0x1
  1681 03c9 8B01     		.2byte	0x18b
  1682 03cb A5000000 		.4byte	0xa5
@@ -3009,7 +3009,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1684 03d3 00       		.byte	0
  1685 03d4 11       		.uleb128 0x11
  1686 03d5 01       		.byte	0x1
- 1687 03d6 8C010000 		.4byte	.LASF47
+ 1687 03d6 6C010000 		.4byte	.LASF47
  1688 03da 01       		.byte	0x1
  1689 03db AD01     		.2byte	0x1ad
  1690 03dd 01       		.byte	0x1
@@ -3022,25 +3022,25 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1697 03ed 01       		.byte	0x1
  1698 03ee 33040000 		.4byte	0x433
  1699 03f2 12       		.uleb128 0x12
- 1700 03f3 A2030000 		.4byte	.LASF41
+ 1700 03f3 B3030000 		.4byte	.LASF41
  1701 03f7 01       		.byte	0x1
  1702 03f8 AD01     		.2byte	0x1ad
  1703 03fa 6F000000 		.4byte	0x6f
  1704 03fe E3020000 		.4byte	.LLST17
  1705 0402 12       		.uleb128 0x12
- 1706 0403 EC030000 		.4byte	.LASF48
+ 1706 0403 FD030000 		.4byte	.LASF48
  1707 0407 01       		.byte	0x1
  1708 0408 AD01     		.2byte	0x1ad
  1709 040a 6F000000 		.4byte	0x6f
  1710 040e 1D030000 		.4byte	.LLST18
  1711 0412 13       		.uleb128 0x13
- 1712 0413 7A010000 		.4byte	.LASF49
+ 1712 0413 5A010000 		.4byte	.LASF49
  1713 0417 01       		.byte	0x1
  1714 0418 AF01     		.2byte	0x1af
  1715 041a 6F000000 		.4byte	0x6f
  1716 041e 49030000 		.4byte	.LLST19
  1717 0422 13       		.uleb128 0x13
- 1718 0423 6F040000 		.4byte	.LASF42
+ 1718 0423 80040000 		.4byte	.LASF42
  1719 0427 01       		.byte	0x1
  1720 0428 B001     		.2byte	0x1b0
  1721 042a A5000000 		.4byte	0xa5
@@ -3048,7 +3048,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1723 0432 00       		.byte	0
  1724 0433 11       		.uleb128 0x11
  1725 0434 01       		.byte	0x1
- 1726 0435 F0010000 		.4byte	.LASF50
+ 1726 0435 D0010000 		.4byte	.LASF50
  1727 0439 01       		.byte	0x1
  1728 043a D601     		.2byte	0x1d6
  1729 043c 01       		.byte	0x1
@@ -3058,37 +3058,37 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1733 0449 02       		.byte	0x2
  1734 044a 7D       		.byte	0x7d
  1735 044b 00       		.sleb128 0
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 52
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 52
 
 
  1736 044c 01       		.byte	0x1
  1737 044d A2040000 		.4byte	0x4a2
  1738 0451 12       		.uleb128 0x12
- 1739 0452 A2030000 		.4byte	.LASF41
+ 1739 0452 B3030000 		.4byte	.LASF41
  1740 0456 01       		.byte	0x1
  1741 0457 D601     		.2byte	0x1d6
  1742 0459 6F000000 		.4byte	0x6f
  1743 045d 98030000 		.4byte	.LLST21
  1744 0461 12       		.uleb128 0x12
- 1745 0462 84020000 		.4byte	.LASF51
+ 1745 0462 95020000 		.4byte	.LASF51
  1746 0466 01       		.byte	0x1
  1747 0467 D601     		.2byte	0x1d6
  1748 0469 7A000000 		.4byte	0x7a
  1749 046d D2030000 		.4byte	.LLST22
  1750 0471 12       		.uleb128 0x12
- 1751 0472 80010000 		.4byte	.LASF52
+ 1751 0472 60010000 		.4byte	.LASF52
  1752 0476 01       		.byte	0x1
  1753 0477 D601     		.2byte	0x1d6
  1754 0479 7A000000 		.4byte	0x7a
  1755 047d E5030000 		.4byte	.LLST23
  1756 0481 13       		.uleb128 0x13
- 1757 0482 6F040000 		.4byte	.LASF42
+ 1757 0482 80040000 		.4byte	.LASF42
  1758 0486 01       		.byte	0x1
  1759 0487 D901     		.2byte	0x1d9
  1760 0489 A5000000 		.4byte	0xa5
  1761 048d F8030000 		.4byte	.LLST24
  1762 0491 13       		.uleb128 0x13
- 1763 0492 2B040000 		.4byte	.LASF53
+ 1763 0492 3C040000 		.4byte	.LASF53
  1764 0496 01       		.byte	0x1
  1765 0497 DA01     		.2byte	0x1da
  1766 0499 A2040000 		.4byte	0x4a2
@@ -3099,7 +3099,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1771 04a4 B0000000 		.4byte	0xb0
  1772 04a8 11       		.uleb128 0x11
  1773 04a9 01       		.byte	0x1
- 1774 04aa 90040000 		.4byte	.LASF54
+ 1774 04aa A1040000 		.4byte	.LASF54
  1775 04ae 01       		.byte	0x1
  1776 04af 1102     		.2byte	0x211
  1777 04b1 01       		.byte	0x1
@@ -3112,23 +3112,23 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1784 04c1 01       		.byte	0x1
  1785 04c2 F5040000 		.4byte	0x4f5
  1786 04c6 12       		.uleb128 0x12
- 1787 04c7 A2030000 		.4byte	.LASF41
+ 1787 04c7 B3030000 		.4byte	.LASF41
  1788 04cb 01       		.byte	0x1
  1789 04cc 1102     		.2byte	0x211
  1790 04ce 6F000000 		.4byte	0x6f
  1791 04d2 60040000 		.4byte	.LLST26
  1792 04d6 15       		.uleb128 0x15
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 53
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 53
 
 
- 1793 04d7 3E040000 		.4byte	.LASF55
+ 1793 04d7 4F040000 		.4byte	.LASF55
  1794 04db 01       		.byte	0x1
  1795 04dc 1102     		.2byte	0x211
  1796 04de 6F000000 		.4byte	0x6f
  1797 04e2 01       		.byte	0x1
  1798 04e3 51       		.byte	0x51
  1799 04e4 13       		.uleb128 0x13
- 1800 04e5 6F040000 		.4byte	.LASF42
+ 1800 04e5 80040000 		.4byte	.LASF42
  1801 04e9 01       		.byte	0x1
  1802 04ea 1302     		.2byte	0x213
  1803 04ec A5000000 		.4byte	0xa5
@@ -3136,7 +3136,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1805 04f4 00       		.byte	0
  1806 04f5 11       		.uleb128 0x11
  1807 04f6 01       		.byte	0x1
- 1808 04f7 62030000 		.4byte	.LASF56
+ 1808 04f7 73030000 		.4byte	.LASF56
  1809 04fb 01       		.byte	0x1
  1810 04fc 3702     		.2byte	0x237
  1811 04fe 01       		.byte	0x1
@@ -3149,19 +3149,19 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1818 050e 01       		.byte	0x1
  1819 050f 44050000 		.4byte	0x544
  1820 0513 12       		.uleb128 0x12
- 1821 0514 A2030000 		.4byte	.LASF41
+ 1821 0514 B3030000 		.4byte	.LASF41
  1822 0518 01       		.byte	0x1
  1823 0519 3702     		.2byte	0x237
  1824 051b 6F000000 		.4byte	0x6f
  1825 051f D1040000 		.4byte	.LLST28
  1826 0523 12       		.uleb128 0x12
- 1827 0524 88040000 		.4byte	.LASF57
+ 1827 0524 99040000 		.4byte	.LASF57
  1828 0528 01       		.byte	0x1
  1829 0529 3702     		.2byte	0x237
  1830 052b 6F000000 		.4byte	0x6f
  1831 052f 0B050000 		.4byte	.LLST29
  1832 0533 13       		.uleb128 0x13
- 1833 0534 6F040000 		.4byte	.LASF42
+ 1833 0534 80040000 		.4byte	.LASF42
  1834 0538 01       		.byte	0x1
  1835 0539 3902     		.2byte	0x239
  1836 053b A5000000 		.4byte	0xa5
@@ -3169,7 +3169,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1838 0543 00       		.byte	0
  1839 0544 11       		.uleb128 0x11
  1840 0545 01       		.byte	0x1
- 1841 0546 76040000 		.4byte	.LASF58
+ 1841 0546 87040000 		.4byte	.LASF58
  1842 054a 01       		.byte	0x1
  1843 054b 5802     		.2byte	0x258
  1844 054d 01       		.byte	0x1
@@ -3178,20 +3178,20 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1847 0556 1C000000 		.4byte	.LFE13
  1848 055a 02       		.byte	0x2
  1849 055b 7D       		.byte	0x7d
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 54
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 54
 
 
  1850 055c 00       		.sleb128 0
  1851 055d 01       		.byte	0x1
  1852 055e 83050000 		.4byte	0x583
  1853 0562 12       		.uleb128 0x12
- 1854 0563 A2030000 		.4byte	.LASF41
+ 1854 0563 B3030000 		.4byte	.LASF41
  1855 0567 01       		.byte	0x1
  1856 0568 5802     		.2byte	0x258
  1857 056a 6F000000 		.4byte	0x6f
  1858 056e 6E050000 		.4byte	.LLST31
  1859 0572 13       		.uleb128 0x13
- 1860 0573 6F040000 		.4byte	.LASF42
+ 1860 0573 80040000 		.4byte	.LASF42
  1861 0577 01       		.byte	0x1
  1862 0578 5A02     		.2byte	0x25a
  1863 057a A5000000 		.4byte	0xa5
@@ -3199,7 +3199,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1865 0582 00       		.byte	0
  1866 0583 16       		.uleb128 0x16
  1867 0584 01       		.byte	0x1
- 1868 0585 B3030000 		.4byte	.LASF59
+ 1868 0585 C4030000 		.4byte	.LASF59
  1869 0589 01       		.byte	0x1
  1870 058a 8A02     		.2byte	0x28a
  1871 058c 01       		.byte	0x1
@@ -3210,13 +3210,13 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1876 059d 01       		.byte	0x1
  1877 059e DE050000 		.4byte	0x5de
  1878 05a2 12       		.uleb128 0x12
- 1879 05a3 A2030000 		.4byte	.LASF41
+ 1879 05a3 B3030000 		.4byte	.LASF41
  1880 05a7 01       		.byte	0x1
  1881 05a8 8A02     		.2byte	0x28a
  1882 05aa 6F000000 		.4byte	0x6f
  1883 05ae 00060000 		.4byte	.LLST34
  1884 05b2 12       		.uleb128 0x12
- 1885 05b3 DD030000 		.4byte	.LASF60
+ 1885 05b3 EE030000 		.4byte	.LASF60
  1886 05b7 01       		.byte	0x1
  1887 05b8 8A02     		.2byte	0x28a
  1888 05ba DE050000 		.4byte	0x5de
@@ -3229,7 +3229,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1895 05ce 01       		.byte	0x1
  1896 05cf 52       		.byte	0x52
  1897 05d0 17       		.uleb128 0x17
- 1898 05d1 6F040000 		.4byte	.LASF42
+ 1898 05d1 80040000 		.4byte	.LASF42
  1899 05d5 01       		.byte	0x1
  1900 05d6 8C02     		.2byte	0x28c
  1901 05d8 A5000000 		.4byte	0xa5
@@ -3238,12 +3238,12 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1904 05de 14       		.uleb128 0x14
  1905 05df 04       		.byte	0x4
  1906 05e0 6F000000 		.4byte	0x6f
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 55
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 55
 
 
  1907 05e4 16       		.uleb128 0x16
  1908 05e5 01       		.byte	0x1
- 1909 05e6 AD040000 		.4byte	.LASF62
+ 1909 05e6 BE040000 		.4byte	.LASF62
  1910 05ea 01       		.byte	0x1
  1911 05eb CC02     		.2byte	0x2cc
  1912 05ed 01       		.byte	0x1
@@ -3254,19 +3254,19 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1917 05fe 01       		.byte	0x1
  1918 05ff 72060000 		.4byte	0x672
  1919 0603 12       		.uleb128 0x12
- 1920 0604 A2030000 		.4byte	.LASF41
+ 1920 0604 B3030000 		.4byte	.LASF41
  1921 0608 01       		.byte	0x1
  1922 0609 CC02     		.2byte	0x2cc
  1923 060b 6F000000 		.4byte	0x6f
  1924 060f 86060000 		.4byte	.LLST37
  1925 0613 12       		.uleb128 0x12
- 1926 0614 E3020000 		.4byte	.LASF63
+ 1926 0614 F4020000 		.4byte	.LASF63
  1927 0618 01       		.byte	0x1
  1928 0619 CC02     		.2byte	0x2cc
  1929 061b 6F000000 		.4byte	0x6f
  1930 061f C0060000 		.4byte	.LLST38
  1931 0623 12       		.uleb128 0x12
- 1932 0624 0F040000 		.4byte	.LASF64
+ 1932 0624 20040000 		.4byte	.LASF64
  1933 0628 01       		.byte	0x1
  1934 0629 CC02     		.2byte	0x2cc
  1935 062b 6F000000 		.4byte	0x6f
@@ -3286,7 +3286,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1949 0650 91       		.byte	0x91
  1950 0651 00       		.sleb128 0
  1951 0652 15       		.uleb128 0x15
- 1952 0653 9B030000 		.4byte	.LASF67
+ 1952 0653 AC030000 		.4byte	.LASF67
  1953 0657 01       		.byte	0x1
  1954 0658 CD02     		.2byte	0x2cd
  1955 065a 6F000000 		.4byte	0x6f
@@ -3294,11 +3294,11 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1957 065f 91       		.byte	0x91
  1958 0660 04       		.sleb128 4
  1959 0661 13       		.uleb128 0x13
- 1960 0662 6F040000 		.4byte	.LASF42
+ 1960 0662 80040000 		.4byte	.LASF42
  1961 0666 01       		.byte	0x1
  1962 0667 CF02     		.2byte	0x2cf
  1963 0669 A5000000 		.4byte	0xa5
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 56
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 56
 
 
  1964 066d 44070000 		.4byte	.LLST41
@@ -3322,7 +3322,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  1982 0699 6F000000 		.4byte	0x6f
  1983 069d 9B070000 		.4byte	.LLST43
  1984 06a1 13       		.uleb128 0x13
- 1985 06a2 C5040000 		.4byte	.LASF69
+ 1985 06a2 D6040000 		.4byte	.LASF69
  1986 06a6 01       		.byte	0x1
  1987 06a7 F302     		.2byte	0x2f3
  1988 06a9 6F000000 		.4byte	0x6f
@@ -3358,7 +3358,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  2018 06f9 01       		.byte	0x1
  2019 06fa 1F03     		.2byte	0x31f
  2020 06fc 6F000000 		.4byte	0x6f
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 57
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 57
 
 
  2021 0700 36080000 		.4byte	.LLST47
@@ -3403,22 +3403,22 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  2060 075a 6F000000 		.4byte	0x6f
  2061 075e 69080000 		.4byte	.LLST49
  2062 0762 15       		.uleb128 0x15
- 2063 0763 57040000 		.4byte	.LASF74
+ 2063 0763 68040000 		.4byte	.LASF74
  2064 0767 01       		.byte	0x1
  2065 0768 7B03     		.2byte	0x37b
  2066 076a 7A000000 		.4byte	0x7a
  2067 076e 01       		.byte	0x1
  2068 076f 51       		.byte	0x51
  2069 0770 15       		.uleb128 0x15
- 2070 0771 5B030000 		.4byte	.LASF75
+ 2070 0771 6C030000 		.4byte	.LASF75
  2071 0775 01       		.byte	0x1
  2072 0776 7B03     		.2byte	0x37b
  2073 0778 6F000000 		.4byte	0x6f
  2074 077c 01       		.byte	0x1
  2075 077d 52       		.byte	0x52
  2076 077e 15       		.uleb128 0x15
- 2077 077f 3C020000 		.4byte	.LASF76
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 58
+ 2077 077f 1C020000 		.4byte	.LASF76
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 58
 
 
  2078 0783 01       		.byte	0x1
@@ -3427,7 +3427,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  2081 078a 01       		.byte	0x1
  2082 078b 53       		.byte	0x53
  2083 078c 13       		.uleb128 0x13
- 2084 078d 6F040000 		.4byte	.LASF42
+ 2084 078d 80040000 		.4byte	.LASF42
  2085 0791 01       		.byte	0x1
  2086 0792 7E03     		.2byte	0x37e
  2087 0794 A5000000 		.4byte	0xa5
@@ -3436,7 +3436,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  2090 079d 0E000000 		.4byte	.LBB4
  2091 07a1 22000000 		.4byte	.LBE4
  2092 07a5 13       		.uleb128 0x13
- 2093 07a6 2B040000 		.4byte	.LASF53
+ 2093 07a6 3C040000 		.4byte	.LASF53
  2094 07aa 01       		.byte	0x1
  2095 07ab 8303     		.2byte	0x383
  2096 07ad A2040000 		.4byte	0x4a2
@@ -3445,7 +3445,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  2099 07b6 00       		.byte	0
  2100 07b7 16       		.uleb128 0x16
  2101 07b8 01       		.byte	0x1
- 2102 07b9 43030000 		.4byte	.LASF77
+ 2102 07b9 54030000 		.4byte	.LASF77
  2103 07bd 01       		.byte	0x1
  2104 07be B703     		.2byte	0x3b7
  2105 07c0 01       		.byte	0x1
@@ -3462,29 +3462,29 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  2116 07de 6F000000 		.4byte	0x6f
  2117 07e2 0D090000 		.4byte	.LLST53
  2118 07e6 12       		.uleb128 0x12
- 2119 07e7 57040000 		.4byte	.LASF74
+ 2119 07e7 68040000 		.4byte	.LASF74
  2120 07eb 01       		.byte	0x1
  2121 07ec B703     		.2byte	0x3b7
  2122 07ee 3C080000 		.4byte	0x83c
  2123 07f2 47090000 		.4byte	.LLST54
  2124 07f6 12       		.uleb128 0x12
- 2125 07f7 5B030000 		.4byte	.LASF75
+ 2125 07f7 6C030000 		.4byte	.LASF75
  2126 07fb 01       		.byte	0x1
  2127 07fc B703     		.2byte	0x3b7
  2128 07fe DE050000 		.4byte	0x5de
  2129 0802 73090000 		.4byte	.LLST55
  2130 0806 15       		.uleb128 0x15
- 2131 0807 3C020000 		.4byte	.LASF76
+ 2131 0807 1C020000 		.4byte	.LASF76
  2132 080b 01       		.byte	0x1
  2133 080c B703     		.2byte	0x3b7
  2134 080e DE050000 		.4byte	0x5de
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 59
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 59
 
 
  2135 0812 01       		.byte	0x1
  2136 0813 53       		.byte	0x53
  2137 0814 17       		.uleb128 0x17
- 2138 0815 6F040000 		.4byte	.LASF42
+ 2138 0815 80040000 		.4byte	.LASF42
  2139 0819 01       		.byte	0x1
  2140 081a BA03     		.2byte	0x3ba
  2141 081c A5000000 		.4byte	0xa5
@@ -3493,7 +3493,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  2144 0822 0A000000 		.4byte	.LBB5
  2145 0826 1C000000 		.4byte	.LBE5
  2146 082a 13       		.uleb128 0x13
- 2147 082b 2B040000 		.4byte	.LASF53
+ 2147 082b 3C040000 		.4byte	.LASF53
  2148 082f 01       		.byte	0x1
  2149 0830 C203     		.2byte	0x3c2
  2150 0832 A2040000 		.4byte	0x4a2
@@ -3505,7 +3505,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  2156 083e 7A000000 		.4byte	0x7a
  2157 0842 11       		.uleb128 0x11
  2158 0843 01       		.byte	0x1
- 2159 0844 B3020000 		.4byte	.LASF78
+ 2159 0844 C4020000 		.4byte	.LASF78
  2160 0848 01       		.byte	0x1
  2161 0849 F203     		.2byte	0x3f2
  2162 084b 01       		.byte	0x1
@@ -3524,30 +3524,30 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  2175 0868 6F000000 		.4byte	0x6f
  2176 086c C7090000 		.4byte	.LLST57
  2177 0870 15       		.uleb128 0x15
- 2178 0871 84020000 		.4byte	.LASF51
+ 2178 0871 95020000 		.4byte	.LASF51
  2179 0875 01       		.byte	0x1
  2180 0876 F203     		.2byte	0x3f2
  2181 0878 7A000000 		.4byte	0x7a
  2182 087c 01       		.byte	0x1
  2183 087d 51       		.byte	0x51
  2184 087e 15       		.uleb128 0x15
- 2185 087f 80010000 		.4byte	.LASF52
+ 2185 087f 60010000 		.4byte	.LASF52
  2186 0883 01       		.byte	0x1
  2187 0884 F203     		.2byte	0x3f2
  2188 0886 7A000000 		.4byte	0x7a
  2189 088a 01       		.byte	0x1
  2190 088b 52       		.byte	0x52
  2191 088c 13       		.uleb128 0x13
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 60
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 60
 
 
- 2192 088d 6F040000 		.4byte	.LASF42
+ 2192 088d 80040000 		.4byte	.LASF42
  2193 0891 01       		.byte	0x1
  2194 0892 F403     		.2byte	0x3f4
  2195 0894 A5000000 		.4byte	0xa5
  2196 0898 010A0000 		.4byte	.LLST58
  2197 089c 13       		.uleb128 0x13
- 2198 089d 2B040000 		.4byte	.LASF53
+ 2198 089d 3C040000 		.4byte	.LASF53
  2199 08a1 01       		.byte	0x1
  2200 08a2 F503     		.2byte	0x3f5
  2201 08a4 A2040000 		.4byte	0x4a2
@@ -3555,7 +3555,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  2203 08ac 00       		.byte	0
  2204 08ad 11       		.uleb128 0x11
  2205 08ae 01       		.byte	0x1
- 2206 08af F5030000 		.4byte	.LASF79
+ 2206 08af 06040000 		.4byte	.LASF79
  2207 08b3 01       		.byte	0x1
  2208 08b4 2204     		.2byte	0x422
  2209 08b6 01       		.byte	0x1
@@ -3574,37 +3574,37 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  2222 08d3 6F000000 		.4byte	0x6f
  2223 08d7 690A0000 		.4byte	.LLST60
  2224 08db 12       		.uleb128 0x12
- 2225 08dc 84020000 		.4byte	.LASF51
+ 2225 08dc 95020000 		.4byte	.LASF51
  2226 08e0 01       		.byte	0x1
  2227 08e1 2204     		.2byte	0x422
  2228 08e3 3C080000 		.4byte	0x83c
  2229 08e7 A30A0000 		.4byte	.LLST61
  2230 08eb 15       		.uleb128 0x15
- 2231 08ec 80010000 		.4byte	.LASF52
+ 2231 08ec 60010000 		.4byte	.LASF52
  2232 08f0 01       		.byte	0x1
  2233 08f1 2204     		.2byte	0x422
  2234 08f3 3C080000 		.4byte	0x83c
  2235 08f7 01       		.byte	0x1
  2236 08f8 52       		.byte	0x52
  2237 08f9 17       		.uleb128 0x17
- 2238 08fa 6F040000 		.4byte	.LASF42
+ 2238 08fa 80040000 		.4byte	.LASF42
  2239 08fe 01       		.byte	0x1
  2240 08ff 2404     		.2byte	0x424
  2241 0901 A5000000 		.4byte	0xa5
  2242 0905 01       		.byte	0x1
  2243 0906 13       		.uleb128 0x13
- 2244 0907 2B040000 		.4byte	.LASF53
+ 2244 0907 3C040000 		.4byte	.LASF53
  2245 090b 01       		.byte	0x1
  2246 090c 2504     		.2byte	0x425
  2247 090e A2040000 		.4byte	0x4a2
  2248 0912 CF0A0000 		.4byte	.LLST62
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 61
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 61
 
 
  2249 0916 00       		.byte	0
  2250 0917 11       		.uleb128 0x11
  2251 0918 01       		.byte	0x1
- 2252 0919 A1020000 		.4byte	.LASF80
+ 2252 0919 B2020000 		.4byte	.LASF80
  2253 091d 01       		.byte	0x1
  2254 091e 5504     		.2byte	0x455
  2255 0920 01       		.byte	0x1
@@ -3617,7 +3617,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  2262 0930 01       		.byte	0x1
  2263 0931 66090000 		.4byte	0x966
  2264 0935 12       		.uleb128 0x12
- 2265 0936 A2030000 		.4byte	.LASF41
+ 2265 0936 B3030000 		.4byte	.LASF41
  2266 093a 01       		.byte	0x1
  2267 093b 5504     		.2byte	0x455
  2268 093d 6F000000 		.4byte	0x6f
@@ -3629,14 +3629,14 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  2274 094d 6F000000 		.4byte	0x6f
  2275 0951 590B0000 		.4byte	.LLST64
  2276 0955 13       		.uleb128 0x13
- 2277 0956 6F040000 		.4byte	.LASF42
+ 2277 0956 80040000 		.4byte	.LASF42
  2278 095a 01       		.byte	0x1
  2279 095b 5704     		.2byte	0x457
  2280 095d A5000000 		.4byte	0xa5
  2281 0961 9E0B0000 		.4byte	.LLST65
  2282 0965 00       		.byte	0
  2283 0966 1D       		.uleb128 0x1d
- 2284 0967 0A020000 		.4byte	.LASF82
+ 2284 0967 EA010000 		.4byte	.LASF82
  2285 096b 01       		.byte	0x1
  2286 096c 28       		.byte	0x28
  2287 096d 6F000000 		.4byte	0x6f
@@ -3644,7 +3644,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  2289 0972 03       		.byte	0x3
  2290 0973 01000000 		.4byte	CyDmaTdCurrentNumber
  2291 0977 1D       		.uleb128 0x1d
- 2292 0978 46040000 		.4byte	.LASF83
+ 2292 0978 57040000 		.4byte	.LASF83
  2293 097c 01       		.byte	0x1
  2294 097d 29       		.byte	0x29
  2295 097e 6F000000 		.4byte	0x6f
@@ -3658,13 +3658,13 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  2303 098f 85000000 		.4byte	0x85
  2304 0993 05       		.byte	0x5
  2305 0994 03       		.byte	0x3
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 62
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 62
 
 
  2306 0995 00000000 		.4byte	CyDmaChannels
  2307 0999 1E       		.uleb128 0x1e
  2308 099a 01       		.byte	0x1
- 2309 099b 56020000 		.4byte	.LASF88
+ 2309 099b 36020000 		.4byte	.LASF88
  2310 099f 04       		.byte	0x4
  2311 09a0 7E       		.byte	0x7e
  2312 09a1 01       		.byte	0x1
@@ -3718,7 +3718,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  2360 0020 03       		.uleb128 0x3
  2361 0021 24       		.uleb128 0x24
  2362 0022 00       		.byte	0
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 63
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 63
 
 
  2363 0023 0B       		.uleb128 0xb
@@ -3778,7 +3778,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  2417 0059 38       		.uleb128 0x38
  2418 005a 0A       		.uleb128 0xa
  2419 005b 00       		.byte	0
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 64
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 64
 
 
  2420 005c 00       		.byte	0
@@ -3838,7 +3838,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  2474 0093 0C       		.uleb128 0xc
  2475 0094 01       		.uleb128 0x1
  2476 0095 13       		.uleb128 0x13
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 65
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 65
 
 
  2477 0096 00       		.byte	0
@@ -3898,7 +3898,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  2531 00cd 06       		.uleb128 0x6
  2532 00ce 00       		.byte	0
  2533 00cf 00       		.byte	0
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 66
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 66
 
 
  2534 00d0 0F       		.uleb128 0xf
@@ -3958,7 +3958,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  2588 0109 01       		.uleb128 0x1
  2589 010a 40       		.uleb128 0x40
  2590 010b 0A       		.uleb128 0xa
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 67
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 67
 
 
  2591 010c 9742     		.uleb128 0x2117
@@ -4018,7 +4018,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  2645 0143 49       		.uleb128 0x49
  2646 0144 13       		.uleb128 0x13
  2647 0145 02       		.uleb128 0x2
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 68
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 68
 
 
  2648 0146 0A       		.uleb128 0xa
@@ -4078,7 +4078,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  2702 017d 3B       		.uleb128 0x3b
  2703 017e 05       		.uleb128 0x5
  2704 017f 27       		.uleb128 0x27
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 69
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 69
 
 
  2705 0180 0C       		.uleb128 0xc
@@ -4138,7 +4138,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  2759 01bb 00       		.byte	0
  2760 01bc 00       		.byte	0
  2761 01bd 1C       		.uleb128 0x1c
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 70
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 70
 
 
  2762 01be 0B       		.uleb128 0xb
@@ -4198,7 +4198,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  2816 01f4 0C       		.uleb128 0xc
  2817 01f5 3C       		.uleb128 0x3c
  2818 01f6 0C       		.uleb128 0xc
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 71
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 71
 
 
  2819 01f7 00       		.byte	0
@@ -4258,7 +4258,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  2873 0065 00000000 		.4byte	0
  2874              	.LLST4:
  2875 0069 06000000 		.4byte	.LVL5
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 72
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 72
 
 
  2876 006d 0E000000 		.4byte	.LVL6
@@ -4318,7 +4318,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  2930 00f5 F3       		.byte	0xf3
  2931 00f6 01       		.uleb128 0x1
  2932 00f7 50       		.byte	0x50
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 73
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 73
 
 
  2933 00f8 9F       		.byte	0x9f
@@ -4378,7 +4378,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  2987 017c 9F       		.byte	0x9f
  2988 017d 00000000 		.4byte	0
  2989 0181 00000000 		.4byte	0
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 74
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 74
 
 
  2990              	.LLST11:
@@ -4438,7 +4438,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  3044 0209 0100     		.2byte	0x1
  3045 020b 50       		.byte	0x50
  3046 020c 08000000 		.4byte	.LVL24
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 75
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 75
 
 
  3047 0210 1C000000 		.4byte	.LVL26
@@ -4498,7 +4498,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  3101 028f 20000000 		.4byte	.LVL32
  3102 0293 0100     		.2byte	0x1
  3103 0295 50       		.byte	0x50
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 76
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 76
 
 
  3104 0296 20000000 		.4byte	.LVL32
@@ -4558,7 +4558,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  3158 0315 00000000 		.4byte	0
  3159 0319 00000000 		.4byte	0
  3160              	.LLST18:
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 77
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 77
 
 
  3161 031d 00000000 		.4byte	.LVL33
@@ -4618,7 +4618,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  3215 03a0 0100     		.2byte	0x1
  3216 03a2 50       		.byte	0x50
  3217 03a3 1A000000 		.4byte	.LVL44
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 78
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 78
 
 
  3218 03a7 2A000000 		.4byte	.LVL49
@@ -4678,7 +4678,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  3272 042b 00000000 		.4byte	0
  3273              	.LLST25:
  3274 042f 22000000 		.4byte	.LVL45
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 79
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 79
 
 
  3275 0433 24000000 		.4byte	.LVL46
@@ -4738,7 +4738,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  3329 04b1 9F       		.byte	0x9f
  3330 04b2 10000000 		.4byte	.LVL54
  3331 04b6 12000000 		.4byte	.LVL55
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 80
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 80
 
 
  3332 04ba 0200     		.2byte	0x2
@@ -4798,7 +4798,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  3386 053b 16000000 		.4byte	.LVL59
  3387 053f 0200     		.2byte	0x2
  3388 0541 31       		.byte	0x31
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 81
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 81
 
 
  3389 0542 9F       		.byte	0x9f
@@ -4858,7 +4858,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  3443 05c4 14000000 		.4byte	.LVL66
  3444 05c8 0300     		.2byte	0x3
  3445 05ca 08       		.byte	0x8
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 82
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 82
 
 
  3446 05cb FF       		.byte	0xff
@@ -4918,7 +4918,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  3500 064f F3       		.byte	0xf3
  3501 0650 01       		.uleb128 0x1
  3502 0651 51       		.byte	0x51
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 83
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 83
 
 
  3503 0652 9F       		.byte	0x9f
@@ -4978,7 +4978,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  3557 06d6 01       		.uleb128 0x1
  3558 06d7 51       		.byte	0x51
  3559 06d8 9F       		.byte	0x9f
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 84
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 84
 
 
  3560 06d9 3C000000 		.4byte	.LVL78
@@ -5038,7 +5038,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  3614 0760 3E000000 		.4byte	.LVL79
  3615 0764 0200     		.2byte	0x2
  3616 0766 31       		.byte	0x31
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 85
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 85
 
 
  3617 0767 9F       		.byte	0x9f
@@ -5098,7 +5098,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  3671 07f2 0200     		.2byte	0x2
  3672 07f4 7D       		.byte	0x7d
  3673 07f5 00       		.sleb128 0
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 86
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 86
 
 
  3674 07f6 04000000 		.4byte	.LCFI5
@@ -5158,7 +5158,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  3728 087f 01       		.uleb128 0x1
  3729 0880 50       		.byte	0x50
  3730 0881 9F       		.byte	0x9f
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 87
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 87
 
 
  3731 0882 22000000 		.4byte	.LVL93
@@ -5218,7 +5218,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  3785 0909 00000000 		.4byte	0
  3786              	.LLST53:
  3787 090d 00000000 		.4byte	.LVL95
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 88
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 88
 
 
  3788 0911 30000000 		.4byte	.LVL100
@@ -5278,7 +5278,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  3842 0990 44000000 		.4byte	.LFE20
  3843 0994 0100     		.2byte	0x1
  3844 0996 52       		.byte	0x52
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 89
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 89
 
 
  3845 0997 00000000 		.4byte	0
@@ -5338,7 +5338,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  3898 0a17 30       		.byte	0x30
  3899 0a18 9F       		.byte	0x9f
  3900 0a19 16000000 		.4byte	.LVL110
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 90
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 90
 
 
  3901 0a1d 18000000 		.4byte	.LVL111
@@ -5398,7 +5398,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  3955 0a9b 00000000 		.4byte	0
  3956 0a9f 00000000 		.4byte	0
  3957              	.LLST61:
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 91
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 91
 
 
  3958 0aa3 00000000 		.4byte	.LVL112
@@ -5458,7 +5458,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  4011 0b1e 9F       		.byte	0x9f
  4012 0b1f 16000000 		.4byte	.LVL125
  4013 0b23 18000000 		.4byte	.LVL126
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 92
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 92
 
 
  4014 0b27 0100     		.2byte	0x1
@@ -5518,7 +5518,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  4068 0ba6 0200     		.2byte	0x2
  4069 0ba8 31       		.byte	0x31
  4070 0ba9 9F       		.byte	0x9f
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 93
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 93
 
 
  4071 0baa 22000000 		.4byte	.LVL129
@@ -5578,7 +5578,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  4125 00b0 00000000 		.4byte	.LFB20
  4126 00b4 44000000 		.4byte	.LFE20-.LFB20
  4127 00b8 00000000 		.4byte	.LFB21
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 94
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 94
 
 
  4128 00bc 1A000000 		.4byte	.LFE21-.LFB21
@@ -5638,7 +5638,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  4182 00b4 26000000 		.4byte	.LFE19
  4183 00b8 00000000 		.4byte	.LFB20
  4184 00bc 44000000 		.4byte	.LFE20
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 95
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 95
 
 
  4185 00c0 00000000 		.4byte	.LFB21
@@ -5698,7 +5698,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  4212              	.LASF31:
  4213 0077 4379446D 		.ascii	"CyDmacConfigure\000"
  4213      6163436F 
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 96
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 96
 
 
  4213      6E666967 
@@ -5758,7 +5758,7 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  4237      6E653100 
  4238              	.LASF16:
  4239 0122 72656731 		.ascii	"reg16\000"
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 97
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 97
 
 
  4239      3600
@@ -5776,313 +5776,314 @@ ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 1
  4246              	.LASF11:
  4247 0143 75696E74 		.ascii	"uint32\000"
  4247      333200
- 4248              	.LASF87:
- 4249 014a 573A5C53 		.ascii	"W:\\SCSI2SD\\USB_Bootloader.cydsn\000"
- 4249      43534932 
- 4249      53445C55 
- 4249      53425F42 
- 4249      6F6F746C 
- 4250              	.LASF20:
- 4251 016a 61637469 		.ascii	"action\000"
- 4251      6F6E00
- 4252              	.LASF22:
- 4253 0171 72657365 		.ascii	"reserved\000"
- 4253      72766564 
- 4253      00
- 4254              	.LASF49:
- 4255 017a 76616C75 		.ascii	"value\000"
- 4255      6500
- 4256              	.LASF52:
- 4257 0180 64657374 		.ascii	"destination\000"
- 4257      696E6174 
- 4257      696F6E00 
- 4258              	.LASF47:
- 4259 018c 4379446D 		.ascii	"CyDmaChPriority\000"
- 4259      61436850 
- 4259      72696F72 
- 4259      69747900 
- 4260              	.LASF8:
- 4261 019c 756E7369 		.ascii	"unsigned int\000"
- 4261      676E6564 
- 4261      20696E74 
- 4261      00
- 4262              	.LASF5:
- 4263 01a9 6C6F6E67 		.ascii	"long unsigned int\000"
- 4263      20756E73 
- 4263      69676E65 
- 4263      6420696E 
- 4263      7400
- 4264              	.LASF25:
- 4265 01bb 646D6163 		.ascii	"dmac_cfgmem_struct\000"
- 4265      5F636667 
- 4265      6D656D5F 
- 4265      73747275 
- 4265      637400
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 98
+ 4248              	.LASF20:
+ 4249 014a 61637469 		.ascii	"action\000"
+ 4249      6F6E00
+ 4250              	.LASF22:
+ 4251 0151 72657365 		.ascii	"reserved\000"
+ 4251      72766564 
+ 4251      00
+ 4252              	.LASF49:
+ 4253 015a 76616C75 		.ascii	"value\000"
+ 4253      6500
+ 4254              	.LASF52:
+ 4255 0160 64657374 		.ascii	"destination\000"
+ 4255      696E6174 
+ 4255      696F6E00 
+ 4256              	.LASF47:
+ 4257 016c 4379446D 		.ascii	"CyDmaChPriority\000"
+ 4257      61436850 
+ 4257      72696F72 
+ 4257      69747900 
+ 4258              	.LASF8:
+ 4259 017c 756E7369 		.ascii	"unsigned int\000"
+ 4259      676E6564 
+ 4259      20696E74 
+ 4259      00
+ 4260              	.LASF5:
+ 4261 0189 6C6F6E67 		.ascii	"long unsigned int\000"
+ 4261      20756E73 
+ 4261      69676E65 
+ 4261      6420696E 
+ 4261      7400
+ 4262              	.LASF25:
+ 4263 019b 646D6163 		.ascii	"dmac_cfgmem_struct\000"
+ 4263      5F636667 
+ 4263      6D656D5F 
+ 4263      73747275 
+ 4263      637400
+ 4264              	.LASF86:
+ 4265 01ae 2E5C4765 		.ascii	".\\Generated_Source\\PSoC5\\CyDmac.c\000"
+ 4265      6E657261 
+ 4265      7465645F 
+ 4265      536F7572 
+ 4265      63655C50 
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 98
 
 
- 4266              	.LASF86:
- 4267 01ce 2E5C4765 		.ascii	".\\Generated_Source\\PSoC5\\CyDmac.c\000"
- 4267      6E657261 
- 4267      7465645F 
- 4267      536F7572 
- 4267      63655C50 
- 4268              	.LASF50:
- 4269 01f0 4379446D 		.ascii	"CyDmaChSetExtendedAddress\000"
- 4269      61436853 
- 4269      65744578 
- 4269      74656E64 
- 4269      65644164 
- 4270              	.LASF82:
- 4271 020a 4379446D 		.ascii	"CyDmaTdCurrentNumber\000"
- 4271      61546443 
- 4271      75727265 
- 4271      6E744E75 
- 4271      6D626572 
- 4272              	.LASF19:
- 4273 021f 62617369 		.ascii	"basic_cfg\000"
- 4273      635F6366 
- 4273      6700
- 4274              	.LASF3:
- 4275 0229 73686F72 		.ascii	"short unsigned int\000"
- 4275      7420756E 
- 4275      7369676E 
- 4275      65642069 
- 4275      6E7400
- 4276              	.LASF76:
- 4277 023c 636F6E66 		.ascii	"configuration\000"
- 4277      69677572 
- 4277      6174696F 
- 4277      6E00
- 4278              	.LASF33:
- 4279 024a 4379446D 		.ascii	"CyDmacError\000"
- 4279      61634572 
- 4279      726F7200 
- 4280              	.LASF88:
- 4281 0256 4379456E 		.ascii	"CyEnterCriticalSection\000"
- 4281      74657243 
- 4281      72697469 
- 4281      63616C53 
- 4281      65637469 
- 4282              	.LASF32:
- 4283 026d 4379446D 		.ascii	"CyDmacClearError\000"
- 4283      6163436C 
- 4283      65617245 
- 4283      72726F72 
- 4283      00
- 4284              	.LASF17:
- 4285 027e 72656733 		.ascii	"reg32\000"
- 4285      3200
- 4286              	.LASF51:
- 4287 0284 736F7572 		.ascii	"source\000"
- 4287      636500
- 4288              	.LASF21:
- 4289 028b 62617369 		.ascii	"basic_status\000"
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 99
+ 4266              	.LASF50:
+ 4267 01d0 4379446D 		.ascii	"CyDmaChSetExtendedAddress\000"
+ 4267      61436853 
+ 4267      65744578 
+ 4267      74656E64 
+ 4267      65644164 
+ 4268              	.LASF82:
+ 4269 01ea 4379446D 		.ascii	"CyDmaTdCurrentNumber\000"
+ 4269      61546443 
+ 4269      75727265 
+ 4269      6E744E75 
+ 4269      6D626572 
+ 4270              	.LASF19:
+ 4271 01ff 62617369 		.ascii	"basic_cfg\000"
+ 4271      635F6366 
+ 4271      6700
+ 4272              	.LASF3:
+ 4273 0209 73686F72 		.ascii	"short unsigned int\000"
+ 4273      7420756E 
+ 4273      7369676E 
+ 4273      65642069 
+ 4273      6E7400
+ 4274              	.LASF76:
+ 4275 021c 636F6E66 		.ascii	"configuration\000"
+ 4275      69677572 
+ 4275      6174696F 
+ 4275      6E00
+ 4276              	.LASF33:
+ 4277 022a 4379446D 		.ascii	"CyDmacError\000"
+ 4277      61634572 
+ 4277      726F7200 
+ 4278              	.LASF88:
+ 4279 0236 4379456E 		.ascii	"CyEnterCriticalSection\000"
+ 4279      74657243 
+ 4279      72697469 
+ 4279      63616C53 
+ 4279      65637469 
+ 4280              	.LASF32:
+ 4281 024d 4379446D 		.ascii	"CyDmacClearError\000"
+ 4281      6163436C 
+ 4281      65617245 
+ 4281      72726F72 
+ 4281      00
+ 4282              	.LASF87:
+ 4283 025e 573A5C53 		.ascii	"W:\\SCSI2SD\\software\\SCSI2SD\\USB_Bootloader.cyds"
+ 4283      43534932 
+ 4283      53445C73 
+ 4283      6F667477 
+ 4283      6172655C 
+ 4284 028d 6E00     		.ascii	"n\000"
+ 4285              	.LASF17:
+ 4286 028f 72656733 		.ascii	"reg32\000"
+ 4286      3200
+ 4287              	.LASF51:
+ 4288 0295 736F7572 		.ascii	"source\000"
+ 4288      636500
+ 4289              	.LASF21:
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 99
 
 
- 4289      635F7374 
- 4289      61747573 
- 4289      00
- 4290              	.LASF18:
- 4291 0298 73697A65 		.ascii	"sizetype\000"
- 4291      74797065 
- 4291      00
- 4292              	.LASF80:
- 4293 02a1 4379446D 		.ascii	"CyDmaChRoundRobin\000"
- 4293      61436852 
- 4293      6F756E64 
- 4293      526F6269 
- 4293      6E00
- 4294              	.LASF78:
- 4295 02b3 4379446D 		.ascii	"CyDmaTdSetAddress\000"
- 4295      61546453 
- 4295      65744164 
- 4295      64726573 
- 4295      7300
- 4296              	.LASF35:
- 4297 02c5 646D6149 		.ascii	"dmaIndex\000"
- 4297      6E646578 
- 4297      00
- 4298              	.LASF46:
- 4299 02ce 4379446D 		.ascii	"CyDmaClearPendingDrq\000"
- 4299      61436C65 
- 4299      61725065 
- 4299      6E64696E 
- 4299      67447271 
- 4300              	.LASF63:
- 4301 02e3 62757273 		.ascii	"burstCount\000"
- 4301      74436F75 
- 4301      6E7400
- 4302              	.LASF12:
- 4303 02ee 666C6F61 		.ascii	"float\000"
- 4303      7400
- 4304              	.LASF40:
- 4305 02f4 6572726F 		.ascii	"error\000"
- 4305      7200
- 4306              	.LASF85:
- 4307 02fa 474E5520 		.ascii	"GNU C 4.7.3 20130312 (release) [ARM/embedded-4_7-br"
- 4307      4320342E 
- 4307      372E3320 
- 4307      32303133 
- 4307      30333132 
- 4308 032d 616E6368 		.ascii	"anch revision 196615]\000"
- 4308      20726576 
- 4308      6973696F 
- 4308      6E203139 
- 4308      36363135 
- 4309              	.LASF77:
- 4310 0343 4379446D 		.ascii	"CyDmaTdGetConfiguration\000"
- 4310      61546447 
- 4310      6574436F 
- 4310      6E666967 
- 4310      75726174 
- 4311              	.LASF75:
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 100
+ 4290 029c 62617369 		.ascii	"basic_status\000"
+ 4290      635F7374 
+ 4290      61747573 
+ 4290      00
+ 4291              	.LASF18:
+ 4292 02a9 73697A65 		.ascii	"sizetype\000"
+ 4292      74797065 
+ 4292      00
+ 4293              	.LASF80:
+ 4294 02b2 4379446D 		.ascii	"CyDmaChRoundRobin\000"
+ 4294      61436852 
+ 4294      6F756E64 
+ 4294      526F6269 
+ 4294      6E00
+ 4295              	.LASF78:
+ 4296 02c4 4379446D 		.ascii	"CyDmaTdSetAddress\000"
+ 4296      61546453 
+ 4296      65744164 
+ 4296      64726573 
+ 4296      7300
+ 4297              	.LASF35:
+ 4298 02d6 646D6149 		.ascii	"dmaIndex\000"
+ 4298      6E646578 
+ 4298      00
+ 4299              	.LASF46:
+ 4300 02df 4379446D 		.ascii	"CyDmaClearPendingDrq\000"
+ 4300      61436C65 
+ 4300      61725065 
+ 4300      6E64696E 
+ 4300      67447271 
+ 4301              	.LASF63:
+ 4302 02f4 62757273 		.ascii	"burstCount\000"
+ 4302      74436F75 
+ 4302      6E7400
+ 4303              	.LASF12:
+ 4304 02ff 666C6F61 		.ascii	"float\000"
+ 4304      7400
+ 4305              	.LASF40:
+ 4306 0305 6572726F 		.ascii	"error\000"
+ 4306      7200
+ 4307              	.LASF85:
+ 4308 030b 474E5520 		.ascii	"GNU C 4.7.3 20130312 (release) [ARM/embedded-4_7-br"
+ 4308      4320342E 
+ 4308      372E3320 
+ 4308      32303133 
+ 4308      30333132 
+ 4309 033e 616E6368 		.ascii	"anch revision 196615]\000"
+ 4309      20726576 
+ 4309      6973696F 
+ 4309      6E203139 
+ 4309      36363135 
+ 4310              	.LASF77:
+ 4311 0354 4379446D 		.ascii	"CyDmaTdGetConfiguration\000"
+ 4311      61546447 
+ 4311      6574436F 
+ 4311      6E666967 
+ 4311      75726174 
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 100
 
 
- 4312 035b 6E657874 		.ascii	"nextTd\000"
- 4312      546400
- 4313              	.LASF56:
- 4314 0362 4379446D 		.ascii	"CyDmaChSetRequest\000"
- 4314      61436853 
- 4314      65745265 
- 4314      71756573 
- 4314      7400
- 4315              	.LASF24:
- 4316 0374 646D6163 		.ascii	"dmac_ch_struct\000"
- 4316      5F63685F 
- 4316      73747275 
- 4316      637400
- 4317              	.LASF1:
- 4318 0383 756E7369 		.ascii	"unsigned char\000"
- 4318      676E6564 
- 4318      20636861 
- 4318      7200
- 4319              	.LASF2:
- 4320 0391 73686F72 		.ascii	"short int\000"
- 4320      7420696E 
- 4320      7400
- 4321              	.LASF67:
- 4322 039b 74645374 		.ascii	"tdStop\000"
- 4322      6F7000
- 4323              	.LASF41:
- 4324 03a2 63684861 		.ascii	"chHandle\000"
- 4324      6E646C65 
- 4324      00
- 4325              	.LASF37:
- 4326 03ab 6368616E 		.ascii	"channel\000"
- 4326      6E656C00 
- 4327              	.LASF59:
- 4328 03b3 4379446D 		.ascii	"CyDmaChStatus\000"
- 4328      61436853 
- 4328      74617475 
- 4328      7300
- 4329              	.LASF45:
- 4330 03c1 4379446D 		.ascii	"CyDmaChDisable\000"
- 4330      61436844 
- 4330      69736162 
- 4330      6C6500
- 4331              	.LASF38:
- 4332 03d0 4379446D 		.ascii	"CyDmaChAlloc\000"
- 4332      61436841 
- 4332      6C6C6F63 
- 4332      00
- 4333              	.LASF60:
- 4334 03dd 63757272 		.ascii	"currentTd\000"
- 4334      656E7454 
- 4334      6400
- 4335              	.LASF14:
- 4336 03e7 63686172 		.ascii	"char\000"
- 4336      00
- 4337              	.LASF48:
- 4338 03ec 7072696F 		.ascii	"priority\000"
- 4338      72697479 
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 101
+ 4312              	.LASF75:
+ 4313 036c 6E657874 		.ascii	"nextTd\000"
+ 4313      546400
+ 4314              	.LASF56:
+ 4315 0373 4379446D 		.ascii	"CyDmaChSetRequest\000"
+ 4315      61436853 
+ 4315      65745265 
+ 4315      71756573 
+ 4315      7400
+ 4316              	.LASF24:
+ 4317 0385 646D6163 		.ascii	"dmac_ch_struct\000"
+ 4317      5F63685F 
+ 4317      73747275 
+ 4317      637400
+ 4318              	.LASF1:
+ 4319 0394 756E7369 		.ascii	"unsigned char\000"
+ 4319      676E6564 
+ 4319      20636861 
+ 4319      7200
+ 4320              	.LASF2:
+ 4321 03a2 73686F72 		.ascii	"short int\000"
+ 4321      7420696E 
+ 4321      7400
+ 4322              	.LASF67:
+ 4323 03ac 74645374 		.ascii	"tdStop\000"
+ 4323      6F7000
+ 4324              	.LASF41:
+ 4325 03b3 63684861 		.ascii	"chHandle\000"
+ 4325      6E646C65 
+ 4325      00
+ 4326              	.LASF37:
+ 4327 03bc 6368616E 		.ascii	"channel\000"
+ 4327      6E656C00 
+ 4328              	.LASF59:
+ 4329 03c4 4379446D 		.ascii	"CyDmaChStatus\000"
+ 4329      61436853 
+ 4329      74617475 
+ 4329      7300
+ 4330              	.LASF45:
+ 4331 03d2 4379446D 		.ascii	"CyDmaChDisable\000"
+ 4331      61436844 
+ 4331      69736162 
+ 4331      6C6500
+ 4332              	.LASF38:
+ 4333 03e1 4379446D 		.ascii	"CyDmaChAlloc\000"
+ 4333      61436841 
+ 4333      6C6C6F63 
+ 4333      00
+ 4334              	.LASF60:
+ 4335 03ee 63757272 		.ascii	"currentTd\000"
+ 4335      656E7454 
+ 4335      6400
+ 4336              	.LASF14:
+ 4337 03f8 63686172 		.ascii	"char\000"
+ 4337      00
+ 4338              	.LASF48:
+ 4339 03fd 7072696F 		.ascii	"priority\000"
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 101
 
 
- 4338      00
- 4339              	.LASF79:
- 4340 03f5 4379446D 		.ascii	"CyDmaTdGetAddress\000"
- 4340      61546447 
- 4340      65744164 
- 4340      64726573 
- 4340      7300
- 4341              	.LASF23:
- 4342 0407 646D6163 		.ascii	"dmac_ch\000"
- 4342      5F636800 
- 4343              	.LASF64:
- 4344 040f 72657175 		.ascii	"requestPerBurst\000"
- 4344      65737450 
- 4344      65724275 
- 4344      72737400 
- 4345              	.LASF44:
- 4346 041f 70726573 		.ascii	"preserveTds\000"
- 4346      65727665 
- 4346      54647300 
- 4347              	.LASF53:
- 4348 042b 636F6E76 		.ascii	"convert\000"
- 4348      65727400 
- 4349              	.LASF30:
- 4350 0433 646D6163 		.ascii	"dmac_tdmem\000"
- 4350      5F74646D 
- 4350      656D00
- 4351              	.LASF55:
- 4352 043e 73746172 		.ascii	"startTd\000"
- 4352      74546400 
- 4353              	.LASF83:
- 4354 0446 4379446D 		.ascii	"CyDmaTdFreeIndex\000"
- 4354      61546446 
- 4354      72656549 
- 4354      6E646578 
- 4354      00
- 4355              	.LASF74:
- 4356 0457 7472616E 		.ascii	"transferCount\000"
- 4356      73666572 
- 4356      436F756E 
- 4356      7400
- 4357              	.LASF26:
- 4358 0465 43464730 		.ascii	"CFG0\000"
- 4358      00
- 4359              	.LASF27:
- 4360 046a 43464731 		.ascii	"CFG1\000"
- 4360      00
- 4361              	.LASF42:
- 4362 046f 73746174 		.ascii	"status\000"
- 4362      757300
- 4363              	.LASF58:
- 4364 0476 4379446D 		.ascii	"CyDmaChGetRequest\000"
- 4364      61436847 
- 4364      65745265 
- 4364      71756573 
- 4364      7400
- 4365              	.LASF57:
- 4366 0488 72657175 		.ascii	"request\000"
-ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\ccyzPvW2.s 			page 102
+ 4339      72697479 
+ 4339      00
+ 4340              	.LASF79:
+ 4341 0406 4379446D 		.ascii	"CyDmaTdGetAddress\000"
+ 4341      61546447 
+ 4341      65744164 
+ 4341      64726573 
+ 4341      7300
+ 4342              	.LASF23:
+ 4343 0418 646D6163 		.ascii	"dmac_ch\000"
+ 4343      5F636800 
+ 4344              	.LASF64:
+ 4345 0420 72657175 		.ascii	"requestPerBurst\000"
+ 4345      65737450 
+ 4345      65724275 
+ 4345      72737400 
+ 4346              	.LASF44:
+ 4347 0430 70726573 		.ascii	"preserveTds\000"
+ 4347      65727665 
+ 4347      54647300 
+ 4348              	.LASF53:
+ 4349 043c 636F6E76 		.ascii	"convert\000"
+ 4349      65727400 
+ 4350              	.LASF30:
+ 4351 0444 646D6163 		.ascii	"dmac_tdmem\000"
+ 4351      5F74646D 
+ 4351      656D00
+ 4352              	.LASF55:
+ 4353 044f 73746172 		.ascii	"startTd\000"
+ 4353      74546400 
+ 4354              	.LASF83:
+ 4355 0457 4379446D 		.ascii	"CyDmaTdFreeIndex\000"
+ 4355      61546446 
+ 4355      72656549 
+ 4355      6E646578 
+ 4355      00
+ 4356              	.LASF74:
+ 4357 0468 7472616E 		.ascii	"transferCount\000"
+ 4357      73666572 
+ 4357      436F756E 
+ 4357      7400
+ 4358              	.LASF26:
+ 4359 0476 43464730 		.ascii	"CFG0\000"
+ 4359      00
+ 4360              	.LASF27:
+ 4361 047b 43464731 		.ascii	"CFG1\000"
+ 4361      00
+ 4362              	.LASF42:
+ 4363 0480 73746174 		.ascii	"status\000"
+ 4363      757300
+ 4364              	.LASF58:
+ 4365 0487 4379446D 		.ascii	"CyDmaChGetRequest\000"
+ 4365      61436847 
+ 4365      65745265 
+ 4365      71756573 
+ 4365      7400
+ 4366              	.LASF57:
+ARM GAS  C:\Users\MICHA_~1\AppData\Local\Temp\cc1lqS7m.s 			page 102
 
 
- 4366      65737400 
- 4367              	.LASF54:
- 4368 0490 4379446D 		.ascii	"CyDmaChSetInitialTd\000"
- 4368      61436853 
- 4368      6574496E 
- 4368      69746961 
- 4368      6C546400 
- 4369              	.LASF15:
- 4370 04a4 63797374 		.ascii	"cystatus\000"
- 4370      61747573 
- 4370      00
- 4371              	.LASF62:
- 4372 04ad 4379446D 		.ascii	"CyDmaChSetConfiguration\000"
- 4372      61436853 
- 4372      6574436F 
- 4372      6E666967 
- 4372      75726174 
- 4373              	.LASF69:
- 4374 04c5 656C656D 		.ascii	"element\000"
- 4374      656E7400 
- 4375              	.LASF39:
- 4376 04cd 4379446D 		.ascii	"CyDmaChFree\000"
- 4376      61436846 
- 4376      72656500 
- 4377              		.ident	"GCC: (GNU Tools for ARM Embedded Processors) 4.7.3 20130312 (release) [ARM/embedded-4_7-br
+ 4367 0499 72657175 		.ascii	"request\000"
+ 4367      65737400 
+ 4368              	.LASF54:
+ 4369 04a1 4379446D 		.ascii	"CyDmaChSetInitialTd\000"
+ 4369      61436853 
+ 4369      6574496E 
+ 4369      69746961 
+ 4369      6C546400 
+ 4370              	.LASF15:
+ 4371 04b5 63797374 		.ascii	"cystatus\000"
+ 4371      61747573 
+ 4371      00
+ 4372              	.LASF62:
+ 4373 04be 4379446D 		.ascii	"CyDmaChSetConfiguration\000"
+ 4373      61436853 
+ 4373      6574436F 
+ 4373      6E666967 
+ 4373      75726174 
+ 4374              	.LASF69:
+ 4375 04d6 656C656D 		.ascii	"element\000"
+ 4375      656E7400 
+ 4376              	.LASF39:
+ 4377 04de 4379446D 		.ascii	"CyDmaChFree\000"
+ 4377      61436846 
+ 4377      72656500 
+ 4378              		.ident	"GCC: (GNU Tools for ARM Embedded Processors) 4.7.3 20130312 (release) [ARM/embedded-4_7-br
