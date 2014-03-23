@@ -55,7 +55,7 @@ __attribute__ ((__section__(".cycustnvl"), used))
 #error "Unsupported toolchain"
 #endif
 const uint8 cy_meta_custnvl[] = {
-    0x80u, 0x00u, 0x40u, 0x05u
+    0x00u, 0x00u, 0x40u, 0x05u
 };
 
 #if defined(__GNUC__) || defined(__ARMCC_VERSION)

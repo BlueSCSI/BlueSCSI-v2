@@ -311,9 +311,9 @@ void cyfitter_cfg(void)
 	static const uint8 CYCODE BS_IOPINS0_8_VAL[] = {
 		0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0xC0u, 0x00u};
 
-	/* IOPINS0_3 Address: CYREG_PRT3_DM0 Size (bytes): 8 */
+	/* IOPINS0_3 Address: CYREG_PRT3_DR Size (bytes): 10 */
 	static const uint8 CYCODE BS_IOPINS0_3_VAL[] = {
-		0x00u, 0x3Eu, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u};
+		0x3Eu, 0x00u, 0x00u, 0x3Eu, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u};
 
 	/* IOPINS0_4 Address: CYREG_PRT4_DM0 Size (bytes): 8 */
 	static const uint8 CYCODE BS_IOPINS0_4_VAL[] = {
@@ -420,7 +420,7 @@ void cyfitter_cfg(void)
 	/* Perform second pass device configuration. These items must be configured in specific order after the regular configuration is done. */
 	CYCONFIGCPYCODE((void CYFAR *)(CYREG_PRT0_DM0), (const void CYCODE *)(BS_IOPINS0_0_VAL), 8u);
 	CYCONFIGCPYCODE((void CYFAR *)(CYREG_PRT15_DR), (const void CYCODE *)(BS_IOPINS0_8_VAL), 10u);
-	CYCONFIGCPYCODE((void CYFAR *)(CYREG_PRT3_DM0), (const void CYCODE *)(BS_IOPINS0_3_VAL), 8u);
+	CYCONFIGCPYCODE((void CYFAR *)(CYREG_PRT3_DR), (const void CYCODE *)(BS_IOPINS0_3_VAL), 10u);
 	CYCONFIGCPYCODE((void CYFAR *)(CYREG_PRT4_DM0), (const void CYCODE *)(BS_IOPINS0_4_VAL), 8u);
 	CYCONFIGCPYCODE((void CYFAR *)(CYREG_PRT6_DM0), (const void CYCODE *)(BS_IOPINS0_6_VAL), 8u);
 
