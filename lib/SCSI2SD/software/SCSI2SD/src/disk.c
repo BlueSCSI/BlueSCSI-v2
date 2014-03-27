@@ -34,11 +34,6 @@ static int doSdInit()
 	if (result)
 	{
 		blockDev.state = blockDev.state | DISK_INITIALISED;
-
-		// artificially limit this value according to EEPROM config.
-		blockDev.capacity =
-			(config->maxBlocks && (sdDev.capacity > config->maxBlocks))
-				? config->maxBlocks : sdDev.capacity;
 	}
 	return result;
 }
@@ -52,11 +47,13 @@ static void doFormatUnit()
 
 static void doReadCapacity()
 {
-	uint32 lba = (((uint32) scsiDev.cdb[2]) << 24) +
+	uint32_t lba = (((uint32) scsiDev.cdb[2]) << 24) +
 		(((uint32) scsiDev.cdb[3]) << 16) +
 		(((uint32) scsiDev.cdb[4]) << 8) +
 		scsiDev.cdb[5];
 	int pmi = scsiDev.cdb[8] & 1;
+
+	uint32_t capacity = getScsiCapacity();
 
 	if (!pmi && lba)
 	{
@@ -69,19 +66,19 @@ static void doReadCapacity()
 		scsiDev.sense.asc = INVALID_FIELD_IN_CDB;
 		scsiDev.phase = STATUS;
 	}
-	else if (blockDev.capacity > 0)
+	else if (capacity > 0)
 	{
-		uint32 highestBlock = blockDev.capacity - 1;
+		uint32_t highestBlock = capacity - 1;
 
 		scsiDev.data[0] = highestBlock >> 24;
 		scsiDev.data[1] = highestBlock >> 16;
 		scsiDev.data[2] = highestBlock >> 8;
 		scsiDev.data[3] = highestBlock;
 
-		scsiDev.data[4] = blockDev.bs >> 24;
-		scsiDev.data[5] = blockDev.bs >> 16;
-		scsiDev.data[6] = blockDev.bs >> 8;
-		scsiDev.data[7] = blockDev.bs;
+		scsiDev.data[4] = config->bytesPerSector >> 24;
+		scsiDev.data[5] = config->bytesPerSector >> 16;
+		scsiDev.data[6] = config->bytesPerSector >> 8;
+		scsiDev.data[7] = config->bytesPerSector;
 		scsiDev.dataLen = 8;
 		scsiDev.phase = DATA_IN;
 	}
@@ -103,7 +100,7 @@ static void doWrite(uint32 lba, uint32 blocks)
 		scsiDev.sense.asc = WRITE_PROTECTED;
 		scsiDev.phase = STATUS;
 	}
-	else if (((uint64) lba) + blocks > blockDev.capacity)
+	else if (((uint64) lba) + blocks > getScsiCapacity())
 	{
 		scsiDev.status = CHECK_CONDITION;
 		scsiDev.sense.code = ILLEGAL_REQUEST;
@@ -117,11 +114,11 @@ static void doWrite(uint32 lba, uint32 blocks)
 		transfer.blocks = blocks;
 		transfer.currentBlock = 0;
 		scsiDev.phase = DATA_OUT;
-		scsiDev.dataLen = SCSI_BLOCK_SIZE;
-		scsiDev.dataPtr = SCSI_BLOCK_SIZE; // TODO FIX scsiDiskPoll()
+		scsiDev.dataLen = config->bytesPerSector;
+		scsiDev.dataPtr = config->bytesPerSector; // TODO FIX scsiDiskPoll()
 
-		// No need for single-block reads atm.  Overhead of the
-		// multi-block read is minimal.
+		// No need for single-block writes atm.  Overhead of the
+		// multi-block write is minimal.
 		transfer.multiBlock = 1;
 		sdPrepareWrite();
 	}
@@ -130,7 +127,8 @@ static void doWrite(uint32 lba, uint32 blocks)
 
 static void doRead(uint32 lba, uint32 blocks)
 {
-	if (((uint64) lba) + blocks > blockDev.capacity)
+	uint32_t capacity = getScsiCapacity();
+	if (((uint64) lba) + blocks > capacity)
 	{
 		scsiDev.status = CHECK_CONDITION;
 		scsiDev.sense.code = ILLEGAL_REQUEST;
@@ -147,7 +145,7 @@ static void doRead(uint32 lba, uint32 blocks)
 		scsiDev.dataLen = 0; // No data yet
 
 		if ((blocks == 1) ||
-			(((uint64) lba) + blocks == blockDev.capacity)
+			(((uint64) lba) + blocks == capacity)
 			)
 		{
 			// We get errors on reading the last sector using a multi-sector
@@ -164,7 +162,7 @@ static void doRead(uint32 lba, uint32 blocks)
 
 static void doSeek(uint32 lba)
 {
-	if (lba >= blockDev.capacity)
+	if (lba >= getScsiCapacity())
 	{
 		scsiDev.status = CHECK_CONDITION;
 		scsiDev.sense.code = ILLEGAL_REQUEST;
@@ -455,8 +453,6 @@ void scsiDiskReset()
 
 void scsiDiskInit()
 {
-	blockDev.bs = SCSI_BLOCK_SIZE;
-	blockDev.capacity = 0;
 	transfer.inProgress = 0;
 	scsiDiskReset();
 

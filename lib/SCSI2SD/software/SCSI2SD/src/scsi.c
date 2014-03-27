@@ -178,7 +178,14 @@ static void process_DataIn()
 	if ((scsiDev.dataPtr >= scsiDev.dataLen) &&
 		(transfer.currentBlock == transfer.blocks))
 	{
-		enter_Status(GOOD);
+		if (scsiDev.postDataOutHook != NULL)
+		{
+			scsiDev.postDataOutHook();
+		}
+		else
+		{
+			enter_Status(GOOD);
+		}
 	}
 }
 
@@ -439,6 +446,8 @@ static void scsiReset()
 	scsiDev.sense.asc = NO_ADDITIONAL_SENSE_INFORMATION;
 	scsiDiskReset();
 
+	scsiDev.postDataOutHook = NULL;
+
 	// Sleep to allow the bus to settle down a bit.
 	// We must be ready again within the "Reset to selection time" of
 	// 250ms.
@@ -463,6 +472,8 @@ static void enter_SelectionPhase()
 
 	transfer.blocks = 0;
 	transfer.currentBlock = 0;
+
+	scsiDev.postDataOutHook = NULL;
 }
 
 static void process_SelectionPhase()

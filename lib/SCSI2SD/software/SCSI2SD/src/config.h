@@ -28,15 +28,17 @@ typedef struct
 	uint8 enableParity;
 	uint8 enableUnitAttention;
 	uint8 reserved1; // Unused. Ensures maxBlocks is aligned.
-	uint32 maxBlocks;
+	uint32 maxSectors;
+	uint16 bytesPerSector;
 
 	// Pad to 64 bytes, which is what we can fit into a USB HID packet.
-	char reserved[28]; 
+	char reserved[26]; 
 } Config;
 
 extern Config* config;
 
 void configInit(void);
 void configPoll(void);
+void configSave(void);
 
 #endif

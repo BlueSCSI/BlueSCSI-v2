@@ -45,7 +45,8 @@ enum
 	PARAM_APPLE,
 	PARAM_VENDOR,
 	PARAM_PRODID,
-	PARAM_REV
+	PARAM_REV,
+	PARAM_BYTESPERSECTOR
 };
 
 // Must be consistent with the structure defined in the SCSI2SD config.h header.
@@ -59,7 +60,9 @@ typedef struct __attribute((packed))
 	uint8_t enableParity;
 	uint8_t enableUnitAttention;
 	uint8_t reserved1; // Unused. Ensures maxBlocks is aligned.
-	uint32_t maxBlocks;
+	uint32_t maxSectors;
+	uint16_t bytesPerSector;
+
 
 	// Pad to 64 bytes, which is what we can fit into a USB HID packet.
 	char reserved[28];
@@ -74,10 +77,11 @@ static void printConfig(ConfigPacket* packet)
 	printf("\n");
 	printf("Parity Checking:\t\t%s\n", packet->enableParity ? "enabled" : "disabled");
 	printf("Unit Attention Condition:\t%s\n", packet->enableUnitAttention ? "enabled" : "disabled");
-	if (packet->maxBlocks)
+	printf("Bytes per sector:\t\t%d\n", packet->bytesPerSector);
+	if (packet->maxSectors)
 	{
 		char sizeBuf[64];
-		uint64_t maxBytes = packet->maxBlocks * (uint64_t) 512;
+		uint64_t maxBytes = packet->maxSectors * (uint64_t) packet->bytesPerSector;
 		if (maxBytes > (1024*1024*1024))
 		{
 			sprintf(sizeBuf, "%.02fGB", maxBytes / (1024.0*1024.0*1024.0));
@@ -95,7 +99,7 @@ static void printConfig(ConfigPacket* packet)
 			sprintf(sizeBuf, "%" PRIu64 " bytes", maxBytes);
 		}
 
-		printf("Maximum Size:\t\t\t%s (%d blocks)\n", sizeBuf, packet->maxBlocks);
+		printf("Maximum Size:\t\t\t%s (%d sectors)\n", sizeBuf, packet->maxSectors);
 	}
 	else
 	{
@@ -117,7 +121,8 @@ static int readConfig(hid_device* handle, ConfigPacket* packet)
 	}
 
 	memcpy(packet, buf, result);
-	packet->maxBlocks = ntohl(packet->maxBlocks);
+	packet->maxSectors = ntohl(packet->maxSectors);
+	packet->bytesPerSector = ntohs(packet->bytesPerSector);
 
 	return result;
 }
@@ -127,9 +132,11 @@ static int writeConfig(hid_device* handle, ConfigPacket* packet)
 	unsigned char buf[1 + sizeof(ConfigPacket)];
 	buf[0] = 0; // report ID
 
-	packet->maxBlocks = htonl(packet->maxBlocks);
+	packet->maxSectors = htonl(packet->maxSectors);
+	packet->bytesPerSector = htons(packet->bytesPerSector);
 	memcpy(buf + 1, packet, sizeof(ConfigPacket));
-	packet->maxBlocks = ntohl(packet->maxBlocks);
+	packet->maxSectors = ntohl(packet->maxSectors);
+	packet->bytesPerSector = ntohs(packet->bytesPerSector);
 
 	int result = hid_write(handle, buf, sizeof(buf));
 
@@ -159,6 +166,8 @@ static void usage()
 	printf("\t\tEach block is 512 bytes. The maximum possible size is 2TB.\n");
 	printf("\t\tThe reported size will be the lower of this value and the SD\n");
 	printf("\t\tcard size. 0 disables the limit.\n\n");
+	printf("--sector={64-2048}\n\t\tSet the bytes-per-sector. Normally 512 bytes.\n");
+	printf("\t\tCan also be set with a SCSI MODE SELECT command.\n\n");
 	printf("--apple\t\tSet the vendor, product ID and revision fields to simulate an \n");
 	printf("\t\tapple-suppled disk. Provides support for the Apple Drive Setup\n");
 	printf("\t\tutility.\n\n");
@@ -251,6 +260,9 @@ int main(int argc, char* argv[])
 			"rev", required_argument, NULL, PARAM_REV
 		},
 		{
+			"sector", required_argument, NULL, PARAM_BYTESPERSECTOR
+		},
+		{
 			NULL, 0, NULL, 0
 		}
 	};
@@ -295,11 +307,11 @@ int main(int argc, char* argv[])
 
 		case PARAM_MAXBLOCKS:
 		{
-			int64_t maxBlocks = -1;
-			if (sscanf(optarg, "%" PRId64, &maxBlocks) == 1 &&
-				maxBlocks >= 0 && maxBlocks <= UINT32_MAX)
+			int64_t maxSectors = -1;
+			if (sscanf(optarg, "%" PRId64, &maxSectors) == 1 &&
+				maxSectors >= 0 && maxSectors <= UINT32_MAX)
 			{
-				packet.maxBlocks = maxBlocks;
+				packet.maxSectors = maxSectors;
 			}
 			else
 			{
@@ -329,6 +341,20 @@ int main(int argc, char* argv[])
 			memcpy(packet.revision, optarg, MIN(strlen(optarg), 4));
 			break;
 
+		case PARAM_BYTESPERSECTOR:
+		{
+			int64_t bytesPerSector = -1;
+			if (sscanf(optarg, "%" PRId64, &bytesPerSector) == 1 &&
+				bytesPerSector >= 64 && bytesPerSector <= 2048)
+			{
+				packet.bytesPerSector = bytesPerSector;
+			}
+			else
+			{
+				usage();
+			}
+			break;
+		}
 		case '?':
 			usage();
 		}

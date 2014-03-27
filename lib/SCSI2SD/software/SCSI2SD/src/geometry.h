@@ -19,10 +19,8 @@
 
 #include "device.h"
 
-// We make some assumptions that the block size and sector size
-// are always equal.
-#define SCSI_BLOCK_SIZE 512
-#define SCSI_SECTOR_SIZE 512
+#include "config.h"
+#include "sd.h"
 
 // Max allowed by legacy IBM-PC Bios (6 bits)
 #define SCSI_SECTORS_PER_TRACK 63
@@ -37,6 +35,14 @@ typedef enum
 	ADDRESS_PHYSICAL_SECTOR = 5
 } SCSI_ADDRESS_FORMAT;
 
+static inline int SDSectorsPerSCSISector()
+{
+	return (config->bytesPerSector + SD_SECTOR_SIZE - 1) / SD_SECTOR_SIZE;
+}
+
+uint32_t getScsiCapacity();
+
+uint32_t SCSISector2SD(uint32_t scsiSector);
 
 uint64 CHS2LBA(uint32 c, uint8 h, uint32 s);
 void LBA2CHS(uint32 lba, uint32* c, uint8* h, uint32* s);

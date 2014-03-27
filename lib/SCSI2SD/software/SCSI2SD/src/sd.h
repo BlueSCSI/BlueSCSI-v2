@@ -17,6 +17,8 @@
 #ifndef SD_H
 #define SD_H
 
+#define SD_SECTOR_SIZE 512
+
 typedef enum
 {
 	SD_GO_IDLE_STATE = 0,

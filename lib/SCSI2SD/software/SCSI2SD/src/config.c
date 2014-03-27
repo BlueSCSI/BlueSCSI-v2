@@ -27,7 +27,7 @@
 #include <string.h>
 
 // CYDEV_EEPROM_ROW_SIZE == 16.
-static char magic[CYDEV_EEPROM_ROW_SIZE] = "codesrc_00000001";
+static char magic[CYDEV_EEPROM_ROW_SIZE] = "codesrc_00000002";
 
 // Config shadow RAM (copy of EEPROM)
 static Config shadow =
@@ -38,7 +38,9 @@ static Config shadow =
 	" 3.3", // revision (68k Apple Drive Setup: Set to "1.0 ")
 	1, // enable parity
 	1, // enable unit attention,
-	0 // Max blocks (0 == disabled)
+	0, // RESERVED
+	0, // Max sectors (0 == disabled)
+	512 // Sector size
 	// reserved bytes will be initialised to 0.
 };
 
@@ -68,6 +70,12 @@ static uint32_t ntohl(uint32_t val)
 		((val >> 8) & 0xFF00) |
 		((val >> 24) & 0xFF);
 }
+static uint16_t ntohs(uint16_t val)
+{
+	return
+		((val & 0xFF) << 8) |
+		((val >> 8) & 0xFF);
+}
 static uint32_t htonl(uint32_t val)
 {
 	return
@@ -75,6 +83,12 @@ static uint32_t htonl(uint32_t val)
 		((val & 0xFF00) << 8) |
 		((val >> 8) & 0xFF00) |
 		((val >> 24) & 0xFF);
+}
+static uint16_t htons(uint16_t val)
+{
+	return
+		((val & 0xFF) << 8) |
+		((val >> 8) & 0xFF);
 }
 
 static void saveConfig()
@@ -111,6 +125,15 @@ void configInit()
 
 	if (memcmp(eeprom + shadowBytes, magic, sizeof(magic)))
 	{
+		// Initial state, invalid, or upgrade required.
+		if (!memcmp(eeprom + shadowBytes, magic, sizeof(magic) - 1) &&
+			((eeprom + shadowBytes)[sizeof(magic) - 2] == '1'))
+		{
+			// Upgrade from version 1.
+			memcpy(&shadow, eeprom, sizeof(shadow));
+			shadow.bytesPerSector = 512;
+		}
+
 		saveConfig();
 	}
 	else
@@ -161,7 +184,17 @@ void configPoll()
 		// shadow should be padded out to 64bytes, which is the largest
 		// possible HID transfer.
 		USBFS_ReadOutEP(USB_EP_OUT, (uint8 *)&shadow, byteCount);
-		shadow.maxBlocks = htonl(shadow.maxBlocks);
+		shadow.maxSectors = ntohl(shadow.maxSectors);
+		shadow.bytesPerSector = ntohs(shadow.bytesPerSector);
+
+		if (shadow.bytesPerSector > MAX_SECTOR_SIZE)
+		{
+			shadow.bytesPerSector = MAX_SECTOR_SIZE;
+		}
+		else if (shadow.bytesPerSector < MIN_SECTOR_SIZE)
+		{
+			shadow.bytesPerSector = MIN_SECTOR_SIZE;
+		}
 
 		CFG_EEPROM_Start();
 		saveConfig(); // write to eeprom
@@ -173,14 +206,18 @@ void configPoll()
 		// Allow the host to send us another updated config.
 		USBFS_EnableOutEP(USB_EP_OUT);
 
+		// Set unt attention as the block size may have changed.
+		scsiDev.unitAttention = MODE_PARAMETERS_CHANGED;
+
 		ledOff();
 	}
 
 	switch (usbInEpState)
 	{
 	case USB_IDLE:
-		shadow.maxBlocks = htonl(shadow.maxBlocks);
-		
+		shadow.maxSectors = htonl(shadow.maxSectors);
+		shadow.bytesPerSector = htons(shadow.bytesPerSector);
+
 		#ifdef MM_DEBUG
 		memcpy(&shadow.reserved, &scsiDev.cdb, 12);
 		shadow.reserved[12] = scsiDev.msgIn;
@@ -197,12 +234,11 @@ void configPoll()
 		shadow.reserved[23] = scsiDev.msgCount;
 		shadow.reserved[24] = scsiDev.cmdCount;
 		shadow.reserved[25] = scsiDev.watchdogTick;
-		shadow.reserved[26] = blockDev.state;
-		shadow.reserved[27] = scsiReadDBxPins();
 		#endif
 
 		USBFS_LoadInEP(USB_EP_IN, (uint8 *)&shadow, sizeof(shadow));
-		shadow.maxBlocks = ntohl(shadow.maxBlocks);
+		shadow.maxSectors = ntohl(shadow.maxSectors);
+		shadow.bytesPerSector = ntohs(shadow.bytesPerSector);
 		usbInEpState = USB_DATA_SENT;
 		break;
 
@@ -214,5 +250,13 @@ void configPoll()
 		}
 		break;
 	}
+}
+
+// Public method for storing MODE SELECT results.
+void configSave()
+{
+	CFG_EEPROM_Start();
+	saveConfig(); // write to eeprom
+	CFG_EEPROM_Stop();
 }
 

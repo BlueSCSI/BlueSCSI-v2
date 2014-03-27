@@ -129,12 +129,14 @@ static void sdClearStatus()
 void sdPrepareRead()
 {
 	uint8 v;
-	uint32 len = (transfer.lba + transfer.currentBlock);
+	uint32 scsiLBA = (transfer.lba + transfer.currentBlock);
+	uint32 sdLBA = SCSISector2SD(scsiLBA);
+	
 	if (!sdDev.ccs)
 	{
-		len = len * SCSI_BLOCK_SIZE;
+		sdLBA = sdLBA * SD_SECTOR_SIZE;
 	}
-	v = sdCommandAndResponse(SD_READ_MULTIPLE_BLOCK, len);
+	v = sdCommandAndResponse(SD_READ_MULTIPLE_BLOCK, sdLBA);
 	if (v)
 	{
 		scsiDiskReset();
@@ -151,7 +153,7 @@ void sdPrepareRead()
 	}
 }
 
-static void doReadSector()
+static void doReadSector(uint32_t numBytes)
 {
 	int prep, i, guard;
 
@@ -184,12 +186,9 @@ static void doReadSector()
 	// Don't do a bus settle delay if we're already in the correct phase.
 	if (transfer.currentBlock == 0)
 	{
-		//scsiEnterPhase(DATA_OUT);
-		//CyDelayUs(200);
 		scsiEnterPhase(DATA_IN);
-		//CyDelayUs(200); // TODO BLOODY SLOW INTERLEAVE
 	}
-	
+
 	// Quickly seed the FIFO
 	prep = 4;
 	CY_SET_REG8(SDCard_TXDATA_PTR, 0xFF); // Put a byte in the FIFO
@@ -204,7 +203,7 @@ static void doReadSector()
 	// We stream data straight from the SDCard fifos into the SCSI component
 	// FIFO's. If the loop isn't fast enough, the transmit FIFO's will empty,
 	// and performance will suffer. Every clock cycle counts.
-	while (i < SCSI_BLOCK_SIZE && !scsiDev.resetFlag)
+	while (i < numBytes && !scsiDev.resetFlag)
 	{
 		uint8_t sdRxStatus = CY_GET_REG8(SDCard_RX_STATUS_PTR);
 		uint8_t scsiStatus = CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG);
@@ -232,7 +231,25 @@ static void doReadSector()
 		// "combined" SPIM TX and RX FIFOS to the individual FIFO size.
 		// Unlike the SCSI component, SPIM doesn't check if there's room in
 		// the output FIFO before starting to transmit.
-		if ((prep - guard < 4) && (prep < SCSI_BLOCK_SIZE))
+		if ((prep - guard < 4) && (prep < numBytes))
+		{
+			CY_SET_REG8(SDCard_TXDATA_PTR, 0xFF); // Put a byte in the FIFO
+			prep++;
+		}
+	}
+
+	// Read and discard remaining bytes.
+	while (i < SD_SECTOR_SIZE)
+	{
+		uint8_t sdRxStatus = CY_GET_REG8(SDCard_RX_STATUS_PTR);
+		if(sdRxStatus & SDCard_STS_RX_FIFO_NOT_EMPTY)
+		{
+			CY_GET_REG8(SDCard_RXDATA_PTR);
+			guard++;
+			i++;
+		}
+
+		if ((prep - guard < 4) && (prep < SD_SECTOR_SIZE))
 		{
 			CY_SET_REG8(SDCard_TXDATA_PTR, 0xFF); // Put a byte in the FIFO
 			prep++;
@@ -241,21 +258,20 @@ static void doReadSector()
 
 	sdSpiByte(0xFF); // CRC
 	sdSpiByte(0xFF); // CRC
-	scsiDev.dataLen = SCSI_BLOCK_SIZE;
-	scsiDev.dataPtr = SCSI_BLOCK_SIZE;
+	scsiDev.dataLen = numBytes;
+	scsiDev.dataPtr = numBytes;
 	
 	while (SCSI_ReadPin(SCSI_In_ACK) && !scsiDev.resetFlag) {}
 }
 
-void sdReadSectorSingle()
+static void doReadSectorSingle(uint32 sdBlock, int sdBytes)
 {
 	uint8 v;
-	uint32 len = (transfer.lba + transfer.currentBlock);
 	if (!sdDev.ccs)
 	{
-		len = len * SCSI_BLOCK_SIZE;
+		sdBlock = sdBlock * SD_SECTOR_SIZE;
 	}	
-	v = sdCommandAndResponse(SD_READ_SINGLE_BLOCK, len);
+	v = sdCommandAndResponse(SD_READ_SINGLE_BLOCK, sdBlock);
 	if (v)
 	{
 		scsiDiskReset();
@@ -268,15 +284,47 @@ void sdReadSectorSingle()
 	}
 	else
 	{
-		doReadSector();
+		doReadSector(sdBytes);
+	}
+}
+
+
+void sdReadSectorSingle()
+{
+	uint32 scsiLBA = (transfer.lba + transfer.currentBlock);
+	uint32 sdLBA = SCSISector2SD(scsiLBA);
+	
+	int sdSectors = SDSectorsPerSCSISector();
+	int i;
+	for (i = 0; (i < sdSectors - 1) && (scsiDev.status != CHECK_CONDITION); ++i)
+	{
+		doReadSectorSingle(sdLBA + i, SD_SECTOR_SIZE);
+	}
+
+	if (scsiDev.status != CHECK_CONDITION)
+	{
+		int remaining = config->bytesPerSector % SD_SECTOR_SIZE;
+		if (remaining == 0) remaining = SD_SECTOR_SIZE; // Full sector needed.
+		doReadSectorSingle(sdLBA + i, remaining);
 	}
 }
 
 void sdReadSectorMulti()
 {
 	// Pre: sdPrepareRead called.
-	
-	doReadSector();
+	int sdSectors = SDSectorsPerSCSISector();
+	int i;
+	for (i = 0; (i < sdSectors - 1) && (scsiDev.status != CHECK_CONDITION); ++i)
+	{
+		doReadSector(SD_SECTOR_SIZE);
+	}
+
+	if (scsiDev.status != CHECK_CONDITION)
+	{
+		int remaining = config->bytesPerSector % SD_SECTOR_SIZE;
+		if (remaining == 0) remaining = SD_SECTOR_SIZE; // Full sector needed.
+		doReadSector(remaining);
+	}
 }
 
 
@@ -329,7 +377,7 @@ static void sdWaitWriteBusy()
 	} while (val != 0xFF);
 }
 
-int sdWriteSector()
+static int doWriteSector(uint32_t numBytes)
 {
 	int prep, i, guard;
 	int result, maxWait;
@@ -351,7 +399,7 @@ int sdWriteSector()
 	// We stream data straight from the SCSI fifos into the SPIM component
 	// FIFO's. If the loop isn't fast enough, the transmit FIFO's will empty,
 	// and performance will suffer. Every clock cycle counts.	
-	while (i < SCSI_BLOCK_SIZE)
+	while (i < numBytes && !scsiDev.resetFlag)
 	{
 		uint8_t sdRxStatus = CY_GET_REG8(SDCard_RX_STATUS_PTR);
 		uint8_t scsiStatus = CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG);
@@ -375,13 +423,32 @@ int sdWriteSector()
 			++i;
 		}
 
-		if (prep < SCSI_BLOCK_SIZE &&
+		if (prep < numBytes &&
 			(scsiDev.resetFlag || (scsiStatus & 1)) // SCSI TX FIFO NOT FULL
 			)
 		{
 			// Trigger the SCSI component to read a byte
 			CY_SET_REG8(scsiTarget_datapath__F0_REG, 0xFF);
 			prep++;
+		}
+	}
+	
+	// Write remaining bytes as 0x00
+	while (i < SD_SECTOR_SIZE)
+	{
+		uint8_t sdRxStatus = CY_GET_REG8(SDCard_RX_STATUS_PTR);
+
+		if(guard - i < 4)
+		{
+			CY_SET_REG8(SDCard_TXDATA_PTR, 0x00);
+			guard++;
+		}
+
+		// Byte has been sent out the SPIM interface.
+		if (sdRxStatus & SDCard_STS_RX_FIFO_NOT_EMPTY)
+		{
+			 CY_GET_REG8(SDCard_RXDATA_PTR);
+			++i;
 		}
 	}
 	
@@ -435,6 +502,26 @@ int sdWriteSector()
 
 	while (SCSI_ReadPin(SCSI_In_ACK) && !scsiDev.resetFlag) {}
 
+	return result;
+}
+
+int sdWriteSector()
+{
+	int result = 1;
+	// Pre: sdPrepareWrite called.
+	int sdSectors = SDSectorsPerSCSISector();
+	int i;
+	for (i = 0; result && (i < sdSectors - 1) && (scsiDev.status != CHECK_CONDITION); ++i)
+	{
+		result = doWriteSector(SD_SECTOR_SIZE);
+	}
+
+	if (result && scsiDev.status != CHECK_CONDITION)
+	{
+		int remaining = config->bytesPerSector % SD_SECTOR_SIZE;
+		if (remaining == 0) remaining = SD_SECTOR_SIZE; // Full sector needed.
+		result = doWriteSector(remaining);
+	}
 	return result;
 }
 
@@ -565,7 +652,7 @@ static int sdReadCSD()
 		uint32 c_size = (((((uint32)buf[6]) & 0x3) << 16) | (((uint32)buf[7]) << 8) | buf[8]) >> 6;
 		uint32 c_mult = (((((uint32)buf[9]) & 0x3) << 8) | ((uint32)buf[0xa])) >> 7;
 		uint32 sectorSize = buf[5] & 0x0F;
-		sdDev.capacity = ((c_size+1) * ((uint64)1 << (c_mult+2)) * ((uint64)1 << sectorSize)) / SCSI_BLOCK_SIZE;
+		sdDev.capacity = ((c_size+1) * ((uint64)1 << (c_mult+2)) * ((uint64)1 << sectorSize)) / SD_SECTOR_SIZE;
 	}
 	else if ((buf[0] >> 6) == 0x01)
 	{
@@ -622,7 +709,7 @@ int sdInit()
 
 	// This command will be ignored if sdDev.ccs is set.
 	// SDHC and SDXC are always 512bytes.
-	v = sdCRCCommandAndResponse(SD_SET_BLOCKLEN, SCSI_BLOCK_SIZE); //Force sector size
+	v = sdCRCCommandAndResponse(SD_SET_BLOCKLEN, SD_SECTOR_SIZE); //Force sector size
 	if(v){goto bad;}
 	v = sdCRCCommandAndResponse(SD_CRC_ON_OFF, 0); //crc off
 	if(v){goto bad;}
@@ -671,23 +758,24 @@ out:
 
 void sdPrepareWrite()
 {
-	uint32 len;
 	uint8 v;
 	
 	// Set the number of blocks to pre-erase by the multiple block write command
 	// We don't care about the response - if the command is not accepted, writes
 	// will just be a bit slower.
 	// Max 22bit parameter.
-	uint32 blocks = transfer.blocks > 0x7FFFFF ? 0x7FFFFF : transfer.blocks;
+	uint32_t sdBlocks = transfer.blocks * SDSectorsPerSCSISector();
+	uint32 blocks = sdBlocks > 0x7FFFFF ? 0x7FFFFF : sdBlocks;
 	sdCommandAndResponse(SD_APP_CMD, 0);
 	sdCommandAndResponse(SD_APP_SET_WR_BLK_ERASE_COUNT, blocks);
 
-	len = (transfer.lba + transfer.currentBlock);
+	uint32 scsiLBA = (transfer.lba + transfer.currentBlock);
+	uint32 sdLBA = SCSISector2SD(scsiLBA);
 	if (!sdDev.ccs)
 	{
-		len = len * SCSI_BLOCK_SIZE;
+		sdLBA = sdLBA * SD_SECTOR_SIZE;
 	}
-	v = sdCommandAndResponse(25, len);
+	v = sdCommandAndResponse(25, sdLBA);
 	if (v)
 	{
 		scsiDiskReset();

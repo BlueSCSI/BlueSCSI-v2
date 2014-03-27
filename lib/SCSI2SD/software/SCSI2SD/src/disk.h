@@ -33,9 +33,6 @@ typedef enum
 
 typedef struct
 {
-	uint32 bs; // Block size.
-	uint32 capacity; // In blocks.
-
 	int state;
 } BlockDevice;
 

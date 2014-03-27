@@ -62,6 +62,10 @@ typedef enum
 	MSG_LINKED_COMMAND_COMPLETE_WITH_FLAG = 0x0B
 } SCSI_MESSAGE;
 
+// Maximum value for bytes-per-sector.
+#define MAX_SECTOR_SIZE 2048
+#define MIN_SECTOR_SIZE 64
+
 typedef struct
 {
 	uint8_t scsiIdMask;
@@ -78,7 +82,7 @@ typedef struct
 
 	int phase;
 
-	uint8 data[SCSI_BLOCK_SIZE];
+	uint8 data[MAX_SECTOR_SIZE];
 	int dataPtr; // Index into data, reset on [re]selection to savedDataPtr
 	int savedDataPtr; // Index into data, initially 0.
 	int dataLen;
@@ -102,6 +106,8 @@ typedef struct
 
 	uint8 msgIn;
 	uint8 msgOut;
+
+	void (*postDataOutHook)(void);
 
 #ifdef MM_DEBUG
 	uint8 cmdCount;

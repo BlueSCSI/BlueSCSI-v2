@@ -20,6 +20,22 @@
 
 #include <string.h>
 
+uint32_t getScsiCapacity()
+{
+	uint32_t capacity = sdDev.capacity / SDSectorsPerSCSISector();
+	if (config->maxSectors && (capacity > config->maxSectors))
+	{
+		capacity = config->maxSectors;
+	}
+	return capacity;
+}
+
+
+uint32_t SCSISector2SD(uint32_t scsiSector)
+{
+	return scsiSector * SDSectorsPerSCSISector();
+}
+
 // Standard mapping according to ECMA-107 and ISO/IEC 9293:1994
 // Sector always starts at 1. There is no 0 sector.
 uint64 CHS2LBA(uint32 c, uint8 h, uint32 s)
@@ -51,7 +67,7 @@ uint64 scsiByteAddress(int format, const uint8* addr)
 			(((uint32) addr[2]) << 8) +
 			addr[3];
 
-		result = (uint64) SCSI_BLOCK_SIZE * lba;
+		result = (uint64_t) config->bytesPerSector * lba;
 	} break;
 
 	case ADDRESS_PHYSICAL_BYTE:
@@ -69,7 +85,7 @@ uint64 scsiByteAddress(int format, const uint8* addr)
 			(((uint32) addr[6]) << 8) +
 			addr[7];
 
-		result = CHS2LBA(cyl, head, 1) * (uint64) SCSI_SECTOR_SIZE + bytes;
+		result = CHS2LBA(cyl, head, 1) * (uint64_t) config->bytesPerSector + bytes;
 	} break;
 
 	case ADDRESS_PHYSICAL_SECTOR:
@@ -87,7 +103,7 @@ uint64 scsiByteAddress(int format, const uint8* addr)
 			(((uint32) addr[6]) << 8) +
 			addr[7];
 
-		result = CHS2LBA(cyl, head, sector) * (uint64) SCSI_SECTOR_SIZE;
+		result = CHS2LBA(cyl, head, sector) * (uint64_t) config->bytesPerSector;
 	} break;
 
 	default:
@@ -100,8 +116,8 @@ uint64 scsiByteAddress(int format, const uint8* addr)
 
 void scsiSaveByteAddress(int format, uint64 byteAddr, uint8* buf)
 {
-	uint32 lba = byteAddr / SCSI_BLOCK_SIZE;
-	uint32 byteOffset = byteAddr % SCSI_BLOCK_SIZE;
+	uint32 lba = byteAddr / config->bytesPerSector;
+	uint32 byteOffset = byteAddr % config->bytesPerSector;
 
 	switch (format)
 	{
@@ -127,7 +143,7 @@ void scsiSaveByteAddress(int format, uint64 byteAddr, uint8* buf)
 
 		LBA2CHS(lba, &cyl, &head, &sector);
 
-		bytes = sector * SCSI_SECTOR_SIZE + byteOffset;
+		bytes = sector * config->bytesPerSector + byteOffset;
 
 		buf[0] = cyl >> 16;
 		buf[1] = cyl >> 8;

@@ -54,14 +54,14 @@ static const uint8 DisconnectReconnectPage[] =
 
 static const uint8 FormatDevicePage[] =
 {
-0x03, // Page code 
+0x03 | 0x80, // Page code | PS (persist) bit.
 0x16, // Page length
 0x00, 0x00, // Single zone
 0x00, 0x00, // No alternate sectors
 0x00, 0x00, // No alternate tracks
 0x00, 0x00, // No alternate tracks per lun
 0x00, SCSI_SECTORS_PER_TRACK, // Sectors per track
-SCSI_SECTOR_SIZE >> 8, SCSI_SECTOR_SIZE & 0xFF, // Data bytes per physical sector
+0xFF, 0xFF, // Data bytes per physical sector. Configurable.
 0x00, 0x01, // Interleave
 0x00, 0x00, // Track skew factor
 0x00, 0x00, // Cylinder skew factor
@@ -111,7 +111,6 @@ static const uint8 ControlModePage[] =
 
 // Allow Apple 68k Drive Setup to format this drive.
 // Code
-// TODO make this string configurable.
 static const uint8 AppleVendorPage[] =
 {
 0x30, // Page code
@@ -143,7 +142,7 @@ static void doModeSense(
 	else
 	{
 		int pageFound = 1;
-		
+
 		////////////// Mode Parameter Header
 		////////////////////////////////////
 
@@ -201,9 +200,9 @@ static void doModeSense(
 			scsiDev.data[idx++] = 0; // reserved
 
 			// Block length
-			scsiDev.data[idx++] = SCSI_BLOCK_SIZE >> 16;
-			scsiDev.data[idx++] = SCSI_BLOCK_SIZE >> 8;
-			scsiDev.data[idx++] = SCSI_BLOCK_SIZE & 0xFF;
+			scsiDev.data[idx++] = config->bytesPerSector >> 16;
+			scsiDev.data[idx++] = config->bytesPerSector >> 8;
+			scsiDev.data[idx++] = config->bytesPerSector & 0xFF;
 		}
 
 		switch (pageCode)
@@ -223,6 +222,19 @@ static void doModeSense(
 
 		case 0x03:
 			pageIn(pc, idx, FormatDevicePage, sizeof(FormatDevicePage));
+			if (pc != 0x01)
+			{
+				// Fill out the configured bytes-per-sector
+				scsiDev.data[idx+12] = config->bytesPerSector >> 8;
+				scsiDev.data[idx+13] = config->bytesPerSector & 0xFF;
+			}
+			else
+			{
+				// Set a mask for the changeable values.
+				scsiDev.data[idx+12] = 0xFF;
+				scsiDev.data[idx+13] = 0xFF;
+			}
+
 			idx += sizeof(FormatDevicePage);
 			if (pageCode != 0x3f) break;
 
@@ -236,7 +248,7 @@ static void doModeSense(
 				uint32 cyl;
 				uint8 head;
 				uint32 sector;
-				LBA2CHS(blockDev.capacity, &cyl, &head, &sector);
+				LBA2CHS(getScsiCapacity(), &cyl, &head, &sector);
 
 				scsiDev.data[idx+2] = cyl >> 16;
 				scsiDev.data[idx+3] = cyl >> 8;
@@ -309,6 +321,74 @@ static void doModeSense(
 	}
 }
 
+// Callback after the DATA OUT phase is complete.
+static void doModeSelect(void)
+{
+	if (scsiDev.status == GOOD) // skip if we've already encountered an error
+	{
+		// scsiDev.dataLen bytes are in scsiDev.data
+
+		int idx;
+		if (scsiDev.cdb[0] == 0x15)
+		{
+			int blockDescLen =
+				(((uint16_t)scsiDev.data[6]) << 8) |scsiDev.data[7];
+			idx = 8 + blockDescLen;
+		}
+		else
+		{
+			int blockDescLen = scsiDev.data[3];
+			idx = 4 + blockDescLen;
+		}
+		if (idx > scsiDev.dataLen) goto bad;
+
+		while (idx < scsiDev.dataLen)
+		{
+			int pageLen = scsiDev.data[idx + 1];
+			if (idx + 2 + pageLen > scsiDev.dataLen) goto bad;
+
+			int pageCode = scsiDev.data[idx] & 0x3F;
+			switch (pageCode)
+			{
+			case 0x03: // Format Device Page
+			{
+				if (pageLen != 0x16) goto bad;
+
+				// Fill out the configured bytes-per-sector
+				uint16_t bytesPerSector =
+					(((uint16_t)scsiDev.data[idx+12]) << 8) |
+					scsiDev.data[idx+13];
+
+				// Sane values only, ok ?
+				if ((bytesPerSector < MIN_SECTOR_SIZE) ||
+					(bytesPerSector > MAX_SECTOR_SIZE))
+				{
+					goto bad;
+				}
+
+				config->bytesPerSector = bytesPerSector;
+				if (scsiDev.cdb[1] & 1) // SP Save Pages flag
+				{
+					configSave();
+				}
+			}
+			break;
+			default:
+				goto bad;
+			}
+		}
+	}
+
+	goto out;
+bad:
+	scsiDev.status = CHECK_CONDITION;
+	scsiDev.sense.code = ILLEGAL_REQUEST;
+	scsiDev.sense.asc = INVALID_FIELD_IN_PARAMETER_LIST;
+
+out:
+	scsiDev.phase = STATUS;
+}
+
 int scsiModeCommand()
 {
 	int commandHandled = 1;
@@ -343,16 +423,39 @@ int scsiModeCommand()
 	{
 		// MODE SELECT(6)
 		int len = scsiDev.cdb[4];
-		if (len == 0) len = 256;
-		scsiDev.dataLen = len;
-		scsiDev.phase = DATA_OUT;
+		if (len == 0)
+		{
+			// If len == 0, then transfer no data. From the SCSI 2 standard:
+			//      A parameter list length of zero indicates that no data shall
+			//      be transferred. This condition shall not be considered as an
+			//		error.
+			scsiDev.phase = STATUS;
+		}
+		else
+		{
+			scsiDev.dataLen = len;
+			scsiDev.phase = DATA_OUT;
+			scsiDev.postDataOutHook = doModeSelect;
+		}
 	}
 	else if (command == 0x55)
 	{
 		// MODE SELECT(10)
 		int allocLength = (((uint16) scsiDev.cdb[7]) << 8) + scsiDev.cdb[8];
-		scsiDev.dataLen = allocLength;
-		scsiDev.phase = DATA_OUT;
+		if (allocLength == 0)
+		{
+			// If len == 0, then transfer no data. From the SCSI 2 standard:
+			//      A parameter list length of zero indicates that no data shall
+			//      be transferred. This condition shall not be considered as an
+			//		error.
+			scsiDev.phase = STATUS;
+		}
+		else
+		{
+			scsiDev.dataLen = allocLength;
+			scsiDev.phase = DATA_OUT;
+			scsiDev.postDataOutHook = doModeSelect;
+		}
 	}
 	else
 	{
