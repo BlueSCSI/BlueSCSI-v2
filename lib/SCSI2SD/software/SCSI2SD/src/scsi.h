@@ -20,7 +20,7 @@
 // Set this to true to log SCSI commands and status information via
 // USB HID packets.  The can be captured and viewed in wireshark.
 // For windows users, capture using USBPcap http://desowin.org/usbpcap/
-#define MM_DEBUG 1
+#define MM_DEBUG 0
 
 #include "geometry.h"
 #include "sense.h"

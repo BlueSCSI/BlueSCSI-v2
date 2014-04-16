@@ -48,6 +48,10 @@ static void doReserveRelease(void);
 
 static void enter_BusFree()
 {
+	// This delay probably isn't needed for most SCSI hosts, but it won't
+	// hurt either. It's possible some of the samplers needed this delay.
+	CyDelayUs(2);
+
 	SCSI_ClearPin(SCSI_Out_BSY);
 	// We now have a Bus Clear Delay of 800ns to release remaining signals.
 	SCSI_ClearPin(SCSI_Out_MSG);
@@ -492,9 +496,16 @@ static void process_SelectionPhase()
 		(goodParity || !config->enableParity) && (maskBitCount <= 2))
 	{
 		// Do we enter MESSAGE OUT immediately ? SCSI 1 and 2 standards says
-		// move to MESSAGE OUT if ATN is true before we release BSY.
-		// The initiate should assert ATN with SEL.
+		// move to MESSAGE OUT if ATN is true before we assert BSY.
+		// The initiator should assert ATN with SEL.
 		scsiDev.atnFlag = SCSI_ReadPin(SCSI_ATN_INT);
+		
+		// Unit attention breaks many older SCSI hosts. Disable it completely for
+		// SCSI-1 (and older) hosts, regardless of our configured setting.
+		if (!scsiDev.atnFlag)
+		{
+			scsiDev.unitAttention = 0;
+		}
 
 		// We've been selected!
 		// Assert BSY - Selection success!

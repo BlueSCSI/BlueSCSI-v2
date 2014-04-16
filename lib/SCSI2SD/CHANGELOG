@@ -1,11 +1,13 @@
-20140???		3.3
+20140416		3.3
 	- Fix to SCSI Reset handling to avoid lockups
 	- Bug fixes to improve standards compatibility
 	- Bug fix for Unit Attention Condition, which is now enabled by default.
-		- scsi2sd-config can be used to disable it for those systems that
+		scsi2sd-config can be used to disable it for those systems that
 		truely require it (eg. Mac Plus).
 	- Added Linked commands support.
 	- Added support for configurable sector sizes between 64 and 2048 bytes.
+		The sector size can be set via the MODE SELECT command using a SCSI
+		format utility, or via scsi2sd-config
 	- Powerbook firmware added
 
 20140214		3.2
