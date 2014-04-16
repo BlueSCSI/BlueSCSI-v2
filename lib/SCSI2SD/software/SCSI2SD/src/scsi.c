@@ -178,14 +178,7 @@ static void process_DataIn()
 	if ((scsiDev.dataPtr >= scsiDev.dataLen) &&
 		(transfer.currentBlock == transfer.blocks))
 	{
-		if (scsiDev.postDataOutHook != NULL)
-		{
-			scsiDev.postDataOutHook();
-		}
-		else
-		{
-			enter_Status(GOOD);
-		}
+		enter_Status(GOOD);
 	}
 }
 
@@ -219,7 +212,14 @@ static void process_DataOut()
 	if ((scsiDev.dataPtr >= scsiDev.dataLen) &&
 		(transfer.currentBlock == transfer.blocks))
 	{
-		enter_Status(GOOD);
+		if (scsiDev.postDataOutHook != NULL)
+		{
+			scsiDev.postDataOutHook();
+		}
+		else
+		{
+			enter_Status(GOOD);
+		}
 	}
 }
 

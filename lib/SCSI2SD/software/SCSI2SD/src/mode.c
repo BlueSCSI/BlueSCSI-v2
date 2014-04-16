@@ -329,18 +329,39 @@ static void doModeSelect(void)
 		// scsiDev.dataLen bytes are in scsiDev.data
 
 		int idx;
-		if (scsiDev.cdb[0] == 0x15)
+		int blockDescLen;
+		if (scsiDev.cdb[0] == 0x55)
 		{
-			int blockDescLen =
+			blockDescLen =
 				(((uint16_t)scsiDev.data[6]) << 8) |scsiDev.data[7];
-			idx = 8 + blockDescLen;
+			idx = 8;
 		}
 		else
 		{
-			int blockDescLen = scsiDev.data[3];
-			idx = 4 + blockDescLen;
+			blockDescLen = scsiDev.data[3];
+			idx = 4;
 		}
-		if (idx > scsiDev.dataLen) goto bad;
+		
+		// The unwritten rule.  Blocksizes are normally set using the
+		// block descriptor value, not by changing page 0x03.
+		if (blockDescLen >= 8)
+		{
+			uint32_t bytesPerSector =
+				(((uint32_t)scsiDev.data[idx+5]) << 16) |
+				(((uint32_t)scsiDev.data[idx+6]) << 8) |
+				scsiDev.data[idx+7];
+			if ((bytesPerSector < MIN_SECTOR_SIZE) ||
+				(bytesPerSector > MAX_SECTOR_SIZE))
+			{
+				goto bad;
+			}
+			else if (bytesPerSector != config->bytesPerSector)
+			{
+				config->bytesPerSector = bytesPerSector;
+				configSave();
+			}
+		}
+		idx += blockDescLen;
 
 		while (idx < scsiDev.dataLen)
 		{
@@ -373,9 +394,12 @@ static void doModeSelect(void)
 				}
 			}
 			break;
-			default:
-				goto bad;
+			//default:
+			
+				// Easiest to just ignore for now. We'll get here when changing
+				// the SCSI block size via the descriptor header.
 			}
+			idx += 2 + pageLen;
 		}
 	}
 
