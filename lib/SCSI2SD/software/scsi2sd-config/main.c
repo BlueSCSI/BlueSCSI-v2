@@ -65,7 +65,7 @@ typedef struct __attribute((packed))
 
 
 	// Pad to 64 bytes, which is what we can fit into a USB HID packet.
-	char reserved[28];
+	char reserved[26];
 } ConfigPacket;
 
 static void printConfig(ConfigPacket* packet)

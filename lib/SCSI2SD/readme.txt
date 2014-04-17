@@ -15,12 +15,14 @@ Features
     In-built active terminator.
     Can optional supply terminator power back to the SCSI bus
     Emulates a non-removable hard drive for maximum compatibility.
+    Supports sector sizes from 64 bytes to 2048 bytes
     Firmware updatable over USB
     Highly configurable over USB
         Selectable SCSI ID
         Selectable parity support
         Enable/disable Unit Attention Condition
         Artificial limits on the SCSI disk size (eg. limit size to 4G to avoid OS bugs) 
+        Sector size (can also be set via the SCSI MODE SELECT command, as sent by SCSI format utilities).
 
 
 Technical Specifications
@@ -62,6 +64,7 @@ Users have reported success on these systems:
     Mac II running System 6.0.8
     Mac SE/30
     Roland JS-30 Sampler
-    Akai S3200 Sampler
-    EMU Emulator E4X with EOS 3.00b 
-
+    Akai S1000, S3200, S3000XL, MPC 2000XL, DPS 12
+    EMU Emulator E4X with EOS 3.00b and E6400 (classic) with Eos 4.01
+    Ensoniq ASR-X
+    HP 16601A logic analyzer
