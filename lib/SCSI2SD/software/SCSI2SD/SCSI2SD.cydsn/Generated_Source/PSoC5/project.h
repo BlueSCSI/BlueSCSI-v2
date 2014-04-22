@@ -30,7 +30,7 @@
 #include <SD_DAT2.h>
 #include <SD_DAT1_aliases.h>
 #include <SD_DAT1.h>
-#include <SCSI_CTL_IO.h>
+#include <SCSI_CTL_PHASE.h>
 #include <SCSI_In_aliases.h>
 #include <SCSI_Out_aliases.h>
 #include <CFG_EEPROM.h>
@@ -40,6 +40,7 @@
 #include <SD_SCK.h>
 #include <SD_MOSI_aliases.h>
 #include <SD_MOSI.h>
+#include <SCSI_CLK.h>
 #include <SCSI_RST_aliases.h>
 #include <SCSI_RST.h>
 #include <SCSI_ATN_aliases.h>

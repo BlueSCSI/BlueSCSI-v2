@@ -27,7 +27,7 @@
 #include <string.h>
 
 // CYDEV_EEPROM_ROW_SIZE == 16.
-static char magic[CYDEV_EEPROM_ROW_SIZE] = "codesrc_00000002";
+static const char magic[CYDEV_EEPROM_ROW_SIZE] = "codesrc_00000002";
 
 // Config shadow RAM (copy of EEPROM)
 static Config shadow =
@@ -35,7 +35,7 @@ static Config shadow =
 	0, // SCSI ID
 	" codesrc", // vendor  (68k Apple Drive Setup: Set to " SEAGATE")
 	"         SCSI2SD", //prodId (68k Apple Drive Setup: Set to "          ST225N")
-	" 3.3", // revision (68k Apple Drive Setup: Set to "1.0 ")
+	" 3.4", // revision (68k Apple Drive Setup: Set to "1.0 ")
 	1, // enable parity
 	1, // enable unit attention,
 	0, // RESERVED
@@ -140,6 +140,7 @@ void configInit()
 	{
 		memcpy(&shadow, eeprom, sizeof(shadow));
 	}
+
 	config = &shadow;
 	CFG_EEPROM_Stop();
 

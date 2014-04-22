@@ -183,11 +183,7 @@ static void doReadSector(uint32_t numBytes)
 		return;
 	}
 
-	// Don't do a bus settle delay if we're already in the correct phase.
-	if (transfer.currentBlock == 0)
-	{
-		scsiEnterPhase(DATA_IN);
-	}
+	scsiEnterPhase(DATA_IN);
 
 	// Quickly seed the FIFO
 	prep = 4;
@@ -383,11 +379,7 @@ static int doWriteSector(uint32_t numBytes)
 	int result, maxWait;
 	uint8 dataToken;
 
-	// Don't do a bus settle delay if we're already in the correct phase.
-	if (transfer.currentBlock == 0)
-	{
-		scsiEnterPhase(DATA_OUT);
-	}
+	scsiEnterPhase(DATA_OUT);
 	
 	sdSpiByte(0xFC); // MULTIPLE byte start token
 	

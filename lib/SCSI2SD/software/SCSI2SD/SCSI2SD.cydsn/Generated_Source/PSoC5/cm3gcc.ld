@@ -56,7 +56,7 @@ EXTERN(cy_meta_custnvl cy_meta_wolatch cy_meta_flashprotect cy_metadata)
 PROVIDE(__cy_heap_start = _end);
 PROVIDE(__cy_region_num = (__cy_regions_end - __cy_regions) / 16);
 PROVIDE(__cy_stack = ORIGIN(ram) + LENGTH(ram));
-PROVIDE(__cy_heap_end = __cy_stack - 0x4000);
+PROVIDE(__cy_heap_end = __cy_stack - 0x2000);
 
 
 SECTIONS
@@ -217,14 +217,14 @@ SECTIONS
   .heap (NOLOAD) :
   {
     . = _end;
-    . += 0x1000;
+    . += 0x0256;
     __cy_heap_limit = .;
   } >ram
 
-  .stack (__cy_stack - 0x4000) (NOLOAD) :
+  .stack (__cy_stack - 0x2000) (NOLOAD) :
   {
     __cy_stack_limit = .;
-    . += 0x4000;
+    . += 0x2000;
   } >ram
   
   /* Check if data + heap + stack exceeds RAM limit */

@@ -123,35 +123,12 @@ static void busSettleDelay(void)
 
 void scsiEnterPhase(int phase)
 {
-	if (phase > 0)
+	int newPhase = phase > 0 ? phase : 0;
+	if (newPhase != SCSI_CTL_PHASE_Read())
 	{
-		if (phase & __scsiphase_msg)
-		{
-			SCSI_SetPin(SCSI_Out_MSG);
-		}
-		else
-		{
-			SCSI_ClearPin(SCSI_Out_MSG);
-		}
-
-		if (phase & __scsiphase_cd)
-		{
-			SCSI_SetPin(SCSI_Out_CD);
-		}
-		else
-		{
-			SCSI_ClearPin(SCSI_Out_CD);
-		}
-
-		SCSI_CTL_IO_Write(phase & __scsiphase_io ? 1 : 0);
+		SCSI_CTL_PHASE_Write(phase > 0 ? phase : 0);
+		busSettleDelay();
 	}
-	else
-	{
-		SCSI_ClearPin(SCSI_Out_MSG);
-		SCSI_ClearPin(SCSI_Out_CD);
-		SCSI_CTL_IO_Write(0);
-	}
-	busSettleDelay();
 }
 
 void scsiPhyReset()
@@ -165,15 +142,13 @@ void scsiPhyReset()
 	// duration.
 	SCSI_SetPin(SCSI_Out_RST);
 
-	SCSI_CTL_IO_Write(0);
+	SCSI_CTL_PHASE_Write(0);
 	SCSI_ClearPin(SCSI_Out_ATN);
 	SCSI_ClearPin(SCSI_Out_BSY);
 	SCSI_ClearPin(SCSI_Out_ACK);
 	SCSI_ClearPin(SCSI_Out_RST);
 	SCSI_ClearPin(SCSI_Out_SEL);
 	SCSI_ClearPin(SCSI_Out_REQ);
-	SCSI_ClearPin(SCSI_Out_MSG);
-	SCSI_ClearPin(SCSI_Out_CD);
 
 	// Allow the FIFOs to fill up again.
 	SCSI_ClearPin(SCSI_Out_RST);

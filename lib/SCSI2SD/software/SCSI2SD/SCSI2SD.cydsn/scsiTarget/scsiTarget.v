@@ -204,7 +204,7 @@ end
 // The data output is valid during the DESKEW_INIT phase as well,
 // so we subtract 1.
 // D1 = [0.000000055 / (1 / clk)] - 1
-cy_psoc3_dp #(.d1_init(3), 
+cy_psoc3_dp #(.d1_init(1), 
 .cy_dpconfig(
 {
     `CS_ALU_OP_PASS, `CS_SRCA_A0, `CS_SRCB_D0,

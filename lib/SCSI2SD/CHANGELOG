@@ -1,3 +1,8 @@
+201404??		3.4
+	- Fix to ensure SCSI phase bits are set atomically.
+	- Decreased (unused) heap and stack sizes to prepare for a memory
+	write cache
+
 20140416		3.3
 	- Fix to SCSI Reset handling to avoid lockups
 	- Bug fixes to improve standards compatibility

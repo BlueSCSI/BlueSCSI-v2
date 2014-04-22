@@ -493,7 +493,7 @@
     <peripheral>
       <name>SD_Clk_Ctl</name>
       <description>No description available</description>
-      <baseAddress>0x4000647A</baseAddress>
+      <baseAddress>0x40006471</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x1</size>
@@ -512,9 +512,9 @@
       </registers>
     </peripheral>
     <peripheral>
-      <name>SCSI_CTL_IO</name>
+      <name>SCSI_CTL_PHASE</name>
       <description>No description available</description>
-      <baseAddress>0x4000647B</baseAddress>
+      <baseAddress>0x40006472</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x1</size>
@@ -522,7 +522,7 @@
       </addressBlock>
       <registers>
         <register>
-          <name>SCSI_CTL_IO_CONTROL_REG</name>
+          <name>SCSI_CTL_PHASE_CONTROL_REG</name>
           <description>No description available</description>
           <addressOffset>0x0</addressOffset>
           <size>8</size>

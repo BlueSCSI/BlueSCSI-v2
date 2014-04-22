@@ -54,9 +54,7 @@ static void enter_BusFree()
 
 	SCSI_ClearPin(SCSI_Out_BSY);
 	// We now have a Bus Clear Delay of 800ns to release remaining signals.
-	SCSI_ClearPin(SCSI_Out_MSG);
-	SCSI_ClearPin(SCSI_Out_CD);
-	SCSI_CTL_IO_Write(0);
+	SCSI_CTL_PHASE_Write(0);
 
 	// Wait for the initiator to cease driving signals
 	// Bus settle delay + bus clear delay = 1200ns
