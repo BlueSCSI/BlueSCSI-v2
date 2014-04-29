@@ -18,6 +18,7 @@
 
 #include "device.h"
 #include "scsi.h"
+#include "scsiPhy.h"
 #include "config.h"
 #include "disk.h"
 #include "sd.h"
@@ -38,11 +39,69 @@ static int doSdInit()
 	return result;
 }
 
-
-static void doFormatUnit()
+// Callback once all data has been read in the data out phase.
+static void doFormatUnitComplete(void)
 {
-	// Low-level formatting is not required.
-	// Nothing left to do.
+	// TODO start writing the initialisation pattern to the SD
+	// card
+	scsiDev.phase = STATUS;
+}
+
+static void doFormatUnitSkipData(int bytes)
+{
+	// We may not have enough memory to store the initialisation pattern and
+	// defect list data.  Since we're not making use of it yet anyway, just
+	// discard the bytes.
+	scsiEnterPhase(DATA_OUT);
+	int i;
+	for (i = 0; i < bytes; ++i)
+	{
+		scsiReadByte();	
+	}
+}
+
+// Callback from the data out phase.
+static void doFormatUnitPatternHeader(void)
+{
+	int defectLength =
+		((((uint16_t)scsiDev.data[2])) << 8) +
+			scsiDev.data[3];
+			
+	int patternLength =
+		((((uint16_t)scsiDev.data[4 + 2])) << 8) +
+		scsiDev.data[4 + 3];
+
+		doFormatUnitSkipData(defectLength + patternLength);
+		doFormatUnitComplete();
+}
+
+// Callback from the data out phase.
+static void doFormatUnitHeader(void)
+{
+	int IP = (scsiDev.data[1] & 0x08) ? 1 : 0;
+	int DSP = (scsiDev.data[1] & 0x04) ? 1 : 0;
+	
+	if (! DSP) // disable save parameters
+	{
+		configSave(); // Save the "MODE SELECT savable parameters"
+	}
+	
+	if (IP)
+	{
+		// We need to read the initialisation pattern header first.
+		scsiDev.dataLen += 4;
+		scsiDev.phase = DATA_OUT;
+		scsiDev.postDataOutHook = doFormatUnitPatternHeader;
+	}
+	else
+	{
+		// Read the defect list data
+		int defectLength =
+			((((uint16_t)scsiDev.data[2])) << 8) +
+			scsiDev.data[3];
+		doFormatUnitSkipData(defectLength);
+		doFormatUnitComplete();
+	}
 }
 
 static void doReadCapacity()
@@ -240,7 +299,22 @@ int scsiDiskCommand()
 	else if (command == 0x04)
 	{
 		// FORMAT UNIT
-		doFormatUnit();
+		// We don't really do any formatting, but we need to read the correct
+		// number of bytes in the DATA_OUT phase to make the SCSI host happy.
+		
+		int fmtData = (scsiDev.cdb[1] & 0x10) ? 1 : 0;
+		if (fmtData)
+		{
+			// We need to read the parameter list, but we don't know how
+			// big it is yet. Start with the header.
+			scsiDev.dataLen = 4;
+			scsiDev.phase = DATA_OUT;
+			scsiDev.postDataOutHook = doFormatUnitHeader;
+		}
+		else
+		{
+			// No data to read, we're already finished!
+		}
 	}
 	else if (command == 0x08)
 	{

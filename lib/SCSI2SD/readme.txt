@@ -66,5 +66,5 @@ Users have reported success on these systems:
     Roland JS-30 Sampler
     Akai S1000, S3200, S3000XL, MPC 2000XL, DPS 12
     EMU Emulator E4X with EOS 3.00b and E6400 (classic) with Eos 4.01
-    Ensoniq ASR-X
+    Ensoniq ASR-X, ASR-10 (from v3.4, 2GB size limit)
     HP 16601A logic analyzer

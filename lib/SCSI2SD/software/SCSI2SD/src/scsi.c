@@ -281,8 +281,12 @@ static void process_Command()
 	{
 		// REQUEST SENSE
 		uint32 allocLength = scsiDev.cdb[4];
-		if (allocLength == 0) allocLength = 256;
-		memset(scsiDev.data, 0, 18);
+
+		// As specified by the SASI and SCSI1 standard.
+		// Newer initiators won't be specifying 0 anyway.
+		if (allocLength == 0) allocLength = 4;
+
+		memset(scsiDev.data, 0, 256); // Max possible alloc length
 		scsiDev.data[0] = 0xF0;
 		scsiDev.data[2] = scsiDev.sense.code & 0x0F;
 
@@ -292,23 +296,12 @@ static void process_Command()
 		scsiDev.data[6] = transfer.lba;
 
 		// Additional bytes if there are errors to report
-		int responseLength;
-		if (scsiDev.sense.code == NO_SENSE)
-		{
-			responseLength = 8;
-		}
-		else
-		{
-			responseLength = 18;
-			scsiDev.data[7] = 10; // additional length
-			scsiDev.data[12] = scsiDev.sense.asc >> 8;
-			scsiDev.data[13] = scsiDev.sense.asc;
-		}
+		scsiDev.data[7] = 10; // additional length
+		scsiDev.data[12] = scsiDev.sense.asc >> 8;
+		scsiDev.data[13] = scsiDev.sense.asc;
 
 		// Silently truncate results. SCSI-2 spec 8.2.14.
-		enter_DataIn(
-			(allocLength < responseLength) ? allocLength : responseLength
-			);
+		enter_DataIn(allocLength);
 
 		// This is a good time to clear out old sense information.
 		scsiDev.sense.code = NO_SENSE;
