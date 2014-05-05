@@ -11,6 +11,8 @@ ifeq ($(UNAME_S),Darwin)
 	# Should match OSX
 	HID_C = ../bootloaderhost/hidapi/mac/hid.c
 	LDFLAGS += -framework IOKit -framework CoreFoundation
+	CFLAGS += -mmacosx-version-min=10.5 -arch x86_64 -arch i386 -arch ppc -isysroot /Xcode3.1.4/SDKs/MacOSX10.5.sdk
+	CC = /Xcode3.1.4/usr/bin/gcc
 endif
 
 
