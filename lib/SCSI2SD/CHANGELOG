@@ -1,9 +1,11 @@
-201404??		3.4
+20140418		3.4
+	- Critical fix for writes when using non-standard block sizes.
 	- Fix to ensure SCSI phase bits are set atomically.
 	- Always return the requested number of bytes for a REQUEST SENSE command
 		This is required to support the Ensoniq ASR-10.
 	- Decreased (unused) heap and stack sizes to prepare for a memory
 	write cache
+	- Increased the maximum sector size to 8192 bytes.
 
 20140416		3.3
 	- Fix to SCSI Reset handling to avoid lockups

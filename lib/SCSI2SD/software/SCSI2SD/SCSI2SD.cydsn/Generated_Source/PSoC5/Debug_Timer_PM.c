@@ -1,5 +1,5 @@
 /*******************************************************************************
-* File Name: SCSI_CMD_TIMER_PM.c
+* File Name: Debug_Timer_PM.c
 * Version 2.50
 *
 *  Description:
@@ -16,12 +16,12 @@
 * the software package with which this file was provided.
 ********************************************************************************/
 
-#include "SCSI_CMD_TIMER.h"
-static SCSI_CMD_TIMER_backupStruct SCSI_CMD_TIMER_backup;
+#include "Debug_Timer.h"
+static Debug_Timer_backupStruct Debug_Timer_backup;
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_SaveConfig
+* Function Name: Debug_Timer_SaveConfig
 ********************************************************************************
 *
 * Summary:
@@ -34,41 +34,41 @@ static SCSI_CMD_TIMER_backupStruct SCSI_CMD_TIMER_backup;
 *  void
 *
 * Global variables:
-*  SCSI_CMD_TIMER_backup:  Variables of this global structure are modified to
+*  Debug_Timer_backup:  Variables of this global structure are modified to
 *  store the values of non retention configuration registers when Sleep() API is
 *  called.
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_SaveConfig(void) 
+void Debug_Timer_SaveConfig(void) 
 {
-    #if (!SCSI_CMD_TIMER_UsingFixedFunction)
+    #if (!Debug_Timer_UsingFixedFunction)
         /* Backup the UDB non-rentention registers for CY_UDB_V0 */
         #if (CY_UDB_V0)
-            SCSI_CMD_TIMER_backup.TimerUdb = SCSI_CMD_TIMER_ReadCounter();
-            SCSI_CMD_TIMER_backup.TimerPeriod = SCSI_CMD_TIMER_ReadPeriod();
-            SCSI_CMD_TIMER_backup.InterruptMaskValue = SCSI_CMD_TIMER_STATUS_MASK;
-            #if (SCSI_CMD_TIMER_UsingHWCaptureCounter)
-                SCSI_CMD_TIMER_backup.TimerCaptureCounter = SCSI_CMD_TIMER_ReadCaptureCount();
+            Debug_Timer_backup.TimerUdb = Debug_Timer_ReadCounter();
+            Debug_Timer_backup.TimerPeriod = Debug_Timer_ReadPeriod();
+            Debug_Timer_backup.InterruptMaskValue = Debug_Timer_STATUS_MASK;
+            #if (Debug_Timer_UsingHWCaptureCounter)
+                Debug_Timer_backup.TimerCaptureCounter = Debug_Timer_ReadCaptureCount();
             #endif /* Backup the UDB non-rentention register capture counter for CY_UDB_V0 */
         #endif /* Backup the UDB non-rentention registers for CY_UDB_V0 */
 
         #if (CY_UDB_V1)
-            SCSI_CMD_TIMER_backup.TimerUdb = SCSI_CMD_TIMER_ReadCounter();
-            SCSI_CMD_TIMER_backup.InterruptMaskValue = SCSI_CMD_TIMER_STATUS_MASK;
-            #if (SCSI_CMD_TIMER_UsingHWCaptureCounter)
-                SCSI_CMD_TIMER_backup.TimerCaptureCounter = SCSI_CMD_TIMER_ReadCaptureCount();
+            Debug_Timer_backup.TimerUdb = Debug_Timer_ReadCounter();
+            Debug_Timer_backup.InterruptMaskValue = Debug_Timer_STATUS_MASK;
+            #if (Debug_Timer_UsingHWCaptureCounter)
+                Debug_Timer_backup.TimerCaptureCounter = Debug_Timer_ReadCaptureCount();
             #endif /* Back Up capture counter register  */
         #endif /* Backup non retention registers, interrupt mask and capture counter for CY_UDB_V1 */
 
-        #if(!SCSI_CMD_TIMER_ControlRegRemoved)
-            SCSI_CMD_TIMER_backup.TimerControlRegister = SCSI_CMD_TIMER_ReadControlRegister();
+        #if(!Debug_Timer_ControlRegRemoved)
+            Debug_Timer_backup.TimerControlRegister = Debug_Timer_ReadControlRegister();
         #endif /* Backup the enable state of the Timer component */
     #endif /* Backup non retention registers in UDB implementation. All fixed function registers are retention */
 }
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_RestoreConfig
+* Function Name: Debug_Timer_RestoreConfig
 ********************************************************************************
 *
 * Summary:
@@ -81,50 +81,50 @@ void SCSI_CMD_TIMER_SaveConfig(void)
 *  void
 *
 * Global variables:
-*  SCSI_CMD_TIMER_backup:  Variables of this global structure are used to
+*  Debug_Timer_backup:  Variables of this global structure are used to
 *  restore the values of non retention registers on wakeup from sleep mode.
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_RestoreConfig(void) 
+void Debug_Timer_RestoreConfig(void) 
 {   
-    #if (!SCSI_CMD_TIMER_UsingFixedFunction)
+    #if (!Debug_Timer_UsingFixedFunction)
         /* Restore the UDB non-rentention registers for CY_UDB_V0 */
         #if (CY_UDB_V0)
             /* Interrupt State Backup for Critical Region*/
-            uint8 SCSI_CMD_TIMER_interruptState;
+            uint8 Debug_Timer_interruptState;
 
-            SCSI_CMD_TIMER_WriteCounter(SCSI_CMD_TIMER_backup.TimerUdb);
-            SCSI_CMD_TIMER_WritePeriod(SCSI_CMD_TIMER_backup.TimerPeriod);
+            Debug_Timer_WriteCounter(Debug_Timer_backup.TimerUdb);
+            Debug_Timer_WritePeriod(Debug_Timer_backup.TimerPeriod);
             /* CyEnterCriticalRegion and CyExitCriticalRegion are used to mark following region critical*/
             /* Enter Critical Region*/
-            SCSI_CMD_TIMER_interruptState = CyEnterCriticalSection();
+            Debug_Timer_interruptState = CyEnterCriticalSection();
             /* Use the interrupt output of the status register for IRQ output */
-            SCSI_CMD_TIMER_STATUS_AUX_CTRL |= SCSI_CMD_TIMER_STATUS_ACTL_INT_EN_MASK;
+            Debug_Timer_STATUS_AUX_CTRL |= Debug_Timer_STATUS_ACTL_INT_EN_MASK;
             /* Exit Critical Region*/
-            CyExitCriticalSection(SCSI_CMD_TIMER_interruptState);
-            SCSI_CMD_TIMER_STATUS_MASK =SCSI_CMD_TIMER_backup.InterruptMaskValue;
-            #if (SCSI_CMD_TIMER_UsingHWCaptureCounter)
-                SCSI_CMD_TIMER_SetCaptureCount(SCSI_CMD_TIMER_backup.TimerCaptureCounter);
+            CyExitCriticalSection(Debug_Timer_interruptState);
+            Debug_Timer_STATUS_MASK =Debug_Timer_backup.InterruptMaskValue;
+            #if (Debug_Timer_UsingHWCaptureCounter)
+                Debug_Timer_SetCaptureCount(Debug_Timer_backup.TimerCaptureCounter);
             #endif /* Restore the UDB non-rentention register capture counter for CY_UDB_V0 */
         #endif /* Restore the UDB non-rentention registers for CY_UDB_V0 */
 
         #if (CY_UDB_V1)
-            SCSI_CMD_TIMER_WriteCounter(SCSI_CMD_TIMER_backup.TimerUdb);
-            SCSI_CMD_TIMER_STATUS_MASK =SCSI_CMD_TIMER_backup.InterruptMaskValue;
-            #if (SCSI_CMD_TIMER_UsingHWCaptureCounter)
-                SCSI_CMD_TIMER_SetCaptureCount(SCSI_CMD_TIMER_backup.TimerCaptureCounter);
+            Debug_Timer_WriteCounter(Debug_Timer_backup.TimerUdb);
+            Debug_Timer_STATUS_MASK =Debug_Timer_backup.InterruptMaskValue;
+            #if (Debug_Timer_UsingHWCaptureCounter)
+                Debug_Timer_SetCaptureCount(Debug_Timer_backup.TimerCaptureCounter);
             #endif /* Restore Capture counter register*/
         #endif /* Restore up non retention registers, interrupt mask and capture counter for CY_UDB_V1 */
 
-        #if(!SCSI_CMD_TIMER_ControlRegRemoved)
-            SCSI_CMD_TIMER_WriteControlRegister(SCSI_CMD_TIMER_backup.TimerControlRegister);
+        #if(!Debug_Timer_ControlRegRemoved)
+            Debug_Timer_WriteControlRegister(Debug_Timer_backup.TimerControlRegister);
         #endif /* Restore the enable state of the Timer component */
     #endif /* Restore non retention registers in the UDB implementation only */
 }
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_Sleep
+* Function Name: Debug_Timer_Sleep
 ********************************************************************************
 *
 * Summary:
@@ -137,32 +137,32 @@ void SCSI_CMD_TIMER_RestoreConfig(void)
 *  void
 *
 * Global variables:
-*  SCSI_CMD_TIMER_backup.TimerEnableState:  Is modified depending on the
+*  Debug_Timer_backup.TimerEnableState:  Is modified depending on the
 *  enable state of the block before entering sleep mode.
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_Sleep(void) 
+void Debug_Timer_Sleep(void) 
 {
-    #if(!SCSI_CMD_TIMER_ControlRegRemoved)
+    #if(!Debug_Timer_ControlRegRemoved)
         /* Save Counter's enable state */
-        if(SCSI_CMD_TIMER_CTRL_ENABLE == (SCSI_CMD_TIMER_CONTROL & SCSI_CMD_TIMER_CTRL_ENABLE))
+        if(Debug_Timer_CTRL_ENABLE == (Debug_Timer_CONTROL & Debug_Timer_CTRL_ENABLE))
         {
             /* Timer is enabled */
-            SCSI_CMD_TIMER_backup.TimerEnableState = 1u;
+            Debug_Timer_backup.TimerEnableState = 1u;
         }
         else
         {
             /* Timer is disabled */
-            SCSI_CMD_TIMER_backup.TimerEnableState = 0u;
+            Debug_Timer_backup.TimerEnableState = 0u;
         }
     #endif /* Back up enable state from the Timer control register */
-    SCSI_CMD_TIMER_Stop();
-    SCSI_CMD_TIMER_SaveConfig();
+    Debug_Timer_Stop();
+    Debug_Timer_SaveConfig();
 }
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_Wakeup
+* Function Name: Debug_Timer_Wakeup
 ********************************************************************************
 *
 * Summary:
@@ -175,17 +175,17 @@ void SCSI_CMD_TIMER_Sleep(void)
 *  void
 *
 * Global variables:
-*  SCSI_CMD_TIMER_backup.enableState:  Is used to restore the enable state of
+*  Debug_Timer_backup.enableState:  Is used to restore the enable state of
 *  block on wakeup from sleep mode.
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_Wakeup(void) 
+void Debug_Timer_Wakeup(void) 
 {
-    SCSI_CMD_TIMER_RestoreConfig();
-    #if(!SCSI_CMD_TIMER_ControlRegRemoved)
-        if(SCSI_CMD_TIMER_backup.TimerEnableState == 1u)
+    Debug_Timer_RestoreConfig();
+    #if(!Debug_Timer_ControlRegRemoved)
+        if(Debug_Timer_backup.TimerEnableState == 1u)
         {     /* Enable Timer's operation */
-                SCSI_CMD_TIMER_Enable();
+                Debug_Timer_Enable();
         } /* Do nothing if Timer was disabled before */
     #endif /* Remove this code section if Control register is removed */
 }

@@ -1,5 +1,5 @@
 /*******************************************************************************
-* File Name: SCSI_CMD_TIMER.c
+* File Name: Debug_Timer.c
 * Version 2.50
 *
 * Description:
@@ -21,13 +21,13 @@
 * the software package with which this file was provided.
 ********************************************************************************/
 
-#include "SCSI_CMD_TIMER.h"
+#include "Debug_Timer.h"
 
-uint8 SCSI_CMD_TIMER_initVar = 0u;
+uint8 Debug_Timer_initVar = 0u;
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_Init
+* Function Name: Debug_Timer_Init
 ********************************************************************************
 *
 * Summary:
@@ -40,130 +40,130 @@ uint8 SCSI_CMD_TIMER_initVar = 0u;
 *  void
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_Init(void) 
+void Debug_Timer_Init(void) 
 {
-    #if(!SCSI_CMD_TIMER_UsingFixedFunction)
+    #if(!Debug_Timer_UsingFixedFunction)
             /* Interrupt State Backup for Critical Region*/
-            uint8 SCSI_CMD_TIMER_interruptState;
+            uint8 Debug_Timer_interruptState;
     #endif /* Interrupt state back up for Fixed Function only */
 
-    #if (SCSI_CMD_TIMER_UsingFixedFunction)
+    #if (Debug_Timer_UsingFixedFunction)
         /* Clear all bits but the enable bit (if it's already set) for Timer operation */
-        SCSI_CMD_TIMER_CONTROL &= SCSI_CMD_TIMER_CTRL_ENABLE;
+        Debug_Timer_CONTROL &= Debug_Timer_CTRL_ENABLE;
 
         /* Clear the mode bits for continuous run mode */
         #if (CY_PSOC5A)
-            SCSI_CMD_TIMER_CONTROL2 &= ((uint8)(~SCSI_CMD_TIMER_CTRL_MODE_MASK));
+            Debug_Timer_CONTROL2 &= ((uint8)(~Debug_Timer_CTRL_MODE_MASK));
         #endif /* Clear bits in CONTROL2 only in PSOC5A */
 
         #if (CY_PSOC3 || CY_PSOC5LP)
-            SCSI_CMD_TIMER_CONTROL3 &= ((uint8)(~SCSI_CMD_TIMER_CTRL_MODE_MASK));
+            Debug_Timer_CONTROL3 &= ((uint8)(~Debug_Timer_CTRL_MODE_MASK));
         #endif /* CONTROL3 register exists only in PSoC3 OR PSoC5LP */
 
         /* Check if One Shot mode is enabled i.e. RunMode !=0*/
-        #if (SCSI_CMD_TIMER_RunModeUsed != 0x0u)
+        #if (Debug_Timer_RunModeUsed != 0x0u)
             /* Set 3rd bit of Control register to enable one shot mode */
-            SCSI_CMD_TIMER_CONTROL |= 0x04u;
+            Debug_Timer_CONTROL |= 0x04u;
         #endif /* One Shot enabled only when RunModeUsed is not Continuous*/
 
-        #if (SCSI_CMD_TIMER_RunModeUsed == 2)
+        #if (Debug_Timer_RunModeUsed == 2)
             #if (CY_PSOC5A)
                 /* Set last 2 bits of control2 register if one shot(halt on
                 interrupt) is enabled*/
-                SCSI_CMD_TIMER_CONTROL2 |= 0x03u;
+                Debug_Timer_CONTROL2 |= 0x03u;
             #endif /* Set One-Shot Halt on Interrupt bit in CONTROL2 for PSoC5A */
 
             #if (CY_PSOC3 || CY_PSOC5LP)
                 /* Set last 2 bits of control3 register if one shot(halt on
                 interrupt) is enabled*/
-                SCSI_CMD_TIMER_CONTROL3 |= 0x03u;
+                Debug_Timer_CONTROL3 |= 0x03u;
             #endif /* Set One-Shot Halt on Interrupt bit in CONTROL3 for PSoC3 or PSoC5LP */
 
         #endif /* Remove section if One Shot Halt on Interrupt is not enabled */
 
-        #if (SCSI_CMD_TIMER_UsingHWEnable != 0)
+        #if (Debug_Timer_UsingHWEnable != 0)
             #if (CY_PSOC5A)
                 /* Set the default Run Mode of the Timer to Continuous */
-                SCSI_CMD_TIMER_CONTROL2 |= SCSI_CMD_TIMER_CTRL_MODE_PULSEWIDTH;
+                Debug_Timer_CONTROL2 |= Debug_Timer_CTRL_MODE_PULSEWIDTH;
             #endif /* Set Continuous Run Mode in CONTROL2 for PSoC5A */
 
             #if (CY_PSOC3 || CY_PSOC5LP)
                 /* Clear and Set ROD and COD bits of CFG2 register */
-                SCSI_CMD_TIMER_CONTROL3 &= ((uint8)(~SCSI_CMD_TIMER_CTRL_RCOD_MASK));
-                SCSI_CMD_TIMER_CONTROL3 |= SCSI_CMD_TIMER_CTRL_RCOD;
+                Debug_Timer_CONTROL3 &= ((uint8)(~Debug_Timer_CTRL_RCOD_MASK));
+                Debug_Timer_CONTROL3 |= Debug_Timer_CTRL_RCOD;
 
                 /* Clear and Enable the HW enable bit in CFG2 register */
-                SCSI_CMD_TIMER_CONTROL3 &= ((uint8)(~SCSI_CMD_TIMER_CTRL_ENBL_MASK));
-                SCSI_CMD_TIMER_CONTROL3 |= SCSI_CMD_TIMER_CTRL_ENBL;
+                Debug_Timer_CONTROL3 &= ((uint8)(~Debug_Timer_CTRL_ENBL_MASK));
+                Debug_Timer_CONTROL3 |= Debug_Timer_CTRL_ENBL;
 
                 /* Set the default Run Mode of the Timer to Continuous */
-                SCSI_CMD_TIMER_CONTROL3 |= SCSI_CMD_TIMER_CTRL_MODE_CONTINUOUS;
+                Debug_Timer_CONTROL3 |= Debug_Timer_CTRL_MODE_CONTINUOUS;
             #endif /* Set Continuous Run Mode in CONTROL3 for PSoC3ES3 or PSoC5A */
 
         #endif /* Configure Run Mode with hardware enable */
 
         /* Clear and Set SYNCTC and SYNCCMP bits of RT1 register */
-        SCSI_CMD_TIMER_RT1 &= ((uint8)(~SCSI_CMD_TIMER_RT1_MASK));
-        SCSI_CMD_TIMER_RT1 |= SCSI_CMD_TIMER_SYNC;
+        Debug_Timer_RT1 &= ((uint8)(~Debug_Timer_RT1_MASK));
+        Debug_Timer_RT1 |= Debug_Timer_SYNC;
 
         /*Enable DSI Sync all all inputs of the Timer*/
-        SCSI_CMD_TIMER_RT1 &= ((uint8)(~SCSI_CMD_TIMER_SYNCDSI_MASK));
-        SCSI_CMD_TIMER_RT1 |= SCSI_CMD_TIMER_SYNCDSI_EN;
+        Debug_Timer_RT1 &= ((uint8)(~Debug_Timer_SYNCDSI_MASK));
+        Debug_Timer_RT1 |= Debug_Timer_SYNCDSI_EN;
 
         /* Set the IRQ to use the status register interrupts */
-        SCSI_CMD_TIMER_CONTROL2 |= SCSI_CMD_TIMER_CTRL2_IRQ_SEL;
+        Debug_Timer_CONTROL2 |= Debug_Timer_CTRL2_IRQ_SEL;
     #endif /* Configuring registers of fixed function implementation */
 
     /* Set Initial values from Configuration */
-    SCSI_CMD_TIMER_WritePeriod(SCSI_CMD_TIMER_INIT_PERIOD);
-    SCSI_CMD_TIMER_WriteCounter(SCSI_CMD_TIMER_INIT_PERIOD);
+    Debug_Timer_WritePeriod(Debug_Timer_INIT_PERIOD);
+    Debug_Timer_WriteCounter(Debug_Timer_INIT_PERIOD);
 
-    #if (SCSI_CMD_TIMER_UsingHWCaptureCounter)/* Capture counter is enabled */
-        SCSI_CMD_TIMER_CAPTURE_COUNT_CTRL |= SCSI_CMD_TIMER_CNTR_ENABLE;
-        SCSI_CMD_TIMER_SetCaptureCount(SCSI_CMD_TIMER_INIT_CAPTURE_COUNT);
+    #if (Debug_Timer_UsingHWCaptureCounter)/* Capture counter is enabled */
+        Debug_Timer_CAPTURE_COUNT_CTRL |= Debug_Timer_CNTR_ENABLE;
+        Debug_Timer_SetCaptureCount(Debug_Timer_INIT_CAPTURE_COUNT);
     #endif /* Configure capture counter value */
 
-    #if (!SCSI_CMD_TIMER_UsingFixedFunction)
-        #if (SCSI_CMD_TIMER_SoftwareCaptureMode)
-            SCSI_CMD_TIMER_SetCaptureMode(SCSI_CMD_TIMER_INIT_CAPTURE_MODE);
+    #if (!Debug_Timer_UsingFixedFunction)
+        #if (Debug_Timer_SoftwareCaptureMode)
+            Debug_Timer_SetCaptureMode(Debug_Timer_INIT_CAPTURE_MODE);
         #endif /* Set Capture Mode for UDB implementation if capture mode is software controlled */
 
-        #if (SCSI_CMD_TIMER_SoftwareTriggerMode)
-            if (0u == (SCSI_CMD_TIMER_CONTROL & SCSI_CMD_TIMER__B_TIMER__TM_SOFTWARE))
+        #if (Debug_Timer_SoftwareTriggerMode)
+            if (0u == (Debug_Timer_CONTROL & Debug_Timer__B_TIMER__TM_SOFTWARE))
             {
-                SCSI_CMD_TIMER_SetTriggerMode(SCSI_CMD_TIMER_INIT_TRIGGER_MODE);
+                Debug_Timer_SetTriggerMode(Debug_Timer_INIT_TRIGGER_MODE);
             }
         #endif /* Set trigger mode for UDB Implementation if trigger mode is software controlled */
 
         /* CyEnterCriticalRegion and CyExitCriticalRegion are used to mark following region critical*/
         /* Enter Critical Region*/
-        SCSI_CMD_TIMER_interruptState = CyEnterCriticalSection();
+        Debug_Timer_interruptState = CyEnterCriticalSection();
 
         /* Use the interrupt output of the status register for IRQ output */
-        SCSI_CMD_TIMER_STATUS_AUX_CTRL |= SCSI_CMD_TIMER_STATUS_ACTL_INT_EN_MASK;
+        Debug_Timer_STATUS_AUX_CTRL |= Debug_Timer_STATUS_ACTL_INT_EN_MASK;
 
         /* Exit Critical Region*/
-        CyExitCriticalSection(SCSI_CMD_TIMER_interruptState);
+        CyExitCriticalSection(Debug_Timer_interruptState);
 
-        #if (SCSI_CMD_TIMER_EnableTriggerMode)
-            SCSI_CMD_TIMER_EnableTrigger();
+        #if (Debug_Timer_EnableTriggerMode)
+            Debug_Timer_EnableTrigger();
         #endif /* Set Trigger enable bit for UDB implementation in the control register*/
 
-        #if (SCSI_CMD_TIMER_InterruptOnCaptureCount)
-             #if (!SCSI_CMD_TIMER_ControlRegRemoved)
-                SCSI_CMD_TIMER_SetInterruptCount(SCSI_CMD_TIMER_INIT_INT_CAPTURE_COUNT);
+        #if (Debug_Timer_InterruptOnCaptureCount)
+             #if (!Debug_Timer_ControlRegRemoved)
+                Debug_Timer_SetInterruptCount(Debug_Timer_INIT_INT_CAPTURE_COUNT);
             #endif /* Set interrupt count in control register if control register is not removed */
         #endif /*Set interrupt count in UDB implementation if interrupt count feature is checked.*/
 
-        SCSI_CMD_TIMER_ClearFIFO();
+        Debug_Timer_ClearFIFO();
     #endif /* Configure additional features of UDB implementation */
 
-    SCSI_CMD_TIMER_SetInterruptMode(SCSI_CMD_TIMER_INIT_INTERRUPT_MODE);
+    Debug_Timer_SetInterruptMode(Debug_Timer_INIT_INTERRUPT_MODE);
 }
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_Enable
+* Function Name: Debug_Timer_Enable
 ********************************************************************************
 *
 * Summary:
@@ -176,23 +176,23 @@ void SCSI_CMD_TIMER_Init(void)
 *  void
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_Enable(void) 
+void Debug_Timer_Enable(void) 
 {
     /* Globally Enable the Fixed Function Block chosen */
-    #if (SCSI_CMD_TIMER_UsingFixedFunction)
-        SCSI_CMD_TIMER_GLOBAL_ENABLE |= SCSI_CMD_TIMER_BLOCK_EN_MASK;
-        SCSI_CMD_TIMER_GLOBAL_STBY_ENABLE |= SCSI_CMD_TIMER_BLOCK_STBY_EN_MASK;
+    #if (Debug_Timer_UsingFixedFunction)
+        Debug_Timer_GLOBAL_ENABLE |= Debug_Timer_BLOCK_EN_MASK;
+        Debug_Timer_GLOBAL_STBY_ENABLE |= Debug_Timer_BLOCK_STBY_EN_MASK;
     #endif /* Set Enable bit for enabling Fixed function timer*/
 
     /* Remove assignment if control register is removed */
-    #if (!SCSI_CMD_TIMER_ControlRegRemoved || SCSI_CMD_TIMER_UsingFixedFunction)
-        SCSI_CMD_TIMER_CONTROL |= SCSI_CMD_TIMER_CTRL_ENABLE;
+    #if (!Debug_Timer_ControlRegRemoved || Debug_Timer_UsingFixedFunction)
+        Debug_Timer_CONTROL |= Debug_Timer_CTRL_ENABLE;
     #endif /* Remove assignment if control register is removed */
 }
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_Start
+* Function Name: Debug_Timer_Start
 ********************************************************************************
 *
 * Summary:
@@ -207,26 +207,26 @@ void SCSI_CMD_TIMER_Enable(void)
 *  void
 *
 * Global variables:
-*  SCSI_CMD_TIMER_initVar: Is modified when this function is called for the
+*  Debug_Timer_initVar: Is modified when this function is called for the
 *   first time. Is used to ensure that initialization happens only once.
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_Start(void) 
+void Debug_Timer_Start(void) 
 {
-    if(SCSI_CMD_TIMER_initVar == 0u)
+    if(Debug_Timer_initVar == 0u)
     {
-        SCSI_CMD_TIMER_Init();
+        Debug_Timer_Init();
 
-        SCSI_CMD_TIMER_initVar = 1u;   /* Clear this bit for Initialization */
+        Debug_Timer_initVar = 1u;   /* Clear this bit for Initialization */
     }
 
     /* Enable the Timer */
-    SCSI_CMD_TIMER_Enable();
+    Debug_Timer_Enable();
 }
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_Stop
+* Function Name: Debug_Timer_Stop
 ********************************************************************************
 *
 * Summary:
@@ -243,23 +243,23 @@ void SCSI_CMD_TIMER_Start(void)
 *               has no effect on the operation of the timer.
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_Stop(void) 
+void Debug_Timer_Stop(void) 
 {
     /* Disable Timer */
-    #if(!SCSI_CMD_TIMER_ControlRegRemoved || SCSI_CMD_TIMER_UsingFixedFunction)
-        SCSI_CMD_TIMER_CONTROL &= ((uint8)(~SCSI_CMD_TIMER_CTRL_ENABLE));
+    #if(!Debug_Timer_ControlRegRemoved || Debug_Timer_UsingFixedFunction)
+        Debug_Timer_CONTROL &= ((uint8)(~Debug_Timer_CTRL_ENABLE));
     #endif /* Remove assignment if control register is removed */
 
     /* Globally disable the Fixed Function Block chosen */
-    #if (SCSI_CMD_TIMER_UsingFixedFunction)
-        SCSI_CMD_TIMER_GLOBAL_ENABLE &= ((uint8)(~SCSI_CMD_TIMER_BLOCK_EN_MASK));
-        SCSI_CMD_TIMER_GLOBAL_STBY_ENABLE &= ((uint8)(~SCSI_CMD_TIMER_BLOCK_STBY_EN_MASK));
+    #if (Debug_Timer_UsingFixedFunction)
+        Debug_Timer_GLOBAL_ENABLE &= ((uint8)(~Debug_Timer_BLOCK_EN_MASK));
+        Debug_Timer_GLOBAL_STBY_ENABLE &= ((uint8)(~Debug_Timer_BLOCK_STBY_EN_MASK));
     #endif /* Disable global enable for the Timer Fixed function block to stop the Timer*/
 }
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_SetInterruptMode
+* Function Name: Debug_Timer_SetInterruptMode
 ********************************************************************************
 *
 * Summary:
@@ -275,14 +275,14 @@ void SCSI_CMD_TIMER_Stop(void)
 *  void
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_SetInterruptMode(uint8 interruptMode) 
+void Debug_Timer_SetInterruptMode(uint8 interruptMode) 
 {
-    SCSI_CMD_TIMER_STATUS_MASK = interruptMode;
+    Debug_Timer_STATUS_MASK = interruptMode;
 }
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_SoftwareCapture
+* Function Name: Debug_Timer_SoftwareCapture
 ********************************************************************************
 *
 * Summary:
@@ -298,16 +298,16 @@ void SCSI_CMD_TIMER_SetInterruptMode(uint8 interruptMode)
 *  An existing hardware capture could be overwritten.
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_SoftwareCapture(void) 
+void Debug_Timer_SoftwareCapture(void) 
 {
     /* Generate a software capture by reading the counter register */
-    (void)SCSI_CMD_TIMER_COUNTER_LSB;
+    (void)Debug_Timer_COUNTER_LSB;
     /* Capture Data is now in the FIFO */
 }
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_ReadStatusRegister
+* Function Name: Debug_Timer_ReadStatusRegister
 ********************************************************************************
 *
 * Summary:
@@ -325,17 +325,17 @@ void SCSI_CMD_TIMER_SoftwareCapture(void)
 *  Status register bits may be clear on read.
 *
 *******************************************************************************/
-uint8   SCSI_CMD_TIMER_ReadStatusRegister(void) 
+uint8   Debug_Timer_ReadStatusRegister(void) 
 {
-    return (SCSI_CMD_TIMER_STATUS);
+    return (Debug_Timer_STATUS);
 }
 
 
-#if (!SCSI_CMD_TIMER_ControlRegRemoved) /* Remove API if control register is removed */
+#if (!Debug_Timer_ControlRegRemoved) /* Remove API if control register is removed */
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_ReadControlRegister
+* Function Name: Debug_Timer_ReadControlRegister
 ********************************************************************************
 *
 * Summary:
@@ -348,14 +348,14 @@ uint8   SCSI_CMD_TIMER_ReadStatusRegister(void)
 *  The contents of the control register
 *
 *******************************************************************************/
-uint8 SCSI_CMD_TIMER_ReadControlRegister(void) 
+uint8 Debug_Timer_ReadControlRegister(void) 
 {
-    return ((uint8)SCSI_CMD_TIMER_CONTROL);
+    return ((uint8)Debug_Timer_CONTROL);
 }
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_WriteControlRegister
+* Function Name: Debug_Timer_WriteControlRegister
 ********************************************************************************
 *
 * Summary:
@@ -367,15 +367,15 @@ uint8 SCSI_CMD_TIMER_ReadControlRegister(void)
 * Return:
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_WriteControlRegister(uint8 control) 
+void Debug_Timer_WriteControlRegister(uint8 control) 
 {
-    SCSI_CMD_TIMER_CONTROL = control;
+    Debug_Timer_CONTROL = control;
 }
 #endif /* Remove API if control register is removed */
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_ReadPeriod
+* Function Name: Debug_Timer_ReadPeriod
 ********************************************************************************
 *
 * Summary:
@@ -388,18 +388,18 @@ void SCSI_CMD_TIMER_WriteControlRegister(uint8 control)
 *  The present value of the counter.
 *
 *******************************************************************************/
-uint16 SCSI_CMD_TIMER_ReadPeriod(void) 
+uint16 Debug_Timer_ReadPeriod(void) 
 {
-   #if(SCSI_CMD_TIMER_UsingFixedFunction)
-       return ((uint16)CY_GET_REG16(SCSI_CMD_TIMER_PERIOD_LSB_PTR));
+   #if(Debug_Timer_UsingFixedFunction)
+       return ((uint16)CY_GET_REG16(Debug_Timer_PERIOD_LSB_PTR));
    #else
-       return (CY_GET_REG16(SCSI_CMD_TIMER_PERIOD_LSB_PTR));
-   #endif /* (SCSI_CMD_TIMER_UsingFixedFunction) */
+       return (CY_GET_REG16(Debug_Timer_PERIOD_LSB_PTR));
+   #endif /* (Debug_Timer_UsingFixedFunction) */
 }
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_WritePeriod
+* Function Name: Debug_Timer_WritePeriod
 ********************************************************************************
 *
 * Summary:
@@ -414,19 +414,19 @@ uint16 SCSI_CMD_TIMER_ReadPeriod(void)
 *  void
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_WritePeriod(uint16 period) 
+void Debug_Timer_WritePeriod(uint16 period) 
 {
-    #if(SCSI_CMD_TIMER_UsingFixedFunction)
+    #if(Debug_Timer_UsingFixedFunction)
         uint16 period_temp = (uint16)period;
-        CY_SET_REG16(SCSI_CMD_TIMER_PERIOD_LSB_PTR, period_temp);
+        CY_SET_REG16(Debug_Timer_PERIOD_LSB_PTR, period_temp);
     #else
-        CY_SET_REG16(SCSI_CMD_TIMER_PERIOD_LSB_PTR, period);
+        CY_SET_REG16(Debug_Timer_PERIOD_LSB_PTR, period);
     #endif /*Write Period value with appropriate resolution suffix depending on UDB or fixed function implementation */
 }
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_ReadCapture
+* Function Name: Debug_Timer_ReadCapture
 ********************************************************************************
 *
 * Summary:
@@ -439,18 +439,18 @@ void SCSI_CMD_TIMER_WritePeriod(uint16 period)
 *  Present Capture value.
 *
 *******************************************************************************/
-uint16 SCSI_CMD_TIMER_ReadCapture(void) 
+uint16 Debug_Timer_ReadCapture(void) 
 {
-   #if(SCSI_CMD_TIMER_UsingFixedFunction)
-       return ((uint16)CY_GET_REG16(SCSI_CMD_TIMER_CAPTURE_LSB_PTR));
+   #if(Debug_Timer_UsingFixedFunction)
+       return ((uint16)CY_GET_REG16(Debug_Timer_CAPTURE_LSB_PTR));
    #else
-       return (CY_GET_REG16(SCSI_CMD_TIMER_CAPTURE_LSB_PTR));
-   #endif /* (SCSI_CMD_TIMER_UsingFixedFunction) */
+       return (CY_GET_REG16(Debug_Timer_CAPTURE_LSB_PTR));
+   #endif /* (Debug_Timer_UsingFixedFunction) */
 }
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_WriteCounter
+* Function Name: Debug_Timer_WriteCounter
 ********************************************************************************
 *
 * Summary:
@@ -463,23 +463,23 @@ uint16 SCSI_CMD_TIMER_ReadCapture(void)
 *  void
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_WriteCounter(uint16 counter) \
+void Debug_Timer_WriteCounter(uint16 counter) \
                                    
 {
-   #if(SCSI_CMD_TIMER_UsingFixedFunction)
+   #if(Debug_Timer_UsingFixedFunction)
         /* This functionality is removed until a FixedFunction HW update to
          * allow this register to be written
          */
-        CY_SET_REG16(SCSI_CMD_TIMER_COUNTER_LSB_PTR, (uint16)counter);
+        CY_SET_REG16(Debug_Timer_COUNTER_LSB_PTR, (uint16)counter);
         
     #else
-        CY_SET_REG16(SCSI_CMD_TIMER_COUNTER_LSB_PTR, counter);
+        CY_SET_REG16(Debug_Timer_COUNTER_LSB_PTR, counter);
     #endif /* Set Write Counter only for the UDB implementation (Write Counter not available in fixed function Timer */
 }
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_ReadCounter
+* Function Name: Debug_Timer_ReadCounter
 ********************************************************************************
 *
 * Summary:
@@ -492,24 +492,24 @@ void SCSI_CMD_TIMER_WriteCounter(uint16 counter) \
 *  Present compare value.
 *
 *******************************************************************************/
-uint16 SCSI_CMD_TIMER_ReadCounter(void) 
+uint16 Debug_Timer_ReadCounter(void) 
 {
 
     /* Force capture by reading Accumulator */
     /* Must first do a software capture to be able to read the counter */
     /* It is up to the user code to make sure there isn't already captured data in the FIFO */
-    (void)SCSI_CMD_TIMER_COUNTER_LSB;
+    (void)Debug_Timer_COUNTER_LSB;
 
     /* Read the data from the FIFO (or capture register for Fixed Function)*/
-    #if(SCSI_CMD_TIMER_UsingFixedFunction)
-        return ((uint16)CY_GET_REG16(SCSI_CMD_TIMER_CAPTURE_LSB_PTR));
+    #if(Debug_Timer_UsingFixedFunction)
+        return ((uint16)CY_GET_REG16(Debug_Timer_CAPTURE_LSB_PTR));
     #else
-        return (CY_GET_REG16(SCSI_CMD_TIMER_CAPTURE_LSB_PTR));
-    #endif /* (SCSI_CMD_TIMER_UsingFixedFunction) */
+        return (CY_GET_REG16(Debug_Timer_CAPTURE_LSB_PTR));
+    #endif /* (Debug_Timer_UsingFixedFunction) */
 }
 
 
-#if(!SCSI_CMD_TIMER_UsingFixedFunction) /* UDB Specific Functions */
+#if(!Debug_Timer_UsingFixedFunction) /* UDB Specific Functions */
 
 /*******************************************************************************
  * The functions below this point are only available using the UDB
@@ -517,11 +517,11 @@ uint16 SCSI_CMD_TIMER_ReadCounter(void)
  ******************************************************************************/
 
 
-#if (SCSI_CMD_TIMER_SoftwareCaptureMode)
+#if (Debug_Timer_SoftwareCaptureMode)
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_SetCaptureMode
+* Function Name: Debug_Timer_SetCaptureMode
 ********************************************************************************
 *
 * Summary:
@@ -530,42 +530,42 @@ uint16 SCSI_CMD_TIMER_ReadCounter(void)
 * Parameters:
 *  captureMode: This parameter sets the capture mode of the UDB capture feature
 *  The parameter values are defined using the
-*  #define SCSI_CMD_TIMER__B_TIMER__CM_NONE 0
-#define SCSI_CMD_TIMER__B_TIMER__CM_RISINGEDGE 1
-#define SCSI_CMD_TIMER__B_TIMER__CM_FALLINGEDGE 2
-#define SCSI_CMD_TIMER__B_TIMER__CM_EITHEREDGE 3
-#define SCSI_CMD_TIMER__B_TIMER__CM_SOFTWARE 4
+*  #define Debug_Timer__B_TIMER__CM_NONE 0
+#define Debug_Timer__B_TIMER__CM_RISINGEDGE 1
+#define Debug_Timer__B_TIMER__CM_FALLINGEDGE 2
+#define Debug_Timer__B_TIMER__CM_EITHEREDGE 3
+#define Debug_Timer__B_TIMER__CM_SOFTWARE 4
  identifiers
 *  The following are the possible values of the parameter
-*  SCSI_CMD_TIMER__B_TIMER__CM_NONE        - Set Capture mode to None
-*  SCSI_CMD_TIMER__B_TIMER__CM_RISINGEDGE  - Rising edge of Capture input
-*  SCSI_CMD_TIMER__B_TIMER__CM_FALLINGEDGE - Falling edge of Capture input
-*  SCSI_CMD_TIMER__B_TIMER__CM_EITHEREDGE  - Either edge of Capture input
+*  Debug_Timer__B_TIMER__CM_NONE        - Set Capture mode to None
+*  Debug_Timer__B_TIMER__CM_RISINGEDGE  - Rising edge of Capture input
+*  Debug_Timer__B_TIMER__CM_FALLINGEDGE - Falling edge of Capture input
+*  Debug_Timer__B_TIMER__CM_EITHEREDGE  - Either edge of Capture input
 *
 * Return:
 *  void
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_SetCaptureMode(uint8 captureMode) 
+void Debug_Timer_SetCaptureMode(uint8 captureMode) 
 {
     /* This must only set to two bits of the control register associated */
-    captureMode = ((uint8)((uint8)captureMode << SCSI_CMD_TIMER_CTRL_CAP_MODE_SHIFT));
-    captureMode &= (SCSI_CMD_TIMER_CTRL_CAP_MODE_MASK);
+    captureMode = ((uint8)((uint8)captureMode << Debug_Timer_CTRL_CAP_MODE_SHIFT));
+    captureMode &= (Debug_Timer_CTRL_CAP_MODE_MASK);
 
     /* Clear the Current Setting */
-    SCSI_CMD_TIMER_CONTROL &= ((uint8)(~SCSI_CMD_TIMER_CTRL_CAP_MODE_MASK));
+    Debug_Timer_CONTROL &= ((uint8)(~Debug_Timer_CTRL_CAP_MODE_MASK));
 
     /* Write The New Setting */
-    SCSI_CMD_TIMER_CONTROL |= captureMode;
+    Debug_Timer_CONTROL |= captureMode;
 }
 #endif /* Remove API if Capture Mode is not Software Controlled */
 
 
-#if (SCSI_CMD_TIMER_SoftwareTriggerMode)
+#if (Debug_Timer_SoftwareTriggerMode)
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_SetTriggerMode
+* Function Name: Debug_Timer_SetTriggerMode
 ********************************************************************************
 *
 * Summary:
@@ -573,35 +573,35 @@ void SCSI_CMD_TIMER_SetCaptureMode(uint8 captureMode)
 *
 * Parameters:
 *  triggerMode: Pass one of the pre-defined Trigger Modes (except Software)
-    #define SCSI_CMD_TIMER__B_TIMER__TM_NONE 0x00u
-    #define SCSI_CMD_TIMER__B_TIMER__TM_RISINGEDGE 0x04u
-    #define SCSI_CMD_TIMER__B_TIMER__TM_FALLINGEDGE 0x08u
-    #define SCSI_CMD_TIMER__B_TIMER__TM_EITHEREDGE 0x0Cu
-    #define SCSI_CMD_TIMER__B_TIMER__TM_SOFTWARE 0x10u
+    #define Debug_Timer__B_TIMER__TM_NONE 0x00u
+    #define Debug_Timer__B_TIMER__TM_RISINGEDGE 0x04u
+    #define Debug_Timer__B_TIMER__TM_FALLINGEDGE 0x08u
+    #define Debug_Timer__B_TIMER__TM_EITHEREDGE 0x0Cu
+    #define Debug_Timer__B_TIMER__TM_SOFTWARE 0x10u
 *
 * Return:
 *  void
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_SetTriggerMode(uint8 triggerMode) 
+void Debug_Timer_SetTriggerMode(uint8 triggerMode) 
 {
     /* This must only set to two bits of the control register associated */
-    triggerMode &= SCSI_CMD_TIMER_CTRL_TRIG_MODE_MASK;
+    triggerMode &= Debug_Timer_CTRL_TRIG_MODE_MASK;
 
     /* Clear the Current Setting */
-    SCSI_CMD_TIMER_CONTROL &= ((uint8)(~SCSI_CMD_TIMER_CTRL_TRIG_MODE_MASK));
+    Debug_Timer_CONTROL &= ((uint8)(~Debug_Timer_CTRL_TRIG_MODE_MASK));
 
     /* Write The New Setting */
-    SCSI_CMD_TIMER_CONTROL |= (triggerMode | SCSI_CMD_TIMER__B_TIMER__TM_SOFTWARE);
+    Debug_Timer_CONTROL |= (triggerMode | Debug_Timer__B_TIMER__TM_SOFTWARE);
 
 }
 #endif /* Remove API if Trigger Mode is not Software Controlled */
 
-#if (SCSI_CMD_TIMER_EnableTriggerMode)
+#if (Debug_Timer_EnableTriggerMode)
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_EnableTrigger
+* Function Name: Debug_Timer_EnableTrigger
 ********************************************************************************
 *
 * Summary:
@@ -614,16 +614,16 @@ void SCSI_CMD_TIMER_SetTriggerMode(uint8 triggerMode)
 *  void
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_EnableTrigger(void) 
+void Debug_Timer_EnableTrigger(void) 
 {
-    #if (!SCSI_CMD_TIMER_ControlRegRemoved)   /* Remove assignment if control register is removed */
-        SCSI_CMD_TIMER_CONTROL |= SCSI_CMD_TIMER_CTRL_TRIG_EN;
+    #if (!Debug_Timer_ControlRegRemoved)   /* Remove assignment if control register is removed */
+        Debug_Timer_CONTROL |= Debug_Timer_CTRL_TRIG_EN;
     #endif /* Remove code section if control register is not used */
 }
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_DisableTrigger
+* Function Name: Debug_Timer_DisableTrigger
 ********************************************************************************
 *
 * Summary:
@@ -636,21 +636,21 @@ void SCSI_CMD_TIMER_EnableTrigger(void)
 *  void
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_DisableTrigger(void) 
+void Debug_Timer_DisableTrigger(void) 
 {
-    #if (!SCSI_CMD_TIMER_ControlRegRemoved)   /* Remove assignment if control register is removed */
-        SCSI_CMD_TIMER_CONTROL &= ((uint8)(~SCSI_CMD_TIMER_CTRL_TRIG_EN));
+    #if (!Debug_Timer_ControlRegRemoved)   /* Remove assignment if control register is removed */
+        Debug_Timer_CONTROL &= ((uint8)(~Debug_Timer_CTRL_TRIG_EN));
     #endif /* Remove code section if control register is not used */
 }
 #endif /* Remove API is Trigger Mode is set to None */
 
 
-#if(SCSI_CMD_TIMER_InterruptOnCaptureCount)
-#if (!SCSI_CMD_TIMER_ControlRegRemoved)   /* Remove API if control register is removed */
+#if(Debug_Timer_InterruptOnCaptureCount)
+#if (!Debug_Timer_ControlRegRemoved)   /* Remove API if control register is removed */
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_SetInterruptCount
+* Function Name: Debug_Timer_SetInterruptCount
 ********************************************************************************
 *
 * Summary:
@@ -666,25 +666,25 @@ void SCSI_CMD_TIMER_DisableTrigger(void)
 *  void
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_SetInterruptCount(uint8 interruptCount) 
+void Debug_Timer_SetInterruptCount(uint8 interruptCount) 
 {
     /* This must only set to two bits of the control register associated */
-    interruptCount &= SCSI_CMD_TIMER_CTRL_INTCNT_MASK;
+    interruptCount &= Debug_Timer_CTRL_INTCNT_MASK;
 
     /* Clear the Current Setting */
-    SCSI_CMD_TIMER_CONTROL &= ((uint8)(~SCSI_CMD_TIMER_CTRL_INTCNT_MASK));
+    Debug_Timer_CONTROL &= ((uint8)(~Debug_Timer_CTRL_INTCNT_MASK));
     /* Write The New Setting */
-    SCSI_CMD_TIMER_CONTROL |= interruptCount;
+    Debug_Timer_CONTROL |= interruptCount;
 }
 #endif /* Remove API if control register is removed */
-#endif /* SCSI_CMD_TIMER_InterruptOnCaptureCount */
+#endif /* Debug_Timer_InterruptOnCaptureCount */
 
 
-#if (SCSI_CMD_TIMER_UsingHWCaptureCounter)
+#if (Debug_Timer_UsingHWCaptureCounter)
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_SetCaptureCount
+* Function Name: Debug_Timer_SetCaptureCount
 ********************************************************************************
 *
 * Summary:
@@ -699,14 +699,14 @@ void SCSI_CMD_TIMER_SetInterruptCount(uint8 interruptCount)
 *  void
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_SetCaptureCount(uint8 captureCount) 
+void Debug_Timer_SetCaptureCount(uint8 captureCount) 
 {
-    SCSI_CMD_TIMER_CAP_COUNT = captureCount;
+    Debug_Timer_CAP_COUNT = captureCount;
 }
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_ReadCaptureCount
+* Function Name: Debug_Timer_ReadCaptureCount
 ********************************************************************************
 *
 * Summary:
@@ -719,15 +719,15 @@ void SCSI_CMD_TIMER_SetCaptureCount(uint8 captureCount)
 *  Returns the Capture Count Setting
 *
 *******************************************************************************/
-uint8 SCSI_CMD_TIMER_ReadCaptureCount(void) 
+uint8 Debug_Timer_ReadCaptureCount(void) 
 {
-    return ((uint8)SCSI_CMD_TIMER_CAP_COUNT);
+    return ((uint8)Debug_Timer_CAP_COUNT);
 }
-#endif /* SCSI_CMD_TIMER_UsingHWCaptureCounter */
+#endif /* Debug_Timer_UsingHWCaptureCounter */
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_ClearFIFO
+* Function Name: Debug_Timer_ClearFIFO
 ********************************************************************************
 *
 * Summary:
@@ -740,11 +740,11 @@ uint8 SCSI_CMD_TIMER_ReadCaptureCount(void)
 *  void
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_ClearFIFO(void) 
+void Debug_Timer_ClearFIFO(void) 
 {
-    while(0u != (SCSI_CMD_TIMER_ReadStatusRegister() & SCSI_CMD_TIMER_STATUS_FIFONEMP))
+    while(0u != (Debug_Timer_ReadStatusRegister() & Debug_Timer_STATUS_FIFONEMP))
     {
-        (void)SCSI_CMD_TIMER_ReadCapture();
+        (void)Debug_Timer_ReadCapture();
     }
 }
 

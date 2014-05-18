@@ -118,8 +118,86 @@ static void enter_Status(uint8 status)
 	#endif
 }
 
+static void doReselectTest()
+{
+	scsiDev.needReconnect = 0;
+	scsiEnterPhase(MESSAGE_IN);
+	scsiWriteByte(0x02); // save data pointer
+
+	// TODO check if this message was rejected.
+
+	scsiWriteByte(0x04); // disconnect msg.
+	enter_BusFree();
+	
+	CyDelay(100);
+
+	while (1)
+	{
+		int sel = SCSI_ReadPin(SCSI_In_SEL);
+		int bsy = SCSI_ReadPin(SCSI_In_BSY);
+		if (!sel && !bsy)
+		{
+			// TODO wait bus settle delay
+			CyDelayUs(1); // TODO bus free delay  800ns
+			
+			// Arbitrate.
+			ledOn();
+			SCSI_Out_Bits_Write(scsiDev.scsiIdMask);
+			SCSI_Out_Ctl_Write(1); // Write bits manually.
+			SCSI_SetPin(SCSI_Out_BSY);
+			
+			CyDelayUs(3); // arbitrate delay. 2.4us.
+			
+			uint8_t dbx = scsiReadDBxPins();
+			sel = SCSI_ReadPin(SCSI_In_SEL);
+			if (sel || ((dbx ^ scsiDev.scsiIdMask) > scsiDev.scsiIdMask))
+			{
+				// Lost arbitration.
+				SCSI_Out_Ctl_Write(0);
+				SCSI_ClearPin(SCSI_Out_BSY);
+				ledOff();
+			}
+			else
+			{
+				// Won arbitration	
+				SCSI_SetPin(SCSI_Out_SEL);
+				CyDelayUs(1); // Bus clear + Bus settle.
+
+				// Reselection phase
+				scsiEnterPhase(__scsiphase_io); // TODO get rid of delay
+				SCSI_Out_Bits_Write(scsiDev.scsiIdMask | (1 << scsiDev.initiatorId));
+				CyDelayCycles(4); // 2 deskew delays
+				SCSI_ClearPin(SCSI_Out_BSY);
+				CyDelayUs(1);  // Bus Settle Delay
+
+				bsy = SCSI_ReadPin(SCSI_In_BSY);
+				while (!bsy) { bsy = SCSI_ReadPin(SCSI_In_BSY); } // Wait for initiator.
+				SCSI_SetPin(SCSI_Out_BSY);
+
+				// Prepare for the initial IDENTIFY message.
+				scsiEnterPhase(MESSAGE_IN);
+
+				SCSI_Out_Ctl_Write(0);
+				SCSI_ClearPin(SCSI_Out_SEL);
+
+				// Send identify command
+				scsiWriteByte(0x80);
+				break;
+			}
+		}
+
+	}
+
+	// Continue with status.
+	
+}
+
 static void process_Status()
 {
+	if (scsiDev.status == GOOD && scsiDev.needReconnect && scsiDev.allowDisconnect)
+	{
+	//	doReselectTest();
+	}
 	scsiEnterPhase(STATUS);
 
 	uint8 message;
@@ -425,11 +503,13 @@ static void scsiReset()
 	ledOff();
 
 	scsiPhyReset();
+	SCSI_Out_Ctl_Write(0);
 
 	scsiDev.parityError = 0;
 	scsiDev.phase = BUS_FREE;
 	scsiDev.atnFlag = 0;
 	scsiDev.resetFlag = 0;
+	scsiDev.needReconnect = 0;
 
 	if (scsiDev.unitAttention != POWER_ON_RESET)
 	{
@@ -464,6 +544,8 @@ static void enter_SelectionPhase()
 	scsiDev.dataLen = 0;
 	scsiDev.status = GOOD;
 	scsiDev.phase = SELECTION;
+	scsiDev.needReconnect = 0;
+	scsiDev.allowDisconnect = 0;
 
 	transfer.blocks = 0;
 	transfer.currentBlock = 0;
@@ -640,8 +722,12 @@ static void process_MessageOut()
 			(scsiDev.msgOut & 0x7) // We only support LUN 0!
 			)
 		{
+			//scsiDev.sense.code = ILLEGAL_REQUEST;
+			//scsiDev.sense.asc = INVALID_BITS_IN_IDENTIFY_MESSAGE;
+			//enter_Status(CHECK_CONDITION);
 			messageReject();
 		}
+		scsiDev.allowDisconnect = scsiDev.msgOut & 0x40;
 	}
 	else if (scsiDev.msgOut >= 0x20 && scsiDev.msgOut <= 0x2F)
 	{

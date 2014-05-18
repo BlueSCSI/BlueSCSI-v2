@@ -63,7 +63,7 @@ typedef enum
 } SCSI_MESSAGE;
 
 // Maximum value for bytes-per-sector.
-#define MAX_SECTOR_SIZE 2048
+#define MAX_SECTOR_SIZE 8192
 #define MIN_SECTOR_SIZE 64
 
 typedef struct
@@ -118,6 +118,9 @@ typedef struct
 	uint8 lastStatus;
 	uint8 lastSense;
 #endif
+
+uint8 allowDisconnect;
+uint8 needReconnect;
 } ScsiDevice;
 
 extern ScsiDevice scsiDev;

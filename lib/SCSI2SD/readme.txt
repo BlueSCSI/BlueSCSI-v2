@@ -68,3 +68,5 @@ Users have reported success on these systems:
     EMU Emulator E4X with EOS 3.00b and E6400 (classic) with Eos 4.01
     Ensoniq ASR-X, ASR-10 (from v3.4, 2GB size limit)
     HP 16601A logic analyzer
+    Apple IIgs using Apple II High Speed SCSI controller card (from v3.3)
+	Symbolics List Machine XL1200, using 1280 byte sectors (from v3.4)

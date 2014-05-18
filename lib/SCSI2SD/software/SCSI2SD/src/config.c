@@ -47,7 +47,8 @@ static Config shadow =
 enum USB_ENDPOINTS
 {
 	USB_EP_OUT = 1,
-	USB_EP_IN = 2
+	USB_EP_IN = 2,
+	USB_EP_DEBUG = 4
 };
 enum USB_STATE
 {
@@ -55,6 +56,8 @@ enum USB_STATE
 	USB_DATA_SENT
 };
 int usbInEpState;
+int usbDebugEpState;
+uint8_t debugBuffer[64];
 
 int usbReady;
 
@@ -148,7 +151,7 @@ void configInit()
 	// The PSoC must be operating between 4.6V and 5V for the regulator
 	// to work.
 	USBFS_Start(0, USBFS_5V_OPERATION);
-	usbInEpState = USB_IDLE;
+	usbInEpState = usbDebugEpState = USB_IDLE;
 	usbReady = 0; // We don't know if host is connected yet.
 }
 
@@ -169,7 +172,7 @@ void configPoll()
 	if (reset)
 	{
 		USBFS_EnableOutEP(USB_EP_OUT);
-		usbInEpState = USB_IDLE;
+		usbInEpState = usbDebugEpState = USB_IDLE;
 	}
 
 	if(USBFS_GetEPState(USB_EP_OUT) == USBFS_OUT_BUFFER_FULL)
@@ -219,24 +222,6 @@ void configPoll()
 		shadow.maxSectors = htonl(shadow.maxSectors);
 		shadow.bytesPerSector = htons(shadow.bytesPerSector);
 
-		#ifdef MM_DEBUG
-		memcpy(&shadow.reserved, &scsiDev.cdb, 12);
-		shadow.reserved[12] = scsiDev.msgIn;
-		shadow.reserved[13] = scsiDev.msgOut;
-		shadow.reserved[14] = scsiDev.lastStatus;
-		shadow.reserved[15] = scsiDev.lastSense;
-		shadow.reserved[16] = scsiDev.phase;
-		shadow.reserved[17] = SCSI_ReadPin(SCSI_In_BSY);
-		shadow.reserved[18] = SCSI_ReadPin(SCSI_In_SEL);
-		shadow.reserved[19] = SCSI_ReadPin(SCSI_ATN_INT);
-		shadow.reserved[20] = SCSI_ReadPin(SCSI_RST_INT);
-		shadow.reserved[21] = scsiDev.rstCount;
-		shadow.reserved[22] = scsiDev.selCount;
-		shadow.reserved[23] = scsiDev.msgCount;
-		shadow.reserved[24] = scsiDev.cmdCount;
-		shadow.reserved[25] = scsiDev.watchdogTick;
-		#endif
-
 		USBFS_LoadInEP(USB_EP_IN, (uint8 *)&shadow, sizeof(shadow));
 		shadow.maxSectors = ntohl(shadow.maxSectors);
 		shadow.bytesPerSector = ntohs(shadow.bytesPerSector);
@@ -251,6 +236,67 @@ void configPoll()
 		}
 		break;
 	}
+}
+
+void debugPoll()
+{
+	if (!usbReady)
+	{
+		return;
+	}
+	
+	switch (usbDebugEpState)
+	{
+	case USB_IDLE:
+		memcpy(&debugBuffer, &scsiDev.cdb, 12);
+		debugBuffer[12] = scsiDev.msgIn;
+		debugBuffer[13] = scsiDev.msgOut;
+		debugBuffer[14] = scsiDev.lastStatus;
+		debugBuffer[15] = scsiDev.lastSense;
+		debugBuffer[16] = scsiDev.phase;
+		debugBuffer[17] = SCSI_ReadPin(SCSI_In_BSY);
+		debugBuffer[18] = SCSI_ReadPin(SCSI_In_SEL);
+		debugBuffer[19] = SCSI_ReadPin(SCSI_ATN_INT);
+		debugBuffer[20] = SCSI_ReadPin(SCSI_RST_INT);
+		debugBuffer[21] = scsiDev.rstCount;
+		debugBuffer[22] = scsiDev.selCount;
+		debugBuffer[23] = scsiDev.msgCount;
+		debugBuffer[24] = scsiDev.cmdCount;
+		debugBuffer[25] = scsiDev.watchdogTick;
+
+		USBFS_LoadInEP(USB_EP_DEBUG, (uint8 *)&debugBuffer, sizeof(debugBuffer));
+		usbDebugEpState = USB_DATA_SENT;
+		break;
+
+	case USB_DATA_SENT:
+		if (USBFS_bGetEPAckState(USB_EP_DEBUG))
+		{
+			// Data accepted.
+			usbDebugEpState = USB_IDLE;
+		}
+		break;
+	}
+}
+
+CY_ISR(debugTimerISR)
+{
+	Debug_Timer_ReadStatusRegister();
+	Debug_Timer_Interrupt_ClearPending();
+	uint8 savedIntrStatus = CyEnterCriticalSection();
+	debugPoll();
+	CyExitCriticalSection(savedIntrStatus); 
+}
+
+void debugInit()
+{
+#ifdef MM_DEBUG
+	Debug_Timer_Interrupt_StartEx(debugTimerISR);
+	Debug_Timer_Start();
+#else
+	Debug_Timer_Interrupt_Stop();
+	Debug_Timer_Stop();
+#endif
+	
 }
 
 // Public method for storing MODE SELECT results.
