@@ -1,5 +1,5 @@
 /*******************************************************************************
-* File Name: SCSI_CMD_TIMER_ISR.c  
+* File Name: Debug_Timer_Interrupt.c  
 * Version 1.70
 *
 *  Description:
@@ -18,14 +18,14 @@
 
 #include <cydevice_trm.h>
 #include <CyLib.h>
-#include <SCSI_CMD_TIMER_ISR.h>
+#include <Debug_Timer_Interrupt.h>
 
-#if !defined(SCSI_CMD_TIMER_ISR__REMOVED) /* Check for removal by optimization */
+#if !defined(Debug_Timer_Interrupt__REMOVED) /* Check for removal by optimization */
 
 /*******************************************************************************
 *  Place your includes, defines and code here 
 ********************************************************************************/
-/* `#START SCSI_CMD_TIMER_ISR_intc` */
+/* `#START Debug_Timer_Interrupt_intc` */
 
 /* `#END` */
 
@@ -41,7 +41,7 @@ CY_ISR_PROTO(IntDefaultHandler);
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_ISR_Start
+* Function Name: Debug_Timer_Interrupt_Start
 ********************************************************************************
 *
 * Summary:
@@ -54,24 +54,24 @@ CY_ISR_PROTO(IntDefaultHandler);
 *   None
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_ISR_Start(void)
+void Debug_Timer_Interrupt_Start(void)
 {
     /* For all we know the interrupt is active. */
-    SCSI_CMD_TIMER_ISR_Disable();
+    Debug_Timer_Interrupt_Disable();
 
-    /* Set the ISR to point to the SCSI_CMD_TIMER_ISR Interrupt. */
-    SCSI_CMD_TIMER_ISR_SetVector(&SCSI_CMD_TIMER_ISR_Interrupt);
+    /* Set the ISR to point to the Debug_Timer_Interrupt Interrupt. */
+    Debug_Timer_Interrupt_SetVector(&Debug_Timer_Interrupt_Interrupt);
 
     /* Set the priority. */
-    SCSI_CMD_TIMER_ISR_SetPriority((uint8)SCSI_CMD_TIMER_ISR_INTC_PRIOR_NUMBER);
+    Debug_Timer_Interrupt_SetPriority((uint8)Debug_Timer_Interrupt_INTC_PRIOR_NUMBER);
 
     /* Enable it. */
-    SCSI_CMD_TIMER_ISR_Enable();
+    Debug_Timer_Interrupt_Enable();
 }
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_ISR_StartEx
+* Function Name: Debug_Timer_Interrupt_StartEx
 ********************************************************************************
 *
 * Summary:
@@ -84,24 +84,24 @@ void SCSI_CMD_TIMER_ISR_Start(void)
 *   None
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_ISR_StartEx(cyisraddress address)
+void Debug_Timer_Interrupt_StartEx(cyisraddress address)
 {
     /* For all we know the interrupt is active. */
-    SCSI_CMD_TIMER_ISR_Disable();
+    Debug_Timer_Interrupt_Disable();
 
-    /* Set the ISR to point to the SCSI_CMD_TIMER_ISR Interrupt. */
-    SCSI_CMD_TIMER_ISR_SetVector(address);
+    /* Set the ISR to point to the Debug_Timer_Interrupt Interrupt. */
+    Debug_Timer_Interrupt_SetVector(address);
 
     /* Set the priority. */
-    SCSI_CMD_TIMER_ISR_SetPriority((uint8)SCSI_CMD_TIMER_ISR_INTC_PRIOR_NUMBER);
+    Debug_Timer_Interrupt_SetPriority((uint8)Debug_Timer_Interrupt_INTC_PRIOR_NUMBER);
 
     /* Enable it. */
-    SCSI_CMD_TIMER_ISR_Enable();
+    Debug_Timer_Interrupt_Enable();
 }
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_ISR_Stop
+* Function Name: Debug_Timer_Interrupt_Stop
 ********************************************************************************
 *
 * Summary:
@@ -113,22 +113,22 @@ void SCSI_CMD_TIMER_ISR_StartEx(cyisraddress address)
 *   None
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_ISR_Stop(void)
+void Debug_Timer_Interrupt_Stop(void)
 {
     /* Disable this interrupt. */
-    SCSI_CMD_TIMER_ISR_Disable();
+    Debug_Timer_Interrupt_Disable();
 
     /* Set the ISR to point to the passive one. */
-    SCSI_CMD_TIMER_ISR_SetVector(&IntDefaultHandler);
+    Debug_Timer_Interrupt_SetVector(&IntDefaultHandler);
 }
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_ISR_Interrupt
+* Function Name: Debug_Timer_Interrupt_Interrupt
 ********************************************************************************
 *
 * Summary:
-*   The default Interrupt Service Routine for SCSI_CMD_TIMER_ISR.
+*   The default Interrupt Service Routine for Debug_Timer_Interrupt.
 *
 *   Add custom code between the coments to keep the next version of this file
 *   from over writting your code.
@@ -139,23 +139,23 @@ void SCSI_CMD_TIMER_ISR_Stop(void)
 *   None
 *
 *******************************************************************************/
-CY_ISR(SCSI_CMD_TIMER_ISR_Interrupt)
+CY_ISR(Debug_Timer_Interrupt_Interrupt)
 {
     /*  Place your Interrupt code here. */
-    /* `#START SCSI_CMD_TIMER_ISR_Interrupt` */
+    /* `#START Debug_Timer_Interrupt_Interrupt` */
 
     /* `#END` */
 }
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_ISR_SetVector
+* Function Name: Debug_Timer_Interrupt_SetVector
 ********************************************************************************
 *
 * Summary:
-*   Change the ISR vector for the Interrupt. Note calling SCSI_CMD_TIMER_ISR_Start
+*   Change the ISR vector for the Interrupt. Note calling Debug_Timer_Interrupt_Start
 *   will override any effect this method would have had. To set the vector 
-*   before the component has been started use SCSI_CMD_TIMER_ISR_StartEx instead.
+*   before the component has been started use Debug_Timer_Interrupt_StartEx instead.
 *
 * Parameters:
 *   address: Address of the ISR to set in the interrupt vector table.
@@ -164,18 +164,18 @@ CY_ISR(SCSI_CMD_TIMER_ISR_Interrupt)
 *   None
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_ISR_SetVector(cyisraddress address)
+void Debug_Timer_Interrupt_SetVector(cyisraddress address)
 {
     cyisraddress * ramVectorTable;
 
     ramVectorTable = (cyisraddress *) *CYINT_VECT_TABLE;
 
-    ramVectorTable[CYINT_IRQ_BASE + (uint32)SCSI_CMD_TIMER_ISR__INTC_NUMBER] = address;
+    ramVectorTable[CYINT_IRQ_BASE + (uint32)Debug_Timer_Interrupt__INTC_NUMBER] = address;
 }
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_ISR_GetVector
+* Function Name: Debug_Timer_Interrupt_GetVector
 ********************************************************************************
 *
 * Summary:
@@ -188,25 +188,25 @@ void SCSI_CMD_TIMER_ISR_SetVector(cyisraddress address)
 *   Address of the ISR in the interrupt vector table.
 *
 *******************************************************************************/
-cyisraddress SCSI_CMD_TIMER_ISR_GetVector(void)
+cyisraddress Debug_Timer_Interrupt_GetVector(void)
 {
     cyisraddress * ramVectorTable;
 
     ramVectorTable = (cyisraddress *) *CYINT_VECT_TABLE;
 
-    return ramVectorTable[CYINT_IRQ_BASE + (uint32)SCSI_CMD_TIMER_ISR__INTC_NUMBER];
+    return ramVectorTable[CYINT_IRQ_BASE + (uint32)Debug_Timer_Interrupt__INTC_NUMBER];
 }
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_ISR_SetPriority
+* Function Name: Debug_Timer_Interrupt_SetPriority
 ********************************************************************************
 *
 * Summary:
-*   Sets the Priority of the Interrupt. Note calling SCSI_CMD_TIMER_ISR_Start
-*   or SCSI_CMD_TIMER_ISR_StartEx will override any effect this method 
+*   Sets the Priority of the Interrupt. Note calling Debug_Timer_Interrupt_Start
+*   or Debug_Timer_Interrupt_StartEx will override any effect this method 
 *   would have had. This method should only be called after 
-*   SCSI_CMD_TIMER_ISR_Start or SCSI_CMD_TIMER_ISR_StartEx has been called. To set 
+*   Debug_Timer_Interrupt_Start or Debug_Timer_Interrupt_StartEx has been called. To set 
 *   the initial priority for the component use the cydwr file in the tool.
 *
 * Parameters:
@@ -216,14 +216,14 @@ cyisraddress SCSI_CMD_TIMER_ISR_GetVector(void)
 *   None
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_ISR_SetPriority(uint8 priority)
+void Debug_Timer_Interrupt_SetPriority(uint8 priority)
 {
-    *SCSI_CMD_TIMER_ISR_INTC_PRIOR = priority << 5;
+    *Debug_Timer_Interrupt_INTC_PRIOR = priority << 5;
 }
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_ISR_GetPriority
+* Function Name: Debug_Timer_Interrupt_GetPriority
 ********************************************************************************
 *
 * Summary:
@@ -236,19 +236,19 @@ void SCSI_CMD_TIMER_ISR_SetPriority(uint8 priority)
 *   Priority of the interrupt. 0 - 7, 0 being the highest.
 *
 *******************************************************************************/
-uint8 SCSI_CMD_TIMER_ISR_GetPriority(void)
+uint8 Debug_Timer_Interrupt_GetPriority(void)
 {
     uint8 priority;
 
 
-    priority = *SCSI_CMD_TIMER_ISR_INTC_PRIOR >> 5;
+    priority = *Debug_Timer_Interrupt_INTC_PRIOR >> 5;
 
     return priority;
 }
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_ISR_Enable
+* Function Name: Debug_Timer_Interrupt_Enable
 ********************************************************************************
 *
 * Summary:
@@ -261,15 +261,15 @@ uint8 SCSI_CMD_TIMER_ISR_GetPriority(void)
 *   None
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_ISR_Enable(void)
+void Debug_Timer_Interrupt_Enable(void)
 {
     /* Enable the general interrupt. */
-    *SCSI_CMD_TIMER_ISR_INTC_SET_EN = SCSI_CMD_TIMER_ISR__INTC_MASK;
+    *Debug_Timer_Interrupt_INTC_SET_EN = Debug_Timer_Interrupt__INTC_MASK;
 }
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_ISR_GetState
+* Function Name: Debug_Timer_Interrupt_GetState
 ********************************************************************************
 *
 * Summary:
@@ -282,15 +282,15 @@ void SCSI_CMD_TIMER_ISR_Enable(void)
 *   1 if enabled, 0 if disabled.
 *
 *******************************************************************************/
-uint8 SCSI_CMD_TIMER_ISR_GetState(void)
+uint8 Debug_Timer_Interrupt_GetState(void)
 {
     /* Get the state of the general interrupt. */
-    return ((*SCSI_CMD_TIMER_ISR_INTC_SET_EN & (uint32)SCSI_CMD_TIMER_ISR__INTC_MASK) != 0u) ? 1u:0u;
+    return ((*Debug_Timer_Interrupt_INTC_SET_EN & (uint32)Debug_Timer_Interrupt__INTC_MASK) != 0u) ? 1u:0u;
 }
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_ISR_Disable
+* Function Name: Debug_Timer_Interrupt_Disable
 ********************************************************************************
 *
 * Summary:
@@ -303,15 +303,15 @@ uint8 SCSI_CMD_TIMER_ISR_GetState(void)
 *   None
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_ISR_Disable(void)
+void Debug_Timer_Interrupt_Disable(void)
 {
     /* Disable the general interrupt. */
-    *SCSI_CMD_TIMER_ISR_INTC_CLR_EN = SCSI_CMD_TIMER_ISR__INTC_MASK;
+    *Debug_Timer_Interrupt_INTC_CLR_EN = Debug_Timer_Interrupt__INTC_MASK;
 }
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_ISR_SetPending
+* Function Name: Debug_Timer_Interrupt_SetPending
 ********************************************************************************
 *
 * Summary:
@@ -325,14 +325,14 @@ void SCSI_CMD_TIMER_ISR_Disable(void)
 *   None
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_ISR_SetPending(void)
+void Debug_Timer_Interrupt_SetPending(void)
 {
-    *SCSI_CMD_TIMER_ISR_INTC_SET_PD = SCSI_CMD_TIMER_ISR__INTC_MASK;
+    *Debug_Timer_Interrupt_INTC_SET_PD = Debug_Timer_Interrupt__INTC_MASK;
 }
 
 
 /*******************************************************************************
-* Function Name: SCSI_CMD_TIMER_ISR_ClearPending
+* Function Name: Debug_Timer_Interrupt_ClearPending
 ********************************************************************************
 *
 * Summary:
@@ -345,9 +345,9 @@ void SCSI_CMD_TIMER_ISR_SetPending(void)
 *   None
 *
 *******************************************************************************/
-void SCSI_CMD_TIMER_ISR_ClearPending(void)
+void Debug_Timer_Interrupt_ClearPending(void)
 {
-    *SCSI_CMD_TIMER_ISR_INTC_CLR_PD = SCSI_CMD_TIMER_ISR__INTC_MASK;
+    *Debug_Timer_Interrupt_INTC_CLR_PD = Debug_Timer_Interrupt__INTC_MASK;
 }
 
 #endif /* End check for removal by optimization */

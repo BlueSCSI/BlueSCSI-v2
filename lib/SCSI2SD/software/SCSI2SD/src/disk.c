@@ -179,6 +179,8 @@ static void doWrite(uint32 lba, uint32 blocks)
 		// No need for single-block writes atm.  Overhead of the
 		// multi-block write is minimal.
 		transfer.multiBlock = 1;
+		
+		if (blocks > 1) scsiDev.needReconnect = 1;
 		sdPrepareWrite();
 	}
 }
@@ -214,6 +216,7 @@ static void doRead(uint32 lba, uint32 blocks)
 		else
 		{
 			transfer.multiBlock = 1;
+			scsiDev.needReconnect = 1;
 			sdPrepareRead();
 		}
 	}

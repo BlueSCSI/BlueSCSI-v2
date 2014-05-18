@@ -59,6 +59,11 @@
 #include <USBFS_midi.h>
 #include <USBFS_pvt.h>
 #include <Bootloadable_1.h>
+#include <SCSI_Out_Bits.h>
+#include <SCSI_Out_Ctl.h>
+#include <Debug_Timer.h>
+#include <timer_clock.h>
+#include <Debug_Timer_Interrupt.h>
 #include <USBFS_Dm_aliases.h>
 #include <USBFS_Dm.h>
 #include <USBFS_Dp_aliases.h>

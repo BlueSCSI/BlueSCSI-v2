@@ -191,10 +191,10 @@ static void doReadSector(uint32_t numBytes)
 	CY_SET_REG8(SDCard_TXDATA_PTR, 0xFF); // Put a byte in the FIFO
 	CY_SET_REG8(SDCard_TXDATA_PTR, 0xFF); // Put a byte in the FIFO
 	CY_SET_REG8(SDCard_TXDATA_PTR, 0xFF); // Put a byte in the FIFO
-
+	
 	i = 0;
 	guard = 0;
-
+	
 	// This loop is critically important for performance.
 	// We stream data straight from the SDCard fifos into the SCSI component
 	// FIFO's. If the loop isn't fast enough, the transmit FIFO's will empty,
@@ -207,42 +207,44 @@ static void doReadSector(uint32_t numBytes)
 		// Read from the SPIM fifo if there is room to stream the byte to the
 		// SCSI fifos
 		if((sdRxStatus & SDCard_STS_RX_FIFO_NOT_EMPTY) &&
-			(scsiDev.resetFlag || (scsiStatus & 1)) // SCSI TX FIFO NOT FULL
+			(scsiStatus & 1) // SCSI TX FIFO NOT FULL
 			)
 		{
 			uint8_t val = CY_GET_REG8(SDCard_RXDATA_PTR);
 			CY_SET_REG8(scsiTarget_datapath__F0_REG, val);
 			guard++;
-		}
 
+			// How many bytes are in a 4-byte FIFO ? 5.  4 FIFO bytes PLUS one byte
+			// being processed bit-by-bit. Artifically limit the number of bytes in the 
+			// "combined" SPIM TX and RX FIFOS to the individual FIFO size.
+			// Unlike the SCSI component, SPIM doesn't check if there's room in
+			// the output FIFO before starting to transmit.
+
+			if (prep < numBytes)
+			{
+				CY_SET_REG8(SDCard_TXDATA_PTR, 0xFF); // Put a byte in the FIFO
+				prep++;
+			}
+
+		}
+					
 		// Byte has been sent out the SCSI interface.
-		if (scsiDev.resetFlag || (scsiStatus & 2)) // SCSI RX FIFO NOT EMPTY
+		if (scsiStatus & 2) // SCSI RX FIFO NOT EMPTY
 		{
 			CY_GET_REG8(scsiTarget_datapath__F1_REG);
 			++i;
 		}
-
-		// How many bytes are in a 4-byte FIFO ? 5.  4 FIFO bytes PLUS one byte
-		// being processed bit-by-bit. Artifically limit the number of bytes in the 
-		// "combined" SPIM TX and RX FIFOS to the individual FIFO size.
-		// Unlike the SCSI component, SPIM doesn't check if there's room in
-		// the output FIFO before starting to transmit.
-		if ((prep - guard < 4) && (prep < numBytes))
-		{
-			CY_SET_REG8(SDCard_TXDATA_PTR, 0xFF); // Put a byte in the FIFO
-			prep++;
-		}
 	}
 
-	// Read and discard remaining bytes.
-	while (i < SD_SECTOR_SIZE)
+	// Read and discard remaining bytes. This applis for non-512 byte sectors,
+	// or if a SCSI reset was triggered.
+	while (guard < SD_SECTOR_SIZE)
 	{
 		uint8_t sdRxStatus = CY_GET_REG8(SDCard_RX_STATUS_PTR);
 		if(sdRxStatus & SDCard_STS_RX_FIFO_NOT_EMPTY)
 		{
 			CY_GET_REG8(SDCard_RXDATA_PTR);
 			guard++;
-			i++;
 		}
 
 		if ((prep - guard < 4) && (prep < SD_SECTOR_SIZE))
@@ -430,7 +432,7 @@ static int doWriteSector(uint32_t numBytes)
 	{
 		uint8_t sdRxStatus = CY_GET_REG8(SDCard_RX_STATUS_PTR);
 
-		if(guard - i < 4)
+		if((guard - i < 4) && (guard < SD_SECTOR_SIZE))
 		{
 			CY_SET_REG8(SDCard_TXDATA_PTR, 0x00);
 			guard++;

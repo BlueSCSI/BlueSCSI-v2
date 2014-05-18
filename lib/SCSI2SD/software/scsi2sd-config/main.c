@@ -163,10 +163,11 @@ static void usage()
 	printf("\t\trequired by the SCSI-2 standard.\n\n");
 	printf("--no-attention\tDisable Unit Attention responses.\n\n");
 	printf("--blocks={0-4294967295}\n\t\tSet a limit to the reported device size.\n");
-	printf("\t\tEach block is 512 bytes. The maximum possible size is 2TB.\n");
+	printf("\t\tThe size of each block/sector is set by the --sector parameter.\n");
 	printf("\t\tThe reported size will be the lower of this value and the SD\n");
-	printf("\t\tcard size. 0 disables the limit.\n\n");
-	printf("--sector={64-2048}\n\t\tSet the bytes-per-sector. Normally 512 bytes.\n");
+	printf("\t\tcard size. 0 disables the limit.\n");
+	printf("\t\tThe maximum possible size is 2TB.\n\n");
+	printf("--sector={64-8192}\n\t\tSet the bytes-per-sector. Normally 512 bytes.\n");
 	printf("\t\tCan also be set with a SCSI MODE SELECT command.\n\n");
 	printf("--apple\t\tSet the vendor, product ID and revision fields to simulate an \n");
 	printf("\t\tapple-suppled disk. Provides support for the Apple Drive Setup\n");
@@ -345,7 +346,7 @@ int main(int argc, char* argv[])
 		{
 			int64_t bytesPerSector = -1;
 			if (sscanf(optarg, "%" PRId64, &bytesPerSector) == 1 &&
-				bytesPerSector >= 64 && bytesPerSector <= 2048)
+				bytesPerSector >= 64 && bytesPerSector <= 8192)
 			{
 				packet.bytesPerSector = bytesPerSector;
 			}

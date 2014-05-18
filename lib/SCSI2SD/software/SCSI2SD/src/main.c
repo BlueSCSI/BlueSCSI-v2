@@ -36,6 +36,7 @@ int main()
 	scsiPhyInit();
 
 	configInit();
+	debugInit();
 
 	scsiInit();
 	scsiDiskInit();
