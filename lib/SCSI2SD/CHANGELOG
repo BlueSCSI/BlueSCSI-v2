@@ -1,3 +1,8 @@
+201404xx		3.5
+	- Fixed several performance issues. Transfer rates up to 2.5MB/s are now
+	possible.
+	- Implemented the READ BUFFER scsi command for performance testing purposes.
+
 20140418		3.4
 	- Critical fix for writes when using non-standard block sizes.
 	- Fix to ensure SCSI phase bits are set atomically.

@@ -132,3 +132,28 @@ void scsiReceiveDiagnostic()
 	}
 }
 
+void scsiReadBuffer()
+{
+	// READ BUFFER
+	// Used for testing the speed of the SCSI interface.
+	uint8 mode = scsiDev.data[1] & 7;
+	
+	int allocLength =
+		(((uint32) scsiDev.cdb[6]) << 16) +
+		(((uint32) scsiDev.cdb[7]) << 8) +
+		scsiDev.cdb[8];
+
+	if (mode == 0)
+	{
+		uint32_t maxSize = MAX_SECTOR_SIZE - 4;
+		// 4 byte header
+		scsiDev.data[0] = 0;
+		scsiDev.data[1] = (maxSize >> 16) & 0xff;
+		scsiDev.data[2] = (maxSize >> 8) & 0xff;
+		scsiDev.data[3] = maxSize & 0xff;
+		
+		scsiDev.dataLen =
+			(allocLength > MAX_SECTOR_SIZE) ? MAX_SECTOR_SIZE : allocLength;
+		scsiDev.phase = DATA_IN;
+	}
+}

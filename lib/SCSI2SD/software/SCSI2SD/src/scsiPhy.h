@@ -17,6 +17,26 @@
 #ifndef SCSIPHY_H
 #define SCSIPHY_H
 
+// Definitions to match the scsiTarget status register.
+typedef enum
+{
+	SCSI_PHY_TX_FIFO_NOT_FULL =  0x01,
+	SCSI_PHY_RX_FIFO_NOT_EMPTY = 0x02,
+
+	// The TX FIFO is empty and the state machine is in the idle state
+	SCSI_PHY_TX_COMPLETE = 0x10
+} SCSI_PHY_STATE;
+
+#define scsiPhyStatus() CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG)
+#define scsiPhyTxFifoFull() ((scsiPhyStatus() & SCSI_PHY_TX_FIFO_NOT_FULL) == 0)
+#define scsiPhyRxFifoEmpty() ((scsiPhyStatus() & SCSI_PHY_RX_FIFO_NOT_EMPTY) == 0)
+
+// Clear 4 byte fifo
+#define scsiPhyRxFifoClear() scsiPhyRx(); scsiPhyRx(); scsiPhyRx(); scsiPhyRx();
+
+#define scsiPhyTx(val) CY_SET_REG8(scsiTarget_datapath__F0_REG, (val))
+#define scsiPhyRx() CY_GET_REG8(scsiTarget_datapath__F1_REG)
+
 #define SCSI_SetPin(pin) \
 	CyPins_SetPin((pin));
 
@@ -28,16 +48,22 @@
 	(CyPins_ReadPin((pin)) == 0)
 
 // Contains the odd-parity flag for a given 8-bit value.
-extern const uint8 Lookup_OddParity[256];
+extern const uint8_t Lookup_OddParity[256];
 
 void scsiPhyReset(void);
 void scsiPhyInit(void);
-uint8 scsiReadByte(void);
-void scsiRead(uint8* data, uint32 count);
-void scsiWriteByte(uint8 value);
-void scsiWrite(uint8* data, uint32 count);
 
-uint8 scsiReadDBxPins(void);
+uint8_t scsiReadByte(void);
+void scsiRead(uint8_t* data, uint32_t count);
+void scsiReadDMA(uint8_t* data, uint32_t count);
+int scsiReadDMAPoll();
+
+void scsiWriteByte(uint8_t value);
+void scsiWrite(uint8_t* data, uint32_t count);
+void scsiWriteDMA(uint8_t* data, uint32_t count);
+int scsiWriteDMAPoll();
+
+uint8_t scsiReadDBxPins(void);
 
 void scsiEnterPhase(int phase);
 

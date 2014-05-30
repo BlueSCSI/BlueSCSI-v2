@@ -1,13 +1,13 @@
-Loading plugins phase: Elapsed time ==> 0s.481ms
-Initializing data phase: Elapsed time ==> 3s.796ms
+Loading plugins phase: Elapsed time ==> 1s.508ms
+Initializing data phase: Elapsed time ==> 9s.403ms
 <CYPRESSTAG name="CyDsfit arguments...">
-cydsfit arguments: -.fdsnotice -.fdswarpdepfile=warp_dependencies.txt -.fdselabdepfile=elab_dependencies.txt -.fdsbldfile=generated_files.txt -p W:\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -d CY8C5267AXI-LP051 -s W:\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\Generated_Source\PSoC5 -- -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE</CYPRESSTAG>
+cydsfit arguments: -.fdsnotice -.fdswarpdepfile=warp_dependencies.txt -.fdselabdepfile=elab_dependencies.txt -.fdsbldfile=generated_files.txt -p Z:\projects\SCSI2SD\git-3.4_debug\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -d CY8C5267AXI-LP051 -s Z:\projects\SCSI2SD\git-3.4_debug\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\Generated_Source\PSoC5 -- -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE</CYPRESSTAG>
 <CYPRESSTAG name="Design elaboration results...">
 </CYPRESSTAG>
-Elaboration phase: Elapsed time ==> 7s.874ms
+Elaboration phase: Elapsed time ==> 9s.079ms
 <CYPRESSTAG name="HDL generation results...">
 </CYPRESSTAG>
-HDL generation phase: Elapsed time ==> 0s.173ms
+HDL generation phase: Elapsed time ==> 0s.906ms
 <CYPRESSTAG name="Synthesis results...">
 
      | | | | | | |
@@ -25,23 +25,23 @@ HDL generation phase: Elapsed time ==> 0s.173ms
 ======================================================================
 Compiling:  USB_Bootloader.v
 Program  :   C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\bin/warp.exe
-Options  :    -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE -ya -.fftprj=W:\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -dcpsoc3 USB_Bootloader.v -verilog
+Options  :    -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE -ya -.fftprj=Z:\projects\SCSI2SD\git-3.4_debug\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -dcpsoc3 USB_Bootloader.v -verilog
 ======================================================================
 
 ======================================================================
 Compiling:  USB_Bootloader.v
 Program  :   C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\bin/warp.exe
-Options  :    -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE -ya -.fftprj=W:\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -dcpsoc3 USB_Bootloader.v -verilog
+Options  :    -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE -ya -.fftprj=Z:\projects\SCSI2SD\git-3.4_debug\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -dcpsoc3 USB_Bootloader.v -verilog
 ======================================================================
 
 ======================================================================
 Compiling:  USB_Bootloader.v
 Program  :   vlogfe
-Options  :    -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE -ya -.fftprj=W:\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -dcpsoc3 -verilog USB_Bootloader.v
+Options  :    -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE -ya -.fftprj=Z:\projects\SCSI2SD\git-3.4_debug\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -dcpsoc3 -verilog USB_Bootloader.v
 ======================================================================
 
 vlogfe V6.3 IR 41:  Verilog parser
-Wed Apr 16 21:15:58 2014
+Tue May 20 21:24:38 2014
 
 
 ======================================================================
@@ -51,7 +51,7 @@ Options  :    -yv2 -q10 USB_Bootloader.v
 ======================================================================
 
 vpp V6.3 IR 41:  Verilog Pre-Processor
-Wed Apr 16 21:15:59 2014
+Tue May 20 21:24:39 2014
 
 
 vpp:  No errors.
@@ -76,11 +76,11 @@ vlogfe:  No errors.
 ======================================================================
 Compiling:  USB_Bootloader.v
 Program  :   tovif
-Options  :    -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE -ya -.fftprj=W:\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -dcpsoc3 -verilog USB_Bootloader.v
+Options  :    -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE -ya -.fftprj=Z:\projects\SCSI2SD\git-3.4_debug\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -dcpsoc3 -verilog USB_Bootloader.v
 ======================================================================
 
 tovif V6.3 IR 41:  High-level synthesis
-Wed Apr 16 21:15:59 2014
+Tue May 20 21:24:41 2014
 
 Linking 'C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\lib\common\std.vhd'.
 Linking 'C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\lib\common\cypress.vhd'.
@@ -91,8 +91,8 @@ Linking 'C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\lib\c
 Linking 'C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\lib\common\stdlogic\mod_cnst.vif'.
 Linking 'C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\lib\common\stdlogic\mod_mthv.vif'.
 Linking 'C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\lib\common\stdlogic\mod_genv.vif'.
-Linking 'W:\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\codegentemp\USB_Bootloader.ctl'.
-Linking 'W:\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\codegentemp\USB_Bootloader.v'.
+Linking 'Z:\projects\SCSI2SD\git-3.4_debug\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\codegentemp\USB_Bootloader.ctl'.
+Linking 'Z:\projects\SCSI2SD\git-3.4_debug\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\codegentemp\USB_Bootloader.v'.
 
 tovif:  No errors.
 
@@ -100,11 +100,11 @@ tovif:  No errors.
 ======================================================================
 Compiling:  USB_Bootloader.v
 Program  :   topld
-Options  :    -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE -ya -.fftprj=W:\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -dcpsoc3 -verilog USB_Bootloader.v
+Options  :    -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE -ya -.fftprj=Z:\projects\SCSI2SD\git-3.4_debug\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -dcpsoc3 -verilog USB_Bootloader.v
 ======================================================================
 
 topld V6.3 IR 41:  Synthesis and optimization
-Wed Apr 16 21:16:00 2014
+Tue May 20 21:24:44 2014
 
 Linking 'C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\lib\common\std.vhd'.
 Linking 'C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\lib\common\cypress.vhd'.
@@ -115,8 +115,8 @@ Linking 'C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\lib\c
 Linking 'C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\lib\common\stdlogic\mod_cnst.vif'.
 Linking 'C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\lib\common\stdlogic\mod_mthv.vif'.
 Linking 'C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\lib\common\stdlogic\mod_genv.vif'.
-Linking 'W:\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\codegentemp\USB_Bootloader.ctl'.
-Linking 'W:\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\codegentemp\USB_Bootloader.v'.
+Linking 'Z:\projects\SCSI2SD\git-3.4_debug\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\codegentemp\USB_Bootloader.ctl'.
+Linking 'Z:\projects\SCSI2SD\git-3.4_debug\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\codegentemp\USB_Bootloader.v'.
 Linking 'C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\lib\lcpsoc3\stdlogic\cpsoc3.vif'.
 
 ----------------------------------------------------------
@@ -202,13 +202,13 @@ topld:  No errors.
 
 CYPRESS_DIR    : C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp
 Warp Program   : C:\Program Files (x86)\Cypress\PSoC Creator\3.0\PSoC Creator\warp\bin/warp.exe
-Warp Arguments : -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE -ya -.fftprj=W:\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -dcpsoc3 USB_Bootloader.v -verilog
+Warp Arguments : -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE -ya -.fftprj=Z:\projects\SCSI2SD\git-3.4_debug\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -dcpsoc3 USB_Bootloader.v -verilog
 </CYPRESSTAG>
-Warp synthesis phase: Elapsed time ==> 2s.967ms
+Warp synthesis phase: Elapsed time ==> 9s.267ms
 <CYPRESSTAG name="Fitter results...">
 <CYPRESSTAG name="Fitter startup details...">
-cyp3fit: V3.0.0.1539, Family: PSoC3, Started at: Wednesday, 16 April 2014 21:16:01
-Options: -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE -ya -.fftprj=W:\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -d CY8C5267AXI-LP051 USB_Bootloader.v -verilog
+cyp3fit: V3.0.0.1539, Family: PSoC3, Started at: Tuesday, 20 May 2014 21:24:47
+Options: -yv2 -v3 -ygs -q10 -o2 -.fftcfgtype=LE -ya -.fftprj=Z:\projects\SCSI2SD\git-3.4_debug\SCSI2SD\software\SCSI2SD\USB_Bootloader.cydsn\USB_Bootloader.cyprj -d CY8C5267AXI-LP051 USB_Bootloader.v -verilog
 </CYPRESSTAG>
 <CYPRESSTAG name="Design parsing">
 Design parsing phase: Elapsed time ==> 0s.046ms
@@ -1314,8 +1314,8 @@ EMIF Fixed Blocks             :    0 :    1 :    1 :   0.00%
 LPF Fixed Blocks              :    0 :    2 :    2 :   0.00%
 SAR Fixed Blocks              :    0 :    1 :    1 :   0.00%
 </CYPRESSTAG>
-Technology Mapping: Elapsed time ==> 0s.015ms
-Tech mapping phase: Elapsed time ==> 0s.281ms
+Technology Mapping: Elapsed time ==> 0s.437ms
+Tech mapping phase: Elapsed time ==> 0s.672ms
 </CYPRESSTAG>
 <CYPRESSTAG name="Analog Placement">
 Initial Analog Placement Results:
@@ -1345,7 +1345,7 @@ IO_5@[IOP=(3)][IoId=(5)] : SD_PULLUP(4) (fixed)
 IO_7@[IOP=(15)][IoId=(7)] : \USBFS:Dm(0)\ (fixed)
 IO_6@[IOP=(15)][IoId=(6)] : \USBFS:Dp(0)\ (fixed)
 USB[0]@[FFB(USB,0)] : \USBFS:USB\
-Analog Placement phase: Elapsed time ==> 0s.109ms
+Analog Placement phase: Elapsed time ==> 0s.078ms
 </CYPRESSTAG>
 <CYPRESSTAG name="Analog Routing">
 Analog Routing phase: Elapsed time ==> 0s.000ms
@@ -1363,12 +1363,12 @@ Dump of CyP35AnalogRoutingResultsDB
 IsVddaHalfUsedForComp = False
 IsVddaHalfUsedForSar0 = False
 IsVddaHalfUsedForSar1 = False
-Analog Code Generation phase: Elapsed time ==> 1s.031ms
+Analog Code Generation phase: Elapsed time ==> 1s.828ms
 </CYPRESSTAG>
 <CYPRESSTAG name="Digital Placement">
 <CYPRESSTAG name="Detailed placement messages">
 I2659: No Constrained paths were found. The placer will run in non-timing driven mode.
-I2076: Total run-time: 1.6 sec.
+I2076: Total run-time: 3.9 sec.
 
 </CYPRESSTAG>
 <CYPRESSTAG name="PLD Packing">
@@ -2664,32 +2664,32 @@ Port | Pin | Fixed |      Type |       Drive Mode |            Name | Connection
 </CYPRESSTAG>
 </CYPRESSTAG>
 </CYPRESSTAG>
-Digital component placer commit/Report: Elapsed time ==> 0s.017ms
-Digital Placement phase: Elapsed time ==> 2s.641ms
+Digital component placer commit/Report: Elapsed time ==> 0s.375ms
+Digital Placement phase: Elapsed time ==> 8s.689ms
 </CYPRESSTAG>
 <CYPRESSTAG name="Digital Routing">
 Routing successful.
-Digital Routing phase: Elapsed time ==> 3s.404ms
+Digital Routing phase: Elapsed time ==> 6s.563ms
 </CYPRESSTAG>
 <CYPRESSTAG name="Bitstream and API generation">
-Bitstream and API generation phase: Elapsed time ==> 0s.796ms
+Bitstream and API generation phase: Elapsed time ==> 26s.707ms
 </CYPRESSTAG>
 <CYPRESSTAG name="Bitstream verification">
-Bitstream verification phase: Elapsed time ==> 0s.171ms
+Bitstream verification phase: Elapsed time ==> 0s.140ms
 </CYPRESSTAG>
 <CYPRESSTAG name="Static timing analysis">
 Timing report is in USB_Bootloader_timing.html.
-Static timing analysis phase: Elapsed time ==> 0s.812ms
+Static timing analysis phase: Elapsed time ==> 7s.016ms
 </CYPRESSTAG>
 <CYPRESSTAG name="Data reporting">
 Data reporting phase: Elapsed time ==> 0s.000ms
 </CYPRESSTAG>
 <CYPRESSTAG name="Database update...">
-Design database save phase: Elapsed time ==> 0s.406ms
+Design database save phase: Elapsed time ==> 0s.577ms
 </CYPRESSTAG>
-cydsfit: Elapsed time ==> 9s.781ms
+cydsfit: Elapsed time ==> 52s.696ms
 </CYPRESSTAG>
-Fitter phase: Elapsed time ==> 9s.859ms
-API generation phase: Elapsed time ==> 4s.706ms
-Dependency generation phase: Elapsed time ==> 0s.028ms
-Cleanup phase: Elapsed time ==> 0s.063ms
+Fitter phase: Elapsed time ==> 52s.775ms
+API generation phase: Elapsed time ==> 25s.205ms
+Dependency generation phase: Elapsed time ==> 0s.796ms
+Cleanup phase: Elapsed time ==> 0s.750ms

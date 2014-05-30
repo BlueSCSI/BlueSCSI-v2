@@ -22,6 +22,41 @@
 
 #define scsiTarget_AUX_CTL (* (reg8 *) scsiTarget_datapath__DP_AUX_CTL_REG)
 
+// DMA controller can't handle any more bytes.
+#define MAX_DMA_BYTES 4095
+
+// Private DMA variables.
+static int dmaInProgress = 0;
+// used when transferring > MAX_DMA_BYTES.
+static uint8_t* dmaBuffer = NULL;
+static uint32_t dmaSentCount = 0;
+static uint32_t dmaTotalCount = 0;
+
+static uint8 scsiDmaRxChan = CY_DMA_INVALID_CHANNEL;
+static uint8 scsiDmaTxChan = CY_DMA_INVALID_CHANNEL;
+
+// DMA descriptors
+static uint8 scsiDmaRxTd[1] = { CY_DMA_INVALID_TD };
+static uint8 scsiDmaTxTd[1] = { CY_DMA_INVALID_TD };
+
+// Source of dummy bytes for DMA reads
+static uint8 dummyBuffer = 0xFF;
+
+volatile static uint8 rxDMAComplete;
+volatile static uint8 txDMAComplete;
+
+CY_ISR_PROTO(scsiRxCompleteISR);
+CY_ISR(scsiRxCompleteISR)
+{
+	rxDMAComplete = 1;
+}
+
+CY_ISR_PROTO(scsiTxCompleteISR);
+CY_ISR(scsiTxCompleteISR)
+{
+	txDMAComplete = 1;
+}
+
 CY_ISR_PROTO(scsiResetISR);
 CY_ISR(scsiResetISR)
 {
@@ -29,7 +64,8 @@ CY_ISR(scsiResetISR)
 	SCSI_RST_ClearInterrupt();
 }
 
-uint8 scsiReadDBxPins()
+uint8_t
+scsiReadDBxPins()
 {
 	return
 		(SCSI_ReadPin(SCSI_In_DBx_DB7) << 7) |
@@ -39,79 +75,259 @@ uint8 scsiReadDBxPins()
 		(SCSI_ReadPin(SCSI_In_DBx_DB3) << 3) |
 		(SCSI_ReadPin(SCSI_In_DBx_DB2) << 2) |
 		(SCSI_ReadPin(SCSI_In_DBx_DB1) << 1) |
-		SCSI_ReadPin(SCSI_In_DBx_DB0);		
+		SCSI_ReadPin(SCSI_In_DBx_DB0);
 }
 
-uint8 scsiReadByte(void)
+uint8_t
+scsiReadByte(void)
 {
-	while (!(CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG) & 1) &&
-		!scsiDev.resetFlag) {}
-	CY_SET_REG8(scsiTarget_datapath__F0_REG, 0);
-	while (!(CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG) & 2) &&
-		!scsiDev.resetFlag) {}
-		
-	while (SCSI_ReadPin(SCSI_In_ACK) && !scsiDev.resetFlag) {}
-		
-	return CY_GET_REG8(scsiTarget_datapath__F1_REG);
-}
+	while (scsiPhyTxFifoFull() && !scsiDev.resetFlag) {}
+	scsiPhyTx(0);
 
-void scsiRead(uint8* data, uint32 count)
-{
-	int prep = 0;
-	int i = 0;
+	while (scsiPhyRxFifoEmpty() && !scsiDev.resetFlag) {}
+	uint8_t val = scsiPhyRx();
 
-	while (i < count && !scsiDev.resetFlag)
-	{
-		if (prep < count && (CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG) & 1))
-		{
-			CY_SET_REG8(scsiTarget_datapath__F0_REG, 0);
-			++prep;
-		}
-		if ((CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG) & 2))
-		{
-			data[i] =  CY_GET_REG8(scsiTarget_datapath__F1_REG);
-			++i;
-		}
-	}
 	while (SCSI_ReadPin(SCSI_In_ACK) && !scsiDev.resetFlag) {}
 
+	return val;
 }
 
-void scsiWriteByte(uint8 value)
-{
-	while (!(CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG) & 1) &&
-		!scsiDev.resetFlag) {}
-	CY_SET_REG8(scsiTarget_datapath__F0_REG, value);
-
-	// TODO maybe move this TX EMPTY check to scsiEnterPhase ?
-	//while (!(CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG) & 4)) {}
-	while (!(CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG) & 2) &&
-		!scsiDev.resetFlag) {}
-	value = CY_GET_REG8(scsiTarget_datapath__F1_REG);
-	
-	while (SCSI_ReadPin(SCSI_In_ACK) && !scsiDev.resetFlag) {}
-}
-
-void scsiWrite(uint8* data, uint32 count)
+static void
+scsiReadPIO(uint8* data, uint32 count)
 {
 	int prep = 0;
 	int i = 0;
 
 	while (i < count && !scsiDev.resetFlag)
 	{
-		if (prep < count && (CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG) & 1))
+		uint8_t status = scsiPhyStatus();
+
+		if (prep < count && (status & SCSI_PHY_TX_FIFO_NOT_FULL))
 		{
-			CY_SET_REG8(scsiTarget_datapath__F0_REG, data[prep]);
+			scsiPhyTx(0);
 			++prep;
 		}
-		if ((CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG) & 2))
+		if (status & SCSI_PHY_RX_FIFO_NOT_EMPTY)
 		{
-			CY_GET_REG8(scsiTarget_datapath__F1_REG);
+			data[i] = scsiPhyRx();
 			++i;
 		}
 	}
-	
 	while (SCSI_ReadPin(SCSI_In_ACK) && !scsiDev.resetFlag) {}
+}
+
+static void
+doRxSingleDMA(uint8* data, uint32 count)
+{
+	// Prepare DMA transfer
+	dmaInProgress = 1;
+
+	CyDmaTdSetConfiguration(
+		scsiDmaTxTd[0],
+		count,
+		CY_DMA_DISABLE_TD, // Disable the DMA channel when TD completes count bytes
+		SCSI_TX_DMA__TD_TERMOUT_EN // Trigger interrupt when complete
+		);
+	CyDmaTdSetConfiguration(
+		scsiDmaRxTd[0],
+		count,
+		CY_DMA_DISABLE_TD, // Disable the DMA channel when TD completes count bytes
+		TD_INC_DST_ADR |
+			SCSI_RX_DMA__TD_TERMOUT_EN // Trigger interrupt when complete
+		);
+	
+	CyDmaTdSetAddress(
+		scsiDmaTxTd[0],
+		LO16((uint32)&dummyBuffer),
+		LO16((uint32)scsiTarget_datapath__F0_REG));
+	CyDmaTdSetAddress(
+		scsiDmaRxTd[0],
+		LO16((uint32)scsiTarget_datapath__F1_REG),
+		LO16((uint32)data)
+		);
+	
+	CyDmaChSetInitialTd(scsiDmaTxChan, scsiDmaTxTd[0]);
+	CyDmaChSetInitialTd(scsiDmaRxChan, scsiDmaRxTd[0]);
+	
+	// The DMA controller is a bit trigger-happy. It will retain
+	// a drq request that was triggered while the channel was
+	// disabled.
+	CyDmaClearPendingDrq(scsiDmaTxChan);
+	CyDmaClearPendingDrq(scsiDmaRxChan);
+
+	txDMAComplete = 0;
+	rxDMAComplete = 0;
+
+	CyDmaChEnable(scsiDmaRxChan, 1);
+	CyDmaChEnable(scsiDmaTxChan, 1);
+}
+
+void
+scsiReadDMA(uint8* data, uint32 count)
+{
+	dmaSentCount = 0;
+	dmaTotalCount = count;
+	dmaBuffer = data;
+
+	uint32_t singleCount = (count > MAX_DMA_BYTES) ? MAX_DMA_BYTES : count;
+	doRxSingleDMA(data, singleCount);
+	dmaSentCount += count;
+}
+
+int
+scsiReadDMAPoll()
+{
+	if (txDMAComplete && rxDMAComplete && (scsiPhyStatus() & SCSI_PHY_TX_COMPLETE))
+	{
+		if (dmaSentCount == dmaTotalCount)
+		{
+			dmaInProgress = 0;
+			while (SCSI_ReadPin(SCSI_In_ACK) && !scsiDev.resetFlag) {}
+			return 1;
+		}
+		else
+		{
+			// Transfer was too large for a single DMA transfer. Continue
+			// to send remaining bytes.
+			uint32_t count = dmaTotalCount - dmaSentCount;
+			if (count > MAX_DMA_BYTES) count = MAX_DMA_BYTES;
+			doRxSingleDMA(dmaBuffer + dmaSentCount, count);
+			dmaSentCount += count;
+			return 0;
+		}
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+void
+scsiRead(uint8_t* data, uint32_t count)
+{
+	if (count < 8)
+	{
+		scsiReadPIO(data, count);
+	}
+	else
+	{
+		scsiReadDMA(data, count);
+		while (!scsiReadDMAPoll() && !scsiDev.resetFlag) {};
+	}
+}
+
+void
+scsiWriteByte(uint8 value)
+{
+	while (scsiPhyTxFifoFull() && !scsiDev.resetFlag) {}
+	scsiPhyTx(value);
+
+	while (!(scsiPhyStatus() & SCSI_PHY_TX_COMPLETE) && !scsiDev.resetFlag) {}
+	scsiPhyRxFifoClear();
+
+	while (SCSI_ReadPin(SCSI_In_ACK) && !scsiDev.resetFlag) {}
+}
+
+static void
+scsiWritePIO(uint8_t* data, uint32_t count)
+{
+	int i = 0;
+
+	while (i < count && !scsiDev.resetFlag)
+	{
+		if (!scsiPhyTxFifoFull())
+		{
+			scsiPhyTx(data[i]);
+			++i;
+		}
+	}
+
+	while (!(scsiPhyStatus() & SCSI_PHY_TX_COMPLETE) && !scsiDev.resetFlag) {}
+	scsiPhyRxFifoClear();
+}
+
+static void
+doTxSingleDMA(uint8* data, uint32 count)
+{
+	// Prepare DMA transfer
+	dmaInProgress = 1;
+
+	CyDmaTdSetConfiguration(
+		scsiDmaTxTd[0],
+		count,
+		CY_DMA_DISABLE_TD, // Disable the DMA channel when TD completes count bytes
+		TD_INC_SRC_ADR |
+			SCSI_TX_DMA__TD_TERMOUT_EN // Trigger interrupt when complete
+		);
+	CyDmaTdSetAddress(
+		scsiDmaTxTd[0],
+		LO16((uint32)data),
+		LO16((uint32)scsiTarget_datapath__F0_REG));
+	CyDmaChSetInitialTd(scsiDmaTxChan, scsiDmaTxTd[0]);
+
+	// The DMA controller is a bit trigger-happy. It will retain
+	// a drq request that was triggered while the channel was
+	// disabled.
+	CyDmaClearPendingDrq(scsiDmaTxChan);
+
+	txDMAComplete = 0;
+
+	CyDmaChEnable(scsiDmaTxChan, 1);
+}
+
+void
+scsiWriteDMA(uint8* data, uint32 count)
+{
+	dmaSentCount = 0;
+	dmaTotalCount = count;
+	dmaBuffer = data;
+
+	uint32_t singleCount = (count > MAX_DMA_BYTES) ? MAX_DMA_BYTES : count;
+	doTxSingleDMA(data, singleCount);
+	dmaSentCount += count;
+}
+
+int
+scsiWriteDMAPoll()
+{
+	if (txDMAComplete && (scsiPhyStatus() & SCSI_PHY_TX_COMPLETE))
+	{
+		if (dmaSentCount == dmaTotalCount)
+		{
+			scsiPhyRxFifoClear();
+			dmaInProgress = 0;
+			while (SCSI_ReadPin(SCSI_In_ACK) && !scsiDev.resetFlag) {}
+			return 1;
+		}
+		else
+		{
+			// Transfer was too large for a single DMA transfer. Continue
+			// to send remaining bytes.
+			uint32_t count = dmaTotalCount - dmaSentCount;
+			if (count > MAX_DMA_BYTES) count = MAX_DMA_BYTES;
+			doTxSingleDMA(dmaBuffer + dmaSentCount, count);
+			dmaSentCount += count;
+			return 0;
+		}
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+void
+scsiWrite(uint8_t* data, uint32_t count)
+{
+	if (count < 8)
+	{
+		scsiWritePIO(data, count);
+	}
+	else
+	{
+		scsiWriteDMA(data, count);
+		while (!scsiWriteDMAPoll() && !scsiDev.resetFlag) {};
+	}
 }
 
 static void busSettleDelay(void)
@@ -133,6 +349,20 @@ void scsiEnterPhase(int phase)
 
 void scsiPhyReset()
 {
+	if (dmaInProgress)
+	{
+		dmaInProgress = 0;
+		dmaBuffer = NULL;
+		dmaSentCount = 0;
+		dmaTotalCount = 0;
+		CyDmaChSetRequest(scsiDmaTxChan, CY_DMA_CPU_TERM_CHAIN);
+		CyDmaChSetRequest(scsiDmaRxChan, CY_DMA_CPU_TERM_CHAIN);
+		while (!(txDMAComplete && rxDMAComplete)) {}
+
+		CyDmaChDisable(scsiDmaTxChan);
+		CyDmaChDisable(scsiDmaRxChan);
+	}
+
 	// Set the Clear bits for both SCSI device FIFOs
 	scsiTarget_AUX_CTL = scsiTarget_AUX_CTL | 0x03;
 
@@ -155,8 +385,43 @@ void scsiPhyReset()
 	scsiTarget_AUX_CTL = scsiTarget_AUX_CTL & ~(0x03);
 }
 
+static void scsiPhyInitDMA()
+{
+	// One-time init only.
+	if (scsiDmaTxChan == CY_DMA_INVALID_CHANNEL)
+	{
+		scsiDmaRxChan =
+			SCSI_RX_DMA_DmaInitialize(
+				1, // Bytes per burst
+				1, // request per burst
+				HI16(CYDEV_PERIPH_BASE),
+				HI16(CYDEV_SRAM_BASE)
+				);
+			
+		scsiDmaTxChan =
+			SCSI_TX_DMA_DmaInitialize(
+				1, // Bytes per burst
+				1, // request per burst
+				HI16(CYDEV_SRAM_BASE),
+				HI16(CYDEV_PERIPH_BASE)
+				);
+
+		CyDmaChDisable(scsiDmaRxChan);
+		CyDmaChDisable(scsiDmaTxChan);
+
+		scsiDmaRxTd[0] = CyDmaTdAllocate();
+		scsiDmaTxTd[0] = CyDmaTdAllocate();
+		
+		SCSI_RX_DMA_COMPLETE_StartEx(scsiRxCompleteISR);
+		SCSI_TX_DMA_COMPLETE_StartEx(scsiTxCompleteISR);
+	}
+}
+
+
 void scsiPhyInit()
 {
+	scsiPhyInitDMA();
+
 	SCSI_RST_ISR_StartEx(scsiResetISR);
 
 	// Interrupts may have already been directed to the (empty)

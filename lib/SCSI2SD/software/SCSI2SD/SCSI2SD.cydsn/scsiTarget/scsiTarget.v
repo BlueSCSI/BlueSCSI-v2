@@ -27,7 +27,9 @@ module scsiTarget (
 	input  [7:0] nDBx_in, // Active LOW, connected directly to SCSI bus.
 	input   IO, // Active High, set by CPU via status register.
 	input   nRST, // Active LOW, connected directly to SCSI bus.
-	input   clk
+	input   clk,
+	output tx_intr,
+	output rx_intr
 );
 
 
@@ -48,28 +50,6 @@ cy_psoc3_udb_clock_enable_v1_0 #(.sync_mode(`TRUE)) ClkSync
 );
 
 /////////////////////////////////////////////////////////////////////////////
-// FIFO Status Register
-/////////////////////////////////////////////////////////////////////////////
-// Status Register: scsiTarget_StatusReg__STATUS_REG
-//     Bit 0: Tx FIFO not full
-//     Bit 1: Rx FIFO not empty
-//     Bit 2: Tx FIFO empty
-//     Bit 3: Rx FIFO full
-//
-// TX FIFO Register: scsiTarget_scsiTarget_u0__F0_REG
-// RX FIFO Register: scsiTarget_scsiTarget_u0__F1_REG
-// Use with CY_GET_REG8 and CY_SET_REG8
-wire f0_bus_stat;   // Tx FIFO not full
-wire f0_blk_stat;	// Tx FIFO empty
-wire f1_bus_stat;	// Rx FIFO not empty
-wire f1_blk_stat;	// Rx FIFO full
-cy_psoc3_status #(.cy_force_order(1), .cy_md_select(8'h00)) StatusReg
-(
-    /* input          */  .clock(op_clk),
-    /* input  [04:00] */  .status({4'b0, f1_blk_stat, f0_blk_stat, f1_bus_stat, f0_bus_stat})
-);
-
-/////////////////////////////////////////////////////////////////////////////
 // CONSTANTS
 /////////////////////////////////////////////////////////////////////////////
 localparam IO_WRITE = 1'b1;
@@ -80,7 +60,7 @@ localparam IO_READ = 1'b0;
 /////////////////////////////////////////////////////////////////////////////
 // TX States:
 // IDLE
-//     Wait for an entry in the FIFO, and for the SCSI Initiator to be ready
+//     Wait for the SCSI Initiator to be ready
 // FIFOLOAD
 //     Load F0 into A0. Feed (old) A0 into the ALU SRCA.
 // TX
@@ -91,11 +71,12 @@ localparam IO_READ = 1'b0;
 //     Load deskew clock count into A0 from D0
 // DESKEW
 //     DBx output signals will be output in this state
-//     Wait for the SCSI deskew time of 55ms. (DEC A0).
+//     Wait for the SCSI deskew time of 55ns. (DEC A0).
 //     A1 must be fed into SRCA, so PO is now useless.
 // READY
 //     REQ and DBx output signals will be output in this state
-//     Wait for acknowledgement from the SCSI initiator.
+//     Wait for acknowledgement from the SCSI initiator
+//     Wait for space in output fifo
 // RX
 //     Dummy state for flow control.
 //     REQ signal will be output in this state
@@ -103,8 +84,8 @@ localparam IO_READ = 1'b0;
 //
 // RX States:
 // IDLE
-//     Wait for a dummy "enabling" entry in the input FIFO, and wait for space
-//     in output the FIFO, and for the SCSI Initiator to be ready
+//     Wait for a dummy "enabling" entry in the input FIFO,
+//     and for the SCSI Initiator to be ready
 // FIFOLOAD
 //     Load F0 into A0.
 //     The input FIFO is used to control the number of bytes we attempt to
@@ -112,6 +93,7 @@ localparam IO_READ = 1'b0;
 // READY
 //     REQ signal will be output in this state
 //     Wait for the initiator to send a byte on the SCSI bus.
+//     Wait for space in output fifo
 // RX
 //     REQ signal will be output in this state
 //     PI enabled for input into ALU "PASS" operation, storing into F1.
@@ -152,6 +134,38 @@ assign DBx_out[7:0] = data;
 assign pi[7:0] = ~nDBx_in[7:0]; // Invert active low scsi bus
 assign fifoStore = (state == STATE_RX) ? 1'b1 : 1'b0;
 
+
+/////////////////////////////////////////////////////////////////////////////
+// FIFO Status Register
+/////////////////////////////////////////////////////////////////////////////
+// Status Register: scsiTarget_StatusReg__STATUS_REG
+//     Bit 0: Tx FIFO not full
+//     Bit 1: Rx FIFO not empty
+//     Bit 2: Tx FIFO empty
+//     Bit 3: Rx FIFO full
+//     Bit 4: TX Complete. Fifos empty and idle.
+//
+// TX FIFO Register: scsiTarget_scsiTarget_u0__F0_REG
+// RX FIFO Register: scsiTarget_scsiTarget_u0__F1_REG
+// Use with CY_GET_REG8 and CY_SET_REG8
+wire f0_bus_stat;   // Tx FIFO not full
+wire f0_blk_stat;	// Tx FIFO empty
+wire f1_bus_stat;	// Rx FIFO not empty
+wire f1_blk_stat;	// Rx FIFO full
+wire txComplete = f0_blk_stat && (state == STATE_IDLE);
+cy_psoc3_status #(.cy_force_order(1), .cy_md_select(8'h00)) StatusReg
+(
+    /* input          */  .clock(op_clk),
+    /* input  [04:00] */  .status({3'b0, txComplete, f1_blk_stat, f0_blk_stat, f1_bus_stat, f0_bus_stat})
+);
+
+// DMA outputs
+assign tx_intr = f0_bus_stat;
+assign rx_intr = f1_bus_stat;
+
+/////////////////////////////////////////////////////////////////////////////
+// State machine
+/////////////////////////////////////////////////////////////////////////////
 always @(posedge op_clk) begin
 	case (state)
 		STATE_IDLE:
@@ -160,7 +174,7 @@ always @(posedge op_clk) begin
 			// and output FIFO is not full.
 			// Note that output FIFO is unused in TX mode.
 			if (!nRST) state <= STATE_IDLE;
-			else if (nACK & !f0_blk_stat && !f1_blk_stat)
+			else if (nACK & !f0_blk_stat)
 				state <= STATE_FIFOLOAD;
 			else
 				state <= STATE_IDLE;
@@ -191,68 +205,74 @@ always @(posedge op_clk) begin
 
 		STATE_READY:
 			if (!nRST) state <= STATE_IDLE;
-			else if (~nACK) state <= STATE_RX;
+			else if (~nACK && ((IO == IO_WRITE) || !f1_blk_stat)) state <= STATE_RX;
 			else state <= STATE_READY;
 
-		STATE_RX: state <= STATE_IDLE;
+		STATE_RX: // same code here as for the IDLE state, as we make
+			// a quick run back to the next byte if possible.
+			if (!nRST) state <= STATE_IDLE;
+			else if (nACK & !f0_blk_stat)
+				state <= STATE_FIFOLOAD;
+			else
+				state <= STATE_IDLE;
 
 		default: state <= STATE_IDLE;
 	endcase
 end
 
-// D1 is used for the deskew count.
+// D0 is used for the deskew count.
 // The data output is valid during the DESKEW_INIT phase as well,
 // so we subtract 1.
-// D1 = [0.000000055 / (1 / clk)] - 1
-cy_psoc3_dp #(.d1_init(1), 
+// D0 = [0.000000055 / (1 / clk)] - 1
+cy_psoc3_dp #(.d0_init(2), 
 .cy_dpconfig(
 {
     `CS_ALU_OP_PASS, `CS_SRCA_A0, `CS_SRCB_D0,
     `CS_SHFT_OP_PASS, `CS_A0_SRC_NONE, `CS_A1_SRC_NONE,
     `CS_FEEDBACK_DSBL, `CS_CI_SEL_CFGA, `CS_SI_SEL_CFGA,
-    `CS_CMP_SEL_CFGA, /*CFGRAM0:         IDLE*/
+    `CS_CMP_SEL_CFGA, /*CFGRAM0:          IDLE*/
     `CS_ALU_OP_PASS, `CS_SRCA_A0, `CS_SRCB_D0,
     `CS_SHFT_OP_PASS, `CS_A0_SRC___F0, `CS_A1_SRC_NONE,
     `CS_FEEDBACK_DSBL, `CS_CI_SEL_CFGA, `CS_SI_SEL_CFGA,
-    `CS_CMP_SEL_CFGA, /*CFGRAM1:         FIFO Load*/
+    `CS_CMP_SEL_CFGA, /*CFGRAM1:          FIFO Load*/
     `CS_ALU_OP_PASS, `CS_SRCA_A0, `CS_SRCB_D0,
     `CS_SHFT_OP_PASS, `CS_A0_SRC_NONE, `CS_A1_SRC_NONE,
     `CS_FEEDBACK_DSBL, `CS_CI_SEL_CFGA, `CS_SI_SEL_CFGA,
-    `CS_CMP_SEL_CFGA, /*CFGRAM2:         TX*/
+    `CS_CMP_SEL_CFGA, /*CFGRAM2:          TX*/
     `CS_ALU_OP_PASS, `CS_SRCA_A0, `CS_SRCB_D0,
     `CS_SHFT_OP_PASS, `CS_A0_SRC___D0, `CS_A1_SRC_NONE,
     `CS_FEEDBACK_DSBL, `CS_CI_SEL_CFGA, `CS_SI_SEL_CFGA,
-    `CS_CMP_SEL_CFGA, /*CFGRAM3:         DESKEW INIT*/
+    `CS_CMP_SEL_CFGA, /*CFGRAM3:          DESKEW INIT*/
     `CS_ALU_OP__DEC, `CS_SRCA_A0, `CS_SRCB_D0,
     `CS_SHFT_OP_PASS, `CS_A0_SRC__ALU, `CS_A1_SRC_NONE,
     `CS_FEEDBACK_DSBL, `CS_CI_SEL_CFGA, `CS_SI_SEL_CFGA,
-    `CS_CMP_SEL_CFGA, /*CFGRAM4:         DESKEW*/
+    `CS_CMP_SEL_CFGA, /*CFGRAM4:          DESKEW*/
     `CS_ALU_OP_PASS, `CS_SRCA_A0, `CS_SRCB_D0,
     `CS_SHFT_OP_PASS, `CS_A0_SRC_NONE, `CS_A1_SRC_NONE,
     `CS_FEEDBACK_DSBL, `CS_CI_SEL_CFGA, `CS_SI_SEL_CFGA,
-    `CS_CMP_SEL_CFGA, /*CFGRAM5:   Not used*/
+    `CS_CMP_SEL_CFGA, /*CFGRAM5:    Not used*/
     `CS_ALU_OP_PASS, `CS_SRCA_A0, `CS_SRCB_D0,
     `CS_SHFT_OP_PASS, `CS_A0_SRC_NONE, `CS_A1_SRC_NONE,
     `CS_FEEDBACK_DSBL, `CS_CI_SEL_CFGA, `CS_SI_SEL_CFGA,
-    `CS_CMP_SEL_CFGA, /*CFGRAM6:         READY*/
+    `CS_CMP_SEL_CFGA, /*CFGRAM6:          READY*/
     `CS_ALU_OP_PASS, `CS_SRCA_A0, `CS_SRCB_D0,
     `CS_SHFT_OP_PASS, `CS_A0_SRC_NONE, `CS_A1_SRC_NONE,
     `CS_FEEDBACK_ENBL, `CS_CI_SEL_CFGA, `CS_SI_SEL_CFGA,
-    `CS_CMP_SEL_CFGA, /*CFGRAM7:         RX*/
-    8'hFF, 8'h00,  /*CFG9:            */
-    8'hFF, 8'hFF,  /*CFG11-10:            */
+    `CS_CMP_SEL_CFGA, /*CFGRAM7:          RX*/
+    8'hFF, 8'h00,  /*CFG9:             */
+    8'hFF, 8'hFF,  /*CFG11-10:             */
     `SC_CMPB_A1_D1, `SC_CMPA_A1_D1, `SC_CI_B_ARITH,
     `SC_CI_A_ARITH, `SC_C1_MASK_DSBL, `SC_C0_MASK_DSBL,
     `SC_A_MASK_DSBL, `SC_DEF_SI_0, `SC_SI_B_DEFSI,
-    `SC_SI_A_DEFSI, /*CFG13-12:            */
+    `SC_SI_A_DEFSI, /*CFG13-12:             */
     `SC_A0_SRC_ACC, `SC_SHIFT_SL, `SC_PI_DYN_EN,
     1'h0, `SC_FIFO1_ALU, `SC_FIFO0_BUS,
     `SC_MSB_DSBL, `SC_MSB_BIT0, `SC_MSB_NOCHN,
     `SC_FB_NOCHN, `SC_CMP1_NOCHN,
-    `SC_CMP0_NOCHN, /*CFG15-14:            */
+    `SC_CMP0_NOCHN, /*CFG15-14:             */
     10'h00, `SC_FIFO_CLK__DP,`SC_FIFO_CAP_AX,
     `SC_FIFO_LEVEL,`SC_FIFO__SYNC,`SC_EXTCRC_DSBL,
-    `SC_WRK16CAT_DSBL /*CFG17-16:            */
+    `SC_WRK16CAT_DSBL /*CFG17-16:             */
 }
 )) datapath(
         /*  input                   */  .reset(1'b0),
@@ -308,3 +328,4 @@ cy_psoc3_dp #(.d1_init(1),
 endmodule
 //`#start footer` -- edit after this line, do not edit this line
 //`#end` -- edit above this line, do not edit this line
+

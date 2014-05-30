@@ -29,6 +29,35 @@
 // Global
 SdDevice sdDev;
 
+// Private DMA variables.
+static int dmaInProgress = 0;
+static uint8 sdDMARxChan = CY_DMA_INVALID_CHANNEL;
+static uint8 sdDMATxChan = CY_DMA_INVALID_CHANNEL;
+
+// DMA descriptors
+static uint8 sdDMARxTd[1] = { CY_DMA_INVALID_TD };
+static uint8 sdDMATxTd[1] = { CY_DMA_INVALID_TD };
+
+// Dummy location for DMA to send unchecked CRC bytes to
+static uint8 discardBuffer;
+
+// Source of dummy SPI bytes for DMA
+static uint8 dummyBuffer = 0xFF;
+
+volatile static uint8 rxDMAComplete;
+volatile static uint8 txDMAComplete;
+
+CY_ISR_PROTO(sdRxISR);
+CY_ISR(sdRxISR)
+{
+	rxDMAComplete = 1;
+}
+CY_ISR_PROTO(sdTxISR);
+CY_ISR(sdTxISR)
+{
+	txDMAComplete = 1;
+}
+
 static uint8 sdCrc7(uint8* chr, uint8 cnt, uint8 crc)
 {
 	uint8 a;
@@ -126,12 +155,13 @@ static void sdClearStatus()
 }
 
 
-void sdPrepareRead()
+void
+sdReadMultiSectorPrep()
 {
 	uint8 v;
 	uint32 scsiLBA = (transfer.lba + transfer.currentBlock);
 	uint32 sdLBA = SCSISector2SD(scsiLBA);
-	
+
 	if (!sdDev.ccs)
 	{
 		sdLBA = sdLBA * SD_SECTOR_SIZE;
@@ -153,10 +183,9 @@ void sdPrepareRead()
 	}
 }
 
-static void doReadSector(uint32_t numBytes)
+static void
+dmaReadSector(uint8_t* outputBuffer)
 {
-	int prep, i, guard;
-
 	// Wait for a start-block token.
 	// Don't wait more than 100ms, which is the timeout recommended
 	// in the standard.
@@ -183,93 +212,60 @@ static void doReadSector(uint32_t numBytes)
 		return;
 	}
 
-	scsiEnterPhase(DATA_IN);
+	CyDmaTdSetConfiguration(sdDMARxTd[0], SD_SECTOR_SIZE, CY_DMA_DISABLE_TD, TD_INC_DST_ADR | SD_RX_DMA__TD_TERMOUT_EN);
+	CyDmaTdSetAddress(sdDMARxTd[0], LO16((uint32)SDCard_RXDATA_PTR), LO16((uint32)outputBuffer));
+	CyDmaTdSetConfiguration(sdDMATxTd[0], SD_SECTOR_SIZE, CY_DMA_DISABLE_TD, SD_TX_DMA__TD_TERMOUT_EN);
+	CyDmaTdSetAddress(sdDMATxTd[0], LO16((uint32)&dummyBuffer), LO16((uint32)SDCard_TXDATA_PTR));
 
-	// Quickly seed the FIFO
-	prep = 4;
-	CY_SET_REG8(SDCard_TXDATA_PTR, 0xFF); // Put a byte in the FIFO
-	CY_SET_REG8(SDCard_TXDATA_PTR, 0xFF); // Put a byte in the FIFO
-	CY_SET_REG8(SDCard_TXDATA_PTR, 0xFF); // Put a byte in the FIFO
-	CY_SET_REG8(SDCard_TXDATA_PTR, 0xFF); // Put a byte in the FIFO
-	
-	i = 0;
-	guard = 0;
-	
-	// This loop is critically important for performance.
-	// We stream data straight from the SDCard fifos into the SCSI component
-	// FIFO's. If the loop isn't fast enough, the transmit FIFO's will empty,
-	// and performance will suffer. Every clock cycle counts.
-	while (i < numBytes && !scsiDev.resetFlag)
-	{
-		uint8_t sdRxStatus = CY_GET_REG8(SDCard_RX_STATUS_PTR);
-		uint8_t scsiStatus = CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG);
+	dmaInProgress = 1;
+	// The DMA controller is a bit trigger-happy. It will retain
+	// a drq request that was triggered while the channel was
+	// disabled.
+	CyDmaClearPendingDrq(sdDMATxChan);
+	CyDmaClearPendingDrq(sdDMARxChan);
 
-		// Read from the SPIM fifo if there is room to stream the byte to the
-		// SCSI fifos
-		if((sdRxStatus & SDCard_STS_RX_FIFO_NOT_EMPTY) &&
-			(scsiStatus & 1) // SCSI TX FIFO NOT FULL
-			)
-		{
-			uint8_t val = CY_GET_REG8(SDCard_RXDATA_PTR);
-			CY_SET_REG8(scsiTarget_datapath__F0_REG, val);
-			guard++;
+	txDMAComplete = 0;
+	rxDMAComplete = 0;
 
-			// How many bytes are in a 4-byte FIFO ? 5.  4 FIFO bytes PLUS one byte
-			// being processed bit-by-bit. Artifically limit the number of bytes in the 
-			// "combined" SPIM TX and RX FIFOS to the individual FIFO size.
-			// Unlike the SCSI component, SPIM doesn't check if there's room in
-			// the output FIFO before starting to transmit.
+	// Re-loading the initial TD's here is very important, or else
+	// we'll be re-using the last-used TD, which would be the last
+	// in the chain (ie. CRC TD)
+	CyDmaChSetInitialTd(sdDMARxChan, sdDMARxTd[0]);
+	CyDmaChSetInitialTd(sdDMATxChan, sdDMATxTd[0]);
 
-			if (prep < numBytes)
-			{
-				CY_SET_REG8(SDCard_TXDATA_PTR, 0xFF); // Put a byte in the FIFO
-				prep++;
-			}
-
-		}
-					
-		// Byte has been sent out the SCSI interface.
-		if (scsiStatus & 2) // SCSI RX FIFO NOT EMPTY
-		{
-			CY_GET_REG8(scsiTarget_datapath__F1_REG);
-			++i;
-		}
-	}
-
-	// Read and discard remaining bytes. This applis for non-512 byte sectors,
-	// or if a SCSI reset was triggered.
-	while (guard < SD_SECTOR_SIZE)
-	{
-		uint8_t sdRxStatus = CY_GET_REG8(SDCard_RX_STATUS_PTR);
-		if(sdRxStatus & SDCard_STS_RX_FIFO_NOT_EMPTY)
-		{
-			CY_GET_REG8(SDCard_RXDATA_PTR);
-			guard++;
-		}
-
-		if ((prep - guard < 4) && (prep < SD_SECTOR_SIZE))
-		{
-			CY_SET_REG8(SDCard_TXDATA_PTR, 0xFF); // Put a byte in the FIFO
-			prep++;
-		}
-	}
-
-	sdSpiByte(0xFF); // CRC
-	sdSpiByte(0xFF); // CRC
-	scsiDev.dataLen = numBytes;
-	scsiDev.dataPtr = numBytes;
-	
-	while (SCSI_ReadPin(SCSI_In_ACK) && !scsiDev.resetFlag) {}
+	// There is no flow control, so we must ensure we can read the bytes
+	// before we start transmitting
+	CyDmaChEnable(sdDMARxChan, 1);
+	CyDmaChEnable(sdDMATxChan, 1);
 }
 
-static void doReadSectorSingle(uint32 sdBlock, int sdBytes)
+int
+sdReadSectorDMAPoll()
+{
+	if (rxDMAComplete && txDMAComplete)
+	{
+		// DMA transfer is complete
+		dmaInProgress = 0;
+
+		sdSpiByte(0xFF); // CRC
+		sdSpiByte(0xFF); // CRC
+
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+void sdReadSingleSectorDMA(uint32_t lba, uint8_t* outputBuffer)
 {
 	uint8 v;
 	if (!sdDev.ccs)
 	{
-		sdBlock = sdBlock * SD_SECTOR_SIZE;
-	}	
-	v = sdCommandAndResponse(SD_READ_SINGLE_BLOCK, sdBlock);
+		lba = lba * SD_SECTOR_SIZE;
+	}
+	v = sdCommandAndResponse(SD_READ_SINGLE_BLOCK, lba);
 	if (v)
 	{
 		scsiDiskReset();
@@ -282,52 +278,28 @@ static void doReadSectorSingle(uint32 sdBlock, int sdBytes)
 	}
 	else
 	{
-		doReadSector(sdBytes);
+		dmaReadSector(outputBuffer);
 	}
 }
 
-
-void sdReadSectorSingle()
+void
+sdReadMultiSectorDMA(uint8_t* outputBuffer)
 {
-	uint32 scsiLBA = (transfer.lba + transfer.currentBlock);
-	uint32 sdLBA = SCSISector2SD(scsiLBA);
-	
-	int sdSectors = SDSectorsPerSCSISector();
-	int i;
-	for (i = 0; (i < sdSectors - 1) && (scsiDev.status != CHECK_CONDITION); ++i)
-	{
-		doReadSectorSingle(sdLBA + i, SD_SECTOR_SIZE);
-	}
-
-	if (scsiDev.status != CHECK_CONDITION)
-	{
-		int remaining = config->bytesPerSector % SD_SECTOR_SIZE;
-		if (remaining == 0) remaining = SD_SECTOR_SIZE; // Full sector needed.
-		doReadSectorSingle(sdLBA + i, remaining);
-	}
-}
-
-void sdReadSectorMulti()
-{
-	// Pre: sdPrepareRead called.
-	int sdSectors = SDSectorsPerSCSISector();
-	int i;
-	for (i = 0; (i < sdSectors - 1) && (scsiDev.status != CHECK_CONDITION); ++i)
-	{
-		doReadSector(SD_SECTOR_SIZE);
-	}
-
-	if (scsiDev.status != CHECK_CONDITION)
-	{
-		int remaining = config->bytesPerSector % SD_SECTOR_SIZE;
-		if (remaining == 0) remaining = SD_SECTOR_SIZE; // Full sector needed.
-		doReadSector(remaining);
-	}
+	// Pre: sdReadMultiSectorPrep called.
+	dmaReadSector(outputBuffer);
 }
 
 
 void sdCompleteRead()
 {
+	if (dmaInProgress)
+	{
+		// Not much choice but to wait until we've completed the transfer.
+		// Cancelling the transfer can't be done as we have no way to reset
+		// the SD card.
+		while (!sdReadSectorDMAPoll()) { /* spin */ }
+	}
+
 	transfer.inProgress = 0;
 
 	// We cannot send even a single "padding" byte, as we normally would when
@@ -375,152 +347,110 @@ static void sdWaitWriteBusy()
 	} while (val != 0xFF);
 }
 
-static int doWriteSector(uint32_t numBytes)
+void
+sdWriteMultiSectorDMA(uint8_t* outputBuffer)
 {
-	int prep, i, guard;
-	int result, maxWait;
-	uint8 dataToken;
-
-	scsiEnterPhase(DATA_OUT);
-	
 	sdSpiByte(0xFC); // MULTIPLE byte start token
+
+	CyDmaTdSetConfiguration(sdDMATxTd[0], SD_SECTOR_SIZE, CY_DMA_DISABLE_TD, TD_INC_SRC_ADR | SD_TX_DMA__TD_TERMOUT_EN);
+	CyDmaTdSetAddress(sdDMATxTd[0], LO16((uint32)outputBuffer), LO16((uint32)SDCard_TXDATA_PTR));
+	CyDmaTdSetConfiguration(sdDMARxTd[0], SD_SECTOR_SIZE, CY_DMA_DISABLE_TD, SD_RX_DMA__TD_TERMOUT_EN);
+	CyDmaTdSetAddress(sdDMARxTd[0], LO16((uint32)SDCard_RXDATA_PTR), LO16((uint32)&discardBuffer));
 	
-	prep = 0;
-	i = 0;
-	guard = 0;
+	dmaInProgress = 1;
+	// The DMA controller is a bit trigger-happy. It will retain
+	// a drq request that was triggered while the channel was
+	// disabled.
+	CyDmaClearPendingDrq(sdDMATxChan);
+	CyDmaClearPendingDrq(sdDMARxChan);
 
-	// This loop is critically important for performance.
-	// We stream data straight from the SCSI fifos into the SPIM component
-	// FIFO's. If the loop isn't fast enough, the transmit FIFO's will empty,
-	// and performance will suffer. Every clock cycle counts.	
-	while (i < numBytes && !scsiDev.resetFlag)
+	txDMAComplete = 0;
+	rxDMAComplete = 0;
+
+	// Re-loading the initial TD's here is very important, or else
+	// we'll be re-using the last-used TD, which would be the last
+	// in the chain (ie. CRC TD)
+	CyDmaChSetInitialTd(sdDMARxChan, sdDMARxTd[0]);
+	CyDmaChSetInitialTd(sdDMATxChan, sdDMATxTd[0]);
+
+	// There is no flow control, so we must ensure we can read the bytes
+	// before we start transmitting
+	CyDmaChEnable(sdDMARxChan, 1);
+	CyDmaChEnable(sdDMATxChan, 1);
+}
+
+int
+sdWriteSectorDMAPoll()
+{
+	if (rxDMAComplete && txDMAComplete)
 	{
-		uint8_t sdRxStatus = CY_GET_REG8(SDCard_RX_STATUS_PTR);
-		uint8_t scsiStatus = CY_GET_REG8(scsiTarget_StatusReg__STATUS_REG);
+		// DMA transfer is complete
+		dmaInProgress = 0;
 
-		// Read from the SCSI fifo if there is room to stream the byte to the
-		// SPIM fifos
-		// See sdReadSector for comment on guard (FIFO size is really 5)
-		if((guard - i < 4) &&
-			(scsiDev.resetFlag || (scsiStatus & 2))
-			) // SCSI RX FIFO NOT EMPTY
+		sdSpiByte(0x00); // CRC
+		sdSpiByte(0x00); // CRC
+
+		// Don't wait more than 1s.
+		// My 2g Kingston micro-sd card doesn't respond immediately.
+		// My 16Gb card does.
+		int maxWait = 1000000;
+		uint8_t dataToken = sdSpiByte(0xFF); // Response
+		while (dataToken == 0xFF && maxWait-- > 0)
 		{
-			uint8_t val = CY_GET_REG8(scsiTarget_datapath__F1_REG);
-			CY_SET_REG8(SDCard_TXDATA_PTR, val);
-			guard++;
+			CyDelayUs(1);
+			dataToken = sdSpiByte(0xFF);
 		}
-
-		// Byte has been sent out the SPIM interface.
-		if (sdRxStatus & SDCard_STS_RX_FIFO_NOT_EMPTY)
+		if (((dataToken & 0x1F) >> 1) != 0x2) // Accepted.
 		{
-			 CY_GET_REG8(SDCard_RXDATA_PTR);
-			++i;
-		}
-
-		if (prep < numBytes &&
-			(scsiDev.resetFlag || (scsiStatus & 1)) // SCSI TX FIFO NOT FULL
-			)
-		{
-			// Trigger the SCSI component to read a byte
-			CY_SET_REG8(scsiTarget_datapath__F0_REG, 0xFF);
-			prep++;
-		}
-	}
-	
-	// Write remaining bytes as 0x00
-	while (i < SD_SECTOR_SIZE)
-	{
-		uint8_t sdRxStatus = CY_GET_REG8(SDCard_RX_STATUS_PTR);
-
-		if((guard - i < 4) && (guard < SD_SECTOR_SIZE))
-		{
-			CY_SET_REG8(SDCard_TXDATA_PTR, 0x00);
-			guard++;
-		}
-
-		// Byte has been sent out the SPIM interface.
-		if (sdRxStatus & SDCard_STS_RX_FIFO_NOT_EMPTY)
-		{
-			 CY_GET_REG8(SDCard_RXDATA_PTR);
-			++i;
-		}
-	}
-	
-	sdSpiByte(0x00); // CRC
-	sdSpiByte(0x00); // CRC
-
-	// Don't wait more than 1s.
-	// My 2g Kingston micro-sd card doesn't respond immediately.
-	// My 16Gb card does.
-	maxWait = 1000000;
-	dataToken = sdSpiByte(0xFF); // Response
-	while (dataToken == 0xFF && maxWait-- > 0)
-	{
-		CyDelayUs(1);
-		dataToken = sdSpiByte(0xFF);
-	}
-	if (((dataToken & 0x1F) >> 1) != 0x2) // Accepted.
-	{
-		uint8 r1b, busy;
+			uint8 r1b, busy;
 		
-		sdWaitWriteBusy();
+			sdWaitWriteBusy();
 
-		r1b = sdCommandAndResponse(SD_STOP_TRANSMISSION, 0);
-		(void) r1b;
-		sdSpiByte(0xFF);
+			r1b = sdCommandAndResponse(SD_STOP_TRANSMISSION, 0);
+			(void) r1b;
+			sdSpiByte(0xFF);
 
-		// R1b has an optional trailing "busy" signal.
-		do
+			// R1b has an optional trailing "busy" signal.
+			do
+			{
+				busy = sdSpiByte(0xFF);
+			} while (busy == 0);
+
+			// Wait for the card to come out of busy.
+			sdWaitWriteBusy();
+
+			transfer.inProgress = 0;
+			scsiDiskReset();
+			sdClearStatus();
+
+			scsiDev.status = CHECK_CONDITION;
+			scsiDev.sense.code = HARDWARE_ERROR;
+			scsiDev.sense.asc = LOGICAL_UNIT_COMMUNICATION_FAILURE;
+			scsiDev.phase = STATUS;
+		}
+		else
 		{
-			busy = sdSpiByte(0xFF);
-		} while (busy == 0);
+			sdWaitWriteBusy();
+		}		
 
-		// Wait for the card to come out of busy.
-		sdWaitWriteBusy();
-
-		transfer.inProgress = 0;
-		scsiDiskReset();
-		sdClearStatus();
-
-		scsiDev.status = CHECK_CONDITION;
-		scsiDev.sense.code = HARDWARE_ERROR;
-		scsiDev.sense.asc = LOGICAL_UNIT_COMMUNICATION_FAILURE;
-		scsiDev.phase = STATUS;
-		result = 0;
+		return 1;
 	}
 	else
 	{
-		sdWaitWriteBusy();
-		result = 1;
+		return 0;
 	}
-
-	while (SCSI_ReadPin(SCSI_In_ACK) && !scsiDev.resetFlag) {}
-
-	return result;
-}
-
-int sdWriteSector()
-{
-	int result = 1;
-	// Pre: sdPrepareWrite called.
-	int sdSectors = SDSectorsPerSCSISector();
-	int i;
-	for (i = 0; result && (i < sdSectors - 1) && (scsiDev.status != CHECK_CONDITION); ++i)
-	{
-		result = doWriteSector(SD_SECTOR_SIZE);
-	}
-
-	if (result && scsiDev.status != CHECK_CONDITION)
-	{
-		int remaining = config->bytesPerSector % SD_SECTOR_SIZE;
-		if (remaining == 0) remaining = SD_SECTOR_SIZE; // Full sector needed.
-		result = doWriteSector(remaining);
-	}
-	return result;
 }
 
 void sdCompleteWrite()
 {
+	if (dmaInProgress)
+	{
+		// Not much choice but to wait until we've completed the transfer.
+		// Cancelling the transfer can't be done as we have no way to reset
+		// the SD card.
+		while (!sdWriteSectorDMAPoll()) { /* spin */ }
+	}
+	
 	transfer.inProgress = 0;
 
 	uint8 r1, r2;
@@ -669,6 +599,38 @@ bad:
 	return 0;
 }
 
+static void sdInitDMA()
+{
+	// One-time init only.
+	if (sdDMATxChan == CY_DMA_INVALID_CHANNEL)
+	{
+		sdDMATxChan =
+			SD_TX_DMA_DmaInitialize(
+				1, // Bytes per burst
+				1, // request per burst
+				HI16(CYDEV_SRAM_BASE),
+				HI16(CYDEV_PERIPH_BASE)
+				);
+
+		sdDMARxChan =
+			SD_RX_DMA_DmaInitialize(
+				1, // Bytes per burst
+				1, // request per burst
+				HI16(CYDEV_PERIPH_BASE),
+				HI16(CYDEV_SRAM_BASE)
+				);
+
+		CyDmaChDisable(sdDMATxChan);
+		CyDmaChDisable(sdDMARxChan);
+
+		sdDMARxTd[0] = CyDmaTdAllocate();
+		sdDMATxTd[0] = CyDmaTdAllocate();
+
+		SD_RX_DMA_COMPLETE_StartEx(sdRxISR);
+		SD_TX_DMA_COMPLETE_StartEx(sdTxISR);
+	}
+}
+
 int sdInit()
 {
 	int result = 0;
@@ -679,9 +641,17 @@ int sdInit()
 	sdDev.ccs = 0;
 	sdDev.capacity = 0;
 
+	sdInitDMA();
+
 	SD_CS_Write(1); // Set CS inactive (active low)
-	SD_Init_Clk_Start(); // Turn on the slow 400KHz clock
-	SD_Clk_Ctl_Write(0); // Select the 400KHz clock source.
+
+	// Set the SPI clock for 400kHz transfers
+	// 25MHz / 400kHz approx factor of 63.
+	uint16_t clkDiv25MHz =  SD_Data_Clk_GetDividerRegister();
+	SD_Data_Clk_SetDivider(clkDiv25MHz * 63);
+	// Wait for the clock to settle.
+	CyDelayUs(1);
+
 	SDCard_Start(); // Enable SPI hardware
 
 	// Power on sequence. 74 clock cycles of a "1" while CS unasserted.
@@ -708,24 +678,16 @@ int sdInit()
 	v = sdCRCCommandAndResponse(SD_CRC_ON_OFF, 0); //crc off
 	if(v){goto bad;}
 
-	// now set the sd card up for full speed
+	// now set the sd card back to full speed.
 	// The SD Card spec says we can run SPI @ 25MHz
-	// But the PSoC 5LP SPIM datasheet says the most we can do is 18MHz.
-	// I've confirmed that no data is ever put into the RX FIFO when run at
-	// 20MHz or 25MHz.
-	// ... and then we get timing analysis failures if the BUS_CLK is over 62MHz.
-	// So we run the MASTER_CLK and BUS_CLK at 60MHz, and run the SPI clock at 30MHz
-	// (15MHz SPI transfer clock).
 	SDCard_Stop();
-	
+
 	// We can't run at full-speed with the pullup resistors enabled.
 	SD_MISO_SetDriveMode(SD_MISO_DM_DIG_HIZ);
 	SD_MOSI_SetDriveMode(SD_MOSI_DM_STRONG);
 	SD_SCK_SetDriveMode(SD_SCK_DM_STRONG);
-	
-	SD_Data_Clk_Start(); // Turn on the fast clock
-	SD_Clk_Ctl_Write(1); // Select the fast clock source.
-	SD_Init_Clk_Stop(); // Stop the slow clock.
+
+	SD_Data_Clk_SetDivider(clkDiv25MHz);
 	CyDelayUs(1);
 	SDCard_Start();
 
@@ -750,7 +712,7 @@ out:
 
 }
 
-void sdPrepareWrite()
+void sdWriteMultiSectorPrep()
 {
 	uint8 v;
 	

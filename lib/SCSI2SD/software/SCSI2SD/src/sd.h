@@ -58,13 +58,16 @@ typedef struct
 extern SdDevice sdDev;
 
 int sdInit(void);
-void sdPrepareWrite(void);
-int sdWriteSector(void);
+
+void sdWriteMultiSectorPrep(void);
+void sdWriteMultiSectorDMA(uint8_t* outputBuffer);
+int sdWriteSectorDMAPoll();
 void sdCompleteWrite(void);
 
-void sdPrepareRead(void);
-void sdReadSectorMulti(void);
-void sdReadSectorSingle(void);
+void sdReadMultiSectorPrep(void);
+void sdReadMultiSectorDMA(uint8_t* outputBuffer);
+void sdReadSingleSectorDMA(uint32_t lba, uint8_t* outputBuffer);
+int sdReadSectorDMAPoll();
 void sdCompleteRead(void);
 
 #endif

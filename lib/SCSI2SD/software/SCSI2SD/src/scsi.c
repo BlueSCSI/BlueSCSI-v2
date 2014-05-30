@@ -423,6 +423,10 @@ static void process_Command()
 	{
 		scsiSendDiagnostic();
 	}
+	else if (command == 0x3C)
+	{
+		scsiReadBuffer();
+	}
 	else if (
 		!scsiModeCommand() &&
 		!scsiDiskCommand())

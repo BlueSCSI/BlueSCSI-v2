@@ -66,7 +66,7 @@ static void doFormatUnitPatternHeader(void)
 	int defectLength =
 		((((uint16_t)scsiDev.data[2])) << 8) +
 			scsiDev.data[3];
-			
+
 	int patternLength =
 		((((uint16_t)scsiDev.data[4 + 2])) << 8) +
 		scsiDev.data[4 + 3];
@@ -181,7 +181,7 @@ static void doWrite(uint32 lba, uint32 blocks)
 		transfer.multiBlock = 1;
 		
 		if (blocks > 1) scsiDev.needReconnect = 1;
-		sdPrepareWrite();
+		sdWriteMultiSectorPrep();
 	}
 }
 
@@ -217,7 +217,7 @@ static void doRead(uint32 lba, uint32 blocks)
 		{
 			transfer.multiBlock = 1;
 			scsiDev.needReconnect = 1;
-			sdPrepareRead();
+			sdReadMultiSectorPrep();
 		}
 	}
 }
@@ -463,43 +463,106 @@ void scsiDiskPoll()
 	if (scsiDev.phase == DATA_IN &&
 		transfer.currentBlock != transfer.blocks)
 	{
-		if (scsiDev.dataLen == 0)
+		int totalSDSectors = transfer.blocks * SDSectorsPerSCSISector();
+		uint32_t sdLBA = SCSISector2SD(transfer.lba);
+		int buffers = sizeof(scsiDev.data) / SD_SECTOR_SIZE;
+		int prep = 0;
+		int i = 0;
+		int scsiActive = 0;
+		int sdActive = 0;
+		while ((i < totalSDSectors) &&
+			(scsiDev.phase == DATA_IN) &&
+			!scsiDev.resetFlag)
 		{
-			if (transfer.multiBlock)
+			if ((sdActive == 1) && sdReadSectorDMAPoll())
 			{
-				sdReadSectorMulti();
+				sdActive = 0;
+				prep++;
 			}
-			else
+			else if ((sdActive == 0) && (prep - i < buffers) && (prep < totalSDSectors))
 			{
-				sdReadSectorSingle();
+				// Start an SD transfer if we have space.
+				if (transfer.multiBlock)
+				{
+					sdReadMultiSectorDMA(&scsiDev.data[SD_SECTOR_SIZE * (prep % buffers)]);
+				}
+				else
+				{
+					sdReadSingleSectorDMA(sdLBA + prep, &scsiDev.data[SD_SECTOR_SIZE * (prep % buffers)]);
+				}
+				sdActive = 1;
+			}
+
+			if ((scsiActive == 1) && scsiWriteDMAPoll())
+			{
+				scsiActive = 0;
+				++i;
+			}
+			else if ((scsiActive == 0) && ((prep - i) > 0))
+			{
+				int dmaBytes = SD_SECTOR_SIZE;
+				if (i % SDSectorsPerSCSISector() == SDSectorsPerSCSISector() - 1)
+				{
+					dmaBytes = config->bytesPerSector % SD_SECTOR_SIZE;
+					if (dmaBytes == 0) dmaBytes = SD_SECTOR_SIZE;
+				}
+				scsiWriteDMA(&scsiDev.data[SD_SECTOR_SIZE * (i % buffers)], dmaBytes);
+				scsiActive = 1;
 			}
 		}
-		else if (scsiDev.dataPtr == scsiDev.dataLen)
+		if (scsiDev.phase == DATA_IN)
 		{
-			scsiDev.dataLen = 0;
-			scsiDev.dataPtr = 0;
-			transfer.currentBlock++;
-			if (transfer.currentBlock >= transfer.blocks)
-			{
-				scsiDev.phase = STATUS;
-				scsiDiskReset();
-			}
+			scsiDev.phase = STATUS;
 		}
+		scsiDiskReset();
 	}
 	else if (scsiDev.phase == DATA_OUT &&
 		transfer.currentBlock != transfer.blocks)
 	{
-		sdWriteSector();
-		// TODO FIX scsiDiskPoll() scsiDev.dataPtr = 0;
-		transfer.currentBlock++;
-		if (transfer.currentBlock >= transfer.blocks)
+		int totalSDSectors = transfer.blocks * SDSectorsPerSCSISector();
+		int buffers = sizeof(scsiDev.data) / SD_SECTOR_SIZE;
+		int prep = 0;
+		int i = 0;
+		int scsiActive = 0;
+		int sdActive = 0;
+		while ((i < totalSDSectors) &&
+			(scsiDev.phase == DATA_OUT) &&
+			!scsiDev.resetFlag)
 		{
-			scsiDev.dataLen = 0;
-			scsiDev.dataPtr = 0;
-			scsiDev.phase = STATUS;
+			if ((sdActive == 1) && sdWriteSectorDMAPoll())
+			{
+				sdActive = 0;
+				i++;
+			}
+			else if ((sdActive == 0) && ((prep - i) > 0))
+			{
+				// Start an SD transfer if we have space.
+				sdWriteMultiSectorDMA(&scsiDev.data[SD_SECTOR_SIZE * (i % buffers)]);
+				sdActive = 1;
+			}
 
-			scsiDiskReset();
+			if ((scsiActive == 1) && scsiReadDMAPoll())
+			{
+				scsiActive = 0;
+				++prep;
+			}
+			else if ((scsiActive == 0) && ((prep - i) < buffers) && (prep < totalSDSectors))
+			{
+				int dmaBytes = SD_SECTOR_SIZE;
+				if (prep % SDSectorsPerSCSISector() == SDSectorsPerSCSISector() - 1)
+				{
+					dmaBytes = config->bytesPerSector % SD_SECTOR_SIZE;
+					if (dmaBytes == 0) dmaBytes = SD_SECTOR_SIZE;
+				}
+				scsiReadDMA(&scsiDev.data[SD_SECTOR_SIZE * (prep % buffers)], dmaBytes);
+				scsiActive = 1;
+			}
 		}
+		if (scsiDev.phase == DATA_OUT)
+		{
+			scsiDev.phase = STATUS;
+		}
+		scsiDiskReset();
 	}
 }
 
