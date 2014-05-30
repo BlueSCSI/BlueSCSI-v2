@@ -45,15 +45,20 @@ Performance
 
 As currently implemented:
 
-Sequential read: 2.5MB/s Sequential write: 900kb/sec
+Transfer size:    512        2048        8192        65536
+-------------------------------------------------------
+read:			2MB/s     2.1MB/s     2.5MB/s     2.6MB/s
+write:			125kB/s   441kB/s     1.5MB/s     2.3MB/s
+-------------------------------------------------------
+
 
 Tested with a 16GB class 10 SD card, via the commands:
 
  # WRITE TEST
- sudo dd bs=8192 count=100 if=/dev/zero of=/dev/sdX oflag=dsync
+ sudo dd bs=${SIZE} count=100 if=/dev/zero of=/dev/sdX oflag=dsync
 
  # READ TEST
- sudo dd bs=8192 count=100 if=/dev/sdX of=/dev/null
+ sudo dd bs=${SIZE} count=100 if=/dev/sdX of=/dev/null
 
 Compatibility
 

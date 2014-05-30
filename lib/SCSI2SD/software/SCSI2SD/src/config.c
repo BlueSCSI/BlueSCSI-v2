@@ -238,6 +238,7 @@ void configPoll()
 	}
 }
 
+#ifdef MM_DEBUG
 void debugPoll()
 {
 	if (!usbReady)
@@ -286,6 +287,7 @@ CY_ISR(debugTimerISR)
 	debugPoll();
 	CyExitCriticalSection(savedIntrStatus); 
 }
+#endif
 
 void debugInit()
 {

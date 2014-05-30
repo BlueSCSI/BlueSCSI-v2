@@ -21,9 +21,7 @@
 #include <cydisabledsheets.h>
 #include <SCSI_In_DBx_aliases.h>
 #include <SCSI_Out_DBx_aliases.h>
-#include <SD_Clk_Ctl.h>
 #include <SD_Data_Clk.h>
-#include <SD_Init_Clk.h>
 #include <SD_CD_aliases.h>
 #include <SD_CD.h>
 #include <SD_DAT2_aliases.h>

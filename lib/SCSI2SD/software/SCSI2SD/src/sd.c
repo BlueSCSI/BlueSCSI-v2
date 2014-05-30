@@ -647,8 +647,9 @@ int sdInit()
 
 	// Set the SPI clock for 400kHz transfers
 	// 25MHz / 400kHz approx factor of 63.
+	// The register contains (divider - 1)
 	uint16_t clkDiv25MHz =  SD_Data_Clk_GetDividerRegister();
-	SD_Data_Clk_SetDivider(clkDiv25MHz * 63);
+	SD_Data_Clk_SetDivider(((clkDiv25MHz + 1) * 63) - 1);
 	// Wait for the clock to settle.
 	CyDelayUs(1);
 

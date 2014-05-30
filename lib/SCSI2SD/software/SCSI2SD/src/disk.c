@@ -463,6 +463,8 @@ void scsiDiskPoll()
 	if (scsiDev.phase == DATA_IN &&
 		transfer.currentBlock != transfer.blocks)
 	{
+		scsiEnterPhase(DATA_IN);
+
 		int totalSDSectors = transfer.blocks * SDSectorsPerSCSISector();
 		uint32_t sdLBA = SCSISector2SD(transfer.lba);
 		int buffers = sizeof(scsiDev.data) / SD_SECTOR_SIZE;
@@ -519,6 +521,8 @@ void scsiDiskPoll()
 	else if (scsiDev.phase == DATA_OUT &&
 		transfer.currentBlock != transfer.blocks)
 	{
+		scsiEnterPhase(DATA_OUT);
+		
 		int totalSDSectors = transfer.blocks * SDSectorsPerSCSISector();
 		int buffers = sizeof(scsiDev.data) / SD_SECTOR_SIZE;
 		int prep = 0;

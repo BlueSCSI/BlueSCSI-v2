@@ -7,6 +7,27 @@
   <width>32</width>
   <peripherals>
     <peripheral>
+      <name>SCSI_Out_Ctl</name>
+      <description>No description available</description>
+      <baseAddress>0x40006577</baseAddress>
+      <addressBlock>
+        <offset>0</offset>
+        <size>0x1</size>
+        <usage>registers</usage>
+      </addressBlock>
+      <registers>
+        <register>
+          <name>SCSI_Out_Ctl_CONTROL_REG</name>
+          <description>No description available</description>
+          <addressOffset>0x0</addressOffset>
+          <size>8</size>
+          <access>read-write</access>
+          <resetValue>0</resetValue>
+          <resetMask>0</resetMask>
+        </register>
+      </registers>
+    </peripheral>
+    <peripheral>
       <name>SCSI_Out_Bits</name>
       <description>No description available</description>
       <baseAddress>0x4000647C</baseAddress>
@@ -313,27 +334,6 @@
           <description>TMRx.CNT_CMP0 - Current Down Counter Value</description>
           <addressOffset>0xB63</addressOffset>
           <size>16</size>
-          <access>read-write</access>
-          <resetValue>0</resetValue>
-          <resetMask>0</resetMask>
-        </register>
-      </registers>
-    </peripheral>
-    <peripheral>
-      <name>SCSI_Out_Ctl</name>
-      <description>No description available</description>
-      <baseAddress>0x40006577</baseAddress>
-      <addressBlock>
-        <offset>0</offset>
-        <size>0x1</size>
-        <usage>registers</usage>
-      </addressBlock>
-      <registers>
-        <register>
-          <name>SCSI_Out_Ctl_CONTROL_REG</name>
-          <description>No description available</description>
-          <addressOffset>0x0</addressOffset>
-          <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
           <resetMask>0</resetMask>
@@ -827,7 +827,7 @@
     <peripheral>
       <name>SCSI_CTL_PHASE</name>
       <description>No description available</description>
-      <baseAddress>0x40006472</baseAddress>
+      <baseAddress>0x40006475</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x1</size>
