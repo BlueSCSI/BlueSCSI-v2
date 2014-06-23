@@ -35,7 +35,7 @@ static Config shadow =
 	0, // SCSI ID
 	" codesrc", // vendor  (68k Apple Drive Setup: Set to " SEAGATE")
 	"         SCSI2SD", //prodId (68k Apple Drive Setup: Set to "          ST225N")
-	" 3.4", // revision (68k Apple Drive Setup: Set to "1.0 ")
+	" 3.5", // revision (68k Apple Drive Setup: Set to "1.0 ")
 	1, // enable parity
 	1, // enable unit attention,
 	0, // RESERVED

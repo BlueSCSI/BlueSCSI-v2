@@ -170,7 +170,7 @@ int main(int argc, char* argv[])
 	case 0x3001:
 		printf("  Release:      3.5\" SCSI2SD\n");
 		expectedName = "SCSI2SD.cyacd";
-		if (!strstr(filename, expectedName))
+		if (strncasecmp(filename, expectedName, 13))
 		{
 			fileMismatch = 1;
 		}
@@ -178,7 +178,7 @@ int main(int argc, char* argv[])
 	case 0x3002:
 		printf("  Release:      2.5\" SCSI2SD for Apple Powerbook\n");
 		expectedName = "pbook.cyacd";
-		if (!strstr(filename, expectedName))
+		if (strncasecmp(filename, expectedName, 11))
 		{
 			fileMismatch = 1;
 		}

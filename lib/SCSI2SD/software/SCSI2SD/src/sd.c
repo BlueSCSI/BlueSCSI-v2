@@ -35,8 +35,8 @@ static uint8 sdDMARxChan = CY_DMA_INVALID_CHANNEL;
 static uint8 sdDMATxChan = CY_DMA_INVALID_CHANNEL;
 
 // DMA descriptors
-static uint8 sdDMARxTd[1] = { CY_DMA_INVALID_TD };
-static uint8 sdDMATxTd[1] = { CY_DMA_INVALID_TD };
+static uint8 sdDMARxTd[2] = { CY_DMA_INVALID_TD, CY_DMA_INVALID_TD };
+static uint8 sdDMATxTd[2] = { CY_DMA_INVALID_TD, CY_DMA_INVALID_TD };
 
 // Dummy location for DMA to send unchecked CRC bytes to
 static uint8 discardBuffer;
@@ -212,9 +212,13 @@ dmaReadSector(uint8_t* outputBuffer)
 		return;
 	}
 
-	CyDmaTdSetConfiguration(sdDMARxTd[0], SD_SECTOR_SIZE, CY_DMA_DISABLE_TD, TD_INC_DST_ADR | SD_RX_DMA__TD_TERMOUT_EN);
+	// Receive 512 bytes of data and then 2 bytes CRC.
+	CyDmaTdSetConfiguration(sdDMARxTd[0], SD_SECTOR_SIZE, sdDMARxTd[1], TD_INC_DST_ADR);
 	CyDmaTdSetAddress(sdDMARxTd[0], LO16((uint32)SDCard_RXDATA_PTR), LO16((uint32)outputBuffer));
-	CyDmaTdSetConfiguration(sdDMATxTd[0], SD_SECTOR_SIZE, CY_DMA_DISABLE_TD, SD_TX_DMA__TD_TERMOUT_EN);
+	CyDmaTdSetConfiguration(sdDMARxTd[1], 2, CY_DMA_DISABLE_TD, SD_RX_DMA__TD_TERMOUT_EN);
+	CyDmaTdSetAddress(sdDMARxTd[1], LO16((uint32)SDCard_RXDATA_PTR), LO16((uint32)&discardBuffer));
+
+	CyDmaTdSetConfiguration(sdDMATxTd[0], SD_SECTOR_SIZE + 2, CY_DMA_DISABLE_TD, SD_TX_DMA__TD_TERMOUT_EN);
 	CyDmaTdSetAddress(sdDMATxTd[0], LO16((uint32)&dummyBuffer), LO16((uint32)SDCard_TXDATA_PTR));
 
 	dmaInProgress = 1;
@@ -246,10 +250,6 @@ sdReadSectorDMAPoll()
 	{
 		// DMA transfer is complete
 		dmaInProgress = 0;
-
-		sdSpiByte(0xFF); // CRC
-		sdSpiByte(0xFF); // CRC
-
 		return 1;
 	}
 	else
@@ -352,10 +352,15 @@ sdWriteMultiSectorDMA(uint8_t* outputBuffer)
 {
 	sdSpiByte(0xFC); // MULTIPLE byte start token
 
-	CyDmaTdSetConfiguration(sdDMATxTd[0], SD_SECTOR_SIZE, CY_DMA_DISABLE_TD, TD_INC_SRC_ADR | SD_TX_DMA__TD_TERMOUT_EN);
+	// Transmit 512 bytes of data and then 2 bytes CRC.
+	CyDmaTdSetConfiguration(sdDMATxTd[0], SD_SECTOR_SIZE, sdDMATxTd[1], TD_INC_SRC_ADR);
 	CyDmaTdSetAddress(sdDMATxTd[0], LO16((uint32)outputBuffer), LO16((uint32)SDCard_TXDATA_PTR));
-	CyDmaTdSetConfiguration(sdDMARxTd[0], SD_SECTOR_SIZE, CY_DMA_DISABLE_TD, SD_RX_DMA__TD_TERMOUT_EN);
+	CyDmaTdSetConfiguration(sdDMATxTd[1], 2, CY_DMA_DISABLE_TD, SD_TX_DMA__TD_TERMOUT_EN);
+	CyDmaTdSetAddress(sdDMATxTd[1], LO16((uint32)&dummyBuffer), LO16((uint32)SDCard_TXDATA_PTR));
+
+	CyDmaTdSetConfiguration(sdDMARxTd[0], SD_SECTOR_SIZE + 2, CY_DMA_DISABLE_TD, SD_RX_DMA__TD_TERMOUT_EN);
 	CyDmaTdSetAddress(sdDMARxTd[0], LO16((uint32)SDCard_RXDATA_PTR), LO16((uint32)&discardBuffer));
+
 	
 	dmaInProgress = 1;
 	// The DMA controller is a bit trigger-happy. It will retain
@@ -384,23 +389,12 @@ sdWriteSectorDMAPoll()
 {
 	if (rxDMAComplete && txDMAComplete)
 	{
-		// DMA transfer is complete
-		dmaInProgress = 0;
-
-		sdSpiByte(0x00); // CRC
-		sdSpiByte(0x00); // CRC
-
-		// Don't wait more than 1s.
-		// My 2g Kingston micro-sd card doesn't respond immediately.
-		// My 16Gb card does.
-		int maxWait = 1000000;
 		uint8_t dataToken = sdSpiByte(0xFF); // Response
-		while (dataToken == 0xFF && maxWait-- > 0)
+		if (dataToken == 0x0FF)
 		{
-			CyDelayUs(1);
-			dataToken = sdSpiByte(0xFF);
+			return 0; // Write has not completed.
 		}
-		if (((dataToken & 0x1F) >> 1) != 0x2) // Accepted.
+		else if (((dataToken & 0x1F) >> 1) != 0x2) // Accepted.
 		{
 			uint8 r1b, busy;
 		
@@ -431,7 +425,9 @@ sdWriteSectorDMAPoll()
 		else
 		{
 			sdWaitWriteBusy();
-		}		
+		}
+		// DMA transfer is complete and the SD card has accepted the write.
+		dmaInProgress = 0;
 
 		return 1;
 	}
@@ -624,7 +620,9 @@ static void sdInitDMA()
 		CyDmaChDisable(sdDMARxChan);
 
 		sdDMARxTd[0] = CyDmaTdAllocate();
+		sdDMARxTd[1] = CyDmaTdAllocate();
 		sdDMATxTd[0] = CyDmaTdAllocate();
+		sdDMATxTd[1] = CyDmaTdAllocate();
 
 		SD_RX_DMA_COMPLETE_StartEx(sdRxISR);
 		SD_TX_DMA_COMPLETE_StartEx(sdTxISR);

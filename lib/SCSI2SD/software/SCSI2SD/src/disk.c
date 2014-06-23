@@ -562,6 +562,7 @@ void scsiDiskPoll()
 				scsiActive = 1;
 			}
 		}
+		
 		if (scsiDev.phase == DATA_OUT)
 		{
 			scsiDev.phase = STATUS;
