@@ -196,6 +196,11 @@ int main(int argc, char* argv[])
 
 	// Enumerate and print the HID devices on the system
 	struct hid_device_info *dev = hid_enumerate(vendorId, productId);
+	while (dev && dev->interface_number != 0)
+	{
+		dev = dev->next;
+	}
+
 	if (!dev)
 	{
 		fprintf(stderr, "ERROR: SCSI2SD USB device not found.\n");

@@ -96,18 +96,22 @@ int main(int argc, char* argv[])
 	// Enumerate and print the HID devices on the system
 	struct hid_device_info *dev = hid_enumerate(vendorId, productId);
 
-	// We need the SECOND interface for debug data
 	if (!dev)
 	{
 		fprintf(stderr, "ERROR: SCSI2SD USB device not found.\n");
 		exit(1);
 	}
-	else if (!dev->next)
+
+	// We need the SECOND interface for debug data
+	while (dev && dev->interface_number != 1)
+	{
+		dev = dev->next;
+	}
+	if (!dev)
 	{
 		fprintf(stderr, "ERROR: SCSI2SD Debug firmware not enabled.\n");
 		exit(1);
 	}
-	dev = dev->next;
 
 	printf("USB Device Found\n  type: %04hx %04hx\n  path: %s\n  serial_number: %ls",
 		dev->vendor_id, dev->product_id, dev->path, dev->serial_number);

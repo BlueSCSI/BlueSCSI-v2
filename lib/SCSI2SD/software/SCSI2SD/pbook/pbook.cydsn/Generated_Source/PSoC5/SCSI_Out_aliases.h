@@ -41,9 +41,9 @@
 #define SCSI_Out_BSY		SCSI_Out__BSY__PC
 #define SCSI_Out_ACK		SCSI_Out__ACK__PC
 #define SCSI_Out_RST		SCSI_Out__RST__PC
-#define SCSI_Out_MSG		SCSI_Out__MSG__PC
+#define SCSI_Out_MSG_raw		SCSI_Out__MSG_raw__PC
 #define SCSI_Out_SEL		SCSI_Out__SEL__PC
-#define SCSI_Out_CD		SCSI_Out__CD__PC
+#define SCSI_Out_CD_raw		SCSI_Out__CD_raw__PC
 #define SCSI_Out_REQ		SCSI_Out__REQ__PC
 #define SCSI_Out_IO_raw		SCSI_Out__IO_raw__PC
 

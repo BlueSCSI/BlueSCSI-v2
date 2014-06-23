@@ -75,3 +75,6 @@ Users have reported success on these systems:
     HP 16601A logic analyzer
     Apple IIgs using Apple II High Speed SCSI controller card (from v3.3)
 	Symbolics List Machine XL1200, using 1280 byte sectors (from v3.4)
+	Fluke 9100 series
+	PDP-11/73 running RSX11M+ V4.6
+	Amiga 500+ with GVP A530
