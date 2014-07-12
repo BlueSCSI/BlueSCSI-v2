@@ -180,7 +180,6 @@ static void doWrite(uint32 lba, uint32 blocks)
 		// multi-block write is minimal.
 		transfer.multiBlock = 1;
 		
-		if (blocks > 1) scsiDev.needReconnect = 1;
 		sdWriteMultiSectorPrep();
 	}
 }
@@ -216,7 +215,6 @@ static void doRead(uint32 lba, uint32 blocks)
 		else
 		{
 			transfer.multiBlock = 1;
-			scsiDev.needReconnect = 1;
 			sdReadMultiSectorPrep();
 		}
 	}
@@ -612,7 +610,10 @@ void scsiDiskInit()
 	}
 	#endif
 
-	if (SD_CD_Read() == 1)
+	// The Card-detect switches of micro-sd sockets are not standard. Don't make
+	// use of SD_CD so we can use sockets from other manufacturers.
+	// Detect presence of the card by testing whether it responds to commands.
+	// if (SD_CD_Read() == 1)
 	{
 		int retry;
 		blockDev.state = blockDev.state | DISK_PRESENT;

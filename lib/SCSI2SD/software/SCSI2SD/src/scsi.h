@@ -17,12 +17,6 @@
 #ifndef SCSI_H
 #define SCSI_H
 
-// Set this to true to log SCSI commands and status information via
-// USB HID packets.  The can be captured and viewed in wireshark.
-// For windows users, capture using USBPcap http://desowin.org/usbpcap/
-//#define MM_DEBUG 1
-#undef MM_DEBUG
-
 #include "geometry.h"
 #include "sense.h"
 
@@ -110,7 +104,6 @@ typedef struct
 
 	void (*postDataOutHook)(void);
 
-#ifdef MM_DEBUG
 	uint8 cmdCount;
 	uint8 selCount;
 	uint8 rstCount;
@@ -118,10 +111,6 @@ typedef struct
 	uint8 watchdogTick;
 	uint8 lastStatus;
 	uint8 lastSense;
-#endif
-
-uint8 allowDisconnect;
-uint8 needReconnect;
 } ScsiDevice;
 
 extern ScsiDevice scsiDev;

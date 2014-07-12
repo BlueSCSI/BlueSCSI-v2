@@ -1,30 +1,59 @@
-all:  build/bootloaderhost
+VPATH=cybootloaderutils
 
-CYAPI = \
-	cybootloaderutils/cybtldr_api2.c \
-	cybootloaderutils/cybtldr_api.c \
-	cybootloaderutils/cybtldr_command.c \
-	cybootloaderutils/cybtldr_parse.c \
-
-CFLAGS += -Wall -Wno-pointer-sign
+CPPFLAGS = -I cybootloaderutils -I hidapi/hidapi
+CFLAGS += -Wall -Wno-pointer-sign -O2
+CXXFLAGS += -Wall -std=c++11 -O2
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
-	HID_C = hidapi/linux/hid.c
+	VPATH += hidapi/linux
 	LDFLAGS += -ludev
+	BUILD=build/linux
 endif
 ifeq ($(UNAME_S),Darwin)
 	# Should match OSX
-	HID_C = hidapi/mac/hid.c
+	VPATH += hidapi/mac
 	LDFLAGS += -framework IOKit -framework CoreFoundation
-	CFLAGS += -mmacosx-version-min=10.5 -arch x86_64 -arch i386 -arch ppc -isysroot /Xcode3.1.4/SDKs/MacOSX10.5.sdk
+	CPPFLAGS += -isysroot /Xcode3.1.4/SDKs/MacOSX10.5.sdk
+	CFLAGS += -mmacosx-version-min=10.5 -arch x86_64 -arch i386 -arch ppc
+	CXXFLAGS += -mmacosx-version-min=10.5 -arch x86_64 -arch i386 -arch ppc
 	CC=/Xcode3.1.4/usr/bin/gcc
+	CXX=/Xcode3.1.4/usr/bin/g++
+	BUILD=build/mac
 endif
 
+all:  $(BUILD)/bootloaderhost
 
-build/bootloaderhost: main.c $(HID_C) $(CYAPI)
+CYAPI = \
+	$(BUILD)/cybtldr_api2.o \
+	$(BUILD)/cybtldr_api.o \
+	$(BUILD)/cybtldr_command.o \
+	$(BUILD)/cybtldr_parse.o \
+
+
+HIDAPI = \
+	$(BUILD)/hid.o \
+
+
+OBJ = \
+	$(CYAPI) $(HIDAPI) \
+	$(BUILD)/main.o \
+	$(BUILD)/Firmware.o \
+	$(BUILD)/SCSI2SD_Bootloader.o \
+	$(BUILD)/SCSI2SD_HID.o \
+
+$(BUILD)/%.o: %.c
 	mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -I cybootloaderutils -I hidapi/hidapi $^ $(LDFLAGS) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $^ -c -o $@
+
+$(BUILD)/%.o: %.cc
+	mkdir -p $(dir $@)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -c -o $@
+
+$(BUILD)/bootloaderhost: $(OBJ)
+	mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
 
 clean:
-	rm build/bootloaderhost
+	rm $(BUILD)/bootloaderhost $(OBJ)
+

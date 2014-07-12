@@ -28,6 +28,7 @@
 
 // CYDEV_EEPROM_ROW_SIZE == 16.
 static const char magic[CYDEV_EEPROM_ROW_SIZE] = "codesrc_00000002";
+static const uint16_t FIRMWARE_VERSION = 0x0350;
 
 // Config shadow RAM (copy of EEPROM)
 static Config shadow =
@@ -48,6 +49,7 @@ enum USB_ENDPOINTS
 {
 	USB_EP_OUT = 1,
 	USB_EP_IN = 2,
+	USB_EP_COMMAND = 3,
 	USB_EP_DEBUG = 4
 };
 enum USB_STATE
@@ -172,6 +174,7 @@ void configPoll()
 	if (reset)
 	{
 		USBFS_EnableOutEP(USB_EP_OUT);
+		USBFS_EnableOutEP(USB_EP_COMMAND);
 		usbInEpState = usbDebugEpState = USB_IDLE;
 	}
 
@@ -238,14 +241,31 @@ void configPoll()
 	}
 }
 
-#ifdef MM_DEBUG
 void debugPoll()
 {
 	if (!usbReady)
 	{
 		return;
 	}
-	
+
+	if(USBFS_GetEPState(USB_EP_COMMAND) == USBFS_OUT_BUFFER_FULL)
+	{
+		// The host sent us some data!
+		int byteCount = USBFS_GetEPCount(USB_EP_COMMAND);
+		USBFS_ReadOutEP(USB_EP_COMMAND, (uint8 *)&debugBuffer, byteCount);
+
+		if (byteCount >= 1 &&
+			debugBuffer[0] == 0x01)
+		{
+			// Reboot command.
+			Bootloadable_1_Load();
+		}
+
+		// Allow the host to send us another command.
+		// (assuming we didn't reboot outselves)
+		USBFS_EnableOutEP(USB_EP_COMMAND);
+	}
+
 	switch (usbDebugEpState)
 	{
 	case USB_IDLE:
@@ -264,6 +284,14 @@ void debugPoll()
 		debugBuffer[23] = scsiDev.msgCount;
 		debugBuffer[24] = scsiDev.cmdCount;
 		debugBuffer[25] = scsiDev.watchdogTick;
+
+		debugBuffer[58] = sdDev.capacity >> 24;
+		debugBuffer[59] = sdDev.capacity >> 16;
+		debugBuffer[60] = sdDev.capacity >> 8;
+		debugBuffer[61] = sdDev.capacity;
+
+		debugBuffer[62] = FIRMWARE_VERSION >> 8;
+		debugBuffer[63] = FIRMWARE_VERSION;
 
 		USBFS_LoadInEP(USB_EP_DEBUG, (uint8 *)&debugBuffer, sizeof(debugBuffer));
 		usbDebugEpState = USB_DATA_SENT;
@@ -287,18 +315,11 @@ CY_ISR(debugTimerISR)
 	debugPoll();
 	CyExitCriticalSection(savedIntrStatus); 
 }
-#endif
 
 void debugInit()
 {
-#ifdef MM_DEBUG
 	Debug_Timer_Interrupt_StartEx(debugTimerISR);
 	Debug_Timer_Start();
-#else
-	Debug_Timer_Interrupt_Stop();
-	Debug_Timer_Stop();
-#endif
-	
 }
 
 // Public method for storing MODE SELECT results.

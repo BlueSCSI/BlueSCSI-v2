@@ -1,4 +1,4 @@
-//	Copyright (C) 2013 Michael McMaster <michael@codesrc.com>
+//	Copyright (C) 2014 Michael McMaster <michael@codesrc.com>
 //
 //	This file is part of SCSI2SD.
 //
@@ -14,13 +14,36 @@
 //
 //	You should have received a copy of the GNU General Public License
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
-#ifndef LED_H
-#define LED_H
 
-#include "device.h"
+#ifndef Firmware_HH
+#define Firmware_HH
 
-void ledInit(void);
-void ledOn(void);
-void ledOff(void);
+#include <cstdint>
+#include <string>
 
+namespace SCSI2SD
+{
+
+//
+// Warning: The Cypress API (used by the Firmware class) uses global data and
+// is NOT thread safe.
+//
+class Firmware
+{
+public:
+	Firmware(const std::string& path);
+	~Firmware();
+
+	uint64_t siliconId() const { return mySiliconId; }
+	std::string siliconRev() const { return mySiliconRev; }
+
+	int totalFlashRows() const { return myTotalFlashRows; }
+
+private:
+	uint64_t mySiliconId;
+	std::string mySiliconRev;
+	int myTotalFlashRows;
+};
+
+} // namespace
 #endif

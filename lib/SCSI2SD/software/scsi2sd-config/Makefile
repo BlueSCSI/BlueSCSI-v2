@@ -1,24 +1,48 @@
-all: build/scsi2sd-config
 
-CFLAGS += -Wall
+CPPFLAGS = -I ../bootloaderhost/hidapi/hidapi -I ../bootloaderhost
+CFLAGS += -Wall -Wno-pointer-sign -O2
+CXXFLAGS += -Wall -std=c++11 -O2
+VPATH += ../bootloaderhost
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
-	HID_C = ../bootloaderhost/hidapi/linux/hid.c
+	VPATH += ../bootloaderhost/hidapi/linux
 	LDFLAGS += -ludev
+	BUILD=build/linux
 endif
 ifeq ($(UNAME_S),Darwin)
 	# Should match OSX
-	HID_C = ../bootloaderhost/hidapi/mac/hid.c
+	VPATH += ../bootloaderhost/hidapi/mac
 	LDFLAGS += -framework IOKit -framework CoreFoundation
-	CFLAGS += -mmacosx-version-min=10.5 -arch x86_64 -arch i386 -arch ppc -isysroot /Xcode3.1.4/SDKs/MacOSX10.5.sdk
-	CC = /Xcode3.1.4/usr/bin/gcc
+	CPPFLAGS += -isysroot /Xcode3.1.4/SDKs/MacOSX10.5.sdk
+	CFLAGS += -mmacosx-version-min=10.5 -arch x86_64 -arch i386 -arch ppc
+	CXXFLAGS += -mmacosx-version-min=10.5 -arch x86_64 -arch i386 -arch ppc
+	CC=/Xcode3.1.4/usr/bin/gcc
+	CXX=/Xcode3.1.4/usr/bin/g++
+	BUILD=build/mac
 endif
 
+all:  $(BUILD)/scsi2sd-config
 
-build/scsi2sd-config: main.c $(HID_C) $(CYAPI)
+HIDAPI = \
+	$(BUILD)/hid.o \
+
+OBJ = \
+	$(HIDAPI) \
+	$(BUILD)/scsi2sd-config.o \
+	$(BUILD)/SCSI2SD_HID.o \
+
+$(BUILD)/%.o: %.c
 	mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -I ../bootloaderhost/hidapi/hidapi $^ $(LDFLAGS) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $^ -c -o $@
+
+$(BUILD)/%.o: %.cc
+	mkdir -p $(dir $@)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -c -o $@
+
+$(BUILD)/scsi2sd-config: $(OBJ)
+	mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
 
 clean:
-	rm build/scsi2sd-config
+	rm $(BUILD)/scsi2sd-config $(OBJ)

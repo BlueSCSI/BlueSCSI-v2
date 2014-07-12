@@ -26,7 +26,7 @@ const char* Notice = "Copyright (C) 2014 Michael McMaster <michael@codesrc.com>"
 
 int main()
 {
-	ledOff();
+	ledInit();
 
 	// Enable global interrupts.
 	// Needed for RST and ATN interrupt handlers.
@@ -41,17 +41,10 @@ int main()
 	scsiInit();
 	scsiDiskInit();
 
-	if (!(blockDev.state & DISK_INITIALISED))
-	{
-			while (1) { ledOn();CyDelay(200); ledOff();CyDelay(200); }
-
-	}
-
 	while (1)
 	{
-#ifdef MM_DEBUG
 		scsiDev.watchdogTick++;
-#endif
+
 		scsiPoll();
 		scsiDiskPoll();
 		configPoll();
