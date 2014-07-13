@@ -31,7 +31,10 @@ static int enable_EXTLED = 0;
 void ledInit()
 {
 #ifdef HAVE_EXTLED
-	EXTLED_SetDriveMode(EXTLED_DM_DIG_HIZ | EXTLED_DM_RES_UP);
+	EXTLED_SetDriveMode(EXTLED_DM_RES_UP);
+	EXTLED_Write(1); // Will pull-up through resistor.
+
+	CyDelayUs(1);
 	int val = EXTLED_Read();
 	if (val)
 	{
@@ -68,10 +71,7 @@ void ledOff()
 	LED1_Write(1);
 
 #ifdef HAVE_EXTLED
-	if (enable_EXTLED)
-	{
-		EXTLED_Write(0);
-	}
+	EXTLED_Write(0);
 #endif
 }
 
