@@ -1,24 +1,64 @@
-all: build/scsi2sd-debug
 
-CFLAGS += -Wall
+CPPFLAGS = -I ../bootloaderhost/hidapi/hidapi -I ../bootloaderhost
+CFLAGS += -Wall -Wno-pointer-sign -O2
+CXXFLAGS += -Wall -std=c++11 -O2
+VPATH += ../bootloaderhost
 
-UNAME_S := $(shell uname -s)
-ifeq ($(UNAME_S),Linux)
-	HID_C = ../bootloaderhost/hidapi/linux/hid.c
+TARGET ?= $(shell uname -s)
+ifeq ($(TARGET),Win32)
+	VPATH += hidapi/windows
+	LDFLAGS += -mconsole -mwindows -lsetupapi -lws2_32
+	BUILD = build/windows/32bit
+	CC=i686-w64-mingw32-gcc
+	CXX=i686-w64-mingw32-g++
+	EXE=.exe
+endif
+ifeq ($(TARGET),Win64)
+	VPATH += hidapi/windows
+	LDFLAGS += -mconsole -mwindows -lsetupapi -lws2_32
+	BUILD = build/windows/64bit
+	CC=x86_64-w64-mingw32-gcc
+	CXX=x86_64-w64-mingw32-g++
+	EXE=.exe
+endif
+ifeq ($(TARGET),Linux)
+	VPATH += hidapi/linux
 	LDFLAGS += -ludev
+	BUILD = build/linux
 endif
-ifeq ($(UNAME_S),Darwin)
+ifeq ($(TARGET),Darwin)
 	# Should match OSX
-	HID_C = ../bootloaderhost/hidapi/mac/hid.c
+	VPATH += ../bootloaderhost/hidapi/mac
 	LDFLAGS += -framework IOKit -framework CoreFoundation
-	CFLAGS += -mmacosx-version-min=10.5 -arch x86_64 -arch i386 -arch ppc -isysroot /Xcode3.1.4/SDKs/MacOSX10.5.sdk
+	CPPFLAGS += -isysroot /Xcode3.1.4/SDKs/MacOSX10.5.sdk
+	CFLAGS += -mmacosx-version-min=10.5 -arch x86_64 -arch i386 -arch ppc
+	CXXFLAGS += -mmacosx-version-min=10.5 -arch x86_64 -arch i386 -arch ppc
 	CC=/Xcode3.1.4/usr/bin/gcc
+	CXX=/Xcode3.1.4/usr/bin/g++
+	BUILD=build/mac
 endif
 
+all:  $(BUILD)/scsi2sd-debug$(EXE)
 
-build/scsi2sd-debug: main.c $(HID_C) $(CYAPI)
+HIDAPI = \
+	$(BUILD)/hid.o \
+
+OBJ = \
+	$(HIDAPI) \
+	$(BUILD)/scsi2sd-debug.o \
+	$(BUILD)/SCSI2SD_HID.o \
+
+$(BUILD)/%.o: %.c
 	mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -I ../bootloaderhost/hidapi/hidapi $^ $(LDFLAGS) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $^ -c -o $@
+
+$(BUILD)/%.o: %.cc
+	mkdir -p $(dir $@)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -c -o $@
+
+$(BUILD)/scsi2sd-debug$(EXE): $(OBJ)
+	mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
 
 clean:
-	rm build/scsi2sd-debug
+	rm $(BUILD)/scsi2sd-debug$(EXE) $(OBJ)

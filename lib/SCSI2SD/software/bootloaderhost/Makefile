@@ -4,13 +4,29 @@ CPPFLAGS = -I cybootloaderutils -I hidapi/hidapi
 CFLAGS += -Wall -Wno-pointer-sign -O2
 CXXFLAGS += -Wall -std=c++11 -O2
 
-UNAME_S := $(shell uname -s)
-ifeq ($(UNAME_S),Linux)
+TARGET ?= $(shell uname -s)
+ifeq ($(TARGET),Win32)
+	VPATH += hidapi/windows
+	LDFLAGS += -mconsole -mwindows -lsetupapi
+	BUILD = build/windows/32bit
+	CC=i686-w64-mingw32-gcc
+	CXX=i686-w64-mingw32-g++
+	EXE=.exe
+endif
+ifeq ($(TARGET),Win64)
+	VPATH += hidapi/windows
+	LDFLAGS += -mconsole -mwindows -lsetupapi
+	BUILD = build/windows/64bit
+	CC=x86_64-w64-mingw32-gcc
+	CXX=x86_64-w64-mingw32-g++
+	EXE=.exe
+endif
+ifeq ($(TARGET),Linux)
 	VPATH += hidapi/linux
 	LDFLAGS += -ludev
-	BUILD=build/linux
+	BUILD = build/linux
 endif
-ifeq ($(UNAME_S),Darwin)
+ifeq ($(TARGET),Darwin)
 	# Should match OSX
 	VPATH += hidapi/mac
 	LDFLAGS += -framework IOKit -framework CoreFoundation
@@ -22,7 +38,7 @@ ifeq ($(UNAME_S),Darwin)
 	BUILD=build/mac
 endif
 
-all:  $(BUILD)/bootloaderhost
+all:  $(BUILD)/bootloaderhost$(EXE)
 
 CYAPI = \
 	$(BUILD)/cybtldr_api2.o \
@@ -50,10 +66,10 @@ $(BUILD)/%.o: %.cc
 	mkdir -p $(dir $@)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -c -o $@
 
-$(BUILD)/bootloaderhost: $(OBJ)
+$(BUILD)/bootloaderhost$(EXE): $(OBJ)
 	mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
 
 clean:
-	rm $(BUILD)/bootloaderhost $(OBJ)
+	rm $(BUILD)/bootloaderhost$(EXE) $(OBJ)
 
