@@ -175,7 +175,7 @@ int main(int argc, char* argv[])
 	std::stringstream firmMsg;
 	firmMsg <<
 		"  Firmware Silicon ID:\t" <<  std::hex << firmware.siliconId() <<
-			"\n" <<
+			"\n";
 	std::cout << firmMsg.str() << std::endl;
 
 	std::cout << "Starting firmware upload: " << filename << std::endl;

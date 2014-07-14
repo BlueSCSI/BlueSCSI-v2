@@ -30,11 +30,10 @@ ifeq ($(TARGET),Darwin)
 	# Should match OSX
 	VPATH += hidapi/mac
 	LDFLAGS += -framework IOKit -framework CoreFoundation
-	CPPFLAGS += -isysroot /Xcode3.1.4/SDKs/MacOSX10.5.sdk
-	CFLAGS += -mmacosx-version-min=10.5 -arch x86_64 -arch i386 -arch ppc
-	CXXFLAGS += -mmacosx-version-min=10.5 -arch x86_64 -arch i386 -arch ppc
-	CC=/Xcode3.1.4/usr/bin/gcc
-	CXX=/Xcode3.1.4/usr/bin/g++
+	CFLAGS += -mmacosx-version-min=10.7
+	CXXFLAGS += -stdlib=libc++ -mmacosx-version-min=10.7
+	CC=clang
+	CXX=clang++
 	BUILD=build/mac
 endif
 
