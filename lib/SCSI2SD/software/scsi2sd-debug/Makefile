@@ -28,10 +28,10 @@ ifeq ($(TARGET),Linux)
 endif
 ifeq ($(TARGET),Darwin)
 	# Should match OSX
-	VPATH += ../bootloaderhost/hidapi/mac
+	VPATH += ../bootloaderhost/hidapi-mac
 	LDFLAGS += -framework IOKit -framework CoreFoundation
 	CFLAGS += -mmacosx-version-min=10.7
-	CXXFLAGS += -stdlib=libc++ -mmacosx-version-min=10.7
+	CXXFLAGS += -stdlib=libc++ -mmacosx-version-min=10.7 -std=c++0x
 	CC=clang
 	CXX=clang++
 	BUILD=build/mac

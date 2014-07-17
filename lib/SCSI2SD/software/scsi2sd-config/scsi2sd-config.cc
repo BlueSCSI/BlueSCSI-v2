@@ -113,14 +113,18 @@ struct __attribute__((packed)) ConfigPacket
 
 static void printConfig(ConfigPacket* packet)
 {
-	printf("SCSI ID:\t\t\t%d\n", packet->scsiId);
-	printf("Vendor:\t\t\t\t\"%.*s\"\n", 8, packet->vendor);
-	printf("Product ID:\t\t\t\"%.*s\"\n", 16, packet->prodId);
-	printf("Revision:\t\t\t\"%.*s\"\n", 4, packet->revision);
-	printf("\n");
-	printf("Parity Checking:\t\t%s\n", packet->enableParity ? "enabled" : "disabled");
-	printf("Unit Attention Condition:\t%s\n", packet->enableUnitAttention ? "enabled" : "disabled");
-	printf("Bytes per sector:\t\t%d\n", packet->bytesPerSector);
+	std::cout <<
+		"SCSI ID:\t\t\t" << packet->scsiId << "\n" <<
+		"Vendor:\t\t\t\t\"" << std::string(packet->vendor, 8) << "\"\n" <<
+		"Product ID:\t\t\t\"" << std::string(packet->prodId, 16) << "\"\n" <<
+		"Revision:\t\t\t\"" << std::string(packet->revision, 4) << "\"\n" <<
+		"\n" <<
+		"Parity Checking:\t\t" <<
+			(packet->enableParity ? "enabled" : "disabled") << "\n" <<
+		"Unit Attention Condition:\t" <<
+			(packet->enableUnitAttention ? "enabled" : "disabled") << "\n" <<
+		"Bytes per sector:\t\t" << packet->bytesPerSector << std::endl;
+
 	if (packet->maxSectors)
 	{
 		char sizeBuf[64];
@@ -142,11 +146,12 @@ static void printConfig(ConfigPacket* packet)
 			sprintf(sizeBuf, "%" PRIu64 " bytes", maxBytes);
 		}
 
-		printf("Maximum Size:\t\t\t%s (%d sectors)\n", sizeBuf, packet->maxSectors);
+		std::cout <<"Maximum Size:\t\t\t" << sizeBuf <<
+			" (" << packet->maxSectors << " sectors)" << std::endl;
 	}
 	else
 	{
-		printf("Maximum Size:\t\t\tUnlimited\n");
+		std::cout << "Maximum Size:\t\t\tUnlimited" << std::endl;
 	}
 }
 
@@ -311,7 +316,7 @@ int main(int argc, char* argv[])
 		{
 			int64_t maxSectors = -1;
 			if (sscanf(optarg, "%" PRId64, &maxSectors) == 1 &&
-				maxSectors >= 0 && maxSectors <= UINT32_MAX)
+				maxSectors >= 0 && maxSectors <= 0xffffffff)
 			{
 				packet.maxSectors = maxSectors;
 			}
@@ -362,6 +367,7 @@ int main(int argc, char* argv[])
 			break;
 
 		case '?':
+			doWrite = 0;
 			usage();
 		}
 	}

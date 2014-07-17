@@ -32,18 +32,57 @@ HID::HID(hid_device_info* hidInfo) :
 	myFirmwareVersion(0),
 	mySDCapacity(0)
 {
-	while (hidInfo)
+	// hidInfo->interface_number not supported on mac, and interfaces
+	// are enumerated in a random order. :-(
+	// We rely on the watchdog value of the debug interface changing on each
+	// read to differentiate the interfaces.
+	while (hidInfo && !(myConfigHandle && myDebugHandle))
 	{
 		if (hidInfo->interface_number == CONFIG_INTERFACE)
 		{
 			myConfigHandle = hid_open_path(hidInfo->path);
+			hidInfo = hidInfo->next;
 		}
 		else if (hidInfo->interface_number == DEBUG_INTERFACE)
 		{
 			myDebugHandle = hid_open_path(hidInfo->path);
 			readDebugData();
+			hidInfo = hidInfo->next;
 		}
-		hidInfo = hidInfo->next;
+		else if (hidInfo->interface_number == -1)
+		{
+			// hidInfo->interface_number not supported on mac, and
+			// interfaces are enumerated in a random order. :-(
+			// We rely on the watchdog value of the debug interface
+			// changing on each read to differentiate the interfaces.
+			hid_device* dev = hid_open_path(hidInfo->path);
+			if (!dev)
+			{
+				hidInfo = hidInfo->next;
+				continue;
+			}
+
+			uint8_t buf[HID_PACKET_SIZE];
+			int watchVal = -1;
+			int configIntFound = 1;
+			for (int i = 0; i < 4; ++i)
+			{
+				buf[0] = 0; // report id
+				hid_read(dev, buf, HID_PACKET_SIZE);
+				if (watchVal == -1) watchVal = buf[25];
+				configIntFound = configIntFound && (buf[25] == watchVal);
+			}
+
+			if (configIntFound)
+			{
+				myConfigHandle = dev;
+			}
+			else
+			{
+				myDebugHandle = dev;
+				readDebugData();
+			}
+		}
 	}
 }
 
