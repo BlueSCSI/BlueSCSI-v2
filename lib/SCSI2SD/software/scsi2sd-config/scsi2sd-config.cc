@@ -17,9 +17,16 @@
 
 #include "SCSI2SD_HID.hh"
 
+#if __cplusplus >= 201103L
+#include <memory>
+using std::shared_ptr;
+#else
+#include <tr1/memory>
+using std::tr1::shared_ptr;
+#endif
+
 #include <iomanip>
 #include <iostream>
-#include <memory>
 #include <sstream>
 
 // Request extended stdio format macros.
@@ -188,7 +195,7 @@ int main(int argc, char* argv[])
 		HID::PRODUCT_ID);
 
 	// Enumerate and print the HID devices on the system
-	std::shared_ptr<HID> scsi2sdHID(HID::Open());
+	shared_ptr<HID> scsi2sdHID(HID::Open());
 
 	if (!scsi2sdHID)
 	{

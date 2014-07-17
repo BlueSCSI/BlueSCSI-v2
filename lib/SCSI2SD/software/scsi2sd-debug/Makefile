@@ -1,13 +1,13 @@
 
 CPPFLAGS = -I ../bootloaderhost/hidapi/hidapi -I ../bootloaderhost
 CFLAGS += -Wall -Wno-pointer-sign -O2
-CXXFLAGS += -Wall -std=c++11 -O2
+CXXFLAGS += -Wall -O2
 VPATH += ../bootloaderhost
 
 TARGET ?= $(shell uname -s)
 ifeq ($(TARGET),Win32)
 	VPATH += hidapi/windows
-	LDFLAGS += -mconsole -mwindows -lsetupapi -lws2_32
+	LDFLAGS += -static -mconsole -mwindows -lsetupapi -lws2_32
 	BUILD = build/windows/32bit
 	CC=i686-w64-mingw32-gcc
 	CXX=i686-w64-mingw32-g++
@@ -15,7 +15,7 @@ ifeq ($(TARGET),Win32)
 endif
 ifeq ($(TARGET),Win64)
 	VPATH += hidapi/windows
-	LDFLAGS += -mconsole -mwindows -lsetupapi -lws2_32
+	LDFLAGS += -static -mconsole -mwindows -lsetupapi -lws2_32
 	BUILD = build/windows/64bit
 	CC=x86_64-w64-mingw32-gcc
 	CXX=x86_64-w64-mingw32-g++

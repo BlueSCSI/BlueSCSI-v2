@@ -17,7 +17,6 @@
 
 #include "SCSI2SD_Bootloader.hh"
 
-#include <cstdint>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>

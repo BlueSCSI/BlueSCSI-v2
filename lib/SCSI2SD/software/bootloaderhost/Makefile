@@ -2,12 +2,12 @@ VPATH=cybootloaderutils
 
 CPPFLAGS = -I cybootloaderutils -I hidapi/hidapi
 CFLAGS += -Wall -Wno-pointer-sign -O2
-CXXFLAGS += -Wall -std=c++11 -O2
+CXXFLAGS += -Wall -O2
 
 TARGET ?= $(shell uname -s)
 ifeq ($(TARGET),Win32)
 	VPATH += hidapi/windows
-	LDFLAGS += -mconsole -mwindows -lsetupapi
+	LDFLAGS += -static -mconsole -mwindows -lsetupapi
 	BUILD = build/windows/32bit
 	CC=i686-w64-mingw32-gcc
 	CXX=i686-w64-mingw32-g++
@@ -15,7 +15,7 @@ ifeq ($(TARGET),Win32)
 endif
 ifeq ($(TARGET),Win64)
 	VPATH += hidapi/windows
-	LDFLAGS += -mconsole -mwindows -lsetupapi
+	LDFLAGS += -static -mconsole -mwindows -lsetupapi
 	BUILD = build/windows/64bit
 	CC=x86_64-w64-mingw32-gcc
 	CXX=x86_64-w64-mingw32-g++

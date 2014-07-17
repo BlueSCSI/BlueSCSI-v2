@@ -19,13 +19,22 @@
 #include "SCSI2SD_Bootloader.hh"
 #include "Firmware.hh"
 
+#if __cplusplus >= 201103L
 #include <cstdint>
+#include <memory>
+using std::shared_ptr;
+#else
+#include <stdint.h>
+#include <tr1/memory>
+using std::tr1::shared_ptr;
+#endif
+
 #include <iomanip>
 #include <iostream>
-#include <memory>
 #include <sstream>
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 using namespace SCSI2SD;
@@ -84,8 +93,8 @@ int main(int argc, char* argv[])
 	}
 
 	// Enumerate and print the HID devices on the system
-	std::shared_ptr<Bootloader> bootloader(Bootloader::Open());
-	std::shared_ptr<HID> hid(HID::Open());
+	shared_ptr<Bootloader> bootloader(Bootloader::Open());
+	shared_ptr<HID> hid(HID::Open());
 
 	if (hid)
 	{

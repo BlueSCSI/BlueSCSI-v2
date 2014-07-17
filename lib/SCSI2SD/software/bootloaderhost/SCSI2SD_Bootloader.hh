@@ -20,7 +20,11 @@
 
 #include "hidapi.h"
 
+#if __cplusplus >= 201103L
 #include <cstdint>
+#else
+#include <stdint.h>
+#endif
 #include <string>
 
 namespace SCSI2SD
