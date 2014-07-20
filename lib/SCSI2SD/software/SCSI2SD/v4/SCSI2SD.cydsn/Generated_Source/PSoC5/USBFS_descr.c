@@ -126,8 +126,8 @@ const uint8 CYCODE USBFS_DEVICE0_CONFIGURATION0_DESCR[73u] = {
 /*  bCountryCode                           */ 0x00u,
 /*  bNumDescriptors                        */ 0x01u,
 /*  bDescriptorType                        */ 0x22u,
-/*  wDescriptorLength (LSB)                */ USBFS_HID_RPT_1_SIZE_LSB,
-/*  wDescriptorLength (MSB)                */ USBFS_HID_RPT_1_SIZE_MSB,
+/*  wDescriptorLength (LSB)                */ USBFS_HID_RPT_2_SIZE_LSB,
+/*  wDescriptorLength (MSB)                */ USBFS_HID_RPT_2_SIZE_MSB,
 /*********************************************************************
 * Endpoint Descriptor
 *********************************************************************/
@@ -187,13 +187,41 @@ const uint8 CYCODE USBFS_SN_STRING_DESCRIPTOR[10] = {
 };
 
 /*********************************************************************
-* HID Report Descriptor: Generic HID
+* HID Report Descriptor: Generic HID - Vendor FF00
 *********************************************************************/
-const uint8 CYCODE USBFS_HIDREPORT_DESCRIPTOR1[40u] = {
+const uint8 CYCODE USBFS_HIDREPORT_DESCRIPTOR1[41u] = {
 /*  Descriptor Size (Not part of descriptor)*/ USBFS_HID_RPT_1_SIZE_LSB,
 USBFS_HID_RPT_1_SIZE_MSB,
-/* USAGE_PAGE                              */ 0x05u, 0x01u, 
+/* USAGE_PAGE                              */ 0x06u, 0x00u, 0xFFu, 
 /* USAGE                                   */ 0x09u, 0x00u, 
+/* COLLECTION                              */ 0xA1u, 0x00u, 
+/* USAGE                                   */ 0x09u, 0x00u, 
+/* COLLECTION                              */ 0xA1u, 0x00u, 
+/* USAGE                                   */ 0x09u, 0x00u, 
+/* LOGICAL_MINIMUM                         */ 0x15u, 0x00u, 
+/* LOGICAL_MAXIMUM                         */ 0x25u, 0xFFu, 
+/* REPORT_SIZE                             */ 0x75u, 0x08u, 
+/* REPORT_COUNT                            */ 0x95u, 0x40u, 
+/* OUTPUT                                  */ 0x91u, 0x02u, 
+/* USAGE                                   */ 0x09u, 0x00u, 
+/* LOGICAL_MINIMUM                         */ 0x15u, 0x00u, 
+/* LOGICAL_MAXIMUM                         */ 0x25u, 0xFFu, 
+/* REPORT_SIZE                             */ 0x75u, 0x08u, 
+/* REPORT_COUNT                            */ 0x95u, 0x40u, 
+/* INPUT                                   */ 0x81u, 0x02u, 
+/* END_COLLECTION                          */ 0xC0u, 
+/* END_COLLECTION                          */ 0xC0u, 
+/*********************************************************************/
+/* End of the HID Report Descriptor        */ 0x00u, 0x00u};
+/*********************************************************************/
+/*********************************************************************
+* HID Report Descriptor: Generic HID - Vendor FF01
+*********************************************************************/
+const uint8 CYCODE USBFS_HIDREPORT_DESCRIPTOR2[41u] = {
+/*  Descriptor Size (Not part of descriptor)*/ USBFS_HID_RPT_2_SIZE_LSB,
+USBFS_HID_RPT_2_SIZE_MSB,
+/* USAGE_PAGE                              */ 0x06u, 0x01u, 0xFFu, 
+/* USAGE                                   */ 0x09u, 0x01u, 
 /* COLLECTION                              */ 0xA1u, 0x00u, 
 /* USAGE                                   */ 0x09u, 0x00u, 
 /* COLLECTION                              */ 0xA1u, 0x00u, 
@@ -305,7 +333,7 @@ const T_USBFS_LUT CYCODE USBFS_DEVICE0_CONFIGURATION0_INTERFACE1_ALTERNATE0_HID_
     {0x00u,     &USBFS_DEVICE0_CONFIGURATION0_INTERFACE1_ALTERNATE0_HID_IN_RPT_TABLE},
     {0x00u,     &USBFS_DEVICE0_CONFIGURATION0_INTERFACE1_ALTERNATE0_HID_OUT_RPT_TABLE},
     {0x00u,    NULL},
-    {0x01u,     (const void *)&USBFS_HIDREPORT_DESCRIPTOR1[0]},
+    {0x01u,     (const void *)&USBFS_HIDREPORT_DESCRIPTOR2[0]},
     {0x01u,     (const void *)&USBFS_DEVICE0_CONFIGURATION0_DESCR[50]}
 };
 #endif /* USER_DEFINE_USBFS_DEVICE0_CONFIGURATION0_INTERFACE1_ALTERNATE0_HID_HID_RPT_STORAGE */

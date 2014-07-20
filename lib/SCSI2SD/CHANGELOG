@@ -1,3 +1,11 @@
+20140718		3.5.2
+	- Fix blank SCSI ID in scsi2sd-config output.
+
+20140717		3.5.1
+	- Allow building utilities on older Linux distros
+	- Resolve missing DLL issues for the Windows utilities
+	- Fix scsi2sd-config crash on Mac.
+
 20140713		3.5
 	- Fixed several performance issues. Transfer rates up to 2.5MB/s are now
 	possible.

@@ -38,12 +38,14 @@ HID::HID(hid_device_info* hidInfo) :
 	// read to differentiate the interfaces.
 	while (hidInfo && !(myConfigHandle && myDebugHandle))
 	{
-		if (hidInfo->interface_number == CONFIG_INTERFACE)
+		if ((hidInfo->interface_number == CONFIG_INTERFACE) ||
+			(hidInfo->usage_page == 0xFF00))
 		{
 			myConfigHandle = hid_open_path(hidInfo->path);
 			hidInfo = hidInfo->next;
 		}
-		else if (hidInfo->interface_number == DEBUG_INTERFACE)
+		else if ((hidInfo->interface_number == DEBUG_INTERFACE) ||
+			(hidInfo->usage_page == 0xFF01))
 		{
 			myDebugHandle = hid_open_path(hidInfo->path);
 			readDebugData();
@@ -55,6 +57,8 @@ HID::HID(hid_device_info* hidInfo) :
 			// interfaces are enumerated in a random order. :-(
 			// We rely on the watchdog value of the debug interface
 			// changing on each read to differentiate the interfaces.
+			// Not necessary since firmware 3.5.2 as the usage_page can
+			// be used instead.
 			hid_device* dev = hid_open_path(hidInfo->path);
 			if (!dev)
 			{
@@ -226,7 +230,13 @@ HID::getFirmwareVersionStr() const
 		std::stringstream ver;
 		ver << std::hex <<
 			(myFirmwareVersion >> 8) <<
-			'.' << (myFirmwareVersion & 0xFF);
+			'.' << ((myFirmwareVersion & 0xF0) >> 4);
+
+		int rev = myFirmwareVersion & 0xF;
+		if (rev)
+		{
+			ver << "." << rev;
+		}
 		return ver.str();
 	}
 }

@@ -334,7 +334,7 @@ static wchar_t *dup_wcs(const wchar_t *s)
 static int make_path(IOHIDDeviceRef device, char *buf, size_t len)
 {
 	int res;
-	unsigned short vid, pid;
+	unsigned short vid, pid, usage_page;
 	char transport[32];
 	int32_t location;
 
@@ -350,11 +350,10 @@ static int make_path(IOHIDDeviceRef device, char *buf, size_t len)
 	location = get_location_id(device);
 	vid = get_vendor_id(device);
 	pid = get_product_id(device);
+	usage_page = get_int_property(device, CFSTR(kIOHIDPrimaryUsagePageKey));
 
-	int interval = get_int_property(device, CFSTR(kIOHIDReportIntervalKey));
-
-	res = snprintf(buf, len, "%s_%04hx_%04hx_%x_%d",
-                       transport, vid, pid, location, interval);
+	res = snprintf(buf, len, "%s_%04hx_%04hx_%x_%04hx",
+                       transport, vid, pid, location, usage_page);
 
 
 	buf[len-1] = '\0';

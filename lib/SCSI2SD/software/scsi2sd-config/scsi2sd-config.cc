@@ -114,7 +114,7 @@ struct __attribute__((packed)) ConfigPacket
 static void printConfig(ConfigPacket* packet)
 {
 	std::cout <<
-		"SCSI ID:\t\t\t" << packet->scsiId << "\n" <<
+		"SCSI ID:\t\t\t" << static_cast<int>(packet->scsiId) << "\n" <<
 		"Vendor:\t\t\t\t\"" << std::string(packet->vendor, 8) << "\"\n" <<
 		"Product ID:\t\t\t\"" << std::string(packet->prodId, 16) << "\"\n" <<
 		"Revision:\t\t\t\"" << std::string(packet->revision, 4) << "\"\n" <<
@@ -390,7 +390,11 @@ int main(int argc, char* argv[])
 		}
 		printf(" Done.\n");
 
+#ifdef _WIN32
+		Sleep(1000); //ms
+#else
 		sleep(1); // Wait for the data to be saved to eeprom
+#endif
 
 		// Clear outstanding stale data
 		scsi2sdHID->readConfig(

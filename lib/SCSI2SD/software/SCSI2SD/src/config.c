@@ -28,7 +28,7 @@
 
 // CYDEV_EEPROM_ROW_SIZE == 16.
 static const char magic[CYDEV_EEPROM_ROW_SIZE] = "codesrc_00000002";
-static const uint16_t FIRMWARE_VERSION = 0x0350;
+static const uint16_t FIRMWARE_VERSION = 0x0352;
 
 // Config shadow RAM (copy of EEPROM)
 static Config shadow =
