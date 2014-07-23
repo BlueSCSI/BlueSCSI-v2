@@ -225,7 +225,6 @@ static void process_Command()
 {
 	int group;
 	uint8 command;
-	uint8 lun;
 	uint8 control;
 
 	scsiEnterPhase(COMMAND);
@@ -239,7 +238,13 @@ static void process_Command()
 	scsiRead(scsiDev.cdb + 1, scsiDev.cdbLen - 1);
 
 	command = scsiDev.cdb[0];
-	lun = scsiDev.cdb[1] >> 5;
+
+	// Prefer LUN's set by IDENTIFY messages for newer hosts.
+	if (scsiDev.lun < 0)
+	{
+		scsiDev.lun = scsiDev.cdb[1] >> 5;
+	}
+
 	control = scsiDev.cdb[scsiDev.cdbLen - 1];
 
 	scsiDev.cmdCount++;
@@ -313,7 +318,7 @@ static void process_Command()
 
 		enter_Status(CHECK_CONDITION);
 	}
-	else if (lun)
+	else if (scsiDev.lun)
 	{
 		scsiDev.sense.code = ILLEGAL_REQUEST;
 		scsiDev.sense.asc = LOGICAL_UNIT_NOT_SUPPORTED;
@@ -424,6 +429,7 @@ static void scsiReset()
 	scsiDev.phase = BUS_FREE;
 	scsiDev.atnFlag = 0;
 	scsiDev.resetFlag = 0;
+	scsiDev.lun = -1;
 
 	if (scsiDev.unitAttention != POWER_ON_RESET)
 	{
@@ -458,6 +464,7 @@ static void enter_SelectionPhase()
 	scsiDev.dataLen = 0;
 	scsiDev.status = GOOD;
 	scsiDev.phase = SELECTION;
+	scsiDev.lun = -1;
 
 	transfer.blocks = 0;
 	transfer.currentBlock = 0;
@@ -626,15 +633,12 @@ static void process_MessageOut()
 		// IDENTIFY
 		// We don't disconnect, so ignore disconnect privilege.
 		if ((scsiDev.msgOut & 0x18) || // Reserved bits set.
-			(scsiDev.msgOut & 0x20)  || // We don't have any target routines!
-			(scsiDev.msgOut & 0x7) // We only support LUN 0!
-			)
+			(scsiDev.msgOut & 0x20))  // We don't have any target routines!
 		{
-			//scsiDev.sense.code = ILLEGAL_REQUEST;
-			//scsiDev.sense.asc = INVALID_BITS_IN_IDENTIFY_MESSAGE;
-			//enter_Status(CHECK_CONDITION);
 			messageReject();
 		}
+
+		scsiDev.lun = scsiDev.msgOut & 0x7;
 		//scsiDev.allowDisconnect = scsiDev.msgOut & 0x40;
 	}
 	else if (scsiDev.msgOut >= 0x20 && scsiDev.msgOut <= 0x2F)

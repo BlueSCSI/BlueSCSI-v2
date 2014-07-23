@@ -123,9 +123,8 @@ void scsiReceiveDiagnostic()
 	}
 
 	{
-		uint8 lun = scsiDev.cdb[1] >> 5;
 		// Set the first byte to indicate LUN presence.
-		if (lun) // We only support lun 0
+		if (scsiDev.lun) // We only support lun 0
 		{
 			scsiDev.data[0] = 0x7F;
 		}

@@ -95,7 +95,6 @@ void scsiInquiry()
 {
 	uint8 evpd = scsiDev.cdb[1] & 1; // enable vital product data.
 	uint8 pageCode = scsiDev.cdb[2];
-	uint8 lun = scsiDev.cdb[1] >> 5;
 	uint32 allocationLength = scsiDev.cdb[4];
 	if (allocationLength == 0) allocationLength = 256;
 	
@@ -180,7 +179,7 @@ void scsiInquiry()
 	}
 
 	// Set the first byte to indicate LUN presence.
-	if (lun) // We only support lun 0
+	if (scsiDev.lun) // We only support lun 0
 	{
 		scsiDev.data[0] = 0x7F;
 	}

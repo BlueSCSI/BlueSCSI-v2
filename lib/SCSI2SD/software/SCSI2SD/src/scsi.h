@@ -84,6 +84,7 @@ typedef struct
 
 	uint8 cdb[12]; // command descriptor block
 	uint8 cdbLen; // 6, 10, or 12 byte message.
+	int8 lun; // Target lun, set by IDENTIFY message.
 
 	// Only let the reserved initiator talk to us.
 	// A 3rd party may be sending the RESERVE/RELEASE commands
