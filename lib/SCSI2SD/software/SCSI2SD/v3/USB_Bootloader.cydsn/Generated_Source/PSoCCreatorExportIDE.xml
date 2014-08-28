@@ -18,7 +18,7 @@
       <Tool Name="postbuild" Command="" Options="" />
     </Toolchain>
   </Toolchains>
-  <Project Name="USB_Bootloader" Path="Z:\projects\SCSI2SD\git\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn" Version="4.0" Type="Bootloader">
+  <Project Name="USB_Bootloader" Path="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn" Version="4.0" Type="Bootloader">
     <CMSIS_SVD_File>USB_Bootloader.svd</CMSIS_SVD_File>
     <Datasheet />
     <LinkerFiles>
@@ -27,13 +27,13 @@
       <LinkerFile Toolchain="IAR EWARM">.\Generated_Source\PSoC5\Cm3Iar.icf</LinkerFile>
     </LinkerFiles>
     <Folders>
-      <Folder BuildType="BUILD" Path="Z:\projects\SCSI2SD\git\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn">
-        <Files Root="Z:\projects\SCSI2SD\git\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn">
+      <Folder BuildType="BUILD" Path="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn">
+        <Files Root="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn">
           <File BuildType="BUILD" Toolchain="">.\main.c</File>
         </Files>
       </Folder>
-      <Folder BuildType="STRICT" Path="Z:\projects\SCSI2SD\git\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn\Generated_Source\PSoC5">
-        <Files Root="Z:\projects\SCSI2SD\git\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn">
+      <Folder BuildType="STRICT" Path="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn\Generated_Source\PSoC5">
+        <Files Root="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn">
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\cyfitter_cfg.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\cyfitter_cfg.c</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\cymetadata.c</File>
@@ -111,41 +111,41 @@
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\libelf.dll</File>
         </Files>
       </Folder>
-      <Folder BuildType="STRICT" Path="Z:\projects\SCSI2SD\git\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn\Generated_Source\PSoC5\ARM_GCC">
-        <Files Root="Z:\projects\SCSI2SD\git\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn">
+      <Folder BuildType="STRICT" Path="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn\Generated_Source\PSoC5\ARM_GCC">
+        <Files Root="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn">
           <File BuildType="BUILD" Toolchain="ARM GCC">.\Generated_Source\PSoC5\ARM_GCC\CyComponentLibrary.a</File>
         </Files>
       </Folder>
-      <Folder BuildType="STRICT" Path="Z:\projects\SCSI2SD\git\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn\Generated_Source\PSoC5\ARM_Keil_MDK">
-        <Files Root="Z:\projects\SCSI2SD\git\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn">
+      <Folder BuildType="STRICT" Path="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn\Generated_Source\PSoC5\ARM_Keil_MDK">
+        <Files Root="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn">
           <File BuildType="BUILD" Toolchain="ARM Keil MDK">.\Generated_Source\PSoC5\ARM_Keil_MDK\CyComponentLibrary.a</File>
         </Files>
       </Folder>
-      <Folder BuildType="STRICT" Path="Z:\projects\SCSI2SD\git\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn\Generated_Source\PSoC5\IAR">
-        <Files Root="Z:\projects\SCSI2SD\git\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn">
+      <Folder BuildType="STRICT" Path="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn\Generated_Source\PSoC5\IAR">
+        <Files Root="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn">
           <File BuildType="BUILD" Toolchain="IAR">.\Generated_Source\PSoC5\IAR\CyComponentLibrary.a</File>
         </Files>
       </Folder>
       <Folder BuildType="EXCLUDE" Path=".\codegentemp">
-        <Files Root="Z:\projects\SCSI2SD\git\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn" />
+        <Files Root="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn" />
       </Folder>
       <Folder BuildType="EXCLUDE" Path=".\ARM_GCC_441">
-        <Files Root="Z:\projects\SCSI2SD\git\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn" />
+        <Files Root="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn" />
       </Folder>
       <Folder BuildType="EXCLUDE" Path=".\ARM_GCC_473">
-        <Files Root="Z:\projects\SCSI2SD\git\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn" />
+        <Files Root="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn" />
       </Folder>
       <Folder BuildType="EXCLUDE" Path=".\DP8051_Keil_951">
-        <Files Root="Z:\projects\SCSI2SD\git\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn" />
+        <Files Root="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn" />
       </Folder>
       <Folder BuildType="EXCLUDE" Path=".\DP8051">
-        <Files Root="Z:\projects\SCSI2SD\git\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn" />
+        <Files Root="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn" />
       </Folder>
       <Folder BuildType="EXCLUDE" Path=".\CortexM0">
-        <Files Root="Z:\projects\SCSI2SD\git\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn" />
+        <Files Root="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn" />
       </Folder>
       <Folder BuildType="EXCLUDE" Path=".\CortexM3">
-        <Files Root="Z:\projects\SCSI2SD\git\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn" />
+        <Files Root="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\USB_Bootloader.cydsn" />
       </Folder>
     </Folders>
   </Project>

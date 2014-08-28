@@ -37,6 +37,7 @@
 #include <SD_SCK.h>
 #include <SD_MOSI_aliases.h>
 #include <SD_MOSI.h>
+#include <SCSI_CLK.h>
 #include <SCSI_RST_aliases.h>
 #include <SCSI_RST.h>
 #include <SCSI_ATN_aliases.h>
@@ -67,6 +68,7 @@
 #include <Debug_Timer_Interrupt.h>
 #include <EXTLED_aliases.h>
 #include <EXTLED.h>
+#include <SCSI_Parity_Error.h>
 #include <USBFS_Dm_aliases.h>
 #include <USBFS_Dm.h>
 #include <USBFS_Dp_aliases.h>

@@ -70,6 +70,7 @@ Compatibility
     Apple IIgs using Apple II High Speed SCSI controller card (from v3.3)
     Symbolics Lisp Machine XL1200, using 1280 byte sectors (from v3.4)
     PDP-11/73 running RSX11M+ V4.6
+    Microvax 3100 Model 80 running VMS 7.3 (needs patch against v3.5.2 firmware) 
     Amiga 500+ with GVP A530
     Atari TT030 System V 
 
@@ -88,6 +89,7 @@ Samplers
     Casio FZ-20M
         Requires TERMPWR jumper. The manual shows the pin25 of the DB25 connector is "not connected".
         May require scsi2sd-config --apple flag 
+    Yamaha EX5R 
 
 Other
 
