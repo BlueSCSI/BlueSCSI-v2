@@ -39,10 +39,7 @@
 #include <SD_MOSI_aliases.h>
 #include <SD_MOSI.h>
 #include <SCSI_CLK.h>
-#include <SCSI_RST_aliases.h>
-#include <SCSI_RST.h>
-#include <SCSI_ATN_aliases.h>
-#include <SCSI_ATN.h>
+#include <SCSI_Noise_aliases.h>
 #include <SCSI_RST_ISR.h>
 #include <LED1_aliases.h>
 #include <LED1.h>
@@ -71,6 +68,7 @@
 #include <SCSI_RX_DMA_dma.h>
 #include <SCSI_RX_DMA_COMPLETE.h>
 #include <SCSI_Parity_Error.h>
+#include <SCSI_Filtered.h>
 #include <USBFS_Dm_aliases.h>
 #include <USBFS_Dm.h>
 #include <USBFS_Dp_aliases.h>

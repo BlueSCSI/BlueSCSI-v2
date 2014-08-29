@@ -30,15 +30,9 @@
 #define SCSI_In_2		SCSI_In__2__PC
 #define SCSI_In_3		SCSI_In__3__PC
 #define SCSI_In_4		SCSI_In__4__PC
-#define SCSI_In_5		SCSI_In__5__PC
-#define SCSI_In_6		SCSI_In__6__PC
-#define SCSI_In_7		SCSI_In__7__PC
 
 #define SCSI_In_DBP		SCSI_In__DBP__PC
-#define SCSI_In_BSY		SCSI_In__BSY__PC
-#define SCSI_In_ACK		SCSI_In__ACK__PC
 #define SCSI_In_MSG		SCSI_In__MSG__PC
-#define SCSI_In_SEL		SCSI_In__SEL__PC
 #define SCSI_In_CD		SCSI_In__CD__PC
 #define SCSI_In_REQ		SCSI_In__REQ__PC
 #define SCSI_In_IO		SCSI_In__IO__PC

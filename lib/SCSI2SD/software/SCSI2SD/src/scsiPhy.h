@@ -47,6 +47,19 @@ typedef enum
 #define SCSI_ReadPin(pin) \
 	(CyPins_ReadPin((pin)) == 0)
 
+// These signals go through a glitch filter - we do not access the pin
+// directly
+enum FilteredInputs
+{
+	SCSI_Filt_ATN = 0x01,
+	SCSI_Filt_BSY = 0x02,
+	SCSI_Filt_SEL = 0x04,
+	SCSI_Filt_RST = 0x08,
+	SCSI_Filt_ACK = 0x10		
+};
+#define SCSI_ReadFilt(filt) \
+	((SCSI_Filtered_Read() & (filt)) == 0)
+
 // Contains the odd-parity flag for a given 8-bit value.
 extern const uint8_t Lookup_OddParity[256];
 

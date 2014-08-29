@@ -473,8 +473,8 @@ static void enter_SelectionPhase()
 
 static void process_SelectionPhase()
 {
-	int sel = SCSI_ReadPin(SCSI_In_SEL);
-	int bsy = SCSI_ReadPin(SCSI_In_BSY);
+	int sel = SCSI_ReadFilt(SCSI_Filt_SEL);
+	int bsy = SCSI_ReadFilt(SCSI_Filt_BSY);
 
 	// Only read these pins AFTER SEL and BSY - we don't want to catch them
 	// during a transition period.
@@ -489,7 +489,7 @@ static void process_SelectionPhase()
 		// Do we enter MESSAGE OUT immediately ? SCSI 1 and 2 standards says
 		// move to MESSAGE OUT if ATN is true before we assert BSY.
 		// The initiator should assert ATN with SEL.
-		scsiDev.atnFlag = SCSI_ReadPin(SCSI_ATN_INT);
+		scsiDev.atnFlag = SCSI_ReadFilt(SCSI_Filt_ATN);
 		
 		// Unit attention breaks many older SCSI hosts. Disable it completely for
 		// SCSI-1 (and older) hosts, regardless of our configured setting.
@@ -512,7 +512,7 @@ static void process_SelectionPhase()
 		// Wait until the end of the selection phase.
 		while (!scsiDev.resetFlag)
 		{
-			if (!SCSI_ReadPin(SCSI_In_SEL))
+			if (!SCSI_ReadFilt(SCSI_Filt_SEL))
 			{
 				break;
 			}
@@ -562,7 +562,7 @@ static void process_MessageOut()
 		// Skip the remaining message bytes, and then start the MESSAGE_OUT
 		// phase again from the start. The initiator will re-send the
 		// same set of messages.
-		while (SCSI_ReadPin(SCSI_ATN_INT) && !scsiDev.resetFlag)
+		while (SCSI_ReadFilt(SCSI_Filt_ATN) && !scsiDev.resetFlag)
 		{
 			scsiReadByte();
 		}
@@ -673,7 +673,7 @@ static void process_MessageOut()
 	}
 
 	// Re-check the ATN flag in case it stays asserted.
-	scsiDev.atnFlag |= SCSI_ReadPin(SCSI_ATN_INT);
+	scsiDev.atnFlag |= SCSI_ReadFilt(SCSI_Filt_ATN);
 }
 
 void scsiPoll(void)
@@ -681,7 +681,7 @@ void scsiPoll(void)
 	if (scsiDev.resetFlag)
 	{
 		scsiReset();
-		if ((scsiDev.resetFlag = SCSI_ReadPin(SCSI_RST_INT)))
+		if ((scsiDev.resetFlag = SCSI_ReadFilt(SCSI_Filt_RST)))
 		{
 			// Still in reset phase. Do not try and process any commands.
 			return;
@@ -691,7 +691,7 @@ void scsiPoll(void)
 	switch (scsiDev.phase)
 	{
 	case BUS_FREE:
-		if (SCSI_ReadPin(SCSI_In_BSY))
+		if (SCSI_ReadFilt(SCSI_Filt_BSY))
 		{
 			scsiDev.phase = BUS_BUSY;
 		}
@@ -699,7 +699,7 @@ void scsiPoll(void)
 		// one initiator in the chain. Support this by moving
 		// straight to selection if SEL is asserted.
 		// ie. the initiator won't assert BSY and it's own ID before moving to selection.
-		else if (SCSI_ReadPin(SCSI_In_SEL))
+		else if (SCSI_ReadFilt(SCSI_Filt_SEL))
 		{
 			enter_SelectionPhase();
 		}
@@ -708,11 +708,11 @@ void scsiPoll(void)
 	case BUS_BUSY:
 		// Someone is using the bus. Perhaps they are trying to
 		// select us.
-		if (SCSI_ReadPin(SCSI_In_SEL))
+		if (SCSI_ReadFilt(SCSI_Filt_SEL))
 		{
 			enter_SelectionPhase();
 		}
-		else if (!SCSI_ReadPin(SCSI_In_BSY))
+		else if (!SCSI_ReadFilt(SCSI_Filt_BSY))
 		{
 			scsiDev.phase = BUS_FREE;
 		}
@@ -745,7 +745,7 @@ void scsiPoll(void)
 	break;
 
 	case DATA_IN:
-		scsiDev.atnFlag |= SCSI_ReadPin(SCSI_ATN_INT);
+		scsiDev.atnFlag |= SCSI_ReadFilt(SCSI_Filt_ATN);
 		if (scsiDev.atnFlag)
 		{
 			process_MessageOut();
@@ -757,7 +757,7 @@ void scsiPoll(void)
 	break;
 
 	case DATA_OUT:
-		scsiDev.atnFlag |= SCSI_ReadPin(SCSI_ATN_INT);
+		scsiDev.atnFlag |= SCSI_ReadFilt(SCSI_Filt_ATN);
 		if (scsiDev.atnFlag)
 		{
 			process_MessageOut();
@@ -769,7 +769,7 @@ void scsiPoll(void)
 	break;
 
 	case STATUS:
-		scsiDev.atnFlag |= SCSI_ReadPin(SCSI_ATN_INT);
+		scsiDev.atnFlag |= SCSI_ReadFilt(SCSI_Filt_ATN);
 		if (scsiDev.atnFlag)
 		{
 			process_MessageOut();
@@ -781,7 +781,7 @@ void scsiPoll(void)
 	break;
 
 	case MESSAGE_IN:
-		scsiDev.atnFlag |= SCSI_ReadPin(SCSI_ATN_INT);
+		scsiDev.atnFlag |= SCSI_ReadFilt(SCSI_Filt_ATN);
 		if (scsiDev.atnFlag)
 		{
 			process_MessageOut();

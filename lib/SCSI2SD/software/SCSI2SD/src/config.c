@@ -275,10 +275,10 @@ void debugPoll()
 		debugBuffer[14] = scsiDev.lastStatus;
 		debugBuffer[15] = scsiDev.lastSense;
 		debugBuffer[16] = scsiDev.phase;
-		debugBuffer[17] = SCSI_ReadPin(SCSI_In_BSY);
-		debugBuffer[18] = SCSI_ReadPin(SCSI_In_SEL);
-		debugBuffer[19] = SCSI_ReadPin(SCSI_ATN_INT);
-		debugBuffer[20] = SCSI_ReadPin(SCSI_RST_INT);
+		debugBuffer[17] = SCSI_ReadFilt(SCSI_Filt_BSY);
+		debugBuffer[18] = SCSI_ReadFilt(SCSI_Filt_SEL);
+		debugBuffer[19] = SCSI_ReadFilt(SCSI_Filt_ATN);
+		debugBuffer[20] = SCSI_ReadFilt(SCSI_Filt_RST);
 		debugBuffer[21] = scsiDev.rstCount;
 		debugBuffer[22] = scsiDev.selCount;
 		debugBuffer[23] = scsiDev.msgCount;

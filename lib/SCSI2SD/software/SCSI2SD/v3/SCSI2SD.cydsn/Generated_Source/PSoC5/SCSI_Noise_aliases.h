@@ -1,5 +1,5 @@
 /*******************************************************************************
-* File Name: SCSI_In.h  
+* File Name: SCSI_Noise.h  
 * Version 1.90
 *
 * Description:
@@ -14,8 +14,8 @@
 * the software package with which this file was provided.
 *******************************************************************************/
 
-#if !defined(CY_PINS_SCSI_In_ALIASES_H) /* Pins SCSI_In_ALIASES_H */
-#define CY_PINS_SCSI_In_ALIASES_H
+#if !defined(CY_PINS_SCSI_Noise_ALIASES_H) /* Pins SCSI_Noise_ALIASES_H */
+#define CY_PINS_SCSI_Noise_ALIASES_H
 
 #include "cytypes.h"
 #include "cyfitter.h"
@@ -25,18 +25,18 @@
 /***************************************
 *              Constants        
 ***************************************/
-#define SCSI_In_0		SCSI_In__0__PC
-#define SCSI_In_1		SCSI_In__1__PC
-#define SCSI_In_2		SCSI_In__2__PC
-#define SCSI_In_3		SCSI_In__3__PC
-#define SCSI_In_4		SCSI_In__4__PC
+#define SCSI_Noise_0		SCSI_Noise__0__PC
+#define SCSI_Noise_1		SCSI_Noise__1__PC
+#define SCSI_Noise_2		SCSI_Noise__2__PC
+#define SCSI_Noise_3		SCSI_Noise__3__PC
+#define SCSI_Noise_4		SCSI_Noise__4__PC
 
-#define SCSI_In_DBP		SCSI_In__DBP__PC
-#define SCSI_In_MSG		SCSI_In__MSG__PC
-#define SCSI_In_CD		SCSI_In__CD__PC
-#define SCSI_In_REQ		SCSI_In__REQ__PC
-#define SCSI_In_IO		SCSI_In__IO__PC
+#define SCSI_Noise_ATN		SCSI_Noise__ATN__PC
+#define SCSI_Noise_BSY		SCSI_Noise__BSY__PC
+#define SCSI_Noise_SEL		SCSI_Noise__SEL__PC
+#define SCSI_Noise_RST		SCSI_Noise__RST__PC
+#define SCSI_Noise_ACK		SCSI_Noise__ACK__PC
 
-#endif /* End Pins SCSI_In_ALIASES_H */
+#endif /* End Pins SCSI_Noise_ALIASES_H */
 
 /* [] END OF FILE */

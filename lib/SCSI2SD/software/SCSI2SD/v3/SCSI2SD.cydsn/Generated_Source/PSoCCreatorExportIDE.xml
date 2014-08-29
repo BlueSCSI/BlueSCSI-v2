@@ -130,12 +130,6 @@
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\SDCard_PM.c</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\SDCard_INT.c</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\SDCard_PVT.h</File>
-          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\SCSI_RST_aliases.h</File>
-          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\SCSI_RST.c</File>
-          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\SCSI_RST.h</File>
-          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\SCSI_ATN_aliases.h</File>
-          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\SCSI_ATN.c</File>
-          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\SCSI_ATN.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\SCSI_RST_ISR.c</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\SCSI_RST_ISR.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\cymetadata.c</File>
@@ -206,6 +200,9 @@
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\SCSI_RX_DMA_COMPLETE.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\SCSI_Parity_Error.c</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\SCSI_Parity_Error.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\SCSI_Noise_aliases.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\SCSI_Filtered.c</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\SCSI_Filtered.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\prebuild.bat</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\postbuild.bat</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\CyElfTool.exe</File>

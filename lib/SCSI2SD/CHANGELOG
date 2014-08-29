@@ -1,6 +1,6 @@
 201408XX		3.6
 	- Fix handling requests for LUNs other than 0 from SCSI-2 hosts.
-	- Handle glitches of the ACK line to improve stability and operate with
+	- Handle glitches of the scsi signals to improve stability and operate with
 	multiple devices on the SCSI bus.
 	- Re-add parity checking. This can be disabled using scsi2sd-config if
 	required.
