@@ -22,6 +22,7 @@
 #include "config.h"
 #include "disk.h"
 #include "sd.h"
+#include "time.h"
 
 #include <string.h>
 
@@ -56,7 +57,7 @@ static void doFormatUnitSkipData(int bytes)
 	int i;
 	for (i = 0; i < bytes; ++i)
 	{
-		scsiReadByte();	
+		scsiReadByte();
 	}
 }
 
@@ -80,7 +81,7 @@ static void doFormatUnitHeader(void)
 {
 	int IP = (scsiDev.data[1] & 0x08) ? 1 : 0;
 	int DSP = (scsiDev.data[1] & 0x04) ? 1 : 0;
-	
+
 	if (! DSP) // disable save parameters
 	{
 		configSave(); // Save the "MODE SELECT savable parameters"
@@ -520,15 +521,18 @@ void scsiDiskPoll()
 		transfer.currentBlock != transfer.blocks)
 	{
 		scsiEnterPhase(DATA_OUT);
-		
+
 		int totalSDSectors = transfer.blocks * SDSectorsPerSCSISector();
 		int buffers = sizeof(scsiDev.data) / SD_SECTOR_SIZE;
 		int prep = 0;
 		int i = 0;
+		int scsiDisconnected = 0;
+		volatile uint32_t lastActivityTime = getTime_ms();
 		int scsiActive = 0;
 		int sdActive = 0;
+		
 		while ((i < totalSDSectors) &&
-			(scsiDev.phase == DATA_OUT) &&
+			(scsiDev.phase == DATA_OUT) && // scsiDisconnect keeps our phase.
 			!scsiDev.resetFlag)
 		{
 			if ((sdActive == 1) && sdWriteSectorDMAPoll())
@@ -547,8 +551,12 @@ void scsiDiskPoll()
 			{
 				scsiActive = 0;
 				++prep;
+				lastActivityTime = getTime_ms();
 			}
-			else if ((scsiActive == 0) && ((prep - i) < buffers) && (prep < totalSDSectors))
+			else if ((scsiActive == 0) &&
+				((prep - i) < buffers) &&
+				(prep < totalSDSectors) &&
+				!scsiDisconnected)
 			{
 				int dmaBytes = SD_SECTOR_SIZE;
 				if (prep % SDSectorsPerSCSISector() == SDSectorsPerSCSISector() - 1)
@@ -559,11 +567,62 @@ void scsiDiskPoll()
 				scsiReadDMA(&scsiDev.data[SD_SECTOR_SIZE * (prep % buffers)], dmaBytes);
 				scsiActive = 1;
 			}
+			else if (
+				(scsiActive == 0) &&
+				!scsiDisconnected &&
+				scsiDev.discPriv &&
+				(diffTime_ms(lastActivityTime, getTime_ms()) >= 20) &&
+				(scsiDev.phase == DATA_OUT))
+			{
+				// We're transferring over the SCSI bus faster than the SD card
+				// can write.  There is no more buffer space once we've finished
+				// this SCSI transfer.
+				// The NCR 53C700 interface chips have a 250ms "byte-to-byte"
+				// timeout buffer. SD card writes are supposed to complete
+				// within 200ms, but sometimes they don't.
+				// The NCR 53C700 series is used on HP 9000 workstations.
+				scsiDisconnect();
+				scsiDisconnected = 1;
+				lastActivityTime = getTime_ms();
+			}
+			else if (scsiDisconnected &&
+				(
+					(prep == i) || // Buffers empty.
+					// Send some messages every 100ms so we don't timeout.
+					// At a minimum, a reselection involves an IDENTIFY message.
+					(diffTime_ms(lastActivityTime, getTime_ms()) >= 100)
+				))
+			{
+				int reconnected = scsiReconnect();
+				if (reconnected)
+				{
+					scsiDisconnected = 0;
+					lastActivityTime = getTime_ms(); // Don't disconnect immediately.
+				}
+				else if (diffTime_ms(lastActivityTime, getTime_ms()) >= 10000)
+				{
+					// Give up after 10 seconds of trying to reconnect.
+					scsiDev.resetFlag = 1;
+				}
+			}
 		}
-		
+
+		while (
+			!scsiDev.resetFlag &&
+			scsiDisconnected &&
+			(diffTime_ms(lastActivityTime, getTime_ms()) <= 10000))
+		{
+			scsiDisconnected = !scsiReconnect();
+		}
+		if (scsiDisconnected)
+		{
+			// Failed to reconnect
+			scsiDev.resetFlag = 1;
+		}
+
 		if (scsiDev.phase == DATA_OUT)
 		{
-			if (scsiDev.parityError)
+			if (scsiDev.parityError && config->enableParity && !scsiDev.compatMode)
 			{
 				scsiDev.sense.code = ABORTED_COMMAND;
 				scsiDev.sense.asc = SCSI_PARITY_ERROR;

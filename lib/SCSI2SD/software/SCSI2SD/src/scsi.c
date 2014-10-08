@@ -26,6 +26,7 @@
 #include "led.h"
 #include "mode.h"
 #include "disk.h"
+#include "time.h"
 
 #include <string.h>
 
@@ -197,7 +198,7 @@ static void process_DataOut()
 		scsiRead(scsiDev.data + scsiDev.dataPtr, len);
 		scsiDev.dataPtr += len;
 
-		if (scsiDev.parityError && config->enableParity)
+		if (scsiDev.parityError && config->enableParity && !scsiDev.compatMode)
 		{
 			scsiDev.sense.code = ABORTED_COMMAND;
 			scsiDev.sense.asc = SCSI_PARITY_ERROR;
@@ -255,7 +256,7 @@ static void process_Command()
 		memset(scsiDev.cdb, 0xff, sizeof(scsiDev.cdb));
 		return;
 	}
-	else if (scsiDev.parityError)
+	else if (scsiDev.parityError && config->enableParity && !scsiDev.compatMode)
 	{
 		scsiDev.sense.code = ABORTED_COMMAND;
 		scsiDev.sense.asc = SCSI_PARITY_ERROR;
@@ -464,6 +465,8 @@ static void enter_SelectionPhase()
 	scsiDev.status = GOOD;
 	scsiDev.phase = SELECTION;
 	scsiDev.lun = -1;
+	scsiDev.discPriv = 0;
+	scsiDev.compatMode = 0;
 
 	transfer.blocks = 0;
 	transfer.currentBlock = 0;
@@ -481,21 +484,26 @@ static void process_SelectionPhase()
 	uint8 mask = scsiReadDBxPins();
 	int maskBitCount = countBits(mask);
 	int goodParity = (Lookup_OddParity[mask] == SCSI_ReadPin(SCSI_In_DBP));
+	int atnFlag = SCSI_ReadFilt(SCSI_Filt_ATN);
 
 	if (!bsy && sel &&
 		(mask & scsiDev.scsiIdMask) &&
-		(goodParity || !config->enableParity) && (maskBitCount <= 2))
+		(goodParity || !config->enableParity || !atnFlag) &&
+		(maskBitCount <= 2))
 	{
 		// Do we enter MESSAGE OUT immediately ? SCSI 1 and 2 standards says
 		// move to MESSAGE OUT if ATN is true before we assert BSY.
 		// The initiator should assert ATN with SEL.
-		scsiDev.atnFlag = SCSI_ReadFilt(SCSI_Filt_ATN);
-		
-		// Unit attention breaks many older SCSI hosts. Disable it completely for
-		// SCSI-1 (and older) hosts, regardless of our configured setting.
+		scsiDev.atnFlag = atnFlag;
+
+		// Unit attention breaks many older SCSI hosts. Disable it completely
+		// for SCSI-1 (and older) hosts, regardless of our configured setting.
+		// Enable the compatability mode also as many SASI and SCSI1
+		// controllers don't generate parity bits.
 		if (!scsiDev.atnFlag)
 		{
 			scsiDev.unitAttention = 0;
+			scsiDev.compatMode = 1;
 		}
 
 		// We've been selected!
@@ -557,7 +565,7 @@ static void process_MessageOut()
 	scsiDev.msgOut = scsiReadByte();
 	scsiDev.msgCount++;
 
-	if (scsiDev.parityError)
+	if (scsiDev.parityError && config->enableParity && !scsiDev.compatMode)
 	{
 		// Skip the remaining message bytes, and then start the MESSAGE_OUT
 		// phase again from the start. The initiator will re-send the
@@ -630,7 +638,6 @@ static void process_MessageOut()
 	else if (scsiDev.msgOut & 0x80) // 0x80 -> 0xFF
 	{
 		// IDENTIFY
-		// We don't disconnect, so ignore disconnect privilege.
 		if ((scsiDev.msgOut & 0x18) || // Reserved bits set.
 			(scsiDev.msgOut & 0x20))  // We don't have any target routines!
 		{
@@ -638,7 +645,9 @@ static void process_MessageOut()
 		}
 
 		scsiDev.lun = scsiDev.msgOut & 0x7;
-		//scsiDev.allowDisconnect = scsiDev.msgOut & 0x40;
+		scsiDev.discPriv =
+			((scsiDev.msgOut & 0x40) && (scsiDev.initiatorId >= 0))
+				? 1 : 0;
 	}
 	else if (scsiDev.msgOut >= 0x20 && scsiDev.msgOut <= 0x2F)
 	{
@@ -809,5 +818,107 @@ void scsiInit()
 	scsiDev.reservedId = -1;
 	scsiDev.reserverId = -1;
 	scsiDev.unitAttention = POWER_ON_RESET;
+}
+
+void scsiDisconnect()
+{
+	scsiEnterPhase(MESSAGE_IN);
+	scsiWriteByte(0x02); // save data pointer
+	scsiWriteByte(0x04); // disconnect msg.
+
+	// For now, the caller is responsible for tracking the disconnected
+	// state, and calling scsiReconnect.
+	// Ideally the client would exit their loop and we'd implement this
+	// as part of scsiPoll
+	int phase = scsiDev.phase;
+	enter_BusFree();
+	scsiDev.phase = phase;
+}
+
+int scsiReconnect()
+{
+	int reconnected = 0;
+
+	int sel = SCSI_ReadFilt(SCSI_Filt_SEL);
+	int bsy = SCSI_ReadFilt(SCSI_Filt_BSY);
+	if (!sel && !bsy)
+	{
+		CyDelayUs(1);
+		sel = SCSI_ReadFilt(SCSI_Filt_SEL);
+		bsy = SCSI_ReadFilt(SCSI_Filt_BSY);
+	}
+
+	if (!sel && !bsy)
+	{
+		// Arbitrate.
+		ledOn();
+		SCSI_Out_Bits_Write(scsiDev.scsiIdMask);
+		SCSI_Out_Ctl_Write(1); // Write bits manually.
+		SCSI_SetPin(SCSI_Out_BSY);
+
+		CyDelayUs(3); // arbitrate delay. 2.4us.
+
+		uint8_t dbx = scsiReadDBxPins();
+		sel = SCSI_ReadFilt(SCSI_Filt_SEL);
+		if (sel || ((dbx ^ scsiDev.scsiIdMask) > scsiDev.scsiIdMask))
+		{
+			// Lost arbitration.
+			SCSI_Out_Ctl_Write(0);
+			SCSI_ClearPin(SCSI_Out_BSY);
+			ledOff();
+		}
+		else
+		{
+			// Won arbitration
+			SCSI_SetPin(SCSI_Out_SEL);
+			CyDelayUs(1); // Bus clear + Bus settle.
+
+			// Reselection phase
+			SCSI_CTL_PHASE_Write(__scsiphase_io);
+			SCSI_Out_Bits_Write(scsiDev.scsiIdMask | (1 << scsiDev.initiatorId));
+			scsiDeskewDelay(); // 2 deskew delays
+			scsiDeskewDelay(); // 2 deskew delays
+			SCSI_ClearPin(SCSI_Out_BSY);
+			CyDelayUs(1);  // Bus Settle Delay
+
+			uint32_t waitStart_ms = getTime_ms();
+			bsy = SCSI_ReadFilt(SCSI_Filt_BSY);
+			// Wait for initiator.
+			while (
+				!bsy &&
+				!scsiDev.resetFlag &&
+				(diffTime_ms(waitStart_ms, getTime_ms()) < 250))
+			{
+				bsy = SCSI_ReadFilt(SCSI_Filt_BSY);
+			}
+
+			if (bsy)
+			{
+				SCSI_SetPin(SCSI_Out_BSY);
+				scsiDeskewDelay(); // 2 deskew delays
+				scsiDeskewDelay(); // 2 deskew delays
+				SCSI_ClearPin(SCSI_Out_SEL);
+
+				// Prepare for the initial IDENTIFY message.
+				SCSI_Out_Ctl_Write(0);
+				scsiEnterPhase(MESSAGE_IN);
+
+				// Send identify command
+				scsiWriteByte(0x80);
+
+				scsiEnterPhase(scsiDev.phase);
+				reconnected = 1;
+			}
+			else
+			{
+				// reselect timeout.
+				SCSI_Out_Ctl_Write(0);
+				SCSI_ClearPin(SCSI_Out_SEL);
+				SCSI_CTL_PHASE_Write(0);
+				ledOff();
+			}
+		}
+	}
+	return reconnected;
 }
 

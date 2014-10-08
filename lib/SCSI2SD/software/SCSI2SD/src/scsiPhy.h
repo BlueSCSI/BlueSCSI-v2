@@ -60,6 +60,10 @@ enum FilteredInputs
 #define SCSI_ReadFilt(filt) \
 	((SCSI_Filtered_Read() & (filt)) == 0)
 
+// SCSI delays, as referenced to the cpu clock
+#define CPU_CLK_PERIOD_NS (1000000000U / BCLK__BUS_CLK__HZ)
+#define scsiDeskewDelay() CyDelayCycles((55 / CPU_CLK_PERIOD_NS) + 1)
+
 // Contains the odd-parity flag for a given 8-bit value.
 extern const uint8_t Lookup_OddParity[256];
 

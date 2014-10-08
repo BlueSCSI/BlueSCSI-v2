@@ -4,6 +4,7 @@
 	multiple devices on the SCSI bus.
 	- Re-add parity checking. This can be disabled using scsi2sd-config if
 	required.
+	- Added disconnect/reconnect support during SD card writes.
 
 20140718		3.5.2
 	- Fix blank SCSI ID in scsi2sd-config output.

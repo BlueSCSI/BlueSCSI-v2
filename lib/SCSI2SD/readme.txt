@@ -73,6 +73,9 @@ Compatibility
     Microvax 3100 Model 80 running VMS 7.3 (needs patch against v3.5.2 firmware) 
     Amiga 500+ with GVP A530
     Atari TT030 System V 
+    Atari MEGA STE
+        needs J3 TERMPWR jumper
+        1GB limit (--blocks=2048000)
 
 Samplers
 
@@ -93,5 +96,5 @@ Samplers
 
 Other
 
-    HP 16601A logic analyzer
+    HP 16601A, 16700A logic analyzers
     Fluke 9100 series 

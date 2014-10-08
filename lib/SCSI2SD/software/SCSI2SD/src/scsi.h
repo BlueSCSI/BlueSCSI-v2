@@ -85,6 +85,8 @@ typedef struct
 	uint8 cdb[12]; // command descriptor block
 	uint8 cdbLen; // 6, 10, or 12 byte message.
 	int8 lun; // Target lun, set by IDENTIFY message.
+	uint8 discPriv; // Disconnect priviledge.
+	uint8_t compatMode; // true for SCSI1 and SASI hosts.
 
 	// Only let the reserved initiator talk to us.
 	// A 3rd party may be sending the RESERVE/RELEASE commands
@@ -93,7 +95,7 @@ typedef struct
 	int reserverId; // 0 -> 7 if reserved. -1 if not reserved.
 
 	// SCSI_STATUS value.
-	// Change to SCSI_STATUS_CHECK_CONDITION when setting a SENSE value
+	// Change to CHECK_CONDITION when setting a SENSE value
 	uint8 status;
 
 	ScsiSense sense;
@@ -118,6 +120,7 @@ extern ScsiDevice scsiDev;
 
 void scsiInit(void);
 void scsiPoll(void);
-
+void scsiDisconnect(void);
+int scsiReconnect(void);
 
 #endif

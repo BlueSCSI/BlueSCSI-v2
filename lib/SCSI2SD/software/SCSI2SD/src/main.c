@@ -21,11 +21,13 @@
 #include "config.h"
 #include "disk.h"
 #include "led.h"
+#include "time.h"
 
 const char* Notice = "Copyright (C) 2014 Michael McMaster <michael@codesrc.com>";
 
 int main()
 {
+	timeInit();
 	ledInit();
 
 	// Enable global interrupts.

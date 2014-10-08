@@ -18,7 +18,7 @@
       <Tool Name="postbuild" Command="" Options="" />
     </Toolchain>
   </Toolchains>
-  <Project Name="SCSI2SD" Path="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn" Version="4.0" Type="Bootloadable">
+  <Project Name="SCSI2SD" Path="Z:\projects\SCSI2SD\git-timeout\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn" Version="4.0" Type="Bootloadable">
     <CMSIS_SVD_File>SCSI2SD.svd</CMSIS_SVD_File>
     <Datasheet />
     <LinkerFiles>
@@ -27,8 +27,8 @@
       <LinkerFile Toolchain="IAR EWARM">.\Generated_Source\PSoC5\Cm3Iar.icf</LinkerFile>
     </LinkerFiles>
     <Folders>
-      <Folder BuildType="BUILD" Path="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\src">
-        <Files Root="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn">
+      <Folder BuildType="BUILD" Path="Z:\projects\SCSI2SD\git-timeout\SCSI2SD\software\SCSI2SD\src">
+        <Files Root="Z:\projects\SCSI2SD\git-timeout\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn">
           <File BuildType="BUILD" Toolchain="">..\..\src\main.c</File>
           <File BuildType="BUILD" Toolchain="">..\..\src\diagnostic.c</File>
           <File BuildType="BUILD" Toolchain="">..\..\src\disk.c</File>
@@ -41,6 +41,7 @@
           <File BuildType="BUILD" Toolchain="">..\..\src\sd.c</File>
           <File BuildType="BUILD" Toolchain="">..\..\src\config.c</File>
           <File BuildType="BUILD" Toolchain="">..\..\src\led.c</File>
+          <File BuildType="BUILD" Toolchain="">..\..\src\time.c</File>
           <File BuildType="BUILD" Toolchain="">..\..\src\diagnostic.h</File>
           <File BuildType="BUILD" Toolchain="">..\..\src\disk.h</File>
           <File BuildType="BUILD" Toolchain="">..\..\src\geometry.h</File>
@@ -53,15 +54,16 @@
           <File BuildType="BUILD" Toolchain="">..\..\src\bits.h</File>
           <File BuildType="BUILD" Toolchain="">..\..\src\sd.h</File>
           <File BuildType="BUILD" Toolchain="">..\..\src\config.h</File>
+          <File BuildType="BUILD" Toolchain="">..\..\src\time.h</File>
         </Files>
       </Folder>
-      <Folder BuildType="BUILD" Path="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn">
-        <Files Root="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn">
+      <Folder BuildType="BUILD" Path="Z:\projects\SCSI2SD\git-timeout\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn">
+        <Files Root="Z:\projects\SCSI2SD\git-timeout\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn">
           <File BuildType="BUILD" Toolchain="">.\device.h</File>
         </Files>
       </Folder>
-      <Folder BuildType="STRICT" Path="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn\Generated_Source\PSoC5">
-        <Files Root="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn">
+      <Folder BuildType="STRICT" Path="Z:\projects\SCSI2SD\git-timeout\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn\Generated_Source\PSoC5">
+        <Files Root="Z:\projects\SCSI2SD\git-timeout\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn">
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\cyfitter_cfg.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\cyfitter_cfg.c</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\cydevice.h</File>
@@ -209,41 +211,41 @@
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\libelf.dll</File>
         </Files>
       </Folder>
-      <Folder BuildType="STRICT" Path="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn\Generated_Source\PSoC5\ARM_GCC">
-        <Files Root="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn">
+      <Folder BuildType="STRICT" Path="Z:\projects\SCSI2SD\git-timeout\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn\Generated_Source\PSoC5\ARM_GCC">
+        <Files Root="Z:\projects\SCSI2SD\git-timeout\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn">
           <File BuildType="BUILD" Toolchain="ARM GCC">.\Generated_Source\PSoC5\ARM_GCC\CyComponentLibrary.a</File>
         </Files>
       </Folder>
-      <Folder BuildType="STRICT" Path="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn\Generated_Source\PSoC5\ARM_Keil_MDK">
-        <Files Root="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn">
+      <Folder BuildType="STRICT" Path="Z:\projects\SCSI2SD\git-timeout\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn\Generated_Source\PSoC5\ARM_Keil_MDK">
+        <Files Root="Z:\projects\SCSI2SD\git-timeout\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn">
           <File BuildType="BUILD" Toolchain="ARM Keil MDK">.\Generated_Source\PSoC5\ARM_Keil_MDK\CyComponentLibrary.a</File>
         </Files>
       </Folder>
-      <Folder BuildType="STRICT" Path="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn\Generated_Source\PSoC5\IAR">
-        <Files Root="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn">
+      <Folder BuildType="STRICT" Path="Z:\projects\SCSI2SD\git-timeout\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn\Generated_Source\PSoC5\IAR">
+        <Files Root="Z:\projects\SCSI2SD\git-timeout\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn">
           <File BuildType="BUILD" Toolchain="IAR">.\Generated_Source\PSoC5\IAR\CyComponentLibrary.a</File>
         </Files>
       </Folder>
       <Folder BuildType="EXCLUDE" Path=".\codegentemp">
-        <Files Root="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn" />
+        <Files Root="Z:\projects\SCSI2SD\git-timeout\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn" />
       </Folder>
       <Folder BuildType="EXCLUDE" Path=".\ARM_GCC_441">
-        <Files Root="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn" />
+        <Files Root="Z:\projects\SCSI2SD\git-timeout\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn" />
       </Folder>
       <Folder BuildType="EXCLUDE" Path=".\ARM_GCC_473">
-        <Files Root="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn" />
+        <Files Root="Z:\projects\SCSI2SD\git-timeout\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn" />
       </Folder>
       <Folder BuildType="EXCLUDE" Path=".\DP8051_Keil_951">
-        <Files Root="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn" />
+        <Files Root="Z:\projects\SCSI2SD\git-timeout\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn" />
       </Folder>
       <Folder BuildType="EXCLUDE" Path=".\DP8051">
-        <Files Root="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn" />
+        <Files Root="Z:\projects\SCSI2SD\git-timeout\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn" />
       </Folder>
       <Folder BuildType="EXCLUDE" Path=".\CortexM0">
-        <Files Root="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn" />
+        <Files Root="Z:\projects\SCSI2SD\git-timeout\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn" />
       </Folder>
       <Folder BuildType="EXCLUDE" Path=".\CortexM3">
-        <Files Root="Z:\projects\SCSI2SD\git-parity\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn" />
+        <Files Root="Z:\projects\SCSI2SD\git-timeout\SCSI2SD\software\SCSI2SD\v3\SCSI2SD.cydsn" />
       </Folder>
     </Folders>
   </Project>
