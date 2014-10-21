@@ -76,6 +76,10 @@ Compatibility
     Atari MEGA STE
         needs J3 TERMPWR jumper
         1GB limit (--blocks=2048000)
+    Sharp X68000
+        SASI models supported. See http://gamesx.com/wiki/doku.php?id=x68000:hard_drive_on_sasi_machine for information on building a custom cable.
+        needs J3 TERMPWR jumper
+        Set to SCSI ID 3.  ID0 will not work.
 
 Samplers
 
