@@ -21,6 +21,7 @@
 #include "disk.h"
 #include "sd.h"
 #include "led.h"
+#include "time.h"
 
 #include "scsiPhy.h"
 
@@ -111,7 +112,7 @@ static void sdSendCommand(uint8 cmd, uint32 param)
 	send[2] = param >> 16;
 	send[3] = param >> 8;
 	send[4] = param;
-	send[5] = 0;
+	send[5] = 1; // 7:1 CRC, 0: Stop bit.
 
 	for(cmd = 0; cmd < sizeof(send); cmd++)
 	{
@@ -187,12 +188,11 @@ static void
 dmaReadSector(uint8_t* outputBuffer)
 {
 	// Wait for a start-block token.
-	// Don't wait more than 100ms, which is the timeout recommended
-	// in the standard.
-	//100ms @ 64Hz = 6400000
-	int maxWait = 6400000;
+	// Don't wait more than 200ms.
+	// The standard recommends 100ms.
+	uint32_t start = getTime_ms();
 	uint8 token = sdSpiByte(0xFF);
-	while (token != 0xFE && (maxWait-- > 0))
+	while (token != 0xFE && (diffTime_ms(start, getTime_ms()) <= 200))
 	{
 		token = sdSpiByte(0xFF);
 	}
@@ -475,6 +475,8 @@ static int sendIfCond()
 
 	do
 	{
+		// 11:8 Host voltage. 1 = 2.7-3.6V
+		// 7:0 Echo bits. Ignore.
 		uint8 status = sdCRCCommandAndResponse(SD_SEND_IF_COND, 0x000001AA);
 
 		if (status == SD_R1_IDLE)
@@ -505,41 +507,50 @@ static int sendIfCond()
 
 static int sdOpCond()
 {
-	int retries = 50;
+	uint32_t start = getTime_ms();
 
 	uint8 status;
 	do
 	{
-		CyDelay(33); // Spec says to retry for 1 second.
-
 		sdCRCCommandAndResponse(SD_APP_CMD, 0);
 		// Host Capacity Support = 1 (SDHC/SDXC supported)
 		status = sdCRCCommandAndResponse(SD_APP_SEND_OP_COND, 0x40000000);
 
 		sdClearStatus();
-	} while ((status != 0) && (--retries > 0));
 
-	return retries > 0;
+	// Spec says to poll for 1 second.
+	} while ((status != 0) && (diffTime_ms(start, getTime_ms()) < 1000));
+
+	return status == 0;
 }
 
 static int sdReadOCR()
 {
-	uint8 buf[4];
-	int i;
+	uint32_t start = getTime_ms();
+	int complete;
+	uint8 status;
 	
-	uint8 status = sdCRCCommandAndResponse(SD_READ_OCR, 0);
-	if(status){goto bad;}
-
-	for (i = 0; i < 4; ++i)
+	do
 	{
-		buf[i] = sdSpiByte(0xFF);
-	}
+		uint8 buf[4];
+		int i;
 
-	sdDev.ccs = (buf[0] & 0x40) ? 1 : 0;
+		status = sdCRCCommandAndResponse(SD_READ_OCR, 0);
+		if(status) { break; }
 
-	return 1;
-bad:
-	return 0;
+		for (i = 0; i < 4; ++i)
+		{
+			buf[i] = sdSpiByte(0xFF);
+		}
+
+		sdDev.ccs = (buf[0] & 0x40) ? 1 : 0;
+		complete = (buf[0] & 0x80);
+
+	} while (!status &&
+		!complete &&
+		(diffTime_ms(start, getTime_ms()) < 1000));
+
+	return (status == 0) && complete;
 }
 
 static int sdReadCSD()
@@ -547,7 +558,7 @@ static int sdReadCSD()
 	uint8 startToken;
 	int maxWait, i;
 	uint8 buf[16];
-	
+
 	uint8 status = sdCRCCommandAndResponse(SD_SEND_CSD, 0);
 	if(status){goto bad;}
 
@@ -634,7 +645,7 @@ int sdInit()
 	int result = 0;
 	int i;
 	uint8 v;
-	
+
 	sdDev.version = 0;
 	sdDev.ccs = 0;
 	sdDev.capacity = 0;
@@ -666,9 +677,9 @@ int sdInit()
 	if(v != 1){goto bad;}
 
 	ledOn();
-	if (!sendIfCond()) goto bad; // Sets V1 or V2 flag
-	if (!sdOpCond()) goto bad;
-	if (!sdReadOCR()) goto bad;
+	if (!sendIfCond()) goto bad; // Sets V1 or V2 flag  CMD8
+	if (!sdOpCond()) goto bad; // ACMD41. Wait for init completes.
+	if (!sdReadOCR()) goto bad; // CMD58. Get CCS flag. Only valid after init.
 
 	// This command will be ignored if sdDev.ccs is set.
 	// SDHC and SDXC are always 512bytes.
