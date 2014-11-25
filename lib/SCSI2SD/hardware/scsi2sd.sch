@@ -499,7 +499,7 @@ C 47200 34900 1 0 1 gnd-1.sym
 T 47200 34900 5 10 0 0 0 6 1
 net=GND:1
 }
-N 67200 33600 69100 33600 4
+N 67200 33600 70000 33600 4
 N 32600 38300 33900 38300 4
 C 36500 46100 1 0 0 gnd-1.sym
 {
@@ -1383,15 +1383,15 @@ C 69100 28500 1 90 0 capacitor-1.sym
 T 68400 28700 5 10 0 0 90 0 1
 device=CAPACITOR
 T 68600 28700 5 10 1 1 90 0 1
-refdes=C13
+refdes=C14
 T 68200 28700 5 10 0 0 90 0 1
 symversion=0.1
 T 69100 28500 5 10 1 1 90 0 1
-value=10uF
+value=47uF
 T 69100 28500 5 10 0 1 90 0 1
 description=Ceramic decoupling cap
 T 69100 28500 5 10 0 0 0 0 1
-footprint=SMD_SIMPLE 80 50
+footprint=SMD_SIMPLE 120 60
 }
 N 68500 29400 68900 29400 4
 C 66600 28500 1 90 0 capacitor-1.sym
@@ -1446,35 +1446,15 @@ refdes=C7
 T 32700 37600 5 10 0 0 90 0 1
 symversion=0.1
 T 33600 37400 5 10 1 1 90 0 1
-value=10uF
+value=47uF
 T 33600 37400 5 10 0 2 90 0 1
 description=Ceramic decoupling cap
 T 33600 37400 5 10 0 0 0 0 1
-footprint=SMD_SIMPLE 80 50
+footprint=SMD_SIMPLE 120 60
 }
 C 33300 37100 1 0 0 gnd-1.sym
 {
 T 33300 37100 5 10 0 0 0 0 1
-net=GND:1
-}
-C 33500 34200 1 90 0 capacitor-1.sym
-{
-T 32800 34400 5 10 0 0 90 0 1
-device=CAPACITOR
-T 33200 34400 5 10 1 1 90 0 1
-refdes=C14
-T 32600 34400 5 10 0 0 90 0 1
-symversion=0.1
-T 33500 34200 5 10 1 1 90 0 1
-value=10uF
-T 33500 34200 5 10 0 2 90 0 1
-description=Ceramic decoupling cap
-T 33500 34200 5 10 0 0 0 0 1
-footprint=SMD_SIMPLE 80 50
-}
-C 33200 33900 1 0 0 gnd-1.sym
-{
-T 33200 33900 5 10 0 0 0 0 1
 net=GND:1
 }
 C 64800 39900 1 0 0 nc-right-1.sym
@@ -1955,11 +1935,11 @@ symversion=0.1
 T 36400 53200 5 10 0 1 90 0 1
 description=Ceramic decoupling cap
 T 36400 53200 5 10 0 0 0 0 1
-footprint=SMD_SIMPLE 80 50
+footprint=SMD_SIMPLE 120 60
 T 36100 53400 5 10 1 1 90 0 1
 refdes=C4
 T 36400 53200 5 10 1 1 90 0 1
-value=10uF
+value=47uF
 }
 C 36100 52900 1 0 0 gnd-1.sym
 {
@@ -2246,11 +2226,11 @@ symversion=0.1
 T 32900 43600 5 10 0 1 90 0 1
 description=Ceramic decoupling cap
 T 32900 43600 5 10 0 0 0 0 1
-footprint=SMD_SIMPLE 80 50
+footprint=SMD_SIMPLE 120 60
 T 32600 43800 5 10 1 1 90 0 1
 refdes=C1
 T 32900 43600 5 10 1 1 90 0 1
-value=10uF
+value=47uF
 }
 C 32600 45400 1 0 0 jumper-1.sym
 {
@@ -2649,3 +2629,19 @@ C 32600 33900 1 0 0 gnd-1.sym
 T 32600 33900 5 10 0 0 0 0 1
 net=GND:1
 }
+C 70200 32700 1 90 0 capacitor-1.sym
+{
+T 69500 32900 5 10 0 0 90 0 1
+device=CAPACITOR
+T 69700 32900 5 10 1 1 90 0 1
+refdes=C13
+T 69300 32900 5 10 0 0 90 0 1
+symversion=0.1
+T 70200 32700 5 10 1 1 90 0 1
+value=10uF
+T 70200 32700 5 10 0 1 90 0 1
+description=Ceramic decoupling cap
+T 70200 32700 5 10 0 0 0 0 1
+footprint=SMD_SIMPLE 80 50
+}
+C 69900 32400 1 0 0 gnd-1.sym

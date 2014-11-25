@@ -1,5 +1,9 @@
 # Pin name action command file
 
+# Start of element C13
+ChangePinName(C13, 2, 2)
+ChangePinName(C13, 1, 1)
+
 # Start of element C16
 ChangePinName(C16, 2, 2)
 ChangePinName(C16, 1, 1)
@@ -256,10 +260,6 @@ ChangePinName(D3, 2, anode)
 ChangePinName(F2, 2, 2)
 ChangePinName(F2, 1, 1)
 
-# Start of element C14
-ChangePinName(C14, 2, 2)
-ChangePinName(C14, 1, 1)
-
 # Start of element C7
 ChangePinName(C7, 2, 2)
 ChangePinName(C7, 1, 1)
@@ -278,9 +278,9 @@ ChangePinName(U2, 1, GND)
 ChangePinName(C12, 2, 2)
 ChangePinName(C12, 1, 1)
 
-# Start of element C13
-ChangePinName(C13, 2, 2)
-ChangePinName(C13, 1, 1)
+# Start of element C14
+ChangePinName(C14, 2, 2)
+ChangePinName(C14, 1, 1)
 
 # Start of element C5
 ChangePinName(C5, 2, 2)
