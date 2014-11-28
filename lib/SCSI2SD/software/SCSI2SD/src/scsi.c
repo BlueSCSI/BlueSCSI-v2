@@ -197,8 +197,7 @@ static void process_DataOut()
 		scsiRead(scsiDev.data + scsiDev.dataPtr, len);
 		scsiDev.dataPtr += len;
 
-		// TODO re-implement parity checking
-		if (0 && scsiDev.parityError && config->enableParity)
+		if (scsiDev.parityError && config->enableParity)
 		{
 			scsiDev.sense.code = ABORTED_COMMAND;
 			scsiDev.sense.asc = SCSI_PARITY_ERROR;

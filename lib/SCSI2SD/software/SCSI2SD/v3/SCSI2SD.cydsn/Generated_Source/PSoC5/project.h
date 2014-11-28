@@ -70,6 +70,7 @@
 #include <SD_TX_DMA_COMPLETE.h>
 #include <SCSI_RX_DMA_dma.h>
 #include <SCSI_RX_DMA_COMPLETE.h>
+#include <SCSI_Parity_Error.h>
 #include <USBFS_Dm_aliases.h>
 #include <USBFS_Dm.h>
 #include <USBFS_Dp_aliases.h>

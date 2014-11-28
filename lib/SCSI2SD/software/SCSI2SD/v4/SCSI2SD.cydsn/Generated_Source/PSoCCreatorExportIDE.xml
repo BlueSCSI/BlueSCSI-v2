@@ -6,14 +6,14 @@
     <Toolchain Name="ARM GCC" Selected="True">
       <Tool Name="prebuild" Command="" Options="" />
       <Tool Name="assembler" Command="arm-none-eabi-as.exe" Options="-I. -I./Generated_Source/PSoC5 -mcpu=cortex-m3 -mthumb -g -alh=${OutputDir}/${CompileFile}.lst " />
-      <Tool Name="compiler" Command="arm-none-eabi-gcc.exe" Options="-I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -Wall -g -D NDEBUG -Wa,-alh=${OutputDir}\${CompileFile}.lst -Os -ffunction-sections " />
+      <Tool Name="compiler" Command="arm-none-eabi-gcc.exe" Options="-I. -I./Generated_Source/PSoC5 -Wno-main -mcpu=cortex-m3 -mthumb -I ..\..\..\include -Wall -g -D DEBUG -Wa,-alh=${OutputDir}\${CompileFile}.lst -ffunction-sections " />
       <Tool Name="linker" Command="arm-none-eabi-gcc.exe" Options="-mthumb -march=armv7-m -mfix-cortex-m3-ldrd -T .\Generated_Source\PSoC5\cm3gcc.ld -g -Wl,-Map,${OutputDir}\${ProjectShortName}.map -specs=nano.specs -Wl,--gc-sections " />
       <Tool Name="postbuild" Command="" Options="" />
     </Toolchain>
     <Toolchain Name="ARM Keil MDK" Selected="False">
       <Tool Name="prebuild" Command="" Options="" />
       <Tool Name="assembler" Command="armasm.exe" Options="-i. -iGenerated_Source/PSoC5 --diag_style=gnu --thumb --cpu=Cortex-M3 -g --list=${OutputDir}/${CompileFile}.lst " />
-      <Tool Name="compiler" Command="armcc.exe" Options="-I. -I./Generated_Source/PSoC5 --diag_suppress=951 --diag_style=gnu --cpu=Cortex-M3 -g -D NDEBUG --signed_chars --list -Ospace --split_sections " />
+      <Tool Name="compiler" Command="armcc.exe" Options="-I. -I./Generated_Source/PSoC5 --diag_suppress=951 --diag_style=gnu --cpu=Cortex-M3 -g -D DEBUG --signed_chars --list -O0 --split_sections " />
       <Tool Name="linker" Command="armlink.exe" Options="--diag_style=gnu --no_startup --cpu=Cortex-M3 --scatter .\Generated_Source\PSoC5\Cm3RealView.scat --map --list ${OutputDir}\${ProjectShortName}.map " />
       <Tool Name="postbuild" Command="" Options="" />
     </Toolchain>
@@ -41,6 +41,7 @@
           <File BuildType="BUILD" Toolchain="">..\..\src\sd.c</File>
           <File BuildType="BUILD" Toolchain="">..\..\src\config.c</File>
           <File BuildType="BUILD" Toolchain="">..\..\src\led.c</File>
+          <File BuildType="BUILD" Toolchain="">..\..\src\hidpacket.c</File>
           <File BuildType="BUILD" Toolchain="">..\..\src\diagnostic.h</File>
           <File BuildType="BUILD" Toolchain="">..\..\src\disk.h</File>
           <File BuildType="BUILD" Toolchain="">..\..\src\geometry.h</File>
@@ -199,6 +200,10 @@
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\EXTLED_aliases.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\EXTLED.c</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\EXTLED.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\SCSI_Parity_Error.c</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\SCSI_Parity_Error.h</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\SCSI_CLK.c</File>
+          <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\SCSI_CLK.h</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\prebuild.bat</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\postbuild.bat</File>
           <File BuildType="BUILD" Toolchain="">.\Generated_Source\PSoC5\CyElfTool.exe</File>

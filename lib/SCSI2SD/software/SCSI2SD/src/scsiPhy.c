@@ -86,8 +86,9 @@ scsiReadByte(void)
 
 	while (scsiPhyRxFifoEmpty() && !scsiDev.resetFlag) {}
 	uint8_t val = scsiPhyRx();
+	scsiDev.parityError = scsiDev.parityError || SCSI_Parity_Error_Read();
 
-	while (SCSI_ReadPin(SCSI_In_ACK) && !scsiDev.resetFlag) {}
+	while (!(scsiPhyStatus() & SCSI_PHY_TX_COMPLETE) && !scsiDev.resetFlag) {}
 
 	return val;
 }
@@ -113,7 +114,8 @@ scsiReadPIO(uint8* data, uint32 count)
 			++i;
 		}
 	}
-	while (SCSI_ReadPin(SCSI_In_ACK) && !scsiDev.resetFlag) {}
+	scsiDev.parityError = scsiDev.parityError || SCSI_Parity_Error_Read();
+	while (!(scsiPhyStatus() & SCSI_PHY_TX_COMPLETE) && !scsiDev.resetFlag) {}
 }
 
 static void
@@ -182,7 +184,7 @@ scsiReadDMAPoll()
 		if (dmaSentCount == dmaTotalCount)
 		{
 			dmaInProgress = 0;
-			while (SCSI_ReadPin(SCSI_In_ACK) && !scsiDev.resetFlag) {}
+			scsiDev.parityError = scsiDev.parityError || SCSI_Parity_Error_Read();
 			return 1;
 		}
 		else
@@ -224,8 +226,6 @@ scsiWriteByte(uint8 value)
 
 	while (!(scsiPhyStatus() & SCSI_PHY_TX_COMPLETE) && !scsiDev.resetFlag) {}
 	scsiPhyRxFifoClear();
-
-	while (SCSI_ReadPin(SCSI_In_ACK) && !scsiDev.resetFlag) {}
 }
 
 static void
@@ -271,6 +271,7 @@ doTxSingleDMA(uint8* data, uint32 count)
 	CyDmaClearPendingDrq(scsiDmaTxChan);
 
 	txDMAComplete = 0;
+	rxDMAComplete = 1;
 
 	CyDmaChEnable(scsiDmaTxChan, 1);
 }
@@ -296,7 +297,6 @@ scsiWriteDMAPoll()
 		{
 			scsiPhyRxFifoClear();
 			dmaInProgress = 0;
-			while (SCSI_ReadPin(SCSI_In_ACK) && !scsiDev.resetFlag) {}
 			return 1;
 		}
 		else
@@ -383,6 +383,8 @@ void scsiPhyReset()
 	// Allow the FIFOs to fill up again.
 	SCSI_ClearPin(SCSI_Out_RST);
 	scsiTarget_AUX_CTL = scsiTarget_AUX_CTL & ~(0x03);
+
+	SCSI_Parity_Error_Read(); // clear sticky bits
 }
 
 static void scsiPhyInitDMA()
@@ -397,7 +399,7 @@ static void scsiPhyInitDMA()
 				HI16(CYDEV_PERIPH_BASE),
 				HI16(CYDEV_SRAM_BASE)
 				);
-			
+
 		scsiDmaTxChan =
 			SCSI_TX_DMA_DmaInitialize(
 				1, // Bytes per burst
@@ -411,7 +413,7 @@ static void scsiPhyInitDMA()
 
 		scsiDmaRxTd[0] = CyDmaTdAllocate();
 		scsiDmaTxTd[0] = CyDmaTdAllocate();
-		
+
 		SCSI_RX_DMA_COMPLETE_StartEx(scsiRxCompleteISR);
 		SCSI_TX_DMA_COMPLETE_StartEx(scsiTxCompleteISR);
 	}

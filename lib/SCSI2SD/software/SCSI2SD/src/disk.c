@@ -563,6 +563,12 @@ void scsiDiskPoll()
 		
 		if (scsiDev.phase == DATA_OUT)
 		{
+			if (scsiDev.parityError)
+			{
+				scsiDev.sense.code = ABORTED_COMMAND;
+				scsiDev.sense.asc = SCSI_PARITY_ERROR;
+				scsiDev.status = CHECK_CONDITION;;
+			}
 			scsiDev.phase = STATUS;
 		}
 		scsiDiskReset();

@@ -25,11 +25,13 @@ module scsiTarget (
 	output  REQ, // Active High, connected to SCSI bus via inverter
 	input   nACK, // Active LOW, connected directly to SCSI bus.
 	input  [7:0] nDBx_in, // Active LOW, connected directly to SCSI bus.
+	input  nDBP, // Active LOW, connected directly to SCSI bus
 	input   IO, // Active High, set by CPU via status register.
 	input   nRST, // Active LOW, connected directly to SCSI bus.
 	input   clk,
 	output tx_intr,
-	output rx_intr
+	output rx_intr,
+	output parityErr
 );
 
 
@@ -54,6 +56,28 @@ cy_psoc3_udb_clock_enable_v1_0 #(.sync_mode(`TRUE)) ClkSync
 /////////////////////////////////////////////////////////////////////////////
 localparam IO_WRITE = 1'b1;
 localparam IO_READ = 1'b0;
+
+
+/////////////////////////////////////////////////////////////////////////////
+// Input filter
+/////////////////////////////////////////////////////////////////////////////
+// Do not respond to glitches in the ACK signal. This will cause us to
+// transfer rubbish data, or too many bytes, and generally leads to
+// hanging the SCSI bus. Reflected signals can cause the ACK signal
+// to be dirty. We don't care so much about the others as we don't
+// respond to them on the rising edge.
+// 4-stage shifter. Ass
+reg safeACK;
+reg[3:0] ackShift;
+always @(posedge op_clk) begin
+	if (ackShift[3:1] == 0) begin
+		safeACK <= 0;
+	end
+	else if (ackShift[3:1] == 1) begin
+		safeACK <= 1;
+	end
+	ackShift <= {ackShift[2:0], ~nACK};
+end
 
 /////////////////////////////////////////////////////////////////////////////
 // STATE MACHINE
@@ -125,14 +149,22 @@ wire[7:0] pi;
 // Parallel output from the selected SRCA value (A0 or A1) to the ALU.
 wire[7:0] po;
 
-// Set true to trigger storing A1 into F1.
-wire fifoStore;
+// Set true to trigger storing A1 into F1. Set while in STATE_RX
+reg fifoStore;
+
+// Set to true on detecting a parity input while reading
+reg parityErrReg;
+// Temp values in parity calcs. We need to do it in 2 steps to avoid
+// timing issues and running-out-of resources
+reg[2:0] genParity;
+
+reg REQReg;
 
 // Set Output Pins
-assign REQ = state[1] & state[2]; // STATE_READY & STATE_RX
+assign REQ = REQReg; // STATE_READY & STATE_RX
 assign DBx_out[7:0] = data;
 assign pi[7:0] = ~nDBx_in[7:0]; // Invert active low scsi bus
-assign fifoStore = (state == STATE_RX) ? 1'b1 : 1'b0;
+assign parityErr = parityErrReg;
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -152,7 +184,7 @@ wire f0_bus_stat;   // Tx FIFO not full
 wire f0_blk_stat;	// Tx FIFO empty
 wire f1_bus_stat;	// Rx FIFO not empty
 wire f1_blk_stat;	// Rx FIFO full
-wire txComplete = f0_blk_stat && (state == STATE_IDLE);
+wire txComplete = f0_blk_stat && (state == STATE_IDLE) && ~safeACK;
 cy_psoc3_status #(.cy_force_order(1), .cy_md_select(8'h00)) StatusReg
 (
     /* input          */  .clock(op_clk),
@@ -174,18 +206,27 @@ always @(posedge op_clk) begin
 			// and output FIFO is not full.
 			// Note that output FIFO is unused in TX mode.
 			if (!nRST) state <= STATE_IDLE;
-			else if (nACK & !f0_blk_stat)
+			else if (~safeACK & !f0_blk_stat  && ((IO == IO_WRITE) || !f1_blk_stat))
 				state <= STATE_FIFOLOAD;
 			else
 				state <= STATE_IDLE;
 
 			// Clear our output pins
 			data <= 8'b0;
+			
+			REQReg <= 1'b0;
+			fifoStore <= 1'b0;
+			parityErrReg <= 1'b0;
 		end
 
 		STATE_FIFOLOAD:
 			if (!nRST) state <= STATE_IDLE;
-			else state <= IO == IO_WRITE ? STATE_TX : STATE_READY;
+			else if (IO == IO_WRITE)
+				state <= STATE_TX;
+			else begin
+				state <= STATE_READY;
+				REQReg <= 1'b1;
+			end
 
 		STATE_TX:
 		begin
@@ -200,21 +241,33 @@ always @(posedge op_clk) begin
 
 		STATE_DESKEW:
 			if (!nRST) state <= STATE_IDLE;
-			else if(deskewComplete) state <= STATE_READY;
-			else state <= STATE_DESKEW;
+			else if(deskewComplete) begin
+				state <= STATE_READY;
+				REQReg <= 1'b1;
+			end else state <= STATE_DESKEW;
 
 		STATE_READY:
 			if (!nRST) state <= STATE_IDLE;
-			else if (~nACK && ((IO == IO_WRITE) || !f1_blk_stat)) state <= STATE_RX;
-			else state <= STATE_READY;
+			else if (safeACK) begin
+				state <= STATE_RX;
+				fifoStore <= 1'b1;
 
-		STATE_RX: // same code here as for the IDLE state, as we make
-			// a quick run back to the next byte if possible.
-			if (!nRST) state <= STATE_IDLE;
-			else if (nACK & !f0_blk_stat)
-				state <= STATE_FIFOLOAD;
-			else
-				state <= STATE_IDLE;
+				genParity[0] <= (~nDBP) ^ 1'b1 ^ ~nDBx_in[7] ^ ~nDBx_in[6];
+				genParity[1] <= ~nDBx_in[5] ^ ~nDBx_in[4] ^ ~nDBx_in[3];
+				genParity[2] <= ~nDBx_in[2] ^ ~nDBx_in[1] ^ ~nDBx_in[0];
+			end else state <= STATE_READY;
+
+		STATE_RX:
+		begin
+			state <= STATE_IDLE;
+			REQReg <= 1'b0;
+			fifoStore <= 1'b0;
+			parityErrReg <= 1'b0;
+			data <= 8'b0;
+			if (IO == IO_READ) begin
+				parityErrReg <= ^genParity[2:0];
+			end
+		end
 
 		default: state <= STATE_IDLE;
 	endcase
