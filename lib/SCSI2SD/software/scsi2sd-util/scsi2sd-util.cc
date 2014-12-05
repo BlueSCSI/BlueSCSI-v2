@@ -29,6 +29,8 @@
 #include <wx/windowptr.h>
 #include <wx/thread.h>
 
+#include <zipper.hh>
+
 #include "ConfigUtil.hh"
 #include "TargetPanel.hh"
 #include "SCSI2SD_Bootloader.hh"

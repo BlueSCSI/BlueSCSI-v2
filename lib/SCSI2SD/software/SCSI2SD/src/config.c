@@ -29,24 +29,7 @@
 
 #include <string.h>
 
-// CYDEV_EEPROM_ROW_SIZE == 16.
-static const char magic[CYDEV_EEPROM_ROW_SIZE] = "codesrc_00000002";
 static const uint16_t FIRMWARE_VERSION = 0x0360;
-
-// Config shadow RAM (copy of EEPROM)
-static Config shadow =
-{
-	0, // SCSI ID
-	" codesrc", // vendor  (68k Apple Drive Setup: Set to " SEAGATE")
-	"         SCSI2SD", //prodId (68k Apple Drive Setup: Set to "          ST225N")
-	" 3.6", // revision (68k Apple Drive Setup: Set to "1.0 ")
-	1, // enable parity
-	1, // enable unit attention,
-	0, // RESERVED
-	0, // Max sectors (0 == disabled)
-	512 // Sector size
-	// reserved bytes will be initialised to 0.
-};
 
 enum USB_ENDPOINTS
 {
@@ -67,92 +50,8 @@ static int usbInEpState;
 static int usbDebugEpState;
 static int usbReady;
 
-// Global
-Config* config = NULL;
-
-// The PSoC 5LP compile to little-endian format.
-static uint32_t ntohl(uint32_t val)
-{
-	return
-		((val & 0xFF) << 24) |
-		((val & 0xFF00) << 8) |
-		((val >> 8) & 0xFF00) |
-		((val >> 24) & 0xFF);
-}
-static uint16_t ntohs(uint16_t val)
-{
-	return
-		((val & 0xFF) << 8) |
-		((val >> 8) & 0xFF);
-}
-static uint32_t htonl(uint32_t val)
-{
-	return
-		((val & 0xFF) << 24) |
-		((val & 0xFF00) << 8) |
-		((val >> 8) & 0xFF00) |
-		((val >> 24) & 0xFF);
-}
-static uint16_t htons(uint16_t val)
-{
-	return
-		((val & 0xFF) << 8) |
-		((val >> 8) & 0xFF);
-}
-
-static void saveConfig()
-{
-	int shadowRows = (sizeof(shadow) / CYDEV_EEPROM_ROW_SIZE) + 1;
-	int row;
-	int status = CYRET_SUCCESS;
-
-	CySetTemp();
-	for (row = 0; (row < shadowRows) && (status == CYRET_SUCCESS); ++row)
-	{
-		CFG_EEPROM_Write(((uint8*)&shadow) + (row * CYDEV_EEPROM_ROW_SIZE), row);
-	}
-	if (status == CYRET_SUCCESS)
-	{
-		CFG_EEPROM_Write((uint8*)magic, row);
-	}
-}
-
 void configInit()
 {
-	int shadowRows, shadowBytes;
-	uint8* eeprom = (uint8*)CYDEV_EE_BASE;
-
-	// We could map cfgPtr directly into the EEPROM memory,
-	// but that would waste power. Copy it to RAM then turn off
-	// the EEPROM.
-	CFG_EEPROM_Start();
-	CyDelayUs(5); // 5us to start per datasheet.
-
-	// Check magic
-	shadowRows = (sizeof(shadow) / CYDEV_EEPROM_ROW_SIZE) + 1;
-	shadowBytes = CYDEV_EEPROM_ROW_SIZE * shadowRows;
-
-	if (memcmp(eeprom + shadowBytes, magic, sizeof(magic)))
-	{
-		// Initial state, invalid, or upgrade required.
-		if (!memcmp(eeprom + shadowBytes, magic, sizeof(magic) - 1) &&
-			((eeprom + shadowBytes)[sizeof(magic) - 2] == '1'))
-		{
-			// Upgrade from version 1.
-			memcpy(&shadow, eeprom, sizeof(shadow));
-			shadow.bytesPerSector = 512;
-		}
-
-		saveConfig();
-	}
-	else
-	{
-		memcpy(&shadow, eeprom, sizeof(shadow));
-	}
-
-	config = &shadow;
-	CFG_EEPROM_Stop();
-
 	// The USB block will be powered by an internal 3.3V regulator.
 	// The PSoC must be operating between 4.6V and 5V for the regulator
 	// to work.
@@ -353,10 +252,10 @@ void debugPoll()
 		hidBuffer[14] = scsiDev.lastStatus;
 		hidBuffer[15] = scsiDev.lastSense;
 		hidBuffer[16] = scsiDev.phase;
-		hidBuffer[17] = SCSI_ReadPin(SCSI_In_BSY);
-		hidBuffer[18] = SCSI_ReadPin(SCSI_In_SEL);
-		hidBuffer[19] = SCSI_ReadPin(SCSI_ATN_INT);
-		hidBuffer[20] = SCSI_ReadPin(SCSI_RST_INT);
+		hidBuffer[17] = SCSI_ReadFilt(SCSI_Filt_BSY);
+		hidBuffer[18] = SCSI_ReadFilt(SCSI_Filt_SEL);
+		hidBuffer[19] = SCSI_ReadFilt(SCSI_Filt_ATN);
+		hidBuffer[20] = SCSI_ReadFilt(SCSI_Filt_RST);
 		hidBuffer[21] = scsiDev.rstCount;
 		hidBuffer[22] = scsiDev.selCount;
 		hidBuffer[23] = scsiDev.msgCount;
@@ -403,8 +302,37 @@ void debugInit()
 // Public method for storing MODE SELECT results.
 void configSave()
 {
-	CFG_EEPROM_Start();
-	saveConfig(); // write to eeprom
-	CFG_EEPROM_Stop();
+// TODO REIMPLEMENT
+//	CFG_EEPROM_Start();
+//	saveConfig(); // write to eeprom
+//	CFG_EEPROM_Stop();
 }
+
+
+const TargetConfig* getConfigByIndex(int i)
+{
+	size_t row = SCSI_CONFIG_0_ROW + (i * SCSI_CONFIG_ROWS);
+	return (const TargetConfig*)
+		(
+			CY_FLASH_BASE +
+			(CY_FLASH_SIZEOF_ARRAY * (size_t) SCSI_CONFIG_ARRAY) +
+			(CY_FLASH_SIZEOF_ROW * row)
+			);
+}
+
+const TargetConfig* getConfigById(int scsiId)
+{
+	int i;
+	for (i = 0; i < MAX_SCSI_TARGETS; ++i)
+	{
+		const TargetConfig* tgt = getConfigByIndex(i);
+		if ((tgt->scsiId & CONFIG_TARGET_ID_BITS) == scsiId)
+		{
+			return tgt;
+		}
+	}
+	return NULL;
+
+}
+
 

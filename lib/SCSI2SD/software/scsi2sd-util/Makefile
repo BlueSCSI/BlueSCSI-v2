@@ -1,8 +1,9 @@
 VPATH=cybootloaderutils ../SCSI2SD/src
 
-CPPFLAGS = -I cybootloaderutils -I hidapi/hidapi -I wxWidgets/include -I ../include
+CPPFLAGS = -I cybootloaderutils -I hidapi/hidapi -I wxWidgets/include -I ../include -Ilibzipper-1.0.3 -I$(BUILD)/zlib
 CFLAGS += -Wall -Wno-pointer-sign -O2 -g
 CXXFLAGS += -Wall -O2 -g -std=c++0x
+LDFLAGS += -L$(BUILD)/libzipper/.libs -lzipper -L$(BUILD)/zlib -lz
 
 TARGET ?= $(shell uname -s)
 ifeq ($(TARGET),Win32)
@@ -65,12 +66,33 @@ OBJ = \
 	$(BUILD)/hidpacket.o \
 
 
+$(OBJ): $(BUILD)/zlib/buildstamp
+$(BUILD)/zlib/buildstamp:
+	mkdir -p $(dir $@)
+	( \
+		cd $(dir $@) && \
+		cp -a $(CURDIR)/zlib-1.2.8/* . && \
+		./configure --static && \
+		$(MAKE) \
+	) && \
+	touch $@
+
 $(OBJ): $(BUILD)/wx.buildstamp
-$(BUILD)/wx.buildstamp:
+$(BUILD)/wx.buildstamp: $(BUILD)/zlib/buildstamp
 	mkdir -p $(dir $@)
 	( \
 		cd $(BUILD) && \
-		$(CURDIR)/wxWidgets/configure $(WX_CONFIG) && \
+		$(CURDIR)/wxWidgets/configure $(WX_CONFIG) CPPFLAGS=-I$(BUILD)/zlib LDFLAGS=-I$(BUILD)/zlib && \
+		$(MAKE) \
+	) && \
+	touch $@
+
+$(OBJ): $(BUILD)/libzipper/buildstamp
+$(BUILD)/libzipper/buildstamp:
+	mkdir -p $(dir $@)
+	( \
+		cd $(dir $@) && \
+		$(CURDIR)/libzipper-1.0.3/configure --disable-shared --enable-static && \
 		$(MAKE) \
 	) && \
 	touch $@
@@ -88,5 +110,5 @@ $(BUILD)/scsi2sd-util$(EXE): $(OBJ)
 	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) `$(BUILD)/wx-config --libs` -o $@
 
 clean:
-	rm $(BUILD)/scsi2sd-util$(EXE) $(OBJ)
+	rm $(BUILD)/scsi2sd-util$(EXE) $(OBJ) $(BUILD)/libzipper/buildstamp
 

@@ -74,6 +74,7 @@ private:
 	{
 		ID_enableCtrl = wxID_HIGHEST + 1,
 		ID_scsiIdCtrl,
+		ID_deviceTypeCtrl,
 		ID_parityCtrl,
 		ID_unitAttCtrl,
 		ID_startSDSectorCtrl,
@@ -102,6 +103,8 @@ private:
 	wxCheckBox* myEnableCtrl;
 	wxSpinCtrl* myScsiIdCtrl;
 	wxStaticText* myScsiIdMsg;
+
+	wxChoice* myDeviceTypeCtrl;
 
 	wxCheckBox* myParityCtrl;
 	wxCheckBox* myUnitAttCtrl;

@@ -51,8 +51,8 @@ void scsiSendDiagnostic()
 			// Nowhere to store this data!
 			// Shouldn't happen - our buffer should be many magnitudes larger
 			// than the required size for diagnostic parameters.
-			scsiDev.sense.code = ILLEGAL_REQUEST;
-			scsiDev.sense.asc = INVALID_FIELD_IN_CDB;
+			scsiDev.target->sense.code = ILLEGAL_REQUEST;
+			scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
 			scsiDev.status = CHECK_CONDITION;
 			scsiDev.phase = STATUS;
 		}
@@ -95,9 +95,10 @@ void scsiReceiveDiagnostic()
 		// Convert each supplied address back to a simple
 		// 64bit linear address, then convert back again.
 		uint64 fromByteAddr =
-			scsiByteAddress(suppliedFmt, &scsiDev.data[6]);
+			scsiByteAddress(scsiDev.target->cfg, suppliedFmt, &scsiDev.data[6]);
 
-		scsiSaveByteAddress(translateFmt, fromByteAddr, &scsiDev.data[6]);
+		scsiSaveByteAddress(
+			scsiDev.target->cfg, translateFmt, fromByteAddr, &scsiDev.data[6]);
 
 		// Fill out the rest of the response.
 		// (Clear out any optional bits).
@@ -111,8 +112,8 @@ void scsiReceiveDiagnostic()
 	{
 		// error.
 		scsiDev.status = CHECK_CONDITION;
-		scsiDev.sense.code = ILLEGAL_REQUEST;
-		scsiDev.sense.asc = INVALID_FIELD_IN_CDB;
+		scsiDev.target->sense.code = ILLEGAL_REQUEST;
+		scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
 		scsiDev.phase = STATUS;
 	}
 

@@ -18,28 +18,14 @@
 #define Config_H
 
 #include "device.h"
-
-typedef struct
-{
-	uint8 scsiId;
-	char vendor[8];
-	char prodId[16];
-	char revision[4];
-	uint8 enableParity;
-	uint8 enableUnitAttention;
-	uint8 reserved1; // Unused. Ensures maxBlocks is aligned.
-	uint32 maxSectors;
-	uint16 bytesPerSector;
-
-	// Pad to 64 bytes, which is what we can fit into a USB HID packet.
-	char reserved[26]; 
-} Config;
-
-extern Config* config;
+#include "scsi2sd.h"
 
 void configInit(void);
 void debugInit(void);
 void configPoll(void);
 void configSave(void);
+
+const TargetConfig* getConfigByIndex(int index);
+const TargetConfig* getConfigById(int scsiId);
 
 #endif

@@ -69,7 +69,7 @@ TargetPanel::TargetPanel(wxWindow* parent, const TargetConfig& initialConfig) :
 	myNumSectorValidator(new wxIntegerValidator<uint32_t>),
 	mySizeValidator(new wxFloatingPointValidator<float>(2))
 {
-	wxFlexGridSizer *fgs = new wxFlexGridSizer(12, 3, 9, 25);
+	wxFlexGridSizer *fgs = new wxFlexGridSizer(13, 3, 9, 25);
 
 	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("")));
 	myEnableCtrl =
@@ -99,6 +99,22 @@ TargetPanel::TargetPanel(wxWindow* parent, const TargetConfig& initialConfig) :
 	myScsiIdMsg = new wxStaticText(this, wxID_ANY, wxT(""));
 	fgs->Add(myScsiIdMsg);
 	Bind(wxEVT_SPINCTRL, &TargetPanel::onInput<wxSpinEvent>, this, ID_scsiIdCtrl);
+
+	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("Device Type")));
+	wxString deviceTypes[] = {wxT("Hard Drive"), wxT("Removable"), wxT("CDROM")};
+	myDeviceTypeCtrl =
+		new wxChoice(
+			this,
+			ID_deviceTypeCtrl,
+			wxDefaultPosition,
+			wxDefaultSize,
+			sizeof(deviceTypes) / sizeof(wxString),
+			deviceTypes
+			);
+	myDeviceTypeCtrl->SetSelection(0);
+	fgs->Add(myDeviceTypeCtrl);
+	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("")));
+	Bind(wxEVT_CHOICE, &TargetPanel::onInput<wxCommandEvent>, this, ID_deviceTypeCtrl);
 
 	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("")));
 	myParityCtrl =
@@ -186,7 +202,7 @@ TargetPanel::TargetPanel(wxWindow* parent, const TargetConfig& initialConfig) :
 	mySizeCtrl->SetToolTip(wxT("Device size"));
 	sizeContainer->Add(mySizeCtrl);
 	wxString units[] = {wxT("KB"), wxT("MB"), wxT("GB")};
-	mySizeUnitCtrl = 
+	mySizeUnitCtrl =
 		new wxChoice(
 			this,
 			ID_sizeUnitCtrl,
@@ -351,6 +367,7 @@ TargetPanel::evaluate()
 	bool enabled = myEnableCtrl->IsChecked();
 	{
 		myScsiIdCtrl->Enable(enabled);
+		myDeviceTypeCtrl->Enable(enabled);
 		myParityCtrl->Enable(enabled);
 		myUnitAttCtrl->Enable(enabled);
 		myStartSDSectorCtrl->Enable(enabled);
@@ -471,6 +488,8 @@ TargetPanel::getConfig() const
 		config.scsiId = config.scsiId | CONFIG_TARGET_ENABLED;
 	}
 
+	config.deviceType = myDeviceTypeCtrl->GetSelection();
+
 	config.flags =
 		(myParityCtrl->IsChecked() ? CONFIG_ENABLE_PARITY : 0) |
 		(myUnitAttCtrl->IsChecked() ? CONFIG_ENABLE_UNIT_ATTENTION : 0);
@@ -502,6 +521,8 @@ TargetPanel::setConfig(const TargetConfig& config)
 
 	myScsiIdCtrl->SetValue(config.scsiId & CONFIG_TARGET_ID_BITS);
 	myEnableCtrl->SetValue(config.scsiId & CONFIG_TARGET_ENABLED);
+
+	myDeviceTypeCtrl->SetSelection(config.deviceType);
 
 	myParityCtrl->SetValue(config.flags & CONFIG_ENABLE_PARITY);
 	myUnitAttCtrl->SetValue(config.flags & CONFIG_ENABLE_UNIT_ATTENTION);

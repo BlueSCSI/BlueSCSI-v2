@@ -20,10 +20,63 @@
 #include <limits>
 
 #include <string.h>
-#include <arpa/inet.h>
 
 
 using namespace SCSI2SD;
+
+namespace
+{
+	// Endian conversion routines.
+	// The Cortex-M3 inside the Cypress PSoC 5LP is a
+	// little-endian device.
+
+	bool isHostLE()
+	{
+		union
+		{
+			int i;
+			char c[sizeof(int)];
+		} x;
+		x.i = 1;
+		return (x.c[0] == 1);
+	}
+
+	uint16_t toLE16(uint16_t in)
+	{
+		if (isHostLE())
+		{
+			return in;
+		}
+		else
+		{
+			return (in >> 8) | (in << 8);
+		}
+	}
+	uint16_t fromLE16(uint16_t in)
+	{
+		return toLE16(in);
+	}
+
+	uint32_t toLE32(uint32_t in)
+	{
+		if (isHostLE())
+		{
+			return in;
+		}
+		else
+		{
+			return (in >> 24) |
+				((in >> 8) & 0xff00) |
+				((in << 8) & 0xff0000) |
+				(in << 24);
+		}
+	}
+	uint32_t fromLE32(uint32_t in)
+	{
+		return toLE32(in);
+	}
+
+}
 
 TargetConfig
 ConfigUtil::Default(size_t targetIdx)
@@ -64,11 +117,11 @@ ConfigUtil::fromBytes(const uint8_t* data)
 {
 	TargetConfig result;
 	memcpy(&result, data, sizeof(TargetConfig));
-	result.sdSectorStart = ntohl(result.sdSectorStart);
-	result.scsiSectors = ntohl(result.scsiSectors);
-	result.bytesPerSector = ntohs(result.bytesPerSector);
-	result.sectorsPerTrack = ntohs(result.sectorsPerTrack);
-	result.headsPerCylinder = ntohs(result.headsPerCylinder);
+	result.sdSectorStart = toLE32(result.sdSectorStart);
+	result.scsiSectors = toLE32(result.scsiSectors);
+	result.bytesPerSector = toLE16(result.bytesPerSector);
+	result.sectorsPerTrack = toLE16(result.sectorsPerTrack);
+	result.headsPerCylinder = toLE16(result.headsPerCylinder);
 	return result;
 }
 
@@ -77,11 +130,11 @@ std::vector<uint8_t>
 ConfigUtil::toBytes(const TargetConfig& _config)
 {
 	TargetConfig config(_config);
-	config.sdSectorStart = htonl(config.sdSectorStart);
-	config.scsiSectors = htonl(config.scsiSectors);
-	config.bytesPerSector = htons(config.bytesPerSector);
-	config.sectorsPerTrack = htons(config.sectorsPerTrack);
-	config.headsPerCylinder = htons(config.headsPerCylinder);
+	config.sdSectorStart = fromLE32(config.sdSectorStart);
+	config.scsiSectors = fromLE32(config.scsiSectors);
+	config.bytesPerSector = fromLE16(config.bytesPerSector);
+	config.sectorsPerTrack = fromLE16(config.sectorsPerTrack);
+	config.headsPerCylinder = fromLE16(config.headsPerCylinder);
 
 	const uint8_t* begin = reinterpret_cast<const uint8_t*>(&config);
 	return std::vector<uint8_t>(begin, begin + sizeof(config));

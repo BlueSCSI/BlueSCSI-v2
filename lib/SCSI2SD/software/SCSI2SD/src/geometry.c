@@ -20,20 +20,22 @@
 
 #include <string.h>
 
-uint32_t getScsiCapacity()
+uint32_t getScsiCapacity(const TargetConfig* config)
 {
-	uint32_t capacity = sdDev.capacity / SDSectorsPerSCSISector();
-	if (config->maxSectors && (capacity > config->maxSectors))
+	uint32_t capacity =
+		(sdDev.capacity - config->sdSectorStart) /
+			SDSectorsPerSCSISector(config);
+	if (config->scsiSectors && (capacity > config->scsiSectors))
 	{
-		capacity = config->maxSectors;
+		capacity = config->scsiSectors;
 	}
 	return capacity;
 }
 
 
-uint32_t SCSISector2SD(uint32_t scsiSector)
+uint32_t SCSISector2SD(const TargetConfig* config, uint32_t scsiSector)
 {
-	return scsiSector * SDSectorsPerSCSISector();
+	return scsiSector * SDSectorsPerSCSISector(config) + config->sdSectorStart;
 }
 
 // Standard mapping according to ECMA-107 and ISO/IEC 9293:1994
@@ -54,7 +56,7 @@ void LBA2CHS(uint32 lba, uint32* c, uint8* h, uint32* s)
 	*s = (lba % SCSI_SECTORS_PER_TRACK) + 1;
 }
 
-uint64 scsiByteAddress(int format, const uint8* addr)
+uint64 scsiByteAddress(const TargetConfig* config, int format, const uint8* addr)
 {
 	uint64 result;
 	switch (format)
@@ -114,7 +116,7 @@ uint64 scsiByteAddress(int format, const uint8* addr)
 }
 
 
-void scsiSaveByteAddress(int format, uint64 byteAddr, uint8* buf)
+void scsiSaveByteAddress(const TargetConfig* config, int format, uint64 byteAddr, uint8* buf)
 {
 	uint32 lba = byteAddr / config->bytesPerSector;
 	uint32 byteOffset = byteAddr % config->bytesPerSector;
