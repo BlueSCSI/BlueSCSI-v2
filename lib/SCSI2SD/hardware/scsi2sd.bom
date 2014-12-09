@@ -1,32 +1,36 @@
-.START
-..device	value	footprint	quantity	refdes
-7406	unknown	SO14	3	U3 U4 U5
-CAPACITOR	0.1uF	cap_0402	2	C15 C16
-CAPACITOR	100nF	cap_0402	11	C10 C11 C17 C19 C21 C22 C23 C24 C28 C3 C9
-CAPACITOR	10uF	SMD_SIMPLE 80 50	5	C12 C13 C2 C5 C6
-CAPACITOR	1uF	cap_0402	4	C20 C26 C27 C8
-CAPACITOR	47uF	SMD_SIMPLE 120 60	4	C1 C14 C4 C7
-CY8C53	unknown	TQFP100_14_reflow	1	U1
-DIODE	unknown	diode-DO-214AA-SMB	3	D1 D2 D3
-FUSE	1.5A Hold	SMD_SIMPLE 120 60	1	F1
-FUSE	500mA Hold	SMD_SIMPLE 120 60	1	F2
-HEADER10	unknown	FTSH-105-01-L-DV-K	1	J4
-HEADER16	unknown	HEADER16_2	1	J8
-HEADER18	unknown	HEADER18_2	1	J12
-HEADER20	unknown	ARMJTAG	1	J9
-HEADER50	unknown	HEADER50_2_RA	1	J2
-HEADER8	unknown	HEADER8_2	1	J11
-JUMPER	unknown	HEADER2_2	3	J10 J3 J7
-LD1117	unknown	DPAK	2	U2 U6
-LED	unknown	SMD_DIODE 80 50	1	LED1
-MOLEX8981	unknown	MOLEX8981	1	J1
-NMOS_TRANSISTOR	unknown	SOT23_MOSFET	1	Q1
-RESISTOR	120?	SMD_SIMPLE 80 50	1	R8
-RESISTOR	154?	SMD_SIMPLE 80 50	1	R9
-RESISTOR	1600	SMD_SIMPLE 80 50	1	R3
-RESISTOR	22?	SMD_SIMPLE 80 50	3	R4 R5 R6
-RESISTOR	56?	SMD_SIMPLE 80 50	1	R7
-RESISTORPACK_10	unknown	SIP10	2	R1 R2
-USB	unknown	fci-10118192-0001LF	1	J5
-wurth-693071010811	unknown	wurth-microsd	1	J6
-.END
+# PcbBOM Version 1.0
+# Date: Tue 09 Dec 2014 09:51:33 GMT UTC
+# Author: Michael McMaster
+# Title: (unknown) - PCB BOM
+# Quantity, Description, Value, RefDes
+# --------------------------------------------
+1,"HEADER16_2","unknown",J8 
+1,"HEADER8_2","unknown",J11 
+1,"SOT23_MOSFET","unknown",Q1 
+3,"HEADER2_2","unknown",J10 J7 J3 
+1,"MOLEX8981","unknown",J1 
+1,"HEADER50_2_RA","unknown",J2 
+3,"SO14","unknown",U4 U3 U5 
+11,"cap_0402","100nF",C22 C9 C21 C11 C3 C19 C23 C10 C17 C28 C24 
+1,"ARMJTAG","unknown",J9 
+3,"SMD_SIMPLE-80-50","22?",R5 R4 R6 
+1,"fci-10118192-0001LF","unknown",J5 
+1,"FTSH-105-01-L-DV-K","unknown",J4 
+5,"SMD_SIMPLE-80-50","10uF",C2 C13 C12 C5 C6 
+4,"cap_0402","1uF",C8 C20 C26 C27 
+3,"diode-DO-214AA-SMB","unknown",D2 D1 D3 
+1,"SMD_SIMPLE-120-60","1.5A Hold",F1 
+2,"SIP10","unknown",R2 R1 
+1,"SMD_SIMPLE-120-60","500mA Hold",F2 
+1,"SMD_SIMPLE-80-50","1600",R3 
+2,"Header connector, DIP pin numbering","HEADER2_1",(unknown) (unknown) 
+1,"TQFP100_14_reflow","unknown",U1 
+2,"DPAK","unknown",U6 U2 
+1,"HEADER18_2","unknown",J12 
+1,"wurth-microsd","unknown",J6 
+1,"SMD_SIMPLE-80-50","56?",R7 
+1,"SMD_SIMPLE-80-50","154?",R9 
+1,"SMD_SIMPLE-80-50","120?",R8 
+2,"cap_0402","0.1uF",C16 C15 
+4,"SMD_SIMPLE-120-60","47uF",C14 C4 C7 C1 
+1,"SMD_DIODE-80-50","unknown",LED1 

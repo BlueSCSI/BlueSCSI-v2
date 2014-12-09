@@ -12,19 +12,19 @@ Element(0x00 "SMT transistor, 3 pins" "" "SOT23" 148 0 3 100 0x00)
 	Pad(25 107
 	       25 113
 			   34
-			      "1" "G" 0x100)
+			      "G" "1" 0x100)
 	# 1st side, 2nd pin
 	# 1st side, 3rd pin
 	Pad(103 107
 	    103 113
 			   34
-			      "2" "S" 0x100)
+			      "S" "2" 0x100)
 	# 2nd side, 3rd pin
 	# 2nd side, 2nd pin
 	Pad(64 25
 	       64 31
 			   34
-			      "3" "D" 0x100)
+			      "D" "3" 0x100)
 	# 2nd side, 1st pin
 	Mark(25 110)
 )

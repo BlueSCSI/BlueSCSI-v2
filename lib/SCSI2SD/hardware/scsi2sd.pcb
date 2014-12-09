@@ -897,9 +897,9 @@ Element["" "HEADER8_2" "J11" "unknown" 3500.00mil 2150.00mil 300.00mil 40.00mil 
 
 Element["" "SOT23_MOSFET" "Q1" "unknown" 83.5175mm 48.8165mm 125.82mil -122.00mil 0 100 ""]
 (
-	Pad[0.0000 -3.00mil 0.0000 3.00mil 34.00mil 38.00mil 40.00mil "G" "G" "square,edge2"]
-	Pad[78.00mil -3.00mil 78.00mil 3.00mil 34.00mil 38.00mil 40.00mil "S" "S" "square,edge2"]
-	Pad[39.00mil -85.00mil 39.00mil -79.00mil 34.00mil 38.00mil 40.00mil "D" "D" "square"]
+	Pad[0.0000 -3.00mil 0.0000 3.00mil 34.00mil 38.00mil 40.00mil "G" "1" "square,edge2"]
+	Pad[78.00mil -3.00mil 78.00mil 3.00mil 34.00mil 38.00mil 40.00mil "S" "2" "square,edge2"]
+	Pad[39.00mil -85.00mil 39.00mil -79.00mil 34.00mil 38.00mil 40.00mil "D" "3" "square"]
 	ElementLine [-25.00mil -110.00mil -25.00mil 29.00mil 10.00mil]
 	ElementLine [-25.00mil 29.00mil 103.00mil 29.00mil 10.00mil]
 	ElementLine [103.00mil 29.00mil 103.00mil -110.00mil 10.00mil]
@@ -1430,18 +1430,6 @@ Element["" "diode-DO-214AA-SMB" "D3" "unknown" 1264.80mil 94.8921mm 76.59mil -16
 
 	)
 
-Element["" "SMD_DIODE-80-50" "LED1" "unknown" 3149.00mil 1923.00mil -103.00mil 68.00mil 0 100 ""]
-(
-	Pad[0.0000 -7.00mil 0.0000 7.00mil 45.00mil 30.00mil 51.00mil "A" "1" "square"]
-	Pad[-80.00mil -7.00mil -80.00mil 7.00mil 45.00mil 30.00mil 51.00mil "K" "2" "square"]
-	ElementLine [37.00mil -44.00mil 37.00mil 44.00mil 8.00mil]
-	ElementLine [-117.00mil -44.00mil 37.00mil -44.00mil 8.00mil]
-	ElementLine [-117.00mil -44.00mil -117.00mil 44.00mil 8.00mil]
-	ElementLine [-117.00mil 44.00mil 37.00mil 44.00mil 8.00mil]
-	ElementLine [27.00mil -44.00mil 27.00mil 44.00mil 8.00mil]
-
-	)
-
 Element["" "SMD_SIMPLE-80-50" "R3" "1600" 79.9742mm 46.0446mm -195.18mil -52.56mil 0 100 ""]
 (
 	Pad[0.0000 -7.00mil 0.0000 7.00mil 45.00mil 30.00mil 51.00mil "1" "1" "square"]
@@ -1898,6 +1886,18 @@ Element["" "SMD_SIMPLE-120-60" "C1" "47uF" 1225.00mil 928.00mil -118.00mil -46.0
 	ElementLine [-50.00mil -45.00mil -50.00mil 165.00mil 8.00mil]
 	ElementLine [-50.00mil 165.00mil 50.00mil 165.00mil 8.00mil]
 	ElementLine [50.00mil -45.00mil 50.00mil 165.00mil 8.00mil]
+
+	)
+
+Element["" "SMD_DIODE-80-50" "LED1" "unknown" 3069.00mil 1922.00mil 16.00mil 50.00mil 0 100 ""]
+(
+	Pad[0.0000 -7.00mil 0.0000 7.00mil 45.00mil 30.00mil 51.00mil "A" "1" "square"]
+	Pad[80.00mil -7.00mil 80.00mil 7.00mil 45.00mil 30.00mil 51.00mil "K" "2" "square"]
+	ElementLine [-37.00mil -44.00mil -37.00mil 44.00mil 8.00mil]
+	ElementLine [-37.00mil 44.00mil 117.00mil 44.00mil 8.00mil]
+	ElementLine [117.00mil -44.00mil 117.00mil 44.00mil 8.00mil]
+	ElementLine [-37.00mil -44.00mil 117.00mil -44.00mil 8.00mil]
+	ElementLine [-27.00mil -44.00mil -27.00mil 44.00mil 8.00mil]
 
 	)
 Layer(1 "component")
@@ -3911,87 +3911,87 @@ NetList()
 	)
 	Net("unnamed_net6" "(unknown)")
 	(
-		Connect("LED1-1")
+		Connect("LED1-2")
 		Connect("R3-1")
 	)
 	Net("unnamed_net7" "(unknown)")
 	(
-		Connect("LED1-2")
-		Connect("U1-72")
-	)
-	Net("unnamed_net8" "(unknown)")
-	(
 		Connect("C27-2")
 		Connect("U1-63")
 	)
-	Net("unnamed_net9" "(unknown)")
+	Net("unnamed_net8" "(unknown)")
 	(
 		Connect("C20-2")
 		Connect("U1-39")
 		Connect("U1-86")
 	)
-	Net("unnamed_net10" "(unknown)")
+	Net("unnamed_net9" "(unknown)")
 	(
 		Connect("U1-11")
 	)
-	Net("unnamed_net11" "(unknown)")
+	Net("unnamed_net10" "(unknown)")
 	(
 		Connect("J9-3")
 		Connect("U1-25")
 	)
-	Net("unnamed_net12" "(unknown)")
+	Net("unnamed_net11" "(unknown)")
 	(
 		Connect("J8-1")
 		Connect("U1-27")
 	)
-	Net("unnamed_net13" "(unknown)")
+	Net("unnamed_net12" "(unknown)")
 	(
 		Connect("J8-3")
 		Connect("U1-28")
 	)
-	Net("unnamed_net14" "(unknown)")
+	Net("unnamed_net13" "(unknown)")
 	(
 		Connect("J8-5")
 		Connect("U1-29")
 	)
-	Net("unnamed_net15" "(unknown)")
+	Net("unnamed_net14" "(unknown)")
 	(
 		Connect("J8-7")
 		Connect("U1-30")
 	)
-	Net("unnamed_net16" "(unknown)")
+	Net("unnamed_net15" "(unknown)")
 	(
 		Connect("J8-9")
 		Connect("U1-31")
 	)
-	Net("unnamed_net17" "(unknown)")
+	Net("unnamed_net16" "(unknown)")
 	(
 		Connect("J8-11")
 		Connect("U1-32")
 	)
-	Net("unnamed_net18" "(unknown)")
+	Net("unnamed_net17" "(unknown)")
 	(
 		Connect("J8-13")
 		Connect("U1-33")
 	)
-	Net("unnamed_net19" "(unknown)")
+	Net("unnamed_net18" "(unknown)")
 	(
 		Connect("J8-15")
 		Connect("U1-34")
 	)
-	Net("unnamed_net20" "(unknown)")
+	Net("unnamed_net19" "(unknown)")
 	(
 		Connect("R4-2")
 		Connect("U1-35")
 	)
-	Net("unnamed_net21" "(unknown)")
+	Net("unnamed_net20" "(unknown)")
 	(
 		Connect("R5-2")
 		Connect("U1-36")
 	)
-	Net("unnamed_net22" "(unknown)")
+	Net("unnamed_net21" "(unknown)")
 	(
 		Connect("U1-42")
+	)
+	Net("unnamed_net22" "(unknown)")
+	(
+		Connect("LED1-1")
+		Connect("U1-72")
 	)
 	Net("unnamed_net23" "(unknown)")
 	(

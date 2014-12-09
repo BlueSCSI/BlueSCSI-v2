@@ -591,19 +591,6 @@ C 38500 41300 1 0 0 gnd-1.sym
 T 38500 41300 5 10 0 0 0 0 1
 net=GND:1
 }
-C 66500 52800 1 270 0 led-1.sym
-{
-T 67100 52000 5 10 0 0 270 0 1
-device=LED
-T 67100 52500 5 10 1 1 270 0 1
-refdes=LED1
-T 67300 52000 5 10 0 0 270 0 1
-symversion=0.1
-T 66500 52800 5 10 0 0 270 0 1
-footprint=SMD_DIODE 80 50
-T 66500 52800 5 10 0 0 270 0 1
-description=Low current 2mA, 1.85Vf red led
-}
 C 66800 52800 1 90 0 resistor-1.sym
 {
 T 66400 53100 5 10 0 0 90 0 1
@@ -2645,3 +2632,16 @@ T 70200 32700 5 10 0 0 0 0 1
 footprint=SMD_SIMPLE 80 50
 }
 C 69900 32400 1 0 0 gnd-1.sym
+C 66500 52800 1 270 0 led.sym
+{
+T 67100 52000 5 10 0 0 270 0 1
+device=LED
+T 66900 52800 5 10 1 1 270 0 1
+refdes=LED1
+T 67300 52000 5 10 0 0 270 0 1
+symversion=0.1
+T 66500 52800 5 10 0 0 0 0 1
+description=Low current 2mA, 1.85Vf red led
+T 66500 52800 5 10 0 0 0 0 1
+footprint=SMD_DIODE 80 50
+}

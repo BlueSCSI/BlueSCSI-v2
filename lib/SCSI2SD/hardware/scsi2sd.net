@@ -28,28 +28,28 @@ unnamed_net26	J11-5 U1-68
 unnamed_net25	J11-3 U1-69 
 unnamed_net24	J11-1 U1-70 
 unnamed_net23	R6-1 U1-71 
+unnamed_net22	LED1-1 U1-72 
 \_SD_CD\_	J12-17 J6-10 U1-49 
 \_SD_CS\_	J12-15 J6-2 U1-48 
 SD_MOSI	J12-13 J6-3 U1-47 
 SD_SCK	J12-11 J6-5 U1-46 
 SD_MISO	J12-9 J6-7 U1-45 
-unnamed_net22	U1-42 
-unnamed_net21	R5-2 U1-36 
-unnamed_net20	R4-2 U1-35 
-unnamed_net19	J8-15 U1-34 
-unnamed_net18	J8-13 U1-33 
-unnamed_net17	J8-11 U1-32 
-unnamed_net16	J8-9 U1-31 
-unnamed_net15	J8-7 U1-30 
-unnamed_net14	J8-5 U1-29 
-unnamed_net13	J8-3 U1-28 
-unnamed_net12	J8-1 U1-27 
-unnamed_net11	J9-3 U1-25 
-unnamed_net10	U1-11 
-unnamed_net9	U1-86 U1-39 C20-2 
-unnamed_net8	U1-63 C27-2 
-unnamed_net7	U1-72 LED1-2 
-unnamed_net6	R3-1 LED1-1 
+unnamed_net21	U1-42 
+unnamed_net20	R5-2 U1-36 
+unnamed_net19	R4-2 U1-35 
+unnamed_net18	J8-15 U1-34 
+unnamed_net17	J8-13 U1-33 
+unnamed_net16	J8-11 U1-32 
+unnamed_net15	J8-9 U1-31 
+unnamed_net14	J8-7 U1-30 
+unnamed_net13	J8-5 U1-29 
+unnamed_net12	J8-3 U1-28 
+unnamed_net11	J8-1 U1-27 
+unnamed_net10	J9-3 U1-25 
+unnamed_net9	U1-11 
+unnamed_net8	U1-86 U1-39 C20-2 
+unnamed_net7	U1-63 C27-2 
+unnamed_net6	LED1-2 R3-1 
 unnamed_net5	J9-13 U1-23 J4-6 
 unnamed_net4	J9-5 U1-24 J4-8 
 unnamed_net3	J9-15 U1-15 J4-10 

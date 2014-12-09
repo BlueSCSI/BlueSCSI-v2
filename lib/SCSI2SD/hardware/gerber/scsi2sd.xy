@@ -1,0 +1,55 @@
+# PcbXY Version 1.0
+# Date: Tue 09 Dec 2014 09:51:33 GMT UTC
+# Author: Michael McMaster
+# Title: (unknown) - PCB X-Y
+# RefDes, Description, Value, X, Y, rotation, top/bottom
+# X,Y in mil.  rotation in degrees.
+# --------------------------------------------
+Q1,"SOT23_MOSFET","unknown",3327.09,2042.42,90,top
+U4,"SO14","unknown",2243.00,2414.50,270,top
+C22,"cap_0402","100nF",2940.94,188.00,180,top
+U3,"SO14","unknown",2820.00,2412.00,270,top
+U5,"SO14","unknown",1742.00,2410.50,270,top
+R5,"SMD_SIMPLE-80-50","22?",2266.41,1116.78,0,top
+J5,"fci-10118192-0001LF","unknown",1952.25,128.13,0,top
+R4,"SMD_SIMPLE-80-50","22?",2226.00,1211.00,0,top
+C2,"SMD_SIMPLE-80-50","10uF",1845.00,1252.00,0,top
+C9,"cap_0402","100nF",1949.69,1352.00,0,top
+C8,"cap_0402","1uF",2369.68,1217.00,180,top
+C20,"cap_0402","1uF",2397.06,1296.82,90,top
+C21,"cap_0402","100nF",2770.31,2007.00,180,top
+C11,"cap_0402","100nF",1970.00,2306.68,270,top
+C3,"cap_0402","100nF",3045.00,2306.68,270,top
+C19,"cap_0402","100nF",2355.00,2141.68,270,top
+C23,"cap_0402","100nF",2345.63,1297.32,90,top
+C10,"cap_0402","100nF",2465.00,2306.68,270,top
+C17,"cap_0402","100nF",2030.00,2112.31,270,top
+C28,"cap_0402","100nF",2705.00,1347.32,90,top
+D2,"diode-DO-214AA-SMB","unknown",190.00,2882.35,90,top
+F1,"SMD_SIMPLE-120-60","1.5A Hold",146.00,3203.00,270,top
+D1,"diode-DO-214AA-SMB","unknown",925.00,2881.65,90,top
+F2,"SMD_SIMPLE-120-60","500mA Hold",1624.00,164.00,180,top
+D3,"diode-DO-214AA-SMB","unknown",1355.35,207.00,0,top
+R3,"SMD_SIMPLE-80-50","1600",3108.59,2124.22,180,top
+C26,"cap_0402","1uF",2815.00,1756.68,270,top
+C24,"cap_0402","100nF",2750.00,1757.31,270,top
+C27,"cap_0402","1uF",2815.00,1662.32,90,top
+U1,"TQFP100_14_reflow","unknown",2339.53,1723.95,0,top
+C13,"SMD_SIMPLE-80-50","10uF",2977.20,334.06,180,top
+U6,"DPAK","unknown",725.00,812.00,0,top
+C12,"SMD_SIMPLE-80-50","10uF",497.06,584.80,0,top
+U2,"DPAK","unknown",725.00,1987.00,0,top
+C5,"SMD_SIMPLE-80-50","10uF",548.23,1752.12,180,top
+J6,"wurth-microsd","unknown",2542.10,257.35,180,top
+R6,"SMD_SIMPLE-80-50","22?",3330.00,1907.00,0,top
+R7,"SMD_SIMPLE-80-50","56?",3325.00,2202.00,0,top
+C6,"SMD_SIMPLE-80-50","10uF",410.00,2312.00,0,top
+R9,"SMD_SIMPLE-80-50","154?",410.00,2217.00,0,top
+R8,"SMD_SIMPLE-80-50","120?",570.00,2217.00,0,top
+C16,"cap_0402","0.1uF",1335.00,2886.68,270,top
+C15,"cap_0402","0.1uF",2410.35,2886.03,270,top
+C14,"SMD_SIMPLE-120-60","47uF",785.00,1047.00,0,top
+C4,"SMD_SIMPLE-120-60","47uF",185.00,2622.00,0,top
+C7,"SMD_SIMPLE-120-60","47uF",845.00,1752.00,0,top
+C1,"SMD_SIMPLE-120-60","47uF",1225.00,2949.00,270,top
+LED1,"SMD_DIODE-80-50","unknown",3109.00,2015.00,0,top
