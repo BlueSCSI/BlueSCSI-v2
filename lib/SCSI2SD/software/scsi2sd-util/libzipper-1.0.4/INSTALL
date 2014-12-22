@@ -1,0 +1,49 @@
+libzipper
+Michael McMaster <michael@codesrc.com>
+
+* Refer to INSTALL.Android for Google Android NDK compilation information.
+
+Pre-Requisites
+	g++  (4.5.3)
+	make (GNU make 3.81)
+	zlib (1.2.3)
+	doxygen (1.7.4)
+
+Optional
+	automake (1.11), autoconf (2.68), libtool (2.4)
+		(Required if building from git)
+
+	graphviz (2.26.3) (for dependency diagrams in the generated docs)
+
+When building from sources obtained from the git repository, the configure
+script must be created first using the autoconf/automake/libtool packages.
+The supplied autogen.sh script automates this process.
+
+*NOTE: it is not necessary to run the autogen.sh script when using a
+source distribution release. ie. If you obtained the sources via
+libzipper-major.minor.patch.tar.gz, do not run autogen.sh
+
+	./autogen.sh
+
+The configure script creates the makefiles specific to your host. eg. It
+allows the paths to dependant packages to be specified.
+
+	./configure --prefix=/usr
+
+The --prefix option specifies the base installation directory, and defaults
+to /usr/local (in which case, the library would be installed in /usr/local/lib,
+and the zipper binary would be installed in /usr/local/bin).
+
+To obtain a complete listing of configure options, use the --help option.
+
+	./configure --help
+
+Once the configure script is run, the software can be compiled.
+
+	make
+
+Now it's time to install the software. This step must be run by a user with
+write access to the installation directory (/usr/local by default).
+
+	make install
+

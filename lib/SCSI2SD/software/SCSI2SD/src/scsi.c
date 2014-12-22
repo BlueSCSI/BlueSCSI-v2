@@ -27,6 +27,7 @@
 #include "mode.h"
 #include "disk.h"
 #include "time.h"
+#include "cdrom.h"
 
 #include <string.h>
 
@@ -113,7 +114,7 @@ static void enter_Status(uint8 status)
 	scsiDev.phase = STATUS;
 
 	scsiDev.lastStatus = scsiDev.status;
-	scsiDev.lastSense = scsiDev.sense.code;
+	scsiDev.lastSense = scsiDev.target->sense.code;
 }
 
 static void process_Status()
@@ -143,7 +144,7 @@ static void process_Status()
 	scsiWriteByte(scsiDev.status);
 
 	scsiDev.lastStatus = scsiDev.status;
-	scsiDev.lastSense = scsiDev.sense.code;
+	scsiDev.lastSense = scsiDev.target->sense.code;
 
 	// Command Complete occurs AFTER a valid status has been
 	// sent. then we go bus-free.
@@ -198,10 +199,12 @@ static void process_DataOut()
 		scsiRead(scsiDev.data + scsiDev.dataPtr, len);
 		scsiDev.dataPtr += len;
 
-		if (scsiDev.parityError && config->enableParity && !scsiDev.compatMode)
+		if (scsiDev.parityError &&
+			(scsiDev.target->cfg->flags & CONFIG_ENABLE_PARITY) &&
+			!scsiDev.compatMode)
 		{
-			scsiDev.sense.code = ABORTED_COMMAND;
-			scsiDev.sense.asc = SCSI_PARITY_ERROR;
+			scsiDev.target->sense.code = ABORTED_COMMAND;
+			scsiDev.target->sense.asc = SCSI_PARITY_ERROR;
 			enter_Status(CHECK_CONDITION);
 		}
 	}
@@ -256,17 +259,19 @@ static void process_Command()
 		memset(scsiDev.cdb, 0xff, sizeof(scsiDev.cdb));
 		return;
 	}
-	else if (scsiDev.parityError && config->enableParity && !scsiDev.compatMode)
+	else if (scsiDev.parityError &&
+		(scsiDev.target->cfg->flags & CONFIG_ENABLE_PARITY) &&
+		!scsiDev.compatMode)
 	{
-		scsiDev.sense.code = ABORTED_COMMAND;
-		scsiDev.sense.asc = SCSI_PARITY_ERROR;
+		scsiDev.target->sense.code = ABORTED_COMMAND;
+		scsiDev.target->sense.asc = SCSI_PARITY_ERROR;
 		enter_Status(CHECK_CONDITION);
 	}
 	else if ((control & 0x02) && ((control & 0x01) == 0))
 	{
 		// FLAG set without LINK flag.
-		scsiDev.sense.code = ILLEGAL_REQUEST;
-		scsiDev.sense.asc = INVALID_FIELD_IN_CDB;
+		scsiDev.target->sense.code = ILLEGAL_REQUEST;
+		scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
 		enter_Status(CHECK_CONDITION);
 	}
 	else if (command == 0x12)
@@ -284,7 +289,7 @@ static void process_Command()
 
 		memset(scsiDev.data, 0, 256); // Max possible alloc length
 		scsiDev.data[0] = 0xF0;
-		scsiDev.data[2] = scsiDev.sense.code & 0x0F;
+		scsiDev.data[2] = scsiDev.target->sense.code & 0x0F;
 
 		scsiDev.data[3] = transfer.lba >> 24;
 		scsiDev.data[4] = transfer.lba >> 16;
@@ -293,43 +298,44 @@ static void process_Command()
 
 		// Additional bytes if there are errors to report
 		scsiDev.data[7] = 10; // additional length
-		scsiDev.data[12] = scsiDev.sense.asc >> 8;
-		scsiDev.data[13] = scsiDev.sense.asc;
+		scsiDev.data[12] = scsiDev.target->sense.asc >> 8;
+		scsiDev.data[13] = scsiDev.target->sense.asc;
 
 		// Silently truncate results. SCSI-2 spec 8.2.14.
 		enter_DataIn(allocLength);
 
 		// This is a good time to clear out old sense information.
-		scsiDev.sense.code = NO_SENSE;
-		scsiDev.sense.asc = NO_ADDITIONAL_SENSE_INFORMATION;
+		scsiDev.target->sense.code = NO_SENSE;
+		scsiDev.target->sense.asc = NO_ADDITIONAL_SENSE_INFORMATION;
 	}
 	// Some old SCSI drivers do NOT properly support
 	// unitAttention. eg. the Mac Plus would trigger a SCSI reset
 	// on receiving the unit attention response on boot, thus
 	// triggering another unit attention condition.
-	else if (scsiDev.unitAttention && config->enableUnitAttention)
+	else if (scsiDev.target->unitAttention &&
+		(scsiDev.target->cfg->flags & CONFIG_ENABLE_UNIT_ATTENTION))
 	{
-		scsiDev.sense.code = UNIT_ATTENTION;
-		scsiDev.sense.asc = scsiDev.unitAttention;
+		scsiDev.target->sense.code = UNIT_ATTENTION;
+		scsiDev.target->sense.asc = scsiDev.target->unitAttention;
 
 		// If initiator doesn't do REQUEST SENSE for the next command, then
 		// data is lost.
-		scsiDev.unitAttention = 0;
+		scsiDev.target->unitAttention = 0;
 
 		enter_Status(CHECK_CONDITION);
 	}
 	else if (scsiDev.lun)
 	{
-		scsiDev.sense.code = ILLEGAL_REQUEST;
-		scsiDev.sense.asc = LOGICAL_UNIT_NOT_SUPPORTED;
+		scsiDev.target->sense.code = ILLEGAL_REQUEST;
+		scsiDev.target->sense.asc = LOGICAL_UNIT_NOT_SUPPORTED;
 		enter_Status(CHECK_CONDITION);
 	}
 	else if (command == 0x17 || command == 0x16)
 	{
 		doReserveRelease();
 	}
-	else if ((scsiDev.reservedId >= 0) &&
-		(scsiDev.reservedId != scsiDev.initiatorId))
+	else if ((scsiDev.target->reservedId >= 0) &&
+		(scsiDev.target->reservedId != scsiDev.initiatorId))
 	{
 		enter_Status(CONFLICT);
 	}
@@ -347,10 +353,11 @@ static void process_Command()
 	}
 	else if (
 		!scsiModeCommand() &&
-		!scsiDiskCommand())
+		!scsiDiskCommand() &&
+		!scsiCDRomCommand())
 	{
-		scsiDev.sense.code = ILLEGAL_REQUEST;
-		scsiDev.sense.asc = INVALID_COMMAND_OPERATION_CODE;
+		scsiDev.target->sense.code = ILLEGAL_REQUEST;
+		scsiDev.target->sense.asc = INVALID_COMMAND_OPERATION_CODE;
 		enter_Status(CHECK_CONDITION);
 	}
 
@@ -370,25 +377,25 @@ static void doReserveRelease()
 	uint8 command = scsiDev.cdb[0];
 
 	int canRelease =
-		(!thirdPty && (scsiDev.initiatorId == scsiDev.reservedId)) ||
+		(!thirdPty && (scsiDev.initiatorId == scsiDev.target->reservedId)) ||
 			(thirdPty &&
-				(scsiDev.reserverId == scsiDev.initiatorId) &&
-				(scsiDev.reservedId == thirdPtyId)
+				(scsiDev.target->reserverId == scsiDev.initiatorId) &&
+				(scsiDev.target->reservedId == thirdPtyId)
 			);
 
 	if (extentReservation)
 	{
 		// Not supported.
-		scsiDev.sense.code = ILLEGAL_REQUEST;
-		scsiDev.sense.asc = INVALID_FIELD_IN_CDB;
+		scsiDev.target->sense.code = ILLEGAL_REQUEST;
+		scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
 		enter_Status(CHECK_CONDITION);
 	}
 	else if (command == 0x17) // release
 	{
-		if ((scsiDev.reservedId < 0) || canRelease)
+		if ((scsiDev.target->reservedId < 0) || canRelease)
 		{
-			scsiDev.reservedId = -1;
-			scsiDev.reserverId = -1;
+			scsiDev.target->reservedId = -1;
+			scsiDev.target->reserverId = -1;
 		}
 		else
 		{
@@ -397,16 +404,16 @@ static void doReserveRelease()
 	}
 	else // assume reserve.
 	{
-		if ((scsiDev.reservedId < 0) || canRelease)
+		if ((scsiDev.target->reservedId < 0) || canRelease)
 		{
-			scsiDev.reserverId = scsiDev.initiatorId;
+			scsiDev.target->reserverId = scsiDev.initiatorId;
 			if (thirdPty)
 			{
-				scsiDev.reservedId = thirdPtyId;
+				scsiDev.target->reservedId = thirdPtyId;
 			}
 			else
 			{
-				scsiDev.reservedId = scsiDev.initiatorId;
+				scsiDev.target->reservedId = scsiDev.initiatorId;
 			}
 		}
 		else
@@ -431,14 +438,18 @@ static void scsiReset()
 	scsiDev.resetFlag = 0;
 	scsiDev.lun = -1;
 
-	if (scsiDev.unitAttention != POWER_ON_RESET)
+	if (scsiDev.target)
 	{
-		scsiDev.unitAttention = SCSI_BUS_RESET;
+		if (scsiDev.target->unitAttention != POWER_ON_RESET)
+		{
+			scsiDev.target->unitAttention = SCSI_BUS_RESET;
+		}
+		scsiDev.target->reservedId = -1;
+		scsiDev.target->reserverId = -1;
+		scsiDev.target->sense.code = NO_SENSE;
+		scsiDev.target->sense.asc = NO_ADDITIONAL_SENSE_INFORMATION;
 	}
-	scsiDev.reservedId = -1;
-	scsiDev.reserverId = -1;
-	scsiDev.sense.code = NO_SENSE;
-	scsiDev.sense.asc = NO_ADDITIONAL_SENSE_INFORMATION;
+	scsiDev.target = NULL;
 	scsiDiskReset();
 
 	scsiDev.postDataOutHook = NULL;
@@ -468,6 +479,9 @@ static void enter_SelectionPhase()
 	scsiDev.discPriv = 0;
 	scsiDev.compatMode = 0;
 
+	scsiDev.initiatorId = -1;
+	scsiDev.target = NULL;
+
 	transfer.blocks = 0;
 	transfer.currentBlock = 0;
 
@@ -486,11 +500,23 @@ static void process_SelectionPhase()
 	int goodParity = (Lookup_OddParity[mask] == SCSI_ReadPin(SCSI_In_DBP));
 	int atnFlag = SCSI_ReadFilt(SCSI_Filt_ATN);
 
+	int tgtIndex;
+	TargetState* target = NULL;
+	for (tgtIndex = 0; tgtIndex < MAX_SCSI_TARGETS; ++tgtIndex)
+	{
+		if (mask & (1 << scsiDev.targets[tgtIndex].targetId))
+		{
+			target = &scsiDev.targets[tgtIndex];
+			break;
+		}
+	}
 	if (!bsy && sel &&
-		(mask & scsiDev.scsiIdMask) &&
-		(goodParity || !config->enableParity || !atnFlag) &&
+		target &&
+		(goodParity || !(target->cfg->flags & CONFIG_ENABLE_PARITY) || !atnFlag) &&
 		(maskBitCount <= 2))
 	{
+		scsiDev.target = target;
+
 		// Do we enter MESSAGE OUT immediately ? SCSI 1 and 2 standards says
 		// move to MESSAGE OUT if ATN is true before we assert BSY.
 		// The initiator should assert ATN with SEL.
@@ -502,7 +528,7 @@ static void process_SelectionPhase()
 		// controllers don't generate parity bits.
 		if (!scsiDev.atnFlag)
 		{
-			scsiDev.unitAttention = 0;
+			target->unitAttention = 0;
 			scsiDev.compatMode = 1;
 		}
 
@@ -529,11 +555,10 @@ static void process_SelectionPhase()
 		// Save our initiator now that we're no longer in a time-critical
 		// section.
 		// SCSI1/SASI initiators may not set their own ID.
-		if (maskBitCount == 2)
 		{
 			int i;
-			uint8 initiatorMask = mask ^ scsiDev.scsiIdMask;
-			scsiDev.initiatorId = 0;
+			uint8_t initiatorMask = mask ^ (1 << target->targetId);
+			scsiDev.initiatorId = -1;
 			for (i = 0; i < 8; ++i)
 			{
 				if (initiatorMask & (1 << i))
@@ -542,10 +567,6 @@ static void process_SelectionPhase()
 					break;
 				}
 			}
-		}
-		else
-		{
-			scsiDev.initiatorId = -1;
 		}
 
 		scsiDev.phase = COMMAND;
@@ -565,7 +586,9 @@ static void process_MessageOut()
 	scsiDev.msgOut = scsiReadByte();
 	scsiDev.msgCount++;
 
-	if (scsiDev.parityError && config->enableParity && !scsiDev.compatMode)
+	if (scsiDev.parityError &&
+		(scsiDev.target->cfg->flags & CONFIG_ENABLE_PARITY) &&
+		!scsiDev.compatMode)
 	{
 		// Skip the remaining message bytes, and then start the MESSAGE_OUT
 		// phase again from the start. The initiator will re-send the
@@ -596,11 +619,11 @@ static void process_MessageOut()
 
 		scsiDiskReset();
 
-		scsiDev.unitAttention = SCSI_BUS_RESET;
+		scsiDev.target->unitAttention = SCSI_BUS_RESET;
 
 		// ANY initiator can reset the reservation state via this message.
-		scsiDev.reservedId = -1;
-		scsiDev.reserverId = -1;
+		scsiDev.target->reservedId = -1;
+		scsiDev.target->reserverId = -1;
 		enter_BusFree();
 	}
 	else if (scsiDev.msgOut == 0x05)
@@ -810,14 +833,33 @@ void scsiPoll(void)
 
 void scsiInit()
 {
-	scsiDev.scsiIdMask = 1 << (config->scsiId);
-
 	scsiDev.atnFlag = 0;
 	scsiDev.resetFlag = 1;
 	scsiDev.phase = BUS_FREE;
-	scsiDev.reservedId = -1;
-	scsiDev.reserverId = -1;
-	scsiDev.unitAttention = POWER_ON_RESET;
+	scsiDev.target = NULL;
+
+	int i;
+	for (i = 0; i < MAX_SCSI_TARGETS; ++i)
+	{
+		const TargetConfig* cfg = getConfigByIndex(i);
+		if (cfg && (cfg->scsiId & CONFIG_TARGET_ENABLED))
+		{
+			scsiDev.targets[i].targetId = cfg->scsiId & CONFIG_TARGET_ID_BITS;
+			scsiDev.targets[i].cfg = cfg;
+
+			scsiDev.targets[i].liveCfg.bytesPerSector = cfg->bytesPerSector;
+		}
+		else
+		{
+			scsiDev.targets[i].targetId = 0xff;
+			scsiDev.targets[i].cfg = NULL;
+		}
+		scsiDev.targets[i].reservedId = -1;
+		scsiDev.targets[i].reserverId = -1;
+		scsiDev.targets[i].unitAttention = POWER_ON_RESET;
+		scsiDev.targets[i].sense.code = NO_SENSE;
+		scsiDev.targets[i].sense.asc = NO_ADDITIONAL_SENSE_INFORMATION;
+	}
 }
 
 void scsiDisconnect()
@@ -852,7 +894,8 @@ int scsiReconnect()
 	{
 		// Arbitrate.
 		ledOn();
-		SCSI_Out_Bits_Write(scsiDev.scsiIdMask);
+		uint8_t scsiIdMask = 1 << scsiDev.target->targetId;
+		SCSI_Out_Bits_Write(scsiIdMask);
 		SCSI_Out_Ctl_Write(1); // Write bits manually.
 		SCSI_SetPin(SCSI_Out_BSY);
 
@@ -860,7 +903,7 @@ int scsiReconnect()
 
 		uint8_t dbx = scsiReadDBxPins();
 		sel = SCSI_ReadFilt(SCSI_Filt_SEL);
-		if (sel || ((dbx ^ scsiDev.scsiIdMask) > scsiDev.scsiIdMask))
+		if (sel || ((dbx ^ scsiIdMask) > scsiIdMask))
 		{
 			// Lost arbitration.
 			SCSI_Out_Ctl_Write(0);
@@ -875,7 +918,7 @@ int scsiReconnect()
 
 			// Reselection phase
 			SCSI_CTL_PHASE_Write(__scsiphase_io);
-			SCSI_Out_Bits_Write(scsiDev.scsiIdMask | (1 << scsiDev.initiatorId));
+			SCSI_Out_Bits_Write(scsiIdMask | (1 << scsiDev.initiatorId));
 			scsiDeskewDelay(); // 2 deskew delays
 			scsiDeskewDelay(); // 2 deskew delays
 			SCSI_ClearPin(SCSI_Out_BSY);

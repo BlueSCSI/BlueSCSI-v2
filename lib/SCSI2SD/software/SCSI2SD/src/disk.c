@@ -32,10 +32,15 @@ Transfer transfer;
 
 static int doSdInit()
 {
-	int result = sdInit();
-	if (result)
+	int result = 0;
+	if (blockDev.state & DISK_PRESENT)
 	{
-		blockDev.state = blockDev.state | DISK_INITIALISED;
+		result = sdInit();
+	
+		if (result)
+		{
+			blockDev.state = blockDev.state | DISK_INITIALISED;
+		}
 	}
 	return result;
 }
@@ -84,9 +89,12 @@ static void doFormatUnitHeader(void)
 
 	if (! DSP) // disable save parameters
 	{
-		configSave(); // Save the "MODE SELECT savable parameters"
+		// Save the "MODE SELECT savable parameters"
+		configSave(
+			scsiDev.target->targetId,
+			scsiDev.target->liveCfg.bytesPerSector);
 	}
-	
+
 	if (IP)
 	{
 		// We need to read the initialisation pattern header first.
@@ -113,7 +121,10 @@ static void doReadCapacity()
 		scsiDev.cdb[5];
 	int pmi = scsiDev.cdb[8] & 1;
 
-	uint32_t capacity = getScsiCapacity();
+	uint32_t capacity = getScsiCapacity(
+		scsiDev.target->cfg->sdSectorStart,
+		scsiDev.target->liveCfg.bytesPerSector,
+		scsiDev.target->cfg->scsiSectors);
 
 	if (!pmi && lba)
 	{
@@ -122,8 +133,8 @@ static void doReadCapacity()
 		// assume that delays are constant across each block. But the spec
 		// says we must return this error if pmi is specified incorrectly.
 		scsiDev.status = CHECK_CONDITION;
-		scsiDev.sense.code = ILLEGAL_REQUEST;
-		scsiDev.sense.asc = INVALID_FIELD_IN_CDB;
+		scsiDev.target->sense.code = ILLEGAL_REQUEST;
+		scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
 		scsiDev.phase = STATUS;
 	}
 	else if (capacity > 0)
@@ -135,18 +146,19 @@ static void doReadCapacity()
 		scsiDev.data[2] = highestBlock >> 8;
 		scsiDev.data[3] = highestBlock;
 
-		scsiDev.data[4] = config->bytesPerSector >> 24;
-		scsiDev.data[5] = config->bytesPerSector >> 16;
-		scsiDev.data[6] = config->bytesPerSector >> 8;
-		scsiDev.data[7] = config->bytesPerSector;
+		uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+		scsiDev.data[4] = bytesPerSector >> 24;
+		scsiDev.data[5] = bytesPerSector >> 16;
+		scsiDev.data[6] = bytesPerSector >> 8;
+		scsiDev.data[7] = bytesPerSector;
 		scsiDev.dataLen = 8;
 		scsiDev.phase = DATA_IN;
 	}
 	else
 	{
 		scsiDev.status = CHECK_CONDITION;
-		scsiDev.sense.code = NOT_READY;
-		scsiDev.sense.asc = MEDIUM_NOT_PRESENT;
+		scsiDev.target->sense.code = NOT_READY;
+		scsiDev.target->sense.asc = MEDIUM_NOT_PRESENT;
 		scsiDev.phase = STATUS;
 	}
 }
@@ -156,15 +168,20 @@ static void doWrite(uint32 lba, uint32 blocks)
 	if (blockDev.state & DISK_WP)
 	{
 		scsiDev.status = CHECK_CONDITION;
-		scsiDev.sense.code = ILLEGAL_REQUEST;
-		scsiDev.sense.asc = WRITE_PROTECTED;
+		scsiDev.target->sense.code = ILLEGAL_REQUEST;
+		scsiDev.target->sense.asc = WRITE_PROTECTED;
 		scsiDev.phase = STATUS;
 	}
-	else if (((uint64) lba) + blocks > getScsiCapacity())
+	else if (((uint64) lba) + blocks >
+		getScsiCapacity(
+			scsiDev.target->cfg->sdSectorStart,
+			scsiDev.target->liveCfg.bytesPerSector,
+			scsiDev.target->cfg->scsiSectors
+			))
 	{
 		scsiDev.status = CHECK_CONDITION;
-		scsiDev.sense.code = ILLEGAL_REQUEST;
-		scsiDev.sense.asc = LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
+		scsiDev.target->sense.code = ILLEGAL_REQUEST;
+		scsiDev.target->sense.asc = LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
 		scsiDev.phase = STATUS;
 	}
 	else
@@ -174,8 +191,8 @@ static void doWrite(uint32 lba, uint32 blocks)
 		transfer.blocks = blocks;
 		transfer.currentBlock = 0;
 		scsiDev.phase = DATA_OUT;
-		scsiDev.dataLen = config->bytesPerSector;
-		scsiDev.dataPtr = config->bytesPerSector; // TODO FIX scsiDiskPoll()
+		scsiDev.dataLen = scsiDev.target->liveCfg.bytesPerSector;
+		scsiDev.dataPtr = scsiDev.target->liveCfg.bytesPerSector;
 
 		// No need for single-block writes atm.  Overhead of the
 		// multi-block write is minimal.
@@ -188,12 +205,15 @@ static void doWrite(uint32 lba, uint32 blocks)
 
 static void doRead(uint32 lba, uint32 blocks)
 {
-	uint32_t capacity = getScsiCapacity();
+	uint32_t capacity = getScsiCapacity(
+		scsiDev.target->cfg->sdSectorStart,
+		scsiDev.target->liveCfg.bytesPerSector,
+		scsiDev.target->cfg->scsiSectors);
 	if (((uint64) lba) + blocks > capacity)
 	{
 		scsiDev.status = CHECK_CONDITION;
-		scsiDev.sense.code = ILLEGAL_REQUEST;
-		scsiDev.sense.asc = LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
+		scsiDev.target->sense.code = ILLEGAL_REQUEST;
+		scsiDev.target->sense.asc = LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
 		scsiDev.phase = STATUS;
 	}
 	else
@@ -223,11 +243,16 @@ static void doRead(uint32 lba, uint32 blocks)
 
 static void doSeek(uint32 lba)
 {
-	if (lba >= getScsiCapacity())
+	if (lba >=
+		getScsiCapacity(
+			scsiDev.target->cfg->sdSectorStart,
+			scsiDev.target->liveCfg.bytesPerSector,
+			scsiDev.target->cfg->scsiSectors)
+		)
 	{
 		scsiDev.status = CHECK_CONDITION;
-		scsiDev.sense.code = ILLEGAL_REQUEST;
-		scsiDev.sense.asc = LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
+		scsiDev.target->sense.code = ILLEGAL_REQUEST;
+		scsiDev.target->sense.asc = LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
 		scsiDev.phase = STATUS;
 	}
 }
@@ -239,24 +264,24 @@ static int doTestUnitReady()
 	{
 		ready = 0;
 		scsiDev.status = CHECK_CONDITION;
-		scsiDev.sense.code = NOT_READY;
-		scsiDev.sense.asc = LOGICAL_UNIT_NOT_READY_INITIALIZING_COMMAND_REQUIRED;
+		scsiDev.target->sense.code = NOT_READY;
+		scsiDev.target->sense.asc = LOGICAL_UNIT_NOT_READY_INITIALIZING_COMMAND_REQUIRED;
 		scsiDev.phase = STATUS;
 	}
 	else if (!(blockDev.state & DISK_PRESENT))
 	{
 		ready = 0;
 		scsiDev.status = CHECK_CONDITION;
-		scsiDev.sense.code = NOT_READY;
-		scsiDev.sense.asc = MEDIUM_NOT_PRESENT;
+		scsiDev.target->sense.code = NOT_READY;
+		scsiDev.target->sense.asc = MEDIUM_NOT_PRESENT;
 		scsiDev.phase = STATUS;
 	}
 	else if (!(blockDev.state & DISK_INITIALISED))
 	{
 		ready = 0;
 		scsiDev.status = CHECK_CONDITION;
-		scsiDev.sense.code = NOT_READY;
-		scsiDev.sense.asc = LOGICAL_UNIT_NOT_READY_CAUSE_NOT_REPORTABLE;
+		scsiDev.target->sense.code = NOT_READY;
+		scsiDev.target->sense.asc = LOGICAL_UNIT_NOT_READY_CAUSE_NOT_REPORTABLE;
 		scsiDev.phase = STATUS;
 	}
 	return ready;
@@ -303,7 +328,7 @@ int scsiDiskCommand()
 		// FORMAT UNIT
 		// We don't really do any formatting, but we need to read the correct
 		// number of bytes in the DATA_OUT phase to make the SCSI host happy.
-		
+
 		int fmtData = (scsiDev.cdb[1] & 0x10) ? 1 : 0;
 		if (fmtData)
 		{
@@ -444,8 +469,8 @@ int scsiDiskCommand()
 			// TODO. This means they are supplying data to verify against.
 			// Technically we should probably grab the data and compare it.
 			scsiDev.status = CHECK_CONDITION;
-			scsiDev.sense.code = ILLEGAL_REQUEST;
-			scsiDev.sense.asc = INVALID_FIELD_IN_CDB;
+			scsiDev.target->sense.code = ILLEGAL_REQUEST;
+			scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
 			scsiDev.phase = STATUS;
 		}
 	}
@@ -464,8 +489,17 @@ void scsiDiskPoll()
 	{
 		scsiEnterPhase(DATA_IN);
 
-		int totalSDSectors = transfer.blocks * SDSectorsPerSCSISector();
-		uint32_t sdLBA = SCSISector2SD(transfer.lba);
+		int totalSDSectors =
+			transfer.blocks *
+				SDSectorsPerSCSISector(scsiDev.target->liveCfg.bytesPerSector);
+		uint32_t sdLBA =
+			SCSISector2SD(
+				scsiDev.target->cfg->sdSectorStart,
+				scsiDev.target->liveCfg.bytesPerSector,
+				transfer.lba);
+
+		const int sdPerScsi =
+			SDSectorsPerSCSISector(scsiDev.target->liveCfg.bytesPerSector);
 		int buffers = sizeof(scsiDev.data) / SD_SECTOR_SIZE;
 		int prep = 0;
 		int i = 0;
@@ -502,9 +536,9 @@ void scsiDiskPoll()
 			else if ((scsiActive == 0) && ((prep - i) > 0))
 			{
 				int dmaBytes = SD_SECTOR_SIZE;
-				if (i % SDSectorsPerSCSISector() == SDSectorsPerSCSISector() - 1)
+				if ((i % sdPerScsi) == (sdPerScsi - 1))
 				{
-					dmaBytes = config->bytesPerSector % SD_SECTOR_SIZE;
+					dmaBytes = scsiDev.target->liveCfg.bytesPerSector % SD_SECTOR_SIZE;
 					if (dmaBytes == 0) dmaBytes = SD_SECTOR_SIZE;
 				}
 				scsiWriteDMA(&scsiDev.data[SD_SECTOR_SIZE * (i % buffers)], dmaBytes);
@@ -522,7 +556,9 @@ void scsiDiskPoll()
 	{
 		scsiEnterPhase(DATA_OUT);
 
-		int totalSDSectors = transfer.blocks * SDSectorsPerSCSISector();
+		const int sdPerScsi =
+			SDSectorsPerSCSISector(scsiDev.target->liveCfg.bytesPerSector);
+		int totalSDSectors = transfer.blocks * sdPerScsi;
 		int buffers = sizeof(scsiDev.data) / SD_SECTOR_SIZE;
 		int prep = 0;
 		int i = 0;
@@ -559,9 +595,9 @@ void scsiDiskPoll()
 				!scsiDisconnected)
 			{
 				int dmaBytes = SD_SECTOR_SIZE;
-				if (prep % SDSectorsPerSCSISector() == SDSectorsPerSCSISector() - 1)
+				if ((prep % sdPerScsi) == (sdPerScsi - 1))
 				{
-					dmaBytes = config->bytesPerSector % SD_SECTOR_SIZE;
+					dmaBytes = scsiDev.target->liveCfg.bytesPerSector % SD_SECTOR_SIZE;
 					if (dmaBytes == 0) dmaBytes = SD_SECTOR_SIZE;
 				}
 				scsiReadDMA(&scsiDev.data[SD_SECTOR_SIZE * (prep % buffers)], dmaBytes);
@@ -622,10 +658,12 @@ void scsiDiskPoll()
 
 		if (scsiDev.phase == DATA_OUT)
 		{
-			if (scsiDev.parityError && config->enableParity && !scsiDev.compatMode)
+			if (scsiDev.parityError &&
+				(scsiDev.target->cfg->flags & CONFIG_ENABLE_PARITY) &&
+				!scsiDev.compatMode)
 			{
-				scsiDev.sense.code = ABORTED_COMMAND;
-				scsiDev.sense.asc = SCSI_PARITY_ERROR;
+				scsiDev.target->sense.code = ABORTED_COMMAND;
+				scsiDev.target->sense.asc = SCSI_PARITY_ERROR;
 				scsiDev.status = CHECK_CONDITION;;
 			}
 			scsiDev.phase = STATUS;
@@ -674,27 +712,5 @@ void scsiDiskInit()
 		blockDev.state = blockDev.state | DISK_WP;
 	}
 	#endif
-
-	// The Card-detect switches of micro-sd sockets are not standard. Don't make
-	// use of SD_CD so we can use sockets from other manufacturers.
-	// Detect presence of the card by testing whether it responds to commands.
-	// if (SD_CD_Read() == 1)
-	{
-		int retry;
-		blockDev.state = blockDev.state | DISK_PRESENT;
-
-		// Wait up to 5 seconds for the SD card to wake up.
-		for (retry = 0; retry < 5; ++retry)
-		{
-			if (doSdInit())
-			{
-				break;
-			}
-			else
-			{
-				CyDelay(1000);
-			}
-		}
-	}
 }
 

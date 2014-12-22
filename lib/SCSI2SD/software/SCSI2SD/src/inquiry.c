@@ -104,12 +104,13 @@ void scsiInquiry()
 		{
 			// error.
 			scsiDev.status = CHECK_CONDITION;
-			scsiDev.sense.code = ILLEGAL_REQUEST;
-			scsiDev.sense.asc = INVALID_FIELD_IN_CDB;
+			scsiDev.target->sense.code = ILLEGAL_REQUEST;
+			scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
 			scsiDev.phase = STATUS;
 		}
 		else
 		{
+			const TargetConfig* config = scsiDev.target->cfg;
 			memcpy(scsiDev.data, StandardResponse, sizeof(StandardResponse));
 			memcpy(&scsiDev.data[8], config->vendor, sizeof(config->vendor));
 			memcpy(&scsiDev.data[16], config->prodId, sizeof(config->prodId));
@@ -155,8 +156,8 @@ void scsiInquiry()
 	{
 		// error.
 		scsiDev.status = CHECK_CONDITION;
-		scsiDev.sense.code = ILLEGAL_REQUEST;
-		scsiDev.sense.asc = INVALID_FIELD_IN_CDB;
+		scsiDev.target->sense.code = ILLEGAL_REQUEST;
+		scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
 		scsiDev.phase = STATUS;
 	}
 
@@ -176,6 +177,21 @@ void scsiInquiry()
 		}
 		// Spec 8.2.5 requires us to simply truncate the response if it's too big.
 		scsiDev.dataLen = allocationLength;
+		
+		// Set the device type as needed.
+		switch (scsiDev.target->cfg->deviceType)
+		{
+		case CONFIG_OPTICAL:
+			scsiDev.data[0] = 0x05; // device type
+			scsiDev.data[1] |= 0x80; // Removable bit.
+			break;
+		case CONFIG_REMOVEABLE:
+			scsiDev.data[1] |= 0x80; // Removable bit.
+			break;
+		 default:
+			// Accept defaults for a fixed disk.
+			break;
+		}
 	}
 
 	// Set the first byte to indicate LUN presence.

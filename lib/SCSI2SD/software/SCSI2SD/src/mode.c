@@ -135,8 +135,8 @@ static void doModeSense(
 	if (pc == 0x03) // Saved Values not supported.
 	{
 		scsiDev.status = CHECK_CONDITION;
-		scsiDev.sense.code = ILLEGAL_REQUEST;
-		scsiDev.sense.asc = SAVING_PARAMETERS_NOT_SUPPORTED;
+		scsiDev.target->sense.code = ILLEGAL_REQUEST;
+		scsiDev.target->sense.asc = SAVING_PARAMETERS_NOT_SUPPORTED;
 		scsiDev.phase = STATUS;
 	}
 	else
@@ -200,9 +200,10 @@ static void doModeSense(
 			scsiDev.data[idx++] = 0; // reserved
 
 			// Block length
-			scsiDev.data[idx++] = config->bytesPerSector >> 16;
-			scsiDev.data[idx++] = config->bytesPerSector >> 8;
-			scsiDev.data[idx++] = config->bytesPerSector & 0xFF;
+			uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+			scsiDev.data[idx++] = bytesPerSector >> 16;
+			scsiDev.data[idx++] = bytesPerSector >> 8;
+			scsiDev.data[idx++] = bytesPerSector & 0xFF;
 		}
 
 		switch (pageCode)
@@ -225,8 +226,9 @@ static void doModeSense(
 			if (pc != 0x01)
 			{
 				// Fill out the configured bytes-per-sector
-				scsiDev.data[idx+12] = config->bytesPerSector >> 8;
-				scsiDev.data[idx+13] = config->bytesPerSector & 0xFF;
+				uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+				scsiDev.data[idx+12] = bytesPerSector >> 8;
+				scsiDev.data[idx+13] = bytesPerSector & 0xFF;
 			}
 			else
 			{
@@ -248,7 +250,14 @@ static void doModeSense(
 				uint32 cyl;
 				uint8 head;
 				uint32 sector;
-				LBA2CHS(getScsiCapacity(), &cyl, &head, &sector);
+				LBA2CHS(
+					getScsiCapacity(
+						scsiDev.target->cfg->sdSectorStart,
+						scsiDev.target->liveCfg.bytesPerSector,
+						scsiDev.target->cfg->scsiSectors),
+					&cyl,
+					&head,
+					&sector);
 
 				scsiDev.data[idx+2] = cyl >> 16;
 				scsiDev.data[idx+3] = cyl >> 8;
@@ -281,8 +290,8 @@ static void doModeSense(
 			// Unknown Page Code
 			pageFound = 0;
 			scsiDev.status = CHECK_CONDITION;
-			scsiDev.sense.code = ILLEGAL_REQUEST;
-			scsiDev.sense.asc = INVALID_FIELD_IN_CDB;
+			scsiDev.target->sense.code = ILLEGAL_REQUEST;
+			scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
 			scsiDev.phase = STATUS;
 		}
 
@@ -314,8 +323,8 @@ static void doModeSense(
 		{
 			// Page not found
 			scsiDev.status = CHECK_CONDITION;
-			scsiDev.sense.code = ILLEGAL_REQUEST;
-			scsiDev.sense.asc = INVALID_FIELD_IN_CDB;
+			scsiDev.target->sense.code = ILLEGAL_REQUEST;
+			scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
 			scsiDev.phase = STATUS;
 		}
 	}
@@ -341,7 +350,7 @@ static void doModeSelect(void)
 			blockDescLen = scsiDev.data[3];
 			idx = 4;
 		}
-		
+
 		// The unwritten rule.  Blocksizes are normally set using the
 		// block descriptor value, not by changing page 0x03.
 		if (blockDescLen >= 8)
@@ -355,10 +364,13 @@ static void doModeSelect(void)
 			{
 				goto bad;
 			}
-			else if (bytesPerSector != config->bytesPerSector)
+			else
 			{
-				config->bytesPerSector = bytesPerSector;
-				configSave();
+				scsiDev.target->liveCfg.bytesPerSector = bytesPerSector;
+				if (bytesPerSector != scsiDev.target->cfg->bytesPerSector)
+				{
+					configSave(scsiDev.target->targetId, bytesPerSector);
+				}
 			}
 		}
 		idx += blockDescLen;
@@ -387,15 +399,15 @@ static void doModeSelect(void)
 					goto bad;
 				}
 
-				config->bytesPerSector = bytesPerSector;
+				scsiDev.target->liveCfg.bytesPerSector = bytesPerSector;
 				if (scsiDev.cdb[1] & 1) // SP Save Pages flag
 				{
-					configSave();
+					configSave(scsiDev.target->targetId, bytesPerSector);
 				}
 			}
 			break;
 			//default:
-			
+
 				// Easiest to just ignore for now. We'll get here when changing
 				// the SCSI block size via the descriptor header.
 			}
@@ -406,8 +418,8 @@ static void doModeSelect(void)
 	goto out;
 bad:
 	scsiDev.status = CHECK_CONDITION;
-	scsiDev.sense.code = ILLEGAL_REQUEST;
-	scsiDev.sense.asc = INVALID_FIELD_IN_PARAMETER_LIST;
+	scsiDev.target->sense.code = ILLEGAL_REQUEST;
+	scsiDev.target->sense.asc = INVALID_FIELD_IN_PARAMETER_LIST;
 
 out:
 	scsiDev.phase = STATUS;

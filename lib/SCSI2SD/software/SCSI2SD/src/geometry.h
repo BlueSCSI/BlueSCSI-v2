@@ -35,14 +35,20 @@ typedef enum
 	ADDRESS_PHYSICAL_SECTOR = 5
 } SCSI_ADDRESS_FORMAT;
 
-static inline int SDSectorsPerSCSISector()
+static inline int SDSectorsPerSCSISector(uint16_t bytesPerSector)
 {
-	return (config->bytesPerSector + SD_SECTOR_SIZE - 1) / SD_SECTOR_SIZE;
+	return (bytesPerSector + SD_SECTOR_SIZE - 1) / SD_SECTOR_SIZE;
 }
 
-uint32_t getScsiCapacity();
+uint32_t getScsiCapacity(
+	uint32_t sdSectorStart,
+	uint16_t bytesPerSector,
+	uint32_t scsiSectors);
 
-uint32_t SCSISector2SD(uint32_t scsiSector);
+uint32_t SCSISector2SD(
+	uint32_t sdSectorStart,
+	uint16_t bytesPerSector,
+	uint32_t scsiSector);
 
 uint64 CHS2LBA(uint32 c, uint8 h, uint32 s);
 void LBA2CHS(uint32 lba, uint32* c, uint8* h, uint32* s);
@@ -50,8 +56,10 @@ void LBA2CHS(uint32 lba, uint32* c, uint8* h, uint32* s);
 // Convert an address in the given SCSI_ADDRESS_FORMAT to
 // a linear byte address.
 // addr must be >= 8 bytes.
-uint64 scsiByteAddress(int format, const uint8* addr);
-void scsiSaveByteAddress(int format, uint64 byteAddr, uint8* buf);
+uint64 scsiByteAddress(
+	uint16_t bytesPerSector, int format, const uint8* addr);
+void scsiSaveByteAddress(
+	uint16_t bytesPerSector, int format, uint64 byteAddr, uint8* buf);
 
 
 #endif

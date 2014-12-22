@@ -1,0 +1,18 @@
+2014-12-18  Version 1.0.4
+	- mingw support for cross-compiling for a Windows target.
+
+2011-10-05  Version 1.0.3
+	- Added Android NDK support
+
+2011-09-07  Version 1.0.2
+	- Fixed a bug in deflate, which caused it to exit prematurely and
+	report valid files as corrupt.
+
+2011-05-27  Version 1.0.1
+	- Removed private classes from doxygen output
+	- Added the zipper utility executable
+	- Added timestamp support
+
+2011-05-21	Version 1.0.0
+	- Initial release
+

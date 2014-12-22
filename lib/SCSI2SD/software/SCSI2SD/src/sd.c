@@ -161,7 +161,11 @@ sdReadMultiSectorPrep()
 {
 	uint8 v;
 	uint32 scsiLBA = (transfer.lba + transfer.currentBlock);
-	uint32 sdLBA = SCSISector2SD(scsiLBA);
+	uint32 sdLBA =
+		SCSISector2SD(
+			scsiDev.target->cfg->sdSectorStart,
+			scsiDev.target->liveCfg.bytesPerSector,
+			scsiLBA);
 
 	if (!sdDev.ccs)
 	{
@@ -174,8 +178,8 @@ sdReadMultiSectorPrep()
 		sdClearStatus();
 
 		scsiDev.status = CHECK_CONDITION;
-		scsiDev.sense.code = HARDWARE_ERROR;
-		scsiDev.sense.asc = LOGICAL_UNIT_COMMUNICATION_FAILURE;
+		scsiDev.target->sense.code = HARDWARE_ERROR;
+		scsiDev.target->sense.asc = LOGICAL_UNIT_COMMUNICATION_FAILURE;
 		scsiDev.phase = STATUS;
 	}
 	else
@@ -205,8 +209,8 @@ dmaReadSector(uint8_t* outputBuffer)
 		if (scsiDev.status != CHECK_CONDITION)
 		{
 			scsiDev.status = CHECK_CONDITION;
-			scsiDev.sense.code = HARDWARE_ERROR;
-			scsiDev.sense.asc = UNRECOVERED_READ_ERROR;
+			scsiDev.target->sense.code = HARDWARE_ERROR;
+			scsiDev.target->sense.asc = UNRECOVERED_READ_ERROR;
 			scsiDev.phase = STATUS;
 		}
 		return;
@@ -272,8 +276,8 @@ void sdReadSingleSectorDMA(uint32_t lba, uint8_t* outputBuffer)
 		sdClearStatus();
 
 		scsiDev.status = CHECK_CONDITION;
-		scsiDev.sense.code = HARDWARE_ERROR;
-		scsiDev.sense.asc = LOGICAL_UNIT_COMMUNICATION_FAILURE;
+		scsiDev.target->sense.code = HARDWARE_ERROR;
+		scsiDev.target->sense.asc = LOGICAL_UNIT_COMMUNICATION_FAILURE;
 		scsiDev.phase = STATUS;
 	}
 	else
@@ -323,8 +327,8 @@ void sdCompleteRead()
 		}
 
 		scsiDev.status = CHECK_CONDITION;
-		scsiDev.sense.code = HARDWARE_ERROR;
-		scsiDev.sense.asc = UNRECOVERED_READ_ERROR;
+		scsiDev.target->sense.code = HARDWARE_ERROR;
+		scsiDev.target->sense.asc = UNRECOVERED_READ_ERROR;
 		scsiDev.phase = STATUS;
 	}
 
@@ -418,8 +422,8 @@ sdWriteSectorDMAPoll()
 			sdClearStatus();
 
 			scsiDev.status = CHECK_CONDITION;
-			scsiDev.sense.code = HARDWARE_ERROR;
-			scsiDev.sense.asc = LOGICAL_UNIT_COMMUNICATION_FAILURE;
+			scsiDev.target->sense.code = HARDWARE_ERROR;
+			scsiDev.target->sense.asc = LOGICAL_UNIT_COMMUNICATION_FAILURE;
 			scsiDev.phase = STATUS;
 		}
 		else
@@ -461,8 +465,8 @@ void sdCompleteWrite()
 	{
 		sdClearStatus();
 		scsiDev.status = CHECK_CONDITION;
-		scsiDev.sense.code = HARDWARE_ERROR;
-		scsiDev.sense.asc = WRITE_ERROR_AUTO_REALLOCATION_FAILED;
+		scsiDev.target->sense.code = HARDWARE_ERROR;
+		scsiDev.target->sense.asc = WRITE_ERROR_AUTO_REALLOCATION_FAILED;
 		scsiDev.phase = STATUS;
 	}
 }
@@ -652,6 +656,7 @@ int sdInit()
 
 	sdInitDMA();
 
+	SD_CS_SetDriveMode(SD_CS_DM_STRONG);
 	SD_CS_Write(1); // Set CS inactive (active low)
 
 	// Set the SPI clock for 400kHz transfers
@@ -730,13 +735,19 @@ void sdWriteMultiSectorPrep()
 	// We don't care about the response - if the command is not accepted, writes
 	// will just be a bit slower.
 	// Max 22bit parameter.
-	uint32_t sdBlocks = transfer.blocks * SDSectorsPerSCSISector();
+	uint32_t sdBlocks =
+		transfer.blocks *
+			SDSectorsPerSCSISector(scsiDev.target->liveCfg.bytesPerSector);
 	uint32 blocks = sdBlocks > 0x7FFFFF ? 0x7FFFFF : sdBlocks;
 	sdCommandAndResponse(SD_APP_CMD, 0);
 	sdCommandAndResponse(SD_APP_SET_WR_BLK_ERASE_COUNT, blocks);
 
 	uint32 scsiLBA = (transfer.lba + transfer.currentBlock);
-	uint32 sdLBA = SCSISector2SD(scsiLBA);
+	uint32 sdLBA =
+		SCSISector2SD(
+			scsiDev.target->cfg->sdSectorStart,
+			scsiDev.target->liveCfg.bytesPerSector,
+			scsiLBA);
 	if (!sdDev.ccs)
 	{
 		sdLBA = sdLBA * SD_SECTOR_SIZE;
@@ -747,8 +758,8 @@ void sdWriteMultiSectorPrep()
 		scsiDiskReset();
 		sdClearStatus();
 		scsiDev.status = CHECK_CONDITION;
-		scsiDev.sense.code = HARDWARE_ERROR;
-		scsiDev.sense.asc = LOGICAL_UNIT_COMMUNICATION_FAILURE;
+		scsiDev.target->sense.code = HARDWARE_ERROR;
+		scsiDev.target->sense.asc = LOGICAL_UNIT_COMMUNICATION_FAILURE;
 		scsiDev.phase = STATUS;
 	}
 	else
@@ -757,3 +768,56 @@ void sdWriteMultiSectorPrep()
 	}
 }
 
+void sdPoll()
+{
+	// Check if there's an SD card present.
+	if ((scsiDev.phase == BUS_FREE) &&
+		!dmaInProgress)
+	{
+		// The CS line is pulled high by the SD card.
+		// De-assert the line, and check if it's high.
+		// This isn't foolproof as it'll be left floating without
+		// an SD card. We can't use the built-in pull-down resistor as it will
+		// overpower the SD pullup resistor.
+		SD_CS_Write(0);
+		SD_CS_SetDriveMode(SD_CS_DM_DIG_HIZ);
+		
+		CyDelayCycles(16);
+		uint8_t cs = SD_CS_Read();
+		SD_CS_SetDriveMode(SD_CS_DM_STRONG)	;
+
+		if (cs && !(blockDev.state & DISK_PRESENT))
+		{
+			static int firstInit = 1;
+		
+			// Debounce
+			CyDelay(250);
+			
+			if (sdInit())
+			{
+				blockDev.state |= DISK_PRESENT | DISK_INITIALISED;
+				
+				if (!firstInit)
+				{
+					int i;
+					for (i = 0; i < MAX_SCSI_TARGETS; ++i)
+					{
+						scsiDev.targets[i].unitAttention = PARAMETERS_CHANGED;
+					}
+				}
+				firstInit = 0;
+			}
+		}
+		else if (!cs && (blockDev.state & DISK_PRESENT))
+		{
+			sdDev.capacity = 0;
+			blockDev.state &= ~DISK_PRESENT;
+			blockDev.state &= ~DISK_INITIALISED;
+			int i;
+			for (i = 0; i < MAX_SCSI_TARGETS; ++i)
+			{
+				scsiDev.targets[i].unitAttention = PARAMETERS_CHANGED;
+			}
+		}
+	}
+}
