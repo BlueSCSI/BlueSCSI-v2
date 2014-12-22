@@ -27,6 +27,8 @@
 #include <sstream>
 #include <string>
 
+#include "config.h"
+
 using namespace zipper;
 
 static std::string argv0;
@@ -136,7 +138,7 @@ command_extract(const std::deque<std::string>& options)
 			++it)
 		{
 			builtPath << *it;
-			int result(mkdir(builtPath.str().c_str(), 0775));
+			int result(MKDIR(builtPath.str().c_str(), 0775));
 			if (result != 0 && errno != EEXIST)
 			{
 				std::string errMsg(zipper::strerror(errno));

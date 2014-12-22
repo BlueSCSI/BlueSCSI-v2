@@ -64,6 +64,7 @@ namespace
 TargetPanel::TargetPanel(wxWindow* parent, const TargetConfig& initialConfig) :
 	wxPanel(parent),
 	myParent(parent),
+	myAutoStartSector(0),
 	myStartSDSectorValidator(new wxIntegerValidator<uint32_t>),
 	mySectorSizeValidator(new wxIntegerValidator<uint16_t>),
 	myNumSectorValidator(new wxIntegerValidator<uint32_t>),
@@ -138,6 +139,7 @@ TargetPanel::TargetPanel(wxWindow* parent, const TargetConfig& initialConfig) :
 	Bind(wxEVT_CHECKBOX, &TargetPanel::onInput<wxCommandEvent>, this, ID_unitAttCtrl);
 
 	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("SD card start sector")));
+	wxWrapSizer* startContainer = new wxWrapSizer();
 	myStartSDSectorCtrl =
 		new wxTextCtrl(
 			this,
@@ -149,10 +151,19 @@ TargetPanel::TargetPanel(wxWindow* parent, const TargetConfig& initialConfig) :
 			*myStartSDSectorValidator);
 	myStartSDSectorCtrl->SetToolTip(wxT("Supports multiple SCSI targets "
 		"on a single memory card. In units of 512-byte sectors."));
-	fgs->Add(myStartSDSectorCtrl);
+	startContainer->Add(myStartSDSectorCtrl);
+	myAutoStartSectorCtrl =
+		new wxCheckBox(
+			this,
+			ID_autoStartSectorCtrl,
+			wxT("Auto"));
+	startContainer->Add(myAutoStartSectorCtrl);
+	Bind(wxEVT_CHECKBOX, &TargetPanel::onInput<wxCommandEvent>, this, ID_autoStartSectorCtrl);
+	fgs->Add(startContainer);
 	myStartSDSectorMsg = new wxStaticText(this, wxID_ANY, wxT(""));
 	fgs->Add(myStartSDSectorMsg);
 	Bind(wxEVT_TEXT, &TargetPanel::onInput<wxCommandEvent>, this, ID_startSDSectorCtrl);
+
 
 	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("Sector size (bytes)")));
 	mySectorSizeCtrl =
@@ -221,7 +232,10 @@ TargetPanel::TargetPanel(wxWindow* parent, const TargetConfig& initialConfig) :
 	myVendorCtrl =
 		new wxTextCtrl(
 			this,
-			ID_vendorCtrl);
+			ID_vendorCtrl,
+			wxEmptyString,
+			wxDefaultPosition,
+			wxSize(GetCharWidth() * 10, -1));
 	myVendorCtrl->SetMaxLength(8);
 	myVendorCtrl->SetToolTip(wxT("SCSI Vendor string. eg. ' codesrc'"));
 	fgs->Add(myVendorCtrl);
@@ -233,8 +247,11 @@ TargetPanel::TargetPanel(wxWindow* parent, const TargetConfig& initialConfig) :
 	myProductCtrl =
 		new wxTextCtrl(
 			this,
-			ID_productCtrl);
-	myProductCtrl->SetMaxLength(16);
+			ID_productCtrl,
+			wxEmptyString,
+			wxDefaultPosition,
+			wxSize(GetCharWidth() * 17, -1));
+	myProductCtrl->SetMaxLength(18);
 	myProductCtrl->SetToolTip(wxT("SCSI Product ID string. eg. 'SCSI2SD'"));
 	fgs->Add(myProductCtrl);
 	myProductMsg = new wxStaticText(this, wxID_ANY, wxT(""));
@@ -245,7 +262,10 @@ TargetPanel::TargetPanel(wxWindow* parent, const TargetConfig& initialConfig) :
 	myRevisionCtrl =
 		new wxTextCtrl(
 			this,
-			ID_revisionCtrl);
+			ID_revisionCtrl,
+			wxEmptyString,
+			wxDefaultPosition,
+			wxSize(GetCharWidth() * 6, -1));
 	myRevisionCtrl->SetMaxLength(4);
 	myRevisionCtrl->SetToolTip(wxT("SCSI device revision string. eg. '3.5a'"));
 	fgs->Add(myRevisionCtrl);
@@ -257,7 +277,10 @@ TargetPanel::TargetPanel(wxWindow* parent, const TargetConfig& initialConfig) :
 	mySerialCtrl =
 		new wxTextCtrl(
 			this,
-			ID_serialCtrl);
+			ID_serialCtrl,
+			wxEmptyString,
+			wxDefaultPosition,
+			wxSize(GetCharWidth() * 18, -1));
 	mySerialCtrl->SetMaxLength(16);
 	mySerialCtrl->SetToolTip(wxT("SCSI serial number. eg. '13eab5632a'"));
 	fgs->Add(mySerialCtrl);
@@ -280,6 +303,12 @@ TargetPanel::evaluate()
 {
 	bool valid = true;
 	std::stringstream conv;
+
+	if (myAutoStartSectorCtrl->IsChecked())
+	{
+		std::stringstream ss; ss << myAutoStartSector;
+		myStartSDSectorCtrl->ChangeValue(ss.str());
+	}
 
 	uint32_t startSDsector;
 	{
@@ -370,7 +399,8 @@ TargetPanel::evaluate()
 		myDeviceTypeCtrl->Enable(enabled);
 		myParityCtrl->Enable(enabled);
 		myUnitAttCtrl->Enable(enabled);
-		myStartSDSectorCtrl->Enable(enabled);
+		myStartSDSectorCtrl->Enable(enabled && !myAutoStartSectorCtrl->IsChecked());
+		myAutoStartSectorCtrl->Enable(enabled);
 		mySectorSizeCtrl->Enable(enabled);
 		myNumSectorCtrl->Enable(enabled);
 		mySizeCtrl->Enable(enabled);
@@ -530,6 +560,7 @@ TargetPanel::setConfig(const TargetConfig& config)
 	{
 		std::stringstream ss; ss << config.sdSectorStart;
 		myStartSDSectorCtrl->ChangeValue(ss.str());
+		myAutoStartSectorCtrl->SetValue(0);
 	}
 
 	{
@@ -607,3 +638,10 @@ TargetPanel::setSDSectorOverlap(bool overlap)
 		myStartSDSectorMsg->SetLabelMarkup("");
 	}
 }
+
+void
+TargetPanel::setAutoStartSector(uint32_t start)
+{
+	myAutoStartSector = start;
+}
+

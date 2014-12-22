@@ -64,7 +64,6 @@ private:
 	void sendHIDPacket(
 		const std::vector<uint8_t>& cmd, std::vector<uint8_t>& out
 		);
-	void saveConfig(uint8_t* buffer, size_t len);
 
 	hid_device_info* myHidInfo;
 	hid_device* myConfigHandle;

@@ -61,6 +61,7 @@ public:
 	// Error messages set by external validation
 	void setDuplicateID(bool duplicate);
 	void setSDSectorOverlap(bool overlap);
+	void setAutoStartSector(uint32_t start);
 
 private:
 	template<typename EvtType> void onInput(EvtType& event);
@@ -78,6 +79,7 @@ private:
 		ID_parityCtrl,
 		ID_unitAttCtrl,
 		ID_startSDSectorCtrl,
+		ID_autoStartSectorCtrl,
 		ID_sectorSizeCtrl,
 		ID_numSectorCtrl,
 		ID_sizeCtrl,
@@ -99,6 +101,7 @@ private:
 	wxWindow* myChangedEventHandler;
 
 	TargetConfig myConfig;
+	uint32_t myAutoStartSector;
 
 	wxCheckBox* myEnableCtrl;
 	wxSpinCtrl* myScsiIdCtrl;
@@ -111,6 +114,7 @@ private:
 
 	wxIntegerValidator<uint32_t>* myStartSDSectorValidator;
 	wxTextCtrl* myStartSDSectorCtrl;
+	wxCheckBox* myAutoStartSectorCtrl;
 	wxStaticText* myStartSDSectorMsg;
 
 	wxIntegerValidator<uint16_t>* mySectorSizeValidator;

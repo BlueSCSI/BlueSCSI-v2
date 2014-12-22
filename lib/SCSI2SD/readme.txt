@@ -14,8 +14,8 @@ Features
 
     In-built active terminator.
     Can optional supply terminator power back to the SCSI bus
-    Emulates a non-removable hard drive for maximum compatibility.
-    Supports sector sizes from 64 bytes to 2048 bytes
+    Emulates up to 4 SCSI devices
+    Supports sector sizes from 64 bytes to 8192 bytes
     Firmware updatable over USB
     Highly configurable over USB
         Selectable SCSI ID
@@ -31,14 +31,13 @@ SCSI Interface
 	SCSI-2 Narrow 8-bit 50-pin connector. Supports asynchronous transfers only.
 SD Card Interface
 	Standard SDSC (1GB maximum size)
-	SDHC (32GB maximum size)
-	SDXC cards are untested. Donations welcome.
+	SDHC, SDXC
 	Communication is via the SPI protocol at 25MHz.
 Power
 	5V via standard molex drive connector.
 Dimensions
 	10cm x 10cm x 1.5cm
-	A 3D-printable bracket is in testing to suit a standard 3.5" hard disk bay.
+	Mounting holes to suit standard 2.5" - 3.5" drive bracket.
 
 
 Performance
@@ -61,8 +60,7 @@ Tested with a 16GB class 10 SD card, via the commands:
  sudo dd bs=${SIZE} count=100 if=/dev/sdX of=/dev/null
 
 Compatibility
-
- Desktop systems
+ Computer systems
 
     Mac LC-III and LC-475
     Mac II running System 6.0.8
@@ -70,16 +68,20 @@ Compatibility
     Apple IIgs using Apple II High Speed SCSI controller card (from v3.3)
     Symbolics Lisp Machine XL1200, using 1280 byte sectors (from v3.4)
     PDP-11/73 running RSX11M+ V4.6
-    Microvax 3100 Model 80 running VMS 7.3 (needs patch against v3.5.2 firmware) 
+    Microvax 3100 Model 80 running VMS 7.3 (needs patch against v3.5.2 firmware)
     Amiga 500+ with GVP A530
-    Atari TT030 System V 
+    Atari TT030 System V
     Atari MEGA STE
         needs J3 TERMPWR jumper
-        1GB limit (--blocks=2048000)
+        1GB limit (--blocks=2048000) 
     Sharp X68000
-        SASI models supported. See http://gamesx.com/wiki/doku.php?id=x68000:hard_drive_on_sasi_machine for information on building a custom cable.
+        SASI models supported. See gamesx.com for information on building a custom cable.
         needs J3 TERMPWR jumper
-        Set to SCSI ID 3.  ID0 will not work.
+        Set to SCSI ID 3. ID0 will not work. 
+    Compaq XP-1000 Professional Workstation
+        Alpha 21264 CPU, 667MHz, with a QLogic SCSI controller in a PCI slot 
+    SCSI-based Macintosh Powerbooks (2.5" SCSI2SD)
+        Also reported to work on Thinkpad 860 running Win NT 4.0 PowerPC. 
 
 Samplers
 
@@ -89,14 +91,15 @@ Samplers
         There are compatibility problems with the Akai MPC3000. It works (slowly) with the alternate Vailixi OS with multi-sector transfers disabled. 
     EMU Emulator E4X with EOS 3.00b and E6400 (classic) with Eos 4.01
     Ensoniq ASR-X, ASR-10 (from v3.4, 2GB size limit)
-        ASR-20 Requires TERMPWR jumper. 
+        ASR-20 Requires TERMPWR jumper.
+        ASR-X resets when writing to devices > 2Gb. 
     Kurzweil K2000R
         See kurzweil.com for size limits which a dependant on the OS version. Older OS versions have a 1GB limit.
         SCSI cable reversed 
     Casio FZ-20M
         Requires TERMPWR jumper. The manual shows the pin25 of the DB25 connector is "not connected".
         May require scsi2sd-config --apple flag 
-    Yamaha EX5R 
+    Yamaha A5000, A3000, EX5, EX5R 
 
 Other
 

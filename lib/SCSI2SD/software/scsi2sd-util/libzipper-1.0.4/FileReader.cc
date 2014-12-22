@@ -27,6 +27,8 @@
 #include <unistd.h>
 #include <errno.h>
 
+#include "config.h"
+
 using namespace zipper;
 
 const timeval zipper::s_now = {0,0};
@@ -40,7 +42,7 @@ public:
 		m_fd(-1),
 		m_closeOnExit(true)
 	{
-		m_fd = ::open(filename.c_str(), O_RDONLY);
+		m_fd = ::open(filename.c_str(), O_RDONLY | O_BINARY);
 
 		if (m_fd < 0)
 		{

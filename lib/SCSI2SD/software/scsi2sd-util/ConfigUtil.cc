@@ -93,13 +93,13 @@ ConfigUtil::Default(size_t targetIdx)
 	config.flags = CONFIG_ENABLE_PARITY | CONFIG_ENABLE_UNIT_ATTENTION;
 	config.pad0 = 0;
 	config.sdSectorStart = 0;
-	config.scsiSectors = std::numeric_limits<uint32_t>::max();
+	config.scsiSectors = 2147483648; // 1TB
 	config.bytesPerSector = 512;
 	config.sectorsPerTrack = 63;
 	config.headsPerCylinder = 255;
 	memcpy(config.vendor, " codesrc", 8);
 	memcpy(config.prodId, "         SCSI2SD", 16);
-	memcpy(config.revision, " 3.6", 4);
+	memcpy(config.revision, " 4.0", 4);
 	memcpy(config.serial, "1234567812345678", 16);
 
 	// Reserved fields, already set to 0

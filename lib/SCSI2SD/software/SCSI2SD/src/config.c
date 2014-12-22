@@ -29,7 +29,7 @@
 
 #include <string.h>
 
-static const uint16_t FIRMWARE_VERSION = 0x0360;
+static const uint16_t FIRMWARE_VERSION = 0x0400;
 
 enum USB_ENDPOINTS
 {
@@ -261,7 +261,8 @@ void debugPoll()
 		hidBuffer[23] = scsiDev.msgCount;
 		hidBuffer[24] = scsiDev.cmdCount;
 		hidBuffer[25] = scsiDev.watchdogTick;
-
+		hidBuffer[26] = blockDev.state;
+		
 		hidBuffer[58] = sdDev.capacity >> 24;
 		hidBuffer[59] = sdDev.capacity >> 16;
 		hidBuffer[60] = sdDev.capacity >> 8;
@@ -300,12 +301,35 @@ void debugInit()
 }
 
 // Public method for storing MODE SELECT results.
-void configSave()
+void configSave(int scsiId, uint16_t bytesPerSector)
 {
-// TODO REIMPLEMENT
-//	CFG_EEPROM_Start();
-//	saveConfig(); // write to eeprom
-//	CFG_EEPROM_Stop();
+	int cfgIdx;
+	for (cfgIdx = 0; cfgIdx < MAX_SCSI_TARGETS; ++cfgIdx)
+	{
+		const TargetConfig* tgt = getConfigByIndex(cfgIdx);
+		if ((tgt->scsiId & CONFIG_TARGET_ID_BITS) == scsiId)
+		{
+			// Save row to flash
+			// We only save the first row of the configuration
+			// this contains the parameters changeable by a MODE SELECT command
+			uint8_t rowData[CYDEV_FLS_ROW_SIZE];
+			TargetConfig* rowCfgData = (TargetConfig*)&rowData;
+			memcpy(rowCfgData, tgt, sizeof(rowData));
+			rowCfgData->bytesPerSector = bytesPerSector;
+
+
+			uint8_t spcBuffer[CYDEV_FLS_ROW_SIZE + CYDEV_ECC_ROW_SIZE];
+			CyFlash_Start();
+			CySetFlashEEBuffer(spcBuffer);
+			CySetTemp();
+			CyWriteRowData(
+				SCSI_CONFIG_ARRAY,
+				SCSI_CONFIG_0_ROW + (cfgIdx * SCSI_CONFIG_ROWS),
+				(uint8_t*)rowCfgData);
+			CyFlash_Stop();
+			return;
+		}
+	}
 }
 
 

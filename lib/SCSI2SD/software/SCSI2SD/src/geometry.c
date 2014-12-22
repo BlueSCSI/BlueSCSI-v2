@@ -20,22 +20,28 @@
 
 #include <string.h>
 
-uint32_t getScsiCapacity(const TargetConfig* config)
+uint32_t getScsiCapacity(
+	uint32_t sdSectorStart,
+	uint16_t bytesPerSector,
+	uint32_t scsiSectors)
 {
 	uint32_t capacity =
-		(sdDev.capacity - config->sdSectorStart) /
-			SDSectorsPerSCSISector(config);
-	if (config->scsiSectors && (capacity > config->scsiSectors))
+		(sdDev.capacity - sdSectorStart) /
+			SDSectorsPerSCSISector(bytesPerSector);
+	if (scsiSectors && (capacity > scsiSectors))
 	{
-		capacity = config->scsiSectors;
+		capacity = scsiSectors;
 	}
 	return capacity;
 }
 
 
-uint32_t SCSISector2SD(const TargetConfig* config, uint32_t scsiSector)
+uint32_t SCSISector2SD(
+	uint32_t sdSectorStart,
+	uint16_t bytesPerSector,
+	uint32_t scsiSector)
 {
-	return scsiSector * SDSectorsPerSCSISector(config) + config->sdSectorStart;
+	return scsiSector * SDSectorsPerSCSISector(bytesPerSector) + sdSectorStart;
 }
 
 // Standard mapping according to ECMA-107 and ISO/IEC 9293:1994
@@ -56,7 +62,10 @@ void LBA2CHS(uint32 lba, uint32* c, uint8* h, uint32* s)
 	*s = (lba % SCSI_SECTORS_PER_TRACK) + 1;
 }
 
-uint64 scsiByteAddress(const TargetConfig* config, int format, const uint8* addr)
+uint64 scsiByteAddress(
+	uint16_t bytesPerSector,
+	int format,
+	const uint8* addr)
 {
 	uint64 result;
 	switch (format)
@@ -69,7 +78,7 @@ uint64 scsiByteAddress(const TargetConfig* config, int format, const uint8* addr
 			(((uint32) addr[2]) << 8) +
 			addr[3];
 
-		result = (uint64_t) config->bytesPerSector * lba;
+		result = (uint64_t) bytesPerSector * lba;
 	} break;
 
 	case ADDRESS_PHYSICAL_BYTE:
@@ -87,7 +96,7 @@ uint64 scsiByteAddress(const TargetConfig* config, int format, const uint8* addr
 			(((uint32) addr[6]) << 8) +
 			addr[7];
 
-		result = CHS2LBA(cyl, head, 1) * (uint64_t) config->bytesPerSector + bytes;
+		result = CHS2LBA(cyl, head, 1) * (uint64_t) bytesPerSector + bytes;
 	} break;
 
 	case ADDRESS_PHYSICAL_SECTOR:
@@ -105,7 +114,7 @@ uint64 scsiByteAddress(const TargetConfig* config, int format, const uint8* addr
 			(((uint32) addr[6]) << 8) +
 			addr[7];
 
-		result = CHS2LBA(cyl, head, sector) * (uint64_t) config->bytesPerSector;
+		result = CHS2LBA(cyl, head, sector) * (uint64_t) bytesPerSector;
 	} break;
 
 	default:
@@ -116,10 +125,14 @@ uint64 scsiByteAddress(const TargetConfig* config, int format, const uint8* addr
 }
 
 
-void scsiSaveByteAddress(const TargetConfig* config, int format, uint64 byteAddr, uint8* buf)
+void scsiSaveByteAddress(
+	uint16_t bytesPerSector,
+	int format,
+	uint64 byteAddr,
+	uint8* buf)
 {
-	uint32 lba = byteAddr / config->bytesPerSector;
-	uint32 byteOffset = byteAddr % config->bytesPerSector;
+	uint32 lba = byteAddr / bytesPerSector;
+	uint32 byteOffset = byteAddr % bytesPerSector;
 
 	switch (format)
 	{
@@ -145,7 +158,7 @@ void scsiSaveByteAddress(const TargetConfig* config, int format, uint64 byteAddr
 
 		LBA2CHS(lba, &cyl, &head, &sector);
 
-		bytes = sector * config->bytesPerSector + byteOffset;
+		bytes = sector * bytesPerSector + byteOffset;
 
 		buf[0] = cyl >> 16;
 		buf[1] = cyl >> 8;

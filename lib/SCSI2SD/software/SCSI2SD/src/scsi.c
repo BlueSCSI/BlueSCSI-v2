@@ -846,6 +846,8 @@ void scsiInit()
 		{
 			scsiDev.targets[i].targetId = cfg->scsiId & CONFIG_TARGET_ID_BITS;
 			scsiDev.targets[i].cfg = cfg;
+
+			scsiDev.targets[i].liveCfg.bytesPerSector = cfg->bytesPerSector;
 		}
 		else
 		{

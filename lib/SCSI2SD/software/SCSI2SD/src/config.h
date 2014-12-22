@@ -23,7 +23,7 @@
 void configInit(void);
 void debugInit(void);
 void configPoll(void);
-void configSave(void);
+void configSave(int scsiId, uint16_t byesPerSector);
 
 const TargetConfig* getConfigByIndex(int index);
 const TargetConfig* getConfigById(int scsiId);

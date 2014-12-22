@@ -1,9 +1,15 @@
 VPATH=cybootloaderutils ../SCSI2SD/src
 
-CPPFLAGS = -I cybootloaderutils -I hidapi/hidapi -I wxWidgets/include -I ../include -Ilibzipper-1.0.3 -I$(BUILD)/zlib
+CPPFLAGS = -I cybootloaderutils -I hidapi/hidapi -I ../include -Ilibzipper-1.0.4 -I$(BUILD)/zlib
 CFLAGS += -Wall -Wno-pointer-sign -O2 -g
 CXXFLAGS += -Wall -O2 -g -std=c++0x
 LDFLAGS += -L$(BUILD)/libzipper/.libs -lzipper -L$(BUILD)/zlib -lz
+
+LIBZIPPER_CONFIG = --disable-shared LDFLAGS="-L../zlib" CPPFLAGS="-I../zlib"
+
+# wxWidgets 3.0.2 uses broken Webkit headers under OSX Yosemeti
+WX_CONFIG=--disable-webkit --disable-webviewwebkit  \
+	--enable-monolithic --enable-stl --disable-shared
 
 TARGET ?= $(shell uname -s)
 ifeq ($(TARGET),Win32)
@@ -12,8 +18,9 @@ ifeq ($(TARGET),Win32)
 	BUILD = build/windows/32bit
 	CC=i686-w64-mingw32-gcc
 	CXX=i686-w64-mingw32-g++
+	LIBZIPPER_CONFIG+=--host=i686-w64-mingw32
 	EXE=.exe
-	WX_CONFIG=--host=i686-w64-mingw32 --enable-monolithic --enable-stl --disable-shared
+	WX_CONFIG+=--host=i686-w64-mingw32
 endif
 ifeq ($(TARGET),Win64)
 	VPATH += hidapi/windows
@@ -21,26 +28,26 @@ ifeq ($(TARGET),Win64)
 	BUILD = build/windows/64bit
 	CC=x86_64-w64-mingw32-gcc
 	CXX=x86_64-w64-mingw32-g++
+	LIBZIPPER_CONFIG+=--host=x86_64-w64-mingw32
 	EXE=.exe
-	WX_CONFIG=--host=x86_64-w64-mingw32 --enable-monolithic --enable-stl --disable-shared
+	WX_CONFIG+=--host=x86_64-w64-mingw32
 endif
 ifeq ($(TARGET),Linux)
 	VPATH += hidapi/linux
 	LDFLAGS += -ludev
 	BUILD = build/linux
-	WX_CONFIG=--enable-monolithic --enable-stl
 endif
 ifeq ($(TARGET),Darwin)
 	# Should match OSX
 	VPATH += hidapi-mac
 	LDFLAGS += -framework IOKit -framework CoreFoundation
-	CFLAGS += -mmacosx-version-min=10.7
-	CXXFLAGS += -stdlib=libc++ -mmacosx-version-min=10.7
-	CC=clang
-	CXX=clang++
+	CC=clang -mmacosx-version-min=10.7
+	CXX=clang++ -stdlib=libc++ -mmacosx-version-min=10.7
+	WX_CONFIG += --with-macosx-version-min=10.7
 	BUILD=build/mac
-	WX_CONFIG=--enable-monolithic --enable-stl --disable-shared
 endif
+
+export CC CXX
 
 all:  $(BUILD)/scsi2sd-util$(EXE)
 
@@ -82,18 +89,18 @@ $(BUILD)/wx.buildstamp: $(BUILD)/zlib/buildstamp
 	mkdir -p $(dir $@)
 	( \
 		cd $(BUILD) && \
-		$(CURDIR)/wxWidgets/configure $(WX_CONFIG) CPPFLAGS=-I$(BUILD)/zlib LDFLAGS=-I$(BUILD)/zlib && \
+		$(CURDIR)/wxWidgets/configure $(WX_CONFIG) CPPFLAGS=-I../zlib LDFLAGS=-I../zlib && \
 		$(MAKE) \
 	) && \
 	touch $@
 
 $(OBJ): $(BUILD)/libzipper/buildstamp
-$(BUILD)/libzipper/buildstamp:
+$(BUILD)/libzipper/buildstamp: $(BUILD)/zlib/buildstamp
 	mkdir -p $(dir $@)
 	( \
 		cd $(dir $@) && \
-		$(CURDIR)/libzipper-1.0.3/configure --disable-shared --enable-static && \
-		$(MAKE) \
+		$(CURDIR)/libzipper-1.0.4/configure ${LIBZIPPER_CONFIG} --disable-shared --enable-static && \
+		$(MAKE) libzipper.la \
 	) && \
 	touch $@
 

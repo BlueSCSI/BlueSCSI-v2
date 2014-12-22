@@ -33,6 +33,11 @@ AM_PROG_LIBTOOL
 AC_FUNC_STRERROR_R
 AM_CONDITIONAL(HAVE_GNU_STRERROR,[test x$ac_cv_func_strerror_r_char_p = xyes])
 
+AC_CHECK_FUNCS([pread pwrite utimes localtime_r])
+AM_CONDITIONAL(HAVE_PREAD,[test x$ac_cv_func_pread = xyes])
+AM_CONDITIONAL(HAVE_PWRITE,[test x$ac_cv_func_pwrite = xyes])
+AM_CONDITIONAL(HAVE_UTIMES,[test x$ac_cv_func_utimes = xyes])
+
 DX_DOXYGEN_FEATURE([ON])
 DX_HTML_FEATURE([ON])
 DX_CHM_FEATURE(OFF)

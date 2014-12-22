@@ -28,6 +28,8 @@
 #include <time.h>
 #include <string.h>
 
+#include "config.h"
+
 using namespace zipper;
 
 namespace

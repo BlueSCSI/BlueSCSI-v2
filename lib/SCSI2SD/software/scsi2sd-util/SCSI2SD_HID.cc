@@ -223,7 +223,11 @@ HID::readHID(uint8_t* buffer, size_t len)
 	assert(len >= 0);
 	buffer[0] = 0; // report id
 
-	int result = hid_read(myConfigHandle, buffer, len);
+	int result = -1;
+	for (int retry = 0; retry < 3 && result < 0; ++retry)
+	{
+		result = hid_read(myConfigHandle, buffer, len);
+	}
 
 	if (result < 0)
 	{
@@ -232,30 +236,6 @@ HID::readHID(uint8_t* buffer, size_t len)
 		ss << "USB HID read failure: " << err;
 		throw std::runtime_error(ss.str());
 	}
-}
-
-void
-HID::saveConfig(uint8_t* buffer, size_t len)
-{
-	assert(len >= 0 && len <= HID_PACKET_SIZE);
-
-	uint8_t hidBuf[HID_PACKET_SIZE + 1] =
-	{
-		0x00, // Report ID;
-	};
-	memcpy(&hidBuf[1], buffer, len);
-
-	int result = hid_write(myConfigHandle, hidBuf, len + 1);
-
-	if (result < 0)
-	{
-		const wchar_t* err = hid_error(myConfigHandle);
-		std::stringstream ss;
-		ss << "USB HID write failure: " << err;
-		throw std::runtime_error(ss.str());
-	}
-
-
 }
 
 void
@@ -334,7 +314,12 @@ HID::sendHIDPacket(const std::vector<uint8_t>& cmd, std::vector<uint8_t>& out)
 	{
 		uint8_t reportBuf[HID_PACKET_SIZE + 1] = { 0x00 }; // Report ID
 		memcpy(&reportBuf[1], chunk, HID_PACKET_SIZE);
-		int result = hid_write(myConfigHandle, reportBuf, sizeof(reportBuf));
+		int result = -1;
+		for (int retry = 0; retry < 10 && result < 0; ++retry)
+		{
+			result = hid_write(myConfigHandle, reportBuf, sizeof(reportBuf));
+			if (result < 0) wxMilliSleep(8);
+		}
 
 		if (result < 0)
 		{
@@ -352,14 +337,14 @@ HID::sendHIDPacket(const std::vector<uint8_t>& cmd, std::vector<uint8_t>& out)
 
 	// We need to poll quick enough to not skip packets
 	// This depends on the USB HID device poll rate parameter.
-	// SCSI2SD uses a 32ms poll rate, so we check for new chunks at twice
+	// SCSI2SD uses a 32ms poll rate, so we check for new chunks at 4x
 	// that rate.
-	for (int retry = 0; retry < (HIDPACKET_MAX_LEN / 62) * 10 && !resp; ++retry)
+	for (int retry = 0; retry < (HIDPACKET_MAX_LEN / 62) * 30 && !resp; ++retry)
 	{
 		readHID(hidBuf, sizeof(hidBuf));
 		hidPacket_recv(hidBuf, HID_PACKET_SIZE);
 		resp = hidPacket_getPacket(&respLen);
-		wxMilliSleep(16);
+		if (!resp) wxMilliSleep(8);
 	}
 
 	if (!resp)

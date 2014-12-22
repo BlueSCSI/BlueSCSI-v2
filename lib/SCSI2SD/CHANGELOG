@@ -1,4 +1,4 @@
-201412XX		3.6
+20141223		4.0
 	- Fix handling requests for LUNs other than 0 from SCSI-2 hosts.
 	- Handle glitches of the scsi signals to improve stability and operate with
 	multiple devices on the SCSI bus.
@@ -13,6 +13,8 @@
 	new scsi2sd-util GUI.
 	- Fix for SD cards with Samsung controllers which expect a "stop" bit
 	in each SD command over SPI.
+	- Hot-swap support. The SD card can be removed whenever it's not in use
+	(ie. the LED must be OFF when the SD card is removed)
 
 20140718		3.5.2
 	- Fix blank SCSI ID in scsi2sd-config output.

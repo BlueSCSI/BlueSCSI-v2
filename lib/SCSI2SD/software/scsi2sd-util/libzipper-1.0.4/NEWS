@@ -1,3 +1,6 @@
+2014-12-18  Version 1.0.4
+	- mingw support for cross-compiling for a Windows target.
+
 2011-10-05  Version 1.0.3
 	- Added Android NDK support
 

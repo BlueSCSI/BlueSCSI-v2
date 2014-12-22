@@ -70,7 +70,11 @@ SCSI2SDHID_WriteData(unsigned char* data, int count)
 	{
 		buf[i+1] = data[i];
 	}
-	int result = hid_write(SCSI2SDHID_handle, buf, count + 1);
+	int result = -1;
+	for (int retry = 0; retry < 3 && result < 0; ++retry)
+	{
+		result = hid_write(SCSI2SDHID_handle, buf, count + 1);
+	}
 
 	if (result < 0)
 	{

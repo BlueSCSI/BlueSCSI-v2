@@ -95,10 +95,16 @@ void scsiReceiveDiagnostic()
 		// Convert each supplied address back to a simple
 		// 64bit linear address, then convert back again.
 		uint64 fromByteAddr =
-			scsiByteAddress(scsiDev.target->cfg, suppliedFmt, &scsiDev.data[6]);
+			scsiByteAddress(
+				scsiDev.target->liveCfg.bytesPerSector,
+				suppliedFmt,
+				&scsiDev.data[6]);
 
 		scsiSaveByteAddress(
-			scsiDev.target->cfg, translateFmt, fromByteAddr, &scsiDev.data[6]);
+			scsiDev.target->liveCfg.bytesPerSector,
+			translateFmt,
+			fromByteAddr,
+			&scsiDev.data[6]);
 
 		// Fill out the rest of the response.
 		// (Clear out any optional bits).
@@ -137,7 +143,7 @@ void scsiReadBuffer()
 	// READ BUFFER
 	// Used for testing the speed of the SCSI interface.
 	uint8 mode = scsiDev.data[1] & 7;
-	
+
 	int allocLength =
 		(((uint32) scsiDev.cdb[6]) << 16) +
 		(((uint32) scsiDev.cdb[7]) << 8) +
@@ -151,7 +157,7 @@ void scsiReadBuffer()
 		scsiDev.data[1] = (maxSize >> 16) & 0xff;
 		scsiDev.data[2] = (maxSize >> 8) & 0xff;
 		scsiDev.data[3] = maxSize & 0xff;
-		
+
 		scsiDev.dataLen =
 			(allocLength > MAX_SECTOR_SIZE) ? MAX_SECTOR_SIZE : allocLength;
 		scsiDev.phase = DATA_IN;

@@ -15,6 +15,8 @@
 #	You should have received a copy of the GNU General Public License
 #	along with libzipper.  If not, see <http://www.gnu.org/licenses/>.
 
+AUTOMAKE_OPTIONS = subdir-objects
+
 include doxygen.am
 
 dist_noinst_SCRIPTS = \
@@ -60,6 +62,21 @@ libzipper_la_SOURCES += \
 else
 libzipper_la_SOURCES += \
 	port/strerror_posix.cc
+endif
+
+if !HAVE_PREAD
+libzipper_la_SOURCES += \
+	port/pread.c
+endif
+
+if !HAVE_PWRITE
+libzipper_la_SOURCES += \
+	port/pwrite.c
+endif
+
+if !HAVE_UTIMES
+libzipper_la_SOURCES += \
+	port/utimes.c
 endif
 
 # Public API headers go here, for installation to /usr/include

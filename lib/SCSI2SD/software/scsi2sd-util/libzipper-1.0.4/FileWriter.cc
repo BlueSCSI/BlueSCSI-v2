@@ -29,6 +29,8 @@
 #include <utime.h>
 #include <errno.h>
 
+#include "config.h"
+
 using namespace zipper;
 
 class FileWriter::FileWriterImpl
@@ -48,7 +50,7 @@ public:
 		m_fd =
 			::open(
 				filename.c_str(),
-				O_WRONLY | O_TRUNC | O_CREAT,
+				O_WRONLY | O_TRUNC | O_CREAT | O_BINARY,
 				createPermissions);
 
 		if (m_fd < 0)

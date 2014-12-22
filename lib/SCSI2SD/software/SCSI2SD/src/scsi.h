@@ -61,10 +61,20 @@ typedef enum
 #define MAX_SECTOR_SIZE 8192
 #define MIN_SECTOR_SIZE 64
 
+// Shadow parameters, possibly not saved to flash yet.
+// Set via Mode Select
+typedef struct
+{
+	uint16_t bytesPerSector;
+} LiveCfg;
+
 typedef struct
 {
 	uint8_t targetId;
+
 	const TargetConfig* cfg;
+
+	LiveCfg liveCfg;
 
 	ScsiSense sense;
 
