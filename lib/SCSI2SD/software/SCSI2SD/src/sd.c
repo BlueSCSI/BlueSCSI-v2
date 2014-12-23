@@ -782,7 +782,7 @@ void sdPoll()
 		SD_CS_Write(0);
 		SD_CS_SetDriveMode(SD_CS_DM_DIG_HIZ);
 		
-		CyDelayCycles(16);
+		CyDelayCycles(64);
 		uint8_t cs = SD_CS_Read();
 		SD_CS_SetDriveMode(SD_CS_DM_STRONG)	;
 
