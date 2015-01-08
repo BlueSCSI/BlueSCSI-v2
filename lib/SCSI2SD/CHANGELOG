@@ -1,4 +1,4 @@
-20141223		4.0
+20150108		4.0
 	- Fix handling requests for LUNs other than 0 from SCSI-2 hosts.
 	- Handle glitches of the scsi signals to improve stability and operate with
 	multiple devices on the SCSI bus.

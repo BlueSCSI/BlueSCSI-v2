@@ -66,6 +66,7 @@ public:
 private:
 	template<typename EvtType> void onInput(EvtType& event);
 	void onSizeInput(wxCommandEvent& event);
+	void evaluateSize();
 
 	std::pair<uint32_t, bool> convertUnitsToSectors() const;
 

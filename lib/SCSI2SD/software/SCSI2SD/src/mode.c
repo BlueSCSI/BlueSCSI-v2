@@ -150,11 +150,37 @@ static void doModeSense(
 		int idx = 1;
 		if (!sixByteCmd) ++idx;
 
-		scsiDev.data[idx++] = 0; // Medium type. 0 = default
+		uint8_t mediumType = 0;
+		uint8_t deviceSpecificParam = 0;
+		uint8_t density = 0;
+		switch (scsiDev.target->cfg->deviceType == CONFIG_OPTICAL)
+		{
+		case CONFIG_FIXED:
+		case CONFIG_REMOVEABLE:
+			mediumType = 0; // We should support various floppy types here!
+			// Contains cache bits (0) and a Write-Protect bit.
+			deviceSpecificParam =
+				(blockDev.state & DISK_WP) ? 0x80 : 0;
+			density = 0; // reserved for direct access
+			break;
 
-		// Device-specific parameter. Contains cache bits (0) and
-		// a Write-Protect bit.
-		scsiDev.data[idx++] = (blockDev.state & DISK_WP) ? 0x80 : 0;
+		case CONFIG_FLOPPY_14MB:
+			mediumType = 0x1E; // 90mm/3.5"
+			deviceSpecificParam =
+				(blockDev.state & DISK_WP) ? 0x80 : 0;
+			density = 0; // reserved for direct access
+			break;
+
+		case CONFIG_OPTICAL:
+			mediumType = 0x02; // 120mm CDROM, data only.
+			deviceSpecificParam = 0;
+			density = 0x01; // User data only, 2048bytes per sector.
+			break;
+
+		};
+
+		scsiDev.data[idx++] = mediumType;
+		scsiDev.data[idx++] = deviceSpecificParam;
 
 		if (sixByteCmd)
 		{
@@ -189,7 +215,7 @@ static void doModeSense(
 		////////////////////////////////////
 		if (!dbd)
 		{
-			scsiDev.data[idx++] = 0; // Density code. Reserved for direct-access
+			scsiDev.data[idx++] = density;
 			// Number of blocks
 			// Zero == all remaining blocks shall have the medium
 			// characteristics specified.

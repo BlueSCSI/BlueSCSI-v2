@@ -8,7 +8,9 @@ LDFLAGS += -L$(BUILD)/libzipper/.libs -lzipper -L$(BUILD)/zlib -lz
 LIBZIPPER_CONFIG = --disable-shared LDFLAGS="-L../zlib" CPPFLAGS="-I../zlib"
 
 # wxWidgets 3.0.2 uses broken Webkit headers under OSX Yosemeti
+# liblzma not available on OSX 10.7
 WX_CONFIG=--disable-webkit --disable-webviewwebkit  \
+	--without-libtiff --without-libjbig --without-liblzma --without-opengl \
 	--enable-monolithic --enable-stl --disable-shared
 
 TARGET ?= $(shell uname -s)

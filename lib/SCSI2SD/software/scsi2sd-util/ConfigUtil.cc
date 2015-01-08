@@ -90,10 +90,15 @@ ConfigUtil::Default(size_t targetIdx)
 		config.scsiId = config.scsiId | CONFIG_TARGET_ENABLED;
 	}
 	config.deviceType = CONFIG_FIXED;
-	config.flags = CONFIG_ENABLE_PARITY | CONFIG_ENABLE_UNIT_ATTENTION;
+
+	// Default to maximum fail-safe options.
+	config.flags = 0;// CONFIG_ENABLE_PARITY | CONFIG_ENABLE_UNIT_ATTENTION;
 	config.pad0 = 0;
 	config.sdSectorStart = 0;
-	config.scsiSectors = 2147483648; // 1TB
+
+	// Default to 2GB. Many systems have trouble with > 2GB disks, and
+	// a few start to complain at 1GB.
+	config.scsiSectors = 4194303; // 2GB - 1 sector
 	config.bytesPerSector = 512;
 	config.sectorsPerTrack = 63;
 	config.headsPerCylinder = 255;

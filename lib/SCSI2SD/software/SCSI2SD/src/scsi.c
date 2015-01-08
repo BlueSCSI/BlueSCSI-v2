@@ -668,7 +668,7 @@ static void process_MessageOut()
 		}
 
 		scsiDev.lun = scsiDev.msgOut & 0x7;
-		scsiDev.discPriv =
+		scsiDev.discPriv = 
 			((scsiDev.msgOut & 0x40) && (scsiDev.initiatorId >= 0))
 				? 1 : 0;
 	}

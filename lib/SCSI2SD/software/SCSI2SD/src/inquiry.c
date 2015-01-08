@@ -185,6 +185,8 @@ void scsiInquiry()
 			scsiDev.data[0] = 0x05; // device type
 			scsiDev.data[1] |= 0x80; // Removable bit.
 			break;
+
+		case CONFIG_FLOPPY_14MB:
 		case CONFIG_REMOVEABLE:
 			scsiDev.data[1] |= 0x80; // Removable bit.
 			break;

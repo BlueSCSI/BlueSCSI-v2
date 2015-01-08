@@ -102,7 +102,13 @@ TargetPanel::TargetPanel(wxWindow* parent, const TargetConfig& initialConfig) :
 	Bind(wxEVT_SPINCTRL, &TargetPanel::onInput<wxSpinEvent>, this, ID_scsiIdCtrl);
 
 	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("Device Type")));
-	wxString deviceTypes[] = {wxT("Hard Drive"), wxT("Removable"), wxT("CDROM")};
+	wxString deviceTypes[] =
+	{
+		wxT("Hard Drive"),
+		wxT("Removable"),
+		wxT("CDROM"),
+		wxT("3.5\" Floppy")
+	};
 	myDeviceTypeCtrl =
 		new wxChoice(
 			this,
@@ -304,6 +310,41 @@ TargetPanel::evaluate()
 	bool valid = true;
 	std::stringstream conv;
 
+	bool enabled = myEnableCtrl->IsChecked();
+	{
+		myScsiIdCtrl->Enable(enabled);
+		myDeviceTypeCtrl->Enable(enabled);
+		myParityCtrl->Enable(enabled);
+		myUnitAttCtrl->Enable(enabled);
+		myStartSDSectorCtrl->Enable(enabled && !myAutoStartSectorCtrl->IsChecked());
+		myAutoStartSectorCtrl->Enable(enabled);
+		mySectorSizeCtrl->Enable(enabled);
+		myNumSectorCtrl->Enable(enabled);
+		mySizeCtrl->Enable(enabled);
+		mySizeUnitCtrl->Enable(enabled);
+		myVendorCtrl->Enable(enabled);
+		myProductCtrl->Enable(enabled);
+		myRevisionCtrl->Enable(enabled);
+		mySerialCtrl->Enable(enabled);
+	}
+
+	switch (myDeviceTypeCtrl->GetSelection())
+	{
+	case CONFIG_OPTICAL:
+		mySectorSizeCtrl->ChangeValue("2048");
+		mySectorSizeCtrl->Enable(false);
+		break;
+	case CONFIG_FLOPPY_14MB:
+		mySectorSizeCtrl->ChangeValue("512");
+		mySectorSizeCtrl->Enable(false);
+		myNumSectorCtrl->ChangeValue("2880");
+		myNumSectorCtrl->Enable(false);
+		mySizeUnitCtrl->Enable(false);
+		mySizeCtrl->Enable(false);
+		break;
+	};
+	evaluateSize();
+
 	if (myAutoStartSectorCtrl->IsChecked())
 	{
 		std::stringstream ss; ss << myAutoStartSector;
@@ -393,23 +434,6 @@ TargetPanel::evaluate()
 		mySerialMsg->SetLabelMarkup("");
 	}
 
-	bool enabled = myEnableCtrl->IsChecked();
-	{
-		myScsiIdCtrl->Enable(enabled);
-		myDeviceTypeCtrl->Enable(enabled);
-		myParityCtrl->Enable(enabled);
-		myUnitAttCtrl->Enable(enabled);
-		myStartSDSectorCtrl->Enable(enabled && !myAutoStartSectorCtrl->IsChecked());
-		myAutoStartSectorCtrl->Enable(enabled);
-		mySectorSizeCtrl->Enable(enabled);
-		myNumSectorCtrl->Enable(enabled);
-		mySizeCtrl->Enable(enabled);
-		mySizeUnitCtrl->Enable(enabled);
-		myVendorCtrl->Enable(enabled);
-		myProductCtrl->Enable(enabled);
-		myRevisionCtrl->Enable(enabled);
-		mySerialCtrl->Enable(enabled);
-	}
 	return valid || !enabled;
 }
 
@@ -423,47 +447,49 @@ TargetPanel::onInput(EvtType& event)
 void
 TargetPanel::onSizeInput(wxCommandEvent& event)
 {
-	if (event.GetId() == ID_numSectorCtrl)
-	{
-		uint32_t numSectors;
-		std::stringstream conv;
-		conv << myNumSectorCtrl->GetValue();
-		conv >> numSectors;
-
-		conv.str(""); conv.clear();
-
-		if (conv)
-		{
-			uint64_t bytes =
-				uint64_t(numSectors) *
-					CtrlGetValue<uint16_t>(mySectorSizeCtrl).first;
-
-			if (bytes >= 1024 * 1024 * 1024)
-			{
-				conv << (bytes / (1024.0 * 1024 * 1024));
-				mySizeUnitCtrl->SetSelection(UNIT_GB);
-			}
-			else if (bytes >= 1024 * 1024)
-			{
-				conv << (bytes / (1024.0 * 1024));
-				mySizeUnitCtrl->SetSelection(UNIT_MB);
-			}
-			else
-			{
-				conv << (bytes / 1024.0);
-				mySizeUnitCtrl->SetSelection(UNIT_KB);
-			}
-			mySizeCtrl->ChangeValue(conv.str());
-		}
-	}
-	else
+	if (event.GetId() != ID_numSectorCtrl)
 	{
 		std::stringstream ss;
 		ss << convertUnitsToSectors().first;
 		myNumSectorCtrl->ChangeValue(ss.str());
 	}
-
+	evaluateSize();
 	onInput(event); // propagate
+}
+
+void
+TargetPanel::evaluateSize()
+{
+	uint32_t numSectors;
+	std::stringstream conv;
+	conv << myNumSectorCtrl->GetValue();
+	conv >> numSectors;
+
+	conv.str(""); conv.clear();
+
+	if (conv)
+	{
+		uint64_t bytes =
+			uint64_t(numSectors) *
+				CtrlGetValue<uint16_t>(mySectorSizeCtrl).first;
+
+		if (bytes >= 1024 * 1024 * 1024)
+		{
+			conv << (bytes / (1024.0 * 1024 * 1024));
+			mySizeUnitCtrl->SetSelection(UNIT_GB);
+		}
+		else if (bytes >= 1024 * 1024)
+		{
+			conv << (bytes / (1024.0 * 1024));
+			mySizeUnitCtrl->SetSelection(UNIT_MB);
+		}
+		else
+		{
+			conv << (bytes / 1024.0);
+			mySizeUnitCtrl->SetSelection(UNIT_KB);
+		}
+		mySizeCtrl->ChangeValue(conv.str());
+	}
 }
 
 std::pair<uint32_t, bool>

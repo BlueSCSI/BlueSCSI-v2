@@ -91,7 +91,8 @@ typedef enum
 {
 	CONFIG_FIXED,
 	CONFIG_REMOVEABLE,
-	CONFIG_OPTICAL
+	CONFIG_OPTICAL,
+	CONFIG_FLOPPY_14MB
 } CONFIG_TYPE;
 
 typedef struct __attribute__((packed))

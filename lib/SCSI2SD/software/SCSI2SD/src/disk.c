@@ -165,7 +165,9 @@ static void doReadCapacity()
 
 static void doWrite(uint32 lba, uint32 blocks)
 {
-	if (blockDev.state & DISK_WP)
+	if ((blockDev.state & DISK_WP) ||
+		(scsiDev.target->cfg->deviceType == CONFIG_OPTICAL))
+
 	{
 		scsiDev.status = CHECK_CONDITION;
 		scsiDev.target->sense.code = ILLEGAL_REQUEST;
