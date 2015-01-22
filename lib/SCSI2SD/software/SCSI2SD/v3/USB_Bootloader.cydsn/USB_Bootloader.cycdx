@@ -4,17 +4,33 @@
   <block name="SD_PULLUP" BASE="0x0" SIZE="0x0" desc="" visible="true" />
   <block name="SCSI_Out_DBx" BASE="0x0" SIZE="0x0" desc="" visible="true" />
   <block name="USBFS" BASE="0x0" SIZE="0x0" desc="USBFS" visible="true">
-    <block name="bus_reset" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="ZeroTerminal_5" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="VirtualMux_6" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="VirtualMux_5" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="VirtualMux_8" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="VirtualMux_7" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="ZeroTerminal_6" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="ZeroTerminal_1" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="VirtualMux_4" BASE="0x0" SIZE="0x0" desc="" visible="true" />
     <block name="ep_0" BASE="0x0" SIZE="0x0" desc="" visible="true" />
-    <block name="arb_int" BASE="0x0" SIZE="0x0" desc="" visible="true" />
-    <block name="USB" BASE="0x0" SIZE="0x0" desc="" visible="true" />
-    <block name="sof_int" BASE="0x0" SIZE="0x0" desc="" visible="true" />
-    <block name="ep_1" BASE="0x0" SIZE="0x0" desc="" visible="true" />
-    <block name="dp_int" BASE="0x0" SIZE="0x0" desc="" visible="true" />
-    <block name="Clock_vbus" BASE="0x0" SIZE="0x0" desc="" visible="true" />
-    <block name="Dp" BASE="0x0" SIZE="0x0" desc="" visible="true" />
-    <block name="ep_2" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="VirtualMux_1" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="ZeroTerminal_4" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="VirtualMux_2" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="ZeroTerminal_2" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="ZeroTerminal_7" BASE="0x0" SIZE="0x0" desc="" visible="true" />
     <block name="Dm" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="dp_int" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="ZeroTerminal_3" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="sof_int" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="USB" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="Dp" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="VirtualMux_3" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="ep_2" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="ep_1" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="bus_reset" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="arb_int" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="Clock_vbus" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="ZeroTerminal_8" BASE="0x0" SIZE="0x0" desc="" visible="true" />
     <register name="USBFS_PM_USB_CR0" address="0x40004394" bitWidth="8" desc="USB Power Mode Control Register 0">
       <field name="fsusbio_ref_en" from="0" to="0" access="RW" resetVal="" desc="" />
       <field name="fsusbio_pd_n" from="1" to="1" access="RW" resetVal="" desc="" />
@@ -47,7 +63,7 @@
     <register name="USBFS_EP0_DR6" address="0x40006006" bitWidth="8" desc="lengthLo" />
     <register name="USBFS_EP0_DR7" address="0x40006007" bitWidth="8" desc="lengthHi" />
     <register name="USBFS_CR0" address="0x40006008" bitWidth="8" desc="USB Control Register 0">
-      <field name="device_address" from="0" to="6" access="R" resetVal="" desc="" />
+      <field name="device_address" from="6" to="0" access="R" resetVal="" desc="" />
       <field name="usb_enable" from="7" to="7" access="RW" resetVal="" desc="" />
     </register>
     <register name="USBFS_CR1" address="0x40006009" bitWidth="8" desc="USB Control Register 1">

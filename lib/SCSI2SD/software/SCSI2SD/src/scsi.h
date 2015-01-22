@@ -103,7 +103,7 @@ typedef struct
 
 	int phase;
 
-	uint8 data[MAX_SECTOR_SIZE];
+	uint8 data[MAX_SECTOR_SIZE * 2];
 	int dataPtr; // Index into data, reset on [re]selection to savedDataPtr
 	int savedDataPtr; // Index into data, initially 0.
 	int dataLen;
@@ -134,9 +134,13 @@ typedef struct
 	uint8 watchdogTick;
 	uint8 lastStatus;
 	uint8 lastSense;
+	uint16_t lastSenseASC;
 } ScsiDevice;
 
 extern ScsiDevice scsiDev;
+
+void process_Status(void);
+void process_MessageIn(void);
 
 void scsiInit(void);
 void scsiPoll(void);

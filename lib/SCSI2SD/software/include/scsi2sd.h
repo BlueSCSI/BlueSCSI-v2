@@ -166,7 +166,14 @@ typedef enum
 	// Command content:
 	// uint8_t CONFIG_REBOOT
 	// Response: None.
-	CONFIG_REBOOT
+	CONFIG_REBOOT,
+
+	// Command content:
+	// uint8_t CONFIG_INFO
+	// Response:
+	// uint8_t[16] CSD
+	// uint8_t[16] CID
+	CONFIG_SDINFO
 } CONFIG_COMMAND;
 
 typedef enum

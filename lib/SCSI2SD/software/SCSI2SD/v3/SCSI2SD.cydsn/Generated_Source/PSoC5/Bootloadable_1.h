@@ -1,13 +1,13 @@
 /*******************************************************************************
 * File Name: Bootloadable_1.h
-* Version 1.20
+* Version 1.30
 *
 *  Description:
 *   Provides an API for the Bootloadable application. The API includes a
 *   single function for starting bootloader.
 *
 ********************************************************************************
-* Copyright 2008-2013, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2014, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
@@ -24,7 +24,7 @@
 /* Check to see if required defines such as CY_PSOC5LP are available */
 /* They are defined starting with cy_boot v3.0 */
 #if !defined (CY_PSOC5LP)
-    #error Component Bootloadable_v1_20 requires cy_boot v3.0 or later
+    #error Component Bootloadable_v1_30 requires cy_boot v3.0 or later
 #endif /* !defined (CY_PSOC5LP) */
 
 
@@ -89,13 +89,13 @@ extern void Bootloadable_1_Load(void) ;
 
 
 /*******************************************************************************
-* Following code are OBSOLETE and must not be used starting from version 1.10
+* The following code is OBSOLETE and must not be used starting from version 1.10
 *******************************************************************************/
 #define CYBTDLR_SET_RUN_TYPE(x)     Bootloadable_1_SET_RUN_TYPE(x)
 
 
 /*******************************************************************************
-* Following code are OBSOLETE and must not be used starting from version 1.20
+* The following code is OBSOLETE and must not be used starting from version 1.20
 *******************************************************************************/
 #define Bootloadable_1_START_APP                      (0x80u)
 #define Bootloadable_1_START_BTLDR                    (0x40u)
@@ -136,12 +136,26 @@ extern void Bootloadable_1_Load(void) ;
 #define Bootloadable_1_SetFlashRunType(runType)           \
                         Bootloadable_1_SetFlashByte(Bootloadable_1_MD_APP_RUN_ADDR(0), (runType))
 
-void Bootloadable_1_SetFlashByte(uint32 address, uint8 runType) ;
 
+/*******************************************************************************
+* The following code is OBSOLETE and must not be used.
+*
+* If the obsoleted macro definitions intended for use in the application use the
+* following scheme, redefine your own versions of these definitions:
+*    #ifdef <OBSOLETED_DEFINE>
+*        #undef  <OBSOLETED_DEFINE>
+*        #define <OBSOLETED_DEFINE>      (<New Value>)
+*    #endif
+*
+* Note: Redefine obsoleted macro definitions with caution. They might still be
+*       used in the application and their modification might lead to unexpected
+*       consequences.
+*******************************************************************************/
+void Bootloadable_1_SetFlashByte(uint32 address, uint8 runType) ;
 #if(CY_PSOC4)
-    #define Bootloadable_1_SOFTWARE_RESET         CY_SET_REG32(CYREG_CM0_AIRCR, 0x05FA0004u)
+    #define Bootloadable_1_SOFTWARE_RESET         CySoftwareReset()
 #else
-    #define Bootloadable_1_SOFTWARE_RESET         CY_SET_REG8(CYREG_RESET_CR2, 0x01u)
+    #define Bootloadable_1_SOFTWARE_RESET         CySoftwareReset()
 #endif  /* (CY_PSOC4) */
 
 #if(CY_PSOC4)

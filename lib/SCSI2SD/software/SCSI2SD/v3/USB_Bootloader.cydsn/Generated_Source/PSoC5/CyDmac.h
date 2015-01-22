@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: CyDmac.h
-* Version 4.0
+* Version 4.20
 *
 *  Description:
 *   Provides the function definitions for the DMA Controller.
@@ -10,7 +10,7 @@
 *   System Reference Guide provided with PSoC Creator.
 *
 ********************************************************************************
-* Copyright 2008-2013, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2014, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
@@ -116,7 +116,7 @@ typedef struct dmac_tdmem2_struct
 
 #define CY_DMA_TD_SIZE              0x08u
 
-/* The "u" was removed as workaround for Keil compiler bug */
+/* "u" was removed as workaround for Keil compiler bug */
 #define CY_DMA_TD_SWAP_EN           0x80
 #define CY_DMA_TD_SWAP_SIZE4        0x40
 #define CY_DMA_TD_AUTO_EXEC_NEXT    0x20
@@ -178,7 +178,18 @@ typedef struct dmac_tdmem2_struct
 
 
 /*******************************************************************************
-* Following code are OBSOLETE and must not be used starting from cy_boot 3.0
+* The following code is OBSOLETE and must not be used.
+*
+* If the obsoleted macro definitions intended for use in the application use the
+* following scheme, redefine your own versions of these definitions:
+*    #ifdef <OBSOLETED_DEFINE>
+*        #undef  <OBSOLETED_DEFINE>
+*        #define <OBSOLETED_DEFINE>      (<New Value>)
+*    #endif
+*
+* Note: Redefine obsoleted macro definitions with caution. They might still be
+*       used in the application and their modification might lead to unexpected
+*       consequences.
 *******************************************************************************/
 #define DMA_INVALID_CHANNEL         (CY_DMA_INVALID_CHANNEL)
 #define DMA_INVALID_TD              (CY_DMA_INVALID_TD)

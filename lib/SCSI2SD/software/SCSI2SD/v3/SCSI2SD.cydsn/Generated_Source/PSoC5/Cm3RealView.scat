@@ -4,7 +4,7 @@
 
 ;********************************************************************************
 ;* File Name: Cm3RealView.scat
-;* Version 4.0
+;* Version 4.20
 ;*
 ;*  Description:
 ;*  This Linker Descriptor file describes the memory layout of the PSoC5
@@ -14,7 +14,7 @@
 ;*
 ;*  Note:
 ;*
-;*  romvectors: Cypress default Interrupt sevice routine vector table.
+;*  romvectors: Cypress default Interrupt service routine vector table.
 ;*
 ;*      This is the ISR vector table at bootup. Used only for the reset vector.
 ;*
@@ -25,7 +25,7 @@
 ;*
 ;*
 ;********************************************************************************
-;* Copyright 2008-2013, Cypress Semiconductor Corporation.  All rights reserved.
+;* Copyright 2008-2014, Cypress Semiconductor Corporation.  All rights reserved.
 ;* You may use this file only in accordance with the license, terms, conditions,
 ;* disclaimers, and limitations in the end user license agreement accompanying
 ;* the software package with which this file was provided.
@@ -112,11 +112,11 @@ APPLICATION APPL_START (CY_FLASH_SIZE - APPL_START)
         .ANY (+RW, +ZI)
     }
 
-    ARM_LIB_HEAP (0x20000000 + (32768 / 2) - 0x0400 - 0x2000) EMPTY 0x0400
+    ARM_LIB_HEAP (0x20000000 + (32768 / 2) - 0x0400 - 0x1000) EMPTY 0x0400
     {
     }
 
-    ARM_LIB_STACK (0x20000000 + (32768 / 2)) EMPTY -0x2000
+    ARM_LIB_STACK (0x20000000 + (32768 / 2)) EMPTY -0x1000
     {
     }
 }

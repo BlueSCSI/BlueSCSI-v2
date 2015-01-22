@@ -1,14 +1,15 @@
 /*******************************************************************************
 * File Name: USBFS_audio.c
-* Version 2.60
+* Version 2.80
 *
 * Description:
 *  USB AUDIO Class request handler.
 *
-* Note:
+* Related Document:
+*  Universal Serial Bus Device Class Definition for Audio Devices Release 1.0
 *
 ********************************************************************************
-* Copyright 2008-2013, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2014, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
@@ -20,9 +21,9 @@
 
 #include "USBFS_audio.h"
 #include "USBFS_pvt.h"
-#if defined(USBFS_ENABLE_MIDI_STREAMING) 
+#if defined(USBFS_ENABLE_MIDI_STREAMING)
     #include "USBFS_midi.h"
-#endif /* End USBFS_ENABLE_MIDI_STREAMING*/
+#endif /*  USBFS_ENABLE_MIDI_STREAMING*/
 
 
 /***************************************
@@ -52,7 +53,7 @@
                                                                                   USBFS_VOL_MAX_MSB};
     volatile uint8 USBFS_resolutionVolume[USBFS_VOLUME_LEN] = {USBFS_VOL_RES_LSB,
                                                                                      USBFS_VOL_RES_MSB};
-#endif /* End USBFS_ENABLE_AUDIO_STREAMING */
+#endif /*  USBFS_ENABLE_AUDIO_STREAMING */
 
 
 /*******************************************************************************
@@ -93,17 +94,18 @@
 uint8 USBFS_DispatchAUDIOClassRqst(void) 
 {
     uint8 requestHandled = USBFS_FALSE;
+    uint8 bmRequestType  = CY_GET_REG8(USBFS_bmRequestType);
 
     #if defined(USBFS_ENABLE_AUDIO_STREAMING)
         uint8 epNumber;
         epNumber = CY_GET_REG8(USBFS_wIndexLo) & USBFS_DIR_UNUSED;
-    #endif /* End USBFS_ENABLE_AUDIO_STREAMING */
+    #endif /*  USBFS_ENABLE_AUDIO_STREAMING */
 
-    if ((CY_GET_REG8(USBFS_bmRequestType) & USBFS_RQST_DIR_MASK) == USBFS_RQST_DIR_D2H)
+
+    if ((bmRequestType & USBFS_RQST_DIR_MASK) == USBFS_RQST_DIR_D2H)
     {
         /* Control Read */
-        if((CY_GET_REG8(USBFS_bmRequestType) & USBFS_RQST_RCPT_MASK) == \
-                                                                                    USBFS_RQST_RCPT_EP)
+        if((bmRequestType & USBFS_RQST_RCPT_MASK) == USBFS_RQST_RCPT_EP)
         {
             /* Endpoint */
             switch (CY_GET_REG8(USBFS_bRequest))
@@ -112,12 +114,12 @@ uint8 USBFS_DispatchAUDIOClassRqst(void)
                 #if defined(USBFS_ENABLE_AUDIO_STREAMING)
                     if(CY_GET_REG8(USBFS_wValueHi) == USBFS_SAMPLING_FREQ_CONTROL)
                     {
-                         /* Endpoint Control Selector is Sampling Frequency */
+                         /* point Control Selector is Sampling Frequency */
                         USBFS_currentTD.wCount = USBFS_SAMPLE_FREQ_LEN;
                         USBFS_currentTD.pData  = USBFS_currentSampleFrequency[epNumber];
                         requestHandled   = USBFS_InitControlRead();
                     }
-                #endif /* End USBFS_ENABLE_AUDIO_STREAMING */
+                #endif /*  USBFS_ENABLE_AUDIO_STREAMING */
 
                 /* `#START AUDIO_READ_REQUESTS` Place other request handler here */
 
@@ -127,8 +129,7 @@ uint8 USBFS_DispatchAUDIOClassRqst(void)
                     break;
             }
         }
-        else if((CY_GET_REG8(USBFS_bmRequestType) & USBFS_RQST_RCPT_MASK) == \
-                                                                                    USBFS_RQST_RCPT_IFC)
+        else if((bmRequestType & USBFS_RQST_RCPT_MASK) == USBFS_RQST_RCPT_IFC)
         {
             /* Interface or Entity ID */
             switch (CY_GET_REG8(USBFS_bRequest))
@@ -140,7 +141,7 @@ uint8 USBFS_DispatchAUDIOClassRqst(void)
                         /* `#START MUTE_CONTROL_GET_REQUEST` Place multi-channel handler here */
 
                         /* `#END` */
-                        
+
                          /* Entity ID Control Selector is MUTE */
                         USBFS_currentTD.wCount = 1u;
                         USBFS_currentTD.pData  = &USBFS_currentMute;
@@ -199,7 +200,7 @@ uint8 USBFS_DispatchAUDIOClassRqst(void)
                         USBFS_currentTD.wCount = 0u;
                         requestHandled   = USBFS_InitControlWrite();
 
-                #endif /* End USBFS_ENABLE_AUDIO_STREAMING */
+                #endif /*  USBFS_ENABLE_AUDIO_STREAMING */
 
                 /* `#START AUDIO_WRITE_REQUESTS` Place other request handler here */
 
@@ -213,27 +214,25 @@ uint8 USBFS_DispatchAUDIOClassRqst(void)
         {   /* USBFS_RQST_RCPT_OTHER */
         }
     }
-    else if ((CY_GET_REG8(USBFS_bmRequestType) & USBFS_RQST_DIR_MASK) == \
-                                                                                    USBFS_RQST_DIR_H2D)
+    else
     {
         /* Control Write */
-        if((CY_GET_REG8(USBFS_bmRequestType) & USBFS_RQST_RCPT_MASK) == \
-                                                                                    USBFS_RQST_RCPT_EP)
+        if((bmRequestType & USBFS_RQST_RCPT_MASK) == USBFS_RQST_RCPT_EP)
         {
-            /* Endpoint */
+            /* point */
             switch (CY_GET_REG8(USBFS_bRequest))
             {
                 case USBFS_SET_CUR:
                 #if defined(USBFS_ENABLE_AUDIO_STREAMING)
                     if(CY_GET_REG8(USBFS_wValueHi) == USBFS_SAMPLING_FREQ_CONTROL)
                     {
-                         /* Endpoint Control Selector is Sampling Frequency */
+                         /* point Control Selector is Sampling Frequency */
                         USBFS_currentTD.wCount = USBFS_SAMPLE_FREQ_LEN;
                         USBFS_currentTD.pData  = USBFS_currentSampleFrequency[epNumber];
                         requestHandled   = USBFS_InitControlWrite();
                         USBFS_frequencyChanged = epNumber;
                     }
-                #endif /* End USBFS_ENABLE_AUDIO_STREAMING */
+                #endif /*  USBFS_ENABLE_AUDIO_STREAMING */
 
                 /* `#START AUDIO_SAMPLING_FREQ_REQUESTS` Place other request handler here */
 
@@ -243,8 +242,7 @@ uint8 USBFS_DispatchAUDIOClassRqst(void)
                     break;
             }
         }
-        else if((CY_GET_REG8(USBFS_bmRequestType) & USBFS_RQST_RCPT_MASK) == \
-                                                                                    USBFS_RQST_RCPT_IFC)
+        else if((bmRequestType & USBFS_RQST_RCPT_MASK) == USBFS_RQST_RCPT_IFC)
         {
             /* Interface or Entity ID */
             switch (CY_GET_REG8(USBFS_bRequest))
@@ -279,7 +277,7 @@ uint8 USBFS_DispatchAUDIOClassRqst(void)
 
                         /* `#END` */
                     }
-                #endif /* End USBFS_ENABLE_AUDIO_STREAMING */
+                #endif /*  USBFS_ENABLE_AUDIO_STREAMING */
 
                 /* `#START AUDIO_CONTROL_SEL_REQUESTS` Place other request handler here */
 
@@ -290,16 +288,13 @@ uint8 USBFS_DispatchAUDIOClassRqst(void)
             }
         }
         else
-        {   /* USBFS_RQST_RCPT_OTHER */
+        {
+            /* USBFS_RQST_RCPT_OTHER */
         }
-    }
-    else
-    {   /* requestHandled is initialized as FALSE by default */
     }
 
     return(requestHandled);
 }
-
 
 #endif /* USER_SUPPLIED_AUDIO_HANDLER */
 
@@ -312,7 +307,7 @@ uint8 USBFS_DispatchAUDIOClassRqst(void)
 
 /* `#END` */
 
-#endif  /* End USBFS_ENABLE_AUDIO_CLASS*/
+#endif  /*  USBFS_ENABLE_AUDIO_CLASS */
 
 
 /* [] END OF FILE */

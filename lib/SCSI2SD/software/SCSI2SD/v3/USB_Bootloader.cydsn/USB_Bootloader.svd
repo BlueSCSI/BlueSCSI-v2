@@ -9,17 +9,17 @@
     <peripheral>
       <name>USBFS</name>
       <description>USBFS</description>
-      <baseAddress>0x40004394</baseAddress>
+      <baseAddress>0x0</baseAddress>
       <addressBlock>
         <offset>0</offset>
-        <size>0x1D0A</size>
+        <size>0x0</size>
         <usage>registers</usage>
       </addressBlock>
       <registers>
         <register>
           <name>USBFS_PM_USB_CR0</name>
           <description>USB Power Mode Control Register 0</description>
-          <addressOffset>0x0</addressOffset>
+          <addressOffset>0x40004394</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -51,7 +51,7 @@
         <register>
           <name>USBFS_PM_ACT_CFG</name>
           <description>Active Power Mode Configuration Register</description>
-          <addressOffset>0x11</addressOffset>
+          <addressOffset>0x400043A5</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -60,7 +60,7 @@
         <register>
           <name>USBFS_PM_STBY_CFG</name>
           <description>Standby Power Mode Configuration Register</description>
-          <addressOffset>0x21</addressOffset>
+          <addressOffset>0x400043B5</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -69,7 +69,7 @@
         <register>
           <name>USBFS_PRT_PS</name>
           <description>Port Pin State Register</description>
-          <addressOffset>0xE5D</addressOffset>
+          <addressOffset>0x400051F1</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -94,7 +94,7 @@
         <register>
           <name>USBFS_PRT_DM0</name>
           <description>Port Drive Mode Register</description>
-          <addressOffset>0xE5E</addressOffset>
+          <addressOffset>0x400051F2</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -119,7 +119,7 @@
         <register>
           <name>USBFS_PRT_DM1</name>
           <description>Port Drive Mode Register</description>
-          <addressOffset>0xE5F</addressOffset>
+          <addressOffset>0x400051F3</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -144,7 +144,7 @@
         <register>
           <name>USBFS_PRT_INP_DIS</name>
           <description>Input buffer disable override</description>
-          <addressOffset>0xE64</addressOffset>
+          <addressOffset>0x400051F8</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -169,7 +169,7 @@
         <register>
           <name>USBFS_EP0_DR0</name>
           <description>bmRequestType</description>
-          <addressOffset>0x1C6C</addressOffset>
+          <addressOffset>0x40006000</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -178,7 +178,7 @@
         <register>
           <name>USBFS_EP0_DR1</name>
           <description>bRequest</description>
-          <addressOffset>0x1C6D</addressOffset>
+          <addressOffset>0x40006001</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -187,7 +187,7 @@
         <register>
           <name>USBFS_EP0_DR2</name>
           <description>wValueLo</description>
-          <addressOffset>0x1C6E</addressOffset>
+          <addressOffset>0x40006002</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -196,7 +196,7 @@
         <register>
           <name>USBFS_EP0_DR3</name>
           <description>wValueHi</description>
-          <addressOffset>0x1C6F</addressOffset>
+          <addressOffset>0x40006003</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -205,7 +205,7 @@
         <register>
           <name>USBFS_EP0_DR4</name>
           <description>wIndexLo</description>
-          <addressOffset>0x1C70</addressOffset>
+          <addressOffset>0x40006004</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -214,7 +214,7 @@
         <register>
           <name>USBFS_EP0_DR5</name>
           <description>wIndexHi</description>
-          <addressOffset>0x1C71</addressOffset>
+          <addressOffset>0x40006005</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -223,7 +223,7 @@
         <register>
           <name>USBFS_EP0_DR6</name>
           <description>lengthLo</description>
-          <addressOffset>0x1C72</addressOffset>
+          <addressOffset>0x40006006</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -232,7 +232,7 @@
         <register>
           <name>USBFS_EP0_DR7</name>
           <description>lengthHi</description>
-          <addressOffset>0x1C73</addressOffset>
+          <addressOffset>0x40006007</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -241,7 +241,7 @@
         <register>
           <name>USBFS_CR0</name>
           <description>USB Control Register 0</description>
-          <addressOffset>0x1C74</addressOffset>
+          <addressOffset>0x40006008</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -250,8 +250,8 @@
             <field>
               <name>device_address</name>
               <description>No description available</description>
-              <lsb>6</lsb>
-              <msb>0</msb>
+              <lsb>0</lsb>
+              <msb>6</msb>
               <access>read-only</access>
             </field>
             <field>
@@ -266,7 +266,7 @@
         <register>
           <name>USBFS_CR1</name>
           <description>USB Control Register 1</description>
-          <addressOffset>0x1C75</addressOffset>
+          <addressOffset>0x40006009</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -305,7 +305,7 @@
         <register>
           <name>USBFS_SIE_EP1_CR0</name>
           <description>The Endpoint1 Control Register</description>
-          <addressOffset>0x1C7A</addressOffset>
+          <addressOffset>0x4000600E</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -314,7 +314,7 @@
         <register>
           <name>USBFS_USBIO_CR0</name>
           <description>USBIO Control Register 0</description>
-          <addressOffset>0x1C7C</addressOffset>
+          <addressOffset>0x40006010</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -353,7 +353,7 @@
         <register>
           <name>USBFS_USBIO_CR1</name>
           <description>USBIO Control Register 1</description>
-          <addressOffset>0x1C7E</addressOffset>
+          <addressOffset>0x40006012</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -392,7 +392,7 @@
         <register>
           <name>USBFS_SIE_EP2_CR0</name>
           <description>The Endpoint2 Control Register</description>
-          <addressOffset>0x1C8A</addressOffset>
+          <addressOffset>0x4000601E</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -401,7 +401,7 @@
         <register>
           <name>USBFS_SIE_EP3_CR0</name>
           <description>The Endpoint3 Control Register</description>
-          <addressOffset>0x1C9A</addressOffset>
+          <addressOffset>0x4000602E</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -410,7 +410,7 @@
         <register>
           <name>USBFS_SIE_EP4_CR0</name>
           <description>The Endpoint4 Control Register</description>
-          <addressOffset>0x1CAA</addressOffset>
+          <addressOffset>0x4000603E</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -419,7 +419,7 @@
         <register>
           <name>USBFS_SIE_EP5_CR0</name>
           <description>The Endpoint5 Control Register</description>
-          <addressOffset>0x1CBA</addressOffset>
+          <addressOffset>0x4000604E</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -428,7 +428,7 @@
         <register>
           <name>USBFS_SIE_EP6_CR0</name>
           <description>The Endpoint6 Control Register</description>
-          <addressOffset>0x1CCA</addressOffset>
+          <addressOffset>0x4000605E</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -437,7 +437,7 @@
         <register>
           <name>USBFS_SIE_EP7_CR0</name>
           <description>The Endpoint7 Control Register</description>
-          <addressOffset>0x1CDA</addressOffset>
+          <addressOffset>0x4000606E</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -446,7 +446,7 @@
         <register>
           <name>USBFS_SIE_EP8_CR0</name>
           <description>The Endpoint8 Control Register</description>
-          <addressOffset>0x1CEA</addressOffset>
+          <addressOffset>0x4000607E</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -455,7 +455,7 @@
         <register>
           <name>USBFS_BUF_SIZE</name>
           <description>Dedicated Endpoint Buffer Size Register</description>
-          <addressOffset>0x1CF8</addressOffset>
+          <addressOffset>0x4000608C</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -464,7 +464,7 @@
         <register>
           <name>USBFS_EP_ACTIVE</name>
           <description>Endpoint Active Indication Register</description>
-          <addressOffset>0x1CFA</addressOffset>
+          <addressOffset>0x4000608E</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -473,7 +473,7 @@
         <register>
           <name>USBFS_EP_TYPE</name>
           <description>Endpoint Type (IN/OUT) Indication</description>
-          <addressOffset>0x1CFB</addressOffset>
+          <addressOffset>0x4000608F</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>
@@ -482,7 +482,7 @@
         <register>
           <name>USBFS_USB_CLK_EN</name>
           <description>USB Block Clock Enable Register</description>
-          <addressOffset>0x1D09</addressOffset>
+          <addressOffset>0x4000609D</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>

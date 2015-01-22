@@ -9,8 +9,8 @@ define symbol __ICFEDIT_region_ROM_end__   = 131072 - 1;
 define symbol __ICFEDIT_region_RAM_start__ = 0x20000000 - (32768 / 2);
 define symbol __ICFEDIT_region_RAM_end__   = 0x20000000 + (32768 / 2) - 1;
 /*-Sizes-*/
-define symbol __ICFEDIT_size_cstack__ = 0x4000;
-define symbol __ICFEDIT_size_heap__   = 0x1000;
+define symbol __ICFEDIT_size_cstack__ = 0x1000;
+define symbol __ICFEDIT_size_heap__   = 0x0400;
 /**** End of ICF editor section. ###ICF###*/
 
 
@@ -40,7 +40,10 @@ define block CSTACK      with alignment = 8, size = __ICFEDIT_size_cstack__   { 
 define block HEAP        with alignment = 8, size = __ICFEDIT_size_heap__     { };
 define block HSTACK      {block HEAP, last block CSTACK};
 
+if (CY_APPL_LOADABLE)
+{
 define block LOADER     { readonly section .cybootloader };
+}
 define block APPL       with fixed order {readonly section .romvectors, readonly};
 
 /* The address of Flash row next after Bootloader image */
@@ -83,7 +86,11 @@ do not initialize  { section .noinit };
 do not initialize  { readwrite section .ramvectors };
 
 /******** Placements *********/
+if (CY_APPL_LOADABLE)
+{
 ".cybootloader"    : place at start of ROM_region {block LOADER};
+}
+
 "APPL"             : place at start of APPL_region {block APPL};
 
 "RAMVEC"           : place at start of RAM_region { readwrite section .ramvectors };
@@ -101,7 +108,10 @@ keep {  section .cybootloader,
         section .cymeta };
 
 ".cyloadermeta"   : place at address mem : (CY_APPL_LOADER ? (CY_FLASH_SIZE - CY_METADATA_SIZE) : 0xF0000000) { readonly section .cyloadermeta };
+if (CY_APPL_LOADABLE)
+{
 ".cyloadablemeta" : place at address mem : (CY_FLASH_SIZE - CY_FLASH_ROW_SIZE * (CY_APPL_NUM - 1) - CY_METADATA_SIZE) { readonly section .cyloadablemeta };
+}
 ".cyconfigecc"    : place at address mem : (0x80000000 + CY_ECC_OFFSET) { readonly section .cyconfigecc };
 ".cycustnvl"      : place at address mem : 0x90000000 { readonly section .cycustnvl };
 ".cywolatch"      : place at address mem : 0x90100000 { readonly section .cywolatch };

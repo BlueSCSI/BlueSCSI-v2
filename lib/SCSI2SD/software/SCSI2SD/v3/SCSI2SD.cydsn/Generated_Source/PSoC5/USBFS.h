@@ -1,12 +1,12 @@
 /*******************************************************************************
 * File Name: USBFS.h
-* Version 2.60
+* Version 2.80
 *
 * Description:
-*  Header File for the USFS component. Contains prototypes and constant values.
+*  Header File for the USBFS component. Contains prototypes and constant values.
 *
 ********************************************************************************
-* Copyright 2008-2013, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2014, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
@@ -20,6 +20,11 @@
 #include "cyfitter.h"
 #include "CyLib.h"
 
+/*  User supplied definitions. */
+/* `#START USER_DEFINITIONS` Place your declaration here */
+
+/* `#END` */
+
 
 /***************************************
 * Conditional Compilation Parameters
@@ -28,7 +33,7 @@
 /* Check to see if required defines such as CY_PSOC5LP are available */
 /* They are defined starting with cy_boot v3.0 */
 #if !defined (CY_PSOC5LP)
-    #error Component USBFS_v2_60 requires cy_boot v3.0 or later
+    #error Component USBFS_v2_80 requires cy_boot v3.0 or later
 #endif /* (CY_PSOC5LP) */
 
 
@@ -47,7 +52,7 @@
 #else
     #define USBFS_DATA
     #define USBFS_XDATA
-#endif /* End __C51__ */
+#endif /*  __C51__ */
 #define USBFS_NULL       NULL
 
 
@@ -105,6 +110,7 @@
 #define USBFS_EP8_ISR_REMOVE                 (1u)
 #define USBFS_EP_MM                          (0u)
 #define USBFS_EP_MA                          (0u)
+#define USBFS_EP_DMA_AUTO_OPT                (0u)
 #define USBFS_DMA1_REMOVE                    (1u)
 #define USBFS_DMA2_REMOVE                    (1u)
 #define USBFS_DMA3_REMOVE                    (1u)
@@ -226,7 +232,7 @@ void   USBFS_Resume(void) ;
 #endif  /* USBFS_ENABLE_FWSN_STRING */
 #if (USBFS_MON_VBUS == 1u)
     uint8  USBFS_VBusPresent(void) ;
-#endif /* End USBFS_MON_VBUS */
+#endif /*  USBFS_MON_VBUS */
 
 #if defined(CYDEV_BOOTLOADER_IO_COMP) && ((CYDEV_BOOTLOADER_IO_COMP == CyBtldr_USBFS) || \
                                           (CYDEV_BOOTLOADER_IO_COMP == CyBtldr_Custom_Interface))
@@ -234,19 +240,24 @@ void   USBFS_Resume(void) ;
     void USBFS_CyBtldrCommStart(void) ;
     void USBFS_CyBtldrCommStop(void) ;
     void USBFS_CyBtldrCommReset(void) ;
-    cystatus USBFS_CyBtldrCommWrite(uint8 *pData, uint16 size, uint16 *count, uint8 timeOut) CYSMALL
+    cystatus USBFS_CyBtldrCommWrite(const uint8 pData[], uint16 size, uint16 *count, uint8 timeOut) CYSMALL
                                                         ;
-    cystatus USBFS_CyBtldrCommRead( uint8 *pData, uint16 size, uint16 *count, uint8 timeOut) CYSMALL
+    cystatus USBFS_CyBtldrCommRead       (uint8 pData[], uint16 size, uint16 *count, uint8 timeOut) CYSMALL
                                                         ;
 
-    #define USBFS_BTLDR_SIZEOF_WRITE_BUFFER      (64u)    /* EP 1 OUT */
-    #define USBFS_BTLDR_SIZEOF_READ_BUFFER       (64u)    /* EP 2 IN */
-    #define USBFS_BTLDR_MAX_PACKET_SIZE          USBFS_BTLDR_SIZEOF_WRITE_BUFFER
+    #define USBFS_BTLDR_OUT_EP      (0x01u)
+    #define USBFS_BTLDR_IN_EP       (0x02u)
+
+    #define USBFS_BTLDR_SIZEOF_WRITE_BUFFER  (64u)   /* EP 1 OUT */
+    #define USBFS_BTLDR_SIZEOF_READ_BUFFER   (64u)   /* EP 2 IN  */
+    #define USBFS_BTLDR_MAX_PACKET_SIZE      USBFS_BTLDR_SIZEOF_WRITE_BUFFER
+
+    #define USBFS_BTLDR_WAIT_1_MS            (1u)    /* Time Out quantity equal 1mS */
 
     /* These defines active if used USBFS interface as an
     *  IO Component for bootloading. When Custom_Interface selected
     *  in Bootloder configuration as the IO Component, user must
-    *  provide these functions
+    *  provide these functions.
     */
     #if (CYDEV_BOOTLOADER_IO_COMP == CyBtldr_USBFS)
         #define CyBtldrCommStart        USBFS_CyBtldrCommStart
@@ -256,13 +267,13 @@ void   USBFS_Resume(void) ;
         #define CyBtldrCommRead         USBFS_CyBtldrCommRead
     #endif  /*End   CYDEV_BOOTLOADER_IO_COMP == CyBtldr_USBFS */
 
-#endif /* End CYDEV_BOOTLOADER_IO_COMP  */
+#endif /*  CYDEV_BOOTLOADER_IO_COMP  */
 
 #if(USBFS_EP_MM != USBFS__EP_MANUAL)
-    void USBFS_InitEP_DMA(uint8 epNumber, const uint8 *pData)
+    void USBFS_InitEP_DMA(uint8 epNumber, const uint8* pData)
                                                     ;
     void USBFS_Stop_DMA(uint8 epNumber) ;
-#endif /* End USBFS_EP_MM != USBFS__EP_MANUAL) */
+#endif /*  USBFS_EP_MM != USBFS__EP_MANUAL) */
 
 #if defined(USBFS_ENABLE_MIDI_STREAMING) && (USBFS_ENABLE_MIDI_API != 0u)
     void USBFS_MIDI_EP_Init(void) ;
@@ -277,7 +288,7 @@ void   USBFS_Resume(void) ;
         void USBFS_MIDI_OUT_EP_Service(void) ;
     #endif /* USBFS_MIDI_OUT_BUFF_SIZE > 0 */
 
-#endif /* End USBFS_ENABLE_MIDI_API != 0u */
+#endif /*  USBFS_ENABLE_MIDI_API != 0u */
 
 /* Renamed Functions for backward compatibility.
 *  Should not be used in new designs.
@@ -490,10 +501,10 @@ void   USBFS_Resume(void) ;
 #define USBFS_EP_USAGE_TYPE_RESERVED         (0x30u)
 #define USBFS_EP_USAGE_TYPE_MASK             (0x30u)
 
-/* Endpoint Status defines */
+/* point Status defines */
 #define USBFS_EP_STATUS_LENGTH               (0x02u)
 
-/* Endpoint Device defines */
+/* point Device defines */
 #define USBFS_DEVICE_STATUS_LENGTH           (0x02u)
 
 #define USBFS_STATUS_LENGTH_MAX \
@@ -520,14 +531,60 @@ void   USBFS_Resume(void) ;
     /* DMA manual mode defines */
     #define USBFS_DMA_BYTES_PER_BURST        (0u)
     #define USBFS_DMA_REQUEST_PER_BURST      (0u)
-#endif /* End USBFS_EP_MM == USBFS__EP_DMAMANUAL */
+#endif /*  USBFS_EP_MM == USBFS__EP_DMAMANUAL */
 #if(USBFS_EP_MM == USBFS__EP_DMAAUTO)
     /* DMA automatic mode defines */
     #define USBFS_DMA_BYTES_PER_BURST        (32u)
+    #define USBFS_DMA_BYTES_REPEAT           (2u)
     /* BUF_SIZE-BYTES_PER_BURST examples: 55-32 bytes  44-16 bytes 33-8 bytes 22-4 bytes 11-2 bytes */
     #define USBFS_DMA_BUF_SIZE               (0x55u)
     #define USBFS_DMA_REQUEST_PER_BURST      (1u)
-#endif /* End USBFS_EP_MM == USBFS__EP_DMAAUTO */
+
+    #if(USBFS_DMA1_REMOVE == 0u)
+        #define USBFS_ep1_TD_TERMOUT_EN      USBFS_ep1__TD_TERMOUT_EN
+    #else
+        #define USBFS_ep1_TD_TERMOUT_EN      (0u)
+    #endif /* USBFS_DMA1_REMOVE == 0u */
+    #if(USBFS_DMA2_REMOVE == 0u)
+        #define USBFS_ep2_TD_TERMOUT_EN      USBFS_ep2__TD_TERMOUT_EN
+    #else
+        #define USBFS_ep2_TD_TERMOUT_EN      (0u)
+    #endif /* USBFS_DMA2_REMOVE == 0u */
+    #if(USBFS_DMA3_REMOVE == 0u)
+        #define USBFS_ep3_TD_TERMOUT_EN      USBFS_ep3__TD_TERMOUT_EN
+    #else
+        #define USBFS_ep3_TD_TERMOUT_EN      (0u)
+    #endif /* USBFS_DMA3_REMOVE == 0u */
+    #if(USBFS_DMA4_REMOVE == 0u)
+        #define USBFS_ep4_TD_TERMOUT_EN      USBFS_ep4__TD_TERMOUT_EN
+    #else
+        #define USBFS_ep4_TD_TERMOUT_EN      (0u)
+    #endif /* USBFS_DMA4_REMOVE == 0u */
+    #if(USBFS_DMA5_REMOVE == 0u)
+        #define USBFS_ep5_TD_TERMOUT_EN      USBFS_ep5__TD_TERMOUT_EN
+    #else
+        #define USBFS_ep5_TD_TERMOUT_EN      (0u)
+    #endif /* USBFS_DMA5_REMOVE == 0u */
+    #if(USBFS_DMA6_REMOVE == 0u)
+        #define USBFS_ep6_TD_TERMOUT_EN      USBFS_ep6__TD_TERMOUT_EN
+    #else
+        #define USBFS_ep6_TD_TERMOUT_EN      (0u)
+    #endif /* USBFS_DMA6_REMOVE == 0u */
+    #if(USBFS_DMA7_REMOVE == 0u)
+        #define USBFS_ep7_TD_TERMOUT_EN      USBFS_ep7__TD_TERMOUT_EN
+    #else
+        #define USBFS_ep7_TD_TERMOUT_EN      (0u)
+    #endif /* USBFS_DMA7_REMOVE == 0u */
+    #if(USBFS_DMA8_REMOVE == 0u)
+        #define USBFS_ep8_TD_TERMOUT_EN      USBFS_ep8__TD_TERMOUT_EN
+    #else
+        #define USBFS_ep8_TD_TERMOUT_EN      (0u)
+    #endif /* USBFS_DMA8_REMOVE == 0u */
+
+    #define     USBFS_EP17_SR_MASK           (0x7fu)
+    #define     USBFS_EP8_SR_MASK            (0x03u)
+
+#endif /*  USBFS_EP_MM == USBFS__EP_DMAAUTO */
 
 /* DIE ID string descriptor defines */
 #if defined(USBFS_ENABLE_IDSN_STRING)
@@ -812,7 +869,7 @@ extern volatile uint8 USBFS_deviceStatus;
 #if(!CY_PSOC5LP)
     #define USBFS_USBIO_CR2_PTR      (  (reg8 *) USBFS_USB__USBIO_CR2)
     #define USBFS_USBIO_CR2_REG      (* (reg8 *) USBFS_USB__USBIO_CR2)
-#endif /* End CY_PSOC5LP */
+#endif /*  CY_PSOC5LP */
 
 #define USBFS_DIE_ID             CYDEV_FLSHID_CUST_TABLES_BASE
 
@@ -838,8 +895,8 @@ extern volatile uint8 USBFS_deviceStatus;
     #else
         #define USBFS_VBUS_PS_PTR        (  (reg8 *) USBFS_Vbus_ps_sts_sts_reg__STATUS_REG )
         #define USBFS_VBUS_MASK          (0x01u)
-    #endif /* End USBFS_EXTERN_VBUS == 0u */
-#endif /* End USBFS_MON_VBUS */
+    #endif /*  USBFS_EXTERN_VBUS == 0u */
+#endif /*  USBFS_MON_VBUS */
 
 /* Renamed Registers for backward compatibility.
 *  Should not be used in new designs.
@@ -1017,7 +1074,7 @@ extern volatile uint8 USBFS_deviceStatus;
     #define USBFS_USB_ISR_SET_EN ((reg8 *) CYDEV_NVIC_SETENA0)
     #define USBFS_USB_ISR_CLR_EN ((reg8 *) CYDEV_NVIC_CLRENA0)
     #define USBFS_USB_ISR_VECT   ((cyisraddress *) CYDEV_NVIC_VECT_OFFSET)
-#endif /* End CYDEV_CHIP_DIE_EXPECT */
+#endif /*  CYDEV_CHIP_DIE_EXPECT */
 
 
 /***************************************
@@ -1138,6 +1195,8 @@ extern volatile uint8 USBFS_deviceStatus;
 #define USBFS_ARB_EPX_CFG_CRC_BYPASS     (0x04u)
 #define USBFS_ARB_EPX_CFG_DMA_REQ        (0x02u)
 #define USBFS_ARB_EPX_CFG_IN_DATA_RDY    (0x01u)
+#define USBFS_ARB_EPX_CFG_DEFAULT        (USBFS_ARB_EPX_CFG_RESET | \
+                                                     USBFS_ARB_EPX_CFG_CRC_BYPASS)
 
 #define USBFS_ARB_EPX_SR_IN_BUF_FULL     (0x01u)
 #define USBFS_ARB_EPX_SR_DMA_GNT         (0x02u)
@@ -1153,7 +1212,7 @@ extern volatile uint8 USBFS_deviceStatus;
     #define USBFS_ARB_EPX_INT_MASK           (0x1Du)
 #else
     #define USBFS_ARB_EPX_INT_MASK           (0x1Fu)
-#endif /* End USBFS_EP_MM == USBFS__EP_DMAAUTO */
+#endif /*  USBFS_EP_MM == USBFS__EP_DMAAUTO */
 #define USBFS_ARB_INT_MASK       (uint8)((USBFS_DMA1_REMOVE ^ 1u) | \
                                             (uint8)((USBFS_DMA2_REMOVE ^ 1u) << 1u) | \
                                             (uint8)((USBFS_DMA3_REMOVE ^ 1u) << 2u) | \
@@ -1190,7 +1249,7 @@ extern volatile uint8 USBFS_deviceStatus;
 #define USBFS_DYN_RECONFIG_RDY_STS       (0x10u)
 
 
-#endif /* End CY_USBFS_USBFS_H */
+#endif /*  CY_USBFS_USBFS_H */
 
 
 /* [] END OF FILE */

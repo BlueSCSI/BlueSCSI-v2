@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: CyDmac.c
-* Version 4.0
+* Version 4.20
 *
 * Description:
 *  Provides an API for the DMAC component. The API includes functions for the
@@ -18,10 +18,10 @@
 *  not being used.
 *
 *  This code uses the first byte of each TD to manage the free list of TD's.
-*  The user can over write this once the TD is allocated.
+*  The user can overwrite this once the TD is allocated.
 *
 ********************************************************************************
-* Copyright 2008-2013, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2014, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
@@ -37,8 +37,8 @@
 * are initialized. To avoid zeroing, these variables should be initialized
 * properly during segments initialization as well.
 *******************************************************************************/
-static uint8  CyDmaTdCurrentNumber = CY_DMA_NUMBEROF_TDS;           /* Current Number of free elements in the list */
-static uint8  CyDmaTdFreeIndex = (uint8)(CY_DMA_NUMBEROF_TDS - 1u); /* Index of the first available TD */
+static uint8  CyDmaTdCurrentNumber = CY_DMA_NUMBEROF_TDS;           /* Current Number of free elements on list */
+static uint8  CyDmaTdFreeIndex = (uint8)(CY_DMA_NUMBEROF_TDS - 1u); /* Index of first available TD */
 static uint32 CyDmaChannels = DMA_CHANNELS_USED__MASK0;              /* Bit map of DMA channel ownership */
 
 
@@ -48,7 +48,7 @@ static uint32 CyDmaChannels = DMA_CHANNELS_USED__MASK0;              /* Bit map 
 *
 * Summary:
 *  Creates a linked list of all the TDs to be allocated. This function is called
-*  by the startup code; you do not normally need to call it. You could call this
+*  by the startup code; you do not normally need to call it. You can call this
 *  function if all of the DMA channels are inactive.
 *
 * Parameters:
@@ -72,7 +72,7 @@ void CyDmacConfigure(void)
         CY_DMA_TDMEM_STRUCT_PTR[dmaIndex].TD0[0u] = (uint8)(dmaIndex - 1u);
     }
 
-    /* Make the last one point to zero. */
+    /* Make last one point to zero. */
     CY_DMA_TDMEM_STRUCT_PTR[dmaIndex].TD0[0u] = 0u;
 }
 
@@ -102,8 +102,8 @@ void CyDmacConfigure(void)
 *   are determined by the BUS_TIMEOUT field in the PHUBCFG register.
 *
 * Theory:
-*  Once an error occurs the error bits are sticky and are only cleared by a
-*  write 1 to the error register.
+*  Once an error occurs the error bits are sticky and are only cleared by 
+*  writing 1 to the error register.
 *
 *******************************************************************************/
 uint8 CyDmacError(void) 
@@ -131,15 +131,15 @@ uint8 CyDmacError(void)
 *   Set to 1 when an access is attempted to an invalid address.
 *
 *  DMAC_BUS_TIMEOUT:
-*   Set to 1 when a bus timeout occurs. Cleared by writing a 1. Timeout values
+*   Set to 1 when a bus timeout occurs. Cleared by writing 1. Timeout values
 *   are determined by the BUS_TIMEOUT field in the PHUBCFG register.
 *
 * Return:
 *  None
 *
 * Theory:
-*  Once an error occurs the error bits are sticky and are only cleared by a
-*  write 1 to the error register.
+*  Once an error occurs the error bits are sticky and are only cleared by 
+*  writing 1 to the error register.
 *
 *******************************************************************************/
 void CyDmacClearError(uint8 error) 
@@ -153,7 +153,7 @@ void CyDmacClearError(uint8 error)
 ********************************************************************************
 *
 * Summary:
-*  When an DMAC_BUS_TIMEOUT, DMAC_UNPOP_ACC and DMAC_PERIPH_ERR occurs the
+*  When DMAC_BUS_TIMEOUT, DMAC_UNPOP_ACC, and DMAC_PERIPH_ERR occur the
 *  address of the error is written to the error address register and can be read
 *  with this function.
 *
@@ -198,12 +198,12 @@ uint8 CyDmaChAlloc(void)
     /* Enter critical section! */
     interruptState = CyEnterCriticalSection();
 
-    /* Look for a free channel. */
+    /* Look for free channel. */
     for(dmaIndex = 0u; dmaIndex < CY_DMA_NUMBEROF_CHANNELS; dmaIndex++)
     {
         if(0uL == (CyDmaChannels & channel))
         {
-            /* Mark the channel as used. */
+            /* Mark channel as used. */
             CyDmaChannels |= channel;
             break;
         }
@@ -249,7 +249,7 @@ cystatus CyDmaChFree(uint8 chHandle)
         /* Enter critical section */
         interruptState = CyEnterCriticalSection();
 
-        /* Clear the bit mask that keeps track of ownership. */
+        /* Clear bit mask that keeps track of ownership. */
         CyDmaChannels &= ~(((uint32) 1u) << chHandle);
 
         /* Exit critical section */
@@ -277,10 +277,10 @@ cystatus CyDmaChFree(uint8 chHandle)
 *   Preserves the original TD state when the TD has completed. This parameter
 *   applies to all TDs in the channel.
 *
-*   0 - When a TD is completed, the DMAC leaves the TD configuration values in
+*   0 - When TD is completed, the DMAC leaves the TD configuration values in
 *   their current state, and does not restore them to their original state.
 *
-*   1 - When a TD is completed, the DMAC restores the original configuration
+*   1 - When TD is completed, the DMAC restores the original configuration
 *   values of the TD.
 *
 *  When preserveTds is set, the TD slot that equals the channel number becomes
@@ -309,14 +309,14 @@ cystatus CyDmaChEnable(uint8 chHandle, uint8 preserveTds)
     {
         if (0u != preserveTds)
         {
-            /* Store the intermediate TD states separately in CHn_SEP_TD0/1 to
-            *  preserve the original TD chain
+            /* Store intermediate TD states separately in CHn_SEP_TD0/1 to
+            *  preserve original TD chain
             */
             CY_DMA_CH_STRUCT_PTR[chHandle].basic_cfg[0u] |= CY_DMA_CH_BASIC_CFG_WORK_SEP;
         }
         else
         {
-            /* Store the intermediate and final TD states on top of the original TD chain */
+            /* Store intermediate and final TD states on top of original TD chain */
             CY_DMA_CH_STRUCT_PTR[chHandle].basic_cfg[0u] &= (uint8)(~CY_DMA_CH_BASIC_CFG_WORK_SEP);
         }
 
@@ -365,7 +365,7 @@ cystatus CyDmaChDisable(uint8 chHandle)
         /* Disable channel */
         CY_DMA_CH_STRUCT_PTR[chHandle].basic_cfg[0] &= ((uint8) (~CY_DMA_CH_BASIC_CFG_EN));
 
-        /* Store the intermediate and final TD states on top of the original TD chain */
+        /* Store intermediate and final TD states on top of original TD chain */
         CY_DMA_CH_STRUCT_PTR[chHandle].basic_cfg[0] &= ((uint8) (~CY_DMA_CH_BASIC_CFG_WORK_SEP));
         status = CYRET_SUCCESS;
     }
@@ -379,7 +379,7 @@ cystatus CyDmaChDisable(uint8 chHandle)
 ********************************************************************************
 *
 * Summary:
-*  Clears pending DMA data request.
+*  Clears pending the DMA data request.
 *
 * Parameters:
 *  uint8 chHandle:
@@ -518,7 +518,7 @@ cystatus CyDmaChSetExtendedAddress(uint8 chHandle, uint16 source, uint16 destina
 *   A handle previously returned by CyDmaChAlloc() or DMA_DmaInitialize().
 *
 *  uint8 startTd:
-*   The index of TD to set as the first TD associated with the channel. Zero is
+*   Set the TD index as the first TD associated with the channel. Zero is
 *   a valid TD index.
 *
 * Return:
@@ -759,13 +759,13 @@ uint8 CyDmaTdAllocate(void)
 
     if(CyDmaTdCurrentNumber > NUMBEROF_CHANNELS)
     {
-        /* Get pointer to the Next available. */
+        /* Get pointer to Next available. */
         element = CyDmaTdFreeIndex;
 
         /* Decrement the count. */
         CyDmaTdCurrentNumber--;
 
-        /* Update the next available pointer. */
+        /* Update next available pointer. */
         CyDmaTdFreeIndex = CY_DMA_TDMEM_STRUCT_PTR[element].TD0[0];
     }
 
@@ -798,7 +798,7 @@ void CyDmaTdFree(uint8 tdHandle)
         /* Enter critical section! */
         uint8 interruptState = CyEnterCriticalSection();
 
-        /* Get pointer to the Next available. */
+        /* Get pointer to Next available. */
         CY_DMA_TDMEM_STRUCT_PTR[tdHandle].TD0[0u] = CyDmaTdFreeIndex;
 
         /* Set new Next Available. */
@@ -942,9 +942,9 @@ cystatus CyDmaTdSetConfiguration(uint8 tdHandle, uint16 transferCount, uint8 nex
 *  CYRET_BAD_PARAM if tdHandle is invalid.
 *
 * Side Effects:
-*  If a TD has a transfer count of N and is executed, the transfer count becomes
+*  If TD has a transfer count of N and is executed, the transfer count becomes
 *  0. If it is reexecuted, the Transfer count of zero will be interpreted as a
-*  request for indefinite transfer. Be careful when requesting a TD with a
+*  request for indefinite transfer. Be careful when requesting TD with a
 *  transfer count of zero.
 *
 *******************************************************************************/
@@ -955,25 +955,25 @@ cystatus CyDmaTdGetConfiguration(uint8 tdHandle, uint16 * transferCount, uint8 *
 
     if(tdHandle < CY_DMA_NUMBEROF_TDS)
     {
-        /* If we have a pointer */
+        /* If we have pointer */
         if(NULL != transferCount)
         {
-            /* Get the 12 bits of the transfer count */
+            /* Get 12 bits of transfer count */
             reg16 *convert = (reg16 *) &CY_DMA_TDMEM_STRUCT_PTR[tdHandle].TD0[0];
             *transferCount = 0x0FFFu & CY_GET_REG16(convert);
         }
 
-        /* If we have a pointer */
+        /* If we have pointer */
         if(NULL != nextTd)
         {
-            /* Get the Next TD pointer */
+            /* Get Next TD pointer */
             *nextTd = CY_DMA_TDMEM_STRUCT_PTR[tdHandle].TD0[2u];
         }
 
-        /* If we have a pointer */
+        /* If we have pointer */
         if(NULL != configuration)
         {
-            /* Get the configuration the TD */
+            /* Get configuration TD */
             *configuration = CY_DMA_TDMEM_STRUCT_PTR[tdHandle].TD0[3u];
         }
 

@@ -1,12 +1,12 @@
 ;-------------------------------------------------------------------------------
 ; FILENAME: CyBootAsmIar.s
-; Version 4.0
+; Version 4.20
 ;
 ;  DESCRIPTION:
 ;    Assembly routines for IAR Embedded Workbench IDE.
 ;
 ;-------------------------------------------------------------------------------
-; Copyright 2013, Cypress Semiconductor Corporation.  All rights reserved.
+; Copyright 2013-2014, Cypress Semiconductor Corporation.  All rights reserved.
 ; You may use this file only in accordance with the license, terms, conditions,
 ; disclaimers, and limitations in the end user license agreement accompanying
 ; the software package with which this file was provided.
@@ -30,7 +30,7 @@
 ;
 ;  Note Implementation of CyEnterCriticalSection manipulates the IRQ enable bit
 ;  with interrupts still enabled. The test and set of the interrupt bits is not
-;  atomic. Therefore, to avoid corrupting processor state, it must be the policy 
+;  atomic. Therefore, to avoid a corrupting processor state, it must be the policy 
 ;  that all interrupt routines restore the interrupt enable bits as they were 
 ;  found on entry.
 ;

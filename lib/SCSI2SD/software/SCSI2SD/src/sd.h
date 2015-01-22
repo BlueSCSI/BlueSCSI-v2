@@ -25,12 +25,14 @@ typedef enum
 	SD_SEND_OP_COND = 1,
 	SD_SEND_IF_COND = 8, // SD V2
 	SD_SEND_CSD = 9,
+	SD_SEND_CID = 10,
 	SD_STOP_TRANSMISSION = 12,
 	SD_SEND_STATUS = 13,
 	SD_SET_BLOCKLEN = 16,
 	SD_READ_SINGLE_BLOCK = 17,
 	SD_READ_MULTIPLE_BLOCK = 18,
 	SD_APP_SET_WR_BLK_ERASE_COUNT = 23,
+	SD_WRITE_MULTIPLE_BLOCK = 25,
 	SD_APP_SEND_OP_COND = 41,
 	SD_APP_CMD = 55,
 	SD_READ_OCR = 58,
@@ -53,6 +55,9 @@ typedef struct
 	int version; // SDHC = version 2.
 	int ccs; // Card Capacity Status. 1 = SDHC or SDXC
 	uint32 capacity; // in 512 byte blocks
+
+	uint8_t csd[16]; // Unparsed CSD
+	uint8_t cid[16]; // Unparsed CID
 } SdDevice;
 
 extern SdDevice sdDev;
@@ -61,7 +66,7 @@ int sdInit(void);
 
 void sdWriteMultiSectorPrep(void);
 void sdWriteMultiSectorDMA(uint8_t* outputBuffer);
-int sdWriteSectorDMAPoll();
+int sdWriteSectorDMAPoll(int sendStopToken);
 void sdCompleteWrite(void);
 
 void sdReadMultiSectorPrep(void);

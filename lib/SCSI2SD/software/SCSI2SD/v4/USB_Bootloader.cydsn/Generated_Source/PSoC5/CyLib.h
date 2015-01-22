@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: CyLib.h
-* Version 4.0
+* Version 4.20
 *
 * Description:
 *  Provides the function definitions for the system, clocking, interrupts and
@@ -11,7 +11,7 @@
 *  Guide provided with PSoC Creator.
 *
 ********************************************************************************
-* Copyright 2008-2013, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2014, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
@@ -163,6 +163,30 @@ uint8 CyVdRealTimeStatus(void) ;
 
 void CySetScPumps(uint8 enable) ;
 
+#if(CY_PSOC5)
+    /* Default interrupt handler */
+    CY_ISR_PROTO(IntDefaultHandler);
+#endif  /* (CY_PSOC5) */
+
+#if(CY_PSOC5)
+    /* System tick timer APIs */
+    typedef void (*cySysTickCallback)(void);
+
+    void CySysTickStart(void);
+    void CySysTickInit(void);
+    void CySysTickEnable(void);
+    void CySysTickStop(void);
+    void CySysTickEnableInterrupt(void);
+    void CySysTickDisableInterrupt(void);
+    void CySysTickSetReload(uint32 value);
+    uint32 CySysTickGetReload(void);
+    uint32 CySysTickGetValue(void);
+    cySysTickCallback CySysTickSetCallback(uint32 number, cySysTickCallback function);
+    cySysTickCallback CySysTickGetCallback(uint32 number);
+    void CySysTickSetClockSource(uint32 clockSource);
+    uint32 CySysTickGetCountFlag(void);
+    void CySysTickClear(void);
+#endif  /* (CY_PSOC5) */
 
 /***************************************
 * API Constants
@@ -398,6 +422,23 @@ void CySetScPumps(uint8 enable) ;
 /* CyUSB_PowerOnCheck() */
 #define CY_ACT_USB_ENABLED              (0x01u)
 #define CY_ALT_ACT_USB_ENABLED          (0x01u)
+
+
+#if(CY_PSOC5)
+
+    /***************************************************************************
+    * Instruction Synchronization Barrier flushes the pipeline in the processor,
+    * so that all instructions following the ISB are fetched from cache or
+    * memory, after the instruction has been completed.
+    ***************************************************************************/
+
+    #if defined(__ARMCC_VERSION)
+        #define CY_SYS_ISB       __isb(0x0f)
+    #else   /* ASM for GCC & IAR */
+        #define CY_SYS_ISB       asm volatile ("isb \n")
+    #endif /* (__ARMCC_VERSION) */
+
+#endif /* (CY_PSOC5) */
 
 
 /***************************************
@@ -689,16 +730,29 @@ void CySetScPumps(uint8 enable) ;
     #define CY_CACHE_CONTROL_REG        (* (reg16 *) CYREG_CACHE_CC_CTL )
     #define CY_CACHE_CONTROL_PTR        (  (reg16 *) CYREG_CACHE_CC_CTL )
 
+    /* System tick registers */
+    #define CY_SYS_SYST_CSR_REG         (*(reg32 *) CYREG_NVIC_SYSTICK_CTL)
+    #define CY_SYS_SYST_CSR_PTR         ( (reg32 *) CYREG_NVIC_SYSTICK_CTL)
+
+    #define CY_SYS_SYST_RVR_REG         (*(reg32 *) CYREG_NVIC_SYSTICK_RELOAD)
+    #define CY_SYS_SYST_RVR_PTR         ( (reg32 *) CYREG_NVIC_SYSTICK_RELOAD)
+
+    #define CY_SYS_SYST_CVR_REG         (*(reg32 *) CYREG_NVIC_SYSTICK_CURRENT)
+    #define CY_SYS_SYST_CVR_PTR         ( (reg32 *) CYREG_NVIC_SYSTICK_CURRENT)
+
+    #define CY_SYS_SYST_CALIB_REG       (*(reg32 *) CYREG_NVIC_SYSTICK_CAL)
+    #define CY_SYS_SYST_CALIB_PTR       ( (reg32 *) CYREG_NVIC_SYSTICK_CAL)
+
 #elif (CY_PSOC3)
 
     /* Interrupt Address Vector registers */
     #define CY_INT_VECT_TABLE           ((cyisraddress CYXDATA *) CYREG_INTC_VECT_MBASE)
 
-    /* Interrrupt Controller Priority Registers */
+    /* Interrupt Controller Priority Registers */
     #define CY_INT_PRIORITY_REG         (* (reg8 *) CYREG_INTC_PRIOR0)
     #define CY_INT_PRIORITY_PTR         (  (reg8 *) CYREG_INTC_PRIOR0)
 
-    /* Interrrupt Controller Set Enable Registers */
+    /* Interrupt Controller Set Enable Registers */
     #define CY_INT_ENABLE_REG           (* (reg8 *) CYREG_INTC_SET_EN0)
     #define CY_INT_ENABLE_PTR           (  (reg8 *) CYREG_INTC_SET_EN0)
 
@@ -714,7 +768,7 @@ void CySetScPumps(uint8 enable) ;
     #define CY_INT_SET_EN3_REG          (* (reg8 *) CYREG_INTC_SET_EN3)
     #define CY_INT_SET_EN3_PTR          (  (reg8 *) CYREG_INTC_SET_EN3)
 
-    /* Interrrupt Controller Clear Enable Registers */
+    /* Interrupt Controller Clear Enable Registers */
     #define CY_INT_CLEAR_REG            (* (reg8 *) CYREG_INTC_CLR_EN0)
     #define CY_INT_CLEAR_PTR            (  (reg8 *) CYREG_INTC_CLR_EN0)
 
@@ -731,11 +785,11 @@ void CySetScPumps(uint8 enable) ;
     #define CY_INT_CLR_EN3_PTR          (  (reg8 *) CYREG_INTC_CLR_EN3)
 
 
-    /* Interrrupt Controller Set Pend Registers */
+    /* Interrupt Controller Set Pend Registers */
     #define CY_INT_SET_PEND_REG         (* (reg8 *) CYREG_INTC_SET_PD0)
     #define CY_INT_SET_PEND_PTR         (  (reg8 *) CYREG_INTC_SET_PD0)
 
-    /* Interrrupt Controller Clear Pend Registers */
+    /* Interrupt Controller Clear Pend Registers */
     #define CY_INT_CLR_PEND_REG         (* (reg8 *) CYREG_INTC_CLR_PD0)
     #define CY_INT_CLR_PEND_PTR         (  (reg8 *) CYREG_INTC_CLR_PD0)
 
@@ -753,8 +807,8 @@ void CySetScPumps(uint8 enable) ;
 * Macro Name: CyAssert
 ********************************************************************************
 * Summary:
-*  Macro that evaluates the expression and if it is false (evaluates to 0) then
-*  the processor is halted.
+*  The macro that evaluates the expression and if it is false (evaluates to 0)
+*  then the processor is halted.
 *
 *  This macro is evaluated unless NDEBUG is defined.
 *
@@ -791,7 +845,7 @@ void CySetScPumps(uint8 enable) ;
 #define CY_RESET_GPIO1              (0x80u)
 
 
-/* Interrrupt Controller Configuration and Status Register */
+/* Interrupt Controller Configuration and Status Register */
 #if(CY_PSOC3)
     #define INTERRUPT_CSR               ((reg8 *) CYREG_INTC_CSR_EN)
     #define DISABLE_IRQ_SET             ((uint8)(0x01u << 1u))    /* INTC_CSR_EN */
@@ -844,6 +898,19 @@ void CySetScPumps(uint8 enable) ;
 #define CY_CACHE_CONTROL_FLUSH          (0x0004u)
 #define CY_LIB_RESET_CR2_RESET          (0x01u)
 
+#if(CY_PSOC5)
+    /* System tick API constants */
+    #define CY_SYS_SYST_CSR_ENABLE              ((uint32) (0x01u))
+    #define CY_SYS_SYST_CSR_ENABLE_INT          ((uint32) (0x02u))
+    #define CY_SYS_SYST_CSR_CLK_SOURCE_SHIFT    ((uint32) (0x02u))
+    #define CY_SYS_SYST_CSR_COUNTFLAG_SHIFT     ((uint32) (16u))
+    #define CY_SYS_SYST_CSR_CLK_SRC_SYSCLK      ((uint32) (1u))
+    #define CY_SYS_SYST_CSR_CLK_SRC_LFCLK       ((uint32) (0u))
+    #define CY_SYS_SYST_RVR_CNT_MASK            ((uint32) (0x00FFFFFFu))
+    #define CY_SYS_SYST_NUM_OF_CALLBACKS        ((uint32) (5u))
+#endif /* (CY_PSOC5) */
+
+
 
 /*******************************************************************************
 * Interrupt API constants
@@ -876,6 +943,20 @@ void CySetScPumps(uint8 enable) ;
 /* Mask to get valid range of system interrupt 0-15 */
 #define CY_INT_SYS_NUMBER_MASK          (0xFu)
 
+#if(CY_PSOC5)
+
+    /* CyIntSetSysVector()/CyIntGetSysVector() - parameter definitions */
+    #define CY_INT_NMI_IRQN                  ( 2u)      /* Non Maskable Interrupt      */
+    #define CY_INT_HARD_FAULT_IRQN           ( 3u)      /* Hard Fault Interrupt        */
+    #define CY_INT_MEM_MANAGE_IRQN           ( 4u)      /* Memory Management Interrupt */
+    #define CY_INT_BUS_FAULT_IRQN            ( 5u)      /* Bus Fault Interrupt         */
+    #define CY_INT_USAGE_FAULT_IRQN          ( 6u)      /* Usage Fault Interrupt       */
+    #define CY_INT_SVCALL_IRQN               (11u)      /* SV Call Interrupt           */
+    #define CY_INT_DEBUG_MONITOR_IRQN        (12u)      /* Debug Monitor Interrupt     */
+    #define CY_INT_PEND_SV_IRQN              (14u)      /* Pend SV Interrupt           */
+    #define CY_INT_SYSTICK_IRQN              (15u)      /* System Tick Interrupt       */
+
+#endif  /* (CY_PSOC5) */
 
 /*******************************************************************************
 * Interrupt Macros
@@ -1027,18 +1108,26 @@ void CySetScPumps(uint8 enable) ;
 
 
 /*******************************************************************************
-* Following code are OBSOLETE and must not be used.
+* The following code is OBSOLETE and must not be used.
+*
+* If the obsoleted macro definitions intended for use in the application use the
+* following scheme, redefine your own versions of these definitions:
+*    #ifdef <OBSOLETED_DEFINE>
+*        #undef  <OBSOLETED_DEFINE>
+*        #define <OBSOLETED_DEFINE>      (<New Value>)
+*    #endif
+*
+* Note: Redefine obsoleted macro definitions with caution. They might still be
+*       used in the application and their modification might lead to unexpected
+*       consequences.
 *******************************************************************************/
+
 #define CYGlobalIntEnable       CyGlobalIntEnable
 #define CYGlobalIntDisable      CyGlobalIntDisable
 
 #define cymemset(s,c,n)         memset((s),(c),(n))
 #define cymemcpy(d,s,n)         memcpy((d),(s),(n))
 
-
-/*******************************************************************************
-* Following code are OBSOLETE and must not be used starting from cy_boot 3.0
-*******************************************************************************/
 #define MFGCFG_X32_TR_PTR               (CY_CLK_XTAL32_TR_PTR)
 #define MFGCFG_X32_TR                   (CY_CLK_XTAL32_TR_REG)
 #define SLOWCLK_X32_TST_PTR             (CY_CLK_XTAL32_TST_PTR)
@@ -1123,10 +1212,6 @@ void CySetScPumps(uint8 enable) ;
 #define CY_VD_PRESISTENT_STATUS_PTR    (CY_VD_PERSISTENT_STATUS_PTR)
 
 
-/*******************************************************************************
-* Following code are OBSOLETE and must not be used starting from cy_boot 3.20
-*******************************************************************************/
-
 #if(CY_PSOC5)
 
     #define CYINT_IRQ_BASE      (CY_INT_IRQ_BASE)
@@ -1153,9 +1238,7 @@ void CySetScPumps(uint8 enable) ;
 #endif  /* (CY_PSOC5) */
 
 
-/*******************************************************************************
-* Following code are OBSOLETE and must not be used starting from cy_boot 3.30
-*******************************************************************************/
+
 #define BUS_AMASK_CLEAR                 (0xF0u)
 #define BUS_DMASK_CLEAR                 (0x00u)
 #define CLKDIST_LD_LOAD_SET             (0x01u)
@@ -1190,9 +1273,6 @@ void CySetScPumps(uint8 enable) ;
 #define CLKDIST_CR                     (*(reg8 *) CYREG_CLKDIST_CR)
 
 
-/*******************************************************************************
-* Following code are OBSOLETE and must not be used starting from cy_boot 3.50
-*******************************************************************************/
 #define IMO_PM_ENABLE                   (0x10u)
 #define PM_ACT_CFG0_PTR                ( (reg8 *) CYREG_PM_ACT_CFG0)
 #define PM_ACT_CFG0                    (*(reg8 *) CYREG_PM_ACT_CFG0)

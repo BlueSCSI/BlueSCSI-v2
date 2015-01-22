@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: core_cm3_psoc5.h
-* Version 4.0
+* Version 4.20
 *
 *  Description:
 *   Provides important type information for the PSoC5.  This includes types
@@ -11,7 +11,7 @@
 *   System Reference Guide provided with PSoC Creator.
 *
 ********************************************************************************
-* Copyright 2008-2013, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2014, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.

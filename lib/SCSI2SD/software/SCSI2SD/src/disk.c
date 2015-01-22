@@ -20,6 +20,8 @@
 #include "scsi.h"
 #include "scsiPhy.h"
 #include "config.h"
+#include "debug.h"
+#include "debug.h"
 #include "disk.h"
 #include "sd.h"
 #include "time.h"
@@ -486,6 +488,8 @@ int scsiDiskCommand()
 
 void scsiDiskPoll()
 {
+	debugPause(); // TODO comment re. timeouts.
+
 	if (scsiDev.phase == DATA_IN &&
 		transfer.currentBlock != transfer.blocks)
 	{
@@ -565,15 +569,17 @@ void scsiDiskPoll()
 		int prep = 0;
 		int i = 0;
 		int scsiDisconnected = 0;
-		volatile uint32_t lastActivityTime = getTime_ms();
+		int scsiComplete = 0;
+		uint32_t lastActivityTime = getTime_ms();
 		int scsiActive = 0;
 		int sdActive = 0;
-		
+
 		while ((i < totalSDSectors) &&
-			(scsiDev.phase == DATA_OUT) && // scsiDisconnect keeps our phase.
+			((scsiDev.phase == DATA_OUT) || // scsiDisconnect keeps our phase.
+				scsiComplete) &&
 			!scsiDev.resetFlag)
 		{
-			if ((sdActive == 1) && sdWriteSectorDMAPoll())
+			if ((sdActive == 1) && sdWriteSectorDMAPoll(i == (totalSDSectors - 1)))
 			{
 				sdActive = 0;
 				i++;
@@ -585,11 +591,13 @@ void scsiDiskPoll()
 				sdActive = 1;
 			}
 
+			uint32_t now = getTime_ms();
+
 			if ((scsiActive == 1) && scsiReadDMAPoll())
 			{
 				scsiActive = 0;
 				++prep;
-				lastActivityTime = getTime_ms();
+				lastActivityTime = now;
 			}
 			else if ((scsiActive == 0) &&
 				((prep - i) < buffers) &&
@@ -609,7 +617,7 @@ void scsiDiskPoll()
 				(scsiActive == 0) &&
 				!scsiDisconnected &&
 				scsiDev.discPriv &&
-				(diffTime_ms(lastActivityTime, getTime_ms()) >= 20) &&
+				(diffTime_ms(lastActivityTime, now) >= 20) &&
 				(scsiDev.phase == DATA_OUT))
 			{
 				// We're transferring over the SCSI bus faster than the SD card
@@ -628,7 +636,7 @@ void scsiDiskPoll()
 					(prep == i) || // Buffers empty.
 					// Send some messages every 100ms so we don't timeout.
 					// At a minimum, a reselection involves an IDENTIFY message.
-					(diffTime_ms(lastActivityTime, getTime_ms()) >= 100)
+					(diffTime_ms(lastActivityTime, now) >= 100)
 				))
 			{
 				int reconnected = scsiReconnect();
@@ -643,8 +651,38 @@ void scsiDiskPoll()
 					scsiDev.resetFlag = 1;
 				}
 			}
+			else if (
+				!scsiComplete &&
+				(sdActive == 1) &&
+				(prep == totalSDSectors) && // All scsi data read and buffered
+				!scsiDev.discPriv && // Prefer disconnect where possible.
+				(diffTime_ms(lastActivityTime, now) >= 150) &&
+
+				(scsiDev.phase == DATA_OUT) &&
+				!(scsiDev.cdb[scsiDev.cdbLen - 1] & 0x01) // Not linked command
+				)
+			{
+				// We're transferring over the SCSI bus faster than the SD card
+				// can write.  All data is buffered, and we're just waiting for
+				// the SD card to complete. The host won't let us disconnect.
+				// Some drivers set a 250ms timeout on transfers to complete.
+				// SD card writes are supposed to complete
+				// within 200ms, but sometimes they don'to.
+				// Just pretend we're finished.
+				scsiComplete = 1;
+
+				process_Status();
+				process_MessageIn(); // Will go to BUS_FREE state
+
+				// Try and prevent anyone else using the SCSI bus while we're not ready.
+				SCSI_SetPin(SCSI_Out_BSY); 
+			}
 		}
 
+		if (scsiComplete)
+		{
+			SCSI_ClearPin(SCSI_Out_BSY);
+		}
 		while (
 			!scsiDev.resetFlag &&
 			scsiDisconnected &&
@@ -672,6 +710,7 @@ void scsiDiskPoll()
 		}
 		scsiDiskReset();
 	}
+	debugResume(); // TODO comment re. timeouts.
 }
 
 void scsiDiskReset()
@@ -697,6 +736,8 @@ void scsiDiskReset()
 	}
 	transfer.inProgress = 0;
 	transfer.multiBlock = 0;
+		//		SD_CS_Write(1);
+
 }
 
 void scsiDiskInit()

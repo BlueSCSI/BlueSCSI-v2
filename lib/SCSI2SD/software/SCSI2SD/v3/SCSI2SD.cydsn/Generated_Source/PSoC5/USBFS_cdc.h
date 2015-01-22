@@ -1,13 +1,16 @@
 /*******************************************************************************
 * File Name: USBFS_cdc.h
-* Version 2.60
+* Version 2.80
 *
 * Description:
-*  Header File for the USFS component.
+*  Header File for the USBFS component.
 *  Contains CDC class prototypes and constant values.
 *
+* Related Document:
+*  Universal Serial Bus Class Definitions for Communication Devices Version 1.1
+*
 ********************************************************************************
-* Copyright 2012-2013, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2012-2014, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
@@ -41,7 +44,7 @@
     uint8 USBFS_GetParityType(void) ;
     uint8 USBFS_GetDataBits(void) ;
     uint16 USBFS_GetLineControl(void) ;
-#endif  /* End USBFS_ENABLE_CDC_CLASS_API*/
+#endif  /*  USBFS_ENABLE_CDC_CLASS_API */
 
 
 /***************************************
@@ -86,7 +89,7 @@ extern volatile uint16 USBFS_lineControlBitmap;
 extern volatile uint8 USBFS_cdc_data_in_ep;
 extern volatile uint8 USBFS_cdc_data_out_ep;
 
-#endif /* End CY_USBFS_USBFS_cdc_H */
+#endif /*  CY_USBFS_USBFS_cdc_H */
 
 
 /* [] END OF FILE */

@@ -38,9 +38,7 @@ static void enter_SelectionPhase(void);
 static void process_SelectionPhase(void);
 static void enter_BusFree(void);
 static void enter_MessageIn(uint8 message);
-static void process_MessageIn(void);
 static void enter_Status(uint8 status);
-static void process_Status(void);
 static void enter_DataIn(int len);
 static void process_DataIn(void);
 static void process_DataOut(void);
@@ -72,7 +70,7 @@ static void enter_MessageIn(uint8 message)
 	scsiDev.phase = MESSAGE_IN;
 }
 
-static void process_MessageIn()
+void process_MessageIn()
 {
 	scsiEnterPhase(MESSAGE_IN);
 	scsiWriteByte(scsiDev.msgIn);
@@ -115,9 +113,10 @@ static void enter_Status(uint8 status)
 
 	scsiDev.lastStatus = scsiDev.status;
 	scsiDev.lastSense = scsiDev.target->sense.code;
+	scsiDev.lastSenseASC = scsiDev.target->sense.asc;
 }
 
-static void process_Status()
+void process_Status()
 {
 	scsiEnterPhase(STATUS);
 
@@ -145,6 +144,8 @@ static void process_Status()
 
 	scsiDev.lastStatus = scsiDev.status;
 	scsiDev.lastSense = scsiDev.target->sense.code;
+	scsiDev.lastSenseASC = scsiDev.target->sense.asc;
+
 
 	// Command Complete occurs AFTER a valid status has been
 	// sent. then we go bus-free.
@@ -460,8 +461,9 @@ static void scsiReset()
 	// There is no guarantee that the RST line will be negated by then.
 	// NOTE: We could be connected and powered by USB for configuration,
 	// in which case TERMPWR cannot be supplied, and reset will ALWAYS
-	// be true.
-	CyDelay(10); // 10ms.
+	// be true. Therefore, the sleep here must be slow to avoid slowing
+	// USB comms
+	CyDelay(1); // 1ms.
 }
 
 static void enter_SelectionPhase()

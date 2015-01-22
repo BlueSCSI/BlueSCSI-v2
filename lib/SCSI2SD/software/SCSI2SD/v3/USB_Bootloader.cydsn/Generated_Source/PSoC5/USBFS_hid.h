@@ -1,12 +1,15 @@
 /*******************************************************************************
 * File Name: USBFS_hid.h
-* Version 2.60
+* Version 2.80
 *
 * Description:
-*  Header File for the USFS component. Contains prototypes and constant values.
+*  Header File for the USBFS component. Contains prototypes and constant values.
+*
+* Related Document:
+*  Device Class Definition for Human Interface Devices (HID) Version 1.11
 *
 ********************************************************************************
-* Copyright 2008-2013, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2014, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
@@ -58,7 +61,7 @@ uint8 USBFS_GetProtocol(uint8 interface) ;
 #define USBFS_HID_GET_REPORT_OUTPUT      (0x02u)
 #define USBFS_HID_GET_REPORT_FEATURE     (0x03u)
 
-#endif /* End CY_USBFS_USBFS_hid_H */
+#endif /*  CY_USBFS_USBFS_hid_H */
 
 
 /* [] END OF FILE */

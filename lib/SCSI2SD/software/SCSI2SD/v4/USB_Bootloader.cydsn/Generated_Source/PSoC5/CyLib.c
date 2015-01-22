@@ -1,16 +1,16 @@
 /*******************************************************************************
 * File Name: CyLib.c
-* Version 4.0
+* Version 4.20
 *
 *  Description:
-*   Provides system API for the clocking, interrupts and watchdog timer.
+*   Provides a system API for the clocking, interrupts and watchdog timer.
 *
 *  Note:
 *   Documentation of the API's in this file is located in the
 *   System Reference Guide provided with PSoC Creator.
 *
 ********************************************************************************
-* Copyright 2008-2013, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2014, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
@@ -49,6 +49,12 @@ static uint8 CyUSB_PowerOnCheck(void)  ;
 static void CyIMO_SetTrimValue(uint8 freq) ;
 static void CyBusClk_Internal_SetDivider(uint16 divider);
 
+#if(CY_PSOC5)
+	static cySysTickCallback CySysTickCallbacks[CY_SYS_SYST_NUM_OF_CALLBACKS];
+    static void CySysTickServiceCallbacks(void);
+    uint32 CySysTickInitVar = 0u;
+#endif  /* (CY_PSOC5) */
+
 
 /*******************************************************************************
 * Function Name: CyPLL_OUT_Start
@@ -72,7 +78,7 @@ static void CyBusClk_Internal_SetDivider(uint16 divider);
 *     clock can still be used.
 *
 * Side Effects:
-*  If wait is enabled: This function wses the Fast Time Wheel to time the wait.
+*  If wait is enabled: This function uses the Fast Time Wheel to time the wait.
 *  Any other use of the Fast Time Wheel will be stopped during the period of
 *  this function and then restored. This function also uses the 100 KHz ILO.
 *  If not enabled, this function will enable the 100 KHz ILO for the period of
@@ -95,7 +101,7 @@ cystatus CyPLL_OUT_Start(uint8 wait)
     uint8 pmTwCfg2State;
 
 
-    /* Enables the PLL circuit  */
+    /* Enables PLL circuit  */
     CY_CLK_PLL_CFG0_REG |= CY_CLK_PLL_ENABLE;
 
     if(wait != 0u)
@@ -111,7 +117,7 @@ cystatus CyPLL_OUT_Start(uint8 wait)
 
         while(0u == (CY_PM_FTW_INT & CyPmReadStatus(CY_PM_FTW_INT)))
         {
-            /* Wait for the interrupt status */
+            /* Wait for interrupt status */
             if(0u != (CY_CLK_PLL_SR_REG & CY_CLK_PLL_LOCK_STATUS))
             {
                 if(0u != (CY_CLK_PLL_SR_REG & CY_CLK_PLL_LOCK_STATUS))
@@ -180,11 +186,11 @@ void CyPLL_OUT_Stop(void)
 *  None
 *
 * Side Effects:
-*  If as result of this function execution the CPU clock frequency is increased
+*  If this function execution results in the CPU clock frequency increasing,
 *  then the number of clock cycles the cache will wait before it samples data
-*  coming back from Flash must be adjusted by calling CyFlash_SetWaitCycles()
-*  with appropriate parameter. It can be optionally called if CPU clock
-*  frequency is lowered in order to improve CPU performance.
+*  coming back from the Flash must be adjusted by calling CyFlash_SetWaitCycles()
+*  with an appropriate parameter. It can be optionally called if the CPU clock
+*  frequency is lowered in order to improve the CPU performance.
 *  See CyFlash_SetWaitCycles() description for more information.
 *
 *******************************************************************************/
@@ -235,11 +241,11 @@ void CyPLL_OUT_SetPQ(uint8 pDiv, uint8 qDiv, uint8 current)
 *  None
 *
 * Side Effects:
-*  If as result of this function execution the CPU clock frequency is increased
+*  If this function execution results in the CPU clock frequency increasing,
 *  then the number of clock cycles the cache will wait before it samples data
-*  coming back from Flash must be adjusted by calling CyFlash_SetWaitCycles()
-*  with appropriate parameter. It can be optionally called if CPU clock
-*  frequency is lowered in order to improve CPU performance.
+*  coming back from the3 Flash must be adjusted by calling CyFlash_SetWaitCycles()
+*  with an appropriate parameter. It can be optionally called if the CPU clock
+*  frequency is lowered in order to improve the CPU performance.
 *  See CyFlash_SetWaitCycles() description for more information.
 *
 *******************************************************************************/
@@ -279,7 +285,7 @@ void CyPLL_OUT_SetSource(uint8 source)
 *  None
 *
 * Side Effects:
-*  If wait is enabled: This function wses the Fast Time Wheel to time the wait.
+*  If wait is enabled: This function uses the Fast Time Wheel to time the wait.
 *  Any other use of the Fast Time Wheel will be stopped during the period of
 *  this function and then restored. This function also uses the 100 KHz ILO.
 *  If not enabled, this function will enable the 100 KHz ILO for the period of
@@ -305,7 +311,7 @@ void CyIMO_Start(uint8 wait)
 
     if(0u != wait)
     {
-        /* Need to turn on the 100KHz ILO if it happens to not already be running.*/
+        /* Need to turn on 100KHz ILO if it happens to not already be running.*/
         ilo100KhzEnable = CY_LIB_SLOWCLK_ILO_CR0_REG & CY_LIB_SLOWCLK_ILO_CR0_EN_100KHZ;
         pmFtwCfg0Reg = CY_LIB_PM_TW_CFG0_REG;
         pmFtwCfg2Reg = CY_LIB_PM_TW_CFG2_REG;
@@ -314,7 +320,7 @@ void CyIMO_Start(uint8 wait)
 
         while (0u == (CY_PM_FTW_INT & CyPmReadStatus(CY_PM_FTW_INT)))
         {
-            /* Wait for the interrupt status */
+            /* Wait for interrupt status */
         }
 
         if(0u == ilo100KhzEnable)
@@ -442,7 +448,7 @@ static void CyIMO_SetTrimValue(uint8 freq)
         /* If USB is powered */
         if(usbPowerOn == 1u)
         {
-            /* Lock the USB Oscillator */
+            /* Lock USB Oscillator */
             CY_LIB_USB_CR1_REG |= CY_LIB_USB_CLK_EN;
         }
         break;
@@ -477,11 +483,11 @@ static void CyIMO_SetTrimValue(uint8 freq)
 *  None
 *
 * Side Effects:
-*  If as result of this function execution the CPU clock frequency is increased
+*  If this function execution results in the CPU clock frequency increasing,
 *  then the number of clock cycles the cache will wait before it samples data
-*  coming back from Flash must be adjusted by calling CyFlash_SetWaitCycles()
-*  with appropriate parameter. It can be optionally called if CPU clock
-*  frequency is lowered in order to improve CPU performance.
+*  coming back from the Flash must be adjusted by calling CyFlash_SetWaitCycles()
+*  with an appropriate parameter. It can be optionally called if the CPU clock
+*  frequency is lowered in order to improve the CPU performance.
 *  See CyFlash_SetWaitCycles() description for more information.
 *
 *  When the USB setting is chosen, the USB clock locking circuit is enabled.
@@ -495,15 +501,15 @@ void CyIMO_SetFreq(uint8 freq)
     uint8 nextFreq;
 
     /***************************************************************************
-    * When changing the IMO frequency the Trim values must also be set
+    * If the IMO frequency is changed,the Trim values must also be set
     * accordingly.This requires reading the current frequency. If the new
-    * frequency is faster, then set the new trim and then change the frequency,
-    * otherwise change the frequency and then set the new trim values.
+    * frequency is faster, then set a new trim and then change the frequency,
+    * otherwise change the frequency and then set new trim values.
     ***************************************************************************/
 
     currentFreq = CY_LIB_FASTCLK_IMO_CR_REG & ((uint8)(~CY_LIB_FASTCLK_IMO_CR_RANGE_MASK));
 
-    /* Check if the requested frequency is USB. */
+    /* Check if requested frequency is USB. */
     nextFreq = (freq == CY_IMO_FREQ_USB) ? CY_IMO_FREQ_24MHZ : freq;
 
     switch (currentFreq)
@@ -545,11 +551,11 @@ void CyIMO_SetFreq(uint8 freq)
 
     if (nextFreq >= currentFreq)
     {
-        /* Set the new trim first */
+        /* Set new trim first */
         CyIMO_SetTrimValue(freq);
     }
 
-    /* Set the usbclk_on bit when using CY_IMO_FREQ_USB, if not clear it */
+    /* Set usbclk_on bit when using CY_IMO_FREQ_USB, if not clear it */
     switch(freq)
     {
     case CY_IMO_FREQ_3MHZ:
@@ -599,7 +605,7 @@ void CyIMO_SetFreq(uint8 freq)
         break;
     }
 
-    /* Turn on the IMO Doubler, if switching to CY_IMO_FREQ_USB */
+    /* Tu rn onIMO Doubler, if switching to CY_IMO_FREQ_USB */
     if (freq == CY_IMO_FREQ_USB)
     {
         CyIMO_EnableDoubler();
@@ -611,7 +617,7 @@ void CyIMO_SetFreq(uint8 freq)
 
     if (nextFreq < currentFreq)
     {
-        /* Set the new trim after setting the frequency */
+        /* Set the trim after setting frequency */
         CyIMO_SetTrimValue(freq);
     }
 }
@@ -625,7 +631,7 @@ void CyIMO_SetFreq(uint8 freq)
 *  Sets the source of the clock output from the IMO block.
 *
 *  The output from the IMO is by default the IMO itself. Optionally the MHz
-*  Crystal or a DSI input can be the source of the IMO output instead.
+*  Crystal or DSI input can be the source of the IMO output instead.
 *
 * Parameters:
 *   source: CY_IMO_SOURCE_DSI to set the DSI as source.
@@ -636,11 +642,11 @@ void CyIMO_SetFreq(uint8 freq)
 *  None
 *
 * Side Effects:
-*  If as result of this function execution the CPU clock frequency is increased
+*  If this function execution resulted in the CPU clock frequency increasing,
 *  then the number of clock cycles the cache will wait before it samples data
-*  coming back from Flash must be adjusted by calling CyFlash_SetWaitCycles()
-*  with appropriate parameter. It can be optionally called if CPU clock
-*  frequency is lowered in order to improve CPU performance.
+*  coming back from the Flash must be adjusted by calling CyFlash_SetWaitCycles()
+*  with an appropriate parameter. It can be optionally called if the CPU clock
+*  frequency is lowered in order to improve the CPU performance.
 *  See CyFlash_SetWaitCycles() description for more information.
 *
 *******************************************************************************/
@@ -687,7 +693,7 @@ void CyIMO_SetSource(uint8 source)
 *******************************************************************************/
 void CyIMO_EnableDoubler(void) 
 {
-    /* Set the FASTCLK_IMO_CR_PTR regigster's 4th bit */
+    /* Set FASTCLK_IMO_CR_PTR regigster's 4th bit */
     CY_LIB_FASTCLK_IMO_CR_REG |= CY_LIB_FASTCLK_IMO_DOUBLER;
 }
 
@@ -733,11 +739,11 @@ void CyIMO_DisableDoubler(void)
 *  The current source and the new source must both be running and stable before
 *  calling this function.
 *
-*  If as result of this function execution the CPU clock frequency is increased
+*  If this function execution resulted in the CPU clock frequency increasing,
 *  then the number of clock cycles the cache will wait before it samples data
-*  coming back from Flash must be adjusted by calling CyFlash_SetWaitCycles()
-*  with appropriate parameter. It can be optionally called if CPU clock
-*  frequency is lowered in order to improve CPU performance.
+*  coming back from the Flash must be adjusted by calling CyFlash_SetWaitCycles()
+*  with an appropriate parameter. It can be optionally called if the CPU clock
+*  frequency is lowered in order to improve the CPU performance.
 *  See CyFlash_SetWaitCycles() description for more information.
 *
 *******************************************************************************/
@@ -757,18 +763,18 @@ void CyMasterClk_SetSource(uint8 source)
 *
 * Parameters:
 *  uint8 divider:
-*   Valid range [0-255]. The clock will be divided by this value + 1.
-*   For example to divide by 2 this parameter should be set to 1.
+*   The valid range is [0-255]. The clock will be divided by this value + 1.
+*   For example to divide this parameter by two should be set to 1.
 *
 * Return:
 *  None
 *
 * Side Effects:
-*  If as result of this function execution the CPU clock frequency is increased
+*  If this function execution resulted in the CPU clock frequency increasing,
 *  then the number of clock cycles the cache will wait before it samples data
-*  coming back from Flash must be adjusted by calling CyFlash_SetWaitCycles()
-*  with appropriate parameter. It can be optionally called if CPU clock
-*  frequency is lowered in order to improve CPU performance.
+*  coming back from the Flash must be adjusted by calling CyFlash_SetWaitCycles()
+*  with an appropriate parameter. It can be optionally called if the CPU clock
+*  frequency is lowered in order to improve the CPU performance.
 *  See CyFlash_SetWaitCycles() description for more information.
 *
 *  When changing the Master or Bus clock divider value from div-by-n to div-by-1
@@ -787,12 +793,12 @@ void CyMasterClk_SetDivider(uint8 divider)
 ********************************************************************************
 *
 * Summary:
-*  Function used by CyBusClk_SetDivider(). For internal use only.
+*  The function used by CyBusClk_SetDivider(). For internal use only.
 *
 * Parameters:
 *   divider: Valid range [0-65535].
 *   The clock will be divided by this value + 1.
-*   For example to divide by 2 this parameter should be set to 1.
+*   For example, to divide this parameter by two should be set to 1.
 *
 * Return:
 *  None
@@ -807,7 +813,7 @@ static void CyBusClk_Internal_SetDivider(uint16 divider)
     /* Enable mask bits to enable shadow loads */
     CY_LIB_CLKDIST_BCFG2_REG |= CY_LIB_CLKDIST_BCFG2_MASK;
 
-    /* Update Shadow Divider Value Register with the new divider */
+    /* Update Shadow Divider Value Register with new divider */
     CY_LIB_CLKDIST_WRK_LSB_REG = LO8(divider);
     CY_LIB_CLKDIST_WRK_MSB_REG = HI8(divider);
 
@@ -827,21 +833,21 @@ static void CyBusClk_Internal_SetDivider(uint16 divider)
 ********************************************************************************
 *
 * Summary:
-*  Sets the divider value used to generate Bus Clock.
+*  Sets the divider value used to generate the Bus Clock.
 *
 * Parameters:
 *  divider: Valid range [0-65535]. The clock will be divided by this value + 1.
-*  For example to divide by 2 this parameter should be set to 1.
+*  For example, to divide this parameter by two should be set to 1.
 *
 * Return:
 *  None
 *
 * Side Effects:
-*  If as result of this function execution the CPU clock frequency is increased
+*  If this function execution resulted in the CPU clock frequency increasing,
 *  then the number of clock cycles the cache will wait before it samples data
-*  coming back from Flash must be adjusted by calling CyFlash_SetWaitCycles()
-*  with appropriate parameter. It can be optionally called if CPU clock
-*  frequency is lowered in order to improve CPU performance.
+*  coming back from the Flash must be adjusted by calling CyFlash_SetWaitCycles()
+*  with an appropriate parameter. It can be optionally called if the CPU clock
+*  frequency is lowered in order to improve the CPU performance.
 *  See CyFlash_SetWaitCycles() description for more information.
 *
 *******************************************************************************/
@@ -853,13 +859,13 @@ void CyBusClk_SetDivider(uint16 divider)
 
     interruptState = CyEnterCriticalSection();
 
-    /* Work around to set the bus clock divider value */
+    /* Work around to set bus clock divider value */
     busClkDiv = (uint16)((uint16)CY_LIB_CLKDIST_BCFG_MSB_REG << 8u);
     busClkDiv |= CY_LIB_CLKDIST_BCFG_LSB_REG;
 
     if ((divider == 0u) || (busClkDiv == 0u))
     {
-        /* Save away the master clock divider value */
+        /* Save away master clock divider value */
         masterClkDiv = CY_LIB_CLKDIST_MSTR0_REG;
 
         if (masterClkDiv < CY_LIB_CLKDIST_MASTERCLK_DIV)
@@ -870,7 +876,7 @@ void CyBusClk_SetDivider(uint16 divider)
 
         if (divider == 0u)
         {
-            /* Set the SSS bit and the divider register desired value */
+            /* Set SSS bit and divider register desired value */
             CY_LIB_CLKDIST_BCFG2_REG |= CY_LIB_CLKDIST_BCFG2_SSS;
             CyBusClk_Internal_SetDivider(divider);
         }
@@ -880,7 +886,7 @@ void CyBusClk_SetDivider(uint16 divider)
             CY_LIB_CLKDIST_BCFG2_REG &= ((uint8)(~CY_LIB_CLKDIST_BCFG2_SSS));
         }
 
-        /* Restore the master clock */
+        /* Restore master clock */
         CyMasterClk_SetDivider(masterClkDiv);
     }
     else
@@ -904,17 +910,17 @@ void CyBusClk_SetDivider(uint16 divider)
     *
     * Parameters:
     *  divider: Valid range [0-15]. The clock will be divided by this value + 1.
-    *  For example to divide by 2 this parameter should be set to 1.
+    *  For example, to divide this parameter by two should be set to 1.
     *
     * Return:
     *  None
     *
     * Side Effects:
-    *  If as result of this function execution the CPU clock frequency is increased
-    *  then the number of clock cycles the cache will wait before it samples data
-    *  coming back from Flash must be adjusted by calling CyFlash_SetWaitCycles()
-    *  with appropriate parameter. It can be optionally called if CPU clock
-    *  frequency is lowered in order to improve CPU performance.
+    *  If this function execution resulted in the CPU clock frequency increasing,
+*  then the number of clock cycles the cache will wait before it samples data
+*  coming back from the Flash must be adjusted by calling CyFlash_SetWaitCycles()
+*  with an appropriate parameter. It can be optionally called if the CPU clock
+*  frequency is lowered in order to improve the CPU performance.
     *  See CyFlash_SetWaitCycles() description for more information.
     *
     *******************************************************************************/
@@ -972,7 +978,7 @@ void CyUsbClk_SetSource(uint8 source)
 *******************************************************************************/
 void CyILO_Start1K(void) 
 {
-    /* Set the bit 1 of ILO RS */
+    /* Set bit 1 of ILO RS */
     CY_LIB_SLOWCLK_ILO_CR0_REG |= CY_LIB_SLOWCLK_ILO_CR0_EN_1KHZ;
 }
 
@@ -984,7 +990,7 @@ void CyILO_Start1K(void)
 * Summary:
 *  Disables the ILO 1 KHz oscillator.
 *
-*  Note The ILO 1 KHz oscillator must be enabled if Sleep or Hibernate low power
+*  Note The ILO 1 KHz oscillator must be enabled if the Sleep or Hibernate low power
 *  mode APIs are expected to be used. For more information, refer to the Power
 *  Management section of this document.
 *
@@ -1000,7 +1006,7 @@ void CyILO_Start1K(void)
 *******************************************************************************/
 void CyILO_Stop1K(void) 
 {
-    /* Clear the bit 1 of ILO RS */
+    /* Clear bit 1 of ILO RS */
     CY_LIB_SLOWCLK_ILO_CR0_REG &= ((uint8)(~CY_LIB_SLOWCLK_ILO_CR0_EN_1KHZ));
 }
 
@@ -1064,7 +1070,7 @@ void CyILO_Stop100K(void)
 *******************************************************************************/
 void CyILO_Enable33K(void) 
 {
-    /* Set the bit 5 of ILO RS */
+    /* Set bit 5 of ILO RS */
     CY_LIB_SLOWCLK_ILO_CR0_REG |= CY_LIB_SLOWCLK_ILO_CR0_EN_33KHZ;
 }
 
@@ -1141,7 +1147,7 @@ uint8 CyILO_SetPowerMode(uint8 mode)
     /* Get current state. */
     state = CY_LIB_SLOWCLK_ILO_CR0_REG;
 
-    /* Set the the oscillator power mode. */
+    /* Set the oscillator power mode. */
     if(mode != CY_ILO_FAST_START)
     {
         CY_LIB_SLOWCLK_ILO_CR0_REG = (state | CY_ILO_CONTROL_PD_MODE);
@@ -1151,7 +1157,7 @@ uint8 CyILO_SetPowerMode(uint8 mode)
         CY_LIB_SLOWCLK_ILO_CR0_REG = (state & ((uint8)(~CY_ILO_CONTROL_PD_MODE)));
     }
 
-    /* Return the old mode. */
+    /* Return old mode. */
     return ((state & CY_ILO_CONTROL_PD_MODE) >> CY_ILO_CONTROL_PD_POSITION);
 }
 
@@ -1183,14 +1189,14 @@ void CyXTAL_32KHZ_Start(void)
         CY_CLK_XTAL32_CR_REG |= CY_CLK_XTAL32_CR_PDBEN;
     #endif  /* (CY_PSOC3) */
 
-    /* Enable operation of the 32K Crystal Oscillator */
+    /* Enable operation of 32K Crystal Oscillator */
     CY_CLK_XTAL32_CR_REG |= CY_CLK_XTAL32_CR_EN;
 
     for (i = 1000u; i > 0u; i--)
     {
         if(0u != (CyXTAL_32KHZ_ReadStatus() & CY_XTAL32K_ANA_STAT))
         {
-            /* Ready - switch to the hign power mode */
+            /* Ready - switch to high power mode */
             (void) CyXTAL_32KHZ_SetPowerMode(0u);
 
             break;
@@ -1256,9 +1262,9 @@ uint8 CyXTAL_32KHZ_ReadStatus(void)
 ********************************************************************************
 *
 * Summary:
-*  Sets the power mode for the 32 KHz oscillator used during sleep mode.
+*  Sets the power mode for the 32 KHz oscillator used during the sleep mode.
 *  Allows for lower power during sleep when there are fewer sources of noise.
-*  During active mode the oscillator is always run in high power mode.
+*  During the active mode the oscillator is always run in the high power mode.
 *
 * Parameters:
 *  uint8 mode
@@ -1345,7 +1351,7 @@ cystatus CyXTAL_Start(uint8 wait)
     uint8 pmTwCfg2Tmp;
 
 
-    /* Enables the MHz crystal oscillator circuit  */
+    /* Enables MHz crystal oscillator circuit  */
     CY_CLK_XMHZ_CSR_REG |= CY_CLK_XMHZ_CSR_ENABLE;
 
 
@@ -1366,19 +1372,19 @@ cystatus CyXTAL_Start(uint8 wait)
             /* Read XERR bit to clear it */
             (void) CY_CLK_XMHZ_CSR_REG;
 
-            /* Wait for a millisecond - 4 x 250 us */
+            /* Wait for 1 millisecond - 4 x 250 us */
             for(count = 4u; count > 0u; count--)
             {
                 while(0u == (CY_PM_FTW_INT & CyPmReadStatus(CY_PM_FTW_INT)))
                 {
-                    /* Wait for the FTW interrupt event */
+                    /* Wait for FTW interrupt event */
                 }
             }
 
 
             /*******************************************************************
-            * High output indicates oscillator failure.
-            * Only can be used after start-up interval (1 ms) is completed.
+            * High output indicates an oscillator failure.
+            * Only can be used after a start-up interval (1 ms) is completed.
             *******************************************************************/
             if(0u == (CY_CLK_XMHZ_CSR_REG & CY_CLK_XMHZ_CSR_XERR))
             {
@@ -1417,7 +1423,7 @@ cystatus CyXTAL_Start(uint8 wait)
 *******************************************************************************/
 void CyXTAL_Stop(void) 
 {
-    /* Disable the the oscillator. */
+    /* Disable oscillator. */
     FASTCLK_XMHZ_CSR &= ((uint8)(~XMHZ_CONTROL_ENABLE));
 }
 
@@ -1472,7 +1478,7 @@ void CyXTAL_DisableErrStatus(void)
 *
 * Summary:
 *  Reads the XERR status bit for the megahertz crystal. This status bit is a
-*  sticky clear on read value. This function is not available for PSoC5.
+*  sticky, clear on read. This function is not available for PSoC5.
 *
 * Parameters:
 *  None
@@ -1486,8 +1492,8 @@ void CyXTAL_DisableErrStatus(void)
 uint8 CyXTAL_ReadStatus(void) 
 {
     /***************************************************************************
-    * High output indicates oscillator failure. Only use this after start-up
-    * interval is completed. This can be used for status and failure recovery.
+    * High output indicates an oscillator failure. Only use this after a start-up
+    * interval is completed. This can be used for the status and failure recovery.
     ***************************************************************************/
     return((0u != (CY_CLK_XMHZ_CSR_REG & CY_CLK_XMHZ_CSR_XERR)) ? 1u : 0u);
 }
@@ -1501,7 +1507,7 @@ uint8 CyXTAL_ReadStatus(void)
 *  Enables the fault recovery circuit which will switch to the IMO in the case
 *  of a fault in the megahertz crystal circuit. The crystal must be up and
 *  running with the XERR bit at 0, before calling this function to prevent
-*  immediate fault switchover. This function is not available for PSoC5.
+*  an immediate fault switchover. This function is not available for PSoC5.
 *
 * Parameters:
 *  None
@@ -1543,7 +1549,7 @@ void CyXTAL_DisableFaultRecovery(void)
 ********************************************************************************
 *
 * Summary:
-*  Sets the startup settings for the crystal. Logic model outputs a frequency
+*  Sets the startup settings for the crystal. The logic model outputs a frequency
 *  (setting + 4) MHz when enabled.
 *
 *  This is artificial as the actual frequency is determined by an attached
@@ -1551,7 +1557,7 @@ void CyXTAL_DisableFaultRecovery(void)
 *
 * Parameters:
 *  setting: Valid range [0-31].
-*   Value is dependent on the frequency and quality of the crystal being used.
+*   The value is dependent on the frequency and quality of the crystal being used.
 *   Refer to the device TRM and datasheet for more information.
 *
 * Return:
@@ -1648,7 +1654,7 @@ void CyHalt(uint8 reason) CYREENTRANT
 ********************************************************************************
 *
 * Summary:
-*  Forces a software reset of the device.
+*  Forces a device software reset.
 *
 * Parameters:
 *  None
@@ -1672,9 +1678,9 @@ void CySoftwareReset(void)
 *
 *  Note:
 *  CyDelay has been implemented with the instruction cache assumed enabled. When
-*  instruction cache is disabled on PSoC5, CyDelay will be two times larger. For
-*  example, with instruction cache disabled CyDelay(100) would result in about
-*  200 ms delay instead of 100 ms.
+*  the instruction cache is disabled on PSoC5, CyDelay will be two times larger.
+*  For example, with instruction cache disabled CyDelay(100) would result in
+*  about 200 ms delay instead of 100 ms.
 *
 * Parameters:
 *  milliseconds: number of milliseconds to delay.
@@ -1724,8 +1730,8 @@ void CyDelay(uint32 milliseconds) CYREENTRANT
     *
     * Side Effects:
     *  CyDelayUS has been implemented with the instruction cache assumed enabled.
-    *  When instruction cache is disabled on PSoC 5, CyDelayUs will be two times
-    *  larger. For example, with instruction cache disabled CyDelayUs(100) would
+    *  When the instruction cache is disabled on PSoC 5, CyDelayUs will be two times
+    *  larger. For example, with the instruction cache disabled CyDelayUs(100) would
     *  result in about 200 us delay instead of 100 us.
     *
     *  If the bus clock frequency is a small non-integer number, the actual delay
@@ -1745,10 +1751,10 @@ void CyDelay(uint32 milliseconds) CYREENTRANT
 ********************************************************************************
 *
 * Summary:
-*  Sets clock frequency for CyDelay.
+*  Sets the clock frequency for CyDelay.
 *
 * Parameters:
-*  freq: Frequency of bus clock in Hertz.
+*  freq: The frequency of the bus clock in Hertz.
 *
 * Return:
 *  None
@@ -1779,7 +1785,7 @@ void CyDelayFreq(uint32 freq) CYREENTRANT
 *  Enables the watchdog timer.
 *
 *  The timer is configured for the specified count interval, the central
-*  timewheel is cleared, the setting for low power mode is configured and the
+*  timewheel is cleared, the setting for the low power mode is configured and the
 *  watchdog timer is enabled.
 *
 *  Once enabled the watchdog cannot be disabled. The watchdog counts each time
@@ -1826,11 +1832,11 @@ void CyWdtStart(uint8 ticks, uint8 lpMode)
     CY_WDT_CFG_REG |= CY_WDT_CFG_CTW_RESET;
     CY_WDT_CFG_REG &= ((uint8)(~CY_WDT_CFG_CTW_RESET));
 
-    /* Setting the low power mode */
+    /* Setting low power mode */
     CY_WDT_CFG_REG = (((uint8)(lpMode << CY_WDT_CFG_LPMODE_SHIFT)) & CY_WDT_CFG_LPMODE_MASK) |
                        (CY_WDT_CFG_REG & ((uint8)(~CY_WDT_CFG_LPMODE_MASK)));
 
-    /* Enables the watchdog reset */
+    /* Enables watchdog reset */
     CY_WDT_CFG_REG |= CY_WDT_CFG_WDR_EN;
 }
 
@@ -1862,16 +1868,16 @@ void CyWdtClear(void)
 *
 * Summary:
 *  Enables the digital low voltage monitors to generate interrupt on Vddd
-*   archives specified threshold and optionally resets device.
+*   archives specified threshold and optionally resets the device.
 *
 * Parameters:
-*  reset: Option to reset device at a specified Vddd threshold:
+*  reset: The option to reset the device at a specified Vddd threshold:
 *           0 - Device is not reset.
 *           1 - Device is reset.
 *
 *  threshold: Sets the trip level for the voltage monitor.
-*  Values from 1.70 V to 5.45 V are accepted with the approximately 250 mV
-*  interval.
+*  Values from 1.70 V to 5.45 V are accepted with an interval  of approximately
+*  250 mV.
 *
 * Return:
 *  None
@@ -1887,7 +1893,7 @@ void CyVdLvDigitEnable(uint8 reset, uint8 threshold)
                             (CY_VD_LVI_TRIP_REG & ((uint8)(~CY_VD_LVI_TRIP_LVID_MASK)));
     CY_VD_LVI_HVI_CONTROL_REG |= CY_VD_LVID_EN;
 
-    /* Timeout to eliminate glitches on the LVI/HVI when enabling */
+    /* Timeout to eliminate glitches on LVI/HVI when enabling */
     CyDelayUs(1u);
 
     (void)CY_VD_PERSISTENT_STATUS_REG;
@@ -1912,10 +1918,10 @@ void CyVdLvDigitEnable(uint8 reset, uint8 threshold)
 *
 * Summary:
 *  Enables the analog low voltage monitors to generate interrupt on Vdda
-*   archives specified threshold and optionally resets device.
+*   archives specified threshold and optionally resets the device.
 *
 * Parameters:
-*  reset: Option to reset device at a specified Vdda threshold:
+*  reset: The option to reset the device at a specified Vdda threshold:
 *           0 - Device is not reset.
 *           1 - Device is reset.
 *
@@ -1936,7 +1942,7 @@ void CyVdLvAnalogEnable(uint8 reset, uint8 threshold)
     CY_VD_LVI_TRIP_REG = ((uint8)(threshold << 4u)) | (CY_VD_LVI_TRIP_REG & 0x0Fu);
     CY_VD_LVI_HVI_CONTROL_REG |= CY_VD_LVIA_EN;
 
-    /* Timeout to eliminate glitches on the LVI/HVI when enabling */
+    /* Timeout to eliminate glitches on LVI/HVI when enabling */
     CyDelayUs(1u);
 
     (void)CY_VD_PERSISTENT_STATUS_REG;
@@ -2258,31 +2264,14 @@ void CyEnableInts(uint32 mask)
         CY_NOP;
         CY_NOP;
 
-        /* All entries in the cache are invalidated on the next clock cycle. */
+        /* All entries in cache are invalidated on next clock cycle. */
         CY_CACHE_CONTROL_REG |= CY_CACHE_CONTROL_FLUSH;
 
+        /* Once this is executed it's guaranteed the cache has been flushed */
+        (void) CY_CACHE_CONTROL_REG;
 
-        /***********************************************************************
-        * The prefetch unit could/would be filled with the instructions that
-        * succeed the flush. Since a flush is desired then theoretically those
-        * instructions might be considered stale/invalid.
-        ***********************************************************************/
-        CY_NOP;
-        CY_NOP;
-        CY_NOP;
-        CY_NOP;
-        CY_NOP;
-        CY_NOP;
-        CY_NOP;
-        CY_NOP;
-        CY_NOP;
-        CY_NOP;
-        CY_NOP;
-        CY_NOP;
-        CY_NOP;
-        CY_NOP;
-        CY_NOP;
-        CY_NOP;
+        /* Flush the pipeline */
+        CY_SYS_ISB;
 
         /* Restore global interrupt enable state */
         CyExitCriticalSection(interruptState);
@@ -2298,8 +2287,18 @@ void CyEnableInts(uint32 mask)
     *  SysTick, PendSV and others.
     *
     * Parameters:
-    *  number: Interrupt number, valid range [0-15].
-       address: Pointer to an interrupt service routine.
+    *  number: System interrupt number:
+    *    CY_INT_NMI_IRQN                - Non Maskable Interrupt
+    *    CY_INT_HARD_FAULT_IRQN         - Hard Fault Interrupt
+    *    CY_INT_MEM_MANAGE_IRQN         - Memory Management Interrupt
+    *    CY_INT_BUS_FAULT_IRQN          - Bus Fault Interrupt
+    *    CY_INT_USAGE_FAULT_IRQN        - Usage Fault Interrupt
+    *    CY_INT_SVCALL_IRQN             - SV Call Interrupt
+    *    CY_INT_DEBUG_MONITOR_IRQN      - Debug Monitor Interrupt
+    *    CY_INT_PEND_SV_IRQN            - Pend SV Interrupt
+    *    CY_INT_SYSTICK_IRQN            - System Tick Interrupt
+    *
+    *  address: Pointer to an interrupt service routine.
     *
     * Return:
     *   The old ISR vector at this location.
@@ -2332,7 +2331,16 @@ void CyEnableInts(uint32 mask)
     *  SysTick, PendSV and others.
     *
     * Parameters:
-    *   number: The interrupt number, valid range [0-15].
+    *  number: System interrupt number:
+    *    CY_INT_NMI_IRQN                - Non Maskable Interrupt
+    *    CY_INT_HARD_FAULT_IRQN         - Hard Fault Interrupt
+    *    CY_INT_MEMORY_MANAGEMENT_IRQN  - Memory Management Interrupt
+    *    CY_INT_BUS_FAULT_IRQN          - Bus Fault Interrupt
+    *    CY_INT_USAGE_FAULT_IRQN        - Usage Fault Interrupt
+    *    CY_INT_SVCALL_IRQN             - SV Call Interrupt
+    *    CY_INT_DEBUG_MONITOR_IRQN      - Debug Monitor Interrupt
+    *    CY_INT_PEND_SV_IRQN            - Pend SV Interrupt
+    *    CY_INT_SYSTICK_IRQN            - System Tick Interrupt
     *
     * Return:
     *   Address of the ISR in the interrupt vector table.
@@ -2390,7 +2398,7 @@ void CyEnableInts(uint32 mask)
     *  number: Valid range [0-31].  Interrupt number
     *
     * Return:
-    *  Address of the ISR in the interrupt vector table.
+    *  The address of the ISR in the interrupt vector table.
     *
     *******************************************************************************/
     cyisraddress CyIntGetVector(uint8 number)
@@ -2471,10 +2479,10 @@ void CyEnableInts(uint32 mask)
 
         CYASSERT(number <= CY_INT_NUMBER_MAX);
 
-        /* Get a pointer to the Interrupt enable register. */
+        /* Get pointer to Interrupt enable register. */
         stateReg = CY_INT_ENABLE_PTR;
 
-        /* Get the state of the interrupt. */
+        /* Get state of interrupt. */
         return (0u != (*stateReg & (((uint32) 1u) << (0x1Fu & number)))) ? ((uint8)(1u)) : ((uint8)(0u));
     }
 
@@ -2609,10 +2617,10 @@ void CyEnableInts(uint32 mask)
 
         CYASSERT(number <= CY_INT_NUMBER_MAX);
 
-        /* Get a pointer to the Interrupt enable register. */
+        /* Get pointer to Interrupt enable register. */
         stateReg = CY_INT_ENABLE_PTR + ((number & CY_INT_NUMBER_MASK) >> 3u);
 
-        /* Get the state of the interrupt. */
+        /* Get state of interrupt. */
         return ((0u != (*stateReg & ((uint8)(1u << (0x07u & number))))) ? ((uint8)(1u)) : ((uint8)(0u)));
     }
 
@@ -2630,20 +2638,20 @@ void CyEnableInts(uint32 mask)
     *  If 1 is passed as a parameter:
     *   - if any of the SC blocks are used - enable pumps for the SC blocks and
     *     start boost clock.
-    *   - For the each enabled SC block set boost clock index and enable boost
+    *   - For each enabled SC block set a boost clock index and enable the boost
     *     clock.
     *
     *  If non-1 value is passed as a parameter:
     *   - If all SC blocks are not used - disable pumps for the SC blocks and
-    *     stop boost clock.
-    *   - For the each enabled SC block clear boost clock index and disable boost
+    *     stop the boost clock.
+    *   - For each enabled SC block clear the boost clock index and disable the  boost
     *     clock.
     *
-    *  The global variable CyScPumpEnabled is updated to be equal to passed
+    *  The global variable CyScPumpEnabled is updated to be equal to passed the
     *  parameter.
     *
     * Parameters:
-    *   uint8 enable: Enable/disable SC pumps and boost clock for enabled SC block.
+    *   uint8 enable: Enable/disable SC pumps and the boost clock for the enabled SC block.
     *                 1 - Enable
     *                 0 - Disable
     *
@@ -2705,6 +2713,393 @@ void CyEnableInts(uint32 mask)
     }
 
 #endif  /* (CYDEV_VARIABLE_VDDA == 1) */
+
+
+#if(CY_PSOC5)
+    /*******************************************************************************
+    * Function Name: CySysTickStart
+    ********************************************************************************
+    *
+    * Summary:
+    *  Configures the SysTick timer to generate interrupt every 1 ms by call to the
+    *  CySysTickInit() function and starts it by calling CySysTickEnable() function.
+    *  Refer to the corresponding function description for the details.
+
+    * Parameters:
+    *  None
+    *
+    * Return:
+    *  None
+    *
+    * Side Effects:
+    *  Clears SysTick count flag if it was set
+    *
+    *******************************************************************************/
+    void CySysTickStart(void)
+    {
+        if (0u == CySysTickInitVar)
+        {
+            CySysTickInit();
+            CySysTickInitVar = 1u;
+        }
+
+        CySysTickEnable();
+    }
+
+
+    /*******************************************************************************
+    * Function Name: CySysTickInit
+    ********************************************************************************
+    *
+    * Summary:
+    *  Initializes the callback addresses with pointers to NULL, associates the
+    *  SysTick system vector with the function that is responsible for calling
+    *  registered callback functions, configures SysTick timer to generate interrupt
+    * every 1 ms.
+    *
+    * Parameters:
+    *  None
+    *
+    * Return:
+    *  None
+    *
+    * Side Effects:
+    *  Clears SysTick count flag if it was set.
+    *
+    *  The 1 ms interrupt interval is configured based on the frequency determined
+    *  by PSoC Creator at build time. If System clock frequency is changed in
+    *  runtime, the CyDelayFreq() with the appropriate parameter should be called.
+    *
+    *******************************************************************************/
+    void CySysTickInit(void)
+    {
+        uint32 i;
+
+        for (i = 0u; i<CY_SYS_SYST_NUM_OF_CALLBACKS; i++)
+        {
+            CySysTickCallbacks[i] = (void *) 0;
+        }
+
+    	(void) CyIntSetSysVector(CY_INT_SYSTICK_IRQN, &CySysTickServiceCallbacks);
+        CySysTickSetClockSource(CY_SYS_SYST_CSR_CLK_SRC_SYSCLK);
+        CySysTickSetReload(cydelay_freq_hz/1000u);
+        CySysTickClear();
+        CyIntEnable(CY_INT_SYSTICK_IRQN);
+    }
+
+
+    /*******************************************************************************
+    * Function Name: CySysTickEnable
+    ********************************************************************************
+    *
+    * Summary:
+    *  Enables the SysTick timer and its interrupt.
+    *
+    * Parameters:
+    *  None
+    *
+    * Return:
+    *  None
+    *
+    * Side Effects:
+    *  Clears SysTick count flag if it was set
+    *
+    *******************************************************************************/
+    void CySysTickEnable(void)
+    {
+        CySysTickEnableInterrupt();
+        CY_SYS_SYST_CSR_REG |= CY_SYS_SYST_CSR_ENABLE;
+    }
+
+
+    /*******************************************************************************
+    * Function Name: CySysTickStop
+    ********************************************************************************
+    *
+    * Summary:
+    *  Stops the system timer (SysTick).
+    *
+    * Parameters:
+    *  None
+    *
+    * Return:
+    *  None
+    *
+    * Side Effects:
+    *  Clears SysTick count flag if it was set
+    *
+    *******************************************************************************/
+    void CySysTickStop(void)
+    {
+        CY_SYS_SYST_CSR_REG &= ((uint32) ~(CY_SYS_SYST_CSR_ENABLE));
+    }
+
+
+    /*******************************************************************************
+    * Function Name: CySysTickEnableInterrupt
+    ********************************************************************************
+    *
+    * Summary:
+    *  Enables the SysTick interrupt.
+    *
+    * Parameters:
+    *  None
+    *
+    * Return:
+    *  None
+    *
+    * Side Effects:
+    *  Clears SysTick count flag if it was set
+    *
+    *******************************************************************************/
+    void CySysTickEnableInterrupt(void)
+    {
+        CY_SYS_SYST_CSR_REG |= CY_SYS_SYST_CSR_ENABLE_INT;
+    }
+
+
+    /*******************************************************************************
+    * Function Name: CySysTickDisableInterrupt
+    ********************************************************************************
+    *
+    * Summary:
+    *  Disables the SysTick interrupt.
+    *
+    * Parameters:
+    *  None
+    *
+    * Return:
+    *  None
+    *
+    * Side Effects:
+    *  Clears SysTick count flag if it was set
+    *
+    *******************************************************************************/
+    void CySysTickDisableInterrupt(void)
+    {
+        CY_SYS_SYST_CSR_REG &= ((uint32) ~(CY_SYS_SYST_CSR_ENABLE_INT));
+    }
+
+
+    /*******************************************************************************
+    * Function Name: CySysTickSetReload
+    ********************************************************************************
+    *
+    * Summary:
+    *  Sets value the counter is set to on startup and after it reaches zero. This
+    *  function do not change or reset current sysTick counter value, so it should
+    *  be cleared using CySysTickClear() API.
+    *
+    * Parameters:
+    *  value: Valid range [0x0-0x00FFFFFF]. Counter reset value.
+    *
+    * Return:
+    *  None
+    *
+    *******************************************************************************/
+    void CySysTickSetReload(uint32 value)
+    {
+        CY_SYS_SYST_RVR_REG = (value & CY_SYS_SYST_RVR_CNT_MASK);
+    }
+
+
+    /*******************************************************************************
+    * Function Name: CySysTickGetReload
+    ********************************************************************************
+    *
+    * Summary:
+    *  Sets value the counter is set to on startup and after it reaches zero.
+    *
+    * Parameters:
+    *  None
+    *
+    * Return:
+    *  Counter reset value
+    *
+    *******************************************************************************/
+    uint32 CySysTickGetReload(void)
+    {
+        return(CY_SYS_SYST_RVR_REG & CY_SYS_SYST_RVR_CNT_MASK);
+    }
+
+
+    /*******************************************************************************
+    * Function Name: CySysTickGetValue
+    ********************************************************************************
+    *
+    * Summary:
+    *  Gets current SysTick counter value.
+    *
+    * Parameters:
+    *  None
+    *
+    * Return:
+    *  Current SysTick counter value
+    *
+    *******************************************************************************/
+    uint32 CySysTickGetValue(void)
+    {
+        return(CY_SYS_SYST_RVR_REG & CY_SYS_SYST_CVR_REG);
+    }
+
+
+    /*******************************************************************************
+    * Function Name: CySysTickSetClockSource
+    ********************************************************************************
+    *
+    * Summary:
+    *  Sets the clock source for the SysTick counter.
+    *
+    * Parameters:
+    *  clockSource: Clock source for SysTick counter
+    *         Define                     Clock Source
+    *   CY_SYS_SYST_CSR_CLK_SRC_SYSCLK     SysTick is clocked by CPU clock.
+    *   CY_SYS_SYST_CSR_CLK_SRC_LFCLK      SysTick is clocked by the low frequency
+    *                              clock (ILO 100 KHz for PSoC 5LP, LFCLK for PSoC 4).
+    *
+    * Return:
+    *  None
+    *
+    * Side Effects:
+    *  Clears SysTick count flag if it was set. If clock source is not ready this
+    *  function call will have no effect. After changing clock source to the low frequency
+    *  clock the counter and reload register values will remain unchanged so time to
+    *  the interrupt will be significantly bigger and vice versa.
+    *
+    *******************************************************************************/
+    void CySysTickSetClockSource(uint32 clockSource)
+    {
+        if (clockSource == CY_SYS_SYST_CSR_CLK_SRC_SYSCLK)
+        {
+            CY_SYS_SYST_CSR_REG |= (uint32)(CY_SYS_SYST_CSR_CLK_SRC_SYSCLK << CY_SYS_SYST_CSR_CLK_SOURCE_SHIFT);
+        }
+        else
+        {
+            CY_SYS_SYST_CSR_REG &= ((uint32) ~(CY_SYS_SYST_CSR_CLK_SRC_SYSCLK << CY_SYS_SYST_CSR_CLK_SOURCE_SHIFT));
+        }
+    }
+
+
+    /*******************************************************************************
+    * Function Name: CySysTickGetCountFlag
+    ********************************************************************************
+    *
+    * Summary:
+    *  The count flag is set once SysTick counter reaches zero.
+    *   The flag cleared on read.
+    *
+    * Parameters:
+    *  None
+    *
+    * Return:
+    *  Returns non-zero value if counter is set, otherwise zero is returned.
+    *
+    *******************************************************************************/
+    uint32 CySysTickGetCountFlag(void)
+    {
+        return ((CY_SYS_SYST_CSR_REG>>CY_SYS_SYST_CSR_COUNTFLAG_SHIFT) & 0x01u);
+    }
+
+
+    /*******************************************************************************
+    * Function Name: CySysTickClear
+    ********************************************************************************
+    *
+    * Summary:
+    *  Clears the SysTick counter for well-defined startup.
+    *
+    * Parameters:
+    *  None
+    *
+    * Return:
+    *  None
+    *
+    *******************************************************************************/
+    void CySysTickClear(void)
+    {
+        CY_SYS_SYST_CVR_REG = 0u;
+    }
+
+
+    /*******************************************************************************
+    * Function Name: CySysTickSetCallback
+    ********************************************************************************
+    *
+    * Summary:
+    *  The function set the pointers to the functions that will be called on
+    *  SysTick interrupt.
+    *
+    * Parameters:
+    *  number:  The number of callback function address to be set.
+    *           The valid range is from 0 to 4.
+    *  CallbackFunction: Function address.
+    *
+    * Return:
+    *  Returns the address of the previous callback function.
+    *  The NULL is returned if the specified address in not set.
+    *
+    *******************************************************************************/
+    cySysTickCallback CySysTickSetCallback(uint32 number, cySysTickCallback function)
+    {
+        cySysTickCallback retVal;
+
+        retVal = CySysTickCallbacks[number];
+        CySysTickCallbacks[number] = function;
+        return (retVal);
+    }
+
+
+    /*******************************************************************************
+    * Function Name: CySysTickGetCallback
+    ********************************************************************************
+    *
+    * Summary:
+    *  The function get the specified callback pointer.
+    *
+    * Parameters:
+    *  None
+    *
+    * Return:
+    *  None
+    *
+    *******************************************************************************/
+    cySysTickCallback CySysTickGetCallback(uint32 number)
+    {
+        return ((cySysTickCallback) CySysTickCallbacks[number]);
+    }
+
+
+    /*******************************************************************************
+    * Function Name: CySysTickServiceCallbacks
+    ********************************************************************************
+    *
+    * Summary:
+    *  System Tick timer interrupt routine
+    *
+    * Parameters:
+    *  None
+    *
+    * Return:
+    *  None
+    *
+    *******************************************************************************/
+    static void CySysTickServiceCallbacks(void)
+    {
+        uint32 i;
+
+        /* Verify that tick timer flag was set */
+        if (1u == CySysTickGetCountFlag())
+        {
+            for (i=0u; i < CY_SYS_SYST_NUM_OF_CALLBACKS; i++)
+            {
+                if (CySysTickCallbacks[i] != (void *) 0)
+                {
+                    (void)(CySysTickCallbacks[i])();
+                }
+            }
+        }
+    }
+#endif /* (CY_PSOC5) */
 
 
 /* [] END OF FILE */

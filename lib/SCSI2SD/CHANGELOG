@@ -1,3 +1,11 @@
+20150201		4.1
+	- Rewrite of the SD card interface to fix compatibility problems.
+		This fixes write issues with Samsung SD cards.
+	- Workaround for SCSI hosts that set 250ms timeouts. Some NCR53C80/53C9X
+	drivers (openbsd, netbsd, and others) set a byte-to-byte timeout which
+	can be exceeded by SD card latency.
+	- Upgrade to PSoC Creator 3.1 and gcc 4.8.4.
+
 20150108		4.0
 	- Fix handling requests for LUNs other than 0 from SCSI-2 hosts.
 	- Handle glitches of the scsi signals to improve stability and operate with

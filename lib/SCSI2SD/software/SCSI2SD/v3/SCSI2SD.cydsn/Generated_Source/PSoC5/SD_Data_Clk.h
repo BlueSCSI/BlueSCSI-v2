@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: SD_Data_Clk.h
-* Version 2.10
+* Version 2.20
 *
 *  Description:
 *   Provides the function and constant definitions for the clock component.
@@ -28,7 +28,7 @@
 /* Check to see if required defines such as CY_PSOC5LP are available */
 /* They are defined starting with cy_boot v3.0 */
 #if !defined (CY_PSOC5LP)
-    #error Component cy_clock_v2_10 requires cy_boot v3.0 or later
+    #error Component cy_clock_v2_20 requires cy_boot v3.0 or later
 #endif /* (CY_PSOC5LP) */
 
 

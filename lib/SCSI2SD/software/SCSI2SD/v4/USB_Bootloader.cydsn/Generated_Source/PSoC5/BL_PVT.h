@@ -1,12 +1,12 @@
 /*******************************************************************************
 * File Name: BL_PVT.h
-* Version 1.20
+* Version 1.30
 *
 *  Description:
 *   Provides an API for the Bootloader.
 *
 ********************************************************************************
-* Copyright 2013, Cypress Semiconductor Corporation. All rights reserved.
+* Copyright 2013-2014, Cypress Semiconductor Corporation. All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
@@ -28,7 +28,7 @@ typedef struct
 
 
 #define BL_VERSION        {\
-                                            (uint8)20, \
+                                            (uint8)30, \
                                             (uint8)1, \
                                             (uint8)0x01u \
                                         }
@@ -38,7 +38,7 @@ typedef struct
 #define BL_EOP            (0x17u)    /* End of Packet */
 
 
-/* Bootloader command responces */
+/* Bootloader command responses */
 #define BL_ERR_KEY       (0x01u)  /* The provided key does not match the expected value          */
 #define BL_ERR_VERIFY    (0x02u)  /* The verification of flash failed                            */
 #define BL_ERR_LENGTH    (0x03u)  /* The amount of data available is outside the expected range  */
@@ -88,7 +88,7 @@ typedef struct
 BL_ValidateBootloadable()
 *******************************************************************************/
 #define BL_FIRST_APP_BYTE(appId)      ((uint32)CYDEV_FLS_ROW_SIZE * \
-        ((uint32) BL_GetMetadata(BL_GET_METADATA_BTLDR_LAST_ROW, appId) + \
+        ((uint32) BL_GetMetadata(BL_GET_BTLDR_LAST_ROW, appId) + \
          (uint32) 1u))
 
 #define BL_MD_BTLDB_IS_VERIFIED       (0x01u)
@@ -101,7 +101,7 @@ BL_ValidateBootloadable()
 #define BL_WAIT_FOR_COMMAND_FOREVER   (0x00u)
 
 
- /* Maximum number of bytes accepted in a packet plus some */
+ /* The maximum number of bytes accepted in a packet plus some */
 #define BL_SIZEOF_COMMAND_BUFFER      (300u)
 
 
@@ -137,18 +137,6 @@ BL_ValidateBootloadable()
 
 
 /*******************************************************************************
-* BL_GetMetadata()
-*******************************************************************************/
-#define BL_GET_METADATA_BTLDB_ADDR             (1u)
-#define BL_GET_METADATA_BTLDR_LAST_ROW         (2u)
-#define BL_GET_METADATA_BTLDB_LENGTH           (3u)
-#define BL_GET_METADATA_BTLDR_APP_VERSION      (4u)
-#define BL_GET_METADATA_BTLDB_APP_VERSION      (5u)
-#define BL_GET_METADATA_BTLDB_APP_ID           (6u)
-#define BL_GET_METADATA_BTLDB_APP_CUST_ID      (7u)
-
-
-/*******************************************************************************
 * CyBtldr_CheckLaunch()
 *******************************************************************************/
 #define BL_RES_CAUSE_RESET_SOFT                (0x10u)
@@ -161,11 +149,11 @@ BL_ValidateBootloadable()
 
 
 /*******************************************************************************
-* Metadata base address. In case of bootloader application, the metadata is
-* placed at row N-1; in case of multi-application bootloader, the bootloadable
-* application number 1 will use row N-1, and application number 2 will use row
-* N-2 to store its metadata, where N is the total number of rows for the
-* selected device.
+* The Metadata base address. In the case of the bootloader application, the
+* metadata is placed at row N-1; in the case of the multi-application
+* bootloader, the bootloadable application number 1 will use row N-1, and
+* application number 2 will use row N-2 to store its metadata, where N is the
+* total number of the rows for the selected device.
 *******************************************************************************/
 #define BL_MD_BASE_ADDR(appId)        (CYDEV_FLASH_BASE + \
                                                         (CYDEV_FLASH_SIZE - ((uint32)(appId) * CYDEV_FLS_ROW_SIZE) - \
@@ -173,8 +161,13 @@ BL_ValidateBootloadable()
 
 #define BL_MD_FLASH_ARRAY_NUM         (BL_NUM_OF_FLASH_ARRAYS - 1u)
 
-#define BL_MD_ROW_NUM(appId)          ((CY_FLASH_NUMBER_ROWS / BL_NUM_OF_FLASH_ARRAYS) - \
-                                                        1u - (uint32)(appId))
+#if(!CY_PSOC4)
+    #define BL_MD_ROW_NUM(appId)      ((CY_FLASH_NUMBER_ROWS / BL_NUM_OF_FLASH_ARRAYS) - \
+                                                    1u - (uint32)(appId))
+#else
+    #define BL_MD_ROW_NUM(appId)      (CY_FLASH_NUMBER_ROWS - 1u - (uint32)(appId))
+#endif /* (!CY_PSOC4) */
+
 
 #define     BL_MD_BTLDB_CHECKSUM_OFFSET(appId)       (BL_MD_BASE_ADDR(appId) + 0u)
 #if(CY_PSOC3)
@@ -192,50 +185,6 @@ BL_ValidateBootloadable()
 #define     BL_MD_BTLDB_APP_ID_OFFSET(appId)         (BL_MD_BASE_ADDR(appId) + 20u)
 #define     BL_MD_BTLDB_APP_VERSION_OFFSET(appId)    (BL_MD_BASE_ADDR(appId) + 22u)
 #define     BL_MD_BTLDB_APP_CUST_ID_OFFSET(appId)    (BL_MD_BASE_ADDR(appId) + 24u)
-
-
-/*******************************************************************************
-* Macro for 1 byte long metadata fields
-*******************************************************************************/
-#define BL_MD_BTLDB_CHECKSUM_PTR  (appId)    \
-            ((reg8 *)(BL_MD_BTLDB_CHECKSUM_OFFSET(appId)))
-#define BL_MD_BTLDB_CHECKSUM_VALUE(appId)    \
-            (CY_GET_XTND_REG8(BL_MD_BTLDB_CHECKSUM_OFFSET(appId)))
-
-#define BL_MD_BTLDB_ACTIVE_PTR(appId)        \
-            ((reg8 *)(BL_MD_BTLDB_ACTIVE_OFFSET(appId)))
-#define BL_MD_BTLDB_ACTIVE_VALUE(appId)      \
-            (CY_GET_XTND_REG8(BL_MD_BTLDB_ACTIVE_OFFSET(appId)))
-
-#define BL_MD_BTLDB_VERIFIED_PTR(appId)      \
-            ((reg8 *)(BL_MD_BTLDB_VERIFIED_OFFSET(appId)))
-#define BL_MD_BTLDB_VERIFIED_VALUE(appId)    \
-            (CY_GET_XTND_REG8(BL_MD_BTLDB_VERIFIED_OFFSET(appId)))
-
-
-/*******************************************************************************
-* Macro for multiple bytes long metadata fields pointers 
-*******************************************************************************/
-#define BL_MD_BTLDB_ADDR_PTR  (appId)        \
-            ((reg8 *)(BL_MD_BTLDB_ADDR_OFFSET(appId)))
-
-#define BL_MD_BTLDR_LAST_ROW_PTR  (appId)    \
-            ((reg8 *)(BL_MD_BTLDR_LAST_ROW_OFFSET(appId)))
-
-#define BL_MD_BTLDB_LENGTH_PTR(appId)        \
-            ((reg8 *)(BL_MD_BTLDB_LENGTH_OFFSET(appId)))
-
-#define BL_MD_BTLDR_APP_VERSION_PTR(appId)    \
-            ((reg8 *)(BL_MD_BTLDR_APP_VERSION_OFFSET(appId)))
-
-#define BL_MD_BTLDB_APP_ID_PTR(appId)         \
-            ((reg8 *)(BL_MD_BTLDB_APP_ID_OFFSET(appId)))
-
-#define BL_MD_BTLDB_APP_VERSION_PTR(appId)    \
-            ((reg8 *)(BL_MD_BTLDB_APP_VERSION_OFFSET(appId)))
-
-#define BL_MD_BTLDB_APP_CUST_ID_PTR(appId)    \
-            ((reg8 *)(BL_MD_BTLDB_APP_CUST_ID_OFFSET(appId)))
 
 
 /*******************************************************************************
@@ -262,7 +211,8 @@ BL_ValidateBootloadable()
 
 
 /*******************************************************************************
-* Offset of the Bootloader application in flash
+* Number of addresses remapped from Flash to RAM, when interrupt vectors are
+* configured to be stored in RAM (default setting, configured by cy_boot).
 *******************************************************************************/
 #if(CY_PSOC4)
     #define BL_MD_BTLDR_ADDR_PTR        (0xC0u)     /* Exclude the vector */
@@ -272,7 +222,7 @@ BL_ValidateBootloadable()
 
 
 /*******************************************************************************
-* Maximum number of Bootloadable applications
+* The maximum number of Bootloadable applications
 *******************************************************************************/
 #if(1u == BL_DUAL_APP_BOOTLOADER)
     #define BL_MAX_NUM_OF_BTLDB       (0x02u)
@@ -282,7 +232,7 @@ BL_ValidateBootloadable()
 
 
 /*******************************************************************************
-* Returns TRUE if row specified as parameter contains metadata section
+* Returns TRUE if the row specified as a parameter contains a metadata section
 *******************************************************************************/
 #if(0u != BL_DUAL_APP_BOOTLOADER)
     #define BL_CONTAIN_METADATA(row)  \
@@ -295,10 +245,10 @@ BL_ValidateBootloadable()
 
 
 /*******************************************************************************
-* Metadata section is located at the last flash row for the Boootloader, for the
-* Multi-Application Bootloader, metadata section of the Bootloadable application
-* # 0 is located at the last flash row, and metadata section of the Bootloadable
-* application # 1 is located in the flash row before last.
+* The Metadata section is located in the last flash row for the Boootloader, for
+* the Multi-Application Bootloader, the metadata section of the Bootloadable
+* application # 0 is located in the last flash row, and the metadata section of
+* the Bootloadable application # 1 is located in the flash row before last.
 *******************************************************************************/
 #if(0u != BL_DUAL_APP_BOOTLOADER)
     #define BL_GET_APP_ID(row)     \
@@ -308,6 +258,29 @@ BL_ValidateBootloadable()
 #else
     #define BL_GET_APP_ID(row)     (BL_MD_BTLDB_ACTIVE_0)
 #endif  /* (0u != BL_DUAL_APP_BOOTLOADER) */
+
+
+/*******************************************************************************
+* Defines the number of flash rows reserved for the metadata section
+*******************************************************************************/
+#if(0u == BL_DUAL_APP_BOOTLOADER)
+    #define BL_NUMBER_OF_METADATA_ROWS            (1u)
+#else
+    #define BL_NUMBER_OF_METADATA_ROWS            (2u)
+#endif /* (0u == BL_DUAL_APP_BOOTLOADER) */
+
+
+/*******************************************************************************
+* Defines the number of possible bootloadable applications
+*******************************************************************************/
+#if(0u == BL_DUAL_APP_BOOTLOADER)
+    #define BL_NUMBER_OF_BTLDBLE_APPS            (1u)
+#else
+    #define BL_NUMBER_OF_BTLDBLE_APPS            (2u)
+#endif /* (0u == BL_DUAL_APP_BOOTLOADER) */
+
+#define BL_NUMBER_OF_ROWS_IN_ARRAY                ((uint16)(CY_FLASH_SIZEOF_ARRAY/CY_FLASH_SIZEOF_ROW))
+#define BL_FIRST_ROW_IN_ARRAY                     (0u)
 
 #endif /* CY_BOOTLOADER_BL_PVT_H */
 

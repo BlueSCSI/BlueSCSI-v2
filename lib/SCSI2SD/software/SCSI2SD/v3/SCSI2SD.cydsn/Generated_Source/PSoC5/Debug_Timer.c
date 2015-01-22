@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: Debug_Timer.c
-* Version 2.50
+* Version 2.70
 *
 * Description:
 *  The Timer component consists of a 8, 16, 24 or 32-bit timer with
@@ -15,7 +15,7 @@
 * Note:
 *
 ********************************************************************************
-* Copyright 2008-2012, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2014, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
@@ -129,10 +129,12 @@ void Debug_Timer_Init(void)
         #endif /* Set Capture Mode for UDB implementation if capture mode is software controlled */
 
         #if (Debug_Timer_SoftwareTriggerMode)
-            if (0u == (Debug_Timer_CONTROL & Debug_Timer__B_TIMER__TM_SOFTWARE))
-            {
-                Debug_Timer_SetTriggerMode(Debug_Timer_INIT_TRIGGER_MODE);
-            }
+            #if (!Debug_Timer_UDB_CONTROL_REG_REMOVED)
+                if (0u == (Debug_Timer_CONTROL & Debug_Timer__B_TIMER__TM_SOFTWARE))
+                {
+                    Debug_Timer_SetTriggerMode(Debug_Timer_INIT_TRIGGER_MODE);
+                }
+            #endif /* (!Debug_Timer_UDB_CONTROL_REG_REMOVED) */
         #endif /* Set trigger mode for UDB Implementation if trigger mode is software controlled */
 
         /* CyEnterCriticalRegion and CyExitCriticalRegion are used to mark following region critical*/
@@ -148,12 +150,11 @@ void Debug_Timer_Init(void)
         #if (Debug_Timer_EnableTriggerMode)
             Debug_Timer_EnableTrigger();
         #endif /* Set Trigger enable bit for UDB implementation in the control register*/
-
-        #if (Debug_Timer_InterruptOnCaptureCount)
-             #if (!Debug_Timer_ControlRegRemoved)
-                Debug_Timer_SetInterruptCount(Debug_Timer_INIT_INT_CAPTURE_COUNT);
-            #endif /* Set interrupt count in control register if control register is not removed */
-        #endif /*Set interrupt count in UDB implementation if interrupt count feature is checked.*/
+		
+		
+        #if (Debug_Timer_InterruptOnCaptureCount && !Debug_Timer_UDB_CONTROL_REG_REMOVED)
+            Debug_Timer_SetInterruptCount(Debug_Timer_INIT_INT_CAPTURE_COUNT);
+        #endif /* Set interrupt count in UDB implementation if interrupt count feature is checked.*/
 
         Debug_Timer_ClearFIFO();
     #endif /* Configure additional features of UDB implementation */
@@ -185,7 +186,7 @@ void Debug_Timer_Enable(void)
     #endif /* Set Enable bit for enabling Fixed function timer*/
 
     /* Remove assignment if control register is removed */
-    #if (!Debug_Timer_ControlRegRemoved || Debug_Timer_UsingFixedFunction)
+    #if (!Debug_Timer_UDB_CONTROL_REG_REMOVED || Debug_Timer_UsingFixedFunction)
         Debug_Timer_CONTROL |= Debug_Timer_CTRL_ENABLE;
     #endif /* Remove assignment if control register is removed */
 }
@@ -246,7 +247,7 @@ void Debug_Timer_Start(void)
 void Debug_Timer_Stop(void) 
 {
     /* Disable Timer */
-    #if(!Debug_Timer_ControlRegRemoved || Debug_Timer_UsingFixedFunction)
+    #if(!Debug_Timer_UDB_CONTROL_REG_REMOVED || Debug_Timer_UsingFixedFunction)
         Debug_Timer_CONTROL &= ((uint8)(~Debug_Timer_CTRL_ENABLE));
     #endif /* Remove assignment if control register is removed */
 
@@ -301,7 +302,11 @@ void Debug_Timer_SetInterruptMode(uint8 interruptMode)
 void Debug_Timer_SoftwareCapture(void) 
 {
     /* Generate a software capture by reading the counter register */
-    (void)Debug_Timer_COUNTER_LSB;
+    #if(Debug_Timer_UsingFixedFunction)
+        (void)CY_GET_REG16(Debug_Timer_COUNTER_LSB_PTR);
+    #else
+        (void)CY_GET_REG8(Debug_Timer_COUNTER_LSB_PTR_8BIT);
+    #endif/* (Debug_Timer_UsingFixedFunction) */
     /* Capture Data is now in the FIFO */
 }
 
@@ -331,7 +336,7 @@ uint8   Debug_Timer_ReadStatusRegister(void)
 }
 
 
-#if (!Debug_Timer_ControlRegRemoved) /* Remove API if control register is removed */
+#if (!Debug_Timer_UDB_CONTROL_REG_REMOVED) /* Remove API if control register is unused */
 
 
 /*******************************************************************************
@@ -350,7 +355,11 @@ uint8   Debug_Timer_ReadStatusRegister(void)
 *******************************************************************************/
 uint8 Debug_Timer_ReadControlRegister(void) 
 {
-    return ((uint8)Debug_Timer_CONTROL);
+    #if (!Debug_Timer_UDB_CONTROL_REG_REMOVED) 
+        return ((uint8)Debug_Timer_CONTROL);
+    #else
+        return (0);
+    #endif /* (!Debug_Timer_UDB_CONTROL_REG_REMOVED) */
 }
 
 
@@ -369,9 +378,14 @@ uint8 Debug_Timer_ReadControlRegister(void)
 *******************************************************************************/
 void Debug_Timer_WriteControlRegister(uint8 control) 
 {
-    Debug_Timer_CONTROL = control;
+    #if (!Debug_Timer_UDB_CONTROL_REG_REMOVED) 
+        Debug_Timer_CONTROL = control;
+    #else
+        control = 0u;
+    #endif /* (!Debug_Timer_UDB_CONTROL_REG_REMOVED) */
 }
-#endif /* Remove API if control register is removed */
+
+#endif /* Remove API if control register is unused */
 
 
 /*******************************************************************************
@@ -463,8 +477,7 @@ uint16 Debug_Timer_ReadCapture(void)
 *  void
 *
 *******************************************************************************/
-void Debug_Timer_WriteCounter(uint16 counter) \
-                                   
+void Debug_Timer_WriteCounter(uint16 counter) 
 {
    #if(Debug_Timer_UsingFixedFunction)
         /* This functionality is removed until a FixedFunction HW update to
@@ -494,11 +507,14 @@ void Debug_Timer_WriteCounter(uint16 counter) \
 *******************************************************************************/
 uint16 Debug_Timer_ReadCounter(void) 
 {
-
     /* Force capture by reading Accumulator */
     /* Must first do a software capture to be able to read the counter */
     /* It is up to the user code to make sure there isn't already captured data in the FIFO */
-    (void)Debug_Timer_COUNTER_LSB;
+    #if(Debug_Timer_UsingFixedFunction)
+        (void)CY_GET_REG16(Debug_Timer_COUNTER_LSB_PTR);
+    #else
+        (void)CY_GET_REG8(Debug_Timer_COUNTER_LSB_PTR_8BIT);
+    #endif/* (Debug_Timer_UsingFixedFunction) */
 
     /* Read the data from the FIFO (or capture register for Fixed Function)*/
     #if(Debug_Timer_UsingFixedFunction)
@@ -511,6 +527,7 @@ uint16 Debug_Timer_ReadCounter(void)
 
 #if(!Debug_Timer_UsingFixedFunction) /* UDB Specific Functions */
 
+    
 /*******************************************************************************
  * The functions below this point are only available using the UDB
  * implementation.  If a feature is selected, then the API is enabled.
@@ -552,11 +569,13 @@ void Debug_Timer_SetCaptureMode(uint8 captureMode)
     captureMode = ((uint8)((uint8)captureMode << Debug_Timer_CTRL_CAP_MODE_SHIFT));
     captureMode &= (Debug_Timer_CTRL_CAP_MODE_MASK);
 
-    /* Clear the Current Setting */
-    Debug_Timer_CONTROL &= ((uint8)(~Debug_Timer_CTRL_CAP_MODE_MASK));
+    #if (!Debug_Timer_UDB_CONTROL_REG_REMOVED)
+        /* Clear the Current Setting */
+        Debug_Timer_CONTROL &= ((uint8)(~Debug_Timer_CTRL_CAP_MODE_MASK));
 
-    /* Write The New Setting */
-    Debug_Timer_CONTROL |= captureMode;
+        /* Write The New Setting */
+        Debug_Timer_CONTROL |= captureMode;
+    #endif /* (!Debug_Timer_UDB_CONTROL_REG_REMOVED) */
 }
 #endif /* Remove API if Capture Mode is not Software Controlled */
 
@@ -588,12 +607,14 @@ void Debug_Timer_SetTriggerMode(uint8 triggerMode)
     /* This must only set to two bits of the control register associated */
     triggerMode &= Debug_Timer_CTRL_TRIG_MODE_MASK;
 
-    /* Clear the Current Setting */
-    Debug_Timer_CONTROL &= ((uint8)(~Debug_Timer_CTRL_TRIG_MODE_MASK));
+    #if (!Debug_Timer_UDB_CONTROL_REG_REMOVED)   /* Remove assignment if control register is removed */
+    
+        /* Clear the Current Setting */
+        Debug_Timer_CONTROL &= ((uint8)(~Debug_Timer_CTRL_TRIG_MODE_MASK));
 
-    /* Write The New Setting */
-    Debug_Timer_CONTROL |= (triggerMode | Debug_Timer__B_TIMER__TM_SOFTWARE);
-
+        /* Write The New Setting */
+        Debug_Timer_CONTROL |= (triggerMode | Debug_Timer__B_TIMER__TM_SOFTWARE);
+    #endif /* Remove code section if control register is not used */
 }
 #endif /* Remove API if Trigger Mode is not Software Controlled */
 
@@ -616,7 +637,7 @@ void Debug_Timer_SetTriggerMode(uint8 triggerMode)
 *******************************************************************************/
 void Debug_Timer_EnableTrigger(void) 
 {
-    #if (!Debug_Timer_ControlRegRemoved)   /* Remove assignment if control register is removed */
+    #if (!Debug_Timer_UDB_CONTROL_REG_REMOVED)   /* Remove assignment if control register is removed */
         Debug_Timer_CONTROL |= Debug_Timer_CTRL_TRIG_EN;
     #endif /* Remove code section if control register is not used */
 }
@@ -638,15 +659,13 @@ void Debug_Timer_EnableTrigger(void)
 *******************************************************************************/
 void Debug_Timer_DisableTrigger(void) 
 {
-    #if (!Debug_Timer_ControlRegRemoved)   /* Remove assignment if control register is removed */
+    #if (!Debug_Timer_UDB_CONTROL_REG_REMOVED )   /* Remove assignment if control register is removed */
         Debug_Timer_CONTROL &= ((uint8)(~Debug_Timer_CTRL_TRIG_EN));
     #endif /* Remove code section if control register is not used */
 }
 #endif /* Remove API is Trigger Mode is set to None */
 
-
 #if(Debug_Timer_InterruptOnCaptureCount)
-#if (!Debug_Timer_ControlRegRemoved)   /* Remove API if control register is removed */
 
 
 /*******************************************************************************
@@ -671,12 +690,13 @@ void Debug_Timer_SetInterruptCount(uint8 interruptCount)
     /* This must only set to two bits of the control register associated */
     interruptCount &= Debug_Timer_CTRL_INTCNT_MASK;
 
-    /* Clear the Current Setting */
-    Debug_Timer_CONTROL &= ((uint8)(~Debug_Timer_CTRL_INTCNT_MASK));
-    /* Write The New Setting */
-    Debug_Timer_CONTROL |= interruptCount;
+    #if (!Debug_Timer_UDB_CONTROL_REG_REMOVED)
+        /* Clear the Current Setting */
+        Debug_Timer_CONTROL &= ((uint8)(~Debug_Timer_CTRL_INTCNT_MASK));
+        /* Write The New Setting */
+        Debug_Timer_CONTROL |= interruptCount;
+    #endif /* (!Debug_Timer_UDB_CONTROL_REG_REMOVED) */
 }
-#endif /* Remove API if control register is removed */
 #endif /* Debug_Timer_InterruptOnCaptureCount */
 
 

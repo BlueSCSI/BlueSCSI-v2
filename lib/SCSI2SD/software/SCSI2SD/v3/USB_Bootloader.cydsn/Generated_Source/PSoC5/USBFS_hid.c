@@ -1,14 +1,17 @@
 /*******************************************************************************
 * File Name: USBFS_hid.c
-* Version 2.60
+* Version 2.80
 *
 * Description:
 *  USB HID Class request handler.
 *
+* Related Document:
+*  Device Class Definition for Human Interface Devices (HID) Version 1.11
+*
 * Note:
 *
 ********************************************************************************
-* Copyright 2008-2013, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2014, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
@@ -416,7 +419,7 @@ void USBFS_FindReport(void)
 
 /* `#END` */
 
-#endif  /* End USBFS_ENABLE_HID_CLASS */
+#endif  /*  USBFS_ENABLE_HID_CLASS */
 
 
 /* [] END OF FILE */

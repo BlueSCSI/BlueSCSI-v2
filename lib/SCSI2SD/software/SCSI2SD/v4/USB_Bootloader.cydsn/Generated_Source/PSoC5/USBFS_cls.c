@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: USBFS_cls.c
-* Version 2.60
+* Version 2.80
 *
 * Description:
 *  USB Class request handler.
@@ -8,7 +8,7 @@
 * Note:
 *
 ********************************************************************************
-* Copyright 2008-2013, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2014, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
@@ -57,8 +57,8 @@ uint8 USBFS_DispatchClassRqst(void)
             break;
         case USBFS_RQST_RCPT_EP:         /* Class-specific request directed to the endpoint */
             /* Find related interface to the endpoint, wIndexLo contain EP number */
-            interfaceNumber =
-                USBFS_EP[CY_GET_REG8(USBFS_wIndexLo) & USBFS_DIR_UNUSED].interface;
+            interfaceNumber = USBFS_EP[CY_GET_REG8(USBFS_wIndexLo) &
+                              USBFS_DIR_UNUSED].interface;
             break;
         default:    /* RequestHandled is initialized as FALSE by default */
             break;
@@ -74,7 +74,7 @@ uint8 USBFS_DispatchClassRqst(void)
         case USBFS_CLASS_AUDIO:
             #if defined(USBFS_ENABLE_AUDIO_CLASS)
                 requestHandled = USBFS_DispatchAUDIOClassRqst();
-            #endif /* USBFS_ENABLE_HID_CLASS */
+            #endif /* USBFS_CLASS_AUDIO */
             break;
         case USBFS_CLASS_CDC:
             #if defined(USBFS_ENABLE_CDC_CLASS)

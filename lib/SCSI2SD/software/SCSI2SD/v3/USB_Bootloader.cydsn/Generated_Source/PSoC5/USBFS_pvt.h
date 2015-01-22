@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: .h
-* Version 2.60
+* Version 2.80
 *
 * Description:
 *  This private file provides constants and parameter values for the
@@ -10,7 +10,7 @@
 * Note:
 *
 ********************************************************************************
-* Copyright 2013, Cypress Semiconductor Corporation. All rights reserved.
+* Copyright 2013-2014, Cypress Semiconductor Corporation. All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
@@ -66,7 +66,14 @@ extern volatile T_USBFS_TD USBFS_currentTD;
 #if(USBFS_EP_MM != USBFS__EP_MANUAL)
     extern uint8 USBFS_DmaChan[USBFS_MAX_EP];
     extern uint8 USBFS_DmaTd[USBFS_MAX_EP];
-#endif /* End USBFS_EP_MM */
+#endif /*  USBFS_EP_MM */
+#if((USBFS_EP_MM == USBFS__EP_DMAAUTO) && (USBFS_EP_DMA_AUTO_OPT == 0u))
+    extern uint8 USBFS_DmaNextTd[USBFS_MAX_EP];
+    extern const uint8 USBFS_epX_TD_TERMOUT_EN[USBFS_MAX_EP];
+    extern volatile uint16 USBFS_inLength[USBFS_MAX_EP];
+    extern const uint8 *USBFS_inDataPointer[USBFS_MAX_EP];
+    extern volatile uint8 USBFS_inBufFull[USBFS_MAX_EP];
+#endif /*  ((USBFS_EP_MM == USBFS__EP_DMAAUTO) && (USBFS_EP_DMA_AUTO_OPT == 0u)) */
 
 extern volatile uint8 USBFS_ep0Toggle;
 extern volatile uint8 USBFS_lastPacketSize;
@@ -106,7 +113,7 @@ void USBFS_Config(uint8 clearAltSetting) ;
 void USBFS_ConfigAltChanged(void) ;
 void USBFS_ConfigReg(void) ;
 
-const T_USBFS_LUT CYCODE *USBFS_GetConfigTablePtr(uint8 c)
+const T_USBFS_LUT CYCODE *USBFS_GetConfigTablePtr(uint8 confIndex)
                                                             ;
 const T_USBFS_LUT CYCODE *USBFS_GetDeviceTablePtr(void)
                                                             ;
@@ -119,56 +126,62 @@ uint8 USBFS_ValidateAlternateSetting(void) ;
 void USBFS_SaveConfig(void) ;
 void USBFS_RestoreConfig(void) ;
 
+#if ((USBFS_EP_MM == USBFS__EP_DMAAUTO) && (USBFS_EP_DMA_AUTO_OPT == 0u))
+    void USBFS_LoadNextInEP(uint8 epNumber, uint8 mode) ;
+#endif /* (USBFS_EP_MM == USBFS__EP_DMAAUTO) && (USBFS_EP_DMA_AUTO_OPT == 0u) */
+
 #if defined(USBFS_ENABLE_IDSN_STRING)
     void USBFS_ReadDieID(uint8 descr[]) ;
 #endif /* USBFS_ENABLE_IDSN_STRING */
 
 #if defined(USBFS_ENABLE_HID_CLASS)
     uint8 USBFS_DispatchHIDClassRqst(void);
-#endif /* End USBFS_ENABLE_HID_CLASS */
+#endif /*  USBFS_ENABLE_HID_CLASS */
 #if defined(USBFS_ENABLE_AUDIO_CLASS)
     uint8 USBFS_DispatchAUDIOClassRqst(void);
-#endif /* End USBFS_ENABLE_HID_CLASS */
+#endif /*  USBFS_ENABLE_HID_CLASS */
 #if defined(USBFS_ENABLE_CDC_CLASS)
     uint8 USBFS_DispatchCDCClassRqst(void);
-#endif /* End USBFS_ENABLE_CDC_CLASS */
+#endif /*  USBFS_ENABLE_CDC_CLASS */
 
 CY_ISR_PROTO(USBFS_EP_0_ISR);
 #if(USBFS_EP1_ISR_REMOVE == 0u)
     CY_ISR_PROTO(USBFS_EP_1_ISR);
-#endif /* End USBFS_EP1_ISR_REMOVE */
+#endif /*  USBFS_EP1_ISR_REMOVE */
 #if(USBFS_EP2_ISR_REMOVE == 0u)
     CY_ISR_PROTO(USBFS_EP_2_ISR);
-#endif /* End USBFS_EP2_ISR_REMOVE */
+#endif /*  USBFS_EP2_ISR_REMOVE */
 #if(USBFS_EP3_ISR_REMOVE == 0u)
     CY_ISR_PROTO(USBFS_EP_3_ISR);
-#endif /* End USBFS_EP3_ISR_REMOVE */
+#endif /*  USBFS_EP3_ISR_REMOVE */
 #if(USBFS_EP4_ISR_REMOVE == 0u)
     CY_ISR_PROTO(USBFS_EP_4_ISR);
-#endif /* End USBFS_EP4_ISR_REMOVE */
+#endif /*  USBFS_EP4_ISR_REMOVE */
 #if(USBFS_EP5_ISR_REMOVE == 0u)
     CY_ISR_PROTO(USBFS_EP_5_ISR);
-#endif /* End USBFS_EP5_ISR_REMOVE */
+#endif /*  USBFS_EP5_ISR_REMOVE */
 #if(USBFS_EP6_ISR_REMOVE == 0u)
     CY_ISR_PROTO(USBFS_EP_6_ISR);
-#endif /* End USBFS_EP6_ISR_REMOVE */
+#endif /*  USBFS_EP6_ISR_REMOVE */
 #if(USBFS_EP7_ISR_REMOVE == 0u)
     CY_ISR_PROTO(USBFS_EP_7_ISR);
-#endif /* End USBFS_EP7_ISR_REMOVE */
+#endif /*  USBFS_EP7_ISR_REMOVE */
 #if(USBFS_EP8_ISR_REMOVE == 0u)
     CY_ISR_PROTO(USBFS_EP_8_ISR);
-#endif /* End USBFS_EP8_ISR_REMOVE */
+#endif /*  USBFS_EP8_ISR_REMOVE */
 CY_ISR_PROTO(USBFS_BUS_RESET_ISR);
 #if(USBFS_SOF_ISR_REMOVE == 0u)
     CY_ISR_PROTO(USBFS_SOF_ISR);
-#endif /* End USBFS_SOF_ISR_REMOVE */
+#endif /*  USBFS_SOF_ISR_REMOVE */
 #if(USBFS_EP_MM != USBFS__EP_MANUAL)
     CY_ISR_PROTO(USBFS_ARB_ISR);
-#endif /* End USBFS_EP_MM */
+#endif /*  USBFS_EP_MM */
 #if(USBFS_DP_ISR_REMOVE == 0u)
     CY_ISR_PROTO(USBFS_DP_ISR);
-#endif /* End USBFS_DP_ISR_REMOVE */
-
+#endif /*  USBFS_DP_ISR_REMOVE */
+#if ((USBFS_EP_MM == USBFS__EP_DMAAUTO) && (USBFS_EP_DMA_AUTO_OPT == 0u))
+    CY_ISR_PROTO(USBFS_EP_DMA_DONE_ISR);
+#endif /* (USBFS_EP_MM == USBFS__EP_DMAAUTO) && (USBFS_EP_DMA_AUTO_OPT == 0u) */
 
 /***************************************
 * Request Handlers
@@ -182,6 +195,7 @@ uint8 USBFS_HandleVendorRqst(void) ;
 /***************************************
 *    HID Internal references
 ***************************************/
+
 #if defined(USBFS_ENABLE_HID_CLASS)
     void USBFS_FindReport(void) ;
     void USBFS_FindReportDescriptor(void) ;
@@ -192,6 +206,7 @@ uint8 USBFS_HandleVendorRqst(void) ;
 /***************************************
 *    MIDI Internal references
 ***************************************/
+
 #if defined(USBFS_ENABLE_MIDI_STREAMING)
     void USBFS_MIDI_IN_EP_Service(void) ;
 #endif /* USBFS_ENABLE_MIDI_STREAMING */

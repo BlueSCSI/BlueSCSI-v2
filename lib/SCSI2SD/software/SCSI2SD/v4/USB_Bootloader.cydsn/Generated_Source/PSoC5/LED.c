@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: LED.c  
-* Version 1.90
+* Version 2.10
 *
 * Description:
 *  This file contains API to enable firmware control of a Pins component.
@@ -8,7 +8,7 @@
 * Note:
 *
 ********************************************************************************
-* Copyright 2008-2012, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2014, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions, 
 * disclaimers, and limitations in the end user license agreement accompanying 
 * the software package with which this file was provided.
@@ -51,7 +51,16 @@ void LED_Write(uint8 value)
 *  Change the drive mode on the pins of the port.
 * 
 * Parameters:  
-*  mode:  Change the pins to this drive mode.
+*  mode:  Change the pins to one of the following drive modes.
+*
+*  LED_DM_STRONG     Strong Drive 
+*  LED_DM_OD_HI      Open Drain, Drives High 
+*  LED_DM_OD_LO      Open Drain, Drives Low 
+*  LED_DM_RES_UP     Resistive Pull Up 
+*  LED_DM_RES_DWN    Resistive Pull Down 
+*  LED_DM_RES_UPDWN  Resistive Pull Up/Down 
+*  LED_DM_DIG_HIZ    High Impedance Digital 
+*  LED_DM_ALG_HIZ    High Impedance Analog 
 *
 * Return: 
 *  None

@@ -45,10 +45,10 @@ CY_METADATA_SIZE    = 64;
  */
 EXTERN(Reset)
 
-/* Bring in the interrupt routines & vector */
+/* Bring in interrupt routines & vector */
 EXTERN(main)
 
-/* Bring in the meta data */
+/* Bring in meta data */
 EXTERN(cy_meta_loader cy_bootloader cy_meta_loadable cy_meta_bootloader)
 EXTERN(cy_meta_custnvl cy_meta_wolatch cy_meta_flashprotect cy_metadata)
 
@@ -90,7 +90,7 @@ SECTIONS
     /* Make sure we pulled in some reset code.  */
     ASSERT (. != __cy_reset, "No reset code");
 
-	/* Place the DMA initialization before text to ensure it gets placed in first 64K of flash */
+	/* Place DMA initialization before text to ensure it gets placed in first 64K of flash */
     *(.dma_init)
     ASSERT(appl_start + . <= 0x10000 || !0, "DMA Init must be within the first 64k of flash");
 		

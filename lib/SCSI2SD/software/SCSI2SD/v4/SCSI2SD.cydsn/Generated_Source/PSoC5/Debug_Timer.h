@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: Debug_Timer.h
-* Version 2.50
+* Version 2.70
 *
 *  Description:
 *     Contains the function prototypes and constants available to the timer
@@ -10,14 +10,14 @@
 *     None
 *
 ********************************************************************************
-* Copyright 2008-2012, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2014, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
 ********************************************************************************/
 
-#if !defined(CY_Timer_v2_30_Debug_Timer_H)
-#define CY_Timer_v2_30_Debug_Timer_H
+#if !defined(CY_Timer_v2_60_Debug_Timer_H)
+#define CY_Timer_v2_60_Debug_Timer_H
 
 #include "cytypes.h"
 #include "cyfitter.h"
@@ -28,7 +28,7 @@ extern uint8 Debug_Timer_initVar;
 /* Check to see if required defines such as CY_PSOC5LP are available */
 /* They are defined starting with cy_boot v3.0 */
 #if !defined (CY_PSOC5LP)
-    #error Component Timer_v2_50 requires cy_boot v3.0 or later
+    #error Component Timer_v2_70 requires cy_boot v3.0 or later
 #endif /* (CY_ PSOC5LP) */
 
 
@@ -47,6 +47,14 @@ extern uint8 Debug_Timer_initVar;
 #define Debug_Timer_RunModeUsed                0u
 #define Debug_Timer_ControlRegRemoved          0u
 
+#if defined(Debug_Timer_TimerUDB_sCTRLReg_SyncCtl_ctrlreg__CONTROL_REG)
+    #define Debug_Timer_UDB_CONTROL_REG_REMOVED            (0u)
+#elif  (Debug_Timer_UsingFixedFunction)
+    #define Debug_Timer_UDB_CONTROL_REG_REMOVED            (0u)
+#else 
+    #define Debug_Timer_UDB_CONTROL_REG_REMOVED            (1u)
+#endif /* End Debug_Timer_TimerUDB_sCTRLReg_SyncCtl_ctrlreg__CONTROL_REG */
+
 
 /***************************************
 *       Type defines
@@ -60,27 +68,18 @@ typedef struct
 {
     uint8 TimerEnableState;
     #if(!Debug_Timer_UsingFixedFunction)
-        #if (CY_UDB_V0)
-            uint16 TimerUdb;                 /* Timer internal counter value */
-            uint16 TimerPeriod;              /* Timer Period value       */
-            uint8 InterruptMaskValue;       /* Timer Compare Value */
-            #if (Debug_Timer_UsingHWCaptureCounter)
-                uint8 TimerCaptureCounter;  /* Timer Capture Counter Value */
-            #endif /* variable declaration for backing up Capture Counter value*/
-        #endif /* variables for non retention registers in CY_UDB_V0 */
 
-        #if (CY_UDB_V1)
-            uint16 TimerUdb;
-            uint8 InterruptMaskValue;
-            #if (Debug_Timer_UsingHWCaptureCounter)
-                uint8 TimerCaptureCounter;
-            #endif /* variable declarations for backing up non retention registers in CY_UDB_V1 */
-        #endif /* (CY_UDB_V1) */
+        uint16 TimerUdb;
+        uint8 InterruptMaskValue;
+        #if (Debug_Timer_UsingHWCaptureCounter)
+            uint8 TimerCaptureCounter;
+        #endif /* variable declarations for backing up non retention registers in CY_UDB_V1 */
 
-        #if (!Debug_Timer_ControlRegRemoved)
+        #if (!Debug_Timer_UDB_CONTROL_REG_REMOVED)
             uint8 TimerControlRegister;
         #endif /* variable declaration for backing up enable state of the Timer */
     #endif /* define backup variables only for UDB implementation. Fixed function registers are all retention */
+
 }Debug_Timer_backupStruct;
 
 
@@ -96,21 +95,17 @@ uint8   Debug_Timer_ReadStatusRegister(void) ;
 /* Deprecated function. Do not use this in future. Retained for backward compatibility */
 #define Debug_Timer_GetInterruptSource() Debug_Timer_ReadStatusRegister()
 
-#if(!Debug_Timer_ControlRegRemoved)
+#if(!Debug_Timer_UDB_CONTROL_REG_REMOVED)
     uint8   Debug_Timer_ReadControlRegister(void) ;
-    void    Debug_Timer_WriteControlRegister(uint8 control) \
-        ;
-#endif /* (!Debug_Timer_ControlRegRemoved) */
+    void    Debug_Timer_WriteControlRegister(uint8 control) ;
+#endif /* (!Debug_Timer_UDB_CONTROL_REG_REMOVED) */
 
 uint16  Debug_Timer_ReadPeriod(void) ;
-void    Debug_Timer_WritePeriod(uint16 period) \
-    ;
+void    Debug_Timer_WritePeriod(uint16 period) ;
 uint16  Debug_Timer_ReadCounter(void) ;
-void    Debug_Timer_WriteCounter(uint16 counter) \
-    ;
+void    Debug_Timer_WriteCounter(uint16 counter) ;
 uint16  Debug_Timer_ReadCapture(void) ;
 void    Debug_Timer_SoftwareCapture(void) ;
-
 
 #if(!Debug_Timer_UsingFixedFunction) /* UDB Prototypes */
     #if (Debug_Timer_SoftwareCaptureMode)
@@ -120,21 +115,19 @@ void    Debug_Timer_SoftwareCapture(void) ;
     #if (Debug_Timer_SoftwareTriggerMode)
         void    Debug_Timer_SetTriggerMode(uint8 triggerMode) ;
     #endif /* (Debug_Timer_SoftwareTriggerMode) */
+
     #if (Debug_Timer_EnableTriggerMode)
         void    Debug_Timer_EnableTrigger(void) ;
         void    Debug_Timer_DisableTrigger(void) ;
     #endif /* (Debug_Timer_EnableTriggerMode) */
 
+
     #if(Debug_Timer_InterruptOnCaptureCount)
-        #if(!Debug_Timer_ControlRegRemoved)
-            void    Debug_Timer_SetInterruptCount(uint8 interruptCount) \
-                ;
-        #endif /* (!Debug_Timer_ControlRegRemoved) */
+        void    Debug_Timer_SetInterruptCount(uint8 interruptCount) ;
     #endif /* (Debug_Timer_InterruptOnCaptureCount) */
 
     #if (Debug_Timer_UsingHWCaptureCounter)
-        void    Debug_Timer_SetCaptureCount(uint8 captureCount) \
-            ;
+        void    Debug_Timer_SetCaptureCount(uint8 captureCount) ;
         uint8   Debug_Timer_ReadCaptureCount(void) ;
     #endif /* (Debug_Timer_UsingHWCaptureCounter) */
 
@@ -256,8 +249,8 @@ void Debug_Timer_Wakeup(void)        ;
     #if (CY_PSOC5A)
         /* Use CFG1 Mode bits to set run mode */
         /* As defined by Verilog Implementation */
-        #define Debug_Timer_CTRL_MODE_SHIFT                     0x01u
-        #define Debug_Timer_CTRL_MODE_MASK                     ((uint8)((uint8)0x07u << Debug_Timer_CTRL_MODE_SHIFT))
+        #define Debug_Timer_CTRL_MODE_SHIFT                 0x01u
+        #define Debug_Timer_CTRL_MODE_MASK                 ((uint8)((uint8)0x07u << Debug_Timer_CTRL_MODE_SHIFT))
     #endif /* (CY_PSOC5A) */
     #if (CY_PSOC3 || CY_PSOC5LP)
         /* Control3 Register Bit Locations */
@@ -367,6 +360,8 @@ void Debug_Timer_Wakeup(void)        ;
         #endif /* CY_PSOC3 || CY_PSOC5 */ 
     #endif
 
+    #define Debug_Timer_COUNTER_LSB_PTR_8BIT       ((reg8 *) Debug_Timer_TimerUDB_sT16_timerdp_u0__A0_REG )
+    
     #if (Debug_Timer_UsingHWCaptureCounter)
         #define Debug_Timer_CAP_COUNT              (*(reg8 *) Debug_Timer_TimerUDB_sCapCount_counter__PERIOD_REG )
         #define Debug_Timer_CAP_COUNT_PTR          ( (reg8 *) Debug_Timer_TimerUDB_sCapCount_counter__PERIOD_REG )

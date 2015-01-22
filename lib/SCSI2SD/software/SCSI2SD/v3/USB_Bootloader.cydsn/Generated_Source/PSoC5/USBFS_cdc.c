@@ -1,14 +1,15 @@
 /*******************************************************************************
 * File Name: USBFS_cdc.c
-* Version 2.60
+* Version 2.80
 *
 * Description:
-*  USB HID Class request handler.
+*  USB CDC class request handler.
 *
-* Note:
+* Related Document:
+*  Universal Serial Bus Class Definitions for Communication Devices Version 1.1
 *
 ********************************************************************************
-* Copyright 2012-2013, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2012-2014, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
@@ -26,7 +27,13 @@
 *    CDC Variables
 ***************************************/
 
-volatile uint8 USBFS_lineCoding[USBFS_LINE_CODING_SIZE];
+volatile uint8 USBFS_lineCoding[USBFS_LINE_CODING_SIZE] =
+{
+    0x00u, 0xC2u, 0x01u, 0x00u,     /* Data terminal rate 115200 */
+    0x00u,                          /* 1 Stop bit */
+    0x00u,                          /* None parity */
+    0x08u                           /* 8 data bits */
+};
 volatile uint8 USBFS_lineChanged;
 volatile uint16 USBFS_lineControlBitmap;
 volatile uint8 USBFS_cdc_data_in_ep;
@@ -36,7 +43,9 @@ volatile uint8 USBFS_cdc_data_out_ep;
 /***************************************
 *     Static Function Prototypes
 ***************************************/
-static uint16 USBFS_StrLen(const char8 string[]) ;
+#if (USBFS_ENABLE_CDC_CLASS_API != 0u)
+    static uint16 USBFS_StrLen(const char8 string[]) ;
+#endif /* (USBFS_ENABLE_CDC_CLASS_API != 0u) */
 
 
 /***************************************
@@ -138,7 +147,6 @@ uint8 USBFS_DispatchCDCClassRqst(void)
 ***************************************/
 #if (USBFS_ENABLE_CDC_CLASS_API != 0u)
 
-
     /*******************************************************************************
     * Function Name: USBFS_CDC_Init
     ********************************************************************************
@@ -173,14 +181,23 @@ uint8 USBFS_DispatchCDCClassRqst(void)
     ********************************************************************************
     *
     * Summary:
-    *  Sends a specified number of bytes from the location specified by a
-    *  pointer to the PC.
+    *  This function sends a specified number of bytes from the location specified
+    *  by a pointer to the PC. The USBFS_CDCIsReady() function should be
+    *  called before sending new data, to be sure that the previous data has
+    *  finished sending.
+    *  If the last sent packet is less than maximum packet size the USB transfer
+    *  of this short packet will identify the end of the segment. If the last sent
+    *  packet is exactly maximum packet size, it shall be followed by a zero-length
+    *  packet (which is a short packet) to assure the end of segment is properly
+    *  identified. To send zero-length packet, use USBFS_PutData() API
+    *  with length parameter set to zero.
     *
     * Parameters:
     *  pData: pointer to the buffer containing data to be sent.
     *  length: Specifies the number of bytes to send from the pData
     *  buffer. Maximum length will be limited by the maximum packet
-    *  size for the endpoint.
+    *  size for the endpoint. Data will be lost if length is greater than Max
+    *  Packet Size.
     *
     * Return:
     *  None.
@@ -239,10 +256,15 @@ uint8 USBFS_DispatchCDCClassRqst(void)
     ********************************************************************************
     *
     * Summary:
-    *  Sends a null terminated string to the PC.
+    *  This function sends a null terminated string to the PC. This function will
+    *  block if there is not enough memory to place the whole string. It will block
+    *  until the entire string has been written to the transmit buffer.
+    *  The USBUART_CDCIsReady() function should be called before sending data with
+    *  a new call to USBFS_PutString(), to be sure that the previous data
+    *  has finished sending.
     *
     * Parameters:
-    *  string: pointer to the string to be sent to the PC
+    *  string: pointer to the string to be sent to the PC.
     *
     * Return:
     *  None.
@@ -254,41 +276,44 @@ uint8 USBFS_DispatchCDCClassRqst(void)
     * Reentrant:
     *  No.
     *
-    * Theory:
-    *  This function will block if there is not enough memory to place the whole
-    *  string, it will block until the entire string has been written to the
-    *  transmit buffer.
-    *
     *******************************************************************************/
     void USBFS_PutString(const char8 string[]) 
     {
-        uint16 str_length;
-        uint16 send_length;
-        uint16 buf_index = 0u;
+        uint16 strLength;
+        uint16 sendLength;
+        uint16 bufIndex = 0u;
 
         /* Get length of the null terminated string */
-        str_length = USBFS_StrLen(string);
+        strLength = USBFS_StrLen(string);
         do
         {
             /* Limits length to maximum packet size for the EP */
-            send_length = (str_length > USBFS_EP[USBFS_cdc_data_in_ep].bufferSize) ?
-                          USBFS_EP[USBFS_cdc_data_in_ep].bufferSize : str_length;
+            sendLength = (strLength > USBFS_EP[USBFS_cdc_data_in_ep].bufferSize) ?
+                          USBFS_EP[USBFS_cdc_data_in_ep].bufferSize : strLength;
              /* Enable IN transfer */
-            USBFS_LoadInEP(USBFS_cdc_data_in_ep, (const uint8 *)&string[buf_index], send_length);
-            str_length -= send_length;
+            USBFS_LoadInEP(USBFS_cdc_data_in_ep, (const uint8 *)&string[bufIndex], sendLength);
+            strLength -= sendLength;
 
-            /* If more data are present to send */
-            if(str_length > 0u)
+            /* If more data are present to send or full packet was sent */
+            if((strLength > 0u) || (sendLength == USBFS_EP[USBFS_cdc_data_in_ep].bufferSize))
             {
-                buf_index += send_length;
+                bufIndex += sendLength;
                 /* Wait for the Host to read it. */
                 while(USBFS_EP[USBFS_cdc_data_in_ep].apiEpState ==
                                           USBFS_IN_BUFFER_FULL)
                 {
                     ;
                 }
+                /* If the last sent packet is exactly maximum packet size,
+                *  it shall be followed by a zero-length packet to assure the
+                *  end of segment is properly identified by the terminal.
+                */
+                if(strLength == 0u)
+                {
+                    USBFS_LoadInEP(USBFS_cdc_data_in_ep, NULL, 0u);
+                }
             }
-        }while(str_length > 0u);
+        }while(strLength > 0u);
     }
 
 
@@ -357,12 +382,17 @@ uint8 USBFS_DispatchCDCClassRqst(void)
     *
     * Summary:
     *  This function returns the number of bytes that were received from the PC.
+    *  The returned length value should be passed to USBFS_GetData() as
+    *  a parameter to read all received data. If all of the received data is not
+    *  read at one time by the USBFS_GetData() API, the unread data will
+    *  be lost.
     *
     * Parameters:
     *  None.
     *
     * Return:
-    *  Returns the number of received bytes.
+    *  Returns the number of received bytes. The maximum amount of received data at
+    *  a time is limited by the maximum packet size for the endpoint.
     *
     * Global variables:
     *   USBFS_cdc_data_out_ep: CDC OUT endpoint number used.
@@ -370,11 +400,15 @@ uint8 USBFS_DispatchCDCClassRqst(void)
     *******************************************************************************/
     uint16 USBFS_GetCount(void) 
     {
-        uint16 bytesCount = 0u;
+        uint16 bytesCount;
 
         if (USBFS_EP[USBFS_cdc_data_out_ep].apiEpState == USBFS_OUT_BUFFER_FULL)
         {
             bytesCount = USBFS_GetEPCount(USBFS_cdc_data_out_ep);
+        }
+        else
+        {
+            bytesCount = 0u;
         }
 
         return(bytesCount);
@@ -387,9 +421,9 @@ uint8 USBFS_DispatchCDCClassRqst(void)
     *
     * Summary:
     *  Returns a nonzero value if the component received data or received
-    *  zero-length packet. The GetAll() or GetData() API should be called to read
-    *  data from the buffer and re-init OUT endpoint even when zero-length packet
-    *  received.
+    *  zero-length packet. The USBFS_GetAll() or
+    *  USBFS_GetData() API should be called to read data from the buffer
+    *  and re-init OUT endpoint even when zero-length packet received.
     *
     * Parameters:
     *  None.
@@ -413,17 +447,19 @@ uint8 USBFS_DispatchCDCClassRqst(void)
     ********************************************************************************
     *
     * Summary:
-    *  Returns a nonzero value if the component is ready to send more data to the
-    *  PC. Otherwise returns zero. Should be called before sending new data to
-    *  ensure the previous data has finished sending.This function returns the
-    *  number of bytes that were received from the PC.
+    *  This function returns a nonzero value if the component is ready to send more
+    *  data to the PC; otherwise, it returns zero. The function should be called
+    *  before sending new data when using any of the following APIs:
+    *  USBFS_PutData(),USBFS_PutString(),
+    *  USBFS_PutChar or USBFS_PutCRLF(),
+    *  to be sure that the previous data has finished sending.
     *
     * Parameters:
     *  None.
     *
     * Return:
-    *  If the buffer can accept new data then this function returns a nonzero value.
-    *  Otherwise zero is returned.
+    *  If the buffer can accept new data, this function returns a nonzero value.
+    *  Otherwise, it returns zero.
     *
     * Global variables:
     *   USBFS_cdc_data_in_ep: CDC IN endpoint number used.
@@ -440,10 +476,12 @@ uint8 USBFS_DispatchCDCClassRqst(void)
     ********************************************************************************
     *
     * Summary:
-    *  Gets a specified number of bytes from the input buffer and places it in a
-    *  data array specified by the passed pointer.
-    *  USBFS_DataIsReady() API should be called before, to be sure
-    *  that data is received from the Host.
+    *  This function gets a specified number of bytes from the input buffer and
+    *  places them in a data array specified by the passed pointer.
+    *  The USBFS_DataIsReady() API should be called first, to be sure
+    *  that data is received from the host. If all received data will not be read at
+    *  once, the unread data will be lost. The USBFS_GetData() API should
+    *  be called to get the number of bytes that were received.
     *
     * Parameters:
     *  pData: Pointer to the data array where data will be placed.
@@ -502,7 +540,8 @@ uint8 USBFS_DispatchCDCClassRqst(void)
     ********************************************************************************
     *
     * Summary:
-    *  Reads one byte of received data from the buffer.
+    *  This function reads one byte of received data from the buffer. If more than
+    *  one byte has been received from the host, the rest of the data will be lost.
     *
     * Parameters:
     *  None.
@@ -531,17 +570,23 @@ uint8 USBFS_DispatchCDCClassRqst(void)
     ********************************************************************************
     *
     * Summary:
-    *  This function returns clear on read status of the line.
+    *  This function returns clear on read status of the line. It returns not zero
+    *  value when the host sends updated coding or control information to the
+    *  device. The USBFS_GetDTERate(), USBFS_GetCharFormat()
+    *  or USBFS_GetParityType() or USBFS_GetDataBits() API
+    *  should be called to read data coding information.
+    *  The USBFS_GetLineControl() API should be called to read line
+    *  control information.
     *
     * Parameters:
     *  None.
     *
     * Return:
-    *  If SET_LINE_CODING or CDC_SET_CONTROL_LINE_STATE request received then not
-    *  zero value returned. Otherwise zero is returned.
+    *  If SET_LINE_CODING or CDC_SET_CONTROL_LINE_STATE requests are received, it
+    *  returns a nonzero value. Otherwise, it returns zero.
     *
     * Global variables:
-    *  USBFS_transferState - it is checked to be sure then OUT data
+    *  USBFS_transferState: it is checked to be sure then OUT data
     *    phase has been complete, and data written to the lineCoding or Control
     *    Bitmap buffer.
     *  USBFS_lineChanged: used as a flag to be aware that Host has been
@@ -689,7 +734,7 @@ uint8 USBFS_DispatchCDCClassRqst(void)
         return(USBFS_lineControlBitmap);
     }
 
-#endif  /* End USBFS_ENABLE_CDC_CLASS_API*/
+#endif  /*  USBFS_ENABLE_CDC_CLASS_API*/
 
 
 /*******************************************************************************
@@ -700,7 +745,7 @@ uint8 USBFS_DispatchCDCClassRqst(void)
 
 /* `#END` */
 
-#endif  /* End USBFS_ENABLE_CDC_CLASS*/
+#endif  /*  USBFS_ENABLE_CDC_CLASS*/
 
 
 /* [] END OF FILE */

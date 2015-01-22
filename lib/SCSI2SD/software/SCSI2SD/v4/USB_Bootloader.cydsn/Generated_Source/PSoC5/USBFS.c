@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: USBFS.c
-* Version 2.60
+* Version 2.80
 *
 * Description:
 *  API for USBFS Component.
@@ -11,7 +11,7 @@
 *  registers are indexed by variations of epNumber - 1.
 *
 ********************************************************************************
-* Copyright 2008-2013, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2014, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
@@ -23,28 +23,33 @@
 #include "USBFS_hid.h"
 #if(USBFS_DMA1_REMOVE == 0u)
     #include "USBFS_ep1_dma.h"
-#endif   /* End USBFS_DMA1_REMOVE */
+#endif   /*  USBFS_DMA1_REMOVE */
 #if(USBFS_DMA2_REMOVE == 0u)
     #include "USBFS_ep2_dma.h"
-#endif   /* End USBFS_DMA2_REMOVE */
+#endif   /*  USBFS_DMA2_REMOVE */
 #if(USBFS_DMA3_REMOVE == 0u)
     #include "USBFS_ep3_dma.h"
-#endif   /* End USBFS_DMA3_REMOVE */
+#endif   /*  USBFS_DMA3_REMOVE */
 #if(USBFS_DMA4_REMOVE == 0u)
     #include "USBFS_ep4_dma.h"
-#endif   /* End USBFS_DMA4_REMOVE */
+#endif   /*  USBFS_DMA4_REMOVE */
 #if(USBFS_DMA5_REMOVE == 0u)
     #include "USBFS_ep5_dma.h"
-#endif   /* End USBFS_DMA5_REMOVE */
+#endif   /*  USBFS_DMA5_REMOVE */
 #if(USBFS_DMA6_REMOVE == 0u)
     #include "USBFS_ep6_dma.h"
-#endif   /* End USBFS_DMA6_REMOVE */
+#endif   /*  USBFS_DMA6_REMOVE */
 #if(USBFS_DMA7_REMOVE == 0u)
     #include "USBFS_ep7_dma.h"
-#endif   /* End USBFS_DMA7_REMOVE */
+#endif   /*  USBFS_DMA7_REMOVE */
 #if(USBFS_DMA8_REMOVE == 0u)
     #include "USBFS_ep8_dma.h"
-#endif   /* End USBFS_DMA8_REMOVE */
+#endif   /*  USBFS_DMA8_REMOVE */
+#if((USBFS_EP_MM == USBFS__EP_DMAAUTO) && (USBFS_EP_DMA_AUTO_OPT == 0u))
+    #include "USBFS_EP_DMA_Done_isr.h"
+    #include "USBFS_EP8_DMA_Done_SR.h"
+    #include "USBFS_EP17_DMA_Done_SR.h"
+#endif /* ((USBFS_EP_MM == USBFS__EP_DMAAUTO) && (USBFS_EP_DMA_AUTO_OPT == 0u)) */
 
 
 /***************************************
@@ -55,7 +60,25 @@ uint8 USBFS_initVar = 0u;
 #if(USBFS_EP_MM != USBFS__EP_MANUAL)
     uint8 USBFS_DmaChan[USBFS_MAX_EP];
     uint8 USBFS_DmaTd[USBFS_MAX_EP];
-#endif /* End USBFS_EP_MM */
+#endif /*  USBFS_EP_MM */
+#if((USBFS_EP_MM == USBFS__EP_DMAAUTO) && (USBFS_EP_DMA_AUTO_OPT == 0u))
+    static uint8 clearInDataRdyStatus = USBFS_ARB_EPX_CFG_DEFAULT;
+    uint8 USBFS_DmaNextTd[USBFS_MAX_EP];
+    const uint8 USBFS_epX_TD_TERMOUT_EN[USBFS_MAX_EP] =
+    {   0u,
+        USBFS_ep1_TD_TERMOUT_EN,
+        USBFS_ep2_TD_TERMOUT_EN,
+        USBFS_ep3_TD_TERMOUT_EN,
+        USBFS_ep4_TD_TERMOUT_EN,
+        USBFS_ep5_TD_TERMOUT_EN,
+        USBFS_ep6_TD_TERMOUT_EN,
+        USBFS_ep7_TD_TERMOUT_EN,
+        USBFS_ep8_TD_TERMOUT_EN
+    };
+    volatile uint16 USBFS_inLength[USBFS_MAX_EP];
+    const uint8 *USBFS_inDataPointer[USBFS_MAX_EP];
+    volatile uint8 USBFS_inBufFull[USBFS_MAX_EP];
+#endif /* ((USBFS_EP_MM == USBFS__EP_DMAAUTO) && (USBFS_EP_DMA_AUTO_OPT == 0u)) */
 
 
 /*******************************************************************************
@@ -137,7 +160,7 @@ void USBFS_Init(void)
     uint8 enableInterrupts;
     #if(USBFS_EP_MM != USBFS__EP_MANUAL)
         uint16 i;
-    #endif   /* End USBFS_EP_MM != USBFS__EP_MANUAL */
+    #endif   /*  USBFS_EP_MM != USBFS__EP_MANUAL */
 
     enableInterrupts = CyEnterCriticalSection();
 
@@ -190,8 +213,11 @@ void USBFS_Init(void)
         for (i = 0u; i < USBFS_MAX_EP; i++)
         {
             USBFS_DmaTd[i] = DMA_INVALID_TD;
+            #if ((USBFS_EP_MM == USBFS__EP_DMAAUTO) && (USBFS_EP_DMA_AUTO_OPT == 0u))
+                USBFS_DmaNextTd[i] = DMA_INVALID_TD;
+            #endif /* ((USBFS_EP_MM == USBFS__EP_DMAAUTO) && (USBFS_EP_DMA_AUTO_OPT == 0u)) */
         }
-    #endif   /* End USBFS_EP_MM != USBFS__EP_MANUAL */
+    #endif   /*  USBFS_EP_MM != USBFS__EP_MANUAL */
 
     CyExitCriticalSection(enableInterrupts);
 
@@ -204,7 +230,7 @@ void USBFS_Init(void)
     #if(USBFS_SOF_ISR_REMOVE == 0u)
         (void) CyIntSetVector(USBFS_SOF_VECT_NUM,   &USBFS_SOF_ISR);
         CyIntSetPriority(USBFS_SOF_VECT_NUM, USBFS_SOF_PRIOR);
-    #endif   /* End USBFS_SOF_ISR_REMOVE */
+    #endif   /*  USBFS_SOF_ISR_REMOVE */
 
     /* Set the Control Endpoint Interrupt. */
     (void) CyIntSetVector(USBFS_EP_0_VECT_NUM,   &USBFS_EP_0_ISR);
@@ -214,55 +240,55 @@ void USBFS_Init(void)
     #if(USBFS_EP1_ISR_REMOVE == 0u)
         (void) CyIntSetVector(USBFS_EP_1_VECT_NUM,   &USBFS_EP_1_ISR);
         CyIntSetPriority(USBFS_EP_1_VECT_NUM, USBFS_EP_1_PRIOR);
-    #endif   /* End USBFS_EP1_ISR_REMOVE */
+    #endif   /*  USBFS_EP1_ISR_REMOVE */
 
     /* Set the Data Endpoint 2 Interrupt. */
     #if(USBFS_EP2_ISR_REMOVE == 0u)
         (void) CyIntSetVector(USBFS_EP_2_VECT_NUM,   &USBFS_EP_2_ISR);
         CyIntSetPriority(USBFS_EP_2_VECT_NUM, USBFS_EP_2_PRIOR);
-    #endif   /* End USBFS_EP2_ISR_REMOVE */
+    #endif   /*  USBFS_EP2_ISR_REMOVE */
 
     /* Set the Data Endpoint 3 Interrupt. */
     #if(USBFS_EP3_ISR_REMOVE == 0u)
         (void) CyIntSetVector(USBFS_EP_3_VECT_NUM,   &USBFS_EP_3_ISR);
         CyIntSetPriority(USBFS_EP_3_VECT_NUM, USBFS_EP_3_PRIOR);
-    #endif   /* End USBFS_EP3_ISR_REMOVE */
+    #endif   /*  USBFS_EP3_ISR_REMOVE */
 
     /* Set the Data Endpoint 4 Interrupt. */
     #if(USBFS_EP4_ISR_REMOVE == 0u)
         (void) CyIntSetVector(USBFS_EP_4_VECT_NUM,   &USBFS_EP_4_ISR);
         CyIntSetPriority(USBFS_EP_4_VECT_NUM, USBFS_EP_4_PRIOR);
-    #endif   /* End USBFS_EP4_ISR_REMOVE */
+    #endif   /*  USBFS_EP4_ISR_REMOVE */
 
     /* Set the Data Endpoint 5 Interrupt. */
     #if(USBFS_EP5_ISR_REMOVE == 0u)
         (void) CyIntSetVector(USBFS_EP_5_VECT_NUM,   &USBFS_EP_5_ISR);
         CyIntSetPriority(USBFS_EP_5_VECT_NUM, USBFS_EP_5_PRIOR);
-    #endif   /* End USBFS_EP5_ISR_REMOVE */
+    #endif   /*  USBFS_EP5_ISR_REMOVE */
 
     /* Set the Data Endpoint 6 Interrupt. */
     #if(USBFS_EP6_ISR_REMOVE == 0u)
         (void) CyIntSetVector(USBFS_EP_6_VECT_NUM,   &USBFS_EP_6_ISR);
         CyIntSetPriority(USBFS_EP_6_VECT_NUM, USBFS_EP_6_PRIOR);
-    #endif   /* End USBFS_EP6_ISR_REMOVE */
+    #endif   /*  USBFS_EP6_ISR_REMOVE */
 
      /* Set the Data Endpoint 7 Interrupt. */
     #if(USBFS_EP7_ISR_REMOVE == 0u)
         (void) CyIntSetVector(USBFS_EP_7_VECT_NUM,   &USBFS_EP_7_ISR);
         CyIntSetPriority(USBFS_EP_7_VECT_NUM, USBFS_EP_7_PRIOR);
-    #endif   /* End USBFS_EP7_ISR_REMOVE */
+    #endif   /*  USBFS_EP7_ISR_REMOVE */
 
     /* Set the Data Endpoint 8 Interrupt. */
     #if(USBFS_EP8_ISR_REMOVE == 0u)
         (void) CyIntSetVector(USBFS_EP_8_VECT_NUM,   &USBFS_EP_8_ISR);
         CyIntSetPriority(USBFS_EP_8_VECT_NUM, USBFS_EP_8_PRIOR);
-    #endif   /* End USBFS_EP8_ISR_REMOVE */
+    #endif   /*  USBFS_EP8_ISR_REMOVE */
 
     #if((USBFS_EP_MM != USBFS__EP_MANUAL) && (USBFS_ARB_ISR_REMOVE == 0u))
         /* Set the ARB Interrupt. */
         (void) CyIntSetVector(USBFS_ARB_VECT_NUM,   &USBFS_ARB_ISR);
         CyIntSetPriority(USBFS_ARB_VECT_NUM, USBFS_ARB_PRIOR);
-    #endif   /* End USBFS_EP_MM != USBFS__EP_MANUAL */
+    #endif   /*  USBFS_EP_MM != USBFS__EP_MANUAL */
 
 }
 
@@ -339,45 +365,50 @@ void USBFS_InitComponent(uint8 device, uint8 mode)
     CyIntEnable(USBFS_EP_0_VECT_NUM);
     #if(USBFS_EP1_ISR_REMOVE == 0u)
         CyIntEnable(USBFS_EP_1_VECT_NUM);
-    #endif   /* End USBFS_EP1_ISR_REMOVE */
+    #endif   /*  USBFS_EP1_ISR_REMOVE */
     #if(USBFS_EP2_ISR_REMOVE == 0u)
         CyIntEnable(USBFS_EP_2_VECT_NUM);
-    #endif   /* End USBFS_EP2_ISR_REMOVE */
+    #endif   /*  USBFS_EP2_ISR_REMOVE */
     #if(USBFS_EP3_ISR_REMOVE == 0u)
         CyIntEnable(USBFS_EP_3_VECT_NUM);
-    #endif   /* End USBFS_EP3_ISR_REMOVE */
+    #endif   /*  USBFS_EP3_ISR_REMOVE */
     #if(USBFS_EP4_ISR_REMOVE == 0u)
         CyIntEnable(USBFS_EP_4_VECT_NUM);
-    #endif   /* End USBFS_EP4_ISR_REMOVE */
+    #endif   /*  USBFS_EP4_ISR_REMOVE */
     #if(USBFS_EP5_ISR_REMOVE == 0u)
         CyIntEnable(USBFS_EP_5_VECT_NUM);
-    #endif   /* End USBFS_EP5_ISR_REMOVE */
+    #endif   /*  USBFS_EP5_ISR_REMOVE */
     #if(USBFS_EP6_ISR_REMOVE == 0u)
         CyIntEnable(USBFS_EP_6_VECT_NUM);
-    #endif   /* End USBFS_EP6_ISR_REMOVE */
+    #endif   /*  USBFS_EP6_ISR_REMOVE */
     #if(USBFS_EP7_ISR_REMOVE == 0u)
         CyIntEnable(USBFS_EP_7_VECT_NUM);
-    #endif   /* End USBFS_EP7_ISR_REMOVE */
+    #endif   /*  USBFS_EP7_ISR_REMOVE */
     #if(USBFS_EP8_ISR_REMOVE == 0u)
         CyIntEnable(USBFS_EP_8_VECT_NUM);
-    #endif   /* End USBFS_EP8_ISR_REMOVE */
+    #endif   /*  USBFS_EP8_ISR_REMOVE */
     #if((USBFS_EP_MM != USBFS__EP_MANUAL) && (USBFS_ARB_ISR_REMOVE == 0u))
         /* usb arb interrupt enable */
         USBFS_ARB_INT_EN_REG = USBFS_ARB_INT_MASK;
         CyIntEnable(USBFS_ARB_VECT_NUM);
-    #endif   /* End USBFS_EP_MM != USBFS__EP_MANUAL */
+    #endif   /*  USBFS_EP_MM != USBFS__EP_MANUAL */
 
     /* Arbiter configuration for DMA transfers */
     #if(USBFS_EP_MM != USBFS__EP_MANUAL)
-
         #if(USBFS_EP_MM == USBFS__EP_DMAMANUAL)
             USBFS_ARB_CFG_REG = USBFS_ARB_CFG_MANUAL_DMA;
-        #endif   /* End USBFS_EP_MM == USBFS__EP_DMAMANUAL */
+        #endif   /*  USBFS_EP_MM == USBFS__EP_DMAMANUAL */
         #if(USBFS_EP_MM == USBFS__EP_DMAAUTO)
             /*Set cfg cmplt this rises DMA request when the full configuration is done */
             USBFS_ARB_CFG_REG = USBFS_ARB_CFG_AUTO_DMA | USBFS_ARB_CFG_AUTO_MEM;
-        #endif   /* End USBFS_EP_MM == USBFS__EP_DMAAUTO */
-    #endif   /* End USBFS_EP_MM != USBFS__EP_MANUAL */
+            #if(USBFS_EP_DMA_AUTO_OPT == 0u)
+                /* Init interrupt which handles verification of the successful DMA transaction */
+                USBFS_EP_DMA_Done_isr_StartEx(&USBFS_EP_DMA_DONE_ISR);
+                USBFS_EP17_DMA_Done_SR_InterruptEnable();
+                USBFS_EP8_DMA_Done_SR_InterruptEnable();
+            #endif /* USBFS_EP_DMA_AUTO_OPT == 0u */
+        #endif   /*  USBFS_EP_MM == USBFS__EP_DMAAUTO */
+    #endif   /*  USBFS_EP_MM != USBFS__EP_MANUAL */
 
     USBFS_transferState = USBFS_TRANS_STATE_IDLE;
 
@@ -395,7 +426,7 @@ void USBFS_InitComponent(uint8 device, uint8 mode)
                 USBFS_CR1_REG = USBFS_CR1_ENABLE_LOCK;
             #else
                 USBFS_CR1_REG = USBFS_CR1_ENABLE_LOCK | USBFS_CR1_REG_ENABLE;
-            #endif /* End USBFS_VDDD_MV < USBFS_3500MV */
+            #endif /*  USBFS_VDDD_MV < USBFS_3500MV */
             break;
     }
 
@@ -535,7 +566,7 @@ void USBFS_Stop(void)
 
     #if(USBFS_EP_MM != USBFS__EP_MANUAL)
         USBFS_Stop_DMA(USBFS_MAX_EP);     /* Stop all DMAs */
-    #endif   /* End USBFS_EP_MM != USBFS__EP_MANUAL */
+    #endif   /*  USBFS_EP_MM != USBFS__EP_MANUAL */
 
     /* Disable the SIE */
     USBFS_CR0_REG &= (uint8)(~USBFS_CR0_ENABLE);
@@ -551,28 +582,28 @@ void USBFS_Stop(void)
     CyIntDisable(USBFS_EP_0_VECT_NUM);
     #if(USBFS_EP1_ISR_REMOVE == 0u)
         CyIntDisable(USBFS_EP_1_VECT_NUM);
-    #endif   /* End USBFS_EP1_ISR_REMOVE */
+    #endif   /*  USBFS_EP1_ISR_REMOVE */
     #if(USBFS_EP2_ISR_REMOVE == 0u)
         CyIntDisable(USBFS_EP_2_VECT_NUM);
-    #endif   /* End USBFS_EP2_ISR_REMOVE */
+    #endif   /*  USBFS_EP2_ISR_REMOVE */
     #if(USBFS_EP3_ISR_REMOVE == 0u)
         CyIntDisable(USBFS_EP_3_VECT_NUM);
-    #endif   /* End USBFS_EP3_ISR_REMOVE */
+    #endif   /*  USBFS_EP3_ISR_REMOVE */
     #if(USBFS_EP4_ISR_REMOVE == 0u)
         CyIntDisable(USBFS_EP_4_VECT_NUM);
-    #endif   /* End USBFS_EP4_ISR_REMOVE */
+    #endif   /*  USBFS_EP4_ISR_REMOVE */
     #if(USBFS_EP5_ISR_REMOVE == 0u)
         CyIntDisable(USBFS_EP_5_VECT_NUM);
-    #endif   /* End USBFS_EP5_ISR_REMOVE */
+    #endif   /*  USBFS_EP5_ISR_REMOVE */
     #if(USBFS_EP6_ISR_REMOVE == 0u)
         CyIntDisable(USBFS_EP_6_VECT_NUM);
-    #endif   /* End USBFS_EP6_ISR_REMOVE */
+    #endif   /*  USBFS_EP6_ISR_REMOVE */
     #if(USBFS_EP7_ISR_REMOVE == 0u)
         CyIntDisable(USBFS_EP_7_VECT_NUM);
-    #endif   /* End USBFS_EP7_ISR_REMOVE */
+    #endif   /*  USBFS_EP7_ISR_REMOVE */
     #if(USBFS_EP8_ISR_REMOVE == 0u)
         CyIntDisable(USBFS_EP_8_VECT_NUM);
-    #endif   /* End USBFS_EP8_ISR_REMOVE */
+    #endif   /*  USBFS_EP8_ISR_REMOVE */
 
     /* Clear all of the component data */
     USBFS_configuration = 0u;
@@ -768,7 +799,7 @@ uint16 USBFS_GetEPCount(uint8 epNumber)
     *  No.
     *
     *******************************************************************************/
-    void USBFS_InitEP_DMA(uint8 epNumber, const uint8 *pData)
+    void USBFS_InitEP_DMA(uint8 epNumber, const uint8* pData)
                                                                     
     {
         uint16 src;
@@ -788,56 +819,56 @@ uint16 USBFS_GetEPCount(uint8 epNumber)
                 src = HI16(CYDEV_PERIPH_BASE);
                 dst = HI16(pData);
             }
-        #endif  /* End C51 */
+        #endif  /*  C51 */
         switch(epNumber)
         {
             case USBFS_EP1:
                 #if(USBFS_DMA1_REMOVE == 0u)
                     USBFS_DmaChan[epNumber] = USBFS_ep1_DmaInitialize(
                         USBFS_DMA_BYTES_PER_BURST, USBFS_DMA_REQUEST_PER_BURST, src, dst);
-                #endif   /* End USBFS_DMA1_REMOVE */
+                #endif   /*  USBFS_DMA1_REMOVE */
                 break;
             case USBFS_EP2:
                 #if(USBFS_DMA2_REMOVE == 0u)
                     USBFS_DmaChan[epNumber] = USBFS_ep2_DmaInitialize(
                         USBFS_DMA_BYTES_PER_BURST, USBFS_DMA_REQUEST_PER_BURST, src, dst);
-                #endif   /* End USBFS_DMA2_REMOVE */
+                #endif   /*  USBFS_DMA2_REMOVE */
                 break;
             case USBFS_EP3:
                 #if(USBFS_DMA3_REMOVE == 0u)
                     USBFS_DmaChan[epNumber] = USBFS_ep3_DmaInitialize(
                         USBFS_DMA_BYTES_PER_BURST, USBFS_DMA_REQUEST_PER_BURST, src, dst);
-                #endif   /* End USBFS_DMA3_REMOVE */
+                #endif   /*  USBFS_DMA3_REMOVE */
                 break;
             case USBFS_EP4:
                 #if(USBFS_DMA4_REMOVE == 0u)
                     USBFS_DmaChan[epNumber] = USBFS_ep4_DmaInitialize(
                         USBFS_DMA_BYTES_PER_BURST, USBFS_DMA_REQUEST_PER_BURST, src, dst);
-                #endif   /* End USBFS_DMA4_REMOVE */
+                #endif   /*  USBFS_DMA4_REMOVE */
                 break;
             case USBFS_EP5:
                 #if(USBFS_DMA5_REMOVE == 0u)
                     USBFS_DmaChan[epNumber] = USBFS_ep5_DmaInitialize(
                         USBFS_DMA_BYTES_PER_BURST, USBFS_DMA_REQUEST_PER_BURST, src, dst);
-                #endif   /* End USBFS_DMA5_REMOVE */
+                #endif   /*  USBFS_DMA5_REMOVE */
                 break;
             case USBFS_EP6:
                 #if(USBFS_DMA6_REMOVE == 0u)
                     USBFS_DmaChan[epNumber] = USBFS_ep6_DmaInitialize(
                         USBFS_DMA_BYTES_PER_BURST, USBFS_DMA_REQUEST_PER_BURST, src, dst);
-                #endif   /* End USBFS_DMA6_REMOVE */
+                #endif   /*  USBFS_DMA6_REMOVE */
                 break;
             case USBFS_EP7:
                 #if(USBFS_DMA7_REMOVE == 0u)
                     USBFS_DmaChan[epNumber] = USBFS_ep7_DmaInitialize(
                         USBFS_DMA_BYTES_PER_BURST, USBFS_DMA_REQUEST_PER_BURST, src, dst);
-                #endif   /* End USBFS_DMA7_REMOVE */
+                #endif   /*  USBFS_DMA7_REMOVE */
                 break;
             case USBFS_EP8:
                 #if(USBFS_DMA8_REMOVE == 0u)
                     USBFS_DmaChan[epNumber] = USBFS_ep8_DmaInitialize(
                         USBFS_DMA_BYTES_PER_BURST, USBFS_DMA_REQUEST_PER_BURST, src, dst);
-                #endif   /* End USBFS_DMA8_REMOVE */
+                #endif   /*  USBFS_DMA8_REMOVE */
                 break;
             default:
                 /* Do not support EP0 DMA transfers */
@@ -846,6 +877,10 @@ uint16 USBFS_GetEPCount(uint8 epNumber)
         if((epNumber > USBFS_EP0) && (epNumber < USBFS_MAX_EP))
         {
             USBFS_DmaTd[epNumber] = CyDmaTdAllocate();
+            #if ((USBFS_EP_MM == USBFS__EP_DMAAUTO) && (USBFS_EP_DMA_AUTO_OPT == 0u))
+                USBFS_DmaNextTd[epNumber] = CyDmaTdAllocate();
+            #endif /*  ((USBFS_EP_MM == USBFS__EP_DMAAUTO) && (USBFS_EP_DMA_AUTO_OPT == 0u)) */
+
         }
     }
 
@@ -879,11 +914,74 @@ uint16 USBFS_GetEPCount(uint8 epNumber)
                 CyDmaTdFree(USBFS_DmaTd[i]);
                 USBFS_DmaTd[i] = DMA_INVALID_TD;
             }
+            #if ((USBFS_EP_MM == USBFS__EP_DMAAUTO) && (USBFS_EP_DMA_AUTO_OPT == 0u))
+                if(USBFS_DmaNextTd[i] != DMA_INVALID_TD)
+                {
+                    CyDmaTdFree(USBFS_DmaNextTd[i]);
+                    USBFS_DmaNextTd[i] = DMA_INVALID_TD;
+                }
+            #endif /* ((USBFS_EP_MM == USBFS__EP_DMAAUTO) && (USBFS_EP_DMA_AUTO_OPT == 0u)) */
             i++;
         }while((i < USBFS_MAX_EP) && (epNumber == USBFS_MAX_EP));
     }
 
-#endif /* End USBFS_EP_MM != USBFS__EP_MANUAL */
+#endif /*  USBFS_EP_MM != USBFS__EP_MANUAL */
+
+
+#if ((USBFS_EP_MM == USBFS__EP_DMAAUTO) && (USBFS_EP_DMA_AUTO_OPT == 0u))
+
+
+    /*******************************************************************************
+    * Function Name: USBFS_LoadNextInEP
+    ********************************************************************************
+    *
+    * Summary:
+    *  This internal function is used for IN endpoint DMA reconfiguration in
+    *  Auto DMA mode.
+    *
+    * Parameters:
+    *  epNumber: Contains the data endpoint number.
+    *  mode:   0 - Configure DMA to send the the rest of data.
+    *          1 - Configure DMA to repeat 2 last bytes of the first burst.
+    *
+    * Return:
+    *  None.
+    *
+    *******************************************************************************/
+    void USBFS_LoadNextInEP(uint8 epNumber, uint8 mode) 
+    {
+        reg16 *convert;
+
+        if(mode == 0u)
+        {
+            /* Configure DMA to send the the rest of data */
+            /* CyDmaTdSetConfiguration API is optimised to change only transfer length and configure TD */
+            convert = (reg16 *) &CY_DMA_TDMEM_STRUCT_PTR[USBFS_DmaTd[epNumber]].TD0[0u];
+            /* Set transfer length */
+            CY_SET_REG16(convert, USBFS_inLength[epNumber] - USBFS_DMA_BYTES_PER_BURST);
+            /* CyDmaTdSetAddress API is optimized to change only source address */
+            convert = (reg16 *) &CY_DMA_TDMEM_STRUCT_PTR[USBFS_DmaTd[epNumber]].TD1[0u];
+            CY_SET_REG16(convert, LO16((uint32)USBFS_inDataPointer[epNumber] +
+                                            USBFS_DMA_BYTES_PER_BURST));
+            USBFS_inBufFull[epNumber] = 1u;
+        }
+        else
+        {
+            /* Configure DMA to repeat 2 last bytes of the first burst. */
+            /* CyDmaTdSetConfiguration API is optimised to change only transfer length and configure TD */
+            convert = (reg16 *) &CY_DMA_TDMEM_STRUCT_PTR[USBFS_DmaTd[epNumber]].TD0[0u];
+            /* Set transfer length */
+            CY_SET_REG16(convert, USBFS_DMA_BYTES_REPEAT);
+            /* CyDmaTdSetAddress API is optimized to change only source address */
+            convert = (reg16 *) &CY_DMA_TDMEM_STRUCT_PTR[USBFS_DmaTd[epNumber]].TD1[0u];
+            CY_SET_REG16(convert,  LO16((uint32)USBFS_inDataPointer[epNumber] +
+                                   USBFS_DMA_BYTES_PER_BURST - USBFS_DMA_BYTES_REPEAT));
+        }
+
+        /* CyDmaChSetInitialTd API is optimised to init TD */
+        CY_DMA_CH_STRUCT_PTR[USBFS_DmaChan[epNumber]].basic_status[1u] = USBFS_DmaTd[epNumber];
+    }
+#endif /* ((USBFS_EP_MM == USBFS__EP_DMAAUTO) && (USBFS_EP_DMA_AUTO_OPT == 0u)) */
 
 
 /*******************************************************************************
@@ -891,8 +989,7 @@ uint16 USBFS_GetEPCount(uint8 epNumber)
 ********************************************************************************
 *
 * Summary:
-*  Loads and enables the specified USB data endpoint for an IN interrupt or bulk
-*  transfer.
+*  Loads and enables the specified USB data endpoint for an IN transfer.
 *
 * Parameters:
 *  epNumber: Contains the data endpoint number.
@@ -916,7 +1013,7 @@ void USBFS_LoadInEP(uint8 epNumber, const uint8 pData[], uint16 length)
     reg8 *p;
     #if(USBFS_EP_MM == USBFS__EP_MANUAL)
         uint16 i;
-    #endif /* End USBFS_EP_MM == USBFS__EP_MANUAL */
+    #endif /*  USBFS_EP_MM == USBFS__EP_MANUAL */
 
     if((epNumber > USBFS_EP0) && (epNumber < USBFS_MAX_EP))
     {
@@ -929,7 +1026,7 @@ void USBFS_LoadInEP(uint8 epNumber, const uint8 pData[], uint16 length)
             {
                 length = USBFS_EPX_DATA_BUF_MAX - USBFS_EP[epNumber].buffOffset;
             }
-        #endif /* End USBFS_EP_MM != USBFS__EP_DMAAUTO */
+        #endif /*  USBFS_EP_MM != USBFS__EP_DMAAUTO */
 
         /* Set the count and data toggle */
         CY_SET_REG8((reg8 *)(USBFS_SIE_EP1_CNT0_IND + ri),
@@ -950,15 +1047,15 @@ void USBFS_LoadInEP(uint8 epNumber, const uint8 pData[], uint16 length)
             CY_SET_REG8((reg8 *)(USBFS_SIE_EP1_CR0_IND + ri), USBFS_EP[epNumber].epMode);
         #else
             /* Init DMA if it was not initialized */
-            if(USBFS_DmaTd[epNumber] == DMA_INVALID_TD)
+            if (USBFS_DmaTd[epNumber] == DMA_INVALID_TD)
             {
                 USBFS_InitEP_DMA(epNumber, pData);
             }
-        #endif /* End USBFS_EP_MM == USBFS__EP_MANUAL */
+        #endif /*  USBFS_EP_MM == USBFS__EP_MANUAL */
 
         #if(USBFS_EP_MM == USBFS__EP_DMAMANUAL)
             USBFS_EP[epNumber].apiEpState = USBFS_NO_EVENT_PENDING;
-            if((pData != NULL) && (length > 0u))
+            if ((pData != NULL) && (length > 0u))
             {
                 /* Enable DMA in mode2 for transferring data */
                 (void) CyDmaChDisable(USBFS_DmaChan[epNumber]);
@@ -978,16 +1075,37 @@ void USBFS_LoadInEP(uint8 epNumber, const uint8 pData[], uint16 length)
                 /* When zero-length packet - write the Mode register directly */
                 CY_SET_REG8((reg8 *)(USBFS_SIE_EP1_CR0_IND + ri), USBFS_EP[epNumber].epMode);
             }
-        #endif /* End USBFS_EP_MM == USBFS__EP_DMAMANUAL */
+        #endif /*  USBFS_EP_MM == USBFS__EP_DMAMANUAL */
 
         #if(USBFS_EP_MM == USBFS__EP_DMAAUTO)
-            if(pData != NULL)
+            if (pData != NULL)
             {
                 /* Enable DMA in mode3 for transferring data */
                 (void) CyDmaChDisable(USBFS_DmaChan[epNumber]);
+            #if (USBFS_EP_DMA_AUTO_OPT == 0u)
+                USBFS_inLength[epNumber] = length;
+                USBFS_inDataPointer[epNumber] = pData;
+                /* Configure DMA to send the data only for the first burst */
+                (void) CyDmaTdSetConfiguration(USBFS_DmaTd[epNumber],
+                    (length > USBFS_DMA_BYTES_PER_BURST) ? USBFS_DMA_BYTES_PER_BURST : length,
+                    USBFS_DmaNextTd[epNumber], TD_TERMIN_EN | TD_INC_SRC_ADR);
+                (void) CyDmaTdSetAddress(USBFS_DmaTd[epNumber],  LO16((uint32)pData), LO16((uint32)p));
+                /* The second TD will be executed only when the first one fails.
+                *  The intention of this TD is to generate NRQ interrupt
+                *  and repeat 2 last bytes of the first burst.
+                */
+                (void) CyDmaTdSetConfiguration(USBFS_DmaNextTd[epNumber], 1u,
+                                               USBFS_DmaNextTd[epNumber],
+                                               USBFS_epX_TD_TERMOUT_EN[epNumber]);
+                /* Configure DmaNextTd to clear Data ready status */
+                (void) CyDmaTdSetAddress(USBFS_DmaNextTd[epNumber],  LO16((uint32)&clearInDataRdyStatus),
+                                                                LO16((uint32)(USBFS_ARB_EP1_CFG_IND + ri)));
+            #else /* Configure DMA to send all data*/
                 (void) CyDmaTdSetConfiguration(USBFS_DmaTd[epNumber], length,
                                                USBFS_DmaTd[epNumber], TD_TERMIN_EN | TD_INC_SRC_ADR);
                 (void) CyDmaTdSetAddress(USBFS_DmaTd[epNumber],  LO16((uint32)pData), LO16((uint32)p));
+            #endif /* USBFS_EP_DMA_AUTO_OPT == 0u */
+
                 /* Clear Any potential pending DMA requests before starting the DMA channel to transfer data */
                 (void) CyDmaClearPendingDrq(USBFS_DmaChan[epNumber]);
                 /* Enable the DMA */
@@ -999,8 +1117,28 @@ void USBFS_LoadInEP(uint8 epNumber, const uint8 pData[], uint16 length)
                 USBFS_EP[epNumber].apiEpState = USBFS_NO_EVENT_PENDING;
                 if(length > 0u)
                 {
+                #if (USBFS_EP_DMA_AUTO_OPT == 0u)
+                    USBFS_inLength[epNumber] = length;
+                    USBFS_inBufFull[epNumber] = 0u;
+                    (void) CyDmaChDisable(USBFS_DmaChan[epNumber]);
+                    /* Configure DMA to send the data only for the first burst */
+                    (void) CyDmaTdSetConfiguration(
+                        USBFS_DmaTd[epNumber], (length > USBFS_DMA_BYTES_PER_BURST) ?
+                        USBFS_DMA_BYTES_PER_BURST : length,
+                        USBFS_DmaNextTd[epNumber], TD_TERMIN_EN | TD_INC_SRC_ADR );
+                    (void) CyDmaTdSetAddress(USBFS_DmaTd[epNumber],
+                                             LO16((uint32)USBFS_inDataPointer[epNumber]), LO16((uint32)p));
+                    /* Clear Any potential pending DMA requests before starting the DMA channel to transfer data */
+                    (void) CyDmaClearPendingDrq(USBFS_DmaChan[epNumber]);
+                    /* Enable the DMA */
+                    (void) CyDmaChSetInitialTd(USBFS_DmaChan[epNumber], USBFS_DmaTd[epNumber]);
+                    (void) CyDmaChEnable(USBFS_DmaChan[epNumber], 1u);
+                #endif /* (USBFS_EP_DMA_AUTO_OPT == 0u) */
+
                     /* Set Data ready status, This will generate DMA request */
-                    * (reg8 *)(USBFS_ARB_EP1_CFG_IND + ri) |= USBFS_ARB_EPX_CFG_IN_DATA_RDY;
+                    #ifndef USBFS_MANUAL_IN_EP_ARM
+                        * (reg8 *)(USBFS_ARB_EP1_CFG_IND + ri) |= USBFS_ARB_EPX_CFG_IN_DATA_RDY;
+                    #endif  /* USBFS_MANUAL_IN_EP_ARM */
                     /* Mode register will be written in arb ISR(In Buffer Full) after first DMA transfer complete */
                 }
                 else
@@ -1009,8 +1147,7 @@ void USBFS_LoadInEP(uint8 epNumber, const uint8 pData[], uint16 length)
                     CY_SET_REG8((reg8 *)(USBFS_SIE_EP1_CR0_IND + ri), USBFS_EP[epNumber].epMode);
                 }
             }
-        #endif /* End USBFS_EP_MM == USBFS__EP_DMAAUTO */
-
+        #endif /*  USBFS_EP_MM == USBFS__EP_DMAAUTO */
     }
 }
 
@@ -1047,10 +1184,10 @@ uint16 USBFS_ReadOutEP(uint8 epNumber, uint8 pData[], uint16 length)
     reg8 *p;
     #if(USBFS_EP_MM == USBFS__EP_MANUAL)
         uint16 i;
-    #endif /* End USBFS_EP_MM == USBFS__EP_MANUAL */
+    #endif /*  USBFS_EP_MM == USBFS__EP_MANUAL */
     #if(USBFS_EP_MM != USBFS__EP_DMAAUTO)
         uint16 xferCount;
-    #endif /* End USBFS_EP_MM != USBFS__EP_DMAAUTO */
+    #endif /*  USBFS_EP_MM != USBFS__EP_DMAAUTO */
 
     if((epNumber > USBFS_EP0) && (epNumber < USBFS_MAX_EP) && (pData != NULL))
     {
@@ -1064,7 +1201,7 @@ uint16 USBFS_ReadOutEP(uint8 epNumber, uint8 pData[], uint16 length)
             {
                 length = xferCount;
             }
-        #endif /* End USBFS_EP_MM != USBFS__EP_DMAAUTO */
+        #endif /*  USBFS_EP_MM != USBFS__EP_DMAAUTO */
 
         #if(USBFS_EP_MM == USBFS__EP_MANUAL)
             /* Copy the data using the arbiter data register */
@@ -1081,7 +1218,8 @@ uint16 USBFS_ReadOutEP(uint8 epNumber, uint8 pData[], uint16 length)
             {
                 USBFS_InitEP_DMA(epNumber, pData);
             }
-        #endif /* End USBFS_EP_MM == USBFS__EP_MANUAL */
+
+        #endif /*  USBFS_EP_MM == USBFS__EP_MANUAL */
 
         #if(USBFS_EP_MM == USBFS__EP_DMAMANUAL)
             /* Enable DMA in mode2 for transferring data */
@@ -1097,7 +1235,7 @@ uint16 USBFS_ReadOutEP(uint8 epNumber, uint8 pData[], uint16 length)
             * (reg8 *)(USBFS_ARB_EP1_CFG_IND + ri) |= USBFS_ARB_EPX_CFG_DMA_REQ;
             * (reg8 *)(USBFS_ARB_EP1_CFG_IND + ri) &= ((uint8)(~USBFS_ARB_EPX_CFG_DMA_REQ));
             /* Out EP will be (re)armed in arb ISR after transfer complete */
-        #endif /* End USBFS_EP_MM == USBFS__EP_DMAMANUAL */
+        #endif /*  USBFS_EP_MM == USBFS__EP_DMAMANUAL */
 
         #if(USBFS_EP_MM == USBFS__EP_DMAAUTO)
             /* Enable DMA in mode3 for transferring data */
@@ -1112,7 +1250,7 @@ uint16 USBFS_ReadOutEP(uint8 epNumber, uint8 pData[], uint16 length)
             (void) CyDmaChSetInitialTd(USBFS_DmaChan[epNumber], USBFS_DmaTd[epNumber]);
             (void) CyDmaChEnable(USBFS_DmaChan[epNumber], 1u);
             /* Out EP will be (re)armed in arb ISR after transfer complete */
-        #endif /* End USBFS_EP_MM == USBFS__EP_DMAAUTO */
+        #endif /*  USBFS_EP_MM == USBFS__EP_DMAAUTO */
 
     }
     else

@@ -17,6 +17,7 @@
 
 #include "device.h"
 #include "config.h"
+#include "debug.h"
 #include "USBFS.h"
 #include "led.h"
 
@@ -29,7 +30,7 @@
 
 #include <string.h>
 
-static const uint16_t FIRMWARE_VERSION = 0x0403;
+static const uint16_t FIRMWARE_VERSION = 0x0410;
 
 enum USB_ENDPOINTS
 {
@@ -99,12 +100,8 @@ writeFlashCommand(const uint8_t* cmd, size_t cmdSize)
 	}
 	else
 	{
-		uint8_t spcBuffer[CYDEV_FLS_ROW_SIZE + CYDEV_ECC_ROW_SIZE];
-		CyFlash_Start();
-		CySetFlashEEBuffer(spcBuffer);
 		CySetTemp();
 		int status = CyWriteRowData(flashArray, flashRow, cmd + 1);
-		CyFlash_Stop();
 
 		uint8_t response[] =
 		{
@@ -125,6 +122,15 @@ pingCommand()
 }
 
 static void
+sdInfoCommand()
+{
+	uint8_t response[sizeof(sdDev.csd) + sizeof(sdDev.cid)];
+	memcpy(response, sdDev.csd, sizeof(sdDev.csd));
+	memcpy(response + sizeof(sdDev.csd), sdDev.cid, sizeof(sdDev.cid));
+
+	hidPacket_send(response, sizeof(response));
+}
+static void
 processCommand(const uint8_t* cmd, size_t cmdSize)
 {
 	switch (cmd[0])
@@ -143,6 +149,10 @@ processCommand(const uint8_t* cmd, size_t cmdSize)
 
 	case CONFIG_REBOOT:
 		Bootloadable_1_Load();
+		break;
+
+	case CONFIG_SDINFO:
+		sdInfoCommand();
 		break;
 
 	case CONFIG_NONE: // invalid
@@ -262,7 +272,10 @@ void debugPoll()
 		hidBuffer[24] = scsiDev.cmdCount;
 		hidBuffer[25] = scsiDev.watchdogTick;
 		hidBuffer[26] = blockDev.state;
-		
+		hidBuffer[27] = scsiDev.lastSenseASC >> 8;
+		hidBuffer[28] = scsiDev.lastSenseASC;
+
+
 		hidBuffer[58] = sdDev.capacity >> 24;
 		hidBuffer[59] = sdDev.capacity >> 16;
 		hidBuffer[60] = sdDev.capacity >> 8;
@@ -300,6 +313,16 @@ void debugInit()
 	Debug_Timer_Start();
 }
 
+void debugPause()
+{
+	Debug_Timer_Stop();
+}
+
+void debugResume()
+{
+	Debug_Timer_Start();
+}
+
 // Public method for storing MODE SELECT results.
 void configSave(int scsiId, uint16_t bytesPerSector)
 {
@@ -317,16 +340,11 @@ void configSave(int scsiId, uint16_t bytesPerSector)
 			memcpy(rowCfgData, tgt, sizeof(rowData));
 			rowCfgData->bytesPerSector = bytesPerSector;
 
-
-			uint8_t spcBuffer[CYDEV_FLS_ROW_SIZE + CYDEV_ECC_ROW_SIZE];
-			CyFlash_Start();
-			CySetFlashEEBuffer(spcBuffer);
 			CySetTemp();
 			CyWriteRowData(
 				SCSI_CONFIG_ARRAY,
 				SCSI_CONFIG_0_ROW + (cfgIdx * SCSI_CONFIG_ROWS),
 				(uint8_t*)rowCfgData);
-			CyFlash_Stop();
 			return;
 		}
 	}

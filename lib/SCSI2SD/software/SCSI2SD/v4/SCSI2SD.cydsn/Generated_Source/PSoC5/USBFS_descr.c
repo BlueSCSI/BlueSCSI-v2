@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: USBFS_descr.c
-* Version 2.60
+* Version 2.80
 *
 * Description:
 *  USB descriptors and storage.
@@ -8,7 +8,7 @@
 *  Note:
 *
 ********************************************************************************
-* Copyright 2008-2013, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2014, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
@@ -20,8 +20,7 @@
 
 /*****************************************************************************
 *  User supplied descriptors.  If you want to specify your own descriptors,
-*  remove the comments around the define USER_SUPPLIED_DESCRIPTORS below and
-*  add your descriptors.
+*  define USER_SUPPLIED_DESCRIPTORS below and add your descriptors.
 *****************************************************************************/
 /* `#START USER_DESCRIPTORS_DECLARATIONS` Place your declaration here */
 
@@ -95,7 +94,7 @@ const uint8 CYCODE USBFS_DEVICE0_CONFIGURATION0_DESCR[73u] = {
 /*  bEndpointAddress                       */ 0x01u,
 /*  bmAttributes                           */ 0x03u,
 /*  wMaxPacketSize                         */ 0x40u, 0x00u,
-/*  bInterval                              */ 0x80u,
+/*  bInterval                              */ 0x20u,
 /*********************************************************************
 * Endpoint Descriptor
 *********************************************************************/
@@ -104,7 +103,7 @@ const uint8 CYCODE USBFS_DEVICE0_CONFIGURATION0_DESCR[73u] = {
 /*  bEndpointAddress                       */ 0x82u,
 /*  bmAttributes                           */ 0x03u,
 /*  wMaxPacketSize                         */ 0x40u, 0x00u,
-/*  bInterval                              */ 0x40u,
+/*  bInterval                              */ 0x20u,
 /*********************************************************************
 * Interface Descriptor
 *********************************************************************/
@@ -136,7 +135,7 @@ const uint8 CYCODE USBFS_DEVICE0_CONFIGURATION0_DESCR[73u] = {
 /*  bEndpointAddress                       */ 0x03u,
 /*  bmAttributes                           */ 0x03u,
 /*  wMaxPacketSize                         */ 0x40u, 0x00u,
-/*  bInterval                              */ 0x80u,
+/*  bInterval                              */ 0x20u,
 /*********************************************************************
 * Endpoint Descriptor
 *********************************************************************/
@@ -145,7 +144,7 @@ const uint8 CYCODE USBFS_DEVICE0_CONFIGURATION0_DESCR[73u] = {
 /*  bEndpointAddress                       */ 0x84u,
 /*  bmAttributes                           */ 0x03u,
 /*  wMaxPacketSize                         */ 0x40u, 0x00u,
-/*  bInterval                              */ 0x40u
+/*  bInterval                              */ 0x20u
 };
 
 /*********************************************************************

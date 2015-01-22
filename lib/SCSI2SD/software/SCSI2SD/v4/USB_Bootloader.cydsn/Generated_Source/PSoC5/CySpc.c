@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: CySpc.c
-* Version 4.0
+* Version 4.20
 *
 *  Description:
 *   Provides an API for the System Performance Component.
@@ -8,7 +8,7 @@
 *   application.
 *
 ********************************************************************************
-* Copyright 2008-2013, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2014, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
@@ -231,6 +231,11 @@ cystatus CySpcLoadMultiByte(uint8 array, uint16 address, const uint8 buffer[], u
 * Summary:
 *  Loads a row of data into the row latch of a Flash/EEPROM array.
 *
+*  The buffer pointer should point to the data that should be written to the
+*  flash row directly (no data in ECC/flash will be preserved). It is Flash API
+*  responsibility to prepare data: the preserved data are copied from flash into
+*  array with the modified data.
+*
 * Parameters:
 *  uint8 array:
 *   Id of the array.
@@ -271,6 +276,149 @@ cystatus CySpcLoadRow(uint8 array, const uint8 buffer[], uint16 size)
             {
                 CY_SPC_CPU_DATA_REG = buffer[i];
             }
+        }
+        else
+        {
+            status = CYRET_CANCELED;
+        }
+    }
+    else
+    {
+        status = CYRET_LOCKED;
+    }
+
+    return(status);
+}
+
+
+/*******************************************************************************
+* Function Name: CySpcLoadRowFull
+********************************************************************************
+* Summary:
+*  Loads a row of data into the row latch of a Flash/EEPROM array.
+*
+*  The only data that are going to be changed should be passed. The function
+*  will handle unmodified data preservation based on DWR settings and input
+*  parameters.
+*
+* Parameters:
+*  uint8 array:
+*   Id of the array.
+*
+*  uint16 row:
+*   Flash row number to be loaded.
+*
+*  uint8* buffer:
+*   Data to be loaded to the row latch
+*
+*  uint8 size:
+*   The number of data bytes that the SPC expects to be written. Depends on the
+*   type of the array and, if the array is Flash, whether ECC is being enabled
+*   or not. There are following values: flash row latch size with ECC enabled,
+*   flash row latch size with ECC disabled and EEPROM row latch size.
+*
+* Return:
+*  CYRET_STARTED
+*  CYRET_CANCELED
+*  CYRET_LOCKED
+*
+*******************************************************************************/
+cystatus CySpcLoadRowFull(uint8 array, uint16 row, const uint8 buffer[], uint16 size)\
+
+{
+    cystatus status = CYRET_STARTED;
+    uint16 i;
+
+    #if (CYDEV_ECC_ENABLE == 0)
+        uint32 offset;
+    #endif /* (CYDEV_ECC_ENABLE == 0) */
+
+    /* Make sure the SPC is ready to accept command */
+    if(CY_SPC_IDLE)
+    {
+        CY_SPC_CPU_DATA_REG = CY_SPC_KEY_ONE;
+        CY_SPC_CPU_DATA_REG = CY_SPC_KEY_TWO(CY_SPC_CMD_LD_ROW);
+        CY_SPC_CPU_DATA_REG = CY_SPC_CMD_LD_ROW;
+
+        /* Make sure the command was accepted */
+        if(CY_SPC_BUSY)
+        {
+            CY_SPC_CPU_DATA_REG = array;
+
+            /*******************************************************************
+            * If "Enable Error Correcting Code (ECC)" and "Store Configuration
+            * Data in ECC" DWR options are disabled, ECC section is available
+            * for user data.
+            *******************************************************************/
+            #if ((CYDEV_ECC_ENABLE == 0u) && (CYDEV_CONFIGURATION_ECC == 0u))
+
+                /*******************************************************************
+                * If size parameter equals size of the ECC row and selected array
+                * identification corresponds to the flash array (but not to EEPROM
+                * array) then data are going to be written to the ECC section.
+                * In this case flash data must be preserved. The flash data copied
+                * from flash data section to the SPC data register.
+                *******************************************************************/
+                if ((size == CYDEV_ECC_ROW_SIZE) && (array <= CY_SPC_LAST_FLASH_ARRAYID))
+                {
+                    offset = CYDEV_FLS_BASE +
+                             ((uint32) array * CYDEV_FLS_SECTOR_SIZE) +
+                             ((uint32)   row * CYDEV_FLS_ROW_SIZE   );
+
+                    for (i = 0u; i < CYDEV_FLS_ROW_SIZE; i++)
+                    {
+                        CY_SPC_CPU_DATA_REG = CY_GET_XTND_REG8((void CYFAR *)(offset + i));
+                    }
+                }
+
+            #endif /* ((CYDEV_ECC_ENABLE == 0u) && (CYDEV_CONFIGURATION_ECC == 0u)) */
+
+
+            for(i = 0u; i < size; i++)
+            {
+                CY_SPC_CPU_DATA_REG = buffer[i];
+            }
+
+
+            /*******************************************************************
+            * If "Enable Error Correcting Code (ECC)" DWR option is disabled,
+            * ECC section can be used for storing device configuration data
+            * ("Store Configuration Data in ECC" DWR option is enabled) or for
+            * storing user data in the ECC section ("Store Configuration Data in
+            * ECC" DWR option is enabled). In both cases, the data in the ECC
+            * section must be preserved if flash data is written.
+            *******************************************************************/
+            #if (CYDEV_ECC_ENABLE == 0)
+
+
+                /*******************************************************************
+                * If size parameter equals size of the flash row and selected array
+                * identification corresponds to the flash array (but not to EEPROM
+                * array) then data are going to be written to the flash data
+                * section. In this case, ECC section data must be preserved.
+                * The ECC section data copied from ECC section to the SPC data
+                * register.
+                *******************************************************************/
+                if ((size == CYDEV_FLS_ROW_SIZE) && (array <= CY_SPC_LAST_FLASH_ARRAYID))
+                {
+                    offset = CYDEV_ECC_BASE +
+                            ((uint32) array * CYDEV_ECC_SECTOR_SIZE) +
+                            ((uint32) row   * CYDEV_ECC_ROW_SIZE   );
+
+                    for (i = 0u; i < CYDEV_ECC_ROW_SIZE; i++)
+                    {
+                        CY_SPC_CPU_DATA_REG = CY_GET_XTND_REG8((void CYFAR *)(offset + i));
+                    }
+                }
+
+            #else
+
+                if(0u != row)
+                {
+                    /* To remove unreferenced local variable warning */
+                }
+
+            #endif /* (CYDEV_ECC_ENABLE == 0) */
         }
         else
         {
@@ -551,4 +699,38 @@ void CySpcUnlock(void)
 }
 
 
+/*******************************************************************************
+* Function Name: CySpcGetAlgorithm
+********************************************************************************
+* Summary:
+*  Downloads SPC algorithm from SPC SROM into SRAM.
+*
+* Parameters:
+*  None
+*
+* Return:
+*  CYRET_STARTED
+*  CYRET_LOCKED
+*
+*******************************************************************************/
+cystatus CySpcGetAlgorithm(void)
+{
+    cystatus status = CYRET_STARTED;
+
+    /* Make sure the SPC is ready to accept command */
+    if(CY_SPC_IDLE)
+    {
+        CY_SPC_CPU_DATA_REG = CY_SPC_KEY_ONE;
+        CY_SPC_CPU_DATA_REG = CY_SPC_KEY_TWO(CY_SPC_CMD_DWNLD_ALGORITHM);
+        CY_SPC_CPU_DATA_REG = CY_SPC_CMD_DWNLD_ALGORITHM;
+    }
+    else
+    {
+        status = CYRET_LOCKED;
+    }
+
+    return(status);
+}
+
 /* [] END OF FILE */
+

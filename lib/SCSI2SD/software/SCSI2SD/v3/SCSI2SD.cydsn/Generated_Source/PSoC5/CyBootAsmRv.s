@@ -1,12 +1,12 @@
 ;-------------------------------------------------------------------------------
 ; FILENAME: CyBootAsmRv.s
-; Version 4.0
+; Version 4.20
 ;
 ;  DESCRIPTION:
 ;    Assembly routines for RealView.
 ;
 ;-------------------------------------------------------------------------------
-; Copyright 2010-2013, Cypress Semiconductor Corporation.  All rights reserved.
+; Copyright 2010-2014, Cypress Semiconductor Corporation.  All rights reserved.
 ; You may use this file only in accordance with the license, terms, conditions,
 ; disclaimers, and limitations in the end user license agreement accompanying
 ; the software package with which this file was provided.
@@ -110,7 +110,7 @@ byte_4 DCB 0x09
 ;
 ;  Note Implementation of CyEnterCriticalSection manipulates the IRQ enable bit
 ;  with interrupts still enabled. The test and set of the interrupt bits is not
-;  atomic; this is true for both PSoC 3 and PSoC 5. Therefore, to avoid
+;  atomic; this is true for both PSoC 3 and PSoC 5. Therefore, to avoid a
 ;  corrupting processor state, it must be the policy that all interrupt routines
 ;  restore the interrupt enable bits as they were found on entry.
 ;

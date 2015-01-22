@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: USBFS_pm.c
-* Version 2.60
+* Version 2.80
 *
 * Description:
 *  This file provides Suspend/Resume APIs functionality.
@@ -8,7 +8,7 @@
 * Note:
 *
 ********************************************************************************
-* Copyright 2008-2013, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2014, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
@@ -35,7 +35,6 @@ static USBFS_BACKUP_STRUCT  USBFS_backup;
 
 
 #if(USBFS_DP_ISR_REMOVE == 0u)
-
 
     /*******************************************************************************
     * Function Name: USBFS_DP_Interrupt
@@ -119,7 +118,7 @@ void USBFS_RestoreConfig(void)
 ********************************************************************************
 *
 * Summary:
-*  This function disables the USBFS block and prepares for power donwn mode.
+*  This function disables the USBFS block and prepares for power down mode.
 *
 * Parameters:
 *  None.
@@ -145,7 +144,7 @@ void USBFS_Suspend(void)
 
         #if(USBFS_EP_MM != USBFS__EP_MANUAL)
             USBFS_Stop_DMA(USBFS_MAX_EP);     /* Stop all DMAs */
-        #endif   /* End USBFS_EP_MM != USBFS__EP_MANUAL */
+        #endif   /*  USBFS_EP_MM != USBFS__EP_MANUAL */
 
         /* Ensure USB transmit enable is low (USB_USBIO_CR0.ten). - Manual Transmission - Disabled */
         USBFS_USBIO_CR0_REG &= (uint8)~USBFS_USBIO_CR0_TEN;
@@ -158,7 +157,7 @@ void USBFS_Suspend(void)
         /* Disable the SIE */
         USBFS_CR0_REG &= (uint8)~USBFS_CR0_ENABLE;
 
-        CyDelayUs(0u);  /*~50ns delay */
+        CyDelayUs(0u);  /* ~50ns delay */
         /* Store mode and Disable VRegulator*/
         USBFS_backup.mode = USBFS_CR1_REG & USBFS_CR1_REG_ENABLE;
         USBFS_CR1_REG &= (uint8)~USBFS_CR1_REG_ENABLE;
@@ -181,16 +180,16 @@ void USBFS_Suspend(void)
     {
         USBFS_backup.enableState = 0u;
     }
+
     CyExitCriticalSection(enableInterrupts);
 
     /* Set the DP Interrupt for wake-up from sleep mode. */
     #if(USBFS_DP_ISR_REMOVE == 0u)
-        (void) CyIntSetVector(USBFS_DP_INTC_VECT_NUM,   &USBFS_DP_ISR);
+        (void) CyIntSetVector(USBFS_DP_INTC_VECT_NUM, &USBFS_DP_ISR);
         CyIntSetPriority(USBFS_DP_INTC_VECT_NUM, USBFS_DP_INTC_PRIOR);
         CyIntClearPending(USBFS_DP_INTC_VECT_NUM);
         CyIntEnable(USBFS_DP_INTC_VECT_NUM);
     #endif /* (USBFS_DP_ISR_REMOVE == 0u) */
-
 }
 
 
@@ -223,7 +222,7 @@ void USBFS_Resume(void)
     {
         #if(USBFS_DP_ISR_REMOVE == 0u)
             CyIntDisable(USBFS_DP_INTC_VECT_NUM);
-        #endif /* End USBFS_DP_ISR_REMOVE */
+        #endif /*  USBFS_DP_ISR_REMOVE */
 
         /* Enable USB block */
         USBFS_PM_ACT_CFG_REG |= USBFS_PM_ACT_EN_FSUSB;
@@ -245,18 +244,18 @@ void USBFS_Resume(void)
         /* Set the USBIO pull-up enable */
         USBFS_PM_USB_CR0_REG |= USBFS_PM_USB_CR0_PD_PULLUP_N;
 
-        /* Reinit Arbiter configuration for DMA transfers */
+        /* Re-init Arbiter configuration for DMA transfers */
         #if(USBFS_EP_MM != USBFS__EP_MANUAL)
-            /* usb arb interrupt enable */
+            /* Usb arb interrupt enable */
             USBFS_ARB_INT_EN_REG = USBFS_ARB_INT_MASK;
             #if(USBFS_EP_MM == USBFS__EP_DMAMANUAL)
                 USBFS_ARB_CFG_REG = USBFS_ARB_CFG_MANUAL_DMA;
-            #endif   /* End USBFS_EP_MM == USBFS__EP_DMAMANUAL */
+            #endif   /*  USBFS_EP_MM == USBFS__EP_DMAMANUAL */
             #if(USBFS_EP_MM == USBFS__EP_DMAAUTO)
                 /*Set cfg cmplt this rises DMA request when the full configuration is done */
                 USBFS_ARB_CFG_REG = USBFS_ARB_CFG_AUTO_DMA | USBFS_ARB_CFG_AUTO_MEM;
-            #endif   /* End USBFS_EP_MM == USBFS__EP_DMAAUTO */
-        #endif   /* End USBFS_EP_MM != USBFS__EP_MANUAL */
+            #endif   /*  USBFS_EP_MM == USBFS__EP_DMAAUTO */
+        #endif   /*  USBFS_EP_MM != USBFS__EP_MANUAL */
 
         /* STALL_IN_OUT */
         CY_SET_REG8(USBFS_EP0_CR_PTR, USBFS_MODE_STALL_IN_OUT);
@@ -268,8 +267,8 @@ void USBFS_Resume(void)
 
         /* Restore USB register settings */
         USBFS_RestoreConfig();
-
     }
+
     CyExitCriticalSection(enableInterrupts);
 }
 

@@ -1,14 +1,18 @@
 /*******************************************************************************
 * File Name: USBFS_midi.c
-* Version 2.60
+* Version 2.80
 *
 * Description:
 *  MIDI Streaming request handler.
 *  This file contains routines for sending and receiving MIDI
 *  messages, and handles running status in both directions.
 *
+* Related Document:
+*  Universal Serial Bus Device Class Definition for MIDI Devices Release 1.0
+*  MIDI 1.0 Detailed Specification Document Version 4.2
+*
 ********************************************************************************
-* Copyright 2008-2013, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2014, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
@@ -60,15 +64,15 @@
         volatile uint16 USBFS_midiInPointer;                            /* Input endpoint buffer pointer */
     #else
         volatile uint8 USBFS_midiInPointer;                             /* Input endpoint buffer pointer */
-    #endif /* End USBFS_MIDI_IN_BUFF_SIZE >=256 */
+    #endif /* (USBFS_MIDI_IN_BUFF_SIZE >= 256) */
     volatile uint8 USBFS_midi_in_ep;                                    /* Input endpoint number */
     uint8 USBFS_midiInBuffer[USBFS_MIDI_IN_BUFF_SIZE];       /* Input endpoint buffer */
-#endif /* USBFS_MIDI_IN_BUFF_SIZE > 0 */
+#endif /* (USBFS_MIDI_IN_BUFF_SIZE > 0) */
 
 #if (USBFS_MIDI_OUT_BUFF_SIZE > 0)
     volatile uint8 USBFS_midi_out_ep;                                   /* Output endpoint number */
     uint8 USBFS_midiOutBuffer[USBFS_MIDI_OUT_BUFF_SIZE];     /* Output endpoint buffer */
-#endif /* USBFS_MIDI_OUT_BUFF_SIZE > 0 */
+#endif /* (USBFS_MIDI_OUT_BUFF_SIZE > 0) */
 
 #if (USBFS_MIDI_EXT_MODE >= USBFS_ONE_EXT_INTRF)
     static USBFS_MIDI_RX_STATUS USBFS_MIDI1_Event;            /* MIDI RX status structure */
@@ -79,8 +83,8 @@
         static USBFS_MIDI_RX_STATUS USBFS_MIDI2_Event;        /* MIDI RX status structure */
         static volatile uint8 USBFS_MIDI2_TxRunStat;                     /* MIDI Output running status */
         volatile uint8 USBFS_MIDI2_InqFlags;                             /* Device inquiry flag */
-    #endif /* End USBFS_MIDI_EXT_MODE >= USBFS_TWO_EXT_INTRF */
-#endif /* End USBFS_MIDI_EXT_MODE >= USBFS_ONE_EXT_INTRF */
+    #endif /* (USBFS_MIDI_EXT_MODE >= USBFS_TWO_EXT_INTRF) */
+#endif /* (USBFS_MIDI_EXT_MODE >= USBFS_ONE_EXT_INTRF) */
 
 
 /***************************************
@@ -134,30 +138,30 @@ void USBFS_MIDI_EP_Init(void)
 {
     #if (USBFS_MIDI_IN_BUFF_SIZE > 0)
        USBFS_midiInPointer = 0u;
-    #endif  /* USBFS_MIDI_IN_BUFF_SIZE > 0 */
+    #endif /* (USBFS_MIDI_IN_BUFF_SIZE > 0) */
 
     #if(USBFS_EP_MM == USBFS__EP_DMAAUTO)
         #if (USBFS_MIDI_IN_BUFF_SIZE > 0)
             /* Init DMA configurations for IN EP*/
             USBFS_LoadInEP(USBFS_midi_in_ep, USBFS_midiInBuffer,
                                                                                 USBFS_MIDI_IN_BUFF_SIZE);
-                                                                                
-        #endif  /* USBFS_MIDI_IN_BUFF_SIZE > 0 */
+
+        #endif  /* (USBFS_MIDI_IN_BUFF_SIZE > 0) */
         #if (USBFS_MIDI_OUT_BUFF_SIZE > 0)
             /* Init DMA configurations for OUT EP*/
             (void)USBFS_ReadOutEP(USBFS_midi_out_ep, USBFS_midiOutBuffer,
                                                                                 USBFS_MIDI_OUT_BUFF_SIZE);
-        #endif /*USBFS_MIDI_OUT_BUFF_SIZE > 0 */
-    #endif  /* End USBFS__EP_DMAAUTO */
+        #endif /* (USBFS_MIDI_OUT_BUFF_SIZE > 0) */
+    #endif /* (USBFS_EP_MM == USBFS__EP_DMAAUTO) */
 
     #if (USBFS_MIDI_OUT_BUFF_SIZE > 0)
         USBFS_EnableOutEP(USBFS_midi_out_ep);
-    #endif /* USBFS_MIDI_OUT_BUFF_SIZE > 0 */
+    #endif /* (USBFS_MIDI_OUT_BUFF_SIZE > 0) */
 
     /* Initialize the MIDI port(s) */
     #if (USBFS_MIDI_EXT_MODE >= USBFS_ONE_EXT_INTRF)
         USBFS_MIDI_Init();
-    #endif /* USBFS_MIDI_EXT_MODE >= USBFS_ONE_EXT_INTRF */
+    #endif /* (USBFS_MIDI_EXT_MODE >= USBFS_ONE_EXT_INTRF) */
 }
 
 #if (USBFS_MIDI_OUT_BUFF_SIZE > 0)
@@ -199,37 +203,43 @@ void USBFS_MIDI_EP_Init(void)
         #else
             uint8 outLength;
             uint8 outPointer;
-        #endif /* End USBFS_MIDI_OUT_BUFF_SIZE >=256 */
+        #endif /*  USBFS_MIDI_OUT_BUFF_SIZE >=256 */
 
         uint8 dmaState = 0u;
 
         /* Service the USB MIDI output endpoint */
         if (USBFS_GetEPState(USBFS_midi_out_ep) == USBFS_OUT_BUFFER_FULL)
         {
-            #if USBFS_MIDI_OUT_BUFF_SIZE >= 256
+            #if(USBFS_MIDI_OUT_BUFF_SIZE >= 256)
                 outLength = USBFS_GetEPCount(USBFS_midi_out_ep);
             #else
                 outLength = (uint8)USBFS_GetEPCount(USBFS_midi_out_ep);
-            #endif /* End USBFS_MIDI_OUT_BUFF_SIZE >= 256 */
+            #endif /* (USBFS_MIDI_OUT_BUFF_SIZE >= 256) */
+
             #if(USBFS_EP_MM != USBFS__EP_DMAAUTO)
-                #if USBFS_MIDI_OUT_BUFF_SIZE >= 256
+                #if (USBFS_MIDI_OUT_BUFF_SIZE >= 256)
                     outLength = USBFS_ReadOutEP(USBFS_midi_out_ep,
                                                                     USBFS_midiOutBuffer, outLength);
                 #else
                     outLength = (uint8)USBFS_ReadOutEP(USBFS_midi_out_ep,
                                                                     USBFS_midiOutBuffer, (uint16)outLength);
-                #endif /* End USBFS_MIDI_OUT_BUFF_SIZE >= 256 */
+                #endif /* (USBFS_MIDI_OUT_BUFF_SIZE >= 256) */
+
                 #if(USBFS_EP_MM == USBFS__EP_DMAMANUAL)
                     do  /* wait for DMA transfer complete */
                     {
-                        (void)CyDmaChStatus(USBFS_DmaChan[USBFS_midi_out_ep], NULL, &dmaState);
-                    }while((dmaState & (STATUS_TD_ACTIVE | STATUS_CHAIN_ACTIVE)) != 0u);
-                #endif /* End USBFS_EP_MM == USBFS__EP_DMAMANUAL */
-            #endif  /* End USBFS_EP_MM != USBFS__EP_DMAAUTO */
+                        (void) CyDmaChStatus(USBFS_DmaChan[USBFS_midi_out_ep], NULL, &dmaState);
+                    }
+                    while((dmaState & (STATUS_TD_ACTIVE | STATUS_CHAIN_ACTIVE)) != 0u);
+                #endif /* (USBFS_EP_MM == USBFS__EP_DMAMANUAL) */
+
+            #endif /* (USBFS_EP_MM != USBFS__EP_DMAAUTO) */
+
             if(dmaState != 0u)
             {
                 /* Suppress compiler warning */
             }
+
             if (outLength >= USBFS_EVENT_LENGTH)
             {
                 outPointer = 0u;
@@ -252,7 +262,7 @@ void USBFS_MIDI_EP_Init(void)
                         {
                             #if (USBFS_MIDI_EXT_MODE >= USBFS_TWO_EXT_INTRF)
                                 USBFS_MIDI2_ProcessUsbOut(&USBFS_midiOutBuffer[outPointer]);
-                            #endif /* End USBFS_MIDI_EXT_MODE >= USBFS_TWO_EXT_INTRF */
+                            #endif /*  USBFS_MIDI_EXT_MODE >= USBFS_TWO_EXT_INTRF */
                         }
                         else
                         {
@@ -260,7 +270,7 @@ void USBFS_MIDI_EP_Init(void)
 
                             /* `#END` */
                         }
-                    #endif /* End USBFS_MIDI_EXT_MODE >= USBFS_ONE_EXT_INTRF */
+                    #endif /* (USBFS_MIDI_EXT_MODE >= USBFS_ONE_EXT_INTRF) */
 
                     /* Process any local MIDI output functions */
                     USBFS_callbackLocalMidiEvent(
@@ -272,7 +282,7 @@ void USBFS_MIDI_EP_Init(void)
             #if(USBFS_EP_MM == USBFS__EP_DMAAUTO)
                 /* Enable Out EP*/
                 USBFS_EnableOutEP(USBFS_midi_out_ep);
-            #endif  /* End USBFS_EP_MM == USBFS__EP_DMAAUTO */
+            #endif  /* (USBFS_EP_MM == USBFS__EP_DMAAUTO) */
         }
     }
 
@@ -322,12 +332,12 @@ void USBFS_MIDI_EP_Init(void)
             #else /* USBFS_EP_MM != USBFS__EP_DMAAUTO */
                 /* rearm IN EP */
                 USBFS_LoadInEP(USBFS_midi_in_ep, NULL, (uint16)USBFS_midiInPointer);
-            #endif /* End USBFS_EP_MM != USBFS__EP_DMAAUTO*/
+            #endif /* (USBFS_EP_MM != USBFS__EP_DMAAUTO) */
 
             /* Clear the midiInPointer. For DMA mode, clear this pointer in the ARB ISR when data are moved by DMA */
             #if(USBFS_EP_MM == USBFS__EP_MANUAL)
                 USBFS_midiInPointer = 0u;
-            #endif /* USBFS_EP_MM == USBFS__EP_MANUAL */
+            #endif /* (USBFS_EP_MM == USBFS__EP_MANUAL) */
             }
         }
     }
@@ -370,7 +380,8 @@ void USBFS_MIDI_EP_Init(void)
             uint8 m2 = 0u;
             do
             {
-                if (USBFS_midiInPointer <= (USBFS_MIDI_IN_BUFF_SIZE - USBFS_EVENT_LENGTH))
+                if (USBFS_midiInPointer <=
+                    (USBFS_MIDI_IN_BUFF_SIZE - USBFS_EVENT_LENGTH))
                 {
                     /* Check MIDI1 input port for a complete event */
                     m1 = USBFS_MIDI1_GetEvent();
@@ -382,7 +393,8 @@ void USBFS_MIDI_EP_Init(void)
                 }
 
             #if (USBFS_MIDI_EXT_MODE >= USBFS_TWO_EXT_INTRF)
-                if (USBFS_midiInPointer <= (USBFS_MIDI_IN_BUFF_SIZE - USBFS_EVENT_LENGTH))
+                if (USBFS_midiInPointer <=
+                    (USBFS_MIDI_IN_BUFF_SIZE - USBFS_EVENT_LENGTH))
                 {
                     /* Check MIDI2 input port for a complete event */
                     m2 = USBFS_MIDI2_GetEvent();
@@ -392,11 +404,12 @@ void USBFS_MIDI_EP_Init(void)
                                                     USBFS_MIDI2_Event.size, USBFS_MIDI_CABLE_01);
                     }
                 }
-            #endif /* End USBFS_MIDI_EXT_MODE >= USBFS_TWO_EXT_INTRF */
+            #endif /*  USBFS_MIDI_EXT_MODE >= USBFS_TWO_EXT_INTRF */
 
-            }while( (USBFS_midiInPointer <= (USBFS_MIDI_IN_BUFF_SIZE - USBFS_EVENT_LENGTH))
-                   && ((m1 != 0u) || (m2 != 0u)) );
-        #endif /* End USBFS_MIDI_EXT_MODE >= USBFS_ONE_EXT_INTRF */
+            }while( (USBFS_midiInPointer <=
+                    (USBFS_MIDI_IN_BUFF_SIZE - USBFS_EVENT_LENGTH)) &&
+                    ((m1 != 0u) || (m2 != 0u)) );
+        #endif /* (USBFS_MIDI_EXT_MODE >= USBFS_ONE_EXT_INTRF) */
 
         /* Service the USB MIDI input endpoint */
         USBFS_MIDI_IN_EP_Service();
@@ -453,8 +466,8 @@ void USBFS_MIDI_EP_Init(void)
             MIDI1_UART_DisableRxInt();
             #if (USBFS_MIDI_EXT_MODE >= USBFS_TWO_EXT_INTRF)
                 MIDI2_UART_DisableRxInt();
-            #endif /* End USBFS_MIDI_EXT_MODE >= USBFS_TWO_EXT_INTRF */
-        #endif /* End USBFS_MIDI_EXT_MODE >= USBFS_ONE_EXT_INTRF */
+            #endif /* (USBFS_MIDI_EXT_MODE >= USBFS_TWO_EXT_INTRF) */
+        #endif /* (USBFS_MIDI_EXT_MODE >= USBFS_ONE_EXT_INTRF) */
 
         if (USBFS_midiInPointer >
                     (USBFS_EP[USBFS_midi_in_ep].bufferSize - USBFS_EVENT_LENGTH))
@@ -481,15 +494,16 @@ void USBFS_MIDI_EP_Init(void)
                         (USBFS_EP[USBFS_midi_in_ep].bufferSize - USBFS_EVENT_LENGTH))
                     {
                         USBFS_MIDI_IN_EP_Service();
-                        if (USBFS_midiInPointer >
-                            (USBFS_EP[USBFS_midi_in_ep].bufferSize - USBFS_EVENT_LENGTH))
+                        if(USBFS_midiInPointer >
+                          (USBFS_EP[USBFS_midi_in_ep].bufferSize - USBFS_EVENT_LENGTH))
                         {
                             /* Error condition. HOST is not ready to receive this packet. */
                             retError = USBFS_TRUE;
                             break;
                         }
                     }
-                }while(ic > USBFS_EVENT_BYTE3);
+                }
+                while(ic > USBFS_EVENT_BYTE3);
 
                 if(retError == USBFS_FALSE)
                 {
@@ -507,8 +521,8 @@ void USBFS_MIDI_EP_Init(void)
             MIDI1_UART_EnableRxInt();
             #if (USBFS_MIDI_EXT_MODE >= USBFS_TWO_EXT_INTRF)
                 MIDI2_UART_EnableRxInt();
-            #endif /* End USBFS_MIDI_EXT_MODE >= USBFS_TWO_EXT_INTRF */
-        #endif /* End USBFS_MIDI_EXT_MODE >= USBFS_ONE_EXT_INTRF */
+            #endif /* (USBFS_MIDI_EXT_MODE >= USBFS_TWO_EXT_INTRF) */
+        #endif /* (USBFS_MIDI_EXT_MODE >= USBFS_ONE_EXT_INTRF) */
 
         return (retError);
     }
@@ -712,7 +726,7 @@ void USBFS_MIDI_EP_Init(void)
             /* Change the priority of the UART TX interrupt */
             CyIntSetPriority(MIDI2_UART_TX_VECT_NUM, USBFS_CUSTOM_UART_TX_PRIOR_NUM);
             CyIntSetPriority(MIDI2_UART_RX_VECT_NUM, USBFS_CUSTOM_UART_RX_PRIOR_NUM);
-        #endif /* End USBFS_MIDI_EXT_MODE >= USBFS_TWO_EXT_INTRF*/
+        #endif /*  USBFS_MIDI_EXT_MODE >= USBFS_TWO_EXT_INTRF*/
 
         /* `#START MIDI_INIT_CUSTOM` Init other extended UARTs here */
 
@@ -915,12 +929,13 @@ void USBFS_MIDI_EP_Init(void)
         uint8 rxData;
         #if (MIDI1_UART_RXBUFFERSIZE >= 256u)
             uint16 rxBufferRead;
-            #if CY_PSOC3 /* This local variable is required only for PSOC3 and large buffer */
+            #if (CY_PSOC3) /* This local variable is required only for PSOC3 and large buffer */
                 uint16 rxBufferWrite;
-            #endif /* end CY_PSOC3 */
+            #endif /* (CY_PSOC3) */
         #else
             uint8 rxBufferRead;
-        #endif /* End MIDI1_UART_RXBUFFERSIZE >= 256 */
+        #endif /* (MIDI1_UART_RXBUFFERSIZE >= 256u) */
+
         uint8 rxBufferLoopDetect;
         /* Read buffer loop condition to the local variable */
         rxBufferLoopDetect = MIDI1_UART_rxBufferLoopDetect;
@@ -930,12 +945,12 @@ void USBFS_MIDI_EP_Init(void)
             /* Protect variables that could change on interrupt by disabling Rx interrupt.*/
             #if ((MIDI1_UART_RXBUFFERSIZE >= 256u) && (CY_PSOC3))
                 CyIntDisable(MIDI1_UART_RX_VECT_NUM);
-            #endif /* End MIDI1_UART_RXBUFFERSIZE >= 256 */
+            #endif /* ((MIDI1_UART_RXBUFFERSIZE >= 256u) && (CY_PSOC3)) */
             rxBufferRead = MIDI1_UART_rxBufferRead;
             #if ((MIDI1_UART_RXBUFFERSIZE >= 256u) && (CY_PSOC3))
                 rxBufferWrite = MIDI1_UART_rxBufferWrite;
                 CyIntEnable(MIDI1_UART_RX_VECT_NUM);
-            #endif /* End MIDI1_UART_RXBUFFERSIZE >= 256 */
+            #endif /* ((MIDI1_UART_RXBUFFERSIZE >= 256u) && (CY_PSOC3)) */
 
             /* Stay here until either the buffer is empty or we have a complete message
             *  in the message buffer. Note that we must use a temporary buffer pointer
@@ -948,7 +963,7 @@ void USBFS_MIDI_EP_Init(void)
                 while ( ((rxBufferRead != rxBufferWrite) || (rxBufferLoopDetect != 0u)) && (msgRtn == 0u) )
             #else
                 while ( ((rxBufferRead != MIDI1_UART_rxBufferWrite) || (rxBufferLoopDetect != 0u)) && (msgRtn == 0u) )
-            #endif /* End MIDI1_UART_RXBUFFERSIZE >= 256 && CY_PSOC3 */
+            #endif /*  ((MIDI1_UART_RXBUFFERSIZE >= 256u) && (CY_PSOC3)) */
                 {
                     rxData = MIDI1_UART_rxBuffer[rxBufferRead];
                     /* Increment pointer with a wrap */
@@ -965,11 +980,11 @@ void USBFS_MIDI_EP_Init(void)
                         MIDI1_UART_rxBufferLoopDetect = 0u;
                         #if ((MIDI1_UART_RXBUFFERSIZE >= 256u) && (CY_PSOC3))
                             CyIntDisable(MIDI1_UART_RX_VECT_NUM);
-                        #endif /* End MIDI1_UART_RXBUFFERSIZE >= 256 */
+                        #endif /*  MIDI1_UART_RXBUFFERSIZE >= 256 */
                         MIDI1_UART_rxBufferRead = rxBufferRead;
                         #if ((MIDI1_UART_RXBUFFERSIZE >= 256u) && (CY_PSOC3))
                             CyIntEnable(MIDI1_UART_RX_VECT_NUM);
-                        #endif /* End MIDI1_UART_RXBUFFERSIZE >= 256 */
+                        #endif /*  MIDI1_UART_RXBUFFERSIZE >= 256 */
                     }
 
                     msgRtn = USBFS_ProcessMidiIn(rxData,
@@ -984,11 +999,11 @@ void USBFS_MIDI_EP_Init(void)
             */
             #if ((MIDI1_UART_RXBUFFERSIZE >= 256u) && (CY_PSOC3))
                 CyIntDisable(MIDI1_UART_RX_VECT_NUM);
-            #endif /* End MIDI1_UART_RXBUFFERSIZE >= 256 */
+            #endif /* ((MIDI1_UART_RXBUFFERSIZE >= 256u) && (CY_PSOC3)) */
             MIDI1_UART_rxBufferRead = rxBufferRead;
             #if ((MIDI1_UART_RXBUFFERSIZE >= 256u) && (CY_PSOC3))
                 CyIntEnable(MIDI1_UART_RX_VECT_NUM);
-            #endif /* End MIDI1_UART_RXBUFFERSIZE >= 256 */
+            #endif /* ((MIDI1_UART_RXBUFFERSIZE >= 256u) && (CY_PSOC3)) */
         }
 
         return (msgRtn);
@@ -1105,6 +1120,7 @@ void USBFS_MIDI_EP_Init(void)
         /* `#END` */
     }
 
+
 #if (USBFS_MIDI_EXT_MODE >= USBFS_TWO_EXT_INTRF)
 
 
@@ -1137,12 +1153,13 @@ void USBFS_MIDI_EP_Init(void)
         uint8 rxData;
         #if (MIDI2_UART_RXBUFFERSIZE >= 256u)
             uint16 rxBufferRead;
-            #if CY_PSOC3 /* This local variable required only for PSOC3 and large buffer */
+            #if (CY_PSOC3) /* This local variable required only for PSOC3 and large buffer */
                 uint16 rxBufferWrite;
-            #endif /* end CY_PSOC3 */
+            #endif /* (CY_PSOC3) */
         #else
             uint8 rxBufferRead;
-        #endif /* End MIDI2_UART_RXBUFFERSIZE >= 256 */
+        #endif /* (MIDI2_UART_RXBUFFERSIZE >= 256) */
+
         uint8 rxBufferLoopDetect;
         /* Read buffer loop condition to the local variable */
         rxBufferLoopDetect = MIDI2_UART_rxBufferLoopDetect;
@@ -1152,12 +1169,12 @@ void USBFS_MIDI_EP_Init(void)
             /* Protect variables that could change on interrupt by disabling Rx interrupt.*/
             #if ((MIDI2_UART_RXBUFFERSIZE >= 256u) && (CY_PSOC3))
                 CyIntDisable(MIDI2_UART_RX_VECT_NUM);
-            #endif /* End MIDI2_UART_RXBUFFERSIZE >= 256 */
+            #endif /* ((MIDI2_UART_RXBUFFERSIZE >= 256u) && (CY_PSOC3)) */
             rxBufferRead = MIDI2_UART_rxBufferRead;
             #if ((MIDI2_UART_RXBUFFERSIZE >= 256u) && (CY_PSOC3))
                 rxBufferWrite = MIDI2_UART_rxBufferWrite;
                 CyIntEnable(MIDI2_UART_RX_VECT_NUM);
-            #endif /* End MIDI2_UART_RXBUFFERSIZE >= 256 */
+            #endif /* ((MIDI2_UART_RXBUFFERSIZE >= 256u) && (CY_PSOC3)) */
 
             /* Stay here until either the buffer is empty or we have a complete message
             *  in the message buffer. Note that we must use a temporary output pointer to
@@ -1170,7 +1187,7 @@ void USBFS_MIDI_EP_Init(void)
                 while ( ((rxBufferRead != rxBufferWrite) || (rxBufferLoopDetect != 0u)) && (msgRtn == 0u) )
             #else
                 while ( ((rxBufferRead != MIDI2_UART_rxBufferWrite) || (rxBufferLoopDetect != 0u)) && (msgRtn == 0u) )
-            #endif /* End MIDI2_UART_RXBUFFERSIZE >= 256 && CY_PSOC3 */
+            #endif /* ((MIDI2_UART_RXBUFFERSIZE >= 256u) && (CY_PSOC3)) */
                 {
                     rxData = MIDI2_UART_rxBuffer[rxBufferRead];
                     rxBufferRead++;
@@ -1186,11 +1203,11 @@ void USBFS_MIDI_EP_Init(void)
                         MIDI2_UART_rxBufferLoopDetect = 0u;
                         #if ((MIDI2_UART_RXBUFFERSIZE >= 256u) && (CY_PSOC3))
                             CyIntDisable(MIDI2_UART_RX_VECT_NUM);
-                        #endif /* End MIDI2_UART_RXBUFFERSIZE >= 256 */
+                        #endif /* ((MIDI2_UART_RXBUFFERSIZE >= 256u) && (CY_PSOC3)) */
                         MIDI2_UART_rxBufferRead = rxBufferRead;
                         #if ((MIDI2_UART_RXBUFFERSIZE >= 256u) && (CY_PSOC3))
                             CyIntEnable(MIDI2_UART_RX_VECT_NUM);
-                        #endif /* End MIDI2_UART_RXBUFFERSIZE >= 256 */
+                        #endif /* ((MIDI2_UART_RXBUFFERSIZE >= 256u) && (CY_PSOC3)) */
                     }
 
                     msgRtn = USBFS_ProcessMidiIn(rxData,
@@ -1205,11 +1222,11 @@ void USBFS_MIDI_EP_Init(void)
             */
             #if ((MIDI2_UART_RXBUFFERSIZE >= 256u) && (CY_PSOC3))
                 CyIntDisable(MIDI2_UART_RX_VECT_NUM);
-            #endif /* End MIDI2_UART_RXBUFFERSIZE >= 256 */
+            #endif /* ((MIDI2_UART_RXBUFFERSIZE >= 256u) && (CY_PSOC3)) */
             MIDI2_UART_rxBufferRead = rxBufferRead;
             #if ((MIDI2_UART_RXBUFFERSIZE >= 256u) && (CY_PSOC3))
                 CyIntEnable(MIDI2_UART_RX_VECT_NUM);
-            #endif /* End MIDI2_UART_RXBUFFERSIZE >= 256 */
+            #endif /* ((MIDI2_UART_RXBUFFERSIZE >= 256u) && (CY_PSOC3)) */
         }
 
         return (msgRtn);
@@ -1325,17 +1342,17 @@ void USBFS_MIDI_EP_Init(void)
 
         /* `#END` */
     }
-#endif /* End USBFS_MIDI_EXT_MODE >= USBFS_TWO_EXT_INTRF */
-#endif /* End USBFS_MIDI_EXT_MODE >= USBFS_ONE_EXT_INTRF */
+#endif /* (USBFS_MIDI_EXT_MODE >= USBFS_TWO_EXT_INTRF) */
+#endif /* (USBFS_MIDI_EXT_MODE >= USBFS_ONE_EXT_INTRF) */
 
-#endif  /* End (USBFS_ENABLE_MIDI_API != 0u) */
+#endif  /*  (USBFS_ENABLE_MIDI_API != 0u) */
 
 
 /* `#START MIDI_FUNCTIONS` Place any additional functions here */
 
 /* `#END` */
 
-#endif  /* End defined(USBFS_ENABLE_MIDI_STREAMING) */
+#endif  /*  defined(USBFS_ENABLE_MIDI_STREAMING) */
 
 
 /* [] END OF FILE */

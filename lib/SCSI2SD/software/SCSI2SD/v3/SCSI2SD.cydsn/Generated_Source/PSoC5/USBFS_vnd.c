@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: USBFS_vnd.c
-* Version 2.60
+* Version 2.80
 *
 * Description:
 *  USB vendor request handler.
@@ -8,7 +8,7 @@
 * Note:
 *
 ********************************************************************************
-* Copyright 2008-2013, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2014, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
@@ -34,7 +34,7 @@
 ********************************************************************************
 *
 * Summary:
-*  This routine provide users with a method to implement vendor specifc
+*  This routine provide users with a method to implement vendor specific
 *  requests.
 *
 *  To implement vendor specific requests, add your code in this function to
@@ -66,7 +66,7 @@ uint8 USBFS_HandleVendorRqst(void)
                     USBFS_currentTD.pData = (volatile uint8 *)&USBFS_MSOS_CONFIGURATION_DESCR[0u];
                     USBFS_currentTD.count = USBFS_MSOS_CONFIGURATION_DESCR[0u];
                     requestHandled  = USBFS_InitControlRead();
-                #endif /* End USBFS_ENABLE_MSOS_STRING */
+                #endif /*  USBFS_ENABLE_MSOS_STRING */
                 break;
             default:
                 break;

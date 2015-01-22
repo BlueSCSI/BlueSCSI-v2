@@ -25,6 +25,8 @@
 
 const char* Notice = "Copyright (C) 2014 Michael McMaster <michael@codesrc.com>";
 
+uint8_t testData[512];
+
 int main()
 {
 	timeInit();
@@ -42,10 +44,13 @@ int main()
 
 	scsiInit();
 	scsiDiskInit();
-	
+
 	uint32_t lastSDPoll = getTime_ms();
 	sdPoll();
-	
+
+
+
+
 	while (1)
 	{
 		scsiDev.watchdogTick++;
@@ -53,7 +58,7 @@ int main()
 		scsiPoll();
 		scsiDiskPoll();
 		configPoll();
-		
+
 		uint32_t now = getTime_ms();
 		if (diffTime_ms(lastSDPoll, now) > 200)
 		{

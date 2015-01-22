@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: BL.c
-* Version 1.20
+* Version 1.30
 *
 *  Description:
 *   Provides an API for the Bootloader component. The API includes functions
@@ -8,7 +8,7 @@
 *   jumping to the application.
 *
 ********************************************************************************
-* Copyright 2008-2013, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2014, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
@@ -24,22 +24,26 @@
 * The Checksum and SizeBytes are forcefully set in code. We then post process
 * the hex file from the linker and inject their values then. When the hex file
 * is loaded onto the device these two variables should have valid values.
-* Because the compiler can do optimizations remove the constant
+* Because the compiler can do optimizations to remove the constant
 * accesses, these should not be accessed directly. Instead, the variables
 * CyBtldr_ChecksumAccess & CyBtldr_SizeBytesAccess should be used to get the
 * proper values at runtime.
 *******************************************************************************/
 #if defined(__ARMCC_VERSION) || defined (__GNUC__)
-    __attribute__((section (".bootloader")))
+    __attribute__((section (".bootloader"), used))
 #elif defined (__ICCARM__)
     #pragma location=".bootloader"
 #endif  /* defined(__ARMCC_VERSION) || defined (__GNUC__) */
 
-const uint8  CYCODE BL_Checksum = 0u;
+#if defined(__ARMCC_VERSION) || defined (__GNUC__) || defined (__C51__)
+           const uint8  CYCODE BL_Checksum = 0u;
+#elif defined (__ICCARM__)
+    __root const uint8  CYCODE BL_Checksum = 0u;
+#endif  /* defined(__ARMCC_VERSION) || defined (__GNUC__) || defined (__C51__) */
 const uint8  CYCODE *BL_ChecksumAccess  = (const uint8  CYCODE *)(&BL_Checksum);
 
 #if defined(__ARMCC_VERSION) || defined (__GNUC__)
-    __attribute__((section (".bootloader")))
+    __attribute__((section (".bootloader"), used))
 #elif defined (__ICCARM__)
     #pragma location=".bootloader"
 #endif  /* defined(__ARMCC_VERSION) || defined (__GNUC__) */
@@ -64,23 +68,10 @@ static cystatus BL_WritePacket(uint8 status, uint8 buffer[], uint16 size) CYSMAL
 static uint16   BL_CalcPacketChecksum(const uint8 buffer[], uint16 size) CYSMALL \
                                     ;
 
-static uint8    BL_Calc8BitFlashSum(uint32 start, uint32 size) CYSMALL \
-                                    ;
-#if(!CY_PSOC4)
-static uint8    BL_Calc8BitEepromSum(uint32 start, uint32 size) CYSMALL \
-                                    ;
-#endif /* (!CY_PSOC4) */
-
 static void     BL_HostLink(uint8 timeOut) \
                                     ;
 
 static void     BL_LaunchApplication(void) CYSMALL \
-                                    ;
-
-static cystatus BL_ValidateBootloadable(uint8 appId) CYSMALL \
-                                    ;
-
-static uint32   BL_GetMetadata(uint8 fieldName, uint8 appId)\
                                     ;
 
 #if(!CY_PSOC3)
@@ -101,7 +92,7 @@ static uint32   BL_GetMetadata(uint8 fieldName, uint8 appId)\
 *  buffer:
 *     The buffer containing the data to compute the checksum for
 *  size:
-*     The number of bytes in buffer to compute the checksum for
+*     The number of bytes in the buffer to compute the checksum for
 *
 * Returns:
 *  16 bit checksum for the provided data
@@ -169,14 +160,19 @@ static uint16 BL_CalcPacketChecksum(const uint8 buffer[], uint16 size) \
 
 
 /*******************************************************************************
-* Function Name: BL_Calc8BitFlashSum
+* Function Name: BL_Calc8BitSum
 ********************************************************************************
 *
 * Summary:
 *  This computes the 8 bit sum for the provided number of bytes contained in
-*  flash.
+*  FLASH (if baseAddr equals CY_FLASH_BASE) or EEPROM (if baseAddr equals
+*  CY_EEPROM_BASE).
 *
 * Parameters:
+* baseAddr:
+*   CY_FLASH_BASE
+*   CY_EEPROM_BASE - applicable only for PSoC 3 / PSoC 5LP devices.
+*
 *  start:
 *     The starting address to start summing data for
 *  size:
@@ -186,87 +182,62 @@ static uint16 BL_CalcPacketChecksum(const uint8 buffer[], uint16 size) \
 *   8 bit sum for the provided data
 *
 *******************************************************************************/
-static uint8 BL_Calc8BitFlashSum(uint32 start, uint32 size) \
+uint8 BL_Calc8BitSum(uint32 baseAddr, uint32 start, uint32 size) \
                 CYSMALL 
 {
     uint8 CYDATA sum = 0u;
 
+    #if(!CY_PSOC4)
+        CYASSERT((baseAddr == CY_EEPROM_BASE) || (baseAddr == CY_FLASH_BASE));
+    #else
+        CYASSERT(baseAddr == CY_FLASH_BASE);
+    #endif  /* (!CY_PSOC4) */
+
     while (size > 0u)
     {
         size--;
-        sum += BL_GET_CODE_BYTE(start + size);
+        sum += (*((uint8  *)(baseAddr + start + size)));
     }
 
     return(sum);
 }
 
 
-#if(!CY_PSOC4)
-
-    /*******************************************************************************
-    * Function Name: BL_Calc8BitEepromSum
-    ********************************************************************************
-    *
-    * Summary:
-    *  This computes the 8 bit sum for the provided number of bytes contained in
-    *  EEPROM.
-    *
-    * Parameters:
-    *  start:
-    *     The starting address to start summing data for
-    *  size:
-    *     The number of bytes to read and compute the sum for
-    *
-    * Returns:
-    *   8 bit sum for the provided data
-    *
-    *******************************************************************************/
-    static uint8 BL_Calc8BitEepromSum(uint32 start, uint32 size) \
-                    CYSMALL 
-    {
-        uint8 CYDATA sum = 0u;
-
-        while (size > 0u)
-        {
-            size--;
-            sum += BL_GET_EEPROM_BYTE(start + size);
-        }
-
-        return(sum);
-    }
-
-#endif  /* (!CY_PSOC4) */
-
-
 /*******************************************************************************
 * Function Name: BL_Start
 ********************************************************************************
 * Summary:
-*  This function is called in order executing following algorithm:
+*  This function is called in order to execute the following algorithm:
 *
-*  - Identify active bootloadable application (applicable only to
-*    Multi-application bootloader)
+*  - Identify the active bootloadable application (applicable only to
+*    the Multi-application bootloader)
 *
-*  - Validate bootloader application (desing-time configurable, Bootloader
+*  - Validate the bootloader application (design-time configurable, Bootloader
 *    application validation option of the component customizer)
 *
-*  - Validate active bootloadable application
+*  - Validate the active bootloadable application. If active bootloadable
+*    application is not valid, and the other bootloadable application (inactive)
+*    is valid, the last one is started.
 *
-*  - Run communication subroutine (desing-time configurable, Wait for command
+*  - Run a communication subroutine (design-time configurable, Wait for command
 *    option of the component customizer)
 *
-*  - Schedule bootloadable and reset device
+*  - Schedule the bootloadable and reset the device
 *
 * Parameters:
 *  None
 *
 * Return:
 *  This method will never return. It will either load a new application and
-*  reset the device or it will jump directly to the existing application.
+*  reset the device or jump directly to the existing application. The CPU is
+*  halted, if validation failed when "Bootloader application validation" option
+*  is enabled.
+*  PSoC 3/PSoC 5: The CPU is halted if Flash initialization fails.
 *
 * Side Effects:
-*  If this method determines that the bootloader appliation itself is corrupt,
-*  this method will not return, instead it will simply hang the application.
+*  If Bootloader application validation option is enabled and this method
+*  determines that the bootloader application itself is corrupt, this method
+*  will not return, instead it will simply hang the application.
 *
 *******************************************************************************/
 void BL_Start(void) CYSMALL 
@@ -276,60 +247,149 @@ void BL_Start(void) CYSMALL
     #endif    /* (0u != BL_BOOTLOADER_APP_VALIDATION) */
 
     #if(!CY_PSOC4)
-        uint8 CYXDATA BL_flashBuffer[BL_FROW_SIZE];
+        #if(0u != BL_FAST_APP_VALIDATION)
+            #if !defined(CY_BOOT_VERSION)
+
+                /* Not required starting from cy_boot 4.20 */
+                uint8 CYXDATA BL_flashBuffer[BL_FROW_SIZE];
+
+            #endif /* !defined(CY_BOOT_VERSION) */
+        #endif  /* (0u != BL_FAST_APP_VALIDATION) */
     #endif  /* (!CY_PSOC4) */
 
-    cystatus tmpStatus;
+    cystatus validApp  = CYRET_BAD_DATA;
 
 
     /* Identify active bootloadable application */
     #if(0u != BL_DUAL_APP_BOOTLOADER)
 
-        if(BL_MD_BTLDB_ACTIVE_VALUE(0u) == BL_MD_BTLDB_IS_ACTIVE)
+        /* Assumes no active bootloadable application. Bootloader is active. */
+        BL_activeApp = BL_MD_BTLDB_ACTIVE_NONE;
+
+        /* Bootloadable # A is active */
+        if(BL_GetMetadata(BL_GET_BTLDB_ACTIVE, 0u) == BL_MD_BTLDB_IS_ACTIVE)
         {
-            BL_activeApp = BL_MD_BTLDB_ACTIVE_0;
-        }
-        else if (BL_MD_BTLDB_ACTIVE_VALUE(1u) == BL_MD_BTLDB_IS_ACTIVE)
-        {
-            BL_activeApp = BL_MD_BTLDB_ACTIVE_1;
-        }
-        else
-        {
-            BL_activeApp = BL_MD_BTLDB_ACTIVE_NONE;
+            /*******************************************************************
+            * -----------------------------------------------------------
+            * |      | Bootloadable A | Bootloadable B |                |
+            * | Case |---------------------------------|     Action     |
+            * |      | Active | Valid | Active | Valid |                |
+            * |------|--------------------------------------------------|
+            * |  9   |    1   |   0   |   0    |   0   | Bootloader     |
+            * |  10  |    1   |   0   |   0    |   1   | Bootloadable B |
+            * |  11  |    1   |   0   |   1    |   0   | Bootloader     |
+            * |  12  |    1   |   0   |   1    |   1   | Bootloadable B |
+            * |  13  |    1   |   1   |   0    |   0   | Bootloadable A |
+            * |  14  |    1   |   1   |   0    |   1   | Bootloadable A |
+            * |  15  |    1   |   1   |   1    |   0   | Bootloadable A |
+            * |  16  |    1   |   1   |   1    |   1   | Bootloadable A |
+            * -----------------------------------------------------------
+            *******************************************************************/
+            if (CYRET_SUCCESS == BL_ValidateBootloadable(BL_MD_BTLDB_ACTIVE_0))
+            {
+                /* Cases # 13,  14, 15, and 16 */
+                BL_activeApp = BL_MD_BTLDB_ACTIVE_0;
+                validApp = CYRET_SUCCESS;
+            }
+            else
+            {
+                if (CYRET_SUCCESS == BL_ValidateBootloadable(BL_MD_BTLDB_ACTIVE_1))
+                {
+                    /* Cases # 10 and 12 */
+                    BL_activeApp = BL_MD_BTLDB_ACTIVE_1;
+                    validApp = CYRET_SUCCESS;
+                }
+            }
         }
 
+        /*  Active bootloadable application is not identified */
+        if(BL_activeApp == BL_MD_BTLDB_ACTIVE_NONE)
+        {
+            /*******************************************************************
+            * -----------------------------------------------------------
+            * |      | Bootloadable A | Bootloadable B |                |
+            * | Case |---------------------------------|     Action     |
+            * |      | Active | Valid | Active | Valid |                |
+            * |------|--------------------------------------------------|
+            * |  1   |    0   |   0   |   0    |   0   | Bootloader     |
+            * |  2   |    0   |   0   |   0    |   1   | Bootloader     |
+            * |  3   |    0   |   0   |   1    |   0   | Bootloader     |
+            * |  4   |    0   |   0   |   1    |   1   | Bootloadable B |
+            * |  5   |    0   |   1   |   0    |   0   | Bootloader     |
+            * |  6   |    0   |   1   |   0    |   1   | Bootloader     |
+            * |  7   |    0   |   1   |   1    |   0   | Bootloadable A |
+            * |  8   |    0   |   1   |   1    |   1   | Bootloadable B |
+            * -----------------------------------------------------------
+            *******************************************************************/
+            if (BL_GetMetadata(BL_GET_BTLDB_ACTIVE, 1u) ==
+                    BL_MD_BTLDB_IS_ACTIVE)
+            {
+                /* Cases # 3, 4, 7, and 8 */
+                if (CYRET_SUCCESS == BL_ValidateBootloadable(BL_MD_BTLDB_ACTIVE_1))
+                {
+                    /* Cases # 4 and 8 */
+                    BL_activeApp = BL_MD_BTLDB_ACTIVE_1;
+                    validApp = CYRET_SUCCESS;
+                }
+                else
+                {
+                    if (CYRET_SUCCESS == BL_ValidateBootloadable(BL_MD_BTLDB_ACTIVE_0))
+                    {
+                        /* Cases # 7 */
+                        BL_activeApp = BL_MD_BTLDB_ACTIVE_0;
+                        validApp = CYRET_SUCCESS;
+                    }
+                }
+            }
+        }
+    #else
+        if (CYRET_SUCCESS == BL_ValidateBootloadable(BL_MD_BTLDB_ACTIVE_0))
+        {
+            validApp = CYRET_SUCCESS;
+        }
     #endif  /* (0u != BL_DUAL_APP_BOOTLOADER) */
 
 
     /* Initialize Flash subsystem for non-PSoC 4 devices */
     #if(!CY_PSOC4)
-        if (CYRET_SUCCESS != CySetTemp())
-        {
-            CyHalt(0x00u);
-        }
+        #if(0u != BL_FAST_APP_VALIDATION)
 
-        if (CYRET_SUCCESS != CySetFlashEEBuffer(BL_flashBuffer))
-        {
-            CyHalt(0x00u);
-        }
+            if (CYRET_SUCCESS != CySetTemp())
+            {
+                CyHalt(0x00u);
+            }
+
+            #if !defined(CY_BOOT_VERSION)
+
+                /* Not required with cy_boot 4.20 */
+                if (CYRET_SUCCESS != CySetFlashEEBuffer(BL_flashBuffer))
+                {
+                    CyHalt(0x00u);
+                }
+
+            #endif /* !defined(CY_BOOT_VERSION) */
+        #endif  /* (0u != BL_FAST_APP_VALIDATION) */
     #endif  /* (CY_PSOC4) */
 
 
     /***********************************************************************
     * Bootloader Application Validation
     *
-    * Halt device if:
-    *  - Calculated checksum does not much one stored in metadata section
-    *  - Invalid pointer to the place where bootloader application ends
-    *  - Flash subsystem where not initialized correctly
+    * Halt the device if:
+    *  - A calculated checksum does not match the one stored in the metadata
+    *     section.
+    *  - There is an invalid pointer to the place where the bootloader
+    *    application ends.
+    *  - Flash subsystem was not initialized correctly
     ***********************************************************************/
     #if(0u != BL_BOOTLOADER_APP_VALIDATION)
 
         /* Calculate Bootloader application checksum */
-        calcedChecksum = BL_Calc8BitFlashSum(BL_MD_BTLDR_ADDR_PTR,
+        calcedChecksum = BL_Calc8BitSum(CY_FLASH_BASE,
+                BL_MD_BTLDR_ADDR_PTR,
                 *BL_SizeBytesAccess - BL_MD_BTLDR_ADDR_PTR);
 
-        /* we actually included the checksum, so remove it */
+        /* we included checksum, so remove it */
         calcedChecksum -= *BL_ChecksumAccess;
         calcedChecksum = ( uint8 )1u + ( uint8 )(~calcedChecksum);
 
@@ -344,17 +404,14 @@ void BL_Start(void) CYSMALL
 
 
     /***********************************************************************
-    * Active Bootloadable Application Validation
-    *
-    * If active bootloadable application is invalid or bootloader
+    * If the active bootloadable application is invalid or a bootloader
     * application is scheduled - do the following:
-    *  - schedule bootloader application to be run after software reset
-    *  - Go to the communication subroutine. Will wait for commands forever
+    *  - schedule the bootloader application to be run after software reset
+    *  - Go to the communication subroutine. The HostLink() will wait for
+    *    the commands forever.
     ***********************************************************************/
-    tmpStatus = BL_ValidateBootloadable(BL_activeApp);
-
     if ((BL_GET_RUN_TYPE == BL_START_BTLDR) ||
-        (CYRET_SUCCESS != tmpStatus))
+        (CYRET_SUCCESS != validApp))
     {
         BL_SET_RUN_TYPE(0u);
 
@@ -362,10 +419,10 @@ void BL_Start(void) CYSMALL
     }
 
 
-    /* Go to the communication subroutine. Will wait for commands specifed time */
+    /* Go to communication subroutine. Will wait for commands for specifed time */
     #if(0u != BL_WAIT_FOR_COMMAND)
 
-        /* Timeout is in 100s of miliseconds */
+        /* Timeout is in 100s of milliseconds */
         BL_HostLink(BL_WAIT_FOR_COMMAND_TIME);
 
     #endif  /* (0u != BL_WAIT_FOR_COMMAND) */
@@ -381,13 +438,13 @@ void BL_Start(void) CYSMALL
 ********************************************************************************
 *
 * Summary:
-*  Jumps the PC to the start address of the user application in flash.
+*  Schedules bootloadable application and resets device
 *
 * Parameters:
 *  None
 *
 * Returns:
-*  This method will never return if it succesfully goes to the user application.
+*  This method will never return.
 *
 *******************************************************************************/
 static void BL_LaunchApplication(void) CYSMALL 
@@ -400,20 +457,82 @@ static void BL_LaunchApplication(void) CYSMALL
 
 
 /*******************************************************************************
+* Function Name: BL_Exit
+********************************************************************************
+*
+* Summary:
+*  Schedules the specified application and performs software reset to launch
+*  a specified application.
+*
+*  If the specified application is not valid, the Bootloader (the result of the
+*  ValidateBootloadable() function execution returns other than CYRET_SUCCESS,
+*  the bootloader application is launched.
+*
+* Parameters:
+*  appId: application to be started:
+*  BL_EXIT_TO_BTLDR   - Bootloader application will be started on
+*                                     software reset.
+*  BL_EXIT_TO_BTLDB,
+*  BL_EXIT_TO_BTLDB_1 - Bootloadable application # 1 will be
+*                                     started on software reset.
+*  BL_EXIT_TO_BTLDB_2 - Bootloadable application # 2 will be
+*                                     started on software reset. Available only
+*                                     if Multi-Application option is enabled in
+*                                     the component customizer.
+* Returns:
+*  This function never returns.
+*
+*******************************************************************************/
+void BL_Exit(uint8 appId) CYSMALL 
+{
+    if(BL_EXIT_TO_BTLDR == appId)
+    {
+        BL_SET_RUN_TYPE(0x0u);
+    }
+    else
+    {
+        if(CYRET_SUCCESS == BL_ValidateBootloadable(appId))
+        {
+            /* Set active application in metadata */
+            uint8 CYDATA idx;
+            for(idx = 0u; idx < BL_MAX_NUM_OF_BTLDB; idx++)
+            {
+                BL_SetFlashByte((uint32) BL_MD_BTLDB_ACTIVE_OFFSET(idx),
+                                              (uint8 )(idx == appId));
+            }
+
+        #if(0u != BL_DUAL_APP_BOOTLOADER)
+            BL_activeApp = appId;
+        #endif /* (0u != BL_DUAL_APP_BOOTLOADER) */
+
+            BL_SET_RUN_TYPE(BL_SCHEDULE_BTLDB);
+        }
+        else
+        {
+            BL_SET_RUN_TYPE(0u);
+        }
+    }
+
+    CySoftwareReset();
+}
+
+
+/*******************************************************************************
 * Function Name: CyBtldr_CheckLaunch
 ********************************************************************************
 *
 * Summary:
-*  This routine checks to see if the bootloader or the bootloadable application
-*  should be run.  If the application is to be run, it will start executing.
-*  If the bootloader is to be run, it will return so the bootloader can
+*  This routine checks if the bootloader or the bootloadable application has to
+*  be run.  If the application has to be run, it will start executing.
+*  If the bootloader is to be run, it will return, so the bootloader can
 *  continue starting up.
 *
 * Parameters:
 *  None
 *
 * Returns:
-*  None
+*  It will not return if it determines that the bootloadable application should
+*  be run.
 *
 *******************************************************************************/
 void CyBtldr_CheckLaunch(void) CYSMALL 
@@ -422,7 +541,7 @@ void CyBtldr_CheckLaunch(void) CYSMALL
 #if(CY_PSOC4)
 
     /*******************************************************************************
-    * Set cyBtldrRunType to zero in case of non-software reset occured. This means
+    * Set cyBtldrRunType to zero in case of non-software reset occurred. This means
     * that bootloader application is scheduled - that is initial clean state. The
     * value of cyBtldrRunType is valid only in case of software reset.
     *******************************************************************************/
@@ -444,17 +563,17 @@ void CyBtldr_CheckLaunch(void) CYSMALL
         * application. We just check to make sure that the value at CY_APP_ADDR_ADDRESS
         * is something other than 0.
         *******************************************************************************/
-        if(0u != BL_GetMetadata(BL_GET_METADATA_BTLDB_ADDR, BL_activeApp))
+        if(0u != BL_GetMetadata(BL_GET_BTLDB_ADDR, BL_activeApp))
         {
             /* Never return from this method */
-            BL_LaunchBootloadable(BL_GetMetadata(BL_GET_METADATA_BTLDB_ADDR,
+            BL_LaunchBootloadable(BL_GetMetadata(BL_GET_BTLDB_ADDR,
                                                                              BL_activeApp));
         }
     }
 }
 
 
-/* Moves the arguement appAddr (RO) into PC, moving execution to the appAddr */
+/* Moves argument appAddr (RO) into PC, moving execution to appAddr */
 #if defined (__ARMCC_VERSION)
 
     __asm static void BL_LaunchBootloadable(uint32 appAddr)
@@ -486,25 +605,37 @@ void CyBtldr_CheckLaunch(void) CYSMALL
 * Function Name: BL_ValidateBootloadable
 ********************************************************************************
 * Summary:
-*  This routine computes the checksum, zero check, 0xFF check of the
-*  application area to determine whether a valid application is loaded.
+*  Performs the bootloadable application validation by calculating the
+*  application image checksum and comparing it with the checksum value stored
+*  in the Bootloadable Application Checksum field of the metadata section.
+*
+*  If the Fast bootloadable application validation option is enabled in the
+*  component customizer and bootloadable application successfully passes
+*  validation, the Bootloadable Application Verification Status field of the
+*  metadata section is updated. Refer to the Metadata Layout section for the
+*  details.
+*
+*  If the Fast bootloadable application validation option is enabled and
+*  Bootloadable Application Verification Status field of the metadata section
+*  claims that bootloadable application is valid, the function returns
+*  CYRET_SUCCESS without further checksum calculation.
 *
 * Parameters:
 *  appId:
-*      The application number to verify
+*  The number of the bootloadable application should be 0 for the normal
+*  bootloader and 0 or 1 for the Multi-Application bootloader.
 *
 * Returns:
-*  CYRET_SUCCESS  - if successful
-*  CYRET_BAD_DATA - if the bootloadable is corrupt
+*  Returns CYRET_SUCCESS if the specified bootloadable application is valid.
 *
 *******************************************************************************/
-static cystatus BL_ValidateBootloadable(uint8 appId) CYSMALL \
+cystatus BL_ValidateBootloadable(uint8 appId) CYSMALL \
 
     {
         uint32 CYDATA idx;
 
         uint32 CYDATA end   = BL_FIRST_APP_BYTE(appId) +
-                                BL_GetMetadata(BL_GET_METADATA_BTLDB_LENGTH,
+                                BL_GetMetadata(BL_GET_BTLDB_LENGTH,
                                                        appId);
 
         CYBIT         valid = 0u; /* Assume bad flash image */
@@ -523,7 +654,9 @@ static cystatus BL_ValidateBootloadable(uint8 appId) CYSMALL \
 
         #if(0u != BL_FAST_APP_VALIDATION)
 
-            if(BL_MD_BTLDB_VERIFIED_VALUE(appId) == BL_MD_BTLDB_IS_VERIFIED)
+
+            if(BL_GetMetadata(BL_GET_BTLDB_STATUS, appId) ==
+               BL_MD_BTLDB_IS_VERIFIED)
             {
                 return(CYRET_SUCCESS);
             }
@@ -557,7 +690,7 @@ static cystatus BL_ValidateBootloadable(uint8 appId) CYSMALL \
             /* Add ECC data to checksum */
             idx = ((BL_FIRST_APP_BYTE(appId)) >> 3u);
 
-            /* Flash may run into meta data, ECC does not so use full row */
+            /* Flash may run into meta data, so ECC does not use full row */
             end = (end == (CY_FLASH_SIZE - BL_MD_SIZEOF))
                 ? (CY_FLASH_SIZE >> 3u)
                 : (end >> 3u);
@@ -572,7 +705,8 @@ static cystatus BL_ValidateBootloadable(uint8 appId) CYSMALL \
 
         calcedChecksum = ( uint8 )1u + ( uint8 )(~calcedChecksum);
 
-        if((calcedChecksum != BL_MD_BTLDB_CHECKSUM_VALUE(appId)) ||
+
+        if((calcedChecksum != BL_GetMetadata(BL_GET_BTLDB_CHECKSUM, appId)) ||
            (0u == valid))
         {
             return(CYRET_BAD_DATA);
@@ -601,7 +735,7 @@ static cystatus BL_ValidateBootloadable(uint8 appId) CYSMALL \
 * Parameters:
 *  timeOut:
 *   The amount of time to listen for data before giving up. Timeout is
-*   measured in 10s of ms.  Use 0 for infinite wait.
+*   measured in 10s of ms.  Use 0 for an infinite wait.
 *
 * Return:
 *   None
@@ -618,15 +752,49 @@ static void BL_HostLink(uint8 timeOut)
     uint16    CYDATA dataOffset = 0u;
     uint8     CYDATA timeOutCnt = 10u;
 
-    #if(0u == BL_DUAL_APP_BOOTLOADER)
+    #if(0u != BL_FAST_APP_VALIDATION)
         uint8 CYDATA clearedMetaData = 0u;
-    #endif  /* (0u == BL_DUAL_APP_BOOTLOADER) */
+    #endif  /* (0u != BL_FAST_APP_VALIDATION) */
 
     CYBIT     communicationState = BL_COMMUNICATION_STATE_IDLE;
 
     uint8     packetBuffer[BL_SIZEOF_COMMAND_BUFFER];
     uint8     dataBuffer  [BL_SIZEOF_COMMAND_BUFFER];
 
+
+    #if(!CY_PSOC4)
+        #if(0u == BL_FAST_APP_VALIDATION)
+            #if !defined(CY_BOOT_VERSION)
+
+                /* Not required with cy_boot 4.20 */
+                uint8 CYXDATA BL_flashBuffer[BL_FROW_SIZE];
+
+            #endif /* !defined(CY_BOOT_VERSION) */
+        #endif  /* (0u == BL_FAST_APP_VALIDATION) */
+    #endif  /* (CY_PSOC4) */
+
+
+
+    #if(!CY_PSOC4)
+        #if(0u == BL_FAST_APP_VALIDATION)
+
+            /* Initialize Flash subsystem for non-PSoC 4 devices */
+            if (CYRET_SUCCESS != CySetTemp())
+            {
+                CyHalt(0x00u);
+            }
+
+            #if !defined(CY_BOOT_VERSION)
+
+                /* Not required with cy_boot 4.20 */
+                if (CYRET_SUCCESS != CySetFlashEEBuffer(BL_flashBuffer))
+                {
+                    CyHalt(0x00u);
+                }
+
+            #endif /* !defined(CY_BOOT_VERSION) */
+        #endif  /* (0u == BL_FAST_APP_VALIDATION) */
+    #endif  /* (CY_PSOC4) */
 
     /* Initialize communications channel. */
     CyBtldrCommStart();
@@ -716,10 +884,12 @@ static void BL_HostLink(uint8 timeOut)
                         {
                             #if(CY_PSOC3)
                                 (void) memcpy(&packetBuffer[BL_DATA_ADDR],
-                                            ((uint8  CYCODE *) (BL_META_BASE(btldrData))), 56);
+                                            ((uint8  CYCODE *) (BL_META_BASE(btldrData))),
+                                            BL_GET_METADATA_RESPONSE_SIZE);
                             #else
                                 (void) memcpy(&packetBuffer[BL_DATA_ADDR],
-                                            (uint8 *) BL_META_BASE(btldrData), 56u);
+                                            (uint8 *) BL_META_BASE(btldrData),
+                                            BL_GET_METADATA_RESPONSE_SIZE);
                             #endif  /* (CY_PSOC3) */
 
                             rspSize = 56u;
@@ -754,25 +924,59 @@ static void BL_HostLink(uint8 timeOut)
             /***************************************************************************
             *   Get flash size
             ***************************************************************************/
+
+            /* Replace BL_NUM_OF_FLASH_ARRAYS with CY_FLASH_NUMBER_ARRAYS */
+
+
             #if(0u != BL_CMD_GET_FLASH_SIZE_AVAIL)
 
                 case BL_COMMAND_REPORT_SIZE:
 
+                    /* btldrData - holds flash array ID sent by host */
+
                     if((BL_COMMUNICATION_STATE_ACTIVE == communicationState) && (pktSize == 1u))
                     {
-                        /* btldrData holds flash array ID sent by host */
-                        if(btldrData < BL_NUM_OF_FLASH_ARRAYS)
+                        if(btldrData < CY_FLASH_NUMBER_ARRAYS)
                         {
-                            #if (1u == BL_NUM_OF_FLASH_ARRAYS)
-                                uint16 CYDATA startRow = (uint16)*BL_SizeBytesAccess / CYDEV_FLS_ROW_SIZE;
-                            #else
-                                uint16 CYDATA startRow = 0u;
-                            #endif  /* (1u == BL_NUM_OF_FLASH_ARRAYS) */
+                            uint16 CYDATA startRow;
+                            uint8  CYDATA ArrayIdBtlderEnds;
+
+
+                            /*******************************************************************************
+                            * - For the flash array where bootloader application ends, return the first
+                            *   full row after the bootloader application.
+                            *
+                            * - For the fully occupied flash array, the number of rows in array is returned.
+                            *   As there is no space for the bootloadable application in this array.
+                            *
+                            * - For the arrays next to the occupied array, zero is returned.
+                            *   The bootloadable application can written from the their beginning.
+                            *
+                            *******************************************************************************/
+                            ArrayIdBtlderEnds = (uint8)  (*BL_SizeBytesAccess / CY_FLASH_SIZEOF_ARRAY);
+
+                            if (btldrData == ArrayIdBtlderEnds)
+                            {
+                                startRow = (uint16) (*BL_SizeBytesAccess / CY_FLASH_SIZEOF_ROW) %
+                                            BL_NUMBER_OF_ROWS_IN_ARRAY;
+                            }
+                            else if (btldrData > ArrayIdBtlderEnds)
+                            {
+                                startRow = BL_FIRST_ROW_IN_ARRAY;
+                            }
+                            else /* (btldrData < ArrayIdBtlderEnds) */
+                            {
+                                startRow = BL_NUMBER_OF_ROWS_IN_ARRAY;
+                            }
 
                             packetBuffer[BL_DATA_ADDR]      = LO8(startRow);
                             packetBuffer[BL_DATA_ADDR + 1u] = HI8(startRow);
-                            packetBuffer[BL_DATA_ADDR + 2u] = LO8(CY_FLASH_NUMBER_ROWS - 1u);
-                            packetBuffer[BL_DATA_ADDR + 3u] = HI8(CY_FLASH_NUMBER_ROWS - 1u);
+
+                            packetBuffer[BL_DATA_ADDR + 2u] =
+                                        LO8(BL_NUMBER_OF_ROWS_IN_ARRAY - 1u);
+
+                            packetBuffer[BL_DATA_ADDR + 3u] =
+                                        HI8(BL_NUMBER_OF_ROWS_IN_ARRAY - 1u);
 
                             rspSize = 4u;
                             ackCode = CYRET_SUCCESS;
@@ -800,7 +1004,7 @@ static void BL_HostLink(uint8 timeOut)
                                 (uint8)BL_ValidateBootloadable(btldrData);
 
                             packetBuffer[BL_DATA_ADDR + 1u] =
-                                (uint8)BL_MD_BTLDB_ACTIVE_VALUE(btldrData);
+                                (uint8) BL_GetMetadata(BL_GET_BTLDB_ACTIVE, btldrData);
 
                             rspSize = 2u;
                             ackCode = CYRET_SUCCESS;
@@ -846,7 +1050,7 @@ static void BL_HostLink(uint8 timeOut)
                         #if(CY_PSOC3)
                             (void) memset(dataBuffer, (char8) 0, (int16) dataOffset);
                         #else
-                            (void) memset(dataBuffer, 0, dataOffset);
+                            (void) memset(dataBuffer, 0, (uint32) dataOffset);
                         #endif  /* (CY_PSOC3) */
                     }
                     else
@@ -865,11 +1069,11 @@ static void BL_HostLink(uint8 timeOut)
                     #if(CY_PSOC3)
                         (void) memcpy(&dataBuffer[dataOffset],
                                       &packetBuffer[BL_DATA_ADDR + 3u],
-                                      ( int16 )pktSize - 3);
+                                      (int16) pktSize - 3);
                     #else
                         (void) memcpy(&dataBuffer[dataOffset],
                                       &packetBuffer[BL_DATA_ADDR + 3u],
-                                      pktSize - 3u);
+                                      (uint32) pktSize - 3u);
                     #endif  /* (CY_PSOC3) */
 
                     dataOffset += (pktSize - 3u);
@@ -898,82 +1102,155 @@ static void BL_HostLink(uint8 timeOut)
                     /* Check if we have all data to program */
                     if(dataOffset == pktSize)
                     {
-                        /* Get FLASH/EEPROM row number */
+                        uint16 row;
+                        uint16 firstRow;
+
+                        /* Get FLASH/EEPROM row number inside of the array */
                         dataOffset = ((uint16)((uint16)packetBuffer[BL_DATA_ADDR + 2u] << 8u)) |
                                               packetBuffer[BL_DATA_ADDR + 1u];
 
+
+                        /* Metadata section resides in Flash (cannot be in EEPROM). */
                         #if(!CY_PSOC4)
                             if(btldrData <= BL_LAST_FLASH_ARRAYID)
                             {
                         #endif  /* (!CY_PSOC4) */
 
-                        #if(0u == BL_DUAL_APP_BOOTLOADER)
 
-                            if(0u == clearedMetaData)
-                            {
-                                /* Metadata section must be filled with zeroes */
+                        /* btldrData  - holds flash array Id sent by host */
+                        /* dataOffset - holds flash row Id sent by host   */
+                        row = (uint16)(btldrData * BL_NUMBER_OF_ROWS_IN_ARRAY) + dataOffset;
 
-                                uint8 erase[BL_FROW_SIZE];
 
-                                #if(CY_PSOC3)
-                                    (void) memset(erase, (char8) 0, (int16) BL_FROW_SIZE);
-                                #else
-                                    (void) memset(erase, 0, BL_FROW_SIZE);
-                                #endif  /* (CY_PSOC3) */
+                        /*******************************************************************************
+                        * Refuse to write to the row within range of the bootloader application
+                        *******************************************************************************/
 
-                                #if(CY_PSOC4)
-                                    (void) CySysFlashWriteRow(BL_MD_ROW, erase);
-                                #else
-                                    (void) CyWriteRowFull((uint8)  BL_MD_FLASH_ARRAY_NUM,
-                                                          (uint16) BL_MD_ROW,
-                                                                    erase,
-                                                                    BL_FROW_SIZE);
-                                #endif  /* (CY_PSOC4) */
+                        /* First empty flash row after bootloader application */
+                        firstRow = (uint16) (*BL_SizeBytesAccess / CYDEV_FLS_ROW_SIZE);
+                        if ((*BL_SizeBytesAccess % CYDEV_FLS_ROW_SIZE) != 0u)
+                        {
+                            firstRow++;
+                        }
 
-                                /* Set up flag that metadata was cleared */
-                                clearedMetaData = 1u;
-                            }
+                        /* Check to see if the row to program will not corrupt the bootloader application */
+                        if(row < firstRow)
+                        {
+                            ackCode = BL_ERR_ROW;
+                            dataOffset = 0u;
+                            break;
+                        }
 
-                        #else
+
+                        #if(0u != BL_DUAL_APP_BOOTLOADER)
 
                             if(BL_activeApp < BL_MD_BTLDB_ACTIVE_NONE)
                             {
-                                /* First active bootloadable application row */
-                                uint16 firstRow = (uint16) 1u +
-                                    (uint16) BL_GetMetadata(BL_GET_METADATA_BTLDR_LAST_ROW,
+                                uint16 lastRow;
+
+
+                                /*******************************************************************************
+                                * For the first bootloadable application gets the last flash row occupied by
+                                * the bootloader application image:
+                                *  ---------------------------------------------------------------------------
+                                * | Bootloader   | Bootloadable # 1 |     | Bootloadable # 2 |     | M2 | M1 |
+                                *  ---------------------------------------------------------------------------
+                                * |<--firstRow---|>
+                                *
+                                * For the second bootloadable application gets the last flash row occupied by
+                                * the first bootloadable application:
+                                *  ---------------------------------------------------------------------------
+                                * | Bootloader   | Bootloadable # 1 |     | Bootloadable # 2 |     | M2 | M1 |
+                                *  ---------------------------------------------------------------------------
+                                * |<-------------firstRow-----------------|>
+                                *
+                                * Incremented by 1 to get the first available row.
+                                *
+                                * Note: M1 and M2 stands for the metadata # 1 and metadata # 2, metadata
+                                * sections for the 1st and 2nd bootloadable applications.
+                                *******************************************************************************/
+                                firstRow = (uint16) 1u +
+                                    (uint16) BL_GetMetadata(BL_GET_BTLDR_LAST_ROW,
                                                                           BL_activeApp);
 
-                                #if(CY_PSOC4)
-                                    uint16 row = dataOffset;
-                                #else
-                                    uint16 row = (uint16)(btldrData * (CYDEV_FLS_SECTOR_SIZE / CYDEV_FLS_ROW_SIZE)) +
-                                                  dataOffset;
-                                #endif  /* (CY_PSOC4) */
-
 
                                 /*******************************************************************************
-                                * Last row is equal to the first row plus the number of rows available for each
-                                * app. To compute this, we first subtract the number of appliaction images from
-                                * the total flash rows: (CY_FLASH_NUMBER_ROWS - 2u).
+                                * The number of flash rows available for the both bootloadable applications:
                                 *
-                                * Then subtract off the first row:
-                                * App Rows = (CY_FLASH_NUMBER_ROWS - 2u - firstRow)
-                                * Then divide that number by the number of application that must fit within the
-                                * space, if we are app1 then that number is 2, if app2 then 1.  Our divisor is
-                                * then: (2u - BL_activeApp).
+                                * First bootloadable application is active:
+                                *  ---------------------------------------------------------------------------
+                                * | Bootloader   | Bootloadable # 1 |     | Bootloadable # 2 |     | M2 | M1 |
+                                *  ---------------------------------------------------------------------------
+                                *                |<-------------------lastRow -------------------->|
                                 *
-                                * Adding this number to firstRow gives the address right beyond our valid range
-                                * so we subtract 1.
+                                * Second bootloadable application is active:
+                                *  ---------------------------------------------------------------------------
+                                * | Bootloader   | Bootloadable # 1 |     | Bootloadable # 2 |     | M2 | M1 |
+                                *  ---------------------------------------------------------------------------
+                                *                                         |<-------lastRow-------->|
                                 *******************************************************************************/
-                                uint16 lastRow = (firstRow - 1u) +
-                                                  ((uint16)((CYDEV_FLASH_SIZE / CYDEV_FLS_ROW_SIZE) - 2u - firstRow) /
-                                                  ((uint16)2u - (uint16)BL_activeApp));
+                                lastRow = (uint16)(CY_FLASH_NUMBER_ROWS -
+                                                    BL_NUMBER_OF_METADATA_ROWS -
+                                                    firstRow);
 
 
                                 /*******************************************************************************
-                                * Check to see if the row to program is within the range of the active
-                                * application, or if it maches the active application's metadata row.  If so,
-                                * refuse to program as it would corrupt the active app.
+                                * The number of flash rows available for the active bootloadable application:
+                                *
+                                * First bootloadable application is active: the number of flash rows available
+                                * for the both bootloadable applications should be divided by 2 - 2 bootloadable
+                                * applications should fit there.
+                                *
+                                * Second bootloadable application is active: the number of flash rows available
+                                * for the both bootloadable applications should be divided by 1 - 1 bootloadable
+                                * application should fit there.
+                                *******************************************************************************/
+                                lastRow = lastRow / (BL_NUMBER_OF_BTLDBLE_APPS -
+                                                BL_activeApp);
+
+
+                                /*******************************************************************************
+                                * The last row equals to the first row plus the number of rows available for
+                                * the each bootloadable application. That gives the flash row number right
+                                * beyond the valid range, so we subtract 1.
+                                *
+                                * First bootloadable application is active:
+                                *  ---------------------------------------------------------------------------
+                                * | Bootloader   | Bootloadable # 1 |     | Bootloadable # 2 |     | M2 | M1 |
+                                *  ---------------------------------------------------------------------------
+                                * |<----------------lastRow ------------->|
+                                *
+                                * Second bootloadable application is active:
+                                *  ---------------------------------------------------------------------------
+                                * | Bootloader   | Bootloadable # 1 |     | Bootloadable # 2 |     | M2 | M1 |
+                                *  ---------------------------------------------------------------------------
+                                * |<-----------------------------lastRow-------------------------->|
+                                *******************************************************************************/
+                                lastRow = (firstRow + lastRow) - 1u;
+
+
+                                /*******************************************************************************
+                                * 1. Refuse to write row within the range of the active application
+                                *
+                                *  First bootloadable application is active:
+                                *   ---------------------------------------------------------------------------
+                                *  | Bootloader   | Bootloadable # 1 |     | Bootloadable # 2 |     | M2 | M1 |
+                                *   ---------------------------------------------------------------------------
+                                *  |<----------------lastRow ------------->|
+                                *  |<--firstRow---|>
+                                *                 |<-------protected------>|
+                                *
+                                *  Second bootloadable application is active:
+                                *   ---------------------------------------------------------------------------
+                                *  | Bootloader   | Bootloadable # 1 |     | Bootloadable # 2 |     | M2 | M1 |
+                                *   ---------------------------------------------------------------------------
+                                *  |<-------------firstRow-----------------|>
+                                *  |<-----------------------------lastRow-------------------------->|
+                                *                                          |<-------protected------>|
+                                *
+                                * 2. Refuse to write to the row that contains metadata of the active
+                                *    bootloadable application.
+                                *
                                 *******************************************************************************/
                                 if(((row >= firstRow) && (row <= lastRow)) ||
                                    ((btldrData == BL_MD_FLASH_ARRAY_NUM) &&
@@ -985,25 +1262,98 @@ static void BL_HostLink(uint8 timeOut)
                                 }
                             }
 
-                        #endif  /* (0u == BL_DUAL_APP_BOOTLOADER) */
+                        #endif  /* (0u != BL_DUAL_APP_BOOTLOADER) */
+
+
+
+                        /*******************************************************************************
+                        * Clear row that contains the metadata, when 'Fast bootloadable application
+                        * validation' option is enabled.
+                        *
+                        * If 'Fast bootloadable application validation' option is enabled, the
+                        * bootloader only computes the checksum the first time and assumes that it
+                        * remains valid in each future startup. The metadata row is cleared because the
+                        * bootloadable application might become corrupted during update, while
+                        * 'Bootloadable Application Verification Status' field will still report that
+                        * application is valid.
+                        *******************************************************************************/
+                        #if(0u != BL_FAST_APP_VALIDATION)
+
+                            if(0u == clearedMetaData)
+                            {
+                                /* Metadata section must be filled with zeros */
+
+                                uint8 erase[BL_FROW_SIZE];
+                                uint8 BL_notActiveApp;
+
+
+                                #if(CY_PSOC3)
+                                    (void) memset(erase, (char8) 0, (int16) BL_FROW_SIZE);
+                                #else
+                                    (void) memset(erase, 0, BL_FROW_SIZE);
+                                #endif  /* (CY_PSOC3) */
+
+
+                                #if(0u != BL_DUAL_APP_BOOTLOADER)
+                                    if (BL_MD_BTLDB_ACTIVE_0 == BL_activeApp)
+                                    {
+                                        BL_notActiveApp = BL_MD_BTLDB_ACTIVE_1;
+                                    }
+                                    else
+                                    {
+                                        BL_notActiveApp = BL_MD_BTLDB_ACTIVE_0;
+                                    }
+                                #else
+                                    BL_notActiveApp = BL_MD_BTLDB_ACTIVE_0;
+                                #endif /* (0u != BL_DUAL_APP_BOOTLOADER) */
+
+
+                                #if(CY_PSOC4)
+                                    (void) CySysFlashWriteRow(
+                                            BL_MD_ROW_NUM(BL_notActiveApp),
+                                            erase);
+                                #else
+                                    (void) CyWriteRowFull(
+                                            (uint8)  BL_MD_FLASH_ARRAY_NUM,
+                                            (uint16) BL_MD_ROW_NUM(BL_notActiveApp),
+                                            erase,
+                                            BL_FROW_SIZE);
+                                #endif  /* (CY_PSOC4) */
+
+                                /* PSoC 5: Do not care about flushing the cache as flash row has been erased. */
+
+                                /* Set up flag that metadata was cleared */
+                                clearedMetaData = 1u;
+                            }
+
+                        #endif  /* (0u != BL_FAST_APP_VALIDATION) */
+
 
                         #if(!CY_PSOC4)
-                            }
+                            }   /* (btldrData <= BL_LAST_FLASH_ARRAYID) */
                         #endif  /* (!CY_PSOC4) */
 
-                        #if(CY_PSOC4)
 
-                            ackCode = (CYRET_SUCCESS != CySysFlashWriteRow((uint32) dataOffset, dataBuffer)) \
+                        #if(CY_PSOC4)
+                            ackCode = (CYRET_SUCCESS != CySysFlashWriteRow((uint32) row, dataBuffer)) \
                                 ? BL_ERR_ROW \
                                 : CYRET_SUCCESS;
-
                         #else
-
                             ackCode = (CYRET_SUCCESS != CyWriteRowFull(btldrData, dataOffset, dataBuffer, pktSize)) \
                                 ? BL_ERR_ROW \
                                 : CYRET_SUCCESS;
-
                         #endif  /* (CY_PSOC4) */
+
+
+                        #if(CY_PSOC5)
+                            /***************************************************************************
+                            * When writing Flash, data in the instruction cache can become stale.
+                            * Therefore, the cache data does not correlate to the data just written to
+                            * Flash. A call to CyFlushCache() is required to invalidate the data in the
+                            * cache and force fresh information to be loaded from Flash.
+                            ***************************************************************************/
+                            CyFlushCache();
+                        #endif /* (CY_PSOC5) */
 
                     }
                     else
@@ -1028,7 +1378,7 @@ static void BL_HostLink(uint8 timeOut)
                     /* If something failed the host would send this command to reset the bootloader. */
                     dataOffset = 0u;
 
-                    /* Don't ack the packet, just get ready to accept the next one */
+                    /* Don't acknowledge the packet, just get ready to accept the next one */
                     continue;
                 }
                 break;
@@ -1037,7 +1387,7 @@ static void BL_HostLink(uint8 timeOut)
 
 
             /***************************************************************************
-            *   Set active application
+            *   Set an active application
             ***************************************************************************/
             #if(0u != BL_DUAL_APP_BOOTLOADER)
 
@@ -1088,7 +1438,7 @@ static void BL_HostLink(uint8 timeOut)
                             #else
                                 (void) memcpy(&dataBuffer[dataOffset],
                                               &packetBuffer[BL_DATA_ADDR],
-                                              pktSize);
+                                              (uint32) pktSize);
                             #endif  /* (CY_PSOC3) */
 
                             dataOffset += pktSize;
@@ -1134,7 +1484,7 @@ static void BL_HostLink(uint8 timeOut)
                     #else
                         (void) memcpy(&packetBuffer[BL_DATA_ADDR],
                                       &BtldrVersion,
-                                      rspSize);
+                                      (uint32) rspSize);
                     #endif  /* (CY_PSOC3) */
 
                     ackCode = CYRET_SUCCESS;
@@ -1145,6 +1495,8 @@ static void BL_HostLink(uint8 timeOut)
             /***************************************************************************
             *   Verify row
             ***************************************************************************/
+            #if (0u != BL_CMD_VERIFY_ROW_AVAIL)
+
             case BL_COMMAND_VERIFY:
 
                 if((BL_COMMUNICATION_STATE_ACTIVE == communicationState) && (pktSize == 3u))
@@ -1165,7 +1517,7 @@ static void BL_HostLink(uint8 timeOut)
                             /* Both PSoC 3 and PSoC 5LP architectures have one EEPROM array. */
                             rowAddr = (uint32)rowNum * CYDEV_EEPROM_ROW_SIZE;
 
-                            checksum = BL_Calc8BitEepromSum(rowAddr, CYDEV_EEPROM_ROW_SIZE);
+                            checksum = BL_Calc8BitSum(CY_EEPROM_BASE, rowAddr, CYDEV_EEPROM_ROW_SIZE);
                         }
                         else
                         {
@@ -1173,7 +1525,7 @@ static void BL_HostLink(uint8 timeOut)
                             rowAddr = ((uint32)btldrData * CYDEV_FLS_SECTOR_SIZE)
                                        + ((uint32)rowNum * CYDEV_FLS_ROW_SIZE);
 
-                            checksum = BL_Calc8BitFlashSum(rowAddr, CYDEV_FLS_ROW_SIZE);
+                            checksum = BL_Calc8BitSum(CY_FLASH_BASE, rowAddr, CYDEV_FLS_ROW_SIZE);
                         }
 
                     #else
@@ -1181,7 +1533,9 @@ static void BL_HostLink(uint8 timeOut)
                         uint32 CYDATA rowAddr = ((uint32)btldrData * CYDEV_FLS_SECTOR_SIZE)
                                             + ((uint32)rowNum * CYDEV_FLS_ROW_SIZE);
 
-                        uint8 CYDATA checksum = BL_Calc8BitFlashSum(rowAddr, CYDEV_FLS_ROW_SIZE);
+                        uint8 CYDATA checksum = BL_Calc8BitSum(CY_FLASH_BASE,
+                                                                             rowAddr,
+                                                                             CYDEV_FLS_ROW_SIZE);
 
                     #endif  /* (!CY_PSOC4) */
 
@@ -1206,15 +1560,19 @@ static void BL_HostLink(uint8 timeOut)
 
 
                     /*******************************************************************************
-                    * App Verified & App Active are information that is updated in flash at runtime
-                    * remove these items from the checksum to allow the host to verify everything is
+                    * App Verified & App Active are information that is updated in Flash at runtime.
+                    * Remove these items from the checksum to allow the host to verify everything is
                     * correct.
                      ******************************************************************************/
                     if((BL_MD_FLASH_ARRAY_NUM == btldrData) &&
                        (BL_CONTAIN_METADATA(rowNum)))
                     {
-                        checksum -= BL_MD_BTLDB_ACTIVE_VALUE  (BL_GET_APP_ID(rowNum));
-                        checksum -= BL_MD_BTLDB_VERIFIED_VALUE(BL_GET_APP_ID(rowNum));
+
+                        checksum -= (uint8)BL_GetMetadata(BL_GET_BTLDB_ACTIVE,
+                                                                 BL_GET_APP_ID(rowNum));
+
+                        checksum -= (uint8)BL_GetMetadata(BL_GET_BTLDB_STATUS,
+                                                                 BL_GET_APP_ID(rowNum));
                     }
 
                     packetBuffer[BL_DATA_ADDR] = (uint8)1u + (uint8)(~checksum);
@@ -1222,6 +1580,8 @@ static void BL_HostLink(uint8 timeOut)
                     rspSize = 1u;
                 }
                 break;
+
+            #endif /* (0u != BL_CMD_VERIFY_ROW_AVAIL) */
 
 
             /***************************************************************************
@@ -1231,7 +1591,7 @@ static void BL_HostLink(uint8 timeOut)
 
                 if(CYRET_SUCCESS == BL_ValidateBootloadable(BL_activeApp))
                 {
-                    BL_SET_RUN_TYPE(BL_START_APP);
+                    BL_SET_RUN_TYPE(BL_SCHEDULE_BTLDB);
                 }
 
                 CySoftwareReset();
@@ -1249,7 +1609,7 @@ static void BL_HostLink(uint8 timeOut)
             }
         }
 
-        /* ?CK the packet and function. */
+        /* Reply with acknowledge or not acknowledge packet */
         (void) BL_WritePacket(ackCode, packetBuffer, rspSize);
 
     } while ((0u == timeOut) || (BL_COMMUNICATION_STATE_ACTIVE == communicationState));
@@ -1261,7 +1621,7 @@ static void BL_HostLink(uint8 timeOut)
 ********************************************************************************
 *
 * Summary:
-*  Creates a bootloader responce packet and transmits it back to the bootloader
+*  Creates a bootloader response packet and transmits it back to the bootloader
 *  host application over the already established communications protocol.
 *
 * Parameters:
@@ -1273,8 +1633,7 @@ static void BL_HostLink(uint8 timeOut)
 *      The number of bytes contained within the buffer to pass back
 *
 * Return:
-*   CYRET_SUCCESS if successful.
-*   CYRET_UNKNOWN if there was an error tranmitting the packet.
+*   CYRET_SUCCESS if successful. Any other non-zero value if failure occurred.
 *
 *******************************************************************************/
 static cystatus BL_WritePacket(uint8 status, uint8 buffer[], uint16 size) CYSMALL \
@@ -1282,20 +1641,20 @@ static cystatus BL_WritePacket(uint8 status, uint8 buffer[], uint16 size) CYSMAL
 {
     uint16 CYDATA checksum;
 
-    /* Start of the packet. */
+    /* Start of packet. */
     buffer[BL_SOP_ADDR]      = BL_SOP;
     buffer[BL_CMD_ADDR]      = status;
     buffer[BL_SIZE_ADDR]     = LO8(size);
     buffer[BL_SIZE_ADDR + 1u] = HI8(size);
 
-    /* Compute the checksum. */
+    /* Compute checksum. */
     checksum = BL_CalcPacketChecksum(buffer, size + BL_DATA_ADDR);
 
     buffer[BL_CHK_ADDR(size)]     = LO8(checksum);
     buffer[BL_CHK_ADDR(1u + size)] = HI8(checksum);
     buffer[BL_EOP_ADDR(size)]     = BL_EOP;
 
-    /* Start the packet transmit. */
+    /* Start packet transmit. */
     return(CyBtldrCommWrite(buffer, size + BL_MIN_PKT_SIZE, &size, 150u));
 }
 
@@ -1305,11 +1664,11 @@ static cystatus BL_WritePacket(uint8 status, uint8 buffer[], uint16 size) CYSMAL
 ********************************************************************************
 *
 * Summary:
-*  Writes byte a flash memory location
+*  Writes a byte to the specified Flash memory location.
 *
 * Parameters:
 *  address:
-*      Address in Flash memory where data will be written
+*      The address in Flash memory where data will be written
 *
 *  runType:
 *      Byte to be written
@@ -1327,7 +1686,12 @@ void BL_SetFlashByte(uint32 address, uint8 runType)
         uint8 arrayId = ( uint8 )(flsAddr / CYDEV_FLS_SECTOR_SIZE);
     #endif  /* !(CY_PSOC4) */
 
-    uint16 rowNum = ( uint16 )((flsAddr % CYDEV_FLS_SECTOR_SIZE) / CYDEV_FLS_ROW_SIZE);
+    #if (CY_PSOC4)
+        uint16 rowNum = ( uint16 )(flsAddr / CYDEV_FLS_ROW_SIZE);
+    #else
+        uint16 rowNum = ( uint16 )((flsAddr % CYDEV_FLS_SECTOR_SIZE) / CYDEV_FLS_ROW_SIZE);
+    #endif  /* (CY_PSOC4) */
+
     uint32 baseAddr = address - (address % CYDEV_FLS_ROW_SIZE);
     uint16 idx;
 
@@ -1343,6 +1707,16 @@ void BL_SetFlashByte(uint32 address, uint8 runType)
     #else
         (void) CyWriteRowData(arrayId, rowNum, rowData);
     #endif  /* (CY_PSOC4) */
+
+    #if(CY_PSOC5)
+        /***************************************************************************
+        * When writing Flash, data in the instruction cache can become stale.
+        * Therefore, the cache data does not correlate to the data just written to
+        * Flash. A call to CyFlushCache() is required to invalidate the data in the
+        * cache and force fresh information to be loaded from Flash.
+        ***************************************************************************/
+        CyFlushCache();
+    #endif /* (CY_PSOC5) */
 }
 
 
@@ -1351,67 +1725,88 @@ void BL_SetFlashByte(uint32 address, uint8 runType)
 ********************************************************************************
 *
 * Summary:
-*  Returns value of the multi-byte field.
+*  Returns the value of the specified field of the metadata section.
 *
 * Parameters:
-*  fieldName:
+*  field:
 *   The field to get data from:
-*     BL_GET_METADATA_BTLDB_ADDR
-*     BL_GET_METADATA_BTLDR_LAST_ROW
-*     BL_GET_METADATA_BTLDB_LENGTH
-*     BL_GET_METADATA_BTLDR_APP_VERSION
-*     BL_GET_METADATA_BTLDB_APP_VERSION
-*     BL_GET_METADATA_BTLDB_APP_ID
-*     BL_GET_METADATA_BTLDB_APP_CUST_ID
+*   BL_GET_BTLDB_CHECKSUM    - Bootloadable Application Checksum
+*   BL_GET_BTLDB_ADDR        - Bootloadable Application Start
+*                                            Routine Address
+*   BL_GET_BTLDR_LAST_ROW    - Bootloader Last Flash Row
+*   BL_GET_BTLDB_LENGTH      - Bootloadable Application Length
+*   BL_GET_BTLDB_ACTIVE      - Active Bootloadable Application
+*   BL_GET_BTLDB_STATUS      - Bootloadable Application
+*                                            Verification Status
+*   BL_GET_BTLDR_APP_VERSION - Bootloader Application Version
+*   BL_GET_BTLDB_APP_VERSION - Bootloadable Application Version
+*   BL_GET_BTLDB_APP_ID      - Bootloadable Application ID
+*   BL_GET_BTLDB_APP_CUST_ID - Bootloadable Application Custom ID
 *
 *  appId:
-*   Number of the bootlodable application.
+*   Number of the bootlodable application. Should be 0 for the normal
+*   bootloader and 0 or 1 for the Multi-Application bootloader.
 *
 * Return:
-*  None
+*  The value of the specified field of the specified application.
 *
 *******************************************************************************/
-static uint32 BL_GetMetadata(uint8 fieldName, uint8 appId)
+uint32 BL_GetMetadata(uint8 field, uint8 appId)
 {
     uint32 fieldPtr;
     uint8  fieldSize = 2u;
-    uint32 result;
+    uint32 result = 0u;
 
-    switch (fieldName)
+    switch (field)
     {
-    case BL_GET_METADATA_BTLDB_APP_CUST_ID:
-        fieldPtr  = BL_MD_BTLDB_APP_CUST_ID_OFFSET(appId);
-        fieldSize = 4u;
+    case BL_GET_BTLDB_CHECKSUM:
+        fieldPtr  = BL_MD_BTLDB_CHECKSUM_OFFSET(appId);
+        fieldSize = 1u;
         break;
 
-    case BL_GET_METADATA_BTLDR_APP_VERSION:
-        fieldPtr  = BL_MD_BTLDR_APP_VERSION_OFFSET(appId);
-        break;
-
-    case BL_GET_METADATA_BTLDB_ADDR:
+    case BL_GET_BTLDB_ADDR:
         fieldPtr  = BL_MD_BTLDB_ADDR_OFFSET(appId);
     #if(!CY_PSOC3)
         fieldSize = 4u;
     #endif  /* (!CY_PSOC3) */
         break;
 
-    case BL_GET_METADATA_BTLDR_LAST_ROW:
+    case BL_GET_BTLDR_LAST_ROW:
         fieldPtr  = BL_MD_BTLDR_LAST_ROW_OFFSET(appId);
         break;
 
-    case BL_GET_METADATA_BTLDB_LENGTH:
+    case BL_GET_BTLDB_LENGTH:
         fieldPtr  = BL_MD_BTLDB_LENGTH_OFFSET(appId);
     #if(!CY_PSOC3)
         fieldSize = 4u;
     #endif  /* (!CY_PSOC3) */
         break;
 
-    case BL_GET_METADATA_BTLDB_APP_VERSION:
+    case BL_GET_BTLDB_ACTIVE:
+        fieldPtr  = BL_MD_BTLDB_ACTIVE_OFFSET(appId);
+        fieldSize = 1u;
+        break;
+
+    case BL_GET_BTLDB_STATUS:
+        fieldPtr  = BL_MD_BTLDB_VERIFIED_OFFSET(appId);
+        fieldSize = 1u;
+        break;
+
+    case BL_GET_BTLDB_APP_VERSION:
         fieldPtr  = BL_MD_BTLDB_APP_VERSION_OFFSET(appId);
         break;
 
-    case BL_GET_METADATA_BTLDB_APP_ID:
+    case BL_GET_BTLDR_APP_VERSION:
+        fieldPtr  = BL_MD_BTLDR_APP_VERSION_OFFSET(appId);
+        break;
+
+    case BL_GET_BTLDB_APP_ID:
         fieldPtr  = BL_MD_BTLDB_APP_ID_OFFSET(appId);
+        break;
+
+    case BL_GET_BTLDB_APP_CUST_ID:
+        fieldPtr  = BL_MD_BTLDB_APP_CUST_ID_OFFSET(appId);
+        fieldSize = 4u;
         break;
 
     default:
@@ -1422,38 +1817,44 @@ static uint32 BL_GetMetadata(uint8 fieldName, uint8 appId)
     }
 
 
-    /* Read all fields as big-endian */
-    if (2u == fieldSize)
+    if (1u == fieldSize)
     {
-        result =  (uint32) CY_GET_XTND_REG8((volatile uint8 *)(fieldPtr + 1u));
-        result |= (uint32) CY_GET_XTND_REG8((volatile uint8 *) fieldPtr      ) <<  8u;
-    }
-    else
-    {
-        result =  (uint32) CY_GET_XTND_REG8((volatile uint8 *)(fieldPtr + 3u));
-        result |= (uint32) CY_GET_XTND_REG8((volatile uint8 *)(fieldPtr + 2u)) <<  8u;
-        result |= (uint32) CY_GET_XTND_REG8((volatile uint8 *)(fieldPtr + 1u)) << 16u;
-        result |= (uint32) CY_GET_XTND_REG8((volatile uint8 *)(fieldPtr     )) << 24u;
+        result =  (uint32) CY_GET_XTND_REG8((volatile uint8 *)fieldPtr);
     }
 
-    /* Following fields should be little-endian */
-#if(!CY_PSOC3)
-    switch (fieldName)
-    {
-    case BL_GET_METADATA_BTLDR_LAST_ROW:
-        result = CYSWAP_ENDIAN16(result);
-        break;
+    #if(CY_PSOC3)   /* Big-endian */
 
-    case BL_GET_METADATA_BTLDB_ADDR:
-    case BL_GET_METADATA_BTLDB_LENGTH:
-        result = CYSWAP_ENDIAN32(result);
-        break;
+        if (2u == fieldSize)
+        {
+            result =  (uint32) CY_GET_XTND_REG8((volatile uint8 *)(fieldPtr + 1u));
+            result |= (uint32) CY_GET_XTND_REG8((volatile uint8 *)(fieldPtr     )) <<  8u;
+        }
 
-    default:
-        break;
-    }
+        if (4u == fieldSize)
+        {
+            result =  (uint32) CY_GET_XTND_REG8((volatile uint8 *)(fieldPtr + 3u));
+            result |= (uint32) CY_GET_XTND_REG8((volatile uint8 *)(fieldPtr + 2u)) <<  8u;
+            result |= (uint32) CY_GET_XTND_REG8((volatile uint8 *)(fieldPtr + 1u)) << 16u;
+            result |= (uint32) CY_GET_XTND_REG8((volatile uint8 *)(fieldPtr     )) << 24u;
+        }
 
-#endif  /* (!CY_PSOC3) */
+    #else   /* PSoC 4 and PSoC 5: Little-endian */
+
+        if (2u == fieldSize)
+        {
+            result =  (uint32) CY_GET_XTND_REG8((volatile uint8 *) (fieldPtr     ));
+            result |= (uint32) CY_GET_XTND_REG8((volatile uint8 *) (fieldPtr + 1u)) <<  8u;
+        }
+
+        if (4u == fieldSize)
+        {
+            result =  (uint32) CY_GET_XTND_REG8((volatile uint8 *)(fieldPtr     ));
+            result |= (uint32) CY_GET_XTND_REG8((volatile uint8 *)(fieldPtr + 1u)) <<  8u;
+            result |= (uint32) CY_GET_XTND_REG8((volatile uint8 *)(fieldPtr + 2u)) << 16u;
+            result |= (uint32) CY_GET_XTND_REG8((volatile uint8 *)(fieldPtr + 3u)) << 24u;
+        }
+
+    #endif /* (CY_PSOC3) */
 
     return (result);
 }

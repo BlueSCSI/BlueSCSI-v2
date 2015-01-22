@@ -1,13 +1,17 @@
 /*******************************************************************************
 * File Name: USBFS_midi.h
-* Version 2.60
+* Version 2.80
 *
 * Description:
 *  Header File for the USBFS MIDI module.
 *  Contains prototypes and constant values.
 *
+* Related Document:
+*  Universal Serial Bus Device Class Definition for MIDI Devices Release 1.0
+*  MIDI 1.0 Detailed Specification Document Version 4.2
+*
 ********************************************************************************
-* Copyright 2008-2013, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2014, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
@@ -21,7 +25,7 @@
 
 
 /***************************************
-*    Data Struct Definition
+*    Data Structure Definition
 ***************************************/
 
 /* The following structure is used to hold status information for
@@ -112,11 +116,12 @@ typedef struct
 #define USBFS_CUSTOM_UART_TX_PRIOR_NUM   (0x04u)
 #define USBFS_CUSTOM_UART_RX_PRIOR_NUM   (0x02u)
 
-#define USBFS_ISR_SERVICE_MIDI_OUT     \
+#define USBFS_ISR_SERVICE_MIDI_OUT         \
         ( (USBFS_ENABLE_MIDI_API != 0u) && \
-          (USBFS_MIDI_OUT_BUFF_SIZE > 0) && (USBFS_EP_MM == USBFS__EP_DMAAUTO) )
+          (USBFS_MIDI_OUT_BUFF_SIZE > 0) && (USBFS_EP_MM == USBFS__EP_DMAAUTO))
 #define USBFS_ISR_SERVICE_MIDI_IN     \
         ( (USBFS_ENABLE_MIDI_API != 0u) && (USBFS_MIDI_IN_BUFF_SIZE > 0) )
+
 
 /***************************************
 * External function references
@@ -132,13 +137,13 @@ void USBFS_callbackLocalMidiEvent(uint8 cable, uint8 *midiMsg)
 
 #if (USBFS_MIDI_EXT_MODE >= USBFS_ONE_EXT_INTRF)
     #include "MIDI1_UART.h"
-#endif /* End USBFS_MIDI_EXT_MODE >= USBFS_ONE_EXT_INTRF */
+#endif /*  USBFS_MIDI_EXT_MODE >= USBFS_ONE_EXT_INTRF */
 #if (USBFS_MIDI_EXT_MODE >= USBFS_TWO_EXT_INTRF)
     #include "MIDI2_UART.h"
-#endif /* End USBFS_MIDI_EXT_MODE >= USBFS_TWO_EXT_INTRF */
+#endif /*  USBFS_MIDI_EXT_MODE >= USBFS_TWO_EXT_INTRF */
 #if(USBFS_EP_MM != USBFS__EP_MANUAL)
     #include <CyDmac.h>
-#endif /* End USBFS_EP_MM */
+#endif /*  USBFS_EP_MM */
 
 
 /***************************************
@@ -159,8 +164,8 @@ void USBFS_PrepareInBuffer(uint8 ic, const uint8 srcBuff[], uint8 eventLen, uint
         uint8 USBFS_MIDI2_GetEvent(void) ;
         void USBFS_MIDI2_ProcessUsbOut(const uint8 epBuf[])
                                                     ;
-    #endif /* End USBFS_MIDI_EXT_MODE >= USBFS_TWO_EXT_INTRF */
-#endif /* End USBFS_MIDI_EXT_MODE >= USBFS_ONE_EXT_INTRF */
+    #endif /*  USBFS_MIDI_EXT_MODE >= USBFS_TWO_EXT_INTRF */
+#endif /*  USBFS_MIDI_EXT_MODE >= USBFS_ONE_EXT_INTRF */
 
 
 /***************************************
@@ -174,7 +179,7 @@ void USBFS_PrepareInBuffer(uint8 ic, const uint8 srcBuff[], uint8 eventLen, uint
         extern volatile uint16 USBFS_midiInPointer;                       /* Input endpoint buffer pointer */
     #else
         extern volatile uint8 USBFS_midiInPointer;                        /* Input endpoint buffer pointer */
-    #endif /* End USBFS_MIDI_IN_BUFF_SIZE >=256 */
+    #endif /*  USBFS_MIDI_IN_BUFF_SIZE >=256 */
     extern volatile uint8 USBFS_midi_in_ep;                               /* Input endpoint number */
     extern uint8 USBFS_midiInBuffer[USBFS_MIDI_IN_BUFF_SIZE];  /* Input endpoint buffer */
 #endif /* USBFS_MIDI_IN_BUFF_SIZE > 0 */
@@ -188,13 +193,13 @@ void USBFS_PrepareInBuffer(uint8 ic, const uint8 srcBuff[], uint8 eventLen, uint
     extern volatile uint8 USBFS_MIDI1_InqFlags;                              /* Device inquiry flag */
     #if (USBFS_MIDI_EXT_MODE >= USBFS_TWO_EXT_INTRF)
         extern volatile uint8 USBFS_MIDI2_InqFlags;                          /* Device inquiry flag */
-    #endif /* End USBFS_MIDI_EXT_MODE >= USBFS_TWO_EXT_INTRF */
-#endif /* End USBFS_MIDI_EXT_MODE >= USBFS_ONE_EXT_INTRF */
+    #endif /*  USBFS_MIDI_EXT_MODE >= USBFS_TWO_EXT_INTRF */
+#endif /*  USBFS_MIDI_EXT_MODE >= USBFS_ONE_EXT_INTRF */
 
 #endif /* USBFS_ENABLE_MIDI_STREAMING */
 
 
-#endif /* End CY_USBFS_USBFS_midi_H */
+#endif /*  CY_USBFS_USBFS_midi_H */
 
 
 /* [] END OF FILE */

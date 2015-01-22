@@ -1,12 +1,12 @@
 /*******************************************************************************
 * File Name: Cm3Start.c
-* Version 4.0
+* Version 4.20
 *
 *  Description:
 *  Startup code for the ARM CM3.
 *
 ********************************************************************************
-* Copyright 2008-2013, Cypress Semiconductor Corporation. All rights reserved.
+* Copyright 2008-2014, Cypress Semiconductor Corporation. All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
@@ -52,6 +52,12 @@ CY_ISR(IntDefaultHandler);
     extern void __iar_data_init3 (void);
 #endif  /* (__ARMCC_VERSION) */
 
+#if defined(__GNUC__)
+    #include <errno.h>
+    extern int  errno;
+    extern int  end;
+#endif  /* defined(__GNUC__) */
+
 /* Global variables */
 #if !defined (__ICCARM__)
     CY_NOINIT static uint32 cySysNoInitDataValid;
@@ -76,7 +82,7 @@ cyisraddress CyRamVectors[CY_NUM_VECTORS];
 ********************************************************************************
 *
 * Summary:
-*  This function is called for all interrupts, other than reset, that get
+*  This function is called for all interrupts, other than a reset that gets
 *  called before the system is setup.
 *
 * Parameters:
@@ -95,7 +101,7 @@ CY_ISR(IntDefaultHandler)
     while(1)
     {
         /***********************************************************************
-        * We should never get here. If we do, a serious problem occured, so go
+        * We must not get here. If we do, a serious problem occurs, so go
         * into an infinite loop.
         ***********************************************************************/
     }
@@ -104,7 +110,7 @@ CY_ISR(IntDefaultHandler)
 
 #if defined(__ARMCC_VERSION)
 
-/* Local function for the device reset. */
+/* Local function for device reset. */
 extern void Reset(void);
 
 /* Application entry point. */
@@ -161,7 +167,7 @@ void Reset(void)
 ********************************************************************************
 *
 * Summary:
-*  This function is called imediatly before the users main
+*  This function is called immediately before the users main
 *
 * Parameters:
 *  None
@@ -179,7 +185,7 @@ void $Sub$$main(void)
 
     while (1)
     {
-        /* If main returns it is undefined what we should do. */
+        /* If main returns, it is undefined what we should do. */
     }
 }
 
@@ -193,7 +199,7 @@ extern void __cy_stack(void);
 /* Application entry point. */
 extern int main(void);
 
-/* The static objects constructors initializer */
+/* Static objects constructors initializer */
 extern void __libc_init_array(void);
 
 typedef unsigned char __cy_byte_align8 __attribute ((aligned (8)));
@@ -209,6 +215,84 @@ struct __cy_region
 extern const struct __cy_region __cy_regions[];
 extern const char __cy_region_num __attribute__((weak));
 #define __cy_region_num ((size_t)&__cy_region_num)
+
+
+/*******************************************************************************
+* System Calls of the Red Hat newlib C Library
+*******************************************************************************/
+
+
+/*******************************************************************************
+* Function Name: _exit
+********************************************************************************
+*
+* Summary:
+*  Exit a program without cleaning up files. If your system doesn't provide
+*  this, it is best to avoid linking with subroutines that require it (exit,
+*  system).
+*
+* Parameters:
+*  status: Status caused program exit.
+*
+* Return:
+*  None
+*
+*******************************************************************************/
+__attribute__((weak))
+void _exit(int status)
+{
+    /* Cause divide by 0 exception */
+    int x = status / (int) INT_MAX;
+    x = 4 / x;
+
+    while(1)
+    {
+
+    }
+}
+
+
+/*******************************************************************************
+* Function Name: _sbrk
+********************************************************************************
+*
+* Summary:
+*  Increase program data space. As malloc and related functions depend on this,
+*  it is useful to have a working implementation. The following suffices for a
+*  standalone system; it exploits the symbol end automatically defined by the
+*  GNU linker.
+*
+* Parameters:
+*  nbytes: The number of bytes requested (if the parameter value is positive)
+*  from the heap or returned back to the heap (if the parameter value is
+*  negative).
+*
+* Return:
+*  None
+*
+*******************************************************************************/
+__attribute__((weak))
+void * _sbrk (int nbytes)
+{
+    extern int  end;            /* Symbol defined by linker map. Start of free memory (as symbol). */
+    void *      returnValue;
+
+    /* The statically held previous end of the heap, with its initialization. */
+    static void *heapPointer = (void *) &end;                 /* Previous end */
+
+    if (((heapPointer + nbytes) - (void *) &end) <= CYDEV_HEAP_SIZE)
+    {
+        returnValue  = heapPointer;
+        heapPointer += nbytes;
+    }
+    else
+    {
+        errno = ENOMEM;
+        returnValue = (void *) -1;
+    }
+
+    return (returnValue);
+}
 
 
 /*******************************************************************************
@@ -249,17 +333,6 @@ void Reset(void)
     Start_c();
 }
 
-__attribute__((weak))
-void _exit(int status)
-{
-    /* Cause a divide by 0 exception */
-    int x = status / INT_MAX;
-    x = 4 / x;
-
-    while(1)
-    {
-    }
-}
 
 /*******************************************************************************
 * Function Name: Start_c
@@ -267,7 +340,7 @@ void _exit(int status)
 *
 * Summary:
 *  This function handles initializing the .data and .bss sections in
-*  preperation for running standard C code.  Once initialization is complete
+*  preparation for running the standard C code.  Once initialization is complete
 *  it will call main(). This function will never return.
 *
 * Parameters:
@@ -284,7 +357,7 @@ void Start_c(void)
     const struct __cy_region *rptr = __cy_regions;
 
     /* Initialize memory */
-    for (regions = __cy_region_num, rptr = __cy_regions; regions--; rptr++)
+    for (regions = __cy_region_num; regions != 0u; regions--)
     {
         uint32 *src = (uint32 *)rptr->init;
         uint32 *dst = (uint32 *)rptr->data;
@@ -293,13 +366,18 @@ void Start_c(void)
 
         for (count = 0u; count != limit; count += sizeof (uint32))
         {
-            *dst++ = *src++;
+            *dst = *src;
+            dst++;
+            src++;
         }
         limit = rptr->zero_size;
         for (count = 0u; count != limit; count += sizeof (uint32))
         {
-            *dst++ = 0u;
+            *dst = 0u;
+            dst++;
         }
+
+        rptr++;
     }
 
     /* Invoke static objects constructors */
@@ -320,8 +398,8 @@ void Start_c(void)
 ********************************************************************************
 *
 * Summary:
-*  This function perform early initializations for the IAR Embedded
-*  Workbench IDE. It is executed in the context of reset interrupt handler
+*  This function performs early initializations for the IAR Embedded
+*  Workbench IDE. It is executed in the context of a reset interrupt handler
 *  before the data sections are initialized.
 *
 * Parameters:
@@ -383,14 +461,14 @@ int __low_level_init(void)
     const cyisraddress RomVectors[CY_NUM_ROM_VECTORS] =
 #endif  /* defined (__ICCARM__) */
 {
-    INITIAL_STACK_POINTER,   /* The initial stack pointer  0 */
-    #if defined (__ICCARM__) /* The reset handler          1 */
+    INITIAL_STACK_POINTER,   /* Initial stack pointer  0 */
+    #if defined (__ICCARM__) /* Reset handler          1 */
         __iar_program_start,
     #else
         (cyisraddress)&Reset,
     #endif  /* defined (__ICCARM__) */
-    &IntDefaultHandler,      /* The NMI handler            2 */
-    &IntDefaultHandler,      /* The hard fault handler     3 */
+    &IntDefaultHandler,      /* NMI handler            2 */
+    &IntDefaultHandler,      /* Hard fault handler     3 */
 };
 
 #if defined(__ARMCC_VERSION)
@@ -438,7 +516,7 @@ void initialize_psoc(void)
     /* Was stored in CFGMEM to avoid being cleared while SRAM gets cleared */
     CyResetStatus = CY_GET_REG8(CYREG_PHUB_CFGMEM23_CFG1);
 
-    /* Point NVIC at the RAM vector table. */
+    /* Point NVIC at RAM vector table. */
     *CYINT_VECT_TABLE = CyRamVectors;
 
     /* Initialize the configuration registers. */
@@ -446,7 +524,7 @@ void initialize_psoc(void)
 
     #if(0u != DMA_CHANNELS_USED__MASK0)
 
-        /* Setup DMA - only necessary if the design contains a DMA component. */
+        /* Setup DMA - only necessary if design contains DMA component. */
         CyDmacConfigure();
 
     #endif  /* (0u != DMA_CHANNELS_USED__MASK0) */

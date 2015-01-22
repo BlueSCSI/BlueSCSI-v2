@@ -1,12 +1,12 @@
 /*******************************************************************************
 * File Name: CyBootAsmGnu.s
-* Version 4.0
+* Version 4.20
 *
 *  Description:
 *   Assembly routines for GNU as.
 *
 ********************************************************************************
-* Copyright 2010-2013, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2010-2014, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.

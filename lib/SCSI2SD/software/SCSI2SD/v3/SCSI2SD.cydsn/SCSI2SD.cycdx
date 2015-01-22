@@ -7,11 +7,11 @@
   <block name="SD_RX_DMA" BASE="0x0" SIZE="0x0" desc="" visible="true" />
   <block name="ZeroTerminal_1" BASE="0x0" SIZE="0x0" desc="" visible="true" />
   <block name="SCSI_Out_Bits" BASE="0x0" SIZE="0x0" desc="" visible="true">
-    <register name="SCSI_Out_Bits_CONTROL_REG" address="0x40006474" bitWidth="8" desc="" />
+    <register name="SCSI_Out_Bits_CONTROL_REG" address="0x4000647B" bitWidth="8" desc="" />
   </block>
   <block name="SCSI_Out_Mux" BASE="0x0" SIZE="0x0" desc="" visible="true" />
   <block name="SCSI_Out_Ctl" BASE="0x0" SIZE="0x0" desc="" visible="true">
-    <register name="SCSI_Out_Ctl_CONTROL_REG" address="0x4000647E" bitWidth="8" desc="" />
+    <register name="SCSI_Out_Ctl_CONTROL_REG" address="0x4000647D" bitWidth="8" desc="" />
   </block>
   <block name="timer_clock" BASE="0x0" SIZE="0x0" desc="" visible="true" />
   <block name="Debug_Timer" BASE="0x0" SIZE="0x0" desc="" visible="true">
@@ -82,9 +82,9 @@
   <block name="SD_TX_DMA_COMPLETE" BASE="0x0" SIZE="0x0" desc="" visible="true" />
   <block name="SCSI_RX_DMA_COMPLETE" BASE="0x0" SIZE="0x0" desc="" visible="true" />
   <block name="SCSI_Filtered" BASE="0x0" SIZE="0x0" desc="" visible="true">
-    <register name="SCSI_Filtered_STATUS_REG" address="0x4000646E" bitWidth="8" desc="" />
-    <register name="SCSI_Filtered_MASK_REG" address="0x4000648E" bitWidth="8" desc="" />
-    <register name="SCSI_Filtered_STATUS_AUX_CTL_REG" address="0x4000649E" bitWidth="8" desc="">
+    <register name="SCSI_Filtered_STATUS_REG" address="0x4000646C" bitWidth="8" desc="" />
+    <register name="SCSI_Filtered_MASK_REG" address="0x4000648C" bitWidth="8" desc="" />
+    <register name="SCSI_Filtered_STATUS_AUX_CTL_REG" address="0x4000649C" bitWidth="8" desc="">
       <field name="FIFO0" from="5" to="5" access="RW" resetVal="" desc="FIFO0 clear">
         <value name="ENABLED" value="1" desc="Enable counter" />
         <value name="DISABLED" value="0" desc="Disable counter" />
@@ -144,7 +144,7 @@
   <block name="Bootloadable_1" BASE="0x0" SIZE="0x0" desc="" visible="true" />
   <block name="OddParityGen_1" BASE="0x0" SIZE="0x0" desc="" visible="true" />
   <block name="SCSI_CTL_PHASE" BASE="0x0" SIZE="0x0" desc="" visible="true">
-    <register name="SCSI_CTL_PHASE_CONTROL_REG" address="0x40006470" bitWidth="8" desc="" />
+    <register name="SCSI_CTL_PHASE_CONTROL_REG" address="0x4000647C" bitWidth="8" desc="" />
   </block>
   <block name="SCSI_In" BASE="0x0" SIZE="0x0" desc="" visible="true" />
   <block name="CFG_EEPROM" BASE="0x0" SIZE="0x0" desc="" visible="true" />
@@ -166,19 +166,35 @@
     <block name="BSPIM" BASE="0x0" SIZE="0x0" desc="" visible="true" />
   </block>
   <block name="USBFS" BASE="0x0" SIZE="0x0" desc="USBFS" visible="true">
-    <block name="bus_reset" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="ZeroTerminal_5" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="VirtualMux_6" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="VirtualMux_5" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="ZeroTerminal_6" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="ZeroTerminal_7" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="VirtualMux_8" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="VirtualMux_7" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="VirtualMux_1" BASE="0x0" SIZE="0x0" desc="" visible="true" />
     <block name="ep_0" BASE="0x0" SIZE="0x0" desc="" visible="true" />
-    <block name="ep_1" BASE="0x0" SIZE="0x0" desc="" visible="true" />
-    <block name="USB" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="VirtualMux_4" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="ZeroTerminal_2" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="ZeroTerminal_1" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="ZeroTerminal_4" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="VirtualMux_2" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="bus_reset" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="Dm" BASE="0x0" SIZE="0x0" desc="" visible="true" />
     <block name="sof_int" BASE="0x0" SIZE="0x0" desc="" visible="true" />
-    <block name="arb_int" BASE="0x0" SIZE="0x0" desc="" visible="true" />
-    <block name="ep_2" BASE="0x0" SIZE="0x0" desc="" visible="true" />
-    <block name="Dp" BASE="0x0" SIZE="0x0" desc="" visible="true" />
     <block name="dp_int" BASE="0x0" SIZE="0x0" desc="" visible="true" />
-    <block name="Clock_vbus" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="Dp" BASE="0x0" SIZE="0x0" desc="" visible="true" />
     <block name="ep_3" BASE="0x0" SIZE="0x0" desc="" visible="true" />
     <block name="ep_4" BASE="0x0" SIZE="0x0" desc="" visible="true" />
-    <block name="Dm" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="USB" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="arb_int" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="ZeroTerminal_8" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="ep_1" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="ep_2" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="ZeroTerminal_3" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="VirtualMux_3" BASE="0x0" SIZE="0x0" desc="" visible="true" />
+    <block name="Clock_vbus" BASE="0x0" SIZE="0x0" desc="" visible="true" />
     <register name="USBFS_PM_USB_CR0" address="0x40004394" bitWidth="8" desc="USB Power Mode Control Register 0">
       <field name="fsusbio_ref_en" from="0" to="0" access="RW" resetVal="" desc="" />
       <field name="fsusbio_pd_n" from="1" to="1" access="RW" resetVal="" desc="" />
@@ -211,7 +227,7 @@
     <register name="USBFS_EP0_DR6" address="0x40006006" bitWidth="8" desc="lengthLo" />
     <register name="USBFS_EP0_DR7" address="0x40006007" bitWidth="8" desc="lengthHi" />
     <register name="USBFS_CR0" address="0x40006008" bitWidth="8" desc="USB Control Register 0">
-      <field name="device_address" from="0" to="6" access="R" resetVal="" desc="" />
+      <field name="device_address" from="6" to="0" access="R" resetVal="" desc="" />
       <field name="usb_enable" from="7" to="7" access="RW" resetVal="" desc="" />
     </register>
     <register name="USBFS_CR1" address="0x40006009" bitWidth="8" desc="USB Control Register 1">
