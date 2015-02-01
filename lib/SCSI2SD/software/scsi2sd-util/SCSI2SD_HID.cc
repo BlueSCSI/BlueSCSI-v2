@@ -90,7 +90,7 @@ HID::HID(hid_device_info* hidInfo) :
 				for (int i = 0; i < 4; ++i)
 				{
 					buf[0] = 0; // report id
-					hid_read(dev, buf, HID_PACKET_SIZE);
+					hid_read_timeout(dev, buf, HID_PACKET_SIZE, HID_TIMEOUT_MS);
 					if (watchVal == -1) watchVal = buf[25];
 					configIntFound = configIntFound && (buf[25] == watchVal);
 				}
@@ -177,7 +177,7 @@ HID::enterBootloader()
 		};
 
 		int result = hid_write(myDebugHandle, hidBuf, sizeof(hidBuf));
-		if (result < 0)
+		if (result <= 0)
 		{
 			const wchar_t* err = hid_error(myDebugHandle);
 			std::stringstream ss;
@@ -196,7 +196,7 @@ HID::readFlashRow(int array, int row, std::vector<uint8_t>& out)
 		static_cast<uint8_t>(array),
 		static_cast<uint8_t>(row)
 	};
-	sendHIDPacket(cmd, out);
+	sendHIDPacket(cmd, out, HIDPACKET_MAX_LEN / 62);
 }
 
 void
@@ -208,7 +208,7 @@ HID::writeFlashRow(int array, int row, const std::vector<uint8_t>& in)
 	cmd.push_back(static_cast<uint8_t>(array));
 	cmd.push_back(static_cast<uint8_t>(row));
 	std::vector<uint8_t> out;
-	sendHIDPacket(cmd, out);
+	sendHIDPacket(cmd, out, 1);
 	if ((out.size() < 1) || (out[0] != CONFIG_STATUS_GOOD))
 	{
 		std::stringstream ss;
@@ -217,6 +217,30 @@ HID::writeFlashRow(int array, int row, const std::vector<uint8_t>& in)
 	}
 }
 
+bool
+HID::readSCSIDebugInfo(std::vector<uint8_t>& buf)
+{
+	buf[0] = 0; // report id
+	hid_set_nonblocking(myDebugHandle, 1);
+	int result =
+		hid_read_timeout(
+			myDebugHandle,
+			&buf[0],
+			HID_PACKET_SIZE,
+			HID_TIMEOUT_MS);
+	hid_set_nonblocking(myDebugHandle, 0);
+
+	if (result <= 0)
+	{
+		const wchar_t* err = hid_error(myDebugHandle);
+		std::stringstream ss;
+		ss << "USB HID read failure: " << err;
+		throw std::runtime_error(ss.str());
+	}
+	return result > 0;
+}
+
+
 void
 HID::readHID(uint8_t* buffer, size_t len)
 {
@@ -224,9 +248,9 @@ HID::readHID(uint8_t* buffer, size_t len)
 	buffer[0] = 0; // report id
 
 	int result = -1;
-	for (int retry = 0; retry < 3 && result < 0; ++retry)
+	for (int retry = 0; retry < 3 && result <= 0; ++retry)
 	{
-		result = hid_read(myConfigHandle, buffer, len);
+		result = hid_read_timeout(myConfigHandle, buffer, len, HID_TIMEOUT_MS);
 	}
 
 	if (result < 0)
@@ -243,9 +267,14 @@ HID::readDebugData()
 {
 	uint8_t buf[HID_PACKET_SIZE];
 	buf[0] = 0; // report id
-	int result = hid_read(myDebugHandle, buf, HID_PACKET_SIZE);
+	int result =
+		hid_read_timeout(
+			myDebugHandle,
+			buf,
+			HID_PACKET_SIZE,
+			HID_TIMEOUT_MS);
 
-	if (result < 0)
+	if (result <= 0)
 	{
 		const wchar_t* err = hid_error(myDebugHandle);
 		std::stringstream ss;
@@ -292,7 +321,7 @@ HID::ping()
 	std::vector<uint8_t> out;
 	try
 	{
-		sendHIDPacket(cmd, out);
+		sendHIDPacket(cmd, out, 1);
 	}
 	catch (std::runtime_error& e)
 	{
@@ -302,26 +331,66 @@ HID::ping()
 	return (out.size() >= 1) && (out[0] == CONFIG_STATUS_GOOD);
 }
 
+std::vector<uint8_t>
+HID::getSD_CSD()
+{
+	std::vector<uint8_t> cmd { CONFIG_SDINFO };
+	std::vector<uint8_t> out;
+	try
+	{
+		sendHIDPacket(cmd, out, 1);
+	}
+	catch (std::runtime_error& e)
+	{
+		return std::vector<uint8_t>(16);
+	}
+
+	out.resize(16);
+	return out;
+}
+
+std::vector<uint8_t>
+HID::getSD_CID()
+{
+	std::vector<uint8_t> cmd { CONFIG_SDINFO };
+	std::vector<uint8_t> out;
+	try
+	{
+		sendHIDPacket(cmd, out, 1);
+	}
+	catch (std::runtime_error& e)
+	{
+		return std::vector<uint8_t>(16);
+	}
+
+	std::vector<uint8_t> result(16);
+	for (size_t i = 0; i < 16; ++i) result[i] = out[16 + i];
+	return result;
+}
+
 void
-HID::sendHIDPacket(const std::vector<uint8_t>& cmd, std::vector<uint8_t>& out)
+HID::sendHIDPacket(
+	const std::vector<uint8_t>& cmd,
+	std::vector<uint8_t>& out,
+	size_t responseLength)
 {
 	assert(cmd.size() <= HIDPACKET_MAX_LEN);
 	hidPacket_send(&cmd[0], cmd.size());
 
 	uint8_t hidBuf[HID_PACKET_SIZE];
 	const uint8_t* chunk = hidPacket_getHIDBytes(hidBuf);
+
 	while (chunk)
 	{
 		uint8_t reportBuf[HID_PACKET_SIZE + 1] = { 0x00 }; // Report ID
 		memcpy(&reportBuf[1], chunk, HID_PACKET_SIZE);
 		int result = -1;
-		for (int retry = 0; retry < 10 && result < 0; ++retry)
+		for (int retry = 0; retry < 10 && result <= 0; ++retry)
 		{
 			result = hid_write(myConfigHandle, reportBuf, sizeof(reportBuf));
-			if (result < 0) wxMilliSleep(8);
 		}
 
-		if (result < 0)
+		if (result <= 0)
 		{
 			const wchar_t* err = hid_error(myConfigHandle);
 			std::stringstream ss;
@@ -335,16 +404,11 @@ HID::sendHIDPacket(const std::vector<uint8_t>& cmd, std::vector<uint8_t>& out)
 	size_t respLen;
 	resp = hidPacket_getPacket(&respLen);
 
-	// We need to poll quick enough to not skip packets
-	// This depends on the USB HID device poll rate parameter.
-	// SCSI2SD uses a 32ms poll rate, so we check for new chunks at 4x
-	// that rate.
-	for (int retry = 0; retry < (HIDPACKET_MAX_LEN / 62) * 30 && !resp; ++retry)
+	for (int retry = 0; retry < responseLength * 2 && !resp; ++retry)
 	{
-		readHID(hidBuf, sizeof(hidBuf));
+		readHID(hidBuf, sizeof(hidBuf)); // Will block
 		hidPacket_recv(hidBuf, HID_PACKET_SIZE);
 		resp = hidPacket_getPacket(&respLen);
-		if (!resp) wxMilliSleep(8);
 	}
 
 	if (!resp)

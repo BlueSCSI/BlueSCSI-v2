@@ -27,7 +27,18 @@ static const uint8 ReadWriteErrorRecoveryPage[] =
 {
 0x01, // Page code
 0x0A, // Page length
-0x00, // No error recovery options for now
+
+// VMS 5.5-2 is very particular regarding the mode page values.
+// The required values for a SCSI2/NoTCQ device are:
+// AWRE=0 ARRE=0 TB=1 RC=0 EER=? PER=1 DTE=1 DCR=?
+// See ftp://www.digiater.nl/openvms/decus/vms94b/net94b/scsi_params_dkdriver.txt
+// X-Newsgroups: comp.os.vms
+// Subject: Re: VMS 6.1 vs. Seagate Disk Drives
+// Message-Id: <32g87h$8q@nntpd.lkg.dec.com>
+// From: weber@evms.enet.dec.com (Ralph O. Weber -- OpenVMS AXP)
+// Date: 12 Aug 1994 16:32:49 GMT
+0x26,
+
 0x00, // Don't try recovery algorithm during reads
 0x00, // Correction span 0
 0x00, // Head offset count 0,
@@ -305,7 +316,7 @@ static void doModeSense(
 		case 0x0A:
 			pageIn(pc, idx, ControlModePage, sizeof(ControlModePage));
 			idx += sizeof(ControlModePage);
-			break;
+			if (pageCode != 0x3f) break;
 
 		case 0x30:
 			pageIn(pc, idx, AppleVendorPage, sizeof(AppleVendorPage));

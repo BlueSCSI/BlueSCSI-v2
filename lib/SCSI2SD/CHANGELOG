@@ -5,6 +5,7 @@
 	drivers (openbsd, netbsd, and others) set a byte-to-byte timeout which
 	can be exceeded by SD card latency.
 	- Upgrade to PSoC Creator 3.1 and gcc 4.8.4.
+	- Integrated scsi2sd-debug functionality with scsi2sd-util.
 
 20150108		4.0
 	- Fix handling requests for LUNs other than 0 from SCSI-2 hosts.

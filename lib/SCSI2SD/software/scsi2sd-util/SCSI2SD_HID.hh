@@ -43,6 +43,11 @@ public:
 
 	static const size_t HID_PACKET_SIZE = 64;
 
+	// HID intervals for 4.0.3 firmware: <= 128ms
+	// > 4.0.3 = 32ms.
+	static const size_t HID_TIMEOUT_MS = 256; // 2x HID Interval.
+
+
 	static HID* Open();
 
 	~HID();
@@ -50,19 +55,26 @@ public:
 	uint16_t getFirmwareVersion() const { return myFirmwareVersion; }
 	std::string getFirmwareVersionStr() const;
 	uint32_t getSDCapacity() const { return mySDCapacity; }
+	std::vector<uint8_t> getSD_CSD();
+	std::vector<uint8_t> getSD_CID();
 
 	void enterBootloader();
 
 	void readFlashRow(int array, int row, std::vector<uint8_t>& out);
 	void writeFlashRow(int array, int row, const std::vector<uint8_t>& in);
 	bool ping();
+
+	bool readSCSIDebugInfo(std::vector<uint8_t>& buf);
+
 private:
 	HID(hid_device_info* hidInfo);
 	void destroy();
 	void readDebugData();
 	void readHID(uint8_t* buffer, size_t len);
 	void sendHIDPacket(
-		const std::vector<uint8_t>& cmd, std::vector<uint8_t>& out
+		const std::vector<uint8_t>& cmd,
+		std::vector<uint8_t>& out,
+		size_t responseLength
 		);
 
 	hid_device_info* myHidInfo;

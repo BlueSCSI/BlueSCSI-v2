@@ -41,6 +41,7 @@
 #include "Firmware.hh"
 
 #include <algorithm>
+#include <iomanip>
 #include <vector>
 #include <set>
 #include <sstream>
@@ -135,7 +136,8 @@ public:
 	AppFrame() :
 		wxFrame(NULL, wxID_ANY, "scsi2sd-util", wxPoint(50, 50), wxSize(600, 650)),
 		myInitialConfig(false),
-		myTickCounter(0)
+		myTickCounter(0),
+		myLastPollTime(0)
 	{
 		wxMenu *menuFile = new wxMenu();
 		menuFile->Append(
@@ -155,17 +157,23 @@ public:
 			"Show &Log",
 			"Show debug log window");
 
+		wxMenu *menuDebug = new wxMenu();
+		mySCSILogChk = menuDebug->AppendCheckItem(
+			ID_SCSILog,
+			"Log SCSI data",
+			"Log SCSI commands");
+
 		wxMenu *menuHelp = new wxMenu();
 		menuHelp->Append(wxID_ABOUT);
 
 		wxMenuBar *menuBar = new wxMenuBar();
 		menuBar->Append( menuFile, "&File" );
+		menuBar->Append( menuDebug, "&Debug" );
 		menuBar->Append( menuWindow, "&Window" );
 		menuBar->Append( menuHelp, "&Help" );
 		SetMenuBar( menuBar );
 
 		CreateStatusBar();
-		wxLogStatus(this, "Searching for SCSI2SD");
 
 		{
 			wxPanel* cfgPanel = new wxPanel(this);
@@ -208,22 +216,35 @@ public:
 		//Fit(); // Needed to reduce window size on Windows
 		FitInside(); // Needed on Linux to prevent status bar overlap
 
-		myTimer = new wxTimer(this, ID_Timer);
-		myTimer->Start(1000); //ms
-
 		myLogWindow = new wxLogWindow(this, wxT("scsi2sd-util debug log"), true);
+		myLogWindow->PassMessages(false); // Prevent messagebox popups
+
+		myTimer = new wxTimer(this, ID_Timer);
+		myTimer->Start(16); //ms, suitable for scsi debug logging
 	}
+
 private:
 	wxLogWindow* myLogWindow;
 	std::vector<TargetPanel*> myTargets;
 	wxButton* myLoadButton;
 	wxButton* mySaveButton;
+	wxMenuItem* mySCSILogChk;
 	wxTimer* myTimer;
 	shared_ptr<HID> myHID;
 	shared_ptr<Bootloader> myBootloader;
 	bool myInitialConfig;
 
 	uint8_t myTickCounter;
+
+	time_t myLastPollTime;
+
+	void mmLogStatus(const std::string& msg)
+	{
+		// We set PassMessages to false on our log window to prevent popups, but
+		// this also prevents wxLogStatus from updating the status bar.
+		SetStatusText(msg);
+		wxLogMessage(this, "%s", msg.c_str());
+	}
 
 	void onConfigChanged(wxCommandEvent& event)
 	{
@@ -307,7 +328,8 @@ private:
 		ID_Notebook,
 		ID_BtnLoad,
 		ID_BtnSave,
-		ID_LogWindow
+		ID_LogWindow,
+		ID_SCSILog
 	};
 
 	void OnID_ConfigDefaults(wxCommandEvent& event)
@@ -350,7 +372,7 @@ private:
 				this,
 				wxPD_AUTO_HIDE | wxPD_CAN_ABORT)
 				);
-		wxLogStatus(this, "Searching for bootloader");
+		mmLogStatus("Searching for bootloader");
 		while (true)
 		{
 			try
@@ -358,7 +380,7 @@ private:
 				if (!myHID) myHID.reset(HID::Open());
 				if (myHID)
 				{
-					wxLogStatus(this, "Resetting SCSI2SD into bootloader");
+					mmLogStatus("Resetting SCSI2SD into bootloader");
 
 					myHID->enterBootloader();
 					myHID.reset();
@@ -370,7 +392,7 @@ private:
 					myBootloader.reset(Bootloader::Open());
 					if (myBootloader)
 					{
-						wxLogStatus(this, "Bootloader found");
+						mmLogStatus("Bootloader found");
 						break;
 					}
 				}
@@ -380,19 +402,19 @@ private:
 					// Verify the USB HID connection is valid
 					if (!myBootloader->ping())
 					{
-						wxLogStatus(this, "Bootloader ping failed");
+						mmLogStatus("Bootloader ping failed");
 						myBootloader.reset();
 					}
 					else
 					{
-						wxLogStatus(this, "Bootloader found");
+						mmLogStatus("Bootloader found");
 						break;
 					}
 				}
 			}
 			catch (std::exception& e)
 			{
-				wxLogStatus(this, "%s", e.what());
+				mmLogStatus(e.what());
 				myHID.reset();
 				myBootloader.reset();
 			}
@@ -414,19 +436,19 @@ private:
 			{
 				if (myBootloader->isCorrectFirmware((*it)->getPath()))
 				{
-					wxLogStatus(this,
-						"Found firmware entry %s within archive %s",
-						(*it)->getPath(),
-						filename);
+					std::stringstream msg;
+					msg << "Found firmware entry " << (*it)->getPath() <<
+						" within archive " << filename;
+					mmLogStatus(msg.str());
 					tmpFile =
 						wxFileName::CreateTempFileName(
 							wxT("SCSI2SD_Firmware"), static_cast<wxFile*>(NULL)
 							);
 					zipper::FileWriter out(tmpFile);
 					(*it)->decompress(out);
-					wxLogStatus(this,
-						"Firmware extracted to %s",
-						tmpFile);
+					msg.clear();
+					msg << "Firmware extracted to " << tmpFile;
+					mmLogStatus(msg.str());
 					break;
 				}
 			}
@@ -446,7 +468,7 @@ private:
 		}
 		catch (std::exception& e)
 		{
-			wxLogStatus(this, "%s", e.what());
+			mmLogStatus(e.what());
 			std::stringstream msg;
 			msg << "Could not open firmware file: " << e.what();
 			wxMessageBox(
@@ -469,7 +491,9 @@ private:
 			TheProgressWrapper.setProgressDialog(progress, totalFlashRows);
 		}
 
-		wxLogStatus(this, "Upgrading firmware from file: %s", tmpFile);
+		std::stringstream msg;
+		msg << "Upgrading firmware from file: " << tmpFile;
+		mmLogStatus(msg.str());
 
 		try
 		{
@@ -480,7 +504,7 @@ private:
 				"Firmware update successful",
 				"Firmware OK",
 				wxOK);
-			wxLogStatus(this, "Firmware update successful");
+			mmLogStatus("Firmware update successful");
 
 
 			myHID.reset();
@@ -489,7 +513,7 @@ private:
 		catch (std::exception& e)
 		{
 			TheProgressWrapper.clearProgressDialog();
-			wxLogStatus(this, "%s", e.what());
+			mmLogStatus(e.what());
 			myHID.reset();
 			myBootloader.reset();
 
@@ -502,8 +526,42 @@ private:
 		}
 	}
 
+	void logSCSI()
+	{
+		if (!mySCSILogChk->IsChecked() ||
+			!myHID)
+		{
+			return;
+		}
+		try
+		{
+			std::vector<uint8_t> info(HID::HID_PACKET_SIZE);
+			if (myHID->readSCSIDebugInfo(info))
+			{
+				std::stringstream msg;
+				msg << std::hex;
+				for (size_t i = 0; i < 32 && i < info.size(); ++i)
+				{
+					msg << std::setfill('0') << std::setw(2) <<
+						static_cast<int>(info[i]) << ' ';
+				}
+				wxLogMessage(this, msg.str().c_str());
+			}
+		}
+		catch (std::exception& e)
+		{
+			wxLogWarning(this, e.what());
+			myHID.reset();
+		}
+	}
+
 	void OnID_Timer(wxTimerEvent& event)
 	{
+		logSCSI();
+		time_t now = time(NULL);
+		if (now == myLastPollTime) return;
+		myLastPollTime = now;
+
 		// Check if we are connected to the HID device.
 		// AND/or bootloader device.
 		try
@@ -523,7 +581,7 @@ private:
 
 				if (myBootloader)
 				{
-					wxLogStatus(this, "%s", "SCSI2SD Bootloader Ready");
+					mmLogStatus("SCSI2SD Bootloader Ready");
 				}
 			}
 
@@ -551,24 +609,49 @@ private:
 						if (!supressLog)
 						{
 							// Oh dear, old firmware
-							wxLogStatus(
-								this,
-								"Firmware update required. Version %s",
-								myHID->getFirmwareVersionStr());
+							std::stringstream msg;
+							msg << "Firmware update required. Version " <<
+								myHID->getFirmwareVersionStr();
+							mmLogStatus(msg.str());
 						}
 					}
 					else
 					{
-						wxLogStatus(
-							this,
-							"SCSI2SD Ready, firmware version %s",
-							myHID->getFirmwareVersionStr());
+						std::stringstream msg;
+						msg << "SCSI2SD Ready, firmware version " <<
+							myHID->getFirmwareVersionStr();
+						mmLogStatus(msg.str());
+
+						std::vector<uint8_t> csd(myHID->getSD_CSD());
+						std::vector<uint8_t> cid(myHID->getSD_CID());
+						std::stringstream sdinfo;
+						sdinfo << "SD Capacity (512-byte sectors): " <<
+							myHID->getSDCapacity() << std::endl;
+
+						sdinfo << "SD CSD Register: ";
+						for (size_t i = 0; i < csd.size(); ++i)
+						{
+							sdinfo <<
+								std::hex << std::setfill('0') << std::setw(2) <<
+								static_cast<int>(csd[i]);
+						}
+						sdinfo << std::endl;
+						sdinfo << "SD CID Register: ";
+						for (size_t i = 0; i < cid.size(); ++i)
+						{
+							sdinfo <<
+								std::hex << std::setfill('0') << std::setw(2) <<
+								static_cast<int>(cid[i]);
+						}
+
+						wxLogMessage(this, "%s", sdinfo.str());
 
 						if (!myInitialConfig)
 						{
 							wxCommandEvent loadEvent(wxEVT_NULL, ID_BtnLoad);
 							GetEventHandler()->AddPendingEvent(loadEvent);
 						}
+
 					}
 				}
 				else
@@ -583,7 +666,8 @@ private:
 		}
 		catch (std::runtime_error& e)
 		{
-			wxLogStatus(this, "%s", e.what());
+			std::cerr << e.what() << std::endl;
+			mmLogStatus(e.what());
 		}
 
 		evaluate();
@@ -594,7 +678,7 @@ private:
 		TimerLock lock(myTimer);
 		if (!myHID) return;
 
-		wxLogStatus(this, "Loading configuration");
+		mmLogStatus("Loading configuration");
 
 		wxWindowPtr<wxGenericProgressDialog> progress(
 			new wxGenericProgressDialog(
@@ -619,7 +703,7 @@ private:
 				std::stringstream ss;
 				ss << "Reading flash array " << SCSI_CONFIG_ARRAY <<
 					" row " << (flashRow + j);
-				wxLogStatus(this, "%s", ss.str());
+				mmLogStatus(ss.str());
 				currentProgress += 1;
 				if (!progress->Update(
 						(100 * currentProgress) / totalProgress,
@@ -640,7 +724,7 @@ private:
 				}
 				catch (std::runtime_error& e)
 				{
-					wxLogStatus(this, "%s", e.what());
+					mmLogStatus(e.what());
 					goto err;
 				}
 
@@ -653,7 +737,7 @@ private:
 		}
 
 		myInitialConfig = true;
-		wxLogStatus(this, "%s", "Load Complete");
+		mmLogStatus("Load Complete");
 		while (progress->Update(100, "Load Complete"))
 		{
 			// Wait for the user to click "Close"
@@ -662,7 +746,7 @@ private:
 		goto out;
 
 	err:
-		wxLogStatus(this, "%s", "Load failed");
+		mmLogStatus("Load failed");
 		while (progress->Update(100, "Load failed"))
 		{
 			// Wait for the user to click "Close"
@@ -671,7 +755,7 @@ private:
 		goto out;
 
 	abort:
-		wxLogStatus(this, "Load Aborted");
+		mmLogStatus("Load Aborted");
 
 	out:
 		return;
@@ -682,7 +766,7 @@ private:
 		TimerLock lock(myTimer);
 		if (!myHID) return;
 
-		wxLogStatus(this, "Saving configuration");
+		mmLogStatus("Saving configuration");
 
 		wxWindowPtr<wxGenericProgressDialog> progress(
 			new wxGenericProgressDialog(
@@ -708,7 +792,7 @@ private:
 				std::stringstream ss;
 				ss << "Programming flash array " << SCSI_CONFIG_ARRAY <<
 					" row " << (flashRow + j);
-				wxLogStatus(this, "%s", ss.str());
+				mmLogStatus(ss.str());
 				currentProgress += 1;
 				if (!progress->Update(
 						(100 * currentProgress) / totalProgress,
@@ -731,7 +815,7 @@ private:
 				}
 				catch (std::runtime_error& e)
 				{
-					wxLogStatus(this, "%s", e.what());
+					mmLogStatus(e.what());
 					goto err;
 				}
 			}
@@ -741,7 +825,7 @@ private:
 		myHID->enterBootloader();
 		myHID.reset();
 
-		wxLogStatus(this, "Save Complete");
+		mmLogStatus("Save Complete");
 		while (progress->Update(100, "Save Complete"))
 		{
 			// Wait for the user to click "Close"
@@ -750,7 +834,7 @@ private:
 		goto out;
 
 	err:
-		wxLogStatus(this, "Save failed");
+		mmLogStatus("Save failed");
 		while (progress->Update(100, "Save failed"))
 		{
 			// Wait for the user to click "Close"
@@ -759,10 +843,10 @@ private:
 		goto out;
 
 	abort:
-		wxLogStatus(this, "Save Aborted");
+		mmLogStatus("Save Aborted");
 
 	out:
-		(void) true; // empty statement.
+		return;
 	}
 
 	void OnExit(wxCommandEvent& event)
