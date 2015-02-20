@@ -19,6 +19,7 @@
 
 void scsiSendDiagnostic(void);
 void scsiReceiveDiagnostic(void);
+void scsiWriteBuffer(void);
 void scsiReadBuffer(void);
 
 #endif

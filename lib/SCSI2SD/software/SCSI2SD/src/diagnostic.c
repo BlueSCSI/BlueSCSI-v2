@@ -14,6 +14,8 @@
 //
 //	You should have received a copy of the GNU General Public License
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
+#pragma GCC push_options
+#pragma GCC optimize("-flto")
 
 #include "device.h"
 #include "scsi.h"
@@ -162,4 +164,54 @@ void scsiReadBuffer()
 			(allocLength > MAX_SECTOR_SIZE) ? MAX_SECTOR_SIZE : allocLength;
 		scsiDev.phase = DATA_IN;
 	}
+	else
+	{
+		// error.
+		scsiDev.status = CHECK_CONDITION;
+		scsiDev.target->sense.code = ILLEGAL_REQUEST;
+		scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+		scsiDev.phase = STATUS;
+	}
 }
+
+// Callback after the DATA OUT phase is complete.
+static void doWriteBuffer(void)
+{
+	if (scsiDev.status == GOOD) // skip if we've already encountered an error
+	{
+		// scsiDev.dataLen bytes are in scsiDev.data
+		// Don't shift it down 4 bytes ... this space is taken by
+		// the read buffer header anyway
+		scsiDev.phase = STATUS;
+	}
+}
+
+void scsiWriteBuffer()
+{
+	// WRITE BUFFER
+	// Used for testing the speed of the SCSI interface.
+	uint8 mode = scsiDev.data[1] & 7;
+
+	int allocLength =
+		(((uint32) scsiDev.cdb[6]) << 16) +
+		(((uint32) scsiDev.cdb[7]) << 8) +
+		scsiDev.cdb[8];
+
+	if (mode == 0 && allocLength <= sizeof(scsiDev.data))
+	{
+		scsiDev.dataLen = allocLength;
+		scsiDev.phase = DATA_OUT;
+		scsiDev.postDataOutHook = doWriteBuffer;
+	}
+	else
+	{
+		// error.
+		scsiDev.status = CHECK_CONDITION;
+		scsiDev.target->sense.code = ILLEGAL_REQUEST;
+		scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+		scsiDev.phase = STATUS;
+	}
+}
+
+
+#pragma GCC pop_options

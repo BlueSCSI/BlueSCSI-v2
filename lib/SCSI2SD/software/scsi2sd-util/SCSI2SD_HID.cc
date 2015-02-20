@@ -404,7 +404,7 @@ HID::sendHIDPacket(
 	size_t respLen;
 	resp = hidPacket_getPacket(&respLen);
 
-	for (int retry = 0; retry < responseLength * 2 && !resp; ++retry)
+	for (unsigned int retry = 0; retry < responseLength * 2 && !resp; ++retry)
 	{
 		readHID(hidBuf, sizeof(hidBuf)); // Will block
 		hidPacket_recv(hidBuf, HID_PACKET_SIZE);

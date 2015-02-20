@@ -15,6 +15,8 @@
 //
 //	You should have received a copy of the GNU General Public License
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
+#pragma GCC push_options
+#pragma GCC optimize("-flto")
 
 #include "device.h"
 #include "scsi.h"
@@ -152,8 +154,6 @@ static void doModeSense(
 	}
 	else
 	{
-		int pageFound = 1;
-
 		////////////// Mode Parameter Header
 		////////////////////////////////////
 
@@ -243,22 +243,25 @@ static void doModeSense(
 			scsiDev.data[idx++] = bytesPerSector & 0xFF;
 		}
 
-		switch (pageCode)
-		{
-		case 0x3F:
-			// EVERYTHING
+		int pageFound = 0;
 
-		case 0x01:
+		if (pageCode == 0x01 || pageCode == 0x3F)
+		{
+			pageFound = 1;
 			pageIn(pc, idx, ReadWriteErrorRecoveryPage, sizeof(ReadWriteErrorRecoveryPage));
 			idx += sizeof(ReadWriteErrorRecoveryPage);
-			if (pageCode != 0x3f) break;
+		}
 
-		case 0x02:
+		if (pageCode == 0x02 || pageCode == 0x3F)
+		{
+			pageFound = 1;
 			pageIn(pc, idx, DisconnectReconnectPage, sizeof(DisconnectReconnectPage));
 			idx += sizeof(DisconnectReconnectPage);
-			if (pageCode != 0x3f) break;
+		}
 
-		case 0x03:
+		if (pageCode == 0x03 || pageCode == 0x3F)
+		{
+			pageFound = 1;
 			pageIn(pc, idx, FormatDevicePage, sizeof(FormatDevicePage));
 			if (pc != 0x01)
 			{
@@ -275,10 +278,11 @@ static void doModeSense(
 			}
 
 			idx += sizeof(FormatDevicePage);
-			if (pageCode != 0x3f) break;
+		}
 
-		case 0x04:
+		if (pageCode == 0x04 || pageCode == 0x3F)
 		{
+			pageFound = 1;
 			pageIn(pc, idx, RigidDiskDriveGeometry, sizeof(RigidDiskDriveGeometry));
 
 			if (pc != 0x01)
@@ -305,25 +309,40 @@ static void doModeSense(
 			}
 
 			idx += sizeof(RigidDiskDriveGeometry);
-			if (pageCode != 0x3f) break;
 		}
 
-		case 0x08:
+		// DON'T output the following pages for SCSI1 hosts. They get upset when
+		// we have more data to send than the allocation length provided.
+		// (ie. Try not to output any more pages below this comment)
+
+
+		if (!scsiDev.compatMode && (pageCode == 0x08 || pageCode == 0x3F))
+		{
+			pageFound = 1;
 			pageIn(pc, idx, CachingPage, sizeof(CachingPage));
 			idx += sizeof(CachingPage);
-			if (pageCode != 0x3f) break;
+		}
 
-		case 0x0A:
+		if (!scsiDev.compatMode && (pageCode == 0x0A || pageCode == 0x3F))
+		{
+			pageFound = 1;
 			pageIn(pc, idx, ControlModePage, sizeof(ControlModePage));
 			idx += sizeof(ControlModePage);
-			if (pageCode != 0x3f) break;
+		}
 
-		case 0x30:
+		if ((
+				(scsiDev.target->cfg->quirks == CONFIG_QUIRKS_APPLE) ||
+				(idx + sizeof(AppleVendorPage) <= allocLength)
+			) &&
+			(pageCode == 0x30 || pageCode == 0x3F))
+		{
+			pageFound = 1;
 			pageIn(pc, idx, AppleVendorPage, sizeof(AppleVendorPage));
 			idx += sizeof(AppleVendorPage);
-			break;
+		}
 
-		default:
+		if (!pageFound)
+		{
 			// Unknown Page Code
 			pageFound = 0;
 			scsiDev.status = CHECK_CONDITION;
@@ -331,15 +350,7 @@ static void doModeSense(
 			scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
 			scsiDev.phase = STATUS;
 		}
-
-
-		if (idx > allocLength)
-		{
-			// Chop the reply off early if shorter length is requested
-			idx = allocLength;
-		}
-
-		if (pageFound)
+		else
 		{
 			// Go back and fill out the mode data length
 			if (sixByteCmd)
@@ -353,16 +364,8 @@ static void doModeSense(
 				scsiDev.data[1] = (idx - 2);
 			}
 
-			scsiDev.dataLen = idx;
+			scsiDev.dataLen = idx > allocLength ? allocLength : idx;
 			scsiDev.phase = DATA_IN;
-		}
-		else
-		{
-			// Page not found
-			scsiDev.status = CHECK_CONDITION;
-			scsiDev.target->sense.code = ILLEGAL_REQUEST;
-			scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
-			scsiDev.phase = STATUS;
 		}
 	}
 }
@@ -538,4 +541,4 @@ int scsiModeCommand()
 	return commandHandled;
 }
 
-
+#pragma GCC pop_options

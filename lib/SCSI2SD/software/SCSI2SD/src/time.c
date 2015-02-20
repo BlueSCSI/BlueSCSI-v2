@@ -14,6 +14,8 @@
 //
 //	You should have received a copy of the GNU General Public License
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
+#pragma GCC push_options
+#pragma GCC optimize("-flto")
 
 #include "time.h"
 #include "limits.h"
@@ -54,3 +56,18 @@ uint32_t diffTime_ms(uint32_t start, uint32_t end)
 		return (UINT_MAX - start) + end;
 	}
 }
+
+uint32_t elapsedTime_ms(uint32_t since)
+{
+	uint32_t now = counter;
+	if (now >= since)
+	{
+		return now - since;
+	}
+	else
+	{
+		return (UINT_MAX - since) + now;
+	}
+}
+
+#pragma GCC pop_options

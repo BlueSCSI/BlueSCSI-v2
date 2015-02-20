@@ -22,5 +22,6 @@
 void timeInit(void);
 uint32_t getTime_ms(void); // Returns milliseconds since init
 uint32_t diffTime_ms(uint32_t start, uint32_t end);
+uint32_t elapsedTime_ms(uint32_t since);
 
 #endif

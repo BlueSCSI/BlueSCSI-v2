@@ -14,6 +14,8 @@
 //
 //	You should have received a copy of the GNU General Public License
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
+#pragma GCC push_options
+#pragma GCC optimize("-flto")
 
 #include "device.h"
 #include "scsi.h"
@@ -28,6 +30,7 @@
 #include "disk.h"
 #include "time.h"
 #include "cdrom.h"
+#include "debug.h"
 
 #include <string.h>
 
@@ -50,7 +53,16 @@ static void enter_BusFree()
 {
 	// This delay probably isn't needed for most SCSI hosts, but it won't
 	// hurt either. It's possible some of the samplers needed this delay.
-	CyDelayUs(2);
+	if (scsiDev.compatMode)
+	{
+		CyDelayUs(2);
+	}
+
+	if (scsiDev.status != GOOD && isDebugEnabled())
+	{
+		// We want to capture debug information for failure cases.
+		CyDelay(64);
+	}
 
 	SCSI_ClearPin(SCSI_Out_BSY);
 	// We now have a Bus Clear Delay of 800ns to release remaining signals.
@@ -75,7 +87,7 @@ void process_MessageIn()
 	scsiEnterPhase(MESSAGE_IN);
 	scsiWriteByte(scsiDev.msgIn);
 
-	if (scsiDev.atnFlag)
+	if (unlikely(scsiDev.atnFlag))
 	{
 		// If there was a parity error, we go
 		// back to MESSAGE_OUT first, get out parity error message, then come
@@ -253,7 +265,7 @@ static void process_Command()
 
 	scsiDev.cmdCount++;
 
-	if (scsiDev.resetFlag)
+	if (unlikely(scsiDev.resetFlag))
 	{
 		// Don't log bogus commands
 		scsiDev.cmdCount--;
@@ -340,6 +352,12 @@ static void process_Command()
 	{
 		enter_Status(CONFLICT);
 	}
+	else if (scsiDiskCommand())
+	{
+		// Already handled.
+		// check for the performance-critical read/write
+		// commands ASAP.
+	}
 	else if (command == 0x1C)
 	{
 		scsiReceiveDiagnostic();
@@ -348,14 +366,17 @@ static void process_Command()
 	{
 		scsiSendDiagnostic();
 	}
+	else if (command == 0x3B)
+	{
+		scsiWriteBuffer();
+	}
 	else if (command == 0x3C)
 	{
 		scsiReadBuffer();
 	}
 	else if (
-		!scsiModeCommand() &&
-		!scsiDiskCommand() &&
-		!scsiCDRomCommand())
+		!scsiCDRomCommand() &&
+		!scsiModeCommand())
 	{
 		scsiDev.target->sense.code = ILLEGAL_REQUEST;
 		scsiDev.target->sense.asc = INVALID_COMMAND_OPERATION_CODE;
@@ -515,7 +536,7 @@ static void process_SelectionPhase()
 	if (!bsy && sel &&
 		target &&
 		(goodParity || !(target->cfg->flags & CONFIG_ENABLE_PARITY) || !atnFlag) &&
-		(maskBitCount <= 2))
+		likely(maskBitCount <= 2))
 	{
 		scsiDev.target = target;
 
@@ -546,7 +567,7 @@ static void process_SelectionPhase()
 		scsiDev.selCount++;
 
 		// Wait until the end of the selection phase.
-		while (!scsiDev.resetFlag)
+		while (likely(!scsiDev.resetFlag))
 		{
 			if (!SCSI_ReadFilt(SCSI_Filt_SEL))
 			{
@@ -686,20 +707,32 @@ static void process_MessageOut()
 		// Extended message.
 		int msgLen = scsiReadByte();
 		if (msgLen == 0) msgLen = 256;
+		uint8_t extmsg[256];
 		for (i = 0; i < msgLen && !scsiDev.resetFlag; ++i)
 		{
 			// Discard bytes.
-			scsiReadByte();
+			extmsg[i] = scsiReadByte();
 		}
-
-		// We don't support ANY extended messages.
-		// Modify Data Pointer:  We don't support reselection.
-		// Wide Data Transfer Request: No. 8bit only.
-		// Synchronous data transfer request. No, we can't do that.
-		// We don't support any 2-byte messages either.
-		// And we don't support any optional 1-byte messages.
-		// In each case, the correct response is MESSAGE REJECT.
-		messageReject();
+		
+		if (extmsg[0] == 3 && msgLen == 2) // Wide Data Request
+		{
+			// Negotiate down to 8bit
+			scsiEnterPhase(MESSAGE_IN);
+			static const uint8_t WDTR[] = {0x01, 0x02, 0x03, 0x00};
+			scsiWrite(WDTR, sizeof(WDTR));
+		}
+		else if (extmsg[0] == 1 && msgLen == 5) // Synchronous data request
+		{
+			// Negotiate back to async
+			scsiEnterPhase(MESSAGE_IN);
+			static const uint8_t SDTR[] = {0x01, 0x03, 0x01, 0x00, 0x00};
+			scsiWrite(SDTR, sizeof(SDTR));
+		}
+		else
+		{
+			// Not supported
+			messageReject();
+		}
 	}
 	else
 	{
@@ -712,7 +745,7 @@ static void process_MessageOut()
 
 void scsiPoll(void)
 {
-	if (scsiDev.resetFlag)
+	if (unlikely(scsiDev.resetFlag))
 	{
 		scsiReset();
 		if ((scsiDev.resetFlag = SCSI_ReadFilt(SCSI_Filt_RST)))
@@ -932,7 +965,7 @@ int scsiReconnect()
 			while (
 				!bsy &&
 				!scsiDev.resetFlag &&
-				(diffTime_ms(waitStart_ms, getTime_ms()) < 250))
+				(elapsedTime_ms(waitStart_ms) < 250))
 			{
 				bsy = SCSI_ReadFilt(SCSI_Filt_BSY);
 			}
@@ -967,3 +1000,4 @@ int scsiReconnect()
 	return reconnected;
 }
 
+#pragma GCC pop_options

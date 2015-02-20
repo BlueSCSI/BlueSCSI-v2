@@ -82,6 +82,11 @@ Compatibility
         Alpha 21264 CPU, 667MHz, with a QLogic SCSI controller in a PCI slot 
     SCSI-based Macintosh Powerbooks (2.5" SCSI2SD)
         Also reported to work on Thinkpad 860 running Win NT 4.0 PowerPC. 
+	Data General MV/2500DC running AOS/VS
+		Vendor: MICROoP
+		Product: 1578-15       UP
+		Revision: DG02
+		Device-type modifier: 0x4c
 
 Samplers
 
@@ -105,3 +110,6 @@ Other
 
     HP 16601A, 16700A logic analyzers
     Fluke 9100 series 
+	Reftek RT-72A Seismic datalogger.
+		http://www.iris.iris.edu/passcal/Reftek/72A-R-005-00.1.pdf
+		http://www.iris.iris.edu/passcal/Manual/rtfm.s3a.13.html

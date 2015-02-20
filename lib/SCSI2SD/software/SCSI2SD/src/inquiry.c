@@ -14,6 +14,8 @@
 //
 //	You should have received a copy of the GNU General Public License
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
+#pragma GCC push_options
+#pragma GCC optimize("-flto")
 
 #include "device.h"
 #include "scsi.h"
@@ -25,7 +27,7 @@
 static uint8 StandardResponse[] =
 {
 0x00, // "Direct-access device". AKA standard hard disk
-0x00, // device type qualifier
+0x00, // device type modifier
 0x02, // Complies with ANSI SCSI-2.
 0x01, // Response format is compatible with the old CCS format.
 0x1f, // standard length.
@@ -112,6 +114,7 @@ void scsiInquiry()
 		{
 			const TargetConfig* config = scsiDev.target->cfg;
 			memcpy(scsiDev.data, StandardResponse, sizeof(StandardResponse));
+			scsiDev.data[1] = scsiDev.target->cfg->deviceTypeModifier;
 			memcpy(&scsiDev.data[8], config->vendor, sizeof(config->vendor));
 			memcpy(&scsiDev.data[16], config->prodId, sizeof(config->prodId));
 			memcpy(&scsiDev.data[32], config->revision, sizeof(config->revision));
@@ -203,3 +206,4 @@ void scsiInquiry()
 	}
 }
 
+#pragma GCC pop_options

@@ -67,6 +67,10 @@ enum FilteredInputs
 // Contains the odd-parity flag for a given 8-bit value.
 extern const uint8_t Lookup_OddParity[256];
 
+extern volatile uint8_t scsiRxDMAComplete;
+extern volatile uint8_t scsiTxDMAComplete;
+#define scsiDMABusy() (!(scsiRxDMAComplete && scsiTxDMAComplete))
+
 void scsiPhyReset(void);
 void scsiPhyInit(void);
 
@@ -76,8 +80,8 @@ void scsiReadDMA(uint8_t* data, uint32_t count);
 int scsiReadDMAPoll();
 
 void scsiWriteByte(uint8_t value);
-void scsiWrite(uint8_t* data, uint32_t count);
-void scsiWriteDMA(uint8_t* data, uint32_t count);
+void scsiWrite(const uint8_t* data, uint32_t count);
+void scsiWriteDMA(const uint8_t* data, uint32_t count);
 int scsiWriteDMAPoll();
 
 uint8_t scsiReadDBxPins(void);

@@ -147,4 +147,10 @@ void scsiPoll(void);
 void scsiDisconnect(void);
 int scsiReconnect(void);
 
+
+// Utility macros, consistent with the Linux Kernel code.
+#define likely(x)       __builtin_expect(!!(x), 1)
+#define unlikely(x)     __builtin_expect(!!(x), 0)
+//#define likely(x)       (x)
+//#define unlikely(x)     (x)
 #endif

@@ -14,6 +14,8 @@
 //
 //	You should have received a copy of the GNU General Public License
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
+#pragma GCC push_options
+#pragma GCC optimize("-flto")
 
 #include "device.h"
 #include "scsi.h"
@@ -42,19 +44,19 @@ static uint8 scsiDmaTxTd[1] = { CY_DMA_INVALID_TD };
 // Source of dummy bytes for DMA reads
 static uint8 dummyBuffer = 0xFF;
 
-volatile static uint8 rxDMAComplete;
-volatile static uint8 txDMAComplete;
+volatile uint8_t scsiRxDMAComplete;
+volatile uint8_t scsiTxDMAComplete;
 
 CY_ISR_PROTO(scsiRxCompleteISR);
 CY_ISR(scsiRxCompleteISR)
 {
-	rxDMAComplete = 1;
+	scsiRxDMAComplete = 1;
 }
 
 CY_ISR_PROTO(scsiTxCompleteISR);
 CY_ISR(scsiTxCompleteISR)
 {
-	txDMAComplete = 1;
+	scsiTxDMAComplete = 1;
 }
 
 CY_ISR_PROTO(scsiResetISR);
@@ -80,14 +82,14 @@ scsiReadDBxPins()
 uint8_t
 scsiReadByte(void)
 {
-	while (scsiPhyTxFifoFull() && !scsiDev.resetFlag) {}
+	while (unlikely(scsiPhyTxFifoFull()) && likely(!scsiDev.resetFlag)) {}
 	scsiPhyTx(0);
 
-	while (scsiPhyRxFifoEmpty() && !scsiDev.resetFlag) {}
+	while (scsiPhyRxFifoEmpty() && likely(!scsiDev.resetFlag)) {}
 	uint8_t val = scsiPhyRx();
 	scsiDev.parityError = scsiDev.parityError || SCSI_Parity_Error_Read();
 
-	while (!(scsiPhyStatus() & SCSI_PHY_TX_COMPLETE) && !scsiDev.resetFlag) {}
+	while (!(scsiPhyStatus() & SCSI_PHY_TX_COMPLETE) && likely(!scsiDev.resetFlag)) {}
 
 	return val;
 }
@@ -98,7 +100,7 @@ scsiReadPIO(uint8* data, uint32 count)
 	int prep = 0;
 	int i = 0;
 
-	while (i < count && !scsiDev.resetFlag)
+	while (i < count && likely(!scsiDev.resetFlag))
 	{
 		uint8_t status = scsiPhyStatus();
 
@@ -114,7 +116,7 @@ scsiReadPIO(uint8* data, uint32 count)
 		}
 	}
 	scsiDev.parityError = scsiDev.parityError || SCSI_Parity_Error_Read();
-	while (!(scsiPhyStatus() & SCSI_PHY_TX_COMPLETE) && !scsiDev.resetFlag) {}
+	while (!(scsiPhyStatus() & SCSI_PHY_TX_COMPLETE) && likely(!scsiDev.resetFlag)) {}
 }
 
 static void
@@ -136,7 +138,7 @@ doRxSingleDMA(uint8* data, uint32 count)
 		TD_INC_DST_ADR |
 			SCSI_RX_DMA__TD_TERMOUT_EN // Trigger interrupt when complete
 		);
-	
+
 	CyDmaTdSetAddress(
 		scsiDmaTxTd[0],
 		LO16((uint32)&dummyBuffer),
@@ -146,18 +148,18 @@ doRxSingleDMA(uint8* data, uint32 count)
 		LO16((uint32)scsiTarget_datapath__F1_REG),
 		LO16((uint32)data)
 		);
-	
+
 	CyDmaChSetInitialTd(scsiDmaTxChan, scsiDmaTxTd[0]);
 	CyDmaChSetInitialTd(scsiDmaRxChan, scsiDmaRxTd[0]);
-	
+
 	// The DMA controller is a bit trigger-happy. It will retain
 	// a drq request that was triggered while the channel was
 	// disabled.
 	CyDmaClearPendingDrq(scsiDmaTxChan);
 	CyDmaClearPendingDrq(scsiDmaRxChan);
 
-	txDMAComplete = 0;
-	rxDMAComplete = 0;
+	scsiTxDMAComplete = 0;
+	scsiRxDMAComplete = 0;
 
 	CyDmaChEnable(scsiDmaRxChan, 1);
 	CyDmaChEnable(scsiDmaTxChan, 1);
@@ -178,9 +180,13 @@ scsiReadDMA(uint8* data, uint32 count)
 int
 scsiReadDMAPoll()
 {
-	if (txDMAComplete && rxDMAComplete && (scsiPhyStatus() & SCSI_PHY_TX_COMPLETE))
+	if (scsiTxDMAComplete && scsiRxDMAComplete)
 	{
-		if (dmaSentCount == dmaTotalCount)
+		// Wait until our scsi signals are consistent. This should only be
+		// a few cycles.
+		while (!(scsiPhyStatus() & SCSI_PHY_TX_COMPLETE)) {}
+
+		if (likely(dmaSentCount == dmaTotalCount))
 		{
 			dmaInProgress = 0;
 			scsiDev.parityError = scsiDev.parityError || SCSI_Parity_Error_Read();
@@ -191,7 +197,7 @@ scsiReadDMAPoll()
 			// Transfer was too large for a single DMA transfer. Continue
 			// to send remaining bytes.
 			uint32_t count = dmaTotalCount - dmaSentCount;
-			if (count > MAX_DMA_BYTES) count = MAX_DMA_BYTES;
+			if (unlikely(count > MAX_DMA_BYTES)) count = MAX_DMA_BYTES;
 			doRxSingleDMA(dmaBuffer + dmaSentCount, count);
 			dmaSentCount += count;
 			return 0;
@@ -213,26 +219,32 @@ scsiRead(uint8_t* data, uint32_t count)
 	else
 	{
 		scsiReadDMA(data, count);
-		while (!scsiReadDMAPoll() && !scsiDev.resetFlag) {};
+		
+		// Wait for the next DMA interrupt (or the 1ms systick)
+		// It's beneficial to halt the processor to
+		// give the DMA controller more memory bandwidth to work with.
+		__WFI();
+		
+		while (!scsiReadDMAPoll() && likely(!scsiDev.resetFlag)) {};
 	}
 }
 
 void
 scsiWriteByte(uint8 value)
 {
-	while (scsiPhyTxFifoFull() && !scsiDev.resetFlag) {}
+	while (unlikely(scsiPhyTxFifoFull()) && likely(!scsiDev.resetFlag)) {}
 	scsiPhyTx(value);
 
-	while (!(scsiPhyStatus() & SCSI_PHY_TX_COMPLETE) && !scsiDev.resetFlag) {}
+	while (!(scsiPhyStatus() & SCSI_PHY_TX_COMPLETE) && likely(!scsiDev.resetFlag)) {}
 	scsiPhyRxFifoClear();
 }
 
 static void
-scsiWritePIO(uint8_t* data, uint32_t count)
+scsiWritePIO(const uint8_t* data, uint32_t count)
 {
 	int i = 0;
 
-	while (i < count && !scsiDev.resetFlag)
+	while (i < count && likely(!scsiDev.resetFlag))
 	{
 		if (!scsiPhyTxFifoFull())
 		{
@@ -241,12 +253,12 @@ scsiWritePIO(uint8_t* data, uint32_t count)
 		}
 	}
 
-	while (!(scsiPhyStatus() & SCSI_PHY_TX_COMPLETE) && !scsiDev.resetFlag) {}
+	while (!(scsiPhyStatus() & SCSI_PHY_TX_COMPLETE) && likely(!scsiDev.resetFlag)) {}
 	scsiPhyRxFifoClear();
 }
 
 static void
-doTxSingleDMA(uint8* data, uint32 count)
+doTxSingleDMA(const uint8* data, uint32 count)
 {
 	// Prepare DMA transfer
 	dmaInProgress = 1;
@@ -269,14 +281,14 @@ doTxSingleDMA(uint8* data, uint32 count)
 	// disabled.
 	CyDmaClearPendingDrq(scsiDmaTxChan);
 
-	txDMAComplete = 0;
-	rxDMAComplete = 1;
+	scsiTxDMAComplete = 0;
+	scsiRxDMAComplete = 1;
 
 	CyDmaChEnable(scsiDmaTxChan, 1);
 }
 
 void
-scsiWriteDMA(uint8* data, uint32 count)
+scsiWriteDMA(const uint8* data, uint32 count)
 {
 	dmaSentCount = 0;
 	dmaTotalCount = count;
@@ -290,9 +302,13 @@ scsiWriteDMA(uint8* data, uint32 count)
 int
 scsiWriteDMAPoll()
 {
-	if (txDMAComplete && (scsiPhyStatus() & SCSI_PHY_TX_COMPLETE))
+	if (scsiTxDMAComplete)
 	{
-		if (dmaSentCount == dmaTotalCount)
+		// Wait until our scsi signals are consistent. This should only be
+		// a few cycles.
+		while (!(scsiPhyStatus() & SCSI_PHY_TX_COMPLETE)) {}
+
+		if (likely(dmaSentCount == dmaTotalCount))
 		{
 			scsiPhyRxFifoClear();
 			dmaInProgress = 0;
@@ -303,7 +319,7 @@ scsiWriteDMAPoll()
 			// Transfer was too large for a single DMA transfer. Continue
 			// to send remaining bytes.
 			uint32_t count = dmaTotalCount - dmaSentCount;
-			if (count > MAX_DMA_BYTES) count = MAX_DMA_BYTES;
+			if (unlikely(count > MAX_DMA_BYTES)) count = MAX_DMA_BYTES;
 			doTxSingleDMA(dmaBuffer + dmaSentCount, count);
 			dmaSentCount += count;
 			return 0;
@@ -316,7 +332,7 @@ scsiWriteDMAPoll()
 }
 
 void
-scsiWrite(uint8_t* data, uint32_t count)
+scsiWrite(const uint8_t* data, uint32_t count)
 {
 	if (count < 8)
 	{
@@ -325,11 +341,17 @@ scsiWrite(uint8_t* data, uint32_t count)
 	else
 	{
 		scsiWriteDMA(data, count);
-		while (!scsiWriteDMAPoll() && !scsiDev.resetFlag) {};
+		
+		// Wait for the next DMA interrupt (or the 1ms systick)
+		// It's beneficial to halt the processor to
+		// give the DMA controller more memory bandwidth to work with.
+		__WFI();
+
+		while (!scsiWriteDMAPoll() && likely(!scsiDev.resetFlag)) {};
 	}
 }
 
-static void busSettleDelay(void)
+static inline void busSettleDelay(void)
 {
 	// Data Release time (switching IO) = 400ns
 	// + Bus Settle time (switching phase) = 400ns.
@@ -356,7 +378,7 @@ void scsiPhyReset()
 		dmaTotalCount = 0;
 		CyDmaChSetRequest(scsiDmaTxChan, CY_DMA_CPU_TERM_CHAIN);
 		CyDmaChSetRequest(scsiDmaRxChan, CY_DMA_CPU_TERM_CHAIN);
-		while (!(txDMAComplete && rxDMAComplete)) {}
+		while (!(scsiTxDMAComplete && scsiRxDMAComplete)) {}
 
 		CyDmaChDisable(scsiDmaTxChan);
 		CyDmaChDisable(scsiDmaRxChan);
@@ -406,7 +428,7 @@ static void scsiPhyInitDMA()
 				HI16(CYDEV_SRAM_BASE),
 				HI16(CYDEV_PERIPH_BASE)
 				);
-
+		
 		CyDmaChDisable(scsiDmaRxChan);
 		CyDmaChDisable(scsiDmaTxChan);
 
@@ -425,3 +447,4 @@ void scsiPhyInit()
 
 	SCSI_RST_ISR_StartEx(scsiResetISR);
 }
+#pragma GCC pop_options

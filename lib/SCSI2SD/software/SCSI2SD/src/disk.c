@@ -15,6 +15,8 @@
 //
 //	You should have received a copy of the GNU General Public License
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
+#pragma GCC push_options
+#pragma GCC optimize("-flto")
 
 #include "device.h"
 #include "scsi.h"
@@ -38,7 +40,7 @@ static int doSdInit()
 	if (blockDev.state & DISK_PRESENT)
 	{
 		result = sdInit();
-	
+
 		if (result)
 		{
 			blockDev.state = blockDev.state | DISK_INITIALISED;
@@ -167,8 +169,8 @@ static void doReadCapacity()
 
 static void doWrite(uint32 lba, uint32 blocks)
 {
-	if ((blockDev.state & DISK_WP) ||
-		(scsiDev.target->cfg->deviceType == CONFIG_OPTICAL))
+	if (unlikely(blockDev.state & DISK_WP) ||
+		unlikely(scsiDev.target->cfg->deviceType == CONFIG_OPTICAL))
 
 	{
 		scsiDev.status = CHECK_CONDITION;
@@ -176,12 +178,13 @@ static void doWrite(uint32 lba, uint32 blocks)
 		scsiDev.target->sense.asc = WRITE_PROTECTED;
 		scsiDev.phase = STATUS;
 	}
-	else if (((uint64) lba) + blocks >
+	else if (unlikely(((uint64) lba) + blocks >
 		getScsiCapacity(
 			scsiDev.target->cfg->sdSectorStart,
 			scsiDev.target->liveCfg.bytesPerSector,
 			scsiDev.target->cfg->scsiSectors
-			))
+			)
+		))
 	{
 		scsiDev.status = CHECK_CONDITION;
 		scsiDev.target->sense.code = ILLEGAL_REQUEST;
@@ -201,7 +204,7 @@ static void doWrite(uint32 lba, uint32 blocks)
 		// No need for single-block writes atm.  Overhead of the
 		// multi-block write is minimal.
 		transfer.multiBlock = 1;
-		
+
 		sdWriteMultiSectorPrep();
 	}
 }
@@ -213,7 +216,7 @@ static void doRead(uint32 lba, uint32 blocks)
 		scsiDev.target->cfg->sdSectorStart,
 		scsiDev.target->liveCfg.bytesPerSector,
 		scsiDev.target->cfg->scsiSectors);
-	if (((uint64) lba) + blocks > capacity)
+	if (unlikely(((uint64) lba) + blocks > capacity))
 	{
 		scsiDev.status = CHECK_CONDITION;
 		scsiDev.target->sense.code = ILLEGAL_REQUEST;
@@ -230,7 +233,7 @@ static void doRead(uint32 lba, uint32 blocks)
 		scsiDev.dataLen = 0; // No data yet
 
 		if ((blocks == 1) ||
-			(((uint64) lba) + blocks == capacity)
+			unlikely(((uint64) lba) + blocks == capacity)
 			)
 		{
 			// We get errors on reading the last sector using a multi-sector
@@ -264,7 +267,11 @@ static void doSeek(uint32 lba)
 static int doTestUnitReady()
 {
 	int ready = 1;
-	if (!(blockDev.state & DISK_STARTED))
+	if (likely(blockDev.state == (DISK_STARTED | DISK_PRESENT | DISK_INITIALISED)))
+	{
+		// nothing to do.
+	}
+	else if (unlikely(!(blockDev.state & DISK_STARTED)))
 	{
 		ready = 0;
 		scsiDev.status = CHECK_CONDITION;
@@ -272,7 +279,7 @@ static int doTestUnitReady()
 		scsiDev.target->sense.asc = LOGICAL_UNIT_NOT_READY_INITIALIZING_COMMAND_REQUIRED;
 		scsiDev.phase = STATUS;
 	}
-	else if (!(blockDev.state & DISK_PRESENT))
+	else if (unlikely(!(blockDev.state & DISK_PRESENT)))
 	{
 		ready = 0;
 		scsiDev.status = CHECK_CONDITION;
@@ -280,7 +287,7 @@ static int doTestUnitReady()
 		scsiDev.target->sense.asc = MEDIUM_NOT_PRESENT;
 		scsiDev.phase = STATUS;
 	}
-	else if (!(blockDev.state & DISK_INITIALISED))
+	else if (unlikely(!(blockDev.state & DISK_INITIALISED)))
 	{
 		ready = 0;
 		scsiDev.status = CHECK_CONDITION;
@@ -297,7 +304,7 @@ int scsiDiskCommand()
 	int commandHandled = 1;
 
 	uint8 command = scsiDev.cdb[0];
-	if (command == 0x1B)
+	if (unlikely(command == 0x1B))
 	{
 		// START STOP UNIT
 		// Enable or disable media access operations.
@@ -318,16 +325,73 @@ int scsiDiskCommand()
 			blockDev.state &= ~DISK_STARTED;
 		}
 	}
-	else if (command == 0x00)
+	else if (unlikely(command == 0x00))
 	{
 		// TEST UNIT READY
 		doTestUnitReady();
 	}
-	else if (!doTestUnitReady())
+	else if (unlikely(!doTestUnitReady()))
 	{
 		// Status and sense codes already set by doTestUnitReady
 	}
-	else if (command == 0x04)
+	else if (likely(command == 0x08))
+	{
+		// READ(6)
+		uint32 lba =
+			(((uint32) scsiDev.cdb[1] & 0x1F) << 16) +
+			(((uint32) scsiDev.cdb[2]) << 8) +
+			scsiDev.cdb[3];
+		uint32 blocks = scsiDev.cdb[4];
+		if (unlikely(blocks == 0)) blocks = 256;
+		doRead(lba, blocks);
+	}
+	else if (likely(command == 0x28))
+	{
+		// READ(10)
+		// Ignore all cache control bits - we don't support a memory cache.
+
+		uint32 lba =
+			(((uint32) scsiDev.cdb[2]) << 24) +
+			(((uint32) scsiDev.cdb[3]) << 16) +
+			(((uint32) scsiDev.cdb[4]) << 8) +
+			scsiDev.cdb[5];
+		uint32 blocks =
+			(((uint32) scsiDev.cdb[7]) << 8) +
+			scsiDev.cdb[8];
+
+		doRead(lba, blocks);
+	}
+	else if (likely(command == 0x0A))
+	{
+		// WRITE(6)
+		uint32 lba =
+			(((uint32) scsiDev.cdb[1] & 0x1F) << 16) +
+			(((uint32) scsiDev.cdb[2]) << 8) +
+			scsiDev.cdb[3];
+		uint32 blocks = scsiDev.cdb[4];
+		if (unlikely(blocks == 0)) blocks = 256;
+		doWrite(lba, blocks);
+	}
+	else if (likely(command == 0x2A) || // WRITE(10)
+		unlikely(command == 0x2E)) // WRITE AND VERIFY
+	{
+		// Ignore all cache control bits - we don't support a memory cache.
+		// Don't bother verifying either. The SD card likely stores ECC
+		// along with each flash row.
+
+		uint32 lba =
+			(((uint32) scsiDev.cdb[2]) << 24) +
+			(((uint32) scsiDev.cdb[3]) << 16) +
+			(((uint32) scsiDev.cdb[4]) << 8) +
+			scsiDev.cdb[5];
+		uint32 blocks =
+			(((uint32) scsiDev.cdb[7]) << 8) +
+			scsiDev.cdb[8];
+
+		doWrite(lba, blocks);
+	}
+
+	else if (unlikely(command == 0x04))
 	{
 		// FORMAT UNIT
 		// We don't really do any formatting, but we need to read the correct
@@ -347,42 +411,12 @@ int scsiDiskCommand()
 			// No data to read, we're already finished!
 		}
 	}
-	else if (command == 0x08)
-	{
-		// READ(6)
-		uint32 lba =
-			(((uint32) scsiDev.cdb[1] & 0x1F) << 16) +
-			(((uint32) scsiDev.cdb[2]) << 8) +
-			scsiDev.cdb[3];
-		uint32 blocks = scsiDev.cdb[4];
-		if (blocks == 0) blocks = 256;
-		doRead(lba, blocks);
-	}
-
-	else if (command == 0x28)
-	{
-		// READ(10)
-		// Ignore all cache control bits - we don't support a memory cache.
-
-		uint32 lba =
-			(((uint32) scsiDev.cdb[2]) << 24) +
-			(((uint32) scsiDev.cdb[3]) << 16) +
-			(((uint32) scsiDev.cdb[4]) << 8) +
-			scsiDev.cdb[5];
-		uint32 blocks =
-			(((uint32) scsiDev.cdb[7]) << 8) +
-			scsiDev.cdb[8];
-
-		doRead(lba, blocks);
-	}
-
-	else if (command == 0x25)
+	else if (unlikely(command == 0x25))
 	{
 		// READ CAPACITY
 		doReadCapacity();
 	}
-
-	else if (command == 0x0B)
+	else if (unlikely(command == 0x0B))
 	{
 		// SEEK(6)
 		uint32 lba =
@@ -393,7 +427,7 @@ int scsiDiskCommand()
 		doSeek(lba);
 	}
 
-	else if (command == 0x2B)
+	else if (unlikely(command == 0x2B))
 	{
 		// SEEK(10)
 		uint32 lba =
@@ -404,61 +438,33 @@ int scsiDiskCommand()
 
 		doSeek(lba);
 	}
-	else if (command == 0x0A)
-	{
-		// WRITE(6)
-		uint32 lba =
-			(((uint32) scsiDev.cdb[1] & 0x1F) << 16) +
-			(((uint32) scsiDev.cdb[2]) << 8) +
-			scsiDev.cdb[3];
-		uint32 blocks = scsiDev.cdb[4];
-		if (blocks == 0) blocks = 256;
-		doWrite(lba, blocks);
-	}
-
-	else if (command == 0x2A)
-	{
-		// WRITE(10)
-		// Ignore all cache control bits - we don't support a memory cache.
-
-		uint32 lba =
-			(((uint32) scsiDev.cdb[2]) << 24) +
-			(((uint32) scsiDev.cdb[3]) << 16) +
-			(((uint32) scsiDev.cdb[4]) << 8) +
-			scsiDev.cdb[5];
-		uint32 blocks =
-			(((uint32) scsiDev.cdb[7]) << 8) +
-			scsiDev.cdb[8];
-
-		doWrite(lba, blocks);
-	}
-	else if (command == 0x36)
+	else if (unlikely(command == 0x36))
 	{
 		// LOCK UNLOCK CACHE
 		// We don't have a cache to lock data into. do nothing.
 	}
-	else if (command == 0x34)
+	else if (unlikely(command == 0x34))
 	{
 		// PRE-FETCH.
 		// We don't have a cache to pre-fetch into. do nothing.
 	}
-	else if (command == 0x1E)
+	else if (unlikely(command == 0x1E))
 	{
 		// PREVENT ALLOW MEDIUM REMOVAL
 		// Not much we can do to prevent the user removing the SD card.
 		// do nothing.
 	}
-	else if (command == 0x01)
+	else if (unlikely(command == 0x01))
 	{
 		// REZERO UNIT
 		// Set the lun to a vendor-specific state. Ignore.
 	}
-	else if (command == 0x35)
+	else if (unlikely(command == 0x35))
 	{
 		// SYNCHRONIZE CACHE
 		// We don't have a cache. do nothing.
 	}
-	else if (command == 0x2F)
+	else if (unlikely(command == 0x2F))
 	{
 		// VERIFY
 		// TODO: When they supply data to verify, we should read the data and
@@ -512,15 +518,27 @@ void scsiDiskPoll()
 		int scsiActive = 0;
 		int sdActive = 0;
 		while ((i < totalSDSectors) &&
-			(scsiDev.phase == DATA_IN) &&
-			!scsiDev.resetFlag)
+			likely(scsiDev.phase == DATA_IN) &&
+			likely(!scsiDev.resetFlag))
 		{
-			if ((sdActive == 1) && sdReadSectorDMAPoll())
+			// Wait for the next DMA interrupt. It's beneficial to halt the
+			// processor to give the DMA controller more memory bandwidth to
+			// work with.
+			// We're optimistically assuming a race condition won't occur
+			// between these checks and the interrupt handers. The 1ms
+			// systick timer interrupt saves us on the event of a race.
+			int scsiBusy = scsiDMABusy();
+			int sdBusy = sdDMABusy();
+			if (scsiBusy && sdBusy) __WFI();
+
+			if (sdActive && !sdBusy && sdReadSectorDMAPoll())
 			{
 				sdActive = 0;
 				prep++;
 			}
-			else if ((sdActive == 0) && (prep - i < buffers) && (prep < totalSDSectors))
+			else if (!sdActive &&
+				(prep - i < buffers) &&
+				(prep < totalSDSectors))
 			{
 				// Start an SD transfer if we have space.
 				if (transfer.multiBlock)
@@ -534,12 +552,12 @@ void scsiDiskPoll()
 				sdActive = 1;
 			}
 
-			if ((scsiActive == 1) && scsiWriteDMAPoll())
+			if (scsiActive && !scsiBusy && scsiWriteDMAPoll())
 			{
 				scsiActive = 0;
 				++i;
 			}
-			else if ((scsiActive == 0) && ((prep - i) > 0))
+			else if (!scsiActive && ((prep - i) > 0))
 			{
 				int dmaBytes = SD_SECTOR_SIZE;
 				if ((i % sdPerScsi) == (sdPerScsi - 1))
@@ -575,16 +593,26 @@ void scsiDiskPoll()
 		int sdActive = 0;
 
 		while ((i < totalSDSectors) &&
-			((scsiDev.phase == DATA_OUT) || // scsiDisconnect keeps our phase.
+			(likely(scsiDev.phase == DATA_OUT) || // scsiDisconnect keeps our phase.
 				scsiComplete) &&
-			!scsiDev.resetFlag)
+			likely(!scsiDev.resetFlag))
 		{
-			if ((sdActive == 1) && sdWriteSectorDMAPoll(i == (totalSDSectors - 1)))
+			// Wait for the next DMA interrupt. It's beneficial to halt the
+			// processor to give the DMA controller more memory bandwidth to
+			// work with.
+			// We're optimistically assuming a race condition won't occur
+			// between these checks and the interrupt handers. The 1ms
+			// systick timer interrupt saves us on the event of a race.
+			int scsiBusy = scsiDMABusy();
+			int sdBusy = sdDMABusy();
+			if (scsiBusy && sdBusy) __WFI();
+
+			if (sdActive && !sdBusy && sdWriteSectorDMAPoll(i == (totalSDSectors - 1)))
 			{
 				sdActive = 0;
 				i++;
 			}
-			else if ((sdActive == 0) && ((prep - i) > 0))
+			else if (!sdActive && ((prep - i) > 0))
 			{
 				// Start an SD transfer if we have space.
 				sdWriteMultiSectorDMA(&scsiDev.data[SD_SECTOR_SIZE * (i % buffers)]);
@@ -593,16 +621,16 @@ void scsiDiskPoll()
 
 			uint32_t now = getTime_ms();
 
-			if ((scsiActive == 1) && scsiReadDMAPoll())
+			if (scsiActive && !scsiBusy && scsiReadDMAPoll())
 			{
 				scsiActive = 0;
 				++prep;
 				lastActivityTime = now;
 			}
-			else if ((scsiActive == 0) &&
+			else if (!scsiActive &&
 				((prep - i) < buffers) &&
 				(prep < totalSDSectors) &&
-				!scsiDisconnected)
+				likely(!scsiDisconnected))
 			{
 				int dmaBytes = SD_SECTOR_SIZE;
 				if ((prep % sdPerScsi) == (sdPerScsi - 1))
@@ -615,10 +643,10 @@ void scsiDiskPoll()
 			}
 			else if (
 				(scsiActive == 0) &&
-				!scsiDisconnected &&
-				scsiDev.discPriv &&
-				(diffTime_ms(lastActivityTime, now) >= 20) &&
-				(scsiDev.phase == DATA_OUT))
+				likely(!scsiDisconnected) &&
+				unlikely(scsiDev.discPriv) &&
+				unlikely(diffTime_ms(lastActivityTime, now) >= 20) &&
+				likely(scsiDev.phase == DATA_OUT))
 			{
 				// We're transferring over the SCSI bus faster than the SD card
 				// can write.  There is no more buffer space once we've finished
@@ -631,12 +659,12 @@ void scsiDiskPoll()
 				scsiDisconnected = 1;
 				lastActivityTime = getTime_ms();
 			}
-			else if (scsiDisconnected &&
+			else if (unlikely(scsiDisconnected) &&
 				(
 					(prep == i) || // Buffers empty.
 					// Send some messages every 100ms so we don't timeout.
 					// At a minimum, a reselection involves an IDENTIFY message.
-					(diffTime_ms(lastActivityTime, now) >= 100)
+					unlikely(diffTime_ms(lastActivityTime, now) >= 100)
 				))
 			{
 				int reconnected = scsiReconnect();
@@ -652,13 +680,13 @@ void scsiDiskPoll()
 				}
 			}
 			else if (
-				!scsiComplete &&
+				likely(!scsiComplete) &&
 				(sdActive == 1) &&
 				(prep == totalSDSectors) && // All scsi data read and buffered
-				!scsiDev.discPriv && // Prefer disconnect where possible.
-				(diffTime_ms(lastActivityTime, now) >= 150) &&
+				likely(!scsiDev.discPriv) && // Prefer disconnect where possible.
+				unlikely(diffTime_ms(lastActivityTime, now) >= 150) &&
 
-				(scsiDev.phase == DATA_OUT) &&
+				likely(scsiDev.phase == DATA_OUT) &&
 				!(scsiDev.cdb[scsiDev.cdbLen - 1] & 0x01) // Not linked command
 				)
 			{
@@ -685,8 +713,8 @@ void scsiDiskPoll()
 		}
 		while (
 			!scsiDev.resetFlag &&
-			scsiDisconnected &&
-			(diffTime_ms(lastActivityTime, getTime_ms()) <= 10000))
+			unlikely(scsiDisconnected) &&
+			(elapsedTime_ms(lastActivityTime) <= 10000))
 		{
 			scsiDisconnected = !scsiReconnect();
 		}
@@ -723,7 +751,7 @@ void scsiDiskReset()
 	transfer.currentBlock = 0;
 
 	// Cancel long running commands!
-	if (transfer.inProgress == 1)
+	if (unlikely(transfer.inProgress == 1))
 	{
 		if (transfer.dir == TRANSFER_WRITE)
 		{
@@ -736,8 +764,6 @@ void scsiDiskReset()
 	}
 	transfer.inProgress = 0;
 	transfer.multiBlock = 0;
-		//		SD_CS_Write(1);
-
 }
 
 void scsiDiskInit()
@@ -757,3 +783,4 @@ void scsiDiskInit()
 	#endif
 }
 
+#pragma GCC pop_options

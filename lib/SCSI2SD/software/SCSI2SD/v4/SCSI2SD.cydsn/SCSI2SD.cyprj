@@ -2483,7 +2483,7 @@
 <name_val_pair name="c9323d49-d323-40b8-9b59-cc008d68a989@Release@CortexM3@C/C++@General@Struct Return Method" v="System Default" />
 <name_val_pair name="c9323d49-d323-40b8-9b59-cc008d68a989@Release@CortexM3@C/C++@General@Verbose Asm" v="False" />
 <name_val_pair name="c9323d49-d323-40b8-9b59-cc008d68a989@Release@CortexM3@C/C++@Optimization@Remove Unused Functions" v="True" />
-<name_val_pair name="c9323d49-d323-40b8-9b59-cc008d68a989@Release@CortexM3@C/C++@Optimization@Inline Functions" v="False" />
+<name_val_pair name="c9323d49-d323-40b8-9b59-cc008d68a989@Release@CortexM3@C/C++@Optimization@Inline Functions" v="True" />
 <name_val_pair name="c9323d49-d323-40b8-9b59-cc008d68a989@Release@CortexM3@C/C++@Optimization@Optimization Level" v="Size" />
 <name_val_pair name="c9323d49-d323-40b8-9b59-cc008d68a989@Release@CortexM3@C/C++@Optimization@Link Time Optimization" v="False" />
 <name_val_pair name="c9323d49-d323-40b8-9b59-cc008d68a989@Release@CortexM3@C/C++@Command Line@Command Line" v="" />
@@ -2497,7 +2497,7 @@
 <name_val_pair name="c9323d49-d323-40b8-9b59-cc008d68a989@Release@CortexM3@Linker@General@Use Default Libs" v="True" />
 <name_val_pair name="c9323d49-d323-40b8-9b59-cc008d68a989@Release@CortexM3@Linker@General@Use Nano Lib" v="True" />
 <name_val_pair name="c9323d49-d323-40b8-9b59-cc008d68a989@Release@CortexM3@Linker@General@Enable printf Float" v="True" />
-<name_val_pair name="c9323d49-d323-40b8-9b59-cc008d68a989@Release@CortexM3@Linker@Optimization@Optimization Level" v="None" />
+<name_val_pair name="c9323d49-d323-40b8-9b59-cc008d68a989@Release@CortexM3@Linker@Optimization@Optimization Level" v="Size" />
 <name_val_pair name="c9323d49-d323-40b8-9b59-cc008d68a989@Release@CortexM3@Linker@Optimization@Remove Unused Functions" v="True" />
 <name_val_pair name="c9323d49-d323-40b8-9b59-cc008d68a989@Release@CortexM3@Linker@Command Line@Command Line" v="" />
 </name>

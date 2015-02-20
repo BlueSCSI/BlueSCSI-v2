@@ -1,3 +1,9 @@
+201501??		4.1.1
+	- Fix MODE SENSE bug when the allocation length is less than the
+	page size.
+	- Add WRITE BUFFER and WRITE AND VERIFY support.
+	- Fix rare case of very slow performance
+
 20150201		4.1
 	- Rewrite of the SD card interface to fix compatibility problems.
 		This fixes write issues with Samsung SD cards.

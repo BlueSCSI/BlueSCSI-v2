@@ -14,6 +14,8 @@
 //
 //	You should have received a copy of the GNU General Public License
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
+#pragma GCC push_options
+#pragma GCC optimize("-flto")
 
 #include "device.h"
 #include "scsi.h"
@@ -59,13 +61,21 @@ int main()
 		scsiDiskPoll();
 		configPoll();
 
-		uint32_t now = getTime_ms();
-		if (diffTime_ms(lastSDPoll, now) > 200)
+		if (unlikely(scsiDev.phase == BUS_FREE))
 		{
-			lastSDPoll = now;
-			sdPoll();
+			if (unlikely(elapsedTime_ms(lastSDPoll) > 200))
+			{
+				lastSDPoll = getTime_ms();
+				sdPoll();
+			}
+			else
+			{
+				// Wait for our 1ms timer to save some power.
+				__WFI();
+			}
 		}
 	}
 	return 0;
 }
 
+#pragma GCC pop_options

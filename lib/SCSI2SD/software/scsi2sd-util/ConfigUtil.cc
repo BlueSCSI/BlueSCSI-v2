@@ -24,6 +24,7 @@
 
 using namespace SCSI2SD;
 
+ADD QUIRKS MODES
 namespace
 {
 	// Endian conversion routines.
@@ -93,7 +94,7 @@ ConfigUtil::Default(size_t targetIdx)
 
 	// Default to maximum fail-safe options.
 	config.flags = 0;// CONFIG_ENABLE_PARITY | CONFIG_ENABLE_UNIT_ATTENTION;
-	config.pad0 = 0;
+	config.deviceTypeModifier = 0;
 	config.sdSectorStart = 0;
 
 	// Default to 2GB. Many systems have trouble with > 2GB disks, and
@@ -145,3 +146,60 @@ ConfigUtil::toBytes(const TargetConfig& _config)
 	return std::vector<uint8_t>(begin, begin + sizeof(config));
 }
 
+wxXmlNode*
+ConfigUtil::toXML(const TargetConfig& config)
+{
+	wxXmlNode* target = new wxXmlNode(wxXML_ELEMENT_NODE, "SCSITarget");
+
+	{
+		std::stringstream s; s << scsiId & CONFIG_TARGET_ID_BITS;
+		target.AddAttribute("id", s.str());
+	}
+	{
+		std::stringstream s; s << config.deviceType;
+		new wxXmlNode(
+			new wxXmlNode(target, wxXML_ELEMENT_NODE, "deviceType"),
+			wxXML_TEXT_NODE, "", s.str());
+	}
+
+	{
+		std::stringstream s; s << "0x" << std::hex << config.deviceTypeModifier;
+		new wxXmlNode(
+			new wxXmlNode(target, wxXML_ELEMENT_NODE, "deviceTypeModifier"),
+			wxXML_TEXT_NODE, "", s.str());
+	}
+
+	wxXmlNode* flags(new wxXmlNode(target, wxXML_ELEMENT_NODE, "flags"));
+
+	new wxXmlNode(
+		new wxXmlNode(flags, wxXML_ELEMENT_NODE, "enabled"),
+		wxXML_TEXT_NODE,
+		"",
+		config.scsiId & CONFIG_TARGET_ENABLED ? "true" : "false");
+
+				"<unitAttention>" <<
+					(config.flags & CONFIG_ENABLE_UNIT_ATTENTION ? "true" : "false") <<
+				"</unitAttention>\n" <<
+				"<parity>" <<
+					(config.flags & CONFIG_ENABLE_PARITY ? "true" : "false") <<
+				"</parity>\n" <<
+
+			"<sdSectorStart>" << config.sdSectorStart << "</sdSectorStart>\n" <<
+			"<scsiSectors>" << config.scsiSectors << "</scsiSectors>\n" <<
+			"<bytesPerSector>" << config.bytesPerSector << "</bytesPerSector>\n" <<
+			"<sectorsPerTrack>" << config.sectorsPerTrack<< "</sectorsPerTrack>\n" <<
+			"<headsPerCylinder>" << config.headsPerCylinder << "</headsPerCylinder>\n" <<
+
+			"<vendor>" << std::string(config.vendor, 8) << "</vendor>" <<
+			"<prodId>" << std::string(config.prodId, 16) << "</prodId>" <<
+			"<revision>" << std::string(config.revision, 4) << "</revision>" <<
+			"<serial>" << std::string(config.serial, 16) << "</serial>" <<
+
+		"</SCSITarget>";
+}
+
+void
+ConfigUtil::deserialise(const std::string& in)
+{
+
+}

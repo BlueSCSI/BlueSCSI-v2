@@ -95,6 +95,12 @@ typedef enum
 	CONFIG_FLOPPY_14MB
 } CONFIG_TYPE;
 
+typedef enum
+{
+	CONFIG_QUIRKS_NONE,
+	CONFIG_QUIRKS_APPLE
+} CONFIG_QUIRKS;
+
 typedef struct __attribute__((packed))
 {
 	uint8_t deviceType;
@@ -112,7 +118,7 @@ typedef struct __attribute__((packed))
 
 	uint8_t deviceType; // CONFIG_TYPE
 	uint8_t flags; // CONFIG_FLAGS
-	uint8_t pad0;
+	uint8_t deviceTypeModifier; // Used in INQUIRY response.
 
 	uint32_t sdSectorStart;
 	uint32_t scsiSectors;
@@ -131,7 +137,9 @@ typedef struct __attribute__((packed))
 	char revision[4];
 	char serial[16];
 
-	uint8_t reserved[962]; // Pad out to 1024 bytes for main section.
+	uint16_t quirks; // CONFIG_QUIRKS
+
+	uint8_t reserved[960]; // Pad out to 1024 bytes for main section.
 
 	uint8_t vpd[3072]; // Total size is 4k.
 } TargetConfig;

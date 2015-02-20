@@ -14,6 +14,9 @@
 //
 //	You should have received a copy of the GNU General Public License
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
+#pragma GCC push_options
+#pragma GCC optimize("-flto")
+
 #include "bits.h"
 
 const uint8 Lookup_OddParity[] =
@@ -45,3 +48,5 @@ uint8 countBits(uint8 value)
 	}
 	return i;
 }
+
+#pragma GCC pop_options

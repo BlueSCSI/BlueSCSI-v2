@@ -14,6 +14,8 @@
 //
 //	You should have received a copy of the GNU General Public License
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
+#pragma GCC push_options
+#pragma GCC optimize("-flto")
 
 #include "device.h"
 #include "config.h"
@@ -30,7 +32,7 @@
 
 #include <string.h>
 
-static const uint16_t FIRMWARE_VERSION = 0x0410;
+static const uint16_t FIRMWARE_VERSION = 0x0411;
 
 enum USB_ENDPOINTS
 {
@@ -274,7 +276,7 @@ void debugPoll()
 		hidBuffer[26] = blockDev.state;
 		hidBuffer[27] = scsiDev.lastSenseASC >> 8;
 		hidBuffer[28] = scsiDev.lastSenseASC;
-
+		hidBuffer[29] = scsiReadDBxPins();
 
 		hidBuffer[58] = sdDev.capacity >> 24;
 		hidBuffer[59] = sdDev.capacity >> 16;
@@ -321,6 +323,11 @@ void debugPause()
 void debugResume()
 {
 	Debug_Timer_Start();
+}
+
+int isDebugEnabled()
+{
+	return usbReady;
 }
 
 // Public method for storing MODE SELECT results.
@@ -377,4 +384,4 @@ const TargetConfig* getConfigById(int scsiId)
 
 }
 
-
+#pragma GCC pop_options

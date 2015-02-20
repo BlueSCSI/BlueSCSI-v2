@@ -61,8 +61,12 @@ typedef struct
 } SdDevice;
 
 extern SdDevice sdDev;
+extern volatile uint8_t sdRxDMAComplete;
+extern volatile uint8_t sdTxDMAComplete;
 
 int sdInit(void);
+
+#define sdDMABusy() (!(sdRxDMAComplete && sdTxDMAComplete))
 
 void sdWriteMultiSectorPrep(void);
 void sdWriteMultiSectorDMA(uint8_t* outputBuffer);

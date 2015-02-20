@@ -849,10 +849,12 @@ private:
 		return;
 	}
 
-	void OnExit(wxCommandEvent& event)
+	// Note: Don't confuse this with the wxApp::OnExit virtual method
+	void OnExitEvt(wxCommandEvent& event)
 	{
 		Close(true);
 	}
+
 	void OnAbout(wxCommandEvent& event)
 	{
 		wxMessageBox(
@@ -882,7 +884,7 @@ wxBEGIN_EVENT_TABLE(AppFrame, wxFrame)
 	EVT_MENU(AppFrame::ID_ConfigDefaults, AppFrame::OnID_ConfigDefaults)
 	EVT_MENU(AppFrame::ID_Firmware, AppFrame::OnID_Firmware)
 	EVT_MENU(AppFrame::ID_LogWindow, AppFrame::OnID_LogWindow)
-	EVT_MENU(wxID_EXIT, AppFrame::OnExit)
+	EVT_MENU(wxID_EXIT, AppFrame::OnExitEvt)
 	EVT_MENU(wxID_ABOUT, AppFrame::OnAbout)
 
 	EVT_TIMER(AppFrame::ID_Timer, AppFrame::OnID_Timer)

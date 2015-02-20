@@ -20,6 +20,7 @@
 void debugInit(void);
 void debugPause(void);
 void debugResume(void);
+int isDebugEnabled(void);
 
 #endif
 
