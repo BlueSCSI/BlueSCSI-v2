@@ -13,7 +13,6 @@ computer and a modern PC (who still has access to a working floppy drive ?)
 Features
 
     In-built active terminator.
-    Can optional supply terminator power back to the SCSI bus
     Emulates up to 4 SCSI devices
     Supports sector sizes from 64 bytes to 8192 bytes
     Firmware updatable over USB
@@ -95,6 +94,8 @@ Samplers
         SCSI cable reversed on S3200
         There are compatibility problems with the Akai MPC3000. It works (slowly) with the alternate Vailixi OS with multi-sector transfers disabled. 
     EMU Emulator E4X with EOS 3.00b and E6400 (classic) with Eos 4.01
+    EMU E6400 w/ EOS2.80f
+    EMU Emax2
     Ensoniq ASR-X, ASR-10 (from v3.4, 2GB size limit)
         ASR-20 Requires TERMPWR jumper.
         ASR-X resets when writing to devices > 2Gb. 
@@ -113,3 +114,5 @@ Other
 	Reftek RT-72A Seismic datalogger.
 		http://www.iris.iris.edu/passcal/Reftek/72A-R-005-00.1.pdf
 		http://www.iris.iris.edu/passcal/Manual/rtfm.s3a.13.html
+	Konami Simpson's Bowling arcade machine
+		http://forums.arcade-museum.com/showthread.php?p=3027446

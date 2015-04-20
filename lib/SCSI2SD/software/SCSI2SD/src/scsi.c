@@ -53,7 +53,7 @@ static void enter_BusFree()
 {
 	// This delay probably isn't needed for most SCSI hosts, but it won't
 	// hurt either. It's possible some of the samplers needed this delay.
-	if (scsiDev.compatMode)
+	if (scsiDev.compatMode < COMPAT_SCSI2)
 	{
 		CyDelayUs(2);
 	}
@@ -214,7 +214,7 @@ static void process_DataOut()
 
 		if (scsiDev.parityError &&
 			(scsiDev.target->cfg->flags & CONFIG_ENABLE_PARITY) &&
-			!scsiDev.compatMode)
+			(scsiDev.compatMode >= COMPAT_SCSI2))
 		{
 			scsiDev.target->sense.code = ABORTED_COMMAND;
 			scsiDev.target->sense.asc = SCSI_PARITY_ERROR;
@@ -274,7 +274,7 @@ static void process_Command()
 	}
 	else if (scsiDev.parityError &&
 		(scsiDev.target->cfg->flags & CONFIG_ENABLE_PARITY) &&
-		!scsiDev.compatMode)
+		(scsiDev.compatMode >= COMPAT_SCSI2))
 	{
 		scsiDev.target->sense.code = ABORTED_COMMAND;
 		scsiDev.target->sense.asc = SCSI_PARITY_ERROR;
@@ -459,6 +459,7 @@ static void scsiReset()
 	scsiDev.atnFlag = 0;
 	scsiDev.resetFlag = 0;
 	scsiDev.lun = -1;
+	scsiDev.compatMode = COMPAT_UNKNOWN;
 
 	if (scsiDev.target)
 	{
@@ -500,7 +501,6 @@ static void enter_SelectionPhase()
 	scsiDev.phase = SELECTION;
 	scsiDev.lun = -1;
 	scsiDev.discPriv = 0;
-	scsiDev.compatMode = 0;
 
 	scsiDev.initiatorId = -1;
 	scsiDev.target = NULL;
@@ -513,6 +513,12 @@ static void enter_SelectionPhase()
 
 static void process_SelectionPhase()
 {
+	if (scsiDev.compatMode < COMPAT_SCSI2)
+	{
+		// Required for some older SCSI1 devices using a 5380 chip.
+		CyDelayUs(100);
+	}
+
 	int sel = SCSI_ReadFilt(SCSI_Filt_SEL);
 	int bsy = SCSI_ReadFilt(SCSI_Filt_BSY);
 
@@ -552,7 +558,11 @@ static void process_SelectionPhase()
 		if (!scsiDev.atnFlag)
 		{
 			target->unitAttention = 0;
-			scsiDev.compatMode = 1;
+			scsiDev.compatMode = COMPAT_SCSI1;
+		}
+		else if (scsiDev.compatMode == COMPAT_UNKNOWN)
+		{
+			scsiDev.compatMode = COMPAT_SCSI2;
 		}
 
 		// We've been selected!
@@ -611,7 +621,7 @@ static void process_MessageOut()
 
 	if (scsiDev.parityError &&
 		(scsiDev.target->cfg->flags & CONFIG_ENABLE_PARITY) &&
-		!scsiDev.compatMode)
+		(scsiDev.compatMode >= COMPAT_SCSI2))
 	{
 		// Skip the remaining message bytes, and then start the MESSAGE_OUT
 		// phase again from the start. The initiator will re-send the
@@ -872,6 +882,7 @@ void scsiInit()
 	scsiDev.resetFlag = 1;
 	scsiDev.phase = BUS_FREE;
 	scsiDev.target = NULL;
+	scsiDev.compatMode = COMPAT_UNKNOWN;
 
 	int i;
 	for (i = 0; i < MAX_SCSI_TARGETS; ++i)

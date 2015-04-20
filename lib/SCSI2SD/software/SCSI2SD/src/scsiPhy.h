@@ -88,4 +88,6 @@ uint8_t scsiReadDBxPins(void);
 
 void scsiEnterPhase(int phase);
 
+int scsiSelfTest(void);
+
 #endif

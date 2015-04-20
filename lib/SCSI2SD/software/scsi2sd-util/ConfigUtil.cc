@@ -24,7 +24,6 @@
 
 using namespace SCSI2SD;
 
-ADD QUIRKS MODES
 namespace
 {
 	// Endian conversion routines.
@@ -105,7 +104,7 @@ ConfigUtil::Default(size_t targetIdx)
 	config.headsPerCylinder = 255;
 	memcpy(config.vendor, " codesrc", 8);
 	memcpy(config.prodId, "         SCSI2SD", 16);
-	memcpy(config.revision, " 4.0", 4);
+	memcpy(config.revision, " 4.2", 4);
 	memcpy(config.serial, "1234567812345678", 16);
 
 	// Reserved fields, already set to 0
@@ -146,6 +145,7 @@ ConfigUtil::toBytes(const TargetConfig& _config)
 	return std::vector<uint8_t>(begin, begin + sizeof(config));
 }
 
+/*
 wxXmlNode*
 ConfigUtil::toXML(const TargetConfig& config)
 {
@@ -203,3 +203,4 @@ ConfigUtil::deserialise(const std::string& in)
 {
 
 }
+*/

@@ -58,6 +58,8 @@ public:
 	std::vector<uint8_t> getSD_CSD();
 	std::vector<uint8_t> getSD_CID();
 
+	bool scsiSelfTest();
+
 	void enterBootloader();
 
 	void readFlashRow(int array, int row, std::vector<uint8_t>& out);

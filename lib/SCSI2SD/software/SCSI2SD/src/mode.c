@@ -145,230 +145,223 @@ static void pageIn(int pc, int dataIdx, const uint8* pageData, int pageLen)
 static void doModeSense(
 	int sixByteCmd, int dbd, int pc, int pageCode, int allocLength)
 {
-	if (pc == 0x03) // Saved Values not supported.
+	////////////// Mode Parameter Header
+	////////////////////////////////////
+
+	// Skip the Mode Data Length, we set that last.
+	int idx = 1;
+	if (!sixByteCmd) ++idx;
+
+	uint8_t mediumType = 0;
+	uint8_t deviceSpecificParam = 0;
+	uint8_t density = 0;
+	switch (scsiDev.target->cfg->deviceType == CONFIG_OPTICAL)
 	{
+	case CONFIG_FIXED:
+	case CONFIG_REMOVEABLE:
+		mediumType = 0; // We should support various floppy types here!
+		// Contains cache bits (0) and a Write-Protect bit.
+		deviceSpecificParam =
+			(blockDev.state & DISK_WP) ? 0x80 : 0;
+		density = 0; // reserved for direct access
+		break;
+
+	case CONFIG_FLOPPY_14MB:
+		mediumType = 0x1E; // 90mm/3.5"
+		deviceSpecificParam =
+			(blockDev.state & DISK_WP) ? 0x80 : 0;
+		density = 0; // reserved for direct access
+		break;
+
+	case CONFIG_OPTICAL:
+		mediumType = 0x02; // 120mm CDROM, data only.
+		deviceSpecificParam = 0;
+		density = 0x01; // User data only, 2048bytes per sector.
+		break;
+
+	};
+
+	scsiDev.data[idx++] = mediumType;
+	scsiDev.data[idx++] = deviceSpecificParam;
+
+	if (sixByteCmd)
+	{
+		if (dbd)
+		{
+			scsiDev.data[idx++] = 0; // No block descriptor
+		}
+		else
+		{
+			// One block descriptor of length 8 bytes.
+			scsiDev.data[idx++] = 8;
+		}
+	}
+	else
+	{
+		scsiDev.data[idx++] = 0; // Reserved
+		scsiDev.data[idx++] = 0; // Reserved
+		if (dbd)
+		{
+			scsiDev.data[idx++] = 0; // No block descriptor
+			scsiDev.data[idx++] = 0; // No block descriptor
+		}
+		else
+		{
+			// One block descriptor of length 8 bytes.
+			scsiDev.data[idx++] = 0;
+			scsiDev.data[idx++] = 8;
+		}
+	}
+
+	////////////// Block Descriptor
+	////////////////////////////////////
+	if (!dbd)
+	{
+		scsiDev.data[idx++] = density;
+		// Number of blocks
+		// Zero == all remaining blocks shall have the medium
+		// characteristics specified.
+		scsiDev.data[idx++] = 0;
+		scsiDev.data[idx++] = 0;
+		scsiDev.data[idx++] = 0;
+
+		scsiDev.data[idx++] = 0; // reserved
+
+		// Block length
+		uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+		scsiDev.data[idx++] = bytesPerSector >> 16;
+		scsiDev.data[idx++] = bytesPerSector >> 8;
+		scsiDev.data[idx++] = bytesPerSector & 0xFF;
+	}
+
+	int pageFound = 0;
+
+	if (pageCode == 0x01 || pageCode == 0x3F)
+	{
+		pageFound = 1;
+		pageIn(pc, idx, ReadWriteErrorRecoveryPage, sizeof(ReadWriteErrorRecoveryPage));
+		idx += sizeof(ReadWriteErrorRecoveryPage);
+	}
+
+	if (pageCode == 0x02 || pageCode == 0x3F)
+	{
+		pageFound = 1;
+		pageIn(pc, idx, DisconnectReconnectPage, sizeof(DisconnectReconnectPage));
+		idx += sizeof(DisconnectReconnectPage);
+	}
+
+	if (pageCode == 0x03 || pageCode == 0x3F)
+	{
+		pageFound = 1;
+		pageIn(pc, idx, FormatDevicePage, sizeof(FormatDevicePage));
+		if (pc != 0x01)
+		{
+			// Fill out the configured bytes-per-sector
+			uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+			scsiDev.data[idx+12] = bytesPerSector >> 8;
+			scsiDev.data[idx+13] = bytesPerSector & 0xFF;
+		}
+		else
+		{
+			// Set a mask for the changeable values.
+			scsiDev.data[idx+12] = 0xFF;
+			scsiDev.data[idx+13] = 0xFF;
+		}
+
+		idx += sizeof(FormatDevicePage);
+	}
+
+	if (pageCode == 0x04 || pageCode == 0x3F)
+	{
+		pageFound = 1;
+		pageIn(pc, idx, RigidDiskDriveGeometry, sizeof(RigidDiskDriveGeometry));
+
+		if (pc != 0x01)
+		{
+			// Need to fill out the number of cylinders.
+			uint32 cyl;
+			uint8 head;
+			uint32 sector;
+			LBA2CHS(
+				getScsiCapacity(
+					scsiDev.target->cfg->sdSectorStart,
+					scsiDev.target->liveCfg.bytesPerSector,
+					scsiDev.target->cfg->scsiSectors),
+				&cyl,
+				&head,
+				&sector);
+
+			scsiDev.data[idx+2] = cyl >> 16;
+			scsiDev.data[idx+3] = cyl >> 8;
+			scsiDev.data[idx+4] = cyl;
+
+			memcpy(&scsiDev.data[idx+6], &scsiDev.data[idx+2], 3);
+			memcpy(&scsiDev.data[idx+9], &scsiDev.data[idx+2], 3);
+		}
+
+		idx += sizeof(RigidDiskDriveGeometry);
+	}
+
+	// DON'T output the following pages for SCSI1 hosts. They get upset when
+	// we have more data to send than the allocation length provided.
+	// (ie. Try not to output any more pages below this comment)
+
+
+	if ((scsiDev.compatMode >= COMPAT_SCSI2) &&
+		(pageCode == 0x08 || pageCode == 0x3F))
+	{
+		pageFound = 1;
+		pageIn(pc, idx, CachingPage, sizeof(CachingPage));
+		idx += sizeof(CachingPage);
+	}
+
+	if ((scsiDev.compatMode >= COMPAT_SCSI2)
+		&& (pageCode == 0x0A || pageCode == 0x3F))
+	{
+		pageFound = 1;
+		pageIn(pc, idx, ControlModePage, sizeof(ControlModePage));
+		idx += sizeof(ControlModePage);
+	}
+
+	if ((
+			(scsiDev.target->cfg->quirks == CONFIG_QUIRKS_APPLE) ||
+			(idx + sizeof(AppleVendorPage) <= allocLength)
+		) &&
+		(pageCode == 0x30 || pageCode == 0x3F))
+	{
+		pageFound = 1;
+		pageIn(pc, idx, AppleVendorPage, sizeof(AppleVendorPage));
+		idx += sizeof(AppleVendorPage);
+	}
+
+	if (!pageFound)
+	{
+		// Unknown Page Code
+		pageFound = 0;
 		scsiDev.status = CHECK_CONDITION;
 		scsiDev.target->sense.code = ILLEGAL_REQUEST;
-		scsiDev.target->sense.asc = SAVING_PARAMETERS_NOT_SUPPORTED;
+		scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
 		scsiDev.phase = STATUS;
 	}
 	else
 	{
-		////////////// Mode Parameter Header
-		////////////////////////////////////
-
-		// Skip the Mode Data Length, we set that last.
-		int idx = 1;
-		if (!sixByteCmd) ++idx;
-
-		uint8_t mediumType = 0;
-		uint8_t deviceSpecificParam = 0;
-		uint8_t density = 0;
-		switch (scsiDev.target->cfg->deviceType == CONFIG_OPTICAL)
-		{
-		case CONFIG_FIXED:
-		case CONFIG_REMOVEABLE:
-			mediumType = 0; // We should support various floppy types here!
-			// Contains cache bits (0) and a Write-Protect bit.
-			deviceSpecificParam =
-				(blockDev.state & DISK_WP) ? 0x80 : 0;
-			density = 0; // reserved for direct access
-			break;
-
-		case CONFIG_FLOPPY_14MB:
-			mediumType = 0x1E; // 90mm/3.5"
-			deviceSpecificParam =
-				(blockDev.state & DISK_WP) ? 0x80 : 0;
-			density = 0; // reserved for direct access
-			break;
-
-		case CONFIG_OPTICAL:
-			mediumType = 0x02; // 120mm CDROM, data only.
-			deviceSpecificParam = 0;
-			density = 0x01; // User data only, 2048bytes per sector.
-			break;
-
-		};
-
-		scsiDev.data[idx++] = mediumType;
-		scsiDev.data[idx++] = deviceSpecificParam;
-
+		// Go back and fill out the mode data length
 		if (sixByteCmd)
 		{
-			if (dbd)
-			{
-				scsiDev.data[idx++] = 0; // No block descriptor
-			}
-			else
-			{
-				// One block descriptor of length 8 bytes.
-				scsiDev.data[idx++] = 8;
-			}
+			// Cannot currently exceed limits. yay
+			scsiDev.data[0] = idx - 1;
 		}
 		else
 		{
-			scsiDev.data[idx++] = 0; // Reserved
-			scsiDev.data[idx++] = 0; // Reserved
-			if (dbd)
-			{
-				scsiDev.data[idx++] = 0; // No block descriptor
-				scsiDev.data[idx++] = 0; // No block descriptor
-			}
-			else
-			{
-				// One block descriptor of length 8 bytes.
-				scsiDev.data[idx++] = 0;
-				scsiDev.data[idx++] = 8;
-			}
+			scsiDev.data[0] = ((idx - 2) >> 8);
+			scsiDev.data[1] = (idx - 2);
 		}
 
-		////////////// Block Descriptor
-		////////////////////////////////////
-		if (!dbd)
-		{
-			scsiDev.data[idx++] = density;
-			// Number of blocks
-			// Zero == all remaining blocks shall have the medium
-			// characteristics specified.
-			scsiDev.data[idx++] = 0;
-			scsiDev.data[idx++] = 0;
-			scsiDev.data[idx++] = 0;
-
-			scsiDev.data[idx++] = 0; // reserved
-
-			// Block length
-			uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
-			scsiDev.data[idx++] = bytesPerSector >> 16;
-			scsiDev.data[idx++] = bytesPerSector >> 8;
-			scsiDev.data[idx++] = bytesPerSector & 0xFF;
-		}
-
-		int pageFound = 0;
-
-		if (pageCode == 0x01 || pageCode == 0x3F)
-		{
-			pageFound = 1;
-			pageIn(pc, idx, ReadWriteErrorRecoveryPage, sizeof(ReadWriteErrorRecoveryPage));
-			idx += sizeof(ReadWriteErrorRecoveryPage);
-		}
-
-		if (pageCode == 0x02 || pageCode == 0x3F)
-		{
-			pageFound = 1;
-			pageIn(pc, idx, DisconnectReconnectPage, sizeof(DisconnectReconnectPage));
-			idx += sizeof(DisconnectReconnectPage);
-		}
-
-		if (pageCode == 0x03 || pageCode == 0x3F)
-		{
-			pageFound = 1;
-			pageIn(pc, idx, FormatDevicePage, sizeof(FormatDevicePage));
-			if (pc != 0x01)
-			{
-				// Fill out the configured bytes-per-sector
-				uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
-				scsiDev.data[idx+12] = bytesPerSector >> 8;
-				scsiDev.data[idx+13] = bytesPerSector & 0xFF;
-			}
-			else
-			{
-				// Set a mask for the changeable values.
-				scsiDev.data[idx+12] = 0xFF;
-				scsiDev.data[idx+13] = 0xFF;
-			}
-
-			idx += sizeof(FormatDevicePage);
-		}
-
-		if (pageCode == 0x04 || pageCode == 0x3F)
-		{
-			pageFound = 1;
-			pageIn(pc, idx, RigidDiskDriveGeometry, sizeof(RigidDiskDriveGeometry));
-
-			if (pc != 0x01)
-			{
-				// Need to fill out the number of cylinders.
-				uint32 cyl;
-				uint8 head;
-				uint32 sector;
-				LBA2CHS(
-					getScsiCapacity(
-						scsiDev.target->cfg->sdSectorStart,
-						scsiDev.target->liveCfg.bytesPerSector,
-						scsiDev.target->cfg->scsiSectors),
-					&cyl,
-					&head,
-					&sector);
-
-				scsiDev.data[idx+2] = cyl >> 16;
-				scsiDev.data[idx+3] = cyl >> 8;
-				scsiDev.data[idx+4] = cyl;
-
-				memcpy(&scsiDev.data[idx+6], &scsiDev.data[idx+2], 3);
-				memcpy(&scsiDev.data[idx+9], &scsiDev.data[idx+2], 3);
-			}
-
-			idx += sizeof(RigidDiskDriveGeometry);
-		}
-
-		// DON'T output the following pages for SCSI1 hosts. They get upset when
-		// we have more data to send than the allocation length provided.
-		// (ie. Try not to output any more pages below this comment)
-
-
-		if (!scsiDev.compatMode && (pageCode == 0x08 || pageCode == 0x3F))
-		{
-			pageFound = 1;
-			pageIn(pc, idx, CachingPage, sizeof(CachingPage));
-			idx += sizeof(CachingPage);
-		}
-
-		if (!scsiDev.compatMode && (pageCode == 0x0A || pageCode == 0x3F))
-		{
-			pageFound = 1;
-			pageIn(pc, idx, ControlModePage, sizeof(ControlModePage));
-			idx += sizeof(ControlModePage);
-		}
-
-		if ((
-				(scsiDev.target->cfg->quirks == CONFIG_QUIRKS_APPLE) ||
-				(idx + sizeof(AppleVendorPage) <= allocLength)
-			) &&
-			(pageCode == 0x30 || pageCode == 0x3F))
-		{
-			pageFound = 1;
-			pageIn(pc, idx, AppleVendorPage, sizeof(AppleVendorPage));
-			idx += sizeof(AppleVendorPage);
-		}
-
-		if (!pageFound)
-		{
-			// Unknown Page Code
-			pageFound = 0;
-			scsiDev.status = CHECK_CONDITION;
-			scsiDev.target->sense.code = ILLEGAL_REQUEST;
-			scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
-			scsiDev.phase = STATUS;
-		}
-		else
-		{
-			// Go back and fill out the mode data length
-			if (sixByteCmd)
-			{
-				// Cannot currently exceed limits. yay
-				scsiDev.data[0] = idx - 1;
-			}
-			else
-			{
-				scsiDev.data[0] = ((idx - 2) >> 8);
-				scsiDev.data[1] = (idx - 2);
-			}
-
-			scsiDev.dataLen = idx > allocLength ? allocLength : idx;
-			scsiDev.phase = DATA_IN;
-		}
+		scsiDev.dataLen = idx > allocLength ? allocLength : idx;
+		scsiDev.phase = DATA_IN;
 	}
 }
+
 
 // Callback after the DATA OUT phase is complete.
 static void doModeSelect(void)

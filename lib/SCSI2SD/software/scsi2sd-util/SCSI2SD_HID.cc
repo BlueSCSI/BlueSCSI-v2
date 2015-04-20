@@ -338,7 +338,7 @@ HID::getSD_CSD()
 	std::vector<uint8_t> out;
 	try
 	{
-		sendHIDPacket(cmd, out, 1);
+		sendHIDPacket(cmd, out, 16);
 	}
 	catch (std::runtime_error& e)
 	{
@@ -356,7 +356,7 @@ HID::getSD_CID()
 	std::vector<uint8_t> out;
 	try
 	{
-		sendHIDPacket(cmd, out, 1);
+		sendHIDPacket(cmd, out, 16);
 	}
 	catch (std::runtime_error& e)
 	{
@@ -367,6 +367,23 @@ HID::getSD_CID()
 	for (size_t i = 0; i < 16; ++i) result[i] = out[16 + i];
 	return result;
 }
+
+bool
+HID::scsiSelfTest()
+{
+	std::vector<uint8_t> cmd { CONFIG_SCSITEST };
+	std::vector<uint8_t> out;
+	try
+	{
+		sendHIDPacket(cmd, out, 2);
+	}
+	catch (std::runtime_error& e)
+	{
+		return false;
+	}
+	return (out.size() >= 1) && (out[0] == CONFIG_STATUS_GOOD);
+}
+
 
 void
 HID::sendHIDPacket(

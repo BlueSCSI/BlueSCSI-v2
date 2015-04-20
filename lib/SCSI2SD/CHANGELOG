@@ -1,4 +1,7 @@
-201501??		4.1.1
+20150420		4.2.2
+	- Improved compatibility with older SCSI1 hosts.
+
+20150123		4.1.1
 	- Fix MODE SENSE bug when the allocation length is less than the
 	page size.
 	- Add WRITE BUFFER and WRITE AND VERIFY support.

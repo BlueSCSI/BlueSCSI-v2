@@ -57,6 +57,13 @@ typedef enum
 	MSG_LINKED_COMMAND_COMPLETE_WITH_FLAG = 0x0B
 } SCSI_MESSAGE;
 
+typedef enum
+{
+	COMPAT_UNKNOWN,
+	COMPAT_SCSI1,
+	COMPAT_SCSI2
+} SCSI_COMPAT_MODE;
+
 // Maximum value for bytes-per-sector.
 #define MAX_SECTOR_SIZE 8192
 #define MIN_SECTOR_SIZE 64
@@ -112,7 +119,7 @@ typedef struct
 	uint8 cdbLen; // 6, 10, or 12 byte message.
 	int8 lun; // Target lun, set by IDENTIFY message.
 	uint8 discPriv; // Disconnect priviledge.
-	uint8_t compatMode; // true for SCSI1 and SASI hosts.
+	uint8_t compatMode; // SCSI_COMPAT_MODE
 
 	// Only let the reserved initiator talk to us.
 	// A 3rd party may be sending the RESERVE/RELEASE commands

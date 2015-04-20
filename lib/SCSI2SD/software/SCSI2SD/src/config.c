@@ -32,7 +32,7 @@
 
 #include <string.h>
 
-static const uint16_t FIRMWARE_VERSION = 0x0411;
+static const uint16_t FIRMWARE_VERSION = 0x0422;
 
 enum USB_ENDPOINTS
 {
@@ -53,8 +53,30 @@ static int usbInEpState;
 static int usbDebugEpState;
 static int usbReady;
 
+uint8_t DEFAULT_CONFIG[256]
+	__attribute__ ((section(".DEFAULT_CONFIG"))) =
+{
+	CONFIG_TARGET_ENABLED,
+	CONFIG_FIXED,
+	0,
+	0,
+	0, 0, 0, 0,
+	0xff, 0xff, 0x3f, 0x00, // 4194303, 2GB - 1 sector
+	0x00, 0x02, //512
+	63, 0,
+	255, 0,
+	' ', 'c', 'o', 'd', 'e', 's', 'r', 'c',
+	' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 'S', 'C', 'S', 'I', '2', 'S', 'D',
+	' ', '4', '.', '2',
+	'1','2','3','4','5','6','7','8','1','2','3','4','5','6','7','8'
+};
+// otherwise linker removes unused section.
+volatile uint8_t trickLinker;
+
 void configInit()
 {
+	trickLinker = DEFAULT_CONFIG[0];
+
 	// The USB block will be powered by an internal 3.3V regulator.
 	// The PSoC must be operating between 4.6V and 5V for the regulator
 	// to work.
@@ -132,6 +154,20 @@ sdInfoCommand()
 
 	hidPacket_send(response, sizeof(response));
 }
+
+
+static void
+scsiTestCommand()
+{
+	int resultCode = scsiSelfTest();
+	uint8_t response[] =
+	{
+		resultCode == 0 ? CONFIG_STATUS_GOOD : CONFIG_STATUS_ERR,
+		resultCode
+	};
+	hidPacket_send(response, sizeof(response));
+}
+
 static void
 processCommand(const uint8_t* cmd, size_t cmdSize)
 {
@@ -155,6 +191,10 @@ processCommand(const uint8_t* cmd, size_t cmdSize)
 
 	case CONFIG_SDINFO:
 		sdInfoCommand();
+		break;
+
+	case CONFIG_SCSITEST:
+		scsiTestCommand();
 		break;
 
 	case CONFIG_NONE: // invalid

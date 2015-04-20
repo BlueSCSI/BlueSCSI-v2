@@ -181,7 +181,14 @@ typedef enum
 	// Response:
 	// uint8_t[16] CSD
 	// uint8_t[16] CID
-	CONFIG_SDINFO
+	CONFIG_SDINFO,
+
+	// Command content:
+	// uint8_t CONFIG_SCSITEST
+	// Response:
+	// CONFIG_STATUS
+	// uint8_t result code (0 = passed)
+	CONFIG_SCSITEST
 } CONFIG_COMMAND;
 
 typedef enum

@@ -447,4 +447,87 @@ void scsiPhyInit()
 
 	SCSI_RST_ISR_StartEx(scsiResetISR);
 }
+
+// 1 = DBx error
+// 2 = Parity error
+// 4 = MSG error
+// 8 = CD error
+// 16 = IO error
+// 32 = other error
+int scsiSelfTest()
+{
+	int result = 0;
+
+	// TEST DBx and DBp
+	int i;
+	SCSI_Out_Ctl_Write(1); // Write bits manually.
+	SCSI_CTL_PHASE_Write(__scsiphase_io); // Needed for parity generation
+	for (i = 0; i < 256; ++i)
+	{
+		SCSI_Out_Bits_Write(i);
+		scsiDeskewDelay();
+		if (scsiReadDBxPins() != (i & 0xff))
+		{
+			result |= 1;
+		}
+		if (Lookup_OddParity[i & 0xff] != SCSI_ReadPin(SCSI_In_DBP))
+		{
+			result |= 2;
+		}
+	}
+	SCSI_Out_Ctl_Write(0); // Write bits normally.
+
+	// TEST MSG, CD, IO
+	for (i = 0; i < 8; ++i)
+	{
+		SCSI_CTL_PHASE_Write(i);
+		scsiDeskewDelay();
+
+		if (SCSI_ReadPin(SCSI_In_MSG) != !!(i & __scsiphase_msg))
+		{
+			result |= 4;
+		}
+		if (SCSI_ReadPin(SCSI_In_CD) != !!(i & __scsiphase_cd))
+		{
+			result |= 8;
+		}
+		if (SCSI_ReadPin(SCSI_In_IO) != !!(i & __scsiphase_io))
+		{
+			result |= 16;
+		}
+	}
+	SCSI_CTL_PHASE_Write(0);
+
+	uint32_t signalsOut[] = { SCSI_Out_ATN, SCSI_Out_BSY, SCSI_Out_RST, SCSI_Out_SEL };
+	uint32_t signalsIn[] = { SCSI_Filt_ATN, SCSI_Filt_BSY, SCSI_Filt_RST, SCSI_Filt_SEL };
+
+	for (i = 0; i < 4; ++i)
+	{
+		SCSI_SetPin(signalsOut[i]);
+		scsiDeskewDelay();
+
+		int j;
+		for (j = 0; j < 4; ++j)
+		{
+			if (i == j)
+			{
+				if (! SCSI_ReadFilt(signalsIn[j]))
+				{
+					result |= 32;
+				}
+			}
+			else
+			{
+				if (SCSI_ReadFilt(signalsIn[j]))
+				{
+					result |= 32;
+				}
+			}
+		}
+		SCSI_ClearPin(signalsOut[i]);
+	}
+	return result;
+}
+
+
 #pragma GCC pop_options

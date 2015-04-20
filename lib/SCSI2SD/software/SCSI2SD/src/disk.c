@@ -728,7 +728,7 @@ void scsiDiskPoll()
 		{
 			if (scsiDev.parityError &&
 				(scsiDev.target->cfg->flags & CONFIG_ENABLE_PARITY) &&
-				!scsiDev.compatMode)
+				(scsiDev.compatMode >= COMPAT_SCSI2))
 			{
 				scsiDev.target->sense.code = ABORTED_COMMAND;
 				scsiDev.target->sense.asc = SCSI_PARITY_ERROR;

@@ -108,6 +108,26 @@ void ProgressUpdate(unsigned char arrayId, unsigned short rowNum)
 namespace
 {
 
+static uint8_t sdCrc7(uint8_t* chr, uint8_t cnt, uint8_t crc)
+{
+	uint8_t a;
+	for(a = 0; a < cnt; a++)
+	{
+		uint8_t data = chr[a];
+		uint8_t i;
+		for(i = 0; i < 8; i++)
+		{
+			crc <<= 1;
+			if ((data & 0x80) ^ (crc & 0x80))
+			{
+				crc ^= 0x09;
+			}
+			data <<= 1;
+		}
+	}
+	return crc & 0x7F;
+}
+
 class TimerLock
 {
 public:
@@ -162,6 +182,11 @@ public:
 			ID_SCSILog,
 			"Log SCSI data",
 			"Log SCSI commands");
+
+		mySelfTestChk = menuDebug->AppendCheckItem(
+			ID_SelfTest,
+			"SCSI Standalone Self-Test",
+			"SCSI Standalone Self-Test");
 
 		wxMenu *menuHelp = new wxMenu();
 		menuHelp->Append(wxID_ABOUT);
@@ -229,6 +254,7 @@ private:
 	wxButton* myLoadButton;
 	wxButton* mySaveButton;
 	wxMenuItem* mySCSILogChk;
+	wxMenuItem* mySelfTestChk;
 	wxTimer* myTimer;
 	shared_ptr<HID> myHID;
 	shared_ptr<Bootloader> myBootloader;
@@ -329,7 +355,8 @@ private:
 		ID_BtnLoad,
 		ID_BtnSave,
 		ID_LogWindow,
-		ID_SCSILog
+		ID_SCSILog,
+		ID_SelfTest
 	};
 
 	void OnID_ConfigDefaults(wxCommandEvent& event)
@@ -629,6 +656,10 @@ private:
 							myHID->getSDCapacity() << std::endl;
 
 						sdinfo << "SD CSD Register: ";
+						if (sdCrc7(&csd[0], 15, 0) != (csd[15] >> 1))
+						{
+							sdinfo << "BADCRC ";
+						}
 						for (size_t i = 0; i < csd.size(); ++i)
 						{
 							sdinfo <<
@@ -637,6 +668,10 @@ private:
 						}
 						sdinfo << std::endl;
 						sdinfo << "SD CID Register: ";
+						if (sdCrc7(&cid[0], 15, 0) != (cid[15] >> 1))
+						{
+							sdinfo << "BADCRC ";
+						}
 						for (size_t i = 0; i < cid.size(); ++i)
 						{
 							sdinfo <<
@@ -645,6 +680,14 @@ private:
 						}
 
 						wxLogMessage(this, "%s", sdinfo.str());
+
+						if (mySelfTestChk->IsChecked())
+						{
+							std::stringstream scsiInfo;
+							scsiInfo << "SCSI Self-Test: " <<
+								(myHID->scsiSelfTest() ? "Passed" : "FAIL");
+							wxLogMessage(this, "%s", scsiInfo.str());
+						}
 
 						if (!myInitialConfig)
 						{

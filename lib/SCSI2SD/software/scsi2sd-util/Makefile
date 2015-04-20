@@ -51,7 +51,7 @@ endif
 
 export CC CXX
 
-all:  $(BUILD)/scsi2sd-util$(EXE)
+all:  $(BUILD)/scsi2sd-util$(EXE) $(BUILD)/scsi2sd-monitor$(EXE)
 
 CYAPI = \
 	$(BUILD)/cybtldr_api2.o \
@@ -66,7 +66,6 @@ HIDAPI = \
 
 OBJ = \
 	$(CYAPI) $(HIDAPI) \
-	$(BUILD)/scsi2sd-util.o \
 	$(BUILD)/ConfigUtil.o \
 	$(BUILD)/Firmware.o \
 	$(BUILD)/TargetPanel.o \
@@ -74,8 +73,14 @@ OBJ = \
 	$(BUILD)/SCSI2SD_HID.o \
 	$(BUILD)/hidpacket.o \
 
+EXEOBJ = \
+	$(BUILD)/scsi2sd-util.o \
+	$(BUILD)/scsi2sd-monitor.o \
+
+
 
 $(OBJ): $(BUILD)/zlib/buildstamp
+$(EXEOBJ): $(BUILD)/zlib/buildstamp
 $(BUILD)/zlib/buildstamp:
 	mkdir -p $(dir $@)
 	( \
@@ -87,6 +92,7 @@ $(BUILD)/zlib/buildstamp:
 	touch $@
 
 $(OBJ): $(BUILD)/wx.buildstamp
+$(EXEOBJ): $(BUILD)/wx.buildstamp
 $(BUILD)/wx.buildstamp: $(BUILD)/zlib/buildstamp
 	mkdir -p $(dir $@)
 	( \
@@ -97,6 +103,7 @@ $(BUILD)/wx.buildstamp: $(BUILD)/zlib/buildstamp
 	touch $@
 
 $(OBJ): $(BUILD)/libzipper/buildstamp
+$(EXEOBJ): $(BUILD)/libzipper/buildstamp
 $(BUILD)/libzipper/buildstamp: $(BUILD)/zlib/buildstamp
 	mkdir -p $(dir $@)
 	( \
@@ -114,7 +121,11 @@ $(BUILD)/%.o: %.cc
 	mkdir -p $(dir $@)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) `$(BUILD)/wx-config --cxxflags` $< -c -o $@
 
-$(BUILD)/scsi2sd-util$(EXE): $(OBJ)
+$(BUILD)/scsi2sd-util$(EXE): $(OBJ) $(BUILD)/scsi2sd-util.o
+	mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) `$(BUILD)/wx-config --libs` -o $@
+
+$(BUILD)/scsi2sd-monitor$(EXE): $(OBJ) $(BUILD)/scsi2sd-monitor.o
 	mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) `$(BUILD)/wx-config --libs` -o $@
 
