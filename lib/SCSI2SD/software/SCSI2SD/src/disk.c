@@ -494,8 +494,6 @@ int scsiDiskCommand()
 
 void scsiDiskPoll()
 {
-	debugPause(); // TODO comment re. timeouts.
-
 	if (scsiDev.phase == DATA_IN &&
 		transfer.currentBlock != transfer.blocks)
 	{
@@ -738,7 +736,6 @@ void scsiDiskPoll()
 		}
 		scsiDiskReset();
 	}
-	debugResume(); // TODO comment re. timeouts.
 }
 
 void scsiDiskReset()
