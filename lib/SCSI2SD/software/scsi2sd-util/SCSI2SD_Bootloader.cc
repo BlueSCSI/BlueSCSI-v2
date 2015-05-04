@@ -168,8 +168,8 @@ Bootloader::getHWInfo() const
 		info.firmwareName = "SCSI2SD-V3.cyacd";
 		break;
 	case 0x3002:
-		info.desc = "3.5\" SCSI2SD (yellow) or 2.5\" SCSI2SD for Apple Powerbook";
-		info.version = "V4.1/V4.2";
+		info.desc = "3.5\" SCSI2SD (yellow/red) or 2.5\" SCSI2SD for Apple Powerbook";
+		info.version = "V4.1/V4.2/V5.0";
 		info.firmwareName = "SCSI2SD-V4.cyacd";
 		break;
 	}

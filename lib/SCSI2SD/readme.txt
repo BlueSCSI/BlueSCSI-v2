@@ -28,10 +28,12 @@ Technical Specifications
 
 SCSI Interface
 	SCSI-2 Narrow 8-bit 50-pin connector. Supports asynchronous transfers only.
-SD Card Interface
-	Standard SDSC (1GB maximum size)
-	SDHC, SDXC
+Micro SD Card Interface
+	Standard microSDSC (1GB maximum size)
+	microSDHC, microSDXC
 	Communication is via the SPI protocol at 25MHz.
+USB Interface (firmware updates and config)
+	USB 2.0 micro-B
 Power
 	5V via standard molex drive connector.
 Dimensions
@@ -69,6 +71,9 @@ Compatibility
     PDP-11/73 running RSX11M+ V4.6
     Microvax 3100 Model 80 running VMS 7.3 (needs patch against v3.5.2 firmware)
     Amiga 500+ with GVP A530
+    Commodore Amiga 500 KS 1.3 with Oktagon 508 SCSI-2 controller
+    Amiga 2000 (B2000 rev 6.4 ECS) with DKB RapidFire SCSI 1 card
+    Amiga 4000 equipped with CyberStorm PPC using 68pin adapter.
     Atari TT030 System V
     Atari MEGA STE
         needs J3 TERMPWR jumper
@@ -80,12 +85,16 @@ Compatibility
     Compaq XP-1000 Professional Workstation
         Alpha 21264 CPU, 667MHz, with a QLogic SCSI controller in a PCI slot 
     SCSI-based Macintosh Powerbooks (2.5" SCSI2SD)
-        Also reported to work on Thinkpad 860 running Win NT 4.0 PowerPC. 
-	Data General MV/2500DC running AOS/VS
-		Vendor: MICROoP
-		Product: 1578-15       UP
-		Revision: DG02
-		Device-type modifier: 0x4c
+        Also reported to work on Thinkpad 860 running Win NT 4.0 PowerPC.
+    AT&T 3B2/600
+    Sun 2/120 Workstation (Unit Attention disabled)
+    Data General MV/2500DC running AOS/VS
+        Vendor: MICROoP
+        Product: 1578-15       UP
+        Revision: DG02
+        Device-type modifier: 0x4c
+    Applix 1616
+    IMS MM/1
 
 Samplers
 
@@ -106,6 +115,7 @@ Samplers
         Requires TERMPWR jumper. The manual shows the pin25 of the DB25 connector is "not connected".
         May require scsi2sd-config --apple flag 
     Yamaha A5000, A3000, EX5, EX5R 
+    EMU ESI4000
 
 Other
 

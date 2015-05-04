@@ -51,6 +51,18 @@ static const uint8 ReadWriteErrorRecoveryPage[] =
 0x00, 0x00 // Recovery time limit 0 (use default)*/
 };
 
+static const uint8 ReadWriteErrorRecoveryPage_SCSI1[] =
+{
+0x01, // Page code
+0x06, // Page length
+0x26,
+0x00, // Don't try recovery algorithm during reads
+0x00, // Correction span 0
+0x00, // Head offset count 0,
+0x00, // Data strobe offset count 0,
+0xFF // Reserved
+};
+
 static const uint8 DisconnectReconnectPage[] =
 {
 0x02, // Page code
@@ -63,6 +75,18 @@ static const uint8 DisconnectReconnectPage[] =
 0x00, 0x00, // Maximum burst size
 0x00 ,// DTDC. Not used.
 0x00, 0x00, 0x00 // Reserved
+};
+
+static const uint8 DisconnectReconnectPage_SCSI1[] =
+{
+0x02, // Page code
+0x0A, // Page length
+0, // Buffer full ratio
+0, // Buffer empty ratio
+0x00, 10, // Bus inactivity limit, 100us increments. Allow 1ms.
+0x00, 0x00, // Disconnect time limit
+0x00, 0x00, // Connect time limit
+0x00, 0x00 // Maximum burst size
 };
 
 static const uint8 FormatDevicePage[] =
@@ -97,6 +121,21 @@ SCSI_HEADS_PER_CYLINDER, // Number of heads
 0x00, // Reserved
 5400 >> 8, 5400 & 0xFF, // Medium rotation rate (RPM)
 0x00, 0x00 // Reserved
+};
+
+static const uint8 RigidDiskDriveGeometry_SCSI1[] =
+{
+0x04, // Page code
+0x12, // Page length
+0xFF, 0xFF, 0xFF, // Number of cylinders
+SCSI_HEADS_PER_CYLINDER, // Number of heads
+0xFF, 0xFF, 0xFF, // Starting cylinder-write precompensation
+0xFF, 0xFF, 0xFF, // Starting cylinder-reduced write current
+0x00, 0x1, // Drive step rate (units of 100ns)
+0x00, 0x00, 0x00, // Landing zone cylinder
+0x00, // RPL
+0x00, // Rotational offset
+0x00 // Reserved
 };
 
 static const uint8 CachingPage[] =
@@ -239,15 +278,31 @@ static void doModeSense(
 	if (pageCode == 0x01 || pageCode == 0x3F)
 	{
 		pageFound = 1;
-		pageIn(pc, idx, ReadWriteErrorRecoveryPage, sizeof(ReadWriteErrorRecoveryPage));
-		idx += sizeof(ReadWriteErrorRecoveryPage);
+		if ((scsiDev.compatMode >= COMPAT_SCSI2))
+		{
+			pageIn(pc, idx, ReadWriteErrorRecoveryPage, sizeof(ReadWriteErrorRecoveryPage));
+			idx += sizeof(ReadWriteErrorRecoveryPage);
+		}
+		else
+		{
+			pageIn(pc, idx, ReadWriteErrorRecoveryPage_SCSI1, sizeof(ReadWriteErrorRecoveryPage_SCSI1));
+			idx += sizeof(ReadWriteErrorRecoveryPage_SCSI1);
+		}
 	}
 
 	if (pageCode == 0x02 || pageCode == 0x3F)
 	{
 		pageFound = 1;
-		pageIn(pc, idx, DisconnectReconnectPage, sizeof(DisconnectReconnectPage));
-		idx += sizeof(DisconnectReconnectPage);
+		if ((scsiDev.compatMode >= COMPAT_SCSI2))
+		{
+			pageIn(pc, idx, DisconnectReconnectPage, sizeof(DisconnectReconnectPage));
+			idx += sizeof(DisconnectReconnectPage);
+		}
+		else
+		{
+			pageIn(pc, idx, DisconnectReconnectPage_SCSI1, sizeof(DisconnectReconnectPage_SCSI1));
+			idx += sizeof(DisconnectReconnectPage_SCSI1);
+		}
 	}
 
 	if (pageCode == 0x03 || pageCode == 0x3F)
@@ -274,7 +329,14 @@ static void doModeSense(
 	if (pageCode == 0x04 || pageCode == 0x3F)
 	{
 		pageFound = 1;
-		pageIn(pc, idx, RigidDiskDriveGeometry, sizeof(RigidDiskDriveGeometry));
+		if ((scsiDev.compatMode >= COMPAT_SCSI2))
+		{
+			pageIn(pc, idx, RigidDiskDriveGeometry, sizeof(RigidDiskDriveGeometry));
+		}
+		else
+		{
+			pageIn(pc, idx, RigidDiskDriveGeometry_SCSI1, sizeof(RigidDiskDriveGeometry_SCSI1));
+		}
 
 		if (pc != 0x01)
 		{
@@ -299,7 +361,14 @@ static void doModeSense(
 			memcpy(&scsiDev.data[idx+9], &scsiDev.data[idx+2], 3);
 		}
 
-		idx += sizeof(RigidDiskDriveGeometry);
+		if ((scsiDev.compatMode >= COMPAT_SCSI2))
+		{
+			idx += sizeof(RigidDiskDriveGeometry);
+		}
+		else
+		{
+			idx += sizeof(RigidDiskDriveGeometry_SCSI1);
+		}
 	}
 
 	// DON'T output the following pages for SCSI1 hosts. They get upset when
