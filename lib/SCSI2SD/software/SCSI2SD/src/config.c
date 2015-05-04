@@ -32,7 +32,7 @@
 
 #include <string.h>
 
-static const uint16_t FIRMWARE_VERSION = 0x0422;
+static const uint16_t FIRMWARE_VERSION = 0x0424;
 
 enum USB_ENDPOINTS
 {

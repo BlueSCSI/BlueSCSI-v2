@@ -1,3 +1,11 @@
+20150504		4.2.4
+	- Clean up version number mishap (4.2.3 reported as 4.2.2)
+	- Reduce size of mode pages for SCSI1 hosts
+	- Stability improvements whan handling resets during SCSI reads.
+
+20150420		4.2.3
+	- Bugfix for failed flash checksums after configing configuration
+
 20150420		4.2.2
 	- Improved compatibility with older SCSI1 hosts.
 

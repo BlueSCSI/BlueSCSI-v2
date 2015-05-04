@@ -395,8 +395,12 @@ void scsiPhyReset()
 		dmaTotalCount = 0;
 		CyDmaChSetRequest(scsiDmaTxChan, CY_DMA_CPU_TERM_CHAIN);
 		CyDmaChSetRequest(scsiDmaRxChan, CY_DMA_CPU_TERM_CHAIN);
+		
+		// CyDmaChGetRequest returns 0 for the relevant bit once the
+		// request is completed.
 		trace(trace_spinDMAReset);
-		while (!(scsiTxDMAComplete && scsiRxDMAComplete)) {}
+		while (CyDmaChGetRequest(scsiDmaTxChan) & CY_DMA_CPU_TERM_CHAIN) {}
+		while (CyDmaChGetRequest(scsiDmaRxChan) & CY_DMA_CPU_TERM_CHAIN) {}
 
 		CyDmaChDisable(scsiDmaTxChan);
 		CyDmaChDisable(scsiDmaRxChan);
@@ -409,6 +413,7 @@ void scsiPhyReset()
 	// ensure it returns to the idle state.  The datapath runs at the BUS clk
 	// speed (ie. same as the CPU), so we can be sure it is active for a sufficient
 	// duration.
+	SCSI_RST_ISR_Disable();
 	SCSI_SetPin(SCSI_Out_RST);
 
 	SCSI_CTL_PHASE_Write(0);
@@ -421,6 +426,7 @@ void scsiPhyReset()
 
 	// Allow the FIFOs to fill up again.
 	SCSI_ClearPin(SCSI_Out_RST);
+	SCSI_RST_ISR_Enable();
 	scsiTarget_AUX_CTL = scsiTarget_AUX_CTL & ~(0x03);
 
 	SCSI_Parity_Error_Read(); // clear sticky bits
