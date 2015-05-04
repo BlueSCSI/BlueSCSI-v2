@@ -24,6 +24,7 @@
 #include "sd.h"
 #include "led.h"
 #include "time.h"
+#include "trace.h"
 
 #include "scsiPhy.h"
 
@@ -86,7 +87,9 @@ static uint8 sdCrc7(uint8* chr, uint8 cnt, uint8 crc)
 static uint8_t sdSpiByte(uint8_t value)
 {
 	SDCard_WriteTxData(value);
+	trace(trace_spinSpiByte);
 	while (!(SDCard_ReadRxStatus() & SDCard_STS_RX_FIFO_NOT_EMPTY)) {}
+	trace(trace_sdSpiByte);
 	return SDCard_ReadRxData();
 }
 
@@ -145,10 +148,12 @@ static uint16_t sdDoCommand(
 	// reads.
 	if (waitWhileBusy)
 	{
+		trace(trace_spinSDRxFIFO);
 		while (!(SDCard_ReadRxStatus() & SDCard_STS_RX_FIFO_NOT_EMPTY)) {}
 		int busy = SDCard_ReadRxData() != 0xFF;
 		if (unlikely(busy))
 		{
+			trace(trace_spinSDBusy);
 			while (sdSpiByte(0xFF) != 0xFF) {}
 		}
 	}
@@ -164,6 +169,7 @@ static uint16_t sdDoCommand(
 	CyDmaChEnable(sdDMARxChan, 1);
 	CyDmaChEnable(sdDMATxChan, 1);
 
+	trace(trace_spinSDDMA);
 	while (!(sdTxDMAComplete && sdRxDMAComplete)) { __WFI(); }
 
 	uint16_t response = discardBuffer;
@@ -177,6 +183,8 @@ static uint16_t sdDoCommand(
 	}
 
 	uint32_t start = getTime_ms();
+
+	trace(trace_spinSDBusy);
 	while ((response & 0x80) && likely(elapsedTime_ms(start) <= 200))
 	{
 		response = sdSpiByte(0xFF);
@@ -246,6 +254,7 @@ dmaReadSector(uint8_t* outputBuffer)
 	// Don't wait more than 200ms.  The standard recommends 100ms.
 	uint32_t start = getTime_ms();
 	uint8_t token = sdSpiByte(0xFF);
+	trace(trace_spinSDBusy);
 	while (token != 0xFE && likely(elapsedTime_ms(start) <= 200))
 	{
 		if (unlikely(token && ((token & 0xE0) == 0)))
@@ -367,6 +376,7 @@ void sdCompleteRead()
 		// Not much choice but to wait until we've completed the transfer.
 		// Cancelling the transfer can't be done as we have no way to reset
 		// the SD card.
+		trace(trace_spinSDCompleteRead);
 		while (!sdReadSectorDMAPoll()) { /* spin */ }
 	}
 	
@@ -536,6 +546,7 @@ void sdCompleteWrite()
 		// Not much choice but to wait until we've completed the transfer.
 		// Cancelling the transfer can't be done as we have no way to reset
 		// the SD card.
+		trace(trace_spinSDCompleteWrite);
 		while (!sdWriteSectorDMAPoll(1)) { /* spin */ }
 	}
 

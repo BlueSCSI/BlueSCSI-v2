@@ -21,6 +21,7 @@
 #include "scsi.h"
 #include "scsiPhy.h"
 #include "bits.h"
+#include "trace.h"
 
 #define scsiTarget_AUX_CTL (* (reg8 *) scsiTarget_datapath__DP_AUX_CTL_REG)
 
@@ -50,18 +51,21 @@ volatile uint8_t scsiTxDMAComplete;
 CY_ISR_PROTO(scsiRxCompleteISR);
 CY_ISR(scsiRxCompleteISR)
 {
+	traceIrq(trace_scsiRxCompleteISR);
 	scsiRxDMAComplete = 1;
 }
 
 CY_ISR_PROTO(scsiTxCompleteISR);
 CY_ISR(scsiTxCompleteISR)
 {
+	traceIrq(trace_scsiTxCompleteISR);
 	scsiTxDMAComplete = 1;
 }
 
 CY_ISR_PROTO(scsiResetISR);
 CY_ISR(scsiResetISR)
 {
+	traceIrq(trace_scsiResetISR);
 	scsiDev.resetFlag = 1;
 }
 
@@ -82,13 +86,16 @@ scsiReadDBxPins()
 uint8_t
 scsiReadByte(void)
 {
+	trace(trace_spinPhyTxFifo);
 	while (unlikely(scsiPhyTxFifoFull()) && likely(!scsiDev.resetFlag)) {}
 	scsiPhyTx(0);
 
+	trace(trace_spinPhyRxFifo);
 	while (scsiPhyRxFifoEmpty() && likely(!scsiDev.resetFlag)) {}
 	uint8_t val = scsiPhyRx();
 	scsiDev.parityError = scsiDev.parityError || SCSI_Parity_Error_Read();
 
+	trace(trace_spinTxComplete);
 	while (!(scsiPhyStatus() & SCSI_PHY_TX_COMPLETE) && likely(!scsiDev.resetFlag)) {}
 
 	return val;
@@ -124,6 +131,7 @@ doRxSingleDMA(uint8* data, uint32 count)
 {
 	// Prepare DMA transfer
 	dmaInProgress = 1;
+	trace(trace_doRxSingleDMA);
 
 	CyDmaTdSetConfiguration(
 		scsiDmaTxTd[0],
@@ -184,6 +192,7 @@ scsiReadDMAPoll()
 	{
 		// Wait until our scsi signals are consistent. This should only be
 		// a few cycles.
+		trace(trace_spinTxComplete);
 		while (!(scsiPhyStatus() & SCSI_PHY_TX_COMPLETE)) {}
 
 		if (likely(dmaSentCount == dmaTotalCount))
@@ -219,12 +228,13 @@ scsiRead(uint8_t* data, uint32_t count)
 	else
 	{
 		scsiReadDMA(data, count);
-		
+
 		// Wait for the next DMA interrupt (or the 1ms systick)
 		// It's beneficial to halt the processor to
 		// give the DMA controller more memory bandwidth to work with.
 		__WFI();
-		
+
+		trace(trace_spinReadDMAPoll);
 		while (!scsiReadDMAPoll() && likely(!scsiDev.resetFlag)) {};
 	}
 }
@@ -232,9 +242,11 @@ scsiRead(uint8_t* data, uint32_t count)
 void
 scsiWriteByte(uint8 value)
 {
+	trace(trace_spinPhyTxFifo);
 	while (unlikely(scsiPhyTxFifoFull()) && likely(!scsiDev.resetFlag)) {}
 	scsiPhyTx(value);
 
+	trace(trace_spinTxComplete);
 	while (!(scsiPhyStatus() & SCSI_PHY_TX_COMPLETE) && likely(!scsiDev.resetFlag)) {}
 	scsiPhyRxFifoClear();
 }
@@ -253,6 +265,7 @@ scsiWritePIO(const uint8_t* data, uint32_t count)
 		}
 	}
 
+	trace(trace_spinTxComplete);
 	while (!(scsiPhyStatus() & SCSI_PHY_TX_COMPLETE) && likely(!scsiDev.resetFlag)) {}
 	scsiPhyRxFifoClear();
 }
@@ -262,6 +275,7 @@ doTxSingleDMA(const uint8* data, uint32 count)
 {
 	// Prepare DMA transfer
 	dmaInProgress = 1;
+	trace(trace_doTxSingleDMA);
 
 	CyDmaTdSetConfiguration(
 		scsiDmaTxTd[0],
@@ -306,6 +320,7 @@ scsiWriteDMAPoll()
 	{
 		// Wait until our scsi signals are consistent. This should only be
 		// a few cycles.
+		trace(trace_spinTxComplete);
 		while (!(scsiPhyStatus() & SCSI_PHY_TX_COMPLETE)) {}
 
 		if (likely(dmaSentCount == dmaTotalCount))
@@ -341,12 +356,13 @@ scsiWrite(const uint8_t* data, uint32_t count)
 	else
 	{
 		scsiWriteDMA(data, count);
-		
+
 		// Wait for the next DMA interrupt (or the 1ms systick)
 		// It's beneficial to halt the processor to
 		// give the DMA controller more memory bandwidth to work with.
 		__WFI();
 
+		trace(trace_spinWriteDMAPoll);
 		while (!scsiWriteDMAPoll() && likely(!scsiDev.resetFlag)) {};
 	}
 }
@@ -370,6 +386,7 @@ void scsiEnterPhase(int phase)
 
 void scsiPhyReset()
 {
+	trace(trace_scsiPhyReset);
 	if (dmaInProgress)
 	{
 		dmaInProgress = 0;
@@ -378,6 +395,7 @@ void scsiPhyReset()
 		dmaTotalCount = 0;
 		CyDmaChSetRequest(scsiDmaTxChan, CY_DMA_CPU_TERM_CHAIN);
 		CyDmaChSetRequest(scsiDmaRxChan, CY_DMA_CPU_TERM_CHAIN);
+		trace(trace_spinDMAReset);
 		while (!(scsiTxDMAComplete && scsiRxDMAComplete)) {}
 
 		CyDmaChDisable(scsiDmaTxChan);

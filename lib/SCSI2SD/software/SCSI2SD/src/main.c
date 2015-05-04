@@ -24,6 +24,7 @@
 #include "disk.h"
 #include "led.h"
 #include "time.h"
+#include "trace.h"
 
 const char* Notice = "Copyright (C) 2014 Michael McMaster <michael@codesrc.com>";
 
@@ -33,6 +34,7 @@ int main()
 {
 	timeInit();
 	ledInit();
+	traceInit();
 
 	// Enable global interrupts.
 	// Needed for RST and ATN interrupt handlers.
