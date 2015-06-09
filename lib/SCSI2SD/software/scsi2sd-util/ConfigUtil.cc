@@ -18,8 +18,12 @@
 #include "ConfigUtil.hh"
 
 #include <limits>
+#include <sstream>
+#include <stdexcept>
 
 #include <string.h>
+
+#include <wx/xml/xml.h>
 
 
 using namespace SCSI2SD;
@@ -145,62 +149,283 @@ ConfigUtil::toBytes(const TargetConfig& _config)
 	return std::vector<uint8_t>(begin, begin + sizeof(config));
 }
 
-/*
-wxXmlNode*
+std::string
 ConfigUtil::toXML(const TargetConfig& config)
 {
-	wxXmlNode* target = new wxXmlNode(wxXML_ELEMENT_NODE, "SCSITarget");
+	std::stringstream s;
 
-	{
-		std::stringstream s; s << scsiId & CONFIG_TARGET_ID_BITS;
-		target.AddAttribute("id", s.str());
-	}
-	{
-		std::stringstream s; s << config.deviceType;
-		new wxXmlNode(
-			new wxXmlNode(target, wxXML_ELEMENT_NODE, "deviceType"),
-			wxXML_TEXT_NODE, "", s.str());
-	}
+	s <<
+		"<SCSITarget id=\"" <<
+			static_cast<int>(config.scsiId & CONFIG_TARGET_ID_BITS) << "\">\n" <<
 
-	{
-		std::stringstream s; s << "0x" << std::hex << config.deviceTypeModifier;
-		new wxXmlNode(
-			new wxXmlNode(target, wxXML_ELEMENT_NODE, "deviceTypeModifier"),
-			wxXML_TEXT_NODE, "", s.str());
-	}
+		"	<enabled>" <<
+			(config.scsiId & CONFIG_TARGET_ENABLED ? "true" : "false") <<
+			"</enabled>\n" <<
 
-	wxXmlNode* flags(new wxXmlNode(target, wxXML_ELEMENT_NODE, "flags"));
+		"	<unitAttention>" <<
+			(config.flags & CONFIG_ENABLE_UNIT_ATTENTION ? "true" : "false") <<
+			"</unitAttention>\n" <<
 
-	new wxXmlNode(
-		new wxXmlNode(flags, wxXML_ELEMENT_NODE, "enabled"),
-		wxXML_TEXT_NODE,
-		"",
-		config.scsiId & CONFIG_TARGET_ENABLED ? "true" : "false");
+		"	<parity>" <<
+			(config.flags & CONFIG_ENABLE_PARITY ? "true" : "false") <<
+			"</parity>\n" <<
 
-				"<unitAttention>" <<
-					(config.flags & CONFIG_ENABLE_UNIT_ATTENTION ? "true" : "false") <<
-				"</unitAttention>\n" <<
-				"<parity>" <<
-					(config.flags & CONFIG_ENABLE_PARITY ? "true" : "false") <<
-				"</parity>\n" <<
+		"\n" <<
+		"	<!-- ********************************************************\n" <<
+		"	Space separated list. Available options:\n" <<
+		"	apple\t\tReturns Apple-specific mode pages\n" <<
+		"	********************************************************* -->\n" <<
+		"	<quirks>" <<
+			(config.quirks & CONFIG_QUIRKS_APPLE ? "apple" : "") <<
+			"</quirks>\n" <<
 
-			"<sdSectorStart>" << config.sdSectorStart << "</sdSectorStart>\n" <<
-			"<scsiSectors>" << config.scsiSectors << "</scsiSectors>\n" <<
-			"<bytesPerSector>" << config.bytesPerSector << "</bytesPerSector>\n" <<
-			"<sectorsPerTrack>" << config.sectorsPerTrack<< "</sectorsPerTrack>\n" <<
-			"<headsPerCylinder>" << config.headsPerCylinder << "</headsPerCylinder>\n" <<
+		"\n\n" <<
+		"	<!-- ********************************************************\n" <<
+		"	0x0    Fixed hard drive.\n" <<
+		"	0x1    Removable drive.\n" <<
+		"	0x2    Optical drive  (ie. CD drive).\n" <<
+		"	0x3    1.44MB Floppy Drive.\n" <<
+		"	********************************************************* -->\n" <<
+		"	<deviceType>0x" <<
+				std::hex << static_cast<int>(config.deviceType) <<
+			"</deviceType>\n" <<
 
-			"<vendor>" << std::string(config.vendor, 8) << "</vendor>" <<
-			"<prodId>" << std::string(config.prodId, 16) << "</prodId>" <<
-			"<revision>" << std::string(config.revision, 4) << "</revision>" <<
-			"<serial>" << std::string(config.serial, 16) << "</serial>" <<
+		"\n\n" <<
+		"	<!-- ********************************************************\n" <<
+		"	Device type modifier is usually 0x00. Only change this if your\n" <<
+		"	OS requires some special value.\n" <<
+		"\n" <<
+		"	0x4C    Data General Micropolis disk\n" <<
+		"	********************************************************* -->\n" <<
+		"	<deviceTypeModifier>0x" <<
+				std::hex << static_cast<int>(config.deviceTypeModifier) <<
+			"</deviceTypeModifier>\n" <<
 
-		"</SCSITarget>";
+		"\n\n" <<
+		"	<!-- ********************************************************\n" <<
+		"	SD card offset, as a sector number (always 512 bytes).\n" <<
+		"	********************************************************* -->\n" <<
+		"	<sdSectorStart>" << std::dec << config.sdSectorStart << "</sdSectorStart>\n" <<
+		"\n\n" <<
+		"	<!-- ********************************************************\n" <<
+		"	Drive geometry settings.\n" <<
+		"	********************************************************* -->\n" <<
+		"\n"
+		"	<scsiSectors>" << std::dec << config.scsiSectors << "</scsiSectors>\n" <<
+		"	<bytesPerSector>" << std::dec << config.bytesPerSector << "</bytesPerSector>\n" <<
+		"	<sectorsPerTrack>" << std::dec << config.sectorsPerTrack<< "</sectorsPerTrack>\n" <<
+		"	<headsPerCylinder>" << std::dec << config.headsPerCylinder << "</headsPerCylinder>\n" <<
+		"\n\n" <<
+		"	<!-- ********************************************************\n" <<
+		"	Drive identification information. The SCSI2SD doesn't\n" <<
+		"	care what these are set to. Use these strings to trick a OS\n" <<
+		"	thinking a specific hard drive model is attached.\n" <<
+		"	********************************************************* -->\n" <<
+		"\n"
+		"	<!-- 8 character vendor string -->\n" <<
+		"	<!-- For Apple HD SC Setup/Drive Setup, use ' SEAGATE' -->\n" <<
+		"	<vendor>" << std::string(config.vendor, 8) << "</vendor>\n" <<
+		"\n" <<
+		"	<!-- 16 character produce identifier -->\n" <<
+		"	<!-- For Apple HD SC Setup/Drive Setup, use ' ST225N' -->\n" <<
+		"	<prodId>" << std::string(config.prodId, 16) << "</prodId>\n" <<
+		"\n" <<
+		"	<!-- 4 character product revision number -->\n" <<
+		"	<!-- For Apple HD SC Setup/Drive Setup, use '1.0 ' -->\n" <<
+		"	<revision>" << std::string(config.revision, 4) << "</revision>\n" <<
+		"\n" <<
+		"	<!-- 16 character serial number -->\n" <<
+		"	<serial>" << std::string(config.serial, 16) << "</serial>\n" <<
+		"</SCSITarget>\n";
+
+	return s.str();
 }
 
-void
-ConfigUtil::deserialise(const std::string& in)
+static uint64_t parseInt(wxXmlNode* node, uint64_t limit)
 {
+	std::string str(node->GetNodeContent().mb_str());
+	if (str.empty())
+	{
+		throw std::runtime_error("Empty " + node->GetName());
+	}
 
+	std::stringstream s;
+	if (str.find("0x") == 0)
+	{
+		s << std::hex << str.substr(2);
+	}
+	else
+	{
+		s << str;
+	}
+
+	uint64_t result;
+	s >> result;
+	if (!s)
+	{
+		throw std::runtime_error("Invalid value for " + node->GetName());
+	}
+
+	if (result > limit)
+	{
+		std::stringstream msg;
+		msg << "Invalid value for " << node->GetName() <<
+			" (max=" << limit << ")";
+		throw std::runtime_error(msg.str());
+	}
+	return result;
 }
-*/
+
+static TargetConfig
+parseTarget(wxXmlNode* node)
+{
+	int id;
+	{
+		std::stringstream s;
+		s << node->GetAttribute("id", "7");
+		s >> id;
+		if (!s) throw std::runtime_error("Could not parse SCSITarget id attr");
+	}
+	TargetConfig result = ConfigUtil::Default(id & 0x7);
+
+	wxXmlNode *child = node->GetChildren();
+	while (child)
+	{
+		if (child->GetName() == "enabled")
+		{
+			std::string s(child->GetNodeContent().mb_str());
+			if (s == "true")
+			{
+				result.scsiId |= CONFIG_TARGET_ENABLED;
+			}
+			else
+			{
+				result.scsiId = result.scsiId & ~CONFIG_TARGET_ENABLED;
+			}
+		}
+		if (child->GetName() == "unitAttention")
+		{
+			std::string s(child->GetNodeContent().mb_str());
+			if (s == "true")
+			{
+				result.flags |= CONFIG_ENABLE_UNIT_ATTENTION;
+			}
+			else
+			{
+				result.flags = result.flags & ~CONFIG_ENABLE_UNIT_ATTENTION;
+			}
+		}
+		if (child->GetName() == "parity")
+		{
+			std::string s(child->GetNodeContent().mb_str());
+			if (s == "true")
+			{
+				result.flags |= CONFIG_ENABLE_PARITY;
+			}
+			else
+			{
+				result.flags = result.flags & ~CONFIG_ENABLE_PARITY;
+			}
+		}
+		else if (child->GetName() == "quirks")
+		{
+			std::stringstream s(std::string(child->GetNodeContent().mb_str()));
+			std::string quirk;
+			while (s >> quirk)
+			{
+				if (quirk == "apple")
+				{
+					result.quirks |= CONFIG_QUIRKS_APPLE;
+				}
+			}
+		}
+		else if (child->GetName() == "deviceType")
+		{
+			result.deviceType = parseInt(child, 0xFF);
+		}
+		else if (child->GetName() == "deviceTypeModifier")
+		{
+			result.deviceTypeModifier = parseInt(child, 0xFF);
+		}
+		else if (child->GetName() == "sdSectorStart")
+		{
+			result.sdSectorStart = parseInt(child, 0xFFFFFFFF);
+		}
+		else if (child->GetName() == "scsiSectors")
+		{
+			result.scsiSectors = parseInt(child, 0xFFFFFFFF);
+		}
+		else if (child->GetName() == "bytesPerSector")
+		{
+			result.bytesPerSector = parseInt(child, 8192);
+		}
+		else if (child->GetName() == "sectorsPerTrack")
+		{
+			result.sectorsPerTrack = parseInt(child, 255);
+		}
+		else if (child->GetName() == "headsPerCylinder")
+		{
+			result.headsPerCylinder = parseInt(child, 255);
+		}
+		else if (child->GetName() == "vendor")
+		{
+			std::string s(child->GetNodeContent().mb_str());
+			s = s.substr(0, sizeof(result.vendor));
+			memset(result.vendor, ' ', sizeof(result.vendor));
+			memcpy(result.vendor, s.c_str(), s.size());
+		}
+		else if (child->GetName() == "prodId")
+		{
+			std::string s(child->GetNodeContent().mb_str());
+			s = s.substr(0, sizeof(result.prodId));
+			memset(result.prodId, ' ', sizeof(result.prodId));
+			memcpy(result.prodId, s.c_str(), s.size());
+		}
+		else if (child->GetName() == "revision")
+		{
+			std::string s(child->GetNodeContent().mb_str());
+			s = s.substr(0, sizeof(result.revision));
+			memset(result.revision, ' ', sizeof(result.revision));
+			memcpy(result.revision, s.c_str(), s.size());
+		}
+		else if (child->GetName() == "serial")
+		{
+			std::string s(child->GetNodeContent().mb_str());
+			s = s.substr(0, sizeof(result.serial));
+			memset(result.serial, ' ', sizeof(result.serial));
+			memcpy(result.serial, s.c_str(), s.size());
+		}
+
+		child = child->GetNext();
+	}
+	return result;
+}
+
+std::vector<TargetConfig>
+ConfigUtil::fromXML(const std::string& filename)
+{
+	wxXmlDocument doc;
+	if (!doc.Load(filename))
+	{
+		throw std::runtime_error("Could not load XML file");
+	}
+
+	// start processing the XML file
+	if (doc.GetRoot()->GetName() != "SCSI2SD")
+	{
+		throw std::runtime_error("Invalid root node, expected <SCSI2SD>");
+	}
+
+	std::vector<TargetConfig> result;
+	wxXmlNode *child = doc.GetRoot()->GetChildren();
+	while (child)
+	{
+		if (child->GetName() == "SCSITarget")
+		{
+			result.push_back(parseTarget(child));
+		}
+		child = child->GetNext();
+	}
+	return result;
+}
+

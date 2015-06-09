@@ -3,7 +3,7 @@ VPATH=cybootloaderutils ../SCSI2SD/src
 CPPFLAGS = -I cybootloaderutils -I hidapi/hidapi -I ../include -Ilibzipper-1.0.4 -I$(BUILD)/zlib
 CFLAGS += -Wall -Wno-pointer-sign -O2 -g
 CXXFLAGS += -Wall -O2 -g -std=c++0x
-LDFLAGS += -L$(BUILD)/libzipper/.libs -lzipper -L$(BUILD)/zlib -lz
+LDFLAGS += -L$(BUILD)/libzipper/.libs -lzipper -L$(BUILD)/zlib -lz -lexpat
 
 LIBZIPPER_CONFIG = --disable-shared LDFLAGS="-L../zlib" CPPFLAGS="-I../zlib"
 

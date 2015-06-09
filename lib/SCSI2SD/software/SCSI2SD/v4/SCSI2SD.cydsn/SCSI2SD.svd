@@ -7,48 +7,6 @@
   <width>32</width>
   <peripherals>
     <peripheral>
-      <name>SCSI_Out_Ctl</name>
-      <description>No description available</description>
-      <baseAddress>0x4000647E</baseAddress>
-      <addressBlock>
-        <offset>0</offset>
-        <size>0x0</size>
-        <usage>registers</usage>
-      </addressBlock>
-      <registers>
-        <register>
-          <name>SCSI_Out_Ctl_CONTROL_REG</name>
-          <description>No description available</description>
-          <addressOffset>0x0</addressOffset>
-          <size>8</size>
-          <access>read-write</access>
-          <resetValue>0</resetValue>
-          <resetMask>0</resetMask>
-        </register>
-      </registers>
-    </peripheral>
-    <peripheral>
-      <name>SCSI_Out_Bits</name>
-      <description>No description available</description>
-      <baseAddress>0x4000647F</baseAddress>
-      <addressBlock>
-        <offset>0</offset>
-        <size>0x0</size>
-        <usage>registers</usage>
-      </addressBlock>
-      <registers>
-        <register>
-          <name>SCSI_Out_Bits_CONTROL_REG</name>
-          <description>No description available</description>
-          <addressOffset>0x0</addressOffset>
-          <size>8</size>
-          <access>read-write</access>
-          <resetValue>0</resetValue>
-          <resetMask>0</resetMask>
-        </register>
-      </registers>
-    </peripheral>
-    <peripheral>
       <name>Debug_Timer</name>
       <description>No description available</description>
       <baseAddress>0x0</baseAddress>
@@ -343,7 +301,7 @@
     <peripheral>
       <name>SCSI_Parity_Error</name>
       <description>No description available</description>
-      <baseAddress>0x40006463</baseAddress>
+      <baseAddress>0x40006464</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x0</size>
@@ -498,7 +456,7 @@
     <peripheral>
       <name>SCSI_Filtered</name>
       <description>No description available</description>
-      <baseAddress>0x40006464</baseAddress>
+      <baseAddress>0x40006461</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x0</size>
@@ -653,7 +611,7 @@
     <peripheral>
       <name>SCSI_CTL_PHASE</name>
       <description>No description available</description>
-      <baseAddress>0x4000647C</baseAddress>
+      <baseAddress>0x40006471</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x0</size>
@@ -1148,6 +1106,48 @@
           <name>USBFS_USB_CLK_EN</name>
           <description>USB Block Clock Enable Register</description>
           <addressOffset>0x4000609D</addressOffset>
+          <size>8</size>
+          <access>read-write</access>
+          <resetValue>0</resetValue>
+          <resetMask>0</resetMask>
+        </register>
+      </registers>
+    </peripheral>
+    <peripheral>
+      <name>SCSI_Out_Ctl</name>
+      <description>No description available</description>
+      <baseAddress>0x40006470</baseAddress>
+      <addressBlock>
+        <offset>0</offset>
+        <size>0x0</size>
+        <usage>registers</usage>
+      </addressBlock>
+      <registers>
+        <register>
+          <name>SCSI_Out_Ctl_CONTROL_REG</name>
+          <description>No description available</description>
+          <addressOffset>0x0</addressOffset>
+          <size>8</size>
+          <access>read-write</access>
+          <resetValue>0</resetValue>
+          <resetMask>0</resetMask>
+        </register>
+      </registers>
+    </peripheral>
+    <peripheral>
+      <name>SCSI_Out_Bits</name>
+      <description>No description available</description>
+      <baseAddress>0x40006478</baseAddress>
+      <addressBlock>
+        <offset>0</offset>
+        <size>0x0</size>
+        <usage>registers</usage>
+      </addressBlock>
+      <registers>
+        <register>
+          <name>SCSI_Out_Bits_CONTROL_REG</name>
+          <description>No description available</description>
+          <addressOffset>0x0</addressOffset>
           <size>8</size>
           <access>read-write</access>
           <resetValue>0</resetValue>

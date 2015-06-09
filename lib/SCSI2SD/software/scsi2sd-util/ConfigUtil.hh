@@ -20,6 +20,7 @@
 #include "scsi2sd.h"
 
 #include <cstddef>
+#include <string>
 #include <vector>
 
 namespace SCSI2SD
@@ -32,6 +33,9 @@ namespace SCSI2SD
 
 		static TargetConfig fromBytes(const uint8_t* data);
 		static std::vector<uint8_t> toBytes(const TargetConfig& config);
+
+		static std::string toXML(const TargetConfig& config);
+		static std::vector<TargetConfig> fromXML(const std::string& filename);
 	};
 }
 

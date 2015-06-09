@@ -67,6 +67,7 @@
 #include <SCSI_Filtered.h>
 #include <EXTLED_aliases.h>
 #include <EXTLED.h>
+#include <SCSI_SEL_ISR.h>
 #include <USBFS_Dm_aliases.h>
 #include <USBFS_Dm.h>
 #include <USBFS_Dp_aliases.h>

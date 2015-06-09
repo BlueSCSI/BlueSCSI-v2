@@ -29,8 +29,10 @@
 #include <wx/notebook.h>
 #include <wx/progdlg.h>
 #include <wx/utils.h>
+#include <wx/wfstream.h>
 #include <wx/windowptr.h>
 #include <wx/thread.h>
+#include <wx/txtstrm.h>
 
 #include <zipper.hh>
 
@@ -160,6 +162,15 @@ public:
 		myLastPollTime(0)
 	{
 		wxMenu *menuFile = new wxMenu();
+		menuFile->Append(
+			ID_SaveFile,
+			"&Save to file...",
+			"Save settings to local file.");
+		menuFile->Append(
+			ID_OpenFile,
+			"&Open file...",
+			"Load settings from local file.");
+		menuFile->AppendSeparator();
 		menuFile->Append(
 			ID_ConfigDefaults,
 			"Load &Defaults",
@@ -356,7 +367,9 @@ private:
 		ID_BtnSave,
 		ID_LogWindow,
 		ID_SCSILog,
-		ID_SelfTest
+		ID_SelfTest,
+		ID_SaveFile,
+		ID_OpenFile
 	};
 
 	void OnID_ConfigDefaults(wxCommandEvent& event)
@@ -364,6 +377,83 @@ private:
 		for (size_t i = 0; i < myTargets.size(); ++i)
 		{
 			myTargets[i]->setConfig(ConfigUtil::Default(i));
+		}
+	}
+
+	void OnID_SaveFile(wxCommandEvent& event)
+	{
+		TimerLock lock(myTimer);
+
+
+
+		wxFileDialog dlg(
+			this,
+			"Save config settings",
+			"",
+			"",
+			"XML files (*.xml)|*.xml",
+			wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+		if (dlg.ShowModal() == wxID_CANCEL) return;
+
+		wxFileOutputStream file(dlg.GetPath());
+		if (!file.IsOk())
+		{
+			wxLogError("Cannot save settings to file '%s'.", dlg.GetPath());
+			return;
+		}
+
+		wxTextOutputStream s(file);
+
+		s << "<SCSI2SD>\n";
+
+		for (size_t i = 0; i < myTargets.size(); ++i)
+		{
+			s << ConfigUtil::toXML(myTargets[i]->getConfig());
+		}
+
+		s << "</SCSI2SD>\n";
+	}
+
+	void OnID_OpenFile(wxCommandEvent& event)
+	{
+		TimerLock lock(myTimer);
+
+		wxFileDialog dlg(
+			this,
+			"Load config settings",
+			"",
+			"",
+			"XML files (*.xml)|*.xml",
+			wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+		if (dlg.ShowModal() == wxID_CANCEL) return;
+
+		try
+		{
+			std::vector<TargetConfig> configs(
+				ConfigUtil::fromXML(dlg.GetPath()));
+
+			size_t i;
+			for (i = 0; i < configs.size() && i < myTargets.size(); ++i)
+			{
+				myTargets[i]->setConfig(configs[i]);
+			}
+
+			for (; i < myTargets.size(); ++i)
+			{
+				myTargets[i]->setConfig(ConfigUtil::Default(i));
+			}
+		}
+		catch (std::exception& e)
+		{
+			wxLogError(
+				"Cannot load settings from file '%s'.\n%s",
+				dlg.GetPath(),
+				e.what());
+
+			wxMessageBox(
+				e.what(),
+				"Load error",
+				wxOK | wxICON_ERROR);
 		}
 	}
 
@@ -927,6 +1017,8 @@ wxBEGIN_EVENT_TABLE(AppFrame, wxFrame)
 	EVT_MENU(AppFrame::ID_ConfigDefaults, AppFrame::OnID_ConfigDefaults)
 	EVT_MENU(AppFrame::ID_Firmware, AppFrame::OnID_Firmware)
 	EVT_MENU(AppFrame::ID_LogWindow, AppFrame::OnID_LogWindow)
+	EVT_MENU(AppFrame::ID_SaveFile, AppFrame::OnID_SaveFile)
+	EVT_MENU(AppFrame::ID_OpenFile, AppFrame::OnID_OpenFile)
 	EVT_MENU(wxID_EXIT, AppFrame::OnExitEvt)
 	EVT_MENU(wxID_ABOUT, AppFrame::OnAbout)
 

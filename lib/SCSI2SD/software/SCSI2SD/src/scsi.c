@@ -516,7 +516,7 @@ static void process_SelectionPhase()
 	if (scsiDev.compatMode < COMPAT_SCSI2)
 	{
 		// Required for some older SCSI1 devices using a 5380 chip.
-		CyDelayUs(100);
+		CyDelay(1);
 	}
 
 	int sel = SCSI_ReadFilt(SCSI_Filt_SEL);

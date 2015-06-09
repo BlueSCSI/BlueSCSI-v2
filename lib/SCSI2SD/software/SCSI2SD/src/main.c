@@ -73,6 +73,8 @@ int main()
 			else
 			{
 				// Wait for our 1ms timer to save some power.
+				// There's an interrupt on the SEL signal to ensure we respond
+				// quickly to any SCSI commands.
 				__WFI();
 			}
 		}

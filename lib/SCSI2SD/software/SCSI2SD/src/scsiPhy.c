@@ -69,6 +69,14 @@ CY_ISR(scsiResetISR)
 	scsiDev.resetFlag = 1;
 }
 
+CY_ISR_PROTO(scsiSelectionISR);
+CY_ISR(scsiSelectionISR)
+{
+	// The SEL signal ISR ensures we wake up from a _WFI() (wait-for-interrupt)
+	// call in the main loop without waiting for our 1ms timer to
+	// expire. This is done for performance reasons only.
+}
+
 uint8_t
 scsiReadDBxPins()
 {
@@ -221,7 +229,7 @@ scsiReadDMAPoll()
 void
 scsiRead(uint8_t* data, uint32_t count)
 {
-	if (count < 8)
+	if (count < 12)
 	{
 		scsiReadPIO(data, count);
 	}
@@ -349,7 +357,7 @@ scsiWriteDMAPoll()
 void
 scsiWrite(const uint8_t* data, uint32_t count)
 {
-	if (count < 8)
+	if (count < 12)
 	{
 		scsiWritePIO(data, count);
 	}
@@ -381,6 +389,11 @@ void scsiEnterPhase(int phase)
 	{
 		SCSI_CTL_PHASE_Write(phase > 0 ? phase : 0);
 		busSettleDelay();
+
+		if (scsiDev.compatMode < COMPAT_SCSI2)
+		{
+			CyDelayUs(100);
+		}
 	}
 }
 
@@ -470,6 +483,9 @@ void scsiPhyInit()
 	scsiPhyInitDMA();
 
 	SCSI_RST_ISR_StartEx(scsiResetISR);
+
+	SCSI_SEL_ISR_StartEx(scsiSelectionISR);
+
 }
 
 // 1 = DBx error

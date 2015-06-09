@@ -51,7 +51,9 @@ namespace
 	void CtrlGetFixedString(wxTextEntry* ctrl, char* dest, size_t len)
 	{
 		memset(dest, ' ', len);
-		strncpy(dest, ctrl->GetValue().ToAscii(), len);
+		std::string str(ctrl->GetValue().ToAscii());
+		// Don't use strncpy - we need to avoid NULL's
+		memcpy(dest, str.c_str(), std::min(len, str.size()));
 	}
 
 	bool CtrlIsAscii(wxTextEntry* ctrl)
