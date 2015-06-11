@@ -781,8 +781,10 @@ private:
 
 						if (!myInitialConfig)
 						{
+/* This doesn't work properly, and causes crashes.
 							wxCommandEvent loadEvent(wxEVT_NULL, ID_BtnLoad);
 							GetEventHandler()->AddPendingEvent(loadEvent);
+*/
 						}
 
 					}

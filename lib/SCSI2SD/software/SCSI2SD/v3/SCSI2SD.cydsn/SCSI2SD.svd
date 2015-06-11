@@ -7,48 +7,6 @@
   <width>32</width>
   <peripherals>
     <peripheral>
-      <name>SCSI_Out_Bits</name>
-      <description>No description available</description>
-      <baseAddress>0x4000647B</baseAddress>
-      <addressBlock>
-        <offset>0</offset>
-        <size>0x0</size>
-        <usage>registers</usage>
-      </addressBlock>
-      <registers>
-        <register>
-          <name>SCSI_Out_Bits_CONTROL_REG</name>
-          <description>No description available</description>
-          <addressOffset>0x0</addressOffset>
-          <size>8</size>
-          <access>read-write</access>
-          <resetValue>0</resetValue>
-          <resetMask>0</resetMask>
-        </register>
-      </registers>
-    </peripheral>
-    <peripheral>
-      <name>SCSI_Out_Ctl</name>
-      <description>No description available</description>
-      <baseAddress>0x40006478</baseAddress>
-      <addressBlock>
-        <offset>0</offset>
-        <size>0x0</size>
-        <usage>registers</usage>
-      </addressBlock>
-      <registers>
-        <register>
-          <name>SCSI_Out_Ctl_CONTROL_REG</name>
-          <description>No description available</description>
-          <addressOffset>0x0</addressOffset>
-          <size>8</size>
-          <access>read-write</access>
-          <resetValue>0</resetValue>
-          <resetMask>0</resetMask>
-        </register>
-      </registers>
-    </peripheral>
-    <peripheral>
       <name>Debug_Timer</name>
       <description>No description available</description>
       <baseAddress>0x0</baseAddress>
@@ -341,9 +299,30 @@
       </registers>
     </peripheral>
     <peripheral>
+      <name>SCSI_Out_Ctl</name>
+      <description>No description available</description>
+      <baseAddress>0x40006474</baseAddress>
+      <addressBlock>
+        <offset>0</offset>
+        <size>0x0</size>
+        <usage>registers</usage>
+      </addressBlock>
+      <registers>
+        <register>
+          <name>SCSI_Out_Ctl_CONTROL_REG</name>
+          <description>No description available</description>
+          <addressOffset>0x0</addressOffset>
+          <size>8</size>
+          <access>read-write</access>
+          <resetValue>0</resetValue>
+          <resetMask>0</resetMask>
+        </register>
+      </registers>
+    </peripheral>
+    <peripheral>
       <name>SCSI_Filtered</name>
       <description>No description available</description>
-      <baseAddress>0x4000646D</baseAddress>
+      <baseAddress>0x40006468</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x0</size>
@@ -498,7 +477,7 @@
     <peripheral>
       <name>SCSI_Parity_Error</name>
       <description>No description available</description>
-      <baseAddress>0x40006465</baseAddress>
+      <baseAddress>0x40006466</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x0</size>
@@ -647,6 +626,27 @@
               </enumeratedValues>
             </field>
           </fields>
+        </register>
+      </registers>
+    </peripheral>
+    <peripheral>
+      <name>SCSI_Out_Bits</name>
+      <description>No description available</description>
+      <baseAddress>0x40006478</baseAddress>
+      <addressBlock>
+        <offset>0</offset>
+        <size>0x0</size>
+        <usage>registers</usage>
+      </addressBlock>
+      <registers>
+        <register>
+          <name>SCSI_Out_Bits_CONTROL_REG</name>
+          <description>No description available</description>
+          <addressOffset>0x0</addressOffset>
+          <size>8</size>
+          <access>read-write</access>
+          <resetValue>0</resetValue>
+          <resetMask>0</resetMask>
         </register>
       </registers>
     </peripheral>

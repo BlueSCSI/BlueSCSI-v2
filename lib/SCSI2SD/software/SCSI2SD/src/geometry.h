@@ -22,12 +22,6 @@
 #include "config.h"
 #include "sd.h"
 
-// Max allowed by legacy IBM-PC Bios (6 bits)
-#define SCSI_SECTORS_PER_TRACK 63
-
-// MS-DOS up to 7.10 will crash on 256 heads.
-#define SCSI_HEADS_PER_CYLINDER 255
-
 typedef enum
 {
 	ADDRESS_BLOCK = 0,
@@ -50,16 +44,36 @@ uint32_t SCSISector2SD(
 	uint16_t bytesPerSector,
 	uint32_t scsiSector);
 
-uint64 CHS2LBA(uint32 c, uint8 h, uint32 s);
-void LBA2CHS(uint32 lba, uint32* c, uint8* h, uint32* s);
+uint64_t CHS2LBA(
+	uint32_t c,
+	uint8_t h,
+	uint32_t s,
+	uint16_t headsPerCylinder,
+	uint16_t sectorsPerTrack);
+void LBA2CHS(
+	uint32_t lba,
+	uint32_t* c,
+	uint8_t* h,
+	uint32_t* s,
+	uint16_t headsPerCylinder,
+	uint16_t sectorsPerTrack);
 
 // Convert an address in the given SCSI_ADDRESS_FORMAT to
 // a linear byte address.
 // addr must be >= 8 bytes.
-uint64 scsiByteAddress(
-	uint16_t bytesPerSector, int format, const uint8* addr);
+uint64_t scsiByteAddress(
+	uint16_t bytesPerSector,
+	uint16_t headsPerCylinder,
+	uint16_t sectorsPerTrack,
+	int format,
+	const uint8_t* addr);
 void scsiSaveByteAddress(
-	uint16_t bytesPerSector, int format, uint64 byteAddr, uint8* buf);
+	uint16_t bytesPerSector,
+	uint16_t headsPerCylinder,
+	uint16_t sectorsPerTrack,
+	int format,
+	uint64_t byteAddr,
+	uint8_t* buf);
 
 
 #endif

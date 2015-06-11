@@ -46,36 +46,49 @@ uint32_t SCSISector2SD(
 
 // Standard mapping according to ECMA-107 and ISO/IEC 9293:1994
 // Sector always starts at 1. There is no 0 sector.
-uint64 CHS2LBA(uint32 c, uint8 h, uint32 s)
+uint64_t CHS2LBA(
+	uint32_t c,
+	uint8_t h,
+	uint32_t s,
+	uint16_t headsPerCylinder,
+	uint16_t sectorsPerTrack)
 {
 	return (
-		(((uint64)c) * SCSI_HEADS_PER_CYLINDER + h) *
-			(uint64) SCSI_SECTORS_PER_TRACK
+		(((uint64_t)c) * headsPerCylinder + h) *
+			(uint64_t) sectorsPerTrack
 		) + (s - 1);
 }
 
 
-void LBA2CHS(uint32 lba, uint32* c, uint8* h, uint32* s)
+void LBA2CHS(
+	uint32_t lba,
+	uint32_t* c,
+	uint8_t* h,
+	uint32_t* s,
+	uint16_t headsPerCylinder,
+	uint16_t sectorsPerTrack)
 {
-	*c = lba / (SCSI_SECTORS_PER_TRACK * SCSI_HEADS_PER_CYLINDER);
-	*h = (lba / SCSI_SECTORS_PER_TRACK) % SCSI_HEADS_PER_CYLINDER;
-	*s = (lba % SCSI_SECTORS_PER_TRACK) + 1;
+	*c = lba / (((uint32_t) sectorsPerTrack) * headsPerCylinder);
+	*h = (lba / sectorsPerTrack) % headsPerCylinder;
+	*s = (lba % sectorsPerTrack) + 1;
 }
 
-uint64 scsiByteAddress(
+uint64_t scsiByteAddress(
 	uint16_t bytesPerSector,
+	uint16_t headsPerCylinder,
+	uint16_t sectorsPerTrack,
 	int format,
-	const uint8* addr)
+	const uint8_t* addr)
 {
-	uint64 result;
+	uint64_t result;
 	switch (format)
 	{
 	case ADDRESS_BLOCK:
 	{
-		uint32 lba =
-			(((uint32) addr[0]) << 24) +
-			(((uint32) addr[1]) << 16) +
-			(((uint32) addr[2]) << 8) +
+		uint32_t lba =
+			(((uint32_t) addr[0]) << 24) +
+			(((uint32_t) addr[1]) << 16) +
+			(((uint32_t) addr[2]) << 8) +
 			addr[3];
 
 		result = (uint64_t) bytesPerSector * lba;
@@ -83,38 +96,39 @@ uint64 scsiByteAddress(
 
 	case ADDRESS_PHYSICAL_BYTE:
 	{
-		uint32 cyl =
-			(((uint32) addr[0]) << 16) +
-			(((uint32) addr[1]) << 8) +
+		uint32_t cyl =
+			(((uint32_t) addr[0]) << 16) +
+			(((uint32_t) addr[1]) << 8) +
 			addr[2];
 
-		uint8 head = addr[3];
+		uint8_t head = addr[3];
 
-		uint32 bytes =
-			(((uint32) addr[4]) << 24) +
-			(((uint32) addr[5]) << 16) +
-			(((uint32) addr[6]) << 8) +
+		uint32_t bytes =
+			(((uint32_t) addr[4]) << 24) +
+			(((uint32_t) addr[5]) << 16) +
+			(((uint32_t) addr[6]) << 8) +
 			addr[7];
 
-		result = CHS2LBA(cyl, head, 1) * (uint64_t) bytesPerSector + bytes;
+		result = CHS2LBA(cyl, head, 1, headsPerCylinder, sectorsPerTrack) *
+			(uint64_t) bytesPerSector + bytes;
 	} break;
 
 	case ADDRESS_PHYSICAL_SECTOR:
 	{
 		uint32 cyl =
-			(((uint32) addr[0]) << 16) +
-			(((uint32) addr[1]) << 8) +
+			(((uint32_t) addr[0]) << 16) +
+			(((uint32_t) addr[1]) << 8) +
 			addr[2];
 
 		uint8 head = scsiDev.data[3];
 
 		uint32 sector =
-			(((uint32) addr[4]) << 24) +
-			(((uint32) addr[5]) << 16) +
-			(((uint32) addr[6]) << 8) +
+			(((uint32_t) addr[4]) << 24) +
+			(((uint32_t) addr[5]) << 16) +
+			(((uint32_t) addr[6]) << 8) +
 			addr[7];
 
-		result = CHS2LBA(cyl, head, sector) * (uint64_t) bytesPerSector;
+		result = CHS2LBA(cyl, head, sector, headsPerCylinder, sectorsPerTrack) * (uint64_t) bytesPerSector;
 	} break;
 
 	default:
@@ -127,12 +141,14 @@ uint64 scsiByteAddress(
 
 void scsiSaveByteAddress(
 	uint16_t bytesPerSector,
+	uint16_t headsPerCylinder,
+	uint16_t sectorsPerTrack,
 	int format,
-	uint64 byteAddr,
-	uint8* buf)
+	uint64_t byteAddr,
+	uint8_t* buf)
 {
-	uint32 lba = byteAddr / bytesPerSector;
-	uint32 byteOffset = byteAddr % bytesPerSector;
+	uint32_t lba = byteAddr / bytesPerSector;
+	uint32_t byteOffset = byteAddr % bytesPerSector;
 
 	switch (format)
 	{
@@ -151,12 +167,12 @@ void scsiSaveByteAddress(
 
 	case ADDRESS_PHYSICAL_BYTE:
 	{
-		uint32 cyl;
-		uint8 head;
-		uint32 sector;
-		uint32 bytes;
+		uint32_t cyl;
+		uint8_t head;
+		uint32_t sector;
+		uint32_t bytes;
 
-		LBA2CHS(lba, &cyl, &head, &sector);
+		LBA2CHS(lba, &cyl, &head, &sector, headsPerCylinder, sectorsPerTrack);
 
 		bytes = sector * bytesPerSector + byteOffset;
 
@@ -174,11 +190,11 @@ void scsiSaveByteAddress(
 
 	case ADDRESS_PHYSICAL_SECTOR:
 	{
-		uint32 cyl;
-		uint8 head;
-		uint32 sector;
+		uint32_t cyl;
+		uint8_t head;
+		uint32_t sector;
 
-		LBA2CHS(lba, &cyl, &head, &sector);
+		LBA2CHS(lba, &cyl, &head, &sector, headsPerCylinder, sectorsPerTrack);
 
 		buf[0] = cyl >> 16;
 		buf[1] = cyl >> 8;

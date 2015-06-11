@@ -99,11 +99,15 @@ void scsiReceiveDiagnostic()
 		uint64 fromByteAddr =
 			scsiByteAddress(
 				scsiDev.target->liveCfg.bytesPerSector,
+				scsiDev.target->cfg->headsPerCylinder,
+				scsiDev.target->cfg->sectorsPerTrack,
 				suppliedFmt,
 				&scsiDev.data[6]);
 
 		scsiSaveByteAddress(
 			scsiDev.target->liveCfg.bytesPerSector,
+			scsiDev.target->cfg->headsPerCylinder,
+			scsiDev.target->cfg->sectorsPerTrack,
 			translateFmt,
 			fromByteAddr,
 			&scsiDev.data[6]);

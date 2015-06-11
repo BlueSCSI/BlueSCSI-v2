@@ -97,7 +97,7 @@ static const uint8 FormatDevicePage[] =
 0x00, 0x00, // No alternate sectors
 0x00, 0x00, // No alternate tracks
 0x00, 0x00, // No alternate tracks per lun
-0x00, SCSI_SECTORS_PER_TRACK, // Sectors per track
+0x00, 0x00, // Sectors per track, configurable
 0xFF, 0xFF, // Data bytes per physical sector. Configurable.
 0x00, 0x01, // Interleave
 0x00, 0x00, // Track skew factor
@@ -111,7 +111,7 @@ static const uint8 RigidDiskDriveGeometry[] =
 0x04, // Page code
 0x16, // Page length
 0xFF, 0xFF, 0xFF, // Number of cylinders
-SCSI_HEADS_PER_CYLINDER, // Number of heads
+0x00, // Number of heads (replaced by configured value)
 0xFF, 0xFF, 0xFF, // Starting cylinder-write precompensation
 0xFF, 0xFF, 0xFF, // Starting cylinder-reduced write current
 0x00, 0x1, // Drive step rate (units of 100ns)
@@ -128,7 +128,7 @@ static const uint8 RigidDiskDriveGeometry_SCSI1[] =
 0x04, // Page code
 0x12, // Page length
 0xFF, 0xFF, 0xFF, // Number of cylinders
-SCSI_HEADS_PER_CYLINDER, // Number of heads
+0x00, // Number of heads (replaced by configured value)
 0xFF, 0xFF, 0xFF, // Starting cylinder-write precompensation
 0xFF, 0xFF, 0xFF, // Starting cylinder-reduced write current
 0x00, 0x1, // Drive step rate (units of 100ns)
@@ -311,6 +311,10 @@ static void doModeSense(
 		pageIn(pc, idx, FormatDevicePage, sizeof(FormatDevicePage));
 		if (pc != 0x01)
 		{
+			uint16_t sectorsPerTrack = scsiDev.target->cfg->sectorsPerTrack;
+			scsiDev.data[idx+10] = sectorsPerTrack >> 8;
+			scsiDev.data[idx+11] = sectorsPerTrack & 0xFF;
+
 			// Fill out the configured bytes-per-sector
 			uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
 			scsiDev.data[idx+12] = bytesPerSector >> 8;
@@ -351,7 +355,9 @@ static void doModeSense(
 					scsiDev.target->cfg->scsiSectors),
 				&cyl,
 				&head,
-				&sector);
+				&sector,
+				scsiDev.target->cfg->headsPerCylinder,
+				scsiDev.target->cfg->sectorsPerTrack);
 
 			scsiDev.data[idx+2] = cyl >> 16;
 			scsiDev.data[idx+3] = cyl >> 8;
@@ -359,6 +365,8 @@ static void doModeSense(
 
 			memcpy(&scsiDev.data[idx+6], &scsiDev.data[idx+2], 3);
 			memcpy(&scsiDev.data[idx+9], &scsiDev.data[idx+2], 3);
+
+			scsiDev.data[idx+5] = scsiDev.target->cfg->headsPerCylinder;
 		}
 
 		if ((scsiDev.compatMode >= COMPAT_SCSI2))

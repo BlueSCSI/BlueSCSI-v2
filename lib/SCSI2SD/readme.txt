@@ -35,10 +35,11 @@ Micro SD Card Interface
 USB Interface (firmware updates and config)
 	USB 2.0 micro-B
 Power
-	5V via standard molex drive connector.
+	5V via standard molex drive connector
+	USB or self-powered using the SCSI host termination power. (v5 only)
 Dimensions
-	10cm x 10cm x 1.5cm
-	Mounting holes to suit standard 2.5" - 3.5" drive bracket.
+	10cm x 5cm x 1.5cm (v5)
+	10cm x 10cm x 1.5cm (v3, v4)
 
 
 Performance
@@ -95,6 +96,17 @@ Compatibility
         Device-type modifier: 0x4c
     Applix 1616
     IMS MM/1
+    NeXTcube + NeXTSTEP 3.3
+    NeXTStation
+    Modified geometry settings are required to avoid "cylinder group too large" errors while formatting.
+    	(To simulate Quantum Fireball 1050S)
+        512 bytesPerSector
+        139 sectorsPerTrack
+        4 tracksPerCylinder
+        4135 cylinder per volume
+        1 spare sector per cylinder
+        2051459 usable sectors on volume
+
 
 Samplers
 
