@@ -1,3 +1,9 @@
+20150614        4.3
+	- Added configurable disk geometry.
+	- Added configuration import/export function to scsi2sd-util
+	- scsi2sd-util stability fixes
+	- Fixes to support EMU EMAX1 & 2
+
 20150504		4.2.4
 	- Clean up version number mishap (4.2.3 reported as 4.2.2)
 	- Reduce size of mode pages for SCSI1 hosts

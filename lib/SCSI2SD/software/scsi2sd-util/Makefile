@@ -3,7 +3,7 @@ VPATH=cybootloaderutils ../SCSI2SD/src
 CPPFLAGS = -I cybootloaderutils -I hidapi/hidapi -I ../include -Ilibzipper-1.0.4 -I$(BUILD)/zlib
 CFLAGS += -Wall -Wno-pointer-sign -O2 -g
 CXXFLAGS += -Wall -O2 -g -std=c++0x
-LDFLAGS += -L$(BUILD)/libzipper/.libs -lzipper -L$(BUILD)/zlib -lz -lexpat
+LDFLAGS += -L$(BUILD)/libzipper/.libs -lzipper -L$(BUILD)/zlib -lz
 
 LIBZIPPER_CONFIG = --disable-shared LDFLAGS="-L../zlib" CPPFLAGS="-I../zlib"
 
@@ -36,13 +36,13 @@ ifeq ($(TARGET),Win64)
 endif
 ifeq ($(TARGET),Linux)
 	VPATH += hidapi/linux
-	LDFLAGS += -ludev
+	LDFLAGS += -ludev -lexpat
 	BUILD = build/linux
 endif
 ifeq ($(TARGET),Darwin)
 	# Should match OSX
 	VPATH += hidapi-mac
-	LDFLAGS += -framework IOKit -framework CoreFoundation
+	LDFLAGS += -framework IOKit -framework CoreFoundation -lexpat
 	CC=clang -mmacosx-version-min=10.7
 	CXX=clang++ -stdlib=libc++ -mmacosx-version-min=10.7
 	WX_CONFIG += --with-macosx-version-min=10.7

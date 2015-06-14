@@ -22,6 +22,7 @@
 #include <wx/wx.h>
 #endif
 
+#include <wx/app.h>
 #include <wx/filedlg.h>
 #include <wx/filefn.h>
 #include <wx/filename.h>
@@ -985,10 +986,9 @@ private:
 	}
 
 	// Note: Don't confuse this with the wxApp::OnExit virtual method
-	void OnExitEvt(wxCommandEvent& event)
-	{
-		Close(true);
-	}
+	void OnExitEvt(wxCommandEvent& event);
+
+	void OnCloseEvt(wxCloseEvent& event);
 
 	void OnAbout(wxCommandEvent& event)
 	{
@@ -1031,6 +1031,7 @@ wxBEGIN_EVENT_TABLE(AppFrame, wxFrame)
 	EVT_BUTTON(ID_BtnSave, AppFrame::doSave)
 	EVT_BUTTON(ID_BtnLoad, AppFrame::doLoad)
 
+	EVT_CLOSE(AppFrame::OnCloseEvt)
 
 wxEND_EVENT_TABLE()
 
@@ -1052,4 +1053,15 @@ public:
 // Main Method
 wxIMPLEMENT_APP(App);
 
+void
+AppFrame::OnExitEvt(wxCommandEvent& event)
+{
+	wxGetApp().ExitMainLoop();
+}
+
+void
+AppFrame::OnCloseEvt(wxCloseEvent& event)
+{
+	wxGetApp().ExitMainLoop();
+}
 

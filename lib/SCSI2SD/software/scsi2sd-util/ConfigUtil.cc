@@ -227,7 +227,7 @@ ConfigUtil::toXML(const TargetConfig& config)
 		"	<vendor>" << std::string(config.vendor, 8) << "</vendor>\n" <<
 		"\n" <<
 		"	<!-- 16 character produce identifier -->\n" <<
-		"	<!-- For Apple HD SC Setup/Drive Setup, use ' ST225N' -->\n" <<
+		"	<!-- For Apple HD SC Setup/Drive Setup, use '          ST225N' -->\n" <<
 		"	<prodId>" << std::string(config.prodId, 16) << "</prodId>\n" <<
 		"\n" <<
 		"	<!-- 4 character product revision number -->\n" <<
