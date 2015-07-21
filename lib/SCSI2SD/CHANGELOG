@@ -1,3 +1,18 @@
+201507XX		4.4
+	- Added configuration option to allow SCSI2 mode. This option is OFF by
+	default, and should only be enabled when using the SCSI2SD with a SCSI2 host
+	controller. Extra timing delays are added in the default SCSI1/SASI mode to
+	work with slow hardware.
+	- Modified hot-swap card detection to work with longer (60cm) microSD to SD
+	cables.
+	- Fixed off-by-one error in scsi2sd-util "Auto" sector start feature.
+	- Fixed crashes and stalls of scsi2sd-util after saving/loading options
+	to/from the device
+	- Fixed synchronous transfer request negotiation.
+	SCSI2SD now negotiates back to async transfers instead of simply
+	rejecting the message.
+	- Fixed INQUIRY response to commands lacking an allocation length.
+
 20150614        4.3
 	- Added configurable disk geometry.
 	- Added configuration import/export function to scsi2sd-util

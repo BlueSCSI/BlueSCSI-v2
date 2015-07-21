@@ -560,6 +560,10 @@ static void process_SelectionPhase()
 			target->unitAttention = 0;
 			scsiDev.compatMode = COMPAT_SCSI1;
 		}
+		else if (!(target->cfg->flags & CONFIG_ENABLE_SCSI2))
+		{
+			scsiDev.compatMode = COMPAT_SCSI1;
+		}
 		else if (scsiDev.compatMode == COMPAT_UNKNOWN)
 		{
 			scsiDev.compatMode = COMPAT_SCSI2;
@@ -723,7 +727,7 @@ static void process_MessageOut()
 			// Discard bytes.
 			extmsg[i] = scsiReadByte();
 		}
-		
+
 		if (extmsg[0] == 3 && msgLen == 2) // Wide Data Request
 		{
 			// Negotiate down to 8bit
@@ -731,7 +735,7 @@ static void process_MessageOut()
 			static const uint8_t WDTR[] = {0x01, 0x02, 0x03, 0x00};
 			scsiWrite(WDTR, sizeof(WDTR));
 		}
-		else if (extmsg[0] == 1 && msgLen == 5) // Synchronous data request
+		else if (extmsg[0] == 1 && msgLen == 3) // Synchronous data request
 		{
 			// Negotiate back to async
 			scsiEnterPhase(MESSAGE_IN);

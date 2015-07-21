@@ -98,8 +98,10 @@ void scsiInquiry()
 	uint8 evpd = scsiDev.cdb[1] & 1; // enable vital product data.
 	uint8 pageCode = scsiDev.cdb[2];
 	uint32 allocationLength = scsiDev.cdb[4];
+
+	// SASI standard, X3T9.3_185_RevE  states that 0 == 256 bytes
 	if (allocationLength == 0) allocationLength = 256;
-	
+
 	if (!evpd)
 	{
 		if (pageCode)
@@ -171,6 +173,7 @@ void scsiInquiry()
 		// with zeroes. This only seems to happen for Inquiry responses, and not
 		// other commands that also supply an allocation length such as Mode Sense or
 		// Request Sense.
+		// (See below for exception to this rule when 0 allocation length)
 		if (scsiDev.dataLen < allocationLength)
 		{
 			memset(
@@ -178,9 +181,20 @@ void scsiInquiry()
 				0,
 				allocationLength - scsiDev.dataLen);
 		}
-		// Spec 8.2.5 requires us to simply truncate the response if it's too big.
-		scsiDev.dataLen = allocationLength;
-		
+		if (scsiDev.cdb[4] == 0 && scsiDev.dataLen < allocationLength)
+		{
+			// Only send back the minimum number of bytes.
+			// Don't forcably send back 256 bytes, as that may cause problems
+			// with some machines (SGI Iris Indigo running IRIX)
+			// scsiDev.dataLen is already the correct value.
+		}
+		else
+		{
+			// Spec 8.2.5 requires us to simply truncate the response if it's
+			// too big.
+			scsiDev.dataLen = allocationLength;
+		}
+
 		// Set the device type as needed.
 		switch (scsiDev.target->cfg->deviceType)
 		{

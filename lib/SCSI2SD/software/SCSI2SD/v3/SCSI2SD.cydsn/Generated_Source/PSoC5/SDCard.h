@@ -146,8 +146,8 @@ extern uint8 SDCard_initVar;
 ***************************************/
 
 #define SDCard_INT_ON_SPI_DONE    ((uint8) (0u   << SDCard_STS_SPI_DONE_SHIFT))
-#define SDCard_INT_ON_TX_EMPTY    ((uint8) (0u   << SDCard_STS_TX_FIFO_EMPTY_SHIFT))
-#define SDCard_INT_ON_TX_NOT_FULL ((uint8) (1u << \
+#define SDCard_INT_ON_TX_EMPTY    ((uint8) (1u   << SDCard_STS_TX_FIFO_EMPTY_SHIFT))
+#define SDCard_INT_ON_TX_NOT_FULL ((uint8) (0u << \
                                                                            SDCard_STS_TX_FIFO_NOT_FULL_SHIFT))
 #define SDCard_INT_ON_BYTE_COMP   ((uint8) (0u  << SDCard_STS_BYTE_COMPLETE_SHIFT))
 #define SDCard_INT_ON_SPI_IDLE    ((uint8) (0u   << SDCard_STS_SPI_IDLE_SHIFT))

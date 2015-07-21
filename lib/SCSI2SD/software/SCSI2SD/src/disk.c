@@ -527,14 +527,24 @@ void scsiDiskPoll()
 			// systick timer interrupt saves us on the event of a race.
 			int scsiBusy = scsiDMABusy();
 			int sdBusy = sdDMABusy();
-			if (scsiBusy && sdBusy) __WFI();
+			while (scsiBusy && sdBusy)
+			{
+				__WFI();
+				scsiBusy = scsiDMABusy();
+				sdBusy = sdDMABusy();
+			}
 
 			if (sdActive && !sdBusy && sdReadSectorDMAPoll())
 			{
 				sdActive = 0;
 				prep++;
 			}
-			else if (!sdActive &&
+
+			// Usually SD is slower than the SCSI interface.
+			// Prioritise starting the read of the next sector over starting a
+			// SCSI transfer for the last sector
+			// ie. NO "else" HERE.
+			if (!sdActive &&
 				(prep - i < buffers) &&
 				(prep < totalSDSectors))
 			{
@@ -555,7 +565,7 @@ void scsiDiskPoll()
 				scsiActive = 0;
 				++i;
 			}
-			else if (!scsiActive && ((prep - i) > 0))
+			if (!scsiActive && ((prep - i) > 0))
 			{
 				int dmaBytes = SD_SECTOR_SIZE;
 				if ((i % sdPerScsi) == (sdPerScsi - 1))
@@ -603,14 +613,19 @@ void scsiDiskPoll()
 			// systick timer interrupt saves us on the event of a race.
 			int scsiBusy = scsiDMABusy();
 			int sdBusy = sdDMABusy();
-			if (scsiBusy && sdBusy) __WFI();
+			while (scsiBusy && sdBusy)
+			{
+				__WFI();
+				scsiBusy = scsiDMABusy();
+				sdBusy = sdDMABusy();
+			}
 
 			if (sdActive && !sdBusy && sdWriteSectorDMAPoll(i == (totalSDSectors - 1)))
 			{
 				sdActive = 0;
 				i++;
 			}
-			else if (!sdActive && ((prep - i) > 0))
+			if (!sdActive && ((prep - i) > 0))
 			{
 				// Start an SD transfer if we have space.
 				sdWriteMultiSectorDMA(&scsiDev.data[SD_SECTOR_SIZE * (i % buffers)]);
@@ -625,7 +640,7 @@ void scsiDiskPoll()
 				++prep;
 				lastActivityTime = now;
 			}
-			else if (!scsiActive &&
+			if (!scsiActive &&
 				((prep - i) < buffers) &&
 				(prep < totalSDSectors) &&
 				likely(!scsiDisconnected))

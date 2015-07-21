@@ -96,7 +96,7 @@ ConfigUtil::Default(size_t targetIdx)
 	config.deviceType = CONFIG_FIXED;
 
 	// Default to maximum fail-safe options.
-	config.flags = 0;// CONFIG_ENABLE_PARITY | CONFIG_ENABLE_UNIT_ATTENTION;
+	config.flags = 0;
 	config.deviceTypeModifier = 0;
 	config.sdSectorStart = 0;
 
@@ -169,6 +169,13 @@ ConfigUtil::toXML(const TargetConfig& config)
 		"	<parity>" <<
 			(config.flags & CONFIG_ENABLE_PARITY ? "true" : "false") <<
 			"</parity>\n" <<
+
+		"	<!-- Only set to true when using with a fast SCSI2 host\n " <<
+		"	controller. This can cause problems with older/slower\n" <<
+		"	 hardware.-->\n" <<
+		"	<enableScsi2>" <<
+			(config.flags & CONFIG_ENABLE_SCSI2 ? "true" : "false") <<
+			"</enableScsi2>\n" <<
 
 		"\n" <<
 		"	<!-- ********************************************************\n" <<
@@ -303,7 +310,7 @@ parseTarget(wxXmlNode* node)
 				result.scsiId = result.scsiId & ~CONFIG_TARGET_ENABLED;
 			}
 		}
-		if (child->GetName() == "unitAttention")
+		else if (child->GetName() == "unitAttention")
 		{
 			std::string s(child->GetNodeContent().mb_str());
 			if (s == "true")
@@ -315,7 +322,7 @@ parseTarget(wxXmlNode* node)
 				result.flags = result.flags & ~CONFIG_ENABLE_UNIT_ATTENTION;
 			}
 		}
-		if (child->GetName() == "parity")
+		else if (child->GetName() == "parity")
 		{
 			std::string s(child->GetNodeContent().mb_str());
 			if (s == "true")
@@ -325,6 +332,18 @@ parseTarget(wxXmlNode* node)
 			else
 			{
 				result.flags = result.flags & ~CONFIG_ENABLE_PARITY;
+			}
+		}
+		else if (child->GetName() == "enableScsi2")
+		{
+			std::string s(child->GetNodeContent().mb_str());
+			if (s == "true")
+			{
+				result.flags |= CONFIG_ENABLE_SCSI2;
+			}
+			else
+			{
+				result.flags = result.flags & ~CONFIG_ENABLE_SCSI2;
 			}
 		}
 		else if (child->GetName() == "quirks")

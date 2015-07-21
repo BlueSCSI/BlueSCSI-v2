@@ -41,16 +41,18 @@ static uint8 sdDMARxChan = CY_DMA_INVALID_CHANNEL;
 static uint8 sdDMATxChan = CY_DMA_INVALID_CHANNEL;
 
 // Dummy location for DMA to send unchecked CRC bytes to
-static uint8 discardBuffer;
+static uint8 discardBuffer __attribute__((aligned(4)));
 
 // 2 bytes CRC, response, 8bits to close the clock..
 // "NCR" time is up to 8 bytes.
-static uint8_t writeResponseBuffer[8];
+static uint8_t writeResponseBuffer[8]  __attribute__((aligned(4)));
 
-static uint8_t writeStartToken = 0xFC;
+// Padded with a dummy byte just to allow the tx DMA channel to
+// use 2-byte bursts for performance.
+static uint8_t writeStartToken[2]  __attribute__((aligned(4))) = {0xFF, 0xFC};
 
 // Source of dummy SPI bytes for DMA
-static uint8 dummyBuffer = 0xFF;
+static uint8_t dummyBuffer[2]  __attribute__((aligned(4))) = {0xFF, 0xFF};
 
 volatile uint8_t sdRxDMAComplete;
 volatile uint8_t sdTxDMAComplete;
@@ -109,7 +111,8 @@ static uint16_t sdDoCommand(
 
 	// send is static as the address must remain consistent for the static
 	// DMA descriptors to work.
-	static uint8_t send[7];
+	// Size must be divisible by 2 to suit 2-byte-burst TX DMA channel.
+	static uint8_t send[6] __attribute__((aligned(4)));
 	send[0] = cmd | 0x40;
 	send[1] = param >> 24;
 	send[2] = param >> 16;
@@ -123,7 +126,6 @@ static uint16_t sdDoCommand(
 	{
 		send[5] = 1; // stop bit
 	}
-	send[6] = 0xFF; // Result code or stuff byte.
 
 	static uint8_t dmaRxTd = CY_DMA_INVALID_TD;
 	static uint8_t dmaTxTd = CY_DMA_INVALID_TD;
@@ -161,7 +163,7 @@ static uint16_t sdDoCommand(
 	// The DMA controller is a bit trigger-happy. It will retain
 	// a drq request that was triggered while the channel was
 	// disabled.
-	CyDmaClearPendingDrq(sdDMATxChan);
+	CyDmaChSetRequest(sdDMATxChan, CY_DMA_CPU_REQ);
 	CyDmaClearPendingDrq(sdDMARxChan);
 
 	// There is no flow control, so we must ensure we can read the bytes
@@ -172,7 +174,7 @@ static uint16_t sdDoCommand(
 	trace(trace_spinSDDMA);
 	while (!(sdTxDMAComplete && sdRxDMAComplete)) { __WFI(); }
 
-	uint16_t response = discardBuffer;
+	uint16_t response = sdSpiByte(0xFF); // Result code or stuff byte
 	if (unlikely(cmd == SD_STOP_TRANSMISSION))
 	{
 		// Stuff byte is required for this command only.
@@ -313,7 +315,7 @@ dmaReadSector(uint8_t* outputBuffer)
 	// The DMA controller is a bit trigger-happy. It will retain
 	// a drq request that was triggered while the channel was
 	// disabled.
-	CyDmaClearPendingDrq(sdDMATxChan);
+	CyDmaChSetRequest(sdDMATxChan, CY_DMA_CPU_REQ);
 	CyDmaClearPendingDrq(sdDMARxChan);
 
 	// There is no flow control, so we must ensure we can read the bytes
@@ -423,7 +425,7 @@ sdWriteMultiSectorDMA(uint8_t* outputBuffer)
 		
 		// Transmit 512 bytes of data and then 2 bytes CRC, and then get the response byte
 		// We need to do this without stopping the clock
-		CyDmaTdSetConfiguration(dmaTxTd[0], 1, dmaTxTd[1], TD_INC_SRC_ADR);
+		CyDmaTdSetConfiguration(dmaTxTd[0], 2, dmaTxTd[1], TD_INC_SRC_ADR);
 		CyDmaTdSetAddress(dmaTxTd[0], LO16((uint32)&writeStartToken), LO16((uint32)SDCard_TXDATA_PTR));
 
 		CyDmaTdSetConfiguration(dmaTxTd[1], SD_SECTOR_SIZE, dmaTxTd[2], TD_INC_SRC_ADR);
@@ -431,7 +433,7 @@ sdWriteMultiSectorDMA(uint8_t* outputBuffer)
 		CyDmaTdSetConfiguration(dmaTxTd[2], 2 + sizeof(writeResponseBuffer), CY_DMA_DISABLE_TD, SD_TX_DMA__TD_TERMOUT_EN);
 		CyDmaTdSetAddress(dmaTxTd[2], LO16((uint32)&dummyBuffer), LO16((uint32)SDCard_TXDATA_PTR));
 
-		CyDmaTdSetConfiguration(dmaRxTd[0], SD_SECTOR_SIZE + 3, dmaRxTd[1], 0);
+		CyDmaTdSetConfiguration(dmaRxTd[0], SD_SECTOR_SIZE + 4, dmaRxTd[1], 0);
 		CyDmaTdSetAddress(dmaRxTd[0], LO16((uint32)SDCard_RXDATA_PTR), LO16((uint32)&discardBuffer));
 		CyDmaTdSetConfiguration(dmaRxTd[1], sizeof(writeResponseBuffer), CY_DMA_DISABLE_TD, SD_RX_DMA__TD_TERMOUT_EN|TD_INC_DST_ADR);
 		CyDmaTdSetAddress(dmaRxTd[1], LO16((uint32)SDCard_RXDATA_PTR), LO16((uint32)&writeResponseBuffer));
@@ -443,7 +445,7 @@ sdWriteMultiSectorDMA(uint8_t* outputBuffer)
 	// The DMA controller is a bit trigger-happy. It will retain
 	// a drq request that was triggered while the channel was
 	// disabled.
-	CyDmaClearPendingDrq(sdDMATxChan);
+	CyDmaChSetRequest(sdDMATxChan, CY_DMA_CPU_REQ);
 	CyDmaClearPendingDrq(sdDMARxChan);
 
 	sdTxDMAComplete = 0;
@@ -733,7 +735,7 @@ static void sdInitDMA()
 	{
 		sdDMATxChan =
 			SD_TX_DMA_DmaInitialize(
-				1, // Bytes per burst
+				2, // Bytes per burst
 				1, // request per burst
 				HI16(CYDEV_SRAM_BASE),
 				HI16(CYDEV_PERIPH_BASE)
@@ -898,7 +900,8 @@ void sdPoll()
 		SD_CS_Write(0);
 		SD_CS_SetDriveMode(SD_CS_DM_DIG_HIZ);
 
-		CyDelayCycles(64);
+		// Delay extended to work with 60cm cables running cards at 2.85V
+		CyDelayCycles(128);
 		uint8_t cs = SD_CS_Read();
 		SD_CS_SetDriveMode(SD_CS_DM_STRONG)	;
 

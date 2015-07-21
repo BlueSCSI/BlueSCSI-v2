@@ -25,8 +25,9 @@
 
 #define scsiTarget_AUX_CTL (* (reg8 *) scsiTarget_datapath__DP_AUX_CTL_REG)
 
-// DMA controller can't handle any more bytes.
-#define MAX_DMA_BYTES 4095
+// DMA controller can't handle any more than 4095 bytes,
+// but we round down to nearest multiple of 4 bytes..
+#define MAX_DMA_BYTES 4088
 
 // Private DMA variables.
 static int dmaInProgress = 0;
@@ -235,7 +236,8 @@ scsiRead(uint8_t* data, uint32_t count)
 	}
 	else
 	{
-		scsiReadDMA(data, count);
+		uint32_t alignedCount = count & 0xFFFFFFF8;
+		scsiReadDMA(data, alignedCount);
 
 		// Wait for the next DMA interrupt (or the 1ms systick)
 		// It's beneficial to halt the processor to
@@ -243,7 +245,15 @@ scsiRead(uint8_t* data, uint32_t count)
 		__WFI();
 
 		trace(trace_spinReadDMAPoll);
-		while (!scsiReadDMAPoll() && likely(!scsiDev.resetFlag)) {};
+		while (!scsiReadDMAPoll() && likely(!scsiDev.resetFlag))
+		{
+			__WFI();
+		};
+
+		if (count > alignedCount)
+		{
+			scsiReadPIO(data + alignedCount, count - alignedCount);
+		}
 	}
 }
 
@@ -363,7 +373,8 @@ scsiWrite(const uint8_t* data, uint32_t count)
 	}
 	else
 	{
-		scsiWriteDMA(data, count);
+		uint32_t alignedCount = count & 0xFFFFFFF8;
+		scsiWriteDMA(data, alignedCount);
 
 		// Wait for the next DMA interrupt (or the 1ms systick)
 		// It's beneficial to halt the processor to
@@ -371,7 +382,15 @@ scsiWrite(const uint8_t* data, uint32_t count)
 		__WFI();
 
 		trace(trace_spinWriteDMAPoll);
-		while (!scsiWriteDMAPoll() && likely(!scsiDev.resetFlag)) {};
+		while (!scsiWriteDMAPoll() && likely(!scsiDev.resetFlag))
+		{
+			__WFI();
+		};
+		
+		if (count > alignedCount)
+		{
+			scsiWritePIO(data + alignedCount, count - alignedCount);
+		}
 	}
 }
 
@@ -452,7 +471,7 @@ static void scsiPhyInitDMA()
 	{
 		scsiDmaRxChan =
 			SCSI_RX_DMA_DmaInitialize(
-				1, // Bytes per burst
+				4, // Bytes per burst
 				1, // request per burst
 				HI16(CYDEV_PERIPH_BASE),
 				HI16(CYDEV_SRAM_BASE)
@@ -460,7 +479,7 @@ static void scsiPhyInitDMA()
 
 		scsiDmaTxChan =
 			SCSI_TX_DMA_DmaInitialize(
-				1, // Bytes per burst
+				4, // Bytes per burst
 				1, // request per burst
 				HI16(CYDEV_SRAM_BASE),
 				HI16(CYDEV_PERIPH_BASE)
@@ -485,6 +504,13 @@ void scsiPhyInit()
 	SCSI_RST_ISR_StartEx(scsiResetISR);
 
 	SCSI_SEL_ISR_StartEx(scsiSelectionISR);
+
+/*
+	// Disable the glitch filter for ACK to improve performance.
+	// TODO NEED SOME CONFIG
+	SCSI_Glitch_Ctl_Write(1);
+	CY_SET_REG8(scsiTarget_datapath__D0_REG, 0);
+*/
 
 }
 

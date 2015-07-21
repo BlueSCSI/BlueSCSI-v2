@@ -78,7 +78,7 @@ Compatibility
     Atari TT030 System V
     Atari MEGA STE
         needs J3 TERMPWR jumper
-        1GB limit (--blocks=2048000) 
+        1GB limit (--blocks=2048000). The OS will fail to read the boot sector if the disk is >= 1GB.
     Sharp X68000
         SASI models supported. See gamesx.com for information on building a custom cable.
         needs J3 TERMPWR jumper
@@ -118,7 +118,7 @@ Samplers
     EMU E6400 w/ EOS2.80f
     EMU Emax2
     Ensoniq ASR-X, ASR-10 (from v3.4, 2GB size limit)
-        ASR-20 Requires TERMPWR jumper.
+        ASR-10 Requires TERMPWR jumper (applies to pre. 5.0 SCSI2SD boards only)
         ASR-X resets when writing to devices > 2Gb. 
     Kurzweil K2000R
         See kurzweil.com for size limits which a dependant on the OS version. Older OS versions have a 1GB limit.

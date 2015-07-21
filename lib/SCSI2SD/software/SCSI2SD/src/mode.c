@@ -551,7 +551,10 @@ int scsiModeCommand()
 		int pc = scsiDev.cdb[2] >> 6; // Page Control
 		int pageCode = scsiDev.cdb[2] & 0x3F;
 		int allocLength = scsiDev.cdb[4];
-		if (allocLength == 0) allocLength = 256;
+
+		// SCSI1 standard: (CCS X3T9.2/86-52)
+		// "An Allocation Length of zero indicates that no MODE SENSE data shall
+		// be transferred. This condition shall not be considered as an error."
 		doModeSense(1, dbd, pc, pageCode, allocLength);
 	}
 	else if (command == 0x5A)

@@ -157,7 +157,7 @@ class AppFrame : public wxFrame
 {
 public:
 	AppFrame() :
-		wxFrame(NULL, wxID_ANY, "scsi2sd-util", wxPoint(50, 50), wxSize(600, 650)),
+		wxFrame(NULL, wxID_ANY, "scsi2sd-util", wxPoint(50, 50), wxSize(600, 700)),
 		myInitialConfig(false),
 		myTickCounter(0),
 		myLastPollTime(0)
@@ -336,7 +336,7 @@ private:
 					}
 				}
 				sdSectors.push_back(sdSectorRange);
-				autoStartSector = sdSectorRange.second + 1;
+				autoStartSector = sdSectorRange.second;
 			}
 			else
 			{
@@ -841,6 +841,12 @@ private:
 					" row " << (flashRow + j);
 				mmLogStatus(ss.str());
 				currentProgress += 1;
+				if (currentProgress == totalProgress)
+				{
+					ss.str("Load Complete.");
+					mmLogStatus("Load Complete.");
+				}
+
 				if (!progress->Update(
 						(100 * currentProgress) / totalProgress,
 						ss.str()
@@ -873,21 +879,11 @@ private:
 		}
 
 		myInitialConfig = true;
-		mmLogStatus("Load Complete");
-		while (progress->Update(100, "Load Complete"))
-		{
-			// Wait for the user to click "Close"
-			wxMilliSleep(50);
-		}
 		goto out;
 
 	err:
 		mmLogStatus("Load failed");
-		while (progress->Update(100, "Load failed"))
-		{
-			// Wait for the user to click "Close"
-			wxMilliSleep(50);
-		}
+		progress->Update(100, "Load failed");
 		goto out;
 
 	abort:
@@ -930,6 +926,12 @@ private:
 					" row " << (flashRow + j);
 				mmLogStatus(ss.str());
 				currentProgress += 1;
+
+				if (currentProgress == totalProgress)
+				{
+					ss.str("Save Complete.");
+					mmLogStatus("Save Complete.");
+				}
 				if (!progress->Update(
 						(100 * currentProgress) / totalProgress,
 						ss.str()
@@ -961,21 +963,12 @@ private:
 		myHID->enterBootloader();
 		myHID.reset();
 
-		mmLogStatus("Save Complete");
-		while (progress->Update(100, "Save Complete"))
-		{
-			// Wait for the user to click "Close"
-			wxMilliSleep(50);
-		}
+
 		goto out;
 
 	err:
 		mmLogStatus("Save failed");
-		while (progress->Update(100, "Save failed"))
-		{
-			// Wait for the user to click "Close"
-			wxMilliSleep(50);
-		}
+		progress->Update(100, "Save failed");
 		goto out;
 
 	abort:
