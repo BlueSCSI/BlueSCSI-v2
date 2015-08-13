@@ -1,13 +1,13 @@
 ;
 ; FILENAME: cydeviceiar_trm.inc
 ; 
-; PSoC Creator  3.1
+; PSoC Creator  3.2
 ;
 ; DESCRIPTION:
 ; This file provides all of the address values for the entire PSoC device.
 ;
 ;-------------------------------------------------------------------------------
-; Copyright 2008-2013, Cypress Semiconductor Corporation.  All rights reserved.
+; Copyright (c) 2007-2015 Cypress Semiconductor.  All rights reserved.
 ; You may use this file only in accordance with the license, terms, conditions, 
 ; disclaimers, and limitations in the end user license agreement accompanying 
 ; the software package with which this file was provided.

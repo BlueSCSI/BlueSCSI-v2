@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: SDCard.h
-* Version 2.40
+* Version 2.50
 *
 * Description:
 *  Contains the function prototypes, constants and register definition
@@ -10,7 +10,7 @@
 *  None
 *
 ********************************************************************************
-* Copyright 2008-2012, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2015, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
@@ -26,7 +26,7 @@
 /* Check to see if required defines such as CY_PSOC5A are available */
 /* They are defined starting with cy_boot v3.0 */
 #if !defined (CY_PSOC5A)
-    #error Component SPI_Master_v2_40 requires cy_boot v3.0 or later
+    #error Component SPI_Master_v2_50 requires cy_boot v3.0 or later
 #endif /* (CY_PSOC5A) */
 
 
@@ -71,11 +71,6 @@ typedef struct
 {
     uint8 enableState;
     uint8 cntrPeriod;
-    #if(CY_UDB_V0)
-        uint8 saveSrTxIntMask;
-        uint8 saveSrRxIntMask;
-    #endif /* (CY_UDB_V0) */
-
 } SDCard_BACKUP_STRUCT;
 
 
@@ -123,9 +118,9 @@ CY_ISR_PROTO(SDCard_TX_ISR);
 CY_ISR_PROTO(SDCard_RX_ISR);
 
 
-/**********************************
+/***************************************
 *   Variable with external linkage
-**********************************/
+***************************************/
 
 extern uint8 SDCard_initVar;
 
@@ -181,7 +176,6 @@ extern uint8 SDCard_initVar;
 /***************************************
 *             Registers
 ***************************************/
-
 #if(CY_PSOC3 || CY_PSOC5)
     #define SDCard_TXDATA_REG (* (reg8 *) \
                                                 SDCard_BSPIM_sR8_Dp_u0__F0_REG)
@@ -199,7 +193,7 @@ extern uint8 SDCard_initVar;
                                           SDCard_BSPIM_sR8_Dp_u0__16BIT_F0_REG)
         #define SDCard_RXDATA_REG (* (reg16 *) \
                                           SDCard_BSPIM_sR8_Dp_u0__16BIT_F1_REG)
-        #define SDCard_RXDATA_PTR         (  (reg16 *) \
+        #define SDCard_RXDATA_PTR (  (reg16 *) \
                                           SDCard_BSPIM_sR8_Dp_u0__16BIT_F1_REG)
     #else
         #define SDCard_TXDATA_REG (* (reg8 *) \
@@ -236,9 +230,9 @@ extern uint8 SDCard_initVar;
 #define SDCard_RX_STATUS_PTR          (  (reg8 *) SDCard_BSPIM_RxStsReg__STATUS_REG)
 
 #define SDCard_CONTROL_REG            (* (reg8 *) \
-                                      SDCard_BSPIM_BidirMode_SyncCtl_CtrlReg__CONTROL_REG)
+                                      SDCard_BSPIM_BidirMode_CtrlReg__CONTROL_REG)
 #define SDCard_CONTROL_PTR            (  (reg8 *) \
-                                      SDCard_BSPIM_BidirMode_SyncCtl_CtrlReg__CONTROL_REG)
+                                      SDCard_BSPIM_BidirMode_CtrlReg__CONTROL_REG)
 
 #define SDCard_TX_STATUS_MASK_REG     (* (reg8 *) SDCard_BSPIM_TxStsReg__MASK_REG)
 #define SDCard_TX_STATUS_MASK_PTR     (  (reg8 *) SDCard_BSPIM_TxStsReg__MASK_REG)
@@ -323,13 +317,9 @@ extern uint8 SDCard_initVar;
 
 
 /***************************************
-*       Obsolete definitions
+* The following code is DEPRECATED and 
+* should not be used in new projects.
 ***************************************/
-
-/* Following definitions are for version compatibility.
-*  They are obsolete in SPIM v2_30.
-*  Please do not use it in new projects
-*/
 
 #define SDCard_WriteByte   SDCard_WriteTxData
 #define SDCard_ReadByte    SDCard_ReadRxData
@@ -338,7 +328,6 @@ uint8 SDCard_ReadStatus(void)                     ;
 void  SDCard_EnableInt(void)                      ;
 void  SDCard_DisableInt(void)                     ;
 
-/* Obsolete register names. Not to be used in new designs */
 #define SDCard_TXDATA                 (SDCard_TXDATA_REG)
 #define SDCard_RXDATA                 (SDCard_RXDATA_REG)
 #define SDCard_AUX_CONTROLDP0         (SDCard_AUX_CONTROL_DP0_REG)
@@ -362,11 +351,6 @@ void  SDCard_DisableInt(void)                     ;
                                                 SDCard_INT_ON_RX_OVER      | \
                                                 SDCard_INT_ON_BYTE_COMP)
                                                 
-/* Following definitions are for version Compatibility.
-*  They are obsolete in SPIM v2_40.
-*  Please do not use it in new projects
-*/
-
 #define SDCard_DataWidth                  (SDCard_DATA_WIDTH)
 #define SDCard_InternalClockUsed          (SDCard_INTERNAL_CLOCK)
 #define SDCard_InternalTxInterruptEnabled (SDCard_INTERNAL_TX_INT_ENABLED)

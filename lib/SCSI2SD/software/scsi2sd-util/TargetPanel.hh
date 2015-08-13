@@ -80,6 +80,7 @@ private:
 		ID_parityCtrl,
 		ID_unitAttCtrl,
 		ID_scsi2Ctrl,
+		ID_glitchCtrl,
 		ID_startSDSectorCtrl,
 		ID_autoStartSectorCtrl,
 		ID_sectorSizeCtrl,
@@ -114,6 +115,7 @@ private:
 	wxCheckBox* myParityCtrl;
 	wxCheckBox* myUnitAttCtrl;
 	wxCheckBox* myScsi2Ctrl;
+	wxCheckBox* myGlitchCtrl;
 
 	wxIntegerValidator<uint32_t>* myStartSDSectorValidator;
 	wxTextCtrl* myStartSDSectorCtrl;

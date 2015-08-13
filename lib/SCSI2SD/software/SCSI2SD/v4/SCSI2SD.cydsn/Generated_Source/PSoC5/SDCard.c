@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: SDCard.c
-* Version 2.40
+* Version 2.50
 *
 * Description:
 *  This file provides all API functionality of the SPI Master component.
@@ -9,7 +9,7 @@
 *  None.
 *
 ********************************************************************************
-* Copyright 2008-2012, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2015, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
@@ -18,14 +18,14 @@
 #include "SDCard_PVT.h"
 
 #if(SDCard_TX_SOFTWARE_BUF_ENABLED)
-    volatile uint8 SDCard_txBuffer[SDCard_TX_BUFFER_SIZE] = {0u};
+    volatile uint8 SDCard_txBuffer[SDCard_TX_BUFFER_SIZE];
     volatile uint8 SDCard_txBufferFull;
     volatile uint8 SDCard_txBufferRead;
     volatile uint8 SDCard_txBufferWrite;
 #endif /* (SDCard_TX_SOFTWARE_BUF_ENABLED) */
 
 #if(SDCard_RX_SOFTWARE_BUF_ENABLED)
-    volatile uint8 SDCard_rxBuffer[SDCard_RX_BUFFER_SIZE] = {0u};
+    volatile uint8 SDCard_rxBuffer[SDCard_RX_BUFFER_SIZE];
     volatile uint8 SDCard_rxBufferFull;
     volatile uint8 SDCard_rxBufferRead;
     volatile uint8 SDCard_rxBufferWrite;
@@ -523,7 +523,7 @@ void SDCard_WriteTxData(uint8 txData)
         if((SDCard_txBufferRead == SDCard_txBufferWrite) &&
            (0u != (SDCard_swStatusTx & SDCard_STS_TX_FIFO_NOT_FULL)))
         {
-            /* Add directly to the TX FIFO */
+            /* Put data element into the TX FIFO */
             CY_SET_REG8(SDCard_TXDATA_PTR, txData);
         }
         else
@@ -553,13 +553,12 @@ void SDCard_WriteTxData(uint8 txData)
         SDCard_EnableTxInt();
 
     #else
-
+        /* Wait until TX FIFO has a place */
         while(0u == (SDCard_TX_STATUS_REG & SDCard_STS_TX_FIFO_NOT_FULL))
         {
-            ; /* Wait for room in FIFO */
         }
 
-        /* Put byte in TX FIFO */
+        /* Put data element into the TX FIFO */
         CY_SET_REG8(SDCard_TXDATA_PTR, txData);
 
     #endif /* (SDCard_TX_SOFTWARE_BUF_ENABLED) */

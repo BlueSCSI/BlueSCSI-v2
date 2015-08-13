@@ -1,4 +1,4 @@
-201507XX		4.4
+20150813		4.4
 	- Added configuration option to allow SCSI2 mode. This option is OFF by
 	default, and should only be enabled when using the SCSI2SD with a SCSI2 host
 	controller. Extra timing delays are added in the default SCSI1/SASI mode to
@@ -12,6 +12,7 @@
 	SCSI2SD now negotiates back to async transfers instead of simply
 	rejecting the message.
 	- Fixed INQUIRY response to commands lacking an allocation length.
+	- Firmware development updated to PSoC Creator 3.2 (from 3.1)
 
 20150614        4.3
 	- Added configurable disk geometry.

@@ -454,30 +454,9 @@
       </registers>
     </peripheral>
     <peripheral>
-      <name>SCSI_Glitch_Ctl</name>
-      <description>No description available</description>
-      <baseAddress>0x4000647A</baseAddress>
-      <addressBlock>
-        <offset>0</offset>
-        <size>0x0</size>
-        <usage>registers</usage>
-      </addressBlock>
-      <registers>
-        <register>
-          <name>SCSI_Glitch_Ctl_CONTROL_REG</name>
-          <description>No description available</description>
-          <addressOffset>0x0</addressOffset>
-          <size>8</size>
-          <access>read-write</access>
-          <resetValue>0</resetValue>
-          <resetMask>0</resetMask>
-        </register>
-      </registers>
-    </peripheral>
-    <peripheral>
       <name>SCSI_Filtered</name>
       <description>No description available</description>
-      <baseAddress>0x40006467</baseAddress>
+      <baseAddress>0x4000646A</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x0</size>
@@ -630,9 +609,9 @@
       </registers>
     </peripheral>
     <peripheral>
-      <name>SCSI_Out_Ctl</name>
+      <name>SCSI_Glitch_Ctl</name>
       <description>No description available</description>
-      <baseAddress>0x4000647C</baseAddress>
+      <baseAddress>0x40006474</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x0</size>
@@ -640,7 +619,7 @@
       </addressBlock>
       <registers>
         <register>
-          <name>SCSI_Out_Ctl_CONTROL_REG</name>
+          <name>SCSI_Glitch_Ctl_CONTROL_REG</name>
           <description>No description available</description>
           <addressOffset>0x0</addressOffset>
           <size>8</size>
@@ -653,7 +632,7 @@
     <peripheral>
       <name>SCSI_CTL_PHASE</name>
       <description>No description available</description>
-      <baseAddress>0x40006471</baseAddress>
+      <baseAddress>0x40006472</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x0</size>
@@ -1156,9 +1135,30 @@
       </registers>
     </peripheral>
     <peripheral>
+      <name>SCSI_Out_Ctl</name>
+      <description>No description available</description>
+      <baseAddress>0x4000647F</baseAddress>
+      <addressBlock>
+        <offset>0</offset>
+        <size>0x0</size>
+        <usage>registers</usage>
+      </addressBlock>
+      <registers>
+        <register>
+          <name>SCSI_Out_Ctl_CONTROL_REG</name>
+          <description>No description available</description>
+          <addressOffset>0x0</addressOffset>
+          <size>8</size>
+          <access>read-write</access>
+          <resetValue>0</resetValue>
+          <resetMask>0</resetMask>
+        </register>
+      </registers>
+    </peripheral>
+    <peripheral>
       <name>SCSI_Out_Bits</name>
       <description>No description available</description>
-      <baseAddress>0x4000657B</baseAddress>
+      <baseAddress>0x4000647B</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x0</size>

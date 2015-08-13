@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: SDCard_INT.c
-* Version 2.40
+* Version 2.50
 *
 * Description:
 *  This file provides all Interrupt Service Routine (ISR) for the SPI Master
@@ -10,7 +10,7 @@
 *  None.
 *
 ********************************************************************************
-* Copyright 2008-2012, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2015, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
@@ -82,9 +82,9 @@ CY_ISR(SDCard_TX_ISR)
                     SDCard_txBufferFull = 0u;
                 }
 
-                /* Move data from the Buffer to the FIFO */
-                CY_SET_REG8(SDCard_TXDATA_PTR,
-                    SDCard_txBuffer[SDCard_txBufferRead]);
+                /* Put data element into the TX FIFO */
+                CY_SET_REG8(SDCard_TXDATA_PTR, 
+                                             SDCard_txBuffer[SDCard_txBufferRead]);
             }
             else
             {

@@ -505,12 +505,12 @@ void scsiPhyInit()
 
 	SCSI_SEL_ISR_StartEx(scsiSelectionISR);
 
-/*
 	// Disable the glitch filter for ACK to improve performance.
-	// TODO NEED SOME CONFIG
-	SCSI_Glitch_Ctl_Write(1);
-	CY_SET_REG8(scsiTarget_datapath__D0_REG, 0);
-*/
+	if (getConfigByIndex(0)->flags & CONFIG_DISABLE_GLITCH)
+	{
+		SCSI_Glitch_Ctl_Write(1);
+		CY_SET_REG8(scsiTarget_datapath__D0_REG, 0);
+	}
 
 }
 

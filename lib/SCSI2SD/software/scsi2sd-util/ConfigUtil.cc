@@ -170,12 +170,25 @@ ConfigUtil::toXML(const TargetConfig& config)
 			(config.flags & CONFIG_ENABLE_PARITY ? "true" : "false") <<
 			"</parity>\n" <<
 
-		"	<!-- Only set to true when using with a fast SCSI2 host\n " <<
+		"	<!-- ********************************************************\n" <<
+		"	Only set to true when using with a fast SCSI2 host\n " <<
 		"	controller. This can cause problems with older/slower\n" <<
-		"	 hardware.-->\n" <<
+		"	 hardware.\n" <<
+		"	********************************************************* -->\n" <<
 		"	<enableScsi2>" <<
 			(config.flags & CONFIG_ENABLE_SCSI2 ? "true" : "false") <<
 			"</enableScsi2>\n" <<
+
+		"	<!-- ********************************************************\n" <<
+		"	Setting to 'true' will result in increased performance at the\n" <<
+		"	cost of lower noise immunity.\n" <<
+		"	Only set to true when using short cables with only 1 or two\n" <<
+		"	devices. This should remain off when using external SCSI1 DB25\n" <<
+		"	cables.\n" <<
+		"	********************************************************* -->\n" <<
+		"	<disableGlitchFilter>" <<
+			(config.flags & CONFIG_DISABLE_GLITCH ? "true" : "false") <<
+			"</disableGlitchFilter>\n" <<
 
 		"\n" <<
 		"	<!-- ********************************************************\n" <<
@@ -344,6 +357,18 @@ parseTarget(wxXmlNode* node)
 			else
 			{
 				result.flags = result.flags & ~CONFIG_ENABLE_SCSI2;
+			}
+		}
+		else if (child->GetName() == "disableGlitchFilter")
+		{
+			std::string s(child->GetNodeContent().mb_str());
+			if (s == "true")
+			{
+				result.flags |= CONFIG_DISABLE_GLITCH;
+			}
+			else
+			{
+				result.flags = result.flags & ~CONFIG_DISABLE_GLITCH;
 			}
 		}
 		else if (child->GetName() == "quirks")
