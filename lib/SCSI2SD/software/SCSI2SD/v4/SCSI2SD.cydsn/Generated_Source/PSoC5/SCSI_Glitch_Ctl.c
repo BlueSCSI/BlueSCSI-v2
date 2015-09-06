@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: SCSI_Glitch_Ctl.c  
-* Version 1.70
+* Version 1.80
 *
 * Description:
 *  This file contains API to enable firmware control of a Control Register.
@@ -8,7 +8,7 @@
 * Note:
 *
 ********************************************************************************
-* Copyright 2008-2012, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2015, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions, 
 * disclaimers, and limitations in the end user license agreement accompanying 
 * the software package with which this file was provided.
@@ -16,8 +16,10 @@
 
 #include "SCSI_Glitch_Ctl.h"
 
-#if !defined(SCSI_Glitch_Ctl_Sync_ctrl_reg__REMOVED) /* Check for removal by optimization */
+/* Check for removal by optimization */
+#if !defined(SCSI_Glitch_Ctl_Sync_ctrl_reg__REMOVED)
 
+    
 /*******************************************************************************
 * Function Name: SCSI_Glitch_Ctl_Write
 ********************************************************************************

@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: SDCard_PM.c
-* Version 2.40
+* Version 2.50
 *
 * Description:
 *  This file contains the setup, control and status commands to support
@@ -9,7 +9,7 @@
 * Note:
 *
 ********************************************************************************
-* Copyright 2008-2012, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2015, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions,
 * disclaimers, and limitations in the end user license agreement accompanying
 * the software package with which this file was provided.
@@ -21,10 +21,6 @@ static SDCard_BACKUP_STRUCT SDCard_backup =
 {
     SDCard_DISABLED,
     SDCard_BITCTR_INIT,
-    #if(CY_UDB_V0)
-        SDCard_TX_INIT_INTERRUPTS_MASK,
-        SDCard_RX_INIT_INTERRUPTS_MASK
-    #endif /* CY_UDB_V0 */
 };
 
 
@@ -33,7 +29,7 @@ static SDCard_BACKUP_STRUCT SDCard_backup =
 ********************************************************************************
 *
 * Summary:
-*  Saves SPIM configuration.
+*  Empty function. Included for consistency with other components.
 *
 * Parameters:
 *  None.
@@ -41,21 +37,10 @@ static SDCard_BACKUP_STRUCT SDCard_backup =
 * Return:
 *  None.
 *
-* Global Variables:
-*  SDCard_backup - modified when non-retention registers are saved.
-*
-* Reentrant:
-*  No.
-*
 *******************************************************************************/
 void SDCard_SaveConfig(void) 
 {
-    /* Store Status Mask registers */
-    #if(CY_UDB_V0)
-       SDCard_backup.cntrPeriod      = SDCard_COUNTER_PERIOD_REG;
-       SDCard_backup.saveSrTxIntMask = SDCard_TX_STATUS_MASK_REG;
-       SDCard_backup.saveSrRxIntMask = SDCard_RX_STATUS_MASK_REG;
-    #endif /* (CY_UDB_V0) */
+
 }
 
 
@@ -64,7 +49,7 @@ void SDCard_SaveConfig(void)
 ********************************************************************************
 *
 * Summary:
-*  Restores SPIM configuration.
+*  Empty function. Included for consistency with other components.
 *
 * Parameters:
 *  None.
@@ -72,23 +57,10 @@ void SDCard_SaveConfig(void)
 * Return:
 *  None.
 *
-* Global Variables:
-*  SDCard_backup - used when non-retention registers are restored.
-*
-* Side Effects:
-*  If this API is called without first calling SaveConfig then in the following
-*  registers will be default values from Customizer:
-*  SDCard_STATUS_MASK_REG and SDCard_COUNTER_PERIOD_REG.
-*
 *******************************************************************************/
 void SDCard_RestoreConfig(void) 
 {
-    /* Restore the data, saved by SaveConfig() function */
-    #if(CY_UDB_V0)
-        SDCard_COUNTER_PERIOD_REG = SDCard_backup.cntrPeriod;
-        SDCard_TX_STATUS_MASK_REG = ((uint8) SDCard_backup.saveSrTxIntMask);
-        SDCard_RX_STATUS_MASK_REG = ((uint8) SDCard_backup.saveSrRxIntMask);
-    #endif /* (CY_UDB_V0) */
+
 }
 
 
@@ -118,7 +90,6 @@ void SDCard_Sleep(void)
     SDCard_backup.enableState = ((uint8) SDCard_IS_ENABLED);
 
     SDCard_Stop();
-    SDCard_SaveConfig();
 }
 
 
@@ -152,8 +123,6 @@ void SDCard_Sleep(void)
 *******************************************************************************/
 void SDCard_Wakeup(void) 
 {
-    SDCard_RestoreConfig();
-
     #if(SDCard_RX_SOFTWARE_BUF_ENABLED)
         SDCard_rxBufferFull  = 0u;
         SDCard_rxBufferRead  = 0u;

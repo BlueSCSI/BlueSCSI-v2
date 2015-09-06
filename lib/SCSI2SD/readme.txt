@@ -76,9 +76,11 @@ Compatibility
     Amiga 2000 (B2000 rev 6.4 ECS) with DKB RapidFire SCSI 1 card
     Amiga 4000 equipped with CyberStorm PPC using 68pin adapter.
     Atari TT030 System V
+    Atari TT running TOS 3.06 with HDDRIVER software version 9.06
     Atari MEGA STE
         needs J3 TERMPWR jumper
         1GB limit (--blocks=2048000). The OS will fail to read the boot sector if the disk is >= 1GB.
+    Atari Falcon, TOS 4.02, HDDRIVER 9.06 driver
     Sharp X68000
         SASI models supported. See gamesx.com for information on building a custom cable.
         needs J3 TERMPWR jumper

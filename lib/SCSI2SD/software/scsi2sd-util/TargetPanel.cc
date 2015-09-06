@@ -72,7 +72,7 @@ TargetPanel::TargetPanel(wxWindow* parent, const TargetConfig& initialConfig) :
 	myNumSectorValidator(new wxIntegerValidator<uint32_t>),
 	mySizeValidator(new wxFloatingPointValidator<float>(2))
 {
-	wxFlexGridSizer *fgs = new wxFlexGridSizer(14, 3, 9, 25);
+	wxFlexGridSizer *fgs = new wxFlexGridSizer(13, 3, 9, 25);
 
 	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("")));
 	myEnableCtrl =
@@ -134,10 +134,8 @@ TargetPanel::TargetPanel(wxWindow* parent, const TargetConfig& initialConfig) :
 			wxT("Enable Parity"));
 	myParityCtrl->SetToolTip(wxT("Enable to require valid SCSI parity bits when receiving data. Some hosts don't provide parity. SCSI2SD always outputs valid parity bits."));
 	fgs->Add(myParityCtrl);
-	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("")));
 	Bind(wxEVT_CHECKBOX, &TargetPanel::onInput<wxCommandEvent>, this, ID_parityCtrl);
 
-	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("")));
 	myUnitAttCtrl =
 		new wxCheckBox(
 			this,
@@ -145,7 +143,6 @@ TargetPanel::TargetPanel(wxWindow* parent, const TargetConfig& initialConfig) :
 			wxT("Enable Unit Attention"));
 	myUnitAttCtrl->SetToolTip(wxT("Enable this to inform the host of changes after hot-swapping SD cards. Causes problems with Mac Plus."));
 	fgs->Add(myUnitAttCtrl);
-	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("")));
 	Bind(wxEVT_CHECKBOX, &TargetPanel::onInput<wxCommandEvent>, this, ID_unitAttCtrl);
 
 	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("")));
@@ -156,8 +153,16 @@ TargetPanel::TargetPanel(wxWindow* parent, const TargetConfig& initialConfig) :
 			wxT("Enable SCSI2 Mode"));
 	myScsi2Ctrl->SetToolTip(wxT("Enable high-performance mode. May cause problems with SASI/SCSI1 hosts."));
 	fgs->Add(myScsi2Ctrl);
-	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("")));
 	Bind(wxEVT_CHECKBOX, &TargetPanel::onInput<wxCommandEvent>, this, ID_scsi2Ctrl);
+
+	myGlitchCtrl =
+		new wxCheckBox(
+			this,
+			ID_glitchCtrl,
+			wxT("Disable glitch filter"));
+	myGlitchCtrl->SetToolTip(wxT("Improve performance at the cost of noise immunity. Only use with short cables."));
+	fgs->Add(myGlitchCtrl);
+	Bind(wxEVT_CHECKBOX, &TargetPanel::onInput<wxCommandEvent>, this, ID_glitchCtrl);
 
 	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("SD card start sector")));
 	wxWrapSizer* startContainer = new wxWrapSizer();
@@ -332,6 +337,7 @@ TargetPanel::evaluate()
 		myParityCtrl->Enable(enabled);
 		myUnitAttCtrl->Enable(enabled);
 		myScsi2Ctrl->Enable(enabled);
+		myGlitchCtrl->Enable(enabled);
 		myStartSDSectorCtrl->Enable(enabled && !myAutoStartSectorCtrl->IsChecked());
 		myAutoStartSectorCtrl->Enable(enabled);
 		mySectorSizeCtrl->Enable(enabled);
@@ -565,7 +571,8 @@ TargetPanel::getConfig() const
 	config.flags =
 		(myParityCtrl->IsChecked() ? CONFIG_ENABLE_PARITY : 0) |
 		(myUnitAttCtrl->IsChecked() ? CONFIG_ENABLE_UNIT_ATTENTION : 0) |
-		(myScsi2Ctrl->IsChecked() ? CONFIG_ENABLE_SCSI2 : 0);
+		(myScsi2Ctrl->IsChecked() ? CONFIG_ENABLE_SCSI2 : 0) |
+		(myGlitchCtrl->IsChecked() ? CONFIG_DISABLE_GLITCH : 0);
 
 	auto startSDSector = CtrlGetValue<uint32_t>(myStartSDSectorCtrl);
 	config.sdSectorStart = startSDSector.first;
@@ -600,6 +607,7 @@ TargetPanel::setConfig(const TargetConfig& config)
 	myParityCtrl->SetValue(config.flags & CONFIG_ENABLE_PARITY);
 	myUnitAttCtrl->SetValue(config.flags & CONFIG_ENABLE_UNIT_ATTENTION);
 	myScsi2Ctrl->SetValue(config.flags & CONFIG_ENABLE_SCSI2);
+	myGlitchCtrl->SetValue(config.flags & CONFIG_DISABLE_GLITCH);
 
 	{
 		std::stringstream ss; ss << config.sdSectorStart;

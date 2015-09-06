@@ -1,6 +1,6 @@
 /*******************************************************************************
 * File Name: SCSI_Filtered.h  
-* Version 1.80
+* Version 1.90
 *
 * Description:
 *  This file containts Status Register function prototypes and register defines
@@ -8,7 +8,7 @@
 * Note:
 *
 ********************************************************************************
-* Copyright 2008-2012, Cypress Semiconductor Corporation.  All rights reserved.
+* Copyright 2008-2015, Cypress Semiconductor Corporation.  All rights reserved.
 * You may use this file only in accordance with the license, terms, conditions, 
 * disclaimers, and limitations in the end user license agreement accompanying 
 * the software package with which this file was provided.
@@ -19,6 +19,18 @@
 
 #include "cytypes.h"
 #include "CyLib.h"
+
+    
+/***************************************
+*     Data Struct Definitions
+***************************************/
+
+/* Sleep Mode API Support */
+typedef struct
+{
+    uint8 statusState;
+
+} SCSI_Filtered_BACKUP_STRUCT;
 
 
 /***************************************
