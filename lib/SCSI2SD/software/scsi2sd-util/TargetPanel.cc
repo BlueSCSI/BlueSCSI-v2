@@ -109,7 +109,8 @@ TargetPanel::TargetPanel(wxWindow* parent, const TargetConfig& initialConfig) :
 		wxT("Hard Drive"),
 		wxT("Removable"),
 		wxT("CDROM"),
-		wxT("3.5\" Floppy")
+		wxT("3.5\" Floppy"),
+		wxT("Magneto optical")
 	};
 	myDeviceTypeCtrl =
 		new wxChoice(

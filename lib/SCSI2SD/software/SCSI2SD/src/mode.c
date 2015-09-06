@@ -161,6 +161,22 @@ static const uint8 ControlModePage[] =
 0x00, 0x00 // AEN holdoff period.
 };
 
+static const uint8_t SequentialDeviceConfigPage[] =
+{
+0x10, // page code
+0x0E, // Page length
+0x00, // CAP, CAF, Active Format
+0x00, // Active partition
+0x00, // Write buffer full ratio
+0x00, // Read buffer empty ratio
+0x00,0x01, // Write delay time, in 100ms units
+0x00, // Default gap size
+0x10, // auto-generation of default eod (end of data)
+0x00,0x00,0x00 // buffer-size at early warning
+0x00, // No data compression
+0x00 // reserved
+};
+
 // Allow Apple 68k Drive Setup to format this drive.
 // Code
 static const uint8 AppleVendorPage[] =
@@ -216,6 +232,17 @@ static void doModeSense(
 		mediumType = 0x02; // 120mm CDROM, data only.
 		deviceSpecificParam = 0;
 		density = 0x01; // User data only, 2048bytes per sector.
+		break;
+
+	case CONFIG_SEQUENTIAL:
+		mediumType = 0; // reserved
+		deviceSpecificParam =
+			(blockDev.state & DISK_WP) ? 0x80 : 0;
+		density = 0x13; // DAT Data Storage, X3B5/88-185A 
+		break;
+
+	case CONFIG_MO:
+		TODO
 		break;
 
 	};
@@ -398,6 +425,18 @@ static void doModeSense(
 		pageFound = 1;
 		pageIn(pc, idx, ControlModePage, sizeof(ControlModePage));
 		idx += sizeof(ControlModePage);
+	}
+
+	if ((scsiDev.target->cfg->deviceType == CONFIG_SEQUENTIAL) &&
+		(pageCode == 0x10 || pageCode == 0x3F))
+	{
+		pageFound = 1;
+		pageIn(
+			pc,
+			idx,
+			SequentialDeviceConfigPage,
+			sizeof(SequentialDeviceConfigPage));
+		idx += sizeof(SequentialDeviceConfigPage);
 	}
 
 	if ((

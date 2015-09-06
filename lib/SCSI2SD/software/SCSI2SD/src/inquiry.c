@@ -203,6 +203,16 @@ void scsiInquiry()
 			scsiDev.data[1] |= 0x80; // Removable bit.
 			break;
 
+		case CONFIG_SEQUENTIAL:
+			scsiDev.data[0] = 0x01; // device type
+			scsiDev.data[1] |= 0x80; // Removable bit.
+			break;
+			
+		case CONFIG_MO:
+			scsiDev.data[0] = 0x07; // device type
+			scsiDev.data[1] |= 0x80; // Removable bit.
+			break;
+
 		case CONFIG_FLOPPY_14MB:
 		case CONFIG_REMOVEABLE:
 			scsiDev.data[1] |= 0x80; // Removable bit.

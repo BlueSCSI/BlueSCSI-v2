@@ -277,50 +277,43 @@ int scsiCDRomCommand()
 	int commandHandled = 1;
 
 	uint8 command = scsiDev.cdb[0];
-	if (scsiDev.target->cfg->deviceType == CONFIG_OPTICAL)
+	if (command == 0x43)
 	{
-		if (command == 0x43)
-		{
-			// CD-ROM Read TOC
-			int MSF = scsiDev.cdb[1] & 0x02 ? 1 : 0;
-			uint8_t track = scsiDev.cdb[6];
-			uint16_t allocationLength =
-				(((uint32_t) scsiDev.cdb[7]) << 8) +
-				scsiDev.cdb[8];
+		// CD-ROM Read TOC
+		int MSF = scsiDev.cdb[1] & 0x02 ? 1 : 0;
+		uint8_t track = scsiDev.cdb[6];
+		uint16_t allocationLength =
+			(((uint32_t) scsiDev.cdb[7]) << 8) +
+			scsiDev.cdb[8];
 
-			// Reject MMC commands for now, otherwise the TOC data format
-			// won't be understood.
-			// The "format" field is reserved for SCSI-2
-			uint8_t format = scsiDev.cdb[2] & 0x0F;
-			switch (format)
+		// Reject MMC commands for now, otherwise the TOC data format
+		// won't be understood.
+		// The "format" field is reserved for SCSI-2
+		uint8_t format = scsiDev.cdb[2] & 0x0F;
+		switch (format)
+		{
+			case 0: doReadTOC(MSF, track, allocationLength); break; // SCSI-2
+			case 1: doReadSessionInfo(MSF, allocationLength); break; // MMC2
+			case 2: doReadFullTOC(0, track, allocationLength); break; // MMC2
+			case 3: doReadFullTOC(1, track, allocationLength); break; // MMC2
+			default:
 			{
-				case 0: doReadTOC(MSF, track, allocationLength); break; // SCSI-2
-				case 1: doReadSessionInfo(MSF, allocationLength); break; // MMC2
-				case 2: doReadFullTOC(0, track, allocationLength); break; // MMC2
-				case 3: doReadFullTOC(1, track, allocationLength); break; // MMC2
-				default:
-				{
-					scsiDev.status = CHECK_CONDITION;
-					scsiDev.target->sense.code = ILLEGAL_REQUEST;
-					scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
-					scsiDev.phase = STATUS;
-				}
+				scsiDev.status = CHECK_CONDITION;
+				scsiDev.target->sense.code = ILLEGAL_REQUEST;
+				scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+				scsiDev.phase = STATUS;
 			}
 		}
-		else if (command == 0x44)
-		{
-			// CD-ROM Read Header
-			int MSF = scsiDev.cdb[1] & 0x02 ? 1 : 0;
-			uint32_t lba = 0; // IGNORED for now
-			uint16_t allocationLength =
-				(((uint32_t) scsiDev.cdb[7]) << 8) +
-				scsiDev.cdb[8];
-			doReadHeader(MSF, lba, allocationLength);
-		}
-		else
-		{
-			commandHandled = 0;
-		}
+	}
+	else if (command == 0x44)
+	{
+		// CD-ROM Read Header
+		int MSF = scsiDev.cdb[1] & 0x02 ? 1 : 0;
+		uint32_t lba = 0; // IGNORED for now
+		uint16_t allocationLength =
+			(((uint32_t) scsiDev.cdb[7]) << 8) +
+			scsiDev.cdb[8];
+		doReadHeader(MSF, lba, allocationLength);
 	}
 	else
 	{

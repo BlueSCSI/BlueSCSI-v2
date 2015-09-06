@@ -264,6 +264,7 @@ static void process_Command()
 	control = scsiDev.cdb[scsiDev.cdbLen - 1];
 
 	scsiDev.cmdCount++;
+	TargetConfig* cfg = scsiDev.target->cfg;
 
 	if (unlikely(scsiDev.resetFlag))
 	{
@@ -273,7 +274,7 @@ static void process_Command()
 		return;
 	}
 	else if (scsiDev.parityError &&
-		(scsiDev.target->cfg->flags & CONFIG_ENABLE_PARITY) &&
+		(cfg->flags & CONFIG_ENABLE_PARITY) &&
 		(scsiDev.compatMode >= COMPAT_SCSI2))
 	{
 		scsiDev.target->sense.code = ABORTED_COMMAND;
@@ -326,7 +327,7 @@ static void process_Command()
 	// on receiving the unit attention response on boot, thus
 	// triggering another unit attention condition.
 	else if (scsiDev.target->unitAttention &&
-		(scsiDev.target->cfg->flags & CONFIG_ENABLE_UNIT_ATTENTION))
+		(cfg->flags & CONFIG_ENABLE_UNIT_ATTENTION))
 	{
 		scsiDev.target->sense.code = UNIT_ATTENTION;
 		scsiDev.target->sense.asc = scsiDev.target->unitAttention;
@@ -352,6 +353,14 @@ static void process_Command()
 	{
 		enter_Status(CONFLICT);
 	}
+	// Handle odd device types first that may override basic read and
+	// write commands. Will fall-through to generic disk handling.
+	else if (((cfg->deviceType == CONFIG_OPTICAL) && scsiCDRomCommand()) ||
+		((cfg->deviceType == CONFIG_SEQUENTIAL) && scsiTapeCommand()) ||
+		((cfg->deviceType == CONFIG_MO) && scsiMOCommand()))
+	{
+		// Already handled.
+	}
 	else if (scsiDiskCommand())
 	{
 		// Already handled.
@@ -374,9 +383,7 @@ static void process_Command()
 	{
 		scsiReadBuffer();
 	}
-	else if (
-		!scsiCDRomCommand() &&
-		!scsiModeCommand())
+	else if (!scsiModeCommand())
 	{
 		scsiDev.target->sense.code = ILLEGAL_REQUEST;
 		scsiDev.target->sense.asc = INVALID_COMMAND_OPERATION_CODE;
