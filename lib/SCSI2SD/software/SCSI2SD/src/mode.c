@@ -172,7 +172,7 @@ static const uint8_t SequentialDeviceConfigPage[] =
 0x00,0x01, // Write delay time, in 100ms units
 0x00, // Default gap size
 0x10, // auto-generation of default eod (end of data)
-0x00,0x00,0x00 // buffer-size at early warning
+0x00,0x00,0x00, // buffer-size at early warning
 0x00, // No data compression
 0x00 // reserved
 };
@@ -242,7 +242,10 @@ static void doModeSense(
 		break;
 
 	case CONFIG_MO:
-		TODO
+        mediumType = 0x03; // Optical reversible or erasable medium
+		deviceSpecificParam =
+			(blockDev.state & DISK_WP) ? 0x80 : 0;
+		density = 0x00; // Default
 		break;
 
 	};

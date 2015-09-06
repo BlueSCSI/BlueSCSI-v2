@@ -1,7 +1,7 @@
 /*******************************************************************************
 * FILENAME: cyfitter_cfg.h
 * 
-* PSoC Creator  3.2
+* PSoC Creator  3.2 SP1
 *
 * DESCRIPTION:
 * This file provides basic startup and mux configration settings
