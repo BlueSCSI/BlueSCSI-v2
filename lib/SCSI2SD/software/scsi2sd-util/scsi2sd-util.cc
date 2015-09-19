@@ -431,7 +431,7 @@ private:
 		try
 		{
 			std::vector<TargetConfig> configs(
-				ConfigUtil::fromXML(dlg.GetPath()));
+				ConfigUtil::fromXML(std::string(dlg.GetPath())));
 
 			size_t i;
 			for (i = 0; i < configs.size() && i < myTargets.size(); ++i)

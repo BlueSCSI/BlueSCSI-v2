@@ -1,11 +1,24 @@
 VPATH=cybootloaderutils ../SCSI2SD/src
 
-CPPFLAGS = -I cybootloaderutils -I hidapi/hidapi -I ../include -Ilibzipper-1.0.4 -I$(BUILD)/zlib
+ifeq ($(USE_SYSTEM), Yes)
+USE_SYSTEM_HIDAPI = Yes
+USE_SYSTEM_ZLIB = Yes
+USE_SYSTEM_WX = Yes
+endif
+
+CPPFLAGS_HIDAPI=$(shell pkg-config hidapi-hidraw --cflags)
+CPPFLAGS_ZLIB=$(shell pkg-config zlib --cflags)
+
+CPPFLAGS = -I cybootloaderutils $(CPPFLAGS_HIDAPI) -I ../include -Ilibzipper-1.0.4 $(CPPFLAGS_ZLIB)
 CFLAGS += -Wall -Wno-pointer-sign -O2 -g
 CXXFLAGS += -Wall -O2 -g -std=c++0x
-LDFLAGS += -L$(BUILD)/libzipper/.libs -lzipper -L$(BUILD)/zlib -lz
 
-LIBZIPPER_CONFIG = --disable-shared LDFLAGS="-L../zlib" CPPFLAGS="-I../zlib"
+LDFLAGS_ZLIB=$(shell pkg-config zlib --libs)
+LDFLAGS_HIDAPI=$(shell pkg-config hidapi-hidraw --libs)
+
+LDFLAGS += -L$(BUILD)/libzipper/.libs -lzipper $(LDFLAGS_ZLIB) $(LDFLAGS_HIDAPI)
+
+LIBZIPPER_CONFIG = --disable-shared LDFLAGS="$(LDFLAGS_ZLIB)" CPPFLAGS="$(CPPFLAGS_ZLIB)"
 
 # wxWidgets 3.0.2 uses broken Webkit headers under OSX Yosemeti
 # liblzma not available on OSX 10.7
@@ -60,8 +73,10 @@ CYAPI = \
 	$(BUILD)/cybtldr_parse.o \
 
 
+ifneq ($(USE_SYSTEM_HIDAPI),Yes)
 HIDAPI = \
-	$(BUILD)/hid.o \
+	$(BUILD)/hid.o
+endif
 
 
 OBJ = \
@@ -79,6 +94,7 @@ EXEOBJ = \
 
 
 
+ifneq ($(USE_SYSTEM_ZLIB),Yes)
 $(OBJ): $(BUILD)/zlib/buildstamp
 $(EXEOBJ): $(BUILD)/zlib/buildstamp
 $(BUILD)/zlib/buildstamp:
@@ -90,25 +106,40 @@ $(BUILD)/zlib/buildstamp:
 		$(MAKE) \
 	) && \
 	touch $@
+endif
 
+ifneq ($(USE_SYSTEM_WX),Yes)
 $(OBJ): $(BUILD)/wx.buildstamp
 $(EXEOBJ): $(BUILD)/wx.buildstamp
+ifneq ($(USE_SYSTEM_ZLIB),Yes)
 $(BUILD)/wx.buildstamp: $(BUILD)/zlib/buildstamp
+else
+$(BUILD)/wx.buildstamp:
+endif
 	mkdir -p $(dir $@)
 	( \
 		cd $(BUILD) && \
-		$(CURDIR)/wxWidgets/configure $(WX_CONFIG) CPPFLAGS=-I../zlib LDFLAGS=-I../zlib && \
+		$(CURDIR)/wxWidgets/configure $(WX_CONFIG) CPPFLAGS="$(CPPFLAGS_ZLIB)" LDFLAGS="$(LDFLAGS_ZLIB)" && \
 		$(MAKE) \
 	) && \
 	touch $@
+endif
+
+ifneq ($(USE_SYSTEM_ZLIB),Yes)
+LIBZIPPER_STATIC=-enable-static
+endif
 
 $(OBJ): $(BUILD)/libzipper/buildstamp
 $(EXEOBJ): $(BUILD)/libzipper/buildstamp
+ifneq ($(USE_SYSTEM_ZLIB),Yes)
 $(BUILD)/libzipper/buildstamp: $(BUILD)/zlib/buildstamp
+else
+$(BUILD)/libzipper/buildstamp:
+endif
 	mkdir -p $(dir $@)
 	( \
 		cd $(dir $@) && \
-		$(CURDIR)/libzipper-1.0.4/configure ${LIBZIPPER_CONFIG} --disable-shared --enable-static && \
+		$(CURDIR)/libzipper-1.0.4/configure ${LIBZIPPER_CONFIG} --disable-shared $(LIBZIPPER_STATIC) && \
 		$(MAKE) libzipper.la \
 	) && \
 	touch $@
@@ -119,15 +150,27 @@ $(BUILD)/%.o: %.c
 
 $(BUILD)/%.o: %.cc
 	mkdir -p $(dir $@)
+ifneq ($(USE_SYSTEM_WX),Yes)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) `$(BUILD)/wx-config --cxxflags` $< -c -o $@
+else
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) `wx-config-3.0 --cxxflags` $< -c -o $@
+endif
 
 $(BUILD)/scsi2sd-util$(EXE): $(OBJ) $(BUILD)/scsi2sd-util.o
 	mkdir -p $(dir $@)
+ifneq ($(USE_SYSTEM_WX),Yes)
 	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) `$(BUILD)/wx-config --libs` -o $@
+else
+	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) `wx-config-3.0 --libs` -o $@
+endif
 
 $(BUILD)/scsi2sd-monitor$(EXE): $(OBJ) $(BUILD)/scsi2sd-monitor.o
 	mkdir -p $(dir $@)
+ifneq ($(USE_SYSTEM_WX),Yes)
 	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) `$(BUILD)/wx-config --libs` -o $@
+else
+	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) `wx-config-3.0 --libs` -o $@
+endif
 
 clean:
 	rm $(BUILD)/scsi2sd-util$(EXE) $(OBJ) $(BUILD)/libzipper/buildstamp
