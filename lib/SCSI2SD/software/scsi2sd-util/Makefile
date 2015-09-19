@@ -1,5 +1,8 @@
 VPATH=cybootloaderutils ../SCSI2SD/src
 
+VERSION=4.4.0
+NAME=scsi2sd-util
+
 ifeq ($(USE_SYSTEM), Yes)
 USE_SYSTEM_HIDAPI = Yes
 USE_SYSTEM_ZLIB = Yes
@@ -9,7 +12,7 @@ endif
 CPPFLAGS_HIDAPI=$(shell pkg-config hidapi-hidraw --cflags)
 CPPFLAGS_ZLIB=$(shell pkg-config zlib --cflags)
 
-CPPFLAGS = -I cybootloaderutils $(CPPFLAGS_HIDAPI) -I ../include -Ilibzipper-1.0.4 $(CPPFLAGS_ZLIB)
+CPPFLAGS = -I cybootloaderutils $(CPPFLAGS_HIDAPI) -I. -I ../include -Ilibzipper-1.0.4 $(CPPFLAGS_ZLIB)
 CFLAGS += -Wall -Wno-pointer-sign -O2 -g
 CXXFLAGS += -Wall -O2 -g -std=c++0x
 
@@ -175,3 +178,19 @@ endif
 clean:
 	rm $(BUILD)/scsi2sd-util$(EXE) $(OBJ) $(BUILD)/libzipper/buildstamp
 
+PREFIX=/usr
+install:
+	install -d $(DESTDIR)/$(PREFIX)/bin
+	install build/linux/scsi2sd-util $(DESTDIR)/$(PREFIX)/bin
+	install build/linux/scsi2sd-monitor $(DESTDIR)/$(PREFIX)/bin
+
+dist:
+	rm -fr $(NAME)-$(VERSION)
+	mkdir $(NAME)-$(VERSION)
+	cp -pr build.sh ConfigUtil.cc ConfigUtil.hh scsi2sd-util.spec \
+               ../SCSI2SD/src/hidpacket.c ../include/hidpacket.h ../include/scsi2sd.h \
+	       cybootloaderutils Firmware.cc Firmware.hh libzipper-1.0.4 Makefile \
+               SCSI2SD_Bootloader.cc SCSI2SD_Bootloader.hh SCSI2SD_HID.cc SCSI2SD_HID.hh \
+	       scsi2sd-monitor.cc scsi2sd-util.cc TargetPanel.cc TargetPanel.hh \
+	       $(NAME)-$(VERSION)
+	tar jcvf $(NAME)-$(VERSION).tar.bz2 $(NAME)-$(VERSION)
