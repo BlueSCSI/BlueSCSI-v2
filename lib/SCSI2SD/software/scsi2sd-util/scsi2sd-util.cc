@@ -644,6 +644,18 @@ private:
 		}
 	}
 
+	void dumpSCSICommand(std::vector<uint8_t> buf)
+        {
+		std::stringstream msg;
+		msg << std::hex;
+		for (size_t i = 0; i < 32 && i < buf.size(); ++i)
+		{
+			msg << std::setfill('0') << std::setw(2) <<
+			static_cast<int>(buf[i]) << ' ';
+		}
+		wxLogMessage(this, msg.str().c_str());
+        }
+
 	void logSCSI()
 	{
 		if (!mySCSILogChk->IsChecked() ||
@@ -656,14 +668,7 @@ private:
 			std::vector<uint8_t> info(HID::HID_PACKET_SIZE);
 			if (myHID->readSCSIDebugInfo(info))
 			{
-				std::stringstream msg;
-				msg << std::hex;
-				for (size_t i = 0; i < 32 && i < info.size(); ++i)
-				{
-					msg << std::setfill('0') << std::setw(2) <<
-						static_cast<int>(info[i]) << ' ';
-				}
-				wxLogMessage(this, msg.str().c_str());
+				dumpSCSICommand(info);
 			}
 		}
 		catch (std::exception& e)
