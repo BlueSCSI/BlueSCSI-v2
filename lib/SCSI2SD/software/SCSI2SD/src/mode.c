@@ -210,7 +210,7 @@ static void doModeSense(
 	uint8_t mediumType = 0;
 	uint8_t deviceSpecificParam = 0;
 	uint8_t density = 0;
-	switch (scsiDev.target->cfg->deviceType == CONFIG_OPTICAL)
+	switch (scsiDev.target->cfg->deviceType)
 	{
 	case CONFIG_FIXED:
 	case CONFIG_REMOVEABLE:
