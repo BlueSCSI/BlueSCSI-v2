@@ -181,19 +181,9 @@ void scsiInquiry()
 				0,
 				allocationLength - scsiDev.dataLen);
 		}
-		if (scsiDev.cdb[4] == 0 && scsiDev.dataLen < allocationLength)
-		{
-			// Only send back the minimum number of bytes.
-			// Don't forcably send back 256 bytes, as that may cause problems
-			// with some machines (SGI Iris Indigo running IRIX)
-			// scsiDev.dataLen is already the correct value.
-		}
-		else
-		{
-			// Spec 8.2.5 requires us to simply truncate the response if it's
-			// too big.
-			scsiDev.dataLen = allocationLength;
-		}
+		// Spec 8.2.5 requires us to simply truncate the response if it's
+		// too big.
+		scsiDev.dataLen = allocationLength;
 
 		// Set the device type as needed.
 		switch (scsiDev.target->cfg->deviceType)

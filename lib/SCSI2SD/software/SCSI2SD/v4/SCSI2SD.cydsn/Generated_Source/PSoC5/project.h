@@ -1,7 +1,7 @@
 /*******************************************************************************
 * FILENAME: project.h
 * 
-* PSoC Creator  3.2 SP1
+* PSoC Creator  3.2
 *
 * DESCRIPTION:
 * It contains references to all generated header files and should not be modified.

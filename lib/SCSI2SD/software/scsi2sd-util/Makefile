@@ -9,19 +9,36 @@ USE_SYSTEM_ZLIB = Yes
 USE_SYSTEM_WX = Yes
 endif
 
+ifeq ($(USE_SYSTEM_HIDAPI), Yes)
 CPPFLAGS_HIDAPI=$(shell pkg-config hidapi-hidraw --cflags)
+LDFLAGS_HIDAPI=$(shell pkg-config hidapi-hidraw --libs)
+else
+CPPFLAGS_HIDAPI=-I hidapi/hidapi
+LDFLAGS_HIDAPI=
+endif
+
+ifeq ($(USE_SYSTEM_ZLIB), Yes)
 CPPFLAGS_ZLIB=$(shell pkg-config zlib --cflags)
+LDFLAGS_ZLIB=$(shell pkg-config zlib --libs)
+LIBZIPPER_CONFIG = --disable-shared LDFLAGS="$(LDFLAGS_ZLIB)" CPPFLAGS="$(CPPFLAGS_ZLIB)"
+else
+CPPFLAGS_ZLIB=-I$(BUILD)/zlib
+LDFLAGS_ZLIB=-L$(BUILD)/zlib -lz
+LIBZIPPER_CONFIG = --disable-shared LDFLAGS="-L../zlib" CPPFLAGS="-I../zlib"
+endif
+
+ifeq ($(USE_SYSTEM_WX),Yes)
+LDFLAGS_WX=$(shell wx-config-3.0 --libs)
+else
+LDFLAGS_WX=$(shell $(BUILD)/wx-config --libs)
+endif
 
 CPPFLAGS = -I cybootloaderutils $(CPPFLAGS_HIDAPI) -I. -I ../include -Ilibzipper-1.0.4 $(CPPFLAGS_ZLIB)
 CFLAGS += -Wall -Wno-pointer-sign -O2 -g
 CXXFLAGS += -Wall -O2 -g -std=c++0x
 
-LDFLAGS_ZLIB=$(shell pkg-config zlib --libs)
-LDFLAGS_HIDAPI=$(shell pkg-config hidapi-hidraw --libs)
-
 LDFLAGS += -L$(BUILD)/libzipper/.libs -lzipper $(LDFLAGS_ZLIB) $(LDFLAGS_HIDAPI)
 
-LIBZIPPER_CONFIG = --disable-shared LDFLAGS="$(LDFLAGS_ZLIB)" CPPFLAGS="$(CPPFLAGS_ZLIB)"
 
 # wxWidgets 3.0.2 uses broken Webkit headers under OSX Yosemeti
 # liblzma not available on OSX 10.7
@@ -161,19 +178,11 @@ endif
 
 $(BUILD)/scsi2sd-util$(EXE): $(OBJ) $(BUILD)/scsi2sd-util.o
 	mkdir -p $(dir $@)
-ifneq ($(USE_SYSTEM_WX),Yes)
-	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) `$(BUILD)/wx-config --libs` -o $@
-else
-	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) `wx-config-3.0 --libs` -o $@
-endif
+	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) $(LDFLAGS_WX) -o $@
 
 $(BUILD)/scsi2sd-monitor$(EXE): $(OBJ) $(BUILD)/scsi2sd-monitor.o
 	mkdir -p $(dir $@)
-ifneq ($(USE_SYSTEM_WX),Yes)
-	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) `$(BUILD)/wx-config --libs` -o $@
-else
-	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) `wx-config-3.0 --libs` -o $@
-endif
+	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) $(LDFLAGS_WX) -o $@
 
 clean:
 	rm $(BUILD)/scsi2sd-util$(EXE) $(OBJ) $(BUILD)/libzipper/buildstamp

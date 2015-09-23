@@ -169,6 +169,12 @@ static void doReadCapacity()
 
 static void doWrite(uint32 lba, uint32 blocks)
 {
+	if (unlikely(scsiDev.target->cfg->deviceType == CONFIG_FLOPPY_14MB)) {
+		// Floppies are supposed to be slow. Some systems can't handle a floppy
+		// without an access time
+		CyDelay(10);
+	}
+
 	if (unlikely(blockDev.state & DISK_WP) ||
 		unlikely(scsiDev.target->cfg->deviceType == CONFIG_OPTICAL))
 
@@ -212,6 +218,12 @@ static void doWrite(uint32 lba, uint32 blocks)
 
 static void doRead(uint32 lba, uint32 blocks)
 {
+	if (unlikely(scsiDev.target->cfg->deviceType == CONFIG_FLOPPY_14MB)) {
+		// Floppies are supposed to be slow. Some systems can't handle a floppy
+		// without an access time
+		CyDelay(10);
+	}
+
 	uint32_t capacity = getScsiCapacity(
 		scsiDev.target->cfg->sdSectorStart,
 		scsiDev.target->liveCfg.bytesPerSector,
@@ -483,6 +495,15 @@ int scsiDiskCommand()
 			scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
 			scsiDev.phase = STATUS;
 		}
+	}
+	else if (unlikely(command == 0x37))
+	{
+		// READ DEFECT DATA
+		scsiDev.status = CHECK_CONDITION;
+		scsiDev.target->sense.code = NO_SENSE;
+		scsiDev.target->sense.asc = DEFECT_LIST_NOT_FOUND;
+		scsiDev.phase = STATUS;
+
 	}
 	else
 	{

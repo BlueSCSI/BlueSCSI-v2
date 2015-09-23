@@ -1,3 +1,7 @@
+20150x0x		4.5
+	- Fix bug in SCSI MODE SENSE that returned the wrong mode type
+		- Fixes CDROM emulation
+
 20150813		4.4
 	- Added configuration option to allow SCSI2 mode. This option is OFF by
 	default, and should only be enabled when using the SCSI2SD with a SCSI2 host

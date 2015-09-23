@@ -511,7 +511,6 @@ void scsiPhyInit()
 		SCSI_Glitch_Ctl_Write(1);
 		CY_SET_REG8(scsiTarget_datapath__D0_REG, 0);
 	}
-
 }
 
 // 1 = DBx error

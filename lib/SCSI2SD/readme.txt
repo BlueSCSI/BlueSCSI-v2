@@ -77,6 +77,7 @@ Compatibility
     Amiga 4000 equipped with CyberStorm PPC using 68pin adapter.
     Atari TT030 System V
     Atari TT running TOS 3.06 with HDDRIVER software version 9.06
+    Atari Mega ST 1; TOS 1.04; Protar ProFile 30 external hard drive enclosure (1GB size limitation)
     Atari MEGA STE
         needs J3 TERMPWR jumper
         1GB limit (--blocks=2048000). The OS will fail to read the boot sector if the disk is >= 1GB.
@@ -91,6 +92,7 @@ Compatibility
         Also reported to work on Thinkpad 860 running Win NT 4.0 PowerPC.
     AT&T 3B2/600
     Sun 2/120 Workstation (Unit Attention disabled)
+    Sun 4/50 workstation
     Data General MV/2500DC running AOS/VS
         Vendor: MICROoP
         Product: 1578-15       UP
@@ -108,6 +110,7 @@ Compatibility
         4135 cylinder per volume
         1 spare sector per cylinder
         2051459 usable sectors on volume
+    Apollo 400/425s running DOMAIN/OS
 
 
 Samplers
@@ -122,6 +125,7 @@ Samplers
     Ensoniq ASR-X, ASR-10 (from v3.4, 2GB size limit)
         ASR-10 Requires TERMPWR jumper (applies to pre. 5.0 SCSI2SD boards only)
         ASR-X resets when writing to devices > 2Gb. 
+    Ensoniq EPS16+
     Kurzweil K2000R
         See kurzweil.com for size limits which a dependant on the OS version. Older OS versions have a 1GB limit.
         SCSI cable reversed 
