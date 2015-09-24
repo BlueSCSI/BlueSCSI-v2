@@ -244,7 +244,7 @@ static void doRead(uint32 lba, uint32 blocks)
 		scsiDev.phase = DATA_IN;
 		scsiDev.dataLen = 0; // No data yet
 
-		if ((blocks == 1) ||
+		if ((blocks * SDSectorsPerSCSISector(scsiDev.target->liveCfg.bytesPerSector) == 1) ||
 			unlikely(((uint64) lba) + blocks == capacity)
 			)
 		{
