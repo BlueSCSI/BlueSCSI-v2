@@ -20,6 +20,7 @@
 #include <CyLib.h>
 #include <SCSI_SEL_ISR.h>
 
+
 #if !defined(SCSI_SEL_ISR__REMOVED) /* Check for removal by optimization */
 
 /*******************************************************************************
@@ -158,6 +159,10 @@ void SCSI_SEL_ISR_Stop(void)
 *******************************************************************************/
 CY_ISR(SCSI_SEL_ISR_Interrupt)
 {
+    #ifdef SCSI_SEL_ISR_INTERRUPT_INTERRUPT_CALLBACK
+        SCSI_SEL_ISR_Interrupt_InterruptCallback();
+    #endif /* SCSI_SEL_ISR_INTERRUPT_INTERRUPT_CALLBACK */ 
+
     /*  Place your Interrupt code here. */
     /* `#START SCSI_SEL_ISR_Interrupt` */
 

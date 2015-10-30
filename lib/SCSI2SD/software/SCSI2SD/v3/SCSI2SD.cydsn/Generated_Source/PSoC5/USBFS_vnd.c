@@ -17,6 +17,7 @@
 #include "USBFS.h"
 #include "USBFS_pvt.h"
 
+
 #if(USBFS_EXTERN_VND == USBFS_FALSE)
 
 
@@ -77,6 +78,10 @@ uint8 USBFS_HandleVendorRqst(void)
 
     /* `#END` */
 
+    #ifdef USBFS_HANDLE_VENDOR_RQST_CALLBACK
+        USBFS_HandleVendorRqst_Callback();
+    #endif /* USBFS_HANDLE_VENDOR_RQST_CALLBACK */
+
     return(requestHandled);
 }
 
@@ -88,7 +93,6 @@ uint8 USBFS_HandleVendorRqst(void)
 /* `#START VENDOR_SPECIFIC_FUNCTIONS` Place any additional functions here */
 
 /* `#END` */
-
 
 #endif /* USBFS_EXTERN_VND */
 

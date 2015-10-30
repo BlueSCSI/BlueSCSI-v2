@@ -38,6 +38,7 @@
 #include <zipper.hh>
 
 #include "ConfigUtil.hh"
+#include "BoardPanel.hh"
 #include "TargetPanel.hh"
 #include "SCSI2SD_Bootloader.hh"
 #include "SCSI2SD_HID.hh"
@@ -157,7 +158,7 @@ class AppFrame : public wxFrame
 {
 public:
 	AppFrame() :
-		wxFrame(NULL, wxID_ANY, "scsi2sd-util", wxPoint(50, 50), wxSize(600, 700)),
+		wxFrame(NULL, wxID_ANY, "scsi2sd-util", wxPoint(50, 50), wxSize(600, 650)),
 		myInitialConfig(false),
 		myTickCounter(0),
 		myLastPollTime(0)
@@ -165,49 +166,49 @@ public:
 		wxMenu *menuFile = new wxMenu();
 		menuFile->Append(
 			ID_SaveFile,
-			"&Save to file...",
-			"Save settings to local file.");
+			_("&Save to file..."),
+			_("Save settings to local file."));
 		menuFile->Append(
 			ID_OpenFile,
-			"&Open file...",
-			"Load settings from local file.");
+			_("&Open file..."),
+			_("Load settings from local file."));
 		menuFile->AppendSeparator();
 		menuFile->Append(
 			ID_ConfigDefaults,
-			"Load &Defaults",
-			"Load default configuration options.");
+			_("Load &Defaults"),
+			_("Load default configuration options."));
 		menuFile->Append(
 			ID_Firmware,
-			"&Upgrade Firmware...",
-			"Upgrade or inspect device firmware version.");
+			_("&Upgrade Firmware..."),
+			_("Upgrade or inspect device firmware version."));
 		menuFile->AppendSeparator();
 		menuFile->Append(wxID_EXIT);
 
 		wxMenu *menuWindow= new wxMenu();
 		menuWindow->Append(
 			ID_LogWindow,
-			"Show &Log",
-			"Show debug log window");
+			_("Show &Log"),
+			_("Show debug log window"));
 
 		wxMenu *menuDebug = new wxMenu();
 		mySCSILogChk = menuDebug->AppendCheckItem(
 			ID_SCSILog,
-			"Log SCSI data",
-			"Log SCSI commands");
+			_("Log SCSI data"),
+			_("Log SCSI commands"));
 
 		mySelfTestChk = menuDebug->AppendCheckItem(
 			ID_SelfTest,
-			"SCSI Standalone Self-Test",
-			"SCSI Standalone Self-Test");
+			_("SCSI Standalone Self-Test"),
+			_("SCSI Standalone Self-Test"));
 
 		wxMenu *menuHelp = new wxMenu();
 		menuHelp->Append(wxID_ABOUT);
 
 		wxMenuBar *menuBar = new wxMenuBar();
-		menuBar->Append( menuFile, "&File" );
-		menuBar->Append( menuDebug, "&Debug" );
-		menuBar->Append( menuWindow, "&Window" );
-		menuBar->Append( menuHelp, "&Help" );
+		menuBar->Append( menuFile, _("&File") );
+		menuBar->Append( menuDebug, _("&Debug") );
+		menuBar->Append( menuWindow, _("&Window") );
+		menuBar->Append( menuHelp, _("&Help") );
 		SetMenuBar( menuBar );
 
 		CreateStatusBar();
@@ -221,7 +222,8 @@ public:
 			fgs->Add(5, 5, wxALL);
 
 			wxNotebook* tabs = new wxNotebook(cfgPanel, ID_Notebook);
-
+			myBoardPanel = new BoardPanel(tabs, ConfigUtil::DefaultBoardConfig());
+			tabs->AddPage(myBoardPanel, _("General Settings"));
 			for (int i = 0; i < MAX_SCSI_TARGETS; ++i)
 			{
 				TargetPanel* target =
@@ -240,10 +242,10 @@ public:
 			wxFlexGridSizer *btnFgs = new wxFlexGridSizer(1, 2, 5, 5);
 			btnPanel->SetSizer(btnFgs);
 			myLoadButton =
-				new wxButton(btnPanel, ID_BtnLoad, wxT("Load from device"));
+				new wxButton(btnPanel, ID_BtnLoad, _("Load from device"));
 			btnFgs->Add(myLoadButton);
 			mySaveButton =
-				new wxButton(btnPanel, ID_BtnSave, wxT("Save to device"));
+				new wxButton(btnPanel, ID_BtnSave, _("Save to device"));
 			btnFgs->Add(mySaveButton);
 			fgs->Add(btnPanel);
 
@@ -253,7 +255,7 @@ public:
 		//Fit(); // Needed to reduce window size on Windows
 		FitInside(); // Needed on Linux to prevent status bar overlap
 
-		myLogWindow = new wxLogWindow(this, wxT("scsi2sd-util debug log"), true);
+		myLogWindow = new wxLogWindow(this, _("scsi2sd-util debug log"), true);
 		myLogWindow->PassMessages(false); // Prevent messagebox popups
 
 		myTimer = new wxTimer(this, ID_Timer);
@@ -262,6 +264,7 @@ public:
 
 private:
 	wxLogWindow* myLogWindow;
+	BoardPanel* myBoardPanel;
 	std::vector<TargetPanel*> myTargets;
 	wxButton* myLoadButton;
 	wxButton* mySaveButton;
@@ -407,6 +410,7 @@ private:
 
 		s << "<SCSI2SD>\n";
 
+		s << ConfigUtil::toXML(myBoardPanel->getConfig());
 		for (size_t i = 0; i < myTargets.size(); ++i)
 		{
 			s << ConfigUtil::toXML(myTargets[i]->getConfig());
@@ -430,13 +434,15 @@ private:
 
 		try
 		{
-			std::vector<TargetConfig> configs(
+			std::pair<BoardConfig, std::vector<TargetConfig>> configs(
 				ConfigUtil::fromXML(std::string(dlg.GetPath())));
 
+			myBoardPanel->setConfig(configs.first);
+
 			size_t i;
-			for (i = 0; i < configs.size() && i < myTargets.size(); ++i)
+			for (i = 0; i < configs.second.size() && i < myTargets.size(); ++i)
 			{
-				myTargets[i]->setConfig(configs[i]);
+				myTargets[i]->setConfig(configs.second[i]);
 			}
 
 			for (; i < myTargets.size(); ++i)
@@ -560,7 +566,7 @@ private:
 					mmLogStatus(msg.str());
 					tmpFile =
 						wxFileName::CreateTempFileName(
-							wxT("SCSI2SD_Firmware"), static_cast<wxFile*>(NULL)
+							_("SCSI2SD_Firmware"), static_cast<wxFile*>(NULL)
 							);
 					zipper::FileWriter out(tmpFile);
 					(*it)->decompress(out);
@@ -830,9 +836,43 @@ private:
 				wxPD_CAN_ABORT | wxPD_REMAINING_TIME)
 				);
 
-		int flashRow = SCSI_CONFIG_0_ROW;
 		int currentProgress = 0;
-		int totalProgress = myTargets.size() * SCSI_CONFIG_ROWS;
+		int totalProgress = myTargets.size() * SCSI_CONFIG_ROWS + 1;
+
+		// Read board config first.
+		std::vector<uint8_t> boardCfgFlashData;
+		int flashRow = SCSI_CONFIG_BOARD_ROW;
+		{
+			std::stringstream ss;
+			ss << "Reading flash array " << SCSI_CONFIG_ARRAY <<
+				" row " << flashRow;
+			mmLogStatus(ss.str());
+			currentProgress += 1;
+
+			if (!progress->Update(
+					(100 * currentProgress) / totalProgress,
+					ss.str()
+					)
+				)
+			{
+				goto abort;
+			}
+
+			try
+			{
+				myHID->readFlashRow(
+					SCSI_CONFIG_ARRAY, flashRow, boardCfgFlashData);
+				myBoardPanel->setConfig(
+					ConfigUtil::boardConfigFromBytes(&boardCfgFlashData[0]));
+			}
+			catch (std::runtime_error& e)
+			{
+				mmLogStatus(e.what());
+				goto err;
+			}
+		}
+
+		flashRow = SCSI_CONFIG_0_ROW;
 		for (size_t i = 0;
 			i < myTargets.size();
 			++i, flashRow += SCSI_CONFIG_ROWS)
@@ -883,6 +923,13 @@ private:
 			myTargets[i]->setConfig(ConfigUtil::fromBytes(&raw[0]));
 		}
 
+		// Support old boards without board config set
+		if (memcmp(&boardCfgFlashData[0], "BCFG", 4)) {
+			BoardConfig defCfg = ConfigUtil::DefaultBoardConfig();
+			defCfg.flags = myTargets[0]->getConfig().flagsDEPRECATED;
+			myBoardPanel->setConfig(defCfg);
+		}
+
 		myInitialConfig = true;
 		goto out;
 
@@ -914,9 +961,43 @@ private:
 				wxPD_CAN_ABORT | wxPD_REMAINING_TIME)
 				);
 
-		int flashRow = SCSI_CONFIG_0_ROW;
+
 		int currentProgress = 0;
-		int totalProgress = myTargets.size() * SCSI_CONFIG_ROWS;
+		int totalProgress = myTargets.size() * SCSI_CONFIG_ROWS + 1;
+
+		// Write board config first.
+		int flashRow = SCSI_CONFIG_BOARD_ROW;
+		{
+			std::stringstream ss;
+			ss << "Programming flash array " << SCSI_CONFIG_ARRAY <<
+				" row " << flashRow;
+			mmLogStatus(ss.str());
+			currentProgress += 1;
+
+			if (!progress->Update(
+					(100 * currentProgress) / totalProgress,
+					ss.str()
+					)
+				)
+			{
+				goto abort;
+			}
+
+			std::vector<uint8_t> flashData =
+				ConfigUtil::boardConfigToBytes(myBoardPanel->getConfig());
+			try
+			{
+				myHID->writeFlashRow(
+					SCSI_CONFIG_ARRAY, flashRow, flashData);
+			}
+			catch (std::runtime_error& e)
+			{
+				mmLogStatus(e.what());
+				goto err;
+			}
+		}
+
+		flashRow = SCSI_CONFIG_0_ROW;
 		for (size_t i = 0;
 			i < myTargets.size();
 			++i, flashRow += SCSI_CONFIG_ROWS)

@@ -76,7 +76,7 @@ wx_top_builddir = @wx_top_builddir@
 DESTDIR = 
 WX_RELEASE = 3.0
 WX_RELEASE_NODOT = 30
-WX_VERSION = $(WX_RELEASE).1
+WX_VERSION = $(WX_RELEASE).2
 LIBDIRNAME = $(wx_top_builddir)/lib
 WXREGEX_CFLAGS = -DNDEBUG -D__WX$(TOOLKIT)__ $(__WXUNIV_DEFINE_p) $(____SHARED) \
 	$(CPPFLAGS) $(CFLAGS)
@@ -1775,6 +1775,7 @@ XRCDLL_OBJECTS =  \
 	xrcdll_xh_scrol.o \
 	xrcdll_xh_scwin.o \
 	xrcdll_xh_htmllbox.o \
+	xrcdll_xh_simplebook.o \
 	xrcdll_xh_sizer.o \
 	xrcdll_xh_slidr.o \
 	xrcdll_xh_spin.o \
@@ -1847,6 +1848,7 @@ XRCLIB_OBJECTS =  \
 	xrclib_xh_scrol.o \
 	xrclib_xh_scwin.o \
 	xrclib_xh_htmllbox.o \
+	xrclib_xh_simplebook.o \
 	xrclib_xh_sizer.o \
 	xrclib_xh_slidr.o \
 	xrclib_xh_spin.o \
@@ -2086,7 +2088,7 @@ LOCALE_MSW_LINGUAS =  it
 @COND_DEPS_TRACKING_1@CXXC = $(BK_DEPS) $(CXX)
 @COND_USE_PLUGINS_0@PLUGIN_ADV_EXTRALIBS = $(EXTRALIBS_SDL)
 @COND_PLATFORM_MACOSX_1@WXMACVERSION_CMD = \
-@COND_PLATFORM_MACOSX_1@	-compatibility_version 2.0 -current_version 2.0
+@COND_PLATFORM_MACOSX_1@	-compatibility_version 3.0 -current_version 3.0
 @COND_USE_GUI_0@PORTNAME = base
 @COND_USE_GUI_1@PORTNAME = $(TOOLKIT_LOWERCASE)$(TOOLKIT_VERSION)
 @COND_TOOLKIT_MAC@WXBASEPORT = _carbon
@@ -4374,6 +4376,7 @@ COND_USE_GUI_1_ALL_GUI_HEADERS =  \
 	wx/xrc/xh_scrol.h \
 	wx/xrc/xh_scwin.h \
 	wx/xrc/xh_htmllbox.h \
+	wx/xrc/xh_simplebook.h \
 	wx/xrc/xh_sizer.h \
 	wx/xrc/xh_slidr.h \
 	wx/xrc/xh_spin.h \
@@ -4699,6 +4702,7 @@ COND_USE_GUI_1___MONOLIB_GUI_SRC_OBJECTS =  \
 	monodll_xh_scrol.o \
 	monodll_xh_scwin.o \
 	monodll_xh_htmllbox.o \
+	monodll_xh_simplebook.o \
 	monodll_xh_sizer.o \
 	monodll_xh_slidr.o \
 	monodll_xh_spin.o \
@@ -6951,6 +6955,7 @@ COND_USE_GUI_1___MONOLIB_GUI_SRC_OBJECTS_1 =  \
 	monolib_xh_scrol.o \
 	monolib_xh_scwin.o \
 	monolib_xh_htmllbox.o \
+	monolib_xh_simplebook.o \
 	monolib_xh_sizer.o \
 	monolib_xh_slidr.o \
 	monolib_xh_spin.o \
@@ -15194,9 +15199,9 @@ COND_MONOLITHIC_0_SHARED_1_USE_GUI_1_USE_HTML_1___htmldll_library_link_LIBR_0 \
 @COND_USE_SOVERSION_0@dll___targetsuf2 = .$(SO_SUFFIX)
 @COND_PLATFORM_MACOSX_0_USE_SOVERCYGWIN_0_USE_SOVERSION_1@dll___targetsuf3 \
 @COND_PLATFORM_MACOSX_0_USE_SOVERCYGWIN_0_USE_SOVERSION_1@	= \
-@COND_PLATFORM_MACOSX_0_USE_SOVERCYGWIN_0_USE_SOVERSION_1@	.$(SO_SUFFIX).0.1.0
+@COND_PLATFORM_MACOSX_0_USE_SOVERCYGWIN_0_USE_SOVERSION_1@	.$(SO_SUFFIX).0.2.0
 @COND_PLATFORM_MACOSX_1_USE_SOVERSION_1@dll___targetsuf3 \
-@COND_PLATFORM_MACOSX_1_USE_SOVERSION_1@	= .0.1.0.$(SO_SUFFIX)
+@COND_PLATFORM_MACOSX_1_USE_SOVERSION_1@	= .0.2.0.$(SO_SUFFIX)
 @COND_USE_SOVERCYGWIN_1_USE_SOVERSION_1@dll___targetsuf3 = -0.$(SO_SUFFIX)
 @COND_USE_SOVERSION_0@dll___targetsuf3 = .$(SO_SUFFIX)
 @COND_USE_SOVERSION_1_USE_SOVERSOLARIS_1@dll___targetsuf3 = .$(SO_SUFFIX).0
@@ -18703,6 +18708,9 @@ monodll_xh_scwin.o: $(srcdir)/src/xrc/xh_scwin.cpp $(MONODLL_ODEP)
 
 monodll_xh_htmllbox.o: $(srcdir)/src/xrc/xh_htmllbox.cpp $(MONODLL_ODEP)
 	$(CXXC) -c -o $@ $(MONODLL_CXXFLAGS) $(srcdir)/src/xrc/xh_htmllbox.cpp
+
+monodll_xh_simplebook.o: $(srcdir)/src/xrc/xh_simplebook.cpp $(MONODLL_ODEP)
+	$(CXXC) -c -o $@ $(MONODLL_CXXFLAGS) $(srcdir)/src/xrc/xh_simplebook.cpp
 
 monodll_xh_sizer.o: $(srcdir)/src/xrc/xh_sizer.cpp $(MONODLL_ODEP)
 	$(CXXC) -c -o $@ $(MONODLL_CXXFLAGS) $(srcdir)/src/xrc/xh_sizer.cpp
@@ -24577,6 +24585,9 @@ monolib_xh_scwin.o: $(srcdir)/src/xrc/xh_scwin.cpp $(MONOLIB_ODEP)
 
 monolib_xh_htmllbox.o: $(srcdir)/src/xrc/xh_htmllbox.cpp $(MONOLIB_ODEP)
 	$(CXXC) -c -o $@ $(MONOLIB_CXXFLAGS) $(srcdir)/src/xrc/xh_htmllbox.cpp
+
+monolib_xh_simplebook.o: $(srcdir)/src/xrc/xh_simplebook.cpp $(MONOLIB_ODEP)
+	$(CXXC) -c -o $@ $(MONOLIB_CXXFLAGS) $(srcdir)/src/xrc/xh_simplebook.cpp
 
 monolib_xh_sizer.o: $(srcdir)/src/xrc/xh_sizer.cpp $(MONOLIB_ODEP)
 	$(CXXC) -c -o $@ $(MONOLIB_CXXFLAGS) $(srcdir)/src/xrc/xh_sizer.cpp
@@ -39980,6 +39991,9 @@ xrcdll_xh_scwin.o: $(srcdir)/src/xrc/xh_scwin.cpp $(XRCDLL_ODEP)
 xrcdll_xh_htmllbox.o: $(srcdir)/src/xrc/xh_htmllbox.cpp $(XRCDLL_ODEP)
 	$(CXXC) -c -o $@ $(XRCDLL_CXXFLAGS) $(srcdir)/src/xrc/xh_htmllbox.cpp
 
+xrcdll_xh_simplebook.o: $(srcdir)/src/xrc/xh_simplebook.cpp $(XRCDLL_ODEP)
+	$(CXXC) -c -o $@ $(XRCDLL_CXXFLAGS) $(srcdir)/src/xrc/xh_simplebook.cpp
+
 xrcdll_xh_sizer.o: $(srcdir)/src/xrc/xh_sizer.cpp $(XRCDLL_ODEP)
 	$(CXXC) -c -o $@ $(XRCDLL_CXXFLAGS) $(srcdir)/src/xrc/xh_sizer.cpp
 
@@ -40174,6 +40188,9 @@ xrclib_xh_scwin.o: $(srcdir)/src/xrc/xh_scwin.cpp $(XRCLIB_ODEP)
 
 xrclib_xh_htmllbox.o: $(srcdir)/src/xrc/xh_htmllbox.cpp $(XRCLIB_ODEP)
 	$(CXXC) -c -o $@ $(XRCLIB_CXXFLAGS) $(srcdir)/src/xrc/xh_htmllbox.cpp
+
+xrclib_xh_simplebook.o: $(srcdir)/src/xrc/xh_simplebook.cpp $(XRCLIB_ODEP)
+	$(CXXC) -c -o $@ $(XRCLIB_CXXFLAGS) $(srcdir)/src/xrc/xh_simplebook.cpp
 
 xrclib_xh_sizer.o: $(srcdir)/src/xrc/xh_sizer.cpp $(XRCLIB_ODEP)
 	$(CXXC) -c -o $@ $(XRCLIB_CXXFLAGS) $(srcdir)/src/xrc/xh_sizer.cpp

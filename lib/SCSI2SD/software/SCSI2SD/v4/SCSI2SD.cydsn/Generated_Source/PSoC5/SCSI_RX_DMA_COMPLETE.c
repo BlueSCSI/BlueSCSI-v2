@@ -20,6 +20,7 @@
 #include <CyLib.h>
 #include <SCSI_RX_DMA_COMPLETE.h>
 
+
 #if !defined(SCSI_RX_DMA_COMPLETE__REMOVED) /* Check for removal by optimization */
 
 /*******************************************************************************
@@ -158,6 +159,10 @@ void SCSI_RX_DMA_COMPLETE_Stop(void)
 *******************************************************************************/
 CY_ISR(SCSI_RX_DMA_COMPLETE_Interrupt)
 {
+    #ifdef SCSI_RX_DMA_COMPLETE_INTERRUPT_INTERRUPT_CALLBACK
+        SCSI_RX_DMA_COMPLETE_Interrupt_InterruptCallback();
+    #endif /* SCSI_RX_DMA_COMPLETE_INTERRUPT_INTERRUPT_CALLBACK */ 
+
     /*  Place your Interrupt code here. */
     /* `#START SCSI_RX_DMA_COMPLETE_Interrupt` */
 

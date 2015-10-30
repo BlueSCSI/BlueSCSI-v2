@@ -33,7 +33,13 @@
 // Global
 SdDevice sdDev;
 
-enum SD_IO_STATE { SD_DMA, SD_ACCEPTED, SD_BUSY, SD_IDLE };
+enum SD_CMD_STATE { CMD_STATE_IDLE, CMD_STATE_READ, CMD_STATE_WRITE };
+static int sdCmdState = CMD_STATE_IDLE;
+static uint32_t sdCmdNextLBA; // Only valid in CMD_STATE_READ or CMD_STATE_WRITE
+static uint32_t sdCmdTime;
+static uint32_t sdLastCmdState = CMD_STATE_IDLE;
+
+enum SD_IO_STATE { SD_DMA, SD_ACCEPTED, SD_IDLE };
 static int sdIOState = SD_IDLE;
 
 // Private DMA variables.
@@ -85,6 +91,7 @@ static uint8 sdCrc7(uint8* chr, uint8 cnt, uint8 crc)
 	return crc & 0x7F;
 }
 
+
 // Read and write 1 byte.
 static uint8_t sdSpiByte(uint8_t value)
 {
@@ -93,6 +100,34 @@ static uint8_t sdSpiByte(uint8_t value)
 	while (!(SDCard_ReadRxStatus() & SDCard_STS_RX_FIFO_NOT_EMPTY)) {}
 	trace(trace_sdSpiByte);
 	return SDCard_ReadRxData();
+}
+
+static void sdWaitWriteBusy()
+{
+	uint8 val;
+	do
+	{
+		val = sdSpiByte(0xFF);
+	} while (val != 0xFF);
+}
+
+static void sdPreCmdState(uint32_t newState)
+{
+	if (sdCmdState == CMD_STATE_READ)
+	{
+		sdCompleteRead();
+	}
+	else if (sdCmdState == CMD_STATE_WRITE)
+	{
+		sdCompleteWrite();
+	}
+	sdCmdState = CMD_STATE_IDLE;
+
+	if (sdLastCmdState != newState && newState != CMD_STATE_IDLE)
+	{
+		sdWaitWriteBusy();
+		sdLastCmdState = newState;
+	}
 }
 
 static uint16_t sdDoCommand(
@@ -172,7 +207,17 @@ static uint16_t sdDoCommand(
 	CyDmaChEnable(sdDMATxChan, 1);
 
 	trace(trace_spinSDDMA);
-	while (!(sdTxDMAComplete && sdRxDMAComplete)) { __WFI(); }
+	int allComplete = 0;
+	while (!allComplete)
+	{
+		uint8_t intr = CyEnterCriticalSection();
+		allComplete = sdTxDMAComplete && sdRxDMAComplete;
+		if (!allComplete)
+		{
+			__WFI();
+		}
+		CyExitCriticalSection(intr);
+	}
 
 	uint16_t response = sdSpiByte(0xFF); // Result code or stuff byte
 	if (unlikely(cmd == SD_STOP_TRANSMISSION))
@@ -218,34 +263,43 @@ static void sdClearStatus()
 }
 
 void
-sdReadMultiSectorPrep()
+sdReadMultiSectorPrep(uint32_t sdLBA, uint32_t sdSectors)
 {
-	uint8 v;
-	uint32 scsiLBA = (transfer.lba + transfer.currentBlock);
-	uint32 sdLBA =
-		SCSISector2SD(
-			scsiDev.target->cfg->sdSectorStart,
-			scsiDev.target->liveCfg.bytesPerSector,
-			scsiLBA);
+	uint32_t tmpNextLBA = sdLBA + sdSectors;
 
 	if (!sdDev.ccs)
 	{
 		sdLBA = sdLBA * SD_SECTOR_SIZE;
+		tmpNextLBA = tmpNextLBA * SD_SECTOR_SIZE;
 	}
-	v = sdCommandAndResponse(SD_READ_MULTIPLE_BLOCK, sdLBA);
-	if (unlikely(v))
-	{
-		scsiDiskReset();
-		sdClearStatus();
 
-		scsiDev.status = CHECK_CONDITION;
-		scsiDev.target->sense.code = HARDWARE_ERROR;
-		scsiDev.target->sense.asc = LOGICAL_UNIT_COMMUNICATION_FAILURE;
-		scsiDev.phase = STATUS;
+	if (sdCmdState == CMD_STATE_READ && sdCmdNextLBA == sdLBA)
+	{
+		// Well, that was lucky. We're already reading this data
+		sdCmdNextLBA = tmpNextLBA;
+		sdCmdTime = getTime_ms();
 	}
 	else
 	{
-		transfer.inProgress = 1;
+		sdPreCmdState(CMD_STATE_READ);
+
+		uint8_t v = sdCommandAndResponse(SD_READ_MULTIPLE_BLOCK, sdLBA);
+		if (unlikely(v))
+		{
+			scsiDiskReset();
+			sdClearStatus();
+
+			scsiDev.status = CHECK_CONDITION;
+			scsiDev.target->sense.code = HARDWARE_ERROR;
+			scsiDev.target->sense.asc = LOGICAL_UNIT_COMMUNICATION_FAILURE;
+			scsiDev.phase = STATUS;
+		}
+		else
+		{
+			sdCmdNextLBA = tmpNextLBA;
+			sdCmdState = CMD_STATE_READ;
+			sdCmdTime = getTime_ms();
+		}
 	}
 }
 
@@ -290,12 +344,12 @@ dmaReadSector(uint8_t* outputBuffer)
 		dmaRxTd[0] = CyDmaTdAllocate();
 		dmaRxTd[1] = CyDmaTdAllocate();
 		dmaTxTd = CyDmaTdAllocate();
-		
+
 		// Receive 512 bytes of data and then 2 bytes CRC.
 		CyDmaTdSetConfiguration(dmaRxTd[0], SD_SECTOR_SIZE, dmaRxTd[1], TD_INC_DST_ADR);
 		CyDmaTdSetConfiguration(dmaRxTd[1], 2, CY_DMA_DISABLE_TD, SD_RX_DMA__TD_TERMOUT_EN);
 		CyDmaTdSetAddress(dmaRxTd[1], LO16((uint32)SDCard_RXDATA_PTR), LO16((uint32)&discardBuffer));
-	
+
 		CyDmaTdSetConfiguration(dmaTxTd, SD_SECTOR_SIZE + 2, CY_DMA_DISABLE_TD, SD_TX_DMA__TD_TERMOUT_EN);
 		CyDmaTdSetAddress(dmaTxTd, LO16((uint32)&dummyBuffer), LO16((uint32)SDCard_TXDATA_PTR));
 
@@ -341,6 +395,8 @@ sdReadSectorDMAPoll()
 
 void sdReadSingleSectorDMA(uint32_t lba, uint8_t* outputBuffer)
 {
+	sdPreCmdState(CMD_STATE_READ);
+
 	uint8 v;
 	if (!sdDev.ccs)
 	{
@@ -370,7 +426,6 @@ sdReadMultiSectorDMA(uint8_t* outputBuffer)
 	dmaReadSector(outputBuffer);
 }
 
-
 void sdCompleteRead()
 {
 	if (unlikely(sdIOState != SD_IDLE))
@@ -381,13 +436,13 @@ void sdCompleteRead()
 		trace(trace_spinSDCompleteRead);
 		while (!sdReadSectorDMAPoll()) { /* spin */ }
 	}
-	
-	if (transfer.inProgress)
+
+
+	if (sdCmdState == CMD_STATE_READ)
 	{
-		transfer.inProgress = 0;
 		uint8 r1b = sdCommandAndResponse(SD_STOP_TRANSMISSION, 0);
 
-		if (unlikely(r1b))
+		if (unlikely(r1b) && (scsiDev.PHASE == DATA_IN))
 		{
 			scsiDev.status = CHECK_CONDITION;
 			scsiDev.target->sense.code = HARDWARE_ERROR;
@@ -399,15 +454,8 @@ void sdCompleteRead()
 	// R1b has an optional trailing "busy" signal, but we defer waiting on this.
 	// The next call so sdCommandAndResponse will wait for the busy state to
 	// clear.
-}
 
-static void sdWaitWriteBusy()
-{
-	uint8 val;
-	do
-	{
-		val = sdSpiByte(0xFF);
-	} while (val != 0xFF);
+	sdCmdState = CMD_STATE_IDLE;
 }
 
 void
@@ -422,7 +470,7 @@ sdWriteMultiSectorDMA(uint8_t* outputBuffer)
 		dmaTxTd[0] = CyDmaTdAllocate();
 		dmaTxTd[1] = CyDmaTdAllocate();
 		dmaTxTd[2] = CyDmaTdAllocate();
-		
+
 		// Transmit 512 bytes of data and then 2 bytes CRC, and then get the response byte
 		// We need to do this without stopping the clock
 		CyDmaTdSetConfiguration(dmaTxTd[0], 2, dmaTxTd[1], TD_INC_SRC_ADR);
@@ -464,7 +512,7 @@ sdWriteMultiSectorDMA(uint8_t* outputBuffer)
 }
 
 int
-sdWriteSectorDMAPoll(int sendStopToken)
+sdWriteSectorDMAPoll()
 {
 	if (sdRxDMAComplete && sdTxDMAComplete)
 	{
@@ -490,7 +538,7 @@ sdWriteSectorDMAPoll(int sendStopToken)
 				sdSpiByte(0xFD); // STOP TOKEN
 				sdWaitWriteBusy();
 
-				transfer.inProgress = 0;
+				sdCmdState = CMD_STATE_IDLE;
 				scsiDiskReset();
 				sdClearStatus();
 
@@ -506,25 +554,6 @@ sdWriteSectorDMAPoll(int sendStopToken)
 		}
 
 		if (sdIOState == SD_ACCEPTED)
-		{
-			// Wait while the SD card is busy
-			if (sdSpiByte(0xFF) == 0xFF)
-			{
-				if (sendStopToken)
-				{
-					sdIOState = SD_BUSY;
-					transfer.inProgress = 0;
-
-					sdSpiByte(0xFD); // STOP TOKEN
-				}
-				else
-				{
-					sdIOState = SD_IDLE;
-				}
-			}
-		}
-
-		if (sdIOState == SD_BUSY)
 		{
 			// Wait while the SD card is busy
 			if (sdSpiByte(0xFF) == 0xFF)
@@ -549,10 +578,20 @@ void sdCompleteWrite()
 		// Cancelling the transfer can't be done as we have no way to reset
 		// the SD card.
 		trace(trace_spinSDCompleteWrite);
-		while (!sdWriteSectorDMAPoll(1)) { /* spin */ }
+		while (!sdWriteSectorDMAPoll()) { /* spin */ }
 	}
 
-	if (transfer.inProgress && likely(scsiDev.phase == DATA_OUT))
+	if (sdCmdState == CMD_STATE_WRITE)
+	{
+		sdWaitWriteBusy();
+
+		sdSpiByte(0xFD); // STOP TOKEN
+
+		sdWaitWriteBusy();
+	}
+
+
+	if (likely(scsiDev.phase == DATA_OUT))
 	{
 		uint16_t r2 = sdDoCommand(SD_SEND_STATUS, 0, 0, 1);
 		if (unlikely(r2))
@@ -564,7 +603,12 @@ void sdCompleteWrite()
 			scsiDev.phase = STATUS;
 		}
 	}
-	transfer.inProgress = 0;
+	sdCmdState = CMD_STATE_IDLE;
+}
+
+void sdCompleteTransfer()
+{
+	sdPreCmdState(CMD_STATE_IDLE);
 }
 
 
@@ -763,6 +807,7 @@ int sdInit()
 	int i;
 	uint8 v;
 
+	sdCmdState = CMD_STATE_IDLE;
 	sdDev.version = 0;
 	sdDev.ccs = 0;
 	sdDev.capacity = 0;
@@ -845,52 +890,68 @@ out:
 
 }
 
-void sdWriteMultiSectorPrep()
+void sdWriteMultiSectorPrep(uint32_t sdLBA, uint32_t sdSectors)
 {
-	uint8 v;
+	uint32_t tmpNextLBA = sdLBA + sdSectors;
 
-	// Set the number of blocks to pre-erase by the multiple block write command
-	// We don't care about the response - if the command is not accepted, writes
-	// will just be a bit slower.
-	// Max 22bit parameter.
-	uint32_t sdBlocks =
-		transfer.blocks *
-			SDSectorsPerSCSISector(scsiDev.target->liveCfg.bytesPerSector);
-	uint32 blocks = sdBlocks > 0x7FFFFF ? 0x7FFFFF : sdBlocks;
-	sdCommandAndResponse(SD_APP_CMD, 0);
-	sdCommandAndResponse(SD_APP_SET_WR_BLK_ERASE_COUNT, blocks);
-
-	uint32 scsiLBA = (transfer.lba + transfer.currentBlock);
-	uint32 sdLBA =
-		SCSISector2SD(
-			scsiDev.target->cfg->sdSectorStart,
-			scsiDev.target->liveCfg.bytesPerSector,
-			scsiLBA);
 	if (!sdDev.ccs)
 	{
 		sdLBA = sdLBA * SD_SECTOR_SIZE;
+		tmpNextLBA = tmpNextLBA * SD_SECTOR_SIZE;
 	}
-	v = sdCommandAndResponse(SD_WRITE_MULTIPLE_BLOCK, sdLBA);
-	if (unlikely(v))
+
+	if (sdCmdState == CMD_STATE_WRITE && sdCmdNextLBA == sdLBA)
 	{
-		scsiDiskReset();
-		sdClearStatus();
-		scsiDev.status = CHECK_CONDITION;
-		scsiDev.target->sense.code = HARDWARE_ERROR;
-		scsiDev.target->sense.asc = LOGICAL_UNIT_COMMUNICATION_FAILURE;
-		scsiDev.phase = STATUS;
+		// Well, that was lucky. We're already writing this data
+		sdCmdNextLBA = tmpNextLBA;
+		sdCmdTime = getTime_ms();
 	}
 	else
 	{
-		transfer.inProgress = 1;
+		sdPreCmdState(CMD_STATE_WRITE);
+
+		// Set the number of blocks to pre-erase by the multiple block write
+		// command. We don't care about the response - if the command is not
+		// accepted, writes will just be a bit slower. Max 22bit parameter.
+		uint32 blocks = sdSectors > 0x7FFFFF ? 0x7FFFFF : sdSectors;
+		sdCommandAndResponse(SD_APP_CMD, 0);
+		sdCommandAndResponse(SD_APP_SET_WR_BLK_ERASE_COUNT, blocks);
+
+		uint8_t v = sdCommandAndResponse(SD_WRITE_MULTIPLE_BLOCK, sdLBA);
+		if (unlikely(v))
+		{
+			scsiDiskReset();
+			sdClearStatus();
+			scsiDev.status = CHECK_CONDITION;
+			scsiDev.target->sense.code = HARDWARE_ERROR;
+			scsiDev.target->sense.asc = LOGICAL_UNIT_COMMUNICATION_FAILURE;
+			scsiDev.phase = STATUS;
+		}
+		else
+		{
+			sdCmdTime = getTime_ms();
+			sdCmdNextLBA = tmpNextLBA;
+			sdCmdState = CMD_STATE_WRITE;
+		}
 	}
 }
 
 void sdPoll()
 {
+	if ((scsiDev.phase == BUS_FREE) &&
+		(sdCmdState != CMD_STATE_IDLE) &&
+		(elapsedTime_ms(sdCmdTime) >= 50))
+	{
+		sdPreCmdState(CMD_STATE_IDLE);
+	}
+}
+
+void sdCheckPresent()
+{
 	// Check if there's an SD card present.
 	if ((scsiDev.phase == BUS_FREE) &&
-		(sdIOState == SD_IDLE))
+		(sdIOState == SD_IDLE) &&
+		(sdCmdState == CMD_STATE_IDLE))
 	{
 		// The CS line is pulled high by the SD card.
 		// De-assert the line, and check if it's high.
@@ -915,6 +976,13 @@ void sdPoll()
 			if (sdInit())
 			{
 				blockDev.state |= DISK_PRESENT | DISK_INITIALISED;
+
+				// Always "start" the device. Many systems (eg. Apple System 7)
+				// won't respond properly to
+				// LOGICAL_UNIT_NOT_READY_INITIALIZING_COMMAND_REQUIRED sense
+				// code, even if they stopped it first with
+				// START STOP UNIT command.
+				blockDev.state |= DISK_STARTED;
 
 				if (!firstInit)
 				{

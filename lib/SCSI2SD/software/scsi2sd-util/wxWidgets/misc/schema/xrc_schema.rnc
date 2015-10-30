@@ -202,6 +202,7 @@ builtinWindowClasses =
     | wxScrollBar
     | wxScrolledWindow
     | wxSimpleHtmlListBox
+    | wxSimplebook
     | wxSlider
     | wxSpinButton
     | wxSpinCtrl
@@ -290,6 +291,7 @@ builtinClassesNames =
     | "wxScrollBar"
     | "wxScrolledWindow"
     | "wxSimpleHtmlListBox"
+    | "wxSimplebook"
     | "wxSlider"
     | "wxSpinButton"
     | "wxSpinCtrl"
@@ -329,6 +331,7 @@ builtinNestedClassesNames =
     | "notebookpage"
     | "choicebookpage"
     | "listbookpage"
+    | "simplebookpage"
     | "treebookpage"
     | "propertysheetpage"
     | "ownerdrawnitem"
@@ -392,6 +395,7 @@ stdWindowProperties =
         [xrc:p="o"] element focused {_, t_bool }* &
         [xrc:p="o"] element hidden  {_, t_bool }* &
         [xrc:p="o"] element tooltip {_, t_text }* &
+        [xrc:p="o"] element variant {_, t_variant }* &
         [xrc:p="o"] element font    {_, t_font }* &
         [xrc:p="o"] element ownfont {_, t_font }* &
         [xrc:p="o"] element help    {_, t_text }*
@@ -446,6 +450,8 @@ t_font       = (
                    [xrc:p="o"] element inherit      {_, t_bool }* &
                    [xrc:p="o"] element relativesize {_, t_float }*
                )
+
+t_variant    = "normal" | "small" | "mini" | "large"
 
 t_imagelist  = (
                    [xrc:p="o"] element mask {_, t_bool }* &
@@ -1199,8 +1205,7 @@ wxRichTextCtrl =
         stdObjectNodeAttributes &
         stdWindowProperties &
         [xrc:p="o"] element value     {_, t_text }* &
-        [xrc:p="o"] element maxlength {_, t_integer }* &
-        [xrc:p="o"] element hint      {_, t_text }*
+        [xrc:p="o"] element maxlength {_, t_integer }*
     }
 
 
@@ -1236,6 +1241,24 @@ wxSimpleHtmlListBox =
             platform,
             element item {_, t_text }*
         }?
+    }
+
+
+wxSimplebook =
+    element object {
+        attribute class { "wxSimplebook" } &
+        stdObjectNodeAttributes &
+        stdWindowProperties &
+        (wxSimplebook_simplebookpage | objectRef)*
+    }
+
+wxSimplebook_simplebookpage =
+    element object {
+        attribute class { "simplebookpage" } &
+        platform &
+        element label {_, t_text }* &
+        [xrc:p="o"] element selected {_, t_bool }* &
+        windowNode
     }
 
 
@@ -1355,7 +1378,8 @@ wxTextCtrl =
         stdObjectNodeAttributes &
         stdWindowProperties &
         [xrc:p="o"] element value     {_, t_text }* &
-        [xrc:p="o"] element maxlength {_, t_integer }*
+        [xrc:p="o"] element maxlength {_, t_integer }* &
+        [xrc:p="o"] element hint      {_, t_text }*
     }
 
 

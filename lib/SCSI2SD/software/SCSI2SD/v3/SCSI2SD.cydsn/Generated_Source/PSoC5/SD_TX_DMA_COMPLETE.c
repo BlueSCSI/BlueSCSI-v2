@@ -20,6 +20,7 @@
 #include <CyLib.h>
 #include <SD_TX_DMA_COMPLETE.h>
 
+
 #if !defined(SD_TX_DMA_COMPLETE__REMOVED) /* Check for removal by optimization */
 
 /*******************************************************************************
@@ -158,6 +159,10 @@ void SD_TX_DMA_COMPLETE_Stop(void)
 *******************************************************************************/
 CY_ISR(SD_TX_DMA_COMPLETE_Interrupt)
 {
+    #ifdef SD_TX_DMA_COMPLETE_INTERRUPT_INTERRUPT_CALLBACK
+        SD_TX_DMA_COMPLETE_Interrupt_InterruptCallback();
+    #endif /* SD_TX_DMA_COMPLETE_INTERRUPT_INTERRUPT_CALLBACK */ 
+
     /*  Place your Interrupt code here. */
     /* `#START SD_TX_DMA_COMPLETE_Interrupt` */
 

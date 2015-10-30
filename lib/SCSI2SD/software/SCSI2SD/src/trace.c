@@ -46,6 +46,8 @@
 
 #define TPIU_FFCR_ENFCONT	(1 << 1)
 
+uint8_t LastTrace;
+
 void traceInit(void) {
 	// enable the trace module clocks
 	CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;

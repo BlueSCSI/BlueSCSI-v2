@@ -72,21 +72,21 @@ TargetPanel::TargetPanel(wxWindow* parent, const TargetConfig& initialConfig) :
 	myNumSectorValidator(new wxIntegerValidator<uint32_t>),
 	mySizeValidator(new wxFloatingPointValidator<float>(2))
 {
-	wxFlexGridSizer *fgs = new wxFlexGridSizer(13, 3, 9, 25);
+	wxFlexGridSizer *fgs = new wxFlexGridSizer(11, 3, 9, 25);
 
 	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("")));
 	myEnableCtrl =
 		new wxCheckBox(
 			this,
 			ID_enableCtrl,
-			wxT("Enable SCSI Target"));
+			_("Enable SCSI Target"));
 	fgs->Add(myEnableCtrl);
 	// Set a non-visible string to leave room in the column for future messages
 	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("                                        ")));
 	Bind(wxEVT_CHECKBOX, &TargetPanel::onInput<wxCommandEvent>, this, ID_enableCtrl);
 
 
-	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("SCSI ID")));
+	fgs->Add(new wxStaticText(this, wxID_ANY, _("SCSI ID")));
 	myScsiIdCtrl =
 		new wxSpinCtrl
 			(this,
@@ -103,14 +103,14 @@ TargetPanel::TargetPanel(wxWindow* parent, const TargetConfig& initialConfig) :
 	fgs->Add(myScsiIdMsg);
 	Bind(wxEVT_SPINCTRL, &TargetPanel::onInput<wxSpinEvent>, this, ID_scsiIdCtrl);
 
-	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("Device Type")));
+	fgs->Add(new wxStaticText(this, wxID_ANY, _("Device Type")));
 	wxString deviceTypes[] =
 	{
-		wxT("Hard Drive"),
-		wxT("Removable"),
-		wxT("CDROM"),
-		wxT("3.5\" Floppy"),
-		wxT("Magneto optical")
+		_("Hard Drive"),
+		_("Removable"),
+		_("CDROM"),
+		_("3.5\" Floppy"),
+		_("Magneto optical")
 	};
 	myDeviceTypeCtrl =
 		new wxChoice(
@@ -125,44 +125,6 @@ TargetPanel::TargetPanel(wxWindow* parent, const TargetConfig& initialConfig) :
 	fgs->Add(myDeviceTypeCtrl);
 	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("")));
 	Bind(wxEVT_CHOICE, &TargetPanel::onInput<wxCommandEvent>, this, ID_deviceTypeCtrl);
-
-	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("")));
-	myParityCtrl =
-		new wxCheckBox(
-			this,
-			ID_parityCtrl,
-			wxT("Enable Parity"));
-	myParityCtrl->SetToolTip(wxT("Enable to require valid SCSI parity bits when receiving data. Some hosts don't provide parity. SCSI2SD always outputs valid parity bits."));
-	fgs->Add(myParityCtrl);
-	Bind(wxEVT_CHECKBOX, &TargetPanel::onInput<wxCommandEvent>, this, ID_parityCtrl);
-
-	myUnitAttCtrl =
-		new wxCheckBox(
-			this,
-			ID_unitAttCtrl,
-			wxT("Enable Unit Attention"));
-	myUnitAttCtrl->SetToolTip(wxT("Enable this to inform the host of changes after hot-swapping SD cards. Causes problems with Mac Plus."));
-	fgs->Add(myUnitAttCtrl);
-	Bind(wxEVT_CHECKBOX, &TargetPanel::onInput<wxCommandEvent>, this, ID_unitAttCtrl);
-
-	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("")));
-	myScsi2Ctrl =
-		new wxCheckBox(
-			this,
-			ID_scsi2Ctrl,
-			wxT("Enable SCSI2 Mode"));
-	myScsi2Ctrl->SetToolTip(wxT("Enable high-performance mode. May cause problems with SASI/SCSI1 hosts."));
-	fgs->Add(myScsi2Ctrl);
-	Bind(wxEVT_CHECKBOX, &TargetPanel::onInput<wxCommandEvent>, this, ID_scsi2Ctrl);
-
-	myGlitchCtrl =
-		new wxCheckBox(
-			this,
-			ID_glitchCtrl,
-			wxT("Disable glitch filter"));
-	myGlitchCtrl->SetToolTip(wxT("Improve performance at the cost of noise immunity. Only use with short cables."));
-	fgs->Add(myGlitchCtrl);
-	Bind(wxEVT_CHECKBOX, &TargetPanel::onInput<wxCommandEvent>, this, ID_glitchCtrl);
 
 	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("SD card start sector")));
 	wxWrapSizer* startContainer = new wxWrapSizer();
@@ -334,10 +296,6 @@ TargetPanel::evaluate()
 	{
 		myScsiIdCtrl->Enable(enabled);
 		myDeviceTypeCtrl->Enable(enabled);
-		myParityCtrl->Enable(enabled);
-		myUnitAttCtrl->Enable(enabled);
-		myScsi2Ctrl->Enable(enabled);
-		myGlitchCtrl->Enable(enabled);
 		myStartSDSectorCtrl->Enable(enabled && !myAutoStartSectorCtrl->IsChecked());
 		myAutoStartSectorCtrl->Enable(enabled);
 		mySectorSizeCtrl->Enable(enabled);
@@ -568,12 +526,6 @@ TargetPanel::getConfig() const
 
 	config.deviceType = myDeviceTypeCtrl->GetSelection();
 
-	config.flags =
-		(myParityCtrl->IsChecked() ? CONFIG_ENABLE_PARITY : 0) |
-		(myUnitAttCtrl->IsChecked() ? CONFIG_ENABLE_UNIT_ATTENTION : 0) |
-		(myScsi2Ctrl->IsChecked() ? CONFIG_ENABLE_SCSI2 : 0) |
-		(myGlitchCtrl->IsChecked() ? CONFIG_DISABLE_GLITCH : 0);
-
 	auto startSDSector = CtrlGetValue<uint32_t>(myStartSDSectorCtrl);
 	config.sdSectorStart = startSDSector.first;
 	valid = valid && startSDSector.second;
@@ -603,11 +555,6 @@ TargetPanel::setConfig(const TargetConfig& config)
 	myEnableCtrl->SetValue(config.scsiId & CONFIG_TARGET_ENABLED);
 
 	myDeviceTypeCtrl->SetSelection(config.deviceType);
-
-	myParityCtrl->SetValue(config.flags & CONFIG_ENABLE_PARITY);
-	myUnitAttCtrl->SetValue(config.flags & CONFIG_ENABLE_UNIT_ATTENTION);
-	myScsi2Ctrl->SetValue(config.flags & CONFIG_ENABLE_SCSI2);
-	myGlitchCtrl->SetValue(config.flags & CONFIG_DISABLE_GLITCH);
 
 	{
 		std::stringstream ss; ss << config.sdSectorStart;

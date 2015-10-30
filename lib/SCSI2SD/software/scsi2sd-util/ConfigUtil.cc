@@ -82,6 +82,22 @@ namespace
 
 }
 
+BoardConfig
+ConfigUtil::DefaultBoardConfig()
+{
+	BoardConfig config;
+	memset(&config, 0, sizeof(config));
+
+	memcpy(config.magic, "BCFG", 4);
+
+
+	// Default to maximum fail-safe options.
+	config.flags = 0;
+	config.selectionDelay = 255; // auto
+
+	return config;
+}
+
 TargetConfig
 ConfigUtil::Default(size_t targetIdx)
 {
@@ -96,7 +112,7 @@ ConfigUtil::Default(size_t targetIdx)
 	config.deviceType = CONFIG_FIXED;
 
 	// Default to maximum fail-safe options.
-	config.flags = 0;
+	config.flagsDEPRECATED = 0;
 	config.deviceTypeModifier = 0;
 	config.sdSectorStart = 0;
 
@@ -149,6 +165,31 @@ ConfigUtil::toBytes(const TargetConfig& _config)
 	return std::vector<uint8_t>(begin, begin + sizeof(config));
 }
 
+BoardConfig
+ConfigUtil::boardConfigFromBytes(const uint8_t* data)
+{
+	BoardConfig result;
+	memcpy(&result, data, sizeof(BoardConfig));
+
+	if (memcmp("BCFG", result.magic, 4))
+	{
+		return DefaultBoardConfig();
+	}
+
+	return result;
+}
+
+
+std::vector<uint8_t>
+ConfigUtil::boardConfigToBytes(const BoardConfig& _config)
+{
+	BoardConfig config(_config);
+
+	memcpy(config.magic, "BCFG", 4);
+	const uint8_t* begin = reinterpret_cast<const uint8_t*>(&config);
+	return std::vector<uint8_t>(begin, begin + sizeof(config));
+}
+
 std::string
 ConfigUtil::toXML(const TargetConfig& config)
 {
@@ -161,34 +202,6 @@ ConfigUtil::toXML(const TargetConfig& config)
 		"	<enabled>" <<
 			(config.scsiId & CONFIG_TARGET_ENABLED ? "true" : "false") <<
 			"</enabled>\n" <<
-
-		"	<unitAttention>" <<
-			(config.flags & CONFIG_ENABLE_UNIT_ATTENTION ? "true" : "false") <<
-			"</unitAttention>\n" <<
-
-		"	<parity>" <<
-			(config.flags & CONFIG_ENABLE_PARITY ? "true" : "false") <<
-			"</parity>\n" <<
-
-		"	<!-- ********************************************************\n" <<
-		"	Only set to true when using with a fast SCSI2 host\n " <<
-		"	controller. This can cause problems with older/slower\n" <<
-		"	 hardware.\n" <<
-		"	********************************************************* -->\n" <<
-		"	<enableScsi2>" <<
-			(config.flags & CONFIG_ENABLE_SCSI2 ? "true" : "false") <<
-			"</enableScsi2>\n" <<
-
-		"	<!-- ********************************************************\n" <<
-		"	Setting to 'true' will result in increased performance at the\n" <<
-		"	cost of lower noise immunity.\n" <<
-		"	Only set to true when using short cables with only 1 or two\n" <<
-		"	devices. This should remain off when using external SCSI1 DB25\n" <<
-		"	cables.\n" <<
-		"	********************************************************* -->\n" <<
-		"	<disableGlitchFilter>" <<
-			(config.flags & CONFIG_DISABLE_GLITCH ? "true" : "false") <<
-			"</disableGlitchFilter>\n" <<
 
 		"\n" <<
 		"	<!-- ********************************************************\n" <<
@@ -261,6 +274,54 @@ ConfigUtil::toXML(const TargetConfig& config)
 	return s.str();
 }
 
+std::string
+ConfigUtil::toXML(const BoardConfig& config)
+{
+	std::stringstream s;
+
+	s << "<BoardConfig>\n" <<
+
+		"	<unitAttention>" <<
+			(config.flags & CONFIG_ENABLE_UNIT_ATTENTION ? "true" : "false") <<
+			"</unitAttention>\n" <<
+
+		"	<parity>" <<
+			(config.flags & CONFIG_ENABLE_PARITY ? "true" : "false") <<
+			"</parity>\n" <<
+
+		"	<!-- ********************************************************\n" <<
+		"	Only set to true when using with a fast SCSI2 host\n " <<
+		"	controller. This can cause problems with older/slower\n" <<
+		"	 hardware.\n" <<
+		"	********************************************************* -->\n" <<
+		"	<enableScsi2>" <<
+			(config.flags & CONFIG_ENABLE_SCSI2 ? "true" : "false") <<
+			"</enableScsi2>\n" <<
+
+		"	<!-- ********************************************************\n" <<
+		"	Setting to 'true' will result in increased performance at the\n" <<
+		"	cost of lower noise immunity.\n" <<
+		"	Only set to true when using short cables with only 1 or two\n" <<
+		"	devices. This should remain off when using external SCSI1 DB25\n" <<
+		"	cables.\n" <<
+		"	********************************************************* -->\n" <<
+		"	<disableGlitchFilter>" <<
+			(config.flags & CONFIG_DISABLE_GLITCH ? "true" : "false") <<
+			"</disableGlitchFilter>\n" <<
+
+		"	<enableCache>" <<
+			(config.flags & CONFIG_ENABLE_CACHE ? "true" : "false") <<
+			"</enableCache>\n" <<
+
+		"	<enableDisconnect>" <<
+			(config.flags & CONFIG_ENABLE_DISCONNECT ? "true" : "false") <<
+			"</enableDisconnect>\n" <<
+		"</BoardConfig>\n";
+
+	return s.str();
+}
+
+
 static uint64_t parseInt(wxXmlNode* node, uint64_t limit)
 {
 	std::string str(node->GetNodeContent().mb_str());
@@ -321,54 +382,6 @@ parseTarget(wxXmlNode* node)
 			else
 			{
 				result.scsiId = result.scsiId & ~CONFIG_TARGET_ENABLED;
-			}
-		}
-		else if (child->GetName() == "unitAttention")
-		{
-			std::string s(child->GetNodeContent().mb_str());
-			if (s == "true")
-			{
-				result.flags |= CONFIG_ENABLE_UNIT_ATTENTION;
-			}
-			else
-			{
-				result.flags = result.flags & ~CONFIG_ENABLE_UNIT_ATTENTION;
-			}
-		}
-		else if (child->GetName() == "parity")
-		{
-			std::string s(child->GetNodeContent().mb_str());
-			if (s == "true")
-			{
-				result.flags |= CONFIG_ENABLE_PARITY;
-			}
-			else
-			{
-				result.flags = result.flags & ~CONFIG_ENABLE_PARITY;
-			}
-		}
-		else if (child->GetName() == "enableScsi2")
-		{
-			std::string s(child->GetNodeContent().mb_str());
-			if (s == "true")
-			{
-				result.flags |= CONFIG_ENABLE_SCSI2;
-			}
-			else
-			{
-				result.flags = result.flags & ~CONFIG_ENABLE_SCSI2;
-			}
-		}
-		else if (child->GetName() == "disableGlitchFilter")
-		{
-			std::string s(child->GetNodeContent().mb_str());
-			if (s == "true")
-			{
-				result.flags |= CONFIG_DISABLE_GLITCH;
-			}
-			else
-			{
-				result.flags = result.flags & ~CONFIG_DISABLE_GLITCH;
 			}
 		}
 		else if (child->GetName() == "quirks")
@@ -445,7 +458,93 @@ parseTarget(wxXmlNode* node)
 	return result;
 }
 
-std::vector<TargetConfig>
+static BoardConfig
+parseBoardConfig(wxXmlNode* node)
+{
+	BoardConfig result = ConfigUtil::DefaultBoardConfig();
+
+	wxXmlNode *child = node->GetChildren();
+	while (child)
+	{
+		if (child->GetName() == "unitAttention")
+		{
+			std::string s(child->GetNodeContent().mb_str());
+			if (s == "true")
+			{
+				result.flags |= CONFIG_ENABLE_UNIT_ATTENTION;
+			}
+			else
+			{
+				result.flags = result.flags & ~CONFIG_ENABLE_UNIT_ATTENTION;
+			}
+		}
+		else if (child->GetName() == "parity")
+		{
+			std::string s(child->GetNodeContent().mb_str());
+			if (s == "true")
+			{
+				result.flags |= CONFIG_ENABLE_PARITY;
+			}
+			else
+			{
+				result.flags = result.flags & ~CONFIG_ENABLE_PARITY;
+			}
+		}
+		else if (child->GetName() == "enableScsi2")
+		{
+			std::string s(child->GetNodeContent().mb_str());
+			if (s == "true")
+			{
+				result.flags |= CONFIG_ENABLE_SCSI2;
+			}
+			else
+			{
+				result.flags = result.flags & ~CONFIG_ENABLE_SCSI2;
+			}
+		}
+		else if (child->GetName() == "disableGlitchFilter")
+		{
+			std::string s(child->GetNodeContent().mb_str());
+			if (s == "true")
+			{
+				result.flags |= CONFIG_DISABLE_GLITCH;
+			}
+			else
+			{
+				result.flags = result.flags & ~CONFIG_DISABLE_GLITCH;
+			}
+		}
+		else if (child->GetName() == "enableCache")
+		{
+			std::string s(child->GetNodeContent().mb_str());
+			if (s == "true")
+			{
+				result.flags |= CONFIG_ENABLE_CACHE;
+			}
+			else
+			{
+				result.flags = result.flags & ~CONFIG_ENABLE_CACHE;
+			}
+		}
+		else if (child->GetName() == "enableDisconnect")
+		{
+			std::string s(child->GetNodeContent().mb_str());
+			if (s == "true")
+			{
+				result.flags |= CONFIG_ENABLE_DISCONNECT;
+			}
+			else
+			{
+				result.flags = result.flags & ~CONFIG_ENABLE_DISCONNECT;
+			}
+		}
+		child = child->GetNext();
+	}
+	return result;
+}
+
+
+std::pair<BoardConfig, std::vector<TargetConfig>>
 ConfigUtil::fromXML(const std::string& filename)
 {
 	wxXmlDocument doc;
@@ -460,16 +559,29 @@ ConfigUtil::fromXML(const std::string& filename)
 		throw std::runtime_error("Invalid root node, expected <SCSI2SD>");
 	}
 
-	std::vector<TargetConfig> result;
+	BoardConfig boardConfig = DefaultBoardConfig();
+	int boardConfigFound = 0;
+
+	std::vector<TargetConfig> targets;
 	wxXmlNode *child = doc.GetRoot()->GetChildren();
 	while (child)
 	{
 		if (child->GetName() == "SCSITarget")
 		{
-			result.push_back(parseTarget(child));
+			targets.push_back(parseTarget(child));
+		}
+		else if (child->GetName() == "BoardConfig")
+		{
+			boardConfig = parseBoardConfig(child);
+			boardConfigFound = 1;
 		}
 		child = child->GetNext();
 	}
-	return result;
+
+	if (!boardConfigFound && targets.size() > 0)
+	{
+		boardConfig.flags = targets[0].flagsDEPRECATED;
+	}
+	return make_pair(boardConfig, targets);
 }
 

@@ -45,7 +45,9 @@ extern "C" {
 			| ...    |
 			|Row 188 | Config target 0
 			---------------------------------
-			|Row 235 |
+			|Row 187 | Board Config
+			---------------------------------
+			|Row 186 |
 			| ...    |
 			|Row 0   |
 	--------|        |
@@ -70,6 +72,7 @@ extern "C" {
 // 256 bytes data, 32 bytes ECC
 #define SCSI_CONFIG_ROW_SIZE 256
 #define SCSI_CONFIG_ROW_ECC 288
+#define SCSI_CONFIG_BOARD_ROW 187
 #define SCSI_CONFIG_0_ROW 188
 #define SCSI_CONFIG_1_ROW 204
 #define SCSI_CONFIG_2_ROW 220
@@ -86,7 +89,9 @@ typedef enum
 	CONFIG_ENABLE_UNIT_ATTENTION = 1,
 	CONFIG_ENABLE_PARITY = 2,
 	CONFIG_ENABLE_SCSI2 = 4,
-	CONFIG_DISABLE_GLITCH = 8
+	CONFIG_DISABLE_GLITCH = 8,
+	CONFIG_ENABLE_CACHE = 16,
+	CONFIG_ENABLE_DISCONNECT = 32
 } CONFIG_FLAGS;
 
 typedef enum
@@ -122,7 +127,7 @@ typedef struct __attribute__((packed))
 	uint8_t scsiId;
 
 	uint8_t deviceType; // CONFIG_TYPE
-	uint8_t flags; // CONFIG_FLAGS
+	uint8_t flagsDEPRECATED; // CONFIG_FLAGS, removed in v4.5
 	uint8_t deviceTypeModifier; // Used in INQUIRY response.
 
 	uint32_t sdSectorStart;
@@ -148,6 +153,16 @@ typedef struct __attribute__((packed))
 
 	uint8_t vpd[3072]; // Total size is 4k.
 } TargetConfig;
+
+typedef struct __attribute__((packed))
+{
+	char magic[4]; // 'BCFG'
+	uint8_t flags; // CONFIG_FLAGS
+	uint8_t startupDelay; // Seconds.
+	uint8_t selectionDelay; // milliseconds. 255 = auto
+
+	uint8_t reserved[249]; // Pad out to 256 bytes
+} BoardConfig;
 
 typedef enum
 {

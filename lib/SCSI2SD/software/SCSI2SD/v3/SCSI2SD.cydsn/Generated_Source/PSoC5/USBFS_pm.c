@@ -19,6 +19,7 @@
 #include "USBFS_pvt.h"
 
 
+
 /***************************************
 * Custom Declarations
 ***************************************/
@@ -53,12 +54,20 @@ static USBFS_BACKUP_STRUCT  USBFS_backup;
     *******************************************************************************/
     CY_ISR(USBFS_DP_ISR)
     {
+        #ifdef USBFS_DP_ISR_ENTRY_CALLBACK
+            USBFS_DP_ISR_EntryCallback();
+        #endif /* USBFS_DP_ISR_ENTRY_CALLBACK */
+
         /* `#START DP_USER_CODE` Place your code here */
 
         /* `#END` */
 
         /* Clears active interrupt */
         CY_GET_REG8(USBFS_DP_INTSTAT_PTR);
+
+        #ifdef USBFS_DP_ISR_EXIT_CALLBACK
+            USBFS_DP_ISR_ExitCallback();
+        #endif /* USBFS_DP_ISR_EXIT_CALLBACK */
     }
 
 #endif /* (USBFS_DP_ISR_REMOVE == 0u) */

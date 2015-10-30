@@ -1,9 +1,9 @@
 ;
-; FILENAME: cydevicerv.inc
+; File Name: cydevicerv.inc
 ; OBSOLETE: Do not use this file. Use the _trm version instead.
-; PSoC Creator  3.2
+; PSoC Creator  3.3
 ;
-; DESCRIPTION:
+; Description:
 ; This file provides all of the address values for the entire PSoC device.
 ;
 ;-------------------------------------------------------------------------------

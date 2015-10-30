@@ -18,6 +18,7 @@
 #include "USBFS_pvt.h"
 
 
+
 /***************************************
 * Global data allocation
 ***************************************/
@@ -68,7 +69,10 @@ CY_ISR(USBFS_EP_0_ISR)
     uint8 bRegTemp;
     uint8 modifyReg;
 
-
+    #ifdef USBFS_EP_0_ISR_ENTRY_CALLBACK
+        USBFS_EP_0_ISR_EntryCallback();
+    #endif /* USBFS_EP_0_ISR_ENTRY_CALLBACK */
+    
     bRegTemp = CY_GET_REG8(USBFS_EP0_CR_PTR);
     if ((bRegTemp & USBFS_MODE_ACKD) != 0u)
     {
@@ -128,6 +132,9 @@ CY_ISR(USBFS_EP_0_ISR)
             }
         }
     }
+    #ifdef USBFS_EP_0_ISR_EXIT_CALLBACK
+        USBFS_EP_0_ISR_ExitCallback();
+    #endif /* USBFS_EP_0_ISR_EXIT_CALLBACK */
 }
 
 

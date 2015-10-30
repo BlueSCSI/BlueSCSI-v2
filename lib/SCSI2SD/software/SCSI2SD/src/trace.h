@@ -15,6 +15,8 @@
 //	You should have received a copy of the GNU General Public License
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
 
+extern uint8_t LastTrace;
+
 // Trace event IDs to be output. 1 and 9 are generated as headers on ports 0
 // and 1 respectively, and should not be used.
 enum trace_event {
@@ -71,6 +73,6 @@ void traceInit(void);
 		ITM->PORT[1].u8 = ch;
 	}
 #else
-	#define trace(ev)
-	#define traceIrq(ev)
+	#define trace(ev) LastTrace = ev
+	#define traceIrq(ev) LastTrace = ev
 #endif

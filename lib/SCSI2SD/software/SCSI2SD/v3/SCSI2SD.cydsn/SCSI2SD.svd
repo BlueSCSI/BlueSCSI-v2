@@ -9,7 +9,7 @@
     <peripheral>
       <name>SCSI_Parity_Error</name>
       <description>No description available</description>
-      <baseAddress>0x4000646B</baseAddress>
+      <baseAddress>0x40006464</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x0</size>
@@ -456,7 +456,7 @@
     <peripheral>
       <name>SCSI_Filtered</name>
       <description>No description available</description>
-      <baseAddress>0x4000646A</baseAddress>
+      <baseAddress>0x40006461</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x0</size>
@@ -611,7 +611,7 @@
     <peripheral>
       <name>SCSI_Glitch_Ctl</name>
       <description>No description available</description>
-      <baseAddress>0x40006474</baseAddress>
+      <baseAddress>0x4000647A</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x0</size>
@@ -632,7 +632,7 @@
     <peripheral>
       <name>SCSI_CTL_PHASE</name>
       <description>No description available</description>
-      <baseAddress>0x40006472</baseAddress>
+      <baseAddress>0x4000647B</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x0</size>
@@ -1137,7 +1137,7 @@
     <peripheral>
       <name>SCSI_Out_Ctl</name>
       <description>No description available</description>
-      <baseAddress>0x4000647F</baseAddress>
+      <baseAddress>0x40006475</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x0</size>
@@ -1158,7 +1158,7 @@
     <peripheral>
       <name>SCSI_Out_Bits</name>
       <description>No description available</description>
-      <baseAddress>0x4000647B</baseAddress>
+      <baseAddress>0x40006575</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x0</size>

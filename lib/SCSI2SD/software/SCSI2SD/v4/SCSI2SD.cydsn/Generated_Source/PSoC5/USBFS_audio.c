@@ -17,6 +17,7 @@
 
 #include "USBFS.h"
 
+
 #if defined(USBFS_ENABLE_AUDIO_CLASS)
 
 #include "USBFS_audio.h"
@@ -124,6 +125,11 @@ uint8 USBFS_DispatchAUDIOClassRqst(void)
                 /* `#START AUDIO_READ_REQUESTS` Place other request handler here */
 
                 /* `#END` */
+                
+                #ifdef USBFS_DISPATCH_AUDIO_CLASS_AUDIO_READ_REQUESTS_CALLBACK
+                    USBFS_DispatchAUDIOClass_AUDIO_READ_REQUESTS_Callback();
+                #endif /* USBFS_DISPATCH_AUDIO_CLASS_AUDIO_READ_REQUESTS_CALLBACK */
+
                     break;
                 default:
                     break;
@@ -142,7 +148,11 @@ uint8 USBFS_DispatchAUDIOClassRqst(void)
 
                         /* `#END` */
 
-                         /* Entity ID Control Selector is MUTE */
+                        #ifdef USBFS_DISPATCH_AUDIO_CLASS_MUTE_CONTROL_GET_REQUEST_CALLBACK
+                            USBFS_DispatchAUDIOClass_MUTE_CONTROL_GET_REQUEST_Callback();
+                        #endif /* USBFS_DISPATCH_AUDIO_CLASS_MUTE_CONTROL_GET_REQUEST_CALLBACK */
+
+                        /* Entity ID Control Selector is MUTE */
                         USBFS_currentTD.wCount = 1u;
                         USBFS_currentTD.pData  = &USBFS_currentMute;
                         requestHandled   = USBFS_InitControlRead();
@@ -152,6 +162,10 @@ uint8 USBFS_DispatchAUDIOClassRqst(void)
                         /* `#START VOLUME_CONTROL_GET_REQUEST` Place multi-channel handler here */
 
                         /* `#END` */
+
+                        #ifdef USBFS_DISPATCH_AUDIO_CLASS_VOLUME_CONTROL_GET_REQUEST_CALLBACK
+                            USBFS_DispatchAUDIOClass_VOLUME_CONTROL_GET_REQUEST_Callback();
+                        #endif /* USBFS_DISPATCH_AUDIO_CLASS_VOLUME_CONTROL_GET_REQUEST_CALLBACK */
 
                         /* Entity ID Control Selector is VOLUME, */
                         USBFS_currentTD.wCount = USBFS_VOLUME_LEN;
@@ -163,6 +177,10 @@ uint8 USBFS_DispatchAUDIOClassRqst(void)
                         /* `#START OTHER_GET_CUR_REQUESTS` Place other request handler here */
 
                         /* `#END` */
+
+                        #ifdef USBFS_DISPATCH_AUDIO_CLASS_OTHER_GET_CUR_REQUESTS_CALLBACK
+                            USBFS_DispatchAUDIOClass_OTHER_GET_CUR_REQUESTS_Callback();
+                        #endif /* USBFS_DISPATCH_AUDIO_CLASS_OTHER_GET_CUR_REQUESTS_CALLBACK */
                     }
                     break;
                 case USBFS_GET_MIN:    /* GET_MIN */
@@ -205,6 +223,11 @@ uint8 USBFS_DispatchAUDIOClassRqst(void)
                 /* `#START AUDIO_WRITE_REQUESTS` Place other request handler here */
 
                 /* `#END` */
+
+                #ifdef USBFS_DISPATCH_AUDIO_CLASS_AUDIO_WRITE_REQUESTS_CALLBACK
+                    USBFS_DispatchAUDIOClass_AUDIO_WRITE_REQUESTS_Callback();
+                #endif /* USBFS_DISPATCH_AUDIO_CLASS_AUDIO_WRITE_REQUESTS_CALLBACK */
+
                     break;
                 default:
                     break;
@@ -237,6 +260,11 @@ uint8 USBFS_DispatchAUDIOClassRqst(void)
                 /* `#START AUDIO_SAMPLING_FREQ_REQUESTS` Place other request handler here */
 
                 /* `#END` */
+
+                #ifdef USBFS_DISPATCH_AUDIO_CLASS_AUDIO_SAMPLING_FREQ_REQUESTS_CALLBACK
+                    USBFS_DispatchAUDIOClass_AUDIO_SAMPLING_FREQ_REQUESTS_Callback();
+                #endif /* USBFS_DISPATCH_AUDIO_CLASS_AUDIO_SAMPLING_FREQ_REQUESTS_CALLBACK */
+
                     break;
                 default:
                     break;
@@ -255,6 +283,10 @@ uint8 USBFS_DispatchAUDIOClassRqst(void)
 
                         /* `#END` */
 
+                        #ifdef USBFS_DISPATCH_AUDIO_CLASS_MUTE_SET_REQUEST_CALLBACK
+                            USBFS_DispatchAUDIOClass_MUTE_SET_REQUEST_Callback();
+                        #endif /* USBFS_DISPATCH_AUDIO_CLASS_MUTE_SET_REQUEST_CALLBACK */
+
                         /* Entity ID Control Selector is MUTE */
                         USBFS_currentTD.wCount = 1u;
                         USBFS_currentTD.pData  = &USBFS_currentMute;
@@ -266,6 +298,10 @@ uint8 USBFS_DispatchAUDIOClassRqst(void)
 
                         /* `#END` */
 
+                        #ifdef USBFS_DISPATCH_AUDIO_CLASS_VOLUME_CONTROL_SET_REQUEST_CALLBACK
+                            USBFS_DispatchAUDIOClass_VOLUME_CONTROL_SET_REQUEST_Callback();
+                        #endif /* USBFS_DISPATCH_AUDIO_CLASS_VOLUME_CONTROL_SET_REQUEST_CALLBACK */
+
                         /* Entity ID Control Selector is VOLUME */
                         USBFS_currentTD.wCount = USBFS_VOLUME_LEN;
                         USBFS_currentTD.pData  = USBFS_currentVolume;
@@ -276,12 +312,21 @@ uint8 USBFS_DispatchAUDIOClassRqst(void)
                         /* `#START OTHER_SET_CUR_REQUESTS` Place other request handler here */
 
                         /* `#END` */
+
+                        #ifdef USBFS_DISPATCH_AUDIO_CLASS_OTHER_SET_CUR_REQUESTS_CALLBACK
+                            USBFS_DispatchAUDIOClass_OTHER_SET_CUR_REQUESTS_Callback();
+                        #endif /* USBFS_DISPATCH_AUDIO_CLASS_OTHER_SET_CUR_REQUESTS_CALLBACK */
                     }
                 #endif /*  USBFS_ENABLE_AUDIO_STREAMING */
 
                 /* `#START AUDIO_CONTROL_SEL_REQUESTS` Place other request handler here */
 
                 /* `#END` */
+
+                #ifdef USBFS_DISPATCH_AUDIO_CLASS_AUDIO_CONTROL_SEL_REQUESTS_CALLBACK
+                    USBFS_DispatchAUDIOClass_AUDIO_CONTROL_SEL_REQUESTS_Callback();
+                #endif /* USBFS_DISPATCH_AUDIO_CLASS_AUDIO_CONTROL_SEL_REQUESTS_CALLBACK */
+
                     break;
                 default:
                     break;

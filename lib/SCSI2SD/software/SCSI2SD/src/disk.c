@@ -175,6 +175,8 @@ static void doWrite(uint32 lba, uint32 blocks)
 		CyDelay(10);
 	}
 
+	uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+
 	if (unlikely(blockDev.state & DISK_WP) ||
 		unlikely(scsiDev.target->cfg->deviceType == CONFIG_OPTICAL))
 
@@ -187,7 +189,7 @@ static void doWrite(uint32 lba, uint32 blocks)
 	else if (unlikely(((uint64) lba) + blocks >
 		getScsiCapacity(
 			scsiDev.target->cfg->sdSectorStart,
-			scsiDev.target->liveCfg.bytesPerSector,
+			bytesPerSector,
 			scsiDev.target->cfg->scsiSectors
 			)
 		))
@@ -199,19 +201,25 @@ static void doWrite(uint32 lba, uint32 blocks)
 	}
 	else
 	{
-		transfer.dir = TRANSFER_WRITE;
 		transfer.lba = lba;
 		transfer.blocks = blocks;
 		transfer.currentBlock = 0;
 		scsiDev.phase = DATA_OUT;
-		scsiDev.dataLen = scsiDev.target->liveCfg.bytesPerSector;
-		scsiDev.dataPtr = scsiDev.target->liveCfg.bytesPerSector;
+		scsiDev.dataLen = bytesPerSector;
+		scsiDev.dataPtr = bytesPerSector;
 
 		// No need for single-block writes atm.  Overhead of the
 		// multi-block write is minimal.
 		transfer.multiBlock = 1;
 
-		sdWriteMultiSectorPrep();
+
+		uint32_t sdLBA =
+			SCSISector2SD(
+				scsiDev.target->cfg->sdSectorStart,
+				bytesPerSector,
+				lba);
+		uint32_t sdBlocks = blocks * SDSectorsPerSCSISector(bytesPerSector);
+		sdWriteMultiSectorPrep(sdLBA, sdBlocks);
 	}
 }
 
@@ -237,14 +245,21 @@ static void doRead(uint32 lba, uint32 blocks)
 	}
 	else
 	{
-		transfer.dir = TRANSFER_READ;
 		transfer.lba = lba;
 		transfer.blocks = blocks;
 		transfer.currentBlock = 0;
 		scsiDev.phase = DATA_IN;
 		scsiDev.dataLen = 0; // No data yet
 
-		if ((blocks * SDSectorsPerSCSISector(scsiDev.target->liveCfg.bytesPerSector) == 1) ||
+		uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+		uint32_t sdSectorPerSCSISector = SDSectorsPerSCSISector(bytesPerSector);
+		uint32_t sdSectors =
+			blocks * sdSectorPerSCSISector;
+
+		if ((
+				(sdSectors == 1) &&
+				!(scsiDev.boardCfg.flags & CONFIG_ENABLE_CACHE)
+			) ||
 			unlikely(((uint64) lba) + blocks == capacity)
 			)
 		{
@@ -255,7 +270,14 @@ static void doRead(uint32 lba, uint32 blocks)
 		else
 		{
 			transfer.multiBlock = 1;
-			sdReadMultiSectorPrep();
+
+			uint32_t sdLBA =
+				SCSISector2SD(
+					scsiDev.target->cfg->sdSectorStart,
+					bytesPerSector,
+					lba);
+
+			sdReadMultiSectorPrep(sdLBA, sdSectors);
 		}
 	}
 }
@@ -515,22 +537,22 @@ int scsiDiskCommand()
 
 void scsiDiskPoll()
 {
+	uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+
 	if (scsiDev.phase == DATA_IN &&
 		transfer.currentBlock != transfer.blocks)
 	{
 		scsiEnterPhase(DATA_IN);
 
 		int totalSDSectors =
-			transfer.blocks *
-				SDSectorsPerSCSISector(scsiDev.target->liveCfg.bytesPerSector);
+			transfer.blocks * SDSectorsPerSCSISector(bytesPerSector);
 		uint32_t sdLBA =
 			SCSISector2SD(
 				scsiDev.target->cfg->sdSectorStart,
-				scsiDev.target->liveCfg.bytesPerSector,
+				bytesPerSector,
 				transfer.lba);
 
-		const int sdPerScsi =
-			SDSectorsPerSCSISector(scsiDev.target->liveCfg.bytesPerSector);
+		const int sdPerScsi = SDSectorsPerSCSISector(bytesPerSector);
 		int buffers = sizeof(scsiDev.data) / SD_SECTOR_SIZE;
 		int prep = 0;
 		int i = 0;
@@ -543,16 +565,18 @@ void scsiDiskPoll()
 			// Wait for the next DMA interrupt. It's beneficial to halt the
 			// processor to give the DMA controller more memory bandwidth to
 			// work with.
-			// We're optimistically assuming a race condition won't occur
-			// between these checks and the interrupt handers. The 1ms
-			// systick timer interrupt saves us on the event of a race.
-			int scsiBusy = scsiDMABusy();
-			int sdBusy = sdDMABusy();
+			int scsiBusy = 1;
+			int sdBusy = 1;
 			while (scsiBusy && sdBusy)
 			{
-				__WFI();
+				uint8_t intr = CyEnterCriticalSection();
 				scsiBusy = scsiDMABusy();
 				sdBusy = sdDMABusy();
+				if (scsiBusy && sdBusy)
+				{
+					__WFI();
+				}
+				CyExitCriticalSection(intr);
 			}
 
 			if (sdActive && !sdBusy && sdReadSectorDMAPoll())
@@ -591,7 +615,7 @@ void scsiDiskPoll()
 				int dmaBytes = SD_SECTOR_SIZE;
 				if ((i % sdPerScsi) == (sdPerScsi - 1))
 				{
-					dmaBytes = scsiDev.target->liveCfg.bytesPerSector % SD_SECTOR_SIZE;
+					dmaBytes = bytesPerSector % SD_SECTOR_SIZE;
 					if (dmaBytes == 0) dmaBytes = SD_SECTOR_SIZE;
 				}
 				scsiWriteDMA(&scsiDev.data[SD_SECTOR_SIZE * (i % buffers)], dmaBytes);
@@ -609,8 +633,7 @@ void scsiDiskPoll()
 	{
 		scsiEnterPhase(DATA_OUT);
 
-		const int sdPerScsi =
-			SDSectorsPerSCSISector(scsiDev.target->liveCfg.bytesPerSector);
+		const int sdPerScsi = SDSectorsPerSCSISector(bytesPerSector);
 		int totalSDSectors = transfer.blocks * sdPerScsi;
 		int buffers = sizeof(scsiDev.data) / SD_SECTOR_SIZE;
 		int prep = 0;
@@ -629,19 +652,21 @@ void scsiDiskPoll()
 			// Wait for the next DMA interrupt. It's beneficial to halt the
 			// processor to give the DMA controller more memory bandwidth to
 			// work with.
-			// We're optimistically assuming a race condition won't occur
-			// between these checks and the interrupt handers. The 1ms
-			// systick timer interrupt saves us on the event of a race.
-			int scsiBusy = scsiDMABusy();
-			int sdBusy = sdDMABusy();
+			int scsiBusy = 1;
+			int sdBusy = 1;
 			while (scsiBusy && sdBusy)
 			{
-				__WFI();
+				uint8_t intr = CyEnterCriticalSection();
 				scsiBusy = scsiDMABusy();
 				sdBusy = sdDMABusy();
+				if (scsiBusy && sdBusy)
+				{
+					__WFI();
+				}
+				CyExitCriticalSection(intr);
 			}
 
-			if (sdActive && !sdBusy && sdWriteSectorDMAPoll(i == (totalSDSectors - 1)))
+			if (sdActive && !sdBusy && sdWriteSectorDMAPoll())
 			{
 				sdActive = 0;
 				i++;
@@ -669,13 +694,14 @@ void scsiDiskPoll()
 				int dmaBytes = SD_SECTOR_SIZE;
 				if ((prep % sdPerScsi) == (sdPerScsi - 1))
 				{
-					dmaBytes = scsiDev.target->liveCfg.bytesPerSector % SD_SECTOR_SIZE;
+					dmaBytes = bytesPerSector % SD_SECTOR_SIZE;
 					if (dmaBytes == 0) dmaBytes = SD_SECTOR_SIZE;
 				}
 				scsiReadDMA(&scsiDev.data[SD_SECTOR_SIZE * (prep % buffers)], dmaBytes);
 				scsiActive = 1;
 			}
 			else if (
+				(scsiDev.boardCfg.flags & CONFIG_ENABLE_DISCONNECT) &&
 				(scsiActive == 0) &&
 				likely(!scsiDisconnected) &&
 				unlikely(scsiDev.discPriv) &&
@@ -761,7 +787,7 @@ void scsiDiskPoll()
 		if (scsiDev.phase == DATA_OUT)
 		{
 			if (scsiDev.parityError &&
-				(scsiDev.target->cfg->flags & CONFIG_ENABLE_PARITY) &&
+				(scsiDev.boardCfg.flags & CONFIG_ENABLE_PARITY) &&
 				(scsiDev.compatMode >= COMPAT_SCSI2))
 			{
 				scsiDev.target->sense.code = ABORTED_COMMAND;
@@ -784,24 +810,19 @@ void scsiDiskReset()
 	transfer.currentBlock = 0;
 
 	// Cancel long running commands!
-	if (unlikely(transfer.inProgress == 1))
+	if (
+		((scsiDev.boardCfg.flags & CONFIG_ENABLE_CACHE) == 0) ||
+			(transfer.multiBlock == 0)
+		)
 	{
-		if (transfer.dir == TRANSFER_WRITE)
-		{
-			sdCompleteWrite();
-		}
-		else
-		{
-			sdCompleteRead();
-		}
+		sdCompleteTransfer();
 	}
-	transfer.inProgress = 0;
+
 	transfer.multiBlock = 0;
 }
 
 void scsiDiskInit()
 {
-	transfer.inProgress = 0;
 	scsiDiskReset();
 
 	// Don't require the host to send us a START STOP UNIT command

@@ -213,7 +213,7 @@ static void process_DataOut()
 		scsiDev.dataPtr += len;
 
 		if (scsiDev.parityError &&
-			(scsiDev.target->cfg->flags & CONFIG_ENABLE_PARITY) &&
+			(scsiDev.boardCfg.flags & CONFIG_ENABLE_PARITY) &&
 			(scsiDev.compatMode >= COMPAT_SCSI2))
 		{
 			scsiDev.target->sense.code = ABORTED_COMMAND;
@@ -274,7 +274,7 @@ static void process_Command()
 		return;
 	}
 	else if (scsiDev.parityError &&
-		(cfg->flags & CONFIG_ENABLE_PARITY) &&
+		(scsiDev.boardCfg.flags & CONFIG_ENABLE_PARITY) &&
 		(scsiDev.compatMode >= COMPAT_SCSI2))
 	{
 		scsiDev.target->sense.code = ABORTED_COMMAND;
@@ -327,7 +327,7 @@ static void process_Command()
 	// on receiving the unit attention response on boot, thus
 	// triggering another unit attention condition.
 	else if (scsiDev.target->unitAttention &&
-		(cfg->flags & CONFIG_ENABLE_UNIT_ATTENTION))
+		(scsiDev.boardCfg.flags & CONFIG_ENABLE_UNIT_ATTENTION))
 	{
 		scsiDev.target->sense.code = UNIT_ATTENTION;
 		scsiDev.target->sense.asc = scsiDev.target->unitAttention;
@@ -520,14 +520,26 @@ static void enter_SelectionPhase()
 
 static void process_SelectionPhase()
 {
-	if (scsiDev.compatMode < COMPAT_SCSI2)
+	// Selection delays.
+	// Many SCSI1 samplers that use a 5380 chip need a delay of at least 1ms.
+	// The Mac Plus boot-time (ie. rom code) selection abort time
+	// is < 1ms and must have no delay (standard suggests 250ms abort time)
+	// Most newer SCSI2 hosts don't care either way.
+	if (scsiDev.boardCfg.selectionDelay == 255) // auto
 	{
-		// Required for some older SCSI1 devices using a 5380 chip.
-		CyDelay(1);
+		if (scsiDev.compatMode < COMPAT_SCSI2)
+		{
+			CyDelay(1);
+		}
+	}
+	else if (scsiDev.boardCfg.selectionDelay != 0)
+	{
+		CyDelay(scsiDev.boardCfg.selectionDelay);
 	}
 
 	int sel = SCSI_ReadFilt(SCSI_Filt_SEL);
 	int bsy = SCSI_ReadFilt(SCSI_Filt_BSY);
+	int io = SCSI_ReadPin(SCSI_In_IO);
 
 	// Only read these pins AFTER SEL and BSY - we don't want to catch them
 	// during a transition period.
@@ -546,17 +558,30 @@ static void process_SelectionPhase()
 			break;
 		}
 	}
-	if (!bsy && sel &&
+	sel &= SCSI_ReadFilt(SCSI_Filt_SEL);
+	bsy |= SCSI_ReadFilt(SCSI_Filt_BSY);
+	io |= SCSI_ReadPin(SCSI_In_IO);
+	if (!bsy && !io && sel &&
 		target &&
-		(goodParity || !(target->cfg->flags & CONFIG_ENABLE_PARITY) || !atnFlag) &&
+		(goodParity || !(scsiDev.boardCfg.flags & CONFIG_ENABLE_PARITY) || !atnFlag) &&
 		likely(maskBitCount <= 2))
 	{
+		// We've been selected!
+		// Assert BSY - Selection success!
+		// must happen within 200us (Selection abort time) of seeing our
+		// ID + SEL.
+		// (Note: the initiator will be waiting the "Selection time-out delay"
+		// for our BSY response, which is actually a very generous 250ms)
+		SCSI_SetPin(SCSI_Out_BSY);
+		ledOn();
+
 		scsiDev.target = target;
 
 		// Do we enter MESSAGE OUT immediately ? SCSI 1 and 2 standards says
 		// move to MESSAGE OUT if ATN is true before we assert BSY.
 		// The initiator should assert ATN with SEL.
 		scsiDev.atnFlag = atnFlag;
+
 
 		// Unit attention breaks many older SCSI hosts. Disable it completely
 		// for SCSI-1 (and older) hosts, regardless of our configured setting.
@@ -567,7 +592,7 @@ static void process_SelectionPhase()
 			target->unitAttention = 0;
 			scsiDev.compatMode = COMPAT_SCSI1;
 		}
-		else if (!(target->cfg->flags & CONFIG_ENABLE_SCSI2))
+		else if (!(scsiDev.boardCfg.flags & CONFIG_ENABLE_SCSI2))
 		{
 			scsiDev.compatMode = COMPAT_SCSI1;
 		}
@@ -576,25 +601,8 @@ static void process_SelectionPhase()
 			scsiDev.compatMode = COMPAT_SCSI2;
 		}
 
-		// We've been selected!
-		// Assert BSY - Selection success!
-		// must happen within 200us (Selection abort time) of seeing our
-		// ID + SEL.
-		// (Note: the initiator will be waiting the "Selection time-out delay"
-		// for our BSY response, which is actually a very generous 250ms)
-		SCSI_SetPin(SCSI_Out_BSY);
-		ledOn();
-
 		scsiDev.selCount++;
 
-		// Wait until the end of the selection phase.
-		while (likely(!scsiDev.resetFlag))
-		{
-			if (!SCSI_ReadFilt(SCSI_Filt_SEL))
-			{
-				break;
-			}
-		}
 
 		// Save our initiator now that we're no longer in a time-critical
 		// section.
@@ -610,6 +618,15 @@ static void process_SelectionPhase()
 					scsiDev.initiatorId = i;
 					break;
 				}
+			}
+		}
+
+		// Wait until the end of the selection phase.
+		while (likely(!scsiDev.resetFlag))
+		{
+			if (!SCSI_ReadFilt(SCSI_Filt_SEL))
+			{
+				break;
 			}
 		}
 
@@ -631,7 +648,7 @@ static void process_MessageOut()
 	scsiDev.msgCount++;
 
 	if (scsiDev.parityError &&
-		(scsiDev.target->cfg->flags & CONFIG_ENABLE_PARITY) &&
+		(scsiDev.boardCfg.flags & CONFIG_ENABLE_PARITY) &&
 		(scsiDev.compatMode >= COMPAT_SCSI2))
 	{
 		// Skip the remaining message bytes, and then start the MESSAGE_OUT
@@ -720,6 +737,12 @@ static void process_MessageOut()
 	{
 		// Two byte message. We don't support these. read and discard.
 		scsiReadByte();
+
+		if (scsiDev.msgOut == 0x23) {
+			// Ignore Wide Residue. We're only 8 bit anyway.
+		} else {
+			messageReject();
+		}
 	}
 	else if (scsiDev.msgOut == 0x01)
 	{

@@ -97,10 +97,12 @@ typedef struct
 {
 	TargetState targets[MAX_SCSI_TARGETS];
 	TargetState* target;
+	BoardConfig boardCfg;
+
 
 	// Set to true (1) if the ATN flag was set, and we need to
 	// enter the MESSAGE_OUT phase.
-	volatile int atnFlag;
+	int atnFlag;
 
 	// Set to true (1) if the RST flag was set.
 	volatile int resetFlag;

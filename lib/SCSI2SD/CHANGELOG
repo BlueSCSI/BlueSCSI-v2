@@ -1,6 +1,17 @@
 20150x0x		4.5
 	- Fix bug in SCSI MODE SENSE that returned the wrong mode type
 		- Fixes CDROM emulation
+	- Added selection delay parameter. This should be set to 1ms for older
+	SCSI1 hardware, or 0ms for SCSI2 and Mac Plus.
+	- Upgraded to wxWidgets 3.0.2
+	- Fixed stability/performance issue for sector sizes above 512
+	- Fixed bug that prevented the dvice working after "ejecting" a drive
+	- Upgraded to Cypress PSoC Creator 3.3
+	- Added experimental caching option. This provides a 2x speed up for
+	sequential single-sector writes. It is disabled by default.
+	- Disabled SCSI Disconnect support by default. There's now an option
+	in scsi2sd-util to enable it. It should be left off unless you have
+	a very good reason to enable it.
 
 20150813		4.4
 	- Added configuration option to allow SCSI2 mode. This option is OFF by

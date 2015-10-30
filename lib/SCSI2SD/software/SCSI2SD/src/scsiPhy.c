@@ -75,7 +75,7 @@ CY_ISR(scsiSelectionISR)
 {
 	// The SEL signal ISR ensures we wake up from a _WFI() (wait-for-interrupt)
 	// call in the main loop without waiting for our 1ms timer to
-	// expire. This is done for performance reasons only.
+	// expire. This is done to meet the 250us selection abort time.
 }
 
 uint8_t
@@ -104,9 +104,6 @@ scsiReadByte(void)
 	uint8_t val = scsiPhyRx();
 	scsiDev.parityError = scsiDev.parityError || SCSI_Parity_Error_Read();
 
-	trace(trace_spinTxComplete);
-	while (!(scsiPhyStatus() & SCSI_PHY_TX_COMPLETE) && likely(!scsiDev.resetFlag)) {}
-
 	return val;
 }
 
@@ -132,7 +129,6 @@ scsiReadPIO(uint8* data, uint32 count)
 		}
 	}
 	scsiDev.parityError = scsiDev.parityError || SCSI_Parity_Error_Read();
-	while (!(scsiPhyStatus() & SCSI_PHY_TX_COMPLETE) && likely(!scsiDev.resetFlag)) {}
 }
 
 static void
@@ -199,11 +195,6 @@ scsiReadDMAPoll()
 {
 	if (scsiTxDMAComplete && scsiRxDMAComplete)
 	{
-		// Wait until our scsi signals are consistent. This should only be
-		// a few cycles.
-		trace(trace_spinTxComplete);
-		while (!(scsiPhyStatus() & SCSI_PHY_TX_COMPLETE)) {}
-
 		if (likely(dmaSentCount == dmaTotalCount))
 		{
 			dmaInProgress = 0;
@@ -266,7 +257,7 @@ scsiWriteByte(uint8 value)
 
 	trace(trace_spinTxComplete);
 	while (!(scsiPhyStatus() & SCSI_PHY_TX_COMPLETE) && likely(!scsiDev.resetFlag)) {}
-	scsiPhyRxFifoClear();
+	scsiPhyRx();
 }
 
 static void
@@ -386,7 +377,7 @@ scsiWrite(const uint8_t* data, uint32_t count)
 		{
 			__WFI();
 		};
-		
+
 		if (count > alignedCount)
 		{
 			scsiWritePIO(data + alignedCount, count - alignedCount);
@@ -403,6 +394,12 @@ static inline void busSettleDelay(void)
 
 void scsiEnterPhase(int phase)
 {
+	// ANSI INCITS 362-2002 SPI-3 10.7.1:
+	// Phase changes are not allowed while REQ or ACK is asserted.
+	while (likely(!scsiDev.resetFlag) &&
+		(SCSI_ReadPin(SCSI_In_REQ) || SCSI_ReadFilt(SCSI_Filt_ACK))
+		) {}
+
 	int newPhase = phase > 0 ? phase : 0;
 	if (newPhase != SCSI_CTL_PHASE_Read())
 	{
@@ -427,7 +424,7 @@ void scsiPhyReset()
 		dmaTotalCount = 0;
 		CyDmaChSetRequest(scsiDmaTxChan, CY_DMA_CPU_TERM_CHAIN);
 		CyDmaChSetRequest(scsiDmaRxChan, CY_DMA_CPU_TERM_CHAIN);
-		
+
 		// CyDmaChGetRequest returns 0 for the relevant bit once the
 		// request is completed.
 		trace(trace_spinDMAReset);
@@ -484,7 +481,7 @@ static void scsiPhyInitDMA()
 				HI16(CYDEV_SRAM_BASE),
 				HI16(CYDEV_PERIPH_BASE)
 				);
-		
+
 		CyDmaChDisable(scsiDmaRxChan);
 		CyDmaChDisable(scsiDmaTxChan);
 
@@ -506,7 +503,7 @@ void scsiPhyInit()
 	SCSI_SEL_ISR_StartEx(scsiSelectionISR);
 
 	// Disable the glitch filter for ACK to improve performance.
-	if (getConfigByIndex(0)->flags & CONFIG_DISABLE_GLITCH)
+	if (scsiDev.boardCfg.flags & CONFIG_DISABLE_GLITCH)
 	{
 		SCSI_Glitch_Ctl_Write(1);
 		CY_SET_REG8(scsiTarget_datapath__D0_REG, 0);

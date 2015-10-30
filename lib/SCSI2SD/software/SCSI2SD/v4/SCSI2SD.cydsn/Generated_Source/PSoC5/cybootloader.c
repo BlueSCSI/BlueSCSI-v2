@@ -2,6 +2,7 @@
 
 #include "cytypes.h"
 
+#if (!CYDEV_BOOTLOADER_ENABLE)
 
 #if defined(__GNUC__) || defined(__ARMCC_VERSION)
 __attribute__ ((__section__(".cyloadermeta"), used))
@@ -19,6 +20,8 @@ const uint8 cy_meta_loader[] = {
     0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
     0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
     0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u};
+#endif /* (!CYDEV_BOOTLOADER_ENABLE) */
+
 
 #if defined(__GNUC__) || defined(__ARMCC_VERSION)
 __attribute__ ((__section__(".cybootloader"), used))

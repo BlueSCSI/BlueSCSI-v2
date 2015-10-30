@@ -77,10 +77,6 @@ private:
 		ID_enableCtrl = wxID_HIGHEST + 1,
 		ID_scsiIdCtrl,
 		ID_deviceTypeCtrl,
-		ID_parityCtrl,
-		ID_unitAttCtrl,
-		ID_scsi2Ctrl,
-		ID_glitchCtrl,
 		ID_startSDSectorCtrl,
 		ID_autoStartSectorCtrl,
 		ID_sectorSizeCtrl,
@@ -111,11 +107,6 @@ private:
 	wxStaticText* myScsiIdMsg;
 
 	wxChoice* myDeviceTypeCtrl;
-
-	wxCheckBox* myParityCtrl;
-	wxCheckBox* myUnitAttCtrl;
-	wxCheckBox* myScsi2Ctrl;
-	wxCheckBox* myGlitchCtrl;
 
 	wxIntegerValidator<uint32_t>* myStartSDSectorValidator;
 	wxTextCtrl* myStartSDSectorCtrl;

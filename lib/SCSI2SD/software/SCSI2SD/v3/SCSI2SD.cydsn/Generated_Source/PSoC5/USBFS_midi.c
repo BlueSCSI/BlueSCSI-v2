@@ -26,6 +26,7 @@
 #include "USBFS_pvt.h"
 
 
+
 /***************************************
 *    MIDI Constants
 ***************************************/
@@ -269,6 +270,10 @@ void USBFS_MIDI_EP_Init(void)
                             /* `#START CUSTOM_MIDI_OUT_EP_SERV` Place your code here */
 
                             /* `#END` */
+
+                            #ifdef USBFS_MIDI_OUT_EP_SERVICE_CALLBACK
+                                USBFS_MIDI_OUT_EP_Service_Callback();
+                            #endif /* USBFS_MIDI_OUT_EP_SERVICE_CALLBACK */
                         }
                     #endif /* (USBFS_MIDI_EXT_MODE >= USBFS_ONE_EXT_INTRF) */
 
@@ -732,6 +737,9 @@ void USBFS_MIDI_EP_Init(void)
 
         /* `#END` */
 
+        #ifdef USBFS_MIDI_INIT_CALLBACK
+            USBFS_MIDI_Init_Callback();
+        #endif /* USBFS_MIDI_INIT_CALLBACK */
     }
 
 
@@ -1046,6 +1054,10 @@ void USBFS_MIDI_EP_Init(void)
 
         /* `#END` */
 
+        #ifdef USBFS_MIDI1_PROCESS_USB_OUT_ENTRY_CALLBACK
+            USBFS_MIDI1_ProcessUsbOut_EntryCallback();
+        #endif /* USBFS_MIDI1_PROCESS_USB_OUT_ENTRY_CALLBACK */
+
         cmd = epBuf[USBFS_EVENT_BYTE0] & USBFS_CIN_MASK;
         if((cmd != USBFS_RESERVED0) && (cmd != USBFS_RESERVED1))
         {
@@ -1118,6 +1130,10 @@ void USBFS_MIDI_EP_Init(void)
         /* `#START MIDI1_PROCESS_OUT_END` */
 
         /* `#END` */
+
+        #ifdef USBFS_MIDI1_PROCESS_USB_OUT_EXIT_CALLBACK
+            USBFS_MIDI1_ProcessUsbOut_ExitCallback();
+        #endif /* USBFS_MIDI1_PROCESS_USB_OUT_EXIT_CALLBACK */
     }
 
 
@@ -1269,6 +1285,10 @@ void USBFS_MIDI_EP_Init(void)
 
         /* `#END` */
 
+        #ifdef USBFS_MIDI2_PROCESS_USB_OUT_ENTRY_CALLBACK
+            USBFS_MIDI2_ProcessUsbOut_EntryCallback();
+        #endif /* USBFS_MIDI2_PROCESS_USB_OUT_ENTRY_CALLBACK */
+
         cmd = epBuf[USBFS_EVENT_BYTE0] & USBFS_CIN_MASK;
         if((cmd != USBFS_RESERVED0) && (cmd != USBFS_RESERVED1))
         {
@@ -1341,6 +1361,10 @@ void USBFS_MIDI_EP_Init(void)
         /* `#START MIDI2_PROCESS_OUT_END` */
 
         /* `#END` */
+
+        #ifdef USBFS_MIDI2_PROCESS_USB_OUT_EXIT_CALLBACK
+            USBFS_MIDI2_ProcessUsbOut_ExitCallback();
+        #endif /* USBFS_MIDI2_PROCESS_USB_OUT_EXIT_CALLBACK */
     }
 #endif /* (USBFS_MIDI_EXT_MODE >= USBFS_TWO_EXT_INTRF) */
 #endif /* (USBFS_MIDI_EXT_MODE >= USBFS_ONE_EXT_INTRF) */

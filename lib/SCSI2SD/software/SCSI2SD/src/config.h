@@ -20,7 +20,7 @@
 #include "device.h"
 #include "scsi2sd.h"
 
-void configInit(void);
+void configInit(BoardConfig* config);
 void debugInit(void);
 void configPoll(void);
 void configSave(int scsiId, uint16_t byesPerSector);

@@ -26,9 +26,7 @@
 #include "time.h"
 #include "trace.h"
 
-const char* Notice = "Copyright (C) 2014 Michael McMaster <michael@codesrc.com>";
-
-uint8_t testData[512];
+const char* Notice = "Copyright (C) 2015 Michael McMaster <michael@codesrc.com>";
 
 int main()
 {
@@ -43,16 +41,21 @@ int main()
 	// Set interrupt handlers.
 	scsiPhyInit();
 
-	configInit();
+	configInit(&scsiDev.boardCfg);
 	debugInit();
 
 	scsiInit();
 	scsiDiskInit();
 
+	// Optional bootup delay
+	int delaySeconds = 0;
+	while (delaySeconds < scsiDev.boardCfg.startupDelay) {
+		CyDelay(1000);
+		++delaySeconds;
+	}
+
 	uint32_t lastSDPoll = getTime_ms();
-	sdPoll();
-
-
+	sdCheckPresent();
 
 
 	while (1)
@@ -62,21 +65,34 @@ int main()
 		scsiPoll();
 		scsiDiskPoll();
 		configPoll();
+		sdPoll();
 
 		if (unlikely(scsiDev.phase == BUS_FREE))
 		{
 			if (unlikely(elapsedTime_ms(lastSDPoll) > 200))
 			{
 				lastSDPoll = getTime_ms();
-				sdPoll();
+				sdCheckPresent();
 			}
 			else
 			{
 				// Wait for our 1ms timer to save some power.
 				// There's an interrupt on the SEL signal to ensure we respond
-				// quickly to any SCSI commands.
-				__WFI();
+				// quickly to any SCSI commands. The selection abort time is
+				// only 250us, and new SCSI-3 controllers time-out very
+				// not long after that, so we need to ensure we wake up quickly.
+				uint8_t interruptState = CyEnterCriticalSection();
+				if (!SCSI_ReadFilt(SCSI_Filt_SEL))
+				{
+					__WFI(); // Will wake on interrupt, regardless of mask
+				}
+				CyExitCriticalSection(interruptState);
 			}
+		}
+		else if (scsiDev.phase >= 0)
+		{
+			// don't waste time scanning SD cards while we're doing disk IO
+			lastSDPoll = getTime_ms();
 		}
 	}
 	return 0;

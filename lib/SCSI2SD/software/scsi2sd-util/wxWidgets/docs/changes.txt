@@ -574,6 +574,56 @@ Major new features in this release
 
 
 
+3.0.2: (released 2014-10-06)
+----------------------------
+
+All:
+
+- Fix silent data loss in wx[F]File::Write(wxString) if conversion fails.
+- Make wxString::FromCDouble() work when the global C++ locale is not the C one.
+- Add support for "%V", "%G" and "%g" to wxDateTime::Format().
+
+All (GUI):
+
+- Add wxGenericListCtrl::EndEditLabel() (Tim Kosse).
+- Implement bounding box computation in wxGCDC (Toni Ruža).
+- Fix saving GIF animations with 2.5s+ delays between frames (elvissteinjr).
+- Add "variant" property to windows in XRC.
+- Add XRC handler for wxSimplebook.
+- Return correct value from wxCommandEvent::GetString() for programmatically
+  generated wxEVT_TEXT events from wxComboBox.
+- Accept "default" as font family value in XRC (pieleric).
+- Send events when toggling wxPropertyGrid nodes from keyboard (Armel Asselin).
+
+wxGTK:
+
+- Fix mouse handling in wxNotebook containing wxListCtrl (Charlie Fenton).
+- Fix layout of wxSearchCtrl to not truncate text in it.
+
+wxMSW:
+
+- Fix Cygwin 1.7 build.
+- Work around a bug in MinGW 4.8 headers and fix build with it too.
+- Include x64 configurations in MSVC 8/9 project files too.
+- Fix parallel build of MSVC 11/12 solutions (Artur Wieczorek).
+- Fix background of wxRadioBox buttons and wxSlider (Artur Wieczorek).
+- Fix appearance of wxToggleButtons with non default colours (Artur Wieczorek).
+- Fix drawing on wxDC when using right-to-left layout (Artur Wieczorek).
+- Fix wxGrid appearance and behaviour in RTL (Artur Wieczorek).
+- Fix creating wxBitmap from monochrome wxIcon or wxCursor (Artur Wieczorek).
+- Fix handling of bitmaps with alpha in wxImageList (Artur Wieczorek).
+- Add paragraph spacing attributes support to wxTextCtrl (dannchr).
+- Show new style directory selector even for non existent paths (raychow).
+- Fix order of radial gradient stops (Alexandru Pana).
+- Fix font created using wxFont(wxFontInfo()) ctor.
+- Fix wxFileName::GetShortcutTarget() in console applications.
+- Fix wxFileName::MakeRelativeTo() for shortcut files (gafatoa).
+- Fix height of initially empty wxBitmapComboBox (Artur Wieczorek).
+- Fix setting label of submenu items (Artur Wieczorek).
+- Fix using Esc as accelerator in the menus.
+- Fix wrong initial status bar height in some cases (Artur Wieczorek).
+
+
 3.0.1: (released 2014-06-15)
 ----------------------------
 
@@ -608,6 +658,7 @@ All (GUI):
 - Fix handling of custom colours in wxPropertyGrid choices (Artur Wieczorek).
 - Add "hint" property to wxTextCtrl XRC handler.
 - Allow using wxALIGN_CENTER, and not just CENTRE, in XRC for wxStaticText.
+- Handle files used in wxAnimationCtrl "animation" property in wxrc.
 
 wxGTK:
 

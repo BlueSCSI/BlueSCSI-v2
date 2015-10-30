@@ -68,17 +68,17 @@ int sdInit(void);
 
 #define sdDMABusy() (!(sdRxDMAComplete && sdTxDMAComplete))
 
-void sdWriteMultiSectorPrep(void);
+void sdWriteMultiSectorPrep(uint32_t sdLBA, uint32_t sdSectors);
 void sdWriteMultiSectorDMA(uint8_t* outputBuffer);
-int sdWriteSectorDMAPoll(int sendStopToken);
-void sdCompleteWrite(void);
+int sdWriteSectorDMAPoll();
 
-void sdReadMultiSectorPrep(void);
+void sdReadMultiSectorPrep(uint32_t sdLBA, uint32_t sdSectors);
 void sdReadMultiSectorDMA(uint8_t* outputBuffer);
 void sdReadSingleSectorDMA(uint32_t lba, uint8_t* outputBuffer);
 int sdReadSectorDMAPoll();
-void sdCompleteRead(void);
 
+void sdCompleteTransfer(void);
+void sdCheckPresent();
 void sdPoll();
 
 #endif

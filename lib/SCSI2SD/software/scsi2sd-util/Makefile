@@ -30,7 +30,7 @@ endif
 ifeq ($(USE_SYSTEM_WX),Yes)
 LDFLAGS_WX=$(shell wx-config-3.0 --libs)
 else
-LDFLAGS_WX=$(shell $(BUILD)/wx-config --libs)
+LDFLAGS_WX=$(shell $(BUILD)/wx/wx-config --libs)
 endif
 
 CPPFLAGS = -I cybootloaderutils $(CPPFLAGS_HIDAPI) -I. -I ../include -Ilibzipper-1.0.4 $(CPPFLAGS_ZLIB)
@@ -50,7 +50,7 @@ TARGET ?= $(shell uname -s)
 ifeq ($(TARGET),Win32)
 	VPATH += hidapi/windows
 	LDFLAGS += -static -mconsole -mwindows -lsetupapi
-	BUILD = build/windows/32bit
+	BUILD := $(PWD)/build/windows/32bit
 	CC=i686-w64-mingw32-gcc
 	CXX=i686-w64-mingw32-g++
 	LIBZIPPER_CONFIG+=--host=i686-w64-mingw32
@@ -60,7 +60,7 @@ endif
 ifeq ($(TARGET),Win64)
 	VPATH += hidapi/windows
 	LDFLAGS += -static -mconsole -mwindows -lsetupapi
-	BUILD = build/windows/64bit
+	BUILD := $(PWD)/build/windows/64bit
 	CC=x86_64-w64-mingw32-gcc
 	CXX=x86_64-w64-mingw32-g++
 	LIBZIPPER_CONFIG+=--host=x86_64-w64-mingw32
@@ -70,7 +70,7 @@ endif
 ifeq ($(TARGET),Linux)
 	VPATH += hidapi/linux
 	LDFLAGS += -ludev -lexpat
-	BUILD = build/linux
+	BUILD := $(PWD)/build/linux
 endif
 ifeq ($(TARGET),Darwin)
 	# Should match OSX
@@ -79,7 +79,7 @@ ifeq ($(TARGET),Darwin)
 	CC=clang -mmacosx-version-min=10.7
 	CXX=clang++ -stdlib=libc++ -mmacosx-version-min=10.7
 	WX_CONFIG += --with-macosx-version-min=10.7
-	BUILD=build/mac
+	BUILD := $(PWD)/build/mac
 endif
 
 export CC CXX
@@ -103,6 +103,7 @@ OBJ = \
 	$(CYAPI) $(HIDAPI) \
 	$(BUILD)/ConfigUtil.o \
 	$(BUILD)/Firmware.o \
+	$(BUILD)/BoardPanel.o \
 	$(BUILD)/TargetPanel.o \
 	$(BUILD)/SCSI2SD_Bootloader.o \
 	$(BUILD)/SCSI2SD_HID.o \
@@ -129,16 +130,16 @@ $(BUILD)/zlib/buildstamp:
 endif
 
 ifneq ($(USE_SYSTEM_WX),Yes)
-$(OBJ): $(BUILD)/wx.buildstamp
-$(EXEOBJ): $(BUILD)/wx.buildstamp
+$(OBJ): $(BUILD)/wx/buildstamp
+$(EXEOBJ): $(BUILD)/wx/buildstamp
 ifneq ($(USE_SYSTEM_ZLIB),Yes)
-$(BUILD)/wx.buildstamp: $(BUILD)/zlib/buildstamp
+$(BUILD)/wx/buildstamp: $(BUILD)/zlib/buildstamp
 else
-$(BUILD)/wx.buildstamp:
+$(BUILD)/wx/buildstamp:
 endif
 	mkdir -p $(dir $@)
 	( \
-		cd $(BUILD) && \
+		cd $(dir $@) && \
 		$(CURDIR)/wxWidgets/configure $(WX_CONFIG) CPPFLAGS="$(CPPFLAGS_ZLIB)" LDFLAGS="$(LDFLAGS_ZLIB)" && \
 		$(MAKE) \
 	) && \
@@ -171,7 +172,7 @@ $(BUILD)/%.o: %.c
 $(BUILD)/%.o: %.cc
 	mkdir -p $(dir $@)
 ifneq ($(USE_SYSTEM_WX),Yes)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) `$(BUILD)/wx-config --cxxflags` $< -c -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) `$(BUILD)/wx/wx-config --cxxflags` $< -c -o $@
 else
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) `wx-config-3.0 --cxxflags` $< -c -o $@
 endif
@@ -201,5 +202,6 @@ dist:
 	       cybootloaderutils Firmware.cc Firmware.hh libzipper-1.0.4 Makefile \
                SCSI2SD_Bootloader.cc SCSI2SD_Bootloader.hh SCSI2SD_HID.cc SCSI2SD_HID.hh \
 	       scsi2sd-monitor.cc scsi2sd-util.cc TargetPanel.cc TargetPanel.hh \
+	       BoardPanel.cc BoardPanel.hh \
 	       $(NAME)-$(VERSION)
 	tar jcvf $(NAME)-$(VERSION).tar.bz2 $(NAME)-$(VERSION)

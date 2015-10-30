@@ -20,6 +20,7 @@
 #include <CyLib.h>
 #include <Debug_Timer_Interrupt.h>
 
+
 #if !defined(Debug_Timer_Interrupt__REMOVED) /* Check for removal by optimization */
 
 /*******************************************************************************
@@ -158,6 +159,10 @@ void Debug_Timer_Interrupt_Stop(void)
 *******************************************************************************/
 CY_ISR(Debug_Timer_Interrupt_Interrupt)
 {
+    #ifdef Debug_Timer_Interrupt_INTERRUPT_INTERRUPT_CALLBACK
+        Debug_Timer_Interrupt_Interrupt_InterruptCallback();
+    #endif /* Debug_Timer_Interrupt_INTERRUPT_INTERRUPT_CALLBACK */ 
+
     /*  Place your Interrupt code here. */
     /* `#START Debug_Timer_Interrupt_Interrupt` */
 

@@ -26,13 +26,14 @@
 #include "scsi.h"
 #include "scsiPhy.h"
 #include "disk.h"
+#include "trace.h"
 
 #include "../../include/scsi2sd.h"
 #include "../../include/hidpacket.h"
 
 #include <string.h>
 
-static const uint16_t FIRMWARE_VERSION = 0x0442;
+static const uint16_t FIRMWARE_VERSION = 0x0450;
 
 // 1 flash row
 static const uint8_t DEFAULT_CONFIG[256] =
@@ -64,7 +65,26 @@ static int usbInEpState;
 static int usbDebugEpState;
 static int usbReady;
 
-void configInit()
+static void initBoardConfig(BoardConfig* config) {
+	memcpy(
+		config,
+		(
+			CY_FLASH_BASE +
+			(CY_FLASH_SIZEOF_ARRAY * (size_t) SCSI_CONFIG_ARRAY) +
+			(CY_FLASH_SIZEOF_ROW * SCSI_CONFIG_BOARD_ROW)
+			),
+		sizeof(BoardConfig));
+
+	if (memcmp(config->magic, "BCFG", 4)) {
+		// Set a default from the deprecated flags, or 0 if
+		// there is no initial config.
+		config->flags = getConfigByIndex(0)->flagsDEPRECATED;
+
+		config->selectionDelay = 255; // auto
+	}
+}
+
+void configInit(BoardConfig* config)
 {
 	// The USB block will be powered by an internal 3.3V regulator.
 	// The PSoC must be operating between 4.6V and 5V for the regulator
@@ -90,6 +110,8 @@ void configInit()
 		CySetTemp();
 		CyWriteRowData(SCSI_CONFIG_ARRAY, SCSI_CONFIG_0_ROW, DEFAULT_CONFIG);
 	}
+
+	initBoardConfig(config);
 }
 
 static void
@@ -123,7 +145,7 @@ writeFlashCommand(const uint8_t* cmd, size_t cmdSize)
 	// Be very careful not to overwrite the bootloader or other
 	// code
 	if ((flashArray != SCSI_CONFIG_ARRAY) ||
-		(flashRow < SCSI_CONFIG_0_ROW) ||
+		(flashRow < SCSI_CONFIG_BOARD_ROW) ||
 		(flashRow >= SCSI_CONFIG_3_ROW + SCSI_CONFIG_ROWS))
 	{
 		uint8_t response[] = { CONFIG_STATUS_ERR};
@@ -324,6 +346,7 @@ void debugPoll()
 		hidBuffer[27] = scsiDev.lastSenseASC >> 8;
 		hidBuffer[28] = scsiDev.lastSenseASC;
 		hidBuffer[29] = scsiReadDBxPins();
+		hidBuffer[30] = LastTrace;
 
 		hidBuffer[58] = sdDev.capacity >> 24;
 		hidBuffer[59] = sdDev.capacity >> 16;

@@ -25,6 +25,7 @@
 #include "USBFS_hid.h"
 
 
+
 /***************************************
 *    HID Variables
 ***************************************/
@@ -375,6 +376,11 @@ void USBFS_FindReport(void)
     /* `#START HID_FINDREPORT` Place custom handling here */
 
     /* `#END` */
+    
+    #ifdef USBFS_FIND_REPORT_CALLBACK
+        USBFS_FindReport_Callback();
+    #endif /* USBFS_FIND_REPORT_CALLBACK */
+    
     USBFS_currentTD.count = 0u;   /* Init not supported condition */
     pTmp = USBFS_GetConfigTablePtr(USBFS_configuration - 1u);
     reportType = CY_GET_REG8(USBFS_wValueHi);

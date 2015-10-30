@@ -21,6 +21,7 @@
 #include "USBFS_pvt.h"
 
 
+
 /***************************************
 * User Implemented Class Driver Declarations.
 ***************************************/
@@ -88,6 +89,10 @@ uint8 USBFS_DispatchClassRqst(void)
     /* `#START USER_DEFINED_CLASS_CODE` Place your Class request here */
 
     /* `#END` */
+
+    #ifdef USBFS_DISPATCH_CLASS_RQST_CALLBACK
+        USBFS_DispatchClassRqst_Callback();
+    #endif /* USBFS_DISPATCH_CLASS_RQST_CALLBACK */
 
     return(requestHandled);
 }

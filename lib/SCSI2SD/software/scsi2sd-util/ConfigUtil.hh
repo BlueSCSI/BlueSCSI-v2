@@ -22,6 +22,7 @@
 #include <cstddef>
 #include <string>
 #include <vector>
+#include <utility>
 
 namespace SCSI2SD
 {
@@ -29,13 +30,18 @@ namespace SCSI2SD
 	{
 	public:
 
+		static BoardConfig DefaultBoardConfig();
 		static TargetConfig Default(size_t targetIdx);
 
 		static TargetConfig fromBytes(const uint8_t* data);
 		static std::vector<uint8_t> toBytes(const TargetConfig& config);
 
+		static BoardConfig boardConfigFromBytes(const uint8_t* data);
+		static std::vector<uint8_t> boardConfigToBytes(const BoardConfig& config);
+
 		static std::string toXML(const TargetConfig& config);
-		static std::vector<TargetConfig> fromXML(const std::string& filename);
+		static std::string toXML(const BoardConfig& config);
+		static std::pair<BoardConfig, std::vector<TargetConfig>> fromXML(const std::string& filename);
 	};
 }
 
