@@ -63,6 +63,9 @@ static uint8_t dummyBuffer[2]  __attribute__((aligned(4))) = {0xFF, 0xFF};
 volatile uint8_t sdRxDMAComplete;
 volatile uint8_t sdTxDMAComplete;
 
+static void sdCompleteRead();
+static void sdCompleteWrite();
+
 CY_ISR_PROTO(sdRxISR);
 CY_ISR(sdRxISR)
 {
@@ -426,7 +429,7 @@ sdReadMultiSectorDMA(uint8_t* outputBuffer)
 	dmaReadSector(outputBuffer);
 }
 
-void sdCompleteRead()
+static void sdCompleteRead()
 {
 	if (unlikely(sdIOState != SD_IDLE))
 	{
@@ -442,7 +445,7 @@ void sdCompleteRead()
 	{
 		uint8 r1b = sdCommandAndResponse(SD_STOP_TRANSMISSION, 0);
 
-		if (unlikely(r1b) && (scsiDev.PHASE == DATA_IN))
+		if (unlikely(r1b) && (scsiDev.phase == DATA_IN))
 		{
 			scsiDev.status = CHECK_CONDITION;
 			scsiDev.target->sense.code = HARDWARE_ERROR;
@@ -570,7 +573,7 @@ sdWriteSectorDMAPoll()
 	}
 }
 
-void sdCompleteWrite()
+static void sdCompleteWrite()
 {
 	if (unlikely(sdIOState != SD_IDLE))
 	{

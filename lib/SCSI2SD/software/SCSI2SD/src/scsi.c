@@ -31,6 +31,8 @@
 #include "time.h"
 #include "cdrom.h"
 #include "debug.h"
+#include "tape.h"
+#include "mo.h"
 
 #include <string.h>
 
