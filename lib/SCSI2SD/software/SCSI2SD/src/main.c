@@ -50,13 +50,19 @@ int main()
 	// Optional bootup delay
 	int delaySeconds = 0;
 	while (delaySeconds < scsiDev.boardCfg.startupDelay) {
-		CyDelay(1000);
+		// Keep the USB connection working, otherwise it's very hard to revert
+		// silly extra-long startup delay settings.
+		int i;
+		for (i = 0; i < 200; i++) {
+			CyDelay(5);
+			scsiDev.watchdogTick++;
+			configPoll();
+		}
 		++delaySeconds;
 	}
 
 	uint32_t lastSDPoll = getTime_ms();
 	sdCheckPresent();
-
 
 	while (1)
 	{

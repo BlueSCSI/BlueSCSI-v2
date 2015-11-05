@@ -57,7 +57,9 @@ private:
 		ID_scsi2Ctrl,
 		ID_glitchCtrl,
 		ID_cacheCtrl,
-		ID_disconnectCtrl
+		ID_disconnectCtrl,
+		ID_startDelayCtrl,
+		ID_selDelayCtrl
 	};
 
 	wxWindow* myParent;
@@ -70,6 +72,10 @@ private:
 	wxCheckBox* myGlitchCtrl;
 	wxCheckBox* myCacheCtrl;
 	wxCheckBox* myDisconnectCtrl;
+
+	wxIntegerValidator<uint8_t>* myDelayValidator;
+	wxTextCtrl* myStartDelayCtrl;
+	wxTextCtrl* mySelDelayCtrl;
 };
 
 } // namespace SCSI2SD

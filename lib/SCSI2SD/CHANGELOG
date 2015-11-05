@@ -1,4 +1,4 @@
-20150x0x		4.5
+20151105		4.5
 	- Fix bug in SCSI MODE SENSE that returned the wrong mode type
 		- Fixes CDROM emulation
 	- Added selection delay parameter. This should be set to 1ms for older

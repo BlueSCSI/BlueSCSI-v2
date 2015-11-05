@@ -378,6 +378,7 @@ private:
 
 	void OnID_ConfigDefaults(wxCommandEvent& event)
 	{
+		myBoardPanel->setConfig(ConfigUtil::DefaultBoardConfig());
 		for (size_t i = 0; i < myTargets.size(); ++i)
 		{
 			myTargets[i]->setConfig(ConfigUtil::Default(i));

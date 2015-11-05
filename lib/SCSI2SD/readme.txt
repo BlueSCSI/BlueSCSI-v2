@@ -111,6 +111,10 @@ Compatibility
         1 spare sector per cylinder
         2051459 usable sectors on volume
     Apollo 400/425s running DOMAIN/OS
+    Motorola System V/68 R3V7 and R3V8.
+        Since the installation have information about limited number of drives(most of them with custom commands) it requires a pre-installed disk image to be dd-ed on it. Works with MVME167 and MVME177
+    Motorola System V/88 R40V4.0 through R40V4.4
+        It requires to describe the disk into a configuration file. The process is described here - http://m88k.com/howto-001.html
 
 
 Samplers
@@ -134,6 +138,9 @@ Samplers
         May require scsi2sd-config --apple flag 
     Yamaha A5000, A3000, EX5, EX5R 
     EMU ESI4000
+    Synclavier 9600.
+        Disable Parity. Max size == 9GB.
+
 
 Other
 

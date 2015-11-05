@@ -46,26 +46,41 @@ namespace
 		return std::make_pair(value, static_cast<bool>(conv));
 	}
 
-	void CtrlGetFixedString(wxTextEntry* ctrl, char* dest, size_t len)
-	{
-		memset(dest, ' ', len);
-		std::string str(ctrl->GetValue().ToAscii());
-		// Don't use strncpy - we need to avoid NULL's
-		memcpy(dest, str.c_str(), std::min(len, str.size()));
-	}
-
-	bool CtrlIsAscii(wxTextEntry* ctrl)
-	{
-		return ctrl->GetValue().IsAscii();
-	}
-
 }
 
 BoardPanel::BoardPanel(wxWindow* parent, const BoardConfig& initialConfig) :
 	wxPanel(parent),
-	myParent(parent)
+	myParent(parent),
+	myDelayValidator(new wxIntegerValidator<uint8_t>)
 {
-	wxFlexGridSizer *fgs = new wxFlexGridSizer(6, 2, 9, 25);
+	wxFlexGridSizer *fgs = new wxFlexGridSizer(8, 2, 9, 25);
+
+	fgs->Add(new wxStaticText(this, wxID_ANY, _("Startup Delay (seconds)")));
+	myStartDelayCtrl =
+		new wxTextCtrl(
+			this,
+			ID_startDelayCtrl,
+			"0",
+			wxDefaultPosition,
+			wxDefaultSize,
+			0,
+			*myDelayValidator);
+	myStartDelayCtrl->SetToolTip(_("Extra delay on power on, normally set to 0"));
+	fgs->Add(myStartDelayCtrl);
+
+
+	fgs->Add(new wxStaticText(this, wxID_ANY, _("SCSI Selection Delay (ms, 255 = auto)")));
+	mySelDelayCtrl =
+		new wxTextCtrl(
+			this,
+			ID_selDelayCtrl,
+			"255",
+			wxDefaultPosition,
+			wxDefaultSize,
+			0,
+			*myDelayValidator);
+	mySelDelayCtrl->SetToolTip(_("Delay before responding to SCSI selection. SCSI1 hosts usually require 1ms delay, however some require no delay"));
+	fgs->Add(mySelDelayCtrl);
 
 	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("")));
 	myParityCtrl =
@@ -147,6 +162,8 @@ BoardPanel::getConfig() const
 		(myCacheCtrl->IsChecked() ? CONFIG_ENABLE_CACHE: 0) |
 		(myDisconnectCtrl->IsChecked() ? CONFIG_ENABLE_DISCONNECT: 0);
 
+	config.startupDelay = CtrlGetValue<unsigned int>(myStartDelayCtrl).first;
+	config.selectionDelay = CtrlGetValue<unsigned int>(mySelDelayCtrl).first;
 	return config;
 }
 
@@ -161,6 +178,17 @@ BoardPanel::setConfig(const BoardConfig& config)
 	myGlitchCtrl->SetValue(config.flags & CONFIG_DISABLE_GLITCH);
 	myCacheCtrl->SetValue(config.flags & CONFIG_ENABLE_CACHE);
 	myDisconnectCtrl->SetValue(config.flags & CONFIG_ENABLE_DISCONNECT);
+
+	{
+		std::stringstream conv;
+		conv << static_cast<unsigned int>(config.startupDelay);
+		myStartDelayCtrl->ChangeValue(conv.str());
+	}
+	{
+		std::stringstream conv;
+		conv << static_cast<unsigned int>(config.selectionDelay);
+		mySelDelayCtrl->ChangeValue(conv.str());
+	}
 }
 
 

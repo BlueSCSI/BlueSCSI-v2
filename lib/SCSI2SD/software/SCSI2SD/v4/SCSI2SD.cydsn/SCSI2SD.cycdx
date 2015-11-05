@@ -1,76 +1,76 @@
 <?xml version="1.0" encoding="utf-8"?>
 <blockRegMap version="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://cypress.com/xsd/cyblockregmap cyblockregmap.xsd" xmlns="http://cypress.com/xsd/cyblockregmap">
+  <block name="SD_TX_DMA_COMPLETE" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
+  <block name="SD_RX_DMA_COMPLETE" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
+  <block name="SD_TX_DMA" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
+  <block name="SCSI_Parity_Error" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false">
+    <register name="SCSI_Parity_Error_STATUS_REG" address="0x40006465" bitWidth="8" desc="" hidden="false" />
+    <register name="SCSI_Parity_Error_MASK_REG" address="0x40006485" bitWidth="8" desc="" hidden="false" />
+    <register name="SCSI_Parity_Error_STATUS_AUX_CTL_REG" address="0x40006495" bitWidth="8" desc="" hidden="false">
+      <field name="FIFO0" from="5" to="5" access="RW" resetVal="" desc="FIFO0 clear">
+        <value name="ENABLED" value="1" desc="Enable counter" />
+        <value name="DISABLED" value="0" desc="Disable counter" />
+      </field>
+      <field name="INTRENBL" from="4" to="4" access="RW" resetVal="" desc="Enables or disables the Interrupt">
+        <value name="ENABLED" value="1" desc="Interrupt enabled" />
+        <value name="DISABLED" value="0" desc="Interrupt disabled" />
+      </field>
+      <field name="FIFO1LEVEL" from="3" to="3" access="RW" resetVal="" desc="FIFO level">
+        <value name="ENABLED" value="1" desc="FIFO LVL: input mode: FIFO at least 1/2 empty; output mode: FIFO at least 1/2 full" />
+        <value name="DISABLED" value="0" desc="FIFO LVL: input mode: FIFO not full; output mode: FIFO not empty" />
+      </field>
+      <field name="FIFO0LEVEL" from="2" to="2" access="RW" resetVal="" desc="FIFO level">
+        <value name="ENABLED" value="1" desc="FIFO LVL: input mode: FIFO at least 1/2 empty; output mode: FIFO at least 1/2 full" />
+        <value name="DISABLED" value="0" desc="FIFO LVL: input mode: FIFO not full; output mode: FIFO not empty" />
+      </field>
+      <field name="FIFO1CLEAR" from="1" to="1" access="RW" resetVal="" desc="FIFO clear">
+        <value name="ENABLED" value="1" desc="Clear FIFO state" />
+        <value name="DISABLED" value="0" desc="Normal FIFO operation" />
+      </field>
+      <field name="FIFO0CLEAR" from="0" to="0" access="RW" resetVal="" desc="FIFO clear">
+        <value name="ENABLED" value="1" desc="Clear FIFO state" />
+        <value name="DISABLED" value="0" desc="Normal FIFO operation" />
+      </field>
+    </register>
+  </block>
   <block name="SCSI_RX_DMA_COMPLETE" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
   <block name="SCSI_RX_DMA" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
-  <block name="SD_TX_DMA_COMPLETE" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
-  <block name="GlitchFilter_1" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
-  <block name="SCSI_Filtered" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false">
-    <register name="SCSI_Filtered_STATUS_REG" address="0x40006462" bitWidth="8" desc="" hidden="false" />
-    <register name="SCSI_Filtered_MASK_REG" address="0x40006482" bitWidth="8" desc="" hidden="false" />
-    <register name="SCSI_Filtered_STATUS_AUX_CTL_REG" address="0x40006492" bitWidth="8" desc="" hidden="false">
-      <field name="FIFO0" from="5" to="5" access="RW" resetVal="" desc="FIFO0 clear">
-        <value name="ENABLED" value="1" desc="Enable counter" />
-        <value name="DISABLED" value="0" desc="Disable counter" />
-      </field>
-      <field name="INTRENBL" from="4" to="4" access="RW" resetVal="" desc="Enables or disables the Interrupt">
-        <value name="ENABLED" value="1" desc="Interrupt enabled" />
-        <value name="DISABLED" value="0" desc="Interrupt disabled" />
-      </field>
-      <field name="FIFO1LEVEL" from="3" to="3" access="RW" resetVal="" desc="FIFO level">
-        <value name="ENABLED" value="1" desc="FIFO LVL: input mode: FIFO at least 1/2 empty; output mode: FIFO at least 1/2 full" />
-        <value name="DISABLED" value="0" desc="FIFO LVL: input mode: FIFO not full; output mode: FIFO not empty" />
-      </field>
-      <field name="FIFO0LEVEL" from="2" to="2" access="RW" resetVal="" desc="FIFO level">
-        <value name="ENABLED" value="1" desc="FIFO LVL: input mode: FIFO at least 1/2 empty; output mode: FIFO at least 1/2 full" />
-        <value name="DISABLED" value="0" desc="FIFO LVL: input mode: FIFO not full; output mode: FIFO not empty" />
-      </field>
-      <field name="FIFO1CLEAR" from="1" to="1" access="RW" resetVal="" desc="FIFO clear">
-        <value name="ENABLED" value="1" desc="Clear FIFO state" />
-        <value name="DISABLED" value="0" desc="Normal FIFO operation" />
-      </field>
-      <field name="FIFO0CLEAR" from="0" to="0" access="RW" resetVal="" desc="FIFO clear">
-        <value name="ENABLED" value="1" desc="Clear FIFO state" />
-        <value name="DISABLED" value="0" desc="Normal FIFO operation" />
-      </field>
-    </register>
-  </block>
-  <block name="SCSI_Parity_Error" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false">
-    <register name="SCSI_Parity_Error_STATUS_REG" address="0x4000646B" bitWidth="8" desc="" hidden="false" />
-    <register name="SCSI_Parity_Error_MASK_REG" address="0x4000648B" bitWidth="8" desc="" hidden="false" />
-    <register name="SCSI_Parity_Error_STATUS_AUX_CTL_REG" address="0x4000649B" bitWidth="8" desc="" hidden="false">
-      <field name="FIFO0" from="5" to="5" access="RW" resetVal="" desc="FIFO0 clear">
-        <value name="ENABLED" value="1" desc="Enable counter" />
-        <value name="DISABLED" value="0" desc="Disable counter" />
-      </field>
-      <field name="INTRENBL" from="4" to="4" access="RW" resetVal="" desc="Enables or disables the Interrupt">
-        <value name="ENABLED" value="1" desc="Interrupt enabled" />
-        <value name="DISABLED" value="0" desc="Interrupt disabled" />
-      </field>
-      <field name="FIFO1LEVEL" from="3" to="3" access="RW" resetVal="" desc="FIFO level">
-        <value name="ENABLED" value="1" desc="FIFO LVL: input mode: FIFO at least 1/2 empty; output mode: FIFO at least 1/2 full" />
-        <value name="DISABLED" value="0" desc="FIFO LVL: input mode: FIFO not full; output mode: FIFO not empty" />
-      </field>
-      <field name="FIFO0LEVEL" from="2" to="2" access="RW" resetVal="" desc="FIFO level">
-        <value name="ENABLED" value="1" desc="FIFO LVL: input mode: FIFO at least 1/2 empty; output mode: FIFO at least 1/2 full" />
-        <value name="DISABLED" value="0" desc="FIFO LVL: input mode: FIFO not full; output mode: FIFO not empty" />
-      </field>
-      <field name="FIFO1CLEAR" from="1" to="1" access="RW" resetVal="" desc="FIFO clear">
-        <value name="ENABLED" value="1" desc="Clear FIFO state" />
-        <value name="DISABLED" value="0" desc="Normal FIFO operation" />
-      </field>
-      <field name="FIFO0CLEAR" from="0" to="0" access="RW" resetVal="" desc="FIFO clear">
-        <value name="ENABLED" value="1" desc="Clear FIFO state" />
-        <value name="DISABLED" value="0" desc="Normal FIFO operation" />
-      </field>
-    </register>
-  </block>
-  <block name="SD_RX_DMA_COMPLETE" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
-  <block name="SCSI_TX_DMA" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
   <block name="Debug_Timer_Interrupt" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
   <block name="ZeroTerminal_1" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
-  <block name="SD_TX_DMA" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
+  <block name="timer_clock" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
   <block name="SD_RX_DMA" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
   <block name="SCSI_TX_DMA_COMPLETE" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
+  <block name="SCSI_TX_DMA" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
+  <block name="SCSI_Filtered" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false">
+    <register name="SCSI_Filtered_STATUS_REG" address="0x40006468" bitWidth="8" desc="" hidden="false" />
+    <register name="SCSI_Filtered_MASK_REG" address="0x40006488" bitWidth="8" desc="" hidden="false" />
+    <register name="SCSI_Filtered_STATUS_AUX_CTL_REG" address="0x40006498" bitWidth="8" desc="" hidden="false">
+      <field name="FIFO0" from="5" to="5" access="RW" resetVal="" desc="FIFO0 clear">
+        <value name="ENABLED" value="1" desc="Enable counter" />
+        <value name="DISABLED" value="0" desc="Disable counter" />
+      </field>
+      <field name="INTRENBL" from="4" to="4" access="RW" resetVal="" desc="Enables or disables the Interrupt">
+        <value name="ENABLED" value="1" desc="Interrupt enabled" />
+        <value name="DISABLED" value="0" desc="Interrupt disabled" />
+      </field>
+      <field name="FIFO1LEVEL" from="3" to="3" access="RW" resetVal="" desc="FIFO level">
+        <value name="ENABLED" value="1" desc="FIFO LVL: input mode: FIFO at least 1/2 empty; output mode: FIFO at least 1/2 full" />
+        <value name="DISABLED" value="0" desc="FIFO LVL: input mode: FIFO not full; output mode: FIFO not empty" />
+      </field>
+      <field name="FIFO0LEVEL" from="2" to="2" access="RW" resetVal="" desc="FIFO level">
+        <value name="ENABLED" value="1" desc="FIFO LVL: input mode: FIFO at least 1/2 empty; output mode: FIFO at least 1/2 full" />
+        <value name="DISABLED" value="0" desc="FIFO LVL: input mode: FIFO not full; output mode: FIFO not empty" />
+      </field>
+      <field name="FIFO1CLEAR" from="1" to="1" access="RW" resetVal="" desc="FIFO clear">
+        <value name="ENABLED" value="1" desc="Clear FIFO state" />
+        <value name="DISABLED" value="0" desc="Normal FIFO operation" />
+      </field>
+      <field name="FIFO0CLEAR" from="0" to="0" access="RW" resetVal="" desc="FIFO clear">
+        <value name="ENABLED" value="1" desc="Clear FIFO state" />
+        <value name="DISABLED" value="0" desc="Normal FIFO operation" />
+      </field>
+    </register>
+  </block>
   <block name="SCSI_SEL_ISR" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
   <block name="cydff_2" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
   <block name="Clock_4" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
@@ -79,21 +79,75 @@
     <register name="SCSI_Glitch_Ctl_CONTROL_REG" address="0x4000647D" bitWidth="8" desc="" hidden="false" />
   </block>
   <block name="mux_1" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
-  <block name="not_2" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
+  <block name="cydff_1" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
   <block name="cy_constant_1" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
-  <block name="Clock_2" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
-  <block name="Clock_1" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
+  <block name="GlitchFilter_1" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
+  <block name="not_2" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
   <block name="EXTLED" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
   <block name="Clock_3" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
-  <block name="cydff_1" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
-  <block name="timer_clock" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
-  <block name="SD_CS" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
+  <block name="Debug_Timer" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false">
+    <block name="VirtualMux_2" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
+    <block name="ZeroTerminal_1" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
+    <block name="TimerHW" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
+    <block name="OneTerminal_1" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
+    <block name="VirtualMux_1" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
+    <block name="VirtualMux_3" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
+    <register name="Debug_Timer_GLOBAL_ENABLE" address="0x400043A3" bitWidth="8" desc="PM.ACT.CFG" hidden="false">
+      <field name="en_timer" from="3" to="0" access="RW" resetVal="" desc="Enable timer/counters." />
+    </register>
+    <register name="Debug_Timer_CONTROL" address="0x40004F00" bitWidth="8" desc="TMRx.CFG0" hidden="false">
+      <field name="EN" from="0" to="0" access="RW" resetVal="" desc="Enables timer/comparator." />
+      <field name="MODE" from="1" to="1" access="RW" resetVal="" desc="Mode. (0 = Timer; 1 = Comparator)">
+        <value name="Timer" value="0" desc="Timer mode. CNT/CMP register holds timer count value." />
+        <value name="Comparator" value="1" desc="Comparator mode. CNT/CMP register holds comparator threshold value." />
+      </field>
+      <field name="ONESHOT" from="2" to="2" access="RW" resetVal="" desc="Timer stops upon reaching stop condition defined by TMR_CFG bits. Can be restarted by asserting TIMER RESET or disabling and re-enabling block." />
+      <field name="CMP_BUFF" from="3" to="3" access="RW" resetVal="" desc="Buffer compare register. Compare register updates only on timer terminal count." />
+      <field name="INV" from="4" to="4" access="RW" resetVal="" desc="Invert sense of TIMEREN signal" />
+      <field name="DB" from="5" to="5" access="RW" resetVal="" desc="Deadband mode--Deadband phases phi1 and phi2 are outputted on CMP and TC output pins respectively.">
+        <value name="Timer" value="0" desc="CMP and TC are output." />
+        <value name="Deadband" value="1" desc="PHI1 (instead of CMP) and PHI2 (instead of TC) are output." />
+      </field>
+      <field name="DEADBAND_PERIOD" from="7" to="6" access="RW" resetVal="" desc="Deadband Period" />
+    </register>
+    <register name="Debug_Timer_CONTROL2" address="0x40004F01" bitWidth="8" desc="TMRx.CFG1" hidden="false">
+      <field name="IRQ_SEL" from="0" to="0" access="RW" resetVal="" desc="Irq selection. (0 = raw interrupts; 1 = status register interrupts)" />
+      <field name="FTC" from="1" to="1" access="RW" resetVal="" desc="First Terminal Count (FTC). Setting this bit forces a single pulse on the TC pin when first enabled.">
+        <value name="Disable FTC" value="0" desc="Disable the single cycle pulse, which signifies the timer is starting." />
+        <value name="Enable FTC" value="1" desc="Enable the single cycle pulse, which signifies the timer is starting." />
+      </field>
+      <field name="DCOR" from="2" to="2" access="RW" resetVal="" desc="Disable Clear on Read (DCOR) of Status Register SR0." />
+      <field name="DBMODE" from="3" to="3" access="RW" resetVal="" desc="Deadband mode (asynchronous/synchronous). CMP output pin is also affected when not in deadband mode (CFG0.DEADBAND)." />
+      <field name="CLK_BUS_EN_SEL" from="6" to="4" access="RW" resetVal="" desc="Digital Global Clock selection." />
+      <field name="BUS_CLK_SEL" from="7" to="7" access="RW" resetVal="" desc="Bus Clock selection." />
+    </register>
+    <register name="Debug_Timer_CONTROL3_" address="0x40004F02" bitWidth="8" desc="TMRx.CFG2" hidden="false">
+      <field name="TMR_CFG" from="1" to="0" access="RW" resetVal="" desc="Timer configuration (MODE = 0): 000 = Continuous; 001 = Pulsewidth; 010 = Period; 011 = Stop on IRQ">
+        <value name="Continuous" value="0" desc="Timer runs while EN bit of CFG0 register is set to '1'." />
+        <value name="Pulsewidth" value="1" desc="Timer runs from positive to negative edge of TIMEREN." />
+        <value name="Period" value="10" desc="Timer runs from positive to positive edge of TIMEREN." />
+        <value name="Irq" value="11" desc="Timer runs until IRQ." />
+      </field>
+      <field name="COD" from="2" to="2" access="RW" resetVal="" desc="Clear On Disable (COD). Clears or gates outputs to zero." />
+      <field name="ROD" from="3" to="3" access="RW" resetVal="" desc="Reset On Disable (ROD). Resets internal state of output logic" />
+      <field name="CMP_CFG" from="6" to="4" access="RW" resetVal="" desc="Comparator configurations">
+        <value name="Equal" value="0" desc="Compare Equal " />
+        <value name="Less than" value="1" desc="Compare Less Than " />
+        <value name="Less than or equal" value="10" desc="Compare Less Than or Equal ." />
+        <value name="Greater" value="11" desc="Compare Greater Than ." />
+        <value name="Greater than or equal" value="100" desc="Compare Greater Than or Equal " />
+      </field>
+      <field name="HW_EN" from="7" to="7" access="RW" resetVal="" desc="When set Timer Enable controls counting." />
+    </register>
+    <register name="Debug_Timer_PERIOD" address="0x40004F04" bitWidth="16" desc="TMRx.PER0 - Assigned Period" hidden="false" />
+    <register name="Debug_Timer_COUNTER" address="0x40004F06" bitWidth="16" desc="TMRx.CNT_CMP0 - Current Down Counter Value" hidden="false" />
+  </block>
   <block name="CFG_EEPROM" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
   <block name="SCSI_Out" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
-  <block name="SCSI_CLK" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
+  <block name="SCSI_In" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
   <block name="SD_MOSI" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
   <block name="SD_SCK" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
-  <block name="SCSI_In" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
+  <block name="SD_CS" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
   <block name="SD_Data_Clk" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
   <block name="SCSI_Out_DBx" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
   <block name="SCSI_In_DBx" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
@@ -102,7 +156,7 @@
     <register name="SCSI_CTL_PHASE_CONTROL_REG" address="0x4000647C" bitWidth="8" desc="" hidden="false" />
   </block>
   <block name="SD_CD" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
-  <block name="SCSI_Out_Mux" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
+  <block name="SCSI_CLK" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
   <block name="Bootloadable_1" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
   <block name="USBFS" BASE="0x0" SIZE="0x0" desc="USBFS" visible="true" hidden="false">
     <block name="ZeroTerminal_5" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
@@ -200,70 +254,14 @@
     <register name="USBFS_EP_TYPE" address="0x4000608F" bitWidth="8" desc="Endpoint Type (IN/OUT) Indication" hidden="false" />
     <register name="USBFS_USB_CLK_EN" address="0x4000609D" bitWidth="8" desc="USB Block Clock Enable Register" hidden="false" />
   </block>
-  <block name="Debug_Timer" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false">
-    <block name="VirtualMux_2" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
-    <block name="ZeroTerminal_1" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
-    <block name="TimerHW" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
-    <block name="OneTerminal_1" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
-    <block name="VirtualMux_1" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
-    <block name="VirtualMux_3" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
-    <register name="Debug_Timer_GLOBAL_ENABLE" address="0x400043A3" bitWidth="8" desc="PM.ACT.CFG" hidden="false">
-      <field name="en_timer" from="3" to="0" access="RW" resetVal="" desc="Enable timer/counters." />
-    </register>
-    <register name="Debug_Timer_CONTROL" address="0x40004F00" bitWidth="8" desc="TMRx.CFG0" hidden="false">
-      <field name="EN" from="0" to="0" access="RW" resetVal="" desc="Enables timer/comparator." />
-      <field name="MODE" from="1" to="1" access="RW" resetVal="" desc="Mode. (0 = Timer; 1 = Comparator)">
-        <value name="Timer" value="0" desc="Timer mode. CNT/CMP register holds timer count value." />
-        <value name="Comparator" value="1" desc="Comparator mode. CNT/CMP register holds comparator threshold value." />
-      </field>
-      <field name="ONESHOT" from="2" to="2" access="RW" resetVal="" desc="Timer stops upon reaching stop condition defined by TMR_CFG bits. Can be restarted by asserting TIMER RESET or disabling and re-enabling block." />
-      <field name="CMP_BUFF" from="3" to="3" access="RW" resetVal="" desc="Buffer compare register. Compare register updates only on timer terminal count." />
-      <field name="INV" from="4" to="4" access="RW" resetVal="" desc="Invert sense of TIMEREN signal" />
-      <field name="DB" from="5" to="5" access="RW" resetVal="" desc="Deadband mode--Deadband phases phi1 and phi2 are outputted on CMP and TC output pins respectively.">
-        <value name="Timer" value="0" desc="CMP and TC are output." />
-        <value name="Deadband" value="1" desc="PHI1 (instead of CMP) and PHI2 (instead of TC) are output." />
-      </field>
-      <field name="DEADBAND_PERIOD" from="7" to="6" access="RW" resetVal="" desc="Deadband Period" />
-    </register>
-    <register name="Debug_Timer_CONTROL2" address="0x40004F01" bitWidth="8" desc="TMRx.CFG1" hidden="false">
-      <field name="IRQ_SEL" from="0" to="0" access="RW" resetVal="" desc="Irq selection. (0 = raw interrupts; 1 = status register interrupts)" />
-      <field name="FTC" from="1" to="1" access="RW" resetVal="" desc="First Terminal Count (FTC). Setting this bit forces a single pulse on the TC pin when first enabled.">
-        <value name="Disable FTC" value="0" desc="Disable the single cycle pulse, which signifies the timer is starting." />
-        <value name="Enable FTC" value="1" desc="Enable the single cycle pulse, which signifies the timer is starting." />
-      </field>
-      <field name="DCOR" from="2" to="2" access="RW" resetVal="" desc="Disable Clear on Read (DCOR) of Status Register SR0." />
-      <field name="DBMODE" from="3" to="3" access="RW" resetVal="" desc="Deadband mode (asynchronous/synchronous). CMP output pin is also affected when not in deadband mode (CFG0.DEADBAND)." />
-      <field name="CLK_BUS_EN_SEL" from="6" to="4" access="RW" resetVal="" desc="Digital Global Clock selection." />
-      <field name="BUS_CLK_SEL" from="7" to="7" access="RW" resetVal="" desc="Bus Clock selection." />
-    </register>
-    <register name="Debug_Timer_CONTROL3_" address="0x40004F02" bitWidth="8" desc="TMRx.CFG2" hidden="false">
-      <field name="TMR_CFG" from="1" to="0" access="RW" resetVal="" desc="Timer configuration (MODE = 0): 000 = Continuous; 001 = Pulsewidth; 010 = Period; 011 = Stop on IRQ">
-        <value name="Continuous" value="0" desc="Timer runs while EN bit of CFG0 register is set to '1'." />
-        <value name="Pulsewidth" value="1" desc="Timer runs from positive to negative edge of TIMEREN." />
-        <value name="Period" value="10" desc="Timer runs from positive to positive edge of TIMEREN." />
-        <value name="Irq" value="11" desc="Timer runs until IRQ." />
-      </field>
-      <field name="COD" from="2" to="2" access="RW" resetVal="" desc="Clear On Disable (COD). Clears or gates outputs to zero." />
-      <field name="ROD" from="3" to="3" access="RW" resetVal="" desc="Reset On Disable (ROD). Resets internal state of output logic" />
-      <field name="CMP_CFG" from="6" to="4" access="RW" resetVal="" desc="Comparator configurations">
-        <value name="Equal" value="0" desc="Compare Equal " />
-        <value name="Less than" value="1" desc="Compare Less Than " />
-        <value name="Less than or equal" value="10" desc="Compare Less Than or Equal ." />
-        <value name="Greater" value="11" desc="Compare Greater Than ." />
-        <value name="Greater than or equal" value="100" desc="Compare Greater Than or Equal " />
-      </field>
-      <field name="HW_EN" from="7" to="7" access="RW" resetVal="" desc="When set Timer Enable controls counting." />
-    </register>
-    <register name="Debug_Timer_PERIOD" address="0x40004F04" bitWidth="16" desc="TMRx.PER0 - Assigned Period" hidden="false" />
-    <register name="Debug_Timer_COUNTER" address="0x40004F06" bitWidth="16" desc="TMRx.CNT_CMP0 - Current Down Counter Value" hidden="false" />
-  </block>
+  <block name="SD_MISO" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
   <block name="SCSI_Out_Ctl" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false">
-    <register name="SCSI_Out_Ctl_CONTROL_REG" address="0x40006471" bitWidth="8" desc="" hidden="false" />
+    <register name="SCSI_Out_Ctl_CONTROL_REG" address="0x40006474" bitWidth="8" desc="" hidden="false" />
   </block>
   <block name="SCSI_Out_Bits" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false">
-    <register name="SCSI_Out_Bits_CONTROL_REG" address="0x40006472" bitWidth="8" desc="" hidden="false" />
+    <register name="SCSI_Out_Bits_CONTROL_REG" address="0x40006473" bitWidth="8" desc="" hidden="false" />
   </block>
-  <block name="SD_MISO" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
+  <block name="SCSI_Out_Mux" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
   <block name="SCSI_RST_ISR" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
   <block name="SCSI_Noise" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
   <block name="not_1" BASE="0x0" SIZE="0x0" desc="" visible="true" hidden="false" />
