@@ -69,6 +69,7 @@ ifeq ($(TARGET),Win64)
 endif
 ifeq ($(TARGET),Linux)
 	VPATH += hidapi/linux
+	CPPFLAGS += -DHAS_LIBUSB
 	LDFLAGS += -ludev -lexpat -lusb-1.0
 	BUILD := $(PWD)/build/linux
 endif
@@ -82,7 +83,7 @@ ifeq ($(TARGET),Darwin)
 	BUILD := $(PWD)/build/mac
 all: $(BUILD)/scsi2sd-util6.dmg
 
-$(BUILD)/scsi2sd-util6.dmg: $(BUILD)/scsi2sd-util6 $(BUILD)/scsi2sd-monitor
+$(BUILD)/scsi2sd-util6.dmg: $(BUILD)/scsi2sd-util6
 	mkdir -p $(dir $@)/dmg
 	cp $(BUILD)/scsi2sd-util6 $(dir $@)/dmg
 	chmod a+rx $(dir $@)/dmg/*
@@ -179,10 +180,6 @@ $(BUILD)/scsi2sd-util6$(EXE): $(OBJ) $(BUILD)/scsi2sd-util.o
 	mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS_WX) $(LDFLAGS) -o $@
 
-$(BUILD)/scsi2sd-monitor$(EXE): $(OBJ) $(BUILD)/scsi2sd-monitor.o
-	mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS_WX) $(LDFLAGS) -o $@
-
 clean:
 	rm $(BUILD)/scsi2sd-util6$(EXE) $(OBJ) $(BUILD)/libzipper/buildstamp
 
@@ -198,7 +195,7 @@ dist:
                ../SCSI2SD/src/hidpacket.c ../../include/hidpacket.h ../../include/scsi2sd.h \
 	       libzipper-1.0.4 Makefile \
                SCSI2SD_Bootloader.cc SCSI2SD_Bootloader.hh SCSI2SD_HID.cc SCSI2SD_HID.hh \
-	       scsi2sd-monitor.cc scsi2sd-util.cc TargetPanel.cc TargetPanel.hh \
+	       scsi2sd-util.cc TargetPanel.cc TargetPanel.hh \
 	       BoardPanel.cc BoardPanel.hh \
 	       $(NAME)-$(VERSION)
 	tar jcvf $(NAME)-$(VERSION).tar.bz2 $(NAME)-$(VERSION)

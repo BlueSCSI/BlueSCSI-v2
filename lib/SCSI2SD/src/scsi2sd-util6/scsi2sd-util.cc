@@ -58,7 +58,9 @@ using std::shared_ptr;
 using std::tr1::shared_ptr;
 #endif
 
+#ifdef HAS_LIBUSB
 #include <libusb-1.0/libusb.h>
+#endif
 
 using namespace SCSI2SD;
 
@@ -110,6 +112,7 @@ void ProgressUpdate(unsigned char arrayId, unsigned short rowNum)
 namespace
 {
 bool hasDFUdevice() {
+#ifdef HAS_LIBUSB
 	bool found = false;
 
 	libusb_device **list;
@@ -130,6 +133,9 @@ bool hasDFUdevice() {
 	libusb_free_device_list(list, 1);
 
 	return found;
+#else
+	return false;
+#endif
 }
 
 
@@ -565,7 +571,11 @@ private:
 
 		std::string cmd = ss.str();
 		int result = system(cmd.c_str());
+#ifdef WIN32
+		if (result != 0)
+#else
 		if (WEXITSTATUS(result) != 0)
+#endif
 		{
 			wxMessageBox(
 				"Update failed",
@@ -930,7 +940,9 @@ class App : public wxApp
 public:
 	virtual bool OnInit()
 	{
+#ifdef HAS_LIBUSB
 		libusb_init(NULL);
+#endif
 		AppFrame* frame = new AppFrame();
 		frame->Show(true);
 		SetTopWindow(frame);
