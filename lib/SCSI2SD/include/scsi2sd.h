@@ -192,7 +192,12 @@ typedef enum
 	// uint32_t Sector Number (MSB)
 	// Response:
 	// 512 bytes of data
-	S2S_CMD_SD_READ
+	S2S_CMD_SD_READ,
+
+	// Command content:
+	// uint8_t S2S_CFG_DEBUG
+	// Response:
+	S2S_CMD_DEBUG,
 } S2S_COMMAND;
 
 typedef enum

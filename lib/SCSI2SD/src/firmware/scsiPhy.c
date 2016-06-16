@@ -26,6 +26,8 @@
 #include "fpga.h"
 #include "led.h"
 
+#include <string.h>
+
 // Private DMA variables.
 static int dmaInProgress = 0;
 
@@ -133,7 +135,7 @@ scsiReadDMA(uint8_t* data, uint32_t count)
 	scsiTxDMAComplete = 1; // TODO not used much
 	scsiRxDMAComplete = 0; // TODO not used much
 
-	HAL_DMA_Start(&fsmcToMem, (uint32_t) SCSI_FIFO_DATA, (uint32_t) data, count); // TODO MM count/4 for tx
+	HAL_DMA_Start(&fsmcToMem, (uint32_t) SCSI_FIFO_DATA, (uint32_t) data, count);
 }
 
 int
@@ -421,6 +423,61 @@ void scsiPhyReset()
 		s2s_ledOff();
 
 		for(int i = 0; i < 10; ++i) s2s_delay_ms(1000);
+	}
+	#endif
+
+	// FPGA comms test code
+	#ifdef FPGA_TEST
+
+	while(1)
+	{
+		for (int j = 0; j < SCSI_FIFO_DEPTH; ++j)
+		{
+			scsiDev.data[j] = j;
+		}
+
+		*SCSI_CTRL_PHASE = DATA_IN;
+		HAL_DMA_Start(
+			&memToFSMC,
+			(uint32_t) &scsiDev.data[0],
+			(uint32_t) SCSI_FIFO_DATA,
+			SCSI_FIFO_DEPTH / 4);
+
+		HAL_DMA_PollForTransfer(
+			&memToFSMC,
+			HAL_DMA_FULL_TRANSFER,
+			0xffffffff);
+
+		memset(&scsiDev.data[0], 0, SCSI_FIFO_DEPTH);
+
+		*SCSI_CTRL_PHASE = DATA_OUT;
+		HAL_DMA_Start(
+			&fsmcToMem,
+			(uint32_t) SCSI_FIFO_DATA,
+			(uint32_t) &scsiDev.data[0],
+			SCSI_FIFO_DEPTH);
+
+		HAL_DMA_PollForTransfer(
+			&fsmcToMem,
+			HAL_DMA_FULL_TRANSFER,
+			0xffffffff);
+
+		for (int j = 0; j < SCSI_FIFO_DEPTH; ++j)
+		{
+			if (scsiDev.data[j] != (uint8_t) j)
+			{
+				while (1)
+				{
+					s2s_ledOn();
+					s2s_delay_ms(100);
+					s2s_ledOff();
+					s2s_delay_ms(100);
+				}
+			}
+		}
+
+		s2s_fpgaReset();
+
 	}
 	#endif
 

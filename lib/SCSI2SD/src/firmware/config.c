@@ -38,7 +38,7 @@
 
 #include <string.h>
 
-static const uint16_t FIRMWARE_VERSION = 0x0600;
+static const uint16_t FIRMWARE_VERSION = 0x0601;
 
 // 1 flash row
 static const uint8_t DEFAULT_CONFIG[128] =
@@ -68,19 +68,6 @@ static int usbDebugEpState;
 #endif
 static int usbReady; // TODO MM REMOVE. Unused ?
 
-static void initS2S_BoardCfg(S2S_BoardCfg* config) {
-	if (memcmp(config->magic, "BCFG", 4)) {
-		config->selectionDelay = 255; // auto
-		config->flags6 = S2S_CFG_ENABLE_TERMINATOR;
-
-		memcpy(
-			s2s_cfg + sizeof(S2S_BoardCfg),
-			DEFAULT_CONFIG,
-			sizeof(S2S_TargetCfg));
-	}
-}
-
-
 void s2s_configInit(S2S_BoardCfg* config)
 {
 
@@ -88,7 +75,7 @@ void s2s_configInit(S2S_BoardCfg* config)
 	usbReady = 0; // We don't know if host is connected yet.
 
 
-	if (blockDev.state & DISK_PRESENT && sdDev.capacity)
+	if ((blockDev.state & DISK_PRESENT) && sdDev.capacity)
 	{
 		int cfgSectors = (S2S_CFG_SIZE + 511) / 512;
 		BSP_SD_ReadBlocks_DMA(
@@ -98,11 +85,35 @@ void s2s_configInit(S2S_BoardCfg* config)
 			cfgSectors);
 
 		memcpy(config, s2s_cfg, sizeof(S2S_BoardCfg));
+
+		if (memcmp(config->magic, "BCFG", 4))
+		{
+			// Invalid SD card config, use default.
+			memset(&s2s_cfg[0], 0, S2S_CFG_SIZE);
+			memcpy(config, s2s_cfg, sizeof(S2S_BoardCfg));
+			memcpy(config->magic, "BCFG", 4);
+			config->selectionDelay = 255; // auto
+			config->flags6 = S2S_CFG_ENABLE_TERMINATOR;
+
+			memcpy(
+				&s2s_cfg[0] + sizeof(S2S_BoardCfg),
+				DEFAULT_CONFIG,
+				sizeof(S2S_TargetCfg));
+		}
+	}
+	else
+	{
+		// No SD card, use existing config if valid
+		if (memcmp(config->magic, "BCFG", 4))
+		{
+			// Not valid, use empty config with no disks.
+			memset(&s2s_cfg[0], 0, S2S_CFG_SIZE);
+			memcpy(config, s2s_cfg, sizeof(S2S_BoardCfg));
+			config->selectionDelay = 255; // auto
+			config->flags6 = S2S_CFG_ENABLE_TERMINATOR;
+		}
 	}
 
-	initS2S_BoardCfg(config);
-
-	scsiPhyConfig();
 }
 
 
@@ -154,6 +165,32 @@ scsiDevInfoCommand()
 	hidPacket_send(response, sizeof(response));
 }
 
+static void
+debugCommand()
+{
+	uint8_t response[32];
+	memcpy(&response, &scsiDev.cdb, 12);
+	response[12] = scsiDev.msgIn;
+	response[13] = scsiDev.msgOut;
+	response[14] = scsiDev.lastStatus;
+	response[15] = scsiDev.lastSense;
+	response[16] = scsiDev.phase;
+	response[17] = scsiStatusBSY();
+	response[18] = *SCSI_STS_SELECTED;
+	response[19] = scsiStatusATN();
+	response[20] = scsiStatusRST();
+	response[21] = scsiDev.rstCount;
+	response[22] = scsiDev.selCount;
+	response[23] = scsiDev.msgCount;
+	response[24] = scsiDev.cmdCount;
+	response[25] = scsiDev.watchdogTick;
+	response[26] = blockDev.state;
+	response[27] = scsiDev.lastSenseASC >> 8;
+	response[28] = scsiDev.lastSenseASC;
+	response[29] = *SCSI_STS_DBX;
+	response[30] = LastTrace;
+	hidPacket_send(response, sizeof(response));
+}
 
 static void
 sdWriteCommand(const uint8_t* cmd, size_t cmdSize)
@@ -228,6 +265,10 @@ processCommand(const uint8_t* cmd, size_t cmdSize)
 
 	case S2S_CMD_SD_READ:
 		sdReadCommand(cmd, cmdSize);
+		break;
+
+	case S2S_CMD_DEBUG:
+		debugCommand();
 		break;
 
 	case S2S_CMD_NONE: // invalid

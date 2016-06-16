@@ -20,6 +20,7 @@
 #include "stm32f2xx.h"
 #include "bsp_driver_sd.h"
 #include "../bsp.h"
+#include "../disk.h"
 #include "../led.h"
 #include "../sd.h"
 #include "../config.h"
@@ -114,15 +115,20 @@ uint32_t s2s_usbd_storage_Inquiry (uint8_t lun, uint8_t* buf, uint8_t maxlen)
 	return s2s_getStandardInquiry(cfg, buf, maxlen);
 }
 
-int8_t  s2s_usbd_storage_IsReady (uint8_t lun)
+int8_t s2s_usbd_storage_IsReady (uint8_t lun)
 {
-	return (0);
+	const S2S_TargetCfg* cfg = getUsbConfig(lun);
+	return (
+			cfg &&
+			(blockDev.state & DISK_PRESENT) &&
+			(blockDev.state & DISK_INITIALISED)
+			) ? 0 : 1; // inverse logic
 }
 
 
 int8_t s2s_usbd_storage_IsWriteProtected (uint8_t lun)
 {
-	return  0;
+	return blockDev.state & DISK_WP;
 }
 
 int8_t s2s_usbd_storage_Read (uint8_t lun,

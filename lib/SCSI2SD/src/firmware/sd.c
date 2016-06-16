@@ -787,35 +787,12 @@ static void sdInitDMA()
 	{
 		init = 1;
 
- //TODO MM SEE STUPID SD_DMA_RxCplt that require the SD IRQs to preempt
-// Configured with 4 bits preemption, NO sub priority.
-  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 8, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
-  HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 8, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
-#if 0
-		sdDMATxChan =
-			SD_TX_DMA_DmaInitialize(
-				2, // Bytes per burst
-				1, // request per burst
-				HI16(CYDEV_SRAM_BASE),
-				HI16(CYDEV_PERIPH_BASE)
-				);
-
-		sdDMARxChan =
-			SD_RX_DMA_DmaInitialize(
-				1, // Bytes per burst
-				1, // request per burst
-				HI16(CYDEV_PERIPH_BASE),
-				HI16(CYDEV_SRAM_BASE)
-				);
-
-		CyDmaChDisable(sdDMATxChan);
-		CyDmaChDisable(sdDMARxChan);
-
-		SD_RX_DMA_COMPLETE_StartEx(sdRxISR);
-		SD_TX_DMA_COMPLETE_StartEx(sdTxISR);
-#endif
+		//TODO MM SEE STUPID SD_DMA_RxCplt that require the SD IRQs to preempt
+		// Configured with 4 bits preemption, NO sub priority.
+		HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 8, 0);
+		HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
+		HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 8, 0);
+		HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
 	}
 }
 
@@ -829,97 +806,24 @@ void sdTmpWrite(uint8_t* data, uint32_t lba, int sectors)
 	BSP_SD_WriteBlocks_DMA((uint32_t*) data, lba * 512ll, 512, sectors);
 }
 
-int sdInit()
+static void sdClear()
 {
-	int result = 0;
-	//int i;
-
-	// TODO sdCmdState = CMD_STATE_IDLE;
 	sdDev.version = 0;
 	sdDev.ccs = 0;
 	sdDev.capacity = 0;
 	memset(sdDev.csd, 0, sizeof(sdDev.csd));
 	memset(sdDev.cid, 0, sizeof(sdDev.cid));
+}
 
-// TODO should be in POLL method!
+static int sdDoInit()
+{
+	int result = 0;
 
-	sdInitDMA();
-#if 0
+	// TODO sdCmdState = CMD_STATE_IDLE;
+	sdClear();
 
-	SD_CS_SetDriveMode(SD_CS_DM_STRONG);
-	SD_CS_Write(1); // Set CS inactive (active low)
 
-	// Set the SPI clock for 400kHz transfers
-	// 25MHz / 400kHz approx factor of 63.
-	// The register contains (divider - 1)
-	uint16_t clkDiv25MHz =  SD_Data_Clk_GetDividerRegister();
-	SD_Data_Clk_SetDivider(((clkDiv25MHz + 1) * 63) - 1);
-	// Wait for the clock to settle.
-	CyDelayUs(1);
-
-	SDCard_Start(); // Enable SPI hardware
-
-	// Power on sequence. 74 clock cycles of a "1" while CS unasserted.
-	for (i = 0; i < 10; ++i)
-	{
-		sdSpiByte(0xFF);
-	}
-
-	SD_CS_Write(0); // Set CS active (active low)
-	CyDelayUs(1);
-
-	sdSpiByte(0xFF);
-	v = sdDoCommand(SD_GO_IDLE_STATE, 0, 1, 0);
-	if(v != 1){goto bad;}
-
-	ledOn();
-	if (!sendIfCond()) goto bad; // Sets V1 or V2 flag  CMD8
-	if (!sdOpCond()) goto bad; // ACMD41. Wait for init completes.
-	if (!sdReadOCR()) goto bad; // CMD58. Get CCS flag. Only valid after init.
-
-	// This command will be ignored if sdDev.ccs is set.
-	// SDHC and SDXC are always 512bytes.
-	v = sdCRCCommandAndResponse(SD_SET_BLOCKLEN, SD_SECTOR_SIZE); //Force sector size
-	if(v){goto bad;}
-	v = sdCRCCommandAndResponse(SD_CRC_ON_OFF, 0); //crc off
-	if(v){goto bad;}
-
-	// now set the sd card back to full speed.
-	// The SD Card spec says we can run SPI @ 25MHz
-	SDCard_Stop();
-
-	// We can't run at full-speed with the pullup resistors enabled.
-	SD_MISO_SetDriveMode(SD_MISO_DM_DIG_HIZ);
-	SD_MOSI_SetDriveMode(SD_MOSI_DM_STRONG);
-	SD_SCK_SetDriveMode(SD_SCK_DM_STRONG);
-
-	SD_Data_Clk_SetDivider(clkDiv25MHz);
-	CyDelayUs(1);
-	SDCard_Start();
-
-	// Clear out rubbish data through clock change
-	CyDelayUs(1);
-	SDCard_ReadRxStatus();
-	SDCard_ReadTxStatus();
-	SDCard_ClearFIFO();
-
-	if (!sdReadCSD()) goto bad;
-	sdReadCID();
-
-	result = 1;
-	goto out;
-
-bad:
-	SD_Data_Clk_SetDivider(clkDiv25MHz); // Restore the clock for our next retry
-	sdDev.capacity = 0;
-
-out:
-	sdClearStatus();
-	ledOff();
-	return result;
-
-#endif
-	uint8_t error = BSP_SD_Init();
+	int8_t error = BSP_SD_Init();
 	if (error == MSD_OK)
 	{
 		memcpy(sdDev.csd, &SDCardInfo.SD_csd, sizeof(sdDev.csd));
@@ -1019,36 +923,53 @@ void sdPoll()
 	}
 }
 
-void sdCheckPresent()
+#endif
+int sdInit()
 {
 	// Check if there's an SD card present.
+	int result = 0;
+
+#if 0
 	if ((scsiDev.phase == BUS_FREE) &&
 		(sdIOState == SD_IDLE) &&
 		(sdCmdState == CMD_STATE_IDLE))
-	{
-		// The CS line is pulled high by the SD card.
-		// De-assert the line, and check if it's high.
-		// This isn't foolproof as it'll be left floating without
-		// an SD card. We can't use the built-in pull-down resistor as it will
-		// overpower the SD pullup resistor.
-		SD_CS_Write(0);
-		SD_CS_SetDriveMode(SD_CS_DM_DIG_HIZ);
+#endif
+	static int firstInit = 1;
 
-		// Delay extended to work with 60cm cables running cards at 2.85V
-		CyDelayCycles(128);
-		uint8_t cs = SD_CS_Read();
-		SD_CS_SetDriveMode(SD_CS_DM_STRONG)	;
+	if (firstInit)
+	{
+		blockDev.state &= ~(DISK_PRESENT | DISK_INITIALISED);
+		sdClear();
+		sdInitDMA();
+	}
+
+	if (scsiDev.phase == BUS_FREE)
+	{
+		uint8_t cs = HAL_GPIO_ReadPin(nSD_CD_GPIO_Port, nSD_CD_Pin) ? 0 : 1;
+		uint8_t wp = HAL_GPIO_ReadPin(nSD_WP_GPIO_Port, nSD_WP_Pin) ? 0 : 1;
 
 		if (cs && !(blockDev.state & DISK_PRESENT))
 		{
-			static int firstInit = 1;
+			s2s_ledOn();
 
 			// Debounce
-			CyDelay(250);
+			if (!firstInit)
+			{
+				s2s_delay_ms(250);
+			}
 
-			if (sdInit())
+			if (sdDoInit())
 			{
 				blockDev.state |= DISK_PRESENT | DISK_INITIALISED;
+
+				if (wp)
+				{
+					blockDev.state |= DISK_WP;
+				}
+				else
+				{
+					blockDev.state &= ~DISK_WP;
+				}
 
 				// Always "start" the device. Many systems (eg. Apple System 7)
 				// won't respond properly to
@@ -1057,15 +978,21 @@ void sdCheckPresent()
 				// START STOP UNIT command.
 				blockDev.state |= DISK_STARTED;
 
-				if (!firstInit)
+				result = 1;
+
+				s2s_ledOff();
+			}
+			else
+			{
+				for (int i = 0; i < 10; ++i)
 				{
-					int i;
-					for (i = 0; i < MAX_SCSI_TARGETS; ++i)
-					{
-						scsiDev.targets[i].unitAttention = PARAMETERS_CHANGED;
-					}
+					// visual indicator of SD error
+					s2s_ledOff();
+					s2s_delay_ms(50);
+					s2s_ledOn();
+					s2s_delay_ms(50);
 				}
-				firstInit = 0;
+				s2s_ledOff();
 			}
 		}
 		else if (!cs && (blockDev.state & DISK_PRESENT))
@@ -1074,12 +1001,16 @@ void sdCheckPresent()
 			blockDev.state &= ~DISK_PRESENT;
 			blockDev.state &= ~DISK_INITIALISED;
 			int i;
-			for (i = 0; i < MAX_SCSI_TARGETS; ++i)
+			for (i = 0; i < S2S_MAX_TARGETS; ++i)
 			{
 				scsiDev.targets[i].unitAttention = PARAMETERS_CHANGED;
 			}
+
+			HAL_SD_DeInit(&hsd);
 		}
 	}
+	firstInit = 0;
+
+	return result;
 }
 
-#endif

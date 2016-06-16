@@ -1,2 +1,8 @@
+20160616		6.01
+	- Improved SD card compatibility
+	- Fixed SCSI interfaces on slower SCSI controllers
+	- Significant performance improvements
+	- Added SD card hotswap support.
+
 20160528		6.0
 	- First BETA firmware for the 6.0 hardware version of the SCSI2SD.

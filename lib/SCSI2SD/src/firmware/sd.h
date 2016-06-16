@@ -82,7 +82,6 @@ void sdReadSingleSectorDMA(uint32_t lba, uint8_t* outputBuffer);
 int sdReadSectorDMAPoll();
 
 void sdCompleteTransfer(void);
-void sdCheckPresent();
 void sdPoll();
 
 #endif

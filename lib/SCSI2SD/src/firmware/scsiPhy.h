@@ -30,22 +30,20 @@
 #define SCSI_STS_FIFO_COMPLETE ((volatile uint8_t*)0x60000012)
 #define SCSI_STS_SELECTED ((volatile uint8_t*)0x60000013)
 #define SCSI_STS_SCSI ((volatile uint8_t*)0x60000014)
+#define SCSI_STS_DBX ((volatile uint8_t*)0x60000015)
 
 #define SCSI_FIFO_DATA ((volatile uint8_t*)0x60000020)
 #define SCSI_FIFO_DEPTH 512
 
 
-#define scsiPhyFifoFull() ((*SCSI_STS_FIFO & 0x02) == 0x02)
-#define scsiPhyFifoEmpty() ((*SCSI_STS_FIFO & 0x01) == 0x01)
+#define scsiPhyFifoFull() ((*SCSI_STS_FIFO & 0x01) == 0x01)
+#define scsiPhyFifoEmpty() ((*SCSI_STS_FIFO & 0x02) == 0x02)
 
 #define scsiPhyFifoFlip() \
 {\
 	scsiPhyFifoSel ^= 1; \
 	*SCSI_FIFO_SEL = scsiPhyFifoSel; \
 }
-
-// Clear 4 byte fifo
-#define scsiPhyFifoClear() (void) scsiPhyRx(); (void) scsiPhyRx(); (void) scsiPhyRx(); (void) scsiPhyRx();
 
 #define scsiPhyTx(val) *SCSI_FIFO_DATA = (val)
 #define scsiPhyRx() *SCSI_FIFO_DATA

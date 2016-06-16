@@ -178,7 +178,6 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f2xx_hal.h"
-
 #ifdef HAL_SD_MODULE_ENABLED
 
 /** @addtogroup STM32F2xx_HAL_Driver

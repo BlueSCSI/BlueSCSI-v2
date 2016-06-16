@@ -32,6 +32,7 @@
 
 
 const char* Notice = "Copyright (C) 2016 Michael McMaster <michael@codesrc.com>";
+uint32_t lastSDPoll;
 
 void mainEarlyInit()
 {
@@ -51,10 +52,11 @@ void mainInit()
 	scsiDiskInit();
 	sdInit();
 	s2s_configInit(&scsiDev.boardCfg);
+	scsiPhyConfig();
+	scsiInit();
 
 	s2s_debugInit();
 
-	scsiInit();
 
 	MX_USB_DEVICE_Init(); // USB lun config now available.
 
@@ -72,10 +74,7 @@ void mainInit()
 		++delaySeconds;
 	}
 
-#if 0
-	uint32_t lastSDPoll = getTime_ms();
-	sdCheckPresent();
-#endif
+	lastSDPoll = s2s_getTime_ms();
 }
 
 void mainLoop()
@@ -89,16 +88,28 @@ void mainLoop()
 
 #if 0
 	sdPoll();
+#endif
 
 	if (unlikely(scsiDev.phase == BUS_FREE))
 	{
-		if (unlikely(elapsedTime_ms(lastSDPoll) > 200))
+		if (unlikely(s2s_elapsedTime_ms(lastSDPoll) > 200))
 		{
-			lastSDPoll = getTime_ms();
-			sdCheckPresent();
+			lastSDPoll = s2s_getTime_ms();
+			if (sdInit())
+			{
+				s2s_configInit(&scsiDev.boardCfg);
+				scsiPhyConfig();
+				scsiInit();
+
+
+				USBD_Stop(&hUsbDeviceFS);
+				s2s_delay_ms(128);
+				USBD_Start(&hUsbDeviceFS);
+			}
 		}
 		else
 		{
+#if 0
 			// Wait for our 1ms timer to save some power.
 			// There's an interrupt on the SEL signal to ensure we respond
 			// quickly to any SCSI commands. The selection abort time is
@@ -110,13 +121,13 @@ void mainLoop()
 				__WFI(); // Will wake on interrupt, regardless of mask
 			}
 			CyExitCriticalSection(interruptState);
+#endif
 		}
 	}
 	else if (scsiDev.phase >= 0)
 	{
 		// don't waste time scanning SD cards while we're doing disk IO
-		lastSDPoll = getTime_ms();
+		lastSDPoll = s2s_getTime_ms();
 	}
-#endif
 }
 

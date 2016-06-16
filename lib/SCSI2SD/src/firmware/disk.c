@@ -35,12 +35,7 @@ static int doSdInit()
 	int result = 0;
 	if (blockDev.state & DISK_PRESENT)
 	{
-		result = sdInit();
-
-		if (result)
-		{
-			blockDev.state = blockDev.state | DISK_INITIALISED;
-		}
+		blockDev.state = blockDev.state | DISK_INITIALISED;
 	}
 	return result;
 }
@@ -628,7 +623,6 @@ void scsiDiskPoll()
 				scsiWriteDMA(&scsiDev.data[SD_SECTOR_SIZE * (i % buffers)], dmaBytes);
 				scsiActive = 1;
 			}
-
 		}
 
 		// We've finished transferring the data to the FPGA, now wait until it's
@@ -656,6 +650,11 @@ void scsiDiskPoll()
 
 		const int sdPerScsi = SDSectorsPerSCSISector(bytesPerSector);
 		int totalSDSectors = transfer.blocks * sdPerScsi;
+		uint32_t sdLBA =
+			SCSISector2SD(
+				scsiDev.target->cfg->sdSectorStart,
+				bytesPerSector,
+				transfer.lba);
 		// int buffers = sizeof(scsiDev.data) / SD_SECTOR_SIZE;
 		// int prep = 0;
 		int i = 0;
@@ -677,7 +676,7 @@ void scsiDiskPoll()
 			uint32_t sectors =
 				totalSDSectors < maxSectors ? totalSDSectors : maxSectors;
 			scsiRead(&scsiDev.data[0], sectors * SD_SECTOR_SIZE);
-			sdTmpWrite(&scsiDev.data[0], i + transfer.lba, sectors);
+			sdTmpWrite(&scsiDev.data[0], i + sdLBA, sectors);
 			i += sectors;
 #if 0
 			// Wait for the next DMA interrupt. It's beneficial to halt the
@@ -863,13 +862,5 @@ void scsiDiskInit()
 
 	// Don't require the host to send us a START STOP UNIT command
 	blockDev.state = DISK_STARTED;
-	// WP pin not available for micro-sd
-	// TODO read card WP register
-	#if 0
-	if (SD_WP_Read())
-	{
-		blockDev.state = blockDev.state | DISK_WP;
-	}
-	#endif
 }
 

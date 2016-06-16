@@ -70,6 +70,7 @@ static void enter_BusFree()
 	// Bus settle delay + bus clear delay = 1200ns
 	s2s_delay_us(2);
 
+
 	s2s_ledOff();
 	scsiDev.phase = BUS_FREE;
 }
@@ -459,7 +460,6 @@ static void scsiReset()
 	s2s_ledOff();
 
 	scsiPhyReset();
-	// TODO SCSI_Out_Ctl_Write(0);
 
 	scsiDev.parityError = 0;
 	scsiDev.phase = BUS_FREE;
@@ -896,6 +896,8 @@ void scsiPoll(void)
 
 void scsiInit()
 {
+	static int firstInit = 1;
+
 	scsiDev.atnFlag = 0;
 	scsiDev.resetFlag = 1;
 	scsiDev.phase = BUS_FREE;
@@ -920,10 +922,18 @@ void scsiInit()
 		}
 		scsiDev.targets[i].reservedId = -1;
 		scsiDev.targets[i].reserverId = -1;
-		scsiDev.targets[i].unitAttention = POWER_ON_RESET;
+		if (firstInit)
+		{
+			scsiDev.targets[i].unitAttention = POWER_ON_RESET;
+		}
+		else
+		{
+			scsiDev.targets[i].unitAttention = PARAMETERS_CHANGED;
+		}
 		scsiDev.targets[i].sense.code = NO_SENSE;
 		scsiDev.targets[i].sense.asc = NO_ADDITIONAL_SENSE_INFORMATION;
 	}
+	firstInit = 0;
 }
 
 /* TODO REENABLE
