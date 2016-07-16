@@ -19,7 +19,6 @@
 #include "scsi.h"
 #include "scsiPhy.h"
 #include "config.h"
-#include "debug.h"
 #include "disk.h"
 #include "sd.h"
 #include "time.h"
@@ -598,6 +597,15 @@ void scsiDiskPoll()
 				sdActive = 1;
 			}
 #endif
+#if 0
+			uint32_t maxSectors = sizeof(scsiDev.data) / SD_SECTOR_SIZE;
+			uint32_t rem = totalSDSectors - i;
+			uint32_t sectors =
+				rem < maxSectors ? rem : maxSectors;
+			sdTmpRead(&scsiDev.data[0], i + sdLBA, sectors);
+			scsiWrite(&scsiDev.data[0], sectors * SD_SECTOR_SIZE);
+			i += sectors;
+#endif
 			if ((prep - i < buffers) &&
 				(prep < totalSDSectors))
 			{
@@ -673,8 +681,9 @@ void scsiDiskPoll()
 			// do this in a half-duplex fashion. We need to write as much as
 			// possible in each SD card transaction.
 			uint32_t maxSectors = sizeof(scsiDev.data) / SD_SECTOR_SIZE;
+			uint32_t rem = totalSDSectors - i;
 			uint32_t sectors =
-				totalSDSectors < maxSectors ? totalSDSectors : maxSectors;
+				rem < maxSectors ? rem : maxSectors;
 			scsiRead(&scsiDev.data[0], sectors * SD_SECTOR_SIZE);
 			sdTmpWrite(&scsiDev.data[0], i + sdLBA, sectors);
 			i += sectors;

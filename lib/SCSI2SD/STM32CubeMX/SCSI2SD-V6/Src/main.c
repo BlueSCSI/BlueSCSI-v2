@@ -92,8 +92,8 @@ int main(void)
   MX_SDIO_SD_Init();
   MX_SPI1_Init();
   MX_TIM4_Init();
-  MX_USART3_UART_Init();
-  MX_USB_HOST_Init();
+  // TODO re-enable MX_USART3_UART_Init();
+  // TODO re-enable MX_USB_HOST_Init();
 
   /* USER CODE BEGIN 2 */
   mainInit();
@@ -105,7 +105,7 @@ int main(void)
   while (1)
   {
   /* USER CODE END WHILE */
-    MX_USB_HOST_Process();
+    // TODO re-enable MX_USB_HOST_Process();
 
   /* USER CODE BEGIN 3 */
   mainLoop();

@@ -131,6 +131,7 @@ USBCOMPOSITE_SRC= \
 
 SRC = \
 	src/firmware/bootloader.c \
+	src/firmware/cdrom.c \
 	src/firmware/config.c \
 	src/firmware/disk.c \
 	src/firmware/diagnostic.c \
@@ -140,10 +141,12 @@ SRC = \
 	src/firmware/inquiry.c \
 	src/firmware/led.c \
 	src/firmware/main.c \
+	src/firmware/mo.c \
 	src/firmware/mode.c \
 	src/firmware/scsiPhy.c \
 	src/firmware/scsi.c \
 	src/firmware/sd.c \
+	src/firmware/tape.c \
 	src/firmware/time.c \
 	src/firmware/trace.c \
 	${USBCOMPOSITE_SRC}

@@ -943,7 +943,7 @@ int sdInit()
 		sdInitDMA();
 	}
 
-	if (scsiDev.phase == BUS_FREE)
+	if (firstInit || (scsiDev.phase == BUS_FREE))
 	{
 		uint8_t cs = HAL_GPIO_ReadPin(nSD_CD_GPIO_Port, nSD_CD_Pin) ? 0 : 1;
 		uint8_t wp = HAL_GPIO_ReadPin(nSD_WP_GPIO_Port, nSD_WP_Pin) ? 0 : 1;

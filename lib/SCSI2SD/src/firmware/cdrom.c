@@ -14,13 +14,12 @@
 //
 //	You should have received a copy of the GNU General Public License
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
-#pragma GCC push_options
-#pragma GCC optimize("-flto")
 
-#include "device.h"
 #include "scsi.h"
 #include "config.h"
 #include "cdrom.h"
+
+#include <string.h>
 
 static const uint8_t SimpleTOC[] =
 {
@@ -276,7 +275,7 @@ int scsiCDRomCommand()
 {
 	int commandHandled = 1;
 
-	uint8 command = scsiDev.cdb[0];
+	uint8_t command = scsiDev.cdb[0];
 	if (command == 0x43)
 	{
 		// CD-ROM Read TOC
@@ -323,4 +322,3 @@ int scsiCDRomCommand()
 	return commandHandled;
 }
 
-#pragma GCC pop_options

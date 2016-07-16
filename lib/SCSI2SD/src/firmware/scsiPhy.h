@@ -38,6 +38,7 @@
 
 #define scsiPhyFifoFull() ((*SCSI_STS_FIFO & 0x01) == 0x01)
 #define scsiPhyFifoEmpty() ((*SCSI_STS_FIFO & 0x02) == 0x02)
+#define scsiPhyFifoAltEmpty() ((*SCSI_STS_ALTFIFO & 0x02) == 0x02)
 
 #define scsiPhyFifoFlip() \
 {\
@@ -52,6 +53,8 @@
 #define scsiStatusATN() ((*SCSI_STS_SCSI & 0x01) == 0x01)
 #define scsiStatusBSY() ((*SCSI_STS_SCSI & 0x02) == 0x02)
 #define scsiStatusRST() ((*SCSI_STS_SCSI & 0x04) == 0x04)
+#define scsiStatusSEL() ((*SCSI_STS_SCSI & 0x08) == 0x08)
+#define scsiStatusACK() ((*SCSI_STS_SCSI & 0x10) == 0x10)
 
 extern uint8_t scsiPhyFifoSel;
 

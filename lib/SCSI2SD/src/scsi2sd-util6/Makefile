@@ -1,4 +1,4 @@
-VPATH=../firmware
+VPATH=../firmware dfu-programmer/src
 
 VERSION=6.0
 NAME=scsi2sd-util6
@@ -7,6 +7,15 @@ ifeq ($(USE_SYSTEM), Yes)
 USE_SYSTEM_HIDAPI = Yes
 USE_SYSTEM_ZLIB = Yes
 USE_SYSTEM_WX = Yes
+USE_SYSTEM_LIBUSB = Yes
+endif
+
+ifeq ($(USE_SYSTEM_LIBUSB), Yes)
+CPPFLAGS_LIBUSB=$(shell pkg-config libusb-1.0 --cflags)
+LDFLAGS_LIBUSB=$(shell pkg-config libusb-1.0 --libs)
+else
+CPPFLAGS_LIBUSB=-I libusb-1.0.9/libusb
+LDFLAGS_LIBUSB=-L $(BUILD)/libusb/libusb/.libs -lusb-1.0
 endif
 
 ifeq ($(USE_SYSTEM_HIDAPI), Yes)
@@ -33,11 +42,20 @@ else
 LDFLAGS_WX=$(shell $(BUILD)/wx/wx-config --libs)
 endif
 
-CPPFLAGS = $(CPPFLAGS_HIDAPI) -I. -I ../../include -Ilibzipper-1.0.4 $(CPPFLAGS_ZLIB)
+CPPFLAGS = $(CPPFLAGS_HIDAPI) -I. -I ../../include -Idfu-programmer/src \
+	-Ilibzipper-1.0.4 \
+	$(CPPFLAGS_ZLIB) \
+	$(CPPFLAGS_LIBUSB) \
+	-DHAVE_LIBUSB_1_0 \
+
+
 CFLAGS += -Wall -Wno-pointer-sign -O2 -g
 CXXFLAGS += -Wall -O2 -g -std=c++0x
 
-LDFLAGS += -L$(BUILD)/libzipper/.libs -lzipper $(LDFLAGS_ZLIB) $(LDFLAGS_HIDAPI)
+LDFLAGS += -L$(BUILD)/libzipper/.libs -lzipper \
+	$(LDFLAGS_ZLIB) \
+	$(LDFLAGS_HIDAPI) \
+	$(LDFLAGS_LIBUSB)
 
 
 # wxWidgets 3.0.2 uses broken Webkit headers under OSX Yosemeti
@@ -56,6 +74,7 @@ ifeq ($(TARGET),Win32)
 	LIBZIPPER_CONFIG+=--host=i686-w64-mingw32
 	EXE=.exe
 	WX_CONFIG+=--host=i686-w64-mingw32
+	LIBUSB_CONFIG+=--host=i686-w64-mingw32 --disable-shared
 endif
 ifeq ($(TARGET),Win64)
 	VPATH += hidapi/windows
@@ -66,12 +85,13 @@ ifeq ($(TARGET),Win64)
 	LIBZIPPER_CONFIG+=--host=x86_64-w64-mingw32
 	EXE=.exe
 	WX_CONFIG+=--host=x86_64-w64-mingw32
+	LIBUSB_CONFIG+=--host=x86_64-w64-mingw32 --disable-shared
 endif
 ifeq ($(TARGET),Linux)
 	VPATH += hidapi/linux
-	CPPFLAGS += -DHAS_LIBUSB
 	LDFLAGS += -ludev -lexpat -lusb-1.0
 	BUILD := $(PWD)/build/linux
+	LIBUSB_CONFIG+=--disable-shared
 endif
 ifeq ($(TARGET),Darwin)
 	# Should match OSX
@@ -80,6 +100,7 @@ ifeq ($(TARGET),Darwin)
 	CC=clang -mmacosx-version-min=10.7
 	CXX=clang++ -stdlib=libc++ -mmacosx-version-min=10.7
 	WX_CONFIG += --with-macosx-version-min=10.7
+	LIBUSB_CONFIG += --with-macosx-version-min=10.7 --disable-shared
 	BUILD := $(PWD)/build/mac
 all: $(BUILD)/scsi2sd-util6.dmg
 
@@ -109,9 +130,12 @@ OBJ = \
 	$(BUILD)/SCSI2SD_HID.o \
 	$(BUILD)/hidpacket.o \
 
+#	$(BUILD)/Dfu.o \
+#	$(BUILD)/dfu.o \
+
+
 EXEOBJ = \
 	$(BUILD)/scsi2sd-util6.o \
-
 
 
 ifneq ($(USE_SYSTEM_ZLIB),Yes)
@@ -123,6 +147,19 @@ $(BUILD)/zlib/buildstamp:
 		cd $(dir $@) && \
 		cp -a $(CURDIR)/zlib-1.2.8/* . && \
 		./configure --static && \
+		$(MAKE) \
+	) && \
+	touch $@
+endif
+
+ifneq ($(USE_SYSTEM_LIBUSB),Yes)
+$(OBJ): $(BUILD)/libusb/buildstamp
+$(EXEOBJ): $(BUILD)/libusb/buildstamp
+$(BUILD)/libusb/buildstamp:
+	mkdir -p $(dir $@)
+	( \
+		cd $(dir $@) && \
+		$(CURDIR)/libusb-1.0.9/configure $(LIBUSB_CONFIG) && \
 		$(MAKE) \
 	) && \
 	touch $@

@@ -25,10 +25,10 @@
 #include "mode.h"
 #include "time.h"
 #include "bsp.h"
-//#include "cdrom.h"
+#include "cdrom.h"
 //#include "debug.h"
-//#include "tape.h"
-//#include "mo.h"
+#include "tape.h"
+#include "mo.h"
 
 #include <string.h>
 
@@ -157,7 +157,6 @@ void process_Status()
 	scsiDev.lastSense = scsiDev.target->sense.code;
 	scsiDev.lastSenseASC = scsiDev.target->sense.asc;
 
-
 	// Command Complete occurs AFTER a valid status has been
 	// sent. then we go bus-free.
 	enter_MessageIn(message);
@@ -263,7 +262,7 @@ static void process_Command()
 	control = scsiDev.cdb[scsiDev.cdbLen - 1];
 
 	scsiDev.cmdCount++;
-	// TODO const S2S_TargetCfg* cfg = scsiDev.target->cfg;
+	const S2S_TargetCfg* cfg = scsiDev.target->cfg;
 
 	if (unlikely(scsiDev.resetFlag))
 	{
@@ -352,7 +351,6 @@ static void process_Command()
 	{
 		enter_Status(CONFLICT);
 	}
-#if 0
 	// Handle odd device types first that may override basic read and
 	// write commands. Will fall-through to generic disk handling.
 	else if (((cfg->deviceType == S2S_CFG_OPTICAL) && scsiCDRomCommand()) ||
@@ -361,7 +359,6 @@ static void process_Command()
 	{
 		// Already handled.
 	}
-#endif
 	else if (scsiDiskCommand())
 	{
 		// Already handled.
@@ -605,13 +602,9 @@ static void process_SelectionPhase()
 		// SCSI1/SASI initiators may not set their own ID.
 		scsiDev.initiatorId = (selStatus >> 3) & 0x7;
 
-		// Wait until the end of the selection phase.
-		while (likely(!scsiDev.resetFlag))
+		while (likely(!scsiDev.resetFlag) && scsiStatusSEL())
 		{
-			if ((*SCSI_STS_SELECTED & 0x40) == 0)
-			{
-				break;
-			}
+			// Wait until the end of the selection phase.
 		}
 
 		scsiDev.phase = COMMAND;

@@ -55,9 +55,6 @@ void mainInit()
 	scsiPhyConfig();
 	scsiInit();
 
-	s2s_debugInit();
-
-
 	MX_USB_DEVICE_Init(); // USB lun config now available.
 
 	// Optional bootup delay

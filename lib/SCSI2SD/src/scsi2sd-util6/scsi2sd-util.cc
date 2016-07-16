@@ -41,6 +41,7 @@
 #include "BoardPanel.hh"
 #include "TargetPanel.hh"
 #include "SCSI2SD_HID.hh"
+//#include "Dfu.hh"
 
 #include <algorithm>
 #include <iomanip>
@@ -56,10 +57,6 @@ using std::shared_ptr;
 #include <stdint.h>
 #include <tr1/memory>
 using std::tr1::shared_ptr;
-#endif
-
-#ifdef HAS_LIBUSB
-#include <libusb-1.0/libusb.h>
 #endif
 
 using namespace SCSI2SD;
@@ -111,33 +108,6 @@ void ProgressUpdate(unsigned char arrayId, unsigned short rowNum)
 
 namespace
 {
-bool hasDFUdevice() {
-#ifdef HAS_LIBUSB
-	bool found = false;
-
-	libusb_device **list;
-	ssize_t cnt = libusb_get_device_list(NULL, &list);
-	ssize_t i = 0;
-	if (cnt < 0) return false;
-
-	for (i = 0; i < cnt; i++) {
-		libusb_device *device = list[i];
-		libusb_device_descriptor desc;
-		libusb_get_device_descriptor(device, &desc);
-		if (desc.idVendor == 0x0483 && desc.idProduct == 0xdf11) {
-			found = true;
-			break;
-		}
-	}
-
-	libusb_free_device_list(list, 1);
-
-	return found;
-#else
-	return false;
-#endif
-}
-
 
 static uint8_t sdCrc7(uint8_t* chr, uint8_t cnt, uint8_t crc)
 {
@@ -285,10 +255,11 @@ public:
 		myLogWindow->PassMessages(false); // Prevent messagebox popups
 
 		myTimer = new wxTimer(this, ID_Timer);
-		myTimer->Start(16); //ms, suitable for scsi debug logging
+		myTimer->Start(64); //ms, suitable for scsi debug logging
 	}
 
 private:
+	//Dfu myDfu;
 	wxLogWindow* myLogWindow;
 	BoardPanel* myBoardPanel;
 	std::vector<TargetPanel*> myTargets;
@@ -532,13 +503,15 @@ private:
 				}
 
 
-				if (hasDFUdevice())
+/*
+				if (myDfu.hasDevice())
 				{
 					mmLogStatus("STM DFU Bootloader found");
 					progress->Show(0);
 					doDFUUpdate(filename);
 					return;
 				}
+*/
 			}
 			catch (std::exception& e)
 			{
@@ -606,7 +579,7 @@ private:
 		}
 		try
 		{
-			std::vector<uint8_t> info(HID::HID_PACKET_SIZE);
+			std::vector<uint8_t> info;
 			if (myHID->readSCSIDebugInfo(info))
 			{
 				dumpSCSICommand(info);
@@ -940,9 +913,6 @@ class App : public wxApp
 public:
 	virtual bool OnInit()
 	{
-#ifdef HAS_LIBUSB
-		libusb_init(NULL);
-#endif
 		AppFrame* frame = new AppFrame();
 		frame->Show(true);
 		SetTopWindow(frame);

@@ -14,10 +14,7 @@
 //
 //	You should have received a copy of the GNU General Public License
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
-#pragma GCC push_options
-#pragma GCC optimize("-flto")
 
-#include "device.h"
 #include "scsi.h"
 #include "config.h"
 #include "tape.h"
@@ -30,4 +27,3 @@ int scsiTapeCommand()
 	return 0;
 }
 
-#pragma GCC pop_options

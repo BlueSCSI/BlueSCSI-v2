@@ -16,7 +16,6 @@
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "config.h"
-#include "debug.h"
 #include "led.h"
 
 #include "scsi.h"
@@ -38,7 +37,7 @@
 
 #include <string.h>
 
-static const uint16_t FIRMWARE_VERSION = 0x0601;
+static const uint16_t FIRMWARE_VERSION = 0x0603;
 
 // 1 flash row
 static const uint8_t DEFAULT_CONFIG[128] =
@@ -176,7 +175,7 @@ debugCommand()
 	response[15] = scsiDev.lastSense;
 	response[16] = scsiDev.phase;
 	response[17] = scsiStatusBSY();
-	response[18] = *SCSI_STS_SELECTED;
+	response[18] = scsiStatusSEL();
 	response[19] = scsiStatusATN();
 	response[20] = scsiStatusRST();
 	response[21] = scsiDev.rstCount;
@@ -189,6 +188,7 @@ debugCommand()
 	response[28] = scsiDev.lastSenseASC;
 	response[29] = *SCSI_STS_DBX;
 	response[30] = LastTrace;
+	response[31] = scsiStatusACK();
 	hidPacket_send(response, sizeof(response));
 }
 
@@ -330,116 +330,7 @@ void s2s_configPoll()
 
 }
 
-void debugPoll()
-{
-#if 0
-	if (!usbReady)
-	{
-		return;
-	}
 
-	if(USBFS_GetEPState(USB_EP_COMMAND) == USBFS_OUT_BUFFER_FULL)
-	{
-		// The host sent us some data!
-		int byteCount = USBFS_GetEPCount(USB_EP_COMMAND);
-		USBFS_ReadOutEP(USB_EP_COMMAND, (uint8 *)&hidBuffer, byteCount);
-
-		if (byteCount >= 1 &&
-			hidBuffer[0] == 0x01)
-		{
-			// Reboot command.
-			Bootloadable_1_Load();
-		}
-
-		// Allow the host to send us another command.
-		// (assuming we didn't reboot outselves)
-		USBFS_EnableOutEP(USB_EP_COMMAND);
-	}
-
-	switch (usbDebugEpState)
-	{
-	case USB_IDLE:
-		memcpy(&hidBuffer, &scsiDev.cdb, 12);
-		hidBuffer[12] = scsiDev.msgIn;
-		hidBuffer[13] = scsiDev.msgOut;
-		hidBuffer[14] = scsiDev.lastStatus;
-		hidBuffer[15] = scsiDev.lastSense;
-		hidBuffer[16] = scsiDev.phase;
-		hidBuffer[17] = SCSI_ReadFilt(SCSI_Filt_BSY);
-		hidBuffer[18] = SCSI_ReadFilt(SCSI_Filt_SEL);
-		hidBuffer[19] = SCSI_ReadFilt(SCSI_Filt_ATN);
-		hidBuffer[20] = SCSI_ReadFilt(SCSI_Filt_RST);
-		hidBuffer[21] = scsiDev.rstCount;
-		hidBuffer[22] = scsiDev.selCount;
-		hidBuffer[23] = scsiDev.msgCount;
-		hidBuffer[24] = scsiDev.cmdCount;
-		hidBuffer[25] = scsiDev.watchdogTick;
-		hidBuffer[26] = blockDev.state;
-		hidBuffer[27] = scsiDev.lastSenseASC >> 8;
-		hidBuffer[28] = scsiDev.lastSenseASC;
-		hidBuffer[29] = scsiReadDBxPins();
-		hidBuffer[30] = LastTrace;
-
-		hidBuffer[58] = sdDev.capacity >> 24;
-		hidBuffer[59] = sdDev.capacity >> 16;
-		hidBuffer[60] = sdDev.capacity >> 8;
-		hidBuffer[61] = sdDev.capacity;
-
-		hidBuffer[62] = FIRMWARE_VERSION >> 8;
-		hidBuffer[63] = FIRMWARE_VERSION;
-
-		USBFS_LoadInEP(USB_EP_DEBUG, (uint8 *)&hidBuffer, sizeof(hidBuffer));
-		usbDebugEpState = USB_DATA_SENT;
-		break;
-
-	case USB_DATA_SENT:
-		if (USBFS_bGetEPAckState(USB_EP_DEBUG))
-		{
-			// Data accepted.
-			usbDebugEpState = USB_IDLE;
-		}
-		break;
-	}
-#endif
-}
-
-#if 0
-CY_ISR(debugTimerISR)
-{
-	Debug_Timer_ReadStatusRegister();
-	Debug_Timer_Interrupt_ClearPending();
-	uint8 savedIntrStatus = CyEnterCriticalSection();
-	debugPoll();
-	CyExitCriticalSection(savedIntrStatus);
-}
-#endif
-
-void s2s_debugInit()
-{
-#if 0
-	Debug_Timer_Interrupt_StartEx(debugTimerISR);
-	Debug_Timer_Start();
-#endif
-}
-
-void debugPause()
-{
-#if 0
-	Debug_Timer_Stop();
-#endif
-}
-
-void debugResume()
-{
-#if 0
-	Debug_Timer_Start();
-#endif
-}
-
-int isDebugEnabled()
-{
-	return usbReady;
-}
 
 // Public method for storing MODE SELECT results.
 void s2s_configSave(int scsiId, uint16_t bytesPerSector)

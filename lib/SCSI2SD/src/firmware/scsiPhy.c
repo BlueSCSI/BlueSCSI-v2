@@ -76,21 +76,16 @@ void EXTI4_IRQHandler()
 	}
 }
 
-#if 0
-uint8_t
-scsiReadDBxPins()
+static void assertFail()
 {
-	return
-		(SCSI_ReadPin(SCSI_In_DBx_DB7) << 7) |
-		(SCSI_ReadPin(SCSI_In_DBx_DB6) << 6) |
-		(SCSI_ReadPin(SCSI_In_DBx_DB5) << 5) |
-		(SCSI_ReadPin(SCSI_In_DBx_DB4) << 4) |
-		(SCSI_ReadPin(SCSI_In_DBx_DB3) << 3) |
-		(SCSI_ReadPin(SCSI_In_DBx_DB2) << 2) |
-		(SCSI_ReadPin(SCSI_In_DBx_DB1) << 1) |
-		SCSI_ReadPin(SCSI_In_DBx_DB0);
+	while (1)
+	{
+		s2s_ledOn();
+		s2s_delay_ms(100);
+		s2s_ledOff();
+		s2s_delay_ms(100);
+	}
 }
-#endif
 
 static void
 startScsiRx(uint32_t count)
@@ -103,6 +98,12 @@ startScsiRx(uint32_t count)
 uint8_t
 scsiReadByte(void)
 {
+#if FIFODEBUG
+	if (!scsiPhyFifoAltEmpty()) {
+		// Force a lock-up.
+		assertFail();
+	}
+#endif
 	startScsiRx(1);
 
 	trace(trace_spinPhyRxFifo);
@@ -111,6 +112,16 @@ scsiReadByte(void)
 	uint8_t val = scsiPhyRx();
 	// TODO scsiDev.parityError = scsiDev.parityError || SCSI_Parity_Error_Read();
 
+#if FIFODEBUG
+	if (!scsiPhyFifoEmpty()) {
+		int j = 0;
+		uint8_t k __attribute((unused));
+		while (!scsiPhyFifoEmpty()) { k = scsiPhyRx(); ++j; }
+
+		// Force a lock-up.
+		assertFail();
+	}
+#endif
 	return val;
 }
 
@@ -176,6 +187,13 @@ scsiRead(uint8_t* data, uint32_t count)
 			chunk = chunk & 0xFFFFFFF8;
 		}
 
+#if FIFODEBUG
+		if (!scsiPhyFifoAltEmpty()) {
+			// Force a lock-up.
+			assertFail();
+		}
+#endif
+
 		startScsiRx(chunk);
 		// Wait for the next scsi interrupt (or the 1ms systick)
 		__WFI();
@@ -208,6 +226,14 @@ scsiRead(uint8_t* data, uint32_t count)
 			};
 		}
 
+#if FIFODEBUG
+		if (!scsiPhyFifoEmpty()) {
+			int j = 0;
+			while (!scsiPhyFifoEmpty()) { scsiPhyRx(); ++j; }
+			// Force a lock-up.
+			assertFail();
+		}
+#endif
 		i += chunk;
 	}
 }
@@ -215,12 +241,25 @@ scsiRead(uint8_t* data, uint32_t count)
 void
 scsiWriteByte(uint8_t value)
 {
+#if FIFODEBUG
+	if (!scsiPhyFifoEmpty()) {
+		// Force a lock-up.
+		assertFail();
+	}
+#endif
 	trace(trace_spinPhyTxFifo);
 	scsiPhyTx(value);
 	scsiPhyFifoFlip();
 
 	trace(trace_spinTxComplete);
 	while (!scsiPhyComplete() && likely(!scsiDev.resetFlag)) {}
+
+#if FIFODEBUG
+	if (!scsiPhyFifoAltEmpty()) {
+		// Force a lock-up.
+		assertFail();
+	}
+#endif
 }
 
 static void
@@ -277,6 +316,13 @@ scsiWrite(const uint8_t* data, uint32_t count)
 		uint32_t chunk = ((count - i) > SCSI_FIFO_DEPTH)
 			? SCSI_FIFO_DEPTH : (count - i);
 
+#if FIFODEBUG
+		if (!scsiPhyFifoEmpty()) {
+			// Force a lock-up.
+			assertFail();
+		}
+#endif
+
 		if (chunk < 16)
 		{
 			scsiWritePIO(data + i, chunk);
@@ -305,6 +351,14 @@ scsiWrite(const uint8_t* data, uint32_t count)
 		}
 
 		while (!scsiPhyComplete() && likely(!scsiDev.resetFlag)) {}
+
+#if FIFODEBUG
+		if (!scsiPhyFifoAltEmpty()) {
+			// Force a lock-up.
+			assertFail();
+		}
+#endif
+
 		scsiPhyFifoFlip();
 #if 0
 // TODO NEED SCSI IRQs
@@ -314,6 +368,13 @@ scsiWrite(const uint8_t* data, uint32_t count)
 		i += chunk;
 	}
 	while (!scsiPhyComplete() && likely(!scsiDev.resetFlag)) {}
+
+#if FIFODEBUG
+	if (!scsiPhyFifoAltEmpty()) {
+		// Force a lock-up.
+		assertFail();
+	}
+#endif
 }
 
 static inline void busSettleDelay(void)
@@ -325,22 +386,25 @@ static inline void busSettleDelay(void)
 
 void scsiEnterBusFree()
 {
-	*SCSI_CTRL_PHASE = 0;
 	*SCSI_CTRL_BSY = 0x00;
+	// We now have a Bus Clear Delay of 800ns to release remaining signals.
+	*SCSI_CTRL_PHASE = 0;
 }
 
 void scsiEnterPhase(int phase)
 {
 	// ANSI INCITS 362-2002 SPI-3 10.7.1:
 	// Phase changes are not allowed while REQ or ACK is asserted.
-#if 0
-	while (likely(!scsiDev.resetFlag) &&
-		(SCSI_ReadPin(SCSI_In_REQ) || SCSI_ReadFilt(SCSI_Filt_ACK))
-		) {}
-#endif
+	while (likely(!scsiDev.resetFlag) && scsiStatusACK()) {}
 
 	int newPhase = phase > 0 ? phase : 0;
-	if (newPhase != *SCSI_CTRL_PHASE)
+	int oldPhase = *SCSI_CTRL_PHASE;
+
+	if (!scsiPhyFifoEmpty() || !scsiPhyFifoAltEmpty()) {
+		// Force a lock-up.
+		assertFail();
+	}
+	if (newPhase != oldPhase)
 	{
 		*SCSI_CTRL_PHASE = newPhase;
 		busSettleDelay();
@@ -349,6 +413,7 @@ void scsiEnterPhase(int phase)
 		{
 			s2s_delay_us(100);
 		}
+
 	}
 }
 
@@ -466,13 +531,7 @@ void scsiPhyReset()
 		{
 			if (scsiDev.data[j] != (uint8_t) j)
 			{
-				while (1)
-				{
-					s2s_ledOn();
-					s2s_delay_ms(100);
-					s2s_ledOff();
-					s2s_delay_ms(100);
-				}
+				assertFail();
 			}
 		}
 

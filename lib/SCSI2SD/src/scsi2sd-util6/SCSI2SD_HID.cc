@@ -138,27 +138,9 @@ HID::writeSector(uint32_t sector, const std::vector<uint8_t>& in)
 bool
 HID::readSCSIDebugInfo(std::vector<uint8_t>& buf)
 {
-#if 0
-	buf[0] = 0; // report id
-	hid_set_nonblocking(myDebugHandle, 1);
-	int result =
-		hid_read_timeout(
-			myDebugHandle,
-			&buf[0],
-			HID_PACKET_SIZE,
-			HID_TIMEOUT_MS);
-	hid_set_nonblocking(myDebugHandle, 0);
-
-	if (result <= 0)
-	{
-		const wchar_t* err = hid_error(myDebugHandle);
-		std::stringstream ss;
-		ss << "USB HID read failure: " << err;
-		throw std::runtime_error(ss.str());
-	}
-	return result > 0;
-#endif
-	return false;
+	std::vector<uint8_t> cmd { S2S_CMD_DEBUG };
+	sendHIDPacket(cmd, buf, 1);
+	return buf.size() > 0;
 }
 
 
