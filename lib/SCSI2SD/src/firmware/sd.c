@@ -35,362 +35,18 @@
 // Global
 SdDevice sdDev;
 
-#if 0
-enum SD_CMD_STATE { CMD_STATE_IDLE, CMD_STATE_READ, CMD_STATE_WRITE };
-static int sdCmdState = CMD_STATE_IDLE;
-static uint32_t sdCmdNextLBA; // Only valid in CMD_STATE_READ or CMD_STATE_WRITE
-static uint32_t sdCmdTime;
-static uint32_t sdLastCmdState = CMD_STATE_IDLE;
-
-enum SD_IO_STATE { SD_DMA, SD_ACCEPTED, SD_IDLE };
-static int sdIOState = SD_IDLE;
-
-// Private DMA variables.
-static uint8 sdDMARxChan = CY_DMA_INVALID_CHANNEL;
-static uint8 sdDMATxChan = CY_DMA_INVALID_CHANNEL;
-
-// Dummy location for DMA to send unchecked CRC bytes to
-static uint8 discardBuffer __attribute__((aligned(4)));
-
-// 2 bytes CRC, response, 8bits to close the clock..
-// "NCR" time is up to 8 bytes.
-static uint8_t writeResponseBuffer[8]  __attribute__((aligned(4)));
-
-// Padded with a dummy byte just to allow the tx DMA channel to
-// use 2-byte bursts for performance.
-static uint8_t writeStartToken[2]  __attribute__((aligned(4))) = {0xFF, 0xFC};
-
-// Source of dummy SPI bytes for DMA
-static uint8_t dummyBuffer[2]  __attribute__((aligned(4))) = {0xFF, 0xFF};
-
-volatile uint8_t sdRxDMAComplete;
-volatile uint8_t sdTxDMAComplete;
-
-static void sdCompleteRead();
-static void sdCompleteWrite();
-
-CY_ISR_PROTO(sdRxISR);
-CY_ISR(sdRxISR)
-{
-	sdRxDMAComplete = 1;
-}
-CY_ISR_PROTO(sdTxISR);
-CY_ISR(sdTxISR)
-{
-	sdTxDMAComplete = 1;
-}
-
-static uint8 sdCrc7(uint8* chr, uint8 cnt, uint8 crc)
-{
-	uint8 a;
-	for(a = 0; a < cnt; a++)
-	{
-		uint8 Data = chr[a];
-		uint8 i;
-		for(i = 0; i < 8; i++)
-		{
-			crc <<= 1;
-			if( (Data & 0x80) ^ (crc & 0x80) ) {crc ^= 0x09;}
-			Data <<= 1;
-		}
-	}
-	return crc & 0x7F;
-}
-
-
-// Read and write 1 byte.
-static uint8_t sdSpiByte(uint8_t value)
-{
-	SDCard_WriteTxData(value);
-	trace(trace_spinSpiByte);
-	while (!(SDCard_ReadRxStatus() & SDCard_STS_RX_FIFO_NOT_EMPTY)) {}
-	trace(trace_sdSpiByte);
-	return SDCard_ReadRxData();
-}
-
-static void sdWaitWriteBusy()
-{
-	uint8 val;
-	do
-	{
-		val = sdSpiByte(0xFF);
-	} while (val != 0xFF);
-}
-
-static void sdPreCmdState(uint32_t newState)
-{
-	if (sdCmdState == CMD_STATE_READ)
-	{
-		sdCompleteRead();
-	}
-	else if (sdCmdState == CMD_STATE_WRITE)
-	{
-		sdCompleteWrite();
-	}
-	sdCmdState = CMD_STATE_IDLE;
-
-	if (sdLastCmdState != newState && newState != CMD_STATE_IDLE)
-	{
-		sdWaitWriteBusy();
-		sdLastCmdState = newState;
-	}
-}
-
-static uint16_t sdDoCommand(
-	uint8_t cmd,
-	uint32_t param,
-	int useCRC,
-	int use2byteResponse)
-{
-	int waitWhileBusy = (cmd != SD_GO_IDLE_STATE) && (cmd != SD_STOP_TRANSMISSION);
-
-	// "busy" probe. We'll examine the results later.
-	if (waitWhileBusy)
-	{
-		SDCard_WriteTxData(0xFF);
-	}
-
-	// send is static as the address must remain consistent for the static
-	// DMA descriptors to work.
-	// Size must be divisible by 2 to suit 2-byte-burst TX DMA channel.
-	static uint8_t send[6] __attribute__((aligned(4)));
-	send[0] = cmd | 0x40;
-	send[1] = param >> 24;
-	send[2] = param >> 16;
-	send[3] = param >> 8;
-	send[4] = param;
-	if (unlikely(useCRC))
-	{
-		send[5] = (sdCrc7(send, 5, 0) << 1) | 1;
-	}
-	else
-	{
-		send[5] = 1; // stop bit
-	}
-
-	static uint8_t dmaRxTd = CY_DMA_INVALID_TD;
-	static uint8_t dmaTxTd = CY_DMA_INVALID_TD;
-	if (unlikely(dmaRxTd == CY_DMA_INVALID_TD))
-	{
-		dmaRxTd = CyDmaTdAllocate();
-		dmaTxTd = CyDmaTdAllocate();
-		CyDmaTdSetConfiguration(dmaTxTd, sizeof(send), CY_DMA_DISABLE_TD, TD_INC_SRC_ADR|SD_TX_DMA__TD_TERMOUT_EN);
-		CyDmaTdSetAddress(dmaTxTd, LO16((uint32)&send), LO16((uint32)SDCard_TXDATA_PTR));
-		CyDmaTdSetConfiguration(dmaRxTd, sizeof(send), CY_DMA_DISABLE_TD, SD_RX_DMA__TD_TERMOUT_EN);
-		CyDmaTdSetAddress(dmaRxTd, LO16((uint32)SDCard_RXDATA_PTR), LO16((uint32)&discardBuffer));
-	}
-
-	sdTxDMAComplete = 0;
-	sdRxDMAComplete = 0;
-
-	CyDmaChSetInitialTd(sdDMARxChan, dmaRxTd);
-	CyDmaChSetInitialTd(sdDMATxChan, dmaTxTd);
-
-	// Some Samsung cards enter a busy-state after single-sector reads.
-	// But we also need to wait for R1B to complete from the multi-sector
-	// reads.
-	if (waitWhileBusy)
-	{
-		trace(trace_spinSDRxFIFO);
-		while (!(SDCard_ReadRxStatus() & SDCard_STS_RX_FIFO_NOT_EMPTY)) {}
-		int busy = SDCard_ReadRxData() != 0xFF;
-		if (unlikely(busy))
-		{
-			trace(trace_spinSDBusy);
-			while (sdSpiByte(0xFF) != 0xFF) {}
-		}
-	}
-
-	// The DMA controller is a bit trigger-happy. It will retain
-	// a drq request that was triggered while the channel was
-	// disabled.
-	CyDmaChSetRequest(sdDMATxChan, CY_DMA_CPU_REQ);
-	CyDmaClearPendingDrq(sdDMARxChan);
-
-	// There is no flow control, so we must ensure we can read the bytes
-	// before we start transmitting
-	CyDmaChEnable(sdDMARxChan, 1);
-	CyDmaChEnable(sdDMATxChan, 1);
-
-	trace(trace_spinSDDMA);
-	int allComplete = 0;
-	while (!allComplete)
-	{
-		uint8_t intr = CyEnterCriticalSection();
-		allComplete = sdTxDMAComplete && sdRxDMAComplete;
-		if (!allComplete)
-		{
-			__WFI();
-		}
-		CyExitCriticalSection(intr);
-	}
-
-	uint16_t response = sdSpiByte(0xFF); // Result code or stuff byte
-	if (unlikely(cmd == SD_STOP_TRANSMISSION))
-	{
-		// Stuff byte is required for this command only.
-		// Part 1 Simplified standard 3.01
-		// "The stop command has an execution delay due to the serial command
-		// transmission."
-		response = sdSpiByte(0xFF);
-	}
-
-	uint32_t start = getTime_ms();
-
-	trace(trace_spinSDBusy);
-	while ((response & 0x80) && likely(elapsedTime_ms(start) <= 200))
-	{
-		response = sdSpiByte(0xFF);
-	}
-	if (unlikely(use2byteResponse))
-	{
-		response = (response << 8) | sdSpiByte(0xFF);
-	}
-	return response;
-}
-
-
-static inline uint16_t sdCommandAndResponse(uint8_t cmd, uint32_t param)
-{
-	return sdDoCommand(cmd, param, 0, 0);
-}
-
-static inline uint16_t sdCRCCommandAndResponse(uint8_t cmd, uint32_t param)
-{
-	return sdDoCommand(cmd, param, 1, 0);
-}
-
-// Clear the sticky status bits on error.
-static void sdClearStatus()
-{
-	sdSpiByte(0xFF);
-	uint16_t r2 = sdDoCommand(SD_SEND_STATUS, 0, 1, 1);
-	(void) r2;
-}
-
-void
-sdReadMultiSectorPrep(uint32_t sdLBA, uint32_t sdSectors)
-{
-	uint32_t tmpNextLBA = sdLBA + sdSectors;
-
-	if (!sdDev.ccs)
-	{
-		sdLBA = sdLBA * SD_SECTOR_SIZE;
-		tmpNextLBA = tmpNextLBA * SD_SECTOR_SIZE;
-	}
-
-	if (sdCmdState == CMD_STATE_READ && sdCmdNextLBA == sdLBA)
-	{
-		// Well, that was lucky. We're already reading this data
-		sdCmdNextLBA = tmpNextLBA;
-		sdCmdTime = getTime_ms();
-	}
-	else
-	{
-		sdPreCmdState(CMD_STATE_READ);
-
-		uint8_t v = sdCommandAndResponse(SD_READ_MULTIPLE_BLOCK, sdLBA);
-		if (unlikely(v))
-		{
-			scsiDiskReset();
-			sdClearStatus();
-
-			scsiDev.status = CHECK_CONDITION;
-			scsiDev.target->sense.code = HARDWARE_ERROR;
-			scsiDev.target->sense.asc = LOGICAL_UNIT_COMMUNICATION_FAILURE;
-			scsiDev.phase = STATUS;
-		}
-		else
-		{
-			sdCmdNextLBA = tmpNextLBA;
-			sdCmdState = CMD_STATE_READ;
-			sdCmdTime = getTime_ms();
-		}
-	}
-}
-
-static void
-dmaReadSector(uint8_t* outputBuffer)
-{
-	// Wait for a start-block token.
-	// Don't wait more than 200ms.  The standard recommends 100ms.
-	uint32_t start = getTime_ms();
-	uint8_t token = sdSpiByte(0xFF);
-	trace(trace_spinSDBusy);
-	while (token != 0xFE && likely(elapsedTime_ms(start) <= 200))
-	{
-		if (unlikely(token && ((token & 0xE0) == 0)))
-		{
-			// Error token!
-			break;
-		}
-		token = sdSpiByte(0xFF);
-	}
-	if (unlikely(token != 0xFE))
-	{
-		if (transfer.multiBlock)
-		{
-			sdCompleteRead();
-		}
-		if (scsiDev.status != CHECK_CONDITION)
-		{
-			scsiDev.status = CHECK_CONDITION;
-			scsiDev.target->sense.code = HARDWARE_ERROR;
-			scsiDev.target->sense.asc = UNRECOVERED_READ_ERROR;
-			scsiDev.phase = STATUS;
-		}
-		sdClearStatus();
-		return;
-	}
-
-	static uint8_t dmaRxTd[2] = { CY_DMA_INVALID_TD, CY_DMA_INVALID_TD};
-	static uint8_t dmaTxTd = CY_DMA_INVALID_TD;
-	if (unlikely(dmaRxTd[0] == CY_DMA_INVALID_TD))
-	{
-		dmaRxTd[0] = CyDmaTdAllocate();
-		dmaRxTd[1] = CyDmaTdAllocate();
-		dmaTxTd = CyDmaTdAllocate();
-
-		// Receive 512 bytes of data and then 2 bytes CRC.
-		CyDmaTdSetConfiguration(dmaRxTd[0], SD_SECTOR_SIZE, dmaRxTd[1], TD_INC_DST_ADR);
-		CyDmaTdSetConfiguration(dmaRxTd[1], 2, CY_DMA_DISABLE_TD, SD_RX_DMA__TD_TERMOUT_EN);
-		CyDmaTdSetAddress(dmaRxTd[1], LO16((uint32)SDCard_RXDATA_PTR), LO16((uint32)&discardBuffer));
-
-		CyDmaTdSetConfiguration(dmaTxTd, SD_SECTOR_SIZE + 2, CY_DMA_DISABLE_TD, SD_TX_DMA__TD_TERMOUT_EN);
-		CyDmaTdSetAddress(dmaTxTd, LO16((uint32)&dummyBuffer), LO16((uint32)SDCard_TXDATA_PTR));
-
-	}
-	CyDmaTdSetAddress(dmaRxTd[0], LO16((uint32)SDCard_RXDATA_PTR), LO16((uint32)outputBuffer));
-
-	sdIOState = SD_DMA;
-	sdTxDMAComplete = 0;
-	sdRxDMAComplete = 0;
-
-	// Re-loading the initial TD's here is very important, or else
-	// we'll be re-using the last-used TD, which would be the last
-	// in the chain (ie. CRC TD)
-	CyDmaChSetInitialTd(sdDMARxChan, dmaRxTd[0]);
-	CyDmaChSetInitialTd(sdDMATxChan, dmaTxTd);
-
-	// The DMA controller is a bit trigger-happy. It will retain
-	// a drq request that was triggered while the channel was
-	// disabled.
-	CyDmaChSetRequest(sdDMATxChan, CY_DMA_CPU_REQ);
-	CyDmaClearPendingDrq(sdDMARxChan);
-
-	// There is no flow control, so we must ensure we can read the bytes
-	// before we start transmitting
-	CyDmaChEnable(sdDMARxChan, 1);
-	CyDmaChEnable(sdDMATxChan, 1);
-}
+static int sdCmdActive = 0;
 
 int
-sdReadSectorDMAPoll()
+sdReadDMAPoll()
 {
-	if (sdRxDMAComplete && sdTxDMAComplete)
+	if (hsd.DmaTransferCplt ||
+		hsd.SdTransferCplt ||
+		(HAL_SD_ErrorTypedef)hsd.SdTransferErr != SD_OK)
 	{
+		HAL_SD_CheckReadOperation(&hsd, (uint32_t)SD_DATATIMEOUT);
 		// DMA transfer is complete
-		sdIOState = SD_IDLE;
+		sdCmdActive = 0;
 		return 1;
 	}
 	else
@@ -399,20 +55,13 @@ sdReadSectorDMAPoll()
 	}
 }
 
-void sdReadSingleSectorDMA(uint32_t lba, uint8_t* outputBuffer)
+void sdReadDMA(uint32_t lba, uint32_t sectors, uint8_t* outputBuffer)
 {
-	sdPreCmdState(CMD_STATE_READ);
-
-	uint8 v;
-	if (!sdDev.ccs)
-	{
-		lba = lba * SD_SECTOR_SIZE;
-	}
-	v = sdCommandAndResponse(SD_READ_SINGLE_BLOCK, lba);
-	if (unlikely(v))
+	if (HAL_SD_ReadBlocks_DMA(
+			&hsd, (uint32_t*)outputBuffer, lba * 512ll, 512, sectors
+			) != SD_OK)
 	{
 		scsiDiskReset();
-		sdClearStatus();
 
 		scsiDev.status = CHECK_CONDITION;
 		scsiDev.target->sense.code = HARDWARE_ERROR;
@@ -421,49 +70,23 @@ void sdReadSingleSectorDMA(uint32_t lba, uint8_t* outputBuffer)
 	}
 	else
 	{
-		dmaReadSector(outputBuffer);
+		sdCmdActive = 1;
 	}
 }
 
-void
-sdReadMultiSectorDMA(uint8_t* outputBuffer)
+void sdCompleteTransfer()
 {
-	// Pre: sdReadMultiSectorPrep called.
-	dmaReadSector(outputBuffer);
+	if (sdCmdActive)
+	{
+		HAL_SD_StopTransfer(&hsd);
+		HAL_DMA_Abort(hsd.hdmarx);
+		HAL_DMA_Abort(hsd.hdmatx);
+		sdCmdActive = 0;
+	}
 }
 
-static void sdCompleteRead()
-{
-	if (unlikely(sdIOState != SD_IDLE))
-	{
-		// Not much choice but to wait until we've completed the transfer.
-		// Cancelling the transfer can't be done as we have no way to reset
-		// the SD card.
-		trace(trace_spinSDCompleteRead);
-		while (!sdReadSectorDMAPoll()) { /* spin */ }
-	}
 
-
-	if (sdCmdState == CMD_STATE_READ)
-	{
-		uint8 r1b = sdCommandAndResponse(SD_STOP_TRANSMISSION, 0);
-
-		if (unlikely(r1b) && (scsiDev.phase == DATA_IN))
-		{
-			scsiDev.status = CHECK_CONDITION;
-			scsiDev.target->sense.code = HARDWARE_ERROR;
-			scsiDev.target->sense.asc = UNRECOVERED_READ_ERROR;
-			scsiDev.phase = STATUS;
-		}
-	}
-
-	// R1b has an optional trailing "busy" signal, but we defer waiting on this.
-	// The next call so sdCommandAndResponse will wait for the busy state to
-	// clear.
-
-	sdCmdState = CMD_STATE_IDLE;
-}
-
+#if 0
 void
 sdWriteMultiSectorDMA(uint8_t* outputBuffer)
 {
@@ -495,7 +118,6 @@ sdWriteMultiSectorDMA(uint8_t* outputBuffer)
 	CyDmaTdSetAddress(dmaTxTd[1], LO16((uint32)outputBuffer), LO16((uint32)SDCard_TXDATA_PTR));
 
 
-	sdIOState = SD_DMA;
 	// The DMA controller is a bit trigger-happy. It will retain
 	// a drq request that was triggered while the channel was
 	// disabled.
@@ -612,172 +234,6 @@ static void sdCompleteWrite()
 	sdCmdState = CMD_STATE_IDLE;
 }
 
-void sdCompleteTransfer()
-{
-	sdPreCmdState(CMD_STATE_IDLE);
-}
-
-
-// SD Version 2 (SDHC) support
-static int sendIfCond()
-{
-	int retries = 50;
-
-	do
-	{
-		// 11:8 Host voltage. 1 = 2.7-3.6V
-		// 7:0 Echo bits. Ignore.
-		uint8 status = sdCRCCommandAndResponse(SD_SEND_IF_COND, 0x000001AA);
-
-		if (status == SD_R1_IDLE)
-		{
-			// Version 2 card.
-			sdDev.version = 2;
-			// Read 32bit response. Should contain the same bytes that
-			// we sent in the command parameter.
-			sdSpiByte(0xFF);
-			sdSpiByte(0xFF);
-			sdSpiByte(0xFF);
-			sdSpiByte(0xFF);
-			break;
-		}
-		else if (status & SD_R1_ILLEGAL)
-		{
-			// Version 1 card.
-			sdDev.version = 1;
-			sdClearStatus();
-			break;
-		}
-
-		sdClearStatus();
-	} while (--retries > 0);
-
-	return retries > 0;
-}
-
-static int sdOpCond()
-{
-	uint32_t start = getTime_ms();
-
-	uint8 status;
-	do
-	{
-		sdCRCCommandAndResponse(SD_APP_CMD, 0);
-		// Host Capacity Support = 1 (SDHC/SDXC supported)
-		status = sdCRCCommandAndResponse(SD_APP_SEND_OP_COND, 0x40000000);
-
-		sdClearStatus();
-
-	// Spec says to poll for 1 second.
-	} while ((status != 0) && (elapsedTime_ms(start) < 1000));
-
-	return status == 0;
-}
-
-static int sdReadOCR()
-{
-	uint32_t start = getTime_ms();
-	int complete;
-	uint8 status;
-
-	do
-	{
-		uint8 buf[4];
-		int i;
-
-		status = sdCRCCommandAndResponse(SD_READ_OCR, 0);
-		if(status) { break; }
-
-		for (i = 0; i < 4; ++i)
-		{
-			buf[i] = sdSpiByte(0xFF);
-		}
-
-		sdDev.ccs = (buf[0] & 0x40) ? 1 : 0;
-		complete = (buf[0] & 0x80);
-
-	} while (!status &&
-		!complete &&
-		(elapsedTime_ms(start) < 1000));
-
-	return (status == 0) && complete;
-}
-
-static void sdReadCID()
-{
-	uint8 startToken;
-	int maxWait, i;
-
-	uint8 status = sdCRCCommandAndResponse(SD_SEND_CID, 0);
-	if(status){return;}
-
-	maxWait = 1023;
-	do
-	{
-		startToken = sdSpiByte(0xFF);
-	} while(maxWait-- && (startToken != 0xFE));
-	if (startToken != 0xFE) { return; }
-
-	for (i = 0; i < 16; ++i)
-	{
-		sdDev.cid[i] = sdSpiByte(0xFF);
-	}
-	sdSpiByte(0xFF); // CRC
-	sdSpiByte(0xFF); // CRC
-}
-
-static int sdReadCSD()
-{
-	uint8 startToken;
-	int maxWait, i;
-
-	uint8 status = sdCRCCommandAndResponse(SD_SEND_CSD, 0);
-	if(status){goto bad;}
-
-	maxWait = 1023;
-	do
-	{
-		startToken = sdSpiByte(0xFF);
-	} while(maxWait-- && (startToken != 0xFE));
-	if (startToken != 0xFE) { goto bad; }
-
-	for (i = 0; i < 16; ++i)
-	{
-		sdDev.csd[i] = sdSpiByte(0xFF);
-	}
-	sdSpiByte(0xFF); // CRC
-	sdSpiByte(0xFF); // CRC
-
-	if ((sdDev.csd[0] >> 6) == 0x00)
-	{
-		// CSD version 1
-		// C_SIZE in bits [73:62]
-		uint32 c_size = (((((uint32)sdDev.csd[6]) & 0x3) << 16) | (((uint32)sdDev.csd[7]) << 8) | sdDev.csd[8]) >> 6;
-		uint32 c_mult = (((((uint32)sdDev.csd[9]) & 0x3) << 8) | ((uint32)sdDev.csd[0xa])) >> 7;
-		uint32 sectorSize = sdDev.csd[5] & 0x0F;
-		sdDev.capacity = ((c_size+1) * ((uint64)1 << (c_mult+2)) * ((uint64)1 << sectorSize)) / SD_SECTOR_SIZE;
-	}
-	else if ((sdDev.csd[0] >> 6) == 0x01)
-	{
-		// CSD version 2
-		// C_SIZE in bits [69:48]
-
-		uint32 c_size =
-			((((uint32)sdDev.csd[7]) & 0x3F) << 16) |
-			(((uint32)sdDev.csd[8]) << 8) |
-			((uint32)sdDev.csd[7]);
-		sdDev.capacity = (c_size + 1) * 1024;
-	}
-	else
-	{
-		goto bad;
-	}
-
-	return 1;
-bad:
-	return 0;
-}
-
 #endif
 static void sdInitDMA()
 {
@@ -819,7 +275,6 @@ static int sdDoInit()
 {
 	int result = 0;
 
-	// TODO sdCmdState = CMD_STATE_IDLE;
 	sdClear();
 
 
@@ -929,11 +384,6 @@ int sdInit()
 	// Check if there's an SD card present.
 	int result = 0;
 
-#if 0
-	if ((scsiDev.phase == BUS_FREE) &&
-		(sdIOState == SD_IDLE) &&
-		(sdCmdState == CMD_STATE_IDLE))
-#endif
 	static int firstInit = 1;
 
 	if (firstInit)

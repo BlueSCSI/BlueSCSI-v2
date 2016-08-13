@@ -536,16 +536,6 @@ static void process_SelectionPhase()
 
 	uint8_t selStatus = *SCSI_STS_SELECTED;
 
-#if 0
-	int sel = SCSI_ReadFilt(SCSI_Filt_SEL);
-	int bsy = SCSI_ReadFilt(SCSI_Filt_BSY);
-	int io = SCSI_ReadPin(SCSI_In_IO);
-
-	// Only read these pins AFTER SEL and BSY - we don't want to catch them
-	// during a transition period.
-	uint8_t mask = scsiReadDBxPins();
-	int atnFlag = SCSI_ReadFilt(SCSI_Filt_ATN);
-#endif
 	int tgtIndex;
 	TargetState* target = NULL;
 	for (tgtIndex = 0; tgtIndex < S2S_MAX_TARGETS; ++tgtIndex)

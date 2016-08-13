@@ -16,6 +16,8 @@
 //	You should have received a copy of the GNU General Public License
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
 
+#include "stm32f2xx.h"
+
 #include "scsi.h"
 #include "scsiPhy.h"
 #include "config.h"
@@ -546,7 +548,7 @@ void scsiDiskPoll()
 		int prep = 0;
 		int i = 0;
 		int scsiActive = 0;
-		// int sdActive = 0;
+		int sdActive = 0;
 		while ((i < totalSDSectors) &&
 			likely(scsiDev.phase == DATA_IN) &&
 			likely(!scsiDev.resetFlag))
@@ -554,64 +556,39 @@ void scsiDiskPoll()
 			// Wait for the next DMA interrupt. It's beneficial to halt the
 			// processor to give the DMA controller more memory bandwidth to
 			// work with.
-#if 0
-			int scsiBusy = 1;
-			int sdBusy = 1;
-			while (scsiBusy && sdBusy)
+			if (sdActive && scsiActive)
 			{
-				uint8_t intr = CyEnterCriticalSection();
-				scsiBusy = scsiDMABusy();
-				sdBusy = sdDMABusy();
-				if (scsiBusy && sdBusy)
-				{
-					__WFI();
-				}
-				CyExitCriticalSection(intr);
+				__WFI();
 			}
-#endif
 
-#if 0
-			if (sdActive && !sdBusy && sdReadSectorDMAPoll())
+			if (sdActive && sdReadDMAPoll())
 			{
+				prep += sdActive;
 				sdActive = 0;
-				prep++;
 			}
 
-			// Usually SD is slower than the SCSI interface.
-			// Prioritise starting the read of the next sector over starting a
-			// SCSI transfer for the last sector
-			// ie. NO "else" HERE.
 			if (!sdActive &&
 				(prep - i < buffers) &&
 				(prep < totalSDSectors))
 			{
 				// Start an SD transfer if we have space.
-				if (transfer.multiBlock)
+				uint32_t startBuffer = prep % buffers;
+				uint32_t sectors = totalSDSectors - prep;
+				if (!scsiActive && prep == i)
 				{
-					sdReadMultiSectorDMA(&scsiDev.data[SD_SECTOR_SIZE * (prep % buffers)]);
+					sectors = 1; // We need to get some data to send ASAP !
 				}
 				else
 				{
-					sdReadSingleSectorDMA(sdLBA + prep, &scsiDev.data[SD_SECTOR_SIZE * (prep % buffers)]);
+					uint32_t freeBuffers = buffers - (prep - i);
+					uint32_t contiguousBuffers = buffers - startBuffer;
+					freeBuffers = freeBuffers < contiguousBuffers
+						? freeBuffers : contiguousBuffers;
+					sectors = sectors < freeBuffers ? sectors : freeBuffers;
 				}
-				sdActive = 1;
-			}
-#endif
-#if 0
-			uint32_t maxSectors = sizeof(scsiDev.data) / SD_SECTOR_SIZE;
-			uint32_t rem = totalSDSectors - i;
-			uint32_t sectors =
-				rem < maxSectors ? rem : maxSectors;
-			sdTmpRead(&scsiDev.data[0], i + sdLBA, sectors);
-			scsiWrite(&scsiDev.data[0], sectors * SD_SECTOR_SIZE);
-			i += sectors;
-#endif
-			if ((prep - i < buffers) &&
-				(prep < totalSDSectors))
-			{
-				// TODO MM Blocking reads are bad mmkay
-				sdTmpRead(&scsiDev.data[SD_SECTOR_SIZE * (prep % buffers)], sdLBA + prep, 1);
-				prep++;
+				sdReadDMA(sdLBA + prep, sectors, &scsiDev.data[SD_SECTOR_SIZE * startBuffer]);
+
+				sdActive = sectors;
 			}
 
 			if (scsiActive && scsiPhyComplete() && scsiWriteDMAPoll())
@@ -639,9 +616,7 @@ void scsiDiskPoll()
 			likely(scsiDev.phase == DATA_IN) &&
 			likely(!scsiDev.resetFlag))
 		{
-#if 0
-		_WFI();
-#endif
+			__WFI();
 		}
 
 
@@ -852,14 +827,14 @@ void scsiDiskReset()
 	transfer.currentBlock = 0;
 
 	// Cancel long running commands!
+#if 0
 	if (
 		((scsiDev.boardCfg.flags & S2S_CFG_ENABLE_CACHE) == 0) ||
 			(transfer.multiBlock == 0)
 		)
-	{
-#if 0
-		sdCompleteTransfer();
 #endif
+	{
+		sdCompleteTransfer();
 	}
 
 	transfer.multiBlock = 0;

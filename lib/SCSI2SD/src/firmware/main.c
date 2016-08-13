@@ -106,19 +106,22 @@ void mainLoop()
 		}
 		else
 		{
-#if 0
 			// Wait for our 1ms timer to save some power.
 			// There's an interrupt on the SEL signal to ensure we respond
 			// quickly to any SCSI commands. The selection abort time is
 			// only 250us, and new SCSI-3 controllers time-out very
 			// not long after that, so we need to ensure we wake up quickly.
-			uint8_t interruptState = CyEnterCriticalSection();
-			if (!SCSI_ReadFilt(SCSI_Filt_SEL))
+			uint32_t interruptState = __get_PRIMASK();
+			__disable_irq();
+
+			if (!*SCSI_STS_SELECTED)
 			{
 				__WFI(); // Will wake on interrupt, regardless of mask
 			}
-			CyExitCriticalSection(interruptState);
-#endif
+			if (!interruptState)
+			{
+				__enable_irq();
+			}
 		}
 	}
 	else if (scsiDev.phase >= 0)

@@ -37,7 +37,7 @@
 
 #include <string.h>
 
-static const uint16_t FIRMWARE_VERSION = 0x0603;
+static const uint16_t FIRMWARE_VERSION = 0x0604;
 
 // 1 flash row
 static const uint8_t DEFAULT_CONFIG[128] =
@@ -140,7 +140,7 @@ sdInfoCommand()
 static void
 scsiTestCommand()
 {
-	int resultCode = 0; // TODO scsiSelfTest();
+	int resultCode = scsiSelfTest();
 	uint8_t response[] =
 	{
 		resultCode == 0 ? S2S_CFG_STATUS_GOOD : S2S_CFG_STATUS_ERR,

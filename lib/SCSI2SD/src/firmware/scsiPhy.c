@@ -212,17 +212,12 @@ scsiRead(uint8_t* data, uint32_t count)
 			// Wait for the next DMA interrupt (or the 1ms systick)
 			// It's beneficial to halt the processor to
 			// give the DMA controller more memory bandwidth to work with.
-#if 0
 			__WFI();
-#endif
 			trace(trace_spinReadDMAPoll);
 
 			while (!scsiReadDMAPoll() && likely(!scsiDev.resetFlag))
 			{
-#if 0
-// TODO NEED SCSI DMA IRQs
-			__WFI();
-#endif
+				__WFI();
 			};
 		}
 
@@ -336,21 +331,19 @@ scsiWrite(const uint8_t* data, uint32_t count)
 			// Wait for the next DMA interrupt (or the 1ms systick)
 			// It's beneficial to halt the processor to
 			// give the DMA controller more memory bandwidth to work with.
-#if 0
 			__WFI();
-#endif
 			trace(trace_spinReadDMAPoll);
 
 			while (!scsiWriteDMAPoll() && likely(!scsiDev.resetFlag))
 			{
-#if 0
-// TODO NEED SCSI DMA IRQs
-			__WFI();
-#endif
+				__WFI();
 			};
 		}
 
-		while (!scsiPhyComplete() && likely(!scsiDev.resetFlag)) {}
+		while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
+		{
+			__WFI();
+		}
 
 #if FIFODEBUG
 		if (!scsiPhyFifoAltEmpty()) {
@@ -360,14 +353,12 @@ scsiWrite(const uint8_t* data, uint32_t count)
 #endif
 
 		scsiPhyFifoFlip();
-#if 0
-// TODO NEED SCSI IRQs
-			__WFI();
-#endif
-
 		i += chunk;
 	}
-	while (!scsiPhyComplete() && likely(!scsiDev.resetFlag)) {}
+	while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
+	{
+		__WFI();
+	}
 
 #if FIFODEBUG
 	if (!scsiPhyFifoAltEmpty()) {
@@ -462,6 +453,7 @@ void scsiPhyReset()
 
 	scsiPhyFifoSel = 0;
 	*SCSI_FIFO_SEL = 0;
+	*SCSI_CTRL_DBX = 0;
 
 	// DMA Benchmark code
 	// Currently 10MB/s. Assume 20MB/s is achievable with 16 bits.
@@ -493,12 +485,16 @@ void scsiPhyReset()
 
 	// FPGA comms test code
 	#ifdef FPGA_TEST
-
 	while(1)
 	{
 		for (int j = 0; j < SCSI_FIFO_DEPTH; ++j)
 		{
 			scsiDev.data[j] = j;
+		}
+
+		if (!scsiPhyFifoEmpty())
+		{
+			assertFail();
 		}
 
 		*SCSI_CTRL_PHASE = DATA_IN;
@@ -513,6 +509,11 @@ void scsiPhyReset()
 			HAL_DMA_FULL_TRANSFER,
 			0xffffffff);
 
+		if (!scsiPhyFifoFull())
+		{
+			assertFail();
+		}
+
 		memset(&scsiDev.data[0], 0, SCSI_FIFO_DEPTH);
 
 		*SCSI_CTRL_PHASE = DATA_OUT;
@@ -526,6 +527,12 @@ void scsiPhyReset()
 			&fsmcToMem,
 			HAL_DMA_FULL_TRANSFER,
 			0xffffffff);
+
+		if (!scsiPhyFifoEmpty())
+		{
+			assertFail();
+		}
+
 
 		for (int j = 0; j < SCSI_FIFO_DEPTH; ++j)
 		{
@@ -609,6 +616,7 @@ void scsiPhyInit()
 	*SCSI_CTRL_BSY = 0x00;
 	scsiPhyFifoSel = 0;
 	*SCSI_FIFO_SEL = 0;
+	*SCSI_CTRL_DBX = 0;
 
 }
 
@@ -645,30 +653,55 @@ void scsiPhyConfig()
 // 32 = other error
 int scsiSelfTest()
 {
-	return 0;
-#if 0
+	if (scsiDev.phase != BUS_FREE)
+	{
+		return 32;
+	}
+
+	// Acquire the SCSI bus.
+	for (int i = 0; i < 100; ++i)
+	{
+		if (scsiStatusBSY())
+		{
+			s2s_delay_ms(1);
+		}
+	}
+	if (scsiStatusBSY())
+	{
+		// Error, couldn't acquire scsi bus
+		return 32;
+	}
+	*SCSI_CTRL_BSY = 1;
+	if (! scsiStatusBSY())
+	{
+		// Error, BSY doesn't work.
+		return 32;
+	}
+
+	// Should be safe to use the bus now.
+
 	int result = 0;
 
-	// TEST DBx and DBp
+	// TEST DBx
+	// TODO test DBp
 	int i;
-	SCSI_Out_Ctl_Write(1); // Write bits manually.
-	SCSI_CTL_PHASE_Write(__scsiphase_io); // Needed for parity generation
 	for (i = 0; i < 256; ++i)
 	{
-		SCSI_Out_Bits_Write(i);
-		scsiDeskewDelay();
-		if (scsiReadDBxPins() != (i & 0xff))
+		*SCSI_CTRL_DBX = i;
+		busSettleDelay();
+		if (*SCSI_STS_DBX != (i & 0xff))
 		{
 			result |= 1;
 		}
-		if (Lookup_OddParity[i & 0xff] != SCSI_ReadPin(SCSI_In_DBP))
+		/*if (Lookup_OddParity[i & 0xff] != SCSI_ReadPin(SCSI_In_DBP))
 		{
 			result |= 2;
-		}
+		}*/
 	}
-	SCSI_Out_Ctl_Write(0); // Write bits normally.
+	*SCSI_CTRL_DBX = 0;
 
 	// TEST MSG, CD, IO
+	/* TODO
 	for (i = 0; i < 8; ++i)
 	{
 		SCSI_CTL_PHASE_Write(i);
@@ -717,7 +750,9 @@ int scsiSelfTest()
 		}
 		SCSI_ClearPin(signalsOut[i]);
 	}
+	*/
+
+	*SCSI_CTRL_BSY = 0;
 	return result;
-#endif
 }
 

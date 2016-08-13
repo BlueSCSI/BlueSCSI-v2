@@ -24,6 +24,7 @@
 #define SCSI_DATA_CNT_HI ((volatile uint8_t*)0x60000004)
 #define SCSI_DATA_CNT_LO ((volatile uint8_t*)0x60000005)
 #define SCSI_DATA_CNT_SET ((volatile uint8_t*)0x60000006)
+#define SCSI_CTRL_DBX ((volatile uint8_t*)0x60000007)
 
 #define SCSI_STS_FIFO ((volatile uint8_t*)0x60000010)
 #define SCSI_STS_ALTFIFO ((volatile uint8_t*)0x60000011)
@@ -75,37 +76,6 @@ void sdTmpRead(uint8_t* data, uint32_t lba, int sectors);
 void sdTmpWrite(uint8_t* data, uint32_t lba, int sectors);
 #if 0
 
-
-
-
-
-#define SCSI_SetPin(pin) \
-	CyPins_SetPin((pin));
-
-#define SCSI_ClearPin(pin) \
-	CyPins_ClearPin((pin));
-
-// Active low: we interpret a 0 as "true", and non-zero as "false"
-#define SCSI_ReadPin(pin) \
-	(CyPins_ReadPin((pin)) == 0)
-
-// These signals go through a glitch filter - we do not access the pin
-// directly
-enum FilteredInputs
-{
-	SCSI_Filt_ATN = 0x01,
-	SCSI_Filt_BSY = 0x02,
-	SCSI_Filt_SEL = 0x04,
-	SCSI_Filt_RST = 0x08,
-	SCSI_Filt_ACK = 0x10		
-};
-#define SCSI_ReadFilt(filt) \
-	((SCSI_Filtered_Read() & (filt)) == 0)
-
-// SCSI delays, as referenced to the cpu clock
-#define CPU_CLK_PERIOD_NS (1000000000U / BCLK__BUS_CLK__HZ)
-#define scsiDeskewDelay() CyDelayCycles((55 / CPU_CLK_PERIOD_NS) + 1)
-
 // Contains the odd-parity flag for a given 8-bit value.
 extern const uint8_t Lookup_OddParity[256];
 
@@ -121,12 +91,6 @@ int scsiReadDMAPoll();
 void scsiWriteDMA(const uint8_t* data, uint32_t count);
 int scsiWriteDMAPoll();
 
-#if 0
-uint8_t scsiReadDBxPins(void);
-
-
 int scsiSelfTest(void);
-
-#endif
 
 #endif

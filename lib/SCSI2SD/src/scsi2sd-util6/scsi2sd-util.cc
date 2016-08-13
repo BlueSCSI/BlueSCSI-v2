@@ -32,6 +32,7 @@
 #include <wx/utils.h>
 #include <wx/wfstream.h>
 #include <wx/windowptr.h>
+#include <wx/stream.h>
 #include <wx/thread.h>
 #include <wx/txtstrm.h>
 
@@ -41,7 +42,9 @@
 #include "BoardPanel.hh"
 #include "TargetPanel.hh"
 #include "SCSI2SD_HID.hh"
-//#include "Dfu.hh"
+#include "Dfu.hh"
+
+#include "terminalwx.h"
 
 #include <algorithm>
 #include <iomanip>
@@ -109,25 +112,6 @@ void ProgressUpdate(unsigned char arrayId, unsigned short rowNum)
 namespace
 {
 
-static uint8_t sdCrc7(uint8_t* chr, uint8_t cnt, uint8_t crc)
-{
-	uint8_t a;
-	for(a = 0; a < cnt; a++)
-	{
-		uint8_t data = chr[a];
-		uint8_t i;
-		for(i = 0; i < 8; i++)
-		{
-			crc <<= 1;
-			if ((data & 0x80) ^ (crc & 0x80))
-			{
-				crc ^= 0x09;
-			}
-			data <<= 1;
-		}
-	}
-	return crc & 0x7F;
-}
 
 class TimerLock
 {
@@ -158,7 +142,8 @@ public:
 		wxFrame(NULL, wxID_ANY, "scsi2sd-util6", wxPoint(50, 50), wxSize(600, 700)),
 		myInitialConfig(false),
 		myTickCounter(0),
-		myLastPollTime(0)
+		myLastPollTime(0),
+		myConsoleProcess(NULL)
 	{
 		wxMenu *menuFile = new wxMenu();
 		menuFile->Append(
@@ -248,8 +233,12 @@ public:
 			btnPanel->Fit();
 			cfgPanel->Fit();
 		}
-		//Fit(); // Needed to reduce window size on Windows
+
+#ifdef __WINDOWS__
+		Fit(); // Needed to reduce window size on Windows
+#else
 		FitInside(); // Needed on Linux to prevent status bar overlap
+#endif
 
 		myLogWindow = new wxLogWindow(this, _("scsi2sd-util6 debug log"), true);
 		myLogWindow->PassMessages(false); // Prevent messagebox popups
@@ -259,7 +248,7 @@ public:
 	}
 
 private:
-	//Dfu myDfu;
+	Dfu myDfu;
 	wxLogWindow* myLogWindow;
 	BoardPanel* myBoardPanel;
 	std::vector<TargetPanel*> myTargets;
@@ -274,6 +263,12 @@ private:
 	uint8_t myTickCounter;
 
 	time_t myLastPollTime;
+
+	wxWindowPtr<TerminalWx> myConsoleTerm;
+	shared_ptr<wxProcess> myConsoleProcess;
+	wxInputStream* myConsoleStdout;
+	wxInputStream* myConsoleStderr;
+	
 
 	void mmLogStatus(const std::string& msg)
 	{
@@ -364,7 +359,8 @@ private:
 		ID_SCSILog,
 		ID_SelfTest,
 		ID_SaveFile,
-		ID_OpenFile
+		ID_OpenFile,
+		ID_ConsoleTerm
 	};
 
 	void OnID_ConfigDefaults(wxCommandEvent& event)
@@ -503,7 +499,6 @@ private:
 				}
 
 
-/*
 				if (myDfu.hasDevice())
 				{
 					mmLogStatus("STM DFU Bootloader found");
@@ -511,7 +506,6 @@ private:
 					doDFUUpdate(filename);
 					return;
 				}
-*/
 			}
 			catch (std::exception& e)
 			{
@@ -537,25 +531,97 @@ private:
 			return;
 		}
 
+
 		std::stringstream ss;
 		ss << "dfu-util --download \""
 			<< filename.c_str() << "\" --alt 0 --reset";
 
+		wxLogMessage("Running: %s", ss.str());
 
+		myConsoleProcess.reset(new wxProcess(this));
 		std::string cmd = ss.str();
-		int result = system(cmd.c_str());
-#ifdef WIN32
-		if (result != 0)
-#else
-		if (WEXITSTATUS(result) != 0)
-#endif
+		myConsoleProcess->Redirect();
+		long result = wxExecute(
+			cmd.c_str(),
+			wxEXEC_ASYNC,
+			myConsoleProcess.get()
+			);
+		if (!result)
 		{
 			wxMessageBox(
 				"Update failed",
-				"Firmware update failed. Command = " + cmd,
+				"Firmware update failed (dfu-util not found ?) Command = " + cmd,
 				wxOK | wxICON_ERROR);
-			return;
+			mmLogStatus("Firmware update failed");
+			myConsoleProcess.reset();
+		} else {
+			myConsoleStdout = myConsoleProcess->GetInputStream();
+			myConsoleStderr = myConsoleProcess->GetErrorStream();
+			wxFrame* frame(new wxFrame(this, wxID_ANY, "dfu-util"));
+			myConsoleTerm.reset(new TerminalWx(frame, wxID_ANY, wxDefaultPosition));
+			frame->Fit();
+			frame->Show();
 		}
+	}
+
+	void redirectDfuOutput()
+	{
+		if (myConsoleProcess)
+		{
+			std::stringstream ss;
+			while (myConsoleStderr && !myConsoleStderr->Eof() && myConsoleStderr->CanRead())
+			{
+				int c = myConsoleStderr->GetC();
+				if (c == '\n')
+				{
+					ss << "\r\n";
+				}
+				else if (c >= 0)
+				{
+					ss << (char) c;
+				}
+			}
+			while (myConsoleStdout && !myConsoleStdout->Eof() && myConsoleStdout->CanRead())
+			{
+				int c = myConsoleStdout->GetC();
+				if (c == '\n')
+				{
+					ss << "\r\n";
+				}
+				else if (c >= 0)
+				{
+					ss << (char) c;
+				}
+			}
+			myConsoleTerm->DisplayCharsUnsafe(ss.str());
+		}
+	}
+
+	void doFinishDfu(wxProcessEvent& event)
+	{
+		redirectDfuOutput();
+
+		if (event.GetExitCode() == 0)
+		{
+			wxMessageBox(
+				"Update complete",
+				"Firmware update complete. Please reconnect USB cable.",
+				wxOK | wxICON_ERROR);
+			mmLogStatus("Firmware update succeeded");
+		} else {
+			wxMessageBox(
+				"Update failed",
+				"Firmware update failed.",
+				wxOK | wxICON_ERROR);
+			mmLogStatus("Firmware update failed");
+		}
+
+		myConsoleStdout = myConsoleStderr = NULL;
+		myConsoleProcess.reset();
+		myConsoleTerm->GetParent()->Close();
+		myConsoleTerm->Close();
+		myConsoleTerm.reset();
+
 	}
 
 	void dumpSCSICommand(std::vector<uint8_t> buf)
@@ -594,6 +660,8 @@ private:
 
 	void OnID_Timer(wxTimerEvent& event)
 	{
+		redirectDfuOutput();
+
 		logSCSI();
 		time_t now = time(NULL);
 		if (now == myLastPollTime) return;
@@ -625,10 +693,6 @@ private:
 						myHID->getSDCapacity() << std::endl;
 
 					sdinfo << "SD CSD Register: ";
-					if (sdCrc7(&csd[0], 15, 0) != (csd[15] >> 1))
-					{
-						sdinfo << "BADCRC ";
-					}
 					for (size_t i = 0; i < csd.size(); ++i)
 					{
 						sdinfo <<
@@ -637,10 +701,6 @@ private:
 					}
 					sdinfo << std::endl;
 					sdinfo << "SD CID Register: ";
-					if (sdCrc7(&cid[0], 15, 0) != (cid[15] >> 1))
-					{
-						sdinfo << "BADCRC ";
-					}
 					for (size_t i = 0; i < cid.size(); ++i)
 					{
 						sdinfo <<
@@ -653,8 +713,16 @@ private:
 					if (mySelfTestChk->IsChecked())
 					{
 						std::stringstream scsiInfo;
-						scsiInfo << "SCSI Self-Test: " <<
-							(myHID->scsiSelfTest() ? "Passed" : "FAIL");
+						int errcode;
+						scsiInfo << "SCSI Self-Test: ";
+						if (myHID->scsiSelfTest(errcode))
+						{
+							scsiInfo << "Passed";
+						}
+						else
+						{
+							scsiInfo << "FAIL (" << errcode << ")";
+						}
 						wxLogMessage(this, "%s", scsiInfo.str());
 					}
 
@@ -903,6 +971,8 @@ wxBEGIN_EVENT_TABLE(AppFrame, wxFrame)
 	EVT_BUTTON(ID_BtnLoad, AppFrame::doLoad)
 
 	EVT_CLOSE(AppFrame::OnCloseEvt)
+
+	EVT_END_PROCESS(wxID_ANY, AppFrame::doFinishDfu)
 
 wxEND_EVENT_TABLE()
 

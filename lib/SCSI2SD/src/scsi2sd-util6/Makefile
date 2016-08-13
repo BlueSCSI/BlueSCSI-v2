@@ -1,4 +1,4 @@
-VPATH=../firmware dfu-programmer/src
+VPATH=../firmware TerminalWx/src TerminalWx/src/taTelnet TerminalWx/src/GTerm
 
 VERSION=6.0
 NAME=scsi2sd-util6
@@ -14,7 +14,7 @@ ifeq ($(USE_SYSTEM_LIBUSB), Yes)
 CPPFLAGS_LIBUSB=$(shell pkg-config libusb-1.0 --cflags)
 LDFLAGS_LIBUSB=$(shell pkg-config libusb-1.0 --libs)
 else
-CPPFLAGS_LIBUSB=-I libusb-1.0.9/libusb
+CPPFLAGS_LIBUSB=-I $(PWD)/libusb-1.0.20/libusb
 LDFLAGS_LIBUSB=-L $(BUILD)/libusb/libusb/.libs -lusb-1.0
 endif
 
@@ -42,7 +42,7 @@ else
 LDFLAGS_WX=$(shell $(BUILD)/wx/wx-config --libs)
 endif
 
-CPPFLAGS = $(CPPFLAGS_HIDAPI) -I. -I ../../include -Idfu-programmer/src \
+CPPFLAGS = $(CPPFLAGS_HIDAPI) -I. -I ../../include -ITerminalWx/src \
 	-Ilibzipper-1.0.4 \
 	$(CPPFLAGS_ZLIB) \
 	$(CPPFLAGS_LIBUSB) \
@@ -75,6 +75,7 @@ ifeq ($(TARGET),Win32)
 	EXE=.exe
 	WX_CONFIG+=--host=i686-w64-mingw32
 	LIBUSB_CONFIG+=--host=i686-w64-mingw32 --disable-shared
+	DFU-UTIL_CONFIG+=--host=i686-w64-mingw32
 endif
 ifeq ($(TARGET),Win64)
 	VPATH += hidapi/windows
@@ -86,12 +87,14 @@ ifeq ($(TARGET),Win64)
 	EXE=.exe
 	WX_CONFIG+=--host=x86_64-w64-mingw32
 	LIBUSB_CONFIG+=--host=x86_64-w64-mingw32 --disable-shared
+	DFU-UTIL_CONFIG+=--host=x86_64-w64-mingw32
 endif
 ifeq ($(TARGET),Linux)
 	VPATH += hidapi/linux
 	LDFLAGS += -ludev -lexpat -lusb-1.0
 	BUILD := $(PWD)/build/linux
 	LIBUSB_CONFIG+=--disable-shared
+	LDFLAGS_LIBUSB+= -ludev -lpthread
 endif
 ifeq ($(TARGET),Darwin)
 	# Should match OSX
@@ -101,6 +104,8 @@ ifeq ($(TARGET),Darwin)
 	CXX=clang++ -stdlib=libc++ -mmacosx-version-min=10.7
 	WX_CONFIG += --with-macosx-version-min=10.7
 	LIBUSB_CONFIG += --with-macosx-version-min=10.7 --disable-shared
+	LDFLAGS_LIBUSB += -lobjc
+	DFU-UTIL_CONFIG += --with-macosx-version-min=10.7 --disable-shared
 	BUILD := $(PWD)/build/mac
 all: $(BUILD)/scsi2sd-util6.dmg
 
@@ -129,9 +134,16 @@ OBJ = \
 	$(BUILD)/TargetPanel.o \
 	$(BUILD)/SCSI2SD_HID.o \
 	$(BUILD)/hidpacket.o \
-
-#	$(BUILD)/Dfu.o \
-#	$(BUILD)/dfu.o \
+	$(BUILD)/Dfu.o \
+	$(BUILD)/terminalwx.o \
+	$(BUILD)/terminalinputevent.o \
+	$(BUILD)/wxterm.o \
+	$(BUILD)/gterm.o \
+	$(BUILD)/actions.o \
+	$(BUILD)/keytrans.o \
+	$(BUILD)/states.o \
+	$(BUILD)/utils.o \
+	$(BUILD)/vt52_states.o \
 
 
 EXEOBJ = \
@@ -159,9 +171,13 @@ $(BUILD)/libusb/buildstamp:
 	mkdir -p $(dir $@)
 	( \
 		cd $(dir $@) && \
-		$(CURDIR)/libusb-1.0.9/configure $(LIBUSB_CONFIG) && \
+		$(CURDIR)/libusb-1.0.20/configure $(LIBUSB_CONFIG) && \
 		$(MAKE) \
 	) && \
+	touch $@
+else
+$(BUILD)/libusb/buildstamp:
+	mkdir -p $(dir $@)
 	touch $@
 endif
 
@@ -213,9 +229,27 @@ else
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) `wx-config-3.0 --cxxflags` $< -c -o $@
 endif
 
+$(BUILD)/%.o: %.cpp
+	mkdir -p $(dir $@)
+ifneq ($(USE_SYSTEM_WX),Yes)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) `$(BUILD)/wx/wx-config --cxxflags` $< -c -o $@
+else
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) `wx-config-3.0 --cxxflags` $< -c -o $@
+endif
+
 $(BUILD)/scsi2sd-util6$(EXE): $(OBJ) $(BUILD)/scsi2sd-util.o
 	mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS_WX) $(LDFLAGS) -o $@
+
+all: $(BUILD)/dfu-util/buildstamp
+$(BUILD)/dfu-util/buildstamp: $(BUILD)/libusb/buildstamp
+	mkdir -p $(dir $@)
+	( \
+		cd $(dir $@) && \
+		$(CURDIR)/dfu-util/configure ${DFU-UTIL_CONFIG} CPPFLAGS="${CPPFLAGS_LIBUSB}" LDFLAGS="${LDFLAGS_LIBUSB} ${LDFLAGS}" && \
+		$(MAKE) \
+	) && \
+	touch $@
 
 clean:
 	rm $(BUILD)/scsi2sd-util6$(EXE) $(OBJ) $(BUILD)/libzipper/buildstamp

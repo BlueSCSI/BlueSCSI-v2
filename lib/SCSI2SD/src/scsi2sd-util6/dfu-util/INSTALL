@@ -1,0 +1,19 @@
+
+1. If building from git (not needed for release tarballs):
+   Generate build system files (requires autoconf from autotools)
+
+	./autogen.sh
+
+2. Generate makefiles
+   (Run ./configure --help to see configuration options)
+
+	./configure
+
+3. Build executables
+
+	make
+
+4. Install executables and manual pages (optional)
+
+	make install
+

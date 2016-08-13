@@ -264,7 +264,7 @@ HID::getSD_CID()
 }
 
 bool
-HID::scsiSelfTest()
+HID::scsiSelfTest(int& code)
 {
 	std::vector<uint8_t> cmd { S2S_CMD_SCSITEST };
 	std::vector<uint8_t> out;
@@ -276,6 +276,7 @@ HID::scsiSelfTest()
 	{
 		return false;
 	}
+	code = out.size() >= 2 ? out[1] : -1;
 	return (out.size() >= 1) && (out[0] == S2S_CFG_STATUS_GOOD);
 }
 
