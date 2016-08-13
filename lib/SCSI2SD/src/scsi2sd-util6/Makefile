@@ -109,9 +109,9 @@ ifeq ($(TARGET),Darwin)
 	BUILD := $(PWD)/build/mac
 all: $(BUILD)/scsi2sd-util6.dmg
 
-$(BUILD)/scsi2sd-util6.dmg: $(BUILD)/scsi2sd-util6
+$(BUILD)/scsi2sd-util6.dmg: $(BUILD)/scsi2sd-util6 $(BUILD)/dfu-util/buildstamp
 	mkdir -p $(dir $@)/dmg
-	cp $(BUILD)/scsi2sd-util6 $(dir $@)/dmg
+	cp $(BUILD)/scsi2sd-util6 $(BUILD)/dfu-util/src/dfu-util $(dir $@)/dmg
 	chmod a+rx $(dir $@)/dmg/*
 	hdiutil create -srcfolder $(dir $@)/dmg $@
 endif

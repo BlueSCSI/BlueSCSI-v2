@@ -539,13 +539,26 @@ private:
 		wxLogMessage("Running: %s", ss.str());
 
 		myConsoleProcess.reset(new wxProcess(this));
-		std::string cmd = ss.str();
 		myConsoleProcess->Redirect();
+		std::string cmd = ss.str();
 		long result = wxExecute(
 			cmd.c_str(),
 			wxEXEC_ASYNC,
 			myConsoleProcess.get()
 			);
+#ifndef __WINDOWS__
+		if (!result)
+		{
+			// Try again using the current directory
+			cmd = std::string("./") + cmd;
+			wxLogMessage("Running: %s", cmd);
+			result = wxExecute(
+				cmd.c_str(),
+				wxEXEC_ASYNC,
+				myConsoleProcess.get()
+				);
+		}
+#endif
 		if (!result)
 		{
 			wxMessageBox(

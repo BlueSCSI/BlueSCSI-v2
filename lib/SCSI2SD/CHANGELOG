@@ -1,3 +1,7 @@
+20160814		6.05
+	- More SCSI bug fixes (some timing issues resolved in the FPGA image)
+	- Firmware update support using scsi2sd-util6.
+
 20160716		6.03 (BETA3)
 	- SCSI bug fixes.
 
