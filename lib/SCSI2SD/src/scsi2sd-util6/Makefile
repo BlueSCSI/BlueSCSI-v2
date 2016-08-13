@@ -113,7 +113,7 @@ $(BUILD)/scsi2sd-util6.dmg: $(BUILD)/scsi2sd-util6 $(BUILD)/dfu-util/buildstamp
 	mkdir -p $(dir $@)/dmg
 	cp $(BUILD)/scsi2sd-util6 $(BUILD)/dfu-util/src/dfu-util $(dir $@)/dmg
 	chmod a+rx $(dir $@)/dmg/*
-	hdiutil create -srcfolder $(dir $@)/dmg $@
+	hdiutil create -volname scsi2sd-util6 -srcfolder $(dir $@)/dmg $@
 endif
 
 export CC CXX

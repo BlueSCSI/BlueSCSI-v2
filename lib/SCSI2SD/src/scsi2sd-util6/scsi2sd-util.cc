@@ -32,6 +32,7 @@
 #include <wx/utils.h>
 #include <wx/wfstream.h>
 #include <wx/windowptr.h>
+#include <wx/stdpaths.h>
 #include <wx/stream.h>
 #include <wx/thread.h>
 #include <wx/txtstrm.h>
@@ -533,8 +534,19 @@ private:
 
 
 		std::stringstream ss;
+#ifdef __WINDOWS__
 		ss << "dfu-util --download \""
 			<< filename.c_str() << "\" --alt 0 --reset";
+#else
+		if (wxExecute("which dfu-util", wxEXEC_SYNC) == 0)
+		{
+			ss << "dfu-util ";
+		} else {
+			wxFileName exePath(wxStandardPaths::Get().GetExecutablePath());
+			ss << exePath.GetPathWithSep() << "dfu-util ";
+		}
+		ss << "--download \"" << filename.c_str() << "\" --alt 0 --reset";
+#endif
 
 		wxLogMessage("Running: %s", ss.str());
 
@@ -546,19 +558,6 @@ private:
 			wxEXEC_ASYNC,
 			myConsoleProcess.get()
 			);
-#ifndef __WINDOWS__
-		if (!result)
-		{
-			// Try again using the current directory
-			cmd = std::string("./") + cmd;
-			wxLogMessage("Running: %s", cmd);
-			result = wxExecute(
-				cmd.c_str(),
-				wxEXEC_ASYNC,
-				myConsoleProcess.get()
-				);
-		}
-#endif
 		if (!result)
 		{
 			wxMessageBox(
