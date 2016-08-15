@@ -176,30 +176,32 @@ void
 scsiRead(uint8_t* data, uint32_t count)
 {
 	int i = 0;
+
+
+	uint32_t chunk = ((count - i) > SCSI_FIFO_DEPTH)
+		? SCSI_FIFO_DEPTH : (count - i);
+	if (chunk >= 16)
+	{
+		// DMA is doing 32bit transfers.
+		chunk = chunk & 0xFFFFFFF8;
+	}
+	startScsiRx(chunk);
+
 	while (i < count && likely(!scsiDev.resetFlag))
 	{
-		uint32_t chunk = ((count - i) > SCSI_FIFO_DEPTH)
-			? SCSI_FIFO_DEPTH : (count - i);
-
-		if (chunk >= 16)
-		{
-			// DMA is doing 32bit transfers.
-			chunk = chunk & 0xFFFFFFF8;
-		}
-
-#if FIFODEBUG
-		if (!scsiPhyFifoAltEmpty()) {
-			// Force a lock-up.
-			assertFail();
-		}
-#endif
-
-		startScsiRx(chunk);
-		// Wait for the next scsi interrupt (or the 1ms systick)
-		__WFI();
-
 		while (!scsiPhyComplete() && likely(!scsiDev.resetFlag)) {}
 		scsiPhyFifoFlip();
+
+		uint32_t nextChunk = ((count - i - chunk) > SCSI_FIFO_DEPTH)
+			? SCSI_FIFO_DEPTH : (count - i - chunk);
+		if (nextChunk >= 16)
+		{
+			nextChunk = nextChunk & 0xFFFFFFF8;
+		}
+		if (nextChunk > 0)
+		{
+			startScsiRx(nextChunk);
+		}
 
 		if (chunk < 16)
 		{
@@ -209,15 +211,10 @@ scsiRead(uint8_t* data, uint32_t count)
 		{
 			scsiReadDMA(data + i, chunk);
 
-			// Wait for the next DMA interrupt (or the 1ms systick)
-			// It's beneficial to halt the processor to
-			// give the DMA controller more memory bandwidth to work with.
-			__WFI();
 			trace(trace_spinReadDMAPoll);
 
 			while (!scsiReadDMAPoll() && likely(!scsiDev.resetFlag))
 			{
-				__WFI();
 			};
 		}
 
@@ -230,6 +227,7 @@ scsiRead(uint8_t* data, uint32_t count)
 		}
 #endif
 		i += chunk;
+		chunk = nextChunk;
 	}
 }
 
@@ -328,21 +326,15 @@ scsiWrite(const uint8_t* data, uint32_t count)
 			chunk = chunk & 0xFFFFFFF8;
 			scsiWriteDMA(data + i, chunk);
 
-			// Wait for the next DMA interrupt (or the 1ms systick)
-			// It's beneficial to halt the processor to
-			// give the DMA controller more memory bandwidth to work with.
-			__WFI();
 			trace(trace_spinReadDMAPoll);
 
 			while (!scsiWriteDMAPoll() && likely(!scsiDev.resetFlag))
 			{
-				__WFI();
-			};
+			}
 		}
 
 		while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
 		{
-			__WFI();
 		}
 
 #if FIFODEBUG
@@ -357,7 +349,6 @@ scsiWrite(const uint8_t* data, uint32_t count)
 	}
 	while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
 	{
-		__WFI();
 	}
 
 #if FIFODEBUG

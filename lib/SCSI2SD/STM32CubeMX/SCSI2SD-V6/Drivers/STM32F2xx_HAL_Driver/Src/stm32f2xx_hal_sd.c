@@ -1048,6 +1048,27 @@ HAL_SD_ErrorTypedef HAL_SD_WriteBlocks_DMA(SD_HandleTypeDef *hsd, uint32_t *pWri
   }
   else
   {
+    /* MM: Prepare for write */
+    /* Set Block Size for Card */ 
+    sdio_cmdinitstructure.Argument         = (uint32_t)(hsd->RCA << 16);
+    sdio_cmdinitstructure.CmdIndex         = SD_CMD_APP_CMD;
+    SDIO_SendCommand(hsd->Instance, &sdio_cmdinitstructure);
+    errorstate = SD_CmdResp1Error(hsd, SD_CMD_APP_CMD);
+    if (errorstate != SD_OK)
+    {
+      return errorstate;
+    }
+    sdio_cmdinitstructure.Argument         = (uint32_t)NumberOfBlocks;
+    sdio_cmdinitstructure.CmdIndex         = SD_CMD_SET_BLOCK_COUNT;
+    SDIO_SendCommand(hsd->Instance, &sdio_cmdinitstructure);
+    errorstate = SD_CmdResp1Error(hsd, SD_CMD_SET_BLOCK_COUNT);
+    if (errorstate != SD_OK)
+    {
+      return errorstate;
+    }
+  
+    /* /MM */
+
     /* Send CMD25 WRITE_MULT_BLOCK with argument data address */
     sdio_cmdinitstructure.CmdIndex = SD_CMD_WRITE_MULT_BLOCK;
   }

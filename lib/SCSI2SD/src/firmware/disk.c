@@ -553,14 +553,6 @@ void scsiDiskPoll()
 			likely(scsiDev.phase == DATA_IN) &&
 			likely(!scsiDev.resetFlag))
 		{
-			// Wait for the next DMA interrupt. It's beneficial to halt the
-			// processor to give the DMA controller more memory bandwidth to
-			// work with.
-			if (sdActive && scsiActive)
-			{
-				__WFI();
-			}
-
 			if (sdActive && sdReadDMAPoll())
 			{
 				prep += sdActive;
@@ -574,11 +566,13 @@ void scsiDiskPoll()
 				// Start an SD transfer if we have space.
 				uint32_t startBuffer = prep % buffers;
 				uint32_t sectors = totalSDSectors - prep;
+#if 0
 				if (!scsiActive && prep == i)
 				{
 					sectors = 1; // We need to get some data to send ASAP !
 				}
 				else
+#endif
 				{
 					uint32_t freeBuffers = buffers - (prep - i);
 					uint32_t contiguousBuffers = buffers - startBuffer;
@@ -616,7 +610,6 @@ void scsiDiskPoll()
 			likely(scsiDev.phase == DATA_IN) &&
 			likely(!scsiDev.resetFlag))
 		{
-			__WFI();
 		}
 
 

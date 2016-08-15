@@ -106,6 +106,9 @@ void mainLoop()
 		}
 		else
 		{
+			// TODO this hurts performance significantly! Work out why __WFI()
+			// doesn't wake up immediately !
+#if 0
 			// Wait for our 1ms timer to save some power.
 			// There's an interrupt on the SEL signal to ensure we respond
 			// quickly to any SCSI commands. The selection abort time is
@@ -116,12 +119,13 @@ void mainLoop()
 
 			if (!*SCSI_STS_SELECTED)
 			{
-				__WFI(); // Will wake on interrupt, regardless of mask
+				//__WFI(); // Will wake on interrupt, regardless of mask
 			}
 			if (!interruptState)
 			{
 				__enable_irq();
 			}
+#endif
 		}
 	}
 	else if (scsiDev.phase >= 0)
