@@ -236,7 +236,7 @@ static void  MSC_BOT_CBW_Decode (USBD_HandleTypeDef  *pdev)
 
 	if ((USBD_LL_GetRxDataSize (pdev ,MSC_EPOUT_ADDR) != USBD_BOT_CBW_LENGTH) ||
 		(hmsc->cbw.dSignature != USBD_BOT_CBW_SIGNATURE)||
-		(hmsc->cbw.bLUN > 1) || 
+		//(hmsc->cbw.bLUN > 1) || 
 		(hmsc->cbw.bCBLength < 1) || 
 		(hmsc->cbw.bCBLength > 16))
 	{
