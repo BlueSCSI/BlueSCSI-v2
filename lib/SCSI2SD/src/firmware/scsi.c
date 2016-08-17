@@ -244,12 +244,15 @@ static void process_Command()
 	scsiEnterPhase(COMMAND);
 	scsiDev.parityError = 0;
 
-	memset(scsiDev.cdb, 0, sizeof(scsiDev.cdb));
-	scsiDev.cdb[0] = scsiReadByte();
+	memset(scsiDev.cdb + 6, 0, sizeof(scsiDev.cdb) - 6);
+	scsiRead(scsiDev.cdb, 6);
 
 	group = scsiDev.cdb[0] >> 5;
 	scsiDev.cdbLen = CmdGroupBytes[group];
-	scsiRead(scsiDev.cdb + 1, scsiDev.cdbLen - 1);
+	if (scsiDev.cdbLen - 6 > 0)
+	{
+		scsiRead(scsiDev.cdb + 6, scsiDev.cdbLen - 6);
+	}
 
 	command = scsiDev.cdb[0];
 
