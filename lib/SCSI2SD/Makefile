@@ -6,8 +6,9 @@ CPPFLAGS=-DSTM32F205xx -DUSE_HAL_DRIVER -Wall -Werror
 CFLAGS=-mcpu=cortex-m3 -mthumb -mslow-flash-data \
 	-std=gnu11 \
 	-specs=nosys.specs \
-	-Os -g \
+	-g \
 
+#	-Os -g \
 
 LDFLAGS= \
 	"-Tsrc/firmware/link.ld" \

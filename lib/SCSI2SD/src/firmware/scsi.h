@@ -93,6 +93,9 @@ typedef struct
 	// A 3rd party may be sending the RESERVE/RELEASE commands
 	int reservedId; // 0 -> 7 if reserved. -1 if not reserved.
 	int reserverId; // 0 -> 7 if reserved. -1 if not reserved.
+
+	uint8_t syncOffset;
+	uint8_t syncPeriod;
 } TargetState;
 
 typedef struct
@@ -148,6 +151,8 @@ typedef struct
 	uint8_t lastStatus;
 	uint8_t lastSense;
 	uint16_t lastSenseASC;
+
+	int needSyncNegotiationAck;
 } ScsiDevice;
 
 extern ScsiDevice scsiDev;

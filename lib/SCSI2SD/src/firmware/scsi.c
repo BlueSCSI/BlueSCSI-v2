@@ -480,6 +480,13 @@ static void scsiReset()
 		scsiDev.target->sense.asc = NO_ADDITIONAL_SENSE_INFORMATION;
 	}
 	scsiDev.target = NULL;
+
+	for (int i = 0; i < S2S_MAX_TARGETS; ++i)
+	{
+		scsiDev.target[i].syncOffset = 0;
+		scsiDev.target[i].syncPeriod = 0;
+	}
+
 	scsiDiskReset();
 
 	scsiDev.postDataOutHook = NULL;
@@ -516,6 +523,8 @@ static void enter_SelectionPhase()
 	transfer.currentBlock = 0;
 
 	scsiDev.postDataOutHook = NULL;
+
+	scsiDev.needSyncNegotiationAck = 0;
 }
 
 static void process_SelectionPhase()
@@ -655,6 +664,11 @@ static void process_MessageOut()
 		// ANY initiator can reset the reservation state via this message.
 		scsiDev.target->reservedId = -1;
 		scsiDev.target->reserverId = -1;
+
+		// Cancel any sync negotiation
+		scsiDev.target->syncOffset = 0;
+		scsiDev.target->syncPeriod = 0;
+
 		enter_BusFree();
 	}
 	else if (scsiDev.msgOut == 0x05)
@@ -677,7 +691,13 @@ static void process_MessageOut()
 	{
 		// Message Reject
 		// Oh well.
-		scsiDev.resetFlag = 1;
+
+		if (scsiDev.needSyncNegotiationAck)
+		{
+			scsiDev.target->syncOffset = 0;
+			scsiDev.target->syncPeriod = 0;
+			scsiDev.needSyncNegotiationAck = 0;
+		}
 	}
 	else if (scsiDev.msgOut == 0x08)
 	{
@@ -737,10 +757,27 @@ static void process_MessageOut()
 		}
 		else if (extmsg[0] == 1 && msgLen == 3) // Synchronous data request
 		{
-			// Negotiate back to async
+			int transferPeriod = extmsg[3];
+			int offset = extmsg[4];
+
+			if (transferPeriod > 50) // 200ns, 5MB/s
+			{
+				scsiDev.target->syncOffset = 0;
+				scsiDev.target->syncPeriod = 0;
+			} else {
+				scsiDev.target->syncOffset = offset < 15 ? offset : 15;
+				if (transferPeriod <= 25)
+				{
+					scsiDev.target->syncPeriod = 25; // 10MB/s
+				} else {
+					scsiDev.target->syncPeriod = 50; // 5MB/s
+				}
+			}
+
 			scsiEnterPhase(MESSAGE_IN);
-			static const uint8_t SDTR[] = {0x01, 0x03, 0x01, 0x00, 0x00};
+			uint8_t SDTR[] = {0x01, 0x03, 0x01, scsiDev.target->syncPeriod, scsiDev.target->syncOffset};
 			scsiWrite(SDTR, sizeof(SDTR));
+			scsiDev.needSyncNegotiationAck = 1; // Check if this message is rejected.
 		}
 		else
 		{
@@ -755,6 +792,12 @@ static void process_MessageOut()
 
 	// Re-check the ATN flag in case it stays asserted.
 	scsiDev.atnFlag |= scsiStatusATN();
+
+	if (!scsiDev.atnFlag)
+	{
+		// Message wasn't rejected!
+		scsiDev.needSyncNegotiationAck = 0;
+	}
 }
 
 void scsiPoll(void)
@@ -918,6 +961,9 @@ void scsiInit()
 		}
 		scsiDev.targets[i].sense.code = NO_SENSE;
 		scsiDev.targets[i].sense.asc = NO_ADDITIONAL_SENSE_INFORMATION;
+
+		scsiDev.targets[i].syncOffset = 0;
+		scsiDev.targets[i].syncPeriod = 0;
 	}
 	firstInit = 0;
 }

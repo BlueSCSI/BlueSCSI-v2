@@ -20,7 +20,7 @@
 
 // For the STM32F205, DMA bursts may not cross 1KB address boundaries.
 // The maximum burst is 16 bytes.
-#define S2S_DMA_ALIGN __attribute__((aligned(16)))
+#define S2S_DMA_ALIGN __attribute__((aligned(1024)))
 
 
 #endif

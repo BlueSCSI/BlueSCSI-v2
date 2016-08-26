@@ -28,6 +28,17 @@
 
 #include <string.h>
 
+// Assumes a 60MHz fpga clock.
+// 7:6 Hold count, 45ns
+// 5:3 Assertion count, 90ns
+// 2:0 Deskew count, 55ns
+#define SCSI_DEFAULT_TIMING ((0x3 << 6) | (0x6 << 3) | 0x4)
+
+// 7:6 Hold count, 10ns
+// 5:3 Assertion count, 30ns
+// 2:0 Deskew count, 25ns
+#define SCSI_FAST_TIMING ((0x1 << 6) | (0x2 << 3) | 0x2)
+
 // Private DMA variables.
 static int dmaInProgress = 0;
 
@@ -218,17 +229,21 @@ scsiRead(uint8_t* data, uint32_t count)
 			};
 		}
 
-#if FIFODEBUG
-		if (!scsiPhyFifoEmpty()) {
+
+		i += chunk;
+		chunk = nextChunk;
+	}
+#if 1
+		if (!scsiPhyFifoEmpty() || !scsiPhyFifoAltEmpty()) {
 			int j = 0;
 			while (!scsiPhyFifoEmpty()) { scsiPhyRx(); ++j; }
+			scsiPhyFifoFlip();
+			int k = 0;
+			while (!scsiPhyFifoEmpty()) { scsiPhyRx(); ++k; }
 			// Force a lock-up.
 			assertFail();
 		}
 #endif
-		i += chunk;
-		chunk = nextChunk;
-	}
 }
 
 void
@@ -382,12 +397,29 @@ void scsiEnterPhase(int phase)
 	int newPhase = phase > 0 ? phase : 0;
 	int oldPhase = *SCSI_CTRL_PHASE;
 
-	if (!scsiPhyFifoEmpty() || !scsiPhyFifoAltEmpty()) {
+	if (!scsiDev.resetFlag && (!scsiPhyFifoEmpty() || !scsiPhyFifoAltEmpty())) {
 		// Force a lock-up.
 		assertFail();
 	}
 	if (newPhase != oldPhase)
 	{
+		if ((newPhase == DATA_IN || newPhase == DATA_OUT) &&
+			scsiDev.target->syncOffset)
+		{
+			if (scsiDev.target->syncPeriod == 25)
+			{
+				// SCSI2 FAST Timing. 10MB/s.
+				*SCSI_CTRL_TIMING = SCSI_FAST_TIMING;
+			} else {
+				// 5MB/s Timing
+				*SCSI_CTRL_TIMING = SCSI_DEFAULT_TIMING;
+			}
+			*SCSI_CTRL_SYNC_OFFSET = scsiDev.target->syncOffset;
+		} else {
+			*SCSI_CTRL_SYNC_OFFSET = 0;
+			*SCSI_CTRL_TIMING = SCSI_DEFAULT_TIMING;
+		}
+
 		*SCSI_CTRL_PHASE = newPhase;
 		busSettleDelay();
 
@@ -445,6 +477,9 @@ void scsiPhyReset()
 	scsiPhyFifoSel = 0;
 	*SCSI_FIFO_SEL = 0;
 	*SCSI_CTRL_DBX = 0;
+
+	*SCSI_CTRL_SYNC_OFFSET = 0;
+	*SCSI_CTRL_TIMING = SCSI_DEFAULT_TIMING;
 
 	// DMA Benchmark code
 	// Currently 10MB/s. Assume 20MB/s is achievable with 16 bits.
@@ -608,6 +643,9 @@ void scsiPhyInit()
 	scsiPhyFifoSel = 0;
 	*SCSI_FIFO_SEL = 0;
 	*SCSI_CTRL_DBX = 0;
+
+	*SCSI_CTRL_SYNC_OFFSET = 0;
+	*SCSI_CTRL_TIMING = SCSI_DEFAULT_TIMING;
 
 }
 

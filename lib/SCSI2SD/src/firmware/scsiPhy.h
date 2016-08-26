@@ -25,6 +25,8 @@
 #define SCSI_DATA_CNT_LO ((volatile uint8_t*)0x60000005)
 #define SCSI_DATA_CNT_SET ((volatile uint8_t*)0x60000006)
 #define SCSI_CTRL_DBX ((volatile uint8_t*)0x60000007)
+#define SCSI_CTRL_SYNC_OFFSET ((volatile uint8_t*)0x60000008)
+#define SCSI_CTRL_TIMING ((volatile uint8_t*)0x60000009)
 
 #define SCSI_STS_FIFO ((volatile uint8_t*)0x60000010)
 #define SCSI_STS_ALTFIFO ((volatile uint8_t*)0x60000011)

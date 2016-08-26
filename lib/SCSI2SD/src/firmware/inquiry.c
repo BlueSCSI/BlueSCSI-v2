@@ -29,7 +29,7 @@ static uint8_t StandardResponse[] =
 0x01, // Response format is compatible with the old CCS format.
 0x1f, // standard length.
 0, 0, // Reserved
-0x08 // Enable linked commands
+0x18 // Enable sync and linked commands
 };
 // Vendor set by config 'c','o','d','e','s','r','c',' ',
 // prodId set by config'S','C','S','I','2','S','D',' ',' ',' ',' ',' ',' ',' ',' ',' ',
