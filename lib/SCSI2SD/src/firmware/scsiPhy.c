@@ -28,16 +28,24 @@
 
 #include <string.h>
 
+// 5MB/s
 // Assumes a 60MHz fpga clock.
 // 7:6 Hold count, 45ns
 // 5:3 Assertion count, 90ns
 // 2:0 Deskew count, 55ns
 #define SCSI_DEFAULT_TIMING ((0x3 << 6) | (0x6 << 3) | 0x4)
 
-// 7:6 Hold count, 10ns
+// 10MB/s
+// 7:6 Hold count, 17ns
 // 5:3 Assertion count, 30ns
 // 2:0 Deskew count, 25ns
-#define SCSI_FAST_TIMING ((0x1 << 6) | (0x2 << 3) | 0x2)
+#define SCSI_FAST10_TIMING ((0x1 << 6) | (0x2 << 3) | 0x2)
+
+// 20MB/s
+// 7:6 Hold count, 17ns
+// 5:3 Assertion count, 17ns
+// 2:0 Deskew count, 17ns
+#define SCSI_FAST20_TIMING ((0x1 << 6) | (0x1 << 3) | 0x1)
 
 // Private DMA variables.
 static int dmaInProgress = 0;
@@ -406,10 +414,15 @@ void scsiEnterPhase(int phase)
 		if ((newPhase == DATA_IN || newPhase == DATA_OUT) &&
 			scsiDev.target->syncOffset)
 		{
-			if (scsiDev.target->syncPeriod == 25)
+			if (scsiDev.target->syncPeriod == 12)
+			{
+				// SCSI2 FAST-20 Timing. 20MB/s.
+				*SCSI_CTRL_TIMING = SCSI_FAST20_TIMING;
+			}
+			else if (scsiDev.target->syncPeriod == 25)
 			{
 				// SCSI2 FAST Timing. 10MB/s.
-				*SCSI_CTRL_TIMING = SCSI_FAST_TIMING;
+				*SCSI_CTRL_TIMING = SCSI_FAST10_TIMING;
 			} else {
 				// 5MB/s Timing
 				*SCSI_CTRL_TIMING = SCSI_DEFAULT_TIMING;

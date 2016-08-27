@@ -757,8 +757,8 @@ static void process_MessageOut()
 		}
 		else if (extmsg[0] == 1 && msgLen == 3) // Synchronous data request
 		{
-			int transferPeriod = extmsg[3];
-			int offset = extmsg[4];
+			int transferPeriod = extmsg[1];
+			int offset = extmsg[2];
 
 			if (transferPeriod > 50) // 200ns, 5MB/s
 			{
@@ -766,11 +766,15 @@ static void process_MessageOut()
 				scsiDev.target->syncPeriod = 0;
 			} else {
 				scsiDev.target->syncOffset = offset < 15 ? offset : 15;
-				if (transferPeriod <= 25)
+				if (transferPeriod <= 12)
 				{
-					scsiDev.target->syncPeriod = 25; // 10MB/s
+					scsiDev.target->syncPeriod = 12; // 50ns, 20MB/s
+				}
+				else if (transferPeriod <= 25)
+				{
+					scsiDev.target->syncPeriod = 25; // 100ns, 10MB/s
 				} else {
-					scsiDev.target->syncPeriod = 50; // 5MB/s
+					scsiDev.target->syncPeriod = 50; // 200ns, 5MB/s
 				}
 			}
 
