@@ -52,6 +52,7 @@ static const uint8_t DEFAULT_CONFIG[128] =
 
 
 static uint8_t s2s_cfg[S2S_CFG_SIZE] S2S_DMA_ALIGN;
+static uint8_t configDmaBuf[512] S2S_DMA_ALIGN; // For SD card writes.
 
 
 enum USB_STATE
@@ -62,16 +63,11 @@ enum USB_STATE
 
 
 static int usbInEpState;
-#if 0
-static int usbDebugEpState;
-#endif
-static int usbReady; // TODO MM REMOVE. Unused ?
 
 void s2s_configInit(S2S_BoardCfg* config)
 {
 
 	usbInEpState = USB_IDLE;
-	usbReady = 0; // We don't know if host is connected yet.
 
 
 	if ((blockDev.state & DISK_PRESENT) && sdDev.capacity)
@@ -205,10 +201,8 @@ sdWriteCommand(const uint8_t* cmd, size_t cmdSize)
 		(((uint32_t)cmd[3]) << 8) |
 		((uint32_t)cmd[4]);
 
-	// Must be aligned.
-	uint8_t buf[512] S2S_DMA_ALIGN;
-	memcpy(buf, &cmd[5], 512);
-	BSP_SD_WriteBlocks_DMA((uint32_t*) buf, lba * 512ll, 512, 1);
+	memcpy(configDmaBuf, &cmd[5], 512);
+	BSP_SD_WriteBlocks_DMA((uint32_t*) configDmaBuf, lba * 512ll, 512, 1);
 
 	uint8_t response[] =
 	{
@@ -230,8 +224,8 @@ sdReadCommand(const uint8_t* cmd, size_t cmdSize)
 		(((uint32_t)cmd[3]) << 8) |
 		((uint32_t)cmd[4]);
 
-	BSP_SD_ReadBlocks_DMA((uint32_t*) cmd, lba * 512ll, 512, 1);
-	hidPacket_send(cmd, 512);
+	BSP_SD_ReadBlocks_DMA((uint32_t*) configDmaBuf, lba * 512ll, 512, 1);
+	hidPacket_send(configDmaBuf, 512);
 }
 
 static void
