@@ -1,4 +1,5 @@
-2016XXXX		6.0.7
+20160827		6.0.8
+	- Fixed "protocol error" issues when saving configuration to SD cards.
 	- Synchronous transfers supported ! 5MB/s and 10MB/s supported.
 	- Fix for accessing data via USB with more than 2 devices configured.
 

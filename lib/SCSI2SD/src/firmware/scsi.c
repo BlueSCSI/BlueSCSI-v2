@@ -766,11 +766,17 @@ static void process_MessageOut()
 				scsiDev.target->syncPeriod = 0;
 			} else {
 				scsiDev.target->syncOffset = offset < 15 ? offset : 15;
+				// FAST20 / 50ns / 20MHz is disabled for now due to
+				// data corruption while reading data. We can count the
+				// ACK's correctly, but can't save the data to a register
+				// before it changes.
+				// TODO work out the fastest sync period that will work
+				/*
 				if (transferPeriod <= 12)
 				{
 					scsiDev.target->syncPeriod = 12; // 50ns, 20MB/s
 				}
-				else if (transferPeriod <= 25)
+				else */if (transferPeriod <= 25)
 				{
 					scsiDev.target->syncPeriod = 25; // 100ns, 10MB/s
 				} else {
