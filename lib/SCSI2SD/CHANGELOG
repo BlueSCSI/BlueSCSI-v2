@@ -1,3 +1,7 @@
+201609XX		6.0.10
+	- Fixed write issue with UHS-I Speed Class 3 SD cards.
+	- More stability bug fixes
+
 20160827		6.0.8
 	- Fixed "protocol error" issues when saving configuration to SD cards.
 	- Synchronous transfers supported ! 5MB/s and 10MB/s supported.

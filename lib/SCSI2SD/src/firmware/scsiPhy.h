@@ -27,6 +27,7 @@
 #define SCSI_CTRL_DBX ((volatile uint8_t*)0x60000007)
 #define SCSI_CTRL_SYNC_OFFSET ((volatile uint8_t*)0x60000008)
 #define SCSI_CTRL_TIMING ((volatile uint8_t*)0x60000009)
+#define SCSI_CTRL_TIMING2 ((volatile uint8_t*)0x6000000A)
 
 #define SCSI_STS_FIFO ((volatile uint8_t*)0x60000010)
 #define SCSI_STS_ALTFIFO ((volatile uint8_t*)0x60000011)
@@ -58,6 +59,11 @@
 #define scsiStatusRST() ((*SCSI_STS_SCSI & 0x04) == 0x04)
 #define scsiStatusSEL() ((*SCSI_STS_SCSI & 0x08) == 0x08)
 #define scsiStatusACK() ((*SCSI_STS_SCSI & 0x10) == 0x10)
+
+// Disable DMA due to errate with the STM32F205 DMA2 controller when
+// concurrently transferring FSMC (with FIFO) and APB (ie. sdio)
+// peripherals.
+#undef SCSI_FSMC_DMA
 
 extern uint8_t scsiPhyFifoSel;
 

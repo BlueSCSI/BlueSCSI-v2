@@ -38,21 +38,31 @@ SdDevice sdDev;
 static int sdCmdActive = 0;
 
 int
-sdReadDMAPoll()
+sdReadDMAPoll(uint32_t remainingSectors)
 {
+	// TODO DMA byte counting disabled for now as it's not
+	// working.
+	// We can ask the SDIO controller how many bytes have been
+	// processed (SDIO_GetDataCounter()) but I'm not sure if that
+	// means the data has been transfered via dma to memory yet.
+//	uint32_t dmaBytesRemaining = __HAL_DMA_GET_COUNTER(hsd.hdmarx) * 4;
+
 	if (hsd.DmaTransferCplt ||
 		hsd.SdTransferCplt ||
+
+//	if (dmaBytesRemaining == 0 ||
 		(HAL_SD_ErrorTypedef)hsd.SdTransferErr != SD_OK)
 	{
 		HAL_SD_CheckReadOperation(&hsd, (uint32_t)SD_DATATIMEOUT);
 		// DMA transfer is complete
 		sdCmdActive = 0;
-		return 1;
+		return remainingSectors;
 	}
-	else
+/*	else
 	{
-		return 0;
-	}
+		return remainingSectors - ((dmaBytesRemaining + (SD_SECTOR_SIZE - 1)) / SD_SECTOR_SIZE);
+	}*/
+	return 0;
 }
 
 void sdReadDMA(uint32_t lba, uint32_t sectors, uint8_t* outputBuffer)
@@ -244,9 +254,12 @@ static void sdInitDMA()
 		init = 1;
 
 		//TODO MM SEE STUPID SD_DMA_RxCplt that require the SD IRQs to preempt
-		// Configured with 4 bits preemption, NO sub priority.
+		// Ie. priority must be geater than the SDIO_IRQn priority.
+		// 4 bits preemption, NO sub priority.
+		HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
 		HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 8, 0);
 		HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
+		HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
 		HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 8, 0);
 		HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
 	}

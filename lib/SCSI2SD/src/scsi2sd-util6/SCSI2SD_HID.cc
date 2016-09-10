@@ -196,7 +196,7 @@ std::string
 HID::getFirmwareVersionStr() const
 {
 	std::stringstream ver;
-	ver << std::hex <<
+	ver <<
 		(myFirmwareVersion >> 8) <<
 		'.' << ((myFirmwareVersion & 0xF0) >> 4);
 

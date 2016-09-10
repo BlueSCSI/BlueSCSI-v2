@@ -67,19 +67,21 @@ void MX_FSMC_Init(void)
   hsram1.Init.WriteBurst = FSMC_WRITE_BURST_DISABLE;
   /* Timing */
 
-/*
+  // 1 clock to read the address, but since the signals aren't stable
+  // at 96MHz we wait two more clocks
   Timing.AddressSetupTime = 3;
-  Timing.AddressHoldTime = 2;
-  Timing.DataSetupTime = 5;
-*/
-
-  Timing.AddressSetupTime = 2;
   Timing.AddressHoldTime = 1;
-  Timing.DataSetupTime = 4;
 
-  Timing.BusTurnAroundDuration = 0;
-  Timing.CLKDivision = 16;
-  Timing.DataLatency = 17;
+  Timing.DataSetupTime = 5;
+  // +1 clock hold time, +2 clock to let the bus settle (unstable at 96MHz)
+  // +1 clock to process read, 1 clock to output
+
+  // Allow a clock for us to release signals, or else we'll read
+  // our own output data as an address.
+  Timing.BusTurnAroundDuration = 1;
+
+  Timing.CLKDivision = 16; // Ignored for async
+  Timing.DataLatency = 17; // Ignored for async
   Timing.AccessMode = FSMC_ACCESS_MODE_A;
   /* ExtTiming */
 

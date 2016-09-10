@@ -40,7 +40,7 @@ void sdWriteMultiSectorDMA(uint8_t* outputBuffer);
 int sdWriteSectorDMAPoll();
 
 void sdReadDMA(uint32_t lba, uint32_t sectors, uint8_t* outputBuffer);
-int sdReadDMAPoll();
+int sdReadDMAPoll(uint32_t remainingSectors);
 void sdCompleteTransfer();
 
 void sdPoll();

@@ -544,19 +544,25 @@ void scsiDiskPoll()
 				transfer.lba);
 
 		const int sdPerScsi = SDSectorsPerSCSISector(bytesPerSector);
-		int buffers = sizeof(scsiDev.data) / SD_SECTOR_SIZE;
+		const int buffers = sizeof(scsiDev.data) / SD_SECTOR_SIZE;
 		int prep = 0;
 		int i = 0;
-		int scsiActive = 0;
+		int scsiActive __attribute__((unused)) = 0; // unused if DMA disabled
 		int sdActive = 0;
 		while ((i < totalSDSectors) &&
 			likely(scsiDev.phase == DATA_IN) &&
 			likely(!scsiDev.resetFlag))
 		{
-			if (sdActive && sdReadDMAPoll())
+			int completedDmaSectors;
+			if (sdActive && (completedDmaSectors = sdReadDMAPoll(sdActive)))
 			{
-				prep += sdActive;
-				sdActive = 0;
+				prep += completedDmaSectors;
+				sdActive -= completedDmaSectors;
+			} else if (sdActive > 1) {
+				if (scsiDev.data[SD_SECTOR_SIZE * (prep % buffers) + 511] != 0x33) {
+					prep += 1;
+					sdActive -= 1;
+				}
 			}
 
 			if (!sdActive &&
@@ -566,25 +572,27 @@ void scsiDiskPoll()
 				// Start an SD transfer if we have space.
 				uint32_t startBuffer = prep % buffers;
 				uint32_t sectors = totalSDSectors - prep;
-#if 0
-				if (!scsiActive && prep == i)
+
+				uint32_t freeBuffers = buffers - (prep - i);
+
+				uint32_t contiguousBuffers = buffers - startBuffer;
+				freeBuffers = freeBuffers < contiguousBuffers
+					? freeBuffers : contiguousBuffers;
+				sectors = sectors < freeBuffers ? sectors : freeBuffers;
+
+				if (sectors > 128) sectors = 128; // 65536 DMA limit !!
+
+				for (int dodgy = 0; dodgy < sectors; dodgy++)
 				{
-					sectors = 1; // We need to get some data to send ASAP !
+					scsiDev.data[SD_SECTOR_SIZE * (startBuffer + dodgy) + 511] = 0x33;
 				}
-				else
-#endif
-				{
-					uint32_t freeBuffers = buffers - (prep - i);
-					uint32_t contiguousBuffers = buffers - startBuffer;
-					freeBuffers = freeBuffers < contiguousBuffers
-						? freeBuffers : contiguousBuffers;
-					sectors = sectors < freeBuffers ? sectors : freeBuffers;
-				}
+
 				sdReadDMA(sdLBA + prep, sectors, &scsiDev.data[SD_SECTOR_SIZE * startBuffer]);
 
 				sdActive = sectors;
 			}
 
+#ifdef SCSI_FSMC_DMA
 			if (scsiActive && scsiPhyComplete() && scsiWriteDMAPoll())
 			{
 				scsiActive = 0;
@@ -602,6 +610,24 @@ void scsiDiskPoll()
 				scsiWriteDMA(&scsiDev.data[SD_SECTOR_SIZE * (i % buffers)], dmaBytes);
 				scsiActive = 1;
 			}
+#else
+			if ((prep - i) > 0)
+			{
+				int dmaBytes = SD_SECTOR_SIZE;
+				if ((i % sdPerScsi) == (sdPerScsi - 1))
+				{
+					dmaBytes = bytesPerSector % SD_SECTOR_SIZE;
+					if (dmaBytes == 0) dmaBytes = SD_SECTOR_SIZE;
+				}
+				for (int k = 0; k < dmaBytes; ++k)
+				{
+					scsiPhyTx(scsiDev.data[SD_SECTOR_SIZE * (i % buffers) + k]);
+				}
+				i++;
+				while (!scsiPhyComplete() && !scsiDev.resetFlag) {}
+				scsiPhyFifoFlip();
+			}
+#endif
 		}
 
 		// We've finished transferring the data to the FPGA, now wait until it's

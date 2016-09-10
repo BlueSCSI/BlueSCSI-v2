@@ -29,23 +29,26 @@
 #include <string.h>
 
 // 5MB/s
-// Assumes a 60MHz fpga clock.
-// 7:6 Hold count, 45ns
-// 5:3 Assertion count, 90ns
+// Assumes a 96MHz fpga clock.
 // 2:0 Deskew count, 55ns
-#define SCSI_DEFAULT_TIMING ((0x3 << 6) | (0x6 << 3) | 0x4)
+// 6:4 Hold count, 53ns
+// 3:0 Assertion count, 80ns
+#define SCSI_DEFAULT_DESKEW 0x6
+#define SCSI_DEFAULT_TIMING ((0x5 << 4) | 0x8)
 
 // 10MB/s
-// 7:6 Hold count, 17ns
-// 5:3 Assertion count, 30ns
 // 2:0 Deskew count, 25ns
-#define SCSI_FAST10_TIMING ((0x1 << 6) | (0x2 << 3) | 0x2)
+// 6:4 Hold count, 33ns
+// 3:0 Assertion count, 30ns
+#define SCSI_FAST10_DESKEW 3
+#define SCSI_FAST10_TIMING ((0x3 << 4) | 0x3)
 
 // 20MB/s
-// 7:6 Hold count, 17ns
-// 5:3 Assertion count, 17ns
-// 2:0 Deskew count, 17ns
-#define SCSI_FAST20_TIMING ((0x1 << 6) | (0x1 << 3) | 0x1)
+// 2:0 Deskew count, 12ns
+// 6:4 Hold count, 17ns
+// 3:0 Assertion count, 15ns
+#define SCSI_FAST20_DESKEW 2
+#define SCSI_FAST20_TIMING ((0x2 << 4) | 0x2)
 
 // Private DMA variables.
 static int dmaInProgress = 0;
@@ -199,11 +202,13 @@ scsiRead(uint8_t* data, uint32_t count)
 
 	uint32_t chunk = ((count - i) > SCSI_FIFO_DEPTH)
 		? SCSI_FIFO_DEPTH : (count - i);
+#ifdef SCSI_FSMC_DMA
 	if (chunk >= 16)
 	{
 		// DMA is doing 32bit transfers.
 		chunk = chunk & 0xFFFFFFF8;
 	}
+#endif
 	startScsiRx(chunk);
 
 	while (i < count && likely(!scsiDev.resetFlag))
@@ -213,19 +218,24 @@ scsiRead(uint8_t* data, uint32_t count)
 
 		uint32_t nextChunk = ((count - i - chunk) > SCSI_FIFO_DEPTH)
 			? SCSI_FIFO_DEPTH : (count - i - chunk);
+#ifdef SCSI_FSMC_DMA
 		if (nextChunk >= 16)
 		{
 			nextChunk = nextChunk & 0xFFFFFFF8;
 		}
+#endif
 		if (nextChunk > 0)
 		{
 			startScsiRx(nextChunk);
 		}
 
+#ifdef SCSI_FSMC_DMA
 		if (chunk < 16)
+#endif
 		{
 			scsiReadPIO(data + i, chunk);
 		}
+#ifdef SCSI_FSMC_DMA
 		else
 		{
 			scsiReadDMA(data + i, chunk);
@@ -236,12 +246,13 @@ scsiRead(uint8_t* data, uint32_t count)
 			{
 			};
 		}
+#endif
 
 
 		i += chunk;
 		chunk = nextChunk;
 	}
-#if 1
+#if FIFODEBUG
 		if (!scsiPhyFifoEmpty() || !scsiPhyFifoAltEmpty()) {
 			int j = 0;
 			while (!scsiPhyFifoEmpty()) { scsiPhyRx(); ++j; }
@@ -339,10 +350,13 @@ scsiWrite(const uint8_t* data, uint32_t count)
 		}
 #endif
 
+#ifdef SCSI_FSMC_DMA
 		if (chunk < 16)
+#endif
 		{
 			scsiWritePIO(data + i, chunk);
 		}
+#ifdef SCSI_FSMC_DMA
 		else
 		{
 			// DMA is doing 32bit transfers.
@@ -355,6 +369,7 @@ scsiWrite(const uint8_t* data, uint32_t count)
 			{
 			}
 		}
+#endif
 
 		while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
 		{
@@ -417,15 +432,18 @@ void scsiEnterPhase(int phase)
 			if (scsiDev.target->syncPeriod == 12)
 			{
 				// SCSI2 FAST-20 Timing. 20MB/s.
-				*SCSI_CTRL_TIMING = SCSI_FAST20_TIMING;
+				*SCSI_CTRL_TIMING = SCSI_FAST20_DESKEW;
+				*SCSI_CTRL_TIMING2 = SCSI_FAST20_TIMING;
 			}
 			else if (scsiDev.target->syncPeriod == 25)
 			{
 				// SCSI2 FAST Timing. 10MB/s.
-				*SCSI_CTRL_TIMING = SCSI_FAST10_TIMING;
+				*SCSI_CTRL_TIMING = SCSI_FAST10_DESKEW;
+				*SCSI_CTRL_TIMING2 = SCSI_FAST10_TIMING;
 			} else {
 				// 5MB/s Timing
-				*SCSI_CTRL_TIMING = SCSI_DEFAULT_TIMING;
+				*SCSI_CTRL_TIMING = SCSI_DEFAULT_DESKEW;
+				*SCSI_CTRL_TIMING2 = SCSI_DEFAULT_TIMING;
 			}
 			*SCSI_CTRL_SYNC_OFFSET = scsiDev.target->syncOffset;
 		} else {
@@ -455,33 +473,6 @@ void scsiPhyReset()
 
 		dmaInProgress = 0;
 	}
-#if 0
-
-	// Set the Clear bits for both SCSI device FIFOs
-	scsiTarget_AUX_CTL = scsiTarget_AUX_CTL | 0x03;
-
-	// Trigger RST outselves.  It is connected to the datapath and will
-	// ensure it returns to the idle state.  The datapath runs at the BUS clk
-	// speed (ie. same as the CPU), so we can be sure it is active for a sufficient
-	// duration.
-	SCSI_RST_ISR_Disable();
-	SCSI_SetPin(SCSI_Out_RST);
-
-	SCSI_CTL_PHASE_Write(0);
-	SCSI_ClearPin(SCSI_Out_ATN);
-	SCSI_ClearPin(SCSI_Out_BSY);
-	SCSI_ClearPin(SCSI_Out_ACK);
-	SCSI_ClearPin(SCSI_Out_RST);
-	SCSI_ClearPin(SCSI_Out_SEL);
-	SCSI_ClearPin(SCSI_Out_REQ);
-
-	// Allow the FIFOs to fill up again.
-	SCSI_ClearPin(SCSI_Out_RST);
-	SCSI_RST_ISR_Enable();
-	scsiTarget_AUX_CTL = scsiTarget_AUX_CTL & ~(0x03);
-
-	SCSI_Parity_Error_Read(); // clear sticky bits
-#endif
 
 	*SCSI_CTRL_PHASE = 0x00;
 	*SCSI_CTRL_BSY = 0x00;
@@ -495,7 +486,7 @@ void scsiPhyReset()
 	*SCSI_CTRL_TIMING = SCSI_DEFAULT_TIMING;
 
 	// DMA Benchmark code
-	// Currently 10MB/s. Assume 20MB/s is achievable with 16 bits.
+	// Currently 6.6MB/s. Assume 13MB/s is achievable with 16 bits
 	#ifdef DMA_BENCHMARK
 	while(1)
 	{

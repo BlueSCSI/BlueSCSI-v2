@@ -888,7 +888,7 @@ private:
 		for (size_t i = 0; i < 2; ++i)
 		{
 			std::stringstream ss;
-			ss << "Programming sector flash array " << sector;
+			ss << "Writing SD sector " << sector;
 			mmLogStatus(ss.str());
 			currentProgress += 1;
 
