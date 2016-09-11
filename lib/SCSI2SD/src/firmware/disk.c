@@ -619,13 +619,16 @@ void scsiDiskPoll()
 					dmaBytes = bytesPerSector % SD_SECTOR_SIZE;
 					if (dmaBytes == 0) dmaBytes = SD_SECTOR_SIZE;
 				}
-				for (int k = 0; k < dmaBytes; ++k)
+
+				uint16_t* scsiDmaData = (uint16_t*) &(scsiDev.data[SD_SECTOR_SIZE * (i % buffers)]);
+				for (int k = 0; k < (dmaBytes + 1) / 2; ++k)
 				{
-					scsiPhyTx(scsiDev.data[SD_SECTOR_SIZE * (i % buffers) + k]);
+					scsiPhyTx(scsiDmaData[k]);
 				}
 				i++;
 				while (!scsiPhyComplete() && !scsiDev.resetFlag) {}
 				scsiPhyFifoFlip();
+				scsiSetDataCount(dmaBytes);
 			}
 #endif
 		}

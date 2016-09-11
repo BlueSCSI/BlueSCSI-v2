@@ -109,8 +109,8 @@ static void assertFail()
 	}
 }
 
-static void
-startScsiRx(uint32_t count)
+void
+scsiSetDataCount(uint32_t count)
 {
 	*SCSI_DATA_CNT_HI = count >> 8;
 	*SCSI_DATA_CNT_LO = count & 0xff;
@@ -126,7 +126,7 @@ scsiReadByte(void)
 		assertFail();
 	}
 #endif
-	startScsiRx(1);
+	scsiSetDataCount(1);
 
 	trace(trace_spinPhyRxFifo);
 	while (!scsiPhyComplete() && likely(!scsiDev.resetFlag)) {}
@@ -151,9 +151,10 @@ scsiReadByte(void)
 static void
 scsiReadPIO(uint8_t* data, uint32_t count)
 {
-	for (int i = 0; i < count; ++i)
+	uint16_t* fifoData = (uint16_t*)data;
+	for (int i = 0; i < (count + 1) / 2; ++i)
 	{
-		data[i] = scsiPhyRx();
+		fifoData[i] = scsiPhyRx(); // TODO ASSUMES LITTLE ENDIAN
 	}
 	// TODO scsiDev.parityError = scsiDev.parityError || SCSI_Parity_Error_Read();
 }
@@ -168,7 +169,11 @@ scsiReadDMA(uint8_t* data, uint32_t count)
 	scsiTxDMAComplete = 1; // TODO not used much
 	scsiRxDMAComplete = 0; // TODO not used much
 
-	HAL_DMA_Start(&fsmcToMem, (uint32_t) SCSI_FIFO_DATA, (uint32_t) data, count);
+	HAL_DMA_Start(
+		&fsmcToMem,
+		(uint32_t) SCSI_FIFO_DATA,
+		(uint32_t) data,
+		(count + 1) / 2);
 }
 
 int
@@ -209,7 +214,7 @@ scsiRead(uint8_t* data, uint32_t count)
 		chunk = chunk & 0xFFFFFFF8;
 	}
 #endif
-	startScsiRx(chunk);
+	scsiSetDataCount(chunk);
 
 	while (i < count && likely(!scsiDev.resetFlag))
 	{
@@ -226,7 +231,7 @@ scsiRead(uint8_t* data, uint32_t count)
 #endif
 		if (nextChunk > 0)
 		{
-			startScsiRx(nextChunk);
+			scsiSetDataCount(nextChunk);
 		}
 
 #ifdef SCSI_FSMC_DMA
@@ -278,6 +283,8 @@ scsiWriteByte(uint8_t value)
 	scsiPhyTx(value);
 	scsiPhyFifoFlip();
 
+	scsiSetDataCount(1);
+
 	trace(trace_spinTxComplete);
 	while (!scsiPhyComplete() && likely(!scsiDev.resetFlag)) {}
 
@@ -292,9 +299,10 @@ scsiWriteByte(uint8_t value)
 static void
 scsiWritePIO(const uint8_t* data, uint32_t count)
 {
-	for (int i = 0; i < count; ++i)
+	uint16_t* fifoData = (uint16_t*)data;
+	for (int i = 0; i < (count + 1) / 2; ++i)
 	{
-		scsiPhyTx(data[i]);
+		scsiPhyTx(fifoData[i]);
 	}
 }
 
@@ -383,6 +391,7 @@ scsiWrite(const uint8_t* data, uint32_t count)
 #endif
 
 		scsiPhyFifoFlip();
+		scsiSetDataCount(chunk);
 		i += chunk;
 	}
 	while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
@@ -486,7 +495,7 @@ void scsiPhyReset()
 	*SCSI_CTRL_TIMING = SCSI_DEFAULT_TIMING;
 
 	// DMA Benchmark code
-	// Currently 6.6MB/s. Assume 13MB/s is achievable with 16 bits
+	// Currently 11MB/s.
 	#ifdef DMA_BENCHMARK
 	while(1)
 	{
@@ -551,7 +560,7 @@ void scsiPhyReset()
 			&fsmcToMem,
 			(uint32_t) SCSI_FIFO_DATA,
 			(uint32_t) &scsiDev.data[0],
-			SCSI_FIFO_DEPTH);
+			SCSI_FIFO_DEPTH / 2);
 
 		HAL_DMA_PollForTransfer(
 			&fsmcToMem,
@@ -598,11 +607,11 @@ static void scsiPhyInitDMA()
 		memToFSMC.Init.PeriphInc = DMA_PINC_ENABLE;
 		memToFSMC.Init.MemInc = DMA_MINC_DISABLE;
 		memToFSMC.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
-		memToFSMC.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+		memToFSMC.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
 		memToFSMC.Init.Mode = DMA_NORMAL;
 		memToFSMC.Init.Priority = DMA_PRIORITY_LOW;
 		// FIFO mode is needed to allow conversion from 32bit words to the
-		// 8bit FSMC interface.
+		// 16bit FSMC interface.
 		memToFSMC.Init.FIFOMode = DMA_FIFOMODE_ENABLE;
 
 		// We only use 1 word (4 bytes) in the fifo at a time. Normally it's
@@ -622,7 +631,7 @@ static void scsiPhyInitDMA()
 		fsmcToMem.Init.Direction = DMA_MEMORY_TO_MEMORY;
 		fsmcToMem.Init.PeriphInc = DMA_PINC_DISABLE;
 		fsmcToMem.Init.MemInc = DMA_MINC_ENABLE;
-		fsmcToMem.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+		fsmcToMem.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
 		fsmcToMem.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
 		fsmcToMem.Init.Mode = DMA_NORMAL;
 		fsmcToMem.Init.Priority = DMA_PRIORITY_LOW;
