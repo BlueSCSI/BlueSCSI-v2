@@ -760,7 +760,8 @@ static void process_MessageOut()
 			int transferPeriod = extmsg[1];
 			int offset = extmsg[2];
 
-			if (transferPeriod > 50) // 200ns, 5MB/s
+			if ((scsiDev.compatMode < COMPAT_SCSI2) ||
+				(transferPeriod > 50)) // 200ns, 5MB/s
 			{
 				scsiDev.target->syncOffset = 0;
 				scsiDev.target->syncPeriod = 0;
