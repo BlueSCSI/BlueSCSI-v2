@@ -28,13 +28,18 @@
 
 #include <string.h>
 
-// 5MB/s
+// Slowest timing. Aim for 1.5MB/s, but it's likely to be faster.
+// Assumes a 96MHz fpga clock.
+#define SCSI_SCSI1_DESKEW 0x7
+#define SCSI_SCSI1_TIMING ((0x7 << 4) | 0xF)
+
+// 5MB/s sync and async.
 // Assumes a 96MHz fpga clock.
 // 2:0 Deskew count, 55ns
 // 6:4 Hold count, 53ns
 // 3:0 Assertion count, 80ns
-#define SCSI_DEFAULT_DESKEW 0x6
-#define SCSI_DEFAULT_TIMING ((0x5 << 4) | 0x8)
+#define SCSI_SCSI2_DESKEW 0x6
+#define SCSI_SCSI2_TIMING ((0x5 << 4) | 0x8)
 
 // 10MB/s
 // 2:0 Deskew count, 25ns
@@ -441,23 +446,32 @@ void scsiEnterPhase(int phase)
 			if (scsiDev.target->syncPeriod == 12)
 			{
 				// SCSI2 FAST-20 Timing. 20MB/s.
-				*SCSI_CTRL_TIMING = SCSI_FAST20_DESKEW;
-				*SCSI_CTRL_TIMING2 = SCSI_FAST20_TIMING;
+				*SCSI_CTRL_DESKEW = SCSI_FAST20_DESKEW;
+				*SCSI_CTRL_TIMING = SCSI_FAST20_TIMING;
 			}
 			else if (scsiDev.target->syncPeriod == 25)
 			{
 				// SCSI2 FAST Timing. 10MB/s.
-				*SCSI_CTRL_TIMING = SCSI_FAST10_DESKEW;
-				*SCSI_CTRL_TIMING2 = SCSI_FAST10_TIMING;
+				*SCSI_CTRL_DESKEW = SCSI_FAST10_DESKEW;
+				*SCSI_CTRL_TIMING = SCSI_FAST10_TIMING;
 			} else {
 				// 5MB/s Timing
-				*SCSI_CTRL_TIMING = SCSI_DEFAULT_DESKEW;
-				*SCSI_CTRL_TIMING2 = SCSI_DEFAULT_TIMING;
+				*SCSI_CTRL_DESKEW = SCSI_SCSI2_DESKEW;
+				*SCSI_CTRL_TIMING = SCSI_SCSI2_TIMING;
 			}
+
 			*SCSI_CTRL_SYNC_OFFSET = scsiDev.target->syncOffset;
 		} else {
 			*SCSI_CTRL_SYNC_OFFSET = 0;
-			*SCSI_CTRL_TIMING = SCSI_DEFAULT_TIMING;
+
+			if (scsiDev.compatMode >= COMPAT_SCSI2) {
+				// 5MB/s Timing
+				*SCSI_CTRL_DESKEW = SCSI_SCSI2_DESKEW;
+				*SCSI_CTRL_TIMING = SCSI_SCSI2_TIMING;
+			} else {
+				*SCSI_CTRL_DESKEW = SCSI_SCSI1_DESKEW;
+				*SCSI_CTRL_TIMING = SCSI_SCSI1_TIMING;
+			}
 		}
 
 		*SCSI_CTRL_PHASE = newPhase;
@@ -492,7 +506,8 @@ void scsiPhyReset()
 	*SCSI_CTRL_DBX = 0;
 
 	*SCSI_CTRL_SYNC_OFFSET = 0;
-	*SCSI_CTRL_TIMING = SCSI_DEFAULT_TIMING;
+	*SCSI_CTRL_DESKEW = SCSI_SCSI1_DESKEW;
+	*SCSI_CTRL_TIMING = SCSI_SCSI1_TIMING;
 
 	// DMA Benchmark code
 	// Currently 11MB/s.
@@ -658,7 +673,8 @@ void scsiPhyInit()
 	*SCSI_CTRL_DBX = 0;
 
 	*SCSI_CTRL_SYNC_OFFSET = 0;
-	*SCSI_CTRL_TIMING = SCSI_DEFAULT_TIMING;
+	*SCSI_CTRL_DESKEW = SCSI_SCSI1_DESKEW;
+	*SCSI_CTRL_TIMING = SCSI_SCSI1_TIMING;
 
 }
 
@@ -684,6 +700,10 @@ void scsiPhyConfig()
 		}
 	}
 	*SCSI_CTRL_IDMASK = idMask;
+
+	*SCSI_CTRL_FLAGS =
+		(scsiDev.boardCfg.flags & S2S_CFG_DISABLE_GLITCH) ? 1 : 0;
+
 }
 
 

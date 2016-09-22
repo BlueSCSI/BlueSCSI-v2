@@ -53,7 +53,7 @@ BoardPanel::BoardPanel(wxWindow* parent, const S2S_BoardCfg& initialConfig) :
 	myParent(parent),
 	myDelayValidator(new wxIntegerValidator<uint8_t>)
 {
-	wxFlexGridSizer *fgs = new wxFlexGridSizer(10, 2, 9, 25);
+	wxFlexGridSizer *fgs = new wxFlexGridSizer(11, 2, 9, 25);
 
 	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("")));
 	myTermCtrl =
@@ -119,6 +119,15 @@ BoardPanel::BoardPanel(wxWindow* parent, const S2S_BoardCfg& initialConfig) :
 	fgs->Add(myScsi2Ctrl);
 
 	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("")));
+	myGlitchCtrl =
+		new wxCheckBox(
+			this,
+			ID_glitchCtrl,
+			_("Disable glitch filter"));
+	myGlitchCtrl->SetToolTip(_("Improve performance at the cost of noise immunity. Only use with short cables."));
+	fgs->Add(myGlitchCtrl);
+
+	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("")));
 	myCacheCtrl =
 		new wxCheckBox(
 			this,
@@ -176,6 +185,7 @@ BoardPanel::getConfig() const
 		(myParityCtrl->IsChecked() ? S2S_CFG_ENABLE_PARITY : 0) |
 		(myUnitAttCtrl->IsChecked() ? S2S_CFG_ENABLE_UNIT_ATTENTION : 0) |
 		(myScsi2Ctrl->IsChecked() ? S2S_CFG_ENABLE_SCSI2 : 0) |
+		(myGlitchCtrl->IsChecked() ? S2S_CFG_DISABLE_GLITCH : 0) |
 		(myCacheCtrl->IsChecked() ? S2S_CFG_ENABLE_CACHE: 0) |
 		(myDisconnectCtrl->IsChecked() ? S2S_CFG_ENABLE_DISCONNECT: 0) |
 		(mySelLatchCtrl->IsChecked() ? S2S_CFG_ENABLE_SEL_LATCH : 0) |
@@ -196,6 +206,7 @@ BoardPanel::setConfig(const S2S_BoardCfg& config)
 	myParityCtrl->SetValue(config.flags & S2S_CFG_ENABLE_PARITY);
 	myUnitAttCtrl->SetValue(config.flags & S2S_CFG_ENABLE_UNIT_ATTENTION);
 	myScsi2Ctrl->SetValue(config.flags & S2S_CFG_ENABLE_SCSI2);
+	myGlitchCtrl->SetValue(config.flags & S2S_CFG_DISABLE_GLITCH);
 	myTermCtrl->SetValue(config.flags6 & S2S_CFG_ENABLE_TERMINATOR);
 	myCacheCtrl->SetValue(config.flags & S2S_CFG_ENABLE_CACHE);
 	myDisconnectCtrl->SetValue(config.flags & S2S_CFG_ENABLE_DISCONNECT);

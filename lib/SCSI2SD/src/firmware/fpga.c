@@ -39,10 +39,8 @@ void s2s_fpgaInit()
 	HAL_GPIO_WritePin(
 		nFGPA_CRESET_B_GPIO_Port, nFGPA_CRESET_B_Pin, GPIO_PIN_SET);
 
-	// 800uS for iCE40HX1K. 1200uS for HX4K according to Appendix A of
-	// TN1248 - iCE40 Programming and Configuration. Note that the
-	// earlier text of the document says 300uS.
-	s2s_delay_us(1200); // Be generous
+	// 800uS for iCE40HX1K. tCR_SCK parameter in datasheet.
+	s2s_delay_us(800);
 
 	uint8_t* fpgaData = &_fpga_bitmap_start;
 	uint32_t fpgaBytes = (uint32_t) &_fpga_bitmap_size;

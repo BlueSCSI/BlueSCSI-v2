@@ -91,7 +91,7 @@ int main(void)
   MX_FSMC_Init();
   MX_SDIO_SD_Init();
   MX_SPI1_Init();
-  MX_TIM4_Init();
+  // TODO re-enable MX_TIM4_Init();
   // TODO re-enable MX_USART3_UART_Init();
   // TODO re-enable MX_USB_HOST_Init();
 

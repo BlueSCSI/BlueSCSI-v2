@@ -319,6 +319,18 @@ ConfigUtil::toXML(const S2S_BoardCfg& config)
 			(config.flags & S2S_CFG_ENABLE_CACHE ? "true" : "false") <<
 			"</enableCache>\n" <<
 
+		"	<!-- ********************************************************\n" <<
+		"	Setting to 'true' will result in increased performance at the\n" <<
+		"	cost of lower noise immunity.\n" <<
+		"	Only set to true when using short cables with only 1 or two\n" <<
+		"	devices. This should remain off when using external SCSI1 DB25\n" <<
+		"	cables.\n" <<
+		"	********************************************************* -->\n" <<
+		"	<disableGlitchFilter>" <<
+			(config.flags & S2S_CFG_DISABLE_GLITCH ? "true" : "false") <<
+			"</disableGlitchFilter>\n" <<
+
+
 		"	<enableDisconnect>" <<
 			(config.flags & S2S_CFG_ENABLE_DISCONNECT ? "true" : "false") <<
 			"</enableDisconnect>\n" <<
@@ -530,6 +542,18 @@ parseBoardConfig(wxXmlNode* node)
 			else
 			{
 				result.flags = result.flags & ~S2S_CFG_ENABLE_SCSI2;
+			}
+		}
+		else if (child->GetName() == "disableGlitchFilter")
+		{
+			std::string s(child->GetNodeContent().mb_str());
+			if (s == "true")
+			{
+				result.flags |= S2S_CFG_DISABLE_GLITCH;
+			}
+			else
+			{
+				result.flags = result.flags & ~S2S_CFG_DISABLE_GLITCH;
 			}
 		}
 		else if (child->GetName() == "enableTerminator")

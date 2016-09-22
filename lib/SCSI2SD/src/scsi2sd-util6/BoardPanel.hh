@@ -55,6 +55,7 @@ private:
 		ID_parityCtrl = wxID_HIGHEST + 1,
 		ID_unitAttCtrl,
 		ID_scsi2Ctrl,
+		ID_glitchCtrl,
 		ID_termCtrl,
 		ID_cacheCtrl,
 		ID_disconnectCtrl,
@@ -71,6 +72,7 @@ private:
 	wxCheckBox* myParityCtrl;
 	wxCheckBox* myUnitAttCtrl;
 	wxCheckBox* myScsi2Ctrl;
+	wxCheckBox* myGlitchCtrl;
 	wxCheckBox* myTermCtrl;
 	wxCheckBox* myCacheCtrl;
 	wxCheckBox* myDisconnectCtrl;

@@ -1,3 +1,7 @@
+20160922		6.0.??
+	- Fixed SCSI timing issue
+	- Added glitch filter on SCSI signals.
+
 20160912		6.0.10
 	- Fixed write issue with UHS-I Speed Class 3 SD cards.
 	- More stability bug fixes
