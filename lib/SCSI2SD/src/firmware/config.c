@@ -37,7 +37,7 @@
 
 #include <string.h>
 
-static const uint16_t FIRMWARE_VERSION = 0x060B;
+static const uint16_t FIRMWARE_VERSION = 0x060C;
 
 // 1 flash row
 static const uint8_t DEFAULT_CONFIG[128] =

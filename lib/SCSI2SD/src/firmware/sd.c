@@ -278,7 +278,6 @@ void sdTmpWrite(uint8_t* data, uint32_t lba, int sectors)
 static void sdClear()
 {
 	sdDev.version = 0;
-	sdDev.ccs = 0;
 	sdDev.capacity = 0;
 	memset(sdDev.csd, 0, sizeof(sdDev.csd));
 	memset(sdDev.cid, 0, sizeof(sdDev.cid));

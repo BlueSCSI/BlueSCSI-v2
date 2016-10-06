@@ -28,18 +28,13 @@
 
 #include <string.h>
 
-// Slowest timing. Aim for 1.5MB/s, but it's likely to be faster.
-// Assumes a 96MHz fpga clock.
-#define SCSI_SCSI1_DESKEW 0x7
-#define SCSI_SCSI1_TIMING ((0x7 << 4) | 0xF)
-
 // 5MB/s sync and async.
 // Assumes a 96MHz fpga clock.
 // 2:0 Deskew count, 55ns
 // 6:4 Hold count, 53ns
 // 3:0 Assertion count, 80ns
-#define SCSI_SCSI2_DESKEW 0x6
-#define SCSI_SCSI2_TIMING ((0x5 << 4) | 0x8)
+#define SCSI_DEFAULT_DESKEW 0x6
+#define SCSI_DEFAULT_TIMING ((0x5 << 4) | 0x8)
 
 // 10MB/s
 // 2:0 Deskew count, 25ns
@@ -161,7 +156,6 @@ scsiReadPIO(uint8_t* data, uint32_t count)
 	{
 		fifoData[i] = scsiPhyRx(); // TODO ASSUMES LITTLE ENDIAN
 	}
-	// TODO scsiDev.parityError = scsiDev.parityError || SCSI_Parity_Error_Read();
 }
 
 void
@@ -205,9 +199,10 @@ scsiReadDMAPoll()
 }
 
 void
-scsiRead(uint8_t* data, uint32_t count)
+scsiRead(uint8_t* data, uint32_t count, int* parityError)
 {
 	int i = 0;
+	*parityError = 0;
 
 
 	uint32_t chunk = ((count - i) > SCSI_FIFO_DEPTH)
@@ -224,6 +219,7 @@ scsiRead(uint8_t* data, uint32_t count)
 	while (i < count && likely(!scsiDev.resetFlag))
 	{
 		while (!scsiPhyComplete() && likely(!scsiDev.resetFlag)) {}
+		*parityError |= scsiParityError();
 		scsiPhyFifoFlip();
 
 		uint32_t nextChunk = ((count - i - chunk) > SCSI_FIFO_DEPTH)
@@ -456,22 +452,17 @@ void scsiEnterPhase(int phase)
 				*SCSI_CTRL_TIMING = SCSI_FAST10_TIMING;
 			} else {
 				// 5MB/s Timing
-				*SCSI_CTRL_DESKEW = SCSI_SCSI2_DESKEW;
-				*SCSI_CTRL_TIMING = SCSI_SCSI2_TIMING;
+				*SCSI_CTRL_DESKEW = SCSI_DEFAULT_DESKEW;
+				*SCSI_CTRL_TIMING = SCSI_DEFAULT_TIMING;
 			}
 
 			*SCSI_CTRL_SYNC_OFFSET = scsiDev.target->syncOffset;
 		} else {
 			*SCSI_CTRL_SYNC_OFFSET = 0;
 
-			if (scsiDev.compatMode >= COMPAT_SCSI2) {
-				// 5MB/s Timing
-				*SCSI_CTRL_DESKEW = SCSI_SCSI2_DESKEW;
-				*SCSI_CTRL_TIMING = SCSI_SCSI2_TIMING;
-			} else {
-				*SCSI_CTRL_DESKEW = SCSI_SCSI1_DESKEW;
-				*SCSI_CTRL_TIMING = SCSI_SCSI1_TIMING;
-			}
+			// 5MB/s Timing
+			*SCSI_CTRL_DESKEW = SCSI_DEFAULT_DESKEW;
+			*SCSI_CTRL_TIMING = SCSI_DEFAULT_TIMING;
 		}
 
 		*SCSI_CTRL_PHASE = newPhase;
@@ -506,8 +497,8 @@ void scsiPhyReset()
 	*SCSI_CTRL_DBX = 0;
 
 	*SCSI_CTRL_SYNC_OFFSET = 0;
-	*SCSI_CTRL_DESKEW = SCSI_SCSI1_DESKEW;
-	*SCSI_CTRL_TIMING = SCSI_SCSI1_TIMING;
+	*SCSI_CTRL_DESKEW = SCSI_DEFAULT_DESKEW;
+	*SCSI_CTRL_TIMING = SCSI_DEFAULT_TIMING;
 
 	// DMA Benchmark code
 	// Currently 11MB/s.
@@ -601,6 +592,14 @@ void scsiPhyReset()
 	}
 	#endif
 
+	//#ifdef SCSI_FREQ_TEST
+	while(1)
+	{
+		*SCSI_CTRL_DBX = 0xAA;
+		*SCSI_CTRL_DBX = 0x55;
+	}
+	//#endif
+
 }
 
 static void scsiPhyInitDMA()
@@ -673,8 +672,8 @@ void scsiPhyInit()
 	*SCSI_CTRL_DBX = 0;
 
 	*SCSI_CTRL_SYNC_OFFSET = 0;
-	*SCSI_CTRL_DESKEW = SCSI_SCSI1_DESKEW;
-	*SCSI_CTRL_TIMING = SCSI_SCSI1_TIMING;
+	*SCSI_CTRL_DESKEW = SCSI_DEFAULT_DESKEW;
+	*SCSI_CTRL_TIMING = SCSI_DEFAULT_TIMING;
 
 }
 
@@ -702,7 +701,10 @@ void scsiPhyConfig()
 	*SCSI_CTRL_IDMASK = idMask;
 
 	*SCSI_CTRL_FLAGS =
-		(scsiDev.boardCfg.flags & S2S_CFG_DISABLE_GLITCH) ? 1 : 0;
+		((scsiDev.boardCfg.flags & S2S_CFG_DISABLE_GLITCH) ?
+			SCSI_CTRL_FLAGS_DISABLE_GLITCH : 0) |
+		((scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY) ?
+			SCSI_CTRL_FLAGS_ENABLE_PARITY : 0);
 
 }
 

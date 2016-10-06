@@ -669,10 +669,12 @@ void scsiDiskPoll()
 		// int scsiActive = 0;
 		// int sdActive = 0;
 
+		int parityError = 0;
 		while ((i < totalSDSectors) &&
 			(likely(scsiDev.phase == DATA_OUT) || // scsiDisconnect keeps our phase.
 				scsiComplete) &&
-			likely(!scsiDev.resetFlag))
+			likely(!scsiDev.resetFlag) &&
+			likely(!parityError))
 		{
 			// Well, until we have some proper non-blocking SD code, we must
 			// do this in a half-duplex fashion. We need to write as much as
@@ -681,8 +683,11 @@ void scsiDiskPoll()
 			uint32_t rem = totalSDSectors - i;
 			uint32_t sectors =
 				rem < maxSectors ? rem : maxSectors;
-			scsiRead(&scsiDev.data[0], sectors * SD_SECTOR_SIZE);
-			sdTmpWrite(&scsiDev.data[0], i + sdLBA, sectors);
+			scsiRead(&scsiDev.data[0], sectors * SD_SECTOR_SIZE, &parityError);
+			if (!parityError)
+			{
+				sdTmpWrite(&scsiDev.data[0], i + sdLBA, sectors);
+			}
 			i += sectors;
 #if 0
 			// Wait for the next DMA interrupt. It's beneficial to halt the
@@ -825,9 +830,8 @@ void scsiDiskPoll()
 
 		if (scsiDev.phase == DATA_OUT)
 		{
-			if (scsiDev.parityError &&
-				(scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY) &&
-				(scsiDev.compatMode >= COMPAT_SCSI2))
+			if (parityError &&
+				(scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY))
 			{
 				scsiDev.target->sense.code = ABORTED_COMMAND;
 				scsiDev.target->sense.asc = SCSI_PARITY_ERROR;

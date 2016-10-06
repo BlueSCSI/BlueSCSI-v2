@@ -97,7 +97,6 @@ void process_MessageIn()
 	{
 		// Go back to the command phase and start again.
 		scsiDev.phase = COMMAND;
-		scsiDev.parityError = 0;
 		scsiDev.dataPtr = 0;
 		scsiDev.savedDataPtr = 0;
 		scsiDev.dataLen = 0;
@@ -201,18 +200,17 @@ static void process_DataOut()
 		scsiDev.dataLen = sizeof(scsiDev.data);
 	}
 
-	scsiDev.parityError = 0;
 	len = scsiDev.dataLen - scsiDev.dataPtr;
 	if (len > 0)
 	{
 		scsiEnterPhase(DATA_OUT);
 
-		scsiRead(scsiDev.data + scsiDev.dataPtr, len);
+		int parityError = 0;
+		scsiRead(scsiDev.data + scsiDev.dataPtr, len, &parityError);
 		scsiDev.dataPtr += len;
 
-		if (scsiDev.parityError &&
-			(scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY) &&
-			(scsiDev.compatMode >= COMPAT_SCSI2))
+		if (parityError &&
+			(scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY))
 		{
 			scsiDev.target->sense.code = ABORTED_COMMAND;
 			scsiDev.target->sense.asc = SCSI_PARITY_ERROR;
@@ -242,16 +240,22 @@ static void process_Command()
 	uint8_t control;
 
 	scsiEnterPhase(COMMAND);
-	scsiDev.parityError = 0;
 
 	memset(scsiDev.cdb + 6, 0, sizeof(scsiDev.cdb) - 6);
-	scsiRead(scsiDev.cdb, 6);
+	int parityError = 0;
+	scsiRead(scsiDev.cdb, 6, &parityError);
 
 	group = scsiDev.cdb[0] >> 5;
 	scsiDev.cdbLen = CmdGroupBytes[group];
-	if (scsiDev.cdbLen - 6 > 0)
+	if (parityError &&
+		(scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY))
 	{
-		scsiRead(scsiDev.cdb + 6, scsiDev.cdbLen - 6);
+		// Don't try and read more bytes, as we cannot be sure what group
+		// the command should be.
+	}
+	else if (scsiDev.cdbLen - 6 > 0)
+	{
+		scsiRead(scsiDev.cdb + 6, scsiDev.cdbLen - 6, &parityError);
 	}
 
 	command = scsiDev.cdb[0];
@@ -274,9 +278,8 @@ static void process_Command()
 		memset(scsiDev.cdb, 0xff, sizeof(scsiDev.cdb));
 		return;
 	}
-	else if (scsiDev.parityError &&
-		(scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY) &&
-		(scsiDev.compatMode >= COMPAT_SCSI2))
+	else if (parityError &&
+		(scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY))
 	{
 		scsiDev.target->sense.code = ABORTED_COMMAND;
 		scsiDev.target->sense.asc = SCSI_PARITY_ERROR;
@@ -461,7 +464,6 @@ static void scsiReset()
 
 	scsiPhyReset();
 
-	scsiDev.parityError = 0;
 	scsiDev.phase = BUS_FREE;
 	scsiDev.atnFlag = 0;
 	scsiDev.resetFlag = 0;
@@ -507,7 +509,6 @@ static void enter_SelectionPhase()
 	// Ignore stale versions of this flag, but ensure we know the
 	// current value if the flag is still set.
 	scsiDev.atnFlag = 0;
-	scsiDev.parityError = 0;
 	scsiDev.dataPtr = 0;
 	scsiDev.savedDataPtr = 0;
 	scsiDev.dataLen = 0;
@@ -559,7 +560,6 @@ static void process_SelectionPhase()
 		}
 	}
 	if ((target != NULL) && (selStatus & 0x40))
-// TODO		(goodParity || !(scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY) || !atnFlag)
 	{
 		// We've been selected!
 		// Assert BSY - Selection success!
@@ -591,7 +591,7 @@ static void process_SelectionPhase()
 		{
 			scsiDev.compatMode = COMPAT_SCSI1;
 		}
-		else if (scsiDev.compatMode == COMPAT_UNKNOWN)
+		else
 		{
 			scsiDev.compatMode = COMPAT_SCSI2;
 		}
@@ -622,13 +622,11 @@ static void process_MessageOut()
 	scsiEnterPhase(MESSAGE_OUT);
 
 	scsiDev.atnFlag = 0;
-	scsiDev.parityError = 0;
 	scsiDev.msgOut = scsiReadByte();
 	scsiDev.msgCount++;
 
-	if (scsiDev.parityError &&
-		(scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY) &&
-		(scsiDev.compatMode >= COMPAT_SCSI2))
+	if (scsiParityError() &&
+		(scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY))
 	{
 		// Skip the remaining message bytes, and then start the MESSAGE_OUT
 		// phase again from the start. The initiator will re-send the
@@ -640,7 +638,6 @@ static void process_MessageOut()
 
 		// Go-back and try the message again.
 		scsiDev.atnFlag = 1;
-		scsiDev.parityError = 0;
 	}
 	else if (scsiDev.msgOut == 0x00)
 	{

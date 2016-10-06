@@ -24,7 +24,6 @@
 typedef struct
 {
 	int version; // SDHC = version 2.
-	int ccs; // Card Capacity Status. 1 = SDHC or SDXC
 	uint32_t capacity; // in 512 byte blocks
 
 	uint8_t csd[16]; // Unparsed CSD

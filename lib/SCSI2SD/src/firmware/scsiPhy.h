@@ -29,6 +29,8 @@
 #define SCSI_CTRL_DESKEW ((volatile uint8_t*)0x60000012)
 #define SCSI_CTRL_TIMING ((volatile uint8_t*)0x60000014)
 #define SCSI_CTRL_FLAGS ((volatile uint8_t*)0x60000016)
+#define SCSI_CTRL_FLAGS_DISABLE_GLITCH 0x1
+#define SCSI_CTRL_FLAGS_ENABLE_PARITY 0x2
 
 #define SCSI_STS_FIFO ((volatile uint8_t*)0x60000020)
 #define SCSI_STS_ALTFIFO ((volatile uint8_t*)0x60000022)
@@ -36,6 +38,7 @@
 #define SCSI_STS_SELECTED ((volatile uint8_t*)0x60000026)
 #define SCSI_STS_SCSI ((volatile uint8_t*)0x60000028)
 #define SCSI_STS_DBX ((volatile uint8_t*)0x6000002A)
+#define SCSI_STS_PARITY_ERR ((volatile uint8_t*)0x6000002C)
 
 #define SCSI_FIFO_DATA ((volatile uint16_t*)0x60000040)
 #define SCSI_FIFO_DEPTH 512
@@ -61,6 +64,8 @@
 #define scsiStatusSEL() ((*SCSI_STS_SCSI & 0x08) == 0x08)
 #define scsiStatusACK() ((*SCSI_STS_SCSI & 0x10) == 0x10)
 
+#define scsiParityError() ((*SCSI_STS_PARITY_ERR & 0x1) == 0x1)
+
 // Disable DMA due to errate with the STM32F205 DMA2 controller when
 // concurrently transferring FSMC (with FIFO) and APB (ie. sdio)
 // peripherals.
@@ -78,7 +83,7 @@ void scsiEnterBusFree(void);
 void scsiSetDataCount(uint32_t count);
 
 void scsiWrite(const uint8_t* data, uint32_t count);
-void scsiRead(uint8_t* data, uint32_t count);
+void scsiRead(uint8_t* data, uint32_t count, int* parityError);
 void scsiWriteByte(uint8_t value);
 uint8_t scsiReadByte(void);
 
