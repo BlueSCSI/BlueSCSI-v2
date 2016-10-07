@@ -1,4 +1,4 @@
-20161006		6.0.12
+20161006		6.0.13
 	- Fixed SCSI timing issue
 	- Added glitch filter on SCSI signals.
 	- Re-implemented SCSI parity checking.

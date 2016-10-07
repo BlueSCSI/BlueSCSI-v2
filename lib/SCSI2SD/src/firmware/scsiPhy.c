@@ -592,13 +592,13 @@ void scsiPhyReset()
 	}
 	#endif
 
-	//#ifdef SCSI_FREQ_TEST
+	#ifdef SCSI_FREQ_TEST
 	while(1)
 	{
 		*SCSI_CTRL_DBX = 0xAA;
 		*SCSI_CTRL_DBX = 0x55;
 	}
-	//#endif
+	#endif
 
 }
 
