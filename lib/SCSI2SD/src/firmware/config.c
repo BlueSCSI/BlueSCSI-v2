@@ -37,7 +37,7 @@
 
 #include <string.h>
 
-static const uint16_t FIRMWARE_VERSION = 0x060D;
+static const uint16_t FIRMWARE_VERSION = 0x060E;
 
 // 1 flash row
 static const uint8_t DEFAULT_CONFIG[128] =
@@ -170,10 +170,10 @@ debugCommand()
 	response[14] = scsiDev.lastStatus;
 	response[15] = scsiDev.lastSense;
 	response[16] = scsiDev.phase;
-	response[17] = scsiStatusBSY();
-	response[18] = scsiStatusSEL();
-	response[19] = scsiStatusATN();
-	response[20] = scsiStatusRST();
+	response[17] = *SCSI_STS_SCSI;
+	response[18] = scsiDev.target != NULL ? scsiDev.target->syncOffset : 0;
+	response[19] = scsiDev.target != NULL ? scsiDev.target->syncPeriod : 0;
+	response[20] = scsiDev.minSyncPeriod;
 	response[21] = scsiDev.rstCount;
 	response[22] = scsiDev.selCount;
 	response[23] = scsiDev.msgCount;
@@ -184,7 +184,7 @@ debugCommand()
 	response[28] = scsiDev.lastSenseASC;
 	response[29] = *SCSI_STS_DBX;
 	response[30] = LastTrace;
-	response[31] = scsiStatusACK();
+	response[31] = 0; // Unused
 	hidPacket_send(response, sizeof(response));
 }
 

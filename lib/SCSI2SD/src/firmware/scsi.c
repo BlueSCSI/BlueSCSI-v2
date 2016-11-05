@@ -73,6 +73,7 @@ static void enter_BusFree()
 
 	s2s_ledOff();
 	scsiDev.phase = BUS_FREE;
+	scsiDev.selFlag = 0;
 }
 
 static void enter_MessageIn(uint8_t message)
@@ -467,6 +468,7 @@ static void scsiReset()
 	scsiDev.phase = BUS_FREE;
 	scsiDev.atnFlag = 0;
 	scsiDev.resetFlag = 0;
+	scsiDev.selFlag = 0;
 	scsiDev.lun = -1;
 	scsiDev.compatMode = COMPAT_UNKNOWN;
 
@@ -488,6 +490,7 @@ static void scsiReset()
 		scsiDev.target[i].syncOffset = 0;
 		scsiDev.target[i].syncPeriod = 0;
 	}
+	scsiDev.minSyncPeriod = 0;
 
 	scsiDiskReset();
 
@@ -548,6 +551,10 @@ static void process_SelectionPhase()
 	}
 
 	uint8_t selStatus = *SCSI_STS_SELECTED;
+	if ((selStatus == 0) && (scsiDev.boardCfg.flags & S2S_CFG_ENABLE_SEL_LATCH))
+	{
+		selStatus = scsiDev.selFlag;
+	}
 
 	int tgtIndex;
 	TargetState* target = NULL;
@@ -615,6 +622,7 @@ static void process_SelectionPhase()
 	{
 		scsiDev.phase = BUS_BUSY;
 	}
+	scsiDev.selFlag = 0;
 }
 
 static void process_MessageOut()
@@ -757,13 +765,22 @@ static void process_MessageOut()
 			int transferPeriod = extmsg[1];
 			int offset = extmsg[2];
 
-			if ((scsiDev.compatMode < COMPAT_SCSI2) ||
-				(transferPeriod > 50)) // 200ns, 5MB/s
+			if ((transferPeriod < scsiDev.minSyncPeriod) ||
+				(scsiDev.minSyncPeriod == 0))
+			{
+				scsiDev.minSyncPeriod = transferPeriod;
+			}
+
+			if ((transferPeriod > 80) || // 320ns, 3.125MB/s
+				// Amiga A590 (WD33C93 chip) only does 3.5MB/s sync
+				// After 80 we start to run out of bits in the fpga timing
+				// register.
+				(transferPeriod == 0))
 			{
 				scsiDev.target->syncOffset = 0;
 				scsiDev.target->syncPeriod = 0;
 			} else {
-				scsiDev.target->syncOffset = offset < 15 ? offset : 15;
+				scsiDev.target->syncOffset = offset < 63 ? offset : 63;
 				// FAST20 / 50ns / 20MHz is disabled for now due to
 				// data corruption while reading data. We can count the
 				// ACK's correctly, but can't save the data to a register
@@ -778,7 +795,7 @@ static void process_MessageOut()
 				{
 					scsiDev.target->syncPeriod = 25; // 100ns, 10MB/s
 				} else {
-					scsiDev.target->syncPeriod = 50; // 200ns, 5MB/s
+					scsiDev.target->syncPeriod = transferPeriod;
 				}
 			}
 
@@ -831,7 +848,7 @@ void scsiPoll(void)
 		// one initiator in the chain. Support this by moving
 		// straight to selection if SEL is asserted.
 		// ie. the initiator won't assert BSY and it's own ID before moving to selection.
-		else if (*SCSI_STS_SELECTED)
+		else if (scsiDev.selFlag || *SCSI_STS_SELECTED)
 		{
 			enter_SelectionPhase();
 		}
@@ -840,7 +857,7 @@ void scsiPoll(void)
 	case BUS_BUSY:
 		// Someone is using the bus. Perhaps they are trying to
 		// select us.
-		if (*SCSI_STS_SELECTED)
+		if (scsiDev.selFlag || *SCSI_STS_SELECTED)
 		{
 			enter_SelectionPhase();
 		}
@@ -937,6 +954,7 @@ void scsiInit()
 
 	scsiDev.atnFlag = 0;
 	scsiDev.resetFlag = 1;
+	scsiDev.selFlag = 0;
 	scsiDev.phase = BUS_FREE;
 	scsiDev.target = NULL;
 	scsiDev.compatMode = COMPAT_UNKNOWN;

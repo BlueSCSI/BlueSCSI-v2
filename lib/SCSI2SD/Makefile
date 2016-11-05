@@ -34,7 +34,6 @@ build/stm32cubemx/gpio.o: STM32CubeMX/SCSI2SD-V6/Src/gpio.c
 build/stm32cubemx/main.o: STM32CubeMX/SCSI2SD-V6/Src/main.c
 build/stm32cubemx/sdio.o: STM32CubeMX/SCSI2SD-V6/Src/sdio.c
 build/stm32cubemx/spi.o: STM32CubeMX/SCSI2SD-V6/Src/spi.c
-build/stm32cubemx/tim.o: STM32CubeMX/SCSI2SD-V6/Src/tim.c
 build/stm32cubemx/stm32f2xx_hal_msp.o: STM32CubeMX/SCSI2SD-V6/Src/stm32f2xx_hal_msp.c
 build/stm32cubemx/stm32f2xx_it.o: STM32CubeMX/SCSI2SD-V6/Src/stm32f2xx_it.c
 build/stm32cubemx/usart.o: STM32CubeMX/SCSI2SD-V6/Src/usart.c
@@ -52,8 +51,6 @@ build/stm32cubemx/stm32f2xx_hal_rcc.o: STM32CubeMX/SCSI2SD-V6/Drivers/STM32F2xx_
 build/stm32cubemx/stm32f2xx_hal_sd.o: STM32CubeMX/SCSI2SD-V6/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_sd.c
 build/stm32cubemx/stm32f2xx_hal_spi.o: STM32CubeMX/SCSI2SD-V6/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_spi.c
 build/stm32cubemx/stm32f2xx_hal_sram.o: STM32CubeMX/SCSI2SD-V6/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_sram.c
-build/stm32cubemx/stm32f2xx_hal_tim.o: STM32CubeMX/SCSI2SD-V6/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_tim.c
-build/stm32cubemx/stm32f2xx_hal_tim_ex.o: STM32CubeMX/SCSI2SD-V6/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_tim_ex.c
 build/stm32cubemx/stm32f2xx_hal_uart.o: STM32CubeMX/SCSI2SD-V6/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_uart.c
 build/stm32cubemx/stm32f2xx_ll_fsmc.o: STM32CubeMX/SCSI2SD-V6/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_ll_fsmc.c
 build/stm32cubemx/stm32f2xx_ll_sdmmc.o: STM32CubeMX/SCSI2SD-V6/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_ll_sdmmc.c
@@ -78,7 +75,6 @@ STM32OBJS = \
 	build/stm32cubemx/main.o \
 	build/stm32cubemx/sdio.o \
 	build/stm32cubemx/spi.o \
-	build/stm32cubemx/tim.o \
 	build/stm32cubemx/stm32f2xx_hal_msp.o \
 	build/stm32cubemx/stm32f2xx_it.o \
 	build/stm32cubemx/usart.o \
@@ -96,8 +92,6 @@ STM32OBJS = \
 	build/stm32cubemx/stm32f2xx_hal_sd.o \
 	build/stm32cubemx/stm32f2xx_hal_spi.o \
 	build/stm32cubemx/stm32f2xx_hal_sram.o \
-	build/stm32cubemx/stm32f2xx_hal_tim.o \
-	build/stm32cubemx/stm32f2xx_hal_tim_ex.o \
 	build/stm32cubemx/stm32f2xx_hal_uart.o \
 	build/stm32cubemx/stm32f2xx_ll_fsmc.o \
 	build/stm32cubemx/stm32f2xx_ll_sdmmc.o \
@@ -130,6 +124,7 @@ USBCOMPOSITE_SRC= \
 
 SRC = \
 	src/firmware/bootloader.c \
+	src/firmware/bsp.c \
 	src/firmware/cdrom.c \
 	src/firmware/config.c \
 	src/firmware/disk.c \

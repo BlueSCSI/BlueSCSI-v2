@@ -28,26 +28,44 @@
 
 #include <string.h>
 
-// 5MB/s sync and async.
-// Assumes a 96MHz fpga clock.
+// Time until we consider ourselves selected
+// 400ns at 108MHz
+#define SCSI_DEFAULT_SELECTION 43
+#define SCSI_FAST_SELECTION 5
+
+// async.
+// Assumes a 108MHz fpga clock.
 // 2:0 Deskew count, 55ns
 // 6:4 Hold count, 53ns
 // 3:0 Assertion count, 80ns
 #define SCSI_DEFAULT_DESKEW 0x6
-#define SCSI_DEFAULT_TIMING ((0x5 << 4) | 0x8)
+#define SCSI_DEFAULT_TIMING ((0x6 << 4) | 0x9)
+
+// 3.125MB/s (80 period) to < 10MB/s sync
+// Assumes a 108MHz fpga clock. (9 ns)
+// (((period * 4) / 2) * 0.8) / 9
+// Done using 3 fixed point math.
+// 2:0 Deskew count, 55ns normal, or 25ns if faster than 5.5MB/s
+// 6:4 Hold count, 53ns normal, or 33ns if faster than 5.5MB/s
+// 3:0 Assertion count, variable
+#define SCSI_SYNC_DESKEW(period) (period < 45 ? SCSI_FAST10_DESKEW : SCSI_DEFAULT_DESKEW)
+#define SCSI_SYNC_TIMING(period) (((period < 45 ? 0x4 : 0x6) << 4) | ((((((int)period) * 177) + 750)/1000) & 0xF))
 
 // 10MB/s
 // 2:0 Deskew count, 25ns
 // 6:4 Hold count, 33ns
 // 3:0 Assertion count, 30ns
-#define SCSI_FAST10_DESKEW 3
+// We want deskew + hold + assert + 3 to add up to 11 clocks
+// the fpga code has 1 clock of overhead when transitioning from deskew to
+// assert to hold
+#define SCSI_FAST10_DESKEW 2
 #define SCSI_FAST10_TIMING ((0x3 << 4) | 0x3)
 
 // 20MB/s
 // 2:0 Deskew count, 12ns
 // 6:4 Hold count, 17ns
 // 3:0 Assertion count, 15ns
-#define SCSI_FAST20_DESKEW 2
+#define SCSI_FAST20_DESKEW 1
 #define SCSI_FAST20_TIMING ((0x2 << 4) | 0x2)
 
 // Private DMA variables.
@@ -59,22 +77,6 @@ static DMA_HandleTypeDef fsmcToMem;
 
 volatile uint8_t scsiRxDMAComplete;
 volatile uint8_t scsiTxDMAComplete;
-
-#if 0
-CY_ISR_PROTO(scsiRxCompleteISR);
-CY_ISR(scsiRxCompleteISR)
-{
-	traceIrq(trace_scsiRxCompleteISR);
-	scsiRxDMAComplete = 1;
-}
-
-CY_ISR_PROTO(scsiTxCompleteISR);
-CY_ISR(scsiTxCompleteISR)
-{
-	traceIrq(trace_scsiTxCompleteISR);
-	scsiTxDMAComplete = 1;
-}
-#endif
 
 uint8_t scsiPhyFifoSel = 0; // global
 
@@ -93,9 +95,14 @@ void EXTI4_IRQHandler()
 		__HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_4);
 
 		scsiDev.resetFlag = scsiDev.resetFlag || scsiStatusRST();
-		// TODO grab SEL status as well
 
+		// selFlag is required for Philips P2000C which releases it after 600ns
+		// without waiting for BSY.
+		// Also required for some early Mac Plus roms
+		scsiDev.selFlag = *SCSI_STS_SELECTED;
 	}
+
+	__SEV(); // Set event. See corresponding __WFE() calls.
 }
 
 static void assertFail()
@@ -129,7 +136,10 @@ scsiReadByte(void)
 	scsiSetDataCount(1);
 
 	trace(trace_spinPhyRxFifo);
-	while (!scsiPhyComplete() && likely(!scsiDev.resetFlag)) {}
+	while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
+	{
+		__WFE(); // Wait for event
+	}
 	scsiPhyFifoFlip();
 	uint8_t val = scsiPhyRx();
 	// TODO scsiDev.parityError = scsiDev.parityError || SCSI_Parity_Error_Read();
@@ -152,6 +162,7 @@ static void
 scsiReadPIO(uint8_t* data, uint32_t count)
 {
 	uint16_t* fifoData = (uint16_t*)data;
+
 	for (int i = 0; i < (count + 1) / 2; ++i)
 	{
 		fifoData[i] = scsiPhyRx(); // TODO ASSUMES LITTLE ENDIAN
@@ -218,7 +229,10 @@ scsiRead(uint8_t* data, uint32_t count, int* parityError)
 
 	while (i < count && likely(!scsiDev.resetFlag))
 	{
-		while (!scsiPhyComplete() && likely(!scsiDev.resetFlag)) {}
+		while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
+		{
+			__WFE(); // Wait for event
+		}
 		*parityError |= scsiParityError();
 		scsiPhyFifoFlip();
 
@@ -287,7 +301,10 @@ scsiWriteByte(uint8_t value)
 	scsiSetDataCount(1);
 
 	trace(trace_spinTxComplete);
-	while (!scsiPhyComplete() && likely(!scsiDev.resetFlag)) {}
+	while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
+	{
+		__WFE(); // Wait for event
+	}
 
 #if FIFODEBUG
 	if (!scsiPhyFifoAltEmpty()) {
@@ -382,6 +399,7 @@ scsiWrite(const uint8_t* data, uint32_t count)
 
 		while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
 		{
+			__WFE(); // Wait for event
 		}
 
 #if FIFODEBUG
@@ -397,6 +415,7 @@ scsiWrite(const uint8_t* data, uint32_t count)
 	}
 	while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
 	{
+		__WFE(); // Wait for event
 	}
 
 #if FIFODEBUG
@@ -450,10 +469,11 @@ void scsiEnterPhase(int phase)
 				// SCSI2 FAST Timing. 10MB/s.
 				*SCSI_CTRL_DESKEW = SCSI_FAST10_DESKEW;
 				*SCSI_CTRL_TIMING = SCSI_FAST10_TIMING;
-			} else {
-				// 5MB/s Timing
-				*SCSI_CTRL_DESKEW = SCSI_DEFAULT_DESKEW;
-				*SCSI_CTRL_TIMING = SCSI_DEFAULT_TIMING;
+			}
+			else
+			{
+				*SCSI_CTRL_DESKEW = SCSI_SYNC_DESKEW(scsiDev.target->syncPeriod);
+				*SCSI_CTRL_TIMING = SCSI_SYNC_TIMING(scsiDev.target->syncPeriod);
 			}
 
 			*SCSI_CTRL_SYNC_OFFSET = scsiDev.target->syncOffset;
@@ -675,6 +695,8 @@ void scsiPhyInit()
 	*SCSI_CTRL_DESKEW = SCSI_DEFAULT_DESKEW;
 	*SCSI_CTRL_TIMING = SCSI_DEFAULT_TIMING;
 
+	*SCSI_CTRL_SEL_TIMING = SCSI_DEFAULT_SELECTION;
+
 }
 
 void scsiPhyConfig()
@@ -706,6 +728,9 @@ void scsiPhyConfig()
 		((scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY) ?
 			SCSI_CTRL_FLAGS_ENABLE_PARITY : 0);
 
+	*SCSI_CTRL_SEL_TIMING =
+		(scsiDev.boardCfg.flags & S2S_CFG_ENABLE_SEL_LATCH) ?
+			SCSI_FAST_SELECTION : SCSI_DEFAULT_SELECTION;
 }
 
 

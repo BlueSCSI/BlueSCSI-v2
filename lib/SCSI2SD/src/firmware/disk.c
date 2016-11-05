@@ -558,8 +558,11 @@ void scsiDiskPoll()
 			{
 				prep += completedDmaSectors;
 				sdActive -= completedDmaSectors;
-			} else if (sdActive > 1) {
-				if (scsiDev.data[SD_SECTOR_SIZE * (prep % buffers) + 511] != 0x33) {
+			} else if (sdActive > 1)
+			{
+				if ((scsiDev.data[SD_SECTOR_SIZE * (prep % buffers) + 510] != 0xAA) ||
+					(scsiDev.data[SD_SECTOR_SIZE * (prep % buffers) + 511] != 0x33))
+				{
 					prep += 1;
 					sdActive -= 1;
 				}
@@ -584,6 +587,7 @@ void scsiDiskPoll()
 
 				for (int dodgy = 0; dodgy < sectors; dodgy++)
 				{
+					scsiDev.data[SD_SECTOR_SIZE * (startBuffer + dodgy) + 510] = 0xAA;
 					scsiDev.data[SD_SECTOR_SIZE * (startBuffer + dodgy) + 511] = 0x33;
 				}
 
@@ -621,12 +625,26 @@ void scsiDiskPoll()
 				}
 
 				uint16_t* scsiDmaData = (uint16_t*) &(scsiDev.data[SD_SECTOR_SIZE * (i % buffers)]);
-				for (int k = 0; k < (dmaBytes + 1) / 2; ++k)
+				// Manually unrolled loop for performance.
+				// -Os won't unroll this for us automatically,
+				// especially since scsiPhyTx does volatile stuff.
+				// Reduces bus utilisation by making the fsmc split
+				// 32bits into 2 16 bit writes.
+				int k = 0;
+				for (; k + 4 < (dmaBytes + 1) / 2; k += 4)
+				{
+					scsiPhyTx32(scsiDmaData[k], scsiDmaData[k+1]);
+					scsiPhyTx32(scsiDmaData[k+2], scsiDmaData[k+3]);
+				}
+				for (; k < (dmaBytes + 1) / 2; ++k)
 				{
 					scsiPhyTx(scsiDmaData[k]);
 				}
 				i++;
-				while (!scsiPhyComplete() && !scsiDev.resetFlag) {}
+				while (!scsiPhyComplete() && !scsiDev.resetFlag)
+				{
+					__WFE(); // Wait for event
+				}
 				scsiPhyFifoFlip();
 				scsiSetDataCount(dmaBytes);
 			}
@@ -639,6 +657,7 @@ void scsiDiskPoll()
 			likely(scsiDev.phase == DATA_IN) &&
 			likely(!scsiDev.resetFlag))
 		{
+			__WFE(); // Wait for event
 		}
 
 

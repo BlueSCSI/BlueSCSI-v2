@@ -18,6 +18,7 @@
 #include "stm32f2xx.h"
 
 #include "config.h"
+#include "bsp.h"
 #include "disk.h"
 #include "fpga.h"
 #include "led.h"
@@ -26,6 +27,7 @@
 #include "scsiPhy.h"
 #include "time.h"
 #include "trace.h"
+#include "sdio.h"
 #include "usb_device/usb_device.h"
 #include "usb_device/usbd_composite.h"
 #include "usb_device/usbd_msc_storage_sd.h"
@@ -33,6 +35,8 @@
 
 const char* Notice = "Copyright (C) 2016 Michael McMaster <michael@codesrc.com>";
 uint32_t lastSDPoll;
+
+static int isUsbStarted;
 
 void mainEarlyInit()
 {
@@ -56,6 +60,7 @@ void mainInit()
 	scsiInit();
 
 	MX_USB_DEVICE_Init(); // USB lun config now available.
+	isUsbStarted = 1;
 
 	// Optional bootup delay
 	int delaySeconds = 0;
@@ -98,10 +103,39 @@ void mainLoop()
 				scsiPhyConfig();
 				scsiInit();
 
+				// Is a USB host connected ?
+				if (isUsbStarted)
+				{
+					USBD_Stop(&hUsbDeviceFS);
+					s2s_delay_ms(128);
+					USBD_Start(&hUsbDeviceFS);
+				}
+			}
 
-				USBD_Stop(&hUsbDeviceFS);
-				s2s_delay_ms(128);
+			// Can we speed up the SD card ?
+			// Don't combine with the above block because that won't
+			// run if the SD card is present at startup.
+			// Don't use VBUS monitoring because that just tells us about
+			// power, which could be from a charger
+			if ((blockDev.state & DISK_PRESENT) &&
+				isUsbStarted &&
+				(scsiDev.cmdCount > 0) && // no need for speed without scsi
+				!USBD_Composite_IsConfigured(&hUsbDeviceFS))
+			{
+				if (HAL_SD_HighSpeed(&hsd) == SD_OK)
+				{
+					USBD_Stop(&hUsbDeviceFS);
+					s2s_setFastClock();
+					isUsbStarted = 0;
+				}
+			}
+
+			else if (!(blockDev.state & DISK_PRESENT) && !isUsbStarted)
+			{
+				// Good time to restart USB.
+				s2s_setNormalClock();
 				USBD_Start(&hUsbDeviceFS);
+				isUsbStarted = 1;
 			}
 		}
 		else

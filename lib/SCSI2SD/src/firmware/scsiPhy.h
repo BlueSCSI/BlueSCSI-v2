@@ -31,6 +31,7 @@
 #define SCSI_CTRL_FLAGS ((volatile uint8_t*)0x60000016)
 #define SCSI_CTRL_FLAGS_DISABLE_GLITCH 0x1
 #define SCSI_CTRL_FLAGS_ENABLE_PARITY 0x2
+#define SCSI_CTRL_SEL_TIMING ((volatile uint8_t*)0x60000018)
 
 #define SCSI_STS_FIFO ((volatile uint8_t*)0x60000020)
 #define SCSI_STS_ALTFIFO ((volatile uint8_t*)0x60000022)
@@ -55,6 +56,11 @@
 }
 
 #define scsiPhyTx(val) *SCSI_FIFO_DATA = (val)
+
+// little endian specific !. Also relies on the fsmc outputting the lower
+// half-word first.
+#define scsiPhyTx32(a,b) *((volatile uint32_t*)SCSI_FIFO_DATA) = (((uint32_t)(b)) << 16) | (a)
+
 #define scsiPhyRx() *SCSI_FIFO_DATA
 #define scsiPhyComplete() ((*SCSI_STS_FIFO_COMPLETE & 0x01) == 0x01)
 

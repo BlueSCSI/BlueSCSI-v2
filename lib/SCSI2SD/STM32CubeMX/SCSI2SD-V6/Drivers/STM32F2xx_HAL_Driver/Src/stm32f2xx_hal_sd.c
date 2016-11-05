@@ -1953,10 +1953,12 @@ HAL_SD_ErrorTypedef HAL_SD_HighSpeed (SD_HandleTypeDef *hsd)
     __HAL_SD_SDIO_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
     
     /* Test if the switch mode HS is ok */
-    if ((SD_hs[13]& 2) != 2)
-    {
-      errorstate = SD_UNSUPPORTED_FEATURE;
-    } 
+    // MM: These bits (0 to 271) are reserved in the spec I'm looking at ???
+    // Should be safe to ignore the result.
+    //if ((SD_hs[13]& 2) != 2)
+    //{
+      //errorstate = SD_UNSUPPORTED_FEATURE;
+    //} 
   }
   
   return errorstate;

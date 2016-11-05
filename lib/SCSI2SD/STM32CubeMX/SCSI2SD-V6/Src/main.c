@@ -34,7 +34,6 @@
 #include "stm32f2xx_hal.h"
 #include "sdio.h"
 #include "spi.h"
-#include "tim.h"
 #include "usart.h"
 #include "usb_device.h"
 #include "usb_host.h"
@@ -91,9 +90,8 @@ int main(void)
   MX_FSMC_Init();
   MX_SDIO_SD_Init();
   MX_SPI1_Init();
-  // TODO re-enable MX_TIM4_Init();
-  // TODO re-enable MX_USART3_UART_Init();
-  // TODO re-enable MX_USB_HOST_Init();
+  MX_USART3_UART_Init(); // Not used, but we don't want the pins floating.
+  // MX_USB_HOST_Init(); // Not used, pins set to GPIO
 
   /* USER CODE BEGIN 2 */
   mainInit();
@@ -105,7 +103,7 @@ int main(void)
   while (1)
   {
   /* USER CODE END WHILE */
-    // TODO re-enable MX_USB_HOST_Process();
+    //MX_USB_HOST_Process();
 
   /* USER CODE BEGIN 3 */
   mainLoop();
@@ -130,9 +128,9 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
 
   RCC_OscInitStruct.PLL.PLLM = 20;
-  RCC_OscInitStruct.PLL.PLLN = 192;
-  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
-  RCC_OscInitStruct.PLL.PLLQ = 4;
+  RCC_OscInitStruct.PLL.PLLN = 432;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
+  RCC_OscInitStruct.PLL.PLLQ = 9;
   HAL_RCC_OscConfig(&RCC_OscInitStruct);
 
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_SYSCLK|RCC_CLOCKTYPE_PCLK1

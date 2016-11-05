@@ -22,6 +22,8 @@
 // The maximum burst is 16 bytes.
 #define S2S_DMA_ALIGN __attribute__((aligned(1024)))
 
+void s2s_setNormalClock();
+void s2s_setFastClock();
 
 #endif
 

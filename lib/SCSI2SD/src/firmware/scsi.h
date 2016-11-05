@@ -115,6 +115,9 @@ typedef struct
 	// Set to true (1) if the RST flag was set.
 	volatile int resetFlag;
 
+	// Set to sel register if the SEL flag was set.
+	volatile int selFlag;
+
 	// Set to true (1) if a parity error was observed.
 	int parityError;
 
@@ -151,6 +154,7 @@ typedef struct
 	uint8_t lastStatus;
 	uint8_t lastSense;
 	uint16_t lastSenseASC;
+	uint8_t minSyncPeriod; // Debug use only.
 
 	int needSyncNegotiationAck;
 } ScsiDevice;

@@ -543,7 +543,7 @@ private:
 			ss << "dfu-util ";
 		} else {
 			wxFileName exePath(wxStandardPaths::Get().GetExecutablePath());
-			ss << exePath.GetPathWithSep() << "dfu-util ";
+			ss << '"' << exePath.GetPathWithSep() << "dfu-util\" ";
 		}
 		ss << "--download \"" << filename.c_str() << "\" --alt 0 --reset";
 #endif
