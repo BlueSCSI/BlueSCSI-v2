@@ -42,6 +42,10 @@ void hidPacket_recv(const uint8_t* bytes, size_t len);
 // available.
 const uint8_t* hidPacket_getPacket(size_t* len);
 
+// Returns the received packet contents, or NULL if a complete packet isn't
+// available.
+const uint8_t* hidPacket_peekPacket(size_t* len);
+
 // Call this with packet data to send. len <= USBHID_LEN
 // Overwrites any packet currently being sent.
 void hidPacket_send(const uint8_t* bytes, size_t len);

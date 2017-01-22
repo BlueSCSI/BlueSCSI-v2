@@ -111,6 +111,21 @@ hidPacket_getPacket(size_t* len)
 	}
 }
 
+const uint8_t*
+hidPacket_peekPacket(size_t* len)
+{
+	if (rx.state == COMPLETE)
+	{
+		*len = rx.offset;
+		return rx.buffer;
+	}
+	else
+	{
+		*len = 0;
+		return NULL;
+	}
+}
+
 void hidPacket_send(const uint8_t* bytes, size_t len)
 {
 	if (len <= sizeof(tx.buffer))

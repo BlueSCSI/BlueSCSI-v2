@@ -476,7 +476,17 @@ void scsiEnterPhase(int phase)
 				*SCSI_CTRL_TIMING = SCSI_SYNC_TIMING(scsiDev.target->syncPeriod);
 			}
 
-			*SCSI_CTRL_SYNC_OFFSET = scsiDev.target->syncOffset;
+			// See note 26 in SCSI 2 standard: SCSI 1 implementations may assume
+			// "leading edge of the first REQ pulse beyond the REQ/ACK offset
+			// agreement would not occur until after the trailing edge of the
+			// last ACK pulse within the agreement."
+			// We simply subtract 1 from the offset to meet this requirement.
+			if (scsiDev.target->syncOffset >= 2)
+			{
+				*SCSI_CTRL_SYNC_OFFSET = scsiDev.target->syncOffset - 1;
+			} else {
+				*SCSI_CTRL_SYNC_OFFSET = scsiDev.target->syncOffset;
+			}
 		} else {
 			*SCSI_CTRL_SYNC_OFFSET = 0;
 
@@ -545,70 +555,6 @@ void scsiPhyReset()
 		s2s_ledOff();
 
 		for(int i = 0; i < 10; ++i) s2s_delay_ms(1000);
-	}
-	#endif
-
-	// FPGA comms test code
-	#ifdef FPGA_TEST
-	while(1)
-	{
-		for (int j = 0; j < SCSI_FIFO_DEPTH; ++j)
-		{
-			scsiDev.data[j] = j;
-		}
-
-		if (!scsiPhyFifoEmpty())
-		{
-			assertFail();
-		}
-
-		*SCSI_CTRL_PHASE = DATA_IN;
-		HAL_DMA_Start(
-			&memToFSMC,
-			(uint32_t) &scsiDev.data[0],
-			(uint32_t) SCSI_FIFO_DATA,
-			SCSI_FIFO_DEPTH / 4);
-
-		HAL_DMA_PollForTransfer(
-			&memToFSMC,
-			HAL_DMA_FULL_TRANSFER,
-			0xffffffff);
-
-		if (!scsiPhyFifoFull())
-		{
-			assertFail();
-		}
-
-		memset(&scsiDev.data[0], 0, SCSI_FIFO_DEPTH);
-
-		*SCSI_CTRL_PHASE = DATA_OUT;
-		HAL_DMA_Start(
-			&fsmcToMem,
-			(uint32_t) SCSI_FIFO_DATA,
-			(uint32_t) &scsiDev.data[0],
-			SCSI_FIFO_DEPTH / 2);
-
-		HAL_DMA_PollForTransfer(
-			&fsmcToMem,
-			HAL_DMA_FULL_TRANSFER,
-			0xffffffff);
-
-		if (!scsiPhyFifoEmpty())
-		{
-			assertFail();
-		}
-
-
-		for (int j = 0; j < SCSI_FIFO_DEPTH; ++j)
-		{
-			if (scsiDev.data[j] != (uint8_t) j)
-			{
-				assertFail();
-			}
-		}
-
-		s2s_fpgaReset();
-
 	}
 	#endif
 
@@ -740,6 +686,7 @@ void scsiPhyConfig()
 // 8 = CD error
 // 16 = IO error
 // 32 = other error
+// 64 = fpga comms error
 int scsiSelfTest()
 {
 	if (scsiDev.phase != BUS_FREE)
@@ -840,6 +787,69 @@ int scsiSelfTest()
 		SCSI_ClearPin(signalsOut[i]);
 	}
 	*/
+
+
+	// FPGA comms test code
+	for(i = 0; i < 10000; ++i)
+	{
+		for (int j = 0; j < SCSI_FIFO_DEPTH; ++j)
+		{
+			scsiDev.data[j] = j;
+		}
+
+		if (!scsiPhyFifoEmpty())
+		{
+			assertFail();
+		}
+
+		*SCSI_CTRL_PHASE = DATA_IN;
+		HAL_DMA_Start(
+			&memToFSMC,
+			(uint32_t) &scsiDev.data[0],
+			(uint32_t) SCSI_FIFO_DATA,
+			SCSI_FIFO_DEPTH / 4);
+
+		HAL_DMA_PollForTransfer(
+			&memToFSMC,
+			HAL_DMA_FULL_TRANSFER,
+			0xffffffff);
+
+		if (!scsiPhyFifoFull())
+		{
+			assertFail();
+		}
+
+		memset(&scsiDev.data[0], 0, SCSI_FIFO_DEPTH);
+
+		*SCSI_CTRL_PHASE = DATA_OUT;
+		HAL_DMA_Start(
+			&fsmcToMem,
+			(uint32_t) SCSI_FIFO_DATA,
+			(uint32_t) &scsiDev.data[0],
+			SCSI_FIFO_DEPTH / 2);
+
+		HAL_DMA_PollForTransfer(
+			&fsmcToMem,
+			HAL_DMA_FULL_TRANSFER,
+			0xffffffff);
+
+		if (!scsiPhyFifoEmpty())
+		{
+			assertFail();
+		}
+
+
+		for (int j = 0; j < SCSI_FIFO_DEPTH; ++j)
+		{
+			if (scsiDev.data[j] != (uint8_t) j)
+			{
+				result |= 64;
+			}
+		}
+
+		s2s_fpgaReset();
+
+	}
 
 	*SCSI_CTRL_BSY = 0;
 	return result;

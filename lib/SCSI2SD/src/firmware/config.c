@@ -25,6 +25,7 @@
 #include "trace.h"
 #include "bootloader.h"
 #include "bsp.h"
+#include "spinlock.h"
 
 #include "../../include/scsi2sd.h"
 #include "../../include/hidpacket.h"
@@ -63,6 +64,25 @@ enum USB_STATE
 
 
 static int usbInEpState;
+
+static void s2s_debugTimer();
+
+// Debug timer to log via USB.
+// Timer 6 & 7 is a simple counter with no external IO supported.
+static s2s_lock_t usbDevLock = s2s_lock_init;
+TIM_HandleTypeDef htim7;
+static int debugTimerStarted = 0;
+void TIM7_IRQHandler()
+{
+	HAL_TIM_IRQHandler(&htim7);
+}
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+	if (s2s_spin_trylock(&usbDevLock)) {
+		s2s_debugTimer();
+		s2s_spin_unlock(&usbDevLock);
+	}
+}
 
 void s2s_configInit(S2S_BoardCfg* config)
 {
@@ -108,7 +128,25 @@ void s2s_configInit(S2S_BoardCfg* config)
 			config->flags6 = S2S_CFG_ENABLE_TERMINATOR;
 		}
 	}
+}
 
+static void debugInit(void)
+{
+	if (debugTimerStarted == 1) return;
+
+	debugTimerStarted = 1;
+	// 10ms debug timer to capture logs over USB
+	__TIM7_CLK_ENABLE();
+	htim7.Instance = TIM7;
+	htim7.Init.Prescaler = 10800 - 1; // 16bit. 108MHz down to 10KHz
+	htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
+	htim7.Init.Period = 100 - 1; // 16bit. 10KHz down to 10ms.
+	htim7.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+	HAL_TIM_Base_Init(&htim7);
+	HAL_TIM_Base_Start_IT(&htim7);
+
+	HAL_NVIC_SetPriority(TIM7_IRQn, 10, 0);
+	HAL_NVIC_EnableIRQ(TIM7_IRQn);
 }
 
 
@@ -262,6 +300,9 @@ processCommand(const uint8_t* cmd, size_t cmdSize)
 		break;
 
 	case S2S_CMD_DEBUG:
+		if (debugTimerStarted == 0) {
+			debugInit();
+		}
 		debugCommand();
 		break;
 
@@ -273,10 +314,12 @@ processCommand(const uint8_t* cmd, size_t cmdSize)
 
 void s2s_configPoll()
 {
+	s2s_spin_lock(&usbDevLock);
+
 	if (!USBD_Composite_IsConfigured(&hUsbDeviceFS))
 	{
 		usbInEpState = USB_IDLE;
-		return;
+		goto out;
 	}
 
 	if (USBD_HID_IsReportReady(&hUsbDeviceFS))
@@ -322,6 +365,65 @@ void s2s_configPoll()
 		break;
 	}
 
+out:
+	s2s_spin_unlock(&usbDevLock);
+}
+
+void s2s_debugTimer()
+{
+	if (!USBD_Composite_IsConfigured(&hUsbDeviceFS))
+	{
+		usbInEpState = USB_IDLE;
+		return;
+	}
+
+	if (USBD_HID_IsReportReady(&hUsbDeviceFS))
+	{
+		uint8_t hidBuffer[USBHID_LEN];
+		int byteCount = USBD_HID_GetReport(&hUsbDeviceFS, hidBuffer, sizeof(hidBuffer));
+		hidPacket_recv(hidBuffer, byteCount);
+
+		size_t cmdSize;
+		const uint8_t* cmd = hidPacket_peekPacket(&cmdSize);
+		// This is called from an ISR, only process simple commands.
+		if (cmd && (cmdSize > 0))
+		{
+			if (cmd[0] == S2S_CMD_DEBUG)
+			{
+				hidPacket_getPacket(&cmdSize);
+				debugCommand();
+			}
+			else if (cmd[0] == S2S_CMD_PING)
+			{
+				hidPacket_getPacket(&cmdSize);
+				pingCommand();
+			}
+		}
+	}
+
+	switch (usbInEpState)
+	{
+		case USB_IDLE:
+		{
+			uint8_t hidBuffer[USBHID_LEN];
+			const uint8_t* nextChunk = hidPacket_getHIDBytes(hidBuffer);
+
+			if (nextChunk)
+			{
+				USBD_HID_SendReport (&hUsbDeviceFS, nextChunk, sizeof(hidBuffer));
+				usbInEpState = USB_DATA_SENT;
+			}
+		}
+		break;
+
+		case USB_DATA_SENT:
+			if (!USBD_HID_IsBusy(&hUsbDeviceFS))
+			{
+				// Data accepted.
+				usbInEpState = USB_IDLE;
+			}
+			break;
+	}
 }
 
 
