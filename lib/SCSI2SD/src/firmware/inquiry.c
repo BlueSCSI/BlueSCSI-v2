@@ -85,7 +85,11 @@ void s2s_scsiInquiry()
 	uint32_t allocationLength = scsiDev.cdb[4];
 
 	// SASI standard, X3T9.3_185_RevE  states that 0 == 256 bytes
-	if (allocationLength == 0) allocationLength = 256;
+	// BUT SCSI 2 standard says 0 == 0.
+	if (scsiDev.compatMode <= COMPAT_SCSI1) // excludes COMPAT_SCSI2_DISABLED
+	{
+		if (allocationLength == 0) allocationLength = 256;
+	}
 
 	if (!evpd)
 	{
@@ -210,6 +214,11 @@ uint32_t s2s_getStandardInquiry(
 
 	memcpy(out, StandardResponse, buflen);
 	out[1] = cfg->deviceTypeModifier;
+
+	if (scsiDev.compatMode >= COMPAT_SCSI2)
+	{
+		out[3] = 2; // SCSI 2 response format.
+	}
 	memcpy(&out[8], cfg->vendor, sizeof(cfg->vendor));
 	memcpy(&out[16], cfg->prodId, sizeof(cfg->prodId));
 	memcpy(&out[32], cfg->revision, sizeof(cfg->revision));

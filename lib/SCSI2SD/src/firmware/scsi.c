@@ -596,7 +596,7 @@ static void process_SelectionPhase()
 		}
 		else if (!(scsiDev.boardCfg.flags & S2S_CFG_ENABLE_SCSI2))
 		{
-			scsiDev.compatMode = COMPAT_SCSI1;
+			scsiDev.compatMode = COMPAT_SCSI2_DISABLED;
 		}
 		else
 		{

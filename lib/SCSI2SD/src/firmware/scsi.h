@@ -63,6 +63,11 @@ typedef enum
 {
 	COMPAT_UNKNOWN,
 	COMPAT_SCSI1,
+
+	// Messages are being used, yet SCSI 2 mode is disabled.
+	// This impacts interpretation of INQUIRY commands.
+	COMPAT_SCSI2_DISABLED,
+
 	COMPAT_SCSI2
 } SCSI_COMPAT_MODE;
 
