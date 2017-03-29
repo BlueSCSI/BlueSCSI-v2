@@ -79,8 +79,19 @@ typedef enum
 typedef enum
 {
 	S2S_CFG_QUIRKS_NONE,
-	S2S_CFG_QUIRKS_APPLE
+	S2S_CFG_QUIRKS_APPLE,
+	S2S_CFG_QUIRKS_OMTI
 } S2S_CFG_QUIRKS;
+
+typedef enum
+{
+	S2S_CFG_SPEED_NoLimit,
+	S2S_CFG_SPEED_ASYNC_15,
+	S2S_CFG_SPEED_ASYNC_33,
+	S2S_CFG_SPEED_ASYNC_50,
+	S2S_CFG_SPEED_SYNC_5,
+	S2S_CFG_SPEED_SYNC_10
+} S2S_CFG_SPEED;
 
 typedef struct __attribute__((packed))
 {
@@ -122,7 +133,9 @@ typedef struct __attribute__((packed))
 	uint8_t selectionDelay; // milliseconds. 255 = auto
 	uint8_t flags6; // S2S_CFG_FLAGS6
 
-	uint8_t reserved[120]; // Pad out to 128 bytes
+	uint8_t scsiSpeed;
+
+	uint8_t reserved[119]; // Pad out to 128 bytes
 } S2S_BoardCfg;
 
 typedef enum

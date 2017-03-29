@@ -53,7 +53,7 @@ BoardPanel::BoardPanel(wxWindow* parent, const S2S_BoardCfg& initialConfig) :
 	myParent(parent),
 	myDelayValidator(new wxIntegerValidator<uint8_t>)
 {
-	wxFlexGridSizer *fgs = new wxFlexGridSizer(11, 2, 9, 25);
+	wxFlexGridSizer *fgs = new wxFlexGridSizer(13, 2, 9, 25);
 
 	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("")));
 	myTermCtrl =
@@ -63,6 +63,26 @@ BoardPanel::BoardPanel(wxWindow* parent, const S2S_BoardCfg& initialConfig) :
 			_("Enable SCSI terminator"));
 	myTermCtrl->SetToolTip(_("Enable active terminator. Both ends of the SCSI chain must be terminated."));
 	fgs->Add(myTermCtrl);
+
+	fgs->Add(new wxStaticText(this, wxID_ANY, _("SCSI Speed Limit")));
+	wxString speeds[] = {
+		wxT("No limit"),
+		wxT("Async, 1.5MB/s"),
+		wxT("Async, 3.3MB/s"),
+		wxT("Async, 5 MB/s"),
+		wxT("Sync, 5 MB/s")};
+
+	myScsiSpeedCtrl =
+		new wxChoice(
+			this,
+			ID_scsiSpeedCtrl,
+			wxDefaultPosition,
+			wxDefaultSize,
+			sizeof(speeds) / sizeof(wxString),
+			speeds
+			);
+	myScsiSpeedCtrl->SetToolTip(_("Limit SCSI interface speed"));
+	fgs->Add(myScsiSpeedCtrl);
 
 	fgs->Add(new wxStaticText(this, wxID_ANY, _("Startup Delay (seconds)")));
 	myStartDelayCtrl =
@@ -119,33 +139,6 @@ BoardPanel::BoardPanel(wxWindow* parent, const S2S_BoardCfg& initialConfig) :
 	fgs->Add(myScsi2Ctrl);
 
 	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("")));
-	myGlitchCtrl =
-		new wxCheckBox(
-			this,
-			ID_glitchCtrl,
-			_("Disable glitch filter"));
-	myGlitchCtrl->SetToolTip(_("Improve performance at the cost of noise immunity. Only use with short cables."));
-	fgs->Add(myGlitchCtrl);
-
-	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("")));
-	myCacheCtrl =
-		new wxCheckBox(
-			this,
-			ID_cacheCtrl,
-			_("Enable disk cache (experimental)"));
-	myCacheCtrl->SetToolTip(_("SD IO commands aren't completed when SCSI commands complete"));
-	fgs->Add(myCacheCtrl);
-
-	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("")));
-	myDisconnectCtrl =
-		new wxCheckBox(
-			this,
-			ID_disconnectCtrl,
-			_("Enable SCSI Disconnect"));
-	myDisconnectCtrl->SetToolTip(_("Release the SCSI bus while waiting for SD card writes to complete. Must also be enabled in host OS."));
-	fgs->Add(myDisconnectCtrl);
-
-	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("")));
 	mySelLatchCtrl =
 		new wxCheckBox(
 			this,
@@ -185,9 +178,6 @@ BoardPanel::getConfig() const
 		(myParityCtrl->IsChecked() ? S2S_CFG_ENABLE_PARITY : 0) |
 		(myUnitAttCtrl->IsChecked() ? S2S_CFG_ENABLE_UNIT_ATTENTION : 0) |
 		(myScsi2Ctrl->IsChecked() ? S2S_CFG_ENABLE_SCSI2 : 0) |
-		(myGlitchCtrl->IsChecked() ? S2S_CFG_DISABLE_GLITCH : 0) |
-		(myCacheCtrl->IsChecked() ? S2S_CFG_ENABLE_CACHE: 0) |
-		(myDisconnectCtrl->IsChecked() ? S2S_CFG_ENABLE_DISCONNECT: 0) |
 		(mySelLatchCtrl->IsChecked() ? S2S_CFG_ENABLE_SEL_LATCH : 0) |
 		(myMapLunsCtrl->IsChecked() ? S2S_CFG_MAP_LUNS_TO_IDS : 0);
 
@@ -195,6 +185,7 @@ BoardPanel::getConfig() const
 
 	config.startupDelay = CtrlGetValue<unsigned int>(myStartDelayCtrl).first;
 	config.selectionDelay = CtrlGetValue<unsigned int>(mySelDelayCtrl).first;
+	config.scsiSpeed = myScsiSpeedCtrl->GetSelection();
 	return config;
 }
 
@@ -206,10 +197,7 @@ BoardPanel::setConfig(const S2S_BoardCfg& config)
 	myParityCtrl->SetValue(config.flags & S2S_CFG_ENABLE_PARITY);
 	myUnitAttCtrl->SetValue(config.flags & S2S_CFG_ENABLE_UNIT_ATTENTION);
 	myScsi2Ctrl->SetValue(config.flags & S2S_CFG_ENABLE_SCSI2);
-	myGlitchCtrl->SetValue(config.flags & S2S_CFG_DISABLE_GLITCH);
 	myTermCtrl->SetValue(config.flags6 & S2S_CFG_ENABLE_TERMINATOR);
-	myCacheCtrl->SetValue(config.flags & S2S_CFG_ENABLE_CACHE);
-	myDisconnectCtrl->SetValue(config.flags & S2S_CFG_ENABLE_DISCONNECT);
 	mySelLatchCtrl->SetValue(config.flags & S2S_CFG_ENABLE_SEL_LATCH);
 	myMapLunsCtrl->SetValue(config.flags & S2S_CFG_MAP_LUNS_TO_IDS);
 
@@ -223,6 +211,7 @@ BoardPanel::setConfig(const S2S_BoardCfg& config)
 		conv << static_cast<unsigned int>(config.selectionDelay);
 		mySelDelayCtrl->ChangeValue(conv.str());
 	}
+	myScsiSpeedCtrl->SetSelection(config.scsiSpeed);
 }
 
 

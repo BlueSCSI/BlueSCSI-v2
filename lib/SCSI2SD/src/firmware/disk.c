@@ -703,11 +703,13 @@ void scsiDiskPoll()
 			uint32_t sectors =
 				rem < maxSectors ? rem : maxSectors;
 			scsiRead(&scsiDev.data[0], sectors * SD_SECTOR_SIZE, &parityError);
+
 			if (!parityError)
 			{
 				sdTmpWrite(&scsiDev.data[0], i + sdLBA, sectors);
 			}
 			i += sectors;
+
 #if 0
 			// Wait for the next DMA interrupt. It's beneficial to halt the
 			// processor to give the DMA controller more memory bandwidth to

@@ -24,7 +24,7 @@ uint32_t s2s_getTime_ms(void); // Returns milliseconds since init
 uint32_t s2s_diffTime_ms(uint32_t start, uint32_t end);
 uint32_t s2s_elapsedTime_ms(uint32_t since);
 
-#define s2s_cpu_freq 120000000LL
+#define s2s_cpu_freq 108000000LL
 #define s2s_delay_ms(delay) s2s_delay_clocks((delay) * (s2s_cpu_freq / 1000))
 #define s2s_delay_us(delay) s2s_delay_clocks((delay) * (s2s_cpu_freq / 1000000))
 void s2s_delay_clocks(uint32_t delay);

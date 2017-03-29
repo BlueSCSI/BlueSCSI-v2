@@ -148,6 +148,7 @@ SRC = \
 	src/firmware/tape.c \
 	src/firmware/time.c \
 	src/firmware/trace.c \
+	src/firmware/vendor.c \
 	${USBCOMPOSITE_SRC}
 
 build/firmware.elf: $(SRC) rtl/fpga_bitmap.o $(STM32OBJS)

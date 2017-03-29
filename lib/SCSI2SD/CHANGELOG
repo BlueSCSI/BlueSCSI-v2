@@ -1,7 +1,8 @@
-2016100X		?
+20170329		6.1.0
 	- Enable synchronous transfers on SCSI1 hosts
 	- Support 4MB/s sync transfers for Amiga A590 (WD33C93)
-	- Faster SD performance, but cannot use USB + SD at the same time.
+	- Merge v4.7 release changes, excluding custom mode/inquiry pages
+	- various bug fixes
 
 20161006		6.0.13
 	- Fixed SCSI timing issue

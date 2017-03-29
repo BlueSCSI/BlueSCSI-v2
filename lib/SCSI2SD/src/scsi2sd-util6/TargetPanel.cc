@@ -311,8 +311,8 @@ TargetPanel::evaluate()
 	switch (myDeviceTypeCtrl->GetSelection())
 	{
 	case S2S_CFG_OPTICAL:
-		// TODO mySectorSizeCtrl->ChangeValue("2048");
-		// TODO mySectorSizeCtrl->Enable(false);
+		mySectorSizeCtrl->ChangeValue("2048");
+		mySectorSizeCtrl->Enable(true); // Enable override
 		break;
 	case S2S_CFG_FLOPPY_14MB:
 		mySectorSizeCtrl->ChangeValue("512");

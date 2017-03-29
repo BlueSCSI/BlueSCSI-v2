@@ -36,7 +36,7 @@ IMPLEMENT_DYNAMIC_CLASS(wxMask, wxObject)
 #endif
 
 #ifndef __WXOSX_IPHONE__
-#include <QuickTime/QuickTime.h>
+//#include <QuickTime/QuickTime.h>
 #endif
 
 CGColorSpaceRef wxMacGetGenericRGBColorSpace();

@@ -49,8 +49,8 @@ CPPFLAGS = $(CPPFLAGS_HIDAPI) -I. -I ../../include -ITerminalWx/src \
 	-DHAVE_LIBUSB_1_0 \
 
 
-CFLAGS += -Wall -Wno-pointer-sign -O2 -g
-CXXFLAGS += -Wall -O2 -g -std=c++0x
+CFLAGS += -Wall -Wno-pointer-sign -O2 -g -fPIC
+CXXFLAGS += -Wall -O2 -g -std=c++0x -fPIC
 
 LDFLAGS += -L$(BUILD)/libzipper/.libs -lzipper \
 	$(LDFLAGS_ZLIB) \
@@ -60,7 +60,8 @@ LDFLAGS += -L$(BUILD)/libzipper/.libs -lzipper \
 
 # wxWidgets 3.0.2 uses broken Webkit headers under OSX Yosemeti
 # liblzma not available on OSX 10.7
-WX_CONFIG=--disable-webkit --disable-webviewwebkit  \
+# --disable-mediactrl for missing Quicktime.h on Mac OSX Sierra
+WX_CONFIG=--disable-webkit --disable-webviewwebkit  --disable-mediactrl \
 	--without-libtiff --without-libjbig --without-liblzma --without-opengl \
 	--enable-monolithic --enable-stl --disable-shared
 
@@ -110,6 +111,7 @@ ifeq ($(TARGET),Darwin)
 all: $(BUILD)/scsi2sd-util6.dmg
 
 $(BUILD)/scsi2sd-util6.dmg: $(BUILD)/scsi2sd-util6 $(BUILD)/dfu-util/buildstamp
+	rm -rf $(dir $@)/dmg $@
 	mkdir -p $(dir $@)/dmg
 	cp $(BUILD)/scsi2sd-util6 $(BUILD)/dfu-util/src/dfu-util $(dir $@)/dmg
 	chmod a+rx $(dir $@)/dmg/*

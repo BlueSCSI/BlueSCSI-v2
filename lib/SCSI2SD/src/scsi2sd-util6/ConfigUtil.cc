@@ -213,9 +213,19 @@ ConfigUtil::toXML(const S2S_TargetCfg& config)
 		"	<!-- ********************************************************\n" <<
 		"	Space separated list. Available options:\n" <<
 		"	apple\t\tReturns Apple-specific mode pages\n" <<
+		"	omti\t\tOMTI host non-standard link control\n" <<
 		"	********************************************************* -->\n" <<
-		"	<quirks>" <<
-			(config.quirks & S2S_CFG_QUIRKS_APPLE ? "apple" : "") <<
+		"	<quirks>";
+	if (config.quirks == S2S_CFG_QUIRKS_APPLE)
+	{
+		s << "apple";
+	}
+	else if (config.quirks == S2S_CFG_QUIRKS_OMTI)
+	{
+		s << "omti";
+	}
+
+	s <<
 			"</quirks>\n" <<
 
 		"\n\n" <<
@@ -315,26 +325,6 @@ ConfigUtil::toXML(const S2S_BoardCfg& config)
 			(config.flags & S2S_CFG_ENABLE_SCSI2 ? "true" : "false") <<
 			"</enableScsi2>\n" <<
 
-		"	<enableCache>" <<
-			(config.flags & S2S_CFG_ENABLE_CACHE ? "true" : "false") <<
-			"</enableCache>\n" <<
-
-		"	<!-- ********************************************************\n" <<
-		"	Setting to 'true' will result in increased performance at the\n" <<
-		"	cost of lower noise immunity.\n" <<
-		"	Only set to true when using short cables with only 1 or two\n" <<
-		"	devices. This should remain off when using external SCSI1 DB25\n" <<
-		"	cables.\n" <<
-		"	********************************************************* -->\n" <<
-		"	<disableGlitchFilter>" <<
-			(config.flags & S2S_CFG_DISABLE_GLITCH ? "true" : "false") <<
-			"</disableGlitchFilter>\n" <<
-
-
-		"	<enableDisconnect>" <<
-			(config.flags & S2S_CFG_ENABLE_DISCONNECT ? "true" : "false") <<
-			"</enableDisconnect>\n" <<
-
 		"	<!-- ********************************************************\n" <<
 		"	Respond to very short duration selection attempts. This supports\n" <<
 		"	non-standard hardware, but is generally safe to enable.\n" <<
@@ -356,6 +346,34 @@ ConfigUtil::toXML(const S2S_BoardCfg& config)
 		"	<mapLunsToIds>" <<
 			(config.flags & S2S_CFG_MAP_LUNS_TO_IDS ? "true" : "false") <<
 			"</mapLunsToIds>\n" <<
+
+
+		"	<!-- ********************************************************\n" <<
+		"	Delay (in milliseconds) before responding to a SCSI selection.\n" <<
+		"	255 (auto) sets it to 0 for SCSI2 hosts and 1ms otherwise.\n" <<
+		"	Some samplers need this set to 1 manually.\n" <<
+		"	********************************************************* -->\n" <<
+		"	<selectionDelay>" << static_cast<int>(config.selectionDelay) << "</selectionDelay>\n" <<
+
+		"	<!-- ********************************************************\n" <<
+		"	Startup delay (in seconds) before responding to the SCSI bus \n" <<
+		"	after power on. Default = 0.\n" <<
+		"	********************************************************* -->\n" <<
+		"	<startupDelay>" << static_cast<int>(config.startupDelay) << "</startupDelay>\n" <<
+
+		"	<!-- ********************************************************\n" <<
+		"	Speed limit the SCSI interface. This is the -max- speed the \n" <<
+		"	device will run at. The actual spee depends on the capability\n" <<
+		"	of the host controller.\n" <<
+		"	0	No limit\n" <<
+		"	1	Async 1.5MB/s\n" <<
+		"	2	Async 3.3MB/s\n" <<
+		"	3	Async 5MB/s\n" <<
+		"	4	Sync 5MB/s\n" <<
+		"	5	Sync 10MB/s\n" <<
+		"	********************************************************* -->\n" <<
+		"	<scsiSpeed>" << static_cast<int>(config.scsiSpeed) << "</scsiSpeed>\n" <<
+
 		"</S2S_BoardCfg>\n";
 
 	return s.str();
@@ -434,6 +452,10 @@ parseTarget(wxXmlNode* node)
 				{
 					result.quirks |= S2S_CFG_QUIRKS_APPLE;
 				}
+				else if (quirk == "omti")
+				{
+					result.quirks |= S2S_CFG_QUIRKS_OMTI;
+				}
 			}
 		}
 		else if (child->GetName() == "deviceType")
@@ -507,8 +529,15 @@ parseBoardConfig(wxXmlNode* node)
 	wxXmlNode *child = node->GetChildren();
 	while (child)
 	{
-// FIXME WHERE IS SELECTION DELAY ? STARTUP DELAY ? FFS.
-		if (child->GetName() == "unitAttention")
+		if (child->GetName() == "selectionDelay")
+		{
+			result.selectionDelay = parseInt(child, 255);
+		}
+		else if (child->GetName() == "startupDelay")
+		{
+			result.startupDelay = parseInt(child, 255);
+		}
+		else if (child->GetName() == "unitAttention")
 		{
 			std::string s(child->GetNodeContent().mb_str());
 			if (s == "true")
@@ -544,18 +573,6 @@ parseBoardConfig(wxXmlNode* node)
 				result.flags = result.flags & ~S2S_CFG_ENABLE_SCSI2;
 			}
 		}
-		else if (child->GetName() == "disableGlitchFilter")
-		{
-			std::string s(child->GetNodeContent().mb_str());
-			if (s == "true")
-			{
-				result.flags |= S2S_CFG_DISABLE_GLITCH;
-			}
-			else
-			{
-				result.flags = result.flags & ~S2S_CFG_DISABLE_GLITCH;
-			}
-		}
 		else if (child->GetName() == "enableTerminator")
 		{
 			std::string s(child->GetNodeContent().mb_str());
@@ -566,30 +583,6 @@ parseBoardConfig(wxXmlNode* node)
 			else
 			{
 				result.flags6 = result.flags & ~S2S_CFG_ENABLE_TERMINATOR;
-			}
-		}
-		else if (child->GetName() == "enableCache")
-		{
-			std::string s(child->GetNodeContent().mb_str());
-			if (s == "true")
-			{
-				result.flags |= S2S_CFG_ENABLE_CACHE;
-			}
-			else
-			{
-				result.flags = result.flags & ~S2S_CFG_ENABLE_CACHE;
-			}
-		}
-		else if (child->GetName() == "enableDisconnect")
-		{
-			std::string s(child->GetNodeContent().mb_str());
-			if (s == "true")
-			{
-				result.flags |= S2S_CFG_ENABLE_DISCONNECT;
-			}
-			else
-			{
-				result.flags = result.flags & ~S2S_CFG_ENABLE_DISCONNECT;
 			}
 		}
 		else if (child->GetName() == "selLatch")
@@ -615,6 +608,10 @@ parseBoardConfig(wxXmlNode* node)
 			{
 				result.flags = result.flags & ~S2S_CFG_MAP_LUNS_TO_IDS;
 			}
+		}
+		else if (child->GetName() == "scsiSpeed")
+		{
+			result.scsiSpeed = parseInt(child, S2S_CFG_SPEED_SYNC_10);
 		}
 		child = child->GetNext();
 	}

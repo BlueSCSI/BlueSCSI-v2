@@ -29,6 +29,7 @@
 //#include "debug.h"
 #include "tape.h"
 #include "mo.h"
+#include "vendor.h"
 
 #include <string.h>
 
@@ -63,6 +64,7 @@ static void enter_BusFree()
 		s2s_delay_ms(64);
 	}
 #endif
+
 
 	scsiEnterBusFree();
 
@@ -134,6 +136,17 @@ void process_Status()
 	uint8_t message;
 
 	uint8_t control = scsiDev.cdb[scsiDev.cdbLen - 1];
+
+	if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_OMTI)
+	{
+		// OMTI non-standard LINK control
+		if (control & 0x01)
+		{
+			scsiDev.phase = COMMAND;
+			return;
+		}
+	}
+
 	if ((scsiDev.status == GOOD) && (control & 0x01))
 	{
 		// Linked command.
@@ -151,6 +164,12 @@ void process_Status()
 	{
 		message = MSG_COMMAND_COMPLETE;
 	}
+
+	if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_OMTI)
+	{
+		scsiDev.status |= (scsiDev.target->targetId & 0x03) << 5;
+	}
+
 	scsiWriteByte(scsiDev.status);
 
 	scsiDev.lastStatus = scsiDev.status;
@@ -388,7 +407,7 @@ static void process_Command()
 	{
 		scsiReadBuffer();
 	}
-	else if (!scsiModeCommand())
+	else if (!scsiModeCommand() && !scsiVendorCommand())
 	{
 		scsiDev.target->sense.code = ILLEGAL_REQUEST;
 		scsiDev.target->sense.asc = INVALID_COMMAND_OPERATION_CODE;
@@ -765,7 +784,9 @@ static void process_MessageOut()
 			int transferPeriod = extmsg[1];
 			int offset = extmsg[2];
 
-			if ((transferPeriod < scsiDev.minSyncPeriod) ||
+			if ((
+					(transferPeriod > 0) &&
+					(transferPeriod < scsiDev.minSyncPeriod)) ||
 				(scsiDev.minSyncPeriod == 0))
 			{
 				scsiDev.minSyncPeriod = transferPeriod;
@@ -775,7 +796,9 @@ static void process_MessageOut()
 				// Amiga A590 (WD33C93 chip) only does 3.5MB/s sync
 				// After 80 we start to run out of bits in the fpga timing
 				// register.
-				(transferPeriod == 0))
+				(transferPeriod == 0) ||
+				((scsiDev.boardCfg.scsiSpeed != S2S_CFG_SPEED_NoLimit) &&
+					(scsiDev.boardCfg.scsiSpeed <= S2S_CFG_SPEED_ASYNC_50)))
 			{
 				scsiDev.target->syncOffset = 0;
 				scsiDev.target->syncPeriod = 0;
@@ -791,11 +814,22 @@ static void process_MessageOut()
 				{
 					scsiDev.target->syncPeriod = 12; // 50ns, 20MB/s
 				}
-				else */if (transferPeriod <= 25)
+				else */if (transferPeriod <= 25 &&
+					((scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_NoLimit) ||
+						(scsiDev.boardCfg.scsiSpeed >= S2S_CFG_SPEED_SYNC_10)))
 				{
 					scsiDev.target->syncPeriod = 25; // 100ns, 10MB/s
-				} else {
+
+				} else if (transferPeriod < 50 &&
+					((scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_NoLimit) ||
+						(scsiDev.boardCfg.scsiSpeed >= S2S_CFG_SPEED_SYNC_10)))
+				{
 					scsiDev.target->syncPeriod = transferPeriod;
+				} else if (transferPeriod >= 50)
+				{
+					scsiDev.target->syncPeriod = transferPeriod;
+				} else {
+					scsiDev.target->syncPeriod = 50;
 				}
 			}
 

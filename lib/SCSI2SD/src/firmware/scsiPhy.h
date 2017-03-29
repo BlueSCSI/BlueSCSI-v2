@@ -26,8 +26,9 @@
 #define SCSI_DATA_CNT_SET ((volatile uint8_t*)0x6000000C)
 #define SCSI_CTRL_DBX ((volatile uint8_t*)0x6000000E)
 #define SCSI_CTRL_SYNC_OFFSET ((volatile uint8_t*)0x60000010)
-#define SCSI_CTRL_DESKEW ((volatile uint8_t*)0x60000012)
-#define SCSI_CTRL_TIMING ((volatile uint8_t*)0x60000014)
+#define SCSI_CTRL_DESKEW ((volatile uint8_t*)0x60000012)// Timing
+#define SCSI_CTRL_TIMING ((volatile uint8_t*)0x60000014)//Timing2
+#define SCSI_CTRL_TIMING3 ((volatile uint8_t*)0x6000001A)//Timing3
 #define SCSI_CTRL_FLAGS ((volatile uint8_t*)0x60000016)
 #define SCSI_CTRL_FLAGS_DISABLE_GLITCH 0x1
 #define SCSI_CTRL_FLAGS_ENABLE_PARITY 0x2
@@ -38,7 +39,11 @@
 #define SCSI_STS_FIFO_COMPLETE ((volatile uint8_t*)0x60000024)
 #define SCSI_STS_SELECTED ((volatile uint8_t*)0x60000026)
 #define SCSI_STS_SCSI ((volatile uint8_t*)0x60000028)
-#define SCSI_STS_DBX ((volatile uint8_t*)0x6000002A)
+
+// top 8 bits = data we're writing.
+// bottom 8 bits = data we're reading
+#define SCSI_STS_DBX ((volatile uint16_t*)0x6000002A)
+
 #define SCSI_STS_PARITY_ERR ((volatile uint8_t*)0x6000002C)
 
 #define SCSI_FIFO_DATA ((volatile uint16_t*)0x60000040)

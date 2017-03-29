@@ -55,14 +55,12 @@ private:
 		ID_parityCtrl = wxID_HIGHEST + 1,
 		ID_unitAttCtrl,
 		ID_scsi2Ctrl,
-		ID_glitchCtrl,
 		ID_termCtrl,
-		ID_cacheCtrl,
-		ID_disconnectCtrl,
 		ID_selLatchCtrl,
 		ID_mapLunsCtrl,
 		ID_startDelayCtrl,
-		ID_selDelayCtrl
+		ID_selDelayCtrl,
+		ID_scsiSpeedCtrl
 	};
 
 	wxWindow* myParent;
@@ -72,16 +70,15 @@ private:
 	wxCheckBox* myParityCtrl;
 	wxCheckBox* myUnitAttCtrl;
 	wxCheckBox* myScsi2Ctrl;
-	wxCheckBox* myGlitchCtrl;
 	wxCheckBox* myTermCtrl;
-	wxCheckBox* myCacheCtrl;
-	wxCheckBox* myDisconnectCtrl;
 	wxCheckBox* mySelLatchCtrl;
 	wxCheckBox* myMapLunsCtrl;
 
 	wxIntegerValidator<uint8_t>* myDelayValidator;
 	wxTextCtrl* myStartDelayCtrl;
 	wxTextCtrl* mySelDelayCtrl;
+
+	wxChoice* myScsiSpeedCtrl;
 };
 
 } // namespace SCSI2SD

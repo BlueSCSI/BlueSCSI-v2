@@ -28,45 +28,53 @@
 
 #include <string.h>
 
-// Time until we consider ourselves selected
-// 400ns at 108MHz
-#define SCSI_DEFAULT_SELECTION 43
-#define SCSI_FAST_SELECTION 5
+static uint8_t asyncTimings[][4] =
+{
+/* Speed,    Assert,    Deskew,    Hold,    Glitch */
+{/*1.5MB/s*/ 28,        18,        13,      13},
+{/*3.3MB/s*/ 13,        6,         6,       13},
+{/*5MB/s*/   9,         6,         6,       6} // 80ns
+};
 
-// async.
-// Assumes a 108MHz fpga clock.
-// 2:0 Deskew count, 55ns
-// 6:4 Hold count, 53ns
-// 3:0 Assertion count, 80ns
-#define SCSI_DEFAULT_DESKEW 0x6
-#define SCSI_DEFAULT_TIMING ((0x6 << 4) | 0x9)
+#define SCSI_ASYNC_15 0
+#define SCSI_ASYNC_33 1
+#define SCSI_ASYNC_50 2
 
-// 3.125MB/s (80 period) to < 10MB/s sync
-// Assumes a 108MHz fpga clock. (9 ns)
-// (((period * 4) / 2) * 0.8) / 9
-// Done using 3 fixed point math.
-// 2:0 Deskew count, 55ns normal, or 25ns if faster than 5.5MB/s
-// 6:4 Hold count, 53ns normal, or 33ns if faster than 5.5MB/s
-// 3:0 Assertion count, variable
-#define SCSI_SYNC_DESKEW(period) (period < 45 ? SCSI_FAST10_DESKEW : SCSI_DEFAULT_DESKEW)
-#define SCSI_SYNC_TIMING(period) (((period < 45 ? 0x4 : 0x6) << 4) | ((((((int)period) * 177) + 750)/1000) & 0xF))
+// 5MB/s synchronous timing
+#define SCSI_FAST5_DESKEW 6 // 55ns
+#define SCSI_FAST5_HOLD 6 // 53ns
 
-// 10MB/s
+// 10MB/s synchronous timing
 // 2:0 Deskew count, 25ns
 // 6:4 Hold count, 33ns
 // 3:0 Assertion count, 30ns
 // We want deskew + hold + assert + 3 to add up to 11 clocks
 // the fpga code has 1 clock of overhead when transitioning from deskew to
 // assert to hold
-#define SCSI_FAST10_DESKEW 2
-#define SCSI_FAST10_TIMING ((0x3 << 4) | 0x3)
 
-// 20MB/s
-// 2:0 Deskew count, 12ns
-// 6:4 Hold count, 17ns
-// 3:0 Assertion count, 15ns
-#define SCSI_FAST20_DESKEW 1
-#define SCSI_FAST20_TIMING ((0x2 << 4) | 0x2)
+#define SCSI_FAST10_DESKEW 2 // 25ns
+#define SCSI_FAST10_HOLD 3 // 33ns
+#define SCSI_FAST10_ASSERT 3 // 30ns
+
+#define syncDeskew(period) ((period) < 45 ? \
+	SCSI_FAST10_DESKEW : SCSI_FAST5_DESKEW)
+
+#define syncHold(period) ((period) < 45 ? \
+	((period) == 25 ? SCSI_FAST10_HOLD : 4) /* 25ns/33ns */\
+	: SCSI_FAST5_HOLD)
+
+
+// 3.125MB/s (80 period) to < 10MB/s sync
+// Assumes a 108MHz fpga clock. (9 ns)
+// (((period * 4) / 2) * 0.8) / 9
+// Done using 3 fixed point math.
+// 3:0 Assertion count, variable
+#define syncAssertion(period) ((((((int)period) * 177) + 750)/1000) & 0xF)
+
+// Time until we consider ourselves selected
+// 400ns at 108MHz
+#define SCSI_DEFAULT_SELECTION 43
+#define SCSI_FAST_SELECTION 5
 
 // Private DMA variables.
 static int dmaInProgress = 0;
@@ -440,6 +448,29 @@ void scsiEnterBusFree()
 	*SCSI_CTRL_PHASE = 0;
 }
 
+static void
+scsiSetTiming(
+	uint8_t assertClocks,
+	uint8_t deskew,
+	uint8_t hold,
+	uint8_t glitch)
+{
+	*SCSI_CTRL_DESKEW = ((hold & 7) << 5) | (deskew & 0x1F);
+	*SCSI_CTRL_TIMING = (assertClocks & 0x3F);
+	*SCSI_CTRL_TIMING3 = (glitch & 0xF);
+}
+
+static void
+scsiSetDefaultTiming()
+{
+	const uint8_t* asyncTiming = asyncTimings[3];
+	scsiSetTiming(
+		asyncTiming[0],
+		asyncTiming[1],
+		asyncTiming[2],
+		asyncTiming[3]);
+}
+
 void scsiEnterPhase(int phase)
 {
 	// ANSI INCITS 362-2002 SPI-3 10.7.1:
@@ -458,22 +489,18 @@ void scsiEnterPhase(int phase)
 		if ((newPhase == DATA_IN || newPhase == DATA_OUT) &&
 			scsiDev.target->syncOffset)
 		{
-			if (scsiDev.target->syncPeriod == 12)
+			
+			if (scsiDev.target->syncPeriod <= 25)
 			{
-				// SCSI2 FAST-20 Timing. 20MB/s.
-				*SCSI_CTRL_DESKEW = SCSI_FAST20_DESKEW;
-				*SCSI_CTRL_TIMING = SCSI_FAST20_TIMING;
-			}
-			else if (scsiDev.target->syncPeriod == 25)
-			{
-				// SCSI2 FAST Timing. 10MB/s.
-				*SCSI_CTRL_DESKEW = SCSI_FAST10_DESKEW;
-				*SCSI_CTRL_TIMING = SCSI_FAST10_TIMING;
+				scsiSetTiming(SCSI_FAST10_ASSERT, SCSI_FAST10_DESKEW, SCSI_FAST10_HOLD, 1);
 			}
 			else
 			{
-				*SCSI_CTRL_DESKEW = SCSI_SYNC_DESKEW(scsiDev.target->syncPeriod);
-				*SCSI_CTRL_TIMING = SCSI_SYNC_TIMING(scsiDev.target->syncPeriod);
+				scsiSetTiming(
+					syncAssertion(scsiDev.target->syncPeriod),
+					syncDeskew(scsiDev.target->syncPeriod),
+					syncHold(scsiDev.target->syncPeriod),
+					scsiDev.target->syncPeriod < 45 ? 1 : 5);
 			}
 
 			// See note 26 in SCSI 2 standard: SCSI 1 implementations may assume
@@ -487,12 +514,29 @@ void scsiEnterPhase(int phase)
 			} else {
 				*SCSI_CTRL_SYNC_OFFSET = scsiDev.target->syncOffset;
 			}
-		} else {
-			*SCSI_CTRL_SYNC_OFFSET = 0;
+		}
+		else
+		{
 
-			// 5MB/s Timing
-			*SCSI_CTRL_DESKEW = SCSI_DEFAULT_DESKEW;
-			*SCSI_CTRL_TIMING = SCSI_DEFAULT_TIMING;
+			*SCSI_CTRL_SYNC_OFFSET = 0;
+			const uint8_t* asyncTiming;
+
+			if (scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_NoLimit ||
+				scsiDev.boardCfg.scsiSpeed >= S2S_CFG_SPEED_ASYNC_50) {
+
+				asyncTiming = asyncTimings[SCSI_ASYNC_50];
+			} else if (scsiDev.boardCfg.scsiSpeed >= S2S_CFG_SPEED_ASYNC_33) {
+
+				asyncTiming = asyncTimings[SCSI_ASYNC_33];
+	
+			} else {
+				asyncTiming = asyncTimings[SCSI_ASYNC_15];
+			}
+			scsiSetTiming(
+				asyncTiming[0],
+				asyncTiming[1],
+				asyncTiming[2],
+				asyncTiming[3]);
 		}
 
 		*SCSI_CTRL_PHASE = newPhase;
@@ -527,8 +571,7 @@ void scsiPhyReset()
 	*SCSI_CTRL_DBX = 0;
 
 	*SCSI_CTRL_SYNC_OFFSET = 0;
-	*SCSI_CTRL_DESKEW = SCSI_DEFAULT_DESKEW;
-	*SCSI_CTRL_TIMING = SCSI_DEFAULT_TIMING;
+	scsiSetDefaultTiming();
 
 	// DMA Benchmark code
 	// Currently 11MB/s.
@@ -638,8 +681,7 @@ void scsiPhyInit()
 	*SCSI_CTRL_DBX = 0;
 
 	*SCSI_CTRL_SYNC_OFFSET = 0;
-	*SCSI_CTRL_DESKEW = SCSI_DEFAULT_DESKEW;
-	*SCSI_CTRL_TIMING = SCSI_DEFAULT_TIMING;
+	scsiSetDefaultTiming();
 
 	*SCSI_CTRL_SEL_TIMING = SCSI_DEFAULT_SELECTION;
 
@@ -725,7 +767,8 @@ int scsiSelfTest()
 	{
 		*SCSI_CTRL_DBX = i;
 		busSettleDelay();
-		if (*SCSI_STS_DBX != (i & 0xff))
+		// STS_DBX is 16 bit!
+		if ((*SCSI_STS_DBX & 0xff) != (i & 0xff))
 		{
 			result |= 1;
 		}
