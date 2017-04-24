@@ -310,10 +310,6 @@ TargetPanel::evaluate()
 
 	switch (myDeviceTypeCtrl->GetSelection())
 	{
-	case S2S_CFG_OPTICAL:
-		mySectorSizeCtrl->ChangeValue("2048");
-		mySectorSizeCtrl->Enable(true); // Enable override
-		break;
 	case S2S_CFG_FLOPPY_14MB:
 		mySectorSizeCtrl->ChangeValue("512");
 		mySectorSizeCtrl->Enable(false);
@@ -321,9 +317,9 @@ TargetPanel::evaluate()
 		myNumSectorCtrl->Enable(false);
 		mySizeUnitCtrl->Enable(false);
 		mySizeCtrl->Enable(false);
+		evaluateSize();
 		break;
 	};
-	evaluateSize();
 
 	if (myAutoStartSectorCtrl->IsChecked())
 	{
@@ -420,6 +416,16 @@ TargetPanel::evaluate()
 template<typename EvtType> void
 TargetPanel::onInput(EvtType& event)
 {
+	if (event.GetId() == ID_deviceTypeCtrl)
+	{
+		switch (myDeviceTypeCtrl->GetSelection())
+		{
+		case S2S_CFG_OPTICAL:
+			mySectorSizeCtrl->ChangeValue("2048");
+			evaluateSize();
+			break;
+		}
+	}
 	wxCommandEvent changeEvent(ConfigChangedEvent);
 	wxPostEvent(myParent, changeEvent);
 }
@@ -429,11 +435,18 @@ TargetPanel::onSizeInput(wxCommandEvent& event)
 {
 	if (event.GetId() != ID_numSectorCtrl)
 	{
-		std::stringstream ss;
-		ss << convertUnitsToSectors().first;
-		myNumSectorCtrl->ChangeValue(ss.str());
+		std::pair<uint32_t, bool> sec = convertUnitsToSectors();
+		if (sec.second)
+		{
+			std::stringstream ss;
+			ss << sec.first;
+			myNumSectorCtrl->ChangeValue(ss.str());
+		}
 	}
-	evaluateSize();
+	if (event.GetId() != ID_sizeCtrl)
+	{
+		evaluateSize();
+	}
 	onInput(event); // propagate
 }
 
