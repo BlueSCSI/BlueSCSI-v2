@@ -1,3 +1,9 @@
+20170429		6.1.1
+	- Add new "turbo" speed mode to get faster async transfers.
+	- Fix scsi2sd-util6 size and sector-size inputs
+	- Fix crash when configured scsi disk starting sector is less than
+	SD card size
+
 20170329		6.1.0
 	- Enable synchronous transfers on SCSI1 hosts
 	- Support 4MB/s sync transfers for Amiga A590 (WD33C93)

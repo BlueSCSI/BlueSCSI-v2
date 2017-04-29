@@ -33,12 +33,16 @@ static uint8_t asyncTimings[][4] =
 /* Speed,    Assert,    Deskew,    Hold,    Glitch */
 {/*1.5MB/s*/ 28,        18,        13,      13},
 {/*3.3MB/s*/ 13,        6,         6,       13},
-{/*5MB/s*/   9,         6,         6,       6} // 80ns
+{/*5MB/s*/   9,         6,         6,       6}, // 80ns
+{/*safe*/    3,         6,         6,       6}, // Probably safe
+{/*turbo*/   3,         3,         3,       2}
 };
 
 #define SCSI_ASYNC_15 0
 #define SCSI_ASYNC_33 1
 #define SCSI_ASYNC_50 2
+#define SCSI_ASYNC_SAFE 3
+#define SCSI_ASYNC_TURBO 4
 
 // 5MB/s synchronous timing
 #define SCSI_FAST5_DESKEW 6 // 55ns
@@ -463,7 +467,7 @@ scsiSetTiming(
 static void
 scsiSetDefaultTiming()
 {
-	const uint8_t* asyncTiming = asyncTimings[3];
+	const uint8_t* asyncTiming = asyncTimings[0];
 	scsiSetTiming(
 		asyncTiming[0],
 		asyncTiming[1],
@@ -521,9 +525,16 @@ void scsiEnterPhase(int phase)
 			*SCSI_CTRL_SYNC_OFFSET = 0;
 			const uint8_t* asyncTiming;
 
-			if (scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_NoLimit ||
-				scsiDev.boardCfg.scsiSpeed >= S2S_CFG_SPEED_ASYNC_50) {
-
+			if (scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_NoLimit)
+			{
+				asyncTiming = asyncTimings[SCSI_ASYNC_SAFE];
+			}
+			else if (scsiDev.boardCfg.scsiSpeed >= S2S_CFG_SPEED_TURBO)
+			{
+				asyncTiming = asyncTimings[SCSI_ASYNC_TURBO];
+			}
+			else if (scsiDev.boardCfg.scsiSpeed >= S2S_CFG_SPEED_ASYNC_50)
+			{
 				asyncTiming = asyncTimings[SCSI_ASYNC_50];
 			} else if (scsiDev.boardCfg.scsiSpeed >= S2S_CFG_SPEED_ASYNC_33) {
 

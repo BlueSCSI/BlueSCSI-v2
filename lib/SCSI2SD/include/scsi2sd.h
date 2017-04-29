@@ -90,7 +90,8 @@ typedef enum
 	S2S_CFG_SPEED_ASYNC_33,
 	S2S_CFG_SPEED_ASYNC_50,
 	S2S_CFG_SPEED_SYNC_5,
-	S2S_CFG_SPEED_SYNC_10
+	S2S_CFG_SPEED_SYNC_10,
+	S2S_CFG_SPEED_TURBO
 } S2S_CFG_SPEED;
 
 typedef struct __attribute__((packed))

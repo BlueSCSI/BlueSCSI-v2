@@ -66,11 +66,13 @@ BoardPanel::BoardPanel(wxWindow* parent, const S2S_BoardCfg& initialConfig) :
 
 	fgs->Add(new wxStaticText(this, wxID_ANY, _("SCSI Speed Limit")));
 	wxString speeds[] = {
-		wxT("No limit"),
+		wxT("No limit (safe)"),
 		wxT("Async, 1.5MB/s"),
 		wxT("Async, 3.3MB/s"),
 		wxT("Async, 5 MB/s"),
-		wxT("Sync, 5 MB/s")};
+		wxT("Sync, 5 MB/s"),
+		wxT("Sync, 10 MB/s"),
+		wxT("Turbo (less reliable)")};
 
 	myScsiSpeedCtrl =
 		new wxChoice(
