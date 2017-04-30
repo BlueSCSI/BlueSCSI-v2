@@ -60,6 +60,12 @@ static uint8_t asyncTimings[][4] =
 #define SCSI_FAST10_HOLD 3 // 33ns
 #define SCSI_FAST10_ASSERT 3 // 30ns
 
+// Fastest possible timing, probably not 20MB/s
+#define SCSI_FAST20_DESKEW 1
+#define SCSI_FAST20_HOLD 2
+#define SCSI_FAST20_ASSERT 2
+
+
 #define syncDeskew(period) ((period) < 45 ? \
 	SCSI_FAST10_DESKEW : SCSI_FAST5_DESKEW)
 
@@ -493,8 +499,11 @@ void scsiEnterPhase(int phase)
 		if ((newPhase == DATA_IN || newPhase == DATA_OUT) &&
 			scsiDev.target->syncOffset)
 		{
-			
-			if (scsiDev.target->syncPeriod <= 25)
+			if (scsiDev.target->syncPeriod < 23)
+			{
+				scsiSetTiming(SCSI_FAST20_ASSERT, SCSI_FAST20_DESKEW, SCSI_FAST20_HOLD, 1);
+			}
+			else if (scsiDev.target->syncPeriod <= 25)
 			{
 				scsiSetTiming(SCSI_FAST10_ASSERT, SCSI_FAST10_DESKEW, SCSI_FAST10_HOLD, 1);
 			}
@@ -539,7 +548,7 @@ void scsiEnterPhase(int phase)
 			} else if (scsiDev.boardCfg.scsiSpeed >= S2S_CFG_SPEED_ASYNC_33) {
 
 				asyncTiming = asyncTimings[SCSI_ASYNC_33];
-	
+
 			} else {
 				asyncTiming = asyncTimings[SCSI_ASYNC_15];
 			}

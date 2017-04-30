@@ -807,14 +807,17 @@ static void process_MessageOut()
 				// FAST20 / 50ns / 20MHz is disabled for now due to
 				// data corruption while reading data. We can count the
 				// ACK's correctly, but can't save the data to a register
-				// before it changes.
-				// TODO work out the fastest sync period that will work
-				/*
-				if (transferPeriod <= 12)
+				// before it changes. (ie. transferPeriod == 12)
+				if ((scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_TURBO) &&
+					(transferPeriod <= 16))
 				{
-					scsiDev.target->syncPeriod = 12; // 50ns, 20MB/s
+					scsiDev.target->syncPeriod = 16; // 15.6MB/s
 				}
-				else */if (transferPeriod <= 25 &&
+				else if (scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_TURBO)
+				{
+					scsiDev.target->syncPeriod = transferPeriod;
+				}
+				else if (transferPeriod <= 25 &&
 					((scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_NoLimit) ||
 						(scsiDev.boardCfg.scsiSpeed >= S2S_CFG_SPEED_SYNC_10)))
 				{

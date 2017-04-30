@@ -67,12 +67,12 @@ void MX_FSMC_Init(void)
   hsram1.Init.WriteBurst = FSMC_WRITE_BURST_DISABLE;
   /* Timing */
 
-  // 1 clock to read the address, + 3 for the synchroniser
-  Timing.AddressSetupTime = 4;
+  // 1 clock to read the address, + 1 for synchroniser skew
+  Timing.AddressSetupTime = 2;
   Timing.AddressHoldTime = 1;
 
-  // 3 for synchroniser, 1 to skip hold time, 1 to process read, 1 to output
-  Timing.DataSetupTime = 6;
+  // 1 for synchroniser skew, 1 to skip hold time, 1 to process read, 1 to output
+  Timing.DataSetupTime = 5;//4 doesn't work ? ?? ?
 
   // Allow a clock for us to release signals, plus 3 for the synchroniser to
   // realise the cycle has ended. Need to avoid both devices acting as outputs
@@ -126,11 +126,14 @@ static void HAL_FSMC_MspInit(void){
   PE0   ------> FSMC_NBL0
   PE1   ------> FSMC_NBL1
   */
+  // MM: GPIO_SPEED_FREQ_MEDIUM is rated up to 50MHz, which is fine as all the
+  // fsmc timings are > 1 (ie. so clock speed / 2 is around 50MHz).
+
   /* GPIO_InitStruct */
   GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_7|GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM; //HIGH;
   GPIO_InitStruct.Alternate = GPIO_AF12_FSMC;
 
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
@@ -140,7 +143,7 @@ static void HAL_FSMC_MspInit(void){
                           |GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_7|GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM; //HIGH;
   GPIO_InitStruct.Alternate = GPIO_AF12_FSMC;
 
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
@@ -149,7 +152,7 @@ static void HAL_FSMC_MspInit(void){
   GPIO_InitStruct.Pin = GPIO_PIN_7;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;//HIGH;
   GPIO_InitStruct.Alternate = GPIO_AF12_FSMC;
 
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);

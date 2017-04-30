@@ -117,11 +117,11 @@ void mainLoop()
 			// run if the SD card is present at startup.
 			// Don't use VBUS monitoring because that just tells us about
 			// power, which could be from a charger
-#if 0
 			if ((blockDev.state & DISK_PRESENT) &&
 				isUsbStarted &&
 				(scsiDev.cmdCount > 0) && // no need for speed without scsi
-				!USBD_Composite_IsConfigured(&hUsbDeviceFS))
+				!USBD_Composite_IsConfigured(&hUsbDeviceFS) &&
+				(scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_TURBO))
 			{
 				if (HAL_SD_HighSpeed(&hsd) == SD_OK)
 				{
@@ -130,7 +130,6 @@ void mainLoop()
 					isUsbStarted = 0;
 				}
 			}
-#endif
 
 			else if (!(blockDev.state & DISK_PRESENT) && !isUsbStarted)
 			{

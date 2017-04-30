@@ -1,5 +1,13 @@
-20170429		6.1.1
-	- Add new "turbo" speed mode to get faster async transfers.
+201705XX		6.1.1
+	- Add new "turbo" speed option to boost speeds.
+		- May not be reliable, and use is not supported.
+		- Async timings trimmed
+		- Sync speeds boosted to theoretical 15.625MB/s, with 12.0MB/s measured
+		read througput.
+		- SD card put in "high speed" mode.
+		- USB for configuration/firmware updates is disabled in turbo mode when
+		processing SCSI commands. A power cycle may be required to connect
+		via USB to reset the 48MHz clock back to 48MHz.
 	- Fix scsi2sd-util6 size and sector-size inputs
 	- Fix crash when configured scsi disk starting sector is less than
 	SD card size

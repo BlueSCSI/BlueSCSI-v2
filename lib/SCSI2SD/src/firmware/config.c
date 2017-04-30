@@ -193,7 +193,8 @@ scsiDevInfoCommand()
 		sdDev.capacity >> 24,
 		sdDev.capacity >> 16,
 		sdDev.capacity >> 8,
-		sdDev.capacity
+		sdDev.capacity,
+		1 // useSdConfig, always true for V6.
 	};
 	hidPacket_send(response, sizeof(response));
 }
