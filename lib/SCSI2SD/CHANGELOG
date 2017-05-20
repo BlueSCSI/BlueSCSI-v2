@@ -1,4 +1,5 @@
-201705XX		6.1.1
+20170520		6.1.1
+	- Performance improvements to improve throughput at all scsi speeds
 	- Add new "turbo" speed option to boost speeds.
 		- May not be reliable, and use is not supported.
 		- Async timings trimmed

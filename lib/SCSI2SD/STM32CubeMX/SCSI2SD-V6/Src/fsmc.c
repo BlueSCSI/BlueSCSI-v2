@@ -71,8 +71,15 @@ void MX_FSMC_Init(void)
   Timing.AddressSetupTime = 2;
   Timing.AddressHoldTime = 1;
 
-  // 1 for synchroniser skew, 1 to skip hold time, 1 to process read, 1 to output
-  Timing.DataSetupTime = 5;//4 doesn't work ? ?? ?
+  // Writes to device:
+  //   1 for synchroniser skew (dbx also delayed)
+  //   1 to skip hold time
+  //   1 to write data.
+
+  // Reads from device:
+  //   3 for syncroniser
+  //   1 to write back to fsmc bus.
+  Timing.DataSetupTime = 4;
 
   // Allow a clock for us to release signals, plus 3 for the synchroniser to
   // realise the cycle has ended. Need to avoid both devices acting as outputs

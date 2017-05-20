@@ -594,7 +594,7 @@ void scsiPhyReset()
 	scsiSetDefaultTiming();
 
 	// DMA Benchmark code
-	// Currently 11MB/s.
+	// Currently 14.9MB/s.
 	#ifdef DMA_BENCHMARK
 	while(1)
 	{
@@ -770,8 +770,11 @@ int scsiSelfTest()
 		return 32;
 	}
 	*SCSI_CTRL_BSY = 1;
+	s2s_delay_ms(1);
 	if (! scsiStatusBSY())
 	{
+		*SCSI_CTRL_BSY = 0;
+
 		// Error, BSY doesn't work.
 		return 32;
 	}
@@ -850,7 +853,6 @@ int scsiSelfTest()
 		SCSI_ClearPin(signalsOut[i]);
 	}
 	*/
-
 
 	// FPGA comms test code
 	for(i = 0; i < 10000; ++i)
