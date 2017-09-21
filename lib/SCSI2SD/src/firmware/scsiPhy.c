@@ -66,10 +66,10 @@ static uint8_t asyncTimings[][4] =
 #define SCSI_FAST20_ASSERT 2
 
 
-#define syncDeskew(period) ((period) < 45 ? \
+#define syncDeskew(period) ((period) < 35 ? \
 	SCSI_FAST10_DESKEW : SCSI_FAST5_DESKEW)
 
-#define syncHold(period) ((period) < 45 ? \
+#define syncHold(period) ((period) < 35 ? \
 	((period) == 25 ? SCSI_FAST10_HOLD : 4) /* 25ns/33ns */\
 	: SCSI_FAST5_HOLD)
 
@@ -509,11 +509,16 @@ void scsiEnterPhase(int phase)
 			}
 			else
 			{
+				// Amiga A3000 OS3.9 sets period to 35 and fails with
+				// glitch == 1.
+				int glitch =
+					scsiDev.target->syncPeriod < 35 ? 1 :
+						(scsiDev.target->syncPeriod < 45 ? 2 : 5);
 				scsiSetTiming(
 					syncAssertion(scsiDev.target->syncPeriod),
 					syncDeskew(scsiDev.target->syncPeriod),
 					syncHold(scsiDev.target->syncPeriod),
-					scsiDev.target->syncPeriod < 45 ? 1 : 5);
+					glitch);
 			}
 
 			// See note 26 in SCSI 2 standard: SCSI 1 implementations may assume

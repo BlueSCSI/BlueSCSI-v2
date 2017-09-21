@@ -477,6 +477,8 @@ static void doReserveRelease()
 	}
 }
 
+static uint32_t resetUntil = 0;
+
 static void scsiReset()
 {
 	scsiDev.rstCount++;
@@ -515,6 +517,7 @@ static void scsiReset()
 
 	scsiDev.postDataOutHook = NULL;
 
+
 	// Sleep to allow the bus to settle down a bit.
 	// We must be ready again within the "Reset to selection time" of
 	// 250ms.
@@ -523,7 +526,7 @@ static void scsiReset()
 	// in which case TERMPWR cannot be supplied, and reset will ALWAYS
 	// be true. Therefore, the sleep here must be slow to avoid slowing
 	// USB comms
-	s2s_delay_ms(1); // 1ms.
+	resetUntil = s2s_getTime_ms() + 2; // At least 1ms.
 }
 
 static void enter_SelectionPhase()
@@ -646,6 +649,9 @@ static void process_SelectionPhase()
 
 static void process_MessageOut()
 {
+	int wasNeedSyncNegotiationAck = scsiDev.needSyncNegotiationAck;
+	scsiDev.needSyncNegotiationAck = 0; // Successful on -most- messages.
+
 	scsiEnterPhase(MESSAGE_OUT);
 
 	scsiDev.atnFlag = 0;
@@ -716,11 +722,10 @@ static void process_MessageOut()
 		// Message Reject
 		// Oh well.
 
-		if (scsiDev.needSyncNegotiationAck)
+		if (wasNeedSyncNegotiationAck)
 		{
 			scsiDev.target->syncOffset = 0;
 			scsiDev.target->syncPeriod = 0;
-			scsiDev.needSyncNegotiationAck = 0;
 		}
 	}
 	else if (scsiDev.msgOut == 0x08)
@@ -732,6 +737,12 @@ static void process_MessageOut()
 		// Message Parity Error
 		// Go back and re-send the last message.
 		scsiDev.phase = MESSAGE_IN;
+
+		if (wasNeedSyncNegotiationAck)
+		{
+			scsiDev.target->syncOffset = 0;
+			scsiDev.target->syncPeriod = 0;
+		}
 	}
 	else if (scsiDev.msgOut & 0x80) // 0x80 -> 0xFF
 	{
@@ -778,9 +789,16 @@ static void process_MessageOut()
 			scsiEnterPhase(MESSAGE_IN);
 			static const uint8_t WDTR[] = {0x01, 0x02, 0x03, 0x00};
 			scsiWrite(WDTR, sizeof(WDTR));
+
+			// SDTR becomes invalidated.
+			scsiDev.target->syncOffset = 0;
+			scsiDev.target->syncPeriod = 0;
 		}
 		else if (extmsg[0] == 1 && msgLen == 3) // Synchronous data request
 		{
+			int oldPeriod = scsiDev.target->syncPeriod;
+			int oldOffset = scsiDev.target->syncOffset;
+
 			int transferPeriod = extmsg[1];
 			int offset = extmsg[2];
 
@@ -836,10 +854,17 @@ static void process_MessageOut()
 				}
 			}
 
-			scsiEnterPhase(MESSAGE_IN);
-			uint8_t SDTR[] = {0x01, 0x03, 0x01, scsiDev.target->syncPeriod, scsiDev.target->syncOffset};
-			scsiWrite(SDTR, sizeof(SDTR));
-			scsiDev.needSyncNegotiationAck = 1; // Check if this message is rejected.
+			if (transferPeriod != oldPeriod ||
+				scsiDev.target->syncPeriod != oldPeriod ||
+				offset != oldOffset ||
+				scsiDev.target->syncOffset != oldOffset ||
+				!wasNeedSyncNegotiationAck) // Don't get into infinite loops negotiating.
+			{
+				scsiEnterPhase(MESSAGE_IN);
+				uint8_t SDTR[] = {0x01, 0x03, 0x01, scsiDev.target->syncPeriod, scsiDev.target->syncOffset};
+				scsiWrite(SDTR, sizeof(SDTR));
+				scsiDev.needSyncNegotiationAck = 1; // Check if this message is rejected.
+			}
 		}
 		else
 		{
@@ -864,6 +889,12 @@ static void process_MessageOut()
 
 void scsiPoll(void)
 {
+	if (resetUntil != 0 && resetUntil > s2s_getTime_ms())
+	{
+		return;
+	}
+	resetUntil = 0;
+
 	if (unlikely(scsiDev.resetFlag))
 	{
 		scsiReset();

@@ -684,9 +684,10 @@ void scsiDiskPoll()
 		int i = 0;
 		// int scsiDisconnected = 0;
 		int scsiComplete = 0;
-		// uint32_t lastActivityTime = s2s_getTime_ms();
+		//uint32_t lastActivityTime = s2s_getTime_ms();
 		// int scsiActive = 0;
 		// int sdActive = 0;
+		int clearBSY = 0;
 
 		int parityError = 0;
 		while ((i < totalSDSectors) &&
@@ -703,6 +704,24 @@ void scsiDiskPoll()
 			uint32_t sectors =
 				rem < maxSectors ? rem : maxSectors;
 			scsiRead(&scsiDev.data[0], sectors * SD_SECTOR_SIZE, &parityError);
+
+			if (i + sectors >= totalSDSectors)
+			{
+				// We're transferring over the SCSI bus faster than the SD card
+				// can write.  All data is buffered, and we're just waiting for
+				// the SD card to complete. The host won't let us disconnect.
+				// Some drivers set a 250ms timeout on transfers to complete.
+				// SD card writes are supposed to complete
+				// within 200ms, but sometimes they don'to.
+				// Just pretend we're finished.
+				process_Status();
+				process_MessageIn(); // Will go to BUS_FREE state
+
+				// Try and prevent anyone else using the SCSI bus while we're not ready.
+				*SCSI_CTRL_BSY = 1;
+				clearBSY = 1;
+			}
+
 
 			if (!parityError)
 			{
@@ -828,6 +847,11 @@ void scsiDiskPoll()
 				SCSI_SetPin(SCSI_Out_BSY); 
 			}
 #endif
+		}
+
+		if (clearBSY)
+		{
+			*SCSI_CTRL_BSY = 0;
 		}
 
 #if 0

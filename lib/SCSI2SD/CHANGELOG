@@ -1,3 +1,6 @@
+2017XXXX		6.1.2
+	- Fix synchronous negotiation bugs
+
 20170520		6.1.1
 	- Performance improvements to improve throughput at all scsi speeds
 	- Add new "turbo" speed option to boost speeds.
