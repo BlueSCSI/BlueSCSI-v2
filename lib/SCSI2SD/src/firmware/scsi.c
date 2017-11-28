@@ -508,8 +508,8 @@ static void scsiReset()
 
 	for (int i = 0; i < S2S_MAX_TARGETS; ++i)
 	{
-		scsiDev.target[i].syncOffset = 0;
-		scsiDev.target[i].syncPeriod = 0;
+		scsiDev.targets[i].syncOffset = 0;
+		scsiDev.targets[i].syncPeriod = 0;
 	}
 	scsiDev.minSyncPeriod = 0;
 
@@ -898,11 +898,9 @@ void scsiPoll(void)
 	if (unlikely(scsiDev.resetFlag))
 	{
 		scsiReset();
-		if ((scsiDev.resetFlag = scsiStatusRST()))
-		{
-			// Still in reset phase. Do not try and process any commands.
-			return;
-		}
+		// Still in reset phase for a few ms.
+		// Do not try and process any commands.
+		return;
 	}
 
 	switch (scsiDev.phase)
