@@ -31,7 +31,7 @@
 static uint8_t asyncTimings[][4] =
 {
 /* Speed,    Assert,    Deskew,    Hold,    Glitch */
-{/*1.5MB/s*/ 28,        18,        13,      13},
+{/*1.5MB/s*/ 28,        18,        13,      15},
 {/*3.3MB/s*/ 13,        6,         6,       13},
 {/*5MB/s*/   9,         6,         6,       6}, // 80ns
 {/*safe*/    3,         6,         6,       6}, // Probably safe
@@ -58,7 +58,13 @@ static uint8_t asyncTimings[][4] =
 
 #define SCSI_FAST10_DESKEW 2 // 25ns
 #define SCSI_FAST10_HOLD 3 // 33ns
-#define SCSI_FAST10_ASSERT 3 // 30ns
+#define SCSI_FAST10_WRITE_ASSERT 3 // 30ns. Overall clocks only works if fpga overhead is 3.
+
+// Slow down the cycle to be valid. 2x assert period is TOO FAST when
+// reading data. It's ok when writing due to the deskew.
+// 50ns. ie. 100ns / 2. Rounded down because there's likely a few extra cycles
+// here and there.
+#define SCSI_FAST10_READ_ASSERT 5
 
 // Fastest possible timing, probably not 20MB/s
 #define SCSI_FAST20_DESKEW 1
@@ -74,12 +80,17 @@ static uint8_t asyncTimings[][4] =
 	: SCSI_FAST5_HOLD)
 
 
+// Number of overhead cycles per period.
+#define FPGA_OVERHEAD 2
+#define FPGA_CYCLES_PER_NS 9
+#define SCSI_PERIOD_CLKS(period) ((((int)period * 4) + (FPGA_CYCLES_PER_NS/2)) / FPGA_CYCLES_PER_NS)
+
 // 3.125MB/s (80 period) to < 10MB/s sync
 // Assumes a 108MHz fpga clock. (9 ns)
-// (((period * 4) / 2) * 0.8) / 9
-// Done using 3 fixed point math.
 // 3:0 Assertion count, variable
-#define syncAssertion(period) ((((((int)period) * 177) + 750)/1000) & 0xF)
+#define syncAssertionWrite(period,deskew) ((SCSI_PERIOD_CLKS(period) - deskew - FPGA_OVERHEAD + 1) / 2)
+#define syncAssertionRead(period) syncAssertionWrite(period,0)
+
 
 // Time until we consider ourselves selected
 // 400ns at 108MHz
@@ -481,13 +492,12 @@ scsiSetDefaultTiming()
 		asyncTiming[3]);
 }
 
-void scsiEnterPhase(int phase)
+void scsiEnterPhase(int newPhase)
 {
 	// ANSI INCITS 362-2002 SPI-3 10.7.1:
 	// Phase changes are not allowed while REQ or ACK is asserted.
 	while (likely(!scsiDev.resetFlag) && scsiStatusACK()) {}
 
-	int newPhase = phase > 0 ? phase : 0;
 	int oldPhase = *SCSI_CTRL_PHASE;
 
 	if (!scsiDev.resetFlag && (!scsiPhyFifoEmpty() || !scsiPhyFifoAltEmpty())) {
@@ -505,7 +515,14 @@ void scsiEnterPhase(int phase)
 			}
 			else if (scsiDev.target->syncPeriod <= 25)
 			{
-				scsiSetTiming(SCSI_FAST10_ASSERT, SCSI_FAST10_DESKEW, SCSI_FAST10_HOLD, 1);
+				if (newPhase == DATA_IN)
+				{
+					scsiSetTiming(SCSI_FAST10_WRITE_ASSERT, SCSI_FAST10_DESKEW, SCSI_FAST10_HOLD, 1);
+				}
+				else
+				{
+					scsiSetTiming(SCSI_FAST10_READ_ASSERT, SCSI_FAST10_DESKEW, SCSI_FAST10_HOLD, 1);
+				}
 			}
 			else
 			{
@@ -514,26 +531,26 @@ void scsiEnterPhase(int phase)
 				int glitch =
 					scsiDev.target->syncPeriod < 35 ? 1 :
 						(scsiDev.target->syncPeriod < 45 ? 2 : 5);
+				int deskew = syncDeskew(scsiDev.target->syncPeriod);
+				int assertion;
+				if (newPhase == DATA_IN)
+				{
+					assertion = syncAssertionWrite(scsiDev.target->syncPeriod, deskew);
+				}
+				else
+				{
+					assertion = syncAssertionRead(scsiDev.target->syncPeriod);
+				}
 				scsiSetTiming(
-					syncAssertion(scsiDev.target->syncPeriod),
-					syncDeskew(scsiDev.target->syncPeriod),
+					assertion,
+					deskew,
 					syncHold(scsiDev.target->syncPeriod),
 					glitch);
 			}
 
-			// See note 26 in SCSI 2 standard: SCSI 1 implementations may assume
-			// "leading edge of the first REQ pulse beyond the REQ/ACK offset
-			// agreement would not occur until after the trailing edge of the
-			// last ACK pulse within the agreement."
-			// We simply subtract 1 from the offset to meet this requirement.
-			if (scsiDev.target->syncOffset >= 2)
-			{
-				*SCSI_CTRL_SYNC_OFFSET = scsiDev.target->syncOffset - 1;
-			} else {
-				*SCSI_CTRL_SYNC_OFFSET = scsiDev.target->syncOffset;
-			}
+			*SCSI_CTRL_SYNC_OFFSET = scsiDev.target->syncOffset;
 		}
-		else
+		else if (newPhase >= 0)
 		{
 
 			*SCSI_CTRL_SYNC_OFFSET = 0;
@@ -564,14 +581,20 @@ void scsiEnterPhase(int phase)
 				asyncTiming[3]);
 		}
 
-		*SCSI_CTRL_PHASE = newPhase;
-		busSettleDelay();
-
-		if (scsiDev.compatMode < COMPAT_SCSI2)
+		if (newPhase >= 0)
 		{
-			s2s_delay_us(100);
-		}
+			*SCSI_CTRL_PHASE = newPhase;
+			busSettleDelay();
 
+			if (scsiDev.compatMode < COMPAT_SCSI2)
+			{
+				s2s_delay_us(100);
+			}
+		}
+		else
+		{
+			*SCSI_CTRL_PHASE = 0;
+		}
 	}
 }
 
@@ -587,10 +610,10 @@ void scsiPhyReset()
 		dmaInProgress = 0;
 	}
 
-	*SCSI_CTRL_PHASE = 0x00;
-	*SCSI_CTRL_BSY = 0x00;
 	s2s_fpgaReset(); // Clears fifos etc.
 
+	*SCSI_CTRL_PHASE = 0x00;
+	*SCSI_CTRL_BSY = 0x00;
 	scsiPhyFifoSel = 0;
 	*SCSI_FIFO_SEL = 0;
 	*SCSI_CTRL_DBX = 0;

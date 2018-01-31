@@ -81,10 +81,10 @@ void MX_FSMC_Init(void)
   //   1 to write back to fsmc bus.
   Timing.DataSetupTime = 4;
 
-  // Allow a clock for us to release signals, plus 3 for the synchroniser to
-  // realise the cycle has ended. Need to avoid both devices acting as outputs
+  // Allow a clock for us to release signals
+  // Need to avoid both devices acting as outputs
   // on the multiplexed lines at the same time.
-  Timing.BusTurnAroundDuration = 4;
+  Timing.BusTurnAroundDuration = 1;
 
   Timing.CLKDivision = 16; // Ignored for async
   Timing.DataLatency = 17; // Ignored for async

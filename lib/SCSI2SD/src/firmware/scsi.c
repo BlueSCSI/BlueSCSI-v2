@@ -815,13 +815,14 @@ static void process_MessageOut()
 				// After 80 we start to run out of bits in the fpga timing
 				// register.
 				(transferPeriod == 0) ||
+				(offset == 0) ||
 				((scsiDev.boardCfg.scsiSpeed != S2S_CFG_SPEED_NoLimit) &&
 					(scsiDev.boardCfg.scsiSpeed <= S2S_CFG_SPEED_ASYNC_50)))
 			{
 				scsiDev.target->syncOffset = 0;
 				scsiDev.target->syncPeriod = 0;
 			} else {
-				scsiDev.target->syncOffset = offset < 63 ? offset : 63;
+				scsiDev.target->syncOffset = offset <= 15 ? offset : 15;
 				// FAST20 / 50ns / 20MHz is disabled for now due to
 				// data corruption while reading data. We can count the
 				// ACK's correctly, but can't save the data to a register

@@ -718,8 +718,11 @@ void scsiDiskPoll()
 				process_MessageIn(); // Will go to BUS_FREE state
 
 				// Try and prevent anyone else using the SCSI bus while we're not ready.
-				*SCSI_CTRL_BSY = 1;
-				clearBSY = 1;
+				if (*SCSI_CTRL_BSY == 0) // Could be busy for a linked command
+				{
+					*SCSI_CTRL_BSY = 1;
+					clearBSY = 1;
+				}
 			}
 
 
