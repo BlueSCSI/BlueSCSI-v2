@@ -1,3 +1,6 @@
+20180430		6.1.4
+	- Fix bug in self-test function
+
 20180131		6.1.3
 	- Fix bug that caused stability issues with 10MB/s transfers.
 
