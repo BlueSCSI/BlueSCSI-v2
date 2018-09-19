@@ -662,8 +662,24 @@ static int8_t SCSI_CheckAddressRange (USBD_HandleTypeDef  *pdev, uint8_t lun , u
 {
 	USBD_CompositeClassData *classData = (USBD_CompositeClassData*) pdev->pClassData;
 	USBD_MSC_BOT_HandleTypeDef *hmsc = &(classData->msc);
-  
-  if ((blk_offset + blk_nbr) > hmsc->scsi_blk_nbr )
+
+	// michael@codesrc.com: Re-check block limits in cause we have different values
+	// for different LUN's.
+    uint32_t blkNbr;
+	uint16_t blkSize;
+	if(((USBD_StorageTypeDef *)pdev->pUserData)->GetCapacity(lun, &blkNbr, &blkSize) != 0)
+	{
+    SCSI_SenseCode(pdev,
+                   lun,
+                   NOT_READY, 
+                   MEDIUM_NOT_PRESENT);
+    return -1;
+  } 
+	// global variables. wooo
+	hmsc->scsi_blk_size = blkSize;
+	hmsc->scsi_blk_nbr = blkNbr;
+
+  if ((blk_offset + blk_nbr) > blkNbr )
   {
     SCSI_SenseCode(pdev,
                    lun, 

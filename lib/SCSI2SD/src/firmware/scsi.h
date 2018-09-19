@@ -162,12 +162,14 @@ typedef struct
 	uint8_t minSyncPeriod; // Debug use only.
 
 	int needSyncNegotiationAck;
+	int sdUnderrunCount;
 } ScsiDevice;
 
 extern ScsiDevice scsiDev;
 
 void process_Status(void);
-void process_MessageIn(void);
+int process_MessageIn(int releaseBusFree);
+void enter_BusFree(void);
 
 void scsiInit(void);
 void scsiPoll(void);

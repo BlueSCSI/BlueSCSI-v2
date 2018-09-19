@@ -18,12 +18,16 @@
 #ifndef S2S_BSP_h
 #define S2S_BSP_h
 
+#include <stdint.h>
+
 // For the STM32F205, DMA bursts may not cross 1KB address boundaries.
 // The maximum burst is 16 bytes.
 #define S2S_DMA_ALIGN __attribute__((aligned(1024)))
 
 void s2s_setNormalClock();
 void s2s_setFastClock();
+
+uint32_t s2s_getSdRateMBs();
 
 #endif
 

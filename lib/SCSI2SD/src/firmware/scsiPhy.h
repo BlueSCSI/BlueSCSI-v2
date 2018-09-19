@@ -47,7 +47,7 @@
 #define SCSI_STS_PARITY_ERR ((volatile uint8_t*)0x6000002C)
 
 #define SCSI_FIFO_DATA ((volatile uint16_t*)0x60000040)
-#define SCSI_FIFO_DEPTH 512
+#define SCSI_FIFO_DEPTH 256
 
 
 #define scsiPhyFifoFull() ((*SCSI_STS_FIFO & 0x01) == 0x01)
@@ -109,9 +109,14 @@ extern volatile uint8_t scsiTxDMAComplete;
 void scsiReadDMA(uint8_t* data, uint32_t count);
 int scsiReadDMAPoll();
 
+// Low-level.
+void scsiReadPIO(uint8_t* data, uint32_t count);
+
 void scsiWriteDMA(const uint8_t* data, uint32_t count);
 int scsiWriteDMAPoll();
 
 int scsiSelfTest(void);
+
+uint32_t s2s_getScsiRateMBs();
 
 #endif

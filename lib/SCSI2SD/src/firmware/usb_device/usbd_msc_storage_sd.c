@@ -205,6 +205,8 @@ int8_t s2s_usbd_storage_Write (uint8_t lun,
 			for (int i = 0; i < SDSectorsPerSCSISector(cfg->bytesPerSector); ++i)
 			{
 				uint8_t partial[512] S2S_DMA_ALIGN;
+				memcpy(partial, buf, 512);
+
 				BSP_SD_WriteBlocks_DMA(
 					(uint32_t*) partial,
 					sdSectorNum * 512LL,
@@ -214,8 +216,6 @@ int8_t s2s_usbd_storage_Write (uint8_t lun,
 
 				int validBytes = cfg->bytesPerSector % SD_SECTOR_SIZE;
 				if (validBytes == 0) validBytes = SD_SECTOR_SIZE;
-
-				memcpy(buf, partial, validBytes);
 
 				buf += validBytes;
 			}

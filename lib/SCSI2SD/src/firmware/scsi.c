@@ -38,7 +38,6 @@ ScsiDevice scsiDev S2S_DMA_ALIGN;
 
 static void enter_SelectionPhase(void);
 static void process_SelectionPhase(void);
-static void enter_BusFree(void);
 static void enter_MessageIn(uint8_t message);
 static void enter_Status(uint8_t status);
 static void enter_DataIn(int len);
@@ -48,7 +47,7 @@ static void process_Command(void);
 
 static void doReserveRelease(void);
 
-static void enter_BusFree()
+void enter_BusFree()
 {
 	// This delay probably isn't needed for most SCSI hosts, but it won't
 	// hurt either. It's possible some of the samplers needed this delay.
@@ -84,7 +83,7 @@ static void enter_MessageIn(uint8_t message)
 	scsiDev.phase = MESSAGE_IN;
 }
 
-void process_MessageIn()
+int process_MessageIn(int releaseBusFree)
 {
 	scsiEnterPhase(MESSAGE_IN);
 	scsiWriteByte(scsiDev.msgIn);
@@ -94,6 +93,7 @@ void process_MessageIn()
 		// If there was a parity error, we go
 		// back to MESSAGE_OUT first, get out parity error message, then come
 		// back here.
+		return 0;
 	}
 	else if ((scsiDev.msgIn == MSG_LINKED_COMMAND_COMPLETE) ||
 		(scsiDev.msgIn == MSG_LINKED_COMMAND_COMPLETE_WITH_FLAG))
@@ -106,10 +106,16 @@ void process_MessageIn()
 		scsiDev.status = GOOD;
 		transfer.blocks = 0;
 		transfer.currentBlock = 0;
+		return 0;
 	}
-	else /*if (scsiDev.msgIn == MSG_COMMAND_COMPLETE)*/
+	else if (releaseBusFree) /*if (scsiDev.msgIn == MSG_COMMAND_COMPLETE)*/
 	{
 		enter_BusFree();
+		return 1;
+	}
+	else
+	{
+		return 1;
 	}
 }
 
@@ -517,6 +523,7 @@ static void scsiReset()
 
 	scsiDev.postDataOutHook = NULL;
 
+	scsiDev.sdUnderrunCount = 0;
 
 	// Sleep to allow the bus to settle down a bit.
 	// We must be ready again within the "Reset to selection time" of
@@ -865,6 +872,7 @@ static void process_MessageOut()
 				uint8_t SDTR[] = {0x01, 0x03, 0x01, scsiDev.target->syncPeriod, scsiDev.target->syncOffset};
 				scsiWrite(SDTR, sizeof(SDTR));
 				scsiDev.needSyncNegotiationAck = 1; // Check if this message is rejected.
+				scsiDev.sdUnderrunCount = 0;  // reset counter, may work now.
 			}
 		}
 		else
@@ -1004,7 +1012,7 @@ void scsiPoll(void)
 		}
 		else
 		{
-			process_MessageIn();
+			process_MessageIn(1);
 		}
 
 	break;

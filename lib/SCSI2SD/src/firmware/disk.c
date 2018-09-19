@@ -18,12 +18,18 @@
 
 #include "stm32f2xx.h"
 
+// For SD write direct routines
+#include "sdio.h"
+#include "bsp_driver_sd.h"
+
+
 #include "scsi.h"
 #include "scsiPhy.h"
 #include "config.h"
 #include "disk.h"
 #include "sd.h"
 #include "time.h"
+#include "bsp.h"
 
 #include <string.h>
 
@@ -533,7 +539,6 @@ void scsiDiskPoll()
 	if (scsiDev.phase == DATA_IN &&
 		transfer.currentBlock != transfer.blocks)
 	{
-		scsiEnterPhase(DATA_IN);
 
 		int totalSDSectors =
 			transfer.blocks * SDSectorsPerSCSISector(bytesPerSector);
@@ -549,8 +554,15 @@ void scsiDiskPoll()
 		int i = 0;
 		int scsiActive __attribute__((unused)) = 0; // unused if DMA disabled
 		int sdActive = 0;
+
+		uint32_t partialScsiChunk = 0;
+
+		// Start reading from the SD card FIRST, because we change state and
+		// wai for SCSI signals
+		int dataInStarted = 0;
+
 		while ((i < totalSDSectors) &&
-			likely(scsiDev.phase == DATA_IN) &&
+			(!dataInStarted || likely(scsiDev.phase == DATA_IN)) &&
 			likely(!scsiDev.resetFlag))
 		{
 			int completedDmaSectors;
@@ -594,9 +606,16 @@ void scsiDiskPoll()
 				sdReadDMA(sdLBA + prep, sectors, &scsiDev.data[SD_SECTOR_SIZE * startBuffer]);
 
 				sdActive = sectors;
+
+				if (!dataInStarted)
+				{
+					dataInStarted = 1;
+					scsiEnterPhase(DATA_IN); // Will wait a few microseconds.
+				}
 			}
 
 #ifdef SCSI_FSMC_DMA
+			#error this code not updated for 256 max bytes in scsi fifo
 			if (scsiActive && scsiPhyComplete() && scsiWriteDMAPoll())
 			{
 				scsiActive = 0;
@@ -624,31 +643,47 @@ void scsiDiskPoll()
 					if (dmaBytes == 0) dmaBytes = SD_SECTOR_SIZE;
 				}
 
-				uint16_t* scsiDmaData = (uint16_t*) &(scsiDev.data[SD_SECTOR_SIZE * (i % buffers)]);
 				// Manually unrolled loop for performance.
 				// -Os won't unroll this for us automatically,
 				// especially since scsiPhyTx does volatile stuff.
 				// Reduces bus utilisation by making the fsmc split
 				// 32bits into 2 16 bit writes.
+
+				uint16_t* scsiDmaData = (uint16_t*) &(scsiDev.data[SD_SECTOR_SIZE * (i % buffers) + partialScsiChunk]);
+
+				uint32_t chunk = ((dmaBytes - partialScsiChunk) > SCSI_FIFO_DEPTH)
+					? SCSI_FIFO_DEPTH : (dmaBytes - partialScsiChunk);
+
 				int k = 0;
-				for (; k + 4 < (dmaBytes + 1) / 2; k += 4)
+				for (; k + 4 < (chunk + 1) / 2; k += 4)
 				{
 					scsiPhyTx32(scsiDmaData[k], scsiDmaData[k+1]);
 					scsiPhyTx32(scsiDmaData[k+2], scsiDmaData[k+3]);
 				}
-				for (; k < (dmaBytes + 1) / 2; ++k)
+				for (; k < (chunk + 1) / 2; ++k)
 				{
 					scsiPhyTx(scsiDmaData[k]);
 				}
-				i++;
 				while (!scsiPhyComplete() && !scsiDev.resetFlag)
 				{
 					__WFE(); // Wait for event
 				}
 				scsiPhyFifoFlip();
-				scsiSetDataCount(dmaBytes);
+				scsiSetDataCount(chunk);
+
+				partialScsiChunk += chunk;
+				if (partialScsiChunk == dmaBytes)
+				{
+					partialScsiChunk = 0;
+					++i;
+				}
 			}
 #endif
+		}
+
+		if (!dataInStarted && !scsiDev.resetFlag) // zero bytes ?
+		{
+			scsiEnterPhase(DATA_IN); // Will wait a few microseconds.
 		}
 
 		// We've finished transferring the data to the FPGA, now wait until it's
@@ -679,22 +714,16 @@ void scsiDiskPoll()
 				scsiDev.target->cfg->sdSectorStart,
 				bytesPerSector,
 				transfer.lba);
-		// int buffers = sizeof(scsiDev.data) / SD_SECTOR_SIZE;
-		// int prep = 0;
 		int i = 0;
-		// int scsiDisconnected = 0;
-		int scsiComplete = 0;
-		//uint32_t lastActivityTime = s2s_getTime_ms();
-		// int scsiActive = 0;
-		// int sdActive = 0;
 		int clearBSY = 0;
 
 		int parityError = 0;
+		int enableParity = scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY;
+
 		while ((i < totalSDSectors) &&
-			(likely(scsiDev.phase == DATA_OUT) || // scsiDisconnect keeps our phase.
-				scsiComplete) &&
+			likely(scsiDev.phase == DATA_OUT) &&
 			likely(!scsiDev.resetFlag) &&
-			likely(!parityError))
+			likely(!parityError || !enableParity))
 		{
 			// Well, until we have some proper non-blocking SD code, we must
 			// do this in a half-duplex fashion. We need to write as much as
@@ -703,178 +732,146 @@ void scsiDiskPoll()
 			uint32_t rem = totalSDSectors - i;
 			uint32_t sectors =
 				rem < maxSectors ? rem : maxSectors;
-			scsiRead(&scsiDev.data[0], sectors * SD_SECTOR_SIZE, &parityError);
 
-			if (i + sectors >= totalSDSectors)
+			if (bytesPerSector == SD_SECTOR_SIZE)
 			{
-				// We're transferring over the SCSI bus faster than the SD card
-				// can write.  All data is buffered, and we're just waiting for
-				// the SD card to complete. The host won't let us disconnect.
-				// Some drivers set a 250ms timeout on transfers to complete.
-				// SD card writes are supposed to complete
-				// within 200ms, but sometimes they don'to.
-				// Just pretend we're finished.
-				process_Status();
-				process_MessageIn(); // Will go to BUS_FREE state
-
-				// Try and prevent anyone else using the SCSI bus while we're not ready.
-				if (*SCSI_CTRL_BSY == 0) // Could be busy for a linked command
+				// We assume the SD card is faster than the SCSI interface, but has
+				// no flow control. This can be handled if a) the scsi interface
+				// doesn't block and b) we read enough SCSI sectors first so that
+				// the SD interface cannot catch up.
+				uint32_t totalBytes = sectors * SD_SECTOR_SIZE;
+				uint32_t readAheadBytes = sectors * SD_SECTOR_SIZE;
+				uint32_t sdSpeed = s2s_getSdRateMBs() + (scsiDev.sdUnderrunCount / 2);
+				uint32_t scsiSpeed = s2s_getScsiRateMBs();
+				// if (have blind writes)
+				if (scsiSpeed > 0 && scsiDev.sdUnderrunCount < 16)
 				{
-					*SCSI_CTRL_BSY = 1;
-					clearBSY = 1;
+					// readAhead = sectors * (sd / scsi - 1 + 0.1);
+					readAheadBytes = totalBytes * sdSpeed / scsiSpeed - totalBytes + SCSI_FIFO_DEPTH;
+					if (readAheadBytes < SCSI_FIFO_DEPTH)
+					{
+						readAheadBytes = SCSI_FIFO_DEPTH;
+					}
+
+					if (readAheadBytes > totalBytes)
+					{
+						readAheadBytes = totalBytes;
+					}
 				}
-			}
 
+				uint32_t chunk = (readAheadBytes > SCSI_FIFO_DEPTH) ? SCSI_FIFO_DEPTH : readAheadBytes;
+				scsiSetDataCount(chunk);
 
-			if (!parityError)
-			{
-				sdTmpWrite(&scsiDev.data[0], i + sdLBA, sectors);
-			}
-			i += sectors;
-
-#if 0
-			// Wait for the next DMA interrupt. It's beneficial to halt the
-			// processor to give the DMA controller more memory bandwidth to
-			// work with.
-			int scsiBusy = 1;
-			int sdBusy = 1;
-			while (scsiBusy && sdBusy)
-			{
-				uint8_t intr = CyEnterCriticalSection();
-				scsiBusy = scsiDMABusy();
-				sdBusy = sdDMABusy();
-				if (scsiBusy && sdBusy)
+				uint32_t scsiBytesRead = 0;
+				while (scsiBytesRead < readAheadBytes)
 				{
-					__WFI();
+					while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
+					{
+						__WFE(); // Wait for event
+					}
+					parityError |= scsiParityError();
+					scsiPhyFifoFlip();
+					uint32_t nextChunk = ((totalBytes - scsiBytesRead - chunk) > SCSI_FIFO_DEPTH)
+						? SCSI_FIFO_DEPTH : (totalBytes - scsiBytesRead - chunk);
+
+					if (nextChunk > 0) scsiSetDataCount(nextChunk);
+					scsiReadPIO(&scsiDev.data[scsiBytesRead], chunk);
+					scsiBytesRead += chunk;
+					chunk = nextChunk;
 				}
-				CyExitCriticalSection(intr);
-			}
 
-			if (sdActive && !sdBusy && sdWriteSectorDMAPoll())
-			{
-				sdActive = 0;
-				i++;
-			}
-			if (!sdActive && ((prep - i) > 0))
-			{
-				// Start an SD transfer if we have space.
-				sdWriteMultiSectorDMA(&scsiDev.data[SD_SECTOR_SIZE * (i % buffers)]);
-				sdActive = 1;
-			}
+				HAL_SD_WriteBlocks_DMA(&hsd, (uint32_t*) (&scsiDev.data[0]), (i + sdLBA) * 512ll, SD_SECTOR_SIZE, sectors);
 
-			uint32_t now = getTime_ms();
-
-			if (scsiActive && !scsiBusy && scsiReadDMAPoll())
-			{
-				scsiActive = 0;
-				++prep;
-				lastActivityTime = now;
-			}
-			if (!scsiActive &&
-				((prep - i) < buffers) &&
-				(prep < totalSDSectors) &&
-				likely(!scsiDisconnected))
-			{
-				int dmaBytes = SD_SECTOR_SIZE;
-				if ((prep % sdPerScsi) == (sdPerScsi - 1))
+				while (scsiBytesRead < totalBytes)
 				{
-					dmaBytes = bytesPerSector % SD_SECTOR_SIZE;
-					if (dmaBytes == 0) dmaBytes = SD_SECTOR_SIZE;
+					while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
+					{
+						__WFE(); // Wait for event
+					}
+					parityError |= scsiParityError();
+					scsiPhyFifoFlip();
+					uint32_t nextChunk = ((totalBytes - scsiBytesRead - chunk) > SCSI_FIFO_DEPTH)
+						? SCSI_FIFO_DEPTH : (totalBytes - scsiBytesRead - chunk);
+
+					if (nextChunk > 0) scsiSetDataCount(nextChunk);
+					scsiReadPIO(&scsiDev.data[scsiBytesRead], chunk);
+					scsiBytesRead += chunk;
+					chunk = nextChunk;
 				}
-				scsiReadDMA(&scsiDev.data[SD_SECTOR_SIZE * (prep % buffers)], dmaBytes);
-				scsiActive = 1;
-			}
-			else if (
-				(scsiDev.boardCfg.flags & CONFIG_ENABLE_DISCONNECT) &&
-				(scsiActive == 0) &&
-				likely(!scsiDisconnected) &&
-				unlikely(scsiDev.discPriv) &&
-				unlikely(diffTime_ms(lastActivityTime, now) >= 20) &&
-				likely(scsiDev.phase == DATA_OUT))
-			{
-				// We're transferring over the SCSI bus faster than the SD card
-				// can write.  There is no more buffer space once we've finished
-				// this SCSI transfer.
-				// The NCR 53C700 interface chips have a 250ms "byte-to-byte"
-				// timeout buffer. SD card writes are supposed to complete
-				// within 200ms, but sometimes they don't.
-				// The NCR 53C700 series is used on HP 9000 workstations.
-				scsiDisconnect();
-				scsiDisconnected = 1;
-				lastActivityTime = getTime_ms();
-			}
-			else if (unlikely(scsiDisconnected) &&
-				(
-					(prep == i) || // Buffers empty.
-					// Send some messages every 100ms so we don't timeout.
-					// At a minimum, a reselection involves an IDENTIFY message.
-					unlikely(diffTime_ms(lastActivityTime, now) >= 100)
-				))
-			{
-				int reconnected = scsiReconnect();
-				if (reconnected)
+
+				// Oh dear, SD finished first.
+				int underrun = totalBytes > readAheadBytes && hsd.DmaTransferCplt;
+
+				uint32_t dmaFinishTime = s2s_getTime_ms();
+				while (!hsd.SdTransferCplt &&
+					s2s_elapsedTime_ms(dmaFinishTime) < 180)
 				{
-					scsiDisconnected = 0;
-					lastActivityTime = getTime_ms(); // Don't disconnect immediately.
+					// Wait while keeping BSY.
 				}
-				else if (diffTime_ms(lastActivityTime, getTime_ms()) >= 10000)
+				while((__HAL_SD_SDIO_GET_FLAG(&hsd, SDIO_FLAG_TXACT)) &&
+					s2s_elapsedTime_ms(dmaFinishTime) < 180)
 				{
-					// Give up after 10 seconds of trying to reconnect.
-					scsiDev.resetFlag = 1;
+					// Wait for SD card while keeping BSY.
 				}
-			}
-			else if (
-				likely(!scsiComplete) &&
-				(sdActive == 1) &&
-				(prep == totalSDSectors) && // All scsi data read and buffered
-				likely(!scsiDev.discPriv) && // Prefer disconnect where possible.
-				unlikely(diffTime_ms(lastActivityTime, now) >= 150) &&
 
-				likely(scsiDev.phase == DATA_OUT) &&
-				!(scsiDev.cdb[scsiDev.cdbLen - 1] & 0x01) // Not linked command
-				)
+				if (i + sectors >= totalSDSectors &&
+					!underrun &&
+					(!parityError || !enableParity))
+				{
+					// We're transferring over the SCSI bus faster than the SD card
+					// can write.  All data is buffered, and we're just waiting for
+					// the SD card to complete. The host won't let us disconnect.
+					// Some drivers set a 250ms timeout on transfers to complete.
+					// SD card writes are supposed to complete
+					// within 200ms, but sometimes they don't.
+					// Just pretend we're finished.
+					process_Status();
+					clearBSY = process_MessageIn(0); // Will go to BUS_FREE state but keep BSY asserted.
+				}
+
+				HAL_SD_CheckWriteOperation(&hsd, (uint32_t)SD_DATATIMEOUT);
+
+				if (underrun)
+				{
+					// Try again. Data is still in memory.
+					sdTmpWrite(&scsiDev.data[0], i + sdLBA, sectors);
+					scsiDev.sdUnderrunCount++;
+				}
+				i += sectors;
+
+			}
+			else
 			{
-				// We're transferring over the SCSI bus faster than the SD card
-				// can write.  All data is buffered, and we're just waiting for
-				// the SD card to complete. The host won't let us disconnect.
-				// Some drivers set a 250ms timeout on transfers to complete.
-				// SD card writes are supposed to complete
-				// within 200ms, but sometimes they don'to.
-				// Just pretend we're finished.
-				scsiComplete = 1;
-
-				process_Status();
-				process_MessageIn(); // Will go to BUS_FREE state
-
-				// Try and prevent anyone else using the SCSI bus while we're not ready.
-				SCSI_SetPin(SCSI_Out_BSY); 
+				// Well, until we have some proper non-blocking SD code, we must
+				// do this in a half-duplex fashion. We need to write as much as
+				// possible in each SD card transaction.
+				// use sg_dd from sg_utils3 tools to test.
+				uint32_t maxSectors = sizeof(scsiDev.data) / SD_SECTOR_SIZE;
+				uint32_t rem = totalSDSectors - i;
+				uint32_t sectors = rem < maxSectors ? rem : maxSectors;
+				int scsiSector;
+				for (scsiSector = i; scsiSector < i + sectors; ++scsiSector)
+				{
+					int dmaBytes = SD_SECTOR_SIZE;
+					if ((scsiSector % sdPerScsi) == (sdPerScsi - 1))
+					{
+						dmaBytes = bytesPerSector % SD_SECTOR_SIZE;
+						if (dmaBytes == 0) dmaBytes = SD_SECTOR_SIZE;
+					}
+					scsiRead(&scsiDev.data[SD_SECTOR_SIZE * (scsiSector - i)], dmaBytes, &parityError);
+				}
+				if (!parityError)
+				{
+					sdTmpWrite(&scsiDev.data[0], i + sdLBA, sectors);
+				}
+				i += sectors;
 			}
-#endif
 		}
 
 		if (clearBSY)
 		{
-			*SCSI_CTRL_BSY = 0;
+			enter_BusFree();
 		}
-
-#if 0
-		if (scsiComplete)
-		{
-			SCSI_ClearPin(SCSI_Out_BSY);
-		}
-		while (
-			!scsiDev.resetFlag &&
-			unlikely(scsiDisconnected) &&
-			(s2s_elapsedTime_ms(lastActivityTime) <= 10000))
-		{
-			scsiDisconnected = !scsiReconnect();
-		}
-		if (scsiDisconnected)
-		{
-			// Failed to reconnect
-			scsiDev.resetFlag = 1;
-		}
-#endif
 
 		if (scsiDev.phase == DATA_OUT)
 		{

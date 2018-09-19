@@ -187,7 +187,7 @@ scsiReadByte(void)
 }
 
 
-static void
+void
 scsiReadPIO(uint8_t* data, uint32_t count)
 {
 	uint16_t* fifoData = (uint16_t*)data;
@@ -595,6 +595,29 @@ void scsiEnterPhase(int newPhase)
 		{
 			*SCSI_CTRL_PHASE = 0;
 		}
+	}
+}
+
+uint32_t s2s_getScsiRateMBs()
+{
+	if (scsiDev.target->syncOffset)
+	{
+		if (scsiDev.target->syncPeriod < 23)
+		{
+			return 20;
+		}
+		else if (scsiDev.target->syncPeriod <= 25)
+		{
+			return 10;
+		}
+		else
+		{
+			return 1000 / (scsiDev.target->syncPeriod * 4);
+		}
+	}
+	else
+	{
+		return 0;
 	}
 }
 

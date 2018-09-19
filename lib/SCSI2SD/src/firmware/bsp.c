@@ -23,6 +23,18 @@ static int usingFastClock = 0;
 
 // TODO keep clock routines consistent with those in STM32Cubemx main.c
 
+uint32_t s2s_getSdRateMBs()
+{
+	if (usingFastClock)
+	{
+		return 18; // ((72MHz / 2) / 8bits) * 4bitparallel
+	}
+	else
+	{
+		return 12; // ((48MHz / 2) / 8bits) * 4bitparallel
+	}
+}
+
 // The standard clock is 108MHz with 48MHz SDIO clock
 void s2s_setNormalClock()
 {

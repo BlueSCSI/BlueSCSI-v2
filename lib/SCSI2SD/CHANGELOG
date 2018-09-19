@@ -1,3 +1,8 @@
+2018XXXX        6.2.1
+	- Fix bug with non-512 byte sectors.
+	- Fix bug when writing with multiple SCSI devices on the chain
+	- Performance improvements to write speeds.
+
 20180430		6.1.4
 	- Fix bug in self-test function
 
