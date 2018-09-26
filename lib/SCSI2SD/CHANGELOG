@@ -1,4 +1,4 @@
-2018XXXX        6.2.1
+20180926        6.2.0
 	- Fix bug with non-512 byte sectors.
 	- Fix bug when writing with multiple SCSI devices on the chain
 	- Performance improvements to write speeds.
