@@ -102,8 +102,12 @@ typedef struct
   uint16_t                 scsi_blk_size;
   uint32_t                 scsi_blk_nbr;
   
-  uint32_t                 scsi_blk_addr;
-  uint32_t                 scsi_blk_len;
+//  uint32_t                 scsi_blk_addr;
+//  uint32_t                 scsi_blk_len;
+// michael@codesrc.com: Need to support > 4gb drives
+  uint64_t                 scsi_blk_addr;
+  uint64_t                 scsi_blk_len;
+
 }
 USBD_MSC_BOT_HandleTypeDef; 
 

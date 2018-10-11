@@ -26,7 +26,6 @@
 #include "scsi.h"
 #include "scsiPhy.h"
 #include "time.h"
-#include "trace.h"
 #include "sdio.h"
 #include "usb_device/usb_device.h"
 #include "usb_device/usbd_composite.h"
@@ -46,7 +45,6 @@ void mainEarlyInit()
 
 void mainInit()
 {
-	traceInit();
 	s2s_timeInit();
 	s2s_ledInit();
 	s2s_fpgaInit();

@@ -26,7 +26,6 @@
 #include "sd.h"
 #include "led.h"
 #include "time.h"
-#include "trace.h"
 
 #include "scsiPhy.h"
 

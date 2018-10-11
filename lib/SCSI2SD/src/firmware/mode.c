@@ -147,6 +147,21 @@ static const uint8_t CachingPage[] =
 0x00, 0x00, // Maximum pre-fetch ceiling
 };
 
+// Old CCS SCSI-1 cache page
+static const uint8_t CCSCachingPage[] =
+{
+0x38, // Page Code
+0x0E, // Page length
+0x00, // Read cache disable
+0x00, // Prefetch threshold
+0x00, 0x00, // Max threshold / multiplier
+0x00, 0x00, // Min threshold / multiplier
+0x00, 0x00, // Reserved
+0x00, 0x00,
+0x00, 0x00,
+0x00, 0x00,
+};
+
 static const uint8_t ControlModePage[] =
 {
 0x0A, // Page code
@@ -448,6 +463,13 @@ static void doModeSense(
 		pageFound = 1;
 		pageIn(pc, idx, AppleVendorPage, sizeof(AppleVendorPage));
 		idx += sizeof(AppleVendorPage);
+	}
+
+	if (pageCode == 0x38) // Don't send unless requested
+	{
+		pageFound = 1;
+		pageIn(pc, idx, CCSCachingPage, sizeof(CCSCachingPage));
+		idx += sizeof(CCSCachingPage);
 	}
 
 	if (!pageFound)

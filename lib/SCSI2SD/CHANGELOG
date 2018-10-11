@@ -1,3 +1,6 @@
+20181011		6.2.1
+	- Fix bug in USB disk interface with disks over 4GB
+
 20180926        6.2.0
 	- Fix bug with non-512 byte sectors.
 	- Fix bug when writing with multiple SCSI devices on the chain

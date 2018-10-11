@@ -22,7 +22,6 @@
 #include "scsiPhy.h"
 #include "sd.h"
 #include "disk.h"
-#include "trace.h"
 #include "bootloader.h"
 #include "bsp.h"
 #include "spinlock.h"
@@ -38,7 +37,7 @@
 
 #include <string.h>
 
-static const uint16_t FIRMWARE_VERSION = 0x0620;
+static const uint16_t FIRMWARE_VERSION = 0x0621;
 
 // 1 flash row
 static const uint8_t DEFAULT_CONFIG[128] =
@@ -86,9 +85,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 void s2s_configInit(S2S_BoardCfg* config)
 {
-
 	usbInEpState = USB_IDLE;
-
 
 	if ((blockDev.state & DISK_PRESENT) && sdDev.capacity)
 	{
@@ -222,7 +219,7 @@ debugCommand()
 	response[27] = scsiDev.lastSenseASC >> 8;
 	response[28] = scsiDev.lastSenseASC;
 	response[29] = *SCSI_STS_DBX & 0xff; // What we've read
-	response[30] = LastTrace;
+	response[30] = 0; // obsolete
 	response[31] = *SCSI_STS_DBX >> 8; // What we're writing
 	hidPacket_send(response, sizeof(response));
 }

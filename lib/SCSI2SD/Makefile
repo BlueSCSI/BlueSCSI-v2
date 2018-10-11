@@ -147,7 +147,6 @@ SRC = \
 	src/firmware/spinlock.c \
 	src/firmware/tape.c \
 	src/firmware/time.c \
-	src/firmware/trace.c \
 	src/firmware/vendor.c \
 	${USBCOMPOSITE_SRC}
 

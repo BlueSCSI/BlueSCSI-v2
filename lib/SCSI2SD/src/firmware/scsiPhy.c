@@ -21,7 +21,6 @@
 
 #include "scsi.h"
 #include "scsiPhy.h"
-#include "trace.h"
 #include "time.h"
 #include "fpga.h"
 #include "led.h"
@@ -115,8 +114,6 @@ uint8_t scsiPhyFifoSel = 0; // global
 // vector table.
 void EXTI4_IRQHandler()
 {
-	traceIrq(trace_scsiResetISR);
-
 	// Make sure that interrupt flag is set
 	if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_4) != RESET) {
 
@@ -164,7 +161,6 @@ scsiReadByte(void)
 #endif
 	scsiSetDataCount(1);
 
-	trace(trace_spinPhyRxFifo);
 	while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
 	{
 		__WFE(); // Wait for event
@@ -203,7 +199,6 @@ scsiReadDMA(uint8_t* data, uint32_t count)
 {
 	// Prepare DMA transfer
 	dmaInProgress = 1;
-	trace(trace_doRxSingleDMA);
 
 	scsiTxDMAComplete = 1; // TODO not used much
 	scsiRxDMAComplete = 0; // TODO not used much
@@ -289,8 +284,6 @@ scsiRead(uint8_t* data, uint32_t count, int* parityError)
 		{
 			scsiReadDMA(data + i, chunk);
 
-			trace(trace_spinReadDMAPoll);
-
 			while (!scsiReadDMAPoll() && likely(!scsiDev.resetFlag))
 			{
 			};
@@ -323,13 +316,11 @@ scsiWriteByte(uint8_t value)
 		assertFail();
 	}
 #endif
-	trace(trace_spinPhyTxFifo);
 	scsiPhyTx(value);
 	scsiPhyFifoFlip();
 
 	scsiSetDataCount(1);
 
-	trace(trace_spinTxComplete);
 	while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
 	{
 		__WFE(); // Wait for event
@@ -358,7 +349,6 @@ scsiWriteDMA(const uint8_t* data, uint32_t count)
 {
 	// Prepare DMA transfer
 	dmaInProgress = 1;
-	trace(trace_doTxSingleDMA);
 
 	scsiTxDMAComplete = 0;
 	scsiRxDMAComplete = 1;
@@ -417,8 +407,6 @@ scsiWrite(const uint8_t* data, uint32_t count)
 			// DMA is doing 32bit transfers.
 			chunk = chunk & 0xFFFFFFF8;
 			scsiWriteDMA(data + i, chunk);
-
-			trace(trace_spinReadDMAPoll);
 
 			while (!scsiWriteDMAPoll() && likely(!scsiDev.resetFlag))
 			{
@@ -623,10 +611,8 @@ uint32_t s2s_getScsiRateMBs()
 
 void scsiPhyReset()
 {
-	trace(trace_scsiPhyReset);
 	if (dmaInProgress)
 	{
-		trace(trace_spinDMAReset);
 		HAL_DMA_Abort(&memToFSMC);
 		HAL_DMA_Abort(&fsmcToMem);
 
