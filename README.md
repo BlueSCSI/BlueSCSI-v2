@@ -6,5 +6,5 @@ ArdSCSino とは SCSIデバイス（ハードディスク）を arduino で再�
 
 # Setup
 * Arduino Software (IDE) V1.8.8 を使用しています。<br>
- ライブラリとしてSDFAT(https://github.com/greiman/SdFat)を使用しています。 <br>
+ ライブラリとしてSDFAT (https://github.com/greiman/SdFat) を使用しています。 <br>
 
