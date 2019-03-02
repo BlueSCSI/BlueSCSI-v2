@@ -234,4 +234,14 @@ void scsiWriteBuffer()
 	}
 }
 
+// XEBEC specific command. See
+// http://www.bitsavers.org/pdf/westernDigital/WD100x/79-000004_WD1002-SHD_OEM_Manual_Aug1984.pdf
+// Section 4.3.14
+void scsiWriteSectorBuffer()
+{
+	scsiDev.dataLen = scsiDev.target->liveCfg.bytesPerSector;
+	scsiDev.phase = DATA_OUT;
+	scsiDev.postDataOutHook = doWriteBuffer;
+}
+
 

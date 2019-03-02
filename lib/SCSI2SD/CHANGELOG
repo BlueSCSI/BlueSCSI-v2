@@ -1,3 +1,6 @@
+2019XXXX
+	- Port XEBEC support from v5 firmware
+
 20181011		6.2.1
 	- Fix bug in USB disk interface with disks over 4GB
 

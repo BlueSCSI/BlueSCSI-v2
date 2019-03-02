@@ -153,7 +153,8 @@ void process_Status()
 		}
 	}
 
-	if ((scsiDev.status == GOOD) && (control & 0x01))
+	if ((scsiDev.status == GOOD) && (control & 0x01) &&
+		scsiDev.target->cfg->quirks != S2S_CFG_QUIRKS_XEBEC)
 	{
 		// Linked command.
 		scsiDev.status = INTERMEDIATE;
@@ -171,12 +172,31 @@ void process_Status()
 		message = MSG_COMMAND_COMPLETE;
 	}
 
-	if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_OMTI)
+	if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_XEBEC)
+	{
+		// More non-standardness. Expects 2 status bytes (really status + msg)
+		// 00 d 000 err 0
+		// d == disk number
+		// ERR = 1 if error.
+		if (scsiDev.status == GOOD)
+		{
+			scsiWriteByte(scsiDev.cdb[1] & 0x20);
+		}
+		else
+		{
+			scsiWriteByte((scsiDev.cdb[1] & 0x20) | 0x2);
+		}
+		s2s_delay_us(10); // Seems to need a delay before changing phase bits.
+	}
+	else if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_OMTI)
 	{
 		scsiDev.status |= (scsiDev.target->targetId & 0x03) << 5;
+		scsiWriteByte(scsiDev.status);
 	}
-
-	scsiWriteByte(scsiDev.status);
+	else
+	{
+		scsiWriteByte(scsiDev.status);
+	}
 
 	scsiDev.lastStatus = scsiDev.status;
 	scsiDev.lastSense = scsiDev.target->sense.code;
@@ -289,7 +309,31 @@ static void process_Command()
 	// Prefer LUN's set by IDENTIFY messages for newer hosts.
 	if (scsiDev.lun < 0)
 	{
-		scsiDev.lun = scsiDev.cdb[1] >> 5;
+		if (command == 0xE0 || command == 0xE4) // XEBEC s1410
+		{
+			scsiDev.lun = 0;
+		}
+		else
+		{
+			scsiDev.lun = scsiDev.cdb[1] >> 5;
+		}
+	}
+
+
+	// For Philips P2000C with Xebec S1410 SASI/MFM adapter
+	// http://bitsavers.trailing-edge.com/pdf/xebec/104524C_S1410Man_Aug83.pdf
+	if ((scsiDev.lun > 0) && (scsiDev.boardCfg.flags & S2S_CFG_MAP_LUNS_TO_IDS))
+	{
+		int tgtIndex;
+		for (tgtIndex = 0; tgtIndex < S2S_MAX_TARGETS; ++tgtIndex)
+		{
+			if (scsiDev.targets[tgtIndex].targetId == scsiDev.lun)
+			{
+				scsiDev.target = &scsiDev.targets[tgtIndex];
+				scsiDev.lun = 0;
+				break;
+			}
+		}
 	}
 
 	control = scsiDev.cdb[scsiDev.cdbLen - 1];
@@ -311,7 +355,9 @@ static void process_Command()
 		scsiDev.target->sense.asc = SCSI_PARITY_ERROR;
 		enter_Status(CHECK_CONDITION);
 	}
-	else if ((control & 0x02) && ((control & 0x01) == 0))
+	else if ((control & 0x02) && ((control & 0x01) == 0) &&
+		// used for head step options on xebec.
+		likely(scsiDev.target->cfg->quirks != S2S_CFG_QUIRKS_XEBEC))
 	{
 		// FLAG set without LINK flag.
 		scsiDev.target->sense.code = ILLEGAL_REQUEST;
@@ -327,23 +373,43 @@ static void process_Command()
 		// REQUEST SENSE
 		uint32_t allocLength = scsiDev.cdb[4];
 
-		// As specified by the SASI and SCSI1 standard.
-		// Newer initiators won't be specifying 0 anyway.
-		if (allocLength == 0) allocLength = 4;
+		if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_XEBEC)
+		{
+			// Completely non-standard
+			allocLength = 4;
+			if (scsiDev.target->sense.code == NO_SENSE)
+				scsiDev.data[0] = 0;
+			else if (scsiDev.target->sense.code == ILLEGAL_REQUEST)
+				scsiDev.data[0] = 0x20; // Illegal command
+			else if (scsiDev.target->sense.code == NOT_READY)
+				scsiDev.data[0] = 0x04; // Drive not ready
+			else
+				scsiDev.data[0] = 0x11;  // Uncorrectable data error
 
-		memset(scsiDev.data, 0, 256); // Max possible alloc length
-		scsiDev.data[0] = 0xF0;
-		scsiDev.data[2] = scsiDev.target->sense.code & 0x0F;
+			scsiDev.data[1] = (scsiDev.cdb[1] & 0x20) | ((transfer.lba >> 16) & 0x1F);
+			scsiDev.data[2] = transfer.lba >> 8;
+			scsiDev.data[3] = transfer.lba;
+		}
+		else
+		{
+			// As specified by the SASI and SCSI1 standard.
+			// Newer initiators won't be specifying 0 anyway.
+			if (allocLength == 0) allocLength = 4;
 
-		scsiDev.data[3] = transfer.lba >> 24;
-		scsiDev.data[4] = transfer.lba >> 16;
-		scsiDev.data[5] = transfer.lba >> 8;
-		scsiDev.data[6] = transfer.lba;
+			memset(scsiDev.data, 0, 256); // Max possible alloc length
+			scsiDev.data[0] = 0xF0;
+			scsiDev.data[2] = scsiDev.target->sense.code & 0x0F;
 
-		// Additional bytes if there are errors to report
-		scsiDev.data[7] = 10; // additional length
-		scsiDev.data[12] = scsiDev.target->sense.asc >> 8;
-		scsiDev.data[13] = scsiDev.target->sense.asc;
+			scsiDev.data[3] = transfer.lba >> 24;
+			scsiDev.data[4] = transfer.lba >> 16;
+			scsiDev.data[5] = transfer.lba >> 8;
+			scsiDev.data[6] = transfer.lba;
+
+			// Additional bytes if there are errors to report
+			scsiDev.data[7] = 10; // additional length
+			scsiDev.data[12] = scsiDev.target->sense.asc >> 8;
+			scsiDev.data[13] = scsiDev.target->sense.asc;
+		}
 
 		// Silently truncate results. SCSI-2 spec 8.2.14.
 		enter_DataIn(allocLength);
@@ -408,6 +474,11 @@ static void process_Command()
 	else if (command == 0x3B)
 	{
 		scsiWriteBuffer();
+	}
+	else if (command == 0x0f &&
+		scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_XEBEC)
+	{
+		scsiWriteSectorBuffer();
 	}
 	else if (command == 0x3C)
 	{
@@ -567,7 +638,11 @@ static void process_SelectionPhase()
 	// The Mac Plus boot-time (ie. rom code) selection abort time
 	// is < 1ms and must have no delay (standard suggests 250ms abort time)
 	// Most newer SCSI2 hosts don't care either way.
-	if (scsiDev.boardCfg.selectionDelay == 255) // auto
+	if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_XEBEC)
+	{
+		s2s_delay_ms(1); // Simply won't work if set to 0.
+	}
+	else if (scsiDev.boardCfg.selectionDelay == 255) // auto
 	{
 		if (scsiDev.compatMode < COMPAT_SCSI2)
 		{
@@ -640,9 +715,27 @@ static void process_SelectionPhase()
 		// SCSI1/SASI initiators may not set their own ID.
 		scsiDev.initiatorId = (selStatus >> 3) & 0x7;
 
-		while (likely(!scsiDev.resetFlag) && scsiStatusSEL())
+		// Wait until the end of the selection phase.
+		uint32_t selTimerBegin = s2s_getTime_ms();
+		while (likely(!scsiDev.resetFlag))
 		{
-			// Wait until the end of the selection phase.
+			if (!scsiStatusSEL())
+			{
+				break;
+			}
+			else if (s2s_elapsedTime_ms(selTimerBegin) >= 10 &&
+				scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_XEBEC)
+			{
+				// XEBEC hosts may not bother releasing SEL at all until
+				// just before the command ends.
+				break;
+			}
+			else if (s2s_elapsedTime_ms(selTimerBegin) >= 250)
+			{
+				*SCSI_CTRL_BSY = 0;
+				scsiDev.resetFlag = 1;
+				break;
+			}
 		}
 
 		scsiDev.phase = COMMAND;

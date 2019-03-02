@@ -20,6 +20,7 @@
 void scsiSendDiagnostic(void);
 void scsiReceiveDiagnostic(void);
 void scsiWriteBuffer(void);
+void scsiWriteSectorBuffer(void);
 void scsiReadBuffer(void);
 
 #endif
