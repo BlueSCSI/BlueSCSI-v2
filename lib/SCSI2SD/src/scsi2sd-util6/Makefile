@@ -96,6 +96,8 @@ ifeq ($(TARGET),Linux)
 	BUILD := $(PWD)/build/linux
 	LIBUSB_CONFIG+=--disable-shared
 	LDFLAGS_LIBUSB+= -ludev -lpthread
+all: $(BUILD)/scsi2sd-test
+
 endif
 ifeq ($(TARGET),Darwin)
 	# Should match OSX
@@ -128,15 +130,10 @@ HIDAPI = \
 	$(BUILD)/hid.o
 endif
 
-
-OBJ = \
-	$(HIDAPI) \
+WXOBJ =\
 	$(BUILD)/ConfigUtil.o \
 	$(BUILD)/BoardPanel.o \
 	$(BUILD)/TargetPanel.o \
-	$(BUILD)/SCSI2SD_HID.o \
-	$(BUILD)/hidpacket.o \
-	$(BUILD)/Dfu.o \
 	$(BUILD)/terminalwx.o \
 	$(BUILD)/terminalinputevent.o \
 	$(BUILD)/wxterm.o \
@@ -147,6 +144,12 @@ OBJ = \
 	$(BUILD)/utils.o \
 	$(BUILD)/vt52_states.o \
 
+OBJ = \
+	$(HIDAPI) \
+	$(BUILD)/SCSI2SD_HID.o \
+	$(BUILD)/hidpacket.o \
+	$(BUILD)/Dfu.o \
+
 
 EXEOBJ = \
 	$(BUILD)/scsi2sd-util6.o \
@@ -154,6 +157,7 @@ EXEOBJ = \
 
 ifneq ($(USE_SYSTEM_ZLIB),Yes)
 $(OBJ): $(BUILD)/zlib/buildstamp
+$(WXOBJ): $(BUILD)/zlib/buildstamp
 $(EXEOBJ): $(BUILD)/zlib/buildstamp
 $(BUILD)/zlib/buildstamp:
 	mkdir -p $(dir $@)
@@ -168,6 +172,7 @@ endif
 
 ifneq ($(USE_SYSTEM_LIBUSB),Yes)
 $(OBJ): $(BUILD)/libusb/buildstamp
+$(WXOBJ): $(BUILD)/libusb/buildstamp
 $(EXEOBJ): $(BUILD)/libusb/buildstamp
 $(BUILD)/libusb/buildstamp:
 	mkdir -p $(dir $@)
@@ -184,7 +189,7 @@ $(BUILD)/libusb/buildstamp:
 endif
 
 ifneq ($(USE_SYSTEM_WX),Yes)
-$(OBJ): $(BUILD)/wx/buildstamp
+$(WXOBJ): $(BUILD)/wx/buildstamp
 $(EXEOBJ): $(BUILD)/wx/buildstamp
 ifneq ($(USE_SYSTEM_ZLIB),Yes)
 $(BUILD)/wx/buildstamp: $(BUILD)/zlib/buildstamp
@@ -205,6 +210,7 @@ LIBZIPPER_STATIC=-enable-static
 endif
 
 $(OBJ): $(BUILD)/libzipper/buildstamp
+$(WXOBJ): $(BUILD)/libzipper/buildstamp
 $(EXEOBJ): $(BUILD)/libzipper/buildstamp
 ifneq ($(USE_SYSTEM_ZLIB),Yes)
 $(BUILD)/libzipper/buildstamp: $(BUILD)/zlib/buildstamp
@@ -239,9 +245,13 @@ else
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) `wx-config-3.0 --cxxflags` $< -c -o $@
 endif
 
-$(BUILD)/scsi2sd-util6$(EXE): $(OBJ) $(BUILD)/scsi2sd-util.o
+$(BUILD)/scsi2sd-util6$(EXE): $(OBJ) $(WXOBJ) $(BUILD)/scsi2sd-util.o
 	mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS_WX) $(LDFLAGS) -o $@
+
+$(BUILD)/scsi2sd-test$(EXE): $(OBJ) $(BUILD)/scsi2sd-test.o
+	mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
 
 all: $(BUILD)/dfu-util/buildstamp
 $(BUILD)/dfu-util/buildstamp: $(BUILD)/libusb/buildstamp
