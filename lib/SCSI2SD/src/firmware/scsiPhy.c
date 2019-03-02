@@ -820,76 +820,31 @@ int scsiSelfTest()
 
 	int result = 0;
 
-	// TEST DBx
-	// TODO test DBp
-	int i;
-	for (i = 0; i < 256; ++i)
-	{
-		*SCSI_CTRL_DBX = i;
-		busSettleDelay();
-		// STS_DBX is 16 bit!
-		if ((*SCSI_STS_DBX & 0xff) != (i & 0xff))
-		{
-			result |= 1;
-		}
-		/*if (Lookup_OddParity[i & 0xff] != SCSI_ReadPin(SCSI_In_DBP))
-		{
-			result |= 2;
-		}*/
-	}
 	*SCSI_CTRL_DBX = 0;
+	busSettleDelay();
+	if ((*SCSI_STS_DBX & 0xff) != 0)
+	{
+		result = 1;
+	}
 
-	// TEST MSG, CD, IO
-	/* TODO
+	// TEST DBx
+	int i;
 	for (i = 0; i < 8; ++i)
 	{
-		SCSI_CTL_PHASE_Write(i);
-		scsiDeskewDelay();
-
-		if (SCSI_ReadPin(SCSI_In_MSG) != !!(i & __scsiphase_msg))
+		uint8_t data = 1 << i;
+		*SCSI_CTRL_DBX = 0;
+		busSettleDelay();
+		*SCSI_CTRL_DBX = data;
+		busSettleDelay();
+		// STS_DBX is 16 bit!
+		if ((*SCSI_STS_DBX & 0xff) != data)
 		{
-			result |= 4;
-		}
-		if (SCSI_ReadPin(SCSI_In_CD) != !!(i & __scsiphase_cd))
-		{
-			result |= 8;
-		}
-		if (SCSI_ReadPin(SCSI_In_IO) != !!(i & __scsiphase_io))
-		{
-			result |= 16;
+			result = i + 2;
 		}
 	}
-	SCSI_CTL_PHASE_Write(0);
 
-	uint32_t signalsOut[] = { SCSI_Out_ATN, SCSI_Out_BSY, SCSI_Out_RST, SCSI_Out_SEL };
-	uint32_t signalsIn[] = { SCSI_Filt_ATN, SCSI_Filt_BSY, SCSI_Filt_RST, SCSI_Filt_SEL };
-
-	for (i = 0; i < 4; ++i)
-	{
-		SCSI_SetPin(signalsOut[i]);
-		scsiDeskewDelay();
-
-		int j;
-		for (j = 0; j < 4; ++j)
-		{
-			if (i == j)
-			{
-				if (! SCSI_ReadFilt(signalsIn[j]))
-				{
-					result |= 32;
-				}
-			}
-			else
-			{
-				if (SCSI_ReadFilt(signalsIn[j]))
-				{
-					result |= 32;
-				}
-			}
-		}
-		SCSI_ClearPin(signalsOut[i]);
-	}
-	*/
+	// TODO Test DBP
+	*SCSI_CTRL_DBX = 0;
 
 	// FPGA comms test code
 	for(i = 0; i < 10000; ++i)
