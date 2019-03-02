@@ -294,6 +294,10 @@ static void doSeek(uint32_t lba)
 		scsiDev.target->sense.asc = LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
 		scsiDev.phase = STATUS;
 	}
+	else
+	{
+		s2s_delay_ms(10);
+	}
 }
 
 static int doTestUnitReady()
