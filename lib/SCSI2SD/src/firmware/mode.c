@@ -120,6 +120,35 @@ static const uint8_t RigidDiskDriveGeometry[] =
 0x00, 0x00 // Reserved
 };
 
+static const uint8_t FlexibleDiskDriveGeometry[] =
+{
+0x05, // Page code
+0x1E, // Page length
+0x01, 0xF4, // Transfer Rate (500kbits)
+0x01, // heads
+18, // sectors per track
+0x20,0x00, // bytes per sector
+0x00, 80, // Cylinders
+0x00, 0x80, // Write-precomp
+0x00, 0x80, // reduced current,
+0x00, 0x00, // Drive step rate
+0x00, // pulse width
+0x00, 0x00, // Head settle delay
+0x00, // motor on delay
+0x00,  // motor off delay
+0x00,
+0x00,
+0x00,
+0x00,
+0x00,
+0x00,
+0x00,
+0x00,
+0x00,
+0x00,
+0x00
+};
+
 static const uint8_t RigidDiskDriveGeometry_SCSI1[] =
 {
 0x04, // Page code
@@ -419,6 +448,13 @@ static void doModeSense(
 		{
 			idx += sizeof(RigidDiskDriveGeometry_SCSI1);
 		}
+	}
+
+	if (pageCode == 0x05 || pageCode == 0x3F)
+	{
+		pageFound = 1;
+		pageIn(pc, idx, FlexibleDiskDriveGeometry, sizeof(FlexibleDiskDriveGeometry));
+		idx += sizeof(FlexibleDiskDriveGeometry);
 	}
 
 	// DON'T output the following pages for SCSI1 hosts. They get upset when
