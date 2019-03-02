@@ -214,6 +214,7 @@ ConfigUtil::toXML(const S2S_TargetCfg& config)
 		"	Space separated list. Available options:\n" <<
 		"	apple\t\tReturns Apple-specific mode pages\n" <<
 		"	omti\t\tOMTI host non-standard link control\n" <<
+		"	xebec\t\tXEBEC ignore step options in control byte\n" <<
 		"	********************************************************* -->\n" <<
 		"	<quirks>";
 	if (config.quirks == S2S_CFG_QUIRKS_APPLE)
@@ -223,6 +224,10 @@ ConfigUtil::toXML(const S2S_TargetCfg& config)
 	else if (config.quirks == S2S_CFG_QUIRKS_OMTI)
 	{
 		s << "omti";
+	}
+	else if (config.quirks == S2S_CFG_QUIRKS_XEBEC)
+	{
+		s << "xebec";
 	}
 
 	s <<
@@ -455,6 +460,10 @@ parseTarget(wxXmlNode* node)
 				else if (quirk == "omti")
 				{
 					result.quirks |= S2S_CFG_QUIRKS_OMTI;
+				}
+				else if (quirk == "xebec")
+				{
+					result.quirks |= S2S_CFG_QUIRKS_XEBEC;
 				}
 			}
 		}
