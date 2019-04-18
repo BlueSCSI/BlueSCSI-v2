@@ -2,18 +2,17 @@
  * SCSI-HDデバイスエミュレータ
  */
 #include <SPI.h>
-#include <SdFat.h>
+#include "SdFat.h"
 
 //ENABLE_EXTENDED_TRANSFER_CLASSを1に設定する
 //libraries/SdFat/SdFatConfig.h
-SPIClass SPI_2(2);
-//SdFat  SD(2);
-SdFatEX  SD(&SPI_2);
+SPIClass SPI_1(1);
+SdFatEX  SD(&SPI_1);
 
-//#define SPI_SPEED SD_SCK_MHZ(18)
-      
-#define LOG(XX)    //Serial.println(XX)
-#define LOGHEX(XX) //Serial.println(XX, HEX)
+#define LOG(XX)     //Serial.print(XX)
+#define LOGHEX(XX)  //Serial.print(XX, HEX)
+#define LOGN(XX)    //Serial.println(XX)
+#define LOGHEXN(XX) //Serial.println(XX, HEX)
 
 #define high 0
 #define low 1
@@ -25,27 +24,27 @@ SdFatEX  SD(&SPI_2);
 #define gpio_write(pin,val) gpio_write_bit(PIN_MAP[pin].gpio_device, PIN_MAP[pin].gpio_bit, val)
 #define gpio_read(pin) gpio_read_bit(PIN_MAP[pin].gpio_device, PIN_MAP[pin].gpio_bit)
 
-//#define DB0       PA0     // SCSI:DB0
-//#define DB1       PA1     // SCSI:DB1
-//#define DB2       PA2     // SCSI:DB2
-//#define DB3       PA3     // SCSI:DB3
-//#define DB4       PA4     // SCSI:DB4
-//#define DB5       PA5     // SCSI:DB5
-//#define DB6       PA6     // SCSI:DB6
-//#define DB7       PA7     // SCSI:DB7
-//#define DBP       PA8     // SCSI:DBP
+//#define DB0       PB8     // SCSI:DB0
+//#define DB1       PB9     // SCSI:DB1
+//#define DB2       PB10    // SCSI:DB2
+//#define DB3       PB11    // SCSI:DB3
+//#define DB4       PB12    // SCSI:DB4
+//#define DB5       PB13    // SCSI:DB5
+//#define DB6       PB14    // SCSI:DB6
+//#define DB7       PB15    // SCSI:DB7
+//#define DBP       PB0     // SCSI:DBP
 
-#define ATN       PB0     // SCSI:ATN
-#define BSY       PB1     // SCSI:BSY
-#define ACK       PB10    // SCSI:ACK
-#define RST       PB11    // SCSI:RST
-#define MSG       PB5     // SCSI:MSG
-#define SEL       PB6     // SCSI:SEL
-#define CD        PB7     // SCSI:C/D
-#define REQ       PB8     // SCSI:REQ
-#define IO        PB9     // SCSI:I/O
+#define ATN       PA8      // SCSI:ATN
+#define BSY       PA9      // SCSI:BSY
+#define ACK       PA10     // SCSI:ACK
+#define RST       PA15     // SCSI:RST
+#define MSG       PB3      // SCSI:MSG
+#define SEL       PB4      // SCSI:SEL
+#define CD        PB5      // SCSI:C/D
+#define REQ       PB6      // SCSI:REQ
+#define IO        PB7      // SCSI:I/O
 
-#define SD_CS     PB12     // SDCARD:CS
+#define SD_CS     PA4      // SDCARD:CS
 #define LED       PC13     // LED
 
 #define SCSIID    0                 // SCSI-ID 
@@ -67,18 +66,23 @@ bool          m_msb[256];
  */
 inline byte readIO(void)
 {
+  //GPIO(SCSI BUS)初期化
+  //ポート設定レジスタ（下位）
+//  GPIOB->regs->CRL |= 0x000000008; // SET INPUT W/ PUPD on PAB-PB0
+  //ポート設定レジスタ（上位）
+  GPIOB->regs->CRH = 0x88888888; // SET INPUT W/ PUPD on PB15-PB8
+//  GPIOB->regs->ODR = 0x0000FF00; // SET PULL-UPs on PB15-PB8
+  //ポート入力データレジスタ
+  uint32 ret = GPIOB->regs->IDR;
   byte bret =  0x00;
-
-  GPIOA->regs->CRL = 0x88888888; // Configure GPIOA[7:0]
-  uint32 ret = GPIOA->regs->IDR;
-  bret |= ((!bitRead(ret,7)) << 7);
-  bret |= ((!bitRead(ret,6)) << 6);
-  bret |= ((!bitRead(ret,5)) << 5);
-  bret |= ((!bitRead(ret,4)) << 4);
-  bret |= ((!bitRead(ret,3)) << 3);
-  bret |= ((!bitRead(ret,2)) << 2);
-  bret |= ((!bitRead(ret,1)) << 1);
-  bret |= ((!bitRead(ret,0)) << 0);
+  bret |= (!(ret & (1<<15))) << 7;
+  bret |= (!(ret & (1<<14))) << 6;
+  bret |= (!(ret & (1<<13))) << 5;
+  bret |= (!(ret & (1<<12))) << 4;
+  bret |= (!(ret & (1<<11))) << 3;
+  bret |= (!(ret & (1<<10))) << 2;
+  bret |= (!(ret & (1<<9)))  << 1;
+  bret |= (!(ret & (1<<8)))  << 0;
   return bret;
 }
 
@@ -87,61 +91,63 @@ inline byte readIO(void)
  */
 inline void writeIO(byte v)
 {
-//  GPIOA->regs->CRL = 0x11111111; // Configure GPIOA PP[7:0]10MHz
-  GPIOA->regs->CRL = 0x33333333;  // Configure GPIOA PP[7:0]50MHz
-  GPIOA->regs->CRH = 0x00000003;  // Configure GPIOA PP[16:8]50MHz
+  //GPIO(SCSI BUS)初期化
+  //ポート設定レジスタ（下位）
+  GPIOB->regs->CRL |= 0x00000003; // SET OUTPUT W/ PUPD on PA7-PB0 50MHz
+  //ポート設定レジスタ（上位）
+  GPIOB->regs->CRH = 0x33333333; // SET OUTPUT W/ PUPD on PB15-PB8 50MHz
+//  GPIOB->regs->ODR != 0x0000FF00; // SET PULL-UPs on PB15-PB8
   uint32 retL =  0x00;
   uint32 retH =  0x00;
-
   if(!parity(v)) {
-    bitWrite(retL, 8, 1);
+    retL |= (1<<0);
   } else {
-    bitWrite(retH, 8, 1);
+    retH |= (1<<0);
   }
   if(v & ( 1 << 7 )) {
-    bitWrite(retL, 7, 1);
+    retL |= (1<<15);
   } else {
-    bitWrite(retH, 7, 1);
-  }
+    retH |= (1<<15);
+  }  
   if(v & ( 1 << 6 )) {
-    bitWrite(retL, 6, 1);
+    retL |= (1<<14);
   } else {
-    bitWrite(retH, 6, 1);
+    retH |= (1<<14);
   }
   if(v & ( 1 << 5 )) {
-    bitWrite(retL, 5, 1);
+    retL |= (1<<13);
   } else {
-    bitWrite(retH, 5, 1);
+    retH |= (1<<13);
   }
   if(v & ( 1 << 4 )) {
-    bitWrite(retL, 4, 1);
+    retL |= (1<<12);
   } else {
-    bitWrite(retH, 4, 1);
+    retH |= (1<<12);
   }
   if(v & ( 1 << 3 )) {
-    bitWrite(retL, 3, 1);
+    retL |= (1<<11);
   } else {
-    bitWrite(retH, 3, 1);
+    retH |= (1<<11);
   }
   if(v & ( 1 << 2 )) {
-    bitWrite(retL, 2, 1);
+    retL |= (1<<10);
   } else {
-    bitWrite(retH, 2, 1);
+    retH |= (1<<10);
   }
   if(v & ( 1 << 1 )) {
-    bitWrite(retL, 1, 1);
+    retL |= (1<<9);
   } else {
-    bitWrite(retH, 1, 1);
+    retH |= (1<<9);
   }
   if(v & ( 1 << 0 )) {
-    bitWrite(retL, 0, 1);
+    retL |= (1<<8);
   } else {
-    bitWrite(retH, 0, 1);
+    retH |= (1<<8);
   }
   //ビットがLOWに設定される
-  GPIOA->regs->BRR = retL ;
+  GPIOB->regs->BRR = retL ;
   // ビットがHIGHに設定される
-  GPIOA->regs->BSRR = retH ;
+  GPIOB->regs->BSRR = retH ;
 }
 
 /*
@@ -166,19 +172,22 @@ void setup()
 {
   // PA15 / PB3 / PB4 が使えない
   // JTAG デバッグ用に使われているからです。
-//  disableDebugPorts();
-//  afio_cfg_debug_ports(AFIO_DEBUG_NONE);
+  disableDebugPorts();
 
   //シリアル初期化
-  Serial.begin(9600);
-  while (!Serial);
+  //Serial.begin(9600);
+  //while (!Serial);
 
   //PINの初期化
   gpio_mode(LED, GPIO_OUTPUT_OD);
   gpio_write(LED, low);
 
-  //GPIO(SCSI BUS)初期化
-  GPIOA->regs->CRL = 0x888888888; // Configure GPIOA[8:0]
+ //GPIO(SCSI BUS)初期化
+  //ポート設定レジスタ（下位）
+//  GPIOB->regs->CRL |= 0x000000008; // SET INPUT W/ PUPD on PAB-PB0
+  //ポート設定レジスタ（上位）
+  GPIOB->regs->CRH = 0x88888888; // SET INPUT W/ PUPD on PB15-PB8
+//  GPIOB->regs->ODR = 0x0000FF00; // SET PULL-UPs on PB15-PB8
 
   gpio_mode(ATN, GPIO_INPUT_PU);
   gpio_mode(BSY, GPIO_INPUT_PU);
@@ -204,7 +213,7 @@ void setup()
     onFalseInit();
   }
   //HDイメージファイル
-  m_file = SD.open(HDIMG_FILE, O_READ | O_WRITE);
+  m_file = SD.open(HDIMG_FILE, O_RDWR);
   if(!m_file) {
     Serial.println("Error: open hdimg");
     onFalseInit();
@@ -240,7 +249,7 @@ void onBusReset(void)
   if(isHigh(gpio_read(RST))) {
     delayMicroseconds(20);
     if(isHigh(gpio_read(RST))) {
-      LOG("BusReset!");
+      LOGN("BusReset!");
       m_isBusReset = true;
     }
   }
@@ -293,7 +302,7 @@ void writeHandshake(byte d)
  */
 void writeDataPhase(int len, byte* p)
 {
-  LOG("DATAIN PHASE");
+  LOGN("DATAIN PHASE");
   gpio_write(MSG, low);
   gpio_write(CD, low);
   gpio_write(IO, high);
@@ -311,7 +320,7 @@ void writeDataPhase(int len, byte* p)
  */
 void writeDataPhaseSD(uint32_t adds, uint32_t len)
 {
-  LOG("DATAIN PHASE(SD)");
+  LOGN("DATAIN PHASE(SD)");
   uint32_t pos = adds * BLOCKSIZE;
   m_file.seek(pos);
   gpio_write(MSG, low);
@@ -334,7 +343,7 @@ void writeDataPhaseSD(uint32_t adds, uint32_t len)
  */
 void readDataPhaseSD(uint32_t adds, uint32_t len)
 {
-  LOG("DATAOUT PHASE(SD)");
+  LOGN("DATAOUT PHASE(SD)");
   uint32_t pos = adds * BLOCKSIZE;
   m_file.seek(pos);
   gpio_write(MSG, low);
@@ -409,9 +418,9 @@ void onReadCapacityCommand(byte pmi)
  */
 byte onReadCommand(uint32_t adds, uint32_t len)
 {
-  LOG("-R");
-  LOGHEX(adds);
-  LOGHEX(len);
+  LOGN("-R");
+  LOGHEXN(adds);
+  LOGHEXN(len);
   gpio_write(LED, high);
   writeDataPhaseSD(adds, len);
   gpio_write(LED, low);
@@ -423,9 +432,9 @@ byte onReadCommand(uint32_t adds, uint32_t len)
  */
 byte onWriteCommand(uint32_t adds, uint32_t len)
 {
-  LOG("-W");
-  LOGHEX(adds);
-  LOGHEX(len);
+  LOGN("-W");
+  LOGHEXN(adds);
+  LOGHEXN(len);
   gpio_write(LED, high);
   readDataPhaseSD(adds, len);
   gpio_write(LED, low);
@@ -488,7 +497,7 @@ void onModeSenseCommand(byte dbd, int pageCode, uint32_t len)
  */
 void MsgIn2(int msg)
 {
-  LOG("MsgIn2");
+  LOGN("MsgIn2");
   gpio_write(MSG, high);
   gpio_write(CD, high);
   gpio_write(IO, high);
@@ -500,7 +509,7 @@ void MsgIn2(int msg)
  */
 void MsgOut2()
 {
-  LOG("MsgOut2");
+  LOGN("MsgOut2");
   gpio_write(MSG, high);
   gpio_write(CD, high);
   gpio_write(IO, low);
@@ -533,7 +542,7 @@ void loop()
     return;
   }
 
-  LOG("Selection");
+  LOGN("Selection");
   m_isBusReset = false;
   // セレクトされたらBSYを-にする
   gpio_mode(BSY, GPIO_OUTPUT_PP);
@@ -593,7 +602,7 @@ void loop()
     }
   }
 
-  LOG("Command");
+  LOGN("Command");
   gpio_write(MSG, low);
   gpio_write(CD, high);
   gpio_write(IO, low);
@@ -622,73 +631,74 @@ void loop()
     cmd[i] = readHandshake();
     LOGHEX(cmd[i]);
   }
+  LOGN("");
 
   switch(cmd[0]) {
   case 0x00:
-    LOG("[Test Unit]");
+    LOGN("[Test Unit]");
     break;
   case 0x01:
-    LOG("[Rezero Unit]");
+    LOGN("[Rezero Unit]");
     break;
   case 0x03:
-    LOG("[RequestSense]");
+    LOGN("[RequestSense]");
     onRequestSenseCommand(cmd[4]);
     break;
   case 0x04:
-    LOG("[FormatUnit]");
+    LOGN("[FormatUnit]");
     break;
   case 0x06:
-    LOG("[FormatUnit]");
+    LOGN("[FormatUnit]");
     break;
   case 0x07:
-    LOG("[ReassignBlocks]");
+    LOGN("[ReassignBlocks]");
     break;
   case 0x08:
-    LOG("[Read6]");
+    LOGN("[Read6]");
     sts = onReadCommand((((uint32_t)cmd[1] & 0x1F) << 16) | ((uint32_t)cmd[2] << 8) | cmd[3], (cmd[4] == 0) ? 0x100 : cmd[4]);
     break;
   case 0x0A:
-    LOG("[Write6]");
+    LOGN("[Write6]");
     sts = onWriteCommand((((uint32_t)cmd[1] & 0x1F) << 16) | ((uint32_t)cmd[2] << 8) | cmd[3], (cmd[4] == 0) ? 0x100 : cmd[4]);
     break;
   case 0x0B:
-    LOG("[Seek6]");
+    LOGN("[Seek6]");
     break;
   case 0x12:
-    LOG("[Inquiry]");
+    LOGN("[Inquiry]");
     onInquiryCommand(cmd[4]);
     break;
   case 0x1A:
-    LOG("[ModeSense6]");
+    LOGN("[ModeSense6]");
     onModeSenseCommand(cmd[1]&0x80, cmd[2] & 0x3F, cmd[4]);
     break;
   case 0x1B:
-    LOG("[StartStopUnit]");
+    LOGN("[StartStopUnit]");
     break;
   case 0x1E:
-    LOG("[PreAllowMed.Removal]");
+    LOGN("[PreAllowMed.Removal]");
     break;
   case 0x25:
-    LOG("[ReadCapacity]");
+    LOGN("[ReadCapacity]");
     onReadCapacityCommand(cmd[8]);
     break;
   case 0x28:
-    LOG("[Read10]");
+    LOGN("[Read10]");
     sts = onReadCommand(((uint32_t)cmd[2] << 24) | ((uint32_t)cmd[3] << 16) | ((uint32_t)cmd[4] << 8) | cmd[5], ((uint32_t)cmd[7] << 8) | cmd[8]);
     break;
   case 0x2A:
-    LOG("[Write10]");
+    LOGN("[Write10]");
     sts = onWriteCommand(((uint32_t)cmd[2] << 24) | ((uint32_t)cmd[3] << 16) | ((uint32_t)cmd[4] << 8) | cmd[5], ((uint32_t)cmd[7] << 8) | cmd[8]);
     break;
   case 0x2B:
-    LOG("[Seek10]");
+    LOGN("[Seek10]");
     break;
   case 0x5A:
-    LOG("[ModeSense10]");
+    LOGN("[ModeSense10]");
     onModeSenseCommand(cmd[1] & 0x80, cmd[2] & 0x3F, ((uint32_t)cmd[7] << 8) | cmd[8]);
     break;
   default:
-    LOG("[*Unknown]");
+    LOGN("[*Unknown]");
     sts = 2;
     m_senseKey = 5;
     break;
@@ -697,7 +707,7 @@ void loop()
      goto BusFree;
   }
 
-  LOG("Sts");
+  LOGN("Sts");
   gpio_write(MSG, low);
   gpio_write(CD, high);
   gpio_write(IO, high);
@@ -706,14 +716,14 @@ void loop()
      goto BusFree;
   }
 
-  LOG("MsgIn");
+  LOGN("MsgIn");
   gpio_write(MSG, high);
   gpio_write(CD, high);
   gpio_write(IO, high);
   writeHandshake(msg);
 
 BusFree:
-  LOG("BusFree");
+  LOGN("BusFree");
   m_isBusReset = false;
   gpio_write(REQ, low);
   gpio_write(MSG, low);
