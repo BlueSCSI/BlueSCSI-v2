@@ -37,7 +37,7 @@
 
 #include <string.h>
 
-static const uint16_t FIRMWARE_VERSION = 0x0621;
+static const uint16_t FIRMWARE_VERSION = 0x0623;
 
 // 1 flash row
 static const uint8_t DEFAULT_CONFIG[128] =
@@ -219,7 +219,7 @@ debugCommand()
 	response[27] = scsiDev.lastSenseASC >> 8;
 	response[28] = scsiDev.lastSenseASC;
 	response[29] = *SCSI_STS_DBX & 0xff; // What we've read
-	response[30] = 0; // obsolete
+	response[30] = *SCSI_STS_SELECTED;
 	response[31] = *SCSI_STS_DBX >> 8; // What we're writing
 	hidPacket_send(response, sizeof(response));
 }

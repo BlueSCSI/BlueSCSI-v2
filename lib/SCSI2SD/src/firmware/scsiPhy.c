@@ -30,8 +30,8 @@
 static uint8_t asyncTimings[][4] =
 {
 /* Speed,    Assert,    Deskew,    Hold,    Glitch */
-{/*1.5MB/s*/ 28,        18,        13,      15},
-{/*3.3MB/s*/ 13,        6,         6,       13},
+{/*1.5MB/s*/ 28,        18,        13,      6},
+{/*3.3MB/s*/ 13,        6,         6,       6},
 {/*5MB/s*/   9,         6,         6,       6}, // 80ns
 {/*safe*/    3,         6,         6,       6}, // Probably safe
 {/*turbo*/   3,         3,         3,       2}
@@ -576,6 +576,7 @@ void scsiEnterPhase(int newPhase)
 
 			if (scsiDev.compatMode < COMPAT_SCSI2)
 			{
+				// EMU EMAX needs 100uS ! 10uS is not enough.
 				s2s_delay_us(100);
 			}
 		}
