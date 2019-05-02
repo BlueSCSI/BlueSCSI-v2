@@ -89,6 +89,7 @@ void scsiPhyConfig(void);
 void scsiPhyReset(void);
 
 void scsiEnterPhase(int phase);
+uint32_t scsiEnterPhaseImmediate(int phase);
 void scsiEnterBusFree(void);
 
 void scsiSetDataCount(uint32_t count);

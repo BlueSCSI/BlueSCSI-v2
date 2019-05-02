@@ -543,6 +543,8 @@ void scsiDiskPoll()
 	if (scsiDev.phase == DATA_IN &&
 		transfer.currentBlock != transfer.blocks)
 	{
+		// Take responsibility for waiting for the phase delays
+		uint32_t phaseChangeDelayUs = scsiEnterPhaseImmediate(DATA_IN);
 
 		int totalSDSectors =
 			transfer.blocks * SDSectorsPerSCSISector(bytesPerSector);
@@ -562,7 +564,7 @@ void scsiDiskPoll()
 		uint32_t partialScsiChunk = 0;
 
 		// Start reading from the SD card FIRST, because we change state and
-		// wai for SCSI signals
+		// wait for SCSI signals
 		int dataInStarted = 0;
 
 		while ((i < totalSDSectors) &&
@@ -611,10 +613,14 @@ void scsiDiskPoll()
 
 				sdActive = sectors;
 
-				if (!dataInStarted)
+				// Wait now that the SD card is busy
+				// Chances are we've probably already waited sufficient time,
+				// but it's hard to measure microseconds cheaply. So just wait
+				// extra just-in-case. Hopefully it's in parallel with dma.
+				if (phaseChangeDelayUs > 0)
 				{
-					dataInStarted = 1;
-					scsiEnterPhase(DATA_IN); // Will wait a few microseconds.
+					s2s_delay_us(phaseChangeDelayUs);
+					phaseChangeDelayUs = 0;
 				}
 			}
 
@@ -685,9 +691,10 @@ void scsiDiskPoll()
 #endif
 		}
 
-		if (!dataInStarted && !scsiDev.resetFlag) // zero bytes ?
+		if (phaseChangeDelayUs > 0 && !scsiDev.resetFlag) // zero bytes ?
 		{
-			scsiEnterPhase(DATA_IN); // Will wait a few microseconds.
+			s2s_delay_us(phaseChangeDelayUs);
+			phaseChangeDelayUs = 0;
 		}
 
 		// We've finished transferring the data to the FPGA, now wait until it's

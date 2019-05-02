@@ -1,7 +1,8 @@
-2019XXXX
+20190502		6.2.4
 	- Port XEBEC support from v5 firmware
 	- Add Flexible Disk Drive Geometry SCSI MODE page
 	- Stability improvements
+	- Fix regression from 6.1.3 firmware for Kurzweil K2000
 
 20181011		6.2.1
 	- Fix bug in USB disk interface with disks over 4GB

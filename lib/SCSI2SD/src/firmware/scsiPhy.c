@@ -30,8 +30,8 @@
 static uint8_t asyncTimings[][4] =
 {
 /* Speed,    Assert,    Deskew,    Hold,    Glitch */
-{/*1.5MB/s*/ 28,        18,        13,      6},
-{/*3.3MB/s*/ 13,        6,         6,       6},
+{/*1.5MB/s*/ 28,        18,        13,      15},
+{/*3.3MB/s*/ 13,        6,         6,       13},
 {/*5MB/s*/   9,         6,         6,       6}, // 80ns
 {/*safe*/    3,         6,         6,       6}, // Probably safe
 {/*turbo*/   3,         3,         3,       2}
@@ -482,6 +482,16 @@ scsiSetDefaultTiming()
 
 void scsiEnterPhase(int newPhase)
 {
+	uint32_t delay = scsiEnterPhaseImmediate(newPhase);
+	if (delay > 0)
+	{
+		s2s_delay_us(delay);
+	}
+}
+
+// Returns microsecond delay
+uint32_t scsiEnterPhaseImmediate(int newPhase)
+{
 	// ANSI INCITS 362-2002 SPI-3 10.7.1:
 	// Phase changes are not allowed while REQ or ACK is asserted.
 	while (likely(!scsiDev.resetFlag) && scsiStatusACK()) {}
@@ -569,22 +579,27 @@ void scsiEnterPhase(int newPhase)
 				asyncTiming[3]);
 		}
 
+		uint32_t delayUs = 0;
 		if (newPhase >= 0)
 		{
 			*SCSI_CTRL_PHASE = newPhase;
-			busSettleDelay();
+			delayUs += 1; // busSettleDelay
 
 			if (scsiDev.compatMode < COMPAT_SCSI2)
 			{
 				// EMU EMAX needs 100uS ! 10uS is not enough.
-				s2s_delay_us(100);
+				delayUs += 100;
 			}
 		}
 		else
 		{
 			*SCSI_CTRL_PHASE = 0;
 		}
+
+		return delayUs;
 	}
+
+	return 0; // No change
 }
 
 uint32_t s2s_getScsiRateMBs()
