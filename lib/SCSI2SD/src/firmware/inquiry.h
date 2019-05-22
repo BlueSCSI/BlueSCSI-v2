@@ -19,5 +19,7 @@
 
 void s2s_scsiInquiry(void);
 uint32_t s2s_getStandardInquiry(const S2S_TargetCfg* cfg, uint8_t* out, uint32_t maxlen);
+uint8_t getDeviceTypeQualifier(void);
+
 
 #endif

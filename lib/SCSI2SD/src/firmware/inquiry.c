@@ -171,20 +171,19 @@ void s2s_scsiInquiry()
 		scsiDev.dataLen = allocationLength;
 
 		// Set the device type as needed.
+		scsiDev.data[0] = getDeviceTypeQualifier();
+
 		switch (scsiDev.target->cfg->deviceType)
 		{
 		case S2S_CFG_OPTICAL:
-			scsiDev.data[0] = 0x05; // device type
 			scsiDev.data[1] |= 0x80; // Removable bit.
 			break;
 
 		case S2S_CFG_SEQUENTIAL:
-			scsiDev.data[0] = 0x01; // device type
 			scsiDev.data[1] |= 0x80; // Removable bit.
 			break;
 
 		case S2S_CFG_MO:
-			scsiDev.data[0] = 0x07; // device type
 			scsiDev.data[1] |= 0x80; // Removable bit.
 			break;
 
@@ -227,3 +226,32 @@ uint32_t s2s_getStandardInquiry(
 		sizeof(cfg->prodId) +
 		sizeof(cfg->revision);
 }
+
+uint8_t getDeviceTypeQualifier()
+{
+	// Set the device type as needed.
+	switch (scsiDev.target->cfg->deviceType)
+	{
+	case S2S_CFG_OPTICAL:
+		return 0x05;
+		break;
+
+	case S2S_CFG_SEQUENTIAL:
+		return 0x01;
+		break;
+
+	case S2S_CFG_MO:
+		return 0x07;
+		break;
+
+	case S2S_CFG_FLOPPY_14MB:
+	case S2S_CFG_REMOVEABLE:
+		return 0;
+		break;
+
+	default:
+		// Accept defaults for a fixed disk.
+		return 0;
+	}
+}
+
