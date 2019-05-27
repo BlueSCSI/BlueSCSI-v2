@@ -161,7 +161,7 @@ void mainLoop()
 #endif
 		}
 	}
-	else if (scsiDev.phase >= 0)
+	else if ((scsiDev.phase >= 0) && (blockDev.state & DISK_PRESENT))
 	{
 		// don't waste time scanning SD cards while we're doing disk IO
 		lastSDPoll = s2s_getTime_ms();
