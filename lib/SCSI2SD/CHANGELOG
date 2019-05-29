@@ -1,4 +1,8 @@
-20190502		6.2.4
+20190529		6.2.5
+	- Add scsi mode page 0 support
+	- Fix SD card hotswap bug when the SCSI host is constantly polling
+
+20190502		6.2.4 (Beta)
 	- Port XEBEC support from v5 firmware
 	- Add Flexible Disk Drive Geometry SCSI MODE page
 	- Stability improvements
