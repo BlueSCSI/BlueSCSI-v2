@@ -30,7 +30,8 @@
 static uint8_t asyncTimings[][4] =
 {
 /* Speed,    Assert,    Deskew,    Hold,    Glitch */
-{/*1.5MB/s*/ 28,        18,        13,      15},
+{/*1.5MB/s*/ 28,        18,        7,      15},
+//{/*1.5MB/s*/ 63,        31,        7,      15},
 {/*3.3MB/s*/ 13,        6,         6,       13},
 {/*5MB/s*/   9,         6,         6,       6}, // 80ns
 {/*safe*/    3,         6,         6,       6}, // Probably safe
@@ -106,8 +107,6 @@ static DMA_HandleTypeDef fsmcToMem;
 volatile uint8_t scsiRxDMAComplete;
 volatile uint8_t scsiTxDMAComplete;
 
-uint8_t scsiPhyFifoSel = 0; // global
-
 // scsi IRQ handler is initialised by the STM32 HAL. Connected to
 // PE4
 // Note: naming is important to ensure this function is listed in the
@@ -120,15 +119,18 @@ void EXTI4_IRQHandler()
 		// Clear interrupt flag
 		__HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_4);
 
-		scsiDev.resetFlag = scsiDev.resetFlag || scsiStatusRST();
+		uint8_t statusFlags = *SCSI_STS_SCSI;
+
+		scsiDev.resetFlag = scsiDev.resetFlag || (statusFlags & 0x04);
 
 		// selFlag is required for Philips P2000C which releases it after 600ns
 		// without waiting for BSY.
 		// Also required for some early Mac Plus roms
-		scsiDev.selFlag = *SCSI_STS_SELECTED;
+		if (statusFlags & 0x08) // Check SEL flag
+		{
+			scsiDev.selFlag = *SCSI_STS_SELECTED;
+		}
 	}
-
-	__SEV(); // Set event. See corresponding __WFE() calls.
 }
 
 static void assertFail()
@@ -145,92 +147,215 @@ static void assertFail()
 void
 scsiSetDataCount(uint32_t count)
 {
-	*SCSI_DATA_CNT_HI = count >> 8;
+	*SCSI_DATA_CNT_HI = (count >> 16) & 0xff;
+	*SCSI_DATA_CNT_MID = (count >> 8) & 0xff;
 	*SCSI_DATA_CNT_LO = count & 0xff;
 	*SCSI_DATA_CNT_SET = 1;
+}
+
+int scsiFifoReady(void)
+{
+	__NOP();
+	HAL_GPIO_ReadPin(GPIOE, FPGA_GPIO3_Pin);
+	__NOP();
+	return HAL_GPIO_ReadPin(GPIOE, FPGA_GPIO3_Pin) != 0;
 }
 
 uint8_t
 scsiReadByte(void)
 {
-#if FIFODEBUG
-	if (!scsiPhyFifoAltEmpty()) {
-		// Force a lock-up.
-		assertFail();
-	}
-#endif
 	scsiSetDataCount(1);
+
+	// Ready immediately. setDataCount resets fifos
 
 	while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
 	{
-		__WFE(); // Wait for event
+		__WFI(); // Wait for interrupt
 	}
-	scsiPhyFifoFlip();
+	__enable_irq();
+
 	uint8_t val = scsiPhyRx();
 	// TODO scsiDev.parityError = scsiDev.parityError || SCSI_Parity_Error_Read();
 
-#if FIFODEBUG
-	if (!scsiPhyFifoEmpty()) {
-		int j = 0;
-		uint8_t k __attribute((unused));
-		while (!scsiPhyFifoEmpty()) { k = scsiPhyRx(); ++j; }
-
-		// Force a lock-up.
-		assertFail();
-	}
-#endif
 	return val;
 }
 
 
 void
-scsiReadPIO(uint8_t* data, uint32_t count)
+scsiReadPIO(uint8_t* data, uint32_t count, int* parityError)
 {
 	uint16_t* fifoData = (uint16_t*)data;
+	uint32_t count16 = (count + 1) / 2;
 
-	for (int i = 0; i < (count + 1) / 2; ++i)
+	int i = 0;
+	while ((i  < count16) && likely(!scsiDev.resetFlag))
 	{
-		fifoData[i] = scsiPhyRx(); // TODO ASSUMES LITTLE ENDIAN
+		// Wait until FIFO is full (or complete)
+		while (!scsiFifoReady() && likely(!scsiDev.resetFlag))
+		{
+			// spin
+		}
+
+		if (count16 - i >= SCSI_FIFO_DEPTH16)
+		{
+			uint32_t chunk16 = SCSI_FIFO_DEPTH16;
+
+			// Let gcc unroll the loop as much as possible.
+			for (uint32_t k = 0; k + 128 <= chunk16; k += 128)
+			{
+				fifoData[i + k] = scsiPhyRx();
+				fifoData[i + k + 1] = scsiPhyRx();
+				fifoData[i + k + 2] = scsiPhyRx();
+				fifoData[i + k + 3] = scsiPhyRx();
+				fifoData[i + k + 4] = scsiPhyRx();
+				fifoData[i + k + 5] = scsiPhyRx();
+				fifoData[i + k + 6] = scsiPhyRx();
+				fifoData[i + k + 7] = scsiPhyRx();
+				fifoData[i + k + 8] = scsiPhyRx();
+				fifoData[i + k + 9] = scsiPhyRx();
+				fifoData[i + k + 10] = scsiPhyRx();
+				fifoData[i + k + 11] = scsiPhyRx();
+				fifoData[i + k + 12] = scsiPhyRx();
+				fifoData[i + k + 13] = scsiPhyRx();
+				fifoData[i + k + 14] = scsiPhyRx();
+				fifoData[i + k + 15] = scsiPhyRx();
+				fifoData[i + k + 16] = scsiPhyRx();
+				fifoData[i + k + 17] = scsiPhyRx();
+				fifoData[i + k + 18] = scsiPhyRx();
+				fifoData[i + k + 19] = scsiPhyRx();
+				fifoData[i + k + 20] = scsiPhyRx();
+				fifoData[i + k + 21] = scsiPhyRx();
+				fifoData[i + k + 22] = scsiPhyRx();
+				fifoData[i + k + 23] = scsiPhyRx();
+				fifoData[i + k + 24] = scsiPhyRx();
+				fifoData[i + k + 25] = scsiPhyRx();
+				fifoData[i + k + 26] = scsiPhyRx();
+				fifoData[i + k + 27] = scsiPhyRx();
+				fifoData[i + k + 28] = scsiPhyRx();
+				fifoData[i + k + 29] = scsiPhyRx();
+				fifoData[i + k + 30] = scsiPhyRx();
+				fifoData[i + k + 31] = scsiPhyRx();
+				fifoData[i + k + 32] = scsiPhyRx();
+				fifoData[i + k + 33] = scsiPhyRx();
+				fifoData[i + k + 34] = scsiPhyRx();
+				fifoData[i + k + 35] = scsiPhyRx();
+				fifoData[i + k + 36] = scsiPhyRx();
+				fifoData[i + k + 37] = scsiPhyRx();
+				fifoData[i + k + 38] = scsiPhyRx();
+				fifoData[i + k + 39] = scsiPhyRx();
+				fifoData[i + k + 40] = scsiPhyRx();
+				fifoData[i + k + 41] = scsiPhyRx();
+				fifoData[i + k + 42] = scsiPhyRx();
+				fifoData[i + k + 43] = scsiPhyRx();
+				fifoData[i + k + 44] = scsiPhyRx();
+				fifoData[i + k + 45] = scsiPhyRx();
+				fifoData[i + k + 46] = scsiPhyRx();
+				fifoData[i + k + 47] = scsiPhyRx();
+				fifoData[i + k + 48] = scsiPhyRx();
+				fifoData[i + k + 49] = scsiPhyRx();
+				fifoData[i + k + 50] = scsiPhyRx();
+				fifoData[i + k + 51] = scsiPhyRx();
+				fifoData[i + k + 52] = scsiPhyRx();
+				fifoData[i + k + 53] = scsiPhyRx();
+				fifoData[i + k + 54] = scsiPhyRx();
+				fifoData[i + k + 55] = scsiPhyRx();
+				fifoData[i + k + 56] = scsiPhyRx();
+				fifoData[i + k + 57] = scsiPhyRx();
+				fifoData[i + k + 58] = scsiPhyRx();
+				fifoData[i + k + 59] = scsiPhyRx();
+				fifoData[i + k + 60] = scsiPhyRx();
+				fifoData[i + k + 61] = scsiPhyRx();
+				fifoData[i + k + 62] = scsiPhyRx();
+				fifoData[i + k + 63] = scsiPhyRx();
+				fifoData[i + k + 64] = scsiPhyRx();
+				fifoData[i + k + 65] = scsiPhyRx();
+				fifoData[i + k + 66] = scsiPhyRx();
+				fifoData[i + k + 67] = scsiPhyRx();
+				fifoData[i + k + 68] = scsiPhyRx();
+				fifoData[i + k + 69] = scsiPhyRx();
+				fifoData[i + k + 70] = scsiPhyRx();
+				fifoData[i + k + 71] = scsiPhyRx();
+				fifoData[i + k + 72] = scsiPhyRx();
+				fifoData[i + k + 73] = scsiPhyRx();
+				fifoData[i + k + 74] = scsiPhyRx();
+				fifoData[i + k + 75] = scsiPhyRx();
+				fifoData[i + k + 76] = scsiPhyRx();
+				fifoData[i + k + 77] = scsiPhyRx();
+				fifoData[i + k + 78] = scsiPhyRx();
+				fifoData[i + k + 79] = scsiPhyRx();
+				fifoData[i + k + 80] = scsiPhyRx();
+				fifoData[i + k + 81] = scsiPhyRx();
+				fifoData[i + k + 82] = scsiPhyRx();
+				fifoData[i + k + 83] = scsiPhyRx();
+				fifoData[i + k + 84] = scsiPhyRx();
+				fifoData[i + k + 85] = scsiPhyRx();
+				fifoData[i + k + 86] = scsiPhyRx();
+				fifoData[i + k + 87] = scsiPhyRx();
+				fifoData[i + k + 88] = scsiPhyRx();
+				fifoData[i + k + 89] = scsiPhyRx();
+				fifoData[i + k + 90] = scsiPhyRx();
+				fifoData[i + k + 91] = scsiPhyRx();
+				fifoData[i + k + 92] = scsiPhyRx();
+				fifoData[i + k + 93] = scsiPhyRx();
+				fifoData[i + k + 94] = scsiPhyRx();
+				fifoData[i + k + 95] = scsiPhyRx();
+				fifoData[i + k + 96] = scsiPhyRx();
+				fifoData[i + k + 97] = scsiPhyRx();
+				fifoData[i + k + 98] = scsiPhyRx();
+				fifoData[i + k + 99] = scsiPhyRx();
+				fifoData[i + k + 100] = scsiPhyRx();
+				fifoData[i + k + 101] = scsiPhyRx();
+				fifoData[i + k + 102] = scsiPhyRx();
+				fifoData[i + k + 103] = scsiPhyRx();
+				fifoData[i + k + 104] = scsiPhyRx();
+				fifoData[i + k + 105] = scsiPhyRx();
+				fifoData[i + k + 106] = scsiPhyRx();
+				fifoData[i + k + 107] = scsiPhyRx();
+				fifoData[i + k + 108] = scsiPhyRx();
+				fifoData[i + k + 109] = scsiPhyRx();
+				fifoData[i + k + 110] = scsiPhyRx();
+				fifoData[i + k + 111] = scsiPhyRx();
+				fifoData[i + k + 112] = scsiPhyRx();
+				fifoData[i + k + 113] = scsiPhyRx();
+				fifoData[i + k + 114] = scsiPhyRx();
+				fifoData[i + k + 115] = scsiPhyRx();
+				fifoData[i + k + 116] = scsiPhyRx();
+				fifoData[i + k + 117] = scsiPhyRx();
+				fifoData[i + k + 118] = scsiPhyRx();
+				fifoData[i + k + 119] = scsiPhyRx();
+				fifoData[i + k + 120] = scsiPhyRx();
+				fifoData[i + k + 121] = scsiPhyRx();
+				fifoData[i + k + 122] = scsiPhyRx();
+				fifoData[i + k + 123] = scsiPhyRx();
+				fifoData[i + k + 124] = scsiPhyRx();
+				fifoData[i + k + 125] = scsiPhyRx();
+				fifoData[i + k + 126] = scsiPhyRx();
+				fifoData[i + k + 127] = scsiPhyRx();
+			}
+
+			i += chunk16;
+		}
+		else
+		{
+			uint32_t chunk16 = count16 - i;
+
+			uint32_t k = 0;
+			for (; k + 4 <= chunk16; k += 4)
+			{
+				fifoData[i + k] = scsiPhyRx();
+				fifoData[i + 1 + k] = scsiPhyRx();
+				fifoData[i + 2 + k] = scsiPhyRx();
+				fifoData[i + 3 + k] = scsiPhyRx();
+			}
+			for (; k < chunk16; ++k)
+			{
+				fifoData[i + k] = scsiPhyRx();
+			}
+			i += chunk16;
+		}
 	}
-}
 
-void
-scsiReadDMA(uint8_t* data, uint32_t count)
-{
-	// Prepare DMA transfer
-	dmaInProgress = 1;
-
-	scsiTxDMAComplete = 1; // TODO not used much
-	scsiRxDMAComplete = 0; // TODO not used much
-
-	HAL_DMA_Start(
-		&fsmcToMem,
-		(uint32_t) SCSI_FIFO_DATA,
-		(uint32_t) data,
-		(count + 1) / 2);
-}
-
-int
-scsiReadDMAPoll()
-{
-	int complete = __HAL_DMA_GET_COUNTER(&fsmcToMem) == 0;
-	complete = complete && (HAL_DMA_PollForTransfer(&fsmcToMem, HAL_DMA_FULL_TRANSFER, 0xffffffff) == HAL_OK);
-	if (complete)
-	{
-		scsiTxDMAComplete = 1; // TODO MM FIX IRQ
-		scsiRxDMAComplete = 1;
-
-		dmaInProgress = 0;
-#if 0
-		// TODO MM scsiDev.parityError = scsiDev.parityError || SCSI_Parity_Error_Read();
-#endif
-		return 1;
-
-	}
-	else
-	{
-		return 0;
-	}
+	*parityError |= scsiParityError();
 }
 
 void
@@ -239,145 +364,151 @@ scsiRead(uint8_t* data, uint32_t count, int* parityError)
 	int i = 0;
 	*parityError = 0;
 
-
-	uint32_t chunk = ((count - i) > SCSI_FIFO_DEPTH)
-		? SCSI_FIFO_DEPTH : (count - i);
-#ifdef SCSI_FSMC_DMA
-	if (chunk >= 16)
-	{
-		// DMA is doing 32bit transfers.
-		chunk = chunk & 0xFFFFFFF8;
-	}
-#endif
-	scsiSetDataCount(chunk);
-
 	while (i < count && likely(!scsiDev.resetFlag))
 	{
+		uint32_t chunk = ((count - i) > SCSI_XFER_MAX)
+			? SCSI_XFER_MAX : (count - i);
+		scsiSetDataCount(chunk);
+
+		scsiReadPIO(data + i, chunk, parityError);
+
+		__disable_irq();
 		while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
 		{
-			__WFE(); // Wait for event
+			__WFI();
 		}
-		*parityError |= scsiParityError();
-		scsiPhyFifoFlip();
-
-		uint32_t nextChunk = ((count - i - chunk) > SCSI_FIFO_DEPTH)
-			? SCSI_FIFO_DEPTH : (count - i - chunk);
-#ifdef SCSI_FSMC_DMA
-		if (nextChunk >= 16)
-		{
-			nextChunk = nextChunk & 0xFFFFFFF8;
-		}
-#endif
-		if (nextChunk > 0)
-		{
-			scsiSetDataCount(nextChunk);
-		}
-
-#ifdef SCSI_FSMC_DMA
-		if (chunk < 16)
-#endif
-		{
-			scsiReadPIO(data + i, chunk);
-		}
-#ifdef SCSI_FSMC_DMA
-		else
-		{
-			scsiReadDMA(data + i, chunk);
-
-			while (!scsiReadDMAPoll() && likely(!scsiDev.resetFlag))
-			{
-			};
-		}
-#endif
-
+		__enable_irq();
 
 		i += chunk;
-		chunk = nextChunk;
 	}
-#if FIFODEBUG
-		if (!scsiPhyFifoEmpty() || !scsiPhyFifoAltEmpty()) {
-			int j = 0;
-			while (!scsiPhyFifoEmpty()) { scsiPhyRx(); ++j; }
-			scsiPhyFifoFlip();
-			int k = 0;
-			while (!scsiPhyFifoEmpty()) { scsiPhyRx(); ++k; }
-			// Force a lock-up.
-			assertFail();
-		}
-#endif
 }
 
 void
 scsiWriteByte(uint8_t value)
 {
-#if FIFODEBUG
-	if (!scsiPhyFifoEmpty()) {
-		// Force a lock-up.
-		assertFail();
-	}
-#endif
-	scsiPhyTx(value);
-	scsiPhyFifoFlip();
-
 	scsiSetDataCount(1);
+	scsiPhyTx(value);
 
+	__disable_irq();
 	while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
 	{
-		__WFE(); // Wait for event
+		__WFI();
 	}
-
-#if FIFODEBUG
-	if (!scsiPhyFifoAltEmpty()) {
-		// Force a lock-up.
-		assertFail();
-	}
-#endif
-}
-
-static void
-scsiWritePIO(const uint8_t* data, uint32_t count)
-{
-	uint16_t* fifoData = (uint16_t*)data;
-	for (int i = 0; i < (count + 1) / 2; ++i)
-	{
-		scsiPhyTx(fifoData[i]);
-	}
+	__enable_irq();
 }
 
 void
-scsiWriteDMA(const uint8_t* data, uint32_t count)
+scsiWritePIO(const uint8_t* data, uint32_t count)
 {
-	// Prepare DMA transfer
-	dmaInProgress = 1;
+	uint16_t* fifoData = (uint16_t*)data;
+	uint32_t count16 = (count + 1) / 2;
 
-	scsiTxDMAComplete = 0;
-	scsiRxDMAComplete = 1;
+	int i = 0;
+	while ((i  < count16) && likely(!scsiDev.resetFlag))
+	{
+		while (!scsiFifoReady() && likely(!scsiDev.resetFlag))
+		{
+			// Spin
+		}
 
-	HAL_DMA_Start(
-		&memToFSMC,
-		(uint32_t) data,
-		(uint32_t) SCSI_FIFO_DATA,
-		count / 4);
+		if (count16 - i >= SCSI_FIFO_DEPTH16)
+		{
+			uint32_t chunk16 = SCSI_FIFO_DEPTH16;
+
+			// Let gcc unroll the loop as much as possible.
+			for (uint32_t k = 0; k + 128 <= chunk16; k += 128)
+			{
+				scsiPhyTx32(fifoData[i + k], fifoData[i + k + 1]);
+				scsiPhyTx32(fifoData[i + 2 + k], fifoData[i + k + 3]);
+				scsiPhyTx32(fifoData[i + 4 + k], fifoData[i + k + 5]);
+				scsiPhyTx32(fifoData[i + 6 + k], fifoData[i + k + 7]);
+				scsiPhyTx32(fifoData[i + 8 + k], fifoData[i + k + 9]);
+				scsiPhyTx32(fifoData[i + 10 + k], fifoData[i + k + 11]);
+				scsiPhyTx32(fifoData[i + 12 + k], fifoData[i + k + 13]);
+				scsiPhyTx32(fifoData[i + 14 + k], fifoData[i + k + 15]);
+				scsiPhyTx32(fifoData[i + 16 + k], fifoData[i + k + 17]);
+				scsiPhyTx32(fifoData[i + 18 + k], fifoData[i + k + 19]);
+				scsiPhyTx32(fifoData[i + 20 + k], fifoData[i + k + 21]);
+				scsiPhyTx32(fifoData[i + 22 + k], fifoData[i + k + 23]);
+				scsiPhyTx32(fifoData[i + 24 + k], fifoData[i + k + 25]);
+				scsiPhyTx32(fifoData[i + 26 + k], fifoData[i + k + 27]);
+				scsiPhyTx32(fifoData[i + 28 + k], fifoData[i + k + 29]);
+				scsiPhyTx32(fifoData[i + 30 + k], fifoData[i + k + 31]);
+
+				scsiPhyTx32(fifoData[i + 32 + k], fifoData[i + k + 33]);
+				scsiPhyTx32(fifoData[i + 34 + k], fifoData[i + k + 35]);
+				scsiPhyTx32(fifoData[i + 36 + k], fifoData[i + k + 37]);
+				scsiPhyTx32(fifoData[i + 38 + k], fifoData[i + k + 39]);
+				scsiPhyTx32(fifoData[i + 40 + k], fifoData[i + k + 41]);
+				scsiPhyTx32(fifoData[i + 42 + k], fifoData[i + k + 43]);
+				scsiPhyTx32(fifoData[i + 44 + k], fifoData[i + k + 45]);
+				scsiPhyTx32(fifoData[i + 46 + k], fifoData[i + k + 47]);
+				scsiPhyTx32(fifoData[i + 48 + k], fifoData[i + k + 49]);
+				scsiPhyTx32(fifoData[i + 50 + k], fifoData[i + k + 51]);
+				scsiPhyTx32(fifoData[i + 52 + k], fifoData[i + k + 53]);
+				scsiPhyTx32(fifoData[i + 54 + k], fifoData[i + k + 55]);
+				scsiPhyTx32(fifoData[i + 56 + k], fifoData[i + k + 57]);
+				scsiPhyTx32(fifoData[i + 58 + k], fifoData[i + k + 59]);
+				scsiPhyTx32(fifoData[i + 60 + k], fifoData[i + k + 61]);
+				scsiPhyTx32(fifoData[i + 62 + k], fifoData[i + k + 63]);
+
+				scsiPhyTx32(fifoData[i + 64 + k], fifoData[i + k + 65]);
+				scsiPhyTx32(fifoData[i + 66 + k], fifoData[i + k + 67]);
+				scsiPhyTx32(fifoData[i + 68 + k], fifoData[i + k + 69]);
+				scsiPhyTx32(fifoData[i + 70 + k], fifoData[i + k + 71]);
+				scsiPhyTx32(fifoData[i + 72 + k], fifoData[i + k + 73]);
+				scsiPhyTx32(fifoData[i + 74 + k], fifoData[i + k + 75]);
+				scsiPhyTx32(fifoData[i + 76 + k], fifoData[i + k + 77]);
+				scsiPhyTx32(fifoData[i + 78 + k], fifoData[i + k + 79]);
+				scsiPhyTx32(fifoData[i + 80 + k], fifoData[i + k + 81]);
+				scsiPhyTx32(fifoData[i + 82 + k], fifoData[i + k + 83]);
+				scsiPhyTx32(fifoData[i + 84 + k], fifoData[i + k + 85]);
+				scsiPhyTx32(fifoData[i + 86 + k], fifoData[i + k + 87]);
+				scsiPhyTx32(fifoData[i + 88 + k], fifoData[i + k + 89]);
+				scsiPhyTx32(fifoData[i + 90 + k], fifoData[i + k + 91]);
+				scsiPhyTx32(fifoData[i + 92 + k], fifoData[i + k + 93]);
+				scsiPhyTx32(fifoData[i + 94 + k], fifoData[i + k + 95]);
+
+				scsiPhyTx32(fifoData[i + 96 + k], fifoData[i + k + 97]);
+				scsiPhyTx32(fifoData[i + 98 + k], fifoData[i + k + 99]);
+				scsiPhyTx32(fifoData[i + 100 + k], fifoData[i + k + 101]);
+				scsiPhyTx32(fifoData[i + 102 + k], fifoData[i + k + 103]);
+				scsiPhyTx32(fifoData[i + 104 + k], fifoData[i + k + 105]);
+				scsiPhyTx32(fifoData[i + 106 + k], fifoData[i + k + 107]);
+				scsiPhyTx32(fifoData[i + 108 + k], fifoData[i + k + 109]);
+				scsiPhyTx32(fifoData[i + 110 + k], fifoData[i + k + 111]);
+				scsiPhyTx32(fifoData[i + 112 + k], fifoData[i + k + 113]);
+				scsiPhyTx32(fifoData[i + 114 + k], fifoData[i + k + 115]);
+				scsiPhyTx32(fifoData[i + 116 + k], fifoData[i + k + 117]);
+				scsiPhyTx32(fifoData[i + 118 + k], fifoData[i + k + 119]);
+				scsiPhyTx32(fifoData[i + 120 + k], fifoData[i + k + 121]);
+				scsiPhyTx32(fifoData[i + 122 + k], fifoData[i + k + 123]);
+				scsiPhyTx32(fifoData[i + 124 + k], fifoData[i + k + 125]);
+				scsiPhyTx32(fifoData[i + 126 + k], fifoData[i + k + 127]);
+
+			}
+
+			i += chunk16;
+		}
+		else
+		{
+			uint32_t chunk16 = count16 - i;
+
+			uint32_t k = 0;
+			for (; k + 4 <= chunk16; k += 4)
+			{
+				scsiPhyTx32(fifoData[i + k], fifoData[i + k + 1]);
+				scsiPhyTx32(fifoData[i + k + 2], fifoData[i + k + 3]);
+			}
+			for (; k < chunk16; ++k)
+			{
+				scsiPhyTx(fifoData[i + k]);
+			}
+			i += chunk16;
+		}
+	}
 }
 
-int
-scsiWriteDMAPoll()
-{
-	int complete = __HAL_DMA_GET_COUNTER(&memToFSMC) == 0;
-	complete = complete && (HAL_DMA_PollForTransfer(&memToFSMC, HAL_DMA_FULL_TRANSFER, 0xffffffff) == HAL_OK);
-	if (complete)
-	{
-		scsiTxDMAComplete = 1; // TODO MM FIX IRQ
-		scsiRxDMAComplete = 1;
-
-		dmaInProgress = 0;
-		return 1;
-	}
-	else
-	{
-		return 0;
-	}
-}
 
 void
 scsiWrite(const uint8_t* data, uint32_t count)
@@ -385,62 +516,21 @@ scsiWrite(const uint8_t* data, uint32_t count)
 	int i = 0;
 	while (i < count && likely(!scsiDev.resetFlag))
 	{
-		uint32_t chunk = ((count - i) > SCSI_FIFO_DEPTH)
-			? SCSI_FIFO_DEPTH : (count - i);
+		uint32_t chunk = ((count - i) > SCSI_XFER_MAX)
+			? SCSI_XFER_MAX : (count - i);
+		scsiSetDataCount(chunk);
 
-#if FIFODEBUG
-		if (!scsiPhyFifoEmpty()) {
-			// Force a lock-up.
-			assertFail();
-		}
-#endif
+		scsiWritePIO(data + i, chunk);
 
-#ifdef SCSI_FSMC_DMA
-		if (chunk < 16)
-#endif
-		{
-			scsiWritePIO(data + i, chunk);
-		}
-#ifdef SCSI_FSMC_DMA
-		else
-		{
-			// DMA is doing 32bit transfers.
-			chunk = chunk & 0xFFFFFFF8;
-			scsiWriteDMA(data + i, chunk);
-
-			while (!scsiWriteDMAPoll() && likely(!scsiDev.resetFlag))
-			{
-			}
-		}
-#endif
-
+		__disable_irq();
 		while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
 		{
-			__WFE(); // Wait for event
+			__WFI();
 		}
+		__enable_irq();
 
-#if FIFODEBUG
-		if (!scsiPhyFifoAltEmpty()) {
-			// Force a lock-up.
-			assertFail();
-		}
-#endif
-
-		scsiPhyFifoFlip();
-		scsiSetDataCount(chunk);
 		i += chunk;
 	}
-	while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
-	{
-		__WFE(); // Wait for event
-	}
-
-#if FIFODEBUG
-	if (!scsiPhyFifoAltEmpty()) {
-		// Force a lock-up.
-		assertFail();
-	}
-#endif
 }
 
 static inline void busSettleDelay(void)
@@ -498,10 +588,6 @@ uint32_t scsiEnterPhaseImmediate(int newPhase)
 
 	int oldPhase = *SCSI_CTRL_PHASE;
 
-	if (!scsiDev.resetFlag && (!scsiPhyFifoEmpty() || !scsiPhyFifoAltEmpty())) {
-		// Force a lock-up.
-		assertFail();
-	}
 	if (newPhase != oldPhase)
 	{
 		if ((newPhase == DATA_IN || newPhase == DATA_OUT) &&
@@ -639,8 +725,6 @@ void scsiPhyReset()
 
 	*SCSI_CTRL_PHASE = 0x00;
 	*SCSI_CTRL_BSY = 0x00;
-	scsiPhyFifoSel = 0;
-	*SCSI_FIFO_SEL = 0;
 	*SCSI_CTRL_DBX = 0;
 
 	*SCSI_CTRL_SYNC_OFFSET = 0;
@@ -667,6 +751,31 @@ void scsiPhyReset()
 				0xffffffff);
 
 			s2s_fpgaReset();
+		}
+		s2s_ledOff();
+
+		for(int i = 0; i < 10; ++i) s2s_delay_ms(1000);
+	}
+	#endif
+
+	// PIO Benchmark code
+	// Currently 16.7MB/s.
+	//#define PIO_BENCHMARK 1
+	#ifdef PIO_BENCHMARK
+	while(1)
+	{
+		s2s_ledOn();
+
+		scsiEnterPhase(DATA_IN); // Need IO flag set for fifo ready flag
+
+		// 100MB
+		for (int i = 0; i < (100LL * 1024 * 1024 / SCSI_FIFO_DEPTH); ++i)
+		{
+			scsiSetDataCount(1); // Resets fifos.
+
+			// Shouldn't block
+			scsiDev.resetFlag = 0;
+			scsiWritePIO(&scsiDev.data[0], SCSI_FIFO_DEPTH);
 		}
 		s2s_ledOff();
 
@@ -749,8 +858,6 @@ void scsiPhyInit()
 	*SCSI_CTRL_IDMASK = 0x00; // Reset in scsiPhyConfig
 	*SCSI_CTRL_PHASE = 0x00;
 	*SCSI_CTRL_BSY = 0x00;
-	scsiPhyFifoSel = 0;
-	*SCSI_FIFO_SEL = 0;
 	*SCSI_CTRL_DBX = 0;
 
 	*SCSI_CTRL_SYNC_OFFSET = 0;

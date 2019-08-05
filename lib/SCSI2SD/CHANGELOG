@@ -1,3 +1,7 @@
+20191009		6.2.7
+	- Slight improvements to data throughput, which may assist SCSI hosts with
+	short timeouts.
+
 20190529		6.2.5
 	- Add scsi mode page 0 support
 	- Fix SD card hotswap bug when the SCSI host is constantly polling

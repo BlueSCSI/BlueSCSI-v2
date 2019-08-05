@@ -34,14 +34,9 @@ extern SdDevice sdDev;
 
 int sdInit(void);
 
-void sdWriteMultiSectorPrep(uint32_t sdLBA, uint32_t sdSectors);
-void sdWriteMultiSectorDMA(uint8_t* outputBuffer);
-int sdWriteSectorDMAPoll();
-
 void sdReadDMA(uint32_t lba, uint32_t sectors, uint8_t* outputBuffer);
 int sdReadDMAPoll(uint32_t remainingSectors);
 void sdCompleteTransfer();
 
-void sdPoll();
 
 #endif

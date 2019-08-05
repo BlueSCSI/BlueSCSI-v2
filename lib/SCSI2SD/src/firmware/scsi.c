@@ -303,7 +303,6 @@ static void process_Command()
 	{
 		scsiRead(scsiDev.cdb + 6, scsiDev.cdbLen - 6, &parityError);
 	}
-
 	command = scsiDev.cdb[0];
 
 	// Prefer LUN's set by IDENTIFY messages for newer hosts.

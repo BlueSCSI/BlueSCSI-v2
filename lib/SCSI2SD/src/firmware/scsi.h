@@ -106,7 +106,9 @@ typedef struct
 typedef struct
 {
 	// TODO reduce this buffer size and add a proper cache
-	uint8_t data[MAX_SECTOR_SIZE * 8]; // Must be aligned for DMA
+	// Must be aligned for DMA
+	// 65536 bytes is the DMA limit
+	uint8_t data[MAX_SECTOR_SIZE * 8];
 
 	TargetState targets[S2S_MAX_TARGETS];
 	TargetState* target;

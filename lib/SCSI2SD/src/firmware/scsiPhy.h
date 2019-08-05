@@ -20,8 +20,8 @@
 #define SCSI_CTRL_IDMASK ((volatile uint8_t*)0x60000000)
 #define SCSI_CTRL_PHASE ((volatile uint8_t*)0x60000002)
 #define SCSI_CTRL_BSY ((volatile uint8_t*)0x60000004)
-#define SCSI_FIFO_SEL ((volatile uint8_t*)0x60000006)
-#define SCSI_DATA_CNT_HI ((volatile uint8_t*)0x60000008)
+#define SCSI_DATA_CNT_HI ((volatile uint8_t*)0x60000006)
+#define SCSI_DATA_CNT_MID ((volatile uint8_t*)0x60000008)
 #define SCSI_DATA_CNT_LO ((volatile uint8_t*)0x6000000A)
 #define SCSI_DATA_CNT_SET ((volatile uint8_t*)0x6000000C)
 #define SCSI_CTRL_DBX ((volatile uint8_t*)0x6000000E)
@@ -35,7 +35,7 @@
 #define SCSI_CTRL_SEL_TIMING ((volatile uint8_t*)0x60000018)
 
 #define SCSI_STS_FIFO ((volatile uint8_t*)0x60000020)
-#define SCSI_STS_ALTFIFO ((volatile uint8_t*)0x60000022)
+// Obsolete #define SCSI_STS_ALTFIFO ((volatile uint8_t*)0x60000022)
 #define SCSI_STS_FIFO_COMPLETE ((volatile uint8_t*)0x60000024)
 #define SCSI_STS_SELECTED ((volatile uint8_t*)0x60000026)
 #define SCSI_STS_SCSI ((volatile uint8_t*)0x60000028)
@@ -47,18 +47,17 @@
 #define SCSI_STS_PARITY_ERR ((volatile uint8_t*)0x6000002C)
 
 #define SCSI_FIFO_DATA ((volatile uint16_t*)0x60000040)
-#define SCSI_FIFO_DEPTH 256
 
+#define SCSI_FIFO_DEPTH 512
+#define SCSI_FIFO_DEPTH16 (SCSI_FIFO_DEPTH / 2)
+#define SCSI_XFER_MAX 524288
 
-#define scsiPhyFifoFull() ((*SCSI_STS_FIFO & 0x01) == 0x01)
-#define scsiPhyFifoEmpty() ((*SCSI_STS_FIFO & 0x02) == 0x02)
-#define scsiPhyFifoAltEmpty() ((*SCSI_STS_ALTFIFO & 0x02) == 0x02)
+// Check if FIFO is empty or full.
+// Replaced with method due to delays
+// #define scsiFifoReady() (HAL_GPIO_ReadPin(GPIOE, FPGA_GPIO3_Pin) != 0)
 
-#define scsiPhyFifoFlip() \
-{\
-	scsiPhyFifoSel ^= 1; \
-	*SCSI_FIFO_SEL = scsiPhyFifoSel; \
-}
+#define scsiPhyFifoFull() ((*SCSI_STS_FIFO & 0x01) != 0)
+#define scsiPhyFifoEmpty() ((*SCSI_STS_FIFO & 0x02) != 0)
 
 #define scsiPhyTx(val) *SCSI_FIFO_DATA = (val)
 
@@ -69,24 +68,23 @@
 #define scsiPhyRx() *SCSI_FIFO_DATA
 #define scsiPhyComplete() ((*SCSI_STS_FIFO_COMPLETE & 0x01) == 0x01)
 
-#define scsiStatusATN() ((*SCSI_STS_SCSI & 0x01) == 0x01)
-#define scsiStatusBSY() ((*SCSI_STS_SCSI & 0x02) == 0x02)
-#define scsiStatusRST() ((*SCSI_STS_SCSI & 0x04) == 0x04)
-#define scsiStatusSEL() ((*SCSI_STS_SCSI & 0x08) == 0x08)
-#define scsiStatusACK() ((*SCSI_STS_SCSI & 0x10) == 0x10)
+#define scsiStatusATN() ((*SCSI_STS_SCSI & 0x01) != 0)
+#define scsiStatusBSY() ((*SCSI_STS_SCSI & 0x02) != 0)
+#define scsiStatusRST() ((*SCSI_STS_SCSI & 0x04) != 0)
+#define scsiStatusSEL() ((*SCSI_STS_SCSI & 0x08) != 0)
+#define scsiStatusACK() ((*SCSI_STS_SCSI & 0x10) != 0)
 
-#define scsiParityError() ((*SCSI_STS_PARITY_ERR & 0x1) == 0x1)
+#define scsiParityError() ((*SCSI_STS_PARITY_ERR & 0x1) != 0)
 
 // Disable DMA due to errate with the STM32F205 DMA2 controller when
 // concurrently transferring FSMC (with FIFO) and APB (ie. sdio)
 // peripherals.
 #undef SCSI_FSMC_DMA
 
-extern uint8_t scsiPhyFifoSel;
-
 void scsiPhyInit(void);
 void scsiPhyConfig(void);
 void scsiPhyReset(void);
+int scsiFifoReady(void);
 
 void scsiEnterPhase(int phase);
 uint32_t scsiEnterPhaseImmediate(int phase);
@@ -111,7 +109,8 @@ void scsiReadDMA(uint8_t* data, uint32_t count);
 int scsiReadDMAPoll();
 
 // Low-level.
-void scsiReadPIO(uint8_t* data, uint32_t count);
+void scsiReadPIO(uint8_t* data, uint32_t count, int* parityError);
+void scsiWritePIO(const uint8_t* data, uint32_t count);
 
 void scsiWriteDMA(const uint8_t* data, uint32_t count);
 int scsiWriteDMAPoll();

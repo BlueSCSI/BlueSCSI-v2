@@ -18,6 +18,8 @@
 
 #include "stm32f2xx.h"
 
+#include <assert.h>
+
 // For SD write direct routines
 #include "sdio.h"
 #include "bsp_driver_sd.h"
@@ -561,14 +563,17 @@ void scsiDiskPoll()
 		int scsiActive __attribute__((unused)) = 0; // unused if DMA disabled
 		int sdActive = 0;
 
-		uint32_t partialScsiChunk = 0;
-
-		// Start reading from the SD card FIRST, because we change state and
-		// wait for SCSI signals
-		int dataInStarted = 0;
+		// It's highly unlikely that someone is going to use huge transfers
+		// per scsi command, but if they do it'll be slower than usual.
+		uint32_t totalScsiBytes = transfer.blocks * bytesPerSector;
+		int useSlowDataCount = totalScsiBytes >= SCSI_XFER_MAX;
+		if (!useSlowDataCount)
+		{
+			scsiSetDataCount(totalScsiBytes);
+		}
 
 		while ((i < totalSDSectors) &&
-			(!dataInStarted || likely(scsiDev.phase == DATA_IN)) &&
+			likely(scsiDev.phase == DATA_IN) &&
 			likely(!scsiDev.resetFlag))
 		{
 			int completedDmaSectors;
@@ -588,12 +593,13 @@ void scsiDiskPoll()
 
 			if (!sdActive &&
 				(prep - i < buffers) &&
-				(prep < totalSDSectors))
+				(prep < totalSDSectors) &&
+				((totalSDSectors - prep) >= sdPerScsi) &&
+				(likely(!useSlowDataCount) || scsiPhyComplete()))
 			{
 				// Start an SD transfer if we have space.
 				uint32_t startBuffer = prep % buffers;
 				uint32_t sectors = totalSDSectors - prep;
-
 				uint32_t freeBuffers = buffers - (prep - i);
 
 				uint32_t contiguousBuffers = buffers - startBuffer;
@@ -602,6 +608,12 @@ void scsiDiskPoll()
 				sectors = sectors < freeBuffers ? sectors : freeBuffers;
 
 				if (sectors > 128) sectors = 128; // 65536 DMA limit !!
+
+				// Round-down when we have odd sector sizes.
+				if (sdPerScsi != 1)
+				{
+					sectors = (sectors / sdPerScsi) * sdPerScsi;
+				}
 
 				for (int dodgy = 0; dodgy < sectors; dodgy++)
 				{
@@ -612,6 +624,11 @@ void scsiDiskPoll()
 				sdReadDMA(sdLBA + prep, sectors, &scsiDev.data[SD_SECTOR_SIZE * startBuffer]);
 
 				sdActive = sectors;
+
+				if (useSlowDataCount)
+				{
+					scsiSetDataCount((sectors / sdPerScsi) * bytesPerSector);
+				}
 
 				// Wait now that the SD card is busy
 				// Chances are we've probably already waited sufficient time,
@@ -624,26 +641,6 @@ void scsiDiskPoll()
 				}
 			}
 
-#ifdef SCSI_FSMC_DMA
-			#error this code not updated for 256 max bytes in scsi fifo
-			if (scsiActive && scsiPhyComplete() && scsiWriteDMAPoll())
-			{
-				scsiActive = 0;
-				i++;
-				scsiPhyFifoFlip();
-			}
-			if (!scsiActive && ((prep - i) > 0))
-			{
-				int dmaBytes = SD_SECTOR_SIZE;
-				if ((i % sdPerScsi) == (sdPerScsi - 1))
-				{
-					dmaBytes = bytesPerSector % SD_SECTOR_SIZE;
-					if (dmaBytes == 0) dmaBytes = SD_SECTOR_SIZE;
-				}
-				scsiWriteDMA(&scsiDev.data[SD_SECTOR_SIZE * (i % buffers)], dmaBytes);
-				scsiActive = 1;
-			}
-#else
 			if ((prep - i) > 0)
 			{
 				int dmaBytes = SD_SECTOR_SIZE;
@@ -653,42 +650,11 @@ void scsiDiskPoll()
 					if (dmaBytes == 0) dmaBytes = SD_SECTOR_SIZE;
 				}
 
-				// Manually unrolled loop for performance.
-				// -Os won't unroll this for us automatically,
-				// especially since scsiPhyTx does volatile stuff.
-				// Reduces bus utilisation by making the fsmc split
-				// 32bits into 2 16 bit writes.
+				uint8_t* scsiDmaData = &(scsiDev.data[SD_SECTOR_SIZE * (i % buffers)]);
+				scsiWritePIO(scsiDmaData, dmaBytes);
 
-				uint16_t* scsiDmaData = (uint16_t*) &(scsiDev.data[SD_SECTOR_SIZE * (i % buffers) + partialScsiChunk]);
-
-				uint32_t chunk = ((dmaBytes - partialScsiChunk) > SCSI_FIFO_DEPTH)
-					? SCSI_FIFO_DEPTH : (dmaBytes - partialScsiChunk);
-
-				int k = 0;
-				for (; k + 4 < (chunk + 1) / 2; k += 4)
-				{
-					scsiPhyTx32(scsiDmaData[k], scsiDmaData[k+1]);
-					scsiPhyTx32(scsiDmaData[k+2], scsiDmaData[k+3]);
-				}
-				for (; k < (chunk + 1) / 2; ++k)
-				{
-					scsiPhyTx(scsiDmaData[k]);
-				}
-				while (!scsiPhyComplete() && !scsiDev.resetFlag)
-				{
-					__WFE(); // Wait for event
-				}
-				scsiPhyFifoFlip();
-				scsiSetDataCount(chunk);
-
-				partialScsiChunk += chunk;
-				if (partialScsiChunk == dmaBytes)
-				{
-					partialScsiChunk = 0;
-					++i;
-				}
+				++i;
 			}
-#endif
 		}
 
 		if (phaseChangeDelayUs > 0 && !scsiDev.resetFlag) // zero bytes ?
@@ -699,13 +665,14 @@ void scsiDiskPoll()
 
 		// We've finished transferring the data to the FPGA, now wait until it's
 		// written to he SCSI bus.
+		__disable_irq();
 		while (!scsiPhyComplete() &&
 			likely(scsiDev.phase == DATA_IN) &&
 			likely(!scsiDev.resetFlag))
 		{
-			__WFE(); // Wait for event
+			__WFI();
 		}
-
+		__enable_irq();
 
 		if (scsiDev.phase == DATA_IN)
 		{
@@ -727,22 +694,28 @@ void scsiDiskPoll()
 				transfer.lba);
 		int i = 0;
 		int clearBSY = 0;
+		int extraSectors = 0;
 
 		int parityError = 0;
 		int enableParity = scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY;
 
+		uint32_t scsiSpeed = s2s_getScsiRateMBs();
+
+		uint32_t maxSectors = sizeof(scsiDev.data) / SD_SECTOR_SIZE;
+
+		static_assert(SCSI_XFER_MAX >= sizeof(scsiDev.data), "Assumes SCSI_XFER_MAX >= sizeof(scsiDev.data)");
+
+		// Start reading and filling fifos as soon as possible.
+		scsiSetDataCount(transfer.blocks * bytesPerSector);
+
 		while ((i < totalSDSectors) &&
 			likely(scsiDev.phase == DATA_OUT) &&
-			likely(!scsiDev.resetFlag) &&
-			likely(!parityError || !enableParity))
+			likely(!scsiDev.resetFlag))
+			// KEEP GOING to ensure FIFOs are in a good state.
+			// likely(!parityError || !enableParity))
 		{
-			// Well, until we have some proper non-blocking SD code, we must
-			// do this in a half-duplex fashion. We need to write as much as
-			// possible in each SD card transaction.
-			uint32_t maxSectors = sizeof(scsiDev.data) / SD_SECTOR_SIZE;
 			uint32_t rem = totalSDSectors - i;
-			uint32_t sectors =
-				rem < maxSectors ? rem : maxSectors;
+			uint32_t sectors = rem < maxSectors ? rem : maxSectors;
 
 			if (bytesPerSector == SD_SECTOR_SIZE)
 			{
@@ -750,19 +723,20 @@ void scsiDiskPoll()
 				// no flow control. This can be handled if a) the scsi interface
 				// doesn't block and b) we read enough SCSI sectors first so that
 				// the SD interface cannot catch up.
+				int prevExtraSectors = extraSectors;
 				uint32_t totalBytes = sectors * SD_SECTOR_SIZE;
-				uint32_t readAheadBytes = sectors * SD_SECTOR_SIZE;
+				extraSectors = 0;
+
+				int32_t readAheadBytes = totalBytes;
 				uint32_t sdSpeed = s2s_getSdRateMBs() + (scsiDev.sdUnderrunCount / 2);
-				uint32_t scsiSpeed = s2s_getScsiRateMBs();
 				// if (have blind writes)
 				if (scsiSpeed > 0 && scsiDev.sdUnderrunCount < 16)
 				{
 					// readAhead = sectors * (sd / scsi - 1 + 0.1);
-					readAheadBytes = totalBytes * sdSpeed / scsiSpeed - totalBytes + SCSI_FIFO_DEPTH;
-					if (readAheadBytes < SCSI_FIFO_DEPTH)
-					{
-						readAheadBytes = SCSI_FIFO_DEPTH;
-					}
+					readAheadBytes = totalBytes * sdSpeed / scsiSpeed - totalBytes;
+
+					// Round up to nearest FIFO size.
+					readAheadBytes = ((readAheadBytes / SCSI_FIFO_DEPTH) + 1) * SCSI_FIFO_DEPTH;
 
 					if (readAheadBytes > totalBytes)
 					{
@@ -770,59 +744,57 @@ void scsiDiskPoll()
 					}
 				}
 
-				uint32_t chunk = (readAheadBytes > SCSI_FIFO_DEPTH) ? SCSI_FIFO_DEPTH : readAheadBytes;
-				scsiSetDataCount(chunk);
+				uint32_t prevExtraBytes = prevExtraSectors * SD_SECTOR_SIZE;
+				uint32_t scsiBytesRead = prevExtraBytes;
+				readAheadBytes -= prevExtraBytes; // Must be signed!
 
-				uint32_t scsiBytesRead = 0;
-				while (scsiBytesRead < readAheadBytes)
+				if (readAheadBytes > 0)
 				{
-					while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
-					{
-						__WFE(); // Wait for event
-					}
-					parityError |= scsiParityError();
-					scsiPhyFifoFlip();
-					uint32_t nextChunk = ((totalBytes - scsiBytesRead - chunk) > SCSI_FIFO_DEPTH)
-						? SCSI_FIFO_DEPTH : (totalBytes - scsiBytesRead - chunk);
-
-					if (nextChunk > 0) scsiSetDataCount(nextChunk);
-					scsiReadPIO(&scsiDev.data[scsiBytesRead], chunk);
-					scsiBytesRead += chunk;
-					chunk = nextChunk;
+					scsiReadPIO(
+						&scsiDev.data[scsiBytesRead],
+						readAheadBytes,
+						&parityError);
+					scsiBytesRead += readAheadBytes;
 				}
 
 				HAL_SD_WriteBlocks_DMA(&hsd, (uint32_t*) (&scsiDev.data[0]), (i + sdLBA) * 512ll, SD_SECTOR_SIZE, sectors);
 
-				while (scsiBytesRead < totalBytes)
+				int underrun = 0;
+				if (scsiBytesRead < totalBytes && !scsiDev.resetFlag)
 				{
-					while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
-					{
-						__WFE(); // Wait for event
-					}
-					parityError |= scsiParityError();
-					scsiPhyFifoFlip();
-					uint32_t nextChunk = ((totalBytes - scsiBytesRead - chunk) > SCSI_FIFO_DEPTH)
-						? SCSI_FIFO_DEPTH : (totalBytes - scsiBytesRead - chunk);
+					scsiReadPIO(
+						&scsiDev.data[scsiBytesRead],
+						totalBytes - readAheadBytes,
+						&parityError);
 
-					if (nextChunk > 0) scsiSetDataCount(nextChunk);
-					scsiReadPIO(&scsiDev.data[scsiBytesRead], chunk);
-					scsiBytesRead += chunk;
-					chunk = nextChunk;
+					// Oh dear, SD finished first.
+					underrun = hsd.DmaTransferCplt;
+
+					scsiBytesRead += (totalBytes - readAheadBytes);
 				}
 
-				// Oh dear, SD finished first.
-				int underrun = totalBytes > readAheadBytes && hsd.DmaTransferCplt;
+				if (!underrun && rem > sectors)
+				{
+					// We probably have some time to waste reading more here.
+					// While noting this is going to drop us down into
+					// half-duplex operation (hence why we read max / 4 only)
+
+					extraSectors = rem - sectors > (maxSectors / 4)
+						? (maxSectors / 4)
+						: rem - sectors;
+
+					scsiReadPIO(
+						&scsiDev.data[0],
+						extraSectors * SD_SECTOR_SIZE,
+						&parityError);
+				}
 
 				uint32_t dmaFinishTime = s2s_getTime_ms();
-				while (!hsd.SdTransferCplt &&
+				while ((!hsd.SdTransferCplt ||
+						__HAL_SD_SDIO_GET_FLAG(&hsd, SDIO_FLAG_TXACT)) &&
 					s2s_elapsedTime_ms(dmaFinishTime) < 180)
 				{
 					// Wait while keeping BSY.
-				}
-				while((__HAL_SD_SDIO_GET_FLAG(&hsd, SDIO_FLAG_TXACT)) &&
-					s2s_elapsedTime_ms(dmaFinishTime) < 180)
-				{
-					// Wait for SD card while keeping BSY.
 				}
 
 				if (i + sectors >= totalSDSectors &&
@@ -842,14 +814,14 @@ void scsiDiskPoll()
 
 				HAL_SD_CheckWriteOperation(&hsd, (uint32_t)SD_DATATIMEOUT);
 
-				if (underrun)
+				if (underrun && (!parityError || !enableParity))
 				{
 					// Try again. Data is still in memory.
 					sdTmpWrite(&scsiDev.data[0], i + sdLBA, sectors);
 					scsiDev.sdUnderrunCount++;
 				}
-				i += sectors;
 
+				i += sectors;
 			}
 			else
 			{
@@ -857,11 +829,7 @@ void scsiDiskPoll()
 				// do this in a half-duplex fashion. We need to write as much as
 				// possible in each SD card transaction.
 				// use sg_dd from sg_utils3 tools to test.
-				uint32_t maxSectors = sizeof(scsiDev.data) / SD_SECTOR_SIZE;
-				uint32_t rem = totalSDSectors - i;
-				uint32_t sectors = rem < maxSectors ? rem : maxSectors;
-				int scsiSector;
-				for (scsiSector = i; scsiSector < i + sectors; ++scsiSector)
+				for (int scsiSector = i; scsiSector < i + sectors; ++scsiSector)
 				{
 					int dmaBytes = SD_SECTOR_SIZE;
 					if ((scsiSector % sdPerScsi) == (sdPerScsi - 1))
@@ -869,15 +837,25 @@ void scsiDiskPoll()
 						dmaBytes = bytesPerSector % SD_SECTOR_SIZE;
 						if (dmaBytes == 0) dmaBytes = SD_SECTOR_SIZE;
 					}
-					scsiRead(&scsiDev.data[SD_SECTOR_SIZE * (scsiSector - i)], dmaBytes, &parityError);
+
+					scsiReadPIO(&scsiDev.data[SD_SECTOR_SIZE * (scsiSector - i)], dmaBytes, &parityError);
 				}
-				if (!parityError)
+				if (!parityError || !enableParity)
 				{
 					sdTmpWrite(&scsiDev.data[0], i + sdLBA, sectors);
 				}
 				i += sectors;
 			}
 		}
+
+		// Should already be complete here as we've ready the FIFOs
+		// by now. Check anyway.
+		__disable_irq();
+		while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
+		{
+			__WFI();
+		}
+		__enable_irq();
 
 		if (clearBSY)
 		{

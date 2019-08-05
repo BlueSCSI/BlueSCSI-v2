@@ -69,9 +69,15 @@ void MX_GPIO_Init(void)
   __GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pins : PEPin PEPin PEPin PEPin */
-  GPIO_InitStruct.Pin = FPGA_GPIO2_Pin|FPGA_GPIO3_Pin|UNUSED_PE5_Pin|UNUSED_PE6_Pin;
+  GPIO_InitStruct.Pin = FPGA_GPIO2_Pin|UNUSED_PE5_Pin|UNUSED_PE6_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PE3 */
+  GPIO_InitStruct.Pin = FPGA_GPIO3_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PE4 */
