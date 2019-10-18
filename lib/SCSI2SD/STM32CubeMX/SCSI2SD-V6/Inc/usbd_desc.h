@@ -1,10 +1,10 @@
 /**
   ******************************************************************************
-  * @file           : usbd_desc.h
+  * @file           : usbd_desc.c
   * @version        : v1.0_Cube
   * @brief          : Header for usbd_desc file.
   ******************************************************************************
-  * COPYRIGHT(c) 2016 STMicroelectronics
+  * COPYRIGHT(c) 2019 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -32,8 +32,8 @@
 */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __USBD_DESC__H__
-#define __USBD_DESC__H__
+#ifndef __USBD_DESC__C__
+#define __USBD_DESC__C__
 
 #ifdef __cplusplus
  extern "C" {
