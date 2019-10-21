@@ -18,7 +18,7 @@
 
 #include "usbd_msc_storage_sd.h"
 #include "stm32f2xx.h"
-#include "bsp_driver_sd.h"
+#include "../bsp_driver_sd.h"
 #include "../bsp.h"
 #include "../disk.h"
 #include "../led.h"

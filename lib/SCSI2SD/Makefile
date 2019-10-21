@@ -2,7 +2,7 @@
 ARMCC=arm-none-eabi-gcc
 OBJCOPY=arm-none-eabi-objcopy
 
-CPPFLAGS=-DSTM32F205xx -DUSE_HAL_DRIVER -Wall -Werror
+CPPFLAGS=-DSTM32F205xx -DUSE_HAL_DRIVER -Wall 
 CFLAGS=-mcpu=cortex-m3 -mthumb -mslow-flash-data \
 	-std=gnu11 \
 	-specs=nosys.specs \
@@ -37,8 +37,6 @@ build/stm32cubemx/stm32f2xx_hal_msp.o: STM32CubeMX/SCSI2SD-V6/Src/stm32f2xx_hal_
 build/stm32cubemx/stm32f2xx_it.o: STM32CubeMX/SCSI2SD-V6/Src/stm32f2xx_it.c
 build/stm32cubemx/usart.o: STM32CubeMX/SCSI2SD-V6/Src/usart.c
 build/stm32cubemx/usbd_conf.o: STM32CubeMX/SCSI2SD-V6/Src/usbd_conf.c
-build/stm32cubemx/usbh_conf.o: STM32CubeMX/SCSI2SD-V6/Src/usbh_conf.c
-build/stm32cubemx/usb_host.o: STM32CubeMX/SCSI2SD-V6/Src/usb_host.c
 build/stm32cubemx/stm32f2xx_hal.o: STM32CubeMX/SCSI2SD-V6/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal.c
 build/stm32cubemx/stm32f2xx_hal_cortex.o: STM32CubeMX/SCSI2SD-V6/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_cortex.c
 build/stm32cubemx/stm32f2xx_hal_dma.o: STM32CubeMX/SCSI2SD-V6/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_dma.c
@@ -59,18 +57,10 @@ build/stm32cubemx/stm32f2xx_ll_usb.o: STM32CubeMX/SCSI2SD-V6/Drivers/STM32F2xx_H
 build/stm32cubemx/usbd_core.o: STM32CubeMX/SCSI2SD-V6/Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_core.c
 build/stm32cubemx/usbd_ctlreq.o: STM32CubeMX/SCSI2SD-V6/Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ctlreq.c
 build/stm32cubemx/usbd_ioreq.o: STM32CubeMX/SCSI2SD-V6/Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ioreq.c
-build/stm32cubemx/usbh_core.o: STM32CubeMX/SCSI2SD-V6/Middlewares/ST/STM32_USB_Host_Library/Core/Src/usbh_core.c
-build/stm32cubemx/usbh_ctlreq.o: STM32CubeMX/SCSI2SD-V6/Middlewares/ST/STM32_USB_Host_Library/Core/Src/usbh_ctlreq.c
-build/stm32cubemx/usbh_ioreq.o: STM32CubeMX/SCSI2SD-V6/Middlewares/ST/STM32_USB_Host_Library/Core/Src/usbh_ioreq.c
-build/stm32cubemx/usbh_pipes.o: STM32CubeMX/SCSI2SD-V6/Middlewares/ST/STM32_USB_Host_Library/Core/Src/usbh_pipes.c
-build/stm32cubemx/usbh_msc.o: STM32CubeMX/SCSI2SD-V6/Middlewares/ST/STM32_USB_Host_Library/Class/MSC/Src/usbh_msc.c
-build/stm32cubemx/usbh_msc_bot.o: STM32CubeMX/SCSI2SD-V6/Middlewares/ST/STM32_USB_Host_Library/Class/MSC/Src/usbh_msc_bot.c
-build/stm32cubemx/usbh_msc_scsi.o: STM32CubeMX/SCSI2SD-V6/Middlewares/ST/STM32_USB_Host_Library/Class/MSC/Src/usbh_msc_scsi.c
 build/stm32cubemx/system_stm32f2xx.o: STM32CubeMX/SCSI2SD-V6/Drivers/CMSIS/Device/ST/STM32F2xx/Source/Templates/system_stm32f2xx.c
 build/stm32cubemx/startup_stm32f205xx.o: STM32CubeMX/SCSI2SD-V6/Drivers/CMSIS/Device/ST/STM32F2xx/Source/Templates/gcc/startup_stm32f205xx.s
 
 STM32OBJS = \
-	build/stm32cubemx/bsp_driver_sd.o \
 	build/stm32cubemx/fsmc.o \
 	build/stm32cubemx/gpio.o \
 	build/stm32cubemx/main.o \
@@ -80,8 +70,6 @@ STM32OBJS = \
 	build/stm32cubemx/stm32f2xx_it.o \
 	build/stm32cubemx/usart.o \
 	build/stm32cubemx/usbd_conf.o \
-	build/stm32cubemx/usbh_conf.o \
-	build/stm32cubemx/usb_host.o \
 	build/stm32cubemx/stm32f2xx_hal.o \
 	build/stm32cubemx/stm32f2xx_hal_cortex.o \
 	build/stm32cubemx/stm32f2xx_hal_dma.o \
@@ -102,13 +90,6 @@ STM32OBJS = \
 	build/stm32cubemx/usbd_core.o \
 	build/stm32cubemx/usbd_ctlreq.o \
 	build/stm32cubemx/usbd_ioreq.o \
-	build/stm32cubemx/usbh_core.o \
-	build/stm32cubemx/usbh_ctlreq.o \
-	build/stm32cubemx/usbh_ioreq.o \
-	build/stm32cubemx/usbh_pipes.o \
-	build/stm32cubemx/usbh_msc.o \
-	build/stm32cubemx/usbh_msc_bot.o \
-	build/stm32cubemx/usbh_msc_scsi.o \
 	build/stm32cubemx/system_stm32f2xx.o \
 	build/stm32cubemx/startup_stm32f205xx.o \
 

@@ -208,23 +208,6 @@ index ef23c94..c899300 100755
  #define HAL_GPIO_MODULE_ENABLED
  #define HAL_DMA_MODULE_ENABLED
  #define HAL_RCC_MODULE_ENABLED
-diff --git b/STM32CubeMX/SCSI2SD-V6/Inc/stm32f2xx_it.h a/STM32CubeMX/SCSI2SD-V6/Inc/stm32f2xx_it.h
-index a2efe1f..4c7075a 100755
---- b/STM32CubeMX/SCSI2SD-V6/Inc/stm32f2xx_it.h
-+++ a/STM32CubeMX/SCSI2SD-V6/Inc/stm32f2xx_it.h
-@@ -46,11 +46,13 @@
- /* Exported functions ------------------------------------------------------- */
- 
- void SysTick_Handler(void);
-+void EXTI3_IRQHandler(void);
- void EXTI4_IRQHandler(void);
- void SDIO_IRQHandler(void);
- void DMA2_Stream3_IRQHandler(void);
- void OTG_FS_IRQHandler(void);
- void DMA2_Stream6_IRQHandler(void);
- 
- #ifdef __cplusplus
- }
 diff --git b/STM32CubeMX/SCSI2SD-V6/Src/fsmc.c a/STM32CubeMX/SCSI2SD-V6/Src/fsmc.c
 index c257924..5261aa9 100755
 --- b/STM32CubeMX/SCSI2SD-V6/Src/fsmc.c
@@ -460,7 +443,7 @@ diff --git b/STM32CubeMX/SCSI2SD-V6/Src/main.c a/STM32CubeMX/SCSI2SD-V6/Src/main
 index 48e1f9a..a80e078 100755
 --- b/STM32CubeMX/SCSI2SD-V6/Src/main.c
 +++ a/STM32CubeMX/SCSI2SD-V6/Src/main.c
-@@ -32,12 +32,11 @@
+@@ -32,12 +32,10 @@
    */
  /* Includes ------------------------------------------------------------------*/
  #include "stm32f2xx_hal.h"
@@ -472,8 +455,8 @@ index 48e1f9a..a80e078 100755
  #include "usb_device.h"
  #include "gpio.h"
  #include "fsmc.h"
- 
-@@ -87,14 +87,11 @@ int main(void)
+
+@@ -87,14 +87,10 @@ int main(void)
  
    /* Initialize all configured peripherals */
    MX_GPIO_Init();
