@@ -5,7 +5,7 @@
   * @brief          : This file implements the board support package for the USB device library
   ******************************************************************************
   *
-  * COPYRIGHT(c) 2016 STMicroelectronics
+  * COPYRIGHT(c) 2019 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -108,18 +108,7 @@ void HAL_PCD_MspDeInit(PCD_HandleTypeDef* hpcd)
     PA11     ------> USB_OTG_FS_DM
     PA12     ------> USB_OTG_FS_DP 
     */
-	// HAL_GPIO_DeInit(GPIOA, GPIO_PIN_9|GPIO_PIN_11|GPIO_PIN_12);
-	// MM: Don't let pins float.
-	GPIO_InitTypeDef GPIO_InitStruct;
-	GPIO_InitStruct.Pin = GPIO_PIN_9;
-	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-	GPIO_InitStruct.Pin = GPIO_PIN_11|GPIO_PIN_12;
-	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+    HAL_GPIO_DeInit(GPIOA, GPIO_PIN_9|GPIO_PIN_11|GPIO_PIN_12);
 
     /* Peripheral interrupt Deinit*/
     HAL_NVIC_DisableIRQ(OTG_FS_IRQn);
@@ -305,11 +294,9 @@ USBD_StatusTypeDef  USBD_LL_Init (USBD_HandleTypeDef *pdev)
   hpcd_USB_OTG_FS.Init.use_dedicated_ep1 = DISABLE;
   HAL_PCD_Init(&hpcd_USB_OTG_FS);
 
-  // Sum of all FIFOs must be <= 320.
   HAL_PCD_SetRxFiFo(&hpcd_USB_OTG_FS, 0x80);
   HAL_PCD_SetTxFiFo(&hpcd_USB_OTG_FS, 0, 0x40);
-  HAL_PCD_SetTxFiFo(&hpcd_USB_OTG_FS, 1, 0x40);
-  HAL_PCD_SetTxFiFo(&hpcd_USB_OTG_FS, 2, 0x40);
+  HAL_PCD_SetTxFiFo(&hpcd_USB_OTG_FS, 1, 0x80);
   }
   return USBD_OK;
 }

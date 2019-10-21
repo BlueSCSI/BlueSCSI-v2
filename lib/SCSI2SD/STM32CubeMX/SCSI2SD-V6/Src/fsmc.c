@@ -5,7 +5,7 @@
   *                      of the FSMC peripheral.
   ******************************************************************************
   *
-  * COPYRIGHT(c) 2016 STMicroelectronics
+  * COPYRIGHT(c) 2019 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -66,28 +66,12 @@ void MX_FSMC_Init(void)
   hsram1.Init.AsynchronousWait = FSMC_ASYNCHRONOUS_WAIT_DISABLE;
   hsram1.Init.WriteBurst = FSMC_WRITE_BURST_DISABLE;
   /* Timing */
-
-  // 1 clock to read the address, + 1 for synchroniser skew
   Timing.AddressSetupTime = 2;
   Timing.AddressHoldTime = 1;
-
-  // Writes to device:
-  //   1 for synchroniser skew (dbx also delayed)
-  //   1 to skip hold time
-  //   1 to write data.
-
-  // Reads from device:
-  //   3 for syncroniser
-  //   1 to write back to fsmc bus.
   Timing.DataSetupTime = 4;
-
-  // Allow a clock for us to release signals
-  // Need to avoid both devices acting as outputs
-  // on the multiplexed lines at the same time.
   Timing.BusTurnAroundDuration = 1;
-
-  Timing.CLKDivision = 16; // Ignored for async
-  Timing.DataLatency = 17; // Ignored for async
+  Timing.CLKDivision = 16;
+  Timing.DataLatency = 17;
   Timing.AccessMode = FSMC_ACCESS_MODE_A;
   /* ExtTiming */
 
@@ -107,7 +91,7 @@ static void HAL_FSMC_MspInit(void){
   }
   FSMC_Initialized = 1;
   /* Peripheral clock enable */
-  __FSMC_CLK_ENABLE();
+  #__FSMC_CLK_ENABLE();
   
   /** FSMC GPIO Configuration  
   PE7   ------> FSMC_DA4
@@ -119,6 +103,9 @@ static void HAL_FSMC_MspInit(void){
   PE13   ------> FSMC_DA10
   PE14   ------> FSMC_DA11
   PE15   ------> FSMC_DA12
+  PD8   ------> FSMC_DA13
+  PD9   ------> FSMC_DA14
+  PD10   ------> FSMC_DA15
   PD14   ------> FSMC_DA0
   PD15   ------> FSMC_DA1
   PD0   ------> FSMC_DA2
@@ -126,31 +113,28 @@ static void HAL_FSMC_MspInit(void){
   PD4   ------> FSMC_NOE
   PD5   ------> FSMC_NWE
   PD7   ------> FSMC_NE1
-  PD8   ------> FSMC_DA13
-  PD9   ------> FSMC_DA14
-  PD10  ------> FSMC_DA15
   PB7   ------> FSMC_NL
   PE0   ------> FSMC_NBL0
   PE1   ------> FSMC_NBL1
   */
-  // MM: GPIO_SPEED_FREQ_MEDIUM is rated up to 50MHz, which is fine as all the
-  // fsmc timings are > 1 (ie. so clock speed / 2 is around 50MHz).
-
   /* GPIO_InitStruct */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_7|GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15;
+  GPIO_InitStruct.Pin = GPIO_PIN_7|GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10 
+                          |GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14 
+                          |GPIO_PIN_15|GPIO_PIN_0|GPIO_PIN_1;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM; //HIGH;
+  GPIO_InitStruct.Speed = GPIO_SPEED_MEDIUM;
   GPIO_InitStruct.Alternate = GPIO_AF12_FSMC;
 
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /* GPIO_InitStruct */
-  GPIO_InitStruct.Pin = GPIO_PIN_14|GPIO_PIN_15|GPIO_PIN_0|GPIO_PIN_1 
-                          |GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_7|GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10;
+  GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_14 
+                          |GPIO_PIN_15|GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_4 
+                          |GPIO_PIN_5|GPIO_PIN_7;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM; //HIGH;
+  GPIO_InitStruct.Speed = GPIO_SPEED_MEDIUM;
   GPIO_InitStruct.Alternate = GPIO_AF12_FSMC;
 
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
@@ -159,7 +143,7 @@ static void HAL_FSMC_MspInit(void){
   GPIO_InitStruct.Pin = GPIO_PIN_7;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;//HIGH;
+  GPIO_InitStruct.Speed = GPIO_SPEED_MEDIUM;
   GPIO_InitStruct.Alternate = GPIO_AF12_FSMC;
 
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
@@ -202,6 +186,9 @@ static void HAL_FSMC_MspDeInit(void){
   PE13   ------> FSMC_DA10
   PE14   ------> FSMC_DA11
   PE15   ------> FSMC_DA12
+  PD8   ------> FSMC_DA13
+  PD9   ------> FSMC_DA14
+  PD10   ------> FSMC_DA15
   PD14   ------> FSMC_DA0
   PD15   ------> FSMC_DA1
   PD0   ------> FSMC_DA2
@@ -209,18 +196,18 @@ static void HAL_FSMC_MspDeInit(void){
   PD4   ------> FSMC_NOE
   PD5   ------> FSMC_NWE
   PD7   ------> FSMC_NE1
-  PD8   ------> FSMC_DA13
-  PD9   ------> FSMC_DA14
-  PD10  ------> FSMC_DA15
   PB7   ------> FSMC_NL
   PE0   ------> FSMC_NBL0
   PE1   ------> FSMC_NBL1
   */
 
-  HAL_GPIO_DeInit(GPIOE, GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_7|GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15);
+  HAL_GPIO_DeInit(GPIOE, GPIO_PIN_7|GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10 
+                          |GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14 
+                          |GPIO_PIN_15|GPIO_PIN_0|GPIO_PIN_1);
 
-  HAL_GPIO_DeInit(GPIOD, GPIO_PIN_14|GPIO_PIN_15|GPIO_PIN_0|GPIO_PIN_1 
-                          |GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_7|GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10);
+  HAL_GPIO_DeInit(GPIOD, GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_14 
+                          |GPIO_PIN_15|GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_4 
+                          |GPIO_PIN_5|GPIO_PIN_7);
 
   HAL_GPIO_DeInit(GPIOB, GPIO_PIN_7);
 

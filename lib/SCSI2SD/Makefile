@@ -28,7 +28,6 @@ STM32CubeMX_INCUDE = \
 
 all: build/firmware.dfu
 
-build/stm32cubemx/bsp_driver_sd.o: STM32CubeMX/SCSI2SD-V6/Src/bsp_driver_sd.c
 build/stm32cubemx/fsmc.o: STM32CubeMX/SCSI2SD-V6/Src/fsmc.c
 build/stm32cubemx/gpio.o: STM32CubeMX/SCSI2SD-V6/Src/gpio.c
 build/stm32cubemx/main.o: STM32CubeMX/SCSI2SD-V6/Src/main.c
@@ -148,6 +147,7 @@ SRC = \
 	src/firmware/tape.c \
 	src/firmware/time.c \
 	src/firmware/vendor.c \
+	src/firmware/bsp_driver_sd.c \
 	${USBCOMPOSITE_SRC}
 
 build/firmware.elf: $(SRC) rtl/fpga_bitmap.o $(STM32OBJS)

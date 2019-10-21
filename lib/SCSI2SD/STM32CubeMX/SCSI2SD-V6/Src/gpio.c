@@ -5,7 +5,7 @@
   *                      of all used GPIO pins.
   ******************************************************************************
   *
-  * COPYRIGHT(c) 2016 STMicroelectronics
+  * COPYRIGHT(c) 2019 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -68,17 +68,17 @@ void MX_GPIO_Init(void)
   __GPIOB_CLK_ENABLE();
   __GPIOD_CLK_ENABLE();
 
-  /*Configure GPIO pins : PEPin PEPin PEPin PEPin */
+  /*Configure GPIO pins : PEPin PEPin PEPin */
   GPIO_InitStruct.Pin = FPGA_GPIO2_Pin|UNUSED_PE5_Pin|UNUSED_PE6_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PE3 */
+  /*Configure GPIO pin : PtPin */
   GPIO_InitStruct.Pin = FPGA_GPIO3_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+  HAL_GPIO_Init(FPGA_GPIO3_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PE4 */
   GPIO_InitStruct.Pin = GPIO_PIN_4;
@@ -96,8 +96,10 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PAPin PAPin PAPin PAPin */
-  GPIO_InitStruct.Pin = UNUSED_PA0_Pin|UNUSED_PA1_Pin|UNUSED_PA2_Pin|UNUSED_PA3_Pin;
+  /*Configure GPIO pins : PAPin PAPin PAPin PAPin 
+                           PA10 */
+  GPIO_InitStruct.Pin = UNUSED_PA0_Pin|UNUSED_PA1_Pin|UNUSED_PA2_Pin|UNUSED_PA3_Pin 
+                          |GPIO_PIN_10;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
@@ -123,25 +125,13 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
   HAL_GPIO_Init(nTERM_EN_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PBPin PBPin PBPin */
-  GPIO_InitStruct.Pin = BOOT1_Pin|UNUSED_PB5_Pin|UNUSED_PB6_Pin;
+  /*Configure GPIO pins : PBPin PBPin PBPin PB14 
+                           PB15 PBPin PBPin */
+  GPIO_InitStruct.Pin = BOOT1_Pin|UNUSED_PB12_Pin|UNUSED_PB13_Pin|GPIO_PIN_14 
+                          |GPIO_PIN_15|UNUSED_PB5_Pin|UNUSED_PB6_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : PBPin PBPin */
-  GPIO_InitStruct.Pin = UNUSED_PB12_Pin|UNUSED_PB13_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : PD6, PD12 */
-  // PD6: FSMC NWAIT, not used yet.PULLED UP in fpga pin config
-  // PD12: FPGA_GPIO1, not used.
-  GPIO_InitStruct.Pin = GPIO_PIN_6 | GPIO_PIN_12;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PDPin PDPin */
   GPIO_InitStruct.Pin = UNUSED_PD11_Pin|FSMC_UNUSED_CLK_Pin;
@@ -170,18 +160,11 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF0_MCO;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PA10 */
-  // USB Host OTG ID pin
-  GPIO_InitStruct.Pin = GPIO_PIN_10;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  // USB Host pins, currently unused.
-  GPIO_InitStruct.Pin = GPIO_PIN_14|GPIO_PIN_15;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  /*Configure GPIO pin : PD6 */
+  GPIO_InitStruct.Pin = GPIO_PIN_6;
+  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PBPin PBPin */
   GPIO_InitStruct.Pin = nSD_WP_Pin|nSD_CD_Pin;

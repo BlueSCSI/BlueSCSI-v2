@@ -5,7 +5,7 @@
   *                      of the SDIO instances.
   ******************************************************************************
   *
-  * COPYRIGHT(c) 2016 STMicroelectronics
+  * COPYRIGHT(c) 2019 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -36,6 +36,7 @@
 #include "sdio.h"
 
 #include "gpio.h"
+#include "dma.h"
 
 /* USER CODE BEGIN 0 */
 
@@ -58,6 +59,9 @@ void MX_SDIO_SD_Init(void)
   hsd.Init.BusWide = SDIO_BUS_WIDE_1B;
   hsd.Init.HardwareFlowControl = SDIO_HARDWARE_FLOW_CONTROL_DISABLE;
   hsd.Init.ClockDiv = 0;
+  HAL_SD_Init(&hsd, &SDCardInfo);
+
+  HAL_SD_WideBusOperation_Config(&hsd, SDIO_BUS_WIDE_4B);
 
 }
 
@@ -83,12 +87,11 @@ void HAL_SD_MspInit(SD_HandleTypeDef* hsd)
     */
     GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_PULLUP; // MM
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
     GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
     GPIO_InitStruct.Alternate = GPIO_AF12_SDIO;
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-    // No pullup on CLK
     GPIO_InitStruct.Pin = GPIO_PIN_12;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -98,7 +101,7 @@ void HAL_SD_MspInit(SD_HandleTypeDef* hsd)
 
     GPIO_InitStruct.Pin = GPIO_PIN_2;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_PULLUP; // MM
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
     GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
     GPIO_InitStruct.Alternate = GPIO_AF12_SDIO;
     HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
@@ -112,8 +115,8 @@ void HAL_SD_MspInit(SD_HandleTypeDef* hsd)
     hdma_sdio_tx.Init.MemInc = DMA_MINC_ENABLE;
     hdma_sdio_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
     hdma_sdio_tx.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
-    hdma_sdio_tx.Init.Mode = DMA_PFCTRL; // TODO MM. This is necessary or SDIO doesn't work
-    hdma_sdio_tx.Init.Priority = DMA_PRIORITY_VERY_HIGH; // TODO MM Prevent underruns
+    hdma_sdio_tx.Init.Mode = DMA_PFCTRL;
+    hdma_sdio_tx.Init.Priority = DMA_PRIORITY_VERY_HIGH;
     hdma_sdio_tx.Init.FIFOMode = DMA_FIFOMODE_ENABLE;
     hdma_sdio_tx.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_FULL;
     hdma_sdio_tx.Init.MemBurst = DMA_MBURST_INC4;
@@ -129,8 +132,8 @@ void HAL_SD_MspInit(SD_HandleTypeDef* hsd)
     hdma_sdio_rx.Init.MemInc = DMA_MINC_ENABLE;
     hdma_sdio_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
     hdma_sdio_rx.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
-    hdma_sdio_rx.Init.Mode = DMA_PFCTRL; // TODO MM. This is necessary or SDIO doesn't work
-    hdma_sdio_rx.Init.Priority = DMA_PRIORITY_VERY_HIGH; // TODO MM Prevent underruns
+    hdma_sdio_rx.Init.Mode = DMA_PFCTRL;
+    hdma_sdio_rx.Init.Priority = DMA_PRIORITY_VERY_HIGH;
     hdma_sdio_rx.Init.FIFOMode = DMA_FIFOMODE_ENABLE;
     hdma_sdio_rx.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_FULL;
     hdma_sdio_rx.Init.MemBurst = DMA_MBURST_INC4;
@@ -140,7 +143,6 @@ void HAL_SD_MspInit(SD_HandleTypeDef* hsd)
     __HAL_LINKDMA(hsd,hdmarx,hdma_sdio_rx);
 
     /* Peripheral interrupt init*/
-	HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
     HAL_NVIC_SetPriority(SDIO_IRQn, 0, 0);
     HAL_NVIC_EnableIRQ(SDIO_IRQn);
   /* USER CODE BEGIN SDIO_MspInit 1 */

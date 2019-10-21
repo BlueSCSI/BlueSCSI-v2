@@ -4,7 +4,7 @@
   * Description        : Main program body
   ******************************************************************************
   *
-  * COPYRIGHT(c) 2016 STMicroelectronics
+  * COPYRIGHT(c) 2019 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -32,11 +32,12 @@
   */
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f2xx_hal.h"
+#include "dma.h"
 #include "sdio.h"
 #include "spi.h"
+#include "tim.h"
 #include "usart.h"
 #include "usb_device.h"
-#include "usb_host.h"
 #include "gpio.h"
 #include "fsmc.h"
 
@@ -53,7 +54,6 @@
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-void MX_USB_HOST_Process(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
@@ -87,11 +87,14 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
+  SystemClock_Config();
   MX_FSMC_Init();
   MX_SDIO_SD_Init();
   MX_SPI1_Init();
-  MX_USART3_UART_Init(); // Not used, but we don't want the pins floating.
-  // MX_USB_HOST_Init(); // Not used, pins set to GPIO
+  MX_TIM4_Init();
+  MX_USART3_UART_Init();
+  MX_USB_DEVICE_Init();
 
   /* USER CODE BEGIN 2 */
   mainInit();
@@ -103,7 +106,6 @@ int main(void)
   while (1)
   {
   /* USER CODE END WHILE */
-    //MX_USB_HOST_Process();
 
   /* USER CODE BEGIN 3 */
   mainLoop();
@@ -126,7 +128,6 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-
   RCC_OscInitStruct.PLL.PLLM = 20;
   RCC_OscInitStruct.PLL.PLLN = 432;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
