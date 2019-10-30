@@ -1,3 +1,6 @@
+20191030		6.2.8
+	- Fix incorrect results from the self-test function.
+
 20191009		6.2.7
 	- Slight improvements to data throughput, which may assist SCSI hosts with
 	short timeouts.
