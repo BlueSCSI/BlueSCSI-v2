@@ -524,11 +524,21 @@ int scsiDiskCommand()
 	else if (unlikely(command == 0x37))
 	{
 		// READ DEFECT DATA
-		scsiDev.status = CHECK_CONDITION;
-		scsiDev.target->sense.code = NO_SENSE;
-		scsiDev.target->sense.asc = DEFECT_LIST_NOT_FOUND;
-		scsiDev.phase = STATUS;
+		uint32_t allocLength = (((uint16_t)scsiDev.cdb[7]) << 8) |
+			scsiDev.cdb[8];
 
+		scsiDev.data[0] = 0;
+		scsiDev.data[1] = scsiDev.cdb[1];
+		scsiDev.data[2] = 0;
+		scsiDev.data[3] = 0;
+		scsiDev.dataLen = 4;
+
+		if (scsiDev.dataLen > allocLength)
+		{
+			scsiDev.dataLen = allocLength;
+		}
+
+		scsiDev.phase = DATA_IN;
 	}
 	else
 	{
