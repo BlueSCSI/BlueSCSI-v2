@@ -42,7 +42,7 @@
 #include "stm32f2xx_hal.h"
 #include "usbd_def.h"
 
-extern USBD_HandleTypeDef hUsbDeviceFS;
+extern USBD_HandleTypeDef hUsbDeviceHS;
 
 /* USB_Device init function */	
 void MX_USB_DEVICE_Init(void);
