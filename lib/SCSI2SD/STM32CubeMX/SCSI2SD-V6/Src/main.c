@@ -34,6 +34,7 @@
 #include "stm32f2xx_hal.h"
 #include "dma.h"
 #include "sdio.h"
+#include "spi.h"
 #include "tim.h"
 #include "usart.h"
 #include "usb_device.h"
@@ -91,6 +92,7 @@ int main(void)
   SystemClock_Config();
   MX_FSMC_Init();
   MX_SDIO_SD_Init();
+  MX_SPI1_Init();
   MX_TIM4_Init();
   MX_USB_DEVICE_Init();
   MX_UART4_Init();
