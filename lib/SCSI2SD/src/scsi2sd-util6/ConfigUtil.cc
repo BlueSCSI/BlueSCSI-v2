@@ -168,6 +168,7 @@ ConfigUtil::toBytes(const S2S_TargetCfg& _config)
 	config.headsPerCylinder = fromLE16(config.headsPerCylinder);
 
 	const uint8_t* begin = reinterpret_cast<const uint8_t*>(&config);
+
 	return std::vector<uint8_t>(begin, begin + sizeof(config));
 }
 
@@ -228,6 +229,10 @@ ConfigUtil::toXML(const S2S_TargetCfg& config)
 	else if (config.quirks == S2S_CFG_QUIRKS_XEBEC)
 	{
 		s << "xebec";
+	}
+	else if (config.quirks == S2S_CFG_QUIRKS_VMS)
+	{
+		s << "vms";
 	}
 
 	s <<
@@ -464,6 +469,10 @@ parseTarget(wxXmlNode* node)
 				else if (quirk == "xebec")
 				{
 					result.quirks |= S2S_CFG_QUIRKS_XEBEC;
+				}
+				else if (quirk == "vms")
+				{
+					result.quirks |= S2S_CFG_QUIRKS_VMS;
 				}
 			}
 		}

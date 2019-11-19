@@ -1,4 +1,5 @@
 //	Copyright (C) 2013 Michael McMaster <michael@codesrc.com>
+//	Copyright (C) 2019 Landon Rodgers  <g.landon.rodgers@gmail.com>
 //
 //	This file is part of SCSI2SD.
 //
@@ -154,6 +155,13 @@ void s2s_scsiInquiry()
 
 	if (scsiDev.phase == DATA_IN)
 	{
+		// VAX workaround
+		if (allocationLength == 255 &&
+			(scsiDev.target->cfg->quirks & S2S_CFG_QUIRKS_VMS))
+		{
+			allocationLength = 254;
+		}
+
 		// "real" hard drives send back exactly allocationLenth bytes, padded
 		// with zeroes. This only seems to happen for Inquiry responses, and not
 		// other commands that also supply an allocation length such as Mode Sense or
