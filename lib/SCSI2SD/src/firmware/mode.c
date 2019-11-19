@@ -1,5 +1,6 @@
 //	Copyright (C) 2013 Michael McMaster <michael@codesrc.com>
 //  Copyright (C) 2014 Doug Brown <doug@downtowndougbrown.com>
+//  Copyright (C) 2019 Landon Rodgers <g.landon.rodgers@gmail.com>
 //
 //	This file is part of SCSI2SD.
 //
@@ -467,7 +468,8 @@ static void doModeSense(
 		}
 	}
 
-	if (pageCode == 0x05 || pageCode == 0x3F)
+	if ((pageCode == 0x05 || pageCode == 0x3F) &&
+		(scsiDev.target->cfg->deviceType == S2S_CFG_FLOPPY_14MB))
 	{
 		pageFound = 1;
 		pageIn(pc, idx, FlexibleDiskDriveGeometry, sizeof(FlexibleDiskDriveGeometry));
