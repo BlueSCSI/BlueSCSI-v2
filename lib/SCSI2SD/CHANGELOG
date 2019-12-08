@@ -1,4 +1,4 @@
-20191119		6.X.X
+20191208		6.2.9
 	- Fix to prevent sending floppy geometry mode page when not configured as
 	a floppy (Thanks Landon Rodgers)
 	- Fix for VMS 5.5-2 Inquiry allocation lengths. Requires setting "vms" quirk
