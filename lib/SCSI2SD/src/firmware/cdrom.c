@@ -170,14 +170,14 @@ static void doReadTOC(int MSF, uint8_t track, uint16_t allocationLength)
 		// Replace start of leadout track
 		if (MSF)
 		{
-			LBA2MSF(capacity, scsiDev.data + 0x0E);
+			LBA2MSF(capacity, scsiDev.data + 0x10);
 		}
 		else
 		{
-			scsiDev.data[0x0E] = capacity >> 24;
-			scsiDev.data[0x0F] = capacity >> 16;
-			scsiDev.data[0x10] = capacity >> 8;
-			scsiDev.data[0x11] = capacity;
+			scsiDev.data[0x10] = capacity >> 24;
+			scsiDev.data[0x11] = capacity >> 16;
+			scsiDev.data[0x12] = capacity >> 8;
+			scsiDev.data[0x13] = capacity;
 		}
 
 		if (len > allocationLength)

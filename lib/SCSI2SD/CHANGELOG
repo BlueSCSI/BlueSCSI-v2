@@ -1,3 +1,6 @@
+2020XXXX		XXXXX
+	- Fix for invalid CDROM READ TOC responses (Thanks Simon Gander)
+
 20191208		6.2.9
 	- Fix to prevent sending floppy geometry mode page when not configured as
 	a floppy (Thanks Landon Rodgers)
