@@ -37,7 +37,10 @@
 
 #include <string.h>
 
-static const uint16_t FIRMWARE_VERSION = 0x0629;
+static const uint16_t FIRMWARE_VERSION = 0x062A;
+
+// Optional static config
+extern uint8_t* __fixed_config;
 
 // 1 flash row
 static const uint8_t DEFAULT_CONFIG[128] =
@@ -87,7 +90,14 @@ void s2s_configInit(S2S_BoardCfg* config)
 {
 	usbInEpState = USB_IDLE;
 
-	if ((blockDev.state & DISK_PRESENT) && sdDev.capacity)
+	if (memcmp(__fixed_config, "BCFG", 4) == 0)
+	{
+		// Use hardcoded config
+		memcpy(s2s_cfg, __fixed_config, S2S_CFG_SIZE);
+		memcpy(config, s2s_cfg, sizeof(S2S_BoardCfg));
+	}
+
+	else if ((blockDev.state & DISK_PRESENT) && sdDev.capacity)
 	{
 		int cfgSectors = (S2S_CFG_SIZE + 511) / 512;
 		BSP_SD_ReadBlocks_DMA(

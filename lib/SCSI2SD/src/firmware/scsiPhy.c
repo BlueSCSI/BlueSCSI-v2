@@ -677,21 +677,25 @@ uint32_t scsiEnterPhaseImmediate(int newPhase)
 	return 0; // No change
 }
 
-uint32_t s2s_getScsiRateMBs()
+// Returns a "safe" estimate of the host SCSI speed of
+// theoretical speed / 2
+uint32_t s2s_getScsiRateKBs()
 {
 	if (scsiDev.target->syncOffset)
 	{
 		if (scsiDev.target->syncPeriod < 23)
 		{
-			return 20;
+			return 20 / 2;
 		}
 		else if (scsiDev.target->syncPeriod <= 25)
 		{
-			return 10;
+			return 10 / 2;
 		}
 		else
 		{
-			return 1000 / (scsiDev.target->syncPeriod * 4);
+			// 1000000000 / (scsiDev.target->syncPeriod * 4) bytes per second
+			// (1000000000 / (scsiDev.target->syncPeriod * 4)) / 1000  kB/s
+			return (1000000 / (scsiDev.target->syncPeriod * 4)) / 2;
 		}
 	}
 	else

@@ -96,7 +96,7 @@ ifeq ($(TARGET),Linux)
 	BUILD := $(PWD)/build/linux
 	LIBUSB_CONFIG+=--disable-shared
 	LDFLAGS_LIBUSB+= -ludev -lpthread
-all: $(BUILD)/scsi2sd-test
+#all: $(BUILD)/scsi2sd-test
 
 endif
 ifeq ($(TARGET),Darwin)

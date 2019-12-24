@@ -27,7 +27,7 @@
 void s2s_setNormalClock();
 void s2s_setFastClock();
 
-uint32_t s2s_getSdRateMBs();
+uint32_t s2s_getSdRateKBs();
 
 #endif
 

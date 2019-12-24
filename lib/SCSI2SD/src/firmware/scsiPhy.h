@@ -117,6 +117,6 @@ int scsiWriteDMAPoll();
 
 int scsiSelfTest(void);
 
-uint32_t s2s_getScsiRateMBs();
+uint32_t s2s_getScsiRateKBs();
 
 #endif

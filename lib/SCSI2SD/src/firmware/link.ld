@@ -34,6 +34,16 @@ SECTIONS
     . = ALIGN(4);
   } >FLASH_ISR
 
+  /* Store config settings into FLASH */
+  .fixed_config :
+  {
+    . = ALIGN(4);
+    __fixed_config = .;        /* create a global symbol at config start */
+    . += 1024;
+    KEEP(*(.fixed_config))
+    . = ALIGN(4);
+  } >CONFIG
+
   /* The program code and other data goes into FLASH */
   .text :
   {
