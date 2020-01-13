@@ -32,13 +32,11 @@
   */
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f2xx_hal.h"
-#include "dma.h"
 #include "sdio.h"
 #include "spi.h"
-#include "tim.h"
 #include "usart.h"
 #include "usb_device.h"
-#include "usb_otg_fs.h"
+//#include "usb_otg_fs.h"
 #include "gpio.h"
 #include "fsmc.h"
 
@@ -88,15 +86,10 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_DMA_Init();
-  SystemClock_Config();
   MX_FSMC_Init();
   MX_SDIO_SD_Init();
   MX_SPI1_Init();
-  MX_TIM4_Init();
-  MX_USB_DEVICE_Init();
   MX_UART4_Init();
-  MX_USB_OTG_FS_PCD_Init();
 
   /* USER CODE BEGIN 2 */
   mainInit();
@@ -130,7 +123,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLM = 20;
+  RCC_OscInitStruct.PLL.PLLM = 12;
   RCC_OscInitStruct.PLL.PLLN = 432;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
   RCC_OscInitStruct.PLL.PLLQ = 9;

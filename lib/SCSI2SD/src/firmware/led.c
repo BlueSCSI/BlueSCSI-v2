@@ -26,22 +26,22 @@ void s2s_ledInit()
 	s2s_ledOff();
 
 	GPIO_InitTypeDef ledDef = {
-		LED_Pin, // Pin
+		LED_IO_Pin, // Pin
 		GPIO_MODE_OUTPUT_PP, // Mode
 		GPIO_NOPULL, // Pull(ups)
 		GPIO_SPEED_FREQ_LOW, // Speed (2MHz)
 		0 // Alternate function
 	};
-	HAL_GPIO_Init(LED_GPIO_Port, &ledDef);
+	HAL_GPIO_Init(LED_IO_GPIO_Port, &ledDef);
 }
 
 void s2s_ledOn()
 {
-	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(LED_IO_GPIO_Port, LED_IO_Pin, GPIO_PIN_RESET);
 }
 
 void s2s_ledOff()
 {
-	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(LED_IO_GPIO_Port, LED_IO_Pin, GPIO_PIN_SET);
 }
 

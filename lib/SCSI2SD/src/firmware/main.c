@@ -32,7 +32,7 @@
 #include "usb_device/usbd_msc_storage_sd.h"
 
 
-const char* Notice = "Copyright (C) 2016 Michael McMaster <michael@codesrc.com>";
+const char* Notice = "Copyright (C) 2019 Michael McMaster <michael@codesrc.com>";
 uint32_t lastSDPoll;
 
 static int isUsbStarted;
@@ -45,6 +45,10 @@ void mainEarlyInit()
 
 void mainInit()
 {
+	// DISable the ULPI chip
+	// NO SEE AN4879: CLOCK IS INPUT ONLY YOU IDIOT.
+	HAL_GPIO_WritePin(nULPI_RESET_GPIO_Port, nULPI_RESET_Pin, GPIO_PIN_RESET);
+
 	s2s_timeInit();
 	s2s_ledInit();
 	s2s_fpgaInit();
@@ -102,14 +106,17 @@ void mainLoop()
 				scsiInit();
 
 				// Is a USB host connected ?
+/* TODO DEAL WITH THIS
 				if (isUsbStarted)
 				{
 					USBD_Stop(&hUsbDeviceFS);
 					s2s_delay_ms(128);
 					USBD_Start(&hUsbDeviceFS);
 				}
+*/			
 			}
 
+/* TODO DEAL WITH THIS
 			// Can we speed up the SD card ?
 			// Don't combine with the above block because that won't
 			// run if the SD card is present at startup.
@@ -136,6 +143,7 @@ void mainLoop()
 				USBD_Start(&hUsbDeviceFS);
 				isUsbStarted = 1;
 			}
+	*/
 		}
 		else
 		{

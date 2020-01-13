@@ -37,23 +37,20 @@
 #include "usb_device.h"
 #include "usbd_core.h"
 #include "usbd_desc.h"
-#include "usbd_msc.h"
-#include "usbd_storage_if.h"
+#include "usbd_hid.h"
 
 /* USB Device Core handle declaration */
-USBD_HandleTypeDef hUsbDeviceHS;
+USBD_HandleTypeDef hUsbDeviceFS;
 
 /* init function */				        
 void MX_USB_DEVICE_Init(void)
 {
   /* Init Device Library,Add Supported Class and Start the library*/
-  USBD_Init(&hUsbDeviceHS, &HS_Desc, DEVICE_HS);
+  USBD_Init(&hUsbDeviceFS, &FS_Desc, DEVICE_FS);
 
-  USBD_RegisterClass(&hUsbDeviceHS, &USBD_MSC);
+  USBD_RegisterClass(&hUsbDeviceFS, &USBD_HID);
 
-  USBD_MSC_RegisterStorage(&hUsbDeviceHS, &USBD_Storage_Interface_fops_HS);
-
-  USBD_Start(&hUsbDeviceHS);
+  USBD_Start(&hUsbDeviceFS);
 
 }
 /**

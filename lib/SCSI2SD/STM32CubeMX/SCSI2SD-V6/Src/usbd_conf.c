@@ -37,7 +37,7 @@
 #include "usbd_def.h"
 #include "usbd_core.h"
 
-PCD_HandleTypeDef hpcd_USB_OTG_HS;
+PCD_HandleTypeDef hpcd_USB_OTG_FS;
 
 /* External functions --------------------------------------------------------*/
 void SystemClock_Config(void);
@@ -355,8 +355,35 @@ void HAL_PCD_DisconnectCallback(PCD_HandleTypeDef *hpcd)
 USBD_StatusTypeDef  USBD_LL_Init (USBD_HandleTypeDef *pdev)
 { 
   /* Init USB_IP */
-  if (pdev->id == DEVICE_HS) {
+  if (pdev->id == DEVICE_FS) {
   /* Link The driver to the stack */
+  hpcd_USB_OTG_FS.pData = pdev;
+  pdev->pData = &hpcd_USB_OTG_FS;
+
+  hpcd_USB_OTG_FS.Instance = USB_OTG_FS;
+  hpcd_USB_OTG_FS.Init.dev_endpoints = 7;
+  hpcd_USB_OTG_FS.Init.speed = PCD_SPEED_FULL;
+  hpcd_USB_OTG_FS.Init.dma_enable = DISABLE;
+  hpcd_USB_OTG_FS.Init.ep0_mps = DEP0CTL_MPS_64;
+  hpcd_USB_OTG_FS.Init.phy_itface = PCD_PHY_EMBEDDED;
+  hpcd_USB_OTG_FS.Init.Sof_enable = DISABLE;
+  hpcd_USB_OTG_FS.Init.low_power_enable = DISABLE;
+  hpcd_USB_OTG_FS.Init.vbus_sensing_enable = DISABLE;  // VBUS NOT CONNECTED ?? CHECK.
+  hpcd_USB_OTG_FS.Init.use_dedicated_ep1 = DISABLE;
+  HAL_PCD_Init(&hpcd_USB_OTG_FS);
+
+  // Sum of all FIFOs must be <= 320.
+  HAL_PCD_SetRxFiFo(&hpcd_USB_OTG_FS, 0x80);
+  HAL_PCD_SetTxFiFo(&hpcd_USB_OTG_FS, 0, 0x40);
+  HAL_PCD_SetTxFiFo(&hpcd_USB_OTG_FS, 1, 0x40);
+  HAL_PCD_SetTxFiFo(&hpcd_USB_OTG_FS, 2, 0x40);
+
+  HAL_NVIC_SetPriority(OTG_FS_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(OTG_FS_IRQn);
+
+  } else if (pdev->id == DEVICE_HS) {
+  /* Link The driver to the stack */
+	  /*
   hpcd_USB_OTG_HS.pData = pdev;
   pdev->pData = &hpcd_USB_OTG_HS;
 
@@ -374,8 +401,10 @@ USBD_StatusTypeDef  USBD_LL_Init (USBD_HandleTypeDef *pdev)
   HAL_PCD_Init(&hpcd_USB_OTG_HS);
 
   HAL_PCD_SetRxFiFo(&hpcd_USB_OTG_HS, 0x200);
-  HAL_PCD_SetTxFiFo(&hpcd_USB_OTG_HS, 0, 0x80);
-  HAL_PCD_SetTxFiFo(&hpcd_USB_OTG_HS, 1, 0x174);
+  HAL_PCD_SetTxFiFo(&hpcd_USB_OTG_HS, 0, 0x40);
+  HAL_PCD_SetTxFiFo(&hpcd_USB_OTG_HS, 1, 0x40);
+  HAL_PCD_SetTxFiFo(&hpcd_USB_OTG_HS, 2, 0x174);
+  */
   }
   return USBD_OK;
 }

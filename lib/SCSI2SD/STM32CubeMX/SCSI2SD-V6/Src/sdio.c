@@ -36,7 +36,6 @@
 #include "sdio.h"
 
 #include "gpio.h"
-#include "dma.h"
 
 /* USER CODE BEGIN 0 */
 
@@ -59,9 +58,6 @@ void MX_SDIO_SD_Init(void)
   hsd.Init.BusWide = SDIO_BUS_WIDE_1B;
   hsd.Init.HardwareFlowControl = SDIO_HARDWARE_FLOW_CONTROL_DISABLE;
   hsd.Init.ClockDiv = 0;
-  HAL_SD_Init(&hsd, &SDCardInfo);
-
-  HAL_SD_WideBusOperation_Config(&hsd, SDIO_BUS_WIDE_4B);
 
 }
 
@@ -143,6 +139,7 @@ void HAL_SD_MspInit(SD_HandleTypeDef* hsd)
     __HAL_LINKDMA(hsd,hdmarx,hdma_sdio_rx);
 
     /* Peripheral interrupt init*/
+       HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
     HAL_NVIC_SetPriority(SDIO_IRQn, 0, 0);
     HAL_NVIC_EnableIRQ(SDIO_IRQn);
   /* USER CODE BEGIN SDIO_MspInit 1 */

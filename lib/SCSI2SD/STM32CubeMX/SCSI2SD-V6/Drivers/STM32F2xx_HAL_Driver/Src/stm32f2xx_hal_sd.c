@@ -893,7 +893,7 @@ HAL_SD_ErrorTypedef HAL_SD_ReadBlocks_DMA(SD_HandleTypeDef *hsd, uint32_t *pRead
                                 SDIO_IT_STBITERR));
   
   /* Enable SDIO DMA transfer */
-  __HAL_SD_SDIO_DMA_ENABLE();
+  // MM disabled, as this fails on fast cards. __HAL_SD_SDIO_DMA_ENABLE();
   
   /* Configure DMA user callbacks */
   hsd->hdmarx->XferCpltCallback  = SD_DMA_RxCplt;
@@ -901,27 +901,29 @@ HAL_SD_ErrorTypedef HAL_SD_ReadBlocks_DMA(SD_HandleTypeDef *hsd, uint32_t *pRead
   
   /* Enable the DMA Stream */
   HAL_DMA_Start_IT(hsd->hdmarx, (uint32_t)&hsd->Instance->FIFO, (uint32_t)pReadBuffer, (uint32_t)(BlockSize * NumberOfBlocks)/4);
+
+  sdio_cmdinitstructure.Response         = SDIO_RESPONSE_SHORT;
+  sdio_cmdinitstructure.WaitForInterrupt = SDIO_WAIT_NO;
+  sdio_cmdinitstructure.CPSM             = SDIO_CPSM_ENABLE;
   
   if (hsd->CardType == HIGH_CAPACITY_SD_CARD)
   {
     BlockSize = 512;
     ReadAddr /= 512;
-  }
+  } else {
+    /* Set Block Size for Card */ 
+    sdio_cmdinitstructure.Argument         = (uint32_t)BlockSize;
+    sdio_cmdinitstructure.CmdIndex         = SD_CMD_SET_BLOCKLEN;
+
+    SDIO_SendCommand(hsd->Instance, &sdio_cmdinitstructure);
   
-  /* Set Block Size for Card */ 
-  sdio_cmdinitstructure.Argument         = (uint32_t)BlockSize;
-  sdio_cmdinitstructure.CmdIndex         = SD_CMD_SET_BLOCKLEN;
-  sdio_cmdinitstructure.Response         = SDIO_RESPONSE_SHORT;
-  sdio_cmdinitstructure.WaitForInterrupt = SDIO_WAIT_NO;
-  sdio_cmdinitstructure.CPSM             = SDIO_CPSM_ENABLE;
-  SDIO_SendCommand(hsd->Instance, &sdio_cmdinitstructure);
+    /* Check for error conditions */
+    errorstate = SD_CmdResp1Error(hsd, SD_CMD_SET_BLOCKLEN);
   
-  /* Check for error conditions */
-  errorstate = SD_CmdResp1Error(hsd, SD_CMD_SET_BLOCKLEN);
-  
-  if (errorstate != SD_OK)
-  {
-    return errorstate;
+    if (errorstate != SD_OK)
+    {
+      return errorstate;
+    }
   }
   
   /* Configure the SD DPSM (Data Path State Machine) */ 
@@ -931,6 +933,11 @@ HAL_SD_ErrorTypedef HAL_SD_ReadBlocks_DMA(SD_HandleTypeDef *hsd, uint32_t *pRead
   sdio_datainitstructure.TransferDir   = SDIO_TRANSFER_DIR_TO_SDIO;
   sdio_datainitstructure.TransferMode  = SDIO_TRANSFER_MODE_BLOCK;
   sdio_datainitstructure.DPSM          = SDIO_DPSM_ENABLE;
+
+  // We cannot enable DMA too early on UHS-I class 3 SD cards, or else the
+  // data is just discarded before the dpsm is started.
+  __HAL_SD_SDIO_DMA_ENABLE();
+  
   SDIO_DataConfig(hsd->Instance, &sdio_datainitstructure);
   
   /* Check number of blocks command */
@@ -1017,28 +1024,29 @@ HAL_SD_ErrorTypedef HAL_SD_WriteBlocks_DMA(SD_HandleTypeDef *hsd, uint32_t *pWri
   HAL_DMA_Start_IT(hsd->hdmatx, (uint32_t)pWriteBuffer, (uint32_t)&hsd->Instance->FIFO, (uint32_t)(BlockSize * NumberOfBlocks)/4);
 
   /* Enable SDIO DMA transfer */
-  __HAL_SD_SDIO_DMA_ENABLE();
+  // MM disabled, as this fails on fast cards. __HAL_SD_SDIO_DMA_ENABLE();
+  sdio_cmdinitstructure.Response         = SDIO_RESPONSE_SHORT;
+  sdio_cmdinitstructure.WaitForInterrupt = SDIO_WAIT_NO;
+  sdio_cmdinitstructure.CPSM             = SDIO_CPSM_ENABLE;
   
   if (hsd->CardType == HIGH_CAPACITY_SD_CARD)
   {
     BlockSize = 512;
     WriteAddr /= 512;
-  }
+  } else {
+       /* Set Block Size for Card */ 
+    sdio_cmdinitstructure.Argument         = (uint32_t)BlockSize;
+    sdio_cmdinitstructure.CmdIndex         = SD_CMD_SET_BLOCKLEN;
 
-  /* Set Block Size for Card */ 
-  sdio_cmdinitstructure.Argument         = (uint32_t)BlockSize;
-  sdio_cmdinitstructure.CmdIndex         = SD_CMD_SET_BLOCKLEN;
-  sdio_cmdinitstructure.Response         = SDIO_RESPONSE_SHORT;
-  sdio_cmdinitstructure.WaitForInterrupt = SDIO_WAIT_NO;
-  sdio_cmdinitstructure.CPSM             = SDIO_CPSM_ENABLE;
-  SDIO_SendCommand(hsd->Instance, &sdio_cmdinitstructure);
+    SDIO_SendCommand(hsd->Instance, &sdio_cmdinitstructure);
 
-  /* Check for error conditions */
-  errorstate = SD_CmdResp1Error(hsd, SD_CMD_SET_BLOCKLEN);
+    /* Check for error conditions */
+    errorstate = SD_CmdResp1Error(hsd, SD_CMD_SET_BLOCKLEN);
 
-  if (errorstate != SD_OK)
-  {
-    return errorstate;
+    if (errorstate != SD_OK)
+    {
+      return errorstate;
+    }
   }
   
   /* Check number of blocks command */
@@ -1049,6 +1057,26 @@ HAL_SD_ErrorTypedef HAL_SD_WriteBlocks_DMA(SD_HandleTypeDef *hsd, uint32_t *pWri
   }
   else
   {
+    /* MM: Prepare for write */
+    sdio_cmdinitstructure.Argument         = (uint32_t)(hsd->RCA << 16);
+    sdio_cmdinitstructure.CmdIndex         = SD_CMD_APP_CMD;
+    SDIO_SendCommand(hsd->Instance, &sdio_cmdinitstructure);
+    errorstate = SD_CmdResp1Error(hsd, SD_CMD_APP_CMD);
+    if (errorstate != SD_OK)
+    {
+      return errorstate;
+    }
+    sdio_cmdinitstructure.Argument         = (uint32_t)NumberOfBlocks;
+    sdio_cmdinitstructure.CmdIndex         = SD_CMD_SET_BLOCK_COUNT;
+    SDIO_SendCommand(hsd->Instance, &sdio_cmdinitstructure);
+    errorstate = SD_CmdResp1Error(hsd, SD_CMD_SET_BLOCK_COUNT);
+    if (errorstate != SD_OK)
+    {
+      return errorstate;
+    }
+
+    /* /MM */
+
     /* Send CMD25 WRITE_MULT_BLOCK with argument data address */
     sdio_cmdinitstructure.CmdIndex = SD_CMD_WRITE_MULT_BLOCK;
   }
@@ -1078,6 +1106,11 @@ HAL_SD_ErrorTypedef HAL_SD_WriteBlocks_DMA(SD_HandleTypeDef *hsd, uint32_t *pWri
   sdio_datainitstructure.TransferDir   = SDIO_TRANSFER_DIR_TO_CARD;
   sdio_datainitstructure.TransferMode  = SDIO_TRANSFER_MODE_BLOCK;
   sdio_datainitstructure.DPSM          = SDIO_DPSM_ENABLE;
+
+  // We cannot enable DMA too early on UHS-I class 3 SD cards, or else the
+  // data is just discarded before the dpsm is started.
+  __HAL_SD_SDIO_DMA_ENABLE();
+
   SDIO_DataConfig(hsd->Instance, &sdio_datainitstructure);
   
   hsd->SdTransferErr = errorstate;
@@ -1116,7 +1149,9 @@ HAL_SD_ErrorTypedef HAL_SD_CheckReadOperation(SD_HandleTypeDef *hsd, uint32_t Ti
   
   timeout = Timeout;
   
-  /* Wait until the Rx transfer is no longer active */
+    /* Wait until the Rx transfer is no longer active. IE. fifo is empty.
+Once FIFO is empty, the DMA will have finished and DmaTransferCplt should
+be true */
   while((__HAL_SD_SDIO_GET_FLAG(hsd, SDIO_FLAG_RXACT)) && (timeout > 0))
   {
     timeout--;  
@@ -1916,10 +1951,12 @@ HAL_SD_ErrorTypedef HAL_SD_HighSpeed (SD_HandleTypeDef *hsd)
     __HAL_SD_SDIO_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
     
     /* Test if the switch mode HS is ok */
-    if ((SD_hs[13]& 2) != 2)
-    {
-      errorstate = SD_UNSUPPORTED_FEATURE;
-    } 
+    // MM: These bits (0 to 271) are reserved in the spec I'm looking at ???
+    // Should be safe to ignore the result.
+    //if ((SD_hs[13]& 2) != 2)
+    //{
+      //errorstate = SD_UNSUPPORTED_FEATURE;
+    //}
   }
   
   return errorstate;

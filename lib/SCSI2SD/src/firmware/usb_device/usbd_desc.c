@@ -263,7 +263,7 @@ uint8_t *  USBD_FS_ConfigStrDescriptor( USBD_SpeedTypeDef speed , uint16_t *leng
 }
 
 /**
-* @brief  USBD_HS_InterfaceStrDescriptor 
+* @brief  USBD_FS_InterfaceStrDescriptor 
 *         return the interface string descriptor
 * @param  speed : current device speed
 * @param  length : pointer to data length variable

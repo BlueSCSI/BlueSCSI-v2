@@ -75,7 +75,7 @@
 /** @defgroup USBD_DESC_Exported_Variables
   * @{
   */ 
-extern USBD_DescriptorsTypeDef HS_Desc;
+extern USBD_DescriptorsTypeDef FS_Desc;
 /**
   * @}
   */ 
