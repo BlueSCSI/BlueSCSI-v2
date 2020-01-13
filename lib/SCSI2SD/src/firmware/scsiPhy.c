@@ -133,17 +133,6 @@ void EXTI4_IRQHandler()
 	}
 }
 
-static void assertFail()
-{
-	while (1)
-	{
-		s2s_ledOn();
-		s2s_delay_ms(100);
-		s2s_ledOff();
-		s2s_delay_ms(100);
-	}
-}
-
 void
 scsiSetDataCount(uint32_t count)
 {
@@ -688,21 +677,25 @@ uint32_t scsiEnterPhaseImmediate(int newPhase)
 	return 0; // No change
 }
 
-uint32_t s2s_getScsiRateMBs()
+// Returns a "safe" estimate of the host SCSI speed of
+// theoretical speed / 2
+uint32_t s2s_getScsiRateKBs()
 {
 	if (scsiDev.target->syncOffset)
 	{
 		if (scsiDev.target->syncPeriod < 23)
 		{
-			return 20;
+			return 20 / 2;
 		}
 		else if (scsiDev.target->syncPeriod <= 25)
 		{
-			return 10;
+			return 10 / 2;
 		}
 		else
 		{
-			return 1000 / (scsiDev.target->syncPeriod * 4);
+			// 1000000000 / (scsiDev.target->syncPeriod * 4) bytes per second
+			// (1000000000 / (scsiDev.target->syncPeriod * 4)) / 1000  kB/s
+			return (1000000 / (scsiDev.target->syncPeriod * 4)) / 2;
 		}
 	}
 	else
@@ -969,69 +962,8 @@ int scsiSelfTest()
 	// TODO Test DBP
 	*SCSI_CTRL_DBX = 0;
 
-	// FPGA comms test code
-	for(i = 0; i < 10000; ++i)
-	{
-		for (int j = 0; j < SCSI_FIFO_DEPTH; ++j)
-		{
-			scsiDev.data[j] = j;
-		}
-
-		if (!scsiPhyFifoEmpty())
-		{
-			assertFail();
-		}
-
-		*SCSI_CTRL_PHASE = DATA_IN;
-		HAL_DMA_Start(
-			&memToFSMC,
-			(uint32_t) &scsiDev.data[0],
-			(uint32_t) SCSI_FIFO_DATA,
-			SCSI_FIFO_DEPTH / 4);
-
-		HAL_DMA_PollForTransfer(
-			&memToFSMC,
-			HAL_DMA_FULL_TRANSFER,
-			0xffffffff);
-
-		if (!scsiPhyFifoFull())
-		{
-			assertFail();
-		}
-
-		memset(&scsiDev.data[0], 0, SCSI_FIFO_DEPTH);
-
-		*SCSI_CTRL_PHASE = DATA_OUT;
-		HAL_DMA_Start(
-			&fsmcToMem,
-			(uint32_t) SCSI_FIFO_DATA,
-			(uint32_t) &scsiDev.data[0],
-			SCSI_FIFO_DEPTH / 2);
-
-		HAL_DMA_PollForTransfer(
-			&fsmcToMem,
-			HAL_DMA_FULL_TRANSFER,
-			0xffffffff);
-
-		if (!scsiPhyFifoEmpty())
-		{
-			assertFail();
-		}
-
-
-		for (int j = 0; j < SCSI_FIFO_DEPTH; ++j)
-		{
-			if (scsiDev.data[j] != (uint8_t) j)
-			{
-				result |= 64;
-			}
-		}
-
-		s2s_fpgaReset();
-
-	}
-
 	*SCSI_CTRL_BSY = 0;
+
 	return result;
 }
 

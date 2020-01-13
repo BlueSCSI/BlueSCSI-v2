@@ -165,6 +165,10 @@ typedef struct
 
 	int needSyncNegotiationAck;
 	int sdUnderrunCount;
+
+	// Estimate of the SCSI host actual speed
+	uint32_t hostSpeedKBs;
+	int hostSpeedMeasured;
 } ScsiDevice;
 
 extern ScsiDevice scsiDev;

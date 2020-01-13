@@ -524,11 +524,21 @@ int scsiDiskCommand()
 	else if (unlikely(command == 0x37))
 	{
 		// READ DEFECT DATA
-		scsiDev.status = CHECK_CONDITION;
-		scsiDev.target->sense.code = NO_SENSE;
-		scsiDev.target->sense.asc = DEFECT_LIST_NOT_FOUND;
-		scsiDev.phase = STATUS;
+		uint32_t allocLength = (((uint16_t)scsiDev.cdb[7]) << 8) |
+			scsiDev.cdb[8];
 
+		scsiDev.data[0] = 0;
+		scsiDev.data[1] = scsiDev.cdb[1];
+		scsiDev.data[2] = 0;
+		scsiDev.data[3] = 0;
+		scsiDev.dataLen = 4;
+
+		if (scsiDev.dataLen > allocLength)
+		{
+			scsiDev.dataLen = allocLength;
+		}
+
+		scsiDev.phase = DATA_IN;
 	}
 	else
 	{
@@ -536,6 +546,29 @@ int scsiDiskCommand()
 	}
 
 	return commandHandled;
+}
+
+static uint32_t
+calcReadahead(uint32_t totalBytes, uint32_t sdSpeedKBs, uint32_t scsiSpeedKBs)
+{
+	if (scsiSpeedKBs == 0 || scsiDev.hostSpeedMeasured == 0)
+	{
+		return totalBytes;
+	}
+
+	// uint32_t readAheadBytes = totalBytes * (1 - scsiSpeedKBs / sdSpeedKBs);
+	// Won't overflow with 65536 max bytes, 20000 max scsi speed.
+	uint32_t readAheadBytes = totalBytes - totalBytes * scsiSpeedKBs / sdSpeedKBs;
+
+	// Round up to nearest FIFO size (* 4 for safety)
+	readAheadBytes = ((readAheadBytes / SCSI_FIFO_DEPTH) + 4) * SCSI_FIFO_DEPTH;
+
+	if (readAheadBytes > totalBytes)
+	{
+		readAheadBytes = totalBytes;
+	}
+
+	return readAheadBytes;
 }
 
 void scsiDiskPoll()
@@ -694,18 +727,16 @@ void scsiDiskPoll()
 				transfer.lba);
 		int i = 0;
 		int clearBSY = 0;
-		int extraSectors = 0;
 
 		int parityError = 0;
 		int enableParity = scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY;
-
-		uint32_t scsiSpeed = s2s_getScsiRateMBs();
 
 		uint32_t maxSectors = sizeof(scsiDev.data) / SD_SECTOR_SIZE;
 
 		static_assert(SCSI_XFER_MAX >= sizeof(scsiDev.data), "Assumes SCSI_XFER_MAX >= sizeof(scsiDev.data)");
 
 		// Start reading and filling fifos as soon as possible.
+		DWT->CYCCNT = 0; // Start counting cycles
 		scsiSetDataCount(transfer.blocks * bytesPerSector);
 
 		while ((i < totalSDSectors) &&
@@ -723,31 +754,15 @@ void scsiDiskPoll()
 				// no flow control. This can be handled if a) the scsi interface
 				// doesn't block and b) we read enough SCSI sectors first so that
 				// the SD interface cannot catch up.
-				int prevExtraSectors = extraSectors;
 				uint32_t totalBytes = sectors * SD_SECTOR_SIZE;
-				extraSectors = 0;
 
-				int32_t readAheadBytes = totalBytes;
-				uint32_t sdSpeed = s2s_getSdRateMBs() + (scsiDev.sdUnderrunCount / 2);
-				// if (have blind writes)
-				if (scsiSpeed > 0 && scsiDev.sdUnderrunCount < 16)
-				{
-					// readAhead = sectors * (sd / scsi - 1 + 0.1);
-					readAheadBytes = totalBytes * sdSpeed / scsiSpeed - totalBytes;
+				uint32_t sdSpeedKBs = s2s_getSdRateKBs() + (scsiDev.sdUnderrunCount * 256);
+				uint32_t readAheadBytes = calcReadahead(
+					totalBytes,
+					sdSpeedKBs,
+					scsiDev.hostSpeedKBs);
 
-					// Round up to nearest FIFO size.
-					readAheadBytes = ((readAheadBytes / SCSI_FIFO_DEPTH) + 1) * SCSI_FIFO_DEPTH;
-
-					if (readAheadBytes > totalBytes)
-					{
-						readAheadBytes = totalBytes;
-					}
-				}
-
-				uint32_t prevExtraBytes = prevExtraSectors * SD_SECTOR_SIZE;
-				uint32_t scsiBytesRead = prevExtraBytes;
-				readAheadBytes -= prevExtraBytes; // Must be signed!
-
+				uint32_t scsiBytesRead = 0;
 				if (readAheadBytes > 0)
 				{
 					scsiReadPIO(
@@ -755,6 +770,42 @@ void scsiDiskPoll()
 						readAheadBytes,
 						&parityError);
 					scsiBytesRead += readAheadBytes;
+
+					if (i == 0)
+					{
+						uint32_t elapsedCycles = DWT->CYCCNT;
+
+						// uint32_t rateKBs = (readAheadBytes / 1000) / (elapsedCycles / HAL_RCC_GetHCLKFreq());
+						// Scaled by 4 to avoid overflow w/ max 65536 at 108MHz.
+						uint32_t rateKBs = ((readAheadBytes / 4) * (HAL_RCC_GetHCLKFreq() / 1000) / elapsedCycles) * 4;
+
+						scsiDev.hostSpeedKBs = (scsiDev.hostSpeedKBs + rateKBs) / 2;
+						scsiDev.hostSpeedMeasured = 1;
+
+						if (rateKBs < scsiDev.hostSpeedKBs)
+						{
+							// Our readahead was too slow; assume remaining bytes
+							// will be as well.
+							if (readAheadBytes < totalBytes)
+							{
+								uint32_t properReadahead = calcReadahead(
+									totalBytes,
+									sdSpeedKBs,
+									rateKBs);
+
+								if (properReadahead > readAheadBytes)
+								{
+									uint32_t diff = properReadahead - readAheadBytes;
+									readAheadBytes = properReadahead;
+									scsiReadPIO(
+										&scsiDev.data[scsiBytesRead],
+										diff,
+										&parityError);
+									scsiBytesRead += diff;
+								}
+							}
+						}
+					}
 				}
 
 				HAL_SD_WriteBlocks_DMA(&hsd, (uint32_t*) (&scsiDev.data[0]), (i + sdLBA) * 512ll, SD_SECTOR_SIZE, sectors);
@@ -771,22 +822,6 @@ void scsiDiskPoll()
 					underrun = hsd.DmaTransferCplt;
 
 					scsiBytesRead += (totalBytes - readAheadBytes);
-				}
-
-				if (!underrun && rem > sectors)
-				{
-					// We probably have some time to waste reading more here.
-					// While noting this is going to drop us down into
-					// half-duplex operation (hence why we read max / 4 only)
-
-					extraSectors = rem - sectors > (maxSectors / 4)
-						? (maxSectors / 4)
-						: rem - sectors;
-
-					scsiReadPIO(
-						&scsiDev.data[0],
-						extraSectors * SD_SECTOR_SIZE,
-						&parityError);
 				}
 
 				uint32_t dmaFinishTime = s2s_getTime_ms();

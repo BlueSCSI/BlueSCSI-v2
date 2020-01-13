@@ -1,3 +1,17 @@
+20200101		6.2.14
+	- Fix for invalid CDROM READ TOC responses (Thanks Simon Gander)
+	- Fix for data corruption for hosts that transfer more than 64k per
+	write.
+
+20191208		6.2.9
+	- Fix to prevent sending floppy geometry mode page when not configured as
+	a floppy (Thanks Landon Rodgers)
+	- Fix for VMS 5.5-2 Inquiry allocation lengths. Requires setting "vms" quirk
+	mode in the XML config (Thanks Landon Rodgers)
+
+20191030		6.2.8
+	- Fix incorrect results from the self-test function.
+
 20191009		6.2.7
 	- Slight improvements to data throughput, which may assist SCSI hosts with
 	short timeouts.

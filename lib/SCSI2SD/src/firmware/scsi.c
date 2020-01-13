@@ -965,6 +965,11 @@ static void process_MessageOut()
 				scsiWrite(SDTR, sizeof(SDTR));
 				scsiDev.needSyncNegotiationAck = 1; // Check if this message is rejected.
 				scsiDev.sdUnderrunCount = 0;  // reset counter, may work now.
+
+				// Set to the theoretical speed, then adjust if we measure lower
+				// actual speeds.
+				scsiDev.hostSpeedKBs = s2s_getScsiRateKBs();
+				scsiDev.hostSpeedMeasured = 0;
 			}
 		}
 		else
@@ -1125,6 +1130,8 @@ void scsiInit()
 	scsiDev.phase = BUS_FREE;
 	scsiDev.target = NULL;
 	scsiDev.compatMode = COMPAT_UNKNOWN;
+	scsiDev.hostSpeedKBs = 0;
+	scsiDev.hostSpeedMeasured = 0;
 
 	int i;
 	for (i = 0; i < S2S_MAX_TARGETS; ++i)

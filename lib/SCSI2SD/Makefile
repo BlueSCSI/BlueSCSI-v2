@@ -141,6 +141,9 @@ build/firmware.elf: $(SRC) rtl/fpga_bitmap.o $(STM32OBJS)
 build/firmware.bin: build/firmware.elf
 	$(OBJCOPY) -O binary $< $@
 
+# Example to hard-code config within firmware
+#sudo arm-none-eabi-objcopy --update-section .fixed_config=config.dat firmware.elf -O binary firmware.bin
+
 build/stm32cubemx/%.o:
 	mkdir -p build/stm32cubemx
 	$(ARMCC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(STM32CubeMX_INCUDE) $(INCLUDE) $^
