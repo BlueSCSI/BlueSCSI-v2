@@ -736,8 +736,17 @@ void scsiDiskPoll()
 		static_assert(SCSI_XFER_MAX >= sizeof(scsiDev.data), "Assumes SCSI_XFER_MAX >= sizeof(scsiDev.data)");
 
 		// Start reading and filling fifos as soon as possible.
-		DWT->CYCCNT = 0; // Start counting cycles
-		scsiSetDataCount(transfer.blocks * bytesPerSector);
+		// It's highly unlikely that someone is going to use huge transfers
+		// per scsi command, but if they do it'll be slower than usual.
+		// Note: Happens in Macintosh FWB HDD Toolkit benchmarks which default
+		// to 768kb
+		uint32_t totalTransferBytes = transfer.blocks * bytesPerSector;
+		int useSlowDataCount = totalTransferBytes >= SCSI_XFER_MAX;
+		if (!useSlowDataCount)
+		{
+			DWT->CYCCNT = 0; // Start counting cycles
+			scsiSetDataCount(totalTransferBytes);
+		}
 
 		while ((i < totalSDSectors) &&
 			likely(scsiDev.phase == DATA_OUT) &&
@@ -762,6 +771,12 @@ void scsiDiskPoll()
 					sdSpeedKBs,
 					scsiDev.hostSpeedKBs);
 
+				if (useSlowDataCount)
+				{
+					DWT->CYCCNT = 0; // Start counting cycles
+					scsiSetDataCount(totalBytes);
+				}
+
 				uint32_t scsiBytesRead = 0;
 				if (readAheadBytes > 0)
 				{
@@ -771,7 +786,7 @@ void scsiDiskPoll()
 						&parityError);
 					scsiBytesRead += readAheadBytes;
 
-					if (i == 0)
+					if (i == 0 && !useSlowDataCount)
 					{
 						uint32_t elapsedCycles = DWT->CYCCNT;
 
@@ -864,6 +879,12 @@ void scsiDiskPoll()
 				// do this in a half-duplex fashion. We need to write as much as
 				// possible in each SD card transaction.
 				// use sg_dd from sg_utils3 tools to test.
+
+				if (useSlowDataCount)
+				{
+					scsiSetDataCount(sectors * bytesPerSector);
+				}
+
 				for (int scsiSector = i; scsiSector < i + sectors; ++scsiSector)
 				{
 					int dmaBytes = SD_SECTOR_SIZE;

@@ -1,3 +1,9 @@
+20200130		6.2.15
+	- Fix issue writing more than 512kb of data in one write command
+	(bug introduced 6.2.7)
+	- Fix possible data corruption bug when reading or writing more than
+	64kb per command (fixed in most cases by 6.2.14)
+
 20200101		6.2.14
 	- Fix for invalid CDROM READ TOC responses (Thanks Simon Gander)
 	- Fix for data corruption for hosts that transfer more than 64k per
