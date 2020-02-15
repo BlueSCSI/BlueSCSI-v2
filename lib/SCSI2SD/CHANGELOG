@@ -1,3 +1,7 @@
+20200215		6.3.0
+	- Fix regression preventing some machines from booting
+	(minor change but ran out of numbers)
+
 20200130		6.2.15
 	- Fix issue writing more than 512kb of data in one write command
 	(bug introduced 6.2.7)
