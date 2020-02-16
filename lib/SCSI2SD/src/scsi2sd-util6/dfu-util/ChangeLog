@@ -1,3 +1,5 @@
+This version is patched by Michael McMaster for USBDK support.
+
 0.9:
 	o Reimplemented USBPATH support (Stefan Zehl)
 	o Better parsing of numeric arguments (Timo Poikola)

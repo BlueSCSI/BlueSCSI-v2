@@ -14,7 +14,7 @@ ifeq ($(USE_SYSTEM_LIBUSB), Yes)
 CPPFLAGS_LIBUSB=$(shell pkg-config libusb-1.0 --cflags)
 LDFLAGS_LIBUSB=$(shell pkg-config libusb-1.0 --libs)
 else
-CPPFLAGS_LIBUSB=-I $(PWD)/libusb-1.0.20/libusb
+CPPFLAGS_LIBUSB=-I $(PWD)/libusb-1.0.23/libusb
 LDFLAGS_LIBUSB=-L $(BUILD)/libusb/libusb/.libs -lusb-1.0
 endif
 
@@ -178,7 +178,7 @@ $(BUILD)/libusb/buildstamp:
 	mkdir -p $(dir $@)
 	( \
 		cd $(dir $@) && \
-		$(CURDIR)/libusb-1.0.20/configure $(LIBUSB_CONFIG) && \
+		$(CURDIR)/libusb-1.0.23/configure $(LIBUSB_CONFIG) && \
 		$(MAKE) \
 	) && \
 	touch $@

@@ -1,6 +1,10 @@
-20200215		6.3.0
+20200216		6.3.0
+	- Breaking change: Firmware updates on windows now require the UsbDK
+	driver to be installed.
+
 	- Fix regression preventing some machines from booting
-	(minor change but ran out of numbers)
+	- Update libusb to 1.0.23 for dfu-util
+	- Modify dfu-util to use the UsbDk driver via libusb.
 
 20200130		6.2.15
 	- Fix issue writing more than 512kb of data in one write command
