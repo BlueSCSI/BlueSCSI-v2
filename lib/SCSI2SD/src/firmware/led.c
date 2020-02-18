@@ -37,11 +37,11 @@ void s2s_ledInit()
 
 void s2s_ledOn()
 {
-	HAL_GPIO_WritePin(LED_IO_GPIO_Port, LED_IO_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(LED_IO_GPIO_Port, LED_IO_Pin, GPIO_PIN_SET);
 }
 
 void s2s_ledOff()
 {
-	HAL_GPIO_WritePin(LED_IO_GPIO_Port, LED_IO_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(LED_IO_GPIO_Port, LED_IO_Pin, GPIO_PIN_RESET);
 }
 
