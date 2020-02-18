@@ -4,6 +4,7 @@
  * Copyright 2007-2008 by OpenMoko, Inc.
  * Copyright 2010-2016 Tormod Volden and Stefan Schmidt
  * Copyright 2013-2014 Hans Petter Selasky <hps@bitfrost.no>
+ * Copyright 2020 Michael McMaster <michael@codesrc.com>
  *
  * Written by Harald Welte <laforge@openmoko.org>
  *
@@ -194,6 +195,7 @@ static void print_version(void)
 	printf(PACKAGE_STRING "\n\n");
 	printf("Copyright 2005-2009 Weston Schmidt, Harald Welte and OpenMoko Inc.\n"
 	       "Copyright 2010-2016 Tormod Volden and Stefan Schmidt\n"
+           "Copyright 2020 Michael McMaster <michael@codesrc.com>\n"
 	       "This program is Free Software and has ABSOLUTELY NO WARRANTY\n"
 	       "Please report bugs to " PACKAGE_BUGREPORT "\n\n");
 }
@@ -357,6 +359,10 @@ int main(int argc, char **argv)
 	}
 
 	ret = libusb_init(&ctx);
+#ifdef WIN32
+	libusb_set_option(ctx, LIBUSB_OPTION_USE_USBDK); // MM PATCH FOR USBDK SUPPORT
+#endif
+
 	if (ret)
 		errx(EX_IOERR, "unable to initialize libusb: %s", libusb_error_name(ret));
 
@@ -384,6 +390,11 @@ int main(int argc, char **argv)
 	}
 
 	/* We have exactly one device. Its libusb_device is now in dfu_root->dev */
+
+#ifdef WIN32
+	// Delay between enumeration and starting usbdk redirect is needed.
+	milli_sleep(500);
+#endif
 
 	printf("Opening DFU capable USB device...\n");
 	ret = libusb_open(dfu_root->dev, &dfu_root->dev_handle);

@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT([dfu-util],[0.9],[http://sourceforge.net/p/dfu-util/tickets/],,[http://dfu-util.sourceforge.net])
+AC_INIT([dfu-util],[0.9+usbdk],[http://sourceforge.net/p/dfu-util/tickets/],,[http://dfu-util.sourceforge.net])
 AC_CONFIG_AUX_DIR(m4)
 AM_INIT_AUTOMAKE([foreign])
 AC_CONFIG_HEADERS([config.h])
