@@ -56,9 +56,6 @@
 // Replaced with method due to delays
 // #define scsiFifoReady() (HAL_GPIO_ReadPin(GPIOE, FPGA_GPIO3_Pin) != 0)
 
-#define scsiPhyFifoFull() ((*SCSI_STS_FIFO & 0x01) != 0)
-#define scsiPhyFifoEmpty() ((*SCSI_STS_FIFO & 0x02) != 0)
-
 #define scsiPhyTx(val) *SCSI_FIFO_DATA = (val)
 
 // little endian specific !. Also relies on the fsmc outputting the lower

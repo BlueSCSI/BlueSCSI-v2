@@ -943,25 +943,6 @@ int scsiSelfTest()
 		result = 1;
 	}
 
-	// TEST DBx
-	int i;
-	for (i = 0; i < 8; ++i)
-	{
-		uint8_t data = 1 << i;
-		*SCSI_CTRL_DBX = 0;
-		busSettleDelay();
-		*SCSI_CTRL_DBX = data;
-		busSettleDelay();
-		// STS_DBX is 16 bit!
-		if ((*SCSI_STS_DBX & 0xff) != data)
-		{
-			result = i + 2;
-		}
-	}
-
-	// TODO Test DBP
-	*SCSI_CTRL_DBX = 0;
-
 	*SCSI_CTRL_BSY = 0;
 
 	return result;
