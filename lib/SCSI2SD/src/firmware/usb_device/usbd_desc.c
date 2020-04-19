@@ -60,10 +60,7 @@
 #define USBD_LANGID_STRING               1033
 #define USBD_MANUFACTURER_STRING         (uint8_t*)"codesrc.com"
 #define USBD_PID_FS                      0x0BD4
-#define USBD_PRODUCT_STRING_FS           (uint8_t*)"SCSI2SD"
-/* USER CODE BEGIN SERIALNUMBER_STRING_FS */
-#define USBD_SERIALNUMBER_STRING_FS      (uint8_t*)"000000000000"
-/* USER CODE END SERIALNUMBER_STRING_FS */
+#define USBD_PRODUCT_STRING_FS           (uint8_t*)"SCSI2SD 2020"
 #define USBD_CONFIGURATION_STRING_FS     (uint8_t*)"SCSI2SD Config"
 #define USBD_INTERFACE_STRING_FS         (uint8_t*)"SCSI2SD Interface"
 
@@ -74,6 +71,10 @@
 /** @defgroup USBD_DESC_Private_Macros
   * @{
   */ 
+
+static void Get_SerialNum(void);
+static void IntToUnicode(uint32_t value, uint8_t * pbuf, uint8_t len);
+
 /**
   * @}
   */ 
@@ -155,6 +156,13 @@ __ALIGN_BEGIN uint8_t USBD_StrDesc[USBD_MAX_STR_DESC_SIZ] __ALIGN_END;
 /** @defgroup USBD_DESC_Private_FunctionPrototypes
   * @{
   */ 
+
+#define  USB_SIZ_STRING_SERIAL       0x1A
+__ALIGN_BEGIN uint8_t USBD_StringSerial[USB_SIZ_STRING_SERIAL] __ALIGN_END = {
+  USB_SIZ_STRING_SERIAL,
+  USB_DESC_TYPE_STRING,
+};
+
 /**
   * @}
   */ 
@@ -231,15 +239,69 @@ uint8_t *  USBD_FS_ManufacturerStrDescriptor( USBD_SpeedTypeDef speed , uint16_t
 */
 uint8_t *  USBD_FS_SerialStrDescriptor( USBD_SpeedTypeDef speed , uint16_t *length)
 {
-  if(speed  == USBD_SPEED_HIGH)
-  {    
-    USBD_GetString (USBD_SERIALNUMBER_STRING_FS, USBD_StrDesc, length);
-  }
-  else
-  {
-    USBD_GetString (USBD_SERIALNUMBER_STRING_FS, USBD_StrDesc, length);    
-  }
-  return USBD_StrDesc;
+	*length = USB_SIZ_STRING_SERIAL;
+
+	// Update the serial number string descriptor with the data from the unique
+	// ID
+	Get_SerialNum();
+
+	return (uint8_t *) USBD_StringSerial;
+}
+
+/**
+ * @brief  Create the serial number string descriptor
+ * @param  None
+ * @retval None
+ */
+static void Get_SerialNum(void)
+{
+	uint32_t deviceserial0, deviceserial1, deviceserial2;
+
+// UID_BASE good for STM32F2 and F4
+#define 		UID_BASE			0x1FFF7A10
+#define         DEVICE_ID1          (UID_BASE)
+#define         DEVICE_ID2          (UID_BASE + 0x4)
+#define         DEVICE_ID3          (UID_BASE + 0x8)
+
+	deviceserial0 = *(uint32_t *) DEVICE_ID1;
+	deviceserial1 = *(uint32_t *) DEVICE_ID2;
+	deviceserial2 = *(uint32_t *) DEVICE_ID3;
+
+	deviceserial0 += deviceserial2;
+
+	if (deviceserial0 != 0)
+	{
+		IntToUnicode(deviceserial0, &USBD_StringSerial[2], 8);
+		IntToUnicode(deviceserial1, &USBD_StringSerial[18], 4);
+	}
+}
+
+/**
+ * @brief  Convert Hex 32Bits value into char
+ * @param  value: value to convert
+ * @param  pbuf: pointer to the buffer
+ * @param  len: buffer length
+ * @retval None
+ */
+static void IntToUnicode(uint32_t value, uint8_t * pbuf, uint8_t len)
+{
+	uint8_t idx = 0;
+
+	for (idx = 0; idx < len; idx++)
+	{
+		if (((value >> 28)) < 0xA)
+		{
+			pbuf[2 * idx] = (value >> 28) + '0';
+		}
+		else
+		{
+			pbuf[2 * idx] = (value >> 28) + 'A' - 10;
+		}
+
+		value = value << 4;
+
+		pbuf[2 * idx + 1] = 0;
+	}
 }
 
 /**

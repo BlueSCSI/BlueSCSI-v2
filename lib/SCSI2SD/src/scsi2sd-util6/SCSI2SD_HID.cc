@@ -334,4 +334,95 @@ HID::sendHIDPacket(
 		resp + respLen);
 }
 
+std::string
+HID::getHardwareVersion()
+{
+	if (myFirmwareVersion < 0x0630)
+	{
+		// Definitely the 2020c or newer hardware.
+		return "V6, Rev F or older";
+	}
+	else if (myFirmwareVersion == 0x0630)
+	{
+		return "V6, unknown.";
+	}
+	else
+	{
+		const size_t maxUsbString = 255;
+		wchar_t wstr[maxUsbString];
+		int res = hid_get_product_string(myConfigHandle, wstr, maxUsbString);
+		if (res == 0)
+		{
+			std::wstring prodStr(wstr);
+			if (prodStr.find(L"2020") != std::string::npos)
+			{
+				// Definitely the 2020c or newer hardware.
+				return "V6, 2020c or newer";
+			}
+			else
+			{
+				return "V6, Rev F or older";
+			}
+		}
+	}
+
+	return "Unknown";
+}
+
+std::string
+HID::getSerialNumber()
+{
+	const size_t maxUsbString = 255;
+	wchar_t wstr[maxUsbString];
+	int res = hid_get_serial_number_string(myConfigHandle, wstr, maxUsbString);
+	if (res == 0)
+	{
+		std::wstring wideString(wstr);
+		return std::string(wideString.begin(), wideString.end());
+	}
+
+	return std::string();
+}
+
+
+bool
+HID::isCorrectFirmware(const std::string& path)
+{
+	if (myFirmwareVersion < 0x0630)
+	{
+		// Definitely the 2020c or newer hardware.
+		return path.rfind("firmware.V6.revF.dfu") != std::string::npos ||
+			path.rfind("firmware.dfu") != std::string::npos;
+	}
+	else if (myFirmwareVersion == 0x0630)
+	{
+		// We don't know which. :-( Initial batch of 2020 boards loaded with
+		// v6.3.0
+		// So for now we CANNOT bundle ? User will need to selet the correct
+		// file.
+		return true;
+	}
+	else
+	{
+		const size_t maxUsbString = 255;
+		wchar_t wstr[maxUsbString];
+		int res = hid_get_product_string(myConfigHandle, wstr, maxUsbString);
+		if (res == 0)
+		{
+			std::wstring prodStr(wstr);
+			if (prodStr.find(L"2020") != std::string::npos)
+			{
+				// Definitely the 2020c or newer hardware.
+				return path.rfind("firmware.V6.2020.dfu") != std::string::npos;
+			}
+			else
+			{
+				return path.rfind("firmware.V6.revF.dfu") != std::string::npos ||
+					path.rfind("firmware.dfu") != std::string::npos;
+			}
+		}
+	}
+
+	return false;
+}
 

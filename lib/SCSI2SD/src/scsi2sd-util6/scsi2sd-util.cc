@@ -475,6 +475,7 @@ private:
 		if (dlg.ShowModal() == wxID_CANCEL) return;
 
 		std::string filename(dlg.GetPath());
+		wxLogMessage("Attempting firmware update from file %s", filename);
 
 		wxWindowPtr<wxGenericProgressDialog> progress(
 			new wxGenericProgressDialog(
@@ -485,6 +486,7 @@ private:
 				wxPD_AUTO_HIDE | wxPD_CAN_ABORT)
 				);
 		mmLogStatus("Searching for bootloader");
+		bool versionChecked = false;
 		while (true)
 		{
 			try
@@ -492,6 +494,16 @@ private:
 				if (!myHID) myHID.reset(HID::Open());
 				if (myHID)
 				{
+					if (!myHID->isCorrectFirmware(filename))
+					{
+						wxMessageBox(
+							"Firmware does not match device hardware",
+							"Wrong filename",
+							wxOK | wxICON_ERROR);
+						return;
+					}
+					versionChecked = true;
+
 					mmLogStatus("Resetting SCSI2SD into bootloader");
 
 					myHID->enterBootloader();
@@ -499,10 +511,25 @@ private:
 				}
 
 
+				if (myDfu.hasDevice() && !versionChecked)
+				{
+					mmLogStatus("STM DFU Bootloader found, checking compatibility");
+					progress->Show(0);
+					if (!checkVersionMarker(filename))
+					{
+						wxMessageBox(
+							"Firmware does not match device hardware",
+							"Wrong filename",
+							wxOK | wxICON_ERROR);
+						return;
+					}
+					versionChecked = true;
+				}
+
 				if (myDfu.hasDevice())
 				{
 					mmLogStatus("STM DFU Bootloader found");
-					progress->Show(0);
+					progress->Show(10);
 					doDFUUpdate(filename);
 					return;
 				}
@@ -520,6 +547,90 @@ private:
 		}
 	}
 
+	bool checkVersionMarker(const std::string& firmware)
+	{
+		std::stringstream ss;
+#ifdef __WINDOWS__
+		ss << "dfu-util ";
+#else
+		if (wxExecute("which dfu-util", wxEXEC_SYNC) == 0)
+		{
+			ss << "dfu-util ";
+		} else {
+			wxFileName exePath(wxStandardPaths::Get().GetExecutablePath());
+			ss << '"' << exePath.GetPathWithSep() << "dfu-util\" ";
+		}
+#endif
+
+		std::string tmpFile =
+			wxFileName::CreateTempFileName(
+				_("SCSI2SD_MARKER"), static_cast<wxFile*>(NULL));
+		wxRemoveFile(tmpFile); // dfu-util won't overwrite.
+
+		ss << "--alt 2 -s 0x1FFF7800:4 -U \"" << tmpFile << "\"";
+
+		wxLogMessage("Running: %s", ss.str());
+
+		std::string cmd = ss.str();
+		long result = wxExecute(
+			cmd.c_str(),
+			wxEXEC_SYNC
+			);
+		if (result != 0)
+		{
+			wxLogMessage("OTP Version check failed.");
+			return false;
+		}
+
+		// Ok, we now have a file with 8 bytes in it.
+		wxFile file(tmpFile);
+		if (file.Length() != 4)
+		{
+			wxLogMessage("OTP Version check file isn't 4 bytes.");
+			return false;
+		}
+
+		uint8_t data[4];
+		if (file.Read(data, sizeof(data)) != sizeof(data))
+		{
+			wxMessageBox(
+				"Couldn't read file",
+				"Couldn't read file",
+				wxOK | wxICON_ERROR);
+			return false;
+		}
+		wxRemoveFile(tmpFile);
+
+		uint32_t value =
+			(((uint32_t)(data[0]))) |
+			(((uint32_t)(data[1])) << 8) |
+			(((uint32_t)(data[2])) << 16) |
+			(((uint32_t)(data[3])) << 24);
+		if (value == 0xFFFFFFFF)
+		{
+			// Not set, ignore.
+			wxLogMessage("OTP Hardware version not set. Ignoring.");
+			return true;
+		}
+		else if (value == 0x06002020)
+		{
+			wxLogMessage("Found V6 2020 hardware marker");
+			return firmware.rfind("firmware.V6.2020.dfu") != std::string::npos;
+		}
+		else if (value == 0x06002019)
+		{
+			wxLogMessage("Found V6 revF hardware marker");
+			return firmware.rfind("firmware.V6.revF.dfu") != std::string::npos ||
+				firmware.rfind("firmware.dfu") != std::string::npos;
+		}
+		else
+		{
+			wxLogMessage("Found unknown hardware marker: %u", value);
+			return false; // Some unknown version.
+		}
+	}
+
+
 	void doDFUUpdate(const std::string& filename)
 	{
 		if (filename.find(".dfu") == std::string::npos)
@@ -530,7 +641,6 @@ private:
 				wxOK | wxICON_ERROR);
 			return;
 		}
-
 
 		std::stringstream ss;
 #ifdef __WINDOWS__
@@ -696,6 +806,13 @@ private:
 					msg << "SCSI2SD Ready, firmware version " <<
 						myHID->getFirmwareVersionStr();
 					mmLogStatus(msg.str());
+
+					std::stringstream devInfo;
+					devInfo << "Hardware version: " <<
+						myHID->getHardwareVersion() << std::endl <<
+						"Serial Number: " <<
+						myHID->getSerialNumber();
+					wxLogMessage(this, "%s", devInfo.str());
 
 					std::vector<uint8_t> csd(myHID->getSD_CSD());
 					std::vector<uint8_t> cid(myHID->getSD_CID());
