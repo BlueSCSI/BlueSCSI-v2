@@ -21,6 +21,7 @@
 #include "bsp.h"
 #include "disk.h"
 #include "fpga.h"
+#include "hwversion.h"
 #include "led.h"
 #include "sd.h"
 #include "scsi.h"
@@ -31,8 +32,7 @@
 #include "usb_device/usbd_composite.h"
 #include "usb_device/usbd_msc_storage_sd.h"
 
-
-const char* Notice = "Copyright (C) 2016 Michael McMaster <michael@codesrc.com>";
+const char* Notice = "Copyright (C) 2020 Michael McMaster <michael@codesrc.com>";
 uint32_t lastSDPoll;
 
 static int isUsbStarted;
@@ -46,6 +46,8 @@ void mainEarlyInit()
 void mainInit()
 {
 	s2s_timeInit();
+	s2s_checkHwVersion();
+
 	s2s_ledInit();
 	s2s_fpgaInit();
 

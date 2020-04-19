@@ -43,6 +43,8 @@ build/stm32cubemx/usb_host.o: STM32CubeMX/SCSI2SD-V6/Src/usb_host.c
 build/stm32cubemx/stm32f2xx_hal.o: STM32CubeMX/SCSI2SD-V6/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal.c
 build/stm32cubemx/stm32f2xx_hal_cortex.o: STM32CubeMX/SCSI2SD-V6/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_cortex.c
 build/stm32cubemx/stm32f2xx_hal_dma.o: STM32CubeMX/SCSI2SD-V6/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_dma.c
+build/stm32cubemx/stm32f2xx_hal_flash.o: STM32CubeMX/SCSI2SD-V6/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_flash.c
+build/stm32cubemx/stm32f2xx_hal_flash_ex.o: STM32CubeMX/SCSI2SD-V6/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_flash_ex.c
 build/stm32cubemx/stm32f2xx_hal_gpio.o: STM32CubeMX/SCSI2SD-V6/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_gpio.c
 build/stm32cubemx/stm32f2xx_hal_hcd.o: STM32CubeMX/SCSI2SD-V6/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_hcd.c
 build/stm32cubemx/stm32f2xx_hal_pcd.o: STM32CubeMX/SCSI2SD-V6/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_pcd.c
@@ -86,6 +88,8 @@ STM32OBJS = \
 	build/stm32cubemx/stm32f2xx_hal.o \
 	build/stm32cubemx/stm32f2xx_hal_cortex.o \
 	build/stm32cubemx/stm32f2xx_hal_dma.o \
+	build/stm32cubemx/stm32f2xx_hal_flash.o \
+	build/stm32cubemx/stm32f2xx_hal_flash_ex.o \
 	build/stm32cubemx/stm32f2xx_hal_gpio.o \
 	build/stm32cubemx/stm32f2xx_hal_hcd.o \
 	build/stm32cubemx/stm32f2xx_hal_pcd.o \
@@ -136,6 +140,7 @@ SRC = \
 	src/firmware/fpga.c \
 	src/firmware/geometry.c \
 	src/firmware/hidpacket.c \
+	src/firmware/hwversion.c \
 	src/firmware/inquiry.c \
 	src/firmware/led.c \
 	src/firmware/main.c \
@@ -190,3 +195,4 @@ clean:
 
 program:
 	dfu-util --download build/firmware.dfu --alt 0
+
