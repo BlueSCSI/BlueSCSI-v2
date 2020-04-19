@@ -60,7 +60,7 @@
 #define USBD_LANGID_STRING               1033
 #define USBD_MANUFACTURER_STRING         (uint8_t*)"codesrc.com"
 #define USBD_PID_FS                      0x0BD4
-#define USBD_PRODUCT_STRING_FS           (uint8_t*)"SCSI2SD 2020"
+#define USBD_PRODUCT_STRING_FS           (uint8_t*)"SCSI2SD"
 #define USBD_CONFIGURATION_STRING_FS     (uint8_t*)"SCSI2SD Config"
 #define USBD_INTERFACE_STRING_FS         (uint8_t*)"SCSI2SD Interface"
 
