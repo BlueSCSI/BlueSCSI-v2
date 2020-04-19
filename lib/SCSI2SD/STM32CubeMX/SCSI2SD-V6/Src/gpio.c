@@ -90,11 +90,17 @@ void MX_GPIO_Init(void)
                            PCPin PCPin PCPin PCPin 
                            PCPin */
   GPIO_InitStruct.Pin = UNUSED_PC13_Pin|UNUSED_PC14_Pin|UNUSED_PC15_Pin|UNUSED_PC0_Pin 
-                          |UNUSED_PC1_Pin|UNUSED_PC2_Pin|UNUSED_PC3_Pin|UNUSED_PC4_Pin 
-                          |UNUSED_PC5_Pin;
+                          |UNUSED_PC1_Pin|UNUSED_PC2_Pin|UNUSED_PC3_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+// Pins are used to sense scsi2sd hardware version, must be pullup
+  GPIO_InitStruct.Pin = UNUSED_PC4_Pin|UNUSED_PC5_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
 
   /*Configure GPIO pins : PAPin PAPin PAPin PAPin */
   GPIO_InitStruct.Pin = UNUSED_PA0_Pin|UNUSED_PA1_Pin|UNUSED_PA2_Pin|UNUSED_PA3_Pin;
