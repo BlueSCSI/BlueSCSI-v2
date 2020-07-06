@@ -6,5 +6,21 @@ ArdSCSino とは SCSIデバイス（ハードディスク）を arduino で再�
 
 # Setup
 * Arduino Software (IDE) V1.8.8 を使用しています。<br>
- ライブラリとしてSDFAT (https://github.com/greiman/SdFat) を使用しています。 <br>
 
+ ツール->ボード->ボードマネージャー->検索のフィルター<br>
+ 「Arduino SAMボード（32ビットARM Cortex-M3）」の検索とインストール<br>
+ ボード「Generic STM32F103Cシリーズ」を選択<br>
+
+ ライブラリとして以下を使用しています。<br>
+ 
+ SDFAT (https://github.com/greiman/SdFat)<br>
+
+ Arduino_STM32(https://github.com/rogerclarkmelbourne/Arduino_STM32/releases/tag/v1.0.0)<br>
+
+ マイクロSDCARDアダプタとして以下を使用しています。<br>
+
+ ArdSCSIno V1<br>
+ Arduino SPIマイクロSDアダプター6PINと互換性のあるマイクロSD TFカードメモリシールドモジュール<br>
+
+ ArdSCSIno V2<br>
+ Hirose DM3AT-SF-PEJM5<br>
