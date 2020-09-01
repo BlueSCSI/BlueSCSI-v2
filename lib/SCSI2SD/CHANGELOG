@@ -1,3 +1,7 @@
+2020xxxx		6.X.X
+	- Increase limit of READ/WRITE BUFFER command for improved compatibility
+	SGI Iris hosts
+
 20200419		6.3.1
 	- Added checks to ensure the correct firmware version is loaded.
 	V6 Rev.f and older boards need the "firmware.V6.revF.dfu" firmware updates.
