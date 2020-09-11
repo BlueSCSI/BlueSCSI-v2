@@ -1,10 +1,10 @@
 /*
- * SCSI-HDデバイスエミュレータ
+ * SCSI-HD device emulator
  */
 #include <SPI.h>
 #include "SdFat.h"
 
-//ENABLE_EXTENDED_TRANSFER_CLASSを1に設定する
+//Set ENABLE_EXTENDED_TRANSFER_CLASS to 1
 //libraries/SdFat/SdFatConfig.h
 SPIClass SPI_2(2);
 SdFatEX  SD(&SPI_2);
@@ -51,25 +51,25 @@ SdFatEX  SD(&SPI_2);
 
 #define SCSIID    0                 // SCSI-ID 
 
-#define BLOCKSIZE 512               // 1BLOCKサイズ
-uint8_t       m_senseKey = 0;       //センスキー
-volatile bool m_isBusReset = false; //バスリセット
+#define BLOCKSIZE 512               // 1BLOCK size
+uint8_t       m_senseKey = 0;       // Sense key
+volatile bool m_isBusReset = false; // Bus reset
 
-#define HDIMG_FILE "HD.HDS"         // HDイメージファイル名
-File          m_file;               // ファイルオブジェクト
-uint32_t      m_fileSize;           // ファイルサイズ
-byte          m_buf[BLOCKSIZE];     // 汎用バッファ
+#define HDIMG_FILE "HD.HDS"         // HD image file name
+File          m_file;               // File object
+uint32_t      m_fileSize;           // file size
+byte          m_buf[BLOCKSIZE];     // General purpose buffer
 
 int           m_msc;
 bool          m_msb[256];
 
 /*
- * IO読み込み.
+ * IO read
  */
 inline byte readIO(void)
 {
-  //GPIO(SCSI BUS)初期化
-  //ポート設定レジスタ（下位  
+  //GPIO (SCSI BUS) initialization
+  //Port setting register (lower level)
   GPIOA->regs->CRL = 0x88888888; // Configure GPIOA[7:0]
   uint32 ret = GPIOA->regs->IDR;
   byte bret =  0x00;
@@ -85,15 +85,15 @@ inline byte readIO(void)
 }
 
 /* 
- * IO書き込み.
+ * IO writing.
  */
 inline void writeIO(byte v)
 {
-  //GPIO(SCSI BUS)初期化
-  //ポート設定レジスタ（下位）
+  //GPIO (SCSI BUS) initialization
+  //Port setting register (lower)
 //  GPIOA->regs->CRL = 0x11111111; // Configure GPIOA PP[7:0]10MHz
   GPIOA->regs->CRL = 0x33333333;  // Configure GPIOA PP[7:0]50MHz
-  //ポート設定レジスタ（上位）
+  //Port setting register (upper)
   GPIOA->regs->CRH = 0x00000003;  // Configure GPIOA PP[16:8]50MHz
   uint32 retL =  0x00;
   uint32 retH =  0x00;
@@ -143,15 +143,15 @@ inline void writeIO(byte v)
   } else {
     bitWrite(retH, 0, 1);
   }
-  //ビットがLOWに設定される
+  // Bit set to LOW
   GPIOA->regs->BRR = retL ;
-  // ビットがHIGHに設定される
+  // Bit set to HIGH
   GPIOA->regs->BSRR = retH ;
 }
 
 /*
- * 初期化.
- *  パリティチェック
+ * Initialization.
+ *  Parity check
  */
 inline int parity(byte val) {
   val ^= val >> 16;
@@ -164,25 +164,25 @@ inline int parity(byte val) {
 }
 
 /*
- * 初期化.
- *  バスの初期化、PINの向きの設定を行う
+ * Initialization.
+ * Initialize the bus and set the PIN orientation
  */
 void setup()
 {
-  // PA15 / PB3 / PB4 が使えない
-  // JTAG デバッグ用に使われているからです。
+  // PA15 / PB3 / PB4 Cannot be used
+  // JTAG Because it is used for debugging.
   disableDebugPorts();
 
-  //シリアル初期化
+  //Serial initialization
   //Serial.begin(9600);
   //while (!Serial);
 
-  //PINの初期化
+  //PIN initialization
   gpio_mode(LED, GPIO_OUTPUT_OD);
   gpio_write(LED, low);
 
-  //GPIO(SCSI BUS)初期化
-  //ポート設定レジスタ（下位）
+  //GPIO(SCSI BUS)Initialization
+  //Port setting register (lower)
   GPIOA->regs->CRL = 0x888888888; // Configure GPIOA[8:0]
 
   gpio_mode(ATN, GPIO_INPUT_PU);
@@ -201,14 +201,14 @@ void setup()
   gpio_write(REQ, low);
   gpio_write(IO, low);
 
-  //RSTピンの状態がHIGHからLOWに変わったときに発生
+  //Occurs when the RST pin state changes from HIGH to LOW
   attachInterrupt(PIN_MAP[RST].gpio_bit, onBusReset, FALLING);
   
   if(!SD.begin(SD_CS,SPI_FULL_SPEED)) {
     Serial.println("SD initialization failed!");
     onFalseInit();
   }
-  //HDイメージファイル
+  //HD image file
   m_file = SD.open(HDIMG_FILE, O_RDWR);
   if(!m_file) {
     Serial.println("Error: open hdimg");
@@ -225,7 +225,7 @@ void setup()
 }
 
 /*
- * 初期化失敗.
+ * Initialization failure.
  */
 void onFalseInit(void)
 {
@@ -238,7 +238,7 @@ void onFalseInit(void)
 }
 
 /*
- * バスリセット割り込み.
+ * Bus reset interrupt.
  */
 void onBusReset(void)
 {
@@ -252,7 +252,7 @@ void onBusReset(void)
 }
 
 /*
- * ハンドシェイクで読み込む.
+ * Read by handshake.
  */
 byte readHandshake(void)
 {
@@ -273,7 +273,7 @@ byte readHandshake(void)
 }
 
 /*
- * ハンドシェイクで書込み.
+ * Write with a handshake.
  */
 void writeHandshake(byte d)
 {
@@ -293,8 +293,8 @@ void writeHandshake(byte d)
 }
 
 /*
- * データインフェーズ.
- *  データ配列 p を len バイト送信する。
+ * Data in phase.
+ *  Send len bytes of data array p.
  */
 void writeDataPhase(int len, byte* p)
 {
@@ -311,9 +311,9 @@ void writeDataPhase(int len, byte* p)
 }
 
 /* 
- * データインフェーズ.
- *  SDカードからの読み込みながら len ブロック送信する。
- */
+ * Data in phase.
+  * Send len block while reading from SD card.
+*/
 void writeDataPhaseSD(uint32_t adds, uint32_t len)
 {
   LOGN("DATAIN PHASE(SD)");
@@ -334,9 +334,9 @@ void writeDataPhaseSD(uint32_t adds, uint32_t len)
 }
 
 /*
- * データアウトフェーズ.
- *  len ブロック読み込みながら SDカードへ書き込む。
- */
+ * Data out phase.
+  * Write to SD card while reading len block.
+*/
 void readDataPhaseSD(uint32_t adds, uint32_t len)
 {
   LOGN("DATAOUT PHASE(SD)");
@@ -358,18 +358,18 @@ void readDataPhaseSD(uint32_t adds, uint32_t len)
 }
 
 /*
- * INQUIRY コマンド処理.
+ * INQUIRY command processing.
  */
 void onInquiryCommand(byte len)
 {
   byte buf[36] = {
-    0x00, //デバイスタイプ
+    0x00, //Device type
     0x00, //RMB = 0
-    0x01, //ISO,ECMA,ANSIバージョン
-    0x01, //レスポンスデータ形式
-    35 - 4, //追加データ長
+    0x01, //ISO,ECMA,ANSI version
+    0x01, //Response data format
+    35 - 4, //Additional data length
     0, 0, //Reserve
-    0x00, //サポート機能
+    0x00, //Support function
     'T', 'N', 'B', ' ', ' ', ' ', ' ', ' ',
     'A', 'r', 'd', 'S', 'C', 'S', 'i', 'n', 'o', ' ', ' ',' ', ' ', ' ', ' ', ' ',
     '0', '0', '1', '0',
@@ -378,16 +378,16 @@ void onInquiryCommand(byte len)
 }
 
 /*
- * REQUEST SENSE コマンド処理.
+ * REQUEST SENSE command processing.
  */
 void onRequestSenseCommand(byte len)
 {
   byte buf[18] = {
     0x70,   //CheckCondition
-    0,      //セグメント番号
-    0x00,   //センスキー
-    0, 0, 0, 0,  //インフォメーション
-    17 - 7 ,   //追加データ長
+    0,      //Segment number
+    0x00,   //Sense key
+    0, 0, 0, 0,  //information
+    17 - 7 ,   //Additional data length
     0,
   };
   buf[2] = m_senseKey;
@@ -396,7 +396,7 @@ void onRequestSenseCommand(byte len)
 }
 
 /*
- * READ CAPACITY コマンド処理.
+ * READ CAPACITY command processing.
  */
 void onReadCapacityCommand(byte pmi)
 {
@@ -410,7 +410,7 @@ void onReadCapacityCommand(byte pmi)
 }
 
 /*
- * READ6/10 コマンド処理.
+ * READ6/10 Command processing.
  */
 byte onReadCommand(uint32_t adds, uint32_t len)
 {
@@ -424,7 +424,7 @@ byte onReadCommand(uint32_t adds, uint32_t len)
 }
 
 /*
- * WRITE6/10 コマンド処理.
+ * WRITE6/10 Command processing.
  */
 byte onWriteCommand(uint32_t adds, uint32_t len)
 {
@@ -438,7 +438,7 @@ byte onWriteCommand(uint32_t adds, uint32_t len)
 }
 
 /*
- * MODE SENSE コマンド処理.
+ * MODE SENSE command processing.
  */
 void onModeSenseCommand(byte dbd, int pageCode, uint32_t len)
 {
@@ -448,7 +448,7 @@ void onModeSenseCommand(byte dbd, int pageCode, uint32_t len)
     uint32_t bc = m_fileSize / BLOCKSIZE;
     uint32_t bl = BLOCKSIZE;
     byte c[8] = {
-      0,//デンシティコード
+      0,//Dense code
       bc >> 16, bc >> 8, bc,
       0, //Reserve
       bl >> 16, bl >> 8, bl    
@@ -459,23 +459,23 @@ void onModeSenseCommand(byte dbd, int pageCode, uint32_t len)
   }
   switch(pageCode) {
   case 0x3F:
-  case 0x03:  //ドライブパラメータ
-    m_buf[a + 0] = 0x03; //ページコード
-    m_buf[a + 1] = 0x16; // ページ長
-    m_buf[a + 11] = 0x3F;//セクタ数/トラック
+  case 0x03:  //Drive parameters
+    m_buf[a + 0] = 0x03; //Page code
+    m_buf[a + 1] = 0x16; //Page length
+    m_buf[a + 11] = 0x3F;//number of sectors/track
     a += 24;
     if(pageCode != 0x3F) {
       break;
     }
-  case 0x04:  //ドライブパラメータ
+  case 0x04:  //Drive parameters
     {
       uint32_t bc = m_fileSize / BLOCKSIZE;
-      m_buf[a + 0] = 0x04; //ページコード
-      m_buf[a + 1] = 0x16; // ページ長
-      m_buf[a + 2] = bc >> 16;// シリンダ長
+      m_buf[a + 0] = 0x04; //Page code
+      m_buf[a + 1] = 0x16; // Page length
+      m_buf[a + 2] = bc >> 16;// Cylinder length
       m_buf[a + 3] = bc >> 8;
       m_buf[a + 4] = bc;
-      m_buf[a + 5] = 1;   //ヘッド数
+      m_buf[a + 5] = 1;   //Number of heads
       a += 24;
     }
     if(pageCode != 0x3F) {
@@ -515,20 +515,20 @@ void MsgOut2()
 }
 
 /*
- * メインループ.
+ * Main loop.
  */
 void loop() 
 {
   int sts = 0;
   int msg = 0;
 
-  //BSY,SELが+はバスフリー
-  // セレクションチェック
-  // BSYが-の間ループ
+  //BSY,SEL + is bus free
+  // Selection check
+  // Loop between BSY-
   if(isHigh(gpio_read(BSY))) {
     return;
   }
-  // SELが+の間ループ
+  // Loop while SEL is +
   if(isLow(gpio_read(SEL))) {
     return;
   }
@@ -540,7 +540,7 @@ void loop()
 
   LOGN("Selection");
   m_isBusReset = false;
-  // セレクトされたらBSYを-にする
+  // Set BSY to-when selected
   gpio_mode(BSY, GPIO_OUTPUT_PP);
   gpio_write(BSY, high);
   while(isHigh(gpio_read(SEL))) {
@@ -570,24 +570,24 @@ void loop()
       // IDENTIFY
       if (m_msb[i] >= 0x80) {
       }
-      // 拡張メッセージ
+      // Extended message
       if (m_msb[i] == 0x01) {
-        // 同期転送が可能な時だけチェック
+        // Check only when synchronous transfer is possible
         if (!syncenable || m_msb[i + 2] != 0x01) {
           MsgIn2(0x07);
           break;
         }
-        // Transfer period factor(50 x 4 = 200nsに制限)
+        // Transfer period factor(50 x 4 = Limited to 200ns)
         syncperiod = m_msb[i + 3];
         if (syncperiod > 50) {
           syncoffset = 50;
         }
-        // REQ/ACK offset(16に制限)
+        // REQ/ACK offset(Limited to 16)
         syncoffset = m_msb[i + 4];
         if (syncoffset > 16) {
           syncoffset = 16;
         }
-        // STDR応答メッセージ生成
+        // STDR response message generation
         MsgIn2(0x01);
         MsgIn2(0x03);
         MsgIn2(0x01);
