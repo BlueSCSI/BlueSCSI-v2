@@ -733,9 +733,9 @@ byte onInquiryCommand(byte len)
     35 - 4, //Additional data length
     0, 0, //Reserve
     0x00, //Support function
-    'T', 'N', 'B', ' ', ' ', ' ', ' ', ' ',
-    'A', 'r', 'd', 'S', 'C', 'S', 'i', 'n', 'o', ' ', ' ',' ', ' ', ' ', ' ', ' ',
-    '0', '0', '1', '0',
+    'Q', 'U', 'A', 'N', 'T', 'U', 'M', ' ',
+    'F', 'I', 'R', 'E', 'B', 'A', 'L', 'L', '1', ' ', ' ',' ', ' ', ' ', ' ', ' ',
+    '1', '.', '0', ' ',
   };
   writeDataPhase(len < 36 ? len : 36, buf);
   return 0x00;
