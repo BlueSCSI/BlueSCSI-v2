@@ -2,7 +2,7 @@
 ARMCC=arm-none-eabi-gcc
 OBJCOPY=arm-none-eabi-objcopy
 
-CPPFLAGS=-DSTM32F205xx -DUSE_HAL_DRIVER -Wall -Werror
+CPPFLAGS=-DSTM32F205xx -DUSE_HAL_DRIVER -Wall 
 CFLAGS=-mcpu=cortex-m3 -mthumb -mslow-flash-data \
 	-std=gnu11 \
 	-specs=nosys.specs \

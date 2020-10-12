@@ -1,6 +1,9 @@
-2020xxxx		6.X.X
+20201012		6.3.2
 	- Increase limit of READ/WRITE BUFFER command for improved compatibility
 	SGI Iris hosts
+	- Add new config option to enable blind writes to improve SD card write
+	performance. This was previously enabled default but causes problems
+	with some SCSI hosts.
 
 20200419		6.3.1
 	- Added checks to ensure the correct firmware version is loaded.
