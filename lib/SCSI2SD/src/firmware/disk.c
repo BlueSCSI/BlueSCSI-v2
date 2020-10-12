@@ -551,7 +551,9 @@ int scsiDiskCommand()
 static uint32_t
 calcReadahead(uint32_t totalBytes, uint32_t sdSpeedKBs, uint32_t scsiSpeedKBs)
 {
-	if (scsiSpeedKBs == 0 || scsiDev.hostSpeedMeasured == 0)
+	if (!(scsiDev.boardCfg.flags6 & S2S_CFG_ENABLE_BLIND_WRITES) ||
+		(scsiSpeedKBs == 0) ||
+		(scsiDev.hostSpeedMeasured == 0))
 	{
 		return totalBytes;
 	}

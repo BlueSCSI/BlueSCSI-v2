@@ -60,7 +60,8 @@ private:
 		ID_mapLunsCtrl,
 		ID_startDelayCtrl,
 		ID_selDelayCtrl,
-		ID_scsiSpeedCtrl
+		ID_scsiSpeedCtrl,
+		ID_blindWriteCtrl,
 	};
 
 	wxWindow* myParent;
@@ -73,6 +74,7 @@ private:
 	wxCheckBox* myTermCtrl;
 	wxCheckBox* mySelLatchCtrl;
 	wxCheckBox* myMapLunsCtrl;
+	wxCheckBox* myBlindWriteCtrl;
 
 	wxIntegerValidator<uint8_t>* myDelayValidator;
 	wxTextCtrl* myStartDelayCtrl;

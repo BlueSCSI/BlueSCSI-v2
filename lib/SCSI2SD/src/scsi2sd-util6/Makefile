@@ -106,6 +106,7 @@ ifeq ($(TARGET),Darwin)
 	CC=clang -mmacosx-version-min=10.7
 	CXX=clang++ -stdlib=libc++ -mmacosx-version-min=10.7
 	WX_CONFIG += --with-macosx-version-min=10.7
+	CPPFLAGS_WXBUILD += -D__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=1
 	LIBUSB_CONFIG += --with-macosx-version-min=10.7 --disable-shared
 	LDFLAGS_LIBUSB += -lobjc
 	DFU-UTIL_CONFIG += --with-macosx-version-min=10.7 --disable-shared
@@ -189,6 +190,7 @@ $(BUILD)/libusb/buildstamp:
 endif
 
 ifneq ($(USE_SYSTEM_WX),Yes)
+$(OBJ): $(BUILD)/wx/buildstamp
 $(WXOBJ): $(BUILD)/wx/buildstamp
 $(EXEOBJ): $(BUILD)/wx/buildstamp
 ifneq ($(USE_SYSTEM_ZLIB),Yes)
@@ -199,7 +201,7 @@ endif
 	mkdir -p $(dir $@)
 	( \
 		cd $(dir $@) && \
-		$(CURDIR)/wxWidgets/configure $(WX_CONFIG) CPPFLAGS="$(CPPFLAGS_ZLIB)" LDFLAGS="$(LDFLAGS_ZLIB)" && \
+		$(CURDIR)/wxWidgets/configure $(WX_CONFIG) CPPFLAGS="$(CPPFLAGS_ZLIB) $(CPPFLAGS_WXBUILD)" LDFLAGS="$(LDFLAGS_ZLIB)" && \
 		$(MAKE) \
 	) && \
 	touch $@
