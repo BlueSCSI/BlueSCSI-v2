@@ -193,8 +193,8 @@ BoardPanel::getConfig() const
 		(mySelLatchCtrl->IsChecked() ? S2S_CFG_ENABLE_SEL_LATCH : 0) |
 		(myMapLunsCtrl->IsChecked() ? S2S_CFG_MAP_LUNS_TO_IDS : 0);
 
-	config.flags6 = (myTermCtrl->IsChecked() ? S2S_CFG_ENABLE_TERMINATOR : 0);
-	config.flags6 = (myBlindWriteCtrl->IsChecked() ? S2S_CFG_ENABLE_BLIND_WRITES : 0);
+	config.flags6 = (myTermCtrl->IsChecked() ? S2S_CFG_ENABLE_TERMINATOR : 0) |
+		(myBlindWriteCtrl->IsChecked() ? S2S_CFG_ENABLE_BLIND_WRITES : 0);
 
 	config.startupDelay = CtrlGetValue<unsigned int>(myStartDelayCtrl).first;
 	config.selectionDelay = CtrlGetValue<unsigned int>(mySelDelayCtrl).first;
