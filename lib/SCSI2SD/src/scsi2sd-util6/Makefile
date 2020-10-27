@@ -121,6 +121,31 @@ $(BUILD)/scsi2sd-util6.dmg: $(BUILD)/scsi2sd-util6 $(BUILD)/dfu-util/buildstamp
 	hdiutil create -volname scsi2sd-util6 -srcfolder $(dir $@)/dmg $@
 endif
 
+ifeq ($(TARGET),osxcross)
+	# TODO osxcross tools must be in path for the wx configure to find the
+	# correct AR binary
+	VPATH += hidapi/mac
+	LDFLAGS += -framework IOKit -framework CoreFoundation -lexpat
+	CC=/home/michael/osx/osxcross/target/bin/x86_64-apple-darwin19-cc -mmacosx-version-min=10.7
+	CXX=/home/michael/osx/osxcross/target/bin/x86_64-apple-darwin19-c++ -stdlib=libc++ -mmacosx-version-min=10.7
+	LIBZIPPER_CONFIG+=--host=x86_64-apple-darwin19 "ZLIB_CFLAGS=-I$(BUILD)/zlib" "ZLIB_LIBS=-L$(BUILD)/zlib -lz"
+	CROSS_PREFIX=/home/michael/osx/osxcross/target/bin/x86_64-apple-darwin19-
+	WX_CONFIG += --with-macosx-version-min=10.7 --host=x86_64-apple-darwin19 SETFILE=/bin/true
+	CPPFLAGS_WXBUILD += -D__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=1
+	LIBUSB_CONFIG += --with-macosx-version-min=10.7 --disable-shared --host=x86_64-apple-darwin19
+	LDFLAGS_LIBUSB += -lobjc
+	DFU-UTIL_CONFIG += --with-macosx-version-min=10.7 --disable-shared --host=x86_64-apple-darwin19 "USB_CFLAGS=-I$(BUILD)/libusb/libusb/include" "USB_LIBS=-L$(BUILD)/libusb/libusb/.libs -lusb-1.0 -lobjc -Wl,-framework,IOKit -Wl,-framework,CoreFoundation"
+	BUILD := $(PWD)/build/mac
+all: $(BUILD)/scsi2sd-util6.dmg
+
+$(BUILD)/scsi2sd-util6.dmg: $(BUILD)/scsi2sd-util6 $(BUILD)/dfu-util/buildstamp
+	rm -rf $(dir $@)/dmg $@
+	mkdir -p $(dir $@)/dmg
+	cp $(BUILD)/scsi2sd-util6 $(BUILD)/dfu-util/src/dfu-util $(dir $@)/dmg
+	chmod a+rx $(dir $@)/dmg/*
+	hdiutil create -volname scsi2sd-util6 -srcfolder $(dir $@)/dmg $@
+endif
+
 export CC CXX
 
 all:  $(BUILD)/scsi2sd-util6$(EXE)
@@ -165,7 +190,7 @@ $(BUILD)/zlib/buildstamp:
 	( \
 		cd $(dir $@) && \
 		cp -a $(CURDIR)/zlib-1.2.8/* . && \
-		./configure --static && \
+		CROSS_PREFIX=${CROSS_PREFIX} ./configure --static && \
 		$(MAKE) \
 	) && \
 	touch $@
