@@ -1,11 +1,20 @@
 /*
  * SCSI-HDデバイスエミュレータ for STM32F103
  */
+#include <SdFat.h>
 
-#define X1TURBO_DTC510B      0 /* for SHARP X1turbo */
-#define READ_SPEED_OPTIMIZE  1 /* リードの高速化 */
-#define WRITE_SPEED_OPTIMIZE 1 /* ライトの高速化 */
-#define USE_DB2ID_TABLE      1 /* SEL-DBからIDの取得にテーブル使用 */
+#ifdef USE_STM32_DMA
+#warning "warning USE_STM32_DMA"
+#endif
+
+#define DEBUG            0      // 0:デバッグ情報出力なし 1:デバッグ情報出力あり 
+
+#define SCSI_SELECT      0      // 0 for STANDARD
+                                // 1 for SHARP X1turbo
+                                // 2 for NEC PC98
+#define READ_SPEED_OPTIMIZE  1 // リードの高速化
+#define WRITE_SPEED_OPTIMIZE 1 // ライトの高速化
+#define USE_DB2ID_TABLE      1 // SEL-DBからIDの取得にテーブル使用
 
 // SCSI config
 #define NUM_SCSIID	7          // サポート最大SCSI-ID数 (最小は0)
@@ -13,28 +22,13 @@
 #define READ_PARITY_CHECK 0    // リードパリティーチェックを行う（未検証）
 
 // HDD format
-#if X1TURBO_DTC510B
-#define BLOCKSIZE 256               // 1BLOCKサイズ
-#else
-#define BLOCKSIZE 512               // 1BLOCKサイズ
-#endif
+#define MAX_BLOCKSIZE 1024     // 最大BLOCKサイズ
 
-//#include <SPI.h>
+// SDFAT
+#define SD1_CONFIG SdSpiConfig(PA4, SHARED_SPI, SD_SCK_MHZ(SPI_FULL_SPEED), &SPI) 
+SdFs SD;
 
-#include <SdFatConfig.h>
-//SdFatEX CLASSを利用可能にする
-#undef  ENABLE_EXTENDED_TRANSFER_CLASS
-#define ENABLE_EXTENDED_TRANSFER_CLASS 1
-#include <SdFat.h>
-
-#ifdef USE_STM32_DMA
-#warning "warning USE_STM32_DMA"
-#endif
-
-SPIClass SPI_1(1);
-SdFatEX  SD(&SPI_1);
-
-#if 0
+#if DEBUG 
 #define LOG(XX)     Serial.print(XX)
 #define LOGHEX(XX)  Serial.print(XX, HEX)
 #define LOGN(XX)    Serial.println(XX)
@@ -88,7 +82,6 @@ SdFatEX  SD(&SPI_1);
 #define LED_ON()       gpio_write(LED, high);
 #define LED_OFF()      gpio_write(LED, low);
 
-
 // 仮想ピン（Arduio互換は遅いのでMCU依存にして）
 #define PA(BIT)       (BIT)
 #define PB(BIT)       (BIT+16)
@@ -135,20 +128,24 @@ SdFatEX  SD(&SPI_1);
 #define SCSI_TARGET_INACTIVE() { SCSI_OUT(vREQ,inactive); SCSI_OUT(vMSG,inactive); SCSI_OUT(vCD,inactive);SCSI_OUT(vIO,inactive); SCSI_OUT(vBSY,inactive); gpio_mode(BSY, GPIO_INPUT_PU); }
 
 // HDDiamge file
-#define HDIMG_FILE "HDxx.HDS"       // HDイメージファイル名ベース
-#define HDIMG_ID_POS  2             // ID数字を埋め込む位置
-#define HDIMG_LUN_POS 3             // LUN数字を埋め込む位置
+#define HDIMG_FILE_256  "HDxx_256.HDS"  // BLOCKSIZE=256  のHDDイメージファイル
+#define HDIMG_FILE_512  "HDxx_512.HDS"  // BLOCKSIZE=512  のHDDイメージファイル名ベース
+#define HDIMG_FILE_1024 "HDxx_1024.HDS" // BLOCKSIZE=1024 のHDDイメージファイル
+#define HDIMG_ID_POS  2                 // ID数字を埋め込む位置
+#define HDIMG_LUN_POS 3                 // LUN数字を埋め込む位置
+#define MAX_FILE_PATH 32                // 最大ファイル名長
 
 // HDD image
 typedef struct hddimg_struct
 {
-	File          m_file;               // ファイルオブジェクト
-	uint32_t      m_fileSize;           // ファイルサイズ
+	FsFile      m_file;                 // ファイルオブジェクト
+	uint64_t    m_fileSize;             // ファイルサイズ
+	size_t      m_blocksize;            // SCSI BLOCKサイズ
 }HDDIMG;
-HDDIMG	img[NUM_SCSIID][NUM_SCSILUN];   // 最大個数分
+HDDIMG	img[NUM_SCSIID][NUM_SCSILUN]; // 最大個数分
 
-uint8_t       m_senseKey = 0;       //センスキー
-volatile bool m_isBusReset = false; //バスリセット
+uint8_t       m_senseKey = 0;         //センスキー
+volatile bool m_isBusReset = false;   //バスリセット
 
 byte          scsi_id_mask;           // 応答するSCSI IDのマスクリスト
 byte          m_id;                   // 現在応答中の SCSI-ID
@@ -156,7 +153,7 @@ byte          m_lun;                  // 現在応答中のロジカルユニッ
 byte          m_sts;                  // ステータスバイト
 byte          m_msg;                  // メッセージバイト
 HDDIMG       *m_img;                  // 現在の SCSI-ID,LUNに対するHDD image
-byte          m_buf[BLOCKSIZE+1];     // 汎用バッファ +オーバーランフェッチ
+byte          m_buf[MAX_BLOCKSIZE+1]; // 汎用バッファ +オーバーランフェッチ
 int           m_msc;
 bool          m_msb[256];
 
@@ -194,7 +191,7 @@ static const uint32_t db_bsrr[256]={
 //#undef PTY
 
 #if USE_DB2ID_TABLE
-/* DB to SCSI-ID テーブル */
+/* DB to SCSI-ID 変換テーブル */
 static const byte db2scsiid[256]={
   0xff,
   0,
@@ -212,9 +209,6 @@ static const byte db2scsiid[256]={
 };
 #endif
 
-
-
-
 void onFalseInit(void);
 void onBusReset(void);
 
@@ -224,7 +218,7 @@ void onBusReset(void);
 inline byte readIO(void)
 {
   //ポート入力データレジスタ
-  uint32 ret = GPIOB->regs->IDR;
+  uint32_t ret = GPIOB->regs->IDR;
   byte bret = (byte)((~ret)>>8);
 #if READ_PARITY_CHECK
   if((db_bsrr[bret]^ret)&1)
@@ -232,6 +226,54 @@ inline byte readIO(void)
 #endif
 
   return bret;
+}
+
+/*
+ * HDDイメージファイルのオープン
+ */
+
+bool hddimageOpen(HDDIMG *h,const char *image_name,int id,int lun,int blocksize)
+{
+  char file_path[MAX_FILE_PATH+1];
+
+  // build file path
+  strcpy(file_path,image_name);
+  file_path[HDIMG_ID_POS ] = '0'+id;
+  file_path[HDIMG_LUN_POS] = '0'+lun;
+  h->m_fileSize = 0;
+  h->m_blocksize = blocksize;
+  h->m_file = SD.open(file_path, O_RDWR);
+  if(h->m_file.isOpen())
+  {
+    h->m_fileSize = h->m_file.size();
+#if DEBUG
+    Serial.print("Imagefile:");
+    Serial.print(h->m_file.name() );
+#endif
+    if(h->m_fileSize>0)
+    {
+      // check blocksize dummy file
+#if DEBUG
+      Serial.print(" / ");
+      Serial.print(h->m_fileSize);
+      Serial.print("bytes / ");
+      Serial.print(h->m_fileSize / 1024);
+      Serial.print("KiB / ");
+      Serial.print(h->m_fileSize / 1024 / 1024);
+      Serial.println("MiB");
+#endif
+      return true; // ファイルが開けた
+    }
+    else
+    {
+      h->m_file.close();
+      h->m_fileSize = h->m_blocksize = 0; // no file
+#if DEBUG
+      Serial.println("FileSizeError");
+#endif
+    }
+  }
+  return false;
 }
 
 /*
@@ -245,8 +287,10 @@ void setup()
   disableDebugPorts();
 
   //シリアル初期化
-  //Serial.begin(9600);
-  //while (!Serial);
+#if DEBUG
+  Serial.begin(9600);
+  while (!Serial);
+#endif
 
   //PINの初期化
   gpio_mode(LED, GPIO_OUTPUT_OD);
@@ -275,101 +319,78 @@ void setup()
   // 出力ポートはOFFにする
   SCSI_TARGET_INACTIVE()
 
-#if X1TURBO_DTC510B
-  // シリアル初期化
-  Serial.begin(9600);
-  for(int tout=3000/200;tout;tout--)
-  {
-    if(Serial) break;
-    Serial.print(".");
-    delay(200);
-    break;
-  }
-  Serial.println("DTC510B HDD emulator for X1turbo");
-#endif
-
   //RSTピンの状態がHIGHからLOWに変わったときに発生
   //attachInterrupt(PIN_MAP[RST].gpio_bit, onBusReset, FALLING);
 
   LED_ON();
 
   // clock = 36MHz , about 4Mbytes/sec
-  if(!SD.begin(SD_CS,SPI_FULL_SPEED)) {
+  if(!SD.begin(SD1_CONFIG)) {
+#if DEBUG
     Serial.println("SD initialization failed!");
+#endif
     onFalseInit();
   }
 
   //セクタデータオーバーランバイトの設定
-  m_buf[BLOCKSIZE] = 0xff; // DB0 all off,DBP off
+  m_buf[MAX_BLOCKSIZE] = 0xff; // DB0 all off,DBP off
   //HDイメージファイルオープン
-  //int totalImage = 0;
   scsi_id_mask = 0x00;
   for(int id=0;id<NUM_SCSIID;id++)
   {
     for(int lun=0;lun<NUM_SCSILUN;lun++)
     {
       HDDIMG *h = &img[id][lun];
-      char file_path[sizeof(HDIMG_FILE)+1] = HDIMG_FILE;
-      // build file path
-      file_path[HDIMG_ID_POS ] = '0'+id;
-      file_path[HDIMG_LUN_POS] = '0'+lun;
-      
-      h->m_fileSize = 0;
-      h->m_file     = SD.open(file_path, O_RDWR);
-      if(h->m_file.isOpen())
+      bool imageReady = false;
+      if(!imageReady)
       {
-        h->m_fileSize = h->m_file.size();
-        Serial.print("Found Imagefile:");
-        Serial.print(file_path);
-    		if(h->m_fileSize==0)
-    		{
-    			h->m_file.close();
-    		}
-    		else
-    		{
-    			Serial.print(" / ");
-    			Serial.print(h->m_fileSize);
-    			Serial.print("bytes / ");
-    			Serial.print(h->m_fileSize / 1024);
-    			Serial.print("KiB / ");
-    			Serial.print(h->m_fileSize / 1024 / 1024);
-    			Serial.println("MiB");
-    			// 応答するIDとしてマーキング 
-    			scsi_id_mask |= 1<<id;
-    			//totalImage++;
-        }
+        imageReady = hddimageOpen(h,HDIMG_FILE_256,id,lun,256);
+      }
+      if(!imageReady)
+      {
+        imageReady = hddimageOpen(h,HDIMG_FILE_512,id,lun,512);
+      }
+      if(!imageReady)
+      {
+        imageReady = hddimageOpen(h,HDIMG_FILE_1024,id,lun,1024);
+      }
+      if(imageReady)
+      {
+        // 応答するIDとしてマーキング 
+        scsi_id_mask |= 1<<id;
+        //totalImage++;
       }
     }
   }
-  // イメージファイルが０ならエラー
+  // イメージファイルが０個ならエラー
   if(scsi_id_mask==0) onFalseInit();
-  // ドライブマップの表示
-  Serial.println("I:<-----LUN----->:");
-  Serial.println("D:0:1:2:3:4:5:6:7:");
+  
+  // サポートドライブマップの表示
+#if DEBUG
+  Serial.print("ID");
+  for(int lun=0;lun<NUM_SCSILUN;lun++)
+  {
+    Serial.print(":LUN");
+    Serial.print(lun);
+  }
+  Serial.println(":");
+  //
   for(int id=0;id<NUM_SCSIID;id++)
   {
+    Serial.print(" ");
     Serial.print(id);
     for(int lun=0;lun<NUM_SCSILUN;lun++)
     {
-      if( (lun<NUM_SCSILUN) && (img[id][lun].m_file))
-        Serial.print(":*");
+      HDDIMG *h = &img[id][lun];
+      if( (lun<NUM_SCSILUN) && (h->m_file))
+      {
+        Serial.print((h->m_blocksize<1000) ? ": " : ":");
+        Serial.print(h->m_blocksize);
+      }
       else      
-        Serial.print(":-");
+        Serial.print(":----");
     }
     Serial.println(":");
-  }
-#if 0
-  //test dump table
-  for(int i=0;i<256;i++)
-  {
-    if(i%16==0)
-    {
-      Serial.println(' ');
-      Serial.print(i, HEX);
-      Serial.print(':');
-    }
-    Serial.print(db_bsrr[i], HEX);
-    Serial.print(',');
   }
 #endif
   LED_OFF();
@@ -395,8 +416,9 @@ void onFalseInit(void)
  */
 void onBusReset(void)
 {
-#if X1TURBO_DTC510B
-  // RSTパルスはライトサイクル+2クロック、1.25usくらいしかでない。
+#if SCSI_SELECT == 1
+  // X1turbo用SASI I/FはRSTパルスがライトサイクル+2クロック ==
+  // 1.25us程度しかアクティブにならないのでフィルタを掛けられない
   {{
 #else
   if(isHigh(gpio_read(RST))) {
@@ -477,7 +499,7 @@ void writeDataPhase(int len, const byte* p)
 void writeDataPhaseSD(uint32_t adds, uint32_t len)
 {
   LOGN("DATAIN PHASE(SD)");
-  uint32_t pos = adds * BLOCKSIZE;
+  uint32_t pos = adds * m_img->m_blocksize;
   m_img->m_file.seek(pos);
 
   SCSI_OUT(vMSG,inactive) //  gpio_write(MSG, low);
@@ -486,7 +508,7 @@ void writeDataPhaseSD(uint32_t adds, uint32_t len)
 	
   for(uint32_t i = 0; i < len; i++) {
       // 非同期リードにすれば速くなるんだけど...
-    m_img->m_file.read(m_buf, BLOCKSIZE);
+    m_img->m_file.read(m_buf, m_img->m_blocksize);
 
 #if READ_SPEED_OPTIMIZE
 
@@ -500,6 +522,8 @@ void writeDataPhaseSD(uint32_t adds, uint32_t len)
 
     SCSI_DB_OUTPUT()
     register byte *srcptr= m_buf;                 // ソースバッファ
+    register byte *endptr= m_buf +  m_img->m_blocksize; // 終了ポインタ
+    
     /*register*/ byte src_byte;                       // 送信データバイト
     register const uint32_t *bsrr_tbl = db_bsrr;  // BSRRに変換するテーブル
     register uint32_t bsrr_val;                   // 出力するBSRR値(DB,DBP,REQ=ACTIVE)
@@ -570,7 +594,7 @@ void writeDataPhaseSD(uint32_t adds, uint32_t len)
       WAIT_ACK_ACTIVE();
       REQ_OFF_DB_SET(bsrr_val);
       WAIT_ACK_INACTIVE();
-    }while(srcptr < m_buf+BLOCKSIZE);
+    }while(srcptr < endptr);
     SCSI_DB_INPUT()
 #else
     for(int j = 0; j < BLOCKSIZE; j++) {
@@ -604,7 +628,7 @@ void readDataPhase(int len, byte* p)
 void readDataPhaseSD(uint32_t adds, uint32_t len)
 {
   LOGN("DATAOUT PHASE(SD)");
-  uint32_t pos = adds * BLOCKSIZE;
+  uint32_t pos = adds * m_img->m_blocksize;
   m_img->m_file.seek(pos);
   SCSI_OUT(vMSG,inactive) //  gpio_write(MSG, low);
   SCSI_OUT(vCD ,inactive) //  gpio_write(CD, low);
@@ -612,7 +636,9 @@ void readDataPhaseSD(uint32_t adds, uint32_t len)
   for(uint32_t i = 0; i < len; i++) {
 #if WRITE_SPEED_OPTIMIZE
 	register byte *dstptr= m_buf;
-    for(int j = 0; j < BLOCKSIZE/8; j++) {
+	register byte *endptr= m_buf + m_img->m_blocksize;
+
+    for(dstptr=m_buf;dstptr<endptr;dstptr+=8) {
       dstptr[0] = readHandshake();
       dstptr[1] = readHandshake();
       dstptr[2] = readHandshake();
@@ -624,17 +650,16 @@ void readDataPhaseSD(uint32_t adds, uint32_t len)
       if(m_isBusReset) {
         return;
       }
-	  dstptr+=8;
     }
 #else
-    for(int j = 0; j < BLOCKSIZE; j++) {
+    for(int j = 0; j <  m_img->m_blocksize; j++) {
       if(m_isBusReset) {
         return;
       }
       m_buf[j] = readHandshake();
     }
 #endif	  
-    m_img->m_file.write(m_buf, BLOCKSIZE);
+    m_img->m_file.write(m_buf, m_img->m_blocksize);
   }
   m_img->m_file.flush();
 }
@@ -642,6 +667,25 @@ void readDataPhaseSD(uint32_t adds, uint32_t len)
 /*
  * INQUIRY コマンド処理.
  */
+#if SCSI_SELECT == 2
+byte onInquiryCommand(byte len)
+{
+  byte buf[36] = {
+    0x00, //デバイスタイプ
+    0x00, //RMB = 0
+    0x01, //ISO,ECMA,ANSIバージョン
+    0x01, //レスポンスデータ形式
+    35 - 4, //追加データ長
+    0, 0, //Reserve
+    0x00, //サポート機能
+    'N', 'E', 'C', ' ', ' ', ' ', ' ', ' ',
+    'A', 'r', 'd', 'S', 'C', 'S', 'i', 'n', 'o', ' ', ' ',' ', ' ', ' ', ' ', ' ',
+    '0', '0', '1', '0',
+  };
+  writeDataPhase(len < 36 ? len : 36, buf);
+  return 0x00;
+}
+#else
 byte onInquiryCommand(byte len)
 {
   byte buf[36] = {
@@ -659,6 +703,7 @@ byte onInquiryCommand(byte len)
   writeDataPhase(len < 36 ? len : 36, buf);
   return 0x00;
 }
+#endif
 
 /*
  * REQUEST SENSE コマンド処理.
@@ -685,8 +730,8 @@ byte onReadCapacityCommand(byte pmi)
 {
   if(!m_img) return 0x02; // イメージファイル不在
   
-  uint32_t bc = m_img->m_fileSize / BLOCKSIZE;
-  uint32_t bl = BLOCKSIZE;
+  uint32_t bl = m_img->m_blocksize;
+  uint32_t bc = m_img->m_fileSize / bl;
   uint8_t buf[8] = {
     bc >> 24, bc >> 16, bc >> 8, bc,
     bl >> 24, bl >> 16, bl >> 8, bl    
@@ -732,15 +777,101 @@ byte onWriteCommand(uint32_t adds, uint32_t len)
 /*
  * MODE SENSE コマンド処理.
  */
-byte onModeSenseCommand(byte dbd, int pageCode, uint32_t len)
+#if SCSI_SELECT == 2
+byte onModeSenseCommand(byte dbd, int cmd2, uint32_t len)
+{
+  if(!m_img) return 0x02; // イメージファイル不在
+
+  int pageCode = cmd2 & 0x3F; 
+
+  // デフォルト設定としてセクタサイズ512,セクタ数25,ヘッド数8を想定
+  int size = m_img->m_fileSize;
+  int cylinders = (int)(size >> 9);
+  cylinders >>= 3;
+  cylinders /= 25;
+  int sectorsize = 512;
+  int sectors = 25;
+  int heads = 8;
+  // セクタサイズ
+ int disksize = 0;
+  for(disksize = 16; disksize > 0; --(disksize)) {
+    if ((1 << disksize) == sectorsize)
+      break;
+  }
+  // ブロック数
+  uint32_t diskblocks = (uint32_t)(size >> disksize);
+
+  memset(m_buf, 0, sizeof(m_buf)); 
+  int a = 4;
+  if(dbd == 0) {
+    uint32_t bl = m_img->m_blocksize;
+    uint32_t bc = m_img->m_fileSize / bl;
+    byte c[8] = {
+      0,//デンシティコード
+      bc >> 16, bc >> 8, bc,
+      0, //Reserve
+      bl >> 16, bl >> 8, bl    
+    };
+    memcpy(&m_buf[4], c, 8);
+    a += 8;
+    m_buf[3] = 0x08;
+  }
+  switch(pageCode) {
+  case 0x3F:
+  {
+    m_buf[a + 0] = 0x01;
+    m_buf[a + 1] = 0x06;
+    a += 8;
+  }
+  case 0x03:  //ドライブパラメータ
+  {
+    m_buf[a + 0] = 0x80 | 0x03; //ページコード
+    m_buf[a + 1] = 0x16; // ページ長
+    m_buf[a + 2] = (byte)(heads >> 8);//セクタ数/トラック
+    m_buf[a + 3] = (byte)(heads);//セクタ数/トラック
+    m_buf[a + 10] = (byte)(sectors >> 8);//セクタ数/トラック
+    m_buf[a + 11] = (byte)(sectors);//セクタ数/トラック
+    int size = 1 << disksize;
+    m_buf[a + 12] = (byte)(size >> 8);//セクタ数/トラック
+    m_buf[a + 13] = (byte)(size);//セクタ数/トラック
+    a += 24;
+    if(pageCode != 0x3F) {
+      break;
+    }
+  }
+  case 0x04:  //ドライブパラメータ
+  {
+      LOGN("AddDrive");
+      m_buf[a + 0] = 0x04; //ページコード
+      m_buf[a + 1] = 0x12; // ページ長
+      m_buf[a + 2] = (cylinders >> 16);// シリンダ長
+      m_buf[a + 3] = (cylinders >> 8);
+      m_buf[a + 4] = cylinders;
+      m_buf[a + 5] = heads;   //ヘッド数
+      a += 20;
+    if(pageCode != 0x3F) {
+      break;
+    }
+  }
+  default:
+    break;
+  }
+  m_buf[0] = a - 1;
+  writeDataPhase(len < a ? len : a, m_buf);
+  return 0x00;
+}
+#else
+byte onModeSenseCommand(byte dbd, int cmd2, uint32_t len)
 {
   if(!m_img) return 0x02; // イメージファイル不在
   
   memset(m_buf, 0, sizeof(m_buf)); 
+  int pageCode = cmd2 & 0x3F; 
   int a = 4;
   if(dbd == 0) {
-    uint32_t bc = m_img->m_fileSize / BLOCKSIZE;
-    uint32_t bl = BLOCKSIZE;
+    uint32_t bl =  m_img->m_blocksize;
+    uint32_t bc = m_img->m_fileSize / bl;
+
     byte c[8] = {
       0,//デンシティコード
       bc >> 16, bc >> 8, bc,
@@ -763,7 +894,7 @@ byte onModeSenseCommand(byte dbd, int pageCode, uint32_t len)
     }
   case 0x04:  //ドライブパラメータ
     {
-      uint32_t bc = m_img->m_fileSize / BLOCKSIZE;
+      uint32_t bc = m_img->m_fileSize / m_img->m_file;
       m_buf[a + 0] = 0x04; //ページコード
       m_buf[a + 1] = 0x16; // ページ長
       m_buf[a + 2] = bc >> 16;// シリンダ長
@@ -782,9 +913,9 @@ byte onModeSenseCommand(byte dbd, int pageCode, uint32_t len)
   writeDataPhase(len < a ? len : a, m_buf);
   return 0x00;
 }
-
+#endif
     
-#if X1TURBO_DTC510B
+#if SCSI_SELECT == 1
 /*
  * dtc510b_setDriveparameter
  */
@@ -1037,7 +1168,7 @@ void loop()
     break;
   case 0x1A:
     LOGN("[ModeSense6]");
-    m_sts |= onModeSenseCommand(cmd[1]&0x80, cmd[2] & 0x3F, cmd[4]);
+    m_sts |= onModeSenseCommand(cmd[1]&0x80, cmd[2], cmd[4]);
     break;
   case 0x1B:
     LOGN("[StartStopUnit]");
@@ -1062,9 +1193,9 @@ void loop()
     break;
   case 0x5A:
     LOGN("[ModeSense10]");
-    onModeSenseCommand(cmd[1] & 0x80, cmd[2] & 0x3F, ((uint32_t)cmd[7] << 8) | cmd[8]);
+    onModeSenseCommand(cmd[1] & 0x80, cmd[2], ((uint32_t)cmd[7] << 8) | cmd[8]);
     break;
-#if X1TURBO_DTC510B
+#if SCSI_SELECT == 1
   case 0xc2:
     LOGN("[DTC510B setDriveParameter]");
     m_sts |= dtc510b_setDriveparameter();
