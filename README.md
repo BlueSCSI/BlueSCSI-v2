@@ -1,20 +1,22 @@
-# ArdSCSino-stm32
+# BlueSCSI
 
-ArdSCSino-stm32 is the STM32 version of ArdSCSino created by Tambo (TNB Seisakusho) (https://twitter.com/h_koma2)
-ArdSCSino is hardware that reproduces SCSI devices (hard disks) with arduino.
-We will publish it with permission.
+BlueSCSI & ArdSCSino are hardware that reproduces SCSI devices (hard disks) with an Arduino STM32F103C (aka Blue Pill.)
+
+`BlueSCSI` created by [erichelgeson](https://github.com/erichelgeson) is a fork of `ArdSCSino-stm32` which adds:
+* Mac specific functionality
+* Passive SCSI termination
+* An alternative power source if not able to be powered by the SCSI bus
+
+`ArdSCSino-stm32` created by [ztto](https://github.com/ztto/ArdSCSino-stm32) is the STM32 version of `ArdSCSino`
+
+`ArdSCSino` created by [Tambo (TNB Seisakusho)](https://twitter.com/h_koma2)
+
 
 # Setup
-* I am using Arduino Software (IDE) V1.8.8.
 
-Tools-> Boards-> Board Manager-> Search Filters
-Search and install "Arduino SAM board (32-bit ARM Cortex-M3)"
-Select the board "Generic STM32F103C series"
+[Wiki](https://github.com/erichelgeson/ArdSCSino-stm32/wiki#setup-arduino-ide)
 
-I am using the following as a library.
- 
-SDFAT (https://github.com/greiman/SdFat)
+# Parts List
 
-Arduino_STM32 (https://github.com/rogerclarkmelbourne/Arduino_STM32/releases/tag/v1.0.0)
+[Wiki](https://github.com/erichelgeson/ArdSCSino-stm32/wiki#parts)
 
-I am using the following as a micro SD CARD adapter: Hirose DM3AT-SF-PEJM5
