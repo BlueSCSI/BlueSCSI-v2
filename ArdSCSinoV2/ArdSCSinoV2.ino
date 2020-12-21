@@ -245,6 +245,11 @@ static const byte db2scsiid[256]={
 };
 #endif
 
+// Log File
+#define VERSION "1.0-b"
+#define LOG_FILENAME "LOG.txt"
+FsFile LOG_FILE;
+
 void onFalseInit(void);
 void onBusReset(void);
 
@@ -282,31 +287,25 @@ bool hddimageOpen(HDDIMG *h,const char *image_name,int id,int lun,int blocksize)
   if(h->m_file.isOpen())
   {
     h->m_fileSize = h->m_file.size();
-#if DEBUG
-    Serial.print("Imagefile:");
-    Serial.print(h->m_file.name() );
-#endif
+    LOG_FILE.print("Imagefile: ");
+    LOG_FILE.print(file_path);
     if(h->m_fileSize>0)
     {
       // check blocksize dummy file
-#if DEBUG
-      Serial.print(" / ");
-      Serial.print(h->m_fileSize);
-      Serial.print("bytes / ");
-      Serial.print(h->m_fileSize / 1024);
-      Serial.print("KiB / ");
-      Serial.print(h->m_fileSize / 1024 / 1024);
-      Serial.println("MiB");
-#endif
-      return true; // ファイルが開けた
+      LOG_FILE.print(" / ");
+      LOG_FILE.print(h->m_fileSize);
+      LOG_FILE.print("bytes / ");
+      LOG_FILE.print(h->m_fileSize / 1024);
+      LOG_FILE.print("KiB / ");
+      LOG_FILE.print(h->m_fileSize / 1024 / 1024);
+      LOG_FILE.println("MiB");
+      return true; // File opened
     }
     else
     {
       h->m_file.close();
       h->m_fileSize = h->m_blocksize = 0; // no file
-#if DEBUG
-      Serial.println("FileSizeError");
-#endif
+      LOG_FILE.println("FileSizeError");
     }
   }
   return false;
@@ -367,6 +366,7 @@ void setup()
 #endif
     onFalseInit();
   }
+  initFileLog();
 
   //Sector data overrun byte setting
   m_buf[MAX_BLOCKSIZE] = 0xff; // DB0 all off,DBP off
@@ -382,57 +382,73 @@ void setup()
       {
         imageReady = hddimageOpen(h,HDIMG_FILE_256,id,lun,256);
       }
-        if(!imageReady)
-        {
-          imageReady = hddimageOpen(h,HDIMG_FILE_512,id,lun,512);
-          }
-          if(!imageReady)
-          {
-          imageReady = hddimageOpen(h,HDIMG_FILE_1024,id,lun, 1024);
-          }
-          if(imageReady)
-          {
-          // Marked as a responsive ID
-          scsi_id_mask |= 1<<id;
-          //totalImage++;
-
+      if(!imageReady)
+      {
+        imageReady = hddimageOpen(h,HDIMG_FILE_512,id,lun,512);
+      }
+      if(!imageReady)
+      {
+        imageReady = hddimageOpen(h,HDIMG_FILE_1024,id,lun, 1024);
+      }
+      if(imageReady)
+      {
+        // Marked as a responsive ID
+        scsi_id_mask |= 1<<id;
       }
     }
   }
   // Error if there are 0 image files
   if(scsi_id_mask==0) onFalseInit();
 
+  finalizeFileLog();
+  LED_OFF();
+  //Occurs when the RST pin state changes from HIGH to LOW
+  attachInterrupt(PIN_MAP[RST].gpio_bit, onBusReset, FALLING);
+}
+
+/*
+ * Setup initialization logfile
+ */
+void initFileLog() {
+  LOG_FILE = SD.open(LOG_FILENAME, O_WRONLY | O_CREAT);
+  LOG_FILE.print("VERSION: ");
+  LOG_FILE.println(VERSION);
+  LOG_FILE.println("Initialized SD Card - lets go!");
+}
+
+/*
+ * Finalize initialization logfile
+ */
+void finalizeFileLog() {
   // View support drive map
-#if DEBUG
-  Serial.print("ID");
+  LOG_FILE.print("ID");
   for(int lun=0;lun<NUM_SCSILUN;lun++)
   {
-    Serial.print(":LUN");
-    Serial.print(lun);
+    LOG_FILE.print(":LUN");
+    LOG_FILE.print(lun);
   }
-  Serial.println(":");
+  LOG_FILE.println(":");
   //
   for(int id=0;id<NUM_SCSIID;id++)
   {
-    Serial.print(" ");
-    Serial.print(id);
+    LOG_FILE.print(" ");
+    LOG_FILE.print(id);
     for(int lun=0;lun<NUM_SCSILUN;lun++)
     {
       HDDIMG *h = &img[id][lun];
       if( (lun<NUM_SCSILUN) && (h->m_file))
       {
-        Serial.print((h->m_blocksize<1000) ? ": " : ":");
-        Serial.print(h->m_blocksize);
+        LOG_FILE.print((h->m_blocksize<1000) ? ": " : ":");
+        LOG_FILE.print(h->m_blocksize);
       }
       else      
-        Serial.print(":----");
+        LOG_FILE.print(":----");
     }
-    Serial.println(":");
+    LOG_FILE.println(":");
   }
-#endif
-  LED_OFF();
-  //Occurs when the RST pin state changes from HIGH to LOW
-  attachInterrupt(PIN_MAP[RST].gpio_bit, onBusReset, FALLING);
+  LOG_FILE.println("Finished initialization of SCSI Devices - Entering main loop.");
+  LOG_FILE.sync();
+  LOG_FILE.close();
 }
 
 /*
