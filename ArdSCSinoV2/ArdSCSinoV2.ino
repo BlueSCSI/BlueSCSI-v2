@@ -164,12 +164,12 @@ SdFs SD;
 #define SCSI_TARGET_INACTIVE() { SCSI_OUT(vREQ,inactive); SCSI_OUT(vMSG,inactive); SCSI_OUT(vCD,inactive);SCSI_OUT(vIO,inactive); SCSI_OUT(vBSY,inactive); gpio_mode(BSY, GPIO_INPUT_PU); }
 
 // HDDiamge file
-#define HDIMG_FILE_256  "HDxx_256.HDS"  // BLOCKSIZE=256  のHDDイメージファイル
-#define HDIMG_FILE_512  "HDxx_512.HDS"  // BLOCKSIZE=512  のHDDイメージファイル名ベース
-#define HDIMG_FILE_1024 "HDxx_1024.HDS" // BLOCKSIZE=1024 のHDDイメージファイル
-#define HDIMG_ID_POS  2                 // ID数字を埋め込む位置
-#define HDIMG_LUN_POS 3                 // LUN数字を埋め込む位置
-#define MAX_FILE_PATH 32                // 最大ファイル名長
+#define HDIMG_FILE_256  "HDxx_256.HDS"  // BLOCKSIZE=256  HDD image file
+#define HDIMG_FILE_512  "HDxx_512.HDS"  // BLOCKSIZE=512  HDD image file name base
+#define HDIMG_FILE_1024 "HDxx_1024.HDS" // BLOCKSIZE=1024 HDD image file
+#define HDIMG_ID_POS  2                 // Position to embed ID number
+#define HDIMG_LUN_POS 3                 // Position to embed LUN numbers
+#define MAX_FILE_PATH 32                // Maximum file name length
 
 // HDD image
 typedef struct hddimg_struct
@@ -270,7 +270,7 @@ inline byte readIO(void)
 }
 
 /*
- * HDDイメージファイルのオープン
+ * Open HDD image file
  */
 
 bool hddimageOpen(HDDIMG *h,const char *image_name,int id,int lun,int blocksize)
@@ -337,7 +337,7 @@ void setup()
   //Port setting register (upper)
   //GPIOB->regs->CRH = 0x88888888; // SET INPUT W/ PUPD on PB15-PB8
 //  GPIOB->regs->ODR = 0x0000FF00; // SET PULL-UPs on PB15-PB8
-  // DB,DPは入力モード
+  // DB and DP are input modes
   SCSI_DB_INPUT()
 
   // Input port
@@ -354,7 +354,7 @@ void setup()
   // Turn off the output port
   SCSI_TARGET_INACTIVE()
 
-  //RSTピンの状態がHIGHからLOWに変わったときに発生
+  //Occurs when the RST pin state changes from HIGH to LOW
   //attachInterrupt(PIN_MAP[RST].gpio_bit, onBusReset, FALLING);
 
   LED_ON();
@@ -575,7 +575,7 @@ void writeDataPhaseSD(uint32_t adds, uint32_t len)
 
     SCSI_DB_OUTPUT()
     register byte *srcptr= m_buf;                 // Source buffer
-    register byte *endptr= m_buf +  m_img->m_blocksize; // 終了ポインタ
+    register byte *endptr= m_buf +  m_img->m_blocksize; // End pointer
 
     /*register*/ byte src_byte;                       // Send data bytes
     register const uint32_t *bsrr_tbl = db_bsrr;  // Table to convert to BSRR
@@ -724,13 +724,13 @@ void readDataPhaseSD(uint32_t adds, uint32_t len)
 byte onInquiryCommand(byte len)
 {
   byte buf[36] = {
-    0x00, //デバイスタイプ
+    0x00, //Device type
     0x00, //RMB = 0
-    0x01, //ISO,ECMA,ANSIバージョン
-    0x01, //レスポンスデータ形式
-    35 - 4, //追加データ長
+    0x01, //ISO,ECMA,ANSI version
+    0x01, //Response data format
+    35 - 4, //Additional data length
     0, 0, //Reserve
-    0x00, //サポート機能
+    0x00, //Support function
     'N', 'E', 'C', 'I', 'T', 'S', 'U', ' ',
     'A', 'r', 'd', 'S', 'C', 'S', 'i', 'n', 'o', ' ', ' ',' ', ' ', ' ', ' ', ' ',
     '0', '0', '1', '0',
@@ -837,7 +837,7 @@ byte onModeSenseCommand(byte dbd, int cmd2, uint32_t len)
 
   int pageCode = cmd2 & 0x3F;
 
-  // デフォルト設定としてセクタサイズ512,セクタ数25,ヘッド数8を想定
+  // Assuming sector size 512, number of sectors 25, number of heads 8 as default settings
   int size = m_img->m_fileSize;
   int cylinders = (int)(size >> 9);
   cylinders >>= 3;
@@ -845,13 +845,13 @@ byte onModeSenseCommand(byte dbd, int cmd2, uint32_t len)
   int sectorsize = 512;
   int sectors = 25;
   int heads = 8;
-  // セクタサイズ
+  // Sector size
  int disksize = 0;
   for(disksize = 16; disksize > 0; --(disksize)) {
     if ((1 << disksize) == sectorsize)
       break;
   }
-  // ブロック数
+  // Number of blocks
   uint32_t diskblocks = (uint32_t)(size >> disksize);
   memset(m_buf, 0, sizeof(m_buf)); 
   int a = 4;
@@ -859,7 +859,7 @@ byte onModeSenseCommand(byte dbd, int cmd2, uint32_t len)
     uint32_t bl = m_img->m_blocksize;
     uint32_t bc = m_img->m_fileSize / bl;
     byte c[8] = {
-      0,//デンシティコード
+      0,// Density code
       bc >> 16, bc >> 8, bc,
       0, //Reserve
       bl >> 16, bl >> 8, bl
@@ -875,31 +875,31 @@ byte onModeSenseCommand(byte dbd, int cmd2, uint32_t len)
     m_buf[a + 1] = 0x06;
     a += 8;
   }
-  case 0x03:  //ドライブパラメータ
+  case 0x03:  // drive parameters
   {
-    m_buf[a + 0] = 0x80 | 0x03; //ページコード
-    m_buf[a + 1] = 0x16; // ページ長
-    m_buf[a + 2] = (byte)(heads >> 8);//セクタ数/トラック
-    m_buf[a + 3] = (byte)(heads);//セクタ数/トラック
-    m_buf[a + 10] = (byte)(sectors >> 8);//セクタ数/トラック
-    m_buf[a + 11] = (byte)(sectors);//セクタ数/トラック
+    m_buf[a + 0] = 0x80 | 0x03; // Page code
+    m_buf[a + 1] = 0x16; // Page length
+    m_buf[a + 2] = (byte)(heads >> 8);// number of sectors / track
+    m_buf[a + 3] = (byte)(heads);// number of sectors / track
+    m_buf[a + 10] = (byte)(sectors >> 8);// number of sectors / track
+    m_buf[a + 11] = (byte)(sectors);// number of sectors / track
     int size = 1 << disksize;
-    m_buf[a + 12] = (byte)(size >> 8);//セクタ数/トラック
-    m_buf[a + 13] = (byte)(size);//セクタ数/トラック
+    m_buf[a + 12] = (byte)(size >> 8);// number of sectors / track
+    m_buf[a + 13] = (byte)(size);// number of sectors / track
     a += 24;
     if(pageCode != 0x3F) {
       break;
     }
   }
-  case 0x04:  //ドライブパラメータ
+  case 0x04:  // drive parameters
   {
       LOGN("AddDrive");
-      m_buf[a + 0] = 0x04; //ページコード
-      m_buf[a + 1] = 0x12; // ページ長
-      m_buf[a + 2] = (cylinders >> 16);// シリンダ長
+      m_buf[a + 0] = 0x04; // Page code
+      m_buf[a + 1] = 0x12; // Page length
+      m_buf[a + 2] = (cylinders >> 16);// Cylinder length
       m_buf[a + 3] = (cylinders >> 8);
       m_buf[a + 4] = cylinders;
-      m_buf[a + 5] = heads;   //ヘッド数
+      m_buf[a + 5] = heads;   // Number of heads
       a += 20;
     if(pageCode != 0x3F) {
       break;
@@ -915,7 +915,7 @@ byte onModeSenseCommand(byte dbd, int cmd2, uint32_t len)
 #else
 byte onModeSenseCommand(byte dbd, int cmd2, uint32_t len)
 {
-  if(!m_img) return 0x02; // イメージファイル不在
+  if(!m_img) return 0x02; // No image file
 
   memset(m_buf, 0, sizeof(m_buf));
   int pageCode = cmd2 & 0x3F;
