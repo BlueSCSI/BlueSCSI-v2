@@ -411,8 +411,13 @@ void setup()
  */
 void initFileLog() {
   LOG_FILE = SD.open(LOG_FILENAME, O_WRONLY | O_CREAT);
+  LOG_FILE.println("BlueSCSI <-> SD - https://github.com/erichelgeson/BlueSCSI");
   LOG_FILE.print("VERSION: ");
   LOG_FILE.println(VERSION);
+  LOG_FILE.print("DEBUG:");
+  LOG_FILE.print(DEBUG);
+  LOG_FILE.print(" SCSI_SELECT:");
+  LOG_FILE.println(SCSI_SELECT);
   LOG_FILE.println("Initialized SD Card - lets go!");
 }
 
