@@ -417,7 +417,11 @@ void initFileLog() {
   LOG_FILE.print("DEBUG:");
   LOG_FILE.print(DEBUG);
   LOG_FILE.print(" SCSI_SELECT:");
-  LOG_FILE.println(SCSI_SELECT);
+  LOG_FILE.print(SCSI_SELECT);
+  LOG_FILE.print(" SDFAT_FILE_TYPE:");
+  LOG_FILE.println(SDFAT_FILE_TYPE);
+  LOG_FILE.print("SdFat version: ");
+  LOG_FILE.println(SD_FAT_VERSION_STR);
   LOG_FILE.println("Initialized SD Card - lets go!");
 }
 
