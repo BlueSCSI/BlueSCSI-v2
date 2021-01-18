@@ -252,6 +252,8 @@ FsFile LOG_FILE;
 
 void onFalseInit(void);
 void onBusReset(void);
+void initFileLog(void);
+void finalizeFileLog(void);
 
 /*
  * IO read.
@@ -319,6 +321,7 @@ void setup()
 {
   // PA15 / PB3 / PB4 Cannot be used
   // JTAG Because it is used for debugging.
+  // Comment out for Debugging in PlatformIO
   disableDebugPorts();
 
   // Serial initialization
