@@ -164,9 +164,9 @@ SdFs SD;
 #define SCSI_TARGET_INACTIVE() { SCSI_OUT(vREQ,inactive); SCSI_OUT(vMSG,inactive); SCSI_OUT(vCD,inactive);SCSI_OUT(vIO,inactive); SCSI_OUT(vBSY,inactive); gpio_mode(BSY, GPIO_INPUT_PU); }
 
 // HDDiamge file
-#define HDIMG_FILE_256  "HDxx_256.HDS"  // BLOCKSIZE=256  HDD image file
-#define HDIMG_FILE_512  "HDxx_512.HDS"  // BLOCKSIZE=512  HDD image file name base
-#define HDIMG_FILE_1024 "HDxx_1024.HDS" // BLOCKSIZE=1024 HDD image file
+#define HDIMG_FILE_256  "HDxx_256.hda"  // BLOCKSIZE=256  HDD image file
+#define HDIMG_FILE_512  "HDxx_512.hda"  // BLOCKSIZE=512  HDD image file name base
+#define HDIMG_FILE_1024 "HDxx_1024.hda" // BLOCKSIZE=1024 HDD image file
 #define HDIMG_ID_POS  2                 // Position to embed ID number
 #define HDIMG_LUN_POS 3                 // Position to embed LUN numbers
 #define MAX_FILE_PATH 32                // Maximum file name length
