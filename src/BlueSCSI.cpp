@@ -164,11 +164,9 @@ SdFs SD;
 #define SCSI_TARGET_INACTIVE() { SCSI_OUT(vREQ,inactive); SCSI_OUT(vMSG,inactive); SCSI_OUT(vCD,inactive);SCSI_OUT(vIO,inactive); SCSI_OUT(vBSY,inactive); gpio_mode(BSY, GPIO_INPUT_PU); }
 
 // HDDiamge file
-#define HDIMG_FILE_256  "HDxx_256.hda"  // BLOCKSIZE=256  HDD image file
-#define HDIMG_FILE_512  "HDxx_512.hda"  // BLOCKSIZE=512  HDD image file name base
-#define HDIMG_FILE_1024 "HDxx_1024.hda" // BLOCKSIZE=1024 HDD image file
 #define HDIMG_ID_POS  2                 // Position to embed ID number
 #define HDIMG_LUN_POS 3                 // Position to embed LUN numbers
+#define HDIMG_BLK_POS 5                 // Position to embed block size numbers
 #define MAX_FILE_PATH 32                // Maximum file name length
 
 // HDD image
@@ -277,20 +275,14 @@ inline byte readIO(void)
 
 bool hddimageOpen(HDDIMG *h,const char *image_name,int id,int lun,int blocksize)
 {
-  char file_path[MAX_FILE_PATH+1];
-
-  // build file path
-  strcpy(file_path,image_name);
-  file_path[HDIMG_ID_POS ] = '0'+id;
-  file_path[HDIMG_LUN_POS] = '0'+lun;
   h->m_fileSize = 0;
   h->m_blocksize = blocksize;
-  h->m_file = SD.open(file_path, O_RDWR);
+  h->m_file = SD.open(image_name, O_RDWR);
   if(h->m_file.isOpen())
   {
     h->m_fileSize = h->m_file.size();
     LOG_FILE.print("Imagefile: ");
-    LOG_FILE.print(file_path);
+    LOG_FILE.print(image_name);
     if(h->m_fileSize>0)
     {
       // check blocksize dummy file
@@ -375,31 +367,49 @@ void setup()
   m_buf[MAX_BLOCKSIZE] = 0xff; // DB0 all off,DBP off
   //HD image file open
   scsi_id_mask = 0x00;
-  for(int id=0;id<NUM_SCSIID;id++)
-  {
-    for(int lun=0;lun<NUM_SCSILUN;lun++)
-    {
-      HDDIMG *h = &img[id][lun];
-      bool imageReady = false;
-      if(!imageReady)
-      {
-        imageReady = hddimageOpen(h,HDIMG_FILE_256,id,lun,256);
+
+  // Iterate over the root path in the SD card looking for candidate image files.
+  SdFile root;
+  root.open("/");
+  SdFile file;
+  bool imageReady;
+  while (1) {
+    if (!file.openNext(&root, O_READ)) break;
+    char name[MAX_FILE_PATH+1];
+    if(!file.isDir()) {
+      file.getName(name, MAX_FILE_PATH+1);
+      file.close();
+      String file_name = String(name);
+      if(file_name.startsWith("HD") && file_name.endsWith(".hda")) {
+        int id  = name[HDIMG_ID_POS] - '0';
+        int lun = name[HDIMG_LUN_POS] - '0';
+        int blk = name[HDIMG_BLK_POS] - '0';
+        if(blk == 2) {
+          blk = 256;
+        } else if(blk == 1) {
+          blk = 1024;
+        } else {
+          blk = 512;
+        }
+        if(id < NUM_SCSIID && lun < NUM_SCSILUN) {
+          HDDIMG *h = &img[id][lun];
+          imageReady = hddimageOpen(h,name,id,lun,blk);
+          if(imageReady) { // Marked as a responsive ID
+            scsi_id_mask |= 1<<id;
+          }
+        } else {
+          LOG_FILE.print("Bad LUN or SCSI id for image: ");
+          LOG_FILE.println(name);
+        }
       }
-      if(!imageReady)
-      {
-        imageReady = hddimageOpen(h,HDIMG_FILE_512,id,lun,512);
-      }
-      if(!imageReady)
-      {
-        imageReady = hddimageOpen(h,HDIMG_FILE_1024,id,lun, 1024);
-      }
-      if(imageReady)
-      {
-        // Marked as a responsive ID
-        scsi_id_mask |= 1<<id;
-      }
+      // else {
+      //     LOG_FILE.print("Not an image: ");
+      //     LOG_FILE.println(name);
+      // }
     }
   }
+  root.close();
+
   // Error if there are 0 image files
   if(scsi_id_mask==0) onFalseInit();
 
@@ -425,6 +435,8 @@ void initFileLog() {
   LOG_FILE.println(SDFAT_FILE_TYPE);
   LOG_FILE.print("SdFat version: ");
   LOG_FILE.println(SD_FAT_VERSION_STR);
+  LOG_FILE.print("SdFat Max FileName Length: ");
+  LOG_FILE.println(MAX_FILE_PATH);
   LOG_FILE.println("Initialized SD Card - lets go!");
 }
 
