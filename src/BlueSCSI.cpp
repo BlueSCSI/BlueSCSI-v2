@@ -248,6 +248,20 @@ static const byte db2scsiid[256]={
 #define LOG_FILENAME "LOG.txt"
 FsFile LOG_FILE;
 
+// SCSI Drive Vendor information
+byte SCSI_INFO_BUF[36] = {
+  0x00, //device type
+  0x00, //RMB = 0
+  0x01, //ISO, ECMA, ANSI version
+  0x01, //Response data format
+  35 - 4, //Additional data length
+  0, 0, //Reserve
+  0x00, //Support function
+  'Q', 'U', 'A', 'N', 'T', 'U', 'M', ' ', // vendor 8
+  'F', 'I', 'R', 'E', 'B', 'A', 'L', 'L', '1', ' ', ' ',' ', ' ', ' ', ' ', ' ', // product 16
+  '1', '.', '0', ' ' // version 4
+};
+
 void onFalseInit(void);
 void onBusReset(void);
 void initFileLog(void);
@@ -267,6 +281,36 @@ inline byte readIO(void)
 #endif
 
   return bret;
+}
+
+// If config file exists, read the first three lines and copy the contents.
+// File must be well formed or you will get junk in the SCSI Vendor fields.
+void readSCSIDeviceConfig() {
+  FsFile config_file = SD.open("scsi-config.txt", O_RDONLY);
+  if (!config_file.isOpen()) {
+    return;
+  }
+  char vendor[9];
+  memset(vendor, 0, sizeof(vendor));
+  config_file.readBytes(vendor, sizeof(vendor));
+  LOG_FILE.print("SCSI VENDOR: ");
+  LOG_FILE.println(vendor);
+  memcpy(&(SCSI_INFO_BUF[8]), vendor, 8);
+
+  char product[17];
+  memset(product, 0, sizeof(product));
+  config_file.readBytes(product, sizeof(product));
+  LOG_FILE.print("SCSI PRODUCT: ");
+  LOG_FILE.println(product);
+  memcpy(&(SCSI_INFO_BUF[16]), product, 16);
+
+  char version[5];
+  memset(version, 0, sizeof(version));
+  config_file.readBytes(version, sizeof(version));
+  LOG_FILE.print("SCSI VERSION: ");
+  LOG_FILE.println(version);
+  memcpy(&(SCSI_INFO_BUF[32]), version, 4);
+  config_file.close();
 }
 
 /*
@@ -362,6 +406,7 @@ void setup()
     onFalseInit();
   }
   initFileLog();
+  readSCSIDeviceConfig();
 
   //Sector data overrun byte setting
   m_buf[MAX_BLOCKSIZE] = 0xff; // DB0 all off,DBP off
@@ -765,19 +810,7 @@ byte onInquiryCommand(byte len)
 #else
 byte onInquiryCommand(byte len)
 {
-  byte buf[36] = {
-    0x00, //device type
-    0x00, //RMB = 0
-    0x01, //ISO, ECMA, ANSI version
-    0x01, //Response data format
-    35 - 4, //Additional data length
-    0, 0, //Reserve
-    0x00, //Support function
-    'Q', 'U', 'A', 'N', 'T', 'U', 'M', ' ',
-    'F', 'I', 'R', 'E', 'B', 'A', 'L', 'L', '1', ' ', ' ',' ', ' ', ' ', ' ', ' ',
-    '1', '.', '0', ' ',
-  };
-  writeDataPhase(len < 36 ? len : 36, buf);
+  writeDataPhase(len < 36 ? len : 36, SCSI_INFO_BUF);
   return 0x00;
 }
 #endif
