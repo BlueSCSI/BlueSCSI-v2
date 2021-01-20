@@ -37,17 +37,21 @@ Plus
 
 ## Performance
 
+Tested on a Color Classic with [SCSI Director Pro 4](https://macintoshgarden.org/apps/scsi-director-pro-40)
+```
 1012KB/Sec Write
 900KB/Sec Read
 1.01ms Seek
+```
+
 
 ## Assembly
 
 1. Solder on the surface mount SD Card holder. Using the [Drag Solder](https://www.youtube.com/watch?v=nyele3CIs-U&start=34) technique.
-  - Once on, check continuity of all connections. Fixing this after the BluePill is on will be difficult.
+    - Once on, check continuity of all connections. Fixing this after the BluePill is on will be difficult.
 1. Solder the dioeds to the bottom of the board. Be sure they are flush as possible to the bottom.
 1. Solder the header pins on to the BluePill. Then the blue pill to the BlueSCSI PCB.
-  - Correct orientation is having the USB should be over the SD Card holder.
+    - Correct orientation is having the USB should be over the SD Card holder.
 1. Solder on the Resistor nets. Pin one is marked on the board and the resistors.
 1. SOlder on the Termination Jumpers & place the jupmpers on.
 1. Solder the 50 Pin headers on.
