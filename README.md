@@ -48,7 +48,6 @@ Tested on a Color Classic with [SCSI Director Pro 4](https://macintoshgarden.org
 1.01ms Seek
 ```
 
-
 ## Assembly
 
 1. Solder on the surface mount SD Card holder. Using the [Drag Solder](https://www.youtube.com/watch?v=nyele3CIs-U&start=34) technique.
@@ -91,7 +90,7 @@ Floppy/Berg Power header https://www.mouser.com/ProductDetail/571-1718254
 
 ## Usage
 
-Hard Disk image files are placed in the root directory of a `FAT32` (or `ExFat`) formatted SD card. 
+Hard Disk image files are placed in the root directory of a `FAT32` (or `ExFat`) formatted SD card. You can create a disk image using `dd` or download one from the `blank_images.zip` file. These images are compatible with the RaSCSI device and Basilisk II emulator.
 
 The naming convention is as follows (file name max 32 characters). Note you may mount multiple drives at a time to different SCSI ID's.
 
