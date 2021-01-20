@@ -11,6 +11,11 @@ BlueSCSI & ArdSCSino are hardware that reproduces SCSI devices (hard disks) with
 
 `ArdSCSino` created by [Tambo (TNB Seisakusho)](https://twitter.com/h_koma2)
 
+# Questions?
+
+Join us in #bluescsi on [Discord](https://discord.gg/sTTYbGYy)
+
+Or open an issue on this repo.
 
 # Setup
 
