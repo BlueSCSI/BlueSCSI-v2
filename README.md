@@ -137,7 +137,7 @@ Below is for users who wish to edit or develop on the BluePill - normal users sh
 
 ## PlatformIO
 
-Open the project in [PlatforIO](https://platformio.org/) and everything is pre-configured.
+Open the project in [PlatformIO](https://platformio.org/) and everything is pre-configured.
 
 ## Setup Arduino IDE (Depricated, Do Not Use)
 
