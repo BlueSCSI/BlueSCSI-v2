@@ -37,7 +37,7 @@ SE, SE/30, Classic, Classic II, Color Classic, LC I/II/III
 
 ### Incompatible 
 
-Plus
+Plus, PowerPC
 
 ## Performance
 
@@ -56,7 +56,7 @@ Tested on a Color Classic with [SCSI Director Pro 4](https://macintoshgarden.org
 1. Solder the header pins on to the BluePill. Then the blue pill to the BlueSCSI PCB.
     - Correct orientation is having the USB should be over the SD Card holder.
 1. Solder on the Resistor nets. Pin one is marked on the board and the resistors.
-1. SOlder on the Termination Jumpers & place the jupmpers on.
+1. Solder on the Termination Jumpers & place the jumpers on.
 1. Solder the 50 Pin headers on.
 1. Optional - Solder on the berg connector. Only needed if your machine does not supply enough power via the SCSI bus.
 1. Optional - Solder on the debug headers near the SD card. Only nessissarry if re-programming.
