@@ -13,7 +13,7 @@ BlueSCSI & ArdSCSino are hardware that reproduces SCSI devices (hard disks) with
 
 # Purchase a Kit or Fully Assembled
 
-Check back Jan 25, 2021 for a link!
+https://gum.co/bluescsi-1b
 
 # Questions?
 
