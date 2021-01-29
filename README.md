@@ -43,7 +43,7 @@ Plus, PowerPC
 
 Tested on a Color Classic with [SCSI Director Pro 4](https://macintoshgarden.org/apps/scsi-director-pro-40)
 ```
-1012KB/Sec Write
+1024KB/Sec Write
 900KB/Sec Read
 1.01ms Seek
 ```
