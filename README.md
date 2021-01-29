@@ -33,7 +33,7 @@ SE, SE/30, Classic, Classic II, Color Classic, LC I/II/III
 
 #### Reported by others
 
-[IIcx](https://68kmla.org/forums/topic/61045-arduino-scsi-device-work-in-progress/?do=findComment&comment=663077)
+[IIcx](https://68kmla.org/forums/topic/61045-arduino-scsi-device-work-in-progress/?do=findComment&comment=663077), [PowerBook 100 (with custom adapter)](https://68kmla.org/forums/topic/61045-arduino-scsi-device-work-in-progress/?do=findComment&comment=664446)
 
 ### Incompatible 
 
@@ -77,9 +77,7 @@ Mouser Cart https://www.mouser.com/ProjectManager/ProjectDetail.aspx?State=EDIT&
 
 * Headers https://www.mouser.com/ProductDetail/872-920-0011-01
 
-Not available on Mouser:
-
-50 PIN SCSI header https://lcsc.com/product-detail/IDC-Connectors_BOOMELE-Boom-Precision-Elec-C30006_C30006.html
+* 50 PIN SCSI header https://www.mouser.com/ProductDetail/517-30350-6002/
   - May substitute with 2 rows of headers from above.
   - **Note on Right angle connectors** - it appears Right angle headers are notched differently then the pin out. Be sure to note PIN 1/red stripe on the cable match up.
 
