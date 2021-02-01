@@ -17,7 +17,15 @@
 
 #include "led.h"
 
+#ifdef STM32F2xx
 #include "stm32f2xx.h"
+#endif
+
+#ifdef STM32F4xx
+#include "stm32f4xx.h"
+#endif
+
+#include "gpio.h"
 
 void s2s_ledInit()
 {

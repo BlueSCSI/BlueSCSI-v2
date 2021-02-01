@@ -17,13 +17,12 @@
 
 #include "config.h"
 #include "led.h"
-
+#include "bsp.h"
 #include "scsi.h"
 #include "scsiPhy.h"
 #include "sd.h"
 #include "disk.h"
 #include "bootloader.h"
-#include "bsp.h"
 #include "spinlock.h"
 
 #include "../../include/scsi2sd.h"
@@ -101,9 +100,8 @@ void s2s_configInit(S2S_BoardCfg* config)
 	{
 		int cfgSectors = (S2S_CFG_SIZE + 511) / 512;
 		BSP_SD_ReadBlocks_DMA(
-			(uint32_t*) &s2s_cfg[0],
+			&s2s_cfg[0],
 			(sdDev.capacity - cfgSectors) * 512ll,
-			512,
 			cfgSectors);
 
 		memcpy(config, s2s_cfg, sizeof(S2S_BoardCfg));
@@ -248,7 +246,7 @@ sdWriteCommand(const uint8_t* cmd, size_t cmdSize)
 		((uint32_t)cmd[4]);
 
 	memcpy(configDmaBuf, &cmd[5], 512);
-	BSP_SD_WriteBlocks_DMA((uint32_t*) configDmaBuf, lba * 512ll, 512, 1);
+	BSP_SD_WriteBlocks_DMA(configDmaBuf, lba * 512ll, 1);
 
 	uint8_t response[] =
 	{
@@ -270,7 +268,7 @@ sdReadCommand(const uint8_t* cmd, size_t cmdSize)
 		(((uint32_t)cmd[3]) << 8) |
 		((uint32_t)cmd[4]);
 
-	BSP_SD_ReadBlocks_DMA((uint32_t*) configDmaBuf, lba * 512ll, 512, 1);
+	BSP_SD_ReadBlocks_DMA(configDmaBuf, lba * 512ll, 1);
 	hidPacket_send(configDmaBuf, 512);
 }
 
@@ -443,9 +441,8 @@ void s2s_configSave(int scsiId, uint16_t bytesPerSector)
 	cfg->bytesPerSector = bytesPerSector;
 
 	BSP_SD_WriteBlocks_DMA(
-		(uint32_t*) &s2s_cfg[0],
+		&s2s_cfg[0],
 		(sdDev.capacity - S2S_CFG_SIZE) * 512ll,
-		512,
 		(S2S_CFG_SIZE + 511) / 512);
 }
 

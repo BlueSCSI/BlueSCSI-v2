@@ -41,7 +41,13 @@
 #endif 
 
 /* Includes ------------------------------------------------------------------*/
+#ifdef STM32F2xx
 #include "stm32f2xx_hal.h"
+#endif
+
+#ifdef STM32F4xx
+#include "stm32f4xx_hal.h"
+#endif
 
 /* Exported constants --------------------------------------------------------*/ 
 
@@ -82,16 +88,16 @@ uint8_t BSP_SD_Init(void);
 uint8_t BSP_SD_ITConfig(void);
 void BSP_SD_DetectIT(void);
 __weak void BSP_SD_DetectCallback(void);
-uint8_t BSP_SD_ReadBlocks(uint32_t *pData, uint64_t ReadAddr, uint32_t BlockSize, uint32_t NumOfBlocks);
-uint8_t BSP_SD_WriteBlocks(uint32_t *pData, uint64_t WriteAddr, uint32_t BlockSize, uint32_t NumOfBlocks);
-uint8_t BSP_SD_ReadBlocks_DMA(uint32_t *pData, uint64_t ReadAddr, uint32_t BlockSize, uint32_t NumOfBlocks);
-uint8_t BSP_SD_WriteBlocks_DMA(uint32_t *pData, uint64_t WriteAddr, uint32_t BlockSize, uint32_t NumOfBlocks);
-uint8_t BSP_SD_Erase(uint64_t StartAddr, uint64_t EndAddr);
-void BSP_SD_IRQHandler(void);
-void BSP_SD_DMA_Tx_IRQHandler(void);
-void BSP_SD_DMA_Rx_IRQHandler(void);
-HAL_SD_TransferStateTypedef BSP_SD_GetStatus(void);
-void BSP_SD_GetCardInfo(HAL_SD_CardInfoTypedef *CardInfo);
+uint8_t BSP_SD_ReadBlocks(uint8_t *pData, uint64_t ReadAddr, uint32_t NumOfBlocks);
+uint8_t BSP_SD_WriteBlocks(uint8_t *pData, uint64_t WriteAddr, uint32_t NumOfBlocks);
+uint8_t BSP_SD_ReadBlocks_DMA(uint8_t *pData, uint64_t ReadAddr, uint32_t NumOfBlocks);
+uint8_t BSP_SD_WriteBlocks_DMA(uint8_t *pData, uint64_t WriteAddr, uint32_t NumOfBlocks);
+//uint8_t BSP_SD_Erase(uint64_t StartAddr, uint64_t EndAddr);
+//void BSP_SD_IRQHandler(void);
+//void BSP_SD_DMA_Tx_IRQHandler(void);
+//void BSP_SD_DMA_Rx_IRQHandler(void);
+HAL_SD_CardStateTypeDef BSP_SD_GetStatus(void);
+void BSP_SD_GetCardInfo(HAL_SD_CardInfoTypeDef *CardInfo);
 uint8_t BSP_SD_IsDetected(void);
 /* USER CODE END 0 */ 
    

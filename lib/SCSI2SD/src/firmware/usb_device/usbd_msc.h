@@ -61,7 +61,7 @@
 #define MSC_EPIN_ADDR                0x81
 #define MSC_EPOUT_ADDR               0x01
 
-#define MSC_MEDIA_PACKET             8192
+#define S2S_MSC_MEDIA_PACKET             8192
 
 /**
   * @}
@@ -91,7 +91,7 @@ typedef struct
   uint8_t                  bot_state;
   uint8_t                  bot_status;  
   uint16_t                 bot_data_length;
-  uint8_t                  bot_data[MSC_MEDIA_PACKET];  
+  uint8_t                  bot_data[S2S_MSC_MEDIA_PACKET];  
   USBD_MSC_BOT_CBWTypeDef  cbw;
   USBD_MSC_BOT_CSWTypeDef  csw;
   

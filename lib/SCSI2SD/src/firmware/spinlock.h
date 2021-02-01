@@ -17,8 +17,13 @@
 #ifndef S2S_SPINLOCK_H
 #define S2S_SPINLOCK_H
 
+#ifdef STM32F2xx
 #include "stm32f2xx.h"
+#endif
 
+#ifdef STM32F4xx
+#include "stm32f4xx.h"
+#endif
 
 #define s2s_lock_t volatile uint32_t
 #define s2s_lock_init 0

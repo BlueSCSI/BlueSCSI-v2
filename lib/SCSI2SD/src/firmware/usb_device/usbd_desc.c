@@ -258,7 +258,10 @@ static void Get_SerialNum(void)
 	uint32_t deviceserial0, deviceserial1, deviceserial2;
 
 // UID_BASE good for STM32F2 and F4
+#ifndef UID_BASE
 #define 		UID_BASE			0x1FFF7A10
+#endif
+
 #define         DEVICE_ID1          (UID_BASE)
 #define         DEVICE_ID2          (UID_BASE + 0x4)
 #define         DEVICE_ID3          (UID_BASE + 0x8)

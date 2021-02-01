@@ -520,7 +520,7 @@ static int8_t SCSI_Read10(USBD_HandleTypeDef  *pdev, uint8_t lun , uint8_t *para
       return -1;
     }
   }
-  hmsc->bot_data_length = MSC_MEDIA_PACKET;  
+  hmsc->bot_data_length = S2S_MSC_MEDIA_PACKET;  
   
   return SCSI_ProcessRead(pdev, lun);
 }
@@ -607,7 +607,7 @@ static int8_t SCSI_Write10 (USBD_HandleTypeDef  *pdev, uint8_t lun , uint8_t *pa
     USBD_LL_PrepareReceive (pdev,
                       MSC_EPOUT_ADDR,
                       hmsc->bot_data, 
-                      MIN (hmsc->scsi_blk_len, MSC_MEDIA_PACKET));  
+                      MIN (hmsc->scsi_blk_len, S2S_MSC_MEDIA_PACKET));  
   }
   else /* Write Process ongoing */
   {
@@ -703,7 +703,7 @@ static int8_t SCSI_ProcessRead (USBD_HandleTypeDef  *pdev, uint8_t lun)
 
   uint32_t len;
   
-  len = MIN(hmsc->scsi_blk_len , MSC_MEDIA_PACKET); 
+  len = MIN(hmsc->scsi_blk_len , S2S_MSC_MEDIA_PACKET); 
   
   if( ((USBD_StorageTypeDef *)pdev->pUserData)->Read(lun ,
                               hmsc->bot_data, 
@@ -751,7 +751,7 @@ static int8_t SCSI_ProcessWrite (USBD_HandleTypeDef  *pdev, uint8_t lun)
 	USBD_CompositeClassData *classData = (USBD_CompositeClassData*) pdev->pClassData;
 	USBD_MSC_BOT_HandleTypeDef *hmsc = &(classData->msc);
 
-  len = MIN(hmsc->scsi_blk_len , MSC_MEDIA_PACKET); 
+  len = MIN(hmsc->scsi_blk_len , S2S_MSC_MEDIA_PACKET); 
   
   if(((USBD_StorageTypeDef *)pdev->pUserData)->Write(lun ,
                               hmsc->bot_data, 
@@ -782,7 +782,7 @@ static int8_t SCSI_ProcessWrite (USBD_HandleTypeDef  *pdev, uint8_t lun)
     USBD_LL_PrepareReceive (pdev,
                             MSC_EPOUT_ADDR,
                             hmsc->bot_data, 
-                            MIN (hmsc->scsi_blk_len, MSC_MEDIA_PACKET)); 
+                            MIN (hmsc->scsi_blk_len, S2S_MSC_MEDIA_PACKET)); 
   }
   
   return 0;

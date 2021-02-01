@@ -16,7 +16,17 @@
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "hwversion.h"
+
+#ifdef STM32F2xx
 #include "stm32f2xx.h"
+#endif
+
+#ifdef STM32F4xx
+#include "stm32f4xx.h"
+#endif
+
+#include "gpio.h"
+
 #include "config.h"
 #include "time.h"
 
@@ -33,7 +43,6 @@ const size_t OTP_BLOCK_SIZE = OTP_SIZE / OTP_BLOCKS;
 const size_t OTP_BLOCK_NUM = 0;
 
 // Define some pointers for writing, but also to allow easy reading back values
-#define FLASH_OTP_BASE 0x1FFF7800
 const uint8_t *otp = (uint8_t*)(FLASH_OTP_BASE + OTP_BLOCK_NUM * OTP_BLOCK_SIZE);
 const uint32_t *otp32 = (uint32_t*)(FLASH_OTP_BASE + OTP_BLOCK_NUM * OTP_BLOCK_SIZE);
 const uint8_t *lock = (uint8_t*)(FLASH_OTP_BASE + OTP_SIZE + OTP_BLOCK_NUM);

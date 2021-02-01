@@ -17,7 +17,15 @@
 
 
 #include "usbd_msc_storage_sd.h"
+
+#ifdef STM32F2xx
 #include "stm32f2xx.h"
+#endif
+
+#ifdef STM32F4xx
+#include "stm32f4xx.h"
+#endif
+
 #include "../bsp_driver_sd.h"
 #include "../bsp.h"
 #include "../disk.h"
@@ -142,9 +150,8 @@ int8_t s2s_usbd_storage_Read (uint8_t lun,
 	if (cfg->bytesPerSector == 512)
 	{
 		BSP_SD_ReadBlocks_DMA(
-			(uint32_t*) buf,
+			buf,
 			(cfg->sdSectorStart + blk_addr) * 512ll,
-			512,
 			blk_len);
 	}
 	else
@@ -158,9 +165,8 @@ int8_t s2s_usbd_storage_Read (uint8_t lun,
 			{
 				uint8_t partial[512] S2S_DMA_ALIGN;
 				BSP_SD_ReadBlocks_DMA(
-					(uint32_t*) partial,
+					partial,
 					sdSectorNum * 512LL,
-					512,
 					1);
 				sdSectorNum++;
 
@@ -190,9 +196,8 @@ int8_t s2s_usbd_storage_Write (uint8_t lun,
 	if (cfg->bytesPerSector == 512)
 	{
 		BSP_SD_WriteBlocks_DMA(
-			(uint32_t*) buf,
+			buf,
 			(cfg->sdSectorStart + blk_addr) * 512ll,
-			512,
 			blk_len);
 	}
 	else
@@ -208,9 +213,8 @@ int8_t s2s_usbd_storage_Write (uint8_t lun,
 				memcpy(partial, buf, 512);
 
 				BSP_SD_WriteBlocks_DMA(
-					(uint32_t*) partial,
+					partial,
 					sdSectorNum * 512LL,
-					512,
 					1);
 				sdSectorNum++;
 

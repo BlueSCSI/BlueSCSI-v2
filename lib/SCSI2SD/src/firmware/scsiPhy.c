@@ -15,9 +15,19 @@
 //	You should have received a copy of the GNU General Public License
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
 
+#ifdef STM32F2xx
 #include "stm32f2xx.h"
 #include "stm32f2xx_hal.h"
 #include "stm32f2xx_hal_dma.h"
+#endif
+
+#ifdef STM32F4xx
+#include "stm32f4xx.h"
+#include "stm32f4xx_hal.h"
+#include "stm32f4xx_hal_dma.h"
+#endif
+
+#include "gpio.h"
 
 #include "scsi.h"
 #include "scsiPhy.h"
