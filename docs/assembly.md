@@ -10,23 +10,22 @@ Read through all instructions before starting.
     - Once on, check continuity of all connections. Fixing this after the BluePill is on will be difficult.
     - Ensure the SD card fits and you dont have too much solder on the sides or contacts
 2. Solder the dioeds to the **bottom** of the board. Be sure they are flush as possible to the bottom.
-
 ![Diode Orientation](images/diodes.png)
-1. Solder the header pins on to the BluePill. Then BluePill pill to the BlueSCSI PCB.
+3. Solder the header pins on to the BluePill. Then BluePill pill to the BlueSCSI PCB.
     - Correct orientation is having the USB connector of the BluePill should be over the SD Card holder.
-2. Solder on the Resistor nets. Pin one is marked on the board and the resistors.
-   - 220 RNETS are closest to the BluePill
+4. Solder on the resistor nets. Pin one is marked on the board and the resistors.
+   - 220 RNETS (`RN1` & `RN3`) are closest to the BluePill
      - Note PIN one on each - they are opposite of eachtoher. See photo.
-   - 330 RNETS are furthest from the BluePill
+   - 330 RNETS (`RN2` & `RN4`) are furthest from the BluePill
      - Note PIN one on each - they are opposite of eachtoher. See photo.
-     
 ![Orientation RNETs and BluePill](images/orientation.png)
-1. Solder on the Termination Jumpers & place the jumpers on to enable Termiation
-2. Solder the 50 Pin headers on. 
+5. Solder on the Termination Jumpers & place the jumpers on to enable Termiation
+6. Solder the 50 Pin headers on.
    1. Note Pin 1 and Box header on the silk screen.
-3. Optional - Solder on the berg connector. Only needed if your machine does not supply enough power via the SCSI bus.
-4. Optional - Solder on the debug headers near the SD card. Only nessissarry if re-programming.
+7. Optional - Solder on the berg connector. Only needed if your machine does not supply enough power via the SCSI bus.
+8. Optional - Solder on the debug headers near the SD card. Only nessissarry if re-programming.
 
+### Fully Assembled
 ![Fully Assembled](images/assembled.png)
 
 ### Version 1.0-b BOM
