@@ -2,6 +2,8 @@
   ******************************************************************************
   * @file    stm32f2xx_hal_adc_ex.c
   * @author  MCD Application Team
+  * @version V1.1.0
+  * @date    09-October-2015
   * @brief   This file provides firmware functions to manage the following 
   *          functionalities of the ADC extension peripheral:
   *           + Extended features functions
@@ -84,16 +86,32 @@
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; Copyright (c) 2016 STMicroelectronics.
-  * All rights reserved.</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2015 STMicroelectronics</center></h2>
   *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
+  * Redistribution and use in source and binary forms, with or without modification,
+  * are permitted provided that the following conditions are met:
+  *   1. Redistributions of source code must retain the above copyright notice,
+  *      this list of conditions and the following disclaimer.
+  *   2. Redistributions in binary form must reproduce the above copyright notice,
+  *      this list of conditions and the following disclaimer in the documentation
+  *      and/or other materials provided with the distribution.
+  *   3. Neither the name of STMicroelectronics nor the names of its contributors
+  *      may be used to endorse or promote products derived from this software
+  *      without specific prior written permission.
+  *
+  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   *
   ******************************************************************************
-  */
+  */ 
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f2xx_hal.h"
@@ -152,14 +170,14 @@ static void ADC_MultiModeDMAHalfConvCplt(DMA_HandleTypeDef *hdma);
 
 /**
   * @brief  Enables the selected ADC software start conversion of the injected channels.
-  * @param  hadc pointer to a ADC_HandleTypeDef structure that contains
+  * @param  hadc: pointer to a ADC_HandleTypeDef structure that contains
   *         the configuration information for the specified ADC.
   * @retval HAL status
   */
 HAL_StatusTypeDef HAL_ADCEx_InjectedStart(ADC_HandleTypeDef* hadc)
 {
-  __IO uint32_t counter = 0U;
-  uint32_t tmp1 = 0U, tmp2 = 0U;
+  __IO uint32_t counter = 0;
+  uint32_t tmp1 = 0, tmp2 = 0;
   
   /* Process locked */
   __HAL_LOCK(hadc);
@@ -175,8 +193,8 @@ HAL_StatusTypeDef HAL_ADCEx_InjectedStart(ADC_HandleTypeDef* hadc)
     
     /* Delay for ADC stabilization time */
     /* Compute number of CPU cycles to wait for */
-    counter = (ADC_STAB_DELAY_US * (SystemCoreClock / 1000000U));
-    while(counter != 0U)
+    counter = (ADC_STAB_DELAY_US * (SystemCoreClock / 1000000));
+    while(counter != 0)
     {
       counter--;
     }
@@ -240,15 +258,15 @@ HAL_StatusTypeDef HAL_ADCEx_InjectedStart(ADC_HandleTypeDef* hadc)
 
 /**
   * @brief  Enables the interrupt and starts ADC conversion of injected channels.
-  * @param  hadc pointer to a ADC_HandleTypeDef structure that contains
+  * @param  hadc: pointer to a ADC_HandleTypeDef structure that contains
   *         the configuration information for the specified ADC.
   *
   * @retval HAL status.
   */
 HAL_StatusTypeDef HAL_ADCEx_InjectedStart_IT(ADC_HandleTypeDef* hadc)
 {
-  __IO uint32_t counter = 0U;
-  uint32_t tmp1 = 0U, tmp2 = 0U;
+  __IO uint32_t counter = 0;
+  uint32_t tmp1 = 0, tmp2 = 0;
   
   /* Process locked */
   __HAL_LOCK(hadc);
@@ -264,8 +282,8 @@ HAL_StatusTypeDef HAL_ADCEx_InjectedStart_IT(ADC_HandleTypeDef* hadc)
     
     /* Delay for ADC stabilization time */
     /* Compute number of CPU cycles to wait for */
-    counter = (ADC_STAB_DELAY_US * (SystemCoreClock / 1000000U));
-    while(counter != 0U)
+    counter = (ADC_STAB_DELAY_US * (SystemCoreClock / 1000000));
+    while(counter != 0)
     {
       counter--;
     }
@@ -301,7 +319,7 @@ HAL_StatusTypeDef HAL_ADCEx_InjectedStart_IT(ADC_HandleTypeDef* hadc)
     __HAL_ADC_CLEAR_FLAG(hadc, ADC_FLAG_JEOC);
     
     /* Enable end of conversion interrupt for injected channels */
-    __HAL_ADC_ENABLE_IT(hadc, ADC_IT_JEOC);
+    __HAL_ADC_ENABLE_IT(hadc, (ADC_IT_JEOC | ADC_IT_OVR));
     
     /* Check if Multimode enabled */
     if(HAL_IS_BIT_CLR(ADC->CCR, ADC_CCR_MULTI))
@@ -339,7 +357,7 @@ HAL_StatusTypeDef HAL_ADCEx_InjectedStart_IT(ADC_HandleTypeDef* hadc)
   * @note   If injected group mode auto-injection is enabled,
   *         function HAL_ADC_Stop must be used.
   * @note   In case of auto-injection mode, HAL_ADC_Stop must be used.
-  * @param  hadc ADC handle
+  * @param  hadc: ADC handle
   * @retval None
   */
 HAL_StatusTypeDef HAL_ADCEx_InjectedStop(ADC_HandleTypeDef* hadc)
@@ -391,14 +409,14 @@ HAL_StatusTypeDef HAL_ADCEx_InjectedStop(ADC_HandleTypeDef* hadc)
 
 /**
   * @brief  Poll for injected conversion complete
-  * @param  hadc pointer to a ADC_HandleTypeDef structure that contains
+  * @param  hadc: pointer to a ADC_HandleTypeDef structure that contains
   *         the configuration information for the specified ADC.
-  * @param  Timeout Timeout value in millisecond.  
+  * @param  Timeout: Timeout value in millisecond.  
   * @retval HAL status
   */
 HAL_StatusTypeDef HAL_ADCEx_InjectedPollForConversion(ADC_HandleTypeDef* hadc, uint32_t Timeout)
 {
-  uint32_t tickstart = 0U;
+  uint32_t tickstart = 0;
 
   /* Get tick */ 
   tickstart = HAL_GetTick();
@@ -409,7 +427,7 @@ HAL_StatusTypeDef HAL_ADCEx_InjectedPollForConversion(ADC_HandleTypeDef* hadc, u
     /* Check for the Timeout */
     if(Timeout != HAL_MAX_DELAY)
     {
-      if((Timeout == 0U)||((HAL_GetTick() - tickstart ) > Timeout))
+      if((Timeout == 0)||((HAL_GetTick() - tickstart ) > Timeout))
       {
         hadc->State= HAL_ADC_STATE_TIMEOUT;
         /* Process unlocked */
@@ -460,7 +478,7 @@ HAL_StatusTypeDef HAL_ADCEx_InjectedPollForConversion(ADC_HandleTypeDef* hadc, u
   *         injected and regular groups, and disable the ADC.
   * @note   If injected group mode auto-injection is enabled,
   *         function HAL_ADC_Stop must be used.
-  * @param  hadc ADC handle
+  * @param  hadc: ADC handle
   * @retval None
   */
 HAL_StatusTypeDef HAL_ADCEx_InjectedStop_IT(ADC_HandleTypeDef* hadc)
@@ -490,7 +508,7 @@ HAL_StatusTypeDef HAL_ADCEx_InjectedStop_IT(ADC_HandleTypeDef* hadc)
     if(HAL_IS_BIT_CLR(hadc->Instance->CR2, ADC_CR2_ADON))
     {
       /* Disable ADC end of conversion interrupt for injected channels */
-      __HAL_ADC_DISABLE_IT(hadc, ADC_IT_JEOC);
+      __HAL_ADC_DISABLE_IT(hadc, (ADC_IT_JEOC | ADC_IT_OVR));
       
       /* Set ADC state */
       ADC_STATE_CLR_SET(hadc->State,
@@ -515,9 +533,9 @@ HAL_StatusTypeDef HAL_ADCEx_InjectedStop_IT(ADC_HandleTypeDef* hadc)
 
 /**
   * @brief  Gets the converted value from data register of injected channel.
-  * @param  hadc pointer to a ADC_HandleTypeDef structure that contains
+  * @param  hadc: pointer to a ADC_HandleTypeDef structure that contains
   *         the configuration information for the specified ADC.
-  * @param  InjectedRank the ADC injected rank.
+  * @param  InjectedRank: the ADC injected rank.
   *          This parameter can be one of the following values:
   *            @arg ADC_INJECTED_RANK_1: Injected Channel1 selected
   *            @arg ADC_INJECTED_RANK_2: Injected Channel2 selected
@@ -527,7 +545,7 @@ HAL_StatusTypeDef HAL_ADCEx_InjectedStop_IT(ADC_HandleTypeDef* hadc)
   */
 uint32_t HAL_ADCEx_InjectedGetValue(ADC_HandleTypeDef* hadc, uint32_t InjectedRank)
 {
-  __IO uint32_t tmp = 0U;
+  __IO uint32_t tmp = 0;
   
   /* Check the parameters */
   assert_param(IS_ADC_INJECTED_RANK(InjectedRank));
@@ -570,15 +588,15 @@ uint32_t HAL_ADCEx_InjectedGetValue(ADC_HandleTypeDef* hadc, uint32_t InjectedRa
   * 
   * @note   Caution: This function must be used only with the ADC master.  
   *
-  * @param  hadc pointer to a ADC_HandleTypeDef structure that contains
+  * @param  hadc: pointer to a ADC_HandleTypeDef structure that contains
   *         the configuration information for the specified ADC.
-  * @param  pData   Pointer to buffer in which transferred from ADC peripheral to memory will be stored. 
-  * @param  Length  The length of data to be transferred from ADC peripheral to memory.  
+  * @param  pData:   Pointer to buffer in which transferred from ADC peripheral to memory will be stored. 
+  * @param  Length:  The length of data to be transferred from ADC peripheral to memory.  
   * @retval HAL status
   */
 HAL_StatusTypeDef HAL_ADCEx_MultiModeStart_DMA(ADC_HandleTypeDef* hadc, uint32_t* pData, uint32_t Length)
 {
-  __IO uint32_t counter = 0U;
+  __IO uint32_t counter = 0;
   
   /* Check the parameters */
   assert_param(IS_FUNCTIONAL_STATE(hadc->Init.ContinuousConvMode));
@@ -597,8 +615,8 @@ HAL_StatusTypeDef HAL_ADCEx_MultiModeStart_DMA(ADC_HandleTypeDef* hadc, uint32_t
     
     /* Delay for temperature sensor stabilization time */
     /* Compute number of CPU cycles to wait for */
-    counter = (ADC_STAB_DELAY_US * (SystemCoreClock / 1000000U));
-    while(counter != 0U)
+    counter = (ADC_STAB_DELAY_US * (SystemCoreClock / 1000000));
+    while(counter != 0)
     {
       counter--;
     }
@@ -685,7 +703,7 @@ HAL_StatusTypeDef HAL_ADCEx_MultiModeStart_DMA(ADC_HandleTypeDef* hadc, uint32_t
 
 /**
   * @brief  Disables ADC DMA (multi-ADC mode) and disables ADC peripheral    
-  * @param  hadc pointer to a ADC_HandleTypeDef structure that contains
+  * @param  hadc: pointer to a ADC_HandleTypeDef structure that contains
   *         the configuration information for the specified ADC.
   * @retval HAL status
   */
@@ -732,28 +750,24 @@ HAL_StatusTypeDef HAL_ADCEx_MultiModeStop_DMA(ADC_HandleTypeDef* hadc)
 /**
   * @brief  Returns the last ADC1, ADC2 and ADC3 regular conversions results 
   *         data in the selected multi mode.
-  * @param  hadc pointer to a ADC_HandleTypeDef structure that contains
+  * @param  hadc: pointer to a ADC_HandleTypeDef structure that contains
   *         the configuration information for the specified ADC.
   * @retval The converted data value.
   */
 uint32_t HAL_ADCEx_MultiModeGetValue(ADC_HandleTypeDef* hadc)
 {
-  /* Prevent unused argument(s) compilation warning */
-  UNUSED(hadc);
   /* Return the multi mode conversion value */
   return ADC->CDR;
 }
 
 /**
   * @brief  Injected conversion complete callback in non blocking mode 
-  * @param  hadc pointer to a ADC_HandleTypeDef structure that contains
+  * @param  hadc: pointer to a ADC_HandleTypeDef structure that contains
   *         the configuration information for the specified ADC.
   * @retval None
   */
 __weak void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
-  /* Prevent unused argument(s) compilation warning */
-  UNUSED(hadc);
   /* NOTE : This function Should not be modified, when the callback is needed,
             the HAL_ADC_InjectedConvCpltCallback could be implemented in the user file
    */
@@ -762,16 +776,16 @@ __weak void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef* hadc)
 /**
   * @brief  Configures for the selected ADC injected channel its corresponding
   *         rank in the sequencer and its sample time.
-  * @param  hadc pointer to a ADC_HandleTypeDef structure that contains
+  * @param  hadc: pointer to a ADC_HandleTypeDef structure that contains
   *         the configuration information for the specified ADC.
-  * @param  sConfigInjected ADC configuration structure for injected channel. 
+  * @param  sConfigInjected: ADC configuration structure for injected channel. 
   * @retval None
   */
 HAL_StatusTypeDef HAL_ADCEx_InjectedConfigChannel(ADC_HandleTypeDef* hadc, ADC_InjectionConfTypeDef* sConfigInjected)
 {
   
 #ifdef USE_FULL_ASSERT  
-  uint32_t tmp = 0U;
+  uint32_t tmp = 0;
 #endif /* USE_FULL_ASSERT  */
   
   /* Check the parameters */
@@ -788,7 +802,7 @@ HAL_StatusTypeDef HAL_ADCEx_InjectedConfigChannel(ADC_HandleTypeDef* hadc, ADC_I
   assert_param(IS_ADC_RANGE(tmp, sConfigInjected->InjectedOffset));
 #endif /* USE_FULL_ASSERT  */
 
-  if(sConfigInjected->ExternalTrigInjecConv != ADC_INJECTED_SOFTWARE_START)
+  if(sConfigInjected->ExternalTrigInjecConvEdge != ADC_INJECTED_SOFTWARE_START)
   {
     assert_param(IS_ADC_EXT_INJEC_TRIG_EDGE(sConfigInjected->ExternalTrigInjecConvEdge));
   }
@@ -917,9 +931,9 @@ HAL_StatusTypeDef HAL_ADCEx_InjectedConfigChannel(ADC_HandleTypeDef* hadc, ADC_I
 
 /**
   * @brief  Configures the ADC multi-mode 
-  * @param  hadc pointer to a ADC_HandleTypeDef structure that contains
-  *              the configuration information for the specified ADC.  
-  * @param  multimode pointer to an ADC_MultiModeTypeDef structure that contains 
+  * @param  hadc      : pointer to a ADC_HandleTypeDef structure that contains
+  *                     the configuration information for the specified ADC.  
+  * @param  multimode : pointer to an ADC_MultiModeTypeDef structure that contains 
   *                     the configuration information for  multimode.
   * @retval HAL status
   */
@@ -956,9 +970,9 @@ HAL_StatusTypeDef HAL_ADCEx_MultiModeConfigChannel(ADC_HandleTypeDef* hadc, ADC_
   * @}
   */
 
-/**
+  /**
   * @brief  DMA transfer complete callback. 
-  * @param  hdma pointer to a DMA_HandleTypeDef structure that contains
+  * @param  hdma: pointer to a DMA_HandleTypeDef structure that contains
   *                the configuration information for the specified DMA module.
   * @retval None
   */
@@ -1011,7 +1025,7 @@ static void ADC_MultiModeDMAConvCplt(DMA_HandleTypeDef *hdma)
 
 /**
   * @brief  DMA half transfer complete callback. 
-  * @param  hdma pointer to a DMA_HandleTypeDef structure that contains
+  * @param  hdma: pointer to a DMA_HandleTypeDef structure that contains
   *                the configuration information for the specified DMA module.
   * @retval None
   */
@@ -1024,7 +1038,7 @@ static void ADC_MultiModeDMAHalfConvCplt(DMA_HandleTypeDef *hdma)
 
 /**
   * @brief  DMA error callback 
-  * @param  hdma pointer to a DMA_HandleTypeDef structure that contains
+  * @param  hdma: pointer to a DMA_HandleTypeDef structure that contains
   *                the configuration information for the specified DMA module.
   * @retval None
   */

@@ -87,9 +87,9 @@
     </link>
 		
 	<link>
-			<name>Application</name>
+			
 			<type>2</type>
-			<locationURI>virtual:/virtual</locationURI>
+			
 		</link>
     <link>
 			<name>Application/User</name>
@@ -167,9 +167,9 @@
 			<location>PARENT-2-PROJECT_LOC/Src/stm32f2xx_hal_msp.c</location>
 		</link>
     <link>
-			<name>Drivers</name>
+			
 			<type>2</type>
-			<locationURI>virtual:/virtual</locationURI>
+			
 		</link>
     <link>
 			<name>Drivers/STM32F2xx_HAL_Driver</name>
@@ -246,11 +246,7 @@
 			<type>1</type>
 			<location>PARENT-2-PROJECT_LOC/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_dma_ex.c</location>
 		</link>
-    <link>
-			<name>Drivers/STM32F2xx_HAL_Driver/stm32f2xx_hal_exti.c</name>
-			<type>1</type>
-			<location>PARENT-2-PROJECT_LOC/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_exti.c</location>
-		</link>
+    
     <link>
 			<name>Drivers/STM32F2xx_HAL_Driver/stm32f2xx_ll_fsmc.c</name>
 			<type>1</type>
@@ -302,9 +298,9 @@
 			<location>PARENT-2-PROJECT_LOC/Src/system_stm32f2xx.c</location>
 		</link>
     <link>
-			<name>Middlewares</name>
+			
 			<type>2</type>
-			<locationURI>virtual:/virtual</locationURI>
+			
 		</link>
     <link>
 			<name>Middlewares/USB_Device_Library</name>
@@ -336,10 +332,6 @@
       <type>1</type>
       <location>PARENT-2-PROJECT_LOC/Src/usbd_storage_if.c</location>
     </link><link>
-      <name>Application/User/usb_otg_fs.c</name>
-      <type>1</type>
-      <location>PARENT-2-PROJECT_LOC/Src/usb_otg_fs.c</location>
-    </link><link>
       <name>Middlewares/USB_Device_Library/usbd_msc.c</name>
       <type>1</type>
       <location>PARENT-2-PROJECT_LOC/Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc.c</location>
@@ -355,5 +347,21 @@
       <name>Middlewares/USB_Device_Library/usbd_msc_scsi.c</name>
       <type>1</type>
       <location>PARENT-2-PROJECT_LOC/Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc_scsi.c</location>
+    </link><link>
+      <name>Application</name>
+      <type>2</type>
+      <locationURI>virtual:/virtual</locationURI>
+    </link><link>
+      <name>Drivers</name>
+      <type>2</type>
+      <locationURI>virtual:/virtual</locationURI>
+    </link><link>
+      <name>Drivers/STM32F2xx_HAL_Driver/stm32f2xx_hal_exti.c</name>
+      <type>1</type>
+      <location>PARENT-2-PROJECT_LOC/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_exti.c</location>
+    </link><link>
+      <name>Middlewares</name>
+      <type>2</type>
+      <locationURI>virtual:/virtual</locationURI>
     </link></linkedResources>
 </projectDescription>

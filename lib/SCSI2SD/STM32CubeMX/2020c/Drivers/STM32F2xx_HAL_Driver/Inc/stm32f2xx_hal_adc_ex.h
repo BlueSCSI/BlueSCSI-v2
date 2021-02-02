@@ -1,18 +1,36 @@
 /**
   ******************************************************************************
-  * @file    stm32f2xx_hal_adc_ex.h
+  * @file    stm32f2xx_hal_adc.h
   * @author  MCD Application Team
-  * @brief   Header file of ADC HAL extension module.
+  * @version V1.1.0
+  * @date    09-October-2015
+  * @brief   Header file of ADC HAL module.
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; Copyright (c) 2016 STMicroelectronics.
-  * All rights reserved.</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2015 STMicroelectronics</center></h2>
   *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
+  * Redistribution and use in source and binary forms, with or without modification,
+  * are permitted provided that the following conditions are met:
+  *   1. Redistributions of source code must retain the above copyright notice,
+  *      this list of conditions and the following disclaimer.
+  *   2. Redistributions in binary form must reproduce the above copyright notice,
+  *      this list of conditions and the following disclaimer in the documentation
+  *      and/or other materials provided with the distribution.
+  *   3. Neither the name of STMicroelectronics nor the names of its contributors
+  *      may be used to endorse or promote products derived from this software
+  *      without specific prior written permission.
+  *
+  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   *
   ******************************************************************************
   */
@@ -108,6 +126,9 @@ typedef struct
                                                Caution: this setting impacts the entire injected group. Therefore, call of HAL_ADCEx_InjectedConfigChannel() to 
                                                         configure a channel on injected group can impact the configuration of other channels previously set. */
 }ADC_InjectionConfTypeDef; 
+/**
+  * @}
+  */
 
 /** 
   * @brief ADC Configuration multi-mode structure definition  
@@ -134,7 +155,7 @@ typedef struct
 /** @defgroup ADCEx_Common_mode ADC Common Mode
   * @{
   */ 
-#define ADC_MODE_INDEPENDENT                  0x00000000U      
+#define ADC_MODE_INDEPENDENT                  ((uint32_t)0x00000000)      
 #define ADC_DUALMODE_REGSIMULT_INJECSIMULT    ((uint32_t)ADC_CCR_MULTI_0)
 #define ADC_DUALMODE_REGSIMULT_ALTERTRIG      ((uint32_t)ADC_CCR_MULTI_1)
 #define ADC_DUALMODE_INJECSIMULT              ((uint32_t)(ADC_CCR_MULTI_2 | ADC_CCR_MULTI_0))
@@ -154,7 +175,7 @@ typedef struct
 /** @defgroup ADCEx_Direct_memory_access_mode_for_multi_mode ADC Direct Memory Access Mode For Multi Mode
   * @{
   */ 
-#define ADC_DMAACCESSMODE_DISABLED  0x00000000U     /*!< DMA mode disabled */
+#define ADC_DMAACCESSMODE_DISABLED  ((uint32_t)0x00000000)     /*!< DMA mode disabled */
 #define ADC_DMAACCESSMODE_1         ((uint32_t)ADC_CCR_DMA_0)  /*!< DMA mode 1 enabled (2 / 3 half-words one by one - 1 then 2 then 3)*/
 #define ADC_DMAACCESSMODE_2         ((uint32_t)ADC_CCR_DMA_1)  /*!< DMA mode 2 enabled (2 / 3 half-words by pairs - 2&1 then 1&3 then 3&2)*/
 #define ADC_DMAACCESSMODE_3         ((uint32_t)ADC_CCR_DMA)    /*!< DMA mode 3 enabled (2 / 3 bytes by pairs - 2&1 then 1&3 then 3&2) */
@@ -165,7 +186,7 @@ typedef struct
 /** @defgroup ADCEx_External_trigger_edge_Injected ADC External Trigger Edge Injected
   * @{
   */ 
-#define ADC_EXTERNALTRIGINJECCONVEDGE_NONE           0x00000000U
+#define ADC_EXTERNALTRIGINJECCONVEDGE_NONE           ((uint32_t)0x00000000)
 #define ADC_EXTERNALTRIGINJECCONVEDGE_RISING         ((uint32_t)ADC_CR2_JEXTEN_0)
 #define ADC_EXTERNALTRIGINJECCONVEDGE_FALLING        ((uint32_t)ADC_CR2_JEXTEN_1)
 #define ADC_EXTERNALTRIGINJECCONVEDGE_RISINGFALLING  ((uint32_t)ADC_CR2_JEXTEN)
@@ -176,7 +197,7 @@ typedef struct
 /** @defgroup ADCEx_External_trigger_Source_Injected ADC External Trigger Source Injected
   * @{
   */ 
-#define ADC_EXTERNALTRIGINJECCONV_T1_CC4           0x00000000U
+#define ADC_EXTERNALTRIGINJECCONV_T1_CC4           ((uint32_t)0x00000000)
 #define ADC_EXTERNALTRIGINJECCONV_T1_TRGO          ((uint32_t)ADC_CR2_JEXTSEL_0)
 #define ADC_EXTERNALTRIGINJECCONV_T2_CC1           ((uint32_t)ADC_CR2_JEXTSEL_1)
 #define ADC_EXTERNALTRIGINJECCONV_T2_TRGO          ((uint32_t)(ADC_CR2_JEXTSEL_1 | ADC_CR2_JEXTSEL_0))
@@ -192,7 +213,7 @@ typedef struct
 #define ADC_EXTERNALTRIGINJECCONV_T8_CC3           ((uint32_t)(ADC_CR2_JEXTSEL_3 | ADC_CR2_JEXTSEL_2 | ADC_CR2_JEXTSEL_0))
 #define ADC_EXTERNALTRIGINJECCONV_T8_CC4           ((uint32_t)(ADC_CR2_JEXTSEL_3 | ADC_CR2_JEXTSEL_2 | ADC_CR2_JEXTSEL_1))
 #define ADC_EXTERNALTRIGINJECCONV_EXT_IT15         ((uint32_t)ADC_CR2_JEXTSEL)
-#define ADC_INJECTED_SOFTWARE_START                ((uint32_t)ADC_CR2_JEXTSEL + 1U)
+#define ADC_INJECTED_SOFTWARE_START                ((uint32_t)ADC_CR2_JEXTSEL + 1)
 /**
   * @}
   */ 
@@ -200,10 +221,10 @@ typedef struct
 /** @defgroup ADCEx_injected_rank ADC Injected Rank
   * @{
   */ 
-#define ADC_INJECTED_RANK_1    0x00000001U
-#define ADC_INJECTED_RANK_2    0x00000002U
-#define ADC_INJECTED_RANK_3    0x00000003U
-#define ADC_INJECTED_RANK_4    0x00000004U
+#define ADC_INJECTED_RANK_1    ((uint32_t)0x00000001)
+#define ADC_INJECTED_RANK_2    ((uint32_t)0x00000002)
+#define ADC_INJECTED_RANK_3    ((uint32_t)0x00000003)
+#define ADC_INJECTED_RANK_4    ((uint32_t)0x00000004)
 /**
   * @}
   */
@@ -317,17 +338,17 @@ HAL_StatusTypeDef HAL_ADCEx_MultiModeConfigChannel(ADC_HandleTypeDef* hadc, ADC_
                                         ((INJTRIG) == ADC_EXTERNALTRIGINJECCONV_T8_CC4)  || \
                                         ((INJTRIG) == ADC_EXTERNALTRIGINJECCONV_EXT_IT15)|| \
                                         ((INJTRIG) == ADC_INJECTED_SOFTWARE_START))
-#define IS_ADC_INJECTED_LENGTH(LENGTH) (((LENGTH) >= ((uint32_t)1U)) && ((LENGTH) <= ((uint32_t)4U)))
-#define IS_ADC_INJECTED_RANK(RANK) (((RANK) >= ((uint32_t)1U)) && ((RANK) <= ((uint32_t)4U)))
+#define IS_ADC_INJECTED_LENGTH(LENGTH) (((LENGTH) >= ((uint32_t)1)) && ((LENGTH) <= ((uint32_t)4)))
+#define IS_ADC_INJECTED_RANK(RANK) (((RANK) >= ((uint32_t)1)) && ((RANK) <= ((uint32_t)4)))
 
 /**
   * @brief  Set the selected injected Channel rank.
-  * @param  _CHANNELNB_ Channel number.
-  * @param  _RANKNB_ Rank number. 
-  * @param  _JSQR_JL_ Sequence length.
+  * @param  _CHANNELNB_: Channel number.
+  * @param  _RANKNB_: Rank number. 
+  * @param  _JSQR_JL_: Sequence length.     
   * @retval None
   */
-#define   ADC_JSQR(_CHANNELNB_, _RANKNB_, _JSQR_JL_)  (((uint32_t)((uint16_t)(_CHANNELNB_))) << (5U * (uint8_t)(((_RANKNB_) + 3U) - (_JSQR_JL_))))
+#define   ADC_JSQR(_CHANNELNB_, _RANKNB_, _JSQR_JL_)  (((uint32_t)((uint16_t)(_CHANNELNB_))) << (5 * (uint8_t)(((_RANKNB_) + 3) - (_JSQR_JL_))))
 
 /**
   * @}

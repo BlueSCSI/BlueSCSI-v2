@@ -26,7 +26,6 @@
 #include "tim.h"
 #include "usart.h"
 #include "usb_device.h"
-#include "usb_otg_fs.h"
 #include "gpio.h"
 #include "fsmc.h"
 
@@ -107,10 +106,7 @@ int main(void)
   MX_FSMC_Init();
   MX_SDIO_SD_Init();
   MX_SPI1_Init();
-  MX_TIM4_Init();
-  MX_USB_DEVICE_Init();
   MX_UART4_Init();
-  MX_USB_OTG_FS_PCD_Init();
   /* USER CODE BEGIN 2 */
   mainInit();
 

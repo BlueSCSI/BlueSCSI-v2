@@ -24,21 +24,30 @@
  *    Removed: osSignalGet 
  *----------------------------------------------------------------------------
  *
- * Copyright (c) 2013-2017 ARM LIMITED
+ * Copyright (c) 2013 ARM LIMITED
+ * All rights reserved.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *  - Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  - Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *  - Neither the name of ARM  nor the names of its contributors may be used
+ *    to endorse or promote products derived from this software without
+ *    specific prior written permission.
  *
- * SPDX-License-Identifier: Apache-2.0
- *
- * Licensed under the Apache License, Version 2.0 (the License); you may
- * not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an AS IS BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL COPYRIGHT HOLDERS AND CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  *---------------------------------------------------------------------------*/
  
  
@@ -327,14 +336,14 @@ osPriority osThreadGetPriority (osThreadId thread_id);
 //  ==== Generic Wait Functions ====
  
 /// Wait for Timeout (Time Delay).
-/// \param[in]     millisec      \ref CMSIS_RTOS_TimeOutValue "time delay" value
+/// \param[in]     millisec      time delay value
 /// \return status code that indicates the execution status of the function.
 osStatus osDelay (uint32_t millisec);
  
 #if (defined (osFeature_Wait)  &&  (osFeature_Wait != 0))     // Generic Wait available
  
 /// Wait for Signal, Message, Mail, or Timeout.
-/// \param[in] millisec          \ref CMSIS_RTOS_TimeOutValue or 0 in case of no time-out
+/// \param[in] millisec          timeout value or 0 in case of no time-out
 /// \return event that contains signal, message, or mail information or error code.
 /// \note MUST REMAIN UNCHANGED: \b osWait shall be consistent in every CMSIS-RTOS.
 osEvent osWait (uint32_t millisec);
@@ -374,7 +383,7 @@ osTimerId osTimerCreate (const osTimerDef_t *timer_def, os_timer_type type, void
  
 /// Start or restart a timer.
 /// \param[in]     timer_id      timer ID obtained by \ref osTimerCreate.
-/// \param[in]     millisec      \ref CMSIS_RTOS_TimeOutValue "time delay" value of the timer.
+/// \param[in]     millisec      time delay value of the timer.
 /// \return status code that indicates the execution status of the function.
 /// \note MUST REMAIN UNCHANGED: \b osTimerStart shall be consistent in every CMSIS-RTOS.
 osStatus osTimerStart (osTimerId timer_id, uint32_t millisec);
@@ -410,7 +419,7 @@ int32_t osSignalClear (osThreadId thread_id, int32_t signals);
  
 /// Wait for one or more Signal Flags to become signaled for the current \b RUNNING thread.
 /// \param[in]     signals       wait until all specified signal flags set or 0 for any single signal flag.
-/// \param[in]     millisec      \ref CMSIS_RTOS_TimeOutValue or 0 in case of no time-out.
+/// \param[in]     millisec      timeout value or 0 in case of no time-out.
 /// \return event flag information or error code.
 /// \note MUST REMAIN UNCHANGED: \b osSignalWait shall be consistent in every CMSIS-RTOS.
 osEvent osSignalWait (int32_t signals, uint32_t millisec);
@@ -445,7 +454,7 @@ osMutexId osMutexCreate (const osMutexDef_t *mutex_def);
  
 /// Wait until a Mutex becomes available.
 /// \param[in]     mutex_id      mutex ID obtained by \ref osMutexCreate.
-/// \param[in]     millisec      \ref CMSIS_RTOS_TimeOutValue or 0 in case of no time-out.
+/// \param[in]     millisec      timeout value or 0 in case of no time-out.
 /// \return status code that indicates the execution status of the function.
 /// \note MUST REMAIN UNCHANGED: \b osMutexWait shall be consistent in every CMSIS-RTOS.
 osStatus osMutexWait (osMutexId mutex_id, uint32_t millisec);
@@ -495,7 +504,7 @@ osSemaphoreId osSemaphoreCreate (const osSemaphoreDef_t *semaphore_def, int32_t 
  
 /// Wait until a Semaphore token becomes available.
 /// \param[in]     semaphore_id  semaphore object referenced with \ref osSemaphoreCreate.
-/// \param[in]     millisec      \ref CMSIS_RTOS_TimeOutValue or 0 in case of no time-out.
+/// \param[in]     millisec      timeout value or 0 in case of no time-out.
 /// \return number of available tokens, or -1 in case of incorrect parameters.
 /// \note MUST REMAIN UNCHANGED: \b osSemaphoreWait shall be consistent in every CMSIS-RTOS.
 int32_t osSemaphoreWait (osSemaphoreId semaphore_id, uint32_t millisec);
@@ -605,14 +614,14 @@ osMessageQId osMessageCreate (const osMessageQDef_t *queue_def, osThreadId threa
 /// Put a Message to a Queue.
 /// \param[in]     queue_id      message queue ID obtained with \ref osMessageCreate.
 /// \param[in]     info          message information.
-/// \param[in]     millisec      \ref CMSIS_RTOS_TimeOutValue or 0 in case of no time-out.
+/// \param[in]     millisec      timeout value or 0 in case of no time-out.
 /// \return status code that indicates the execution status of the function.
 /// \note MUST REMAIN UNCHANGED: \b osMessagePut shall be consistent in every CMSIS-RTOS.
 osStatus osMessagePut (osMessageQId queue_id, uint32_t info, uint32_t millisec);
  
 /// Get a Message or Wait for a Message from a Queue.
 /// \param[in]     queue_id      message queue ID obtained with \ref osMessageCreate.
-/// \param[in]     millisec      \ref CMSIS_RTOS_TimeOutValue or 0 in case of no time-out.
+/// \param[in]     millisec      timeout value or 0 in case of no time-out.
 /// \return event information that includes status code.
 /// \note MUST REMAIN UNCHANGED: \b osMessageGet shall be consistent in every CMSIS-RTOS.
 osEvent osMessageGet (osMessageQId queue_id, uint32_t millisec);
@@ -655,14 +664,14 @@ osMailQId osMailCreate (const osMailQDef_t *queue_def, osThreadId thread_id);
  
 /// Allocate a memory block from a mail.
 /// \param[in]     queue_id      mail queue ID obtained with \ref osMailCreate.
-/// \param[in]     millisec      \ref CMSIS_RTOS_TimeOutValue or 0 in case of no time-out
+/// \param[in]     millisec      timeout value or 0 in case of no time-out
 /// \return pointer to memory block that can be filled with mail or NULL in case of error.
 /// \note MUST REMAIN UNCHANGED: \b osMailAlloc shall be consistent in every CMSIS-RTOS.
 void *osMailAlloc (osMailQId queue_id, uint32_t millisec);
  
 /// Allocate a memory block from a mail and set memory block to zero.
 /// \param[in]     queue_id      mail queue ID obtained with \ref osMailCreate.
-/// \param[in]     millisec      \ref CMSIS_RTOS_TimeOutValue or 0 in case of no time-out
+/// \param[in]     millisec      timeout value or 0 in case of no time-out
 /// \return pointer to memory block that can be filled with mail or NULL in case of error.
 /// \note MUST REMAIN UNCHANGED: \b osMailCAlloc shall be consistent in every CMSIS-RTOS.
 void *osMailCAlloc (osMailQId queue_id, uint32_t millisec);
@@ -676,7 +685,7 @@ osStatus osMailPut (osMailQId queue_id, void *mail);
  
 /// Get a mail from a queue.
 /// \param[in]     queue_id      mail queue ID obtained with \ref osMailCreate.
-/// \param[in]     millisec      \ref CMSIS_RTOS_TimeOutValue or 0 in case of no time-out
+/// \param[in]     millisec      timeout value or 0 in case of no time-out
 /// \return event that contains mail information or error code.
 /// \note MUST REMAIN UNCHANGED: \b osMailGet shall be consistent in every CMSIS-RTOS.
 osEvent osMailGet (osMailQId queue_id, uint32_t millisec);

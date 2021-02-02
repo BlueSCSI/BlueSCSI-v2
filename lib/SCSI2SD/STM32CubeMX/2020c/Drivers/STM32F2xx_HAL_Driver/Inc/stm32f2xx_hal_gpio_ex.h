@@ -2,20 +2,38 @@
   ******************************************************************************
   * @file    stm32f2xx_hal_gpio_ex.h
   * @author  MCD Application Team
+  * @version V1.1.0
+  * @date    09-October-2015
   * @brief   Header file of GPIO HAL Extension module.
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; Copyright (c) 2017 STMicroelectronics.
-  * All rights reserved.</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2015 STMicroelectronics</center></h2>
   *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
+  * Redistribution and use in source and binary forms, with or without modification,
+  * are permitted provided that the following conditions are met:
+  *   1. Redistributions of source code must retain the above copyright notice,
+  *      this list of conditions and the following disclaimer.
+  *   2. Redistributions in binary form must reproduce the above copyright notice,
+  *      this list of conditions and the following disclaimer in the documentation
+  *      and/or other materials provided with the distribution.
+  *   3. Neither the name of STMicroelectronics nor the names of its contributors
+  *      may be used to endorse or promote products derived from this software
+  *      without specific prior written permission.
+  *
+  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   *
   ******************************************************************************
-  */
+  */ 
 
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __STM32F2xx_HAL_GPIO_EX_H
@@ -121,22 +139,22 @@
 /** 
   * @brief   AF 10 selection  
   */ 
-#define GPIO_AF10_OTG_FS        ((uint8_t)0x0A)  /* OTG_FS Alternate Function mapping */
-#define GPIO_AF10_OTG_HS        ((uint8_t)0x0A)  /* OTG_HS Alternate Function mapping */
+#define GPIO_AF10_OTG_FS        ((uint8_t)0xA)  /* OTG_FS Alternate Function mapping */
+#define GPIO_AF10_OTG_HS        ((uint8_t)0xA)  /* OTG_HS Alternate Function mapping */
 
 /** 
   * @brief   AF 11 selection  
   */ 
 #if defined(STM32F207xx) || defined(STM32F217xx)
-#define GPIO_AF11_ETH           ((uint8_t)0x0B)  /* ETHERNET Alternate Function mapping */
+#define GPIO_AF11_ETH             ((uint8_t)0x0B)  /* ETHERNET Alternate Function mapping */
 #endif /* STM32F207xx || STM32F217xx */
 
 /** 
   * @brief   AF 12 selection  
   */ 
-#define GPIO_AF12_FSMC          ((uint8_t)0x0C)  /* FSMC Alternate Function mapping                     */
-#define GPIO_AF12_OTG_HS_FS     ((uint8_t)0x0C)  /* OTG HS configured in FS, Alternate Function mapping */
-#define GPIO_AF12_SDIO          ((uint8_t)0x0C)  /* SDIO Alternate Function mapping                     */
+#define GPIO_AF12_FSMC          ((uint8_t)0xC)  /* FSMC Alternate Function mapping                     */
+#define GPIO_AF12_OTG_HS_FS     ((uint8_t)0xC)  /* OTG HS configured in FS, Alternate Function mapping */
+#define GPIO_AF12_SDIO          ((uint8_t)0xC)  /* SDIO Alternate Function mapping                     */
 
 /** 
   * @brief   AF 13 selection  
@@ -246,7 +264,7 @@
                           ((AF) == GPIO_AF12_OTG_HS_FS) || ((AF) == GPIO_AF12_SDIO)      || \
                           ((AF) == GPIO_AF12_FSMC)      || ((AF) == GPIO_AF15_EVENTOUT))
 #endif /* STM32F207xx || STM32F217xx */
-
+                          
 /**
   * @}
   */ 

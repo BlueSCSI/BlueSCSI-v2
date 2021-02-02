@@ -2,20 +2,38 @@
   ******************************************************************************
   * @file    stm32f2xx_hal_pwr_ex.h
   * @author  MCD Application Team
+  * @version V1.1.0
+  * @date    09-October-2015
   * @brief   Header file of PWR HAL Extension module.
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; Copyright (c) 2017 STMicroelectronics.
-  * All rights reserved.</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2015 STMicroelectronics</center></h2>
   *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
+  * Redistribution and use in source and binary forms, with or without modification,
+  * are permitted provided that the following conditions are met:
+  *   1. Redistributions of source code must retain the above copyright notice,
+  *      this list of conditions and the following disclaimer.
+  *   2. Redistributions in binary form must reproduce the above copyright notice,
+  *      this list of conditions and the following disclaimer in the documentation
+  *      and/or other materials provided with the distribution.
+  *   3. Neither the name of STMicroelectronics nor the names of its contributors
+  *      may be used to endorse or promote products derived from this software
+  *      without specific prior written permission.
+  *
+  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   *
   ******************************************************************************
-  */
+  */ 
 
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __STM32F2xx_HAL_PWR_EX_H
@@ -38,7 +56,7 @@
 
 /* Exported types ------------------------------------------------------------*/ 
 /* Exported constants --------------------------------------------------------*/
-/** @defgroup PWREx_Exported_Constants PWR Exported Constants
+/** @defgroup PWREx_Exported_Constants PWREx Exported Constants
   * @{
   */
 
@@ -47,7 +65,7 @@
   */ 
 
 /* Exported macro ------------------------------------------------------------*/
-/** @defgroup PWREx_Exported_Constants PWR Exported Constants
+/** @defgroup PWREx_Exported_Constants PWREx Exported Constants
   *  @{
   */
 /**
@@ -55,7 +73,7 @@
   */
 
 /* Exported functions --------------------------------------------------------*/
-/** @addtogroup PWREx_Exported_Functions PWR Exported Functions
+/** @addtogroup PWREx_Exported_Functions PWREx Exported Functions
   *  @{
   */
  
@@ -76,30 +94,30 @@ HAL_StatusTypeDef HAL_PWREx_DisableBkUpReg(void);
 /* Private types -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 /* Private constants ---------------------------------------------------------*/
-/** @defgroup PWREx_Private_Constants PWR Private Constants
+/** @defgroup PWREx_Private_Constants PWREx Private Constants
   * @{
   */
 
-/** @defgroup PWREx_register_alias_address PWR Register alias address
+/** @defgroup PWREx_register_alias_address PWREx Register alias address
   * @{
   */
 /* ------------- PWR registers bit address in the alias region ---------------*/
 /* --- CR Register ---*/
 /* Alias word address of FPDS bit */
 #define FPDS_BIT_NUMBER          POSITION_VAL(PWR_CR_FPDS)
-#define CR_FPDS_BB               (uint32_t)(PERIPH_BB_BASE + (PWR_CR_OFFSET_BB * 32U) + (FPDS_BIT_NUMBER * 4U))
+#define CR_FPDS_BB               (uint32_t)(PERIPH_BB_BASE + (PWR_CR_OFFSET_BB * 32) + (FPDS_BIT_NUMBER * 4))
 
  /**
   * @}
   */
 
-/** @defgroup PWREx_CSR_register_alias PWR CSR Register alias address
+/** @defgroup PWREx_CSR_register_alias PWRx CSR Register alias address
   * @{
   */  
 /* --- CSR Register ---*/
 /* Alias word address of BRE bit */
 #define BRE_BIT_NUMBER   POSITION_VAL(PWR_CSR_BRE)
-#define CSR_BRE_BB      (uint32_t)(PERIPH_BB_BASE + (PWR_CSR_OFFSET_BB * 32U) + (BRE_BIT_NUMBER * 4U))    
+#define CSR_BRE_BB      (uint32_t)(PERIPH_BB_BASE + (PWR_CSR_OFFSET_BB * 32) + (BRE_BIT_NUMBER * 4))    
 /**
   * @}
   */
@@ -109,11 +127,11 @@ HAL_StatusTypeDef HAL_PWREx_DisableBkUpReg(void);
   */
 
 /* Private macros ------------------------------------------------------------*/
-/** @defgroup PWREx_Private_Macros PWR Private Macros
+/** @defgroup PWREx_Private_Macros PWREx Private Macros
   * @{
   */
 
-/** @defgroup PWREx_IS_PWR_Definitions PWR Private macros to check input parameters
+/** @defgroup PWREx_IS_PWR_Definitions PWREx Private macros to check input parameters
   * @{
   */
 

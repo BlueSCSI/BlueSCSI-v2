@@ -43,6 +43,7 @@
 
 /* USB Device Core handle declaration. */
 USBD_HandleTypeDef hUsbDeviceHS;
+USBD_HandleTypeDef hUsbDeviceFS;
 
 /*
  * -- Insert your variables declaration here --
@@ -82,6 +83,27 @@ void MX_USB_DEVICE_Init(void)
     Error_Handler();
   }
   if (USBD_Start(&hUsbDeviceHS) != USBD_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USB_DEVICE_Init_PreTreatment */
+  
+  /* USER CODE END USB_DEVICE_Init_PreTreatment */
+  
+  /* Init Device Library, add supported class and start the library. */
+  if (USBD_Init(&hUsbDeviceFS, &FS_Desc, DEVICE_FS) != USBD_OK)
+  {
+    Error_Handler();
+  }
+  if (USBD_RegisterClass(&hUsbDeviceFS, &USBD_MSC) != USBD_OK)
+  {
+    Error_Handler();
+  }
+  if (USBD_MSC_RegisterStorage(&hUsbDeviceFS, &USBD_Storage_Interface_fops_FS) != USBD_OK)
+  {
+    Error_Handler();
+  }
+  if (USBD_Start(&hUsbDeviceFS) != USBD_OK)
   {
     Error_Handler();
   }

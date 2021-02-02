@@ -2,6 +2,8 @@
   ******************************************************************************
   * @file    stm32f2xx_hal_rcc_ex.c
   * @author  MCD Application Team
+  * @version V1.1.0
+  * @date    09-October-2015
   * @brief   Extension RCC HAL module driver.
   *          This file provides firmware functions to manage the following 
   *          functionalities RCC extension peripheral:
@@ -10,16 +12,32 @@
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; Copyright (c) 2017 STMicroelectronics.
-  * All rights reserved.</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2015 STMicroelectronics</center></h2>
   *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
+  * Redistribution and use in source and binary forms, with or without modification,
+  * are permitted provided that the following conditions are met:
+  *   1. Redistributions of source code must retain the above copyright notice,
+  *      this list of conditions and the following disclaimer.
+  *   2. Redistributions in binary form must reproduce the above copyright notice,
+  *      this list of conditions and the following disclaimer in the documentation
+  *      and/or other materials provided with the distribution.
+  *   3. Neither the name of STMicroelectronics nor the names of its contributors
+  *      may be used to endorse or promote products derived from this software
+  *      without specific prior written permission.
+  *
+  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   *
   ******************************************************************************
-  */
+  */ 
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f2xx_hal.h"
@@ -57,7 +75,7 @@
 @verbatim   
  ===============================================================================
                 ##### Extended Peripheral Control functions  #####
- ===============================================================================
+ ===============================================================================  
     [..]
     This subsection provides a set of functions allowing to control the RCC Clocks 
     frequencies.
@@ -74,7 +92,7 @@
 /**
   * @brief  Initializes the RCC extended peripherals clocks according to the specified parameters in the
   *         RCC_PeriphCLKInitTypeDef.
-  * @param  PeriphClkInit pointer to an RCC_PeriphCLKInitTypeDef structure that
+  * @param  PeriphClkInit: pointer to an RCC_PeriphCLKInitTypeDef structure that
   *         contains the configuration information for the Extended Peripherals clocks(I2S and RTC clocks).
   *         
   * @note   A caution to be taken when HAL_RCCEx_PeriphCLKConfig() is used to select RTC clock selection, in this case 
@@ -85,8 +103,8 @@
   */
 HAL_StatusTypeDef HAL_RCCEx_PeriphCLKConfig(RCC_PeriphCLKInitTypeDef  *PeriphClkInit)
 {
-  uint32_t tickstart = 0U;
-  uint32_t tmpreg1 = 0U;
+  uint32_t tickstart = 0;
+  uint32_t tmpreg1 = 0;
     
   /* Check the parameters */
   assert_param(IS_RCC_PERIPHCLOCK(PeriphClkInit->PeriphClockSelection));
@@ -133,12 +151,9 @@ HAL_StatusTypeDef HAL_RCCEx_PeriphCLKConfig(RCC_PeriphCLKInitTypeDef  *PeriphClk
   }
   /*--------------------------------------------------------------------------*/
   
-  /*---------------------------- RTC configuration ---------------------------*/
+  /*----------------------------- RTC configuration --------------------------*/
   if(((PeriphClkInit->PeriphClockSelection) & RCC_PERIPHCLK_RTC) == (RCC_PERIPHCLK_RTC))
-  {
-    /* Check for RTC Parameters used to output RTCCLK */
-    assert_param(IS_RCC_RTCCLKSOURCE(PeriphClkInit->RTCClockSelection));
-    
+  {    
     /* Enable Power Clock*/
     __HAL_RCC_PWR_CLK_ENABLE();
     
@@ -153,11 +168,10 @@ HAL_StatusTypeDef HAL_RCCEx_PeriphCLKConfig(RCC_PeriphCLKInitTypeDef  *PeriphClk
       if((HAL_GetTick() - tickstart ) > RCC_DBP_TIMEOUT_VALUE)
       {
         return HAL_TIMEOUT;
-      }
+      }      
     }
-    /* Reset the Backup domain only if the RTC Clock source selection is modified from reset value */ 
-    tmpreg1 = (RCC->BDCR & RCC_BDCR_RTCSEL);
-    if((tmpreg1 != 0x00000000U) && ((tmpreg1) != (PeriphClkInit->RTCClockSelection & RCC_BDCR_RTCSEL)))
+    /* Reset the Backup domain only if the RTC Clock source selection is modified */
+    if((RCC->BDCR & RCC_BDCR_RTCSEL) != (PeriphClkInit->RTCClockSelection & RCC_BDCR_RTCSEL))
     {
       /* Store the content of BDCR register before the reset of Backup Domain */
       tmpreg1 = (RCC->BDCR & ~(RCC_BDCR_RTCSEL));
@@ -166,9 +180,8 @@ HAL_StatusTypeDef HAL_RCCEx_PeriphCLKConfig(RCC_PeriphCLKInitTypeDef  *PeriphClk
       __HAL_RCC_BACKUPRESET_RELEASE();
       /* Restore the Content of BDCR register */
       RCC->BDCR = tmpreg1;
-
-      /* Wait for LSE reactivation if LSE was enable prior to Backup Domain reset */
-      if(HAL_IS_BIT_SET(RCC->BDCR, RCC_BDCR_LSEON))
+      /* Wait for LSERDY if LSE was enabled */
+      if(HAL_IS_BIT_SET(tmpreg1, RCC_BDCR_LSERDY))
       {
         /* Get tick */
         tickstart = HAL_GetTick();
@@ -182,8 +195,8 @@ HAL_StatusTypeDef HAL_RCCEx_PeriphCLKConfig(RCC_PeriphCLKInitTypeDef  *PeriphClk
           }
         }
       }
+      __HAL_RCC_RTC_CONFIG(PeriphClkInit->RTCClockSelection);
     }
-    __HAL_RCC_RTC_CONFIG(PeriphClkInit->RTCClockSelection);
   }
   /*--------------------------------------------------------------------------*/
 
@@ -193,7 +206,7 @@ HAL_StatusTypeDef HAL_RCCEx_PeriphCLKConfig(RCC_PeriphCLKInitTypeDef  *PeriphClk
 /**
   * @brief  Configures the RCC_OscInitStruct according to the internal 
   * RCC configuration registers.
-  * @param  PeriphClkInit pointer to an RCC_PeriphCLKInitTypeDef structure that 
+  * @param  PeriphClkInit: pointer to an RCC_PeriphCLKInitTypeDef structure that 
   * will be configured.
   * @retval None
   */
@@ -204,7 +217,7 @@ void HAL_RCCEx_GetPeriphCLKConfig(RCC_PeriphCLKInitTypeDef  *PeriphClkInit)
   /* Set all possible values for the extended clock type parameter------------*/
   PeriphClkInit->PeriphClockSelection = RCC_PERIPHCLK_I2S | RCC_PERIPHCLK_RTC;
   
-  /* Get the PLLI2S Clock configuration --------------------------------------*/
+  /* Get the PLLI2S Clock configuration -----------------------------------------------*/
   PeriphClkInit->PLLI2S.PLLI2SN = (uint32_t)((RCC->PLLI2SCFGR & RCC_PLLI2SCFGR_PLLI2SN) >> POSITION_VAL(RCC_PLLI2SCFGR_PLLI2SN));
   PeriphClkInit->PLLI2S.PLLI2SR = (uint32_t)((RCC->PLLI2SCFGR & RCC_PLLI2SCFGR_PLLI2SR) >> POSITION_VAL(RCC_PLLI2SCFGR_PLLI2SR));
   
