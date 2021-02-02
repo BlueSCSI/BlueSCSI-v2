@@ -50,42 +50,7 @@ Tested on a Color Classic with [SCSI Director Pro 4](https://macintoshgarden.org
 
 ## Assembly
 
-1. Solder on the surface mount SD Card holder. Using the [Drag Solder](https://www.youtube.com/watch?v=nyele3CIs-U&start=34) technique.
-    - Once on, check continuity of all connections. Fixing this after the BluePill is on will be difficult.
-1. Solder the dioeds to the bottom of the board. Be sure they are flush as possible to the bottom.
-1. Solder the header pins on to the BluePill. Then the blue pill to the BlueSCSI PCB.
-    - Correct orientation is having the USB should be over the SD Card holder.
-1. Solder on the Resistor nets. Pin one is marked on the board and the resistors.
-1. Solder on the Termination Jumpers & place the jumpers on.
-1. Solder the 50 Pin headers on.
-1. Optional - Solder on the berg connector. Only needed if your machine does not supply enough power via the SCSI bus.
-1. Optional - Solder on the debug headers near the SD card. Only nessissarry if re-programming.
-
-### Version 1.0-b BOM
-
-STM32F103C8T6 (U1) aka BluePill board. Beware of fake/scams. Look for reviews. Amazon, ebay, etc.
-
-Mouser Cart https://www.mouser.com/ProjectManager/ProjectDetail.aspx?State=EDIT&ProjectGUID=db967d46-a51a-4a0e-a350-8f503b2f02cf
-
-* 2x 330 (RN2, RN4) Resistor nets https://www.mouser.com/ProductDetail/652-4610X-1LF-330
-
-* 2x 220 (RN1, RN3) Resistor nets https://www.mouser.com/ProductDetail/652-4610X-1LF-220
-
-* 2x Diodes https://www.mouser.com/ProductDetail/583-1N5818-T
-
-* SD Card Holder (J1)  https://www.mouser.com/ProductDetail/538-104031-0811
-
-* Headers https://www.mouser.com/ProductDetail/872-920-0011-01
-
-* 50 PIN SCSI header https://www.mouser.com/ProductDetail/517-30350-6002/
-  - May substitute with 2 rows of headers from above.
-  - **Note on Right angle connectors** - it appears Right angle headers are notched differently then the pin out. Be sure to note PIN 1/red stripe on the cable match up.
-
-### Optional
-
-Floppy/Berg Power header https://www.mouser.com/ProductDetail/571-1718254
-  - Required if your machine does not supply power via TERM POWER. For example a Mac Plus or Mac with a Analog/PSU board that has not been recapped.
-
+See [Assembly.md](docs/assembly.md)
 ## Usage
 
 Hard Disk image files are placed in the root directory of a `FAT32` (or `ExFat`) formatted SD card. You can create a disk image using `dd` or download one from the `blank_images.zip` file. These images are compatible with the RaSCSI device and Basilisk II emulator.
