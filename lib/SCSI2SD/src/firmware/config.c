@@ -41,6 +41,12 @@ static const uint16_t FIRMWARE_VERSION = 0x0632;
 // Optional static config
 extern uint8_t* __fixed_config;
 
+#ifdef S2S_USB_HS
+#define configUsbDev hUsbDeviceHS
+#else
+#define configUsbDev configUsbDev
+#endif
+
 // 1 flash row
 static const uint8_t DEFAULT_CONFIG[128] =
 {
@@ -322,19 +328,19 @@ void s2s_configPoll()
 {
 	s2s_spin_lock(&usbDevLock);
 
-	if (!USBD_Composite_IsConfigured(&hUsbDeviceFS))
+	if (!USBD_Composite_IsConfigured(&configUsbDev))
 	{
 		usbInEpState = USB_IDLE;
 		goto out;
 	}
 
-	if (USBD_HID_IsReportReady(&hUsbDeviceFS))
+	if (USBD_HID_IsReportReady(&configUsbDev))
 	{
 		s2s_ledOn();
 
 		// The host sent us some data!
 		uint8_t hidBuffer[USBHID_LEN];
-		int byteCount = USBD_HID_GetReport(&hUsbDeviceFS, hidBuffer, sizeof(hidBuffer));
+		int byteCount = USBD_HID_GetReport(&configUsbDev, hidBuffer, sizeof(hidBuffer));
 		hidPacket_recv(hidBuffer, byteCount);
 
 		size_t cmdSize;
@@ -356,14 +362,14 @@ void s2s_configPoll()
 
 			if (nextChunk)
 			{
-				USBD_HID_SendReport (&hUsbDeviceFS, nextChunk, sizeof(hidBuffer));
+				USBD_HID_SendReport (&configUsbDev, nextChunk, sizeof(hidBuffer));
 				usbInEpState = USB_DATA_SENT;
 			}
 		}
 		break;
 
 	case USB_DATA_SENT:
-		if (!USBD_HID_IsBusy(&hUsbDeviceFS))
+		if (!USBD_HID_IsBusy(&configUsbDev))
 		{
 			// Data accepted.
 			usbInEpState = USB_IDLE;
@@ -377,16 +383,16 @@ out:
 
 void s2s_debugTimer()
 {
-	if (!USBD_Composite_IsConfigured(&hUsbDeviceFS))
+	if (!USBD_Composite_IsConfigured(&configUsbDev))
 	{
 		usbInEpState = USB_IDLE;
 		return;
 	}
 
-	if (USBD_HID_IsReportReady(&hUsbDeviceFS))
+	if (USBD_HID_IsReportReady(&configUsbDev))
 	{
 		uint8_t hidBuffer[USBHID_LEN];
-		int byteCount = USBD_HID_GetReport(&hUsbDeviceFS, hidBuffer, sizeof(hidBuffer));
+		int byteCount = USBD_HID_GetReport(&configUsbDev, hidBuffer, sizeof(hidBuffer));
 		hidPacket_recv(hidBuffer, byteCount);
 
 		size_t cmdSize;
@@ -416,14 +422,14 @@ void s2s_debugTimer()
 
 			if (nextChunk)
 			{
-				USBD_HID_SendReport (&hUsbDeviceFS, nextChunk, sizeof(hidBuffer));
+				USBD_HID_SendReport (&configUsbDev, nextChunk, sizeof(hidBuffer));
 				usbInEpState = USB_DATA_SENT;
 			}
 		}
 		break;
 
 		case USB_DATA_SENT:
-			if (!USBD_HID_IsBusy(&hUsbDeviceFS))
+			if (!USBD_HID_IsBusy(&configUsbDev))
 			{
 				// Data accepted.
 				usbInEpState = USB_IDLE;

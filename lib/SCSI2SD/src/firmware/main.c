@@ -54,8 +54,14 @@ void mainInit()
 	s2s_timeInit();
 	s2s_checkHwVersion();
 
-	// DISable the ULPI chip
-	HAL_GPIO_WritePin(nULPI_RESET_GPIO_Port, nULPI_RESET_Pin, GPIO_PIN_RESET);
+	#ifdef S2S_USB_HS
+		// Enable the ULPI chip
+		HAL_GPIO_WritePin(nULPI_RESET_GPIO_Port, nULPI_RESET_Pin, GPIO_PIN_SET);
+		s2s_delay_ms(5);
+	#else
+		// DISable the ULPI chip
+		HAL_GPIO_WritePin(nULPI_RESET_GPIO_Port, nULPI_RESET_Pin, GPIO_PIN_RESET);
+	#endif
 
 	s2s_ledInit();
 	s2s_fpgaInit();
@@ -95,7 +101,13 @@ void mainLoop()
 	scsiPoll();
 	scsiDiskPoll();
 	s2s_configPoll();
-	s2s_usbDevicePoll();
+
+#ifdef S2S_USB_FS
+	s2s_usbDevicePoll(&hUsbDeviceFS);
+#endif
+#ifdef S2S_USB_FS
+	s2s_usbDevicePoll(&hUsbDeviceHS);
+#endif
 
 #if 0
 	sdPoll();

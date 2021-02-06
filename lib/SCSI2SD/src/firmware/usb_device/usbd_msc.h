@@ -91,9 +91,9 @@ typedef struct
   uint8_t                  bot_state;
   uint8_t                  bot_status;  
   uint16_t                 bot_data_length;
-  uint8_t                  bot_data[S2S_MSC_MEDIA_PACKET];  
-  USBD_MSC_BOT_CBWTypeDef  cbw;
-  USBD_MSC_BOT_CSWTypeDef  csw;
+  __ALIGN_BEGIN uint8_t                  bot_data[S2S_MSC_MEDIA_PACKET] __ALIGN_END;
+  __ALIGN_BEGIN USBD_MSC_BOT_CBWTypeDef  cbw __ALIGN_END;
+  __ALIGN_BEGIN USBD_MSC_BOT_CSWTypeDef  csw __ALIGN_END;
   
   USBD_SCSI_SenseTypeDef   scsi_sense [SENSE_LIST_DEEPTH];
   uint8_t                  scsi_sense_head;

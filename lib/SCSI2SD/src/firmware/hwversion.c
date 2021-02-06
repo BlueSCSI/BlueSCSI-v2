@@ -66,6 +66,7 @@ checkHwSensePins()
 void
 s2s_checkHwVersion()
 {
+return; // TODO FIX FOR 2021
 	checkHwSensePins();
 
 	// Write a marker to flash that can be read by dfu-util now that we know

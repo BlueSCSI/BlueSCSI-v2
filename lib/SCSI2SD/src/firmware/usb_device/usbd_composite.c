@@ -27,6 +27,9 @@
 #include "usbd_ctlreq.h"
 
 
+// Support 2 USB devices.
+__ALIGN_BEGIN static USBD_CompositeClassData fsClassData __ALIGN_END;
+__ALIGN_BEGIN static USBD_CompositeClassData hsClassData __ALIGN_END;
 
 static uint8_t  USBD_Composite_Init (USBD_HandleTypeDef *pdev, uint8_t cfgidx);
 
@@ -179,11 +182,20 @@ static uint8_t  USBD_Composite_Init(USBD_HandleTypeDef *pdev, uint8_t cfgidx)
 	USBD_LL_OpenEP(pdev, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
 
 
-	// Use static memory. This limits us to a single HID and MSC devicd
-	static USBD_CompositeClassData classData;
-	classData.hid.state = HID_IDLE;
-	classData.hid.reportReady = 0;
-	pdev->pClassData = &classData;
+	USBD_CompositeClassData* classData;
+	if (pdev->id == DEVICE_HS)
+	{
+		classData = &hsClassData;
+	}
+	else
+	{
+		classData = &fsClassData;
+	}
+	classData->hid.state = HID_IDLE;
+	classData->hid.reportReady = 0;
+	classData->DataInReady = 0;
+	classData->DataOutReady = 0;
+	pdev->pClassData = classData;
 
 	MSC_BOT_Init(pdev);
 
@@ -191,8 +203,8 @@ static uint8_t  USBD_Composite_Init(USBD_HandleTypeDef *pdev, uint8_t cfgidx)
 	USBD_LL_PrepareReceive(
 		pdev,
 		HID_EPOUT_ADDR,
-		classData.hid.rxBuffer,
-		sizeof(classData.hid.rxBuffer));
+		classData->hid.rxBuffer,
+		sizeof(classData->hid.rxBuffer));
 
 	return ret;
 }
@@ -350,15 +362,11 @@ static uint8_t USBD_Composite_Setup(
 }
 
 
-int FIXME_IN = 0;
-int FIXME_OUT = 0;
-USBD_HandleTypeDef  *pdevtmp;
 static uint8_t USBD_Composite_DataIn(USBD_HandleTypeDef *pdev, uint8_t epnum)
 {
-pdevtmp = pdev;
+	USBD_CompositeClassData *classData = (USBD_CompositeClassData*) pdev->pClassData;
 	if (epnum == (HID_EPIN_ADDR & 0x7F))
 	{
-		USBD_CompositeClassData *classData = (USBD_CompositeClassData*) pdev->pClassData;
 		USBD_HID_HandleTypeDef *hhid = &(classData->hid);
 		/* Ensure that the FIFO is empty before a new transfer, this condition could 
 		be caused by  a new transfer before the end of the previous transfer */
@@ -366,40 +374,40 @@ pdevtmp = pdev;
 	}
 	else if (epnum == (MSC_EPIN_ADDR & 0x7F))
 	{
-	FIXME_IN = epnum;
-	//	MSC_BOT_DataIn(pdev , epnum);
+		classData->DataInReady = epnum;
 	}
 	return USBD_OK;
 }
 
 static uint8_t USBD_Composite_DataOut(USBD_HandleTypeDef  *pdev, uint8_t epnum)
 {
-pdevtmp = pdev;
+	USBD_CompositeClassData *classData = (USBD_CompositeClassData*) pdev->pClassData;
 	if (epnum == (HID_EPOUT_ADDR & 0x7F))
 	{
-		USBD_CompositeClassData *classData = (USBD_CompositeClassData*) pdev->pClassData;
 		USBD_HID_HandleTypeDef *hhid = &(classData->hid);
 		hhid->reportReady = 1;
 	}
 	else if (epnum == (MSC_EPOUT_ADDR & 0x7F))
 	{
-	FIXME_OUT = epnum;
-		//MSC_BOT_DataOut(pdev, epnum);
+		classData->DataOutReady = epnum;
 	}
 	return USBD_OK;
 }
 
-void s2s_usbDevicePoll(void) {
-	if (FIXME_IN) {
-		int tmp = FIXME_IN;
-		FIXME_IN = 0;
-		MSC_BOT_DataIn(pdevtmp, tmp);
+void s2s_usbDevicePoll(USBD_HandleTypeDef  *pdev) {
+	USBD_CompositeClassData *classData = (USBD_CompositeClassData*) pdev->pClassData;
+
+	if (classData->DataInReady)
+	{
+		int tmp = classData->DataInReady;
+		classData->DataInReady = 0;
+		MSC_BOT_DataIn(pdev, tmp);
 	}
 
-	if (FIXME_OUT) {
-		int tmp = FIXME_OUT;
-		FIXME_OUT = 0;
-		MSC_BOT_DataOut(pdevtmp, tmp);
+	if (classData->DataOutReady) {
+		int tmp = classData->DataOutReady;
+		classData->DataOutReady = 0;
+		MSC_BOT_DataOut(pdev, tmp);
 	}
 }
 

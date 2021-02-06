@@ -39,19 +39,29 @@
 #include "usbd_desc.h"
 #include "usbd_composite.h"
 
+//#include "usbd_hidt.h"
+
 /* USB Device Core handle declaration */
 USBD_HandleTypeDef hUsbDeviceFS;
+USBD_HandleTypeDef hUsbDeviceHS;
 
-/* init function */				        
 void MX_USB_DEVICE_Init(void)
 {
-  /* Init Device Library,Add Supported Class and Start the library*/
-  USBD_Init(&hUsbDeviceFS, &FS_Desc, DEVICE_FS);
+#if S2S_USB_FS
+	USBD_Init(&hUsbDeviceFS, &FS_Desc, DEVICE_FS);
+	USBD_RegisterClass(&hUsbDeviceFS, &USBD_Composite);
+	USBD_Start(&hUsbDeviceFS);
+#endif
+#if S2S_USB_HS
+	USBD_Init(&hUsbDeviceHS, &FS_Desc, DEVICE_HS);
+	USBD_RegisterClass(&hUsbDeviceHS, &USBD_Composite);
 
-  USBD_RegisterClass(&hUsbDeviceFS, &USBD_Composite);
+USB_OTG_GlobalTypeDef* USBx  = USB_OTG_HS;
+USBx_DEVICE->DCFG |= 0x4000; // BIT 14
 
-  USBD_Start(&hUsbDeviceFS);
+	USBD_Start(&hUsbDeviceHS);
 
+#endif
 }
 /**
   * @}
