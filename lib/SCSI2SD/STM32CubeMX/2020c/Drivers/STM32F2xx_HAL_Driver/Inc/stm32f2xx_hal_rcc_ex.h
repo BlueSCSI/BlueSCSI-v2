@@ -2,38 +2,20 @@
   ******************************************************************************
   * @file    stm32f2xx_hal_rcc_ex.h
   * @author  MCD Application Team
-  * @version V1.1.0
-  * @date    09-October-2015
   * @brief   Header file of RCC HAL Extension module.
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2015 STMicroelectronics</center></h2>
+  * <h2><center>&copy; Copyright (c) 2017 STMicroelectronics.
+  * All rights reserved.</center></h2>
   *
-  * Redistribution and use in source and binary forms, with or without modification,
-  * are permitted provided that the following conditions are met:
-  *   1. Redistributions of source code must retain the above copyright notice,
-  *      this list of conditions and the following disclaimer.
-  *   2. Redistributions in binary form must reproduce the above copyright notice,
-  *      this list of conditions and the following disclaimer in the documentation
-  *      and/or other materials provided with the distribution.
-  *   3. Neither the name of STMicroelectronics nor the names of its contributors
-  *      may be used to endorse or promote products derived from this software
-  *      without specific prior written permission.
-  *
-  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  * This software component is licensed by ST under BSD 3-Clause license,
+  * the "License"; You may not use this file except in compliance with the
+  * License. You may obtain a copy of the License at:
+  *                        opensource.org/licenses/BSD-3-Clause
   *
   ******************************************************************************
-  */ 
+  */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __STM32F2xx_HAL_RCC_EX_H
@@ -126,7 +108,7 @@ typedef struct
   */
      
 /* Exported macro ------------------------------------------------------------*/
-/** @defgroup RCCEx_Exported_Macros RCCEx Exported Macros
+/** @defgroup RCCEx_Exported_Macros RCC Exported Macros
   * @{
   */
 
@@ -135,31 +117,32 @@ typedef struct
   * @note   After reset, the peripheral clock (used for registers read/write access)
   *         is disabled and the application software has to enable this clock before 
   *         using it.
+  * @{
   */
 #if defined(STM32F207xx) || defined(STM32F217xx)
 #define __HAL_RCC_ETHMAC_CLK_ENABLE()   do { \
-                                       __IO uint32_t tmpreg; \
+                                       __IO uint32_t tmpreg = 0x00; \
                                        SET_BIT(RCC->AHB1ENR, RCC_AHB1ENR_ETHMACEN);\
                                        /* Delay after an RCC peripheral clock enabling */ \
                                        tmpreg = READ_BIT(RCC->AHB1ENR, RCC_AHB1ENR_ETHMACEN);\
                                        UNUSED(tmpreg); \
                                        } while(0)
 #define __HAL_RCC_ETHMACTX_CLK_ENABLE()   do { \
-                                       __IO uint32_t tmpreg; \
+                                       __IO uint32_t tmpreg = 0x00; \
                                        SET_BIT(RCC->AHB1ENR, RCC_AHB1ENR_ETHMACTXEN);\
                                        /* Delay after an RCC peripheral clock enabling */ \
                                        tmpreg = READ_BIT(RCC->AHB1ENR, RCC_AHB1ENR_ETHMACTXEN);\
                                        UNUSED(tmpreg); \
                                        } while(0)
 #define __HAL_RCC_ETHMACRX_CLK_ENABLE()   do { \
-                                       __IO uint32_t tmpreg; \
+                                       __IO uint32_t tmpreg = 0x00; \
                                        SET_BIT(RCC->AHB1ENR, RCC_AHB1ENR_ETHMACRXEN);\
                                        /* Delay after an RCC peripheral clock enabling */ \
                                        tmpreg = READ_BIT(RCC->AHB1ENR, RCC_AHB1ENR_ETHMACRXEN);\
                                        UNUSED(tmpreg); \
                                        } while(0)
 #define __HAL_RCC_ETHMACPTP_CLK_ENABLE()   do { \
-                                       __IO uint32_t tmpreg; \
+                                       __IO uint32_t tmpreg = 0x00; \
                                        SET_BIT(RCC->AHB1ENR, RCC_AHB1ENR_ETHMACPTPEN);\
                                        /* Delay after an RCC peripheral clock enabling */ \
                                        tmpreg = READ_BIT(RCC->AHB1ENR, RCC_AHB1ENR_ETHMACPTPEN);\
@@ -170,6 +153,31 @@ typedef struct
 #define __HAL_RCC_ETHMACTX_CLK_DISABLE()  (RCC->AHB1ENR &= ~(RCC_AHB1ENR_ETHMACTXEN))
 #define __HAL_RCC_ETHMACRX_CLK_DISABLE()  (RCC->AHB1ENR &= ~(RCC_AHB1ENR_ETHMACRXEN))
 #define __HAL_RCC_ETHMACPTP_CLK_DISABLE() (RCC->AHB1ENR &= ~(RCC_AHB1ENR_ETHMACPTPEN))
+
+/** @defgroup RCC_AHB1_Peripheral_Clock_Enable_Disable_Status AHB1 Peripheral Clock Enable Disable Status
+  * @brief  Get the enable or disable status of the AHB1 peripheral clock.
+  * @note   After reset, the peripheral clock (used for registers read/write access)
+  *         is disabled and the application software has to enable this clock before
+  *         using it.
+  * @{
+  */
+#define __HAL_RCC_ETHMAC_IS_CLK_ENABLED()    ((RCC->AHB1ENR &(RCC_AHB1ENR_ETHMACEN))!= RESET)
+#define __HAL_RCC_ETHMACTX_IS_CLK_ENABLED()  ((RCC->AHB1ENR &(RCC_AHB1ENR_ETHMACTXEN))!= RESET)
+#define __HAL_RCC_ETHMACRX_IS_CLK_ENABLED()  ((RCC->AHB1ENR &(RCC_AHB1ENR_ETHMACRXEN))!= RESET)
+#define __HAL_RCC_ETHMACPTP_IS_CLK_ENABLED() ((RCC->AHB1ENR &(RCC_AHB1ENR_ETHMACPTPEN))!= RESET) 
+#define __HAL_RCC_ETH_IS_CLK_ENABLED()        (__HAL_RCC_ETHMAC_IS_CLK_ENABLED()   && \
+                                               __HAL_RCC_ETHMACTX_IS_CLK_ENABLED() && \
+	                                       __HAL_RCC_ETHMACRX_IS_CLK_ENABLED())
+#define __HAL_RCC_ETHMAC_IS_CLK_DISABLED()    ((RCC->AHB1ENR &(RCC_AHB1ENR_ETHMACEN))== RESET)
+#define __HAL_RCC_ETHMACTX_IS_CLK_DISABLED()  ((RCC->AHB1ENR &(RCC_AHB1ENR_ETHMACTXEN))== RESET)
+#define __HAL_RCC_ETHMACRX_IS_CLK_DISABLED()  ((RCC->AHB1ENR &(RCC_AHB1ENR_ETHMACRXEN))== RESET)
+#define __HAL_RCC_ETHMACPTP_IS_CLK_DISABLED() ((RCC->AHB1ENR &(RCC_AHB1ENR_ETHMACPTPEN))== RESET)
+#define __HAL_RCC_ETH_IS_CLK_DISABLED()        (__HAL_RCC_ETHMAC_IS_CLK_DISABLED()   && \
+                                                __HAL_RCC_ETHMACTX_IS_CLK_DISABLED() && \
+	                                        __HAL_RCC_ETHMACRX_IS_CLK_DISABLED())
+/**
+  * @}
+  */ 
 
 /**
   * @brief  Enable ETHERNET clock.
@@ -197,10 +205,11 @@ typedef struct
   * @note   After reset, the peripheral clock (used for registers read/write access)
   *         is disabled and the application software has to enable this clock before 
   *         using it.
+  * @{
   */
 #if defined(STM32F207xx) || defined(STM32F217xx)
 #define __HAL_RCC_DCMI_CLK_ENABLE()   do { \
-                                       __IO uint32_t tmpreg; \
+                                       __IO uint32_t tmpreg = 0x00; \
                                        SET_BIT(RCC->AHB2ENR, RCC_AHB2ENR_DCMIEN);\
                                        /* Delay after an RCC peripheral clock enabling */ \
                                        tmpreg = READ_BIT(RCC->AHB2ENR, RCC_AHB2ENR_DCMIEN);\
@@ -212,14 +221,14 @@ typedef struct
 
 #if defined(STM32F215xx) || defined(STM32F217xx)
 #define __HAL_RCC_CRYP_CLK_ENABLE()   do { \
-                                       __IO uint32_t tmpreg; \
+                                       __IO uint32_t tmpreg = 0x00; \
                                        SET_BIT(RCC->AHB2ENR, RCC_AHB2ENR_CRYPEN);\
                                        /* Delay after an RCC peripheral clock enabling */ \
                                        tmpreg = READ_BIT(RCC->AHB2ENR, RCC_AHB2ENR_CRYPEN);\
                                        UNUSED(tmpreg); \
                                        } while(0)
 #define __HAL_RCC_HASH_CLK_ENABLE()   do { \
-                                       __IO uint32_t tmpreg; \
+                                       __IO uint32_t tmpreg = 0x00; \
                                        SET_BIT(RCC->AHB2ENR, RCC_AHB2ENR_HASHEN);\
                                        /* Delay after an RCC peripheral clock enabling */ \
                                        tmpreg = READ_BIT(RCC->AHB2ENR, RCC_AHB2ENR_HASHEN);\
@@ -233,8 +242,31 @@ typedef struct
   * @}
   */
 
+/** @defgroup RCC_AHB2_Peripheral_Clock_Enable_Disable_Status AHB2 Peripheral Clock Enable Disable Status
+  * @brief  Get the enable or disable status of the AHB2 peripheral clock.
+  * @note   After reset, the peripheral clock (used for registers read/write access)
+  *         is disabled and the application software has to enable this clock before
+  *         using it.
+  * @{
+  */
+#if defined(STM32F207xx) || defined(STM32F217xx)
+#define __HAL_RCC_DCMI_IS_CLK_ENABLED()  ((RCC->AHB2ENR &(RCC_AHB2ENR_DCMIEN))!= RESET)
+#define __HAL_RCC_DCMI_IS_CLK_DISABLED() ((RCC->AHB2ENR &(RCC_AHB2ENR_DCMIEN))== RESET)
+#endif /* defined(STM32F207xx) || defined(STM32F217xx) */
+#if defined(STM32F215xx) || defined(STM32F217xx)
+#define __HAL_RCC_CRYP_IS_CLK_ENABLED()  ((RCC->AHB2ENR &(RCC_AHB2ENR_CRYPEN))!= RESET)
+#define __HAL_RCC_HASH_IS_CLK_ENABLED()  ((RCC->AHB2ENR &(RCC_AHB2ENR_HASHEN))!= RESET)
+
+#define __HAL_RCC_CRYP_IS_CLK_DISABLED()  ((RCC->AHB2ENR &(RCC_AHB2ENR_CRYPEN))== RESET)
+#define __HAL_RCC_HASH_IS_CLK_DISABLED()  ((RCC->AHB2ENR &(RCC_AHB2ENR_HASHEN))== RESET)
+#endif /* defined(STM32F215xx) || defined(STM32F217xx) */
+/**
+  * @}
+  */ 
+                                         
 /** @defgroup RCCEx_AHB1_Force_Release_Reset AHB1 Force Release Reset 
   * @brief  Force or release AHB1 peripheral reset.
+  * @{
   */
 #if defined(STM32F207xx) || defined(STM32F217xx)
 #define __HAL_RCC_ETHMAC_FORCE_RESET()   (RCC->AHB1RSTR |= (RCC_AHB1RSTR_ETHMACRST))
@@ -271,6 +303,7 @@ typedef struct
   *         power consumption.
   * @note   After wakeup from SLEEP mode, the peripheral clock is enabled again.
   * @note   By default, all peripheral clocks are enabled during SLEEP mode.
+  * @{
   */
 #if defined(STM32F207xx) || defined(STM32F217xx)
 #define __HAL_RCC_ETHMAC_CLK_SLEEP_ENABLE()     (RCC->AHB1LPENR |= (RCC_AHB1LPENR_ETHMACLPEN))
@@ -336,7 +369,7 @@ void HAL_RCCEx_GetPeriphCLKConfig(RCC_PeriphCLKInitTypeDef  *PeriphClkInit);
 /* Private types -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 /* Private constants ---------------------------------------------------------*/
-/** @defgroup RCCEx_Private_Constants RCCEx Private Constants
+/** @defgroup RCCEx_Private_Constants RCC Private Constants
   * @{
   */
 
@@ -354,7 +387,7 @@ void HAL_RCCEx_GetPeriphCLKConfig(RCC_PeriphCLKInitTypeDef  *PeriphClkInit);
   */
 
 /* Private macros ------------------------------------------------------------*/
-/** @addtogroup RCCEx_Private_Macros RCCEx Private Macros
+/** @defgroup RCCEx_Private_Macros RCC Private Macros
   * @{
   */
 /** @defgroup RCCEx_IS_RCC_Definitions RCC Private macros to check input parameters

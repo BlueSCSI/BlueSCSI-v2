@@ -2,8 +2,6 @@
   ******************************************************************************
   * @file    stm32f2xx_hal.c
   * @author  MCD Application Team
-  * @version V1.1.0
-  * @date    09-October-2015
   * @brief   HAL module driver.
   *          This is the common part of the HAL initialization
   *
@@ -15,7 +13,7 @@
     The common HAL driver contains a set of generic and common APIs that can be
     used by the PPP peripheral drivers and the user to start using the HAL. 
     [..]
-    The HAL contains two APIs categories: 
+    The HAL contains two APIs' categories: 
          (+) Common HAL APIs
          (+) Services HAL APIs
 
@@ -23,32 +21,16 @@
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2015 STMicroelectronics</center></h2>
+  * <h2><center>&copy; Copyright (c) 2016 STMicroelectronics.
+  * All rights reserved.</center></h2>
   *
-  * Redistribution and use in source and binary forms, with or without modification,
-  * are permitted provided that the following conditions are met:
-  *   1. Redistributions of source code must retain the above copyright notice,
-  *      this list of conditions and the following disclaimer.
-  *   2. Redistributions in binary form must reproduce the above copyright notice,
-  *      this list of conditions and the following disclaimer in the documentation
-  *      and/or other materials provided with the distribution.
-  *   3. Neither the name of STMicroelectronics nor the names of its contributors
-  *      may be used to endorse or promote products derived from this software
-  *      without specific prior written permission.
-  *
-  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  * This software component is licensed by ST under BSD 3-Clause license,
+  * the "License"; You may not use this file except in compliance with the
+  * License. You may obtain a copy of the License at:
+  *                        opensource.org/licenses/BSD-3-Clause
   *
   ******************************************************************************
-  */ 
+  */
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f2xx_hal.h"
@@ -68,18 +50,18 @@
   * @{
   */
 /**
-  * @brief STM32F2xx HAL Driver version number V1.1.0
+  * @brief STM32F2xx HAL Driver version number V1.2.3
   */
-#define __STM32F2xx_HAL_VERSION_MAIN   (0x01) /*!< [31:24] main version */
-#define __STM32F2xx_HAL_VERSION_SUB1   (0x01) /*!< [23:16] sub1 version */
-#define __STM32F2xx_HAL_VERSION_SUB2   (0x00) /*!< [15:8]  sub2 version */
-#define __STM32F2xx_HAL_VERSION_RC     (0x00) /*!< [7:0]  release candidate */ 
-#define __STM32F2xx_HAL_VERSION         ((__STM32F2xx_HAL_VERSION_MAIN << 24)\
-                                        |(__STM32F2xx_HAL_VERSION_SUB1 << 16)\
-                                        |(__STM32F2xx_HAL_VERSION_SUB2 << 8 )\
+#define __STM32F2xx_HAL_VERSION_MAIN   0x01U /*!< [31:24] main version */
+#define __STM32F2xx_HAL_VERSION_SUB1   0x02U /*!< [23:16] sub1 version */
+#define __STM32F2xx_HAL_VERSION_SUB2   0x03U /*!< [15:8]  sub2 version */
+#define __STM32F2xx_HAL_VERSION_RC     0x00U /*!< [7:0]  release candidate */ 
+#define __STM32F2xx_HAL_VERSION         ((__STM32F2xx_HAL_VERSION_MAIN << 24U)\
+                                        |(__STM32F2xx_HAL_VERSION_SUB1 << 16U)\
+                                        |(__STM32F2xx_HAL_VERSION_SUB2 << 8U) \
                                         |(__STM32F2xx_HAL_VERSION_RC))
                                         
-#define IDCODE_DEVID_MASK    ((uint32_t)0x00000FFF)
+#define IDCODE_DEVID_MASK    0x00000FFFU
 
 /* ------------ RCC registers bit address in the alias region ----------- */
 #define SYSCFG_OFFSET             (SYSCFG_BASE - PERIPH_BASE)
@@ -87,23 +69,25 @@
 /* Alias word address of UFB_MODE bit */ 
 #define MEMRMP_OFFSET             SYSCFG_OFFSET 
 #define UFB_MODE_BIT_NUMBER       POSITION_VAL(SYSCFG_MEMRMP_UFB_MODE)
-#define UFB_MODE_BB               (uint32_t)(PERIPH_BB_BASE + (MEMRMP_OFFSET * 32) + (UFB_MODE_BIT_NUMBER * 4)) 
+#define UFB_MODE_BB               (uint32_t)(PERIPH_BB_BASE + (MEMRMP_OFFSET * 32U) + (UFB_MODE_BIT_NUMBER * 4U)) 
 
 /* ---  CMPCR Register ---*/ 
 /* Alias word address of CMP_PD bit */ 
-#define CMPCR_OFFSET              (SYSCFG_OFFSET + 0x20) 
+#define CMPCR_OFFSET              (SYSCFG_OFFSET + 0x20U) 
 #define CMP_PD_BIT_NUMBER         POSITION_VAL(SYSCFG_CMPCR_CMP_PD)
-#define CMPCR_CMP_PD_BB           (uint32_t)(PERIPH_BB_BASE + (CMPCR_OFFSET * 32) + (CMP_PD_BIT_NUMBER * 4))
+#define CMPCR_CMP_PD_BB           (uint32_t)(PERIPH_BB_BASE + (CMPCR_OFFSET * 32U) + (CMP_PD_BIT_NUMBER * 4U))
 /**
   * @}
   */
 
 /* Private macro -------------------------------------------------------------*/
-/* Private variables ---------------------------------------------------------*/
-/** @addtogroup HAL_Private_Variables
+/* Exported variables ---------------------------------------------------------*/
+/** @addtogroup HAL_Exported_Variables
   * @{
   */
-static __IO uint32_t uwTick;
+__IO uint32_t uwTick;
+uint32_t uwTickPrio   = (1UL << __NVIC_PRIO_BITS); /* Invalid PRIO */
+HAL_TickFreqTypeDef uwTickFreq = HAL_TICK_FREQ_DEFAULT;  /* 1KHz */
 /**
   * @}
   */
@@ -167,15 +151,15 @@ static __IO uint32_t uwTick;
 HAL_StatusTypeDef HAL_Init(void)
 {
   /* Configure Flash prefetch, Instruction cache, Data cache */ 
-#if (INSTRUCTION_CACHE_ENABLE != 0)
+#if (INSTRUCTION_CACHE_ENABLE != 0U)
    __HAL_FLASH_INSTRUCTION_CACHE_ENABLE();
 #endif /* INSTRUCTION_CACHE_ENABLE */
 
-#if (DATA_CACHE_ENABLE != 0)
+#if (DATA_CACHE_ENABLE != 0U)
    __HAL_FLASH_DATA_CACHE_ENABLE();
 #endif /* DATA_CACHE_ENABLE */
 
-#if (PREFETCH_ENABLE != 0)
+#if (PREFETCH_ENABLE != 0U)
   __HAL_FLASH_PREFETCH_BUFFER_ENABLE();
 #endif /* PREFETCH_ENABLE */
 
@@ -257,16 +241,27 @@ __weak void HAL_MspDeInit(void)
   *       than the peripheral interrupt. Otherwise the caller ISR process will be blocked.
   *       The function is declared as __weak  to be overwritten  in case of other
   *       implementation  in user file.
-  * @param TickPriority: Tick interrupt priority.
+  * @param  TickPriority Tick interrupt priority.
   * @retval HAL status
   */
 __weak HAL_StatusTypeDef HAL_InitTick(uint32_t TickPriority)
 {
-  /*Configure the SysTick to have interrupt in 1ms time basis*/
-  HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/1000);
+  /* Configure the SysTick to have interrupt in 1ms time basis*/
+  if (HAL_SYSTICK_Config(SystemCoreClock / (1000U / uwTickFreq)) > 0U)
+  {
+    return HAL_ERROR;
+  }
 
-  /*Configure the SysTick IRQ priority */
-  HAL_NVIC_SetPriority(SysTick_IRQn, TickPriority ,0);
+  /* Configure the SysTick IRQ priority */
+  if (TickPriority < (1UL << __NVIC_PRIO_BITS))
+  {
+    HAL_NVIC_SetPriority(SysTick_IRQn, TickPriority, 0U);
+    uwTickPrio = TickPriority;
+  }
+  else
+  {
+    return HAL_ERROR;
+  }
 
   /* Return function status */
   return HAL_OK;
@@ -310,7 +305,7 @@ __weak HAL_StatusTypeDef HAL_InitTick(uint32_t TickPriority)
   */
 __weak void HAL_IncTick(void)
 {
-  uwTick++;
+  uwTick += uwTickFreq;
 }
 
 /**
@@ -325,21 +320,68 @@ __weak uint32_t HAL_GetTick(void)
 }
 
 /**
-  * @brief This function provides accurate delay (in milliseconds) based 
+  * @brief This function returns a tick priority.
+  * @retval tick priority
+  */
+uint32_t HAL_GetTickPrio(void)
+{
+  return uwTickPrio;
+}
+
+/**
+  * @brief Set new tick Freq.
+  * @retval status
+  */
+HAL_StatusTypeDef HAL_SetTickFreq(HAL_TickFreqTypeDef Freq)
+{
+  HAL_StatusTypeDef status  = HAL_OK;
+  assert_param(IS_TICKFREQ(Freq));
+
+  if (uwTickFreq != Freq)
+  {
+    /* Apply the new tick Freq  */
+    status = HAL_InitTick(uwTickPrio);
+    if (status == HAL_OK)
+    {
+      uwTickFreq = Freq;
+    }
+  }
+
+  return status;
+}
+
+/**
+  * @brief return tick frequency.
+  * @retval tick period in Hz
+  */
+HAL_TickFreqTypeDef HAL_GetTickFreq(void)
+{
+  return uwTickFreq;
+}
+
+/**
+  * @brief This function provides minimum delay (in milliseconds) based 
   *        on variable incremented.
   * @note In the default implementation , SysTick timer is the source of time base.
   *       It is used to generate interrupts at regular time intervals where uwTick
   *       is incremented.
   * @note This function is declared as __weak to be overwritten in case of other
   *       implementations in user file.
-  * @param Delay: specifies the delay time length, in milliseconds.
+  * @param  Delay specifies the delay time length, in milliseconds.
   * @retval None
   */
 __weak void HAL_Delay(__IO uint32_t Delay)
 {
-  uint32_t tickstart = 0;
-  tickstart = HAL_GetTick();
-  while((HAL_GetTick() - tickstart) < Delay)
+  uint32_t tickstart = HAL_GetTick();
+  uint32_t wait = Delay;
+
+  /* Add a freq to guarantee minimum wait */
+  if (wait < HAL_MAX_DELAY)
+  {
+    wait += (uint32_t)(uwTickFreq);
+  }
+
+  while ((HAL_GetTick() - tickstart) < wait)
   {
   }
 }
@@ -391,7 +433,7 @@ uint32_t HAL_GetHalVersion(void)
   */
 uint32_t HAL_GetREVID(void)
 {
-   return((DBGMCU->IDCODE) >> 16);
+   return((DBGMCU->IDCODE) >> 16U);
 }
 
 /**
@@ -477,6 +519,33 @@ void HAL_EnableCompensationCell(void)
 void HAL_DisableCompensationCell(void)
 {
   *(__IO uint32_t *)CMPCR_CMP_PD_BB = (uint32_t)DISABLE;
+}
+
+/**
+  * @brief  Returns first word of the unique device identifier (UID based on 96 bits)
+  * @retval Device identifier
+  */
+uint32_t HAL_GetUIDw0(void)
+{
+  return (READ_REG(*((uint32_t *)UID_BASE)));
+}
+
+/**
+  * @brief  Returns second word of the unique device identifier (UID based on 96 bits)
+  * @retval Device identifier
+  */
+uint32_t HAL_GetUIDw1(void)
+{
+  return (READ_REG(*((uint32_t *)(UID_BASE + 4U))));
+}
+
+/**
+  * @brief  Returns third word of the unique device identifier (UID based on 96 bits)
+  * @retval Device identifier
+  */
+uint32_t HAL_GetUIDw2(void)
+{
+  return (READ_REG(*((uint32_t *)(UID_BASE + 8U))));
 }
 
 /**

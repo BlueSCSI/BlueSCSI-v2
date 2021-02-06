@@ -51,7 +51,6 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-/* Private variables ---------------------------------------------------------*/
 
 /* USER CODE END PV */
 
@@ -62,7 +61,6 @@ void SystemClock_Config(void);
 void mainEarlyInit();
 void mainInit();
 void mainLoop();
-
 
 /* USER CODE END PFP */
 
@@ -79,7 +77,6 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
   mainEarlyInit();
-
 
   /* USER CODE END 1 */
   
@@ -109,7 +106,6 @@ int main(void)
   MX_UART4_Init();
   /* USER CODE BEGIN 2 */
   mainInit();
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -117,11 +113,8 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
     /* USER CODE BEGIN 3 */
   mainLoop();
-
-
   }
   /* USER CODE END 3 */
 }
@@ -193,7 +186,7 @@ void assert_failed(uint8_t *file, uint32_t line)
 { 
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
-    ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+     tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */

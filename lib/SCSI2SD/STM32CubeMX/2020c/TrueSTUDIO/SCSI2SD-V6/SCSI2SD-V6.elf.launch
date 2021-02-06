@@ -25,7 +25,7 @@
 <booleanAttribute key="com.atollic.hardwaredebug.launch.useRemoteTarget" value="true" />
 <stringAttribute key="com.atollic.hardwaredebug.launch.verifyCommands" value="# Set flash parallelism mode to 32, 16, or 8 bit when using STM32 F2/F4 microcontrollers&#xD;&#xA;# 2=32 bit, 1=16 bit and 0=8 bit parallelism mode&#xD;&#xA;monitor flash set_parallelism_mode 2&#xD;&#xA;&#xD;&#xA;# Load the program executable&#xD;&#xA;load&#x9;&#x9;&#xD;&#xA;&#xD;&#xA;# Enable Debug connection in low power modes (DBGMCU-&gt;CR)&#xD;&#xA;set *0xE0042004 = (*0xE0042004) | 0x7&#xD;&#xA;# The executable starts automatically" />
 <booleanAttribute key="com.atollic.hardwaredebug.stlink.enable_logging" value="false" />
-<stringAttribute key="com.atollic.hardwaredebug.stlink.log_file" value="C:/Users/Michael/projects/SCSI2SD-V6/STM32CubeMX/SCSI2SD-V6//TrueSTUDIO/SCSI2SD-V6\Debug\st-link_gdbserver_log.txt" />
+<stringAttribute key="com.atollic.hardwaredebug.stlink.log_file" value="C:/Users/Michael/projects/SCSI2SD-V6/STM32CubeMX/2020c//TrueSTUDIO/SCSI2SD-V6\Debug\st-link_gdbserver_log.txt" />
 <booleanAttribute key="com.atollic.hardwaredebug.stlink.verify_flash" value="false" />
 <stringAttribute key="org.eclipse.cdt.debug.mi.core.DEBUG_NAME" value="${TOOLCHAIN_PATH}/arm-atollic-eabi-gdb" />
 <stringAttribute key="org.eclipse.cdt.debug.mi.core.commandFactory" value="Standard (Windows)" />

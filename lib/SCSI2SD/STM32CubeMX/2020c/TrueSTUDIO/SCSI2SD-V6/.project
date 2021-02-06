@@ -1,7 +1,6 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<projectDescription>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><projectDescription>
 	<name>SCSI2SD-V6</name>
-	<comment />
+	<comment/>
 	<projects>
 	</projects>
 	<buildSpec>
@@ -15,7 +14,7 @@
 				</dictionary>
 				<dictionary>
 					<key>?name?</key>
-					<value />
+					<value/>
 				</dictionary>
 				<dictionary>
 					<key>org.eclipse.cdt.make.core.append_environment</key>
@@ -23,7 +22,7 @@
 				</dictionary>
 				<dictionary>
 					<key>org.eclipse.cdt.make.core.buildArguments</key>
-					<value />
+					<value/>
 				</dictionary>
 				<dictionary>
 					<key>org.eclipse.cdt.make.core.buildCommand</key>
@@ -87,9 +86,9 @@
     </link>
 		
 	<link>
-			
+			<name>Application</name>
 			<type>2</type>
-			
+			<locationURI>virtual:/virtual</locationURI>
 		</link>
     <link>
 			<name>Application/User</name>
@@ -157,6 +156,11 @@
 			<location>PARENT-2-PROJECT_LOC/Src/usbd_desc.c</location>
 		</link>
     <link>
+			<name>Application/User/usbd_storage_if.c</name>
+			<type>1</type>
+			<location>PARENT-2-PROJECT_LOC/Src/usbd_storage_if.c</location>
+		</link>
+    <link>
 			<name>Application/User/stm32f2xx_it.c</name>
 			<type>1</type>
 			<location>PARENT-2-PROJECT_LOC/Src/stm32f2xx_it.c</location>
@@ -167,9 +171,9 @@
 			<location>PARENT-2-PROJECT_LOC/Src/stm32f2xx_hal_msp.c</location>
 		</link>
     <link>
-			
+			<name>Drivers</name>
 			<type>2</type>
-			
+			<locationURI>virtual:/virtual</locationURI>
 		</link>
     <link>
 			<name>Drivers/STM32F2xx_HAL_Driver</name>
@@ -246,7 +250,11 @@
 			<type>1</type>
 			<location>PARENT-2-PROJECT_LOC/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_dma_ex.c</location>
 		</link>
-    
+    <link>
+			<name>Drivers/STM32F2xx_HAL_Driver/stm32f2xx_hal_exti.c</name>
+			<type>1</type>
+			<location>PARENT-2-PROJECT_LOC/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_exti.c</location>
+		</link>
     <link>
 			<name>Drivers/STM32F2xx_HAL_Driver/stm32f2xx_ll_fsmc.c</name>
 			<type>1</type>
@@ -298,9 +306,9 @@
 			<location>PARENT-2-PROJECT_LOC/Src/system_stm32f2xx.c</location>
 		</link>
     <link>
-			
+			<name>Middlewares</name>
 			<type>2</type>
-			
+			<locationURI>virtual:/virtual</locationURI>
 		</link>
     <link>
 			<name>Middlewares/USB_Device_Library</name>
@@ -323,45 +331,24 @@
 			<location>PARENT-2-PROJECT_LOC/Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ioreq.c</location>
 		</link>
     <link>
-			<name>Middlewares/USB_Device_Library/usbd_hid.c</name>
+			<name>Middlewares/USB_Device_Library/usbd_msc.c</name>
 			<type>1</type>
-			<location>PARENT-2-PROJECT_LOC/Middlewares/ST/STM32_USB_Device_Library/Class/HID/Src/usbd_hid.c</location>
+			<location>PARENT-2-PROJECT_LOC/Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc.c</location>
 		</link>
-  <link>
-      <name>Application/User/usbd_storage_if.c</name>
-      <type>1</type>
-      <location>PARENT-2-PROJECT_LOC/Src/usbd_storage_if.c</location>
-    </link><link>
-      <name>Middlewares/USB_Device_Library/usbd_msc.c</name>
-      <type>1</type>
-      <location>PARENT-2-PROJECT_LOC/Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc.c</location>
-    </link><link>
-      <name>Middlewares/USB_Device_Library/usbd_msc_bot.c</name>
-      <type>1</type>
-      <location>PARENT-2-PROJECT_LOC/Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc_bot.c</location>
-    </link><link>
-      <name>Middlewares/USB_Device_Library/usbd_msc_data.c</name>
-      <type>1</type>
-      <location>PARENT-2-PROJECT_LOC/Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc_data.c</location>
-    </link><link>
-      <name>Middlewares/USB_Device_Library/usbd_msc_scsi.c</name>
-      <type>1</type>
-      <location>PARENT-2-PROJECT_LOC/Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc_scsi.c</location>
-    </link><link>
-      <name>Application</name>
-      <type>2</type>
-      <locationURI>virtual:/virtual</locationURI>
-    </link><link>
-      <name>Drivers</name>
-      <type>2</type>
-      <locationURI>virtual:/virtual</locationURI>
-    </link><link>
-      <name>Drivers/STM32F2xx_HAL_Driver/stm32f2xx_hal_exti.c</name>
-      <type>1</type>
-      <location>PARENT-2-PROJECT_LOC/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_exti.c</location>
-    </link><link>
-      <name>Middlewares</name>
-      <type>2</type>
-      <locationURI>virtual:/virtual</locationURI>
-    </link></linkedResources>
+    <link>
+			<name>Middlewares/USB_Device_Library/usbd_msc_bot.c</name>
+			<type>1</type>
+			<location>PARENT-2-PROJECT_LOC/Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc_bot.c</location>
+		</link>
+    <link>
+			<name>Middlewares/USB_Device_Library/usbd_msc_data.c</name>
+			<type>1</type>
+			<location>PARENT-2-PROJECT_LOC/Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc_data.c</location>
+		</link>
+    <link>
+			<name>Middlewares/USB_Device_Library/usbd_msc_scsi.c</name>
+			<type>1</type>
+			<location>PARENT-2-PROJECT_LOC/Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc_scsi.c</location>
+		</link>
+  </linkedResources>
 </projectDescription>

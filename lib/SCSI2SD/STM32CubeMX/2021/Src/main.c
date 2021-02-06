@@ -57,6 +57,10 @@
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
+/* Private function prototypes -----------------------------------------------*/
+void mainEarlyInit();
+void mainInit();
+void mainLoop();
 
 /* USER CODE END PFP */
 
@@ -72,7 +76,7 @@ void SystemClock_Config(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+  mainEarlyInit();
   /* USER CODE END 1 */
   
 
@@ -100,7 +104,7 @@ int main(void)
   MX_FMC_Init();
   MX_UART4_Init();
   /* USER CODE BEGIN 2 */
-
+  mainInit();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -110,6 +114,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    mainLoop();
   }
   /* USER CODE END 3 */
 }

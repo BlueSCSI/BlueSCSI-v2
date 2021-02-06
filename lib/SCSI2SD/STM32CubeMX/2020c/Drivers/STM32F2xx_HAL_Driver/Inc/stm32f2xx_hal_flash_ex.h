@@ -2,38 +2,20 @@
   ******************************************************************************
   * @file    stm32f2xx_hal_flash_ex.h
   * @author  MCD Application Team
-  * @version V1.1.0
-  * @date    09-October-2015
   * @brief   Header file of FLASH HAL Extension module.
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2015 STMicroelectronics</center></h2>
+  * <h2><center>&copy; Copyright (c) 2017 STMicroelectronics.
+  * All rights reserved.</center></h2>
   *
-  * Redistribution and use in source and binary forms, with or without modification,
-  * are permitted provided that the following conditions are met:
-  *   1. Redistributions of source code must retain the above copyright notice,
-  *      this list of conditions and the following disclaimer.
-  *   2. Redistributions in binary form must reproduce the above copyright notice,
-  *      this list of conditions and the following disclaimer in the documentation
-  *      and/or other materials provided with the distribution.
-  *   3. Neither the name of STMicroelectronics nor the names of its contributors
-  *      may be used to endorse or promote products derived from this software
-  *      without specific prior written permission.
-  *
-  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  * This software component is licensed by ST under BSD 3-Clause license,
+  * the "License"; You may not use this file except in compliance with the
+  * License. You may obtain a copy of the License at:
+  *                        opensource.org/licenses/BSD-3-Clause
   *
   ******************************************************************************
-  */ 
+  */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __STM32F2xx_HAL_FLASH_EX_H
@@ -68,17 +50,17 @@ typedef struct
                              This parameter can be a value of @ref FLASHEx_Type_Erase */
 
   uint32_t Banks;       /*!< Select banks to erase when Mass erase is enabled.
-                             This parameter must be a value of @ref FLASHEx_Banks */        
+                             This parameter must be a value of @ref FLASHEx_Banks */
 
   uint32_t Sector;      /*!< Initial FLASH sector to erase when Mass erase is disabled
-                             This parameter must be a value of @ref FLASHEx_Sectors */        
-  
+                             This parameter must be a value of @ref FLASHEx_Sectors */
+
   uint32_t NbSectors;   /*!< Number of sectors to be erased.
-                             This parameter must be a value between 1 and (max number of sectors - value of Initial sector)*/           
-                                                          
+                             This parameter must be a value between 1 and (max number of sectors - value of Initial sector)*/
+
   uint32_t VoltageRange;/*!< The device voltage range which defines the erase parallelism
-                             This parameter must be a value of @ref FLASHEx_Voltage_Range */        
-  
+                             This parameter must be a value of @ref FLASHEx_Voltage_Range */
+
 } FLASH_EraseInitTypeDef;
 
 /**
@@ -117,8 +99,8 @@ typedef struct
 /** @defgroup FLASHEx_Type_Erase FLASH Type Erase
   * @{
   */ 
-#define FLASH_TYPEERASE_SECTORS         ((uint32_t)0x00)  /*!< Sectors erase only          */
-#define FLASH_TYPEERASE_MASSERASE       ((uint32_t)0x01)  /*!< Flash Mass erase activation */
+#define FLASH_TYPEERASE_SECTORS         0x00000000U  /*!< Sectors erase only          */
+#define FLASH_TYPEERASE_MASSERASE       0x00000001U  /*!< Flash Mass erase activation */
 /**
   * @}
   */
@@ -126,10 +108,10 @@ typedef struct
 /** @defgroup FLASHEx_Voltage_Range FLASH Voltage Range
   * @{
   */ 
-#define FLASH_VOLTAGE_RANGE_1        ((uint32_t)0x00)  /*!< Device operating range: 1.8V to 2.1V                */
-#define FLASH_VOLTAGE_RANGE_2        ((uint32_t)0x01)  /*!< Device operating range: 2.1V to 2.7V                */
-#define FLASH_VOLTAGE_RANGE_3        ((uint32_t)0x02)  /*!< Device operating range: 2.7V to 3.6V                */
-#define FLASH_VOLTAGE_RANGE_4        ((uint32_t)0x03)  /*!< Device operating range: 2.7V to 3.6V + External Vpp */
+#define FLASH_VOLTAGE_RANGE_1        0x00000000U  /*!< Device operating range: 1.8V to 2.1V                */
+#define FLASH_VOLTAGE_RANGE_2        0x00000001U  /*!< Device operating range: 2.1V to 2.7V                */
+#define FLASH_VOLTAGE_RANGE_3        0x00000002U  /*!< Device operating range: 2.7V to 3.6V                */
+#define FLASH_VOLTAGE_RANGE_4        0x00000003U  /*!< Device operating range: 2.7V to 3.6V + External Vpp */
 /**
   * @}
   */
@@ -137,8 +119,8 @@ typedef struct
 /** @defgroup FLASHEx_WRP_State FLASH WRP State
   * @{
   */ 
-#define OB_WRPSTATE_DISABLE       ((uint32_t)0x00)  /*!< Disable the write protection of the desired bank 1 sectors */
-#define OB_WRPSTATE_ENABLE        ((uint32_t)0x01)  /*!< Enable the write protection of the desired bank 1 sectors  */
+#define OB_WRPSTATE_DISABLE       0x00000000U  /*!< Disable the write protection of the desired bank 1 sectors */
+#define OB_WRPSTATE_ENABLE        0x00000001U  /*!< Enable the write protection of the desired bank 1 sectors  */
 /**
   * @}
   */
@@ -146,10 +128,10 @@ typedef struct
 /** @defgroup FLASHEx_Option_Type FLASH Option Type
   * @{
   */ 
-#define OPTIONBYTE_WRP        ((uint32_t)0x01)  /*!< WRP option byte configuration  */
-#define OPTIONBYTE_RDP        ((uint32_t)0x02)  /*!< RDP option byte configuration  */
-#define OPTIONBYTE_USER       ((uint32_t)0x04)  /*!< USER option byte configuration */
-#define OPTIONBYTE_BOR        ((uint32_t)0x08)  /*!< BOR option byte configuration  */
+#define OPTIONBYTE_WRP        0x00000001U  /*!< WRP option byte configuration  */
+#define OPTIONBYTE_RDP        0x00000002U  /*!< RDP option byte configuration  */
+#define OPTIONBYTE_USER       0x00000004U  /*!< USER option byte configuration */
+#define OPTIONBYTE_BOR        0x00000008U  /*!< BOR option byte configuration  */
 /**
   * @}
   */
@@ -159,8 +141,8 @@ typedef struct
   */
 #define OB_RDP_LEVEL_0   ((uint8_t)0xAA)
 #define OB_RDP_LEVEL_1   ((uint8_t)0x55)
-#define OB_RDP_LEVEL_2   ((uint8_t)0xCC)   /*!< Warning: When enabling read protection level 2 
-                                            it s no more possible to go back to level 1 or 0 */
+#define OB_RDP_LEVEL_2   ((uint8_t)0xCC) /*!< Warning: When enabling read protection level 2 
+                                              it s no more possible to go back to level 1 or 0 */
 /**
   * @}
   */ 
@@ -229,7 +211,7 @@ typedef struct
 /** @defgroup FLASHEx_Banks FLASH Banks
   * @{
   */
-#define FLASH_BANK_1     ((uint32_t)1) /*!< Bank 1   */
+#define FLASH_BANK_1     1U /*!< Bank 1   */
 /**
   * @}
   */ 
@@ -237,7 +219,7 @@ typedef struct
 /** @defgroup FLASHEx_MassErase_bit FLASH Mass Erase bit
   * @{
   */
-#define FLASH_MER_BIT     (FLASH_CR_MER) /*!< only 1 MER Bit */
+#define FLASH_MER_BIT     FLASH_CR_MER /*!< only 1 MER Bit */
 /**
   * @}
   */ 
@@ -245,18 +227,18 @@ typedef struct
 /** @defgroup FLASHEx_Sectors FLASH Sectors
   * @{
   */
-#define FLASH_SECTOR_0     ((uint32_t)0)  /*!< Sector Number 0   */
-#define FLASH_SECTOR_1     ((uint32_t)1)  /*!< Sector Number 1   */
-#define FLASH_SECTOR_2     ((uint32_t)2)  /*!< Sector Number 2   */
-#define FLASH_SECTOR_3     ((uint32_t)3)  /*!< Sector Number 3   */
-#define FLASH_SECTOR_4     ((uint32_t)4)  /*!< Sector Number 4   */
-#define FLASH_SECTOR_5     ((uint32_t)5)  /*!< Sector Number 5   */
-#define FLASH_SECTOR_6     ((uint32_t)6)  /*!< Sector Number 6   */
-#define FLASH_SECTOR_7     ((uint32_t)7)  /*!< Sector Number 7   */
-#define FLASH_SECTOR_8     ((uint32_t)8)  /*!< Sector Number 8   */
-#define FLASH_SECTOR_9     ((uint32_t)9)  /*!< Sector Number 9   */
-#define FLASH_SECTOR_10    ((uint32_t)10) /*!< Sector Number 10  */
-#define FLASH_SECTOR_11    ((uint32_t)11) /*!< Sector Number 11  */
+#define FLASH_SECTOR_0     0U  /*!< Sector Number 0   */
+#define FLASH_SECTOR_1     1U  /*!< Sector Number 1   */
+#define FLASH_SECTOR_2     2U  /*!< Sector Number 2   */
+#define FLASH_SECTOR_3     3U  /*!< Sector Number 3   */
+#define FLASH_SECTOR_4     4U  /*!< Sector Number 4   */
+#define FLASH_SECTOR_5     5U  /*!< Sector Number 5   */
+#define FLASH_SECTOR_6     6U  /*!< Sector Number 6   */
+#define FLASH_SECTOR_7     7U  /*!< Sector Number 7   */
+#define FLASH_SECTOR_8     8U  /*!< Sector Number 8   */
+#define FLASH_SECTOR_9     9U  /*!< Sector Number 9   */
+#define FLASH_SECTOR_10    10U /*!< Sector Number 10  */
+#define FLASH_SECTOR_11    11U /*!< Sector Number 11  */
 
 
 
@@ -267,19 +249,19 @@ typedef struct
 /** @defgroup FLASHEx_Option_Bytes_Write_Protection FLASH Option Bytes Write Protection
   * @{
   */
-#define OB_WRP_SECTOR_0       ((uint32_t)0x00000001) /*!< Write protection of Sector0 */
-#define OB_WRP_SECTOR_1       ((uint32_t)0x00000002) /*!< Write protection of Sector1 */
-#define OB_WRP_SECTOR_2       ((uint32_t)0x00000004) /*!< Write protection of Sector2 */
-#define OB_WRP_SECTOR_3       ((uint32_t)0x00000008) /*!< Write protection of Sector3 */
-#define OB_WRP_SECTOR_4       ((uint32_t)0x00000010) /*!< Write protection of Sector4 */
-#define OB_WRP_SECTOR_5       ((uint32_t)0x00000020) /*!< Write protection of Sector5 */
-#define OB_WRP_SECTOR_6       ((uint32_t)0x00000040) /*!< Write protection of Sector6 */
-#define OB_WRP_SECTOR_7       ((uint32_t)0x00000080) /*!< Write protection of Sector7 */
-#define OB_WRP_SECTOR_8       ((uint32_t)0x00000100) /*!< Write protection of Sector8 */
-#define OB_WRP_SECTOR_9       ((uint32_t)0x00000200) /*!< Write protection of Sector9 */
-#define OB_WRP_SECTOR_10      ((uint32_t)0x00000400) /*!< Write protection of Sector10 */
-#define OB_WRP_SECTOR_11      ((uint32_t)0x00000800) /*!< Write protection of Sector11 */
-#define OB_WRP_SECTOR_All     ((uint32_t)0x00000FFF) /*!< Write protection of all Sectors */
+#define OB_WRP_SECTOR_0       0x00000001U /*!< Write protection of Sector0 */
+#define OB_WRP_SECTOR_1       0x00000002U /*!< Write protection of Sector1 */
+#define OB_WRP_SECTOR_2       0x00000004U /*!< Write protection of Sector2 */
+#define OB_WRP_SECTOR_3       0x00000008U /*!< Write protection of Sector3 */
+#define OB_WRP_SECTOR_4       0x00000010U /*!< Write protection of Sector4 */
+#define OB_WRP_SECTOR_5       0x00000020U /*!< Write protection of Sector5 */
+#define OB_WRP_SECTOR_6       0x00000040U /*!< Write protection of Sector6 */
+#define OB_WRP_SECTOR_7       0x00000080U /*!< Write protection of Sector7 */
+#define OB_WRP_SECTOR_8       0x00000100U /*!< Write protection of Sector8 */
+#define OB_WRP_SECTOR_9       0x00000200U /*!< Write protection of Sector9 */
+#define OB_WRP_SECTOR_10      0x00000400U /*!< Write protection of Sector10 */
+#define OB_WRP_SECTOR_11      0x00000800U /*!< Write protection of Sector11 */
+#define OB_WRP_SECTOR_All     0x00000FFFU /*!< Write protection of all Sectors */
 
 
 /**
@@ -315,12 +297,19 @@ void              HAL_FLASHEx_OBGetConfig(FLASH_OBProgramInitTypeDef *pOBInit);
   */
 /* Private types -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
+/** @defgroup FLASHEx_Private_Variables FLASH Private Variables
+  * @{
+  */
+
+/**
+  * @}
+  */
 /* Private constants ---------------------------------------------------------*/
 /** @defgroup FLASHEx_Private_Constants FLASH Private Constants
   * @{
   */
 
-#define FLASH_SECTOR_TOTAL  12
+#define FLASH_SECTOR_TOTAL  12U
 
 /**
   * @}
@@ -380,9 +369,10 @@ void              HAL_FLASHEx_OBGetConfig(FLASH_OBProgramInitTypeDef *pOBInit);
 
 
 
-#define IS_FLASH_ADDRESS(ADDRESS) (((ADDRESS) >= FLASH_BASE) && ((ADDRESS) <= FLASH_END))
-#define IS_FLASH_NBSECTORS(NBSECTORS) (((NBSECTORS) != 0) && ((NBSECTORS) <= FLASH_SECTOR_TOTAL))
-#define IS_OB_WRP_SECTOR(SECTOR)((((SECTOR) & (uint32_t)0xFFFFF000) == 0x00000000) && ((SECTOR) != 0x00000000))
+#define IS_FLASH_ADDRESS(ADDRESS) ((((ADDRESS) >= FLASH_BASE) && ((ADDRESS) <= FLASH_END)) || \
+                                   (((ADDRESS) >= FLASH_OTP_BASE) && ((ADDRESS) <= FLASH_OTP_END)))
+#define IS_FLASH_NBSECTORS(NBSECTORS) (((NBSECTORS) != 0U) && ((NBSECTORS) <= FLASH_SECTOR_TOTAL))
+#define IS_OB_WRP_SECTOR(SECTOR)((((SECTOR) & 0xFFFFF000U) == 0x00000000U) && ((SECTOR) != 0x00000000U))
 
 /**
   * @}

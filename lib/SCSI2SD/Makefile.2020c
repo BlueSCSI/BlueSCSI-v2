@@ -39,7 +39,6 @@ build/2020c/stm32cubemx/stm32f2xx_it.o: STM32CubeMX/2020c/Src/stm32f2xx_it.c
 build/2020c/stm32cubemx/tim.o: STM32CubeMX/2020c/Src/tim.c
 build/2020c/stm32cubemx/usart.o: STM32CubeMX/2020c/Src/usart.c
 build/2020c/stm32cubemx/usbd_conf.o: STM32CubeMX/2020c/Src/usbd_conf.c
-build/2020c/stm32cubemx/usb_otg_fs.o: STM32CubeMX/2020c/Src/usb_otg_fs.c
 build/2020c/stm32cubemx/stm32f2xx_hal.o: STM32CubeMX/2020c/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal.c
 build/2020c/stm32cubemx/stm32f2xx_hal_cortex.o: STM32CubeMX/2020c/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_cortex.c
 build/2020c/stm32cubemx/stm32f2xx_hal_dma.o: STM32CubeMX/2020c/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_dma.c
@@ -77,7 +76,6 @@ STM32OBJS = \
 	build/2020c/stm32cubemx/tim.o \
 	build/2020c/stm32cubemx/usart.o \
 	build/2020c/stm32cubemx/usbd_conf.o \
-	build/2020c/stm32cubemx/usb_otg_fs.o \
 	build/2020c/stm32cubemx/stm32f2xx_hal.o \
 	build/2020c/stm32cubemx/stm32f2xx_hal_cortex.o \
 	build/2020c/stm32cubemx/stm32f2xx_hal_dma.o \

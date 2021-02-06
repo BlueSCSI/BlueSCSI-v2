@@ -2,38 +2,20 @@
   ******************************************************************************
   * @file    stm32f2xx_hal_flash.h
   * @author  MCD Application Team
-  * @version V1.1.0
-  * @date    09-October-2015
   * @brief   Header file of FLASH HAL module.
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2015 STMicroelectronics</center></h2>
+  * <h2><center>&copy; Copyright (c) 2017 STMicroelectronics.
+  * All rights reserved.</center></h2>
   *
-  * Redistribution and use in source and binary forms, with or without modification,
-  * are permitted provided that the following conditions are met:
-  *   1. Redistributions of source code must retain the above copyright notice,
-  *      this list of conditions and the following disclaimer.
-  *   2. Redistributions in binary form must reproduce the above copyright notice,
-  *      this list of conditions and the following disclaimer in the documentation
-  *      and/or other materials provided with the distribution.
-  *   3. Neither the name of STMicroelectronics nor the names of its contributors
-  *      may be used to endorse or promote products derived from this software
-  *      without specific prior written permission.
-  *
-  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  * This software component is licensed by ST under BSD 3-Clause license,
+  * the "License"; You may not use this file except in compliance with the
+  * License. You may obtain a copy of the License at:
+  *                        opensource.org/licenses/BSD-3-Clause
   *
   ******************************************************************************
-  */ 
+  */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __STM32F2xx_HAL_FLASH_H
@@ -64,7 +46,7 @@
   */
 typedef enum 
 {
-  FLASH_PROC_NONE = 0, 
+  FLASH_PROC_NONE = 0U, 
   FLASH_PROC_SECTERASE,
   FLASH_PROC_MASSERASE,
   FLASH_PROC_PROGRAM
@@ -105,12 +87,12 @@ typedef struct
   * @brief    FLASH Error Code 
   * @{
   */ 
-#define HAL_FLASH_ERROR_NONE         ((uint32_t)0x00000000)    /*!< No error                      */
-#define HAL_FLASH_ERROR_PGS          ((uint32_t)0x00000001)    /*!< Programming Sequence error    */
-#define HAL_FLASH_ERROR_PGP          ((uint32_t)0x00000002)    /*!< Programming Parallelism error */
-#define HAL_FLASH_ERROR_PGA          ((uint32_t)0x00000004)    /*!< Programming Alignment error   */
-#define HAL_FLASH_ERROR_WRP          ((uint32_t)0x00000008)    /*!< Write protection error        */
-#define HAL_FLASH_ERROR_OPERATION    ((uint32_t)0x00000010)    /*!< Operation Error               */
+#define HAL_FLASH_ERROR_NONE         0x00000000U    /*!< No error                      */
+#define HAL_FLASH_ERROR_PGS          0x00000001U    /*!< Programming Sequence error    */
+#define HAL_FLASH_ERROR_PGP          0x00000002U    /*!< Programming Parallelism error */
+#define HAL_FLASH_ERROR_PGA          0x00000004U    /*!< Programming Alignment error   */
+#define HAL_FLASH_ERROR_WRP          0x00000008U    /*!< Write protection error        */
+#define HAL_FLASH_ERROR_OPERATION    0x00000010U    /*!< Operation Error               */
 /**
   * @}
   */
@@ -118,10 +100,10 @@ typedef struct
 /** @defgroup FLASH_Type_Program FLASH Type Program
   * @{
   */ 
-#define FLASH_TYPEPROGRAM_BYTE        ((uint32_t)0x00)  /*!< Program byte (8-bit) at a specified address           */
-#define FLASH_TYPEPROGRAM_HALFWORD    ((uint32_t)0x01)  /*!< Program a half-word (16-bit) at a specified address   */
-#define FLASH_TYPEPROGRAM_WORD        ((uint32_t)0x02)  /*!< Program a word (32-bit) at a specified address        */
-#define FLASH_TYPEPROGRAM_DOUBLEWORD  ((uint32_t)0x03)  /*!< Program a double word (64-bit) at a specified address */
+#define FLASH_TYPEPROGRAM_BYTE        0x00U  /*!< Program byte (8-bit) at a specified address           */
+#define FLASH_TYPEPROGRAM_HALFWORD    0x01U  /*!< Program a half-word (16-bit) at a specified address   */
+#define FLASH_TYPEPROGRAM_WORD        0x02U  /*!< Program a word (32-bit) at a specified address        */
+#define FLASH_TYPEPROGRAM_DOUBLEWORD  0x03U  /*!< Program a double word (64-bit) at a specified address */
 /**
   * @}
   */
@@ -145,8 +127,8 @@ typedef struct
   * @brief FLASH Interrupt definition
   * @{
   */ 
-#define FLASH_IT_EOP                   FLASH_CR_EOPIE          /*!< End of FLASH Operation Interrupt source */
-#define FLASH_IT_ERR                   ((uint32_t)0x02000000)  /*!< Error Interrupt source                  */
+#define FLASH_IT_EOP                   FLASH_CR_EOPIE           /*!< End of FLASH Operation Interrupt source */
+#define FLASH_IT_ERR                   0x02000000U  /*!< Error Interrupt source                  */
 /**
   * @}
   */  
@@ -154,11 +136,11 @@ typedef struct
 /** @defgroup FLASH_Program_Parallelism FLASH Program Parallelism
   * @{
   */
-#define FLASH_PSIZE_BYTE           ((uint32_t)0x00000000)
-#define FLASH_PSIZE_HALF_WORD      ((uint32_t)0x00000100)
-#define FLASH_PSIZE_WORD           ((uint32_t)0x00000200)
-#define FLASH_PSIZE_DOUBLE_WORD    ((uint32_t)0x00000300)
-#define CR_PSIZE_MASK              ((uint32_t)0xFFFFFCFF)
+#define FLASH_PSIZE_BYTE           0x00000000U
+#define FLASH_PSIZE_HALF_WORD      0x00000100U
+#define FLASH_PSIZE_WORD           0x00000200U
+#define FLASH_PSIZE_DOUBLE_WORD    0x00000300U
+#define CR_PSIZE_MASK              0xFFFFFCFFU
 /**
   * @}
   */ 
@@ -167,10 +149,10 @@ typedef struct
   * @{
   */ 
 #define RDP_KEY                  ((uint16_t)0x00A5)
-#define FLASH_KEY1               ((uint32_t)0x45670123)
-#define FLASH_KEY2               ((uint32_t)0xCDEF89AB)
-#define FLASH_OPT_KEY1           ((uint32_t)0x08192A3B)
-#define FLASH_OPT_KEY2           ((uint32_t)0x4C5D6E7F)
+#define FLASH_KEY1               0x45670123U
+#define FLASH_KEY2               0xCDEF89ABU
+#define FLASH_OPT_KEY1           0x08192A3BU
+#define FLASH_OPT_KEY2           0x4C5D6E7FU
 /**
   * @}
   */ 
@@ -185,7 +167,7 @@ typedef struct
   */
 /**
   * @brief  Set the FLASH Latency.
-  * @param  __LATENCY__: FLASH Latency                   
+  * @param  __LATENCY__ FLASH Latency                   
   *         The value of this parameter depend on device used within the same series
   * @retval none
   */ 
@@ -241,7 +223,7 @@ typedef struct
   */
 #define __HAL_FLASH_INSTRUCTION_CACHE_RESET() do {FLASH->ACR |= FLASH_ACR_ICRST;  \
                                                   FLASH->ACR &= ~FLASH_ACR_ICRST; \
-                                                 }while(0)
+                                                 }while(0U)
 
 /**
   * @brief  Resets the FLASH data Cache.
@@ -250,10 +232,10 @@ typedef struct
   */
 #define __HAL_FLASH_DATA_CACHE_RESET() do {FLASH->ACR |= FLASH_ACR_DCRST;  \
                                            FLASH->ACR &= ~FLASH_ACR_DCRST; \
-                                          }while(0)
+                                          }while(0U)
 /**
   * @brief  Enable the specified FLASH interrupt.
-  * @param  __INTERRUPT__ : FLASH interrupt 
+  * @param  __INTERRUPT__ FLASH interrupt 
   *         This parameter can be any combination of the following values:
   *     @arg FLASH_IT_EOP: End of FLASH Operation Interrupt
   *     @arg FLASH_IT_ERR: Error Interrupt    
@@ -263,7 +245,7 @@ typedef struct
 
 /**
   * @brief  Disable the specified FLASH interrupt.
-  * @param  __INTERRUPT__ : FLASH interrupt 
+  * @param  __INTERRUPT__ FLASH interrupt 
   *         This parameter can be any combination of the following values:
   *     @arg FLASH_IT_EOP: End of FLASH Operation Interrupt
   *     @arg FLASH_IT_ERR: Error Interrupt    
@@ -273,8 +255,8 @@ typedef struct
 
 /**
   * @brief  Get the specified FLASH flag status. 
-  * @param  __FLAG__: specifies the FLASH flag to check.
-  *          This parameter can be one of the following values:
+  * @param  __FLAG__ specifies the FLASH flags to check.
+  *          This parameter can be any combination of the following values:
   *            @arg FLASH_FLAG_EOP   : FLASH End of Operation flag 
   *            @arg FLASH_FLAG_OPERR : FLASH operation Error flag 
   *            @arg FLASH_FLAG_WRPERR: FLASH Write protected error flag 
@@ -284,11 +266,11 @@ typedef struct
   *            @arg FLASH_FLAG_BSY   : FLASH Busy flag
   * @retval The new state of __FLAG__ (SET or RESET).
   */
-#define __HAL_FLASH_GET_FLAG(__FLAG__)   ((FLASH->SR & (__FLAG__)) == (__FLAG__))
+#define __HAL_FLASH_GET_FLAG(__FLAG__)   ((FLASH->SR & (__FLAG__)))
 
 /**
-  * @brief  Clear the specified FLASH flag.
-  * @param  __FLAG__: specifies the FLASH flags to clear.
+  * @brief  Clear the specified FLASH flags.
+  * @param  __FLAG__ specifies the FLASH flags to clear.
   *          This parameter can be any combination of the following values:
   *            @arg FLASH_FLAG_EOP   : FLASH End of Operation flag 
   *            @arg FLASH_FLAG_OPERR : FLASH operation Error flag 
@@ -369,23 +351,23 @@ HAL_StatusTypeDef FLASH_WaitForLastOperation(uint32_t Timeout);
 /** 
   * @brief   ACR register byte 0 (Bits[7:0]) base address  
   */ 
-#define ACR_BYTE0_ADDRESS           ((uint32_t)0x40023C00) 
+#define ACR_BYTE0_ADDRESS           0x40023C00U
 /** 
   * @brief   OPTCR register byte 0 (Bits[7:0]) base address  
   */ 
-#define OPTCR_BYTE0_ADDRESS         ((uint32_t)0x40023C14)
+#define OPTCR_BYTE0_ADDRESS         0x40023C14U
 /** 
   * @brief   OPTCR register byte 1 (Bits[15:8]) base address  
   */ 
-#define OPTCR_BYTE1_ADDRESS         ((uint32_t)0x40023C15)
+#define OPTCR_BYTE1_ADDRESS         0x40023C15U
 /** 
   * @brief   OPTCR register byte 2 (Bits[23:16]) base address  
   */ 
-#define OPTCR_BYTE2_ADDRESS         ((uint32_t)0x40023C16)
+#define OPTCR_BYTE2_ADDRESS         0x40023C16U
 /** 
   * @brief   OPTCR register byte 3 (Bits[31:24]) base address  
   */ 
-#define OPTCR_BYTE3_ADDRESS         ((uint32_t)0x40023C17)
+#define OPTCR_BYTE3_ADDRESS         0x40023C17U
 
 /**
   * @}
