@@ -29,7 +29,7 @@ If your computer is not listed below - it may be compatible but there is no guar
 
 #### Tested by Me
 
-SE, SE/30, Classic, Classic II, Color Classic, LC I/II/III
+SE, SE/30, Classic, Classic II, Color Classic, LC I/II/III, LC 475
 
 #### Reported by others
 
@@ -37,7 +37,7 @@ SE, SE/30, Classic, Classic II, Color Classic, LC I/II/III
 
 ### Incompatible 
 
-Plus, PowerPC
+Plus, Some 040's, PowerPC
 
 ## Performance
 
