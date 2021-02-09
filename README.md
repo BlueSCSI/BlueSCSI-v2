@@ -29,7 +29,7 @@ If your computer is not listed below - it may be compatible but there is no guar
 
 #### Tested by Me
 
-SE, SE/30, Classic, Classic II, Color Classic, LC I/II/III, LC 475
+SE, SE/30, Classic, Classic II, Color Classic, LC I/II/III, LC 475, LC 575
 
 #### Reported by others
 
@@ -37,7 +37,7 @@ SE, SE/30, Classic, Classic II, Color Classic, LC I/II/III, LC 475
 
 ### Incompatible 
 
-Plus, Some 040's, PowerPC
+Plus, PowerPC (SCSI-2?)
 
 ## Performance
 
