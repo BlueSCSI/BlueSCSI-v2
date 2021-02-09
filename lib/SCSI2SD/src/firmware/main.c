@@ -105,7 +105,7 @@ void mainLoop()
 #ifdef S2S_USB_FS
 	s2s_usbDevicePoll(&hUsbDeviceFS);
 #endif
-#ifdef S2S_USB_FS
+#ifdef S2S_USB_HS
 	s2s_usbDevicePoll(&hUsbDeviceHS);
 #endif
 

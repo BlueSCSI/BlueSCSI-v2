@@ -51,7 +51,6 @@
 /** @defgroup USBD_BOT_Exported_Defines
   * @{
   */ 
-#define MSC_MAX_FS_PACKET            0x40
 
 #define BOT_GET_MAX_LUN              0xFE
 #define BOT_RESET                    0xFF

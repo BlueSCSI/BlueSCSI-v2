@@ -39,8 +39,6 @@
 #include "usbd_desc.h"
 #include "usbd_composite.h"
 
-//#include "usbd_hidt.h"
-
 /* USB Device Core handle declaration */
 USBD_HandleTypeDef hUsbDeviceFS;
 USBD_HandleTypeDef hUsbDeviceHS;
@@ -53,11 +51,14 @@ void MX_USB_DEVICE_Init(void)
 	USBD_Start(&hUsbDeviceFS);
 #endif
 #if S2S_USB_HS
-	USBD_Init(&hUsbDeviceHS, &FS_Desc, DEVICE_HS);
+	USBD_Init(&hUsbDeviceHS, &HS_Desc, DEVICE_HS);
 	USBD_RegisterClass(&hUsbDeviceHS, &USBD_Composite);
 
-USB_OTG_GlobalTypeDef* USBx  = USB_OTG_HS;
-USBx_DEVICE->DCFG |= 0x4000; // BIT 14
+    // Hack to work with LPM ULPI (STM32F4446 only)
+    // See https://community.st.com/s/question/0D50X00009XkZUeSAN/stm32f2f4-problems-with-various-ulpi-usb-phys
+    USB_OTG_GlobalTypeDef* USBx  = USB_OTG_HS;
+    uint32_t USBx_BASE = (uint32_t)USBx; // Needed for macro expansion
+    USBx_DEVICE->DCFG |= 0x4000; // BIT 14
 
 	USBD_Start(&hUsbDeviceHS);
 

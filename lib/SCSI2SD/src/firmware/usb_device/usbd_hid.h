@@ -51,7 +51,7 @@
 #define HID_REPORT_DESC               0x22
 
 #define HID_FS_BINTERVAL               0x20 // 32ms
-#define HID_HS_BINTERVAL               0x20 // 32ms
+#define HID_HS_BINTERVAL               0x9
 
 #define HID_REQ_SET_PROTOCOL          0x0B
 #define HID_REQ_GET_PROTOCOL          0x03

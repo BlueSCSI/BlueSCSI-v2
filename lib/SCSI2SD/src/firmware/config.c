@@ -44,7 +44,7 @@ extern uint8_t* __fixed_config;
 #ifdef S2S_USB_HS
 #define configUsbDev hUsbDeviceHS
 #else
-#define configUsbDev configUsbDev
+#define configUsbDev hUsbDeviceFS
 #endif
 
 // 1 flash row

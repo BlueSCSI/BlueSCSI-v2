@@ -113,7 +113,7 @@ int8_t s2s_usbd_storage_GetCapacity (uint8_t lun, uint32_t *block_num, uint16_t 
 
 	*block_num  = capacity;
 	*block_size = cfg->bytesPerSector;
-	return (0);
+	return capacity ? 0 : 1;
 }
 
 uint32_t s2s_usbd_storage_Inquiry (uint8_t lun, uint8_t* buf, uint8_t maxlen)
@@ -248,6 +248,11 @@ int8_t s2s_usbd_storage_GetMaxLun (void)
 
 void s2s_initUsbDeviceStorage(void)
 {
+#ifdef S2S_USB_FS
 	USBD_MSC_RegisterStorage(&hUsbDeviceFS, &USBD_MSC_SD_fops);
+#endif
+#ifdef S2S_USB_HS
+	USBD_MSC_RegisterStorage(&hUsbDeviceHS, &USBD_MSC_SD_fops);
+#endif
 }
 
