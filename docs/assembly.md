@@ -6,7 +6,7 @@ Read through all instructions before starting.
 
 ## Building
 
-1. Solder on the surface mount SD Card holder. Use the [Drag Solder](https://www.youtube.com/watch?v=nyele3CIs-U&start=34) technique.
+1. Solder on the surface mount SD Card holder. Use the [Drag Solder](https://youtu.be/Z_KL4fWOMug) technique.
     - Once on, check continuity of all connections. Fixing this after the BluePill is on will be difficult.
     - Ensure the SD card fits and you dont have too much solder on the sides or contacts
 2. Solder the dioeds to the **bottom** of the board. Be sure they are flush as possible to the bottom.
