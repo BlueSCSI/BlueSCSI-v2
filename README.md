@@ -51,9 +51,10 @@ Tested on a Color Classic with [SCSI Director Pro 4](https://macintoshgarden.org
 ## Assembly
 
 See [Assembly.md](docs/assembly.md)
+
 ## Usage
 
-Hard Disk image files are placed in the root directory of a `FAT32` (or `ExFat`) formatted SD card. You can create a disk image using `dd` or download one from the `blank_images.zip` file. These images are compatible with the RaSCSI device and Basilisk II emulator.
+Hard Disk image files are placed in the root directory of a `FAT32` (or `ExFat`) formatted SD card. You can create a disk image using `dd` or any raw disk will work. See premade disks below. These images are compatible with the RaSCSI device and Basilisk II emulator.
 
 The naming convention is as follows (file name max 32 characters). Note you may mount multiple drives at a time to different SCSI ID's.
 
@@ -75,6 +76,14 @@ y - LUN id usually 0.
 `HD99_712 foo bar fizz buzz bang.hda` Over 32 chars and invalid SCSI/LUN/Block size....
 
 If no image files are found PC13 will pulse on and off. Check the log file for any errors.
+
+### Blanks & Premade Images
+
+Any blank raw file will do. They are easy to come by as they are used in other devices and emulators such as Basilisk II.
+
+* Blanks of various sizes from gryphel.com - https://www.gryphel.com/c/minivmac/extras/blanks/
+* Premade from savagetaylor.com - https://www.savagetaylor.com/downloads/downloads-macintosh/ 
+* Premade from RaSCSI - http://macintoshgarden.org/apps/rascsi-68kmla-edition
 
 ### Termination
 
