@@ -257,11 +257,7 @@
 			<type>1</type>
 			<location>PARENT-2-PROJECT_LOC/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal.c</location>
 		</link>
-    <link>
-			<name>Drivers/STM32F4xx_HAL_Driver/stm32f4xx_hal_exti.c</name>
-			<type>1</type>
-			<location>PARENT-2-PROJECT_LOC/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_exti.c</location>
-		</link>
+    
     <link>
 			<name>Drivers/STM32F4xx_HAL_Driver/stm32f4xx_ll_fmc.c</name>
 			<type>1</type>
@@ -358,6 +354,30 @@
 			<location>PARENT-2-PROJECT_LOC/Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc_scsi.c</location>
 		</link>
   <link>
+      
+      <type>2</type>
+      
+    </link><link>
+      
+      <type>2</type>
+      
+    </link><link>
+      
+      <type>2</type>
+      
+    </link><link>
+      
+      <type>2</type>
+      
+    </link><link>
+      
+      <type>2</type>
+      
+    </link><link>
+      
+      <type>2</type>
+      
+    </link><link>
       <name>Application</name>
       <type>2</type>
       <locationURI>virtual:/virtual</locationURI>
@@ -365,6 +385,10 @@
       <name>Drivers</name>
       <type>2</type>
       <locationURI>virtual:/virtual</locationURI>
+    </link><link>
+      <name>Drivers/STM32F4xx_HAL_Driver/stm32f4xx_hal_exti.c</name>
+      <type>1</type>
+      <location>PARENT-2-PROJECT_LOC/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_exti.c</location>
     </link><link>
       <name>Middlewares</name>
       <type>2</type>

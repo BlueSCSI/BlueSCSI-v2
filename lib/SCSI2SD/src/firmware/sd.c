@@ -92,27 +92,6 @@ void sdCompleteTransfer()
 	}
 }
 
-
-static void sdInitDMA()
-{
-	// One-time init only.
-	static uint8_t init = 0;
-	if (init == 0)
-	{
-		init = 1;
-
-		//TODO MM SEE STUPID SD_DMA_RxCplt that require the SD IRQs to preempt
-		// Ie. priority must be geater than the SDIO_IRQn priority.
-		// 4 bits preemption, NO sub priority.
-		HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
-		HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 8, 0);
-		HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
-		HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
-		HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 8, 0);
-		HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
-	}
-}
-
 static void sdClear()
 {
 	sdDev.version = 0;
@@ -162,7 +141,6 @@ int sdInit()
 	{
 		blockDev.state &= ~(DISK_PRESENT | DISK_INITIALISED);
 		sdClear();
-		sdInitDMA();
 	}
 
 	if (firstInit || (scsiDev.phase == BUS_FREE))
