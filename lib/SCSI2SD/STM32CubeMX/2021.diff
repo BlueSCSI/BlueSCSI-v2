@@ -209,3 +209,30 @@ index 902bdb2..1d8d45e 100644
    hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
    hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
    hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
+diff --git a/STM32CubeMX/2021/Src/usbd_conf.c b/STM32CubeMX/2021/Src/usbd_conf.c
+index 1e08ba4..110da2f 100644
+--- a/STM32CubeMX/2021/Src/usbd_conf.c
++++ b/STM32CubeMX/2021/Src/usbd_conf.c
+@@ -468,7 +468,8 @@ USBD_StatusTypeDef USBD_LL_Init(USBD_HandleTypeDef *pdev)
+ #endif /* USE_HAL_PCD_REGISTER_CALLBACKS */
+   HAL_PCDEx_SetRxFiFo(&hpcd_USB_OTG_FS, 0x80);
+   HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 0, 0x40);
+-  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 1, 0x80);
++  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 1, 0x40);
++  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 2, 0x40);
+   }
+   if (pdev->id == DEVICE_HS) {
+   /* Link the driver to the stack. */
+@@ -507,8 +508,9 @@ USBD_StatusTypeDef USBD_LL_Init(USBD_HandleTypeDef *pdev)
+   HAL_PCD_RegisterIsoInIncpltCallback(&hpcd_USB_OTG_HS, PCD_ISOINIncompleteCallback);
+ #endif /* USE_HAL_PCD_REGISTER_CALLBACKS */
+   HAL_PCDEx_SetRxFiFo(&hpcd_USB_OTG_HS, 0x200);
+-  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 0, 0x80);
+-  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 1, 0x174);
++  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 0, 0x40);
++  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 1, 0x40);
++  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 2, 0x174);
+   }
+   return USBD_OK;
+ }
+
