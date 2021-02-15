@@ -105,14 +105,13 @@ __weak void BSP_SD_DetectCallback(void)
 /**
   * @brief  Reads block(s) from a specified address in an SD card, in polling mode. 
   * @param  pData: Pointer to the buffer that will contain the data to transmit
-  * @param  ReadAddr: Address from where data is to be read  
-  * @param  BlockSize: SD card data block size, that should be 512
+  * @param  BlockAddr: Address from where data is to be read  
   * @param  NumOfBlocks: Number of SD blocks to read 
   * @retval SD status
   */
-uint8_t BSP_SD_ReadBlocks(uint8_t *pData, uint64_t ReadAddr, uint32_t NumOfBlocks)
+uint8_t BSP_SD_ReadBlocks(uint8_t *pData, uint64_t BlockAddr, uint32_t NumOfBlocks)
 {
-  if(HAL_SD_ReadBlocks_DMA(&hsd, pData, ReadAddr, NumOfBlocks) != HAL_OK)  
+  if(HAL_SD_ReadBlocks_DMA(&hsd, pData, BlockAddr, NumOfBlocks) != HAL_OK)  
   {
     return MSD_ERROR;
   }
@@ -122,13 +121,13 @@ uint8_t BSP_SD_ReadBlocks(uint8_t *pData, uint64_t ReadAddr, uint32_t NumOfBlock
 /**
   * @brief  Writes block(s) to a specified address in an SD card, in polling mode. 
   * @param  pData: Pointer to the buffer that will contain the data to transmit
-  * @param  WriteAddr: Address from where data is to be written  
+  * @param  BlockAddr: Address from where data is to be written  
   * @param  NumOfBlocks: Number of SD blocks to write
   * @retval SD status
   */
-uint8_t BSP_SD_WriteBlocks(uint8_t *pData, uint64_t WriteAddr, uint32_t NumOfBlocks)
+uint8_t BSP_SD_WriteBlocks(uint8_t *pData, uint64_t BlockAddr, uint32_t NumOfBlocks)
 {
-  if(HAL_SD_WriteBlocks_DMA(&hsd, pData, WriteAddr, NumOfBlocks) != HAL_OK)  
+  if(HAL_SD_WriteBlocks_DMA(&hsd, pData, BlockAddr, NumOfBlocks) != HAL_OK)  
   {
     return MSD_ERROR;
   }
@@ -138,17 +137,16 @@ uint8_t BSP_SD_WriteBlocks(uint8_t *pData, uint64_t WriteAddr, uint32_t NumOfBlo
 /**
   * @brief  Reads block(s) from a specified address in an SD card, in DMA mode. 
   * @param  pData: Pointer to the buffer that will contain the data to transmit
-  * @param  ReadAddr: Address from where data is to be read  
-  * @param  BlockSize: SD card data block size, that should be 512
+  * @param  BlockAddr: Address from where data is to be read  
   * @param  NumOfBlocks: Number of SD blocks to read 
   * @retval SD status
   */
-uint8_t BSP_SD_ReadBlocks_DMA(uint8_t *pData, uint64_t ReadAddr, uint32_t NumOfBlocks)
+uint8_t BSP_SD_ReadBlocks_DMA(uint8_t *pData, uint64_t BlockAddr, uint32_t NumOfBlocks)
 {
   uint8_t SD_state = MSD_OK;
   
   /* Read block(s) in DMA transfer mode */
-  if(HAL_SD_ReadBlocks_DMA(&hsd, pData, ReadAddr, NumOfBlocks) != HAL_OK)  
+  if(HAL_SD_ReadBlocks_DMA(&hsd, pData, BlockAddr, NumOfBlocks) != HAL_OK)  
   {
     SD_state = MSD_ERROR;
   }
@@ -174,16 +172,16 @@ uint8_t BSP_SD_ReadBlocks_DMA(uint8_t *pData, uint64_t ReadAddr, uint32_t NumOfB
 /**
   * @brief  Writes block(s) to a specified address in an SD card, in DMA mode.  
   * @param  pData: Pointer to the buffer that will contain the data to transmit
-  * @param  WriteAddr: Address from where data is to be written  
+  * @param  BlockAddr: Address from where data is to be written  
   * @param  NumOfBlocks: Number of SD blocks to write 
   * @retval SD status
   */
-uint8_t BSP_SD_WriteBlocks_DMA(uint8_t *pData, uint64_t WriteAddr, uint32_t NumOfBlocks)
+uint8_t BSP_SD_WriteBlocks_DMA(uint8_t *pData, uint64_t BlockAddr, uint32_t NumOfBlocks)
 {
   uint8_t SD_state = MSD_OK;
   
   /* Write block(s) in DMA transfer mode */
-  if(HAL_SD_WriteBlocks_DMA(&hsd, pData, WriteAddr, NumOfBlocks) != HAL_OK)  
+  if(HAL_SD_WriteBlocks_DMA(&hsd, pData, BlockAddr, NumOfBlocks) != HAL_OK)  
   {
     SD_state = MSD_ERROR;
   }

@@ -68,7 +68,7 @@ sdReadDMAPoll(uint32_t remainingSectors)
 
 void sdReadDMA(uint32_t lba, uint32_t sectors, uint8_t* outputBuffer)
 {
-	if (HAL_SD_ReadBlocks_DMA(&hsd, outputBuffer, lba * 512ll, sectors) != HAL_OK)
+	if (HAL_SD_ReadBlocks_DMA(&hsd, outputBuffer, lba, sectors) != HAL_OK)
 	{
 		scsiDiskReset();
 

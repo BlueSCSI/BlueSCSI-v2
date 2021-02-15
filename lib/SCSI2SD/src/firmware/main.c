@@ -43,9 +43,13 @@ uint32_t lastSDPoll;
 
 static int isUsbStarted;
 
+// Note that the chip clocking isn't fully configured at this stage.
 void mainEarlyInit()
 {
-	// USB device is initialised before mainInit is called
+	// Disable the ULPI chip
+	HAL_GPIO_WritePin(nULPI_RESET_GPIO_Port, nULPI_RESET_Pin, GPIO_PIN_RESET);
+
+	// Sets up function pointers only
 	s2s_initUsbDeviceStorage();
 }
 
@@ -53,15 +57,6 @@ void mainInit()
 {
 	s2s_timeInit();
 	s2s_checkHwVersion();
-
-	#ifdef S2S_USB_HS
-		// Enable the ULPI chip
-		HAL_GPIO_WritePin(nULPI_RESET_GPIO_Port, nULPI_RESET_Pin, GPIO_PIN_SET);
-		s2s_delay_ms(5);
-	#else
-		// DISable the ULPI chip
-		HAL_GPIO_WritePin(nULPI_RESET_GPIO_Port, nULPI_RESET_Pin, GPIO_PIN_RESET);
-	#endif
 
 	s2s_ledInit();
 	s2s_fpgaInit();
@@ -73,6 +68,12 @@ void mainInit()
 	s2s_configInit(&scsiDev.boardCfg);
 	scsiPhyConfig();
 	scsiInit();
+
+	#ifdef S2S_USB_HS
+		// Enable the ULPI chip
+		HAL_GPIO_WritePin(nULPI_RESET_GPIO_Port, nULPI_RESET_Pin, GPIO_PIN_SET);
+		s2s_delay_ms(5);
+	#endif
 
 	MX_USB_DEVICE_Init(); // USB lun config now available.
 	isUsbStarted = 1;

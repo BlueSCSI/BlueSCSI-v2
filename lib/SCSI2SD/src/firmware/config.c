@@ -107,7 +107,7 @@ void s2s_configInit(S2S_BoardCfg* config)
 		int cfgSectors = (S2S_CFG_SIZE + 511) / 512;
 		BSP_SD_ReadBlocks_DMA(
 			&s2s_cfg[0],
-			(sdDev.capacity - cfgSectors) * 512ll,
+			sdDev.capacity - cfgSectors,
 			cfgSectors);
 
 		memcpy(config, s2s_cfg, sizeof(S2S_BoardCfg));
@@ -252,7 +252,7 @@ sdWriteCommand(const uint8_t* cmd, size_t cmdSize)
 		((uint32_t)cmd[4]);
 
 	memcpy(configDmaBuf, &cmd[5], 512);
-	BSP_SD_WriteBlocks_DMA(configDmaBuf, lba * 512ll, 1);
+	BSP_SD_WriteBlocks_DMA(configDmaBuf, lba, 1);
 
 	uint8_t response[] =
 	{
@@ -274,7 +274,7 @@ sdReadCommand(const uint8_t* cmd, size_t cmdSize)
 		(((uint32_t)cmd[3]) << 8) |
 		((uint32_t)cmd[4]);
 
-	BSP_SD_ReadBlocks_DMA(configDmaBuf, lba * 512ll, 1);
+	BSP_SD_ReadBlocks_DMA(configDmaBuf, lba, 1);
 	hidPacket_send(configDmaBuf, 512);
 }
 
@@ -448,7 +448,7 @@ void s2s_configSave(int scsiId, uint16_t bytesPerSector)
 
 	BSP_SD_WriteBlocks_DMA(
 		&s2s_cfg[0],
-		(sdDev.capacity - S2S_CFG_SIZE) * 512ll,
+		sdDev.capacity - S2S_CFG_SIZE,
 		(S2S_CFG_SIZE + 511) / 512);
 }
 

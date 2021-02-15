@@ -830,7 +830,7 @@ void scsiDiskPoll()
 					}
 				}
 
-				HAL_SD_WriteBlocks_DMA(&hsd, (&scsiDev.data[0]), (i + sdLBA) * 512ll, sectors);
+				HAL_SD_WriteBlocks_DMA(&hsd, (&scsiDev.data[0]), i + sdLBA, sectors);
 
 				int underrun = 0;
 				if (scsiBytesRead < totalBytes && !scsiDev.resetFlag)
@@ -877,7 +877,7 @@ void scsiDiskPoll()
 				if (underrun && (!parityError || !enableParity))
 				{
 					// Try again. Data is still in memory.
-					BSP_SD_WriteBlocks_DMA(&scsiDev.data[0], 512ll * (i + sdLBA), sectors);
+					BSP_SD_WriteBlocks_DMA(&scsiDev.data[0], i + sdLBA, sectors);
 					scsiDev.sdUnderrunCount++;
 				}
 
@@ -908,7 +908,7 @@ void scsiDiskPoll()
 				}
 				if (!parityError || !enableParity)
 				{
-					BSP_SD_WriteBlocks_DMA(&scsiDev.data[0], 512ll * (i + sdLBA), sectors);
+					BSP_SD_WriteBlocks_DMA(&scsiDev.data[0], i + sdLBA, sectors);
 				}
 				i += sectors;
 			}
