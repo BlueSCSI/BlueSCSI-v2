@@ -31,8 +31,12 @@
 
 
 // Support 2 USB devices.
+#ifdef S2S_USB_FS
 __ALIGN_BEGIN static USBD_CompositeClassData fsClassData __ALIGN_END;
+#endif
+#ifdef S2S_USB_HS
 __ALIGN_BEGIN static USBD_CompositeClassData hsClassData __ALIGN_END;
+#endif
 
 static uint8_t  USBD_Composite_Init (USBD_HandleTypeDef *pdev, uint8_t cfgidx);
 
@@ -270,6 +274,7 @@ static uint8_t  USBD_Composite_Init(USBD_HandleTypeDef *pdev, uint8_t cfgidx)
 	USBD_LL_OpenEP(pdev, HID_EPOUT_ADDR, USBD_EP_TYPE_INTR, HID_EPOUT_SIZE);
 
 	USBD_CompositeClassData* classData;
+#ifdef S2S_USB_HS
     if(pdev->dev_speed == USBD_SPEED_HIGH)
 	{
 		classData = &hsClassData;
@@ -278,7 +283,9 @@ static uint8_t  USBD_Composite_Init(USBD_HandleTypeDef *pdev, uint8_t cfgidx)
     	USBD_LL_OpenEP(pdev, MSC_EPOUT_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_HS_PACKET);
     	USBD_LL_OpenEP(pdev, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_HS_PACKET);
 	}
-	else
+#endif
+#ifdef S2S_USB_FS
+    if(pdev->dev_speed != USBD_SPEED_HIGH)
 	{
 		classData = &fsClassData;
 
@@ -286,6 +293,8 @@ static uint8_t  USBD_Composite_Init(USBD_HandleTypeDef *pdev, uint8_t cfgidx)
     	USBD_LL_OpenEP(pdev, MSC_EPOUT_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
     	USBD_LL_OpenEP(pdev, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
 	}
+#endif
+
 	classData->hid.state = HID_IDLE;
 	classData->hid.reportReady = 0;
 	classData->DataInReady = 0;

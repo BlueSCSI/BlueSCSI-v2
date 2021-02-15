@@ -151,7 +151,7 @@ int8_t s2s_usbd_storage_Read (uint8_t lun,
 	{
 		BSP_SD_ReadBlocks_DMA(
 			buf,
-			(cfg->sdSectorStart + blk_addr) * 512ll,
+			cfg->sdSectorStart + blk_addr,
 			blk_len);
 	}
 	else
@@ -166,7 +166,7 @@ int8_t s2s_usbd_storage_Read (uint8_t lun,
 				uint8_t partial[512] S2S_DMA_ALIGN;
 				BSP_SD_ReadBlocks_DMA(
 					partial,
-					sdSectorNum * 512LL,
+					sdSectorNum,
 					1);
 				sdSectorNum++;
 
@@ -197,7 +197,7 @@ int8_t s2s_usbd_storage_Write (uint8_t lun,
 	{
 		BSP_SD_WriteBlocks_DMA(
 			buf,
-			(cfg->sdSectorStart + blk_addr) * 512ll,
+			cfg->sdSectorStart + blk_addr,
 			blk_len);
 	}
 	else
@@ -214,7 +214,7 @@ int8_t s2s_usbd_storage_Write (uint8_t lun,
 
 				BSP_SD_WriteBlocks_DMA(
 					partial,
-					sdSectorNum * 512LL,
+					sdSectorNum,
 					1);
 				sdSectorNum++;
 
