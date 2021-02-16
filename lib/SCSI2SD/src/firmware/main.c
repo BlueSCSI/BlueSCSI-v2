@@ -114,6 +114,7 @@ void mainLoop()
 	sdPoll();
 #endif
 
+    // TODO test if USB transfer is in progress
 	if (unlikely(scsiDev.phase == BUS_FREE))
 	{
 		if (unlikely(s2s_elapsedTime_ms(lastSDPoll) > 200))

@@ -491,13 +491,13 @@ static int8_t SCSI_Read10(USBD_HandleTypeDef  *pdev, uint8_t lun , uint8_t *para
       return -1;
     } 
     
-    hmsc->scsi_blk_addr = (params[2] << 24) | \
-      (params[3] << 16) | \
-        (params[4] <<  8) | \
-          params[5];
+    hmsc->scsi_blk_addr = ((uint32_t)params[2] << 24) | \
+      ((uint32_t)params[3] << 16) | \
+        ((uint32_t)params[4] <<  8) | \
+          (uint32_t)params[5];
     
-    hmsc->scsi_blk_len =  (params[7] <<  8) | \
-      params[8];  
+    hmsc->scsi_blk_len =  ((uint32_t)params[7] <<  8) | \
+      (uint32_t)params[8];  
     
     
     
@@ -573,12 +573,12 @@ static int8_t SCSI_Write10 (USBD_HandleTypeDef  *pdev, uint8_t lun , uint8_t *pa
     } 
     
     
-    hmsc->scsi_blk_addr = (params[2] << 24) | \
-      (params[3] << 16) | \
-        (params[4] <<  8) | \
-          params[5];
-    hmsc->scsi_blk_len = (params[7] <<  8) | \
-      params[8];  
+    hmsc->scsi_blk_addr = ((uint32_t)params[2] << 24) | \
+      ((uint32_t)params[3] << 16) | \
+        ((uint32_t)params[4] <<  8) | \
+          (uint32_t)params[5];
+    hmsc->scsi_blk_len = ((uint32_t)params[7] <<  8) | \
+      (uint32_t)params[8];  
     
     /* check if LBA address is in the right range */
     if(SCSI_CheckAddressRange(pdev,
