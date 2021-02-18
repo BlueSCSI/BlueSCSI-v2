@@ -353,7 +353,7 @@ void GTerm::delete_line()
 
 void GTerm::status_report()
 {
-	char str[20];
+	char str[64];
 	if (param[0] == 5) {
 		char *str = "\033[0n";
                 ProcessOutput(strlen(str), (unsigned char *)str);
