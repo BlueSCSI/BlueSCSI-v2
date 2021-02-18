@@ -83,7 +83,7 @@ GTerm::GTerm(int w, int h) : width(w), height(h)
 	doing_update = 0;
 
 	// could make this dynamic
-	text = new unsigned char[MAXWIDTH*MAXHEIGHT];
+	text = new unsigned char[MAXWIDTH*MAXHEIGHT+1];
 	color = new unsigned short[MAXWIDTH*MAXHEIGHT];
 
 	for (i=0; i<MAXHEIGHT; i++) {
