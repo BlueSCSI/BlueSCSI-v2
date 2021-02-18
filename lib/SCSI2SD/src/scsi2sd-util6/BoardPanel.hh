@@ -35,6 +35,7 @@
 #endif
 
 #include <utility>
+#include <memory>
 
 namespace SCSI2SD
 {
@@ -76,7 +77,7 @@ private:
 	wxCheckBox* myMapLunsCtrl;
 	wxCheckBox* myBlindWriteCtrl;
 
-	wxIntegerValidator<uint8_t>* myDelayValidator;
+	std::unique_ptr<wxIntegerValidator<uint8_t>> myDelayValidator;
 	wxTextCtrl* myStartDelayCtrl;
 	wxTextCtrl* mySelDelayCtrl;
 

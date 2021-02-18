@@ -35,6 +35,7 @@
 #endif
 
 #include <utility>
+#include <memory>
 
 namespace SCSI2SD
 {
@@ -108,20 +109,20 @@ private:
 
 	wxChoice* myDeviceTypeCtrl;
 
-	wxIntegerValidator<uint32_t>* myStartSDSectorValidator;
+	std::unique_ptr<wxIntegerValidator<uint32_t>> myStartSDSectorValidator;
 	wxTextCtrl* myStartSDSectorCtrl;
 	wxCheckBox* myAutoStartSectorCtrl;
 	wxStaticText* myStartSDSectorMsg;
 
-	wxIntegerValidator<uint16_t>* mySectorSizeValidator;
+	std::unique_ptr<wxIntegerValidator<uint16_t>> mySectorSizeValidator;
 	wxTextCtrl* mySectorSizeCtrl;
 	wxStaticText* mySectorSizeMsg;
 
-	wxIntegerValidator<uint32_t>* myNumSectorValidator;
+	std::unique_ptr<wxIntegerValidator<uint32_t>> myNumSectorValidator;
 	wxTextCtrl* myNumSectorCtrl;
 	wxStaticText* myNumSectorMsg;
 
-	wxFloatingPointValidator<float>* mySizeValidator;
+	std::unique_ptr<wxFloatingPointValidator<float>> mySizeValidator;
 	wxTextCtrl* mySizeCtrl;
 	wxChoice* mySizeUnitCtrl;
 
