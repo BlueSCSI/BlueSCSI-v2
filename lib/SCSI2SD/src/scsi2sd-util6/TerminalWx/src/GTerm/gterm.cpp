@@ -106,11 +106,11 @@ GTerm::GTerm(int w, int h) : width(w), height(h)
 
 GTerm::~GTerm()
 {
-	delete text;
-	delete color;
+	delete[] text;
+	delete[] color;
 #ifdef GTERM_PC
         if(pc_machinename)
-          delete pc_machinename;
+          delete[] pc_machinename;
 #endif // GTERM_PC
 }
 
