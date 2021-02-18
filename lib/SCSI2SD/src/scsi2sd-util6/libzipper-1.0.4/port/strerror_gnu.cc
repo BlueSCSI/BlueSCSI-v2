@@ -15,7 +15,7 @@
 //	You should have received a copy of the GNU General Public License
 //	along with libzipper.  If not, see <http://www.gnu.org/licenses/>.
 
-#define _GNU_SOURCE
+#define _GNU_SOURCE 1
 
 #include "../strerror.hh"
 
