@@ -96,8 +96,6 @@ ifeq ($(TARGET),Linux)
 	BUILD := $(PWD)/build/linux
 	LIBUSB_CONFIG+=--disable-shared
 	LDFLAGS_LIBUSB+= -ludev -lpthread
-#all: $(BUILD)/scsi2sd-test
-
 endif
 ifeq ($(TARGET),Darwin)
 	# Should match OSX
@@ -276,9 +274,10 @@ $(BUILD)/scsi2sd-util6$(EXE): $(OBJ) $(WXOBJ) $(BUILD)/scsi2sd-util.o
 	mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS_WX) $(LDFLAGS) -o $@
 
+all: $(BUILD)/scsi2sd-test$(EXE)
 $(BUILD)/scsi2sd-test$(EXE): $(OBJ) $(BUILD)/scsi2sd-test.o
 	mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
+	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS_WX) $(LDFLAGS) -o $@
 
 all: $(BUILD)/dfu-util/buildstamp
 $(BUILD)/dfu-util/buildstamp: $(BUILD)/libusb/buildstamp
