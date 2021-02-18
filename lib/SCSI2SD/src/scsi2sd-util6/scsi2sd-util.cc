@@ -562,7 +562,7 @@ private:
 		}
 #endif
 
-		std::string tmpFile =
+		auto tmpFile =
 			wxFileName::CreateTempFileName(
 				_("SCSI2SD_MARKER"), static_cast<wxFile*>(NULL));
 		wxRemoveFile(tmpFile); // dfu-util won't overwrite.
