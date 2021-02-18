@@ -8,6 +8,7 @@ USE_SYSTEM_HIDAPI = Yes
 USE_SYSTEM_ZLIB = Yes
 USE_SYSTEM_WX = Yes
 USE_SYSTEM_LIBUSB = Yes
+USE_SYSTEM_DFU_UTIL = Yes
 endif
 
 ifeq ($(USE_SYSTEM_LIBUSB), Yes)
@@ -279,7 +280,9 @@ $(BUILD)/scsi2sd-test$(EXE): $(OBJ) $(BUILD)/scsi2sd-test.o
 	mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS_WX) $(LDFLAGS) -o $@
 
+ifneq ($(USE_SYSTEM_DFU_UTIL),Yes)
 all: $(BUILD)/dfu-util/buildstamp
+endif
 $(BUILD)/dfu-util/buildstamp: $(BUILD)/libusb/buildstamp
 	mkdir -p $(dir $@)
 	( \
