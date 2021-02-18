@@ -11,7 +11,9 @@ BuildRequires:	wxGTK3-devel
 BuildRequires:	zlib-devel
 BuildRequires:	hidapi-devel
 BuildRequires:	systemd-devel
+BuildRequires:	expat-devel
 BuildRequires:	gcc-c++
+BuildRequires:	make
 Requires:	wxGTK3
 Requires:	zlib
 Requires:	hidapi
@@ -30,7 +32,7 @@ computer and a modern PC (who still has access to a working floppy drive ?)
 
 This package provides the tools to manage the SCSI2SD card:
 - scsi2sd-util, to configure it
-- scsi2sd-monitor, to test it
+- scsi2sd-test, to test it
 
 %prep
 %setup -q
@@ -42,8 +44,8 @@ make USE_SYSTEM=Yes %{?_smp_mflags}
 %make_install USE_SYSTEM=Yes
 
 %files
-%{_bindir}/scsi2sd-util
-%{_bindir}/scsi2sd-monitor
+%{_bindir}/scsi2sd-util6
+%{_bindir}/scsi2sd-test
 
 %changelog
 
