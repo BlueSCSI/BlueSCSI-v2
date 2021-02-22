@@ -52,28 +52,12 @@ void MX_FMC_Init(void)
   hsram1.Init.WriteFifo = FMC_WRITE_FIFO_ENABLE;
   hsram1.Init.PageSize = FMC_PAGE_SIZE_NONE;
   /* Timing */
-
-  // 1 clock to read the address, + 1 for synchroniser skew
   Timing.AddressSetupTime = 2;
   Timing.AddressHoldTime = 1;
-
-  // Writes to device:
-  //   1 for synchroniser skew (dbx also delayed)
-  //   1 to skip hold time
-  //   1 to write data.
-
-  // Reads from device:
-  //   3 for syncroniser
-  //   1 to write back to fsmc bus.
   Timing.DataSetupTime = 4;
-
-  // Allow a clock for us to release signals
-  // Need to avoid both devices acting as outputs
-  // on the multiplexed lines at the same time.
   Timing.BusTurnAroundDuration = 1;
-
-  Timing.CLKDivision = 16; // Ignored for async
-  Timing.DataLatency = 17; // Ignored for async
+  Timing.CLKDivision = 16;
+  Timing.DataLatency = 17;
   Timing.AccessMode = FMC_ACCESS_MODE_A;
   /* ExtTiming */
 
@@ -123,10 +107,6 @@ static void HAL_FMC_MspInit(void){
   PE0   ------> FMC_NBL0
   PE1   ------> FMC_NBL1
   */
-
-  // MM: GPIO_SPEED_FREQ_MEDIUM is rated up to 50MHz, which is fine as all the
-  // fsmc timings are > 1 (ie. so clock speed / 2 is around 50MHz).
-
   /* GPIO_InitStruct */
   GPIO_InitStruct.Pin = GPIO_PIN_7|GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10 
                           |GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14 
