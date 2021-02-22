@@ -123,6 +123,8 @@ void s2s_scsiInquiry()
 	{
 		memcpy(scsiDev.data, UnitSerialNumber, sizeof(UnitSerialNumber));
 		scsiDev.dataLen = sizeof(UnitSerialNumber);
+        const S2S_TargetCfg* config = scsiDev.target->cfg;
+        memcpy(&scsiDev.data[4], config->serial, sizeof(config->serial));
 		scsiDev.phase = DATA_IN;
 	}
 	else if (pageCode == 0x81)
