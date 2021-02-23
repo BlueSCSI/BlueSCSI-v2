@@ -174,7 +174,7 @@ index 03a1b12..1b01446 100644
    GPIO_InitStruct.Pin = GPIO_PIN_7|GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10 
                            |GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14 
 diff --git a/STM32CubeMX/2020c/Src/sdio.c b/STM32CubeMX/2020c/Src/sdio.c
-index aeec4fa..01f716a 100644
+index f2a0b7c..a00c6a8 100644
 --- a/STM32CubeMX/2020c/Src/sdio.c
 +++ b/STM32CubeMX/2020c/Src/sdio.c
 @@ -40,6 +40,8 @@ void MX_SDIO_SD_Init(void)
@@ -210,7 +210,7 @@ index 902bdb2..4935bf0 100644
    hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
    hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
 diff --git a/STM32CubeMX/2020c/Src/usbd_conf.c b/STM32CubeMX/2020c/Src/usbd_conf.c
-index adb664f..9b9b800 100644
+index eee1fd8..9567a95 100644
 --- a/STM32CubeMX/2020c/Src/usbd_conf.c
 +++ b/STM32CubeMX/2020c/Src/usbd_conf.c
 @@ -458,9 +458,12 @@ USBD_StatusTypeDef USBD_LL_Init(USBD_HandleTypeDef *pdev)
@@ -218,7 +218,7 @@ index adb664f..9b9b800 100644
    HAL_PCD_RegisterIsoInIncpltCallback(&hpcd_USB_OTG_FS, PCD_ISOINIncompleteCallback);
  #endif /* USE_HAL_PCD_REGISTER_CALLBACKS */
 +
-+  // Sum of all FIFOs must be <= 320.
++  // Combined RX + TX fifo of 0x140 4-byte words (1280 bytes)
    HAL_PCDEx_SetRxFiFo(&hpcd_USB_OTG_FS, 0x80);
    HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 0, 0x40);
 -  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 1, 0x80);
@@ -227,15 +227,21 @@ index adb664f..9b9b800 100644
    }
    if (pdev->id == DEVICE_HS) {
    /* Link the driver to the stack. */
-@@ -498,8 +501,9 @@ USBD_StatusTypeDef USBD_LL_Init(USBD_HandleTypeDef *pdev)
+@@ -497,9 +500,15 @@ USBD_StatusTypeDef USBD_LL_Init(USBD_HandleTypeDef *pdev)
+   HAL_PCD_RegisterIsoOutIncpltCallback(&hpcd_USB_OTG_HS, PCD_ISOOUTIncompleteCallback);
    HAL_PCD_RegisterIsoInIncpltCallback(&hpcd_USB_OTG_HS, PCD_ISOINIncompleteCallback);
  #endif /* USE_HAL_PCD_REGISTER_CALLBACKS */
++  // Combined RX + TX fifo of 0x400 4-byte words (4096 bytes)
    HAL_PCDEx_SetRxFiFo(&hpcd_USB_OTG_HS, 0x200);
 -  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 0, 0x80);
 -  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 1, 0x174);
 +  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 0, 0x40);
-+  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 1, 0x40);
-+  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 2, 0x174);
++
++//  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 1, 0x100);
++// HOst requests 7 sectors, which is an odd number and doesn't fill the
++// fifo, looks like it doesn't complete in this case !!!!
++  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 1, 0x80); // 512 bytes
++  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 2, 0x40);
    }
    return USBD_OK;
  }

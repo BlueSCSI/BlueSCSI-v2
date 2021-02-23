@@ -174,7 +174,7 @@ index dae179a..995fd15 100644
    GPIO_InitStruct.Pin = GPIO_PIN_7|GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10 
                            |GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14 
 diff --git a/STM32CubeMX/2021/Src/sdio.c b/STM32CubeMX/2021/Src/sdio.c
-index 3c8aff3..f187a45 100644
+index 01e3895..33fbae1 100644
 --- a/STM32CubeMX/2021/Src/sdio.c
 +++ b/STM32CubeMX/2021/Src/sdio.c
 @@ -40,6 +40,8 @@ void MX_SDIO_SD_Init(void)
@@ -197,7 +197,7 @@ index 3c8aff3..f187a45 100644
  
  void HAL_SD_MspInit(SD_HandleTypeDef* sdHandle)
 diff --git a/STM32CubeMX/2021/Src/spi.c b/STM32CubeMX/2021/Src/spi.c
-index 902bdb2..1d8d45e 100644
+index 2f9fbfb..aa786dd 100644
 --- a/STM32CubeMX/2021/Src/spi.c
 +++ b/STM32CubeMX/2021/Src/spi.c
 @@ -37,6 +37,8 @@ void MX_SPI1_Init(void)
@@ -210,11 +210,14 @@ index 902bdb2..1d8d45e 100644
    hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
    hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
 diff --git a/STM32CubeMX/2021/Src/usbd_conf.c b/STM32CubeMX/2021/Src/usbd_conf.c
-index 1e08ba4..110da2f 100644
+index 5b10126..a2c4047 100644
 --- a/STM32CubeMX/2021/Src/usbd_conf.c
 +++ b/STM32CubeMX/2021/Src/usbd_conf.c
-@@ -468,7 +468,8 @@ USBD_StatusTypeDef USBD_LL_Init(USBD_HandleTypeDef *pdev)
+@@ -466,9 +466,11 @@ USBD_StatusTypeDef USBD_LL_Init(USBD_HandleTypeDef *pdev)
+   HAL_PCD_RegisterIsoOutIncpltCallback(&hpcd_USB_OTG_FS, PCD_ISOOUTIncompleteCallback);
+   HAL_PCD_RegisterIsoInIncpltCallback(&hpcd_USB_OTG_FS, PCD_ISOINIncompleteCallback);
  #endif /* USE_HAL_PCD_REGISTER_CALLBACKS */
++  // Combined RX + TX fifo of 0x140 4-byte words (1280 bytes)
    HAL_PCDEx_SetRxFiFo(&hpcd_USB_OTG_FS, 0x80);
    HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 0, 0x40);
 -  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 1, 0x80);
@@ -223,16 +226,21 @@ index 1e08ba4..110da2f 100644
    }
    if (pdev->id == DEVICE_HS) {
    /* Link the driver to the stack. */
-@@ -507,8 +508,9 @@ USBD_StatusTypeDef USBD_LL_Init(USBD_HandleTypeDef *pdev)
+@@ -506,9 +508,15 @@ USBD_StatusTypeDef USBD_LL_Init(USBD_HandleTypeDef *pdev)
+   HAL_PCD_RegisterIsoOutIncpltCallback(&hpcd_USB_OTG_HS, PCD_ISOOUTIncompleteCallback);
    HAL_PCD_RegisterIsoInIncpltCallback(&hpcd_USB_OTG_HS, PCD_ISOINIncompleteCallback);
  #endif /* USE_HAL_PCD_REGISTER_CALLBACKS */
++  // Combined RX + TX fifo of 0x400 4-byte words (4096 bytes)
    HAL_PCDEx_SetRxFiFo(&hpcd_USB_OTG_HS, 0x200);
 -  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 0, 0x80);
 -  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 1, 0x174);
 +  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 0, 0x40);
-+  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 1, 0x40);
-+  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 2, 0x174);
++
++//  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 1, 0x100);
++// HOst requests 7 sectors, which is an odd number and doesn't fill the
++// fifo, looks like it doesn't complete in this case !!!!
++  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 1, 0x80); // 512 bytes
++  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 2, 0x40);
    }
    return USBD_OK;
  }
-

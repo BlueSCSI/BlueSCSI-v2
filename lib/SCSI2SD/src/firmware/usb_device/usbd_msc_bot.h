@@ -127,11 +127,8 @@ USBD_MSC_BOT_CSWTypeDef;
 void MSC_BOT_Init (USBD_HandleTypeDef  *pdev);
 void MSC_BOT_Reset (USBD_HandleTypeDef  *pdev);
 void MSC_BOT_DeInit (USBD_HandleTypeDef  *pdev);
-void MSC_BOT_DataIn (USBD_HandleTypeDef  *pdev, 
-                     uint8_t epnum);
-
-void MSC_BOT_DataOut (USBD_HandleTypeDef  *pdev, 
-                      uint8_t epnum);
+void MSC_BOT_DataIn (USBD_HandleTypeDef  *pdev);
+void MSC_BOT_DataOut (USBD_HandleTypeDef  *pdev);
 
 void MSC_BOT_SendCSW (USBD_HandleTypeDef  *pdev,
                              uint8_t CSW_Status);

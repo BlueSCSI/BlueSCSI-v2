@@ -511,15 +511,14 @@ void s2s_usbDevicePoll(USBD_HandleTypeDef  *pdev) {
 
 	if (classData->DataInReady)
 	{
-		int tmp = classData->DataInReady;
 		classData->DataInReady = 0;
-		MSC_BOT_DataIn(pdev, tmp);
+		MSC_BOT_DataIn(pdev);
 	}
 
-	if (classData->DataOutReady) {
-		int tmp = classData->DataOutReady;
+	if (classData->DataOutReady)
+    {
 		classData->DataOutReady = 0;
-		MSC_BOT_DataOut(pdev, tmp);
+		MSC_BOT_DataOut(pdev);
 	}
 }
 
