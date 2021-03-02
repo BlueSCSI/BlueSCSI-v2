@@ -155,8 +155,14 @@ scsiSetDataCount(uint32_t count)
 int scsiFifoReady(void)
 {
 	__NOP();
+#ifdef STM32F4xx
+	__NOP();
+#endif
 	HAL_GPIO_ReadPin(GPIOE, FPGA_GPIO3_Pin);
 	__NOP();
+#ifdef STM32F4xx
+	__NOP();
+#endif
 	return HAL_GPIO_ReadPin(GPIOE, FPGA_GPIO3_Pin) != 0;
 }
 
@@ -167,6 +173,7 @@ scsiReadByte(void)
 
 	// Ready immediately. setDataCount resets fifos
 
+	__disable_irq();
 	while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
 	{
 		__WFI(); // Wait for interrupt
