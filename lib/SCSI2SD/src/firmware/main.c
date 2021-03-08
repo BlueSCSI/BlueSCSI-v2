@@ -46,8 +46,10 @@ static int isUsbStarted;
 // Note that the chip clocking isn't fully configured at this stage.
 void mainEarlyInit()
 {
+#ifdef nULPI_RESET_GPIO_Port
 	// Disable the ULPI chip
 	HAL_GPIO_WritePin(nULPI_RESET_GPIO_Port, nULPI_RESET_Pin, GPIO_PIN_RESET);
+#endif
 
 	// Sets up function pointers only
 	s2s_initUsbDeviceStorage();

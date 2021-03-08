@@ -15,9 +15,9 @@
 <intAttribute key="com.atollic.hardwaredebug.launch.portNumber" value="61234" />
 <stringAttribute key="com.atollic.hardwaredebug.launch.remoteCommand" value="target extended-remote" />
 <stringAttribute key="com.atollic.hardwaredebug.launch.runCommands" value="# Set flash parallelism mode to 32, 16, or 8 bit when using STM32 F2/F4 microcontrollers&#xD;&#xA;# 2=32 bit, 1=16 bit and 0=8 bit parallelism mode&#xD;&#xA;monitor flash set_parallelism_mode 2&#xD;&#xA;&#xD;&#xA;# Load the program executable&#xD;&#xA;load&#x9;&#x9;&#xD;&#xA;&#xD;&#xA;# Enable Debug connection in low power modes (DBGMCU-&gt;CR)&#xD;&#xA;set *0xE0042004 = (*0xE0042004) | 0x7&#xD;&#xA;# Set a breakpoint at main().&#xD;&#xA;tbreak main&#xD;&#xA;&#xD;&#xA;# Run to the breakpoint.&#xD;&#xA;continue" />
-<stringAttribute key="com.atollic.hardwaredebug.launch.serverParam" value="-p 61234 -l 1" />
+<stringAttribute key="com.atollic.hardwaredebug.launch.serverParam" value="-p 61234 -l 1 -d" />
 <booleanAttribute key="com.atollic.hardwaredebug.launch.startServer" value="true" />
-<booleanAttribute key="com.atollic.hardwaredebug.launch.swd_mode" value="false" />
+<booleanAttribute key="com.atollic.hardwaredebug.launch.swd_mode" value="true" />
 <stringAttribute key="com.atollic.hardwaredebug.launch.swv_port" value="61235" />
 <stringAttribute key="com.atollic.hardwaredebug.launch.swv_trace_div" value="120" />
 <stringAttribute key="com.atollic.hardwaredebug.launch.swv_trace_hclk" value="120000000" />

@@ -47,7 +47,17 @@ const uint8_t *otp = (uint8_t*)(FLASH_OTP_BASE + OTP_BLOCK_NUM * OTP_BLOCK_SIZE)
 const uint32_t *otp32 = (uint32_t*)(FLASH_OTP_BASE + OTP_BLOCK_NUM * OTP_BLOCK_SIZE);
 const uint8_t *lock = (uint8_t*)(FLASH_OTP_BASE + OTP_SIZE + OTP_BLOCK_NUM);
 
+#ifdef STM32F2xx
+#ifdef REV_2019
+const uint32_t marker = 0x06002019; // REV F and older
+#endif
+#ifdef REV_2020
 const uint32_t marker = 0x06002020;
+#endif
+#endif
+#ifdef STM32F4xx
+const uint32_t marker = 0x06002021;
+#endif
 
 static void
 checkHwSensePins()
@@ -55,18 +65,28 @@ checkHwSensePins()
 	// Check the board version is correct.
 	// Sense pins are configued as pullup, and connected to GND for 2020 hw,
 	// or N/C for v6 ref F or older
+#ifdef REV_2019
+	if ((HAL_GPIO_ReadPin(VER_ID1_GPIO_Port, VER_ID1_Pin) == 0) ||
+		(HAL_GPIO_ReadPin(VER_ID2_GPIO_Port, VER_ID2_Pin) == 0))
+	{
+		// Oh dear, wrong version. Do not pass go.
+		while (1) {}
+	}
+
+#endif
+#ifdef REV_2020
 	if (HAL_GPIO_ReadPin(VER_ID1_GPIO_Port, VER_ID1_Pin) ||
 		HAL_GPIO_ReadPin(VER_ID2_GPIO_Port, VER_ID2_Pin))
 	{
 		// Oh dear, wrong version. Do not pass go.
 		while (1) {}
 	}
+#endif
 }
 
 void
 s2s_checkHwVersion()
 {
-return; // TODO FIX FOR 2021
 	checkHwSensePins();
 
 	// Write a marker to flash that can be read by dfu-util now that we know

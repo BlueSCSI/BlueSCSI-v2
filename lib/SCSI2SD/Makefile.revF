@@ -2,7 +2,7 @@
 ARMCC=arm-none-eabi-gcc
 OBJCOPY=arm-none-eabi-objcopy
 
-CPPFLAGS=-DSTM32F2xx -DSTM32F205xx -DUSE_HAL_DRIVER -Wall 
+CPPFLAGS=-DSTM32F2xx -DSTM32F205xx -DUSE_HAL_DRIVER -Wall -DS2S_USB_FS -DREV_2019
 CFLAGS=-mcpu=cortex-m3 -mthumb -mslow-flash-data \
 	-std=gnu11 \
 	-specs=nosys.specs \
@@ -26,96 +26,80 @@ STM32CubeMX_INCUDE = \
 	-ISTM32CubeMX/revF/Middlewares/ST/STM32_USB_Device_Library/Core/Inc \
 	-Isrc/firmware/usb_device \
 
-all: build/firmware.dfu
+all: build/firmware.V6.revF.dfu
 
-build/stm32cubemx/bsp_driver_sd.o: STM32CubeMX/revF/Src/bsp_driver_sd.c
-build/stm32cubemx/fsmc.o: STM32CubeMX/revF/Src/fsmc.c
-build/stm32cubemx/gpio.o: STM32CubeMX/revF/Src/gpio.c
-build/stm32cubemx/main.o: STM32CubeMX/revF/Src/main.c
-build/stm32cubemx/sdio.o: STM32CubeMX/revF/Src/sdio.c
-build/stm32cubemx/spi.o: STM32CubeMX/revF/Src/spi.c
-build/stm32cubemx/stm32f2xx_hal_msp.o: STM32CubeMX/revF/Src/stm32f2xx_hal_msp.c
-build/stm32cubemx/stm32f2xx_it.o: STM32CubeMX/revF/Src/stm32f2xx_it.c
-build/stm32cubemx/usart.o: STM32CubeMX/revF/Src/usart.c
-build/stm32cubemx/usbd_conf.o: STM32CubeMX/revF/Src/usbd_conf.c
-build/stm32cubemx/usbh_conf.o: STM32CubeMX/revF/Src/usbh_conf.c
-build/stm32cubemx/usb_host.o: STM32CubeMX/revF/Src/usb_host.c
-build/stm32cubemx/stm32f2xx_hal.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal.c
-build/stm32cubemx/stm32f2xx_hal_cortex.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_cortex.c
-build/stm32cubemx/stm32f2xx_hal_dma.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_dma.c
-build/stm32cubemx/stm32f2xx_hal_flash.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_flash.c
-build/stm32cubemx/stm32f2xx_hal_flash_ex.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_flash_ex.c
-build/stm32cubemx/stm32f2xx_hal_gpio.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_gpio.c
-build/stm32cubemx/stm32f2xx_hal_hcd.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_hcd.c
-build/stm32cubemx/stm32f2xx_hal_pcd.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_pcd.c
-build/stm32cubemx/stm32f2xx_hal_pcd_ex.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_pcd_ex.c
-build/stm32cubemx/stm32f2xx_hal_rcc.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_rcc.c
-build/stm32cubemx/stm32f2xx_hal_sd.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_sd.c
-build/stm32cubemx/stm32f2xx_hal_spi.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_spi.c
-build/stm32cubemx/stm32f2xx_hal_sram.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_sram.c
-build/stm32cubemx/stm32f2xx_hal_tim.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_tim.c
-build/stm32cubemx/stm32f2xx_hal_tim_ex.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_tim_ex.c
-build/stm32cubemx/stm32f2xx_hal_uart.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_uart.c
-build/stm32cubemx/stm32f2xx_ll_fsmc.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_ll_fsmc.c
-build/stm32cubemx/stm32f2xx_ll_sdmmc.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_ll_sdmmc.c
-build/stm32cubemx/stm32f2xx_ll_usb.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_ll_usb.c
-build/stm32cubemx/usbd_core.o: STM32CubeMX/revF/Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_core.c
-build/stm32cubemx/usbd_ctlreq.o: STM32CubeMX/revF/Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ctlreq.c
-build/stm32cubemx/usbd_ioreq.o: STM32CubeMX/revF/Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ioreq.c
-build/stm32cubemx/usbh_core.o: STM32CubeMX/revF/Middlewares/ST/STM32_USB_Host_Library/Core/Src/usbh_core.c
-build/stm32cubemx/usbh_ctlreq.o: STM32CubeMX/revF/Middlewares/ST/STM32_USB_Host_Library/Core/Src/usbh_ctlreq.c
-build/stm32cubemx/usbh_ioreq.o: STM32CubeMX/revF/Middlewares/ST/STM32_USB_Host_Library/Core/Src/usbh_ioreq.c
-build/stm32cubemx/usbh_pipes.o: STM32CubeMX/revF/Middlewares/ST/STM32_USB_Host_Library/Core/Src/usbh_pipes.c
-build/stm32cubemx/usbh_msc.o: STM32CubeMX/revF/Middlewares/ST/STM32_USB_Host_Library/Class/MSC/Src/usbh_msc.c
-build/stm32cubemx/usbh_msc_bot.o: STM32CubeMX/revF/Middlewares/ST/STM32_USB_Host_Library/Class/MSC/Src/usbh_msc_bot.c
-build/stm32cubemx/usbh_msc_scsi.o: STM32CubeMX/revF/Middlewares/ST/STM32_USB_Host_Library/Class/MSC/Src/usbh_msc_scsi.c
-build/stm32cubemx/system_stm32f2xx.o: STM32CubeMX/revF/Drivers/CMSIS/Device/ST/STM32F2xx/Source/Templates/system_stm32f2xx.c
-build/stm32cubemx/startup_stm32f205xx.o: STM32CubeMX/revF/Drivers/CMSIS/Device/ST/STM32F2xx/Source/Templates/gcc/startup_stm32f205xx.s
+build/revF/stm32cubemx/dma.o: STM32CubeMX/revF/Src/dma.c
+build/revF/stm32cubemx/fsmc.o: STM32CubeMX/revF/Src/fsmc.c
+build/revF/stm32cubemx/gpio.o: STM32CubeMX/revF/Src/gpio.c
+build/revF/stm32cubemx/main.o: STM32CubeMX/revF/Src/main.c
+build/revF/stm32cubemx/sdio.o: STM32CubeMX/revF/Src/sdio.c
+build/revF/stm32cubemx/spi.o: STM32CubeMX/revF/Src/spi.c
+build/revF/stm32cubemx/tim.o: STM32CubeMX/revF/Src/tim.c
+build/revF/stm32cubemx/stm32f2xx_hal_msp.o: STM32CubeMX/revF/Src/stm32f2xx_hal_msp.c
+build/revF/stm32cubemx/stm32f2xx_it.o: STM32CubeMX/revF/Src/stm32f2xx_it.c
+build/revF/stm32cubemx/usart.o: STM32CubeMX/revF/Src/usart.c
+build/revF/stm32cubemx/usbd_conf.o: STM32CubeMX/revF/Src/usbd_conf.c
+build/revF/stm32cubemx/stm32f2xx_hal.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal.c
+build/revF/stm32cubemx/stm32f2xx_hal_cortex.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_cortex.c
+build/revF/stm32cubemx/stm32f2xx_hal_dma.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_dma.c
+build/revF/stm32cubemx/stm32f2xx_hal_flash.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_flash.c
+build/revF/stm32cubemx/stm32f2xx_hal_flash_ex.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_flash_ex.c
+build/revF/stm32cubemx/stm32f2xx_hal_gpio.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_gpio.c
+build/revF/stm32cubemx/stm32f2xx_hal_hcd.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_hcd.c
+build/revF/stm32cubemx/stm32f2xx_hal_pcd.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_pcd.c
+build/revF/stm32cubemx/stm32f2xx_hal_pcd_ex.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_pcd_ex.c
+build/revF/stm32cubemx/stm32f2xx_hal_rcc.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_rcc.c
+build/revF/stm32cubemx/stm32f2xx_hal_sd.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_sd.c
+build/revF/stm32cubemx/stm32f2xx_hal_spi.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_spi.c
+build/revF/stm32cubemx/stm32f2xx_hal_sram.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_sram.c
+build/revF/stm32cubemx/stm32f2xx_hal_tim.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_tim.c
+build/revF/stm32cubemx/stm32f2xx_hal_tim_ex.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_tim_ex.c
+build/revF/stm32cubemx/stm32f2xx_hal_uart.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_hal_uart.c
+build/revF/stm32cubemx/stm32f2xx_ll_fsmc.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_ll_fsmc.c
+build/revF/stm32cubemx/stm32f2xx_ll_sdmmc.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_ll_sdmmc.c
+build/revF/stm32cubemx/stm32f2xx_ll_usb.o: STM32CubeMX/revF/Drivers/STM32F2xx_HAL_Driver/Src/stm32f2xx_ll_usb.c
+build/revF/stm32cubemx/usbd_core.o: STM32CubeMX/revF/Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_core.c
+build/revF/stm32cubemx/usbd_ctlreq.o: STM32CubeMX/revF/Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ctlreq.c
+build/revF/stm32cubemx/usbd_ioreq.o: STM32CubeMX/revF/Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ioreq.c
+build/revF/stm32cubemx/system_stm32f2xx.o: STM32CubeMX/revF/Drivers/CMSIS/Device/ST/STM32F2xx/Source/Templates/system_stm32f2xx.c
+build/revF/stm32cubemx/startup_stm32f205xx.o: STM32CubeMX/revF/Drivers/CMSIS/Device/ST/STM32F2xx/Source/Templates/gcc/startup_stm32f205xx.s
 
 STM32OBJS = \
-	build/stm32cubemx/bsp_driver_sd.o \
-	build/stm32cubemx/fsmc.o \
-	build/stm32cubemx/gpio.o \
-	build/stm32cubemx/main.o \
-	build/stm32cubemx/sdio.o \
-	build/stm32cubemx/spi.o \
-	build/stm32cubemx/stm32f2xx_hal_msp.o \
-	build/stm32cubemx/stm32f2xx_it.o \
-	build/stm32cubemx/usart.o \
-	build/stm32cubemx/usbd_conf.o \
-	build/stm32cubemx/usbh_conf.o \
-	build/stm32cubemx/usb_host.o \
-	build/stm32cubemx/stm32f2xx_hal.o \
-	build/stm32cubemx/stm32f2xx_hal_cortex.o \
-	build/stm32cubemx/stm32f2xx_hal_dma.o \
-	build/stm32cubemx/stm32f2xx_hal_flash.o \
-	build/stm32cubemx/stm32f2xx_hal_flash_ex.o \
-	build/stm32cubemx/stm32f2xx_hal_gpio.o \
-	build/stm32cubemx/stm32f2xx_hal_hcd.o \
-	build/stm32cubemx/stm32f2xx_hal_pcd.o \
-	build/stm32cubemx/stm32f2xx_hal_pcd_ex.o \
-	build/stm32cubemx/stm32f2xx_hal_rcc.o \
-	build/stm32cubemx/stm32f2xx_hal_sd.o \
-	build/stm32cubemx/stm32f2xx_hal_spi.o \
-	build/stm32cubemx/stm32f2xx_hal_sram.o \
-	build/stm32cubemx/stm32f2xx_hal_tim.o \
-	build/stm32cubemx/stm32f2xx_hal_tim_ex.o \
-	build/stm32cubemx/stm32f2xx_hal_uart.o \
-	build/stm32cubemx/stm32f2xx_ll_fsmc.o \
-	build/stm32cubemx/stm32f2xx_ll_sdmmc.o \
-	build/stm32cubemx/stm32f2xx_ll_usb.o \
-	build/stm32cubemx/usbd_core.o \
-	build/stm32cubemx/usbd_ctlreq.o \
-	build/stm32cubemx/usbd_ioreq.o \
-	build/stm32cubemx/usbh_core.o \
-	build/stm32cubemx/usbh_ctlreq.o \
-	build/stm32cubemx/usbh_ioreq.o \
-	build/stm32cubemx/usbh_pipes.o \
-	build/stm32cubemx/usbh_msc.o \
-	build/stm32cubemx/usbh_msc_bot.o \
-	build/stm32cubemx/usbh_msc_scsi.o \
-	build/stm32cubemx/system_stm32f2xx.o \
-	build/stm32cubemx/startup_stm32f205xx.o \
+	build/revF/stm32cubemx/dma.o \
+	build/revF/stm32cubemx/fsmc.o \
+	build/revF/stm32cubemx/gpio.o \
+	build/revF/stm32cubemx/main.o \
+	build/revF/stm32cubemx/sdio.o \
+	build/revF/stm32cubemx/spi.o \
+	build/revF/stm32cubemx/tim.o \
+	build/revF/stm32cubemx/stm32f2xx_hal_msp.o \
+	build/revF/stm32cubemx/stm32f2xx_it.o \
+	build/revF/stm32cubemx/usart.o \
+	build/revF/stm32cubemx/usbd_conf.o \
+	build/revF/stm32cubemx/stm32f2xx_hal.o \
+	build/revF/stm32cubemx/stm32f2xx_hal_cortex.o \
+	build/revF/stm32cubemx/stm32f2xx_hal_dma.o \
+	build/revF/stm32cubemx/stm32f2xx_hal_flash.o \
+	build/revF/stm32cubemx/stm32f2xx_hal_flash_ex.o \
+	build/revF/stm32cubemx/stm32f2xx_hal_gpio.o \
+	build/revF/stm32cubemx/stm32f2xx_hal_hcd.o \
+	build/revF/stm32cubemx/stm32f2xx_hal_pcd.o \
+	build/revF/stm32cubemx/stm32f2xx_hal_pcd_ex.o \
+	build/revF/stm32cubemx/stm32f2xx_hal_rcc.o \
+	build/revF/stm32cubemx/stm32f2xx_hal_sd.o \
+	build/revF/stm32cubemx/stm32f2xx_hal_spi.o \
+	build/revF/stm32cubemx/stm32f2xx_hal_sram.o \
+	build/revF/stm32cubemx/stm32f2xx_hal_tim.o \
+	build/revF/stm32cubemx/stm32f2xx_hal_tim_ex.o \
+	build/revF/stm32cubemx/stm32f2xx_hal_uart.o \
+	build/revF/stm32cubemx/stm32f2xx_ll_fsmc.o \
+	build/revF/stm32cubemx/stm32f2xx_ll_sdmmc.o \
+	build/revF/stm32cubemx/stm32f2xx_ll_usb.o \
+	build/revF/stm32cubemx/usbd_core.o \
+	build/revF/stm32cubemx/usbd_ctlreq.o \
+	build/revF/stm32cubemx/usbd_ioreq.o \
+	build/revF/stm32cubemx/system_stm32f2xx.o \
+	build/revF/stm32cubemx/startup_stm32f205xx.o \
 
 # Modified versin from stm32cubemx for a composite class with both
 # mass-storage and HID interfaces
@@ -153,46 +137,47 @@ SRC = \
 	src/firmware/tape.c \
 	src/firmware/time.c \
 	src/firmware/vendor.c \
+	src/firmware/bsp_driver_sd.c \
 	${USBCOMPOSITE_SRC}
 
-build/firmware.elf: $(SRC) rtl/fpga_bitmap.o $(STM32OBJS)
+build/revF/firmware.elf: $(SRC) rtl/fpga_bitmap.o $(STM32OBJS)
 	$(ARMCC) $(CPPFLAGS) $(CFLAGS) -o $@ $(STM32CubeMX_INCUDE) $(INCLUDE) $^ $(LDFLAGS)
-	@EBSS=`arm-none-eabi-nm build/firmware.elf | grep _ebss | cut -f1 "-d "`; \
+	@EBSS=`arm-none-eabi-nm build/revF/firmware.elf | grep _ebss | cut -f1 "-d "`; \
 	echo HEAPSIZE = $$((0x2001C000 - 0x$${EBSS})) bytes
 	@echo STACKSIZE = 16384 bytes
 
 
-build/firmware.bin: build/firmware.elf
+build/revF/firmware.bin: build/revF/firmware.elf
 	$(OBJCOPY) -O binary $< $@
 
 # Example to hard-code config within firmware
 #sudo arm-none-eabi-objcopy --update-section .fixed_config=config.dat firmware.elf -O binary firmware.bin
 
-build/stm32cubemx/%.o:
-	mkdir -p build/stm32cubemx
+build/revF/stm32cubemx/%.o:
+	mkdir -p build/revF/stm32cubemx
 	$(ARMCC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(STM32CubeMX_INCUDE) $(INCLUDE) $^
 
 
-build/stm32cubemx/stm32f2xx_it.o:
-	mkdir -p build/stm32cubemx
+build/revF/stm32cubemx/stm32f2xx_it.o:
+	mkdir -p build/revF/stm32cubemx
 	$(ARMCC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(STM32CubeMX_INCUDE) $(INCLUDE) $^
 	$(OBJCOPY) -N EXTI4_IRQHandler $@
 
-build/stm32cubemx/system_stm32f2xx.o:
-	mkdir -p build/stm32cubemx
+build/revF/stm32cubemx/system_stm32f2xx.o:
+	mkdir -p build/revF/stm32cubemx
 	$(ARMCC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(STM32CubeMX_INCUDE) $(INCLUDE) $^
 	$(OBJCOPY) --redefine-sym SystemInit=OrigSystemInit $@
 
-build/scsiPhy.s: src/firmware/scsiPhy.c
+build/revF/scsiPhy.s: src/firmware/scsiPhy.c
 	$(ARMCC) $(CPPFLAGS) $(CFLAGS) -S -o $@ $(STM32CubeMX_INCUDE) $(INCLUDE) $^
 
 
-build/firmware.dfu: build/firmware.bin
+build/firmware.V6.revF.dfu: build/revF/firmware.bin
 	python tools/dfu-convert.py -b 0x08000000:$< $@
 
 clean:
-	rm -f build/firmware.elf build/firmware.bin
+	rm -rf build/revF build/firmware.V6.revF.dfu
 
 program:
-	dfu-util --download build/firmware.dfu --alt 0
+	dfu-util --download build/firmware.V6.revF.dfu --alt 0
 
