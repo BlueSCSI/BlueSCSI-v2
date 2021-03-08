@@ -53,12 +53,6 @@
 #include "usbd_desc.h"
 #include "usbd_ctlreq.h"
 
-
-
-int usbdReportReady = 0; // Global to allow poll-based HID report processing
-
-
-
 /* USB HID device Configuration Descriptor */
 __ALIGN_BEGIN static uint8_t USBD_HID_Desc[USB_HID_DESC_SIZ]  __ALIGN_END  =
 {
@@ -116,11 +110,15 @@ uint8_t USBD_HID_SendReport     (USBD_HandleTypeDef  *pdev,
 	{
 		if(hhid->state == HID_IDLE)
 		{
+			uint16_t safeLen =
+				len < sizeof(hhid->txBuffer) ? len : sizeof(hhid->txBuffer);
+			memcpy(hhid->txBuffer, report, safeLen);
+
 			hhid->state = HID_BUSY;
 			USBD_LL_Transmit (pdev,
 					HID_EPIN_ADDR,
-					(uint8_t*)report,
-					len);
+					(uint8_t*)hhid->txBuffer,
+					safeLen);
 		}
 	}
 	return USBD_OK;
@@ -134,9 +132,24 @@ uint8_t USBD_HID_SendReport     (USBD_HandleTypeDef  *pdev,
   */
 uint32_t USBD_HID_GetPollingInterval (USBD_HandleTypeDef *pdev)
 {
-	/* Sets the data transfer polling interval for low and full 
-	speed transfers */
-	return HID_FS_BINTERVAL;
+	uint32_t polling_interval = 0;
+
+	/* HIGH-speed endpoints */
+	if(pdev->dev_speed == USBD_SPEED_HIGH)
+	{
+		/* Sets the data transfer polling interval for high speed transfers. 
+		Values between 1..16 are allowed. Values correspond to interval 
+		of 2 ^ (bInterval-1). This option (8 ms, corresponds to HID_HS_BINTERVAL */
+		polling_interval = (((1 <<(HID_HS_BINTERVAL - 1)))/8);
+	}
+	else   /* LOW and FULL-speed endpoints */
+	{
+		/* Sets the data transfer polling interval for low and full 
+		speed transfers */
+		polling_interval =  HID_FS_BINTERVAL;
+	}
+
+	return ((uint32_t)(polling_interval));
 }
 
 uint8_t USBD_HID_GetReport(USBD_HandleTypeDef *pdev, uint8_t *report, uint8_t maxLen)

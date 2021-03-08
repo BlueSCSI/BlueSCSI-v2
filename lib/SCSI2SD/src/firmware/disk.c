@@ -16,7 +16,12 @@
 //	You should have received a copy of the GNU General Public License
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
 
+#ifdef STM32F2xx
 #include "stm32f2xx.h"
+#endif
+#ifdef STM32F4xx
+#include "stm32f4xx.h"
+#endif
 
 #include <assert.h>
 
@@ -825,7 +830,7 @@ void scsiDiskPoll()
 					}
 				}
 
-				HAL_SD_WriteBlocks_DMA(&hsd, (uint32_t*) (&scsiDev.data[0]), (i + sdLBA) * 512ll, SD_SECTOR_SIZE, sectors);
+				HAL_SD_WriteBlocks_DMA(&hsd, (&scsiDev.data[0]), i + sdLBA, sectors);
 
 				int underrun = 0;
 				if (scsiBytesRead < totalBytes && !scsiDev.resetFlag)
@@ -836,14 +841,13 @@ void scsiDiskPoll()
 						&parityError);
 
 					// Oh dear, SD finished first.
-					underrun = hsd.DmaTransferCplt;
+					underrun = HAL_DMA_GetState(hsd.hdmatx) == HAL_DMA_STATE_BUSY;
 
 					scsiBytesRead += (totalBytes - readAheadBytes);
 				}
 
 				uint32_t dmaFinishTime = s2s_getTime_ms();
-				while ((!hsd.SdTransferCplt ||
-						__HAL_SD_SDIO_GET_FLAG(&hsd, SDIO_FLAG_TXACT)) &&
+				while ((HAL_SD_GetState(&hsd) == HAL_SD_STATE_BUSY) &&
 					s2s_elapsedTime_ms(dmaFinishTime) < 180)
 				{
 					// Wait while keeping BSY.
@@ -864,12 +868,16 @@ void scsiDiskPoll()
 					clearBSY = process_MessageIn(0); // Will go to BUS_FREE state but keep BSY asserted.
 				}
 
-				HAL_SD_CheckWriteOperation(&hsd, (uint32_t)SD_DATATIMEOUT);
+				while (HAL_SD_GetState(&hsd) == HAL_SD_STATE_BUSY)
+				{
+					// Wait while keeping BSY.
+				}
+				HAL_SD_GetCardState(&hsd); // TODO check error response
 
 				if (underrun && (!parityError || !enableParity))
 				{
 					// Try again. Data is still in memory.
-					sdTmpWrite(&scsiDev.data[0], i + sdLBA, sectors);
+					BSP_SD_WriteBlocks_DMA(&scsiDev.data[0], i + sdLBA, sectors);
 					scsiDev.sdUnderrunCount++;
 				}
 
@@ -900,7 +908,7 @@ void scsiDiskPoll()
 				}
 				if (!parityError || !enableParity)
 				{
-					sdTmpWrite(&scsiDev.data[0], i + sdLBA, sectors);
+					BSP_SD_WriteBlocks_DMA(&scsiDev.data[0], i + sdLBA, sectors);
 				}
 				i += sectors;
 			}

@@ -17,13 +17,12 @@
 
 #include "config.h"
 #include "led.h"
-
+#include "bsp.h"
 #include "scsi.h"
 #include "scsiPhy.h"
 #include "sd.h"
 #include "disk.h"
 #include "bootloader.h"
-#include "bsp.h"
 #include "spinlock.h"
 
 #include "../../include/scsi2sd.h"
@@ -41,6 +40,12 @@ static const uint16_t FIRMWARE_VERSION = 0x0632;
 
 // Optional static config
 extern uint8_t* __fixed_config;
+
+#ifdef S2S_USB_HS
+#define configUsbDev hUsbDeviceHS
+#else
+#define configUsbDev hUsbDeviceFS
+#endif
 
 // 1 flash row
 static const uint8_t DEFAULT_CONFIG[128] =
@@ -101,9 +106,8 @@ void s2s_configInit(S2S_BoardCfg* config)
 	{
 		int cfgSectors = (S2S_CFG_SIZE + 511) / 512;
 		BSP_SD_ReadBlocks_DMA(
-			(uint32_t*) &s2s_cfg[0],
-			(sdDev.capacity - cfgSectors) * 512ll,
-			512,
+			&s2s_cfg[0],
+			sdDev.capacity - cfgSectors,
 			cfgSectors);
 
 		memcpy(config, s2s_cfg, sizeof(S2S_BoardCfg));
@@ -248,7 +252,7 @@ sdWriteCommand(const uint8_t* cmd, size_t cmdSize)
 		((uint32_t)cmd[4]);
 
 	memcpy(configDmaBuf, &cmd[5], 512);
-	BSP_SD_WriteBlocks_DMA((uint32_t*) configDmaBuf, lba * 512ll, 512, 1);
+	BSP_SD_WriteBlocks_DMA(configDmaBuf, lba, 1);
 
 	uint8_t response[] =
 	{
@@ -270,7 +274,7 @@ sdReadCommand(const uint8_t* cmd, size_t cmdSize)
 		(((uint32_t)cmd[3]) << 8) |
 		((uint32_t)cmd[4]);
 
-	BSP_SD_ReadBlocks_DMA((uint32_t*) configDmaBuf, lba * 512ll, 512, 1);
+	BSP_SD_ReadBlocks_DMA(configDmaBuf, lba, 1);
 	hidPacket_send(configDmaBuf, 512);
 }
 
@@ -324,19 +328,19 @@ void s2s_configPoll()
 {
 	s2s_spin_lock(&usbDevLock);
 
-	if (!USBD_Composite_IsConfigured(&hUsbDeviceFS))
+	if (!USBD_Composite_IsConfigured(&configUsbDev))
 	{
 		usbInEpState = USB_IDLE;
 		goto out;
 	}
 
-	if (USBD_HID_IsReportReady(&hUsbDeviceFS))
+	if (USBD_HID_IsReportReady(&configUsbDev))
 	{
 		s2s_ledOn();
 
 		// The host sent us some data!
 		uint8_t hidBuffer[USBHID_LEN];
-		int byteCount = USBD_HID_GetReport(&hUsbDeviceFS, hidBuffer, sizeof(hidBuffer));
+		int byteCount = USBD_HID_GetReport(&configUsbDev, hidBuffer, sizeof(hidBuffer));
 		hidPacket_recv(hidBuffer, byteCount);
 
 		size_t cmdSize;
@@ -358,14 +362,14 @@ void s2s_configPoll()
 
 			if (nextChunk)
 			{
-				USBD_HID_SendReport (&hUsbDeviceFS, nextChunk, sizeof(hidBuffer));
+				USBD_HID_SendReport (&configUsbDev, nextChunk, sizeof(hidBuffer));
 				usbInEpState = USB_DATA_SENT;
 			}
 		}
 		break;
 
 	case USB_DATA_SENT:
-		if (!USBD_HID_IsBusy(&hUsbDeviceFS))
+		if (!USBD_HID_IsBusy(&configUsbDev))
 		{
 			// Data accepted.
 			usbInEpState = USB_IDLE;
@@ -379,16 +383,16 @@ out:
 
 void s2s_debugTimer()
 {
-	if (!USBD_Composite_IsConfigured(&hUsbDeviceFS))
+	if (!USBD_Composite_IsConfigured(&configUsbDev))
 	{
 		usbInEpState = USB_IDLE;
 		return;
 	}
 
-	if (USBD_HID_IsReportReady(&hUsbDeviceFS))
+	if (USBD_HID_IsReportReady(&configUsbDev))
 	{
 		uint8_t hidBuffer[USBHID_LEN];
-		int byteCount = USBD_HID_GetReport(&hUsbDeviceFS, hidBuffer, sizeof(hidBuffer));
+		int byteCount = USBD_HID_GetReport(&configUsbDev, hidBuffer, sizeof(hidBuffer));
 		hidPacket_recv(hidBuffer, byteCount);
 
 		size_t cmdSize;
@@ -418,14 +422,14 @@ void s2s_debugTimer()
 
 			if (nextChunk)
 			{
-				USBD_HID_SendReport (&hUsbDeviceFS, nextChunk, sizeof(hidBuffer));
+				USBD_HID_SendReport (&configUsbDev, nextChunk, sizeof(hidBuffer));
 				usbInEpState = USB_DATA_SENT;
 			}
 		}
 		break;
 
 		case USB_DATA_SENT:
-			if (!USBD_HID_IsBusy(&hUsbDeviceFS))
+			if (!USBD_HID_IsBusy(&configUsbDev))
 			{
 				// Data accepted.
 				usbInEpState = USB_IDLE;
@@ -443,9 +447,8 @@ void s2s_configSave(int scsiId, uint16_t bytesPerSector)
 	cfg->bytesPerSector = bytesPerSector;
 
 	BSP_SD_WriteBlocks_DMA(
-		(uint32_t*) &s2s_cfg[0],
-		(sdDev.capacity - S2S_CFG_SIZE) * 512ll,
-		512,
+		&s2s_cfg[0],
+		sdDev.capacity - S2S_CFG_SIZE,
 		(S2S_CFG_SIZE + 511) / 512);
 }
 

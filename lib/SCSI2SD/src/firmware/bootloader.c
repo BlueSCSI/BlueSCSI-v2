@@ -16,8 +16,13 @@
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "bootloader.h"
-#include "stm32f2xx_hal.h"
 
+#ifdef STM32F2xx
+#include "stm32f2xx_hal.h"
+#endif
+#ifdef STM32F4xx
+#include "stm32f4xx_hal.h"
+#endif
 
 #define MAGIC 0xDEADBEEF
 

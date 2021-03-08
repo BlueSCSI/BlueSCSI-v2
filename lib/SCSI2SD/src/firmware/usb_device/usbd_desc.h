@@ -76,6 +76,7 @@
   * @{
   */ 
 extern USBD_DescriptorsTypeDef FS_Desc;
+extern USBD_DescriptorsTypeDef HS_Desc;
 /**
   * @}
   */ 

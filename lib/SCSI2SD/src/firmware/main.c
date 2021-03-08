@@ -15,10 +15,16 @@
 //	You should have received a copy of the GNU General Public License
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
 
+#ifdef STM32F2xx
 #include "stm32f2xx.h"
+#endif
+
+#ifdef STM32F4xx
+#include "stm32f4xx.h"
+#endif
+
 
 #include "config.h"
-#include "bsp.h"
 #include "disk.h"
 #include "fpga.h"
 #include "hwversion.h"
@@ -37,9 +43,13 @@ uint32_t lastSDPoll;
 
 static int isUsbStarted;
 
+// Note that the chip clocking isn't fully configured at this stage.
 void mainEarlyInit()
 {
-	// USB device is initialised before mainInit is called
+	// Disable the ULPI chip
+	HAL_GPIO_WritePin(nULPI_RESET_GPIO_Port, nULPI_RESET_Pin, GPIO_PIN_RESET);
+
+	// Sets up function pointers only
 	s2s_initUsbDeviceStorage();
 }
 
@@ -58,6 +68,12 @@ void mainInit()
 	s2s_configInit(&scsiDev.boardCfg);
 	scsiPhyConfig();
 	scsiInit();
+
+	#ifdef S2S_USB_HS
+		// Enable the ULPI chip
+		HAL_GPIO_WritePin(nULPI_RESET_GPIO_Port, nULPI_RESET_Pin, GPIO_PIN_SET);
+		s2s_delay_ms(5);
+	#endif
 
 	MX_USB_DEVICE_Init(); // USB lun config now available.
 	isUsbStarted = 1;
@@ -86,12 +102,19 @@ void mainLoop()
 	scsiPoll();
 	scsiDiskPoll();
 	s2s_configPoll();
-	s2s_usbDevicePoll();
+
+#ifdef S2S_USB_FS
+	s2s_usbDevicePoll(&hUsbDeviceFS);
+#endif
+#ifdef S2S_USB_HS
+	s2s_usbDevicePoll(&hUsbDeviceHS);
+#endif
 
 #if 0
 	sdPoll();
 #endif
 
+    // TODO test if USB transfer is in progress
 	if (unlikely(scsiDev.phase == BUS_FREE))
 	{
 		if (unlikely(s2s_elapsedTime_ms(lastSDPoll) > 200))
@@ -103,41 +126,16 @@ void mainLoop()
 				scsiPhyConfig();
 				scsiInit();
 
-				// Is a USB host connected ?
+/* TODO DEAL WITH THIS
 				if (isUsbStarted)
 				{
 					USBD_Stop(&hUsbDeviceFS);
 					s2s_delay_ms(128);
 					USBD_Start(&hUsbDeviceFS);
 				}
+*/			
 			}
 
-			// Can we speed up the SD card ?
-			// Don't combine with the above block because that won't
-			// run if the SD card is present at startup.
-			// Don't use VBUS monitoring because that just tells us about
-			// power, which could be from a charger
-			if ((blockDev.state & DISK_PRESENT) &&
-				isUsbStarted &&
-				(scsiDev.cmdCount > 0) && // no need for speed without scsi
-				!USBD_Composite_IsConfigured(&hUsbDeviceFS) &&
-				(scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_TURBO))
-			{
-				if (HAL_SD_HighSpeed(&hsd) == SD_OK)
-				{
-					USBD_Stop(&hUsbDeviceFS);
-					s2s_setFastClock();
-					isUsbStarted = 0;
-				}
-			}
-
-			else if (!(blockDev.state & DISK_PRESENT) && !isUsbStarted)
-			{
-				// Good time to restart USB.
-				s2s_setNormalClock();
-				USBD_Start(&hUsbDeviceFS);
-				isUsbStarted = 1;
-			}
 		}
 		else
 		{

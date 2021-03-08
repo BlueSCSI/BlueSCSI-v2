@@ -16,7 +16,14 @@
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "time.h"
+
+#ifdef STM32F2xx
 #include "stm32f2xx.h"
+#endif
+
+#ifdef STM32F4xx
+#include "stm32f4xx.h"
+#endif
 
 #include <limits.h>
 

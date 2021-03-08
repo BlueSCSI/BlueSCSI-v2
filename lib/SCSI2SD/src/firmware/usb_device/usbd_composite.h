@@ -40,12 +40,15 @@ extern USBD_ClassTypeDef  USBD_Composite;
 
 
 typedef struct {
-	USBD_HID_HandleTypeDef hid;
-	USBD_MSC_BOT_HandleTypeDef msc;
+	__ALIGN_BEGIN USBD_HID_HandleTypeDef hid __ALIGN_END;
+	__ALIGN_BEGIN USBD_MSC_BOT_HandleTypeDef msc __ALIGN_END;
+
+	int DataInReady; // Endpoint number, 0 if not ready.
+	int DataOutReady;// Endpoint number, 0 if not ready.
 } USBD_CompositeClassData;
 
 
-void s2s_usbDevicePoll(void);
+void s2s_usbDevicePoll(USBD_HandleTypeDef* pdev);
 
 static inline uint8_t USBD_Composite_IsConfigured(USBD_HandleTypeDef *pdev) {
 	return pdev->dev_state == USBD_STATE_CONFIGURED;

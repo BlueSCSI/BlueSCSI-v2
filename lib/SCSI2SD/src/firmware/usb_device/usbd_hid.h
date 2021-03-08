@@ -51,6 +51,7 @@
 #define HID_REPORT_DESC               0x22
 
 #define HID_FS_BINTERVAL               0x20 // 32ms
+#define HID_HS_BINTERVAL               0x9
 
 #define HID_REQ_SET_PROTOCOL          0x0B
 #define HID_REQ_GET_PROTOCOL          0x03
@@ -75,7 +76,8 @@ typedef struct
 	uint32_t             IdleState;
 	uint32_t             AltSetting;
 	HID_StateTypeDef     state;
-	uint8_t              rxBuffer[HID_EPOUT_SIZE];
+	__ALIGN_BEGIN uint8_t rxBuffer[HID_EPOUT_SIZE] __ALIGN_END;
+	__ALIGN_BEGIN uint8_t txBuffer[HID_EPOUT_SIZE] __ALIGN_END;
 	int                  reportReady;
 }
 USBD_HID_HandleTypeDef;

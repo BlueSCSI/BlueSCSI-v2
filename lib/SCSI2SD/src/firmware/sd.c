@@ -15,7 +15,14 @@
 //	You should have received a copy of the GNU General Public License
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
 
+#ifdef STM32F2xx
 #include "stm32f2xx.h"
+#endif
+
+#ifdef STM32F4xx
+#include "stm32f4xx.h"
+#endif
+
 #include "sdio.h"
 #include "bsp_driver_sd.h"
 
@@ -46,13 +53,8 @@ sdReadDMAPoll(uint32_t remainingSectors)
 	// means the data has been transfered via dma to memory yet.
 //	uint32_t dmaBytesRemaining = __HAL_DMA_GET_COUNTER(hsd.hdmarx) * 4;
 
-	if (hsd.DmaTransferCplt ||
-		hsd.SdTransferCplt ||
-
-//	if (dmaBytesRemaining == 0 ||
-		(HAL_SD_ErrorTypedef)hsd.SdTransferErr != SD_OK)
+	if (HAL_SD_GetState(&hsd) != HAL_SD_STATE_BUSY)
 	{
-		HAL_SD_CheckReadOperation(&hsd, (uint32_t)SD_DATATIMEOUT);
 		// DMA transfer is complete
 		sdCmdActive = 0;
 		return remainingSectors;
@@ -66,9 +68,7 @@ sdReadDMAPoll(uint32_t remainingSectors)
 
 void sdReadDMA(uint32_t lba, uint32_t sectors, uint8_t* outputBuffer)
 {
-	if (HAL_SD_ReadBlocks_DMA(
-			&hsd, (uint32_t*)outputBuffer, lba * 512ll, 512, sectors
-			) != SD_OK)
+	if (HAL_SD_ReadBlocks_DMA(&hsd, outputBuffer, lba, sectors) != HAL_OK)
 	{
 		scsiDiskReset();
 
@@ -87,42 +87,9 @@ void sdCompleteTransfer()
 {
 	if (sdCmdActive)
 	{
-		HAL_SD_StopTransfer(&hsd);
-		HAL_DMA_Abort(hsd.hdmarx);
-		HAL_DMA_Abort(hsd.hdmatx);
+		HAL_SD_Abort(&hsd);
 		sdCmdActive = 0;
 	}
-}
-
-
-static void sdInitDMA()
-{
-	// One-time init only.
-	static uint8_t init = 0;
-	if (init == 0)
-	{
-		init = 1;
-
-		//TODO MM SEE STUPID SD_DMA_RxCplt that require the SD IRQs to preempt
-		// Ie. priority must be geater than the SDIO_IRQn priority.
-		// 4 bits preemption, NO sub priority.
-		HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
-		HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 8, 0);
-		HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
-		HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
-		HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 8, 0);
-		HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
-	}
-}
-
-void sdTmpRead(uint8_t* data, uint32_t lba, int sectors)
-{
-	BSP_SD_ReadBlocks_DMA((uint32_t*) data, lba * 512ll, 512, sectors);
-}
-
-void sdTmpWrite(uint8_t* data, uint32_t lba, int sectors)
-{
-	BSP_SD_WriteBlocks_DMA((uint32_t*) data, lba * 512ll, 512, sectors);
 }
 
 static void sdClear()
@@ -139,41 +106,16 @@ static int sdDoInit()
 
 	sdClear();
 
-
 	int8_t error = BSP_SD_Init();
 	if (error == MSD_OK)
 	{
-		memcpy(sdDev.csd, &SDCardInfo.SD_csd, sizeof(sdDev.csd));
-		memcpy(sdDev.cid, &SDCardInfo.SD_cid, sizeof(sdDev.cid));
-		sdDev.capacity = SDCardInfo.CardCapacity / SD_SECTOR_SIZE;
+		HAL_SD_CardInfoTypeDef cardInfo;
+		HAL_SD_GetCardInfo(&hsd, &cardInfo);
+		memcpy(sdDev.csd, hsd.CSD, sizeof(sdDev.csd));
+		memcpy(sdDev.cid, hsd.CID, sizeof(sdDev.cid));
+		sdDev.capacity = cardInfo.BlockNbr;
 		blockDev.state |= DISK_PRESENT | DISK_INITIALISED;
 		result = 1;
-
-		// SD Benchmark code
-		// Currently 10MB/s in high-speed mode.
-		#ifdef SD_BENCHMARK
-		if (HAL_SD_HighSpeed(&hsd) == SD_OK) // normally done in mainLoop()
-		{
-			s2s_setFastClock();
-		}
-
-		while(1)
-		{
-			s2s_ledOn();
-			// 100MB
-			int maxSectors = MAX_SECTOR_SIZE / SD_SECTOR_SIZE;
-			for (
-				int i = 0;
-				i < (100LL * 1024 * 1024 / (maxSectors * SD_SECTOR_SIZE));
-				++i)
-			{
-				sdTmpRead(&scsiDev.data[0], 0, maxSectors);
-			}
-			s2s_ledOff();
-
-			for(int i = 0; i < 10; ++i) s2s_delay_ms(1000);
-		}
-		#endif
 
 		goto out;
 	}
@@ -199,7 +141,6 @@ int sdInit()
 	{
 		blockDev.state &= ~(DISK_PRESENT | DISK_INITIALISED);
 		sdClear();
-		sdInitDMA();
 	}
 
 	if (firstInit || (scsiDev.phase == BUS_FREE))

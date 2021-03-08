@@ -51,7 +51,6 @@
 /** @defgroup USBD_BOT_Exported_Defines
   * @{
   */ 
-#define MSC_MAX_FS_PACKET            0x40
 
 #define BOT_GET_MAX_LUN              0xFE
 #define BOT_RESET                    0xFF
@@ -61,7 +60,7 @@
 #define MSC_EPIN_ADDR                0x81
 #define MSC_EPOUT_ADDR               0x01
 
-#define MSC_MEDIA_PACKET             8192
+#define S2S_MSC_MEDIA_PACKET             8192
 
 /**
   * @}
@@ -91,9 +90,9 @@ typedef struct
   uint8_t                  bot_state;
   uint8_t                  bot_status;  
   uint16_t                 bot_data_length;
-  uint8_t                  bot_data[MSC_MEDIA_PACKET];  
-  USBD_MSC_BOT_CBWTypeDef  cbw;
-  USBD_MSC_BOT_CSWTypeDef  csw;
+  __ALIGN_BEGIN uint8_t                  bot_data[S2S_MSC_MEDIA_PACKET] __ALIGN_END;
+  __ALIGN_BEGIN USBD_MSC_BOT_CBWTypeDef  cbw __ALIGN_END;
+  __ALIGN_BEGIN USBD_MSC_BOT_CSWTypeDef  csw __ALIGN_END;
   
   USBD_SCSI_SenseTypeDef   scsi_sense [SENSE_LIST_DEEPTH];
   uint8_t                  scsi_sense_head;

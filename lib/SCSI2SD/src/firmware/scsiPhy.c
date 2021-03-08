@@ -15,9 +15,19 @@
 //	You should have received a copy of the GNU General Public License
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
 
+#ifdef STM32F2xx
 #include "stm32f2xx.h"
 #include "stm32f2xx_hal.h"
 #include "stm32f2xx_hal_dma.h"
+#endif
+
+#ifdef STM32F4xx
+#include "stm32f4xx.h"
+#include "stm32f4xx_hal.h"
+#include "stm32f4xx_hal_dma.h"
+#endif
+
+#include "gpio.h"
 
 #include "scsi.h"
 #include "scsiPhy.h"
@@ -145,8 +155,14 @@ scsiSetDataCount(uint32_t count)
 int scsiFifoReady(void)
 {
 	__NOP();
+#ifdef STM32F4xx
+	__NOP();
+#endif
 	HAL_GPIO_ReadPin(GPIOE, FPGA_GPIO3_Pin);
 	__NOP();
+#ifdef STM32F4xx
+	__NOP();
+#endif
 	return HAL_GPIO_ReadPin(GPIOE, FPGA_GPIO3_Pin) != 0;
 }
 
@@ -157,6 +173,7 @@ scsiReadByte(void)
 
 	// Ready immediately. setDataCount resets fifos
 
+	__disable_irq();
 	while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
 	{
 		__WFI(); // Wait for interrupt
@@ -942,25 +959,6 @@ int scsiSelfTest()
 	{
 		result = 1;
 	}
-
-	// TEST DBx
-	int i;
-	for (i = 0; i < 8; ++i)
-	{
-		uint8_t data = 1 << i;
-		*SCSI_CTRL_DBX = 0;
-		busSettleDelay();
-		*SCSI_CTRL_DBX = data;
-		busSettleDelay();
-		// STS_DBX is 16 bit!
-		if ((*SCSI_STS_DBX & 0xff) != data)
-		{
-			result = i + 2;
-		}
-	}
-
-	// TODO Test DBP
-	*SCSI_CTRL_DBX = 0;
 
 	*SCSI_CTRL_BSY = 0;
 

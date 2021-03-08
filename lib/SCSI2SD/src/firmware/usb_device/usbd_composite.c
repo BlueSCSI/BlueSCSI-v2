@@ -26,7 +26,17 @@
 #include "usbd_desc.h"
 #include "usbd_ctlreq.h"
 
+#define MSC_MAX_FS_PACKET 64
+#define MSC_MAX_HS_PACKET 512
 
+
+// Support 2 USB devices.
+#ifdef S2S_USB_FS
+__ALIGN_BEGIN static USBD_CompositeClassData fsClassData __ALIGN_END;
+#endif
+#ifdef S2S_USB_HS
+__ALIGN_BEGIN static USBD_CompositeClassData hsClassData __ALIGN_END;
+#endif
 
 static uint8_t  USBD_Composite_Init (USBD_HandleTypeDef *pdev, uint8_t cfgidx);
 
@@ -34,7 +44,8 @@ static uint8_t  USBD_Composite_DeInit (USBD_HandleTypeDef *pdev, uint8_t cfgidx)
 
 static uint8_t  USBD_Composite_Setup (USBD_HandleTypeDef *pdev, USBD_SetupReqTypedef *req);
 
-static uint8_t  *USBD_Composite_GetCfgDesc (uint16_t *length);
+static uint8_t  *USBD_Composite_GetHSCfgDesc (uint16_t *length);
+static uint8_t  *USBD_Composite_GetFSCfgDesc (uint16_t *length);
 
 static uint8_t  *USBD_Composite_GetDeviceQualifierDesc (uint16_t *length);
 
@@ -54,13 +65,102 @@ USBD_ClassTypeDef USBD_Composite =
 	NULL, /*SOF */
 	NULL,
 	NULL,      
-	USBD_Composite_GetCfgDesc,
-	USBD_Composite_GetCfgDesc,
-	USBD_Composite_GetCfgDesc,
+	USBD_Composite_GetHSCfgDesc,
+	USBD_Composite_GetFSCfgDesc,
+	USBD_Composite_GetFSCfgDesc, // "Other" speed
 	USBD_Composite_GetDeviceQualifierDesc,
 };
 
-__ALIGN_BEGIN static uint8_t USBD_Composite_CfgDesc[USB_COMPOSITE_CONFIG_DESC_SIZ]  __ALIGN_END =
+__ALIGN_BEGIN static uint8_t USBD_Composite_CfgHSDesc[USB_COMPOSITE_CONFIG_DESC_SIZ]  __ALIGN_END =
+{
+  0x09, /* bLength: Configuration Descriptor size */
+  USB_DESC_TYPE_CONFIGURATION, /* bDescriptorType: Configuration */
+  USB_COMPOSITE_CONFIG_DESC_SIZ,
+  /* wTotalLength: Bytes returned */
+  0x00,
+  0x02,         /*bNumInterfaces: 1 interface*/
+  0x01,         /*bConfigurationValue: Configuration value*/
+  0x00,         /*iConfiguration: Index of string descriptor describing
+  the configuration*/
+  0x80,         /*bmAttributes: bus powered */
+  0xFA,         /*MaxPower 500 mA: this current is used for detecting Vbus*/
+  
+  /************** Descriptor of GENERIC interface ****************/
+  /* 09 */
+  0x09,         /*bLength: Interface Descriptor size*/
+  USB_DESC_TYPE_INTERFACE,/*bDescriptorType: Interface descriptor type*/
+  0x00,         /*bInterfaceNumber: Number of Interface*/
+  0x00,         /*bAlternateSetting: Alternate setting*/
+  0x02,         /*bNumEndpoints*/
+  0x03,         /*bInterfaceClass: HID*/
+  0x00,         /*bInterfaceSubClass : 1=BOOT, 0=no boot*/
+  0x00,         /*nInterfaceProtocol : 0=none, 1=keyboard, 2=mouse*/
+  0,            /*iInterface: Index of string descriptor*/
+  /******************** Descriptor of GENERIC HID ********************/
+  /* 18 */
+  0x09,         /*bLength: HID Descriptor size*/
+  HID_DESCRIPTOR_TYPE, /*bDescriptorType: HID*/
+  0x11,         /*bcdHID: HID Class Spec release number*/
+  0x01,
+  0x00,         /*bCountryCode: Hardware target country*/
+  0x01,         /*bNumDescriptors: Number of HID class descriptors to follow*/
+  0x22,         /*bDescriptorType*/
+  HID_GENERIC_REPORT_DESC_SIZE,/*wItemLength: Total length of Report descriptor*/
+  0x00,
+  /******************** Descriptor of Generic HID endpoint ********************/
+  /* 27 */
+  0x07,          /*bLength: Endpoint Descriptor size*/
+  USB_DESC_TYPE_ENDPOINT, /*bDescriptorType:*/
+  
+  HID_EPIN_ADDR,     /*bEndpointAddress: Endpoint Address (IN)*/
+  0x03,          /*bmAttributes: Interrupt endpoint*/
+  HID_EPIN_SIZE, /*wMaxPacketSize: 64 Byte max */
+  0x00,
+  HID_HS_BINTERVAL,          /*bInterval*/
+  /* 34 */
+
+  /******************** Descriptor of GENERIC HID endpoint ********************/
+  /* 34 */
+  0x07,          /*bLength: Endpoint Descriptor size*/
+  USB_DESC_TYPE_ENDPOINT, /*bDescriptorType:*/
+  
+  HID_EPOUT_ADDR,    /*bEndpointAddress: Endpoint Address (OUT)*/
+  0x03,          /*bmAttributes: Interrupt endpoint*/
+  HID_EPOUT_SIZE, /*wMaxPacketSize */
+  0x00,
+  HID_HS_BINTERVAL,          /*bInterval*/
+  /* 41 */
+
+  /********************  Mass Storage interface ********************/
+  0x09,   /* bLength: Interface Descriptor size */
+  USB_DESC_TYPE_INTERFACE,   /* bDescriptorType: */
+  0x01,   /* bInterfaceNumber: Number of Interface */
+  0x00,   /* bAlternateSetting: Alternate setting */
+  0x02,   /* bNumEndpoints*/
+  0x08,   /* bInterfaceClass: MSC Class */
+  0x06,   /* bInterfaceSubClass : SCSI transparent*/
+  0x50,   /* nInterfaceProtocol */
+  0x00,          /* iInterface: */
+  /********************  Mass Storage Endpoints ********************/
+  0x07,   /*Endpoint descriptor length = 7*/
+  0x05,   /*Endpoint descriptor type */
+  MSC_EPIN_ADDR,   /*Endpoint address */
+  0x02,   /*Bulk endpoint type */
+  LOBYTE(MSC_MAX_HS_PACKET),
+  HIBYTE(MSC_MAX_HS_PACKET),
+  0x00,   /*Polling interval in milliseconds */
+  
+  0x07,   /*Endpoint descriptor length = 7 */
+  0x05,   /*Endpoint descriptor type */
+  MSC_EPOUT_ADDR,   /*Endpoint address  */
+  0x02,   /*Bulk endpoint type */
+  LOBYTE(MSC_MAX_HS_PACKET),
+  HIBYTE(MSC_MAX_HS_PACKET),
+  0x00     /*Polling interval in milliseconds*/
+
+};
+
+__ALIGN_BEGIN static uint8_t USBD_Composite_CfgFSDesc[USB_COMPOSITE_CONFIG_DESC_SIZ]  __ALIGN_END =
 {
   0x09, /* bLength: Configuration Descriptor size */
   USB_DESC_TYPE_CONFIGURATION, /* bDescriptorType: Configuration */
@@ -159,7 +259,7 @@ __ALIGN_BEGIN static uint8_t USBD_Composite_DeviceQualifierDesc[USB_LEN_DEV_QUAL
   0x00,
   0x00,
   0x00,
-  0x40,
+  MSC_MAX_FS_PACKET,
   0x01,
   0x00,
 };
@@ -173,17 +273,33 @@ static uint8_t  USBD_Composite_Init(USBD_HandleTypeDef *pdev, uint8_t cfgidx)
 	USBD_LL_OpenEP(pdev, HID_EPIN_ADDR, USBD_EP_TYPE_INTR, HID_EPIN_SIZE);
 	USBD_LL_OpenEP(pdev, HID_EPOUT_ADDR, USBD_EP_TYPE_INTR, HID_EPOUT_SIZE);
 
+	USBD_CompositeClassData* classData;
+#ifdef S2S_USB_HS
+    if(pdev->dev_speed == USBD_SPEED_HIGH)
+	{
+		classData = &hsClassData;
 
-	// MSC Endpoints
-	USBD_LL_OpenEP(pdev, MSC_EPOUT_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
-	USBD_LL_OpenEP(pdev, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
+	    // MSC Endpoints
+    	USBD_LL_OpenEP(pdev, MSC_EPOUT_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_HS_PACKET);
+    	USBD_LL_OpenEP(pdev, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_HS_PACKET);
+	}
+#endif
+#ifdef S2S_USB_FS
+    if(pdev->dev_speed != USBD_SPEED_HIGH)
+	{
+		classData = &fsClassData;
 
+	    // MSC Endpoints
+    	USBD_LL_OpenEP(pdev, MSC_EPOUT_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
+    	USBD_LL_OpenEP(pdev, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
+	}
+#endif
 
-	// Use static memory. This limits us to a single HID and MSC devicd
-	static USBD_CompositeClassData classData;
-	classData.hid.state = HID_IDLE;
-	classData.hid.reportReady = 0;
-	pdev->pClassData = &classData;
+	classData->hid.state = HID_IDLE;
+	classData->hid.reportReady = 0;
+	classData->DataInReady = 0;
+	classData->DataOutReady = 0;
+	pdev->pClassData = classData;
 
 	MSC_BOT_Init(pdev);
 
@@ -191,8 +307,8 @@ static uint8_t  USBD_Composite_Init(USBD_HandleTypeDef *pdev, uint8_t cfgidx)
 	USBD_LL_PrepareReceive(
 		pdev,
 		HID_EPOUT_ADDR,
-		classData.hid.rxBuffer,
-		sizeof(classData.hid.rxBuffer));
+		classData->hid.rxBuffer,
+		sizeof(classData->hid.rxBuffer));
 
 	return ret;
 }
@@ -323,11 +439,19 @@ static uint8_t USBD_Composite_Setup(
 				switch ((uint8_t)req->wIndex)
 				{
 				case MSC_EPIN_ADDR:
-					USBD_LL_OpenEP(pdev, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
+					USBD_LL_OpenEP(
+                        pdev,
+                        MSC_EPIN_ADDR,
+                        USBD_EP_TYPE_BULK,
+                        pdev->dev_speed == USBD_SPEED_HIGH ? MSC_MAX_HS_PACKET : MSC_MAX_FS_PACKET);
 					break;
 
 				case MSC_EPOUT_ADDR:
-					USBD_LL_OpenEP(pdev, MSC_EPOUT_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);  
+					USBD_LL_OpenEP(
+                        pdev,
+                        MSC_EPOUT_ADDR,
+                        USBD_EP_TYPE_BULK,
+                        pdev->dev_speed == USBD_SPEED_HIGH ? MSC_MAX_HS_PACKET : MSC_MAX_FS_PACKET);
 					break;
 
 				case HID_EPIN_ADDR:
@@ -350,15 +474,11 @@ static uint8_t USBD_Composite_Setup(
 }
 
 
-int FIXME_IN = 0;
-int FIXME_OUT = 0;
-USBD_HandleTypeDef  *pdevtmp;
 static uint8_t USBD_Composite_DataIn(USBD_HandleTypeDef *pdev, uint8_t epnum)
 {
-pdevtmp = pdev;
+	USBD_CompositeClassData *classData = (USBD_CompositeClassData*) pdev->pClassData;
 	if (epnum == (HID_EPIN_ADDR & 0x7F))
 	{
-		USBD_CompositeClassData *classData = (USBD_CompositeClassData*) pdev->pClassData;
 		USBD_HID_HandleTypeDef *hhid = &(classData->hid);
 		/* Ensure that the FIFO is empty before a new transfer, this condition could 
 		be caused by  a new transfer before the end of the previous transfer */
@@ -366,40 +486,39 @@ pdevtmp = pdev;
 	}
 	else if (epnum == (MSC_EPIN_ADDR & 0x7F))
 	{
-	FIXME_IN = epnum;
-	//	MSC_BOT_DataIn(pdev , epnum);
+		classData->DataInReady = epnum;
 	}
 	return USBD_OK;
 }
 
 static uint8_t USBD_Composite_DataOut(USBD_HandleTypeDef  *pdev, uint8_t epnum)
 {
-pdevtmp = pdev;
+	USBD_CompositeClassData *classData = (USBD_CompositeClassData*) pdev->pClassData;
 	if (epnum == (HID_EPOUT_ADDR & 0x7F))
 	{
-		USBD_CompositeClassData *classData = (USBD_CompositeClassData*) pdev->pClassData;
 		USBD_HID_HandleTypeDef *hhid = &(classData->hid);
 		hhid->reportReady = 1;
 	}
 	else if (epnum == (MSC_EPOUT_ADDR & 0x7F))
 	{
-	FIXME_OUT = epnum;
-		//MSC_BOT_DataOut(pdev, epnum);
+		classData->DataOutReady = epnum;
 	}
 	return USBD_OK;
 }
 
-void s2s_usbDevicePoll(void) {
-	if (FIXME_IN) {
-		int tmp = FIXME_IN;
-		FIXME_IN = 0;
-		MSC_BOT_DataIn(pdevtmp, tmp);
+void s2s_usbDevicePoll(USBD_HandleTypeDef  *pdev) {
+	USBD_CompositeClassData *classData = (USBD_CompositeClassData*) pdev->pClassData;
+
+	if (classData->DataInReady)
+	{
+		classData->DataInReady = 0;
+		MSC_BOT_DataIn(pdev);
 	}
 
-	if (FIXME_OUT) {
-		int tmp = FIXME_OUT;
-		FIXME_OUT = 0;
-		MSC_BOT_DataOut(pdevtmp, tmp);
+	if (classData->DataOutReady)
+    {
+		classData->DataOutReady = 0;
+		MSC_BOT_DataOut(pdev);
 	}
 }
 
@@ -410,9 +529,15 @@ static uint8_t *USBD_Composite_GetDeviceQualifierDesc (uint16_t *length)
 	return USBD_Composite_DeviceQualifierDesc;
 }
 
-
-static uint8_t *USBD_Composite_GetCfgDesc (uint16_t *length)
+uint8_t  *USBD_Composite_GetHSCfgDesc (uint16_t *length)
 {
-	*length = sizeof (USBD_Composite_CfgDesc);
-	return USBD_Composite_CfgDesc;
+  *length = sizeof (USBD_Composite_CfgHSDesc);
+  return USBD_Composite_CfgHSDesc;
 }
+
+uint8_t  *USBD_Composite_GetFSCfgDesc (uint16_t *length)
+{
+  *length = sizeof (USBD_Composite_CfgFSDesc);
+  return USBD_Composite_CfgFSDesc;
+}
+

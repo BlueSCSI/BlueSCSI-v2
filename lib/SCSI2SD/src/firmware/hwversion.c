@@ -16,7 +16,17 @@
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "hwversion.h"
+
+#ifdef STM32F2xx
 #include "stm32f2xx.h"
+#endif
+
+#ifdef STM32F4xx
+#include "stm32f4xx.h"
+#endif
+
+#include "gpio.h"
+
 #include "config.h"
 #include "time.h"
 
@@ -33,12 +43,11 @@ const size_t OTP_BLOCK_SIZE = OTP_SIZE / OTP_BLOCKS;
 const size_t OTP_BLOCK_NUM = 0;
 
 // Define some pointers for writing, but also to allow easy reading back values
-#define FLASH_OTP_BASE 0x1FFF7800
 const uint8_t *otp = (uint8_t*)(FLASH_OTP_BASE + OTP_BLOCK_NUM * OTP_BLOCK_SIZE);
 const uint32_t *otp32 = (uint32_t*)(FLASH_OTP_BASE + OTP_BLOCK_NUM * OTP_BLOCK_SIZE);
 const uint8_t *lock = (uint8_t*)(FLASH_OTP_BASE + OTP_SIZE + OTP_BLOCK_NUM);
 
-const uint32_t marker = 0x06002019;
+const uint32_t marker = 0x06002020;
 
 static void
 checkHwSensePins()
@@ -46,8 +55,8 @@ checkHwSensePins()
 	// Check the board version is correct.
 	// Sense pins are configued as pullup, and connected to GND for 2020 hw,
 	// or N/C for v6 ref F or older
-	if ((HAL_GPIO_ReadPin(UNUSED_PC4_GPIO_Port, UNUSED_PC4_Pin) == 0) ||
-		(HAL_GPIO_ReadPin(UNUSED_PC5_GPIO_Port, UNUSED_PC5_Pin) == 0))
+	if (HAL_GPIO_ReadPin(VER_ID1_GPIO_Port, VER_ID1_Pin) ||
+		HAL_GPIO_ReadPin(VER_ID2_GPIO_Port, VER_ID2_Pin))
 	{
 		// Oh dear, wrong version. Do not pass go.
 		while (1) {}
@@ -57,6 +66,7 @@ checkHwSensePins()
 void
 s2s_checkHwVersion()
 {
+return; // TODO FIX FOR 2021
 	checkHwSensePins();
 
 	// Write a marker to flash that can be read by dfu-util now that we know

@@ -167,7 +167,7 @@ void MSC_BOT_DeInit (USBD_HandleTypeDef  *pdev)
 * @param  epnum: endpoint index
 * @retval None
 */
-void MSC_BOT_DataIn (USBD_HandleTypeDef  *pdev, uint8_t epnum)
+void MSC_BOT_DataIn (USBD_HandleTypeDef  *pdev)
 {
 	USBD_CompositeClassData *classData = (USBD_CompositeClassData*) pdev->pClassData;
 	USBD_MSC_BOT_HandleTypeDef *hmsc = &(classData->msc);
@@ -194,10 +194,9 @@ void MSC_BOT_DataIn (USBD_HandleTypeDef  *pdev, uint8_t epnum)
 * @brief  MSC_BOT_DataOut
 *         Process MSC OUT data
 * @param  pdev: device instance
-* @param  epnum: endpoint index
 * @retval None
 */
-void MSC_BOT_DataOut (USBD_HandleTypeDef  *pdev, uint8_t epnum)
+void MSC_BOT_DataOut (USBD_HandleTypeDef  *pdev)
 {
 	USBD_CompositeClassData *classData = (USBD_CompositeClassData*) pdev->pClassData;
 	USBD_MSC_BOT_HandleTypeDef *hmsc = &(classData->msc);
@@ -252,14 +251,14 @@ static void  MSC_BOT_CBW_Decode (USBD_HandleTypeDef  *pdev)
 	{
 		if(SCSI_ProcessCmd(pdev, hmsc->cbw.bLUN, &hmsc->cbw.CB[0]) < 0)
 		{
-			if(hmsc->bot_state == USBD_BOT_NO_DATA)
-			{
+		//	if(hmsc->bot_state == USBD_BOT_NO_DATA)
+		//	{
 				MSC_BOT_SendCSW (pdev, USBD_CSW_CMD_FAILED);
-			}
-			else
-			{
-				MSC_BOT_Abort(pdev);
-			}
+		//	}
+		//	else
+		//	{
+		//		MSC_BOT_Abort(pdev);
+		//	}
 		}
 		/*Burst xfer handled internally*/
 		else if ((hmsc->bot_state != USBD_BOT_DATA_IN) &&
@@ -293,12 +292,13 @@ static void MSC_BOT_SendData(USBD_HandleTypeDef *pdev,
 	USBD_CompositeClassData *classData = (USBD_CompositeClassData*) pdev->pClassData;
 	USBD_MSC_BOT_HandleTypeDef *hmsc = &(classData->msc);
 
-	len = MIN (hmsc->cbw.dDataLength, len);
+    uint16_t length = (uint16_t)MIN(hmsc->cbw.dDataLength, len);
+
 	hmsc->csw.dDataResidue -= len;
 	hmsc->csw.bStatus = USBD_CSW_CMD_PASSED;
 	hmsc->bot_state = USBD_BOT_SEND_DATA;
 
-	USBD_LL_Transmit (pdev, MSC_EPIN_ADDR, buf, len);
+	USBD_LL_Transmit (pdev, MSC_EPIN_ADDR, buf, length);
 }
 
 /**
