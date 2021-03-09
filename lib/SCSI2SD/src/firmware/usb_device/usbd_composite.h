@@ -48,7 +48,8 @@ typedef struct {
 } USBD_CompositeClassData;
 
 
-void s2s_usbDevicePoll(USBD_HandleTypeDef* pdev);
+// Returns 1 if busy
+int s2s_usbDevicePoll(USBD_HandleTypeDef* pdev);
 
 static inline uint8_t USBD_Composite_IsConfigured(USBD_HandleTypeDef *pdev) {
 	return pdev->dev_state == USBD_STATE_CONFIGURED;

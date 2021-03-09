@@ -506,20 +506,26 @@ static uint8_t USBD_Composite_DataOut(USBD_HandleTypeDef  *pdev, uint8_t epnum)
 	return USBD_OK;
 }
 
-void s2s_usbDevicePoll(USBD_HandleTypeDef  *pdev) {
+int s2s_usbDevicePoll(USBD_HandleTypeDef  *pdev) {
 	USBD_CompositeClassData *classData = (USBD_CompositeClassData*) pdev->pClassData;
+
+    int busy = 0;
 
 	if (classData->DataInReady)
 	{
 		classData->DataInReady = 0;
 		MSC_BOT_DataIn(pdev);
+        busy = busy || 1;
 	}
 
 	if (classData->DataOutReady)
     {
 		classData->DataOutReady = 0;
 		MSC_BOT_DataOut(pdev);
+        busy = busy || 1;
 	}
+
+    return busy;
 }
 
 

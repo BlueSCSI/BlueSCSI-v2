@@ -106,10 +106,10 @@ void mainLoop()
 	s2s_configPoll();
 
 #ifdef S2S_USB_FS
-	s2s_usbDevicePoll(&hUsbDeviceFS);
+	int usbBusy = s2s_usbDevicePoll(&hUsbDeviceFS);
 #endif
 #ifdef S2S_USB_HS
-	s2s_usbDevicePoll(&hUsbDeviceHS);
+	int usbBusy = s2s_usbDevicePoll(&hUsbDeviceHS);
 #endif
 
 #if 0
@@ -117,7 +117,7 @@ void mainLoop()
 #endif
 
     // TODO test if USB transfer is in progress
-	if (unlikely(scsiDev.phase == BUS_FREE))
+	if (unlikely(scsiDev.phase == BUS_FREE) && !usbBusy)
 	{
 		if (unlikely(s2s_elapsedTime_ms(lastSDPoll) > 200))
 		{
@@ -128,19 +128,23 @@ void mainLoop()
 				scsiPhyConfig();
 				scsiInit();
 
-/* TODO DEAL WITH THIS
 				if (isUsbStarted)
 				{
+#ifdef S2S_USB_FS
 					USBD_Stop(&hUsbDeviceFS);
 					s2s_delay_ms(128);
 					USBD_Start(&hUsbDeviceFS);
+#endif
+#ifdef S2S_USB_HS
+					USBD_Stop(&hUsbDeviceHS);
+					s2s_delay_ms(128);
+					USBD_Start(&hUsbDeviceHS);
+#endif
 				}
-*/			
 			}
-
 		}
 	}
-	else if ((scsiDev.phase >= 0) && (blockDev.state & DISK_PRESENT))
+	else if (usbBusy || ((scsiDev.phase >= 0) && (blockDev.state & DISK_PRESENT)))
 	{
 		// don't waste time scanning SD cards while we're doing disk IO
 		lastSDPoll = s2s_getTime_ms();
