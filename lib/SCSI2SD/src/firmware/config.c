@@ -331,26 +331,33 @@ void s2s_configPoll()
 	if (!USBD_Composite_IsConfigured(&configUsbDev))
 	{
 		usbInEpState = USB_IDLE;
+		hidPacket_reset();
 		goto out;
 	}
 
 	if (USBD_HID_IsReportReady(&configUsbDev))
 	{
-		s2s_ledOn();
+		// Check if we have a previous command outstanding
+		// before accepting another
+		size_t cmdSize;
+		if (hidPacket_peekPacket(&cmdSize) == NULL)
+		{
+			uint8_t hidBuffer[USBHID_LEN];
+			int byteCount = USBD_HID_GetReport(&configUsbDev, hidBuffer, sizeof(hidBuffer));
+			hidPacket_recv(hidBuffer, byteCount);
+		}
+	}
 
-		// The host sent us some data!
-		uint8_t hidBuffer[USBHID_LEN];
-		int byteCount = USBD_HID_GetReport(&configUsbDev, hidBuffer, sizeof(hidBuffer));
-		hidPacket_recv(hidBuffer, byteCount);
-
+	if (hidPacket_getHIDBytesReady() == 0) // Nothing queued to send
+	{
 		size_t cmdSize;
 		const uint8_t* cmd = hidPacket_getPacket(&cmdSize);
 		if (cmd && (cmdSize > 0))
 		{
+			s2s_ledOn();
 			processCommand(cmd, cmdSize);
+			s2s_ledOff();
 		}
-
-		s2s_ledOff();
 	}
 
 	switch (usbInEpState)
@@ -391,10 +398,19 @@ void s2s_debugTimer()
 
 	if (USBD_HID_IsReportReady(&configUsbDev))
 	{
-		uint8_t hidBuffer[USBHID_LEN];
-		int byteCount = USBD_HID_GetReport(&configUsbDev, hidBuffer, sizeof(hidBuffer));
-		hidPacket_recv(hidBuffer, byteCount);
+		// Check if we have a previous command outstanding
+		// before accepting another
+		size_t cmdSize;
+		if (hidPacket_peekPacket(&cmdSize) == NULL)
+		{
+			uint8_t hidBuffer[USBHID_LEN];
+			int byteCount = USBD_HID_GetReport(&configUsbDev, hidBuffer, sizeof(hidBuffer));
+			hidPacket_recv(hidBuffer, byteCount);
+		}
+	}
 
+	if (hidPacket_getHIDBytesReady() == 0) // Nothing queued to send
+	{
 		size_t cmdSize;
 		const uint8_t* cmd = hidPacket_peekPacket(&cmdSize);
 		// This is called from an ISR, only process simple commands.

@@ -54,6 +54,11 @@ void hidPacket_send(const uint8_t* bytes, size_t len);
 // NULL if there's nothing to send.
 const uint8_t* hidPacket_getHIDBytes(uint8_t* hidBuffer);
 
+// Returns 1 if hidPacket_getHIDBytes will return non-null
+int hidPacket_getHIDBytesReady();
+
+void hidPacket_reset();
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

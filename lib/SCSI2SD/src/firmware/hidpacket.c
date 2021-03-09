@@ -46,6 +46,12 @@ txReset()
 	tx.offset = 0;
 }
 
+void hidPacket_reset()
+{
+    rxReset();
+    txReset();
+}
+
 void hidPacket_recv(const uint8_t* bytes, size_t len)
 {
 	if (len < 2)
@@ -139,6 +145,17 @@ void hidPacket_send(const uint8_t* bytes, size_t len)
 	{
 		txReset();
 	}
+}
+
+int
+hidPacket_getHIDBytesReady()
+{
+       if ((tx.state != PARTIAL) || (tx.offset <= 0))
+       {
+               return 0;
+       }
+
+       return 1;
 }
 
 const uint8_t*
