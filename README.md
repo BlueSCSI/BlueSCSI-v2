@@ -17,7 +17,7 @@ https://gum.co/bluescsi-1b
 
 # Questions?
 
-Join us in #bluescsi on [Discord](https://discord.gg/Hgz25jrA)
+Join us in #bluescsi on [Discord](https://discord.gg/GKcvtgU7P9)
 
 Or open an issue on this repo.
 
