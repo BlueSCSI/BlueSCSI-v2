@@ -1,0 +1,171 @@
+# BlueSCSI
+:toc: macro
+
+BlueSCSI & ArdSCSino are hardware that reproduces SCSI devices (hard disks) with an Arduino STM32F103C (aka Blue Pill.)
+
+`BlueSCSI` created by https://github.com/erichelgeson[erichelgeson] is a fork of `ArdSCSino-stm32` which adds:
+
+* Mac specific functionality
+* Passive SCSI termination
+* An alternative power source if not able to be powered by the SCSI bus
+
+`ArdSCSino-stm32` created by https://github.com/ztto/ArdSCSino-stm32[ztto] is the STM32 version of `ArdSCSino`
+`ArdSCSino` created by https://twitter.com/h_koma2[Tambo (TNB Seisakusho)]
+
+image::docs/buynow.png[link=https://gum.co/bluescsi-1b, 150]
+image::docs/discordbanner.png[https://discord.gg/GKcvtgU7P9, 150]
+
+Join us in #bluescsi on https://discord.gg/GKcvtgU7P9[Discord] or open an issue on this repo.
+
+toc::[]
+
+## Compatibility
+
+If your computer is not listed below - it may be compatible but there is no guarantee it will work. This device is designed and tested to work with pre-PowerPC Macs.
+
+### Compatible
+
+#### Tested by Me
+
+SE, SE/30, Classic, Classic II, Color Classic, LC I/II/III, LC 475, LC 575
+
+#### Reported by others
+
+https://68kmla.org/forums/topic/61045-arduino-scsi-device-work-in-progress/?do=findComment&comment=663077[IIcx], https://68kmla.org/forums/topic/61045-arduino-scsi-device-work-in-progress/?do=findComment&comment=664446[PowerBook 100 (with custom adapter)]
+
+### Incompatible 
+
+Plus, PowerPC (SCSI-2?)
+
+## Performance
+
+Tested on a Color Classic with https://macintoshgarden.org/apps/scsi-director-pro-40[SCSI Director Pro 4]
+```
+1024KB/Sec Write
+900KB/Sec Read
+1.01ms Seek
+```
+
+## Assembly
+
+See <<Assembly.md,Assembly.md>>
+
+## Usage
+
+Hard Disk image files are placed in the root directory of a `FAT32` (or `ExFat`) formatted SD card. You can create a disk image using `dd` or any raw disk will work. See premade disks below. These images are compatible with the RaSCSI device and Basilisk II emulator.
+
+The naming convention is as follows (file name max 32 characters). Note you may mount multiple drives at a time to different SCSI ID's.
+
+`HDxy_512.hda`
+```
+HD - Hard Disk
+x - SCSI ID to attach to. 0-7 (though 7 on a Macintosh is the System)
+y - LUN id usually 0. 
+512 - Sector size. Usually 512. 256, 512, & 1024 supported.
+```
+
+### Examples:
+
+`HD10_512.hda` - Hard Disk at SCSI ID 1, LUN 0, sector size of 512. 
+`HD51_512 System 6.0.8L LC.hda` - Hard Disk at SCSI ID 5, LUN 1, sector size of 512. Text between block size and .hda is ignored.
+
+### Bad 
+
+`HD99_712 foo bar fizz buzz bang.hda` Over 32 chars and invalid SCSI/LUN/Block size....
+
+If no image files are found PC13 will pulse on and off. Check the log file for any errors.
+
+### Blanks & Premade Images
+
+Any blank raw file will do. They are easy to come by as they are used in other devices and emulators such as https://www.emaculation.com/doku.php/basiliskii_osx_setup[Basilisk II].
+
+* Blanks of various sizes from gryphel.com - https://www.gryphel.com/c/minivmac/extras/blanks/
+* Premade from savagetaylor.com - https://www.savagetaylor.com/downloads/downloads-macintosh/ 
+* Premade from RaSCSI - http://macintoshgarden.org/apps/rascsi-68kmla-edition
+
+### Custom Disk Images
+
+This technique is useful when you would like a disk image larger than the pre-built images in the previous section.
+
+The following instructions demonstrates the process using https://ss64.com/osx/dd.html[dd] on a modern Mac:
+
+1. Open terminal.
+2. The following command will create a blank disk image. You can modify the command to suit your use.
+   * `dd if=/dev/zero of=example.hda bs=1m count=500`
+   * The `count` field defines the number of megabytes (`bs=1m`) the total disk image should be.
+   * The output file from the command is "example.hda". This can be changed in the `of=example.hda` field.
+3. Place the new blank disk image in the root directory of your SD card.
+4. If you do not already have a tool to format SCSI drives, https://macintoshgarden.org/apps/lido-756[download LIDO]. You can use an emulator such as https://www.emaculation.com/doku.php/basiliskii_osx_setup[Basilisk II] to move files to the image to prepare your installation.
+5. After booting into your target machine with the working Mac OS disk image on your BlueSCSI from step 3, format the blank disk.
+
+### Termination
+
+To enable termination place the two jumpers on the TERM block. Termination should be enabled if it is the last device in the chain - which is normally how it is used.
+
+## Troubleshooting
+
+### Log Files
+
+If your device is not working - check the `LOG.txt` in the root of the SD card.
+
+### Verify you are not using a fake
+
+https://github.com/keirf/Greaseweazle/wiki/STM32-Fakes[How to tell if your STM32 is fake]
+
+### Performance is slower than expected
+
+Try a different SD card. Cheap/old SD cards can affect performance.
+
+## Development
+
+Below is for users who wish to edit or develop on the BluePill - normal users should not need to worry about this.
+
+### Setup PlatformIO
+
+Open the project in [PlatformIO](https://platformio.org/) and everything is pre-configured.
+
+## Flashing
+
+When flashing you have two options:
+
+Flash by setting up the IDE and re-compiling and programming. If you are a developer and plan to contribute this method is what you should use.
+
+You may also flash the `.bin` file directly from STM32CubeProgrammer. If you are not a developer and just wish to get the code to the BluePill, use this (as development environment setup can be a bit tricky!)
+
+### Using STLink v2 (prefered)
+
+1. Remove SD Card
+2. Make sure the STLink is up to date - https://my.st.com/content/my_st_com/en/products/development-tools/software-development-tools/stm32-software-development-tools/stm32-programmers/stsw-link007.license=1610785194992.product=STSW-LINK007.version=2.37.26.html[Latest Firmware]
+3. Connect pins `SWDIO`(2), `GND`(4), `SWCLK`(6), and `3.3v`(8) from the programmer to the Blue Pill. NOTE: These are not the same as Serial ports.
+4. Using Arduino Studio Select Tools -> Upload Method -> STLink.
+5. You should see the LED `PC_13` flashing indicating no SD Card detected.
+6. Insert SD Card, boot on your favorite Mac!
+
+#### Trouble Shooting
+
+If the device is not detected you may need to hold reset, click program, once it is detected release reset.
+
+If you are unable to get the device in DFU mode for programming you may need to use https://www.st.com/en/development-tools/stm32cubeprog.html[STM32CubeProgrammer] to erase the chip.
+
+### Using UART Serial
+
+I used these - but any USB->TTL device should work https://www.amazon.com/gp/product/B07D6LLX19/
+
+1. Remove SD Card if you have one installed.
+2. Set the BOOT0 jumper to 1
+3. Connect to your UART flashing device via the debug pins, then connect to your computer.
+4. Click the reset button on the BluePill to reset and enter programming mode.
+5. In Arduino Studio click Upload
+    - Note you may have to click Upload more than once, or try restarting more than once.
+6. You should see the LED flashing if you have no SD Card.
+7. Unplug UART device.
+8. Set the BOOT0 jumper to 0
+9. Insert SD Card, boot on your favorite Mac!
+
+### Using USB HID
+
+Note: I have not been able to get this method to work.
+
+## Making Gerber files
+
+https://support.jlcpcb.com/article/44-how-to-export-kicad-pcb-to-gerber-files
