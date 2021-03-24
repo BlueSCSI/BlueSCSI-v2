@@ -148,20 +148,9 @@ If the device is not detected you may need to hold reset, click program, once it
 
 If you are unable to get the device in DFU mode for programming you may need to use https://www.st.com/en/development-tools/stm32cubeprog.html[STM32CubeProgrammer] to erase the chip.
 
-### Using UART Serial
+### Alterantive upload methods
 
-I used these - but any USB->TTL device should work https://www.amazon.com/gp/product/B07D6LLX19/
-
-1. Remove SD Card if you have one installed.
-2. Set the BOOT0 jumper to 1
-3. Connect to your UART flashing device via the debug pins, then connect to your computer.
-4. Click the reset button on the BluePill to reset and enter programming mode.
-5. In Arduino Studio click Upload
-    - Note you may have to click Upload more than once, or try restarting more than once.
-6. You should see the LED flashing if you have no SD Card.
-7. Unplug UART device.
-8. Set the BOOT0 jumper to 0
-9. Insert SD Card, boot on your favorite Mac!
+See the https://docs.platformio.org/en/latest/boards/ststm32/bluepill_f103c8.html#uploading[uploading] documentation on PlatformIO for alterantives.
 
 ### Using USB HID
 
