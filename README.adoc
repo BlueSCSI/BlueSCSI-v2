@@ -123,7 +123,7 @@ Below is for users who wish to edit or develop on the BluePill - normal users sh
 
 ### Setup PlatformIO
 
-Open the project in [PlatformIO](https://platformio.org/) and everything is pre-configured.
+Open the project in https://platformio.org/[PlatformIO] and everything is pre-configured.
 
 ## Flashing
 
