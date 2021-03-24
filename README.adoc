@@ -49,7 +49,9 @@ Tested on a Color Classic with https://macintoshgarden.org/apps/scsi-director-pr
 
 ## Assembly
 
-See <<docs/assembly.md,docs/assembly.md>>
+++++
+See <a href="docs/assembly.md">docs/assembly.md</a>
+++++
 
 ## Usage
 
