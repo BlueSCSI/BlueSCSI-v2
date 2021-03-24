@@ -49,7 +49,7 @@ Tested on a Color Classic with https://macintoshgarden.org/apps/scsi-director-pr
 
 ## Assembly
 
-See <<Assembly.md,Assembly.md>>
+See <<docs/assembly.md,docs/assembly.md>>
 
 ## Usage
 
