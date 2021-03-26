@@ -161,3 +161,6 @@ Note: I have not been able to get this method to work.
 ## Making Gerber files
 
 https://support.jlcpcb.com/article/44-how-to-export-kicad-pcb-to-gerber-files
+
+
+BlueSCSI (TM) - Eric Helgeson - All rights reserved.
