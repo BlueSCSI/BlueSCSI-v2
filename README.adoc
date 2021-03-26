@@ -67,14 +67,15 @@ y - LUN id usually 0.
 512 - Sector size. Usually 512. 256, 512, & 1024 supported.
 ```
 
-### Examples:
+### Examples
 
-`HD10_512.hda` - Hard Disk at SCSI ID 1, LUN 0, sector size of 512. 
+`HD10_512.hda` - Hard Disk at SCSI ID 1, LUN 0, sector size of 512.
+
 `HD51_512 System 6.0.8L LC.hda` - Hard Disk at SCSI ID 5, LUN 1, sector size of 512. Text between block size and .hda is ignored.
 
 ### Bad 
 
-`HD99_712 foo bar fizz buzz bang.hda` Over 32 chars and invalid SCSI/LUN/Block size....
+`HD99_712 foo bar fizz buzz bang.hda` Over 32 chars and invalid SCSI/LUN/Block size
 
 If no image files are found PC13 will pulse on and off. Check the log file for any errors.
 
