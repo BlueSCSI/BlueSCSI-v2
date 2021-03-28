@@ -84,7 +84,6 @@ If no image files are found PC13 will pulse on and off. Check the log file for a
 Any blank raw file will do. They are easy to come by as they are used in other devices and emulators such as https://www.emaculation.com/doku.php/basiliskii_osx_setup[Basilisk II].
 
 * Preformatted HFS blank images - https://github.com/erichelgeson/BlueSCSI/tree/main/docs/MacHD.zip
-* Blanks of various sizes from gryphel.com - https://www.gryphel.com/c/minivmac/extras/blanks/
 * Premade from savagetaylor.com - https://www.savagetaylor.com/downloads/downloads-macintosh/ 
 * Premade from RaSCSI - http://macintoshgarden.org/apps/rascsi-68kmla-edition
 
