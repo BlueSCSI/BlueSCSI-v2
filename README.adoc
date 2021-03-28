@@ -139,7 +139,7 @@ You may also flash the `.bin` file directly from STM32CubeProgrammer. If you are
 ### Using STLink v2 (prefered)
 
 1. Remove SD Card
-2. Make sure the STLink is up to date - https://my.st.com/content/my_st_com/en/products/development-tools/software-development-tools/stm32-software-development-tools/stm32-programmers/stsw-link007.license=1610785194992.product=STSW-LINK007.version=2.37.26.html[Latest Firmware]
+2. Make sure the STLink is up to date - https://www.st.com/en/development-tools/stsw-link007.html[Latest Firmware]
 3. Connect pins `SWDIO`(2), `GND`(4), `SWCLK`(6), and `3.3v`(8) from the programmer to the Blue Pill. NOTE: These are not the same as Serial ports.
 4. Run the https://docs.platformio.org/en/latest/integration/ide/vscode.html#project-tasks[PlatformIO: Upload] task.
 5. You should see the LED `PC_13` flashing indicating no SD Card detected.
