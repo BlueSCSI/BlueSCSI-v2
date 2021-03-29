@@ -73,21 +73,26 @@ y - LUN id usually 0.
 
 `HD51_512 System 6.0.8L LC.hda` - Hard Disk at SCSI ID 5, LUN 1, sector size of 512. Text between block size and .hda is ignored.
 
-### Bad 
+#### Bad 
 
 `HD99_712 foo bar fizz buzz bang.hda` Over 32 chars and invalid SCSI/LUN/Block size
 
 If no image files are found PC13 will pulse on and off. Check the log file for any errors.
 
-### Blanks & Premade Images
+### Premade Images
 
-Any blank raw file will do. They are easy to come by as they are used in other devices and emulators such as https://www.emaculation.com/doku.php/basiliskii_osx_setup[Basilisk II].
+Premade images are handy to just drop onto your SD card and go. You can use an emulator such as https://www.emaculation.com/doku.php/basiliskii_osx_setup[Basilisk II] on your modern machine to get software from places like the https://macintoshgarden.com[Macintosh Garden] to your vintage mac.
 
-* Preformatted HFS blank images - https://github.com/erichelgeson/BlueSCSI/tree/main/docs/MacHD.zip
 * Premade from savagetaylor.com (Use images from the "Drive" section) - https://www.savagetaylor.com/downloads/downloads-macintosh/ 
-* Premade from RaSCSI - http://macintoshgarden.org/apps/rascsi-68kmla-edition
+* Premade from RaSCSI work as well - http://macintoshgarden.org/apps/rascsi-68kmla-edition
 
-### Custom Disk Images
+### Blanks
+
+These are blank, formatted drives. If you want to install an OS or software on an empty drive, use one of these.
+
+* Preformatted HFS blank images in various sizes - https://github.com/erichelgeson/BlueSCSI/tree/main/docs/MacHD.zip
+
+### Custom Disk Images (Advanced)
 
 This technique is useful when you would like a disk image larger than the pre-built images in the previous section.
 
