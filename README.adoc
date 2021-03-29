@@ -55,7 +55,7 @@ See <a href="docs/assembly.md">docs/assembly.md</a>
 
 ## Usage
 
-Hard Disk image files are placed in the root directory of a `FAT32` (or `ExFat`) formatted SD card. You can create a disk image using `dd` or any raw disk will work. See premade disks below. These images are compatible with the RaSCSI device and Basilisk II emulator.
+Hard Disk image files are placed in the root directory of a `ExFat` or `FAT32` formatted SD card. https://twitter.com/theory_retro/status/1376571371694723076[`ExFat` may be much faster]. Use a premade or blank disk below. These images are compatible with the RaSCSI device and Basilisk II emulator.
 
 The naming convention is as follows (file name max 32 characters). Note you may mount multiple drives at a time to different SCSI ID's.
 
