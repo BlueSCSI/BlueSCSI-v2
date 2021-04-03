@@ -1,0 +1,26 @@
+# Troubleshooting 1.0-b
+:toc: macro
+
+NOTE: If your BlueSCSI was shipped after April 3rd, 2021 please refer to the 1.0-c troubleshooting guide.
+
+## Green LED Flashes on and off
+
+This indicates BlueSCSI could not find any files on the SD card or communicate with the SD card.
+
+Ensure your files are named properly (case sensitive) following the naming convetion in the readme.
+
+If you recived a kit - verify all connections and that the outside of the SD holder is grounded.
+
+## LOG.txt is empty
+
+This indicates the BlueSCSI could communicate with the SD Card but found no files. Check your naming convention.
+
+## Slow performance
+
+Ensure you are using a good SD card. SD card quality can vary widely. 
+
+Format your card as ExFat - users have seen quite a jump in performance.
+
+## (Kit Only) Verify you are not using a fake
+
+https://github.com/keirf/Greaseweazle/wiki/STM32-Fakes[How to tell if your STM32 is fake]

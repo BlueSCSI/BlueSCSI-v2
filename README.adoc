@@ -5,9 +5,12 @@ BlueSCSI & ArdSCSino are hardware that reproduces SCSI devices (hard disks) with
 
 `BlueSCSI` created by https://github.com/erichelgeson[erichelgeson] is a fork of `ArdSCSino-stm32` which adds:
 
+* Usability Improvements
 * Mac specific functionality
-* Passive SCSI termination
+* Enable/Disable Passive SCSI termination
 * An alternative power source if not able to be powered by the SCSI bus
+* Documentation
+* Open Hardware (KiCad & Grebers)
 
 `ArdSCSino-stm32` created by https://github.com/ztto/ArdSCSino-stm32[ztto] is the STM32 version of `ArdSCSino`
 
@@ -28,15 +31,17 @@ If your computer is not listed below - it may be compatible but there is no guar
 
 #### Tested by Me
 
-SE, SE/30, Classic, Classic II, Color Classic, LC I/II/III, LC 475, LC 575
+SE, SE/30, Classic, Classic II, Mac II's, Color Classic, LC I/II/III, LC 475, LC 575
+
+#### Partially Compatible
+
+Mac Plus (1.0-c and above) - Only System 7 currenty works.
+
+PowerPC - Some have had luck booting but is not recommended. 
 
 #### Reported by others
 
 https://68kmla.org/forums/topic/61045-arduino-scsi-device-work-in-progress/?do=findComment&comment=663077[IIcx], https://68kmla.org/forums/topic/61045-arduino-scsi-device-work-in-progress/?do=findComment&comment=664446[PowerBook 100 (with custom adapter)]
-
-### Incompatible 
-
-Plus, PowerPC (SCSI-2?)
 
 ## Performance
 
@@ -77,7 +82,7 @@ y - LUN id usually 0.
 
 `HD99_712 foo bar fizz buzz bang.hda` Over 32 chars and invalid SCSI/LUN/Block size
 
-If no image files are found PC13 will pulse on and off. Check the log file for any errors.
+If no image files are found PC13 will pulse on and off. Check the LOG.txt on the root of the SD card for any errors.
 
 ### Premade Images
 
@@ -113,25 +118,29 @@ To enable termination place the two jumpers on the TERM block. Termination shoul
 
 ## Troubleshooting
 
-### Log Files
+### Check Log Files
 
 If your device is not working - check the `LOG.txt` in the root of the SD card.
 
-### Verify you are not using a fake
-
-https://github.com/keirf/Greaseweazle/wiki/STM32-Fakes[How to tell if your STM32 is fake]
-
 ### Performance is slower than expected
+
+Use ExFat instead of FAT32
 
 Try a different SD card. Cheap/old SD cards can affect performance.
 
-## Development
+### Version Specific
+
+<<docs/troubleshooting-1.0-b.adoc,Version 1.0-b>>
+
+<<docs/troubleshooting-1.0-c.adoc,Version 1.0-c>>
+
+## Development (Advanced)
 
 Below is for users who wish to edit or develop on the BluePill - normal users should not need to worry about this.
 
-### Setup PlatformIO
+### Setup PlatformIO IDE
 
-Open the project in https://platformio.org/[PlatformIO] and everything is pre-configured.
+Open the project in https://platformio.org/platformio-ide[PlatformIO IDE] and everything is pre-configured.
 
 ## Flashing
 
@@ -139,7 +148,7 @@ When flashing you have two options:
 
 Flash by setting up the IDE and re-compiling and programming. If you are a developer and plan to contribute this method is what you should use.
 
-You may also flash the `.bin` file directly from STM32CubeProgrammer. If you are not a developer and just wish to get the code to the BluePill, use this (as development environment setup can be a bit tricky!)
+You may also flash the `.bin` file directly from https://www.st.com/en/development-tools/stm32cubeprog.html[STM32CubeProgrammer]. Use this method if you are not a developer and just wish to get the code to the BluePill.
 
 ### Using STLink v2 (prefered)
 
@@ -162,9 +171,11 @@ See the https://docs.platformio.org/en/latest/boards/ststm32/bluepill_f103c8.htm
 
 ### Using USB HID
 
-Note: I have not been able to get this method to work.
+Note: I have not been able to get this method to work. Please contribute to this document if you do.
 
-## Making Gerber files
+## Notes
+
+### Making Gerbers for JLCPCB
 
 https://support.jlcpcb.com/article/44-how-to-export-kicad-pcb-to-gerber-files
 

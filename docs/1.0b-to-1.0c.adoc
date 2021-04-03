@@ -1,0 +1,27 @@
+# BlueSCSI 1.0-b to 1.0-c
+:toc: macro
+
+## Introduction
+
+1.0-c was a small change to fix an issue with machines that provide low or no `TERMPOWER` over the SCSI bus. If you recived a Fully Assembled BlueSCSI after April 1st, 2021 then this was done for you. If you have a kit labled 1.0-b you can make these modifications to become a 1.0-c.
+
+## Steps
+
+### Disconnect `TERMPOWER` from 220 Pull Up Jupmer
+
+Use a cutting tool to cut the small trace between the `TERMPOWR` and 220 Pull Up Jumper pictured below.
+
+Make sure continiutiy from `TERMPOWER` to the diode still flows correctly but is disconnected from the jumper.
+
+image::images/1.0-b-bodge-1.jpg[]
+
+### Connect 5V to 220 Pull Up Jupmer
+
+Now we will provide pull up from the 5v provided by the BluePill.
+
+image::images/1.0-b-bodge-2.png[]
+
+### Complete!
+
+Thats it! 5v to the Pull Up resistors will now work when powered externally.
+
