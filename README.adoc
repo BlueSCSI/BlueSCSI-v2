@@ -37,7 +37,7 @@ SE, SE/30, Classic, Classic II, Mac II's, Color Classic, LC I/II/III, LC 475, LC
 
 Mac Plus (1.0-c and above) - Only System 7 currenty works.
 
-PowerPC - Some have had luck booting but is not recommended. 
+PowerPC - Some have had luck booting but is not recommended.
 
 #### Reported by others
 
@@ -114,7 +114,7 @@ The following instructions demonstrates the process using https://ss64.com/osx/d
 
 ### Termination
 
-To enable termination place the two jumpers on the TERM block. Termination should be enabled if it is the last device in the chain - which is normally how it is used.
+To enable termination place the two jumpers on the TERM block. Termination should be enabled if it is the last device in the SCSI chain, otherwise remove the jumpers if it is not.
 
 ## Troubleshooting
 
@@ -133,6 +133,22 @@ Try a different SD card. Cheap/old SD cards can affect performance.
 <<docs/troubleshooting-1.0-b.adoc,Version 1.0-b>>
 
 <<docs/troubleshooting-1.0-c.adoc,Version 1.0-c>>
+
+## Hardware Versions
+
+### 1.0-b
+
+First release
+
+### 1.0-c (in testing)
+
+* Fixed issue with diode footprint being too small
+* Fixed issue with external power and `TERMPOWER`
+
+### 1.1-a (in testing)
+
+* Other SCSI connection types
+* More silk screen art
 
 ## Development (Advanced)
 
