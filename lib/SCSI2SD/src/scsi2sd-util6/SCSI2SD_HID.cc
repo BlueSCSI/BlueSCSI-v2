@@ -359,6 +359,11 @@ HID::getHardwareVersion()
 				// Definitely the 2020c or newer hardware.
 				return "V6, 2020c or newer";
 			}
+			else if (prodStr.find(L"2021") != std::string::npos)
+			{
+				// Definitely the 2020c or newer hardware.
+				return "V6, 2021 or newer";
+			}
 			else
 			{
 				return "V6, Rev F or older";
@@ -390,7 +395,7 @@ HID::isCorrectFirmware(const std::string& path)
 {
 	if (myFirmwareVersion < 0x0630)
 	{
-		// Definitely the 2020c or newer hardware.
+		// Definitely the older hardware.
 		return path.rfind("firmware.V6.revF.dfu") != std::string::npos ||
 			path.rfind("firmware.dfu") != std::string::npos;
 	}
@@ -414,6 +419,11 @@ HID::isCorrectFirmware(const std::string& path)
 			{
 				// Definitely the 2020c or newer hardware.
 				return path.rfind("firmware.V6.2020.dfu") != std::string::npos;
+			}
+			else if (prodStr.find(L"2021") != std::string::npos)
+			{
+				// Definitely the 2020c or newer hardware.
+				return path.rfind("firmware.V6.2021.dfu") != std::string::npos;
 			}
 			else
 			{
