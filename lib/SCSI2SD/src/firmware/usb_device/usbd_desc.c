@@ -60,7 +60,17 @@
 #define USBD_LANGID_STRING               1033
 #define USBD_MANUFACTURER_STRING         (uint8_t*)"codesrc.com"
 #define USBD_PID_FS                      0x0BD4
-#define USBD_PRODUCT_STRING_FS           (uint8_t*)"SCSI2SD 2020"
+#ifdef STM32F2xx
+#ifdef REV_2019
+#define USBD_PRODUCT_STRING              (uint8_t*)"SCSI2SD V6"
+#endif
+#ifdef REV_2020
+#define USBD_PRODUCT_STRING              (uint8_t*)"SCSI2SD V6 2020"
+#endif
+#endif
+#ifdef STM32F4xx
+#define USBD_PRODUCT_STRING              (uint8_t*)"SCSI2SD V6 2021"
+#endif
 #define USBD_CONFIGURATION_STRING_FS     (uint8_t*)"SCSI2SD Config"
 #define USBD_INTERFACE_STRING_FS         (uint8_t*)"SCSI2SD Interface"
 #define USB_SIZ_BOS_DESC                 0x0C
@@ -245,14 +255,7 @@ uint8_t *  USBD_FS_LangIDStrDescriptor( USBD_SpeedTypeDef speed , uint16_t *leng
 */
 uint8_t *  USBD_FS_ProductStrDescriptor( USBD_SpeedTypeDef speed , uint16_t *length)
 {
-  if(speed == 0)
-  {   
-    USBD_GetString (USBD_PRODUCT_STRING_FS, USBD_StrDesc, length);
-  }
-  else
-  {
-    USBD_GetString (USBD_PRODUCT_STRING_FS, USBD_StrDesc, length);    
-  }
+  USBD_GetString (USBD_PRODUCT_STRING, USBD_StrDesc, length);
   return USBD_StrDesc;
 }
 
