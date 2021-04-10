@@ -263,6 +263,7 @@ byte SCSI_INFO_BUF[36] = {
 };
 
 void onFalseInit(void);
+void noSDCardFound(void);
 void onBusReset(void);
 void initFileLog(void);
 void finalizeFileLog(void);
@@ -403,7 +404,7 @@ void setup()
 #if DEBUG
     Serial.println("SD initialization failed!");
 #endif
-    onFalseInit();
+    noSDCardFound();
   }
   initFileLog();
   readSCSIDeviceConfig();
@@ -445,18 +446,22 @@ void setup()
         } else {
           LOG_FILE.print("Bad LUN or SCSI id for image: ");
           LOG_FILE.println(name);
+          LOG_FILE.sync();
         }
+      } else {
+          LOG_FILE.print("Not an image: ");
+          LOG_FILE.println(name);
+          LOG_FILE.sync();
       }
-      // else {
-      //     LOG_FILE.print("Not an image: ");
-      //     LOG_FILE.println(name);
-      // }
     }
   }
   root.close();
 
   // Error if there are 0 image files
-  if(scsi_id_mask==0) onFalseInit();
+  if(scsi_id_mask==0) {
+    LOG_FILE.println("ERROR: No valid images found!");
+    onFalseInit();
+  }
 
   finalizeFileLog();
   LED_OFF();
@@ -483,6 +488,7 @@ void initFileLog() {
   LOG_FILE.print("SdFat Max FileName Length: ");
   LOG_FILE.println(MAX_FILE_PATH);
   LOG_FILE.println("Initialized SD Card - lets go!");
+  LOG_FILE.sync();
 }
 
 /*
@@ -521,15 +527,35 @@ void finalizeFileLog() {
 }
 
 /*
- * Initialization failed.
+ * Initialization failed, blink 3x fast
  */
 void onFalseInit(void)
 {
+  LOG_FILE.sync();
   while(true) {
-    gpio_write(LED, high);
-    delay(500); 
-    gpio_write(LED, low);
-    delay(500);
+    for(int i = 0; i < 3; i++) {
+      gpio_write(LED, high);
+      delay(250);
+      gpio_write(LED, low);
+      delay(250);
+    }
+    delay(3000);
+  }
+}
+
+/*
+ * No SC Card found, blink 5x fast
+ */
+void noSDCardFound(void)
+{
+  while(true) {
+    for(int i = 0; i < 5; i++) {
+      gpio_write(LED, high);
+      delay(250);
+      gpio_write(LED, low);
+      delay(250);
+    }
+    delay(3000);
   }
 }
 
