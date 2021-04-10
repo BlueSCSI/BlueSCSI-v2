@@ -426,7 +426,8 @@ void setup()
       file.getName(name, MAX_FILE_PATH+1);
       file.close();
       String file_name = String(name);
-      if(file_name.startsWith("HD") && file_name.endsWith(".hda")) {
+      file_name.toLowerCase();
+      if(file_name.startsWith("hd") && file_name.endsWith(".hda")) {
         int id  = name[HDIMG_ID_POS] - '0';
         int lun = name[HDIMG_LUN_POS] - '0';
         int blk = name[HDIMG_BLK_POS] - '0';
