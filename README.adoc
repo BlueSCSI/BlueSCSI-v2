@@ -136,19 +136,19 @@ Try a different SD card. Cheap/old SD cards can affect performance.
 
 ## Hardware Versions
 
-### 1.0-b
-
-First release
-
-### 1.0-c (in testing)
-
-* Fixed issue with diode footprint being too small
-* Fixed issue with external power and `TERMPOWER`
-
 ### 1.1-a (in testing)
 
 * Other SCSI connection types
 * More silk screen art
+
+### 1.0-c (Latest)
+
+* Fixed issue with diode footprint being too small
+* Fixed issue with external power and `TERMPOWER`
+
+### 1.0-b
+
+First release
 
 ## Development (Advanced)
 
