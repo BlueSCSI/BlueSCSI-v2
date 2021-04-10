@@ -189,7 +189,7 @@ byte          m_msg;                  // Message bytes
 HDDIMG       *m_img;                  // HDD image for current SCSI-ID, LUN
 byte          m_buf[MAX_BLOCKSIZE+1]; // General purpose buffer + overrun fetch
 int           m_msc;
-bool          m_msb[256];
+byte          m_msb[256];             // Command storage bytes
 
 /*
  *  Data byte to BSRR register setting value and parity table
@@ -595,7 +595,7 @@ inline byte readHandshake(void)
 {
   SCSI_OUT(vREQ,active)
   //SCSI_DB_INPUT()
-  while(!SCSI_IN(vACK)) { if(m_isBusReset) return 0; }
+  while( ! SCSI_IN(vACK)) { if(m_isBusReset) return 0; }
   byte r = readIO();
   SCSI_OUT(vREQ,inactive)
   while( SCSI_IN(vACK)) { if(m_isBusReset) return 0; }
@@ -1166,7 +1166,7 @@ void loop()
 #endif
 
   // Wait until SEL becomes inactive
-  while(isHigh(gpio_read(SEL))) {
+  while(isHigh(gpio_read(SEL)) && isLow(gpio_read(BSY))) {
     if(m_isBusReset) {
       goto BusFree;
     }
@@ -1177,10 +1177,12 @@ void loop()
     bool syncenable = false;
     int syncperiod = 50;
     int syncoffset = 0;
+    int loopWait = 0;
     m_msc = 0;
     memset(m_msb, 0x00, sizeof(m_msb));
-    while(isHigh(gpio_read(ATN))) {
+    while(isHigh(gpio_read(ATN)) && loopWait < 255) {
       MsgOut2();
+      loopWait++;
     }
     for(int i = 0; i < m_msc; i++) {
       // ABORT
