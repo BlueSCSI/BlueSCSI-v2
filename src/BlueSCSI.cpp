@@ -1,6 +1,6 @@
 /*  
  *  BlueSCSI
- *  Copyright (c) 2021  Eric Helgeson   
+ *  Copyright (c) 2021  Eric Helgeson, Androda
  *  
  *  This file is free software: you may copy, redistribute and/or modify it  
  *  under the terms of the GNU General Public License as published by the  
