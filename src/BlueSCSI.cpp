@@ -1248,8 +1248,8 @@ void loop()
     if(m_isBusReset) goto BusFree;
   }
   // LUN confirmation
-  m_lun = m_sts>>5;
   m_sts = cmd[1]&0xe0;      // Preset LUN in status byte
+  m_lun = m_sts>>5;
   // HDD Image selection
   m_img = (HDDIMG *)0; // None
   if( (m_lun <= NUM_SCSILUN) )
