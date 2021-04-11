@@ -175,6 +175,8 @@ You may also flash the `.bin` file directly from https://www.st.com/en/developme
 5. You should see the LED `PC_13` flashing indicating no SD Card detected.
 6. Insert SD Card, boot on your favorite Mac!
 
+The following YoutTube video demonstrates the steps of flashing & updating your BlueSCSI https://www.youtube.com/watch?v=bRLAOts_MTM
+
 #### Trouble Shooting
 
 If the device is not detected you may need to hold reset, click program, once it is detected release reset.
