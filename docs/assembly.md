@@ -4,6 +4,12 @@
 
 Read through all instructions before starting.
 
+## Videos
+
+The community has created a few assembly videos:
+* [Stephen Arsenault - BlueSCSI Kit Assembly](https://www.youtube.com/watch?v=G6lwCfLQwd8) 2:52
+* [Joe's Computer Museum - A New Challenger - BlueSCSI - #MARCHintosh Review](https://www.youtube.com/watch?v=d_8VVmvvlNI) 26:52
+
 ## Building
 
 1. Solder on the surface mount SD Card holder. Use the [Drag Solder](https://youtu.be/Z_KL4fWOMug) technique.
