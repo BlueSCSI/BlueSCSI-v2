@@ -1,0 +1,62 @@
+
+# Build Your Own
+
+These instructions will guide you thorugh purchasing all of the parts needed to assemble kits for yourselves and for friends! Please note the hardware is licensed non-comercial.
+
+If you'd like to buy the kits pre-packaged/pre-flashed or fully assembled we have a network of makers here to help you out at https://scsi.blue
+
+## Order Parts
+
+Updated for 1.0-c.
+
+### PCB's
+
+Grab the latest Gerbers. Gerber files tell the PCB manufactuer how to create the BlueSCSI boards.
+
+https://github.com/erichelgeson/BlueSCSI/tree/main/hw/gerbers
+
+Order the boards from https://jlcpcb.com/ or your manufactuer of choice.
+
+### Components
+
+A Mouser project can be found here with all the parts - 
+
+NOTE: you only need 1 of the header packs for ~20 boards, so adjust acccordingly.
+
+https://www.mouser.com/ProjectManager/ProjectDetail.aspx?State=EDIT&ProjectGUID=ac1981ee-73ba-4b4e-b80d-ad0cee123b87
+
+### BluePill
+
+Beware of fakes and buy from a place where returns are easy. Ensure the photo in the listing shows a chip that says STM32 on it.
+
+https://www.amazon.com/s?k=stm32f103c8t6
+
+https://www.ebay.com/sch/i.html?_nkw=stm32f103c8t6
+
+### STlinkV2
+
+You can usually find these bundled with the bluepill or at the same store you bought your bluepill. 
+
+## Assemble
+
+Follow the guide on component orientation and assembly.
+
+https://github.com/erichelgeson/BlueSCSI/blob/main/docs/assembly.md
+
+## 3D Case
+
+Print or order a 3D case for your BlueSCSI to mount it inside your computer.
+
+https://github.com/erichelgeson/BlueSCSI/tree/main/3D-Files
+
+## Flash
+
+You will need to flash the BlueSCSI program onto your BluePill following these instructions.
+
+https://github.com/erichelgeson/BlueSCSI#flashing
+
+## Usage
+
+Be sure to follow the usage instructions for getting your drive images setup:
+
+https://github.com/erichelgeson/BlueSCSI#usage
