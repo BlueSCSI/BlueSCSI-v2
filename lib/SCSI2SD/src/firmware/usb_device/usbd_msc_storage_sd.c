@@ -36,7 +36,22 @@
 #include "../inquiry.h"
 #include "usb_device.h"
 
-
+uint8_t NoSDInquiryData[] =  /* 36 */
+{
+  /* LUN 0 */
+  0x00,
+  0x80, // Removable
+  0x02,
+  0x02,
+  0x1F, // Standard length
+  0x00,
+  0x00,
+  0x00,
+  'C', 'O', 'D', 'E', 'S', 'R', 'C', ' ', /* Manufacturer : 8 bytes */
+  'S', 'C', 'S', 'I', '2', 'S', 'D', ' ', /* Product      : 16 Bytes */
+  ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+  '6', '.', 'X', 'X',                     /* Version      : 4 Bytes */
+};
 
 static int8_t s2s_usbd_storage_Init(uint8_t lun);
 
@@ -106,31 +121,48 @@ int8_t s2s_usbd_storage_GetCapacity (uint8_t lun, uint32_t *block_num, uint16_t 
 {
 	const S2S_TargetCfg* cfg = getUsbConfig(lun);
 
-	uint32_t capacity = getScsiCapacity(
-		cfg->sdSectorStart,
-		cfg->bytesPerSector,
-		cfg->scsiSectors);
+    if (cfg->scsiId & S2S_CFG_TARGET_ENABLED)
+    {
+        uint32_t capacity = getScsiCapacity(
+            cfg->sdSectorStart,
+            cfg->bytesPerSector,
+            cfg->scsiSectors);
 
-	*block_num  = capacity;
-	*block_size = cfg->bytesPerSector;
-	return capacity ? 0 : 1;
+        *block_num  = capacity;
+        *block_size = cfg->bytesPerSector;
+        return capacity ? 0 : 1;
+    }
+    else
+    {
+        *block_num = 0;
+        *block_size = 512;
+        return 1;
+    }
 }
 
 uint32_t s2s_usbd_storage_Inquiry (uint8_t lun, uint8_t* buf, uint8_t maxlen)
 {
 	const S2S_TargetCfg* cfg = getUsbConfig(lun);
-
-	return s2s_getStandardInquiry(cfg, buf, maxlen);
+    if (cfg->scsiId & S2S_CFG_TARGET_ENABLED)
+    {
+        return s2s_getStandardInquiry(cfg, buf, maxlen);
+    }
+    else
+    {
+        memcpy(buf, NoSDInquiryData, maxlen < sizeof(NoSDInquiryData) ? maxlen : sizeof(NoSDInquiryData));
+        return sizeof(NoSDInquiryData);
+    }
 }
 
 int8_t s2s_usbd_storage_IsReady (uint8_t lun)
 {
-	const S2S_TargetCfg* cfg = getUsbConfig(lun);
-	return (
-			cfg &&
-			(blockDev.state & DISK_PRESENT) &&
-			(blockDev.state & DISK_INITIALISED)
-			) ? 0 : 1; // inverse logic
+    const S2S_TargetCfg* cfg = getUsbConfig(lun);
+    return (
+            cfg &&
+            (cfg->scsiId & S2S_CFG_TARGET_ENABLED) &&
+            (blockDev.state & DISK_PRESENT) &&
+            (blockDev.state & DISK_INITIALISED)
+            ) ? 0 : 1; // inverse logic
 }
 
 

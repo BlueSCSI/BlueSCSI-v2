@@ -149,7 +149,12 @@ static void debugInit(void)
 	// 10ms debug timer to capture logs over USB
 	__TIM7_CLK_ENABLE();
 	htim7.Instance = TIM7;
+#ifdef STM32F2xx
 	htim7.Init.Prescaler = 10800 - 1; // 16bit. 108MHz down to 10KHz
+#else
+	htim7.Init.Prescaler = 18000 - 1; // 16bit. 180MHz down to 10KHz
+#endif
+
 	htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
 	htim7.Init.Period = 100 - 1; // 16bit. 10KHz down to 10ms.
 	htim7.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
