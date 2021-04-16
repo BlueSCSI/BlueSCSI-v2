@@ -1207,7 +1207,7 @@ void loop()
         // Transfer period factor(50 x 4 = Limited to 200ns)
         syncperiod = m_msb[i + 3];
         if (syncperiod > 50) {
-          syncoffset = 50;
+          syncperiod = 50;
         }
         // REQ/ACK offset(Limited to 16)
         syncoffset = m_msb[i + 4];
