@@ -19,11 +19,28 @@ Order the boards from https://jlcpcb.com/ or your manufactuer of choice.
 
 ### Components
 
-A Mouser project can be found here with all the parts - 
+#### Version 1.0-b & 1.0-c BOM
 
-NOTE: you only need 1 of the header packs for ~20 boards, so adjust acccordingly.
+STM32F103C8T6 (U1) aka BluePill board. Beware of fake/scams. Look for reviews. Amazon, ebay, etc.
 
-https://www.mouser.com/ProjectManager/ProjectDetail.aspx?State=EDIT&ProjectGUID=ac1981ee-73ba-4b4e-b80d-ad0cee123b87
+* 2x 330 (RN2, RN4) Resistor nets https://www.mouser.com/ProductDetail/652-4610X-1LF-330
+
+* 2x 220 (RN1, RN3) Resistor nets https://www.mouser.com/ProductDetail/652-4610X-1LF-220
+
+* 2x Diodes https://www.mouser.com/ProductDetail/583-1N5818-T
+
+* SD Card Holder (J1)  https://www.mouser.com/ProductDetail/538-104031-0811
+
+* Headers https://www.mouser.com/ProductDetail/872-920-0011-01
+
+* 50 PIN SCSI header https://www.mouser.com/ProductDetail/517-30350-6002/
+  - May substitute with 2 rows of headers from above.
+  - **Note on Right angle connectors** - it appears Right angle headers are notched differently then the pin out. Be sure to note PIN 1/red stripe on the cable match up.
+
+#### Optional
+
+Floppy/Berg Power header https://www.mouser.com/ProductDetail/571-1718254
+  - Required if your machine does not supply power via TERM POWER. For example a Mac Plus or Mac with a Analog/PSU board that has not been recapped.
 
 ### BluePill
 
