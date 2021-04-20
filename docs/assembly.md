@@ -36,6 +36,12 @@ The community has created a few assembly videos:
 
 ### Version 1.0-b & 1.0-c BOM
 
+#### Mouser Cart
+
+https://www.mouser.com/ProjectManager/ProjectDetail.aspx?AccessID=c5cc83feff
+
+#### Parts
+
 STM32F103C8T6 (U1) aka BluePill board. Beware of fake/scams. Look for reviews. Amazon, ebay, etc.
 
 * 2x 330 (RN2, RN4) Resistor nets https://www.mouser.com/ProductDetail/652-4610X-1LF-330
