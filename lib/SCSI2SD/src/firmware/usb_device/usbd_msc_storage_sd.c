@@ -36,7 +36,7 @@
 #include "../inquiry.h"
 #include "usb_device.h"
 
-uint8_t NoSDInquiryData[] =  /* 36 */
+uint8_t NoSDInquiryData[36] =
 {
   /* LUN 0 */
   0x00,
@@ -50,7 +50,7 @@ uint8_t NoSDInquiryData[] =  /* 36 */
   'C', 'O', 'D', 'E', 'S', 'R', 'C', ' ', /* Manufacturer : 8 bytes */
   'S', 'C', 'S', 'I', '2', 'S', 'D', ' ', /* Product      : 16 Bytes */
   ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
-  '6', '.', 'X', 'X',                     /* Version      : 4 Bytes */
+  '6', '.', 'X', 'X'                      /* Version      : 4 Bytes */
 };
 
 static int8_t s2s_usbd_storage_Init(uint8_t lun);

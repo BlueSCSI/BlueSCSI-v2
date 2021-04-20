@@ -306,11 +306,24 @@ static int8_t SCSI_ReadFormatCapacity(USBD_HandleTypeDef  *pdev, uint8_t lun, ui
   
   if(((USBD_StorageTypeDef *)pdev->pUserData)->GetCapacity(lun, &blk_nbr, &blk_size) != 0)
   {
-    SCSI_SenseCode(pdev,
-                   lun,
-                   NOT_READY, 
-                   MEDIUM_NOT_PRESENT);
-    return -1;
+    // Capacity List Header
+    // [0] Reserved
+    // [1] Reserved
+    // [2] Reserved
+    
+    hmsc->bot_data[3] = 0x08; // Capacity List Length (8 bytes, 1 descriptor)
+
+    // Number of blocks. MAXIMUM
+    // 0x400000 is 2TB worth of 512 blocks.
+    hmsc->bot_data[4] = 0x00;
+    hmsc->bot_data[5] = 0x3F;
+    hmsc->bot_data[6] = 0xFF;
+    hmsc->bot_data[7] = 0xFF;
+    
+    hmsc->bot_data[8] = 0x03; // Descriptor code - No media.
+    hmsc->bot_data[9] = 0x00;
+    hmsc->bot_data[10] = 0x02; // 0x200 512 bytes
+    hmsc->bot_data[11] = 0x00;
   } 
   else
   {
@@ -320,15 +333,16 @@ static int8_t SCSI_ReadFormatCapacity(USBD_HandleTypeDef  *pdev, uint8_t lun, ui
     hmsc->bot_data[6] = (uint8_t)((blk_nbr - 1) >>  8);
     hmsc->bot_data[7] = (uint8_t)(blk_nbr - 1);
     
-    hmsc->bot_data[8] = 0x02;
+    hmsc->bot_data[8] = 0x02; // Descriptor code - Formatted media
     hmsc->bot_data[9] = (uint8_t)(blk_size >>  16);
     hmsc->bot_data[10] = (uint8_t)(blk_size >>  8);
     hmsc->bot_data[11] = (uint8_t)(blk_size);
+  }
     
     hmsc->bot_data_length = 12;
     return 0;
-  }
 }
+
 /**
 * @brief  SCSI_ModeSense6
 *         Process Mode Sense6 command
