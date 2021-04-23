@@ -607,6 +607,31 @@ uint32_t SDMMC_CmdWriteSingleBlock(SDIO_TypeDef *SDIOx, uint32_t WriteAdd)
 }
 
 /**
+  * @brief  Set the count of a multi-block write command
+  * @param  SDIOx: Pointer to SDIO register base 
+  * @retval HAL status
+  */
+uint32_t SDMMC_CmdSetBlockCount(SDIO_TypeDef *SDIOx, uint32_t appCmdArg, uint32_t blockCount)
+{
+  SDIO_CmdInitTypeDef  sdmmc_cmdinit;
+  uint32_t errorstate;
+  
+  errorstate = SDMMC_CmdAppCommand(SDIOx, appCmdArg);
+  if(errorstate == HAL_SD_ERROR_NONE)
+  {
+    sdmmc_cmdinit.Argument         = blockCount;
+    sdmmc_cmdinit.CmdIndex         = SDMMC_CMD_SET_BLOCK_COUNT;
+    sdmmc_cmdinit.Response         = SDIO_RESPONSE_SHORT;
+    sdmmc_cmdinit.WaitForInterrupt = SDIO_WAIT_NO;
+    sdmmc_cmdinit.CPSM             = SDIO_CPSM_ENABLE;
+    (void)SDIO_SendCommand(SDIOx, &sdmmc_cmdinit);
+    errorstate = SDMMC_GetCmdResp1(SDIOx, SDMMC_CMD_SET_BLOCK_COUNT, SDIO_CMDTIMEOUT);
+  }
+
+  return errorstate;
+}
+
+/**
   * @brief  Send the Write Multi Block command and check the response
   * @param  SDIOx: Pointer to SDIO register base 
   * @retval HAL status

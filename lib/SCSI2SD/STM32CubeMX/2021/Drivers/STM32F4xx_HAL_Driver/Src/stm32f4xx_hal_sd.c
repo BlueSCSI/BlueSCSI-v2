@@ -1352,6 +1352,19 @@ HAL_StatusTypeDef HAL_SD_WriteBlocks_DMA(SD_HandleTypeDef *hsd, uint8_t *pData, 
       return HAL_ERROR;
     }
 
+    if(NumberOfBlocks > 1U && hsd->SdCard.CardType == CARD_SDHC_SDXC)
+    {
+      /* MM: Prepare for write */
+      errorstate = SDMMC_CmdSetBlockCount(hsd->Instance, (uint32_t)(hsd->SdCard.RelCardAdd) << 16, NumberOfBlocks);
+      if(errorstate != HAL_SD_ERROR_NONE)
+      {
+        __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
+        hsd->ErrorCode |= errorstate;
+        hsd->State = HAL_SD_STATE_READY;
+        return HAL_ERROR;
+      }
+    }
+
     hsd->State = HAL_SD_STATE_BUSY;
 
     /* Initialize data control register */
@@ -1393,18 +1406,6 @@ HAL_StatusTypeDef HAL_SD_WriteBlocks_DMA(SD_HandleTypeDef *hsd, uint8_t *pData, 
     if(NumberOfBlocks > 1U)
     {
       hsd->Context = (SD_CONTEXT_WRITE_MULTIPLE_BLOCK | SD_CONTEXT_DMA);
-
-      /* MM: Prepare for write */
-/* TODO
-      SDMMC_CmdAppCommand(hsd->Instance, (uint32_t)(hsd->RCA << 16));
-      SDIO_CmdInitTypeDef  mm_cmdinit;
-      mm_cmdinit.Argument         = (uint32_t)NumberOfBlocks;
-      mm_cmdinit.CmdIndex         = SDMMC_CMD_SET_BLOCK_COUNT;
-      mm_cmdinit.Response         = SDIO_RESPONSE_SHORT;
-      mm_cmdinit.WaitForInterrupt = SDIO_WAIT_NO;
-      mm_cmdinit.CPSM             = SDIO_CPSM_ENABLE;
-      (void)SDIO_SendCommand(hsd->Instance, &mm_cmdinit);
-      SDMMC_GetCmdResp1(hsd->Instance, SDMMC_CMD_SET_BLOCK_COUNT, SDIO_CMDTIMEOUT);*/
 
       /* Write Multi Block command */
       errorstate = SDMMC_CmdWriteMultiBlock(hsd->Instance, add);
@@ -1658,6 +1659,10 @@ void HAL_SD_IRQHandler(SD_HandleTypeDef *hsd)
           HAL_SD_ErrorCallback(hsd);
 #endif /* USE_HAL_SD_REGISTER_CALLBACKS */
         }
+        __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_DATA_FLAGS);
+
+        hsd->State = HAL_SD_STATE_READY;
+        hsd->Context = SD_CONTEXT_NONE;
       }
       if(((context & SD_CONTEXT_READ_SINGLE_BLOCK) == 0U) && ((context & SD_CONTEXT_READ_MULTIPLE_BLOCK) == 0U))
       {

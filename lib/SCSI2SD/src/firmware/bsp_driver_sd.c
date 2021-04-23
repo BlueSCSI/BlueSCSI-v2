@@ -63,6 +63,89 @@ uint8_t BSP_SD_Init(void)
     else
     {
       SD_state = MSD_OK;
+
+// Clock bypass mode is broken on STM32F205
+// This just corrupts data for now.
+//#ifdef STM32F4xx
+#if 0
+      uint8_t SD_hs[64]  = {0};
+      //uint32_t SD_scr[2] = {0, 0};
+      //uint32_t SD_SPEC   = 0 ;
+      uint32_t count = 0;
+      uint32_t *tempbuff = (uint32_t *)SD_hs;
+
+      // Prepare to read 64 bytes training data
+      SDIO_DataInitTypeDef config;
+      config.DataTimeOut   = SDMMC_DATATIMEOUT;
+      config.DataLength    = 64;
+      config.DataBlockSize = SDIO_DATABLOCK_SIZE_64B;
+      config.TransferDir   = SDIO_TRANSFER_DIR_TO_SDIO;
+      config.TransferMode  = SDIO_TRANSFER_MODE_BLOCK;
+      config.DPSM          = SDIO_DPSM_ENABLE;
+      (void)SDIO_ConfigData(hsd.Instance, &config);
+
+      // High speed switch.
+      // SDR25 (25MB/s) mode 0x80FFFF01
+      // Which is the max without going to 1.8v
+      uint32_t errorstate = SDMMC_CmdSwitch(hsd.Instance, 0x80FFFF01);
+
+      // Low-level init for the bypass. Changes registers only
+      hsd.Init.ClockBypass = SDIO_CLOCK_BYPASS_ENABLE;
+      SDIO_Init(hsd.Instance, hsd.Init); 
+
+      // Now we read some training data
+
+      if (errorstate == HAL_SD_ERROR_NONE)
+      {
+        while(!__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_RXOVERR | SDIO_FLAG_DCRCFAIL | SDIO_FLAG_DTIMEOUT | SDIO_FLAG_DATAEND/* | SDIO_FLAG_STBITERR*/))
+        {
+          if (__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_RXFIFOHF))
+          {
+            for (count = 0; count < 8; count++)
+            {
+              *(tempbuff + count) = SDIO_ReadFIFO(hsd.Instance);
+            }
+
+            tempbuff += 8;
+          }
+        }
+
+        if (__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_DTIMEOUT))
+        {
+          __HAL_SD_CLEAR_FLAG(&hsd, SDIO_FLAG_DTIMEOUT);
+          SD_state = MSD_ERROR;
+        }
+        else if (__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_DCRCFAIL))
+        {
+          __HAL_SD_CLEAR_FLAG(&hsd, SDIO_FLAG_DCRCFAIL);
+          SD_state = MSD_ERROR;
+        }
+        else if (__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_RXOVERR))
+        {
+          __HAL_SD_CLEAR_FLAG(&hsd, SDIO_FLAG_RXOVERR);
+          SD_state = MSD_ERROR;
+        }
+        /*else if (__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_STBITERR))
+        {
+          __HAL_SD_CLEAR_FLAG(&hsd, SDIO_FLAG_STBITERR);
+          SD_state = MSD_ERROR;
+        }*/
+        else
+        {
+          count = SD_DATATIMEOUT;
+
+          while ((__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_RXDAVL)) && (count > 0))
+          {
+            *tempbuff = SDIO_ReadFIFO(hsd.Instance);
+            tempbuff++;
+            count--;
+          }
+
+          /* Clear all the static flags */
+          __HAL_SD_CLEAR_FLAG(&hsd, SDIO_STATIC_FLAGS);
+        }
+      }
+#endif
     }
   }
 #endif
@@ -199,6 +282,8 @@ uint8_t BSP_SD_WriteBlocks_DMA(uint8_t *pData, uint64_t BlockAddr, uint32_t NumO
     {
       SD_state = MSD_OK;
     }
+
+    while (HAL_SD_GetCardState(&hsd) == HAL_SD_CARD_PROGRAMMING) {}
   }
   
   return SD_state; 
