@@ -739,6 +739,12 @@ void scsiDiskPoll()
 		int enableParity = scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY;
 
 		uint32_t maxSectors = sizeof(scsiDev.data) / SD_SECTOR_SIZE;
+        #ifdef STM32F4xx
+        // TODO fix this hack
+        // corruption occurs with 65536 byte transfers but not 32768
+        // works fine on STM32F2 (or at least it did with older firmware ?
+        if (maxSectors > 64) maxSectors = 64;
+        #endif
 
 		static_assert(SCSI_XFER_MAX >= sizeof(scsiDev.data), "Assumes SCSI_XFER_MAX >= sizeof(scsiDev.data)");
 
