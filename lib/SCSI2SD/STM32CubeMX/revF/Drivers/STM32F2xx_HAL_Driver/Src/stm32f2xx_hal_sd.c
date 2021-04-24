@@ -430,6 +430,10 @@ HAL_StatusTypeDef HAL_SD_InitCard(SD_HandleTypeDef *hsd)
   /* Enable SDIO Clock */
   __HAL_SD_ENABLE(hsd);
 
+  /* 1ms: required power up waiting time before starting the SD initialization 
+     sequence */
+  HAL_Delay(1);
+
   /* Identify card operating voltage */
   errorstate = SD_PowerON(hsd);
   if(errorstate != HAL_SD_ERROR_NONE)
@@ -1227,22 +1231,22 @@ HAL_StatusTypeDef HAL_SD_ReadBlocks_DMA(SD_HandleTypeDef *hsd, uint8_t *pData, u
     else
     {
       /* Enable SD DMA transfer */
-      __HAL_SD_DMA_ENABLE(hsd);
+      // MM disabled, as this fails on fast cards. __HAL_SD_DMA_ENABLE(hsd);
 
       if(hsd->SdCard.CardType != CARD_SDHC_SDXC)
       {
         add *= 512U;
-      }
 
-      /* Set Block Size for Card */
-      errorstate = SDMMC_CmdBlockLength(hsd->Instance, BLOCKSIZE);
-      if(errorstate != HAL_SD_ERROR_NONE)
-      {
-        /* Clear all the static flags */
-        __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
-        hsd->ErrorCode |= errorstate;
-        hsd->State = HAL_SD_STATE_READY;
-        return HAL_ERROR;
+        /* Set Block Size for Card */
+        errorstate = SDMMC_CmdBlockLength(hsd->Instance, BLOCKSIZE);
+        if(errorstate != HAL_SD_ERROR_NONE)
+        {
+          /* Clear all the static flags */
+          __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
+          hsd->ErrorCode |= errorstate;
+          hsd->State = HAL_SD_STATE_READY;
+          return HAL_ERROR;
+        }
       }
 
       /* Configure the SD DPSM (Data Path State Machine) */
@@ -1252,6 +1256,11 @@ HAL_StatusTypeDef HAL_SD_ReadBlocks_DMA(SD_HandleTypeDef *hsd, uint8_t *pData, u
       config.TransferDir   = SDIO_TRANSFER_DIR_TO_SDIO;
       config.TransferMode  = SDIO_TRANSFER_MODE_BLOCK;
       config.DPSM          = SDIO_DPSM_ENABLE;
+
+      // We cannot enable DMA too early on UHS-I class 3 SD cards, or else the
+      // data is just discarded before the dpsm is started.
+      __HAL_SD_DMA_ENABLE();
+
       (void)SDIO_ConfigData(hsd->Instance, &config);
 
       /* Read Blocks in DMA mode */
@@ -1323,6 +1332,19 @@ HAL_StatusTypeDef HAL_SD_WriteBlocks_DMA(SD_HandleTypeDef *hsd, uint8_t *pData, 
       return HAL_ERROR;
     }
 
+    if(NumberOfBlocks > 1U && hsd->SdCard.CardType == CARD_SDHC_SDXC)
+    {
+      /* MM: Prepare for write */
+      errorstate = SDMMC_CmdSetBlockCount(hsd->Instance, (uint32_t)(hsd->SdCard.RelCardAdd) << 16, NumberOfBlocks);
+      if(errorstate != HAL_SD_ERROR_NONE)
+      {
+        __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
+        hsd->ErrorCode |= errorstate;
+        hsd->State = HAL_SD_STATE_READY;
+        return HAL_ERROR;
+      }
+    }
+
     hsd->State = HAL_SD_STATE_BUSY;
 
     /* Initialize data control register */
@@ -1343,17 +1365,17 @@ HAL_StatusTypeDef HAL_SD_WriteBlocks_DMA(SD_HandleTypeDef *hsd, uint8_t *pData, 
     if(hsd->SdCard.CardType != CARD_SDHC_SDXC)
     {
       add *= 512U;
-    }
 
-    /* Set Block Size for Card */
-    errorstate = SDMMC_CmdBlockLength(hsd->Instance, BLOCKSIZE);
-    if(errorstate != HAL_SD_ERROR_NONE)
-    {
-      /* Clear all the static flags */
-      __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
-      hsd->ErrorCode |= errorstate;
-      hsd->State = HAL_SD_STATE_READY;
-      return HAL_ERROR;
+      /* Set Block Size for Card */
+      errorstate = SDMMC_CmdBlockLength(hsd->Instance, BLOCKSIZE);
+      if(errorstate != HAL_SD_ERROR_NONE)
+      {
+        /* Clear all the static flags */
+        __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
+        hsd->ErrorCode |= errorstate;
+        hsd->State = HAL_SD_STATE_READY;
+        return HAL_ERROR;
+      }
     }
 
     /* Write Blocks in Polling mode */
@@ -1382,7 +1404,7 @@ HAL_StatusTypeDef HAL_SD_WriteBlocks_DMA(SD_HandleTypeDef *hsd, uint8_t *pData, 
     }
 
     /* Enable SDIO DMA transfer */
-    __HAL_SD_DMA_ENABLE(hsd);
+    // MM disabled, as this fails on fast cards. __HAL_SD_DMA_ENABLE(hsd);
 
     /* Enable the DMA Channel */
     if(HAL_DMA_Start_IT(hsd->hdmatx, (uint32_t)pData, (uint32_t)&hsd->Instance->FIFO, (uint32_t)(BLOCKSIZE * NumberOfBlocks)/4U) != HAL_OK)
@@ -1403,6 +1425,11 @@ HAL_StatusTypeDef HAL_SD_WriteBlocks_DMA(SD_HandleTypeDef *hsd, uint8_t *pData, 
       config.TransferDir   = SDIO_TRANSFER_DIR_TO_CARD;
       config.TransferMode  = SDIO_TRANSFER_MODE_BLOCK;
       config.DPSM          = SDIO_DPSM_ENABLE;
+
+      // We cannot enable DMA too early on UHS-I class 3 SD cards, or else the
+      // data is just discarded before the dpsm is started.
+      __HAL_SD_DMA_ENABLE();
+
       (void)SDIO_ConfigData(hsd->Instance, &config);
 
       return HAL_OK;
@@ -1598,6 +1625,10 @@ void HAL_SD_IRQHandler(SD_HandleTypeDef *hsd)
           HAL_SD_ErrorCallback(hsd);
 #endif /* USE_HAL_SD_REGISTER_CALLBACKS */
         }
+        __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_DATA_FLAGS);
+
+        hsd->State = HAL_SD_STATE_READY;
+        hsd->Context = SD_CONTEXT_NONE;
       }
       if(((context & SD_CONTEXT_READ_SINGLE_BLOCK) == 0U) && ((context & SD_CONTEXT_READ_MULTIPLE_BLOCK) == 0U))
       {
