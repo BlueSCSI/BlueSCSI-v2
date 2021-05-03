@@ -535,9 +535,7 @@ void onFalseInit(void)
   LOG_FILE.sync();
   while(true) {
     for(int i = 0; i < 3; i++) {
-      gpio_write(LED, high);
-      delay(250);
-      gpio_write(LED, low);
+      gpio_write(LED, !gpio_read(LED));
       delay(250);
     }
     delay(3000);
@@ -551,9 +549,7 @@ void noSDCardFound(void)
 {
   while(true) {
     for(int i = 0; i < 5; i++) {
-      gpio_write(LED, high);
-      delay(250);
-      gpio_write(LED, low);
+      gpio_write(LED, !gpio_read(LED));
       delay(250);
     }
     delay(3000);
