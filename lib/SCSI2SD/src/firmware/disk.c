@@ -859,6 +859,16 @@ void scsiDiskPoll()
 					// Wait while keeping BSY.
 				}
 
+                HAL_SD_CardStateTypeDef cardState = HAL_SD_GetCardState(&hsd);
+                while ((cardState == HAL_SD_CARD_PROGRAMMING || cardState == HAL_SD_CARD_RECEIVING) &&
+					s2s_elapsedTime_ms(dmaFinishTime) < 180)
+                {
+                    // Wait while the SD card is writing buffer to flash
+                    // The card may remain in the RECEIVING state (even though it's programming) if
+                    // it has buffer space to receive more data available.
+                    cardState = HAL_SD_GetCardState(&hsd);
+                }
+
 				if (i + sectors >= totalSDSectors &&
 					!underrun &&
 					(!parityError || !enableParity))
@@ -878,9 +888,14 @@ void scsiDiskPoll()
 				{
 					// Wait while keeping BSY.
 				}
-                while (HAL_SD_GetCardState(&hsd) == HAL_SD_CARD_PROGRAMMING) 
+
+                cardState = HAL_SD_GetCardState(&hsd);
+                while (cardState == HAL_SD_CARD_PROGRAMMING || cardState == HAL_SD_CARD_RECEIVING) 
                 {
                     // Wait while the SD card is writing buffer to flash
+                    // The card may remain in the RECEIVING state (even though it's programming) if
+                    // it has buffer space to receive more data available.
+                    cardState = HAL_SD_GetCardState(&hsd);
                 }
 
 				if (underrun && (!parityError || !enableParity))

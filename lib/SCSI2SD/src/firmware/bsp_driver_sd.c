@@ -192,6 +192,7 @@ __weak void BSP_SD_DetectCallback(void)
   * @param  NumOfBlocks: Number of SD blocks to read 
   * @retval SD status
   */
+/*
 uint8_t BSP_SD_ReadBlocks(uint8_t *pData, uint64_t BlockAddr, uint32_t NumOfBlocks)
 {
   if(HAL_SD_ReadBlocks_DMA(&hsd, pData, BlockAddr, NumOfBlocks) != HAL_OK)  
@@ -199,7 +200,7 @@ uint8_t BSP_SD_ReadBlocks(uint8_t *pData, uint64_t BlockAddr, uint32_t NumOfBloc
     return MSD_ERROR;
   }
   return MSD_OK;
-}
+}*/
 
 /**
   * @brief  Writes block(s) to a specified address in an SD card, in polling mode. 
@@ -208,14 +209,14 @@ uint8_t BSP_SD_ReadBlocks(uint8_t *pData, uint64_t BlockAddr, uint32_t NumOfBloc
   * @param  NumOfBlocks: Number of SD blocks to write
   * @retval SD status
   */
-uint8_t BSP_SD_WriteBlocks(uint8_t *pData, uint64_t BlockAddr, uint32_t NumOfBlocks)
+/*uint8_t BSP_SD_WriteBlocks(uint8_t *pData, uint64_t BlockAddr, uint32_t NumOfBlocks)
 {
   if(HAL_SD_WriteBlocks_DMA(&hsd, pData, BlockAddr, NumOfBlocks) != HAL_OK)  
   {
     return MSD_ERROR;
   }
   return MSD_OK;
-}
+}*/
 
 /**
   * @brief  Reads block(s) from a specified address in an SD card, in DMA mode. 
@@ -283,7 +284,16 @@ uint8_t BSP_SD_WriteBlocks_DMA(uint8_t *pData, uint64_t BlockAddr, uint32_t NumO
       SD_state = MSD_OK;
     }
 
-    while (HAL_SD_GetCardState(&hsd) == HAL_SD_CARD_PROGRAMMING) {}
+    HAL_SD_CardStateTypeDef cardState = HAL_SD_GetCardState(&hsd);
+    while (cardState == HAL_SD_CARD_PROGRAMMING || cardState == HAL_SD_CARD_RECEIVING) 
+    {
+        // Wait while the SD card is writing buffer to flash
+        // The card may remain in the RECEIVING state (even though it's programming) if
+        // it has buffer space to receive more data available.
+
+        cardState = HAL_SD_GetCardState(&hsd);
+    }
+
   }
   
   return SD_state; 
