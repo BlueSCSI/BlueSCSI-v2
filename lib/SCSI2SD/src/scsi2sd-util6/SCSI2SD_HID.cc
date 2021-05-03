@@ -301,6 +301,10 @@ HID::sendHIDPacket(
 		for (int retry = 0; retry < 10 && result <= 0; ++retry)
 		{
 			result = hid_write(myConfigHandle, reportBuf, sizeof(reportBuf));
+            if (result <= 0)
+            {
+                wxMilliSleep(32);
+            }
 		}
 
 		if (result <= 0)
@@ -322,6 +326,10 @@ HID::sendHIDPacket(
 		readHID(hidBuf, sizeof(hidBuf)); // Will block
 		hidPacket_recv(hidBuf, HID_PACKET_SIZE);
 		resp = hidPacket_getPacket(&respLen);
+        if (!resp)
+        {
+            wxMilliSleep(32);
+        }
 	}
 
 	if (!resp)
