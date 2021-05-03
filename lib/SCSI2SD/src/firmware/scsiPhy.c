@@ -94,6 +94,11 @@ scsiSetDataCount(uint32_t count)
 	*SCSI_DATA_CNT_MID = (count >> 8) & 0xff;
 	*SCSI_DATA_CNT_LO = count & 0xff;
 	*SCSI_DATA_CNT_SET = 1;
+
+#ifdef STM32F4xx
+	__NOP();
+	__NOP();
+#endif
 }
 
 int scsiFifoReady(void)
@@ -105,6 +110,8 @@ int scsiFifoReady(void)
 	HAL_GPIO_ReadPin(GPIOE, FPGA_GPIO3_Pin);
 	__NOP();
 #ifdef STM32F4xx
+	__NOP();
+	__NOP();
 	__NOP();
 #endif
 	return HAL_GPIO_ReadPin(GPIOE, FPGA_GPIO3_Pin) != 0;

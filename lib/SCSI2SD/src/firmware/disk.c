@@ -635,7 +635,8 @@ void scsiDiskPoll()
 				(prep - i < buffers) &&
 				(prep < totalSDSectors) &&
 				((totalSDSectors - prep) >= sdPerScsi) &&
-				(likely(!useSlowDataCount) || scsiPhyComplete()))
+				(likely(!useSlowDataCount) || scsiPhyComplete()) &&
+				(HAL_SD_GetState(&hsd) != HAL_SD_STATE_BUSY)) // rx complete but IRQ not fired yet.
 			{
 				// Start an SD transfer if we have space.
 				uint32_t startBuffer = prep % buffers;
@@ -713,6 +714,11 @@ void scsiDiskPoll()
 			__WFI();
 		}
 		__enable_irq();
+
+		while (HAL_SD_GetState(&hsd) == HAL_SD_STATE_BUSY)
+		{
+			// Wait while keeping BSY.
+		}
 
 		if (scsiDev.phase == DATA_IN)
 		{

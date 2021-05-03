@@ -76,7 +76,7 @@ void s2s_fpgaInit()
 void s2s_fpgaReset()
 {
 	HAL_GPIO_WritePin(FPGA_RST_GPIO_Port, FPGA_RST_Pin, GPIO_PIN_SET);
-	s2s_delay_clocks(4);
+	s2s_delay_clocks(12);
 	HAL_GPIO_WritePin(FPGA_RST_GPIO_Port, FPGA_RST_Pin, GPIO_PIN_RESET);
 }
 
