@@ -88,8 +88,7 @@ If no image files are found PC13 will pulse on and off. Check the LOG.txt on the
 
 Premade images are handy to just drop onto your SD card and go. You can use an emulator such as https://www.emaculation.com/doku.php/basiliskii_osx_setup[Basilisk II] on your modern machine to get software from places like the https://macintoshgarden.com[Macintosh Garden] to your vintage mac.
 
-* Premade from savagetaylor.com (Use images from the "Drive" section) - https://www.savagetaylor.com/downloads/downloads-macintosh/ 
-* Premade from RaSCSI work as well - http://macintoshgarden.org/apps/rascsi-68kmla-edition
+* Premade from RaSCSI in BlueSCSI too - Rename the files based on the Usage instructions above. - http://macintoshgarden.org/apps/rascsi-68kmla-edition
 
 ### Blanks
 
