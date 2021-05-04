@@ -1,3 +1,6 @@
+20210504        6.4.3
+    - More bug fixes while writing data.
+
 20210503        6.4.2
     - Bug fix for errors while writing data
     - Fix for scsi2sd-util6 under Windows which may fail to detect a board without a SD card inserted.
@@ -5,7 +8,6 @@
 20210426		6.4.1
     - 2021 hardware support release.
     - scsi2sd-util6 stability improvements (contributed by Jonathan Wakely.
-
 
 20201012		6.3.2
 	- Increase limit of READ/WRITE BUFFER command for improved compatibility
