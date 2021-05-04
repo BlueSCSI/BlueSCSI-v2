@@ -631,6 +631,7 @@ uint32_t SDMMC_CmdSetBlockCount(SDIO_TypeDef *SDIOx, uint32_t appCmdArg, uint32_
   return errorstate;
 }
 
+
 /**
   * @brief  Send the Write Multi Block command and check the response
   * @param  SDIOx: Pointer to SDIO register base 

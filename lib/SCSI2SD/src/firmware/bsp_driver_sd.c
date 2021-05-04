@@ -265,7 +265,7 @@ uint8_t BSP_SD_WriteBlocks_DMA(uint8_t *pData, uint64_t BlockAddr, uint32_t NumO
   uint8_t SD_state = MSD_OK;
   
   /* Write block(s) in DMA transfer mode */
-  if(HAL_SD_WriteBlocks_DMA(&hsd, pData, BlockAddr, NumOfBlocks) != HAL_OK)  
+  if(HAL_SD_WriteBlocks_DMA(&hsd, BlockAddr, NumOfBlocks) != HAL_OK)  
   {
     SD_state = MSD_ERROR;
   }
@@ -273,7 +273,25 @@ uint8_t BSP_SD_WriteBlocks_DMA(uint8_t *pData, uint64_t BlockAddr, uint32_t NumO
   /* Wait until transfer is complete */
   if(SD_state == MSD_OK)
   {
-    while (HAL_SD_GetState(&hsd) == HAL_SD_STATE_BUSY) {}
+    for (int i = 0; i < NumOfBlocks; ++i)
+    {
+        while (HAL_SD_GetState(&hsd) == HAL_SD_STATE_BUSY) {}
+
+        HAL_SD_CardStateTypeDef cardState = HAL_SD_GetCardState(&hsd);
+        while (cardState == HAL_SD_CARD_PROGRAMMING) 
+        {   
+            // Wait while the SD card is writing buffer to flash
+            // The card may remain in the RECEIVING state (even though it's programming) if
+            // it has buffer space to receive more data available.
+
+            cardState = HAL_SD_GetCardState(&hsd);
+        }
+
+        HAL_SD_WriteBlocks_Data(&hsd, pData + (i * 512));
+    }
+
+    while (HAL_SD_GetState(&hsd) == HAL_SD_STATE_BUSY) {} // Wait for DMA to complete
+    SDMMC_CmdStopTransfer(hsd.Instance);
 
     if(HAL_SD_GetState(&hsd) == HAL_SD_STATE_ERROR)
     {
@@ -293,7 +311,6 @@ uint8_t BSP_SD_WriteBlocks_DMA(uint8_t *pData, uint64_t BlockAddr, uint32_t NumO
 
         cardState = HAL_SD_GetCardState(&hsd);
     }
-
   }
   
   return SD_state; 

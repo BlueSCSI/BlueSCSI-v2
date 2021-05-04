@@ -1330,17 +1330,10 @@ HAL_StatusTypeDef HAL_SD_ReadBlocks_DMA(SD_HandleTypeDef *hsd, uint8_t *pData, u
   * @param  NumberOfBlocks: Number of blocks to write
   * @retval HAL status
   */
-HAL_StatusTypeDef HAL_SD_WriteBlocks_DMA(SD_HandleTypeDef *hsd, uint8_t *pData, uint32_t BlockAdd, uint32_t NumberOfBlocks)
+HAL_StatusTypeDef HAL_SD_WriteBlocks_DMA(SD_HandleTypeDef *hsd, uint32_t BlockAdd, uint32_t NumberOfBlocks)
 {
-  SDIO_DataInitTypeDef config;
   uint32_t errorstate;
   uint32_t add = BlockAdd;
-
-  if(NULL == pData)
-  {
-    hsd->ErrorCode |= HAL_SD_ERROR_PARAM;
-    return HAL_ERROR;
-  }
 
   if(hsd->State == HAL_SD_STATE_READY)
   {
@@ -1365,19 +1358,20 @@ HAL_StatusTypeDef HAL_SD_WriteBlocks_DMA(SD_HandleTypeDef *hsd, uint8_t *pData, 
       }
     }
 
-    hsd->State = HAL_SD_STATE_BUSY;
+    // hsd->State = HAL_SD_STATE_BUSY;
 
     /* Initialize data control register */
     hsd->Instance->DCTRL = 0U;
 
     /* Enable SD Error interrupts */
 #if defined(SDIO_STA_STBITERR)
-    __HAL_SD_ENABLE_IT(hsd, (SDIO_IT_DCRCFAIL | SDIO_IT_DTIMEOUT | SDIO_IT_TXUNDERR | SDIO_IT_STBITERR));
+    __HAL_SD_ENABLE_IT(hsd, (SDIO_IT_DCRCFAIL | SDIO_IT_DTIMEOUT | SDIO_IT_TXUNDERR | SDIO_IT_DATAEND | SDIO_IT_STBITERR));
 #else /* SDIO_STA_STBITERR not defined */
-    __HAL_SD_ENABLE_IT(hsd, (SDIO_IT_DCRCFAIL | SDIO_IT_DTIMEOUT | SDIO_IT_TXUNDERR));   
+    __HAL_SD_ENABLE_IT(hsd, (SDIO_IT_DCRCFAIL | SDIO_IT_DTIMEOUT | SDIO_IT_TXUNDERR | SDIO_IT_DATAEND));
 #endif /* SDIO_STA_STBITERR */
 
     /* Set the DMA transfer complete callback */
+    // This callback now doesn't do anything - enabling DATAEND interrupt is set above to avoid race conditions
     hsd->hdmatx->XferCpltCallback = SD_DMATransmitCplt;
 
     /* Set the DMA error callback */
@@ -1427,11 +1421,59 @@ HAL_StatusTypeDef HAL_SD_WriteBlocks_DMA(SD_HandleTypeDef *hsd, uint8_t *pData, 
       return HAL_ERROR;
     }
 
-    /* Enable SDIO DMA transfer */
-    // MM disabled, as this fails on fast cards. __HAL_SD_DMA_ENABLE(hsd);
+    return HAL_OK;
+  }
+  else
+  {
+    return HAL_BUSY;
+  }
+}
+
+/**
+  * @brief  Writes block(s) to a specified address in a card. The Data transfer
+  *         is managed by DMA mode.
+  * @note   This API should be followed by a check on the card state through
+  *         HAL_SD_GetCardState().
+  * @note   You could also check the DMA transfer process through the SD Tx
+  *         interrupt event.
+  * @param  hsd: Pointer to SD handle
+  * @param  pData: Pointer to the buffer that will contain the data to transmit
+  * @param  BlockAdd: Block Address where data will be written
+  * @param  NumberOfBlocks: Number of blocks to write
+  * @retval HAL status
+  */
+HAL_StatusTypeDef HAL_SD_WriteBlocks_Data(SD_HandleTypeDef *hsd, uint8_t *pData)
+{
+  SDIO_DataInitTypeDef config;
+
+  if(hsd->State == HAL_SD_STATE_READY)
+  {
+    hsd->ErrorCode = HAL_SD_ERROR_NONE;
+
+    hsd->State = HAL_SD_STATE_BUSY;
+
+    /* Initialize data control register */
+    hsd->Instance->DCTRL = 0U;
+
+    /* Enable SD Error interrupts */
+#if defined(SDIO_STA_STBITERR)
+    __HAL_SD_ENABLE_IT(hsd, (SDIO_IT_DCRCFAIL | SDIO_IT_DTIMEOUT | SDIO_IT_TXUNDERR | SDIO_IT_DATAEND | SDIO_IT_STBITERR));
+#else /* SDIO_STA_STBITERR not defined */
+    __HAL_SD_ENABLE_IT(hsd, (SDIO_IT_DCRCFAIL | SDIO_IT_DTIMEOUT | SDIO_IT_TXUNDERR | SDIO_IT_DATAEND));
+#endif /* SDIO_STA_STBITERR */
+
+    /* Set the DMA transfer complete callback */
+    // This callback now doesn't do anything - enabling DATAEND interrupt is set above to avoid race conditions
+    hsd->hdmatx->XferCpltCallback = SD_DMATransmitCplt;
+
+    /* Set the DMA error callback */
+    hsd->hdmatx->XferErrorCallback = SD_DMAError;
+
+    /* Set the DMA Abort callback */
+    hsd->hdmatx->XferAbortCallback = NULL;
 
     /* Enable the DMA Channel */
-    if(HAL_DMA_Start_IT(hsd->hdmatx, (uint32_t)pData, (uint32_t)&hsd->Instance->FIFO, (uint32_t)(BLOCKSIZE * NumberOfBlocks)/4U) != HAL_OK)
+    if(HAL_DMA_Start_IT(hsd->hdmatx, (uint32_t)pData, (uint32_t)&hsd->Instance->FIFO, (uint32_t)(BLOCKSIZE)/4U) != HAL_OK)
     {
 #if defined(SDIO_STA_STBITERR)
       __HAL_SD_DISABLE_IT(hsd, (SDIO_IT_DCRCFAIL | SDIO_IT_DTIMEOUT | SDIO_IT_TXUNDERR | SDIO_IT_STBITERR));
@@ -1448,7 +1490,7 @@ HAL_StatusTypeDef HAL_SD_WriteBlocks_DMA(SD_HandleTypeDef *hsd, uint8_t *pData, 
     {
       /* Configure the SD DPSM (Data Path State Machine) */
       config.DataTimeOut   = SDMMC_DATATIMEOUT;
-      config.DataLength    = BLOCKSIZE * NumberOfBlocks;
+      config.DataLength    = BLOCKSIZE;
       config.DataBlockSize = SDIO_DATABLOCK_SIZE_512B;
       config.TransferDir   = SDIO_TRANSFER_DIR_TO_CARD;
       config.TransferMode  = SDIO_TRANSFER_MODE_BLOCK;
@@ -1649,20 +1691,8 @@ void HAL_SD_IRQHandler(SD_HandleTypeDef *hsd)
     {
       if((context & SD_CONTEXT_WRITE_MULTIPLE_BLOCK) != 0U)
       {
-        errorstate = SDMMC_CmdStopTransfer(hsd->Instance);
-        if(errorstate != HAL_SD_ERROR_NONE)
-        {
-          hsd->ErrorCode |= errorstate;
-#if defined (USE_HAL_SD_REGISTER_CALLBACKS) && (USE_HAL_SD_REGISTER_CALLBACKS == 1U)
-          hsd->ErrorCallback(hsd);
-#else
-          HAL_SD_ErrorCallback(hsd);
-#endif /* USE_HAL_SD_REGISTER_CALLBACKS */
-        }
         __HAL_SD_CLEAR_FLAG(hsd, SDIO_STATIC_DATA_FLAGS);
-
-        hsd->State = HAL_SD_STATE_READY;
-        hsd->Context = SD_CONTEXT_NONE;
+        __HAL_SD_DMA_DISABLE(hsd);
       }
       if(((context & SD_CONTEXT_READ_SINGLE_BLOCK) == 0U) && ((context & SD_CONTEXT_READ_MULTIPLE_BLOCK) == 0U))
       {
@@ -2438,7 +2468,7 @@ HAL_StatusTypeDef HAL_SD_Abort(SD_HandleTypeDef *hsd)
   hsd->Context = SD_CONTEXT_NONE;
 
   CardState = HAL_SD_GetCardState(hsd);
-  if((CardState == HAL_SD_CARD_RECEIVING) || (CardState == HAL_SD_CARD_SENDING))
+  if((CardState == HAL_SD_CARD_RECEIVING) || (CardState == HAL_SD_CARD_SENDING) || (CardState == HAL_SD_CARD_PROGRAMMING))
   {
     hsd->ErrorCode = SDMMC_CmdStopTransfer(hsd->Instance);
   }
@@ -2544,10 +2574,12 @@ HAL_StatusTypeDef HAL_SD_Abort_IT(SD_HandleTypeDef *hsd)
   */
 static void SD_DMATransmitCplt(DMA_HandleTypeDef *hdma)
 {
-  SD_HandleTypeDef* hsd = (SD_HandleTypeDef* )(hdma->Parent);
+  // SD_HandleTypeDef* hsd = (SD_HandleTypeDef* )(hdma->Parent);
 
   /* Enable DATAEND Interrupt */
-  __HAL_SD_ENABLE_IT(hsd, (SDIO_IT_DATAEND));
+  //WHAT IF IT ALREADY TRIGGERED ? Maybe it can't due to interrupt priorities ?
+  // Easier to just ignore it.
+  //  __HAL_SD_ENABLE_IT(hsd, (SDIO_IT_DATAEND));
 }
 
 /**
