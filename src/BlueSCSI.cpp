@@ -746,7 +746,7 @@ void writeDataPhaseSD(uint32_t adds, uint32_t len)
     }while(srcptr < endptr);
     SCSI_DB_INPUT()
 #else
-    for(int j = 0; j < BLOCKSIZE; j++) {
+    for(int j = 0; j < m_img->m_blocksize; j++) {
       if(m_isBusReset) {
         return;
       }
