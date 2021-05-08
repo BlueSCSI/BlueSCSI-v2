@@ -401,11 +401,16 @@ HID::getSerialNumber()
 bool
 HID::isCorrectFirmware(const std::string& path)
 {
+    if (path.rfind(".dfu") != path.size() - 4)
+    {
+        return false;
+    }
+
 	if (myFirmwareVersion < 0x0630)
 	{
 		// Definitely the older hardware.
-		return path.rfind("firmware.V6.revF.dfu") != std::string::npos ||
-			path.rfind("firmware.dfu") != std::string::npos;
+		return path.rfind("firmware.V6.revF") != std::string::npos ||
+			path.rfind("firmware") != std::string::npos;
 	}
 	else if (myFirmwareVersion == 0x0630)
 	{
@@ -426,17 +431,17 @@ HID::isCorrectFirmware(const std::string& path)
 			if (prodStr.find(L"2020") != std::string::npos)
 			{
 				// Definitely the 2020c or newer hardware.
-				return path.rfind("firmware.V6.2020.dfu") != std::string::npos;
+				return path.rfind("firmware.V6.2020") != std::string::npos;
 			}
 			else if (prodStr.find(L"2021") != std::string::npos)
 			{
 				// Definitely the 2020c or newer hardware.
-				return path.rfind("firmware.V6.2021.dfu") != std::string::npos;
+				return path.rfind("firmware.V6.2021") != std::string::npos;
 			}
 			else
 			{
-				return path.rfind("firmware.V6.revF.dfu") != std::string::npos ||
-					path.rfind("firmware.dfu") != std::string::npos;
+				return path.rfind("firmware.V6.revF") != std::string::npos ||
+					path.rfind("firmware") != std::string::npos;
 			}
 		}
 	}

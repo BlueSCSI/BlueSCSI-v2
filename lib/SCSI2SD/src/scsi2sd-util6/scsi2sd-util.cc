@@ -599,6 +599,7 @@ private:
 				wxOK | wxICON_ERROR);
 			return false;
 		}
+        file.Close();
 		wxRemoveFile(tmpFile);
 
 		uint32_t value =
@@ -611,6 +612,11 @@ private:
 			// Not set, ignore.
 			wxLogMessage("OTP Hardware version not set. Ignoring.");
 			return true;
+		}
+		else if (value == 0x06002021)
+		{
+			wxLogMessage("Found V6 2021 hardware marker");
+			return firmware.rfind("firmware.V6.2021.dfu") != std::string::npos;
 		}
 		else if (value == 0x06002020)
 		{

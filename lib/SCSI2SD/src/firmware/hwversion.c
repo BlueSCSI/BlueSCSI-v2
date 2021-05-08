@@ -82,6 +82,13 @@ checkHwSensePins()
 		while (1) {}
 	}
 #endif
+#ifdef REV_2021
+    if ((DBGMCU->IDCODE & 0x00000FFF) != 0x0421)
+    {
+		// Oh dear, wrong cpu. Do not pass go.
+		while (1) {}
+    }
+#endif
 }
 
 void
