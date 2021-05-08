@@ -782,7 +782,8 @@ void scsiDiskPoll()
         			}
 
                     if (((prep - j) < maxSectors) &&
-                        (prep < sectors))
+                        (prep < sectors) &&
+                        scsiFifoReady())
                     {
     				    scsiReadPIO(
         					&scsiDev.data[(prep % maxSectors) * SD_SECTOR_SIZE],
