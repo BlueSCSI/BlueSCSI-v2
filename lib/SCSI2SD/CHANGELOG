@@ -1,3 +1,6 @@
+20210508        6.4.4
+    - More bug fixes for firmware hanging during read/writes
+
 20210504        6.4.3
     - More bug fixes while writing data.
 
