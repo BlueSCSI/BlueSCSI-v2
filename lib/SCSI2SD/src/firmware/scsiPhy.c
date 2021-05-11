@@ -329,12 +329,15 @@ scsiRead(uint8_t* data, uint32_t count, int* parityError)
 
 		scsiReadPIO(data + i, chunk, parityError);
 
-		__disable_irq();
 		while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
 		{
-			__WFI();
+		    __disable_irq();
+            if (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
+            {
+    			__WFI();
+            }
+		    __enable_irq();
 		}
-		__enable_irq();
 
 		i += chunk;
 	}
@@ -479,12 +482,15 @@ scsiWrite(const uint8_t* data, uint32_t count)
 
 		scsiWritePIO(data + i, chunk);
 
-		__disable_irq();
 		while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
 		{
-			__WFI();
+		    __disable_irq();
+		    if (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
+            {
+    			__WFI();
+            }
+		    __enable_irq();
 		}
-		__enable_irq();
 
 		i += chunk;
 	}

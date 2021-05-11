@@ -657,7 +657,8 @@ void scsiDiskPoll()
 				}
 			}
 
-			if ((prep - i) > 0)
+			if (((prep - i) > 0) &&
+                scsiFifoReady())
 			{
 				int dmaBytes = SD_SECTOR_SIZE;
 				if ((i % sdPerScsi) == (sdPerScsi - 1))
@@ -679,20 +680,26 @@ void scsiDiskPoll()
 			phaseChangeDelayUs = 0;
 		}
 
+        // Wait for the SD transfer to complete before we disable IRQs.
+        // (Otherwise some cards will cause an error if we don't sent the
+        // stop transfer command via the DMA complete handler in time)
+		while (HAL_SD_GetState(&hsd) == HAL_SD_STATE_BUSY)
+		{
+			// Wait while keeping BSY.
+		}
+
 		// We've finished transferring the data to the FPGA, now wait until it's
 		// written to he SCSI bus.
-		__disable_irq();
 		while (!scsiPhyComplete() &&
 			likely(scsiDev.phase == DATA_IN) &&
 			likely(!scsiDev.resetFlag))
 		{
-			__WFI();
-		}
-		__enable_irq();
-
-		while (HAL_SD_GetState(&hsd) == HAL_SD_STATE_BUSY)
-		{
-			// Wait while keeping BSY.
+    		__disable_irq();
+		    if (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
+            {
+			    __WFI();
+            }
+		    __enable_irq();
 		}
 
 		if (scsiDev.phase == DATA_IN)
