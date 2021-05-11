@@ -117,21 +117,36 @@ To enable termination place the two jumpers on the TERM block. Termination shoul
 
 ## Troubleshooting
 
-### Check Log Files
+### Review the LOG.txt
 
-If your device is not working - check the `LOG.txt` in the root of the SD card.
+There should logs that indicate what BlueSCSI did at startup.
 
-### Performance is slower than expected
+### LED Flashes on and off 3x
 
-Use ExFat instead of FAT32
+This indicates BlueSCSI could not find any files on the SD card or communicate with the SD card.
 
-Try a different SD card. Cheap/old SD cards can affect performance.
+Ensure your files are named properly (case sensitive) following the naming convetion in the readme.
 
-### Version Specific
+If you recived a kit - verify all connections and that the outside of the SD holder is grounded.
+
+
+### LED Flashes on and off 5x
+
+Format your card with https://www.sdcard.org/downloads/formatter/
+
+### Slow performance
+
+Ensure you are using a good SD card. SD card quality can vary widely.
+
+Format your card as ExFat - users have seen quite a jump in performance.
+
+### (Kit Only) Verify you are not using a bad fake
+
+https://github.com/keirf/Greaseweazle/wiki/STM32-Fakes[How to tell if your STM32 is fake]
+
+### Older Version Specific Troubleshooting
 
 <<docs/troubleshooting-1.0-b.adoc,Version 1.0-b>>
-
-<<docs/troubleshooting-1.0-c.adoc,Version 1.0-c>>
 
 ## Hardware Versions
 
