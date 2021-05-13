@@ -248,6 +248,12 @@ uint8_t BSP_SD_ReadBlocks_DMA(uint8_t *pData, uint64_t BlockAddr, uint32_t NumOf
     {
       SD_state = MSD_OK;
     }
+
+    HAL_SD_CardStateTypeDef cardState = HAL_SD_GetCardState(&hsd);
+    while (cardState == HAL_SD_CARD_PROGRAMMING || cardState == HAL_SD_CARD_SENDING) 
+    {
+        cardState = HAL_SD_GetCardState(&hsd);
+    }
   }
   
   return SD_state; 
@@ -291,7 +297,11 @@ uint8_t BSP_SD_WriteBlocks_DMA(uint8_t *pData, uint64_t BlockAddr, uint32_t NumO
     }
 
     while (HAL_SD_GetState(&hsd) == HAL_SD_STATE_BUSY) {} // Wait for DMA to complete
-    SDMMC_CmdStopTransfer(hsd.Instance);
+
+    if (NumOfBlocks > 1)
+    {
+        SDMMC_CmdStopTransfer(hsd.Instance);
+    }
 
     if(HAL_SD_GetState(&hsd) == HAL_SD_STATE_ERROR)
     {
