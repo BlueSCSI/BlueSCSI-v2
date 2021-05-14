@@ -29,13 +29,13 @@ If your computer is not listed below - it may be compatible but there is no guar
 
 ### Compatible
 
-#### Tested by Me
+#### Tested
 
-SE, SE/30, Classic, Classic II, Mac II's, Color Classic, LC I/II/III, LC 475, LC 575
+SE, SE/30, Classic, Classic II, Mac II's, Mac IIsi(external power required), Color Classic, LC I/II/III, LC 475, LC 575
 
 #### Partially Compatible
 
-Mac Plus (1.0-c and above) - Only System 7 currenty works.
+Mac Plus (hardware 1.0-c and above) - Only System 7 currenty works.
 
 PowerPC - Some have had luck booting but is not recommended.
 
@@ -45,11 +45,27 @@ https://68kmla.org/forums/topic/61045-arduino-scsi-device-work-in-progress/?do=f
 
 ## Performance
 
-Tested on a Color Classic with https://macintoshgarden.org/apps/scsi-director-pro-40[SCSI Director Pro 4]
+All tests done on a Color Classic with https://macintoshgarden.org/apps/scsi-director-pro-40[SCSI Director Pro 4]
+
+* BlueSCSI
 ```
-1024KB/Sec Write
-900KB/Sec Read
-1.01ms Seek
+Max Read 1024 KB/sec
+Max Write 900 KB/sec
+Seek 1.05
+```
+
+* RaSCSI
+```
+Max Read 1181 KB/sec
+Max Write 664 KB/sec
+Seek 1.19
+```
+
+* SCS2SD v5.1
+```
+Max Read 523 KB/sec
+Max Write 267 KB/sec
+Seek 1.90
 ```
 
 ## Assembly
