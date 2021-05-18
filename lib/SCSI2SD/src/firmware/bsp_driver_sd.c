@@ -34,6 +34,7 @@
 /* USER CODE BEGIN 0 */
 /* Includes ------------------------------------------------------------------*/
 #include "bsp_driver_sd.h"
+#include "sd.h"
 
 /* Extern variables ---------------------------------------------------------*/ 
   
@@ -283,15 +284,8 @@ uint8_t BSP_SD_WriteBlocks_DMA(uint8_t *pData, uint64_t BlockAddr, uint32_t NumO
     {
         while (HAL_SD_GetState(&hsd) == HAL_SD_STATE_BUSY) {}
 
-        HAL_SD_CardStateTypeDef cardState = HAL_SD_GetCardState(&hsd);
-        while (cardState == HAL_SD_CARD_PROGRAMMING) 
-        {   
-            // Wait while the SD card is writing buffer to flash
-            // The card may remain in the RECEIVING state (even though it's programming) if
-            // it has buffer space to receive more data available.
-
-            cardState = HAL_SD_GetCardState(&hsd);
-        }
+        // Wait while the SD card has no buffer space
+        while (sdIsBusy()) {}
 
         HAL_SD_WriteBlocks_Data(&hsd, pData + (i * 512));
     }
@@ -311,6 +305,9 @@ uint8_t BSP_SD_WriteBlocks_DMA(uint8_t *pData, uint64_t BlockAddr, uint32_t NumO
     {
       SD_state = MSD_OK;
     }
+
+    // Wait while the SD card is in the PROGRAMMING state.
+    while (sdIsBusy()) {}
 
     HAL_SD_CardStateTypeDef cardState = HAL_SD_GetCardState(&hsd);
     while (cardState == HAL_SD_CARD_PROGRAMMING || cardState == HAL_SD_CARD_RECEIVING) 

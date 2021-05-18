@@ -214,3 +214,11 @@ int sdInit()
 	return result;
 }
 
+// Return 1 if the SD card has no buffer space left for writes and/or is
+// in the programming state.
+int sdIsBusy()
+{
+    // Busy while DAT0 is held low.
+    return HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_8) == 0;
+}
+

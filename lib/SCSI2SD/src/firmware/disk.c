@@ -693,13 +693,13 @@ void scsiDiskPoll()
             {
                 // Wait while keeping BSY.
             }
-	}
+        }
 
         HAL_SD_CardStateTypeDef cardState = HAL_SD_GetCardState(&hsd);
         while (cardState == HAL_SD_CARD_PROGRAMMING || cardState == HAL_SD_CARD_SENDING) 
         {
             cardState = HAL_SD_GetCardState(&hsd);
-        }
+         }
 
         // We've finished transferring the data to the FPGA, now wait until it's
         // written to he SCSI bus.
@@ -787,14 +787,11 @@ void scsiDiskPoll()
                 while (j < sectors && !scsiDev.resetFlag)
                 {
                     if (sdActive &&
-                        HAL_SD_GetState(&hsd) != HAL_SD_STATE_BUSY)
+                        HAL_SD_GetState(&hsd) != HAL_SD_STATE_BUSY &&
+                        !sdIsBusy())
                     {
-                        HAL_SD_CardStateTypeDef tmpCardState = HAL_SD_GetCardState(&hsd);
-                        if (tmpCardState != HAL_SD_CARD_PROGRAMMING)
-                        {
-                            j += sdActive;
-                            sdActive = 0;
-                        }
+                        j += sdActive;
+                        sdActive = 0;
                     }
                     if (!sdActive && ((prep - j) > 0))
                     {
@@ -850,14 +847,12 @@ void scsiDiskPoll()
                     }
                 }
 
-                HAL_SD_CardStateTypeDef cardState = HAL_SD_GetCardState(&hsd);
-                while ((cardState == HAL_SD_CARD_PROGRAMMING || cardState == HAL_SD_CARD_RECEIVING) &&
+                while (sdIsBusy() &&
                     s2s_elapsedTime_ms(dmaFinishTime) < 180)
                 {
                     // Wait while the SD card is writing buffer to flash
                     // The card may remain in the RECEIVING state (even though it's programming) if
                     // it has buffer space to receive more data available.
-                    cardState = HAL_SD_GetCardState(&hsd);
                 }
 
                 if (!disconnected && 
@@ -875,7 +870,11 @@ void scsiDiskPoll()
                     clearBSY = process_MessageIn(0); // Will go to BUS_FREE state but keep BSY asserted.
                 }
 
-                cardState = HAL_SD_GetCardState(&hsd);
+                // Wait while the SD card is writing buffer to flash
+                // The card may remain in the RECEIVING state (even though it's programming) if
+                // it has buffer space to receive more data available.
+                while (sdIsBusy()) {}
+                HAL_SD_CardStateTypeDef cardState = HAL_SD_GetCardState(&hsd);
                 while (cardState == HAL_SD_CARD_PROGRAMMING || cardState == HAL_SD_CARD_RECEIVING) 
                 {
                     // Wait while the SD card is writing buffer to flash
