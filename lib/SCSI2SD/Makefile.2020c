@@ -140,7 +140,7 @@ SRC = \
 	src/firmware/bsp_driver_sd.c \
 	${USBCOMPOSITE_SRC}
 
-build/2020c/firmware.elf: $(SRC) rtl/fpga_bitmap.o $(STM32OBJS)
+build/2020c/firmware.elf: $(SRC) rtl/fpga_bitmap.2020.o $(STM32OBJS)
 	$(ARMCC) $(CPPFLAGS) $(CFLAGS) -o $@ $(STM32CubeMX_INCUDE) $(INCLUDE) $^ $(LDFLAGS)
 	@EBSS=`arm-none-eabi-nm build/2020c/firmware.elf | grep _ebss | cut -f1 "-d "`; \
 	echo HEAPSIZE = $$((0x2001C000 - 0x$${EBSS})) bytes
