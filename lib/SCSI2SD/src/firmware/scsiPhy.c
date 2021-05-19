@@ -104,17 +104,15 @@ scsiSetDataCount(uint32_t count)
 int scsiFifoReady(void)
 {
 	__NOP();
-#ifdef STM32F4xx
-	__NOP();
-#endif
-	HAL_GPIO_ReadPin(GPIOE, FPGA_GPIO3_Pin);
+	uint8_t test1 = HAL_GPIO_ReadPin(GPIOE, FPGA_GPIO3_Pin);
 	__NOP();
 #ifdef STM32F4xx
 	__NOP();
 	__NOP();
 	__NOP();
 #endif
-	return HAL_GPIO_ReadPin(GPIOE, FPGA_GPIO3_Pin) != 0;
+	uint8_t test2 = HAL_GPIO_ReadPin(GPIOE, FPGA_GPIO3_Pin);
+	return test1 != 0 && test2 != 0;
 }
 
 uint8_t

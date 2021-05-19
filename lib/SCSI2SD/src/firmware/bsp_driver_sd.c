@@ -55,7 +55,7 @@ uint8_t BSP_SD_Init(void)
   }
   SD_state = HAL_SD_Init(&hsd);
 #ifdef BUS_4BITS
-  if (SD_state == MSD_OK)
+  if (SD_state == HAL_OK)
   {
     if (HAL_SD_ConfigWideBusOperation(&hsd, SDIO_BUS_WIDE_4B) != HAL_OK)
     {

@@ -36,10 +36,12 @@
 
 #include <string.h>
 
-static const uint16_t FIRMWARE_VERSION = 0x0646;
+static const uint16_t FIRMWARE_VERSION = 0x0647;
 
 // Optional static config
 extern uint8_t* __fixed_config;
+
+extern SD_HandleTypeDef hsd;
 
 #ifdef S2S_USB_HS
 #define configUsbDev hUsbDeviceHS
@@ -235,7 +237,7 @@ debugCommand()
     response[23] = scsiDev.msgCount;
     response[24] = scsiDev.cmdCount;
     response[25] = scsiDev.watchdogTick;
-    response[26] = blockDev.state;
+    response[26] = (hsd.State << 4) | blockDev.state;
     response[27] = scsiDev.lastSenseASC >> 8;
     response[28] = scsiDev.lastSenseASC;
     response[29] = *SCSI_STS_DBX & 0xff; // What we've read
