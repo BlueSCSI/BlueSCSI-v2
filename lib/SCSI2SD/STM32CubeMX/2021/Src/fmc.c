@@ -50,13 +50,12 @@ void MX_FMC_Init(void)
   hsram1.Init.WriteBurst = FMC_WRITE_BURST_DISABLE;
   hsram1.Init.ContinuousClock = FMC_CONTINUOUS_CLOCK_SYNC_ONLY;
   hsram1.Init.WriteFifo = FMC_WRITE_FIFO_DISABLE;
-  // WE MAY start writing another 512 bytes before this FIFO is empty!
 
   hsram1.Init.PageSize = FMC_PAGE_SIZE_NONE;
   /* Timing */
 
   // 1 clock to read the address, + 1 for synchroniser skew
-  Timing.AddressSetupTime = 5;
+  Timing.AddressSetupTime = 4;
   Timing.AddressHoldTime = 2;
 
   // Writes to device:
@@ -67,12 +66,12 @@ void MX_FMC_Init(void)
   // Reads from device:
   //   3 for syncroniser
   //   1 to write back to fsmc bus.
-  Timing.DataSetupTime = 9;
+  Timing.DataSetupTime = 8;
 
   // Allow a clock for us to release signals
   // Need to avoid both devices acting as outputs
   // on the multiplexed lines at the same time.
-  Timing.BusTurnAroundDuration = 3;
+  Timing.BusTurnAroundDuration = 2;
 
   Timing.CLKDivision = 16; // Ignored for async
   Timing.DataLatency = 17; // Ignored for async

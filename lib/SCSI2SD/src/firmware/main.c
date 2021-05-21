@@ -115,7 +115,17 @@ void mainInit()
         }
         else
         {
-            BSP_SD_WriteBlocks_DMA(scsiDev.data, h * 2000, 1);
+            uint8_t random[1024];
+            for (int p = 0; p < 512; ++p) random[p] = h + p ^ 0xAA;
+            BSP_SD_WriteBlocks_DMA(random, h * 2000, 1);
+            BSP_SD_ReadBlocks_DMA(scsiDev.data, h * 2000, 1);
+            BSP_SD_WriteBlocks_DMA(random, h * 2000 + 1, 2);
+            BSP_SD_ReadBlocks_DMA(&(scsiDev.data[512]), h * 2000 + 1, 2);
+            if (memcmp(random, scsiDev.data, 512) ||
+                memcmp(random, &(scsiDev.data[512]), 1024))
+            {
+                while (1) {}
+            }
         }
     }
     s2s_ledOff();
