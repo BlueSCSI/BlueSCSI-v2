@@ -56,7 +56,7 @@ void MX_FMC_Init(void)
   /* Timing */
 
   // 1 clock to read the address, + 1 for synchroniser skew
-  Timing.AddressSetupTime = 4;
+  Timing.AddressSetupTime = 5;
   Timing.AddressHoldTime = 2;
 
   // Writes to device:
@@ -67,12 +67,12 @@ void MX_FMC_Init(void)
   // Reads from device:
   //   3 for syncroniser
   //   1 to write back to fsmc bus.
-  Timing.DataSetupTime = 8;
+  Timing.DataSetupTime = 9;
 
   // Allow a clock for us to release signals
   // Need to avoid both devices acting as outputs
   // on the multiplexed lines at the same time.
-  Timing.BusTurnAroundDuration = 2;
+  Timing.BusTurnAroundDuration = 3;
 
   Timing.CLKDivision = 16; // Ignored for async
   Timing.DataLatency = 17; // Ignored for async

@@ -122,12 +122,12 @@ scsiReadByte(void)
 
 	// Ready immediately. setDataCount resets fifos
 
-	__disable_irq();
+	//__disable_irq();
 	while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
 	{
-		__WFI(); // Wait for interrupt
+		//__WFI(); // Wait for interrupt
 	}
-	__enable_irq();
+	//__enable_irq();
 
 	uint8_t val = scsiPhyRx();
 	// TODO scsiDev.parityError = scsiDev.parityError || SCSI_Parity_Error_Read();
@@ -347,12 +347,12 @@ scsiWriteByte(uint8_t value)
 	scsiSetDataCount(1);
 	scsiPhyTx(value);
 
-	__disable_irq();
+	//__disable_irq();
 	while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
 	{
-		__WFI();
+		//__WFI();
 	}
-	__enable_irq();
+	//__enable_irq();
 }
 
 void
