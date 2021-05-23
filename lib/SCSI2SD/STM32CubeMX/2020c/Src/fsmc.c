@@ -51,17 +51,18 @@ void MX_FSMC_Init(void)
   hsram1.Init.WriteBurst = FSMC_WRITE_BURST_DISABLE;
   /* Timing */
 
-  // 1 clock to read the address, + 1 for synchroniser skew
-  Timing.AddressSetupTime = 2;
+  // 1 clock to read the address, + 2 for synchroniser skew
+  Timing.AddressSetupTime = 3;
   Timing.AddressHoldTime = 1;
 
   // Writes to device:
-  //   1 for synchroniser skew (dbx also delayed)
+  //   2 for synchroniser skew (dbx also delayed)
   //   1 to skip hold time
   //   1 to write data.
 
   // Reads from device:
-  //   3 for syncroniser
+  //   1 to skip hold time
+  //   1 for synchroniser on OE
   //   1 to write back to fsmc bus.
   Timing.DataSetupTime = 4;
 

@@ -54,17 +54,18 @@ void MX_FMC_Init(void)
   hsram1.Init.PageSize = FMC_PAGE_SIZE_NONE;
   /* Timing */
 
-  // 1 clock to read the address, + 1 for synchroniser skew
-  Timing.AddressSetupTime = 4;
+  // 1 clock to read the address, + 2 for synchroniser skew
+  Timing.AddressSetupTime = 6;
   Timing.AddressHoldTime = 2;
 
   // Writes to device:
-  //   1 for synchroniser skew (dbx also delayed)
+  //   2 for synchroniser skew (dbx also delayed)
   //   1 to skip hold time
   //   1 to write data.
 
   // Reads from device:
-  //   3 for syncroniser
+  //   1 to skip hold time
+  //   2 for synchroniser skew on OE
   //   1 to write back to fsmc bus.
   Timing.DataSetupTime = 8;
 

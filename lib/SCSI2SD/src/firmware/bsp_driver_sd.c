@@ -66,8 +66,7 @@ uint8_t BSP_SD_Init(void)
       SD_state = MSD_OK;
 
 // Clock bypass mode is broken on STM32F205
-// This just corrupts data for now.
-//#ifdef STM32F4xx
+// #ifdef STM32F4xx
 #if 0
       uint8_t SD_hs[64]  = {0};
       //uint32_t SD_scr[2] = {0, 0};
@@ -75,7 +74,7 @@ uint8_t BSP_SD_Init(void)
       uint32_t count = 0;
       uint32_t *tempbuff = (uint32_t *)SD_hs;
 
-      // Prepare to read 64 bytes training data
+      // Prepare to read 64 bytes status data
       SDIO_DataInitTypeDef config;
       config.DataTimeOut   = SDMMC_DATATIMEOUT;
       config.DataLength    = 64;
@@ -90,61 +89,63 @@ uint8_t BSP_SD_Init(void)
       // Which is the max without going to 1.8v
       uint32_t errorstate = SDMMC_CmdSwitch(hsd.Instance, 0x80FFFF01);
 
-      // Low-level init for the bypass. Changes registers only
-      hsd.Init.ClockBypass = SDIO_CLOCK_BYPASS_ENABLE;
-      SDIO_Init(hsd.Instance, hsd.Init); 
-
-      // Now we read some training data
+      // Now we read some status data
 
       if (errorstate == HAL_SD_ERROR_NONE)
       {
-        while(!__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_RXOVERR | SDIO_FLAG_DCRCFAIL | SDIO_FLAG_DTIMEOUT | SDIO_FLAG_DATAEND/* | SDIO_FLAG_STBITERR*/))
-        {
-          if (__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_RXFIFOHF))
+          while(!__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_RXOVERR | SDIO_FLAG_DCRCFAIL | SDIO_FLAG_DTIMEOUT | SDIO_FLAG_DATAEND/* | SDIO_FLAG_STBITERR*/))
           {
-            for (count = 0; count < 8; count++)
+              if (__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_RXFIFOHF))
+              {
+                  for (count = 0; count < 8; count++)
+                  {
+                      *(tempbuff + count) = SDIO_ReadFIFO(hsd.Instance);
+                  }
+
+                  tempbuff += 8;
+              }
+          }
+
+          if (__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_DTIMEOUT))
+          {
+              __HAL_SD_CLEAR_FLAG(&hsd, SDIO_FLAG_DTIMEOUT);
+              SD_state = MSD_ERROR;
+          }
+          else if (__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_DCRCFAIL))
+          {
+              __HAL_SD_CLEAR_FLAG(&hsd, SDIO_FLAG_DCRCFAIL);
+              SD_state = MSD_ERROR;
+          }
+          else if (__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_RXOVERR))
+          {
+              __HAL_SD_CLEAR_FLAG(&hsd, SDIO_FLAG_RXOVERR);
+              SD_state = MSD_ERROR;
+          }
+          /*else if (__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_STBITERR))
             {
-              *(tempbuff + count) = SDIO_ReadFIFO(hsd.Instance);
-            }
-
-            tempbuff += 8;
-          }
-        }
-
-        if (__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_DTIMEOUT))
-        {
-          __HAL_SD_CLEAR_FLAG(&hsd, SDIO_FLAG_DTIMEOUT);
-          SD_state = MSD_ERROR;
-        }
-        else if (__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_DCRCFAIL))
-        {
-          __HAL_SD_CLEAR_FLAG(&hsd, SDIO_FLAG_DCRCFAIL);
-          SD_state = MSD_ERROR;
-        }
-        else if (__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_RXOVERR))
-        {
-          __HAL_SD_CLEAR_FLAG(&hsd, SDIO_FLAG_RXOVERR);
-          SD_state = MSD_ERROR;
-        }
-        /*else if (__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_STBITERR))
-        {
-          __HAL_SD_CLEAR_FLAG(&hsd, SDIO_FLAG_STBITERR);
-          SD_state = MSD_ERROR;
-        }*/
-        else
-        {
-          count = SD_DATATIMEOUT;
-
-          while ((__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_RXDAVL)) && (count > 0))
+            __HAL_SD_CLEAR_FLAG(&hsd, SDIO_FLAG_STBITERR);
+            SD_state = MSD_ERROR;
+            }*/
+          else
           {
-            *tempbuff = SDIO_ReadFIFO(hsd.Instance);
-            tempbuff++;
-            count--;
-          }
+              count = SD_DATATIMEOUT;
 
-          /* Clear all the static flags */
-          __HAL_SD_CLEAR_FLAG(&hsd, SDIO_STATIC_FLAGS);
-        }
+              while ((__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_RXDAVL)) && (count > 0))
+              {
+                  *tempbuff = SDIO_ReadFIFO(hsd.Instance);
+                  tempbuff++;
+                  count--;
+              }
+
+              /* Clear all the static flags */
+              __HAL_SD_CLEAR_FLAG(&hsd, SDIO_STATIC_FLAGS);
+
+              // After 8 "SD" clocks we can change speed
+              // Low-level init for the bypass. Changes registers only
+              hsd.Init.ClockBypass = SDIO_CLOCK_BYPASS_ENABLE;
+              SDIO_Init(hsd.Instance, hsd.Init); 
+
+          }
       }
 #endif
     }

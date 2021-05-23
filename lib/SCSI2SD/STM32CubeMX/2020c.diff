@@ -1,49 +1,3 @@
-diff --git a/STM32CubeMX/2020c/Src/fsmc.c b/STM32CubeMX/2020c/Src/fsmc.c
-index 03a1b12..1b01446 100644
---- a/STM32CubeMX/2020c/Src/fsmc.c
-+++ b/STM32CubeMX/2020c/Src/fsmc.c
-@@ -50,12 +50,28 @@ void MX_FSMC_Init(void)
-   hsram1.Init.AsynchronousWait = FSMC_ASYNCHRONOUS_WAIT_DISABLE;
-   hsram1.Init.WriteBurst = FSMC_WRITE_BURST_DISABLE;
-   /* Timing */
-+
-+  // 1 clock to read the address, + 1 for synchroniser skew
-   Timing.AddressSetupTime = 2;
-   Timing.AddressHoldTime = 1;
-+
-+  // Writes to device:
-+  //   1 for synchroniser skew (dbx also delayed)
-+  //   1 to skip hold time
-+  //   1 to write data.
-+
-+  // Reads from device:
-+  //   3 for syncroniser
-+  //   1 to write back to fsmc bus.
-   Timing.DataSetupTime = 4;
-+
-+  // Allow a clock for us to release signals
-+  // Need to avoid both devices acting as outputs
-+  // on the multiplexed lines at the same time.
-   Timing.BusTurnAroundDuration = 1;
--  Timing.CLKDivision = 16;
--  Timing.DataLatency = 17;
-+
-+  Timing.CLKDivision = 16; // Ignored for async
-+  Timing.DataLatency = 17; // Ignored for async
-   Timing.AccessMode = FSMC_ACCESS_MODE_A;
-   /* ExtTiming */
- 
-@@ -105,6 +121,10 @@ static void HAL_FSMC_MspInit(void){
-   PE0   ------> FSMC_NBL0
-   PE1   ------> FSMC_NBL1
-   */
-+
-+  // MM: GPIO_SPEED_FREQ_MEDIUM is rated up to 50MHz, which is fine as all the
-+  // fsmc timings are > 1 (ie. so clock speed / 2 is around 50MHz).
-+
-   /* GPIO_InitStruct */
-   GPIO_InitStruct.Pin = GPIO_PIN_7|GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10 
-                           |GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14 
 diff --git a/STM32CubeMX/2020c/Src/sdio.c b/STM32CubeMX/2020c/Src/sdio.c
 index f2a0b7c..a00c6a8 100644
 --- a/STM32CubeMX/2020c/Src/sdio.c
@@ -441,3 +395,51 @@ index b060eae..de39f9d 100644
  /**
    * @brief  Send the Write Multi Block command and check the response
    * @param  SDIOx: Pointer to SDIO register base 
+diff --git a/STM32CubeMX/2020c/Src/fsmc.c b/STM32CubeMX/2020c/Src/fsmc.c
+index 03a1b12..52f03f4 100644
+--- a/STM32CubeMX/2020c/Src/fsmc.c
++++ b/STM32CubeMX/2020c/Src/fsmc.c
+@@ -50,12 +50,29 @@ void MX_FSMC_Init(void)
+   hsram1.Init.AsynchronousWait = FSMC_ASYNCHRONOUS_WAIT_DISABLE;
+   hsram1.Init.WriteBurst = FSMC_WRITE_BURST_DISABLE;
+   /* Timing */
+-  Timing.AddressSetupTime = 2;
++
++  // 1 clock to read the address, + 2 for synchroniser skew
++  Timing.AddressSetupTime = 3;
+   Timing.AddressHoldTime = 1;
++
++  // Writes to device:
++  //   2 for synchroniser skew (dbx also delayed)
++  //   1 to skip hold time
++  //   1 to write data.
++
++  // Reads from device:
++  //   1 to skip hold time
++  //   1 for synchroniser on OE
++  //   1 to write back to fsmc bus.
+   Timing.DataSetupTime = 4;
++
++  // Allow a clock for us to release signals
++  // Need to avoid both devices acting as outputs
++  // on the multiplexed lines at the same time.
+   Timing.BusTurnAroundDuration = 1;
+-  Timing.CLKDivision = 16;
+-  Timing.DataLatency = 17;
++
++  Timing.CLKDivision = 16; // Ignored for async
++  Timing.DataLatency = 17; // Ignored for async
+   Timing.AccessMode = FSMC_ACCESS_MODE_A;
+   /* ExtTiming */
+ 
+@@ -105,6 +122,10 @@ static void HAL_FSMC_MspInit(void){
+   PE0   ------> FSMC_NBL0
+   PE1   ------> FSMC_NBL1
+   */
++
++  // MM: GPIO_SPEED_FREQ_MEDIUM is rated up to 50MHz, which is fine as all the
++  // fsmc timings are > 1 (ie. so clock speed / 2 is around 50MHz).
++
+   /* GPIO_InitStruct */
+   GPIO_InitStruct.Pin = GPIO_PIN_7|GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10 
+                           |GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14 

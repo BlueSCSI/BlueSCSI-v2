@@ -19,12 +19,18 @@
 #include "stm32f2xx.h"
 #include "stm32f2xx_hal.h"
 #include "stm32f2xx_hal_dma.h"
+#include "fsmc.h"
+#define FMC_NORSRAM_TimingTypeDef FSMC_NORSRAM_TimingTypeDef
+#define FMC_ACCESS_MODE_A FSMC_ACCESS_MODE_A
+#define FMC_NORSRAM_Timing_Init FSMC_NORSRAM_Timing_Init
+#define FMC_NORSRAM_DEVICE FSMC_NORSRAM_DEVICE
 #endif
 
 #ifdef STM32F4xx
 #include "stm32f4xx.h"
 #include "stm32f4xx_hal.h"
 #include "stm32f4xx_hal_dma.h"
+#include "fmc.h"
 #endif
 
 #include "gpio.h"
@@ -442,16 +448,7 @@ scsiWritePIO(const uint8_t* data, uint32_t count)
                 scsiPhyTx32(fifoData[i + 120 + k], fifoData[i + k + 121]);
                 scsiPhyTx32(fifoData[i + 122 + k], fifoData[i + k + 123]);
                 scsiPhyTx32(fifoData[i + 124 + k], fifoData[i + k + 125]);
-
-                // Last write must be 16bit to avoid having data waiting in the AHB bus
-                // somewhere still waiting to be written while we're off checking
-                // for empty fifos
-                // Note also that the fmc fifo is disabled on stm32f446 because it's too big
-                // (64 bytes) and we may think the fpga fifo is empty even though
-                // there's pending writes
-                scsiPhyTx(fifoData[i + 126 + k]);
-                scsiPhyTx(fifoData[i + k + 127]);
-
+                scsiPhyTx32(fifoData[i + 126 + k], fifoData[i + k + 127]);
             }
 
             i += chunk16;
@@ -461,9 +458,7 @@ scsiWritePIO(const uint8_t* data, uint32_t count)
             uint32_t chunk16 = count16 - i;
 
             uint32_t k = 0;
-            // Note that last 4 bytes will fall through to next loop, which avoids
-            // ending on a 32bit write.
-            for (; k + 4 < chunk16; k += 4)
+            for (; k + 4 <= chunk16; k += 4)
             {
                 scsiPhyTx32(fifoData[i + k], fifoData[i + k + 1]);
                 scsiPhyTx32(fifoData[i + k + 2], fifoData[i + k + 3]);
@@ -853,7 +848,6 @@ void scsiPhyConfig()
         HAL_GPIO_WritePin(nTERM_EN_GPIO_Port, nTERM_EN_Pin, GPIO_PIN_SET);
     }
 
-
     uint8_t idMask = 0;
     for (int i = 0; i < 8; ++i)
     {
@@ -875,7 +869,6 @@ void scsiPhyConfig()
         (scsiDev.boardCfg.flags & S2S_CFG_ENABLE_SEL_LATCH) ?
             SCSI_FAST_SELECTION : SCSI_DEFAULT_SELECTION;
 }
-
 
 // 1 = DBx error
 // 2 = Parity error
