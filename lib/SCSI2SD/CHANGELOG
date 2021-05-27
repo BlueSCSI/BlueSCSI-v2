@@ -1,3 +1,7 @@
+20210628        6.4.11
+    - Remove the "Blind Writes" option from scsi2sd-util. The firmware no longer
+    requires this option for improved write performance
+
 20210508        6.4.4
     - More bug fixes for firmware hanging during read/writes
 

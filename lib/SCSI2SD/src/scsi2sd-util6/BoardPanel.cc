@@ -158,16 +158,6 @@ BoardPanel::BoardPanel(wxWindow* parent, const S2S_BoardCfg& initialConfig) :
 	myMapLunsCtrl->SetToolTip(_("Treat LUNS as IDs instead. Supports multiple drives on XEBEC S1410 SASI Bridge"));
 	fgs->Add(myMapLunsCtrl);
 
-
-	fgs->Add(new wxStaticText(this, wxID_ANY, wxT("")));
-	myBlindWriteCtrl =
-		new wxCheckBox(
-			this,
-			ID_blindWriteCtrl,
-			_("Enable Blind Writes"));
-	myBlindWriteCtrl->SetToolTip(_("Enable writing to the SD card before all the SCSI data has been received."));
-	fgs->Add(myBlindWriteCtrl);
-
 	wxBoxSizer* hbox = new wxBoxSizer(wxHORIZONTAL);
 	hbox->Add(fgs, 1, wxALL | wxEXPAND, 15);
 	this->SetSizer(hbox);
@@ -193,8 +183,7 @@ BoardPanel::getConfig() const
 		(mySelLatchCtrl->IsChecked() ? S2S_CFG_ENABLE_SEL_LATCH : 0) |
 		(myMapLunsCtrl->IsChecked() ? S2S_CFG_MAP_LUNS_TO_IDS : 0);
 
-	config.flags6 = (myTermCtrl->IsChecked() ? S2S_CFG_ENABLE_TERMINATOR : 0) |
-		(myBlindWriteCtrl->IsChecked() ? S2S_CFG_ENABLE_BLIND_WRITES : 0);
+	config.flags6 = (myTermCtrl->IsChecked() ? S2S_CFG_ENABLE_TERMINATOR : 0);
 
 	config.startupDelay = CtrlGetValue<unsigned int>(myStartDelayCtrl).first;
 	config.selectionDelay = CtrlGetValue<unsigned int>(mySelDelayCtrl).first;
@@ -211,7 +200,6 @@ BoardPanel::setConfig(const S2S_BoardCfg& config)
 	myUnitAttCtrl->SetValue(config.flags & S2S_CFG_ENABLE_UNIT_ATTENTION);
 	myScsi2Ctrl->SetValue(config.flags & S2S_CFG_ENABLE_SCSI2);
 	myTermCtrl->SetValue(config.flags6 & S2S_CFG_ENABLE_TERMINATOR);
-	myBlindWriteCtrl->SetValue(config.flags6 & S2S_CFG_ENABLE_BLIND_WRITES);
 	mySelLatchCtrl->SetValue(config.flags & S2S_CFG_ENABLE_SEL_LATCH);
 	myMapLunsCtrl->SetValue(config.flags & S2S_CFG_MAP_LUNS_TO_IDS);
 
