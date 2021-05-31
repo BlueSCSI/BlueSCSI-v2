@@ -42,6 +42,7 @@
 
 const char* Notice = "Copyright (C) 2020 Michael McMaster <michael@codesrc.com>";
 uint32_t lastSDPoll;
+uint32_t lastSDKeepAlive;
 
 static int isUsbStarted;
 
@@ -131,7 +132,7 @@ void mainInit()
     s2s_ledOff();
 #endif
 
-    lastSDPoll = s2s_getTime_ms();
+    lastSDPoll = lastSDKeepAlive = s2s_getTime_ms();
 }
 
 void mainLoop()
@@ -180,11 +181,17 @@ void mainLoop()
                 }
             }
         }
+        else if (lastSDKeepAlive > 10000) // 10 seconds
+        {
+            // 2021 boards fail if there's no commands sent in a while
+            sdKeepAlive();
+            lastSDKeepAlive = s2s_getTime_ms();
+        }
     }
     else if (usbBusy || ((scsiDev.phase >= 0) && (blockDev.state & DISK_PRESENT)))
     {
         // don't waste time scanning SD cards while we're doing disk IO
-        lastSDPoll = s2s_getTime_ms();
+        lastSDPoll = lastSDKeepAlive = s2s_getTime_ms();
     }
 }
 

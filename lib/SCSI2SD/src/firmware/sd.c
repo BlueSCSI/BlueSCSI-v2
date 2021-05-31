@@ -222,3 +222,7 @@ int sdIsBusy()
     return HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_8) == 0;
 }
 
+void sdKeepAlive()
+{
+    /*HAL_SD_CardStateTypeDef cardState = */HAL_SD_GetCardState(&hsd);
+}

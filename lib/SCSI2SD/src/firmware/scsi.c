@@ -56,13 +56,13 @@ void enter_BusFree()
 		s2s_delay_us(2);
 	}
 
-#if 0
-	if (scsiDev.status != GOOD && isDebugEnabled())
+//#if 0
+	if (scsiDev.status != GOOD)// && isDebugEnabled())
 	{
 		// We want to capture debug information for failure cases.
-		s2s_delay_ms(64);
+		s2s_delay_ms(80);
 	}
-#endif
+//#endif
 
 
 	scsiEnterBusFree();
