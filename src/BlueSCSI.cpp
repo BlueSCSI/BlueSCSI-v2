@@ -315,6 +315,37 @@ void readSCSIDeviceConfig() {
   config_file.close();
 }
 
+// read SD information and print to logfile
+void readSDCardInfo()
+{
+  cid_t sd_cid;
+
+  if(SD.card()->readCID(&sd_cid))
+  {
+    LOG_FILE.print("Sd MID:");
+    LOG_FILE.print(sd_cid.mid, 16);
+    LOG_FILE.print(" OID:");
+    LOG_FILE.print(sd_cid.oid[0]);
+    LOG_FILE.println(sd_cid.oid[1]);
+
+    LOG_FILE.print("Sd Name:");
+    LOG_FILE.print(sd_cid.pnm[0]);
+    LOG_FILE.print(sd_cid.pnm[1]);
+    LOG_FILE.print(sd_cid.pnm[2]);
+    LOG_FILE.print(sd_cid.pnm[3]);
+    LOG_FILE.println(sd_cid.pnm[4]);
+
+    LOG_FILE.print("Sd Date:");
+    LOG_FILE.print(sd_cid.mdt_month);
+    LOG_FILE.print('/20'); // CID year is 2000 + high/low
+    LOG_FILE.print(sd_cid.mdt_year_high);
+    LOG_FILE.println(sd_cid.mdt_year_low);
+    
+    LOG_FILE.print("Sd Serial:");
+    LOG_FILE.println(sd_cid.psn);
+  }
+}
+
 /*
  * Open HDD image file
  */
@@ -410,6 +441,7 @@ void setup()
   }
   initFileLog();
   readSCSIDeviceConfig();
+  readSDCardInfo();
 
   //Sector data overrun byte setting
   m_buf[MAX_BLOCKSIZE] = 0xff; // DB0 all off,DBP off
