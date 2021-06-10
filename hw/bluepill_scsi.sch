@@ -296,10 +296,10 @@ F 3 "www.rogerclark.net" H 2450 1250 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L Connector:Micro_SD_Card J1
+L Connector:Micro_SD_Card J5
 U 1 1 5F0BA382
 P 9450 4150
-F 0 "J1" H 9400 4867 50  0000 C CNN
+F 0 "J5" H 9400 4867 50  0000 C CNN
 F 1 "Micro_SD_Card" H 9400 4776 50  0000 C CNN
 F 2 "Connector_Card:microSD_HC_Molex_104031-0811" H 10600 4450 50  0001 C CNN
 F 3 "https://www.mouser.com/datasheet/2/276/1/1040310811_MEMORY_CARD_SOCKET-153593.pdf" H 9450 4150 50  0001 C CNN
@@ -440,7 +440,6 @@ Wire Wire Line
 NoConn ~ 1600 2050
 NoConn ~ 1600 2250
 NoConn ~ 1600 2350
-NoConn ~ 1600 2450
 NoConn ~ 1600 2550
 NoConn ~ 1600 2650
 NoConn ~ 1600 2750
@@ -584,7 +583,7 @@ U 1 1 5F24DEAF
 P 5550 4700
 F 0 "H1" H 5650 4749 50  0000 L CNN
 F 1 "MountingHole_Pad" H 5650 4658 50  0000 L CNN
-F 2 "MountingHole:MountingHole_2.7mm_M2.5" H 5550 4700 50  0001 C CNN
+F 2 "MountingHole:MountingHole_2.7mm_M2.5_Pad_Via" H 5550 4700 50  0001 C CNN
 F 3 "~" H 5550 4700 50  0001 C CNN
 	1    5550 4700
 	1    0    0    -1  
@@ -630,33 +629,31 @@ Wire Notes Line
 	4900 5300 4900 4350
 Wire Notes Line
 	4900 4350 6950 4350
-Text Notes 5650 5250 0    50   ~ 0
+Text Notes 5700 5200 0    50   ~ 0
 Mounting Hole
 NoConn ~ 5550 4800
-Text Label 8700 2600 1    50   ~ 0
+Text Label 10750 2600 1    50   ~ 0
 SCSI_IO
-Text Label 8800 2600 1    50   ~ 0
+Text Label 10650 2600 1    50   ~ 0
 SCSI_REQ
-Text Label 8900 2600 1    50   ~ 0
+Text Label 10550 2600 1    50   ~ 0
 SCSI_CD
-Text Label 9000 2600 1    50   ~ 0
+Text Label 10350 2600 1    50   ~ 0
 SCSI_MSG
-Text Label 9100 2600 1    50   ~ 0
+Text Label 10050 2600 1    50   ~ 0
 SCSI_BSY
-Text Label 9200 2600 1    50   ~ 0
+Text Label 10450 2600 1    50   ~ 0
 SCSI_SEL
-Text Label 9300 2600 1    50   ~ 0
-SCSI_RST
-Text Label 9400 2600 1    50   ~ 0
+Text Label 10150 2600 1    50   ~ 0
 SCSI_ACK
-Text Label 9500 2600 1    50   ~ 0
+Text Label 9950 2600 1    50   ~ 0
 SCSI_ATN
 Wire Wire Line
-	8700 2200 8700 2600
-Wire Wire Line
-	8800 2200 8800 2600
-Wire Wire Line
 	8900 2200 8900 2600
+Wire Wire Line
+	10050 2200 10050 2600
+Wire Wire Line
+	10150 2200 10150 2600
 Wire Wire Line
 	9000 2200 9000 2600
 Wire Wire Line
@@ -669,25 +666,25 @@ Wire Wire Line
 	9400 2200 9400 2600
 Wire Wire Line
 	9500 2200 9500 2600
-Text Label 9950 2600 1    50   ~ 0
+Text Label 9100 2600 1    50   ~ 0
 SCSI_DBP
-Text Label 9950 1650 1    50   ~ 0
+Text Label 9100 1650 1    50   ~ 0
 SCSI_DBP
 Text Notes 7700 2750 0    50   ~ 0
 SCSI Termination Resistors
-Text Label 10750 2600 1    50   ~ 0
+Text Label 9500 2600 1    50   ~ 0
 SCSI_DAT7
-Text Label 10650 2600 1    50   ~ 0
+Text Label 9400 2600 1    50   ~ 0
 SCSI_DAT6
-Text Label 10250 2600 1    50   ~ 0
+Text Label 9000 2600 1    50   ~ 0
 SCSI_DAT2
-Text Label 10550 2600 1    50   ~ 0
+Text Label 9300 2600 1    50   ~ 0
 SCSI_DAT5
-Text Label 10450 2600 1    50   ~ 0
+Text Label 9200 2600 1    50   ~ 0
 SCSI_DAT4
-Text Label 10350 2600 1    50   ~ 0
+Text Label 8900 2600 1    50   ~ 0
 SCSI_DAT3
-Text Label 10150 2600 1    50   ~ 0
+Text Label 8800 2600 1    50   ~ 0
 SCSI_DAT1
 Wire Wire Line
 	10750 2200 10750 2600
@@ -702,26 +699,24 @@ Wire Wire Line
 Wire Wire Line
 	10250 2200 10250 2600
 Wire Wire Line
-	10150 2200 10150 2600
+	8700 2200 8700 2600
 Wire Wire Line
-	10050 2200 10050 2600
+	8800 2200 8800 2600
 Wire Wire Line
 	9950 2200 9950 2600
-Text Label 10050 2600 1    50   ~ 0
-SCSI_DAT0
-Text Label 10750 1650 1    50   ~ 0
+Text Label 9500 1650 1    50   ~ 0
 SCSI_DAT7
-Text Label 10650 1650 1    50   ~ 0
+Text Label 9400 1650 1    50   ~ 0
 SCSI_DAT6
-Text Label 10250 1650 1    50   ~ 0
+Text Label 9000 1650 1    50   ~ 0
 SCSI_DAT2
-Text Label 10550 1650 1    50   ~ 0
+Text Label 9300 1650 1    50   ~ 0
 SCSI_DAT5
-Text Label 10450 1650 1    50   ~ 0
+Text Label 9200 1650 1    50   ~ 0
 SCSI_DAT4
-Text Label 10350 1650 1    50   ~ 0
+Text Label 8900 1650 1    50   ~ 0
 SCSI_DAT3
-Text Label 10150 1650 1    50   ~ 0
+Text Label 8800 1650 1    50   ~ 0
 SCSI_DAT1
 Wire Wire Line
 	9500 1250 9500 1650
@@ -738,9 +733,9 @@ Wire Wire Line
 Wire Wire Line
 	8900 1250 8900 1650
 Wire Wire Line
-	8800 1250 8800 1650
+	10050 1250 10050 1650
 Wire Wire Line
-	8700 1250 8700 1650
+	10150 1250 10150 1650
 Wire Wire Line
 	10750 1250 10750 1650
 Wire Wire Line
@@ -754,30 +749,30 @@ Wire Wire Line
 Wire Wire Line
 	10250 1250 10250 1650
 Wire Wire Line
-	10150 1250 10150 1650
+	8700 1250 8700 1650
 Wire Wire Line
-	10050 1250 10050 1650
+	8800 1250 8800 1650
 Wire Wire Line
 	9950 1250 9950 1650
-Text Label 10050 1650 1    50   ~ 0
-SCSI_DAT0
-Text Label 9500 1650 1    50   ~ 0
-SCSI_ATN
-Text Label 9400 1650 1    50   ~ 0
-SCSI_ACK
-Text Label 9300 1650 1    50   ~ 0
-SCSI_RST
-Text Label 9200 1650 1    50   ~ 0
-SCSI_SEL
-Text Label 9100 1650 1    50   ~ 0
-SCSI_BSY
-Text Label 9000 1650 1    50   ~ 0
-SCSI_MSG
-Text Label 8900 1650 1    50   ~ 0
-SCSI_CD
-Text Label 8800 1650 1    50   ~ 0
-SCSI_REQ
 Text Label 8700 1650 1    50   ~ 0
+SCSI_DAT0
+Text Label 9950 1650 1    50   ~ 0
+SCSI_ATN
+Text Label 10150 1650 1    50   ~ 0
+SCSI_ACK
+Text Label 10250 1650 1    50   ~ 0
+SCSI_RST
+Text Label 10450 1650 1    50   ~ 0
+SCSI_SEL
+Text Label 10050 1650 1    50   ~ 0
+SCSI_BSY
+Text Label 10350 1650 1    50   ~ 0
+SCSI_MSG
+Text Label 10550 1650 1    50   ~ 0
+SCSI_CD
+Text Label 10650 1650 1    50   ~ 0
+SCSI_REQ
+Text Label 10750 1650 1    50   ~ 0
 SCSI_IO
 NoConn ~ 8550 3850
 NoConn ~ 8550 4550
@@ -840,59 +835,6 @@ Connection ~ 8700 850
 Wire Wire Line
 	8700 850  9950 850 
 $Comp
-L Connector_Generic:Conn_01x04 J3
-U 1 1 5F8E1558
-P 950 5350
-F 0 "J3" V 1050 5350 50  0000 L CNN
-F 1 "Programming Pins" V 1200 4950 50  0000 L CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical" H 950 5350 50  0001 C CNN
-F 3 "~" H 950 5350 50  0001 C CNN
-	1    950  5350
-	0    -1   -1   0   
-$EndComp
-Text Label 1150 5950 1    50   ~ 0
-SCSI_ACK
-Wire Wire Line
-	1050 5550 1050 5950
-Wire Wire Line
-	1150 5550 1150 5950
-Text Label 1050 5950 1    50   ~ 0
-SCSI_BSY
-$Comp
-L power:GND #PWR0113
-U 1 1 5F92A76C
-P 950 5950
-F 0 "#PWR0113" H 950 5700 50  0001 C CNN
-F 1 "GND" V 950 5750 50  0000 C CNN
-F 2 "" H 950 5950 50  0001 C CNN
-F 3 "" H 950 5950 50  0001 C CNN
-	1    950  5950
-	1    0    0    -1  
-$EndComp
-$Comp
-L power:+3.3V #PWR0114
-U 1 1 5F92B1C2
-P 850 5950
-F 0 "#PWR0114" H 850 5800 50  0001 C CNN
-F 1 "+3.3V" V 850 6200 50  0000 C CNN
-F 2 "" H 850 5950 50  0001 C CNN
-F 3 "" H 850 5950 50  0001 C CNN
-	1    850  5950
-	-1   0    0    1   
-$EndComp
-Wire Wire Line
-	950  5550 950  5950
-Wire Wire Line
-	850  5550 850  5950
-Wire Notes Line
-	600  5000 1450 5000
-Wire Notes Line
-	1450 5000 1450 6350
-Wire Notes Line
-	1450 6350 600  6350
-Wire Notes Line
-	600  6350 600  5000
-$Comp
 L power:GND #PWR0117
 U 1 1 5F9CFB24
 P 2100 6050
@@ -918,10 +860,10 @@ Wire Notes Line
 Wire Notes Line
 	2650 5000 1650 5000
 $Comp
-L bluepill_scsi-rescue:171825-4-171825-4 J4
+L bluepill_scsi-rescue:171825-4-171825-4 J1
 U 1 1 5FA7AEFD
 P 2200 5500
-F 0 "J4" V 2450 5750 50  0000 R CNN
+F 0 "J1" V 2450 5750 50  0000 R CNN
 F 1 "Berg Power Connector" V 2600 5950 50  0000 R CNN
 F 2 "171825-4:TE_171825-4" H 2200 5500 50  0001 L BNN
 F 3 "171825-4" H 2200 5500 50  0001 L BNN
@@ -1032,10 +974,10 @@ F 3 "~" H 3400 5850 50  0001 C CNN
 	0    -1   -1   0   
 $EndComp
 $Comp
-L power:VCC #PWR?
+L power:VCC #PWR0112
 U 1 1 60659E21
 P 8250 1000
-F 0 "#PWR?" H 8250 850 50  0001 C CNN
+F 0 "#PWR0112" H 8250 850 50  0001 C CNN
 F 1 "VCC" H 8265 1173 50  0000 C CNN
 F 2 "" H 8250 1000 50  0001 C CNN
 F 3 "" H 8250 1000 50  0001 C CNN
@@ -1044,4 +986,115 @@ F 3 "" H 8250 1000 50  0001 C CNN
 $EndComp
 Wire Wire Line
 	8250 1000 8250 1100
+Text Label 10250 2600 1    50   ~ 0
+SCSI_RST
+Text Label 8700 2600 1    50   ~ 0
+SCSI_DAT0
+NoConn ~ 5550 5100
+$Comp
+L Mechanical:MountingHole_Pad H2
+U 1 1 60C5D16F
+P 5550 5000
+F 0 "H2" H 5650 5049 50  0000 L CNN
+F 1 "MountingHole_Pad" H 5650 4958 50  0000 L CNN
+F 2 "MountingHole:MountingHole_2.7mm_M2.5_Pad_Via" H 5550 5000 50  0001 C CNN
+F 3 "~" H 5550 5000 50  0001 C CNN
+	1    5550 5000
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:Jumper J3
+U 1 1 60D2A72A
+P 5600 6000
+F 0 "J3" H 5650 5950 50  0000 R CNN
+F 1 "ACT_LED" H 5750 6150 50  0000 R CNN
+F 2 "Connector_PinSocket_2.54mm:PinSocket_1x02_P2.54mm_Vertical" H 5600 6000 50  0001 C CNN
+F 3 "~" H 5600 6000 50  0001 C CNN
+F 4 "https://www.mouser.com/ProductDetail/872-920-0011-01" H 5600 6000 50  0001 C CNN "Mouser"
+F 5 "https://www.mouser.com/ProductDetail/151-8001-E" H 5600 6000 50  0001 C CNN "Mouser_1"
+	1    5600 6000
+	-1   0    0    1   
+$EndComp
+$Comp
+L Device:Jumper J4
+U 1 1 60D2A732
+P 5600 5650
+F 0 "J4" H 5650 5600 50  0000 R CNN
+F 1 "POWER_LED" H 5800 5800 50  0000 R CNN
+F 2 "Connector_PinSocket_2.54mm:PinSocket_1x02_P2.54mm_Vertical" H 5600 5650 50  0001 C CNN
+F 3 "~" H 5600 5650 50  0001 C CNN
+F 4 "https://www.mouser.com/ProductDetail/872-920-0011-01" H 5600 5650 50  0001 C CNN "Mouser"
+F 5 "https://www.mouser.com/ProductDetail/151-8001-E" H 5600 5650 50  0001 C CNN "Mouser_1"
+	1    5600 5650
+	-1   0    0    1   
+$EndComp
+Wire Wire Line
+	5200 6000 5300 6000
+Wire Wire Line
+	5200 5650 5300 5650
+Wire Wire Line
+	1600 2450 1150 2450
+Text Label 1150 2450 0    50   ~ 0
+EXTERNAL_LED
+$Comp
+L power:GND #PWR0113
+U 1 1 60D65EC9
+P 5200 6000
+F 0 "#PWR0113" H 5200 5750 50  0001 C CNN
+F 1 "GND" H 5205 5827 50  0000 C CNN
+F 2 "" H 5200 6000 50  0001 C CNN
+F 3 "" H 5200 6000 50  0001 C CNN
+	1    5200 6000
+	0    1    1    0   
+$EndComp
+$Comp
+L power:GND #PWR0114
+U 1 1 60D6E643
+P 5200 5650
+F 0 "#PWR0114" H 5200 5400 50  0001 C CNN
+F 1 "GND" H 5205 5477 50  0000 C CNN
+F 2 "" H 5200 5650 50  0001 C CNN
+F 3 "" H 5200 5650 50  0001 C CNN
+	1    5200 5650
+	0    1    1    0   
+$EndComp
+$Comp
+L Device:R_US R2
+U 1 1 60D813BA
+P 6050 6000
+F 0 "R2" V 6150 6050 50  0000 L CNN
+F 1 "R_US" V 6150 5850 50  0000 L CNN
+F 2 "Resistor_THT:R_Axial_DIN0204_L3.6mm_D1.6mm_P5.08mm_Horizontal" V 6090 5990 50  0001 C CNN
+F 3 "~" H 6050 6000 50  0001 C CNN
+	1    6050 6000
+	0    -1   -1   0   
+$EndComp
+Text Label 6850 6000 2    50   ~ 0
+EXTERNAL_LED
+Wire Wire Line
+	6200 6000 6850 6000
+Wire Wire Line
+	6200 5650 6600 5650
+$Comp
+L power:VCC #PWR0118
+U 1 1 60D48920
+P 6600 5650
+F 0 "#PWR0118" H 6600 5500 50  0001 C CNN
+F 1 "VCC" H 6615 5823 50  0000 C CNN
+F 2 "" H 6600 5650 50  0001 C CNN
+F 3 "" H 6600 5650 50  0001 C CNN
+	1    6600 5650
+	0    1    1    0   
+$EndComp
+$Comp
+L Device:R_US R1
+U 1 1 60D8AF20
+P 6050 5650
+F 0 "R1" V 6150 5700 50  0000 L CNN
+F 1 "R_US" V 6150 5500 50  0000 L CNN
+F 2 "Resistor_THT:R_Axial_DIN0204_L3.6mm_D1.6mm_P5.08mm_Horizontal" V 6090 5640 50  0001 C CNN
+F 3 "~" H 6050 5650 50  0001 C CNN
+	1    6050 5650
+	0    -1   -1   0   
+$EndComp
 $EndSCHEMATC
