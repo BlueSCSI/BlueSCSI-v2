@@ -468,17 +468,35 @@ void setup()
       file.close();
       String file_name = String(name);
       file_name.toLowerCase();
-      if(file_name.startsWith("hd") && file_name.endsWith(".hda")) {
-        int id  = name[HDIMG_ID_POS] - '0';
-        int lun = name[HDIMG_LUN_POS] - '0';
-        int blk = name[HDIMG_BLK_POS] - '0';
-        if(blk == 2) {
-          blk = 256;
-        } else if(blk == 1) {
-          blk = 1024;
-        } else {
-          blk = 512;
+      if(file_name.startsWith("hd")) {
+        // Defaults for Hard Disks
+        int id  = 0;
+        int lun = 0;
+        int blk = 512;
+
+        // Positionally read in and coerase the chars to integers.
+        // We only require the minimum and read in the next if provided.
+        int file_name_length = file_name.length();
+        if(file_name_length > 2) // HD[N]
+          id  = name[HDIMG_ID_POS] - '0' || 0;
+        if(file_name_length > 3) // HD0[N]
+          lun = name[HDIMG_LUN_POS] - '0' || 0;
+        int blk1, blk2, blk3, blk4 = 0;
+        if(file_name_length > 8) { // HD00_[111]
+          blk1 = name[HDIMG_BLK_POS] - '0';
+          blk2 = name[HDIMG_BLK_POS+1] - '0';
+          blk3 = name[HDIMG_BLK_POS+2] - '0';
+          if(file_name_length > 9) // HD00_NNN[1]
+            blk4 = name[HDIMG_BLK_POS+3] - '0';
         }
+        if(blk1 == 2 && blk2 == 5 && blk3 == 6) {
+          blk = 256;
+        } else if(blk1 == 1 && blk2 == 0 && blk3 == 2 && blk4 == 4) {
+          blk = 1024;
+        } else if(blk1 == 2 && blk2 == 0 && blk3 == 4 && blk4 == 8) {
+          blk  = 2048;
+        }
+
         if(id < NUM_SCSIID && lun < NUM_SCSILUN) {
           HDDIMG *h = &img[id][lun];
           imageReady = hddimageOpen(h,name,id,lun,blk);
