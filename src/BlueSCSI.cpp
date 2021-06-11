@@ -337,12 +337,13 @@ void readSDCardInfo()
 
     LOG_FILE.print("Sd Date:");
     LOG_FILE.print(sd_cid.mdt_month);
-    LOG_FILE.print('/20'); // CID year is 2000 + high/low
+    LOG_FILE.print("/20"); // CID year is 2000 + high/low
     LOG_FILE.print(sd_cid.mdt_year_high);
     LOG_FILE.println(sd_cid.mdt_year_low);
     
     LOG_FILE.print("Sd Serial:");
     LOG_FILE.println(sd_cid.psn);
+    LOG_FILE.sync();
   }
 }
 
