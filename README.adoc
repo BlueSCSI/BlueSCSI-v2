@@ -29,11 +29,11 @@ If your computer is not listed below - it may be compatible but there is no guar
 
 ### Compatible
 
-https://github.com/erichelgeson/BlueSCSI/wiki/Supported-Systems
+https://github.com/erichelgeson/BlueSCSI/wiki/Supported-Systems[Supported-Systems]
 
 ## Performance
 
-https://github.com/erichelgeson/BlueSCSI/wiki/Performance
+https://github.com/erichelgeson/BlueSCSI/wiki/Performance[Performance]
 
 ## Assembly
 
@@ -43,56 +43,7 @@ See <a href="docs/assembly.md">docs/assembly.md</a>
 
 ## Usage
 
-Hard Disk image files are placed in the root directory of a `ExFat` or `FAT32` formatted SD card. https://twitter.com/theory_retro/status/1376571371694723076[`ExFat` may be much faster]. Use a premade or blank disk below. These images are compatible with the RaSCSI device and Basilisk II emulator.
-
-The naming convention is as follows (file name max 32 characters). Note you may mount multiple drives at a time to different SCSI ID's.
-
-`HDxy_512.hda`
-```
-HD - Hard Disk
-x - SCSI ID to attach to. 0-7 (though 7 on a Macintosh is the System)
-y - LUN id usually 0. 
-512 - Sector size. Usually 512. 256, 512, & 1024 supported.
-```
-
-### Examples
-
-`HD10_512.hda` - Hard Disk at SCSI ID 1, LUN 0, sector size of 512.
-
-`HD51_512 System 6.0.8L LC.hda` - Hard Disk at SCSI ID 5, LUN 1, sector size of 512. Text between block size and .hda is ignored.
-
-#### Bad 
-
-`HD99_712 foo bar fizz buzz bang.hda` Over 32 chars and invalid SCSI/LUN/Block size
-
-If no image files are found PC13 will pulse on and off. Check the LOG.txt on the root of the SD card for any errors.
-
-### Premade Images
-
-Premade images are handy to just drop onto your SD card and go. You can use an emulator such as https://www.emaculation.com/doku.php/basiliskii_osx_setup[Basilisk II] on your modern machine to get software from places like the https://macintoshgarden.com[Macintosh Garden] to your vintage mac.
-
-* Premade from RaSCSI in BlueSCSI too - Rename the files based on the Usage instructions above. - http://macintoshgarden.org/apps/rascsi-68kmla-edition
-
-### Blanks
-
-These are blank, formatted drives. If you want to install an OS or software on an empty drive, use one of these.
-
-* Preformatted HFS blank images in various sizes - https://github.com/erichelgeson/BlueSCSI/tree/main/docs/MacHD.zip
-
-### Custom Disk Images (Advanced)
-
-This technique is useful when you would like a disk image larger than the pre-built images in the previous section.
-
-The following instructions demonstrates the process using https://ss64.com/osx/dd.html[dd] on a modern Mac:
-
-1. Open terminal.
-2. The following command will create a blank disk image. You can modify the command to suit your use.
-   * `dd if=/dev/zero of=example.hda bs=1m count=500`
-   * The `count` field defines the number of megabytes (`bs=1m`) the total disk image should be.
-   * The output file from the command is "example.hda". This can be changed in the `of=example.hda` field.
-3. Place the new blank disk image in the root directory of your SD card.
-4. If you do not already have a tool to format SCSI drives, https://macintoshgarden.org/apps/lido-756[download LIDO]. You can use an emulator such as https://www.emaculation.com/doku.php/basiliskii_osx_setup[Basilisk II] to move files to the image to prepare your installation.
-5. After booting into your target machine with the working Mac OS disk image on your BlueSCSI from step 3, format the blank disk.
+https://github.com/erichelgeson/BlueSCSI/wiki/Usage[Usage]
 
 ### Termination
 
@@ -124,44 +75,7 @@ First release
 
 ## Development (Advanced)
 
-Below is for users who wish to edit or develop on the BluePill - normal users should not need to worry about this.
-
-### Setup PlatformIO IDE
-
-Open the project in https://platformio.org/platformio-ide[PlatformIO IDE] and everything is pre-configured.
-
-## Flashing
-
-When flashing you have two options:
-
-Flash by setting up the IDE and re-compiling and programming. If you are a developer and plan to contribute this method is what you should use.
-
-You may also flash the `.bin` file directly from https://www.st.com/en/development-tools/stm32cubeprog.html[STM32CubeProgrammer]. Use this method if you are not a developer and just wish to get the code to the BluePill.
-
-### Using STLink v2 (prefered)
-
-1. Remove SD Card
-2. Make sure the STLink is up to date - https://www.st.com/en/development-tools/stsw-link007.html[Latest Firmware]
-3. Connect pins `SWDIO`(2), `GND`(4), `SWCLK`(6), and `3.3v`(8) from the programmer to the Blue Pill. NOTE: These are not the same as Serial ports.
-4. Run the https://docs.platformio.org/en/latest/integration/ide/vscode.html#project-tasks[PlatformIO: Upload] task.
-5. You should see the LED `PC_13` flashing indicating no SD Card detected.
-6. Insert SD Card, boot on your favorite Mac!
-
-The following YoutTube video demonstrates the steps of flashing & updating your BlueSCSI https://www.youtube.com/watch?v=bRLAOts_MTM
-
-#### Trouble Shooting
-
-If the device is not detected you may need to hold reset, click program, once it is detected release reset.
-
-If you are unable to get the device in DFU mode for programming you may need to use https://www.st.com/en/development-tools/stm32cubeprog.html[STM32CubeProgrammer] to erase the chip.
-
-### Alterantive upload methods
-
-See the https://docs.platformio.org/en/latest/boards/ststm32/bluepill_f103c8.html#uploading[uploading] documentation on PlatformIO for alterantives.
-
-### Using USB HID
-
-Note: I have not been able to get this method to work. Please contribute to this document if you do.
+https://github.com/erichelgeson/BlueSCSI/wiki/Flashing[Flashing]
 
 ## Notes
 
