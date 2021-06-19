@@ -106,6 +106,7 @@ SdFs SD;
 #define CD        PB5      // SCSI:C/D
 #define REQ       PB6      // SCSI:REQ
 #define IO        PB7      // SCSI:I/O
+#define LED2      PA0      // External LED
 
 #define SD_CS     PA4      // SDCARD:CS
 #define LED       PC13     // LED
@@ -115,8 +116,8 @@ SdFs SD;
 #define PBREG GPIOB->regs
 
 // LED control
-#define LED_ON()       gpio_write(LED, high);
-#define LED_OFF()      gpio_write(LED, low);
+#define LED_ON()       gpio_write(LED, high); gpio_write(LED2, low);
+#define LED_OFF()      gpio_write(LED, low); gpio_write(LED2, high);
 
 // Virtual pin (Arduio compatibility is slow, so make it MCU-dependent)
 #define PA(BIT)       (BIT)
@@ -368,8 +369,9 @@ void setup()
 #endif
 
   // PIN initialization
+  gpio_mode(LED2, GPIO_OUTPUT_PP);
   gpio_mode(LED, GPIO_OUTPUT_OD);
-  gpio_write(LED, low);
+  LED_OFF();
 
   //GPIO(SCSI BUS)Initialization
   //Port setting register (lower)
@@ -535,9 +537,9 @@ void onFalseInit(void)
   LOG_FILE.sync();
   while(true) {
     for(int i = 0; i < 3; i++) {
-      gpio_write(LED, high);
+      LED_ON();
       delay(250);
-      gpio_write(LED, low);
+      LED_OFF();
       delay(250);
     }
     delay(3000);
@@ -551,9 +553,9 @@ void noSDCardFound(void)
 {
   while(true) {
     for(int i = 0; i < 5; i++) {
-      gpio_write(LED, high);
+      LED_ON();
       delay(250);
-      gpio_write(LED, low);
+      LED_OFF();
       delay(250);
     }
     delay(3000);
@@ -888,9 +890,9 @@ byte onReadCommand(uint32_t adds, uint32_t len)
 
   if(!m_img) return 0x02; // Image file absent
   
-  gpio_write(LED, high);
+  LED_ON();
   writeDataPhaseSD(adds, len);
-  gpio_write(LED, low);
+  LED_OFF();
   return 0x00; //sts
 }
 
@@ -905,9 +907,9 @@ byte onWriteCommand(uint32_t adds, uint32_t len)
   
   if(!m_img) return 0x02; // Image file absent
   
-  gpio_write(LED, high);
+  LED_ON();
   readDataPhaseSD(adds, len);
-  gpio_write(LED, low);
+  LED_OFF();
   return 0; //sts
 }
 
