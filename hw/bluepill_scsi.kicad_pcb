@@ -1,8 +1,8 @@
-(kicad_pcb (version 20171130) (host pcbnew "(5.1.6-0-10_14)")
+(kicad_pcb (version 20171130) (host pcbnew "(5.1.10-1-10_14)")
 
   (general
     (thickness 1.6)
-    (drawings 12)
+    (drawings 14)
     (tracks 249)
     (zones 0)
     (modules 14)
@@ -1029,6 +1029,12 @@
     )
   )
 
+  (gr_text "BlueSCSI(TM) Eric Helgeson - NonCommercial - CC BY-NC 4.0" (at 73.025 110.998 90) (layer B.SilkS) (tstamp 60D21A7B)
+    (effects (font (size 1 1) (thickness 0.15)) (justify mirror))
+  )
+  (gr_text "BlueSCSI(TM) Eric Helgeson - NonCommercial - CC BY-NC 4.0" (at 73.025 110.998 90) (layer F.SilkS) (tstamp 60D217F5)
+    (effects (font (size 1 1) (thickness 0.15)))
+  )
   (gr_line (start 71.755 149.225) (end 71.12 149.225) (layer Edge.Cuts) (width 0.05) (tstamp 5F9CBA08))
   (gr_line (start 71.12 147.955) (end 71.12 149.225) (layer Edge.Cuts) (width 0.05) (tstamp 5F9CB9FF))
   (gr_line (start 114.935 149.225) (end 71.755 149.225) (layer Edge.Cuts) (width 0.05))
