@@ -9,6 +9,7 @@ Read through all instructions before starting.
 The community has created a few assembly videos:
 * [Stephen Arsenault - BlueSCSI Kit Assembly](https://www.youtube.com/watch?v=G6lwCfLQwd8) 2:52
 * [Joe's Computer Museum - A New Challenger - BlueSCSI - #MARCHintosh Review](https://www.youtube.com/watch?v=d_8VVmvvlNI) 26:52
+* [Geeky Bit - Tutorial - BlueSCSI Assembly](https://www.youtube.com/watch?v=-nF9FYFgVHM) 20:35
 
 ## Building
 
