@@ -515,7 +515,7 @@ void setup()
  * Setup initialization logfile
  */
 void initFileLog() {
-  LOG_FILE = SD.open(LOG_FILENAME, O_WRONLY | O_CREAT);
+  LOG_FILE = SD.open(LOG_FILENAME, O_WRONLY | O_CREAT | O_TRUNC);
   LOG_FILE.println("BlueSCSI <-> SD - https://github.com/erichelgeson/BlueSCSI");
   LOG_FILE.print("VERSION: ");
   LOG_FILE.println(VERSION);
