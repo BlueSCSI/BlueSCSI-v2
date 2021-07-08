@@ -43,7 +43,8 @@
 #endif
 
 #define DEBUG            0      // 0:No debug information output
-                                // 1: Debug information output available
+                                // 1: Debug information output to USB Serial
+                                // 2: Debug information output to LOG.txt (slow)
 
 #define SCSI_SELECT      0      // 0 for STANDARD
                                 // 1 for SHARP X1turbo
@@ -64,11 +65,16 @@
 #define SD1_CONFIG SdSpiConfig(PA4, DEDICATED_SPI, SD_SCK_MHZ(SPI_FULL_SPEED), &SPI)
 SdFs SD;
 
-#if DEBUG
+#if DEBUG == 1
 #define LOG(XX)     Serial.print(XX)
 #define LOGHEX(XX)  Serial.print(XX, HEX)
 #define LOGN(XX)    Serial.println(XX)
 #define LOGHEXN(XX) Serial.println(XX, HEX)
+#elif DEBUG == 2
+#define LOG(XX)     LOG_FILE.println(XX); LOG_FILE.sync();
+#define LOGHEX(XX)  LOG_FILE.println(XX, HEX); LOG_FILE.sync();
+#define LOGN(XX)    LOG_FILE.println(XX); LOG_FILE.sync();
+#define LOGHEXN(XX) LOG_FILE.println(XX, HEX); LOG_FILE.sync();
 #else
 #define LOG(XX)     //Serial.print(XX)
 #define LOGHEX(XX)  //Serial.print(XX, HEX)
@@ -391,13 +397,13 @@ void setup()
 {
   // PA15 / PB3 / PB4 Cannot be used
   // JTAG Because it is used for debugging.
-  // Comment out for Debugging in PlatformIO
   disableDebugPorts();
 
   // Serial initialization
-#if DEBUG
+#if DEBUG > 0
   Serial.begin(9600);
-  while (!Serial);
+  // If using a USB->TTL monitor instead of USB serial monitor - you can uncomment this.
+  //while (!Serial);
 #endif
 
   // PIN initialization
@@ -435,7 +441,7 @@ void setup()
 
   // clock = 36MHz , about 4Mbytes/sec
   if(!SD.begin(SD1_CONFIG)) {
-#if DEBUG
+#if DEBUG > 0
     Serial.println("SD initialization failed!");
 #endif
     noSDCardFound();
