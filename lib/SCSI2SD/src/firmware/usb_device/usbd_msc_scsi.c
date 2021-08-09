@@ -166,6 +166,13 @@ int8_t SCSI_ProcessCmd(USBD_HandleTypeDef  *pdev,
                    lun,
                    ILLEGAL_REQUEST, 
                    INVALID_CDB);    
+
+    {
+        USBD_CompositeClassData *classData = (USBD_CompositeClassData*) pdev->pClassData;
+        USBD_MSC_BOT_HandleTypeDef *hmsc = &(classData->msc);
+        hmsc->bot_state = USBD_BOT_NO_DATA;
+    }
+
     return -1;
   }
 }
@@ -264,6 +271,7 @@ static int8_t SCSI_ReadCapacity10(USBD_HandleTypeDef  *pdev, uint8_t lun, uint8_
                    lun,
                    NOT_READY, 
                    MEDIUM_NOT_PRESENT);
+    hmsc->bot_state = USBD_BOT_NO_DATA;
     return -1;
   } 
   else
@@ -718,9 +726,6 @@ static int8_t SCSI_ProcessRead (USBD_HandleTypeDef  *pdev, uint8_t lun)
 
   len = MIN(len, S2S_MSC_MEDIA_PACKET);
 
-  // TODO there is a dcache issue here.
-  // work out how, and when, to flush cashes between sdio dma and usb dma
-  memset (hmsc->bot_data, 0xAA, len);
   if( ((USBD_StorageTypeDef *)pdev->pUserData)->Read(lun ,
                               hmsc->bot_data, 
                               hmsc->scsi_blk_addr, 
