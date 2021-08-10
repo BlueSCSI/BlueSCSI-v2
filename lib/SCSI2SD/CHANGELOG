@@ -1,4 +1,4 @@
-2021xxxx        6.4.x
+20210810        6.4.12
     - Fix USB disconnect issue when no SD card is installed.
 
 20210628        6.4.11
