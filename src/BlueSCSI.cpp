@@ -460,6 +460,7 @@ void setup()
   root.open("/");
   SdFile file;
   bool imageReady;
+  int usedDefaultId = 0;
   while (1) {
     if (!file.openNext(&root, O_READ)) break;
     char name[MAX_FILE_PATH+1];
@@ -470,17 +471,28 @@ void setup()
       file_name.toLowerCase();
       if(file_name.startsWith("hd")) {
         // Defaults for Hard Disks
-        int id  = 0;
+        int id  = 1; // 0 and 3 are common in Macs for physical HD and CD, so avoid them.
         int lun = 0;
         int blk = 512;
 
         // Positionally read in and coerase the chars to integers.
         // We only require the minimum and read in the next if provided.
         int file_name_length = file_name.length();
-        if(file_name_length > 2) // HD[N]
-          id  = name[HDIMG_ID_POS] - '0' || 0;
-        if(file_name_length > 3) // HD0[N]
-          lun = name[HDIMG_LUN_POS] - '0' || 0;
+        if(file_name_length > 2) { // HD[N]
+          int tmp_id = name[HDIMG_ID_POS] - '0';
+
+          if(tmp_id > -1 && tmp_id < 8) {
+            id = tmp_id; // If valid id, set it, else use default
+            usedDefaultId++;
+          }
+        }
+        if(file_name_length > 3) { // HD0[N]
+          int tmp_lun = name[HDIMG_LUN_POS] - '0';
+
+          if(tmp_lun > -1 && tmp_lun < 2) {
+            lun = tmp_lun; // If valid id, set it, else use default
+          }
+        }
         int blk1, blk2, blk3, blk4 = 0;
         if(file_name_length > 8) { // HD00_[111]
           blk1 = name[HDIMG_BLK_POS] - '0';
@@ -514,6 +526,10 @@ void setup()
           LOG_FILE.sync();
       }
     }
+  }
+  if(usedDefaultId > 0) {
+    LOG_FILE.println("!! More than one image did not specify a SCSI ID. Last file will be used at ID 1. !!");
+    LOG_FILE.sync();
   }
   root.close();
 
