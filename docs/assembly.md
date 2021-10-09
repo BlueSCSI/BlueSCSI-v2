@@ -16,7 +16,7 @@ The community has created a few assembly videos:
 1. Solder on the surface mount SD Card holder. Use the [Drag Solder](https://youtu.be/Z_KL4fWOMug) technique.
     - Once on, check continuity of all connections. Fixing this after the BluePill is on will be difficult.
     - Ensure the SD card fits and you dont have too much solder on the sides or contacts
-2. Solder the dioeds to the **bottom** of the board. Be sure they are flush as possible to the bottom.
+2. Solder the diodes to the **bottom** of the board. Be sure they are flush as possible to the bottom.
 ![Diode Orientation](images/diodes.png)
 3. Solder the header pins on to the BluePill. Then BluePill pill to the BlueSCSI PCB.
     - Correct orientation is having the USB connector of the BluePill should be over the SD Card holder.
