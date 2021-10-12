@@ -893,11 +893,21 @@ void scsiDiskPoll()
                 // use sg_dd from sg_utils3 tools to test.
 
                 uint32_t rem = totalSDSectors - i;
-                uint32_t sectors = rem < maxSectors ? rem : maxSectors;
+                uint32_t sectors;
+                if (rem <= maxSectors)
+                {
+                    sectors = rem;
+                }
+                else
+                {
+                    sectors = maxSectors;
+                    while (sectors % sdPerScsi) sectors--;
+                }
+                
 
                 if (useSlowDataCount)
                 {
-                    scsiSetDataCount(sectors * bytesPerSector);
+                    scsiSetDataCount((sectors / sdPerScsi) * bytesPerSector);
                 }
 
                 for (int scsiSector = i; scsiSector < i + sectors; ++scsiSector)

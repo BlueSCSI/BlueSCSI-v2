@@ -1,3 +1,7 @@
+?               6.4.13
+    - Fix SCSI writes with sector sizes larger than 512.
+
+
 20210810        6.4.12
     - Fix USB disconnect issue when no SD card is installed.
 
