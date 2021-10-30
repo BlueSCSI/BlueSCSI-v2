@@ -1,5 +1,6 @@
 ?               6.4.13
     - Fix SCSI writes with sector sizes larger than 512.
+    - Fix 2Gb SD cards being detected as 1Gb
 
 
 20210810        6.4.12

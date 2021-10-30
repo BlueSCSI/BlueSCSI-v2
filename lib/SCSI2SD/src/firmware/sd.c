@@ -113,7 +113,7 @@ static int sdDoInit()
 		HAL_SD_GetCardInfo(&hsd, &cardInfo);
 		memcpy(sdDev.csd, hsd.CSD, sizeof(sdDev.csd));
 		memcpy(sdDev.cid, hsd.CID, sizeof(sdDev.cid));
-		sdDev.capacity = cardInfo.BlockNbr;
+		sdDev.capacity = cardInfo.LogBlockNbr;
 		blockDev.state |= DISK_PRESENT | DISK_INITIALISED;
 		result = 1;
 
