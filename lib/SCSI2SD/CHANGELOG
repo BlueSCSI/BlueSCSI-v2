@@ -1,6 +1,8 @@
 ?               6.4.13
     - Fix SCSI writes with sector sizes larger than 512.
     - Fix 2Gb SD cards being detected as 1Gb
+    - Fix for CD emulation stopping the drive when receiving a load/eject
+    request
 
 
 20210810        6.4.12

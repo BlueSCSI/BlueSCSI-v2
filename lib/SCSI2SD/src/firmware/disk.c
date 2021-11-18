@@ -351,11 +351,15 @@ int scsiDiskCommand()
     {
         // START STOP UNIT
         // Enable or disable media access operations.
-        // Ignore load/eject requests. We can't do that.
         //int immed = scsiDev.cdb[1] & 1;
         int start = scsiDev.cdb[4] & 1;
-
-        if (start)
+	int loadEject = scsiDev.cdb[4] & 2;
+	
+        if (loadEject)
+        {
+            // Ignore load/eject requests. We can't do that.
+        }
+        else if (start)
         {
             blockDev.state = blockDev.state | DISK_STARTED;
             if (!(blockDev.state & DISK_INITIALISED))
