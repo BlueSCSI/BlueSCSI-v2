@@ -652,7 +652,7 @@ F 3 "" H 6200 1200 50  0001 C CNN
 	-1   0    0    1   
 $EndComp
 Wire Wire Line
-	6200 1400 6200 1200
+	6200 1400 6200 1250
 Wire Wire Line
 	5500 1400 6200 1400
 Text Label 5550 1500 0    50   ~ 0
@@ -720,4 +720,13 @@ Wire Wire Line
 	8250 1000 8250 1700
 Wire Wire Line
 	7900 1000 7900 1800
+Wire Wire Line
+	5200 1100 6050 1100
+Wire Wire Line
+	6050 1100 6050 1250
+Wire Wire Line
+	6050 1250 6200 1250
+Connection ~ 6200 1250
+Wire Wire Line
+	6200 1250 6200 1200
 $EndSCHEMATC
