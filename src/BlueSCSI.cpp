@@ -488,14 +488,7 @@ void setup()
             usedDefaultId++;
           }
         }
-        if(file_name_length > 3) { // HD0[N]
-          int tmp_lun = name[HDIMG_LUN_POS] - '0';
 
-          if(tmp_lun != 0) {
-            LOG_FILE.println("!! Only 0 is supported for LUN, forcing to 0 !!");
-            LOG_FILE.sync();
-          }
-        }
         int blk1, blk2, blk3, blk4 = 0;
         if(file_name_length > 8) { // HD00_[111]
           blk1 = name[HDIMG_BLK_POS] - '0';
