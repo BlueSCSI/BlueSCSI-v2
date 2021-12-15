@@ -481,16 +481,19 @@ void setup()
         if(file_name_length > 2) { // HD[N]
           int tmp_id = name[HDIMG_ID_POS] - '0';
 
+          // If valid id, set it, else use default
           if(tmp_id > -1 && tmp_id < 8) {
-            id = tmp_id; // If valid id, set it, else use default
+            id = tmp_id;
+          } else {
             usedDefaultId++;
           }
         }
         if(file_name_length > 3) { // HD0[N]
           int tmp_lun = name[HDIMG_LUN_POS] - '0';
 
-          if(tmp_lun > -1 && tmp_lun < 2) {
-            lun = tmp_lun; // If valid id, set it, else use default
+          if(tmp_lun != 0) {
+            LOG_FILE.println("!! Only 0 is supported for LUN, forcing to 0 !!");
+            LOG_FILE.sync();
           }
         }
         int blk1, blk2, blk3, blk4 = 0;
@@ -527,8 +530,8 @@ void setup()
       }
     }
   }
-  if(usedDefaultId > 0) {
-    LOG_FILE.println("!! More than one image did not specify a SCSI ID. Last file will be used at ID 1. !!");
+  if(usedDefaultId > 1) {
+    LOG_FILE.println("!! More than one image did not specify a SCSI ID. Last file will be used at ID 1 !!");
     LOG_FILE.sync();
   }
   root.close();
