@@ -59,12 +59,26 @@ https://github.com/erichelgeson/BlueSCSI/wiki/Troubleshooting
 
 ## Hardware Versions
 
-### 1.1-a (in testing)
+### 1.1-a (Latest)
 
-* Other SCSI connection types
-* More silk screen art
+#### 1.1-a Desktop
 
-### 1.0-c (Latest)
+* Binky! There are now resistors and pin outs for Power and Activity LED's
+* Resistor nets flipped all the same way
+* 50 pin allows for right angle connector
+* SD Card facing out the back - gives some better options for mounting and access
+* New bracket that uses less filament and has mounting options for most cases
+* Better mounting holes on the PCB
+* New artwork by @Stephen
+
+#### 1.1-a DB25
+
+* Plugs directly into the DB25 port of your Mac.
+* Removed unnecessary components.
+* Termination is always on.
+  * If you do not need termination you can socket or not install the resistor nets (this would be an unusual case)
+
+### 1.0-c
 
 * Fixed issue with diode footprint being too small
 * Fixed issue with external power and `TERMPOWER`

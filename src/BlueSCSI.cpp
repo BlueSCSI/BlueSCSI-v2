@@ -251,7 +251,7 @@ static const byte db2scsiid[256]={
 #endif
 
 // Log File
-#define VERSION "1.1-SNAPSHOT"
+#define VERSION "1.1-20211215"
 #define LOG_FILENAME "LOG.txt"
 FsFile LOG_FILE;
 
