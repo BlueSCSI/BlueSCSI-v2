@@ -1,4 +1,9 @@
 /*  
+ *  AzulSCSI
+ *  Copyright (c) 2022 Rabbit Hole Computing
+ * 
+ * This project is based on BlueSCSI:
+ *
  *  BlueSCSI
  *  Copyright (c) 2021  Eric Helgeson, Androda
  *  

@@ -1,7 +1,9 @@
 Software
 -----
 
-This fork of BlueSCSI (called AzulSCSI) is licensed under the GPL version 3 or any later version.
+AzulSCSI - Copyright (c) 2022 Rabbit Hole Computing
+
+AzulSCSI is based on BlueSCSI and licensed under the GPL version 3 or any later version.
 https://www.gnu.org/licenses/gpl-3.0.html
 ----
 BlueSCSI code is Copyright (C) 2021  Eric Helgeson.
