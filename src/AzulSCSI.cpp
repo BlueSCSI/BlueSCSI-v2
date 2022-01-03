@@ -40,12 +40,10 @@
  *     CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.  
  */
 
-#include <Arduino.h> // For Platform.IO
-#include <SdFat.h>
+#include "platform_GD32F205.h"
 
-#ifdef USE_STM32_DMA
-#warning "warning USE_STM32_DMA"
-#endif
+#if 0
+#include <SdFat.h>
 
 #define DEBUG            0      // 0:No debug information output
                                 // 1: Debug information output to USB Serial
@@ -1453,4 +1451,19 @@ BusFree:
   //SCSI_OUT(vIO ,inactive) // gpio_write(IO, low);
   //SCSI_OUT(vBSY,inactive)
   SCSI_TARGET_INACTIVE() // Turn off BSY, REQ, MSG, CD, IO output
+}
+
+#endif
+
+int main(void)
+{
+  platform_init();
+
+  while (1)
+  {
+    LED_ON();
+    for (int i = 0; i < 1000000; i++) asm("nop");
+    LED_OFF();
+    for (int i = 0; i < 1000000; i++) asm("nop");
+  }
 }
