@@ -1,10 +1,19 @@
-// Platform-specific definitions.
+// Platform-specific definitions for AzulSCSI.
 // Can be customized for different microcontrollers, this file is for GD32F205VCT6.
 
 #pragma once
 
 #include <gd32f20x.h>
 #include <gd32f20x_gpio.h>
+
+#ifdef __cplusplus
+// SD card driver for SdFat
+class SdSpiConfig;
+extern SdSpiConfig g_sd_spi_config;
+#define SD_CONFIG g_sd_spi_config
+
+extern "C" {
+#endif
 
 // GPIO definitions
 
@@ -28,6 +37,7 @@
 #define SCSI_OUT_RST  GPIO_PIN_13
 #define SCSI_OUT_BSY  GPIO_PIN_14
 #define SCSI_OUT_DBP  GPIO_PIN_15
+#define SCSI_OUT_DATA_MASK (0x00FF | SCSI_OUT_DBP)
 #define SCSI_OUT_MASK 0xFFFF
 
 // SCSI input port
@@ -42,6 +52,7 @@
 #define SCSI_IN_DB0   GPIO_PIN_8
 #define SCSI_IN_DBP   GPIO_PIN_7
 #define SCSI_IN_MASK  (SCSI_IN_DB7|SCSI_IN_DB6|SCSI_IN_DB5|SCSI_IN_DB4|SCSI_IN_DB3|SCSI_IN_DB2|SCSI_IN_DB1|SCSI_IN_DB0|SCSI_IN_DBP)
+#define SCSI_IN_SHIFT 8
 
 // Various SCSI status signals
 #define SCSI_ATN_PORT GPIOB // FIXME: Change to 5V-tolerant pin
@@ -52,8 +63,15 @@
 #define SCSI_SEL_PIN  GPIO_PIN_11
 #define SCSI_ACK_PORT GPIOB
 #define SCSI_ACK_PIN  GPIO_PIN_12
+
+// RST pin uses EXTI interrupt
 #define SCSI_RST_PORT GPIOB
 #define SCSI_RST_PIN  GPIO_PIN_13
+#define SCSI_RST_EXTI EXTI_13
+#define SCSI_RST_EXTI_SOURCE_PORT GPIO_PORT_SOURCE_GPIOB
+#define SCSI_RST_EXTI_SOURCE_PIN GPIO_PIN_SOURCE_13
+#define SCSI_RST_IRQ  EXTI10_15_IRQHandler
+#define SCSI_RST_IRQn EXTI10_15_IRQn
 
 // Terminator enable/disable config, active low
 #define SCSI_TERM_EN_PORT GPIOC
@@ -81,53 +99,52 @@
 #define LED_OFF()    gpio_bit_set(LED_PORT, LED_PINS)
 
 // Debug logging functions
-#define LOG(XX)     //Serial.print(XX)
-#define LOGHEX(XX)  //Serial.print(XX, HEX)
-#define LOGN(XX)    //Serial.println(XX)
-#define LOGHEXN(XX) //Serial.println(XX, HEX)
+void azplatform_log(const char *s);
+
+// Minimal millis() implementation as GD32F205 does not
+// have an Arduino core yet.
+unsigned long millis();
+void delay(unsigned long ms);
+
+// Precise nanosecond delays
+static inline void delay_100ns()
+{
+    asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+}
 
 // Initialize SPI and GPIO configuration
-// Clock has already been initialized by system_gd32f20x.c
-static void platform_init()
-{
-    // Enable needed clocks
-    rcu_periph_clock_enable(RCU_GPIOA);
-    rcu_periph_clock_enable(RCU_GPIOB);
-    rcu_periph_clock_enable(RCU_GPIOC);
-    rcu_periph_clock_enable(RCU_GPIOD);
-    rcu_periph_clock_enable(RCU_GPIOE);
+void azplatform_init();
 
-    // Switch to SWD debug port (disable JTAG) to release PB4 as GPIO
-    gpio_pin_remap_config(GPIO_SWJ_SWDPENABLE_REMAP, ENABLE);    
+// Set callback for when SCSI_RST pin goes low
+void azplatform_set_rst_callback(void (*callback)());
 
-    // SCSI pins.
-    // Initialize open drain outputs to high.
-    gpio_bit_set(SCSI_OUT_PORT, SCSI_OUT_MASK);
-    gpio_init(SCSI_OUT_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_MASK);
-    gpio_init(SCSI_IN_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_IN_MASK);
-    gpio_init(SCSI_ATN_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_ATN_PIN);
-    gpio_init(SCSI_BSY_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_BSY_PIN);
-    gpio_init(SCSI_SEL_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_SEL_PIN);
-    gpio_init(SCSI_ACK_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_ACK_PIN);
-    gpio_init(SCSI_RST_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_RST_PIN);
+// Write a single SCSI pin.
+// Example use: SCSI_OUT(ATN, 1) sets SCSI_ATN to low (active) state.
+#define SCSI_OUT(pin, state) \
+    GPIO_BOP(SCSI_OUT_PORT) = (SCSI_OUT_ ## pin) << (state ? 16 : 0)
 
-    // Terminator enable
-    gpio_bit_set(SCSI_TERM_EN_PORT, SCSI_TERM_EN_PIN);
-    gpio_init(SCSI_TERM_EN_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_2MHZ, SCSI_TERM_EN_PIN);
+// Read a single SCSI pin.
+// Example use: SCSI_IN(ATN), returns 1 for active low state.
+#define SCSI_IN(pin) \
+    ((GPIO_ISTAT(SCSI_ ## pin ## _PORT) & (SCSI_ ## pin ## _PIN)) ? 0 : 1)
 
-    // SD card pins
-    gpio_init(SD_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SD_CS_PIN);
-    gpio_init(SD_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, SD_CLK_PIN);
-    gpio_init(SD_PORT, GPIO_MODE_IN_FLOATING, 0, SD_MISO_PIN);
-    gpio_init(SD_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, SD_MOSI_PIN);
+// Write SCSI data bus
+extern const uint32_t g_scsi_out_byte_to_bop[256];
+#define SCSI_OUT_DATA(data) \
+    GPIO_BOP(SCSI_OUT_PORT) = g_scsi_out_byte_to_bop[(uint8_t)(data)]
 
-    // DIP switches
-    gpio_init(DIP_PORT, GPIO_MODE_IPD, 0, DIPSW1_PIN | DIPSW2_PIN | DIPSW3_PIN);
+// Release SCSI data bus
+#define SCSI_RELEASE_DATA() \
+    GPIO_BOP(SCSI_OUT_PORT) = SCSI_OUT_DATA_MASK
 
-    // LED pins
-    gpio_bit_set(LED_PORT, LED_PINS);
-    gpio_init(LED_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_2MHZ, LED_PINS);
+// Release all SCSI outputs
+#define SCSI_RELEASE_OUTPUTS() \
+    GPIO_BOP(SCSI_OUT_PORT) = SCSI_OUT_MASK
 
-    // SWO trace pin on PB3
-    gpio_init(GPIOB, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_3);
+// Read SCSI data bus
+#define SCSI_IN_DATA(data) \
+    ((GPIO_ISTAT(SCSI_IN_PORT) & SCSI_IN_MASK) >> SCSI_IN_SHIFT)
+
+#ifdef __cplusplus
 }
+#endif
