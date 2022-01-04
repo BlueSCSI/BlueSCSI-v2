@@ -40,226 +40,59 @@
  *     CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.  
  */
 
-#include "platform_GD32F205.h"
-
-#if 0
 #include <SdFat.h>
+#include <minIni.h>
+#include <string.h>
+#include <ctype.h>
+#include "AzulSCSI_config.h"
+#include "AzulSCSI_platform.h"
+#include "AzulSCSI_log.h"
 
-#define DEBUG            0      // 0:No debug information output
-                                // 1: Debug information output to USB Serial
-                                // 2: Debug information output to LOG.txt (slow)
-
-#define SCSI_SELECT      0      // 0 for STANDARD
-                                // 1 for SHARP X1turbo
-                                // 2 for NEC PC98
-#define READ_SPEED_OPTIMIZE  1 // Faster reads
-#define WRITE_SPEED_OPTIMIZE 1 // Speeding up writes
-#define USE_DB2ID_TABLE      1 // Use table to get ID from SEL-DB
-
-// SCSI config
-#define NUM_SCSIID  7          // Maximum number of supported SCSI-IDs (The minimum is 0)
-#define NUM_SCSILUN 2          // Maximum number of LUNs supported     (The minimum is 0)
-#define READ_PARITY_CHECK 0    // Perform read parity check (unverified)
-
-// HDD format
-#define MAX_BLOCKSIZE 1024     // Maximum BLOCK size
-
-// SDFAT
-#define SD1_CONFIG SdSpiConfig(PA4, DEDICATED_SPI, SD_SCK_MHZ(SPI_FULL_SPEED), &SPI)
 SdFs SD;
 
-#if DEBUG == 1
-#define LOG(XX)     Serial.print(XX)
-#define LOGHEX(XX)  Serial.print(XX, HEX)
-#define LOGN(XX)    Serial.println(XX)
-#define LOGHEXN(XX) Serial.println(XX, HEX)
-#elif DEBUG == 2
-#define LOG(XX)     LOG_FILE.println(XX); LOG_FILE.sync();
-#define LOGHEX(XX)  LOG_FILE.println(XX, HEX); LOG_FILE.sync();
-#define LOGN(XX)    LOG_FILE.println(XX); LOG_FILE.sync();
-#define LOGHEXN(XX) LOG_FILE.println(XX, HEX); LOG_FILE.sync();
-#else
-#define LOG(XX)     //Serial.print(XX)
-#define LOGHEX(XX)  //Serial.print(XX, HEX)
-#define LOGN(XX)    //Serial.println(XX)
-#define LOGHEXN(XX) //Serial.println(XX, HEX)
-#endif
+/***********************************/
+/* Error reporting by blinking led */
+/***********************************/
 
-#define active   1
-#define inactive 0
-#define high 0
-#define low 1
+#define BLINK_ERROR_NO_IMAGES  3 
+#define BLINK_ERROR_NO_SD_CARD 5
 
-#define isHigh(XX) ((XX) == high)
-#define isLow(XX) ((XX) != high)
-
-#define gpio_mode(pin,val) gpio_set_mode(PIN_MAP[pin].gpio_device, PIN_MAP[pin].gpio_bit, val);
-#define gpio_write(pin,val) gpio_write_bit(PIN_MAP[pin].gpio_device, PIN_MAP[pin].gpio_bit, val)
-#define gpio_read(pin) gpio_read_bit(PIN_MAP[pin].gpio_device, PIN_MAP[pin].gpio_bit)
-
-//#define DB0       PB8     // SCSI:DB0
-//#define DB1       PB9     // SCSI:DB1
-//#define DB2       PB10    // SCSI:DB2
-//#define DB3       PB11    // SCSI:DB3
-//#define DB4       PB12    // SCSI:DB4
-//#define DB5       PB13    // SCSI:DB5
-//#define DB6       PB14    // SCSI:DB6
-//#define DB7       PB15    // SCSI:DB7
-//#define DBP       PB0     // SCSI:DBP
-#define ATN       PA8      // SCSI:ATN
-#define BSY       PA9      // SCSI:BSY
-#define ACK       PA10     // SCSI:ACK
-#define RST       PA15     // SCSI:RST
-#define MSG       PB3      // SCSI:MSG
-#define SEL       PB4      // SCSI:SEL
-#define CD        PB5      // SCSI:C/D
-#define REQ       PB6      // SCSI:REQ
-#define IO        PB7      // SCSI:I/O
-#define LED2      PA0      // External LED
-
-#define SD_CS     PA4      // SDCARD:CS
-#define LED       PC13     // LED
-
-// GPIO register port
-#define PAREG GPIOA->regs
-#define PBREG GPIOB->regs
-
-// LED control
-#define LED_ON()       gpio_write(LED, high); gpio_write(LED2, low);
-#define LED_OFF()      gpio_write(LED, low); gpio_write(LED2, high);
-
-// Virtual pin (Arduio compatibility is slow, so make it MCU-dependent)
-#define PA(BIT)       (BIT)
-#define PB(BIT)       (BIT+16)
-// Virtual pin decoding
-#define GPIOREG(VPIN)    ((VPIN)>=16?PBREG:PAREG)
-#define BITMASK(VPIN) (1<<((VPIN)&15))
-
-#define vATN       PA(8)      // SCSI:ATN
-#define vBSY       PA(9)      // SCSI:BSY
-#define vACK       PA(10)     // SCSI:ACK
-#define vRST       PA(15)     // SCSI:RST
-#define vMSG       PB(3)      // SCSI:MSG
-#define vSEL       PB(4)      // SCSI:SEL
-#define vCD        PB(5)      // SCSI:C/D
-#define vREQ       PB(6)      // SCSI:REQ
-#define vIO        PB(7)      // SCSI:I/O
-#define vSD_CS     PA(4)      // SDCARD:CS
-
-// SCSI output pin control: opendrain active LOW (direct pin drive)
-#define SCSI_OUT(VPIN,ACTIVE) { GPIOREG(VPIN)->BSRR = BITMASK(VPIN)<<((ACTIVE)?16:0); }
-
-// SCSI input pin check (inactive=0,avtive=1)
-#define SCSI_IN(VPIN) ((~GPIOREG(VPIN)->IDR>>(VPIN&15))&1)
-
-// GPIO mode
-// IN , FLOAT      : 4
-// IN , PU/PD      : 8
-// OUT, PUSH/PULL  : 3
-// OUT, OD         : 1
-//#define DB_MODE_OUT 3
-#define DB_MODE_OUT 1
-#define DB_MODE_IN  8
-
-// Put DB and DP in output mode
-#define SCSI_DB_OUTPUT() { PBREG->CRL=(PBREG->CRL &0xfffffff0)|DB_MODE_OUT; PBREG->CRH = 0x11111111*DB_MODE_OUT; }
-// Put DB and DP in input mode
-#define SCSI_DB_INPUT()  { PBREG->CRL=(PBREG->CRL &0xfffffff0)|DB_MODE_IN ; PBREG->CRH = 0x11111111*DB_MODE_IN;  }
-
-// Turn on the output only for BSY
-#define SCSI_BSY_ACTIVE()      { gpio_mode(BSY, GPIO_OUTPUT_OD); SCSI_OUT(vBSY,  active) }
-// BSY,REQ,MSG,CD,IO Turn on the output (no change required for OD)
-#define SCSI_TARGET_ACTIVE()   { }
-// BSY,REQ,MSG,CD,IO Turn off output, BSY is the last input
-#define SCSI_TARGET_INACTIVE() { SCSI_OUT(vREQ,inactive); SCSI_OUT(vMSG,inactive); SCSI_OUT(vCD,inactive);SCSI_OUT(vIO,inactive); SCSI_OUT(vBSY,inactive); gpio_mode(BSY, GPIO_INPUT_PU); }
-
-// HDDiamge file
-#define HDIMG_ID_POS  2                 // Position to embed ID number
-#define HDIMG_LUN_POS 3                 // Position to embed LUN numbers
-#define HDIMG_BLK_POS 5                 // Position to embed block size numbers
-#define MAX_FILE_PATH 32                // Maximum file name length
-
-// HDD image
-typedef struct hddimg_struct
+void blinkStatus(int count)
 {
-	FsFile      m_file;                 // File object
-	uint64_t    m_fileSize;             // File size
-	size_t      m_blocksize;            // SCSI BLOCK size
-}HDDIMG;
-HDDIMG  img[NUM_SCSIID][NUM_SCSILUN]; // Maximum number
+  azlogn("Blinking status code: ", count);
+  for (int i = 0; i < count; i++)
+  {
+    LED_ON();
+    delay(250);
+    LED_OFF();
+    delay(250);
+  }
+}
 
-uint8_t       m_senseKey = 0;         // Sense key
-volatile bool m_isBusReset = false;   // Bus reset
+/*********************************/
+/* Global state for SCSI code    */
+/*********************************/
 
-byte          scsi_id_mask;           // Mask list of responding SCSI IDs
-byte          m_id;                   // Currently responding SCSI-ID
-byte          m_lun;                  // Logical unit number currently responding
-byte          m_sts;                  // Status byte
-byte          m_msg;                  // Message bytes
-HDDIMG       *m_img;                  // HDD image for current SCSI-ID, LUN
-byte          m_buf[MAX_BLOCKSIZE+1]; // General purpose buffer + overrun fetch
-int           m_msc;
-byte          m_msb[256];             // Command storage bytes
+static volatile bool g_busreset = false;
+static uint8_t g_sensekey = 0;
+uint8_t   g_scsi_id_mask;    // Mask list of responding SCSI IDs
+uint8_t   g_scsi_id;         // Currently responding SCSI-ID
+uint8_t   g_scsi_lun;        // Logical unit number currently responding
+uint8_t   g_scsi_sts;        // Status byte
 
-/*
- *  Data byte to BSRR register setting value and parity table
-*/
 
-// Parity bit generation
-#define PTY(V)   (1^((V)^((V)>>1)^((V)>>2)^((V)>>3)^((V)>>4)^((V)>>5)^((V)>>6)^((V)>>7))&1)
+/*********************************/
+/* SCSI Drive Vendor information */
+/*********************************/
 
-// Data byte to BSRR register setting value conversion table
-// BSRR[31:24] =  DB[7:0]
-// BSRR[   16] =  PTY(DB)
-// BSRR[15: 8] = ~DB[7:0]
-// BSRR[    0] = ~PTY(DB)
+// Quirks for specific SCSI hosts
+enum scsi_quirks_t {
+  SCSI_QUIRKS_STANDARD = 0,
+  SCSI_QUIRKS_SHARP = 1,
+  SCSI_QUIRKS_NEC_PC98 = 2
+} g_scsi_quirks;
 
-// Set DBP, set REQ = inactive
-#define DBP(D)    ((((((uint32_t)(D)<<8)|PTY(D))*0x00010001)^0x0000ff01)|BITMASK(vREQ))
-
-#define DBP8(D)   DBP(D),DBP(D+1),DBP(D+2),DBP(D+3),DBP(D+4),DBP(D+5),DBP(D+6),DBP(D+7)
-#define DBP32(D)  DBP8(D),DBP8(D+8),DBP8(D+16),DBP8(D+24)
-
-// BSRR register control value that simultaneously performs DB set, DP set, and REQ = H (inactrive)
-static const uint32_t db_bsrr[256]={
-  DBP32(0x00),DBP32(0x20),DBP32(0x40),DBP32(0x60),
-  DBP32(0x80),DBP32(0xA0),DBP32(0xC0),DBP32(0xE0)
-};
-// Parity bit acquisition
-#define PARITY(DB) (db_bsrr[DB]&1)
-
-// Macro cleaning
-#undef DBP32
-#undef DBP8
-//#undef DBP
-//#undef PTY
-
-#if USE_DB2ID_TABLE
-/* DB to SCSI-ID translation table */
-static const byte db2scsiid[256]={
-  0xff,
-  0,
-  1,1,
-  2,2,2,2,
-  3,3,3,3,3,3,3,3,
-  4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
-  5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
-  6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
-  6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
-  7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
-  7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
-  7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
-  7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7
-};
-#endif
-
-// Log File
-#define VERSION "1.1-SNAPSHOT"
-#define LOG_FILENAME "LOG.txt"
-FsFile LOG_FILE;
-
-// SCSI Drive Vendor information
-byte SCSI_INFO_BUF[36] = {
+uint8_t SCSI_INFO_BUF[36] = {
   0x00, //device type
   0x00, //RMB = 0
   0x01, //ISO, ECMA, ANSI version
@@ -272,93 +105,49 @@ byte SCSI_INFO_BUF[36] = {
   '1', '.', '0', ' ' // version 4
 };
 
-void onFalseInit(void);
-void noSDCardFound(void);
-void onBusReset(void);
-void initFileLog(void);
-void finalizeFileLog(void);
-
-/*
- * IO read.
- */
-inline byte readIO(void)
+void readSCSIDeviceConfig()
 {
-  // Port input data register
-  uint32_t ret = GPIOB->regs->IDR;
-  byte bret = (byte)((~ret)>>8);
-#if READ_PARITY_CHECK
-  if((db_bsrr[bret]^ret)&1)
-    m_sts |= 0x01; // parity error
-#endif
+  char tmp[32];
 
-  return bret;
-}
+  g_scsi_quirks = (scsi_quirks_t)ini_getl("SCSI", "Quirks", SCSI_QUIRKS_STANDARD, CONFIGFILE);
 
-// If config file exists, read the first three lines and copy the contents.
-// File must be well formed or you will get junk in the SCSI Vendor fields.
-void readSCSIDeviceConfig() {
-  FsFile config_file = SD.open("scsi-config.txt", O_RDONLY);
-  if (!config_file.isOpen()) {
-    return;
-  }
-  char vendor[9];
-  memset(vendor, 0, sizeof(vendor));
-  config_file.readBytes(vendor, sizeof(vendor));
-  LOG_FILE.print("SCSI VENDOR: ");
-  LOG_FILE.println(vendor);
-  memcpy(&(SCSI_INFO_BUF[8]), vendor, 8);
+  const char *default_vendor = DEFAULT_VENDOR;
+  const char *default_product = DEFAULT_PRODUCT;
+  const char *default_version = DEFAULT_VERSION;
 
-  char product[17];
-  memset(product, 0, sizeof(product));
-  config_file.readBytes(product, sizeof(product));
-  LOG_FILE.print("SCSI PRODUCT: ");
-  LOG_FILE.println(product);
-  memcpy(&(SCSI_INFO_BUF[16]), product, 16);
-
-  char version[5];
-  memset(version, 0, sizeof(version));
-  config_file.readBytes(version, sizeof(version));
-  LOG_FILE.print("SCSI VERSION: ");
-  LOG_FILE.println(version);
-  memcpy(&(SCSI_INFO_BUF[32]), version, 4);
-  config_file.close();
-}
-
-// read SD information and print to logfile
-void readSDCardInfo()
-{
-  cid_t sd_cid;
-
-  if(SD.card()->readCID(&sd_cid))
+  if (g_scsi_quirks == SCSI_QUIRKS_NEC_PC98)
   {
-    LOG_FILE.print("Sd MID:");
-    LOG_FILE.print(sd_cid.mid, 16);
-    LOG_FILE.print(" OID:");
-    LOG_FILE.print(sd_cid.oid[0]);
-    LOG_FILE.println(sd_cid.oid[1]);
-
-    LOG_FILE.print("Sd Name:");
-    LOG_FILE.print(sd_cid.pnm[0]);
-    LOG_FILE.print(sd_cid.pnm[1]);
-    LOG_FILE.print(sd_cid.pnm[2]);
-    LOG_FILE.print(sd_cid.pnm[3]);
-    LOG_FILE.println(sd_cid.pnm[4]);
-
-    LOG_FILE.print("Sd Date:");
-    LOG_FILE.print(sd_cid.mdt_month);
-    LOG_FILE.print("/20"); // CID year is 2000 + high/low
-    LOG_FILE.print(sd_cid.mdt_year_high);
-    LOG_FILE.println(sd_cid.mdt_year_low);
-
-    LOG_FILE.print("Sd Serial:");
-    LOG_FILE.println(sd_cid.psn);
-    LOG_FILE.sync();
+    default_vendor = "NECITSU ";
+    default_product = "ArdSCSino       ";
+    default_version = "0010";
   }
+
+  memset(tmp, 0, sizeof(tmp));
+  ini_gets("SCSI", "Vendor", default_vendor, tmp, sizeof(tmp), CONFIGFILE);
+  memcpy(&(SCSI_INFO_BUF[8]), tmp, 8);
+
+  memset(tmp, 0, sizeof(tmp));
+  ini_gets("SCSI", "Product", default_product, tmp, sizeof(tmp), CONFIGFILE);
+  memcpy(&(SCSI_INFO_BUF[16]), tmp, 16);
+
+  memset(tmp, 0, sizeof(tmp));
+  ini_gets("SCSI", "Version", default_version, tmp, sizeof(tmp), CONFIGFILE);
+  memcpy(&(SCSI_INFO_BUF[32]), tmp, 4);
 }
 
-/*
- * Open HDD image file
- */
+/*********************************/
+/* Harddisk image file handling  */
+/*********************************/
+
+// Information about active HDD image
+typedef struct hddimg_struct
+{
+	FsFile      m_file;                 // File object
+	uint64_t    m_fileSize;             // File size
+	size_t      m_blocksize;            // SCSI BLOCK size
+} HDDIMG;
+HDDIMG g_hddimg[NUM_SCSIID][NUM_SCSILUN]; // Allocate storage for all images
+static HDDIMG *g_currentimg = NULL; // Pointer to active image based on LUN/ID
 
 bool hddimageOpen(HDDIMG *h,const char *image_name,int id,int lun,int blocksize)
 {
@@ -368,97 +157,27 @@ bool hddimageOpen(HDDIMG *h,const char *image_name,int id,int lun,int blocksize)
   if(h->m_file.isOpen())
   {
     h->m_fileSize = h->m_file.size();
-    LOG_FILE.print("Imagefile: ");
-    LOG_FILE.print(image_name);
-    if(h->m_fileSize>0)
+    azlogn("Opened image file ", image_name, " fileSize: ", (int)h->m_fileSize, " bytes");
+    
+    if(h->m_fileSize > 0)
     {
-      // check blocksize dummy file
-      LOG_FILE.print(" / ");
-      LOG_FILE.print(h->m_fileSize);
-      LOG_FILE.print("bytes / ");
-      LOG_FILE.print(h->m_fileSize / 1024);
-      LOG_FILE.print("KiB / ");
-      LOG_FILE.print(h->m_fileSize / 1024 / 1024);
-      LOG_FILE.println("MiB");
       return true; // File opened
     }
     else
     {
       h->m_file.close();
       h->m_fileSize = h->m_blocksize = 0; // no file
-      LOG_FILE.println("FileSizeError");
+      azlogn("Error: image is empty");
     }
   }
   return false;
 }
 
-/*
- * Initialization.
- *  Initialize the bus and set the PIN orientation
- */
-void setup()
+// Iterate over the root path in the SD card looking for candidate image files.
+void findHDDImages()
 {
-  // PA15 / PB3 / PB4 Cannot be used
-  // JTAG Because it is used for debugging.
-  disableDebugPorts();
+  g_scsi_id_mask = 0x00;
 
-  // Serial initialization
-#if DEBUG > 0
-  Serial.begin(9600);
-  // If using a USB->TTL monitor instead of USB serial monitor - you can uncomment this.
-  //while (!Serial);
-#endif
-
-  // PIN initialization
-  gpio_mode(LED2, GPIO_OUTPUT_PP);
-  gpio_mode(LED, GPIO_OUTPUT_OD);
-  LED_OFF();
-
-  //GPIO(SCSI BUS)Initialization
-  //Port setting register (lower)
-//  GPIOB->regs->CRL |= 0x000000008; // SET INPUT W/ PUPD on PAB-PB0
-  //Port setting register (upper)
-  //GPIOB->regs->CRH = 0x88888888; // SET INPUT W/ PUPD on PB15-PB8
-//  GPIOB->regs->ODR = 0x0000FF00; // SET PULL-UPs on PB15-PB8
-  // DB and DP are input modes
-  SCSI_DB_INPUT()
-
-  // Input port
-  gpio_mode(ATN, GPIO_INPUT_PU);
-  gpio_mode(BSY, GPIO_INPUT_PU);
-  gpio_mode(ACK, GPIO_INPUT_PU);
-  gpio_mode(RST, GPIO_INPUT_PU);
-  gpio_mode(SEL, GPIO_INPUT_PU);
-  // Output port
-  gpio_mode(MSG, GPIO_OUTPUT_OD);
-  gpio_mode(CD,  GPIO_OUTPUT_OD);
-  gpio_mode(REQ, GPIO_OUTPUT_OD);
-  gpio_mode(IO,  GPIO_OUTPUT_OD);
-  // Turn off the output port
-  SCSI_TARGET_INACTIVE()
-
-  //Occurs when the RST pin state changes from HIGH to LOW
-  //attachInterrupt(PIN_MAP[RST].gpio_bit, onBusReset, FALLING);
-
-  LED_ON();
-
-  // clock = 36MHz , about 4Mbytes/sec
-  if(!SD.begin(SD1_CONFIG)) {
-#if DEBUG > 0
-    Serial.println("SD initialization failed!");
-#endif
-    noSDCardFound();
-  }
-  initFileLog();
-  readSCSIDeviceConfig();
-  readSDCardInfo();
-
-  //Sector data overrun byte setting
-  m_buf[MAX_BLOCKSIZE] = 0xff; // DB0 all off,DBP off
-  //HD image file open
-  scsi_id_mask = 0x00;
-
-  // Iterate over the root path in the SD card looking for candidate image files.
   SdFile root;
   root.open("/");
   SdFile file;
@@ -470,9 +189,7 @@ void setup()
     if(!file.isDir()) {
       file.getName(name, MAX_FILE_PATH+1);
       file.close();
-      String file_name = String(name);
-      file_name.toLowerCase();
-      if(file_name.startsWith("hd")) {
+      if (tolower(name[0]) == 'h' && tolower(name[1]) == 'd') {
         // Defaults for Hard Disks
         int id  = 1; // 0 and 3 are common in Macs for physical HD and CD, so avoid them.
         int lun = 0;
@@ -480,7 +197,7 @@ void setup()
 
         // Positionally read in and coerase the chars to integers.
         // We only require the minimum and read in the next if provided.
-        int file_name_length = file_name.length();
+        int file_name_length = strlen(name);
         if(file_name_length > 2) { // HD[N]
           int tmp_id = name[HDIMG_ID_POS] - '0';
 
@@ -496,7 +213,7 @@ void setup()
             lun = tmp_lun; // If valid id, set it, else use default
           }
         }
-        int blk1, blk2, blk3, blk4 = 0;
+        int blk1 = 0, blk2 = 0, blk3 = 0, blk4 = 0;
         if(file_name_length > 8) { // HD00_[111]
           blk1 = name[HDIMG_BLK_POS] - '0';
           blk2 = name[HDIMG_BLK_POS+1] - '0';
@@ -513,206 +230,107 @@ void setup()
         }
 
         if(id < NUM_SCSIID && lun < NUM_SCSILUN) {
-          HDDIMG *h = &img[id][lun];
+          HDDIMG *h = &g_hddimg[id][lun];
+          azlogn("Trying to open ", name, " for id:", id, " lun:", lun);
           imageReady = hddimageOpen(h,name,id,lun,blk);
           if(imageReady) { // Marked as a responsive ID
-            scsi_id_mask |= 1<<id;
+            g_scsi_id_mask |= 1<<id;
           }
         } else {
-          LOG_FILE.print("Bad LUN or SCSI id for image: ");
-          LOG_FILE.println(name);
-          LOG_FILE.sync();
+          azlogn("Invalid lun or id for image ", name);
         }
       } else {
-          LOG_FILE.print("Not an image: ");
-          LOG_FILE.println(name);
-          LOG_FILE.sync();
+        azlogn("Skipping file ", name);
       }
     }
   }
+
   if(usedDefaultId > 0) {
-    LOG_FILE.println("!! More than one image did not specify a SCSI ID. Last file will be used at ID 1. !!");
-    LOG_FILE.sync();
+    azlogn("!! More than one image did not specify a SCSI ID. Last file will be used at ID 1. !!");
   }
   root.close();
 
   // Error if there are 0 image files
-  if(scsi_id_mask==0) {
-    LOG_FILE.println("ERROR: No valid images found!");
-    onFalseInit();
+  if(g_scsi_id_mask==0) {
+    azlogn("ERROR: No valid images found!");
+    blinkStatus(BLINK_ERROR_NO_IMAGES);
   }
 
-  finalizeFileLog();
-  LED_OFF();
-  //Occurs when the RST pin state changes from HIGH to LOW
-  attachInterrupt(PIN_MAP[RST].gpio_bit, onBusReset, FALLING);
-}
-
-/*
- * Setup initialization logfile
- */
-void initFileLog() {
-  LOG_FILE = SD.open(LOG_FILENAME, O_WRONLY | O_CREAT | O_TRUNC);
-  LOG_FILE.println("BlueSCSI <-> SD - https://github.com/erichelgeson/BlueSCSI");
-  LOG_FILE.print("VERSION: ");
-  LOG_FILE.println(VERSION);
-  LOG_FILE.print("DEBUG:");
-  LOG_FILE.print(DEBUG);
-  LOG_FILE.print(" SCSI_SELECT:");
-  LOG_FILE.print(SCSI_SELECT);
-  LOG_FILE.print(" SDFAT_FILE_TYPE:");
-  LOG_FILE.println(SDFAT_FILE_TYPE);
-  LOG_FILE.print("SdFat version: ");
-  LOG_FILE.println(SD_FAT_VERSION_STR);
-  LOG_FILE.print("SdFat Max FileName Length: ");
-  LOG_FILE.println(MAX_FILE_PATH);
-  LOG_FILE.println("Initialized SD Card - lets go!");
-  LOG_FILE.sync();
-}
-
-/*
- * Finalize initialization logfile
- */
-void finalizeFileLog() {
-  // View support drive map
-  LOG_FILE.print("ID");
-  for(int lun=0;lun<NUM_SCSILUN;lun++)
+  // Print SCSI drive map
+  azlogn("SCSI drive map:");
+  azlog("ID");
+  for (int lun = 0; lun < NUM_SCSILUN; lun++)
   {
-    LOG_FILE.print(":LUN");
-    LOG_FILE.print(lun);
+    azlog(":LUN", lun);
   }
-  LOG_FILE.println(":");
-  //
-  for(int id=0;id<NUM_SCSIID;id++)
+  azlogn(":");
+
+  for (int id = 0; id < NUM_SCSIID; id++)
   {
-    LOG_FILE.print(" ");
-    LOG_FILE.print(id);
-    for(int lun=0;lun<NUM_SCSILUN;lun++)
+    azlog(" ", id);
+    for (int lun = 0; lun < NUM_SCSILUN; lun++)
     {
-      HDDIMG *h = &img[id][lun];
-      if( (lun<NUM_SCSILUN) && (h->m_file))
+      HDDIMG *h = &g_hddimg[id][lun];
+      if (h->m_file)
       {
-        LOG_FILE.print((h->m_blocksize<1000) ? ": " : ":");
-        LOG_FILE.print(h->m_blocksize);
+        azlog((h->m_blocksize<1000) ? ": " : ":");
+        azlog((int)h->m_blocksize);
       }
-      else      
-        LOG_FILE.print(":----");
+      else
+      {
+        azlog(":----");
+      }
     }
-    LOG_FILE.println(":");
-  }
-  LOG_FILE.println("Finished initialization of SCSI Devices - Entering main loop.");
-  LOG_FILE.sync();
-  LOG_FILE.close();
-}
-
-/*
- * Initialization failed, blink 3x fast
- */
-void onFalseInit(void)
-{
-  LOG_FILE.sync();
-  while(true) {
-    for(int i = 0; i < 3; i++) {
-      LED_ON();
-      delay(250);
-      LED_OFF();
-      delay(250);
-    }
-    delay(3000);
+    azlogn(":");
   }
 }
 
-/*
- * No SC Card found, blink 5x fast
- */
-void noSDCardFound(void)
-{
-  while(true) {
-    for(int i = 0; i < 5; i++) {
-      LED_ON();
-      delay(250);
-      LED_OFF();
-      delay(250);
-    }
-    delay(3000);
-  }
-}
+/*********************************/
+/* SCSI bus communication        */
+/*********************************/
 
-/*
- * Bus reset interrupt.
- */
-void onBusReset(void)
-{
-#if SCSI_SELECT == 1
-  // SASI I / F for X1 turbo has RST pulse write cycle +2 clock ==
-  // I can't filter because it only activates about 1.25us
-  {{
-#else
-  if(isHigh(gpio_read(RST))) {
-    delayMicroseconds(20);
-    if(isHigh(gpio_read(RST))) {
-#endif  
-  // BUS FREE is done in the main process
-//      gpio_mode(MSG, GPIO_OUTPUT_OD);
-//      gpio_mode(CD,  GPIO_OUTPUT_OD);
-//      gpio_mode(REQ, GPIO_OUTPUT_OD);
-//      gpio_mode(IO,  GPIO_OUTPUT_OD);
-      // Should I enter DB and DBP once?
-      SCSI_DB_INPUT()
-
-      LOGN("BusReset!");
-      m_isBusReset = true;
-    }
-  }
-}
+#define active   1
+#define inactive 0
 
 /*
  * Read by handshake.
  */
-inline byte readHandshake(void)
+inline uint8_t readHandshake(void)
 {
-  SCSI_OUT(vREQ,active)
-  //SCSI_DB_INPUT()
-  while( ! SCSI_IN(vACK)) { if(m_isBusReset) return 0; }
-  byte r = readIO();
-  SCSI_OUT(vREQ,inactive)
-  while( SCSI_IN(vACK)) { if(m_isBusReset) return 0; }
+  SCSI_OUT(REQ,active);
+  while (!SCSI_IN(ACK)) { if(g_busreset) return 0; }
+  uint8_t r = SCSI_IN_DATA();
+  SCSI_OUT(REQ,inactive);
+  while (SCSI_IN(ACK)) { if(g_busreset) return 0; }
   return r;  
 }
 
 /*
  * Write with a handshake.
  */
-inline void writeHandshake(byte d)
+inline void writeHandshake(uint8_t d)
 {
-  GPIOB->regs->BSRR = db_bsrr[d]; // setup DB,DBP (160ns)
-  SCSI_DB_OUTPUT() // (180ns)
-  // ACK.Fall to DB output delay 100ns(MAX)  (DTC-510B)
-  SCSI_OUT(vREQ,inactive) // setup wait (30ns)
-  SCSI_OUT(vREQ,inactive) // setup wait (30ns)
-  SCSI_OUT(vREQ,inactive) // setup wait (30ns)
-  SCSI_OUT(vREQ,active)   // (30ns)
-  //while(!SCSI_IN(vACK)) { if(m_isBusReset){ SCSI_DB_INPUT() return; }}
-  while(!m_isBusReset && !SCSI_IN(vACK));
-  // ACK.Fall to REQ.Raise delay 500ns(typ.) (DTC-510B)
-  GPIOB->regs->BSRR = DBP(0xff);  // DB=0xFF , SCSI_OUT(vREQ,inactive)
-  // REQ.Raise to DB hold time 0ns
-  SCSI_DB_INPUT() // (150ns)
-  while( SCSI_IN(vACK)) { if(m_isBusReset) return; }
+  SCSI_OUT_DATA(d);
+  SCSI_OUT(REQ,inactive);
+  delay_100ns(); // ACK.Fall to DB output delay 100ns(MAX)  (DTC-510B)
+  SCSI_OUT(REQ, active);
+  while(!g_busreset && !SCSI_IN(ACK));
+  SCSI_OUT(REQ, inactive); // ACK.Fall to REQ.Raise max delay 500ns(typ.) (DTC-510B)
+  SCSI_RELEASE_DATA(); // REQ.Raise to DB hold time 0ns
+  while(!g_busreset && SCSI_IN(ACK));
 }
 
 /*
  * Data in phase.
- *  Send len bytes of data array p.
+ *  Send len uint8_ts of data array p.
  */
-void writeDataPhase(int len, const byte* p)
+void writeDataPhase(int len, const uint8_t* p)
 {
-  LOGN("DATAIN PHASE");
-  SCSI_OUT(vMSG,inactive) //  gpio_write(MSG, low);
-  SCSI_OUT(vCD ,inactive) //  gpio_write(CD, low);
-  SCSI_OUT(vIO ,  active) //  gpio_write(IO, high);
+  SCSI_OUT(MSG,inactive);
+  SCSI_OUT(CD ,inactive);
+  SCSI_OUT(IO ,  active);
   for (int i = 0; i < len; i++) {
-    if(m_isBusReset) {
+    if(g_busreset) {
       return;
     }
     writeHandshake(p[i]);
@@ -721,116 +339,23 @@ void writeDataPhase(int len, const byte* p)
 
 /* 
  * Data in phase.
- *  Send len block while reading from SD card.
+ *  Send len blocks while reading from SD card.
  */
-void writeDataPhaseSD(uint32_t adds, uint32_t len)
+void writeDataPhase_FromSD(uint32_t adds, uint32_t len)
 {
-  LOGN("DATAIN PHASE(SD)");
-  uint32_t pos = adds * m_img->m_blocksize;
-  m_img->m_file.seek(pos);
+  uint32_t pos = adds * g_currentimg->m_blocksize;
+  g_currentimg->m_file.seek(pos);
 
-  SCSI_OUT(vMSG,inactive) //  gpio_write(MSG, low);
-  SCSI_OUT(vCD ,inactive) //  gpio_write(CD, low);
-  SCSI_OUT(vIO ,  active) //  gpio_write(IO, high);
+  SCSI_OUT(MSG,inactive);
+  SCSI_OUT(CD ,inactive);
+  SCSI_OUT(IO ,  active);
 
-  for(uint32_t i = 0; i < len; i++) {
-      // Asynchronous reads will make it faster ...
-    m_img->m_file.read(m_buf, m_img->m_blocksize);
+  uint8_t buf[MAX_BLOCKSIZE];
 
-#if READ_SPEED_OPTIMIZE
-
-//#define REQ_ON() SCSI_OUT(vREQ,active)
-#define REQ_ON() (*db_dst = BITMASK(vREQ)<<16)
-#define FETCH_SRC()   (src_byte = *srcptr++)
-#define FETCH_BSRR_DB() (bsrr_val = bsrr_tbl[src_byte])
-#define REQ_OFF_DB_SET(BSRR_VAL) *db_dst = BSRR_VAL
-#define WAIT_ACK_ACTIVE()   while(!m_isBusReset && !SCSI_IN(vACK))
-#define WAIT_ACK_INACTIVE() do{ if(m_isBusReset) return; }while(SCSI_IN(vACK)) 
-
-    SCSI_DB_OUTPUT()
-    register byte *srcptr= m_buf;                 // Source buffer
-    register byte *endptr= m_buf +  m_img->m_blocksize; // End pointer
-
-    /*register*/ byte src_byte;                       // Send data bytes
-    register const uint32_t *bsrr_tbl = db_bsrr;  // Table to convert to BSRR
-    register uint32_t bsrr_val;                   // BSRR value to output (DB, DBP, REQ = ACTIVE)
-    register volatile uint32_t *db_dst = &(GPIOB->regs->BSRR); // Output port
-
-    // prefetch & 1st out
-    FETCH_SRC();
-    FETCH_BSRR_DB();
-    REQ_OFF_DB_SET(bsrr_val);
-    // DB.set to REQ.F setup 100ns max (DTC-510B)
-    // Maybe there should be some weight here
-    //　WAIT_ACK_INACTIVE();
-    do{
-      // 0
-      REQ_ON();
-      FETCH_SRC();
-      FETCH_BSRR_DB();
-      WAIT_ACK_ACTIVE();
-      // ACK.F  to REQ.R       500ns typ. (DTC-510B)
-      REQ_OFF_DB_SET(bsrr_val);
-      WAIT_ACK_INACTIVE();
-      // 1
-      REQ_ON();
-      FETCH_SRC();
-      FETCH_BSRR_DB();
-      WAIT_ACK_ACTIVE();
-      REQ_OFF_DB_SET(bsrr_val);
-      WAIT_ACK_INACTIVE();
-      // 2
-      REQ_ON();
-      FETCH_SRC();
-      FETCH_BSRR_DB();
-      WAIT_ACK_ACTIVE();
-      REQ_OFF_DB_SET(bsrr_val);
-      WAIT_ACK_INACTIVE();
-      // 3
-      REQ_ON();
-      FETCH_SRC();
-      FETCH_BSRR_DB();
-      WAIT_ACK_ACTIVE();
-      REQ_OFF_DB_SET(bsrr_val);
-      WAIT_ACK_INACTIVE();
-      // 4
-      REQ_ON();
-      FETCH_SRC();
-      FETCH_BSRR_DB();
-      WAIT_ACK_ACTIVE();
-      REQ_OFF_DB_SET(bsrr_val);
-      WAIT_ACK_INACTIVE();
-      // 5
-      REQ_ON();
-      FETCH_SRC();
-      FETCH_BSRR_DB();
-      WAIT_ACK_ACTIVE();
-      REQ_OFF_DB_SET(bsrr_val);
-      WAIT_ACK_INACTIVE();
-      // 6
-      REQ_ON();
-      FETCH_SRC();
-      FETCH_BSRR_DB();
-      WAIT_ACK_ACTIVE();
-      REQ_OFF_DB_SET(bsrr_val);
-      WAIT_ACK_INACTIVE();
-      // 7
-      REQ_ON();
-      FETCH_SRC();
-      FETCH_BSRR_DB();
-      WAIT_ACK_ACTIVE();
-      REQ_OFF_DB_SET(bsrr_val);
-      WAIT_ACK_INACTIVE();
-    }while(srcptr < endptr);
-    SCSI_DB_INPUT()
-#else
-    for(int j = 0; j < m_img->m_blocksize; j++) {
-      if(m_isBusReset) {
-        return;
-      }
-      writeHandshake(m_buf[j]);
-    }
-#endif
+  for(uint32_t i = 0; i < len; i++)
+  {
+    g_currentimg->m_file.read(buf, g_currentimg->m_blocksize);
+    writeDataPhase(g_currentimg->m_blocksize, buf);
   }
 }
 
@@ -838,169 +363,119 @@ void writeDataPhaseSD(uint32_t adds, uint32_t len)
  * Data out phase.
  *  len block read
  */
-void readDataPhase(int len, byte* p)
+void readDataPhase(int len, uint8_t* p)
 {
-  LOGN("DATAOUT PHASE");
-  SCSI_OUT(vMSG,inactive) //  gpio_write(MSG, low);
-  SCSI_OUT(vCD ,inactive) //  gpio_write(CD, low);
-  SCSI_OUT(vIO ,inactive) //  gpio_write(IO, low);
-  for(uint32_t i = 0; i < len; i++)
+  SCSI_OUT(MSG,inactive);
+  SCSI_OUT(CD ,inactive);
+  SCSI_OUT(IO ,inactive);
+  for(int i = 0; i < len; i++)
+  {
+    if (g_busreset) break;
     p[i] = readHandshake();
+  }
 }
 
 /*
  * Data out phase.
  *  Write to SD card while reading len block.
  */
-void readDataPhaseSD(uint32_t adds, uint32_t len)
+void readDataPhase_ToSD(uint32_t adds, uint32_t len)
 {
-  LOGN("DATAOUT PHASE(SD)");
-  uint32_t pos = adds * m_img->m_blocksize;
-  m_img->m_file.seek(pos);
-  SCSI_OUT(vMSG,inactive) //  gpio_write(MSG, low);
-  SCSI_OUT(vCD ,inactive) //  gpio_write(CD, low);
-  SCSI_OUT(vIO ,inactive) //  gpio_write(IO, low);
-  for(uint32_t i = 0; i < len; i++) {
-#if WRITE_SPEED_OPTIMIZE
-  register byte *dstptr= m_buf;
-	register byte *endptr= m_buf + m_img->m_blocksize;
+  uint32_t pos = adds * g_currentimg->m_blocksize;
+  g_currentimg->m_file.seek(pos);
 
-    for(dstptr=m_buf;dstptr<endptr;dstptr+=8) {
-      dstptr[0] = readHandshake();
-      dstptr[1] = readHandshake();
-      dstptr[2] = readHandshake();
-      dstptr[3] = readHandshake();
-      dstptr[4] = readHandshake();
-      dstptr[5] = readHandshake();
-      dstptr[6] = readHandshake();
-      dstptr[7] = readHandshake();
-      if(m_isBusReset) {
-        return;
-      }
-    }
-#else
-    for(int j = 0; j <  m_img->m_blocksize; j++) {
-      if(m_isBusReset) {
-        return;
-      }
-      m_buf[j] = readHandshake();
-    }
-#endif
-    m_img->m_file.write(m_buf, m_img->m_blocksize);
+  SCSI_OUT(MSG,inactive);
+  SCSI_OUT(CD ,inactive);
+  SCSI_OUT(IO ,inactive);
+
+  uint8_t buf[MAX_BLOCKSIZE];
+
+  for (uint32_t i = 0; i < len; i++)
+  {
+    readDataPhase(g_currentimg->m_blocksize, buf);
+    g_currentimg->m_file.write(buf, g_currentimg->m_blocksize);
   }
-  m_img->m_file.flush();
+  g_currentimg->m_file.flush();
 }
 
-/*
- * INQUIRY command processing.
- */
-#if SCSI_SELECT == 2
-byte onInquiryCommand(byte len)
-{
-  byte buf[36] = {
-    0x00, //Device type
-    0x00, //RMB = 0
-    0x01, //ISO,ECMA,ANSI version
-    0x01, //Response data format
-    35 - 4, //Additional data length
-    0, 0, //Reserve
-    0x00, //Support function
-    'N', 'E', 'C', 'I', 'T', 'S', 'U', ' ',
-    'A', 'r', 'd', 'S', 'C', 'S', 'i', 'n', 'o', ' ', ' ',' ', ' ', ' ', ' ', ' ',
-    '0', '0', '1', '0',
-  };
-  writeDataPhase(len < 36 ? len : 36, buf);
-  return 0x00;
-}
-#else
-byte onInquiryCommand(byte len)
+/*********************************/
+/* SCSI commands                 */
+/*********************************/
+
+// INQUIRY command processing.
+uint8_t onInquiryCommand(uint8_t len)
 {
   writeDataPhase(len < 36 ? len : 36, SCSI_INFO_BUF);
   return 0x00;
 }
-#endif
 
-/*
- * REQUEST SENSE command processing.
- */
-void onRequestSenseCommand(byte len)
+// REQUEST SENSE command processing.
+void onRequestSenseCommand(uint8_t len)
 {
-  byte buf[18] = {
+  uint8_t buf[18] = {
     0x70,   //CheckCondition
     0,      //Segment number
-    0x00,   //Sense key
+    g_sensekey,   //Sense key
     0, 0, 0, 0,  //information
     17 - 7 ,   //Additional data length
     0,
   };
-  buf[2] = m_senseKey;
-  m_senseKey = 0;
+  g_sensekey = 0;
   writeDataPhase(len < 18 ? len : 18, buf);  
 }
 
-/*
- * READ CAPACITY command processing.
- */
-byte onReadCapacityCommand(byte pmi)
+// READ CAPACITY command processing.
+uint8_t onReadCapacityCommand(uint8_t pmi)
 {
-  if(!m_img) return 0x02; // Image file absent
+  if(!g_currentimg) return 0x02; // Image file absent
   
-  uint32_t bl = m_img->m_blocksize;
-  uint32_t bc = m_img->m_fileSize / bl;
+  uint32_t bl = g_currentimg->m_blocksize;
+  uint32_t bc = g_currentimg->m_fileSize / bl;
   uint8_t buf[8] = {
-    bc >> 24, bc >> 16, bc >> 8, bc,
-    bl >> 24, bl >> 16, bl >> 8, bl    
+    (uint8_t)(bc >> 24), (uint8_t)(bc >> 16), (uint8_t)(bc >> 8), (uint8_t)(bc),
+    (uint8_t)(bl >> 24), (uint8_t)(bl >> 16), (uint8_t)(bl >> 8), (uint8_t)(bl)    
   };
   writeDataPhase(8, buf);
   return 0x00;
 }
 
-/*
- * READ6 / 10 Command processing.
- */
-byte onReadCommand(uint32_t adds, uint32_t len)
+// READ6 / 10 Command processing.
+uint8_t onReadCommand(uint32_t adds, uint32_t len)
 {
-  LOGN("-R");
-  LOGHEXN(adds);
-  LOGHEXN(len);
-
-  if(!m_img) return 0x02; // Image file absent
+  azlogn("R ", adds, " ", (int)len);
+  
+  if(!g_currentimg) return 0x02; // Image file absent
   
   LED_ON();
-  writeDataPhaseSD(adds, len);
+  writeDataPhase_FromSD(adds, len);
   LED_OFF();
-  return 0x00; //sts
+  return 0x00;
 }
 
-/*
- * WRITE6 / 10 Command processing.
- */
-byte onWriteCommand(uint32_t adds, uint32_t len)
+// WRITE6 / 10 Command processing.
+uint8_t onWriteCommand(uint32_t adds, uint32_t len)
 {
-  LOGN("-W");
-  LOGHEXN(adds);
-  LOGHEXN(len);
+  azlogn("W ", adds, " ", (int)len);
   
-  if(!m_img) return 0x02; // Image file absent
+  if(!g_currentimg) return 0x02; // Image file absent
   
   LED_ON();
-  readDataPhaseSD(adds, len);
+  readDataPhase_ToSD(adds, len);
   LED_OFF();
-  return 0; //sts
+  return 0;
 }
 
-/*
- * MODE SENSE command processing.
- */
-#if SCSI_SELECT == 2
-byte onModeSenseCommand(byte dbd, int cmd2, uint32_t len)
+// MODE SENSE command processing for NEC_PC98
+uint8_t onModeSenseCommand_NEC_PC98(uint8_t dbd, int cmd2, uint32_t len)
 {
-  if(!m_img) return 0x02; // Image file absent
+  if(!g_currentimg) return 0x02; // Image file absent
+
+  uint8_t buf[512];
 
   int pageCode = cmd2 & 0x3F;
 
   // Assuming sector size 512, number of sectors 25, number of heads 8 as default settings
-  int size = m_img->m_fileSize;
+  int size = g_currentimg->m_fileSize;
   int cylinders = (int)(size >> 9);
   cylinders >>= 3;
   cylinders /= 25;
@@ -1008,46 +483,46 @@ byte onModeSenseCommand(byte dbd, int cmd2, uint32_t len)
   int sectors = 25;
   int heads = 8;
   // Sector size
- int disksize = 0;
+  int disksize = 0;
   for(disksize = 16; disksize > 0; --(disksize)) {
     if ((1 << disksize) == sectorsize)
       break;
   }
   // Number of blocks
-  uint32_t diskblocks = (uint32_t)(size >> disksize);
-  memset(m_buf, 0, sizeof(m_buf)); 
-  int a = 4;
+  // uint32_t diskblocks = (uint32_t)(size >> disksize);
+  memset(buf, 0, sizeof(buf)); 
+  uint32_t a = 4;
   if(dbd == 0) {
-    uint32_t bl = m_img->m_blocksize;
-    uint32_t bc = m_img->m_fileSize / bl;
-    byte c[8] = {
+    uint32_t bl = g_currentimg->m_blocksize;
+    uint32_t bc = g_currentimg->m_fileSize / bl;
+    uint8_t c[8] = {
       0,// Density code
-      bc >> 16, bc >> 8, bc,
+      (uint8_t)(bc >> 16), (uint8_t)(bc >> 8), (uint8_t)bc,
       0, //Reserve
-      bl >> 16, bl >> 8, bl
+      (uint8_t)(bl >> 16), (uint8_t)(bl >> 8), (uint8_t)(bl)
     };
-    memcpy(&m_buf[4], c, 8);
+    memcpy(&buf[4], c, 8);
     a += 8;
-    m_buf[3] = 0x08;
+    buf[3] = 0x08;
   }
   switch(pageCode) {
   case 0x3F:
   {
-    m_buf[a + 0] = 0x01;
-    m_buf[a + 1] = 0x06;
+    buf[a + 0] = 0x01;
+    buf[a + 1] = 0x06;
     a += 8;
   }
   case 0x03:  // drive parameters
   {
-    m_buf[a + 0] = 0x80 | 0x03; // Page code
-    m_buf[a + 1] = 0x16; // Page length
-    m_buf[a + 2] = (byte)(heads >> 8);// number of sectors / track
-    m_buf[a + 3] = (byte)(heads);// number of sectors / track
-    m_buf[a + 10] = (byte)(sectors >> 8);// number of sectors / track
-    m_buf[a + 11] = (byte)(sectors);// number of sectors / track
+    buf[a + 0] = 0x80 | 0x03; // Page code
+    buf[a + 1] = 0x16; // Page length
+    buf[a + 2] = (uint8_t)(heads >> 8);// number of sectors / track
+    buf[a + 3] = (uint8_t)(heads);// number of sectors / track
+    buf[a + 10] = (uint8_t)(sectors >> 8);// number of sectors / track
+    buf[a + 11] = (uint8_t)(sectors);// number of sectors / track
     int size = 1 << disksize;
-    m_buf[a + 12] = (byte)(size >> 8);// number of sectors / track
-    m_buf[a + 13] = (byte)(size);// number of sectors / track
+    buf[a + 12] = (uint8_t)(size >> 8);// number of sectors / track
+    buf[a + 13] = (uint8_t)(size);// number of sectors / track
     a += 24;
     if(pageCode != 0x3F) {
       break;
@@ -1055,13 +530,13 @@ byte onModeSenseCommand(byte dbd, int cmd2, uint32_t len)
   }
   case 0x04:  // drive parameters
   {
-      LOGN("AddDrive");
-      m_buf[a + 0] = 0x04; // Page code
-      m_buf[a + 1] = 0x12; // Page length
-      m_buf[a + 2] = (cylinders >> 16);// Cylinder length
-      m_buf[a + 3] = (cylinders >> 8);
-      m_buf[a + 4] = cylinders;
-      m_buf[a + 5] = heads;   // Number of heads
+      azlogn("AddDrive");
+      buf[a + 0] = 0x04; // Page code
+      buf[a + 1] = 0x12; // Page length
+      buf[a + 2] = (cylinders >> 16);// Cylinder length
+      buf[a + 3] = (cylinders >> 8);
+      buf[a + 4] = cylinders;
+      buf[a + 5] = heads;   // Number of heads
       a += 20;
     if(pageCode != 0x3F) {
       break;
@@ -1070,51 +545,58 @@ byte onModeSenseCommand(byte dbd, int cmd2, uint32_t len)
   default:
     break;
   }
-  m_buf[0] = a - 1;
-  writeDataPhase(len < a ? len : a, m_buf);
+  buf[0] = a - 1;
+  writeDataPhase(len < a ? len : a, buf);
   return 0x00;
 }
-#else
-byte onModeSenseCommand(byte dbd, int cmd2, uint32_t len)
+
+uint8_t onModeSenseCommand(uint8_t dbd, int cmd2, uint32_t len)
 {
-  if(!m_img) return 0x02; // No image file
+  if (g_scsi_quirks == SCSI_QUIRKS_NEC_PC98)
+  {
+    return onModeSenseCommand_NEC_PC98(dbd, cmd2, len);
+  }
 
-  memset(m_buf, 0, sizeof(m_buf));
+  if(!g_currentimg) return 0x02; // No image file
+
+  uint8_t buf[512];
+
+  memset(buf, 0, sizeof(buf));
   int pageCode = cmd2 & 0x3F;
-  int a = 4;
+  uint32_t a = 4;
   if(dbd == 0) {
-    uint32_t bl =  m_img->m_blocksize;
-    uint32_t bc = m_img->m_fileSize / bl;
+    uint32_t bl =  g_currentimg->m_blocksize;
+    uint32_t bc = g_currentimg->m_fileSize / bl;
 
-    byte c[8] = {
+    uint8_t c[8] = {
       0,//Density code
-      bc >> 16, bc >> 8, bc,
+      (uint8_t)(bc >> 16), (uint8_t)(bc >> 8), (uint8_t)bc,
       0, //Reserve
-      bl >> 16, bl >> 8, bl    
+      (uint8_t)(bl >> 16), (uint8_t)(bl >> 8), (uint8_t)bl    
     };
-    memcpy(&m_buf[4], c, 8);
+    memcpy(&buf[4], c, 8);
     a += 8;
-    m_buf[3] = 0x08;
+    buf[3] = 0x08;
   }
   switch(pageCode) {
   case 0x3F:
   case 0x03:  //Drive parameters
-    m_buf[a + 0] = 0x03; //Page code
-    m_buf[a + 1] = 0x16; // Page length
-    m_buf[a + 11] = 0x3F;//Number of sectors / track
+    buf[a + 0] = 0x03; //Page code
+    buf[a + 1] = 0x16; // Page length
+    buf[a + 11] = 0x3F;//Number of sectors / track
     a += 24;
     if(pageCode != 0x3F) {
       break;
     }
   case 0x04:  //Drive parameters
     {
-      uint32_t bc = m_img->m_fileSize / m_img->m_file;
-      m_buf[a + 0] = 0x04; //Page code
-      m_buf[a + 1] = 0x16; // Page length
-      m_buf[a + 2] = bc >> 16;// Cylinder length
-      m_buf[a + 3] = bc >> 8;
-      m_buf[a + 4] = bc;
-      m_buf[a + 5] = 1;   //Number of heads
+      uint32_t bc = g_currentimg->m_fileSize / g_currentimg->m_file;
+      buf[a + 0] = 0x04; //Page code
+      buf[a + 1] = 0x16; // Page length
+      buf[a + 2] = bc >> 16;// Cylinder length
+      buf[a + 3] = bc >> 8;
+      buf[a + 4] = bc;
+      buf[a + 5] = 1;   //Number of heads
       a += 24;
     }
     if(pageCode != 0x3F) {
@@ -1123,347 +605,422 @@ byte onModeSenseCommand(byte dbd, int cmd2, uint32_t len)
   default:
     break;
   }
-  m_buf[0] = a - 1;
-  writeDataPhase(len < a ? len : a, m_buf);
+  buf[0] = a - 1;
+  writeDataPhase(len < a ? len : a, buf);
   return 0x00;
 }
-#endif
-    
-#if SCSI_SELECT == 1
+
 /*
- * dtc510b_setDriveparameter
+ * dtc510b_setDriveparameter for SCSI_QUIRKS_SHARP
  */
-#define PACKED  __attribute__((packed))
-typedef struct PACKED dtc500_cmd_c2_param_struct
+typedef struct __attribute__((packed)) dtc500_cmd_c2_param_struct
 {
   uint8_t StepPlusWidth;        // Default is 13.6usec (11)
   uint8_t StepPeriod;         // Default is  3  msec.(60)
   uint8_t StepMode;         // Default is  Bufferd (0)
   uint8_t MaximumHeadAdress;      // Default is 4 heads (3)
-  uint8_t HighCylinderAddressByte;  // Default set to 0   (0)
-  uint8_t LowCylinderAddressByte;   // Default is 153 cylinders (152)
+  uint8_t HighCylinderAddressuint8_t;  // Default set to 0   (0)
+  uint8_t LowCylinderAddressuint8_t;   // Default is 153 cylinders (152)
   uint8_t ReduceWrietCurrent;     // Default is above Cylinder 128 (127)
   uint8_t DriveType_SeekCompleteOption;// (0)
   uint8_t Reserved8;          // (0)
   uint8_t Reserved9;          // (0)
 } DTC510_CMD_C2_PARAM;
 
-static void logStrHex(const char *msg,uint32_t num)
-{
-    LOG(msg);
-    LOGHEXN(num);
-}
-
-static byte dtc510b_setDriveparameter(void)
+static uint8_t dtc510b_setDriveparameter(void)
 {
   DTC510_CMD_C2_PARAM DriveParameter;
   uint16_t maxCylinder;
   uint16_t numLAD;
-  //uint32_t stepPulseUsec;
-  int StepPeriodMsec;
+  // int StepPeriodMsec;
 
   // receive paramter
-  writeDataPhase(sizeof(DriveParameter),(byte *)(&DriveParameter));
+  writeDataPhase(sizeof(DriveParameter),(uint8_t *)(&DriveParameter));
  
   maxCylinder =
-    (((uint16_t)DriveParameter.HighCylinderAddressByte)<<8) |
-    (DriveParameter.LowCylinderAddressByte);
+    (((uint16_t)DriveParameter.HighCylinderAddressuint8_t)<<8) |
+    (DriveParameter.LowCylinderAddressuint8_t);
   numLAD = maxCylinder * (DriveParameter.MaximumHeadAdress+1);
-  //stepPulseUsec  = calcStepPulseUsec(DriveParameter.StepPlusWidth);
-  StepPeriodMsec = DriveParameter.StepPeriod*50;
-  logStrHex (" StepPlusWidth      : ",DriveParameter.StepPlusWidth);
-  logStrHex (" StepPeriod         : ",DriveParameter.StepPeriod   );
-  logStrHex (" StepMode           : ",DriveParameter.StepMode     );
-  logStrHex (" MaximumHeadAdress  : ",DriveParameter.MaximumHeadAdress);
-  logStrHex (" CylinderAddress    : ",maxCylinder);
-  logStrHex (" ReduceWrietCurrent : ",DriveParameter.ReduceWrietCurrent);
-  logStrHex (" DriveType/SeekCompleteOption : ",DriveParameter.DriveType_SeekCompleteOption);
-  logStrHex (" Maximum LAD        : ",numLAD-1);
-  return  0; // error result
-}
-#endif
-
-/*
- * MsgIn2.
- */
-void MsgIn2(int msg)
-{
-  LOGN("MsgIn2");
-  SCSI_OUT(vMSG,  active) //  gpio_write(MSG, high);
-  SCSI_OUT(vCD ,  active) //  gpio_write(CD, high);
-  SCSI_OUT(vIO ,  active) //  gpio_write(IO, high);
-  writeHandshake(msg);
+  // StepPeriodMsec = DriveParameter.StepPeriod*50;
+  azlogn(" StepPlusWidth      : ",DriveParameter.StepPlusWidth);
+  azlogn(" StepPeriod         : ",DriveParameter.StepPeriod   );
+  azlogn(" StepMode           : ",DriveParameter.StepMode     );
+  azlogn(" MaximumHeadAdress  : ",DriveParameter.MaximumHeadAdress);
+  azlogn(" CylinderAddress    : ",maxCylinder);
+  azlogn(" ReduceWrietCurrent : ",DriveParameter.ReduceWrietCurrent);
+  azlogn(" DriveType/SeekCompleteOption : ",DriveParameter.DriveType_SeekCompleteOption);
+  azlogn(" Maximum LAD        : ",numLAD-1);
+  return  0;
 }
 
-/*
- * MsgOut2.
- */
-void MsgOut2()
+// Read the command, returns 0 on bus reset.
+int readSCSICommand(uint8_t cmd[12])
 {
-  LOGN("MsgOut2");
-  SCSI_OUT(vMSG,  active) //  gpio_write(MSG, high);
-  SCSI_OUT(vCD ,  active) //  gpio_write(CD, high);
-  SCSI_OUT(vIO ,inactive) //  gpio_write(IO, low);
-  m_msb[m_msc] = readHandshake();
-  m_msc++;
-  m_msc %= 256;
+  SCSI_OUT(MSG,inactive);
+  SCSI_OUT(CD ,  active);
+  SCSI_OUT(IO ,inactive);
+
+  cmd[0] = readHandshake();
+  if (g_busreset) return 0;
+
+  static const int cmd_class_len[8]={6,10,10,6,6,12,6,6};
+  int cmdlen = cmd_class_len[cmd[0] >> 5];
+
+  for (int i = 0; i < cmdlen; i++)
+  {
+    cmd[i] = readHandshake();
+    if (g_busreset) return 0;
+  }
+
+  return cmdlen;
 }
 
-/*
- * Main loop.
- */
-void loop() 
+// ATN message handling, returns false on abort/reset
+bool onATNMessage()
 {
-  //int msg = 0;
-  m_msg = 0;
+  bool syncenable = false;
+  int syncperiod = 50;
+  int syncoffset = 0;
+  
+  uint8_t msg[256];
+  memset(msg, 0x00, sizeof(msg));
+
+  uint8_t response[64];
+  size_t responselen = 0;
+  memset(response, 0x00, sizeof(response));
+
+  int msg_bytes = 0;
+  while(SCSI_IN(ATN) && msg_bytes < (int)sizeof(msg)) {
+    if (g_busreset) break;
+
+    SCSI_OUT(MSG,  active);
+    SCSI_OUT(CD ,  active);
+    SCSI_OUT(IO ,inactive);
+    msg[msg_bytes] = readHandshake();
+    msg_bytes++;
+  }
+
+  if (msg_bytes == 0)
+  {
+    return false;
+  }
+
+  azlogn("Received MSG, ", (int)msg_bytes, " bytes, first byte ", (int)msg[0]);
+
+  for (int i = 0; i < msg_bytes; i++)
+  {
+    // ABORT
+    if (msg[i] == 0x06) {
+      azlogn("MSG_ABORT");
+      return false;
+    }
+
+    // BUS DEVICE RESET
+    if (msg[i] == 0x0C) {
+      azlogn("MSG_BUS_DEVICE_RESET");
+      return false;
+    }
+
+    // IDENTIFY
+    if (msg[i] >= 0x80) {
+      azlogn("MSG_IDENTIFY");
+    }
+
+    // Extended message
+    if (msg[i] == 0x01) {
+      azlogn("MSG_EXTENDED");
+
+      // Check only when synchronous transfer is possible
+      if (!syncenable || msg[i + 2] != 0x01) {
+        response[0] = 0x07;
+        responselen = 1;
+        break;
+      }
+      // Transfer period factor(50 x 4 = Limited to 200ns)
+      syncperiod = msg[i + 3];
+      if (syncperiod > 50) {
+        syncperiod = 50;
+      }
+      // REQ/ACK offset(Limited to 16)
+      syncoffset = msg[i + 4];
+      if (syncoffset > 16) {
+        syncoffset = 16;
+      }
+      // STDR response message generation
+      response[0] = 0x01;
+      response[1] = 0x03;
+      response[2] = 0x01;
+      response[3] = syncperiod;
+      response[4] = syncoffset;
+      responselen = 5;
+      break;
+    }
+  }
+
+  if (responselen > 0)
+  {
+    azlogn("Sending MSG response, ", (int)responselen, " bytes, first byte ", (int)response[0]);
+    SCSI_OUT(MSG,  active);
+    SCSI_OUT(CD ,  active);
+    SCSI_OUT(IO ,  active);
+
+    for (int i = 0; i < responselen; i++)
+    {
+      writeHandshake(response[i]);
+    }
+  }
+
+  return true;
+}
+
+/*********************************/
+/* Main SCSI handling loop       */
+/*********************************/
+
+void scsi_loop()
+{
+  if (g_busreset)
+  {
+    SCSI_RELEASE_OUTPUTS();
+    g_busreset = false;
+  }
 
   // Wait until RST = H, BSY = H, SEL = L
-  do {} while( SCSI_IN(vBSY) || !SCSI_IN(vSEL) || SCSI_IN(vRST));
+  while (SCSI_IN(BSY) || !SCSI_IN(SEL) || SCSI_IN(RST));
 
   // BSY+ SEL-
   // If the ID to respond is not driven, wait for the next
-  //byte db = readIO();
-  //byte scsiid = db & scsi_id_mask;
-  byte scsiid = readIO() & scsi_id_mask;
-  if((scsiid) == 0) {
-    return;
+  uint8_t scsiid = SCSI_IN_DATA() & g_scsi_id_mask;
+  if (scsiid == 0) {
+    return; // Not for us
   }
-  LOGN("Selection");
-  m_isBusReset = false;
-  // Set BSY to-when selected
-  SCSI_BSY_ACTIVE();     // Turn only BSY output ON, ACTIVE
 
+  azlog("SCSI device selected");
+  g_busreset = false;
+  
+  // Set BSY to-when selected
+  SCSI_OUT(BSY, active);
+  
   // Ask for a TARGET-ID to respond
-#if USE_DB2ID_TABLE
-  m_id = db2scsiid[scsiid];
-  //if(m_id==0xff) return;
-#else
-  for(m_id=7;m_id>=0;m_id--)
-    if(scsiid & (1<<m_id)) break;
-  //if(m_id<0) return;
-#endif
+  g_scsi_id = 0;
+  for(int i = 7; i >= 0; i--)
+  {
+    if (scsiid & (1<<i))
+    {
+      g_scsi_id = i;
+      break;
+    }
+  }
 
   // Wait until SEL becomes inactive
-  while(isHigh(gpio_read(SEL)) && isLow(gpio_read(BSY))) {
-    if(m_isBusReset) {
-      goto BusFree;
-    }
-  }
-  SCSI_TARGET_ACTIVE()  // (BSY), REQ, MSG, CD, IO output turned on
-  //  
-  if(isHigh(gpio_read(ATN))) {
-    bool syncenable = false;
-    int syncperiod = 50;
-    int syncoffset = 0;
-    int loopWait = 0;
-    m_msc = 0;
-    memset(m_msb, 0x00, sizeof(m_msb));
-    while(isHigh(gpio_read(ATN)) && loopWait < 255) {
-      MsgOut2();
-      loopWait++;
-    }
-    for(int i = 0; i < m_msc; i++) {
-      // ABORT
-      if (m_msb[i] == 0x06) {
-        goto BusFree;
-      }
-      // BUS DEVICE RESET
-      if (m_msb[i] == 0x0C) {
-        syncoffset = 0;
-        goto BusFree;
-      }
-      // IDENTIFY
-      if (m_msb[i] >= 0x80) {
-      }
-      // Extended message
-      if (m_msb[i] == 0x01) {
-        // Check only when synchronous transfer is possible
-        if (!syncenable || m_msb[i + 2] != 0x01) {
-          MsgIn2(0x07);
-          break;
-        }
-        // Transfer period factor(50 x 4 = Limited to 200ns)
-        syncperiod = m_msb[i + 3];
-        if (syncperiod > 50) {
-          syncperiod = 50;
-        }
-        // REQ/ACK offset(Limited to 16)
-        syncoffset = m_msb[i + 4];
-        if (syncoffset > 16) {
-          syncoffset = 16;
-        }
-        // STDR response message generation
-        MsgIn2(0x01);
-        MsgIn2(0x03);
-        MsgIn2(0x01);
-        MsgIn2(syncperiod);
-        MsgIn2(syncoffset);
-        break;
-      }
-    }
-  }
-
-  LOG("Command:");
-  SCSI_OUT(vMSG,inactive) // gpio_write(MSG, low);
-  SCSI_OUT(vCD ,  active) // gpio_write(CD, high);
-  SCSI_OUT(vIO ,inactive) // gpio_write(IO, low);
-  
-  int len;
-  byte cmd[12];
-  cmd[0] = readHandshake(); if(m_isBusReset) goto BusFree;
-  LOGHEX(cmd[0]);
-  // Command length selection, reception
-  static const int cmd_class_len[8]={6,10,10,6,6,12,6,6};
-  len = cmd_class_len[cmd[0] >> 5];
-  cmd[1] = readHandshake(); LOG(":");LOGHEX(cmd[1]); if(m_isBusReset) goto BusFree;
-  cmd[2] = readHandshake(); LOG(":");LOGHEX(cmd[2]); if(m_isBusReset) goto BusFree;
-  cmd[3] = readHandshake(); LOG(":");LOGHEX(cmd[3]); if(m_isBusReset) goto BusFree;
-  cmd[4] = readHandshake(); LOG(":");LOGHEX(cmd[4]); if(m_isBusReset) goto BusFree;
-  cmd[5] = readHandshake(); LOG(":");LOGHEX(cmd[5]); if(m_isBusReset) goto BusFree;
-  // Receive the remaining commands
-  for(int i = 6; i < len; i++ ) {
-    cmd[i] = readHandshake();
-    LOG(":");
-    LOGHEX(cmd[i]);
-    if(m_isBusReset) goto BusFree;
-  }
-  // LUN confirmation
-  m_sts = cmd[1]&0xe0;      // Preset LUN in status byte
-  m_lun = m_sts>>5;
-  // HDD Image selection
-  m_img = (HDDIMG *)0; // None
-  if( (m_lun <= NUM_SCSILUN) )
+  while (SCSI_IN(SEL))
   {
-    m_img = &(img[m_id][m_lun]); // There is an image
-    if(!(m_img->m_file.isOpen()))
-      m_img = (HDDIMG *)0;       // Image absent
+    if (g_busreset)
+    {
+      SCSI_RELEASE_OUTPUTS();
+      return;
+    }
   }
-  // if(!m_img) m_sts |= 0x02;            // Missing image file for LUN
-  //LOGHEX(((uint32_t)m_img));
   
-  LOG(":ID ");
-  LOG(m_id);
-  LOG(":LUN ");
-  LOG(m_lun);
+  if(SCSI_IN(ATN))
+  {
+    if (!onATNMessage())
+    {
+      // Abort/reset message
+      SCSI_RELEASE_OUTPUTS();
+      return;
+    }
+  }
 
-  LOGN("");
+  uint8_t cmd[12];
+  int cmdlen = readSCSICommand(cmd);
+
+  if (cmdlen == 0)
+  {
+    SCSI_RELEASE_OUTPUTS();
+    return;
+  }
+  
+  // LUN confirmation
+  g_scsi_sts = cmd[1] & 0xe0;      // Preset LUN in status byte
+  g_scsi_lun = g_scsi_sts >> 5;
+
+  // HDD Image selection
+  g_currentimg = (HDDIMG *)0; // None
+  if( (g_scsi_lun <= NUM_SCSILUN) )
+  {
+    g_currentimg = &(g_hddimg[g_scsi_id][g_scsi_lun]); // There is an image
+    if(!(g_currentimg->m_file.isOpen()))
+      g_currentimg = (HDDIMG *)0;       // Image absent
+  }
+  
+  azlog("CMD ", cmd[0], " (", cmdlen, " bytes): ");
+  azlog("ID", (int)g_scsi_id, ", LUN", (int)g_scsi_lun, " ");
+  
   switch(cmd[0]) {
-  case 0x00:
-    LOGN("[Test Unit]");
-    break;
-  case 0x01:
-    LOGN("[Rezero Unit]");
-    break;
-  case 0x03:
-    LOGN("[RequestSense]");
-    onRequestSenseCommand(cmd[4]);
-    break;
-  case 0x04:
-    LOGN("[FormatUnit]");
-    break;
-  case 0x06:
-    LOGN("[FormatUnit]");
-    break;
-  case 0x07:
-    LOGN("[ReassignBlocks]");
-    break;
-  case 0x08:
-    LOGN("[Read6]");
-    m_sts |= onReadCommand((((uint32_t)cmd[1] & 0x1F) << 16) | ((uint32_t)cmd[2] << 8) | cmd[3], (cmd[4] == 0) ? 0x100 : cmd[4]);
-    break;
-  case 0x0A:
-    LOGN("[Write6]");
-    m_sts |= onWriteCommand((((uint32_t)cmd[1] & 0x1F) << 16) | ((uint32_t)cmd[2] << 8) | cmd[3], (cmd[4] == 0) ? 0x100 : cmd[4]);
-    break;
-  case 0x0B:
-    LOGN("[Seek6]");
-    break;
-  case 0x12:
-    LOGN("[Inquiry]");
-    m_sts |= onInquiryCommand(cmd[4]);
-    break;
-  case 0x1A:
-    LOGN("[ModeSense6]");
-    m_sts |= onModeSenseCommand(cmd[1]&0x80, cmd[2], cmd[4]);
-    break;
-  case 0x1B:
-    LOGN("[StartStopUnit]");
-    break;
-  case 0x1E:
-    LOGN("[PreAllowMed.Removal]");
-    break;
-  case 0x25:
-    LOGN("[ReadCapacity]");
-    m_sts |= onReadCapacityCommand(cmd[8]);
-    break;
-  case 0x28:
-    LOGN("[Read10]");
-    m_sts |= onReadCommand(((uint32_t)cmd[2] << 24) | ((uint32_t)cmd[3] << 16) | ((uint32_t)cmd[4] << 8) | cmd[5], ((uint32_t)cmd[7] << 8) | cmd[8]);
-    break;
-  case 0x2A:
-    LOGN("[Write10]");
-    m_sts |= onWriteCommand(((uint32_t)cmd[2] << 24) | ((uint32_t)cmd[3] << 16) | ((uint32_t)cmd[4] << 8) | cmd[5], ((uint32_t)cmd[7] << 8) | cmd[8]);
-    break;
-  case 0x2B:
-    LOGN("[Seek10]");
-    break;
-  case 0x5A:
-    LOGN("[ModeSense10]");
-    onModeSenseCommand(cmd[1] & 0x80, cmd[2], ((uint32_t)cmd[7] << 8) | cmd[8]);
-    break;
-#if SCSI_SELECT == 1
-  case 0xc2:
-    LOGN("[DTC510B setDriveParameter]");
-    m_sts |= dtc510b_setDriveparameter();
-    break;
-#endif    
-  default:
-    LOGN("[*Unknown]");
-    m_sts |= 0x02;
-    m_senseKey = 5;
-    break;
-  }
-  if(m_isBusReset) {
-     goto BusFree;
+    case 0x00: azlogn("[Test Unit]"); break;
+    case 0x01: azlogn("[Rezero Unit]"); break;
+    case 0x03:
+      azlogn("[RequestSense]");
+      onRequestSenseCommand(cmd[4]);
+      break;
+    case 0x04: azlogn("[FormatUnit]"); break;
+    case 0x06: azlogn("[FormatUnit]"); break;
+    case 0x07: azlogn("[ReassignBlocks]"); break;
+    case 0x08:
+      azlogn("[Read6]");
+      g_scsi_sts |= onReadCommand((((uint32_t)cmd[1] & 0x1F) << 16) | ((uint32_t)cmd[2] << 8) | cmd[3], (cmd[4] == 0) ? 0x100 : cmd[4]);
+      break;
+    case 0x0A:
+      azlogn("[Write6]");
+      g_scsi_sts |= onWriteCommand((((uint32_t)cmd[1] & 0x1F) << 16) | ((uint32_t)cmd[2] << 8) | cmd[3], (cmd[4] == 0) ? 0x100 : cmd[4]);
+      break;
+    case 0x0B: azlogn("[Seek6]"); break;
+    case 0x12:
+      azlogn("[Inquiry]");
+      g_scsi_sts |= onInquiryCommand(cmd[4]);
+      break;
+    case 0x1A:
+      azlogn("[ModeSense6]");
+      g_scsi_sts |= onModeSenseCommand(cmd[1]&0x80, cmd[2], cmd[4]);
+      break;
+    case 0x1B: azlogn("[StartStopUnit]"); break;
+    case 0x1E: azlogn("[PreAllowMed.Removal]"); break;
+    case 0x25:
+      azlogn("[ReadCapacity]");
+      g_scsi_sts |= onReadCapacityCommand(cmd[8]);
+      break;
+    case 0x28:
+      azlogn("[Read10]");
+      g_scsi_sts |= onReadCommand(((uint32_t)cmd[2] << 24) | ((uint32_t)cmd[3] << 16) | ((uint32_t)cmd[4] << 8) | cmd[5], ((uint32_t)cmd[7] << 8) | cmd[8]);
+      break;
+    case 0x2A:
+      azlogn("[Write10]");
+      g_scsi_sts |= onWriteCommand(((uint32_t)cmd[2] << 24) | ((uint32_t)cmd[3] << 16) | ((uint32_t)cmd[4] << 8) | cmd[5], ((uint32_t)cmd[7] << 8) | cmd[8]);
+      break;
+    case 0x2B: azlogn("[Seek10]"); break;
+    case 0x5A:
+      azlogn("[ModeSense10]");
+      onModeSenseCommand(cmd[1] & 0x80, cmd[2], ((uint32_t)cmd[7] << 8) | cmd[8]);
+      break;
+    case 0xc2:
+      if (g_scsi_quirks == SCSI_QUIRKS_SHARP)
+      {
+        azlogn("[DTC510B setDriveParameter]");
+        g_scsi_sts |= dtc510b_setDriveparameter();
+      }
+      else
+      {
+        g_scsi_sts |= 0x02;
+        g_sensekey = 5;
+      }
+      break;
+      
+    default:
+      azlogn("[*Unknown]");
+      g_scsi_sts |= 0x02;
+      g_sensekey = 5;
+      break;
   }
 
-  LOGN("Sts");
-  SCSI_OUT(vMSG,inactive) // gpio_write(MSG, low);
-  SCSI_OUT(vCD ,  active) // gpio_write(CD, high);
-  SCSI_OUT(vIO ,  active) // gpio_write(IO, high);
-  writeHandshake(m_sts);
-  if(m_isBusReset) {
-     goto BusFree;
+  if (g_busreset) {
+     SCSI_RELEASE_OUTPUTS();
+     return;
   }
 
-  LOGN("MsgIn");
-  SCSI_OUT(vMSG,  active) // gpio_write(MSG, high);
-  SCSI_OUT(vCD ,  active) // gpio_write(CD, high);
-  SCSI_OUT(vIO ,  active) // gpio_write(IO, high);
-  writeHandshake(m_msg);
+  azlogn("Status: ", g_scsi_sts);
+  SCSI_OUT(MSG,inactive);
+  SCSI_OUT(CD ,  active);
+  SCSI_OUT(IO ,  active);
+  writeHandshake(g_scsi_sts);
+  
+  if(g_busreset) {
+     SCSI_RELEASE_OUTPUTS();
+     return;
+  }
 
-BusFree:
-  LOGN("BusFree");
-  m_isBusReset = false;
-  //SCSI_OUT(vREQ,inactive) // gpio_write(REQ, low);
-  //SCSI_OUT(vMSG,inactive) // gpio_write(MSG, low);
-  //SCSI_OUT(vCD ,inactive) // gpio_write(CD, low);
-  //SCSI_OUT(vIO ,inactive) // gpio_write(IO, low);
-  //SCSI_OUT(vBSY,inactive)
-  SCSI_TARGET_INACTIVE() // Turn off BSY, REQ, MSG, CD, IO output
+  SCSI_OUT(MSG,  active);
+  SCSI_OUT(CD ,  active);
+  SCSI_OUT(IO ,  active);
+  writeHandshake(0);
 }
 
-#endif
+void onBusReset(void)
+{
+  int filterlen = 100;
+
+  if (g_scsi_quirks == SCSI_QUIRKS_SHARP)
+  {
+    // SASI I / F for X1 turbo has RST pulse write cycle +2 clock
+    // Active about 1.25 us
+    filterlen = 2;
+  }
+
+  while (filterlen > 0)
+  {
+    delay_100ns();
+    if (!SCSI_IN(RST)) return;
+    filterlen--;
+  }
+
+  SCSI_RELEASE_OUTPUTS();
+  azlogn("BUSRESET");
+  g_busreset = true;
+}
+
+// Check for any new data in log buffer and save it to file
+void saveLog(void)
+{
+  static uint32_t prev_log_len = 0;
+  uint32_t loglen = azlog_get_buffer_len();
+
+  if (loglen != prev_log_len)
+  {
+    FsFile file = SD.open(LOGFILE, O_WRONLY | O_CREAT | O_TRUNC);
+    file.write(azlog_get_buffer());
+    file.truncate();
+    file.flush();
+    file.close();
+
+    prev_log_len = loglen;
+  }
+}
 
 int main(void)
 {
-  platform_init();
+  azplatform_init();
+  azplatform_set_rst_callback(&onBusReset);
+
+  if(!SD.begin(SD_CONFIG))
+  {
+    azlogn("SD card init failed, sdErrorCode:", (int)SD.sdErrorCode(),
+           "sdErrorData:", (int)SD.sdErrorData());
+    blinkStatus(BLINK_ERROR_NO_SD_CARD);
+  }
+  else
+  {
+    uint64_t size = (uint64_t)SD.vol()->clusterCount() * SD.vol()->bytesPerCluster();
+    azlogn("SD card init succeeded, FAT", (int)SD.vol()->fatType(),
+           " volume size: ", (int)(size / 1024 / 1024), " MB");
+  }
+
+  readSCSIDeviceConfig();
+  findHDDImages();
+
+  azlogn("Initialization complete!");
+  saveLog();
+
+  uint32_t prev_log_save = millis();
 
   while (1)
   {
-    LED_ON();
-    for (int i = 0; i < 1000000; i++) asm("nop");
-    LED_OFF();
-    for (int i = 0; i < 1000000; i++) asm("nop");
+    scsi_loop();
+
+    // Save log every 10 seconds, until the internal log buffer is full
+    if (millis() - prev_log_save > 10000)
+    {
+      saveLog();
+      prev_log_save = millis();
+    }
   }
 }
