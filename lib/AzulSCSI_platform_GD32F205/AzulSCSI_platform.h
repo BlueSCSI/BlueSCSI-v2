@@ -143,7 +143,7 @@ extern const uint32_t g_scsi_out_byte_to_bop[256];
 
 // Read SCSI data bus
 #define SCSI_IN_DATA(data) \
-    ((GPIO_ISTAT(SCSI_IN_PORT) & SCSI_IN_MASK) >> SCSI_IN_SHIFT)
+    (((~GPIO_ISTAT(SCSI_IN_PORT)) & SCSI_IN_MASK) >> SCSI_IN_SHIFT)
 
 #ifdef __cplusplus
 }
