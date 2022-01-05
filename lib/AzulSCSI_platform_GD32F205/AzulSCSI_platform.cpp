@@ -21,6 +21,22 @@ void delay(unsigned long ms)
     while ((uint32_t)(g_millisecond_counter - start) < ms);
 }
 
+void delay_ns(unsigned long ns)
+{
+    int cycles = (ns * SysTick->LOAD) / 1024 / 1024;
+    cycles -= 10; // Call overhead
+    if (cycles > 0)
+    {
+        int end = (int)SysTick->VAL - cycles;
+        if (end < 0)
+        {
+            end += SysTick->LOAD;
+            while (SysTick->VAL < cycles);
+        }
+        while (SysTick->VAL > end);
+    }
+}
+
 void SysTick_Handler(void)
 {
     g_millisecond_counter++;
@@ -199,19 +215,19 @@ void show_hardfault(uint32_t *sp)
     {
         // Flash the crash address on the LED
         // Short pulse means 0, long pulse means 1
-        int base_delay = 500000;
+        int base_delay = 1000;
         for (int i = 31; i >= 0; i--)
         {
             LED_OFF();
-            for (int j = 0; j < base_delay; j++) delay_100ns();
+            for (int j = 0; j < base_delay; j++) delay_ns(100000);
             
             int delay = (pc & (1 << i)) ? (3 * base_delay) : base_delay;
             LED_ON();
-            for (int j = 0; j < delay; j++) delay_100ns();
+            for (int j = 0; j < delay; j++) delay_ns(100000);
             LED_OFF();
         }
 
-        for (int j = 0; j < base_delay * 10; j++) delay_100ns();
+        for (int j = 0; j < base_delay * 10; j++) delay_ns(100000);
     }
 }
 
@@ -249,6 +265,22 @@ void UsageFault_Handler(void)
 /*****************************************/
 /* Driver for GD32 SPI for SdFat library */
 /*****************************************/
+
+extern volatile bool g_busreset;
+
+#define SCSI_WAIT_ACTIVE(pin) \
+  if (!SCSI_IN(pin)) { \
+    if (!SCSI_IN(pin)) { \
+      while(!SCSI_IN(pin) && !g_busreset); \
+    } \
+  }
+
+#define SCSI_WAIT_INACTIVE(pin) \
+  if (SCSI_IN(pin)) { \
+    if (SCSI_IN(pin)) { \
+      while(SCSI_IN(pin) && !g_busreset); \
+    } \
+  }
 
 #define SD_SPI SPI0
 class GD32SPIDriver : public SdSpiBaseClass
@@ -317,6 +349,13 @@ public:
         wait_idle();
         (void)SPI_DATA(SD_SPI);
 
+        if (buf == m_stream_buffer)
+        {
+            // Stream data directly to SCSI bus
+            return stream_receive(count);
+        }
+        
+        // Store data to buffer
         for (size_t i = 0; i < count; i++)
         {
             while (!(SPI_STAT(SD_SPI) & SPI_STAT_TBE));
@@ -328,12 +367,67 @@ public:
         return 0;
     }
 
+    // Stream data directly to SCSI bus
+    uint8_t stream_receive(size_t count)
+    {         
+        // Handle first byte
+        SPI_DATA(SD_SPI) = 0xFF;
+        while (!(SPI_STAT(SD_SPI) & SPI_STAT_RBNE));
+        uint8_t data = SPI_DATA(SD_SPI);
+        SCSI_OUT_DATA(data);
+        SPI_DATA(SD_SPI) = 0xFF;
+        SCSI_WAIT_INACTIVE(ACK);
+        SCSI_OUT(REQ, 1);
+
+        // Handle main payload
+        for (size_t i = 1; i < count - 1; i++)
+        {
+            // Wait that host confirms previous reception
+            SCSI_WAIT_ACTIVE(ACK);
+            SCSI_OUT(REQ, 0);
+
+            // Wait for received byte
+            while (!(SPI_STAT(SD_SPI) & SPI_STAT_RBNE));
+            data = SPI_DATA(SD_SPI);
+
+            // Stream byte to SCSI
+            SCSI_OUT_DATA(data);
+            
+            // Start SPI transfer for next byte
+            SPI_DATA(SD_SPI) = 0xFF;
+
+            SCSI_WAIT_INACTIVE(ACK); // This takes long enough to fullfill the 100 ns setup time.
+            SCSI_OUT(REQ, 1);
+        }
+
+        // Handle last byte
+        while (!(SPI_STAT(SD_SPI) & SPI_STAT_RBNE));
+        data = SPI_DATA(SD_SPI);
+        SCSI_OUT_DATA(data);
+        delay_100ns(); // DB hold time before REQ (DTC-510B)
+        SCSI_WAIT_INACTIVE(ACK);
+        SCSI_OUT(REQ, 1);
+        SCSI_WAIT_ACTIVE(ACK);
+        SCSI_RELEASE_DATA_REQ();
+        SCSI_WAIT_INACTIVE(ACK);
+
+        m_stream_status = true;
+        m_stream_buffer = NULL;
+        return 0;
+    }
+
     void send(uint8_t data) {
         SPI_DATA(SD_SPI) = data;
         wait_idle();
     }
 
     void send(const uint8_t* buf, size_t count) {
+        if (buf == m_stream_buffer)
+        {
+            stream_send(count);
+            return;
+        }
+
         for (size_t i = 0; i < count; i++) {
             while (!(SPI_STAT(SD_SPI) & SPI_STAT_TBE));
             SPI_DATA(SD_SPI) = buf[i];
@@ -341,12 +435,49 @@ public:
         wait_idle();
     }
 
+    // Stream data directly from SCSI bus
+    void stream_send(size_t count)
+    {
+        for (size_t i = 0; i < count; i++) {
+            SCSI_OUT(REQ, 1);
+            SCSI_WAIT_ACTIVE(ACK);
+            delay_100ns(); // ACK.Fall to DB output delay 100ns(MAX)  (DTC-510B)
+            uint8_t data = SCSI_IN_DATA();
+            SCSI_OUT(REQ, 0);
+
+            while (!(SPI_STAT(SD_SPI) & SPI_STAT_TBE));
+            SPI_DATA(SD_SPI) = data;
+
+            SCSI_WAIT_INACTIVE(ACK);
+        }
+        wait_idle();
+
+        m_stream_status = true;
+        m_stream_buffer = NULL;
+    }
+
     void setSckSpeed(uint32_t maxSck) {
         m_sckfreq = maxSck;
     }
 
+    void prepare_stream(uint8_t *buffer)
+    {
+        m_stream_buffer = buffer;
+        m_stream_status = false;
+    }
+
+    bool finish_stream()
+    {
+        bool result = m_stream_status;
+        m_stream_status = false;
+        m_stream_buffer = NULL;
+        return result;
+    }
+
 private:
     uint32_t m_sckfreq;
+    uint8_t *m_stream_buffer;
+    bool m_stream_status;
 };
 
 void sdCsInit(SdCsPin_t pin)
@@ -364,6 +495,16 @@ void sdCsWrite(SdCsPin_t pin, bool level)
 GD32SPIDriver g_sd_spi_port;
 SdSpiConfig g_sd_spi_config(0, DEDICATED_SPI, SD_SCK_MHZ(25), &g_sd_spi_port);
 
+void azplatform_prepare_stream(uint8_t *buffer)
+{
+    g_sd_spi_port.prepare_stream(buffer);
+}
+
+bool azplatform_finish_stream()
+{
+    return g_sd_spi_port.finish_stream();
+}
+
 /**********************************************/
 /* Mapping from data bytes to GPIO BOP values */
 /**********************************************/
@@ -378,7 +519,8 @@ SdSpiConfig g_sd_spi_config(0, DEDICATED_SPI, SD_SCK_MHZ(25), &g_sd_spi_port);
     ((n & 0x20) ? (SCSI_OUT_DB5 << 16) : SCSI_OUT_DB5) | \
     ((n & 0x40) ? (SCSI_OUT_DB6 << 16) : SCSI_OUT_DB6) | \
     ((n & 0x80) ? (SCSI_OUT_DB7 << 16) : SCSI_OUT_DB7) | \
-    (PARITY(n)  ? (SCSI_OUT_DBP << 16) : SCSI_OUT_DBP) \
+    (PARITY(n)  ? (SCSI_OUT_DBP << 16) : SCSI_OUT_DBP) | \
+    (SCSI_OUT_REQ) \
 )
     
 const uint32_t g_scsi_out_byte_to_bop[256] =

@@ -109,13 +109,13 @@ unsigned long millis();
 void delay(unsigned long ms);
 
 // Precise nanosecond delays
+// Works in interrupt context also, max delay 500 000 ns, min delay about 500 ns
+void delay_ns(unsigned long ns);
+
+// Approximate fast delay
 static inline void delay_100ns()
 {
-#if HXTAL_VALUE==8000000
-    asm("nop"); asm("nop"); asm("nop");
-#else
     asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
-#endif
 }
 
 // Initialize SPI and GPIO configuration
@@ -128,6 +128,16 @@ void azplatform_set_rst_callback(void (*callback)());
 // This can be used in crash handlers.
 void azplatform_emergency_log_save();
 
+// Direct streaming between SCSI and SD card
+// If the SD card driver receives a read request to buffer, it will directly send the data to SCSI bus.
+// If the SD card driver receives a write request from buffer, it will directly get the data from SCSI.
+void azplatform_prepare_stream(uint8_t *buffer);
+
+// Get status of latest streaming operation.
+// If this returns false, the caller should do the SCSI write themselves.
+// Usually that happens if the read goes through SdFs cache.
+bool azplatform_finish_stream();
+
 // Write a single SCSI pin.
 // Example use: SCSI_OUT(ATN, 1) sets SCSI_ATN to low (active) state.
 #define SCSI_OUT(pin, state) \
@@ -138,14 +148,14 @@ void azplatform_emergency_log_save();
 #define SCSI_IN(pin) \
     ((GPIO_ISTAT(SCSI_ ## pin ## _PORT) & (SCSI_ ## pin ## _PIN)) ? 0 : 1)
 
-// Write SCSI data bus
+// Write SCSI data bus, also sets REQ to inactive.
 extern const uint32_t g_scsi_out_byte_to_bop[256];
 #define SCSI_OUT_DATA(data) \
     GPIO_BOP(SCSI_OUT_PORT) = g_scsi_out_byte_to_bop[(uint8_t)(data)]
 
-// Release SCSI data bus
-#define SCSI_RELEASE_DATA() \
-    GPIO_BOP(SCSI_OUT_PORT) = SCSI_OUT_DATA_MASK
+// Release SCSI data bus and REQ signal
+#define SCSI_RELEASE_DATA_REQ() \
+    GPIO_BOP(SCSI_OUT_PORT) = SCSI_OUT_DATA_MASK | SCSI_OUT_REQ
 
 // Release all SCSI outputs
 #define SCSI_RELEASE_OUTPUTS() \
