@@ -27,3 +27,6 @@
 #define DEFAULT_VENDOR "QUANTUM "
 #define DEFAULT_PRODUCT "FIREBALL1       "
 #define DEFAULT_VERSION "1.0 "
+
+// Use streaming SCSI and SD transfers for higher performance
+#define STREAM_SD_TRANSFERS 1

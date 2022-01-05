@@ -73,7 +73,7 @@ void blinkStatus(int count)
 /* Global state for SCSI code    */
 /*********************************/
 
-static volatile bool g_busreset = false;
+volatile bool g_busreset = false;
 static uint8_t g_sensekey = 0;
 uint8_t   g_scsi_id_mask;    // Mask list of responding SCSI IDs
 uint8_t   g_scsi_id;         // Currently responding SCSI-ID
@@ -296,16 +296,31 @@ void findHDDImages()
 #define active   1
 #define inactive 0
 
+#define SCSI_WAIT_ACTIVE(pin) \
+  if (!SCSI_IN(pin)) { \
+    if (!SCSI_IN(pin)) { \
+      while(!SCSI_IN(pin) && !g_busreset); \
+    } \
+  }
+
+#define SCSI_WAIT_INACTIVE(pin) \
+  if (SCSI_IN(pin)) { \
+    if (SCSI_IN(pin)) { \
+      while(SCSI_IN(pin) && !g_busreset); \
+    } \
+  }
+
 /*
  * Read by handshake.
  */
 inline uint8_t readHandshake(void)
 {
   SCSI_OUT(REQ,active);
-  while (!SCSI_IN(ACK)) { if(g_busreset) return 0; }
+  SCSI_WAIT_ACTIVE(ACK);
+  delay_100ns(); // ACK.Fall to DB output delay 100ns(MAX)  (DTC-510B)
   uint8_t r = SCSI_IN_DATA();
-  SCSI_OUT(REQ,inactive);
-  while (SCSI_IN(ACK)) { if(g_busreset) return 0; }
+  SCSI_OUT(REQ, inactive);
+  SCSI_WAIT_INACTIVE(ACK);
   return r;  
 }
 
@@ -315,13 +330,11 @@ inline uint8_t readHandshake(void)
 inline void writeHandshake(uint8_t d)
 {
   SCSI_OUT_DATA(d);
-  SCSI_OUT(REQ,inactive);
-  delay_100ns(); // ACK.Fall to DB output delay 100ns(MAX)  (DTC-510B)
+  delay_100ns(); // DB hold time before REQ (DTC-510B)
   SCSI_OUT(REQ, active);
-  while(!g_busreset && !SCSI_IN(ACK));
-  SCSI_OUT(REQ, inactive); // ACK.Fall to REQ.Raise max delay 500ns(typ.) (DTC-510B)
-  SCSI_RELEASE_DATA(); // REQ.Raise to DB hold time 0ns
-  while(!g_busreset && SCSI_IN(ACK));
+  SCSI_WAIT_ACTIVE(ACK);
+  SCSI_RELEASE_DATA_REQ(); // Release data and REQ
+  SCSI_WAIT_INACTIVE(ACK);
 }
 
 /*
@@ -334,9 +347,7 @@ void writeDataPhase(int len, const uint8_t* p)
   SCSI_OUT(CD ,inactive);
   SCSI_OUT(IO ,  active);
   for (int i = 0; i < len; i++) {
-    if(g_busreset) {
-      return;
-    }
+    if (g_busreset) break;
     writeHandshake(p[i]);
   }
 }
@@ -358,8 +369,22 @@ void writeDataPhase_FromSD(uint32_t adds, uint32_t len)
 
   for(uint32_t i = 0; i < len; i++)
   {
+#if STREAM_SD_TRANSFERS
+    azplatform_prepare_stream(buf);
+    g_currentimg->m_file.read(buf, g_currentimg->m_blocksize);
+
+    if (g_busreset) return;
+
+    if (!azplatform_finish_stream())
+    {
+      // Streaming did not happen, send data now
+      azdbg("Streaming from SD failed, using fallback");
+      writeDataPhase(g_currentimg->m_blocksize, buf);
+    }
+#else
     g_currentimg->m_file.read(buf, g_currentimg->m_blocksize);
     writeDataPhase(g_currentimg->m_blocksize, buf);
+#endif
   }
 }
 
@@ -396,8 +421,26 @@ void readDataPhase_ToSD(uint32_t adds, uint32_t len)
 
   for (uint32_t i = 0; i < len; i++)
   {
+#if STREAM_SD_TRANSFERS
+  azplatform_prepare_stream(buf);
+  g_currentimg->m_file.write(buf, g_currentimg->m_blocksize);
+
+  if (g_busreset) return;
+
+  if (!azplatform_finish_stream())
+  {
+    // Streaming did not happen, rewrite
+    azdbg("Streaming to SD failed, using fallback");
+
+    g_currentimg->m_file.seek(pos + i * g_currentimg->m_blocksize);
+
     readDataPhase(g_currentimg->m_blocksize, buf);
     g_currentimg->m_file.write(buf, g_currentimg->m_blocksize);
+  }
+#else
+    readDataPhase(g_currentimg->m_blocksize, buf);
+    g_currentimg->m_file.write(buf, g_currentimg->m_blocksize);
+#endif
   }
   g_currentimg->m_file.flush();
 }
@@ -663,6 +706,8 @@ int readSCSICommand(uint8_t cmd[12])
   SCSI_OUT(MSG,inactive);
   SCSI_OUT(CD ,  active);
   SCSI_OUT(IO ,inactive);
+
+  delay_ns(500);
 
   cmd[0] = readHandshake();
   if (g_busreset) return 0;
