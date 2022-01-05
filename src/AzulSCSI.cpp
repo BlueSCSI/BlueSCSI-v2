@@ -59,7 +59,7 @@ SdFs SD;
 
 void blinkStatus(int count)
 {
-  azlogn("Blinking status code: ", count);
+  azlog("Blinking status code: ", count);
   for (int i = 0; i < count; i++)
   {
     LED_ON();
@@ -157,7 +157,7 @@ bool hddimageOpen(HDDIMG *h,const char *image_name,int id,int lun,int blocksize)
   if(h->m_file.isOpen())
   {
     h->m_fileSize = h->m_file.size();
-    azlogn("Opened image file ", image_name, " fileSize: ", (int)h->m_fileSize, " bytes");
+    azlog("Opened image file ", image_name, " fileSize: ", (int)h->m_fileSize, " bytes");
     
     if(h->m_fileSize > 0)
     {
@@ -167,7 +167,7 @@ bool hddimageOpen(HDDIMG *h,const char *image_name,int id,int lun,int blocksize)
     {
       h->m_file.close();
       h->m_fileSize = h->m_blocksize = 0; // no file
-      azlogn("Error: image is empty");
+      azlog("Error: image is empty");
     }
   }
   return false;
@@ -201,9 +201,13 @@ void findHDDImages()
         if(file_name_length > 2) { // HD[N]
           int tmp_id = name[HDIMG_ID_POS] - '0';
 
-          if(tmp_id > -1 && tmp_id < 8) {
+          if(tmp_id > -1 && tmp_id < 8)
+          {
             id = tmp_id; // If valid id, set it, else use default
-            usedDefaultId++;
+          }
+          else
+          {
+            id = usedDefaultId++;
           }
         }
         if(file_name_length > 3) { // HD0[N]
@@ -231,57 +235,57 @@ void findHDDImages()
 
         if(id < NUM_SCSIID && lun < NUM_SCSILUN) {
           HDDIMG *h = &g_hddimg[id][lun];
-          azlogn("Trying to open ", name, " for id:", id, " lun:", lun);
+          azlog("Trying to open ", name, " for id:", id, " lun:", lun);
           imageReady = hddimageOpen(h,name,id,lun,blk);
           if(imageReady) { // Marked as a responsive ID
             g_scsi_id_mask |= 1<<id;
           }
         } else {
-          azlogn("Invalid lun or id for image ", name);
+          azlog("Invalid lun or id for image ", name);
         }
       } else {
-        azlogn("Skipping file ", name);
+        azlog("Skipping file ", name);
       }
     }
   }
 
   if(usedDefaultId > 0) {
-    azlogn("!! More than one image did not specify a SCSI ID. Last file will be used at ID 1. !!");
+    azlog("Some images did not specify a SCSI ID. Last file will be used at ID ", usedDefaultId);
   }
   root.close();
 
   // Error if there are 0 image files
   if(g_scsi_id_mask==0) {
-    azlogn("ERROR: No valid images found!");
+    azlog("ERROR: No valid images found!");
     blinkStatus(BLINK_ERROR_NO_IMAGES);
   }
 
   // Print SCSI drive map
-  azlogn("SCSI drive map:");
-  azlog("ID");
+  azlog("SCSI drive map:");
+  azlog_raw("ID");
   for (int lun = 0; lun < NUM_SCSILUN; lun++)
   {
-    azlog(":LUN", lun);
+    azlog_raw(":LUN", lun);
   }
-  azlogn(":");
+  azlog_raw(":\n");
 
   for (int id = 0; id < NUM_SCSIID; id++)
   {
-    azlog(" ", id);
+    azlog_raw(" ", id);
     for (int lun = 0; lun < NUM_SCSILUN; lun++)
     {
       HDDIMG *h = &g_hddimg[id][lun];
       if (h->m_file)
       {
-        azlog((h->m_blocksize<1000) ? ": " : ":");
-        azlog((int)h->m_blocksize);
+        azlog_raw((h->m_blocksize<1000) ? ": " : ":");
+        azlog_raw((int)h->m_blocksize);
       }
       else
       {
-        azlog(":----");
+        azlog_raw(":----");
       }
     }
-    azlogn(":");
+    azlog_raw(":\n");
   }
 }
 
@@ -442,7 +446,7 @@ uint8_t onReadCapacityCommand(uint8_t pmi)
 // READ6 / 10 Command processing.
 uint8_t onReadCommand(uint32_t adds, uint32_t len)
 {
-  azlogn("R ", adds, " ", (int)len);
+  azdbg("Read at ", adds, " ", (int)len, " blocks");
   
   if(!g_currentimg) return 0x02; // Image file absent
   
@@ -455,7 +459,7 @@ uint8_t onReadCommand(uint32_t adds, uint32_t len)
 // WRITE6 / 10 Command processing.
 uint8_t onWriteCommand(uint32_t adds, uint32_t len)
 {
-  azlogn("W ", adds, " ", (int)len);
+  azdbg("Write at ", adds, " ", (int)len, " blocks");
   
   if(!g_currentimg) return 0x02; // Image file absent
   
@@ -530,7 +534,7 @@ uint8_t onModeSenseCommand_NEC_PC98(uint8_t dbd, int cmd2, uint32_t len)
   }
   case 0x04:  // drive parameters
   {
-      azlogn("AddDrive");
+      azdbg("onModeSenseCommand_NEC_PC98: AddDrive");
       buf[a + 0] = 0x04; // Page code
       buf[a + 1] = 0x12; // Page length
       buf[a + 2] = (cylinders >> 16);// Cylinder length
@@ -642,14 +646,14 @@ static uint8_t dtc510b_setDriveparameter(void)
     (DriveParameter.LowCylinderAddressuint8_t);
   numLAD = maxCylinder * (DriveParameter.MaximumHeadAdress+1);
   // StepPeriodMsec = DriveParameter.StepPeriod*50;
-  azlogn(" StepPlusWidth      : ",DriveParameter.StepPlusWidth);
-  azlogn(" StepPeriod         : ",DriveParameter.StepPeriod   );
-  azlogn(" StepMode           : ",DriveParameter.StepMode     );
-  azlogn(" MaximumHeadAdress  : ",DriveParameter.MaximumHeadAdress);
-  azlogn(" CylinderAddress    : ",maxCylinder);
-  azlogn(" ReduceWrietCurrent : ",DriveParameter.ReduceWrietCurrent);
-  azlogn(" DriveType/SeekCompleteOption : ",DriveParameter.DriveType_SeekCompleteOption);
-  azlogn(" Maximum LAD        : ",numLAD-1);
+  azdbg(" StepPlusWidth      : ",DriveParameter.StepPlusWidth);
+  azdbg(" StepPeriod         : ",DriveParameter.StepPeriod   );
+  azdbg(" StepMode           : ",DriveParameter.StepMode     );
+  azdbg(" MaximumHeadAdress  : ",DriveParameter.MaximumHeadAdress);
+  azdbg(" CylinderAddress    : ",maxCylinder);
+  azdbg(" ReduceWriteCurrent : ",DriveParameter.ReduceWrietCurrent);
+  azdbg(" DriveType/SeekCompleteOption : ",DriveParameter.DriveType_SeekCompleteOption);
+  azdbg(" Maximum LAD        : ",numLAD-1);
   return  0;
 }
 
@@ -671,6 +675,8 @@ int readSCSICommand(uint8_t cmd[12])
     cmd[i] = readHandshake();
     if (g_busreset) return 0;
   }
+
+  azdbg("Got command (", cmdlen, " bytes): ", bytearray(cmd, cmdlen));
 
   return cmdlen;
 }
@@ -709,30 +715,30 @@ bool onATNMessage()
     return false;
   }
 
-  azlogn("Received MSG, ", (int)msg_bytes, " bytes, first byte ", msg[0]);
+  azdbg("Received MSG ", (int)msg_bytes, " bytes: ", bytearray(msg, msg_bytes));
 
   for (int i = 0; i < msg_bytes; i++)
   {
     // ABORT
     if (msg[i] == 0x06) {
-      azlogn("MSG_ABORT");
+      azdbg("MSG_ABORT");
       return false;
     }
 
     // BUS DEVICE RESET
     if (msg[i] == 0x0C) {
-      azlogn("MSG_BUS_DEVICE_RESET");
+      azdbg("MSG_BUS_DEVICE_RESET");
       return false;
     }
 
     // IDENTIFY
     if (msg[i] >= 0x80) {
-      azlogn("MSG_IDENTIFY");
+      azdbg("MSG_IDENTIFY");
     }
 
     // Extended message
     if (msg[i] == 0x01) {
-      azlogn("MSG_EXTENDED");
+      azdbg("MSG_EXTENDED");
 
       // Check only when synchronous transfer is possible
       if (!syncenable || msg[i + 2] != 0x01) {
@@ -763,7 +769,7 @@ bool onATNMessage()
 
   if (responselen > 0)
   {
-    azlogn("Sending MSG response, ", (int)responselen, " bytes, first byte ", response[0]);
+    azdbg("Sending MSG response, ", (int)responselen, " bytes: ", bytearray(response, responselen));
     SCSI_OUT(MSG,  active);
     SCSI_OUT(CD ,  active);
     SCSI_OUT(IO ,  active);
@@ -804,7 +810,7 @@ void scsi_loop()
   
   // Set BSY to-when selected
   SCSI_OUT(BSY, active);
-  azlogn("SCSI device selected");
+  azdbg("SCSI device selected");
   
   // Ask for a TARGET-ID to respond
   g_scsi_id = 0;
@@ -859,59 +865,58 @@ void scsi_loop()
       g_currentimg = (HDDIMG *)0;       // Image absent
   }
   
-  azlog("CMD ", cmd[0], " (", cmdlen, " bytes): ");
-  azlog("ID", (int)g_scsi_id, ", LUN", (int)g_scsi_lun, " ");
+  azdbg("CMD ", cmd[0], " (", cmdlen, " bytes): ", "ID", (int)g_scsi_id, ", LUN", (int)g_scsi_lun);
   
   switch(cmd[0]) {
-    case 0x00: azlogn("[Test Unit]"); break;
-    case 0x01: azlogn("[Rezero Unit]"); break;
+    case 0x00: azdbg("[Test Unit]"); break;
+    case 0x01: azdbg("[Rezero Unit]"); break;
     case 0x03:
-      azlogn("[RequestSense]");
+      azdbg("[RequestSense]");
       onRequestSenseCommand(cmd[4]);
       break;
-    case 0x04: azlogn("[FormatUnit]"); break;
-    case 0x06: azlogn("[FormatUnit]"); break;
-    case 0x07: azlogn("[ReassignBlocks]"); break;
+    case 0x04: azdbg("[FormatUnit]"); break;
+    case 0x06: azdbg("[FormatUnit]"); break;
+    case 0x07: azdbg("[ReassignBlocks]"); break;
     case 0x08:
-      azlogn("[Read6]");
+      azdbg("[Read6]");
       g_scsi_sts |= onReadCommand((((uint32_t)cmd[1] & 0x1F) << 16) | ((uint32_t)cmd[2] << 8) | cmd[3], (cmd[4] == 0) ? 0x100 : cmd[4]);
       break;
     case 0x0A:
-      azlogn("[Write6]");
+      azdbg("[Write6]");
       g_scsi_sts |= onWriteCommand((((uint32_t)cmd[1] & 0x1F) << 16) | ((uint32_t)cmd[2] << 8) | cmd[3], (cmd[4] == 0) ? 0x100 : cmd[4]);
       break;
-    case 0x0B: azlogn("[Seek6]"); break;
+    case 0x0B: azdbg("[Seek6]"); break;
     case 0x12:
-      azlogn("[Inquiry]");
+      azdbg("[Inquiry]");
       g_scsi_sts |= onInquiryCommand(cmd[4]);
       break;
     case 0x1A:
-      azlogn("[ModeSense6]");
+      azdbg("[ModeSense6]");
       g_scsi_sts |= onModeSenseCommand(cmd[1]&0x80, cmd[2], cmd[4]);
       break;
-    case 0x1B: azlogn("[StartStopUnit]"); break;
-    case 0x1E: azlogn("[PreAllowMed.Removal]"); break;
+    case 0x1B: azdbg("[StartStopUnit]"); break;
+    case 0x1E: azdbg("[PreAllowMed.Removal]"); break;
     case 0x25:
-      azlogn("[ReadCapacity]");
+      azdbg("[ReadCapacity]");
       g_scsi_sts |= onReadCapacityCommand(cmd[8]);
       break;
     case 0x28:
-      azlogn("[Read10]");
+      azdbg("[Read10]");
       g_scsi_sts |= onReadCommand(((uint32_t)cmd[2] << 24) | ((uint32_t)cmd[3] << 16) | ((uint32_t)cmd[4] << 8) | cmd[5], ((uint32_t)cmd[7] << 8) | cmd[8]);
       break;
     case 0x2A:
-      azlogn("[Write10]");
+      azdbg("[Write10]");
       g_scsi_sts |= onWriteCommand(((uint32_t)cmd[2] << 24) | ((uint32_t)cmd[3] << 16) | ((uint32_t)cmd[4] << 8) | cmd[5], ((uint32_t)cmd[7] << 8) | cmd[8]);
       break;
-    case 0x2B: azlogn("[Seek10]"); break;
+    case 0x2B: azdbg("[Seek10]"); break;
     case 0x5A:
-      azlogn("[ModeSense10]");
+      azdbg("[ModeSense10]");
       onModeSenseCommand(cmd[1] & 0x80, cmd[2], ((uint32_t)cmd[7] << 8) | cmd[8]);
       break;
     case 0xc2:
       if (g_scsi_quirks == SCSI_QUIRKS_SHARP)
       {
-        azlogn("[DTC510B setDriveParameter]");
+        azdbg("[DTC510B setDriveParameter]");
         g_scsi_sts |= dtc510b_setDriveparameter();
       }
       else
@@ -922,7 +927,7 @@ void scsi_loop()
       break;
       
     default:
-      azlogn("[*Unknown]");
+      azdbg("[Unknown CMD: ", cmd[0], "]");
       g_scsi_sts |= 0x02;
       g_sensekey = 5;
       break;
@@ -933,7 +938,7 @@ void scsi_loop()
      return;
   }
 
-  azlogn("Status: ", g_scsi_sts);
+  azdbg("Status: ", g_scsi_sts);
   SCSI_OUT(MSG,inactive);
   SCSI_OUT(CD ,  active);
   SCSI_OUT(IO ,  active);
@@ -949,7 +954,7 @@ void scsi_loop()
   SCSI_OUT(IO ,  active);
   writeHandshake(0);
 
-  azlogn("Command complete");
+  azdbg("Command complete");
   SCSI_RELEASE_OUTPUTS();
 }
 
@@ -972,24 +977,22 @@ void onBusReset(void)
   }
 
   SCSI_RELEASE_OUTPUTS();
-  azlogn("BUSRESET");
+  azdbg("BUSRESET");
   g_busreset = true;
 }
 
 // Check for any new data in log buffer and save it to file
-void saveLog(void)
+void saveLog(FsFile &logfile)
 {
+  static uint32_t prev_log_pos = 0;
   static uint32_t prev_log_len = 0;
   uint32_t loglen = azlog_get_buffer_len();
 
   if (loglen != prev_log_len)
   {
-    FsFile file = SD.open(LOGFILE, O_WRONLY | O_CREAT | O_TRUNC);
-    file.write(azlog_get_buffer());
-    file.truncate();
-    file.flush();
-    file.close();
-
+    logfile.write(azlog_get_buffer(&prev_log_pos));
+    logfile.flush();
+    
     prev_log_len = loglen;
   }
 }
@@ -1001,22 +1004,27 @@ int main(void)
 
   if(!SD.begin(SD_CONFIG))
   {
-    azlogn("SD card init failed, sdErrorCode:", (int)SD.sdErrorCode(),
+    azlog("SD card init failed, sdErrorCode:", (int)SD.sdErrorCode(),
            "sdErrorData:", (int)SD.sdErrorData());
     blinkStatus(BLINK_ERROR_NO_SD_CARD);
   }
   else
   {
     uint64_t size = (uint64_t)SD.vol()->clusterCount() * SD.vol()->bytesPerCluster();
-    azlogn("SD card init succeeded, FAT", (int)SD.vol()->fatType(),
+    azlog("SD card init succeeded, FAT", (int)SD.vol()->fatType(),
            " volume size: ", (int)(size / 1024 / 1024), " MB");
   }
 
   readSCSIDeviceConfig();
   findHDDImages();
 
-  azlogn("Initialization complete!");
-  saveLog();
+  azlog("Initialization complete!");
+  azlog("Platform: ", g_azplatform_name);
+  azlog("FW Version: ", g_azlog_firmwareversion);
+
+  FsFile logfile;
+  logfile = SD.open(LOGFILE, O_WRONLY | O_CREAT | O_TRUNC);
+  saveLog(logfile);
 
   uint32_t prev_log_save = millis();
 
@@ -1024,10 +1032,10 @@ int main(void)
   {
     scsi_loop();
 
-    // Save log every 10 seconds, until the internal log buffer is full
-    if (millis() - prev_log_save > 10000)
+    // Save log once a second if there are new log messages
+    if ((uint32_t)(millis() - prev_log_save) > 1000)
     {
-      saveLog();
+      saveLog(logfile);
       prev_log_save = millis();
     }
   }
