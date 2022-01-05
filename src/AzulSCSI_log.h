@@ -3,79 +3,74 @@
 #pragma once
 
 #include <stdint.h>
+#include <stddef.h>
 
-// Retrieve stored log buffer
+// Get total number of bytes that have been written to log
 uint32_t azlog_get_buffer_len();
-const char *azlog_get_buffer();
+
+// Get log as a string.
+// If startpos is given, continues log reading from previous position and updates the position.
+const char *azlog_get_buffer(uint32_t *startpos);
+
+// Whether to enable debug messages
+extern bool g_azlog_debug;
+
+// Firmware version string
+extern const char *g_azlog_firmwareversion;
 
 // Log string
-void azlog(const char *str);
+void azlog_raw(const char *str);
 
 // Log byte as hex
-inline void azlog(uint8_t value)
-{
-    const char *nibble = "0123456789ABCDEF";
-    char hexbuf[5] = {
-        '0', 'x', 
-        nibble[(value >>  4) & 0xF], nibble[(value >>  0) & 0xF],
-        0
-    };
-    azlog(hexbuf);
-}
+void azlog_raw(uint8_t value);
 
 // Log integer as hex
-inline void azlog(uint32_t value)
-{
-    const char *nibble = "0123456789ABCDEF";
-    char hexbuf[11] = {
-        '0', 'x', 
-        nibble[(value >> 28) & 0xF], nibble[(value >> 24) & 0xF],
-        nibble[(value >> 20) & 0xF], nibble[(value >> 16) & 0xF],
-        nibble[(value >> 12) & 0xF], nibble[(value >>  8) & 0xF],
-        nibble[(value >>  4) & 0xF], nibble[(value >>  0) & 0xF],
-        0
-    };
-    azlog(hexbuf);
-}
+void azlog_raw(uint32_t value);
 
 // Log integer as decimal
-inline void azlog(int value)
-{
-    char decbuf[16] = {0};
-    char *p = &decbuf[14];
-    int remainder = (value < 0) ? -value : value;
-    do
-    {
-        *--p = '0' + (remainder % 10);
-        remainder /= 10;
-    } while (remainder > 0);
-    
-    if (value < 0)
-    {
-        *--p = '-';
-    }
+void azlog_raw(int value);
 
-    azlog(p);
-}
+// Log array of bytes
+struct bytearray {
+    bytearray(const uint8_t *data, size_t len): data(data), len(len) {}
+    const uint8_t *data;
+    size_t len;
+};
+void azlog_raw(bytearray array);
 
-inline void azlog()
+inline void azlog_raw()
 {
     // End of template recursion
 }
 
-// Variadic template for composing strings
+extern "C" unsigned long millis();
+
+// Variadic template for printing multiple items
 template<typename T, typename T2, typename... Rest>
-inline void azlog(T first, T2 second, Rest... rest)
+inline void azlog_raw(T first, T2 second, Rest... rest)
 {
-    azlog(first);
-    azlog(second);
-    azlog(rest...);
+    azlog_raw(first);
+    azlog_raw(second);
+    azlog_raw(rest...);
 }
 
-// Append newline automatically
+// Format a complete log message
 template<typename... Params>
-inline void azlogn(Params... params)
+inline void azlog(Params... params)
 {
-    azlog(params...);
-    azlog("\n");
+    azlog_raw("[", (int)millis(), "ms] ");
+    azlog_raw(params...);
+    azlog_raw("\n");
+}
+
+// Format a complete debug message
+template<typename... Params>
+inline void azdbg(Params... params)
+{
+    if (g_azlog_debug)
+    {
+        azlog_raw("[", (int)millis(), "ms] DBG ");
+        azlog_raw(params...);
+        azlog_raw("\n");
+    }
 }

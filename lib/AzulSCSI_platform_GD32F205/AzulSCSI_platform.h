@@ -15,6 +15,8 @@ extern SdSpiConfig g_sd_spi_config;
 extern "C" {
 #endif
 
+extern const char *g_azplatform_name;
+
 // GPIO definitions
 
 // SCSI output port.
@@ -109,7 +111,11 @@ void delay(unsigned long ms);
 // Precise nanosecond delays
 static inline void delay_100ns()
 {
-    asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+#if HXTAL_VALUE==8000000
+    asm("nop"); asm("nop"); asm("nop");
+#else
+    asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+#endif
 }
 
 // Initialize SPI and GPIO configuration
@@ -117,6 +123,10 @@ void azplatform_init();
 
 // Set callback for when SCSI_RST pin goes low
 void azplatform_set_rst_callback(void (*callback)());
+
+// Reinitialize SD card connection and save log from interrupt context.
+// This can be used in crash handlers.
+void azplatform_emergency_log_save();
 
 // Write a single SCSI pin.
 // Example use: SCSI_OUT(ATN, 1) sets SCSI_ATN to low (active) state.

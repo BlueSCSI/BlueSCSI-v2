@@ -1,9 +1,12 @@
 #include "AzulSCSI_platform.h"
 #include "gd32f20x_spi.h"
 #include "AzulSCSI_log.h"
+#include "AzulSCSI_config.h"
 #include <SdFat.h>
 
 extern "C" {
+
+const char *g_azplatform_name = "GD32F205 AzulSCSI v1.x";
 
 static volatile uint32_t g_millisecond_counter;
 
@@ -102,16 +105,24 @@ void azplatform_init()
     // SWO trace pin on PB3
     gpio_init(GPIOB, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_3);
 
-    azlogn("GPIO init complete");
-
     if (gpio_input_bit_get(DIP_PORT, DIPSW3_PIN))
     {
-        azlogn("DIPSW3 is ON: Enabling SCSI termination");
+        azlog("DIPSW3 is ON: Enabling SCSI termination");
         gpio_bit_reset(SCSI_TERM_EN_PORT, SCSI_TERM_EN_PIN);
     }
     else
     {
-        azlogn("DIPSW3 is OFF: SCSI termination disabled");
+        azlog("DIPSW3 is OFF: SCSI termination disabled");
+    }
+
+    if (gpio_input_bit_get(DIP_PORT, DIPSW2_PIN))
+    {
+        azlog("DIPSW2 is ON: enabling debug messages");
+        g_azlog_debug = true;
+    }
+    else
+    {
+        g_azlog_debug = false;
     }
 }
 
@@ -141,24 +152,96 @@ void SCSI_RST_IRQ (void)
 /* Crash handlers                        */
 /*****************************************/
 
+extern SdFs SD;
+
+void azplatform_emergency_log_save()
+{
+    FsFile crashfile = SD.open(CRASHFILE, O_WRONLY | O_CREAT | O_TRUNC);
+
+    if (!crashfile.isOpen())
+    {
+        // Try to reinitialize
+        int max_retry = 10;
+        while (max_retry-- > 0 && !SD.begin(SD_CONFIG));
+
+        crashfile = SD.open(CRASHFILE, O_WRONLY | O_CREAT | O_TRUNC);
+    }
+
+    uint32_t startpos = 0;
+    crashfile.write(azlog_get_buffer(&startpos));
+    crashfile.write(azlog_get_buffer(&startpos));
+    crashfile.flush();
+    crashfile.close();
+}
+
+__attribute__((noinline))
+void show_hardfault(uint32_t *sp)
+{
+    uint32_t pc = sp[6];
+    uint32_t lr = sp[5];
+    uint32_t cfsr = SCB->CFSR;
+    
+    azlog("--------------");
+    azlog("CRASH!");
+    azlog("Platform: ", g_azplatform_name);
+    azlog("FW Version: ", g_azlog_firmwareversion);
+    azlog("CFSR: ", cfsr);
+    azlog("PC: ", pc);
+    azlog("LR: ", lr);
+    azlog("R0: ", sp[0]);
+    azlog("R1: ", sp[1]);
+    azlog("R2: ", sp[2]);
+    azlog("R3: ", sp[3]);
+
+    azplatform_emergency_log_save();
+
+    while (1)
+    {
+        // Flash the crash address on the LED
+        // Short pulse means 0, long pulse means 1
+        int base_delay = 500000;
+        for (int i = 31; i >= 0; i--)
+        {
+            LED_OFF();
+            for (int j = 0; j < base_delay; j++) delay_100ns();
+            
+            int delay = (pc & (1 << i)) ? (3 * base_delay) : base_delay;
+            LED_ON();
+            for (int j = 0; j < delay; j++) delay_100ns();
+            LED_OFF();
+        }
+
+        for (int j = 0; j < base_delay * 10; j++) delay_100ns();
+    }
+}
+
+__attribute__((naked))
 void HardFault_Handler(void)
 {
-    while (1);
+    // Copies stack pointer into first argument
+    asm("mrs r0, msp\n"
+        "b show_hardfault": : : "r0");
 }
 
+__attribute__((naked))
 void MemManage_Handler(void)
 {
-    while (1);
+    asm("mrs r0, msp\n"
+        "b show_hardfault": : : "r0");
 }
 
+__attribute__((naked))
 void BusFault_Handler(void)
 {
-    while (1);
+    asm("mrs r0, msp\n"
+        "b show_hardfault": : : "r0");
 }
 
+__attribute__((naked))
 void UsageFault_Handler(void)
 {
-    while (1);
+    asm("mrs r0, msp\n"
+        "b show_hardfault": : : "r0");
 }
 
 } /* extern "C" */

@@ -5,7 +5,11 @@
 
 // Configuration and log file paths
 #define CONFIGFILE  "azulscsi.ini"
-#define LOGFILE "azullog.txt"
+#define LOGFILE     "azullog.txt"
+#define CRASHFILE   "azulerr.txt"
+
+// Log buffer size in bytes, must be a power of 2
+#define LOGBUFSIZE 16384
 
 // HDD image file format
 #define HDIMG_ID_POS  2                 // Position to embed ID number
