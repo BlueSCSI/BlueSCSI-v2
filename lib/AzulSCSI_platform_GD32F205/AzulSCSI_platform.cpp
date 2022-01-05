@@ -1,5 +1,6 @@
 #include "AzulSCSI_platform.h"
 #include "gd32f20x_spi.h"
+#include "AzulSCSI_log.h"
 #include <SdFat.h>
 
 extern "C" {
@@ -101,7 +102,17 @@ void azplatform_init()
     // SWO trace pin on PB3
     gpio_init(GPIOB, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_3);
 
-    azplatform_log("GPIO init complete\n");    
+    azlogn("GPIO init complete");
+
+    if (gpio_input_bit_get(DIP_PORT, DIPSW3_PIN))
+    {
+        azlogn("DIPSW3 is ON: Enabling SCSI termination");
+        gpio_bit_reset(SCSI_TERM_EN_PORT, SCSI_TERM_EN_PIN);
+    }
+    else
+    {
+        azlogn("DIPSW3 is OFF: SCSI termination disabled");
+    }
 }
 
 static void (*g_rst_callback)();
@@ -276,15 +287,15 @@ SdSpiConfig g_sd_spi_config(0, DEDICATED_SPI, SD_SCK_MHZ(25), &g_sd_spi_port);
 
 #define PARITY(n) ((1 ^ (n) ^ ((n)>>1) ^ ((n)>>2) ^ ((n)>>3) ^ ((n)>>4) ^ ((n)>>5) ^ ((n)>>6) ^ ((n)>>7)) & 1)
 #define X(n) (\
-    ((n & 0x01) ? SCSI_OUT_DB0 : (SCSI_OUT_DB0 << 16)) | \
-    ((n & 0x02) ? SCSI_OUT_DB1 : (SCSI_OUT_DB1 << 16)) | \
-    ((n & 0x04) ? SCSI_OUT_DB2 : (SCSI_OUT_DB2 << 16)) | \
-    ((n & 0x08) ? SCSI_OUT_DB3 : (SCSI_OUT_DB3 << 16)) | \
-    ((n & 0x10) ? SCSI_OUT_DB4 : (SCSI_OUT_DB4 << 16)) | \
-    ((n & 0x20) ? SCSI_OUT_DB5 : (SCSI_OUT_DB5 << 16)) | \
-    ((n & 0x40) ? SCSI_OUT_DB6 : (SCSI_OUT_DB6 << 16)) | \
-    ((n & 0x80) ? SCSI_OUT_DB7 : (SCSI_OUT_DB7 << 16)) | \
-    (PARITY(n)  ? SCSI_OUT_DBP : (SCSI_OUT_DBP << 16)) \
+    ((n & 0x01) ? (SCSI_OUT_DB0 << 16) : SCSI_OUT_DB0) | \
+    ((n & 0x02) ? (SCSI_OUT_DB1 << 16) : SCSI_OUT_DB1) | \
+    ((n & 0x04) ? (SCSI_OUT_DB2 << 16) : SCSI_OUT_DB2) | \
+    ((n & 0x08) ? (SCSI_OUT_DB3 << 16) : SCSI_OUT_DB3) | \
+    ((n & 0x10) ? (SCSI_OUT_DB4 << 16) : SCSI_OUT_DB4) | \
+    ((n & 0x20) ? (SCSI_OUT_DB5 << 16) : SCSI_OUT_DB5) | \
+    ((n & 0x40) ? (SCSI_OUT_DB6 << 16) : SCSI_OUT_DB6) | \
+    ((n & 0x80) ? (SCSI_OUT_DB7 << 16) : SCSI_OUT_DB7) | \
+    (PARITY(n)  ? (SCSI_OUT_DBP << 16) : SCSI_OUT_DBP) \
 )
     
 const uint32_t g_scsi_out_byte_to_bop[256] =

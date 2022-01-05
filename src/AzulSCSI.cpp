@@ -666,7 +666,7 @@ int readSCSICommand(uint8_t cmd[12])
   static const int cmd_class_len[8]={6,10,10,6,6,12,6,6};
   int cmdlen = cmd_class_len[cmd[0] >> 5];
 
-  for (int i = 0; i < cmdlen; i++)
+  for (int i = 1; i < cmdlen; i++)
   {
     cmd[i] = readHandshake();
     if (g_busreset) return 0;
@@ -681,7 +681,11 @@ bool onATNMessage()
   bool syncenable = false;
   int syncperiod = 50;
   int syncoffset = 0;
-  
+
+  SCSI_OUT(MSG,  active);
+  SCSI_OUT(CD ,  active);
+  SCSI_OUT(IO ,inactive);  
+
   uint8_t msg[256];
   memset(msg, 0x00, sizeof(msg));
 
@@ -691,11 +695,11 @@ bool onATNMessage()
 
   int msg_bytes = 0;
   while(SCSI_IN(ATN) && msg_bytes < (int)sizeof(msg)) {
-    if (g_busreset) break;
-
-    SCSI_OUT(MSG,  active);
-    SCSI_OUT(CD ,  active);
-    SCSI_OUT(IO ,inactive);
+    if (g_busreset)
+    {
+      return false;
+    }
+    
     msg[msg_bytes] = readHandshake();
     msg_bytes++;
   }
@@ -705,7 +709,7 @@ bool onATNMessage()
     return false;
   }
 
-  azlogn("Received MSG, ", (int)msg_bytes, " bytes, first byte ", (int)msg[0]);
+  azlogn("Received MSG, ", (int)msg_bytes, " bytes, first byte ", msg[0]);
 
   for (int i = 0; i < msg_bytes; i++)
   {
@@ -759,7 +763,7 @@ bool onATNMessage()
 
   if (responselen > 0)
   {
-    azlogn("Sending MSG response, ", (int)responselen, " bytes, first byte ", (int)response[0]);
+    azlogn("Sending MSG response, ", (int)responselen, " bytes, first byte ", response[0]);
     SCSI_OUT(MSG,  active);
     SCSI_OUT(CD ,  active);
     SCSI_OUT(IO ,  active);
@@ -779,9 +783,10 @@ bool onATNMessage()
 
 void scsi_loop()
 {
+  SCSI_RELEASE_OUTPUTS();
+
   if (g_busreset)
   {
-    SCSI_RELEASE_OUTPUTS();
     g_busreset = false;
   }
 
@@ -795,11 +800,11 @@ void scsi_loop()
     return; // Not for us
   }
 
-  azlog("SCSI device selected");
   g_busreset = false;
   
   // Set BSY to-when selected
   SCSI_OUT(BSY, active);
+  azlogn("SCSI device selected");
   
   // Ask for a TARGET-ID to respond
   g_scsi_id = 0;
@@ -943,6 +948,9 @@ void scsi_loop()
   SCSI_OUT(CD ,  active);
   SCSI_OUT(IO ,  active);
   writeHandshake(0);
+
+  azlogn("Command complete");
+  SCSI_RELEASE_OUTPUTS();
 }
 
 void onBusReset(void)
