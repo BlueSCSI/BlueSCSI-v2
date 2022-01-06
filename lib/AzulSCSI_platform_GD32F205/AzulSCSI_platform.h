@@ -5,6 +5,7 @@
 
 #include <gd32f20x.h>
 #include <gd32f20x_gpio.h>
+#include "AzulSCSI_config.h"
 
 #ifdef __cplusplus
 // SD card driver for SdFat
@@ -56,9 +57,16 @@ extern const char *g_azplatform_name;
 #define SCSI_IN_MASK  (SCSI_IN_DB7|SCSI_IN_DB6|SCSI_IN_DB5|SCSI_IN_DB4|SCSI_IN_DB3|SCSI_IN_DB2|SCSI_IN_DB1|SCSI_IN_DB0|SCSI_IN_DBP)
 #define SCSI_IN_SHIFT 8
 
-// Various SCSI status signals
-#define SCSI_ATN_PORT GPIOB // FIXME: Change to 5V-tolerant pin
+// The SCSI_ATN pin was PB0 in prototype 2022a, but was moved to PC6 for 5V-tolerance
+#ifdef AZULSCSI_2022A_REVISION
+#define SCSI_ATN_PORT GPIOB
 #define SCSI_ATN_PIN  GPIO_PIN_0
+#else
+#define SCSI_ATN_PORT GPIOC
+#define SCSI_ATN_PIN  GPIO_PIN_6
+#endif
+
+// Various SCSI status signals
 #define SCSI_BSY_PORT GPIOB
 #define SCSI_BSY_PIN  GPIO_PIN_10
 #define SCSI_SEL_PORT GPIOB
