@@ -142,9 +142,8 @@ void azplatform_emergency_log_save();
 void azplatform_prepare_stream(uint8_t *buffer);
 
 // Get status of latest streaming operation.
-// If this returns false, the caller should do the SCSI write themselves.
-// Usually that happens if the read goes through SdFs cache.
-bool azplatform_finish_stream();
+// Returns number of bytes transferred.
+size_t azplatform_finish_stream();
 
 // Write a single SCSI pin.
 // Example use: SCSI_OUT(ATN, 1) sets SCSI_ATN to low (active) state.

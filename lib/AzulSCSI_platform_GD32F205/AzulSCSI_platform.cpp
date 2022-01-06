@@ -349,7 +349,7 @@ public:
         wait_idle();
         (void)SPI_DATA(SD_SPI);
 
-        if (buf == m_stream_buffer)
+        if (buf == m_stream_buffer + m_stream_status)
         {
             // Stream data directly to SCSI bus
             return stream_receive(count);
@@ -411,8 +411,7 @@ public:
         SCSI_RELEASE_DATA_REQ();
         SCSI_WAIT_INACTIVE(ACK);
 
-        m_stream_status = true;
-        m_stream_buffer = NULL;
+        m_stream_status += count;
         return 0;
     }
 
@@ -422,7 +421,7 @@ public:
     }
 
     void send(const uint8_t* buf, size_t count) {
-        if (buf == m_stream_buffer)
+        if (buf == m_stream_buffer + m_stream_status)
         {
             stream_send(count);
             return;
@@ -452,8 +451,7 @@ public:
         }
         wait_idle();
 
-        m_stream_status = true;
-        m_stream_buffer = NULL;
+        m_stream_status += count;
     }
 
     void setSckSpeed(uint32_t maxSck) {
@@ -463,13 +461,13 @@ public:
     void prepare_stream(uint8_t *buffer)
     {
         m_stream_buffer = buffer;
-        m_stream_status = false;
+        m_stream_status = 0;
     }
 
-    bool finish_stream()
+    size_t finish_stream()
     {
-        bool result = m_stream_status;
-        m_stream_status = false;
+        size_t result = m_stream_status;
+        m_stream_status = 0;
         m_stream_buffer = NULL;
         return result;
     }
@@ -477,7 +475,7 @@ public:
 private:
     uint32_t m_sckfreq;
     uint8_t *m_stream_buffer;
-    bool m_stream_status;
+    size_t m_stream_status; // Number of bytes transferred so far
 };
 
 void sdCsInit(SdCsPin_t pin)
@@ -500,7 +498,7 @@ void azplatform_prepare_stream(uint8_t *buffer)
     g_sd_spi_port.prepare_stream(buffer);
 }
 
-bool azplatform_finish_stream()
+size_t azplatform_finish_stream()
 {
     return g_sd_spi_port.finish_stream();
 }

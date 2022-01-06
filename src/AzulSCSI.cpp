@@ -59,7 +59,7 @@ SdFs SD;
 
 void blinkStatus(int count)
 {
-  azlog("Blinking status code: ", count);
+  azdbg("Blinking status code: ", count);
   for (int i = 0; i < count; i++)
   {
     LED_ON();
@@ -375,11 +375,18 @@ void writeDataPhase_FromSD(uint32_t adds, uint32_t len)
 
     if (g_busreset) return;
 
-    if (!azplatform_finish_stream())
+    size_t status = azplatform_finish_stream();
+    if (status == 0)
     {
       // Streaming did not happen, send data now
       azdbg("Streaming from SD failed, using fallback");
       writeDataPhase(g_currentimg->m_blocksize, buf);
+    }
+    else if (status != g_currentimg->m_blocksize)
+    {
+      azlog("Streaming failed halfway, data may be corrupt, aborting!");
+      g_scsi_sts |= 2;
+      return;
     }
 #else
     g_currentimg->m_file.read(buf, g_currentimg->m_blocksize);
@@ -427,7 +434,9 @@ void readDataPhase_ToSD(uint32_t adds, uint32_t len)
 
   if (g_busreset) return;
 
-  if (!azplatform_finish_stream())
+  size_t status = azplatform_finish_stream();
+
+  if (status == 0)
   {
     // Streaming did not happen, rewrite
     azdbg("Streaming to SD failed, using fallback");
@@ -436,6 +445,12 @@ void readDataPhase_ToSD(uint32_t adds, uint32_t len)
 
     readDataPhase(g_currentimg->m_blocksize, buf);
     g_currentimg->m_file.write(buf, g_currentimg->m_blocksize);
+  }
+  else if (status != g_currentimg->m_blocksize)
+  {
+    azlog("Streaming to SD failed halfway, data may be corrupt, aborting!");
+    g_scsi_sts |= 2;
+    return;
   }
 #else
     readDataPhase(g_currentimg->m_blocksize, buf);
