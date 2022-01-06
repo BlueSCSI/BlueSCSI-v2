@@ -1060,16 +1060,20 @@ int main(void)
 
   if(!SD.begin(SD_CONFIG))
   {
-    azlog("SD card init failed, sdErrorCode:", (int)SD.sdErrorCode(),
-           "sdErrorData:", (int)SD.sdErrorData());
-    blinkStatus(BLINK_ERROR_NO_SD_CARD);
+    azlog("SD card init failed, sdErrorCode: ", (int)SD.sdErrorCode(),
+           " sdErrorData: ", (int)SD.sdErrorData());
+    
+    do
+    {
+      blinkStatus(BLINK_ERROR_NO_SD_CARD);
+      delay(5000);
+    } while (!SD.begin(SD_CONFIG));
+    azlog("SD card init succeeded after retry");
   }
-  else
-  {
-    uint64_t size = (uint64_t)SD.vol()->clusterCount() * SD.vol()->bytesPerCluster();
-    azlog("SD card init succeeded, FAT", (int)SD.vol()->fatType(),
-           " volume size: ", (int)(size / 1024 / 1024), " MB");
-  }
+
+  uint64_t size = (uint64_t)SD.vol()->clusterCount() * SD.vol()->bytesPerCluster();
+  azlog("SD card init succeeded, FAT", (int)SD.vol()->fatType(),
+          " volume size: ", (int)(size / 1024 / 1024), " MB");
 
   readSCSIDeviceConfig();
   findHDDImages();
