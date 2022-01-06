@@ -157,7 +157,7 @@ bool hddimageOpen(HDDIMG *h,const char *image_name,int id,int lun,int blocksize)
   if(h->m_file.isOpen())
   {
     h->m_fileSize = h->m_file.size();
-    azlog("Opened image file ", image_name, " fileSize: ", (int)h->m_fileSize, " bytes");
+    azlog("Opened image file ", image_name, " fileSize: ", (int)(h->m_fileSize / 1024), " kB");
     
     if(h->m_fileSize > 0)
     {
@@ -1000,6 +1000,7 @@ void scsi_loop()
   writeHandshake(0);
 
   azdbg("Command complete");
+
   SCSI_RELEASE_OUTPUTS();
 }
 
@@ -1035,9 +1036,19 @@ void saveLog(FsFile &logfile)
 
   if (loglen != prev_log_len)
   {
+    // Hold down BSY during the write to avoid timeouts on host
+    if (SCSI_IN(BSY))
+    {
+      return;
+    }
+
+    SCSI_OUT(BSY, active);
+
     logfile.write(azlog_get_buffer(&prev_log_pos));
     logfile.flush();
     
+    SCSI_OUT(BSY, inactive);
+
     prev_log_len = loglen;
   }
 }
