@@ -186,6 +186,7 @@ typedef struct hddimg_struct
 HDDIMG  img[NUM_SCSIID][NUM_SCSILUN]; // Maximum number
 
 uint8_t       m_senseKey = 0;         // Sense key
+unsigned      m_addition_sense = 0;   // Additional sense information
 volatile bool m_isBusReset = false;   // Bus reset
 
 byte          scsi_id_mask;           // Mask list of responding SCSI IDs
@@ -251,7 +252,7 @@ static const byte db2scsiid[256]={
 #endif
 
 // Log File
-#define VERSION "1.1-20211215"
+#define VERSION "1.1-20220107"
 #define LOG_FILENAME "LOG.txt"
 FsFile LOG_FILE;
 
@@ -921,13 +922,16 @@ void onRequestSenseCommand(byte len)
   byte buf[18] = {
     0x70,   //CheckCondition
     0,      //Segment number
-    0x00,   //Sense key
+    m_senseKey,   //Sense key
     0, 0, 0, 0,  //information
-    17 - 7 ,   //Additional data length
-    0,
+    10,   //Additional data length
+    0, 0, 0, 0, // command specific information bytes
+    (byte)(m_addition_sense >> 8),
+    (byte)m_addition_sense,
+    0, 0, 0, 0,
   };
-  buf[2] = m_senseKey;
   m_senseKey = 0;
+  m_addition_sense = 0;
   writeDataPhase(len < 18 ? len : 18, buf);  
 }
 
@@ -939,7 +943,7 @@ byte onReadCapacityCommand(byte pmi)
   if(!m_img) return 0x02; // Image file absent
   
   uint32_t bl = m_img->m_blocksize;
-  uint32_t bc = m_img->m_fileSize / bl;
+  uint32_t bc = m_img->m_fileSize / bl - 1; // Points to last LBA
   uint8_t buf[8] = {
     bc >> 24, bc >> 16, bc >> 8, bc,
     bl >> 24, bl >> 16, bl >> 8, bl    
@@ -986,7 +990,7 @@ byte onWriteCommand(uint32_t adds, uint32_t len)
  * MODE SENSE command processing.
  */
 #if SCSI_SELECT == 2
-byte onModeSenseCommand(byte dbd, int cmd2, uint32_t len)
+byte onModeSenseCommand(byte scsi_cmd, byte dbd, int cmd2, uint32_t len)
 {
   if(!m_img) return 0x02; // Image file absent
 
@@ -1068,55 +1072,82 @@ byte onModeSenseCommand(byte dbd, int cmd2, uint32_t len)
   return 0x00;
 }
 #else
-byte onModeSenseCommand(byte dbd, int cmd2, uint32_t len)
+byte onModeSenseCommand(byte scsi_cmd, byte dbd, int cmd2, uint32_t len)
 {
   if(!m_img) return 0x02; // No image file
+
+  uint32_t bl =  m_img->m_blocksize;
+  uint32_t bc = m_img->m_fileSize / bl;
 
   memset(m_buf, 0, sizeof(m_buf));
   int pageCode = cmd2 & 0x3F;
   int a = 4;
-  if(dbd == 0) {
-    uint32_t bl =  m_img->m_blocksize;
-    uint32_t bc = m_img->m_fileSize / bl;
-
+  if(scsi_cmd == 0x5A) a = 8;
+  
+    if(dbd == 0) {
     byte c[8] = {
       0,//Density code
       bc >> 16, bc >> 8, bc,
       0, //Reserve
       bl >> 16, bl >> 8, bl    
     };
-    memcpy(&m_buf[4], c, 8);
+    memcpy(&m_buf[a], c, 8);
     a += 8;
-    m_buf[3] = 0x08;
   }
   switch(pageCode) {
   case 0x3F:
+        case 0x01: // Read/Write Error Recovery
+        m_buf[a + 0] = 0x01;
+        m_buf[a + 1] = 0x0A;
+        a += 0x0C;
+        if(pageCode != 0x3F) break;
+
+      case 0x02: // Disconnect-Reconnect page
+        m_buf[a + 0] = 0x02;
+        m_buf[a + 1] = 0x0A;
+        a += 0x0C;
+        if(pageCode != 0x3f) break;
+
   case 0x03:  //Drive parameters
     m_buf[a + 0] = 0x03; //Page code
     m_buf[a + 1] = 0x16; // Page length
     m_buf[a + 11] = 0x3F;//Number of sectors / track
-    a += 24;
-    if(pageCode != 0x3F) {
-      break;
-    }
+    m_buf[a + 12] = (byte)(m_img->m_blocksize >> 8);
+        m_buf[a + 13] = (byte)m_img->m_blocksize;
+        m_buf[a + 15] = 0x1; // Interleave
+        a += 0x18;
+        if(pageCode != 0x3F) break;
+
   case 0x04:  //Drive parameters
     {
-      uint32_t bc = m_img->m_fileSize / m_img->m_file;
-      m_buf[a + 0] = 0x04; //Page code
-      m_buf[a + 1] = 0x16; // Page length
-      m_buf[a + 2] = bc >> 16;// Cylinder length
-      m_buf[a + 3] = bc >> 8;
-      m_buf[a + 4] = bc;
-      m_buf[a + 5] = 1;   //Number of heads
-      a += 24;
+        unsigned cylinders = bc / (16 * 63);
+        m_buf[a + 0] = 0x04; //Page code
+        m_buf[a + 1] = 0x16; // Page length
+        m_buf[a + 2] = (byte)(cylinders >> 16); // Cylinders
+        m_buf[a + 3] = (byte)(cylinders >> 8);
+        m_buf[a + 4] = (byte)cylinders;
+        m_buf[a + 5] = 16;   //Number of heads
+        a += 0x18;
+        if(pageCode != 0x3F) break;
     }
-    if(pageCode != 0x3F) {
-      break;
-    }
+    break; // Don't want 0x3F falling through to error condition
+
   default:
+    m_senseKey = 5; // Illegal request
+    m_addition_sense = 0x2400; // Invalid field in CDB
+    return 0x02;
     break;
   }
-  m_buf[0] = a - 1;
+   if(scsi_cmd == 0x5A) // MODE SENSE 10
+  {
+    m_buf[1] = a - 2;
+    m_buf[7] = 0x08;
+  }
+  else
+  {
+    m_buf[0] = a - 1;
+    m_buf[3] = 0x08;
+  }
   writeDataPhase(len < a ? len : a, m_buf);
   return 0x00;
 }
@@ -1219,6 +1250,7 @@ void loop()
   //byte scsiid = db & scsi_id_mask;
   byte scsiid = readIO() & scsi_id_mask;
   if((scsiid) == 0) {
+    delayMicroseconds(1);
     return;
   }
   LOGN("Selection");
@@ -1377,7 +1409,7 @@ void loop()
     break;
   case 0x1A:
     LOGN("[ModeSense6]");
-    m_sts |= onModeSenseCommand(cmd[1]&0x80, cmd[2], cmd[4]);
+    m_sts |= onModeSenseCommand(cmd[0], cmd[1]&0x80, cmd[2], cmd[4]);
     break;
   case 0x1B:
     LOGN("[StartStopUnit]");
@@ -1402,7 +1434,7 @@ void loop()
     break;
   case 0x5A:
     LOGN("[ModeSense10]");
-    onModeSenseCommand(cmd[1] & 0x80, cmd[2], ((uint32_t)cmd[7] << 8) | cmd[8]);
+    m_sts |= onModeSenseCommand(cmd[0], cmd[1] & 0x80, cmd[2], ((uint32_t)cmd[7] << 8) | cmd[8]);
     break;
 #if SCSI_SELECT == 1
   case 0xc2:
@@ -1413,7 +1445,8 @@ void loop()
   default:
     LOGN("[*Unknown]");
     m_sts |= 0x02;
-    m_senseKey = 5;
+    m_senseKey = 5;  // Illegal request
+    m_addition_sense = 0x2000; // Invalid Command Operation Code
     break;
   }
   if(m_isBusReset) {
