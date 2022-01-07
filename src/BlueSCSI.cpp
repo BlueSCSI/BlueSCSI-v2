@@ -71,8 +71,8 @@ SdFs SD;
 #define LOGN(XX)    Serial.println(XX)
 #define LOGHEXN(XX) Serial.println(XX, HEX)
 #elif DEBUG == 2
-#define LOG(XX)     LOG_FILE.println(XX); LOG_FILE.sync();
-#define LOGHEX(XX)  LOG_FILE.println(XX, HEX); LOG_FILE.sync();
+#define LOG(XX)     LOG_FILE.print(XX); LOG_FILE.sync();
+#define LOGHEX(XX)  LOG_FILE.print(XX, HEX); LOG_FILE.sync();
 #define LOGN(XX)    LOG_FILE.println(XX); LOG_FILE.sync();
 #define LOGHEXN(XX) LOG_FILE.println(XX, HEX); LOG_FILE.sync();
 #else
@@ -1096,27 +1096,27 @@ byte onModeSenseCommand(byte scsi_cmd, byte dbd, int cmd2, uint32_t len)
   }
   switch(pageCode) {
   case 0x3F:
-        case 0x01: // Read/Write Error Recovery
-        m_buf[a + 0] = 0x01;
-        m_buf[a + 1] = 0x0A;
-        a += 0x0C;
-        if(pageCode != 0x3F) break;
+  case 0x01: // Read/Write Error Recovery
+    m_buf[a + 0] = 0x01;
+    m_buf[a + 1] = 0x0A;
+    a += 0x0C;
+    if(pageCode != 0x3F) break;
 
-      case 0x02: // Disconnect-Reconnect page
-        m_buf[a + 0] = 0x02;
-        m_buf[a + 1] = 0x0A;
-        a += 0x0C;
-        if(pageCode != 0x3f) break;
+  case 0x02: // Disconnect-Reconnect page
+    m_buf[a + 0] = 0x02;
+    m_buf[a + 1] = 0x0A;
+    a += 0x0C;
+    if(pageCode != 0x3f) break;
 
   case 0x03:  //Drive parameters
     m_buf[a + 0] = 0x03; //Page code
     m_buf[a + 1] = 0x16; // Page length
     m_buf[a + 11] = 0x3F;//Number of sectors / track
     m_buf[a + 12] = (byte)(m_img->m_blocksize >> 8);
-        m_buf[a + 13] = (byte)m_img->m_blocksize;
-        m_buf[a + 15] = 0x1; // Interleave
-        a += 0x18;
-        if(pageCode != 0x3F) break;
+    m_buf[a + 13] = (byte)m_img->m_blocksize;
+    m_buf[a + 15] = 0x1; // Interleave
+    a += 0x18;
+    if(pageCode != 0x3F) break;
 
   case 0x04:  //Drive parameters
     {
