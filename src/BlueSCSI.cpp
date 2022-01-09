@@ -252,7 +252,7 @@ static const byte db2scsiid[256]={
 #endif
 
 // Log File
-#define VERSION "1.1-20220107"
+#define VERSION "1.1-SNAPSHOT-20220107"
 #define LOG_FILENAME "LOG.txt"
 FsFile LOG_FILE;
 
@@ -1083,8 +1083,8 @@ byte onModeSenseCommand(byte scsi_cmd, byte dbd, int cmd2, uint32_t len)
   int pageCode = cmd2 & 0x3F;
   int a = 4;
   if(scsi_cmd == 0x5A) a = 8;
-  
-    if(dbd == 0) {
+
+  if(dbd == 0) {
     byte c[8] = {
       0,//Density code
       bc >> 16, bc >> 8, bc,
@@ -1138,7 +1138,7 @@ byte onModeSenseCommand(byte scsi_cmd, byte dbd, int cmd2, uint32_t len)
     return 0x02;
     break;
   }
-   if(scsi_cmd == 0x5A) // MODE SENSE 10
+  if(scsi_cmd == 0x5A) // MODE SENSE 10
   {
     m_buf[1] = a - 2;
     m_buf[7] = 0x08;
