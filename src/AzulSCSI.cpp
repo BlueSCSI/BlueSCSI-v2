@@ -133,6 +133,11 @@ void readSCSIDeviceConfig()
   memset(tmp, 0, sizeof(tmp));
   ini_gets("SCSI", "Version", default_version, tmp, sizeof(tmp), CONFIGFILE);
   memcpy(&(SCSI_INFO_BUF[32]), tmp, 4);
+  
+  if (ini_getbool("SCSI", "Debug", 0, CONFIGFILE))
+  {
+    g_azlog_debug = true;
+  }
 }
 
 /*********************************/
