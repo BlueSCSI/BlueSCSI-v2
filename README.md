@@ -31,6 +31,7 @@ Example format for config file:
     Product = "FIREBALL1       "
     Version = "1.0 "
     Quirks = 0   # 0: Standard, 1: Sharp, 2: NEC PC98
+    Debug = 0   # Same effect as DIPSW2
 
 Performance
 -----------
