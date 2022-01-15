@@ -1164,6 +1164,12 @@ void scsiInit()
 
 		scsiDev.targets[i].syncOffset = 0;
 		scsiDev.targets[i].syncPeriod = 0;
+
+		// Always "start" the device. Many systems (eg. Apple System 7)
+		// won't respond properly to
+		// LOGICAL_UNIT_NOT_READY_INITIALIZING_COMMAND_REQUIRED sense
+		// code
+		scsiDev.targets[i].started = 1;
 	}
 	firstInit = 0;
 }

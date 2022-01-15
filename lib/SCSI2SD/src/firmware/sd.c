@@ -171,13 +171,6 @@ int sdInit()
 					blockDev.state &= ~DISK_WP;
 				}
 
-				// Always "start" the device. Many systems (eg. Apple System 7)
-				// won't respond properly to
-				// LOGICAL_UNIT_NOT_READY_INITIALIZING_COMMAND_REQUIRED sense
-				// code, even if they stopped it first with
-				// START STOP UNIT command.
-				blockDev.state |= DISK_STARTED;
-
 				result = 1;
 
 				s2s_ledOff();

@@ -310,11 +310,12 @@ static void doSeek(uint32_t lba)
 static int doTestUnitReady()
 {
     int ready = 1;
-    if (likely(blockDev.state == (DISK_STARTED | DISK_PRESENT | DISK_INITIALISED)))
+    if (likely(blockDev.state == (DISK_PRESENT | DISK_INITIALISED) &&
+		scsiDev.target->started))
     {
         // nothing to do.
     }
-    else if (unlikely(!(blockDev.state & DISK_STARTED)))
+    else if (unlikely(!scsiDev.target->started))
     {
         ready = 0;
         scsiDev.status = CHECK_CONDITION;
@@ -361,7 +362,7 @@ int scsiDiskCommand()
         }
         else if (start)
         {
-            blockDev.state = blockDev.state | DISK_STARTED;
+            scsiDev.target->started = 1;
             if (!(blockDev.state & DISK_INITIALISED))
             {
                 doSdInit();
@@ -369,7 +370,7 @@ int scsiDiskCommand()
         }
         else
         {
-            blockDev.state &= ~DISK_STARTED;
+            scsiDev.target->started = 0;
         }
     }
     else if (unlikely(command == 0x00))
@@ -988,8 +989,5 @@ void scsiDiskReset()
 void scsiDiskInit()
 {
     scsiDiskReset();
-
-    // Don't require the host to send us a START STOP UNIT command
-    blockDev.state = DISK_STARTED;
 }
 

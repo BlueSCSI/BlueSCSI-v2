@@ -19,7 +19,9 @@
 
 typedef enum
 {
-	DISK_STARTED = 1,     // Controlled via START STOP UNIT
+	// DISK_STARTED is stored per-target now as it's controlled by the
+	// START STOP UNIT command
+	OBSOLETE_DISK_STARTED = 1,
 	DISK_PRESENT = 2,     // SD card is physically present
 	DISK_INITIALISED = 4, // SD card responded to init sequence
 	DISK_WP = 8           // Write-protect.
