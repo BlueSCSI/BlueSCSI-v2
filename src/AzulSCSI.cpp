@@ -92,6 +92,16 @@ enum scsi_quirks_t {
   SCSI_QUIRKS_NEC_PC98 = 2
 } g_scsi_quirks;
 
+struct {
+  uint32_t ARBITRATION_DELAY_US;
+  uint32_t SELECTION_DELAY_US;
+  uint32_t COMMAND_DELAY_US;
+  uint32_t DATA_DELAY_US;
+  uint32_t STATUS_DELAY_US;
+  uint32_t MESSAGE_DELAY_US;
+  uint32_t REQ_TYPE_SETUP_NS;
+} g_scsi_timing;
+
 uint8_t SCSI_INFO_BUF[36] = {
   0x00, //device type
   0x00, //RMB = 0
@@ -138,6 +148,14 @@ void readSCSIDeviceConfig()
   {
     g_azlog_debug = true;
   }
+
+  g_scsi_timing.ARBITRATION_DELAY_US = ini_getl("SCSI", "ARBITRATION_DELAY_US", DEFAULT_SCSI_DELAY_US, CONFIGFILE);
+  g_scsi_timing.SELECTION_DELAY_US   = ini_getl("SCSI", "SELECTION_DELAY_US", DEFAULT_SCSI_DELAY_US, CONFIGFILE);
+  g_scsi_timing.COMMAND_DELAY_US     = ini_getl("SCSI", "COMMAND_DELAY_US", DEFAULT_SCSI_DELAY_US, CONFIGFILE);
+  g_scsi_timing.DATA_DELAY_US        = ini_getl("SCSI", "DATA_DELAY_US", DEFAULT_SCSI_DELAY_US, CONFIGFILE);
+  g_scsi_timing.STATUS_DELAY_US      = ini_getl("SCSI", "STATUS_DELAY_US", DEFAULT_SCSI_DELAY_US, CONFIGFILE);
+  g_scsi_timing.MESSAGE_DELAY_US     = ini_getl("SCSI", "MESSAGE_DELAY_US", DEFAULT_SCSI_DELAY_US, CONFIGFILE);
+  g_scsi_timing.REQ_TYPE_SETUP_NS    = ini_getl("SCSI", "REQ_TYPE_SETUP_NS", DEFAULT_REQ_TYPE_SETUP_NS, CONFIGFILE);
 }
 
 /*********************************/
@@ -360,6 +378,8 @@ void writeDataPhase(int len, const uint8_t* p)
   SCSI_OUT(MSG,inactive);
   SCSI_OUT(CD ,inactive);
   SCSI_OUT(IO ,  active);
+  delay_ns(g_scsi_timing.REQ_TYPE_SETUP_NS);
+
   for (int i = 0; i < len; i++) {
     if (g_busreset) break;
     writeHandshake(p[i]);
@@ -378,6 +398,7 @@ void writeDataPhase_FromSD(uint32_t adds, uint32_t len)
   SCSI_OUT(MSG,inactive);
   SCSI_OUT(CD ,inactive);
   SCSI_OUT(IO ,  active);
+  delay_ns(g_scsi_timing.REQ_TYPE_SETUP_NS);
 
   uint8_t buf[MAX_BLOCKSIZE];
 
@@ -418,6 +439,8 @@ void readDataPhase(int len, uint8_t* p)
   SCSI_OUT(MSG,inactive);
   SCSI_OUT(CD ,inactive);
   SCSI_OUT(IO ,inactive);
+  delay_ns(g_scsi_timing.REQ_TYPE_SETUP_NS);
+
   for(int i = 0; i < len; i++)
   {
     if (g_busreset) break;
@@ -437,6 +460,7 @@ void readDataPhase_ToSD(uint32_t adds, uint32_t len)
   SCSI_OUT(MSG,inactive);
   SCSI_OUT(CD ,inactive);
   SCSI_OUT(IO ,inactive);
+  delay_ns(g_scsi_timing.REQ_TYPE_SETUP_NS);
 
   uint8_t buf[MAX_BLOCKSIZE];
 
@@ -735,8 +759,7 @@ int readSCSICommand(uint8_t cmd[12])
   SCSI_OUT(MSG,inactive);
   SCSI_OUT(CD ,  active);
   SCSI_OUT(IO ,inactive);
-
-  delay_ns(500);
+  delay_ns(g_scsi_timing.REQ_TYPE_SETUP_NS);
 
   cmd[0] = readHandshake();
   if (g_busreset) return 0;
@@ -764,7 +787,8 @@ bool onATNMessage()
 
   SCSI_OUT(MSG,  active);
   SCSI_OUT(CD ,  active);
-  SCSI_OUT(IO ,inactive);  
+  SCSI_OUT(IO ,inactive);
+  delay_ns(g_scsi_timing.REQ_TYPE_SETUP_NS);
 
   uint8_t msg[256];
   memset(msg, 0x00, sizeof(msg));
@@ -847,6 +871,7 @@ bool onATNMessage()
     SCSI_OUT(MSG,  active);
     SCSI_OUT(CD ,  active);
     SCSI_OUT(IO ,  active);
+    delay_ns(g_scsi_timing.REQ_TYPE_SETUP_NS);
 
     for (int i = 0; i < responselen; i++)
     {
@@ -882,6 +907,8 @@ void scsi_loop()
 
   g_busreset = false;
   
+  delay_us(g_scsi_timing.ARBITRATION_DELAY_US);
+
   // Set BSY to-when selected
   SCSI_OUT(BSY, active);
   azdbg("SCSI device selected");
@@ -907,6 +934,8 @@ void scsi_loop()
     }
   }
   
+  delay_us(g_scsi_timing.SELECTION_DELAY_US);
+
   if(SCSI_IN(ATN))
   {
     if (!onATNMessage())
@@ -917,8 +946,12 @@ void scsi_loop()
     }
   }
 
+  delay_us(g_scsi_timing.COMMAND_DELAY_US);
+
   uint8_t cmd[12];
   int cmdlen = readSCSICommand(cmd);
+
+  delay_us(g_scsi_timing.DATA_DELAY_US);
 
   if (cmdlen == 0)
   {
@@ -1012,10 +1045,13 @@ void scsi_loop()
      return;
   }
 
+  delay_us(g_scsi_timing.STATUS_DELAY_US);
+
   azdbg("Status: ", g_scsi_sts);
   SCSI_OUT(MSG,inactive);
   SCSI_OUT(CD ,  active);
   SCSI_OUT(IO ,  active);
+  delay_ns(g_scsi_timing.REQ_TYPE_SETUP_NS);
   writeHandshake(g_scsi_sts);
   
   if(g_busreset) {
@@ -1023,9 +1059,12 @@ void scsi_loop()
      return;
   }
 
+  delay_us(g_scsi_timing.MESSAGE_DELAY_US);
+
   SCSI_OUT(MSG,  active);
   SCSI_OUT(CD ,  active);
   SCSI_OUT(IO ,  active);
+  delay_ns(g_scsi_timing.REQ_TYPE_SETUP_NS);
   writeHandshake(0);
 
   azdbg("Command complete");

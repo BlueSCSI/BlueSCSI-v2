@@ -120,6 +120,14 @@ void delay(unsigned long ms);
 // Works in interrupt context also, max delay 500 000 ns, min delay about 500 ns
 void delay_ns(unsigned long ns);
 
+static inline void delay_us(unsigned long us)
+{
+    if (us > 0)
+    {
+        delay_ns(us * 1000);
+    }
+}
+
 // Approximate fast delay
 static inline void delay_100ns()
 {

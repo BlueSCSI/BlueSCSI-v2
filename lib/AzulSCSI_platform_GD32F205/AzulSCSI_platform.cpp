@@ -9,6 +9,7 @@ extern "C" {
 const char *g_azplatform_name = "GD32F205 AzulSCSI v1.x";
 
 static volatile uint32_t g_millisecond_counter;
+static uint32_t g_ns_to_cycles; // Q0.32 fixed point format
 
 unsigned long millis()
 {
@@ -23,18 +24,26 @@ void delay(unsigned long ms)
 
 void delay_ns(unsigned long ns)
 {
-    int cycles = (ns * SysTick->LOAD) / 1024 / 1024;
-    cycles -= 10; // Call overhead
-    if (cycles > 0)
+    if (ns <= 100) return; // Approximate call overhead
+    ns -= 100;
+
+    uint32_t VAL_start = SysTick->VAL;
+
+    if (ns > 1000000)
     {
-        int end = (int)SysTick->VAL - cycles;
-        if (end < 0)
-        {
-            end += SysTick->LOAD;
-            while (SysTick->VAL < cycles);
-        }
-        while (SysTick->VAL > end);
+        int ms = ns / 1000000;
+        ns = ns - ms * 1000000;
+        delay(ms);
     }
+
+    int cycles = ((uint64_t)ns * g_ns_to_cycles) >> 32;
+    int end = (int)VAL_start - cycles;
+    if (end <= 0)
+    {
+        end += SysTick->LOAD;
+        while (SysTick->VAL < end);
+    }
+    while (SysTick->VAL > end);
 }
 
 void SysTick_Handler(void)
@@ -60,6 +69,8 @@ void azplatform_init()
     SystemCoreClockUpdate();
 
     // Enable SysTick to drive millis()
+    g_millisecond_counter = 0;
+    g_ns_to_cycles = ((uint64_t)SystemCoreClock << 32) / 1000000000;
     SysTick_Config(SystemCoreClock / 1000U);
     NVIC_SetPriority(SysTick_IRQn, 0x00U);
 
