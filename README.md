@@ -38,6 +38,11 @@ Performance
 With verbose log messages disabled, expected SCSI performance is 1.7 MB/s read and 1.5 MB/s write.
 Slow SD card or fragmented filesystem can slow down access.
 
+Seek performance is best if image files are contiguous.
+For ExFAT filesystem this relies on a file flag set by PC.
+Current versions of exfat-fuse on Linux have an [issue](https://github.com/relan/exfat/pull/101) that causes the files not to be marked contiguous even when they are.
+This is indicated by message `WARNING: file HD00_512.hda is not contiguous. This will increase read latency.` in the log.
+
 Programming
 -----------
 The AzulSCSI v1 board can be programmed using USB connection in DFU mode.
