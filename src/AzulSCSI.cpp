@@ -164,6 +164,15 @@ bool hddimageOpen(HDDIMG *h,const char *image_name,int id,int lun,int blocksize)
     h->m_fileSize = h->m_file.size();
     azlog("Opened image file ", image_name, " fileSize: ", (int)(h->m_fileSize / 1024), " kB");
     
+    if (h->m_file.contiguousRange(NULL, NULL))
+    {
+      azlog("Image file is contiguous.");
+    }
+    else
+    {
+      azlog("WARNING: file ", image_name, " is not contiguous. This will increase read latency.");
+    }
+
     if(h->m_fileSize > 0)
     {
       return true; // File opened
