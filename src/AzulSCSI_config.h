@@ -28,6 +28,11 @@
 #define DEFAULT_PRODUCT "FIREBALL1       "
 #define DEFAULT_VERSION "1.0 "
 
+// Default delay for SCSI phases.
+// Can be adjusted in ini file
+#define DEFAULT_SCSI_DELAY_US 10
+#define DEFAULT_REQ_TYPE_SETUP_NS 500
+
 // Use streaming SCSI and SD transfers for higher performance
 #define STREAM_SD_TRANSFERS 1
 

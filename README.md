@@ -33,6 +33,15 @@ Example format for config file:
     Quirks = 0   # 0: Standard, 1: Sharp, 2: NEC PC98
     Debug = 0   # Same effect as DIPSW2
 
+    # Default timings that work with most devices
+    ARBITRATION_DELAY_US = 10
+    SELECTION_DELAY_US   = 10
+    COMMAND_DELAY_US     = 10
+    DATA_DELAY_US        = 10
+    STATUS_DELAY_US      = 10
+    MESSAGE_DELAY_US     = 10
+    REQ_TYPE_SETUP_NS    = 500
+
 Performance
 -----------
 With verbose log messages disabled, expected SCSI performance is 1.7 MB/s read and 1.5 MB/s write.
