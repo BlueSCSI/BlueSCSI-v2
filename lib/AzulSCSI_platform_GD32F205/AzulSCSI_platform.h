@@ -93,6 +93,9 @@ extern const char *g_azplatform_name;
 #define SD_CLK_PIN   GPIO_PIN_5
 #define SD_MISO_PIN  GPIO_PIN_6
 #define SD_MOSI_PIN  GPIO_PIN_7
+#define SD_SPI       SPI0
+#define SD_SPI_RX_DMA_CHANNEL DMA_CH1
+#define SD_SPI_TX_DMA_CHANNEL DMA_CH2
 
 // DIP switches
 #define DIP_PORT     GPIOB
@@ -131,7 +134,7 @@ static inline void delay_us(unsigned long us)
 // Approximate fast delay
 static inline void delay_100ns()
 {
-    asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop"); asm("nop");
+    asm volatile ("nop \n nop \n nop \n nop \n nop");
 }
 
 // Initialize SPI and GPIO configuration
