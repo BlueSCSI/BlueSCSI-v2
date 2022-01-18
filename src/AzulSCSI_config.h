@@ -18,6 +18,10 @@
 #define MAX_FILE_PATH 32                // Maximum file name length
 #define MAX_BLOCKSIZE 1024              // Maximum BLOCK size
 
+// Read buffer size
+// Should be at least MAX_BLOCKSIZE.
+#define READBUFFER_SIZE 4096
+
 // SCSI config
 #define NUM_SCSIID  7          // Maximum number of supported SCSI-IDs (The minimum is 0)
 #define NUM_SCSILUN 2          // Maximum number of LUNs supported     (The minimum is 0)

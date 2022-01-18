@@ -79,6 +79,7 @@ uint8_t   g_scsi_id_mask;    // Mask list of responding SCSI IDs
 uint8_t   g_scsi_id;         // Currently responding SCSI-ID
 uint8_t   g_scsi_lun;        // Logical unit number currently responding
 uint8_t   g_scsi_sts;        // Status byte
+uint8_t   g_scsi_buffer[READBUFFER_SIZE] __attribute__((aligned(4)));
 
 
 /*********************************/
@@ -400,14 +401,17 @@ void writeDataPhase_FromSD(uint32_t adds, uint32_t len)
   SCSI_OUT(IO ,  active);
   delay_ns(g_scsi_timing.REQ_TYPE_SETUP_NS);
 
-  uint8_t buf[MAX_BLOCKSIZE];
-
-  for(uint32_t i = 0; i < len; i++)
+  while (len > 0)
   {
-#if STREAM_SD_TRANSFERS
-    azplatform_prepare_stream(buf);
-    g_currentimg->m_file.read(buf, g_currentimg->m_blocksize);
+    uint32_t max_transfer_len = READBUFFER_SIZE / g_currentimg->m_blocksize;
+    uint32_t transfer_len = (len < max_transfer_len) ? len : max_transfer_len;
+    len -= transfer_len;
+    transfer_len *= g_currentimg->m_blocksize;
 
+#if STREAM_SD_TRANSFERS
+    azplatform_prepare_stream(g_scsi_buffer);
+    g_currentimg->m_file.read(g_scsi_buffer, transfer_len);
+    
     if (g_busreset) return;
 
     size_t status = azplatform_finish_stream();
@@ -415,17 +419,17 @@ void writeDataPhase_FromSD(uint32_t adds, uint32_t len)
     {
       // Streaming did not happen, send data now
       azdbg("Streaming from SD failed, using fallback");
-      writeDataPhase(g_currentimg->m_blocksize, buf);
+      writeDataPhase(transfer_len, g_scsi_buffer);
     }
-    else if (status != g_currentimg->m_blocksize)
+    else if (status != transfer_len)
     {
       azlog("Streaming failed halfway, data may be corrupt, aborting!");
       g_scsi_sts |= 2;
       return;
     }
 #else
-    g_currentimg->m_file.read(buf, g_currentimg->m_blocksize);
-    writeDataPhase(g_currentimg->m_blocksize, buf);
+    g_currentimg->m_file.read(g_scsi_buffer, transfer_len);
+    writeDataPhase(transfer_len, g_scsi_buffer);
 #endif
   }
 }
@@ -462,37 +466,41 @@ void readDataPhase_ToSD(uint32_t adds, uint32_t len)
   SCSI_OUT(IO ,inactive);
   delay_ns(g_scsi_timing.REQ_TYPE_SETUP_NS);
 
-  uint8_t buf[MAX_BLOCKSIZE];
-
-  for (uint32_t i = 0; i < len; i++)
+  while (len > 0)
   {
+    uint32_t max_transfer_len = READBUFFER_SIZE / g_currentimg->m_blocksize;
+    uint32_t transfer_len = (len < max_transfer_len) ? len : max_transfer_len;
+    len -= transfer_len;
+    transfer_len *= g_currentimg->m_blocksize;
+
 #if STREAM_SD_TRANSFERS
-  azplatform_prepare_stream(buf);
-  g_currentimg->m_file.write(buf, g_currentimg->m_blocksize);
+    azplatform_prepare_stream(g_scsi_buffer);
+    g_currentimg->m_file.write(g_scsi_buffer, transfer_len);
+    pos += transfer_len;
 
-  if (g_busreset) return;
+    if (g_busreset) return;
 
-  size_t status = azplatform_finish_stream();
+    size_t status = azplatform_finish_stream();
 
-  if (status == 0)
-  {
-    // Streaming did not happen, rewrite
-    azdbg("Streaming to SD failed, using fallback");
+    if (status == 0)
+    {
+      // Streaming did not happen, rewrite
+      azdbg("Streaming to SD failed, using fallback");
 
-    g_currentimg->m_file.seek(pos + i * g_currentimg->m_blocksize);
+      g_currentimg->m_file.seek(pos - transfer_len);
 
-    readDataPhase(g_currentimg->m_blocksize, buf);
-    g_currentimg->m_file.write(buf, g_currentimg->m_blocksize);
-  }
-  else if (status != g_currentimg->m_blocksize)
-  {
-    azlog("Streaming to SD failed halfway, data may be corrupt, aborting!");
-    g_scsi_sts |= 2;
-    return;
-  }
+      readDataPhase(transfer_len, g_scsi_buffer);
+      g_currentimg->m_file.write(g_scsi_buffer, transfer_len);
+    }
+    else if (status != transfer_len)
+    {
+      azlog("Streaming to SD failed halfway, data may be corrupt, aborting!");
+      g_scsi_sts |= 2;
+      return;
+    }
 #else
-    readDataPhase(g_currentimg->m_blocksize, buf);
-    g_currentimg->m_file.write(buf, g_currentimg->m_blocksize);
+    readDataPhase(transfer_len, g_scsi_buffer);
+    g_currentimg->m_file.write(g_scsi_buffer, transfer_len);
 #endif
   }
   g_currentimg->m_file.flush();
