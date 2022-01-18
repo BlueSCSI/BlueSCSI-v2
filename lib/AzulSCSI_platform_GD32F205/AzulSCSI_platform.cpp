@@ -1,5 +1,6 @@
 #include "AzulSCSI_platform.h"
 #include "gd32f20x_spi.h"
+#include "gd32f20x_dma.h"
 #include "AzulSCSI_log.h"
 #include "AzulSCSI_config.h"
 #include <SdFat.h>
@@ -294,11 +295,43 @@ extern volatile bool g_busreset;
   }
 
 #define SD_SPI SPI0
+#define SD_SPI_RX_DMA_CHANNEL DMA_CH1
+#define SD_SPI_TX_DMA_CHANNEL DMA_CH2
+
 class GD32SPIDriver : public SdSpiBaseClass
 {
 public:
     void begin(SdSpiConfig config) {
         rcu_periph_clock_enable(RCU_SPI0);
+        rcu_periph_clock_enable(RCU_DMA0);
+
+        dma_parameter_struct rx_dma_config =
+        {
+            .periph_addr = (uint32_t)&SPI_DATA(SD_SPI),
+            .periph_width = DMA_PERIPHERAL_WIDTH_8BIT,
+            .memory_addr = 0, // Set before transfer
+            .memory_width = DMA_MEMORY_WIDTH_8BIT,
+            .number = 0, // Set before transfer
+            .priority = DMA_PRIORITY_ULTRA_HIGH,
+            .periph_inc = DMA_PERIPH_INCREASE_DISABLE,
+            .memory_inc = DMA_MEMORY_INCREASE_ENABLE,
+            .direction = DMA_PERIPHERAL_TO_MEMORY
+        };
+        dma_init(DMA0, SD_SPI_RX_DMA_CHANNEL, &rx_dma_config);
+
+        dma_parameter_struct tx_dma_config =
+        {
+            .periph_addr = (uint32_t)&SPI_DATA(SD_SPI),
+            .periph_width = DMA_PERIPHERAL_WIDTH_8BIT,
+            .memory_addr = 0, // Set before transfer
+            .memory_width = DMA_MEMORY_WIDTH_8BIT,
+            .number = 0, // Set before transfer
+            .priority = DMA_PRIORITY_HIGH,
+            .periph_inc = DMA_PERIPH_INCREASE_DISABLE,
+            .memory_inc = DMA_MEMORY_INCREASE_ENABLE,
+            .direction = DMA_MEMORY_TO_PERIPHERAL
+        };
+        dma_init(DMA0, SD_SPI_TX_DMA_CHANNEL, &tx_dma_config);
     }
         
     void activate() {
@@ -363,17 +396,43 @@ public:
         if (buf == m_stream_buffer + m_stream_status)
         {
             // Stream data directly to SCSI bus
-            return stream_receive(count);
+            return stream_receive(buf, count);
         }
         
-        // Store data to buffer
-        for (size_t i = 0; i < count; i++)
+        // Stream to memory
+        
+        // Use DMA to stream dummy TX data and store RX data
+        uint8_t tx_data = 0xFF;
+        DMA_INTC(DMA0) = DMA_FLAG_ADD(DMA_FLAG_FTF | DMA_FLAG_ERR, SD_SPI_RX_DMA_CHANNEL);
+        DMA_INTC(DMA0) = DMA_FLAG_ADD(DMA_FLAG_FTF | DMA_FLAG_ERR, SD_SPI_TX_DMA_CHANNEL);
+        DMA_CHMADDR(DMA0, SD_SPI_RX_DMA_CHANNEL) = (uint32_t)buf;
+        DMA_CHMADDR(DMA0, SD_SPI_TX_DMA_CHANNEL) = (uint32_t)&tx_data;
+        DMA_CHCTL(DMA0, SD_SPI_TX_DMA_CHANNEL) &= ~DMA_CHXCTL_MNAGA; // No memory increment for TX
+        DMA_CHCNT(DMA0, SD_SPI_RX_DMA_CHANNEL) = count;
+        DMA_CHCNT(DMA0, SD_SPI_TX_DMA_CHANNEL) = count;
+        DMA_CHCTL(DMA0, SD_SPI_RX_DMA_CHANNEL) |= DMA_CHXCTL_CHEN;
+        DMA_CHCTL(DMA0, SD_SPI_TX_DMA_CHANNEL) |= DMA_CHXCTL_CHEN;
+
+        SPI_CTL1(SD_SPI) |= SPI_CTL1_DMAREN | SPI_CTL1_DMATEN;
+        
+        uint32_t start = millis();
+        while (!(DMA_INTF(DMA0) & DMA_FLAG_ADD(DMA_FLAG_FTF | DMA_FLAG_ERR, SD_SPI_RX_DMA_CHANNEL)))
         {
-            while (!(SPI_STAT(SD_SPI) & SPI_STAT_TBE));
-            SPI_DATA(SD_SPI) = 0xFF;
-            while (!(SPI_STAT(SD_SPI) & SPI_STAT_RBNE));
-            buf[i] = SPI_DATA(SD_SPI);
+            if (millis() - start > 500)
+            {
+                azlog("ERROR: SPI DMA receive of ", (int)count, " bytes timeouted");
+                return 1;
+            }
         }
+
+        if (DMA_INTF(DMA0) & DMA_FLAG_ADD(DMA_FLAG_ERR, SD_SPI_RX_DMA_CHANNEL))
+        {
+            azlog("ERROR: SPI DMA receive set DMA_FLAG_ERR");
+        }
+
+        SPI_CTL1(SD_SPI) &= ~(SPI_CTL1_DMAREN | SPI_CTL1_DMATEN);
+        DMA_CHCTL(DMA0, SD_SPI_RX_DMA_CHANNEL) &= ~DMA_CHXCTL_CHEN;
+        DMA_CHCTL(DMA0, SD_SPI_TX_DMA_CHANNEL) &= ~DMA_CHXCTL_CHEN;
 
         return 0;
     }
