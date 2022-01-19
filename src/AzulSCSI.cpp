@@ -74,7 +74,9 @@ void blinkStatus(int count)
 /*********************************/
 
 volatile bool g_busreset = false;
-static uint8_t g_sensekey = 0;
+uint8_t   g_sensekey = 0;    // Error information
+uint8_t   g_sense_asc = 0;   // Additional error code
+uint8_t   g_sense_ascq = 0;  // Additional error code qualifier
 uint8_t   g_scsi_id_mask;    // Mask list of responding SCSI IDs
 uint8_t   g_scsi_id;         // Currently responding SCSI-ID
 uint8_t   g_scsi_lun;        // Logical unit number currently responding
@@ -510,25 +512,60 @@ void readDataPhase_ToSD(uint32_t adds, uint32_t len)
 /* SCSI commands                 */
 /*********************************/
 
+// https://www.staff.uni-mainz.de/tacke/scsi/SCSI2-08.html#8.2.16
+uint8_t onTestUnitReady()
+{
+  if(!g_currentimg)
+  {
+    g_sensekey = 2; // Not ready
+    g_sense_asc = 0x3A; // Medium not present
+    g_sense_ascq = 0;
+    return 0x02; // Check condition
+  }
+
+  return 0x00;
+}
+
 // INQUIRY command processing.
 uint8_t onInquiryCommand(uint8_t len)
 {
-  writeDataPhase(len < 36 ? len : 36, SCSI_INFO_BUF);
+  uint8_t response[sizeof(SCSI_INFO_BUF)];
+  int responselen = sizeof(SCSI_INFO_BUF);
+  memcpy(response, SCSI_INFO_BUF, responselen);
+
+  // Select device type based on LUN
+  if (g_scsi_lun >= NUM_SCSILUN)
+  {
+    response[0] = 0x7F; // Unsupported LUN
+  }
+  else if (!g_currentimg)
+  {
+    response[0] = 0x3F; // Unconnected LUN
+  }
+
+  writeDataPhase(len < responselen ? len : responselen, response);
   return 0x00;
 }
 
 // REQUEST SENSE command processing.
+// Refer to https://www.staff.uni-mainz.de/tacke/scsi/SCSI2-08.html#8.2.14
 void onRequestSenseCommand(uint8_t len)
 {
   uint8_t buf[18] = {
-    0x70,   //CheckCondition
+    0xF0,   //CheckCondition
     0,      //Segment number
     g_sensekey,   //Sense key
     0, 0, 0, 0,  //information
     17 - 7 ,   //Additional data length
+    0, 0, 0, 0, // Command specific
+    g_sense_asc,
+    g_sense_ascq,
     0,
+    0, 0, 0
   };
   g_sensekey = 0;
+  g_sense_asc = 0;
+  g_sense_ascq = 0;
   writeDataPhase(len < 18 ? len : 18, buf);  
 }
 
@@ -919,7 +956,7 @@ void scsi_loop()
 
   // Set BSY to-when selected
   SCSI_OUT(BSY, active);
-  azdbg("SCSI device selected");
+  azdbg("------------ SCSI device selected");
   
   // Ask for a TARGET-ID to respond
   g_scsi_id = 0;
@@ -967,9 +1004,8 @@ void scsi_loop()
     return;
   }
   
-  // LUN confirmation
-  g_scsi_sts = cmd[1] & 0xe0;      // Preset LUN in status byte
-  g_scsi_lun = g_scsi_sts >> 5;
+  // LUN selection
+  g_scsi_lun = cmd[1] >> 5;
 
   // HDD Image selection
   g_currentimg = (HDDIMG *)0; // None
@@ -979,11 +1015,17 @@ void scsi_loop()
     if(!(g_currentimg->m_file.isOpen()))
       g_currentimg = (HDDIMG *)0;       // Image absent
   }
+
+  g_scsi_sts = 0;
   
   azdbg("CMD ", cmd[0], " (", cmdlen, " bytes): ", "ID", (int)g_scsi_id, ", LUN", (int)g_scsi_lun);
   
   switch(cmd[0]) {
-    case 0x00: azdbg("[Test Unit]"); break;
+    case 0x00:
+      azdbg("[Test Unit Ready]");
+      g_scsi_sts |= onTestUnitReady();
+      break;
+
     case 0x01: azdbg("[Rezero Unit]"); break;
     case 0x03:
       azdbg("[RequestSense]");
@@ -1075,7 +1117,7 @@ void scsi_loop()
   delay_ns(g_scsi_timing.REQ_TYPE_SETUP_NS);
   writeHandshake(0);
 
-  azdbg("Command complete");
+  azdbg("------------ Command complete");
 
   SCSI_RELEASE_OUTPUTS();
 }
