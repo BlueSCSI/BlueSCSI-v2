@@ -12,4 +12,4 @@ arm-none-eabi-gdb \
        -iex 'mon tpiu config internal swo.log uart false 38400000 2000000' \
        -iex 'shell bash -m -c "orbuculum -f swo.log &"' \
        -iex 'shell bash -m -c "orbcat -c 0,%c &"' \
-       .pio/build/genericGD32F205VC/firmware.elf
+       .pio/build/AzulSCSIv1_0/firmware.elf
