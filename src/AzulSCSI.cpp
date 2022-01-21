@@ -941,7 +941,15 @@ void scsi_loop()
   }
 
   // Wait until RST = H, BSY = H, SEL = L
-  while (SCSI_IN(BSY) || !SCSI_IN(SEL) || SCSI_IN(RST));
+  uint32_t start = millis();
+  while (SCSI_IN(BSY) || !SCSI_IN(SEL) || SCSI_IN(RST))
+  {
+    if ((uint32_t)(millis() - start) > 1000)
+    {
+      // Service main loop while waiting for request
+      return;
+    }
+  }
 
   // BSY+ SEL-
   // If the ID to respond is not driven, wait for the next
@@ -1184,7 +1192,7 @@ int main(void)
     do
     {
       blinkStatus(BLINK_ERROR_NO_SD_CARD);
-      delay(5000);
+      delay(1000);
     } while (!SD.begin(SD_CONFIG));
     azlog("SD card init succeeded after retry");
   }
@@ -1204,11 +1212,40 @@ int main(void)
   logfile = SD.open(LOGFILE, O_WRONLY | O_CREAT | O_TRUNC);
   saveLog(logfile);
 
+  if (g_scsi_id_mask != 0)
+  {
+    // Ok, there is an image
+    blinkStatus(1);
+  }
+
   uint32_t prev_log_save = millis();
 
   while (1)
   {
     scsi_loop();
+
+    // Check SD card status for hotplug
+    uint32_t ocr;
+    if (!SD.card()->readOCR(&ocr))
+    {
+      if (!SD.card()->readOCR(&ocr))
+      {
+        azlog("SD card removed, trying to reinit");
+        do
+        {
+          blinkStatus(BLINK_ERROR_NO_SD_CARD);
+          delay(1000);
+        } while (!SD.begin(SD_CONFIG));
+        azlog("SD card reinit succeeded");
+        readSCSIDeviceConfig();
+        findHDDImages();
+
+        if (g_scsi_id_mask != 0)
+        {
+          blinkStatus(1);
+        }
+      }
+    }
 
     // Save log once a second if there are new log messages
     if ((uint32_t)(millis() - prev_log_save) > 1000)
