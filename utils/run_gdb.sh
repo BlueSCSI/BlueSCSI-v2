@@ -5,6 +5,7 @@
 
 killall orbuculum
 killall orbcat
+rm -f swo.log
 
 arm-none-eabi-gdb \
        -iex 'target extended | openocd -f interface/stlink.cfg -f target/stm32f1x.cfg -c "gdb_port pipe"' \

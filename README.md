@@ -13,8 +13,9 @@ Log messages are stored in `azullog.txt`, which is cleared on every boot.
 Normally only basic initialization information is stored, but turning `DIPSW2` on will cause every SCSI command to be logged.
 
 The indicator LED will normally report disk access.
-It also reports following error conditions:
+It also reports following status conditions:
 
+- 1 fast blink on boot: Image file loaded successfully
 - 3 fast blinks: No images found on SD card
 - 5 fast blinks: SD card not detected
 - Continuous morse pattern: firmware crashed, morse code indicates crash location
@@ -44,13 +45,21 @@ Example format for config file:
 
 Performance
 -----------
-With verbose log messages disabled, expected SCSI performance is 1.7 MB/s read and 1.5 MB/s write.
+With verbose log messages disabled, expected SCSI performance is 2.4 MB/s read and 1.5 MB/s write.
 Slow SD card or fragmented filesystem can slow down access.
 
 Seek performance is best if image files are contiguous.
 For ExFAT filesystem this relies on a file flag set by PC.
 Current versions of exfat-fuse on Linux have an [issue](https://github.com/relan/exfat/pull/101) that causes the files not to be marked contiguous even when they are.
 This is indicated by message `WARNING: file HD00_512.hda is not contiguous. This will increase read latency.` in the log.
+
+Hotplugging
+-----------
+The firmware supports hot-plug removal and reinsertion of SD card.
+The status led will blink continuously when card is not present, then blink once when card is reinserted successfully.
+
+It will depend on the host system whether it gets confused by hotplugging.
+Any IO requests issued when card is removed will be timeouted.
 
 Programming
 -----------
