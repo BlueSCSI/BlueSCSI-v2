@@ -10,6 +10,7 @@
 
 // Log buffer size in bytes, must be a power of 2
 #define LOGBUFSIZE 16384
+#define LOG_SAVE_INTERVAL_MS 1000
 
 // HDD image file format
 #define HDIMG_ID_POS  2                 // Position to embed ID number
