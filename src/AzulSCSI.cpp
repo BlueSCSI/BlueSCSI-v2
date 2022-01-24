@@ -49,6 +49,7 @@
 #include "AzulSCSI_log.h"
 
 SdFs SD;
+FsFile g_logfile;
 
 /***********************************/
 /* Error reporting by blinking led */
@@ -59,7 +60,6 @@ SdFs SD;
 
 void blinkStatus(int count)
 {
-  azdbg("Blinking status code: ", count);
   for (int i = 0; i < count; i++)
   {
     LED_ON();
@@ -67,6 +67,42 @@ void blinkStatus(int count)
     LED_OFF();
     delay(250);
   }
+}
+
+/**************/
+/* Log saving */
+/**************/
+
+void save_logfile()
+{
+  static uint32_t prev_log_pos = 0;
+  static uint32_t prev_log_len = 0;
+  static uint32_t prev_log_save = 0;
+  uint32_t loglen = azlog_get_buffer_len();
+
+  if (loglen != prev_log_len)
+  {
+    if (LOG_SAVE_INTERVAL_MS > 0 && (uint32_t)(millis() - prev_log_save) > LOG_SAVE_INTERVAL_MS)
+    {
+      g_logfile.write(azlog_get_buffer(&prev_log_pos));
+      g_logfile.flush();
+      
+      prev_log_len = loglen;
+      prev_log_save = millis();
+    }
+  }
+}
+
+void init_logfile()
+{
+  static bool first_open_after_boot = true;
+
+  bool truncate = first_open_after_boot;
+  int flags = O_WRONLY | O_CREAT | (truncate ? O_TRUNC : O_APPEND);
+  g_logfile = SD.open(LOGFILE, flags);
+  save_logfile();
+
+  first_open_after_boot = false;
 }
 
 /*********************************/
@@ -1125,6 +1161,8 @@ void scsi_loop()
   delay_ns(g_scsi_timing.REQ_TYPE_SETUP_NS);
   writeHandshake(0);
 
+  save_logfile();
+
   azdbg("------------ Command complete");
 
   SCSI_RELEASE_OUTPUTS();
@@ -1151,32 +1189,6 @@ void onBusReset(void)
   SCSI_RELEASE_OUTPUTS();
   azdbg("BUSRESET");
   g_busreset = true;
-}
-
-// Check for any new data in log buffer and save it to file
-void saveLog(FsFile &logfile)
-{
-  static uint32_t prev_log_pos = 0;
-  static uint32_t prev_log_len = 0;
-  uint32_t loglen = azlog_get_buffer_len();
-
-  if (loglen != prev_log_len)
-  {
-    // Hold down BSY during the write to avoid timeouts on host
-    if (SCSI_IN(BSY))
-    {
-      return;
-    }
-
-    SCSI_OUT(BSY, active);
-
-    logfile.write(azlog_get_buffer(&prev_log_pos));
-    logfile.flush();
-    
-    SCSI_OUT(BSY, inactive);
-
-    prev_log_len = loglen;
-  }
 }
 
 int main(void)
@@ -1208,17 +1220,13 @@ int main(void)
   azlog("Platform: ", g_azplatform_name);
   azlog("FW Version: ", g_azlog_firmwareversion);
 
-  FsFile logfile;
-  logfile = SD.open(LOGFILE, O_WRONLY | O_CREAT | O_TRUNC);
-  saveLog(logfile);
+  init_logfile();
 
   if (g_scsi_id_mask != 0)
   {
     // Ok, there is an image
     blinkStatus(1);
   }
-
-  uint32_t prev_log_save = millis();
 
   while (1)
   {
@@ -1245,13 +1253,6 @@ int main(void)
           blinkStatus(1);
         }
       }
-    }
-
-    // Save log once a second if there are new log messages
-    if ((uint32_t)(millis() - prev_log_save) > 1000)
-    {
-      saveLog(logfile);
-      prev_log_save = millis();
     }
   }
 }
