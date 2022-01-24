@@ -13,19 +13,19 @@ Updated for 1.0-c.
 
 Grab the latest Gerbers. Gerber files tell the PCB manufactuer how to create the BlueSCSI boards.
 
-https://github.com/erichelgeson/BlueSCSI/tree/main/hw/gerbers
+https://github.com/erichelgeson/BlueSCSI/tree/main/hw/
 
 Order the boards from https://jlcpcb.com/ or your manufactuer of choice.
 
 ### Components
 
-#### Version 1.0-b & 1.0-c BOM
+#### Version 1.0-c, 1.1-a BOM
 
 https://www.mouser.com/ProjectManager/ProjectDetail.aspx?AccessID=c5cc83feff
 
 ### BluePill
 
-Beware of fakes and buy from a place where returns are easy. Ensure the photo in the listing shows a chip that says STM32 on it.
+Buy from a place where returns are easy. Ensure the photo in the listing shows a chip that says STM32 on it.
 
 https://www.amazon.com/s?k=stm32f103c8t6
 
