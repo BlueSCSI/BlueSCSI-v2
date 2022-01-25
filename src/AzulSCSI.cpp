@@ -463,7 +463,7 @@ void writeDataPhase_FromSD(uint32_t adds, uint32_t len)
     }
     else if (status != transfer_len)
     {
-      azlog("Streaming failed halfway, data may be corrupt, aborting!");
+      azlog("Streaming failed halfway: ", (int)status, "/", (int)transfer_len, " bytes, data may be corrupt, aborting!");
       g_scsi_sts |= 2;
       return;
     }
