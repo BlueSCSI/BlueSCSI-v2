@@ -40,6 +40,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cd AzulSCSI/distrib
+          cd AzulSCSI
+          git tag -d latest
+          git tag latest
+          git push origin --force latest
+          cd distrib
           gh release upload --repo ${GITHUB_REPOSITORY} --clobber latest *
 
