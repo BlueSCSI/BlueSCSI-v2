@@ -73,7 +73,7 @@ void blinkStatus(int count)
 /* Log saving */
 /**************/
 
-void save_logfile()
+void save_logfile(bool always = false)
 {
   static uint32_t prev_log_pos = 0;
   static uint32_t prev_log_len = 0;
@@ -82,7 +82,9 @@ void save_logfile()
 
   if (loglen != prev_log_len)
   {
-    if (LOG_SAVE_INTERVAL_MS > 0 && (uint32_t)(millis() - prev_log_save) > LOG_SAVE_INTERVAL_MS)
+    // When debug is off, save log at most every LOG_SAVE_INTERVAL_MS
+    // When debug is on, save after every SCSI command.
+    if (always || g_azlog_debug || (LOG_SAVE_INTERVAL_MS > 0 && (uint32_t)(millis() - prev_log_save) > LOG_SAVE_INTERVAL_MS))
     {
       g_logfile.write(azlog_get_buffer(&prev_log_pos));
       g_logfile.flush();
@@ -100,7 +102,7 @@ void init_logfile()
   bool truncate = first_open_after_boot;
   int flags = O_WRONLY | O_CREAT | (truncate ? O_TRUNC : O_APPEND);
   g_logfile = SD.open(LOGFILE, flags);
-  save_logfile();
+  save_logfile(true);
 
   first_open_after_boot = false;
 }

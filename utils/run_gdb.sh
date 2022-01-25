@@ -9,6 +9,7 @@ rm -f swo.log
 
 arm-none-eabi-gdb \
        -iex 'target extended | openocd -f interface/stlink.cfg -f target/stm32f1x.cfg -c "gdb_port pipe"' \
+       -iex 'mon reset_config srst_only' \
        -iex 'mon halt' \
        -iex 'mon tpiu config internal swo.log uart false 38400000 2000000' \
        -iex 'shell bash -m -c "orbuculum -f swo.log &"' \
