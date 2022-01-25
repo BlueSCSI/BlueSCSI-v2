@@ -1,0 +1,45 @@
+name: Build AzulSCSI firmware
+
+on: 
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  build_firmware:
+    name: Build firmware on Ubuntu 20.04
+    runs-on: ubuntu-20.04
+    
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v2
+        with:
+          path: AzulSCSI
+          fetch-depth: "0"
+      
+      - name: Install platformio
+        run: |
+          sudo pip install platformio
+      
+      - name: Build firmware
+        run: |
+          cd AzulSCSI
+          pio run -v
+    
+      - name: Rename firmware files
+        run: |
+          cd AzulSCSI
+          utils/rename_binaries.sh
+
+      - name: Upload binaries into build artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          path: AzulSCSI/distrib/*
+          name: AzulSCSI binaries
+      
+      - name: Upload to latest release
+        run: |
+          cd AzulSCSI/distrib
+          gh release upload --repo ${GITHUB_REPOSITORY} --clobber latest *
+
