@@ -37,6 +37,8 @@ jobs:
           name: AzulSCSI binaries
       
       - name: Upload to latest release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd AzulSCSI/distrib
           gh release upload --repo ${GITHUB_REPOSITORY} --clobber latest *
