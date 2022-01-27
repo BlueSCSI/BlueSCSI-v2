@@ -586,6 +586,7 @@ public:
         while (word_ptr < end_ptr)
         {
             uint32_t words_available = (count - DMA_CHCNT(DMA0, SD_SPI_RX_DMA_CHANNEL)) / 4;
+            words_available -= (word_ptr - (uint32_t*)buf);
             if (words_available > 0)
             {
                 if (word_ptr + words_available > end_ptr)

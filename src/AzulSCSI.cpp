@@ -436,6 +436,12 @@ void writeDataPhase_FromSD(uint32_t adds, uint32_t len)
   uint32_t pos = adds * g_currentimg->m_blocksize;
   g_currentimg->m_file.seek(pos);
 
+  if (len > g_currentimg->m_fileSize - pos)
+  {
+    azdbg("Limiting read length from ", (int)len, " to ", (int)(g_currentimg->m_fileSize - pos));
+    len = g_currentimg->m_fileSize - pos;
+  }
+
   SCSI_OUT(MSG,inactive);
   SCSI_OUT(CD ,inactive);
   SCSI_OUT(IO ,  active);
@@ -464,6 +470,7 @@ void writeDataPhase_FromSD(uint32_t adds, uint32_t len)
     else if (status != transfer_len)
     {
       azlog("Streaming failed halfway: ", (int)status, "/", (int)transfer_len, " bytes, data may be corrupt, aborting!");
+      azlog("SD card error: ", (int)SD.sdErrorCode(), " ", (int)SD.sdErrorData());
       g_scsi_sts |= 2;
       return;
     }
