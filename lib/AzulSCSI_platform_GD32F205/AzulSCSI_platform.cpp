@@ -10,7 +10,10 @@ extern "C" {
 const char *g_azplatform_name = "GD32F205 AzulSCSI v1.x";
 
 static volatile uint32_t g_millisecond_counter;
+static volatile uint32_t g_watchdog_timeout;
 static uint32_t g_ns_to_cycles; // Q0.32 fixed point format
+
+static void watchdog_handler(uint32_t *sp);
 
 unsigned long millis()
 {
@@ -33,9 +36,27 @@ void delay_ns(unsigned long ns)
     while ((uint32_t)(DWT->CYCCNT - CNT_start) < cycles);
 }
 
-void SysTick_Handler(void)
+void SysTick_Handler_inner(uint32_t *sp)
 {
     g_millisecond_counter++;
+
+    if (g_watchdog_timeout > 0)
+    {
+        g_watchdog_timeout--;
+        if (g_watchdog_timeout == 0)
+        {
+            watchdog_handler(sp);
+        }
+    }
+}
+
+__attribute__((interrupt, naked))
+void SysTick_Handler(void)
+{
+    // Take note of stack pointer so that we can print debug
+    // info in watchdog handler.
+    asm("mrs r0, msp\n"
+        "b SysTick_Handler_inner": : : "r0");
 }
 
 // Writes log data to the PB3 SWO pin
@@ -193,6 +214,8 @@ void azplatform_emergency_log_save()
     crashfile.close();
 }
 
+extern uint32_t _estack;
+
 __attribute__((noinline))
 void show_hardfault(uint32_t *sp)
 {
@@ -205,12 +228,22 @@ void show_hardfault(uint32_t *sp)
     azlog("Platform: ", g_azplatform_name);
     azlog("FW Version: ", g_azlog_firmwareversion);
     azlog("CFSR: ", cfsr);
+    azlog("SP: ", (uint32_t)sp);
     azlog("PC: ", pc);
     azlog("LR: ", lr);
     azlog("R0: ", sp[0]);
     azlog("R1: ", sp[1]);
     azlog("R2: ", sp[2]);
     azlog("R3: ", sp[3]);
+
+    uint32_t *p = (uint32_t*)((uint32_t)sp & ~3);
+    for (int i = 0; i < 8; i++)
+    {
+        if (p == &_estack) break; // End of stack
+        
+        azlog("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
+        p += 4;
+    }
 
     azplatform_emergency_log_save();
 
@@ -234,7 +267,7 @@ void show_hardfault(uint32_t *sp)
     }
 }
 
-__attribute__((naked))
+__attribute__((naked, interrupt))
 void HardFault_Handler(void)
 {
     // Copies stack pointer into first argument
@@ -242,21 +275,21 @@ void HardFault_Handler(void)
         "b show_hardfault": : : "r0");
 }
 
-__attribute__((naked))
+__attribute__((naked, interrupt))
 void MemManage_Handler(void)
 {
     asm("mrs r0, msp\n"
         "b show_hardfault": : : "r0");
 }
 
-__attribute__((naked))
+__attribute__((naked, interrupt))
 void BusFault_Handler(void)
 {
     asm("mrs r0, msp\n"
         "b show_hardfault": : : "r0");
 }
 
-__attribute__((naked))
+__attribute__((naked, interrupt))
 void UsageFault_Handler(void)
 {
     asm("mrs r0, msp\n"
@@ -264,6 +297,20 @@ void UsageFault_Handler(void)
 }
 
 } /* extern "C" */
+
+static void watchdog_handler(uint32_t *sp)
+{
+    azlog("-------------- WATCHDOG TIMEOUT");
+    show_hardfault(sp);
+}
+
+void azplatform_reset_watchdog(int timeout_ms)
+{
+    // This uses a software watchdog based on systick timer interrupt.
+    // It gives us opportunity to collect better debug info than the
+    // full hardware reset that would be caused by hardware watchdog.
+    g_watchdog_timeout = timeout_ms;
+}
 
 /*****************************************/
 /* Driver for GD32 SPI for SdFat library */

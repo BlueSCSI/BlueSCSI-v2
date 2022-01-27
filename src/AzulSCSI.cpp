@@ -1238,6 +1238,7 @@ int main(void)
 
   while (1)
   {
+    azplatform_reset_watchdog(30000);
     scsi_loop();
 
     // Check SD card status for hotplug

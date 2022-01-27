@@ -143,6 +143,9 @@ void azplatform_init();
 // Set callback for when SCSI_RST pin goes low
 void azplatform_set_rst_callback(void (*callback)());
 
+// Setup soft watchdog
+void azplatform_reset_watchdog(int timeout_ms);
+
 // Reinitialize SD card connection and save log from interrupt context.
 // This can be used in crash handlers.
 void azplatform_emergency_log_save();
