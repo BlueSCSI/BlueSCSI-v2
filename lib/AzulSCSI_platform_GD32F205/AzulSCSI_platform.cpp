@@ -152,6 +152,7 @@ void azplatform_set_rst_callback(void (*callback)())
     gpio_exti_source_select(SCSI_RST_EXTI_SOURCE_PORT, SCSI_RST_EXTI_SOURCE_PIN);
     exti_init(SCSI_RST_EXTI, EXTI_INTERRUPT, EXTI_TRIG_FALLING);
     NVIC_SetPriority(SCSI_RST_IRQn, 0x00U);
+    NVIC_EnableIRQ(SCSI_RST_IRQn);
 }
 
 void SCSI_RST_IRQ (void)

@@ -1172,6 +1172,12 @@ void scsi_loop()
 
 void onBusReset(void)
 {
+  if (g_busreset)
+  {
+    // Previous reset is not yet handled
+    return;
+  }
+
   int filterlen = 100;
 
   if (g_scsi_quirks == SCSI_QUIRKS_SHARP)
