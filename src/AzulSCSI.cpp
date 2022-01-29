@@ -620,7 +620,7 @@ uint8_t onReadCapacityCommand(uint8_t pmi)
   if(!g_currentimg) return 0x02; // Image file absent
   
   uint32_t bl = g_currentimg->m_blocksize;
-  uint32_t bc = g_currentimg->m_fileSize / bl;
+  uint32_t bc = g_currentimg->m_fileSize / bl - 1; // Last block address
   uint8_t buf[8] = {
     (uint8_t)(bc >> 24), (uint8_t)(bc >> 16), (uint8_t)(bc >> 8), (uint8_t)(bc),
     (uint8_t)(bl >> 24), (uint8_t)(bl >> 16), (uint8_t)(bl >> 8), (uint8_t)(bl)    
