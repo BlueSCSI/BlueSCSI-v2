@@ -42,4 +42,4 @@
 #define STREAM_SD_TRANSFERS 1
 
 // Uncomment for building on revision 2022a prototype board
-#define AZULSCSI_2022A_REVISION 1
+/* #define AZULSCSI_2022A_REVISION 1 */
