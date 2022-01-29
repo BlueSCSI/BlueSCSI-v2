@@ -267,12 +267,38 @@ static int8_t SCSI_ReadCapacity10(USBD_HandleTypeDef  *pdev, uint8_t lun, uint8_
   
   if(((USBD_StorageTypeDef *)pdev->pUserData)->GetCapacity(lun, &hmsc->scsi_blk_nbr, &hmsc->scsi_blk_size) != 0)
   {
-    SCSI_SenseCode(pdev,
+    memset(hmsc->bot_data, 0, 8);
+    if (hmsc->bot_state == USBD_BOT_DATA_IN)
+    {
+        if (hmsc->bot_data_length > 0)
+        {
+            USBD_LL_Transmit (pdev, 
+                MSC_EPIN_ADDR,
+                hmsc->bot_data,
+                hmsc->bot_data_length);
+            hmsc->csw.dDataResidue -= hmsc->bot_data_length;
+            hmsc->bot_data_length = 0;
+            return 0;
+        }
+        else
+        {
+            return -1; // Time to send the error.
+        }
+    }
+    else
+    {
+        SCSI_SenseCode(pdev,
                    lun,
                    NOT_READY, 
                    MEDIUM_NOT_PRESENT);
-    hmsc->bot_state = USBD_BOT_NO_DATA;
-    return -1;
+
+        // Don't send the error just yet. Microsoft Windows fails to detect the CSW
+        // prior to the 8 byte response is sent. Windows also insists on calling
+        // ReadCapacity even when TestUnitReady fails with MEDIUM_NOT_PRESENT
+        hmsc->bot_state = USBD_BOT_DATA_IN;
+        hmsc->bot_data_length = MIN(8, hmsc->csw.dDataResidue);
+        return 0;
+    }
   } 
   else
   {
