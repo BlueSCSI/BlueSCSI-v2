@@ -998,7 +998,10 @@ void scsi_loop()
 
   // BSY+ SEL-
   // If the ID to respond is not driven, wait for the next
-  uint8_t scsiid = SCSI_IN_DATA() & g_scsi_id_mask;
+  uint8_t scsi_id_in = SCSI_IN_DATA();
+  azdbg("------------ SCSI selection id ", scsi_id_in);
+  
+  uint8_t scsiid = scsi_id_in & g_scsi_id_mask;
   if (scsiid == 0) {
     return; // Not for us
   }
