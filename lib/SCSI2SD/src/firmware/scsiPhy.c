@@ -503,7 +503,7 @@ static inline void busSettleDelay(void)
 {
     // Data Release time (switching IO) = 400ns
     // + Bus Settle time (switching phase) = 400ns.
-    s2s_delay_us(1); // Close enough.
+    s2s_delay_ns(800);
 }
 
 void scsiEnterBusFree()
@@ -541,7 +541,7 @@ void scsiEnterPhase(int newPhase)
     uint32_t delay = scsiEnterPhaseImmediate(newPhase);
     if (delay > 0)
     {
-        s2s_delay_us(delay);
+        s2s_delay_ns(delay);
     }
 }
 
@@ -631,16 +631,21 @@ uint32_t scsiEnterPhaseImmediate(int newPhase)
                 asyncTiming[3]);
         }
 
-        uint32_t delayUs = 0;
+        uint32_t delayNs = 0;
         if (newPhase >= 0)
         {
             *SCSI_CTRL_PHASE = newPhase;
-            delayUs += 1; // busSettleDelay
+            delayNs += 400; // busSettleDelay
+
+            if ((oldPhase & __scsiphase_io) != (newPhase & __scsiphase_io))
+            {
+                delayNs += 400; // Data release delay
+            }
 
             if (scsiDev.compatMode < COMPAT_SCSI2)
             {
                 // EMU EMAX needs 100uS ! 10uS is not enough.
-                delayUs += 100;
+                delayNs += 100000;
             }
         }
         else
@@ -648,7 +653,7 @@ uint32_t scsiEnterPhaseImmediate(int newPhase)
             *SCSI_CTRL_PHASE = 0;
         }
 
-        return delayUs;
+        return delayNs;
     }
 
     return 0; // No change

@@ -38,6 +38,8 @@
 #include "time.h"
 #include "bsp.h"
 
+#include "led.h"
+
 #include <string.h>
 
 // Global
@@ -216,15 +218,6 @@ static void doWrite(uint32_t lba, uint32_t blocks)
         // No need for single-block writes atm.  Overhead of the
         // multi-block write is minimal.
         transfer.multiBlock = 1;
-
-
-        // TODO uint32_t sdLBA =
-// TODO             SCSISector2SD(
-    // TODO             scsiDev.target->cfg->sdSectorStart,
-        // TODO         bytesPerSector,
-            // TODO     lba);
-        // TODO uint32_t sdBlocks = blocks * SDSectorsPerSCSISector(bytesPerSector);
-        // TODO sdWriteMultiSectorPrep(sdLBA, sdBlocks);
     }
 }
 
@@ -303,7 +296,15 @@ static void doSeek(uint32_t lba)
     }
     else
     {
-        s2s_delay_ms(10);
+        if (unlikely(scsiDev.target->cfg->deviceType == S2S_CFG_FLOPPY_14MB) ||
+            scsiDev.compatMode < COMPAT_SCSI2)
+        {
+            s2s_delay_ms(10);
+        }
+        else
+        {
+            s2s_delay_ms(1);
+        }
     }
 }
 
@@ -558,131 +559,426 @@ int scsiDiskCommand()
     return commandHandled;
 }
 
-void scsiDiskPoll()
+static void diskDataInBuffered(int totalSDSectors, uint32_t sdLBA, int useSlowDataCount, uint32_t* phaseChangeDelayNs)
 {
     uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
 
-    if (scsiDev.phase == DATA_IN &&
-        transfer.currentBlock != transfer.blocks)
+    const int sdPerScsi = SDSectorsPerSCSISector(bytesPerSector);
+    const int buffers = sizeof(scsiDev.data) / SD_SECTOR_SIZE;
+    int prep = 0;
+    int i = 0;
+    int scsiActive __attribute__((unused)) = 0; // unused if DMA disabled
+    int sdActive = 0;
+
+    int gotHalf = 0;
+    int sentHalf = 0;
+
+    while ((i < totalSDSectors) &&
+        likely(scsiDev.phase == DATA_IN) &&
+        likely(!scsiDev.resetFlag))
     {
-        // Take responsibility for waiting for the phase delays
-        uint32_t phaseChangeDelayUs = scsiEnterPhaseImmediate(DATA_IN);
-
-        int totalSDSectors =
-            transfer.blocks * SDSectorsPerSCSISector(bytesPerSector);
-        uint32_t sdLBA =
-            SCSISector2SD(
-                scsiDev.target->cfg->sdSectorStart,
-                bytesPerSector,
-                transfer.lba);
-
-        const int sdPerScsi = SDSectorsPerSCSISector(bytesPerSector);
-        const int buffers = sizeof(scsiDev.data) / SD_SECTOR_SIZE;
-        int prep = 0;
-        int i = 0;
-        int scsiActive __attribute__((unused)) = 0; // unused if DMA disabled
-        int sdActive = 0;
-
-        // It's highly unlikely that someone is going to use huge transfers
-        // per scsi command, but if they do it'll be slower than usual.
-        uint32_t totalScsiBytes = transfer.blocks * bytesPerSector;
-        int useSlowDataCount = totalScsiBytes >= SCSI_XFER_MAX;
-        if (!useSlowDataCount)
+        int completedDmaSectors;
+        if (sdActive && (completedDmaSectors = sdReadDMAPoll(sdActive)))
         {
-            scsiSetDataCount(totalScsiBytes);
+            prep += completedDmaSectors;
+            sdActive -= completedDmaSectors;
+            gotHalf = 0;
+        }
+        else if (sdActive > 1)
+        {
+            if ((scsiDev.data[SD_SECTOR_SIZE * (prep % buffers) + 510] != 0xAA) ||
+                (scsiDev.data[SD_SECTOR_SIZE * (prep % buffers) + 511] != 0x33))
+            {
+                prep += 1;
+                sdActive -= 1;
+                gotHalf = 0;
+            }
+            else if (scsiDev.data[SD_SECTOR_SIZE * (prep % buffers) + 127] != 0xAA)
+            {
+                // Half-block
+                gotHalf = 1;
+            }
         }
 
-        while ((i < totalSDSectors) &&
+        if (!sdActive &&
+            (prep - i < buffers) &&
+            (prep < totalSDSectors) &&
+            ((totalSDSectors - prep) >= sdPerScsi) &&
+            (likely(!useSlowDataCount) || scsiPhyComplete()) &&
+            (HAL_SD_GetState(&hsd) != HAL_SD_STATE_BUSY)) // rx complete but IRQ not fired yet.
+        {
+            // Start an SD transfer if we have space.
+            uint32_t startBuffer = prep % buffers;
+            uint32_t sectors = totalSDSectors - prep;
+            uint32_t freeBuffers = buffers - (prep - i);
+
+            uint32_t contiguousBuffers = buffers - startBuffer;
+            freeBuffers = freeBuffers < contiguousBuffers
+                ? freeBuffers : contiguousBuffers;
+            sectors = sectors < freeBuffers ? sectors : freeBuffers;
+
+            if (sectors > 128) sectors = 128; // 65536 DMA limit !!
+
+            // Round-down when we have odd sector sizes.
+            if (sdPerScsi != 1)
+            {
+                sectors = (sectors / sdPerScsi) * sdPerScsi;
+            }
+
+            for (int dodgy = 0; dodgy < sectors; dodgy++)
+            {
+                scsiDev.data[SD_SECTOR_SIZE * (startBuffer + dodgy) + 127] = 0xAA;
+
+                scsiDev.data[SD_SECTOR_SIZE * (startBuffer + dodgy) + 510] = 0xAA;
+                scsiDev.data[SD_SECTOR_SIZE * (startBuffer + dodgy) + 511] = 0x33;
+            }
+
+            sdReadDMA(sdLBA + prep, sectors, &scsiDev.data[SD_SECTOR_SIZE * startBuffer]);
+
+            sdActive = sectors;
+
+            if (useSlowDataCount)
+            {
+                scsiSetDataCount((sectors / sdPerScsi) * bytesPerSector);
+            }
+
+            // Wait now that the SD card is busy
+            // Chances are we've probably already waited sufficient time,
+            // but it's hard to measure microseconds cheaply. So just wait
+            // extra just-in-case. Hopefully it's in parallel with dma.
+            if (*phaseChangeDelayNs > 0)
+            {
+                s2s_delay_ns(*phaseChangeDelayNs);
+                *phaseChangeDelayNs = 0;
+            }
+        }
+
+        int fifoReady = scsiFifoReady();
+        if (((prep - i) > 0) && fifoReady)
+        {
+            int dmaBytes = SD_SECTOR_SIZE;
+            if ((i % sdPerScsi) == (sdPerScsi - 1))
+            {
+                dmaBytes = bytesPerSector % SD_SECTOR_SIZE;
+                if (dmaBytes == 0) dmaBytes = SD_SECTOR_SIZE;
+            }
+
+            uint8_t* scsiDmaData = &(scsiDev.data[SD_SECTOR_SIZE * (i % buffers)]);
+
+            if (sentHalf)
+            {
+                scsiDmaData += SD_SECTOR_SIZE / 2;
+                dmaBytes -= (SD_SECTOR_SIZE / 2);
+            }
+            scsiWritePIO(scsiDmaData, dmaBytes);
+
+            ++i;
+            sentHalf = 0;
+            gotHalf = 0;
+        }
+        else if (gotHalf && !sentHalf && fifoReady && bytesPerSector == SD_SECTOR_SIZE)
+        {
+            uint8_t* scsiDmaData = &(scsiDev.data[SD_SECTOR_SIZE * (i % buffers)]);
+            scsiWritePIO(scsiDmaData, SD_SECTOR_SIZE / 2);
+            sentHalf = 1;
+        }
+    }
+}
+
+// Transfer from the SD card straight to the SCSI Fifo without storing in memory first for lower latency
+// This requires hardware flow control on the SD device (broken on stm32f205)
+// Only functional for 512 byte sectors.
+static void diskDataInDirect(uint32_t totalSDSectors, uint32_t sdLBA, int useSlowDataCount, uint32_t* phaseChangeDelayNs)
+{
+    sdReadPIO(sdLBA, totalSDSectors);
+
+    // Wait while the SD card starts buffering data
+    if (*phaseChangeDelayNs > 0)
+    {
+        s2s_delay_ns(*phaseChangeDelayNs);
+        *phaseChangeDelayNs = 0;
+    }
+
+    for (int i = 0; i < totalSDSectors && !scsiDev.resetFlag; ++i)
+    {
+        // TODO if i %128 == 0, and not in an error state, then do another read.
+
+        if (useSlowDataCount)
+        {
+            scsiSetDataCount(SD_SECTOR_SIZE);
+        }
+
+        // The SCSI fifo is a full sector so we only need to check once.
+        while (!scsiFifoReady() && !scsiDev.resetFlag)
+        {}
+
+        int byteCount = 0;
+        while(byteCount < SD_SECTOR_SIZE &&
+            likely(!scsiDev.resetFlag) &&
             likely(scsiDev.phase == DATA_IN) &&
+            !__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_RXOVERR | SDIO_FLAG_DCRCFAIL | SDIO_FLAG_DTIMEOUT))
+        {
+            if(__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_RXFIFOHF))
+            {
+                // The SDIO fifo is 32 x 32bits. As we're using the "half full" flag we must
+                // always read half the FIFO.
+
+                for (int j = 0; j < 4; ++j)
+                {
+                    uint32_t data[4];
+                    data[0] = SDIO_ReadFIFO(hsd.Instance);
+                    data[1] = SDIO_ReadFIFO(hsd.Instance);
+                    data[2] = SDIO_ReadFIFO(hsd.Instance);
+                    data[3] = SDIO_ReadFIFO(hsd.Instance);
+
+                    *((volatile uint32_t*)SCSI_FIFO_DATA) = data[0];
+                    *((volatile uint32_t*)SCSI_FIFO_DATA) = data[1];
+                    *((volatile uint32_t*)SCSI_FIFO_DATA) = data[2];
+                    *((volatile uint32_t*)SCSI_FIFO_DATA) = data[3];
+
+                    /*
+                    scsiPhyTx32(data[0] & 0xFFFF, data[0] >> 16);
+                    scsiPhyTx32(data[1] & 0xFFFF, data[1] >> 16);
+                    scsiPhyTx32(data[2] & 0xFFFF, data[2] >> 16);
+                    scsiPhyTx32(data[3] & 0xFFFF, data[3] >> 16);
+                    */
+                }
+
+                byteCount += 64;
+            }
+        }
+
+        int error = 0;
+        if (__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_DTIMEOUT))
+        {
+            __HAL_SD_CLEAR_FLAG(&hsd, SDIO_FLAG_DTIMEOUT);
+            error = 1;
+        }
+        else if (__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_DCRCFAIL))
+        {
+            __HAL_SD_CLEAR_FLAG(&hsd, SDIO_FLAG_DCRCFAIL);
+            error = 1;
+        }
+        else if (__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_RXOVERR))
+        {
+            __HAL_SD_CLEAR_FLAG(&hsd, SDIO_FLAG_RXOVERR);
+            error = 1;
+        }
+
+        if (error && scsiDev.phase == DATA_IN)
+        {
+            __HAL_SD_CLEAR_FLAG(&hsd, SDIO_STATIC_FLAGS);
+
+            scsiDiskReset();
+
+            scsiDev.status = CHECK_CONDITION;
+            scsiDev.target->sense.code = HARDWARE_ERROR;
+            scsiDev.target->sense.asc = LOGICAL_UNIT_COMMUNICATION_FAILURE;
+            scsiDev.phase = STATUS;
+        }
+
+        // We need the SCSI FIFO count to complete even after the SD read has failed
+        while (byteCount < SD_SECTOR_SIZE &&
             likely(!scsiDev.resetFlag))
         {
-            int completedDmaSectors;
-            if (sdActive && (completedDmaSectors = sdReadDMAPoll(sdActive)))
-            {
-                prep += completedDmaSectors;
-                sdActive -= completedDmaSectors;
-            } else if (sdActive > 1)
-            {
-                if ((scsiDev.data[SD_SECTOR_SIZE * (prep % buffers) + 510] != 0xAA) ||
-                    (scsiDev.data[SD_SECTOR_SIZE * (prep % buffers) + 511] != 0x33))
-                {
-                    prep += 1;
-                    sdActive -= 1;
-                }
-            }
-
-            if (!sdActive &&
-                (prep - i < buffers) &&
-                (prep < totalSDSectors) &&
-                ((totalSDSectors - prep) >= sdPerScsi) &&
-                (likely(!useSlowDataCount) || scsiPhyComplete()) &&
-                (HAL_SD_GetState(&hsd) != HAL_SD_STATE_BUSY)) // rx complete but IRQ not fired yet.
-            {
-                // Start an SD transfer if we have space.
-                uint32_t startBuffer = prep % buffers;
-                uint32_t sectors = totalSDSectors - prep;
-                uint32_t freeBuffers = buffers - (prep - i);
-
-                uint32_t contiguousBuffers = buffers - startBuffer;
-                freeBuffers = freeBuffers < contiguousBuffers
-                    ? freeBuffers : contiguousBuffers;
-                sectors = sectors < freeBuffers ? sectors : freeBuffers;
-
-                if (sectors > 128) sectors = 128; // 65536 DMA limit !!
-
-                // Round-down when we have odd sector sizes.
-                if (sdPerScsi != 1)
-                {
-                    sectors = (sectors / sdPerScsi) * sdPerScsi;
-                }
-
-                for (int dodgy = 0; dodgy < sectors; dodgy++)
-                {
-                    scsiDev.data[SD_SECTOR_SIZE * (startBuffer + dodgy) + 510] = 0xAA;
-                    scsiDev.data[SD_SECTOR_SIZE * (startBuffer + dodgy) + 511] = 0x33;
-                }
-
-                sdReadDMA(sdLBA + prep, sectors, &scsiDev.data[SD_SECTOR_SIZE * startBuffer]);
-
-                sdActive = sectors;
-
-                if (useSlowDataCount)
-                {
-                    scsiSetDataCount((sectors / sdPerScsi) * bytesPerSector);
-                }
-
-                // Wait now that the SD card is busy
-                // Chances are we've probably already waited sufficient time,
-                // but it's hard to measure microseconds cheaply. So just wait
-                // extra just-in-case. Hopefully it's in parallel with dma.
-                if (phaseChangeDelayUs > 0)
-                {
-                    s2s_delay_us(phaseChangeDelayUs);
-                    phaseChangeDelayUs = 0;
-                }
-            }
-
-            if (((prep - i) > 0) &&
-                scsiFifoReady())
-            {
-                int dmaBytes = SD_SECTOR_SIZE;
-                if ((i % sdPerScsi) == (sdPerScsi - 1))
-                {
-                    dmaBytes = bytesPerSector % SD_SECTOR_SIZE;
-                    if (dmaBytes == 0) dmaBytes = SD_SECTOR_SIZE;
-                }
-
-                uint8_t* scsiDmaData = &(scsiDev.data[SD_SECTOR_SIZE * (i % buffers)]);
-                scsiWritePIO(scsiDmaData, dmaBytes);
-
-                ++i;
-            }
+            scsiPhyTx32(0, 0);
+            byteCount += 4;
         }
 
-        if (phaseChangeDelayUs > 0 && !scsiDev.resetFlag) // zero bytes ?
+        while (useSlowDataCount && !scsiDev.resetFlag && !scsiPhyComplete())
         {
-            s2s_delay_us(phaseChangeDelayUs);
-            phaseChangeDelayUs = 0;
+        }
+    }
+
+//while(1) { s2s_ledOn(); s2s_delay_ms(1000); s2s_ledOff(); s2s_delay_ms(1000); }
+
+    /* Send stop transmission command in case of multiblock read */
+    if(totalSDSectors > 1U)
+    {
+        SDMMC_CmdStopTransfer(hsd.Instance);
+    }
+
+    // Read remaining data
+    uint32_t extraCount = SD_DATATIMEOUT;
+    while ((__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_RXDAVL)) && (extraCount > 0))
+    {
+        SDIO_ReadFIFO(hsd.Instance);
+        extraCount--;
+    }
+
+    __HAL_SD_CLEAR_FLAG(&hsd, SDIO_STATIC_DATA_FLAGS);
+    hsd.State = HAL_SD_STATE_READY;
+    
+    sdCompleteTransfer(); // Probably overkill
+}
+
+static void diskDataIn()
+{
+    uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+
+    // Take responsibility for waiting for the phase delays
+    uint32_t phaseChangeDelayNs = scsiEnterPhaseImmediate(DATA_IN);
+
+    int totalSDSectors =
+        transfer.blocks * SDSectorsPerSCSISector(bytesPerSector);
+    uint32_t sdLBA =
+        SCSISector2SD(
+            scsiDev.target->cfg->sdSectorStart,
+            bytesPerSector,
+            transfer.lba);
+
+    // It's highly unlikely that someone is going to use huge transfers
+    // per scsi command, but if they do it'll be slower than usual.
+    uint32_t totalScsiBytes = transfer.blocks * bytesPerSector;
+    int useSlowDataCount = totalScsiBytes >= SCSI_XFER_MAX;
+    if (!useSlowDataCount)
+    {
+        scsiSetDataCount(totalScsiBytes);
+    }
+
+#ifdef STM32F4xx
+    // Direct mode requires hardware flow control to be working on the SD peripheral
+    if (bytesPerSector == SD_SECTOR_SIZE && totalSDSectors < 128)
+    {
+        diskDataInDirect(totalSDSectors, sdLBA, useSlowDataCount, &phaseChangeDelayNs);
+    }
+    else
+#endif 
+    {
+        diskDataInBuffered(totalSDSectors, sdLBA, useSlowDataCount, &phaseChangeDelayNs);
+    }
+
+    if (phaseChangeDelayNs > 0 && !scsiDev.resetFlag) // zero bytes ?
+    {
+        s2s_delay_ns(phaseChangeDelayNs);
+        phaseChangeDelayNs = 0;
+    }
+
+    if (scsiDev.resetFlag)
+    {
+        HAL_SD_Abort(&hsd);
+    }
+    else
+    {
+        // Wait for the SD transfer to complete before we disable IRQs.
+        // (Otherwise some cards will cause an error if we don't sent the
+        // stop transfer command via the DMA complete handler in time)
+        while (HAL_SD_GetState(&hsd) == HAL_SD_STATE_BUSY)
+        {
+            // Wait while keeping BSY.
+        }
+    }
+
+    HAL_SD_CardStateTypeDef cardState = HAL_SD_GetCardState(&hsd);
+    while (cardState == HAL_SD_CARD_PROGRAMMING || cardState == HAL_SD_CARD_SENDING) 
+    {
+        cardState = HAL_SD_GetCardState(&hsd);
+    }
+
+    // We've finished transferring the data to the FPGA, now wait until it's
+    // written to he SCSI bus.
+    while (!scsiPhyComplete() &&
+        likely(scsiDev.phase == DATA_IN) &&
+        likely(!scsiDev.resetFlag))
+    {
+        __disable_irq();
+        if (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
+        {
+            __WFI();
+        }
+        __enable_irq();
+    }
+
+    if (scsiDev.phase == DATA_IN)
+    {
+        scsiDev.phase = STATUS;
+    }
+    scsiDiskReset();
+}
+
+void diskDataOut_512(int totalSDSectors, uint32_t sdLBA, int useSlowDataCount, int* clearBSY, int* parityError)
+{
+    int i = 0;
+    int disconnected = 0;
+
+    int enableParity = scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY;
+
+    uint32_t maxSectors = sizeof(scsiDev.data) / SD_SECTOR_SIZE;
+
+    int lastWriteSize = 0;
+
+    while ((i < totalSDSectors) &&
+        likely(scsiDev.phase == DATA_OUT) &&
+        likely(!scsiDev.resetFlag))
+        // KEEP GOING to ensure FIFOs are in a good state.
+        // likely(!parityError || !enableParity))
+    {
+
+        uint32_t maxXferSectors = SCSI_XFER_MAX / SD_SECTOR_SIZE;
+        uint32_t rem = totalSDSectors - i;
+        uint32_t sectors = rem < maxXferSectors ? rem : maxXferSectors;
+
+        uint32_t totalBytes = sectors * SD_SECTOR_SIZE;
+
+        if (useSlowDataCount)
+        {
+            scsiSetDataCount(totalBytes);
+        }
+
+        lastWriteSize = sectors;
+        HAL_SD_WriteBlocks_DMA(&hsd, i + sdLBA, sectors);
+        int j = 0;
+        int prep = 0;
+        int sdActive = 0;
+        uint32_t dmaFinishTime = 0;
+        while (j < sectors && !scsiDev.resetFlag)
+        {
+            if (sdActive &&
+                HAL_SD_GetState(&hsd) != HAL_SD_STATE_BUSY &&
+                !sdIsBusy())
+            {
+                j += sdActive;
+                sdActive = 0;
+            }
+            if (!sdActive && ((prep - j) > 0))
+            {
+                // Start an SD transfer if we have space.
+                HAL_SD_WriteBlocks_Data(&hsd, &scsiDev.data[SD_SECTOR_SIZE * (j % maxSectors)]);
+
+                sdActive = 1;
+            }
+
+            if (((prep - j) < maxSectors) &&
+                (prep < sectors) &&
+                scsiFifoReady())
+            {
+                scsiReadPIO(
+                    &scsiDev.data[(prep % maxSectors) * SD_SECTOR_SIZE],
+                    SD_SECTOR_SIZE,
+                    parityError);
+                prep++;
+                if (prep == sectors)
+                {
+                    dmaFinishTime = s2s_getTime_ms();
+                }
+            }
+        
+            if (i + prep >= totalSDSectors &&
+                !disconnected &&
+                (!(*parityError) || !enableParity) &&
+                s2s_elapsedTime_ms(dmaFinishTime) >= 180)
+            {
+                // We're transferring over the SCSI bus faster than the SD card
+                // can write.  All data is buffered, and we're just waiting for
+                // the SD card to complete. The host won't let us disconnect.
+                // Some drivers set a 250ms timeout on transfers to complete.
+                // SD card writes are supposed to complete
+                // within 200ms, but sometimes they don't.
+                // Just pretend we're finished.
+                process_Status();
+                *clearBSY = process_MessageIn(0); // Will go to BUS_FREE state but keep BSY asserted.
+                disconnected = 1;
+            }
         }
 
         if (scsiDev.resetFlag)
@@ -691,277 +987,197 @@ void scsiDiskPoll()
         }
         else
         {
-            // Wait for the SD transfer to complete before we disable IRQs.
-            // (Otherwise some cards will cause an error if we don't sent the
-            // stop transfer command via the DMA complete handler in time)
-            while (HAL_SD_GetState(&hsd) == HAL_SD_STATE_BUSY)
+            while (HAL_SD_GetState(&hsd) == HAL_SD_STATE_BUSY) {} // Waits for DMA to complete
+            if (lastWriteSize > 1)
             {
-                // Wait while keeping BSY.
+                SDMMC_CmdStopTransfer(hsd.Instance);
             }
         }
 
+        while (sdIsBusy() &&
+            s2s_elapsedTime_ms(dmaFinishTime) < 180)
+        {
+            // Wait while the SD card is writing buffer to flash
+            // The card may remain in the RECEIVING state (even though it's programming) if
+            // it has buffer space to receive more data available.
+        }
+
+        if (!disconnected && 
+            i + sectors >= totalSDSectors &&
+            (!parityError || !enableParity))
+        {
+            // We're transferring over the SCSI bus faster than the SD card
+            // can write.  All data is buffered, and we're just waiting for
+            // the SD card to complete. The host won't let us disconnect.
+            // Some drivers set a 250ms timeout on transfers to complete.
+            // SD card writes are supposed to complete
+            // within 200ms, but sometimes they don't.
+            // Just pretend we're finished.
+            process_Status();
+            *clearBSY = process_MessageIn(0); // Will go to BUS_FREE state but keep BSY asserted.
+        }
+
+        // Wait while the SD card is writing buffer to flash
+        // The card may remain in the RECEIVING state (even though it's programming) if
+        // it has buffer space to receive more data available.
+        while (sdIsBusy()) {}
         HAL_SD_CardStateTypeDef cardState = HAL_SD_GetCardState(&hsd);
-        while (cardState == HAL_SD_CARD_PROGRAMMING || cardState == HAL_SD_CARD_SENDING) 
+        while (cardState == HAL_SD_CARD_PROGRAMMING || cardState == HAL_SD_CARD_RECEIVING) 
         {
+            // Wait while the SD card is writing buffer to flash
+            // The card may remain in the RECEIVING state (even though it's programming) if
+            // it has buffer space to receive more data available.
             cardState = HAL_SD_GetCardState(&hsd);
-         }
-
-        // We've finished transferring the data to the FPGA, now wait until it's
-        // written to he SCSI bus.
-        while (!scsiPhyComplete() &&
-            likely(scsiDev.phase == DATA_IN) &&
-            likely(!scsiDev.resetFlag))
-        {
-            __disable_irq();
-            if (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
-            {
-                __WFI();
-            }
-            __enable_irq();
         }
 
-        if (scsiDev.phase == DATA_IN)
-        {
-            scsiDev.phase = STATUS;
-        }
-        scsiDiskReset();
+        i += sectors;
+   
     }
+}
+
+void diskDataOut_variableSectorSize(int sdPerScsi, int totalSDSectors, uint32_t sdLBA, int useSlowDataCount, int* parityError)
+{
+    uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+
+    int i = 0;
+
+    int enableParity = scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY;
+
+    uint32_t maxSectors = sizeof(scsiDev.data) / SD_SECTOR_SIZE;
+
+    while ((i < totalSDSectors) &&
+        likely(scsiDev.phase == DATA_OUT) &&
+        likely(!scsiDev.resetFlag))
+        // KEEP GOING to ensure FIFOs are in a good state.
+        // likely(!parityError || !enableParity))
+    {
+        // Well, until we have some proper non-blocking SD code, we must
+        // do this in a half-duplex fashion. We need to write as much as
+        // possible in each SD card transaction.
+        // use sg_dd from sg_utils3 tools to test.
+
+        uint32_t rem = totalSDSectors - i;
+        uint32_t sectors;
+        if (rem <= maxSectors)
+        {
+            sectors = rem;
+        }
+        else
+        {
+            sectors = maxSectors;
+            while (sectors % sdPerScsi) sectors--;
+        }
+        
+
+        if (useSlowDataCount)
+        {
+            scsiSetDataCount((sectors / sdPerScsi) * bytesPerSector);
+        }
+
+        for (int scsiSector = i; scsiSector < i + sectors; ++scsiSector)
+        {
+            int dmaBytes = SD_SECTOR_SIZE;
+            if ((scsiSector % sdPerScsi) == (sdPerScsi - 1))
+            {
+                dmaBytes = bytesPerSector % SD_SECTOR_SIZE;
+                if (dmaBytes == 0) dmaBytes = SD_SECTOR_SIZE;
+            }
+
+            scsiReadPIO(&scsiDev.data[SD_SECTOR_SIZE * (scsiSector - i)], dmaBytes, parityError);
+        }
+        if (!(*parityError) || !enableParity)
+        {
+            BSP_SD_WriteBlocks_DMA(&scsiDev.data[0], i + sdLBA, sectors);
+        }
+        i += sectors;
+    }
+}
+
+void diskDataOut()
+{
+    uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+
+    scsiEnterPhase(DATA_OUT);
+
+    const int sdPerScsi = SDSectorsPerSCSISector(bytesPerSector);
+    int totalSDSectors = transfer.blocks * sdPerScsi;
+    uint32_t sdLBA =
+        SCSISector2SD(
+            scsiDev.target->cfg->sdSectorStart,
+            bytesPerSector,
+            transfer.lba);
+    int clearBSY = 0;
+
+    int parityError = 0;
+
+    static_assert(SCSI_XFER_MAX >= sizeof(scsiDev.data), "Assumes SCSI_XFER_MAX >= sizeof(scsiDev.data)");
+
+    // Start reading and filling fifos as soon as possible.
+    // It's highly unlikely that someone is going to use huge transfers
+    // per scsi command, but if they do it'll be slower than usual.
+    // Note: Happens in Macintosh FWB HDD Toolkit benchmarks which default
+    // to 768kb
+    uint32_t totalTransferBytes = transfer.blocks * bytesPerSector;
+    int useSlowDataCount = totalTransferBytes >= SCSI_XFER_MAX;
+    if (!useSlowDataCount)
+    {
+        DWT->CYCCNT = 0; // Start counting cycles
+        scsiSetDataCount(totalTransferBytes);
+    }
+
+    if (bytesPerSector == SD_SECTOR_SIZE)
+    {
+        diskDataOut_512(totalSDSectors, sdLBA, useSlowDataCount, &clearBSY, &parityError);
+    }
+    else
+    {
+        diskDataOut_variableSectorSize(sdPerScsi, totalSDSectors, sdLBA, useSlowDataCount, &parityError);
+    }
+    
+
+    // Should already be complete here as we've ready the FIFOs
+    // by now. Check anyway.
+    __disable_irq();
+    while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
+    {
+        __WFI();
+    }
+    __enable_irq();
+
+    if (clearBSY)
+    {
+        enter_BusFree();
+    }
+
+    if (scsiDev.phase == DATA_OUT)
+    {
+        if (parityError &&
+            (scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY))
+        {
+            scsiDev.target->sense.code = ABORTED_COMMAND;
+            scsiDev.target->sense.asc = SCSI_PARITY_ERROR;
+            scsiDev.status = CHECK_CONDITION;;
+        }
+        scsiDev.phase = STATUS;
+    }
+    scsiDiskReset();
+}
+
+
+void scsiDiskPoll()
+{
+    if (scsiDev.phase == DATA_IN &&
+        transfer.currentBlock != transfer.blocks)
+    {
+        diskDataIn();
+     }
     else if (scsiDev.phase == DATA_OUT &&
         transfer.currentBlock != transfer.blocks)
     {
-        scsiEnterPhase(DATA_OUT);
-
-        const int sdPerScsi = SDSectorsPerSCSISector(bytesPerSector);
-        int totalSDSectors = transfer.blocks * sdPerScsi;
-        uint32_t sdLBA =
-            SCSISector2SD(
-                scsiDev.target->cfg->sdSectorStart,
-                bytesPerSector,
-                transfer.lba);
-        int i = 0;
-        int clearBSY = 0;
-        int disconnected = 0;
-
-        int parityError = 0;
-        int enableParity = scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY;
-
-        uint32_t maxSectors = sizeof(scsiDev.data) / SD_SECTOR_SIZE;
-
-        static_assert(SCSI_XFER_MAX >= sizeof(scsiDev.data), "Assumes SCSI_XFER_MAX >= sizeof(scsiDev.data)");
-
-        // Start reading and filling fifos as soon as possible.
-        // It's highly unlikely that someone is going to use huge transfers
-        // per scsi command, but if they do it'll be slower than usual.
-        // Note: Happens in Macintosh FWB HDD Toolkit benchmarks which default
-        // to 768kb
-        uint32_t totalTransferBytes = transfer.blocks * bytesPerSector;
-        int useSlowDataCount = totalTransferBytes >= SCSI_XFER_MAX;
-        if (!useSlowDataCount)
-        {
-            DWT->CYCCNT = 0; // Start counting cycles
-            scsiSetDataCount(totalTransferBytes);
-        }
-
-        int lastWriteSize = 0;
-
-        while ((i < totalSDSectors) &&
-            likely(scsiDev.phase == DATA_OUT) &&
-            likely(!scsiDev.resetFlag))
-            // KEEP GOING to ensure FIFOs are in a good state.
-            // likely(!parityError || !enableParity))
-        {
-            if (bytesPerSector == SD_SECTOR_SIZE)
-            {
-                uint32_t maxXferSectors = SCSI_XFER_MAX / SD_SECTOR_SIZE;
-                uint32_t rem = totalSDSectors - i;
-                uint32_t sectors = rem < maxXferSectors ? rem : maxXferSectors;
-
-                uint32_t totalBytes = sectors * SD_SECTOR_SIZE;
-
-                if (useSlowDataCount)
-                {
-                    scsiSetDataCount(totalBytes);
-                }
-
-                lastWriteSize = sectors;
-                HAL_SD_WriteBlocks_DMA(&hsd, i + sdLBA, sectors);
-                int j = 0;
-                int prep = 0;
-                int sdActive = 0;
-                uint32_t dmaFinishTime = 0;
-                while (j < sectors && !scsiDev.resetFlag)
-                {
-                    if (sdActive &&
-                        HAL_SD_GetState(&hsd) != HAL_SD_STATE_BUSY &&
-                        !sdIsBusy())
-                    {
-                        j += sdActive;
-                        sdActive = 0;
-                    }
-                    if (!sdActive && ((prep - j) > 0))
-                    {
-                        // Start an SD transfer if we have space.
-                        HAL_SD_WriteBlocks_Data(&hsd, &scsiDev.data[SD_SECTOR_SIZE * (j % maxSectors)]);
-
-                        sdActive = 1;
-                    }
-
-                    if (((prep - j) < maxSectors) &&
-                        (prep < sectors) &&
-                        scsiFifoReady())
-                    {
-                        scsiReadPIO(
-                            &scsiDev.data[(prep % maxSectors) * SD_SECTOR_SIZE],
-                            SD_SECTOR_SIZE,
-                            &parityError);
-                        prep++;
-                        if (prep == sectors)
-                        {
-                            dmaFinishTime = s2s_getTime_ms();
-                        }
-                    }
-                
-                    if (i + prep >= totalSDSectors &&
-                        !disconnected &&
-                        (!parityError || !enableParity) &&
-                        s2s_elapsedTime_ms(dmaFinishTime) >= 180)
-                    {
-                        // We're transferring over the SCSI bus faster than the SD card
-                        // can write.  All data is buffered, and we're just waiting for
-                        // the SD card to complete. The host won't let us disconnect.
-                        // Some drivers set a 250ms timeout on transfers to complete.
-                        // SD card writes are supposed to complete
-                        // within 200ms, but sometimes they don't.
-                        // Just pretend we're finished.
-                        process_Status();
-                        clearBSY = process_MessageIn(0); // Will go to BUS_FREE state but keep BSY asserted.
-                        disconnected = 1;
-                    }
-                }
-
-                if (scsiDev.resetFlag)
-                {
-                    HAL_SD_Abort(&hsd);
-                }
-                else
-                {
-                    while (HAL_SD_GetState(&hsd) == HAL_SD_STATE_BUSY) {} // Waits for DMA to complete
-                    if (lastWriteSize > 1)
-                    {
-                        SDMMC_CmdStopTransfer(hsd.Instance);
-                    }
-                }
-
-                while (sdIsBusy() &&
-                    s2s_elapsedTime_ms(dmaFinishTime) < 180)
-                {
-                    // Wait while the SD card is writing buffer to flash
-                    // The card may remain in the RECEIVING state (even though it's programming) if
-                    // it has buffer space to receive more data available.
-                }
-
-                if (!disconnected && 
-                    i + sectors >= totalSDSectors &&
-                    (!parityError || !enableParity))
-                {
-                    // We're transferring over the SCSI bus faster than the SD card
-                    // can write.  All data is buffered, and we're just waiting for
-                    // the SD card to complete. The host won't let us disconnect.
-                    // Some drivers set a 250ms timeout on transfers to complete.
-                    // SD card writes are supposed to complete
-                    // within 200ms, but sometimes they don't.
-                    // Just pretend we're finished.
-                    process_Status();
-                    clearBSY = process_MessageIn(0); // Will go to BUS_FREE state but keep BSY asserted.
-                }
-
-                // Wait while the SD card is writing buffer to flash
-                // The card may remain in the RECEIVING state (even though it's programming) if
-                // it has buffer space to receive more data available.
-                while (sdIsBusy()) {}
-                HAL_SD_CardStateTypeDef cardState = HAL_SD_GetCardState(&hsd);
-                while (cardState == HAL_SD_CARD_PROGRAMMING || cardState == HAL_SD_CARD_RECEIVING) 
-                {
-                    // Wait while the SD card is writing buffer to flash
-                    // The card may remain in the RECEIVING state (even though it's programming) if
-                    // it has buffer space to receive more data available.
-                    cardState = HAL_SD_GetCardState(&hsd);
-                }
-
-                i += sectors;
-            }
-            else
-            {
-                // Well, until we have some proper non-blocking SD code, we must
-                // do this in a half-duplex fashion. We need to write as much as
-                // possible in each SD card transaction.
-                // use sg_dd from sg_utils3 tools to test.
-
-                uint32_t rem = totalSDSectors - i;
-                uint32_t sectors;
-                if (rem <= maxSectors)
-                {
-                    sectors = rem;
-                }
-                else
-                {
-                    sectors = maxSectors;
-                    while (sectors % sdPerScsi) sectors--;
-                }
-                
-
-                if (useSlowDataCount)
-                {
-                    scsiSetDataCount((sectors / sdPerScsi) * bytesPerSector);
-                }
-
-                for (int scsiSector = i; scsiSector < i + sectors; ++scsiSector)
-                {
-                    int dmaBytes = SD_SECTOR_SIZE;
-                    if ((scsiSector % sdPerScsi) == (sdPerScsi - 1))
-                    {
-                        dmaBytes = bytesPerSector % SD_SECTOR_SIZE;
-                        if (dmaBytes == 0) dmaBytes = SD_SECTOR_SIZE;
-                    }
-
-                    scsiReadPIO(&scsiDev.data[SD_SECTOR_SIZE * (scsiSector - i)], dmaBytes, &parityError);
-                }
-                if (!parityError || !enableParity)
-                {
-                    BSP_SD_WriteBlocks_DMA(&scsiDev.data[0], i + sdLBA, sectors);
-                }
-                i += sectors;
-            }
-        }
-
-        // Should already be complete here as we've ready the FIFOs
-        // by now. Check anyway.
-        __disable_irq();
-        while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
-        {
-            __WFI();
-        }
-        __enable_irq();
-
-        if (clearBSY)
-        {
-            enter_BusFree();
-        }
-
-        if (scsiDev.phase == DATA_OUT)
-        {
-            if (parityError &&
-                (scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY))
-            {
-                scsiDev.target->sense.code = ABORTED_COMMAND;
-                scsiDev.target->sense.asc = SCSI_PARITY_ERROR;
-                scsiDev.status = CHECK_CONDITION;;
-            }
-            scsiDev.phase = STATUS;
-        }
-        scsiDiskReset();
+        diskDataOut();
     }
 }
+
 
 void scsiDiskReset()
 {

@@ -33,6 +33,7 @@ uint32_t s2s_elapsedTime_ms(uint32_t since);
 
 #define s2s_delay_ms(delay) s2s_delay_clocks((delay) * (s2s_cpu_freq / 1000))
 #define s2s_delay_us(delay) s2s_delay_clocks((delay) * (s2s_cpu_freq / 1000000))
+#define s2s_delay_ns(delay) s2s_delay_clocks(((delay) * ((s2s_cpu_freq * 64LL + 500000000) / 1000000000)) / 64)
 void s2s_delay_clocks(uint32_t delay);
 
 #endif

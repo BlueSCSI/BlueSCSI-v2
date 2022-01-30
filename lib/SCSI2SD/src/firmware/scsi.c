@@ -56,21 +56,21 @@ void enter_BusFree()
 		s2s_delay_us(2);
 	}
 
-//#if 0
+#if 0
 	if (scsiDev.status != GOOD)// && isDebugEnabled())
 	{
 		// We want to capture debug information for failure cases.
 		s2s_delay_ms(80);
 	}
-//#endif
+#endif
 
 
 	scsiEnterBusFree();
 
 	// Wait for the initiator to cease driving signals
 	// Bus settle delay + bus clear delay = 1200ns
-	s2s_delay_us(2);
-
+    // Just waiting the clear delay is sufficient.
+	s2s_delay_ns(800);
 
 	s2s_ledOff();
 	scsiDev.phase = BUS_FREE;

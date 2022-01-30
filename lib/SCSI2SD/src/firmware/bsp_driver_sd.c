@@ -35,10 +35,13 @@
 /* Includes ------------------------------------------------------------------*/
 #include "bsp_driver_sd.h"
 #include "sd.h"
+#include "time.h"
 
 /* Extern variables ---------------------------------------------------------*/ 
   
 extern SD_HandleTypeDef hsd;
+
+static uint8_t HighSpeedSwitch();
 
 /**
   * @brief  Initializes the SD card device.
@@ -47,111 +50,114 @@ extern SD_HandleTypeDef hsd;
   */
 uint8_t BSP_SD_Init(void)
 {
-  uint8_t SD_state = MSD_OK;
-  /* Check if the SD card is plugged in the slot */
-  if (BSP_SD_IsDetected() != SD_PRESENT)
-  {
-    return MSD_ERROR;
-  }
-  SD_state = HAL_SD_Init(&hsd);
-#ifdef BUS_4BITS
-  if (SD_state == HAL_OK)
-  {
-    if (HAL_SD_ConfigWideBusOperation(&hsd, SDIO_BUS_WIDE_4B) != HAL_OK)
+    uint8_t SD_state = MSD_OK;
+    /* Check if the SD card is plugged in the slot */
+    if (BSP_SD_IsDetected() != SD_PRESENT)
     {
-      SD_state = MSD_ERROR;
+        return MSD_ERROR;
     }
-    else
+    SD_state = HAL_SD_Init(&hsd);
+#ifdef BUS_4BITS
+    if (SD_state == HAL_OK)
     {
-      SD_state = MSD_OK;
+        if (HAL_SD_ConfigWideBusOperation(&hsd, SDIO_BUS_WIDE_4B) != HAL_OK)
+        {
+            SD_state = MSD_ERROR;
+        }
+        else
+        {
+            // Save the wide mode setting for when we call SDIO_Init again
+            // for high speed mode.
+            hsd.Init.BusWide = SDIO_BUS_WIDE_4B;
+            SD_state = MSD_OK;
 
 // Clock bypass mode is broken on STM32F205
-// #ifdef STM32F4xx
-#if 0
-      uint8_t SD_hs[64]  = {0};
-      //uint32_t SD_scr[2] = {0, 0};
-      //uint32_t SD_SPEC   = 0 ;
-      uint32_t count = 0;
-      uint32_t *tempbuff = (uint32_t *)SD_hs;
-
-      // Prepare to read 64 bytes status data
-      SDIO_DataInitTypeDef config;
-      config.DataTimeOut   = SDMMC_DATATIMEOUT;
-      config.DataLength    = 64;
-      config.DataBlockSize = SDIO_DATABLOCK_SIZE_64B;
-      config.TransferDir   = SDIO_TRANSFER_DIR_TO_SDIO;
-      config.TransferMode  = SDIO_TRANSFER_MODE_BLOCK;
-      config.DPSM          = SDIO_DPSM_ENABLE;
-      (void)SDIO_ConfigData(hsd.Instance, &config);
-
-      // High speed switch.
-      // SDR25 (25MB/s) mode 0x80FFFF01
-      // Which is the max without going to 1.8v
-      uint32_t errorstate = SDMMC_CmdSwitch(hsd.Instance, 0x80FFFF01);
-
-      // Now we read some status data
-
-      if (errorstate == HAL_SD_ERROR_NONE)
-      {
-          while(!__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_RXOVERR | SDIO_FLAG_DCRCFAIL | SDIO_FLAG_DTIMEOUT | SDIO_FLAG_DATAEND/* | SDIO_FLAG_STBITERR*/))
-          {
-              if (__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_RXFIFOHF))
-              {
-                  for (count = 0; count < 8; count++)
-                  {
-                      *(tempbuff + count) = SDIO_ReadFIFO(hsd.Instance);
-                  }
-
-                  tempbuff += 8;
-              }
-          }
-
-          if (__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_DTIMEOUT))
-          {
-              __HAL_SD_CLEAR_FLAG(&hsd, SDIO_FLAG_DTIMEOUT);
-              SD_state = MSD_ERROR;
-          }
-          else if (__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_DCRCFAIL))
-          {
-              __HAL_SD_CLEAR_FLAG(&hsd, SDIO_FLAG_DCRCFAIL);
-              SD_state = MSD_ERROR;
-          }
-          else if (__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_RXOVERR))
-          {
-              __HAL_SD_CLEAR_FLAG(&hsd, SDIO_FLAG_RXOVERR);
-              SD_state = MSD_ERROR;
-          }
-          /*else if (__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_STBITERR))
+#ifdef STM32F4xx
+            if (hsd.SdCard.CardType == CARD_SDHC_SDXC)
             {
-            __HAL_SD_CLEAR_FLAG(&hsd, SDIO_FLAG_STBITERR);
-            SD_state = MSD_ERROR;
-            }*/
-          else
-          {
-              count = SD_DATATIMEOUT;
-
-              while ((__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_RXDAVL)) && (count > 0))
-              {
-                  *tempbuff = SDIO_ReadFIFO(hsd.Instance);
-                  tempbuff++;
-                  count--;
-              }
-
-              /* Clear all the static flags */
-              __HAL_SD_CLEAR_FLAG(&hsd, SDIO_STATIC_FLAGS);
-
-              // After 8 "SD" clocks we can change speed
-              // Low-level init for the bypass. Changes registers only
-              hsd.Init.ClockBypass = SDIO_CLOCK_BYPASS_ENABLE;
-              SDIO_Init(hsd.Instance, hsd.Init); 
-
-          }
-      }
+                HighSpeedSwitch();
+            }
 #endif
+        }
     }
-  }
 #endif
-  return SD_state;
+    return SD_state;
+}
+
+static uint8_t HighSpeedSwitch()
+{
+    uint8_t SD_state = MSD_OK;
+
+    // Prepare to read 64 bytes status data
+    SDIO_DataInitTypeDef config;
+    config.DataTimeOut   = SDMMC_DATATIMEOUT;
+    config.DataLength    = 64;
+    config.DataBlockSize = SDIO_DATABLOCK_SIZE_64B;
+    config.TransferDir   = SDIO_TRANSFER_DIR_TO_SDIO;
+    config.TransferMode  = SDIO_TRANSFER_MODE_BLOCK;
+    config.DPSM          = SDIO_DPSM_ENABLE;
+    (void)SDIO_ConfigData(hsd.Instance, &config);
+
+    // High speed switch.
+    // SDR25 (25MB/s) mode 0x80FFFF01
+    // Which is the max without going to 1.8v
+    uint32_t errorstate = SDMMC_CmdSwitch(hsd.Instance, 0x80FFFFF1);
+
+    // Now we read some status data
+
+    if (errorstate == HAL_SD_ERROR_NONE)
+    {
+        uint32_t statusByteCount = 0;
+        while(!__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_RXOVERR | SDIO_FLAG_DCRCFAIL | SDIO_FLAG_DTIMEOUT | SDIO_FLAG_DBCKEND))
+        {
+            if (__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_RXFIFOHF) && statusByteCount < 64)
+            {
+                for ( uint32_t i = 0; i < 8; i++, statusByteCount += 4)
+                {
+                    SDIO_ReadFIFO(hsd.Instance);
+                }
+            }
+        }
+
+        if (__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_DTIMEOUT))
+        {
+            __HAL_SD_CLEAR_FLAG(&hsd, SDIO_FLAG_DTIMEOUT);
+            SD_state = MSD_ERROR;
+        }
+        else if (__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_DCRCFAIL))
+        {
+            __HAL_SD_CLEAR_FLAG(&hsd, SDIO_FLAG_DCRCFAIL);
+            SD_state = MSD_ERROR;
+        }
+        else if (__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_RXOVERR))
+        {
+            __HAL_SD_CLEAR_FLAG(&hsd, SDIO_FLAG_RXOVERR);
+            SD_state = MSD_ERROR;
+        }
+        else
+        {
+            // Read remaining data, could be the CRC bytes.
+            uint32_t count = SD_DATATIMEOUT;
+            while ((__HAL_SD_GET_FLAG(&hsd, SDIO_FLAG_RXDAVL)) && (count > 0))
+            {
+                SDIO_ReadFIFO(hsd.Instance);
+                count--;
+            }
+
+            /* Clear all the static flags */
+            __HAL_SD_CLEAR_FLAG(&hsd, SDIO_STATIC_FLAGS);
+
+            // After 8 "SD" clocks we can change speed
+            // Low-level init for the bypass. Changes registers only
+            hsd.Init.ClockBypass = SDIO_CLOCK_BYPASS_ENABLE;
+            SDIO_Init(hsd.Instance, hsd.Init); 
+
+            // 8 clocks is 160ns at 50Mhz
+            s2s_delay_ns(200);
+        }
+    }
+
+    return SD_state;
 }
 
 /**

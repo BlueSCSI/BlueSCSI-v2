@@ -83,6 +83,78 @@ void sdReadDMA(uint32_t lba, uint32_t sectors, uint8_t* outputBuffer)
 	}
 }
 
+void sdReadPIO(uint32_t lba, uint32_t sectors)
+{
+	uint32_t errorstate;
+	hsd.ErrorCode = HAL_SD_ERROR_NONE;
+	hsd.State = HAL_SD_STATE_BUSY;
+
+	/* Initialize data control register */
+	hsd.Instance->DCTRL = 0U;
+
+	// The IRQ handler clears flags which we need to read the fifo data
+#if defined(SDIO_STA_STBITERR)
+    __HAL_SD_DISABLE_IT(&hsd, (SDIO_IT_DCRCFAIL | SDIO_IT_DTIMEOUT | SDIO_IT_RXOVERR | SDIO_IT_DATAEND | SDIO_FLAG_RXFIFOHF | SDIO_IT_STBITERR));
+#else
+    __HAL_SD_DISABLE_IT(&hsd, (SDIO_IT_DCRCFAIL | SDIO_IT_DTIMEOUT | SDIO_IT_RXOVERR | SDIO_IT_DATAEND | SDIO_FLAG_RXFIFOHF));
+#endif
+
+	if(hsd.SdCard.CardType != CARD_SDHC_SDXC)
+	{
+		lba *= 512U;
+
+		errorstate = SDMMC_CmdBlockLength(hsd.Instance, 512u);
+		if(errorstate != HAL_SD_ERROR_NONE)
+		{
+			__HAL_SD_CLEAR_FLAG(&hsd, SDIO_STATIC_FLAGS);
+			scsiDiskReset();
+
+			scsiDev.status = CHECK_CONDITION;
+			scsiDev.target->sense.code = HARDWARE_ERROR;
+			scsiDev.target->sense.asc = LOGICAL_UNIT_COMMUNICATION_FAILURE;
+			scsiDev.phase = STATUS;
+			return;
+		}
+	}
+
+	SDIO_DataInitTypeDef config;
+	config.DataTimeOut   = SDMMC_DATATIMEOUT;
+	config.DataLength    = sectors * 512u;
+	config.DataBlockSize = SDIO_DATABLOCK_SIZE_512B;
+	config.TransferDir   = SDIO_TRANSFER_DIR_TO_SDIO;
+	config.TransferMode  = SDIO_TRANSFER_MODE_BLOCK;
+	config.DPSM          = SDIO_DPSM_ENABLE;
+	SDIO_ConfigData(hsd.Instance, &config);
+
+	if(sectors > 1U)
+	{
+		hsd.Context = SD_CONTEXT_READ_MULTIPLE_BLOCK;
+		errorstate = SDMMC_CmdReadMultiBlock(hsd.Instance, lba);
+	}
+	else
+	{
+		hsd.Context = SD_CONTEXT_READ_SINGLE_BLOCK;
+		errorstate = SDMMC_CmdReadSingleBlock(hsd.Instance, lba);
+	}
+
+	if(errorstate != HAL_SD_ERROR_NONE)
+	{
+		__HAL_SD_CLEAR_FLAG(&hsd, SDIO_STATIC_FLAGS);
+
+		scsiDiskReset();
+
+		scsiDev.status = CHECK_CONDITION;
+		scsiDev.target->sense.code = HARDWARE_ERROR;
+		scsiDev.target->sense.asc = LOGICAL_UNIT_COMMUNICATION_FAILURE;
+		scsiDev.phase = STATUS;
+	}
+	else
+	{
+		sdCmdActive = 1;
+	}
+}
+
+
 void sdCompleteTransfer()
 {
 	if (sdCmdActive)
