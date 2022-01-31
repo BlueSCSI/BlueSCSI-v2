@@ -107,6 +107,28 @@ void init_logfile()
   first_open_after_boot = false;
 }
 
+void print_sd_info()
+{
+  uint64_t size = (uint64_t)SD.vol()->clusterCount() * SD.vol()->bytesPerCluster();
+  azlog("SD card detected, FAT", (int)SD.vol()->fatType(),
+          " volume size: ", (int)(size / 1024 / 1024), " MB");
+  
+  cid_t sd_cid;
+
+  if(SD.card()->readCID(&sd_cid))
+  {
+    azlog("SD MID: ", (uint8_t)sd_cid.mid, ", OID: ", (uint8_t)sd_cid.oid[0], " ", (uint8_t)sd_cid.oid[1]);
+    
+    char sdname[6] = {sd_cid.pnm[0], sd_cid.pnm[1], sd_cid.pnm[2], sd_cid.pnm[3], sd_cid.pnm[4], 0};
+    azlog("SD Name: ", sdname);
+    
+    char sdyear[5] = {'2', '0', sd_cid.mdt_year_high, sd_cid.mdt_year_low, 0};
+    azlog("SD Date: ", (int)sd_cid.mdt_month, "/", sdyear);
+    
+    azlog("SD Serial: ", sd_cid.psn);
+  }
+}
+
 /*********************************/
 /* Global state for SCSI code    */
 /*********************************/
@@ -1228,12 +1250,10 @@ int main(void)
     azlog("SD card init succeeded after retry");
   }
 
-  uint64_t size = (uint64_t)SD.vol()->clusterCount() * SD.vol()->bytesPerCluster();
-  azlog("SD card init succeeded, FAT", (int)SD.vol()->fatType(),
-          " volume size: ", (int)(size / 1024 / 1024), " MB");
-
   readSCSIDeviceConfig();
   findHDDImages();
+
+  print_sd_info();
 
   azlog("Initialization complete!");
   azlog("Platform: ", g_azplatform_name);
@@ -1265,9 +1285,11 @@ int main(void)
           delay(1000);
         } while (!SD.begin(SD_CONFIG));
         azlog("SD card reinit succeeded");
+        print_sd_info();
         readSCSIDeviceConfig();
         findHDDImages();
-
+        init_logfile();
+        
         if (g_scsi_id_mask != 0)
         {
           blinkStatus(1);
