@@ -1003,6 +1003,7 @@ void scsi_loop()
   
   uint8_t scsiid = scsi_id_in & g_scsi_id_mask;
   if (scsiid == 0) {
+    SCSI_WAIT_INACTIVE(SEL);
     return; // Not for us
   }
 
