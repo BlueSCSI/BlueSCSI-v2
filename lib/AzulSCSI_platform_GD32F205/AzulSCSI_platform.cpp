@@ -1,5 +1,6 @@
 #include "AzulSCSI_platform.h"
 #include "gd32f20x_spi.h"
+#include "gd32f20x_sdio.h"
 #include "gd32f20x_dma.h"
 #include "AzulSCSI_log.h"
 #include "AzulSCSI_config.h"
@@ -7,7 +8,7 @@
 
 extern "C" {
 
-const char *g_azplatform_name = "GD32F205 AzulSCSI v1.x";
+const char *g_azplatform_name = PLATFORM_NAME;
 
 static volatile uint32_t g_millisecond_counter;
 static volatile uint32_t g_watchdog_timeout;
@@ -115,8 +116,15 @@ void azplatform_init()
 
     // SCSI pins.
     // Initialize open drain outputs to high.
-    gpio_bit_set(SCSI_OUT_PORT, SCSI_OUT_MASK);
-    gpio_init(SCSI_OUT_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_MASK);
+    SCSI_RELEASE_OUTPUTS();
+    gpio_init(SCSI_OUT_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_DATA_MASK | SCSI_OUT_REQ);
+    gpio_init(SCSI_OUT_IO_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_IO_PIN);
+    gpio_init(SCSI_OUT_CD_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_CD_PIN);
+    gpio_init(SCSI_OUT_SEL_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_SEL_PIN);
+    gpio_init(SCSI_OUT_MSG_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_MSG_PIN);
+    gpio_init(SCSI_OUT_RST_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_RST_PIN);
+    gpio_init(SCSI_OUT_BSY_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_BSY_PIN);
+
     gpio_init(SCSI_IN_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_IN_MASK);
     gpio_init(SCSI_ATN_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_ATN_PIN);
     gpio_init(SCSI_BSY_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_BSY_PIN);
@@ -128,11 +136,15 @@ void azplatform_init()
     gpio_bit_set(SCSI_TERM_EN_PORT, SCSI_TERM_EN_PIN);
     gpio_init(SCSI_TERM_EN_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_2MHZ, SCSI_TERM_EN_PIN);
 
+#ifndef SD_USE_SDIO
     // SD card pins
     gpio_init(SD_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SD_CS_PIN);
     gpio_init(SD_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, SD_CLK_PIN);
     gpio_init(SD_PORT, GPIO_MODE_IPU, 0, SD_MISO_PIN);
     gpio_init(SD_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, SD_MOSI_PIN);
+#else
+#error SDIO support not added yet
+#endif
 
     // DIP switches
     gpio_init(DIP_PORT, GPIO_MODE_IPD, 0, DIPSW1_PIN | DIPSW2_PIN | DIPSW3_PIN);
