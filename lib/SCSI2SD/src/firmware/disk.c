@@ -38,8 +38,6 @@
 #include "time.h"
 #include "bsp.h"
 
-#include "led.h"
-
 #include <string.h>
 
 // Global
@@ -690,7 +688,7 @@ static void diskDataInBuffered(int totalSDSectors, uint32_t sdLBA, int useSlowDa
 // Only functional for 512 byte sectors.
 static void diskDataInDirect(uint32_t totalSDSectors, uint32_t sdLBA, int useSlowDataCount, uint32_t* phaseChangeDelayNs)
 {
-    sdReadPIO(sdLBA, totalSDSectors);
+    sdReadCmd(sdLBA, totalSDSectors);
 
     // Wait while the SD card starts buffering data
     if (*phaseChangeDelayNs > 0)
@@ -701,11 +699,18 @@ static void diskDataInDirect(uint32_t totalSDSectors, uint32_t sdLBA, int useSlo
 
     for (int i = 0; i < totalSDSectors && !scsiDev.resetFlag; ++i)
     {
-        // TODO if i %128 == 0, and not in an error state, then do another read.
-
-        if (useSlowDataCount)
+        if (i % 128 == 0)
         {
-            scsiSetDataCount(SD_SECTOR_SIZE);
+            // SD DPSM has 24 bit limit. Re-use 128 (DMA limit)
+            uint32_t chunk = totalSDSectors - i > 128 ? 128 : totalSDSectors - i;
+            sdReadPIOData(chunk);
+
+            if (useSlowDataCount)
+            {
+                while (!scsiDev.resetFlag && !scsiPhyComplete())
+                {}
+                scsiSetDataCount(chunk * SD_SECTOR_SIZE); // SCSI_XFER_MAX > 65536
+            }
         }
 
         // The SCSI fifo is a full sector so we only need to check once.
@@ -735,13 +740,6 @@ static void diskDataInDirect(uint32_t totalSDSectors, uint32_t sdLBA, int useSlo
                     *((volatile uint32_t*)SCSI_FIFO_DATA) = data[1];
                     *((volatile uint32_t*)SCSI_FIFO_DATA) = data[2];
                     *((volatile uint32_t*)SCSI_FIFO_DATA) = data[3];
-
-                    /*
-                    scsiPhyTx32(data[0] & 0xFFFF, data[0] >> 16);
-                    scsiPhyTx32(data[1] & 0xFFFF, data[1] >> 16);
-                    scsiPhyTx32(data[2] & 0xFFFF, data[2] >> 16);
-                    scsiPhyTx32(data[3] & 0xFFFF, data[3] >> 16);
-                    */
                 }
 
                 byteCount += 64;
@@ -784,13 +782,7 @@ static void diskDataInDirect(uint32_t totalSDSectors, uint32_t sdLBA, int useSlo
             scsiPhyTx32(0, 0);
             byteCount += 4;
         }
-
-        while (useSlowDataCount && !scsiDev.resetFlag && !scsiPhyComplete())
-        {
-        }
     }
-
-//while(1) { s2s_ledOn(); s2s_delay_ms(1000); s2s_ledOff(); s2s_delay_ms(1000); }
 
     /* Send stop transmission command in case of multiblock read */
     if(totalSDSectors > 1U)
@@ -838,7 +830,7 @@ static void diskDataIn()
 
 #ifdef STM32F4xx
     // Direct mode requires hardware flow control to be working on the SD peripheral
-    if (bytesPerSector == SD_SECTOR_SIZE && totalSDSectors < 128)
+    if (bytesPerSector == SD_SECTOR_SIZE)
     {
         diskDataInDirect(totalSDSectors, sdLBA, useSlowDataCount, &phaseChangeDelayNs);
     }

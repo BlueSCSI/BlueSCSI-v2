@@ -83,7 +83,7 @@ void sdReadDMA(uint32_t lba, uint32_t sectors, uint8_t* outputBuffer)
 	}
 }
 
-void sdReadPIO(uint32_t lba, uint32_t sectors)
+void sdReadCmd(uint32_t lba, uint32_t sectors)
 {
 	uint32_t errorstate;
 	hsd.ErrorCode = HAL_SD_ERROR_NONE;
@@ -117,15 +117,6 @@ void sdReadPIO(uint32_t lba, uint32_t sectors)
 		}
 	}
 
-	SDIO_DataInitTypeDef config;
-	config.DataTimeOut   = SDMMC_DATATIMEOUT;
-	config.DataLength    = sectors * 512u;
-	config.DataBlockSize = SDIO_DATABLOCK_SIZE_512B;
-	config.TransferDir   = SDIO_TRANSFER_DIR_TO_SDIO;
-	config.TransferMode  = SDIO_TRANSFER_MODE_BLOCK;
-	config.DPSM          = SDIO_DPSM_ENABLE;
-	SDIO_ConfigData(hsd.Instance, &config);
-
 	if(sectors > 1U)
 	{
 		hsd.Context = SD_CONTEXT_READ_MULTIPLE_BLOCK;
@@ -152,6 +143,21 @@ void sdReadPIO(uint32_t lba, uint32_t sectors)
 	{
 		sdCmdActive = 1;
 	}
+}
+
+void sdReadPIOData(uint32_t sectors)
+{
+	/* Initialize data control register */
+	hsd.Instance->DCTRL = 0U;
+
+	SDIO_DataInitTypeDef config;
+	config.DataTimeOut   = SDMMC_DATATIMEOUT;
+	config.DataLength    = sectors * 512u;
+	config.DataBlockSize = SDIO_DATABLOCK_SIZE_512B;
+	config.TransferDir   = SDIO_TRANSFER_DIR_TO_SDIO;
+	config.TransferMode  = SDIO_TRANSFER_MODE_BLOCK;
+	config.DPSM          = SDIO_DPSM_ENABLE;
+	SDIO_ConfigData(hsd.Instance, &config);
 }
 
 

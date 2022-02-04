@@ -37,7 +37,8 @@ int sdInit(void);
 void sdReadDMA(uint32_t lba, uint32_t sectors, uint8_t* outputBuffer);
 int sdReadDMAPoll(uint32_t remainingSectors);
 
-void sdReadPIO(uint32_t lba, uint32_t sectors);
+void sdReadCmd(uint32_t lba, uint32_t sectors);
+void sdReadPIOData(uint32_t sectors);
 
 void sdCompleteTransfer();
 void sdKeepAlive();
