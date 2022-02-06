@@ -301,7 +301,7 @@ static void doSeek(uint32_t lba)
         }
         else
         {
-            s2s_delay_ms(1);
+            s2s_delay_us(10);
         }
     }
 }

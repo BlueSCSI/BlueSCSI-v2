@@ -154,10 +154,9 @@ void mainLoop()
     sdPoll();
 #endif
 
-    // TODO test if USB transfer is in progress
     if (unlikely(scsiDev.phase == BUS_FREE) && !usbBusy)
     {
-        if (unlikely(s2s_elapsedTime_ms(lastSDPoll) > 200))
+        if (unlikely(s2s_elapsedTime_ms(lastSDPoll) > 377))
         {
             lastSDPoll = s2s_getTime_ms();
             if (sdInit())
@@ -181,7 +180,7 @@ void mainLoop()
                 }
             }
         }
-        else if (lastSDKeepAlive > 10000) // 10 seconds
+        else if (s2s_elapsedTime_ms(lastSDKeepAlive) > 10000) // 10 seconds
         {
             // 2021 boards fail if there's no commands sent in a while
             sdKeepAlive();

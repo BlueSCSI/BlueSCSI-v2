@@ -55,20 +55,20 @@ static uint8_t  USBD_Composite_DataOut (USBD_HandleTypeDef *pdev, uint8_t epnum)
 
 USBD_ClassTypeDef USBD_Composite =
 {
-	USBD_Composite_Init,
-	USBD_Composite_DeInit,
-	USBD_Composite_Setup,
-	NULL, /*EP0_TxSent*/  
-	NULL, /*EP0_RxReady*/
-	USBD_Composite_DataIn, /*DataIn*/
-	USBD_Composite_DataOut, /*DataOut*/
-	NULL, /*SOF */
-	NULL,
-	NULL,      
-	USBD_Composite_GetHSCfgDesc,
-	USBD_Composite_GetFSCfgDesc,
-	USBD_Composite_GetFSCfgDesc, // "Other" speed
-	USBD_Composite_GetDeviceQualifierDesc,
+    USBD_Composite_Init,
+    USBD_Composite_DeInit,
+    USBD_Composite_Setup,
+    NULL, /*EP0_TxSent*/  
+    NULL, /*EP0_RxReady*/
+    USBD_Composite_DataIn, /*DataIn*/
+    USBD_Composite_DataOut, /*DataOut*/
+    NULL, /*SOF */
+    NULL,
+    NULL,      
+    USBD_Composite_GetHSCfgDesc,
+    USBD_Composite_GetFSCfgDesc,
+    USBD_Composite_GetFSCfgDesc, // "Other" speed
+    USBD_Composite_GetDeviceQualifierDesc,
 };
 
 __ALIGN_BEGIN static uint8_t USBD_Composite_CfgHSDesc[USB_COMPOSITE_CONFIG_DESC_SIZ]  __ALIGN_END =
@@ -267,263 +267,263 @@ __ALIGN_BEGIN static uint8_t USBD_Composite_DeviceQualifierDesc[USB_LEN_DEV_QUAL
 
 static uint8_t  USBD_Composite_Init(USBD_HandleTypeDef *pdev, uint8_t cfgidx)
 {
-	uint8_t ret = 0;
+    uint8_t ret = 0;
 
-	// HID Endpoints
-	USBD_LL_OpenEP(pdev, HID_EPIN_ADDR, USBD_EP_TYPE_INTR, HID_EPIN_SIZE);
-	USBD_LL_OpenEP(pdev, HID_EPOUT_ADDR, USBD_EP_TYPE_INTR, HID_EPOUT_SIZE);
+    // HID Endpoints
+    USBD_LL_OpenEP(pdev, HID_EPIN_ADDR, USBD_EP_TYPE_INTR, HID_EPIN_SIZE);
+    USBD_LL_OpenEP(pdev, HID_EPOUT_ADDR, USBD_EP_TYPE_INTR, HID_EPOUT_SIZE);
 
-	USBD_CompositeClassData* classData;
+    USBD_CompositeClassData* classData;
 #ifdef S2S_USB_HS
     if(pdev->dev_speed == USBD_SPEED_HIGH)
-	{
-		classData = &hsClassData;
+    {
+        classData = &hsClassData;
 
-	    // MSC Endpoints
-    	USBD_LL_OpenEP(pdev, MSC_EPOUT_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_HS_PACKET);
-    	USBD_LL_OpenEP(pdev, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_HS_PACKET);
-	}
+        // MSC Endpoints
+        USBD_LL_OpenEP(pdev, MSC_EPOUT_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_HS_PACKET);
+        USBD_LL_OpenEP(pdev, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_HS_PACKET);
+    }
 #endif
 #ifdef S2S_USB_FS
     if(pdev->dev_speed != USBD_SPEED_HIGH)
-	{
-		classData = &fsClassData;
+    {
+        classData = &fsClassData;
 
-	    // MSC Endpoints
-    	USBD_LL_OpenEP(pdev, MSC_EPOUT_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
-    	USBD_LL_OpenEP(pdev, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
-	}
+        // MSC Endpoints
+        USBD_LL_OpenEP(pdev, MSC_EPOUT_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
+        USBD_LL_OpenEP(pdev, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
+    }
 #endif
 
-	classData->hid.state = HID_IDLE;
-	classData->hid.reportReady = 0;
-	classData->DataInReady = 0;
-	classData->DataOutReady = 0;
-	pdev->pClassData = classData;
+    classData->hid.state = HID_IDLE;
+    classData->hid.reportReady = 0;
+    classData->DataInReady = 0;
+    classData->DataOutReady = 0;
+    pdev->pClassData = classData;
 
-	MSC_BOT_Init(pdev);
+    MSC_BOT_Init(pdev);
 
-	// Prepare Out endpoint to receive next HID packet
-	USBD_LL_PrepareReceive(
-		pdev,
-		HID_EPOUT_ADDR,
-		classData->hid.rxBuffer,
-		sizeof(classData->hid.rxBuffer));
+    // Prepare Out endpoint to receive next HID packet
+    USBD_LL_PrepareReceive(
+        pdev,
+        HID_EPOUT_ADDR,
+        classData->hid.rxBuffer,
+        sizeof(classData->hid.rxBuffer));
 
-	return ret;
+    return ret;
 }
 
 static uint8_t USBD_Composite_DeInit (USBD_HandleTypeDef *pdev, uint8_t cfgidx)
 {
-	USBD_LL_CloseEP(pdev, HID_EPIN_ADDR);
-	USBD_LL_CloseEP(pdev, HID_EPOUT_ADDR);
-	USBD_LL_CloseEP(pdev, MSC_EPOUT_ADDR);
-	USBD_LL_CloseEP(pdev, MSC_EPIN_ADDR);
+    USBD_LL_CloseEP(pdev, HID_EPIN_ADDR);
+    USBD_LL_CloseEP(pdev, HID_EPOUT_ADDR);
+    USBD_LL_CloseEP(pdev, MSC_EPOUT_ADDR);
+    USBD_LL_CloseEP(pdev, MSC_EPIN_ADDR);
 
-	MSC_BOT_DeInit(pdev);
+    MSC_BOT_DeInit(pdev);
 
-	pdev->pClassData = NULL;
-	return USBD_OK;
+    pdev->pClassData = NULL;
+    return USBD_OK;
 }
 
 
 static uint8_t USBD_Composite_Setup(
-	USBD_HandleTypeDef *pdev,
-	USBD_SetupReqTypedef *req)
+    USBD_HandleTypeDef *pdev,
+    USBD_SetupReqTypedef *req)
 {
-	uint16_t len = 0;
-	uint8_t  *pbuf = NULL;
+    uint16_t len = 0;
+    uint8_t  *pbuf = NULL;
 
-	USBD_CompositeClassData *classData = (USBD_CompositeClassData*) pdev->pClassData;
-	USBD_HID_HandleTypeDef *hhid = &(classData->hid);
-	USBD_MSC_BOT_HandleTypeDef *hmsc = &(classData->msc);
+    USBD_CompositeClassData *classData = (USBD_CompositeClassData*) pdev->pClassData;
+    USBD_HID_HandleTypeDef *hhid = &(classData->hid);
+    USBD_MSC_BOT_HandleTypeDef *hmsc = &(classData->msc);
 
-	switch (req->bmRequest & USB_REQ_TYPE_MASK)
-	{
-	case USB_REQ_TYPE_CLASS :
-		switch (req->bRequest)
-		{
-			case HID_REQ_SET_PROTOCOL:
-				hhid->Protocol = (uint8_t)(req->wValue);
-				break;
-			case HID_REQ_GET_PROTOCOL:
-				USBD_CtlSendData (pdev, (uint8_t *)&hhid->Protocol, 1);
-				break;
-			case HID_REQ_SET_IDLE:
-				hhid->IdleState = (uint8_t)(req->wValue >> 8);
-				break;
-			case HID_REQ_GET_IDLE:
-				USBD_CtlSendData (pdev, (uint8_t *)&hhid->IdleState, 1);
-				break;
+    switch (req->bmRequest & USB_REQ_TYPE_MASK)
+    {
+    case USB_REQ_TYPE_CLASS :
+        switch (req->bRequest)
+        {
+            case HID_REQ_SET_PROTOCOL:
+                hhid->Protocol = (uint8_t)(req->wValue);
+                break;
+            case HID_REQ_GET_PROTOCOL:
+                USBD_CtlSendData (pdev, (uint8_t *)&hhid->Protocol, 1);
+                break;
+            case HID_REQ_SET_IDLE:
+                hhid->IdleState = (uint8_t)(req->wValue >> 8);
+                break;
+            case HID_REQ_GET_IDLE:
+                USBD_CtlSendData (pdev, (uint8_t *)&hhid->IdleState, 1);
+                break;
 
-			case BOT_GET_MAX_LUN :
-				if((req->wValue  == 0) &&
-					(req->wLength == 1) &&
-					((req->bmRequest & 0x80) == 0x80))
-				{
-					hmsc->max_lun = ((USBD_StorageTypeDef *)pdev->pUserData)->GetMaxLun();
-					USBD_CtlSendData (pdev, (uint8_t *)&hmsc->max_lun, 1);
-				}
-				else
-				{
-					USBD_CtlError(pdev , req);
-					return USBD_FAIL;
-				}
-				break;
+            case BOT_GET_MAX_LUN :
+                if((req->wValue  == 0) &&
+                    (req->wLength == 1) &&
+                    ((req->bmRequest & 0x80) == 0x80))
+                {
+                    hmsc->max_lun = ((USBD_StorageTypeDef *)pdev->pUserData)->GetMaxLun();
+                    USBD_CtlSendData (pdev, (uint8_t *)&hmsc->max_lun, 1);
+                }
+                else
+                {
+                    USBD_CtlError(pdev , req);
+                    return USBD_FAIL;
+                }
+                break;
 
-			case BOT_RESET :
-				if((req->wValue  == 0) &&
-					(req->wLength == 0) &&
-					((req->bmRequest & 0x80) != 0x80))
-				{
-					MSC_BOT_Reset(pdev);
-				}
-				else
-				{
-					USBD_CtlError(pdev , req);
-					return USBD_FAIL;
-				}
-				break;
-
-
-			default:
-				USBD_CtlError (pdev, req);
-				return USBD_FAIL;
-		} break;
+            case BOT_RESET :
+                if((req->wValue  == 0) &&
+                    (req->wLength == 0) &&
+                    ((req->bmRequest & 0x80) != 0x80))
+                {
+                    MSC_BOT_Reset(pdev);
+                }
+                else
+                {
+                    USBD_CtlError(pdev , req);
+                    return USBD_FAIL;
+                }
+                break;
 
 
-	case USB_REQ_TYPE_STANDARD:
-		switch (req->bRequest)
-		{
-			case USB_REQ_GET_DESCRIPTOR:
-				if( req->wValue >> 8 == HID_REPORT_DESC)
-				{
-					len = MIN(HID_GENERIC_REPORT_DESC_SIZE , req->wLength);
-					pbuf = (uint8_t*) USBD_HID_GetReportDesc();
-				}
-				else if( req->wValue >> 8 == HID_DESCRIPTOR_TYPE)
-				{
-					pbuf = (uint8_t*) USBD_HID_GetDesc();
-					len = MIN(USB_HID_DESC_SIZ , req->wLength);
-				}
-				USBD_CtlSendData (pdev, pbuf, len);
-				break;
+            default:
+                USBD_CtlError (pdev, req);
+                return USBD_FAIL;
+        } break;
 
-			case USB_REQ_GET_INTERFACE :
-				if (req->wIndex == 0)
-				{
-					USBD_CtlSendData (pdev, (uint8_t *)&hhid->AltSetting, 1);
-				}
-				else
-				{
-					USBD_CtlSendData (pdev, (uint8_t *)&hmsc->interface, 1);
-				}
-				break;
-			case USB_REQ_SET_INTERFACE :
-				if (req->wIndex == 0)
-				{
-					hhid->AltSetting = (uint8_t)(req->wValue);
-				}
-				else
-				{
-					hmsc->interface = (uint8_t)(req->wValue);
-				}
-				break;
 
-			case USB_REQ_CLEAR_FEATURE:
-				/* Flush the FIFO and Clear the stall status */
-				USBD_LL_FlushEP(pdev, (uint8_t)req->wIndex);
+    case USB_REQ_TYPE_STANDARD:
+        switch (req->bRequest)
+        {
+            case USB_REQ_GET_DESCRIPTOR:
+                if( req->wValue >> 8 == HID_REPORT_DESC)
+                {
+                    len = MIN(HID_GENERIC_REPORT_DESC_SIZE , req->wLength);
+                    pbuf = (uint8_t*) USBD_HID_GetReportDesc();
+                }
+                else if( req->wValue >> 8 == HID_DESCRIPTOR_TYPE)
+                {
+                    pbuf = (uint8_t*) USBD_HID_GetDesc();
+                    len = MIN(USB_HID_DESC_SIZ , req->wLength);
+                }
+                USBD_CtlSendData (pdev, pbuf, len);
+                break;
 
-				/* Reactivate the EP */
-				USBD_LL_CloseEP (pdev , (uint8_t)req->wIndex);
-				switch ((uint8_t)req->wIndex)
-				{
-				case MSC_EPIN_ADDR:
-					USBD_LL_OpenEP(
+            case USB_REQ_GET_INTERFACE :
+                if (req->wIndex == 0)
+                {
+                    USBD_CtlSendData (pdev, (uint8_t *)&hhid->AltSetting, 1);
+                }
+                else
+                {
+                    USBD_CtlSendData (pdev, (uint8_t *)&hmsc->interface, 1);
+                }
+                break;
+            case USB_REQ_SET_INTERFACE :
+                if (req->wIndex == 0)
+                {
+                    hhid->AltSetting = (uint8_t)(req->wValue);
+                }
+                else
+                {
+                    hmsc->interface = (uint8_t)(req->wValue);
+                }
+                break;
+
+            case USB_REQ_CLEAR_FEATURE:
+                /* Flush the FIFO and Clear the stall status */
+                USBD_LL_FlushEP(pdev, (uint8_t)req->wIndex);
+
+                /* Reactivate the EP */
+                USBD_LL_CloseEP (pdev , (uint8_t)req->wIndex);
+                switch ((uint8_t)req->wIndex)
+                {
+                case MSC_EPIN_ADDR:
+                    USBD_LL_OpenEP(
                         pdev,
                         MSC_EPIN_ADDR,
                         USBD_EP_TYPE_BULK,
                         pdev->dev_speed == USBD_SPEED_HIGH ? MSC_MAX_HS_PACKET : MSC_MAX_FS_PACKET);
-					break;
+                    break;
 
-				case MSC_EPOUT_ADDR:
-					USBD_LL_OpenEP(
+                case MSC_EPOUT_ADDR:
+                    USBD_LL_OpenEP(
                         pdev,
                         MSC_EPOUT_ADDR,
                         USBD_EP_TYPE_BULK,
                         pdev->dev_speed == USBD_SPEED_HIGH ? MSC_MAX_HS_PACKET : MSC_MAX_FS_PACKET);
-					break;
+                    break;
 
-				case HID_EPIN_ADDR:
-					USBD_LL_OpenEP(pdev, HID_EPIN_ADDR, USBD_EP_TYPE_INTR, HID_EPIN_SIZE);
-					break;
+                case HID_EPIN_ADDR:
+                    USBD_LL_OpenEP(pdev, HID_EPIN_ADDR, USBD_EP_TYPE_INTR, HID_EPIN_SIZE);
+                    break;
 
-				case HID_EPOUT_ADDR:
-					USBD_LL_OpenEP(pdev, HID_EPOUT_ADDR, USBD_EP_TYPE_INTR, HID_EPOUT_SIZE);
-					break;
-				}
+                case HID_EPOUT_ADDR:
+                    USBD_LL_OpenEP(pdev, HID_EPOUT_ADDR, USBD_EP_TYPE_INTR, HID_EPOUT_SIZE);
+                    break;
+                }
 
-				/* Handle BOT error */
-				MSC_BOT_CplClrFeature(pdev, (uint8_t)req->wIndex);
-				break;
+                /* Handle BOT error */
+                MSC_BOT_CplClrFeature(pdev, (uint8_t)req->wIndex);
+                break;
 
-		} break;
-	}
+        } break;
+    }
 
-	return USBD_OK;
+    return USBD_OK;
 }
 
 
 static uint8_t USBD_Composite_DataIn(USBD_HandleTypeDef *pdev, uint8_t epnum)
 {
-	USBD_CompositeClassData *classData = (USBD_CompositeClassData*) pdev->pClassData;
-	if (epnum == (HID_EPIN_ADDR & 0x7F))
-	{
-		USBD_HID_HandleTypeDef *hhid = &(classData->hid);
-		/* Ensure that the FIFO is empty before a new transfer, this condition could 
-		be caused by  a new transfer before the end of the previous transfer */
-		hhid->state = HID_IDLE;
-	}
-	else if (epnum == (MSC_EPIN_ADDR & 0x7F))
-	{
-		classData->DataInReady = epnum;
-	}
-	return USBD_OK;
+    USBD_CompositeClassData *classData = (USBD_CompositeClassData*) pdev->pClassData;
+    if (epnum == (HID_EPIN_ADDR & 0x7F))
+    {
+        USBD_HID_HandleTypeDef *hhid = &(classData->hid);
+        /* Ensure that the FIFO is empty before a new transfer, this condition could 
+        be caused by  a new transfer before the end of the previous transfer */
+        hhid->state = HID_IDLE;
+    }
+    else if (epnum == (MSC_EPIN_ADDR & 0x7F))
+    {
+        classData->DataInReady = epnum;
+    }
+    return USBD_OK;
 }
 
 static uint8_t USBD_Composite_DataOut(USBD_HandleTypeDef  *pdev, uint8_t epnum)
 {
-	USBD_CompositeClassData *classData = (USBD_CompositeClassData*) pdev->pClassData;
-	if (epnum == (HID_EPOUT_ADDR & 0x7F))
-	{
-		USBD_HID_HandleTypeDef *hhid = &(classData->hid);
-		hhid->reportReady = 1;
-	}
-	else if (epnum == (MSC_EPOUT_ADDR & 0x7F))
-	{
-		classData->DataOutReady = epnum;
-	}
-	return USBD_OK;
+    USBD_CompositeClassData *classData = (USBD_CompositeClassData*) pdev->pClassData;
+    if (epnum == (HID_EPOUT_ADDR & 0x7F))
+    {
+        USBD_HID_HandleTypeDef *hhid = &(classData->hid);
+        hhid->reportReady = 1;
+    }
+    else if (epnum == (MSC_EPOUT_ADDR & 0x7F))
+    {
+        classData->DataOutReady = epnum;
+    }
+    return USBD_OK;
 }
 
 int s2s_usbDevicePoll(USBD_HandleTypeDef  *pdev) {
-	USBD_CompositeClassData *classData = (USBD_CompositeClassData*) pdev->pClassData;
+    USBD_CompositeClassData *classData = (USBD_CompositeClassData*) pdev->pClassData;
 
     int busy = 0;
 
-	if (classData->DataInReady)
-	{
-		classData->DataInReady = 0;
-		MSC_BOT_DataIn(pdev);
-        busy = busy || 1;
-	}
-
-	if (classData->DataOutReady)
+    if (classData->DataInReady)
     {
-		classData->DataOutReady = 0;
-		MSC_BOT_DataOut(pdev);
+        classData->DataInReady = 0;
+        MSC_BOT_DataIn(pdev);
         busy = busy || 1;
-	}
+    }
+
+    if (classData->DataOutReady)
+    {
+        classData->DataOutReady = 0;
+        MSC_BOT_DataOut(pdev);
+        busy = busy || 1;
+    }
 
     return busy;
 }
@@ -531,8 +531,8 @@ int s2s_usbDevicePoll(USBD_HandleTypeDef  *pdev) {
 
 static uint8_t *USBD_Composite_GetDeviceQualifierDesc (uint16_t *length)
 {
-	*length = sizeof (USBD_Composite_DeviceQualifierDesc);
-	return USBD_Composite_DeviceQualifierDesc;
+    *length = sizeof (USBD_Composite_DeviceQualifierDesc);
+    return USBD_Composite_DeviceQualifierDesc;
 }
 
 uint8_t  *USBD_Composite_GetHSCfgDesc (uint16_t *length)
