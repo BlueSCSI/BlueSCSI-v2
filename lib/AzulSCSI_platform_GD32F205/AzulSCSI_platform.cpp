@@ -1,7 +1,5 @@
 #include "AzulSCSI_platform.h"
-#include "gd32f20x_spi.h"
 #include "gd32f20x_sdio.h"
-#include "gd32f20x_dma.h"
 #include "AzulSCSI_log.h"
 #include "AzulSCSI_config.h"
 #include <SdFat.h>
@@ -9,6 +7,10 @@
 extern "C" {
 
 const char *g_azplatform_name = PLATFORM_NAME;
+
+/*************************/
+/* Timing functions      */
+/*************************/
 
 static volatile uint32_t g_millisecond_counter;
 static volatile uint32_t g_watchdog_timeout;
@@ -60,16 +62,9 @@ void SysTick_Handler(void)
         "b SysTick_Handler_inner": : : "r0");
 }
 
-// Writes log data to the PB3 SWO pin
-void azplatform_log(const char *s)
-{
-    while (*s)
-    {
-        // Write to SWO pin
-        while (ITM->PORT[0].u32 == 0);
-        ITM->PORT[0].u8 = *s++;
-    }
-}
+/***************/
+/* GPIO init   */
+/***************/
 
 // Initialize SPI and GPIO configuration
 // Clock has already been initialized by system_gd32f20x.c
@@ -105,6 +100,7 @@ void azplatform_init()
     ITM->TER = 0xFFFFFFFF; // Enable all stimulus ports
 
     // Enable needed clocks for GPIO
+    rcu_periph_clock_enable(RCU_AF);
     rcu_periph_clock_enable(RCU_GPIOA);
     rcu_periph_clock_enable(RCU_GPIOB);
     rcu_periph_clock_enable(RCU_GPIOC);
@@ -177,34 +173,22 @@ void azplatform_init()
     }
 }
 
-static void (*g_rst_callback)();
-
-void azplatform_set_rst_callback(void (*callback)())
-{
-    g_rst_callback = callback;
-    gpio_exti_source_select(SCSI_RST_EXTI_SOURCE_PORT, SCSI_RST_EXTI_SOURCE_PIN);
-    exti_init(SCSI_RST_EXTI, EXTI_INTERRUPT, EXTI_TRIG_FALLING);
-    NVIC_SetPriority(SCSI_RST_IRQn, 0x00U);
-    NVIC_EnableIRQ(SCSI_RST_IRQn);
-}
-
-void SCSI_RST_IRQ (void)
-{
-    if (exti_interrupt_flag_get(SCSI_RST_EXTI))
-    {
-        exti_interrupt_flag_clear(SCSI_RST_EXTI);
-        if (g_rst_callback)
-        {
-            g_rst_callback();
-        }
-    }
-}
-
 /*****************************************/
 /* Crash handlers                        */
 /*****************************************/
 
 extern SdFs SD;
+
+// Writes log data to the PB3 SWO pin
+void azplatform_log(const char *s)
+{
+    while (*s)
+    {
+        // Write to SWO pin
+        while (ITM->PORT[0].u32 == 0);
+        ITM->PORT[0].u8 = *s++;
+    }
+}
 
 void azplatform_emergency_log_save()
 {
@@ -322,395 +306,6 @@ void azplatform_reset_watchdog(int timeout_ms)
     // It gives us opportunity to collect better debug info than the
     // full hardware reset that would be caused by hardware watchdog.
     g_watchdog_timeout = timeout_ms;
-}
-
-/*****************************************/
-/* Driver for GD32 SPI for SdFat library */
-/*****************************************/
-
-extern volatile bool g_busreset;
-
-#define SCSI_WAIT_ACTIVE(pin) \
-  if (!SCSI_IN(pin)) { \
-    if (!SCSI_IN(pin)) { \
-      while(!SCSI_IN(pin) && !g_busreset); \
-    } \
-  }
-
-#define SCSI_WAIT_INACTIVE(pin) \
-  if (SCSI_IN(pin)) { \
-    if (SCSI_IN(pin)) { \
-      while(SCSI_IN(pin) && !g_busreset); \
-    } \
-  }
-
-// Optimized ASM blocks for the SCSI communication subroutine
-
-// Take 8 bits from d and format them for writing
-// d is name of data operand, b is bit offset, x is unique label
-#define ASM_LOAD_DATA(d, b, x) \
-"    load_data1_" x "_%=: \n" \
-"        ubfx    %[tmp1], %[" d "], #" b ", #8 \n" \
-"        ldr     %[tmp1], [%[byte_lookup], %[tmp1], lsl #2] \n"
-
-// Write data to SCSI port and set REQ high
-#define ASM_SEND_DATA(x) \
-"    send_data" x "_%=: \n" \
-"        str     %[tmp1], [%[out_port_bop]] \n"
-
-// Wait for ACK to be high, set REQ low, wait ACK low
-#define ASM_HANDSHAKE(x) \
-"        ldr     %[tmp2], [%[ack_pin_bb]] \n" \
-"        str     %[tmp2], [%[req_pin_bb]] \n" \
-"        cbnz    %[tmp2], req_is_low_now" x "_%= \n" \
-"        ldr     %[tmp2], [%[ack_pin_bb]] \n" \
-"        str     %[tmp2], [%[req_pin_bb]] \n" \
-"        cbnz    %[tmp2], req_is_low_now" x "_%= \n" \
-"        ldr     %[tmp2], [%[ack_pin_bb]] \n" \
-"        str     %[tmp2], [%[req_pin_bb]] \n" \
-"        cbnz    %[tmp2], req_is_low_now" x "_%= \n" \
-"    wait_ack_inactive" x "_%=: \n" \
-"        ldr     %[tmp2], [%[ack_pin_bb]] \n" \
-"        str     %[tmp2], [%[req_pin_bb]] \n" \
-"        cbnz    %[tmp2], req_is_low_now" x "_%= \n" \
-"        b.n     wait_ack_inactive" x "_%= \n" \
-"    req_is_low_now" x "_%=: \n" \
-"        ldr     %[tmp2], [%[ack_pin_bb]] \n" \
-"        cbz     %[tmp2], over_ack_active" x "_%= \n" \
-"        ldr     %[tmp2], [%[ack_pin_bb]] \n" \
-"        cbz     %[tmp2], over_ack_active" x "_%= \n" \
-"        ldr     %[tmp2], [%[ack_pin_bb]] \n" \
-"        cbz     %[tmp2], over_ack_active" x "_%= \n" \
-"        ldr     %[tmp2], [%[ack_pin_bb]] \n" \
-"        cbz     %[tmp2], over_ack_active" x "_%= \n" \
-"    wait_ack_active" x "_%=: \n" \
-"        ldr     %[tmp2], [%[ack_pin_bb]] \n" \
-"        cbz     %[tmp2], over_ack_active" x "_%= \n" \
-"        b.n     wait_ack_active" x "_%= \n" \
-"    over_ack_active" x "_%=: \n" \
-
-// Send bytes to SCSI bus using the asynchronous handshake mechanism
-// Takes 4 bytes at a time for sending from buf.
-// Returns the next buffer pointer.
-static inline uint32_t *scsi_send_words_async(uint32_t *buf, uint32_t num_words)
-{
-    volatile uint32_t *out_port_bop = (volatile uint32_t*)&GPIO_BOP(SCSI_OUT_PORT);
-    const uint32_t *byte_lookup = g_scsi_out_byte_to_bop;
-    uint32_t ack_pin_bb = PERIPH_BB_BASE + (((uint32_t)&GPIO_ISTAT(SCSI_ACK_PORT)) - APB1_BUS_BASE) * 32 + 12 * 4;
-    uint32_t req_pin_bb = PERIPH_BB_BASE + (((uint32_t)out_port_bop) - APB1_BUS_BASE) * 32 + (9 + 16) * 4;
-    register uint32_t tmp1 = 0;
-    register uint32_t tmp2 = 0;
-    register uint32_t data = 0;
-
-    asm volatile (
-    "   ldr      %[data], [%[buf]], #4 \n" \
-        ASM_LOAD_DATA("data", "0", "first")
-
-    "inner_loop_%=: \n" \
-        ASM_SEND_DATA("0")
-        ASM_LOAD_DATA("data", "8", "8")
-        ASM_HANDSHAKE("0")
-        
-        ASM_SEND_DATA("8")
-        ASM_LOAD_DATA("data", "16", "16")
-        ASM_HANDSHAKE("8")
-
-        ASM_SEND_DATA("16")
-        ASM_LOAD_DATA("data", "24", "24")
-        ASM_HANDSHAKE("16")
-
-        ASM_SEND_DATA("24")
-    "   ldr      %[data], [%[buf]], #4 \n" \
-        ASM_LOAD_DATA("data", "0", "0")
-        ASM_HANDSHAKE("24")
-
-    "   subs     %[num_words], %[num_words], #1 \n" \
-    "   bne     inner_loop_%= \n"
-    : /* Output */ [tmp1] "+l" (tmp1), [tmp2] "+l" (tmp2), [data] "+r" (data),
-                   [buf] "+r" (buf), [num_words] "+r" (num_words)
-    : /* Input */ [ack_pin_bb] "r" (ack_pin_bb),
-                  [req_pin_bb] "r" (req_pin_bb),
-                  [out_port_bop] "r"(out_port_bop),
-                  [byte_lookup] "r" (byte_lookup)
-    : /* Clobber */ );
-
-    return buf - 1;
-}
-
-class GD32SPIDriver : public SdSpiBaseClass
-{
-public:
-    void begin(SdSpiConfig config) {
-        rcu_periph_clock_enable(RCU_SPI0);
-        rcu_periph_clock_enable(RCU_DMA0);
-
-        dma_parameter_struct rx_dma_config =
-        {
-            .periph_addr = (uint32_t)&SPI_DATA(SD_SPI),
-            .periph_width = DMA_PERIPHERAL_WIDTH_8BIT,
-            .memory_addr = 0, // Set before transfer
-            .memory_width = DMA_MEMORY_WIDTH_8BIT,
-            .number = 0, // Set before transfer
-            .priority = DMA_PRIORITY_ULTRA_HIGH,
-            .periph_inc = DMA_PERIPH_INCREASE_DISABLE,
-            .memory_inc = DMA_MEMORY_INCREASE_ENABLE,
-            .direction = DMA_PERIPHERAL_TO_MEMORY
-        };
-        dma_init(DMA0, SD_SPI_RX_DMA_CHANNEL, &rx_dma_config);
-
-        dma_parameter_struct tx_dma_config =
-        {
-            .periph_addr = (uint32_t)&SPI_DATA(SD_SPI),
-            .periph_width = DMA_PERIPHERAL_WIDTH_8BIT,
-            .memory_addr = 0, // Set before transfer
-            .memory_width = DMA_MEMORY_WIDTH_8BIT,
-            .number = 0, // Set before transfer
-            .priority = DMA_PRIORITY_HIGH,
-            .periph_inc = DMA_PERIPH_INCREASE_DISABLE,
-            .memory_inc = DMA_MEMORY_INCREASE_ENABLE,
-            .direction = DMA_MEMORY_TO_PERIPHERAL
-        };
-        dma_init(DMA0, SD_SPI_TX_DMA_CHANNEL, &tx_dma_config);
-    }
-        
-    void activate() {
-        spi_parameter_struct config = {
-            SPI_MASTER,
-            SPI_TRANSMODE_FULLDUPLEX,
-            SPI_FRAMESIZE_8BIT,
-            SPI_NSS_SOFT,
-            SPI_ENDIAN_MSB,
-            SPI_CK_PL_LOW_PH_1EDGE,
-            SPI_PSC_256
-        };
-
-        // Select closest available divider based on system frequency
-        int divider = (SystemCoreClock + m_sckfreq / 2) / m_sckfreq;
-        if (divider <= 2)
-            config.prescale = SPI_PSC_2;
-        else if (divider <= 4)
-            config.prescale = SPI_PSC_4;
-        else if (divider <= 8)
-            config.prescale = SPI_PSC_8;
-        else if (divider <= 16)
-            config.prescale = SPI_PSC_16;
-        else if (divider <= 32)
-            config.prescale = SPI_PSC_32;
-        else if (divider <= 64)
-            config.prescale = SPI_PSC_64;
-        else if (divider <= 128)
-            config.prescale = SPI_PSC_128;
-        else
-            config.prescale = SPI_PSC_256;
-
-        spi_init(SD_SPI, &config);
-        spi_enable(SD_SPI);
-    }
-    
-    void deactivate() {
-        spi_disable(SD_SPI);
-    }
-
-    void wait_idle() {
-        while (!(SPI_STAT(SD_SPI) & SPI_STAT_TBE));
-        while (SPI_STAT(SD_SPI) & SPI_STAT_TRANS);
-    }
-
-    uint8_t receive() {
-        // Wait for idle and clear RX buffer
-        wait_idle();
-        (void)SPI_DATA(SD_SPI);
-
-        // Send dummy byte and wait for receive
-        SPI_DATA(SD_SPI) = 0xFF;
-        while (!(SPI_STAT(SD_SPI) & SPI_STAT_RBNE));
-        return SPI_DATA(SD_SPI);
-    }
-
-    uint8_t receive(uint8_t* buf, size_t count) {
-        // Wait for idle and clear RX buffer
-        wait_idle();
-        (void)SPI_DATA(SD_SPI);
-
-        if (buf == m_stream_buffer + m_stream_status)
-        {
-            // Stream data directly to SCSI bus
-            return stream_receive(buf, count);
-        }
-        
-        // Stream to memory
-        
-        // Use DMA to stream dummy TX data and store RX data
-        uint8_t tx_data = 0xFF;
-        DMA_INTC(DMA0) = DMA_FLAG_ADD(DMA_FLAG_FTF | DMA_FLAG_ERR, SD_SPI_RX_DMA_CHANNEL);
-        DMA_INTC(DMA0) = DMA_FLAG_ADD(DMA_FLAG_FTF | DMA_FLAG_ERR, SD_SPI_TX_DMA_CHANNEL);
-        DMA_CHMADDR(DMA0, SD_SPI_RX_DMA_CHANNEL) = (uint32_t)buf;
-        DMA_CHMADDR(DMA0, SD_SPI_TX_DMA_CHANNEL) = (uint32_t)&tx_data;
-        DMA_CHCTL(DMA0, SD_SPI_TX_DMA_CHANNEL) &= ~DMA_CHXCTL_MNAGA; // No memory increment for TX
-        DMA_CHCNT(DMA0, SD_SPI_RX_DMA_CHANNEL) = count;
-        DMA_CHCNT(DMA0, SD_SPI_TX_DMA_CHANNEL) = count;
-        DMA_CHCTL(DMA0, SD_SPI_RX_DMA_CHANNEL) |= DMA_CHXCTL_CHEN;
-        DMA_CHCTL(DMA0, SD_SPI_TX_DMA_CHANNEL) |= DMA_CHXCTL_CHEN;
-
-        SPI_CTL1(SD_SPI) |= SPI_CTL1_DMAREN | SPI_CTL1_DMATEN;
-        
-        uint32_t start = millis();
-        while (!(DMA_INTF(DMA0) & DMA_FLAG_ADD(DMA_FLAG_FTF | DMA_FLAG_ERR, SD_SPI_RX_DMA_CHANNEL)))
-        {
-            if (millis() - start > 500)
-            {
-                azlog("ERROR: SPI DMA receive of ", (int)count, " bytes timeouted");
-                return 1;
-            }
-        }
-
-        if (DMA_INTF(DMA0) & DMA_FLAG_ADD(DMA_FLAG_ERR, SD_SPI_RX_DMA_CHANNEL))
-        {
-            azlog("ERROR: SPI DMA receive set DMA_FLAG_ERR");
-        }
-
-        SPI_CTL1(SD_SPI) &= ~(SPI_CTL1_DMAREN | SPI_CTL1_DMATEN);
-        DMA_CHCTL(DMA0, SD_SPI_RX_DMA_CHANNEL) &= ~DMA_CHXCTL_CHEN;
-        DMA_CHCTL(DMA0, SD_SPI_TX_DMA_CHANNEL) &= ~DMA_CHXCTL_CHEN;
-
-        return 0;
-    }
-
-    // Stream data directly to SCSI bus
-    uint8_t stream_receive(uint8_t *buf, size_t count)
-    {
-        uint8_t tx_data = 0xFF;
-        DMA_INTC(DMA0) = DMA_FLAG_ADD(DMA_FLAG_FTF | DMA_FLAG_ERR, SD_SPI_RX_DMA_CHANNEL);
-        DMA_INTC(DMA0) = DMA_FLAG_ADD(DMA_FLAG_FTF | DMA_FLAG_ERR, SD_SPI_TX_DMA_CHANNEL);
-        DMA_CHMADDR(DMA0, SD_SPI_RX_DMA_CHANNEL) = (uint32_t)buf;
-        DMA_CHMADDR(DMA0, SD_SPI_TX_DMA_CHANNEL) = (uint32_t)&tx_data;
-        DMA_CHCTL(DMA0, SD_SPI_TX_DMA_CHANNEL) &= ~DMA_CHXCTL_MNAGA; // No memory increment for TX
-        DMA_CHCNT(DMA0, SD_SPI_RX_DMA_CHANNEL) = count;
-        DMA_CHCNT(DMA0, SD_SPI_TX_DMA_CHANNEL) = count;
-        DMA_CHCTL(DMA0, SD_SPI_RX_DMA_CHANNEL) |= DMA_CHXCTL_CHEN;
-        DMA_CHCTL(DMA0, SD_SPI_TX_DMA_CHANNEL) |= DMA_CHXCTL_CHEN;
-
-        SPI_CTL1(SD_SPI) |= SPI_CTL1_DMAREN | SPI_CTL1_DMATEN;
-        
-        // DMA transfer is now running, we can start sending received bytes to SCSI
-        uint32_t *word_ptr = (uint32_t*)buf;
-        uint32_t *end_ptr = word_ptr + (count / 4);
-        while (word_ptr < end_ptr)
-        {
-            uint32_t words_available = (count - DMA_CHCNT(DMA0, SD_SPI_RX_DMA_CHANNEL)) / 4;
-            words_available -= (word_ptr - (uint32_t*)buf);
-            if (words_available > 0)
-            {
-                if (word_ptr + words_available > end_ptr)
-                {
-                    words_available = end_ptr - word_ptr;
-                }
-
-                word_ptr = scsi_send_words_async(word_ptr, words_available);
-            }
-        }
-        
-        SCSI_RELEASE_DATA_REQ();
-
-        if (DMA_INTF(DMA0) & DMA_FLAG_ADD(DMA_FLAG_ERR, SD_SPI_RX_DMA_CHANNEL))
-        {
-            azlog("ERROR: SPI DMA receive set DMA_FLAG_ERR");
-        }
-
-        SPI_CTL1(SD_SPI) &= ~(SPI_CTL1_DMAREN | SPI_CTL1_DMATEN);
-        DMA_CHCTL(DMA0, SD_SPI_RX_DMA_CHANNEL) &= ~DMA_CHXCTL_CHEN;
-        DMA_CHCTL(DMA0, SD_SPI_TX_DMA_CHANNEL) &= ~DMA_CHXCTL_CHEN;
-
-        m_stream_status += count;
-        return 0;
-    }
-
-    void send(uint8_t data) {
-        SPI_DATA(SD_SPI) = data;
-        wait_idle();
-    }
-
-    void send(const uint8_t* buf, size_t count) {
-        if (buf == m_stream_buffer + m_stream_status)
-        {
-            stream_send(count);
-            return;
-        }
-
-        for (size_t i = 0; i < count; i++) {
-            while (!(SPI_STAT(SD_SPI) & SPI_STAT_TBE));
-            SPI_DATA(SD_SPI) = buf[i];
-        }
-        wait_idle();
-    }
-
-    // Stream data directly from SCSI bus
-    void stream_send(size_t count)
-    {
-        for (size_t i = 0; i < count; i++) {
-            SCSI_OUT(REQ, 1);
-            SCSI_WAIT_ACTIVE(ACK);
-            delay_100ns(); // ACK.Fall to DB output delay 100ns(MAX)  (DTC-510B)
-            uint8_t data = SCSI_IN_DATA();
-            SCSI_OUT(REQ, 0);
-
-            while (!(SPI_STAT(SD_SPI) & SPI_STAT_TBE));
-            SPI_DATA(SD_SPI) = data;
-
-            SCSI_WAIT_INACTIVE(ACK);
-        }
-        wait_idle();
-
-        m_stream_status += count;
-    }
-
-    void setSckSpeed(uint32_t maxSck) {
-        m_sckfreq = maxSck;
-    }
-
-    void prepare_stream(uint8_t *buffer)
-    {
-        m_stream_buffer = buffer;
-        m_stream_status = 0;
-    }
-
-    size_t finish_stream()
-    {
-        size_t result = m_stream_status;
-        m_stream_status = 0;
-        m_stream_buffer = NULL;
-        return result;
-    }
-
-private:
-    uint32_t m_sckfreq;
-    uint8_t *m_stream_buffer;
-    size_t m_stream_status; // Number of bytes transferred so far
-};
-
-void sdCsInit(SdCsPin_t pin)
-{
-}
-
-void sdCsWrite(SdCsPin_t pin, bool level)
-{
-    if (level)
-        GPIO_BOP(SD_PORT) = SD_CS_PIN;
-    else
-        GPIO_BC(SD_PORT) = SD_CS_PIN;
-}
-
-GD32SPIDriver g_sd_spi_port;
-SdSpiConfig g_sd_spi_config(0, DEDICATED_SPI, SD_SCK_MHZ(30), &g_sd_spi_port);
-
-void azplatform_prepare_stream(uint8_t *buffer)
-{
-    g_sd_spi_port.prepare_stream(buffer);
-}
-
-size_t azplatform_finish_stream()
-{
-    return g_sd_spi_port.finish_stream();
 }
 
 /**********************************************/

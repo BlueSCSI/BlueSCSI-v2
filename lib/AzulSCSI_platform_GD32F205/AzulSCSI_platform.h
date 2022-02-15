@@ -31,7 +31,7 @@ void azplatform_log(const char *s);
 
 // Minimal millis() implementation as GD32F205 does not
 // have an Arduino core yet.
-unsigned long millis();
+unsigned long millis(void);
 void delay(unsigned long ms);
 
 // Precise nanosecond delays
@@ -55,9 +55,6 @@ static inline void delay_100ns()
 // Initialize SPI and GPIO configuration
 void azplatform_init();
 
-// Set callback for when SCSI_RST pin goes low
-void azplatform_set_rst_callback(void (*callback)());
-
 // Setup soft watchdog
 void azplatform_reset_watchdog(int timeout_ms);
 
@@ -65,14 +62,10 @@ void azplatform_reset_watchdog(int timeout_ms);
 // This can be used in crash handlers.
 void azplatform_emergency_log_save();
 
-// Direct streaming between SCSI and SD card
-// If the SD card driver receives a read request to buffer, it will directly send the data to SCSI bus.
-// If the SD card driver receives a write request from buffer, it will directly get the data from SCSI.
-void azplatform_prepare_stream(uint8_t *buffer);
-
-// Get status of latest streaming operation.
-// Returns number of bytes transferred.
-size_t azplatform_finish_stream();
+// Set callback that will be called during data transfer to/from SD card.
+// This can be used to implement simultaneous transfer to SCSI bus.
+typedef void (*sd_callback_t)(uint32_t bytes_complete);
+void azplatform_set_sd_callback(sd_callback_t func, const uint8_t *buffer);
 
 // Write a single SCSI pin.
 // Example use: SCSI_OUT(ATN, 1) sets SCSI_ATN to low (active) state.

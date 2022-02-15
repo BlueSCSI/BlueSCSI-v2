@@ -45,6 +45,7 @@ jobs:
       - name: Upload to latest release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: github.ref == 'refs/heads/main'
         run: |
           cd AzulSCSI
           git tag -d latest
