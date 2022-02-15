@@ -56,6 +56,12 @@ uint8_t BSP_SD_Init(void)
     {
         return MSD_ERROR;
     }
+
+    // Reset defaults. High-speed mode can be incorrectly set if user removed then
+    // inserted a new SD card and we re-run initialisation.
+    hsd.Init.ClockBypass = SDIO_CLOCK_BYPASS_DISABLE;
+    hsd.Init.BusWide = SDIO_BUS_WIDE_1B;
+
     SD_state = HAL_SD_Init(&hsd);
 #ifdef BUS_4BITS
     if (SD_state == HAL_OK)

@@ -233,7 +233,7 @@ int sdInit()
             // power on
             if (!firstInit)
             {
-                for (int i = 0; cs && i < 50; ++i)
+                for (int i = 0; cs && (i < 50); ++i)
                 {
                     cs = HAL_GPIO_ReadPin(nSD_CD_GPIO_Port, nSD_CD_Pin) ? 0 : 1;
                     s2s_delay_ms(5);
