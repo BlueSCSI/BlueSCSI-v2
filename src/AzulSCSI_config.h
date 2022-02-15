@@ -25,13 +25,14 @@
 
 // SCSI config
 #define NUM_SCSIID  7          // Maximum number of supported SCSI-IDs (The minimum is 0)
-#define NUM_SCSILUN 2          // Maximum number of LUNs supported     (The minimum is 0)
+#define NUM_SCSILUN 1          // Maximum number of LUNs supported     (Currently has to be 1)
 #define READ_PARITY_CHECK 0    // Perform read parity check (unverified)
 
 // Default SCSI drive information (can be overridden in INI file)
 #define DEFAULT_VENDOR "QUANTUM "
 #define DEFAULT_PRODUCT "FIREBALL1       "
 #define DEFAULT_VERSION "1.0 "
+#define DEFAULT_SERIAL  "0123456789ABCDEF"
 
 // Default delay for SCSI phases.
 // Can be adjusted in ini file

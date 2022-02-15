@@ -49,8 +49,6 @@
 #define SCSI_OUT_REQ_PIN  SCSI_OUT_REQ
 
 // SCSI input status signals
-#define SCSI_BSY_PORT GPIOB
-#define SCSI_BSY_PIN  GPIO_PIN_10
 #define SCSI_SEL_PORT GPIOB
 #define SCSI_SEL_PIN  GPIO_PIN_11
 #define SCSI_ACK_PORT GPIOB
@@ -64,6 +62,15 @@
 #define SCSI_ATN_PORT GPIOC
 #define SCSI_ATN_PIN  GPIO_PIN_6
 #endif
+
+// BSY pin uses EXTI interrupt
+#define SCSI_BSY_PORT GPIOB
+#define SCSI_BSY_PIN  GPIO_PIN_10
+#define SCSI_BSY_EXTI EXTI_10
+#define SCSI_BSY_EXTI_SOURCE_PORT GPIO_PORT_SOURCE_GPIOB
+#define SCSI_BSY_EXTI_SOURCE_PIN  GPIO_PIN_SOURCE_10
+#define SCSI_BSY_IRQ  EXTI10_15_IRQHandler
+#define SCSI_BSY_IRQn EXTI10_15_IRQn
 
 // RST pin uses EXTI interrupt
 #define SCSI_RST_PORT GPIOB

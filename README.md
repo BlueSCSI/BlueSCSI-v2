@@ -25,23 +25,23 @@ In crashes the firmware will also attempt to save information into `azulerr.txt`
 Configuration file
 ------------------
 Optional configuration can be stored in `azulscsi.ini`.
+If image file is found but configuration is missing, a default configuration is used.
+
+A single AzulSCSI device can represent multiple devices on the SCSI bus.
+The configuration sections are numbered `SCSI0` to `SCSI7` and correspond to images `HD00.hda` to `HD70.hda`.
+
 Example format for config file:
 
     [SCSI]
+    # Settings that apply to all devices
+    Debug = 0   # Same effect as DIPSW2
+
+    [SCSI0]
     Vendor = "QUANTUM "
     Product = "FIREBALL1       "
     Version = "1.0 "
-    Quirks = 0   # 0: Standard, 1: Sharp, 2: NEC PC98
-    Debug = 0   # Same effect as DIPSW2
-
-    # Default timings that work with most devices
-    ARBITRATION_DELAY_US = 10
-    SELECTION_DELAY_US   = 10
-    COMMAND_DELAY_US     = 10
-    DATA_DELAY_US        = 10
-    STATUS_DELAY_US      = 10
-    MESSAGE_DELAY_US     = 10
-    REQ_TYPE_SETUP_NS    = 500
+    Serial = "0123456789ABCDEF"
+    Quirks = 0   # 0: Standard, 1: Apple, 2: OMTI, 4: Xebec, 8: VMS
 
 Performance
 -----------
@@ -96,12 +96,21 @@ To build run the command:
 Origins and License
 -------------------
 
-This firmware is derived from [BlueSCSI](https://github.com/erichelgeson/BlueSCSI), which in turn is derived from [ArdSCSIno-stm32](https://github.com/ztto/ArdSCSino-stm32). The firmware is available under GPL 3 license.
+This firmware is derived from two sources, both under GPL 3 license:
 
-Major changes from BlueSCSI include:
+* [SCSI2SD V6](http://www.codesrc.com/mediawiki/index.php/SCSI2SD)
+* [BlueSCSI](https://github.com/erichelgeson/BlueSCSI), which in turn is derived from [ArdSCSIno-stm32](https://github.com/ztto/ArdSCSino-stm32).
 
-- Separation of platform-specific functionality to separate file to ease porting.
-- Ported to GD32F205.
-- Removal of Arduino core dependency, as it was not currently available for GD32F205.
-- Buffered log functions.
-- Direct streaming between SD card and SCSI for slightly improved performance.
+Main program structure:
+
+* SCSI command implementations are from SCSI2SD.
+* SCSI physical layer code is mostly custom, with some inspiration from BlueSCSI.
+* Image file access is derived from BlueSCSI.
+
+Major changes from BlueSCSI and SCSI2SD include:
+
+* Separation of platform-specific functionality to separate file to ease porting.
+* Ported to GD32F205.
+* Removal of Arduino core dependency, as it was not currently available for GD32F205.
+* Buffered log functions.
+* Direct streaming between SD card and SCSI for slightly improved performance.
