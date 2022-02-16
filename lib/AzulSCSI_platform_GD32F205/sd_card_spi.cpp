@@ -7,6 +7,8 @@
 #include "gd32f20x_dma.h"
 #include <SdFat.h>
 
+#ifndef SD_USE_SDIO
+
 class GD32SPIDriver : public SdSpiBaseClass
 {
 public:
@@ -239,3 +241,10 @@ void sdCsWrite(SdCsPin_t pin, bool level)
 
 GD32SPIDriver g_sd_spi_port;
 SdSpiConfig g_sd_spi_config(0, DEDICATED_SPI, SD_SCK_MHZ(30), &g_sd_spi_port);
+
+void azplatform_set_sd_callback(sd_callback_t func, const uint8_t *buffer)
+{
+    g_sd_spi_port.set_sd_callback(func, buffer);    
+}
+
+#endif

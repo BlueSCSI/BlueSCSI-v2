@@ -13,29 +13,40 @@ static bool g_LogData = false;
 
 static const char *getCommandName(uint8_t cmd)
 {
-    if (cmd == 0x00) return "TestUnitReady";
-    if (cmd == 0x1A) return "ModeSense";
-    if (cmd == 0x5A) return "ModeSense10";
-    if (cmd == 0x0A) return "Write6";
-    if (cmd == 0x2A) return "Write10";
-    if (cmd == 0x08) return "Read6";
-    if (cmd == 0x28) return "Read10";
-    if (cmd == 0x12) return "Inquiry";
-    if (cmd == 0x25) return "ReadCapacity";
-    return "";
-}
-
-static void printCommand()
-{
-    uint8_t cmd = scsiDev.cdb[0];
-    const char *cmdname = getCommandName(cmd);
-
-    azdbg("---- COMMAND: ", cmdname, " ", bytearray(scsiDev.cdb, scsiDev.cdbLen));
+    switch (cmd)
+    {
+        case 0x00: return "TestUnitReady";
+        case 0x1A: return "ModeSense";
+        case 0x5A: return "ModeSense10";
+        case 0x0A: return "Write6";
+        case 0x2A: return "Write10";
+        case 0x08: return "Read6";
+        case 0x28: return "Read10";
+        case 0x12: return "Inquiry";
+        case 0x25: return "ReadCapacity";
+        case 0x43: return "CDROM Read TOC";
+        case 0x44: return "CDROM Read Header";
+        case 0x2C: return "Erase10";
+        case 0xAC: return "Erase12";
+        case 0x15: return "ModeSelect6";
+        case 0x55: return "ModeSelect10";
+        case 0x03: return "RequestSense";
+        case 0x16: return "Reserve";
+        case 0x17: return "Release";
+        case 0x1C: return "ReceiveDiagnostic";
+        case 0x1D: return "SendDiagnostic";
+        case 0x3B: return "WriteBuffer";
+        case 0x0F: return "WriteSectorBuffer";
+        case 0x3C: return "ReadBuffer";
+        case 0xC0: return "OMTI-5204 DefineFlexibleDiskFormat";
+        case 0xC2: return "OMTI-5204 AssignDiskParameters";
+        default:   return "Unknown";
+    }
 }
 
 static void printNewPhase(int phase)
 {
-    g_LogData = true; //false;
+    g_LogData = false;
     if (!g_azlog_debug)
     {
         return;
@@ -79,6 +90,7 @@ static void printNewPhase(int phase)
             break;
         
         case COMMAND:
+            g_LogData = true;
             break;
         
         case DATA_IN:
@@ -111,11 +123,6 @@ void scsiLogPhaseChange(int new_phase)
 
     if (new_phase != old_phase)
     {
-        if (old_phase == COMMAND && scsiDev.cdbLen > 0)
-        {
-            printCommand();
-        }
-
         printNewPhase(new_phase);
         old_phase = new_phase;
     }
@@ -131,6 +138,11 @@ void scsiLogDataIn(const uint8_t *buf, uint32_t length)
 
 void scsiLogDataOut(const uint8_t *buf, uint32_t length)
 {
+    if (buf == scsiDev.cdb)
+    {
+        azdbg("---- COMMAND: ", getCommandName(buf[0]));
+    }
+    
     if (g_LogData)
     {
         azdbg("------ OUT: ", bytearray(buf, length));

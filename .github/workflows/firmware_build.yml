@@ -39,6 +39,7 @@ jobs:
       - name: Remove old binaries from release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: github.ref == 'refs/heads/main'
         run: |
           gh api repos/${GITHUB_REPOSITORY}/releases/tags/latest | jq -r '.assets[] | [.url] | @tsv' | xargs -n 1 gh api -X DELETE || true
 
