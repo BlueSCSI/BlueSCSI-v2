@@ -111,17 +111,39 @@ void scsiDiskLoadConfig(int target_idx)
 extern "C"
 void s2s_configInit(S2S_BoardCfg* config)
 {
+    azlog("Reading configuration");
     memset(config, 0, sizeof(S2S_BoardCfg));
     memcpy(config->magic, "BCFG", 4);
-    config->flags = ini_getl("SCSI", "Flags", 0, CONFIGFILE);
+    config->flags = 0;
     config->startupDelay = 0;
     config->selectionDelay = ini_getl("SCSI", "SelectionDelay", 255, CONFIGFILE);
-    config->flags6 = ini_getl("SCSI", "Flags6", 0, CONFIGFILE);
-    config->scsiSpeed = ini_getl("SCSI", "SCSISpeed", PLATFORM_MAX_SCSI_SPEED, CONFIGFILE);
+    config->flags6 = 0;
+    config->scsiSpeed = PLATFORM_MAX_SCSI_SPEED;
+    
+    azlog("-- SelectionDelay: ", (int)config->selectionDelay);
 
-    if (config->scsiSpeed > PLATFORM_MAX_SCSI_SPEED)
+    if (ini_getbool("SCSI", "EnableUnitAttention", false, CONFIGFILE))
     {
-        config->scsiSpeed = PLATFORM_MAX_SCSI_SPEED;
+        azlog("-- EnableUnitAttention is on");
+        config->flags |= S2S_CFG_ENABLE_UNIT_ATTENTION;
+    }
+
+    if (ini_getbool("SCSI", "EnableSCSI2", true, CONFIGFILE))
+    {
+        azlog("-- EnableSCSI2 is on");
+        config->flags |= S2S_CFG_ENABLE_SCSI2;
+    }
+
+    if (ini_getbool("SCSI", "EnableSelLatch", false, CONFIGFILE))
+    {
+        azlog("-- EnableSelLatch is on");
+        config->flags |= S2S_CFG_ENABLE_SEL_LATCH;
+    }
+
+    if (ini_getbool("SCSI", "MapLunsToIDs", false, CONFIGFILE))
+    {
+        azlog("-- MapLunsToIDs is on");
+        config->flags |= S2S_CFG_MAP_LUNS_TO_IDS;
     }
 }
 

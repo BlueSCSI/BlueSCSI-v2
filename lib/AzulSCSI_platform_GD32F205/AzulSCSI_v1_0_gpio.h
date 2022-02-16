@@ -17,6 +17,7 @@
 #define SCSI_OUT_DBP  GPIO_PIN_15
 #define SCSI_OUT_REQ  GPIO_PIN_9
 #define SCSI_OUT_DATA_MASK (SCSI_OUT_DB0 | SCSI_OUT_DB1 | SCSI_OUT_DB2 | SCSI_OUT_DB3 | SCSI_OUT_DB4 | SCSI_OUT_DB5 | SCSI_OUT_DB6 | SCSI_OUT_DB7 | SCSI_OUT_DBP)
+#define SCSI_OUT_REQ_IDX 9
 
 // SCSI input data port
 #define SCSI_IN_PORT  GPIOE
@@ -53,6 +54,7 @@
 #define SCSI_SEL_PIN  GPIO_PIN_11
 #define SCSI_ACK_PORT GPIOB
 #define SCSI_ACK_PIN  GPIO_PIN_12
+#define SCSI_IN_ACK_IDX 12
 
 // The SCSI_ATN pin was PB0 in prototype 2022a, but was moved to PC6 for 5V-tolerance
 #ifdef AZULSCSI_2022A_REVISION

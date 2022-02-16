@@ -118,7 +118,10 @@ public:
         if (m_stream_callback && buf == m_stream_buffer + m_stream_count)
         {
             stream = true;
-            m_stream_count += count;
+        }
+        else if (m_stream_callback)
+        {
+            azdbg("Stream buffer mismatch: ", (uint32_t)buf, " vs. ", (uint32_t)(m_stream_buffer + m_stream_count));
         }
 
         // Use DMA to stream dummy TX data and store RX data
@@ -146,7 +149,7 @@ public:
 
             if (stream)
             {
-                uint32_t complete = (count - DMA_CHCNT(DMA0, SD_SPI_RX_DMA_CHANNEL));
+                uint32_t complete = m_stream_count + (count - DMA_CHCNT(DMA0, SD_SPI_RX_DMA_CHANNEL));
                 m_stream_callback(complete);
             }
         }
@@ -160,6 +163,11 @@ public:
         DMA_CHCTL(DMA0, SD_SPI_RX_DMA_CHANNEL) &= ~DMA_CHXCTL_CHEN;
         DMA_CHCTL(DMA0, SD_SPI_TX_DMA_CHANNEL) &= ~DMA_CHXCTL_CHEN;
 
+        if (stream)
+        {
+            m_stream_count += count;
+        }
+
         return 0;
     }
 
@@ -170,7 +178,10 @@ public:
         if (m_stream_callback && buf == m_stream_buffer + m_stream_count)
         {
             stream = true;
-            m_stream_count += count;
+        }
+        else if (m_stream_callback)
+        {
+            azdbg("Stream buffer mismatch: ", (uint32_t)buf, " vs. ", (uint32_t)(m_stream_buffer + m_stream_count));
         }
 
         // Use DMA to stream TX data
@@ -193,7 +204,7 @@ public:
 
             if (stream)
             {
-                uint32_t complete = (count - DMA_CHCNT(DMA0, SD_SPI_TX_DMA_CHANNEL));
+                uint32_t complete = m_stream_count + (count - DMA_CHCNT(DMA0, SD_SPI_TX_DMA_CHANNEL));
                 m_stream_callback(complete);
             }
         }
@@ -207,6 +218,11 @@ public:
 
         SPI_CTL1(SD_SPI) &= ~(SPI_CTL1_DMAREN | SPI_CTL1_DMATEN);
         DMA_CHCTL(DMA0, SD_SPI_TX_DMA_CHANNEL) &= ~DMA_CHXCTL_CHEN;
+
+        if (stream)
+        {
+            m_stream_count += count;
+        }
     }
 
     void setSckSpeed(uint32_t maxSck) {

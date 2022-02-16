@@ -27,21 +27,7 @@ Configuration file
 Optional configuration can be stored in `azulscsi.ini`.
 If image file is found but configuration is missing, a default configuration is used.
 
-A single AzulSCSI device can represent multiple devices on the SCSI bus.
-The configuration sections are numbered `SCSI0` to `SCSI7` and correspond to images `HD00.hda` to `HD70.hda`.
-
-Example format for config file:
-
-    [SCSI]
-    # Settings that apply to all devices
-    Debug = 0   # Same effect as DIPSW2
-
-    [SCSI0]
-    Vendor = "QUANTUM "
-    Product = "FIREBALL1       "
-    Version = "1.0 "
-    Serial = "0123456789ABCDEF"
-    Quirks = 0   # 0: Standard, 1: Apple, 2: OMTI, 4: Xebec, 8: VMS
+Example config file is available here: [azulscsi.ini](azulscsi.ini).
 
 Performance
 -----------
