@@ -59,6 +59,11 @@ static void scsi_bsy_deassert_interrupt()
             uint8_t atn_flag = SCSI_IN(ATN) ? SCSI_STS_SELECTION_ATN : 0;
             g_scsi_sts_selection = SCSI_STS_SELECTION_SUCCEEDED | atn_flag | sel_id;
         }
+
+        // selFlag is required for Philips P2000C which releases it after 600ns
+        // without waiting for BSY.
+        // Also required for some early Mac Plus roms
+        scsiDev.selFlag = *SCSI_STS_SELECTED;
     }
 }
 
@@ -124,23 +129,36 @@ extern "C" uint32_t scsiEnterPhaseImmediate(int phase)
 
     if (phase != g_scsi_phase)
     {
+        int oldphase = g_scsi_phase;
+        g_scsi_phase = (SCSI_PHASE)phase;
+        scsiLogPhaseChange(phase);
+        
         if (phase < 0)
         {
             // Other communication on bus or reset state
             SCSI_RELEASE_OUTPUTS();
+            return 0;
         }
         else
         {
             SCSI_OUT(MSG, phase & __scsiphase_msg);
             SCSI_OUT(CD,  phase & __scsiphase_cd);
             SCSI_OUT(IO,  phase & __scsiphase_io);
+        
+            int delayNs = 400; // Bus settle delay
+            if ((oldphase & __scsiphase_io) != (phase & __scsiphase_io))
+            {
+                delayNs += 400; // Data release delay
+            }
+
+            if (scsiDev.compatMode < COMPAT_SCSI2)
+            {
+                // EMU EMAX needs 100uS ! 10uS is not enough.
+                delayNs += 100000;
+            }
+
+            return delayNs;
         }
-
-        scsiLogPhaseChange(phase);
-        g_scsi_phase = (SCSI_PHASE)phase;
-
-        // Hardcoded 100 us delay for now.
-        return 100000;
     }
     else
     {
@@ -239,11 +257,20 @@ extern "C" void scsiRead(uint8_t* data, uint32_t count, int* parityError)
 {
     *parityError = 0;
 
-    for (uint32_t i = 0; i < count; i++)
+    uint32_t count_words = count / 4;
+    if (count_words * 4 == count)
     {
-        if (scsiDev.resetFlag) break;
+        // Use accelerated subroutine
+        scsi_accel_asm_recv((uint32_t*)data, count_words, &scsiDev.resetFlag);
+    }
+    else
+    {
+        for (uint32_t i = 0; i < count; i++)
+        {
+            if (scsiDev.resetFlag) break;
 
-        data[i] = scsiReadOneByte();
+            data[i] = scsiReadOneByte();
+        }
     }
 
     scsiLogDataOut(data, count);
