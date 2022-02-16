@@ -239,10 +239,12 @@ bool findHDDImages()
     
     if (cfg && cfg->scsiId & S2S_CFG_TARGET_ENABLED)
     {
+      int capacity_kB = ((uint64_t)cfg->scsiSectors * cfg->bytesPerSector) / 1024;
       azlog("SCSI ID:", (int)(cfg->scsiId & 7),
             " BlockSize:", (int)cfg->bytesPerSector,
             " Type:", (int)cfg->deviceType,
-            " Quirks:", (int)cfg->quirks);
+            " Quirks:", (int)cfg->quirks,
+            " ImageSize:", capacity_kB, "kB");
     }
   }
 
@@ -272,6 +274,23 @@ void readSCSIDeviceConfig()
 /* Main SCSI handling loop       */
 /*********************************/
 
+static void reinitSCSI()
+{
+  readSCSIDeviceConfig();
+  bool foundImage = findHDDImages();
+
+  if (foundImage)
+  {
+    // Ok, there is an image
+    blinkStatus(1);
+  }
+
+  scsiPhyReset();
+  scsiDiskInit();
+  scsiInit();
+  
+}
+
 int main(void)
 {
   azplatform_init();
@@ -290,34 +309,33 @@ int main(void)
   }
 
   print_sd_info();
-
-  readSCSIDeviceConfig();
-  bool foundImage = findHDDImages();
+  
+  reinitSCSI();
 
   azlog("Initialization complete!");
   azlog("Platform: ", g_azplatform_name);
   azlog("FW Version: ", g_azlog_firmwareversion);
 
   init_logfile();
-
-  if (foundImage)
-  {
-    // Ok, there is an image
-    blinkStatus(1);
-  }
-
-  scsiInit();
-
+  
   uint32_t sd_card_check_time = 0;
 
   while (1)
   {
-    azplatform_reset_watchdog(30000);
+    azplatform_reset_watchdog(15000);
     scsiPoll();
+    scsiDiskPoll();
     scsiLogPhaseChange(scsiDev.phase);
 
+    // Save log periodically during status phase if there are new messages.
+    if (scsiDev.phase == STATUS)
+    {
+      save_logfile();
+    }
+
     // Check SD card status for hotplug
-    if ((uint32_t)(millis() - sd_card_check_time) > 5000)
+    if (scsiDev.phase == BUS_FREE &&
+        (uint32_t)(millis() - sd_card_check_time) > 5000)
     {
       sd_card_check_time = millis();
       uint32_t ocr;
@@ -333,15 +351,9 @@ int main(void)
           } while (!SD.begin(SD_CONFIG));
           azlog("SD card reinit succeeded");
           print_sd_info();
-          readSCSIDeviceConfig();
-          foundImage = findHDDImages();
-          init_logfile();
-          scsiInit();
           
-          if (foundImage)
-          {
-            blinkStatus(1);
-          }
+          reinitSCSI();
+          init_logfile();
         }
       }
     }

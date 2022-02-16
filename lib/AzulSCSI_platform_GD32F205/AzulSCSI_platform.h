@@ -20,9 +20,11 @@ extern const char *g_azplatform_name;
 
 #if defined(AZULSCSI_V1_0)
 #   define PLATFORM_NAME "AzulSCSI v1.0"
+#   define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_ASYNC_50
 #   include "AzulSCSI_v1_0_gpio.h"
 #elif defined(AZULSCSI_V1_1)
 #   define PLATFORM_NAME "AzulSCSI v1.1"
+#   define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_ASYNC_50
 #   include "AzulSCSI_v1_1_gpio.h"
 #endif
 

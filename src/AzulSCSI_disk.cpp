@@ -65,12 +65,9 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
     return false;
 }
 
-void scsiDiskLoadConfig(int target_idx)
+static void scsiDiskLoadConfig(int target_idx, const char *section)
 {
     image_config_t &img = g_DiskImages[target_idx];
-    char section[6] = "SCSI0";
-    section[4] = '0' + target_idx;
-
     img.deviceType = ini_getl(section, "Type", S2S_CFG_FIXED, CONFIGFILE);
     img.deviceTypeModifier = ini_getl(section, "TypeModifier", 0, CONFIGFILE);
     img.sectorsPerTrack = ini_getl(section, "SectorsPerTrack", 18, CONFIGFILE);
@@ -95,6 +92,18 @@ void scsiDiskLoadConfig(int target_idx)
     memcpy(img.serial, tmp, 16);
 }
 
+void scsiDiskLoadConfig(int target_idx)
+{
+    char section[6] = "SCSI0";
+    section[4] = '0' + target_idx;
+
+    // First load global settings
+    scsiDiskLoadConfig(target_idx, "SCSI");
+
+    // Then settings specific to target ID
+    scsiDiskLoadConfig(target_idx, section);
+}
+
 /*******************************/
 /* Config handling for SCSI2SD */
 /*******************************/
@@ -108,7 +117,12 @@ void s2s_configInit(S2S_BoardCfg* config)
     config->startupDelay = 0;
     config->selectionDelay = ini_getl("SCSI", "SelectionDelay", 255, CONFIGFILE);
     config->flags6 = ini_getl("SCSI", "Flags6", 0, CONFIGFILE);
-    config->scsiSpeed = ini_getl("SCSI", "SCSISpeed", S2S_CFG_SPEED_ASYNC_50, CONFIGFILE);
+    config->scsiSpeed = ini_getl("SCSI", "SCSISpeed", PLATFORM_MAX_SCSI_SPEED, CONFIGFILE);
+
+    if (config->scsiSpeed > PLATFORM_MAX_SCSI_SPEED)
+    {
+        config->scsiSpeed = PLATFORM_MAX_SCSI_SPEED;
+    }
 }
 
 extern "C"
@@ -354,7 +368,7 @@ static void doSeek(uint32_t lba)
 /* Transfer state for read / write commands */
 /********************************************/
 
-BlockDevice blockDev;
+BlockDevice blockDev = {DISK_PRESENT | DISK_INITIALISED};
 Transfer transfer;
 
 /*****************/
@@ -400,11 +414,13 @@ static void doWrite(uint32_t lba, uint32_t blocks)
         transfer.blocks = blocks;
         transfer.currentBlock = 0;
         scsiDev.phase = DATA_OUT;
-        scsiDev.dataLen = bytesPerSector;
-        scsiDev.dataPtr = bytesPerSector;
+        scsiDev.dataLen = 0;
+        scsiDev.dataPtr = 0;
+
+        azdbg("------ Write ", (int)blocks, "x", (int)bytesPerSector, " starting at ", (int)lba);
 
         image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-        if (!img.file.seek(transfer.lba * img.bytesPerSector))
+        if (!img.file.seek(transfer.lba * bytesPerSector))
         {
             azlog("Seek to ", transfer.lba, " failed for ", scsiDev.target->targetId);
             scsiDev.status = CHECK_CONDITION;
@@ -447,18 +463,21 @@ void diskDataOut()
     uint32_t maxblocks = sizeof(scsiDev.data) / scsiDev.target->liveCfg.bytesPerSector;
     if (blockcount > maxblocks) blockcount = maxblocks;
     uint32_t transferlen = blockcount * scsiDev.target->liveCfg.bytesPerSector;
-
-    // Read first block from SCSI bus
     scsiDev.dataLen = transferlen;
     scsiDev.dataPtr = 0;
-    diskDataOut_callback(0);
     
-    // Start writing blocks to SD card.
-    // The callback will simultaneously read the next block from SCSI bus.
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     uint32_t written = 0;
     while (written < transferlen)
     {
+        // Read next block from SCSI bus
+        if (scsiDev.dataPtr == written)
+        {
+            diskDataOut_callback(0);
+        }
+
+        // Start writing blocks to SD card.
+        // The callback will simultaneously read the next block from SCSI bus.    
         uint8_t *buf = scsiDev.data + written;
         uint32_t buflen = scsiDev.dataPtr - written;
         azplatform_set_sd_callback(&diskDataOut_callback, buf);
@@ -475,8 +494,8 @@ void diskDataOut()
     }
 
     azplatform_set_sd_callback(NULL, NULL);
-
     transfer.currentBlock += blockcount;
+    scsiDev.dataPtr = scsiDev.dataLen = 0;
 }
 
 /*****************/
@@ -512,8 +531,11 @@ static void doRead(uint32_t lba, uint32_t blocks)
         scsiDev.dataLen = 0;
         scsiDev.dataPtr = 0;
 
+        uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+        azdbg("------ Read ", (int)blocks, "x", (int)bytesPerSector, " starting at ", (int)lba);
+
         image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-        if (!img.file.seek(transfer.lba * img.bytesPerSector))
+        if (!img.file.seek(transfer.lba * bytesPerSector))
         {
             azlog("Seek to ", transfer.lba, " failed for ", scsiDev.target->targetId);
             scsiDev.status = CHECK_CONDITION;
@@ -564,8 +586,11 @@ static void diskDataIn()
         scsiDev.phase = STATUS;
     }
 
+    diskDataIn_callback(transferlen);
+
     azplatform_set_sd_callback(NULL, NULL);
     transfer.currentBlock += blockcount;
+    scsiDev.dataPtr = scsiDev.dataLen = 0;
 }
 
 
@@ -595,7 +620,6 @@ int scsiDiskCommand()
         else if (start)
         {
             scsiDev.target->started = 1;
-            blockDev.state = DISK_INITIALISED;
         }
         else
         {

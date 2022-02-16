@@ -78,9 +78,9 @@ void azlog_raw(bytearray array)
     {
         azlog_raw(array.data[i]);
         azlog_raw(" ");
-        if (i > 64)
+        if (i > 32)
         {
-            azlog_raw("...");
+            azlog_raw("... (total ", (int)array.len, ")");
             break;
         }
     }
