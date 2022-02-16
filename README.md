@@ -31,7 +31,7 @@ Example config file is available here: [azulscsi.ini](azulscsi.ini).
 
 Performance
 -----------
-With verbose log messages disabled, expected SCSI performance is 2.4 MB/s read and 1.5 MB/s write.
+With verbose log messages disabled, expected SCSI performance is 2.4 MB/s read and 2.1 MB/s write.
 Slow SD card or fragmented filesystem can slow down access.
 
 Seek performance is best if image files are contiguous.
@@ -64,9 +64,11 @@ The DIP switch settings are as follows:
 Project structure
 -----------------
 - **src/AzulSCSI.cpp**: Main portable SCSI implementation.
+- **src/AzulSCSI_disk.cpp**: Interface between SCSI2SD code and SD card reading.
 - **src/AzulSCSI_log.cpp**: Simple logging functionality, uses memory buffering.
 - **src/AzulSCSI_config.h**: Some compile-time options, usually no need to change.
 - **lib/AzulSCSI_platform_GD32F205**: Platform-specific code for GD32F205.
+- **lib/SCSI2SD**: SCSI2SD V6 code, used for SCSI command implementations.
 - **lib/minIni**: Ini config file access library
 - **lib/SdFat_NoArduino**: Modified version of [SdFat](https://github.com/greiman/SdFat) library for use without Arduino core.
 - **utils/run_gdb.sh**: Helper script for debugging with st-link adapter. Displays SWO log directly in console.
