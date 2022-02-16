@@ -134,7 +134,9 @@ void print_sd_info()
     char sdname[6] = {sd_cid.pnm[0], sd_cid.pnm[1], sd_cid.pnm[2], sd_cid.pnm[3], sd_cid.pnm[4], 0};
     azlog("SD Name: ", sdname);
     
-    char sdyear[5] = {'2', '0', sd_cid.mdt_year_high, sd_cid.mdt_year_low, 0};
+    char sdyear[5] = "2000";
+    sdyear[2] += sd_cid.mdt_year_high;
+    sdyear[3] += sd_cid.mdt_year_low;
     azlog("SD Date: ", (int)sd_cid.mdt_month, "/", sdyear);
     
     azlog("SD Serial: ", sd_cid.psn);
@@ -207,7 +209,7 @@ bool findHDDImages()
         }
 
         if(id < NUM_SCSIID && lun < NUM_SCSILUN) {
-          azlog("-- Trying to open ", name, " for id:", id, " lun:", lun);
+          azlog("-- Opening ", name, " for id:", id, " lun:", lun);
           imageReady = scsiDiskOpenHDDImage(id, name, id, lun, blk);
           if(imageReady) { // Marked as a responsive ID
             foundImage = true;
@@ -216,7 +218,6 @@ bool findHDDImages()
           azlog("-- Invalid lun or id for image ", name);
         }
       } else {
-        azlog("-- Skipping file ", name);
       }
     }
   }
@@ -304,6 +305,7 @@ int main(void)
     {
       blinkStatus(BLINK_ERROR_NO_SD_CARD);
       delay(1000);
+      azplatform_reset_watchdog(15000);
     } while (!SD.begin(SD_CONFIG));
     azlog("SD card init succeeded after retry");
   }
@@ -348,6 +350,7 @@ int main(void)
           {
             blinkStatus(BLINK_ERROR_NO_SD_CARD);
             delay(1000);
+            azplatform_reset_watchdog(15000);
           } while (!SD.begin(SD_CONFIG));
           azlog("SD card reinit succeeded");
           print_sd_info();

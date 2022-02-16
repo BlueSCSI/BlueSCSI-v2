@@ -26,7 +26,7 @@ SdDevice sdDev = {2, 256 * 1024 * 1024 * 2}; /* For SCSI2SD */
 
 struct image_config_t: public S2S_TargetCfg
 {
-    FsFile file;    
+    FsFile file;
 };
 
 static image_config_t g_DiskImages[S2S_MAX_TARGETS];
@@ -273,10 +273,9 @@ static void doReadCapacity()
         scsiDev.cdb[5];
     int pmi = scsiDev.cdb[8] & 1;
 
-    uint32_t capacity = getScsiCapacity(
-        scsiDev.target->cfg->sdSectorStart,
-        scsiDev.target->liveCfg.bytesPerSector,
-        scsiDev.target->cfg->scsiSectors);
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+    uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+    uint32_t capacity = img.file.size() / bytesPerSector;
 
     if (!pmi && lba)
     {
@@ -360,12 +359,11 @@ static int doTestUnitReady()
 
 static void doSeek(uint32_t lba)
 {
-    if (lba >=
-        getScsiCapacity(
-            scsiDev.target->cfg->sdSectorStart,
-            scsiDev.target->liveCfg.bytesPerSector,
-            scsiDev.target->cfg->scsiSectors)
-        )
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+    uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+    uint32_t capacity = img.file.size() / bytesPerSector;
+
+    if (lba >= capacity)
     {
         scsiDev.status = CHECK_CONDITION;
         scsiDev.target->sense.code = ILLEGAL_REQUEST;
@@ -405,7 +403,11 @@ static void doWrite(uint32_t lba, uint32_t blocks)
         s2s_delay_ms(10);
     }
 
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+    uint32_t capacity = img.file.size() / bytesPerSector;
+
+    azdbg("------ Write ", (int)blocks, "x", (int)bytesPerSector, " starting at ", (int)lba);
 
     if (unlikely(blockDev.state & DISK_WP) ||
         unlikely(scsiDev.target->cfg->deviceType == S2S_CFG_OPTICAL))
@@ -416,13 +418,7 @@ static void doWrite(uint32_t lba, uint32_t blocks)
         scsiDev.target->sense.asc = WRITE_PROTECTED;
         scsiDev.phase = STATUS;
     }
-    else if (unlikely(((uint64_t) lba) + blocks >
-        getScsiCapacity(
-            scsiDev.target->cfg->sdSectorStart,
-            bytesPerSector,
-            scsiDev.target->cfg->scsiSectors
-            )
-        ))
+    else if (unlikely(((uint64_t) lba) + blocks > capacity))
     {
         scsiDev.status = CHECK_CONDITION;
         scsiDev.target->sense.code = ILLEGAL_REQUEST;
@@ -439,12 +435,10 @@ static void doWrite(uint32_t lba, uint32_t blocks)
         scsiDev.dataLen = 0;
         scsiDev.dataPtr = 0;
 
-        azdbg("------ Write ", (int)blocks, "x", (int)bytesPerSector, " starting at ", (int)lba);
-
         image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
         if (!img.file.seek(transfer.lba * bytesPerSector))
         {
-            azlog("Seek to ", transfer.lba, " failed for ", scsiDev.target->targetId);
+            azlog("Seek to ", transfer.lba, " failed for SCSI ID", (int)scsiDev.target->targetId);
             scsiDev.status = CHECK_CONDITION;
             scsiDev.target->sense.code = MEDIUM_ERROR;
             scsiDev.target->sense.asc = NO_SEEK_COMPLETE;
@@ -482,9 +476,10 @@ void diskDataOut()
 
     // Figure out how many blocks we can fit in buffer
     uint32_t blockcount = (transfer.blocks - transfer.currentBlock);
-    uint32_t maxblocks = sizeof(scsiDev.data) / scsiDev.target->liveCfg.bytesPerSector;
+    uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+    uint32_t maxblocks = sizeof(scsiDev.data) / bytesPerSector;
     if (blockcount > maxblocks) blockcount = maxblocks;
-    uint32_t transferlen = blockcount * scsiDev.target->liveCfg.bytesPerSector;
+    uint32_t transferlen = blockcount * bytesPerSector;
     scsiDev.dataLen = transferlen;
     scsiDev.dataPtr = 0;
     
@@ -532,10 +527,12 @@ static void doRead(uint32_t lba, uint32_t blocks)
         s2s_delay_ms(10);
     }
 
-    uint32_t capacity = getScsiCapacity(
-        scsiDev.target->cfg->sdSectorStart,
-        scsiDev.target->liveCfg.bytesPerSector,
-        scsiDev.target->cfg->scsiSectors);
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+    uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+    uint32_t capacity = img.file.size() / bytesPerSector;
+    
+    azdbg("------ Read ", (int)blocks, "x", (int)bytesPerSector, " starting at ", (int)lba);
+
     if (unlikely(((uint64_t) lba) + blocks > capacity))
     {
         scsiDev.status = CHECK_CONDITION;
@@ -553,13 +550,9 @@ static void doRead(uint32_t lba, uint32_t blocks)
         scsiDev.dataLen = 0;
         scsiDev.dataPtr = 0;
 
-        uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
-        azdbg("------ Read ", (int)blocks, "x", (int)bytesPerSector, " starting at ", (int)lba);
-
-        image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
         if (!img.file.seek(transfer.lba * bytesPerSector))
         {
-            azlog("Seek to ", transfer.lba, " failed for ", scsiDev.target->targetId);
+            azlog("Seek to ", transfer.lba, " failed for SCSI ID", (int)scsiDev.target->targetId);
             scsiDev.status = CHECK_CONDITION;
             scsiDev.target->sense.code = MEDIUM_ERROR;
             scsiDev.target->sense.asc = NO_SEEK_COMPLETE;
@@ -571,7 +564,10 @@ static void doRead(uint32_t lba, uint32_t blocks)
 void diskDataIn_callback(uint32_t bytes_complete)
 {
     // For best performance, do writes in blocks of 4 or more bytes
-    bytes_complete &= ~3;
+    if (bytes_complete < scsiDev.dataLen)
+    {
+        bytes_complete &= ~3;
+    }
 
     if (bytes_complete > scsiDev.dataPtr)
     {
@@ -590,9 +586,10 @@ static void diskDataIn()
 
     // Figure out how many blocks we can fit in buffer
     uint32_t blockcount = (transfer.blocks - transfer.currentBlock);
-    uint32_t maxblocks = sizeof(scsiDev.data) / scsiDev.target->liveCfg.bytesPerSector;
+    uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+    uint32_t maxblocks = sizeof(scsiDev.data) / bytesPerSector;
     if (blockcount > maxblocks) blockcount = maxblocks;
-    uint32_t transferlen = blockcount * scsiDev.target->liveCfg.bytesPerSector;
+    uint32_t transferlen = blockcount * bytesPerSector;
 
     // Start reading from SD card.
     // The callback will write to SCSI bus.
