@@ -8,11 +8,6 @@
 #include "AzulSCSI_config.h"
 
 #ifdef __cplusplus
-// SD card driver for SdFat
-class SdSpiConfig;
-extern SdSpiConfig g_sd_spi_config;
-#define SD_CONFIG g_sd_spi_config
-
 extern "C" {
 #endif
 
@@ -104,4 +99,20 @@ extern const uint32_t g_scsi_out_byte_to_bop[256];
 
 #ifdef __cplusplus
 }
+
+// SD card driver for SdFat
+#ifndef SD_USE_SDIO
+// SPI interface, AzulSCSI v1.0
+class SdSpiConfig;
+extern SdSpiConfig g_sd_spi_config;
+#define SD_CONFIG g_sd_spi_config
+
+#else
+// SDIO interface, AzulSCSI v1.1
+class SdioConfig;
+extern SdioConfig g_sd_sdio_config;
+#define SD_CONFIG g_sd_sdio_config
+
+#endif
+
 #endif

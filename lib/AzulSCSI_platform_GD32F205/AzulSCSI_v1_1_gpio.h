@@ -17,6 +17,7 @@
 #define SCSI_OUT_DBP  GPIO_PIN_8
 #define SCSI_OUT_REQ  GPIO_PIN_4
 #define SCSI_OUT_DATA_MASK (SCSI_OUT_DB0 | SCSI_OUT_DB1 | SCSI_OUT_DB2 | SCSI_OUT_DB3 | SCSI_OUT_DB4 | SCSI_OUT_DB5 | SCSI_OUT_DB6 | SCSI_OUT_DB7 | SCSI_OUT_DBP)
+#define SCSI_OUT_REQ_IDX 4
 
 // Control signals to optional PLD device
 #define SCSI_OUT_PLD1 GPIO_PIN_15
@@ -55,14 +56,22 @@
 #define SCSI_OUT_REQ_PIN  SCSI_OUT_REQ
 
 // SCSI input status signals
-#define SCSI_BSY_PORT GPIOB
-#define SCSI_BSY_PIN  GPIO_PIN_10
 #define SCSI_SEL_PORT GPIOB
 #define SCSI_SEL_PIN  GPIO_PIN_11
 #define SCSI_ACK_PORT GPIOA
 #define SCSI_ACK_PIN  GPIO_PIN_0
 #define SCSI_ATN_PORT GPIOB
 #define SCSI_ATN_PIN  GPIO_PIN_12
+#define SCSI_IN_ACK_IDX 0
+
+// BSY pin uses EXTI interrupt
+#define SCSI_BSY_PORT GPIOB
+#define SCSI_BSY_PIN  GPIO_PIN_10
+#define SCSI_BSY_EXTI EXTI_10
+#define SCSI_BSY_EXTI_SOURCE_PORT GPIO_PORT_SOURCE_GPIOB
+#define SCSI_BSY_EXTI_SOURCE_PIN  GPIO_PIN_SOURCE_10
+#define SCSI_BSY_IRQ  EXTI10_15_IRQHandler
+#define SCSI_BSY_IRQn EXTI10_15_IRQn
 
 // RST pin uses EXTI interrupt
 #define SCSI_RST_PORT GPIOB
@@ -79,6 +88,15 @@
 
 // SD card pins
 #define SD_USE_SDIO 1
+#define SD_SDIO_DATA_PORT GPIOC
+#define SD_SDIO_D0        GPIO_PIN_8
+#define SD_SDIO_D1        GPIO_PIN_9
+#define SD_SDIO_D2        GPIO_PIN_10
+#define SD_SDIO_D3        GPIO_PIN_11
+#define SD_SDIO_CLK_PORT  GPIOC
+#define SD_SDIO_CLK       GPIO_PIN_12
+#define SD_SDIO_CMD_PORT  GPIOD
+#define SD_SDIO_CMD       GPIO_PIN_2
 
 // DIP switches
 #define DIP_PORT     GPIOB

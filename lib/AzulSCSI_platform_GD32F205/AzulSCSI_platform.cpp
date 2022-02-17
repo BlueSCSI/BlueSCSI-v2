@@ -133,13 +133,16 @@ void azplatform_init()
     gpio_init(SCSI_TERM_EN_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_2MHZ, SCSI_TERM_EN_PIN);
 
 #ifndef SD_USE_SDIO
-    // SD card pins
+    // SD card pins using SPI
     gpio_init(SD_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SD_CS_PIN);
     gpio_init(SD_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, SD_CLK_PIN);
     gpio_init(SD_PORT, GPIO_MODE_IPU, 0, SD_MISO_PIN);
     gpio_init(SD_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, SD_MOSI_PIN);
 #else
-#error SDIO support not added yet
+    // SD card pins using SDIO
+    gpio_init(SD_SDIO_DATA_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, SD_SDIO_D0 | SD_SDIO_D1 | SD_SDIO_D2 | SD_SDIO_D3);
+    gpio_init(SD_SDIO_CLK_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, SD_SDIO_CLK);
+    gpio_init(SD_SDIO_CMD_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, SD_SDIO_CMD);
 #endif
 
     // DIP switches
