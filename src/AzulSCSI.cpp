@@ -157,6 +157,7 @@ bool findHDDImages()
   SdFile file;
   bool imageReady;
   bool foundImage = false;
+  uint8_t usedIds = 0;
   int usedDefaultId = 0;
   while (1) {
     if (!file.openNext(&root, O_READ)) break;
@@ -208,16 +209,22 @@ bool findHDDImages()
           blk  = 2048;
         }
 
+        if (usedIds & (1 << id))
+        {
+          azlog("-- Ignoring ", name, ", SCSI ID ", id, " is already in use!");
+          continue;
+        }
+
         if(id < NUM_SCSIID && lun < NUM_SCSILUN) {
           azlog("-- Opening ", name, " for id:", id, " lun:", lun);
           imageReady = scsiDiskOpenHDDImage(id, name, id, lun, blk);
           if(imageReady) { // Marked as a responsive ID
             foundImage = true;
+            usedIds |= (1 << id);
           }
         } else {
           azlog("-- Invalid lun or id for image ", name);
         }
-      } else {
       }
     }
   }
