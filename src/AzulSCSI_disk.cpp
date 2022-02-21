@@ -65,37 +65,57 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
     return false;
 }
 
+// Set target configuration to default values
+static void scsiDiskConfigDefaults(int target_idx)
+{
+    image_config_t &img = g_DiskImages[target_idx];
+    img.deviceType = S2S_CFG_FIXED;
+    img.deviceTypeModifier = 0;
+    img.sectorsPerTrack = 63;
+    img.headsPerCylinder = 255;
+    img.quirks = S2S_CFG_QUIRKS_NONE;
+    memcpy(img.vendor, DEFAULT_VENDOR, 8);
+    memcpy(img.prodId, DEFAULT_PRODUCT, 16);
+    memcpy(img.revision, DEFAULT_VERSION, 4);
+    memcpy(img.serial, DEFAULT_SERIAL, 16);
+}
+
+// Load values for target configuration from given section if they exist.
+// Otherwise keep current settings.
 static void scsiDiskLoadConfig(int target_idx, const char *section)
 {
     image_config_t &img = g_DiskImages[target_idx];
-    img.deviceType = ini_getl(section, "Type", S2S_CFG_FIXED, CONFIGFILE);
-    img.deviceTypeModifier = ini_getl(section, "TypeModifier", 0, CONFIGFILE);
-    img.sectorsPerTrack = ini_getl(section, "SectorsPerTrack", 18, CONFIGFILE);
-    img.headsPerCylinder = ini_getl(section, "HeadsPerCylinder", 255, CONFIGFILE);
-    img.quirks = ini_getl(section, "Quirks", S2S_CFG_QUIRKS_NONE, CONFIGFILE);
+    img.deviceType = ini_getl(section, "Type", img.deviceType, CONFIGFILE);
+    img.deviceTypeModifier = ini_getl(section, "TypeModifier", img.deviceTypeModifier, CONFIGFILE);
+    img.sectorsPerTrack = ini_getl(section, "SectorsPerTrack", img.sectorsPerTrack, CONFIGFILE);
+    img.headsPerCylinder = ini_getl(section, "HeadsPerCylinder", img.headsPerCylinder, CONFIGFILE);
+    img.quirks = ini_getl(section, "Quirks", img.quirks, CONFIGFILE);
     
     char tmp[32];
     memset(tmp, 0, sizeof(tmp));
-    ini_gets(section, "Vendor", DEFAULT_VENDOR, tmp, sizeof(tmp), CONFIGFILE);
-    memcpy(img.vendor, tmp, 8);
+    ini_gets(section, "Vendor", "", tmp, sizeof(tmp), CONFIGFILE);
+    if (tmp[0]) memcpy(img.vendor, tmp, 8);
 
     memset(tmp, 0, sizeof(tmp));
-    ini_gets(section, "Product", DEFAULT_PRODUCT, tmp, sizeof(tmp), CONFIGFILE);
-    memcpy(img.prodId, tmp, 16);
+    ini_gets(section, "Product", "", tmp, sizeof(tmp), CONFIGFILE);
+    if (tmp[0]) memcpy(img.prodId, tmp, 16);
 
     memset(tmp, 0, sizeof(tmp));
-    ini_gets(section, "Version", DEFAULT_VERSION, tmp, sizeof(tmp), CONFIGFILE);
-    memcpy(img.revision, tmp, 4);
+    ini_gets(section, "Version", "", tmp, sizeof(tmp), CONFIGFILE);
+    if (tmp[0]) memcpy(img.revision, tmp, 4);
     
     memset(tmp, 0, sizeof(tmp));
-    ini_gets(section, "Serial", DEFAULT_SERIAL, tmp, sizeof(tmp), CONFIGFILE);
-    memcpy(img.serial, tmp, 16);
+    ini_gets(section, "Serial", "", tmp, sizeof(tmp), CONFIGFILE);
+    if (tmp[0]) memcpy(img.serial, tmp, 16);
 }
 
 void scsiDiskLoadConfig(int target_idx)
 {
     char section[6] = "SCSI0";
     section[4] = '0' + target_idx;
+
+    // Set default settings
+    scsiDiskConfigDefaults(target_idx);
 
     // First load global settings
     scsiDiskLoadConfig(target_idx, "SCSI");
@@ -111,7 +131,16 @@ void scsiDiskLoadConfig(int target_idx)
 extern "C"
 void s2s_configInit(S2S_BoardCfg* config)
 {
-    azlog("Reading configuration");
+    if (SD.exists(CONFIGFILE))
+    {
+        azlog("Reading configuration from " CONFIGFILE);
+    }
+    else
+    {
+        azlog("Config file " CONFIGFILE " not found, using defaults");
+    }
+
+    azlog("Active configuration:");
     memset(config, 0, sizeof(S2S_BoardCfg));
     memcpy(config->magic, "BCFG", 4);
     config->flags = 0;
