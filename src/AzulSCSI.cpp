@@ -299,7 +299,7 @@ static void reinitSCSI()
   
 }
 
-int main(void)
+extern "C" int azulscsi_main(void)
 {
   azplatform_init();
 
@@ -312,7 +312,7 @@ int main(void)
     {
       blinkStatus(BLINK_ERROR_NO_SD_CARD);
       delay(1000);
-      azplatform_reset_watchdog(15000);
+      azplatform_reset_watchdog();
     } while (!SD.begin(SD_CONFIG));
     azlog("SD card init succeeded after retry");
   }
@@ -331,7 +331,7 @@ int main(void)
 
   while (1)
   {
-    azplatform_reset_watchdog(WATCHDOG_CRASH_TIMEOUT);
+    azplatform_reset_watchdog();
     scsiPoll();
     scsiDiskPoll();
     scsiLogPhaseChange(scsiDev.phase);
@@ -357,7 +357,7 @@ int main(void)
           {
             blinkStatus(BLINK_ERROR_NO_SD_CARD);
             delay(1000);
-            azplatform_reset_watchdog(15000);
+            azplatform_reset_watchdog();
           } while (!SD.begin(SD_CONFIG));
           azlog("SD card reinit succeeded");
           print_sd_info();

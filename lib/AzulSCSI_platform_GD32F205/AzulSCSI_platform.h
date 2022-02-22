@@ -64,6 +64,13 @@ void azplatform_emergency_log_save();
 typedef void (*sd_callback_t)(uint32_t bytes_complete);
 void azplatform_set_sd_callback(sd_callback_t func, const uint8_t *buffer);
 
+// Reprogram firmware in main program area.
+#define AZPLATFORM_BOOTLOADER_SIZE 32768
+#define AZPLATFORM_FLASH_TOTAL_SIZE (256 * 1024)
+#define AZPLATFORM_FLASH_PAGE_SIZE 2048
+bool azplatform_rewrite_flash_page(uint32_t offset, uint8_t buffer[AZPLATFORM_FLASH_PAGE_SIZE]);
+void azplatform_boot_to_main_firmware();
+
 // Write a single SCSI pin.
 // Example use: SCSI_OUT(ATN, 1) sets SCSI_ATN to low (active) state.
 #define SCSI_OUT(pin, state) \

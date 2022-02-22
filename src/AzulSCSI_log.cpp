@@ -3,15 +3,26 @@
 #include "AzulSCSI_platform.h"
 
 const char *g_azlog_firmwareversion = __DATE__ " " __TIME__;
+bool g_azlog_debug = true;
 
 // This memory buffer can be read by debugger and is also saved to azullog.txt
 #define LOGBUFMASK (LOGBUFSIZE - 1)
+
+// The log buffer is in special uninitialized RAM section so that it is not reset
+// when soft rebooting or jumping from bootloader.
+uint32_t g_log_magic;
 char g_logbuffer[LOGBUFSIZE + 1];
-uint32_t g_logpos = 0;
-bool g_azlog_debug = true;
+uint32_t g_logpos;
 
 void azlog_raw(const char *str)
 {
+    // Keep log from reboot / bootloader if magic matches expected value
+    if (g_log_magic != 0xAA55AA55)
+    {
+        g_log_magic = 0xAA55AA55;
+        g_logpos = 0;
+    }
+
     const char *p = str;
     while (*p)
     {

@@ -1,9 +1,11 @@
 #include "AzulSCSI_platform.h"
 #include "gd32f20x_sdio.h"
+#include "gd32f20x_fmc.h"
 #include "AzulSCSI_log.h"
 #include "AzulSCSI_config.h"
 #include <SdFat.h>
 #include <scsi.h>
+#include <assert.h>
 
 extern "C" {
 
@@ -321,6 +323,74 @@ void azplatform_reset_watchdog()
     // It gives us opportunity to collect better debug info than the
     // full hardware reset that would be caused by hardware watchdog.
     g_watchdog_timeout = WATCHDOG_CRASH_TIMEOUT;
+}
+
+/***********************/
+/* Flash reprogramming */
+/***********************/
+
+bool azplatform_rewrite_flash_page(uint32_t offset, uint8_t buffer[AZPLATFORM_FLASH_PAGE_SIZE])
+{
+    if (offset == 0)
+    {
+        if (buffer[3] != 0x20 || buffer[7] != 0x08)
+        {
+            azlog("Invalid firmware file, starts with: ", bytearray(buffer, 16));
+            return false;
+        }
+    }
+
+    azdbg("Writing flash at offset ", offset, " data ", bytearray(buffer, 4));
+    assert(offset % AZPLATFORM_FLASH_PAGE_SIZE == 0);
+    assert(offset >= AZPLATFORM_BOOTLOADER_SIZE);
+    
+    fmc_unlock();
+    fmc_bank0_unlock();
+
+    fmc_state_enum status;
+    status = fmc_page_erase(FLASH_BASE + offset);
+    if (status != FMC_READY)
+    {
+        azlog("Erase failed: ", (int)status);
+        return false;
+    }
+
+    uint32_t *buf32 = (uint32_t*)buffer;
+    uint32_t num_words = AZPLATFORM_FLASH_PAGE_SIZE / 4;
+    for (int i = 0; i < num_words; i++)
+    {
+        status = fmc_word_program(FLASH_BASE + offset + i * 4, buf32[i]);
+        if (status != FMC_READY)
+        {
+            azlog("Flash write failed: ", (int)status);
+            return false;
+        }   
+    }
+
+    fmc_lock();
+
+    for (int i = 0; i < num_words; i++)
+    {
+        uint32_t expected = buf32[i];
+        uint32_t actual = *(volatile uint32_t*)(FLASH_BASE + offset + i * 4);
+        if (actual != expected)
+        {
+            azlog("Flash verify failed at offset ", offset + i * 4, " got ", actual, " expected ", expected);
+            return false;
+        }
+    }
+    return true;
+}
+
+void azplatform_boot_to_main_firmware()
+{
+    uint32_t *mainprogram_start = (uint32_t*)(0x08000000 + AZPLATFORM_BOOTLOADER_SIZE);
+    SCB->VTOR = (uint32_t)mainprogram_start;
+  
+    __asm__(
+        "msr msp, %0\n\t"
+        "bx %1" : : "r" (mainprogram_start[0]),
+                    "r" (mainprogram_start[1]) : "memory");
 }
 
 /**********************************************/
