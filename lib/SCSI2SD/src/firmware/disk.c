@@ -830,7 +830,8 @@ static void diskDataIn()
 
 #ifdef STM32F4xx
     // Direct mode requires hardware flow control to be working on the SD peripheral
-    if (bytesPerSector == SD_SECTOR_SIZE)
+    // Code isn't currently working above 128 sectors. TODO investigate
+    if (totalSDSectors < 128 && bytesPerSector == SD_SECTOR_SIZE)
     {
         diskDataInDirect(totalSDSectors, sdLBA, useSlowDataCount, &phaseChangeDelayNs);
     }
