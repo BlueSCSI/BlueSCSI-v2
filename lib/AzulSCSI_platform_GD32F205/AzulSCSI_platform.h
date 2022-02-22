@@ -53,7 +53,7 @@ static inline void delay_100ns()
 void azplatform_init();
 
 // Setup soft watchdog
-void azplatform_reset_watchdog(int timeout_ms);
+void azplatform_reset_watchdog();
 
 // Reinitialize SD card connection and save log from interrupt context.
 // This can be used in crash handlers.

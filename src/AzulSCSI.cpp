@@ -331,7 +331,7 @@ int main(void)
 
   while (1)
   {
-    azplatform_reset_watchdog(15000);
+    azplatform_reset_watchdog(WATCHDOG_CRASH_TIMEOUT);
     scsiPoll();
     scsiDiskPoll();
     scsiLogPhaseChange(scsiDev.phase);

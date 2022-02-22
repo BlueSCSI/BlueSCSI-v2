@@ -93,6 +93,7 @@ static void scsi_rst_assert_interrupt()
 
     if (rst1 && rst2)
     {
+        azdbg("BUS RESET");
         scsiDev.resetFlag = 1;
     }
 }

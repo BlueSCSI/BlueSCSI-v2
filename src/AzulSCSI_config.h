@@ -12,6 +12,11 @@
 #define LOGBUFSIZE 16384
 #define LOG_SAVE_INTERVAL_MS 1000
 
+// Watchdog timeout
+// Watchdog will first issue a bus reset and if that does not help, crashdump.
+#define WATCHDOG_BUS_RESET_TIMEOUT 15000
+#define WATCHDOG_CRASH_TIMEOUT 30000
+
 // HDD image file format
 #define HDIMG_ID_POS  2                 // Position to embed ID number
 #define HDIMG_LUN_POS 3                 // Position to embed LUN numbers
