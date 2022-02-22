@@ -47,9 +47,16 @@ The status led will blink continuously when card is not present, then blink once
 It will depend on the host system whether it gets confused by hotplugging.
 Any IO requests issued when card is removed will be timeouted.
 
-Programming
------------
-The AzulSCSI v1 board can be programmed using USB connection in DFU mode.
+Programming & bootloader
+------------------------
+There is a bootloader that loads new firmware from SD card on boot.
+The firmware file must be e.g. `AzulSCSI.bin` or `AzulSCSIv1_0_2022-xxxxx.bin`.
+Firmware update takes about 1 second, during which the LED will flash rapidly.
+
+When successful, the bootloader removes the update file and continues to main firmware.
+On failure, `azulerr.txt` is written on the SD card.
+
+Alternatively, the board can be programmed using USB connection in DFU mode by setting DIP switch 4.
 The necessary programmer utility for Windows can be downloaded from [GD32 website](http://www.gd32mcu.com/en/download?kw=dfu&lan=en). On Linux and Mac [gd32-dfu-utils](https://github.com/riscv-mcu/gd32-dfu-utils) can be used.
 
 DIP switches
