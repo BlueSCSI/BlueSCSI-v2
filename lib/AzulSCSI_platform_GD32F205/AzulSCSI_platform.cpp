@@ -3,6 +3,7 @@
 #include "AzulSCSI_log.h"
 #include "AzulSCSI_config.h"
 #include <SdFat.h>
+#include <scsi.h>
 
 extern "C" {
 
@@ -46,9 +47,20 @@ void SysTick_Handler_inner(uint32_t *sp)
     if (g_watchdog_timeout > 0)
     {
         g_watchdog_timeout--;
-        if (g_watchdog_timeout == 0)
+
+        const uint32_t busreset_time = WATCHDOG_CRASH_TIMEOUT - WATCHDOG_BUS_RESET_TIMEOUT;
+        if (g_watchdog_timeout <= busreset_time)
         {
-            watchdog_handler(sp);
+            if (!scsiDev.resetFlag)
+            {
+                azlog("WATCHDOG TIMEOUT at PC ", sp[6], " LR ", sp[5], " attempting bus reset");
+                scsiDev.resetFlag = 1;
+            }
+
+            if (g_watchdog_timeout == 0)
+            {
+                watchdog_handler(sp);
+            }
         }
     }
 }
@@ -303,12 +315,12 @@ static void watchdog_handler(uint32_t *sp)
     show_hardfault(sp);
 }
 
-void azplatform_reset_watchdog(int timeout_ms)
+void azplatform_reset_watchdog()
 {
     // This uses a software watchdog based on systick timer interrupt.
     // It gives us opportunity to collect better debug info than the
     // full hardware reset that would be caused by hardware watchdog.
-    g_watchdog_timeout = timeout_ms;
+    g_watchdog_timeout = WATCHDOG_CRASH_TIMEOUT;
 }
 
 /**********************************************/

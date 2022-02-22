@@ -10,6 +10,8 @@ extern "C" {
 }
 
 static bool g_LogData = false;
+static int g_InByteCount = 0;
+static int g_OutByteCount = 0;
 
 static const char *getCommandName(uint8_t cmd)
 {
@@ -123,6 +125,12 @@ void scsiLogPhaseChange(int new_phase)
 
     if (new_phase != old_phase)
     {
+        if (old_phase == DATA_IN || old_phase == DATA_OUT)
+        {
+            azdbg("---- Total IN: ", g_InByteCount, " OUT: ", g_OutByteCount);
+        }
+        g_InByteCount = g_OutByteCount = 0;
+
         printNewPhase(new_phase);
         old_phase = new_phase;
     }
@@ -134,6 +142,8 @@ void scsiLogDataIn(const uint8_t *buf, uint32_t length)
     {
         azdbg("------ IN: ", bytearray(buf, length));
     }
+
+    g_InByteCount += length;
 }
 
 void scsiLogDataOut(const uint8_t *buf, uint32_t length)
@@ -147,4 +157,6 @@ void scsiLogDataOut(const uint8_t *buf, uint32_t length)
     {
         azdbg("------ OUT: ", bytearray(buf, length));
     }
+
+    g_OutByteCount += length;
 }
