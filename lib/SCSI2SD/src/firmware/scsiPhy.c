@@ -335,12 +335,7 @@ scsiRead(uint8_t* data, uint32_t count, int* parityError)
 
         while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
         {
-            __disable_irq();
-            if (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
-            {
-                __WFI();
-            }
-            __enable_irq();
+            // spin
         }
 
         i += chunk;
@@ -487,12 +482,10 @@ scsiWrite(const uint8_t* data, uint32_t count)
 
         while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
         {
-            __disable_irq();
             if (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
             {
-                __WFI();
+                // spin
             }
-            __enable_irq();
         }
 
         i += chunk;

@@ -874,12 +874,7 @@ static void diskDataIn()
         likely(scsiDev.phase == DATA_IN) &&
         likely(!scsiDev.resetFlag))
     {
-        __disable_irq();
-        if (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
-        {
-            __WFI();
-        }
-        __enable_irq();
+        // spin
     }
 
     if (scsiDev.phase == DATA_IN)
@@ -1130,12 +1125,10 @@ void diskDataOut()
 
     // Should already be complete here as we've ready the FIFOs
     // by now. Check anyway.
-    __disable_irq();
     while (!scsiPhyComplete() && likely(!scsiDev.resetFlag))
     {
-        __WFI();
+        // spin
     }
-    __enable_irq();
 
     if (clearBSY)
     {
