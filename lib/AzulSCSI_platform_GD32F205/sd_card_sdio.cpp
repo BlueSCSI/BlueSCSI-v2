@@ -99,16 +99,6 @@ bool SdioCard::readData(uint8_t* dst)
     return false;
 }
 
-bool SdioCard::readSector(uint32_t sector, uint8_t* dst)
-{
-    return checkReturnOk(sd_block_read((uint32_t*)dst, sector * 512, 512));
-}
-
-bool SdioCard::readSectors(uint32_t sector, uint8_t* dst, size_t n)
-{
-    return checkReturnOk(sd_multiblocks_read((uint32_t*)dst, sector * 512, 512, n));
-}
-
 bool SdioCard::readStart(uint32_t sector)
 {
     azlog("SdioCard::readStart() called but not implemented!");
@@ -187,16 +177,6 @@ bool SdioCard::writeData(const uint8_t* src)
     return false;
 }
 
-bool SdioCard::writeSector(uint32_t sector, const uint8_t* src)
-{
-    return checkReturnOk(sd_block_write((uint32_t*)src, sector * 512, 512));
-}
-
-bool SdioCard::writeSectors(uint32_t sector, const uint8_t* src, size_t n)
-{
-    return checkReturnOk(sd_multiblocks_write((uint32_t*)src, sector * 512, 512, n));
-}
-
 bool SdioCard::writeStart(uint32_t sector)
 {
     azlog("SdioCard::writeStart() called but not implemented!");
@@ -214,12 +194,75 @@ bool SdioCard::erase(uint32_t firstSector, uint32_t lastSector)
     return checkReturnOk(sd_erase(firstSector * 512, lastSector * 512));
 }
 
+/* Writing and reading, with progress callback */
 
-SdioConfig g_sd_sdio_config(DMA_SDIO);
+static sd_callback_t m_stream_callback;
+static const uint8_t *m_stream_buffer;
+static uint32_t m_stream_count;
+static uint32_t m_stream_count_start;
 
 void azplatform_set_sd_callback(sd_callback_t func, const uint8_t *buffer)
 {
+    m_stream_callback = func;
+    m_stream_buffer = buffer;
+    m_stream_count = 0;
+    m_stream_count_start = 0;
 }
+
+static void sdio_callback(uint32_t complete)
+{
+    if (m_stream_callback)
+    {
+        m_stream_callback(m_stream_count_start + complete);
+    }
+}
+
+static sdio_callback_t get_stream_callback(const uint8_t *buf, uint32_t count)
+{
+    m_stream_count_start = m_stream_count;
+
+    if (m_stream_callback)
+    {
+        if (buf == m_stream_buffer + m_stream_count)
+        {
+            m_stream_count += count;
+            return &sdio_callback;
+        }
+        else
+        {
+            azdbg("Stream buffer mismatch: ", (uint32_t)buf, " vs. ", (uint32_t)(m_stream_buffer + m_stream_count));
+            return NULL;
+        }
+    }
+    
+    return NULL;
+}
+
+
+bool SdioCard::writeSector(uint32_t sector, const uint8_t* src)
+{
+    return checkReturnOk(sd_block_write((uint32_t*)src, (uint64_t)sector * 512, 512,
+        get_stream_callback(src, 512)));
+}
+
+bool SdioCard::writeSectors(uint32_t sector, const uint8_t* src, size_t n)
+{
+    return checkReturnOk(sd_multiblocks_write((uint32_t*)src, (uint64_t)sector * 512, 512, n,
+        get_stream_callback(src, n * 512)));
+}
+
+bool SdioCard::readSector(uint32_t sector, uint8_t* dst)
+{
+    return checkReturnOk(sd_block_read((uint32_t*)dst, (uint64_t)sector * 512, 512,
+        get_stream_callback(dst, 512)));
+}
+
+bool SdioCard::readSectors(uint32_t sector, uint8_t* dst, size_t n)
+{
+    return checkReturnOk(sd_multiblocks_read((uint32_t*)dst, (uint64_t)sector * 512, 512, n,
+        get_stream_callback(dst, n * 512)));
+}
+
 
 // These functions are not used for SDIO mode but are needed to avoid build error.
 void sdCsInit(SdCsPin_t pin) {}
@@ -230,5 +273,8 @@ extern "C" void SDIO_IRQHandler(void)
 {
     sd_interrupts_process();
 }
+
+// SDIO configuration for main program
+SdioConfig g_sd_sdio_config(DMA_SDIO);
 
 #endif

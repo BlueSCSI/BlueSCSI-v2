@@ -22,11 +22,7 @@
 #define HDIMG_LUN_POS 3                 // Position to embed LUN numbers
 #define HDIMG_BLK_POS 5                 // Position to embed block size numbers
 #define MAX_FILE_PATH 64                // Maximum file name length
-#define MAX_BLOCKSIZE 1024              // Maximum BLOCK size
-
-// Read buffer size
-// Should be at least MAX_BLOCKSIZE.
-#define READBUFFER_SIZE 4096
+#define MAX_BLOCKSIZE 8192              // Maximum BLOCK size
 
 // SCSI config
 #define NUM_SCSIID  7          // Maximum number of supported SCSI-IDs (The minimum is 0)
