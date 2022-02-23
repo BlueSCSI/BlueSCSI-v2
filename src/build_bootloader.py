@@ -21,7 +21,7 @@ for nodelist in env["PIOBUILDFILES"]:
         filename = str(node.rfile())
         if 'AzulSCSI_main.o' not in filename:
             dep_objs.append(node)
-print("Bootloader dependencies: ", type(dep_objs), str([str(f.rfile()) for f in dep_objs]))
+# print("Bootloader dependencies: ", type(dep_objs), str([str(f.rfile()) for f in dep_objs]))
 
 # Build bootloader.elf
 bootloader_elf = env2.Program(

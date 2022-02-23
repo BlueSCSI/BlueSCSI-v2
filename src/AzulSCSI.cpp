@@ -114,6 +114,10 @@ void init_logfile()
   bool truncate = first_open_after_boot;
   int flags = O_WRONLY | O_CREAT | (truncate ? O_TRUNC : O_APPEND);
   g_logfile = SD.open(LOGFILE, flags);
+  if (!g_logfile.isOpen())
+  {
+    azlog("Failed to open log file: ", SD.sdErrorCode());
+  }
   save_logfile(true);
 
   first_open_after_boot = false;

@@ -84,7 +84,7 @@ int bootloader_main(void)
 
     azlog("Bootloader version: " __DATE__ " " __TIME__ " " PLATFORM_NAME);
 
-    if (SD.begin(SD_CONFIG))
+    if (SD.begin(SD_CONFIG) || SD.begin(SD_CONFIG))
     {
         FsFile fwfile;
         char name[MAX_FILE_PATH + 1];
