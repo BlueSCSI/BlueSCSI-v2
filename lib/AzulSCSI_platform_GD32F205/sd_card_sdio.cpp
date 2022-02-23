@@ -27,8 +27,19 @@ static bool logSDError(int line)
 
 bool SdioCard::begin(SdioConfig sdioConfig)
 {
-    return checkReturnOk(sd_init())
-        && checkReturnOk(sd_card_information_get(&g_sdio_card_info))
+    rcu_periph_clock_enable(RCU_SDIO);
+    rcu_periph_clock_enable(RCU_DMA1);
+    nvic_irq_enable(SDIO_IRQn, 0, 0);
+
+    g_sdio_error = sd_init();
+    if (g_sdio_error != SD_OK)
+    {
+        // Don't spam the log when main program polls for card insertion.
+        azdbg("sd_init() failed: ", (int)g_sdio_error);
+        return false;
+    }
+
+    return checkReturnOk(sd_card_information_get(&g_sdio_card_info))
         && checkReturnOk(sd_card_select_deselect(g_sdio_card_info.card_rca))
         && checkReturnOk(sd_cardstatus_get(&g_sdio_card_status))
         && checkReturnOk(sd_bus_mode_config(SDIO_BUSMODE_4BIT))
@@ -65,19 +76,21 @@ uint32_t SdioCard::kHzSdClk()
 
 bool SdioCard::readCID(cid_t* cid)
 {
-    memcpy(cid, &g_sdio_card_info.card_cid, sizeof(cid_t));
+    sd_cid_get((uint8_t*)cid);
     return true;
 }
 
 bool SdioCard::readCSD(csd_t* csd)
 {
-    memcpy(csd, &g_sdio_card_info.card_csd, sizeof(csd_t));
+    sd_csd_get((uint8_t*)csd);
     return true;
 }
 
 bool SdioCard::readOCR(uint32_t* ocr)
 {
-    return checkReturnOk(sd_card_read_ocr(ocr));
+    // SDIO mode does not have CMD58, but main program uses this to
+    // poll for card presence. Return status register instead.
+    return sd_cardstatus_get(ocr) == SD_OK;
 }
 
 bool SdioCard::readData(uint8_t* dst)
@@ -88,12 +101,12 @@ bool SdioCard::readData(uint8_t* dst)
 
 bool SdioCard::readSector(uint32_t sector, uint8_t* dst)
 {
-    return checkReturnOk(sd_block_read((uint32_t*)dst, sector, 512));
+    return checkReturnOk(sd_block_read((uint32_t*)dst, sector * 512, 512));
 }
 
 bool SdioCard::readSectors(uint32_t sector, uint8_t* dst, size_t n)
 {
-    return checkReturnOk(sd_multiblocks_read((uint32_t*)dst, sector, 512, n));
+    return checkReturnOk(sd_multiblocks_read((uint32_t*)dst, sector * 512, 512, n));
 }
 
 bool SdioCard::readStart(uint32_t sector)
@@ -151,7 +164,11 @@ bool SdioCard::stopTransmission(bool blocking)
 
 bool SdioCard::syncDevice()
 {
-    return stopTransmission(true);
+    if (sd_transfer_state_get() != SD_NO_TRANSFER)
+    {
+        return stopTransmission(true);
+    }
+    return true;
 }
 
 uint8_t SdioCard::type() const
@@ -172,12 +189,12 @@ bool SdioCard::writeData(const uint8_t* src)
 
 bool SdioCard::writeSector(uint32_t sector, const uint8_t* src)
 {
-    return checkReturnOk(sd_block_write((uint32_t*)src, sector, 512));
+    return checkReturnOk(sd_block_write((uint32_t*)src, sector * 512, 512));
 }
 
 bool SdioCard::writeSectors(uint32_t sector, const uint8_t* src, size_t n)
 {
-    return checkReturnOk(sd_multiblocks_write((uint32_t*)src, sector, 512, n));
+    return checkReturnOk(sd_multiblocks_write((uint32_t*)src, sector * 512, 512, n));
 }
 
 bool SdioCard::writeStart(uint32_t sector)
@@ -194,7 +211,7 @@ bool SdioCard::writeStop()
 
 bool SdioCard::erase(uint32_t firstSector, uint32_t lastSector)
 {
-    return checkReturnOk(sd_erase(firstSector, lastSector));
+    return checkReturnOk(sd_erase(firstSector * 512, lastSector * 512));
 }
 
 
@@ -207,5 +224,11 @@ void azplatform_set_sd_callback(sd_callback_t func, const uint8_t *buffer)
 // These functions are not used for SDIO mode but are needed to avoid build error.
 void sdCsInit(SdCsPin_t pin) {}
 void sdCsWrite(SdCsPin_t pin, bool level) {}
+
+// Interrupt handler for SDIO
+extern "C" void SDIO_IRQHandler(void)
+{
+    sd_interrupts_process();
+}
 
 #endif

@@ -146,10 +146,6 @@ static sd_error_enum sd_scr_get(uint16_t rca, uint32_t *pscr);
 /* get the data block size */
 static uint32_t sd_datablocksize_get(uint16_t bytesnumber);
 
-/* configure the GPIO of SDIO interface */
-static void gpio_config(void);
-/* configure the RCU of SDIO and DMA */
-static void rcu_config(void);
 /* configure the DMA for SDIO transfer request */
 static void dma_transfer_config(uint32_t *srcbuf, uint32_t bufsize);
 /* configure the DMA for SDIO receive request */
@@ -165,8 +161,6 @@ sd_error_enum sd_init(void)
 {
     sd_error_enum status = SD_OK;
     /* configure the RCU and GPIO, deinitialize the SDIO */
-    rcu_config();
-    gpio_config();
     sdio_deinit();
 
     /* configure the clock and work voltage */
@@ -435,7 +429,7 @@ sd_error_enum sd_transfer_mode_config(uint32_t txmode)
     \param[in]  blocksize: the data block size
     \retval     sd_error_enum
 */
-sd_error_enum sd_block_read(uint32_t *preadbuffer, uint32_t readaddr, uint16_t blocksize)
+sd_error_enum sd_block_read(uint32_t *preadbuffer, uint64_t readaddr, uint16_t blocksize)
 {
     /* initialize the variables */
     sd_error_enum status = SD_OK;
@@ -567,7 +561,7 @@ sd_error_enum sd_block_read(uint32_t *preadbuffer, uint32_t readaddr, uint16_t b
     \param[in]  blocksnumber: number of blocks that will be read
     \retval     sd_error_enum
 */
-sd_error_enum sd_multiblocks_read(uint32_t *preadbuffer, uint32_t readaddr, uint16_t blocksize, uint32_t blocksnumber)
+sd_error_enum sd_multiblocks_read(uint32_t *preadbuffer, uint64_t readaddr, uint16_t blocksize, uint32_t blocksnumber)
 {
     /* initialize the variables */
     sd_error_enum status = SD_OK;
@@ -727,7 +721,7 @@ sd_error_enum sd_multiblocks_read(uint32_t *preadbuffer, uint32_t readaddr, uint
     \param[out] none
     \retval     sd_error_enum
 */
-sd_error_enum sd_block_write(uint32_t *pwritebuffer, uint32_t writeaddr, uint16_t blocksize)
+sd_error_enum sd_block_write(uint32_t *pwritebuffer, uint64_t writeaddr, uint16_t blocksize)
 {
     /* initialize the variables */
     sd_error_enum status = SD_OK;
@@ -914,7 +908,7 @@ sd_error_enum sd_block_write(uint32_t *pwritebuffer, uint32_t writeaddr, uint16_
     \param[out] none
     \retval     sd_error_enum
 */
-sd_error_enum sd_multiblocks_write(uint32_t *pwritebuffer, uint32_t writeaddr, uint16_t blocksize, uint32_t blocksnumber)
+sd_error_enum sd_multiblocks_write(uint32_t *pwritebuffer, uint64_t writeaddr, uint16_t blocksize, uint32_t blocksnumber)
 {
     /* initialize the variables */
     sd_error_enum status = SD_OK;
@@ -1122,7 +1116,7 @@ sd_error_enum sd_multiblocks_write(uint32_t *pwritebuffer, uint32_t writeaddr, u
     \param[out] none
     \retval     sd_error_enum
 */
-sd_error_enum sd_erase(uint32_t startaddr, uint32_t endaddr)
+sd_error_enum sd_erase(uint64_t startaddr, uint64_t endaddr)
 {
     /* initialize the variables */
     sd_error_enum status = SD_OK;
@@ -1826,6 +1820,23 @@ sd_error_enum sd_card_information_get(sd_card_info_struct *pcardinfo)
     return status;
 }
 
+void sd_cid_get(uint8_t *cid)
+{
+    // SdFat expects the data in big endian format.
+    for (int i = 0; i < 16; i++)
+    {
+        cid[i] = (sd_cid[i / 4] >> (24 - (i % 4) * 8)) & 0xFF;
+    }
+}
+
+void sd_csd_get(uint8_t *csd)
+{
+    for (int i = 0; i < 16; i++)
+    {
+        csd[i] = (sd_csd[i / 4] >> (24 - (i % 4) * 8)) & 0xFF;
+    }
+}
+
 /*!
     \brief      check if the command sent error occurs
     \param[in]  none
@@ -2345,38 +2356,6 @@ static uint32_t sd_datablocksize_get(uint16_t bytesnumber)
 }
 
 /*!
-    \brief      configure the GPIO of SDIO interface
-    \param[in]  none
-    \param[out] none
-    \retval     none
-*/
-static void gpio_config(void)
-{
-    /* configure the PB.8, PB.9, PC.6, PC.7, PC.8, PC.9, PC.10, PC.11, PC.12 and PD.2 */
-    gpio_init(GPIOB, GPIO_MODE_AF_PP, GPIO_OSPEED_10MHZ, GPIO_PIN_8 | GPIO_PIN_9);
-    gpio_init(GPIOC, GPIO_MODE_AF_PP, GPIO_OSPEED_10MHZ, GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 |
-              GPIO_PIN_9 | GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12);
-    gpio_init(GPIOD, GPIO_MODE_AF_PP, GPIO_OSPEED_10MHZ, GPIO_PIN_2);
-}
-
-/*!
-    \brief      configure the RCU of SDIO and DMA
-    \param[in]  none
-    \param[out] none
-    \retval     none
-*/
-static void rcu_config(void)
-{
-    rcu_periph_clock_enable(RCU_GPIOB);
-    rcu_periph_clock_enable(RCU_GPIOC);
-    rcu_periph_clock_enable(RCU_GPIOD);
-    rcu_periph_clock_enable(RCU_AF);
-
-    rcu_periph_clock_enable(RCU_SDIO);
-    rcu_periph_clock_enable(RCU_DMA1);
-}
-
-/*!
     \brief      configure the DMA1 channel 3 for transferring data
     \param[in]  srcbuf: a pointer point to a buffer which will be transferred
     \param[in]  bufsize: the size of buffer(not used in flow controller is peripheral)
@@ -2442,21 +2421,4 @@ static void dma_receive_config(uint32_t *dstbuf, uint32_t bufsize)
 
     dma_circulation_disable(DMA1, DMA_CH3);
     dma_channel_enable(DMA1, DMA_CH3);
-}
-
-sd_error_enum sd_card_read_ocr(uint32_t *ocr)
-{
-    sd_error_enum status = SD_OK;
-
-    sdio_command_response_config(SD_CMD_READ_OCR, 0, SDIO_RESPONSETYPE_SHORT);
-    sdio_wait_type_set(SDIO_WAITTYPE_NO);
-    sdio_csm_enable();
-    /* check if some error occurs */
-    status = r3_error_check();
-    if(SD_OK != status) {
-        return status;
-    }
-    
-    *ocr = sdio_response_get(SDIO_RESPONSE0);
-    return SD_OK;
 }
