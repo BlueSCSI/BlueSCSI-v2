@@ -309,6 +309,36 @@ void UsageFault_Handler(void)
         "b show_hardfault": : : "r0");
 }
 
+void __assert_func(const char *file, int line, const char *func, const char *expr)
+{
+    uint32_t dummy = 0;
+
+    azlog("--------------");
+    azlog("ASSERT FAILED!");
+    azlog("Platform: ", g_azplatform_name);
+    azlog("FW Version: ", g_azlog_firmwareversion);
+    azlog("Assert failed: ", file , ":", line, " in ", func, ":", expr);
+
+    uint32_t *p = (uint32_t*)((uint32_t)&dummy & ~3);
+    for (int i = 0; i < 8; i++)
+    {
+        if (p == &_estack) break; // End of stack
+
+        azlog("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
+        p += 4;
+    }
+
+    azplatform_emergency_log_save();
+
+    while(1)
+    {
+        LED_OFF();
+        for (int j = 0; j < 1000; j++) delay_ns(100000);
+        LED_ON();
+        for (int j = 0; j < 1000; j++) delay_ns(100000);
+    }
+}
+
 } /* extern "C" */
 
 static void watchdog_handler(uint32_t *sp)
