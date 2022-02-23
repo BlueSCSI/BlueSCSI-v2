@@ -151,6 +151,8 @@ static void dma_transfer_config(uint32_t *srcbuf, uint32_t bufsize);
 /* configure the DMA for SDIO receive request */
 static void dma_receive_config(uint32_t *dstbuf, uint32_t bufsize);
 
+unsigned long millis(void);
+
 /*!
     \brief      initialize the SD card and make it in standby state
     \param[in]  none
@@ -429,12 +431,11 @@ sd_error_enum sd_transfer_mode_config(uint32_t txmode)
     \param[in]  blocksize: the data block size
     \retval     sd_error_enum
 */
-sd_error_enum sd_block_read(uint32_t *preadbuffer, uint64_t readaddr, uint16_t blocksize)
+sd_error_enum sd_block_read(uint32_t *preadbuffer, uint64_t readaddr, uint16_t blocksize, sdio_callback_t callback)
 {
     /* initialize the variables */
     sd_error_enum status = SD_OK;
     uint32_t count = 0, align = 0, datablksize = SDIO_DATABLOCKSIZE_1BYTE, *ptempbuff = preadbuffer;
-    __IO uint32_t timeout = 0;
 
     if(NULL == preadbuffer) {
         status = SD_PARAMETER_INVALID;
@@ -540,11 +541,15 @@ sd_error_enum sd_block_read(uint32_t *preadbuffer, uint64_t readaddr, uint16_t b
         sdio_interrupt_enable(SDIO_INT_CCRCERR | SDIO_INT_DTTMOUT | SDIO_INT_RXORE | SDIO_INT_DTEND | SDIO_INT_STBITE);
         sdio_dma_enable();
         dma_receive_config(preadbuffer, blocksize);
-        timeout = 100000;
-        while((RESET == dma_flag_get(DMA1, DMA_CH3, DMA_FLAG_FTF)) && (timeout > 0)) {
-            timeout--;
-            if(0 == timeout) {
+        uint32_t start = millis();
+        while((RESET == dma_flag_get(DMA1, DMA_CH3, DMA_FLAG_FTF))) {
+            if((uint32_t)(millis() - start) > 1000) {
                 return SD_ERROR;
+            }
+            if (callback)
+            {
+                uint32_t complete = (blocksize - DMA_CHCNT(DMA1, DMA_CH3) * 4);
+                callback(complete);
             }
         }
     } else {
@@ -561,13 +566,12 @@ sd_error_enum sd_block_read(uint32_t *preadbuffer, uint64_t readaddr, uint16_t b
     \param[in]  blocksnumber: number of blocks that will be read
     \retval     sd_error_enum
 */
-sd_error_enum sd_multiblocks_read(uint32_t *preadbuffer, uint64_t readaddr, uint16_t blocksize, uint32_t blocksnumber)
+sd_error_enum sd_multiblocks_read(uint32_t *preadbuffer, uint64_t readaddr, uint16_t blocksize, uint32_t blocksnumber, sdio_callback_t callback)
 {
     /* initialize the variables */
     sd_error_enum status = SD_OK;
     uint32_t count = 0, align = 0, datablksize = SDIO_DATABLOCKSIZE_1BYTE, *ptempbuff = preadbuffer;
-    __IO uint32_t timeout = 0;
-
+    
     if(NULL == preadbuffer) {
         status = SD_PARAMETER_INVALID;
         return status;
@@ -612,7 +616,7 @@ sd_error_enum sd_multiblocks_read(uint32_t *preadbuffer, uint64_t readaddr, uint
         return status;
     }
 
-    if(blocksnumber > 1) {
+    if(blocksnumber >= 1) {
         if(blocksnumber * blocksize > SD_MAX_DATA_LENGTH) {
             /* exceeds the maximum length */
             status = SD_PARAMETER_INVALID;
@@ -694,14 +698,22 @@ sd_error_enum sd_multiblocks_read(uint32_t *preadbuffer, uint64_t readaddr, uint
             sdio_dma_enable();
             dma_receive_config(preadbuffer, totalnumber_bytes);
 
-            timeout = 100000;
-            while((RESET == dma_flag_get(DMA1, DMA_CH3, DMA_FLAG_FTF)) && (timeout > 0)) {
-                timeout--;
-                if(0 == timeout) {
+            uint32_t start = millis();
+            while((RESET == dma_flag_get(DMA1, DMA_CH3, DMA_FLAG_FTF))) {
+                if((uint32_t)(millis() - start) > 1000) {
                     return SD_ERROR;
+                }
+                if (callback)
+                {
+                    uint32_t complete = (totalnumber_bytes - DMA_CHCNT(DMA1, DMA_CH3) * 4);
+                    callback(complete);
                 }
             }
             while((0 == transend) && (SD_OK == transerror)) {
+                if (callback)
+                {
+                    callback(totalnumber_bytes);
+                }
             }
             if(SD_OK != transerror) {
                 return transerror;
@@ -721,15 +733,14 @@ sd_error_enum sd_multiblocks_read(uint32_t *preadbuffer, uint64_t readaddr, uint
     \param[out] none
     \retval     sd_error_enum
 */
-sd_error_enum sd_block_write(uint32_t *pwritebuffer, uint64_t writeaddr, uint16_t blocksize)
+sd_error_enum sd_block_write(uint32_t *pwritebuffer, uint64_t writeaddr, uint16_t blocksize, sdio_callback_t callback)
 {
     /* initialize the variables */
     sd_error_enum status = SD_OK;
     uint8_t cardstate = 0;
     uint32_t count = 0, align = 0, datablksize = SDIO_DATABLOCKSIZE_1BYTE, *ptempbuff = pwritebuffer;
     uint32_t transbytes = 0, restwords = 0, response = 0;
-    __IO uint32_t timeout = 0;
-
+    
     if(NULL == pwritebuffer) {
         status = SD_PARAMETER_INVALID;
         return status;
@@ -785,11 +796,19 @@ sd_error_enum sd_block_write(uint32_t *pwritebuffer, uint64_t writeaddr, uint16_
     }
 
     response = sdio_response_get(SDIO_RESPONSE0);
-    timeout = 100000;
-
-    while((0 == (response & SD_R1_READY_FOR_DATA)) && (timeout > 0)) {
+    
+    uint32_t start = millis();
+    while((0 == (response & SD_R1_READY_FOR_DATA))) {
         /* continue to send CMD13 to polling the state of card until buffer empty or timeout */
-        --timeout;
+        if((uint32_t)(millis() - start) > 1000) {
+            return SD_ERROR;
+        }
+
+        if (callback)
+        {
+            callback(0);
+        }
+
         /* send CMD13(SEND_STATUS), addressed card sends its status registers */
         sdio_command_response_config(SD_CMD_SEND_STATUS, (uint32_t)sd_rca << SD_RCA_SHIFT, SDIO_RESPONSETYPE_SHORT);
         sdio_wait_type_set(SDIO_WAITTYPE_NO);
@@ -800,9 +819,6 @@ sd_error_enum sd_block_write(uint32_t *pwritebuffer, uint64_t writeaddr, uint16_
             return status;
         }
         response = sdio_response_get(SDIO_RESPONSE0);
-    }
-    if(0 == timeout) {
-        return SD_ERROR;
     }
 
     /* send CMD24(WRITE_BLOCK) to write a block */
@@ -871,14 +887,22 @@ sd_error_enum sd_block_write(uint32_t *pwritebuffer, uint64_t writeaddr, uint16_
         dma_transfer_config(pwritebuffer, blocksize);
         sdio_dma_enable();
 
-        timeout = 100000;
-        while((RESET == dma_flag_get(DMA1, DMA_CH3, DMA_FLAG_FTF)) && (timeout > 0)) {
-            timeout--;
-            if(0 == timeout) {
+        uint32_t start = millis();
+        while((RESET == dma_flag_get(DMA1, DMA_CH3, DMA_FLAG_FTF))) {
+            if((uint32_t)(millis() - start) > 1000) {
                 return SD_ERROR;
+            }
+            if (callback)
+            {
+                uint32_t complete = (blocksize - DMA_CHCNT(DMA1, DMA_CH3) * 4);
+                callback(complete);
             }
         }
         while((0 == transend) && (SD_OK == transerror)) {
+            if (callback)
+            {
+                callback(blocksize);
+            }
         }
 
         if(SD_OK != transerror) {
@@ -894,6 +918,10 @@ sd_error_enum sd_block_write(uint32_t *pwritebuffer, uint64_t writeaddr, uint16_
     /* get the card state and wait the card is out of programming and receiving state */
     status = sd_card_state_get(&cardstate);
     while((SD_OK == status) && ((SD_CARDSTATE_PROGRAMMING == cardstate) || (SD_CARDSTATE_RECEIVING == cardstate))) {
+        if (callback)
+        {
+            callback(blocksize);
+        }
         status = sd_card_state_get(&cardstate);
     }
     return status;
@@ -908,15 +936,14 @@ sd_error_enum sd_block_write(uint32_t *pwritebuffer, uint64_t writeaddr, uint16_
     \param[out] none
     \retval     sd_error_enum
 */
-sd_error_enum sd_multiblocks_write(uint32_t *pwritebuffer, uint64_t writeaddr, uint16_t blocksize, uint32_t blocksnumber)
+sd_error_enum sd_multiblocks_write(uint32_t *pwritebuffer, uint64_t writeaddr, uint16_t blocksize, uint32_t blocksnumber, sdio_callback_t callback)
 {
     /* initialize the variables */
     sd_error_enum status = SD_OK;
     uint8_t cardstate = 0;
     uint32_t count = 0, align = 0, datablksize = SDIO_DATABLOCKSIZE_1BYTE, *ptempbuff = pwritebuffer;
     uint32_t transbytes = 0, restwords = 0;
-    __IO uint32_t timeout = 0;
-
+    
     if(NULL == pwritebuffer) {
         status = SD_PARAMETER_INVALID;
         return status;
@@ -971,7 +998,7 @@ sd_error_enum sd_multiblocks_write(uint32_t *pwritebuffer, uint64_t writeaddr, u
         return status;
     }
 
-    if(blocksnumber > 1) {
+    if(blocksnumber >= 1) {
         if(blocksnumber * blocksize > SD_MAX_DATA_LENGTH) {
             status = SD_PARAMETER_INVALID;
             return status;
@@ -1081,14 +1108,22 @@ sd_error_enum sd_multiblocks_write(uint32_t *pwritebuffer, uint64_t writeaddr, u
             sdio_dma_enable();
             dma_transfer_config(pwritebuffer, totalnumber_bytes);
 
-            timeout = 100000;
-            while((RESET == dma_flag_get(DMA1, DMA_CH3, DMA_FLAG_FTF) && (timeout > 0))) {
-                timeout--;
-                if(0 == timeout) {
+            uint32_t start = millis();
+            while((RESET == dma_flag_get(DMA1, DMA_CH3, DMA_FLAG_FTF))) {
+                if((uint32_t)(millis() - start) > 1000) {
                     return SD_ERROR;
+                }
+                if (callback)
+                {
+                    uint32_t complete = (totalnumber_bytes - DMA_CHCNT(DMA1, DMA_CH3) * 4);
+                    callback(complete);
                 }
             }
             while((0 == transend) && (SD_OK == transerror)) {
+                if (callback)
+                {
+                    callback(totalnumber_bytes);
+                }
             }
             if(SD_OK != transerror) {
                 return transerror;
@@ -1104,6 +1139,10 @@ sd_error_enum sd_multiblocks_write(uint32_t *pwritebuffer, uint64_t writeaddr, u
     /* get the card state and wait the card is out of programming and receiving state */
     status = sd_card_state_get(&cardstate);
     while((SD_OK == status) && ((SD_CARDSTATE_PROGRAMMING == cardstate) || (SD_CARDSTATE_RECEIVING == cardstate))) {
+        if (callback)
+        {
+            callback(totalnumber_bytes);
+        }
         status = sd_card_state_get(&cardstate);
     }
     return status;
