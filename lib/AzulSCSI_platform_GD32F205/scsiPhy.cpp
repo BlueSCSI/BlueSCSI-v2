@@ -4,6 +4,7 @@
 #include "scsiPhy.h"
 #include "AzulSCSI_platform.h"
 #include "scsi_accel_asm.h"
+#include "scsi_accel_dma.h"
 #include "AzulSCSI_log.h"
 #include "AzulSCSI_log_trace.h"
 
@@ -104,6 +105,10 @@ extern "C" void scsiPhyReset(void)
     g_scsi_sts_selection = 0;
     g_scsi_ctrl_bsy = 0;
     init_irqs();
+
+#ifdef SCSI_ACCEL_DMA_AVAILABLE
+    scsi_accel_dma_init();
+#endif
 }
 
 /************************/
@@ -214,8 +219,55 @@ extern "C" void scsiWriteByte(uint8_t value)
 
 extern "C" void scsiWrite(const uint8_t* data, uint32_t count)
 {
-    uint32_t count_words = count / 4;
+    scsiStartWrite(data, count);
+    scsiFinishWrite();
+}
+
+static struct {
+    const uint8_t *data;
+    uint32_t count;
+} g_scsi_writereq;
+
+extern "C" void scsiStartWrite(const uint8_t* data, uint32_t count)
+{
     scsiLogDataIn(data, count);
+
+#ifdef SCSI_ACCEL_DMA_AVAILABLE
+    if (gpio_input_bit_get(DIP_PORT, DIPSW1_PIN))
+    {
+        scsi_accel_dma_startWrite(data, count, &scsiDev.resetFlag);
+        return;
+    }
+#endif
+
+    if (g_scsi_writereq.count)
+    {
+        if (data == g_scsi_writereq.data + g_scsi_writereq.count)
+        {
+            // Combine with previous one
+            g_scsi_writereq.count += count;
+            return;
+        }
+        else
+        {
+            // Actually execute previous request
+            scsiFinishWrite();
+        }
+    }
+
+    // Queue polling write requests.
+    // This allows better parallelism with SD card transfers.
+    g_scsi_writereq.data = data;
+    g_scsi_writereq.count = count;
+}
+
+static void processPollingWrite(uint32_t count)
+{
+    if (count > g_scsi_writereq.count)
+        count = g_scsi_writereq.count;
+    
+    const uint8_t *data = g_scsi_writereq.data;
+    uint32_t count_words = count / 4;
     if (count_words * 4 == count)
     {
         // Use accelerated subroutine
@@ -228,6 +280,65 @@ extern "C" void scsiWrite(const uint8_t* data, uint32_t count)
             if (scsiDev.resetFlag) break;
             scsiWriteOneByte(data[i]);
         }
+    }
+
+    g_scsi_writereq.count -= count;
+    if (g_scsi_writereq.count)
+    {
+        g_scsi_writereq.data += count;
+    }
+    else
+    {
+        g_scsi_writereq.data = NULL;
+    }
+}
+
+static bool isPollingWriteFinished(const uint8_t *data)
+{
+    if (g_scsi_writereq.count)
+    {
+        if (data == NULL)
+        {
+            return false;
+        }
+        else if (data >= g_scsi_writereq.data &&
+            data < g_scsi_writereq.data + g_scsi_writereq.count)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+extern "C" bool scsiIsWriteFinished(const uint8_t *data)
+{
+#ifdef SCSI_ACCEL_DMA_AVAILABLE
+    if (!scsi_accel_dma_isWriteFinished(data))
+        return false;
+#endif
+
+    // Check if there is still a polling transfer in progress
+    if (!isPollingWriteFinished(data))
+    {
+        // Process the transfer piece-by-piece while waiting
+        // for SD card to react.
+        processPollingWrite(256);
+        return isPollingWriteFinished(data);
+    }
+
+    return true;
+}
+
+extern "C" void scsiFinishWrite()
+{
+#ifdef SCSI_ACCEL_DMA_AVAILABLE
+    scsi_accel_dma_finishWrite(&scsiDev.resetFlag);
+#endif
+
+    // Finish previously started polling write request.
+    if (g_scsi_writereq.count)
+    {
+        processPollingWrite(g_scsi_writereq.count);
     }
 }
 
