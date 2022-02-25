@@ -419,6 +419,20 @@ static void doSeek(uint32_t lba)
 
 BlockDevice blockDev = {DISK_PRESENT | DISK_INITIALISED};
 Transfer transfer;
+static struct {
+    uint8_t *buffer;
+    uint32_t bytes_sd; // Number of bytes that have been scheduled for transfer on SD card side
+    uint32_t bytes_scsi; // Number of bytes that have been scheduled for transfer on SCSI side
+} g_disk_transfer;
+
+#ifdef PREFETCH_BUFFER_SIZE
+static struct {
+    uint8_t buffer[PREFETCH_BUFFER_SIZE];
+    uint32_t sector;
+    uint32_t bytes;
+    uint8_t scsiId;
+} g_scsi_prefetch;
+#endif
 
 /*****************/
 /* Write command */
@@ -579,7 +593,24 @@ static void doRead(uint32_t lba, uint32_t blocks)
         scsiDev.dataLen = 0;
         scsiDev.dataPtr = 0;
 
-        if (!img.file.seek(transfer.lba * bytesPerSector))
+#ifdef PREFETCH_BUFFER_SIZE
+        uint32_t sectors_in_prefetch = g_scsi_prefetch.bytes / bytesPerSector;
+        if (img.scsiId == g_scsi_prefetch.scsiId &&
+            transfer.lba >= g_scsi_prefetch.sector &&
+            transfer.lba < g_scsi_prefetch.sector + sectors_in_prefetch)
+        {
+            // We have the some sectors already in prefetch cache
+            scsiEnterPhase(DATA_IN);
+
+            uint32_t start_offset = transfer.lba - g_scsi_prefetch.sector;
+            uint32_t count = sectors_in_prefetch - start_offset;
+            if (count > transfer.blocks) count = transfer.blocks;
+            scsiStartWrite(g_scsi_prefetch.buffer + start_offset * bytesPerSector, count * bytesPerSector);
+            transfer.currentBlock += count;
+        }
+#endif
+
+        if (!img.file.seek((transfer.lba + transfer.currentBlock) * bytesPerSector))
         {
             azlog("Seek to ", transfer.lba, " failed for SCSI ID", (int)scsiDev.target->targetId);
             scsiDev.status = CHECK_CONDITION;
@@ -593,39 +624,49 @@ static void doRead(uint32_t lba, uint32_t blocks)
 void diskDataIn_callback(uint32_t bytes_complete)
 {
     // For best performance, do writes in blocks of 4 or more bytes
-    if (bytes_complete < scsiDev.dataLen)
+    if (bytes_complete < g_disk_transfer.bytes_sd)
     {
         bytes_complete &= ~3;
     }
 
-    if (bytes_complete > scsiDev.dataPtr)
+    if (bytes_complete > g_disk_transfer.bytes_scsi)
     {
         // DMA is reading from SD card, bytes_complete bytes have already been read.
         // Send them to SCSI bus now.
-        
-        uint32_t len = bytes_complete - scsiDev.dataPtr;
-        scsiWrite(scsiDev.data + scsiDev.dataPtr, len);
-        scsiDev.dataPtr += len;
+        uint32_t len = bytes_complete - g_disk_transfer.bytes_scsi;
+        scsiStartWrite(g_disk_transfer.buffer + g_disk_transfer.bytes_scsi, len);
+        g_disk_transfer.bytes_scsi += len;
     }
+    
+    // Provide a chance for polling request processing
+    scsiIsWriteFinished(NULL);
 }
 
-static void diskDataIn()
+// Start a data in transfer using given temporary buffer.
+// diskDataIn() below divides the scsiDev.data buffer to two halves for double buffering.
+static void start_dataInTransfer(uint8_t *buffer, uint32_t count)
 {
-    scsiEnterPhase(DATA_IN);
+    g_disk_transfer.buffer = buffer;
+    g_disk_transfer.bytes_scsi = 0;
+    g_disk_transfer.bytes_sd = count;
+    
+    // Verify that previous write using this buffer has finished
+    uint32_t start = millis();
+    while (!scsiIsWriteFinished(buffer + count - 1) && !scsiDev.resetFlag)
+    {
+        if ((uint32_t)(millis() - start) > 5000)
+        {
+            azlog("start_dataInTransfer() timeout waiting for previous to finish");
+            scsiDev.resetFlag = 1;
+        }
+    }
+    if (scsiDev.resetFlag) return;
 
-    // Figure out how many blocks we can fit in buffer
-    uint32_t blockcount = (transfer.blocks - transfer.currentBlock);
-    uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
-    uint32_t maxblocks = sizeof(scsiDev.data) / bytesPerSector;
-    if (blockcount > maxblocks) blockcount = maxblocks;
-    uint32_t transferlen = blockcount * bytesPerSector;
-
-    // Start reading from SD card.
-    // The callback will write to SCSI bus.
+    // Start transferring from SD card
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-    azplatform_set_sd_callback(&diskDataIn_callback, scsiDev.data);
+    azplatform_set_sd_callback(&diskDataIn_callback, buffer);
 
-    if (img.file.read(scsiDev.data, transferlen) != transferlen)
+    if (img.file.read(buffer, count) != count)
     {
         azlog("SD card read failed: ", SD.sdErrorCode());
         scsiDev.status = CHECK_CONDITION;
@@ -634,11 +675,67 @@ static void diskDataIn()
         scsiDev.phase = STATUS;
     }
 
-    diskDataIn_callback(transferlen);
-
+    diskDataIn_callback(count);
     azplatform_set_sd_callback(NULL, NULL);
-    transfer.currentBlock += blockcount;
-    scsiDev.dataPtr = scsiDev.dataLen = 0;
+}
+
+static void diskDataIn()
+{
+    scsiEnterPhase(DATA_IN);
+
+    // Figure out how many blocks we can fit in buffer
+    uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+    uint32_t maxblocks = sizeof(scsiDev.data) / bytesPerSector;
+    uint32_t maxblocks_half = maxblocks / 2;
+    
+    // Start transfer in first half of buffer
+    // Waits for the previous first half transfer to finish first.
+    uint32_t remain = (transfer.blocks - transfer.currentBlock);
+    if (remain > 0)
+    {
+        uint32_t transfer_blocks = std::min(remain, maxblocks_half);
+        uint32_t transfer_bytes = transfer_blocks * bytesPerSector;
+        start_dataInTransfer(&scsiDev.data[0], transfer_bytes);
+        transfer.currentBlock += transfer_blocks;
+    }
+
+    // Start transfer in second half of buffer
+    // Waits for the previous second half transfer to finish first
+    remain = (transfer.blocks - transfer.currentBlock);
+    if (remain > 0)
+    {
+        uint32_t transfer_blocks = std::min(remain, maxblocks_half);
+        uint32_t transfer_bytes = transfer_blocks * bytesPerSector;
+        start_dataInTransfer(&scsiDev.data[maxblocks_half * bytesPerSector], transfer_bytes);
+        transfer.currentBlock += transfer_blocks;
+    }
+
+    if (transfer.currentBlock == transfer.blocks)
+    {
+        // This was the last block, verify that everything finishes
+
+#ifdef PREFETCH_BUFFER_SIZE
+        uint32_t prefetch_sectors = PREFETCH_BUFFER_SIZE / bytesPerSector;            
+        g_scsi_prefetch.sector = transfer.lba + transfer.blocks;
+        g_scsi_prefetch.bytes = 0;
+        g_scsi_prefetch.scsiId = scsiDev.target->cfg->scsiId;
+        while (!scsiIsWriteFinished(NULL) && prefetch_sectors > 0)
+        {
+            // We still have time, prefetch next sectors in case this SCSI request
+            // is part of a longer linear read.
+            g_disk_transfer.buffer = g_scsi_prefetch.buffer + g_scsi_prefetch.bytes;
+            g_disk_transfer.bytes_sd = bytesPerSector;
+            g_disk_transfer.bytes_scsi = bytesPerSector; // Tell callback not to send to SCSI
+            image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+            azplatform_set_sd_callback(&diskDataIn_callback, g_disk_transfer.buffer);
+            g_scsi_prefetch.bytes += img.file.read(g_disk_transfer.buffer, bytesPerSector);
+            azplatform_set_sd_callback(NULL, NULL);
+            prefetch_sectors--;
+        }
+#endif
+
+        scsiFinishWrite();
+    }
 }
 
 
@@ -884,6 +981,11 @@ void scsiDiskReset()
     transfer.blocks = 0;
     transfer.currentBlock = 0;
     transfer.multiBlock = 0;
+
+#ifdef PREFETCH_BUFFER_SIZE
+    g_scsi_prefetch.bytes = 0;
+    g_scsi_prefetch.sector = 0;
+#endif
 }
 
 extern "C"

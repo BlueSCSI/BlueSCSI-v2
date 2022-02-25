@@ -40,8 +40,8 @@
 #define DEFAULT_SCSI_DELAY_US 10
 #define DEFAULT_REQ_TYPE_SETUP_NS 500
 
-// Use streaming SCSI and SD transfers for higher performance
-#define STREAM_SD_TRANSFERS 1
+// Use prefetch buffer in read requests
+#define PREFETCH_BUFFER_SIZE 8192
 
 // Uncomment for building on revision 2022a prototype board
 /* #define AZULSCSI_2022A_REVISION 1 */
