@@ -5,7 +5,10 @@ Harddrive image files
 ---------------------
 AzulSCSI uses the same harddrive image file format as in [BlueSCSI instructions](https://github.com/erichelgeson/BlueSCSI/wiki/Usage).
 
-The image files should be named e.g. `HD00_512.hda` for ID 0, LUN 0, 512 byte block.
+Examples of valid filenames:
+* `HD5.hda` or `HD5.img`: hard drive with SCSI ID 5
+* `HD20_512.hda`: hard drive with SCSI ID 2, LUN 0, block size 512
+* `CD3.iso`: CD drive with SCSI ID 3
 
 Log files and error indications
 -------------------------------

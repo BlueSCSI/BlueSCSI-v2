@@ -59,6 +59,12 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
             azlog("---- WARNING: file ", filename, " is not contiguous. This will increase read latency.");
         }
 
+        if (tolower(filename[0]) == 'c' && tolower(filename[1]) == 'd')
+        {
+            azlog("---- Configuring as CD-ROM drive based on image name");
+            img.deviceType = S2S_CFG_OPTICAL;
+        }
+
         return true;
     }
 

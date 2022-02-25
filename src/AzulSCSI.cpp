@@ -169,7 +169,8 @@ bool findHDDImages()
     if(!file.isDir()) {
       file.getName(name, MAX_FILE_PATH+1);
       file.close();
-      if (tolower(name[0]) == 'h' && tolower(name[1]) == 'd') {
+      if ((tolower(name[0]) == 'h' && tolower(name[1]) == 'd') ||
+          (tolower(name[0]) == 'c' && tolower(name[1]) == 'd')) {
         // Defaults for Hard Disks
         int id  = 1; // 0 and 3 are common in Macs for physical HD and CD, so avoid them.
         int lun = 0;
