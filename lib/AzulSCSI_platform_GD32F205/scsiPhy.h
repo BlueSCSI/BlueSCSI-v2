@@ -45,10 +45,23 @@ void scsiEnterBusFree(void);
 //void scsiSetDataCount(uint32_t count);
 //int scsiFifoReady(void);
 
+// Blocking data transfer
 void scsiWrite(const uint8_t* data, uint32_t count);
 void scsiRead(uint8_t* data, uint32_t count, int* parityError);
 void scsiWriteByte(uint8_t value);
 uint8_t scsiReadByte(void);
+
+// Non-blocking data transfer.
+// Depending on platform support the start() function may block.
+// The start function can be called multiple times, it may internally
+// either combine transfers or block until previous transfer completes.
+void scsiStartWrite(const uint8_t* data, uint32_t count);
+void scsiFinishWrite();
+
+// Query whether the data at pointer has already been read, i.e. buffer can be reused.
+// If data is NULL, checks if all writes have completed.
+bool scsiIsWriteFinished(const uint8_t *data);
+
 
 #define s2s_getScsiRateKBs() 0
 
