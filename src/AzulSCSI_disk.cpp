@@ -484,6 +484,12 @@ static void doWrite(uint32_t lba, uint32_t blocks)
         scsiDev.dataLen = 0;
         scsiDev.dataPtr = 0;
 
+#ifdef PREFETCH_BUFFER_SIZE
+        // Invalidate prefetch buffer
+        g_scsi_prefetch.bytes = 0;
+        g_scsi_prefetch.sector = 0;
+#endif
+
         image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
         if (!img.file.seek(transfer.lba * bytesPerSector))
         {
