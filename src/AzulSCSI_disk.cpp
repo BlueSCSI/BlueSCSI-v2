@@ -614,6 +614,11 @@ static void doRead(uint32_t lba, uint32_t blocks)
             scsiStartWrite(g_scsi_prefetch.buffer + start_offset * bytesPerSector, count * bytesPerSector);
             transfer.currentBlock += count;
         }
+
+        if (transfer.currentBlock == transfer.blocks)
+        {
+            scsiFinishWrite();
+        }
 #endif
 
         if (!img.file.seek((transfer.lba + transfer.currentBlock) * bytesPerSector))
