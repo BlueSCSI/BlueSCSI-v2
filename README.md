@@ -60,7 +60,7 @@ When successful, the bootloader removes the update file and continues to main fi
 On failure, `azulerr.txt` is written on the SD card.
 
 Alternatively, the board can be programmed using USB connection in DFU mode by setting DIP switch 4.
-The necessary programmer utility for Windows can be downloaded from [GD32 website](http://www.gd32mcu.com/en/download?kw=dfu&lan=en). On Linux and Mac [gd32-dfu-utils](https://github.com/riscv-mcu/gd32-dfu-utils) can be used.
+The necessary programmer utility for Windows can be downloaded from [GD32 website](http://www.gd32mcu.com/en/download?kw=dfu&lan=en). On Linux and MacOS, the standard 'dfu-util' can be used. It can be installed via your package manager under Linux. On MacOS, it is available through MacPorts and Brew as a package
 
 DIP switches
 ------------
