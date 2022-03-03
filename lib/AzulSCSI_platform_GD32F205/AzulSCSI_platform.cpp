@@ -3,6 +3,7 @@
 #include "gd32f20x_fmc.h"
 #include "AzulSCSI_log.h"
 #include "AzulSCSI_config.h"
+#include "greenpak.h"
 #include <SdFat.h>
 #include <scsi.h>
 #include <assert.h>
@@ -188,6 +189,8 @@ void azplatform_init()
     {
         g_azlog_debug = false;
     }
+
+    greenpak_load_firmware();
 }
 
 /*****************************************/
