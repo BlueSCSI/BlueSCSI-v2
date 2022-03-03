@@ -31,6 +31,11 @@ struct image_config_t: public S2S_TargetCfg
 
 static image_config_t g_DiskImages[S2S_MAX_TARGETS];
 
+void scsiDiskResetImages()
+{
+    memset(g_DiskImages, 0, sizeof(g_DiskImages));
+}
+
 bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize)
 {
     image_config_t &img = g_DiskImages[target_idx];
@@ -581,6 +586,14 @@ void diskDataOut()
     azplatform_set_sd_callback(NULL, NULL);
     transfer.currentBlock += blockcount;
     scsiDev.dataPtr = scsiDev.dataLen = 0;
+
+    if (transfer.currentBlock == transfer.blocks)
+    {
+        // Verify that all data has been flushed to disk from SdFat cache.
+        // Normally does nothing as we do not change image file size and
+        // data writes are not cached.
+        img.file.flush();
+    }
 }
 
 /*****************/
