@@ -59,6 +59,15 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
             azlog("---- WARNING: file ", filename, " is not contiguous. This will increase read latency.");
         }
 
+        uint32_t sectorsPerHeadTrack = img.sectorsPerTrack * img.headsPerCylinder;
+        if (img.scsiSectors % sectorsPerHeadTrack != 0)
+        {
+            azlog("---- NOTE: Drive geometry is ",
+                (int)img.sectorsPerTrack, "x", (int)img.headsPerCylinder, "=",
+                (int)sectorsPerHeadTrack, " but image size of ", (int)img.scsiSectors,
+                " is not divisible.");
+        }
+
         if (tolower(filename[0]) == 'c' && tolower(filename[1]) == 'd')
         {
             azlog("---- Configuring as CD-ROM drive based on image name");
@@ -462,6 +471,7 @@ static void doWrite(uint32_t lba, uint32_t blocks)
         unlikely(scsiDev.target->cfg->deviceType == S2S_CFG_OPTICAL))
 
     {
+        azlog("WARNING: Host attempted write to CD-ROM");
         scsiDev.status = CHECK_CONDITION;
         scsiDev.target->sense.code = ILLEGAL_REQUEST;
         scsiDev.target->sense.asc = WRITE_PROTECTED;
@@ -469,6 +479,9 @@ static void doWrite(uint32_t lba, uint32_t blocks)
     }
     else if (unlikely(((uint64_t) lba) + blocks > capacity))
     {
+        azlog("WARNING: Host attempted write at sector ", (int)lba, "+", (int)blocks,
+              ", exceeding image size ", (int)capacity, " sectors (",
+              (int)bytesPerSector, "B/sector)");
         scsiDev.status = CHECK_CONDITION;
         scsiDev.target->sense.code = ILLEGAL_REQUEST;
         scsiDev.target->sense.asc = LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
@@ -590,6 +603,9 @@ static void doRead(uint32_t lba, uint32_t blocks)
 
     if (unlikely(((uint64_t) lba) + blocks > capacity))
     {
+        azlog("WARNING: Host attempted write at sector ", (int)lba, "+", (int)blocks,
+              ", exceeding image size ", (int)capacity, " sectors (",
+              (int)bytesPerSector, "B/sector)");
         scsiDev.status = CHECK_CONDITION;
         scsiDev.target->sense.code = ILLEGAL_REQUEST;
         scsiDev.target->sense.asc = LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
