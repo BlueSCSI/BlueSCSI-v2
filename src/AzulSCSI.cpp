@@ -289,6 +289,7 @@ void readSCSIDeviceConfig()
 
 static void reinitSCSI()
 {
+  scsiDiskResetImages();
   readSCSIDeviceConfig();
   bool foundImage = findHDDImages();
 

@@ -13,5 +13,6 @@ extern "C" {
 #include <scsi.h>
 }
 
+void scsiDiskResetImages();
 bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize);
 void scsiDiskLoadConfig(int target_idx);
