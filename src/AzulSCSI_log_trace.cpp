@@ -42,6 +42,7 @@ static const char *getCommandName(uint8_t cmd)
         case 0x3C: return "ReadBuffer";
         case 0xC0: return "OMTI-5204 DefineFlexibleDiskFormat";
         case 0xC2: return "OMTI-5204 AssignDiskParameters";
+        case 0x4A: return "GetEventStatusNotification";
         default:   return "Unknown";
     }
 }

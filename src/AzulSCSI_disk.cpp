@@ -27,6 +27,10 @@ SdDevice sdDev = {2, 256 * 1024 * 1024 * 2}; /* For SCSI2SD */
 struct image_config_t: public S2S_TargetCfg
 {
     FsFile file;
+
+    // For CD-ROM drive ejection
+    bool ejected;
+    uint8_t cdrom_events;
 };
 
 static image_config_t g_DiskImages[S2S_MAX_TARGETS];
@@ -370,17 +374,21 @@ static void doReadCapacity()
 static int doTestUnitReady()
 {
     int ready = 1;
-    if (likely(blockDev.state == (DISK_PRESENT | DISK_INITIALISED) &&
-		scsiDev.target->started))
-    {
-        // nothing to do.
-    }
-    else if (unlikely(!scsiDev.target->started))
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+    if (unlikely(!scsiDev.target->started || !img.file.isOpen()))
     {
         ready = 0;
         scsiDev.status = CHECK_CONDITION;
         scsiDev.target->sense.code = NOT_READY;
         scsiDev.target->sense.asc = LOGICAL_UNIT_NOT_READY_INITIALIZING_COMMAND_REQUIRED;
+        scsiDev.phase = STATUS;
+    }
+    else if (img.ejected)
+    {
+        ready = 0;
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = NOT_READY;
+        scsiDev.target->sense.asc = MEDIUM_NOT_PRESENT;
         scsiDev.phase = STATUS;
     }
     else if (unlikely(!(blockDev.state & DISK_PRESENT)))
@@ -400,6 +408,43 @@ static int doTestUnitReady()
         scsiDev.phase = STATUS;
     }
     return ready;
+}
+
+static void doGetEventStatusNotification(bool immed)
+{
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+
+    if (!immed)
+    {
+        // Asynchronous notification not supported
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+        scsiDev.phase = STATUS;
+    }
+    else if (img.cdrom_events)
+    {
+        scsiDev.data[0] = 0;
+        scsiDev.data[1] = 6; // EventDataLength
+        scsiDev.data[2] = 0x04; // Media status events
+        scsiDev.data[3] = 0x04; // Supported events
+        scsiDev.data[4] = img.cdrom_events;
+        scsiDev.data[5] = 0x01; // Power status
+        scsiDev.data[6] = 0; // Start slot
+        scsiDev.data[7] = 0; // End slot
+        scsiDev.dataLen = 8;
+        scsiDev.phase = DATA_IN;
+        img.cdrom_events = 0;
+    }
+    else
+    {
+        scsiDev.data[0] = 0;
+        scsiDev.data[1] = 2; // EventDataLength
+        scsiDev.data[2] = 0x00; // Media status events
+        scsiDev.data[3] = 0x04; // Supported events
+        scsiDev.dataLen = 4;
+        scsiDev.phase = DATA_IN;
+    }
 }
 
 /****************/
@@ -794,6 +839,7 @@ extern "C"
 int scsiDiskCommand()
 {
     int commandHandled = 1;
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
 
     uint8_t command = scsiDev.cdb[0];
     if (unlikely(command == 0x1B))
@@ -804,9 +850,20 @@ int scsiDiskCommand()
         int start = scsiDev.cdb[4] & 1;
 	    int loadEject = scsiDev.cdb[4] & 2;
 	
-        if (loadEject)
+        if (loadEject && img.deviceType == S2S_CFG_OPTICAL)
         {
-            // Ignore load/eject requests. We can't do that.
+            if (start)
+            {
+                azdbg("------ CDROM close tray");
+                img.ejected = false;
+                img.cdrom_events = 2; // New media
+            }
+            else
+            {
+                azdbg("------ CDROM open tray");
+                img.ejected = true;
+                img.cdrom_events = 3; // Media removal
+            }
         }
         else if (start)
         {
@@ -821,6 +878,11 @@ int scsiDiskCommand()
     {
         // TEST UNIT READY
         doTestUnitReady();
+    }
+    else if (command == 0x4A)
+    {
+        bool immed = scsiDev.cdb[1] & 1;
+        doGetEventStatusNotification(immed);
     }
     else if (unlikely(!doTestUnitReady()))
     {
