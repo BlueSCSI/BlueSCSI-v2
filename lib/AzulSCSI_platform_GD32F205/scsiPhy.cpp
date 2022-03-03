@@ -5,6 +5,7 @@
 #include "AzulSCSI_platform.h"
 #include "scsi_accel_asm.h"
 #include "scsi_accel_dma.h"
+#include "scsi_accel_greenpak.h"
 #include "AzulSCSI_log.h"
 #include "AzulSCSI_log_trace.h"
 
@@ -271,7 +272,14 @@ static void processPollingWrite(uint32_t count)
     if (count_words * 4 == count)
     {
         // Use accelerated subroutine
-        scsi_accel_asm_send((const uint32_t*)data, count_words, &scsiDev.resetFlag);
+        if (greenpak_is_ready())
+        {
+            scsi_accel_greenpak_send((const uint32_t*)data, count_words, &scsiDev.resetFlag);
+        }
+        else
+        {
+            scsi_accel_asm_send((const uint32_t*)data, count_words, &scsiDev.resetFlag);
+        }
     }
     else
     {
