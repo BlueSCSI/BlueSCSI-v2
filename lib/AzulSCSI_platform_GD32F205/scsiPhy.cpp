@@ -8,12 +8,25 @@
 #include "scsi_accel_greenpak.h"
 #include "AzulSCSI_log.h"
 #include "AzulSCSI_log_trace.h"
+#include "AzulSCSI_config.h"
+#include <minIni.h>
 
 #include <scsi2sd.h>
 extern "C" {
 #include <scsi.h>
 #include <time.h>
 }
+
+// Acceleration mode in use
+static enum {
+    PHY_MODE_UNKNOWN = 0,
+    PHY_MODE_PIO = 1,
+    PHY_MODE_DMA_TIMER = 2,
+    PHY_MODE_GREENPAK_PIO = 3
+} g_scsi_phy_mode;
+static const char *g_scsi_phy_mode_names[4] = {
+    "Unknown", "PIO", "DMA_TIMER", "GREENPAK_PIO"
+};
 
 static void init_irqs();
 
@@ -100,6 +113,34 @@ static void scsi_rst_assert_interrupt()
     }
 }
 
+static void selectPhyMode()
+{
+    int oldmode = g_scsi_phy_mode;
+
+    int wanted_mode = ini_getl("SCSI", "PhyMode", PHY_MODE_UNKNOWN, CONFIGFILE);
+    g_scsi_phy_mode = PHY_MODE_PIO;
+    
+#ifdef SCSI_ACCEL_DMA_AVAILABLE
+    if (wanted_mode == PHY_MODE_UNKNOWN || wanted_mode == PHY_MODE_DMA_TIMER)
+    {
+        g_scsi_phy_mode = PHY_MODE_DMA_TIMER;
+    }
+#endif
+
+    if (wanted_mode == PHY_MODE_UNKNOWN || wanted_mode == PHY_MODE_GREENPAK_PIO)
+    {
+        if (greenpak_is_ready())
+        {
+            g_scsi_phy_mode = PHY_MODE_GREENPAK_PIO;
+        }
+    }
+
+    if (g_scsi_phy_mode != oldmode)
+    {
+        azlog("SCSI PHY operating mode: ", g_scsi_phy_mode_names[g_scsi_phy_mode]);
+    }
+}
+
 extern "C" void scsiPhyReset(void)
 {
     SCSI_RELEASE_OUTPUTS();
@@ -107,9 +148,8 @@ extern "C" void scsiPhyReset(void)
     g_scsi_ctrl_bsy = 0;
     init_irqs();
 
-#ifdef SCSI_ACCEL_DMA_AVAILABLE
+    selectPhyMode();
     scsi_accel_dma_init();
-#endif
 }
 
 /************************/
@@ -233,33 +273,39 @@ extern "C" void scsiStartWrite(const uint8_t* data, uint32_t count)
 {
     scsiLogDataIn(data, count);
 
-#ifdef SCSI_ACCEL_DMA_AVAILABLE
-    if (gpio_input_bit_get(DIP_PORT, DIPSW1_PIN))
+    if (g_scsi_phy_mode == PHY_MODE_PIO || g_scsi_phy_mode == PHY_MODE_GREENPAK_PIO)
     {
+        // Software based bit-banging.
+        // Write requests are queued and then executed in isWriteFinished() callback.
+        // This allows better parallelism with SD card transfers.
+        
+        if (g_scsi_writereq.count)
+        {
+            if (data == g_scsi_writereq.data + g_scsi_writereq.count)
+            {
+                // Combine with previous one
+                g_scsi_writereq.count += count;
+                return;
+            }
+            else
+            {
+                // Actually execute previous request
+                scsiFinishWrite();
+            }
+        }
+
+        g_scsi_writereq.data = data;
+        g_scsi_writereq.count = count;
+    }
+    else if (g_scsi_phy_mode == PHY_MODE_DMA_TIMER)
+    {
+        // Accelerated writes using DMA and timers
         scsi_accel_dma_startWrite(data, count, &scsiDev.resetFlag);
-        return;
     }
-#endif
-
-    if (g_scsi_writereq.count)
+    else
     {
-        if (data == g_scsi_writereq.data + g_scsi_writereq.count)
-        {
-            // Combine with previous one
-            g_scsi_writereq.count += count;
-            return;
-        }
-        else
-        {
-            // Actually execute previous request
-            scsiFinishWrite();
-        }
+        azlog("Unknown SCSI PHY mode: ", (int)g_scsi_phy_mode);
     }
-
-    // Queue polling write requests.
-    // This allows better parallelism with SD card transfers.
-    g_scsi_writereq.data = data;
-    g_scsi_writereq.count = count;
 }
 
 static void processPollingWrite(uint32_t count)
@@ -272,7 +318,7 @@ static void processPollingWrite(uint32_t count)
     if (count_words * 4 == count)
     {
         // Use accelerated subroutine
-        if (greenpak_is_ready())
+        if (g_scsi_phy_mode == PHY_MODE_GREENPAK_PIO)
         {
             scsi_accel_greenpak_send((const uint32_t*)data, count_words, &scsiDev.resetFlag);
         }
@@ -320,33 +366,38 @@ static bool isPollingWriteFinished(const uint8_t *data)
 
 extern "C" bool scsiIsWriteFinished(const uint8_t *data)
 {
-#ifdef SCSI_ACCEL_DMA_AVAILABLE
-    if (!scsi_accel_dma_isWriteFinished(data))
-        return false;
-#endif
-
-    // Check if there is still a polling transfer in progress
-    if (!isPollingWriteFinished(data))
+    if (g_scsi_phy_mode == PHY_MODE_DMA_TIMER)
     {
-        // Process the transfer piece-by-piece while waiting
-        // for SD card to react.
-        processPollingWrite(256);
-        return isPollingWriteFinished(data);
+        return scsi_accel_dma_isWriteFinished(data);
     }
+    else
+    {
+        // Check if there is still a polling transfer in progress
+        if (!isPollingWriteFinished(data))
+        {
+            // Process the transfer piece-by-piece while waiting
+            // for SD card to react.
+            processPollingWrite(256);
+            return isPollingWriteFinished(data);
+        }
 
-    return true;
+        return true;
+    }
 }
 
 extern "C" void scsiFinishWrite()
 {
-#ifdef SCSI_ACCEL_DMA_AVAILABLE
-    scsi_accel_dma_finishWrite(&scsiDev.resetFlag);
-#endif
-
-    // Finish previously started polling write request.
-    if (g_scsi_writereq.count)
+    if (g_scsi_phy_mode == PHY_MODE_DMA_TIMER)
     {
-        processPollingWrite(g_scsi_writereq.count);
+        scsi_accel_dma_finishWrite(&scsiDev.resetFlag);
+    }
+    else
+    {
+        // Finish previously started polling write request.
+        if (g_scsi_writereq.count)
+        {
+            processPollingWrite(g_scsi_writereq.count);
+        }
     }
 }
 

@@ -4,7 +4,15 @@
 #include <gd32f20x_rcu.h>
 #include <assert.h>
 
-#ifdef SCSI_ACCEL_DMA_AVAILABLE
+#ifndef SCSI_ACCEL_DMA_AVAILABLE
+
+void scsi_accel_dma_init() {}
+void scsi_accel_dma_startWrite(const uint8_t* data, uint32_t count, volatile int *resetFlag) {}
+void scsi_accel_dma_stopWrite() {}
+void scsi_accel_dma_finishWrite(volatile int *resetFlag) {}
+bool scsi_accel_dma_isWriteFinished(const uint8_t* data) { return true; }
+
+#else
 
 #define DMA_BUF_SIZE 256
 #define DMA_BUF_MASK (DMA_BUF_SIZE - 1)
@@ -94,9 +102,6 @@ void scsi_accel_dma_init()
     gpio_init(SCSI_TIMER_IN_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_TIMER_IN_PIN);
 
     scsi_accel_dma_stopWrite();
-
-    // For debug
-    gpio_init(GPIOE, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_0);
 }
 
 // Select whether OUT_REQ is connected to timer or GPIO port
@@ -106,13 +111,11 @@ static void scsi_dma_gpio_config(bool enable_timer)
     {
         gpio_init(SCSI_OUT_PORT, GPIO_MODE_IPU, GPIO_OSPEED_50MHZ, SCSI_OUT_REQ);
         gpio_init(SCSI_TIMER_OUT_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, SCSI_TIMER_OUT_PIN);
-        GPIO_BOP(GPIOE) = GPIO_PIN_0;
     }
     else
     {
         gpio_init(SCSI_TIMER_OUT_PORT, GPIO_MODE_IN_FLOATING, GPIO_OSPEED_50MHZ, SCSI_TIMER_OUT_PIN);
         gpio_init(SCSI_OUT_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_REQ);
-        GPIO_BC(GPIOE) = GPIO_PIN_0;
     }
 }
 
@@ -182,11 +185,11 @@ static void start_dma()
     DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) |= DMA_CHXCTL_CHEN;
 
     // Make sure REQ is initially high
+    TIMER_CNT(SCSI_TIMER) = 16;
     TIMER_CHCTL1(SCSI_TIMER) = 0x6050;
     TIMER_CHCTL1(SCSI_TIMER) = 0x6074;
 
     // Enable timer
-    TIMER_CNT(SCSI_TIMER) = 16;
     TIMER_CTL0(SCSI_TIMER) |= TIMER_CTL0_CEN;
 
     // Generate first events
@@ -199,8 +202,11 @@ static void stop_dma()
 {
     DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA) &= ~DMA_CHXCTL_CHEN;
     DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) &= ~DMA_CHXCTL_CHEN;
+    DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA) &= ~(DMA_CHXCTL_FTFIE | DMA_CHXCTL_HTFIE);
+    DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) &= ~DMA_CHXCTL_FTFIE;
     TIMER_CTL0(SCSI_TIMER) &= ~TIMER_CTL0_CEN;
     g_scsi_dma_state = SCSIDMA_IDLE;
+    SCSI_RELEASE_DATA_REQ();
 }
 
 // Convert new data from application buffer to DMA buffer
@@ -242,9 +248,11 @@ extern "C" void SCSI_TIMER_DMACHA_IRQ()
     if (g_scsi_dma.next_app_buf && g_scsi_dma.bytes_dma == g_scsi_dma.bytes_app)
     {
         // Switch to next buffer
+        assert(g_scsi_dma.scheduled_dma == g_scsi_dma.bytes_app);
         g_scsi_dma.app_buf = g_scsi_dma.next_app_buf;
         g_scsi_dma.bytes_app = g_scsi_dma.next_app_bytes;
         g_scsi_dma.bytes_dma = 0;
+        g_scsi_dma.scheduled_dma = 0;
         g_scsi_dma.next_app_buf = 0;
         g_scsi_dma.next_app_bytes = 0;
         refill_dmabuf();
@@ -266,8 +274,13 @@ extern "C" void SCSI_TIMER_DMACHB_IRQ()
         {
             if (g_scsi_dma.dma_idx < g_scsi_dma.dma_fillto)
             {
+                // Previous request didn't have a complete buffer worth of data.
+                // Refill the buffer and ensure that the first byte of the new data gets
+                // written to outputs.
                 __disable_irq();
+                uint32_t *first_data = &g_scsi_dma.dma_buf[g_scsi_dma.dma_idx & DMA_BUF_MASK];
                 refill_dmabuf();
+                GPIO_BOP(SCSI_OUT_PORT) = *first_data;
                 __enable_irq();
             }
 
@@ -326,7 +339,7 @@ void scsi_accel_dma_startWrite(const uint8_t* data, uint32_t count, volatile int
         }
     }
 
-    azdbg("Starting DMA write of ", (int)count, " bytes");
+    // azdbg("Starting DMA write of ", (int)count, " bytes");
     scsi_dma_gpio_config(true);
     g_scsi_dma_state = SCSIDMA_WRITE;
     g_scsi_dma.app_buf = (uint8_t*)data;

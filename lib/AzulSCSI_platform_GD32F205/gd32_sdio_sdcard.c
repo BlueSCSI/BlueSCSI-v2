@@ -2472,7 +2472,7 @@ static void dma_transfer_config(uint32_t *srcbuf, uint32_t bufsize)
     dma_struct.memory_inc = DMA_MEMORY_INCREASE_ENABLE;
     dma_struct.periph_width = DMA_PERIPHERAL_WIDTH_32BIT;
     dma_struct.memory_width = DMA_MEMORY_WIDTH_32BIT;
-    dma_struct.priority = DMA_PRIORITY_ULTRA_HIGH;
+    dma_struct.priority = DMA_PRIORITY_MEDIUM;
     dma_init(DMA1, DMA_CH3, &dma_struct);
 
     dma_circulation_disable(DMA1, DMA_CH3);

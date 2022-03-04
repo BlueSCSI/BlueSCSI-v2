@@ -6,9 +6,8 @@
 #include "AzulSCSI_platform.h"
 
 #ifdef SCSI_TIMER
-// TODO: This works, but without external logic does not improve performance compared
-// to software bitbang.
-// #define SCSI_ACCEL_DMA_AVAILABLE 1
+#define SCSI_ACCEL_DMA_AVAILABLE 1
+#endif
 
 void scsi_accel_dma_init();
 void scsi_accel_dma_startWrite(const uint8_t* data, uint32_t count, volatile int *resetFlag);
@@ -20,4 +19,4 @@ void scsi_accel_dma_finishWrite(volatile int *resetFlag);
 bool scsi_accel_dma_isWriteFinished(const uint8_t* data);
 
 
-#endif
+
