@@ -101,9 +101,11 @@ void azplatform_init()
     DBG_CTL |= DBG_CTL_TRACE_IOEN;
     CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
     TPI->ACPR = SystemCoreClock / 2000000 - 1; // 2 Mbps baudrate for SWO
+    // TPI->ACPR = SystemCoreClock / 30000000 - 1; // 30 Mbps baudrate for SWO
     TPI->SPPR = 2;
     TPI->FFCR = 0x100; // TPIU packet framing disabled
-    // DWT->CTRL = (1 << DWT_CTRL_CYCTAP_Pos)
+    // DWT->CTRL |= (1 << DWT_CTRL_EXCTRCENA_Pos);
+    // DWT->CTRL |= (1 << DWT_CTRL_CYCTAP_Pos)
     //             | (15 << DWT_CTRL_POSTPRESET_Pos)
     //             | (1 << DWT_CTRL_PCSAMPLENA_Pos)
     //             | (3 << DWT_CTRL_SYNCTAP_Pos)
