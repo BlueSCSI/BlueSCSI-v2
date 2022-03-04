@@ -169,12 +169,21 @@ bool findHDDImages()
     if(!file.isDir()) {
       file.getName(name, MAX_FILE_PATH+1);
       file.close();
-      if ((tolower(name[0]) == 'h' && tolower(name[1]) == 'd') ||
-          (tolower(name[0]) == 'c' && tolower(name[1]) == 'd')) {
+      bool is_hd = (tolower(name[0]) == 'h' && tolower(name[1]) == 'd');
+      bool is_cd = (tolower(name[0]) == 'c' && tolower(name[1]) == 'd');
+
+      if (is_hd || is_cd)
+      {
         // Defaults for Hard Disks
         int id  = 1; // 0 and 3 are common in Macs for physical HD and CD, so avoid them.
         int lun = 0;
         int blk = 512;
+
+        if (is_cd)
+        {
+          // Use 2048 as the default sector size for CD-ROMs
+          blk = 2048;
+        }
 
         // Positionally read in and coerase the chars to integers.
         // We only require the minimum and read in the next if provided.
