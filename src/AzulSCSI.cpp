@@ -366,6 +366,7 @@ static void reinitSCSI()
 extern "C" int azulscsi_main(void)
 {
   azplatform_init();
+  azplatform_late_init();
 
   if(!SD.begin(SD_CONFIG))
   {

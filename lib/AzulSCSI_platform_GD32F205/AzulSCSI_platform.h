@@ -52,6 +52,9 @@ static inline void delay_100ns()
 // Initialize SPI and GPIO configuration
 void azplatform_init();
 
+// Initialization for main application, not used for bootloader
+void azplatform_late_init();
+
 // Setup soft watchdog
 void azplatform_reset_watchdog();
 
