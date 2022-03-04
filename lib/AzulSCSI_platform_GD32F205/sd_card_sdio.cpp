@@ -44,7 +44,7 @@ bool SdioCard::begin(SdioConfig sdioConfig)
         && checkReturnOk(sd_card_select_deselect(g_sdio_card_rca))
         && checkReturnOk(sd_cardstatus_get(&g_sdio_card_status))
         && checkReturnOk(sd_bus_mode_config(SDIO_BUSMODE_4BIT))
-        && checkReturnOk(sd_transfer_mode_config(SD_DMA_MODE));
+        && checkReturnOk(sd_transfer_mode_config(sdioConfig.useDma() ? SD_DMA_MODE : SD_POLLING_MODE));
 }
 
 uint8_t SdioCard::errorCode() const
@@ -279,5 +279,8 @@ extern "C" void SDIO_IRQHandler(void)
 
 // SDIO configuration for main program
 SdioConfig g_sd_sdio_config(DMA_SDIO);
+
+// SDIO configuration in crash
+SdioConfig g_sd_sdio_config_crash(0);
 
 #endif
