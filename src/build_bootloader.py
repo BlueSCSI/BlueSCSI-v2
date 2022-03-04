@@ -23,6 +23,12 @@ for nodelist in env["PIOBUILDFILES"]:
             dep_objs.append(node)
 # print("Bootloader dependencies: ", type(dep_objs), str([str(f.rfile()) for f in dep_objs]))
 
+# Use different linker script for bootloader
+if env2.GetProjectOption("ldscript_bootloader"):
+    env2.Replace(LDSCRIPT_PATH = env2.GetProjectOption("ldscript_bootloader"))
+    env2['LINKFLAGS'] = [a for a in env2['LINKFLAGS'] if not a.startswith('-T') and not a.endswith('.ld')]
+    env2.Append(LINKFLAGS="-T" + env2.GetProjectOption("ldscript_bootloader"))
+
 # Build bootloader.elf
 bootloader_elf = env2.Program(
     os.path.join("$BUILD_DIR", "bootloader.elf"),

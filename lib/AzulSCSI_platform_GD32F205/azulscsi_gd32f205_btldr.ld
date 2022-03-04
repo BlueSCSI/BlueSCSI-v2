@@ -1,7 +1,6 @@
 /*
  *
- * Customized linker script for combining bootloader & main program
- * PlatformIO default linker script template for STM32 F1/F2/F3/F4/F7/L0/L1/L4
+ * Customized linker script for building bootloader
  *
  */
 
@@ -19,20 +18,28 @@ MEMORY
 {
     RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 128K
     CCRAM (xrw)    : ORIGIN = 0x10000000, LENGTH = 0K
-    FLASH (rx)     : ORIGIN = 0x08000000, LENGTH = 256K
+    FLASH (rx)     : ORIGIN = 0x08000000, LENGTH = 32K
 }
 
 /* Define output sections */
 SECTIONS
 {
-  /* If bootloader is included, it goes in first 32 kB */
-  .text.bootloader : ALIGN(16) SUBALIGN(16)
+  /* Discard interrupt vectors that are not needed for bootloader.
+   * This way unnecessary code doesn't get pulled in.
+   */
+  /DISCARD/ :
   {
-    KEEP(*(.text.btldr*))
-    . = ALIGN(32768);
-    CHECK_BOOTLOADER_SIZE = 1 / (. <= 32768);
-  } >FLASH
-  
+    *(*DMA1_Channel4_IRQHandler*)
+    *(*DMA1_Channel1_IRQHandler*)
+    *(*EXTI3_IRQHandler*)
+    *(*EXTI10_15_IRQHandler*)
+  }
+
+  DMA1_Channel1_IRQHandler = 0;
+  DMA1_Channel4_IRQHandler = 0;
+  EXTI10_15_IRQHandler = 0;
+  EXTI3_IRQHandler = 0;
+
   /* The startup code goes first into FLASH */
   .isr_vector :
   {
