@@ -169,7 +169,10 @@ void azplatform_init()
 
     // SWO trace pin on PB3
     gpio_init(GPIOB, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_3);
+}
 
+void azplatform_late_init()
+{
     if (gpio_input_bit_get(DIP_PORT, DIPSW3_PIN))
     {
         azlog("DIPSW3 is ON: Enabling SCSI termination");

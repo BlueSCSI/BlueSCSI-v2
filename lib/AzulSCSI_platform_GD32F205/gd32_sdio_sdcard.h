@@ -258,6 +258,7 @@ sd_transfer_state_enum sd_transfer_state_get(void);
 uint32_t sd_card_capacity_get(void);
 /* get the detailed information of the SD card based on received CID and CSD */
 sd_error_enum sd_card_information_get(sd_card_info_struct *pcardinfo);
+sd_error_enum sd_card_information_get_short(sdio_card_type_enum *card_type, uint16_t *card_rca);
 
 /* Get card information in raw format */
 void sd_cid_get(uint8_t *cid);

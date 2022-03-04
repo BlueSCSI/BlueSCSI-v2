@@ -13,9 +13,10 @@
 
 static sd_error_enum g_sdio_error = SD_OK;
 static int g_sdio_error_line = 0;
-static sd_card_info_struct g_sdio_card_info;
 static uint32_t g_sdio_card_status;
 static uint32_t g_sdio_clk_kHz;
+static sdio_card_type_enum g_sdio_card_type;
+static uint16_t g_sdio_card_rca;
 
 #define checkReturnOk(call) ((g_sdio_error = (call)) == SD_OK ? true : logSDError(__LINE__))
 static bool logSDError(int line)
@@ -39,8 +40,8 @@ bool SdioCard::begin(SdioConfig sdioConfig)
         return false;
     }
 
-    return checkReturnOk(sd_card_information_get(&g_sdio_card_info))
-        && checkReturnOk(sd_card_select_deselect(g_sdio_card_info.card_rca))
+    return checkReturnOk(sd_card_information_get_short(&g_sdio_card_type, &g_sdio_card_rca))
+        && checkReturnOk(sd_card_select_deselect(g_sdio_card_rca))
         && checkReturnOk(sd_cardstatus_get(&g_sdio_card_status))
         && checkReturnOk(sd_bus_mode_config(SDIO_BUSMODE_4BIT))
         && checkReturnOk(sd_transfer_mode_config(SD_DMA_MODE));
@@ -113,7 +114,9 @@ bool SdioCard::readStop()
 
 uint32_t SdioCard::sectorCount()
 {
-    return sdCardCapacity((csd_t*)&g_sdio_card_info.card_csd);
+    csd_t csd;
+    sd_csd_get((uint8_t*)&csd);
+    return sdCardCapacity(&csd);
 }
 
 uint32_t SdioCard::status()
@@ -163,9 +166,9 @@ bool SdioCard::syncDevice()
 
 uint8_t SdioCard::type() const
 {
-    if (g_sdio_card_info.card_type == SDIO_HIGH_CAPACITY_SD_CARD)
+    if (g_sdio_card_type == SDIO_HIGH_CAPACITY_SD_CARD)
         return SD_CARD_TYPE_SDHC;
-    else if (g_sdio_card_info.card_type == SDIO_STD_CAPACITY_SD_CARD_V2_0)
+    else if (g_sdio_card_type == SDIO_STD_CAPACITY_SD_CARD_V2_0)
         return SD_CARD_TYPE_SD2;
     else
         return SD_CARD_TYPE_SD1;
