@@ -217,13 +217,16 @@ void azplatform_log(const char *s)
 
 void azplatform_emergency_log_save()
 {
+    azplatform_set_sd_callback(NULL, NULL);
+
+    SD.begin(SD_CONFIG_CRASH);
     FsFile crashfile = SD.open(CRASHFILE, O_WRONLY | O_CREAT | O_TRUNC);
 
     if (!crashfile.isOpen())
     {
         // Try to reinitialize
         int max_retry = 10;
-        while (max_retry-- > 0 && !SD.begin(SD_CONFIG));
+        while (max_retry-- > 0 && !SD.begin(SD_CONFIG_CRASH));
 
         crashfile = SD.open(CRASHFILE, O_WRONLY | O_CREAT | O_TRUNC);
     }
