@@ -19,13 +19,14 @@ extern "C" {
 
 // Acceleration mode in use
 static enum {
-    PHY_MODE_UNKNOWN = 0,
+    PHY_MODE_BEST_AVAILABLE = 0,
     PHY_MODE_PIO = 1,
     PHY_MODE_DMA_TIMER = 2,
-    PHY_MODE_GREENPAK_PIO = 3
+    PHY_MODE_GREENPAK_PIO = 3,
+    PHY_MODE_GREENPAK_DMA = 4
 } g_scsi_phy_mode;
-static const char *g_scsi_phy_mode_names[4] = {
-    "Unknown", "PIO", "DMA_TIMER", "GREENPAK_PIO"
+static const char *g_scsi_phy_mode_names[] = {
+    "Unknown", "PIO", "DMA_TIMER", "GREENPAK_PIO", "GREENPAK_DMA"
 };
 
 static void init_irqs();
@@ -117,23 +118,43 @@ static void selectPhyMode()
 {
     int oldmode = g_scsi_phy_mode;
 
-    int wanted_mode = ini_getl("SCSI", "PhyMode", PHY_MODE_UNKNOWN, CONFIGFILE);
+    // TODO: Change to BEST_AVAILABLE once accelerated modes are tested enough.
+    // int default_mode = PHY_MODE_BEST_AVAILABLE;
+    int default_mode = PHY_MODE_PIO;
+
+    // Read overriding setting from configuration file
+    int wanted_mode = ini_getl("SCSI", "PhyMode", default_mode, CONFIGFILE);
+
+    // Default: software GPIO bitbang, available on all revisions
     g_scsi_phy_mode = PHY_MODE_PIO;
     
+    // Timer based DMA bitbang, available on V1.1, 2.8 MB/s
 #ifdef SCSI_ACCEL_DMA_AVAILABLE
-    if (wanted_mode == PHY_MODE_UNKNOWN || wanted_mode == PHY_MODE_DMA_TIMER)
+    if (wanted_mode == PHY_MODE_BEST_AVAILABLE || wanted_mode == PHY_MODE_DMA_TIMER)
     {
         g_scsi_phy_mode = PHY_MODE_DMA_TIMER;
     }
 #endif
 
-    if (wanted_mode == PHY_MODE_UNKNOWN || wanted_mode == PHY_MODE_GREENPAK_PIO)
+    // GreenPAK with software write, available on V1.1 with extra chip, 3.5 MB/s
+    if (wanted_mode == PHY_MODE_BEST_AVAILABLE || wanted_mode == PHY_MODE_GREENPAK_PIO)
     {
         if (greenpak_is_ready())
         {
             g_scsi_phy_mode = PHY_MODE_GREENPAK_PIO;
         }
     }
+
+    // GreenPAK with DMA write, available on V1.1 with extra chip
+#ifdef SCSI_ACCEL_DMA_AVAILABLE
+    if (wanted_mode == PHY_MODE_BEST_AVAILABLE || wanted_mode == PHY_MODE_GREENPAK_DMA)
+    {
+        if (greenpak_is_ready())
+        {
+            g_scsi_phy_mode = PHY_MODE_GREENPAK_DMA;
+        }
+    }
+#endif
 
     if (g_scsi_phy_mode != oldmode)
     {
@@ -144,12 +165,22 @@ static void selectPhyMode()
 extern "C" void scsiPhyReset(void)
 {
     SCSI_RELEASE_OUTPUTS();
+    scsi_accel_dma_stopWrite();
+
     g_scsi_sts_selection = 0;
     g_scsi_ctrl_bsy = 0;
     init_irqs();
 
     selectPhyMode();
-    scsi_accel_dma_init();
+
+    if (g_scsi_phy_mode == PHY_MODE_DMA_TIMER)
+    {
+        scsi_accel_timer_dma_init();
+    }
+    else if (g_scsi_phy_mode == PHY_MODE_GREENPAK_DMA)
+    {
+        scsi_accel_greenpak_dma_init();
+    }
 }
 
 /************************/
@@ -297,7 +328,7 @@ extern "C" void scsiStartWrite(const uint8_t* data, uint32_t count)
         g_scsi_writereq.data = data;
         g_scsi_writereq.count = count;
     }
-    else if (g_scsi_phy_mode == PHY_MODE_DMA_TIMER)
+    else if (g_scsi_phy_mode == PHY_MODE_DMA_TIMER || g_scsi_phy_mode == PHY_MODE_GREENPAK_DMA)
     {
         // Accelerated writes using DMA and timers
         scsi_accel_dma_startWrite(data, count, &scsiDev.resetFlag);
@@ -366,7 +397,7 @@ static bool isPollingWriteFinished(const uint8_t *data)
 
 extern "C" bool scsiIsWriteFinished(const uint8_t *data)
 {
-    if (g_scsi_phy_mode == PHY_MODE_DMA_TIMER)
+    if (g_scsi_phy_mode == PHY_MODE_DMA_TIMER || g_scsi_phy_mode == PHY_MODE_GREENPAK_DMA)
     {
         return scsi_accel_dma_isWriteFinished(data);
     }
@@ -387,7 +418,7 @@ extern "C" bool scsiIsWriteFinished(const uint8_t *data)
 
 extern "C" void scsiFinishWrite()
 {
-    if (g_scsi_phy_mode == PHY_MODE_DMA_TIMER)
+    if (g_scsi_phy_mode == PHY_MODE_DMA_TIMER || g_scsi_phy_mode == PHY_MODE_GREENPAK_DMA)
     {
         scsi_accel_dma_finishWrite(&scsiDev.resetFlag);
     }

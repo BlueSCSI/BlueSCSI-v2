@@ -61,7 +61,6 @@ extern const uint32_t g_scsi_out_byte_to_bop_pld1lo[256];
 void scsi_accel_greenpak_send(const uint32_t *buf, uint32_t num_words, volatile int *resetFlag)
 {
     volatile uint32_t *out_port_bop = (volatile uint32_t*)&GPIO_BOP(SCSI_OUT_PORT);
-    const uint32_t *byte_lookup = g_scsi_out_byte_to_bop;
     uint32_t ack_pin_bb = PERIPH_BB_BASE + (((uint32_t)&GPIO_ISTAT(SCSI_ACK_PORT)) - APB1_BUS_BASE) * 32 + SCSI_IN_ACK_IDX * 4;
     uint32_t req_pin_bb = PERIPH_BB_BASE + (((uint32_t)&GPIO_ISTAT(SCSI_OUT_PORT)) - APB1_BUS_BASE) * 32 + SCSI_OUT_REQ_IDX * 4;
     register uint32_t tmp1 = 0;

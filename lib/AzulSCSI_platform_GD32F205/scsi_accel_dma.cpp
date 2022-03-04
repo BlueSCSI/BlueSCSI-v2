@@ -3,16 +3,25 @@
 #include <gd32f20x_timer.h>
 #include <gd32f20x_rcu.h>
 #include <assert.h>
+#include <string.h>
 
 #ifndef SCSI_ACCEL_DMA_AVAILABLE
 
-void scsi_accel_dma_init() {}
+void scsi_accel_timer_dma_init() {}
+void scsi_accel_greenpak_dma_init() {}
 void scsi_accel_dma_startWrite(const uint8_t* data, uint32_t count, volatile int *resetFlag) {}
 void scsi_accel_dma_stopWrite() {}
 void scsi_accel_dma_finishWrite(volatile int *resetFlag) {}
 bool scsi_accel_dma_isWriteFinished(const uint8_t* data) { return true; }
 
+
 #else
+
+static void greenpak_refill_dmabuf();
+static void greenpak_start_dma();
+static void greenpak_stop_dma();
+
+enum greenpak_state_t { GREENPAK_IO1_LOW = 0, GREENPAK_IO1_HIGH, GREENPAK_STOP};
 
 #define DMA_BUF_SIZE 256
 #define DMA_BUF_MASK (DMA_BUF_SIZE - 1)
@@ -25,17 +34,20 @@ static struct {
     uint32_t bytes_app; // Bytes available in application buffer
     uint32_t bytes_dma; // Bytes (words) written so far to DMA buffer
     uint32_t scheduled_dma; // Bytes (words) that DMA data count was last set to
+    greenpak_state_t greenpak_state; // Toggle signal state for greenpak
 
     uint8_t *next_app_buf; // Next buffer from application after current one finishes
     uint32_t next_app_bytes; // Bytes in next buffer
 } g_scsi_dma;
 
-enum scsidma_state_t { SCSIDMA_IDLE = 0, SCSIDMA_WRITE, SCSIDMA_READ };
+enum scsidma_state_t { SCSIDMA_IDLE = 0, SCSIDMA_WRITE };
 static volatile scsidma_state_t g_scsi_dma_state;
+static bool g_scsi_dma_use_greenpak;
 
-void scsi_accel_dma_init()
+void scsi_accel_timer_dma_init()
 {
     g_scsi_dma_state = SCSIDMA_IDLE;
+    g_scsi_dma_use_greenpak = false;
     rcu_periph_clock_enable(SCSI_TIMER_RCU);
     rcu_periph_clock_enable(SCSI_TIMER_DMA_RCU);
 
@@ -105,15 +117,25 @@ void scsi_accel_dma_init()
 }
 
 // Select whether OUT_REQ is connected to timer or GPIO port
-static void scsi_dma_gpio_config(bool enable_timer)
+static void scsi_dma_gpio_config(bool enable)
 {
-    if (enable_timer)
+    if (enable)
     {
         gpio_init(SCSI_OUT_PORT, GPIO_MODE_IPU, GPIO_OSPEED_50MHZ, SCSI_OUT_REQ);
-        gpio_init(SCSI_TIMER_OUT_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, SCSI_TIMER_OUT_PIN);
+
+        if (g_scsi_dma_use_greenpak)
+        {
+            GPIO_BC(SCSI_OUT_PORT) = GREENPAK_PLD_IO1;
+            GPIO_BOP(SCSI_OUT_PORT) = GREENPAK_PLD_IO2;
+        }
+        else
+        {
+            gpio_init(SCSI_TIMER_OUT_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, SCSI_TIMER_OUT_PIN);
+        }
     }
     else
     {
+        GPIO_BC(SCSI_OUT_PORT) = GREENPAK_PLD_IO2;
         gpio_init(SCSI_TIMER_OUT_PORT, GPIO_MODE_IN_FLOATING, GPIO_OSPEED_50MHZ, SCSI_TIMER_OUT_PIN);
         gpio_init(SCSI_OUT_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_REQ);
     }
@@ -122,6 +144,12 @@ static void scsi_dma_gpio_config(bool enable_timer)
 // Convert input bytes into BOP values in the DMA buffer
 static void refill_dmabuf()
 {
+    if (g_scsi_dma_use_greenpak)
+    {
+        greenpak_refill_dmabuf();
+        return;
+    }
+
     // Check how many bytes we have available from the application
     uint32_t count = g_scsi_dma.bytes_app - g_scsi_dma.bytes_dma;
     
@@ -148,7 +176,7 @@ static void refill_dmabuf()
         dst[(pos++) & DMA_BUF_MASK] = g_scsi_out_byte_to_bop[(input >> 24) & 0xFF];
     }
 
-    while (pos + 4 <= end)
+    while (pos < end)
     {
         dst[(pos++) & DMA_BUF_MASK] = g_scsi_out_byte_to_bop[*src++];
     }
@@ -157,6 +185,12 @@ static void refill_dmabuf()
 // Start DMA transfer
 static void start_dma()
 {
+    if (g_scsi_dma_use_greenpak)
+    {
+        greenpak_start_dma();
+        return;
+    }
+
     // Disable channels while configuring
     DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA) &= ~DMA_CHXCTL_CHEN;
     DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) &= ~DMA_CHXCTL_CHEN;
@@ -166,6 +200,7 @@ static void start_dma()
     // CHA / Data channel is in circular mode and always has DMA_BUF_SIZE buffer size.
     // CHB / Update channel limits the number of data.
     DMA_CHMADDR(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA) = (uint32_t)g_scsi_dma.dma_buf;
+    DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA) = DMA_BUF_SIZE;
     uint32_t dma_to_schedule = g_scsi_dma.bytes_app - g_scsi_dma.scheduled_dma;
     DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) = dma_to_schedule;
     g_scsi_dma.scheduled_dma += dma_to_schedule;
@@ -200,6 +235,7 @@ static void start_dma()
 // Stop DMA transfer
 static void stop_dma()
 {
+    greenpak_stop_dma();
     DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA) &= ~DMA_CHXCTL_CHEN;
     DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) &= ~DMA_CHXCTL_CHEN;
     DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA) &= ~(DMA_CHXCTL_FTFIE | DMA_CHXCTL_HTFIE);
@@ -207,6 +243,23 @@ static void stop_dma()
     TIMER_CTL0(SCSI_TIMER) &= ~TIMER_CTL0_CEN;
     g_scsi_dma_state = SCSIDMA_IDLE;
     SCSI_RELEASE_DATA_REQ();
+}
+
+static void check_dma_next_buffer()
+{
+    // Check if we are at the end of the application buffer
+    if (g_scsi_dma.next_app_buf && g_scsi_dma.bytes_dma == g_scsi_dma.bytes_app)
+    {
+        // Switch to next buffer
+        assert(g_scsi_dma.scheduled_dma == g_scsi_dma.bytes_app);
+        g_scsi_dma.app_buf = g_scsi_dma.next_app_buf;
+        g_scsi_dma.bytes_app = g_scsi_dma.next_app_bytes;
+        g_scsi_dma.bytes_dma = 0;
+        g_scsi_dma.scheduled_dma = 0;
+        g_scsi_dma.next_app_buf = 0;
+        g_scsi_dma.next_app_bytes = 0;
+        refill_dmabuf();
+    }
 }
 
 // Convert new data from application buffer to DMA buffer
@@ -244,19 +297,7 @@ extern "C" void SCSI_TIMER_DMACHA_IRQ()
     // Fill DMA buffer with data from current application buffer
     refill_dmabuf();
 
-    // Check if we are at the end of the application buffer
-    if (g_scsi_dma.next_app_buf && g_scsi_dma.bytes_dma == g_scsi_dma.bytes_app)
-    {
-        // Switch to next buffer
-        assert(g_scsi_dma.scheduled_dma == g_scsi_dma.bytes_app);
-        g_scsi_dma.app_buf = g_scsi_dma.next_app_buf;
-        g_scsi_dma.bytes_app = g_scsi_dma.next_app_bytes;
-        g_scsi_dma.bytes_dma = 0;
-        g_scsi_dma.scheduled_dma = 0;
-        g_scsi_dma.next_app_buf = 0;
-        g_scsi_dma.next_app_bytes = 0;
-        refill_dmabuf();
-    }
+    check_dma_next_buffer();
 }
 
 // Check if enough data is available to continue DMA transfer
@@ -350,6 +391,7 @@ void scsi_accel_dma_startWrite(const uint8_t* data, uint32_t count, volatile int
     g_scsi_dma.scheduled_dma = 0;
     g_scsi_dma.next_app_buf = NULL;
     g_scsi_dma.next_app_bytes = 0;
+    g_scsi_dma.greenpak_state = GREENPAK_IO1_LOW;
     refill_dmabuf();
     start_dma();
 }
@@ -406,6 +448,198 @@ void scsi_accel_dma_finishWrite(volatile int *resetFlag)
     }
 
     scsi_accel_dma_stopWrite();
+}
+
+/************************************************/
+/* Functions using external GreenPAK logic chip */
+/************************************************/
+
+void scsi_accel_greenpak_dma_init()
+{
+    g_scsi_dma_state = SCSIDMA_IDLE;
+    g_scsi_dma_use_greenpak = true;
+    rcu_periph_clock_enable(SCSI_TIMER_RCU);
+    rcu_periph_clock_enable(SCSI_TIMER_DMA_RCU);
+
+    // DMA Channel A: data copy
+    // GPIO DMA copies data from memory buffer to GPIO BOP register.
+    // The memory buffer is filled by interrupt routine.
+    dma_parameter_struct gpio_dma_config =
+    {
+        .periph_addr = (uint32_t)&GPIO_BOP(SCSI_OUT_PORT),
+        .periph_width = DMA_PERIPHERAL_WIDTH_32BIT,
+        .memory_addr = (uint32_t)g_scsi_dma.dma_buf,
+        .memory_width = DMA_MEMORY_WIDTH_32BIT,
+        .number = DMA_BUF_SIZE,
+        .priority = DMA_PRIORITY_ULTRA_HIGH,
+        .periph_inc = DMA_PERIPH_INCREASE_DISABLE,
+        .memory_inc = DMA_MEMORY_INCREASE_ENABLE,
+        .direction = DMA_MEMORY_TO_PERIPHERAL
+    };
+    dma_init(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA, &gpio_dma_config);
+    dma_circulation_enable(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA);
+    NVIC_SetPriority(SCSI_TIMER_DMACHA_IRQn, 2);
+    NVIC_EnableIRQ(SCSI_TIMER_DMACHA_IRQn);
+    NVIC_DisableIRQ(SCSI_TIMER_DMACHB_IRQn);
+
+    // EXTI channel is used to trigger when we reach end of the transfer.
+    // Because the main DMA is circular and transfer size may not be even
+    // multiple of it, we cannot trigger the end at the DMA interrupt.
+    gpio_exti_source_select(GREENPAK_PLD_IO2_EXTI_SOURCE_PORT, GREENPAK_PLD_IO2_EXTI_SOURCE_PIN);
+    exti_init(GREENPAK_PLD_IO2_EXTI, EXTI_INTERRUPT, EXTI_TRIG_FALLING);
+    exti_interrupt_flag_clear(GREENPAK_PLD_IO2_EXTI);
+    exti_interrupt_disable(GREENPAK_PLD_IO2_EXTI);
+    NVIC_SetPriority(GREENPAK_IRQn, 1);
+    NVIC_EnableIRQ(GREENPAK_IRQn);
+    
+    // Timer is used to trigger DMA requests
+    // OUT_REQ is driven by timer output.
+    // 1. On timer update event, REQ is set low.
+    // 2. When ACK goes low, timer counts and OUT_REQ is set high.
+    //    Simultaneously a DMA request is triggered to write next data to GPIO.
+    // 3. When ACK goes high, a DMA request is triggered to cause timer update event.
+    //    The DMA request priority is set so that 2. always completes before it.
+    TIMER_CTL0(SCSI_TIMER) = 0;
+    TIMER_SMCFG(SCSI_TIMER) = TIMER_SLAVE_MODE_EXTERNAL0 | TIMER_SMCFG_TRGSEL_CI0F_ED;
+    TIMER_CAR(SCSI_TIMER) = 1;
+    TIMER_PSC(SCSI_TIMER) = 0;
+    TIMER_DMAINTEN(SCSI_TIMER) = 0;
+    TIMER_CHCTL0(SCSI_TIMER) = 0x6001; // CH0 as input, CH1 as DMA trigger
+    TIMER_CHCTL1(SCSI_TIMER) = 0;
+    TIMER_CHCTL2(SCSI_TIMER) = 0;
+    TIMER_CCHP(SCSI_TIMER) = 0;
+    TIMER_CH1CV(SCSI_TIMER) = 1; // Copy data when ACK goes low
+    gpio_init(SCSI_TIMER_IN_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_TIMER_IN_PIN);
+}
+
+extern const uint32_t g_scsi_out_byte_to_bop_pld1hi[256];
+extern const uint32_t g_scsi_out_byte_to_bop_pld1lo[256];
+
+static void greenpak_refill_dmabuf()
+{
+    if (g_scsi_dma.greenpak_state == GREENPAK_STOP)
+    {
+        // Wait for previous DMA block to end first
+        return;
+    }
+
+    // Check how many bytes we have available from the application
+    uint32_t count = g_scsi_dma.bytes_app - g_scsi_dma.bytes_dma;
+    
+    // Check amount of free space in DMA buffer
+    uint32_t max = g_scsi_dma.dma_fillto - g_scsi_dma.dma_idx;
+    if (count > max) count = max;
+
+    uint8_t *src = g_scsi_dma.app_buf + g_scsi_dma.bytes_dma;
+    uint32_t *dst = g_scsi_dma.dma_buf;
+    uint32_t pos = g_scsi_dma.dma_idx;
+    uint32_t end = pos + count;
+    g_scsi_dma.dma_idx = end;
+    g_scsi_dma.bytes_dma += count;
+    g_scsi_dma.scheduled_dma = g_scsi_dma.bytes_dma;
+
+    if (pos < end && g_scsi_dma.greenpak_state == GREENPAK_IO1_HIGH)
+    {
+        // Fix alignment so that main loop begins with PLD1HI
+        dst[(pos++) & DMA_BUF_MASK] = g_scsi_out_byte_to_bop_pld1lo[*src++];
+        g_scsi_dma.greenpak_state = GREENPAK_IO1_LOW;
+    }
+
+    while (pos + 4 <= end)
+    {
+        uint32_t input = *(uint32_t*)src;
+        src += 4;
+
+        dst[(pos++) & DMA_BUF_MASK] = g_scsi_out_byte_to_bop_pld1hi[(input >> 0) & 0xFF];
+        dst[(pos++) & DMA_BUF_MASK] = g_scsi_out_byte_to_bop_pld1lo[(input >> 8) & 0xFF];
+        dst[(pos++) & DMA_BUF_MASK] = g_scsi_out_byte_to_bop_pld1hi[(input >> 16) & 0xFF];
+        dst[(pos++) & DMA_BUF_MASK] = g_scsi_out_byte_to_bop_pld1lo[(input >> 24) & 0xFF];
+    }
+
+    while (pos < end)
+    {
+        if (g_scsi_dma.greenpak_state == GREENPAK_IO1_HIGH)
+        {
+            dst[(pos++) & DMA_BUF_MASK] = g_scsi_out_byte_to_bop_pld1lo[*src++];
+            g_scsi_dma.greenpak_state = GREENPAK_IO1_LOW;
+        }
+        else
+        {
+            dst[(pos++) & DMA_BUF_MASK] = g_scsi_out_byte_to_bop_pld1hi[*src++];
+            g_scsi_dma.greenpak_state = GREENPAK_IO1_HIGH;
+        }
+    }
+
+    uint32_t remain = g_scsi_dma.dma_fillto - g_scsi_dma.dma_idx;
+    if (!g_scsi_dma.next_app_buf && remain > 0)
+    {
+        // Mark the end of transfer by turning PD2 off
+        dst[(pos++) & DMA_BUF_MASK] = (GREENPAK_PLD_IO2 << 16) | (GREENPAK_PLD_IO1 << 16);
+        g_scsi_dma.dma_idx = pos;
+        g_scsi_dma.greenpak_state = GREENPAK_STOP;
+    }
+}
+
+extern "C" void GREENPAK_IRQ()
+{
+    if (EXTI_PD & GREENPAK_PLD_IO2_EXTI)
+    {
+        EXTI_PD = GREENPAK_PLD_IO2_EXTI;
+
+        if (g_scsi_dma.bytes_app > g_scsi_dma.bytes_dma || g_scsi_dma.next_app_buf)
+        {
+            assert(g_scsi_dma.greenpak_state == GREENPAK_STOP);
+            g_scsi_dma.greenpak_state = GREENPAK_IO1_LOW;
+            // More data is available
+            check_dma_next_buffer();
+            refill_dmabuf();
+            
+            // Continue transferring
+            GPIO_BOP(SCSI_OUT_PORT) = GREENPAK_PLD_IO2;
+            TIMER_SWEVG(SCSI_TIMER) = TIMER_SWEVG_CH1G;
+        }
+        else
+        {
+            stop_dma();
+        }
+    }
+}
+
+static void greenpak_start_dma()
+{
+    // Disable channels while configuring
+    DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA) &= ~DMA_CHXCTL_CHEN;
+    DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) &= ~DMA_CHXCTL_CHEN;
+    TIMER_CTL0(SCSI_TIMER) = 0;
+
+    // Set buffer address and size
+    DMA_CHMADDR(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA) = (uint32_t)g_scsi_dma.dma_buf;
+    DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA) = DMA_BUF_SIZE;
+
+    // Clear pending DMA events
+    TIMER_DMAINTEN(SCSI_TIMER) = 0;
+    TIMER_DMAINTEN(SCSI_TIMER) = TIMER_DMAINTEN_CH1DEN | TIMER_DMAINTEN_CH3DEN;
+
+    // Clear and enable interrupt
+    DMA_INTC(SCSI_TIMER_DMA) = DMA_FLAG_ADD(DMA_FLAG_HTF | DMA_FLAG_FTF | DMA_FLAG_ERR, SCSI_TIMER_DMACHA);
+    DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA) |= DMA_CHXCTL_FTFIE | DMA_CHXCTL_HTFIE;
+    exti_interrupt_flag_clear(GREENPAK_PLD_IO2_EXTI);
+    exti_interrupt_enable(GREENPAK_PLD_IO2_EXTI);
+
+    // Enable channels
+    DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA) |= DMA_CHXCTL_CHEN;
+    
+    // Enable timer
+    TIMER_CNT(SCSI_TIMER) = 0;
+    TIMER_CTL0(SCSI_TIMER) |= TIMER_CTL0_CEN;
+
+    // Generate first event
+    TIMER_SWEVG(SCSI_TIMER) = TIMER_SWEVG_CH1G;
+}
+
+static void greenpak_stop_dma()
+{
+    exti_interrupt_disable(GREENPAK_PLD_IO2_EXTI);
 }
 
 #endif
