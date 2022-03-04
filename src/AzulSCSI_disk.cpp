@@ -40,7 +40,7 @@ void scsiDiskResetImages()
     memset(g_DiskImages, 0, sizeof(g_DiskImages));
 }
 
-bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize)
+bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize, bool is_cd)
 {
     image_config_t &img = g_DiskImages[target_idx];
     img.file = SD.open(filename, O_RDWR);
@@ -77,7 +77,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
                 " is not divisible.");
         }
 
-        if (tolower(filename[0]) == 'c' && tolower(filename[1]) == 'd')
+        if (is_cd)
         {
             azlog("---- Configuring as CD-ROM drive based on image name");
             img.deviceType = S2S_CFG_OPTICAL;

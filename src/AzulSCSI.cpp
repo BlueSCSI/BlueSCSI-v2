@@ -154,17 +154,56 @@ void print_sd_info()
 // Iterate over the root path in the SD card looking for candidate image files.
 bool findHDDImages()
 {
-  azlog("Finding HDD images:");
+  char imgdir[MAX_FILE_PATH];
+  ini_gets("SCSI", "Dir", "/", imgdir, sizeof(imgdir), CONFIGFILE);
+  int dirindex = 0;
+
+  azlog("Finding HDD images in directory ", imgdir, ":");
 
   SdFile root;
-  root.open("/");
+  root.open(imgdir);
+  if (!root.isOpen())
+  {
+    azlog("Could not open directory: ", imgdir);
+  }
+
   SdFile file;
   bool imageReady;
   bool foundImage = false;
   uint8_t usedIds = 0;
   int usedDefaultId = 0;
-  while (1) {
-    if (!file.openNext(&root, O_READ)) break;
+  while (1)
+  {
+    if (!file.openNext(&root, O_READ))
+    {
+      // Check for additional directories with ini keys Dir1..Dir9
+      while (dirindex < 10)
+      {
+        dirindex++;
+        char key[5] = "Dir0";
+        key[3] += dirindex;
+        if (ini_gets("SCSI", key, "", imgdir, sizeof(imgdir), CONFIGFILE) != 0)
+        {
+          break;
+        }
+      }
+
+      if (imgdir[0] != '\0')
+      {
+        azlog("Finding HDD images in additional directory Dir", (int)dirindex, " = \"", imgdir, "\":");
+        root.open(imgdir);
+        if (!root.isOpen())
+        {
+          azlog("-- Could not open directory: ", imgdir);
+        }
+        continue;
+      }
+      else
+      {
+        break;
+      }
+    }
+
     char name[MAX_FILE_PATH+1];
     if(!file.isDir()) {
       file.getName(name, MAX_FILE_PATH+1);
@@ -223,21 +262,31 @@ bool findHDDImages()
           blk  = 2048;
         }
 
+        char fullname[MAX_FILE_PATH * 2 + 2] = {0};
+        strncpy(fullname, imgdir, MAX_FILE_PATH);
+        if (fullname[strlen(fullname) - 1] != '/') strcat(fullname, "/");
+        strcat(fullname, name);
+
         if (usedIds & (1 << id))
         {
-          azlog("-- Ignoring ", name, ", SCSI ID ", id, " is already in use!");
+          azlog("-- Ignoring ", fullname, ", SCSI ID ", id, " is already in use!");
           continue;
         }
 
         if(id < NUM_SCSIID && lun < NUM_SCSILUN) {
-          azlog("-- Opening ", name, " for id:", id, " lun:", lun);
-          imageReady = scsiDiskOpenHDDImage(id, name, id, lun, blk);
-          if(imageReady) { // Marked as a responsive ID
+          azlog("-- Opening ", fullname, " for id:", id, " lun:", lun);
+          imageReady = scsiDiskOpenHDDImage(id, fullname, id, lun, blk, is_cd);
+          if(imageReady)
+          {
             foundImage = true;
             usedIds |= (1 << id);
           }
+          else
+          {
+            azlog("---- Failed to load image");
+          }
         } else {
-          azlog("-- Invalid lun or id for image ", name);
+          azlog("-- Invalid lun or id for image ", fullname);
         }
       }
     }
