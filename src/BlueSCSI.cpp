@@ -51,7 +51,6 @@
                                 // 2 for NEC PC98
 #define READ_SPEED_OPTIMIZE  1 // Faster reads
 #define WRITE_SPEED_OPTIMIZE 1 // Speeding up writes
-#define USE_DB2ID_TABLE      1 // Use table to get ID from SEL-DB
 
 // SCSI config
 #define NUM_SCSIID  7          // Maximum number of supported SCSI-IDs (The minimum is 0)
@@ -231,25 +230,6 @@ static const uint32_t db_bsrr[256]={
 #undef DBP8
 //#undef DBP
 //#undef PTY
-
-#if USE_DB2ID_TABLE
-/* DB to SCSI-ID translation table */
-static const byte db2scsiid[256]={
-  0xff,
-  0,
-  1,1,
-  2,2,2,2,
-  3,3,3,3,3,3,3,3,
-  4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
-  5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
-  6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
-  6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
-  7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
-  7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
-  7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
-  7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7
-};
-#endif
 
 // Log File
 #define VERSION "1.1-SNAPSHOT-20220107"
@@ -1259,14 +1239,7 @@ void loop()
   SCSI_BSY_ACTIVE();     // Turn only BSY output ON, ACTIVE
 
   // Ask for a TARGET-ID to respond
-#if USE_DB2ID_TABLE
-  m_id = db2scsiid[scsiid];
-  //if(m_id==0xff) return;
-#else
-  for(m_id=7;m_id>=0;m_id--)
-    if(scsiid & (1<<m_id)) break;
-  //if(m_id<0) return;
-#endif
+  m_id = 31 - __builtin_clz(scsiid);
 
   // Wait until SEL becomes inactive
   while(isHigh(gpio_read(SEL)) && isLow(gpio_read(BSY))) {
