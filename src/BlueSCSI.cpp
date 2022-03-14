@@ -168,7 +168,7 @@ SdFs SD;
 // BSY,REQ,MSG,CD,IO Turn on the output (no change required for OD)
 #define SCSI_TARGET_ACTIVE()   { if (DB_MODE_OUT != 7) gpio_mode(REQ, GPIO_OUTPUT_PP);}
 // BSY,REQ,MSG,CD,IO Turn off output, BSY is the last input
-#define SCSI_TARGET_INACTIVE() { if (DB_MODE_OUT == 7) SCSI_OUT(vREQ,inactive) else { if (DB_MODE_IN == 8) gpio_mode(REQ, GPIO_INPUT_PU) else gpio_mode(REQ, GPIO_INPUT_FLOATING)} SCSI_OUT(vMSG,inactive); SCSI_OUT(vCD,inactive);SCSI_OUT(vIO,inactive); SCSI_OUT(vBSY,inactive); gpio_mode(BSY, GPIO_INPUT_PU); }
+#define SCSI_TARGET_INACTIVE() { if (DB_MODE_OUT == 7) SCSI_OUT(vREQ,inactive) else { if (DB_MODE_IN == 8) gpio_mode(REQ, GPIO_INPUT_PU) else gpio_mode(REQ, GPIO_INPUT_FLOATING)} SCSI_OUT(vMSG,inactive); SCSI_OUT(vCD,inactive);SCSI_OUT(vIO,inactive); gpio_mode(BSY, GPIO_INPUT_PU); }
 
 // HDDiamge file
 #define HDIMG_ID_POS  2                 // Position to embed ID number
