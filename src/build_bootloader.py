@@ -42,6 +42,16 @@ bootloader_bin = env.ElfToBin(
 )
 
 # Convert back to .o to facilitate linking
+def escape_cpp(path):
+    '''Apply double-escaping for path name to include in generated C++ file'''
+    result = ''
+    for c in str(path).encode('utf-8'):
+        if 32 <= c <= 127 and c not in (ord('\\'), ord('"')):
+            result += chr(c)
+        else:
+            result += '\\\\%03o' % c
+    return result
+
 temp_src = env.subst(os.path.join("$BUILD_DIR", "bootloader_bin.cpp"))
 open(temp_src, 'w').write(
 '''
@@ -50,7 +60,7 @@ __asm__(
 "btldr:\\n"
 "   .incbin \\"%s\\"\\n"
 );
-''' % bootloader_bin[0]
+''' % escape_cpp(bootloader_bin[0])
 )
 
 bootloader_obj = env.Object(
