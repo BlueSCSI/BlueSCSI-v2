@@ -640,7 +640,8 @@ void longjmpFromInterrupt(jmp_buf jmpb, int retval) {
       str %2, [sp, #20];\
       str %3, [sp, #24];\
       str %4, [sp, #28];\
-      ldr lr, =0xfffffff9"
+      ldr lr, =0xfffffff9;\
+      bx lr"
        :: "r"(jmpb),"r"(retval),"r"(zero), "r"(longjmpaddr), "r"(PSR)
   );
 }
