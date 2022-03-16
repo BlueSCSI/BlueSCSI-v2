@@ -217,14 +217,9 @@ byte          m_msb[256];             // Command storage bytes
 // Set DBP, set REQ = inactive
 #define DBP(D)    ((((((uint32_t)(D)<<8)|PTY(D))*0x00010001)^0x0000ff01)|BITMASK(vREQ))
 
-#define DBP8(D)   DBP(D),DBP(D+1),DBP(D+2),DBP(D+3),DBP(D+4),DBP(D+5),DBP(D+6),DBP(D+7)
-#define DBP32(D)  DBP8(D),DBP8(D+8),DBP8(D+16),DBP8(D+24)
-
 // BSRR register control value that simultaneously performs DB set, DP set, and REQ = H (inactrive)
-static const uint32_t db_bsrr[256]={
-  DBP32(0x00),DBP32(0x20),DBP32(0x40),DBP32(0x60),
-  DBP32(0x80),DBP32(0xA0),DBP32(0xC0),DBP32(0xE0)
-};
+uint32_t db_bsrr[256];
+
 // Parity bit acquisition
 #define PARITY(DB) (db_bsrr[DB]&1)
 
@@ -382,6 +377,11 @@ void setup()
   // PA15 / PB3 / PB4 Cannot be used
   // JTAG Because it is used for debugging.
   disableDebugPorts();
+
+  // Setup BSRR table
+  for (unsigned i = 0; i <= 255; i++) {
+    db_bsrr[i] = DBP(i);
+  }
 
   // Serial initialization
 #if DEBUG > 0
