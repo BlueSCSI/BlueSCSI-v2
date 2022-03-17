@@ -197,7 +197,7 @@ byte          m_lun;                  // Logical unit number currently respondin
 byte          m_sts;                  // Status byte
 byte          m_msg;                  // Message bytes
 HDDIMG       *m_img;                  // HDD image for current SCSI-ID, LUN
-byte          m_buf[MAX_BLOCKSIZE+1]; // General purpose buffer + overrun fetch
+byte          m_buf[MAX_BLOCKSIZE];   // General purpose buffer
 int           m_msc;
 byte          m_msb[256];             // Command storage bytes
 
@@ -741,6 +741,59 @@ void writeDataPhase(int len, const byte* p)
     writeHandshake(p[i]);
   }
 }
+		
+#if READ_SPEED_OPTIMIZE
+/*
+ * This loop is tuned to repeat the following pattern:
+ * 1) Set REQ
+ * 2) 5 cycles of work/delay
+ * 3) Wait for ACK
+ * Cycle time tunings are for 72MHz STM32F103
+ */
+void writeDataLoop(uint32_t blocksize)
+{
+#define REQ_ON() (*db_dst = BITMASK(vREQ)<<16);
+#define FETCH_BSRR_DB() (bsrr_val = bsrr_tbl[*srcptr++])
+#define REQ_OFF_DB_SET(BSRR_VAL) *db_dst = BSRR_VAL;
+#define WAIT_ACK_ACTIVE()   while(!SCSI_IN(vACK))
+#define WAIT_ACK_INACTIVE() while(SCSI_IN(vACK))
+
+	register byte *srcptr= m_buf;                 // Source buffer
+	register byte *endptr= m_buf + blocksize;     // End pointer
+
+	register const uint32_t *bsrr_tbl = db_bsrr;  // Table to convert to BSRR
+	register uint32_t bsrr_val;                   // BSRR value to output (DB, DBP, REQ = ACTIVE)
+	register volatile uint32_t *db_dst = &(GPIOB->regs->BSRR); // Output port
+
+	// Start the first bus cycle.
+	FETCH_BSRR_DB();
+	REQ_OFF_DB_SET(bsrr_val);
+	REQ_ON();
+	FETCH_BSRR_DB();
+	WAIT_ACK_ACTIVE();
+	REQ_OFF_DB_SET(bsrr_val);
+	do{
+		WAIT_ACK_INACTIVE();
+		REQ_ON();
+		// 5 cycle delay before reading ACK.
+		// Two loads plus NOP is 5 cycles.
+		FETCH_BSRR_DB();
+		asm("NOP");
+		WAIT_ACK_ACTIVE();
+		REQ_OFF_DB_SET(bsrr_val);
+		// 5 cycle delay before reading ACK.
+		// Branch taken is 2-4, seems to be taking 3. A second write is 2 more cycles.
+		// cmp is being pipelined in to a store so doesn't add any time.
+		REQ_OFF_DB_SET(bsrr_val);
+	}while(srcptr < endptr);
+	WAIT_ACK_INACTIVE();
+	// Finish the last bus cycle, byte is already on DB.
+	REQ_ON();
+	WAIT_ACK_ACTIVE();
+	REQ_OFF_DB_SET(bsrr_val);
+	WAIT_ACK_INACTIVE();
+}
+#endif
 
 /* 
  * Data in phase.
@@ -756,6 +809,7 @@ void writeDataPhaseSD(uint32_t adds, uint32_t len)
   SCSI_OUT(vCD ,inactive) //  gpio_write(CD, low);
   SCSI_OUT(vIO ,  active) //  gpio_write(IO, high);
 
+	SCSI_DB_OUTPUT()
   for(uint32_t i = 0; i < len; i++) {
       // Asynchronous reads will make it faster ...
     m_resetJmp = false;
@@ -763,97 +817,14 @@ void writeDataPhaseSD(uint32_t adds, uint32_t len)
     enableResetJmp();
 
 #if READ_SPEED_OPTIMIZE
-
-//#define REQ_ON() SCSI_OUT(vREQ,active)
-#define REQ_ON() (*db_dst = BITMASK(vREQ)<<16)
-#define FETCH_SRC()   (src_byte = *srcptr++)
-#define FETCH_BSRR_DB() (bsrr_val = bsrr_tbl[src_byte])
-#define REQ_OFF_DB_SET(BSRR_VAL) *db_dst = BSRR_VAL
-#define WAIT_ACK_ACTIVE()   while(!SCSI_IN(vACK))
-#define WAIT_ACK_INACTIVE() while(SCSI_IN(vACK)) 
-
-    SCSI_DB_OUTPUT()
-    register byte *srcptr= m_buf;                 // Source buffer
-    register byte *endptr= m_buf +  m_img->m_blocksize; // End pointer
-
-    /*register*/ byte src_byte;                       // Send data bytes
-    register const uint32_t *bsrr_tbl = db_bsrr;  // Table to convert to BSRR
-    register uint32_t bsrr_val;                   // BSRR value to output (DB, DBP, REQ = ACTIVE)
-    register volatile uint32_t *db_dst = &(GPIOB->regs->BSRR); // Output port
-
-    // prefetch & 1st out
-    FETCH_SRC();
-    FETCH_BSRR_DB();
-    REQ_OFF_DB_SET(bsrr_val);
-    // DB.set to REQ.F setup 100ns max (DTC-510B)
-    // Maybe there should be some weight here
-    //　WAIT_ACK_INACTIVE();
-    do{
-      // 0
-      REQ_ON();
-      FETCH_SRC();
-      FETCH_BSRR_DB();
-      WAIT_ACK_ACTIVE();
-      // ACK.F  to REQ.R       500ns typ. (DTC-510B)
-      REQ_OFF_DB_SET(bsrr_val);
-      WAIT_ACK_INACTIVE();
-      // 1
-      REQ_ON();
-      FETCH_SRC();
-      FETCH_BSRR_DB();
-      WAIT_ACK_ACTIVE();
-      REQ_OFF_DB_SET(bsrr_val);
-      WAIT_ACK_INACTIVE();
-      // 2
-      REQ_ON();
-      FETCH_SRC();
-      FETCH_BSRR_DB();
-      WAIT_ACK_ACTIVE();
-      REQ_OFF_DB_SET(bsrr_val);
-      WAIT_ACK_INACTIVE();
-      // 3
-      REQ_ON();
-      FETCH_SRC();
-      FETCH_BSRR_DB();
-      WAIT_ACK_ACTIVE();
-      REQ_OFF_DB_SET(bsrr_val);
-      WAIT_ACK_INACTIVE();
-      // 4
-      REQ_ON();
-      FETCH_SRC();
-      FETCH_BSRR_DB();
-      WAIT_ACK_ACTIVE();
-      REQ_OFF_DB_SET(bsrr_val);
-      WAIT_ACK_INACTIVE();
-      // 5
-      REQ_ON();
-      FETCH_SRC();
-      FETCH_BSRR_DB();
-      WAIT_ACK_ACTIVE();
-      REQ_OFF_DB_SET(bsrr_val);
-      WAIT_ACK_INACTIVE();
-      // 6
-      REQ_ON();
-      FETCH_SRC();
-      FETCH_BSRR_DB();
-      WAIT_ACK_ACTIVE();
-      REQ_OFF_DB_SET(bsrr_val);
-      WAIT_ACK_INACTIVE();
-      // 7
-      REQ_ON();
-      FETCH_SRC();
-      FETCH_BSRR_DB();
-      WAIT_ACK_ACTIVE();
-      REQ_OFF_DB_SET(bsrr_val);
-      WAIT_ACK_INACTIVE();
-    }while(srcptr < endptr);
-    SCSI_DB_INPUT()
+		writeDataLoop(m_img->m_blocksize);
 #else
     for(int j = 0; j < m_img->m_blocksize; j++) {
       writeHandshake(m_buf[j]);
     }
 #endif
   }
+	SCSI_DB_INPUT()
 }
 
 /*
