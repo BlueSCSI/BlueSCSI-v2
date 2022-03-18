@@ -743,27 +743,35 @@ void writeDataPhase(int len, const byte* p)
 }
 
 #if READ_SPEED_OPTIMIZE
+#pragma GCC push_options
+#pragma GCC optimize ("-Os")
 /*
  * This loop is tuned to repeat the following pattern:
  * 1) Set REQ
- * 2) 5-6 cycles of work/delay
+ * 2) 5 cycles of work/delay
  * 3) Wait for ACK
  * Cycle time tunings are for 72MHz STM32F103
+ * Alignment matters. For the 3 instruction wait loops,it looks like crossing
+ * an 8 byte prefetch buffer can add 2 cycles of wait every branch taken.
  */
+void writeDataLoop(uint32_t blocksize) __attribute__ ((aligned(8)));
 void writeDataLoop(uint32_t blocksize)
 {
-#define REQ_ON() (*db_dst = BITMASK(vREQ)<<16);
+#define REQ_ON() (port_b->BRR = req_bit);
 #define FETCH_BSRR_DB() (bsrr_val = bsrr_tbl[*srcptr++])
-#define REQ_OFF_DB_SET(BSRR_VAL) *db_dst = BSRR_VAL;
-#define WAIT_ACK_ACTIVE()   while(!SCSI_IN(vACK))
-#define WAIT_ACK_INACTIVE() while(SCSI_IN(vACK))
+#define REQ_OFF_DB_SET(BSRR_VAL) port_b->BSRR = BSRR_VAL;
+#define WAIT_ACK_ACTIVE()   while((*port_a_idr>>(vACK&15)&1))
+#define WAIT_ACK_INACTIVE() while(!(*port_a_idr>>(vACK&15)&1))
 
   register byte *srcptr= m_buf;                 // Source buffer
   register byte *endptr= m_buf + blocksize;     // End pointer
 
   register const uint32_t *bsrr_tbl = db_bsrr;  // Table to convert to BSRR
   register uint32_t bsrr_val;                   // BSRR value to output (DB, DBP, REQ = ACTIVE)
-  register volatile uint32_t *db_dst = &(GPIOB->regs->BSRR); // Output port
+
+  register uint32_t req_bit = BITMASK(vREQ);
+  register gpio_reg_map *port_b = PBREG;
+  register volatile uint32_t *port_a_idr = &(GPIOA->regs->IDR);
 
   // Start the first bus cycle.
   FETCH_BSRR_DB();
@@ -772,19 +780,19 @@ void writeDataLoop(uint32_t blocksize)
   FETCH_BSRR_DB();
   WAIT_ACK_ACTIVE();
   REQ_OFF_DB_SET(bsrr_val);
+  // Align the starts of the do/while and WAIT loops to an 8 byte prefetch.
+  asm("nop.w;nop");
   do{
     WAIT_ACK_INACTIVE();
     REQ_ON();
-    // 6 cycle delay before reading ACK.
-    // Store plus 2 loads is 6 cycles.
-    REQ_ON();
+    // 4 cycles of work
     FETCH_BSRR_DB();
+    // Extra 1 cycle delay while keeping the loop within an 8 byte prefetch.
+    asm("nop");
     WAIT_ACK_ACTIVE();
     REQ_OFF_DB_SET(bsrr_val);
-    // 5 cycle delay before reading ACK.
-    // Branch taken is 2-4, seems to be taking 3. A second write is 2 more cycles.
-    // cmp is being pipelined in to a store so doesn't add any time.
-    REQ_OFF_DB_SET(bsrr_val);
+    // Extra 1 cycle delay, plus 4 cycles for the branch taken with prefetch.
+    asm("nop");
   }while(srcptr < endptr);
   WAIT_ACK_INACTIVE();
   // Finish the last bus cycle, byte is already on DB.
@@ -793,6 +801,7 @@ void writeDataLoop(uint32_t blocksize)
   REQ_OFF_DB_SET(bsrr_val);
   WAIT_ACK_INACTIVE();
 }
+#pragma GCC pop_options
 #endif
 
 /* 
@@ -841,32 +850,48 @@ void readDataPhase(int len, byte* p)
     p[i] = readHandshake();
 }
 
+#if WRITE_SPEED_OPTIMIZE
+#pragma GCC push_options
+#pragma GCC optimize ("-Os")
+    
+/*
+ * See writeDataLoop for optimization info.
+ */
+void readDataLoop(uint32_t blockSize) __attribute__ ((aligned(8)));
 void readDataLoop(uint32_t blockSize)
 {
   register byte *dstptr= m_buf;
   register byte *endptr= m_buf + blockSize - 1;
 
-#define REQ_ON() (port_b->BSRR = BITMASK(vREQ)<<16);
-#define REQ_OFF() (port_b->BSRR = BITMASK(vREQ));
-#define WAIT_ACK_ACTIVE()   while((*ack_src>>(vACK&15)&1))
-#define WAIT_ACK_INACTIVE() while(!(*ack_src>>(vACK&15)&1))
+#define REQ_ON() (port_b->BRR = req_bit);
+#define REQ_OFF() (port_b->BSRR = req_bit);
+#define WAIT_ACK_ACTIVE()   while((*port_a_idr>>(vACK&15)&1))
+#define WAIT_ACK_INACTIVE() while(!(*port_a_idr>>(vACK&15)&1))
+  register uint32_t req_bit = BITMASK(vREQ);
   register gpio_reg_map *port_b = PBREG;
-  register volatile uint32_t *ack_src = &(GPIOA->regs->IDR);
+  register volatile uint32_t *port_a_idr = &(GPIOA->regs->IDR);
   REQ_ON();
+  // Start of the do/while and WAIT are already aligned to 8 bytes.
   do {
     WAIT_ACK_ACTIVE();
-    uint32_t ret = GPIOB->regs->IDR;
+    uint32_t ret = port_b->IDR;
     REQ_OFF();
     *dstptr++ = ~(ret >> 8);
+    // Move wait loop in to a single 8 byte prefetch buffer
+    asm("nop.w");
     WAIT_ACK_INACTIVE();
     REQ_ON();
+    // Extra 1 cycle delay
+    asm("nop");
   } while(dstptr<endptr);
   WAIT_ACK_ACTIVE();
   uint32_t ret = GPIOB->regs->IDR;
   REQ_OFF();
-  *dstptr++ = ~(ret >> 8);
+  *dstptr = ~(ret >> 8);
   WAIT_ACK_INACTIVE();
 }
+#pragma GCC pop_options
+#endif
 
 /*
  * Data out phase.
