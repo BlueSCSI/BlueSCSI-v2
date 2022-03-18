@@ -261,7 +261,7 @@ inline byte readIO(void)
 {
   // Port input data register
   uint32_t ret = GPIOB->regs->IDR;
-  byte bret = (byte)((~ret)>>8);
+  byte bret = (byte)(~(ret>>8));
 #if READ_PARITY_CHECK
   if((db_bsrr[bret]^ret)&1)
     m_sts |= 0x01; // parity error
@@ -741,12 +741,12 @@ void writeDataPhase(int len, const byte* p)
     writeHandshake(p[i]);
   }
 }
-		
+
 #if READ_SPEED_OPTIMIZE
 /*
  * This loop is tuned to repeat the following pattern:
  * 1) Set REQ
- * 2) 5 cycles of work/delay
+ * 2) 5-6 cycles of work/delay
  * 3) Wait for ACK
  * Cycle time tunings are for 72MHz STM32F103
  */
@@ -758,40 +758,40 @@ void writeDataLoop(uint32_t blocksize)
 #define WAIT_ACK_ACTIVE()   while(!SCSI_IN(vACK))
 #define WAIT_ACK_INACTIVE() while(SCSI_IN(vACK))
 
-	register byte *srcptr= m_buf;                 // Source buffer
-	register byte *endptr= m_buf + blocksize;     // End pointer
+  register byte *srcptr= m_buf;                 // Source buffer
+  register byte *endptr= m_buf + blocksize;     // End pointer
 
-	register const uint32_t *bsrr_tbl = db_bsrr;  // Table to convert to BSRR
-	register uint32_t bsrr_val;                   // BSRR value to output (DB, DBP, REQ = ACTIVE)
-	register volatile uint32_t *db_dst = &(GPIOB->regs->BSRR); // Output port
+  register const uint32_t *bsrr_tbl = db_bsrr;  // Table to convert to BSRR
+  register uint32_t bsrr_val;                   // BSRR value to output (DB, DBP, REQ = ACTIVE)
+  register volatile uint32_t *db_dst = &(GPIOB->regs->BSRR); // Output port
 
-	// Start the first bus cycle.
-	FETCH_BSRR_DB();
-	REQ_OFF_DB_SET(bsrr_val);
-	REQ_ON();
-	FETCH_BSRR_DB();
-	WAIT_ACK_ACTIVE();
-	REQ_OFF_DB_SET(bsrr_val);
-	do{
-		WAIT_ACK_INACTIVE();
-		REQ_ON();
-		// 5 cycle delay before reading ACK.
-		// Two loads plus NOP is 5 cycles.
-		FETCH_BSRR_DB();
-		asm("NOP");
-		WAIT_ACK_ACTIVE();
-		REQ_OFF_DB_SET(bsrr_val);
-		// 5 cycle delay before reading ACK.
-		// Branch taken is 2-4, seems to be taking 3. A second write is 2 more cycles.
-		// cmp is being pipelined in to a store so doesn't add any time.
-		REQ_OFF_DB_SET(bsrr_val);
-	}while(srcptr < endptr);
-	WAIT_ACK_INACTIVE();
-	// Finish the last bus cycle, byte is already on DB.
-	REQ_ON();
-	WAIT_ACK_ACTIVE();
-	REQ_OFF_DB_SET(bsrr_val);
-	WAIT_ACK_INACTIVE();
+  // Start the first bus cycle.
+  FETCH_BSRR_DB();
+  REQ_OFF_DB_SET(bsrr_val);
+  REQ_ON();
+  FETCH_BSRR_DB();
+  WAIT_ACK_ACTIVE();
+  REQ_OFF_DB_SET(bsrr_val);
+  do{
+    WAIT_ACK_INACTIVE();
+    REQ_ON();
+    // 6 cycle delay before reading ACK.
+    // Store plus 2 loads is 6 cycles.
+    REQ_ON();
+    FETCH_BSRR_DB();
+    WAIT_ACK_ACTIVE();
+    REQ_OFF_DB_SET(bsrr_val);
+    // 5 cycle delay before reading ACK.
+    // Branch taken is 2-4, seems to be taking 3. A second write is 2 more cycles.
+    // cmp is being pipelined in to a store so doesn't add any time.
+    REQ_OFF_DB_SET(bsrr_val);
+  }while(srcptr < endptr);
+  WAIT_ACK_INACTIVE();
+  // Finish the last bus cycle, byte is already on DB.
+  REQ_ON();
+  WAIT_ACK_ACTIVE();
+  REQ_OFF_DB_SET(bsrr_val);
+  WAIT_ACK_INACTIVE();
 }
 #endif
 
@@ -809,7 +809,7 @@ void writeDataPhaseSD(uint32_t adds, uint32_t len)
   SCSI_OUT(vCD ,inactive) //  gpio_write(CD, low);
   SCSI_OUT(vIO ,  active) //  gpio_write(IO, high);
 
-	SCSI_DB_OUTPUT()
+  SCSI_DB_OUTPUT()
   for(uint32_t i = 0; i < len; i++) {
       // Asynchronous reads will make it faster ...
     m_resetJmp = false;
@@ -817,14 +817,14 @@ void writeDataPhaseSD(uint32_t adds, uint32_t len)
     enableResetJmp();
 
 #if READ_SPEED_OPTIMIZE
-		writeDataLoop(m_img->m_blocksize);
+    writeDataLoop(m_img->m_blocksize);
 #else
     for(int j = 0; j < m_img->m_blocksize; j++) {
       writeHandshake(m_buf[j]);
     }
 #endif
   }
-	SCSI_DB_INPUT()
+  SCSI_DB_INPUT()
 }
 
 /*
@@ -839,6 +839,33 @@ void readDataPhase(int len, byte* p)
   SCSI_OUT(vIO ,inactive) //  gpio_write(IO, low);
   for(uint32_t i = 0; i < len; i++)
     p[i] = readHandshake();
+}
+
+void readDataLoop(uint32_t blockSize)
+{
+  register byte *dstptr= m_buf;
+  register byte *endptr= m_buf + blockSize - 1;
+
+#define REQ_ON() (port_b->BSRR = BITMASK(vREQ)<<16);
+#define REQ_OFF() (port_b->BSRR = BITMASK(vREQ));
+#define WAIT_ACK_ACTIVE()   while((*ack_src>>(vACK&15)&1))
+#define WAIT_ACK_INACTIVE() while(!(*ack_src>>(vACK&15)&1))
+  register gpio_reg_map *port_b = PBREG;
+  register volatile uint32_t *ack_src = &(GPIOA->regs->IDR);
+  REQ_ON();
+  do {
+    WAIT_ACK_ACTIVE();
+    uint32_t ret = GPIOB->regs->IDR;
+    REQ_OFF();
+    *dstptr++ = ~(ret >> 8);
+    WAIT_ACK_INACTIVE();
+    REQ_ON();
+  } while(dstptr<endptr);
+  WAIT_ACK_ACTIVE();
+  uint32_t ret = GPIOB->regs->IDR;
+  REQ_OFF();
+  *dstptr++ = ~(ret >> 8);
+  WAIT_ACK_INACTIVE();
 }
 
 /*
@@ -856,19 +883,7 @@ void readDataPhaseSD(uint32_t adds, uint32_t len)
   for(uint32_t i = 0; i < len; i++) {
     m_resetJmp = true;
 #if WRITE_SPEED_OPTIMIZE
-  register byte *dstptr= m_buf;
-	register byte *endptr= m_buf + m_img->m_blocksize;
-
-    for(dstptr=m_buf;dstptr<endptr;dstptr+=8) {
-      dstptr[0] = readHandshake();
-      dstptr[1] = readHandshake();
-      dstptr[2] = readHandshake();
-      dstptr[3] = readHandshake();
-      dstptr[4] = readHandshake();
-      dstptr[5] = readHandshake();
-      dstptr[6] = readHandshake();
-      dstptr[7] = readHandshake();
-    }
+    readDataLoop(m_img->m_blocksize);
 #else
     for(int j = 0; j <  m_img->m_blocksize; j++) {
       m_buf[j] = readHandshake();
