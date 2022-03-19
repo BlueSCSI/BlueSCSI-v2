@@ -878,7 +878,7 @@ void readDataLoop(uint32_t blockSize)
     REQ_OFF();
     *dstptr++ = ~(ret >> 8);
     // Move wait loop in to a single 8 byte prefetch buffer
-    asm("nop.w");
+    asm("nop.w;nop");
     WAIT_ACK_INACTIVE();
     REQ_ON();
     // Extra 1 cycle delay
