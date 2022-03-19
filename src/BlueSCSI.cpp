@@ -116,6 +116,10 @@ SdFs SD;
 #define SD_CS     PA4      // SDCARD:CS
 #define LED       PC13     // LED
 
+// Image Set Selector
+#define IMAGE_SELECT1   PA1
+#define IMAGE_SELECT2   PB1
+
 // GPIO register port
 #define PAREG GPIOA->regs
 #define PBREG GPIOB->regs
@@ -252,6 +256,7 @@ void noSDCardFound(void);
 void onBusReset(void);
 void initFileLog(int);
 void finalizeFileLog(void);
+void findDriveImages(FsFile root);
 
 /*
  * IO read.
@@ -335,16 +340,14 @@ void readSDCardInfo()
  * Open HDD image file
  */
 
-bool hddimageOpen(HDDIMG *h,const char *image_name,int id,int lun,int blocksize)
+bool hddimageOpen(HDDIMG *h, FsFile file,int id,int lun,int blocksize)
 {
   h->m_fileSize = 0;
   h->m_blocksize = blocksize;
-  h->m_file = SD.open(image_name, O_RDWR);
+  h->m_file = file;
   if(h->m_file.isOpen())
   {
     h->m_fileSize = h->m_file.size();
-    LOG_FILE.print("Imagefile: ");
-    LOG_FILE.print(image_name);
     if(h->m_fileSize>0)
     {
       // check blocksize dummy file
@@ -359,9 +362,9 @@ bool hddimageOpen(HDDIMG *h,const char *image_name,int id,int lun,int blocksize)
     }
     else
     {
+      LOG_FILE.println(" - file is 0 bytes, can not use.");
       h->m_file.close();
       h->m_fileSize = h->m_blocksize = 0; // no file
-      LOG_FILE.println("FileSizeError");
     }
   }
   return false;
@@ -392,6 +395,14 @@ void setup()
   // PIN initialization
   gpio_mode(LED2, GPIO_OUTPUT_PP);
   gpio_mode(LED, GPIO_OUTPUT_OD);
+
+  // Image Set Select Init
+  gpio_mode(IMAGE_SELECT1, GPIO_INPUT_PU);
+  gpio_mode(IMAGE_SELECT2, GPIO_INPUT_PU);
+  pinMode(IMAGE_SELECT1, INPUT);
+  pinMode(IMAGE_SELECT2, INPUT);
+  int image_file_set = ((digitalRead(IMAGE_SELECT1) == LOW) ? 1 : 0) | ((digitalRead(IMAGE_SELECT2) == LOW) ? 2 : 0);
+
   LED_OFF();
 
   //GPIO(SCSI BUS)Initialization
@@ -450,18 +461,71 @@ void setup()
   scsi_id_mask = 0x00;
 
   // Iterate over the root path in the SD card looking for candidate image files.
-  SdFile root;
-  root.open("/");
-  SdFile file;
-  bool imageReady;
-  int usedDefaultId = 0;
+  FsFile root;
+
+  char image_set_dir_name[] = "/ImageSetX/";
+  image_set_dir_name[9] = char(image_file_set) + 0x30;
+  root.open(image_set_dir_name);
+  if (root.isDirectory()) {
+    LOG_FILE.print("Looking for images in: ");
+    LOG_FILE.println(image_set_dir_name);
+    LOG_FILE.sync();
+  } else {
+    root.close();
+    root.open("/");
+  }
+
+  findDriveImages(root);
+  root.close();
+
+  FsFile images_all_dir;
+  images_all_dir.open("/ImageSetAll/");
+  if (images_all_dir.isDirectory()) {
+    LOG_FILE.println("Looking for images in: /ImageSetAll/");
+    LOG_FILE.sync();
+    findDriveImages(images_all_dir);
+  }
+  images_all_dir.close();
+
+  // Error if there are 0 image files
+  if(scsi_id_mask==0) {
+    LOG_FILE.println("ERROR: No valid images found!");
+    onFalseInit();
+  }
+
+  finalizeFileLog();
+  LED_OFF();
+  //Occurs when the RST pin state changes from HIGH to LOW
+  attachInterrupt(RST, onBusReset, FALLING);
+}
+
+void findDriveImages(FsFile root) {
+  bool image_ready;
+  FsFile file;
+  char path_name[MAX_FILE_PATH+1];
+  root.getName(path_name, sizeof(path_name));
+  SD.chdir(path_name);
+
   while (1) {
-    if (!file.openNext(&root, O_READ)) break;
+    // Directories can not be opened RDWR, so it will fail, but fails the same way with no file/dir, so we need to peek at the file first.
+    FsFile file_test = root.openNextFile(O_RDONLY);
     char name[MAX_FILE_PATH+1];
-    if(!file.isDir()) {
-      file.getName(name, MAX_FILE_PATH+1);
-      file.close();
-      String file_name = String(name);
+    file_test.getName(name, MAX_FILE_PATH+1);
+    String file_name = String(name);
+
+    // Skip directories and already open files.
+    if(file_test.isDir() || file_name.startsWith("LOG.txt")) {
+      file_test.close();
+      continue;
+    }
+    // If error there is no next file to open.
+    if(file_test.getError() > 0) {
+      file_test.close();
+      break;
+    }
+    // Valid file, open for reading/writing.
+    file = SD.open(name, O_RDWR);
+    if(file && file.isFile()) {
       file_name.toLowerCase();
       if(file_name.startsWith("hd")) {
         // Defaults for Hard Disks
@@ -479,7 +543,8 @@ void setup()
           if(tmp_id > -1 && tmp_id < 8) {
             id = tmp_id;
           } else {
-            usedDefaultId++;
+            LOG_FILE.print(name);
+            LOG_FILE.println(" - bad SCSI id in filename, Using default ID 1");
           }
         }
 
@@ -501,38 +566,23 @@ void setup()
 
         if(id < NUM_SCSIID && lun < NUM_SCSILUN) {
           HDDIMG *h = &img[id][lun];
-          imageReady = hddimageOpen(h,name,id,lun,blk);
-          if(imageReady) { // Marked as a responsive ID
+          LOG_FILE.print(" - ");
+          LOG_FILE.print(name);
+          image_ready = hddimageOpen(h, file, id, lun, blk);
+          if(image_ready) { // Marked as a responsive ID
             scsi_id_mask |= 1<<id;
           }
-        } else {
-          LOG_FILE.print("Bad LUN or SCSI id for image: ");
-          LOG_FILE.println(name);
-          LOG_FILE.sync();
         }
-      } else {
-          LOG_FILE.print("Not an image: ");
-          LOG_FILE.println(name);
-          LOG_FILE.sync();
       }
+    } else {
+      file.close();
+      LOG_FILE.print("Not an image: ");
+      LOG_FILE.println(name);
     }
-  }
-  if(usedDefaultId > 1) {
-    LOG_FILE.println("!! More than one image did not specify a SCSI ID. Last file will be used at ID 1 !!");
     LOG_FILE.sync();
   }
-  root.close();
-
-  // Error if there are 0 image files
-  if(scsi_id_mask==0) {
-    LOG_FILE.println("ERROR: No valid images found!");
-    onFalseInit();
-  }
-
-  finalizeFileLog();
-  LED_OFF();
-  //Occurs when the RST pin state changes from HIGH to LOW
-  attachInterrupt(RST, onBusReset, FALLING);
+  // cd .. before going back.
+  SD.chdir("/");
 }
 
 /*
