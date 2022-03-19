@@ -857,7 +857,7 @@ void readDataPhase(int len, byte* p)
 /*
  * See writeDataLoop for optimization info.
  */
-void readDataLoop(uint32_t blockSize) __attribute__ ((aligned(8)));
+void readDataLoop(uint32_t blockSize) __attribute__ ((aligned(16)));
 void readDataLoop(uint32_t blockSize)
 {
   register byte *dstptr= m_buf;
