@@ -1112,7 +1112,7 @@ byte onModeSenseCommand(byte scsi_cmd, byte dbd, int cmd2, uint32_t len)
   return 0x00;
 }
 #else
-byte onModeSenseCommand(byte scsi_cmd, byte dbd, int cmd2, uint32_t len)
+byte onModeSenseCommand(byte scsi_cmd, byte dbd, byte cmd2, uint32_t len)
 {
   if(!m_img) return 0x02; // No image file
 
@@ -1121,6 +1121,7 @@ byte onModeSenseCommand(byte scsi_cmd, byte dbd, int cmd2, uint32_t len)
 
   memset(m_buf, 0, sizeof(m_buf));
   int pageCode = cmd2 & 0x3F;
+  int pageControl = cmd2 >> 6;
   int a = 4;
   if(scsi_cmd == 0x5A) a = 8;
 
@@ -1151,24 +1152,37 @@ byte onModeSenseCommand(byte scsi_cmd, byte dbd, int cmd2, uint32_t len)
   case 0x03:  //Drive parameters
     m_buf[a + 0] = 0x03; //Page code
     m_buf[a + 1] = 0x16; // Page length
-    m_buf[a + 11] = 0x3F;//Number of sectors / track
-    m_buf[a + 12] = (byte)(m_img->m_blocksize >> 8);
-    m_buf[a + 13] = (byte)m_img->m_blocksize;
-    m_buf[a + 15] = 0x1; // Interleave
+    if(pageControl != 1) {
+      m_buf[a + 11] = 0x3F;//Number of sectors / track
+      m_buf[a + 12] = (byte)(m_img->m_blocksize >> 8);
+      m_buf[a + 13] = (byte)m_img->m_blocksize;
+      m_buf[a + 15] = 0x1; // Interleave
+    }
     a += 0x18;
     if(pageCode != 0x3F) break;
 
   case 0x04:  //Drive parameters
+    m_buf[a + 0] = 0x04; //Page code
+    m_buf[a + 1] = 0x16; // Page length
+    if(pageControl != 1) {
+      unsigned cylinders = bc / (16 * 63);
+      m_buf[a + 2] = (byte)(cylinders >> 16); // Cylinders
+      m_buf[a + 3] = (byte)(cylinders >> 8);
+      m_buf[a + 4] = (byte)cylinders;
+      m_buf[a + 5] = 16;   //Number of heads
+    }
+    a += 0x18;
+    if(pageCode != 0x3F) break;
+  case 0x30:
     {
-        unsigned cylinders = bc / (16 * 63);
-        m_buf[a + 0] = 0x04; //Page code
-        m_buf[a + 1] = 0x16; // Page length
-        m_buf[a + 2] = (byte)(cylinders >> 16); // Cylinders
-        m_buf[a + 3] = (byte)(cylinders >> 8);
-        m_buf[a + 4] = (byte)cylinders;
-        m_buf[a + 5] = 16;   //Number of heads
-        a += 0x18;
-        if(pageCode != 0x3F) break;
+      const byte page30[0x14] = {0x41, 0x50, 0x50, 0x4C, 0x45, 0x20, 0x43, 0x4F, 0x4D, 0x50, 0x55, 0x54, 0x45, 0x52, 0x2C, 0x20, 0x49, 0x4E, 0x43, 0x20};
+      m_buf[a + 0] = 0x30; // Page code
+      m_buf[a + 1] = sizeof(page30); // Page length
+      if(pageControl != 1) {
+        memcpy(&m_buf[a + 2], page30, sizeof(page30));
+      }
+      a += 2 + sizeof(page30);
+      if(pageCode != 0x3F) break;
     }
     break; // Don't want 0x3F falling through to error condition
 
@@ -1465,6 +1479,9 @@ void loop()
     break;
   case 0x2B:
     LOGN("[Seek10]");
+    break;
+  case 0x35:
+    LOGN("[SynchronizeCache10]");
     break;
   case 0x5A:
     LOGN("[ModeSense10]");
