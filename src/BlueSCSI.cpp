@@ -186,7 +186,7 @@ typedef struct hddimg_struct
 HDDIMG  img[NUM_SCSIID][NUM_SCSILUN]; // Maximum number
 
 uint8_t       m_senseKey = 0;         // Sense key
-unsigned      m_addition_sense = 0;   // Additional sense information
+uint16_t      m_addition_sense = 0;   // Additional sense information
 volatile bool m_isBusReset = false;   // Bus reset
 volatile bool m_resetJmp = false;     // Call longjmp on reset
 jmp_buf       m_resetJmpBuf;
@@ -926,6 +926,30 @@ void readDataPhaseSD(uint32_t adds, uint32_t len)
 }
 
 /*
+ * Data out phase.
+ * Compare to SD card while reading len block.
+ */
+void verifyDataPhaseSD(uint32_t adds, uint32_t len)
+{
+  LOGN("DATAOUT PHASE(SD)");
+  uint32_t pos = adds * m_img->m_blocksize;
+  m_img->m_file.seek(pos);
+  SCSI_OUT(vMSG,inactive) //  gpio_write(MSG, low);
+  SCSI_OUT(vCD ,inactive) //  gpio_write(CD, low);
+  SCSI_OUT(vIO ,inactive) //  gpio_write(IO, low);
+  for(uint32_t i = 0; i < len; i++) {
+#if WRITE_SPEED_OPTIMIZE
+    readDataLoop(m_img->m_blocksize);
+#else
+    for(int j = 0; j <  m_img->m_blocksize; j++) {
+      m_buf[j] = readHandshake();
+    }
+#endif
+    // This has just gone through the transfer to make things work, a compare would go here.
+  }
+}
+
+/*
  * INQUIRY command processing.
  */
 #if SCSI_SELECT == 2
@@ -980,7 +1004,11 @@ void onRequestSenseCommand(byte len)
  */
 byte onReadCapacityCommand(byte pmi)
 {
-  if(!m_img) return 0x02; // Image file absent
+  if(!m_img) {
+    m_senseKey = 2; // Not ready
+    m_addition_sense = 0x0403; // Logical Unit Not Ready, Manual Intervention Required
+    return 0x02; // Image file absent
+  }
   
   uint32_t bl = m_img->m_blocksize;
   uint32_t bc = m_img->m_fileSize / bl - 1; // Points to last LBA
@@ -993,6 +1021,27 @@ byte onReadCapacityCommand(byte pmi)
 }
 
 /*
+ * Check that the image file is present and the block range is valid.
+ */
+byte checkBlockCommand(uint32_t adds, uint32_t len)
+{
+  // Check that image file is present
+  if(!m_img) {
+    m_senseKey = 2; // Not ready
+    m_addition_sense = 0x0403; // Logical Unit Not Ready, Manual Intervention Required
+    return 0x02;
+  }
+  // Check block range is valid
+  uint32_t bc = m_img->m_fileSize / m_img->m_blocksize;
+  if (adds >= bc || (adds + len) > bc) {
+    m_senseKey = 5; // Illegal request
+    m_addition_sense = 0x2100; // Logical block address out of range
+    return 0x02;
+  }
+  return 0x00;
+}
+
+/*
  * READ6 / 10 Command processing.
  */
 byte onReadCommand(uint32_t adds, uint32_t len)
@@ -1001,8 +1050,10 @@ byte onReadCommand(uint32_t adds, uint32_t len)
   LOGHEXN(adds);
   LOGHEXN(len);
 
-  if(!m_img) return 0x02; // Image file absent
-  
+  byte sts = checkBlockCommand(adds, len);
+  if (sts) {
+    return sts;
+  }
   LED_ON();
   writeDataPhaseSD(adds, len);
   LED_OFF();
@@ -1018,12 +1069,37 @@ byte onWriteCommand(uint32_t adds, uint32_t len)
   LOGHEXN(adds);
   LOGHEXN(len);
   
-  if(!m_img) return 0x02; // Image file absent
-  
+  byte sts = checkBlockCommand(adds, len);
+  if (sts) {
+    return sts;
+  }
   LED_ON();
   readDataPhaseSD(adds, len);
   LED_OFF();
   return 0; //sts
+}
+
+/*
+ * VERIFY10 Command processing.
+ */
+    
+byte onVerifyCommand(byte flags, uint32_t adds, uint32_t len)
+{
+  byte sts = checkBlockCommand(adds, len);
+  if (sts) {
+    return sts;
+  }
+  int bytchk = (flags >> 1) & 0x03;
+  if (bytchk != 0) {
+    if (bytchk == 3) {
+      // Data-Out buffer is single logical block for repeated verification.
+      len == m_img->m_blocksize;
+    }
+    LED_ON();
+    verifyDataPhaseSD(adds, len);
+    LED_OFF();
+  }
+  return 0x00;
 }
 
 /*
@@ -1032,7 +1108,11 @@ byte onWriteCommand(uint32_t adds, uint32_t len)
 #if SCSI_SELECT == 2
 byte onModeSenseCommand(byte scsi_cmd, byte dbd, int cmd2, uint32_t len)
 {
-  if(!m_img) return 0x02; // Image file absent
+  if(!m_img) {
+    m_senseKey = 2; // Not ready
+    m_addition_sense = 0x0403; // Logical Unit Not Ready, Manual Intervention Required
+    return 0x02; // Image file absent
+  }
 
   int pageCode = cmd2 & 0x3F;
 
@@ -1112,15 +1192,20 @@ byte onModeSenseCommand(byte scsi_cmd, byte dbd, int cmd2, uint32_t len)
   return 0x00;
 }
 #else
-byte onModeSenseCommand(byte scsi_cmd, byte dbd, int cmd2, uint32_t len)
+byte onModeSenseCommand(byte scsi_cmd, byte dbd, byte cmd2, uint32_t len)
 {
-  if(!m_img) return 0x02; // No image file
+  if(!m_img) {
+    m_senseKey = 2; // Not ready
+    m_addition_sense = 0x0403; // Logical Unit Not Ready, Manual Intervention Required
+    return 0x02; // No image file
+  }
 
   uint32_t bl =  m_img->m_blocksize;
   uint32_t bc = m_img->m_fileSize / bl;
 
   memset(m_buf, 0, sizeof(m_buf));
   int pageCode = cmd2 & 0x3F;
+  int pageControl = cmd2 >> 6;
   int a = 4;
   if(scsi_cmd == 0x5A) a = 8;
 
@@ -1151,24 +1236,37 @@ byte onModeSenseCommand(byte scsi_cmd, byte dbd, int cmd2, uint32_t len)
   case 0x03:  //Drive parameters
     m_buf[a + 0] = 0x03; //Page code
     m_buf[a + 1] = 0x16; // Page length
-    m_buf[a + 11] = 0x3F;//Number of sectors / track
-    m_buf[a + 12] = (byte)(m_img->m_blocksize >> 8);
-    m_buf[a + 13] = (byte)m_img->m_blocksize;
-    m_buf[a + 15] = 0x1; // Interleave
+    if(pageControl != 1) {
+      m_buf[a + 11] = 0x3F;//Number of sectors / track
+      m_buf[a + 12] = (byte)(m_img->m_blocksize >> 8);
+      m_buf[a + 13] = (byte)m_img->m_blocksize;
+      m_buf[a + 15] = 0x1; // Interleave
+    }
     a += 0x18;
     if(pageCode != 0x3F) break;
 
   case 0x04:  //Drive parameters
+    m_buf[a + 0] = 0x04; //Page code
+    m_buf[a + 1] = 0x16; // Page length
+    if(pageControl != 1) {
+      unsigned cylinders = bc / (16 * 63);
+      m_buf[a + 2] = (byte)(cylinders >> 16); // Cylinders
+      m_buf[a + 3] = (byte)(cylinders >> 8);
+      m_buf[a + 4] = (byte)cylinders;
+      m_buf[a + 5] = 16;   //Number of heads
+    }
+    a += 0x18;
+    if(pageCode != 0x3F) break;
+  case 0x30:
     {
-        unsigned cylinders = bc / (16 * 63);
-        m_buf[a + 0] = 0x04; //Page code
-        m_buf[a + 1] = 0x16; // Page length
-        m_buf[a + 2] = (byte)(cylinders >> 16); // Cylinders
-        m_buf[a + 3] = (byte)(cylinders >> 8);
-        m_buf[a + 4] = (byte)cylinders;
-        m_buf[a + 5] = 16;   //Number of heads
-        a += 0x18;
-        if(pageCode != 0x3F) break;
+      const byte page30[0x14] = {0x41, 0x50, 0x50, 0x4C, 0x45, 0x20, 0x43, 0x4F, 0x4D, 0x50, 0x55, 0x54, 0x45, 0x52, 0x2C, 0x20, 0x49, 0x4E, 0x43, 0x20};
+      m_buf[a + 0] = 0x30; // Page code
+      m_buf[a + 1] = sizeof(page30); // Page length
+      if(pageControl != 1) {
+        memcpy(&m_buf[a + 2], page30, sizeof(page30));
+      }
+      a += 2 + sizeof(page30);
+      if(pageCode != 0x3F) break;
     }
     break; // Don't want 0x3F falling through to error condition
 
@@ -1192,6 +1290,25 @@ byte onModeSenseCommand(byte scsi_cmd, byte dbd, int cmd2, uint32_t len)
   return 0x00;
 }
 #endif
+    
+byte onModeSelectCommand(byte scsi_cmd, byte flags, uint32_t len)
+{
+  if (len > MAX_BLOCKSIZE) {
+    m_senseKey = 5; // Illegal request
+    m_addition_sense = 0x2400; // Invalid field in CDB
+    return 0x02;
+  }
+  readDataPhase(len, m_buf);
+  //Apple HD SC Setup sends:
+  //0 0 0 8 0 0 0 0 0 0 2 0 0 2 10 0 1 6 24 10 8 0 0 0
+  //I believe mode page 0 set to 10 00 is Disable Unit Attention
+  //Mode page 1 set to 24 10 08 00 00 00 is TB and PER set, read retry count 16, correction span 8
+  for (unsigned i = 0; i < len; i++) {
+    LOGHEX(m_buf[i]);LOG(" ");
+  }
+  LOGN("");
+  return 0x00;
+}
     
 #if SCSI_SELECT == 1
 /*
@@ -1441,6 +1558,10 @@ void loop()
     LOGN("[Inquiry]");
     m_sts |= onInquiryCommand(cmd[4]);
     break;
+  case 0x15:
+    LOGN("[ModeSelect6]");
+    m_sts |= onModeSelectCommand(cmd[0], cmd[1], cmd[4]);
+    break;
   case 0x1A:
     LOGN("[ModeSense6]");
     m_sts |= onModeSenseCommand(cmd[0], cmd[1]&0x80, cmd[2], cmd[4]);
@@ -1465,6 +1586,17 @@ void loop()
     break;
   case 0x2B:
     LOGN("[Seek10]");
+    break;
+  case 0x2F:
+    LOGN("[Verify10]");
+    m_sts |= onVerifyCommand(cmd[1], ((uint32_t)cmd[2] << 24) | ((uint32_t)cmd[3] << 16) | ((uint32_t)cmd[4] << 8) | cmd[5], ((uint32_t)cmd[7] << 8) | cmd[8]);
+    break;
+  case 0x35:
+    LOGN("[SynchronizeCache10]");
+    break;
+  case 0x55:
+    LOGN("[ModeSelect10");
+    m_sts |= onModeSelectCommand(cmd[0], cmd[1], ((uint32_t)cmd[7] << 8) | cmd[8]);
     break;
   case 0x5A:
     LOGN("[ModeSense10]");
