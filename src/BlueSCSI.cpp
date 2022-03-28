@@ -877,12 +877,13 @@ void writeDataLoop(uint32_t blocksize)
 void writeDataPhaseSD(uint32_t adds, uint32_t len)
 {
   LOGN("DATAIN PHASE(SD)");
-  uint32_t pos = adds * m_img->m_blocksize;
-  m_img->m_file.seek(pos);
-
   SCSI_OUT(vMSG,inactive) //  gpio_write(MSG, low);
   SCSI_OUT(vCD ,inactive) //  gpio_write(CD, low);
   SCSI_OUT(vIO ,  active) //  gpio_write(IO, high);
+  //Bus settle delay 400ns, file.seek() measured at over 1000ns.
+
+  uint32_t pos = adds * m_img->m_blocksize;
+  m_img->m_file.seek(pos);
 
   SCSI_DB_OUTPUT()
   for(uint32_t i = 0; i < len; i++) {
@@ -966,11 +967,13 @@ void readDataLoop(uint32_t blockSize)
 void readDataPhaseSD(uint32_t adds, uint32_t len)
 {
   LOGN("DATAOUT PHASE(SD)");
-  uint32_t pos = adds * m_img->m_blocksize;
-  m_img->m_file.seek(pos);
   SCSI_OUT(vMSG,inactive) //  gpio_write(MSG, low);
   SCSI_OUT(vCD ,inactive) //  gpio_write(CD, low);
   SCSI_OUT(vIO ,inactive) //  gpio_write(IO, low);
+  //Bus settle delay 400ns, file.seek() measured at over 1000ns.
+
+  uint32_t pos = adds * m_img->m_blocksize;
+  m_img->m_file.seek(pos);
   for(uint32_t i = 0; i < len; i++) {
     m_resetJmp = true;
 #if WRITE_SPEED_OPTIMIZE
@@ -998,11 +1001,13 @@ void readDataPhaseSD(uint32_t adds, uint32_t len)
 void verifyDataPhaseSD(uint32_t adds, uint32_t len)
 {
   LOGN("DATAOUT PHASE(SD)");
-  uint32_t pos = adds * m_img->m_blocksize;
-  m_img->m_file.seek(pos);
   SCSI_OUT(vMSG,inactive) //  gpio_write(MSG, low);
   SCSI_OUT(vCD ,inactive) //  gpio_write(CD, low);
   SCSI_OUT(vIO ,inactive) //  gpio_write(IO, low);
+  //Bus settle delay 400ns, file.seek() measured at over 1000ns.
+
+  uint32_t pos = adds * m_img->m_blocksize;
+  m_img->m_file.seek(pos);
   for(uint32_t i = 0; i < len; i++) {
 #if WRITE_SPEED_OPTIMIZE
     readDataLoop(m_img->m_blocksize);
