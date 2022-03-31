@@ -1164,7 +1164,7 @@ byte onVerifyCommand(byte flags, uint32_t adds, uint32_t len)
   if (bytchk != 0) {
     if (bytchk == 3) {
       // Data-Out buffer is single logical block for repeated verification.
-      len == m_img->m_blocksize;
+      len = m_img->m_blocksize;
     }
     LED_ON();
     verifyDataPhaseSD(adds, len);
