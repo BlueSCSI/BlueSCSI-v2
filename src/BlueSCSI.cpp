@@ -455,8 +455,6 @@ void setup()
   readSCSIDeviceConfig();
   readSDCardInfo();
 
-  //Sector data overrun byte setting
-  m_buf[MAX_BLOCKSIZE] = 0xff; // DB0 all off,DBP off
   //HD image file open
   scsi_id_mask = 0x00;
 
