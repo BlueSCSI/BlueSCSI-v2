@@ -546,7 +546,7 @@ void findDriveImages(FsFile root) {
           }
         }
 
-        int blk1, blk2, blk3, blk4 = 0;
+        int blk1 = 0, blk2, blk3, blk4 = 0;
         if(file_name_length > 8) { // HD00_[111]
           blk1 = name[HDIMG_BLK_POS] - '0';
           blk2 = name[HDIMG_BLK_POS+1] - '0';
