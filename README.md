@@ -13,7 +13,7 @@ Examples of valid filenames:
 Log files and error indications
 -------------------------------
 Log messages are stored in `azullog.txt`, which is cleared on every boot.
-Normally only basic initialization information is stored, but turning `DIPSW2` on will cause every SCSI command to be logged.
+Normally only basic initialization information is stored, but switching the `DBG` DIP switch on will cause every SCSI command to be logged, once the board is power cycled.
 
 The indicator LED will normally report disk access.
 It also reports following status conditions:
@@ -66,10 +66,10 @@ DIP switches
 ------------
 The DIP switch settings are as follows:
 
-- DIPSW1: Not used
-- DIPSW2: Enable verbose debug log (saved to `azullog.txt`)
-- DIPSW3: Enable SCSI termination
-- DIPSW4: Enable built-in USB bootloader
+- DEBUG: Enable verbose debug log (saved to `azullog.txt`)
+- TERM: Enable SCSI termination
+- BOOT: Enable built-in USB bootloader, this DIP switch MUST remain off during normal operation.
+- SW1: Not used for anything, available for further customization.
 
 Project structure
 -----------------
