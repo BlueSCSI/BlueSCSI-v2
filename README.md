@@ -83,6 +83,8 @@ Project structure
 - **lib/SdFat_NoArduino**: Modified version of [SdFat](https://github.com/greiman/SdFat) library for use without Arduino core.
 - **utils/run_gdb.sh**: Helper script for debugging with st-link adapter. Displays SWO log directly in console.
 
+To port the code to a new platform, see README in [lib/AzulSCSI_platform_template](lib/AzulSCSI_platform_template) folder.
+
 Building
 --------
 This codebase uses [PlatformIO](https://platformio.org/).
@@ -107,8 +109,8 @@ Main program structure:
 
 Major changes from BlueSCSI and SCSI2SD include:
 
-* Separation of platform-specific functionality to separate file to ease porting.
+* Separation of platform-specific functionality to separate directory to ease porting.
 * Ported to GD32F205.
 * Removal of Arduino core dependency, as it was not currently available for GD32F205.
 * Buffered log functions.
-* Direct streaming between SD card and SCSI for slightly improved performance.
+* Simultaneous transfer between SD card and SCSI for improved performance.
