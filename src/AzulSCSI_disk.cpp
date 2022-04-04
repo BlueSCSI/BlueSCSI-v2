@@ -8,6 +8,7 @@
 
 #include "AzulSCSI_disk.h"
 #include "AzulSCSI_log.h"
+#include "AzulSCSI_config.h"
 #include <minIni.h>
 #include <string.h>
 #include <SdFat.h>
@@ -16,6 +17,10 @@ extern "C" {
 #include <time.h>
 #include <sd.h>
 }
+
+#ifndef PLATFORM_MAX_SCSI_SPEED
+#define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_ASYNC_50
+#endif
 
 /***********************/
 /* Backing image files */
