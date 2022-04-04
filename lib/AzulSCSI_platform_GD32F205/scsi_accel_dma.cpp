@@ -180,6 +180,14 @@ static void refill_dmabuf()
     {
         dst[(pos++) & DMA_BUF_MASK] = g_scsi_out_byte_to_bop[*src++];
     }
+
+    if (end < g_scsi_dma.dma_fillto)
+    {
+        // Partial buffer fill, this will get refilled from interrupt if we
+        // get more data. Set next byte to an invalid parity value so that
+        // any race conditions will get caught as parity error.
+        dst[pos & DMA_BUF_MASK] = g_scsi_out_byte_to_bop[0] ^ SCSI_OUT_DBP;
+    }
 }
 
 // Start DMA transfer
@@ -319,11 +327,17 @@ extern "C" void SCSI_TIMER_DMACHB_IRQ()
                 // Refill the buffer and ensure that the first byte of the new data gets
                 // written to outputs.
                 __disable_irq();
-                uint32_t *first_data = &g_scsi_dma.dma_buf[g_scsi_dma.dma_idx & DMA_BUF_MASK];
                 refill_dmabuf();
-                GPIO_BOP(SCSI_OUT_PORT) = *first_data;
                 __enable_irq();
             }
+
+            // Verify the first byte of the new data has been written to outputs
+            // It may have been updated after the DMA write occurred.
+            __disable_irq();
+            uint32_t first_data_idx = g_scsi_dma.dma_idx - (g_scsi_dma.bytes_dma - g_scsi_dma.scheduled_dma);
+            uint32_t first_data = g_scsi_dma.dma_buf[first_data_idx & DMA_BUF_MASK];
+            GPIO_BOP(SCSI_OUT_PORT) = first_data;
+            __enable_irq();
 
             // Update the total number of bytes available for DMA
             uint32_t dma_to_schedule = g_scsi_dma.bytes_app - g_scsi_dma.scheduled_dma;
