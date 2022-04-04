@@ -9,7 +9,9 @@
 #define CRASHFILE   "azulerr.txt"
 
 // Log buffer size in bytes, must be a power of 2
+#ifndef LOGBUFSIZE
 #define LOGBUFSIZE 16384
+#endif
 #define LOG_SAVE_INTERVAL_MS 1000
 
 // Watchdog timeout
@@ -22,7 +24,6 @@
 #define HDIMG_LUN_POS 3                 // Position to embed LUN numbers
 #define HDIMG_BLK_POS 5                 // Position to embed block size numbers
 #define MAX_FILE_PATH 64                // Maximum file name length
-#define MAX_BLOCKSIZE 8192              // Maximum BLOCK size
 
 // SCSI config
 #define NUM_SCSIID  7          // Maximum number of supported SCSI-IDs (The minimum is 0)
@@ -46,7 +47,6 @@
 #define DEFAULT_REQ_TYPE_SETUP_NS 500
 
 // Use prefetch buffer in read requests
+#ifndef PREFETCH_BUFFER_SIZE
 #define PREFETCH_BUFFER_SIZE 8192
-
-// Uncomment for building on revision 2022a prototype board
-/* #define AZULSCSI_2022A_REVISION 1 */
+#endif

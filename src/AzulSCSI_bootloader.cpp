@@ -5,6 +5,8 @@
 #include <SdFat.h>
 #include <string.h>
 
+#ifdef AZPLATFORM_BOOTLOADER_SIZE
+
 extern SdFs SD;
 extern FsFile g_logfile;
 
@@ -117,3 +119,5 @@ int bootloader_main(void)
 
     return 0;
 }
+
+#endif
