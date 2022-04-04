@@ -30,10 +30,15 @@
 #define READ_PARITY_CHECK 0    // Perform read parity check (unverified)
 
 // Default SCSI drive information (can be overridden in INI file)
-#define DEFAULT_VENDOR "QUANTUM "
-#define DEFAULT_PRODUCT "FIREBALL1       "
-#define DEFAULT_VERSION "1.0 "
-#define DEFAULT_SERIAL  "0123456789ABCDEF"
+// Selected based on device type (fixed, removable, optical, floppy, mag-optical, tape)
+// Each entry has {vendor, product, version, serial}
+// If serial number is left empty, SD card serial number is used.
+#define DRIVEINFO_FIXED     {"AZULSCSI", "HARDDRIVE", PLATFORM_REVISION, ""}
+#define DRIVEINFO_REMOVABLE {"AZULSCSI", "REMOVABLE", PLATFORM_REVISION, ""}
+#define DRIVEINFO_OPTICAL   {"AZULSCSI", "CDROM",     PLATFORM_REVISION, ""}
+#define DRIVEINFO_FLOPPY    {"AZULSCSI", "FLOPPY",    PLATFORM_REVISION, ""}
+#define DRIVEINFO_MAGOPT    {"AZULSCSI", "MO_DRIVE",  PLATFORM_REVISION, ""}
+#define DRIVEINFO_TAPE      {"AZULSCSI", "TAPE",      PLATFORM_REVISION, ""}
 
 // Default delay for SCSI phases.
 // Can be adjusted in ini file
