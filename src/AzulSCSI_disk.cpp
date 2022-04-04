@@ -40,6 +40,125 @@ void scsiDiskResetImages()
     memset(g_DiskImages, 0, sizeof(g_DiskImages));
 }
 
+// Verify format conformance to SCSI spec:
+// - Empty bytes filled with 0x20 (space)
+// - Only values 0x20 to 0x7E
+// - Left alignment for vendor/product/revision, right alignment for serial.
+static void formatDriveInfoField(char *field, int fieldsize, bool align_right)
+{
+    if (align_right)
+    {
+        int dst = fieldsize - 1;
+        for (int src = fieldsize - 1; src >= 0; src--)
+        {
+            char c = field[src];
+            if (c < 0x20 || c > 0x7E) c = 0x20;
+            if (c != 0x20 || dst != fieldsize - 1)
+            {
+                field[dst--] = c;
+            }
+        }
+        while (dst >= 0)
+        {
+            field[dst--] = 0x20;
+        }
+    }
+    else
+    {
+        int dst = 0;
+        for (int src = 0; src < fieldsize; src++)
+        {
+            char c = field[src];
+            if (c < 0x20 || c > 0x7E) c = 0x20;
+            if (c != 0x20 || dst != 0)
+            {
+                field[dst++] = c;
+            }
+        }
+        while (dst < fieldsize)
+        {
+            field[dst++] = 0x20;
+        }
+    }
+}
+
+// Set default drive vendor / product info after the image file
+// is loaded and the device type is known.
+static void setDefaultDriveInfo(int target_idx)
+{
+    image_config_t &img = g_DiskImages[target_idx];
+
+    static const char *driveinfo_fixed[4] = DRIVEINFO_FIXED;
+    static const char *driveinfo_removable[4] = DRIVEINFO_REMOVABLE;
+    static const char *driveinfo_optical[4] = DRIVEINFO_OPTICAL;
+    static const char *driveinfo_floppy[4] = DRIVEINFO_FLOPPY;
+    static const char *driveinfo_magopt[4] = DRIVEINFO_MAGOPT;
+    static const char *driveinfo_tape[4] = DRIVEINFO_TAPE;
+    const char **driveinfo = NULL;
+
+    switch (img.deviceType)
+    {
+        case S2S_CFG_FIXED:         driveinfo = driveinfo_fixed; break;
+        case S2S_CFG_REMOVEABLE:    driveinfo = driveinfo_removable; break;
+        case S2S_CFG_OPTICAL:       driveinfo = driveinfo_optical; break;
+        case S2S_CFG_FLOPPY_14MB:   driveinfo = driveinfo_floppy; break;
+        case S2S_CFG_MO:            driveinfo = driveinfo_magopt; break;
+        case S2S_CFG_SEQUENTIAL:    driveinfo = driveinfo_tape; break;
+        default:                    driveinfo = driveinfo_fixed; break;
+    }
+
+    if (img.vendor[0] == '\0')
+    {
+        memset(img.vendor, 0, sizeof(img.vendor));
+        strncpy(img.vendor, driveinfo[0], sizeof(img.vendor));
+    }
+
+    if (img.prodId[0] == '\0')
+    {
+        memset(img.prodId, 0, sizeof(img.prodId));
+        strncpy(img.prodId, driveinfo[1], sizeof(img.prodId));
+    }
+
+    if (img.revision[0] == '\0')
+    {
+        memset(img.revision, 0, sizeof(img.revision));
+        strncpy(img.revision, driveinfo[2], sizeof(img.revision));
+    }
+
+    if (img.serial[0] == '\0')
+    {
+        memset(img.serial, 0, sizeof(img.serial));
+        strncpy(img.serial, driveinfo[3], sizeof(img.serial));
+    }
+
+    if (img.serial[0] == '\0')
+    {
+        // Use SD card serial number
+        cid_t sd_cid;
+        uint32_t sd_sn = 0;
+        if (SD.card()->readCID(&sd_cid))
+        {
+            sd_sn = sd_cid.psn;
+        }
+
+        memset(img.serial, 0, sizeof(img.serial));
+        const char *nibble = "0123456789ABCDEF";
+        img.serial[0] = nibble[(sd_sn >> 28) & 0xF];
+        img.serial[1] = nibble[(sd_sn >> 24) & 0xF];
+        img.serial[2] = nibble[(sd_sn >> 20) & 0xF];
+        img.serial[3] = nibble[(sd_sn >> 16) & 0xF];
+        img.serial[4] = nibble[(sd_sn >> 12) & 0xF];
+        img.serial[5] = nibble[(sd_sn >>  8) & 0xF];
+        img.serial[6] = nibble[(sd_sn >>  4) & 0xF];
+        img.serial[7] = nibble[(sd_sn >>  0) & 0xF];
+    }
+
+    formatDriveInfoField(img.vendor, sizeof(img.vendor), false);
+    formatDriveInfoField(img.prodId, sizeof(img.prodId), false);
+    formatDriveInfoField(img.revision, sizeof(img.revision), false);
+    formatDriveInfoField(img.serial, sizeof(img.serial), true);
+}
+
 bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize, bool is_cd)
 {
     image_config_t &img = g_DiskImages[target_idx];
@@ -83,6 +202,8 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
             img.deviceType = S2S_CFG_OPTICAL;
         }
 
+        setDefaultDriveInfo(target_idx);
+
         return true;
     }
 
@@ -98,10 +219,10 @@ static void scsiDiskConfigDefaults(int target_idx)
     img.sectorsPerTrack = 63;
     img.headsPerCylinder = 255;
     img.quirks = S2S_CFG_QUIRKS_NONE;
-    memcpy(img.vendor, DEFAULT_VENDOR, 8);
-    memcpy(img.prodId, DEFAULT_PRODUCT, 16);
-    memcpy(img.revision, DEFAULT_VERSION, 4);
-    memcpy(img.serial, DEFAULT_SERIAL, 16);
+    memset(img.vendor, 0, sizeof(img.vendor));
+    memset(img.prodId, 0, sizeof(img.prodId));
+    memset(img.revision, 0, sizeof(img.revision));
+    memset(img.serial, 0, sizeof(img.serial));
 }
 
 // Load values for target configuration from given section if they exist.
@@ -118,19 +239,19 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
     char tmp[32];
     memset(tmp, 0, sizeof(tmp));
     ini_gets(section, "Vendor", "", tmp, sizeof(tmp), CONFIGFILE);
-    if (tmp[0]) memcpy(img.vendor, tmp, 8);
+    if (tmp[0]) memcpy(img.vendor, tmp, sizeof(img.vendor));
 
     memset(tmp, 0, sizeof(tmp));
     ini_gets(section, "Product", "", tmp, sizeof(tmp), CONFIGFILE);
-    if (tmp[0]) memcpy(img.prodId, tmp, 16);
+    if (tmp[0]) memcpy(img.prodId, tmp, sizeof(img.prodId));
 
     memset(tmp, 0, sizeof(tmp));
     ini_gets(section, "Version", "", tmp, sizeof(tmp), CONFIGFILE);
-    if (tmp[0]) memcpy(img.revision, tmp, 4);
+    if (tmp[0]) memcpy(img.revision, tmp, sizeof(img.revision));
     
     memset(tmp, 0, sizeof(tmp));
     ini_gets(section, "Serial", "", tmp, sizeof(tmp), CONFIGFILE);
-    if (tmp[0]) memcpy(img.serial, tmp, 16);
+    if (tmp[0]) memcpy(img.serial, tmp, sizeof(img.serial));
 }
 
 void scsiDiskLoadConfig(int target_idx)
