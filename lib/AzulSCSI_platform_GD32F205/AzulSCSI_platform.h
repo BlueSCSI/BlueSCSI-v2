@@ -5,6 +5,7 @@
 
 #include <gd32f20x.h>
 #include <gd32f20x_gpio.h>
+#include <scsi2sd.h>
 #include "AzulSCSI_config.h"
 
 #ifdef __cplusplus
@@ -75,6 +76,17 @@ void azplatform_set_sd_callback(sd_callback_t func, const uint8_t *buffer);
 #define AZPLATFORM_FLASH_PAGE_SIZE 2048
 bool azplatform_rewrite_flash_page(uint32_t offset, uint8_t buffer[AZPLATFORM_FLASH_PAGE_SIZE]);
 void azplatform_boot_to_main_firmware();
+
+// Configuration customizations based on DIP switch settings
+// When DIPSW1 is on, Apple quirks are enabled by default.
+void azplatform_config_hook(S2S_TargetCfg *config);
+#define AZPLATFORM_CONFIG_HOOK(cfg) azplatform_config_hook(cfg)
+#define APPLE_DRIVEINFO_FIXED     {"AZULSCSI", "APPLE_HDD",         PLATFORM_REVISION, ""}
+#define APPLE_DRIVEINFO_REMOVABLE {"AZULSCSI", "APPLE_REMOVABLE",   PLATFORM_REVISION, ""}
+#define APPLE_DRIVEINFO_OPTICAL   {"AZULSCSI", "APPLE_CD",          PLATFORM_REVISION, ""}
+#define APPLE_DRIVEINFO_FLOPPY    {"AZULSCSI", "APPLE_FLOPPY",      PLATFORM_REVISION, ""}
+#define APPLE_DRIVEINFO_MAGOPT    {"AZULSCSI", "APPLE_MO",          PLATFORM_REVISION, ""}
+#define APPLE_DRIVEINFO_TAPE      {"AZULSCSI", "APPLE_TAPE",        PLATFORM_REVISION, ""}
 
 // Write a single SCSI pin.
 // Example use: SCSI_OUT(ATN, 1) sets SCSI_ATN to low (active) state.
