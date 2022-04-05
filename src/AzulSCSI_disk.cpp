@@ -207,6 +207,10 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
             img.deviceType = S2S_CFG_OPTICAL;
         }
 
+#ifdef AZPLATFORM_CONFIG_HOOK
+        AZPLATFORM_CONFIG_HOOK(&img);
+#endif
+
         setDefaultDriveInfo(target_idx);
 
         return true;
