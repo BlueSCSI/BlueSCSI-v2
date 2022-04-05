@@ -14,7 +14,7 @@
 #include <SdFat.h>
 
 extern "C" {
-#include <time.h>
+#include <scsi2sd_time.h>
 #include <sd.h>
 }
 

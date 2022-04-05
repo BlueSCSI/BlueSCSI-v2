@@ -23,7 +23,7 @@
 #include "inquiry.h"
 #include "led.h"
 #include "mode.h"
-#include "time.h"
+#include "scsi2sd_time.h"
 #include "bsp.h"
 #include "cdrom.h"
 //#include "debug.h"
