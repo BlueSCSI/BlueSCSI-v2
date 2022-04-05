@@ -14,7 +14,7 @@
 #include <scsi2sd.h>
 extern "C" {
 #include <scsi.h>
-#include <time.h>
+#include <scsi2sd_time.h>
 }
 
 // Acceleration mode in use
