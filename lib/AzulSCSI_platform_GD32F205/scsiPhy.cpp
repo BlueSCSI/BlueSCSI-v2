@@ -6,6 +6,7 @@
 #include "scsi_accel_asm.h"
 #include "scsi_accel_dma.h"
 #include "scsi_accel_greenpak.h"
+#include "scsi_accel_sync.h"
 #include "AzulSCSI_log.h"
 #include "AzulSCSI_log_trace.h"
 #include "AzulSCSI_config.h"
@@ -171,6 +172,10 @@ extern "C" void scsiPhyReset(void)
     g_scsi_ctrl_bsy = 0;
     init_irqs();
 
+#ifdef SCSI_SYNC_MODE_AVAILABLE
+    scsi_accel_sync_init();
+#endif
+
     selectPhyMode();
 
     if (g_scsi_phy_mode == PHY_MODE_DMA_TIMER)
@@ -304,7 +309,12 @@ extern "C" void scsiStartWrite(const uint8_t* data, uint32_t count)
 {
     scsiLogDataIn(data, count);
 
-    if (g_scsi_phy_mode == PHY_MODE_PIO || g_scsi_phy_mode == PHY_MODE_GREENPAK_PIO)
+    if (g_scsi_phase == DATA_IN && scsiDev.target->syncOffset > 0)
+    {
+        // Synchronous data transfer
+        scsi_accel_sync_startWrite(data, count, &scsiDev.resetFlag);
+    }
+    else if (g_scsi_phy_mode == PHY_MODE_PIO || g_scsi_phy_mode == PHY_MODE_GREENPAK_PIO)
     {
         // Software based bit-banging.
         // Write requests are queued and then executed in isWriteFinished() callback.
@@ -397,7 +407,11 @@ static bool isPollingWriteFinished(const uint8_t *data)
 
 extern "C" bool scsiIsWriteFinished(const uint8_t *data)
 {
-    if (g_scsi_phy_mode == PHY_MODE_DMA_TIMER || g_scsi_phy_mode == PHY_MODE_GREENPAK_DMA)
+    if (g_scsi_phase == DATA_IN && scsiDev.target->syncOffset > 0)
+    {
+        return scsi_accel_sync_isWriteFinished(data);
+    }
+    else if (g_scsi_phy_mode == PHY_MODE_DMA_TIMER || g_scsi_phy_mode == PHY_MODE_GREENPAK_DMA)
     {
         return scsi_accel_dma_isWriteFinished(data);
     }
@@ -418,7 +432,11 @@ extern "C" bool scsiIsWriteFinished(const uint8_t *data)
 
 extern "C" void scsiFinishWrite()
 {
-    if (g_scsi_phy_mode == PHY_MODE_DMA_TIMER || g_scsi_phy_mode == PHY_MODE_GREENPAK_DMA)
+    if (g_scsi_phase == DATA_IN && scsiDev.target->syncOffset > 0)
+    {
+        return scsi_accel_sync_finishWrite(&scsiDev.resetFlag);
+    }
+    else if (g_scsi_phy_mode == PHY_MODE_DMA_TIMER || g_scsi_phy_mode == PHY_MODE_GREENPAK_DMA)
     {
         scsi_accel_dma_finishWrite(&scsiDev.resetFlag);
     }
@@ -462,7 +480,12 @@ extern "C" void scsiRead(uint8_t* data, uint32_t count, int* parityError)
     uint32_t count_words = count / 4;
     bool use_greenpak = (g_scsi_phy_mode == PHY_MODE_GREENPAK_DMA || g_scsi_phy_mode == PHY_MODE_GREENPAK_PIO);
 
-    if (count_words * 4 == count && count_words >= 2 && use_greenpak)
+    if (g_scsi_phase == DATA_OUT && scsiDev.target->syncOffset > 0)
+    {
+        // Synchronous data transfer
+        scsi_accel_sync_read(data, count, parityError, &scsiDev.resetFlag);
+    }
+    else if (count_words * 4 == count && count_words >= 2 && use_greenpak)
     {
         // GreenPAK accelerated receive can handle a multiple of 4 bytes with minimum of 8 bytes.
         scsi_accel_greenpak_recv((uint32_t*)data, count_words, &scsiDev.resetFlag);
