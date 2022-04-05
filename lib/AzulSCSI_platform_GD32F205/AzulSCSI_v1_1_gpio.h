@@ -95,6 +95,13 @@
 #define SCSI_ATN_PIN  GPIO_PIN_12
 #define SCSI_IN_ACK_IDX 0
 
+// Extra signals used with EXMC for synchronous mode
+#define SCSI_IN_ACK_EXMC_NWAIT_PORT GPIOD
+#define SCSI_IN_ACK_EXMC_NWAIT_PIN  GPIO_PIN_6
+#define SCSI_OUT_REQ_EXMC_NOE_PORT  GPIOD
+#define SCSI_OUT_REQ_EXMC_NOE_PIN   GPIO_PIN_4
+#define SCSI_EXMC_DATA_SHIFT 5
+
 // BSY pin uses EXTI interrupt
 #define SCSI_BSY_PORT GPIOB
 #define SCSI_BSY_PIN  GPIO_PIN_10
