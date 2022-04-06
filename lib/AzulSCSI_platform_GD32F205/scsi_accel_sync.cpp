@@ -31,10 +31,14 @@ bool scsi_accel_sync_isWriteFinished(const uint8_t* data) { return true; }
 
 #else
 
+#define SYNC_DMA_BUFSIZE 512
+static uint32_t g_sync_dma_buf[SYNC_DMA_BUFSIZE];
+
 void scsi_accel_sync_init()
 {
     rcu_periph_clock_enable(RCU_EXMC);
     rcu_periph_clock_enable(SCSI_TIMER_RCU);
+    rcu_periph_clock_enable(SCSI_EXMC_DMA_RCU);
 
     exmc_norsram_timing_parameter_struct timing_param = {
         .asyn_access_mode = EXMC_ACCESS_MODE_A,
@@ -43,7 +47,7 @@ void scsi_accel_sync_init()
         .bus_latency = 1,
         .asyn_data_setuptime = 2,
         .asyn_address_holdtime = 2,
-        .asyn_address_setuptime = 1
+        .asyn_address_setuptime = 16
     };
 
     exmc_norsram_parameter_struct sram_param = {
@@ -63,24 +67,74 @@ void scsi_accel_sync_init()
         .read_write_timing = &timing_param
     };
 
+    EXMC_SNCTL(EXMC_BANK0_NORSRAM_REGION0) &= ~EXMC_SNCTL_NRBKEN;
     exmc_norsram_init(&sram_param);
+
+    // DMA used to transfer data from EXMC to RAM
+    // DMA is used so that if data transfer fails, we can at least abort by resetting CPU.
+    // Accessing EXMC from the CPU directly hangs it totally if ACK pulses are not received.
+    dma_parameter_struct exmc_dma_config =
+    {
+        .periph_addr = EXMC_NOR_PSRAM,
+        .periph_width = DMA_PERIPHERAL_WIDTH_16BIT,
+        .memory_addr = (uint32_t)g_sync_dma_buf,
+        .memory_width = DMA_MEMORY_WIDTH_16BIT,
+        .number = 0, // Filled before transfer
+        .priority = DMA_PRIORITY_MEDIUM,
+        .periph_inc = DMA_PERIPH_INCREASE_DISABLE,
+        .memory_inc = DMA_MEMORY_INCREASE_ENABLE,
+        .direction = DMA_PERIPHERAL_TO_MEMORY
+    };
+    dma_init(SCSI_EXMC_DMA, SCSI_EXMC_DMACH, &exmc_dma_config);
+    dma_memory_to_memory_enable(SCSI_EXMC_DMA, SCSI_EXMC_DMACH);
 
     gpio_init(SCSI_IN_ACK_EXMC_NWAIT_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_IN_ACK_EXMC_NWAIT_PIN);
 }
 
 void scsi_accel_sync_read(uint8_t *data, uint32_t count, int* parityError, volatile int *resetFlag)
 {
-    exmc_norsram_enable(EXMC_BANK0_NORSRAM_REGION0);
-    gpio_init(SCSI_OUT_REQ_EXMC_NOE_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_REQ_EXMC_NOE_PIN);
+    // Enable EXMC to drive REQ from EXMC_NOE pin
+    EXMC_SNCTL(EXMC_BANK0_NORSRAM_REGION0) |= EXMC_SNCTL_NRBKEN;
+    uint32_t oldmode = GPIO_CTL0(SCSI_OUT_REQ_EXMC_NOE_PORT);
+    uint32_t newmode = oldmode & ~(0xF << (SCSI_OUT_REQ_EXMC_NOE_IDX * 4));
+    newmode |= 0xB << (SCSI_OUT_REQ_EXMC_NOE_IDX * 4);
+    GPIO_CTL0(SCSI_OUT_REQ_EXMC_NOE_PORT) = newmode;
     
-    for (int i = 0; i < count; i++)
+    while (count > 0)
     {
-        uint32_t value = *(volatile uint32_t*)EXMC_NOR_PSRAM;
-        data[i] = ~(value >> SCSI_EXMC_DATA_SHIFT) & 0xFF;
+        uint32_t blocksize = (count > SYNC_DMA_BUFSIZE * 2) ? (SYNC_DMA_BUFSIZE * 2) : count;
+        count -= blocksize;
+
+        DMA_CHCNT(SCSI_EXMC_DMA, SCSI_EXMC_DMACH) = blocksize;
+        DMA_CHCTL(SCSI_EXMC_DMA, SCSI_EXMC_DMACH) |= DMA_CHXCTL_CHEN;
+
+        uint16_t *src = (uint16_t*)g_sync_dma_buf;
+        uint8_t *dst = data;
+        uint8_t *end = data + blocksize;
+        uint32_t start = millis();
+        while (dst < end)
+        {
+            uint32_t remain = DMA_CHCNT(SCSI_EXMC_DMA, SCSI_EXMC_DMACH);
+
+            while (dst < end - remain)
+            {
+                *dst++ = ~(*src++) >> SCSI_EXMC_DATA_SHIFT;
+            }
+
+            if ((uint32_t)(millis() - start) > 500 || *resetFlag)
+            {
+                // We are in a pinch here: without ACK pulses coming, the EXMC and DMA peripherals
+                // are locked up. The only way out is a whole system reset.
+                azlog("SCSI Synchronous read timeout: resetting system");
+                NVIC_SystemReset();
+            }
+        }
+
+        DMA_CHCTL(SCSI_EXMC_DMA, SCSI_EXMC_DMACH) &= ~DMA_CHXCTL_CHEN;
     }
 
-    gpio_init(SCSI_OUT_REQ_EXMC_NOE_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_REQ_EXMC_NOE_PIN);
-    exmc_norsram_disable(EXMC_BANK0_NORSRAM_REGION0);
+    GPIO_CTL0(SCSI_OUT_REQ_EXMC_NOE_PORT) = oldmode;
+    EXMC_SNCTL(EXMC_BANK0_NORSRAM_REGION0) &= ~EXMC_SNCTL_NRBKEN;
 }
 
 void scsi_accel_sync_startWrite(const uint8_t* data, uint32_t count, volatile int *resetFlag)
