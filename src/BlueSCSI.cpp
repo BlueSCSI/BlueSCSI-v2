@@ -233,7 +233,7 @@ uint32_t db_bsrr[256];
 //#undef PTY
 
 // Log File
-#define VERSION "1.1-20220404"
+#define VERSION "1.1-SNAPSHOT-20220407"
 #define LOG_FILENAME "LOG.txt"
 FsFile LOG_FILE;
 
