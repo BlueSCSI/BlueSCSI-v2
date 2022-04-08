@@ -3,7 +3,7 @@ AzulSCSI Firmware
 
 Harddrive image files
 ---------------------
-AzulSCSI uses the same harddrive image file format as in [BlueSCSI instructions](https://github.com/erichelgeson/BlueSCSI/wiki/Usage).
+AzulSCSI uses the same type of (raw) hard drive image file as in [BlueSCSI instructions](https://github.com/erichelgeson/BlueSCSI/wiki/Usage).
 
 Examples of valid filenames:
 * `HD5.hda` or `HD5.img`: hard drive with SCSI ID 5
@@ -69,7 +69,7 @@ The DIP switch settings are as follows:
 - DEBUG: Enable verbose debug log (saved to `azullog.txt`)
 - TERM: Enable SCSI termination
 - BOOT: Enable built-in USB bootloader, this DIP switch MUST remain off during normal operation.
-- SW1: Not used for anything, available for further customization.
+- SW1: Enables/disables Macintosh/Apple specific mode-pages and device strings, which eases disk initialization when performing fresh installs on legacy Macintosh computers.
 
 Project structure
 -----------------
