@@ -34,7 +34,7 @@ static void greenpak_gpio_init()
     gpio_init(GREENPAK_I2C_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_2MHZ, GREENPAK_I2C_SCL);
 
     // Data bits used for communication
-    uint32_t greenpak_io = GREENPAK_PLD_IO1 | GREENPAK_PLD_IO2;
+    uint32_t greenpak_io = GREENPAK_PLD_IO1 | GREENPAK_PLD_IO2 | GREENPAK_PLD_IO3;
     gpio_bit_reset(SCSI_OUT_PORT, greenpak_io);
     gpio_init(SCSI_OUT_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, greenpak_io);
 }
