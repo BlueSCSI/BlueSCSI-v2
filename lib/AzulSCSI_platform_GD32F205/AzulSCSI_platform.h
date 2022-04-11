@@ -81,7 +81,7 @@ void azplatform_boot_to_main_firmware();
 // When DIPSW1 is on, Apple quirks are enabled by default.
 void azplatform_config_hook(S2S_TargetCfg *config);
 #define AZPLATFORM_CONFIG_HOOK(cfg) azplatform_config_hook(cfg)
-#define APPLE_DRIVEINFO_FIXED     {"AZULSCSI", "APPLE_HDD",         PLATFORM_REVISION, ""}
+#define APPLE_DRIVEINFO_FIXED     {"SEAGATE",  "ST225N",            PLATFORM_REVISION, ""}
 #define APPLE_DRIVEINFO_REMOVABLE {"AZULSCSI", "APPLE_REMOVABLE",   PLATFORM_REVISION, ""}
 #define APPLE_DRIVEINFO_OPTICAL   {"AZULSCSI", "APPLE_CD",          PLATFORM_REVISION, ""}
 #define APPLE_DRIVEINFO_FLOPPY    {"AZULSCSI", "APPLE_FLOPPY",      PLATFORM_REVISION, ""}

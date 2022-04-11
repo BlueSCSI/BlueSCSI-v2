@@ -36,6 +36,11 @@ struct image_config_t: public S2S_TargetCfg
     // For CD-ROM drive ejection
     bool ejected;
     uint8_t cdrom_events;
+
+    // Right-align vendor / product type strings (for Apple)
+    // Standard SCSI uses left alignment
+    // This field uses -1 for default when field is not set in .ini
+    int rightAlignStrings;
 };
 
 static image_config_t g_DiskImages[S2S_MAX_TARGETS];
@@ -53,6 +58,7 @@ static void formatDriveInfoField(char *field, int fieldsize, bool align_right)
 {
     if (align_right)
     {
+        // Right align and trim spaces on either side
         int dst = fieldsize - 1;
         for (int src = fieldsize - 1; src >= 0; src--)
         {
@@ -70,15 +76,13 @@ static void formatDriveInfoField(char *field, int fieldsize, bool align_right)
     }
     else
     {
+        // Left align, preserve spaces in case config tries to manually right-align
         int dst = 0;
         for (int src = 0; src < fieldsize; src++)
         {
             char c = field[src];
             if (c < 0x20 || c > 0x7E) c = 0x20;
-            if (c != 0x20 || dst != 0)
-            {
-                field[dst++] = c;
-            }
+            field[dst++] = c;
         }
         while (dst < fieldsize)
         {
@@ -158,9 +162,16 @@ static void setDefaultDriveInfo(int target_idx)
         img.serial[7] = nibble[(sd_sn >>  0) & 0xF];
     }
 
-    formatDriveInfoField(img.vendor, sizeof(img.vendor), false);
-    formatDriveInfoField(img.prodId, sizeof(img.prodId), false);
-    formatDriveInfoField(img.revision, sizeof(img.revision), false);
+    int rightAlign = img.rightAlignStrings;
+    if (rightAlign < 0)
+    {
+        // Default value based on quirks
+        rightAlign = (img.quirks == S2S_CFG_QUIRKS_APPLE);
+    }
+
+    formatDriveInfoField(img.vendor, sizeof(img.vendor), rightAlign);
+    formatDriveInfoField(img.prodId, sizeof(img.prodId), rightAlign);
+    formatDriveInfoField(img.revision, sizeof(img.revision), rightAlign);
     formatDriveInfoField(img.serial, sizeof(img.serial), true);
 }
 
@@ -244,6 +255,7 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
     img.sectorsPerTrack = ini_getl(section, "SectorsPerTrack", img.sectorsPerTrack, CONFIGFILE);
     img.headsPerCylinder = ini_getl(section, "HeadsPerCylinder", img.headsPerCylinder, CONFIGFILE);
     img.quirks = ini_getl(section, "Quirks", img.quirks, CONFIGFILE);
+    img.rightAlignStrings = ini_getbool(section, "RightAlignStrings", -1, CONFIGFILE);
     
     char tmp[32];
     memset(tmp, 0, sizeof(tmp));
