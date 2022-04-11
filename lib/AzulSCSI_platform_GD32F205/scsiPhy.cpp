@@ -460,13 +460,21 @@ extern "C" void scsiRead(uint8_t* data, uint32_t count, int* parityError)
     *parityError = 0;
 
     uint32_t count_words = count / 4;
-    if (count_words * 4 == count)
+    bool use_greenpak = (g_scsi_phy_mode == PHY_MODE_GREENPAK_DMA || g_scsi_phy_mode == PHY_MODE_GREENPAK_PIO);
+
+    if (count_words * 4 == count && count_words >= 2 && use_greenpak)
     {
-        // Use accelerated subroutine
+        // GreenPAK accelerated receive can handle a multiple of 4 bytes with minimum of 8 bytes.
+        scsi_accel_greenpak_recv((uint32_t*)data, count_words, &scsiDev.resetFlag);
+    }
+    else if (count_words * 4 == count && count_words >= 1)
+    {
+        // Optimized ASM subroutine can handle multiple of 4 bytes with minimum of 4 bytes.
         scsi_accel_asm_recv((uint32_t*)data, count_words, &scsiDev.resetFlag);
     }
     else
     {
+        // Use a simple loop for short and unaligned transfers
         for (uint32_t i = 0; i < count; i++)
         {
             if (scsiDev.resetFlag) break;
