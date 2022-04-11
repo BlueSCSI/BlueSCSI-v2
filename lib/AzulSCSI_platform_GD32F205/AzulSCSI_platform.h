@@ -23,6 +23,9 @@ extern const char *g_azplatform_name;
 #   define PLATFORM_NAME "AzulSCSI v1.1"
 #   define PLATFORM_REVISION "1.1"
 #   define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_ASYNC_50
+#   define PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE 4096
+#   define PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE 65536
+#   define PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE 8192
 #   include "AzulSCSI_v1_1_gpio.h"
 #endif
 

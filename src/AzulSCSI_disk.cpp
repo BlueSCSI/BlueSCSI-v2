@@ -22,6 +22,26 @@ extern "C" {
 #define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_ASYNC_50
 #endif
 
+// This can be overridden in platform file to set the size of the transfers
+// used when reading from SCSI bus and writing to SD card.
+// When SD card access is fast, these are usually better increased.
+// If SD card access is roughly same speed as SCSI bus, these can be left at 512
+#ifndef PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE
+#define PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE 512
+#endif
+
+#ifndef PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE
+#define PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE 1024
+#endif
+
+// Optimal size for the last write in a write request.
+// This is often better a bit smaller than PLATFORM_OPTIMAL_SD_WRITE_SIZE
+// to reduce the dead time between end of SCSI transfer and finishing of SD write.
+#ifndef PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE
+#define PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE 512
+#endif
+
+
 /***********************/
 /* Backing image files */
 /***********************/
@@ -630,6 +650,9 @@ static struct {
     uint8_t *buffer;
     uint32_t bytes_sd; // Number of bytes that have been scheduled for transfer on SD card side
     uint32_t bytes_scsi; // Number of bytes that have been scheduled for transfer on SCSI side
+
+    uint32_t bytes_scsi_done;
+    uint32_t sd_transfer_start;
 } g_disk_transfer;
 
 #ifdef PREFETCH_BUFFER_SIZE
@@ -707,18 +730,63 @@ static void doWrite(uint32_t lba, uint32_t blocks)
     }
 }
 
+// Called to transfer next block from SCSI bus.
+// Usually called from SD card driver during waiting for SD card access.
 void diskDataOut_callback(uint32_t bytes_complete)
 {
-    if (scsiDev.dataPtr < scsiDev.dataLen)
+    // For best performance, do SCSI reads in blocks of 4 or more bytes
+    bytes_complete &= ~3;
+
+    if (g_disk_transfer.bytes_scsi_done < g_disk_transfer.bytes_scsi)
     {
-        // DMA is now writing to SD card.
-        // We can use this time to transfer next block from SCSI bus.
-        uint32_t len = scsiDev.dataLen - scsiDev.dataPtr;
-        if (len > 512) len = 512;
+        // How many bytes remaining in the transfer?
+        uint32_t remain = g_disk_transfer.bytes_scsi - g_disk_transfer.bytes_scsi_done;
+        uint32_t len = remain;
         
+        // Limit maximum amount of data transferred at one go, to give enough callbacks to SD driver.
+        // Select the limit based on total bytes in the transfer.
+        // Transfer size is reduced towards the end of transfer to reduce the dead time between
+        // end of SCSI transfer and the SD write completing.
+        uint32_t limit = g_disk_transfer.bytes_scsi / 8;
+        if (limit < PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE) limit = PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE;
+        if (limit > PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE) limit = PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE;
+
+        if (len > limit)
+        {
+            len = limit;
+        }
+        else if (len > PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE)
+        {
+            len = len - PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE;
+        }
+
+        // Split read so that it doesn't wrap around buffer edge
+        uint32_t bufsize = sizeof(scsiDev.data);
+        uint32_t start = (g_disk_transfer.bytes_scsi_done % bufsize);
+        if (start + len > bufsize)
+            len = bufsize - start;
+
+        // Don't overwrite data that has not yet been written to SD card
+        uint32_t sd_ready_cnt = g_disk_transfer.bytes_sd + bytes_complete;
+        if (g_disk_transfer.bytes_scsi_done + len > sd_ready_cnt + bufsize)
+            len = sd_ready_cnt + bufsize - g_disk_transfer.bytes_scsi_done;
+
+        // Keep transfers a multiple of sector size.
+        // Macintosh SCSI driver seems to get confused if we have a delay
+        // in middle of a sector.
+        uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+        if (remain >= bytesPerSector && len % bytesPerSector != 0)
+        {
+            len -= len % bytesPerSector;
+        }
+
+        if (len == 0)
+            return;
+
+        // azdbg("SCSI read ", (int)start, " + ", (int)len);
         int parityError = 0;
-        scsiRead(scsiDev.data + scsiDev.dataPtr, len, &parityError);
-        scsiDev.dataPtr += len;
+        scsiRead(&scsiDev.data[start], len, &parityError);
+        g_disk_transfer.bytes_scsi_done += len;
 
         if (parityError)
         {
@@ -734,31 +802,41 @@ void diskDataOut()
 {
     scsiEnterPhase(DATA_OUT);
 
-    // Figure out how many blocks we can fit in buffer
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     uint32_t blockcount = (transfer.blocks - transfer.currentBlock);
     uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
-    uint32_t maxblocks = sizeof(scsiDev.data) / bytesPerSector;
-    if (blockcount > maxblocks) blockcount = maxblocks;
-    uint32_t transferlen = blockcount * bytesPerSector;
-    scsiDev.dataLen = transferlen;
-    scsiDev.dataPtr = 0;
-    
-    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-    uint32_t written = 0;
-    while (written < transferlen)
+    g_disk_transfer.buffer = scsiDev.data;
+    g_disk_transfer.bytes_scsi = blockcount * bytesPerSector;
+    g_disk_transfer.bytes_sd = 0;
+    g_disk_transfer.bytes_scsi_done = 0;
+    g_disk_transfer.sd_transfer_start = 0;
+
+    while (g_disk_transfer.bytes_sd < g_disk_transfer.bytes_scsi
+           && scsiDev.phase == DATA_OUT
+           && !scsiDev.resetFlag)
     {
         // Read next block from SCSI bus
-        if (scsiDev.dataPtr == written)
+        if (g_disk_transfer.bytes_sd == g_disk_transfer.bytes_scsi_done)
         {
             diskDataOut_callback(0);
         }
 
-        // Start writing blocks to SD card.
-        // The callback will simultaneously read the next block from SCSI bus.    
-        uint8_t *buf = scsiDev.data + written;
-        uint32_t buflen = scsiDev.dataPtr - written;
+        // Figure out longest continuous block in buffer
+        uint32_t bufsize = sizeof(scsiDev.data);
+        uint32_t start = g_disk_transfer.bytes_sd % bufsize;
+        uint32_t len = g_disk_transfer.bytes_scsi_done - g_disk_transfer.bytes_sd;
+        if (start + len > bufsize) len = bufsize - start;
+
+        // Try to do writes in multiple of 512 bytes
+        // This allows better performance for SD card access.
+        if (len >= 512) len &= ~511;
+
+        // Start writing to SD card and simultaneously reading more from SCSI bus
+        uint8_t *buf = &scsiDev.data[start];
+        g_disk_transfer.sd_transfer_start = start;
+        // azdbg("SD write ", (int)start, " + ", (int)len);
         azplatform_set_sd_callback(&diskDataOut_callback, buf);
-        if (img.file.write(buf, buflen) != buflen)
+        if (img.file.write(buf, len) != len)
         {
             azlog("SD card write failed: ", SD.sdErrorCode());
             scsiDev.status = CHECK_CONDITION;
@@ -766,8 +844,7 @@ void diskDataOut()
             scsiDev.target->sense.asc = WRITE_ERROR_AUTO_REALLOCATION_FAILED;
             scsiDev.phase = STATUS;
         }
-
-        written += buflen;
+        g_disk_transfer.bytes_sd += len;
     }
 
     azplatform_set_sd_callback(NULL, NULL);
