@@ -13,8 +13,5 @@
 
 void scsi_accel_sync_init();
 
-void scsi_accel_sync_read(uint8_t *data, uint32_t count, int* parityError, volatile int *resetFlag);
-void scsi_accel_sync_startWrite(const uint8_t* data, uint32_t count, volatile int *resetFlag);
-void scsi_accel_sync_stopWrite();
-void scsi_accel_sync_finishWrite(volatile int *resetFlag);
-bool scsi_accel_sync_isWriteFinished(const uint8_t* data);
+void scsi_accel_sync_recv(uint8_t *data, uint32_t count, int* parityError, volatile int *resetFlag);
+void scsi_accel_sync_send(const uint8_t* data, uint32_t count, volatile int *resetFlag);

@@ -30,6 +30,13 @@ static const char *g_scsi_phy_mode_names[] = {
     "Unknown", "PIO", "DMA_TIMER", "GREENPAK_PIO", "GREENPAK_DMA"
 };
 
+// State of polling write request
+static struct {
+    const uint8_t *data;
+    uint32_t count;
+    bool use_sync_mode;
+} g_scsi_writereq;
+
 static void init_irqs();
 
 /***********************/
@@ -170,6 +177,7 @@ extern "C" void scsiPhyReset(void)
 
     g_scsi_sts_selection = 0;
     g_scsi_ctrl_bsy = 0;
+    g_scsi_writereq.count = 0;
     init_irqs();
 
 #ifdef SCSI_SYNC_MODE_AVAILABLE
@@ -300,21 +308,15 @@ extern "C" void scsiWrite(const uint8_t* data, uint32_t count)
     scsiFinishWrite();
 }
 
-static struct {
-    const uint8_t *data;
-    uint32_t count;
-} g_scsi_writereq;
-
 extern "C" void scsiStartWrite(const uint8_t* data, uint32_t count)
 {
     scsiLogDataIn(data, count);
 
-    if (g_scsi_phase == DATA_IN && scsiDev.target->syncOffset > 0)
-    {
-        // Synchronous data transfer
-        scsi_accel_sync_startWrite(data, count, &scsiDev.resetFlag);
-    }
-    else if (g_scsi_phy_mode == PHY_MODE_PIO || g_scsi_phy_mode == PHY_MODE_GREENPAK_PIO)
+    g_scsi_writereq.use_sync_mode = (g_scsi_phase == DATA_IN && scsiDev.target->syncOffset > 0);
+
+    if (g_scsi_phy_mode == PHY_MODE_PIO
+        || g_scsi_phy_mode == PHY_MODE_GREENPAK_PIO
+        || g_scsi_writereq.use_sync_mode)
     {
         // Software based bit-banging.
         // Write requests are queued and then executed in isWriteFinished() callback.
@@ -356,20 +358,28 @@ static void processPollingWrite(uint32_t count)
     
     const uint8_t *data = g_scsi_writereq.data;
     uint32_t count_words = count / 4;
-    if (count_words * 4 == count)
+
+    if (g_scsi_writereq.use_sync_mode)
     {
-        // Use accelerated subroutine
+        // Synchronous mode transfer
+        scsi_accel_sync_send(data, count, &scsiDev.resetFlag);
+    }
+    else if (count_words * 4 == count)
+    {
         if (g_scsi_phy_mode == PHY_MODE_GREENPAK_PIO)
         {
+            // GreenPAK PIO accelerated asynchronous transfer
             scsi_accel_greenpak_send((const uint32_t*)data, count_words, &scsiDev.resetFlag);
         }
         else
         {
+            // Assembler optimized asynchronous transfer
             scsi_accel_asm_send((const uint32_t*)data, count_words, &scsiDev.resetFlag);
         }
     }
     else
     {
+        // Use simple loop for unaligned transfers
         for (uint32_t i = 0; i < count; i++)
         {
             if (scsiDev.resetFlag) break;
@@ -407,46 +417,36 @@ static bool isPollingWriteFinished(const uint8_t *data)
 
 extern "C" bool scsiIsWriteFinished(const uint8_t *data)
 {
-    if (g_scsi_phase == DATA_IN && scsiDev.target->syncOffset > 0)
+    // Check if there is still a polling transfer in progress
+    if (!isPollingWriteFinished(data))
     {
-        return scsi_accel_sync_isWriteFinished(data);
+        // Process the transfer piece-by-piece while waiting
+        // for SD card to react.
+        processPollingWrite(256);
+        return isPollingWriteFinished(data);
     }
-    else if (g_scsi_phy_mode == PHY_MODE_DMA_TIMER || g_scsi_phy_mode == PHY_MODE_GREENPAK_DMA)
+    
+    if (g_scsi_phy_mode == PHY_MODE_DMA_TIMER || g_scsi_phy_mode == PHY_MODE_GREENPAK_DMA)
     {
         return scsi_accel_dma_isWriteFinished(data);
     }
     else
     {
-        // Check if there is still a polling transfer in progress
-        if (!isPollingWriteFinished(data))
-        {
-            // Process the transfer piece-by-piece while waiting
-            // for SD card to react.
-            processPollingWrite(256);
-            return isPollingWriteFinished(data);
-        }
-
         return true;
     }
 }
 
 extern "C" void scsiFinishWrite()
 {
-    if (g_scsi_phase == DATA_IN && scsiDev.target->syncOffset > 0)
-    {
-        return scsi_accel_sync_finishWrite(&scsiDev.resetFlag);
-    }
-    else if (g_scsi_phy_mode == PHY_MODE_DMA_TIMER || g_scsi_phy_mode == PHY_MODE_GREENPAK_DMA)
-    {
-        scsi_accel_dma_finishWrite(&scsiDev.resetFlag);
-    }
-    else
+    if (g_scsi_writereq.count)
     {
         // Finish previously started polling write request.
-        if (g_scsi_writereq.count)
-        {
-            processPollingWrite(g_scsi_writereq.count);
-        }
+        processPollingWrite(g_scsi_writereq.count);
+    }
+
+    if (g_scsi_phy_mode == PHY_MODE_DMA_TIMER || g_scsi_phy_mode == PHY_MODE_GREENPAK_DMA)
+    {
+        scsi_accel_dma_finishWrite(&scsiDev.resetFlag);
     }
 }
 
@@ -483,7 +483,7 @@ extern "C" void scsiRead(uint8_t* data, uint32_t count, int* parityError)
     if (g_scsi_phase == DATA_OUT && scsiDev.target->syncOffset > 0)
     {
         // Synchronous data transfer
-        scsi_accel_sync_read(data, count, parityError, &scsiDev.resetFlag);
+        scsi_accel_sync_recv(data, count, parityError, &scsiDev.resetFlag);
     }
     else if (count_words * 4 == count && count_words >= 2 && use_greenpak)
     {

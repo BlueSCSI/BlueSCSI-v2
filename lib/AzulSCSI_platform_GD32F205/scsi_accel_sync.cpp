@@ -23,13 +23,14 @@
 
 void scsi_accel_sync_init() {}
 
-void scsi_accel_sync_read(uint8_t *data, uint32_t count, int* parityError, volatile int *resetFlag) {}
-void scsi_accel_sync_startWrite(const uint8_t* data, uint32_t count, volatile int *resetFlag) {}
-void scsi_accel_sync_stopWrite() {}
-void scsi_accel_sync_finishWrite(volatile int *resetFlag) {}
-bool scsi_accel_sync_isWriteFinished(const uint8_t* data) { return true; }
+void scsi_accel_sync_recv(uint8_t *data, uint32_t count, int* parityError, volatile int *resetFlag) {}
+void scsi_accel_sync_send(const uint8_t* data, uint32_t count, volatile int *resetFlag) {}
 
 #else
+
+/********************************/
+/* Transfer from host to device */
+/********************************/
 
 #define SYNC_DMA_BUFSIZE 512
 static uint32_t g_sync_dma_buf[SYNC_DMA_BUFSIZE];
@@ -91,7 +92,7 @@ void scsi_accel_sync_init()
     gpio_init(SCSI_IN_ACK_EXMC_NWAIT_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_IN_ACK_EXMC_NWAIT_PIN);
 }
 
-void scsi_accel_sync_read(uint8_t *data, uint32_t count, int* parityError, volatile int *resetFlag)
+void scsi_accel_sync_recv(uint8_t *data, uint32_t count, int* parityError, volatile int *resetFlag)
 {
     // Enable EXMC to drive REQ from EXMC_NOE pin
     EXMC_SNCTL(EXMC_BANK0_NORSRAM_REGION0) |= EXMC_SNCTL_NRBKEN;
@@ -137,7 +138,11 @@ void scsi_accel_sync_read(uint8_t *data, uint32_t count, int* parityError, volat
     EXMC_SNCTL(EXMC_BANK0_NORSRAM_REGION0) &= ~EXMC_SNCTL_NRBKEN;
 }
 
-void scsi_accel_sync_startWrite(const uint8_t* data, uint32_t count, volatile int *resetFlag)
+/********************************/
+/* Transfer from device to host */
+/********************************/
+
+void scsi_accel_sync_send(const uint8_t* data, uint32_t count, volatile int *resetFlag)
 {
     for (int i = 0; i < count; i++)
     {
@@ -151,19 +156,5 @@ void scsi_accel_sync_startWrite(const uint8_t* data, uint32_t count, volatile in
     SCSI_RELEASE_DATA_REQ();
 }
 
-void scsi_accel_sync_stopWrite()
-{
-
-}
-
-void scsi_accel_sync_finishWrite(volatile int *resetFlag)
-{
-
-}
-
-bool scsi_accel_sync_isWriteFinished(const uint8_t* data)
-{
-    return true;
-}
 
 #endif
