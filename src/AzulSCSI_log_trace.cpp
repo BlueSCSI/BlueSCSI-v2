@@ -97,11 +97,19 @@ static void printNewPhase(int phase)
             break;
         
         case DATA_IN:
-            azdbg("---- DATA_IN");
+            if (scsiDev.target->syncOffset > 0)
+                azdbg("---- DATA_IN, syncOffset ", (int)scsiDev.target->syncOffset,
+                                   " syncPeriod ", (int)scsiDev.target->syncPeriod);
+            else
+                azdbg("---- DATA_IN");
             break;
         
         case DATA_OUT:
-            azdbg("---- DATA_OUT");
+            if (scsiDev.target->syncOffset > 0)
+                azdbg("---- DATA_OUT, syncOffset ", (int)scsiDev.target->syncOffset,
+                                    " syncPeriod ", (int)scsiDev.target->syncPeriod);
+            else
+                azdbg("---- DATA_OUT");
             break;
         
         case MESSAGE_IN:

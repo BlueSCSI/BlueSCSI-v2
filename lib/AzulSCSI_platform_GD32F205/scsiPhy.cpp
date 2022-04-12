@@ -422,7 +422,10 @@ extern "C" bool scsiIsWriteFinished(const uint8_t *data)
     {
         // Process the transfer piece-by-piece while waiting
         // for SD card to react.
-        processPollingWrite(256);
+        int max_count = g_scsi_writereq.count / 8;
+        max_count &= ~255;
+        if (max_count < 256) max_count = 256;
+        processPollingWrite(max_count);
         return isPollingWriteFinished(data);
     }
     
