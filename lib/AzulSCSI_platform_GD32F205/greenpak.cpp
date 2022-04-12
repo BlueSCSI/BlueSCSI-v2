@@ -171,6 +171,10 @@ bool greenpak_load_firmware()
     else
     {
         azlog("GreenPAK firmware successfully loaded");
+        LED_ON();
+        delay(10);
+        LED_OFF();
+        delay(100);
         g_greenpak_is_ready = true;
         return true;
     }
