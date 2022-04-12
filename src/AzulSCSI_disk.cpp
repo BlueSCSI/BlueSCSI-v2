@@ -334,6 +334,12 @@ void s2s_configInit(S2S_BoardCfg* config)
     config->selectionDelay = ini_getl("SCSI", "SelectionDelay", 255, CONFIGFILE);
     config->flags6 = 0;
     config->scsiSpeed = PLATFORM_MAX_SCSI_SPEED;
+
+    int maxSyncSpeed = ini_getl("SCSI", "MaxSyncSpeed", 10, CONFIGFILE);
+    if (maxSyncSpeed < 5 && config->scsiSpeed > S2S_CFG_SPEED_ASYNC_50)
+        config->scsiSpeed = S2S_CFG_SPEED_ASYNC_50;
+    else if (maxSyncSpeed < 10 && config->scsiSpeed > S2S_CFG_SPEED_SYNC_5)
+        config->scsiSpeed = S2S_CFG_SPEED_SYNC_5;
     
     azlog("-- SelectionDelay: ", (int)config->selectionDelay);
 
