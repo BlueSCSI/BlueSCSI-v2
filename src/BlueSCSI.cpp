@@ -180,8 +180,9 @@ SdFs SD;
 // Turn on the output only for BSY
 #define SCSI_BSY_ACTIVE()      {  gpio_mode(BSY, GPIO_OUTPUT_PP); SCSI_OUT(vBSY, active) }
 
+#define SCSI_TARGET_ACTIVE()   { gpio_mode(REQ, GPIO_OUTPUT_PP); gpio_mode(MSG, GPIO_OUTPUT_PP); gpio_mode(CD, GPIO_OUTPUT_PP); gpio_mode(IO, GPIO_OUTPUT_PP); gpio_mode(BSY, GPIO_OUTPUT_PP);  TRANSCEIVER_IO_SET(vTR_TARGET,TR_OUTPUT);}
 // BSY,REQ,MSG,CD,IO Turn off output, BSY is the last input
-#define SCSI_TARGET_INACTIVE() { gpio_mode(REQ, GPIO_INPUT_FLOATING); gpio_mode(MSG, GPIO_INPUT_FLOATING); gpio_mode(CD, GPIO_INPUT_FLOATING); gpio_mode(IO, GPIO_INPUT_FLOATING); gpio_mode(BSY, GPIO_INPUT_FLOATING); TRANSCEIVER_IO_SET(vTR_TARGET,TR_INPUT); }
+#define SCSI_TARGET_INACTIVE() { pinMode(REQ, INPUT); pinMode(MSG, INPUT); pinMode(CD, INPUT); pinMode(IO, INPUT); pinMode(BSY, INPUT); TRANSCEIVER_IO_SET(vTR_TARGET,TR_INPUT); }
 
 #define DB_MODE_OUT 1  // push-pull mode
 #define DB_MODE_IN  4  // floating inputs
@@ -209,7 +210,7 @@ SdFs SD;
 // Put DB and DP in output mode
 #define SCSI_DB_OUTPUT() { PBREG->CRL=(PBREG->CRL &0xfffffff0)|DB_MODE_OUT; PBREG->CRH = 0x11111111*DB_MODE_OUT; }
 // Put DB and DP in input mode
-#define SCSI_DB_INPUT()  { PBREG->CRL=(PBREG->CRL &0xfffffff0)|DB_MODE_IN ; PBREG->CRH = 0x11111111*DB_MODE_IN; if (DB_MODE_IN == 8) PBREG->BSRR = 0xFF01;}
+#define SCSI_DB_INPUT()  { PBREG->CRL=(PBREG->CRL &0xfffffff0)|DB_MODE_IN ; PBREG->CRH = 0x11111111*DB_MODE_IN; }
 
 // HDDiamge file
 #define HDIMG_ID_POS  2                 // Position to embed ID number
@@ -445,9 +446,9 @@ void setup()
 
 #if XCVR == 1
   // Transceiver Pin Initialization
-  gpio_mode(TR_TARGET, GPIO_OUTPUT_PP);
-  gpio_mode(TR_INITIATOR, GPIO_OUTPUT_PP);
-  gpio_mode(TR_DBP, GPIO_OUTPUT_PP);
+  pinMode(TR_TARGET, OUTPUT);
+  pinMode(TR_INITIATOR, OUTPUT);
+  pinMode(TR_DBP, OUTPUT);
   
   TRANSCEIVER_IO_SET(vTR_INITIATOR,TR_INPUT);
 #endif
@@ -465,18 +466,18 @@ void setup()
   TRANSCEIVER_IO_SET(vTR_DBP,TR_INPUT);
   
   // Initiator port
-  gpio_mode(ATN, GPIO_INPUT_FLOATING);
-  gpio_mode(BSY, GPIO_INPUT_FLOATING);
-  gpio_mode(ACK, GPIO_INPUT_FLOATING);
-  gpio_mode(RST, GPIO_INPUT_FLOATING);
-  gpio_mode(SEL, GPIO_INPUT_FLOATING);
+  pinMode(ATN, INPUT);
+  pinMode(BSY, INPUT);
+  pinMode(ACK, INPUT);
+  pinMode(RST, INPUT);
+  pinMode(SEL, INPUT);
   TRANSCEIVER_IO_SET(vTR_INITIATOR,TR_INPUT);
 
   // Target port
-  gpio_mode(MSG, GPIO_INPUT_FLOATING);
-  gpio_mode(CD, GPIO_INPUT_FLOATING);
-  gpio_mode(REQ, GPIO_INPUT_FLOATING);
-  gpio_mode(IO, GPIO_INPUT_FLOATING);
+  pinMode(MSG, INPUT);
+  pinMode(CD, INPUT);
+  pinMode(REQ, INPUT);
+  pinMode(IO, INPUT);
   TRANSCEIVER_IO_SET(vTR_TARGET,TR_INPUT);
 #else
   // Input port
@@ -490,10 +491,10 @@ void setup()
   gpio_mode(CD,  GPIO_OUTPUT_OD);
   gpio_mode(REQ, GPIO_OUTPUT_OD);
   gpio_mode(IO,  GPIO_OUTPUT_OD);
-#endif
 
   // Turn off the output port
   SCSI_TARGET_INACTIVE()
+#endif
 
   //Occurs when the RST pin state changes from HIGH to LOW
   //attachInterrupt(RST, onBusReset, FALLING);
@@ -1576,7 +1577,10 @@ void loop()
   enableResetJmp();
   
 #if XCVR == 1
-  TRANSCEIVER_IO_SET(vTR_TARGET,TR_OUTPUT);
+  // Reconfigure target pins to output mode, after resetting their values
+  GPIOB->regs->BSRR = 0x000000E8; // MSG, CD, REQ, IO
+  GPIOA->regs->BSRR = 0x00000200; // BSY
+  SCSI_TARGET_ACTIVE();
 #endif
   // Set BSY to-when selected
   SCSI_BSY_ACTIVE();     // Turn only BSY output ON, ACTIVE
