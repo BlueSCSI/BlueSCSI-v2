@@ -1575,12 +1575,6 @@ void loop()
   }
   enableResetJmp();
   
-#if XCVR == 1
-  // Reconfigure target pins to output mode, after resetting their values
-  GPIOB->regs->BSRR = 0x000000E8; // MSG, CD, REQ, IO
-  GPIOA->regs->BSRR = 0x00000200; // BSY
-  SCSI_TARGET_ACTIVE();
-#endif
   // Set BSY to-when selected
   SCSI_BSY_ACTIVE();     // Turn only BSY output ON, ACTIVE
 
@@ -1590,6 +1584,13 @@ void loop()
   // Wait until SEL becomes inactive
   while(isHigh(gpio_read(SEL)) && isLow(gpio_read(BSY))) {
   }
+  
+#if XCVR == 1
+  // Reconfigure target pins to output mode, after resetting their values
+  GPIOB->regs->BSRR = 0x000000E8; // MSG, CD, REQ, IO
+//  GPIOA->regs->BSRR = 0x00000200; // BSY
+#endif
+  SCSI_TARGET_ACTIVE()  // (BSY), REQ, MSG, CD, IO output turned on
 
   //  
   if(isHigh(gpio_read(ATN))) {
