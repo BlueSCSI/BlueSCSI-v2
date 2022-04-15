@@ -128,7 +128,6 @@ SdFs SD;
 #define IMAGE_SELECT2   PB1
 #endif
 
-
 // GPIO register port
 #define PAREG GPIOA->regs
 #define PBREG GPIOB->regs
@@ -142,7 +141,7 @@ SdFs SD;
 #define PB(BIT)       (BIT+16)
 // Virtual pin decoding
 #define GPIOREG(VPIN)    ((VPIN)>=16?PBREG:PAREG)
-#define BITMASK(VPIN) (1<<((VPIN)&15))
+#define BITMASK(VPIN)    (1<<((VPIN)&15))
 
 #define vATN       PA(8)      // SCSI:ATN
 #define vBSY       PA(9)      // SCSI:BSY
@@ -189,12 +188,6 @@ SdFs SD;
 
 #else
 
-// Turn on the output only for BSY
-#define SCSI_BSY_ACTIVE()      { gpio_mode(BSY, GPIO_OUTPUT_OD); SCSI_OUT(vBSY,  active) }
-
-// BSY,REQ,MSG,CD,IO Turn off output, BSY is the last input
-#define SCSI_TARGET_INACTIVE() { if (DB_MODE_OUT == 7) SCSI_OUT(vREQ,inactive) else { if (DB_MODE_IN == 8) gpio_mode(REQ, GPIO_INPUT_PU) else gpio_mode(REQ, GPIO_INPUT_FLOATING)} SCSI_OUT(vMSG,inactive); SCSI_OUT(vCD,inactive);SCSI_OUT(vIO,inactive); gpio_mode(BSY, GPIO_INPUT_PU); }
-
 // GPIO mode
 // IN , FLOAT      : 4
 // IN , PU/PD      : 8
@@ -203,6 +196,13 @@ SdFs SD;
 #define DB_MODE_OUT 3
 //#define DB_MODE_OUT 7
 #define DB_MODE_IN  8
+
+// Turn on the output only for BSY
+#define SCSI_BSY_ACTIVE()      { gpio_mode(BSY, GPIO_OUTPUT_OD); SCSI_OUT(vBSY,  active) }
+// BSY,REQ,MSG,CD,IO Turn on the output (no change required for OD)
+#define SCSI_TARGET_ACTIVE()   { if (DB_MODE_OUT != 7) gpio_mode(REQ, GPIO_OUTPUT_PP);}
+// BSY,REQ,MSG,CD,IO Turn off output, BSY is the last input
+#define SCSI_TARGET_INACTIVE() { if (DB_MODE_OUT == 7) SCSI_OUT(vREQ,inactive) else { if (DB_MODE_IN == 8) gpio_mode(REQ, GPIO_INPUT_PU) else gpio_mode(REQ, GPIO_INPUT_FLOATING)} SCSI_OUT(vMSG,inactive); SCSI_OUT(vCD,inactive);SCSI_OUT(vIO,inactive); gpio_mode(BSY, GPIO_INPUT_PU); }
 
 #endif
 
@@ -491,7 +491,6 @@ void setup()
   gpio_mode(CD,  GPIO_OUTPUT_OD);
   gpio_mode(REQ, GPIO_OUTPUT_OD);
   gpio_mode(IO,  GPIO_OUTPUT_OD);
-
   // Turn off the output port
   SCSI_TARGET_INACTIVE()
 #endif
