@@ -160,8 +160,19 @@ SdFs SD;
 // SCSI input pin check (inactive=0,avtive=1)
 #define SCSI_IN(VPIN) ((~GPIOREG(VPIN)->IDR>>(VPIN&15))&1)
 
-#if XCVR == 1
+// SCSI phase change as single write to port B
+#define SCSIPHASEMASK(MSGACTIVE, CDACTIVE, IOACTIVE) ((BITMASK(vMSG)<<((MSGACTIVE)?16:0)) | (BITMASK(vCD)<<((CDACTIVE)?16:0)) | (BITMASK(vIO)<<((IOACTIVE)?16:0)))
 
+#define SCSI_PHASE_DATAOUT SCSIPHASEMASK(inactive, inactive, inactive)
+#define SCSI_PHASE_DATAIN SCSIPHASEMASK(inactive, inactive, active)
+#define SCSI_PHASE_COMMAND SCSIPHASEMASK(inactive, active, inactive)
+#define SCSI_PHASE_STATUS SCSIPHASEMASK(inactive, active, active)
+#define SCSI_PHASE_MESSAGEOUT SCSIPHASEMASK(active, active, inactive)
+#define SCSI_PHASE_MESSAGEIN SCSIPHASEMASK(active, active, active)
+
+#define SCSI_PHASE_CHANGE(MASK) { PBREG->BSRR = (MASK); }
+
+#if XCVR == 1
 #define TR_TARGET        PA1   // Target Transceiver Control Pin
 #define TR_DBP           PA2   // Data Pins Transceiver Control Pin
 #define TR_INITIATOR     PA3   // Initiator Transciever Control Pin
@@ -202,7 +213,7 @@ SdFs SD;
 // BSY,REQ,MSG,CD,IO Turn on the output (no change required for OD)
 #define SCSI_TARGET_ACTIVE()   { if (DB_MODE_OUT != 7) gpio_mode(REQ, GPIO_OUTPUT_PP);}
 // BSY,REQ,MSG,CD,IO Turn off output, BSY is the last input
-#define SCSI_TARGET_INACTIVE() { if (DB_MODE_OUT == 7) SCSI_OUT(vREQ,inactive) else { if (DB_MODE_IN == 8) gpio_mode(REQ, GPIO_INPUT_PU) else gpio_mode(REQ, GPIO_INPUT_FLOATING)} SCSI_OUT(vMSG,inactive); SCSI_OUT(vCD,inactive);SCSI_OUT(vIO,inactive); gpio_mode(BSY, GPIO_INPUT_PU); }
+#define SCSI_TARGET_INACTIVE() { if (DB_MODE_OUT == 7) SCSI_OUT(vREQ,inactive) else { if (DB_MODE_IN == 8) gpio_mode(REQ, GPIO_INPUT_PU) else gpio_mode(REQ, GPIO_INPUT_FLOATING)} SCSI_PHASE_CHANGE(SCSI_PHASE_DATAOUT); gpio_mode(BSY, GPIO_INPUT_PU); }
 
 #endif
 
@@ -240,7 +251,6 @@ byte          m_sts;                  // Status byte
 byte          m_msg;                  // Message bytes
 HDDIMG       *m_img;                  // HDD image for current SCSI-ID, LUN
 byte          m_buf[MAX_BLOCKSIZE];   // General purpose buffer
-int           m_msc;
 byte          m_msb[256];             // Command storage bytes
 
 /*
@@ -842,6 +852,7 @@ inline byte readHandshake(void)
  */
 inline void writeHandshake(byte d)
 {
+  // This has a 400ns bus settle delay built in. Not optimal for multi-byte transfers.
   GPIOB->regs->BSRR = db_bsrr[d]; // setup DB,DBP (160ns)
 #if XCVR == 1
   TRANSCEIVER_IO_SET(vTR_DBP,TR_OUTPUT)
@@ -864,21 +875,6 @@ inline void writeHandshake(byte d)
   while( SCSI_IN(vACK));
 }
 
-/*
- * Data in phase.
- *  Send len bytes of data array p.
- */
-void writeDataPhase(int len, const byte* p)
-{
-  LOGN("DATAIN PHASE");
-  SCSI_OUT(vMSG,inactive) //  gpio_write(MSG, low);
-  SCSI_OUT(vCD ,inactive) //  gpio_write(CD, low);
-  SCSI_OUT(vIO ,  active) //  gpio_write(IO, high);
-  for (int i = 0; i < len; i++) {
-    writeHandshake(p[i]);
-  }
-}
-
 #if READ_SPEED_OPTIMIZE
 #pragma GCC push_options
 #pragma GCC optimize ("-Os")
@@ -891,8 +887,8 @@ void writeDataPhase(int len, const byte* p)
  * Alignment matters. For the 3 instruction wait loops,it looks like crossing
  * an 8 byte prefetch buffer can add 2 cycles of wait every branch taken.
  */
-void writeDataLoop(uint32_t blocksize) __attribute__ ((aligned(8)));
-void writeDataLoop(uint32_t blocksize)
+void writeDataLoop(uint32_t blocksize, const byte* srcptr) __attribute__ ((aligned(8)));
+void writeDataLoop(uint32_t blocksize, const byte* srcptr)
 {
 #define REQ_ON() (port_b->BRR = req_bit);
 #define FETCH_BSRR_DB() (bsrr_val = bsrr_tbl[*srcptr++])
@@ -900,11 +896,10 @@ void writeDataLoop(uint32_t blocksize)
 #define WAIT_ACK_ACTIVE()   while((*port_a_idr>>(vACK&15)&1))
 #define WAIT_ACK_INACTIVE() while(!(*port_a_idr>>(vACK&15)&1))
 
-  register byte *srcptr= m_buf;                 // Source buffer
-  register byte *endptr= m_buf + blocksize;     // End pointer
+  register const byte *endptr= srcptr + blocksize;  // End pointer
 
-  register const uint32_t *bsrr_tbl = db_bsrr;  // Table to convert to BSRR
-  register uint32_t bsrr_val;                   // BSRR value to output (DB, DBP, REQ = ACTIVE)
+  register const uint32_t *bsrr_tbl = db_bsrr;      // Table to convert to BSRR
+  register uint32_t bsrr_val;                       // BSRR value to output (DB, DBP, REQ = ACTIVE)
 
   register uint32_t req_bit = BITMASK(vREQ);
   register gpio_reg_map *port_b = PBREG;
@@ -944,16 +939,34 @@ void writeDataLoop(uint32_t blocksize)
 #pragma GCC pop_options
 #endif
 
-/* 
+/*
+ * Data in phase.
+ *  Send len bytes of data array p.
+ */
+void writeDataPhase(int len, const byte* p)
+{
+  LOGN("DATAIN PHASE");
+  SCSI_PHASE_CHANGE(SCSI_PHASE_DATAIN);
+#if READ_SPEED_OPTIMIZE
+  // Bus settle delay 400ns. Following code was measured at 800ns before REQ asserted. STM32F103.
+  SCSI_DB_OUTPUT()
+  writeDataLoop(len, p);
+  SCSI_DB_INPUT()
+#else
+  for (int i = 0; i < len; i++) {
+    writeHandshake(p[i]);
+  }
+#endif
+}
+
+/*
  * Data in phase.
  *  Send len block while reading from SD card.
  */
 void writeDataPhaseSD(uint32_t adds, uint32_t len)
 {
   LOGN("DATAIN PHASE(SD)");
-  SCSI_OUT(vMSG,inactive) //  gpio_write(MSG, low);
-  SCSI_OUT(vCD ,inactive) //  gpio_write(CD, low);
-  SCSI_OUT(vIO ,  active) //  gpio_write(IO, high);
+  SCSI_PHASE_CHANGE(SCSI_PHASE_DATAIN);
   //Bus settle delay 400ns, file.seek() measured at over 1000ns.
 
   uint32_t pos = adds * m_img->m_blocksize;
@@ -967,7 +980,7 @@ void writeDataPhaseSD(uint32_t adds, uint32_t len)
     enableResetJmp();
 
 #if READ_SPEED_OPTIMIZE
-    writeDataLoop(m_img->m_blocksize);
+    writeDataLoop(m_img->m_blocksize, m_buf);
 #else
     for(int j = 0; j < m_img->m_blocksize; j++) {
       writeHandshake(m_buf[j]);
@@ -980,20 +993,6 @@ void writeDataPhaseSD(uint32_t adds, uint32_t len)
 #endif
 }
 
-/*
- * Data out phase.
- *  len block read
- */
-void readDataPhase(int len, byte* p)
-{
-  LOGN("DATAOUT PHASE");
-  SCSI_OUT(vMSG,inactive) //  gpio_write(MSG, low);
-  SCSI_OUT(vCD ,inactive) //  gpio_write(CD, low);
-  SCSI_OUT(vIO ,inactive) //  gpio_write(IO, low);
-  for(uint32_t i = 0; i < len; i++)
-    p[i] = readHandshake();
-}
-
 #if WRITE_SPEED_OPTIMIZE
 #pragma GCC push_options
 #pragma GCC optimize ("-Os")
@@ -1001,11 +1000,10 @@ void readDataPhase(int len, byte* p)
 /*
  * See writeDataLoop for optimization info.
  */
-void readDataLoop(uint32_t blockSize) __attribute__ ((aligned(16)));
-void readDataLoop(uint32_t blockSize)
+void readDataLoop(uint32_t blockSize, byte* dstptr) __attribute__ ((aligned(16)));
+void readDataLoop(uint32_t blockSize, byte* dstptr)
 {
-  register byte *dstptr= m_buf;
-  register byte *endptr= m_buf + blockSize - 1;
+  register byte *endptr= dstptr + blockSize - 1;
 
 #define REQ_ON() (port_b->BRR = req_bit);
 #define REQ_OFF() (port_b->BSRR = req_bit);
@@ -1039,14 +1037,29 @@ void readDataLoop(uint32_t blockSize)
 
 /*
  * Data out phase.
+ *  len block read
+ */
+void readDataPhase(int len, byte* p)
+{
+  LOGN("DATAOUT PHASE");
+  SCSI_PHASE_CHANGE(SCSI_PHASE_DATAOUT);
+  // Bus settle delay 400ns. The following code was measured at 450ns before REQ asserted. STM32F103.
+#if WRITE_SPEED_OPTIMIZE
+  readDataLoop(len, p);
+#else
+  for(uint32_t i = 0; i < len; i++)
+    p[i] = readHandshake();
+#endif
+}
+
+/*
+ * Data out phase.
  *  Write to SD card while reading len block.
  */
 void readDataPhaseSD(uint32_t adds, uint32_t len)
 {
   LOGN("DATAOUT PHASE(SD)");
-  SCSI_OUT(vMSG,inactive) //  gpio_write(MSG, low);
-  SCSI_OUT(vCD ,inactive) //  gpio_write(CD, low);
-  SCSI_OUT(vIO ,inactive) //  gpio_write(IO, low);
+  SCSI_PHASE_CHANGE(SCSI_PHASE_DATAOUT);
   //Bus settle delay 400ns, file.seek() measured at over 1000ns.
 
   uint32_t pos = adds * m_img->m_blocksize;
@@ -1054,7 +1067,7 @@ void readDataPhaseSD(uint32_t adds, uint32_t len)
   for(uint32_t i = 0; i < len; i++) {
     m_resetJmp = true;
 #if WRITE_SPEED_OPTIMIZE
-    readDataLoop(m_img->m_blocksize);
+    readDataLoop(m_img->m_blocksize, m_buf);
 #else
     for(int j = 0; j <  m_img->m_blocksize; j++) {
       m_buf[j] = readHandshake();
@@ -1078,16 +1091,14 @@ void readDataPhaseSD(uint32_t adds, uint32_t len)
 void verifyDataPhaseSD(uint32_t adds, uint32_t len)
 {
   LOGN("DATAOUT PHASE(SD)");
-  SCSI_OUT(vMSG,inactive) //  gpio_write(MSG, low);
-  SCSI_OUT(vCD ,inactive) //  gpio_write(CD, low);
-  SCSI_OUT(vIO ,inactive) //  gpio_write(IO, low);
+  SCSI_PHASE_CHANGE(SCSI_PHASE_DATAOUT);
   //Bus settle delay 400ns, file.seek() measured at over 1000ns.
 
   uint32_t pos = adds * m_img->m_blocksize;
   m_img->m_file.seek(pos);
   for(uint32_t i = 0; i < len; i++) {
 #if WRITE_SPEED_OPTIMIZE
-    readDataLoop(m_img->m_blocksize);
+    readDataLoop(m_img->m_blocksize, m_buf);
 #else
     for(int j = 0; j <  m_img->m_blocksize; j++) {
       m_buf[j] = readHandshake();
@@ -1518,24 +1529,9 @@ static byte dtc510b_setDriveparameter(void)
 void MsgIn2(int msg)
 {
   LOGN("MsgIn2");
-  SCSI_OUT(vMSG,  active) //  gpio_write(MSG, high);
-  SCSI_OUT(vCD ,  active) //  gpio_write(CD, high);
-  SCSI_OUT(vIO ,  active) //  gpio_write(IO, high);
+  SCSI_PHASE_CHANGE(SCSI_PHASE_MESSAGEIN);
+  // Bus settle delay 400ns built in to writeHandshake
   writeHandshake(msg);
-}
-
-/*
- * MsgOut2.
- */
-void MsgOut2()
-{
-  LOGN("MsgOut2");
-  SCSI_OUT(vMSG,  active) //  gpio_write(MSG, high);
-  SCSI_OUT(vCD ,  active) //  gpio_write(CD, high);
-  SCSI_OUT(vIO ,inactive) //  gpio_write(IO, low);
-  m_msb[m_msc] = readHandshake();
-  m_msc++;
-  m_msc %= 256;
 }
 
 /*
@@ -1594,17 +1590,18 @@ void loop()
 
   //  
   if(isHigh(gpio_read(ATN))) {
+    SCSI_PHASE_CHANGE(SCSI_PHASE_MESSAGEOUT);
+    // Bus settle delay 400ns. Following code was measured at 350ns before REQ asserted. Added another 50ns. STM32F103.
+    SCSI_PHASE_CHANGE(SCSI_PHASE_MESSAGEOUT);// 28ns delay STM32F103
+    SCSI_PHASE_CHANGE(SCSI_PHASE_MESSAGEOUT);// 28ns delay STM32F103
     bool syncenable = false;
     int syncperiod = 50;
     int syncoffset = 0;
-    int loopWait = 0;
-    m_msc = 0;
-    memset(m_msb, 0x00, sizeof(m_msb));
-    while(isHigh(gpio_read(ATN)) && loopWait < 255) {
-      MsgOut2();
-      loopWait++;
+    int msc = 0;
+    while(isHigh(gpio_read(ATN)) && msc < 255) {
+      m_msb[msc++] = readHandshake();
     }
-    for(int i = 0; i < m_msc; i++) {
+    for(int i = 0; i < msc; i++) {
       // ABORT
       if (m_msb[i] == 0x06) {
         goto BusFree;
@@ -1646,10 +1643,9 @@ void loop()
   }
 
   LOG("Command:");
-  SCSI_OUT(vMSG,inactive) // gpio_write(MSG, low);
-  SCSI_OUT(vCD ,  active) // gpio_write(CD, high);
-  SCSI_OUT(vIO ,inactive) // gpio_write(IO, low);
-  
+  SCSI_PHASE_CHANGE(SCSI_PHASE_COMMAND);
+  // Bus settle delay 400ns. The following code was measured at 20ns before REQ asserted. Added another 380ns. STM32F103.
+  asm("nop;nop;nop;nop;nop;nop;nop;nop");// This asm causes some code reodering, which adds 270ns, plus 8 nop cycles for an additional 110ns. STM32F103
   int len;
   byte cmd[12];
   cmd[0] = readHandshake();
@@ -1782,15 +1778,13 @@ void loop()
   }
 
   LOGN("Sts");
-  SCSI_OUT(vMSG,inactive) // gpio_write(MSG, low);
-  SCSI_OUT(vCD ,  active) // gpio_write(CD, high);
-  SCSI_OUT(vIO ,  active) // gpio_write(IO, high);
+  SCSI_PHASE_CHANGE(SCSI_PHASE_STATUS);
+  // Bus settle delay 400ns built in to writeHandshake
   writeHandshake(m_sts);
 
   LOGN("MsgIn");
-  SCSI_OUT(vMSG,  active) // gpio_write(MSG, high);
-  SCSI_OUT(vCD ,  active) // gpio_write(CD, high);
-  SCSI_OUT(vIO ,  active) // gpio_write(IO, high);
+  SCSI_PHASE_CHANGE(SCSI_PHASE_MESSAGEIN);
+  // Bus settle delay 400ns built in to writeHandshake
   writeHandshake(m_msg);
 
 BusFree:
