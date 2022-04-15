@@ -50,11 +50,11 @@
 #define SCSI_SELECT      0      // 0 for STANDARD
                                 // 1 for SHARP X1turbo
                                 // 2 for NEC PC98
-#define READ_SPEED_OPTIMIZE  1 // Faster reads
-#define WRITE_SPEED_OPTIMIZE 1 // Speeding up writes
+#define READ_SPEED_OPTIMIZE  1  // Faster reads
+#define WRITE_SPEED_OPTIMIZE 1  // Speeding up writes
 
-#define XCVR             1  // 0 for standard mode
-                            // 1 for transceiver hardware
+#define XCVR             0      // 0 for standard mode
+                                // 1 for transceiver hardware
 
 // SCSI config
 #define NUM_SCSIID  7          // Maximum number of supported SCSI-IDs (The minimum is 0)
