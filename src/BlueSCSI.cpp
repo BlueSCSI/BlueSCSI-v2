@@ -1010,14 +1010,16 @@ void readDataLoop(uint32_t blockSize, byte* dstptr)
   register gpio_reg_map *port_b = PBREG;
   register volatile uint32_t *port_a_idr = &(GPIOA->regs->IDR);
   REQ_ON();
-  // Start of the do/while and WAIT are already aligned to 8 bytes.
+  // Fastest alignment obtained by trial and error.
+  // Wait loop is within an 8 byte prefetch buffer.
+  asm("nop");
   do {
     WAIT_ACK_ACTIVE();
     uint32_t ret = port_b->IDR;
     REQ_OFF();
     *dstptr++ = ~(ret >> 8);
     // Move wait loop in to a single 8 byte prefetch buffer
-    asm("nop.w;nop");
+    asm("nop;nop;nop");
     WAIT_ACK_INACTIVE();
     REQ_ON();
     // Extra 1 cycle delay
