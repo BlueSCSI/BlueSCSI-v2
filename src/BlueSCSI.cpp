@@ -53,9 +53,6 @@
 #define READ_SPEED_OPTIMIZE  1  // Faster reads
 #define WRITE_SPEED_OPTIMIZE 1  // Speeding up writes
 
-#define XCVR             0      // 0 for standard mode
-                                // 1 for transceiver hardware
-
 // SCSI config
 #define NUM_SCSIID  7          // Maximum number of supported SCSI-IDs (The minimum is 0)
 #define NUM_SCSILUN 2          // Maximum number of LUNs supported     (The minimum is 0)
@@ -120,7 +117,7 @@ SdFs SD;
 #define LED       PC13     // LED
 
 // Image Set Selector
-#if XCVR == 1
+#ifdef XCVR
 #define IMAGE_SELECT1   PC14
 #define IMAGE_SELECT2   PC15
 #else
@@ -172,7 +169,7 @@ SdFs SD;
 
 #define SCSI_PHASE_CHANGE(MASK) { PBREG->BSRR = (MASK); }
 
-#if XCVR == 1
+#ifdef XCVR
 #define TR_TARGET        PA1   // Target Transceiver Control Pin
 #define TR_DBP           PA2   // Data Pins Transceiver Control Pin
 #define TR_INITIATOR     PA3   // Initiator Transciever Control Pin
@@ -454,7 +451,7 @@ void setup()
 
   LED_OFF();
 
-#if XCVR == 1
+#ifdef XCVR
   // Transceiver Pin Initialization
   pinMode(TR_TARGET, OUTPUT);
   pinMode(TR_INITIATOR, OUTPUT);
@@ -472,7 +469,7 @@ void setup()
   // DB and DP are input modes
   SCSI_DB_INPUT()
 
-#if XCVR == 1
+#ifdef XCVR
   TRANSCEIVER_IO_SET(vTR_DBP,TR_INPUT);
   
   // Initiator port
@@ -854,7 +851,7 @@ inline void writeHandshake(byte d)
 {
   // This has a 400ns bus settle delay built in. Not optimal for multi-byte transfers.
   GPIOB->regs->BSRR = db_bsrr[d]; // setup DB,DBP (160ns)
-#if XCVR == 1
+#ifdef XCVR
   TRANSCEIVER_IO_SET(vTR_DBP,TR_OUTPUT)
 #endif
   SCSI_DB_OUTPUT() // (180ns)
@@ -869,7 +866,7 @@ inline void writeHandshake(byte d)
   GPIOB->regs->BSRR = DBP(0xff);  // DB=0xFF , SCSI_OUT(vREQ,inactive)
   // REQ.Raise to DB hold time 0ns
   SCSI_DB_INPUT() // (150ns)
-#if XCVR == 1
+#ifdef XCVR
   TRANSCEIVER_IO_SET(vTR_DBP,TR_INPUT)
 #endif
   while( SCSI_IN(vACK));
@@ -908,7 +905,7 @@ void writeDataLoop(uint32_t blocksize, const byte* srcptr)
   // Start the first bus cycle.
   FETCH_BSRR_DB();
   REQ_OFF_DB_SET(bsrr_val);
-#if XCVR == 1
+#ifdef XCVR
   TRANSCEIVER_IO_SET(vTR_DBP,TR_OUTPUT)
 #endif
   REQ_ON();
@@ -988,7 +985,7 @@ void writeDataPhaseSD(uint32_t adds, uint32_t len)
 #endif
   }
   SCSI_DB_INPUT()
-#if XCVR == 1
+#ifdef XCVR
   TRANSCEIVER_IO_SET(vTR_DBP,TR_INPUT)
 #endif
 }
@@ -1539,7 +1536,7 @@ void MsgIn2(int msg)
  */
 void loop() 
 {
-#if XCVR == 1
+#ifdef XCVR
   // Reset all DB and Target pins, switch transceivers to input
   // Precaution against bugs or jumps which don't clean up properly
   SCSI_DB_INPUT();
@@ -1581,7 +1578,7 @@ void loop()
   while(isHigh(gpio_read(SEL)) && isLow(gpio_read(BSY))) {
   }
   
-#if XCVR == 1
+#ifdef XCVR
   // Reconfigure target pins to output mode, after resetting their values
   GPIOB->regs->BSRR = 0x000000E8; // MSG, CD, REQ, IO
 //  GPIOA->regs->BSRR = 0x00000200; // BSY
@@ -1796,7 +1793,7 @@ BusFree:
   //SCSI_OUT(vIO ,inactive) // gpio_write(IO, low);
   //SCSI_OUT(vBSY,inactive)
   SCSI_TARGET_INACTIVE() // Turn off BSY, REQ, MSG, CD, IO output
-#if XCVR == 1
+#ifdef XCVR
   TRANSCEIVER_IO_SET(vTR_TARGET,TR_INPUT);
 #endif
 }
