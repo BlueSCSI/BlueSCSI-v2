@@ -47,9 +47,6 @@
                                 // 1: Debug information output to USB Serial
                                 // 2: Debug information output to LOG.txt (slow)
 
-#define SCSI_SELECT      0      // 0 for STANDARD
-                                // 1 for SHARP X1turbo
-                                // 2 for NEC PC98
 #define READ_SPEED_OPTIMIZE  1  // Faster reads
 #define WRITE_SPEED_OPTIMIZE 1  // Speeding up writes
 
@@ -667,8 +664,6 @@ void initFileLog(int success_mhz) {
   LOG_FILE.println(VERSION);
   LOG_FILE.print("DEBUG:");
   LOG_FILE.print(DEBUG);
-  LOG_FILE.print(" SCSI_SELECT:");
-  LOG_FILE.print(SCSI_SELECT);
   LOG_FILE.print(" SDFAT_FILE_TYPE:");
   LOG_FILE.println(SDFAT_FILE_TYPE);
   LOG_FILE.print("SdFat version: ");
@@ -789,15 +784,9 @@ void longjmpFromInterrupt(jmp_buf jmpb, int retval) {
  */
 void onBusReset(void)
 {
-#if SCSI_SELECT == 1
-  // SASI I / F for X1 turbo has RST pulse write cycle +2 clock ==
-  // I can't filter because it only activates about 1.25us
-  {{
-#else
   if(isHigh(gpio_read(RST))) {
     delayMicroseconds(20);
     if(isHigh(gpio_read(RST))) {
-#endif  
   // BUS FREE is done in the main process
 //      gpio_mode(MSG, GPIO_OUTPUT_OD);
 //      gpio_mode(CD,  GPIO_OUTPUT_OD);
@@ -1110,31 +1099,11 @@ void verifyDataPhaseSD(uint32_t adds, uint32_t len)
 /*
  * INQUIRY command processing.
  */
-#if SCSI_SELECT == 2
-byte onInquiryCommand(byte len)
-{
-  byte buf[36] = {
-    0x00, //Device type
-    0x00, //RMB = 0
-    0x01, //ISO,ECMA,ANSI version
-    0x01, //Response data format
-    35 - 4, //Additional data length
-    0, 0, //Reserve
-    0x00, //Support function
-    'N', 'E', 'C', 'I', 'T', 'S', 'U', ' ',
-    'A', 'r', 'd', 'S', 'C', 'S', 'i', 'n', 'o', ' ', ' ',' ', ' ', ' ', ' ', ' ',
-    '0', '0', '1', '0',
-  };
-  writeDataPhase(len < 36 ? len : 36, buf);
-  return 0x00;
-}
-#else
 byte onInquiryCommand(byte len)
 {
   writeDataPhase(len < 36 ? len : 36, SCSI_INFO_BUF);
   return 0x00;
 }
-#endif
 
 /*
  * REQUEST SENSE command processing.
@@ -1263,93 +1232,6 @@ byte onVerifyCommand(byte flags, uint32_t adds, uint32_t len)
 /*
  * MODE SENSE command processing.
  */
-#if SCSI_SELECT == 2
-byte onModeSenseCommand(byte scsi_cmd, byte dbd, int cmd2, uint32_t len)
-{
-  if(!m_img) {
-    m_senseKey = 2; // Not ready
-    m_addition_sense = 0x0403; // Logical Unit Not Ready, Manual Intervention Required
-    return 0x02; // Image file absent
-  }
-
-  int pageCode = cmd2 & 0x3F;
-
-  // Assuming sector size 512, number of sectors 25, number of heads 8 as default settings
-  int size = m_img->m_fileSize;
-  int cylinders = (int)(size >> 9);
-  cylinders >>= 3;
-  cylinders /= 25;
-  int sectorsize = 512;
-  int sectors = 25;
-  int heads = 8;
-  // Sector size
- int disksize = 0;
-  for(disksize = 16; disksize > 0; --(disksize)) {
-    if ((1 << disksize) == sectorsize)
-      break;
-  }
-  // Number of blocks
-  uint32_t diskblocks = (uint32_t)(size >> disksize);
-  memset(m_buf, 0, sizeof(m_buf)); 
-  int a = 4;
-  if(dbd == 0) {
-    uint32_t bl = m_img->m_blocksize;
-    uint32_t bc = m_img->m_fileSize / bl;
-    byte c[8] = {
-      0,// Density code
-      bc >> 16, bc >> 8, bc,
-      0, //Reserve
-      bl >> 16, bl >> 8, bl
-    };
-    memcpy(&m_buf[4], c, 8);
-    a += 8;
-    m_buf[3] = 0x08;
-  }
-  switch(pageCode) {
-  case 0x3F:
-  {
-    m_buf[a + 0] = 0x01;
-    m_buf[a + 1] = 0x06;
-    a += 8;
-  }
-  case 0x03:  // drive parameters
-  {
-    m_buf[a + 0] = 0x80 | 0x03; // Page code
-    m_buf[a + 1] = 0x16; // Page length
-    m_buf[a + 2] = (byte)(heads >> 8);// number of sectors / track
-    m_buf[a + 3] = (byte)(heads);// number of sectors / track
-    m_buf[a + 10] = (byte)(sectors >> 8);// number of sectors / track
-    m_buf[a + 11] = (byte)(sectors);// number of sectors / track
-    int size = 1 << disksize;
-    m_buf[a + 12] = (byte)(size >> 8);// number of sectors / track
-    m_buf[a + 13] = (byte)(size);// number of sectors / track
-    a += 24;
-    if(pageCode != 0x3F) {
-      break;
-    }
-  }
-  case 0x04:  // drive parameters
-  {
-      LOGN("AddDrive");
-      m_buf[a + 0] = 0x04; // Page code
-      m_buf[a + 1] = 0x12; // Page length
-      m_buf[a + 2] = (cylinders >> 16);// Cylinder length
-      m_buf[a + 3] = (cylinders >> 8);
-      m_buf[a + 4] = cylinders;
-      m_buf[a + 5] = heads;   // Number of heads
-      a += 20;
-    if(pageCode != 0x3F) {
-      break;
-    }
-  }
-  default:
-    break;
-  }
-  m_buf[0] = a - 1;
-  writeDataPhase(len < a ? len : a, m_buf);
-  return 0x00;
-}
-#else
 byte onModeSenseCommand(byte scsi_cmd, byte dbd, byte cmd2, uint32_t len)
 {
   if(!m_img) {
@@ -1447,7 +1329,6 @@ byte onModeSenseCommand(byte scsi_cmd, byte dbd, byte cmd2, uint32_t len)
   writeDataPhase(len < a ? len : a, m_buf);
   return 0x00;
 }
-#endif
     
 byte onModeSelectCommand(byte scsi_cmd, byte flags, uint32_t len)
 {
@@ -1468,60 +1349,6 @@ byte onModeSelectCommand(byte scsi_cmd, byte flags, uint32_t len)
   return 0x00;
 }
     
-#if SCSI_SELECT == 1
-/*
- * dtc510b_setDriveparameter
- */
-#define PACKED  __attribute__((packed))
-typedef struct PACKED dtc500_cmd_c2_param_struct
-{
-  uint8_t StepPlusWidth;        // Default is 13.6usec (11)
-  uint8_t StepPeriod;         // Default is  3  msec.(60)
-  uint8_t StepMode;         // Default is  Bufferd (0)
-  uint8_t MaximumHeadAdress;      // Default is 4 heads (3)
-  uint8_t HighCylinderAddressByte;  // Default set to 0   (0)
-  uint8_t LowCylinderAddressByte;   // Default is 153 cylinders (152)
-  uint8_t ReduceWrietCurrent;     // Default is above Cylinder 128 (127)
-  uint8_t DriveType_SeekCompleteOption;// (0)
-  uint8_t Reserved8;          // (0)
-  uint8_t Reserved9;          // (0)
-} DTC510_CMD_C2_PARAM;
-
-static void logStrHex(const char *msg,uint32_t num)
-{
-    LOG(msg);
-    LOGHEXN(num);
-}
-
-static byte dtc510b_setDriveparameter(void)
-{
-  DTC510_CMD_C2_PARAM DriveParameter;
-  uint16_t maxCylinder;
-  uint16_t numLAD;
-  //uint32_t stepPulseUsec;
-  int StepPeriodMsec;
-
-  // receive paramter
-  writeDataPhase(sizeof(DriveParameter),(byte *)(&DriveParameter));
- 
-  maxCylinder =
-    (((uint16_t)DriveParameter.HighCylinderAddressByte)<<8) |
-    (DriveParameter.LowCylinderAddressByte);
-  numLAD = maxCylinder * (DriveParameter.MaximumHeadAdress+1);
-  //stepPulseUsec  = calcStepPulseUsec(DriveParameter.StepPlusWidth);
-  StepPeriodMsec = DriveParameter.StepPeriod*50;
-  logStrHex (" StepPlusWidth      : ",DriveParameter.StepPlusWidth);
-  logStrHex (" StepPeriod         : ",DriveParameter.StepPeriod   );
-  logStrHex (" StepMode           : ",DriveParameter.StepMode     );
-  logStrHex (" MaximumHeadAdress  : ",DriveParameter.MaximumHeadAdress);
-  logStrHex (" CylinderAddress    : ",maxCylinder);
-  logStrHex (" ReduceWrietCurrent : ",DriveParameter.ReduceWrietCurrent);
-  logStrHex (" DriveType/SeekCompleteOption : ",DriveParameter.DriveType_SeekCompleteOption);
-  logStrHex (" Maximum LAD        : ",numLAD-1);
-  return  0; // error result
-}
-#endif
-
 /*
  * MsgIn2.
  */
@@ -1762,12 +1589,6 @@ void loop()
     LOGN("[ModeSense10]");
     m_sts |= onModeSenseCommand(cmd[0], cmd[1] & 0x80, cmd[2], ((uint32_t)cmd[7] << 8) | cmd[8]);
     break;
-#if SCSI_SELECT == 1
-  case 0xc2:
-    LOGN("[DTC510B setDriveParameter]");
-    m_sts |= dtc510b_setDriveparameter();
-    break;
-#endif    
   default:
     LOGN("[*Unknown]");
     m_sts |= 0x02;
