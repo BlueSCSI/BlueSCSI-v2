@@ -1351,7 +1351,21 @@ byte onModeSelectCommand(byte scsi_cmd, byte flags, uint32_t len)
   LOGN("");
   return SCSI_STATUS_GOOD;
 }
-    
+
+/*
+ * Test Unit Ready command processing.
+*/
+byte onTestUnitReady()
+{
+  // Check that image file is present
+  if(!m_img) {
+    m_senseKey = SCSI_SENSE_NOT_READY;
+    m_addition_sense = SCSI_ASC_MEDIUM_NOT_PRESENT;
+    return SCSI_STATUS_CHECK_CONDITION;
+  }
+  return SCSI_STATUS_GOOD;
+}
+
 /*
  * MsgIn2.
  */
@@ -1516,6 +1530,7 @@ void loop()
   switch(cmd[0]) {
   case SCSI_TEST_UNIT_READY: // TODO: Implement me!
     LOGN("[Test Unit Ready]");
+    m_sts |= onTestUnitReady();
     break;
   case SCSI_REZERO_UNIT: // TODO: Implement me!
     LOGN("[Rezero Unit]");
