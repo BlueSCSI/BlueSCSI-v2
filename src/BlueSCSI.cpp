@@ -620,6 +620,18 @@ void findDriveImages(FsFile root) {
           }
         }
 
+        if(file_name_length > 3) { // HDN[N]
+          int tmp_lun = name[HDIMG_LUN_POS] - '0';
+
+          // If valid lun, set it, else use default
+          if(tmp_lun == 0 || tmp_lun == 1) {
+            lun = tmp_lun;
+          } else {
+            LOG_FILE.print(name);
+            LOG_FILE.println(" - bad SCSI LUN in filename, Using default LUN ID 0");
+          }
+        }
+
         int blk1 = 0, blk2, blk3, blk4 = 0;
         if(file_name_length > 8) { // HD00_[111]
           blk1 = name[HDIMG_BLK_POS] - '0';
