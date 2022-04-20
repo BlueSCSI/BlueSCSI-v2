@@ -38,6 +38,9 @@
 #include <Arduino.h> // For Platform.IO
 #include <SdFat.h>
 #include <setjmp.h>
+#include "scsi_cmds.h"
+#include "scsi_sense.h"
+#include "scsi_status.h"
 
 #ifdef USE_STM32_DMA
 #warning "warning USE_STM32_DMA"
@@ -1102,7 +1105,7 @@ void verifyDataPhaseSD(uint32_t adds, uint32_t len)
 byte onInquiryCommand(byte len)
 {
   writeDataPhase(len < 36 ? len : 36, SCSI_INFO_BUF);
-  return 0x00;
+  return SCSI_STATUS_GOOD;
 }
 
 /*
@@ -1132,9 +1135,9 @@ void onRequestSenseCommand(byte len)
 byte onReadCapacityCommand(byte pmi)
 {
   if(!m_img) {
-    m_senseKey = 2; // Not ready
-    m_addition_sense = 0x0403; // Logical Unit Not Ready, Manual Intervention Required
-    return 0x02; // Image file absent
+    m_senseKey = SCSI_SENSE_NOT_READY;
+    m_addition_sense = SCSI_ASC_LUN_NOT_READY_MANUAL_INTERVENTION_REQUIRED;
+    return SCSI_STATUS_CHECK_CONDITION;
   }
   
   uint32_t bl = m_img->m_blocksize;
@@ -1144,7 +1147,7 @@ byte onReadCapacityCommand(byte pmi)
     bl >> 24, bl >> 16, bl >> 8, bl    
   };
   writeDataPhase(8, buf);
-  return 0x00;
+  return SCSI_STATUS_GOOD;
 }
 
 /*
@@ -1154,18 +1157,18 @@ byte checkBlockCommand(uint32_t adds, uint32_t len)
 {
   // Check that image file is present
   if(!m_img) {
-    m_senseKey = 2; // Not ready
-    m_addition_sense = 0x0403; // Logical Unit Not Ready, Manual Intervention Required
-    return 0x02;
+    m_senseKey = SCSI_SENSE_NOT_READY;
+    m_addition_sense = SCSI_ASC_LUN_NOT_READY_MANUAL_INTERVENTION_REQUIRED;
+    return SCSI_STATUS_CHECK_CONDITION;
   }
   // Check block range is valid
   uint32_t bc = m_img->m_fileSize / m_img->m_blocksize;
   if (adds >= bc || (adds + len) > bc) {
-    m_senseKey = 5; // Illegal request
-    m_addition_sense = 0x2100; // Logical block address out of range
-    return 0x02;
+    m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
+    m_addition_sense = SCSI_ASC_LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
+    return SCSI_STATUS_CHECK_CONDITION;
   }
-  return 0x00;
+  return SCSI_STATUS_GOOD;
 }
 
 /*
@@ -1184,7 +1187,7 @@ byte onReadCommand(uint32_t adds, uint32_t len)
   LED_ON();
   writeDataPhaseSD(adds, len);
   LED_OFF();
-  return 0x00; //sts
+  return SCSI_STATUS_GOOD;
 }
 
 /*
@@ -1203,7 +1206,7 @@ byte onWriteCommand(uint32_t adds, uint32_t len)
   LED_ON();
   readDataPhaseSD(adds, len);
   LED_OFF();
-  return 0; //sts
+  return SCSI_STATUS_GOOD;
 }
 
 /*
@@ -1226,7 +1229,7 @@ byte onVerifyCommand(byte flags, uint32_t adds, uint32_t len)
     verifyDataPhaseSD(adds, len);
     LED_OFF();
   }
-  return 0x00;
+  return SCSI_STATUS_GOOD;
 }
 
 /*
@@ -1235,9 +1238,9 @@ byte onVerifyCommand(byte flags, uint32_t adds, uint32_t len)
 byte onModeSenseCommand(byte scsi_cmd, byte dbd, byte cmd2, uint32_t len)
 {
   if(!m_img) {
-    m_senseKey = 2; // Not ready
-    m_addition_sense = 0x0403; // Logical Unit Not Ready, Manual Intervention Required
-    return 0x02; // No image file
+    m_senseKey = SCSI_SENSE_NOT_READY;
+    m_addition_sense = SCSI_ASC_LUN_NOT_READY_MANUAL_INTERVENTION_REQUIRED;
+    return SCSI_STATUS_CHECK_CONDITION;
   }
 
   uint32_t bl =  m_img->m_blocksize;
@@ -1311,12 +1314,12 @@ byte onModeSenseCommand(byte scsi_cmd, byte dbd, byte cmd2, uint32_t len)
     break; // Don't want 0x3F falling through to error condition
 
   default:
-    m_senseKey = 5; // Illegal request
-    m_addition_sense = 0x2400; // Invalid field in CDB
-    return 0x02;
+    m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
+    m_addition_sense = SCSI_ASC_INVALID_FIELD_IN_CDB;
+    return SCSI_STATUS_CHECK_CONDITION;
     break;
   }
-  if(scsi_cmd == 0x5A) // MODE SENSE 10
+  if(scsi_cmd == SCSI_MODE_SENSE10)
   {
     m_buf[1] = a - 2;
     m_buf[7] = 0x08;
@@ -1327,15 +1330,15 @@ byte onModeSenseCommand(byte scsi_cmd, byte dbd, byte cmd2, uint32_t len)
     m_buf[3] = 0x08;
   }
   writeDataPhase(len < a ? len : a, m_buf);
-  return 0x00;
+  return SCSI_STATUS_GOOD;
 }
     
 byte onModeSelectCommand(byte scsi_cmd, byte flags, uint32_t len)
 {
   if (len > MAX_BLOCKSIZE) {
-    m_senseKey = 5; // Illegal request
-    m_addition_sense = 0x2400; // Invalid field in CDB
-    return 0x02;
+    m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
+    m_addition_sense = SCSI_ASC_INVALID_FIELD_IN_CDB;
+    return SCSI_STATUS_CHECK_CONDITION;
   }
   readDataPhase(len, m_buf);
   //Apple HD SC Setup sends:
@@ -1346,7 +1349,7 @@ byte onModeSelectCommand(byte scsi_cmd, byte flags, uint32_t len)
     LOGHEX(m_buf[i]);LOG(" ");
   }
   LOGN("");
-  return 0x00;
+  return SCSI_STATUS_GOOD;
 }
     
 /*
@@ -1511,89 +1514,89 @@ void loop()
 
   LOGN("");
   switch(cmd[0]) {
-  case 0x00:
-    LOGN("[Test Unit]");
+  case SCSI_TEST_UNIT_READY: // TODO: Implement me!
+    LOGN("[Test Unit Ready]");
     break;
-  case 0x01:
+  case SCSI_REZERO_UNIT: // TODO: Implement me!
     LOGN("[Rezero Unit]");
     break;
-  case 0x03:
+  case SCSI_REQUEST_SENSE:
     LOGN("[RequestSense]");
     onRequestSenseCommand(cmd[4]);
     break;
-  case 0x04:
-    LOGN("[FormatUnit]");
+  case SCSI_FORMAT_UNIT4: // TODO: Implement me!
+    LOGN("[FormatUnit4]");
     break;
-  case 0x06:
-    LOGN("[FormatUnit]");
+  case SCSI_FORMAT_UNIT6: // TODO: Implement me!
+    LOGN("[FormatUnit6]");
     break;
-  case 0x07:
+  case SCSI_REASSIGN_BLOCKS: // TODO: Implement me!
     LOGN("[ReassignBlocks]");
     break;
-  case 0x08:
+  case SCSI_READ6:
     LOGN("[Read6]");
     m_sts |= onReadCommand((((uint32_t)cmd[1] & 0x1F) << 16) | ((uint32_t)cmd[2] << 8) | cmd[3], (cmd[4] == 0) ? 0x100 : cmd[4]);
     break;
-  case 0x0A:
+  case SCSI_WRITE6:
     LOGN("[Write6]");
     m_sts |= onWriteCommand((((uint32_t)cmd[1] & 0x1F) << 16) | ((uint32_t)cmd[2] << 8) | cmd[3], (cmd[4] == 0) ? 0x100 : cmd[4]);
     break;
-  case 0x0B:
+  case SCSI_SEEK6: // TODO: Implement me!
     LOGN("[Seek6]");
     break;
-  case 0x12:
+  case SCSI_INQUIRY:
     LOGN("[Inquiry]");
     m_sts |= onInquiryCommand(cmd[4]);
     break;
-  case 0x15:
+  case SCSI_MODE_SELECT6:
     LOGN("[ModeSelect6]");
     m_sts |= onModeSelectCommand(cmd[0], cmd[1], cmd[4]);
     break;
-  case 0x1A:
+  case SCSI_MODE_SENSE6:
     LOGN("[ModeSense6]");
     m_sts |= onModeSenseCommand(cmd[0], cmd[1]&0x80, cmd[2], cmd[4]);
     break;
-  case 0x1B:
+  case SCSI_START_STOP_UNIT: // TODO: Implement me!
     LOGN("[StartStopUnit]");
     break;
-  case 0x1E:
+  case SCSI_PREVENT_ALLOW_REMOVAL: // TODO: Implement me!
     LOGN("[PreAllowMed.Removal]");
     break;
-  case 0x25:
+  case SCSI_READ_CAPACITY:
     LOGN("[ReadCapacity]");
     m_sts |= onReadCapacityCommand(cmd[8]);
     break;
-  case 0x28:
+  case SCSI_READ10:
     LOGN("[Read10]");
     m_sts |= onReadCommand(((uint32_t)cmd[2] << 24) | ((uint32_t)cmd[3] << 16) | ((uint32_t)cmd[4] << 8) | cmd[5], ((uint32_t)cmd[7] << 8) | cmd[8]);
     break;
-  case 0x2A:
+  case SCSI_WRITE10:
     LOGN("[Write10]");
     m_sts |= onWriteCommand(((uint32_t)cmd[2] << 24) | ((uint32_t)cmd[3] << 16) | ((uint32_t)cmd[4] << 8) | cmd[5], ((uint32_t)cmd[7] << 8) | cmd[8]);
     break;
-  case 0x2B:
+  case SCSI_SEEK10: // TODO: Implement me!
     LOGN("[Seek10]");
     break;
-  case 0x2F:
+  case SCSI_VERIFY10:
     LOGN("[Verify10]");
     m_sts |= onVerifyCommand(cmd[1], ((uint32_t)cmd[2] << 24) | ((uint32_t)cmd[3] << 16) | ((uint32_t)cmd[4] << 8) | cmd[5], ((uint32_t)cmd[7] << 8) | cmd[8]);
     break;
-  case 0x35:
+  case SCSI_SYNCHRONIZE_CACHE: // TODO: Implement me!
     LOGN("[SynchronizeCache10]");
     break;
-  case 0x55:
+  case SCSI_MODE_SELECT10:
     LOGN("[ModeSelect10");
     m_sts |= onModeSelectCommand(cmd[0], cmd[1], ((uint32_t)cmd[7] << 8) | cmd[8]);
     break;
-  case 0x5A:
+  case SCSI_MODE_SENSE10:
     LOGN("[ModeSense10]");
     m_sts |= onModeSenseCommand(cmd[0], cmd[1] & 0x80, cmd[2], ((uint32_t)cmd[7] << 8) | cmd[8]);
     break;
   default:
     LOGN("[*Unknown]");
-    m_sts |= 0x02;
-    m_senseKey = 5;  // Illegal request
-    m_addition_sense = 0x2000; // Invalid Command Operation Code
+    m_sts |= SCSI_STATUS_CHECK_CONDITION;
+    m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
+    m_addition_sense = SCSI_ASC_INVALID_OPERATION_CODE;
     break;
   }
 
