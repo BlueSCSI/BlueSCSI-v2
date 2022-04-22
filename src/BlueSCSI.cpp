@@ -966,8 +966,8 @@ void writeDataPhaseSD(uint32_t adds, uint32_t len)
   SCSI_PHASE_CHANGE(SCSI_PHASE_DATAIN);
   //Bus settle delay 400ns, file.seek() measured at over 1000ns.
 
-  uint32_t pos = adds * m_img->m_blocksize;
-  m_img->m_file.seek(pos);
+  uint64_t pos = (uint64_t)adds * m_img->m_blocksize;
+  m_img->m_file.seekSet(pos);
 
   SCSI_DB_OUTPUT()
   for(uint32_t i = 0; i < len; i++) {
@@ -1061,8 +1061,8 @@ void readDataPhaseSD(uint32_t adds, uint32_t len)
   SCSI_PHASE_CHANGE(SCSI_PHASE_DATAOUT);
   //Bus settle delay 400ns, file.seek() measured at over 1000ns.
 
-  uint32_t pos = adds * m_img->m_blocksize;
-  m_img->m_file.seek(pos);
+  uint64_t pos = (uint64_t)adds * m_img->m_blocksize;
+  m_img->m_file.seekSet(pos);
   for(uint32_t i = 0; i < len; i++) {
     m_resetJmp = true;
 #if WRITE_SPEED_OPTIMIZE
@@ -1093,8 +1093,8 @@ void verifyDataPhaseSD(uint32_t adds, uint32_t len)
   SCSI_PHASE_CHANGE(SCSI_PHASE_DATAOUT);
   //Bus settle delay 400ns, file.seek() measured at over 1000ns.
 
-  uint32_t pos = adds * m_img->m_blocksize;
-  m_img->m_file.seek(pos);
+  uint64_t pos = (uint64_t)adds * m_img->m_blocksize;
+  m_img->m_file.seekSet(pos);
   for(uint32_t i = 0; i < len; i++) {
 #if WRITE_SPEED_OPTIMIZE
     readDataLoop(m_img->m_blocksize, m_buf);
