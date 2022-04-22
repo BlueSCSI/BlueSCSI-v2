@@ -37,6 +37,9 @@ struct image_config_t: public S2S_TargetCfg
     bool ejected;
     uint8_t cdrom_events;
 
+    // Index of image, for when image on-the-fly switching is used for CD drives
+    int image_index;
+
     // Right-align vendor / product type strings (for Apple)
     // Standard SCSI uses left alignment
     // This field uses -1 for default when field is not set in .ini
@@ -275,6 +278,21 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
     if (tmp[0]) memcpy(img.serial, tmp, sizeof(img.serial));
 }
 
+// Check if image file name is overridden in config
+static bool get_image_name(int target_idx, char *buf, size_t buflen)
+{
+    image_config_t &img = g_DiskImages[target_idx];
+
+    char section[6] = "SCSI0";
+    section[4] = '0' + target_idx;
+
+    char key[5] = "IMG0";
+    key[3] = '0' + img.image_index;
+
+    ini_gets(section, key, "", buf, buflen, CONFIGFILE);
+    return buf[0] != '\0';
+}
+
 void scsiDiskLoadConfig(int target_idx)
 {
     char section[6] = "SCSI0";
@@ -288,6 +306,16 @@ void scsiDiskLoadConfig(int target_idx)
 
     // Then settings specific to target ID
     scsiDiskLoadConfig(target_idx, section);
+
+    // Check if we have image specified by name
+    char filename[MAX_FILE_PATH];
+    if (get_image_name(target_idx, filename, sizeof(filename)))
+    {
+        image_config_t &img = g_DiskImages[target_idx];
+        int blocksize = (img.deviceType == S2S_CFG_OPTICAL) ? 2048 : 512;
+        azlog("-- Opening ", filename, " for id:", target_idx, ", specified in " CONFIGFILE);
+        scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, blocksize, false);
+    }
 }
 
 /*******************************/
@@ -513,6 +541,38 @@ static void doReadCapacity()
 /* TestUnitReady command */
 /*************************/
 
+// Check if we have multiple CD-ROM images to cycle when drive is ejected.
+static bool checkNextCDImage()
+{
+    // Check if we have a next image to load, so that drive is closed next time the host asks.
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+    img.image_index++;
+    char filename[MAX_FILE_PATH];
+    int target_idx = img.scsiId & 7;
+    if (!get_image_name(target_idx, filename, sizeof(filename)))
+    {
+        img.image_index = 0;
+        get_image_name(target_idx, filename, sizeof(filename));
+    }
+
+    if (filename[0] != '\0')
+    {
+        azlog("Switching to next CD-ROM image for ", target_idx, ": ", filename);
+        image_config_t &img = g_DiskImages[target_idx];
+        img.file.close();
+        bool status = scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, 2048, false);
+
+        if (status)
+        {
+            img.ejected = false;
+            img.cdrom_events = 2; // New media
+            return true;
+        }
+    }
+
+    return false;
+}
+
 static int doTestUnitReady()
 {
     int ready = 1;
@@ -532,6 +592,10 @@ static int doTestUnitReady()
         scsiDev.target->sense.code = NOT_READY;
         scsiDev.target->sense.asc = MEDIUM_NOT_PRESENT;
         scsiDev.phase = STATUS;
+
+        // We are now reporting to host that the drive is open.
+        // Simulate a "close" for next time the host polls.
+        checkNextCDImage();
     }
     else if (unlikely(!(blockDev.state & DISK_PRESENT)))
     {
@@ -577,6 +641,13 @@ static void doGetEventStatusNotification(bool immed)
         scsiDev.dataLen = 8;
         scsiDev.phase = DATA_IN;
         img.cdrom_events = 0;
+
+        if (img.ejected)
+        {
+            // We are now reporting to host that the drive is open.
+            // Simulate a "close" for next time the host polls.
+            checkNextCDImage();
+        }
     }
     else
     {
