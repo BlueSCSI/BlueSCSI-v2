@@ -170,7 +170,6 @@ bool findHDDImages()
   SdFile file;
   bool imageReady;
   bool foundImage = false;
-  uint8_t usedIds = 0;
   int usedDefaultId = 0;
   while (1)
   {
@@ -267,7 +266,8 @@ bool findHDDImages()
         if (fullname[strlen(fullname) - 1] != '/') strcat(fullname, "/");
         strcat(fullname, name);
 
-        if (usedIds & (1 << id))
+        const S2S_TargetCfg* cfg = s2s_getConfigByIndex(id);
+        if (cfg && (cfg->scsiId & S2S_CFG_TARGET_ENABLED))
         {
           azlog("-- Ignoring ", fullname, ", SCSI ID ", id, " is already in use!");
           continue;
@@ -279,7 +279,6 @@ bool findHDDImages()
           if(imageReady)
           {
             foundImage = true;
-            usedIds |= (1 << id);
           }
           else
           {
@@ -308,7 +307,7 @@ bool findHDDImages()
   {
     const S2S_TargetCfg* cfg = s2s_getConfigByIndex(i);
     
-    if (cfg && cfg->scsiId & S2S_CFG_TARGET_ENABLED)
+    if (cfg && (cfg->scsiId & S2S_CFG_TARGET_ENABLED))
     {
       int capacity_kB = ((uint64_t)cfg->scsiSectors * cfg->bytesPerSector) / 1024;
       azlog("SCSI ID:", (int)(cfg->scsiId & 7),
