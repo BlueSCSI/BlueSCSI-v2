@@ -38,6 +38,9 @@
 #include <Arduino.h> // For Platform.IO
 #include <SdFat.h>
 #include <setjmp.h>
+#include "scsi_cmds.h"
+#include "scsi_sense.h"
+#include "scsi_status.h"
 
 #ifdef USE_STM32_DMA
 #warning "warning USE_STM32_DMA"
@@ -46,12 +49,6 @@
 #define DEBUG            0      // 0:No debug information output
                                 // 1: Debug information output to USB Serial
                                 // 2: Debug information output to LOG.txt (slow)
-
-#define SCSI_SELECT      0      // 0 for STANDARD
-                                // 1 for SHARP X1turbo
-                                // 2 for NEC PC98
-#define READ_SPEED_OPTIMIZE  1  // Faster reads
-#define WRITE_SPEED_OPTIMIZE 1  // Speeding up writes
 
 // SCSI config
 #define NUM_SCSIID  7          // Maximum number of supported SCSI-IDs (The minimum is 0)
@@ -620,6 +617,18 @@ void findDriveImages(FsFile root) {
           }
         }
 
+        if(file_name_length > 3) { // HDN[N]
+          int tmp_lun = name[HDIMG_LUN_POS] - '0';
+
+          // If valid lun, set it, else use default
+          if(tmp_lun == 0 || tmp_lun == 1) {
+            lun = tmp_lun;
+          } else {
+            LOG_FILE.print(name);
+            LOG_FILE.println(" - bad SCSI LUN in filename, Using default LUN ID 0");
+          }
+        }
+
         int blk1 = 0, blk2, blk3, blk4 = 0;
         if(file_name_length > 8) { // HD00_[111]
           blk1 = name[HDIMG_BLK_POS] - '0';
@@ -667,8 +676,6 @@ void initFileLog(int success_mhz) {
   LOG_FILE.println(VERSION);
   LOG_FILE.print("DEBUG:");
   LOG_FILE.print(DEBUG);
-  LOG_FILE.print(" SCSI_SELECT:");
-  LOG_FILE.print(SCSI_SELECT);
   LOG_FILE.print(" SDFAT_FILE_TYPE:");
   LOG_FILE.println(SDFAT_FILE_TYPE);
   LOG_FILE.print("SdFat version: ");
@@ -789,15 +796,9 @@ void longjmpFromInterrupt(jmp_buf jmpb, int retval) {
  */
 void onBusReset(void)
 {
-#if SCSI_SELECT == 1
-  // SASI I / F for X1 turbo has RST pulse write cycle +2 clock ==
-  // I can't filter because it only activates about 1.25us
-  {{
-#else
   if(isHigh(gpio_read(RST))) {
     delayMicroseconds(20);
     if(isHigh(gpio_read(RST))) {
-#endif  
   // BUS FREE is done in the main process
 //      gpio_mode(MSG, GPIO_OUTPUT_OD);
 //      gpio_mode(CD,  GPIO_OUTPUT_OD);
@@ -872,7 +873,6 @@ inline void writeHandshake(byte d)
   while( SCSI_IN(vACK));
 }
 
-#if READ_SPEED_OPTIMIZE
 #pragma GCC push_options
 #pragma GCC optimize ("-Os")
 /*
@@ -934,7 +934,6 @@ void writeDataLoop(uint32_t blocksize, const byte* srcptr)
   WAIT_ACK_INACTIVE();
 }
 #pragma GCC pop_options
-#endif
 
 /*
  * Data in phase.
@@ -944,16 +943,10 @@ void writeDataPhase(int len, const byte* p)
 {
   LOGN("DATAIN PHASE");
   SCSI_PHASE_CHANGE(SCSI_PHASE_DATAIN);
-#if READ_SPEED_OPTIMIZE
   // Bus settle delay 400ns. Following code was measured at 800ns before REQ asserted. STM32F103.
   SCSI_DB_OUTPUT()
   writeDataLoop(len, p);
   SCSI_DB_INPUT()
-#else
-  for (int i = 0; i < len; i++) {
-    writeHandshake(p[i]);
-  }
-#endif
 }
 
 /*
@@ -976,13 +969,7 @@ void writeDataPhaseSD(uint32_t adds, uint32_t len)
     m_img->m_file.read(m_buf, m_img->m_blocksize);
     enableResetJmp();
 
-#if READ_SPEED_OPTIMIZE
     writeDataLoop(m_img->m_blocksize, m_buf);
-#else
-    for(int j = 0; j < m_img->m_blocksize; j++) {
-      writeHandshake(m_buf[j]);
-    }
-#endif
   }
   SCSI_DB_INPUT()
 #ifdef XCVR
@@ -990,7 +977,6 @@ void writeDataPhaseSD(uint32_t adds, uint32_t len)
 #endif
 }
 
-#if WRITE_SPEED_OPTIMIZE
 #pragma GCC push_options
 #pragma GCC optimize ("-Os")
     
@@ -1032,7 +1018,6 @@ void readDataLoop(uint32_t blockSize, byte* dstptr)
   WAIT_ACK_INACTIVE();
 }
 #pragma GCC pop_options
-#endif
 
 /*
  * Data out phase.
@@ -1043,12 +1028,7 @@ void readDataPhase(int len, byte* p)
   LOGN("DATAOUT PHASE");
   SCSI_PHASE_CHANGE(SCSI_PHASE_DATAOUT);
   // Bus settle delay 400ns. The following code was measured at 450ns before REQ asserted. STM32F103.
-#if WRITE_SPEED_OPTIMIZE
   readDataLoop(len, p);
-#else
-  for(uint32_t i = 0; i < len; i++)
-    p[i] = readHandshake();
-#endif
 }
 
 /*
@@ -1065,13 +1045,7 @@ void readDataPhaseSD(uint32_t adds, uint32_t len)
   m_img->m_file.seekSet(pos);
   for(uint32_t i = 0; i < len; i++) {
     m_resetJmp = true;
-#if WRITE_SPEED_OPTIMIZE
     readDataLoop(m_img->m_blocksize, m_buf);
-#else
-    for(int j = 0; j <  m_img->m_blocksize; j++) {
-      m_buf[j] = readHandshake();
-    }
-#endif
     m_resetJmp = false;
     m_img->m_file.write(m_buf, m_img->m_blocksize);
     // If a reset happened while writing, break and let the flush happen before it is handled.
@@ -1096,13 +1070,7 @@ void verifyDataPhaseSD(uint32_t adds, uint32_t len)
   uint64_t pos = (uint64_t)adds * m_img->m_blocksize;
   m_img->m_file.seekSet(pos);
   for(uint32_t i = 0; i < len; i++) {
-#if WRITE_SPEED_OPTIMIZE
     readDataLoop(m_img->m_blocksize, m_buf);
-#else
-    for(int j = 0; j <  m_img->m_blocksize; j++) {
-      m_buf[j] = readHandshake();
-    }
-#endif
     // This has just gone through the transfer to make things work, a compare would go here.
   }
 }
@@ -1110,31 +1078,11 @@ void verifyDataPhaseSD(uint32_t adds, uint32_t len)
 /*
  * INQUIRY command processing.
  */
-#if SCSI_SELECT == 2
-byte onInquiryCommand(byte len)
-{
-  byte buf[36] = {
-    0x00, //Device type
-    0x00, //RMB = 0
-    0x01, //ISO,ECMA,ANSI version
-    0x01, //Response data format
-    35 - 4, //Additional data length
-    0, 0, //Reserve
-    0x00, //Support function
-    'N', 'E', 'C', 'I', 'T', 'S', 'U', ' ',
-    'A', 'r', 'd', 'S', 'C', 'S', 'i', 'n', 'o', ' ', ' ',' ', ' ', ' ', ' ', ' ',
-    '0', '0', '1', '0',
-  };
-  writeDataPhase(len < 36 ? len : 36, buf);
-  return 0x00;
-}
-#else
 byte onInquiryCommand(byte len)
 {
   writeDataPhase(len < 36 ? len : 36, SCSI_INFO_BUF);
-  return 0x00;
+  return SCSI_STATUS_GOOD;
 }
-#endif
 
 /*
  * REQUEST SENSE command processing.
@@ -1163,9 +1111,9 @@ void onRequestSenseCommand(byte len)
 byte onReadCapacityCommand(byte pmi)
 {
   if(!m_img) {
-    m_senseKey = 2; // Not ready
-    m_addition_sense = 0x0403; // Logical Unit Not Ready, Manual Intervention Required
-    return 0x02; // Image file absent
+    m_senseKey = SCSI_SENSE_NOT_READY;
+    m_addition_sense = SCSI_ASC_LUN_NOT_READY_MANUAL_INTERVENTION_REQUIRED;
+    return SCSI_STATUS_CHECK_CONDITION;
   }
   
   uint32_t bl = m_img->m_blocksize;
@@ -1175,7 +1123,7 @@ byte onReadCapacityCommand(byte pmi)
     bl >> 24, bl >> 16, bl >> 8, bl    
   };
   writeDataPhase(8, buf);
-  return 0x00;
+  return SCSI_STATUS_GOOD;
 }
 
 /*
@@ -1185,18 +1133,18 @@ byte checkBlockCommand(uint32_t adds, uint32_t len)
 {
   // Check that image file is present
   if(!m_img) {
-    m_senseKey = 2; // Not ready
-    m_addition_sense = 0x0403; // Logical Unit Not Ready, Manual Intervention Required
-    return 0x02;
+    m_senseKey = SCSI_SENSE_NOT_READY;
+    m_addition_sense = SCSI_ASC_LUN_NOT_READY_MANUAL_INTERVENTION_REQUIRED;
+    return SCSI_STATUS_CHECK_CONDITION;
   }
   // Check block range is valid
   uint32_t bc = m_img->m_fileSize / m_img->m_blocksize;
   if (adds >= bc || (adds + len) > bc) {
-    m_senseKey = 5; // Illegal request
-    m_addition_sense = 0x2100; // Logical block address out of range
-    return 0x02;
+    m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
+    m_addition_sense = SCSI_ASC_LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
+    return SCSI_STATUS_CHECK_CONDITION;
   }
-  return 0x00;
+  return SCSI_STATUS_GOOD;
 }
 
 /*
@@ -1215,7 +1163,7 @@ byte onReadCommand(uint32_t adds, uint32_t len)
   LED_ON();
   writeDataPhaseSD(adds, len);
   LED_OFF();
-  return 0x00; //sts
+  return SCSI_STATUS_GOOD;
 }
 
 /*
@@ -1234,7 +1182,7 @@ byte onWriteCommand(uint32_t adds, uint32_t len)
   LED_ON();
   readDataPhaseSD(adds, len);
   LED_OFF();
-  return 0; //sts
+  return SCSI_STATUS_GOOD;
 }
 
 /*
@@ -1257,105 +1205,18 @@ byte onVerifyCommand(byte flags, uint32_t adds, uint32_t len)
     verifyDataPhaseSD(adds, len);
     LED_OFF();
   }
-  return 0x00;
+  return SCSI_STATUS_GOOD;
 }
 
 /*
  * MODE SENSE command processing.
  */
-#if SCSI_SELECT == 2
-byte onModeSenseCommand(byte scsi_cmd, byte dbd, int cmd2, uint32_t len)
-{
-  if(!m_img) {
-    m_senseKey = 2; // Not ready
-    m_addition_sense = 0x0403; // Logical Unit Not Ready, Manual Intervention Required
-    return 0x02; // Image file absent
-  }
-
-  int pageCode = cmd2 & 0x3F;
-
-  // Assuming sector size 512, number of sectors 25, number of heads 8 as default settings
-  int size = m_img->m_fileSize;
-  int cylinders = (int)(size >> 9);
-  cylinders >>= 3;
-  cylinders /= 25;
-  int sectorsize = 512;
-  int sectors = 25;
-  int heads = 8;
-  // Sector size
- int disksize = 0;
-  for(disksize = 16; disksize > 0; --(disksize)) {
-    if ((1 << disksize) == sectorsize)
-      break;
-  }
-  // Number of blocks
-  uint32_t diskblocks = (uint32_t)(size >> disksize);
-  memset(m_buf, 0, sizeof(m_buf)); 
-  int a = 4;
-  if(dbd == 0) {
-    uint32_t bl = m_img->m_blocksize;
-    uint32_t bc = m_img->m_fileSize / bl;
-    byte c[8] = {
-      0,// Density code
-      bc >> 16, bc >> 8, bc,
-      0, //Reserve
-      bl >> 16, bl >> 8, bl
-    };
-    memcpy(&m_buf[4], c, 8);
-    a += 8;
-    m_buf[3] = 0x08;
-  }
-  switch(pageCode) {
-  case 0x3F:
-  {
-    m_buf[a + 0] = 0x01;
-    m_buf[a + 1] = 0x06;
-    a += 8;
-  }
-  case 0x03:  // drive parameters
-  {
-    m_buf[a + 0] = 0x80 | 0x03; // Page code
-    m_buf[a + 1] = 0x16; // Page length
-    m_buf[a + 2] = (byte)(heads >> 8);// number of sectors / track
-    m_buf[a + 3] = (byte)(heads);// number of sectors / track
-    m_buf[a + 10] = (byte)(sectors >> 8);// number of sectors / track
-    m_buf[a + 11] = (byte)(sectors);// number of sectors / track
-    int size = 1 << disksize;
-    m_buf[a + 12] = (byte)(size >> 8);// number of sectors / track
-    m_buf[a + 13] = (byte)(size);// number of sectors / track
-    a += 24;
-    if(pageCode != 0x3F) {
-      break;
-    }
-  }
-  case 0x04:  // drive parameters
-  {
-      LOGN("AddDrive");
-      m_buf[a + 0] = 0x04; // Page code
-      m_buf[a + 1] = 0x12; // Page length
-      m_buf[a + 2] = (cylinders >> 16);// Cylinder length
-      m_buf[a + 3] = (cylinders >> 8);
-      m_buf[a + 4] = cylinders;
-      m_buf[a + 5] = heads;   // Number of heads
-      a += 20;
-    if(pageCode != 0x3F) {
-      break;
-    }
-  }
-  default:
-    break;
-  }
-  m_buf[0] = a - 1;
-  writeDataPhase(len < a ? len : a, m_buf);
-  return 0x00;
-}
-#else
 byte onModeSenseCommand(byte scsi_cmd, byte dbd, byte cmd2, uint32_t len)
 {
   if(!m_img) {
-    m_senseKey = 2; // Not ready
-    m_addition_sense = 0x0403; // Logical Unit Not Ready, Manual Intervention Required
-    return 0x02; // No image file
+    m_senseKey = SCSI_SENSE_NOT_READY;
+    m_addition_sense = SCSI_ASC_LUN_NOT_READY_MANUAL_INTERVENTION_REQUIRED;
+    return SCSI_STATUS_CHECK_CONDITION;
   }
 
   uint32_t bl =  m_img->m_blocksize;
@@ -1429,12 +1290,12 @@ byte onModeSenseCommand(byte scsi_cmd, byte dbd, byte cmd2, uint32_t len)
     break; // Don't want 0x3F falling through to error condition
 
   default:
-    m_senseKey = 5; // Illegal request
-    m_addition_sense = 0x2400; // Invalid field in CDB
-    return 0x02;
+    m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
+    m_addition_sense = SCSI_ASC_INVALID_FIELD_IN_CDB;
+    return SCSI_STATUS_CHECK_CONDITION;
     break;
   }
-  if(scsi_cmd == 0x5A) // MODE SENSE 10
+  if(scsi_cmd == SCSI_MODE_SENSE10)
   {
     m_buf[1] = a - 2;
     m_buf[7] = 0x08;
@@ -1445,16 +1306,15 @@ byte onModeSenseCommand(byte scsi_cmd, byte dbd, byte cmd2, uint32_t len)
     m_buf[3] = 0x08;
   }
   writeDataPhase(len < a ? len : a, m_buf);
-  return 0x00;
+  return SCSI_STATUS_GOOD;
 }
-#endif
     
 byte onModeSelectCommand(byte scsi_cmd, byte flags, uint32_t len)
 {
   if (len > MAX_BLOCKSIZE) {
-    m_senseKey = 5; // Illegal request
-    m_addition_sense = 0x2400; // Invalid field in CDB
-    return 0x02;
+    m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
+    m_addition_sense = SCSI_ASC_INVALID_FIELD_IN_CDB;
+    return SCSI_STATUS_CHECK_CONDITION;
   }
   readDataPhase(len, m_buf);
   //Apple HD SC Setup sends:
@@ -1465,62 +1325,22 @@ byte onModeSelectCommand(byte scsi_cmd, byte flags, uint32_t len)
     LOGHEX(m_buf[i]);LOG(" ");
   }
   LOGN("");
-  return 0x00;
+  return SCSI_STATUS_GOOD;
 }
-    
-#if SCSI_SELECT == 1
+
 /*
- * dtc510b_setDriveparameter
- */
-#define PACKED  __attribute__((packed))
-typedef struct PACKED dtc500_cmd_c2_param_struct
+ * Test Unit Ready command processing.
+*/
+byte onTestUnitReady()
 {
-  uint8_t StepPlusWidth;        // Default is 13.6usec (11)
-  uint8_t StepPeriod;         // Default is  3  msec.(60)
-  uint8_t StepMode;         // Default is  Bufferd (0)
-  uint8_t MaximumHeadAdress;      // Default is 4 heads (3)
-  uint8_t HighCylinderAddressByte;  // Default set to 0   (0)
-  uint8_t LowCylinderAddressByte;   // Default is 153 cylinders (152)
-  uint8_t ReduceWrietCurrent;     // Default is above Cylinder 128 (127)
-  uint8_t DriveType_SeekCompleteOption;// (0)
-  uint8_t Reserved8;          // (0)
-  uint8_t Reserved9;          // (0)
-} DTC510_CMD_C2_PARAM;
-
-static void logStrHex(const char *msg,uint32_t num)
-{
-    LOG(msg);
-    LOGHEXN(num);
+  // Check that image file is present
+  if(!m_img) {
+    m_senseKey = SCSI_SENSE_NOT_READY;
+    m_addition_sense = SCSI_ASC_MEDIUM_NOT_PRESENT;
+    return SCSI_STATUS_CHECK_CONDITION;
+  }
+  return SCSI_STATUS_GOOD;
 }
-
-static byte dtc510b_setDriveparameter(void)
-{
-  DTC510_CMD_C2_PARAM DriveParameter;
-  uint16_t maxCylinder;
-  uint16_t numLAD;
-  //uint32_t stepPulseUsec;
-  int StepPeriodMsec;
-
-  // receive paramter
-  writeDataPhase(sizeof(DriveParameter),(byte *)(&DriveParameter));
- 
-  maxCylinder =
-    (((uint16_t)DriveParameter.HighCylinderAddressByte)<<8) |
-    (DriveParameter.LowCylinderAddressByte);
-  numLAD = maxCylinder * (DriveParameter.MaximumHeadAdress+1);
-  //stepPulseUsec  = calcStepPulseUsec(DriveParameter.StepPlusWidth);
-  StepPeriodMsec = DriveParameter.StepPeriod*50;
-  logStrHex (" StepPlusWidth      : ",DriveParameter.StepPlusWidth);
-  logStrHex (" StepPeriod         : ",DriveParameter.StepPeriod   );
-  logStrHex (" StepMode           : ",DriveParameter.StepMode     );
-  logStrHex (" MaximumHeadAdress  : ",DriveParameter.MaximumHeadAdress);
-  logStrHex (" CylinderAddress    : ",maxCylinder);
-  logStrHex (" ReduceWrietCurrent : ",DriveParameter.ReduceWrietCurrent);
-  logStrHex (" DriveType/SeekCompleteOption : ",DriveParameter.DriveType_SeekCompleteOption);
-  logStrHex (" Maximum LAD        : ",numLAD-1);
-  return  0; // error result
-}
-#endif
 
 /*
  * MsgIn2.
@@ -1684,95 +1504,90 @@ void loop()
 
   LOGN("");
   switch(cmd[0]) {
-  case 0x00:
-    LOGN("[Test Unit]");
+  case SCSI_TEST_UNIT_READY:
+    LOGN("[Test Unit Ready]");
+    m_sts |= onTestUnitReady();
     break;
-  case 0x01:
+  case SCSI_REZERO_UNIT: // TODO: Implement me!
     LOGN("[Rezero Unit]");
     break;
-  case 0x03:
+  case SCSI_REQUEST_SENSE:
     LOGN("[RequestSense]");
     onRequestSenseCommand(cmd[4]);
     break;
-  case 0x04:
-    LOGN("[FormatUnit]");
+  case SCSI_FORMAT_UNIT4: // TODO: Implement me!
+    LOGN("[FormatUnit4]");
     break;
-  case 0x06:
-    LOGN("[FormatUnit]");
+  case SCSI_FORMAT_UNIT6: // TODO: Implement me!
+    LOGN("[FormatUnit6]");
     break;
-  case 0x07:
+  case SCSI_REASSIGN_BLOCKS: // TODO: Implement me!
     LOGN("[ReassignBlocks]");
     break;
-  case 0x08:
+  case SCSI_READ6:
     LOGN("[Read6]");
     m_sts |= onReadCommand((((uint32_t)cmd[1] & 0x1F) << 16) | ((uint32_t)cmd[2] << 8) | cmd[3], (cmd[4] == 0) ? 0x100 : cmd[4]);
     break;
-  case 0x0A:
+  case SCSI_WRITE6:
     LOGN("[Write6]");
     m_sts |= onWriteCommand((((uint32_t)cmd[1] & 0x1F) << 16) | ((uint32_t)cmd[2] << 8) | cmd[3], (cmd[4] == 0) ? 0x100 : cmd[4]);
     break;
-  case 0x0B:
+  case SCSI_SEEK6: // TODO: Implement me!
     LOGN("[Seek6]");
     break;
-  case 0x12:
+  case SCSI_INQUIRY:
     LOGN("[Inquiry]");
     m_sts |= onInquiryCommand(cmd[4]);
     break;
-  case 0x15:
+  case SCSI_MODE_SELECT6:
     LOGN("[ModeSelect6]");
     m_sts |= onModeSelectCommand(cmd[0], cmd[1], cmd[4]);
     break;
-  case 0x1A:
+  case SCSI_MODE_SENSE6:
     LOGN("[ModeSense6]");
     m_sts |= onModeSenseCommand(cmd[0], cmd[1]&0x80, cmd[2], cmd[4]);
     break;
-  case 0x1B:
+  case SCSI_START_STOP_UNIT: // TODO: Implement me!
     LOGN("[StartStopUnit]");
     break;
-  case 0x1E:
+  case SCSI_PREVENT_ALLOW_REMOVAL: // TODO: Implement me!
     LOGN("[PreAllowMed.Removal]");
     break;
-  case 0x25:
+  case SCSI_READ_CAPACITY:
     LOGN("[ReadCapacity]");
     m_sts |= onReadCapacityCommand(cmd[8]);
     break;
-  case 0x28:
+  case SCSI_READ10:
     LOGN("[Read10]");
     m_sts |= onReadCommand(((uint32_t)cmd[2] << 24) | ((uint32_t)cmd[3] << 16) | ((uint32_t)cmd[4] << 8) | cmd[5], ((uint32_t)cmd[7] << 8) | cmd[8]);
     break;
-  case 0x2A:
+  case SCSI_WRITE10:
     LOGN("[Write10]");
     m_sts |= onWriteCommand(((uint32_t)cmd[2] << 24) | ((uint32_t)cmd[3] << 16) | ((uint32_t)cmd[4] << 8) | cmd[5], ((uint32_t)cmd[7] << 8) | cmd[8]);
     break;
-  case 0x2B:
+  case SCSI_SEEK10: // TODO: Implement me!
     LOGN("[Seek10]");
     break;
-  case 0x2F:
+  case SCSI_VERIFY10:
     LOGN("[Verify10]");
     m_sts |= onVerifyCommand(cmd[1], ((uint32_t)cmd[2] << 24) | ((uint32_t)cmd[3] << 16) | ((uint32_t)cmd[4] << 8) | cmd[5], ((uint32_t)cmd[7] << 8) | cmd[8]);
     break;
-  case 0x35:
+  case SCSI_SYNCHRONIZE_CACHE: // TODO: Implement me!
     LOGN("[SynchronizeCache10]");
     break;
-  case 0x55:
+  case SCSI_MODE_SELECT10:
     LOGN("[ModeSelect10");
     m_sts |= onModeSelectCommand(cmd[0], cmd[1], ((uint32_t)cmd[7] << 8) | cmd[8]);
     break;
-  case 0x5A:
+  case SCSI_MODE_SENSE10:
     LOGN("[ModeSense10]");
     m_sts |= onModeSenseCommand(cmd[0], cmd[1] & 0x80, cmd[2], ((uint32_t)cmd[7] << 8) | cmd[8]);
     break;
-#if SCSI_SELECT == 1
-  case 0xc2:
-    LOGN("[DTC510B setDriveParameter]");
-    m_sts |= dtc510b_setDriveparameter();
-    break;
-#endif    
   default:
     LOGN("[*Unknown]");
-    m_sts |= 0x02;
-    m_senseKey = 5;  // Illegal request
-    m_addition_sense = 0x2000; // Invalid Command Operation Code
+    m_sts |= SCSI_STATUS_CHECK_CONDITION;
+    m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
+    m_addition_sense = SCSI_ASC_INVALID_OPERATION_CODE;
     break;
   }
 
