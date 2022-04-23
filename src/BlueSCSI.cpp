@@ -1504,7 +1504,7 @@ void loop()
 
   LOGN("");
   switch(cmd[0]) {
-  case SCSI_TEST_UNIT_READY: // TODO: Implement me!
+  case SCSI_TEST_UNIT_READY:
     LOGN("[Test Unit Ready]");
     m_sts |= onTestUnitReady();
     break;
