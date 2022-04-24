@@ -63,7 +63,7 @@ https://github.com/erichelgeson/BlueSCSI/wiki/Troubleshooting
 
 #### 1.1-a Desktop
 
-* Binky! There are now resistors and pin outs for Power and Activity LED's
+* Blinky! There are now resistors and pin outs for Power and Activity LED's
 * Resistor nets flipped all the same way
 * 50 pin allows for right angle connector
 * SD Card facing out the back - gives some better options for mounting and access
