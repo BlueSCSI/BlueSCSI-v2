@@ -954,9 +954,16 @@ static void diskDataIn()
         g_scsi_prefetch.scsiId = scsiDev.target->cfg->scsiId;
         while (!scsiIsWriteFinished(NULL) && prefetch_sectors > 0)
         {
+            // Check if prefetch buffer is free
+            g_disk_transfer.buffer = g_scsi_prefetch.buffer + g_scsi_prefetch.bytes;
+            if (!scsiIsWriteFinished(g_disk_transfer.buffer) ||
+                !scsiIsWriteFinished(g_disk_transfer.buffer + bytesPerSector - 1))
+            {
+                continue;
+            }
+
             // We still have time, prefetch next sectors in case this SCSI request
             // is part of a longer linear read.
-            g_disk_transfer.buffer = g_scsi_prefetch.buffer + g_scsi_prefetch.bytes;
             g_disk_transfer.bytes_sd = bytesPerSector;
             g_disk_transfer.bytes_scsi = bytesPerSector; // Tell callback not to send to SCSI
             image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
