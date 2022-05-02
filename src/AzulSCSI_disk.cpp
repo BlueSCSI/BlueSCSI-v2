@@ -1331,7 +1331,7 @@ void scsiDiskReset()
             }
         }
     }
- }
+}
 
 extern "C"
 void scsiDiskInit()
