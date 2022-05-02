@@ -10,7 +10,16 @@ void scsi_accel_greenpak_send(const uint32_t *buf, uint32_t num_words, volatile 
     assert(false);
 }
 
+void scsi_accel_greenpak_recv(uint32_t *buf, uint32_t num_words, volatile int *resetFlag)
+{
+    assert(false);
+}
+
 #else
+
+/*********************************************************/
+/* Optimized writes to SCSI bus in GREENPAK_PIO mode     */
+/*********************************************************/
 
 extern const uint32_t g_scsi_out_byte_to_bop_pld1hi[256];
 extern const uint32_t g_scsi_out_byte_to_bop_pld1lo[256];
@@ -187,5 +196,170 @@ const uint32_t g_scsi_out_byte_to_bop_pld1lo[256] =
 };
 
 #undef X
+
+/*********************************************************/
+/* Optimized reads from SCSI bus in GREENPAK_PIO mode    */
+/*********************************************************/
+
+// Wait for ACK to go high and back low.
+// This indicates that there is a byte ready to be read
+// If interrupt occurs in middle, we may miss ACK going high.
+// In that case, verify that REQ is already low.
+#define ASM_WAIT_ACK(x) \
+"        ldr     %[tmp2], [%[ack_pin_bb]] \n" \
+"        cbnz    %[tmp2], ack_is_high_" x "_%= \n" \
+"        ldr     %[tmp2], [%[ack_pin_bb]] \n" \
+"        cbnz    %[tmp2], ack_is_high_" x "_%= \n" \
+"        ldr     %[tmp2], [%[ack_pin_bb]] \n" \
+"        cbnz    %[tmp2], ack_is_high_" x "_%= \n" \
+"        ldr     %[tmp2], [%[ack_pin_bb]] \n" \
+"        cbnz    %[tmp2], ack_is_high_" x "_%= \n" \
+"        ldr     %[tmp2], [%[ack_pin_bb]] \n" \
+"        cbnz    %[tmp2], ack_is_high_" x "_%= \n" \
+"    wait_req_low_" x "_%=: \n" \
+"        cpsid   i \n" \
+"        ldr     %[tmp2], [%[req_pin_bb]] \n" \
+"        cbz     %[tmp2], ack_is_high_" x "_%= \n" \
+"        ldr     %[tmp2], [%[reset_flag]] \n" \
+"        cbnz    %[tmp2], ack_is_high_" x "_%= \n" \
+"        cpsie   i \n" \
+"        b.n     wait_req_low_" x "_%= \n" \
+"    ack_is_high_" x "_%=: \n" \
+"        ldr     %[tmp2], [%[ack_pin_bb]] \n" \
+"        cbz     %[tmp2], ack_is_low_" x "_%= \n" \
+"        ldr     %[tmp2], [%[ack_pin_bb]] \n" \
+"        cbz     %[tmp2], ack_is_low_" x "_%= \n" \
+"        ldr     %[tmp2], [%[ack_pin_bb]] \n" \
+"        cbz     %[tmp2], ack_is_low_" x "_%= \n" \
+"        ldr     %[tmp2], [%[ack_pin_bb]] \n" \
+"        cbz     %[tmp2], ack_is_low_" x "_%= \n" \
+"        ldr     %[tmp2], [%[ack_pin_bb]] \n" \
+"        cbz     %[tmp2], ack_is_low_" x "_%= \n" \
+"        ldr     %[tmp2], [%[ack_pin_bb]] \n" \
+"        cbz     %[tmp2], ack_is_low_" x "_%= \n" \
+"    wait_ack_low_" x "_%=: \n" \
+"        cpsid   i \n" \
+"        ldr     %[tmp2], [%[ack_pin_bb]] \n" \
+"        cbz     %[tmp2], ack_is_low_" x "_%= \n" \
+"        ldr     %[tmp2], [%[reset_flag]] \n" \
+"        cbnz    %[tmp2], ack_is_low_" x "_%= \n" \
+"        cpsie   i \n" \
+"        b.n     wait_ack_low_" x "_%= \n" \
+"    ack_is_low_" x "_%=: \n"
+
+// Prepare for reception of data by loading the next PLD_IO1 value
+// and disabling interrupts.
+#define ASM_PREP_RECV(l) \
+"        mov    %[tmp1], %[" l "] \n" \
+"        cpsid  i \n"
+
+// Read GPIO bus, take the data byte and toggle PLD_IO1.
+// Note that the PLD_IO1 write is done first to reduce latency, but
+// the istat value that is read by next instruction is still the old
+// one due to IO port delays. Interrupts must be disabled for this
+// sequence to work correctly.
+//
+// d is the name of register where data is to be stored
+// b is the bit offset to store the byte at
+// x is unique label
+#define ASM_RECV_DATA(d, b, x) \
+"    read_data_" x "_%=: \n" \
+"        str    %[tmp1], [%[out_port_bop]] \n" \
+"        ldr    %[tmp1], [%[in_port_istat]] \n" \
+"        ubfx   %[tmp1], %[tmp1], %[data_in_shift], #8 \n" \
+"        bfi    %[" d "], %[tmp1], #" b ", #8 \n" \
+"        cpsie  i \n"
+
+// Read bytes from SCSI bus using asynchronous handshake mechanism
+// Takes 4 bytes at a time.
+void scsi_accel_greenpak_recv(uint32_t *buf, uint32_t num_words, volatile int *resetFlag)
+{
+    volatile uint32_t *out_port_bop = (volatile uint32_t*)&GPIO_BOP(SCSI_OUT_PORT);
+    volatile uint32_t *in_port_istat = (volatile uint32_t*)&GPIO_ISTAT(SCSI_IN_PORT);
+    uint32_t ack_pin_bb = PERIPH_BB_BASE + (((uint32_t)&GPIO_ISTAT(SCSI_ACK_PORT)) - APB1_BUS_BASE) * 32 + SCSI_IN_ACK_IDX * 4;
+    uint32_t req_pin_bb = PERIPH_BB_BASE + (((uint32_t)&GPIO_ISTAT(SCSI_OUT_PORT)) - APB1_BUS_BASE) * 32 + SCSI_OUT_REQ_IDX * 4;
+    register uint32_t tmp1 = 0;
+    register uint32_t tmp2 = 0;
+    register uint32_t data = 0;
+
+    // Last word requires special handling so that hardware doesn't issue new REQ pulse.
+    assert(num_words >= 2);
+    num_words -= 1;
+
+    // Set PLD_IO3 high to enable read from SCSI bus
+    GPIO_BOP(SCSI_OUT_PORT) = GREENPAK_PLD_IO3;
+
+    // Make sure that the previous access has fully completed.
+    // E.g. Macintosh can hold ACK low for long time after last byte of block.
+    while (SCSI_IN(ACK) && !*resetFlag);
+
+    // Set REQ pin as input and PLD_IO2 high to enable logic
+    GPIO_BC(SCSI_OUT_PORT) = GREENPAK_PLD_IO1;
+    gpio_init(SCSI_OUT_PORT, GPIO_MODE_IPU, 0, SCSI_OUT_REQ);
+    GPIO_BOP(SCSI_OUT_PORT) = GREENPAK_PLD_IO2;
+
+    asm volatile (
+    "inner_loop_%=: \n"
+        ASM_PREP_RECV("pld1_hi")
+        ASM_WAIT_ACK("0")
+        ASM_RECV_DATA("data", "0", "0")
+        
+        ASM_PREP_RECV("pld1_lo")
+        ASM_WAIT_ACK("8")
+        ASM_RECV_DATA("data", "8", "8")
+        
+        ASM_PREP_RECV("pld1_hi")
+        ASM_WAIT_ACK("16")
+        ASM_RECV_DATA("data", "16", "16")
+        
+        ASM_PREP_RECV("pld1_lo")
+        ASM_WAIT_ACK("24")
+        ASM_RECV_DATA("data", "24", "24")
+
+    "   mvn      %[data], %[data] \n"
+    "   str      %[data], [%[buf]], #4 \n"
+    "   subs     %[num_words], %[num_words], #1 \n"
+    "   bne     inner_loop_%= \n"
+
+    // Process last word separately to avoid issuing extra REQ pulse at end.
+    "recv_last_word_%=: \n"
+        ASM_PREP_RECV("pld1_hi")
+        ASM_WAIT_ACK("0b")
+        ASM_RECV_DATA("data", "0", "0b")
+        
+        ASM_PREP_RECV("pld1_lo")
+        ASM_WAIT_ACK("8b")
+        ASM_RECV_DATA("data", "8", "8b")
+        
+        ASM_PREP_RECV("pld1_hi")
+        ASM_WAIT_ACK("16b")
+        ASM_RECV_DATA("data", "16", "16b")
+        
+        ASM_PREP_RECV("pld1_hi")
+        ASM_WAIT_ACK("24b")
+        ASM_RECV_DATA("data", "24", "24b")
+
+    "   mvn      %[data], %[data] \n"
+    "   str      %[data], [%[buf]], #4 \n"
+
+    : /* Output */ [tmp1] "+l" (tmp1), [tmp2] "+l" (tmp2), [data] "+r" (data),
+                   [buf] "+r" (buf), [num_words] "+r" (num_words)
+    : /* Input */ [ack_pin_bb] "r" (ack_pin_bb),
+                  [req_pin_bb] "r" (req_pin_bb),
+                  [out_port_bop] "r"(out_port_bop),
+                  [in_port_istat] "r" (in_port_istat),
+                  [reset_flag] "r" (resetFlag),
+                  [data_in_shift] "I" (SCSI_IN_SHIFT),
+                  [pld1_lo] "I" (SCSI_OUT_PLD1 << 16),
+                  [pld1_hi] "I" (SCSI_OUT_PLD1)
+    : /* Clobber */ );
+
+    SCSI_RELEASE_DATA_REQ();
+
+    // Disable external logic and set REQ pin as output
+    GPIO_BC(SCSI_OUT_PORT) = GREENPAK_PLD_IO2;
+    gpio_init(SCSI_OUT_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_REQ);
+    GPIO_BC(SCSI_OUT_PORT) = GREENPAK_PLD_IO3;
+}
 
 #endif
