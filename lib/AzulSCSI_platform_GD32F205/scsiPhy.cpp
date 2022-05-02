@@ -6,6 +6,7 @@
 #include "scsi_accel_asm.h"
 #include "scsi_accel_dma.h"
 #include "scsi_accel_greenpak.h"
+#include "scsi_accel_sync.h"
 #include "AzulSCSI_log.h"
 #include "AzulSCSI_log_trace.h"
 #include "AzulSCSI_config.h"
@@ -28,6 +29,13 @@ static enum {
 static const char *g_scsi_phy_mode_names[] = {
     "Unknown", "PIO", "DMA_TIMER", "GREENPAK_PIO", "GREENPAK_DMA"
 };
+
+// State of polling write request
+static struct {
+    const uint8_t *data;
+    uint32_t count;
+    bool use_sync_mode;
+} g_scsi_writereq;
 
 static void init_irqs();
 
@@ -169,7 +177,12 @@ extern "C" void scsiPhyReset(void)
 
     g_scsi_sts_selection = 0;
     g_scsi_ctrl_bsy = 0;
+    g_scsi_writereq.count = 0;
     init_irqs();
+
+#ifdef SCSI_SYNC_MODE_AVAILABLE
+    scsi_accel_sync_init();
+#endif
 
     selectPhyMode();
 
@@ -295,16 +308,15 @@ extern "C" void scsiWrite(const uint8_t* data, uint32_t count)
     scsiFinishWrite();
 }
 
-static struct {
-    const uint8_t *data;
-    uint32_t count;
-} g_scsi_writereq;
-
 extern "C" void scsiStartWrite(const uint8_t* data, uint32_t count)
 {
     scsiLogDataIn(data, count);
 
-    if (g_scsi_phy_mode == PHY_MODE_PIO || g_scsi_phy_mode == PHY_MODE_GREENPAK_PIO)
+    g_scsi_writereq.use_sync_mode = (g_scsi_phase == DATA_IN && scsiDev.target->syncOffset > 0);
+
+    if (g_scsi_phy_mode == PHY_MODE_PIO
+        || g_scsi_phy_mode == PHY_MODE_GREENPAK_PIO
+        || g_scsi_writereq.use_sync_mode)
     {
         // Software based bit-banging.
         // Write requests are queued and then executed in isWriteFinished() callback.
@@ -346,20 +358,28 @@ static void processPollingWrite(uint32_t count)
     
     const uint8_t *data = g_scsi_writereq.data;
     uint32_t count_words = count / 4;
-    if (count_words * 4 == count)
+
+    if (g_scsi_writereq.use_sync_mode)
     {
-        // Use accelerated subroutine
+        // Synchronous mode transfer
+        scsi_accel_sync_send(data, count, &scsiDev.resetFlag);
+    }
+    else if (count_words * 4 == count)
+    {
         if (g_scsi_phy_mode == PHY_MODE_GREENPAK_PIO)
         {
+            // GreenPAK PIO accelerated asynchronous transfer
             scsi_accel_greenpak_send((const uint32_t*)data, count_words, &scsiDev.resetFlag);
         }
         else
         {
+            // Assembler optimized asynchronous transfer
             scsi_accel_asm_send((const uint32_t*)data, count_words, &scsiDev.resetFlag);
         }
     }
     else
     {
+        // Use simple loop for unaligned transfers
         for (uint32_t i = 0; i < count; i++)
         {
             if (scsiDev.resetFlag) break;
@@ -397,38 +417,39 @@ static bool isPollingWriteFinished(const uint8_t *data)
 
 extern "C" bool scsiIsWriteFinished(const uint8_t *data)
 {
+    // Check if there is still a polling transfer in progress
+    if (!isPollingWriteFinished(data))
+    {
+        // Process the transfer piece-by-piece while waiting
+        // for SD card to react.
+        int max_count = g_scsi_writereq.count / 8;
+        max_count &= ~255;
+        if (max_count < 256) max_count = 256;
+        processPollingWrite(max_count);
+        return isPollingWriteFinished(data);
+    }
+    
     if (g_scsi_phy_mode == PHY_MODE_DMA_TIMER || g_scsi_phy_mode == PHY_MODE_GREENPAK_DMA)
     {
         return scsi_accel_dma_isWriteFinished(data);
     }
     else
     {
-        // Check if there is still a polling transfer in progress
-        if (!isPollingWriteFinished(data))
-        {
-            // Process the transfer piece-by-piece while waiting
-            // for SD card to react.
-            processPollingWrite(256);
-            return isPollingWriteFinished(data);
-        }
-
         return true;
     }
 }
 
 extern "C" void scsiFinishWrite()
 {
+    if (g_scsi_writereq.count)
+    {
+        // Finish previously started polling write request.
+        processPollingWrite(g_scsi_writereq.count);
+    }
+
     if (g_scsi_phy_mode == PHY_MODE_DMA_TIMER || g_scsi_phy_mode == PHY_MODE_GREENPAK_DMA)
     {
         scsi_accel_dma_finishWrite(&scsiDev.resetFlag);
-    }
-    else
-    {
-        // Finish previously started polling write request.
-        if (g_scsi_writereq.count)
-        {
-            processPollingWrite(g_scsi_writereq.count);
-        }
     }
 }
 
@@ -460,13 +481,26 @@ extern "C" void scsiRead(uint8_t* data, uint32_t count, int* parityError)
     *parityError = 0;
 
     uint32_t count_words = count / 4;
-    if (count_words * 4 == count)
+    bool use_greenpak = (g_scsi_phy_mode == PHY_MODE_GREENPAK_DMA || g_scsi_phy_mode == PHY_MODE_GREENPAK_PIO);
+
+    if (g_scsi_phase == DATA_OUT && scsiDev.target->syncOffset > 0)
     {
-        // Use accelerated subroutine
+        // Synchronous data transfer
+        scsi_accel_sync_recv(data, count, parityError, &scsiDev.resetFlag);
+    }
+    else if (count_words * 4 == count && count_words >= 2 && use_greenpak)
+    {
+        // GreenPAK accelerated receive can handle a multiple of 4 bytes with minimum of 8 bytes.
+        scsi_accel_greenpak_recv((uint32_t*)data, count_words, &scsiDev.resetFlag);
+    }
+    else if (count_words * 4 == count && count_words >= 1)
+    {
+        // Optimized ASM subroutine can handle multiple of 4 bytes with minimum of 4 bytes.
         scsi_accel_asm_recv((uint32_t*)data, count_words, &scsiDev.resetFlag);
     }
     else
     {
+        // Use a simple loop for short and unaligned transfers
         for (uint32_t i = 0; i < count; i++)
         {
             if (scsiDev.resetFlag) break;
