@@ -1314,7 +1314,24 @@ void scsiDiskReset()
     g_scsi_prefetch.bytes = 0;
     g_scsi_prefetch.sector = 0;
 #endif
-}
+
+    // Reinsert any ejected CD-ROMs
+    for (int i = 0; i < S2S_MAX_TARGETS; ++i)
+    {
+        image_config_t &img = g_DiskImages[i];
+        if (img.deviceType == S2S_CFG_OPTICAL)
+        {
+            img.ejected = false;
+            img.cdrom_events = 2; // New media
+
+            if (img.image_index > 0)
+            {
+                img.image_index = 9; // Force restart back from 0
+                checkNextCDImage();
+            }
+        }
+    }
+ }
 
 extern "C"
 void scsiDiskInit()
