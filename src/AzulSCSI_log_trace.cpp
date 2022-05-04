@@ -18,31 +18,43 @@ static const char *getCommandName(uint8_t cmd)
     switch (cmd)
     {
         case 0x00: return "TestUnitReady";
-        case 0x1A: return "ModeSense";
-        case 0x5A: return "ModeSense10";
-        case 0x0A: return "Write6";
-        case 0x2A: return "Write10";
-        case 0x08: return "Read6";
-        case 0x28: return "Read10";
-        case 0x12: return "Inquiry";
-        case 0x25: return "ReadCapacity";
-        case 0x43: return "CDROM Read TOC";
-        case 0x44: return "CDROM Read Header";
-        case 0x2C: return "Erase10";
-        case 0xAC: return "Erase12";
-        case 0x15: return "ModeSelect6";
-        case 0x55: return "ModeSelect10";
+        case 0x01: return "RezeroUnit";
         case 0x03: return "RequestSense";
+        case 0x04: return "FormatUnit";
+        case 0x08: return "Read6";
+        case 0x0A: return "Write6";
+        case 0x0B: return "Seek6";
+        case 0x0F: return "WriteSectorBuffer";
+        case 0x12: return "Inquiry";
+        case 0x15: return "ModeSelect6";
         case 0x16: return "Reserve";
         case 0x17: return "Release";
+        case 0x1A: return "ModeSense";
+        case 0x1B: return "StartStopUnit";
         case 0x1C: return "ReceiveDiagnostic";
         case 0x1D: return "SendDiagnostic";
+        case 0x1E: return "PreventAllowMediumRemoval";
+        case 0x25: return "ReadCapacity";
+        case 0x28: return "Read10";
+        case 0x2A: return "Write10";
+        case 0x2B: return "Seek10";
+        case 0x2C: return "Erase10";
+        case 0x2E: return "WriteVerify";
+        case 0x2F: return "Verify";
+        case 0x34: return "PreFetch";
+        case 0x35: return "SynchronizeCache";
+        case 0x36: return "LockUnlockCache";
+        case 0x37: return "ReadDefectData";
         case 0x3B: return "WriteBuffer";
-        case 0x0F: return "WriteSectorBuffer";
         case 0x3C: return "ReadBuffer";
+        case 0x43: return "CDROM Read TOC";
+        case 0x44: return "CDROM Read Header";
+        case 0x4A: return "GetEventStatusNotification";
+        case 0x55: return "ModeSelect10";
+        case 0x5A: return "ModeSense10";
+        case 0xAC: return "Erase12";
         case 0xC0: return "OMTI-5204 DefineFlexibleDiskFormat";
         case 0xC2: return "OMTI-5204 AssignDiskParameters";
-        case 0x4A: return "GetEventStatusNotification";
         default:   return "Unknown";
     }
 }
@@ -97,11 +109,19 @@ static void printNewPhase(int phase)
             break;
         
         case DATA_IN:
-            azdbg("---- DATA_IN");
+            if (scsiDev.target->syncOffset > 0)
+                azdbg("---- DATA_IN, syncOffset ", (int)scsiDev.target->syncOffset,
+                                   " syncPeriod ", (int)scsiDev.target->syncPeriod);
+            else
+                azdbg("---- DATA_IN");
             break;
         
         case DATA_OUT:
-            azdbg("---- DATA_OUT");
+            if (scsiDev.target->syncOffset > 0)
+                azdbg("---- DATA_OUT, syncOffset ", (int)scsiDev.target->syncOffset,
+                                    " syncPeriod ", (int)scsiDev.target->syncPeriod);
+            else
+                azdbg("---- DATA_OUT");
             break;
         
         case MESSAGE_IN:

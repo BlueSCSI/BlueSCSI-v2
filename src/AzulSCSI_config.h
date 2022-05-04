@@ -26,7 +26,7 @@
 #define MAX_FILE_PATH 64                // Maximum file name length
 
 // SCSI config
-#define NUM_SCSIID  7          // Maximum number of supported SCSI-IDs (The minimum is 0)
+#define NUM_SCSIID  8          // Maximum number of supported SCSI-IDs (The minimum is 0)
 #define NUM_SCSILUN 1          // Maximum number of LUNs supported     (Currently has to be 1)
 #define READ_PARITY_CHECK 0    // Perform read parity check (unverified)
 
