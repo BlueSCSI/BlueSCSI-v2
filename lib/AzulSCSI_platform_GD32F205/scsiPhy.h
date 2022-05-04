@@ -42,9 +42,6 @@ uint32_t scsiEnterPhaseImmediate(int phase);
 // Release all signals
 void scsiEnterBusFree(void);
 
-//void scsiSetDataCount(uint32_t count);
-//int scsiFifoReady(void);
-
 // Blocking data transfer
 void scsiWrite(const uint8_t* data, uint32_t count);
 void scsiRead(uint8_t* data, uint32_t count, int* parityError);
