@@ -403,7 +403,7 @@ static void reinitSCSI()
   
 }
 
-extern "C" int zuluscsi_main(void)
+extern "C" void zuluscsi_setup(void)
 {
   azplatform_init();
   azplatform_late_init();
@@ -436,45 +436,45 @@ extern "C" int zuluscsi_main(void)
   azlog("FW Version: ", g_azlog_firmwareversion);
 
   init_logfile();
-  
-  uint32_t sd_card_check_time = 0;
+}
 
-  while (1)
+extern "C" void zuluscsi_main_loop(void)
+{
+  static uint32_t sd_card_check_time = 0;
+
+  azplatform_reset_watchdog();
+  scsiPoll();
+  scsiDiskPoll();
+  scsiLogPhaseChange(scsiDev.phase);
+
+  // Save log periodically during status phase if there are new messages.
+  if (scsiDev.phase == STATUS)
   {
-    azplatform_reset_watchdog();
-    scsiPoll();
-    scsiDiskPoll();
-    scsiLogPhaseChange(scsiDev.phase);
+    save_logfile();
+  }
 
-    // Save log periodically during status phase if there are new messages.
-    if (scsiDev.phase == STATUS)
+  // Check SD card status for hotplug
+  if (scsiDev.phase == BUS_FREE &&
+      (uint32_t)(millis() - sd_card_check_time) > 5000)
+  {
+    sd_card_check_time = millis();
+    uint32_t ocr;
+    if (!SD.card()->readOCR(&ocr))
     {
-      save_logfile();
-    }
-
-    // Check SD card status for hotplug
-    if (scsiDev.phase == BUS_FREE &&
-        (uint32_t)(millis() - sd_card_check_time) > 5000)
-    {
-      sd_card_check_time = millis();
-      uint32_t ocr;
       if (!SD.card()->readOCR(&ocr))
       {
-        if (!SD.card()->readOCR(&ocr))
+        azlog("SD card removed, trying to reinit");
+        do
         {
-          azlog("SD card removed, trying to reinit");
-          do
-          {
-            blinkStatus(BLINK_ERROR_NO_SD_CARD);
-            delay(1000);
-            azplatform_reset_watchdog();
-          } while (!SD.begin(SD_CONFIG) && (!SD.card() || SD.sdErrorCode() != 0));
-          azlog("SD card reinit succeeded");
-          print_sd_info();
+          blinkStatus(BLINK_ERROR_NO_SD_CARD);
+          delay(1000);
+          azplatform_reset_watchdog();
+        } while (!SD.begin(SD_CONFIG) && (!SD.card() || SD.sdErrorCode() != 0));
+        azlog("SD card reinit succeeded");
+        print_sd_info();
 
-          reinitSCSI();
-          init_logfile();
-        }
+        reinitSCSI();
+        init_logfile();
       }
     }
   }

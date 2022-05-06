@@ -12,11 +12,28 @@ int main(void)
 
 #else
 
-extern "C" int zuluscsi_main(void);
+extern "C" void zuluscsi_setup(void);
+extern "C" void zuluscsi_main_loop(void);
 
+#ifdef USE_ARDUINO
+extern "C" void setup(void)
+{
+    zuluscsi_setup();
+}
+
+extern "C" void loop(void)
+{
+    zuluscsi_main_loop();
+}
+#else
 int main(void)
 {
-    return zuluscsi_main();
+    zuluscsi_setup();
+    while (1)
+    {
+        zuluscsi_main_loop();
+    }
 }
+#endif
 
 #endif
