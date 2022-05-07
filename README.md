@@ -1,20 +1,20 @@
-AzulSCSI Firmware
+ZuluSCSI Firmware
 =================
 
 Hard Drive & ISO image files
 ---------------------
-AzulSCSI uses the same type of (raw) hard drive image file as that of [BlueSCSI instructions](https://github.com/erichelgeson/BlueSCSI/wiki/Usage). 
+ZuluSCSI uses the same type of (raw) hard drive image file as that of [BlueSCSI instructions](https://github.com/erichelgeson/BlueSCSI/wiki/Usage). 
 
 Examples of valid filenames:
 * `HD5.hda` or `HD5.img`: hard drive with SCSI ID 5
 * `HD20_512.hda`: hard drive with SCSI ID 2, LUN 0, block size 512
 * `CD3.iso`: CD drive with SCSI ID 3
 
-In addition to the simplified filenames style above, the AzulSCSI firmware also looks for images using the BlueSCSI-style "HDxy_512.hda" filename formatting.
+In addition to the simplified filenames style above, the ZuluSCSI firmware also looks for images using the BlueSCSI-style "HDxy_512.hda" filename formatting.
 
 Log files and error indications
 -------------------------------
-Log messages are stored in `azullog.txt`, which is cleared on every boot.
+Log messages are stored in `Zululog.txt`, which is cleared on every boot.
 Normally only basic initialization information is stored, but switching the `DBG` DIP switch on will cause every SCSI command to be logged, once the board is power cycled.
 
 The indicator LED will normally report disk access.
@@ -25,18 +25,18 @@ It also reports following status conditions:
 - 5 fast blinks: SD card not detected
 - Continuous morse pattern: firmware crashed, morse code indicates crash location
 
-In crashes the firmware will also attempt to save information into `azulerr.txt`.
+In crashes the firmware will also attempt to save information into `Zuluerr.txt`.
 
 Configuration file
 ------------------
-Optional configuration can be stored in `azulscsi.ini`.
+Optional configuration can be stored in `Zuluscsi.ini`.
 If image file is found but configuration is missing, a default configuration is used.
 
-Example config file is available here: [azulscsi.ini](azulscsi.ini).
+Example config file is available here: [Zuluscsi.ini](Zuluscsi.ini).
 
 Performance
 -----------
-Performance information for the various AzulSCSI hardware models is [documented separately, here](Performance.md)
+Performance information for the various ZuluSCSI hardware models is [documented separately, here](Performance.md)
 
 Hotplugging
 -----------
@@ -49,11 +49,11 @@ Any IO requests issued when card is removed will be timeouted.
 Programming & bootloader
 ------------------------
 There is a bootloader that loads new firmware from SD card on boot.
-The firmware file must be e.g. `AzulSCSI.bin` or `AzulSCSIv1_0_2022-xxxxx.bin`.
+The firmware file must be e.g. `ZuluSCSI.bin` or `ZuluSCSIv1_0_2022-xxxxx.bin`.
 Firmware update takes about 1 second, during which the LED will flash rapidly.
 
 When successful, the bootloader removes the update file and continues to main firmware.
-On failure, `azulerr.txt` is written on the SD card.
+On failure, `Zuluerr.txt` is written on the SD card.
 
 Alternatively, the board can be programmed using USB connection in DFU mode by setting DIP switch 4.
 The necessary programmer utility for Windows can be downloaded from [GD32 website](http://www.gd32mcu.com/en/download?kw=dfu&lan=en). On Linux and MacOS, the standard 'dfu-util' can be used. It can be installed via your package manager under Linux. On MacOS, it is available through MacPorts and Brew as a package
@@ -62,24 +62,24 @@ DIP switches
 ------------
 The DIP switch settings are as follows:
 
-- DEBUG: Enable verbose debug log (saved to `azullog.txt`)
+- DEBUG: Enable verbose debug log (saved to `Zululog.txt`)
 - TERM: Enable SCSI termination
 - BOOT: Enable built-in USB bootloader, this DIP switch MUST remain off during normal operation.
 - SW1: Enables/disables Macintosh/Apple specific mode-pages and device strings, which eases disk initialization when performing fresh installs on legacy Macintosh computers.
 
 Project structure
 -----------------
-- **src/AzulSCSI.cpp**: Main portable SCSI implementation.
-- **src/AzulSCSI_disk.cpp**: Interface between SCSI2SD code and SD card reading.
-- **src/AzulSCSI_log.cpp**: Simple logging functionality, uses memory buffering.
-- **src/AzulSCSI_config.h**: Some compile-time options, usually no need to change.
-- **lib/AzulSCSI_platform_GD32F205**: Platform-specific code for GD32F205.
+- **src/ZuluSCSI.cpp**: Main portable SCSI implementation.
+- **src/ZuluSCSI_disk.cpp**: Interface between SCSI2SD code and SD card reading.
+- **src/ZuluSCSI_log.cpp**: Simple logging functionality, uses memory buffering.
+- **src/ZuluSCSI_config.h**: Some compile-time options, usually no need to change.
+- **lib/ZuluSCSI_platform_GD32F205**: Platform-specific code for GD32F205.
 - **lib/SCSI2SD**: SCSI2SD V6 code, used for SCSI command implementations.
 - **lib/minIni**: Ini config file access library
 - **lib/SdFat_NoArduino**: Modified version of [SdFat](https://github.com/greiman/SdFat) library for use without Arduino core.
 - **utils/run_gdb.sh**: Helper script for debugging with st-link adapter. Displays SWO log directly in console.
 
-To port the code to a new platform, see README in [lib/AzulSCSI_platform_template](lib/AzulSCSI_platform_template) folder.
+To port the code to a new platform, see README in [lib/ZuluSCSI_platform_template](lib/ZuluSCSI_platform_template) folder.
 
 Building
 --------
