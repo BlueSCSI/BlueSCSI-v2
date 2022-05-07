@@ -1,11 +1,11 @@
-#include "AzulSCSI_log.h"
-#include "AzulSCSI_config.h"
-#include "AzulSCSI_platform.h"
+#include "ZuluSCSI_log.h"
+#include "ZuluSCSI_config.h"
+#include "ZuluSCSI_platform.h"
 
 const char *g_azlog_firmwareversion = "1.0.1" " " __DATE__ " " __TIME__;
 bool g_azlog_debug = true;
 
-// This memory buffer can be read by debugger and is also saved to azullog.txt
+// This memory buffer can be read by debugger and is also saved to zululog.txt
 #define LOGBUFMASK (LOGBUFSIZE - 1)
 
 // The log buffer is in special uninitialized RAM section so that it is not reset

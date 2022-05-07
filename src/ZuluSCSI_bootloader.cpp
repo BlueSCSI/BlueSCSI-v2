@@ -1,7 +1,7 @@
 // Simple bootloader that loads new firmware from SD card.
 
-#include <AzulSCSI_platform.h>
-#include "AzulSCSI_log.h"
+#include <ZuluSCSI_platform.h>
+#include "ZuluSCSI_log.h"
 #include <SdFat.h>
 #include <string.h>
 
@@ -22,7 +22,7 @@ bool find_firmware_image(FsFile &file, char name[MAX_FILE_PATH + 1])
         int namelen = file.getName(name, MAX_FILE_PATH);
 
         if (namelen >= 11 &&
-            strncasecmp(name, "azulscsi", 8) == 0 &&
+            strncasecmp(name, "zuluscsi", 8) == 0 &&
             strncasecmp(name + namelen - 3, "bin", 3) == 0)
         {
             root.close();

@@ -1,6 +1,6 @@
-#include "AzulSCSI_platform.h"
-#include "AzulSCSI_log.h"
-#include "AzulSCSI_config.h"
+#include "ZuluSCSI_platform.h"
+#include "ZuluSCSI_log.h"
+#include "ZuluSCSI_config.h"
 #include <SdFat.h>
 #include <scsi.h>
 #include <assert.h>

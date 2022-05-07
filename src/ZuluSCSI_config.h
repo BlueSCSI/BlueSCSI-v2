@@ -4,9 +4,9 @@
 #pragma once
 
 // Configuration and log file paths
-#define CONFIGFILE  "azulscsi.ini"
-#define LOGFILE     "azullog.txt"
-#define CRASHFILE   "azulerr.txt"
+#define CONFIGFILE  "zuluscsi.ini"
+#define LOGFILE     "zululog.txt"
+#define CRASHFILE   "zuluerr.txt"
 
 // Log buffer size in bytes, must be a power of 2
 #ifndef LOGBUFSIZE
@@ -34,12 +34,12 @@
 // Selected based on device type (fixed, removable, optical, floppy, mag-optical, tape)
 // Each entry has {vendor, product, version, serial}
 // If serial number is left empty, SD card serial number is used.
-#define DRIVEINFO_FIXED     {"AZULSCSI", "HARDDRIVE", PLATFORM_REVISION, ""}
-#define DRIVEINFO_REMOVABLE {"AZULSCSI", "REMOVABLE", PLATFORM_REVISION, ""}
-#define DRIVEINFO_OPTICAL   {"AZULSCSI", "CDROM",     PLATFORM_REVISION, ""}
-#define DRIVEINFO_FLOPPY    {"AZULSCSI", "FLOPPY",    PLATFORM_REVISION, ""}
-#define DRIVEINFO_MAGOPT    {"AZULSCSI", "MO_DRIVE",  PLATFORM_REVISION, ""}
-#define DRIVEINFO_TAPE      {"AZULSCSI", "TAPE",      PLATFORM_REVISION, ""}
+#define DRIVEINFO_FIXED     {"ZULUSCSI", "HARDDRIVE", PLATFORM_REVISION, ""}
+#define DRIVEINFO_REMOVABLE {"ZULUSCSI", "REMOVABLE", PLATFORM_REVISION, ""}
+#define DRIVEINFO_OPTICAL   {"ZULUSCSI", "CDROM",     PLATFORM_REVISION, ""}
+#define DRIVEINFO_FLOPPY    {"ZULUSCSI", "FLOPPY",    PLATFORM_REVISION, ""}
+#define DRIVEINFO_MAGOPT    {"ZULUSCSI", "MO_DRIVE",  PLATFORM_REVISION, ""}
+#define DRIVEINFO_TAPE      {"ZULUSCSI", "TAPE",      PLATFORM_REVISION, ""}
 
 // Default delay for SCSI phases.
 // Can be adjusted in ini file
