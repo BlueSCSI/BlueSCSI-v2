@@ -1,5 +1,5 @@
 /*  
- *  AzulSCSI
+ *  ZuluSCSI
  *  Copyright (c) 2022 Rabbit Hole Computing
  * 
  * This project is based on BlueSCSI:
@@ -44,11 +44,11 @@
 #include <minIni.h>
 #include <string.h>
 #include <ctype.h>
-#include "AzulSCSI_config.h"
-#include "AzulSCSI_platform.h"
-#include "AzulSCSI_log.h"
-#include "AzulSCSI_log_trace.h"
-#include "AzulSCSI_disk.h"
+#include "ZuluSCSI_config.h"
+#include "ZuluSCSI_platform.h"
+#include "ZuluSCSI_log.h"
+#include "ZuluSCSI_log_trace.h"
+#include "ZuluSCSI_disk.h"
 
 SdFs SD;
 FsFile g_logfile;
@@ -362,7 +362,7 @@ static void reinitSCSI()
   
 }
 
-extern "C" int azulscsi_main(void)
+extern "C" int zuluscsi_main(void)
 {
   azplatform_init();
   azplatform_late_init();

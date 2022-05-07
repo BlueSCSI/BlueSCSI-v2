@@ -1,4 +1,4 @@
-// Example GPIO definitions for AzulSCSI platform
+// Example GPIO definitions for ZuluSCSI platform
 
 #pragma once
 

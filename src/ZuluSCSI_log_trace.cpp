@@ -1,7 +1,7 @@
 // SCSI trace logging
 
-#include "AzulSCSI_log_trace.h"
-#include "AzulSCSI_log.h"
+#include "ZuluSCSI_log_trace.h"
+#include "ZuluSCSI_log.h"
 #include <scsi2sd.h>
 
 extern "C" {

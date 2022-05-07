@@ -4,7 +4,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "AzulSCSI_platform.h"
+#include "ZuluSCSI_platform.h"
 
 #define s2s_getTime_ms() millis()
 #define s2s_elapsedTime_ms(since) ((uint32_t)(millis() - (since)))

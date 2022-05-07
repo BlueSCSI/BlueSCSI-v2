@@ -6,9 +6,9 @@
 //    Copyright (C) 2014 Doug Brown <doug@downtowndougbrown.com>
 //    Copyright (C) 2022 Rabbit Hole Computing
 
-#include "AzulSCSI_disk.h"
-#include "AzulSCSI_log.h"
-#include "AzulSCSI_config.h"
+#include "ZuluSCSI_disk.h"
+#include "ZuluSCSI_log.h"
+#include "ZuluSCSI_config.h"
 #include <minIni.h>
 #include <string.h>
 #include <SdFat.h>

@@ -1,4 +1,4 @@
-// Platform-specific definitions for AzulSCSI.
+// Platform-specific definitions for ZuluSCSI.
 //
 // This file is example platform definition that can easily be
 // customized for a different board / CPU.
@@ -8,7 +8,7 @@
 /* Add any platform-specific includes you need here */
 #include <stdint.h>
 #include <Arduino.h>
-#include "AzulSCSI_platform_gpio.h"
+#include "ZuluSCSI_platform_gpio.h"
 
 #ifdef __cplusplus
 extern "C" {
