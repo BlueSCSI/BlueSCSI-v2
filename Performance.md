@@ -1,14 +1,15 @@
 Performance
 -----------
-Performance characteristics of AzulSCSI differ depending on the hardware version. 
+Performance characteristics of ZuluSCSI differ depending on the hardware version. 
 
 Additionally, on older, slower computers, particularly 68000 Macs with 8-16MHz CPUs, performance will be gated by the speed of your CPU, and the local bus between the CPU and your SCSI controller.
 
 
-With AzulSCSI V1.1, and verbose log messages disabled (debug DIP switch OFF), expected SCSI performance is ~3.5 MB/s read and ~2 MB/s write.
+With ZuluSCSI V1.1, and verbose log messages disabled (debug DIP switch OFF), expected SCSI performance is ~3.5 MB/s read and ~2 MB/s write.
 
-With AzulSCSI V1.0, and verbose log messages disabled (debug DIP switch OFF), expected SCSI performance is 2.4 MB/s read and 2 MB/s write, assuming you're using a fast enough machine, 
-With AzulSCSI Mini (V1.0), and verbose log messages disabled (default, unless you enable it in azulscsi.ini), expected SCSI performance is 2.4 MB/s read and 2 MB/s write.
+With ZuluSCSI V1.0, and verbose log messages disabled (debug DIP switch OFF), expected SCSI performance is 2.4 MB/s read and 2 MB/s write, assuming you're using a fast enough machine, 
+With ZuluSCSI Mini (V1.0), and verbose log messages disabled (default, unless you enable it in zuluscsi.ini), 
+expected SCSI performance is 2.4 MB/s read and 2 MB/s write.
 
 Slow SD cards or a fragmented filesystem can slow down access.
 
