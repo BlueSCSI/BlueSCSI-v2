@@ -1,4 +1,4 @@
-// GPIO definitions for AzulSCSI v1.0
+// GPIO definitions for ZuluSCSI v1.0
 
 #pragma once
 
@@ -57,7 +57,7 @@
 #define SCSI_IN_ACK_IDX 12
 
 // The SCSI_ATN pin was PB0 in prototype 2022a, but was moved to PC6 for 5V-tolerance
-#ifdef AZULSCSI_2022A_REVISION
+#ifdef ZULUSCSI_2022A_REVISION
 #define SCSI_ATN_PORT GPIOB
 #define SCSI_ATN_PIN  GPIO_PIN_0
 #else

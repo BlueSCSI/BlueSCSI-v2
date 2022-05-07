@@ -1,5 +1,5 @@
 #include "scsi_accel_asm.h"
-#include "AzulSCSI_platform.h"
+#include "ZuluSCSI_platform.h"
 
 // Optimized ASM blocks for the SCSI communication subroutine
 

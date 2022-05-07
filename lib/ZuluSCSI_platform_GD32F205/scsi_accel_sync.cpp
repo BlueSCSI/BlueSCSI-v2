@@ -16,7 +16,7 @@
  */
 
 #include "scsi_accel_sync.h"
-#include <AzulSCSI_log.h>
+#include <ZuluSCSI_log.h>
 #include <gd32f20x_exmc.h>
 #include <scsi.h>
 

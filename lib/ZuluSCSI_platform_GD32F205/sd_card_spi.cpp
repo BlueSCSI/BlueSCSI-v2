@@ -1,8 +1,8 @@
 // Driver and interface for accessing SD card in SPI mode
-// Used on AzulSCSI v1.0.
+// Used on ZuluSCSI v1.0.
 
-#include "AzulSCSI_platform.h"
-#include "AzulSCSI_log.h"
+#include "ZuluSCSI_platform.h"
+#include "ZuluSCSI_log.h"
 #include "gd32f20x_spi.h"
 #include "gd32f20x_dma.h"
 #include <SdFat.h>
