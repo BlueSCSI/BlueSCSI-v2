@@ -25,14 +25,14 @@ It also reports following status conditions:
 - 5 fast blinks: SD card not detected
 - Continuous morse pattern: firmware crashed, morse code indicates crash location
 
-In crashes the firmware will also attempt to save information into `Zuluerr.txt`.
+In crashes the firmware will also attempt to save information into `zuluerr.txt`.
 
 Configuration file
 ------------------
-Optional configuration can be stored in `Zuluscsi.ini`.
+Optional configuration can be stored in `zuluscsi.ini`.
 If image file is found but configuration is missing, a default configuration is used.
 
-Example config file is available here: [Zuluscsi.ini](Zuluscsi.ini).
+Example config file is available here: [zuluscsi.ini](Zuluscsi.ini).
 
 Performance
 -----------
