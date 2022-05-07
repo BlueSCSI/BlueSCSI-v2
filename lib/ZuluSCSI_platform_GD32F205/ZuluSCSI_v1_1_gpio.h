@@ -1,4 +1,4 @@
-// GPIO definitions for AzulSCSI v1.1
+// GPIO definitions for ZuluSCSI v1.1
 
 #pragma once
 

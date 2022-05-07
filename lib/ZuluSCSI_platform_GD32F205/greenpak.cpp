@@ -3,8 +3,8 @@
 // and to avoid the bugs that are present in STM32F2 I2C peripheral,
 // it is uncertain if the same bugs apply to GD32F2.
 
-#include "AzulSCSI_platform.h"
-#include "AzulSCSI_log.h"
+#include "ZuluSCSI_platform.h"
+#include "ZuluSCSI_log.h"
 #include "greenpak.h"
 #include "greenpak_fw.h"
 

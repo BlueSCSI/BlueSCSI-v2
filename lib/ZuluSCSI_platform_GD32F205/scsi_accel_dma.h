@@ -4,7 +4,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "AzulSCSI_platform.h"
+#include "ZuluSCSI_platform.h"
 #include "greenpak.h"
 
 #ifdef SCSI_TIMER

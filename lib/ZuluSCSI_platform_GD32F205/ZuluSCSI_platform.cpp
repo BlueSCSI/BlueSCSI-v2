@@ -1,8 +1,8 @@
-#include "AzulSCSI_platform.h"
+#include "ZuluSCSI_platform.h"
 #include "gd32f20x_sdio.h"
 #include "gd32f20x_fmc.h"
-#include "AzulSCSI_log.h"
-#include "AzulSCSI_config.h"
+#include "ZuluSCSI_log.h"
+#include "ZuluSCSI_config.h"
 #include "greenpak.h"
 #include <SdFat.h>
 #include <scsi.h>

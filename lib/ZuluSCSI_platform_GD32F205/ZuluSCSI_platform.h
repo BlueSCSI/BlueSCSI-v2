@@ -1,4 +1,4 @@
-// Platform-specific definitions for AzulSCSI.
+// Platform-specific definitions for ZuluSCSI.
 // Can be customized for different microcontrollers, this file is for GD32F205VCT6.
 
 #pragma once
@@ -6,7 +6,7 @@
 #include <gd32f20x.h>
 #include <gd32f20x_gpio.h>
 #include <scsi2sd.h>
-#include "AzulSCSI_config.h"
+#include "ZuluSCSI_config.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -14,19 +14,19 @@ extern "C" {
 
 extern const char *g_azplatform_name;
 
-#if defined(AZULSCSI_V1_0)
-#   define PLATFORM_NAME "AzulSCSI v1.0"
+#if defined(ZULUSCSI_V1_0)
+#   define PLATFORM_NAME "ZuluSCSI v1.0"
 #   define PLATFORM_REVISION "1.0"
 #   define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_ASYNC_50
-#   include "AzulSCSI_v1_0_gpio.h"
-#elif defined(AZULSCSI_V1_1)
-#   define PLATFORM_NAME "AzulSCSI v1.1"
+#   include "ZuluSCSI_v1_0_gpio.h"
+#elif defined(ZULUSCSI_V1_1)
+#   define PLATFORM_NAME "ZuluSCSI v1.1"
 #   define PLATFORM_REVISION "1.1"
 #   define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_10
 #   define PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE 4096
 #   define PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE 65536
 #   define PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE 8192
-#   include "AzulSCSI_v1_1_gpio.h"
+#   include "ZuluSCSI_v1_1_gpio.h"
 #endif
 
 // Debug logging functions
@@ -85,11 +85,11 @@ void azplatform_boot_to_main_firmware();
 void azplatform_config_hook(S2S_TargetCfg *config);
 #define AZPLATFORM_CONFIG_HOOK(cfg) azplatform_config_hook(cfg)
 #define APPLE_DRIVEINFO_FIXED     {"SEAGATE",  "ST225N",            PLATFORM_REVISION, "1.0"}
-#define APPLE_DRIVEINFO_REMOVABLE {"AZULSCSI", "APPLE_REMOVABLE",   PLATFORM_REVISION, ""}
+#define APPLE_DRIVEINFO_REMOVABLE {"ZULUSCSI", "APPLE_REMOVABLE",   PLATFORM_REVISION, ""}
 #define APPLE_DRIVEINFO_OPTICAL   {"MATSHITA", "CD-ROM CR-8004A",   PLATFORM_REVISION, "2.0a"}
-#define APPLE_DRIVEINFO_FLOPPY    {"AZULSCSI", "APPLE_FLOPPY",      PLATFORM_REVISION, ""}
-#define APPLE_DRIVEINFO_MAGOPT    {"AZULSCSI", "APPLE_MO",          PLATFORM_REVISION, ""}
-#define APPLE_DRIVEINFO_TAPE      {"AZULSCSI", "APPLE_TAPE",        PLATFORM_REVISION, ""}
+#define APPLE_DRIVEINFO_FLOPPY    {"ZULUSCSI", "APPLE_FLOPPY",      PLATFORM_REVISION, ""}
+#define APPLE_DRIVEINFO_MAGOPT    {"ZULUSCSI", "APPLE_MO",          PLATFORM_REVISION, ""}
+#define APPLE_DRIVEINFO_TAPE      {"ZULUSCSI", "APPLE_TAPE",        PLATFORM_REVISION, ""}
 
 // Write a single SCSI pin.
 // Example use: SCSI_OUT(ATN, 1) sets SCSI_ATN to low (active) state.
@@ -129,14 +129,14 @@ extern const uint32_t g_scsi_out_byte_to_bop[256];
 
 // SD card driver for SdFat
 #ifndef SD_USE_SDIO
-// SPI interface, AzulSCSI v1.0
+// SPI interface, ZuluSCSI v1.0
 class SdSpiConfig;
 extern SdSpiConfig g_sd_spi_config;
 #define SD_CONFIG g_sd_spi_config
 #define SD_CONFIG_CRASH g_sd_spi_config
 
 #else
-// SDIO interface, AzulSCSI v1.1
+// SDIO interface, ZuluSCSI v1.1
 class SdioConfig;
 extern SdioConfig g_sd_sdio_config;
 extern SdioConfig g_sd_sdio_config_crash;

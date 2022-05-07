@@ -5,7 +5,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "AzulSCSI_platform.h"
+#include "ZuluSCSI_platform.h"
 
 #ifdef SCSI_IN_ACK_EXMC_NWAIT_PORT
 #define SCSI_SYNC_MODE_AVAILABLE

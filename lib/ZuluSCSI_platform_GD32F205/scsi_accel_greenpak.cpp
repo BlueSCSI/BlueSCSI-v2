@@ -1,6 +1,6 @@
 #include "scsi_accel_greenpak.h"
-#include "AzulSCSI_platform.h"
-#include <AzulSCSI_log.h>
+#include "ZuluSCSI_platform.h"
+#include <ZuluSCSI_log.h>
 #include <assert.h>
 
 #ifndef GREENPAK_PLD_IO1

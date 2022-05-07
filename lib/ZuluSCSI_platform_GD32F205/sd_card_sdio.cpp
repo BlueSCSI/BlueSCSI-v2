@@ -1,11 +1,11 @@
 // Driver and interface for accessing SD card in SDIO mode
-// Used on AzulSCSI v1.1.
+// Used on ZuluSCSI v1.1.
 
-#include "AzulSCSI_platform.h"
+#include "ZuluSCSI_platform.h"
 
 #ifdef SD_USE_SDIO
 
-#include "AzulSCSI_log.h"
+#include "ZuluSCSI_log.h"
 #include "gd32f20x_sdio.h"
 #include "gd32f20x_dma.h"
 #include "gd32_sdio_sdcard.h"
