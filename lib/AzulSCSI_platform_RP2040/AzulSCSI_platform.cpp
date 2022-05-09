@@ -7,10 +7,13 @@
 #include <hardware/gpio.h>
 #include <hardware/uart.h>
 #include <hardware/spi.h>
+#include <platform/mbed_error.h>
 
 extern "C" {
 
 const char *g_azplatform_name = PLATFORM_NAME;
+
+void mbed_error_hook(const mbed_error_ctx * error_context);
 
 /***************/
 /* GPIO init   */
@@ -55,6 +58,7 @@ void azplatform_init()
     /* Initialize logging to SWO pin (UART0) */
     gpio_conf(SWO_PIN,        GPIO_FUNC_UART,false,false, true,  false, true);
     uart_init(uart0, 2000000);
+    mbed_set_error_hook(mbed_error_hook);
 
     azlog("DIP switch settings: initiator ", (int)initiator, ", debug log ", (int)dbglog, ", termination ", (int)termination);
 
@@ -142,102 +146,72 @@ void azplatform_late_init()
 extern SdFs SD;
 extern uint32_t __StackTop;
 
-// void azplatform_emergency_log_save()
-// {
-//     azplatform_set_sd_callback(NULL, NULL);
+void azplatform_emergency_log_save()
+{
+    azplatform_set_sd_callback(NULL, NULL);
 
-//     SD.begin(SD_CONFIG_CRASH);
-//     FsFile crashfile = SD.open(CRASHFILE, O_WRONLY | O_CREAT | O_TRUNC);
+    SD.begin(SD_CONFIG_CRASH);
+    FsFile crashfile = SD.open(CRASHFILE, O_WRONLY | O_CREAT | O_TRUNC);
 
-//     if (!crashfile.isOpen())
-//     {
-//         // Try to reinitialize
-//         int max_retry = 10;
-//         while (max_retry-- > 0 && !SD.begin(SD_CONFIG_CRASH));
+    if (!crashfile.isOpen())
+    {
+        // Try to reinitialize
+        int max_retry = 10;
+        while (max_retry-- > 0 && !SD.begin(SD_CONFIG_CRASH));
 
-//         crashfile = SD.open(CRASHFILE, O_WRONLY | O_CREAT | O_TRUNC);
-//     }
+        crashfile = SD.open(CRASHFILE, O_WRONLY | O_CREAT | O_TRUNC);
+    }
 
-//     uint32_t startpos = 0;
-//     crashfile.write(azlog_get_buffer(&startpos));
-//     crashfile.write(azlog_get_buffer(&startpos));
-//     crashfile.flush();
-//     crashfile.close();
-// }
+    uint32_t startpos = 0;
+    crashfile.write(azlog_get_buffer(&startpos));
+    crashfile.write(azlog_get_buffer(&startpos));
+    crashfile.flush();
+    crashfile.close();
+}
 
-// void mbed_error_hook(const mbed_error_ctx * error_context)
-// {
-//     azlog("--------------");
-//     azlog("CRASH!");
-//     azlog("Platform: ", g_azplatform_name);
-//     azlog("FW Version: ", g_azlog_firmwareversion);
-//     azlog("error_status: ", (int)error_context->error_status);
-//     azlog("error_address: ", error_context->error_address);
-//     azlog("error_valu: ", error_context->error_value);
+void mbed_error_hook(const mbed_error_ctx * error_context)
+{
+    azlog("--------------");
+    azlog("CRASH!");
+    azlog("Platform: ", g_azplatform_name);
+    azlog("FW Version: ", g_azlog_firmwareversion);
+    azlog("error_status: ", (uint32_t)error_context->error_status);
+    azlog("error_address: ", error_context->error_address);
+    azlog("error_value: ", error_context->error_value);
 
-//     uint32_t *p = (uint32_t*)((uint32_t)error_context->thread_current_sp & ~3);
-//     for (int i = 0; i < 8; i++)
-//     {
-//         if (p == &__StackTop) break; // End of stack
+    uint32_t *p = (uint32_t*)((uint32_t)error_context->thread_current_sp & ~3);
+    for (int i = 0; i < 8; i++)
+    {
+        if (p == &__StackTop) break; // End of stack
 
-//         azlog("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
-//         p += 4;
-//     }
+        azlog("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
+        p += 4;
+    }
 
-//     azplatform_emergency_log_save();
+    azplatform_emergency_log_save();
 
-//     while (1)
-//     {
-//         // Flash the crash address on the LED
-//         // Short pulse means 0, long pulse means 1
-//         int base_delay = 1000;
-//         for (int i = 31; i >= 0; i--)
-//         {
-//             LED_OFF();
-//             for (int j = 0; j < base_delay; j++) delay_ns(100000);
+    while (1)
+    {
+        // Flash the crash address on the LED
+        // Short pulse means 0, long pulse means 1
+        int base_delay = 1000;
+        for (int i = 31; i >= 0; i--)
+        {
+            LED_OFF();
+            for (int j = 0; j < base_delay; j++) delay_ns(100000);
 
-//             int delay = (error_context->error_address & (1 << i)) ? (3 * base_delay) : base_delay;
-//             LED_ON();
-//             for (int j = 0; j < delay; j++) delay_ns(100000);
-//             LED_OFF();
-//         }
+            int delay = (error_context->error_address & (1 << i)) ? (3 * base_delay) : base_delay;
+            LED_ON();
+            for (int j = 0; j < delay; j++) delay_ns(100000);
+            LED_OFF();
+        }
 
-//         for (int j = 0; j < base_delay * 10; j++) delay_ns(100000);
-//     }
-// }
-
-// void __assert_func(const char *file, int line, const char *func, const char *expr)
-// {
-//     uint32_t dummy = 0;
-
-//     azlog("--------------");
-//     azlog("ASSERT FAILED!");
-//     azlog("Platform: ", g_azplatform_name);
-//     azlog("FW Version: ", g_azlog_firmwareversion);
-//     azlog("Assert failed: ", file , ":", line, " in ", func, ":", expr);
-
-//     uint32_t *p = (uint32_t*)((uint32_t)&dummy & ~3);
-//     for (int i = 0; i < 8; i++)
-//     {
-//         if (p == &__StackTop) break; // End of stack
-
-//         azlog("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
-//         p += 4;
-//     }
-
-//     azplatform_emergency_log_save();
-
-//     while(1)
-//     {
-//         LED_OFF();
-//         for (int j = 0; j < 1000; j++) delay_ns(100000);
-//         LED_ON();
-//         for (int j = 0; j < 1000; j++) delay_ns(100000);
-//     }
-// }
+        for (int j = 0; j < base_delay * 10; j++) delay_ns(100000);
+    }
+}
 
 /*****************************************/
-/* Debug logging and watchdor            */
+/* Debug logging and watchdog            */
 /*****************************************/
 
 // This function is called for every log message.
@@ -298,3 +272,30 @@ const uint32_t g_scsi_out_byte_lookup[256] =
 #undef X
 
 } /* extern "C" */
+
+/* Logging from mbed */
+
+static class LogTarget: public mbed::FileHandle {
+public:
+    virtual ssize_t read(void *buffer, size_t size) { return 0; }
+    virtual ssize_t write(const void *buffer, size_t size)
+    {
+        // A bit inefficient but mbed seems to write() one character
+        // at a time anyways.
+        for (int i = 0; i < size; i++)
+        {
+            char buf[2] = {((const char*)buffer)[i], 0};
+            azlog_raw(buf);
+        }
+        return size;
+    }
+
+    virtual off_t seek(off_t offset, int whence = SEEK_SET) { return offset; }
+    virtual int close() { return 0; }
+    virtual off_t size() { return 0; }
+} g_LogTarget;
+
+mbed::FileHandle *mbed::mbed_override_console(int fd)
+{
+    return &g_LogTarget;
+}
