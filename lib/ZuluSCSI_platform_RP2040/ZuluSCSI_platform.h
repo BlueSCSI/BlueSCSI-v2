@@ -1,10 +1,10 @@
-// Platform-specific definitions for AzulSCSI RP2040 hardware.
+// Platform-specific definitions for ZuluSCSI RP2040 hardware.
 
 #pragma once
 
 #include <stdint.h>
 #include <Arduino.h>
-#include "AzulSCSI_platform_gpio.h"
+#include "ZuluSCSI_platform_gpio.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -12,7 +12,7 @@ extern "C" {
 
 /* These are used in debug output and default SCSI strings */
 extern const char *g_azplatform_name;
-#define PLATFORM_NAME "AzulSCSI RP2040"
+#define PLATFORM_NAME "ZuluSCSI RP2040"
 #define PLATFORM_REVISION "2.0"
 
 // Debug logging function, can be used to print to e.g. serial port.

@@ -2,10 +2,10 @@
 // Partially derived from scsiPhy.c from SCSI2SD-V6
 
 #include "scsiPhy.h"
-#include "AzulSCSI_platform.h"
-#include "AzulSCSI_log.h"
-#include "AzulSCSI_log_trace.h"
-#include "AzulSCSI_config.h"
+#include "ZuluSCSI_platform.h"
+#include "ZuluSCSI_log.h"
+#include "ZuluSCSI_log_trace.h"
+#include "ZuluSCSI_config.h"
 
 #include <scsi2sd.h>
 extern "C" {
