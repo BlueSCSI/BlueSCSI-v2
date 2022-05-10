@@ -3,8 +3,7 @@ ZuluSCSI Firmware
 
 Hard Drive & ISO image files
 ---------------------
-ZuluSCSI uses the same type of (raw) hard drive image file as that of [BlueSCSI instructions](https://github.com/erichelgeson/BlueSCSI/wiki/Usage). 
-
+ZuluSCSI uses raw hard drive image files, the same as used with RaSCSI and BlueSCSI. These are often referred to as "hda" files. 
 Examples of valid filenames:
 * `HD5.hda` or `HD5.img`: hard drive with SCSI ID 5
 * `HD20_512.hda`: hard drive with SCSI ID 2, LUN 0, block size 512
