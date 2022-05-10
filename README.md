@@ -3,7 +3,8 @@ ZuluSCSI Firmware
 
 Hard Drive & ISO image files
 ---------------------
-ZuluSCSI uses raw hard drive image files, the same as used with RaSCSI and BlueSCSI. These are often referred to as "hda" files. 
+ZuluSCSI uses raw hard drive image files, which are stored on a FAT32 or exFAT-formatted SD card. These are often referred to as "hda" files.
+
 Examples of valid filenames:
 * `HD5.hda` or `HD5.img`: hard drive with SCSI ID 5
 * `HD20_512.hda`: hard drive with SCSI ID 2, LUN 0, block size 512
@@ -13,7 +14,7 @@ In addition to the simplified filenames style above, the ZuluSCSI firmware also 
 
 Log files and error indications
 -------------------------------
-Log messages are stored in `Zululog.txt`, which is cleared on every boot.
+Log messages are stored in `zlulog.txt`, which is cleared on every boot.
 Normally only basic initialization information is stored, but switching the `DBG` DIP switch on will cause every SCSI command to be logged, once the board is power cycled.
 
 The indicator LED will normally report disk access.
