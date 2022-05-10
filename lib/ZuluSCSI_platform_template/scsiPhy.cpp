@@ -109,6 +109,9 @@ extern "C" void scsiPhyReset(void)
     /* Implement here code to enable two interrupts:
      * scsi_bsy_deassert_interrupt() on rising edge of BSY pin
      * scsi_rst_assert_interrupt() on falling edge of RST pin
+     *
+     * For SCSI-1 single-initiator support, also call:
+     * scsi_bsy_deassert_interrupt() on falling edge of SEL pin
      */
 }
 

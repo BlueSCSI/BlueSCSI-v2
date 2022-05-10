@@ -530,11 +530,28 @@ void SCSI_RST_IRQ (void)
         exti_interrupt_flag_clear(SCSI_BSY_EXTI);
         scsi_bsy_deassert_interrupt();
     }
+
+    if (exti_interrupt_flag_get(SCSI_SEL_EXTI))
+    {
+        // Check BSY line status when SEL goes active.
+        // This is needed to handle SCSI-1 hosts that use the single initiator mode.
+        // The host will just assert the SEL directly, without asserting BSY first.
+        exti_interrupt_flag_clear(SCSI_SEL_EXTI);
+        scsi_bsy_deassert_interrupt();
+    }
 }
 
 #if SCSI_RST_IRQn != SCSI_BSY_IRQn
 extern "C"
 void SCSI_BSY_IRQ (void)
+{
+    SCSI_RST_IRQ();
+}
+#endif
+
+#if (SCSI_SEL_IRQn != SCSI_RST_IRQn) && (SCSI_SEL_IRQn != SCSI_BSY_IRQn)
+extern "C"
+void SCSI_SEL_IRQ (void)
 {
     SCSI_RST_IRQ();
 }
@@ -553,6 +570,12 @@ static void init_irqs()
     exti_init(SCSI_BSY_EXTI, EXTI_INTERRUPT, EXTI_TRIG_RISING);
     NVIC_SetPriority(SCSI_BSY_IRQn, 1);
     NVIC_EnableIRQ(SCSI_BSY_IRQn);
+
+    // Falling edge of SEL pin
+    gpio_exti_source_select(SCSI_SEL_EXTI_SOURCE_PORT, SCSI_SEL_EXTI_SOURCE_PIN);
+    exti_init(SCSI_SEL_EXTI, EXTI_INTERRUPT, EXTI_TRIG_FALLING);
+    NVIC_SetPriority(SCSI_SEL_IRQn, 1);
+    NVIC_EnableIRQ(SCSI_SEL_IRQn);
 }
 
 
