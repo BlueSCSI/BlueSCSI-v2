@@ -6,6 +6,7 @@
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_log_trace.h"
 #include "ZuluSCSI_config.h"
+#include "scsi_accel_rp2040.h"
 
 #include <scsi2sd.h>
 extern "C" {
@@ -128,6 +129,8 @@ extern "C" void scsiPhyReset(void)
     g_scsi_sts_selection = 0;
     g_scsi_ctrl_bsy = 0;
 
+    scsi_accel_rp2040_init();
+
     // Enable BSY and RST interrupts
     // Note: RP2040 library currently supports only one callback,
     // so it has to be same for both pins.
@@ -245,33 +248,39 @@ extern "C" void scsiWriteByte(uint8_t value)
 
 extern "C" void scsiWrite(const uint8_t* data, uint32_t count)
 {
-    scsiLogDataIn(data, count);
-    for (uint32_t i = 0; i < count; i++)
-    {
-        if (scsiDev.resetFlag) break;
-        scsiWriteOneByte(data[i]);
-    }
+    scsiStartWrite(data, count);
+    scsiFinishWrite();
 }
 
 extern "C" void scsiStartWrite(const uint8_t* data, uint32_t count)
 {
-    // If the platform supports DMA for either SD card access or for SCSI bus,
-    // this function can be used to execute SD card transfers in parallel with
-    // SCSI transfers. This usually doubles the transfer speed.
-    //
-    // For simplicity, this example only implements blocking writes.
-    scsiWrite(data, count);
+    scsiLogDataIn(data, count);
+
+    if ((count & 1) != 0)
+    {
+        // Unaligned write, do it byte-by-byte
+        scsiFinishWrite();
+        for (uint32_t i = 0; i < count; i++)
+        {
+            if (scsiDev.resetFlag) break;
+            scsiWriteOneByte(data[i]);
+        }
+    }
+    else
+    {
+        // Use accelerated routine
+        scsi_accel_rp2040_startWrite(data, count, &scsiDev.resetFlag);
+    }
 }
 
 extern "C" bool scsiIsWriteFinished(const uint8_t *data)
 {
-    // Asynchronous writes are not implemented in this example.
-    return true;
+    return scsi_accel_rp2040_isWriteFinished(data);
 }
 
 extern "C" void scsiFinishWrite()
 {
-    // Asynchronous writes are not implemented in this example.
+    scsi_accel_rp2040_finishWrite(&scsiDev.resetFlag);
 }
 
 /*********************/
@@ -279,21 +288,27 @@ extern "C" void scsiFinishWrite()
 /*********************/
 
 // Read one byte from SCSI host using the handshake mechanism.
-static inline uint8_t scsiReadOneByte(void)
+static inline uint8_t scsiReadOneByte(int* parityError)
 {
     SCSI_OUT(REQ, 1);
     SCSI_WAIT_ACTIVE(ACK);
     delay_100ns();
-    uint8_t r = SCSI_IN_DATA();
+    uint16_t r = SCSI_IN_DATA();
     SCSI_OUT(REQ, 0);
     SCSI_WAIT_INACTIVE(ACK);
 
-    return r;
+    if (parityError && r != (g_scsi_parity_lookup[r & 0xFF] ^ SCSI_IO_DATA_MASK))
+    {
+        azlog("Parity error in scsiReadOneByte(): ", (uint32_t)r);
+        *parityError = 1;
+    }
+
+    return (uint8_t)r;
 }
 
 extern "C" uint8_t scsiReadByte(void)
 {
-    uint8_t r = scsiReadOneByte();
+    uint8_t r = scsiReadOneByte(NULL);
     scsiLogDataOut(&r, 1);
     return r;
 }
@@ -302,11 +317,19 @@ extern "C" void scsiRead(uint8_t* data, uint32_t count, int* parityError)
 {
     *parityError = 0;
 
-    for (uint32_t i = 0; i < count; i++)
+    if ((count & 1) != 0)
     {
-        if (scsiDev.resetFlag) break;
-
-        data[i] = scsiReadOneByte();
+        // Unaligned transfer, do byte by byte
+        for (uint32_t i = 0; i < count; i++)
+        {
+            if (scsiDev.resetFlag) break;
+            data[i] = scsiReadOneByte(parityError);
+        }
+    }
+    else
+    {
+        // Use accelerated routine
+        scsi_accel_rp2040_read(data, count, parityError, &scsiDev.resetFlag);
     }
 
     scsiLogDataOut(data, count);

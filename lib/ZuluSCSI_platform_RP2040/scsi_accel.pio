@@ -1,0 +1,46 @@
+; RP2040 PIO program for accelerating SCSI communication
+; Run "pioasm scsi_accel.pio scsi_accel.pio.h" to regenerate the C header from this.
+; GPIO mapping:
+; - 0-7: DB0-DB7
+; -   8: DBP
+; Side set is REQ pin
+
+.define REQ 9
+.define ACK 10
+
+; Delay from data setup to REQ assertion.
+; deskew delay + cable skew delay = 55 ns minimum
+; One clock cycle is 8 ns => delay 7 clocks
+.define REQ_DLY 7
+
+; Write to SCSI bus using asynchronous handshake.
+; Data is written as 16-bit words that contain the 8 data bits + 1 parity bit.
+; 7 bits in each word are discarded.
+; Number of bytes to send must be multiple of 2.
+.program scsi_accel_async_write
+    .side_set 1
+
+    pull ifempty block          side 1  ; Get data from TX FIFO
+    out pins, 9                 side 1  ; Write data and parity bit
+    out null, 7 [REQ_DLY-2]     side 1  ; Discard unused bits, wait for data preset time
+    wait 1 gpio ACK             side 1  ; Wait for ACK to be inactive
+    wait 0 gpio ACK             side 0  ; Assert REQ, wait for ACK low
+
+; Read from SCSI bus using asynchronous handshake.
+; Data is returned as 16-bit words that contain the 8 data bits + 1 parity bit.
+; Number of bytes to receive minus 1 should be written to TX fifo.
+; Number of bytes to receive must be divisible by 2.
+.program scsi_accel_async_read
+    .side_set 1
+
+    pull block                  side 1  ; Get number of bytes to receive
+    mov x, osr                  side 1  ; Store to counter X
+
+start:
+    wait 1 gpio ACK             side 1  ; Wait for ACK high
+    wait 0 gpio ACK             side 0  ; Assert REQ, wait for ACK low
+    in pins, 9                  side 1  ; Deassert REQ, read GPIO
+    in null, 7                  side 1  ; Padding bits
+    push iffull block           side 1  ; Put data to RX FIFO
+    jmp x-- start               side 1  ; Decrement byte count and jump to start
+
