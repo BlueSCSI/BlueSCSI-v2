@@ -73,9 +73,10 @@ void azplatform_set_sd_callback(sd_callback_t func, const uint8_t *buffer);
      sio_hw->gpio_oe_set = SCSI_IO_DATA_MASK)
 
 // Write SCSI data bus, also sets REQ to inactive.
-extern const uint32_t g_scsi_out_byte_lookup[256];
+extern const uint32_t g_scsi_parity_lookup[256];
 #define SCSI_OUT_DATA(data) \
-    gpio_put_masked(SCSI_IO_DATA_MASK | (1 << SCSI_OUT_REQ), g_scsi_out_byte_lookup[(uint8_t)(data)]), \
+    gpio_put_masked(SCSI_IO_DATA_MASK | (1 << SCSI_OUT_REQ), \
+                    g_scsi_parity_lookup[(uint8_t)(data)] | (1 << SCSI_OUT_REQ)), \
     SCSI_ENABLE_DATA_OUT()
 
 // Release SCSI data bus and REQ signal

@@ -57,7 +57,7 @@ void azplatform_init()
 
     /* Initialize logging to SWO pin (UART0) */
     gpio_conf(SWO_PIN,        GPIO_FUNC_UART,false,false, true,  false, true);
-    uart_init(uart0, 2000000);
+    uart_init(uart0, 1000000);
     mbed_set_error_hook(mbed_error_hook);
 
     azlog("DIP switch settings: initiator ", (int)initiator, ", debug log ", (int)dbglog, ", termination ", (int)termination);
@@ -85,7 +85,8 @@ void azplatform_init()
      * SCSI pins should be inactive / input at this point.
      */
 
-    // SCSI data bus
+    // SCSI data bus direction is switched by DATA_DIR signal.
+    // Pullups make sure that no glitches occur when switching direction.
     //        pin             function       pup   pdown  out    state fast
     gpio_conf(SCSI_IO_DB0,    GPIO_FUNC_SIO, true, false, false, true, true);
     gpio_conf(SCSI_IO_DB1,    GPIO_FUNC_SIO, true, false, false, true, true);
@@ -101,7 +102,9 @@ void azplatform_init()
     //        pin             function       pup   pdown  out    state fast
     gpio_conf(SCSI_OUT_IO,    GPIO_FUNC_SIO, false,false, true,  true, true);
     gpio_conf(SCSI_OUT_MSG,   GPIO_FUNC_SIO, false,false, true,  true, true);
-    gpio_conf(SCSI_OUT_REQ,   GPIO_FUNC_SIO, false,false, true,  true, true);
+
+    // REQ pin is switched between PIO and SIO, pull-up makes sure no glitches
+    gpio_conf(SCSI_OUT_REQ,   GPIO_FUNC_SIO, true ,false, true,  true, true);
 
     // Shared pins are changed to input / output depending on communication phase
     gpio_conf(SCSI_IN_SEL,    GPIO_FUNC_SIO, true, false, false, true, true);
@@ -230,9 +233,8 @@ void azplatform_reset_watchdog()
 /* Mapping from data bytes to GPIO BOP values */
 /**********************************************/
 
-/* A lookup table is the fastest way to calculate parity and convert the IO pin mapping for
- * data bus. The method below uses the BOP register of GD32, this is called BSRR on STM32.
- * If there are no other pins on the same port, you can also use direct writes to the GPIO.
+/* A lookup table is the fastest way to calculate parity and convert the IO pin mapping for data bus.
+ * For RP2040 we expect that the bits are consecutive and in order.
  */
 
 #define PARITY(n) ((1 ^ (n) ^ ((n)>>1) ^ ((n)>>2) ^ ((n)>>3) ^ ((n)>>4) ^ ((n)>>5) ^ ((n)>>6) ^ ((n)>>7)) & 1)
@@ -245,11 +247,10 @@ void azplatform_reset_watchdog()
     ((n & 0x20) ? 0 : (1 << SCSI_IO_DB5)) | \
     ((n & 0x40) ? 0 : (1 << SCSI_IO_DB6)) | \
     ((n & 0x80) ? 0 : (1 << SCSI_IO_DB7)) | \
-    (PARITY(n)  ? 0 : (1 << SCSI_IO_DBP)) | \
-    (1 << SCSI_OUT_REQ) \
+    (PARITY(n)  ? 0 : (1 << SCSI_IO_DBP)) \
 )
 
-const uint32_t g_scsi_out_byte_lookup[256] =
+const uint32_t g_scsi_parity_lookup[256] =
 {
     X(0x00), X(0x01), X(0x02), X(0x03), X(0x04), X(0x05), X(0x06), X(0x07), X(0x08), X(0x09), X(0x0a), X(0x0b), X(0x0c), X(0x0d), X(0x0e), X(0x0f),
     X(0x10), X(0x11), X(0x12), X(0x13), X(0x14), X(0x15), X(0x16), X(0x17), X(0x18), X(0x19), X(0x1a), X(0x1b), X(0x1c), X(0x1d), X(0x1e), X(0x1f),
