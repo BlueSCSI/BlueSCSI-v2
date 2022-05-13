@@ -825,16 +825,15 @@ void diskDataOut_callback(uint32_t bytes_complete)
         // Transfer size is reduced towards the end of transfer to reduce the dead time between
         // end of SCSI transfer and the SD write completing.
         uint32_t limit = g_disk_transfer.bytes_scsi / 8;
+        uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
         if (limit < PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE) limit = PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE;
         if (limit > PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE) limit = PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE;
+        if (limit > len) limit = PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE;
+        if (limit < bytesPerSector) limit = bytesPerSector;
 
         if (len > limit)
         {
             len = limit;
-        }
-        else if (len > PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE)
-        {
-            len = len - PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE;
         }
 
         // Split read so that it doesn't wrap around buffer edge
@@ -851,7 +850,6 @@ void diskDataOut_callback(uint32_t bytes_complete)
         // Keep transfers a multiple of sector size.
         // Macintosh SCSI driver seems to get confused if we have a delay
         // in middle of a sector.
-        uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
         if (remain >= bytesPerSector && len % bytesPerSector != 0)
         {
             len -= len % bytesPerSector;
