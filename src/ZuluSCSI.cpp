@@ -259,6 +259,10 @@ bool findHDDImages()
           blk = 1024;
         } else if(blk1 == 2 && blk2 == 0 && blk3 == 4 && blk4 == 8) {
           blk  = 2048;
+        } else if(blk1 == 4 && blk2 == 0 && blk3 == 9 && blk4 == 6) {
+          blk = 4096;
+        } else if(blk1 == 8 && blk2 == 1 && blk3 == 9 && blk4 == 2) {
+          blk = 8192;
         }
 
         char fullname[MAX_FILE_PATH * 2 + 2] = {0};
