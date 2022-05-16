@@ -796,7 +796,7 @@ static void doWrite(uint32_t lba, uint32_t blocks)
 #endif
 
         image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-        if (!img.file.seek(transfer.lba * bytesPerSector))
+        if (!img.file.seek((uint64_t)transfer.lba * bytesPerSector))
         {
             azlog("Seek to ", transfer.lba, " failed for SCSI ID", (int)scsiDev.target->targetId);
             scsiDev.status = CHECK_CONDITION;
@@ -995,7 +995,7 @@ static void doRead(uint32_t lba, uint32_t blocks)
         }
 #endif
 
-        if (!img.file.seek((transfer.lba + transfer.currentBlock) * bytesPerSector))
+        if (!img.file.seek((uint64_t)(transfer.lba + transfer.currentBlock) * bytesPerSector))
         {
             azlog("Seek to ", transfer.lba, " failed for SCSI ID", (int)scsiDev.target->targetId);
             scsiDev.status = CHECK_CONDITION;
