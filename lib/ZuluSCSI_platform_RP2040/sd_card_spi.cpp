@@ -1,16 +1,21 @@
 // Driver and interface for accessing SD card in SPI mode
+// Normally this is only used for saving crash log in interrupt mode
 
 #include "ZuluSCSI_platform.h"
 #include "ZuluSCSI_log.h"
 #include <hardware/spi.h>
 #include <SdFat.h>
 
-#ifndef SD_USE_SDIO
 
 class RP2040SPIDriver : public SdSpiBaseClass
 {
 public:
     void begin(SdSpiConfig config) {
+        // Make sure pins are routed to SPI
+        gpio_set_function(SD_SPI_SCK,  GPIO_FUNC_SPI);
+        gpio_set_function(SD_SPI_MOSI, GPIO_FUNC_SPI);
+        gpio_set_function(SD_SPI_MISO, GPIO_FUNC_SPI);
+        gpio_set_function(SD_SPI_CS,   GPIO_FUNC_SIO);
     }
 
     void activate() {
@@ -102,5 +107,3 @@ void azplatform_set_sd_callback(sd_callback_t func, const uint8_t *buffer)
 {
     g_sd_spi_port.set_sd_callback(func, buffer);
 }
-
-#endif

@@ -126,10 +126,14 @@ void azplatform_init()
     gpio_conf(SCSI_IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
 
     // SD card pins
-    gpio_conf(SD_SPI_SCK,     GPIO_FUNC_SPI, false,false, true,  true, true);
-    gpio_conf(SD_SPI_MOSI,    GPIO_FUNC_SPI, false,false, true,  true, true);
-    gpio_conf(SD_SPI_MISO,    GPIO_FUNC_SPI, false,false, false, true, true);
-    gpio_conf(SD_SPI_CS,      GPIO_FUNC_SIO, false,false, true,  true, true);
+    // Card is used in SDIO mode for main program, and in SPI mode for crash handler & bootloader.
+    //        pin             function       pup   pdown  out    state fast
+    gpio_conf(SD_SPI_SCK,     GPIO_FUNC_SPI, true, false, true,  true, true);
+    gpio_conf(SD_SPI_MOSI,    GPIO_FUNC_SPI, true, false, true,  true, true);
+    gpio_conf(SD_SPI_MISO,    GPIO_FUNC_SPI, true, false, false, true, true);
+    gpio_conf(SD_SPI_CS,      GPIO_FUNC_SIO, true, false, true,  true, true);
+    gpio_conf(SDIO_D1,        GPIO_FUNC_SIO, true, false, false, true, true);
+    gpio_conf(SDIO_D2,        GPIO_FUNC_SIO, true, false, false, true, true);
 
     // LED pin
     gpio_conf(LED_PIN,        GPIO_FUNC_SIO, false,false, true,  false, false);
