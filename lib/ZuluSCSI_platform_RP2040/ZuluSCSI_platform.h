@@ -14,6 +14,7 @@ extern "C" {
 extern const char *g_azplatform_name;
 #define PLATFORM_NAME "ZuluSCSI RP2040"
 #define PLATFORM_REVISION "2.0"
+#define SD_USE_SDIO 1
 
 // Debug logging function, can be used to print to e.g. serial port.
 // May get called from interrupt handlers.
@@ -106,8 +107,16 @@ extern const uint32_t g_scsi_parity_lookup[256];
 
 // SD card driver for SdFat
 class SdSpiConfig;
+class SdioConfig;
 extern SdSpiConfig g_sd_spi_config;
+extern SdioConfig g_sd_sdio_config;
+
+#ifdef SD_USE_SDIO
+#define SD_CONFIG g_sd_sdio_config
+#define SD_CONFIG_CRASH g_sd_spi_config
+#else
 #define SD_CONFIG g_sd_spi_config
 #define SD_CONFIG_CRASH g_sd_spi_config
+#endif
 
 #endif
