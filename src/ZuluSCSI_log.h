@@ -27,6 +27,9 @@ void azlog_raw(uint8_t value);
 // Log integer as hex
 void azlog_raw(uint32_t value);
 
+// Log integer as hex
+void azlog_raw(uint64_t value);
+
 // Log integer as decimal
 void azlog_raw(int value);
 
