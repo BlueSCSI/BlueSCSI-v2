@@ -58,21 +58,22 @@ static inline pio_sm_config sdio_cmd_clk_program_get_default_config(uint offset)
 // ------------ //
 
 #define sdio_data_rx_wrap_target 2
-#define sdio_data_rx_wrap 3
+#define sdio_data_rx_wrap 4
 
 static const uint16_t sdio_data_rx_program_instructions[] = {
-    0xa048, //  0: mov    y, !pins                   
-    0x0060, //  1: jmp    !y, 0                      
+    0x2020, //  0: wait   0 pin, 0
+    0x2092, //  1: wait   1 gpio, 18
             //     .wrap_target
-    0x2092, //  2: wait   1 gpio, 18                 
-    0x4004, //  3: in     pins, 4                    
+    0x2012, //  2: wait   0 gpio, 18
+    0x2092, //  3: wait   1 gpio, 18
+    0x4004, //  4: in     pins, 4
             //     .wrap
 };
 
 #if !PICO_NO_HARDWARE
 static const struct pio_program sdio_data_rx_program = {
     .instructions = sdio_data_rx_program_instructions,
-    .length = 4,
+    .length = 5,
     .origin = -1,
 };
 
@@ -88,19 +89,20 @@ static inline pio_sm_config sdio_data_rx_program_get_default_config(uint offset)
 // ------------ //
 
 #define sdio_data_tx_wrap_target 0
-#define sdio_data_tx_wrap 1
+#define sdio_data_tx_wrap 2
 
 static const uint16_t sdio_data_tx_program_instructions[] = {
             //     .wrap_target
-    0x2012, //  0: wait   0 gpio, 18                 
-    0x6004, //  1: out    pins, 4                    
+    0x2092, //  0: wait   1 gpio, 18
+    0x2012, //  1: wait   0 gpio, 18
+    0x6004, //  2: out    pins, 4
             //     .wrap
 };
 
 #if !PICO_NO_HARDWARE
 static const struct pio_program sdio_data_tx_program = {
     .instructions = sdio_data_tx_program_instructions,
-    .length = 2,
+    .length = 3,
     .origin = -1,
 };
 

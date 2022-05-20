@@ -101,10 +101,11 @@ resp_done:
 .program sdio_data_rx
 
 wait_start:
-    mov Y, !PINS                ; Read GPIOs (currently doesn't check for clock edge)
-    jmp !Y wait_start           ; Keep looping until we see all zeros start token
+    wait 0 pin 0                ; Wait for zero state on D0
+    wait 1 gpio SDIO_CLK_GPIO   ; Wait for rising edge
 
 .wrap_target
+    wait 0 gpio SDIO_CLK_GPIO
     wait 1 gpio SDIO_CLK_GPIO   ; Wait for rising clock edge
     in PINS, 4                  ; Read nibble
 .wrap
@@ -115,5 +116,6 @@ wait_start:
 ; for the start of block token, and append the checksum.
 ; The data should be padded to full 32 bits by 0xFF bytes.
 .program sdio_data_tx
+    wait 1 gpio SDIO_CLK_GPIO
     wait 0 gpio SDIO_CLK_GPIO   ; Wait for falling clock edge
     out PINS, 4                 ; Write nibble

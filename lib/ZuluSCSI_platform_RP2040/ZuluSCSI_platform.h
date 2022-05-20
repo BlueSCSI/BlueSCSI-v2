@@ -106,15 +106,15 @@ extern const uint32_t g_scsi_parity_lookup[256];
 }
 
 // SD card driver for SdFat
-class SdSpiConfig;
-class SdioConfig;
-extern SdSpiConfig g_sd_spi_config;
-extern SdioConfig g_sd_sdio_config;
 
 #ifdef SD_USE_SDIO
+class SdioConfig;
+extern SdioConfig g_sd_sdio_config;
 #define SD_CONFIG g_sd_sdio_config
-#define SD_CONFIG_CRASH g_sd_spi_config
+#define SD_CONFIG_CRASH g_sd_sdio_config
 #else
+class SdSpiConfig;
+extern SdSpiConfig g_sd_spi_config;
 #define SD_CONFIG g_sd_spi_config
 #define SD_CONFIG_CRASH g_sd_spi_config
 #endif
