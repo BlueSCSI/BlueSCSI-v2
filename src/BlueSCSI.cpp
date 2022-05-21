@@ -671,7 +671,8 @@ void initFileLog(int success_mhz) {
   LOG_FILE = SD.open(LOG_FILENAME, O_WRONLY | O_CREAT | O_TRUNC);
   LOG_FILE.println("BlueSCSI <-> SD - https://github.com/erichelgeson/BlueSCSI");
   LOG_FILE.print("VERSION: ");
-  LOG_FILE.println(VERSION);
+  LOG_FILE.print(VERSION);
+  LOG_FILE.println(BUILD_TAGS);
   LOG_FILE.print("DEBUG:");
   LOG_FILE.print(DEBUG);
   LOG_FILE.print(" SDFAT_FILE_TYPE:");
