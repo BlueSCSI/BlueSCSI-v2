@@ -580,10 +580,9 @@ void findDriveImages(FsFile root) {
     FsFile file_test = root.openNextFile(O_RDONLY);
     char name[MAX_FILE_PATH+1];
     file_test.getName(name, MAX_FILE_PATH+1);
-    String file_name = String(name);
 
     // Skip directories and already open files.
-    if(file_test.isDir() || file_name.startsWith("LOG.txt")) {
+    if(file_test.isDir() || strncmp(name, "LOG.txt", 7) == 0) {
       file_test.close();
       continue;
     }
@@ -595,8 +594,7 @@ void findDriveImages(FsFile root) {
     // Valid file, open for reading/writing.
     file = SD.open(name, O_RDWR);
     if(file && file.isFile()) {
-      file_name.toLowerCase();
-      if(file_name.startsWith("hd")) {
+      if(tolower(name[0]) == 'h' && tolower(name[1]) == 'd') {
         // Defaults for Hard Disks
         int id  = 1; // 0 and 3 are common in Macs for physical HD and CD, so avoid them.
         int lun = 0;
@@ -604,7 +602,7 @@ void findDriveImages(FsFile root) {
 
         // Positionally read in and coerase the chars to integers.
         // We only require the minimum and read in the next if provided.
-        int file_name_length = file_name.length();
+        int file_name_length = strlen(name);
         if(file_name_length > 2) { // HD[N]
           int tmp_id = name[HDIMG_ID_POS] - '0';
 
