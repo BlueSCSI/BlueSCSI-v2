@@ -41,6 +41,7 @@
 #include "scsi_cmds.h"
 #include "scsi_sense.h"
 #include "scsi_status.h"
+#include "scsi_mode.h"
 
 #ifdef USE_STM32_DMA
 #warning "warning USE_STM32_DMA"
@@ -245,6 +246,7 @@ byte          m_sts;                  // Status byte
 byte          m_msg;                  // Message bytes
 HDDIMG       *m_img;                  // HDD image for current SCSI-ID, LUN
 byte          m_buf[MAX_BLOCKSIZE];   // General purpose buffer
+byte          m_scsi_buf[512];        // Buffer for SCSI READ/WRITE Buffer
 byte          m_msb[256];             // Command storage bytes
 
 /*
@@ -1334,10 +1336,12 @@ byte onModeSelectCommand(byte scsi_cmd, byte flags, uint32_t len)
   //0 0 0 8 0 0 0 0 0 0 2 0 0 2 10 0 1 6 24 10 8 0 0 0
   //I believe mode page 0 set to 10 00 is Disable Unit Attention
   //Mode page 1 set to 24 10 08 00 00 00 is TB and PER set, read retry count 16, correction span 8
+  #if DEBUG > 0
   for (unsigned i = 0; i < len; i++) {
     LOGHEX(m_buf[i]);LOG(" ");
   }
   LOGN("");
+  #endif
   return SCSI_STATUS_GOOD;
 }
 
@@ -1353,6 +1357,90 @@ byte onTestUnitReady()
     return SCSI_STATUS_CHECK_CONDITION;
   }
   return SCSI_STATUS_GOOD;
+}
+/*
+ * ReZero Unit - Move to Logical Block Zero in file.
+ */
+byte onReZeroUnit() {
+  LOGN("-ReZeroUnit");
+  // Make sure we have an image with atleast a first byte.
+  // Actually seeking to the position wont do anything, so dont.
+  return checkBlockCommand(0, 0);
+}
+
+/*
+ * WriteBuffer - Used for testing buffer, no change to medium
+ */
+byte onWriteBuffer(byte mode, uint32_t allocLength)
+{
+  LOGN("-WriteBuffer");
+  LOGHEXN(mode);
+  LOGHEXN(allocLength);
+
+  if ((mode == MODE_COMBINED_HEADER_DATA || mode == MODE_DATA) && allocLength <= sizeof(m_scsi_buf))
+  {
+    readDataPhase(allocLength, m_scsi_buf);
+    #if DEBUG > 0
+    for (unsigned i = 0; i < allocLength; i++) {
+      LOGHEX(m_buf[i]);LOG(" ");
+    }
+    LOGN("");
+    #endif
+    return SCSI_STATUS_GOOD;
+  }
+  else
+  {
+    m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
+    m_addition_sense = SCSI_ASC_INVALID_FIELD_IN_CDB;
+    return SCSI_STATUS_CHECK_CONDITION;
+  }
+}
+
+/*
+ * ReadBuffer - Used for testing buffer, no change to medium
+ */
+byte onReadBuffer(byte mode, uint32_t allocLength)
+{
+  LOGN("-ReadBuffer");
+  LOGHEXN(mode);
+  LOGHEXN(allocLength);
+
+  if (mode == MODE_COMBINED_HEADER_DATA)
+  {
+    uint32_t bufCapacity = sizeof(m_scsi_buf) - 4;
+    // four byte read buffer header
+    m_scsi_buf[0] = 0;
+    m_scsi_buf[1] = (bufCapacity >> 16) & 0xff;
+    m_scsi_buf[2] = (bufCapacity >> 8) & 0xff;
+    m_scsi_buf[3] = bufCapacity & 0xff;
+
+    writeDataPhase(allocLength, m_scsi_buf);
+
+    #if DEBUG > 0
+    for (unsigned i = 0; i < allocLength; i++) {
+      LOGHEX(m_scsi_buf[i]);LOG(" ");
+    }
+    LOGN("");
+    #endif
+    return SCSI_STATUS_GOOD;
+  }
+  else if (mode == MODE_DATA)
+  {
+    writeDataPhase(allocLength, m_scsi_buf);
+    #if DEBUG > 0
+    for (unsigned i = 0; i < allocLength; i++) {
+      LOGHEX(m_scsi_buf[i]);LOG(" ");
+    }
+    LOGN("");
+    #endif
+    return SCSI_STATUS_GOOD;
+  }
+  else
+  {
+    m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
+    m_addition_sense = SCSI_ASC_INVALID_FIELD_IN_CDB;
+    return SCSI_STATUS_CHECK_CONDITION;
+  }
 }
 
 /*
@@ -1521,8 +1609,9 @@ void loop()
     LOGN("[Test Unit Ready]");
     m_sts |= onTestUnitReady();
     break;
-  case SCSI_REZERO_UNIT: // TODO: Implement me!
+  case SCSI_REZERO_UNIT:
     LOGN("[Rezero Unit]");
+    m_sts |= onReZeroUnit();
     break;
   case SCSI_REQUEST_SENSE:
     LOGN("[RequestSense]");
@@ -1595,6 +1684,14 @@ void loop()
   case SCSI_MODE_SENSE10:
     LOGN("[ModeSense10]");
     m_sts |= onModeSenseCommand(cmd[0], cmd[1] & 0x80, cmd[2], ((uint32_t)cmd[7] << 8) | cmd[8]);
+    break;
+  case SCSI_WRITE_BUFFER:
+    LOGN("[WriteBuffer]");
+    m_sts |= onWriteBuffer(cmd[1] & 7, ((uint32_t)cmd[6] << 16) | ((uint32_t)cmd[7] << 8) | cmd[8]);
+    break;
+  case SCSI_READ_BUFFER:
+    LOGN("[ReadBuffer]");
+    m_sts |= onReadBuffer(cmd[1] & 7, ((uint32_t)cmd[6] << 16) | ((uint32_t)cmd[7] << 8) | cmd[8]);
     break;
   default:
     LOGN("[*Unknown]");
