@@ -734,7 +734,9 @@ void finalizeFileLog() {
   }
   LOG_FILE.println("Finished initialization of SCSI Devices - Entering main loop.");
   LOG_FILE.sync();
+  #if DEBUG < 2
   LOG_FILE.close();
+  #endif
 }
 
 /*
