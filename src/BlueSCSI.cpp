@@ -1241,7 +1241,7 @@ byte onModeSenseCommand(byte scsi_cmd, byte dbd, byte cmd2, uint32_t len)
   int pageCode = cmd2 & 0x3F;
   int pageControl = cmd2 >> 6;
   int a = 4;
-  if(scsi_cmd == 0x5A) a = 8;
+  if(scsi_cmd == SCSI_MODE_SENSE10) a = 8;
 
   if(dbd == 0) {
     byte c[8] = {
@@ -1254,21 +1254,21 @@ byte onModeSenseCommand(byte scsi_cmd, byte dbd, byte cmd2, uint32_t len)
     a += 8;
   }
   switch(pageCode) {
-  case 0x3F:
-  case 0x01: // Read/Write Error Recovery
-    m_buf[a + 0] = 0x01;
+  case SCSI_SENSE_MODE_ALL:
+  case SCSI_SENSE_MODE_READ_WRITE_ERROR_RECOVERY:
+    m_buf[a + 0] = SCSI_SENSE_MODE_READ_WRITE_ERROR_RECOVERY;
     m_buf[a + 1] = 0x0A;
     a += 0x0C;
-    if(pageCode != 0x3F) break;
+    if(pageCode != SCSI_SENSE_MODE_ALL) break;
 
-  case 0x02: // Disconnect-Reconnect page
-    m_buf[a + 0] = 0x02;
+  case SCSI_SENSE_MODE_DISCONNECT_RECONNECT:
+    m_buf[a + 0] = SCSI_SENSE_MODE_DISCONNECT_RECONNECT;
     m_buf[a + 1] = 0x0A;
     a += 0x0C;
-    if(pageCode != 0x3f) break;
+    if(pageCode != SCSI_SENSE_MODE_ALL) break;
 
-  case 0x03:  //Drive parameters
-    m_buf[a + 0] = 0x03; //Page code
+  case SCSI_SENSE_MODE_FORMAT_DEVICE:  //Drive parameters
+    m_buf[a + 0] = SCSI_SENSE_MODE_FORMAT_DEVICE; //Page code
     m_buf[a + 1] = 0x16; // Page length
     if(pageControl != 1) {
       m_buf[a + 11] = 0x3F;//Number of sectors / track
@@ -1277,10 +1277,10 @@ byte onModeSenseCommand(byte scsi_cmd, byte dbd, byte cmd2, uint32_t len)
       m_buf[a + 15] = 0x1; // Interleave
     }
     a += 0x18;
-    if(pageCode != 0x3F) break;
+    if(pageCode != SCSI_SENSE_MODE_ALL) break;
 
-  case 0x04:  //Drive parameters
-    m_buf[a + 0] = 0x04; //Page code
+  case SCSI_SENSE_MODE_DISK_GEOMETRY:  //Drive parameters
+    m_buf[a + 0] = SCSI_SENSE_MODE_DISK_GEOMETRY; //Page code
     m_buf[a + 1] = 0x16; // Page length
     if(pageControl != 1) {
       unsigned cylinders = bc / (16 * 63);
@@ -1290,19 +1290,19 @@ byte onModeSenseCommand(byte scsi_cmd, byte dbd, byte cmd2, uint32_t len)
       m_buf[a + 5] = 16;   //Number of heads
     }
     a += 0x18;
-    if(pageCode != 0x3F) break;
-  case 0x30:
+    if(pageCode != SCSI_SENSE_MODE_ALL) break;
+  case SCSI_SENSE_MODE_VENDOR_APPLE:
     {
       const byte page30[0x14] = {0x41, 0x50, 0x50, 0x4C, 0x45, 0x20, 0x43, 0x4F, 0x4D, 0x50, 0x55, 0x54, 0x45, 0x52, 0x2C, 0x20, 0x49, 0x4E, 0x43, 0x20};
-      m_buf[a + 0] = 0x30; // Page code
+      m_buf[a + 0] = SCSI_SENSE_MODE_VENDOR_APPLE; // Page code
       m_buf[a + 1] = sizeof(page30); // Page length
       if(pageControl != 1) {
         memcpy(&m_buf[a + 2], page30, sizeof(page30));
       }
       a += 2 + sizeof(page30);
-      if(pageCode != 0x3F) break;
+      if(pageCode != SCSI_SENSE_MODE_ALL) break;
     }
-    break; // Don't want 0x3F falling through to error condition
+    break; // Don't want SCSI_SENSE_MODE_ALL falling through to error condition
 
   default:
     m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;

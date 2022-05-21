@@ -29,4 +29,17 @@
 #define SCSI_ASC_CANNOT_READ_MEDIUM_INCOMPATIBLE_FORMAT         0x3002
 #define SCSI_ASC_MEDIUM_NOT_PRESENT                             0x3A00
 #define SCSI_ASC_LUN_NOT_READY_MANUAL_INTERVENTION_REQUIRED     0x0403
+
+
+// SCSI mode page codes
+#define SCSI_SENSE_MODE_VENDOR                      0x00
+#define SCSI_SENSE_MODE_READ_WRITE_ERROR_RECOVERY   0x01
+#define SCSI_SENSE_MODE_DISCONNECT_RECONNECT        0x02
+#define SCSI_SENSE_MODE_FORMAT_DEVICE               0x03
+#define SCSI_SENSE_MODE_DISK_GEOMETRY               0x04
+#define SCSI_SENSE_MODE_VENDOR_APPLE                0x30
+
+#define SCSI_SENSE_MODE_ALL                         0x3F
+
+
 #endif
