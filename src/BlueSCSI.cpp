@@ -278,7 +278,7 @@ uint32_t db_bsrr[256];
 //#undef PTY
 
 // Log File
-#define VERSION "1.1-SNAPSHOT-20220407"
+#define VERSION "1.1-SNAPSHOT-20220522"
 #define LOG_FILENAME "LOG.txt"
 FsFile LOG_FILE;
 
@@ -681,7 +681,7 @@ void initFileLog(int success_mhz) {
   LOG_FILE.println(SDFAT_FILE_TYPE);
   LOG_FILE.print("SdFat version: ");
   LOG_FILE.println(SD_FAT_VERSION_STR);
-  LOG_FILE.print("SD Format: ");
+  LOG_FILE.print("Sd Format: ");
   switch(SD.vol()->fatType()) {
     case FAT_TYPE_EXFAT:
     LOG_FILE.println("exFAT");
