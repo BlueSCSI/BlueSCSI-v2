@@ -1407,14 +1407,17 @@ byte onReadBuffer(byte mode, uint32_t allocLength)
 
   if (mode == MODE_COMBINED_HEADER_DATA)
   {
-    uint32_t bufCapacity = sizeof(m_scsi_buf) - 4;
+    uint32_t bufCapacity = sizeof(m_scsi_buf);
+    byte scsi_buf_response[bufCapacity + 4];
     // four byte read buffer header
-    m_scsi_buf[0] = 0;
-    m_scsi_buf[1] = (bufCapacity >> 16) & 0xff;
-    m_scsi_buf[2] = (bufCapacity >> 8) & 0xff;
-    m_scsi_buf[3] = bufCapacity & 0xff;
+    scsi_buf_response[0] = 0;
+    scsi_buf_response[1] = (bufCapacity >> 16) & 0xff;
+    scsi_buf_response[2] = (bufCapacity >> 8) & 0xff;
+    scsi_buf_response[3] = bufCapacity & 0xff;
+    // actual data
+    memcpy((&scsi_buf_response[4]), m_scsi_buf, bufCapacity);
 
-    writeDataPhase(allocLength, m_scsi_buf);
+    writeDataPhase(sizeof(scsi_buf_response), scsi_buf_response);
 
     #if DEBUG > 0
     for (unsigned i = 0; i < allocLength; i++) {
