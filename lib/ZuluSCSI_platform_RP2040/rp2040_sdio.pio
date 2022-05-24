@@ -20,10 +20,10 @@
 ;
 ; Because data is written on the falling edge and read on the rising
 ; edge, it is preferrable to have a long 0 state and short 1 state.
-;.define CLOCK_DIVIDER 3
-.define CLOCK_DIVIDER 25
-.define D1 (CLOCK_DIVIDER/2 - 1)
-.define D0 ((CLOCK_DIVIDER + 1) / 2 - 1)
+;.define CLKDIV 3
+.define CLKDIV 5
+.define D0 ((CLKDIV + 1) / 2 - 1)
+.define D1 (CLKDIV/2 - 1)
 .define SDIO_CLK_GPIO 18
 
 ; State machine 0 is used to:
@@ -95,27 +95,51 @@ resp_done:
 
 ; Data reception program
 ; This program will wait for initial start of block token and then
-; continuously receive data. The application can set limit of bytes
-; to receive by using DMA controller, and the final checksum will
-; fit in state machine RX FIFO.
+; receive a data block. The application must set number of nibbles
+; to receive minus 1 to Y register before running this program.
 .program sdio_data_rx
 
 wait_start:
-    wait 0 pin 0                ; Wait for zero state on D0
-    wait 1 gpio SDIO_CLK_GPIO   ; Wait for rising edge
+    mov X, Y                               ; Reinitialize number of nibbles to receive
+    wait 0 pin 0                           ; Wait for zero state on D0
+    wait 1 gpio SDIO_CLK_GPIO  [CLKDIV-1]  ; Wait for rising edge and then whole clock cycle
 
-.wrap_target
-    wait 0 gpio SDIO_CLK_GPIO
-    wait 1 gpio SDIO_CLK_GPIO   ; Wait for rising clock edge
-    in PINS, 4                  ; Read nibble
-.wrap
+rx_data:
+    in PINS, 4                 [CLKDIV-2]  ; Read nibble
+    jmp X--, rx_data
 
 ; Data transmission program
-; This program will simply send nibbles out to pins, synchronous
-; to the clock signal. The application should prepend 0xF0 to the data
-; for the start of block token, and append the checksum.
-; The data should be padded to full 32 bits by 0xFF bytes.
+;
+; Before running this program, pindirs should be set as output
+; and register X should be initialized with the number of nibbles
+; to send minus 1 (typically 8 + 1024 + 16 + 1 - 1 = 1048)
+; and register Y with the number of response bits minus 1 (typically 31).
+;
+; Words written to TX FIFO must be:
+; - Word 0: start token 0xFFFFFFF0
+; - Word 1-128: transmitted data (512 bytes)
+; - Word 129-130: CRC checksum
+; - Word 131: end token 0xFFFFFFFF
+;
+; After the card reports idle status, RX FIFO will get a word that
+; contains the D0 line response from card.
+
 .program sdio_data_tx
-    wait 1 gpio SDIO_CLK_GPIO
-    wait 0 gpio SDIO_CLK_GPIO   ; Wait for falling clock edge
-    out PINS, 4                 ; Write nibble
+    wait 0 gpio SDIO_CLK_GPIO  
+    wait 1 gpio SDIO_CLK_GPIO  [CLKDIV + D1 - 1]; Synchronize so that write occurs on falling edge
+
+tx_loop:
+    out PINS, 4                [D0]    ; Write nibble and wait for whole clock cycle
+    jmp X-- tx_loop            [D1]
+
+    set pindirs, 0x00          [D0]    ; Set data bus as input
+
+.wrap_target
+response_loop:
+    in PINS, 1                 [D1]    ; Read D0 on rising edge
+    jmp Y--, response_loop     [D0]
+
+wait_idle:
+    wait 1 pin 0               [D1]    ; Wait for card to indicate idle condition
+    push                       [D0]    ; Push the response token
+.wrap

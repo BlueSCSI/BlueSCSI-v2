@@ -58,6 +58,10 @@
 #define SD_SPI_MISO  20
 #define SD_SPI_CS    23
 
+// IO expander I2C
+#define GPIO_I2C_SDA 14
+#define GPIO_I2C_SCL 15
+
 // DIP switch pins
 #define DIP_INITIATOR 10
 #define DIP_DBGLOG 16

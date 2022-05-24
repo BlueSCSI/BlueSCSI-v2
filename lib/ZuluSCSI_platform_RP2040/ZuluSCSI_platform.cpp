@@ -67,11 +67,8 @@ void azplatform_init()
         azlog("ERROR: SCSI initiator mode is not implemented yet, turn DIP switch off for proper operation!");
     }
 
-    if (dbglog)
-    {
-        g_azlog_debug = true;
-    }
-
+    g_azlog_debug = dbglog;
+    
     if (termination)
     {
         azlog("SCSI termination is enabled");
@@ -137,6 +134,11 @@ void azplatform_init()
 
     // LED pin
     gpio_conf(LED_PIN,        GPIO_FUNC_SIO, false,false, true,  false, false);
+
+    // I2C pins
+    //        pin             function       pup   pdown  out    state fast
+    gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_I2C, true,false, false,  true, true);
+    gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_I2C, true,false, false,  true, true);
 }
 
 void azplatform_late_init()

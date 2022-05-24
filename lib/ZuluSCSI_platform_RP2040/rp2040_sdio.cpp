@@ -20,11 +20,12 @@
 #define SDIO_CMD_SM 0
 #define SDIO_DATA_SM 1
 #define SDIO_DMA_CH 1
+#define SDIO_DMA_CHB 2
 
 // Maximum number of 512 byte blocks to transfer in one request
 #define SDIO_MAX_BLOCKS 256
 
-enum sdio_transfer_state_t { SDIO_IDLE, SDIO_RX, SDIO_TX };
+enum sdio_transfer_state_t { SDIO_IDLE, SDIO_RX, SDIO_TX, SDIO_TX_WAIT_IDLE};
 
 static struct {
     uint32_t pio_cmd_clk_offset;
@@ -34,15 +35,32 @@ static struct {
     pio_sm_config pio_cfg_data_tx;
 
     sdio_transfer_state_t transfer_state;
-    bool inside_irq_handler; // True if we are inside crash handler code
     uint32_t transfer_start_time;
     uint32_t *data_buf;
     uint32_t blocks_done; // Number of blocks transferred so far
     uint32_t total_blocks; // Total number of blocks to transfer
     uint32_t blocks_checksumed; // Number of blocks that have had CRC calculated
     uint32_t checksum_errors; // Number of checksum errors detected
-    uint64_t block_checksums[SDIO_MAX_BLOCKS];
+
+    // Variables for block writes
+    uint64_t next_wr_block_checksum;
+    uint32_t end_token_buf[3]; // CRC and end token for write block
+    sdio_status_t wr_status;
+    uint32_t card_response;
+    
+    // Variables for block reads
+    // This is used to perform DMA into data buffers and checksum buffers separately.
+    struct {
+        void * write_addr;
+        uint32_t transfer_count;
+    } dma_blocks[SDIO_MAX_BLOCKS * 2];
+    struct {
+        uint32_t top;
+        uint32_t bottom;
+    } received_checksums[SDIO_MAX_BLOCKS];
 } g_sdio;
+
+void rp2040_sdio_dma_irq();
 
 /*******************************************************
  * Checksum algorithms
@@ -323,71 +341,6 @@ sdio_status_t rp2040_sdio_command_R3(uint8_t command, uint32_t arg, uint32_t *re
  * Data reception from SD card
  *******************************************************/
 
-static void sdio_start_next_block_rx()
-{
-    assert (g_sdio.blocks_done < g_sdio.total_blocks);
-
-    // Disable and reset PIO from previous block
-    pio_sm_set_enabled(SDIO_PIO, SDIO_DATA_SM, false);
-    pio_sm_restart(SDIO_PIO, SDIO_DATA_SM);
-    pio_sm_exec(SDIO_PIO, SDIO_DATA_SM, pio_encode_jmp(g_sdio.pio_data_rx_offset));
-
-    // Start new DMA transfer
-    dma_channel_transfer_to_buffer_now(SDIO_DMA_CH, g_sdio.data_buf + 128 * g_sdio.blocks_done, 128);
-
-    // Enable PIO
-    pio_sm_set_enabled(SDIO_PIO, SDIO_DATA_SM, true);
-}
-
-// Check checksums for received blocks
-static void sdio_verify_rx_checksums(uint32_t maxcount)
-{
-    while (g_sdio.blocks_checksumed < g_sdio.blocks_done && maxcount-- > 0)
-    {
-        int blockidx = g_sdio.blocks_checksumed++;
-        uint64_t checksum = sdio_crc16_4bit_checksum(g_sdio.data_buf + blockidx * 128, 128);
-        uint64_t expected = g_sdio.block_checksums[blockidx];
-
-        if (checksum != expected)
-        {
-            g_sdio.checksum_errors++;
-            if (g_sdio.checksum_errors == 1)
-            {
-                azlog("SDIO checksum error in reception: calculated ", checksum, " expected ", expected);
-            }
-        }
-    }
-}
-
-static void rp2040_sdio_rx_irq()
-{
-    dma_hw->ints1 = 1 << SDIO_DMA_CH;
-
-    // Wait for CRC to be received
-    int maxwait = 1000;
-    while (pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_DATA_SM) < 2)
-    {
-        if (maxwait-- < 0)
-        {
-            azlog("rp2040_sdio_rx_irq(): timeout waiting for CRC reception");
-            break;
-        }
-    }
-    uint32_t crc0 = pio_sm_get(SDIO_PIO, SDIO_DATA_SM);
-    uint32_t crc1 = pio_sm_get(SDIO_PIO, SDIO_DATA_SM);
-    g_sdio.block_checksums[g_sdio.blocks_done] = ((uint64_t)crc0 << 32) | crc1;
-    g_sdio.blocks_done++;
-
-    if (g_sdio.blocks_done < g_sdio.total_blocks)
-    {
-        sdio_start_next_block_rx();
-    }
-    else
-    {
-        g_sdio.transfer_state = SDIO_IDLE;
-    }
-}
-
 sdio_status_t rp2040_sdio_rx_start(uint8_t *buffer, uint32_t num_blocks)
 {
     // Buffer must be aligned
@@ -401,39 +354,103 @@ sdio_status_t rp2040_sdio_rx_start(uint8_t *buffer, uint32_t num_blocks)
     g_sdio.blocks_checksumed = 0;
     g_sdio.checksum_errors = 0;
 
-    // Check if we are inside interrupt handler.
-    // This happens when saving crash log from hardfault.
-    // If true, must use polling mode instead of interrupts.
-    g_sdio.inside_irq_handler = (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk);
+    // Create DMA block descriptors to store each block of 512 bytes of data to buffer
+    // and then 8 bytes to g_sdio.received_checksums.
+    for (int i = 0; i < num_blocks; i++)
+    {
+        g_sdio.dma_blocks[i * 2].write_addr = buffer + i * SDIO_BLOCK_SIZE;
+        g_sdio.dma_blocks[i * 2].transfer_count = SDIO_BLOCK_SIZE / sizeof(uint32_t);
 
-    pio_sm_init(SDIO_PIO, SDIO_DATA_SM, g_sdio.pio_data_rx_offset, &g_sdio.pio_cfg_data_rx);
-    pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_DATA_SM, SDIO_D0, 4, false);
+        g_sdio.dma_blocks[i * 2 + 1].write_addr = &g_sdio.received_checksums[i];
+        g_sdio.dma_blocks[i * 2 + 1].transfer_count = 2;
+    }
+    g_sdio.dma_blocks[num_blocks * 2].write_addr = 0;
+    g_sdio.dma_blocks[num_blocks * 2].transfer_count = 0;
 
-    // Configure DMA to receive the data block payload (512 bytes).
+    // Configure first DMA channel for reading from the PIO RX fifo
     dma_channel_config dmacfg = dma_channel_get_default_config(SDIO_DMA_CH);
     channel_config_set_transfer_data_size(&dmacfg, DMA_SIZE_32);
     channel_config_set_read_increment(&dmacfg, false);
     channel_config_set_write_increment(&dmacfg, true);
     channel_config_set_dreq(&dmacfg, pio_get_dreq(SDIO_PIO, SDIO_DATA_SM, false));
     channel_config_set_bswap(&dmacfg, true);
+    channel_config_set_chain_to(&dmacfg, SDIO_DMA_CHB);
     dma_channel_configure(SDIO_DMA_CH, &dmacfg, 0, &SDIO_PIO->rxf[SDIO_DATA_SM], 0, false);
 
-    sdio_start_next_block_rx();
+    // Configure second DMA channel for reconfiguring the first one
+    dmacfg = dma_channel_get_default_config(SDIO_DMA_CHB);
+    channel_config_set_transfer_data_size(&dmacfg, DMA_SIZE_32);
+    channel_config_set_read_increment(&dmacfg, true);
+    channel_config_set_write_increment(&dmacfg, true);
+    channel_config_set_ring(&dmacfg, true, 3);
+    dma_channel_configure(SDIO_DMA_CHB, &dmacfg, &dma_hw->ch[SDIO_DMA_CH].al1_write_addr,
+        g_sdio.dma_blocks, 2, false);
+
+    // Initialize PIO state machine
+    pio_sm_init(SDIO_PIO, SDIO_DATA_SM, g_sdio.pio_data_rx_offset, &g_sdio.pio_cfg_data_rx);
+    pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_DATA_SM, SDIO_D0, 4, false);
+
+    // Write number of nibbles to receive to Y register
+    pio_sm_put(SDIO_PIO, SDIO_DATA_SM, SDIO_BLOCK_SIZE * 2 + 16 - 1);
+    pio_sm_exec(SDIO_PIO, SDIO_DATA_SM, pio_encode_out(pio_y, 32));
+
+    // Enable RX FIFO join because we don't need the TX FIFO during transfer.
+    // This gives more leeway for the DMA block switching
+    SDIO_PIO->sm[SDIO_DATA_SM].shiftctrl |= PIO_SM0_SHIFTCTRL_FJOIN_RX_BITS;
+
+    // Start PIO and DMA
+    dma_channel_start(SDIO_DMA_CHB);
+    pio_sm_set_enabled(SDIO_PIO, SDIO_DATA_SM, true);
 
     return SDIO_OK;
 }
 
+// Check checksums for received blocks
+static void sdio_verify_rx_checksums(uint32_t maxcount)
+{
+    while (g_sdio.blocks_checksumed < g_sdio.blocks_done && maxcount-- > 0)
+    {
+        // Calculate checksum from received data
+        int blockidx = g_sdio.blocks_checksumed++;
+        uint64_t checksum = sdio_crc16_4bit_checksum(g_sdio.data_buf + blockidx * SDIO_WORDS_PER_BLOCK,
+                                                     SDIO_WORDS_PER_BLOCK);
+
+        // Convert received checksum to little-endian format
+        uint32_t top = __builtin_bswap32(g_sdio.received_checksums[blockidx].top);
+        uint32_t bottom = __builtin_bswap32(g_sdio.received_checksums[blockidx].bottom);
+        uint64_t expected = ((uint64_t)top << 32) | bottom;
+
+        if (checksum != expected)
+        {
+            g_sdio.checksum_errors++;
+            if (g_sdio.checksum_errors == 1)
+            {
+                azlog("SDIO checksum error in reception: block ", blockidx,
+                      " calculated ", checksum, " expected ", expected);
+            }
+        }
+    }
+}
+
 sdio_status_t rp2040_sdio_rx_poll(uint32_t *bytes_complete)
 {
-    if (g_sdio.inside_irq_handler && (dma_hw->ints0 & (1 << SDIO_DMA_CH)))
+    // Check how many DMA control blocks have been consumed
+    uint32_t dma_ctrl_block_count = (dma_hw->ch[SDIO_DMA_CHB].read_addr - (uint32_t)&g_sdio.dma_blocks);
+    dma_ctrl_block_count /= sizeof(g_sdio.dma_blocks[0]);
+
+    // Compute how many complete 512 byte SDIO blocks have been transferred
+    // When transfer ends, dma_ctrl_block_count == g_sdio.total_blocks * 2 + 1
+    g_sdio.blocks_done = (dma_ctrl_block_count - 1) / 2;
+
+    // Is it all done?
+    if (g_sdio.blocks_done >= g_sdio.total_blocks)
     {
-        // Make sure DMA interrupt handler gets called even from inside hardfault handler.
-        rp2040_sdio_rx_irq();
+        g_sdio.transfer_state = SDIO_IDLE;
     }
 
     if (bytes_complete)
     {
-        *bytes_complete = g_sdio.blocks_done * 512;
+        *bytes_complete = g_sdio.blocks_done * SDIO_BLOCK_SIZE;
     }
 
     if (g_sdio.transfer_state == SDIO_IDLE)
@@ -471,51 +488,59 @@ sdio_status_t rp2040_sdio_rx_poll(uint32_t *bytes_complete)
 
 static void sdio_start_next_block_tx()
 {
-    assert (g_sdio.blocks_done < g_sdio.total_blocks && g_sdio.blocks_checksumed > g_sdio.blocks_done);
+    // Initialize PIO
+    pio_sm_init(SDIO_PIO, SDIO_DATA_SM, g_sdio.pio_data_tx_offset, &g_sdio.pio_cfg_data_tx);
+    
+    // Configure DMA to send the data block payload (512 bytes)
+    dma_channel_config dmacfg = dma_channel_get_default_config(SDIO_DMA_CH);
+    channel_config_set_transfer_data_size(&dmacfg, DMA_SIZE_32);
+    channel_config_set_read_increment(&dmacfg, true);
+    channel_config_set_write_increment(&dmacfg, false);
+    channel_config_set_dreq(&dmacfg, pio_get_dreq(SDIO_PIO, SDIO_DATA_SM, true));
+    channel_config_set_bswap(&dmacfg, true);
+    channel_config_set_chain_to(&dmacfg, SDIO_DMA_CHB);
+    dma_channel_configure(SDIO_DMA_CH, &dmacfg,
+        &SDIO_PIO->txf[SDIO_DATA_SM], g_sdio.data_buf + g_sdio.blocks_done * SDIO_WORDS_PER_BLOCK,
+        SDIO_WORDS_PER_BLOCK, false);
 
-    // Start new DMA transfer
-    dma_channel_transfer_from_buffer_now(SDIO_DMA_CH, g_sdio.data_buf + 128 * g_sdio.blocks_done, 128);
+    // Prepare second DMA channel to send the CRC and block end marker
+    uint64_t crc = g_sdio.next_wr_block_checksum;
+    g_sdio.end_token_buf[0] = (uint32_t)(crc >> 32);
+    g_sdio.end_token_buf[1] = (uint32_t)(crc >>  0);
+    g_sdio.end_token_buf[2] = 0xFFFFFFFF;
+    channel_config_set_bswap(&dmacfg, false);
+    dma_channel_configure(SDIO_DMA_CHB, &dmacfg,
+        &SDIO_PIO->txf[SDIO_DATA_SM], g_sdio.end_token_buf, 3, false);
+    
+    // Enable IRQ to trigger when block is done
+    dma_hw->ints1 = 1 << SDIO_DMA_CHB;
+    dma_set_irq1_channel_mask_enabled(1 << SDIO_DMA_CHB, 1);
+
+    // Initialize register X with nibble count and register Y with response bit count
+    pio_sm_put(SDIO_PIO, SDIO_DATA_SM, 1048);
+    pio_sm_exec(SDIO_PIO, SDIO_DATA_SM, pio_encode_out(pio_x, 32));
+    pio_sm_put(SDIO_PIO, SDIO_DATA_SM, 31);
+    pio_sm_exec(SDIO_PIO, SDIO_DATA_SM, pio_encode_out(pio_y, 32));
+    
+    // Initialize pins to output and high
+    pio_sm_exec(SDIO_PIO, SDIO_DATA_SM, pio_encode_set(pio_pins, 15));
+    pio_sm_exec(SDIO_PIO, SDIO_DATA_SM, pio_encode_set(pio_pindirs, 15));
+
+    // Write start token and start the DMA transfer.
+    pio_sm_put(SDIO_PIO, SDIO_DATA_SM, 0xFFFFFFF0);
+    dma_channel_start(SDIO_DMA_CH);
+    
+    // Start state machine
+    pio_sm_set_enabled(SDIO_PIO, SDIO_DATA_SM, true);
 }
 
-static void sdio_compute_tx_checksums(uint32_t maxcount)
+static void sdio_compute_next_tx_checksum()
 {
-    while (g_sdio.blocks_checksumed < g_sdio.blocks_done && maxcount-- > 0)
-    {
-        int blockidx = g_sdio.blocks_checksumed++;
-        g_sdio.block_checksums[blockidx] = sdio_crc16_4bit_checksum(g_sdio.data_buf + blockidx * 128, 128);
-    }
+    assert (g_sdio.blocks_done < g_sdio.total_blocks && g_sdio.blocks_checksumed < g_sdio.total_blocks);
+    int blockidx = g_sdio.blocks_checksumed++;
+    g_sdio.next_wr_block_checksum = sdio_crc16_4bit_checksum(g_sdio.data_buf + blockidx * SDIO_WORDS_PER_BLOCK,
+                                                             SDIO_WORDS_PER_BLOCK);
 }
-
-static void rp2040_sdio_tx_irq()
-{
-    // Wait for there to be enough space for checksum
-    int maxwait = 1000;
-    while (pio_sm_get_tx_fifo_level(SDIO_PIO, SDIO_DATA_SM) < 5)
-    {
-        if (maxwait-- < 0)
-        {
-            azlog("rp2040_sdio_tx_irq(): timeout waiting for space in TX buffer for CRC");
-            break;
-        }
-    }
-
-    // Send the checksum and block end marker
-    uint64_t crc = g_sdio.block_checksums[g_sdio.blocks_done];
-    pio_sm_put(SDIO_PIO, SDIO_DATA_SM, (uint32_t)(crc >> 32));
-    pio_sm_put(SDIO_PIO, SDIO_DATA_SM, (uint32_t)(crc >>  0));
-    pio_sm_put(SDIO_PIO, SDIO_DATA_SM, 0xFFFFFFFF);
-
-    g_sdio.blocks_done++;
-    if (g_sdio.blocks_done < g_sdio.total_blocks)
-    {
-        sdio_start_next_block_tx();
-    }
-    else
-    {
-        g_sdio.transfer_state = SDIO_IDLE;
-    }
-}
-
 
 // Start transferring data from memory to SD card
 sdio_status_t rp2040_sdio_tx_start(const uint8_t *buffer, uint32_t num_blocks)
@@ -531,61 +556,143 @@ sdio_status_t rp2040_sdio_tx_start(const uint8_t *buffer, uint32_t num_blocks)
     g_sdio.blocks_checksumed = 0;
     g_sdio.checksum_errors = 0;
 
-    // Check if we are inside interrupt handler.
-    // This happens when saving crash log from hardfault.
-    // If true, must use polling mode instead of interrupts.
-    g_sdio.inside_irq_handler = (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk);
-
     // Compute first block checksum
-    sdio_compute_tx_checksums(1);
-
-    // Initialize PIO
-    pio_sm_init(SDIO_PIO, SDIO_DATA_SM, g_sdio.pio_data_tx_offset, &g_sdio.pio_cfg_data_tx);
-    pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_DATA_SM, SDIO_D0, 4, true);
-
-    // Configure DMA to send the data block payload (512 bytes)
-    dma_channel_config dmacfg = dma_channel_get_default_config(SDIO_DMA_CH);
-    channel_config_set_transfer_data_size(&dmacfg, DMA_SIZE_32);
-    channel_config_set_read_increment(&dmacfg, true);
-    channel_config_set_write_increment(&dmacfg, false);
-    channel_config_set_dreq(&dmacfg, pio_get_dreq(SDIO_PIO, SDIO_DATA_SM, false));
-    channel_config_set_bswap(&dmacfg, true);
-    dma_channel_configure(SDIO_DMA_CH, &dmacfg, 0, &SDIO_PIO->txf[SDIO_DATA_SM], 0, false);
+    sdio_compute_next_tx_checksum();
 
     // Start first DMA transfer and PIO
     sdio_start_next_block_tx();
-    pio_sm_set_enabled(SDIO_PIO, SDIO_DATA_SM, true);
 
-    // Compute rest of the block checksums so that they are ready when needed
-    sdio_compute_tx_checksums(g_sdio.total_blocks);
+    if (g_sdio.blocks_checksumed < g_sdio.total_blocks)
+    {
+        // Precompute second block checksum
+        sdio_compute_next_tx_checksum();
+    }
 
     return SDIO_OK;
+}
+
+sdio_status_t check_sdio_write_response(uint32_t card_response)
+{
+    // Shift card response until top bit is 0 (the start bit)
+    // The format of response is poorly documented in SDIO spec but refer to e.g.
+    // http://my-cool-projects.blogspot.com/2013/02/the-mysterious-sd-card-crc-status.html
+    uint32_t resp = card_response;
+    if (!(~resp & 0xFFFF0000)) resp <<= 16;
+    if (!(~resp & 0xFF000000)) resp <<= 8;
+    if (!(~resp & 0xF0000000)) resp <<= 4;
+    if (!(~resp & 0xC0000000)) resp <<= 2;
+    if (!(~resp & 0x80000000)) resp <<= 1;
+
+    uint32_t wr_status = (resp >> 28) & 7;
+
+    if (wr_status == 2)
+    {
+        return SDIO_OK;
+    }
+    else if (wr_status == 5)
+    {
+        azlog("SDIO card reports write CRC error, status ", card_response);
+        return SDIO_ERR_WRITE_CRC;    
+    }
+    else if (wr_status == 6)
+    {
+        azlog("SDIO card reports write failure, status ", card_response);
+        return SDIO_ERR_WRITE_FAIL;    
+    }
+    else
+    {
+        azlog("SDIO card reports unknown write status ", card_response);
+        return SDIO_ERR_WRITE_FAIL;    
+    }
+}
+
+// When a block finishes, this IRQ handler starts the next one
+static void rp2040_sdio_tx_irq()
+{
+    dma_hw->ints1 = 1 << SDIO_DMA_CHB;
+
+    if (g_sdio.transfer_state == SDIO_TX)
+    {
+        if (!dma_channel_is_busy(SDIO_DMA_CH) && !dma_channel_is_busy(SDIO_DMA_CHB))
+        {
+            // Main data transfer is finished now.
+            // When card is ready, PIO will put card response on RX fifo
+            g_sdio.transfer_state = SDIO_TX_WAIT_IDLE;
+            if (!pio_sm_is_rx_fifo_empty(SDIO_PIO, SDIO_DATA_SM))
+            {
+                // Card is already idle
+                g_sdio.card_response = pio_sm_get(SDIO_PIO, SDIO_DATA_SM);
+            }
+            else
+            {
+                // Use DMA to wait for the response
+                dma_channel_config dmacfg = dma_channel_get_default_config(SDIO_DMA_CHB);
+                channel_config_set_transfer_data_size(&dmacfg, DMA_SIZE_32);
+                channel_config_set_read_increment(&dmacfg, false);
+                channel_config_set_write_increment(&dmacfg, false);
+                channel_config_set_dreq(&dmacfg, pio_get_dreq(SDIO_PIO, SDIO_DATA_SM, false));
+                dma_channel_configure(SDIO_DMA_CHB, &dmacfg,
+                    &g_sdio.card_response, &SDIO_PIO->rxf[SDIO_DATA_SM], 1, true);
+            }
+        }
+    }
+    
+    if (g_sdio.transfer_state == SDIO_TX_WAIT_IDLE)
+    {
+        if (!dma_channel_is_busy(SDIO_DMA_CHB))
+        {
+            g_sdio.wr_status = check_sdio_write_response(g_sdio.card_response);
+
+            if (g_sdio.wr_status != SDIO_OK)
+            {
+                rp2040_sdio_stop();
+                return;
+            }
+
+            g_sdio.blocks_done++;
+            if (g_sdio.blocks_done < g_sdio.total_blocks)
+            {
+                sdio_start_next_block_tx();
+                g_sdio.transfer_state = SDIO_TX;
+
+                if (g_sdio.blocks_checksumed < g_sdio.total_blocks)
+                {
+                    // Precompute the CRC for next block so that it is ready when
+                    // we want to send it.
+                    sdio_compute_next_tx_checksum();
+                }
+            }
+            else
+            {
+                rp2040_sdio_stop();
+            }
+        }    
+    }
 }
 
 // Check if transmission is complete
 sdio_status_t rp2040_sdio_tx_poll(uint32_t *bytes_complete)
 {
-    if (g_sdio.inside_irq_handler && (dma_hw->ints0 & (1 << SDIO_DMA_CH)))
+    if (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk)
     {
-        // Make sure DMA interrupt handler gets called even from inside hardfault handler.
+        // Verify that IRQ handler gets called even if we are in hardfault handler
         rp2040_sdio_tx_irq();
     }
 
     if (bytes_complete)
     {
-        *bytes_complete = g_sdio.blocks_done * 512;
+        *bytes_complete = g_sdio.blocks_done * SDIO_BLOCK_SIZE;
     }
 
     if (g_sdio.transfer_state == SDIO_IDLE)
     {
-        pio_sm_set_enabled(SDIO_PIO, SDIO_DATA_SM, false);
-        pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_DATA_SM, SDIO_D0, 4, false);
-        return SDIO_OK;
+        rp2040_sdio_stop();
+        return g_sdio.wr_status;
     }
     else if ((uint32_t)(millis() - g_sdio.transfer_start_time) > 1000)
     {
         azdbg("rp2040_sdio_tx_poll() timeout, "
-            "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_DATA_SM) - (int)g_sdio.pio_data_rx_offset,
+            "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_DATA_SM) - (int)g_sdio.pio_data_tx_offset,
             " RXF: ", (int)pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_DATA_SM),
             " TXF: ", (int)pio_sm_get_tx_fifo_level(SDIO_PIO, SDIO_DATA_SM),
             " DMA CNT: ", dma_hw->ch[SDIO_DMA_CH].al2_transfer_count);
@@ -600,23 +707,15 @@ sdio_status_t rp2040_sdio_tx_poll(uint32_t *bytes_complete)
 sdio_status_t rp2040_sdio_stop()
 {
     dma_channel_abort(SDIO_DMA_CH);
+    dma_channel_abort(SDIO_DMA_CHB);
+    dma_set_irq1_channel_mask_enabled(1 << SDIO_DMA_CHB, 0);
     pio_sm_set_enabled(SDIO_PIO, SDIO_DATA_SM, false);
     pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_DATA_SM, SDIO_D0, 4, false);
     g_sdio.transfer_state = SDIO_IDLE;
     return SDIO_OK;
 }
 
-void rp2040_sdio_dma_irq()
-{
-    dma_hw->ints1 = 1 << SDIO_DMA_CH;
-
-    if (g_sdio.transfer_state == SDIO_TX)
-        rp2040_sdio_tx_irq();
-    else if (g_sdio.transfer_state == SDIO_RX)
-        rp2040_sdio_rx_irq();
-}
-
-void rp2040_sdio_init()
+void rp2040_sdio_init(int clock_divider)
 {
     // Mark resources as being in use, unless it has been done already.
     static bool resources_claimed = false;
@@ -625,10 +724,16 @@ void rp2040_sdio_init()
         pio_sm_claim(SDIO_PIO, SDIO_CMD_SM);
         pio_sm_claim(SDIO_PIO, SDIO_DATA_SM);
         dma_channel_claim(SDIO_DMA_CH);
+        dma_channel_claim(SDIO_DMA_CHB);
         resources_claimed = true;
     }
 
     memset(&g_sdio, 0, sizeof(g_sdio));
+
+    dma_channel_abort(SDIO_DMA_CH);
+    dma_channel_abort(SDIO_DMA_CHB);
+    pio_sm_set_enabled(SDIO_PIO, SDIO_CMD_SM, false);
+    pio_sm_set_enabled(SDIO_PIO, SDIO_DATA_SM, false);
 
     // Load PIO programs
     pio_clear_instruction_memory(SDIO_PIO);
@@ -643,7 +748,7 @@ void rp2040_sdio_init()
     sm_config_set_sideset_pins(&cfg, SDIO_CLK);
     sm_config_set_out_shift(&cfg, false, true, 32);
     sm_config_set_in_shift(&cfg, false, true, 32);
-    sm_config_set_clkdiv_int_frac(&cfg, 5, 0);
+    sm_config_set_clkdiv_int_frac(&cfg, clock_divider, 0);
     sm_config_set_mov_status(&cfg, STATUS_TX_LESSTHAN, 2);
 
     pio_sm_init(SDIO_PIO, SDIO_CMD_SM, g_sdio.pio_cmd_clk_offset, &cfg);
@@ -655,20 +760,25 @@ void rp2040_sdio_init()
     g_sdio.pio_cfg_data_rx = sdio_data_rx_program_get_default_config(g_sdio.pio_data_rx_offset);
     sm_config_set_in_pins(&g_sdio.pio_cfg_data_rx, SDIO_D0);
     sm_config_set_in_shift(&g_sdio.pio_cfg_data_rx, false, true, 32);
-    sm_config_set_fifo_join(&g_sdio.pio_cfg_data_rx, PIO_FIFO_JOIN_RX);
+    sm_config_set_out_shift(&g_sdio.pio_cfg_data_rx, false, true, 32);
+    sm_config_set_clkdiv_int_frac(&g_sdio.pio_cfg_data_rx, clock_divider, 0);
 
     // Data transmission program
     g_sdio.pio_data_tx_offset = pio_add_program(SDIO_PIO, &sdio_data_tx_program);
-    g_sdio.pio_cfg_data_tx = sdio_data_rx_program_get_default_config(g_sdio.pio_data_tx_offset);
+    g_sdio.pio_cfg_data_tx = sdio_data_tx_program_get_default_config(g_sdio.pio_data_tx_offset);
+    sm_config_set_in_pins(&g_sdio.pio_cfg_data_tx, SDIO_D0);
+    sm_config_set_set_pins(&g_sdio.pio_cfg_data_tx, SDIO_D0, 4);
     sm_config_set_out_pins(&g_sdio.pio_cfg_data_tx, SDIO_D0, 4);
+    sm_config_set_in_shift(&g_sdio.pio_cfg_data_tx, false, false, 32);
     sm_config_set_out_shift(&g_sdio.pio_cfg_data_tx, false, true, 32);
-    sm_config_set_fifo_join(&g_sdio.pio_cfg_data_tx, PIO_FIFO_JOIN_TX);
+    sm_config_set_clkdiv_int_frac(&g_sdio.pio_cfg_data_tx, clock_divider, 0);
 
-    // Disable CLK pin input synchronizer.
-    // This reduces delay from clk state machine to data state machine.
-    // Because the CLK pin is output and driven synchronously to CPU clock,
-    // there is no metastability problems.
-    SDIO_PIO->input_sync_bypass |= (1 << SDIO_CLK);
+    // Disable SDIO pins input synchronizer.
+    // This reduces input delay.
+    // Because the CLK is driven synchronously to CPU clock,
+    // there should be no metastability problems.
+    SDIO_PIO->input_sync_bypass |= (1 << SDIO_CLK) | (1 << SDIO_CMD)
+                                 | (1 << SDIO_D0) | (1 << SDIO_D1) | (1 << SDIO_D2) | (1 << SDIO_D3);
 
     // Redirect GPIOs to PIO
     gpio_set_function(SDIO_CMD, GPIO_FUNC_PIO1);
@@ -679,10 +789,6 @@ void rp2040_sdio_init()
     gpio_set_function(SDIO_D3, GPIO_FUNC_PIO1);
 
     // Set up IRQ handler when DMA completes.
-    // This is time-critical because the CRC must be written / read before PIO FIFO runs out.
-    dma_hw->ints1 = 1 << SDIO_DMA_CH;
-    dma_channel_set_irq1_enabled(SDIO_DMA_CH, true);
-    irq_set_exclusive_handler(DMA_IRQ_1, rp2040_sdio_dma_irq);
+    irq_set_exclusive_handler(DMA_IRQ_1, rp2040_sdio_tx_irq);
     irq_set_enabled(DMA_IRQ_1, true);
-    irq_set_priority(DMA_IRQ_1, 255);
 }

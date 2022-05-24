@@ -15,6 +15,7 @@ static uint32_t g_sdio_rca; // Relative card address
 static cid_t g_sdio_cid;
 static int g_sdio_error_line;
 static sdio_status_t g_sdio_error;
+static uint32_t g_sdio_dma_buf[128];
 
 #define checkReturnOk(call) ((g_sdio_error = (call)) == SDIO_OK ? true : logSDError(__LINE__))
 static bool logSDError(int line)
@@ -24,12 +25,48 @@ static bool logSDError(int line)
     return false;
 }
 
+// Callback used by SCSI code for simultaneous processing
+static sd_callback_t m_stream_callback;
+static const uint8_t *m_stream_buffer;
+static uint32_t m_stream_count;
+static uint32_t m_stream_count_start;
+
+void azplatform_set_sd_callback(sd_callback_t func, const uint8_t *buffer)
+{
+    m_stream_callback = func;
+    m_stream_buffer = buffer;
+    m_stream_count = 0;
+    m_stream_count_start = 0;
+}
+
+static sd_callback_t get_stream_callback(const uint8_t *buf, uint32_t count)
+{
+    m_stream_count_start = m_stream_count;
+
+    if (m_stream_callback)
+    {
+        if (buf == m_stream_buffer + m_stream_count)
+        {
+            m_stream_count += count;
+            return m_stream_callback;
+        }
+        else
+        {
+            azdbg("Stream buffer mismatch: ", (uint32_t)buf, " vs. ", (uint32_t)(m_stream_buffer + m_stream_count));
+            return NULL;
+        }
+    }
+    
+    return NULL;
+}
+
 bool SdioCard::begin(SdioConfig sdioConfig)
 {
     uint32_t reply;
     sdio_status_t status;
     
-    rp2040_sdio_init();
+    // Initialize at 1 MHz clock speed
+    rp2040_sdio_init(25);
 
     // Establish initial connection with the card
     for (int retries = 0; retries < 5; retries++)
@@ -96,6 +133,9 @@ bool SdioCard::begin(SdioConfig sdioConfig)
         azdbg("SDIO failed to set bus width");
         return false;
     }
+
+    // Increase to 25 MHz clock rate
+    rp2040_sdio_init(1);
 
     return true;
 }
@@ -194,6 +234,10 @@ bool SdioCard::stopTransmission(bool blocking)
         uint32_t end = millis() + 100;
         while (millis() < end && isBusy())
         {
+            if (m_stream_callback)
+            {
+                m_stream_callback(m_stream_count);
+            }
         }
         if (isBusy())
         {
@@ -246,43 +290,16 @@ bool SdioCard::erase(uint32_t firstSector, uint32_t lastSector)
 
 /* Writing and reading, with progress callback */
 
-static sd_callback_t m_stream_callback;
-static const uint8_t *m_stream_buffer;
-static uint32_t m_stream_count;
-static uint32_t m_stream_count_start;
-
-void azplatform_set_sd_callback(sd_callback_t func, const uint8_t *buffer)
-{
-    m_stream_callback = func;
-    m_stream_buffer = buffer;
-    m_stream_count = 0;
-    m_stream_count_start = 0;
-}
-
-static sd_callback_t get_stream_callback(const uint8_t *buf, uint32_t count)
-{
-    m_stream_count_start = m_stream_count;
-
-    if (m_stream_callback)
-    {
-        if (buf == m_stream_buffer + m_stream_count)
-        {
-            m_stream_count += count;
-            return m_stream_callback;
-        }
-        else
-        {
-            azdbg("Stream buffer mismatch: ", (uint32_t)buf, " vs. ", (uint32_t)(m_stream_buffer + m_stream_count));
-            return NULL;
-        }
-    }
-    
-    return NULL;
-}
-
-
 bool SdioCard::writeSector(uint32_t sector, const uint8_t* src)
 {
+    if (((uint32_t)src & 3) != 0)
+    {
+        // Buffer is not aligned, need to memcpy() the data to a temporary buffer.
+        memcpy(g_sdio_dma_buf, src, sizeof(g_sdio_dma_buf));
+        src = (uint8_t*)g_sdio_dma_buf;
+    }
+
+    // If possible, report transfer status to application through callback.
     sd_callback_t callback = get_stream_callback(src, 512);
 
     uint32_t reply;
@@ -305,7 +322,7 @@ bool SdioCard::writeSector(uint32_t sector, const uint8_t* src)
 
     if (g_sdio_error != SDIO_OK)
     {
-        azdbg("SdioCard::writeSector(", sector, ") failed: ", (int)g_sdio_error);
+        azlog("SdioCard::writeSector(", sector, ") failed: ", (int)g_sdio_error);
     }
 
     return g_sdio_error == SDIO_OK;
@@ -313,7 +330,20 @@ bool SdioCard::writeSector(uint32_t sector, const uint8_t* src)
 
 bool SdioCard::writeSectors(uint32_t sector, const uint8_t* src, size_t n)
 {
-    sd_callback_t callback = get_stream_callback(src, 512);
+    if (((uint32_t)src & 3) != 0)
+    {
+        // Unaligned write, execute sector-by-sector
+        for (size_t i = 0; i < n; i++)
+        {
+            if (!writeSector(sector + i, src + 512 * i))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    sd_callback_t callback = get_stream_callback(src, n * 512);
 
     uint32_t reply;
     if (!checkReturnOk(rp2040_sdio_command_R1(16, 512, &reply)) || // SET_BLOCKLEN
@@ -335,18 +365,27 @@ bool SdioCard::writeSectors(uint32_t sector, const uint8_t* src, size_t n)
         }
     } while (g_sdio_error == SDIO_BUSY);
 
-    checkReturnOk(rp2040_sdio_command_R1(CMD12, 0, &reply)); // STOP_TRANSMISSION
-
     if (g_sdio_error != SDIO_OK)
     {
-        azdbg("SdioCard::writeSectors(", sector, ",...,", (int)n, ") failed: ", (int)g_sdio_error);
+        azlog("SdioCard::writeSectors(", sector, ",...,", (int)n, ") failed: ", (int)g_sdio_error);
+        stopTransmission(true);
+        return false;
     }
-
-    return g_sdio_error == SDIO_OK;
+    else
+    {
+        return stopTransmission(true);
+    }
 }
 
 bool SdioCard::readSector(uint32_t sector, uint8_t* dst)
 {
+    uint8_t *real_dst = dst;
+    if (((uint32_t)dst & 3) != 0)
+    {
+        // Buffer is not aligned, need to memcpy() the data from a temporary buffer.
+        dst = (uint8_t*)g_sdio_dma_buf;
+    }
+
     sd_callback_t callback = get_stream_callback(dst, 512);
 
     uint32_t reply;
@@ -369,7 +408,12 @@ bool SdioCard::readSector(uint32_t sector, uint8_t* dst)
 
     if (g_sdio_error != SDIO_OK)
     {
-        azdbg("SdioCard::readSector(", sector, ") failed: ", (int)g_sdio_error);
+        azlog("SdioCard::readSector(", sector, ") failed: ", (int)g_sdio_error);
+    }
+
+    if (dst != real_dst)
+    {
+        memcpy(real_dst, g_sdio_dma_buf, sizeof(g_sdio_dma_buf));
     }
 
     return g_sdio_error == SDIO_OK;
@@ -377,6 +421,19 @@ bool SdioCard::readSector(uint32_t sector, uint8_t* dst)
 
 bool SdioCard::readSectors(uint32_t sector, uint8_t* dst, size_t n)
 {
+    if (((uint32_t)dst & 3) != 0)
+    {
+        // Unaligned read, execute sector-by-sector
+        for (size_t i = 0; i < n; i++)
+        {
+            if (!readSector(sector + i, dst + 512 * i))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
     sd_callback_t callback = get_stream_callback(dst, n * 512);
 
     uint32_t reply;
@@ -397,14 +454,16 @@ bool SdioCard::readSectors(uint32_t sector, uint8_t* dst, size_t n)
         }
     } while (g_sdio_error == SDIO_BUSY);
 
-    checkReturnOk(rp2040_sdio_command_R1(CMD12, 0, &reply)); // STOP_TRANSMISSION
-
     if (g_sdio_error != SDIO_OK)
     {
-        azdbg("SdioCard::readSectors(", sector, ",...,", (int)n, ") failed: ", (int)g_sdio_error);
+        azlog("SdioCard::readSectors(", sector, ",...,", (int)n, ") failed: ", (int)g_sdio_error);
+        stopTransmission(true);
+        return false;
     }
-
-    return g_sdio_error == SDIO_OK;
+    else
+    {
+        return stopTransmission(true);
+    }
 }
 
 // These functions are not used for SDIO mode but are needed to avoid build error.

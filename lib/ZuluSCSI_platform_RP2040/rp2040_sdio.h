@@ -13,7 +13,12 @@ enum sdio_status_t {
     SDIO_ERR_RESPONSE_CODE = 4,    // Response command code does not match what was sent
     SDIO_ERR_DATA_TIMEOUT = 5,     // Timed out waiting for data block
     SDIO_ERR_DATA_CRC = 6,         // CRC for data packet is wrong
+    SDIO_ERR_WRITE_CRC = 7,        // Card reports bad CRC for write
+    SDIO_ERR_WRITE_FAIL = 8,       // Card reports write failure
 };
+
+#define SDIO_BLOCK_SIZE 512
+#define SDIO_WORDS_PER_BLOCK 128
 
 // Execute a command that has 48-bit reply (response types R1, R6, R7)
 // If response is NULL, does not wait for reply.
@@ -44,4 +49,4 @@ sdio_status_t rp2040_sdio_tx_poll(uint32_t *bytes_complete = nullptr);
 sdio_status_t rp2040_sdio_stop();
 
 // (Re)initialize the SDIO interface
-void rp2040_sdio_init();
+void rp2040_sdio_init(int clock_divider = 1);
