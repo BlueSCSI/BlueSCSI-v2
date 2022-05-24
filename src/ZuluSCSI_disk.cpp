@@ -383,9 +383,10 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
             return false;
         }
 
-        if (img.file.contiguousRange(NULL, NULL))
+        uint32_t sector_begin = 0, sector_end = 0;
+        if (img.file.contiguousRange(&sector_begin, &sector_end))
         {
-            azlog("---- Image file is contiguous.");
+            azlog("---- Image file is contiguous, SD card sectors ", (int)sector_begin, " to ", (int)sector_end);
         }
         else
         {
