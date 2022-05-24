@@ -55,7 +55,7 @@
 #define NUM_SCSIID  7          // Maximum number of supported SCSI-IDs (The minimum is 0)
 #define NUM_SCSILUN 2          // Maximum number of LUNs supported     (The minimum is 0)
 #define READ_PARITY_CHECK 0    // Perform read parity check (unverified)
-
+#define SCSI_BUF_SIZE 512      // Size of the SCSI Buffer
 // HDD format
 #define MAX_BLOCKSIZE 2048     // Maximum BLOCK size
 
@@ -239,15 +239,15 @@ volatile bool m_isBusReset = false;   // Bus reset
 volatile bool m_resetJmp = false;     // Call longjmp on reset
 jmp_buf       m_resetJmpBuf;
 
-byte          scsi_id_mask;           // Mask list of responding SCSI IDs
-byte          m_id;                   // Currently responding SCSI-ID
-byte          m_lun;                  // Logical unit number currently responding
-byte          m_sts;                  // Status byte
-byte          m_msg;                  // Message bytes
-HDDIMG       *m_img;                  // HDD image for current SCSI-ID, LUN
-byte          m_buf[MAX_BLOCKSIZE];   // General purpose buffer
-byte          m_scsi_buf[512];        // Buffer for SCSI READ/WRITE Buffer
-byte          m_msb[256];             // Command storage bytes
+byte          scsi_id_mask;              // Mask list of responding SCSI IDs
+byte          m_id;                      // Currently responding SCSI-ID
+byte          m_lun;                     // Logical unit number currently responding
+byte          m_sts;                     // Status byte
+byte          m_msg;                     // Message bytes
+HDDIMG       *m_img;                     // HDD image for current SCSI-ID, LUN
+byte          m_buf[MAX_BLOCKSIZE];      // General purpose buffer
+byte          m_scsi_buf[SCSI_BUF_SIZE]; // Buffer for SCSI READ/WRITE Buffer
+byte          m_msb[256];                // Command storage bytes
 
 /*
  *  Data byte to BSRR register setting value and parity table
@@ -1377,12 +1377,26 @@ byte onWriteBuffer(byte mode, uint32_t allocLength)
   LOGHEXN(mode);
   LOGHEXN(allocLength);
 
-  if ((mode == MODE_COMBINED_HEADER_DATA || mode == MODE_DATA) && allocLength <= sizeof(m_scsi_buf))
+  if (mode == MODE_COMBINED_HEADER_DATA && (allocLength - 4) <= SCSI_BUF_SIZE)
+  {
+    byte tmp[allocLength];
+    readDataPhase(allocLength, tmp);
+    // Drop header
+    memcpy(m_scsi_buf, (&tmp[4]), allocLength - 4);
+    #if DEBUG > 0
+    for (unsigned i = 0; i < allocLength; i++) {
+      LOGHEX(tmp[i]);LOG(" ");
+    }
+    LOGN("");
+    #endif
+    return SCSI_STATUS_GOOD;
+  }
+  else if ( mode == MODE_DATA && allocLength <= SCSI_BUF_SIZE)
   {
     readDataPhase(allocLength, m_scsi_buf);
     #if DEBUG > 0
     for (unsigned i = 0; i < allocLength; i++) {
-      LOGHEX(m_buf[i]);LOG(" ");
+      LOGHEX(m_scsi_buf[i]);LOG(" ");
     }
     LOGN("");
     #endif
@@ -1407,17 +1421,16 @@ byte onReadBuffer(byte mode, uint32_t allocLength)
 
   if (mode == MODE_COMBINED_HEADER_DATA)
   {
-    uint32_t bufCapacity = sizeof(m_scsi_buf);
-    byte scsi_buf_response[bufCapacity + 4];
+    byte scsi_buf_response[SCSI_BUF_SIZE + 4];
     // four byte read buffer header
     scsi_buf_response[0] = 0;
-    scsi_buf_response[1] = (bufCapacity >> 16) & 0xff;
-    scsi_buf_response[2] = (bufCapacity >> 8) & 0xff;
-    scsi_buf_response[3] = bufCapacity & 0xff;
+    scsi_buf_response[1] = (SCSI_BUF_SIZE >> 16) & 0xff;
+    scsi_buf_response[2] = (SCSI_BUF_SIZE >> 8) & 0xff;
+    scsi_buf_response[3] = SCSI_BUF_SIZE & 0xff;
     // actual data
-    memcpy((&scsi_buf_response[4]), m_scsi_buf, bufCapacity);
+    memcpy((&scsi_buf_response[4]), m_scsi_buf, SCSI_BUF_SIZE);
 
-    writeDataPhase(sizeof(scsi_buf_response), scsi_buf_response);
+    writeDataPhase(SCSI_BUF_SIZE + 4, scsi_buf_response);
 
     #if DEBUG > 0
     for (unsigned i = 0; i < allocLength; i++) {
