@@ -1291,6 +1291,15 @@ byte onModeSenseCommand(byte scsi_cmd, byte dbd, byte cmd2, uint32_t len)
     }
     a += 0x18;
     if(pageCode != SCSI_SENSE_MODE_ALL) break;
+  case SCSI_SENSE_MODE_FLEXABLE_GEOMETRY:
+    m_buf[a + 0] = SCSI_SENSE_MODE_FLEXABLE_GEOMETRY;
+    m_buf[a + 1] = 0x1E;  // Page length
+    m_buf[a + 2] = 0x03E8; // Transfer rate 1 mbit/s
+    m_buf[a + 4] = 16; // Number of heads
+    m_buf[a + 5] = 18; // Sectors per track
+    m_buf[a + 6] = 0x2000; // Data bytes per sector
+    a += 0x1E;
+    if(pageCode != SCSI_SENSE_MODE_ALL) break;
   case SCSI_SENSE_MODE_VENDOR_APPLE:
     {
       const byte page30[0x14] = {0x41, 0x50, 0x50, 0x4C, 0x45, 0x20, 0x43, 0x4F, 0x4D, 0x50, 0x55, 0x54, 0x45, 0x52, 0x2C, 0x20, 0x49, 0x4E, 0x43, 0x20};
