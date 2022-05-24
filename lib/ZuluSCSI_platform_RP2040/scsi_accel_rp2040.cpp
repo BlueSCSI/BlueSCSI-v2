@@ -57,6 +57,15 @@ static bool g_channels_claimed = false;
 // Fill DMA buffer and return number of words ready to be transferred
 static uint32_t refill_dmabuf(uint32_t *buf)
 {
+    if (g_scsi_dma.app_bytes == 0 && g_scsi_dma.next_app_bytes > 0)
+    {
+        g_scsi_dma.dma_bytes = 0;
+        g_scsi_dma.app_buf = g_scsi_dma.next_app_buf;
+        g_scsi_dma.app_bytes = g_scsi_dma.next_app_bytes;
+        g_scsi_dma.next_app_buf = 0;
+        g_scsi_dma.next_app_bytes = 0;
+    }
+
     uint32_t count = (g_scsi_dma.app_bytes - g_scsi_dma.dma_bytes) / 2;
     if (count > DMA_BUF_SIZE) count = DMA_BUF_SIZE;
 
