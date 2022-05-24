@@ -1469,6 +1469,27 @@ byte onReadBuffer(byte mode, uint32_t allocLength)
 }
 
 /*
+ * On Send Diagnostic
+ */
+byte onSendDiagnostic(byte flags)
+{
+  int self_test = flags & 0x4;
+  LOGN("-SendDiagnostic");
+  LOGHEXN(flags);
+  if(self_test)
+  {
+    // Don't actually do a test, we're good.
+    return SCSI_STATUS_GOOD;
+  }
+  else
+  {
+    m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
+    m_addition_sense = SCSI_ASC_INVALID_FIELD_IN_CDB;
+    return SCSI_STATUS_CHECK_CONDITION;
+  }
+}
+
+/*
  * MsgIn2.
  */
 void MsgIn2(int msg)
@@ -1717,6 +1738,9 @@ void loop()
   case SCSI_READ_BUFFER:
     LOGN("[ReadBuffer]");
     m_sts |= onReadBuffer(cmd[1] & 7, ((uint32_t)cmd[6] << 16) | ((uint32_t)cmd[7] << 8) | cmd[8]);
+    break;
+  case SCSI_SEND_DIAG:
+    m_sts |= onSendDiagnostic(cmd[1]);
     break;
   default:
     LOGN("[*Unknown]");
