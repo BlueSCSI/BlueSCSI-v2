@@ -32,7 +32,7 @@ Configuration file
 Optional configuration can be stored in `zuluscsi.ini`.
 If image file is found but configuration is missing, a default configuration is used.
 
-Example config file is available here: [zuluscsi.ini](Zuluscsi.ini).
+Example config file is available here: [zuluscsi.ini](zuluscsi.ini).
 
 Performance
 -----------
