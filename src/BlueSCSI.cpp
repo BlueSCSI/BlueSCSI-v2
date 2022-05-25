@@ -41,6 +41,7 @@
 #include "scsi_cmds.h"
 #include "scsi_sense.h"
 #include "scsi_status.h"
+#include "scsi_mode.h"
 
 #ifdef USE_STM32_DMA
 #warning "warning USE_STM32_DMA"
@@ -54,7 +55,7 @@
 #define NUM_SCSIID  7          // Maximum number of supported SCSI-IDs (The minimum is 0)
 #define NUM_SCSILUN 2          // Maximum number of LUNs supported     (The minimum is 0)
 #define READ_PARITY_CHECK 0    // Perform read parity check (unverified)
-
+#define SCSI_BUF_SIZE 512      // Size of the SCSI Buffer
 // HDD format
 #define MAX_BLOCKSIZE 2048     // Maximum BLOCK size
 
@@ -238,14 +239,15 @@ volatile bool m_isBusReset = false;   // Bus reset
 volatile bool m_resetJmp = false;     // Call longjmp on reset
 jmp_buf       m_resetJmpBuf;
 
-byte          scsi_id_mask;           // Mask list of responding SCSI IDs
-byte          m_id;                   // Currently responding SCSI-ID
-byte          m_lun;                  // Logical unit number currently responding
-byte          m_sts;                  // Status byte
-byte          m_msg;                  // Message bytes
-HDDIMG       *m_img;                  // HDD image for current SCSI-ID, LUN
-byte          m_buf[MAX_BLOCKSIZE];   // General purpose buffer
-byte          m_msb[256];             // Command storage bytes
+byte          scsi_id_mask;              // Mask list of responding SCSI IDs
+byte          m_id;                      // Currently responding SCSI-ID
+byte          m_lun;                     // Logical unit number currently responding
+byte          m_sts;                     // Status byte
+byte          m_msg;                     // Message bytes
+HDDIMG       *m_img;                     // HDD image for current SCSI-ID, LUN
+byte          m_buf[MAX_BLOCKSIZE];      // General purpose buffer
+byte          m_scsi_buf[SCSI_BUF_SIZE]; // Buffer for SCSI READ/WRITE Buffer
+byte          m_msb[256];                // Command storage bytes
 
 /*
  *  Data byte to BSRR register setting value and parity table
@@ -276,7 +278,7 @@ uint32_t db_bsrr[256];
 //#undef PTY
 
 // Log File
-#define VERSION "1.1-SNAPSHOT-20220407"
+#define VERSION "1.1-SNAPSHOT-20220522"
 #define LOG_FILENAME "LOG.txt"
 FsFile LOG_FILE;
 
@@ -679,7 +681,7 @@ void initFileLog(int success_mhz) {
   LOG_FILE.println(SDFAT_FILE_TYPE);
   LOG_FILE.print("SdFat version: ");
   LOG_FILE.println(SD_FAT_VERSION_STR);
-  LOG_FILE.print("SD Format: ");
+  LOG_FILE.print("Sd Format: ");
   switch(SD.vol()->fatType()) {
     case FAT_TYPE_EXFAT:
     LOG_FILE.println("exFAT");
@@ -1239,7 +1241,7 @@ byte onModeSenseCommand(byte scsi_cmd, byte dbd, byte cmd2, uint32_t len)
   int pageCode = cmd2 & 0x3F;
   int pageControl = cmd2 >> 6;
   int a = 4;
-  if(scsi_cmd == 0x5A) a = 8;
+  if(scsi_cmd == SCSI_MODE_SENSE10) a = 8;
 
   if(dbd == 0) {
     byte c[8] = {
@@ -1252,21 +1254,21 @@ byte onModeSenseCommand(byte scsi_cmd, byte dbd, byte cmd2, uint32_t len)
     a += 8;
   }
   switch(pageCode) {
-  case 0x3F:
-  case 0x01: // Read/Write Error Recovery
-    m_buf[a + 0] = 0x01;
+  case SCSI_SENSE_MODE_ALL:
+  case SCSI_SENSE_MODE_READ_WRITE_ERROR_RECOVERY:
+    m_buf[a + 0] = SCSI_SENSE_MODE_READ_WRITE_ERROR_RECOVERY;
     m_buf[a + 1] = 0x0A;
     a += 0x0C;
-    if(pageCode != 0x3F) break;
+    if(pageCode != SCSI_SENSE_MODE_ALL) break;
 
-  case 0x02: // Disconnect-Reconnect page
-    m_buf[a + 0] = 0x02;
+  case SCSI_SENSE_MODE_DISCONNECT_RECONNECT:
+    m_buf[a + 0] = SCSI_SENSE_MODE_DISCONNECT_RECONNECT;
     m_buf[a + 1] = 0x0A;
     a += 0x0C;
-    if(pageCode != 0x3f) break;
+    if(pageCode != SCSI_SENSE_MODE_ALL) break;
 
-  case 0x03:  //Drive parameters
-    m_buf[a + 0] = 0x03; //Page code
+  case SCSI_SENSE_MODE_FORMAT_DEVICE:  //Drive parameters
+    m_buf[a + 0] = SCSI_SENSE_MODE_FORMAT_DEVICE; //Page code
     m_buf[a + 1] = 0x16; // Page length
     if(pageControl != 1) {
       m_buf[a + 11] = 0x3F;//Number of sectors / track
@@ -1275,10 +1277,10 @@ byte onModeSenseCommand(byte scsi_cmd, byte dbd, byte cmd2, uint32_t len)
       m_buf[a + 15] = 0x1; // Interleave
     }
     a += 0x18;
-    if(pageCode != 0x3F) break;
+    if(pageCode != SCSI_SENSE_MODE_ALL) break;
 
-  case 0x04:  //Drive parameters
-    m_buf[a + 0] = 0x04; //Page code
+  case SCSI_SENSE_MODE_DISK_GEOMETRY:  //Drive parameters
+    m_buf[a + 0] = SCSI_SENSE_MODE_DISK_GEOMETRY; //Page code
     m_buf[a + 1] = 0x16; // Page length
     if(pageControl != 1) {
       unsigned cylinders = bc / (16 * 63);
@@ -1288,19 +1290,28 @@ byte onModeSenseCommand(byte scsi_cmd, byte dbd, byte cmd2, uint32_t len)
       m_buf[a + 5] = 16;   //Number of heads
     }
     a += 0x18;
-    if(pageCode != 0x3F) break;
-  case 0x30:
+    if(pageCode != SCSI_SENSE_MODE_ALL) break;
+  case SCSI_SENSE_MODE_FLEXABLE_GEOMETRY:
+    m_buf[a + 0] = SCSI_SENSE_MODE_FLEXABLE_GEOMETRY;
+    m_buf[a + 1] = 0x1E;  // Page length
+    m_buf[a + 2] = 0x03E8; // Transfer rate 1 mbit/s
+    m_buf[a + 4] = 16; // Number of heads
+    m_buf[a + 5] = 18; // Sectors per track
+    m_buf[a + 6] = 0x2000; // Data bytes per sector
+    a += 0x1E;
+    if(pageCode != SCSI_SENSE_MODE_ALL) break;
+  case SCSI_SENSE_MODE_VENDOR_APPLE:
     {
       const byte page30[0x14] = {0x41, 0x50, 0x50, 0x4C, 0x45, 0x20, 0x43, 0x4F, 0x4D, 0x50, 0x55, 0x54, 0x45, 0x52, 0x2C, 0x20, 0x49, 0x4E, 0x43, 0x20};
-      m_buf[a + 0] = 0x30; // Page code
+      m_buf[a + 0] = SCSI_SENSE_MODE_VENDOR_APPLE; // Page code
       m_buf[a + 1] = sizeof(page30); // Page length
       if(pageControl != 1) {
         memcpy(&m_buf[a + 2], page30, sizeof(page30));
       }
       a += 2 + sizeof(page30);
-      if(pageCode != 0x3F) break;
+      if(pageCode != SCSI_SENSE_MODE_ALL) break;
     }
-    break; // Don't want 0x3F falling through to error condition
+    break; // Don't want SCSI_SENSE_MODE_ALL falling through to error condition
 
   default:
     m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
@@ -1334,10 +1345,12 @@ byte onModeSelectCommand(byte scsi_cmd, byte flags, uint32_t len)
   //0 0 0 8 0 0 0 0 0 0 2 0 0 2 10 0 1 6 24 10 8 0 0 0
   //I believe mode page 0 set to 10 00 is Disable Unit Attention
   //Mode page 1 set to 24 10 08 00 00 00 is TB and PER set, read retry count 16, correction span 8
+  #if DEBUG > 0
   for (unsigned i = 0; i < len; i++) {
     LOGHEX(m_buf[i]);LOG(" ");
   }
   LOGN("");
+  #endif
   return SCSI_STATUS_GOOD;
 }
 
@@ -1353,6 +1366,127 @@ byte onTestUnitReady()
     return SCSI_STATUS_CHECK_CONDITION;
   }
   return SCSI_STATUS_GOOD;
+}
+/*
+ * ReZero Unit - Move to Logical Block Zero in file.
+ */
+byte onReZeroUnit() {
+  LOGN("-ReZeroUnit");
+  // Make sure we have an image with atleast a first byte.
+  // Actually seeking to the position wont do anything, so dont.
+  return checkBlockCommand(0, 0);
+}
+
+/*
+ * WriteBuffer - Used for testing buffer, no change to medium
+ */
+byte onWriteBuffer(byte mode, uint32_t allocLength)
+{
+  LOGN("-WriteBuffer");
+  LOGHEXN(mode);
+  LOGHEXN(allocLength);
+
+  if (mode == MODE_COMBINED_HEADER_DATA && (allocLength - 4) <= SCSI_BUF_SIZE)
+  {
+    byte tmp[allocLength];
+    readDataPhase(allocLength, tmp);
+    // Drop header
+    memcpy(m_scsi_buf, (&tmp[4]), allocLength - 4);
+    #if DEBUG > 0
+    for (unsigned i = 0; i < allocLength; i++) {
+      LOGHEX(tmp[i]);LOG(" ");
+    }
+    LOGN("");
+    #endif
+    return SCSI_STATUS_GOOD;
+  }
+  else if ( mode == MODE_DATA && allocLength <= SCSI_BUF_SIZE)
+  {
+    readDataPhase(allocLength, m_scsi_buf);
+    #if DEBUG > 0
+    for (unsigned i = 0; i < allocLength; i++) {
+      LOGHEX(m_scsi_buf[i]);LOG(" ");
+    }
+    LOGN("");
+    #endif
+    return SCSI_STATUS_GOOD;
+  }
+  else
+  {
+    m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
+    m_addition_sense = SCSI_ASC_INVALID_FIELD_IN_CDB;
+    return SCSI_STATUS_CHECK_CONDITION;
+  }
+}
+
+/*
+ * ReadBuffer - Used for testing buffer, no change to medium
+ */
+byte onReadBuffer(byte mode, uint32_t allocLength)
+{
+  LOGN("-ReadBuffer");
+  LOGHEXN(mode);
+  LOGHEXN(allocLength);
+
+  if (mode == MODE_COMBINED_HEADER_DATA)
+  {
+    byte scsi_buf_response[SCSI_BUF_SIZE + 4];
+    // four byte read buffer header
+    scsi_buf_response[0] = 0;
+    scsi_buf_response[1] = (SCSI_BUF_SIZE >> 16) & 0xff;
+    scsi_buf_response[2] = (SCSI_BUF_SIZE >> 8) & 0xff;
+    scsi_buf_response[3] = SCSI_BUF_SIZE & 0xff;
+    // actual data
+    memcpy((&scsi_buf_response[4]), m_scsi_buf, SCSI_BUF_SIZE);
+
+    writeDataPhase(SCSI_BUF_SIZE + 4, scsi_buf_response);
+
+    #if DEBUG > 0
+    for (unsigned i = 0; i < allocLength; i++) {
+      LOGHEX(m_scsi_buf[i]);LOG(" ");
+    }
+    LOGN("");
+    #endif
+    return SCSI_STATUS_GOOD;
+  }
+  else if (mode == MODE_DATA)
+  {
+    writeDataPhase(allocLength, m_scsi_buf);
+    #if DEBUG > 0
+    for (unsigned i = 0; i < allocLength; i++) {
+      LOGHEX(m_scsi_buf[i]);LOG(" ");
+    }
+    LOGN("");
+    #endif
+    return SCSI_STATUS_GOOD;
+  }
+  else
+  {
+    m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
+    m_addition_sense = SCSI_ASC_INVALID_FIELD_IN_CDB;
+    return SCSI_STATUS_CHECK_CONDITION;
+  }
+}
+
+/*
+ * On Send Diagnostic
+ */
+byte onSendDiagnostic(byte flags)
+{
+  int self_test = flags & 0x4;
+  LOGN("-SendDiagnostic");
+  LOGHEXN(flags);
+  if(self_test)
+  {
+    // Don't actually do a test, we're good.
+    return SCSI_STATUS_GOOD;
+  }
+  else
+  {
+    m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
+    m_addition_sense = SCSI_ASC_INVALID_FIELD_IN_CDB;
+    return SCSI_STATUS_CHECK_CONDITION;
+  }
 }
 
 /*
@@ -1521,8 +1655,9 @@ void loop()
     LOGN("[Test Unit Ready]");
     m_sts |= onTestUnitReady();
     break;
-  case SCSI_REZERO_UNIT: // TODO: Implement me!
+  case SCSI_REZERO_UNIT:
     LOGN("[Rezero Unit]");
+    m_sts |= onReZeroUnit();
     break;
   case SCSI_REQUEST_SENSE:
     LOGN("[RequestSense]");
@@ -1595,6 +1730,17 @@ void loop()
   case SCSI_MODE_SENSE10:
     LOGN("[ModeSense10]");
     m_sts |= onModeSenseCommand(cmd[0], cmd[1] & 0x80, cmd[2], ((uint32_t)cmd[7] << 8) | cmd[8]);
+    break;
+  case SCSI_WRITE_BUFFER:
+    LOGN("[WriteBuffer]");
+    m_sts |= onWriteBuffer(cmd[1] & 7, ((uint32_t)cmd[6] << 16) | ((uint32_t)cmd[7] << 8) | cmd[8]);
+    break;
+  case SCSI_READ_BUFFER:
+    LOGN("[ReadBuffer]");
+    m_sts |= onReadBuffer(cmd[1] & 7, ((uint32_t)cmd[6] << 16) | ((uint32_t)cmd[7] << 8) | cmd[8]);
+    break;
+  case SCSI_SEND_DIAG:
+    m_sts |= onSendDiagnostic(cmd[1]);
     break;
   default:
     LOGN("[*Unknown]");
