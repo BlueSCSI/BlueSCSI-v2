@@ -1651,6 +1651,23 @@ void loop()
 
   LOGN("");
   switch(cmd[0]) {
+  case SCSI_READ6:
+    LOGN("[Read6]");
+    m_sts |= onReadCommand((((uint32_t)cmd[1] & 0x1F) << 16) | ((uint32_t)cmd[2] << 8) | cmd[3], (cmd[4] == 0) ? 0x100 : cmd[4]);
+    break;
+  case SCSI_WRITE6:
+    LOGN("[Write6]");
+    m_sts |= onWriteCommand((((uint32_t)cmd[1] & 0x1F) << 16) | ((uint32_t)cmd[2] << 8) | cmd[3], (cmd[4] == 0) ? 0x100 : cmd[4]);
+    break;
+  case SCSI_READ10:
+    LOGN("[Read10]");
+    m_sts |= onReadCommand(((uint32_t)cmd[2] << 24) | ((uint32_t)cmd[3] << 16) | ((uint32_t)cmd[4] << 8) | cmd[5], ((uint32_t)cmd[7] << 8) | cmd[8]);
+    break;
+  case SCSI_WRITE10:
+  case SCSI_WRITE_AND_VERIFY:
+    LOGN("[Write10]");
+    m_sts |= onWriteCommand(((uint32_t)cmd[2] << 24) | ((uint32_t)cmd[3] << 16) | ((uint32_t)cmd[4] << 8) | cmd[5], ((uint32_t)cmd[7] << 8) | cmd[8]);
+    break;
   case SCSI_TEST_UNIT_READY:
     LOGN("[Test Unit Ready]");
     m_sts |= onTestUnitReady();
@@ -1672,17 +1689,6 @@ void loop()
   case SCSI_REASSIGN_BLOCKS: // TODO: Implement me!
     LOGN("[ReassignBlocks]");
     break;
-  case SCSI_READ6:
-    LOGN("[Read6]");
-    m_sts |= onReadCommand((((uint32_t)cmd[1] & 0x1F) << 16) | ((uint32_t)cmd[2] << 8) | cmd[3], (cmd[4] == 0) ? 0x100 : cmd[4]);
-    break;
-  case SCSI_WRITE6:
-    LOGN("[Write6]");
-    m_sts |= onWriteCommand((((uint32_t)cmd[1] & 0x1F) << 16) | ((uint32_t)cmd[2] << 8) | cmd[3], (cmd[4] == 0) ? 0x100 : cmd[4]);
-    break;
-  case SCSI_SEEK6: // TODO: Implement me!
-    LOGN("[Seek6]");
-    break;
   case SCSI_INQUIRY:
     LOGN("[Inquiry]");
     m_sts |= onInquiryCommand(cmd[4]);
@@ -1701,18 +1707,6 @@ void loop()
   case SCSI_READ_CAPACITY:
     LOGN("[ReadCapacity]");
     m_sts |= onReadCapacityCommand(cmd[8]);
-    break;
-  case SCSI_READ10:
-    LOGN("[Read10]");
-    m_sts |= onReadCommand(((uint32_t)cmd[2] << 24) | ((uint32_t)cmd[3] << 16) | ((uint32_t)cmd[4] << 8) | cmd[5], ((uint32_t)cmd[7] << 8) | cmd[8]);
-    break;
-  case SCSI_WRITE10:
-  case SCSI_WRITE_AND_VERIFY:
-    LOGN("[Write10]");
-    m_sts |= onWriteCommand(((uint32_t)cmd[2] << 24) | ((uint32_t)cmd[3] << 16) | ((uint32_t)cmd[4] << 8) | cmd[5], ((uint32_t)cmd[7] << 8) | cmd[8]);
-    break;
-  case SCSI_SEEK10: // TODO: Implement me!
-    LOGN("[Seek10]");
     break;
   case SCSI_VERIFY10:
     LOGN("[Verify10]");
