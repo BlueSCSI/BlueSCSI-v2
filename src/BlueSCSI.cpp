@@ -1737,6 +1737,8 @@ void loop()
   case SCSI_LOCK_UNLOCK_CACHE: // Commands we dont have anything to do but can safely respond GOOD.
   case SCSI_PREFETCH:          // In the future we could implement something to mimic these.
   case SCSI_PREVENT_ALLOW_REMOVAL:
+  case SCSI_SEEK6:
+  case SCSI_SEEK10:
     m_sts |= SCSI_STATUS_GOOD;
     break;
   default:
