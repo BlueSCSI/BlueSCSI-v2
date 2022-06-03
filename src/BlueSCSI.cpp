@@ -961,10 +961,6 @@ void writeDataPhase(int len, const byte* p)
 #endif
   SCSI_DB_OUTPUT()
   writeDataLoop(len, p);
-  SCSI_DB_INPUT()
-#ifdef XCVR
-  TRANSCEIVER_IO_SET(vTR_DBP,TR_INPUT)
-#endif
 }
 
 /*
@@ -992,10 +988,6 @@ void writeDataPhaseSD(uint32_t adds, uint32_t len)
 
     writeDataLoop(m_img->m_blocksize, m_buf);
   }
-  SCSI_DB_INPUT()
-#ifdef XCVR
-  TRANSCEIVER_IO_SET(vTR_DBP,TR_INPUT)
-#endif
 }
 
 #pragma GCC push_options
