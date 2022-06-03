@@ -1490,6 +1490,20 @@ byte onSendDiagnostic(byte flags)
 }
 
 /*
+ * Read Defect Data
+ */
+byte onReadDefectData(const byte *cdb)
+{
+  byte response[4] = {
+    0x0, // Reserved
+    cdb[2], // echo back Reserved, Plist, Glist, Defect list format
+    cdb[7], cdb[8] // echo back defect list length
+  };
+  writeDataPhase(4, response);
+  return SCSI_STATUS_GOOD;
+}
+
+/*
  * MsgIn2.
  */
 void MsgIn2(int msg)
@@ -1733,6 +1747,9 @@ void loop()
     break;
   case SCSI_SEND_DIAG:
     m_sts |= onSendDiagnostic(cmd[1]);
+    break;
+  case SCSI_READ_DEFECT_DATA:
+    m_sts |= onReadDefectData(cmd);
     break;
   case SCSI_LOCK_UNLOCK_CACHE: // Commands we dont have anything to do but can safely respond GOOD.
   case SCSI_PREFETCH:          // In the future we could implement something to mimic these.
