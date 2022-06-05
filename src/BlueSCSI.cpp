@@ -1768,5 +1768,11 @@ BusFree:
   SCSI_TARGET_INACTIVE() // Turn off BSY, REQ, MSG, CD, IO output
 #ifdef XCVR
   TRANSCEIVER_IO_SET(vTR_TARGET,TR_INPUT);
+  // Something in code linked after this function is performing better with a +4 alignment.
+  // Adding this nop is causing the next function (_GLOBAL__sub_I_SD) to have an address with a last digit of 0x4.
+  // Last digit of 0xc also works.
+  // This affects both with and without XCVR, currently without XCVR doesn't need any padding.
+  // Until the culprit can be tracked down and fixed, it may be necessary to do manual adjustment.
+  asm("nop.w");
 #endif
 }
