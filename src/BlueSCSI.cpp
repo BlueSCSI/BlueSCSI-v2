@@ -920,9 +920,6 @@ void writeDataLoop(uint32_t blocksize, const byte* srcptr)
   // Start the first bus cycle.
   FETCH_BSRR_DB();
   REQ_OFF_DB_SET(bsrr_val);
-#ifdef XCVR
-  TRANSCEIVER_IO_SET(vTR_DBP,TR_OUTPUT)
-#endif
   REQ_ON();
   FETCH_BSRR_DB();
   WAIT_ACK_ACTIVE();
@@ -959,9 +956,11 @@ void writeDataPhase(int len, const byte* p)
   LOGN("DATAIN PHASE");
   SCSI_PHASE_CHANGE(SCSI_PHASE_DATAIN);
   // Bus settle delay 400ns. Following code was measured at 800ns before REQ asserted. STM32F103.
+#ifdef XCVR
+  TRANSCEIVER_IO_SET(vTR_DBP,TR_OUTPUT)
+#endif
   SCSI_DB_OUTPUT()
   writeDataLoop(len, p);
-  SCSI_DB_INPUT()
 }
 
 /*
@@ -977,6 +976,9 @@ void writeDataPhaseSD(uint32_t adds, uint32_t len)
   uint64_t pos = (uint64_t)adds * m_img->m_blocksize;
   m_img->m_file.seekSet(pos);
 
+#ifdef XCVR
+  TRANSCEIVER_IO_SET(vTR_DBP,TR_OUTPUT)
+#endif
   SCSI_DB_OUTPUT()
   for(uint32_t i = 0; i < len; i++) {
       // Asynchronous reads will make it faster ...
@@ -986,10 +988,6 @@ void writeDataPhaseSD(uint32_t adds, uint32_t len)
 
     writeDataLoop(m_img->m_blocksize, m_buf);
   }
-  SCSI_DB_INPUT()
-#ifdef XCVR
-  TRANSCEIVER_IO_SET(vTR_DBP,TR_INPUT)
-#endif
 }
 
 #pragma GCC push_options
@@ -1770,5 +1768,11 @@ BusFree:
   SCSI_TARGET_INACTIVE() // Turn off BSY, REQ, MSG, CD, IO output
 #ifdef XCVR
   TRANSCEIVER_IO_SET(vTR_TARGET,TR_INPUT);
+  // Something in code linked after this function is performing better with a +4 alignment.
+  // Adding this nop is causing the next function (_GLOBAL__sub_I_SD) to have an address with a last digit of 0x4.
+  // Last digit of 0xc also works.
+  // This affects both with and without XCVR, currently without XCVR doesn't need any padding.
+  // Until the culprit can be tracked down and fixed, it may be necessary to do manual adjustment.
+  asm("nop.w");
 #endif
 }
