@@ -39,7 +39,7 @@
 #include <SdFat.h>
 #include <setjmp.h>
 
-#define DEBUG            0      // 0:No debug information output
+#define DEBUG            1      // 0:No debug information output
                                 // 1: Debug information output to USB Serial
                                 // 2: Debug information output to LOG.txt (slow)
 
@@ -216,12 +216,12 @@ bool hddimageOpen(SCSI_DEVICE *dev, FsFile *file,int id,int lun,int blocksize)
 {
   dev->m_fileSize= 0;
   dev->m_blocksize = blocksize;
-  dev->m_blockcount = dev->m_fileSize / dev->m_blocksize;
-  dev->m_file = new FsFile(*file);
+  dev->m_file = file;
   dev->m_type = SCSI_DEVICE_HDD;
   if(dev->m_file->isOpen())
   {
     dev->m_fileSize = dev->m_file->size();
+    dev->m_blockcount = dev->m_fileSize / dev->m_blocksize;
     if(dev->m_fileSize>0)
     {
       // check blocksize dummy file
@@ -438,7 +438,7 @@ void setup()
 
 void findDriveImages(FsFile root) {
   bool image_ready;
-  FsFile file;
+  FsFile *file = NULL;
   char path_name[MAX_FILE_PATH+1];
   root.getName(path_name, sizeof(path_name));
   SD.chdir(path_name);
@@ -461,8 +461,8 @@ void findDriveImages(FsFile root) {
       break;
     }
     // Valid file, open for reading/writing.
-    file = SD.open(name, O_RDWR);
-    if(file && file.isFile()) {
+    file = new FsFile(SD.open(name, O_RDWR));
+    if(file && file->isFile()) {
       if(tolower(name[0]) == 'h' && tolower(name[1]) == 'd') {
         // Defaults for Hard Disks
         int id  = 1; // 0 and 3 are common in Macs for physical HD and CD, so avoid them.
@@ -516,7 +516,7 @@ void findDriveImages(FsFile root) {
           dev = &scsi_device_list[id][lun];
           LOG_FILE.print(" - ");
           LOG_FILE.print(name);
-          image_ready = hddimageOpen(dev, &file, id, lun, blk);
+          image_ready = hddimageOpen(dev, file, id, lun, blk);
           if(image_ready) { // Marked as a responsive ID
             scsi_id_mask |= 1<<id;
             
@@ -553,7 +553,8 @@ void findDriveImages(FsFile root) {
         }
       }
     } else {
-      file.close();
+      file->close();
+      delete file;
       LOG_FILE.print("Not an image: ");
       LOG_FILE.println(name);
     }
@@ -1022,7 +1023,7 @@ byte onReadCapacity(SCSI_DEVICE *dev, const byte *cdb)
 byte checkBlockCommand(SCSI_DEVICE *dev, uint32_t adds, uint32_t len)
 {
   // Check block range is valid
-  if (adds >= dev->m_blockcount || (adds + len) > dev->m_blockcount) {
+  if (adds >= dev->m_blockcount || (adds + len) > dev->m_blockcount) {    
     dev->m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
     dev->m_additional_sense_code = SCSI_ASC_LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
     return SCSI_STATUS_CHECK_CONDITION;
