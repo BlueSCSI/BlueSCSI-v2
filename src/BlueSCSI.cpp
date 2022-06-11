@@ -39,7 +39,7 @@
 #include <SdFat.h>
 #include <setjmp.h>
 
-#define DEBUG            1      // 0:No debug information output
+#define DEBUG            0      // 0:No debug information output
                                 // 1: Debug information output to USB Serial
                                 // 2: Debug information output to LOG.txt (slow)
 
