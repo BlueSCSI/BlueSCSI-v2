@@ -89,8 +89,8 @@
 #define PCREG GPIOC->regs
 
 // LED control
-#define LED_ON()  PCREG->BSRR = 0b00100000000000000000000000000000;
-#define LED_OFF() PCREG->BSRR = 0b00000000000000000010000000000000;
+#define LED_ON()  PCREG->BSRR = 0b00100000000000000000000000000000; PAREG->BSRR = 0b00000000000000000000000000000001;
+#define LED_OFF() PCREG->BSRR = 0b00000000000000000010000000000000; PAREG->BSRR = 0b00000000000000010000000000000000;
 
 // Virtual pin (Arduio compatibility is slow, so make it MCU-dependent)
 #define PA(BIT)       (BIT)
@@ -311,7 +311,7 @@ typedef __attribute__((aligned(4))) struct _SCSI_DEVICE
 	uint64_t      m_fileSize;             // File size
 	size_t        m_blocksize;            // SCSI BLOCK size
   uint8_t       m_type;                 // SCSI device type
-  unsigned long m_blockcount;           // blockcount
+  uint32_t      m_blockcount;           // blockcount
   bool          m_raw;                  // Raw disk
   SCSI_INQUIRY_DATA inquiry_block;      // SCSI information
   uint8_t       m_senseKey;               // Sense key
