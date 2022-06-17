@@ -44,7 +44,7 @@
                                 // 2: Debug information output to LOG.txt (slow)
 
 // Log File
-#define VERSION "1.1-SNAPSHOT-20220522"
+#define VERSION "1.1-SNAPSHOT-20220617"
 #define LOG_FILENAME "LOG.txt"
 
 #include "BlueSCSI.h"
