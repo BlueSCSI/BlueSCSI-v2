@@ -1,7 +1,7 @@
 
 # Build Your Own
 
-These instructions will guide you thorugh purchasing all of the parts needed to assemble kits for yourselves and for friends! Please note the hardware is licensed non-comercial.
+These instructions will guide you through purchasing all of the parts needed to assemble kits for yourselves and for friends! Please note the hardware is licensed non-commercial.
 
 If you'd like to buy the kits pre-packaged/pre-flashed or fully assembled we have a network of makers here to help you out at https://scsi.blue
 
@@ -11,11 +11,11 @@ Updated for 1.0-c.
 
 ### PCB's
 
-Grab the latest Gerbers. Gerber files tell the PCB manufactuer how to create the BlueSCSI boards.
+Grab the latest Gerbers. Gerber files tell the PCB manufacturer how to create the BlueSCSI boards.
 
 https://github.com/erichelgeson/BlueSCSI/tree/main/hw/
 
-Order the boards from https://jlcpcb.com/ or your manufactuer of choice.
+Order the boards from https://jlcpcb.com/ or your manufacturer of choice.
 
 ### Components
 
@@ -55,6 +55,6 @@ https://github.com/erichelgeson/BlueSCSI#flashing
 
 ## Usage
 
-Be sure to follow the usage instructions for getting your drive images setup:
+Be sure to follow the usage instructions for getting your drive images set up:
 
 https://github.com/erichelgeson/BlueSCSI#usage
