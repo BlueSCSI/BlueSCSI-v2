@@ -76,26 +76,7 @@ byte          m_msb[256];                // Command storage bytes
 SCSI_DEVICE scsi_device_list[NUM_SCSIID][NUM_SCSILUN]; // Maximum number
 SCSI_INQUIRY_DATA default_hdd, default_optical;
 
-static byte onUnimplemented(SCSI_DEVICE *dev, const byte *cdb)
-{
-  // does nothing!
-  if(Serial)
-  {
-    Serial.print("Unimplemented SCSI command: ");
-    Serial.println(cdb[0], 16);
-  }
 
-  dev->m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
-  dev->m_additional_sense_code = SCSI_ASC_INVALID_OPERATION_CODE;
-  return SCSI_STATUS_CHECK_CONDITION;
-}
-
-static byte onNOP(SCSI_DEVICE *dev, const byte *cdb)
-{
-  dev->m_senseKey = 0;
-  dev->m_additional_sense_code = 0;
-  return SCSI_STATUS_GOOD;
-}
 
 #define MAX_SCSI_COMMAND  0xff
 
@@ -105,6 +86,9 @@ byte (*scsi_command_table[MAX_SCSI_COMMAND])(SCSI_DEVICE *dev, const byte *cdb);
 #define SCSI_COMMAND_HANDLER(x) static byte x(SCSI_DEVICE *dev, const byte *cdb)
 
 // scsi command functions
+SCSI_COMMAND_HANDLER(onUnimplemented);
+SCSI_COMMAND_HANDLER(onNOP);
+
 SCSI_COMMAND_HANDLER(onRequestSense);
 SCSI_COMMAND_HANDLER(onRead6);
 SCSI_COMMAND_HANDLER(onRead10);
@@ -972,6 +956,264 @@ void verifyDataPhaseSD(SCSI_DEVICE *dev, uint32_t adds, uint32_t len)
   }
 }
 
+
+/*
+ * MsgIn2.
+ */
+void MsgIn2(int msg)
+{
+  LOGN("MsgIn2");
+  SCSI_PHASE_CHANGE(SCSI_PHASE_MESSAGEIN);
+  // Bus settle delay 400ns built in to writeHandshake
+  writeHandshake(msg);
+}
+
+/*
+ * Main loop.
+ */
+void loop() 
+{
+#ifdef XCVR
+  // Reset all DB and Target pins, switch transceivers to input
+  // Precaution against bugs or jumps which don't clean up properly
+  SCSI_DB_INPUT();
+  TRANSCEIVER_IO_SET(vTR_DBP,TR_INPUT)
+  SCSI_TARGET_INACTIVE();
+  TRANSCEIVER_IO_SET(vTR_INITIATOR,TR_INPUT)
+#endif
+
+  //int msg = 0;
+  m_msg = 0;
+  m_lun = 0xff;
+  SCSI_DEVICE *dev = (SCSI_DEVICE *)0; // HDD image for current SCSI-ID, LUN
+
+  // Wait until RST = H, BSY = H, SEL = L
+  do {} while( SCSI_IN(vBSY) || !SCSI_IN(vSEL) || SCSI_IN(vRST));
+
+  // BSY+ SEL-
+  // If the ID to respond is not driven, wait for the next
+  //byte db = readIO();
+  //byte scsiid = db & scsi_id_mask;
+  byte scsiid = readIO() & scsi_id_mask;
+  if((scsiid) == 0) {
+    delayMicroseconds(1);
+    return;
+  }
+  LOGN("Selection");
+  m_isBusReset = false;
+  if (setjmp(m_resetJmpBuf) == 1) {
+    LOGN("Reset, going to BusFree");
+    goto BusFree;
+  }
+  enableResetJmp();
+  
+  // Set BSY to-when selected
+  SCSI_BSY_ACTIVE();     // Turn only BSY output ON, ACTIVE
+
+  // Ask for a TARGET-ID to respond
+  m_id = 31 - __builtin_clz(scsiid);
+
+  // Wait until SEL becomes inactive
+  while(isHigh(gpio_read(SEL)) && isLow(gpio_read(BSY))) {
+  }
+  
+#ifdef XCVR
+  // Reconfigure target pins to output mode, after resetting their values
+  GPIOB->regs->BSRR = 0x000000E8; // MSG, CD, REQ, IO
+//  GPIOA->regs->BSRR = 0x00000200; // BSY
+#endif
+  SCSI_TARGET_ACTIVE()  // (BSY), REQ, MSG, CD, IO output turned on
+
+  //  
+  if(isHigh(gpio_read(ATN))) {
+    SCSI_PHASE_CHANGE(SCSI_PHASE_MESSAGEOUT);
+    // Bus settle delay 400ns. Following code was measured at 350ns before REQ asserted. Added another 50ns. STM32F103.
+    SCSI_PHASE_CHANGE(SCSI_PHASE_MESSAGEOUT);// 28ns delay STM32F103
+    SCSI_PHASE_CHANGE(SCSI_PHASE_MESSAGEOUT);// 28ns delay STM32F103
+    bool syncenable = false;
+    int syncperiod = 50;
+    int syncoffset = 0;
+    int msc = 0;
+    while(isHigh(gpio_read(ATN)) && msc < 255) {
+      m_msb[msc++] = readHandshake();
+    }
+    for(int i = 0; i < msc; i++) {
+      // ABORT
+      if (m_msb[i] == 0x06) {
+        goto BusFree;
+      }
+      // BUS DEVICE RESET
+      if (m_msb[i] == 0x0C) {
+        syncoffset = 0;
+        goto BusFree;
+      }
+      // IDENTIFY
+      if (m_msb[i] >= 0x80) {
+        m_lun = m_msb[i] & 0x1f;
+        if(m_lun >= NUM_SCSILUN)
+        {
+          SCSI_DEVICE *d = &scsi_device_list[m_id][m_lun];
+          d->m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
+          d->m_additional_sense_code = SCSI_ASC_LOGICAL_UNIT_NOT_SUPPORTED;
+          m_sts |= SCSI_STATUS_CHECK_CONDITION;
+          goto Status;
+        }
+      }
+      // Extended message
+      if (m_msb[i] == 0x01) {
+        // Check only when synchronous transfer is possible
+        if (!syncenable || m_msb[i + 2] != 0x01) {
+          MsgIn2(0x07);
+          break;
+        }
+        // Transfer period factor(50 x 4 = Limited to 200ns)
+        syncperiod = m_msb[i + 3];
+        if (syncperiod > 50) {
+          syncperiod = 50;
+        }
+        // REQ/ACK offset(Limited to 16)
+        syncoffset = m_msb[i + 4];
+        if (syncoffset > 16) {
+          syncoffset = 16;
+        }
+        // STDR response message generation
+        MsgIn2(0x01);
+        MsgIn2(0x03);
+        MsgIn2(0x01);
+        MsgIn2(syncperiod);
+        MsgIn2(syncoffset);
+        break;
+      }
+    }
+  }
+
+  LOG("Command:");
+  SCSI_PHASE_CHANGE(SCSI_PHASE_COMMAND);
+  // Bus settle delay 400ns. The following code was measured at 20ns before REQ asserted. Added another 380ns. STM32F103.
+  asm("nop;nop;nop;nop;nop;nop;nop;nop");// This asm causes some code reodering, which adds 270ns, plus 8 nop cycles for an additional 110ns. STM32F103
+  int len;
+  byte cmd[12];
+  cmd[0] = readHandshake();
+  LOGHEX(cmd[0]);
+  // Command length selection, reception
+  static const int cmd_class_len[8]={6,10,10,6,6,12,6,6};
+  len = cmd_class_len[cmd[0] >> 5];
+  cmd[1] = readHandshake(); LOG(":");LOGHEX(cmd[1]);
+  cmd[2] = readHandshake(); LOG(":");LOGHEX(cmd[2]);
+  cmd[3] = readHandshake(); LOG(":");LOGHEX(cmd[3]);
+  cmd[4] = readHandshake(); LOG(":");LOGHEX(cmd[4]);
+  cmd[5] = readHandshake(); LOG(":");LOGHEX(cmd[5]);
+  // Receive the remaining commands
+  for(int i = 6; i < len; i++ ) {
+    cmd[i] = readHandshake();
+    LOG(":");
+    LOGHEX(cmd[i]);
+  }
+  // LUN confirmation
+  m_sts = cmd[1]&0xe0;      // Preset LUN in status byte
+  // if it wasn't set in the IDENTIFY then grab it from the CDB
+  if(m_lun > NUM_SCSILUN)
+  {
+      m_lun = m_sts>>5;
+  }
+
+  LOG(":ID ");
+  LOG(m_id);
+  LOG(":LUN ");
+  LOG(m_lun);
+  LOGN("");
+
+  dev = &(scsi_device_list[m_id][m_lun]);
+  // HDD Image selection
+  if(m_lun >= NUM_SCSILUN || !dev->m_file)
+  {
+    // REQUEST SENSE and INQUIRY are handled different with invalid LUNs
+    if(cmd[0] != SCSI_REQUEST_SENSE || cmd[0] != SCSI_INQUIRY)
+    {
+      dev->m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
+      dev->m_additional_sense_code = SCSI_ASC_LOGICAL_UNIT_NOT_SUPPORTED;
+      m_sts = SCSI_STATUS_CHECK_CONDITION;
+      goto Status;
+    }
+
+    if(cmd[0] == SCSI_INQUIRY)
+    {
+      // Special INQUIRY handling for invalid LUNs
+      LOGN("onInquiry - InvalidLUN");
+      dev = &(scsi_device_list[m_id][0]);
+
+      byte temp = dev->inquiry_block.raw[0];
+
+      // If the LUN is invalid byte 0 of inquiry block needs to be 7fh
+      dev->inquiry_block.raw[0] = 0x7f;
+
+      // only write back what was asked for
+      writeDataPhase(cmd[4], dev->inquiry_block.raw);
+
+      // return it back to normal if it was altered
+      dev->inquiry_block.raw[0] = temp;
+
+      m_sts = SCSI_STATUS_GOOD;
+      goto Status;
+    }
+  }
+
+  LED_ON();
+  m_sts = scsi_command_table[cmd[0]](dev, cmd);
+  LED_OFF();
+
+Status:
+  LOGN("Sts");
+  SCSI_PHASE_CHANGE(SCSI_PHASE_STATUS);
+  // Bus settle delay 400ns built in to writeHandshake
+  writeHandshake(m_sts);
+
+  LOGN("MsgIn");
+  SCSI_PHASE_CHANGE(SCSI_PHASE_MESSAGEIN);
+  // Bus settle delay 400ns built in to writeHandshake
+  writeHandshake(m_msg);
+
+BusFree:
+  LOGN("BusFree");
+  m_isBusReset = false;
+  //SCSI_OUT(vREQ,inactive) // gpio_write(REQ, low);
+  //SCSI_OUT(vMSG,inactive) // gpio_write(MSG, low);
+  //SCSI_OUT(vCD ,inactive) // gpio_write(CD, low);
+  //SCSI_OUT(vIO ,inactive) // gpio_write(IO, low);
+  //SCSI_OUT(vBSY,inactive)
+  SCSI_TARGET_INACTIVE() // Turn off BSY, REQ, MSG, CD, IO output
+#ifdef XCVR
+  TRANSCEIVER_IO_SET(vTR_TARGET,TR_INPUT);
+  // Something in code linked after this function is performing better with a +4 alignment.
+  // Adding this nop is causing the next function (_GLOBAL__sub_I_SD) to have an address with a last digit of 0x4.
+  // Last digit of 0xc also works.
+  // This affects both with and without XCVR, currently without XCVR doesn't need any padding.
+  // Until the culprit can be tracked down and fixed, it may be necessary to do manual adjustment.
+  asm("nop.w");
+#endif
+}
+
+static byte onUnimplemented(SCSI_DEVICE *dev, const byte *cdb)
+{
+  // does nothing!
+  if(Serial)
+  {
+    Serial.print("Unimplemented SCSI command: ");
+    Serial.println(cdb[0], 16);
+  }
+
+  dev->m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
+  dev->m_additional_sense_code = SCSI_ASC_INVALID_OPERATION_CODE;
+  return SCSI_STATUS_CHECK_CONDITION;
+}
+
+static byte onNOP(SCSI_DEVICE *dev, const byte *cdb)
+{
+  dev->m_senseKey = 0;
+  dev->m_additional_sense_code = 0;
+  return SCSI_STATUS_GOOD;
+}
+
 /*
  * INQUIRY command processing.
  */
@@ -1461,6 +1703,7 @@ byte onReadDefectData(SCSI_DEVICE *dev, const byte *cdb)
   return SCSI_STATUS_GOOD;
 }
 
+<<<<<<< HEAD
 /*
  * MsgIn2.
  */
@@ -1716,3 +1959,5 @@ BusFree:
   asm("nop.w");
 #endif
 }
+=======
+>>>>>>> faed60f (code layout adjustments)
