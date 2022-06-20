@@ -63,7 +63,7 @@ typedef enum
 typedef enum
 {
 	S2S_CFG_ENABLE_TERMINATOR = 1
-	//S2S_CFG_ENABLE_BLIND_WRITES = 2, // Obosolete
+	//S2S_CFG_ENABLE_BLIND_WRITES = 2, // Obsolete
 } S2S_CFG_FLAGS6;
 
 typedef enum

@@ -97,6 +97,7 @@ ifeq ($(TARGET),Linux)
 	BUILD := $(PWD)/build/linux
 	LIBUSB_CONFIG+=--disable-shared
 	LDFLAGS_LIBUSB+= -ludev -lpthread
+	USE_SYSTEM_DFU_UTIL = Yes
 endif
 ifeq ($(TARGET),Darwin)
 	# Should match OSX

@@ -384,15 +384,6 @@ ConfigUtil::toXML(const S2S_BoardCfg& config)
 		"	********************************************************* -->\n" <<
 		"	<scsiSpeed>" << static_cast<int>(config.scsiSpeed) << "</scsiSpeed>\n" <<
 
-		"	<!-- ********************************************************\n" <<
-		"	Enable SD card blind writes, which starts writing to the SD\n"
-		"	card before all the SCSI data has been received. Can cause problems\n" <<
-		"	with some SCSI hosts\n" <<
-		"	********************************************************* -->\n" <<
-		"	<blindWrites>" <<
-			(config.flags6 & S2S_CFG_ENABLE_BLIND_WRITES ? "true" : "false") <<
-			"</blindWrites>\n" <<
-
 		"</S2S_BoardCfg>\n";
 
 	return s.str();
@@ -610,18 +601,6 @@ parseBoardConfig(wxXmlNode* node)
 			else
 			{
 				result.flags6 = result.flags & ~S2S_CFG_ENABLE_TERMINATOR;
-			}
-		}
-		else if (child->GetName() == "blindWrites")
-		{
-			std::string s(child->GetNodeContent().mb_str());
-			if (s == "true")
-			{
-				result.flags6 |= S2S_CFG_ENABLE_BLIND_WRITES;
-			}
-			else
-			{
-				result.flags6 = result.flags & ~S2S_CFG_ENABLE_BLIND_WRITES;
 			}
 		}
 		else if (child->GetName() == "selLatch")
