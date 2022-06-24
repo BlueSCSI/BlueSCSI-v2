@@ -1228,7 +1228,7 @@ byte onModeSense(SCSI_DEVICE *dev, const byte *cdb)
     m_buf[a + 4] = 16; // Number of heads
     m_buf[a + 5] = 18; // Sectors per track
     m_buf[a + 6] = 0x2000; // Data bytes per sector
-    a += 0x1E;
+    a += 0x20;
     if(pageCode != SCSI_SENSE_MODE_ALL) break;
   case SCSI_SENSE_MODE_VENDOR_APPLE:
     {
