@@ -999,16 +999,18 @@ byte onRequestSense(SCSI_DEVICE *dev, const byte *cdb)
  * READ CAPACITY command processing.
  */
 byte onReadCapacity(SCSI_DEVICE *dev, const byte *cdb)
-{  
+{
+  uint32_t blocksize = dev->m_blocksize;
+  uint32_t blockcount = dev->m_fileSize / blocksize - 1; // Points to last LBA
   uint8_t buf[8] = {
-    dev->m_blockcount >> 24,
-    dev->m_blockcount >> 16,
-    dev->m_blockcount >> 8,
-    dev->m_blockcount - 1, // Points to last LBA
-    dev->m_blocksize >> 24,
-    dev->m_blocksize >> 16,
-    dev->m_blocksize >> 8,
-    dev->m_blocksize    
+    blockcount >> 24,
+    blockcount >> 16,
+    blockcount >> 8,
+    blockcount,
+    blocksize >> 24,
+    blocksize >> 16,
+    blocksize >> 8,
+    blocksize
   };
   writeDataPhase(8, buf);
   return SCSI_STATUS_GOOD;
@@ -1226,7 +1228,7 @@ byte onModeSense(SCSI_DEVICE *dev, const byte *cdb)
     m_buf[a + 4] = 16; // Number of heads
     m_buf[a + 5] = 18; // Sectors per track
     m_buf[a + 6] = 0x2000; // Data bytes per sector
-    a += 0x1E;
+    a += 0x20;
     if(pageCode != SCSI_SENSE_MODE_ALL) break;
   case SCSI_SENSE_MODE_VENDOR_APPLE:
     {
