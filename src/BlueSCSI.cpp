@@ -110,7 +110,6 @@ SCSI_COMMAND_HANDLER(onRead10);
 SCSI_COMMAND_HANDLER(onWrite6);
 SCSI_COMMAND_HANDLER(onWrite10);
 SCSI_COMMAND_HANDLER(onInquiry);
-SCSI_COMMAND_HANDLER(onModeSense);
 SCSI_COMMAND_HANDLER(onReadCapacity);
 SCSI_COMMAND_HANDLER(onModeSense);
 SCSI_COMMAND_HANDLER(onModeSelect);
@@ -285,7 +284,6 @@ void setup()
   scsi_command_table[SCSI_WRITE6] = onWrite6;
   scsi_command_table[SCSI_WRITE10] = onWrite10;
   scsi_command_table[SCSI_INQUIRY] = onInquiry;
-  scsi_command_table[SCSI_MODE_SELECT6] = onModeSense;
   scsi_command_table[SCSI_READ_CAPACITY] = onReadCapacity;
   scsi_command_table[SCSI_MODE_SENSE6] =  onModeSense;
   scsi_command_table[SCSI_MODE_SENSE10] = onModeSense;
@@ -1165,7 +1163,7 @@ byte onModeSense(SCSI_DEVICE *dev, const byte *cdb)
   int pageCode = cdb[2] & 0x3F;
   int pageControl = cdb[2] >> 6;
   int a = 4;
-  byte dbd = cdb[1] * 0x80;
+  byte dbd = cdb[1] & 0x08;
 
   if(cdb[0] == SCSI_MODE_SENSE10) a = 8;
 
