@@ -1000,19 +1000,18 @@ byte onRequestSense(SCSI_DEVICE *dev, const byte *cdb)
  */
 byte onReadCapacity(SCSI_DEVICE *dev, const byte *cdb)
 {
-  uint32_t blocksize = dev->m_blocksize;
-  uint32_t blockcount = dev->m_fileSize / blocksize - 1; // Points to last LBA
+  uint32_t lastlba = dev->m_blockcount - 1; // Points to last LBA
   uint8_t buf[8] = {
-    blockcount >> 24,
-    blockcount >> 16,
-    blockcount >> 8,
-    blockcount,
-    blocksize >> 24,
-    blocksize >> 16,
-    blocksize >> 8,
-    blocksize
+    lastlba >> 24,
+    lastlba >> 16,
+    lastlba >> 8,
+    lastlba,
+    dev->m_blocksize >> 24,
+    dev->m_blocksize >> 16,
+    dev->m_blocksize >> 8,
+    dev->m_blocksize
   };
-  writeDataPhase(8, buf);
+  writeDataPhase(sizeof(buf), buf);
   return SCSI_STATUS_GOOD;
 }
 
@@ -1224,10 +1223,14 @@ byte onModeSense(SCSI_DEVICE *dev, const byte *cdb)
   case SCSI_SENSE_MODE_FLEXABLE_GEOMETRY:
     m_buf[a + 0] = SCSI_SENSE_MODE_FLEXABLE_GEOMETRY;
     m_buf[a + 1] = 0x1E;  // Page length
-    m_buf[a + 2] = 0x03E8; // Transfer rate 1 mbit/s
-    m_buf[a + 4] = 16; // Number of heads
-    m_buf[a + 5] = 18; // Sectors per track
-    m_buf[a + 6] = 0x2000; // Data bytes per sector
+    if(pageControl != 1) {
+      m_buf[a + 2] = 0x03; 
+      m_buf[a + 3] = 0xE8; // Transfer rate 1 mbit/s
+      m_buf[a + 4] = 16; // Number of heads
+      m_buf[a + 5] = 18; // Sectors per track
+      m_buf[a + 6] = (byte)dev->m_blocksize >> 8;
+      m_buf[a + 7] = (byte)dev->m_blocksize & 0xff;  // Data bytes per sector
+    }
     a += 0x20;
     if(pageCode != SCSI_SENSE_MODE_ALL) break;
   case SCSI_SENSE_MODE_VENDOR_APPLE:
@@ -1267,12 +1270,6 @@ byte onModeSelect(SCSI_DEVICE *dev, const byte *cdb)
 {
   unsigned length = 0;
   LOGN("onModeSelect");
-
-  if (cdb[4] > MAX_BLOCKSIZE) {
-    dev->m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
-    dev->m_additional_sense_code = SCSI_ASC_INVALID_FIELD_IN_CDB;
-    return SCSI_STATUS_CHECK_CONDITION;
-  }
 
   if(dev->m_type != SCSI_DEVICE_HDD && (cdb[1] & 0x01))
   {
