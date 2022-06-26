@@ -1233,6 +1233,14 @@ byte onModeSense(SCSI_DEVICE *dev, const byte *cdb)
     }
     a += 0x20;
     if(pageCode != SCSI_SENSE_MODE_ALL) break;
+  case SCSI_SENSE_MODE_CACHING:
+    m_buf[a + 0] = SCSI_SENSE_MODE_CACHING;
+    m_buf[a + 1] = 0x0A;  // Page length
+    if(pageControl != 1) {
+      m_buf[a + 2] = 0x01; // Disalbe Read Cache so no one asks for Cache Stats page.
+    }
+    a += 0x08;
+    if(pageCode != SCSI_SENSE_MODE_ALL) break;
   case SCSI_SENSE_MODE_VENDOR_APPLE:
     {
       const byte page30[0x14] = {0x41, 0x50, 0x50, 0x4C, 0x45, 0x20, 0x43, 0x4F, 0x4D, 0x50, 0x55, 0x54, 0x45, 0x52, 0x2C, 0x20, 0x49, 0x4E, 0x43, 0x20};

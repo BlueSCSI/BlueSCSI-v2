@@ -38,6 +38,7 @@
 #define SCSI_SENSE_MODE_FORMAT_DEVICE               0x03
 #define SCSI_SENSE_MODE_DISK_GEOMETRY               0x04
 #define SCSI_SENSE_MODE_FLEXABLE_GEOMETRY           0x05
+#define SCSI_SENSE_MODE_CACHING                     0x08
 #define SCSI_SENSE_MODE_VENDOR_APPLE                0x30
 
 #define SCSI_SENSE_MODE_ALL                         0x3F
