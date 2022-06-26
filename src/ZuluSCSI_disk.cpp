@@ -1138,7 +1138,7 @@ static void doRead(uint32_t lba, uint32_t blocks)
 
     if (unlikely(((uint64_t) lba) + blocks > capacity))
     {
-        azlog("WARNING: Host attempted write at sector ", (int)lba, "+", (int)blocks,
+        azlog("WARNING: Host attempted read at sector ", (int)lba, "+", (int)blocks,
               ", exceeding image size ", (int)capacity, " sectors (",
               (int)bytesPerSector, "B/sector)");
         scsiDev.status = CHECK_CONDITION;
