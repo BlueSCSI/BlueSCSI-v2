@@ -309,7 +309,7 @@ typedef __attribute__((aligned(4))) struct _SCSI_DEVICE
 {
 	FsFile        *m_file;                 // File object
 	uint64_t      m_fileSize;             // File size
-	size_t        m_blocksize;            // SCSI BLOCK size
+	uint16_t      m_blocksize;            // SCSI BLOCK size
   uint8_t       m_type;                 // SCSI device type
   uint32_t      m_blockcount;           // blockcount
   bool          m_raw;                  // Raw disk
