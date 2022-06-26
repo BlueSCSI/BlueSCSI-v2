@@ -1198,6 +1198,19 @@ void diskDataIn_callback(uint32_t bytes_complete)
         bytes_complete &= ~3;
     }
 
+    // Machintosh SCSI driver can get confused if pauses occur in middle of
+    // a sector, so schedule the transfers in sector sized blocks.
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+    if (bytes_complete < g_disk_transfer.bytes_sd &&
+        img.quirks == S2S_CFG_QUIRKS_APPLE)
+    {
+        uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+        if (bytes_complete % bytesPerSector != 0)
+        {
+            bytes_complete -= bytes_complete % bytesPerSector;
+        }
+    }
+
     if (bytes_complete > g_disk_transfer.bytes_scsi)
     {
         // DMA is reading from SD card, bytes_complete bytes have already been read.
