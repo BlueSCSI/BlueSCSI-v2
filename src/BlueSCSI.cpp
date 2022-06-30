@@ -1589,8 +1589,16 @@ void loop()
   // Bus settle delay 400ns. The following code was measured at 20ns before REQ asserted. Added another 380ns. STM32F103.
   asm("nop;nop;nop;nop;nop;nop;nop;nop");// This asm causes some code reodering, which adds 270ns, plus 8 nop cycles for an additional 110ns. STM32F103
   int len;
-  byte cmd[12];
+  byte cmd[20];
+
   cmd[0] = readHandshake();
+  // Atari ST ICD extension support
+  // It sends a 0x1F as a indicator there is a 
+  // proper full size SCSI command byte to follow
+  // so just read it and re-read it again to get the
+  // real command byte
+  if(cmd[0] == 0x1F) { cmd[0] = readHandshake(); }
+
   LOGHEX(cmd[0]);
   // Command length selection, reception
   static const int cmd_class_len[8]={6,10,10,6,6,12,6,6};
