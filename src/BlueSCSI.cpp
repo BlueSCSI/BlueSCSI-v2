@@ -73,7 +73,8 @@ byte          m_msg;                     // Message bytes
 byte          m_buf[MAX_BLOCKSIZE];      // General purpose buffer
 byte          m_scsi_buf[SCSI_BUF_SIZE]; // Buffer for SCSI READ/WRITE Buffer
 byte          m_msb[256];                // Command storage bytes
-SCSI_DEVICE scsi_device_list[NUM_SCSIID][MAX_SCSILUN]; // Maximum number
+SCSI_DEVICE scsi_device_list[NUM_SCSIID][NUM_SCSILUN]; // Maximum number
+SCSI_INQUIRY_DATA default_hdd, default_optical;
 
 static byte onUnimplemented(SCSI_DEVICE *dev, const byte *cdb)
 {
@@ -150,7 +151,7 @@ void readSCSIDeviceConfig(SCSI_DEVICE *dev) {
   if (!config_file.isOpen()) {
     return;
   }
-  SCSI_INQUIRY_DATA *iq = &dev->inquiry_block;
+  SCSI_INQUIRY_DATA *iq = dev->inquiry_block;
 
   char vendor[9];
   memset(vendor, 0, sizeof(vendor));
@@ -294,6 +295,30 @@ void setup()
   scsi_command_table[SCSI_WRITE_BUFFER] = onWriteBuffer;
   scsi_command_table[SCSI_SEND_DIAG] = onSendDiagnostic;
   scsi_command_table[SCSI_READ_DEFECT_DATA] = onReadDefectData;
+
+  // clear and initialize default inquiry blocks
+  // default SCSI HDD
+  memset(&default_hdd, 0, sizeof(default_hdd));
+  default_hdd.ansi_version = 1;
+  default_hdd.response_format = 1;
+  default_hdd.additional_length = 31;
+  memcpy(&default_hdd.vendor, "QUANTUM", 7);
+  memcpy(&default_hdd.product, "FIREBALL1", 9);
+  memcpy(&default_hdd.revision, "1.0", 3);
+
+  // default SCSI CDROM
+  memset(&default_optical, 0, sizeof(default_optical));
+  default_optical.peripheral_device_type = 5;
+  default_optical.rmb = 1;
+  default_optical.ansi_version = 1;
+  default_optical.response_format = 1;
+  default_optical.additional_length = 42;
+  default_optical.sync = 1;
+  memcpy(&default_optical.vendor, "BLUESCSI", 8);
+  memcpy(&default_optical.product, "CD-ROM CDU-55S", 14);
+  memcpy(&default_optical.revision, "1.9a", 4);
+  default_optical.release = 0x20;
+  memcpy(&default_optical.revision_date, "1995", 4);
 
   // Serial initialization
 #if DEBUG > 0
@@ -521,27 +546,12 @@ void findDriveImages(FsFile root) {
             {
               case SCSI_DEVICE_HDD:
               // default SCSI HDD
-              dev->inquiry_block.ansi_version = 1;
-              dev->inquiry_block.response_format = 1;
-              dev->inquiry_block.additional_length = 31;
-              memcpy(dev->inquiry_block.vendor, "QUANTUM", 7);
-              memcpy(dev->inquiry_block.product, "BLUESCSI F1", 11);
-              memcpy(dev->inquiry_block.revision, "1.1", 3);
+              dev->inquiry_block = &default_hdd;        
               break;
               
               case SCSI_DEVICE_OPTICAL:
               // default SCSI CDROM
-              dev->inquiry_block.peripheral_device_type = 5;
-              dev->inquiry_block.rmb = 1;
-              dev->inquiry_block.ansi_version = 1;
-              dev->inquiry_block.response_format = 1;
-              dev->inquiry_block.additional_length = 42;
-              dev->inquiry_block.sync = 1;
-              memcpy(dev->inquiry_block.vendor, "BLUESCSI", 8);
-              memcpy(dev->inquiry_block.product, "CD-ROM CDU-55S", 14);
-              memcpy(dev->inquiry_block.revision, "1.9a", 4);
-              dev->inquiry_block.release = 0x20;
-              memcpy(dev->inquiry_block.revision_date, "1995", 4);
+              dev->inquiry_block = &default_optical;
               break;
             }
 
@@ -968,7 +978,7 @@ void verifyDataPhaseSD(SCSI_DEVICE *dev, uint32_t adds, uint32_t len)
  */
 byte onInquiry(SCSI_DEVICE *dev, const byte *cdb)
 {
-  writeDataPhase(cdb[4] < 36 ? cdb[4] : 36, dev->inquiry_block.raw);
+  writeDataPhase(cdb[4] < 36 ? cdb[4] : 36, dev->inquiry_block->raw);
   return SCSI_STATUS_GOOD;
 }
 
@@ -1547,14 +1557,6 @@ void loop()
       // IDENTIFY
       if (m_msb[i] >= 0x80) {
         m_lun = m_msb[i] & 0x1f;
-        if(m_lun >= NUM_SCSILUN)
-        {
-          SCSI_DEVICE *d = &scsi_device_list[m_id][m_lun];
-          d->m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
-          d->m_additional_sense_code = SCSI_ASC_LOGICAL_UNIT_NOT_SUPPORTED;
-          m_sts |= SCSI_STATUS_CHECK_CONDITION;
-          goto Status;
-        }
       }
       // Extended message
       if (m_msb[i] == 0x01) {
@@ -1607,11 +1609,10 @@ void loop()
     LOGHEX(cmd[i]);
   }
   // LUN confirmation
-  m_sts = cmd[1]&0xe0;      // Preset LUN in status byte
   // if it wasn't set in the IDENTIFY then grab it from the CDB
-  if(m_lun > NUM_SCSILUN)
+  if(m_lun > MAX_SCSILUN)
   {
-      m_lun = m_sts>>5;
+      m_lun = (cmd[1] & 0xe0) >> 5;
   }
 
   LOG(":ID ");
@@ -1620,39 +1621,59 @@ void loop()
   LOG(m_lun);
   LOGN("");
 
-  dev = &(scsi_device_list[m_id][m_lun]);
   // HDD Image selection
-  if(m_lun >= NUM_SCSILUN || !dev->m_file)
+  if(m_lun >= NUM_SCSILUN)
   {
-    // REQUEST SENSE and INQUIRY are handled different with invalid LUNs
-    if(cmd[0] != SCSI_REQUEST_SENSE || cmd[0] != SCSI_INQUIRY)
-    {
-      dev->m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
-      dev->m_additional_sense_code = SCSI_ASC_LOGICAL_UNIT_NOT_SUPPORTED;
-      m_sts = SCSI_STATUS_CHECK_CONDITION;
-      goto Status;
-    }
+    m_sts = SCSI_STATUS_GOOD;
 
+    // REQUEST SENSE and INQUIRY are handled different with invalid LUNs
     if(cmd[0] == SCSI_INQUIRY)
     {
       // Special INQUIRY handling for invalid LUNs
       LOGN("onInquiry - InvalidLUN");
       dev = &(scsi_device_list[m_id][0]);
 
-      byte temp = dev->inquiry_block.raw[0];
+      byte temp = dev->inquiry_block->raw[0];
 
       // If the LUN is invalid byte 0 of inquiry block needs to be 7fh
-      dev->inquiry_block.raw[0] = 0x7f;
+      dev->inquiry_block->raw[0] = 0x7f;
 
       // only write back what was asked for
-      writeDataPhase(cmd[4], dev->inquiry_block.raw);
+      writeDataPhase(cmd[4], dev->inquiry_block->raw);
 
       // return it back to normal if it was altered
-      dev->inquiry_block.raw[0] = temp;
-
-      m_sts = SCSI_STATUS_GOOD;
-      goto Status;
+      dev->inquiry_block->raw[0] = temp;
     }
+    else if(cmd[0] == SCSI_REQUEST_SENSE)
+    {
+      byte buf[18] = {
+        0x70,   //CheckCondition
+        0,      //Segment number
+        SCSI_SENSE_ILLEGAL_REQUEST,   //Sense key
+        0, 0, 0, 0,  //information
+        10,   //Additional data length
+        0, 0, 0, 0, // command specific information bytes
+        (byte)(SCSI_ASC_LOGICAL_UNIT_NOT_SUPPORTED >> 8),
+        (byte)SCSI_ASC_LOGICAL_UNIT_NOT_SUPPORTED,
+        0, 0, 0, 0,
+      };
+      writeDataPhase(cmd[4] < 18 ? cmd[4] : 18, buf);      
+    }
+    else
+    {    
+      m_sts = SCSI_STATUS_CHECK_CONDITION;
+    }
+
+    goto Status;
+  }
+
+  dev = &(scsi_device_list[m_id][m_lun]);
+  if(!dev->m_file)
+  {
+    dev->m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
+    dev->m_additional_sense_code = SCSI_ASC_LOGICAL_UNIT_NOT_SUPPORTED;
+    m_sts = SCSI_STATUS_CHECK_CONDITION;
+    goto Status;
   }
 
   LED_ON();
