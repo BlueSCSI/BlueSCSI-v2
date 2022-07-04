@@ -39,7 +39,7 @@
 #include <SdFat.h>
 #include <setjmp.h>
 
-#define DEBUG            1      // 0:No debug information output
+#define DEBUG            0      // 0:No debug information output
                                 // 1: Debug information output to USB Serial
                                 // 2: Debug information output to LOG.txt (slow)
 
@@ -1089,41 +1089,43 @@ void loop()
   SCSI_DEVICE *dev = (SCSI_DEVICE *)0; // HDD image for current SCSI-ID, LUN
 
   // Wait until RST = H, BSY = H, SEL = L
+  //do {} while( SCSI_IN(vBSY) || !SCSI_IN(vSEL) || SCSI_IN(vRST));
+  do {} while( !SCSI_IN(vBSY) || SCSI_IN(vRST));
+  //LOG(" A:"); LOGHEX(readIO()); LOG(" ");
   do {} while( SCSI_IN(vBSY) || !SCSI_IN(vSEL) || SCSI_IN(vRST));
-
+  //LOG(" S:"); LOGHEX(readIO()); LOG(" ");
   // BSY+ SEL-
   // If the ID to respond is not driven, wait for the next
   //byte db = readIO();
   //byte scsiid = db & scsi_id_mask;
   byte scsiid = readIO() & scsi_id_mask;
-  if((scsiid) == 0) {
+  if(SCSI_IN(vIO) || (scsiid) == 0) {
     delayMicroseconds(1);
     return;
   }
-  LOG(" S ");
-  m_isBusReset = false;
-  if (setjmp(m_resetJmpBuf) == 1) {
-    LOGN("Reset, going to BusFree");
-    goto BusFree;
-  }
-  enableResetJmp();
-  
-  // Set BSY to-when selected
-  SCSI_BSY_ACTIVE();     // Turn only BSY output ON, ACTIVE
 
-  // Ask for a TARGET-ID to respond
-  m_id = 31 - __builtin_clz(scsiid);
-
-  // Wait until SEL becomes inactive
-  while(isHigh(gpio_read(SEL)) && isLow(gpio_read(BSY))) {
-  }
-  
 #ifdef XCVR
   // Reconfigure target pins to output mode, after resetting their values
   GPIOB->regs->BSRR = 0x000000E8; // MSG, CD, REQ, IO
 //  GPIOA->regs->BSRR = 0x00000200; // BSY
 #endif
   SCSI_TARGET_ACTIVE()  // (BSY), REQ, MSG, CD, IO output turned on
+
+  // Set BSY to-when selected
+  SCSI_BSY_ACTIVE();     // Turn only BSY output ON, ACTIVE
+
+  // Wait until SEL becomes inactive
+  while(isHigh(gpio_read(SEL))) {}
+  
+  m_isBusReset = false;
+  if (setjmp(m_resetJmpBuf) == 1) {
+    LOGN("Reset, going to BusFree");
+    goto BusFree;
+  }
+  enableResetJmp();
+
+  // Ask for a TARGET-ID to respond
+  m_id = 31 - __builtin_clz(scsiid);
 
   //  
   if(isHigh(gpio_read(ATN))) {
@@ -1375,9 +1377,6 @@ byte checkBlockCommand(SCSI_DEVICE *dev, uint32_t adds, uint32_t len)
 {
   // Check block range is valid
   if (adds >= dev->m_blockcount || (adds + len) > dev->m_blockcount) {    
-    LOG(dev->m_blockcount);
-    if(adds >= dev->m_additional_sense_code) { LOGN(" first "); }
-    if((adds + len) > dev->m_blockcount) { LOGN(" second "); }
     dev->m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
     dev->m_additional_sense_code = SCSI_ASC_LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
     return SCSI_STATUS_CHECK_CONDITION;
@@ -1652,7 +1651,6 @@ byte onModeSense(SCSI_DEVICE *dev, const byte *cdb)
     }
   } else {
     // OPTICAL
-    block_descriptor_length = 0;
     if(cdb[0] == SCSI_MODE_SENSE6) {
       m_buf[2] = 1 << 7; // WP bit
     } else {
