@@ -21,6 +21,7 @@
 #define SCSI_RECV_DIAG_RESULTS      0x1C
 #define SCSI_SEND_DIAG              0x1D
 #define SCSI_PREVENT_ALLOW_REMOVAL  0x1E
+#define SCSI_ICD_EXTENDED_CMD       0x1F
 #define SCSI_READ_CAPACITY          0x25
 #define SCSI_READ10                 0x28
 #define SCSI_WRITE10                0x2A

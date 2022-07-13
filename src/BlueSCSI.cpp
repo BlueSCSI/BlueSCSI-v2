@@ -1597,7 +1597,7 @@ void loop()
   // proper full size SCSI command byte to follow
   // so just read it and re-read it again to get the
   // real command byte
-  if(cmd[0] == 0x1F) { cmd[0] = readHandshake(); }
+  if(cmd[0] == SCSI_ICD_EXTENDED_CMD) { cmd[0] = readHandshake(); }
 
   LOGHEX(cmd[0]);
   // Command length selection, reception
