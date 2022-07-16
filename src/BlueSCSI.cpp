@@ -117,7 +117,6 @@ SCSI_COMMAND_HANDLER(onModeSelect);
 SCSI_COMMAND_HANDLER(onVerify);
 SCSI_COMMAND_HANDLER(onReadBuffer);
 SCSI_COMMAND_HANDLER(onWriteBuffer);
-SCSI_COMMAND_HANDLER(onTestUnitReady);
 SCSI_COMMAND_HANDLER(onReZeroUnit);
 SCSI_COMMAND_HANDLER(onSendDiagnostic);
 SCSI_COMMAND_HANDLER(onReadDefectData);
@@ -303,7 +302,7 @@ void setup()
   default_hdd.response_format = 1;
   default_hdd.additional_length = 31;
   memcpy(&default_hdd.vendor, "QUANTUM", 7);
-  memcpy(&default_hdd.product, "FIREBALL1", 9);
+  memcpy(&default_hdd.product, "BLUESCSI F1", 11);
   memcpy(&default_hdd.revision, "1.0", 3);
 
   // default SCSI CDROM
@@ -1158,9 +1157,7 @@ byte onVerify(SCSI_DEVICE *dev, const byte *cdb)
       // Data-Out buffer is single logical block for repeated verification.
       len = dev->m_blocksize;
     }
-    LED_ON();
     verifyDataPhaseSD(dev, adds, len);
-    LED_OFF();
   }
   return SCSI_STATUS_GOOD;
 }
