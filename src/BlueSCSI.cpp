@@ -302,7 +302,7 @@ void setup()
   default_hdd.response_format = 1;
   default_hdd.additional_length = 31;
   memcpy(&default_hdd.vendor, "QUANTUM", 7);
-  memcpy(&default_hdd.product, "FIREBALL1", 9);
+  memcpy(&default_hdd.product, "BLUESCSI F1", 11);
   memcpy(&default_hdd.revision, "1.0", 3);
 
   // default SCSI CDROM
