@@ -44,7 +44,7 @@
                                 // 2: Debug information output to LOG.txt (slow)
 
 // Log File
-#define VERSION "1.1-SNAPSHOT-20220622"
+#define VERSION "1.1-SNAPSHOT-20220627"
 #define LOG_FILENAME "LOG.txt"
 
 #include "BlueSCSI.h"
@@ -525,8 +525,8 @@ void findDriveImages(FsFile root) {
               dev->inquiry_block.response_format = 1;
               dev->inquiry_block.additional_length = 31;
               memcpy(dev->inquiry_block.vendor, "QUANTUM", 7);
-              memcpy(dev->inquiry_block.product, "FIREBALL1", 9);
-              memcpy(dev->inquiry_block.revision, "1.0", 3);
+              memcpy(dev->inquiry_block.product, "BLUESCSI F1", 11);
+              memcpy(dev->inquiry_block.revision, "1.1", 3);
               break;
               
               case SCSI_DEVICE_OPTICAL:
