@@ -6,7 +6,7 @@
 
 // SCSI config
 #define MAX_SCSIID  7          // Maximum number of supported SCSI-IDs (The minimum is 0)
-#define MAX_SCSILUN 1          // Maximum number of LUNs supported     (The minimum is 0)
+#define MAX_SCSILUN 8          // Maximum number of LUNs supported     (The minimum is 0)
 #define NUM_SCSIID  MAX_SCSIID // Number of enabled SCSI IDs
 #define NUM_SCSILUN 1          // Number of enabled LUNs
 #define READ_PARITY_CHECK 0    // Perform read parity check (unverified)
@@ -313,7 +313,7 @@ typedef __attribute__((aligned(4))) struct _SCSI_DEVICE
   uint8_t       m_type;                 // SCSI device type
   uint32_t      m_blockcount;           // blockcount
   bool          m_raw;                  // Raw disk
-  SCSI_INQUIRY_DATA inquiry_block;      // SCSI information
+  SCSI_INQUIRY_DATA *inquiry_block;      // SCSI information
   uint8_t       m_senseKey;               // Sense key
   uint16_t      m_additional_sense_code;  // ASC/ASCQ 
   bool          m_mode2;                  // MODE2 CDROM
