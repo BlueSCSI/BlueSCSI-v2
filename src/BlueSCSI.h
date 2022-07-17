@@ -218,7 +218,7 @@ enum SCSI_DEVICE_TYPE
 // Put DB and DP in output mode
 #define SCSI_DB_OUTPUT() { PBREG->CRL=(PBREG->CRL &0xfffffff0)|DB_MODE_OUT; PBREG->CRH = 0x11111111*DB_MODE_OUT; }
 // Put DB and DP in input mode
-#define SCSI_DB_INPUT()  { PBREG->CRL=(PBREG->CRL &0xfffffff0)|DB_MODE_IN ; PBREG->CRH = 0x11111111*DB_MODE_IN; }
+#define SCSI_DB_INPUT()  { PBREG->CRL=(PBREG->CRL &0xfffffff0)|DB_MODE_IN ; PBREG->CRH = (uint32_t)0x11111111*DB_MODE_IN; }
 
 // HDDiamge file
 #define HDIMG_ID_POS  2                 // Position to embed ID number

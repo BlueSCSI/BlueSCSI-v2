@@ -620,30 +620,15 @@ void findDriveImages(FsFile root) {
           
           switch(dev->m_type)
           {
-            case SCSI_DEVICE_HDD:
-            // default SCSI HDD
-            dev->inquiry_block.ansi_version = 1;
-            dev->inquiry_block.response_format = 1;
-            dev->inquiry_block.additional_length = 31;
-            memcpy(dev->inquiry_block.vendor, "QUANTUM", 7);
-            memcpy(dev->inquiry_block.product, "FIREBALL1", 9);
-            memcpy(dev->inquiry_block.revision, "1.0", 3);
-            break;
-            
-            case SCSI_DEVICE_OPTICAL:
-            // default SCSI CDROM
-            dev->inquiry_block.peripheral_device_type = 5;
-            dev->inquiry_block.rmb = 1;
-            dev->inquiry_block.ansi_version = 1;
-            dev->inquiry_block.response_format = 1;
-            dev->inquiry_block.additional_length = 42;
-            dev->inquiry_block.sync = 1;
-            memcpy(dev->inquiry_block.vendor, "BLUESCSI", 8);
-            memcpy(dev->inquiry_block.product, "CD-ROM CDU-55S", 14);
-            memcpy(dev->inquiry_block.revision, "1.9a", 4);
-            dev->inquiry_block.release = 0x20;
-            memcpy(dev->inquiry_block.revision_date, "1995", 4);
-            break;
+             case SCSI_DEVICE_HDD:
+              // default SCSI HDD
+              dev->inquiry_block = &default_hdd;        
+              break;
+              
+              case SCSI_DEVICE_OPTICAL:
+              // default SCSI CDROM
+              dev->inquiry_block = &default_optical;
+              break;
           }
 
           readSCSIDeviceConfig(dev);
@@ -1088,26 +1073,25 @@ void loop()
   m_lun = 0xff;
   SCSI_DEVICE *dev = (SCSI_DEVICE *)0; // HDD image for current SCSI-ID, LUN
 
-  // Wait until RST = H, BSY = H, SEL = L
-  //do {} while( SCSI_IN(vBSY) || !SCSI_IN(vSEL) || SCSI_IN(vRST));
   do {} while( !SCSI_IN(vBSY) || SCSI_IN(vRST));
+  // We're in ARBITRATION
   //LOG(" A:"); LOGHEX(readIO()); LOG(" ");
+  
   do {} while( SCSI_IN(vBSY) || !SCSI_IN(vSEL) || SCSI_IN(vRST));
   //LOG(" S:"); LOGHEX(readIO()); LOG(" ");
-  // BSY+ SEL-
-  // If the ID to respond is not driven, wait for the next
-  //byte db = readIO();
-  //byte scsiid = db & scsi_id_mask;
+  // We're in SELECTION
+  
   byte scsiid = readIO() & scsi_id_mask;
   if(SCSI_IN(vIO) || (scsiid) == 0) {
     delayMicroseconds(1);
     return;
   }
+  // We've been selected
 
-#ifdef XCVR
+  #ifdef XCVR
   // Reconfigure target pins to output mode, after resetting their values
   GPIOB->regs->BSRR = 0x000000E8; // MSG, CD, REQ, IO
-//  GPIOA->regs->BSRR = 0x00000200; // BSY
+  //  GPIOA->regs->BSRR = 0x00000200; // BSY
 #endif
   SCSI_TARGET_ACTIVE()  // (BSY), REQ, MSG, CD, IO output turned on
 
@@ -1117,19 +1101,18 @@ void loop()
   // Wait until SEL becomes inactive
   while(isHigh(gpio_read(SEL))) {}
   
+  // Ask for a TARGET-ID to respond
+  m_id = 31 - __builtin_clz(scsiid);
+
   m_isBusReset = false;
   if (setjmp(m_resetJmpBuf) == 1) {
     LOGN("Reset, going to BusFree");
     goto BusFree;
   }
   enableResetJmp();
-
-  // Ask for a TARGET-ID to respond
-  m_id = 31 - __builtin_clz(scsiid);
-
-  //  
+  
+  // In SCSI-2 this is mandatory, but in SCSI-1 it's optional 
   if(isHigh(gpio_read(ATN))) {
-    LOG(" MO:");
     SCSI_PHASE_CHANGE(SCSI_PHASE_MESSAGEOUT);
     // Bus settle delay 400ns. Following code was measured at 350ns before REQ asserted. Added another 50ns. STM32F103.
     SCSI_PHASE_CHANGE(SCSI_PHASE_MESSAGEOUT);// 28ns delay STM32F103
@@ -1142,7 +1125,6 @@ void loop()
       m_msb[msc++] = readHandshake();
     }
     for(int i = 0; i < msc; i++) {
-      LOGHEX(m_msb[i]); LOG(":");
       // ABORT
       if (m_msb[i] == 0x06) {
         goto BusFree;
@@ -1155,14 +1137,6 @@ void loop()
       // IDENTIFY
       if (m_msb[i] >= 0x80) {
         m_lun = m_msb[i] & 0x1f;
-        if(m_lun >= NUM_SCSILUN)
-        {
-          SCSI_DEVICE *d = &scsi_device_list[m_id][m_lun];
-          d->m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
-          d->m_additional_sense_code = SCSI_ASC_LOGICAL_UNIT_NOT_SUPPORTED;
-          m_sts |= SCSI_STATUS_CHECK_CONDITION;
-          goto Status;
-        }
       }
       // Extended message
       if (m_msb[i] == 0x01) {
@@ -1192,13 +1166,21 @@ void loop()
     }
   }
 
-  LOG(" CMD:");
+  LOG("Command:");
   SCSI_PHASE_CHANGE(SCSI_PHASE_COMMAND);
   // Bus settle delay 400ns. The following code was measured at 20ns before REQ asserted. Added another 380ns. STM32F103.
   asm("nop;nop;nop;nop;nop;nop;nop;nop");// This asm causes some code reodering, which adds 270ns, plus 8 nop cycles for an additional 110ns. STM32F103
   int len;
-  byte cmd[12];
+  byte cmd[20];
+
   cmd[0] = readHandshake();
+  // Atari ST ICD extension support
+  // It sends a 0x1F as a indicator there is a 
+  // proper full size SCSI command byte to follow
+  // so just read it and re-read it again to get the
+  // real command byte
+  if(cmd[0] == SCSI_ICD_EXTENDED_CMD) { cmd[0] = readHandshake(); }
+
   LOGHEX(cmd[0]);
   // Command length selection, reception
   static const int cmd_class_len[8]={6,10,10,6,6,12,6,6};
@@ -1215,52 +1197,71 @@ void loop()
     LOGHEX(cmd[i]);
   }
   // LUN confirmation
-  m_sts = cmd[1]&0xe0;      // Preset LUN in status byte
   // if it wasn't set in the IDENTIFY then grab it from the CDB
-  if(m_lun > NUM_SCSILUN)
+  if(m_lun > MAX_SCSILUN)
   {
-      m_lun = m_sts>>5;
+      m_lun = (cmd[1] & 0xe0) >> 5;
   }
 
   LOG(":ID ");
   LOG(m_id);
   LOG(":LUN ");
   LOG(m_lun);
-  LOG(" ");
+  LOGN("");
 
-  dev = &(scsi_device_list[m_id][m_lun]);
   // HDD Image selection
-  if(m_lun >= NUM_SCSILUN || !dev->m_file)
+  if(m_lun >= NUM_SCSILUN)
   {
-    // REQUEST SENSE and INQUIRY are handled different with invalid LUNs
-    if(cmd[0] != SCSI_REQUEST_SENSE || cmd[0] != SCSI_INQUIRY)
-    {
-      dev->m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
-      dev->m_additional_sense_code = SCSI_ASC_LOGICAL_UNIT_NOT_SUPPORTED;
-      m_sts = SCSI_STATUS_CHECK_CONDITION;
-      goto Status;
-    }
+    m_sts = SCSI_STATUS_GOOD;
 
+    // REQUEST SENSE and INQUIRY are handled different with invalid LUNs
     if(cmd[0] == SCSI_INQUIRY)
     {
       // Special INQUIRY handling for invalid LUNs
-      LOG(" onInquiry-InvalidLUN ");
+      LOGN("onInquiry - InvalidLUN");
       dev = &(scsi_device_list[m_id][0]);
 
-      byte temp = dev->inquiry_block.raw[0];
+      byte temp = dev->inquiry_block->raw[0];
 
       // If the LUN is invalid byte 0 of inquiry block needs to be 7fh
-      dev->inquiry_block.raw[0] = 0x7f;
+      dev->inquiry_block->raw[0] = 0x7f;
 
       // only write back what was asked for
-      writeDataPhase(cmd[4], dev->inquiry_block.raw);
+      writeDataPhase(cmd[4], dev->inquiry_block->raw);
 
       // return it back to normal if it was altered
-      dev->inquiry_block.raw[0] = temp;
-
-      m_sts = SCSI_STATUS_GOOD;
-      goto Status;
+      dev->inquiry_block->raw[0] = temp;
     }
+    else if(cmd[0] == SCSI_REQUEST_SENSE)
+    {
+      byte buf[18] = {
+        0x70,   //CheckCondition
+        0,      //Segment number
+        SCSI_SENSE_ILLEGAL_REQUEST,   //Sense key
+        0, 0, 0, 0,  //information
+        10,   //Additional data length
+        0, 0, 0, 0, // command specific information bytes
+        (byte)(SCSI_ASC_LOGICAL_UNIT_NOT_SUPPORTED >> 8),
+        (byte)SCSI_ASC_LOGICAL_UNIT_NOT_SUPPORTED,
+        0, 0, 0, 0,
+      };
+      writeDataPhase(cmd[4] < 18 ? cmd[4] : 18, buf);      
+    }
+    else
+    {    
+      m_sts = SCSI_STATUS_CHECK_CONDITION;
+    }
+
+    goto Status;
+  }
+
+  dev = &(scsi_device_list[m_id][m_lun]);
+  if(!dev->m_file)
+  {
+    dev->m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
+    dev->m_additional_sense_code = SCSI_ASC_LOGICAL_UNIT_NOT_SUPPORTED;
+    m_sts = SCSI_STATUS_CHECK_CONDITION;
+    goto Status;
   }
 
   LED_ON();
@@ -1268,17 +1269,18 @@ void loop()
   LED_OFF();
 
 Status:
-  LOG(" S:"); LOGHEX(m_sts);
+  LOGN("Sts");
   SCSI_PHASE_CHANGE(SCSI_PHASE_STATUS);
   // Bus settle delay 400ns built in to writeHandshake
   writeHandshake(m_sts);
 
-  LOG(" MI:"); LOGHEX(m_msg);
+  LOGN("MsgIn");
   SCSI_PHASE_CHANGE(SCSI_PHASE_MESSAGEIN);
   // Bus settle delay 400ns built in to writeHandshake
   writeHandshake(m_msg);
+
 BusFree:
-  LOGN(" BF");
+  LOGN("BusFree");
   m_isBusReset = false;
   //SCSI_OUT(vREQ,inactive) // gpio_write(REQ, low);
   //SCSI_OUT(vMSG,inactive) // gpio_write(MSG, low);
@@ -1323,7 +1325,7 @@ static byte onNOP(SCSI_DEVICE *dev, const byte *cdb)
  */
 byte onInquiry(SCSI_DEVICE *dev, const byte *cdb)
 {
-  writeDataPhase(cdb[4] < 47 ? cdb[4] : 47, dev->inquiry_block.raw);
+  writeDataPhase(cdb[4] < 47 ? cdb[4] : 47, dev->inquiry_block->raw);
   return SCSI_STATUS_GOOD;
 }
 
@@ -1357,14 +1359,14 @@ byte onReadCapacity(SCSI_DEVICE *dev, const byte *cdb)
 {
   uint32_t lastlba = dev->m_blockcount - 1; // Points to last LBA
   uint8_t buf[8] = {
-    lastlba >> 24,
-    lastlba >> 16,
-    lastlba >> 8,
-    lastlba,
-    dev->m_blocksize >> 24,
-    dev->m_blocksize >> 16,
-    dev->m_blocksize >> 8,
-    dev->m_blocksize
+    (byte)(lastlba >> 24),
+    (byte)(lastlba >> 16),
+    (byte)(lastlba >> 8),
+    (byte)(lastlba),
+    (byte)(dev->m_blocksize >> 24),
+    (byte)(dev->m_blocksize >> 16),
+    (byte)(dev->m_blocksize >> 8),
+    (byte)(dev->m_blocksize)
   };
   writeDataPhase(sizeof(buf), buf);
   return SCSI_STATUS_GOOD;
@@ -1544,13 +1546,13 @@ byte onModeSense(SCSI_DEVICE *dev, const byte *cdb)
   if(!dbd && dev->m_type != SCSI_DEVICE_OPTICAL) {
     byte c[8] = {
       0,//Density code
-      dev->m_blockcount >> 16,
-      dev->m_blockcount >> 8,
-      dev->m_blockcount,
+      (byte)(dev->m_blockcount >> 16),
+      (byte)(dev->m_blockcount >> 8),
+      (byte)(dev->m_blockcount),
       0, //Reserve
-      dev->m_blocksize >> 16,
-      dev->m_blocksize >> 8,
-      dev->m_blocksize,    
+      (byte)(dev->m_blocksize >> 16),
+      (byte)(dev->m_blocksize >> 8),
+      (byte)(dev->m_blocksize),    
     };
     memcpy(&m_buf[a], c, 8);
     a += 8;
@@ -1916,269 +1918,8 @@ byte onReadDefectData(SCSI_DEVICE *dev, const byte *cdb)
   return SCSI_STATUS_GOOD;
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-/*
- * MsgIn2.
- */
-void MsgIn2(int msg)
-{
-  LOGN("MsgIn2");
-  SCSI_PHASE_CHANGE(SCSI_PHASE_MESSAGEIN);
-  // Bus settle delay 400ns built in to writeHandshake
-  writeHandshake(msg);
-}
-
-/*
- * Main loop.
- */
-void loop() 
-{
-#ifdef XCVR
-  // Reset all DB and Target pins, switch transceivers to input
-  // Precaution against bugs or jumps which don't clean up properly
-  SCSI_DB_INPUT();
-  TRANSCEIVER_IO_SET(vTR_DBP,TR_INPUT)
-  SCSI_TARGET_INACTIVE();
-  TRANSCEIVER_IO_SET(vTR_INITIATOR,TR_INPUT)
-#endif
-
-  //int msg = 0;
-  m_msg = 0;
-  m_lun = 0xff;
-  SCSI_DEVICE *dev = (SCSI_DEVICE *)0; // HDD image for current SCSI-ID, LUN
-
-  do {} while( !SCSI_IN(vBSY) || SCSI_IN(vRST));
-  // We're in ARBITRATION
-  //LOG(" A:"); LOGHEX(readIO()); LOG(" ");
-  
-  do {} while( SCSI_IN(vBSY) || !SCSI_IN(vSEL) || SCSI_IN(vRST));
-  //LOG(" S:"); LOGHEX(readIO()); LOG(" ");
-  // We're in SELECTION
-  
-  byte scsiid = readIO() & scsi_id_mask;
-  if(SCSI_IN(vIO) || (scsiid) == 0) {
-    delayMicroseconds(1);
-    return;
-  }
-  // We've been selected
-
-  #ifdef XCVR
-  // Reconfigure target pins to output mode, after resetting their values
-  GPIOB->regs->BSRR = 0x000000E8; // MSG, CD, REQ, IO
-  //  GPIOA->regs->BSRR = 0x00000200; // BSY
-#endif
-  SCSI_TARGET_ACTIVE()  // (BSY), REQ, MSG, CD, IO output turned on
-
-  // Set BSY to-when selected
-  SCSI_BSY_ACTIVE();     // Turn only BSY output ON, ACTIVE
-
-  // Wait until SEL becomes inactive
-  while(isHigh(gpio_read(SEL))) {}
-  
-  // Ask for a TARGET-ID to respond
-  m_id = 31 - __builtin_clz(scsiid);
-
-  m_isBusReset = false;
-  if (setjmp(m_resetJmpBuf) == 1) {
-    LOGN("Reset, going to BusFree");
-    goto BusFree;
-  }
-  enableResetJmp();
-  
-  // In SCSI-2 this is mandatory, but in SCSI-1 it's optional 
-  if(isHigh(gpio_read(ATN))) {
-    SCSI_PHASE_CHANGE(SCSI_PHASE_MESSAGEOUT);
-    // Bus settle delay 400ns. Following code was measured at 350ns before REQ asserted. Added another 50ns. STM32F103.
-    SCSI_PHASE_CHANGE(SCSI_PHASE_MESSAGEOUT);// 28ns delay STM32F103
-    SCSI_PHASE_CHANGE(SCSI_PHASE_MESSAGEOUT);// 28ns delay STM32F103
-    bool syncenable = false;
-    int syncperiod = 50;
-    int syncoffset = 0;
-    int msc = 0;
-    while(isHigh(gpio_read(ATN)) && msc < 255) {
-      m_msb[msc++] = readHandshake();
-    }
-    for(int i = 0; i < msc; i++) {
-      // ABORT
-      if (m_msb[i] == 0x06) {
-        goto BusFree;
-      }
-      // BUS DEVICE RESET
-      if (m_msb[i] == 0x0C) {
-        syncoffset = 0;
-        goto BusFree;
-      }
-      // IDENTIFY
-      if (m_msb[i] >= 0x80) {
-        m_lun = m_msb[i] & 0x1f;
-      }
-      // Extended message
-      if (m_msb[i] == 0x01) {
-        // Check only when synchronous transfer is possible
-        if (!syncenable || m_msb[i + 2] != 0x01) {
-          MsgIn2(0x07);
-          break;
-        }
-        // Transfer period factor(50 x 4 = Limited to 200ns)
-        syncperiod = m_msb[i + 3];
-        if (syncperiod > 50) {
-          syncperiod = 50;
-        }
-        // REQ/ACK offset(Limited to 16)
-        syncoffset = m_msb[i + 4];
-        if (syncoffset > 16) {
-          syncoffset = 16;
-        }
-        // STDR response message generation
-        MsgIn2(0x01);
-        MsgIn2(0x03);
-        MsgIn2(0x01);
-        MsgIn2(syncperiod);
-        MsgIn2(syncoffset);
-        break;
-      }
-    }
-  }
-
-  LOG("Command:");
-  SCSI_PHASE_CHANGE(SCSI_PHASE_COMMAND);
-  // Bus settle delay 400ns. The following code was measured at 20ns before REQ asserted. Added another 380ns. STM32F103.
-  asm("nop;nop;nop;nop;nop;nop;nop;nop");// This asm causes some code reodering, which adds 270ns, plus 8 nop cycles for an additional 110ns. STM32F103
-  int len;
-  byte cmd[20];
-
-  cmd[0] = readHandshake();
-  // Atari ST ICD extension support
-  // It sends a 0x1F as a indicator there is a 
-  // proper full size SCSI command byte to follow
-  // so just read it and re-read it again to get the
-  // real command byte
-  if(cmd[0] == SCSI_ICD_EXTENDED_CMD) { cmd[0] = readHandshake(); }
-
-  LOGHEX(cmd[0]);
-  // Command length selection, reception
-  static const int cmd_class_len[8]={6,10,10,6,6,12,6,6};
-  len = cmd_class_len[cmd[0] >> 5];
-  cmd[1] = readHandshake(); LOG(":");LOGHEX(cmd[1]);
-  cmd[2] = readHandshake(); LOG(":");LOGHEX(cmd[2]);
-  cmd[3] = readHandshake(); LOG(":");LOGHEX(cmd[3]);
-  cmd[4] = readHandshake(); LOG(":");LOGHEX(cmd[4]);
-  cmd[5] = readHandshake(); LOG(":");LOGHEX(cmd[5]);
-  // Receive the remaining commands
-  for(int i = 6; i < len; i++ ) {
-    cmd[i] = readHandshake();
-    LOG(":");
-    LOGHEX(cmd[i]);
-  }
-  // LUN confirmation
-  // if it wasn't set in the IDENTIFY then grab it from the CDB
-  if(m_lun > MAX_SCSILUN)
-  {
-      m_lun = (cmd[1] & 0xe0) >> 5;
-  }
-
-  LOG(":ID ");
-  LOG(m_id);
-  LOG(":LUN ");
-  LOG(m_lun);
-  LOGN("");
-
-  // HDD Image selection
-  if(m_lun >= NUM_SCSILUN)
-  {
-    m_sts = SCSI_STATUS_GOOD;
-
-    // REQUEST SENSE and INQUIRY are handled different with invalid LUNs
-    if(cmd[0] == SCSI_INQUIRY)
-    {
-      // Special INQUIRY handling for invalid LUNs
-      LOGN("onInquiry - InvalidLUN");
-      dev = &(scsi_device_list[m_id][0]);
-
-      byte temp = dev->inquiry_block->raw[0];
-
-      // If the LUN is invalid byte 0 of inquiry block needs to be 7fh
-      dev->inquiry_block->raw[0] = 0x7f;
-
-      // only write back what was asked for
-      writeDataPhase(cmd[4], dev->inquiry_block->raw);
-
-      // return it back to normal if it was altered
-      dev->inquiry_block->raw[0] = temp;
-    }
-    else if(cmd[0] == SCSI_REQUEST_SENSE)
-    {
-      byte buf[18] = {
-        0x70,   //CheckCondition
-        0,      //Segment number
-        SCSI_SENSE_ILLEGAL_REQUEST,   //Sense key
-        0, 0, 0, 0,  //information
-        10,   //Additional data length
-        0, 0, 0, 0, // command specific information bytes
-        (byte)(SCSI_ASC_LOGICAL_UNIT_NOT_SUPPORTED >> 8),
-        (byte)SCSI_ASC_LOGICAL_UNIT_NOT_SUPPORTED,
-        0, 0, 0, 0,
-      };
-      writeDataPhase(cmd[4] < 18 ? cmd[4] : 18, buf);      
-    }
-    else
-    {    
-      m_sts = SCSI_STATUS_CHECK_CONDITION;
-    }
-
-    goto Status;
-  }
-
-  dev = &(scsi_device_list[m_id][m_lun]);
-  if(!dev->m_file)
-  {
-    dev->m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
-    dev->m_additional_sense_code = SCSI_ASC_LOGICAL_UNIT_NOT_SUPPORTED;
-    m_sts = SCSI_STATUS_CHECK_CONDITION;
-    goto Status;
-  }
-
-  LED_ON();
-  m_sts = scsi_command_table[cmd[0]](dev, cmd);
-  LED_OFF();
-
-Status:
-  LOGN("Sts");
-  SCSI_PHASE_CHANGE(SCSI_PHASE_STATUS);
-  // Bus settle delay 400ns built in to writeHandshake
-  writeHandshake(m_sts);
-
-  LOGN("MsgIn");
-  SCSI_PHASE_CHANGE(SCSI_PHASE_MESSAGEIN);
-  // Bus settle delay 400ns built in to writeHandshake
-  writeHandshake(m_msg);
-
-BusFree:
-  LOGN("BusFree");
-  m_isBusReset = false;
-  //SCSI_OUT(vREQ,inactive) // gpio_write(REQ, low);
-  //SCSI_OUT(vMSG,inactive) // gpio_write(MSG, low);
-  //SCSI_OUT(vCD ,inactive) // gpio_write(CD, low);
-  //SCSI_OUT(vIO ,inactive) // gpio_write(IO, low);
-  //SCSI_OUT(vBSY,inactive)
-  SCSI_TARGET_INACTIVE() // Turn off BSY, REQ, MSG, CD, IO output
-#ifdef XCVR
-  TRANSCEIVER_IO_SET(vTR_TARGET,TR_INPUT);
-  // Something in code linked after this function is performing better with a +4 alignment.
-  // Adding this nop is causing the next function (_GLOBAL__sub_I_SD) to have an address with a last digit of 0x4.
-  // Last digit of 0xc also works.
-  // This affects both with and without XCVR, currently without XCVR doesn't need any padding.
-  // Until the culprit can be tracked down and fixed, it may be necessary to do manual adjustment.
-  asm("nop.w");
-#endif
-}
-=======
->>>>>>> faed60f (code layout adjustments)
-=======
 static byte onReadTOC(SCSI_DEVICE *dev, const byte *cdb)
 {
-  unsigned lba = 0;
   uint8_t msf = cdb[1] & 0x02;
   uint8_t track = cdb[6];
   unsigned len = ((uint32_t)cdb[7] << 8) | cdb[8];
