@@ -218,7 +218,7 @@ enum SCSI_DEVICE_TYPE
 // Put DB and DP in output mode
 #define SCSI_DB_OUTPUT() { PBREG->CRL=(PBREG->CRL &0xfffffff0)|DB_MODE_OUT; PBREG->CRH = 0x11111111*DB_MODE_OUT; }
 // Put DB and DP in input mode
-#define SCSI_DB_INPUT()  { PBREG->CRL=(PBREG->CRL &0xfffffff0)|DB_MODE_IN ; PBREG->CRH = (uint32_t)0x11111111*DB_MODE_IN; }
+#define SCSI_DB_INPUT()  { PBREG->CRL=(PBREG->CRL &0xfffffff0)|DB_MODE_IN ; PBREG->CRH = (uint32_t)(0x11111111*DB_MODE_IN); }
 
 // HDDiamge file
 #define HDIMG_ID_POS  2                 // Position to embed ID number
@@ -311,18 +311,18 @@ struct SCSI_INQUIRY_DATA
 // HDD image
 typedef __attribute__((aligned(4))) struct _SCSI_DEVICE
 {
-	FsFile        *m_file;                 // File object
-	uint64_t      m_fileSize;             // File size
-	uint16_t      m_blocksize;            // SCSI BLOCK size
-  uint16_t      m_rawblocksize;
-  uint8_t       m_type;                 // SCSI device type
-  uint32_t      m_blockcount;           // blockcount
-  bool          m_raw;                  // Raw disk
-  SCSI_INQUIRY_DATA *inquiry_block;      // SCSI information
+	FsFile        *m_file;                  // File object
+	uint64_t      m_fileSize;               // File size
+	uint16_t      m_blocksize;              // SCSI BLOCK size
+  uint16_t      m_rawblocksize;           // OPTICAL raw sector size
+  uint8_t       m_type;                   // SCSI device type
+  uint32_t      m_blockcount;             // blockcount
+  bool          m_raw;                    // Raw disk
+  SCSI_INQUIRY_DATA *inquiry_block;       // SCSI information
   uint8_t       m_senseKey;               // Sense key
   uint16_t      m_additional_sense_code;  // ASC/ASCQ 
   bool          m_mode2;                  // MODE2 CDROM
-  uint8_t       m_offset;                 // ISO offset for missing sync header
+  uint8_t       m_sector_offset;          // optical sector offset for missing sync header
 } SCSI_DEVICE;
 
 

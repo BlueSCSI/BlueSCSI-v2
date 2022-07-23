@@ -215,8 +215,9 @@ bool VerifyISOPVD(SCSI_DEVICE *dev, unsigned sector_size, bool mode2)
 bool hddimageOpen(SCSI_DEVICE *dev, FsFile *file,int id,int lun,int blocksize)
 {
   dev->m_fileSize= 0;
-  dev->m_offset = 0;
+  dev->m_sector_offset = 0;
   dev->m_blocksize = blocksize;
+  dev->m_rawblocksize = blocksize;
   dev->m_file = file;
   if(!dev->m_file->isOpen()) { goto failed; }
 
@@ -229,25 +230,25 @@ bool hddimageOpen(SCSI_DEVICE *dev, FsFile *file,int id,int lun,int blocksize)
 
   if(dev->m_type == SCSI_DEVICE_OPTICAL) {
     LOG_FILE.print(" CDROM");
+    dev->m_blocksize = CDROM_COMMON_SECTORSIZE;
 
     // Borrowed from PCEM
     if(VerifyISOPVD(dev, CDROM_COMMON_SECTORSIZE, false)) {
-      dev->m_blocksize = CDROM_COMMON_SECTORSIZE;
-      dev->m_mode2 = false;
-    } else if(VerifyISOPVD(dev, CDROM_RAW_SECTORSIZE, false)) {
-      dev->m_blocksize = CDROM_RAW_SECTORSIZE;
       dev->m_rawblocksize = CDROM_COMMON_SECTORSIZE;
       dev->m_mode2 = false;
+    } else if(VerifyISOPVD(dev, CDROM_RAW_SECTORSIZE, false)) {
+      dev->m_rawblocksize = CDROM_RAW_SECTORSIZE;
+      dev->m_mode2 = false;
       dev->m_raw = true;
-      dev->m_offset = 16;
+      dev->m_sector_offset = 16;
     } else if(VerifyISOPVD(dev, 2336, true)) {
-      dev->m_blocksize = 2336;
+      dev->m_rawblocksize = 2336;
       dev->m_mode2 = true;
     } else if(VerifyISOPVD(dev, CDROM_RAW_SECTORSIZE, true)) {
-      dev->m_blocksize = CDROM_RAW_SECTORSIZE;
+      dev->m_rawblocksize = CDROM_RAW_SECTORSIZE;
       dev->m_mode2 = true;
       dev->m_raw = true;
-      dev->m_offset = 16;
+      dev->m_sector_offset = 24;
     } else {
       // Last ditch effort
       // size must be less than 700MB
@@ -282,7 +283,7 @@ bool hddimageOpen(SCSI_DEVICE *dev, FsFile *file,int id,int lun,int blocksize)
 
   if(dev->m_type == SCSI_DEVICE_OPTICAL) {
     LOG_FILE.print(" MODE2:");LOG_FILE.print(dev->m_mode2);
-    LOG_FILE.print(" BlockSize:");LOG_FILE.println(dev->m_blocksize);
+    LOG_FILE.print(" BlockSize:");LOG_FILE.println(dev->m_rawblocksize);
   }
   return true; // File opened
 
@@ -927,7 +928,7 @@ void writeDataPhaseSD(SCSI_DEVICE *dev, uint32_t adds, uint32_t len)
   LOG (" DI(SD) ");
   SCSI_PHASE_CHANGE(SCSI_PHASE_DATAIN);
   //Bus settle delay 400ns, file.seek() measured at over 1000ns.
-  uint64_t pos = (uint64_t)adds * dev->m_blocksize;
+  uint64_t pos = (uint64_t)adds * dev->m_rawblocksize;
   dev->m_file->seekSet(pos);
 #ifdef XCVR
   TRANSCEIVER_IO_SET(vTR_DBP,TR_OUTPUT)
@@ -937,10 +938,10 @@ void writeDataPhaseSD(SCSI_DEVICE *dev, uint32_t adds, uint32_t len)
   for(uint32_t i = 0; i < len; i++) {
       // Asynchronous reads will make it faster ...
     m_resetJmp = false;
-    dev->m_file->read(m_buf, dev->m_blocksize);
+    dev->m_file->read(m_buf, dev->m_rawblocksize);
     enableResetJmp();
 
-    writeDataLoop(dev->m_blocksize, m_buf);
+    writeDataLoop(dev->m_blocksize, &m_buf[dev->m_sector_offset]);
   }
 }
 
@@ -1073,11 +1074,12 @@ void loop()
   m_lun = 0xff;
   SCSI_DEVICE *dev = (SCSI_DEVICE *)0; // HDD image for current SCSI-ID, LUN
 
-  do {} while( !SCSI_IN(vBSY) || SCSI_IN(vRST));
+  do {} while( SCSI_IN(vBSY) || !SCSI_IN(vSEL) || SCSI_IN(vRST));
+  //do {} while( !SCSI_IN(vBSY) || SCSI_IN(vRST));
   // We're in ARBITRATION
   //LOG(" A:"); LOGHEX(readIO()); LOG(" ");
   
-  do {} while( SCSI_IN(vBSY) || !SCSI_IN(vSEL) || SCSI_IN(vRST));
+  //do {} while( SCSI_IN(vBSY) || !SCSI_IN(vSEL) || SCSI_IN(vRST));
   //LOG(" S:"); LOGHEX(readIO()); LOG(" ");
   // We're in SELECTION
   
@@ -1368,6 +1370,7 @@ byte onReadCapacity(SCSI_DEVICE *dev, const byte *cdb)
     (byte)(dev->m_blocksize >> 8),
     (byte)(dev->m_blocksize)
   };
+
   writeDataPhase(sizeof(buf), buf);
   return SCSI_STATUS_GOOD;
 }
@@ -1552,7 +1555,7 @@ byte onModeSense(SCSI_DEVICE *dev, const byte *cdb)
       0, //Reserve
       (byte)(dev->m_blocksize >> 16),
       (byte)(dev->m_blocksize >> 8),
-      (byte)(dev->m_blocksize),    
+      (byte)(dev->m_blocksize),
     };
     memcpy(&m_buf[a], c, 8);
     a += 8;
