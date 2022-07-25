@@ -261,6 +261,7 @@ bool hddimageOpen(SCSI_DEVICE *dev, FsFile *file,int id,int lun,int blocksize)
       if(!(dev->m_fileSize % CDROM_COMMON_SECTORSIZE)) {
         // try a multiple of 2048
         dev->m_blocksize = CDROM_COMMON_SECTORSIZE;
+        dev->m_rawblocksize = CDROM_COMMON_SECTORSIZE;
       } else {
         // I give up!
         LOG_FILE.println(" InvalidISO");
