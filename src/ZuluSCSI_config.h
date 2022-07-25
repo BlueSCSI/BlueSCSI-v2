@@ -35,6 +35,12 @@
 #define NUM_SCSILUN 1          // Maximum number of LUNs supported     (Currently has to be 1)
 #define READ_PARITY_CHECK 0    // Perform read parity check (unverified)
 
+// SCSI raw fallback configuration when no image files are detected
+// Presents the whole SD card as an SCSI drive
+#define RAW_FALLBACK_ENABLE 1
+#define RAW_FALLBACK_SCSI_ID 1
+#define RAW_FALLBACK_BLOCKSIZE 512
+
 // Default SCSI drive information (can be overridden in INI file)
 // Selected based on device type (fixed, removable, optical, floppy, mag-optical, tape)
 // Each entry has {vendor, product, version, serial}
