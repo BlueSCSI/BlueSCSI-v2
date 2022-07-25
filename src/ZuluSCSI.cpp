@@ -58,6 +58,7 @@ FsFile g_logfile;
 /* Status reporting by blinking led */
 /************************************/
 
+#define BLINK_STATUS_OK 1
 #define BLINK_ERROR_NO_IMAGES  3 
 #define BLINK_ERROR_NO_SD_CARD 5
 
@@ -384,7 +385,15 @@ static void reinitSCSI()
   if (foundImage)
   {
     // Ok, there is an image
-    blinkStatus(1);
+    blinkStatus(BLINK_STATUS_OK);
+  }
+  else
+  {
+#if RAW_FALLBACK_ENABLE
+    azlog("No images found, enabling RAW fallback partition");
+    scsiDiskOpenHDDImage(RAW_FALLBACK_SCSI_ID, "RAW:0:0xFFFFFFFF", RAW_FALLBACK_SCSI_ID, 0,
+                         RAW_FALLBACK_BLOCKSIZE, false);
+#endif
   }
 
   scsiPhyReset();
@@ -398,7 +407,7 @@ extern "C" int zuluscsi_main(void)
   azplatform_init();
   azplatform_late_init();
 
-  if(!SD.begin(SD_CONFIG))
+  if(!SD.begin(SD_CONFIG) && (!SD.card() || SD.sdErrorCode() != 0))
   {
     azlog("SD card init failed, sdErrorCode: ", (int)SD.sdErrorCode(),
            " sdErrorData: ", (int)SD.sdErrorData());
@@ -408,8 +417,13 @@ extern "C" int zuluscsi_main(void)
       blinkStatus(BLINK_ERROR_NO_SD_CARD);
       delay(1000);
       azplatform_reset_watchdog();
-    } while (!SD.begin(SD_CONFIG));
+    } while (!SD.begin(SD_CONFIG) && (!SD.card() || SD.sdErrorCode() != 0));
     azlog("SD card init succeeded after retry");
+  }
+
+  if (SD.clusterCount() == 0)
+  {
+    azlog("SD card without filesystem!");
   }
 
   print_sd_info();
