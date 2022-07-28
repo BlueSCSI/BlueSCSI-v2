@@ -43,6 +43,7 @@
 #include <SdFat.h>
 #include <minIni.h>
 #include <string.h>
+#include <strings.h>
 #include <ctype.h>
 #include "ZuluSCSI_config.h"
 #include "ZuluSCSI_platform.h"
@@ -212,6 +213,35 @@ bool findHDDImages()
 
       if (is_hd || is_cd)
       {
+        // Check file extension
+        // We accept anything except known compressed files
+        bool is_compressed = false;
+        const char *extension = strrchr(name, '.');
+        if (extension)
+        {
+          const char *archive_exts[] = {
+            ".tar", ".tgz", ".gz", ".bz2", ".tbz2", ".xz", ".zst", ".z",
+            ".zip", ".zipx", ".rar", ".lzh", ".7z", ".s7z", ".arj",
+            ".dmg",
+            NULL
+          };
+
+          for (int i = 0; archive_exts[i]; i++)
+          {
+            if (strcasecmp(extension, archive_exts[i]) == 0)
+            {
+              is_compressed = true;
+              break;
+            }
+          }
+        }
+
+        if (is_compressed)
+        {
+          azlog("-- Ignoring compressed file ", name);
+          continue;
+        }
+
         // Defaults for Hard Disks
         int id  = 1; // 0 and 3 are common in Macs for physical HD and CD, so avoid them.
         int lun = 0;
@@ -223,8 +253,7 @@ bool findHDDImages()
           blk = 2048;
         }
 
-        // Positionally read in and coerase the chars to integers.
-        // We only require the minimum and read in the next if provided.
+        // Parse SCSI device ID
         int file_name_length = strlen(name);
         if(file_name_length > 2) { // HD[N]
           int tmp_id = name[HDIMG_ID_POS] - '0';
@@ -238,38 +267,35 @@ bool findHDDImages()
             id = usedDefaultId++;
           }
         }
+
+        // Parse SCSI LUN number
         if(file_name_length > 3) { // HD0[N]
           int tmp_lun = name[HDIMG_LUN_POS] - '0';
 
-          if(tmp_lun > -1 && tmp_lun < 2) {
+          if(tmp_lun > -1 && tmp_lun < NUM_SCSILUN) {
             lun = tmp_lun; // If valid id, set it, else use default
           }
         }
-        int blk1 = 0, blk2 = 0, blk3 = 0, blk4 = 0;
-        if(file_name_length > 8) { // HD00_[111]
-          blk1 = name[HDIMG_BLK_POS] - '0';
-          blk2 = name[HDIMG_BLK_POS+1] - '0';
-          blk3 = name[HDIMG_BLK_POS+2] - '0';
-          if(file_name_length > 9) // HD00_NNN[1]
-            blk4 = name[HDIMG_BLK_POS+3] - '0';
-        }
-        if(blk1 == 2 && blk2 == 5 && blk3 == 6) {
-          blk = 256;
-        } else if(blk1 == 1 && blk2 == 0 && blk3 == 2 && blk4 == 4) {
-          blk = 1024;
-        } else if(blk1 == 2 && blk2 == 0 && blk3 == 4 && blk4 == 8) {
-          blk  = 2048;
-        } else if(blk1 == 4 && blk2 == 0 && blk3 == 9 && blk4 == 6) {
-          blk = 4096;
-        } else if(blk1 == 8 && blk2 == 1 && blk3 == 9 && blk4 == 2) {
-          blk = 8192;
+
+        // Parse block size (HD00_NNNN)
+        const char *blksize = strchr(name, '_');
+        if (blksize)
+        {
+          int blktmp = strtoul(blksize + 1, NULL, 10);
+          if (blktmp == 256 || blktmp == 512 || blktmp == 1024 ||
+              blktmp == 2048 || blktmp == 4096 || blktmp == 8192)
+          {
+            blk = blktmp;
+          }
         }
 
+        // Add the directory name to get the full file path
         char fullname[MAX_FILE_PATH * 2 + 2] = {0};
         strncpy(fullname, imgdir, MAX_FILE_PATH);
         if (fullname[strlen(fullname) - 1] != '/') strcat(fullname, "/");
         strcat(fullname, name);
 
+        // Check whether this SCSI ID has been configured yet
         const S2S_TargetCfg* cfg = s2s_getConfigByIndex(id);
         if (cfg && (cfg->scsiId & S2S_CFG_TARGET_ENABLED))
         {
@@ -277,6 +303,7 @@ bool findHDDImages()
           continue;
         }
 
+        // Open the image file
         if(id < NUM_SCSIID && lun < NUM_SCSILUN) {
           azlog("-- Opening ", fullname, " for id:", id, " lun:", lun);
           imageReady = scsiDiskOpenHDDImage(id, fullname, id, lun, blk, is_cd);

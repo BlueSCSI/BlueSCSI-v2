@@ -2,7 +2,7 @@
 #include "ZuluSCSI_config.h"
 #include "ZuluSCSI_platform.h"
 
-const char *g_azlog_firmwareversion = "1.0.1" " " __DATE__ " " __TIME__;
+const char *g_azlog_firmwareversion = "1.0.3" " " __DATE__ " " __TIME__;
 bool g_azlog_debug = true;
 
 // This memory buffer can be read by debugger and is also saved to zululog.txt

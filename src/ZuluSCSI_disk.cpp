@@ -1100,10 +1100,19 @@ static void diskDataIn()
         // This was the last block, verify that everything finishes
 
 #ifdef PREFETCH_BUFFER_SIZE
+        image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
         uint32_t prefetch_sectors = PREFETCH_BUFFER_SIZE / bytesPerSector;            
+        uint32_t img_sector_count = img.file.size() / bytesPerSector;
         g_scsi_prefetch.sector = transfer.lba + transfer.blocks;
         g_scsi_prefetch.bytes = 0;
         g_scsi_prefetch.scsiId = scsiDev.target->cfg->scsiId;
+        
+        if (g_scsi_prefetch.sector + prefetch_sectors > img_sector_count)
+        {
+            // Don't try to read past image end.
+            prefetch_sectors = img_sector_count - g_scsi_prefetch.sector;
+        }
+
         while (!scsiIsWriteFinished(NULL) && prefetch_sectors > 0)
         {
             // Check if prefetch buffer is free
@@ -1118,9 +1127,15 @@ static void diskDataIn()
             // is part of a longer linear read.
             g_disk_transfer.bytes_sd = bytesPerSector;
             g_disk_transfer.bytes_scsi = bytesPerSector; // Tell callback not to send to SCSI
-            image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
             azplatform_set_sd_callback(&diskDataIn_callback, g_disk_transfer.buffer);
-            g_scsi_prefetch.bytes += img.file.read(g_disk_transfer.buffer, bytesPerSector);
+            int status = img.file.read(g_disk_transfer.buffer, bytesPerSector);
+            if (status <= 0)
+            {
+                azlog("Prefetch read failed");
+                prefetch_sectors = 0;
+                break;
+            }
+            g_scsi_prefetch.bytes += status;
             azplatform_set_sd_callback(NULL, NULL);
             prefetch_sectors--;
         }
