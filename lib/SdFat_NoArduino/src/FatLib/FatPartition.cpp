@@ -416,7 +416,7 @@ bool FatPartition::init(FsBlockDevice* dev, uint8_t part) {
           (dataCachePrepare(0, FsCache::CACHE_FOR_READ));
     MbrPart_t* mp = mbr->part + part - 1;
 
-    if (!mbr || mp->type == 0 || (mp->boot != 0 && mp->boot != 0X80)) {
+    if (!mbr || mp->type == 0) {
       DBG_FAIL_MACRO;
       goto fail;
     }
