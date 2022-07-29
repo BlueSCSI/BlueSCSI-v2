@@ -305,50 +305,46 @@ sd_error_enum sd_power_on(void)
         sdcardtype = SD_HIGH_CAPACITY;
     }
 
-    /* send CMD55(APP_CMD) to indicate next command is application specific command */
-    sdio_csm_disable();
-    sdio_command_response_config(SD_CMD_APP_CMD, (uint32_t)0x0, SDIO_RESPONSETYPE_SHORT);
-    sdio_wait_type_set(SDIO_WAITTYPE_NO);
-    sdio_csm_enable();
+    while((!busyflag) && (count < SD_MAX_VOLT_VALIDATION)) {
+        /* send CMD55(APP_CMD) to indicate next command is application specific command */
+        sdio_csm_disable();
+        sdio_command_response_config(SD_CMD_APP_CMD, (uint32_t)0x0, SDIO_RESPONSETYPE_SHORT);
+        sdio_wait_type_set(SDIO_WAITTYPE_NO);
+        sdio_csm_enable();
 
-    if(SD_OK == r1_error_check(SD_CMD_APP_CMD)) {
-        /* SD memory card */
-        while((!busyflag) && (count < SD_MAX_VOLT_VALIDATION)) {
-            /* send CMD55(APP_CMD) to indicate next command is application specific command */
-            sdio_csm_disable();
-            sdio_command_response_config(SD_CMD_APP_CMD, (uint32_t)0x0, SDIO_RESPONSETYPE_SHORT);
-            sdio_wait_type_set(SDIO_WAITTYPE_NO);
-            sdio_csm_enable();
-            /* check if some error occurs */
-            status = r1_error_check(SD_CMD_APP_CMD);
-            if(SD_OK != status) {
-                return status;
-            }
-
-            /* send ACMD41(SD_SEND_OP_COND) to get host capacity support information (HCS) and OCR content */
-            sdio_csm_disable();
-            sdio_command_response_config(SD_APPCMD_SD_SEND_OP_COND, (SD_VOLTAGE_WINDOW | sdcardtype), SDIO_RESPONSETYPE_SHORT);
-            sdio_wait_type_set(SDIO_WAITTYPE_NO);
-            sdio_csm_enable();
-            /* check if some error occurs */
-            status = r3_error_check();
-            if(SD_OK != status) {
-                return status;
-            }
-            /* get the response and check card power up status bit(busy) */
-            response = sdio_response_get(SDIO_RESPONSE0);
-            busyflag = (uint8_t)((response >> 31) & (uint32_t)0x01);
-            ++count;
-        }
-        if(count >= SD_MAX_VOLT_VALIDATION) {
-            status = SD_VOLTRANGE_INVALID;
+        
+        /* check if some error occurs */
+        /* ignoring return value, SD_ILLEGAL_COMMAND, for v1.x spec SD cards */
+        status = r1_error_check(SD_CMD_APP_CMD);
+        if(SD_OK != status && SD_ILLEGAL_COMMAND != status) {
             return status;
         }
-        if(response &= SD_HIGH_CAPACITY) {
-            /* SDHC card */
-            cardtype = SDIO_HIGH_CAPACITY_SD_CARD;
+        
+        /* send ACMD41(SD_SEND_OP_COND) to get host capacity support information (HCS) and OCR content */
+        sdio_csm_disable();
+        sdio_command_response_config(SD_APPCMD_SD_SEND_OP_COND, (SD_VOLTAGE_WINDOW | sdcardtype), SDIO_RESPONSETYPE_SHORT);
+        sdio_wait_type_set(SDIO_WAITTYPE_NO);
+        sdio_csm_enable();
+        /* check if some error occurs */
+
+        status = r3_error_check();
+        if(SD_OK != status) {
+            return status;
         }
+        /* get the response and check card power up status bit(busy) */
+        response = sdio_response_get(SDIO_RESPONSE0);
+        busyflag = (uint8_t)((response >> 31) & (uint32_t)0x01);
+        ++count;
     }
+    if(count >= SD_MAX_VOLT_VALIDATION) {
+        status = SD_VOLTRANGE_INVALID;
+        return status;
+    }
+    if(response &= SD_HIGH_CAPACITY) {
+        /* SDHC card */
+        cardtype = SDIO_HIGH_CAPACITY_SD_CARD;
+    }
+
     return status;
 }
 
