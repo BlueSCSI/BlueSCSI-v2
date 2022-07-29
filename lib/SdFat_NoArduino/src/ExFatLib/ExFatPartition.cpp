@@ -285,7 +285,7 @@ bool ExFatPartition::init(FsBlockDevice* dev, uint8_t part) {
   if (part >= 1) {
     mbr = reinterpret_cast<MbrSector_t*>(cache);
     mp = &mbr->part[part - 1];
-    if ((mp->boot != 0 && mp->boot != 0X80) || mp->type == 0) {
+    if (mp->type == 0) {
       DBG_FAIL_MACRO;
       goto fail;
     }

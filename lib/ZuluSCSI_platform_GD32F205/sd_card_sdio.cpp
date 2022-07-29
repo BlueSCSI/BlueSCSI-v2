@@ -17,6 +17,7 @@ static uint32_t g_sdio_card_status;
 static uint32_t g_sdio_clk_kHz;
 static sdio_card_type_enum g_sdio_card_type;
 static uint16_t g_sdio_card_rca;
+static uint32_t g_sdio_sector_count;
 
 #define checkReturnOk(call) ((g_sdio_error = (call)) == SD_OK ? true : logSDError(__LINE__))
 static bool logSDError(int line)
@@ -44,7 +45,8 @@ bool SdioCard::begin(SdioConfig sdioConfig)
         && checkReturnOk(sd_card_select_deselect(g_sdio_card_rca))
         && checkReturnOk(sd_cardstatus_get(&g_sdio_card_status))
         && checkReturnOk(sd_bus_mode_config(SDIO_BUSMODE_4BIT))
-        && checkReturnOk(sd_transfer_mode_config(sdioConfig.useDma() ? SD_DMA_MODE : SD_POLLING_MODE));
+        && checkReturnOk(sd_transfer_mode_config(sdioConfig.useDma() ? SD_DMA_MODE : SD_POLLING_MODE))
+        && (g_sdio_sector_count = sectorCount());
 }
 
 uint8_t SdioCard::errorCode() const
@@ -262,6 +264,20 @@ bool SdioCard::readSector(uint32_t sector, uint8_t* dst)
 
 bool SdioCard::readSectors(uint32_t sector, uint8_t* dst, size_t n)
 {
+    if (sector + n >= g_sdio_sector_count)
+    {
+        // sd_multiblocks_read() seems to have trouble reading the very last sector
+        for (int i = 0; i < n; i++)
+        {
+            if (!readSector(sector + i, dst + i * 512))
+            {
+                azlog("End of drive read failed at ", sector, " + ", i);
+                return false;
+            }
+        }
+        return true;
+    }
+
     return checkReturnOk(sd_multiblocks_read((uint32_t*)dst, (uint64_t)sector * 512, 512, n,
         get_stream_callback(dst, n * 512)));
 }
