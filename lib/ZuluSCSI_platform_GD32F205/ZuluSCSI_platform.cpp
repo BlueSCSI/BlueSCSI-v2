@@ -100,22 +100,25 @@ void azplatform_init()
 
     // Enable debug output on SWO pin
     DBG_CTL |= DBG_CTL_TRACE_IOEN;
-    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
-    TPI->ACPR = SystemCoreClock / 2000000 - 1; // 2 Mbps baudrate for SWO
-    // TPI->ACPR = SystemCoreClock / 30000000 - 1; // 30 Mbps baudrate for SWO
-    TPI->SPPR = 2;
-    TPI->FFCR = 0x100; // TPIU packet framing disabled
-    // DWT->CTRL |= (1 << DWT_CTRL_EXCTRCENA_Pos);
-    // DWT->CTRL |= (1 << DWT_CTRL_CYCTAP_Pos)
-    //             | (15 << DWT_CTRL_POSTPRESET_Pos)
-    //             | (1 << DWT_CTRL_PCSAMPLENA_Pos)
-    //             | (3 << DWT_CTRL_SYNCTAP_Pos)
-    //             | (1 << DWT_CTRL_CYCCNTENA_Pos);
-    ITM->LAR = 0xC5ACCE55;
-    ITM->TCR = (1 << ITM_TCR_DWTENA_Pos)
-                | (1 << ITM_TCR_SYNCENA_Pos)
-                | (1 << ITM_TCR_ITMENA_Pos);
-    ITM->TER = 0xFFFFFFFF; // Enable all stimulus ports
+    if (TPI->ACPR == 0)
+    {
+        CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+        TPI->ACPR = SystemCoreClock / 2000000 - 1; // 2 Mbps baudrate for SWO
+        // TPI->ACPR = SystemCoreClock / 30000000 - 1; // 30 Mbps baudrate for SWO
+        TPI->SPPR = 2;
+        TPI->FFCR = 0x100; // TPIU packet framing disabled
+        // DWT->CTRL |= (1 << DWT_CTRL_EXCTRCENA_Pos);
+        // DWT->CTRL |= (1 << DWT_CTRL_CYCTAP_Pos)
+        //             | (15 << DWT_CTRL_POSTPRESET_Pos)
+        //             | (1 << DWT_CTRL_PCSAMPLENA_Pos)
+        //             | (3 << DWT_CTRL_SYNCTAP_Pos)
+        //             | (1 << DWT_CTRL_CYCCNTENA_Pos);
+        ITM->LAR = 0xC5ACCE55;
+        ITM->TCR = (1 << ITM_TCR_DWTENA_Pos)
+                    | (1 << ITM_TCR_SYNCENA_Pos)
+                    | (1 << ITM_TCR_ITMENA_Pos);
+        ITM->TER = 0xFFFFFFFF; // Enable all stimulus ports
+    }
 
     // Enable needed clocks for GPIO
     rcu_periph_clock_enable(RCU_AF);
