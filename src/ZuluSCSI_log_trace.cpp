@@ -142,7 +142,9 @@ static void printNewPhase(int phase)
 
 void scsiLogPhaseChange(int new_phase)
 {
+    static int old_scsi_id = 0;
     static int old_phase = BUS_FREE;
+    static int old_sync_period = 0;
 
     if (new_phase != old_phase)
     {
@@ -152,8 +154,24 @@ void scsiLogPhaseChange(int new_phase)
         }
         g_InByteCount = g_OutByteCount = 0;
 
+
+        if (old_phase >= 0 &&
+            old_scsi_id == scsiDev.target->targetId &&
+            old_sync_period != scsiDev.target->syncPeriod)
+        {
+            // Add a log message when negotiated synchronous speed changes.
+            int syncper = scsiDev.target->syncPeriod;
+            int syncoff = scsiDev.target->syncOffset;
+            int mbyte_per_s = (1000 + syncper * 2) / (syncper * 4);
+            azlog("SCSI ID ", (int)scsiDev.target->targetId,
+                  " negotiated synchronous mode ", mbyte_per_s, " MB/s ",
+                  "(period 4x", syncper, " ns, offset ", syncoff, " bytes)");
+        }
+
         printNewPhase(new_phase);
         old_phase = new_phase;
+        old_sync_period = scsiDev.target->syncPeriod;
+        old_scsi_id = scsiDev.target->targetId;
     }
 }
 
