@@ -1000,6 +1000,7 @@ static void doRead(uint32_t lba, uint32_t blocks)
             uint32_t count = sectors_in_prefetch - start_offset;
             if (count > transfer.blocks) count = transfer.blocks;
             scsiStartWrite(g_scsi_prefetch.buffer + start_offset * bytesPerSector, count * bytesPerSector);
+            azdbg("------ Found ", (int)count, " sectors in prefetch cache");
             transfer.currentBlock += count;
         }
 
