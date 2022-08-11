@@ -453,10 +453,10 @@ extern "C" int zuluscsi_main(void)
             blinkStatus(BLINK_ERROR_NO_SD_CARD);
             delay(1000);
             azplatform_reset_watchdog();
-          } while (!SD.begin(SD_CONFIG));
+          } while (!SD.begin(SD_CONFIG) && (!SD.card() || SD.sdErrorCode() != 0));
           azlog("SD card reinit succeeded");
           print_sd_info();
-          
+
           reinitSCSI();
           init_logfile();
         }
