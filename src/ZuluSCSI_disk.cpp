@@ -250,6 +250,15 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
 
         setDefaultDriveInfo(target_idx);
 
+        if (img.prefetchbytes > 0)
+        {
+            azlog("---- Read prefetch enabled: ", (int)img.prefetchbytes, " bytes");
+        }
+        else
+        {
+            azlog("---- Read prefetch disabled");
+        }
+
         return true;
     }
 
