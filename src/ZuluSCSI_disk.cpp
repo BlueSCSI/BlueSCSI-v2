@@ -64,6 +64,9 @@ struct image_config_t: public S2S_TargetCfg
     // Standard SCSI uses left alignment
     // This field uses -1 for default when field is not set in .ini
     int rightAlignStrings;
+
+    // Maximum amount of bytes to prefetch
+    int prefetchbytes;
 };
 
 static image_config_t g_DiskImages[S2S_MAX_TARGETS];
@@ -247,6 +250,15 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
 
         setDefaultDriveInfo(target_idx);
 
+        if (img.prefetchbytes > 0)
+        {
+            azlog("---- Read prefetch enabled: ", (int)img.prefetchbytes, " bytes");
+        }
+        else
+        {
+            azlog("---- Read prefetch disabled");
+        }
+
         return true;
     }
 
@@ -262,6 +274,7 @@ static void scsiDiskConfigDefaults(int target_idx)
     img.sectorsPerTrack = 63;
     img.headsPerCylinder = 255;
     img.quirks = S2S_CFG_QUIRKS_NONE;
+    img.prefetchbytes = PREFETCH_BUFFER_SIZE;
     memset(img.vendor, 0, sizeof(img.vendor));
     memset(img.prodId, 0, sizeof(img.prodId));
     memset(img.revision, 0, sizeof(img.revision));
@@ -279,6 +292,7 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
     img.headsPerCylinder = ini_getl(section, "HeadsPerCylinder", img.headsPerCylinder, CONFIGFILE);
     img.quirks = ini_getl(section, "Quirks", img.quirks, CONFIGFILE);
     img.rightAlignStrings = ini_getbool(section, "RightAlignStrings", -1, CONFIGFILE);
+    img.prefetchbytes = ini_getl(section, "PrefetchBytes", img.prefetchbytes, CONFIGFILE);
     
     char tmp[32];
     memset(tmp, 0, sizeof(tmp));
@@ -986,6 +1000,7 @@ static void doRead(uint32_t lba, uint32_t blocks)
             uint32_t count = sectors_in_prefetch - start_offset;
             if (count > transfer.blocks) count = transfer.blocks;
             scsiStartWrite(g_scsi_prefetch.buffer + start_offset * bytesPerSector, count * bytesPerSector);
+            azdbg("------ Found ", (int)count, " sectors in prefetch cache");
             transfer.currentBlock += count;
         }
 
@@ -1101,7 +1116,9 @@ static void diskDataIn()
 
 #ifdef PREFETCH_BUFFER_SIZE
         image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-        uint32_t prefetch_sectors = PREFETCH_BUFFER_SIZE / bytesPerSector;            
+        int prefetchbytes = img.prefetchbytes;
+        if (prefetchbytes > PREFETCH_BUFFER_SIZE) prefetchbytes = PREFETCH_BUFFER_SIZE;
+        uint32_t prefetch_sectors = prefetchbytes / bytesPerSector;
         uint32_t img_sector_count = img.file.size() / bytesPerSector;
         g_scsi_prefetch.sector = transfer.lba + transfer.blocks;
         g_scsi_prefetch.bytes = 0;

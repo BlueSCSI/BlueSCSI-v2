@@ -12,6 +12,7 @@ extern "C" {
 static bool g_LogData = false;
 static int g_InByteCount = 0;
 static int g_OutByteCount = 0;
+static uint16_t g_DataChecksum = 0;
 
 static const char *getCommandName(uint8_t cmd)
 {
@@ -142,18 +143,36 @@ static void printNewPhase(int phase)
 
 void scsiLogPhaseChange(int new_phase)
 {
+    static int old_scsi_id = 0;
     static int old_phase = BUS_FREE;
+    static int old_sync_period = 0;
 
     if (new_phase != old_phase)
     {
         if (old_phase == DATA_IN || old_phase == DATA_OUT)
         {
-            azdbg("---- Total IN: ", g_InByteCount, " OUT: ", g_OutByteCount);
+            azdbg("---- Total IN: ", g_InByteCount, " OUT: ", g_OutByteCount, " CHECKSUM: ", (int)g_DataChecksum);
         }
         g_InByteCount = g_OutByteCount = 0;
+        g_DataChecksum = 0;
+
+        if (old_phase >= 0 &&
+            old_scsi_id == scsiDev.target->targetId &&
+            old_sync_period != scsiDev.target->syncPeriod)
+        {
+            // Add a log message when negotiated synchronous speed changes.
+            int syncper = scsiDev.target->syncPeriod;
+            int syncoff = scsiDev.target->syncOffset;
+            int mbyte_per_s = (1000 + syncper * 2) / (syncper * 4);
+            azlog("SCSI ID ", (int)scsiDev.target->targetId,
+                  " negotiated synchronous mode ", mbyte_per_s, " MB/s ",
+                  "(period 4x", syncper, " ns, offset ", syncoff, " bytes)");
+        }
 
         printNewPhase(new_phase);
         old_phase = new_phase;
+        old_sync_period = scsiDev.target->syncPeriod;
+        old_scsi_id = scsiDev.target->targetId;
     }
 }
 
@@ -162,6 +181,16 @@ void scsiLogDataIn(const uint8_t *buf, uint32_t length)
     if (g_LogData)
     {
         azdbg("------ IN: ", bytearray(buf, length));
+    }
+
+    if (g_azlog_debug)
+    {
+        // BSD checksum algorithm
+        for (uint32_t i = 0; i < length; i++)
+        {
+            g_DataChecksum = (g_DataChecksum >> 1) + ((g_DataChecksum & 1) << 15);
+            g_DataChecksum += buf[i];
+        }
     }
 
     g_InByteCount += length;
@@ -177,6 +206,16 @@ void scsiLogDataOut(const uint8_t *buf, uint32_t length)
     if (g_LogData)
     {
         azdbg("------ OUT: ", bytearray(buf, length));
+    }
+
+    if (g_azlog_debug)
+    {
+        // BSD checksum algorithm
+        for (uint32_t i = 0; i < length; i++)
+        {
+            g_DataChecksum = (g_DataChecksum >> 1) + ((g_DataChecksum & 1) << 15);
+            g_DataChecksum += buf[i];
+        }
     }
 
     g_OutByteCount += length;
