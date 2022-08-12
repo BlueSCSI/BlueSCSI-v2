@@ -211,8 +211,9 @@ bool findHDDImages()
       file.close();
       bool is_hd = (tolower(name[0]) == 'h' && tolower(name[1]) == 'd');
       bool is_cd = (tolower(name[0]) == 'c' && tolower(name[1]) == 'd');
+      bool is_fd = (tolower(name[0]) == 'f' && tolower(name[1]) == 'd');
 
-      if (is_hd || is_cd)
+      if (is_hd || is_cd || is_fd)
       {
         // Check file extension
         // We accept anything except known compressed files
@@ -307,7 +308,7 @@ bool findHDDImages()
         // Open the image file
         if(id < NUM_SCSIID && lun < NUM_SCSILUN) {
           azlog("-- Opening ", fullname, " for id:", id, " lun:", lun);
-          imageReady = scsiDiskOpenHDDImage(id, fullname, id, lun, blk, is_cd);
+          imageReady = scsiDiskOpenHDDImage(id, fullname, id, lun, blk, is_cd, is_fd);
           if(imageReady)
           {
             foundImage = true;
@@ -392,7 +393,7 @@ static void reinitSCSI()
 #if RAW_FALLBACK_ENABLE
     azlog("No images found, enabling RAW fallback partition");
     scsiDiskOpenHDDImage(RAW_FALLBACK_SCSI_ID, "RAW:0:0xFFFFFFFF", RAW_FALLBACK_SCSI_ID, 0,
-                         RAW_FALLBACK_BLOCKSIZE, false);
+                         RAW_FALLBACK_BLOCKSIZE, false, false);
 #endif
   }
 
