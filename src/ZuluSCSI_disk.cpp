@@ -364,7 +364,7 @@ static void setDefaultDriveInfo(int target_idx)
     formatDriveInfoField(img.serial, sizeof(img.serial), true);
 }
 
-bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize, bool is_cd)
+bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize, bool is_cd, bool is_fd)
 {
     image_config_t &img = g_DiskImages[target_idx];
     img.file = ImageBackingStore(filename);
@@ -405,6 +405,11 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
         {
             azlog("---- Configuring as CD-ROM drive based on image name");
             img.deviceType = S2S_CFG_OPTICAL;
+        }
+        else if (is_fd)
+        {
+            azlog("---- Configuring as floppy drive based on image name");
+            img.deviceType = S2S_CFG_FLOPPY_14MB;
         }
 
 #ifdef AZPLATFORM_CONFIG_HOOK
@@ -511,7 +516,7 @@ void scsiDiskLoadConfig(int target_idx)
         image_config_t &img = g_DiskImages[target_idx];
         int blocksize = (img.deviceType == S2S_CFG_OPTICAL) ? 2048 : 512;
         azlog("-- Opening ", filename, " for id:", target_idx, ", specified in " CONFIGFILE);
-        scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, blocksize, false);
+        scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, blocksize, false, false);
     }
 }
 
@@ -763,7 +768,7 @@ static bool checkNextCDImage()
         azlog("Switching to next CD-ROM image for ", target_idx, ": ", filename);
         image_config_t &img = g_DiskImages[target_idx];
         img.file.close();
-        bool status = scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, 2048, false);
+        bool status = scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, 2048, false, false);
 
         if (status)
         {
