@@ -58,6 +58,7 @@ FsFile g_logfile;
 /* Status reporting by blinking led */
 /************************************/
 
+#define BLINK_STATUS_OK 1
 #define BLINK_ERROR_NO_IMAGES  3 
 #define BLINK_ERROR_NO_SD_CARD 5
 
@@ -210,8 +211,9 @@ bool findHDDImages()
       file.close();
       bool is_hd = (tolower(name[0]) == 'h' && tolower(name[1]) == 'd');
       bool is_cd = (tolower(name[0]) == 'c' && tolower(name[1]) == 'd');
+      bool is_fd = (tolower(name[0]) == 'f' && tolower(name[1]) == 'd');
 
-      if (is_hd || is_cd)
+      if (is_hd || is_cd || is_fd)
       {
         // Check file extension
         // We accept anything except known compressed files
@@ -306,7 +308,7 @@ bool findHDDImages()
         // Open the image file
         if(id < NUM_SCSIID && lun < NUM_SCSILUN) {
           azlog("-- Opening ", fullname, " for id:", id, " lun:", lun);
-          imageReady = scsiDiskOpenHDDImage(id, fullname, id, lun, blk, is_cd);
+          imageReady = scsiDiskOpenHDDImage(id, fullname, id, lun, blk, is_cd, is_fd);
           if(imageReady)
           {
             foundImage = true;
@@ -384,7 +386,15 @@ static void reinitSCSI()
   if (foundImage)
   {
     // Ok, there is an image
-    blinkStatus(1);
+    blinkStatus(BLINK_STATUS_OK);
+  }
+  else
+  {
+#if RAW_FALLBACK_ENABLE
+    azlog("No images found, enabling RAW fallback partition");
+    scsiDiskOpenHDDImage(RAW_FALLBACK_SCSI_ID, "RAW:0:0xFFFFFFFF", RAW_FALLBACK_SCSI_ID, 0,
+                         RAW_FALLBACK_BLOCKSIZE, false, false);
+#endif
   }
 
   scsiPhyReset();
@@ -398,7 +408,7 @@ extern "C" int zuluscsi_main(void)
   azplatform_init();
   azplatform_late_init();
 
-  if(!SD.begin(SD_CONFIG))
+  if(!SD.begin(SD_CONFIG) && (!SD.card() || SD.sdErrorCode() != 0))
   {
     azlog("SD card init failed, sdErrorCode: ", (int)SD.sdErrorCode(),
            " sdErrorData: ", (int)SD.sdErrorData());
@@ -408,8 +418,13 @@ extern "C" int zuluscsi_main(void)
       blinkStatus(BLINK_ERROR_NO_SD_CARD);
       delay(1000);
       azplatform_reset_watchdog();
-    } while (!SD.begin(SD_CONFIG));
+    } while (!SD.begin(SD_CONFIG) && (!SD.card() || SD.sdErrorCode() != 0));
     azlog("SD card init succeeded after retry");
+  }
+
+  if (SD.clusterCount() == 0)
+  {
+    azlog("SD card without filesystem!");
   }
 
   print_sd_info();

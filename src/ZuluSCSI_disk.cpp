@@ -11,6 +11,8 @@
 #include "ZuluSCSI_config.h"
 #include <minIni.h>
 #include <string.h>
+#include <strings.h>
+#include <assert.h>
 #include <SdFat.h>
 
 extern "C" {
@@ -41,6 +43,8 @@ extern "C" {
 #define PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE 512
 #endif
 
+// SD card sector size is always 512 bytes
+#define SD_SECTOR_SIZE 512
 
 /***********************/
 /* Backing image files */
@@ -49,9 +53,168 @@ extern "C" {
 extern SdFs SD;
 SdDevice sdDev = {2, 256 * 1024 * 1024 * 2}; /* For SCSI2SD */
 
+// This class wraps SdFat library FsFile to allow access
+// through either FAT filesystem or as a raw sector range.
+//
+// Raw access is activated by using filename like "RAW:0:12345"
+// where the numbers are the first and last sector.
+class ImageBackingStore
+{
+public:
+    ImageBackingStore()
+    {
+        m_israw = false;
+        m_blockdev = nullptr;
+        m_bgnsector = m_endsector = m_cursector = 0;
+    }
+
+    ImageBackingStore(const char *filename): ImageBackingStore()
+    {
+        if (strncasecmp(filename, "RAW:", 4) == 0)
+        {
+            char *endptr, *endptr2;
+            m_bgnsector = strtoul(filename + 4, &endptr, 0);
+            m_endsector = strtoul(endptr + 1, &endptr2, 0);
+
+            if (*endptr != ':' || *endptr2 != '\0')
+            {
+                azlog("Invalid format for raw filename: ", filename);
+                return;
+            }
+
+            m_israw = true;
+            m_blockdev = SD.card();
+
+            if (m_endsector >= SD.card()->sectorCount())
+            {
+                m_endsector = SD.card()->sectorCount() - 1;
+            }
+        }
+        else
+        {
+            m_fsfile = SD.open(filename, O_RDWR);
+        }
+    }
+
+    bool isOpen() { return m_israw ? !!m_blockdev : m_fsfile.isOpen(); }
+    bool close()
+    {
+        if (m_israw)
+        {
+            m_blockdev = nullptr;
+            return true;
+        }
+        else
+        {
+            return m_fsfile.close();
+        }
+    }
+
+    uint64_t size()
+    {
+        if (m_israw && m_blockdev)
+        {
+            return (uint64_t)(m_endsector - m_bgnsector + 1) * SD_SECTOR_SIZE;
+        }
+        else
+        {
+            return m_fsfile.size();
+        }
+    }
+
+    bool contiguousRange(uint32_t* bgnSector, uint32_t* endSector)
+    {
+        if (m_israw && m_blockdev)
+        {
+            *bgnSector = m_bgnsector;
+            *endSector = m_endsector;
+            return true;
+        }
+        else
+        {
+            return m_fsfile.contiguousRange(bgnSector, endSector);
+        }
+    }
+
+    bool seek(uint64_t pos)
+    {
+        if (m_israw && m_blockdev)
+        {
+            uint32_t sectornum = pos / SD_SECTOR_SIZE;
+            assert((uint64_t)sectornum * SD_SECTOR_SIZE == pos);
+            m_cursector = m_bgnsector + sectornum;
+            return (m_cursector <= m_endsector);
+        }
+        else
+        {
+            return m_fsfile.seek(pos);
+        }
+    }
+
+    int read(void* buf, size_t count)
+    {
+        if (m_israw && m_blockdev)
+        {
+            uint32_t sectorcount = count / SD_SECTOR_SIZE;
+            assert((uint64_t)sectorcount * SD_SECTOR_SIZE == count);
+            if (m_blockdev->readSectors(m_cursector, (uint8_t*)buf, sectorcount))
+            {
+                m_cursector += sectorcount;
+                return count;
+            }
+            else
+            {
+                return -1;
+            }
+        }
+        else
+        {
+            return m_fsfile.read(buf, count);
+        }
+    }
+
+    size_t write(const void* buf, size_t count)
+    {
+        if (m_israw && m_blockdev)
+        {
+            uint32_t sectorcount = count / SD_SECTOR_SIZE;
+            assert((uint64_t)sectorcount * SD_SECTOR_SIZE == count);
+            if (m_blockdev->writeSectors(m_cursector, (const uint8_t*)buf, sectorcount))
+            {
+                m_cursector += sectorcount;
+                return count;
+            }
+            else
+            {
+                return 0;
+            }
+        }
+        else
+        {
+            return m_fsfile.write(buf, count);
+        }
+    }
+
+    void flush()
+    {
+        if (!m_israw)
+        {
+            m_fsfile.flush();
+        }
+    }
+
+private:
+    bool m_israw;
+    FsFile m_fsfile;
+    SdCard *m_blockdev;
+    uint32_t m_bgnsector;
+    uint32_t m_endsector;
+    uint32_t m_cursector;
+};
+
 struct image_config_t: public S2S_TargetCfg
 {
-    FsFile file;
+    ImageBackingStore file;
 
     // For CD-ROM drive ejection
     bool ejected;
@@ -201,10 +364,10 @@ static void setDefaultDriveInfo(int target_idx)
     formatDriveInfoField(img.serial, sizeof(img.serial), true);
 }
 
-bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize, bool is_cd)
+bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize, bool is_cd, bool is_fd)
 {
     image_config_t &img = g_DiskImages[target_idx];
-    img.file = SD.open(filename, O_RDWR);
+    img.file = ImageBackingStore(filename);
 
     if (img.file.isOpen())
     {
@@ -242,6 +405,11 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
         {
             azlog("---- Configuring as CD-ROM drive based on image name");
             img.deviceType = S2S_CFG_OPTICAL;
+        }
+        else if (is_fd)
+        {
+            azlog("---- Configuring as floppy drive based on image name");
+            img.deviceType = S2S_CFG_FLOPPY_14MB;
         }
 
 #ifdef AZPLATFORM_CONFIG_HOOK
@@ -348,7 +516,7 @@ void scsiDiskLoadConfig(int target_idx)
         image_config_t &img = g_DiskImages[target_idx];
         int blocksize = (img.deviceType == S2S_CFG_OPTICAL) ? 2048 : 512;
         azlog("-- Opening ", filename, " for id:", target_idx, ", specified in " CONFIGFILE);
-        scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, blocksize, false);
+        scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, blocksize, false, false);
     }
 }
 
@@ -600,7 +768,7 @@ static bool checkNextCDImage()
         azlog("Switching to next CD-ROM image for ", target_idx, ": ", filename);
         image_config_t &img = g_DiskImages[target_idx];
         img.file.close();
-        bool status = scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, 2048, false);
+        bool status = scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, 2048, false, false);
 
         if (status)
         {
