@@ -14,7 +14,7 @@ In addition to the simplified filenames style above, the ZuluSCSI firmware also 
 
 Log files and error indications
 -------------------------------
-Log messages are stored in `zlulog.txt`, which is cleared on every boot.
+Log messages are stored in `zululog.txt`, which is cleared on every boot.
 Normally only basic initialization information is stored, but switching the `DBG` DIP switch on will cause every SCSI command to be logged, once the board is power cycled.
 
 The indicator LED will normally report disk access.
