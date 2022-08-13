@@ -14,5 +14,5 @@ extern "C" {
 }
 
 void scsiDiskResetImages();
-bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize, bool is_cd);
+bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize, bool is_cd, bool is_fd);
 void scsiDiskLoadConfig(int target_idx);
