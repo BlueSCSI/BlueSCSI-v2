@@ -383,9 +383,10 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
             return false;
         }
 
-        if (img.file.contiguousRange(NULL, NULL))
+        uint32_t sector_begin = 0, sector_end = 0;
+        if (img.file.contiguousRange(&sector_begin, &sector_end))
         {
-            azlog("---- Image file is contiguous.");
+            azlog("---- Image file is contiguous, SD card sectors ", (int)sector_begin, " to ", (int)sector_end);
         }
         else
         {
@@ -1137,7 +1138,7 @@ static void doRead(uint32_t lba, uint32_t blocks)
 
     if (unlikely(((uint64_t) lba) + blocks > capacity))
     {
-        azlog("WARNING: Host attempted write at sector ", (int)lba, "+", (int)blocks,
+        azlog("WARNING: Host attempted read at sector ", (int)lba, "+", (int)blocks,
               ", exceeding image size ", (int)capacity, " sectors (",
               (int)bytesPerSector, "B/sector)");
         scsiDev.status = CHECK_CONDITION;
@@ -1195,6 +1196,19 @@ void diskDataIn_callback(uint32_t bytes_complete)
     if (bytes_complete < g_disk_transfer.bytes_sd)
     {
         bytes_complete &= ~3;
+    }
+
+    // Machintosh SCSI driver can get confused if pauses occur in middle of
+    // a sector, so schedule the transfers in sector sized blocks.
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+    if (bytes_complete < g_disk_transfer.bytes_sd &&
+        img.quirks == S2S_CFG_QUIRKS_APPLE)
+    {
+        uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+        if (bytes_complete % bytesPerSector != 0)
+        {
+            bytes_complete -= bytes_complete % bytesPerSector;
+        }
     }
 
     if (bytes_complete > g_disk_transfer.bytes_scsi)
