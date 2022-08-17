@@ -63,6 +63,25 @@ void azlog_raw(uint32_t value)
     azlog_raw(hexbuf);
 }
 
+// Log integer as hex
+void azlog_raw(uint64_t value)
+{
+    const char *nibble = "0123456789ABCDEF";
+    char hexbuf[19] = {
+        '0', 'x',
+        nibble[(value >> 60) & 0xF], nibble[(value >> 56) & 0xF],
+        nibble[(value >> 52) & 0xF], nibble[(value >> 48) & 0xF],
+        nibble[(value >> 44) & 0xF], nibble[(value >> 40) & 0xF],
+        nibble[(value >> 36) & 0xF], nibble[(value >> 32) & 0xF],
+        nibble[(value >> 28) & 0xF], nibble[(value >> 24) & 0xF],
+        nibble[(value >> 20) & 0xF], nibble[(value >> 16) & 0xF],
+        nibble[(value >> 12) & 0xF], nibble[(value >>  8) & 0xF],
+        nibble[(value >>  4) & 0xF], nibble[(value >>  0) & 0xF],
+        0
+    };
+    azlog_raw(hexbuf);
+}
+
 // Log integer as decimal
 void azlog_raw(int value)
 {
