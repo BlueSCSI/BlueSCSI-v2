@@ -1200,9 +1200,7 @@ void diskDataIn_callback(uint32_t bytes_complete)
 
     // Machintosh SCSI driver can get confused if pauses occur in middle of
     // a sector, so schedule the transfers in sector sized blocks.
-    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-    if (bytes_complete < g_disk_transfer.bytes_sd &&
-        img.quirks == S2S_CFG_QUIRKS_APPLE)
+    if (bytes_complete < g_disk_transfer.bytes_sd)
     {
         uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
         if (bytes_complete % bytesPerSector != 0)
