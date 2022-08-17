@@ -4,8 +4,8 @@
 #pragma once
 
 // Use variables for version number
-#define FW_VER_NUM      "1.0.5"
-#define FW_VER_SUFFIX   "release"
+#define FW_VER_NUM      "1.0.6"
+#define FW_VER_SUFFIX   "devel"
 #define ZULU_FW_VERSION FW_VER_NUM "-" FW_VER_SUFFIX
 
 // Configuration and log file paths
