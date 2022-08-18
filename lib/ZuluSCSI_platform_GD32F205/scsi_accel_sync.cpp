@@ -468,6 +468,12 @@ void scsi_accel_sync_send(const uint8_t* data, uint32_t count, volatile int *res
 
     while (TIMER_CNT(SCSI_SYNC_TIMER) > 0 && !*resetFlag);
 
+    if (*resetFlag)
+    {
+        azdbg("Bus reset during sync transfer, total ", (int)count,
+              " bytes, remaining ACK count ", (int)TIMER_CNT(SCSI_SYNC_TIMER));
+    }
+
     TIMER_CTL0(SCSI_SYNC_TIMER) = 0;
 }
 
