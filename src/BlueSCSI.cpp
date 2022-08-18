@@ -1169,7 +1169,7 @@ void loop()
     }
   }
 
-  LOG("Command:");
+  LOG("CMD:");
   SCSI_PHASE_CHANGE(SCSI_PHASE_COMMAND);
   // Bus settle delay 400ns. The following code was measured at 20ns before REQ asserted. Added another 380ns. STM32F103.
   asm("nop;nop;nop;nop;nop;nop;nop;nop");// This asm causes some code reodering, which adds 270ns, plus 8 nop cycles for an additional 110ns. STM32F103
@@ -1210,7 +1210,7 @@ void loop()
   LOG(m_id);
   LOG(":LUN ");
   LOG(m_lun);
-  LOGN("");
+  LOG(" ");
 
   // HDD Image selection
   if(m_lun >= NUM_SCSILUN)
@@ -1272,18 +1272,18 @@ void loop()
   LED_OFF();
 
 Status:
-  LOGN("Sts");
+  LOG("S TS:"); LOGHEX(m_sts);
   SCSI_PHASE_CHANGE(SCSI_PHASE_STATUS);
   // Bus settle delay 400ns built in to writeHandshake
   writeHandshake(m_sts);
 
-  LOGN("MsgIn");
+  LOG(" MI:"); LOGHEX(m_msg);
   SCSI_PHASE_CHANGE(SCSI_PHASE_MESSAGEIN);
   // Bus settle delay 400ns built in to writeHandshake
   writeHandshake(m_msg);
 
 BusFree:
-  LOGN("BusFree");
+  LOGN(" BF ");
   m_isBusReset = false;
   //SCSI_OUT(vREQ,inactive) // gpio_write(REQ, low);
   //SCSI_OUT(vMSG,inactive) // gpio_write(MSG, low);
@@ -1547,7 +1547,7 @@ byte onModeSense(SCSI_DEVICE *dev, const byte *cdb)
   
   memset(m_buf, 0, length);
   
-  if(!dbd && dev->m_type != SCSI_DEVICE_OPTICAL) {
+  if(!dbd) {
     byte c[8] = {
       0,//Density code
       (byte)(dev->m_blockcount >> 16),
@@ -1668,6 +1668,7 @@ byte onModeSense(SCSI_DEVICE *dev, const byte *cdb)
     case SCSI_SENSE_MODE_READ_WRITE_ERROR_RECOVERY:
       m_buf[a + 0] = SCSI_SENSE_MODE_READ_WRITE_ERROR_RECOVERY;
       m_buf[a + 1] = 0x06;
+      m_buf[a + 3] = 0x01; // Retry Count
       a += 0x08;
       if(pageCode != SCSI_SENSE_MODE_ALL) break;
 
@@ -1739,6 +1740,12 @@ byte onModeSense(SCSI_DEVICE *dev, const byte *cdb)
   writeDataPhase(length < a ? length : a, m_buf);
   return SCSI_STATUS_GOOD;
 }
+
+void setBlockLength(SCSI_DEVICE *dev, uint32_t length)
+{
+  dev->m_blocksize = dev->m_rawblocksize = length;
+  dev->m_blockcount = dev->m_fileSize / dev->m_blocksize;
+}
     
 byte onModeSelect(SCSI_DEVICE *dev, const byte *cdb)
 {
@@ -1770,6 +1777,32 @@ byte onModeSelect(SCSI_DEVICE *dev, const byte *cdb)
   //0 0 0 8 0 0 0 0 0 0 2 0 0 2 10 0 1 6 24 10 8 0 0 0
   //I believe mode page 0 set to 10 00 is Disable Unit Attention
   //Mode page 1 set to 24 10 08 00 00 00 is TB and PER set, read retry count 16, correction span 8
+  
+  // Requested change of blocksize
+  // Only supporting 512 or 2048 for optical devices
+  if(dev->m_type == SCSI_DEVICE_OPTICAL)
+  {
+    // hacky for now
+    for(unsigned i = 0; i < length; i++)
+    {
+      if(m_buf[i] == 8)
+      {
+        // found the block length so we know the offset
+        // for the desired block length
+        switch(m_buf[i + 7])
+        {
+          // 512
+          case 2: setBlockLength(dev, 512);
+          break;
+          // 2048
+          case 8: setBlockLength(dev, 2048);
+          break;
+        }
+        break;
+      }
+    }
+  }
+  
   #if DEBUG > 0
   for (unsigned i = 0; i < length; i++) {
     LOGHEX(m_buf[i]);LOG(" ");
