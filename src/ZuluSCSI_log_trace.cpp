@@ -157,6 +157,7 @@ void scsiLogPhaseChange(int new_phase)
         g_DataChecksum = 0;
 
         if (old_phase >= 0 &&
+            scsiDev.target != NULL &&
             old_scsi_id == scsiDev.target->targetId &&
             old_sync_period != scsiDev.target->syncPeriod)
         {
