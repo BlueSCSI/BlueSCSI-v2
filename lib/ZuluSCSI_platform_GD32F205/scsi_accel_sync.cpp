@@ -152,7 +152,7 @@ void scsi_accel_sync_recv(uint8_t *data, uint32_t count, int* parityError, volat
 /* Transfer from device to host */
 /********************************/
 
-// Simple delay, about 10 ns.
+// Simple delay, about 20 ns.
 // This is less likely to get optimized away by CPU pipeline than nop
 #define ASM_DELAY()  \
 "   ldr     %[tmp2], [%[reset_flag]] \n"
@@ -246,8 +246,10 @@ static void sync_send_100ns_15off(const uint8_t *buf, uint32_t num_bytes, volati
     register uint32_t tmp2 = 0;
     register uint32_t data = 0;
 
-#define ASM_DELAY1()
-#define ASM_DELAY2() ASM_DELAY()
+// Delay 1 is typically longest and delay 2 shortest.
+// Tuning these is just trial and error.
+#define ASM_DELAY1() "    nop\n   nop\n   nop\n"
+#define ASM_DELAY2() "    nop\n   nop\n"
 
     asm volatile (
     "main_loop_%=: \n"
@@ -257,13 +259,10 @@ static void sync_send_100ns_15off(const uint8_t *buf, uint32_t num_bytes, volati
         /* At each point make sure there is at most 15 bytes in flight */
         "   ldr   %[data], [%[buf]], #4 \n"
         ASM_SEND_4BYTES_WAIT("22")
-        ASM_DELAY2()
         "   ldr   %[data], [%[buf]], #4 \n"
         ASM_SEND_4BYTES()
-        ASM_DELAY2()
         "   ldr   %[data], [%[buf]], #4 \n"
         ASM_SEND_4BYTES_WAIT("14")
-        ASM_DELAY2()
         "   ldr   %[data], [%[buf]], #4 \n"
         ASM_SEND_4BYTES()
 
@@ -280,12 +279,11 @@ static void sync_send_100ns_15off(const uint8_t *buf, uint32_t num_bytes, volati
         ASM_SEND_DATA()
         ASM_DELAY1()
         ASM_SET_REQ_LOW()
-        ASM_DELAY2()
 
         "   subs %[num_bytes], %[num_bytes], #1 \n"
         "   bne  last_bytes_loop_%= \n"
     "all_done_%=: \n"
-        ASM_DELAY1()
+        ASM_DELAY()
 
     : /* Output */ [tmp1] "+l" (tmp1), [tmp2] "+l" (tmp2), [data] "+r" (data),
                    [buf] "+r" (buf), [num_bytes] "+r" (num_bytes)
@@ -313,8 +311,8 @@ static void sync_send_200ns_15off(const uint8_t *buf, uint32_t num_bytes, volati
     register uint32_t tmp2 = 0;
     register uint32_t data = 0;
 
-#define ASM_DELAY1() ASM_DELAY() ASM_DELAY() ASM_DELAY()
-#define ASM_DELAY2() ASM_DELAY() ASM_DELAY() ASM_DELAY() ASM_DELAY()
+#define ASM_DELAY1() ASM_DELAY() ASM_DELAY() ASM_DELAY() ASM_DELAY()
+#define ASM_DELAY2() ASM_DELAY() ASM_DELAY() ASM_DELAY()
 
     asm volatile (
     "main_loop_%=: \n"
