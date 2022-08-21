@@ -60,12 +60,14 @@ The necessary programmer utility for Windows can be downloaded from [GD32 websit
 
 DIP switches
 ------------
-The DIP switch settings are as follows:
+For ZuluSCSI V1.1, the DIP switch settings are as follows:
 
 - DEBUG: Enable verbose debug log (saved to `Zululog.txt`)
 - TERM: Enable SCSI termination
 - BOOT: Enable built-in USB bootloader, this DIP switch MUST remain off during normal operation.
 - SW1: Enables/disables Macintosh/Apple specific mode-pages and device strings, which eases disk initialization when performing fresh installs on legacy Macintosh computers.
+
+ZuluSCSI Mini has no DIP switches, so all optional configuration parameters must be defined in zuluscsi.ini
 
 Project structure
 -----------------
