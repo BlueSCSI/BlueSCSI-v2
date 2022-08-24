@@ -329,12 +329,6 @@ bool findHDDImages()
   }
   root.close();
 
-  // Error if there are 0 image files
-  if(!foundImage) {
-    azlog("ERROR: No valid images found!");
-    blinkStatus(BLINK_ERROR_NO_IMAGES);
-  }
-
   // Print SCSI drive map
   for (int i = 0; i < NUM_SCSIID; i++)
   {
@@ -381,9 +375,10 @@ static void reinitSCSI()
 {
   scsiDiskResetImages();
   readSCSIDeviceConfig();
-  bool foundImage = findHDDImages();
+  findHDDImages();
 
-  if (foundImage)
+  // Error if there are 0 image files
+  if (scsiDiskCheckAnyImagesConfigured())
   {
     // Ok, there is an image
     blinkStatus(BLINK_STATUS_OK);
@@ -394,7 +389,10 @@ static void reinitSCSI()
     azlog("No images found, enabling RAW fallback partition");
     scsiDiskOpenHDDImage(RAW_FALLBACK_SCSI_ID, "RAW:0:0xFFFFFFFF", RAW_FALLBACK_SCSI_ID, 0,
                          RAW_FALLBACK_BLOCKSIZE, false, false);
+#else
+    azlog("No valid image files found!");
 #endif
+    blinkStatus(BLINK_ERROR_NO_IMAGES);
   }
 
   scsiPhyReset();

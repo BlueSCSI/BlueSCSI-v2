@@ -521,6 +521,19 @@ void scsiDiskLoadConfig(int target_idx)
     }
 }
 
+bool scsiDiskCheckAnyImagesConfigured()
+{
+    for (int i = 0; i < S2S_MAX_TARGETS; i++)
+    {
+        if (g_DiskImages[i].file.isOpen() && (g_DiskImages[i].scsiId & S2S_CFG_TARGET_ENABLED))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 /*******************************/
 /* Config handling for SCSI2SD */
 /*******************************/
