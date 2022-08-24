@@ -145,4 +145,8 @@ extern SdioConfig g_sd_sdio_config_crash;
 
 #endif
 
+// Check if a DMA request for SD card read has completed.
+// This is used to optimize the timing of data transfers on SCSI bus.
+bool check_sd_read_done();
+
 #endif

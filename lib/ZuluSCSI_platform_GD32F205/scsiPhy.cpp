@@ -418,13 +418,21 @@ static bool isPollingWriteFinished(const uint8_t *data)
 extern "C" bool scsiIsWriteFinished(const uint8_t *data)
 {
     // Check if there is still a polling transfer in progress
-    if (!isPollingWriteFinished(data))
+    if (!isPollingWriteFinished(data) && !check_sd_read_done())
     {
         // Process the transfer piece-by-piece while waiting
         // for SD card to react.
         int max_count = g_scsi_writereq.count / 8;
-        max_count &= ~255;
-        if (max_count < 256) max_count = 256;
+        
+        // Always transfer whole sectors without pause to avoid problems with some SCSI hosts.
+        int bytesPerSector = 512;
+        if (scsiDev.target)
+        {
+            bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+        }
+        if (max_count % bytesPerSector != 0) max_count -= (max_count % bytesPerSector);
+        if (max_count < bytesPerSector) max_count = bytesPerSector;
+        
         processPollingWrite(max_count);
         return isPollingWriteFinished(data);
     }
