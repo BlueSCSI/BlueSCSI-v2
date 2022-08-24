@@ -230,6 +230,9 @@ struct image_config_t: public S2S_TargetCfg
 
     // Maximum amount of bytes to prefetch
     int prefetchbytes;
+
+    // Warning about geometry settings
+    bool geometrywarningprinted;
 };
 
 static image_config_t g_DiskImages[S2S_MAX_TARGETS];
@@ -393,15 +396,6 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
             azlog("---- WARNING: file ", filename, " is not contiguous. This will increase read latency.");
         }
 
-        uint32_t sectorsPerHeadTrack = img.sectorsPerTrack * img.headsPerCylinder;
-        if (img.scsiSectors % sectorsPerHeadTrack != 0)
-        {
-            azlog("---- NOTE: Drive geometry is ",
-                (int)img.sectorsPerTrack, "x", (int)img.headsPerCylinder, "=",
-                (int)sectorsPerHeadTrack, " but image size of ", (int)img.scsiSectors,
-                " is not divisible.");
-        }
-
         if (is_cd)
         {
             azlog("---- Configuring as CD-ROM drive based on image name");
@@ -432,6 +426,23 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
     }
 
     return false;
+}
+
+static void checkDiskGeometryDivisible(image_config_t &img)
+{
+    if (!img.geometrywarningprinted)
+    {
+        uint32_t sectorsPerHeadTrack = img.sectorsPerTrack * img.headsPerCylinder;
+        if (img.scsiSectors % sectorsPerHeadTrack != 0)
+        {
+            azlog("WARNING: Host used command ", scsiDev.cdb[0],
+                " which is affected by drive geometry. Current settings are ",
+                (int)img.sectorsPerTrack, " sectors x ", (int)img.headsPerCylinder, " heads = ",
+                (int)sectorsPerHeadTrack, " but image size of ", (int)img.scsiSectors,
+                " sectors is not divisible. This can cause error messages in diagnostics tools.");
+            img.geometrywarningprinted = true;
+        }
+    }
 }
 
 // Set target configuration to default values
@@ -1602,6 +1613,22 @@ void scsiDiskPoll()
         transfer.currentBlock != transfer.blocks)
     {
         diskDataOut();
+    }
+
+    if (scsiDev.phase == STATUS && scsiDev.target)
+    {
+        // Check if the command is affected by drive geometry.
+        // Affected commands are:
+        // 0x1A MODE SENSE command of pages 0x03 (device format), 0x04 (disk geometry) or 0x3F (all pages)
+        // 0x1C RECEIVE DIAGNOSTICS RESULTS
+        uint8_t command = scsiDev.cdb[0];
+        uint8_t pageCode = scsiDev.cdb[2] & 0x3F;
+        if ((command == 0x1A && (pageCode == 0x03 || pageCode == 0x04 || pageCode == 0x3F)) ||
+            command == 0x1C)
+        {
+            image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+            checkDiskGeometryDivisible(img);
+        }
     }
 }
 
