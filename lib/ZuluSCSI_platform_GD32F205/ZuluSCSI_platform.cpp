@@ -78,6 +78,30 @@ void SysTick_Handler(void)
         "b SysTick_Handler_inner": : : "r0");
 }
 
+// This function is called by scsiPhy.cpp.
+// It resets the systick counter to give 1 millisecond of uninterrupted transfer time.
+// The total number of skips is kept track of to keep the correct time on average.
+void SysTick_Handle_PreEmptively()
+{
+    static int skipped_clocks = 0;
+
+    __disable_irq();
+    uint32_t loadval = SysTick->LOAD;
+    skipped_clocks += loadval - SysTick->VAL;
+    SysTick->VAL = 0;
+
+    if (skipped_clocks > loadval)
+    {
+        // We have skipped enough ticks that it is time to fake a call
+        // to SysTick interrupt handler.
+        skipped_clocks -= loadval;
+        uint32_t stack_frame[8] = {0};
+        stack_frame[6] = (uint32_t)__builtin_return_address(0);
+        SysTick_Handler_inner(stack_frame);
+    }
+    __enable_irq();
+}
+
 /***************/
 /* GPIO init   */
 /***************/
