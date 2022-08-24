@@ -73,6 +73,11 @@ void azplatform_emergency_log_save();
 typedef void (*sd_callback_t)(uint32_t bytes_complete);
 void azplatform_set_sd_callback(sd_callback_t func, const uint8_t *buffer);
 
+// This function is called by scsiPhy.cpp.
+// It resets the systick counter to give 1 millisecond of uninterrupted transfer time.
+// The total number of skips is kept track of to keep the correct time on average.
+void SysTick_Handle_PreEmptively();
+
 // Reprogram firmware in main program area.
 #define AZPLATFORM_BOOTLOADER_SIZE 32768
 #define AZPLATFORM_FLASH_TOTAL_SIZE (256 * 1024)
