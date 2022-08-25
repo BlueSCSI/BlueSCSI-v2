@@ -418,13 +418,24 @@ static bool isPollingWriteFinished(const uint8_t *data)
 extern "C" bool scsiIsWriteFinished(const uint8_t *data)
 {
     // Check if there is still a polling transfer in progress
-    if (!isPollingWriteFinished(data))
+    if (!isPollingWriteFinished(data) && !check_sd_read_done())
     {
         // Process the transfer piece-by-piece while waiting
         // for SD card to react.
         int max_count = g_scsi_writereq.count / 8;
-        max_count &= ~255;
-        if (max_count < 256) max_count = 256;
+        
+        // Always transfer whole sectors without pause to avoid problems with some SCSI hosts.
+        int bytesPerSector = 512;
+        if (scsiDev.target)
+        {
+            bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+        }
+        if (max_count % bytesPerSector != 0) max_count -= (max_count % bytesPerSector);
+        if (max_count < bytesPerSector) max_count = bytesPerSector;
+        
+        // Avoid SysTick interrupt pauses during the transfer
+        SysTick_Handle_PreEmptively();
+
         processPollingWrite(max_count);
         return isPollingWriteFinished(data);
     }
@@ -482,6 +493,8 @@ extern "C" void scsiRead(uint8_t* data, uint32_t count, int* parityError)
 
     uint32_t count_words = count / 4;
     bool use_greenpak = (g_scsi_phy_mode == PHY_MODE_GREENPAK_DMA || g_scsi_phy_mode == PHY_MODE_GREENPAK_PIO);
+
+    SysTick_Handle_PreEmptively();
 
     if (g_scsi_phase == DATA_OUT && scsiDev.target->syncOffset > 0)
     {
