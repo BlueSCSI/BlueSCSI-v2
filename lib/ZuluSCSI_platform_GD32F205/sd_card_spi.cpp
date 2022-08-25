@@ -263,4 +263,12 @@ void azplatform_set_sd_callback(sd_callback_t func, const uint8_t *buffer)
     g_sd_spi_port.set_sd_callback(func, buffer);    
 }
 
+// Check if a DMA request for SD card read has completed.
+// This is used to optimize the timing of data transfers on SCSI bus.
+bool check_sd_read_done()
+{
+    return (DMA_CHCTL(DMA0, SD_SPI_RX_DMA_CHANNEL) & DMA_CHXCTL_CHEN)
+        && (DMA_INTF(DMA0) & DMA_FLAG_ADD(DMA_FLAG_FTF, SD_SPI_RX_DMA_CHANNEL));
+}
+
 #endif

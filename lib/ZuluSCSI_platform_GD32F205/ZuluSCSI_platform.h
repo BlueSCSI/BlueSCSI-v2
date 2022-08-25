@@ -73,6 +73,11 @@ void azplatform_emergency_log_save();
 typedef void (*sd_callback_t)(uint32_t bytes_complete);
 void azplatform_set_sd_callback(sd_callback_t func, const uint8_t *buffer);
 
+// This function is called by scsiPhy.cpp.
+// It resets the systick counter to give 1 millisecond of uninterrupted transfer time.
+// The total number of skips is kept track of to keep the correct time on average.
+void SysTick_Handle_PreEmptively();
+
 // Reprogram firmware in main program area.
 #define AZPLATFORM_BOOTLOADER_SIZE 32768
 #define AZPLATFORM_FLASH_TOTAL_SIZE (256 * 1024)
@@ -144,5 +149,9 @@ extern SdioConfig g_sd_sdio_config_crash;
 #define SD_CONFIG_CRASH g_sd_sdio_config_crash
 
 #endif
+
+// Check if a DMA request for SD card read has completed.
+// This is used to optimize the timing of data transfers on SCSI bus.
+bool check_sd_read_done();
 
 #endif
