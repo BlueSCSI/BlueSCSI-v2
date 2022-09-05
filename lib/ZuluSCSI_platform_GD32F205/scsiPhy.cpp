@@ -126,9 +126,7 @@ static void selectPhyMode()
 {
     int oldmode = g_scsi_phy_mode;
 
-    // TODO: Change to BEST_AVAILABLE once accelerated modes are tested enough.
-    // int default_mode = PHY_MODE_BEST_AVAILABLE;
-    int default_mode = PHY_MODE_GREENPAK_DMA;
+    int default_mode = PHY_MODE_BEST_AVAILABLE;
 
     // Read overriding setting from configuration file
     int wanted_mode = ini_getl("SCSI", "PhyMode", default_mode, CONFIGFILE);
