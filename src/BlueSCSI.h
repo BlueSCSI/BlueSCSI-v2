@@ -189,7 +189,7 @@ enum SCSI_DEVICE_TYPE
 
 #define SCSI_TARGET_ACTIVE()   { gpio_mode(REQ, GPIO_OUTPUT_PP); gpio_mode(MSG, GPIO_OUTPUT_PP); gpio_mode(CD, GPIO_OUTPUT_PP); gpio_mode(IO, GPIO_OUTPUT_PP); gpio_mode(BSY, GPIO_OUTPUT_PP);  TRANSCEIVER_IO_SET(vTR_TARGET,TR_OUTPUT);}
 // BSY,REQ,MSG,CD,IO Turn off output, BSY is the last input
-#define SCSI_TARGET_INACTIVE() { pinMode(REQ, INPUT); pinMode(MSG, INPUT); pinMode(CD, INPUT); pinMode(IO, INPUT); pinMode(BSY, INPUT); TRANSCEIVER_IO_SET(vTR_TARGET,TR_INPUT); }
+#define SCSI_TARGET_INACTIVE() { gpio_mode(REQ, GPIO_INPUT_FLOATING); gpio_mode(MSG, GPIO_INPUT_FLOATING); gpio_mode(CD, GPIO_INPUT_FLOATING); gpio_mode(IO, GPIO_INPUT_FLOATING); gpio_mode(BSY, GPIO_INPUT_FLOATING); TRANSCEIVER_IO_SET(vTR_TARGET,TR_INPUT); }
 
 #define DB_MODE_OUT 1  // push-pull mode
 #define DB_MODE_IN  4  // floating inputs
