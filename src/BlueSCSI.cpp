@@ -1272,7 +1272,7 @@ void loop()
   LED_OFF();
 
 Status:
-  LOG("S TS:"); LOGHEX(m_sts);
+  LOG(" STS:"); LOGHEX(m_sts);
   SCSI_PHASE_CHANGE(SCSI_PHASE_STATUS);
   // Bus settle delay 400ns built in to writeHandshake
   writeHandshake(m_sts);
