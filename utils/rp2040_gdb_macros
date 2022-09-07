@@ -1,0 +1,96 @@
+# Macros to help debugging on RP2040 and other mbed-os / RTX targets using Black Magic Probe
+# Loosely based upon https://github.com/pyocd/pyOCD/pull/392/files
+
+# Get a thread backtrace from hardfault context
+define hardfault_backtrace
+    set $sp = $psp
+    bt
+end
+
+# List current threads
+define threads
+    set $t = &osRtxInfo.thread
+    thread_print_chain $t->run.curr "RUN  "
+    thread_print_chain $t->ready.thread_list "READY"
+    thread_print_chain $t->delay_list "DELAY"
+    thread_print_chain $t->wait_list "WAIT "
+
+    printf "Use thread_bt 0x... to show thread backtrace\n"
+end
+
+define thread_print_chain
+    set $p = $arg0
+    while ($p != 0)
+        printf "%-16s ", $p->name
+        printf $arg1
+        printf " 0x%08x\n", $p->sp
+        set $p = $p->thread_next
+    end
+end
+
+# Switch to different thread
+define thread_switch
+    set $tsp=(uint32_t*)$arg0
+    set $n_r0  =$r0  
+    set $n_r1  =$r1  
+    set $n_r2  =$r2  
+    set $n_r3  =$r3  
+    set $n_r4  =$r4  
+    set $n_r5  =$r5  
+    set $n_r6  =$r6  
+    set $n_r7  =$r7  
+    set $n_r8  =$r8  
+    set $n_r9  =$r9  
+    set $n_r10 =$r10 
+    set $n_r11 =$r11 
+    set $n_r12 =$r12 
+    set $n_sp  =$sp  
+    set $n_lr  =$lr  
+    set $n_pc  =$pc  
+    set $n_xPSR=$xPSR
+    set $r4   = $tsp[0]
+    set $r5   = $tsp[1]
+    set $r6   = $tsp[2]
+    set $r7   = $tsp[3]
+    set $r8   = $tsp[4]
+    set $r9   = $tsp[5]
+    set $r10  = $tsp[6]
+    set $r11  = $tsp[7]
+    set $r0   = $tsp[8]
+    set $r1   = $tsp[9]
+    set $r2   = $tsp[10]
+    set $r3   = $tsp[11]
+    set $r12  = $tsp[12]
+    set $lr   = $tsp[13]
+    set $pc   = $tsp[14]
+    set $xPSR = $tsp[15]
+    set $sp   = &$tsp[16]
+
+    echo Switched task, use thread_restore to return before continuing execution.\n
+end
+
+define thread_restore
+    set $r0  =$n_r0  
+    set $r1  =$n_r1  
+    set $r2  =$n_r2  
+    set $r3  =$n_r3  
+    set $r4  =$n_r4  
+    set $r5  =$n_r5  
+    set $r6  =$n_r6  
+    set $r7  =$n_r7  
+    set $r8  =$n_r8  
+    set $r9  =$n_r9  
+    set $r10 =$n_r10 
+    set $r11 =$n_r11 
+    set $r12 =$n_r12 
+    set $sp  =$n_sp  
+    set $lr  =$n_lr  
+    set $pc  =$n_pc  
+    set $xPSR=$n_xPSR
+end
+
+define thread_bt
+    thread_switch $arg0
+    bt
+    thread_restore
+end
