@@ -14,7 +14,12 @@ extern "C" {
 extern const char *g_azplatform_name;
 #define PLATFORM_NAME "ZuluSCSI RP2040"
 #define PLATFORM_REVISION "2.0"
+#define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_10
 #define SD_USE_SDIO 1
+
+// NOTE: The driver supports synchronous speeds higher than 10MB/s, but this
+// has not been tested due to lack of fast enough SCSI adapter.
+// #define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_TURBO
 
 // Debug logging function, can be used to print to e.g. serial port.
 // May get called from interrupt handlers.
