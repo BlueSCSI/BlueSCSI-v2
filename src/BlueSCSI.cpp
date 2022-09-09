@@ -678,7 +678,7 @@ void initFileLog(int success_mhz) {
   }
   LOG_FILE.print("SdFat Max FileName Length: ");
   LOG_FILE.println(MAX_FILE_PATH);
-  LOG_FILE.println("Initialized SD Card - lets go!");
+  LOG_FILE.println("Initialized SD Card - let's go!");
   LOG_FILE.sync();
 }
 
