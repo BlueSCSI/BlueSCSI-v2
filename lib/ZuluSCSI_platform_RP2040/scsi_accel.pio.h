@@ -45,7 +45,7 @@ static inline pio_sm_config scsi_accel_async_write_program_get_default_config(ui
 // --------------------- //
 
 #define scsi_accel_async_read_wrap_target 0
-#define scsi_accel_async_read_wrap 7
+#define scsi_accel_async_read_wrap 6
 
 static const uint16_t scsi_accel_async_read_program_instructions[] = {
             //     .wrap_target
@@ -55,15 +55,14 @@ static const uint16_t scsi_accel_async_read_program_instructions[] = {
     0x200a, //  3: wait   0 gpio, 10      side 0     
     0x5009, //  4: in     pins, 9         side 1     
     0x5067, //  5: in     null, 7         side 1     
-    0x9060, //  6: push   iffull block    side 1     
-    0x1042, //  7: jmp    x--, 2          side 1     
+    0x1042, //  6: jmp    x--, 2          side 1
             //     .wrap
 };
 
 #if !PICO_NO_HARDWARE
 static const struct pio_program scsi_accel_async_read_program = {
     .instructions = scsi_accel_async_read_program_instructions,
-    .length = 8,
+    .length = 7,
     .origin = -1,
 };
 
@@ -75,3 +74,61 @@ static inline pio_sm_config scsi_accel_async_read_program_get_default_config(uin
 }
 #endif
 
+// --------------- //
+// scsi_sync_write //
+// --------------- //
+
+#define scsi_sync_write_wrap_target 0
+#define scsi_sync_write_wrap 2
+
+static const uint16_t scsi_sync_write_program_instructions[] = {
+            //     .wrap_target
+    0x7009, //  0: out    pins, 9         side 1
+    0x6067, //  1: out    null, 7         side 0
+    0x5061, //  2: in     null, 1         side 1
+            //     .wrap
+};
+
+#if !PICO_NO_HARDWARE
+static const struct pio_program scsi_sync_write_program = {
+    .instructions = scsi_sync_write_program_instructions,
+    .length = 3,
+    .origin = -1,
+};
+
+static inline pio_sm_config scsi_sync_write_program_get_default_config(uint offset) {
+    pio_sm_config c = pio_get_default_sm_config();
+    sm_config_set_wrap(&c, offset + scsi_sync_write_wrap_target, offset + scsi_sync_write_wrap);
+    sm_config_set_sideset(&c, 1, false, false);
+    return c;
+}
+#endif
+
+// --------------------- //
+// scsi_sync_write_pacer //
+// --------------------- //
+
+#define scsi_sync_write_pacer_wrap_target 0
+#define scsi_sync_write_pacer_wrap 2
+
+static const uint16_t scsi_sync_write_pacer_program_instructions[] = {
+            //     .wrap_target
+    0x208a, //  0: wait   1 gpio, 10
+    0x200a, //  1: wait   0 gpio, 10
+    0x6061, //  2: out    null, 1
+            //     .wrap
+};
+
+#if !PICO_NO_HARDWARE
+static const struct pio_program scsi_sync_write_pacer_program = {
+    .instructions = scsi_sync_write_pacer_program_instructions,
+    .length = 3,
+    .origin = -1,
+};
+
+static inline pio_sm_config scsi_sync_write_pacer_program_get_default_config(uint offset) {
+    pio_sm_config c = pio_get_default_sm_config();
+    sm_config_set_wrap(&c, offset + scsi_sync_write_pacer_wrap_target, offset + scsi_sync_write_pacer_wrap);
+    return c;
+}
+#endif

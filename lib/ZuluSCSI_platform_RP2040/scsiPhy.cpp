@@ -166,6 +166,16 @@ extern "C" uint32_t scsiEnterPhaseImmediate(int phase)
         g_scsi_phase = (SCSI_PHASE)phase;
         scsiLogPhaseChange(phase);
 
+        // Select between synchronous vs. asynchronous SCSI writes
+        if (g_scsi_phase == DATA_IN && scsiDev.target->syncOffset > 0)
+        {
+            scsi_accel_rp2040_setWriteMode(scsiDev.target->syncOffset, scsiDev.target->syncPeriod);
+        }
+        else
+        {
+            scsi_accel_rp2040_setWriteMode(0, 0);
+        }
+
         if (phase < 0)
         {
             // Other communication on bus or reset state
