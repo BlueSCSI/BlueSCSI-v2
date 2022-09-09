@@ -1520,6 +1520,7 @@ byte onVerify(SCSI_DEVICE *dev, const byte *cdb)
  */
 byte onModeSense(SCSI_DEVICE *dev, const byte *cdb)
 {
+  const byte apple_magic[] = "APPLE COMPUTER, INC   ";
   int pageCode = cdb[2] & 0x3F;
   int pageControl = cdb[2] >> 6;
   byte dbd = cdb[1] & 0x8;
@@ -1633,18 +1634,12 @@ byte onModeSense(SCSI_DEVICE *dev, const byte *cdb)
       if(pageCode != SCSI_SENSE_MODE_ALL) break;
     case SCSI_SENSE_MODE_VENDOR_APPLE:
       {
-        const byte apple_magic[0x24] = {
-          0x23,
-          0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00,
-          0x00, 0x08, 0x00, 0x30, 0x16, 0x41, 0x50, 0x50,
-          0x4C, 0x45, 0x20, 0x43, 0x4F, 0x4D, 0x50, 0x55,
-          0x54, 0x45, 0x52, 0x2C, 0x20, 0x49, 0x4E, 0x43,
-          0x20, 0x20, 0x20
-        };
         if(pageControl != 1) {
-          memcpy(&m_buf[0], apple_magic, sizeof(apple_magic));
+          m_buf[a + 0] = SCSI_SENSE_MODE_VENDOR_APPLE;
+          m_buf[a + 1] = sizeof(apple_magic); // Page length
+          memcpy(&m_buf[a + 2], apple_magic, sizeof(apple_magic));
+          a += sizeof(apple_magic) + 2;
         }
-        a = sizeof(apple_magic);
         if(pageCode != SCSI_SENSE_MODE_ALL) break;
       }
       break; // Don't want SCSI_SENSE_MODE_ALL falling through to error condition
@@ -1701,18 +1696,12 @@ byte onModeSense(SCSI_DEVICE *dev, const byte *cdb)
 
     case SCSI_SENSE_MODE_VENDOR_APPLE:
       {
-        const byte apple_magic[0x24] = {
-          0x23,
-          0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00,
-          0x00, 0x08, 0x00, 0x30, 0x16, 0x41, 0x50, 0x50,
-          0x4C, 0x45, 0x20, 0x43, 0x4F, 0x4D, 0x50, 0x55,
-          0x54, 0x45, 0x52, 0x2C, 0x20, 0x49, 0x4E, 0x43,
-          0x20, 0x20, 0x20
-        };
         if(pageControl != 1) {
-          memcpy(&m_buf[0], apple_magic, sizeof(apple_magic));
+          m_buf[a + 0] = SCSI_SENSE_MODE_VENDOR_APPLE;
+          m_buf[a + 1] = sizeof(apple_magic); // Page length
+          memcpy(&m_buf[a + 2], apple_magic, sizeof(apple_magic));
+          a += sizeof(apple_magic) + 2;
         }
-        a = sizeof(apple_magic);
         if(pageCode != SCSI_SENSE_MODE_ALL) break;
       }
       break; // Don't want SCSI_SENSE_MODE_ALL falling through to error condition
@@ -1724,17 +1713,16 @@ byte onModeSense(SCSI_DEVICE *dev, const byte *cdb)
       break;
     }
   }
-  if(pageCode != SCSI_SENSE_MODE_VENDOR_APPLE) {
-    if(cdb[0] == SCSI_MODE_SENSE10)
-    {
-      m_buf[1] = a - 2;
-      m_buf[7] = block_descriptor_length; // block descriptor length
-    }
-    else
-    {
-      m_buf[0] = a - 1;
-      m_buf[3] = block_descriptor_length; // block descriptor length
-    }
+
+  if(cdb[0] == SCSI_MODE_SENSE10)
+  {
+    m_buf[1] = a - 2;
+    m_buf[7] = block_descriptor_length; // block descriptor length
+  }
+  else
+  {
+    m_buf[0] = a - 1;
+    m_buf[3] = block_descriptor_length; // block descriptor length
   }
 
   writeDataPhase(length < a ? length : a, m_buf);
