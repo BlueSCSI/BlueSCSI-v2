@@ -12,6 +12,9 @@ Examples of valid filenames:
 
 In addition to the simplified filenames style above, the ZuluSCSI firmware also looks for images using the BlueSCSI-style "HDxy_512.hda" filename formatting.
 
+The media type can be set in `zuluscsi.ini`, or directly by the file name prefix.
+Supported prefixes are `HD` (hard drive), `CD` (cd-rom), `FD` (floppy), `MO` (magneto-optical), `RE` (generic removeable media), `TP` (sequential tape drive).
+
 Log files and error indications
 -------------------------------
 Log messages are stored in `zululog.txt`, which is cleared on every boot.
