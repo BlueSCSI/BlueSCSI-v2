@@ -72,6 +72,7 @@ byte          m_sts;                     // Status byte
 byte          m_msg;                     // Message bytes
 byte          m_buf[MAX_BLOCKSIZE];      // General purpose buffer
 byte          m_scsi_buf[SCSI_BUF_SIZE]; // Buffer for SCSI READ/WRITE Buffer
+unsigned      m_scsi_buf_size = 0;
 byte          m_msb[256];                // Command storage bytes
 SCSI_DEVICE scsi_device_list[NUM_SCSIID][NUM_SCSILUN]; // Maximum number
 SCSI_INQUIRY_DATA default_hdd, default_optical;
@@ -1597,17 +1598,15 @@ byte onModeSense(SCSI_DEVICE *dev, const byte *cdb)
       m_buf[a + 1] = 0x16; // Page length
       if(pageControl != 1) {
         unsigned cylinders = dev->m_blockcount / (16 * 63);
-        if(pageControl != 1) {
-          m_buf[a + 2] = (byte)(cylinders >> 16); // Cylinders
-          m_buf[a + 3] = (byte)(cylinders >> 8);
-          m_buf[a + 4] = (byte)cylinders;
-          m_buf[a + 5] = 16;   //Number of heads
-        } else {
-          m_buf[a + 2] = 0xFF; // Cylinder length
-          m_buf[a + 3] = 0xFF;
-          m_buf[a + 4] = 0xFF;
-          m_buf[a + 5] = 16;   //Number of heads
-        }
+        m_buf[a + 2] = (byte)(cylinders >> 16); // Cylinders
+        m_buf[a + 3] = (byte)(cylinders >> 8);
+        m_buf[a + 4] = (byte)cylinders;
+        m_buf[a + 5] = 16;   //Number of heads
+      } else {
+        m_buf[a + 2] = 0xFF; // Cylinder length
+        m_buf[a + 3] = 0xFF;
+        m_buf[a + 4] = 0xFF;
+        m_buf[a + 5] = 16;   //Number of heads
       }
       a += 0x18;
       if(pageCode != SCSI_SENSE_MODE_ALL) break;
@@ -1759,6 +1758,11 @@ byte onModeSelect(SCSI_DEVICE *dev, const byte *cdb)
     if(length > 0x800) { length = 0x800; }
   }
 
+  if(length == 0)
+  {
+    return SCSI_STATUS_GOOD;
+  }
+
   memset(m_buf, 0, length);
   readDataPhase(length, m_buf);
   //Apple HD SC Setup sends:
@@ -1766,27 +1770,23 @@ byte onModeSelect(SCSI_DEVICE *dev, const byte *cdb)
   //I believe mode page 0 set to 10 00 is Disable Unit Attention
   //Mode page 1 set to 24 10 08 00 00 00 is TB and PER set, read retry count 16, correction span 8
   
-  // Requested change of blocksize
-  // Only supporting 512 or 2048 for optical devices
   if(dev->m_type == SCSI_DEVICE_OPTICAL)
   {
-    // hacky for now
-    for(unsigned i = 0; i < length; i++)
+    // check for a block descriptor
+    if(m_buf[3] == 8)
     {
-      if(m_buf[i] == 8)
+      // Requested change of blocksize
+      // Only supporting 512 or 2048 for optical devices
+      uint32_t new_block_size =  ((uint32_t)m_buf[8] << 16) | ((uint32_t)m_buf[10] << 8) | m_buf[9];
+      switch(new_block_size)
       {
-        // found the block length so we know the offset
-        // for the desired block length
-        switch(m_buf[i + 7])
-        {
-          // 512
-          case 2: setBlockLength(dev, 512);
-          break;
-          // 2048
-          case 8: setBlockLength(dev, 2048);
-          break;
-        }
+        case 512: setBlockLength(dev, 512);
         break;
+
+        case 2048: setBlockLength(dev, 2048);
+        break;
+
+        default: LOG("Err BlockSize:"); LOG(new_block_size); LOG(" ");
       }
     }
   }
@@ -1869,16 +1869,16 @@ byte onReadBuffer(SCSI_DEVICE *dev, const byte *cdb)
 
   if (mode == MODE_COMBINED_HEADER_DATA)
   {
-    byte scsi_buf_response[SCSI_BUF_SIZE + 4];
+    memset(m_buf, 0, 4 + m_scsi_buf_size);
     // four byte read buffer header
-    scsi_buf_response[0] = 0;
-    scsi_buf_response[1] = (SCSI_BUF_SIZE >> 16) & 0xff;
-    scsi_buf_response[2] = (SCSI_BUF_SIZE >> 8) & 0xff;
-    scsi_buf_response[3] = SCSI_BUF_SIZE & 0xff;
+    m_buf[0] = 0;
+    m_buf[1] = (SCSI_BUF_SIZE >> 16) & 0xff;
+    m_buf[2] = (SCSI_BUF_SIZE >> 8) & 0xff;
+    m_buf[3] = SCSI_BUF_SIZE & 0xff;
     // actual data
-    memcpy((&scsi_buf_response[4]), m_scsi_buf, SCSI_BUF_SIZE);
+    memcpy((&m_buf[4]), m_scsi_buf, m_scsi_buf_size);
 
-    writeDataPhase(SCSI_BUF_SIZE + 4, scsi_buf_response);
+    writeDataPhase(4 + m_scsi_buf_size, m_buf);
 
     #if DEBUG > 0
     for (unsigned i = 0; i < allocLength; i++) {
@@ -1890,7 +1890,7 @@ byte onReadBuffer(SCSI_DEVICE *dev, const byte *cdb)
   }
   else if (mode == MODE_DATA)
   {
-    writeDataPhase(allocLength, m_scsi_buf);
+    writeDataPhase(m_scsi_buf_size, m_scsi_buf);
     #if DEBUG > 0
     for (unsigned i = 0; i < allocLength; i++) {
       LOGHEX(m_scsi_buf[i]);LOG(" ");
