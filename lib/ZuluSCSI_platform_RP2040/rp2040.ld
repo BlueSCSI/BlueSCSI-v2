@@ -38,8 +38,23 @@ SECTIONS
         *(.dtors)
         *(.eh_frame*)
         . = ALIGN(4);
-        *(.text)
-        *(.text*)
+
+        /* Put only non-timecritical code in flash
+         * This includes e.g. floating point math routines.
+         */
+        *libm*:(.text .text*)
+        *libc*:(.text .text*)
+        *libgcc*:*df*(.text .text*)
+        *USB*(.text .text*)
+        *SPI*(.text .text*)
+        *Spi*(.text .text*)
+        *spi*(.text .text*)
+        *stdc*:(.text .text*)
+        *supc*:(.text .text*)
+        *nosys*:(.text .text*)
+        *libc*:*printf*(.text .text*)
+        *libc*:*toa*(.text .text*)
+        *libminIni.a:(.text .text*)
     } > FLASH
     .rodata : {
         . = ALIGN(4);
@@ -74,7 +89,13 @@ SECTIONS
     .data : {
         __data_start__ = .;
         *(vtable)
+
+        /* Time critical code will go here to avoid external flash latency */
         *(.time_critical*)
+        . = ALIGN(4);
+        *(.text)
+        *(.text*)
+
         . = ALIGN(4);
         *(.data*)
         . = ALIGN(4);
