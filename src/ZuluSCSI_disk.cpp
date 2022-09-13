@@ -93,6 +93,18 @@ public:
         else
         {
             m_fsfile = SD.open(filename, O_RDWR);
+
+            uint32_t begin = 0, end = 0;
+            if (m_fsfile.contiguousRange(&begin, &end))
+            {
+                // Convert to raw mapping, this avoids some unnecessary
+                // access overhead in SdFat library.
+                m_israw = true;
+                m_blockdev = SD.card();
+                m_bgnsector = begin;
+                m_endsector = end;
+                m_fsfile.close();
+            }
         }
     }
 
