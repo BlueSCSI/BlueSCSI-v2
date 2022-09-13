@@ -15,6 +15,9 @@ extern const char *g_azplatform_name;
 #define PLATFORM_NAME "ZuluSCSI RP2040"
 #define PLATFORM_REVISION "2.0"
 #define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_10
+#define PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE 4096
+#define PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE 65536
+#define PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE 8192
 #define SD_USE_SDIO 1
 
 // NOTE: The driver supports synchronous speeds higher than 10MB/s, but this
