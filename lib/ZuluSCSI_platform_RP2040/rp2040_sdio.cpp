@@ -94,31 +94,35 @@ static const uint8_t crc7_table[256] = {
 // When the SDIO bus operates in 4-bit mode, the CRC16 algorithm
 // is applied to each line separately and generates total of
 // 4 x 16 = 64 bits of checksum.
+__attribute__((optimize("O3")))
 uint64_t sdio_crc16_4bit_checksum(uint32_t *data, uint32_t num_words)
 {
     uint64_t crc = 0;
     uint32_t *end = data + num_words;
     while (data < end)
     {
-        // Each 32-bit word contains 8 bits per line.
-        // Reverse the bytes because SDIO protocol is big-endian.
-        uint32_t data_in = __builtin_bswap32(*data++);
+        for (int unroll = 0; unroll < 4; unroll++)
+        {
+            // Each 32-bit word contains 8 bits per line.
+            // Reverse the bytes because SDIO protocol is big-endian.
+            uint32_t data_in = __builtin_bswap32(*data++);
 
-        // Shift out 8 bits for each line
-        uint32_t data_out = crc >> 32;
-        crc <<= 32;
+            // Shift out 8 bits for each line
+            uint32_t data_out = crc >> 32;
+            crc <<= 32;
 
-        // XOR outgoing data to itself with 4 bit delay
-        data_out ^= (data_out >> 16);
+            // XOR outgoing data to itself with 4 bit delay
+            data_out ^= (data_out >> 16);
 
-        // XOR incoming data to outgoing data with 4 bit delay
-        data_out ^= (data_in >> 16);
+            // XOR incoming data to outgoing data with 4 bit delay
+            data_out ^= (data_in >> 16);
 
-        // XOR outgoing and incoming data to accumulator at each tap
-        uint64_t xorred = data_out ^ data_in;
-        crc ^= xorred;
-        crc ^= xorred << (5 * 4);
-        crc ^= xorred << (12 * 4);
+            // XOR outgoing and incoming data to accumulator at each tap
+            uint64_t xorred = data_out ^ data_in;
+            crc ^= xorred;
+            crc ^= xorred << (5 * 4);
+            crc ^= xorred << (12 * 4);
+        }
     }
 
     return crc;
@@ -434,18 +438,28 @@ static void sdio_verify_rx_checksums(uint32_t maxcount)
 
 sdio_status_t rp2040_sdio_rx_poll(uint32_t *bytes_complete)
 {
-    // Check how many DMA control blocks have been consumed
-    uint32_t dma_ctrl_block_count = (dma_hw->ch[SDIO_DMA_CHB].read_addr - (uint32_t)&g_sdio.dma_blocks);
-    dma_ctrl_block_count /= sizeof(g_sdio.dma_blocks[0]);
-
-    // Compute how many complete 512 byte SDIO blocks have been transferred
-    // When transfer ends, dma_ctrl_block_count == g_sdio.total_blocks * 2 + 1
-    g_sdio.blocks_done = (dma_ctrl_block_count - 1) / 2;
-
-    // Is it all done?
+    // Was everything done when the previous rx_poll() finished?
     if (g_sdio.blocks_done >= g_sdio.total_blocks)
     {
         g_sdio.transfer_state = SDIO_IDLE;
+    }
+    else
+    {
+        // Use the idle time to calculate checksums
+        sdio_verify_rx_checksums(4);
+
+        // Check how many DMA control blocks have been consumed
+        uint32_t dma_ctrl_block_count = (dma_hw->ch[SDIO_DMA_CHB].read_addr - (uint32_t)&g_sdio.dma_blocks);
+        dma_ctrl_block_count /= sizeof(g_sdio.dma_blocks[0]);
+
+        // Compute how many complete 512 byte SDIO blocks have been transferred
+        // When transfer ends, dma_ctrl_block_count == g_sdio.total_blocks * 2 + 1
+        g_sdio.blocks_done = (dma_ctrl_block_count - 1) / 2;
+
+        // NOTE: When all blocks are done, rx_poll() still returns SDIO_BUSY once.
+        // This provides a chance to start the SCSI transfer before the last checksums
+        // are computed. Any checksum failures can be indicated in SCSI status after
+        // the data transfer has finished.
     }
 
     if (bytes_complete)
@@ -455,6 +469,7 @@ sdio_status_t rp2040_sdio_rx_poll(uint32_t *bytes_complete)
 
     if (g_sdio.transfer_state == SDIO_IDLE)
     {
+        // Verify all remaining checksums.
         sdio_verify_rx_checksums(g_sdio.total_blocks);
 
         if (g_sdio.checksum_errors == 0)
@@ -471,11 +486,6 @@ sdio_status_t rp2040_sdio_rx_poll(uint32_t *bytes_complete)
             " DMA CNT: ", dma_hw->ch[SDIO_DMA_CH].al2_transfer_count);
         rp2040_sdio_stop();
         return SDIO_ERR_DATA_TIMEOUT;
-    }
-    else
-    {
-        // Use the idle time to calculate checksums
-        sdio_verify_rx_checksums(1);
     }
 
     return SDIO_BUSY;
