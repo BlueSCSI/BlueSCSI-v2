@@ -14,6 +14,8 @@
 #include <hardware/dma.h>
 #include <hardware/irq.h>
 #include <hardware/structs/iobank0.h>
+#include <hardware/sync.h>
+#include <multicore.h>
 
 #define SCSI_DMA_PIO pio0
 #define SCSI_DMA_SM 0
@@ -59,6 +61,10 @@ static struct {
     uint32_t dma_countB;
     uint32_t dma_bufA[DMA_BUF_SIZE];
     uint32_t dma_bufB[DMA_BUF_SIZE];
+
+    // Try to offload SCSI DMA interrupts to second core if possible
+    volatile bool core1_active;
+    mutex_t mutex;
 } g_scsi_dma;
 
 enum scsidma_state_t { SCSIDMA_IDLE = 0,
@@ -217,6 +223,8 @@ static void scsi_dma_write_irq()
 {
     dma_hw->ints0 = 1 << SCSI_DMA_CH;
 
+    mutex_enter_blocking(&g_scsi_dma.mutex);
+
     if (g_scsi_dma.dma_current_buf == SCSIBUF_A)
     {
         // Transfer from buffer A finished
@@ -273,6 +281,30 @@ static void scsi_dma_write_irq()
             g_scsi_dma.dma_countB = refill_dmabuf(g_scsi_dma.dma_bufB);
         }
     }
+
+    mutex_exit(&g_scsi_dma.mutex);
+}
+
+// SCSI DMA interrupts are offloaded to the second core if possible
+static void enable_irq_second_core()
+{
+    irq_set_exclusive_handler(DMA_IRQ_0, scsi_dma_write_irq);
+    irq_set_enabled(DMA_IRQ_0, true);
+    g_scsi_dma.core1_active = true;
+}
+
+// Block the SCSI DMA interrupt from executing on either core.
+// Used during setting of the buffer pointers.
+static void scsi_dma_block_irqs()
+{
+    __disable_irq();
+    mutex_enter_blocking(&g_scsi_dma.mutex);
+}
+
+static void scsi_dma_unblock_irqs()
+{
+    mutex_exit(&g_scsi_dma.mutex);
+    __enable_irq();
 }
 
 void scsi_accel_rp2040_startWrite(const uint8_t* data, uint32_t count, volatile int *resetFlag)
@@ -280,7 +312,7 @@ void scsi_accel_rp2040_startWrite(const uint8_t* data, uint32_t count, volatile 
     // Number of bytes should always be divisible by 2.
     assert((count & 1) == 0);
 
-    __disable_irq();
+    scsi_dma_block_irqs();
     if (g_scsi_dma_state == SCSIDMA_WRITE)
     {
         if (!g_scsi_dma.next_app_buf && data == g_scsi_dma.app_buf + g_scsi_dma.app_bytes)
@@ -303,7 +335,7 @@ void scsi_accel_rp2040_startWrite(const uint8_t* data, uint32_t count, volatile 
             count = 0;
         }
     }
-    __enable_irq();
+    scsi_dma_unblock_irqs();
 
     // Check if the request was combined
     if (count == 0) return;
@@ -366,8 +398,6 @@ void scsi_accel_rp2040_startWrite(const uint8_t* data, uint32_t count, volatile 
         }
         
         dma_channel_set_irq0_enabled(SCSI_DMA_CH, true);
-        irq_set_exclusive_handler(DMA_IRQ_0, scsi_dma_write_irq);
-        irq_set_enabled(DMA_IRQ_0, true);
     }
 
     start_dma_write();
@@ -385,8 +415,8 @@ bool scsi_accel_rp2040_isWriteFinished(const uint8_t* data)
         return false;
     
     // Check if this data item is still in queue.
-    __disable_irq();
     bool finished = true;
+    scsi_dma_block_irqs();
     if (data >= g_scsi_dma.app_buf + g_scsi_dma.dma_bytes &&
         data < g_scsi_dma.app_buf + g_scsi_dma.app_bytes)
     {
@@ -397,7 +427,7 @@ bool scsi_accel_rp2040_isWriteFinished(const uint8_t* data)
     {
         finished = false; // In queued transfer
     }
-    __enable_irq();
+    scsi_dma_unblock_irqs();
 
     return finished;
 }
@@ -522,6 +552,7 @@ void scsi_accel_rp2040_init()
     {
         pio_sm_claim(SCSI_DMA_PIO, SCSI_DMA_SM);
         dma_channel_claim(SCSI_DMA_CH);
+        mutex_init(&g_scsi_dma.mutex);
         g_channels_claimed = true;
     }
 
@@ -573,6 +604,20 @@ void scsi_accel_rp2040_init()
     channel_config_set_write_increment(&cfg, false);
     channel_config_set_dreq(&cfg, pio_get_dreq(SCSI_DMA_PIO, SCSI_DMA_SYNC_SM, true));
     g_scsi_dma.dma_write_pacer_config = cfg;
+
+    // Try to enable interrupt handling on second core
+    irq_set_enabled(DMA_IRQ_0, false);
+    g_scsi_dma.core1_active = false;
+    multicore_reset_core1();
+    multicore_launch_core1(&enable_irq_second_core);
+    delay(1);
+
+    if (!g_scsi_dma.core1_active)
+    {
+        azlog("Failed to offload SCSI DMA interrupts to second core, using first core");
+        irq_set_exclusive_handler(DMA_IRQ_0, scsi_dma_write_irq);
+        irq_set_enabled(DMA_IRQ_0, true);
+    }
 }
 
 void scsi_accel_rp2040_setWriteMode(int syncOffset, int syncPeriod)
