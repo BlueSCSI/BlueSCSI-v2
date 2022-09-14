@@ -1,6 +1,7 @@
 // Simple bootloader that loads new firmware from SD card.
 
 #include <ZuluSCSI_platform.h>
+#include "ZuluSCSI_config.h"
 #include "ZuluSCSI_log.h"
 #include <SdFat.h>
 #include <string.h>
@@ -41,7 +42,10 @@ bool program_firmware(FsFile &file)
 {
     uint32_t fwsize = file.size() - AZPLATFORM_BOOTLOADER_SIZE;
     uint32_t num_pages = (fwsize + AZPLATFORM_FLASH_PAGE_SIZE - 1) / AZPLATFORM_FLASH_PAGE_SIZE;
-    static uint8_t buffer[AZPLATFORM_FLASH_PAGE_SIZE];
+
+    // Make sure the buffer is aligned to word boundary
+    static uint32_t buffer32[AZPLATFORM_FLASH_PAGE_SIZE / 4];
+    uint8_t *buffer = (uint8_t*)buffer32;
 
     if (fwsize > AZPLATFORM_FLASH_TOTAL_SIZE)
     {
