@@ -27,6 +27,7 @@ extern const char *g_azplatform_name;
 // Debug logging function, can be used to print to e.g. serial port.
 // May get called from interrupt handlers.
 void azplatform_log(const char *s);
+void azplatform_emergency_log_save();
 
 // Timing and delay functions.
 // Arduino platform already provides these
@@ -58,6 +59,15 @@ void azplatform_reset_watchdog();
 // This can be used to implement simultaneous transfer to SCSI bus.
 typedef void (*sd_callback_t)(uint32_t bytes_complete);
 void azplatform_set_sd_callback(sd_callback_t func, const uint8_t *buffer);
+
+// Reprogram firmware in main program area.
+#ifndef RP2040_DISABLE_BOOTLOADER
+#define AZPLATFORM_BOOTLOADER_SIZE (128 * 1024)
+#define AZPLATFORM_FLASH_TOTAL_SIZE (1024 * 1024)
+#define AZPLATFORM_FLASH_PAGE_SIZE 4096
+bool azplatform_rewrite_flash_page(uint32_t offset, uint8_t buffer[AZPLATFORM_FLASH_PAGE_SIZE]);
+void azplatform_boot_to_main_firmware();
+#endif
 
 // Below are GPIO access definitions that are used from scsiPhy.cpp.
 

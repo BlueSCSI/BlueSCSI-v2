@@ -11,6 +11,10 @@
 
 extern "C" {
 
+// As of 2022-09-13, the platformio RP2040 core is missing cplusplus guard on flash.h
+// For that reason this has to be inside the extern "C" here.
+#include <hardware/flash.h>
+
 const char *g_azplatform_name = PLATFORM_NAME;
 
 void mbed_error_hook(const mbed_error_ctx * error_context);
@@ -234,6 +238,83 @@ void azplatform_log(const char *s)
 void azplatform_reset_watchdog()
 {
 }
+
+/*****************************************/
+/* Flash reprogramming from bootloader   */
+/*****************************************/
+
+#ifdef AZPLATFORM_BOOTLOADER_SIZE
+
+extern uint32_t __real_vectors_start;
+extern uint32_t __StackTop;
+static volatile void *g_bootloader_exit_req;
+
+bool azplatform_rewrite_flash_page(uint32_t offset, uint8_t buffer[AZPLATFORM_FLASH_PAGE_SIZE])
+{
+    if (offset == AZPLATFORM_BOOTLOADER_SIZE)
+    {
+        if (buffer[3] != 0x20 || buffer[7] != 0x10)
+        {
+            azlog("Invalid firmware file, starts with: ", bytearray(buffer, 16));
+            return false;
+        }
+    }
+
+    azdbg("Writing flash at offset ", offset, " data ", bytearray(buffer, 4));
+    assert(offset % AZPLATFORM_FLASH_PAGE_SIZE == 0);
+    assert(offset >= AZPLATFORM_BOOTLOADER_SIZE);
+
+    __disable_irq();
+    flash_range_erase(offset, AZPLATFORM_FLASH_PAGE_SIZE);
+    flash_range_program(offset, buffer, AZPLATFORM_FLASH_PAGE_SIZE);
+    __enable_irq();
+
+    uint32_t *buf32 = (uint32_t*)buffer;
+    uint32_t num_words = AZPLATFORM_FLASH_PAGE_SIZE / 4;
+    for (int i = 0; i < num_words; i++)
+    {
+        uint32_t expected = buf32[i];
+        uint32_t actual = *(volatile uint32_t*)(XIP_NOCACHE_BASE + offset + i * 4);
+        if (actual != expected)
+        {
+            azlog("Flash verify failed at offset ", offset + i * 4, " got ", actual, " expected ", expected);
+            return false;
+        }
+    }
+    return true;
+}
+
+void azplatform_boot_to_main_firmware()
+{
+    // To ensure that the system state is reset properly, we perform
+    // a SYSRESETREQ and jump straight from the reset vector to main application.
+    g_bootloader_exit_req = &g_bootloader_exit_req;
+    SCB->AIRCR = 0x05FA0004;
+    while(1);
+}
+
+void btldr_reset_handler()
+{
+    uint32_t* application_base = &__real_vectors_start;
+    if (g_bootloader_exit_req == &g_bootloader_exit_req)
+    {
+        // Boot to main application
+        application_base = (uint32_t*)(XIP_BASE + AZPLATFORM_BOOTLOADER_SIZE);
+    }
+
+    SCB->VTOR = (uint32_t)application_base;
+    __asm__(
+        "msr msp, %0\n\t"
+        "bx %1" : : "r" (application_base[0]),
+                    "r" (application_base[1]) : "memory");
+}
+
+// Replace the reset handler when building the bootloader
+// The rp2040_btldr.ld places real vector table at an offset.
+__attribute__((section(".btldr_vectors")))
+const void * btldr_vectors[2] = {&__StackTop, (void*)&btldr_reset_handler};
+
+#endif
 
 /**********************************************/
 /* Mapping from data bytes to GPIO BOP values */
