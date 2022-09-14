@@ -19,7 +19,7 @@ dep_objs = []
 for nodelist in env["PIOBUILDFILES"]:
     for node in nodelist:
         filename = str(node.rfile())
-        if 'ZuluSCSI_main.o' not in filename:
+        if 'ZuluSCSI_main' not in filename:
             dep_objs.append(node)
 # print("Bootloader dependencies: ", type(dep_objs), str([str(f.rfile()) for f in dep_objs]))
 

@@ -5,10 +5,20 @@
 
 extern "C" int bootloader_main(void);
 
+#ifdef USE_ARDUINO
+extern "C" void setup(void)
+{
+    bootloader_main();
+}
+extern "C" void loop(void)
+{
+}
+#else
 int main(void)
 {
     return bootloader_main();
 }
+#endif
 
 #else
 
