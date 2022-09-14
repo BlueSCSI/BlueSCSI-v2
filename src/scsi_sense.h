@@ -27,6 +27,7 @@
 #define SCSI_ASC_WRITE_PROTECTED                                0x2700
 #define SCSI_ASC_CANNOT_READ_MEDIUM_UNKNOWN_FORMAT              0x3001
 #define SCSI_ASC_CANNOT_READ_MEDIUM_INCOMPATIBLE_FORMAT         0x3002
+#define SCSI_ASC_SAVING_PARAMETERS_NOT_SUPPORTED                0x3900
 #define SCSI_ASC_MEDIUM_NOT_PRESENT                             0x3A00
 #define SCSI_ASC_LUN_NOT_READY_MANUAL_INTERVENTION_REQUIRED     0x0403
 
@@ -39,6 +40,8 @@
 #define SCSI_SENSE_MODE_DISK_GEOMETRY               0x04
 #define SCSI_SENSE_MODE_FLEXABLE_GEOMETRY           0x05
 #define SCSI_SENSE_MODE_CACHING                     0x08
+#define SCSI_SENSE_MODE_CDROM                       0x0D
+#define SCSI_SENSE_MODE_CDROM_AUDIO_CONTROL         0x0E
 #define SCSI_SENSE_MODE_VENDOR_APPLE                0x30
 
 #define SCSI_SENSE_MODE_ALL                         0x3F

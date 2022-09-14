@@ -26,6 +26,17 @@
 #define ERROR_FALSE_INIT  3
 #define ERROR_NO_SDCARD   5
 
+enum SCSI_DEVICE_TYPE
+{
+  SCSI_DEVICE_HDD,
+  SCSI_DEVICE_OPTICAL,
+};
+
+#define CDROM_RAW_SECTORSIZE    2352
+#define CDROM_COMMON_SECTORSIZE 2048
+
+#define MAX_SCSI_COMMAND  0xff
+#define SCSI_COMMAND_HANDLER(x) static byte x(SCSI_DEVICE *dev, const byte *cdb)
 
 #if DEBUG
 #define LOG(XX)     Serial.print(XX)
@@ -178,7 +189,7 @@
 
 #define SCSI_TARGET_ACTIVE()   { gpio_mode(REQ, GPIO_OUTPUT_PP); gpio_mode(MSG, GPIO_OUTPUT_PP); gpio_mode(CD, GPIO_OUTPUT_PP); gpio_mode(IO, GPIO_OUTPUT_PP); gpio_mode(BSY, GPIO_OUTPUT_PP);  TRANSCEIVER_IO_SET(vTR_TARGET,TR_OUTPUT);}
 // BSY,REQ,MSG,CD,IO Turn off output, BSY is the last input
-#define SCSI_TARGET_INACTIVE() { pinMode(REQ, INPUT); pinMode(MSG, INPUT); pinMode(CD, INPUT); pinMode(IO, INPUT); pinMode(BSY, INPUT); TRANSCEIVER_IO_SET(vTR_TARGET,TR_INPUT); }
+#define SCSI_TARGET_INACTIVE() { gpio_mode(REQ, GPIO_INPUT_FLOATING); gpio_mode(MSG, GPIO_INPUT_FLOATING); gpio_mode(CD, GPIO_INPUT_FLOATING); gpio_mode(IO, GPIO_INPUT_FLOATING); gpio_mode(BSY, GPIO_INPUT_FLOATING); TRANSCEIVER_IO_SET(vTR_TARGET,TR_INPUT); }
 
 #define DB_MODE_OUT 1  // push-pull mode
 #define DB_MODE_IN  4  // floating inputs
@@ -207,7 +218,7 @@
 // Put DB and DP in output mode
 #define SCSI_DB_OUTPUT() { PBREG->CRL=(PBREG->CRL &0xfffffff0)|DB_MODE_OUT; PBREG->CRH = 0x11111111*DB_MODE_OUT; }
 // Put DB and DP in input mode
-#define SCSI_DB_INPUT()  { PBREG->CRL=(PBREG->CRL &0xfffffff0)|DB_MODE_IN ; PBREG->CRH = 0x11111111*DB_MODE_IN; }
+#define SCSI_DB_INPUT()  { PBREG->CRL=(PBREG->CRL &0xfffffff0)|DB_MODE_IN ; PBREG->CRH = (uint32_t)(0x11111111*DB_MODE_IN); }
 
 // HDDiamge file
 #define HDIMG_ID_POS  2                 // Position to embed ID number
@@ -250,14 +261,7 @@ uint32_t db_bsrr[256];
 // #define GET_CDB6_LBA(x) ((x[2] & 01f) << 16) | (x[3] << 8) | x[4]
 #define READ_DATA_BUS() (byte)((~(uint32_t)GPIOB->regs->IDR)>>8)
 
-enum SCSI_DEVICE_TYPE
-{
-  SCSI_DEVICE_HDD,
-  SCSI_DEVICE_OPTICAL,
-};
 
-#define CDROM_RAW_SECTORSIZE    2352
-#define CDROM_COMMON_SECTORSIZE 2048
 
 struct SCSI_INQUIRY_DATA
 {
@@ -307,16 +311,18 @@ struct SCSI_INQUIRY_DATA
 // HDD image
 typedef __attribute__((aligned(4))) struct _SCSI_DEVICE
 {
-	FsFile        *m_file;                 // File object
-	uint64_t      m_fileSize;             // File size
-	uint16_t      m_blocksize;            // SCSI BLOCK size
-  uint8_t       m_type;                 // SCSI device type
-  uint32_t      m_blockcount;           // blockcount
-  bool          m_raw;                  // Raw disk
-  SCSI_INQUIRY_DATA *inquiry_block;      // SCSI information
+	FsFile        *m_file;                  // File object
+	uint64_t      m_fileSize;               // File size
+	uint16_t      m_blocksize;              // SCSI BLOCK size
+  uint16_t      m_rawblocksize;           // OPTICAL raw sector size
+  uint8_t       m_type;                   // SCSI device type
+  uint32_t      m_blockcount;             // blockcount
+  bool          m_raw;                    // Raw disk
+  SCSI_INQUIRY_DATA *inquiry_block;       // SCSI information
   uint8_t       m_senseKey;               // Sense key
   uint16_t      m_additional_sense_code;  // ASC/ASCQ 
   bool          m_mode2;                  // MODE2 CDROM
+  uint8_t       m_sector_offset;          // optical sector offset for missing sync header
 } SCSI_DEVICE;
 
 
