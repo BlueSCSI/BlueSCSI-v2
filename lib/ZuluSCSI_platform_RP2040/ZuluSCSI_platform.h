@@ -15,6 +15,9 @@ extern const char *g_azplatform_name;
 #define PLATFORM_NAME "ZuluSCSI RP2040"
 #define PLATFORM_REVISION "2.0"
 #define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_10
+#define PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE 4096
+#define PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE 65536
+#define PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE 8192
 #define SD_USE_SDIO 1
 
 // NOTE: The driver supports synchronous speeds higher than 10MB/s, but this
@@ -24,6 +27,7 @@ extern const char *g_azplatform_name;
 // Debug logging function, can be used to print to e.g. serial port.
 // May get called from interrupt handlers.
 void azplatform_log(const char *s);
+void azplatform_emergency_log_save();
 
 // Timing and delay functions.
 // Arduino platform already provides these
@@ -55,6 +59,15 @@ void azplatform_reset_watchdog();
 // This can be used to implement simultaneous transfer to SCSI bus.
 typedef void (*sd_callback_t)(uint32_t bytes_complete);
 void azplatform_set_sd_callback(sd_callback_t func, const uint8_t *buffer);
+
+// Reprogram firmware in main program area.
+#ifndef RP2040_DISABLE_BOOTLOADER
+#define AZPLATFORM_BOOTLOADER_SIZE (128 * 1024)
+#define AZPLATFORM_FLASH_TOTAL_SIZE (1024 * 1024)
+#define AZPLATFORM_FLASH_PAGE_SIZE 4096
+bool azplatform_rewrite_flash_page(uint32_t offset, uint8_t buffer[AZPLATFORM_FLASH_PAGE_SIZE]);
+void azplatform_boot_to_main_firmware();
+#endif
 
 // Below are GPIO access definitions that are used from scsiPhy.cpp.
 
