@@ -233,10 +233,43 @@ void azplatform_log(const char *s)
     uart_puts(uart0, s);
 }
 
+static int g_watchdog_timeout;
+static bool g_watchdog_initialized;
+
+static void watchdog_callback(unsigned alarm_num)
+{
+    g_watchdog_timeout -= 1000;
+
+    if (g_watchdog_timeout <= WATCHDOG_CRASH_TIMEOUT - WATCHDOG_BUS_RESET_TIMEOUT)
+    {
+        if (!scsiDev.resetFlag)
+        {
+            azlog("WATCHDOG TIMEOUT, attempting bus reset");
+            scsiDev.resetFlag = 1;
+        }
+
+        if (g_watchdog_timeout <= 0)
+        {
+            assert(false);
+        }
+    }
+
+    hardware_alarm_set_target(3, delayed_by_ms(get_absolute_time(), 1000));
+}
+
 // This function can be used to periodically reset watchdog timer for crash handling.
 // It can also be left empty if the platform does not use a watchdog timer.
 void azplatform_reset_watchdog()
 {
+    g_watchdog_timeout = WATCHDOG_CRASH_TIMEOUT;
+
+    if (!g_watchdog_initialized)
+    {
+        hardware_alarm_claim(3);
+        hardware_alarm_set_callback(3, &watchdog_callback);
+        hardware_alarm_set_target(3, delayed_by_ms(get_absolute_time(), 1000));
+        g_watchdog_initialized = true;
+    }
 }
 
 /*****************************************/
