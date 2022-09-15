@@ -113,9 +113,9 @@ static void scsi_rst_assert_interrupt()
 
 static void scsiPhyIRQ(uint gpio, uint32_t events)
 {
-    if (gpio == SCSI_IN_BSY)
+    if (gpio == SCSI_IN_BSY || gpio == SCSI_IN_SEL)
     {
-        // Note BSY interrupts only when we are not driving OUT_BSY low ourselves.
+        // Note BSY / SEL interrupts only when we are not driving OUT_BSY low ourselves.
         // The BSY input pin may be shared with other signals.
         if (sio_hw->gpio_out & (1 << SCSI_OUT_BSY))
         {
@@ -138,11 +138,16 @@ extern "C" void scsiPhyReset(void)
 
     scsi_accel_rp2040_init();
 
-    // Enable BSY and RST interrupts
+    // Enable BSY, RST and SEL interrupts
     // Note: RP2040 library currently supports only one callback,
     // so it has to be same for both pins.
     gpio_set_irq_enabled_with_callback(SCSI_IN_BSY, GPIO_IRQ_EDGE_RISE, true, scsiPhyIRQ);
-    gpio_set_irq_enabled_with_callback(SCSI_IN_RST, GPIO_IRQ_EDGE_FALL, true, scsiPhyIRQ);
+    gpio_set_irq_enabled(SCSI_IN_RST, GPIO_IRQ_EDGE_FALL, true);
+
+    // Check BSY line status when SEL goes active.
+    // This is needed to handle SCSI-1 hosts that use the single initiator mode.
+    // The host will just assert the SEL directly, without asserting BSY first.
+    gpio_set_irq_enabled(SCSI_IN_SEL, GPIO_IRQ_EDGE_FALL, true);
 }
 
 /************************/
