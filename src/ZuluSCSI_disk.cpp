@@ -301,23 +301,49 @@ static void setDefaultDriveInfo(int target_idx)
 {
     image_config_t &img = g_DiskImages[target_idx];
 
-    static const char *driveinfo_fixed[4] = DRIVEINFO_FIXED;
+    static const char *driveinfo_fixed[4]     = DRIVEINFO_FIXED;
     static const char *driveinfo_removable[4] = DRIVEINFO_REMOVABLE;
-    static const char *driveinfo_optical[4] = DRIVEINFO_OPTICAL;
-    static const char *driveinfo_floppy[4] = DRIVEINFO_FLOPPY;
-    static const char *driveinfo_magopt[4] = DRIVEINFO_MAGOPT;
-    static const char *driveinfo_tape[4] = DRIVEINFO_TAPE;
+    static const char *driveinfo_optical[4]   = DRIVEINFO_OPTICAL;
+    static const char *driveinfo_floppy[4]    = DRIVEINFO_FLOPPY;
+    static const char *driveinfo_magopt[4]    = DRIVEINFO_MAGOPT;
+    static const char *driveinfo_tape[4]      = DRIVEINFO_TAPE;
+
+    static const char *apl_driveinfo_fixed[4]     = APPLE_DRIVEINFO_FIXED;
+    static const char *apl_driveinfo_removable[4] = APPLE_DRIVEINFO_REMOVABLE;
+    static const char *apl_driveinfo_optical[4]   = APPLE_DRIVEINFO_OPTICAL;
+    static const char *apl_driveinfo_floppy[4]    = APPLE_DRIVEINFO_FLOPPY;
+    static const char *apl_driveinfo_magopt[4]    = APPLE_DRIVEINFO_MAGOPT;
+    static const char *apl_driveinfo_tape[4]      = APPLE_DRIVEINFO_TAPE;
+
     const char **driveinfo = NULL;
 
-    switch (img.deviceType)
+    if (img.quirks == S2S_CFG_QUIRKS_APPLE)
     {
-        case S2S_CFG_FIXED:         driveinfo = driveinfo_fixed; break;
-        case S2S_CFG_REMOVEABLE:    driveinfo = driveinfo_removable; break;
-        case S2S_CFG_OPTICAL:       driveinfo = driveinfo_optical; break;
-        case S2S_CFG_FLOPPY_14MB:   driveinfo = driveinfo_floppy; break;
-        case S2S_CFG_MO:            driveinfo = driveinfo_magopt; break;
-        case S2S_CFG_SEQUENTIAL:    driveinfo = driveinfo_tape; break;
-        default:                    driveinfo = driveinfo_fixed; break;
+        // Use default drive IDs that are recognized by Apple machines
+        switch (img.deviceType)
+        {
+            case S2S_CFG_FIXED:         driveinfo = apl_driveinfo_fixed; break;
+            case S2S_CFG_REMOVEABLE:    driveinfo = apl_driveinfo_removable; break;
+            case S2S_CFG_OPTICAL:       driveinfo = apl_driveinfo_optical; break;
+            case S2S_CFG_FLOPPY_14MB:   driveinfo = apl_driveinfo_floppy; break;
+            case S2S_CFG_MO:            driveinfo = apl_driveinfo_magopt; break;
+            case S2S_CFG_SEQUENTIAL:    driveinfo = apl_driveinfo_tape; break;
+            default:                    driveinfo = apl_driveinfo_fixed; break;
+        }
+    }
+    else
+    {
+        // Generic IDs
+        switch (img.deviceType)
+        {
+            case S2S_CFG_FIXED:         driveinfo = driveinfo_fixed; break;
+            case S2S_CFG_REMOVEABLE:    driveinfo = driveinfo_removable; break;
+            case S2S_CFG_OPTICAL:       driveinfo = driveinfo_optical; break;
+            case S2S_CFG_FLOPPY_14MB:   driveinfo = driveinfo_floppy; break;
+            case S2S_CFG_MO:            driveinfo = driveinfo_magopt; break;
+            case S2S_CFG_SEQUENTIAL:    driveinfo = driveinfo_tape; break;
+            default:                    driveinfo = driveinfo_fixed; break;
+        }
     }
 
     if (img.vendor[0] == '\0')
