@@ -56,8 +56,9 @@ void scsi_bsy_deassert_interrupt()
 
         if (sel_id >= 0)
         {
-            uint8_t atn_flag = SCSI_IN(ATN) ? SCSI_STS_SELECTION_ATN : 0;
-            g_scsi_sts_selection = SCSI_STS_SELECTION_SUCCEEDED | atn_flag | sel_id;
+            // Set ATN flag here unconditionally, real value is only known after
+            // OUT_BSY is enabled in scsiStatusSEL() below.
+            g_scsi_sts_selection = SCSI_STS_SELECTION_SUCCEEDED | SCSI_STS_SELECTION_ATN | sel_id;
         }
 
         // selFlag is required for Philips P2000C which releases it after 600ns
@@ -80,7 +81,13 @@ extern "C" bool scsiStatusSEL()
         // On RP2040 hardware the ATN signal is only available after OUT_BSY enables
         // the IO buffer U105, so check the signal status here.
         delay_100ns();
-        scsiDev.atnFlag |= scsiStatusATN();
+        if (!scsiStatusATN())
+        {
+            // This is a SCSI1 host that does send IDENTIFY message
+            scsiDev.atnFlag = 0;
+            scsiDev.target->unitAttention = 0;
+            scsiDev.compatMode = COMPAT_SCSI1;
+        }
     }
 
     return SCSI_IN(SEL);
