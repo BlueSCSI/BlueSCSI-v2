@@ -474,57 +474,12 @@ void azplatform_boot_to_main_firmware()
 
 void azplatform_config_hook(S2S_TargetCfg *config)
 {
+    // Enable Apple quirks by dip switch
     if (g_enable_apple_quirks)
     {
         if (config->quirks == S2S_CFG_QUIRKS_NONE)
         {
             config->quirks = S2S_CFG_QUIRKS_APPLE;
-        }
-
-        if (config->quirks == S2S_CFG_QUIRKS_APPLE)
-        {
-            static const char *driveinfo_fixed[4] = APPLE_DRIVEINFO_FIXED;
-            static const char *driveinfo_removable[4] = APPLE_DRIVEINFO_REMOVABLE;
-            static const char *driveinfo_optical[4] = APPLE_DRIVEINFO_OPTICAL;
-            static const char *driveinfo_floppy[4] = APPLE_DRIVEINFO_FLOPPY;
-            static const char *driveinfo_magopt[4] = APPLE_DRIVEINFO_MAGOPT;
-            static const char *driveinfo_tape[4] = APPLE_DRIVEINFO_TAPE;
-            const char **driveinfo = NULL;
-
-            switch (config->deviceType)
-            {
-                case S2S_CFG_FIXED:         driveinfo = driveinfo_fixed; break;
-                case S2S_CFG_REMOVEABLE:    driveinfo = driveinfo_removable; break;
-                case S2S_CFG_OPTICAL:       driveinfo = driveinfo_optical; break;
-                case S2S_CFG_FLOPPY_14MB:   driveinfo = driveinfo_floppy; break;
-                case S2S_CFG_MO:            driveinfo = driveinfo_magopt; break;
-                case S2S_CFG_SEQUENTIAL:    driveinfo = driveinfo_tape; break;
-                default:                    driveinfo = driveinfo_fixed; break;
-            }
-
-            if (config->vendor[0] == '\0')
-            {
-                memset(config->vendor, 0, sizeof(config->vendor));
-                strncpy(config->vendor, driveinfo[0], sizeof(config->vendor));
-            }
-
-            if (config->prodId[0] == '\0')
-            {
-                memset(config->prodId, 0, sizeof(config->prodId));
-                strncpy(config->prodId, driveinfo[1], sizeof(config->prodId));
-            }
-
-            if (config->revision[0] == '\0')
-            {
-                memset(config->revision, 0, sizeof(config->revision));
-                strncpy(config->revision, driveinfo[2], sizeof(config->revision));
-            }
-
-            if (config->serial[0] == '\0')
-            {
-                memset(config->serial, 0, sizeof(config->serial));
-                strncpy(config->serial, driveinfo[3], sizeof(config->serial));
-            }
         }
     }
 }
