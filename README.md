@@ -1,4 +1,4 @@
-ZuluSCSI Firmware
+ZuluSCSI™ Firmware
 =================
 
 Hard Drive & ISO image files
@@ -61,7 +61,7 @@ On failure, `Zuluerr.txt` is written on the SD card.
 Alternatively, the board can be programmed using USB connection in DFU mode by setting DIP switch 4.
 The necessary programmer utility for Windows can be downloaded from [GD32 website](http://www.gd32mcu.com/en/download?kw=dfu&lan=en). On Linux and MacOS, the standard 'dfu-util' can be used. It can be installed via your package manager under Linux. On MacOS, it is available through MacPorts and Brew as a package.
 
-    dfu-util --alt 0 --dfuse-address 0x08000000 --download ZuluSCSIv1_1_XXXXXX.bin
+    `dfu-util --alt 0 --dfuse-address 0x08000000 --download ZuluSCSIv1_1_XXXXXX.bin`
 
 For RP2040-based boards, the USB programming uses `.uf2` format file that can be copied to the USB drive that shows up in bootloader mode.
 
