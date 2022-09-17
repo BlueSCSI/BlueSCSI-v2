@@ -224,7 +224,7 @@ enum SCSI_DEVICE_TYPE
 #define HDIMG_ID_POS  2                 // Position to embed ID number
 #define HDIMG_LUN_POS 3                 // Position to embed LUN numbers
 #define HDIMG_BLK_POS 5                 // Position to embed block size numbers
-#define MAX_FILE_PATH 32                // Maximum file name length
+#define MAX_FILE_PATH 64                // Maximum file name length
 
 /*
  *  Data byte to BSRR register setting value and parity table
