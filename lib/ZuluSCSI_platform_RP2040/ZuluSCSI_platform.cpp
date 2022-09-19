@@ -7,6 +7,7 @@
 #include <hardware/gpio.h>
 #include <hardware/uart.h>
 #include <hardware/spi.h>
+#include <hardware/structs/xip_ctrl.h>
 #include <platform/mbed_error.h>
 
 extern "C" {
@@ -297,7 +298,17 @@ bool azplatform_rewrite_flash_page(uint32_t offset, uint8_t buffer[AZPLATFORM_FL
     assert(offset % AZPLATFORM_FLASH_PAGE_SIZE == 0);
     assert(offset >= AZPLATFORM_BOOTLOADER_SIZE);
 
+    // Avoid any mbed timer interrupts triggering during the flashing.
     __disable_irq();
+
+    // For some reason any code executed after flashing crashes
+    // unless we disable the XIP cache.
+    // Not sure why this happens, as flash_range_program() is flushing
+    // the cache correctly.
+    // The cache is now enabled from bootloader start until it starts
+    // flashing, and again after reset to main firmware.
+    xip_ctrl_hw->ctrl = 0;
+
     flash_range_erase(offset, AZPLATFORM_FLASH_PAGE_SIZE);
     flash_range_program(offset, buffer, AZPLATFORM_FLASH_PAGE_SIZE);
     __enable_irq();

@@ -9,10 +9,8 @@
     /* The bootloader is linked to begin at 0x12000100.
      * First 256 bytes are reserved for RP2040 second stage bootloader,
      * which comes as part of the main firmware.elf and is never overwritten.
-     * The bootloader also runs without XIP cache because that seemed to cause
-     * problems when writing flash.
      */
-    FLASH(rx) : ORIGIN = 0x12000100, LENGTH = 128k-256
+    FLASH(rx) : ORIGIN = 0x10000100, LENGTH = 128k-256
     RAM(rwx) : ORIGIN = 0x20000000, LENGTH = 240k  /* Leave space for pico-debug */
     SCRATCH_X(rwx) : ORIGIN = 0x20040000, LENGTH = 4k
     SCRATCH_Y(rwx) : ORIGIN = 0x20041000, LENGTH = 4k
