@@ -10,7 +10,7 @@ Please pre-tap any screw holes before mounting.
 
 Print with supports for front overhangs. Tight fit to hold everything together.
 
-Remix = a slightly modified version with light-pipes for the LEDs and some geometry.
+Remix = a slightly modified version with light-pipes for the LEDs and some geometry fixes.
 
 # License
 
