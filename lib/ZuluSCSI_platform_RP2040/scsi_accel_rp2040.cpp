@@ -432,20 +432,45 @@ bool scsi_accel_rp2040_isWriteFinished(const uint8_t* data)
     return finished;
 }
 
+static bool scsi_accel_rp2040_isWriteDone()
+{
+    // Check if data is still waiting in PIO FIFO
+    if (!pio_sm_is_tx_fifo_empty(SCSI_DMA_PIO, SCSI_DMA_SM))
+        return false;
+
+    if (g_scsi_dma.syncOffset > 0)
+    {
+        // Check if all bytes of synchronous write have been acknowledged
+        if (pio_sm_get_rx_fifo_level(SCSI_DMA_PIO, SCSI_DMA_SM) > g_scsi_dma.syncOffsetPreload)
+            return false;
+    }
+    else
+    {
+        // Check if state machine has written out its OSR
+        if (pio_sm_get_pc(SCSI_DMA_PIO, SCSI_DMA_SM) != g_scsi_dma.pio_offset_async_write)
+            return false;
+    }
+
+    // Check if ACK of the final byte has finished
+    if (SCSI_IN(ACK))
+        return false;
+
+    return true;
+}
+
 void scsi_accel_rp2040_stopWrite(volatile int *resetFlag)
 {
     // Wait for TX fifo to be empty and ACK to go high
     // For synchronous writes wait for all ACKs to be received also
     uint32_t start = millis();
-    while ((!pio_sm_is_tx_fifo_empty(SCSI_DMA_PIO, SCSI_DMA_SM)
-            || pio_sm_get_rx_fifo_level(SCSI_DMA_PIO, SCSI_DMA_SM) > g_scsi_dma.syncOffsetPreload
-            || SCSI_IN(ACK)) && !*resetFlag)
+    while (!scsi_accel_rp2040_isWriteDone() && !*resetFlag)
     {
         if ((uint32_t)(millis() - start) > 5000)
         {
             azlog("scsi_accel_rp2040_stopWrite() timeout, FIFO levels ",
                 (int)pio_sm_get_tx_fifo_level(SCSI_DMA_PIO, SCSI_DMA_SM), " ",
-                (int)pio_sm_get_rx_fifo_level(SCSI_DMA_PIO, SCSI_DMA_SM));
+                (int)pio_sm_get_rx_fifo_level(SCSI_DMA_PIO, SCSI_DMA_SM), " PC ",
+                (int)pio_sm_get_pc(SCSI_DMA_PIO, SCSI_DMA_SM));
             *resetFlag = 1;
             break;
         }
