@@ -13,6 +13,7 @@
 static uint32_t g_sdio_ocr; // Operating condition register from card
 static uint32_t g_sdio_rca; // Relative card address
 static cid_t g_sdio_cid;
+static csd_t g_sdio_csd;
 static int g_sdio_error_line;
 static sdio_status_t g_sdio_error;
 static uint32_t g_sdio_dma_buf[128];
@@ -119,6 +120,13 @@ bool SdioCard::begin(SdioConfig sdioConfig)
         return false;
     }
 
+    // Get CSD
+    if (!checkReturnOk(rp2040_sdio_command_R2(CMD9, g_sdio_rca, (uint8_t*)&g_sdio_csd)))
+    {
+        azdbg("SDIO failed to read CSD");
+        return false;
+    }
+
     // Select card
     if (!checkReturnOk(rp2040_sdio_command_R1(CMD7, g_sdio_rca, &reply)))
     {
@@ -173,7 +181,8 @@ bool SdioCard::readCID(cid_t* cid)
 
 bool SdioCard::readCSD(csd_t* csd)
 {
-    return checkReturnOk(rp2040_sdio_command_R2(CMD9, g_sdio_rca, (uint8_t*)csd)); // SEND_CSD
+    *csd = g_sdio_csd;
+    return true;
 }
 
 bool SdioCard::readOCR(uint32_t* ocr)
@@ -203,9 +212,7 @@ bool SdioCard::readStop()
 
 uint32_t SdioCard::sectorCount()
 {
-    csd_t csd;
-    readCSD(&csd);
-    return sdCardCapacity(&csd);
+    return sdCardCapacity(&g_sdio_csd);
 }
 
 uint32_t SdioCard::status()
