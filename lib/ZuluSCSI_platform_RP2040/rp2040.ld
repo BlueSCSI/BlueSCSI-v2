@@ -65,6 +65,12 @@ SECTIONS
         *libc*:*printf*(.text .text*)
         *libc*:*toa*(.text .text*)
         *libminIni.a:(.text .text*)
+
+        /* RP2040 breakpoints in RAM code don't always work very well
+         * because the boot routine tends to overwrite them.
+         * Uncommenting this line puts all code in flash.
+         */
+        /* *(.text .text*) */
     } > FLASH
     .rodata : {
         . = ALIGN(4);

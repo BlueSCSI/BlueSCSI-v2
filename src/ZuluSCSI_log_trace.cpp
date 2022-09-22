@@ -10,6 +10,7 @@ extern "C" {
 }
 
 static bool g_LogData = false;
+static bool g_LogInitiatorCommand = false;
 static int g_InByteCount = 0;
 static int g_OutByteCount = 0;
 static uint16_t g_DataChecksum = 0;
@@ -60,9 +61,10 @@ static const char *getCommandName(uint8_t cmd)
     }
 }
 
-static void printNewPhase(int phase)
+static void printNewPhase(int phase, bool initiator = false)
 {
     g_LogData = false;
+    g_LogInitiatorCommand = false;
     if (!g_azlog_debug)
     {
         return;
@@ -83,7 +85,10 @@ static void printNewPhase(int phase)
             break;
         
         case SELECTION:
-            azdbg("---- SELECTION: ", (int)(*SCSI_STS_SELECTED & 7));
+            if (initiator)
+                azdbg("---- SELECTION");
+            else
+                azdbg("---- SELECTION: ", (int)(*SCSI_STS_SELECTED & 7));
             break;
         
         case RESELECTION:
@@ -91,7 +96,12 @@ static void printNewPhase(int phase)
             break;
         
         case STATUS:
-            if (scsiDev.status == GOOD)
+            if (initiator)
+            {
+                azdbg("---- STATUS");
+                g_LogData = true;
+            }
+            else if (scsiDev.status == GOOD)
             {
                 azdbg("---- STATUS: 0 GOOD");
             }
@@ -106,11 +116,12 @@ static void printNewPhase(int phase)
             break;
         
         case COMMAND:
+            g_LogInitiatorCommand = initiator;
             g_LogData = true;
             break;
         
         case DATA_IN:
-            if (scsiDev.target->syncOffset > 0)
+            if (!initiator && scsiDev.target->syncOffset > 0)
                 azdbg("---- DATA_IN, syncOffset ", (int)scsiDev.target->syncOffset,
                                    " syncPeriod ", (int)scsiDev.target->syncPeriod);
             else
@@ -118,7 +129,7 @@ static void printNewPhase(int phase)
             break;
         
         case DATA_OUT:
-            if (scsiDev.target->syncOffset > 0)
+            if (!initiator && scsiDev.target->syncOffset > 0)
                 azdbg("---- DATA_OUT, syncOffset ", (int)scsiDev.target->syncOffset,
                                     " syncPeriod ", (int)scsiDev.target->syncPeriod);
             else
@@ -177,6 +188,24 @@ void scsiLogPhaseChange(int new_phase)
     }
 }
 
+void scsiLogInitiatorPhaseChange(int new_phase)
+{
+    static int old_phase = BUS_FREE;
+
+    if (new_phase != old_phase)
+    {
+        if (old_phase == DATA_IN || old_phase == DATA_OUT)
+        {
+            azdbg("---- Total IN: ", g_InByteCount, " OUT: ", g_OutByteCount, " CHECKSUM: ", (int)g_DataChecksum);
+        }
+        g_InByteCount = g_OutByteCount = 0;
+        g_DataChecksum = 0;
+
+        printNewPhase(new_phase, true);
+        old_phase = new_phase;
+    }
+}
+
 void scsiLogDataIn(const uint8_t *buf, uint32_t length)
 {
     if (g_LogData)
@@ -199,7 +228,7 @@ void scsiLogDataIn(const uint8_t *buf, uint32_t length)
 
 void scsiLogDataOut(const uint8_t *buf, uint32_t length)
 {
-    if (buf == scsiDev.cdb)
+    if (buf == scsiDev.cdb || g_LogInitiatorCommand)
     {
         azdbg("---- COMMAND: ", getCommandName(buf[0]));
     }
