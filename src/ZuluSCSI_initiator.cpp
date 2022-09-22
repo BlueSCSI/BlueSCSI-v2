@@ -127,6 +127,8 @@ int scsiInitiatorRunCommand(int target_id,
         }
     }
 
+    scsiHostPhyRelease();
+
     return status;
 }
 
