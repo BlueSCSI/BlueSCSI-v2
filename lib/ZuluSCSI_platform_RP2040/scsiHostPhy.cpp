@@ -83,25 +83,30 @@ bool scsiHostPhySelect(int target_id)
 // Read the current communication phase as signaled by the target
 int scsiHostPhyGetPhase()
 {
-    // Disable OUT_BSY for a short time to see if the target is still on line
-    SCSI_OUT(BSY, 0);
-    delay_100ns();
-
-    if (!SCSI_IN(BSY))
-    {
-        scsiLogInitiatorPhaseChange(BUS_FREE);
-        return BUS_FREE;
-    }
-
-    // Re-enable OUT_BSY to read signal states
-    SCSI_OUT(BSY, 1);
-    delay_100ns();
+    static absolute_time_t last_online_time;
 
     int phase = 0;
     if (SCSI_IN(CD)) phase |= __scsiphase_cd;
     if (SCSI_IN(IO)) phase |= __scsiphase_io;
     if (SCSI_IN(MSG)) phase |= __scsiphase_msg;
 
+    if (phase == 0 && absolute_time_diff_us(last_online_time, get_absolute_time()) > 100)
+    {
+        // Disable OUT_BSY for a short time to see if the target is still on line
+        SCSI_OUT(BSY, 0);
+        delay_100ns();
+
+        if (!SCSI_IN(BSY))
+        {
+            scsiLogInitiatorPhaseChange(BUS_FREE);
+            return BUS_FREE;
+        }
+
+        // Still online, re-enable OUT_BSY
+        SCSI_OUT(BSY, 1);
+    }
+
+    last_online_time = get_absolute_time();
     scsiLogInitiatorPhaseChange(phase);
     return phase;
 }
