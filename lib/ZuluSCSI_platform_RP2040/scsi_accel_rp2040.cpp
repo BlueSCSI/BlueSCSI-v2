@@ -635,11 +635,12 @@ void scsi_accel_rp2040_init()
     g_scsi_dma.core1_active = false;
     multicore_reset_core1();
     multicore_launch_core1(&enable_irq_second_core);
-    delay(1);
+    delay(5);
 
     if (!g_scsi_dma.core1_active)
     {
         azlog("Failed to offload SCSI DMA interrupts to second core, using first core");
+        multicore_reset_core1();
         irq_set_exclusive_handler(DMA_IRQ_0, scsi_dma_write_irq);
         irq_set_enabled(DMA_IRQ_0, true);
     }
