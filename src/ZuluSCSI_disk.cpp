@@ -85,9 +85,11 @@ public:
             m_israw = true;
             m_blockdev = SD.card();
 
-            if (m_endsector >= SD.card()->sectorCount())
+            uint32_t sectorCount = SD.card()->sectorCount();
+            if (m_endsector >= sectorCount)
             {
-                m_endsector = SD.card()->sectorCount() - 1;
+                azlog("Limiting RAW image mapping to SD card sector count: ", (int)sectorCount);
+                m_endsector = sectorCount - 1;
             }
         }
         else
