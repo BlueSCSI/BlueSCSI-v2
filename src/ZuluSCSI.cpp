@@ -50,6 +50,7 @@
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_log_trace.h"
 #include "ZuluSCSI_disk.h"
+#include "ZuluSCSI_initiator.h"
 
 SdFs SD;
 FsFile g_logfile;
@@ -386,6 +387,21 @@ void readSCSIDeviceConfig()
 
 static void reinitSCSI()
 {
+#ifdef PLATFORM_HAS_INITIATOR_MODE
+  if (azplatform_is_initiator_mode_enabled())
+  {
+    // Initialize scsiDev to zero values even though it is not used
+    scsiInit();
+
+    // Initializer initiator mode state machine
+    scsiInitiatorInit();
+
+    blinkStatus(BLINK_STATUS_OK);
+
+    return;
+  }
+#endif
+
   scsiDiskResetImages();
   readSCSIDeviceConfig();
   findHDDImages();
@@ -454,14 +470,25 @@ extern "C" void zuluscsi_main_loop(void)
   static uint32_t sd_card_check_time = 0;
 
   azplatform_reset_watchdog();
-  scsiPoll();
-  scsiDiskPoll();
-  scsiLogPhaseChange(scsiDev.phase);
-
-  // Save log periodically during status phase if there are new messages.
-  if (scsiDev.phase == STATUS)
+  
+#ifdef PLATFORM_HAS_INITIATOR_MODE
+  if (azplatform_is_initiator_mode_enabled())
   {
+    scsiInitiatorMainLoop();
     save_logfile();
+  }
+  else
+#endif
+  {
+    scsiPoll();
+    scsiDiskPoll();
+    scsiLogPhaseChange(scsiDev.phase);
+
+    // Save log periodically during status phase if there are new messages.
+    if (scsiDev.phase == STATUS)
+    {
+      save_logfile();
+    }
   }
 
   // Check SD card status for hotplug

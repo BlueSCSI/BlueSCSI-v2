@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <ZuluSCSI_platform.h>
+
 // Use variables for version number
 #define FW_VER_NUM      "1.0.9"
 #define FW_VER_SUFFIX   "devel"
