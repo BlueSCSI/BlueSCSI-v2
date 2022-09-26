@@ -11,7 +11,7 @@ With ZuluSCSI V1.0, and verbose log messages disabled (debug DIP switch OFF), ex
 With ZuluSCSI Mini (V1.0), and verbose log messages disabled (default, unless you enable it in zuluscsi.ini), 
 expected SCSI performance is 2.4 MB/s read and 2 MB/s write.
 
-Slow SD cards or a fragmented filesystem can slow down access.
+Slow SD cards or a fragmented filesystem can slow down access. The use of Speed Class 4 SD cards may result in the bottleneck being the SD card itself. We recommend using Speed Class 10 or above SDHC-marked cards. 
 
 Seek performance is best if image files are contiguous.
 
