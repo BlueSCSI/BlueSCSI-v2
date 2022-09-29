@@ -76,6 +76,28 @@ For ZuluSCSI V1.1, the DIP switch settings are as follows:
 
 ZuluSCSI Mini has no DIP switches, so all optional configuration parameters must be defined in zuluscsi.ini
 
+ZuluSCSI RP2040 DIP switch settings are:
+- INITIATOR: Enable SCSI initiator mode for imaging SCSI drives
+- DEBUG LOG: Enable verbose debug log (saved to `Zululog.txt`)
+- TERMINATION: Enable SCSI termination
+- BOOTLOADER: Enable built-in USB bootloader, this DIP switch MUST remain off during normal operation.
+
+SCSI initiator mode
+-------------------
+The RP2040 model supports SCSI initiator mode for reading SCSI drives.
+When enabled by the DIP switch, ZuluSCSI RP2040 will scan for SCSI drives on the bus and copy the data as `HDxx_imaged.hda` to the SD card.
+
+LED indications in initiator mode:
+
+- Short blink once a second: idle, searching for SCSI drives
+- Slow blink every 5 seconds: copying data. The blink acts as a progress bar: first it is short and becomes longer when data copying progresses.
+
+The firmware retries reads up to 5 times and attempts to skip any sectors that have problems.
+Any read errors are logged into `zululog.txt`.
+
+Depending on hardware setup, you may need to mount diode `D205` and jumper `JP201` to supply `TERMPWR` to the SCSI bus.
+This is necessary if the drives do not supply their own SCSI terminator power.
+
 Project structure
 -----------------
 - **src/ZuluSCSI.cpp**: Main portable SCSI implementation.

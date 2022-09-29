@@ -374,11 +374,6 @@ void readSCSIDeviceConfig()
   {
     scsiDiskLoadConfig(i);
   }
-  
-  if (ini_getbool("SCSI", "Debug", 0, CONFIGFILE))
-  {
-    g_azlog_debug = true;
-  }
 }
 
 /*********************************/
@@ -387,6 +382,11 @@ void readSCSIDeviceConfig()
 
 static void reinitSCSI()
 {
+  if (ini_getbool("SCSI", "Debug", 0, CONFIGFILE))
+  {
+    g_azlog_debug = true;
+  }
+
 #ifdef PLATFORM_HAS_INITIATOR_MODE
   if (azplatform_is_initiator_mode_enabled())
   {
