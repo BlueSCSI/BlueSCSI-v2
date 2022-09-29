@@ -58,9 +58,9 @@ bool scsiHostPhySelect(int target_id)
     SCSI_OUT(BSY, 0);
 
     // Wait for target to respond
-    for (int wait = 0; wait < 250; wait++)
+    for (int wait = 0; wait < 2500; wait++)
     {
-        delayMicroseconds(1000);
+        delayMicroseconds(100);
         if (SCSI_IN(BSY))
         {
             break;
@@ -75,6 +75,7 @@ bool scsiHostPhySelect(int target_id)
     }
 
     // We need to assert OUT_BSY to enable IO buffer U105 to read status signals.
+    SCSI_RELEASE_DATA_REQ();
     SCSI_OUT(BSY, 1);
     SCSI_OUT(SEL, 0);
     return true;
@@ -85,7 +86,15 @@ int scsiHostPhyGetPhase()
 {
     static absolute_time_t last_online_time;
 
+    if (g_scsiHostPhyReset)
+    {
+        // Reset request from watchdog timer
+        scsiHostPhyRelease();
+        return BUS_FREE;
+    }
+
     int phase = 0;
+    bool req_in = SCSI_IN(REQ);
     if (SCSI_IN(CD)) phase |= __scsiphase_cd;
     if (SCSI_IN(IO)) phase |= __scsiphase_io;
     if (SCSI_IN(MSG)) phase |= __scsiphase_msg;
@@ -102,13 +111,23 @@ int scsiHostPhyGetPhase()
             return BUS_FREE;
         }
 
-        // Still online, re-enable OUT_BSY
+        // Still online, re-enable OUT_BSY to enable IO buffers
         SCSI_OUT(BSY, 1);
     }
 
     last_online_time = get_absolute_time();
-    scsiLogInitiatorPhaseChange(phase);
-    return phase;
+
+    if (!req_in)
+    {
+        // Don't act on phase changes until target asserts request signal.
+        // This filters out any spurious changes on control signals.
+        return BUS_BUSY;
+    }
+    else
+    {
+        scsiLogInitiatorPhaseChange(phase);
+        return phase;
+    }
 }
 
 bool scsiHostRequestWaiting()
