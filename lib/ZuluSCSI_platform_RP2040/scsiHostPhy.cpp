@@ -103,7 +103,7 @@ int scsiHostPhyGetPhase()
     {
         // Disable OUT_BSY for a short time to see if the target is still on line
         SCSI_OUT(BSY, 0);
-        delay_100ns();
+        delayMicroseconds(1);
 
         if (!SCSI_IN(BSY))
         {
