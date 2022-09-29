@@ -307,16 +307,45 @@ static void watchdog_callback(unsigned alarm_num)
 
     if (g_watchdog_timeout <= WATCHDOG_CRASH_TIMEOUT - WATCHDOG_BUS_RESET_TIMEOUT)
     {
-        if (!scsiDev.resetFlag)
+        if (!scsiDev.resetFlag || !g_scsiHostPhyReset)
         {
+            azlog("--------------");
             azlog("WATCHDOG TIMEOUT, attempting bus reset");
+            azlog("GPIO states: out ", sio_hw->gpio_out, " oe ", sio_hw->gpio_oe, " in ", sio_hw->gpio_in);
+
+            uint32_t *p = (uint32_t*)__get_PSP();
+            for (int i = 0; i < 8; i++)
+            {
+                if (p == &__StackTop) break; // End of stack
+
+                azlog("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
+                p += 4;
+            }
+
             scsiDev.resetFlag = 1;
             g_scsiHostPhyReset = true;
         }
 
         if (g_watchdog_timeout <= 0)
         {
-            assert(false);
+            azlog("--------------");
+            azlog("WATCHDOG TIMEOUT!");
+            azlog("Platform: ", g_azplatform_name);
+            azlog("FW Version: ", g_azlog_firmwareversion);
+            azlog("GPIO states: out ", sio_hw->gpio_out, " oe ", sio_hw->gpio_oe, " in ", sio_hw->gpio_in);
+
+            uint32_t *p = (uint32_t*)__get_PSP();
+            for (int i = 0; i < 8; i++)
+            {
+                if (p == &__StackTop) break; // End of stack
+
+                azlog("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
+                p += 4;
+            }
+
+            azplatform_emergency_log_save();
+
+            azplatform_boot_to_main_firmware();
         }
     }
 
