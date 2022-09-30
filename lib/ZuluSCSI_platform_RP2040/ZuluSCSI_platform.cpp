@@ -17,6 +17,7 @@ extern "C" {
 #include <hardware/flash.h>
 
 const char *g_azplatform_name = PLATFORM_NAME;
+static bool g_scsi_initiator = false;
 
 void mbed_error_hook(const mbed_error_ctx * error_context);
 
@@ -56,7 +57,6 @@ void azplatform_init()
 
     delay(10); // 10 ms delay to let pull-ups do their work
 
-    bool initiator = !gpio_get(DIP_INITIATOR);
     bool dbglog = !gpio_get(DIP_DBGLOG);
     bool termination = !gpio_get(DIP_TERM);
 
@@ -65,12 +65,7 @@ void azplatform_init()
     uart_init(uart0, 1000000);
     mbed_set_error_hook(mbed_error_hook);
 
-    azlog("DIP switch settings: initiator ", (int)initiator, ", debug log ", (int)dbglog, ", termination ", (int)termination);
-
-    if (initiator)
-    {
-        azlog("ERROR: SCSI initiator mode is not implemented yet, turn DIP switch off for proper operation!");
-    }
+    azlog("DIP switch settings: debug log ", (int)dbglog, ", termination ", (int)termination);
 
     g_azlog_debug = dbglog;
     
@@ -82,50 +77,6 @@ void azplatform_init()
     {
         azlog("NOTE: SCSI termination is disabled");
     }
-
-    /* Initialize SCSI and SD card pins to required modes.
-     * SCSI pins should be inactive / input at this point.
-     */
-
-    // SCSI data bus direction is switched by DATA_DIR signal.
-    // Pullups make sure that no glitches occur when switching direction.
-    //        pin             function       pup   pdown  out    state fast
-    gpio_conf(SCSI_IO_DB0,    GPIO_FUNC_SIO, true, false, false, true, true);
-    gpio_conf(SCSI_IO_DB1,    GPIO_FUNC_SIO, true, false, false, true, true);
-    gpio_conf(SCSI_IO_DB2,    GPIO_FUNC_SIO, true, false, false, true, true);
-    gpio_conf(SCSI_IO_DB3,    GPIO_FUNC_SIO, true, false, false, true, true);
-    gpio_conf(SCSI_IO_DB4,    GPIO_FUNC_SIO, true, false, false, true, true);
-    gpio_conf(SCSI_IO_DB5,    GPIO_FUNC_SIO, true, false, false, true, true);
-    gpio_conf(SCSI_IO_DB6,    GPIO_FUNC_SIO, true, false, false, true, true);
-    gpio_conf(SCSI_IO_DB7,    GPIO_FUNC_SIO, true, false, false, true, true);
-    gpio_conf(SCSI_IO_DBP,    GPIO_FUNC_SIO, true, false, false, true, true);
-
-    // SCSI control outputs
-    //        pin             function       pup   pdown  out    state fast
-    gpio_conf(SCSI_OUT_IO,    GPIO_FUNC_SIO, false,false, true,  true, true);
-    gpio_conf(SCSI_OUT_MSG,   GPIO_FUNC_SIO, false,false, true,  true, true);
-
-    // REQ pin is switched between PIO and SIO, pull-up makes sure no glitches
-    gpio_conf(SCSI_OUT_REQ,   GPIO_FUNC_SIO, true ,false, true,  true, true);
-
-    // Shared pins are changed to input / output depending on communication phase
-    gpio_conf(SCSI_IN_SEL,    GPIO_FUNC_SIO, true, false, false, true, true);
-    if (SCSI_OUT_CD != SCSI_IN_SEL)
-    {
-        gpio_conf(SCSI_OUT_CD,    GPIO_FUNC_SIO, false,false, true,  true, true);
-    }
-
-    gpio_conf(SCSI_IN_BSY,    GPIO_FUNC_SIO, true, false, false, true, true);
-    if (SCSI_OUT_MSG != SCSI_IN_BSY)
-    {
-        gpio_conf(SCSI_OUT_MSG,    GPIO_FUNC_SIO, false,false, true,  true, true);
-    }
-
-    // SCSI control inputs
-    //        pin             function       pup   pdown  out    state fast
-    gpio_conf(SCSI_IN_ACK,    GPIO_FUNC_SIO, true, false, false, true, false);
-    gpio_conf(SCSI_IN_ATN,    GPIO_FUNC_SIO, true, false, false, true, false);
-    gpio_conf(SCSI_IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
 
     // SD card pins
     // Card is used in SDIO mode for main program, and in SPI mode for crash handler & bootloader.
@@ -146,11 +97,124 @@ void azplatform_init()
     gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_I2C, true,false, false,  true, true);
 }
 
+static bool read_initiator_dip_switch()
+{
+    /* Revision 2022d hardware has problems reading initiator DIP switch setting.
+     * The 74LVT245 hold current is keeping the GPIO_ACK state too strongly.
+     * Detect this condition by toggling the pin up and down and seeing if it sticks.
+     */
+
+    // Strong output high, then pulldown
+    //        pin             function       pup   pdown   out    state  fast
+    gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, false, false, true,  true,  false);
+    gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, false, true,  false, true,  false);
+    delay(1);
+    bool initiator_state1 = gpio_get(DIP_INITIATOR);
+    
+    // Strong output low, then pullup
+    //        pin             function       pup   pdown   out    state  fast
+    gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, false, false, true,  false, false);
+    gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, true,  false, false, false, false);
+    delay(1);
+    bool initiator_state2 = gpio_get(DIP_INITIATOR);
+
+    if (initiator_state1 == initiator_state2)
+    {
+        // Ok, was able to read the state directly
+        return !initiator_state1;
+    }
+
+    // Enable OUT_BSY for a short time.
+    // If in target mode, this will force GPIO_ACK high.
+    gpio_put(SCSI_OUT_BSY, 0);
+    delay_100ns();
+    gpio_put(SCSI_OUT_BSY, 1);
+
+    return !gpio_get(DIP_INITIATOR);
+}
+
+// late_init() only runs in main application, SCSI not needed in bootloader
 void azplatform_late_init()
 {
-    /* This function can usually be left empty.
-     * It can be used for initialization code that should not run in bootloader.
+    if (read_initiator_dip_switch())
+    {
+        g_scsi_initiator = true;
+        azlog("SCSI initiator mode selected by DIP switch, expecting SCSI disks on the bus");
+    }
+    else
+    {
+        g_scsi_initiator = false;
+        azlog("SCSI target mode selected by DIP switch, acting as an SCSI disk");
+    }
+
+    /* Initialize SCSI pins to required modes.
+     * SCSI pins should be inactive / input at this point.
      */
+
+    // SCSI data bus direction is switched by DATA_DIR signal.
+    // Pullups make sure that no glitches occur when switching direction.
+    //        pin             function       pup   pdown  out    state fast
+    gpio_conf(SCSI_IO_DB0,    GPIO_FUNC_SIO, true, false, false, true, true);
+    gpio_conf(SCSI_IO_DB1,    GPIO_FUNC_SIO, true, false, false, true, true);
+    gpio_conf(SCSI_IO_DB2,    GPIO_FUNC_SIO, true, false, false, true, true);
+    gpio_conf(SCSI_IO_DB3,    GPIO_FUNC_SIO, true, false, false, true, true);
+    gpio_conf(SCSI_IO_DB4,    GPIO_FUNC_SIO, true, false, false, true, true);
+    gpio_conf(SCSI_IO_DB5,    GPIO_FUNC_SIO, true, false, false, true, true);
+    gpio_conf(SCSI_IO_DB6,    GPIO_FUNC_SIO, true, false, false, true, true);
+    gpio_conf(SCSI_IO_DB7,    GPIO_FUNC_SIO, true, false, false, true, true);
+    gpio_conf(SCSI_IO_DBP,    GPIO_FUNC_SIO, true, false, false, true, true);
+
+    if (!g_scsi_initiator)
+    {
+        // Act as SCSI device / target
+
+        // SCSI control outputs
+        //        pin             function       pup   pdown  out    state fast
+        gpio_conf(SCSI_OUT_IO,    GPIO_FUNC_SIO, false,false, true,  true, true);
+        gpio_conf(SCSI_OUT_MSG,   GPIO_FUNC_SIO, false,false, true,  true, true);
+
+        // REQ pin is switched between PIO and SIO, pull-up makes sure no glitches
+        gpio_conf(SCSI_OUT_REQ,   GPIO_FUNC_SIO, true ,false, true,  true, true);
+
+        // Shared pins are changed to input / output depending on communication phase
+        gpio_conf(SCSI_IN_SEL,    GPIO_FUNC_SIO, true, false, false, true, true);
+        if (SCSI_OUT_CD != SCSI_IN_SEL)
+        {
+            gpio_conf(SCSI_OUT_CD,    GPIO_FUNC_SIO, false,false, true,  true, true);
+        }
+
+        gpio_conf(SCSI_IN_BSY,    GPIO_FUNC_SIO, true, false, false, true, true);
+        if (SCSI_OUT_MSG != SCSI_IN_BSY)
+        {
+            gpio_conf(SCSI_OUT_MSG,    GPIO_FUNC_SIO, false,false, true,  true, true);
+        }
+
+        // SCSI control inputs
+        //        pin             function       pup   pdown  out    state fast
+        gpio_conf(SCSI_IN_ACK,    GPIO_FUNC_SIO, true, false, false, true, false);
+        gpio_conf(SCSI_IN_ATN,    GPIO_FUNC_SIO, true, false, false, true, false);
+        gpio_conf(SCSI_IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
+    }
+    else
+    {
+        // Act as SCSI initiator
+
+        //        pin             function       pup   pdown  out    state fast
+        gpio_conf(SCSI_IN_IO,     GPIO_FUNC_SIO, true ,false, false, true, false);
+        gpio_conf(SCSI_IN_MSG,    GPIO_FUNC_SIO, true ,false, false, true, false);
+        gpio_conf(SCSI_IN_CD,     GPIO_FUNC_SIO, true ,false, false, true, false);
+        gpio_conf(SCSI_IN_REQ,    GPIO_FUNC_SIO, true ,false, false, true, false);
+        gpio_conf(SCSI_IN_BSY,    GPIO_FUNC_SIO, true, false, false, true, false);
+        gpio_conf(SCSI_IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
+        gpio_conf(SCSI_OUT_SEL,   GPIO_FUNC_SIO, false,false, true,  true, true);
+        gpio_conf(SCSI_OUT_ACK,   GPIO_FUNC_SIO, false,false, true,  true, true);
+        gpio_conf(SCSI_OUT_ATN,   GPIO_FUNC_SIO, false,false, true,  true, true);
+    }
+}
+
+bool azplatform_is_initiator_mode_enabled()
+{
+    return g_scsi_initiator;
 }
 
 /*****************************************/
@@ -243,15 +307,45 @@ static void watchdog_callback(unsigned alarm_num)
 
     if (g_watchdog_timeout <= WATCHDOG_CRASH_TIMEOUT - WATCHDOG_BUS_RESET_TIMEOUT)
     {
-        if (!scsiDev.resetFlag)
+        if (!scsiDev.resetFlag || !g_scsiHostPhyReset)
         {
+            azlog("--------------");
             azlog("WATCHDOG TIMEOUT, attempting bus reset");
+            azlog("GPIO states: out ", sio_hw->gpio_out, " oe ", sio_hw->gpio_oe, " in ", sio_hw->gpio_in);
+
+            uint32_t *p = (uint32_t*)__get_PSP();
+            for (int i = 0; i < 8; i++)
+            {
+                if (p == &__StackTop) break; // End of stack
+
+                azlog("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
+                p += 4;
+            }
+
             scsiDev.resetFlag = 1;
+            g_scsiHostPhyReset = true;
         }
 
         if (g_watchdog_timeout <= 0)
         {
-            assert(false);
+            azlog("--------------");
+            azlog("WATCHDOG TIMEOUT!");
+            azlog("Platform: ", g_azplatform_name);
+            azlog("FW Version: ", g_azlog_firmwareversion);
+            azlog("GPIO states: out ", sio_hw->gpio_out, " oe ", sio_hw->gpio_oe, " in ", sio_hw->gpio_in);
+
+            uint32_t *p = (uint32_t*)__get_PSP();
+            for (int i = 0; i < 8; i++)
+            {
+                if (p == &__StackTop) break; // End of stack
+
+                azlog("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
+                p += 4;
+            }
+
+            azplatform_emergency_log_save();
+
+            azplatform_boot_to_main_firmware();
         }
     }
 

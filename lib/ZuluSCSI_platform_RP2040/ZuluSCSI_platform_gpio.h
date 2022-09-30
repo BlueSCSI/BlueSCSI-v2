@@ -38,6 +38,16 @@
 #define SCSI_IN_BSY  13
 #define SCSI_IN_RST  27
 
+// Status line outputs for initiator mode
+#define SCSI_OUT_ACK  10
+#define SCSI_OUT_ATN  29
+
+// Status line inputs for initiator mode
+#define SCSI_IN_IO    12
+#define SCSI_IN_CD    11
+#define SCSI_IN_MSG   13
+#define SCSI_IN_REQ   9
+
 // Status LED pins
 #define LED_PIN      25
 #define LED_ON()     sio_hw->gpio_set = 1 << LED_PIN

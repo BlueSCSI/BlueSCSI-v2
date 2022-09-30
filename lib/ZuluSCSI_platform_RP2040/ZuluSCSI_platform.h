@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <Arduino.h>
 #include "ZuluSCSI_platform_gpio.h"
+#include "scsiHostPhy.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -16,9 +17,10 @@ extern const char *g_azplatform_name;
 #define PLATFORM_REVISION "2.0"
 #define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_10
 #define PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE 4096
-#define PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE 65536
+#define PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE 32768
 #define PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE 8192
 #define SD_USE_SDIO 1
+#define PLATFORM_HAS_INITIATOR_MODE 1
 
 // NOTE: The driver supports synchronous speeds higher than 10MB/s, but this
 // has not been tested due to lack of fast enough SCSI adapter.
@@ -43,7 +45,7 @@ static inline void delay_ns(unsigned long ns)
 // Approximate fast delay
 static inline void delay_100ns()
 {
-    asm volatile ("nop \n nop \n nop \n nop \n nop");
+    asm volatile ("nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop");
 }
 
 // Initialize SD card and GPIO configuration
@@ -51,6 +53,9 @@ void azplatform_init();
 
 // Initialization for main application, not used for bootloader
 void azplatform_late_init();
+
+// Query whether initiator mode is enabled on targets with PLATFORM_HAS_INITIATOR_MODE
+bool azplatform_is_initiator_mode_enabled();
 
 // Setup soft watchdog if supported
 void azplatform_reset_watchdog();
@@ -80,6 +85,15 @@ void azplatform_boot_to_main_firmware();
 // Example use: SCSI_IN(ATN), returns 1 for active low state.
 #define SCSI_IN(pin) \
     ((sio_hw->gpio_in & (1 << (SCSI_IN_ ## pin))) ? 0 : 1)
+
+// Set pin directions for initiator vs. target mode
+#define SCSI_ENABLE_INITIATOR() \
+    (sio_hw->gpio_oe_set = (1 << SCSI_OUT_ACK) | \
+                           (1 << SCSI_OUT_ATN)), \
+    (sio_hw->gpio_oe_clr = (1 << SCSI_IN_IO) | \
+                           (1 << SCSI_IN_CD) | \
+                           (1 << SCSI_IN_MSG) | \
+                           (1 << SCSI_IN_REQ))
 
 // Enable driving of shared control pins
 #define SCSI_ENABLE_CONTROL_OUT() \
@@ -117,7 +131,7 @@ extern const uint32_t g_scsi_parity_lookup[256];
                        (1 << SCSI_OUT_SEL)
 
 // Read SCSI data bus
-#define SCSI_IN_DATA(data) \
+#define SCSI_IN_DATA() \
     (~sio_hw->gpio_in & SCSI_IO_DATA_MASK) >> SCSI_IO_SHIFT
 
 #ifdef __cplusplus
