@@ -92,7 +92,9 @@ void scsiInitiatorMainLoop()
         {
             delay(1000);
             LED_ON();
-            bool readcapok = scsiInitiatorReadCapacity(g_initiator_state.target_id, &g_initiator_state.sectorcount, &g_initiator_state.sectorsize);
+            bool readcapok =
+                scsiStartStopUnit(g_initiator_state.target_id, true) &&
+                scsiInitiatorReadCapacity(g_initiator_state.target_id, &g_initiator_state.sectorcount, &g_initiator_state.sectorsize);
             LED_OFF();
 
             if (readcapok)
@@ -123,6 +125,7 @@ void scsiInitiatorMainLoop()
         // Copy sectors from SCSI drive to file
         if (g_initiator_state.sectors_done >= g_initiator_state.sectorcount)
         {
+            scsiStartStopUnit(g_initiator_state.target_id, false);
             azlog("Finished imaging drive with id ", g_initiator_state.target_id);
             LED_OFF();
             g_initiator_state.drives_imaged |= (1 << g_initiator_state.target_id);
@@ -301,12 +304,57 @@ bool scsiInitiatorReadCapacity(int target_id, uint32_t *sectorcount, uint32_t *s
 
         return true;
     }
+    else if (status == 2)
+    {
+        uint8_t sense_key;
+        scsiRequestSense(target_id, &sense_key);
+        azlog("READ CAPACITY on target ", target_id, " failed, sense key ", sense_key);
+        return false;
+    }
     else
     {
         *sectorcount = *sectorsize = 0;
         return false;
     }
 } 
+
+// Execute REQUEST SENSE command to get more information about error status
+bool scsiRequestSense(int target_id, uint8_t *sense_key)
+{
+    uint8_t command[6] = {0x03, 0, 0, 0, 4, 0};
+    uint8_t response[4] = {0};
+
+    int status = scsiInitiatorRunCommand(target_id,
+                                         command, sizeof(command),
+                                         response, sizeof(response),
+                                         NULL, 0);
+
+    *sense_key = response[2];
+    return status == 0;
+}
+
+// Execute UNIT START STOP command to load/unload media
+bool scsiStartStopUnit(int target_id, bool start)
+{
+    uint8_t command[6] = {0x1B, 0, 0, 0, 0, 0};
+    uint8_t response[4] = {0};
+
+    if (start) command[4] |= 1;
+
+    int status = scsiInitiatorRunCommand(target_id,
+                                         command, sizeof(command),
+                                         response, sizeof(response),
+                                         NULL, 0);
+
+    if (status == 2)
+    {
+        uint8_t sense_key;
+        scsiRequestSense(target_id, &sense_key);
+        azlog("START STOP UNIT on target ", target_id, " failed, sense key ", sense_key);
+    }
+
+    return status == 0;
+}
 
 // This uses callbacks to run SD and SCSI transfers in parallel
 static struct {
@@ -428,7 +476,10 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
 
     if (status != 0)
     {
-        azlog("scsiInitiatorReadDataToFile: Issuing command failed: ", status);
+        uint8_t sense_key;
+        scsiRequestSense(target_id, &sense_key);
+
+        azlog("scsiInitiatorReadDataToFile: READ10 failed: ", status, " sense key ", sense_key);
         scsiHostPhyRelease();
         return false;
     }
