@@ -93,6 +93,7 @@ void scsiInitiatorMainLoop()
             delay(1000);
             LED_ON();
             bool readcapok =
+                scsiTestUnitReady(g_initiator_state.target_id) &&
                 scsiStartStopUnit(g_initiator_state.target_id, true) &&
                 scsiInitiatorReadCapacity(g_initiator_state.target_id, &g_initiator_state.sectorcount, &g_initiator_state.sectorsize);
             LED_OFF();
@@ -322,12 +323,14 @@ bool scsiInitiatorReadCapacity(int target_id, uint32_t *sectorcount, uint32_t *s
 bool scsiRequestSense(int target_id, uint8_t *sense_key)
 {
     uint8_t command[6] = {0x03, 0, 0, 0, 4, 0};
-    uint8_t response[4] = {0};
+    uint8_t response[18] = {0};
 
     int status = scsiInitiatorRunCommand(target_id,
                                          command, sizeof(command),
                                          response, sizeof(response),
                                          NULL, 0);
+
+    azdbg("RequestSense response: ", bytearray(response, 18));
 
     *sense_key = response[2];
     return status == 0;
@@ -354,6 +357,58 @@ bool scsiStartStopUnit(int target_id, bool start)
     }
 
     return status == 0;
+}
+
+// Execute INQUIRY command
+bool scsiInquiry(int target_id, uint8_t inquiry_data[36])
+{
+    uint8_t command[6] = {0x12, 0, 0, 0, 36, 0};
+    int status = scsiInitiatorRunCommand(target_id,
+                                         command, sizeof(command),
+                                         inquiry_data, 36,
+                                         NULL, 0);
+    return status == 0;
+}
+
+// Execute TEST UNIT READY command and handle unit attention state
+bool scsiTestUnitReady(int target_id)
+{
+    for (int retries = 0; retries < 2; retries++)
+    {
+        uint8_t command[6] = {0x00, 0, 0, 0, 0, 0};
+        int status = scsiInitiatorRunCommand(target_id,
+                                            command, sizeof(command),
+                                            NULL, 0,
+                                            NULL, 0);
+
+        if (status == 0)
+        {
+            return true;
+        }
+        else if (status == 2)
+        {
+            uint8_t sense_key;
+            scsiRequestSense(target_id, &sense_key);
+
+            if (sense_key == 6)
+            {
+                uint8_t inquiry[36];
+                azlog("Target ", target_id, " reports UNIT_ATTENTION, running INQUIRY");
+                scsiInquiry(target_id, inquiry);
+            }
+            else if (sense_key == 2)
+            {
+                azlog("Target ", target_id, " reports NOT_READY, running STARTSTOPUNIT");
+                scsiStartStopUnit(target_id, true);
+            }
+        }
+        else
+        {
+            azlog("Target ", target_id, " TEST UNIT READY response: ", status);
+        }
+    }
+
+    return false;
 }
 
 // This uses callbacks to run SD and SCSI transfers in parallel
