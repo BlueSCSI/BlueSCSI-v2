@@ -45,7 +45,7 @@ static inline void delay_ns(unsigned long ns)
 // Approximate fast delay
 static inline void delay_100ns()
 {
-    asm volatile ("nop \n nop \n nop \n nop \n nop");
+    asm volatile ("nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop");
 }
 
 // Initialize SD card and GPIO configuration
