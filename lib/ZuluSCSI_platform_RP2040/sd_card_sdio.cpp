@@ -40,7 +40,7 @@ void azplatform_set_sd_callback(sd_callback_t func, const uint8_t *buffer)
     m_stream_count_start = 0;
 }
 
-static sd_callback_t get_stream_callback(const uint8_t *buf, uint32_t count)
+static sd_callback_t get_stream_callback(const uint8_t *buf, uint32_t count, const char *accesstype, uint32_t sector)
 {
     m_stream_count_start = m_stream_count;
 
@@ -53,7 +53,8 @@ static sd_callback_t get_stream_callback(const uint8_t *buf, uint32_t count)
         }
         else
         {
-            azdbg("Stream buffer mismatch: ", (uint32_t)buf, " vs. ", (uint32_t)(m_stream_buffer + m_stream_count));
+            azdbg("SD card ", accesstype, "(", (int)sector,
+                  ") slow transfer, buffer", (uint32_t)buf, " vs. ", (uint32_t)(m_stream_buffer + m_stream_count));
             return NULL;
         }
     }
@@ -307,7 +308,7 @@ bool SdioCard::writeSector(uint32_t sector, const uint8_t* src)
     }
 
     // If possible, report transfer status to application through callback.
-    sd_callback_t callback = get_stream_callback(src, 512);
+    sd_callback_t callback = get_stream_callback(src, 512, "writeSector", sector);
 
     uint32_t reply;
     if (!checkReturnOk(rp2040_sdio_command_R1(16, 512, &reply)) || // SET_BLOCKLEN
@@ -350,7 +351,7 @@ bool SdioCard::writeSectors(uint32_t sector, const uint8_t* src, size_t n)
         return true;
     }
 
-    sd_callback_t callback = get_stream_callback(src, n * 512);
+    sd_callback_t callback = get_stream_callback(src, n * 512, "writeSectors", sector);
 
     uint32_t reply;
     if (!checkReturnOk(rp2040_sdio_command_R1(16, 512, &reply)) || // SET_BLOCKLEN
@@ -393,7 +394,7 @@ bool SdioCard::readSector(uint32_t sector, uint8_t* dst)
         dst = (uint8_t*)g_sdio_dma_buf;
     }
 
-    sd_callback_t callback = get_stream_callback(dst, 512);
+    sd_callback_t callback = get_stream_callback(dst, 512, "readSector", sector);
 
     uint32_t reply;
     if (!checkReturnOk(rp2040_sdio_command_R1(16, 512, &reply)) || // SET_BLOCKLEN
@@ -441,7 +442,7 @@ bool SdioCard::readSectors(uint32_t sector, uint8_t* dst, size_t n)
         return true;
     }
 
-    sd_callback_t callback = get_stream_callback(dst, n * 512);
+    sd_callback_t callback = get_stream_callback(dst, n * 512, "readSectors", sector);
 
     uint32_t reply;
     if (!checkReturnOk(rp2040_sdio_command_R1(16, 512, &reply)) || // SET_BLOCKLEN

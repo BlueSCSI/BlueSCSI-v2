@@ -222,7 +222,7 @@ static void sdio_callback(uint32_t complete)
     }
 }
 
-static sdio_callback_t get_stream_callback(const uint8_t *buf, uint32_t count)
+static sdio_callback_t get_stream_callback(const uint8_t *buf, uint32_t count, const char *accesstype, uint32_t sector)
 {
     m_stream_count_start = m_stream_count;
 
@@ -235,7 +235,8 @@ static sdio_callback_t get_stream_callback(const uint8_t *buf, uint32_t count)
         }
         else
         {
-            azdbg("Stream buffer mismatch: ", (uint32_t)buf, " vs. ", (uint32_t)(m_stream_buffer + m_stream_count));
+            azdbg("SD card ", accesstype, "(", (int)sector,
+                  ") slow transfer, buffer", (uint32_t)buf, " vs. ", (uint32_t)(m_stream_buffer + m_stream_count));
             return NULL;
         }
     }
@@ -247,19 +248,19 @@ static sdio_callback_t get_stream_callback(const uint8_t *buf, uint32_t count)
 bool SdioCard::writeSector(uint32_t sector, const uint8_t* src)
 {
     return checkReturnOk(sd_block_write((uint32_t*)src, (uint64_t)sector * 512, 512,
-        get_stream_callback(src, 512)));
+        get_stream_callback(src, 512, "writeSector", sector)));
 }
 
 bool SdioCard::writeSectors(uint32_t sector, const uint8_t* src, size_t n)
 {
     return checkReturnOk(sd_multiblocks_write((uint32_t*)src, (uint64_t)sector * 512, 512, n,
-        get_stream_callback(src, n * 512)));
+        get_stream_callback(src, n * 512, "writeSectors", sector)));
 }
 
 bool SdioCard::readSector(uint32_t sector, uint8_t* dst)
 {
     return checkReturnOk(sd_block_read((uint32_t*)dst, (uint64_t)sector * 512, 512,
-        get_stream_callback(dst, 512)));
+        get_stream_callback(dst, 512, "readSector", sector)));
 }
 
 bool SdioCard::readSectors(uint32_t sector, uint8_t* dst, size_t n)
@@ -279,7 +280,7 @@ bool SdioCard::readSectors(uint32_t sector, uint8_t* dst, size_t n)
     }
 
     return checkReturnOk(sd_multiblocks_read((uint32_t*)dst, (uint64_t)sector * 512, 512, n,
-        get_stream_callback(dst, n * 512)));
+        get_stream_callback(dst, n * 512, "readSectors", sector)));
 }
 
 // Check if a DMA request for SD card read has completed.
