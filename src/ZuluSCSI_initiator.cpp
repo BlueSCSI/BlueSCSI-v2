@@ -132,7 +132,8 @@ void scsiInitiatorMainLoop()
         }
 
         // Update status indicator, the led blinks every 5 seconds and is on the longer the more data has been transferred
-        int phase = (millis() % 5000);
+        uint32_t time_start = millis();
+        int phase = (time_start % 5000);
         int duty = g_initiator_state.sectors_done * 5000 / g_initiator_state.sectorcount;
         if (duty < 100) duty = 100;
         if (phase <= duty)
@@ -148,20 +149,24 @@ void scsiInitiatorMainLoop()
         int numtoread = g_initiator_state.sectorcount - g_initiator_state.sectors_done;
         if (numtoread > 512) numtoread = 512;
 
+        // Retry sector-by-sector
+        if (g_initiator_state.retrycount > 1)
+            numtoread = 1;
+
         bool status = scsiInitiatorReadDataToFile(g_initiator_state.target_id,
             g_initiator_state.sectors_done, numtoread, g_initiator_state.sectorsize,
             g_initiator_state.target_file);
 
         if (!status)
         {
-            azlog("Failed to transfer starting at sector ", (int)g_initiator_state.sectors_done);
+            azlog("Failed to transfer ", numtoread, " sectors starting at ", (int)g_initiator_state.sectors_done);
 
             if (g_initiator_state.retrycount < 5)
             {
                 azlog("Retrying.. ", g_initiator_state.retrycount, "/5");
-                delay(1000);
+                delay(200);
                 scsiHostPhyReset();
-                delay(1000);
+                delay(200);
 
                 g_initiator_state.retrycount++;
                 g_initiator_state.target_file.seek((uint64_t)g_initiator_state.sectors_done * g_initiator_state.sectorsize);
@@ -179,7 +184,11 @@ void scsiInitiatorMainLoop()
             g_initiator_state.retrycount = 0;
             g_initiator_state.sectors_done += numtoread;
             g_initiator_state.target_file.flush();
-            azlog("SCSI read succeeded, sectors done: ", (int)g_initiator_state.sectors_done, " / ", (int)g_initiator_state.sectorcount);
+
+            int speed_kbps = numtoread * g_initiator_state.sectorsize / (millis() - time_start);
+            azlog("SCSI read succeeded, sectors done: ",
+                  (int)g_initiator_state.sectors_done, " / ", (int)g_initiator_state.sectorcount,
+                  " speed ", speed_kbps, " kB/s");
         }
     }
 }
@@ -301,12 +310,12 @@ bool scsiInitiatorReadCapacity(int target_id, uint32_t *sectorcount, uint32_t *s
 
 // This uses callbacks to run SD and SCSI transfers in parallel
 static struct {
-    uint32_t bytes_sd; // Number of bytes that have been scheduled for transfer on SD card side
+    uint32_t bytes_sd; // Number of bytes that have been transferred on SD card side
+    uint32_t bytes_sd_scheduled; // Number of bytes scheduled for transfer on SD card side
     uint32_t bytes_scsi; // Number of bytes that have been scheduled for transfer on SCSI side
-
+    uint32_t bytes_scsi_done; // Number of bytes that have been transferred on SCSI side
+    
     uint32_t bytes_per_sector;
-    uint32_t bytes_scsi_done;
-    uint32_t sd_transfer_start;
     bool all_ok;
 } g_initiator_transfer;
 
@@ -344,6 +353,14 @@ static void initiatorReadSDCallback(uint32_t bytes_complete)
         uint32_t sd_ready_cnt = g_initiator_transfer.bytes_sd + bytes_complete;
         if (g_initiator_transfer.bytes_scsi_done + len > sd_ready_cnt + bufsize)
             len = sd_ready_cnt + bufsize - g_initiator_transfer.bytes_scsi_done;
+        
+        if (sd_ready_cnt == g_initiator_transfer.bytes_sd_scheduled &&
+            g_initiator_transfer.bytes_sd_scheduled + bytesPerSector <= g_initiator_transfer.bytes_scsi_done)
+        {
+            // Current SD transfer is complete, it is better we return now and offer a chance for the next
+            // transfer to begin.
+            return;
+        }
 
         // Keep transfers a multiple of sector size.
         if (remain >= bytesPerSector && len % bytesPerSector != 0)
@@ -385,6 +402,7 @@ static void scsiInitiatorWriteDataToSd(FsFile &file, bool use_callback)
         azplatform_set_sd_callback(&initiatorReadSDCallback, buf);
     }
 
+    g_initiator_transfer.bytes_sd_scheduled = g_initiator_transfer.bytes_sd + len;
     if (file.write(buf, len) != len)
     {
         azlog("scsiInitiatorReadDataToFile: SD card write failed");
@@ -420,20 +438,28 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
     g_initiator_transfer.bytes_scsi = sectorcount * sectorsize;
     g_initiator_transfer.bytes_per_sector = sectorsize;
     g_initiator_transfer.bytes_sd = 0;
+    g_initiator_transfer.bytes_sd_scheduled = 0;
     g_initiator_transfer.bytes_scsi_done = 0;
-    g_initiator_transfer.sd_transfer_start = 0;
     g_initiator_transfer.all_ok = true;
 
-    while ((phase = (SCSI_PHASE)scsiHostPhyGetPhase()) == DATA_IN)
+    while (true)
     {
+        phase = (SCSI_PHASE)scsiHostPhyGetPhase();
+        if (phase != DATA_IN && phase != BUS_BUSY)
+        {
+            break;
+        }
+
         // Read next block from SCSI bus if buffer empty
         if (g_initiator_transfer.bytes_sd == g_initiator_transfer.bytes_scsi_done)
         {
             initiatorReadSDCallback(0);
         }
-
-        // Write data to SD card and simultaneously read more from SCSI
-        scsiInitiatorWriteDataToSd(file, true);
+        else
+        {
+            // Write data to SD card and simultaneously read more from SCSI
+            scsiInitiatorWriteDataToSd(file, true);
+        }
     }
 
     // Write any remaining buffered data

@@ -7,7 +7,7 @@
 #include <stdbool.h>
 
 // Request to stop activity and reset the bus
-extern volatile bool g_scsiHostPhyReset;
+extern volatile int g_scsiHostPhyReset;
 
 // Release bus and pulse RST signal, initialize PHY to host mode.
 void scsiHostPhyReset(void);

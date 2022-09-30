@@ -2,6 +2,7 @@
 #include "ZuluSCSI_platform.h"
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_log_trace.h"
+#include "scsi_accel_host.h"
 #include <assert.h>
 
 #include <scsi2sd.h>
@@ -9,13 +10,15 @@ extern "C" {
 #include <scsi.h>
 }
 
-volatile bool g_scsiHostPhyReset;
+volatile int g_scsiHostPhyReset;
 
 // Release bus and pulse RST signal, initialize PHY to host mode.
 void scsiHostPhyReset(void)
 {
     SCSI_RELEASE_OUTPUTS();
     SCSI_ENABLE_INITIATOR();
+
+    scsi_accel_host_init();
 
     SCSI_OUT(RST, 1);
     delay(2);
@@ -113,9 +116,12 @@ int scsiHostPhyGetPhase()
 
         // Still online, re-enable OUT_BSY to enable IO buffers
         SCSI_OUT(BSY, 1);
+        last_online_time = get_absolute_time();
     }
-
-    last_online_time = get_absolute_time();
+    else if (phase != 0)
+    {
+        last_online_time = get_absolute_time();
+    }
 
     if (!req_in)
     {
@@ -196,15 +202,32 @@ bool scsiHostWrite(const uint8_t *data, uint32_t count)
 
 bool scsiHostRead(uint8_t *data, uint32_t count)
 {
-    for (uint32_t i = 0; i < count; i++)
-    {
-        if (g_scsiHostPhyReset) return false;
+    int parityError = 0;
 
-        data[i] = scsiHostReadOneByte(NULL);
+    if ((count & 1) == 0)
+    {
+        // Even number of bytes, use accelerated routine
+        scsi_accel_host_read(data, count, &parityError, &g_scsiHostPhyReset);
+    }
+    else
+    {
+        for (uint32_t i = 0; i < count; i++)
+        {
+            if (g_scsiHostPhyReset) return false;
+
+            data[i] = scsiHostReadOneByte(&parityError);
+        }
     }
 
-    scsiLogDataIn(data, count);
-    return true;
+    if (parityError || g_scsiHostPhyReset)
+    {
+        return false;
+    }
+    else
+    {
+        scsiLogDataIn(data, count);
+        return true;
+    }
 }
 
 // Release all bus signals
