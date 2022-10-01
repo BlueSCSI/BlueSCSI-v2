@@ -69,7 +69,7 @@ DIP switches
 ------------
 For ZuluSCSI V1.1, the DIP switch settings are as follows:
 
-- DEBUG: Enable verbose debug log (saved to `Zululog.txt`)
+- DEBUG: Enable verbose debug log (saved to `zululog.txt`)
 - TERM: Enable SCSI termination
 - BOOT: Enable built-in USB bootloader, this DIP switch MUST remain off during normal operation.
 - SW1: Enables/disables Macintosh/Apple specific mode-pages and device strings, which eases disk initialization when performing fresh installs on legacy Macintosh computers.
@@ -78,7 +78,7 @@ ZuluSCSI Mini has no DIP switches, so all optional configuration parameters must
 
 ZuluSCSI RP2040 DIP switch settings are:
 - INITIATOR: Enable SCSI initiator mode for imaging SCSI drives
-- DEBUG LOG: Enable verbose debug log (saved to `Zululog.txt`)
+- DEBUG LOG: Enable verbose debug log (saved to `zululog.txt`)
 - TERMINATION: Enable SCSI termination
 - BOOTLOADER: Enable built-in USB bootloader, this DIP switch MUST remain off during normal operation.
 
