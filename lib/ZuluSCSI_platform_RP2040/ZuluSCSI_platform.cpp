@@ -405,7 +405,6 @@ bool azplatform_rewrite_flash_page(uint32_t offset, uint8_t buffer[AZPLATFORM_FL
 
     flash_range_erase(offset, AZPLATFORM_FLASH_PAGE_SIZE);
     flash_range_program(offset, buffer, AZPLATFORM_FLASH_PAGE_SIZE);
-    __enable_irq();
 
     uint32_t *buf32 = (uint32_t*)buffer;
     uint32_t num_words = AZPLATFORM_FLASH_PAGE_SIZE / 4;
@@ -413,12 +412,16 @@ bool azplatform_rewrite_flash_page(uint32_t offset, uint8_t buffer[AZPLATFORM_FL
     {
         uint32_t expected = buf32[i];
         uint32_t actual = *(volatile uint32_t*)(XIP_NOCACHE_BASE + offset + i * 4);
+
         if (actual != expected)
         {
             azlog("Flash verify failed at offset ", offset + i * 4, " got ", actual, " expected ", expected);
             return false;
         }
     }
+
+    __enable_irq();
+
     return true;
 }
 
