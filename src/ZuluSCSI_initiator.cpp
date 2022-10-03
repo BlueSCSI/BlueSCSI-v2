@@ -84,6 +84,28 @@ void scsiInitiatorInit()
     g_initiator_state.failposition = 0;
 }
 
+// Update progress bar LED during transfers
+static void scsiInitiatorUpdateLed()
+{
+    // Update status indicator, the led blinks every 5 seconds and is on the longer the more data has been transferred
+    const int period = 256;
+    int phase = (millis() % period);
+    int duty = g_initiator_state.sectors_done * period / g_initiator_state.sectorcount;
+
+    // Minimum and maximum time to verify that the blink is visible
+    if (duty < 50) duty = 50;
+    if (duty > period - 50) duty = period - 50;
+
+    if (phase <= duty)
+    {
+        LED_ON();
+    }
+    else
+    {
+        LED_OFF();
+    }
+}
+
 // High level logic of the initiator mode
 void scsiInitiatorMainLoop()
 {
@@ -169,19 +191,7 @@ void scsiInitiatorMainLoop()
             return;
         }
 
-        // Update status indicator, the led blinks every 5 seconds and is on the longer the more data has been transferred
-        uint32_t time_start = millis();
-        int phase = (time_start % 5000);
-        int duty = g_initiator_state.sectors_done * 5000 / g_initiator_state.sectorcount;
-        if (duty < 100) duty = 100;
-        if (phase <= duty)
-        {
-            LED_ON();
-        }
-        else
-        {
-            LED_OFF();
-        }
+        scsiInitiatorUpdateLed();
 
         // How many sectors to read in one batch?
         int numtoread = g_initiator_state.sectorcount - g_initiator_state.sectors_done;
@@ -191,6 +201,7 @@ void scsiInitiatorMainLoop()
         if (g_initiator_state.sectors_done < g_initiator_state.failposition)
             numtoread = 1;
 
+        uint32_t time_start = millis();
         bool status = scsiInitiatorReadDataToFile(g_initiator_state.target_id,
             g_initiator_state.sectors_done, numtoread, g_initiator_state.sectorsize,
             g_initiator_state.target_file);
@@ -609,6 +620,7 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
         else
         {
             // Write data to SD card and simultaneously read more from SCSI
+            scsiInitiatorUpdateLed();
             scsiInitiatorWriteDataToSd(file, true);
         }
     }
