@@ -57,7 +57,11 @@ static struct {
     uint32_t sectorsize;
     uint32_t sectorcount;
     uint32_t sectors_done;
+
+    // Retry information for sector reads.
+    // If a large read fails, retry is done sector-by-sector.
     int retrycount;
+    uint32_t failposition;
 
     FsFile target_file;
 } g_initiator_state;
@@ -76,6 +80,7 @@ void scsiInitiatorInit()
     g_initiator_state.sectorcount = 0;
     g_initiator_state.sectors_done = 0;
     g_initiator_state.retrycount = 0;
+    g_initiator_state.failposition = 0;
 }
 
 // High level logic of the initiator mode
@@ -153,8 +158,8 @@ void scsiInitiatorMainLoop()
         int numtoread = g_initiator_state.sectorcount - g_initiator_state.sectors_done;
         if (numtoread > 512) numtoread = 512;
 
-        // Retry sector-by-sector
-        if (g_initiator_state.retrycount > 1)
+        // Retry sector-by-sector after failure
+        if (g_initiator_state.sectors_done < g_initiator_state.failposition)
             numtoread = 1;
 
         bool status = scsiInitiatorReadDataToFile(g_initiator_state.target_id,
@@ -174,6 +179,12 @@ void scsiInitiatorMainLoop()
 
                 g_initiator_state.retrycount++;
                 g_initiator_state.target_file.seek((uint64_t)g_initiator_state.sectors_done * g_initiator_state.sectorsize);
+
+                if (g_initiator_state.retrycount > 1 && numtoread > 1)
+                {
+                    azlog("Multiple failures, retrying sector-by-sector");
+                    g_initiator_state.failposition = g_initiator_state.sectors_done + numtoread;
+                }
             }
             else
             {
