@@ -244,7 +244,7 @@ int scsiInitiatorRunCommand(int target_id,
 
             if (!scsiHostRead(bufIn, bufInLen))
             {
-                azlog("scsiHostRead failed, was writing ", bytearray(bufOut, bufOutLen));
+                azlog("scsiHostRead failed, tried to read ", (int)bufInLen, " bytes");
                 status = -2;
                 break;
             }
