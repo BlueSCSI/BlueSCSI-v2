@@ -396,6 +396,11 @@ bool scsiTestUnitReady(int target_id)
         {
             return true;
         }
+        else if (status == -1)
+        {
+            // No response to select
+            return false;
+        }
         else if (status == 2)
         {
             uint8_t sense_key;
