@@ -293,7 +293,7 @@ int scsiInitiatorRunCommand(int target_id,
                 break;
             }
 
-            if (!scsiHostRead(bufIn, bufInLen))
+            if (scsiHostRead(bufIn, bufInLen) == 0)
             {
                 azlog("scsiHostRead failed, tried to read ", (int)bufInLen, " bytes");
                 status = -2;
@@ -310,7 +310,7 @@ int scsiInitiatorRunCommand(int target_id,
                 break;
             }
 
-            if (!scsiHostWrite(bufOut, bufOutLen))
+            if (scsiHostWrite(bufOut, bufOutLen) < bufOutLen)
             {
                 azlog("scsiHostWrite failed, was writing ", bytearray(bufOut, bufOutLen));
                 status = -2;
@@ -319,7 +319,7 @@ int scsiInitiatorRunCommand(int target_id,
         }
         else if (phase == STATUS)
         {
-            uint8_t tmp = 0;
+            uint8_t tmp = -1;
             scsiHostRead(&tmp, 1);
             status = tmp;
             azdbg("------ STATUS: ", tmp);
@@ -373,7 +373,7 @@ bool scsiInitiatorReadCapacity(int target_id, uint32_t *sectorcount, uint32_t *s
 // Execute REQUEST SENSE command to get more information about error status
 bool scsiRequestSense(int target_id, uint8_t *sense_key)
 {
-    uint8_t command[6] = {0x03, 0, 0, 0, 4, 0};
+    uint8_t command[6] = {0x03, 0, 0, 0, 18, 0};
     uint8_t response[18] = {0};
 
     int status = scsiInitiatorRunCommand(target_id,
@@ -531,7 +531,7 @@ static void initiatorReadSDCallback(uint32_t bytes_complete)
             return;
 
         // azdbg("SCSI read ", (int)start, " + ", (int)len, ", sd ready cnt ", (int)sd_ready_cnt, " ", (int)bytes_complete, ", scsi done ", (int)g_initiator_transfer.bytes_scsi_done);
-        if (!scsiHostRead(&scsiDev.data[start], len))
+        if (scsiHostRead(&scsiDev.data[start], len) != len)
         {
             azlog("Read failed at byte ", (int)g_initiator_transfer.bytes_scsi_done);
             g_initiator_transfer.all_ok = false;

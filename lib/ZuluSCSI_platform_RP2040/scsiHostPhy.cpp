@@ -186,47 +186,75 @@ static inline uint8_t scsiHostReadOneByte(int* parityError)
     return (uint8_t)r;
 }
 
-bool scsiHostWrite(const uint8_t *data, uint32_t count)
+uint32_t scsiHostWrite(const uint8_t *data, uint32_t count)
 {
     scsiLogDataOut(data, count);
 
+    int cd_start = SCSI_IN(CD);
+    int msg_start = SCSI_IN(MSG);
+
     for (uint32_t i = 0; i < count; i++)
     {
-        if (g_scsiHostPhyReset) return false;
+        while (!SCSI_IN(REQ))
+        {
+            if (g_scsiHostPhyReset || SCSI_IN(IO) || SCSI_IN(CD) != cd_start || SCSI_IN(MSG) != msg_start)
+            {
+                // Target switched out of DATA_OUT mode
+                azlog("scsiHostWrite: sent ", (int)i, " bytes, expected ", (int)count);
+                return i;
+            }
+        }
 
         scsiHostWriteOneByte(data[i]);
     }
 
-    return true;
+    return count;
 }
 
-bool scsiHostRead(uint8_t *data, uint32_t count)
+uint32_t scsiHostRead(uint8_t *data, uint32_t count)
 {
     int parityError = 0;
+    uint32_t fullcount = count;
+
+    int cd_start = SCSI_IN(CD);
+    int msg_start = SCSI_IN(MSG);
 
     if ((count & 1) == 0)
     {
         // Even number of bytes, use accelerated routine
-        scsi_accel_host_read(data, count, &parityError, &g_scsiHostPhyReset);
+        count = scsi_accel_host_read(data, count, &parityError, &g_scsiHostPhyReset);
     }
     else
     {
         for (uint32_t i = 0; i < count; i++)
         {
-            if (g_scsiHostPhyReset) return false;
+            while (!SCSI_IN(REQ))
+            {
+                if (g_scsiHostPhyReset || !SCSI_IN(IO) || SCSI_IN(CD) != cd_start || SCSI_IN(MSG) != msg_start)
+                {
+                    // Target switched out of DATA_IN mode
+                    count = i;
+                }
+            }
 
             data[i] = scsiHostReadOneByte(&parityError);
         }
     }
 
-    if (parityError || g_scsiHostPhyReset)
+    scsiLogDataIn(data, count);
+
+    if (g_scsiHostPhyReset || parityError)
     {
-        return false;
+        return 0;
     }
     else
     {
-        scsiLogDataIn(data, count);
-        return true;
+        if (count < fullcount)
+        {
+            azlog("scsiHostRead: received ", (int)count, " bytes, expected ", (int)fullcount);
+        }
+
+        return count;
     }
 }
 
