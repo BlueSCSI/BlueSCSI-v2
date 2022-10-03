@@ -58,6 +58,7 @@ static struct {
     uint32_t sectorcount;
     uint32_t sectorcount_all;
     uint32_t sectors_done;
+    uint32_t max_sector_per_transfer;
 
     // Retry information for sector reads.
     // If a large read fails, retry is done sector-by-sector.
@@ -82,6 +83,7 @@ void scsiInitiatorInit()
     g_initiator_state.sectors_done = 0;
     g_initiator_state.retrycount = 0;
     g_initiator_state.failposition = 0;
+    g_initiator_state.max_sector_per_transfer = 512;
 }
 
 // Update progress bar LED during transfers
@@ -115,15 +117,26 @@ void scsiInitiatorMainLoop()
         g_initiator_state.target_id = (g_initiator_state.target_id + 1) % 8;
         g_initiator_state.sectors_done = 0;
         g_initiator_state.retrycount = 0;
+        g_initiator_state.max_sector_per_transfer = 512;
 
         if (!(g_initiator_state.drives_imaged & (1 << g_initiator_state.target_id)))
         {
             delay(1000);
+
+            uint8_t inquiry_data[36];
+
             LED_ON();
-            bool readcapok =
+            bool startstopok =
                 scsiTestUnitReady(g_initiator_state.target_id) &&
-                scsiStartStopUnit(g_initiator_state.target_id, true) &&
-                scsiInitiatorReadCapacity(g_initiator_state.target_id, &g_initiator_state.sectorcount, &g_initiator_state.sectorsize);
+                scsiStartStopUnit(g_initiator_state.target_id, true);
+
+            bool readcapok = startstopok &&
+                scsiInitiatorReadCapacity(g_initiator_state.target_id,
+                                          &g_initiator_state.sectorcount,
+                                          &g_initiator_state.sectorsize);
+
+            bool inquiryok = startstopok &&
+                scsiInquiry(g_initiator_state.target_id, inquiry_data);
             LED_OFF();
 
             if (readcapok)
@@ -145,8 +158,35 @@ void scsiInitiatorMainLoop()
                     g_initiator_state.sectorcount = (uint32_t)0xFFFFFFFF / g_initiator_state.sectorsize;
                     azlog("Will image first 4 GiB - 1 = ", (int)g_initiator_state.sectorcount, " sectors");
                 }
+            }
+            else if (startstopok)
+            {
+                azlog("SCSI id ", g_initiator_state.target_id, " responds but ReadCapacity command failed");
+                azlog("Possibly SCSI-1 drive? Attempting to read up to 1 GB.");
+                g_initiator_state.sectorsize = 512;
+                g_initiator_state.sectorcount = g_initiator_state.sectorcount_all = 2097152;
+                g_initiator_state.max_sector_per_transfer = 128;
+            }
+            else
+            {
+                azdbg("Failed to connect to SCSI id ", g_initiator_state.target_id);
+                g_initiator_state.sectorsize = 0;
+                g_initiator_state.sectorcount = g_initiator_state.sectorcount_all = 0;
+            }
 
-                char filename[] = "HD00_imaged.hda";
+            const char *filename_format = "HD00_imaged.hda";
+            if (inquiryok)
+            {
+                if ((inquiry_data[0] & 0x1F) == 5)
+                {
+                    filename_format = "CD00_imaged.iso";
+                }
+            }
+
+            if (g_initiator_state.sectorcount > 0)
+            {
+                char filename[32] = {0};
+                strncpy(filename, filename_format, sizeof(filename) - 1);
                 filename[2] += g_initiator_state.target_id;
 
                 SD.remove(filename);
@@ -195,7 +235,8 @@ void scsiInitiatorMainLoop()
 
         // How many sectors to read in one batch?
         int numtoread = g_initiator_state.sectorcount - g_initiator_state.sectors_done;
-        if (numtoread > 512) numtoread = 512;
+        if (numtoread > g_initiator_state.max_sector_per_transfer)
+            numtoread = g_initiator_state.max_sector_per_transfer;
 
         // Retry sector-by-sector after failure
         if (g_initiator_state.sectors_done < g_initiator_state.failposition)
@@ -574,23 +615,44 @@ static void scsiInitiatorWriteDataToSd(FsFile &file, bool use_callback)
 bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t sectorcount, uint32_t sectorsize,
                                  FsFile &file)
 {
-    uint8_t command[10] = {0x28, 0x00,
-        (uint8_t)(start_sector >> 24), (uint8_t)(start_sector >> 16),
-        (uint8_t)(start_sector >> 8), (uint8_t)start_sector,
-        0x00,
-        (uint8_t)(sectorcount >> 8), (uint8_t)(sectorcount),
-        0x00
-    };
+    int status = -1;
 
-    // Start executing command, return in data phase
-    int status = scsiInitiatorRunCommand(target_id, command, sizeof(command), NULL, 0, NULL, 0, true);
+    if (start_sector < 0xFFFFFF && sectorcount <= 256)
+    {
+        // Use READ6 command for compatibility with old SCSI1 drives
+        uint8_t command[6] = {0x08,
+            (uint8_t)(start_sector >> 16),
+            (uint8_t)(start_sector >> 8),
+            (uint8_t)start_sector,
+            (uint8_t)sectorcount,
+            0x00
+        };
+
+        // Start executing command, return in data phase
+        status = scsiInitiatorRunCommand(target_id, command, sizeof(command), NULL, 0, NULL, 0, true);
+    }
+    else
+    {
+        // Use READ10 command for larger number of blocks
+        uint8_t command[10] = {0x28, 0x00,
+            (uint8_t)(start_sector >> 24), (uint8_t)(start_sector >> 16),
+            (uint8_t)(start_sector >> 8), (uint8_t)start_sector,
+            0x00,
+            (uint8_t)(sectorcount >> 8), (uint8_t)(sectorcount),
+            0x00
+        };
+
+        // Start executing command, return in data phase
+        status = scsiInitiatorRunCommand(target_id, command, sizeof(command), NULL, 0, NULL, 0, true);
+    }
+
 
     if (status != 0)
     {
         uint8_t sense_key;
         scsiRequestSense(target_id, &sense_key);
 
-        azlog("scsiInitiatorReadDataToFile: READ10 failed: ", status, " sense key ", sense_key);
+        azlog("scsiInitiatorReadDataToFile: READ failed: ", status, " sense key ", sense_key);
         scsiHostPhyRelease();
         return false;
     }
