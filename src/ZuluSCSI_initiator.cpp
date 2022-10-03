@@ -56,6 +56,7 @@ static struct {
     int target_id;
     uint32_t sectorsize;
     uint32_t sectorcount;
+    uint32_t sectorcount_all;
     uint32_t sectors_done;
 
     // Retry information for sector reads.
@@ -109,6 +110,20 @@ void scsiInitiatorMainLoop()
                     " capacity ", (int)g_initiator_state.sectorcount,
                     " sectors x ", (int)g_initiator_state.sectorsize, " bytes");
 
+                g_initiator_state.sectorcount_all = g_initiator_state.sectorcount;
+
+                uint64_t total_bytes = (uint64_t)g_initiator_state.sectorcount * g_initiator_state.sectorsize;
+                azlog("Drive total size is ", (int)(total_bytes / (1024 * 1024)), " MiB");
+                if (total_bytes >= 0xFFFFFFFF && SD.fatType() != FAT_TYPE_EXFAT)
+                {
+                    // Note: the FAT32 limit is 4 GiB - 1 byte
+                    azlog("Image files equal or larger than 4 GiB are only possible on exFAT filesystem");
+                    azlog("Please reformat the SD card with exFAT format to image this drive fully");
+
+                    g_initiator_state.sectorcount = (uint32_t)0xFFFFFFFF / g_initiator_state.sectorsize;
+                    azlog("Will image first 4 GiB - 1 = ", (int)g_initiator_state.sectorcount, " sectors");
+                }
+
                 char filename[] = "HD00_imaged.hda";
                 filename[2] += g_initiator_state.target_id;
 
@@ -120,8 +135,15 @@ void scsiInitiatorMainLoop()
                     return;
                 }
 
+                if (SD.fatType() == FAT_TYPE_EXFAT)
+                {
+                    // Only preallocate on exFAT, on FAT32 preallocating can result in false garbage data in the
+                    // file if write is interrupted.
+                    azlog("Preallocating image file");
+                    g_initiator_state.target_file.preAllocate((uint64_t)g_initiator_state.sectorcount * g_initiator_state.sectorsize);
+                }
+
                 azlog("Starting to copy drive data to ", filename);
-                g_initiator_state.target_file.preAllocate((uint64_t)g_initiator_state.sectorcount * g_initiator_state.sectorsize);
                 g_initiator_state.imaging = true;
             }
         }
@@ -134,6 +156,13 @@ void scsiInitiatorMainLoop()
             scsiStartStopUnit(g_initiator_state.target_id, false);
             azlog("Finished imaging drive with id ", g_initiator_state.target_id);
             LED_OFF();
+
+            if (g_initiator_state.sectorcount != g_initiator_state.sectorcount_all)
+            {
+                azlog("NOTE: Image size was limited to first 4 GiB due to SD card filesystem limit");
+                azlog("Please reformat the SD card with exFAT format to image this drive fully");
+            }
+
             g_initiator_state.drives_imaged |= (1 << g_initiator_state.target_id);
             g_initiator_state.imaging = false;
             g_initiator_state.target_file.close();
