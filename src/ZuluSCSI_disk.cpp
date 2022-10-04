@@ -521,7 +521,7 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
     img.sectorsPerTrack = ini_getl(section, "SectorsPerTrack", img.sectorsPerTrack, CONFIGFILE);
     img.headsPerCylinder = ini_getl(section, "HeadsPerCylinder", img.headsPerCylinder, CONFIGFILE);
     img.quirks = ini_getl(section, "Quirks", img.quirks, CONFIGFILE);
-    img.rightAlignStrings = ini_getbool(section, "RightAlignStrings", -1, CONFIGFILE);
+    img.rightAlignStrings = ini_getbool(section, "RightAlignStrings", 0, CONFIGFILE);
     img.prefetchbytes = ini_getl(section, "PrefetchBytes", img.prefetchbytes, CONFIGFILE);
     
     char tmp[32];
