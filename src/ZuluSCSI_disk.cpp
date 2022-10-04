@@ -395,11 +395,6 @@ static void setDefaultDriveInfo(int target_idx)
     }
 
     int rightAlign = img.rightAlignStrings;
-    if (rightAlign < 0)
-    {
-        // Default value based on quirks
-        rightAlign = (img.quirks == S2S_CFG_QUIRKS_APPLE);
-    }
 
     formatDriveInfoField(img.vendor, sizeof(img.vendor), rightAlign);
     formatDriveInfoField(img.prodId, sizeof(img.prodId), rightAlign);
