@@ -24,8 +24,9 @@ int scsiHostPhyGetPhase();
 bool scsiHostRequestWaiting();
 
 // Blocking data transfer
-bool scsiHostWrite(const uint8_t *data, uint32_t count);
-bool scsiHostRead(uint8_t *data, uint32_t count);
+// These return the actual number of bytes transferred.
+uint32_t scsiHostWrite(const uint8_t *data, uint32_t count);
+uint32_t scsiHostRead(uint8_t *data, uint32_t count);
 
 // Release all bus signals
 void scsiHostPhyRelease();

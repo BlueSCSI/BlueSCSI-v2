@@ -58,11 +58,14 @@ static void scsi_accel_host_config_gpio()
     }
 }
 
-void scsi_accel_host_read(uint8_t *buf, uint32_t count, int *parityError, volatile int *resetFlag)
+uint32_t scsi_accel_host_read(uint8_t *buf, uint32_t count, int *parityError, volatile int *resetFlag)
 {
     // Currently this method just reads from the PIO RX fifo directly in software loop.
     // The SD card access is parallelized using DMA, so there is limited benefit from using DMA here.
     g_scsi_host_state = SCSIHOST_READ;
+
+    int cd_start = SCSI_IN(CD);
+    int msg_start = SCSI_IN(MSG);
 
     pio_sm_init(SCSI_PIO, SCSI_SM, g_scsi_host.pio_offset_async_read, &g_scsi_host.pio_cfg_async_read);
     scsi_accel_host_config_gpio();
@@ -78,12 +81,17 @@ void scsi_accel_host_read(uint8_t *buf, uint32_t count, int *parityError, volati
     uint32_t paritycheck = 0;
     while (dst < end)
     {
-        if (*resetFlag)
-        {
-            break;
-        }
-
         uint32_t available = pio_sm_get_rx_fifo_level(SCSI_PIO, SCSI_SM);
+
+        if (available == 0)
+        {
+            if (*resetFlag || !SCSI_IN(IO) || SCSI_IN(CD) != cd_start || SCSI_IN(MSG) != msg_start)
+            {
+                // Target switched out of DATA_IN mode
+                count = dst - buf;
+                break;
+            }
+        }
 
         while (available > 0)
         {
@@ -110,6 +118,8 @@ void scsi_accel_host_read(uint8_t *buf, uint32_t count, int *parityError, volati
     SCSI_RELEASE_DATA_REQ();
     scsi_accel_host_config_gpio();
     pio_sm_set_enabled(SCSI_PIO, SCSI_SM, false);
+
+    return count;
 }
 
 

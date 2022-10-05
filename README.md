@@ -90,7 +90,7 @@ When enabled by the DIP switch, ZuluSCSI RP2040 will scan for SCSI drives on the
 LED indications in initiator mode:
 
 - Short blink once a second: idle, searching for SCSI drives
-- Slow blink every 5 seconds: copying data. The blink acts as a progress bar: first it is short and becomes longer when data copying progresses.
+- Fast blink 4 times per second: copying data. The blink acts as a progress bar: first it is short and becomes longer when data copying progresses.
 
 The firmware retries reads up to 5 times and attempts to skip any sectors that have problems.
 Any read errors are logged into `zululog.txt`.
