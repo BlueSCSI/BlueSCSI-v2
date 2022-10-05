@@ -204,7 +204,7 @@ bool scsiHostRead(uint8_t *data, uint32_t count)
 {
     int parityError = 0;
 
-    if ((count & 1) == 0)
+    if ((count & 1) == 0 && ((uint32_t)data & 1) == 0)
     {
         // Even number of bytes, use accelerated routine
         scsi_accel_host_read(data, count, &parityError, &g_scsiHostPhyReset);
