@@ -278,7 +278,7 @@ extern "C" void scsiStartWrite(const uint8_t* data, uint32_t count)
 {
     scsiLogDataIn(data, count);
 
-    if ((count & 1) != 0)
+    if ((count & 1) != 0 || ((uint32_t)data & 1) != 0)
     {
         // Unaligned write, do it byte-by-byte
         scsiFinishWrite();
@@ -339,7 +339,7 @@ extern "C" void scsiRead(uint8_t* data, uint32_t count, int* parityError)
 {
     *parityError = 0;
 
-    if ((count & 1) != 0)
+    if ((count & 1) != 0 || ((uint32_t)data & 1) != 0)
     {
         // Unaligned transfer, do byte by byte
         for (uint32_t i = 0; i < count; i++)
