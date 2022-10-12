@@ -1266,6 +1266,10 @@ static void doRead(uint32_t lba, uint32_t blocks)
 
 void diskDataIn_callback(uint32_t bytes_complete)
 {
+    // On SCSI-1 devices the phase change has some extra delays.
+    // Doing it here lets the SD card transfer proceed in background.
+    scsiEnterPhase(DATA_IN);
+
     // For best performance, do writes in blocks of 4 or more bytes
     if (bytes_complete < g_disk_transfer.bytes_sd)
     {
@@ -1335,8 +1339,6 @@ static void start_dataInTransfer(uint8_t *buffer, uint32_t count)
 
 static void diskDataIn()
 {
-    scsiEnterPhase(DATA_IN);
-
     // Figure out how many blocks we can fit in buffer
     uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
     uint32_t maxblocks = sizeof(scsiDev.data) / bytesPerSector;
