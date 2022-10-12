@@ -168,12 +168,20 @@ extern "C" void scsiEnterPhase(int phase)
 // Change state and return nanosecond delay to wait
 extern "C" uint32_t scsiEnterPhaseImmediate(int phase)
 {
-    // ANSI INCITS 362-2002 SPI-3 10.7.1:
-    // Phase changes are not allowed while REQ or ACK is asserted.
-    while (likely(!scsiDev.resetFlag) && SCSI_IN(ACK)) {}
-
     if (phase != g_scsi_phase)
     {
+        // ANSI INCITS 362-2002 SPI-3 10.7.1:
+        // Phase changes are not allowed while REQ or ACK is asserted.
+        while (likely(!scsiDev.resetFlag) && SCSI_IN(ACK)) {}
+
+        if (scsiDev.compatMode < COMPAT_SCSI2 && (phase == DATA_IN || phase == DATA_OUT))
+        {
+            // Akai S1000/S3000 seems to need extra delay before changing to data phase
+            // after a command. The code in ZuluSCSI_disk.cpp tries to do this while waiting
+            // for SD card, to avoid any extra latency.
+            s2s_delay_ns(400000);
+        }
+
         int oldphase = g_scsi_phase;
         g_scsi_phase = (SCSI_PHASE)phase;
         scsiLogPhaseChange(phase);
