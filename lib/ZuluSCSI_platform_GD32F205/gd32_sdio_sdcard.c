@@ -1997,18 +1997,20 @@ static sd_error_enum r1_error_check(uint8_t cmdindex)
 {
     sd_error_enum status = SD_OK;
     uint32_t reg_status = 0, resp_r1 = 0;
+    __IO uint32_t timeout = 100000;
 
     /* store the content of SDIO_STAT */
     reg_status = SDIO_STAT;
-    while(!(reg_status & (SDIO_FLAG_CCRCERR | SDIO_FLAG_CMDTMOUT | SDIO_FLAG_CMDRECV))) {
+    while(!(reg_status & (SDIO_FLAG_CCRCERR | SDIO_FLAG_CMDTMOUT | SDIO_FLAG_CMDRECV)) && (timeout > 0)) {
         reg_status = SDIO_STAT;
+        --timeout;
     }
     /* check whether an error or timeout occurs or command response received */
     if(reg_status & SDIO_FLAG_CCRCERR) {
         status = SD_CMD_CRC_ERROR;
         sdio_flag_clear(SDIO_FLAG_CCRCERR);
         return status;
-    } else if(reg_status & SDIO_FLAG_CMDTMOUT) {
+    } else if((reg_status & SDIO_FLAG_CMDTMOUT) || (0 == timeout)) {
         status = SD_CMD_RESP_TIMEOUT;
         sdio_flag_clear(SDIO_FLAG_CMDTMOUT);
         return status;
@@ -2044,18 +2046,20 @@ static sd_error_enum r2_error_check(void)
 {
     sd_error_enum status = SD_OK;
     uint32_t reg_status = 0;
+    __IO uint32_t timeout = 100000;
 
     /* store the content of SDIO_STAT */
     reg_status = SDIO_STAT;
-    while(!(reg_status & (SDIO_FLAG_CCRCERR | SDIO_FLAG_CMDTMOUT | SDIO_FLAG_CMDRECV))) {
+    while(!(reg_status & (SDIO_FLAG_CCRCERR | SDIO_FLAG_CMDTMOUT | SDIO_FLAG_CMDRECV)) && (timeout > 0)) {
         reg_status = SDIO_STAT;
+        --timeout;
     }
     /* check whether an error or timeout occurs or command response received */
     if(reg_status & SDIO_FLAG_CCRCERR) {
         status = SD_CMD_CRC_ERROR;
         sdio_flag_clear(SDIO_FLAG_CCRCERR);
         return status;
-    } else if(reg_status & SDIO_FLAG_CMDTMOUT) {
+    } else if((reg_status & SDIO_FLAG_CMDTMOUT) || (0 == timeout)) {
         status = SD_CMD_RESP_TIMEOUT;
         sdio_flag_clear(SDIO_FLAG_CMDTMOUT);
         return status;
@@ -2075,13 +2079,15 @@ static sd_error_enum r3_error_check(void)
 {
     sd_error_enum status = SD_OK;
     uint32_t reg_status = 0;
+    __IO uint32_t timeout = 100000;
 
     /* store the content of SDIO_STAT */
     reg_status = SDIO_STAT;
-    while(!(reg_status & (SDIO_FLAG_CCRCERR | SDIO_FLAG_CMDTMOUT | SDIO_FLAG_CMDRECV))) {
+    while(!(reg_status & (SDIO_FLAG_CCRCERR | SDIO_FLAG_CMDTMOUT | SDIO_FLAG_CMDRECV)) && (timeout > 0)) {
         reg_status = SDIO_STAT;
+        --timeout;
     }
-    if(reg_status & SDIO_FLAG_CMDTMOUT) {
+    if((reg_status & SDIO_FLAG_CMDTMOUT) || (0 == timeout)) {
         status = SD_CMD_RESP_TIMEOUT;
         sdio_flag_clear(SDIO_FLAG_CMDTMOUT);
         return status;
@@ -2101,18 +2107,20 @@ static sd_error_enum r6_error_check(uint8_t cmdindex, uint16_t *prca)
 {
     sd_error_enum status = SD_OK;
     uint32_t reg_status = 0, response = 0;
+    __IO uint32_t timeout = 100000;
 
     /* store the content of SDIO_STAT */
     reg_status = SDIO_STAT;
-    while(!(reg_status & (SDIO_FLAG_CCRCERR | SDIO_FLAG_CMDTMOUT | SDIO_FLAG_CMDRECV))) {
+    while(!(reg_status & (SDIO_FLAG_CCRCERR | SDIO_FLAG_CMDTMOUT | SDIO_FLAG_CMDRECV)) && (timeout > 0)) {
         reg_status = SDIO_STAT;
+        --timeout;
     }
     /* check whether an error or timeout occurs or command response received */
     if(reg_status & SDIO_FLAG_CCRCERR) {
         status = SD_CMD_CRC_ERROR;
         sdio_flag_clear(SDIO_FLAG_CCRCERR);
         return status;
-    } else if(reg_status & SDIO_FLAG_CMDTMOUT) {
+    } else if((reg_status & SDIO_FLAG_CMDTMOUT) || (0 == timeout)) {
         status = SD_CMD_RESP_TIMEOUT;
         sdio_flag_clear(SDIO_FLAG_CMDTMOUT);
         return status;
@@ -2196,6 +2204,7 @@ static sd_error_enum sd_card_state_get(uint8_t *pcardstate)
 {
     sd_error_enum status = SD_OK;
     __IO uint32_t reg_status = 0, response = 0;
+    __IO uint32_t timeout = 100000;
 
     /* send CMD13(SEND_STATUS), addressed card sends its status register */
     sdio_csm_disable();
@@ -2205,15 +2214,16 @@ static sd_error_enum sd_card_state_get(uint8_t *pcardstate)
 
     /* store the content of SDIO_STAT */
     reg_status = SDIO_STAT;
-    while(!(reg_status & (SDIO_FLAG_CCRCERR | SDIO_FLAG_CMDTMOUT | SDIO_FLAG_CMDRECV))) {
+    while(!(reg_status & (SDIO_FLAG_CCRCERR | SDIO_FLAG_CMDTMOUT | SDIO_FLAG_CMDRECV)) && (timeout > 0)) {
         reg_status = SDIO_STAT;
+        --timeout;
     }
     /* check whether an error or timeout occurs or command response received */
     if(reg_status & SDIO_FLAG_CCRCERR) {
         status = SD_CMD_CRC_ERROR;
         sdio_flag_clear(SDIO_FLAG_CCRCERR);
         return status;
-    } else if(reg_status & SDIO_FLAG_CMDTMOUT) {
+    } else if((reg_status & SDIO_FLAG_CMDTMOUT) || (0 == timeout)) {
         status = SD_CMD_RESP_TIMEOUT;
         sdio_flag_clear(SDIO_FLAG_CMDTMOUT);
         return status;
