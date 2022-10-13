@@ -663,12 +663,8 @@ void initFileLog(int success_mhz) {
     case FAT_TYPE_EXFAT:
     LOG_FILE.println("exFAT");
     break;
-    case FAT_TYPE_FAT32:
-    LOG_FILE.print("FAT32");
-    case FAT_TYPE_FAT16:
-    LOG_FILE.print("FAT16");
     default:
-    LOG_FILE.println(" - Consider formatting the SD Card with exFAT for improved performance.");
+    LOG_FILE.print("FAT 32/16/12 - Consider formatting the SD Card with exFAT for improved performance.");
   }
   LOG_FILE.print("SPI speed: ");
   LOG_FILE.print(success_mhz);
