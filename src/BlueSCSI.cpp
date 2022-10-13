@@ -1999,7 +1999,7 @@ static byte onReadDiscInformation(SCSI_DEVICE *dev, const byte *cdb)
 static byte onReadDVDStructure(SCSI_DEVICE *dev, const byte *cdb)
 {
   dev->m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
-  dev->m_additional_sense_code = SCSI_ASC_CANNOT_READ_MEDIUM_INCOMPATIBLE_FORMAT;
+  dev->m_additional_sense_code = SCSI_ASC_INVALID_OPERATION_CODE;
   return SCSI_STATUS_CHECK_CONDITION;
 }
 
