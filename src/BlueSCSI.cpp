@@ -663,12 +663,8 @@ void initFileLog(int success_mhz) {
     case FAT_TYPE_EXFAT:
     LOG_FILE.println("exFAT");
     break;
-    case FAT_TYPE_FAT32:
-    LOG_FILE.print("FAT32");
-    case FAT_TYPE_FAT16:
-    LOG_FILE.print("FAT16");
     default:
-    LOG_FILE.println(" - Consider formatting the SD Card with exFAT for improved performance.");
+    LOG_FILE.print("FAT 32/16/12 - Consider formatting the SD Card with exFAT for improved performance.");
   }
   LOG_FILE.print("SPI speed: ");
   LOG_FILE.print(success_mhz);
@@ -1999,7 +1995,7 @@ static byte onReadDiscInformation(SCSI_DEVICE *dev, const byte *cdb)
 static byte onReadDVDStructure(SCSI_DEVICE *dev, const byte *cdb)
 {
   dev->m_senseKey = SCSI_SENSE_ILLEGAL_REQUEST;
-  dev->m_additional_sense_code = SCSI_ASC_CANNOT_READ_MEDIUM_INCOMPATIBLE_FORMAT;
+  dev->m_additional_sense_code = SCSI_ASC_INVALID_OPERATION_CODE;
   return SCSI_STATUS_CHECK_CONDITION;
 }
 
