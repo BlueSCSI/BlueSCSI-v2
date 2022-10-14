@@ -1,6 +1,6 @@
 # Mounts
 
-## Desktop 
+## Desktop
 
 Provides mouting holes for the BlueSCSI along with side and bottom holes for common mounting in computers.
 
@@ -9,6 +9,8 @@ Please pre-tap any screw holes before mounting.
 ## DB-25 External
 
 Print with supports for front overhangs. Tight fit to hold everything together.
+
+Remix = a slightly modified version with light-pipes for the LEDs and some geometry fixes.
 
 # License
 
