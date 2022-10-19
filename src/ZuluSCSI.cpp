@@ -380,6 +380,24 @@ void readSCSIDeviceConfig()
 /* Main SCSI handling loop       */
 /*********************************/
 
+static bool mountSDCard()
+{
+  // Check for the common case, FAT filesystem as first partition
+  if (SD.begin(SD_CONFIG))
+    return true;
+
+  // Do we have any kind of card?
+  if (!SD.card() || SD.sdErrorCode() != 0)
+    return false;
+
+  // Try to mount the whole card as FAT (without partition table)
+  if (static_cast<FsVolume*>(&SD)->begin(SD.card(), true, 0))
+    return true;
+
+  // Failed to mount FAT filesystem, but card can still be accessed as raw image
+  return true;
+}
+
 static void reinitSCSI()
 {
   if (ini_getbool("SCSI", "Debug", 0, CONFIGFILE))
@@ -435,7 +453,7 @@ extern "C" void zuluscsi_setup(void)
   azplatform_init();
   azplatform_late_init();
 
-  if(!SD.begin(SD_CONFIG) && (!SD.card() || SD.sdErrorCode() != 0))
+  if(!mountSDCard())
   {
     azlog("SD card init failed, sdErrorCode: ", (int)SD.sdErrorCode(),
            " sdErrorData: ", (int)SD.sdErrorData());
@@ -445,7 +463,7 @@ extern "C" void zuluscsi_setup(void)
       blinkStatus(BLINK_ERROR_NO_SD_CARD);
       delay(1000);
       azplatform_reset_watchdog();
-    } while (!SD.begin(SD_CONFIG) && (!SD.card() || SD.sdErrorCode() != 0));
+    } while (!mountSDCard());
     azlog("SD card init succeeded after retry");
   }
 
@@ -507,7 +525,7 @@ extern "C" void zuluscsi_main_loop(void)
           blinkStatus(BLINK_ERROR_NO_SD_CARD);
           delay(1000);
           azplatform_reset_watchdog();
-        } while (!SD.begin(SD_CONFIG) && (!SD.card() || SD.sdErrorCode() != 0));
+        } while (!mountSDCard());
         azlog("SD card reinit succeeded");
         print_sd_info();
 
