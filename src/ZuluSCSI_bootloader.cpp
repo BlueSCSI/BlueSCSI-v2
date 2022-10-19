@@ -82,6 +82,24 @@ bool program_firmware(FsFile &file)
     return true;
 }
 
+static bool mountSDCard()
+{
+  // Check for the common case, FAT filesystem as first partition
+  if (SD.begin(SD_CONFIG))
+    return true;
+
+  // Do we have any kind of card?
+  if (!SD.card() || SD.sdErrorCode() != 0)
+    return false;
+
+  // Try to mount the whole card as FAT (without partition table)
+  if (static_cast<FsVolume*>(&SD)->begin(SD.card(), true, 0))
+    return true;
+
+  // Bootloader cannot do anything without FAT
+  return false;
+}
+
 extern "C"
 int bootloader_main(void)
 {
@@ -90,7 +108,7 @@ int bootloader_main(void)
 
     azlog("Bootloader version: " __DATE__ " " __TIME__ " " PLATFORM_NAME);
 
-    if (SD.begin(SD_CONFIG) || SD.begin(SD_CONFIG))
+    if (mountSDCard() || mountSDCard())
     {
         FsFile fwfile;
         char name[MAX_FILE_PATH + 1];
