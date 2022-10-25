@@ -36,6 +36,15 @@ https://www.gnu.org/licenses/gpl-3.0.html
 BlueSCSI to SD is a SCSI emulator.
 Copyright (C) 2021  Eric Helgeson
 
+ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
+
+ZuluSCSI™ is based on both SCSI2SD V6A codebase,
+and licensed under the GPL version 3 or any later version.
+
+https://www.gnu.org/licenses/gpl-3.0.html
+----
+SCSI2SD code is Copyright (C) 2016-2022 Michael McMaster.
+
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or

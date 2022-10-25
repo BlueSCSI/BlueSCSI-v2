@@ -1,4 +1,3 @@
-
 This directory is intended for PlatformIO Unit Testing and project tests.
 
 Unit Testing is a software testing method by which individual units of
