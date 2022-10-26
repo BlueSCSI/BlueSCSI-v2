@@ -7,6 +7,7 @@
 #include "ZuluSCSI_log_trace.h"
 #include "ZuluSCSI_config.h"
 #include "scsi_accel_rp2040.h"
+#include "hardware/structs/iobank0.h"
 
 #include <scsi2sd.h>
 extern "C" {
@@ -252,6 +253,15 @@ void scsiEnterBusFree(void)
     } \
   }
 
+// In synchronous mode the ACK pulse can be very short, so use edge IRQ to detect it.
+#define CHECK_EDGE(pin) \
+    ((iobank0_hw->intr[pin / 8] >> (4 * (pin % 8))) & GPIO_IRQ_EDGE_FALL)
+
+#define SCSI_WAIT_ACTIVE_EDGE(pin) \
+  if (!CHECK_EDGE(SCSI_IN_ ## pin)) { \
+    while(!SCSI_IN(pin) && !CHECK_EDGE(SCSI_IN_ ## pin) && !scsiDev.resetFlag); \
+  }
+
 #define SCSI_WAIT_INACTIVE(pin) \
   if (SCSI_IN(pin)) { \
     if (SCSI_IN(pin)) { \
@@ -260,12 +270,14 @@ void scsiEnterBusFree(void)
   }
 
 // Write one byte to SCSI host using the handshake mechanism
+// This is suitable for both asynchronous and synchronous communication.
 static inline void scsiWriteOneByte(uint8_t value)
 {
     SCSI_OUT_DATA(value);
     delay_100ns(); // DB setup time before REQ
+    gpio_acknowledge_irq(SCSI_IN_ACK, GPIO_IRQ_EDGE_FALL);
     SCSI_OUT(REQ, 1);
-    SCSI_WAIT_ACTIVE(ACK);
+    SCSI_WAIT_ACTIVE_EDGE(ACK);
     SCSI_RELEASE_DATA_REQ();
     SCSI_WAIT_INACTIVE(ACK);
 }
