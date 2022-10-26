@@ -1,6 +1,6 @@
-name: Build ZuluSCSI firmware
+name: Build BlueSCSI firmware
 
-on: 
+on:
   push:
   workflow_dispatch:
 
@@ -8,40 +8,40 @@ jobs:
   build_firmware:
     name: Build firmware on Ubuntu 20.04
     runs-on: ubuntu-20.04
-    
+
     steps:
       - name: Check out code from GitHub
         uses: actions/checkout@v2
         with:
-          path: ZuluSCSI
+          path: BlueSCSI
           fetch-depth: "0"
-      
+
       - name: Install platformio
         run: |
           sudo pip install platformio
-      
+
       - name: Build firmware
         run: |
-          cd ZuluSCSI
+          cd BlueSCSI
           pio run -v
-    
+
       - name: Rename firmware files
         run: |
-          cd ZuluSCSI
+          cd BlueSCSI
           utils/rename_binaries.sh
 
       - name: Upload binaries into build artifacts
         uses: actions/upload-artifact@v2
         with:
-          path: ZuluSCSI/distrib/*
-          name: ZuluSCSI binaries
-      
+          path: BlueSCSI/distrib/*
+          name: BlueSCSI binaries
+
       - name: Upload to latest release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: github.ref == 'refs/heads/main'
         run: |
-          cd ZuluSCSI
+          cd BlueSCSI
           git tag -d latest
           git tag latest
           git push origin --force latest
@@ -54,6 +54,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         run: |
-          cd ZuluSCSI/distrib
+          cd BlueSCSI/distrib
           RELEASE=$(basename ${{github.ref}})
           gh release upload --repo ${GITHUB_REPOSITORY} $RELEASE *

@@ -1,20 +1,7 @@
 # BlueSCSI
 :toc: macro
 
-BlueSCSI & ArdSCSino are hardware that reproduces SCSI devices (hard disks) with an Arduino STM32F103C (aka Blue Pill.)
-
-`BlueSCSI` created by https://github.com/erichelgeson[erichelgeson] is a fork of `ArdSCSino-stm32` which adds:
-
-* Usability Improvements
-* Mac specific functionality
-* Enable/Disable Passive SCSI termination
-* An alternative power source if not able to be powered by the SCSI bus
-* Documentation
-* Open Hardware (KiCad & Gerbers)
-
-`ArdSCSino-stm32` created by https://github.com/ztto/ArdSCSino-stm32[ztto] is the STM32 version of `ArdSCSino`
-
-`ArdSCSino` created by https://twitter.com/h_koma2[Tambo (TNB Seisakusho)]
+BlueSCSI is hardware that reproduces SCSI devices (hard disks, optical, etc) with an Pico 2040 dev board.
 
 image::docs/buynow.png[link=https://scsi.blue, 150]
 image::docs/discordbanner.png[link=https://discord.gg/GKcvtgU7P9, 150]
@@ -35,61 +22,22 @@ https://github.com/erichelgeson/BlueSCSI/wiki/Supported-Systems[Supported-System
 
 https://github.com/erichelgeson/BlueSCSI/wiki/Performance[Performance]
 
-## Assembly
-
-++++
-See <a href="docs/assembly.md">docs/assembly.md</a>
-++++
-
 ## Usage
 
 https://github.com/erichelgeson/BlueSCSI/wiki/Usage[Usage]
 
 ### Termination
 
-To enable termination place the two jumpers on the TERM block. Termination should be enabled if it is the last device in the SCSI chain, otherwise remove the jumpers if it is not.
+To enable termination place the a jumper on the TERM block. Termination should be enabled if it is the last device in the SCSI chain, otherwise remove the jumpers if it is not.
 
 ## Troubleshooting
 
 https://github.com/erichelgeson/BlueSCSI/wiki/Troubleshooting
 
-### Older Version Specific Troubleshooting
-
-<<docs/troubleshooting-1.0-b.adoc,Version 1.0-b>>
 
 ## Hardware Versions
 
-### 1.1-a (Latest)
-
-#### 1.1-a Desktop
-
-* Blinky! There are now resistors and pin outs for Power and Activity LED's
-* Resistor nets flipped all the same way
-* 50 pin allows for right angle connector
-* SD Card facing out the back - gives some better options for mounting and access
-* New bracket that uses less filament and has mounting options for most cases
-* Better mounting holes on the PCB
-* New artwork by @Stephen
-
-#### 1.1-a DB25
-
-* Plugs directly into the DB25 port of your Mac.
-* Removed unnecessary components.
-* Termination is always on.
-  * If you do not need termination you can socket or not install the resistor nets (this would be an unusual case)
-
-### 1.0-c
-
-* Fixed issue with diode footprint being too small
-* Fixed issue with external power and `TERMPOWER`
-
-### 1.0-b
-
-First release
-
-## Development (Advanced)
-
-https://github.com/erichelgeson/BlueSCSI/wiki/Flashing[Flashing]
+### 2.0 (Latest)
 
 ## Notes
 

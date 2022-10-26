@@ -14,4 +14,4 @@ arm-none-eabi-gdb \
        -iex 'mon tpiu config internal swo.log uart false 38400000 2000000' \
        -iex 'shell bash -m -c "orbuculum -f swo.log &"' \
        -iex 'shell bash -m -c "orbcat -c 0,%c &"' \
-       .pio/build/ZuluSCSIv1_1/firmware.elf
+       .pio/build/BlueSCSIv1_1/firmware.elf

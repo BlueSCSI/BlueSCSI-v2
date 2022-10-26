@@ -4,7 +4,7 @@
 
 INFILE="greenpak/SCSI_Accelerator_SLG46824.hex"
 TMPFILE="/tmp/greenpak.bin"
-OUTFILE="lib/zuluSCSI_platform_GD32F205/greenpak_fw.h"
+OUTFILE="lib/bluescsi_platform_GD32F205/greenpak_fw.h"
 
 objcopy --input-target=ihex --output-target=binary $INFILE $TMPFILE
 

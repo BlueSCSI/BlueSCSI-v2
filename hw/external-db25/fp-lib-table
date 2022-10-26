@@ -1,3 +1,0 @@
-(fp_lib_table
-  (lib (name BlueSCSILogo)(type KiCad)(uri ${KIPRJMOD}/BlueSCSILogo.pretty)(options "")(descr ""))
-)
