@@ -133,8 +133,15 @@ static void scsidma_config_gpio()
     else if (g_scsi_dma_state == SCSIDMA_WRITE)
     {
         // Make sure the initial state of all pins is high and output
-        pio_sm_set_pins(SCSI_DMA_PIO, SCSI_DMA_SM, 0x3FF);
-        pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DMA_SM, 0, 10, true);
+        pio_sm_set_pins(SCSI_DMA_PIO, SCSI_DMA_SM, 0x201FF);  //0x3FF
+        // Binary of 0x3FF is is 0 0 1 1 11111111
+        //                       ? A R P DBP
+        // A = ACK, R = REQ, DBP are the data pins
+        // REQ internal state needs to be set 'high'
+        // 100000000111111111
+        // Probably right to left here, so 0 - 9 are set 'high' and 10/11 are set 'low'
+        pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DMA_SM, 0, 9, true);
+        pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DMA_SM, 17, 1, true);
 
         iobank0_hw->io[SCSI_IO_DB0].ctrl  = GPIO_FUNC_PIO0;
         iobank0_hw->io[SCSI_IO_DB1].ctrl  = GPIO_FUNC_PIO0;
@@ -150,9 +157,10 @@ static void scsidma_config_gpio()
     else if (g_scsi_dma_state == SCSIDMA_READ)
     {
         // Data bus as input, REQ pin as output
-        pio_sm_set_pins(SCSI_DMA_PIO, SCSI_DMA_SM, 0x3FF);
+        pio_sm_set_pins(SCSI_DMA_PIO, SCSI_DMA_SM, 0x201FF); // 0x3FF
         pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DMA_SM, 0, 9, false);
-        pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DMA_SM, 9, 1, true);
+        pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DMA_SM, 17, 1, true);
+        // pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DMA_SM, 26, 1, false);  // not sure if this needs to be here
 
         iobank0_hw->io[SCSI_IO_DB0].ctrl  = GPIO_FUNC_SIO;
         iobank0_hw->io[SCSI_IO_DB1].ctrl  = GPIO_FUNC_SIO;

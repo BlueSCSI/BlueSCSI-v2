@@ -102,7 +102,7 @@ void bluescsiplatform_boot_to_main_firmware();
 
 // Set SCSI data bus to output
 #define SCSI_ENABLE_DATA_OUT() \
-    (sio_hw->gpio_clr = (1 << SCSI_DATA_DIR), \
+    (sio_hw->gpio_set = (1 << SCSI_DATA_DIR), \
      sio_hw->gpio_oe_set = SCSI_IO_DATA_MASK)
 
 // Write SCSI data bus, also sets REQ to inactive.
@@ -115,20 +115,22 @@ extern const uint32_t g_scsi_parity_lookup[256];
 // Release SCSI data bus and REQ signal
 #define SCSI_RELEASE_DATA_REQ() \
     (sio_hw->gpio_oe_clr = SCSI_IO_DATA_MASK, \
-     sio_hw->gpio_set = (1 << SCSI_DATA_DIR) | (1 << SCSI_OUT_REQ))
+     sio_hw->gpio_clr = (1 << SCSI_DATA_DIR), \
+     sio_hw->gpio_set = ((1 << SCSI_OUT_REQ)))
 
 // Release all SCSI outputs
 #define SCSI_RELEASE_OUTPUTS() \
     SCSI_RELEASE_DATA_REQ(), \
-    sio_hw->gpio_oe_clr = (1 << SCSI_OUT_CD) | \
-                          (1 << SCSI_OUT_MSG), \
     sio_hw->gpio_set = (1 << SCSI_OUT_IO) | \
                        (1 << SCSI_OUT_CD) | \
                        (1 << SCSI_OUT_MSG) | \
                        (1 << SCSI_OUT_RST) | \
                        (1 << SCSI_OUT_BSY) | \
                        (1 << SCSI_OUT_REQ) | \
-                       (1 << SCSI_OUT_SEL)
+                       (1 << SCSI_OUT_SEL), \
+                       delay(1), \
+    sio_hw->gpio_oe_clr = (1 << SCSI_OUT_CD) | \
+                          (1 << SCSI_OUT_MSG)
 
 // Read SCSI data bus
 #define SCSI_IN_DATA() \

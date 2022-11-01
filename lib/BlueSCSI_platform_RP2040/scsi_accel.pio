@@ -5,8 +5,8 @@
 ; -   8: DBP
 ; Side set is REQ pin
 
-.define REQ 9
-.define ACK 10
+.define REQ 17  ; was 9
+.define ACK 26  ; was 10
 
 ; Delay from data setup to REQ assertion.
 ; deskew delay + cable skew delay = 55 ns minimum

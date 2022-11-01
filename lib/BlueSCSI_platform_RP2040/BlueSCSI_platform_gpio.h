@@ -20,23 +20,26 @@
 #define SCSI_IO_SHIFT 0
 
 // Data direction control
-#define SCSI_DATA_DIR 17
+#define SCSI_DATA_DIR 9
 
-// SCSI output status lines
-#define SCSI_OUT_IO   12
-#define SCSI_OUT_CD   11
-#define SCSI_OUT_MSG  13
-#define SCSI_OUT_RST  28
-#define SCSI_OUT_BSY  26
-#define SCSI_OUT_REQ  9
-#define SCSI_OUT_SEL  24
+// SCSI control lines
+#define SCSI_OUT_IO   22  // Used to be 16
+#define SCSI_OUT_REQ  17
 
-// SCSI input status signals
-#define SCSI_IN_SEL  11
-#define SCSI_IN_ACK  10
-#define SCSI_IN_ATN  29
-#define SCSI_IN_BSY  13
-#define SCSI_IN_RST  27
+#define SCSI_OUT_CD   18  // TODO hardware design
+#define SCSI_IN_SEL  18
+
+#define SCSI_OUT_SEL  19
+
+#define SCSI_OUT_MSG  20
+#define SCSI_IN_BSY  20  // TODO hardware design
+
+#define SCSI_IN_RST  21
+#define SCSI_OUT_RST  22  // Same as IO currently, not initialized or used
+
+#define SCSI_IN_ACK  26
+#define SCSI_OUT_BSY  27
+#define SCSI_IN_ATN  28
 
 // Status line outputs for initiator mode
 #define SCSI_OUT_ACK  10
@@ -53,29 +56,31 @@
 #define LED_ON()     sio_hw->gpio_set = 1 << LED_PIN
 #define LED_OFF()    sio_hw->gpio_clr = 1 << LED_PIN
 
-// SD card pins in SDIO mode
-#define SDIO_CLK 18
-#define SDIO_CMD 19
-#define SDIO_D0  20
-#define SDIO_D1  21
-#define SDIO_D2  22
-#define SDIO_D3  23
+// SDIO and SPI block
+#define SD_SPI_SCK   10
+#define SDIO_CLK 10
 
-// SD card pins in SPI mode
-#define SD_SPI       spi0
-#define SD_SPI_SCK   18
-#define SD_SPI_MOSI  19
-#define SD_SPI_MISO  20
-#define SD_SPI_CS    23
+#define SD_SPI_MOSI  11
+#define SDIO_CMD 11
+
+#define SD_SPI_MISO  12
+#define SDIO_D0  12
+
+#define SDIO_D1  13
+
+#define SDIO_D2  14
+
+#define SDIO_D3  15
+#define SD_SPI_CS    15
 
 // IO expander I2C
-#define GPIO_I2C_SDA 14
-#define GPIO_I2C_SCL 15
+// #define GPIO_I2C_SDA 14
+// #define GPIO_I2C_SCL 15
 
 // DIP switch pins
-#define DIP_INITIATOR 10
-#define DIP_DBGLOG 16
-#define DIP_TERM 9
+// #define DIP_INITIATOR 10
+// #define DIP_DBGLOG 28
+// #define DIP_TERM 9
 
 // Other pins
 #define SWO_PIN 16
