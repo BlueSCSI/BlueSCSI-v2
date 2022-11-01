@@ -45,38 +45,39 @@ void bluescsiplatform_init()
      * RP2040 defaults to pulldowns, while these pins have external pull-ups.
      */
     //        pin             function       pup   pdown  out    state fast
-    gpio_conf(SCSI_DATA_DIR,  GPIO_FUNC_SIO, false,false, true,  true, true);
-    gpio_conf(SCSI_OUT_RST,   GPIO_FUNC_SIO, false,false, true,  true, true);
-    gpio_conf(SCSI_OUT_BSY,   GPIO_FUNC_SIO, false,false, true,  true, true);
-    gpio_conf(SCSI_OUT_SEL,   GPIO_FUNC_SIO, false,false, true,  true, true);
+    gpio_conf(SCSI_DATA_DIR,  GPIO_FUNC_SIO, false,false, true,  false, true);
+    //gpio_conf(SCSI_OUT_RST,   GPIO_FUNC_SIO, false,false, true,  true, true);
+    gpio_conf(SCSI_OUT_BSY,   GPIO_FUNC_SIO, false,false, true,  true, false);   
+    //gpio_set_drive_strength(SCSI_OUT_BSY, GPIO_DRIVE_STRENGTH_8MA);
+    gpio_conf(SCSI_OUT_SEL,   GPIO_FUNC_SIO, false,false, true,  true, false);
 
     /* Check dip switch settings */
-    gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, false, false, false, false, false);
-    gpio_conf(DIP_DBGLOG,     GPIO_FUNC_SIO, false, false, false, false, false);
-    gpio_conf(DIP_TERM,       GPIO_FUNC_SIO, false, false, false, false, false);
+    //gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, false, false, false, false, false);
+    //gpio_conf(DIP_DBGLOG,     GPIO_FUNC_SIO, false, false, false, false, false);
+    //gpio_conf(DIP_TERM,       GPIO_FUNC_SIO, false, false, false, false, false);
 
     delay(10); // 10 ms delay to let pull-ups do their work
 
-    bool dbglog = !gpio_get(DIP_DBGLOG);
-    bool termination = !gpio_get(DIP_TERM);
+    //bool dbglog = !gpio_get(DIP_DBGLOG);
+    //bool termination = !gpio_get(DIP_TERM);
 
     /* Initialize logging to SWO pin (UART0) */
     gpio_conf(SWO_PIN,        GPIO_FUNC_UART,false,false, true,  false, true);
     uart_init(uart0, 1000000);
     mbed_set_error_hook(mbed_error_hook);
 
-    bluelog("DIP switch settings: debug log ", (int)dbglog, ", termination ", (int)termination);
+    //bluelog("DIP switch settings: debug log ", (int)dbglog, ", termination ", (int)termination);
 
-    g_bluelog_debug = dbglog;
+    g_bluelog_debug = false; // Debug logging can be handled with a debug firmware, very easy to reflash
 
-    if (termination)
-    {
-        bluelog("SCSI termination is enabled");
-    }
-    else
-    {
-        bluelog("NOTE: SCSI termination is disabled");
-    }
+    // if (termination)  // Termination is handled by hardware jumper
+    // {
+    //     bluelog("SCSI termination is enabled");
+    // }
+    // else
+    // {
+    //     bluelog("NOTE: SCSI termination is disabled");
+    // }
 
     // SD card pins
     // Card is used in SDIO mode for main program, and in SPI mode for crash handler & bootloader.
@@ -106,23 +107,23 @@ static bool read_initiator_dip_switch()
 
     // Strong output high, then pulldown
     //        pin             function       pup   pdown   out    state  fast
-    gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, false, false, true,  true,  false);
-    gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, false, true,  false, true,  false);
-    delay(1);
-    bool initiator_state1 = gpio_get(DIP_INITIATOR);
+    //gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, false, false, true,  true,  false);
+    //gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, false, true,  false, true,  false);
+    //delay(1);
+    //bool initiator_state1 = gpio_get(DIP_INITIATOR);
 
     // Strong output low, then pullup
     //        pin             function       pup   pdown   out    state  fast
-    gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, false, false, true,  false, false);
-    gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, true,  false, false, false, false);
-    delay(1);
-    bool initiator_state2 = gpio_get(DIP_INITIATOR);
+    //gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, false, false, true,  false, false);
+    //gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, true,  false, false, false, false);
+    //delay(1);
+    //bool initiator_state2 = gpio_get(DIP_INITIATOR);
 
-    if (initiator_state1 == initiator_state2)
-    {
+    //if (initiator_state1 == initiator_state2)
+    //{
         // Ok, was able to read the state directly
-        return !initiator_state1;
-    }
+        //return !initiator_state1;
+    //}
 
     // Enable OUT_BSY for a short time.
     // If in target mode, this will force GPIO_ACK high.
@@ -130,7 +131,8 @@ static bool read_initiator_dip_switch()
     delay_100ns();
     gpio_put(SCSI_OUT_BSY, 1);
 
-    return !gpio_get(DIP_INITIATOR);
+    //return !gpio_get(DIP_INITIATOR);
+    return false;
 }
 
 // late_init() only runs in main application, SCSI not needed in bootloader
@@ -191,8 +193,8 @@ void bluescsiplatform_late_init()
 
         // SCSI control inputs
         //        pin             function       pup   pdown  out    state fast
-        gpio_conf(SCSI_IN_ACK,    GPIO_FUNC_SIO, true, false, false, true, false);
-        gpio_conf(SCSI_IN_ATN,    GPIO_FUNC_SIO, true, false, false, true, false);
+        gpio_conf(SCSI_IN_ACK,    GPIO_FUNC_SIO, false, false, false, true, false);
+        gpio_conf(SCSI_IN_ATN,    GPIO_FUNC_SIO, false, false, false, true, false);
         gpio_conf(SCSI_IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
     }
     else

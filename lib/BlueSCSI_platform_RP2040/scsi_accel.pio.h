@@ -20,8 +20,8 @@ static const uint16_t scsi_accel_async_write_program_instructions[] = {
     0x90e0, //  0: pull   ifempty block   side 1     
     0x7009, //  1: out    pins, 9         side 1     
     0x7567, //  2: out    null, 7         side 1 [5] 
-    0x308a, //  3: wait   1 gpio, 10      side 1     
-    0x200a, //  4: wait   0 gpio, 10      side 0     
+    0x309a, //  3: wait   1 gpio, 26      side 1     
+    0x201a, //  4: wait   0 gpio, 26      side 0     
             //     .wrap
 };
 
@@ -51,11 +51,11 @@ static const uint16_t scsi_accel_async_read_program_instructions[] = {
             //     .wrap_target
     0x90a0, //  0: pull   block           side 1     
     0xb027, //  1: mov    x, osr          side 1     
-    0x308a, //  2: wait   1 gpio, 10      side 1     
-    0x200a, //  3: wait   0 gpio, 10      side 0     
+    0x309a, //  2: wait   1 gpio, 26      side 1     
+    0x201a, //  3: wait   0 gpio, 26      side 0     
     0x5009, //  4: in     pins, 9         side 1     
     0x5067, //  5: in     null, 7         side 1     
-    0x1042, //  6: jmp    x--, 2          side 1
+    0x1042, //  6: jmp    x--, 2          side 1     
             //     .wrap
 };
 
@@ -83,9 +83,9 @@ static inline pio_sm_config scsi_accel_async_read_program_get_default_config(uin
 
 static const uint16_t scsi_sync_write_program_instructions[] = {
             //     .wrap_target
-    0x7009, //  0: out    pins, 9         side 1
-    0x6067, //  1: out    null, 7         side 0
-    0x5061, //  2: in     null, 1         side 1
+    0x7009, //  0: out    pins, 9         side 1     
+    0x6067, //  1: out    null, 7         side 0     
+    0x5061, //  2: in     null, 1         side 1     
             //     .wrap
 };
 
@@ -113,9 +113,9 @@ static inline pio_sm_config scsi_sync_write_program_get_default_config(uint offs
 
 static const uint16_t scsi_sync_write_pacer_program_instructions[] = {
             //     .wrap_target
-    0x208a, //  0: wait   1 gpio, 10
-    0x200a, //  1: wait   0 gpio, 10
-    0x6061, //  2: out    null, 1
+    0x209a, //  0: wait   1 gpio, 26                 
+    0x201a, //  1: wait   0 gpio, 26                 
+    0x6061, //  2: out    null, 1                    
             //     .wrap
 };
 
