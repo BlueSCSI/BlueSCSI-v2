@@ -94,8 +94,8 @@ void bluescsiplatform_init()
 
     // I2C pins
     //        pin             function       pup   pdown  out    state fast
-    gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_I2C, true,false, false,  true, true);
-    gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_I2C, true,false, false,  true, true);
+    //gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_I2C, true,false, false,  true, true);
+    //gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_I2C, true,false, false,  true, true);
 }
 
 static bool read_initiator_dip_switch()
