@@ -52,14 +52,12 @@ void bluescsiplatform_init()
     gpio_conf(SCSI_OUT_SEL,   GPIO_FUNC_SIO, false,false, true,  true, false);
 
     /* Check dip switch settings */
-    //gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, false, false, false, false, false);
-    //gpio_conf(DIP_DBGLOG,     GPIO_FUNC_SIO, false, false, false, false, false);
-    //gpio_conf(DIP_TERM,       GPIO_FUNC_SIO, false, false, false, false, false);
-
-    delay(10); // 10 ms delay to let pull-ups do their work
-
-    //bool dbglog = !gpio_get(DIP_DBGLOG);
-    //bool termination = !gpio_get(DIP_TERM);
+    // Option switches: S1 is iATN, S2 is iACK
+    gpio_conf(SCSI_IN_ACK,    GPIO_FUNC_SIO, false, false, false, false, false);
+    gpio_conf(SCSI_IN_ATN,    GPIO_FUNC_SIO, false, false, false, false, false);
+    delay(10); /// Settle time
+    bool optionS1 = !gpio_get(SCSI_IN_ATN);
+    bool optionS2 = !gpio_get(SCSI_IN_ACK);
 
     /* Initialize logging to SWO pin (UART0) */
     gpio_conf(SWO_PIN,        GPIO_FUNC_UART,false,false, true,  false, true);
