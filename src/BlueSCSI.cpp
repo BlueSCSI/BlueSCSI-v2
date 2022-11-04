@@ -115,13 +115,8 @@ void print_sd_info()
 
     char sdname[6] = {sd_cid.pnm[0], sd_cid.pnm[1], sd_cid.pnm[2], sd_cid.pnm[3], sd_cid.pnm[4], 0};
     bluelog("SD Name: ", sdname);
-
-    char sdyear[5] = "2000";
-    sdyear[2] += sd_cid.mdt_year_high;
-    sdyear[3] += sd_cid.mdt_year_low;
-    bluelog("SD Date: ", (int)sd_cid.mdt_month, "/", sdyear);
-
-    bluelog("SD Serial: ", sd_cid.psn);
+    bluelog("SD Date: ", (int)sd_cid.mdtMonth(), "/", sd_cid.mdtYear());
+    bluelog("SD Serial: ", sd_cid.psn());
   }
 }
 

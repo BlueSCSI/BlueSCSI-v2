@@ -189,6 +189,18 @@ bool SdioCard::readCSD(csd_t* csd)
     return true;
 }
 
+bool SdioCard::readSCR(scr_t *scr)
+{
+    bluelog("SdioCard::readSCR() called but not implemented!");
+    return false;
+}
+
+bool SdioCard::cardCMD6(uint32_t arg, uint8_t* status)
+{
+    bluelog("SdioCard::cardCMD6() called but not implemented!");
+    return false;
+}
+
 bool SdioCard::readOCR(uint32_t* ocr)
 {
     // SDIO mode does not have CMD58, but main program uses this to
@@ -216,7 +228,7 @@ bool SdioCard::readStop()
 
 uint32_t SdioCard::sectorCount()
 {
-    return sdCardCapacity(&g_sdio_csd);
+    return g_sdio_csd.capacity();
 }
 
 uint32_t SdioCard::status()

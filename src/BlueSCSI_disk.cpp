@@ -396,7 +396,7 @@ static void setDefaultDriveInfo(int target_idx)
         uint32_t sd_sn = 0;
         if (SD.card()->readCID(&sd_cid))
         {
-            sd_sn = sd_cid.psn;
+            sd_sn = sd_cid.psn();
         }
 
         memset(img.serial, 0, sizeof(img.serial));
