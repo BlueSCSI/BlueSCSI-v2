@@ -269,7 +269,8 @@ static image_config_t g_DiskImages[S2S_MAX_TARGETS];
 
 void scsiDiskResetImages()
 {
-    memset(g_DiskImages, 0, sizeof(g_DiskImages));
+    for(int i = 0; i < S2S_MAX_TARGETS; i++)
+        g_DiskImages[i] = image_config_t();
 }
 
 // Verify format conformance to SCSI spec:
