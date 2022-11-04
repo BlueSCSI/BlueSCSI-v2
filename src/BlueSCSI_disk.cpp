@@ -519,7 +519,7 @@ static void scsiDiskConfigDefaults(int target_idx)
     img.deviceTypeModifier = 0;
     img.sectorsPerTrack = 63;
     img.headsPerCylinder = 255;
-    img.quirks = S2S_CFG_QUIRKS_NONE;
+    img.quirks = S2S_CFG_QUIRKS_APPLE;
     img.prefetchbytes = PREFETCH_BUFFER_SIZE;
     memset(img.vendor, 0, sizeof(img.vendor));
     memset(img.prodId, 0, sizeof(img.prodId));
