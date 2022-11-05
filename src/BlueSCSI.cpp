@@ -43,8 +43,10 @@ void blinkStatus(int count)
   for (int i = 0; i < count; i++)
   {
     LED_ON();
+    SCSI_OUT(BSY, 1);
     delay(250);
     LED_OFF();
+    SCSI_OUT(BSY, 0);
     delay(250);
   }
 }
