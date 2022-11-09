@@ -68,7 +68,7 @@ public:
         m_bgnsector = m_endsector = m_cursector = 0;
     }
 
-    ImageBackingStore(const char *filename): ImageBackingStore()
+    ImageBackingStore(const char *filename, uint32_t scsi_block_size): ImageBackingStore()
     {
         if (strncasecmp(filename, "RAW:", 4) == 0)
         {
@@ -79,6 +79,12 @@ public:
             if (*endptr != ':' || *endptr2 != '\0')
             {
                 azlog("Invalid format for raw filename: ", filename);
+                return;
+            }
+
+            if ((scsi_block_size % SD_SECTOR_SIZE) != 0)
+            {
+                azlog("SCSI block size ", (int)scsi_block_size, " is not supported for RAW partitions (must be divisible by 512 bytes)");
                 return;
             }
 
@@ -98,7 +104,8 @@ public:
 
             uint32_t sectorcount = m_fsfile.size() / SD_SECTOR_SIZE;
             uint32_t begin = 0, end = 0;
-            if (m_fsfile.contiguousRange(&begin, &end) && end >= begin + sectorcount)
+            if (m_fsfile.contiguousRange(&begin, &end) && end >= begin + sectorcount
+                && (scsi_block_size % SD_SECTOR_SIZE) == 0)
             {
                 // Convert to raw mapping, this avoids some unnecessary
                 // access overhead in SdFat library.
@@ -421,7 +428,7 @@ static void setDefaultDriveInfo(int target_idx)
 bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize, S2S_CFG_TYPE type)
 {
     image_config_t &img = g_DiskImages[target_idx];
-    img.file = ImageBackingStore(filename);
+    img.file = ImageBackingStore(filename, blocksize);
 
     if (img.file.isOpen())
     {
