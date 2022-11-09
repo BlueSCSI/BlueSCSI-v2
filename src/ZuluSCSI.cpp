@@ -248,6 +248,18 @@ bool findHDDImages()
           continue;
         }
 
+        // Check if the image should be loaded to microcontroller flash ROM drive
+        bool is_romdrive = false;
+        if (extension && strcasecmp(extension, ".rom") == 0)
+        {
+          is_romdrive = true;
+        }
+        else if (extension && strcasecmp(extension, ".rom_loaded") == 0)
+        {
+          // Already loaded ROM drive, ignore the image
+          continue;
+        }
+
         // Defaults for Hard Disks
         int id  = 1; // 0 and 3 are common in Macs for physical HD and CD, so avoid them.
         int lun = 0;
@@ -309,18 +321,28 @@ bool findHDDImages()
           continue;
         }
 
-        // Open the image file
-        if(id < NUM_SCSIID && lun < NUM_SCSILUN) {
-          azlog("-- Opening ", fullname, " for id:", id, " lun:", lun);
+        // Type mapping based on filename.
+        // If type is FIXED, the type can still be overridden in .ini file.
+        S2S_CFG_TYPE type = S2S_CFG_FIXED;
+        if (is_cd) type = S2S_CFG_OPTICAL;
+        if (is_fd) type = S2S_CFG_FLOPPY_14MB;
+        if (is_mo) type = S2S_CFG_MO;
+        if (is_re) type = S2S_CFG_REMOVEABLE;
+        if (is_tp) type = S2S_CFG_SEQUENTIAL;
 
-          // Type mapping based on filename.
-          // If type is FIXED, the type can still be overridden in .ini file.
-          S2S_CFG_TYPE type = S2S_CFG_FIXED;
-          if (is_cd) type = S2S_CFG_OPTICAL;
-          if (is_fd) type = S2S_CFG_FLOPPY_14MB;
-          if (is_mo) type = S2S_CFG_MO;
-          if (is_re) type = S2S_CFG_REMOVEABLE;
-          if (is_tp) type = S2S_CFG_SEQUENTIAL;
+        // Open the image file
+        if (id < NUM_SCSIID && is_romdrive)
+        {
+          azlog("-- Loading ROM drive from ", fullname, " for id:", id);
+          imageReady = scsiDiskProgramRomDrive(fullname, id, blk, type);
+          
+          if (imageReady)
+          {
+            foundImage = true;
+          }
+        }
+        else if(id < NUM_SCSIID && lun < NUM_SCSILUN) {
+          azlog("-- Opening ", fullname, " for id:", id, " lun:", lun);
 
           imageReady = scsiDiskOpenHDDImage(id, fullname, id, lun, blk, type);
           if(imageReady)
@@ -342,6 +364,8 @@ bool findHDDImages()
     azlog("Some images did not specify a SCSI ID. Last file will be used at ID ", usedDefaultId);
   }
   root.close();
+
+  scsiDiskActivateRomDrive();
 
   // Print SCSI drive map
   for (int i = 0; i < NUM_SCSIID; i++)

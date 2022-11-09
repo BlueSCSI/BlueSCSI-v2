@@ -17,5 +17,11 @@ void scsiDiskResetImages();
 bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize, S2S_CFG_TYPE type = S2S_CFG_FIXED);
 void scsiDiskLoadConfig(int target_idx);
 
+// Program ROM drive and rename image file
+bool scsiDiskProgramRomDrive(const char *filename, int scsi_id, int blocksize, S2S_CFG_TYPE type);
+
+// Check if there is ROM drive configured in microcontroller flash
+bool scsiDiskActivateRomDrive();
+
 // Returns true if there is at least one image active
 bool scsiDiskCheckAnyImagesConfigured();
