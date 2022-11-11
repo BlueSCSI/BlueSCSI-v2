@@ -127,6 +127,45 @@ void print_sd_info()
 /*********************************/
 /* Harddisk image file handling  */
 /*********************************/
+const char * typeToChar(int deviceType)
+{
+  switch (deviceType)
+  {
+  case S2S_CFG_OPTICAL:
+    return "Optical";
+  case S2S_CFG_FIXED:
+    return "Fixed";
+  case S2S_CFG_FLOPPY_14MB:
+    return "Floppy1.4MB";
+  case S2S_CFG_MO:
+    return "MO";
+  case S2S_CFG_SEQUENTIAL:
+    return "Tape";
+  case S2S_CFG_REMOVEABLE:
+    return "Removable";
+  default:
+    return "Unknown";
+  }
+}
+
+const char * quirksToChar(int quirks)
+{
+  switch (quirks)
+  {
+  case S2S_CFG_QUIRKS_APPLE:
+    return "Apple";
+  case S2S_CFG_QUIRKS_OMTI:
+    return "OMTI";
+  case S2S_CFG_QUIRKS_VMS:
+    return "VMS";
+  case S2S_CFG_QUIRKS_XEBEC:
+    return "XEBEC";
+  case S2S_CFG_QUIRKS_NONE:
+    return "None";
+  default:
+    return "Unknown";
+  }
+}
 
 // Iterate over the root path in the SD card looking for candidate image files.
 bool findHDDImages()
@@ -358,8 +397,8 @@ bool findHDDImages()
       int capacity_kB = ((uint64_t)cfg->scsiSectors * cfg->bytesPerSector) / 1024;
       log("SCSI ID:", (int)(cfg->scsiId & 7),
             " BlockSize:", (int)cfg->bytesPerSector,
-            " Type:", (int)cfg->deviceType,
-            " Quirks:", (int)cfg->quirks,
+            " Type:", typeToChar((int)cfg->deviceType),
+            " Quirks:", quirksToChar((int)cfg->quirks),
             " ImageSize:", capacity_kB, "kB");
     }
   }
