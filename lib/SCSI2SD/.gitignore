@@ -1,0 +1,6 @@
+*.c.un~
+*.c~
+*.h.un~
+*.h~
+build/
+src/scsi2sd-util6/build
