@@ -72,8 +72,17 @@ typedef enum
 } SCSI_COMPAT_MODE;
 
 // Maximum value for bytes-per-sector.
+#ifndef MAX_SECTOR_SIZE
 #define MAX_SECTOR_SIZE 8192
+#endif
+
+#ifndef MIN_SECTOR_SIZE
 #define MIN_SECTOR_SIZE 64
+#endif
+
+#ifndef SCSI2SD_BUFFER_SIZE
+#define SCSI2SD_BUFFER_SIZE (MAX_SECTOR_SIZE * 8)
+#endif
 
 // Shadow parameters, possibly not saved to flash yet.
 // Set via Mode Select
@@ -110,7 +119,7 @@ typedef struct
 	// TODO reduce this buffer size and add a proper cache
 	// Must be aligned for DMA
 	// 65536 bytes is the DMA limit
-	uint8_t data[MAX_SECTOR_SIZE * 8];
+	uint8_t data[SCSI2SD_BUFFER_SIZE];
 
 	TargetState targets[S2S_MAX_TARGETS];
 	TargetState* target;
