@@ -181,10 +181,13 @@ sdio_status_t rp2040_sdio_command_R1(uint8_t command, uint32_t arg, uint32_t *re
     {
         if ((uint32_t)(millis() - start) > 2)
         {
-            azdbg("Timeout waiting for response in rp2040_sdio_command_R1(", (int)command, "), ",
-                  "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_CMD_SM) - (int)g_sdio.pio_cmd_clk_offset,
-                  " RXF: ", (int)pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_CMD_SM),
-                  " TXF: ", (int)pio_sm_get_tx_fifo_level(SDIO_PIO, SDIO_CMD_SM));
+            if (command != 8) // Don't log for missing SD card
+            {
+                azdbg("Timeout waiting for response in rp2040_sdio_command_R1(", (int)command, "), ",
+                    "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_CMD_SM) - (int)g_sdio.pio_cmd_clk_offset,
+                    " RXF: ", (int)pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_CMD_SM),
+                    " TXF: ", (int)pio_sm_get_tx_fifo_level(SDIO_PIO, SDIO_CMD_SM));
+            }
 
             // Reset the state machine program
             pio_sm_clear_fifos(SDIO_PIO, SDIO_CMD_SM);
