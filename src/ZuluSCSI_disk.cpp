@@ -18,6 +18,7 @@
 extern "C" {
 #include <scsi2sd_time.h>
 #include <sd.h>
+#include <mode.h>
 }
 
 #ifndef PLATFORM_MAX_SCSI_SPEED
@@ -131,7 +132,12 @@ bool scsiDiskProgramRomDrive(const char *filename, int scsi_id, int blocksize, S
     uint32_t pages = (filesize + AZPLATFORM_ROMDRIVE_PAGE_SIZE - 1) / AZPLATFORM_ROMDRIVE_PAGE_SIZE;
     for (uint32_t i = 0; i < pages; i++)
     {
-        if (!file.read(scsiDev.data, AZPLATFORM_ROMDRIVE_PAGE_SIZE) ||
+        if (i % 2)
+            LED_ON();
+        else
+            LED_OFF();
+
+        if (file.read(scsiDev.data, AZPLATFORM_ROMDRIVE_PAGE_SIZE) <= 0 ||
             !azplatform_write_romdrive(scsiDev.data, (i + 1) * AZPLATFORM_ROMDRIVE_PAGE_SIZE, AZPLATFORM_ROMDRIVE_PAGE_SIZE))
         {
             azlog("---- Failed to program ROM drive page ", (int)i);
@@ -139,6 +145,8 @@ bool scsiDiskProgramRomDrive(const char *filename, int scsi_id, int blocksize, S
             return false;
         }
     }
+
+    LED_OFF();
 
     file.close();
 
@@ -149,6 +157,12 @@ bool scsiDiskProgramRomDrive(const char *filename, int scsi_id, int blocksize, S
     azlog("---- ROM drive programming successful, image file renamed to ", newname);
 
     return true;
+}
+
+bool scsiDiskCheckRomDrive()
+{
+    romdrive_hdr_t hdr = {};
+    return check_romdrive(&hdr);
 }
 
 // Check if rom drive exists and activate it
@@ -285,6 +299,16 @@ public:
                 m_fsfile.close();
             }
         }
+    }
+
+    bool isWritable()
+    {
+        return !m_isrom;
+    }
+
+    bool isRom()
+    {
+        return m_isrom;
     }
 
     bool isOpen()
@@ -652,7 +676,11 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
         }
 
         uint32_t sector_begin = 0, sector_end = 0;
-        if (img.file.contiguousRange(&sector_begin, &sector_end) && sector_end != 0)
+        if (img.file.isRom())
+        {
+            // ROM is always contiguous, no need to log
+        }
+        else if (img.file.contiguousRange(&sector_begin, &sector_end))
         {
             azlog("---- Image file is contiguous, SD card sectors ", (int)sector_begin, " to ", (int)sector_end);
         }
@@ -919,7 +947,8 @@ const S2S_TargetCfg* s2s_getConfigById(int scsiId)
     for (i = 0; i < S2S_MAX_TARGETS; ++i)
     {
         const S2S_TargetCfg* tgt = s2s_getConfigByIndex(i);
-        if ((tgt->scsiId & S2S_CFG_TARGET_ID_BITS) == scsiId)
+        if ((tgt->scsiId & S2S_CFG_TARGET_ID_BITS) == scsiId &&
+            (tgt->scsiId & S2S_CFG_TARGET_ENABLED))
         {
             return tgt;
         }
@@ -1247,10 +1276,11 @@ static void doWrite(uint32_t lba, uint32_t blocks)
     azdbg("------ Write ", (int)blocks, "x", (int)bytesPerSector, " starting at ", (int)lba);
 
     if (unlikely(blockDev.state & DISK_WP) ||
-        unlikely(scsiDev.target->cfg->deviceType == S2S_CFG_OPTICAL))
+        unlikely(scsiDev.target->cfg->deviceType == S2S_CFG_OPTICAL) ||
+        unlikely(!img.file.isWritable()))
 
     {
-        azlog("WARNING: Host attempted write to CD-ROM");
+        azlog("WARNING: Host attempted write to read-only drive ID ", (int)(img.scsiId & S2S_CFG_TARGET_ID_BITS));
         scsiDev.status = CHECK_CONDITION;
         scsiDev.target->sense.code = ILLEGAL_REQUEST;
         scsiDev.target->sense.asc = WRITE_PROTECTED;
@@ -1874,6 +1904,13 @@ int scsiDiskCommand()
         }
 
         scsiDev.phase = DATA_IN;
+    }
+    else if (img.file.isRom())
+    {
+        // Special handling for ROM drive to make SCSI2SD code report it as read-only
+        blockDev.state |= DISK_WP;
+        commandHandled = scsiModeCommand();
+        blockDev.state &= ~DISK_WP;
     }
     else
     {

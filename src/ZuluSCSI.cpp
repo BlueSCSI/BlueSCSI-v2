@@ -54,6 +54,8 @@
 
 SdFs SD;
 FsFile g_logfile;
+static bool g_romdrive_active;
+static bool g_sdcard_present;
 
 /************************************/
 /* Status reporting by blinking led */
@@ -95,7 +97,7 @@ void save_logfile(bool always = false)
   static uint32_t prev_log_save = 0;
   uint32_t loglen = azlog_get_buffer_len();
 
-  if (loglen != prev_log_len)
+  if (loglen != prev_log_len && g_sdcard_present)
   {
     // When debug is off, save log at most every LOG_SAVE_INTERVAL_MS
     // When debug is on, save after every SCSI command.
@@ -314,8 +316,7 @@ bool findHDDImages()
         strcat(fullname, name);
 
         // Check whether this SCSI ID has been configured yet
-        const S2S_TargetCfg* cfg = s2s_getConfigByIndex(id);
-        if (cfg && (cfg->scsiId & S2S_CFG_TARGET_ENABLED))
+        if (s2s_getConfigById(id))
         {
           azlog("-- Ignoring ", fullname, ", SCSI ID ", id, " is already in use!");
           continue;
@@ -365,7 +366,7 @@ bool findHDDImages()
   }
   root.close();
 
-  scsiDiskActivateRomDrive();
+  g_romdrive_active = scsiDiskActivateRomDrive();
 
   // Print SCSI drive map
   for (int i = 0; i < NUM_SCSIID; i++)
@@ -477,34 +478,55 @@ extern "C" void zuluscsi_setup(void)
   azplatform_init();
   azplatform_late_init();
 
-  if(!mountSDCard())
+  g_sdcard_present = mountSDCard();
+
+  if(!g_sdcard_present)
   {
     azlog("SD card init failed, sdErrorCode: ", (int)SD.sdErrorCode(),
            " sdErrorData: ", (int)SD.sdErrorData());
     
+    blinkStatus(BLINK_ERROR_NO_SD_CARD);
+
+    if (scsiDiskCheckRomDrive())
+    {
+      reinitSCSI();
+      if (g_romdrive_active)
+      {
+        azlog("Enabled ROM drive without SD card");
+        return;
+      }
+    }
+
     do
     {
       blinkStatus(BLINK_ERROR_NO_SD_CARD);
       delay(1000);
       azplatform_reset_watchdog();
-    } while (!mountSDCard());
+      g_sdcard_present = mountSDCard();
+    } while (!g_sdcard_present);
     azlog("SD card init succeeded after retry");
   }
 
-  if (SD.clusterCount() == 0)
+  if (g_sdcard_present)
   {
-    azlog("SD card without filesystem!");
+    if (SD.clusterCount() == 0)
+    {
+      azlog("SD card without filesystem!");
+    }
+
+    print_sd_info();
+  
+    reinitSCSI();
   }
 
-  print_sd_info();
-  
-  reinitSCSI();
-
-  azlog("Initialization complete!");
   azlog("Platform: ", g_azplatform_name);
   azlog("FW Version: ", g_azlog_firmwareversion);
+  azlog("Initialization complete!");
 
-  init_logfile();
+  if (g_sdcard_present)
+  {
+    init_logfile();
+  }
 }
 
 extern "C" void zuluscsi_main_loop(void)
@@ -533,29 +555,50 @@ extern "C" void zuluscsi_main_loop(void)
     }
   }
 
-  // Check SD card status for hotplug
-  if (scsiDev.phase == BUS_FREE &&
-      (uint32_t)(millis() - sd_card_check_time) > 5000)
+  if (g_sdcard_present)
   {
-    sd_card_check_time = millis();
-    uint32_t ocr;
-    if (!SD.card()->readOCR(&ocr))
+    // Check SD card status for hotplug
+    if (scsiDev.phase == BUS_FREE &&
+        (uint32_t)(millis() - sd_card_check_time) > 5000)
     {
+      sd_card_check_time = millis();
+      uint32_t ocr;
       if (!SD.card()->readOCR(&ocr))
       {
-        azlog("SD card removed, trying to reinit");
-        do
+        if (!SD.card()->readOCR(&ocr))
         {
-          blinkStatus(BLINK_ERROR_NO_SD_CARD);
-          delay(1000);
-          azplatform_reset_watchdog();
-        } while (!mountSDCard());
+          g_sdcard_present = false;
+          azlog("SD card removed, trying to reinit");
+        }
+      }
+    }
+  }
+
+  if (!g_sdcard_present)
+  {
+    // Try to remount SD card
+    do 
+    {
+      g_sdcard_present = mountSDCard();
+
+      if (g_sdcard_present)
+      {
         azlog("SD card reinit succeeded");
         print_sd_info();
 
         reinitSCSI();
         init_logfile();
       }
-    }
+      else if (!g_romdrive_active)
+      {
+        blinkStatus(BLINK_ERROR_NO_SD_CARD);
+        delay(1000);
+        azplatform_reset_watchdog();
+      }
+    } while (!g_sdcard_present && !g_romdrive_active);
+  }
+  else
+  {
+    
   }
 }
