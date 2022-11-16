@@ -132,7 +132,7 @@ bool scsiDiskProgramRomDrive(const char *filename, int scsi_id, int blocksize, S
     uint32_t pages = (filesize + AZPLATFORM_ROMDRIVE_PAGE_SIZE - 1) / AZPLATFORM_ROMDRIVE_PAGE_SIZE;
     for (uint32_t i = 0; i < pages; i++)
     {
-        if (!file.read(scsiDev.data, AZPLATFORM_ROMDRIVE_PAGE_SIZE) ||
+        if (file.read(scsiDev.data, AZPLATFORM_ROMDRIVE_PAGE_SIZE) <= 0 ||
             !azplatform_write_romdrive(scsiDev.data, (i + 1) * AZPLATFORM_ROMDRIVE_PAGE_SIZE, AZPLATFORM_ROMDRIVE_PAGE_SIZE))
         {
             azlog("---- Failed to program ROM drive page ", (int)i);
@@ -150,6 +150,12 @@ bool scsiDiskProgramRomDrive(const char *filename, int scsi_id, int blocksize, S
     azlog("---- ROM drive programming successful, image file renamed to ", newname);
 
     return true;
+}
+
+bool scsiDiskCheckRomDrive()
+{
+    romdrive_hdr_t hdr = {};
+    return check_romdrive(&hdr);
 }
 
 // Check if rom drive exists and activate it
@@ -291,6 +297,11 @@ public:
     bool isWritable()
     {
         return !m_isrom;
+    }
+
+    bool isRom()
+    {
+        return m_isrom;
     }
 
     bool isOpen()
@@ -658,7 +669,11 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
         }
 
         uint32_t sector_begin = 0, sector_end = 0;
-        if (img.file.contiguousRange(&sector_begin, &sector_end) && sector_end != 0)
+        if (img.file.isRom())
+        {
+            // ROM is always contiguous, no need to log
+        }
+        else if (img.file.contiguousRange(&sector_begin, &sector_end))
         {
             azlog("---- Image file is contiguous, SD card sectors ", (int)sector_begin, " to ", (int)sector_end);
         }
