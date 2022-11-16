@@ -457,6 +457,67 @@ const void * btldr_vectors[2] = {&__StackTop, (void*)&btldr_reset_handler};
 
 #endif
 
+/************************************/
+/* ROM drive in extra flash space   */
+/************************************/
+
+#ifdef PLATFORM_HAS_ROM_DRIVE
+
+// Reserve up to 512 kB for firmware.
+#define ROMDRIVE_OFFSET (512 * 1024)
+
+// TODO: Actually read the flash chip size instead of assuming 2 MB.
+static uint32_t g_romdrive_max_size = 2048 * 1024 - ROMDRIVE_OFFSET;
+
+uint32_t azplatform_get_romdrive_maxsize()
+{
+    return g_romdrive_max_size;
+}
+
+bool azplatform_read_romdrive(uint8_t *dest, uint32_t start, uint32_t count)
+{
+    xip_ctrl_hw->stream_ctr = 0;
+
+    while (!(xip_ctrl_hw->stat & XIP_STAT_FIFO_EMPTY))
+    {
+        (void) xip_ctrl_hw->stream_fifo;
+    }
+
+    xip_ctrl_hw->stream_addr = start + ROMDRIVE_OFFSET;
+    xip_ctrl_hw->stream_ctr = count / 4;
+
+    // Transfer happens in multiples of 4 bytes
+    assert(start < g_romdrive_max_size);
+    assert((count & 3) == 0);
+    assert((((uint32_t)dest) & 3) == 0);
+
+    uint32_t *dest32 = (uint32_t*)dest;
+    uint32_t words_remain = count / 4;
+    while (words_remain > 0)
+    {
+        if (!(xip_ctrl_hw->stat & XIP_STAT_FIFO_EMPTY))
+        {
+            *dest32++ = xip_ctrl_hw->stream_fifo;
+            words_remain--;
+        }
+    }
+
+    return true;
+}
+
+bool azplatform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count)
+{
+    assert(start < g_romdrive_max_size);
+    assert((count % AZPLATFORM_ROMDRIVE_PAGE_SIZE) == 0);
+    __disable_irq();
+    flash_range_erase(start + ROMDRIVE_OFFSET, count);
+    flash_range_program(start + ROMDRIVE_OFFSET, data, count);
+    __enable_irq();
+    return true;
+}
+
+#endif
+
 /**********************************************/
 /* Mapping from data bytes to GPIO BOP values */
 /**********************************************/
