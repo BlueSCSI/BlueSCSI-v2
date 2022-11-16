@@ -314,8 +314,7 @@ bool findHDDImages()
         strcat(fullname, name);
 
         // Check whether this SCSI ID has been configured yet
-        const S2S_TargetCfg* cfg = s2s_getConfigByIndex(id);
-        if (cfg && (cfg->scsiId & S2S_CFG_TARGET_ENABLED))
+        if (s2s_getConfigById(id))
         {
           azlog("-- Ignoring ", fullname, ", SCSI ID ", id, " is already in use!");
           continue;

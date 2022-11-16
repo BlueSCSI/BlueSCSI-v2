@@ -919,7 +919,8 @@ const S2S_TargetCfg* s2s_getConfigById(int scsiId)
     for (i = 0; i < S2S_MAX_TARGETS; ++i)
     {
         const S2S_TargetCfg* tgt = s2s_getConfigByIndex(i);
-        if ((tgt->scsiId & S2S_CFG_TARGET_ID_BITS) == scsiId)
+        if ((tgt->scsiId & S2S_CFG_TARGET_ID_BITS) == scsiId &&
+            (tgt->scsiId & S2S_CFG_TARGET_ENABLED))
         {
             return tgt;
         }
