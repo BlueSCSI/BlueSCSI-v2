@@ -18,6 +18,7 @@
 extern "C" {
 #include <scsi2sd_time.h>
 #include <sd.h>
+#include <mode.h>
 }
 
 #ifndef PLATFORM_MAX_SCSI_SPEED
@@ -285,6 +286,11 @@ public:
                 m_fsfile.close();
             }
         }
+    }
+
+    bool isWritable()
+    {
+        return !m_isrom;
     }
 
     bool isOpen()
@@ -1248,10 +1254,11 @@ static void doWrite(uint32_t lba, uint32_t blocks)
     azdbg("------ Write ", (int)blocks, "x", (int)bytesPerSector, " starting at ", (int)lba);
 
     if (unlikely(blockDev.state & DISK_WP) ||
-        unlikely(scsiDev.target->cfg->deviceType == S2S_CFG_OPTICAL))
+        unlikely(scsiDev.target->cfg->deviceType == S2S_CFG_OPTICAL) ||
+        unlikely(!img.file.isWritable()))
 
     {
-        azlog("WARNING: Host attempted write to CD-ROM");
+        azlog("WARNING: Host attempted write to read-only drive ID ", (int)(img.scsiId & S2S_CFG_TARGET_ID_BITS));
         scsiDev.status = CHECK_CONDITION;
         scsiDev.target->sense.code = ILLEGAL_REQUEST;
         scsiDev.target->sense.asc = WRITE_PROTECTED;
@@ -1875,6 +1882,13 @@ int scsiDiskCommand()
         }
 
         scsiDev.phase = DATA_IN;
+    }
+    else if (img.file.isRom())
+    {
+        // Special handling for ROM drive to make SCSI2SD code report it as read-only
+        blockDev.state |= DISK_WP;
+        commandHandled = scsiModeCommand();
+        blockDev.state &= ~DISK_WP;
     }
     else
     {
