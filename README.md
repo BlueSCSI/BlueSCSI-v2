@@ -98,6 +98,22 @@ Any read errors are logged into `zululog.txt`.
 Depending on hardware setup, you may need to mount diode `D205` and jumper `JP201` to supply `TERMPWR` to the SCSI bus.
 This is necessary if the drives do not supply their own SCSI terminator power.
 
+ROM drive in microcontroller flash
+----------------------------------
+The RP2040 model supports storing up to 1660kB image as a read-only drive in the
+flash chip on the PCB itself. This can be used as e.g. a boot floppy that is available
+even without SD card.
+
+To initialize a ROM drive, name your image file as e.g. `HD0.rom`.
+The drive type, SCSI ID and blocksize can be set in the filename the same way as for normal images.
+On first boot, the LED will blink rapidly while the image is being loaded into flash memory.
+Once loading is complete, the file is renamed to `HD0.rom_loaded` and the data is accessed from flash instead.
+
+The status and maximum size of ROM drive are reported in `zululog.txt`.
+To disable a previously programmed ROM drive, create empty file called `HD0.rom`.
+If there is a `.bin` file with the same ID as the programmed ROM drive, it overrides the ROM drive.
+There can be at most one ROM drive enabled at a time.
+
 Project structure
 -----------------
 - **src/ZuluSCSI.cpp**: Main portable SCSI implementation.

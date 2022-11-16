@@ -132,6 +132,11 @@ bool scsiDiskProgramRomDrive(const char *filename, int scsi_id, int blocksize, S
     uint32_t pages = (filesize + AZPLATFORM_ROMDRIVE_PAGE_SIZE - 1) / AZPLATFORM_ROMDRIVE_PAGE_SIZE;
     for (uint32_t i = 0; i < pages; i++)
     {
+        if (i % 2)
+            LED_ON();
+        else
+            LED_OFF();
+
         if (file.read(scsiDev.data, AZPLATFORM_ROMDRIVE_PAGE_SIZE) <= 0 ||
             !azplatform_write_romdrive(scsiDev.data, (i + 1) * AZPLATFORM_ROMDRIVE_PAGE_SIZE, AZPLATFORM_ROMDRIVE_PAGE_SIZE))
         {
@@ -140,6 +145,8 @@ bool scsiDiskProgramRomDrive(const char *filename, int scsi_id, int blocksize, S
             return false;
         }
     }
+
+    LED_OFF();
 
     file.close();
 
