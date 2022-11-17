@@ -472,8 +472,8 @@ const void * btldr_vectors[2] = {&__StackTop, (void*)&btldr_reset_handler};
 
 #ifdef PLATFORM_HAS_ROM_DRIVE
 
-// Reserve up to 384 kB for firmware.
-#define ROMDRIVE_OFFSET (384 * 1024)
+// Reserve up to 352 kB for firmware.
+#define ROMDRIVE_OFFSET (352 * 1024)
 
 uint32_t azplatform_get_romdrive_maxsize()
 {
