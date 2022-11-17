@@ -103,8 +103,8 @@ bool scsiDiskProgramRomDrive(const char *filename, int scsi_id, int blocksize, S
     uint32_t maxsize = azplatform_get_romdrive_maxsize() - AZPLATFORM_ROMDRIVE_PAGE_SIZE;
 
     azlog("---- SCSI ID: ", scsi_id, " blocksize ", blocksize, " type ", (int)type);
-    azlog("---- ROM drive maximum size is ", (int)azplatform_get_romdrive_maxsize(),
-          " bytes, image file is ", (int)file.size(), " bytes");
+    azlog("---- ROM drive maximum size is ", (int)maxsize,
+          " bytes, image file is ", (int)filesize, " bytes");
     
     if (filesize > maxsize)
     {
