@@ -1,16 +1,15 @@
 #include "ZuluSCSI_platform.h"
-#include "gd32f20x_sdio.h"
-#include "gd32f20x_fmc.h"
+#include "gd32f4xx_sdio.h"
+#include "gd32f4xx_fmc.h"
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_config.h"
-#include "greenpak.h"
 #include <SdFat.h>
 #include <scsi.h>
 #include <assert.h>
 
 extern "C" {
 
-const char *g_platform_name = PLATFORM_NAME;
+const char *g_azplatform_name = PLATFORM_NAME;
 static bool g_enable_apple_quirks = false;
 
 /*************************/
@@ -57,7 +56,7 @@ void SysTick_Handler_inner(uint32_t *sp)
         {
             if (!scsiDev.resetFlag)
             {
-                logmsg("WATCHDOG TIMEOUT at PC ", sp[6], " LR ", sp[5], " attempting bus reset");
+                azlog("WATCHDOG TIMEOUT at PC ", sp[6], " LR ", sp[5], " attempting bus reset");
                 scsiDev.resetFlag = 1;
             }
 
@@ -108,7 +107,7 @@ void SysTick_Handle_PreEmptively()
 
 // Initialize SPI and GPIO configuration
 // Clock has already been initialized by system_gd32f20x.c
-void platform_init()
+void azplatform_init()
 {
     SystemCoreClockUpdate();
 
@@ -123,7 +122,7 @@ void platform_init()
     DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 
     // Enable debug output on SWO pin
-    DBG_CTL |= DBG_CTL_TRACE_IOEN;
+    DBG_CTL0 |= DBG_CTL0_TRACE_IOEN;
     if (TPI->ACPR == 0)
     {
         CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
@@ -145,53 +144,37 @@ void platform_init()
     }
 
     // Enable needed clocks for GPIO
-    rcu_periph_clock_enable(RCU_AF);
     rcu_periph_clock_enable(RCU_GPIOA);
     rcu_periph_clock_enable(RCU_GPIOB);
     rcu_periph_clock_enable(RCU_GPIOC);
     rcu_periph_clock_enable(RCU_GPIOD);
     rcu_periph_clock_enable(RCU_GPIOE);
     
-    
     // Switch to SWD debug port (disable JTAG) to release PB4 as GPIO
-    // --remove-- gpio_pin_remap_config(GPIO_SWJ_SWDPENABLE_REMAP, ENABLE);    
-    gpio_mode_set(GPIOB, GPIO_MODE_INPUT, GPIO_PUPD_PULLDOWN, 4);
+    gpio_af_set(GPIOB, GPIO)
+    gpio_pin_remap_config(GPIO_SWJ_SWDPENABLE_REMAP, ENABLE);    
+
     // SCSI pins.
     // Initialize open drain outputs to high.
     SCSI_RELEASE_OUTPUTS();
-    gpio_mode_set(SCSI_OUT_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, SCSI_OUT_DATA_MASK | SCSI_OUT_REQ);
-    gpio_output_options_set(SCSI_OUT_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_DATA_MASK | SCSI_OUT_REQ);
-    
+    gpio_init(SCSI_OUT_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_DATA_MASK | SCSI_OUT_REQ);
+    gpio_init(SCSI_OUT_IO_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_IO_PIN);
+    gpio_init(SCSI_OUT_CD_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_CD_PIN);
+    gpio_init(SCSI_OUT_SEL_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_SEL_PIN);
+    gpio_init(SCSI_OUT_MSG_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_MSG_PIN);
+    gpio_init(SCSI_OUT_RST_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_RST_PIN);
+    gpio_init(SCSI_OUT_BSY_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_BSY_PIN);
 
-    gpio_mode_set(SCSI_OUT_IO_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, SCSI_OUT_IO_PIN);
-    gpio_output_options_set(SCSI_OUT_IO_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_IO_PIN);
-
-    gpio_mode_set(SCSI_OUT_CD_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, SCSI_OUT_CD_PIN);
-    gpio_output_options_set(SCSI_OUT_CD_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_CD_PIN);
-
-    gpio_mode_set(SCSI_OUT_SEL_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, SCSI_OUT_SEL_PIN);
-    gpio_output_options_set(SCSI_OUT_SEL_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_SEL_PIN);
-
-    gpio_mode_set(SCSI_OUT_MSG_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, SCSI_OUT_MSG_PIN);
-    gpio_output_options_set(SCSI_OUT_MSG_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_MSG_PIN);
-
-    gpio_mode_set(SCSI_OUT_RST_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, SCSI_OUT_RST_PIN);
-    gpio_output_options_set(SCSI_OUT_RST_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_RST_PIN);
-
-    gpio_mode_set(SCSI_OUT_BSY_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, SCSI_OUT_BSY_PIN);
-    gpio_output_options_set(SCSI_OUT_BSY_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_BSY_PIN);
-
-    gpio_mode_set(SCSI_IN_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_IN_MASK);
-    gpio_mode_set(SCSI_ATN_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_ATN_PIN);
-    gpio_mode_set(SCSI_BSY_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_BSY_PIN);
-    gpio_mode_set(SCSI_SEL_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_SEL_PIN);
-    gpio_mode_set(SCSI_ACK_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_ACK_PIN);
-    gpio_mode_set(SCSI_RST_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_RST_PIN);
+    gpio_init(SCSI_IN_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_IN_MASK);
+    gpio_init(SCSI_ATN_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_ATN_PIN);
+    gpio_init(SCSI_BSY_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_BSY_PIN);
+    gpio_init(SCSI_SEL_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_SEL_PIN);
+    gpio_init(SCSI_ACK_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_ACK_PIN);
+    gpio_init(SCSI_RST_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_RST_PIN);
 
     // Terminator enable
     gpio_bit_set(SCSI_TERM_EN_PORT, SCSI_TERM_EN_PIN);
-    gpio_mode_set(SCSI_TERM_EN_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, SCSI_TERM_EN_PIN);
-    gpio_output_options_set(SCSI_TERM_EN_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_2MHZ, SCSI_TERM_EN_PIN);
+    gpio_init(SCSI_TERM_EN_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_2MHZ, SCSI_TERM_EN_PIN);
 
 #ifndef SD_USE_SDIO
     // SD card pins using SPI
@@ -217,48 +200,35 @@ void platform_init()
     gpio_init(GPIOB, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_3);
 }
 
-void platform_late_init()
+void azplatform_late_init()
 {
-    logmsg("Platform: ", g_platform_name);
-    logmsg("FW Version: ", g_log_firmwareversion);
-    
-#ifdef ZULUSCSI_V1_0_mini
-    logmsg("DIPSW3 is ON: Enabling SCSI termination");
-#else
     if (gpio_input_bit_get(DIP_PORT, DIPSW3_PIN))
     {
-        logmsg("DIPSW3 is ON: Enabling SCSI termination");
+        azlog("DIPSW3 is ON: Enabling SCSI termination");
         gpio_bit_reset(SCSI_TERM_EN_PORT, SCSI_TERM_EN_PIN);
     }
     else
     {
-        logmsg("DIPSW3 is OFF: SCSI termination disabled");
+        azlog("DIPSW3 is OFF: SCSI termination disabled");
     }
-#endif // ZULUSCSI_V1_0_mini
 
     if (gpio_input_bit_get(DIP_PORT, DIPSW2_PIN))
     {
-        logmsg("DIPSW2 is ON: enabling debug messages");
-        g_log_debug = true;
+        azlog("DIPSW2 is ON: enabling debug messages");
+        g_azlog_debug = true;
     }
     else
     {
-        g_log_debug = false;
+        g_azlog_debug = false;
     }
 
     if (gpio_input_bit_get(DIP_PORT, DIPSW1_PIN))
     {
-        logmsg("DIPSW1 is ON: enabling Apple quirks by default");
+        azlog("DIPSW1 is ON: enabling Apple quirks by default");
         g_enable_apple_quirks = true;
     }
 
     greenpak_load_firmware();
-}
-
-void platform_disable_led(void)
-{   
-    gpio_init(LED_PORT, GPIO_MODE_IPU, 0, LED_PINS);
-    logmsg("Disabling status LED");
 }
 
 /*****************************************/
@@ -268,7 +238,7 @@ void platform_disable_led(void)
 extern SdFs SD;
 
 // Writes log data to the PB3 SWO pin
-void platform_log(const char *s)
+void azplatform_log(const char *s)
 {
     while (*s)
     {
@@ -278,9 +248,9 @@ void platform_log(const char *s)
     }
 }
 
-void platform_emergency_log_save()
+void azplatform_emergency_log_save()
 {
-    platform_set_sd_callback(NULL, NULL);
+    azplatform_set_sd_callback(NULL, NULL);
 
     SD.begin(SD_CONFIG_CRASH);
     FsFile crashfile = SD.open(CRASHFILE, O_WRONLY | O_CREAT | O_TRUNC);
@@ -295,8 +265,8 @@ void platform_emergency_log_save()
     }
 
     uint32_t startpos = 0;
-    crashfile.write(log_get_buffer(&startpos));
-    crashfile.write(log_get_buffer(&startpos));
+    crashfile.write(azlog_get_buffer(&startpos));
+    crashfile.write(azlog_get_buffer(&startpos));
     crashfile.flush();
     crashfile.close();
 }
@@ -310,29 +280,29 @@ void show_hardfault(uint32_t *sp)
     uint32_t lr = sp[5];
     uint32_t cfsr = SCB->CFSR;
     
-    logmsg("--------------");
-    logmsg("CRASH!");
-    logmsg("Platform: ", g_platform_name);
-    logmsg("FW Version: ", g_log_firmwareversion);
-    logmsg("CFSR: ", cfsr);
-    logmsg("SP: ", (uint32_t)sp);
-    logmsg("PC: ", pc);
-    logmsg("LR: ", lr);
-    logmsg("R0: ", sp[0]);
-    logmsg("R1: ", sp[1]);
-    logmsg("R2: ", sp[2]);
-    logmsg("R3: ", sp[3]);
+    azlog("--------------");
+    azlog("CRASH!");
+    azlog("Platform: ", g_azplatform_name);
+    azlog("FW Version: ", g_azlog_firmwareversion);
+    azlog("CFSR: ", cfsr);
+    azlog("SP: ", (uint32_t)sp);
+    azlog("PC: ", pc);
+    azlog("LR: ", lr);
+    azlog("R0: ", sp[0]);
+    azlog("R1: ", sp[1]);
+    azlog("R2: ", sp[2]);
+    azlog("R3: ", sp[3]);
 
     uint32_t *p = (uint32_t*)((uint32_t)sp & ~3);
     for (int i = 0; i < 8; i++)
     {
         if (p == &_estack) break; // End of stack
         
-        logmsg("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
+        azlog("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
         p += 4;
     }
 
-    platform_emergency_log_save();
+    azplatform_emergency_log_save();
 
     while (1)
     {
@@ -387,22 +357,22 @@ void __assert_func(const char *file, int line, const char *func, const char *exp
 {
     uint32_t dummy = 0;
 
-    logmsg("--------------");
-    logmsg("ASSERT FAILED!");
-    logmsg("Platform: ", g_platform_name);
-    logmsg("FW Version: ", g_log_firmwareversion);
-    logmsg("Assert failed: ", file , ":", line, " in ", func, ":", expr);
+    azlog("--------------");
+    azlog("ASSERT FAILED!");
+    azlog("Platform: ", g_azplatform_name);
+    azlog("FW Version: ", g_azlog_firmwareversion);
+    azlog("Assert failed: ", file , ":", line, " in ", func, ":", expr);
 
     uint32_t *p = (uint32_t*)((uint32_t)&dummy & ~3);
     for (int i = 0; i < 8; i++)
     {
         if (p == &_estack) break; // End of stack
 
-        logmsg("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
+        azlog("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
         p += 4;
     }
 
-    platform_emergency_log_save();
+    azplatform_emergency_log_save();
 
     while(1)
     {
@@ -417,11 +387,11 @@ void __assert_func(const char *file, int line, const char *func, const char *exp
 
 static void watchdog_handler(uint32_t *sp)
 {
-    logmsg("-------------- WATCHDOG TIMEOUT");
+    azlog("-------------- WATCHDOG TIMEOUT");
     show_hardfault(sp);
 }
 
-void platform_reset_watchdog()
+void azplatform_reset_watchdog()
 {
     // This uses a software watchdog based on systick timer interrupt.
     // It gives us opportunity to collect better debug info than the
@@ -433,20 +403,20 @@ void platform_reset_watchdog()
 /* Flash reprogramming */
 /***********************/
 
-bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_PAGE_SIZE])
+bool azplatform_rewrite_flash_page(uint32_t offset, uint8_t buffer[AZPLATFORM_FLASH_PAGE_SIZE])
 {
     if (offset == 0)
     {
         if (buffer[3] != 0x20 || buffer[7] != 0x08)
         {
-            logmsg("Invalid firmware file, starts with: ", bytearray(buffer, 16));
+            azlog("Invalid firmware file, starts with: ", bytearray(buffer, 16));
             return false;
         }
     }
 
-    dbgmsg("Writing flash at offset ", offset, " data ", bytearray(buffer, 4));
-    assert(offset % PLATFORM_FLASH_PAGE_SIZE == 0);
-    assert(offset >= PLATFORM_BOOTLOADER_SIZE);
+    azdbg("Writing flash at offset ", offset, " data ", bytearray(buffer, 4));
+    assert(offset % AZPLATFORM_FLASH_PAGE_SIZE == 0);
+    assert(offset >= AZPLATFORM_BOOTLOADER_SIZE);
     
     fmc_unlock();
     fmc_bank0_unlock();
@@ -455,18 +425,18 @@ bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_
     status = fmc_page_erase(FLASH_BASE + offset);
     if (status != FMC_READY)
     {
-        logmsg("Erase failed: ", (int)status);
+        azlog("Erase failed: ", (int)status);
         return false;
     }
 
     uint32_t *buf32 = (uint32_t*)buffer;
-    uint32_t num_words = PLATFORM_FLASH_PAGE_SIZE / 4;
+    uint32_t num_words = AZPLATFORM_FLASH_PAGE_SIZE / 4;
     for (int i = 0; i < num_words; i++)
     {
         status = fmc_word_program(FLASH_BASE + offset + i * 4, buf32[i]);
         if (status != FMC_READY)
         {
-            logmsg("Flash write failed: ", (int)status);
+            azlog("Flash write failed: ", (int)status);
             return false;
         }   
     }
@@ -479,16 +449,16 @@ bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_
         uint32_t actual = *(volatile uint32_t*)(FLASH_BASE + offset + i * 4);
         if (actual != expected)
         {
-            logmsg("Flash verify failed at offset ", offset + i * 4, " got ", actual, " expected ", expected);
+            azlog("Flash verify failed at offset ", offset + i * 4, " got ", actual, " expected ", expected);
             return false;
         }
     }
     return true;
 }
 
-void platform_boot_to_main_firmware()
+void azplatform_boot_to_main_firmware()
 {
-    uint32_t *mainprogram_start = (uint32_t*)(0x08000000 + PLATFORM_BOOTLOADER_SIZE);
+    uint32_t *mainprogram_start = (uint32_t*)(0x08000000 + AZPLATFORM_BOOTLOADER_SIZE);
     SCB->VTOR = (uint32_t)mainprogram_start;
   
     __asm__(
@@ -501,7 +471,7 @@ void platform_boot_to_main_firmware()
 /* SCSI configuration based on DIPSW1 */
 /**************************************/
 
-void platform_config_hook(S2S_TargetCfg *config)
+void azplatform_config_hook(S2S_TargetCfg *config)
 {
     // Enable Apple quirks by dip switch
     if (g_enable_apple_quirks)
