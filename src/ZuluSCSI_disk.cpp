@@ -178,13 +178,13 @@ bool scsiDiskActivateRomDrive()
         return false;
     }
 
-    if (ini_getbool("SCSI", "DisableROM", 0, CONFIGFILE))
+    if (ini_getbool("SCSI", "DisableROMDrive", 0, CONFIGFILE))
     {
-        azlog("---- ROM disabled in ini file, not enabling");
+        azlog("---- ROM drive disabled in ini file, not enabling");
         return false;
     }
 
-    long rom_scsi_id = ini_getl("SCSI", "ROMSetSCSIID", -1, CONFIGFILE);
+    long rom_scsi_id = ini_getl("SCSI", "ROMDriveSCSIID", -1, CONFIGFILE);
     if (rom_scsi_id >= 0 && rom_scsi_id <= 7)
     {
         hdr.scsi_id = rom_scsi_id;
