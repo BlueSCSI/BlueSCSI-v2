@@ -110,11 +110,16 @@ void scsi_accel_sync_recv(uint8_t *data, uint32_t count, int* parityError, volat
 {
     // Enable EXMC to drive REQ from EXMC_NOE pin
     EXMC_SNCTL(EXMC_BANK0_NORSRAM_REGION0) |= EXMC_SNCTL_NRBKEN;
-    uint32_t oldmode = GPIO_CTL(SCSI_OUT_REQ_EXMC_NOE_PORT);
-    //@ TODO check if this IDX offset and it multiplicand are correct - GPIO_CTL has a different layout than f20x GPIO_CTL0
-    uint32_t newmode = oldmode & ~(0xF << (SCSI_OUT_REQ_EXMC_NOE_IDX * 4));
-    newmode |= 0xB << (SCSI_OUT_REQ_EXMC_NOE_IDX * 4);
-    GPIO_CTL(SCSI_OUT_REQ_EXMC_NOE_PORT) = newmode;
+
+    uint32_t oldmode_gpio_ctl = GPIO_CTL(SCSI_OUT_REQ_EXMC_NOE_PORT);
+    uint32_t oldmode_gpio_pud = GPIO_PUD(SCSI_OUT_REQ_EXMC_NOE_PORT);
+    uint32_t oldmode_gpio_ospd = GPIO_OSPD(SCSI_OUT_REQ_EXMC_NOE_PORT);
+    uint32_t oldmode_gpio_omode = GPIO_OMODE(SCSI_OUT_REQ_EXMC_NOE_PORT);
+    uint32_t oldmode_gpio_af = GPIO_AFSEL0(SCSI_OUT_REQ_EXMC_NOE_PORT);
+
+    gpio_af_set(SCSI_OUT_REQ_EXMC_NOE_PORT, GPIO_AF_12, SCSI_OUT_REQ_EXMC_NOE_PIN);
+    gpio_output_options_set(SCSI_OUT_REQ_EXMC_NOE_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_REQ_EXMC_NOE_PIN);
+    gpio_mode_set(SCSI_OUT_REQ_EXMC_NOE_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, SCSI_OUT_REQ_EXMC_NOE_PIN);
     
     while (count > 0)
     {
@@ -150,7 +155,11 @@ void scsi_accel_sync_recv(uint8_t *data, uint32_t count, int* parityError, volat
         data = end;
     }
 
-    GPIO_CTL(SCSI_OUT_REQ_EXMC_NOE_PORT) = oldmode;
+    GPIO_CTL(SCSI_OUT_REQ_EXMC_NOE_PORT) = oldmode_gpio_ctl;
+    GPIO_OSPD(SCSI_OUT_REQ_EXMC_NOE_PORT) = oldmode_gpio_ospd;
+    GPIO_OMODE(SCSI_OUT_REQ_EXMC_NOE_PORT) = oldmode_gpio_omode;
+    GPIO_PUD(SCSI_OUT_REQ_EXMC_NOE_PORT) = oldmode_gpio_pud;
+    GPIO_AFSEL0(SCSI_OUT_REQ_EXMC_NOE_PORT) = oldmode_gpio_af;
     EXMC_SNCTL(EXMC_BANK0_NORSRAM_REGION0) &= ~EXMC_SNCTL_NRBKEN;
 }
 
