@@ -67,6 +67,9 @@ void azplatform_init()
     uart_init(uart0, 1000000);
     mbed_set_error_hook(mbed_error_hook);
 
+    azlog("Platform: ", g_azplatform_name);
+    azlog("FW Version: ", g_azlog_firmwareversion);
+
     azlog("DIP switch settings: debug log ", (int)dbglog, ", termination ", (int)termination);
 
     g_azlog_debug = dbglog;
