@@ -447,9 +447,4 @@ void scsi_accel_dma_finishWrite(volatile int *resetFlag)
     scsi_accel_dma_stopWrite();
 }
 
-// @TODO check if these externs are need without greenpak
-extern const uint32_t g_scsi_out_byte_to_bop_pld1hi[256];
-extern const uint32_t g_scsi_out_byte_to_bop_pld1lo[256];
-
-
 #endif

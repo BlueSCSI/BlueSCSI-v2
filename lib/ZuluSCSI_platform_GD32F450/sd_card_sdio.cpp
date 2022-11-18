@@ -4,11 +4,14 @@
 #include "ZuluSCSI_platform.h"
 
 #ifdef SD_USE_SDIO
-
-#include "ZuluSCSI_log.h"
+extern "C"
+{
 #include "gd32f4xx_sdio.h"
 #include "gd32f4xx_dma.h"
 #include "gd32_sdio_sdcard.h"
+}
+
+#include "ZuluSCSI_log.h"
 #include <SdFat.h>
 
 static sd_error_enum g_sdio_error = SD_OK;
