@@ -178,11 +178,26 @@ bool scsiDiskActivateRomDrive()
         return false;
     }
 
+    if (ini_getbool("SCSI", "DisableROM", 0, CONFIGFILE))
+    {
+        azlog("---- ROM disabled in ini file, not enabling");
+        return false;
+    }
+
+    long rom_scsi_id = ini_getl("SCSI", "ROMSetSCSIID", -1, CONFIGFILE);
+    if (rom_scsi_id >= 0 && rom_scsi_id <= 7)
+    {
+        hdr.scsi_id = rom_scsi_id;
+        azlog("---- ROM drive SCSI id overriden in ini file, changed to ", (int)hdr.scsi_id);
+    }
+
     if (s2s_getConfigById(hdr.scsi_id))
     {
         azlog("---- ROM drive SCSI id ", (int)hdr.scsi_id, " is already in use, not enabling");
         return false;
     }
+
+
 
     azlog("---- Activating ROM drive, SCSI id ", (int)hdr.scsi_id, " size ", (int)(hdr.imagesize / 1024), " kB");
     bool status = scsiDiskOpenHDDImage(hdr.scsi_id, "ROM:", hdr.scsi_id, 0, hdr.blocksize, hdr.drivetype);
