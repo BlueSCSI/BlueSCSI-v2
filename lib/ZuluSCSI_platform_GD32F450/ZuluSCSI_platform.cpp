@@ -150,31 +150,42 @@ void azplatform_init()
     rcu_periph_clock_enable(RCU_GPIOD);
     rcu_periph_clock_enable(RCU_GPIOE);
     
-    // Switch to SWD debug port (disable JTAG) to release PB4 as GPIO
-    gpio_af_set(GPIOB, GPIO)
-    gpio_pin_remap_config(GPIO_SWJ_SWDPENABLE_REMAP, ENABLE);    
-
     // SCSI pins.
     // Initialize open drain outputs to high.
     SCSI_RELEASE_OUTPUTS();
-    gpio_init(SCSI_OUT_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_DATA_MASK | SCSI_OUT_REQ);
-    gpio_init(SCSI_OUT_IO_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_IO_PIN);
-    gpio_init(SCSI_OUT_CD_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_CD_PIN);
-    gpio_init(SCSI_OUT_SEL_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_SEL_PIN);
-    gpio_init(SCSI_OUT_MSG_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_MSG_PIN);
-    gpio_init(SCSI_OUT_RST_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_RST_PIN);
-    gpio_init(SCSI_OUT_BSY_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_BSY_PIN);
+    // @TODO Check if the output speed should be set to 200MHZ
+    gpio_mode_set(SCSI_OUT_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, SCSI_OUT_DATA_MASK | SCSI_OUT_REQ);
+    gpio_output_options_set(SCSI_OUT_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_DATA_MASK | SCSI_OUT_REQ);
 
-    gpio_init(SCSI_IN_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_IN_MASK);
-    gpio_init(SCSI_ATN_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_ATN_PIN);
-    gpio_init(SCSI_BSY_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_BSY_PIN);
-    gpio_init(SCSI_SEL_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_SEL_PIN);
-    gpio_init(SCSI_ACK_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_ACK_PIN);
-    gpio_init(SCSI_RST_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_RST_PIN);
+    gpio_mode_set(SCSI_OUT_IO_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, SCSI_OUT_IO_PIN);
+    gpio_output_options_set(SCSI_OUT_IO_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_IO_PIN);
+
+    gpio_mode_set(SCSI_OUT_CD_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, SCSI_OUT_CD_PIN);
+    gpio_output_options_set(SCSI_OUT_CD_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_CD_PIN);
+
+    gpio_mode_set(SCSI_OUT_SEL_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, SCSI_OUT_SEL_PIN);
+    gpio_output_options_set(SCSI_OUT_SEL_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_SEL_PIN);
+
+    gpio_mode_set(SCSI_OUT_MSG_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, SCSI_OUT_MSG_PIN);
+    gpio_output_options_set(SCSI_OUT_MSG_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_MSG_PIN);
+
+    gpio_mode_set(SCSI_OUT_RST_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, SCSI_OUT_RST_PIN);
+    gpio_output_options_set(SCSI_OUT_RST_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_RST_PIN);
+
+    gpio_mode_set(SCSI_OUT_BSY_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, SCSI_OUT_BSY_PIN);
+    gpio_output_options_set(SCSI_OUT_BSY_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_BSY_PIN);
+
+    gpio_mode_set(SCSI_IN_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_IN_MASK);
+    gpio_mode_set(SCSI_ATN_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_ATN_PIN);
+    gpio_mode_set(SCSI_BSY_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_BSY_PIN);
+    gpio_mode_set(SCSI_SEL_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_SEL_PIN);
+    gpio_mode_set(SCSI_ACK_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_ACK_PIN);
+    gpio_mode_set(SCSI_RST_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_RST_PIN);
 
     // Terminator enable
     gpio_bit_set(SCSI_TERM_EN_PORT, SCSI_TERM_EN_PIN);
-    gpio_init(SCSI_TERM_EN_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_2MHZ, SCSI_TERM_EN_PIN);
+    gpio_mode_set(SCSI_TERM_EN_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, SCSI_TERM_EN_PIN);
+    gpio_output_options_set(SCSI_TERM_EN_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_2MHZ, SCSI_TERM_EN_PIN);
 
 #ifndef SD_USE_SDIO
     // SD card pins using SPI
@@ -184,20 +195,38 @@ void azplatform_init()
     gpio_init(SD_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, SD_MOSI_PIN);
 #else
     // SD card pins using SDIO
-    gpio_init(SD_SDIO_DATA_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, SD_SDIO_D0 | SD_SDIO_D1 | SD_SDIO_D2 | SD_SDIO_D3);
-    gpio_init(SD_SDIO_CLK_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, SD_SDIO_CLK);
-    gpio_init(SD_SDIO_CMD_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, SD_SDIO_CMD);
+    gpio_mode_set(SD_SDIO_DATA_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, SD_SDIO_D0 | SD_SDIO_D1 | SD_SDIO_D2 | SD_SDIO_D3);
+    gpio_output_options_set(SD_SDIO_DATA_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SD_SDIO_D0 | SD_SDIO_D1 | SD_SDIO_D2 | SD_SDIO_D3);
+    gpio_af_set(SD_SDIO_DATA_PORT, GPIO_AF_12, SD_SDIO_D0 | SD_SDIO_D1 | SD_SDIO_D2 | SD_SDIO_D3);
+
+    gpio_mode_set(SD_SDIO_CLK_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, SD_SDIO_CLK);
+    gpio_output_options_set(SD_SDIO_CLK_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SD_SDIO_CLK);
+    gpio_af_set(SD_SDIO_CLK_PORT, GPIO_AF_12, SD_SDIO_CLK);
+
+    gpio_mode_set(SD_SDIO_CMD_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, SD_SDIO_CMD);
+    gpio_output_options_set(SD_SDIO_CMD_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SD_SDIO_CMD);
+    gpio_af_set(SD_SDIO_CMD_PORT, GPIO_AF_12, SD_SDIO_CMD);
+
 #endif
 
+    // @TODO confirm dip switch 1 is not longer JTAG NJTRST
+    // Switch to SWD debug port (disable JTAG) to release PB4 as GPIO
+    //gpio_pin_remap_config(GPIO_SWJ_SWDPENABLE_REMAP, ENABLE);   
+
     // DIP switches
-    gpio_init(DIP_PORT, GPIO_MODE_IPD, 0, DIPSW1_PIN | DIPSW2_PIN | DIPSW3_PIN);
+    gpio_mode_set(DIP_PORT, GPIO_MODE_INPUT, GPIO_PUPD_PULLDOWN, DIPSW1_PIN | DIPSW2_PIN | DIPSW3_PIN);
+
 
     // LED pins
     gpio_bit_set(LED_PORT, LED_PINS);
-    gpio_init(LED_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_2MHZ, LED_PINS);
-
+    gpio_mode_set(LED_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, LED_PINS);
+    gpio_output_options_set(LED_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_2MHZ, LED_PINS);
+ 
     // SWO trace pin on PB3
-    gpio_init(GPIOB, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_3);
+    gpio_mode_set(GPIOB, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO_PIN_3);
+    gpio_output_options_set(GPIOB, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_3);
+    gpio_af_set(GPIOB, GPIO_AF_0, GPIO_PIN_3);   
+
 }
 
 void azplatform_late_init()
@@ -227,8 +256,6 @@ void azplatform_late_init()
         azlog("DIPSW1 is ON: enabling Apple quirks by default");
         g_enable_apple_quirks = true;
     }
-
-    greenpak_load_firmware();
 }
 
 /*****************************************/
@@ -405,6 +432,10 @@ void azplatform_reset_watchdog()
 
 bool azplatform_rewrite_flash_page(uint32_t offset, uint8_t buffer[AZPLATFORM_FLASH_PAGE_SIZE])
 {
+    // @TODO rewrite this function for sector erases as page erases aren't available
+    azlog("Flash rewrite not implemented for the GD32F4xx yet.");
+    return false;
+
     if (offset == 0)
     {
         if (buffer[3] != 0x20 || buffer[7] != 0x08)
@@ -419,10 +450,13 @@ bool azplatform_rewrite_flash_page(uint32_t offset, uint8_t buffer[AZPLATFORM_FL
     assert(offset >= AZPLATFORM_BOOTLOADER_SIZE);
     
     fmc_unlock();
-    fmc_bank0_unlock();
+    // @TODO make sure this is no longer needed
+    // fmc_bank0_unlock();
+
 
     fmc_state_enum status;
-    status = fmc_page_erase(FLASH_BASE + offset);
+    // @TODO - rewrite this to do sector errases as page erase is not available for the gd32f450
+    // status = fmc_page_erase(FLASH_BASE + offset);
     if (status != FMC_READY)
     {
         azlog("Erase failed: ", (int)status);

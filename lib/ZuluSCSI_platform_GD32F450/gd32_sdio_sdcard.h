@@ -222,6 +222,7 @@ sd_error_enum sd_bus_mode_config(uint32_t busmode);
 /* configure the mode of transmission */
 sd_error_enum sd_transfer_mode_config(uint32_t txmode);
 
+typedef void (*sdio_callback_t)(uint32_t bytes_done);
 /* read a block data into a buffer from the specified address of a card */
 sd_error_enum sd_block_read(uint32_t *preadbuffer, uint32_t readaddr, uint16_t blocksize);
 /* read multiple blocks data into a buffer from the specified address of a card */
@@ -252,5 +253,10 @@ sd_transfer_state_enum sd_transfer_state_get(void);
 uint32_t sd_card_capacity_get(void);
 /* get the detailed information of the SD card based on received CID and CSD */
 sd_error_enum sd_card_information_get(sd_card_info_struct *pcardinfo);
+sd_error_enum sd_card_information_get_short(sdio_card_type_enum *card_type, uint16_t *card_rca);
+
+/* Get card information in raw format */
+void sd_cid_get(uint8_t *cid);
+void sd_csd_get(uint8_t *csd);
 
 #endif /* SDCARD_H */

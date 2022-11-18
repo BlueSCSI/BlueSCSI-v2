@@ -75,23 +75,28 @@ void scsi_accel_sync_init()
     // DMA used to transfer data from EXMC to RAM
     // DMA is used so that if data transfer fails, we can at least abort by resetting CPU.
     // Accessing EXMC from the CPU directly hangs it totally if ACK pulses are not received.
-    dma_parameter_struct exmc_dma_config =
+    dma_single_data_parameter_struct exmc_dma_config =
     {
         .periph_addr = EXMC_NOR_PSRAM,
-        .periph_width = DMA_PERIPHERAL_WIDTH_16BIT,
-        .memory_addr = (uint32_t)g_sync_dma_buf,
-        .memory_width = DMA_MEMORY_WIDTH_16BIT,
-        .number = 0, // Filled before transfer
-        .priority = DMA_PRIORITY_MEDIUM,
         .periph_inc = DMA_PERIPH_INCREASE_DISABLE,
+        .memory0_addr = (uint32_t)g_sync_dma_buf,
         .memory_inc = DMA_MEMORY_INCREASE_ENABLE,
-        .direction = DMA_PERIPHERAL_TO_MEMORY
+        .periph_memory_width = DMA_PERIPH_WIDTH_16BIT,
+        .circular_mode = DMA_CIRCULAR_MODE_DISABLE,
+        .direction = DMA_PERIPH_TO_MEMORY,
+        .number = 0, // Filled before transfer
+        .priority = DMA_PRIORITY_MEDIUM
     };
-    dma_init(SCSI_EXMC_DMA, SCSI_EXMC_DMACH, &exmc_dma_config);
-    dma_memory_to_memory_enable(SCSI_EXMC_DMA, SCSI_EXMC_DMACH);
+    dma_single_data_mode_init(SCSI_EXMC_DMA, SCSI_EXMC_DMACH, &exmc_dma_config);
+    // @TODO - figure out how to implement memory to memory DMA transfer
+    // dma_memory_to_memory_enable(SCSI_EXMC_DMA, SCSI_EXMC_DMACH);
 
-    gpio_init(SCSI_IN_ACK_EXMC_NWAIT_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_IN_ACK_EXMC_NWAIT_PIN);
-    gpio_init(SCSI_TIMER_IN_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_TIMER_IN_PIN);
+    gpio_mode_set(SCSI_IN_ACK_EXMC_NWAIT_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_IN_ACK_EXMC_NWAIT_PIN);
+    gpio_mode_set(SCSI_TIMER_IN_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_TIMER_IN_PIN);
+
+    // @TODO - added this gpio init sequence - figure out if it actually needed
+    gpio_mode_set(SCSI_ACK_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, SCSI_ACK_PIN);
+    gpio_af_set(SCSI_ACK_PORT, GPIO_AF_1, SCSI_ACK_PIN);
 
     // TIMER1 is used to count ACK pulses
     TIMER_CTL0(SCSI_SYNC_TIMER) = 0;
@@ -105,10 +110,11 @@ void scsi_accel_sync_recv(uint8_t *data, uint32_t count, int* parityError, volat
 {
     // Enable EXMC to drive REQ from EXMC_NOE pin
     EXMC_SNCTL(EXMC_BANK0_NORSRAM_REGION0) |= EXMC_SNCTL_NRBKEN;
-    uint32_t oldmode = GPIO_CTL0(SCSI_OUT_REQ_EXMC_NOE_PORT);
+    uint32_t oldmode = GPIO_CTL(SCSI_OUT_REQ_EXMC_NOE_PORT);
+    //@ TODO check if this IDX offset and it multiplicand are correct - GPIO_CTL has a different layout than f20x GPIO_CTL0
     uint32_t newmode = oldmode & ~(0xF << (SCSI_OUT_REQ_EXMC_NOE_IDX * 4));
     newmode |= 0xB << (SCSI_OUT_REQ_EXMC_NOE_IDX * 4);
-    GPIO_CTL0(SCSI_OUT_REQ_EXMC_NOE_PORT) = newmode;
+    GPIO_CTL(SCSI_OUT_REQ_EXMC_NOE_PORT) = newmode;
     
     while (count > 0)
     {
@@ -144,7 +150,7 @@ void scsi_accel_sync_recv(uint8_t *data, uint32_t count, int* parityError, volat
         data = end;
     }
 
-    GPIO_CTL0(SCSI_OUT_REQ_EXMC_NOE_PORT) = oldmode;
+    GPIO_CTL(SCSI_OUT_REQ_EXMC_NOE_PORT) = oldmode;
     EXMC_SNCTL(EXMC_BANK0_NORSRAM_REGION0) &= ~EXMC_SNCTL_NRBKEN;
 }
 
