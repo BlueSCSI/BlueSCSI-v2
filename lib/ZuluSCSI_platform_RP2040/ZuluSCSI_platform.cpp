@@ -156,7 +156,7 @@ void azplatform_late_init()
     else
     {
         g_scsi_initiator = false;
-        azlog("SCSI target mode selected by DIP switch, acting as an SCSI disk");
+        azlog("SCSI target/disk mode selected by DIP switch, acting as a SCSI disk");
     }
 
     /* Initialize SCSI pins to required modes.
