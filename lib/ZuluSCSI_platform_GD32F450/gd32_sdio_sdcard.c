@@ -1628,6 +1628,13 @@ uint32_t sd_card_capacity_get(void)
     return capacity;
 }
 
+sd_error_enum sd_card_information_get_short(sdio_card_type_enum *card_type, uint16_t *card_rca)
+{
+    *card_type = cardtype;
+    *card_rca = sd_rca;
+    return SD_OK;
+}
+
 /*!
     \brief      get the detailed information of the SD card based on received CID and CSD
     \param[in]  none
@@ -1824,6 +1831,23 @@ sd_error_enum sd_card_information_get(sd_card_info_struct *pcardinfo)
     pcardinfo->card_csd.csd_crc = (tempbyte & 0xFE) >> 1;
 
     return status;
+}
+
+void sd_cid_get(uint8_t *cid)
+{
+    // SdFat expects the data in big endian format.
+    for (int i = 0; i < 16; i++)
+    {
+        cid[i] = (sd_cid[i / 4] >> (24 - (i % 4) * 8)) & 0xFF;
+    }
+}
+
+void sd_csd_get(uint8_t *csd)
+{
+    for (int i = 0; i < 16; i++)
+    {
+        csd[i] = (sd_csd[i / 4] >> (24 - (i % 4) * 8)) & 0xFF;
+    }
 }
 
 /*!

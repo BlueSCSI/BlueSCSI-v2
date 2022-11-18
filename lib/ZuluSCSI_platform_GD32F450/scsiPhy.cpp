@@ -141,26 +141,6 @@ static void selectPhyMode()
     }
 #endif
 
-    // GreenPAK with software write, available on V1.1 with extra chip, 3.5 MB/s
-    if (wanted_mode == PHY_MODE_BEST_AVAILABLE || wanted_mode == PHY_MODE_GREENPAK_PIO)
-    {
-        if (greenpak_is_ready())
-        {
-            g_scsi_phy_mode = PHY_MODE_GREENPAK_PIO;
-        }
-    }
-
-    // GreenPAK with DMA write, available on V1.1 with extra chip
-#ifdef SCSI_ACCEL_DMA_AVAILABLE
-    if (wanted_mode == PHY_MODE_BEST_AVAILABLE || wanted_mode == PHY_MODE_GREENPAK_DMA)
-    {
-        if (greenpak_is_ready())
-        {
-            g_scsi_phy_mode = PHY_MODE_GREENPAK_DMA;
-        }
-    }
-#endif
-
     if (g_scsi_phy_mode != oldmode)
     {
         azlog("SCSI PHY operating mode: ", g_scsi_phy_mode_names[g_scsi_phy_mode]);
@@ -186,10 +166,6 @@ extern "C" void scsiPhyReset(void)
     if (g_scsi_phy_mode == PHY_MODE_DMA_TIMER)
     {
         scsi_accel_timer_dma_init();
-    }
-    else if (g_scsi_phy_mode == PHY_MODE_GREENPAK_DMA)
-    {
-        scsi_accel_greenpak_dma_init();
     }
 }
 
@@ -371,16 +347,8 @@ static void processPollingWrite(uint32_t count)
     }
     else if (count_words * 4 == count)
     {
-        if (g_scsi_phy_mode == PHY_MODE_GREENPAK_PIO)
-        {
-            // GreenPAK PIO accelerated asynchronous transfer
-            scsi_accel_greenpak_send((const uint32_t*)data, count_words, &scsiDev.resetFlag);
-        }
-        else
-        {
-            // Assembler optimized asynchronous transfer
-            scsi_accel_asm_send((const uint32_t*)data, count_words, &scsiDev.resetFlag);
-        }
+        // Assembler optimized asynchronous transfer
+        scsi_accel_asm_send((const uint32_t*)data, count_words, &scsiDev.resetFlag);
     }
     else
     {
@@ -506,11 +474,6 @@ extern "C" void scsiRead(uint8_t* data, uint32_t count, int* parityError)
         // Synchronous data transfer
         scsi_accel_sync_recv(data, count, parityError, &scsiDev.resetFlag);
     }
-    else if (count_words * 4 == count && count_words >= 2 && use_greenpak)
-    {
-        // GreenPAK accelerated receive can handle a multiple of 4 bytes with minimum of 8 bytes.
-        scsi_accel_greenpak_recv((uint32_t*)data, count_words, &scsiDev.resetFlag);
-    }
     else if (count_words * 4 == count && count_words >= 1)
     {
         // Optimized ASM subroutine can handle multiple of 4 bytes with minimum of 4 bytes.
@@ -578,19 +541,22 @@ void SCSI_SEL_IRQ (void)
 static void init_irqs()
 {
     // Falling edge of RST pin
-    gpio_exti_source_select(SCSI_RST_EXTI_SOURCE_PORT, SCSI_RST_EXTI_SOURCE_PIN);
+    gpio_mode_set(SCSI_RST_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_RST_PIN);
+    syscfg_exti_line_config(SCSI_RST_EXTI_SOURCE_PORT, SCSI_RST_EXTI_SOURCE_PIN);
     exti_init(SCSI_RST_EXTI, EXTI_INTERRUPT, EXTI_TRIG_FALLING);
     NVIC_SetPriority(SCSI_RST_IRQn, 1);
     NVIC_EnableIRQ(SCSI_RST_IRQn);
 
     // Rising edge of BSY pin
-    gpio_exti_source_select(SCSI_BSY_EXTI_SOURCE_PORT, SCSI_BSY_EXTI_SOURCE_PIN);
+    gpio_mode_set(SCSI_BSY_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_BSY_PIN);
+    syscfg_exti_line_config(SCSI_BSY_EXTI_SOURCE_PORT, SCSI_BSY_EXTI_SOURCE_PIN);
     exti_init(SCSI_BSY_EXTI, EXTI_INTERRUPT, EXTI_TRIG_RISING);
     NVIC_SetPriority(SCSI_BSY_IRQn, 1);
     NVIC_EnableIRQ(SCSI_BSY_IRQn);
 
     // Falling edge of SEL pin
-    gpio_exti_source_select(SCSI_SEL_EXTI_SOURCE_PORT, SCSI_SEL_EXTI_SOURCE_PIN);
+    gpio_mode_set(SCSI_SEL_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_SEL_PIN);
+    syscfg_exti_line_config(SCSI_SEL_EXTI_SOURCE_PORT, SCSI_SEL_EXTI_SOURCE_PIN);
     exti_init(SCSI_SEL_EXTI, EXTI_INTERRUPT, EXTI_TRIG_FALLING);
     NVIC_SetPriority(SCSI_SEL_IRQn, 1);
     NVIC_EnableIRQ(SCSI_SEL_IRQn);

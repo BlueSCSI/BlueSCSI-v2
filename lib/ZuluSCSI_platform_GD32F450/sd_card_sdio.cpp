@@ -1,5 +1,5 @@
 // Driver and interface for accessing SD card in SDIO mode
-// Used on ZuluSCSI v1.1.
+// Used on ZuluSCSI v1.4.
 
 #include "ZuluSCSI_platform.h"
 
