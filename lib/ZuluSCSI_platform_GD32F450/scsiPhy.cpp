@@ -465,7 +465,6 @@ extern "C" void scsiRead(uint8_t* data, uint32_t count, int* parityError)
     *parityError = 0;
 
     uint32_t count_words = count / 4;
-    bool use_greenpak = (g_scsi_phy_mode == PHY_MODE_GREENPAK_DMA || g_scsi_phy_mode == PHY_MODE_GREENPAK_PIO);
 
     SysTick_Handle_PreEmptively();
 

@@ -288,7 +288,7 @@ bool SdioCard::readSectors(uint32_t sector, uint8_t* dst, size_t n)
 bool check_sd_read_done()
 {
     return (DMA_CHCTL(DMA1, DMA_CH3) & DMA_CHXCTL_CHEN)
-        && (DMA_INTF(DMA1) & DMA_FLAG_ADD(DMA_FLAG_FTF, DMA_CH3));
+        && (DMA_INTF0(DMA1) & DMA_FLAG_ADD(DMA_FLAG_FTF, DMA_CH3));
 }
 
 // These functions are not used for SDIO mode but are needed to avoid build error.
