@@ -117,6 +117,7 @@ void scsi_accel_sync_recv(uint8_t *data, uint32_t count, int* parityError, volat
     uint32_t oldmode_gpio_omode = GPIO_OMODE(SCSI_OUT_REQ_EXMC_NOE_PORT);
     uint32_t oldmode_gpio_af = GPIO_AFSEL0(SCSI_OUT_REQ_EXMC_NOE_PORT);
 
+    // @TODO figure out ouput speed should be set to 200MHz
     gpio_af_set(SCSI_OUT_REQ_EXMC_NOE_PORT, GPIO_AF_12, SCSI_OUT_REQ_EXMC_NOE_PIN);
     gpio_output_options_set(SCSI_OUT_REQ_EXMC_NOE_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_REQ_EXMC_NOE_PIN);
     gpio_mode_set(SCSI_OUT_REQ_EXMC_NOE_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, SCSI_OUT_REQ_EXMC_NOE_PIN);
