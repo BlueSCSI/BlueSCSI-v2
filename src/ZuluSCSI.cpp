@@ -229,8 +229,8 @@ bool findHDDImages()
         {
           const char *archive_exts[] = {
             ".tar", ".tgz", ".gz", ".bz2", ".tbz2", ".xz", ".zst", ".z",
-            ".zip", ".zipx", ".rar", ".lzh", ".7z", ".s7z", ".arj",
-            ".dmg",
+            ".zip", ".zipx", ".rar", ".lzh", ".lha", ".lzo", ".lz4", ".arj",
+            ".dmg", ".hqx", ".cpt", ".7z", ".s7z"
             NULL
           };
 
