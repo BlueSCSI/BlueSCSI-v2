@@ -22,8 +22,6 @@ static enum {
     PHY_MODE_BEST_AVAILABLE = 0,
     PHY_MODE_PIO = 1,
     PHY_MODE_DMA_TIMER = 2,
-    PHY_MODE_GREENPAK_PIO = 3,
-    PHY_MODE_GREENPAK_DMA = 4
 } g_scsi_phy_mode;
 static const char *g_scsi_phy_mode_names[] = {
     "Unknown", "PIO", "DMA_TIMER" // removing greenpak , "GREENPAK_PIO", "GREENPAK_DMA"
@@ -296,7 +294,6 @@ extern "C" void scsiStartWrite(const uint8_t* data, uint32_t count)
     g_scsi_writereq.use_sync_mode = (g_scsi_phase == DATA_IN && scsiDev.target->syncOffset > 0);
 
     if (g_scsi_phy_mode == PHY_MODE_PIO
-        || g_scsi_phy_mode == PHY_MODE_GREENPAK_PIO
         || g_scsi_writereq.use_sync_mode)
     {
         // Software based bit-banging.
@@ -321,7 +318,7 @@ extern "C" void scsiStartWrite(const uint8_t* data, uint32_t count)
         g_scsi_writereq.data = data;
         g_scsi_writereq.count = count;
     }
-    else if (g_scsi_phy_mode == PHY_MODE_DMA_TIMER || g_scsi_phy_mode == PHY_MODE_GREENPAK_DMA)
+    else if (g_scsi_phy_mode == PHY_MODE_DMA_TIMER)
     {
         // Accelerated writes using DMA and timers
         scsi_accel_dma_startWrite(data, count, &scsiDev.resetFlag);
@@ -413,14 +410,13 @@ extern "C" bool scsiIsWriteFinished(const uint8_t *data)
         return isPollingWriteFinished(data);
     }
     
-    if (g_scsi_phy_mode == PHY_MODE_DMA_TIMER || g_scsi_phy_mode == PHY_MODE_GREENPAK_DMA)
+    if (g_scsi_phy_mode == PHY_MODE_DMA_TIMER)
     {
         return scsi_accel_dma_isWriteFinished(data);
     }
-    else
-    {
-        return true;
-    }
+    // @TODO this was attached as an else to g_scsi_phy_mode==PHY_MODE_DMA_TIMER, not sure if true should be returned as default
+    return true;
+    
 }
 
 extern "C" void scsiFinishWrite()
@@ -431,7 +427,7 @@ extern "C" void scsiFinishWrite()
         processPollingWrite(g_scsi_writereq.count);
     }
 
-    if (g_scsi_phy_mode == PHY_MODE_DMA_TIMER || g_scsi_phy_mode == PHY_MODE_GREENPAK_DMA)
+    if (g_scsi_phy_mode == PHY_MODE_DMA_TIMER)
     {
         scsi_accel_dma_finishWrite(&scsiDev.resetFlag);
     }
@@ -539,6 +535,9 @@ void SCSI_SEL_IRQ (void)
 
 static void init_irqs()
 {
+    // Enable SYSCFG clock to set EXTI lines
+    rcu_periph_clock_enable(RCU_SYSCFG);
+
     // Falling edge of RST pin
     gpio_mode_set(SCSI_RST_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_RST_PIN);
     syscfg_exti_line_config(SCSI_RST_EXTI_SOURCE_PORT, SCSI_RST_EXTI_SOURCE_PIN);
@@ -547,14 +546,14 @@ static void init_irqs()
     NVIC_EnableIRQ(SCSI_RST_IRQn);
 
     // Rising edge of BSY pin
-    gpio_mode_set(SCSI_BSY_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_BSY_PIN);
+    //gpio_mode_set(SCSI_BSY_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_BSY_PIN);
     syscfg_exti_line_config(SCSI_BSY_EXTI_SOURCE_PORT, SCSI_BSY_EXTI_SOURCE_PIN);
     exti_init(SCSI_BSY_EXTI, EXTI_INTERRUPT, EXTI_TRIG_RISING);
     NVIC_SetPriority(SCSI_BSY_IRQn, 1);
     NVIC_EnableIRQ(SCSI_BSY_IRQn);
 
     // Falling edge of SEL pin
-    gpio_mode_set(SCSI_SEL_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_SEL_PIN);
+    // gpio_mode_set(SCSI_SEL_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_SEL_PIN);
     syscfg_exti_line_config(SCSI_SEL_EXTI_SOURCE_PORT, SCSI_SEL_EXTI_SOURCE_PIN);
     exti_init(SCSI_SEL_EXTI, EXTI_INTERRUPT, EXTI_TRIG_FALLING);
     NVIC_SetPriority(SCSI_SEL_IRQn, 1);

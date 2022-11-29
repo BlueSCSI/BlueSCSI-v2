@@ -622,7 +622,7 @@ sd_error_enum sd_multiblocks_read(uint32_t *preadbuffer, uint64_t readaddr, uint
         return status;
     }
 
-    if(blocksnumber > 1) {
+    if(blocksnumber >= 1) {
         if(blocksnumber * blocksize > SD_MAX_DATA_LENGTH) {
             /* exceeds the maximum length */
             status = SD_PARAMETER_INVALID;
@@ -703,17 +703,19 @@ sd_error_enum sd_multiblocks_read(uint32_t *preadbuffer, uint64_t readaddr, uint
             sdio_interrupt_enable(SDIO_INT_DTCRCERR | SDIO_INT_DTTMOUT | SDIO_INT_RXORE | SDIO_INT_DTEND | SDIO_INT_STBITE);
             sdio_dma_enable();
             dma_receive_config(preadbuffer, totalnumber_bytes);
-
             uint32_t start = millis();
             while((RESET == dma_flag_get(DMA1, DMA_CH3, DMA_FLAG_FTF))) {
                 if((uint32_t)(millis() - start) > 1000) {
                     return SD_ERROR;
                 }
-                if (callback)
+                /* @TODO - figure out how to fix the count or remove call back from this function
+                                if (callback)
                 {
-                    uint32_t complete = (totalnumber_bytes - DMA_CHCNT(DMA1, DMA_CH3) * 4);
-                    callback(complete);
-                }
+                    uint32_t complete = totalnumber_bytes - DMA_CHCNT(DMA1, DMA_CH3) * 4;
+                        callback(complete);
+               }
+               */
+
             }
             while((0 == transend) && (SD_OK == transerror)) {
                 if (callback)
@@ -2507,7 +2509,7 @@ static void dma_receive_config(uint32_t *dstbuf, uint32_t bufsize)
     dma_struct.periph_addr = (uint32_t)SDIO_FIFO_ADDR;
     dma_struct.memory0_addr = (uint32_t)dstbuf;
     dma_struct.direction = DMA_PERIPH_TO_MEMORY;
-    dma_struct.number = 0;
+    dma_struct.number = bufsize/4;
     dma_struct.periph_inc = DMA_PERIPH_INCREASE_DISABLE;
     dma_struct.memory_inc = DMA_MEMORY_INCREASE_ENABLE;
     dma_struct.periph_width = DMA_PERIPH_WIDTH_32BIT;
