@@ -75,19 +75,23 @@ void scsi_accel_sync_init()
     // DMA used to transfer data from EXMC to RAM
     // DMA is used so that if data transfer fails, we can at least abort by resetting CPU.
     // Accessing EXMC from the CPU directly hangs it totally if ACK pulses are not received.
-    dma_single_data_parameter_struct exmc_dma_config =
+    dma_multi_data_parameter_struct exmc_dma_config =
     {
         .periph_addr = EXMC_NOR_PSRAM,
+        .periph_width = DMA_PERIPH_WIDTH_16BIT,
         .periph_inc = DMA_PERIPH_INCREASE_DISABLE,
         .memory0_addr = (uint32_t)g_sync_dma_buf,
+        .memory_width = DMA_PERIPH_WIDTH_16BIT,
         .memory_inc = DMA_MEMORY_INCREASE_ENABLE,
-        .periph_memory_width = DMA_PERIPH_WIDTH_16BIT,
+        .memory_burst_width = DMA_MEMORY_BURST_SINGLE,
+        .periph_burst_width = DMA_PERIPH_BURST_SINGLE,
+        .critical_value = DMA_FIFO_1_WORD,
         .circular_mode = DMA_CIRCULAR_MODE_DISABLE,
-        .direction = DMA_PERIPH_TO_MEMORY,
+        .direction = DMA_MEMORY_TO_MEMORY,
         .number = 0, // Filled before transfer
         .priority = DMA_PRIORITY_MEDIUM
     };
-    dma_single_data_mode_init(SCSI_EXMC_DMA, SCSI_EXMC_DMACH, &exmc_dma_config);
+    dma_multi_data_mode_init(SCSI_EXMC_DMA, SCSI_EXMC_DMACH, &exmc_dma_config);
     // @TODO - figure out how to implement memory to memory DMA transfer
     // dma_memory_to_memory_enable(SCSI_EXMC_DMA, SCSI_EXMC_DMACH);
 

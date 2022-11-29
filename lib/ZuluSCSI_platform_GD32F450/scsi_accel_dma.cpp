@@ -62,7 +62,6 @@ void scsi_accel_timer_dma_init()
     };
 
     dma_single_data_mode_init(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA, &gpio_dma_config);
-    dma_circulation_enable(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA);
     NVIC_SetPriority(SCSI_TIMER_DMACHA_IRQn, 1);
     NVIC_EnableIRQ(SCSI_TIMER_DMACHA_IRQn);
 
@@ -123,7 +122,7 @@ static void scsi_dma_gpio_config(bool enable)
         // @TODO determine if the output should be set to 200MHZ instead of 50MHZ
         gpio_output_options_set(SCSI_TIMER_OUT_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SCSI_TIMER_OUT_PIN);
         // @TODO find if TIMER2_CH3 (AF2) is the correct AF
-        gpio_af_set(SCSI_TIMER_OUT_PORT, GPIO_AF_2, SCSI_TIMER_OUT_PIN);
+        gpio_af_set(SCSI_TIMER_OUT_PORT, GPIO_AF_3, SCSI_TIMER_OUT_PIN);
 
     }
     else
@@ -131,6 +130,7 @@ static void scsi_dma_gpio_config(bool enable)
         // @ DELETE this line shouldn't be needed?
         // GPIO_BC(SCSI_OUT_PORT) = GREENPAK_PLD_IO2;
         gpio_mode_set(SCSI_TIMER_OUT_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_TIMER_OUT_PIN);
+
         gpio_output_options_set(SCSI_OUT_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_REQ);
         gpio_mode_set(SCSI_OUT_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, SCSI_OUT_REQ);
         
@@ -203,14 +203,20 @@ static void start_dma()
     TIMER_DMAINTEN(SCSI_TIMER) = TIMER_DMAINTEN_CH1DEN | TIMER_DMAINTEN_CH3DEN;
 
     // Clear and enable interrupt
-    DMA_INTC1(SCSI_TIMER_DMA) = DMA_FLAG_ADD(DMA_FLAG_HTF | DMA_FLAG_FTF | DMA_FLAG_FEE, SCSI_TIMER_DMACHA);
-    DMA_INTC0(SCSI_TIMER_DMA) = DMA_FLAG_ADD(DMA_FLAG_HTF | DMA_FLAG_FTF | DMA_FLAG_FEE, SCSI_TIMER_DMACHB);
-    DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA) |= DMA_CHXCTL_FTFIE | DMA_CHXCTL_HTFIE;
-    DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) |= DMA_CHXCTL_FTFIE;
+    dma_interrupt_flag_clear(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA, DMA_FLAG_HTF | DMA_FLAG_FTF | DMA_FLAG_FEE);
+    // DMA_INTC1(SCSI_TIMER_DMA) = DMA_FLAG_ADD(DMA_FLAG_HTF | DMA_FLAG_FTF | DMA_FLAG_FEE, SCSI_TIMER_DMACHA);
+    dma_interrupt_flag_clear(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, DMA_FLAG_HTF | DMA_FLAG_FTF | DMA_FLAG_FEE);
+    // DMA_INTC0(SCSI_TIMER_DMA) = DMA_FLAG_ADD(DMA_FLAG_HTF | DMA_FLAG_FTF | DMA_FLAG_FEE, SCSI_TIMER_DMACHB);
+    dma_interrupt_enable(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA, DMA_CHXCTL_FTFIE | DMA_CHXCTL_HTFIE);
+    // DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA) |= DMA_CHXCTL_FTFIE | DMA_CHXCTL_HTFIE;
+    dma_interrupt_enable(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, DMA_CHXCTL_FTFIE);
+    // DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) |= DMA_CHXCTL_FTFIE;
 
     // Enable channels
-    DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA) |= DMA_CHXCTL_CHEN;
-    DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) |= DMA_CHXCTL_CHEN;
+    dma_channel_enable(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA);
+    //DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA) |= DMA_CHXCTL_CHEN;
+    dma_channel_enable(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB);
+    //DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) |= DMA_CHXCTL_CHEN;
 
     // Make sure REQ is initially high
     TIMER_CNT(SCSI_TIMER) = 16;
@@ -218,7 +224,8 @@ static void start_dma()
     TIMER_CHCTL1(SCSI_TIMER) = 0x6074;
 
     // Enable timer
-    TIMER_CTL0(SCSI_TIMER) |= TIMER_CTL0_CEN;
+    timer_enable(SCSI_TIMER);
+    //TIMER_CTL0(SCSI_TIMER) |= TIMER_CTL0_CEN;
 
     // Generate first events
     TIMER_SWEVG(SCSI_TIMER) = TIMER_SWEVG_CH1G;
@@ -228,11 +235,16 @@ static void start_dma()
 // Stop DMA transfer
 static void stop_dma()
 {
-    DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA) &= ~DMA_CHXCTL_CHEN;
-    DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) &= ~DMA_CHXCTL_CHEN;
-    DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA) &= ~(DMA_CHXCTL_FTFIE | DMA_CHXCTL_HTFIE);
-    DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) &= ~DMA_CHXCTL_FTFIE;
-    TIMER_CTL0(SCSI_TIMER) &= ~TIMER_CTL0_CEN;
+    dma_channel_disable(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA);
+    // DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA) &= ~DMA_CHXCTL_CHEN;
+    dma_channel_disable(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB);
+    // DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) &= ~DMA_CHXCTL_CHEN;
+    dma_interrupt_disable(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA, DMA_CHXCTL_FTFIE | DMA_CHXCTL_HTFIE);
+    // DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA) &= ~(DMA_CHXCTL_FTFIE | DMA_CHXCTL_HTFIE);
+    dma_interrupt_disable(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, DMA_CHXCTL_FTFIE);
+    //DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) &= ~DMA_CHXCTL_FTFIE;
+    timer_disable(SCSI_TIMER);
+    //TIMER_CTL0(SCSI_TIMER) &= ~TIMER_CTL0_CEN;
     g_scsi_dma_state = SCSIDMA_IDLE;
     SCSI_RELEASE_DATA_REQ();
 }
@@ -262,11 +274,10 @@ extern "C" void SCSI_TIMER_DMACHA_IRQ()
     //             TIMER_CNT(SCSI_TIMER));
 
     uint32_t intf = DMA_INTF1(SCSI_TIMER_DMA);
-    const uint32_t half_flag = DMA_FLAG_ADD(DMA_FLAG_HTF, SCSI_TIMER_DMACHA);
-    const uint32_t full_flag = DMA_FLAG_ADD(DMA_FLAG_FTF, SCSI_TIMER_DMACHA);
-    if (intf & half_flag)
+
+    if (dma_interrupt_flag_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA, DMA_FLAG_HTF))
     {
-        if (intf & full_flag)
+        if (dma_interrupt_flag_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA, DMA_FLAG_FTF))
         {
             azlog("ERROR: SCSI DMA overrun: ", intf,
                " bytes_app: ", g_scsi_dma.bytes_app,
@@ -277,12 +288,12 @@ extern "C" void SCSI_TIMER_DMACHA_IRQ()
             return;
         }
 
-        DMA_INTC1(SCSI_TIMER_DMA) = DMA_FLAG_ADD(DMA_FLAG_HTF, SCSI_TIMER_DMACHA);
+        dma_interrupt_flag_clear(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA, DMA_FLAG_HTF);
         g_scsi_dma.dma_fillto += DMA_BUF_SIZE / 2;
     }
-    else if (intf & full_flag)
+    else if (dma_interrupt_flag_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA, DMA_FLAG_FTF))
     {
-        DMA_INTC1(SCSI_TIMER_DMA) = DMA_FLAG_ADD(DMA_FLAG_FTF, SCSI_TIMER_DMACHA);
+        dma_interrupt_flag_clear(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA, DMA_FLAG_FTF);
         g_scsi_dma.dma_fillto += DMA_BUF_SIZE / 2;
     }
 
@@ -292,16 +303,17 @@ extern "C" void SCSI_TIMER_DMACHA_IRQ()
     check_dma_next_buffer();
 }
 
+// dma_interrupt_flag_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, DMA_FLAG_FTF);
+// dma_interrupt_flag_clear(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, DMA_FLAG_FTF);
 // Check if enough data is available to continue DMA transfer
 extern "C" void SCSI_TIMER_DMACHB_IRQ()
 {
     // azdbg("DMA irq B, counts: ", DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA), " ",
     //             DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB), " ",
     //             TIMER_CNT(SCSI_TIMER));
-    uint32_t intf = DMA_INTF0(SCSI_TIMER_DMA);
-    if (intf & DMA_FLAG_ADD(DMA_FLAG_FTF, SCSI_TIMER_DMACHB))
+    if (dma_interrupt_flag_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, DMA_FLAG_FTF))
     {
-        DMA_INTC0(SCSI_TIMER_DMA) = DMA_FLAG_ADD(DMA_FLAG_FTF, SCSI_TIMER_DMACHB);
+        dma_interrupt_flag_clear(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, DMA_FLAG_FTF);
 
         if (g_scsi_dma.bytes_app > g_scsi_dma.scheduled_dma)
         {
@@ -325,9 +337,12 @@ extern "C" void SCSI_TIMER_DMACHB_IRQ()
 
             // Update the total number of bytes available for DMA
             uint32_t dma_to_schedule = g_scsi_dma.bytes_app - g_scsi_dma.scheduled_dma;
-            DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) &= ~DMA_CHXCTL_CHEN;
-            DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) = dma_to_schedule;
-            DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) |= DMA_CHXCTL_CHEN;
+            dma_channel_disable(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB);
+            // DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) &= ~DMA_CHXCTL_CHEN;
+            dma_transfer_number_config(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, dma_to_schedule);
+            // DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) = dma_to_schedule;
+            dma_channel_enable(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB);
+            // DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) |= DMA_CHXCTL_CHEN;
             g_scsi_dma.scheduled_dma += dma_to_schedule;
         }
         else
