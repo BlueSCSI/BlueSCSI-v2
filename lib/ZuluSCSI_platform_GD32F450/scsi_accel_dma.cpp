@@ -43,6 +43,7 @@ void scsi_accel_timer_dma_init()
     rcu_periph_clock_enable(SCSI_TIMER_RCU);
     rcu_periph_clock_enable(SCSI_TIMER_DMA_RCU);
 
+
     // DMA Channel A: data copy
     // GPIO DMA copies data from memory buffer to GPIO BOP register.
     // The memory buffer is filled by interrupt routine.
@@ -54,7 +55,6 @@ void scsi_accel_timer_dma_init()
         .memory0_addr = 0, // Filled before transfer
         .memory_inc = DMA_MEMORY_INCREASE_ENABLE,
         .periph_memory_width = DMA_PERIPH_WIDTH_32BIT,
-        // @TODO Check if circular mode is needed or not
         .circular_mode = DMA_CIRCULAR_MODE_ENABLE,
         .direction = DMA_MEMORY_TO_PERIPH,
         .number = DMA_BUF_SIZE,
@@ -62,6 +62,7 @@ void scsi_accel_timer_dma_init()
     };
 
     dma_single_data_mode_init(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA, &gpio_dma_config);
+    dma_channel_subperipheral_select(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA, SCSI_TIMER_DMACHA_SUB_PERIPH);
     NVIC_SetPriority(SCSI_TIMER_DMACHA_IRQn, 1);
     NVIC_EnableIRQ(SCSI_TIMER_DMACHA_IRQn);
 
@@ -81,6 +82,7 @@ void scsi_accel_timer_dma_init()
         .priority = DMA_PRIORITY_HIGH
     };
     dma_single_data_mode_init(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, &timer_dma_config);
+    dma_channel_subperipheral_select(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, SCSI_TIMER_DMACHB_SUB_PERIPH);
     NVIC_SetPriority(SCSI_TIMER_DMACHB_IRQn, 2);
     NVIC_EnableIRQ(SCSI_TIMER_DMACHB_IRQn);
 
@@ -107,7 +109,7 @@ void scsi_accel_timer_dma_init()
     TIMER_CH3CV(SCSI_TIMER) = 2; // Reset timer after ACK goes high & previous DMA is complete
 
     gpio_mode_set(SCSI_TIMER_IN_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, SCSI_TIMER_IN_PIN);
-    gpio_af_set(SCSI_TIMER_IN_PORT, GPIO_AF_3, SCSI_TIMER_IN_PIN);    
+    gpio_af_set(SCSI_TIMER_IN_PORT, SCSI_TIMER_IN_AF, SCSI_TIMER_IN_PIN);    
     scsi_accel_dma_stopWrite();
 }
 
@@ -122,7 +124,7 @@ static void scsi_dma_gpio_config(bool enable)
         // @TODO determine if the output should be set to 200MHZ instead of 50MHZ
         gpio_output_options_set(SCSI_TIMER_OUT_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SCSI_TIMER_OUT_PIN);
         // @TODO find if TIMER2_CH3 (AF2) is the correct AF
-        gpio_af_set(SCSI_TIMER_OUT_PORT, GPIO_AF_3, SCSI_TIMER_OUT_PIN);
+        gpio_af_set(SCSI_TIMER_OUT_PORT, SCSI_TIMER_OUT_AF, SCSI_TIMER_OUT_PIN);
 
     }
     else
@@ -185,17 +187,20 @@ static void start_dma()
 {
 
     // Disable channels while configuring
-    DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA) &= ~DMA_CHXCTL_CHEN;
-    DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) &= ~DMA_CHXCTL_CHEN;
+    dma_channel_disable(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA);
+    dma_channel_disable(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB);
     TIMER_CTL0(SCSI_TIMER) = 0;
 
     // Set new buffer address and size
     // CHA / Data channel is in circular mode and always has DMA_BUF_SIZE buffer size.
     // CHB / Update channel limits the number of data.
-    DMA_CHM0ADDR(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA) = (uint32_t)g_scsi_dma.dma_buf;
-    DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA) = DMA_BUF_SIZE;
+    dma_memory_address_config(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA, DMA_MEMORY_0, (uint32_t)g_scsi_dma.dma_buf);
+    // DMA_CHM0ADDR(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA) = (uint32_t)g_scsi_dma.dma_buf;
+    dma_transfer_number_config(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA, DMA_BUF_SIZE);
+    // DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA) = DMA_BUF_SIZE;
     uint32_t dma_to_schedule = g_scsi_dma.bytes_app - g_scsi_dma.scheduled_dma;
-    DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) = dma_to_schedule;
+    dma_transfer_number_config(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, dma_to_schedule);
+    // DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) = dma_to_schedule;
     g_scsi_dma.scheduled_dma += dma_to_schedule;
     
     // Clear pending DMA events
@@ -269,9 +274,9 @@ static void check_dma_next_buffer()
 // Convert new data from application buffer to DMA buffer
 extern "C" void SCSI_TIMER_DMACHA_IRQ()
 {
-    // azdbg("DMA irq A, counts: ", DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA), " ",
-    //             DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB), " ",
-    //             TIMER_CNT(SCSI_TIMER));
+    azdbg("DMA irq A, counts: ", dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA), " ",
+                dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB), " ",
+                TIMER_CNT(SCSI_TIMER));
 
     uint32_t intf = DMA_INTF1(SCSI_TIMER_DMA);
 
@@ -303,14 +308,12 @@ extern "C" void SCSI_TIMER_DMACHA_IRQ()
     check_dma_next_buffer();
 }
 
-// dma_interrupt_flag_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, DMA_FLAG_FTF);
-// dma_interrupt_flag_clear(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, DMA_FLAG_FTF);
 // Check if enough data is available to continue DMA transfer
 extern "C" void SCSI_TIMER_DMACHB_IRQ()
 {
-    // azdbg("DMA irq B, counts: ", DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA), " ",
-    //             DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB), " ",
-    //             TIMER_CNT(SCSI_TIMER));
+    azdbg("DMA irq B, counts: ", dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA), " ",
+                 dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB), " ",
+                 TIMER_CNT(SCSI_TIMER));
     if (dma_interrupt_flag_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, DMA_FLAG_FTF))
     {
         dma_interrupt_flag_clear(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, DMA_FLAG_FTF);
@@ -393,7 +396,7 @@ void scsi_accel_dma_startWrite(const uint8_t* data, uint32_t count, volatile int
         }
     }
 
-    // azdbg("Starting DMA write of ", (int)count, " bytes");
+    azdbg("Starting DMA write of ", (int)count, " bytes");
     scsi_dma_gpio_config(true);
     g_scsi_dma_state = SCSIDMA_WRITE;
     g_scsi_dma.app_buf = (uint8_t*)data;
@@ -451,8 +454,8 @@ void scsi_accel_dma_finishWrite(volatile int *resetFlag)
         if ((uint32_t)(millis() - start) > 5000)
         {
             azlog("scsi_accel_dma_finishWrite() timeout, DMA counts ",
-                DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA), " ",
-                DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB), " ",
+                dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA), " ",
+                dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB), " ",
                 TIMER_CNT(SCSI_TIMER));
             *resetFlag = 1;
             break;
