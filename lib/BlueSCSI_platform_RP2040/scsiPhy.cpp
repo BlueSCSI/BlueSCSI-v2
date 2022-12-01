@@ -332,7 +332,7 @@ static inline uint8_t scsiReadOneByte(int* parityError)
 
     if (parityError && r != (g_scsi_parity_lookup[r & 0xFF] ^ SCSI_IO_DATA_MASK))
     {
-        bluelog("Parity error in scsiReadOneByte(): ", (uint32_t)r);
+        bluedbg("Parity error in scsiReadOneByte(): ", (uint32_t)r);
         *parityError = 1;
     }
 
@@ -363,6 +363,12 @@ extern "C" void scsiRead(uint8_t* data, uint32_t count, int* parityError)
     {
         // Use accelerated routine
         scsi_accel_rp2040_read(data, count, parityError, &scsiDev.resetFlag);
+
+    }
+
+    if(*parityError && (scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY))
+    {
+        bluelog("Parity error in scsiRead()");
     }
 
     scsiLogDataOut(data, count);

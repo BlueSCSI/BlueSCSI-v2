@@ -565,7 +565,7 @@ void scsi_accel_rp2040_read(uint8_t *buf, uint32_t count, int *parityError, vola
     uint8_t byte1 = ~(paritycheck >> 16);
     if (paritycheck != ((g_scsi_parity_lookup[byte1] << 16) | g_scsi_parity_lookup[byte0]))
     {
-        bluelog("Parity error in scsi_accel_rp2040_read(): ", paritycheck);
+        bluedbg("Parity error in scsi_accel_rp2040_read(): ", paritycheck);
         *parityError = 1;
     }
 

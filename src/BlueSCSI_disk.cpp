@@ -668,6 +668,16 @@ void s2s_configInit(S2S_BoardCfg* config)
         bluelog("-- MapLunsToIDs is on");
         config->flags |= S2S_CFG_MAP_LUNS_TO_IDS;
     }
+
+    if (ini_getbool("SCSI", "Parity", true, CONFIGFILE))
+    {
+        bluelog("-- Parity is enabled");
+        config->flags |= S2S_CFG_ENABLE_PARITY;
+    }
+    else
+    {
+        bluelog("-- Parity is disabled");
+    }
 }
 
 extern "C"
@@ -1137,7 +1147,7 @@ void diskDataOut_callback(uint32_t bytes_complete)
         scsiRead(&scsiDev.data[start], len, &parityError);
         g_disk_transfer.bytes_scsi_done += len;
 
-        if (parityError)
+        if (parityError & (scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY))
         {
             scsiDev.status = CHECK_CONDITION;
             scsiDev.target->sense.code = ABORTED_COMMAND;
