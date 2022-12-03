@@ -87,7 +87,7 @@ bool SdioCard::begin(SdioConfig sdioConfig)
 
     if (reply != 0x1AA || status != SDIO_OK)
     {
-        bluedbg("SDIO not responding to CMD8 SEND_IF_COND, status ", (int)status, " reply ", reply);
+        // bluedbg("SDIO not responding to CMD8 SEND_IF_COND, status ", (int)status, " reply ", reply);
         return false;
     }
 

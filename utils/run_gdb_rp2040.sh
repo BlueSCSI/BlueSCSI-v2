@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 arm-none-eabi-gdb \
        -iex 'target extended /dev/ttyACM0' \
        -iex 'mon s' -iex 'att 1' \

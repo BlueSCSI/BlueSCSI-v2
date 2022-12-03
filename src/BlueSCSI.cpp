@@ -29,6 +29,8 @@
 
 SdFs SD;
 FsFile g_logfile;
+static bool g_romdrive_active;
+static bool g_sdcard_present;
 
 /************************************/
 /* Status reporting by blinking led */
@@ -72,7 +74,7 @@ void save_logfile(bool always = false)
   static uint32_t prev_log_save = 0;
   uint32_t loglen = bluelog_get_buffer_len();
 
-  if (loglen != prev_log_len)
+  if (loglen != prev_log_len && g_sdcard_present)
   {
     // When debug is off, save log at most every LOG_SAVE_INTERVAL_MS
     // When debug is on, save after every SCSI command.
@@ -199,8 +201,8 @@ bool findHDDImages()
         {
           const char *archive_exts[] = {
             ".tar", ".tgz", ".gz", ".bz2", ".tbz2", ".xz", ".zst", ".z",
-            ".zip", ".zipx", ".rar", ".lzh", ".7z", ".s7z", ".arj",
-            ".dmg",
+            ".zip", ".zipx", ".rar", ".lzh", ".lha", ".lzo", ".lz4", ".arj",
+            ".dmg", ".hqx", ".cpt", ".7z", ".s7z",
             NULL
           };
 
@@ -217,6 +219,18 @@ bool findHDDImages()
         if (is_compressed)
         {
           bluelog("-- Ignoring compressed file ", name);
+          continue;
+        }
+
+        // Check if the image should be loaded to microcontroller flash ROM drive
+        bool is_romdrive = false;
+        if (extension && strcasecmp(extension, ".rom") == 0)
+        {
+          is_romdrive = true;
+        }
+        else if (extension && strcasecmp(extension, ".rom_loaded") == 0)
+        {
+          // Already loaded ROM drive, ignore the image
           continue;
         }
 
@@ -274,25 +288,34 @@ bool findHDDImages()
         strcat(fullname, name);
 
         // Check whether this SCSI ID has been configured yet
-        const S2S_TargetCfg* cfg = s2s_getConfigByIndex(id);
-        if (cfg && (cfg->scsiId & S2S_CFG_TARGET_ENABLED))
+        if (s2s_getConfigById(id))
         {
           bluelog("-- Ignoring ", fullname, ", SCSI ID ", id, " is already in use!");
           continue;
         }
 
-        // Open the image file
-        if(id < NUM_SCSIID && lun < NUM_SCSILUN) {
-          bluelog("-- Opening ", fullname, " for id:", id, " lun:", lun);
+        // Type mapping based on filename.
+        // If type is FIXED, the type can still be overridden in .ini file.
+        S2S_CFG_TYPE type = S2S_CFG_FIXED;
+        if (is_cd) type = S2S_CFG_OPTICAL;
+        if (is_fd) type = S2S_CFG_FLOPPY_14MB;
+        if (is_mo) type = S2S_CFG_MO;
+        if (is_re) type = S2S_CFG_REMOVEABLE;
+        if (is_tp) type = S2S_CFG_SEQUENTIAL;
 
-          // Type mapping based on filename.
-          // If type is FIXED, the type can still be overridden in .ini file.
-          S2S_CFG_TYPE type = S2S_CFG_FIXED;
-          if (is_cd) type = S2S_CFG_OPTICAL;
-          if (is_fd) type = S2S_CFG_FLOPPY_14MB;
-          if (is_mo) type = S2S_CFG_MO;
-          if (is_re) type = S2S_CFG_REMOVEABLE;
-          if (is_tp) type = S2S_CFG_SEQUENTIAL;
+        // Open the image file
+        if (id < NUM_SCSIID && is_romdrive)
+        {
+          bluelog("-- Loading ROM drive from ", fullname, " for id:", id);
+          imageReady = scsiDiskProgramRomDrive(fullname, id, blk, type);
+          
+          if (imageReady)
+          {
+            foundImage = true;
+          }
+        }
+        else if(id < NUM_SCSIID && lun < NUM_SCSILUN) {
+          bluelog("-- Opening ", fullname, " for id:", id, " lun:", lun);
 
           imageReady = scsiDiskOpenHDDImage(id, fullname, id, lun, blk, type);
           if(imageReady)
@@ -314,6 +337,8 @@ bool findHDDImages()
     bluelog("Some images did not specify a SCSI ID. Last file will be used at ID ", usedDefaultId);
   }
   root.close();
+
+  g_romdrive_active = scsiDiskActivateRomDrive();
 
   // Print SCSI drive map
   for (int i = 0; i < NUM_SCSIID; i++)
@@ -422,37 +447,62 @@ static void reinitSCSI()
 
 extern "C" void bluescsi_setup(void)
 {
+// The RP2040 must log FW Version in azplatform_init to avoid hanging  
+#ifndef BLUESCSI_V2_0  
+  bluelog("Platform: ", g_bluescsiplatform_name);
+  bluelog("FW Version: ", g_bluelog_firmwareversion);
+#endif
+
   bluescsiplatform_init();
   bluescsiplatform_late_init();
 
-  if(!mountSDCard())
+  g_sdcard_present = mountSDCard();
+
+  if(!g_sdcard_present)
   {
     bluelog("SD card init failed, sdErrorCode: ", (int)SD.sdErrorCode(),
            " sdErrorData: ", (int)SD.sdErrorData());
+    
+    blinkStatus(BLINK_ERROR_NO_SD_CARD);
+
+    if (scsiDiskCheckRomDrive())
+    {
+      reinitSCSI();
+      if (g_romdrive_active)
+      {
+        bluelog("Enabled ROM drive without SD card");
+        return;
+      }
+    }
 
     do
     {
       blinkStatus(BLINK_ERROR_NO_SD_CARD);
       delay(1000);
       bluescsiplatform_reset_watchdog();
-    } while (!mountSDCard());
+      g_sdcard_present = mountSDCard();
+    } while (!g_sdcard_present);
     bluelog("SD card init succeeded after retry");
   }
 
-  if (SD.clusterCount() == 0)
+  if (g_sdcard_present)
   {
-    bluelog("SD card without filesystem!");
+    if (SD.clusterCount() == 0)
+    {
+      bluelog("SD card without filesystem!");
+    }
+
+    print_sd_info();
+  
+    reinitSCSI();
   }
 
-  print_sd_info();
-
-  reinitSCSI();
-
   bluelog("Initialization complete!");
-  bluelog("Platform: ", g_bluescsiplatform_name);
-  bluelog("FW Version: ", g_bluelog_firmwareversion);
 
-  init_logfile();
+  if (g_sdcard_present)
+  {
+    init_logfile();
+  }
 }
 
 extern "C" void bluescsi_main_loop(void)
@@ -481,29 +531,50 @@ extern "C" void bluescsi_main_loop(void)
     }
   }
 
-  // Check SD card status for hotplug
-  if (scsiDev.phase == BUS_FREE &&
-      (uint32_t)(millis() - sd_card_check_time) > 5000)
+  if (g_sdcard_present)
   {
-    sd_card_check_time = millis();
-    uint32_t ocr;
-    if (!SD.card()->readOCR(&ocr))
+    // Check SD card status for hotplug
+    if (scsiDev.phase == BUS_FREE &&
+        (uint32_t)(millis() - sd_card_check_time) > 5000)
     {
+      sd_card_check_time = millis();
+      uint32_t ocr;
       if (!SD.card()->readOCR(&ocr))
       {
-        bluelog("SD card removed, trying to reinit");
-        do
+        if (!SD.card()->readOCR(&ocr))
         {
-          blinkStatus(BLINK_ERROR_NO_SD_CARD);
-          delay(1000);
-          bluescsiplatform_reset_watchdog();
-        } while (!mountSDCard());
+          g_sdcard_present = false;
+          bluelog("SD card removed, trying to reinit");
+        }
+      }
+    }
+  }
+
+  if (!g_sdcard_present)
+  {
+    // Try to remount SD card
+    do 
+    {
+      g_sdcard_present = mountSDCard();
+
+      if (g_sdcard_present)
+      {
         bluelog("SD card reinit succeeded");
         print_sd_info();
 
         reinitSCSI();
         init_logfile();
       }
-    }
+      else if (!g_romdrive_active)
+      {
+        blinkStatus(BLINK_ERROR_NO_SD_CARD);
+        delay(1000);
+        bluescsiplatform_reset_watchdog();
+      }
+    } while (!g_sdcard_present && !g_romdrive_active);
+  }
+  else
+  {
+    
   }
 }

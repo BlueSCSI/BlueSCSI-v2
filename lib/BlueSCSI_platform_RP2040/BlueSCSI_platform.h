@@ -74,6 +74,20 @@ bool bluescsiplatform_rewrite_flash_page(uint32_t offset, uint8_t buffer[BLUESCS
 void bluescsiplatform_boot_to_main_firmware();
 #endif
 
+// ROM drive in the unused external flash area
+#ifndef RP2040_DISABLE_ROMDRIVE
+#define PLATFORM_HAS_ROM_DRIVE 1
+// Check maximum available space for ROM drive in bytes
+uint32_t azplatform_get_romdrive_maxsize();
+
+// Read ROM drive area
+bool azplatform_read_romdrive(uint8_t *dest, uint32_t start, uint32_t count);
+
+// Reprogram ROM drive area
+#define AZPLATFORM_ROMDRIVE_PAGE_SIZE 4096
+bool azplatform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count);
+#endif
+
 // Below are GPIO access definitions that are used from scsiPhy.cpp.
 
 // Write a single SCSI pin.
