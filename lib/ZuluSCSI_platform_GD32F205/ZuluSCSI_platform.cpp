@@ -203,8 +203,11 @@ void azplatform_init()
 
 void azplatform_late_init()
 {
+    azlog("Platform: ", g_azplatform_name);
+    azlog("FW Version: ", g_azlog_firmwareversion);
+    
 #ifdef ZULUSCSI_V1_0_mini
-        azlog("DIPSW3 is ON: Enabling SCSI termination");
+    azlog("DIPSW3 is ON: Enabling SCSI termination");
 #else
     if (gpio_input_bit_get(DIP_PORT, DIPSW3_PIN))
     {
