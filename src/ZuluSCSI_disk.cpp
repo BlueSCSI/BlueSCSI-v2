@@ -92,6 +92,11 @@ static bool check_romdrive(romdrive_hdr_t *hdr)
 // Load an image file to romdrive
 bool scsiDiskProgramRomDrive(const char *filename, int scsi_id, int blocksize, S2S_CFG_TYPE type)
 {
+#ifndef PLATFORM_HAS_ROM_DRIVE
+    azlog("---- Platform does not support ROM drive");
+    return false;
+#endif
+
     FsFile file = SD.open(filename, O_RDONLY);
     if (!file.isOpen())
     {
@@ -168,6 +173,10 @@ bool scsiDiskCheckRomDrive()
 // Check if rom drive exists and activate it
 bool scsiDiskActivateRomDrive()
 {
+#ifndef PLATFORM_HAS_ROM_DRIVE
+    return false;
+#endif
+
     uint32_t maxsize = azplatform_get_romdrive_maxsize() - AZPLATFORM_ROMDRIVE_PAGE_SIZE;
     azlog("-- Platform supports ROM drive up to ", (int)(maxsize / 1024), " kB");
 
