@@ -475,12 +475,6 @@ static void reinitSCSI()
 
 extern "C" void zuluscsi_setup(void)
 {
-// V2.0, the RP2040 must log FW Version in azplatform_init to avoid hanging  
-#ifndef ZULUSCSI_V2_0  
-  azlog("Platform: ", g_azplatform_name);
-  azlog("FW Version: ", g_azlog_firmwareversion);
-#endif
-
   azplatform_init();
   azplatform_late_init();
 
