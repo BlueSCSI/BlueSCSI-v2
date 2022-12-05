@@ -15,7 +15,11 @@ extern "C" {
 extern const char *g_azplatform_name;
 
 #if defined(ZULUSCSI_V1_0)
-#   define PLATFORM_NAME "ZuluSCSI v1.0"
+#   if defined(ZULUSCSI_V1_0_mini)
+#       define PLATFORM_NAME "ZuluSCSI mini v1.0"
+#   else
+#       define PLATFORM_NAME "ZuluSCSI v1.0"
+#   endif
 #   define PLATFORM_REVISION "1.0"
 #   define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_ASYNC_50
 #   include "ZuluSCSI_v1_0_gpio.h"
