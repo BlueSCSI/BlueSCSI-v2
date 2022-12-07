@@ -118,7 +118,7 @@ uint32_t SdioCard::sectorCount()
 {
     csd_t csd;
     sd_csd_get((uint8_t*)&csd);
-    return sdCardCapacity(&csd);
+    return csd.capacity();
 }
 
 uint32_t SdioCard::status()
@@ -197,6 +197,16 @@ bool SdioCard::writeStop()
 bool SdioCard::erase(uint32_t firstSector, uint32_t lastSector)
 {
     return checkReturnOk(sd_erase(firstSector * 512, lastSector * 512));
+}
+
+bool SdioCard::cardCMD6(uint32_t arg, uint8_t* status) {
+    azlog("SdioCard::cardCMD6() not implemented");
+    return false;
+}
+
+bool SdioCard::readSCR(scr_t* scr) {
+    azlog("SdioCard::readSCR() not implemented");
+    return false;
 }
 
 /* Writing and reading, with progress callback */
