@@ -1,5 +1,6 @@
 /**
  * Copyright (c) 2011-2022 Bill Greiman
+ * 
  * This file is part of the SdFat library for SD memory cards.
  *
  * MIT License
@@ -22,54 +23,18 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
-#define DBG_FILE "FsCache.cpp"
-#include "DebugMacros.h"
+#ifndef PartitionTable_h
+#define PartitionTable_h
+
 #include "FsCache.h"
-//------------------------------------------------------------------------------
-uint8_t* FsCache::prepare(uint32_t sector, uint8_t option) {
-  if (!m_blockDev) {
-    DBG_FAIL_MACRO;
-    goto fail;
-  }
-  if (m_sector != sector) {
-    if (!sync()) {
-      DBG_FAIL_MACRO;
-      goto fail;
-    }
-    if (!(option & CACHE_OPTION_NO_READ)) {
-      if (!m_blockDev->readSector(sector, m_buffer)) {
-        DBG_FAIL_MACRO;
-        goto fail;
-      }
-    }
-    m_status = 0;
-    m_sector = sector;
-  }
-  m_status |= option & CACHE_STATUS_MASK;
-  return m_buffer;
 
- fail:
-  return nullptr;
-}
-//------------------------------------------------------------------------------
-bool FsCache::sync() {
-  if (m_status & CACHE_STATUS_DIRTY) {
-    if (!m_blockDev->writeSector(m_sector, m_buffer)) {
-      DBG_FAIL_MACRO;
-      goto fail;
-    }
-    // mirror second FAT
-    if (m_status & CACHE_STATUS_MIRROR_FAT) {
-      uint32_t sector = m_sector + m_mirrorOffset;
-      if (!m_blockDev->writeSector(sector, m_buffer)) {
-        DBG_FAIL_MACRO;
-        goto fail;
-      }
-    }
-    m_status &= ~CACHE_STATUS_DIRTY;
-  }
-  return true;
+/**
+ * Parse either MBR or GPT format partition table to get the first sector
+ * number of a volume.
+ * \param[in] fscache Cache instance used to read the disk.
+ * \param[in] part Index of partition to read, 1 to 4.
+ * \return First sector of volume, or 0 if partition table could not be parsed.
+ */
+uint32_t partitionTableGetVolumeStartSector(FsCache& fscache, uint8_t part);
 
- fail:
-  return false;
-}
+#endif
