@@ -20,6 +20,7 @@ extern "C" {
 const char *g_azplatform_name = PLATFORM_NAME;
 static bool g_scsi_initiator = false;
 static uint32_t g_flash_chip_size = 0;
+static bool g_uart_initialized = false;
 
 void mbed_error_hook(const mbed_error_ctx * error_context);
 
@@ -65,6 +66,7 @@ void azplatform_init()
     /* Initialize logging to SWO pin (UART0) */
     gpio_conf(SWO_PIN,        GPIO_FUNC_UART,false,false, true,  false, true);
     uart_init(uart0, 1000000);
+    g_uart_initialized = true;
     mbed_set_error_hook(mbed_error_hook);
 
     azlog("Platform: ", g_azplatform_name);
@@ -307,7 +309,10 @@ void mbed_error_hook(const mbed_error_ctx * error_context)
 // This function is called for every log message.
 void azplatform_log(const char *s)
 {
-    uart_puts(uart0, s);
+    if (g_uart_initialized)
+    {
+        uart_puts(uart0, s);
+    }
 }
 
 static int g_watchdog_timeout;
