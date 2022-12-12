@@ -297,22 +297,7 @@ extern "C" void scsiWrite(const uint8_t* data, uint32_t count)
 extern "C" void scsiStartWrite(const uint8_t* data, uint32_t count)
 {
     scsiLogDataIn(data, count);
-
-    if ((count & 1) != 0 || ((uint32_t)data & 1) != 0)
-    {
-        // Unaligned write, do it byte-by-byte
-        scsiFinishWrite();
-        for (uint32_t i = 0; i < count; i++)
-        {
-            if (scsiDev.resetFlag) break;
-            scsiWriteOneByte(data[i]);
-        }
-    }
-    else
-    {
-        // Use accelerated routine
-        scsi_accel_rp2040_startWrite(data, count, &scsiDev.resetFlag);
-    }
+    scsi_accel_rp2040_startWrite(data, count, &scsiDev.resetFlag);
 }
 
 extern "C" bool scsiIsWriteFinished(const uint8_t *data)
@@ -358,21 +343,6 @@ extern "C" uint8_t scsiReadByte(void)
 extern "C" void scsiRead(uint8_t* data, uint32_t count, int* parityError)
 {
     *parityError = 0;
-
-    if ((count & 1) != 0 || ((uint32_t)data & 1) != 0)
-    {
-        // Unaligned transfer, do byte by byte
-        for (uint32_t i = 0; i < count; i++)
-        {
-            if (scsiDev.resetFlag) break;
-            data[i] = scsiReadOneByte(parityError);
-        }
-    }
-    else
-    {
-        // Use accelerated routine
-        scsi_accel_rp2040_read(data, count, parityError, &scsiDev.resetFlag);
-    }
-
+    scsi_accel_rp2040_read(data, count, parityError, &scsiDev.resetFlag);
     scsiLogDataOut(data, count);
 }
