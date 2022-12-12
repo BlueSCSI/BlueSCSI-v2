@@ -8,6 +8,36 @@
 #include "hardware/pio.h"
 #endif
 
+// ----------- //
+// scsi_parity //
+// ----------- //
+
+#define scsi_parity_wrap_target 0
+#define scsi_parity_wrap 3
+
+static const uint16_t scsi_parity_program_instructions[] = {
+            //     .wrap_target
+    0x80a0, //  0: pull   block                      
+    0x4061, //  1: in     null, 1                    
+    0x40e8, //  2: in     osr, 8                     
+    0x4037, //  3: in     x, 23                      
+            //     .wrap
+};
+
+#if !PICO_NO_HARDWARE
+static const struct pio_program scsi_parity_program = {
+    .instructions = scsi_parity_program_instructions,
+    .length = 4,
+    .origin = -1,
+};
+
+static inline pio_sm_config scsi_parity_program_get_default_config(uint offset) {
+    pio_sm_config c = pio_get_default_sm_config();
+    sm_config_set_wrap(&c, offset + scsi_parity_wrap_target, offset + scsi_parity_wrap);
+    return c;
+}
+#endif
+
 // ---------------------- //
 // scsi_accel_async_write //
 // ---------------------- //

@@ -13,6 +13,15 @@
 ; One clock cycle is 8 ns => delay 7 clocks
 .define REQ_DLY 7
 
+; Adds parity to data that is to be written to SCSI
+; This works by generating addresses for DMA to fetch data from.
+; Register X should be initialized to the base address of the lookup table.
+.program scsi_parity
+    pull block
+    in NULL, 1
+    in OSR, 8
+    in X, 23
+
 ; Write to SCSI bus using asynchronous handshake.
 ; Data is written as 32-bit words that contain the 8 data bits + 1 parity bit.
 ; 23 bits in each word are discarded.

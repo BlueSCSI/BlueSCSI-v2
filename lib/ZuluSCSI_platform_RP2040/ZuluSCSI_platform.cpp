@@ -9,6 +9,7 @@
 #include <hardware/spi.h>
 #include <hardware/structs/xip_ctrl.h>
 #include <platform/mbed_error.h>
+#include <multicore.h>
 
 extern "C" {
 
@@ -44,6 +45,9 @@ static void gpio_conf(uint gpio, enum gpio_function fn, bool pullup, bool pulldo
 
 void azplatform_init()
 {
+    // Make sure second core is stopped
+    multicore_reset_core1();
+
     /* First configure the pins that affect external buffer directions.
      * RP2040 defaults to pulldowns, while these pins have external pull-ups.
      */
@@ -547,6 +551,8 @@ bool azplatform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t cou
 
 /* A lookup table is the fastest way to calculate parity and convert the IO pin mapping for data bus.
  * For RP2040 we expect that the bits are consecutive and in order.
+ * The PIO-based parity scheme also requires that the lookup table is aligned to 512-byte increment.
+ * The parity table is placed into SRAM4 area to reduce bus contention.
  */
 
 #define PARITY(n) ((1 ^ (n) ^ ((n)>>1) ^ ((n)>>2) ^ ((n)>>3) ^ ((n)>>4) ^ ((n)>>5) ^ ((n)>>6) ^ ((n)>>7)) & 1)
@@ -562,7 +568,7 @@ bool azplatform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t cou
     (PARITY(n)  ? 0 : (1 << SCSI_IO_DBP)) \
 )
 
-const uint32_t g_scsi_parity_lookup[256] =
+const uint16_t g_scsi_parity_lookup[256] __attribute__((aligned(512), section(".scratch_x.parity"))) =
 {
     X(0x00), X(0x01), X(0x02), X(0x03), X(0x04), X(0x05), X(0x06), X(0x07), X(0x08), X(0x09), X(0x0a), X(0x0b), X(0x0c), X(0x0d), X(0x0e), X(0x0f),
     X(0x10), X(0x11), X(0x12), X(0x13), X(0x14), X(0x15), X(0x16), X(0x17), X(0x18), X(0x19), X(0x1a), X(0x1b), X(0x1c), X(0x1d), X(0x1e), X(0x1f),
