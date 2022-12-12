@@ -120,7 +120,7 @@ bool azplatform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t cou
      sio_hw->gpio_oe_set = SCSI_IO_DATA_MASK)
 
 // Write SCSI data bus, also sets REQ to inactive.
-extern const uint32_t g_scsi_parity_lookup[256];
+extern const uint16_t g_scsi_parity_lookup[256];
 #define SCSI_OUT_DATA(data) \
     gpio_put_masked(SCSI_IO_DATA_MASK | (1 << SCSI_OUT_REQ), \
                     g_scsi_parity_lookup[(uint8_t)(data)] | (1 << SCSI_OUT_REQ)), \

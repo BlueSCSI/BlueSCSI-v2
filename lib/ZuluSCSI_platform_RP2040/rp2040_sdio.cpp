@@ -19,8 +19,8 @@
 #define SDIO_PIO pio1
 #define SDIO_CMD_SM 0
 #define SDIO_DATA_SM 1
-#define SDIO_DMA_CH 2
-#define SDIO_DMA_CHB 3
+#define SDIO_DMA_CH 4
+#define SDIO_DMA_CHB 5
 
 // Maximum number of 512 byte blocks to transfer in one request
 #define SDIO_MAX_BLOCKS 256
