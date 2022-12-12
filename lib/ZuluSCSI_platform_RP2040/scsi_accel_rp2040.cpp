@@ -25,7 +25,7 @@
 
 enum scsidma_buf_sel_t { SCSIBUF_NONE = 0, SCSIBUF_A = 1, SCSIBUF_B = 2 };
 
-#define DMA_BUF_SIZE 128
+#define DMA_BUF_SIZE 256
 static struct {
     uint8_t *app_buf; // Buffer provided by application
     uint32_t app_bytes; // Bytes available in application buffer
@@ -59,8 +59,8 @@ static struct {
     scsidma_buf_sel_t dma_current_buf;
     uint32_t dma_countA;
     uint32_t dma_countB;
-    uint32_t dma_bufA[DMA_BUF_SIZE];
-    uint32_t dma_bufB[DMA_BUF_SIZE];
+    uint16_t dma_bufA[DMA_BUF_SIZE];
+    uint16_t dma_bufB[DMA_BUF_SIZE];
 
     // Try to offload SCSI DMA interrupts to second core if possible
     volatile bool core1_active;
@@ -74,7 +74,7 @@ static volatile scsidma_state_t g_scsi_dma_state;
 static bool g_channels_claimed = false;
 
 // Fill DMA buffer and return number of words ready to be transferred
-static uint32_t refill_dmabuf(uint32_t *buf)
+static uint32_t refill_dmabuf(uint16_t *buf)
 {
     if (g_scsi_dma.app_bytes == 0 && g_scsi_dma.next_app_bytes > 0)
     {
@@ -85,20 +85,18 @@ static uint32_t refill_dmabuf(uint32_t *buf)
         g_scsi_dma.next_app_bytes = 0;
     }
 
-    uint32_t count = (g_scsi_dma.app_bytes - g_scsi_dma.dma_bytes) / 2;
+    uint32_t count = (g_scsi_dma.app_bytes - g_scsi_dma.dma_bytes);
     if (count > DMA_BUF_SIZE) count = DMA_BUF_SIZE;
 
-    uint16_t *src = (uint16_t*)&g_scsi_dma.app_buf[g_scsi_dma.dma_bytes];
-    uint16_t *end = src + count;
-    uint32_t *dst = buf;
+    uint8_t *src = &g_scsi_dma.app_buf[g_scsi_dma.dma_bytes];
+    uint8_t *end = src + count;
+    uint16_t *dst = buf;
     while (src < end)
     {
-        uint16_t input = *src++;
-        *dst++ = (g_scsi_parity_lookup[input & 0xFF])
-               | ((g_scsi_parity_lookup[input >> 8]) << 16);
+        *dst++ = (g_scsi_parity_lookup[*src++]);
     }
 
-    g_scsi_dma.dma_bytes += count * 2;
+    g_scsi_dma.dma_bytes += count;
 
     // Check if this buffer has been fully processed
     if (g_scsi_dma.dma_bytes >= g_scsi_dma.app_bytes)
@@ -309,9 +307,6 @@ static void scsi_dma_unblock_irqs()
 
 void scsi_accel_rp2040_startWrite(const uint8_t* data, uint32_t count, volatile int *resetFlag)
 {
-    // Number of bytes should always be divisible by 2.
-    assert((count & 1) == 0);
-
     scsi_dma_block_irqs();
     if (g_scsi_dma_state == SCSIDMA_WRITE)
     {
@@ -523,8 +518,7 @@ void scsi_accel_rp2040_read(uint8_t *buf, uint32_t count, int *parityError, vola
     scsidma_config_gpio();
     pio_sm_set_enabled(SCSI_DMA_PIO, SCSI_DMA_SM, true);
 
-    // Set the number of bytes to read, must be divisible by 2.
-    assert((count & 1) == 0);
+    // Set the number of bytes to read
     pio_sm_put(SCSI_DMA_PIO, SCSI_DMA_SM, count - 1);
 
     // Read results from PIO RX FIFO
@@ -547,17 +541,15 @@ void scsi_accel_rp2040_read(uint8_t *buf, uint32_t count, int *parityError, vola
             paritycheck ^= word;
             word = ~word;
             *dst++ = word & 0xFF;
-            *dst++ = word >> 16;
         }
     }
 
     // Check parity errors in whole block
     // This doesn't detect if there is even number of parity errors in block.
     uint8_t byte0 = ~(paritycheck & 0xFF);
-    uint8_t byte1 = ~(paritycheck >> 16);
-    if (paritycheck != ((g_scsi_parity_lookup[byte1] << 16) | g_scsi_parity_lookup[byte0]))
+    if (paritycheck != g_scsi_parity_lookup[byte0])
     {
-        azlog("Parity error in scsi_accel_rp2040_read(): ", paritycheck);
+        azdbg("Parity error in scsi_accel_rp2040_read(): ", paritycheck);
         *parityError = 1;
     }
 
@@ -615,7 +607,7 @@ void scsi_accel_rp2040_init()
 
     // Create DMA channel configuration so it can be applied quickly later
     dma_channel_config cfg = dma_channel_get_default_config(SCSI_DMA_CH);
-    channel_config_set_transfer_data_size(&cfg, DMA_SIZE_32);
+    channel_config_set_transfer_data_size(&cfg, DMA_SIZE_16);
     channel_config_set_read_increment(&cfg, true);
     channel_config_set_write_increment(&cfg, false);
     channel_config_set_dreq(&cfg, pio_get_dreq(SCSI_DMA_PIO, SCSI_DMA_SM, true));
