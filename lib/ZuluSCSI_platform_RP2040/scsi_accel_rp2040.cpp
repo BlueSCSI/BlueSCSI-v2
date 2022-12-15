@@ -26,11 +26,17 @@
 #define SCSI_DATA_SM 1
 #define SCSI_SYNC_SM 2
 
-// SCSI bus write acceleration uses up to 4 DMA channels:
+// SCSI bus write acceleration uses 3 or 4 DMA channels (data flow A->B->C->D):
 // A: Bytes from RAM to scsi_parity PIO
 // B: Addresses from scsi_parity PIO to lookup DMA READ_ADDR register
 // C: Lookup from g_scsi_parity_lookup and copy to scsi_accel_async_write or scsi_sync_write PIO
 // D: For sync transfers, scsi_sync_write to scsi_sync_write_pacer PIO
+//
+// SCSI bus read acceleration uses 4 DMA channels (data flow D->C->B->A):
+// A: Bytes from scsi_read_parity PIO to memory buffer
+// B: Lookup from g_scsi_parity_check_lookup and copy to scsi_read_parity PIO
+// C: Addresses from scsi_accel_read PIO to lookup DMA READ_ADDR register
+// D: From pacer to data state machine to trigger transfers
 #define SCSI_DMA_CH_A 0
 #define SCSI_DMA_CH_B 1
 #define SCSI_DMA_CH_C 2
@@ -53,80 +59,43 @@ static struct {
     // PIO configurations
     uint32_t pio_offset_parity;
     uint32_t pio_offset_async_write;
-    uint32_t pio_offset_async_read;
     uint32_t pio_offset_sync_write_pacer;
     uint32_t pio_offset_sync_write;
+    uint32_t pio_offset_read;
+    uint32_t pio_offset_read_parity;
+    uint32_t pio_offset_sync_read_pacer;
     pio_sm_config pio_cfg_parity;
     pio_sm_config pio_cfg_async_write;
-    pio_sm_config pio_cfg_async_read;
     pio_sm_config pio_cfg_sync_write_pacer;
     pio_sm_config pio_cfg_sync_write;
+    pio_sm_config pio_cfg_read;
+    pio_sm_config pio_cfg_read_parity;
+    pio_sm_config pio_cfg_sync_read_pacer;
+    
+    // DMA configurations for write
+    dma_channel_config dmacfg_write_chA; // Data from RAM to scsi_parity PIO
+    dma_channel_config dmacfg_write_chB; // Addresses from scsi_parity PIO to lookup DMA
+    dma_channel_config dmacfg_write_chC; // Data from g_scsi_parity_lookup to scsi write PIO
+    dma_channel_config dmacfg_write_chD; // In synchronous mode only, transfer between state machines
 
-    // DMA configurations
-    dma_channel_config dma_parity_config; // Data from RAM to scsi_parity PIO
-    dma_channel_config dma_address_config; // Addresses from scsi_parity PIO to lookup DMA
-    dma_channel_config dma_lookup_config; // Data from g_scsi_parity_lookup to scsi write PIO
-    dma_channel_config dma_write_pacer_config; // In synchronous mode only, transfer between state machines
+    // DMA configurations for read
+    dma_channel_config dmacfg_read_chA; // Data to destination memory buffer
+    dma_channel_config dmacfg_read_chB; // From lookup table to scsi_read_parity PIO
+    dma_channel_config dmacfg_read_chC; // From scsi_accel_read to channel B READ_ADDR
+    dma_channel_config dmacfg_read_chD; // From pacer to data state machine
 } g_scsi_dma;
 
 enum scsidma_state_t { SCSIDMA_IDLE = 0,
                        SCSIDMA_WRITE, SCSIDMA_WRITE_DONE,
-                       SCSIDMA_READ };
+                       SCSIDMA_READ, SCSIDMA_READ_DONE };
 static volatile scsidma_state_t g_scsi_dma_state;
 static bool g_channels_claimed = false;
+static void scsidma_config_gpio();
 
-// Select GPIO from PIO peripheral or from software controlled SIO
-static void scsidma_config_gpio()
-{
-    if (g_scsi_dma_state == SCSIDMA_IDLE)
-    {
-        iobank0_hw->io[SCSI_IO_DB0].ctrl  = GPIO_FUNC_SIO;
-        iobank0_hw->io[SCSI_IO_DB1].ctrl  = GPIO_FUNC_SIO;
-        iobank0_hw->io[SCSI_IO_DB2].ctrl  = GPIO_FUNC_SIO;
-        iobank0_hw->io[SCSI_IO_DB3].ctrl  = GPIO_FUNC_SIO;
-        iobank0_hw->io[SCSI_IO_DB4].ctrl  = GPIO_FUNC_SIO;
-        iobank0_hw->io[SCSI_IO_DB5].ctrl  = GPIO_FUNC_SIO;
-        iobank0_hw->io[SCSI_IO_DB6].ctrl  = GPIO_FUNC_SIO;
-        iobank0_hw->io[SCSI_IO_DB7].ctrl  = GPIO_FUNC_SIO;
-        iobank0_hw->io[SCSI_IO_DBP].ctrl  = GPIO_FUNC_SIO;
-        iobank0_hw->io[SCSI_OUT_REQ].ctrl = GPIO_FUNC_SIO;
-    }
-    else if (g_scsi_dma_state == SCSIDMA_WRITE)
-    {
-        // Make sure the initial state of all pins is high and output
-        pio_sm_set_pins(SCSI_DMA_PIO, SCSI_DATA_SM, 0x3FF);
-        pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, 0, 10, true);
 
-        iobank0_hw->io[SCSI_IO_DB0].ctrl  = GPIO_FUNC_PIO0;
-        iobank0_hw->io[SCSI_IO_DB1].ctrl  = GPIO_FUNC_PIO0;
-        iobank0_hw->io[SCSI_IO_DB2].ctrl  = GPIO_FUNC_PIO0;
-        iobank0_hw->io[SCSI_IO_DB3].ctrl  = GPIO_FUNC_PIO0;
-        iobank0_hw->io[SCSI_IO_DB4].ctrl  = GPIO_FUNC_PIO0;
-        iobank0_hw->io[SCSI_IO_DB5].ctrl  = GPIO_FUNC_PIO0;
-        iobank0_hw->io[SCSI_IO_DB6].ctrl  = GPIO_FUNC_PIO0;
-        iobank0_hw->io[SCSI_IO_DB7].ctrl  = GPIO_FUNC_PIO0;
-        iobank0_hw->io[SCSI_IO_DBP].ctrl  = GPIO_FUNC_PIO0;
-        iobank0_hw->io[SCSI_OUT_REQ].ctrl = GPIO_FUNC_PIO0;
-    }
-    else if (g_scsi_dma_state == SCSIDMA_READ)
-    {
-        // Data bus as input, REQ pin as output
-        pio_sm_set_pins(SCSI_DMA_PIO, SCSI_DATA_SM, 0x3FF);
-        pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, 0, 9, false);
-        pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, 9, 1, true);
-
-        iobank0_hw->io[SCSI_IO_DB0].ctrl  = GPIO_FUNC_SIO;
-        iobank0_hw->io[SCSI_IO_DB1].ctrl  = GPIO_FUNC_SIO;
-        iobank0_hw->io[SCSI_IO_DB2].ctrl  = GPIO_FUNC_SIO;
-        iobank0_hw->io[SCSI_IO_DB3].ctrl  = GPIO_FUNC_SIO;
-        iobank0_hw->io[SCSI_IO_DB4].ctrl  = GPIO_FUNC_SIO;
-        iobank0_hw->io[SCSI_IO_DB5].ctrl  = GPIO_FUNC_SIO;
-        iobank0_hw->io[SCSI_IO_DB6].ctrl  = GPIO_FUNC_SIO;
-        iobank0_hw->io[SCSI_IO_DB7].ctrl  = GPIO_FUNC_SIO;
-        iobank0_hw->io[SCSI_IO_DBP].ctrl  = GPIO_FUNC_SIO;
-        iobank0_hw->io[SCSI_OUT_REQ].ctrl = GPIO_FUNC_PIO0;
-    }
-}
+/****************************************/
+/* Accelerated writes to SCSI bus       */
+/****************************************/
 
 // Load the SCSI parity state machine with the address of the parity lookup table.
 // Also sets up DMA channels B and C
@@ -143,7 +112,7 @@ static void config_parity_sm_for_write()
     // DMA channel B will copy addresses from parity PIO to DMA channel C read address register.
     // It is triggered by the parity SM RX FIFO request
     dma_channel_configure(SCSI_DMA_CH_B,
-        &g_scsi_dma.dma_address_config,
+        &g_scsi_dma.dmacfg_write_chB,
         &dma_hw->ch[SCSI_DMA_CH_C].al3_read_addr_trig,
         &SCSI_DMA_PIO->rxf[SCSI_PARITY_SM],
         1, true);
@@ -151,7 +120,7 @@ static void config_parity_sm_for_write()
     // DMA channel C will read g_scsi_parity_lookup to copy data + parity to SCSI write state machine.
     // It is triggered by SCSI write machine TX FIFO request and chains to re-enable channel B.
     dma_channel_configure(SCSI_DMA_CH_C,
-        &g_scsi_dma.dma_lookup_config,
+        &g_scsi_dma.dmacfg_write_chC,
         &SCSI_DMA_PIO->txf[SCSI_DATA_SM],
         NULL,
         1, false);
@@ -178,28 +147,25 @@ static void start_dma_write()
         g_scsi_dma_state = SCSIDMA_WRITE_DONE;
         return;
     }
+
+    uint8_t *src_buf = &g_scsi_dma.app_buf[g_scsi_dma.dma_bytes];
+    g_scsi_dma.dma_bytes += bytes_to_send;
     
     // Start DMA from current buffer to parity generator
     dma_channel_configure(SCSI_DMA_CH_A,
-        &g_scsi_dma.dma_parity_config,
+        &g_scsi_dma.dmacfg_write_chA,
         &SCSI_DMA_PIO->txf[SCSI_PARITY_SM],
-        &g_scsi_dma.app_buf[g_scsi_dma.dma_bytes],
+        src_buf,
         bytes_to_send,
         true
     );
-    g_scsi_dma.dma_bytes += bytes_to_send;
-}
-
-static void scsi_dma_write_irq()
-{
-    dma_hw->ints0 = 1 << SCSI_DMA_CH_A;
-
-    // Start writing from next buffer, if any, or set state to SCSIDMA_WRITE_DONE
-    start_dma_write();
 }
 
 void scsi_accel_rp2040_startWrite(const uint8_t* data, uint32_t count, volatile int *resetFlag)
 {
+    // Any read requests should be matched with a stopRead()
+    assert(g_scsi_dma_state != SCSIDMA_READ && g_scsi_dma_state != SCSIDMA_READ_DONE);
+
     __disable_irq();
     if (g_scsi_dma_state == SCSIDMA_WRITE)
     {
@@ -290,7 +256,7 @@ void scsi_accel_rp2040_startWrite(const uint8_t* data, uint32_t count, volatile 
 
             // Start DMA transfer to move dummy bits to write pacer
             dma_channel_configure(SCSI_DMA_CH_D,
-                &g_scsi_dma.dma_write_pacer_config,
+                &g_scsi_dma.dmacfg_write_chD,
                 &SCSI_DMA_PIO->txf[SCSI_SYNC_SM],
                 &SCSI_DMA_PIO->rxf[SCSI_DATA_SM],
                 0xFFFFFFFF,
@@ -339,6 +305,7 @@ bool scsi_accel_rp2040_isWriteFinished(const uint8_t* data)
     return finished;
 }
 
+// Once DMA has finished, check if all PIO queues have been drained
 static bool scsi_accel_rp2040_isWriteDone()
 {
     // Check if data is still waiting in PIO FIFO
@@ -369,7 +336,7 @@ static bool scsi_accel_rp2040_isWriteDone()
     return true;
 }
 
-void scsi_accel_rp2040_stopWrite(volatile int *resetFlag)
+static void scsi_accel_rp2040_stopWrite(volatile int *resetFlag)
 {
     // Wait for TX fifo to be empty and ACK to go high
     // For synchronous writes wait for all ACKs to be received also
@@ -411,8 +378,8 @@ void scsi_accel_rp2040_finishWrite(volatile int *resetFlag)
              " state: ", (int)g_scsi_dma_state, " ", (int)g_scsi_dma.dma_bytes, "/", (int)g_scsi_dma.app_bytes, ", ", (int)g_scsi_dma.next_app_bytes,
              " PIO PC: ", (int)pio_sm_get_pc(SCSI_DMA_PIO, SCSI_DATA_SM), " ", (int)pio_sm_get_pc(SCSI_DMA_PIO, SCSI_SYNC_SM),
              " PIO FIFO: ", (int)pio_sm_get_tx_fifo_level(SCSI_DMA_PIO, SCSI_DATA_SM), " ", (int)pio_sm_get_tx_fifo_level(SCSI_DMA_PIO, SCSI_SYNC_SM),
-             " DMA counts: ", dma_hw->ch[SCSI_DMA_CH_A].al2_transfer_count, " ", dma_hw->ch[SCSI_DMA_CH_B].al2_transfer_count,
-                         " ", dma_hw->ch[SCSI_DMA_CH_C].al2_transfer_count, " ", dma_hw->ch[SCSI_DMA_CH_D].al2_transfer_count);
+             " DMA counts: ", dma_hw->ch[SCSI_DMA_CH_A].transfer_count, " ", dma_hw->ch[SCSI_DMA_CH_B].transfer_count,
+                         " ", dma_hw->ch[SCSI_DMA_CH_C].transfer_count, " ", dma_hw->ch[SCSI_DMA_CH_D].transfer_count);
             *resetFlag = 1;
             break;
         }
@@ -425,58 +392,388 @@ void scsi_accel_rp2040_finishWrite(volatile int *resetFlag)
     }
 }
 
-void scsi_accel_rp2040_read(uint8_t *buf, uint32_t count, int *parityError, volatile int *resetFlag)
+/****************************************/
+/* Accelerated reads from SCSI bus      */
+/****************************************/
+
+// Load the SCSI read state machine with the address of the parity lookup table.
+// Also sets up DMA channels B, C and D
+static void config_parity_sm_for_read()
 {
-    // The hardware would support DMA for reading from SCSI bus also, but currently
-    // the rest of the software architecture does not. There is not much benefit
-    // because there isn't much else to do before we get the data from the SCSI bus.
-    //
-    // Currently this method just reads from the PIO RX fifo directly in software loop.
+    // Configure parity check state machine
+    pio_sm_init(SCSI_DMA_PIO, SCSI_PARITY_SM, g_scsi_dma.pio_offset_read_parity, &g_scsi_dma.pio_cfg_read_parity);
+
+    // Load base address to state machine register X
+    uint32_t addrbase = (uint32_t)&g_scsi_parity_check_lookup[0];
+    assert((addrbase & 0x3FF) == 0);
+    pio_sm_init(SCSI_DMA_PIO, SCSI_DATA_SM, g_scsi_dma.pio_offset_read, &g_scsi_dma.pio_cfg_read);
+    pio_sm_put(SCSI_DMA_PIO, SCSI_DATA_SM, addrbase >> 10);
+    pio_sm_exec(SCSI_DMA_PIO, SCSI_DATA_SM, pio_encode_pull(false, false) | pio_encode_sideset(1, 1));
+    pio_sm_exec(SCSI_DMA_PIO, SCSI_DATA_SM, pio_encode_mov(pio_y, pio_osr) | pio_encode_sideset(1, 1));
     
-    g_scsi_dma_state = SCSIDMA_READ;
-    pio_sm_init(SCSI_DMA_PIO, SCSI_DATA_SM, g_scsi_dma.pio_offset_async_read, &g_scsi_dma.pio_cfg_async_read);
-    scsidma_config_gpio();
+    // For synchronous mode, the REQ pin is driven by SCSI_SYNC_SM, so disable it in SCSI_DATA_SM
+    if (g_scsi_dma.syncOffset > 0)
+    {
+        pio_sm_set_sideset_pins(SCSI_DMA_PIO, SCSI_DATA_SM, 0);
+    }
+
+    // DMA channel B will read g_scsi_parity_check_lookup and write to scsi_read_parity PIO.
+    dma_channel_configure(SCSI_DMA_CH_B,
+        &g_scsi_dma.dmacfg_read_chB,
+        &SCSI_DMA_PIO->txf[SCSI_PARITY_SM],
+        NULL,
+        1, false);
+    
+    // DMA channel C will copy addresses from data PIO to DMA channel B read address register.
+    // It is triggered by the data SM RX FIFO request.
+    // This triggers channel B by writing to READ_ADDR_TRIG
+    // Channel B chaining re-enables this channel.
+    dma_channel_configure(SCSI_DMA_CH_C,
+        &g_scsi_dma.dmacfg_read_chC,
+        &dma_hw->ch[SCSI_DMA_CH_B].al3_read_addr_trig,
+        &SCSI_DMA_PIO->rxf[SCSI_DATA_SM],
+        1, true);
+
+    if (g_scsi_dma.syncOffset == 0)
+    {
+        // DMA channel D will copy dummy words to scsi_accel_read PIO to set the number
+        // of bytes to transfer.
+        static const uint32_t dummy = 0;
+        dma_channel_configure(SCSI_DMA_CH_D,
+            &g_scsi_dma.dmacfg_read_chD,
+            &SCSI_DMA_PIO->txf[SCSI_DATA_SM],
+            &dummy,
+            0, false);
+    }
+    else
+    {
+        pio_sm_init(SCSI_DMA_PIO, SCSI_SYNC_SM, g_scsi_dma.pio_offset_sync_read_pacer, &g_scsi_dma.pio_cfg_sync_read_pacer);
+
+        // DMA channel D will copy words from scsi_sync_read_pacer to scsi_accel_read PIO
+        // to control the offset between REQ pulses sent and ACK pulses received.
+        dma_channel_configure(SCSI_DMA_CH_D,
+            &g_scsi_dma.dmacfg_read_chD,
+            &SCSI_DMA_PIO->txf[SCSI_DATA_SM],
+            &SCSI_DMA_PIO->rxf[SCSI_SYNC_SM],
+            0, false);
+    }
+
+    // Clear PIO IRQ flag that is used to detect parity error
+    SCSI_DMA_PIO->irq = 1;
+}
+
+static void start_dma_read()
+{
+    pio_sm_set_enabled(SCSI_DMA_PIO, SCSI_PARITY_SM, false);
+    pio_sm_set_enabled(SCSI_DMA_PIO, SCSI_DATA_SM, false);
+    pio_sm_clear_fifos(SCSI_DMA_PIO, SCSI_PARITY_SM);
+    pio_sm_clear_fifos(SCSI_DMA_PIO, SCSI_DATA_SM);
+    
+    if (g_scsi_dma.app_bytes <= g_scsi_dma.dma_bytes)
+    {
+        // Buffer has been fully processed, swap it
+        g_scsi_dma.dma_bytes = 0;
+        g_scsi_dma.app_buf = g_scsi_dma.next_app_buf;
+        g_scsi_dma.app_bytes = g_scsi_dma.next_app_bytes;
+        g_scsi_dma.next_app_buf = 0;
+        g_scsi_dma.next_app_bytes = 0;
+    }
+    
+    // Check if we are all done.
+    // From SCSIDMA_READ_DONE state we can either go to IDLE in stopRead()
+    // or back to READ in startWrite().
+    uint32_t bytes_to_read = g_scsi_dma.app_bytes - g_scsi_dma.dma_bytes;
+    if (bytes_to_read == 0)
+    {
+        g_scsi_dma_state = SCSIDMA_READ_DONE;
+        return;
+    }
+
+    if (g_scsi_dma.syncOffset == 0)
+    {
+        // Start sending dummy words to scsi_accel_read state machine
+        dma_channel_set_trans_count(SCSI_DMA_CH_D, bytes_to_read, true);
+    }
+    else
+    {
+        // Set number of bytes to receive to the scsi_sync_read_pacer state machine register X
+        pio_sm_set_enabled(SCSI_DMA_PIO, SCSI_SYNC_SM, false);
+        hw_clear_bits(&SCSI_DMA_PIO->sm[SCSI_SYNC_SM].shiftctrl, PIO_SM0_SHIFTCTRL_FJOIN_RX_BITS);
+        pio_sm_put(SCSI_DMA_PIO, SCSI_SYNC_SM, bytes_to_read - 1);
+        pio_sm_exec(SCSI_DMA_PIO, SCSI_SYNC_SM, pio_encode_pull(false, false) | pio_encode_sideset(1, 1));
+        pio_sm_exec(SCSI_DMA_PIO, SCSI_SYNC_SM, pio_encode_mov(pio_x, pio_osr) | pio_encode_sideset(1, 1));
+        hw_set_bits(&SCSI_DMA_PIO->sm[SCSI_SYNC_SM].shiftctrl, PIO_SM0_SHIFTCTRL_FJOIN_RX_BITS);
+        
+        // Prefill FIFOs to get correct syncOffset
+        int prefill = 12 - g_scsi_dma.syncOffset;
+        
+        // Always at least 1 word to avoid race condition between REQ and ACK pulses
+        if (prefill < 1) prefill = 1;
+
+        // Up to 4 words in SCSI_DATA_SM TX fifo
+        for (int i = 0; i < 4 && prefill > 0; i++)
+        {
+            pio_sm_put(SCSI_DMA_PIO, SCSI_DATA_SM, 0);
+            prefill--;
+        }
+
+        // Up to 8 words in SCSI_SYNC_SM RX fifo
+        for (int i = 0; i < 8 && prefill > 0; i++)
+        {
+            pio_sm_exec(SCSI_DMA_PIO, SCSI_SYNC_SM, pio_encode_push(false, false) | pio_encode_sideset(1, 1));
+            prefill--;
+        }
+        
+        pio_sm_exec(SCSI_DMA_PIO, SCSI_SYNC_SM, pio_encode_jmp(g_scsi_dma.pio_offset_sync_read_pacer) | pio_encode_sideset(1, 1));
+
+        // Start transfers
+        dma_channel_set_trans_count(SCSI_DMA_CH_D, bytes_to_read, true);
+    }
+
+    // Start DMA to fill the destination buffer
+    uint8_t *dest_buf = &g_scsi_dma.app_buf[g_scsi_dma.dma_bytes];
+    g_scsi_dma.dma_bytes += bytes_to_read;
+    dma_channel_configure(SCSI_DMA_CH_A,
+        &g_scsi_dma.dmacfg_read_chA,
+        dest_buf,
+        &SCSI_DMA_PIO->rxf[SCSI_PARITY_SM],
+        bytes_to_read,
+        true
+    );
+
+    // Ready to start the data and parity check state machines
+    pio_sm_set_enabled(SCSI_DMA_PIO, SCSI_PARITY_SM, true);
     pio_sm_set_enabled(SCSI_DMA_PIO, SCSI_DATA_SM, true);
 
-    // Set the number of bytes to read
-    pio_sm_put(SCSI_DMA_PIO, SCSI_DATA_SM, count - 1);
-
-    // Read results from PIO RX FIFO
-    uint8_t *dst = buf;
-    uint8_t *end = buf + count;
-    uint32_t paritycheck = 0;
-    while (dst < end)
+    if (g_scsi_dma.syncOffset > 0)
     {
+        // Start sending REQ pulses
+        pio_sm_set_enabled(SCSI_DMA_PIO, SCSI_SYNC_SM, true);
+    }
+}
+
+void scsi_accel_rp2040_startRead(uint8_t *data, uint32_t count, int *parityError, volatile int *resetFlag)
+{
+    // Any write requests should be matched with a stopWrite()
+    assert(g_scsi_dma_state != SCSIDMA_WRITE && g_scsi_dma_state != SCSIDMA_WRITE_DONE);
+
+    __disable_irq();
+    if (g_scsi_dma_state == SCSIDMA_READ)
+    {
+        if (!g_scsi_dma.next_app_buf && data == g_scsi_dma.app_buf + g_scsi_dma.app_bytes)
+        {
+            // Combine with currently running request
+            g_scsi_dma.app_bytes += count;
+            count = 0;
+        }
+        else if (data == g_scsi_dma.next_app_buf + g_scsi_dma.next_app_bytes)
+        {
+            // Combine with queued request
+            g_scsi_dma.next_app_bytes += count;
+            count = 0;
+        }
+        else if (!g_scsi_dma.next_app_buf)
+        {
+            // Add as queued request
+            g_scsi_dma.next_app_buf = (uint8_t*)data;
+            g_scsi_dma.next_app_bytes = count;
+            count = 0;
+        }
+    }
+    __enable_irq();
+
+    // Check if the request was combined
+    if (count == 0) return;
+
+    if (g_scsi_dma_state != SCSIDMA_IDLE && g_scsi_dma_state != SCSIDMA_READ_DONE)
+    {
+        // Wait for previous request to finish
+        scsi_accel_rp2040_finishRead(NULL, 0, parityError, resetFlag);
         if (*resetFlag)
         {
-            break;
-        }
-
-        uint32_t available = pio_sm_get_rx_fifo_level(SCSI_DMA_PIO, SCSI_DATA_SM);
-
-        while (available > 0)
-        {
-            available--;
-            uint32_t word = pio_sm_get(SCSI_DMA_PIO, SCSI_DATA_SM);
-            paritycheck ^= word;
-            word = ~word;
-            *dst++ = word & 0xFF;
+            return;
         }
     }
 
-    // Check parity errors in whole block
-    // This doesn't detect if there is even number of parity errors in block.
-    uint8_t byte0 = ~(paritycheck & 0xFF);
-    if (paritycheck != g_scsi_parity_lookup[byte0])
+    bool must_reconfig_gpio = (g_scsi_dma_state == SCSIDMA_IDLE);
+    g_scsi_dma_state = SCSIDMA_READ;
+    g_scsi_dma.app_buf = (uint8_t*)data;
+    g_scsi_dma.app_bytes = count;
+    g_scsi_dma.dma_bytes = 0;
+    g_scsi_dma.next_app_buf = 0;
+    g_scsi_dma.next_app_bytes = 0;
+
+    if (must_reconfig_gpio)
     {
-        azdbg("Parity error in scsi_accel_rp2040_read(): ", paritycheck);
-        *parityError = 1;
+        config_parity_sm_for_read();
+        scsidma_config_gpio();
+        dma_channel_set_irq0_enabled(SCSI_DMA_CH_A, true);
     }
 
+    start_dma_read();
+}
+
+bool scsi_accel_rp2040_isReadFinished(const uint8_t* data)
+{
+    // Check if everything has completed
+    if (g_scsi_dma_state == SCSIDMA_IDLE || g_scsi_dma_state == SCSIDMA_READ_DONE)
+    {
+        return true;
+    }
+
+    if (!data)
+        return false;
+
+    // Check if this data item is still in queue.
+    bool finished = true;
+    __disable_irq();
+    if (data >= g_scsi_dma.app_buf &&
+        data < g_scsi_dma.app_buf + g_scsi_dma.app_bytes &&
+        (uint32_t)data >= dma_hw->ch[SCSI_DMA_CH_A].write_addr)
+    {
+        finished = false; // In current transfer
+    }
+    else if (data >= g_scsi_dma.next_app_buf &&
+             data < g_scsi_dma.next_app_buf + g_scsi_dma.next_app_bytes)
+    {
+        finished = false; // In queued transfer
+    }
+    __enable_irq();
+
+    return finished;
+}
+
+static void scsi_accel_rp2040_stopRead()
+{
+    dma_channel_abort(SCSI_DMA_CH_A);
+    dma_channel_abort(SCSI_DMA_CH_B);
+    dma_channel_abort(SCSI_DMA_CH_C);
+    dma_channel_abort(SCSI_DMA_CH_D);
+    dma_channel_set_irq0_enabled(SCSI_DMA_CH_A, false);
     g_scsi_dma_state = SCSIDMA_IDLE;
     SCSI_RELEASE_DATA_REQ();
     scsidma_config_gpio();
+    pio_sm_set_enabled(SCSI_DMA_PIO, SCSI_PARITY_SM, false);
     pio_sm_set_enabled(SCSI_DMA_PIO, SCSI_DATA_SM, false);
+    pio_sm_set_enabled(SCSI_DMA_PIO, SCSI_SYNC_SM, false);
+}
+
+void scsi_accel_rp2040_finishRead(const uint8_t *data, uint32_t count, int *parityError, volatile int *resetFlag)
+{
+    uint32_t start = millis();
+    const uint8_t *query_addr = (data ? (data + count - 1) : NULL);
+    while (!scsi_accel_rp2040_isReadFinished(query_addr) && !*resetFlag)
+    {
+        if ((uint32_t)(millis() - start) > 5000)
+        {
+            azlog("scsi_accel_rp2040_finishRead timeout,"
+             " state: ", (int)g_scsi_dma_state, " ", (int)g_scsi_dma.dma_bytes, "/", (int)g_scsi_dma.app_bytes, ", ", (int)g_scsi_dma.next_app_bytes,
+             " PIO PC: ", (int)pio_sm_get_pc(SCSI_DMA_PIO, SCSI_DATA_SM), " ", (int)pio_sm_get_pc(SCSI_DMA_PIO, SCSI_SYNC_SM),
+             " PIO FIFO: ", (int)pio_sm_get_rx_fifo_level(SCSI_DMA_PIO, SCSI_DATA_SM), " ", (int)pio_sm_get_tx_fifo_level(SCSI_DMA_PIO, SCSI_DATA_SM),
+             " DMA counts: ", dma_hw->ch[SCSI_DMA_CH_A].transfer_count, " ", dma_hw->ch[SCSI_DMA_CH_B].transfer_count,
+                         " ", dma_hw->ch[SCSI_DMA_CH_C].transfer_count, " ", dma_hw->ch[SCSI_DMA_CH_D].transfer_count);
+            *resetFlag = 1;
+            break;
+        }
+    }
+    
+    if (g_scsi_dma_state == SCSIDMA_READ_DONE || *resetFlag)
+    {
+        // This was last buffer, release bus
+        scsi_accel_rp2040_stopRead();
+    }
+    
+    // Check if any parity errors have been detected during the transfer so far
+    if (SCSI_DMA_PIO->irq & 1)
+    {
+        azdbg("scsi_accel_rp2040_finishRead(", bytearray(data, count), ") detected parity error");
+        *parityError = true;
+    }
+}
+
+/*******************************************************/
+/* Initialization functions common to read/write       */
+/*******************************************************/
+
+static void scsi_dma_irq()
+{
+    dma_hw->ints0 = (1 << SCSI_DMA_CH_A);
+
+    scsidma_state_t state = g_scsi_dma_state;
+    if (state == SCSIDMA_WRITE)
+    {
+        // Start writing from next buffer, if any, or set state to SCSIDMA_WRITE_DONE
+        start_dma_write();
+    }
+    else if (state == SCSIDMA_READ)
+    {
+        // Start reading into next buffer, if any, or set state to SCSIDMA_READ_DONE
+        start_dma_read();
+    }
+}
+
+// Select GPIO from PIO peripheral or from software controlled SIO
+static void scsidma_config_gpio()
+{
+    if (g_scsi_dma_state == SCSIDMA_IDLE)
+    {
+        iobank0_hw->io[SCSI_IO_DB0].ctrl  = GPIO_FUNC_SIO;
+        iobank0_hw->io[SCSI_IO_DB1].ctrl  = GPIO_FUNC_SIO;
+        iobank0_hw->io[SCSI_IO_DB2].ctrl  = GPIO_FUNC_SIO;
+        iobank0_hw->io[SCSI_IO_DB3].ctrl  = GPIO_FUNC_SIO;
+        iobank0_hw->io[SCSI_IO_DB4].ctrl  = GPIO_FUNC_SIO;
+        iobank0_hw->io[SCSI_IO_DB5].ctrl  = GPIO_FUNC_SIO;
+        iobank0_hw->io[SCSI_IO_DB6].ctrl  = GPIO_FUNC_SIO;
+        iobank0_hw->io[SCSI_IO_DB7].ctrl  = GPIO_FUNC_SIO;
+        iobank0_hw->io[SCSI_IO_DBP].ctrl  = GPIO_FUNC_SIO;
+        iobank0_hw->io[SCSI_OUT_REQ].ctrl = GPIO_FUNC_SIO;
+    }
+    else if (g_scsi_dma_state == SCSIDMA_WRITE)
+    {
+        // Make sure the initial state of all pins is high and output
+        pio_sm_set_pins(SCSI_DMA_PIO, SCSI_DATA_SM, 0x3FF);
+        pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, 0, 10, true);
+
+        iobank0_hw->io[SCSI_IO_DB0].ctrl  = GPIO_FUNC_PIO0;
+        iobank0_hw->io[SCSI_IO_DB1].ctrl  = GPIO_FUNC_PIO0;
+        iobank0_hw->io[SCSI_IO_DB2].ctrl  = GPIO_FUNC_PIO0;
+        iobank0_hw->io[SCSI_IO_DB3].ctrl  = GPIO_FUNC_PIO0;
+        iobank0_hw->io[SCSI_IO_DB4].ctrl  = GPIO_FUNC_PIO0;
+        iobank0_hw->io[SCSI_IO_DB5].ctrl  = GPIO_FUNC_PIO0;
+        iobank0_hw->io[SCSI_IO_DB6].ctrl  = GPIO_FUNC_PIO0;
+        iobank0_hw->io[SCSI_IO_DB7].ctrl  = GPIO_FUNC_PIO0;
+        iobank0_hw->io[SCSI_IO_DBP].ctrl  = GPIO_FUNC_PIO0;
+        iobank0_hw->io[SCSI_OUT_REQ].ctrl = GPIO_FUNC_PIO0;
+    }
+    else if (g_scsi_dma_state == SCSIDMA_READ)
+    {
+        if (g_scsi_dma.syncOffset == 0)
+        {
+            // Asynchronous read
+            // Data bus as input, REQ pin as output
+            pio_sm_set_pins(SCSI_DMA_PIO, SCSI_DATA_SM, 0x3FF);
+            pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, 0, 9, false);
+            pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, 9, 1, true);
+        }
+        else
+        {
+            // Synchronous read, REQ pin is written by SYNC_SM
+            pio_sm_set_pins(SCSI_DMA_PIO, SCSI_SYNC_SM, 0x3FF);
+            pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, 0, 10, false);
+            pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_SYNC_SM, 9, 1, true);
+        }
+
+        iobank0_hw->io[SCSI_IO_DB0].ctrl  = GPIO_FUNC_SIO;
+        iobank0_hw->io[SCSI_IO_DB1].ctrl  = GPIO_FUNC_SIO;
+        iobank0_hw->io[SCSI_IO_DB2].ctrl  = GPIO_FUNC_SIO;
+        iobank0_hw->io[SCSI_IO_DB3].ctrl  = GPIO_FUNC_SIO;
+        iobank0_hw->io[SCSI_IO_DB4].ctrl  = GPIO_FUNC_SIO;
+        iobank0_hw->io[SCSI_IO_DB5].ctrl  = GPIO_FUNC_SIO;
+        iobank0_hw->io[SCSI_IO_DB6].ctrl  = GPIO_FUNC_SIO;
+        iobank0_hw->io[SCSI_IO_DB7].ctrl  = GPIO_FUNC_SIO;
+        iobank0_hw->io[SCSI_IO_DBP].ctrl  = GPIO_FUNC_SIO;
+        iobank0_hw->io[SCSI_OUT_REQ].ctrl = GPIO_FUNC_PIO0;
+    }
 }
 
 void scsi_accel_rp2040_init()
@@ -514,14 +811,6 @@ void scsi_accel_rp2040_init()
     sm_config_set_fifo_join(&g_scsi_dma.pio_cfg_async_write, PIO_FIFO_JOIN_TX);
     sm_config_set_out_shift(&g_scsi_dma.pio_cfg_async_write, true, false, 32);
 
-    // Asynchronous / synchronous SCSI read
-    g_scsi_dma.pio_offset_async_read = pio_add_program(SCSI_DMA_PIO, &scsi_accel_async_read_program);
-    g_scsi_dma.pio_cfg_async_read = scsi_accel_async_read_program_get_default_config(g_scsi_dma.pio_offset_async_read);
-    sm_config_set_in_pins(&g_scsi_dma.pio_cfg_async_read, SCSI_IO_DB0);
-    sm_config_set_sideset_pins(&g_scsi_dma.pio_cfg_async_read, SCSI_OUT_REQ);
-    sm_config_set_out_shift(&g_scsi_dma.pio_cfg_async_read, true, false, 32);
-    sm_config_set_in_shift(&g_scsi_dma.pio_cfg_async_read, true, true, 32);
-
     // Synchronous SCSI write pacer / ACK handler
     g_scsi_dma.pio_offset_sync_write_pacer = pio_add_program(SCSI_DMA_PIO, &scsi_sync_write_pacer_program);
     g_scsi_dma.pio_cfg_sync_write_pacer = scsi_sync_write_pacer_program_get_default_config(g_scsi_dma.pio_offset_sync_write_pacer);
@@ -535,15 +824,35 @@ void scsi_accel_rp2040_init()
     sm_config_set_out_shift(&g_scsi_dma.pio_cfg_sync_write, true, true, 32);
     sm_config_set_in_shift(&g_scsi_dma.pio_cfg_sync_write, true, true, 1);
 
-    // Create DMA channel configurations so they can be applied quickly later
+    // Asynchronous / synchronous SCSI read
+    g_scsi_dma.pio_offset_read = pio_add_program(SCSI_DMA_PIO, &scsi_accel_read_program);
+    g_scsi_dma.pio_cfg_read = scsi_accel_read_program_get_default_config(g_scsi_dma.pio_offset_read);
+    sm_config_set_in_pins(&g_scsi_dma.pio_cfg_read, SCSI_IO_DB0);
+    sm_config_set_sideset_pins(&g_scsi_dma.pio_cfg_read, SCSI_OUT_REQ);
+    sm_config_set_out_shift(&g_scsi_dma.pio_cfg_read, true, false, 32);
+    sm_config_set_in_shift(&g_scsi_dma.pio_cfg_read, true, true, 32);
 
+    // Synchronous SCSI read pacer
+    g_scsi_dma.pio_offset_sync_read_pacer = pio_add_program(SCSI_DMA_PIO, &scsi_sync_read_pacer_program);
+    g_scsi_dma.pio_cfg_sync_read_pacer = scsi_sync_read_pacer_program_get_default_config(g_scsi_dma.pio_offset_sync_read_pacer);
+    sm_config_set_sideset_pins(&g_scsi_dma.pio_cfg_sync_read_pacer, SCSI_OUT_REQ);
+
+    // Read parity check
+    g_scsi_dma.pio_offset_read_parity = pio_add_program(SCSI_DMA_PIO, &scsi_read_parity_program);
+    g_scsi_dma.pio_cfg_read_parity = scsi_read_parity_program_get_default_config(g_scsi_dma.pio_offset_read_parity);
+    sm_config_set_out_shift(&g_scsi_dma.pio_cfg_read_parity, true, true, 32);
+    sm_config_set_in_shift(&g_scsi_dma.pio_cfg_read_parity, true, false, 32);
+
+    // Create DMA channel configurations so they can be applied quickly later
+    
+    // For write to SCSI BUS:
     // Channel A: Bytes from RAM to scsi_parity PIO
     dma_channel_config cfg = dma_channel_get_default_config(SCSI_DMA_CH_A);
     channel_config_set_transfer_data_size(&cfg, DMA_SIZE_8);
     channel_config_set_read_increment(&cfg, true);
     channel_config_set_write_increment(&cfg, false);
     channel_config_set_dreq(&cfg, pio_get_dreq(SCSI_DMA_PIO, SCSI_PARITY_SM, true));
-    g_scsi_dma.dma_parity_config = cfg;
+    g_scsi_dma.dmacfg_write_chA = cfg;
 
     // Channel B: Addresses from scsi_parity PIO to lookup DMA READ_ADDR register
     cfg = dma_channel_get_default_config(SCSI_DMA_CH_B);
@@ -551,7 +860,7 @@ void scsi_accel_rp2040_init()
     channel_config_set_read_increment(&cfg, false);
     channel_config_set_write_increment(&cfg, false);
     channel_config_set_dreq(&cfg, pio_get_dreq(SCSI_DMA_PIO, SCSI_PARITY_SM, false));
-    g_scsi_dma.dma_address_config = cfg;
+    g_scsi_dma.dmacfg_write_chB = cfg;
 
     // Channel C: Lookup from g_scsi_parity_lookup and copy to scsi_accel_async_write or scsi_sync_write PIO
     // When done, chain to channel B
@@ -561,7 +870,7 @@ void scsi_accel_rp2040_init()
     channel_config_set_write_increment(&cfg, false);
     channel_config_set_dreq(&cfg, pio_get_dreq(SCSI_DMA_PIO, SCSI_DATA_SM, true));
     channel_config_set_chain_to(&cfg, SCSI_DMA_CH_B);
-    g_scsi_dma.dma_lookup_config = cfg;
+    g_scsi_dma.dmacfg_write_chC = cfg;
 
     // Channel D: In synchronous mode a second DMA channel is used to transfer dummy bits
     // from first state machine to second one.
@@ -570,14 +879,60 @@ void scsi_accel_rp2040_init()
     channel_config_set_read_increment(&cfg, false);
     channel_config_set_write_increment(&cfg, false);
     channel_config_set_dreq(&cfg, pio_get_dreq(SCSI_DMA_PIO, SCSI_SYNC_SM, true));
-    g_scsi_dma.dma_write_pacer_config = cfg;
+    g_scsi_dma.dmacfg_write_chD = cfg;
 
-    irq_set_exclusive_handler(DMA_IRQ_0, scsi_dma_write_irq);
+    // For read from SCSI BUS:
+    // Channel A: Bytes from scsi_read_parity PIO to destination memory buffer
+    // This takes the bottom 8 bits which is the data without parity bit.
+    // Triggered by scsi_read_parity RX FIFO.
+    cfg = dma_channel_get_default_config(SCSI_DMA_CH_A);
+    channel_config_set_transfer_data_size(&cfg, DMA_SIZE_8);
+    channel_config_set_read_increment(&cfg, false);
+    channel_config_set_write_increment(&cfg, true);
+    channel_config_set_dreq(&cfg, pio_get_dreq(SCSI_DMA_PIO, SCSI_PARITY_SM, false));
+    g_scsi_dma.dmacfg_read_chA = cfg;
+
+    // Channel B: Lookup from g_scsi_parity_check_lookup and copy to scsi_read_parity PIO
+    // Triggered by channel C writing to READ_ADDR_TRIG
+    // Re-enables channel C by chaining after done.
+    cfg = dma_channel_get_default_config(SCSI_DMA_CH_B);
+    channel_config_set_transfer_data_size(&cfg, DMA_SIZE_16);
+    channel_config_set_read_increment(&cfg, false);
+    channel_config_set_write_increment(&cfg, false);
+    channel_config_set_dreq(&cfg, DREQ_FORCE);
+    channel_config_set_chain_to(&cfg, SCSI_DMA_CH_C);
+    cfg.ctrl |= DMA_CH0_CTRL_TRIG_HIGH_PRIORITY_BITS;
+    g_scsi_dma.dmacfg_read_chB = cfg;
+
+    // Channel C: Addresses from scsi_read PIO to channel B READ_ADDR register
+    // A single transfer starts when PIO RX FIFO has data.
+    // The DMA channel is re-enabled by channel B chaining.
+    cfg = dma_channel_get_default_config(SCSI_DMA_CH_C);
+    channel_config_set_transfer_data_size(&cfg, DMA_SIZE_32);
+    channel_config_set_read_increment(&cfg, false);
+    channel_config_set_write_increment(&cfg, false);
+    channel_config_set_dreq(&cfg, pio_get_dreq(SCSI_DMA_PIO, SCSI_DATA_SM, false));
+    g_scsi_dma.dmacfg_read_chC = cfg;
+
+    // Channel D: In synchronous mode a second DMA channel is used to transfer dummy words
+    // from first state machine to second one to control the pace of data transfer.
+    // In asynchronous mode this just transfers words to control the number of bytes.
+    cfg = dma_channel_get_default_config(SCSI_DMA_CH_D);
+    channel_config_set_transfer_data_size(&cfg, DMA_SIZE_32);
+    channel_config_set_read_increment(&cfg, false);
+    channel_config_set_write_increment(&cfg, false);
+    channel_config_set_dreq(&cfg, pio_get_dreq(SCSI_DMA_PIO, SCSI_DATA_SM, true));
+    g_scsi_dma.dmacfg_read_chD = cfg;
+    
+    // Interrupts are used for data buffer swapping
+    irq_set_exclusive_handler(DMA_IRQ_0, scsi_dma_irq);
     irq_set_enabled(DMA_IRQ_0, true);
 }
 
-void scsi_accel_rp2040_setWriteMode(int syncOffset, int syncPeriod)
+void scsi_accel_rp2040_setSyncMode(int syncOffset, int syncPeriod)
 {
+    assert(g_scsi_dma_state == SCSIDMA_IDLE);
+
     if (syncOffset != g_scsi_dma.syncOffset || syncPeriod != g_scsi_dma.syncPeriod)
     {
         g_scsi_dma.syncOffset = syncOffset;
@@ -649,15 +1004,23 @@ void scsi_accel_rp2040_setWriteMode(int syncOffset, int syncPeriod)
                 if (delay2 > 15) delay2 = 15;
             }
 
-            // Patch the delay values into the instructions.
+            // Patch the delay values into the instructions in scsi_sync_write.
             // The code in scsi_accel.pio must have delay set to 0 for this to work correctly.
             uint16_t instr0 = scsi_sync_write_program_instructions[0] | pio_encode_delay(delay0);
             uint16_t instr1 = scsi_sync_write_program_instructions[1] | pio_encode_delay(delay1);
             uint16_t instr2 = scsi_sync_write_program_instructions[2] | pio_encode_delay(delay2);
-
             SCSI_DMA_PIO->instr_mem[g_scsi_dma.pio_offset_sync_write + 0] = instr0;
             SCSI_DMA_PIO->instr_mem[g_scsi_dma.pio_offset_sync_write + 1] = instr1;
             SCSI_DMA_PIO->instr_mem[g_scsi_dma.pio_offset_sync_write + 2] = instr2;
+
+            // And similar patching for scsi_sync_read_pacer
+            int rdelay2 = totalDelay - delay1 - 2;
+            if (rdelay2 > 15) rdelay2 = 15;
+            if (rdelay2 < 5) rdelay2 = 5;
+            uint16_t rinstr0 = scsi_sync_read_pacer_program_instructions[0] | pio_encode_delay(rdelay2);
+            uint16_t rinstr1 = (scsi_sync_read_pacer_program_instructions[1] + g_scsi_dma.pio_offset_sync_read_pacer) | pio_encode_delay(delay1);
+            SCSI_DMA_PIO->instr_mem[g_scsi_dma.pio_offset_sync_read_pacer + 0] = rinstr0;
+            SCSI_DMA_PIO->instr_mem[g_scsi_dma.pio_offset_sync_read_pacer + 1] = rinstr1;
         }
     }
 
