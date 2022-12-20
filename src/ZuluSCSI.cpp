@@ -519,6 +519,10 @@ extern "C" void zuluscsi_setup(void)
   if (g_sdcard_present)
   {
     init_logfile();
+    if (ini_getbool("SCSI", "DisableStatusLED", false, CONFIGFILE))
+    {
+      azplatform_disable_led();
+    }
   }
 }
 
