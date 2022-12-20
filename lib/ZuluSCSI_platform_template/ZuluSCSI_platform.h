@@ -46,6 +46,9 @@ void azplatform_init();
 // Initialization for main application, not used for bootloader
 void azplatform_late_init();
 
+// Disable the status LED
+void azplatform_disable_led(void);
+
 // Setup soft watchdog if supported
 void azplatform_reset_watchdog();
 
