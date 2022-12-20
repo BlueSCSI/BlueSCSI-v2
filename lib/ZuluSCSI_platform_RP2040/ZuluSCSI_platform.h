@@ -54,6 +54,9 @@ void azplatform_init();
 // Initialization for main application, not used for bootloader
 void azplatform_late_init();
 
+// Disable the status LED
+void azplatform_disable_led(void);
+
 // Query whether initiator mode is enabled on targets with PLATFORM_HAS_INITIATOR_MODE
 bool azplatform_is_initiator_mode_enabled();
 

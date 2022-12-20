@@ -231,6 +231,13 @@ bool azplatform_is_initiator_mode_enabled()
     return g_scsi_initiator;
 }
 
+void azplatform_disable_led(void)
+{   
+    //        pin      function       pup   pdown  out    state fast
+    gpio_conf(LED_PIN, GPIO_FUNC_SIO, false,false, false, false, false);
+    azlog("Disabling status LED");
+}
+
 /*****************************************/
 /* Crash handlers                        */
 /*****************************************/
