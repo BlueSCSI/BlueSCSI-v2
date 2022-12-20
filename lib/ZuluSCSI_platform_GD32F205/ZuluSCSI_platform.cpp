@@ -239,6 +239,12 @@ void azplatform_late_init()
     greenpak_load_firmware();
 }
 
+void azplatform_disable_led(void)
+{   
+    gpio_init(LED_PORT, GPIO_MODE_IPU, 0, LED_PINS);
+    azlog("Disabling status LED");
+}
+
 /*****************************************/
 /* Crash handlers                        */
 /*****************************************/
