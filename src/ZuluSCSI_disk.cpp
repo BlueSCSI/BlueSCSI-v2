@@ -44,12 +44,39 @@ extern "C" {
 #define PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE 512
 #endif
 
+// Optimal size for read block from SCSI bus
+// For platforms with nonblocking transfer, this can be large.
+// For Akai MPC60 compatibility this has to be at least 5120
+#ifndef PLATFORM_OPTIMAL_SCSI_READ_BLOCK_SIZE
+#ifdef PLATFORM_SCSIPHY_HAS_NONBLOCKING_READ
+#define PLATFORM_OPTIMAL_SCSI_READ_BLOCK_SIZE 65536
+#else
+#define PLATFORM_OPTIMAL_SCSI_READ_BLOCK_SIZE 8192
+#endif
+#endif
+
 #ifndef PLATFORM_HAS_ROM_DRIVE
 // Dummy defines for platforms without ROM drive support
 #define AZPLATFORM_ROMDRIVE_PAGE_SIZE 1024
 uint32_t azplatform_get_romdrive_maxsize() { return 0; }
 bool azplatform_read_romdrive(uint8_t *dest, uint32_t start, uint32_t count) { return false; }
 bool azplatform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count) { return false; }
+#endif
+
+#ifndef PLATFORM_SCSIPHY_HAS_NONBLOCKING_READ
+// For platforms that do not have non-blocking read from SCSI bus
+void scsiStartRead(uint8_t* data, uint32_t count, int *parityError)
+{
+    scsiRead(data, count, parityError);
+}
+void scsiFinishRead(uint8_t* data, uint32_t count, int *parityError)
+{
+    
+}
+bool scsiIsReadFinished(const uint8_t *data)
+{
+    return true;
+}
 #endif
 
 // SD card sector size is always 512 bytes
@@ -1268,8 +1295,9 @@ static struct {
     uint32_t bytes_sd; // Number of bytes that have been scheduled for transfer on SD card side
     uint32_t bytes_scsi; // Number of bytes that have been scheduled for transfer on SCSI side
 
-    uint32_t bytes_scsi_done;
+    uint32_t bytes_scsi_started;
     uint32_t sd_transfer_start;
+    int parityError;
 } g_disk_transfer;
 
 #ifdef PREFETCH_BUFFER_SIZE
@@ -1355,42 +1383,33 @@ void diskDataOut_callback(uint32_t bytes_complete)
     // For best performance, do SCSI reads in blocks of 4 or more bytes
     bytes_complete &= ~3;
 
-    if (g_disk_transfer.bytes_scsi_done < g_disk_transfer.bytes_scsi)
+    if (g_disk_transfer.bytes_scsi_started < g_disk_transfer.bytes_scsi)
     {
         // How many bytes remaining in the transfer?
-        uint32_t remain = g_disk_transfer.bytes_scsi - g_disk_transfer.bytes_scsi_done;
+        uint32_t remain = g_disk_transfer.bytes_scsi - g_disk_transfer.bytes_scsi_started;
         uint32_t len = remain;
         
-        // Limit maximum amount of data transferred at one go, to give enough callbacks to SD driver.
-        // Select the limit based on total bytes in the transfer.
-        // Transfer size is reduced towards the end of transfer to reduce the dead time between
-        // end of SCSI transfer and the SD write completing.
-        uint32_t limit = g_disk_transfer.bytes_scsi / 8;
-        uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
-        if (limit < PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE) limit = PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE;
-        if (limit > PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE) limit = PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE;
-        if (limit > len) limit = PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE;
-        if (limit < bytesPerSector) limit = bytesPerSector;
-
-        if (len > limit)
-        {
-            len = limit;
-        }
-
         // Split read so that it doesn't wrap around buffer edge
         uint32_t bufsize = sizeof(scsiDev.data);
-        uint32_t start = (g_disk_transfer.bytes_scsi_done % bufsize);
+        uint32_t start = (g_disk_transfer.bytes_scsi_started % bufsize);
         if (start + len > bufsize)
             len = bufsize - start;
 
+        // Apply platform-specific optimized transfer sizes
+        if (len > PLATFORM_OPTIMAL_SCSI_READ_BLOCK_SIZE)
+        {
+            len = PLATFORM_OPTIMAL_SCSI_READ_BLOCK_SIZE;
+        }
+
         // Don't overwrite data that has not yet been written to SD card
         uint32_t sd_ready_cnt = g_disk_transfer.bytes_sd + bytes_complete;
-        if (g_disk_transfer.bytes_scsi_done + len > sd_ready_cnt + bufsize)
-            len = sd_ready_cnt + bufsize - g_disk_transfer.bytes_scsi_done;
+        if (g_disk_transfer.bytes_scsi_started + len > sd_ready_cnt + bufsize)
+            len = sd_ready_cnt + bufsize - g_disk_transfer.bytes_scsi_started;
 
         // Keep transfers a multiple of sector size.
         // Macintosh SCSI driver seems to get confused if we have a delay
         // in middle of a sector.
+        uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
         if (remain >= bytesPerSector && len % bytesPerSector != 0)
         {
             len -= len % bytesPerSector;
@@ -1400,17 +1419,8 @@ void diskDataOut_callback(uint32_t bytes_complete)
             return;
 
         // azdbg("SCSI read ", (int)start, " + ", (int)len);
-        int parityError = 0;
-        scsiRead(&scsiDev.data[start], len, &parityError);
-        g_disk_transfer.bytes_scsi_done += len;
-
-        if (parityError)
-        {
-            scsiDev.status = CHECK_CONDITION;
-            scsiDev.target->sense.code = ABORTED_COMMAND;
-            scsiDev.target->sense.asc = SCSI_PARITY_ERROR;
-            scsiDev.phase = STATUS;
-        }
+        scsiStartRead(&scsiDev.data[start], len, &g_disk_transfer.parityError);
+        g_disk_transfer.bytes_scsi_started += len;
     }
 }
 
@@ -1424,46 +1434,108 @@ void diskDataOut()
     g_disk_transfer.buffer = scsiDev.data;
     g_disk_transfer.bytes_scsi = blockcount * bytesPerSector;
     g_disk_transfer.bytes_sd = 0;
-    g_disk_transfer.bytes_scsi_done = 0;
+    g_disk_transfer.bytes_scsi_started = 0;
     g_disk_transfer.sd_transfer_start = 0;
+    g_disk_transfer.parityError = 0;
 
     while (g_disk_transfer.bytes_sd < g_disk_transfer.bytes_scsi
            && scsiDev.phase == DATA_OUT
            && !scsiDev.resetFlag)
     {
-        // Read next block from SCSI bus
-        if (g_disk_transfer.bytes_sd == g_disk_transfer.bytes_scsi_done)
-        {
-            diskDataOut_callback(0);
-        }
-
-        // Figure out longest continuous block in buffer
+        // Figure out how many contiguous bytes are available for writing to SD card.
         uint32_t bufsize = sizeof(scsiDev.data);
         uint32_t start = g_disk_transfer.bytes_sd % bufsize;
-        uint32_t len = g_disk_transfer.bytes_scsi_done - g_disk_transfer.bytes_sd;
-        if (start + len > bufsize) len = bufsize - start;
+        uint32_t len = 0;
 
-        // Try to do writes in multiple of 512 bytes
-        // This allows better performance for SD card access.
-        if (len >= 512) len &= ~511;
+        // How much data until buffer edge wrap?
+        uint32_t available = g_disk_transfer.bytes_scsi_started - g_disk_transfer.bytes_sd;
+        if (start + available > bufsize)
+            available = bufsize - start;
 
-        // Start writing to SD card and simultaneously reading more from SCSI bus
-        uint8_t *buf = &scsiDev.data[start];
-        g_disk_transfer.sd_transfer_start = start;
-        // azdbg("SD write ", (int)start, " + ", (int)len);
-        azplatform_set_sd_callback(&diskDataOut_callback, buf);
-        if (img.file.write(buf, len) != len)
+        // Count number of finished sectors
+        if (scsiIsReadFinished(&scsiDev.data[start + available - 1]))
         {
-            azlog("SD card write failed: ", SD.sdErrorCode());
-            scsiDev.status = CHECK_CONDITION;
-            scsiDev.target->sense.code = MEDIUM_ERROR;
-            scsiDev.target->sense.asc = WRITE_ERROR_AUTO_REALLOCATION_FAILED;
-            scsiDev.phase = STATUS;
+            len = available;
         }
-        g_disk_transfer.bytes_sd += len;
+        else
+        {
+            while (len < available && scsiIsReadFinished(&scsiDev.data[start + len + SD_SECTOR_SIZE - 1]))
+            {
+                len += SD_SECTOR_SIZE;
+            }
+        }
+
+        // In case the last sector is partial (256 byte SCSI sectors)
+        if (len > available)
+        {
+            len = available;
+        }
+
+        // Apply platform-specific write size blocks for optimization
+        if (len > PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE)
+        {
+            len = PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE;
+        }
+
+        uint32_t remain_in_transfer = g_disk_transfer.bytes_scsi - g_disk_transfer.bytes_sd;
+        if (len < bufsize - start && len < remain_in_transfer)
+        {
+            // Use large write blocks in middle of transfer and smaller at the end of transfer.
+            // This improves performance for large writes and reduces latency at end of request.
+            uint32_t min_write_size = PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE;
+            if (remain_in_transfer <= PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE)
+            {
+                min_write_size = PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE;
+            }
+
+            if (len < min_write_size)
+            {                
+                len = 0;
+            }
+        }
+
+        if (len == 0)
+        {
+            // Nothing ready to transfer, check if we can read more from SCSI bus
+            diskDataOut_callback(0);
+        }
+        else
+        {
+            // Finalize transfer on SCSI side
+            scsiFinishRead(&scsiDev.data[start], len, &g_disk_transfer.parityError);
+
+            // Check parity error status before writing to SD card
+            if (g_disk_transfer.parityError)
+            {
+                scsiDev.status = CHECK_CONDITION;
+                scsiDev.target->sense.code = ABORTED_COMMAND;
+                scsiDev.target->sense.asc = SCSI_PARITY_ERROR;
+                scsiDev.phase = STATUS;
+                break;
+            }
+
+            // Start writing to SD card and simultaneously start new SCSI transfers
+            // when buffer space is freed.
+            uint8_t *buf = &scsiDev.data[start];
+            g_disk_transfer.sd_transfer_start = start;
+            // azdbg("SD write ", (int)start, " + ", (int)len, " ", bytearray(buf, len));
+            azplatform_set_sd_callback(&diskDataOut_callback, buf);
+            if (img.file.write(buf, len) != len)
+            {
+                azlog("SD card write failed: ", SD.sdErrorCode());
+                scsiDev.status = CHECK_CONDITION;
+                scsiDev.target->sense.code = MEDIUM_ERROR;
+                scsiDev.target->sense.asc = WRITE_ERROR_AUTO_REALLOCATION_FAILED;
+                scsiDev.phase = STATUS;
+            }
+            azplatform_set_sd_callback(NULL, NULL);
+            g_disk_transfer.bytes_sd += len;
+        }
     }
 
-    azplatform_set_sd_callback(NULL, NULL);
+    // Release SCSI bus
+    scsiFinishRead(NULL, 0, &g_disk_transfer.parityError);
+
     transfer.currentBlock += blockcount;
     scsiDev.dataPtr = scsiDev.dataLen = 0;
 

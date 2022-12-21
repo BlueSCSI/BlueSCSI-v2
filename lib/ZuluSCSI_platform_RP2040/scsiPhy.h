@@ -54,11 +54,18 @@ uint8_t scsiReadByte(void);
 // either combine transfers or block until previous transfer completes.
 void scsiStartWrite(const uint8_t* data, uint32_t count);
 void scsiFinishWrite();
+void scsiStartRead(uint8_t* data, uint32_t count, int *parityError);
+void scsiFinishRead(uint8_t* data, uint32_t count, int *parityError);
 
 // Query whether the data at pointer has already been read, i.e. buffer can be reused.
 // If data is NULL, checks if all writes have completed.
 bool scsiIsWriteFinished(const uint8_t *data);
 
+// Query whether the data at pointer has already been written, i.e. can be processed.
+// If data is NULL, checks if all reads have completed.
+bool scsiIsReadFinished(const uint8_t *data);
+
+#define PLATFORM_SCSIPHY_HAS_NONBLOCKING_READ 1
 
 #define s2s_getScsiRateKBs() 0
 
