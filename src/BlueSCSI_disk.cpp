@@ -272,6 +272,7 @@ public:
     {
         m_israw = false;
         m_isrom = false;
+        m_iscdrom = false;
         m_blockdev = nullptr;
         m_bgnsector = m_endsector = m_cursector = 0;
     }
@@ -319,7 +320,15 @@ public:
         }
         else
         {
-            m_fsfile = SD.open(filename, O_RDWR);
+            if(tolower(filename[0]) == 'c')
+            {
+                m_fsfile = SD.open(filename, O_RDONLY);
+                m_iscdrom = true;
+            }
+            else
+            {
+                m_fsfile = SD.open(filename, O_RDWR);
+            }
 
             uint32_t sectorcount = m_fsfile.size() / SD_SECTOR_SIZE;
             uint32_t begin = 0, end = 0;
@@ -354,7 +363,7 @@ public:
 
     bool isWritable()
     {
-        return !m_isrom;
+        return !m_isrom || !m_iscdrom;
     }
 
     bool isRom()
@@ -523,6 +532,7 @@ public:
 private:
     bool m_israw;
     bool m_isrom;
+    bool m_iscdrom;
     romdrive_hdr_t m_romhdr;
     FsFile m_fsfile;
     SdCard *m_blockdev;
