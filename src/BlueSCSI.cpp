@@ -298,7 +298,7 @@ bool findHDDImages()
         // Apple computers reserve ID 7, so warn the user this configuration wont work
         if(id == 7 && cfg->quirks == S2S_CFG_QUIRKS_APPLE )
         {
-          bluelog("-- Ignoring ", fullname, ", SCSI ID ", id, " Quirks set to Apple so can not use SCSI ID 7!");
+          log("-- Ignoring ", fullname, ", SCSI ID ", id, " Quirks set to Apple so can not use SCSI ID 7!");
           continue;
         }
 
