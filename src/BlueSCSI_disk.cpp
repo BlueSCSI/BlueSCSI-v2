@@ -742,11 +742,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
         {
             // ROM is always contiguous, no need to log
         }
-        else if (img.file.contiguousRange(&sector_begin, &sector_end))
-        {
-            log("---- Image file is contiguous, SD card sectors ", (int)sector_begin, " to ", (int)sector_end);
-        }
-        else
+        else if (!img.file.contiguousRange(&sector_begin, &sector_end))
         {
             log("---- WARNING: file ", filename, " is not contiguous. This will increase read latency.");
         }
