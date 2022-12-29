@@ -968,6 +968,11 @@ void s2s_configInit(S2S_BoardCfg* config)
         config->flags |= S2S_CFG_MAP_LUNS_TO_IDS;
     }
 
+    if (ini_getbool("SCSI", "Debug", 0, CONFIGFILE))
+    {
+        bluelog("-- Debug is enabled");
+    }
+
     if (ini_getbool("SCSI", "Parity", true, CONFIGFILE))
     {
         log("-- Parity is enabled");
