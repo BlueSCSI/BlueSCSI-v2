@@ -6,7 +6,7 @@
 #include <SdFat.h>
 #include <string.h>
 
-#ifdef BLUESCSIPLATFORM_BOOTLOADER_SIZE
+#ifdef PLATFORM_BOOTLOADER_SIZE
 
 extern SdFs SD;
 extern FsFile g_logfile;
@@ -40,20 +40,20 @@ bool find_firmware_image(FsFile &file, char name[MAX_FILE_PATH + 1])
 
 bool program_firmware(FsFile &file)
 {
-    uint32_t fwsize = file.size() - BLUESCSIPLATFORM_BOOTLOADER_SIZE;
-    uint32_t num_pages = (fwsize + BLUESCSIPLATFORM_FLASH_PAGE_SIZE - 1) / BLUESCSIPLATFORM_FLASH_PAGE_SIZE;
+    uint32_t fwsize = file.size() - PLATFORM_BOOTLOADER_SIZE;
+    uint32_t num_pages = (fwsize + PLATFORM_FLASH_PAGE_SIZE - 1) / PLATFORM_FLASH_PAGE_SIZE;
 
     // Make sure the buffer is aligned to word boundary
-    static uint32_t buffer32[BLUESCSIPLATFORM_FLASH_PAGE_SIZE / 4];
+    static uint32_t buffer32[PLATFORM_FLASH_PAGE_SIZE / 4];
     uint8_t *buffer = (uint8_t*)buffer32;
 
-    if (fwsize > BLUESCSIPLATFORM_FLASH_TOTAL_SIZE)
+    if (fwsize > PLATFORM_FLASH_TOTAL_SIZE)
     {
-        bluelog("Firmware too large: ", (int)fwsize, " flash size ", (int)BLUESCSIPLATFORM_FLASH_TOTAL_SIZE);
+        bluelog("Firmware too large: ", (int)fwsize, " flash size ", (int)PLATFORM_FLASH_TOTAL_SIZE);
         return false;
     }
 
-    if (!file.seek(BLUESCSIPLATFORM_BOOTLOADER_SIZE))
+    if (!file.seek(PLATFORM_BOOTLOADER_SIZE))
     {
         bluelog("Seek failed");
         return false;
@@ -66,13 +66,13 @@ bool program_firmware(FsFile &file)
         else
             LED_OFF();
 
-        if (file.read(buffer, BLUESCSIPLATFORM_FLASH_PAGE_SIZE) <= 0)
+        if (file.read(buffer, PLATFORM_FLASH_PAGE_SIZE) <= 0)
         {
             bluelog("Firmware file read failed on page ", i);
             return false;
         }
 
-        if (!bluescsiplatform_rewrite_flash_page(BLUESCSIPLATFORM_BOOTLOADER_SIZE + i * BLUESCSIPLATFORM_FLASH_PAGE_SIZE, buffer))
+        if (!platform_rewrite_flash_page(PLATFORM_BOOTLOADER_SIZE + i * PLATFORM_FLASH_PAGE_SIZE, buffer))
         {
             bluelog("Flash programming failed on page ", i);
             return false;
@@ -103,7 +103,7 @@ static bool mountSDCard()
 extern "C"
 int bootloader_main(void)
 {
-    bluescsiplatform_init();
+    platform_init();
     g_bluelog_debug = true;
 
     bluelog("Bootloader version: " __DATE__ " " __TIME__ " " PLATFORM_NAME);
@@ -126,7 +126,7 @@ int bootloader_main(void)
             else
             {
                 bluelog("Firmware update failed!");
-                bluescsiplatform_emergency_log_save();
+                platform_emergency_log_save();
             }
 
         }
@@ -137,7 +137,7 @@ int bootloader_main(void)
     }
 
     bluelog("Bootloader continuing to main firmware");
-    bluescsiplatform_boot_to_main_firmware();
+    platform_boot_to_main_firmware();
 
     return 0;
 }

@@ -599,7 +599,7 @@ static void scsiInitiatorWriteDataToSd(FsFile &file, bool use_callback)
 
     if (use_callback)
     {
-        bluescsiplatform_set_sd_callback(&initiatorReadSDCallback, buf);
+        platform_set_sd_callback(&initiatorReadSDCallback, buf);
     }
 
     g_initiator_transfer.bytes_sd_scheduled = g_initiator_transfer.bytes_sd + len;
@@ -608,7 +608,7 @@ static void scsiInitiatorWriteDataToSd(FsFile &file, bool use_callback)
         bluelog("scsiInitiatorReadDataToFile: SD card write failed");
         g_initiator_transfer.all_ok = false;
     }
-    bluescsiplatform_set_sd_callback(NULL, NULL);
+    platform_set_sd_callback(NULL, NULL);
     g_initiator_transfer.bytes_sd += len;
 }
 

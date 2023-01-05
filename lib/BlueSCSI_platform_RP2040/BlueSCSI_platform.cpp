@@ -18,7 +18,7 @@ extern "C" {
 #include <hardware/flash.h>
 #include "rp2040_flash_do_cmd.h"
 
-const char *g_bluescsiplatform_name = PLATFORM_NAME;
+const char *g_platform_name = PLATFORM_NAME;
 static bool g_scsi_initiator = false;
 static uint32_t g_flash_chip_size = 0;
 static bool g_uart_initialized = false;
@@ -43,7 +43,7 @@ static void gpio_conf(uint gpio, enum gpio_function fn, bool pullup, bool pulldo
     }
 }
 
-void bluescsiplatform_init()
+void platform_init()
 {
     // Make sure second core is stopped
     multicore_reset_core1();
@@ -73,7 +73,7 @@ void bluescsiplatform_init()
     mbed_set_error_hook(mbed_error_hook);
 
     //bluelog("DIP switch settings: debug log ", (int)dbglog, ", termination ", (int)termination);
-    bluelog("Platform: ", g_bluescsiplatform_name);
+    bluelog("Platform: ", g_platform_name);
     bluelog("FW Version: ", g_bluelog_firmwareversion);
 
     g_bluelog_debug = false; // Debug logging can be handled with a debug firmware, very easy to reflash
@@ -151,7 +151,7 @@ static bool read_initiator_dip_switch()
 }
 
 // late_init() only runs in main application, SCSI not needed in bootloader
-void bluescsiplatform_late_init()
+void platform_late_init()
 {
     if (read_initiator_dip_switch())
     {
@@ -229,7 +229,7 @@ void bluescsiplatform_late_init()
     }
 }
 
-bool bluescsiplatform_is_initiator_mode_enabled()
+bool platform_is_initiator_mode_enabled()
 {
     return g_scsi_initiator;
 }
@@ -248,9 +248,9 @@ void platform_disable_led(void)
 extern SdFs SD;
 extern uint32_t __StackTop;
 
-void bluescsiplatform_emergency_log_save()
+void platform_emergency_log_save()
 {
-    bluescsiplatform_set_sd_callback(NULL, NULL);
+    platform_set_sd_callback(NULL, NULL);
 
     SD.begin(SD_CONFIG_CRASH);
     FsFile crashfile = SD.open(CRASHFILE, O_WRONLY | O_CREAT | O_TRUNC);
@@ -275,7 +275,7 @@ void mbed_error_hook(const mbed_error_ctx * error_context)
 {
     bluelog("--------------");
     bluelog("CRASH!");
-    bluelog("Platform: ", g_bluescsiplatform_name);
+    bluelog("Platform: ", g_platform_name);
     bluelog("FW Version: ", g_bluelog_firmwareversion);
     bluelog("error_status: ", (uint32_t)error_context->error_status);
     bluelog("error_address: ", error_context->error_address);
@@ -290,7 +290,7 @@ void mbed_error_hook(const mbed_error_ctx * error_context)
         p += 4;
     }
 
-    bluescsiplatform_emergency_log_save();
+    platform_emergency_log_save();
 
     while (1)
     {
@@ -317,7 +317,7 @@ void mbed_error_hook(const mbed_error_ctx * error_context)
 /*****************************************/
 
 // This function is called for every log message.
-void bluescsiplatform_log(const char *s)
+void platform_log(const char *s)
 {
     if (g_uart_initialized)
     {
@@ -357,7 +357,7 @@ static void watchdog_callback(unsigned alarm_num)
         {
             bluelog("--------------");
             bluelog("WATCHDOG TIMEOUT!");
-            bluelog("Platform: ", g_bluescsiplatform_name);
+            bluelog("Platform: ", g_platform_name);
             bluelog("FW Version: ", g_bluelog_firmwareversion);
             bluelog("GPIO states: out ", sio_hw->gpio_out, " oe ", sio_hw->gpio_oe, " in ", sio_hw->gpio_in);
 
@@ -370,9 +370,9 @@ static void watchdog_callback(unsigned alarm_num)
                 p += 4;
             }
 
-            bluescsiplatform_emergency_log_save();
+            platform_emergency_log_save();
 
-            bluescsiplatform_boot_to_main_firmware();
+            platform_boot_to_main_firmware();
         }
     }
 
@@ -381,7 +381,7 @@ static void watchdog_callback(unsigned alarm_num)
 
 // This function can be used to periodically reset watchdog timer for crash handling.
 // It can also be left empty if the platform does not use a watchdog timer.
-void bluescsiplatform_reset_watchdog()
+void platform_reset_watchdog()
 {
     g_watchdog_timeout = WATCHDOG_CRASH_TIMEOUT;
 
@@ -398,15 +398,15 @@ void bluescsiplatform_reset_watchdog()
 /* Flash reprogramming from bootloader   */
 /*****************************************/
 
-#ifdef BLUESCSIPLATFORM_BOOTLOADER_SIZE
+#ifdef PLATFORM_BOOTLOADER_SIZE
 
 extern uint32_t __real_vectors_start;
 extern uint32_t __StackTop;
 static volatile void *g_bootloader_exit_req;
 
-bool bluescsiplatform_rewrite_flash_page(uint32_t offset, uint8_t buffer[BLUESCSIPLATFORM_FLASH_PAGE_SIZE])
+bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_PAGE_SIZE])
 {
-    if (offset == BLUESCSIPLATFORM_BOOTLOADER_SIZE)
+    if (offset == PLATFORM_BOOTLOADER_SIZE)
     {
         if (buffer[3] != 0x20 || buffer[7] != 0x10)
         {
@@ -416,8 +416,8 @@ bool bluescsiplatform_rewrite_flash_page(uint32_t offset, uint8_t buffer[BLUESCS
     }
 
     bluedbg("Writing flash at offset ", offset, " data ", bytearray(buffer, 4));
-    assert(offset % BLUESCSIPLATFORM_FLASH_PAGE_SIZE == 0);
-    assert(offset >= BLUESCSIPLATFORM_BOOTLOADER_SIZE);
+    assert(offset % PLATFORM_FLASH_PAGE_SIZE == 0);
+    assert(offset >= PLATFORM_BOOTLOADER_SIZE);
 
     // Avoid any mbed timer interrupts triggering during the flashing.
     __disable_irq();
@@ -430,11 +430,11 @@ bool bluescsiplatform_rewrite_flash_page(uint32_t offset, uint8_t buffer[BLUESCS
     // flashing, and again after reset to main firmware.
     xip_ctrl_hw->ctrl = 0;
 
-    flash_range_erase(offset, BLUESCSIPLATFORM_FLASH_PAGE_SIZE);
-    flash_range_program(offset, buffer, BLUESCSIPLATFORM_FLASH_PAGE_SIZE);
+    flash_range_erase(offset, PLATFORM_FLASH_PAGE_SIZE);
+    flash_range_program(offset, buffer, PLATFORM_FLASH_PAGE_SIZE);
 
     uint32_t *buf32 = (uint32_t*)buffer;
-    uint32_t num_words = BLUESCSIPLATFORM_FLASH_PAGE_SIZE / 4;
+    uint32_t num_words = PLATFORM_FLASH_PAGE_SIZE / 4;
     for (int i = 0; i < num_words; i++)
     {
         uint32_t expected = buf32[i];
@@ -452,7 +452,7 @@ bool bluescsiplatform_rewrite_flash_page(uint32_t offset, uint8_t buffer[BLUESCS
     return true;
 }
 
-void bluescsiplatform_boot_to_main_firmware()
+void platform_boot_to_main_firmware()
 {
     // To ensure that the system state is reset properly, we perform
     // a SYSRESETREQ and jump straight from the reset vector to main application.
@@ -467,7 +467,7 @@ void btldr_reset_handler()
     if (g_bootloader_exit_req == &g_bootloader_exit_req)
     {
         // Boot to main application
-        application_base = (uint32_t*)(XIP_BASE + BLUESCSIPLATFORM_BOOTLOADER_SIZE);
+        application_base = (uint32_t*)(XIP_BASE + PLATFORM_BOOTLOADER_SIZE);
     }
 
     SCB->VTOR = (uint32_t)application_base;

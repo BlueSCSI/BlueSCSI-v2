@@ -12,7 +12,7 @@ extern "C" {
 #endif
 
 /* These are used in debug output and default SCSI strings */
-extern const char *g_bluescsiplatform_name;
+extern const char *g_platform_name;
 #define PLATFORM_NAME "BlueSCSI RP2040"
 #define PLATFORM_REVISION "2.0"
 #define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_10
@@ -28,8 +28,8 @@ extern const char *g_bluescsiplatform_name;
 
 // Debug logging function, can be used to print to e.g. serial port.
 // May get called from interrupt handlers.
-void bluescsiplatform_log(const char *s);
-void bluescsiplatform_emergency_log_save();
+void platform_log(const char *s);
+void platform_emergency_log_save();
 
 // Timing and delay functions.
 // Arduino platform already provides these
@@ -49,32 +49,32 @@ static inline void delay_100ns()
 }
 
 // Initialize SD card and GPIO configuration
-void bluescsiplatform_init();
+void platform_init();
 
 // Initialization for main application, not used for bootloader
-void bluescsiplatform_late_init();
+void platform_late_init();
 
 // Disable the status LED
 void platform_disable_led(void);
 
 // Query whether initiator mode is enabled on targets with PLATFORM_HAS_INITIATOR_MODE
-bool bluescsiplatform_is_initiator_mode_enabled();
+bool platform_is_initiator_mode_enabled();
 
 // Setup soft watchdog if supported
-void bluescsiplatform_reset_watchdog();
+void platform_reset_watchdog();
 
 // Set callback that will be called during data transfer to/from SD card.
 // This can be used to implement simultaneous transfer to SCSI bus.
 typedef void (*sd_callback_t)(uint32_t bytes_complete);
-void bluescsiplatform_set_sd_callback(sd_callback_t func, const uint8_t *buffer);
+void platform_set_sd_callback(sd_callback_t func, const uint8_t *buffer);
 
 // Reprogram firmware in main program area.
 #ifndef RP2040_DISABLE_BOOTLOADER
-#define BLUESCSIPLATFORM_BOOTLOADER_SIZE (128 * 1024)
-#define BLUESCSIPLATFORM_FLASH_TOTAL_SIZE (1024 * 1024)
-#define BLUESCSIPLATFORM_FLASH_PAGE_SIZE 4096
-bool bluescsiplatform_rewrite_flash_page(uint32_t offset, uint8_t buffer[BLUESCSIPLATFORM_FLASH_PAGE_SIZE]);
-void bluescsiplatform_boot_to_main_firmware();
+#define PLATFORM_BOOTLOADER_SIZE (128 * 1024)
+#define PLATFORM_FLASH_TOTAL_SIZE (1024 * 1024)
+#define PLATFORM_FLASH_PAGE_SIZE 4096
+bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_PAGE_SIZE]);
+void platform_boot_to_main_firmware();
 #endif
 
 // ROM drive in the unused external flash area

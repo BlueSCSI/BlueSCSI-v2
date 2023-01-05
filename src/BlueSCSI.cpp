@@ -403,7 +403,7 @@ static void reinitSCSI()
   }
 
 #ifdef PLATFORM_HAS_INITIATOR_MODE
-  if (bluescsiplatform_is_initiator_mode_enabled())
+  if (platform_is_initiator_mode_enabled())
   {
     // Initialize scsiDev to zero values even though it is not used
     scsiInit();
@@ -447,8 +447,8 @@ static void reinitSCSI()
 
 extern "C" void bluescsi_setup(void)
 {
-  bluescsiplatform_init();
-  bluescsiplatform_late_init();
+  platform_init();
+  platform_late_init();
 
   g_sdcard_present = mountSDCard();
 
@@ -473,7 +473,7 @@ extern "C" void bluescsi_setup(void)
     {
       blinkStatus(BLINK_ERROR_NO_SD_CARD);
       delay(1000);
-      bluescsiplatform_reset_watchdog();
+      platform_reset_watchdog();
       g_sdcard_present = mountSDCard();
     } while (!g_sdcard_present);
     bluelog("SD card init succeeded after retry");
@@ -507,10 +507,10 @@ extern "C" void bluescsi_main_loop(void)
 {
   static uint32_t sd_card_check_time = 0;
 
-  bluescsiplatform_reset_watchdog();
+  platform_reset_watchdog();
 
 #ifdef PLATFORM_HAS_INITIATOR_MODE
-  if (bluescsiplatform_is_initiator_mode_enabled())
+  if (platform_is_initiator_mode_enabled())
   {
     scsiInitiatorMainLoop();
     save_logfile();
@@ -567,7 +567,7 @@ extern "C" void bluescsi_main_loop(void)
       {
         blinkStatus(BLINK_ERROR_NO_SD_CARD);
         delay(1000);
-        bluescsiplatform_reset_watchdog();
+        platform_reset_watchdog();
       }
     } while (!g_sdcard_present && !g_romdrive_active);
   }

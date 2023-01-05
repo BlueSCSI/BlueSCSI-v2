@@ -767,8 +767,8 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
             img.deviceType = S2S_CFG_SEQUENTIAL;
         }
 
-#ifdef BLUESCSIPLATFORM_CONFIG_HOOK
-        BLUESCSIPLATFORM_CONFIG_HOOK(&img);
+#ifdef PLATFORM_CONFIG_HOOK
+        PLATFORM_CONFIG_HOOK(&img);
 #endif
 
         setDefaultDriveInfo(target_idx);
@@ -1530,7 +1530,7 @@ void diskDataOut()
             uint8_t *buf = &scsiDev.data[start];
             g_disk_transfer.sd_transfer_start = start;
             // bluedbg("SD write ", (int)start, " + ", (int)len, " ", bytearray(buf, len));
-            bluescsiplatform_set_sd_callback(&diskDataOut_callback, buf);
+            platform_set_sd_callback(&diskDataOut_callback, buf);
             if (img.file.write(buf, len) != len)
             {
                 bluelog("SD card write failed: ", SD.sdErrorCode());
@@ -1539,7 +1539,7 @@ void diskDataOut()
                 scsiDev.target->sense.asc = WRITE_ERROR_AUTO_REALLOCATION_FAILED;
                 scsiDev.phase = STATUS;
             }
-            bluescsiplatform_set_sd_callback(NULL, NULL);
+            platform_set_sd_callback(NULL, NULL);
             g_disk_transfer.bytes_sd += len;
         }
     }
@@ -1689,7 +1689,7 @@ static void start_dataInTransfer(uint8_t *buffer, uint32_t count)
 
     // Start transferring from SD card
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-    bluescsiplatform_set_sd_callback(&diskDataIn_callback, buffer);
+    platform_set_sd_callback(&diskDataIn_callback, buffer);
 
     if (img.file.read(buffer, count) != count)
     {
@@ -1701,7 +1701,7 @@ static void start_dataInTransfer(uint8_t *buffer, uint32_t count)
     }
 
     diskDataIn_callback(count);
-    bluescsiplatform_set_sd_callback(NULL, NULL);
+    platform_set_sd_callback(NULL, NULL);
 }
 
 static void diskDataIn()
@@ -1767,7 +1767,7 @@ static void diskDataIn()
             // is part of a longer linear read.
             g_disk_transfer.bytes_sd = bytesPerSector;
             g_disk_transfer.bytes_scsi = bytesPerSector; // Tell callback not to send to SCSI
-            bluescsiplatform_set_sd_callback(&diskDataIn_callback, g_disk_transfer.buffer);
+            platform_set_sd_callback(&diskDataIn_callback, g_disk_transfer.buffer);
             int status = img.file.read(g_disk_transfer.buffer, bytesPerSector);
             if (status <= 0)
             {
@@ -1776,7 +1776,7 @@ static void diskDataIn()
                 break;
             }
             g_scsi_prefetch.bytes += status;
-            bluescsiplatform_set_sd_callback(NULL, NULL);
+            platform_set_sd_callback(NULL, NULL);
             prefetch_sectors--;
         }
 #endif
