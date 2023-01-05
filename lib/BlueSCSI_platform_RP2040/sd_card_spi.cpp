@@ -75,7 +75,7 @@ void sdCsWrite(SdCsPin_t pin, bool level)
 RP2040SPIDriver g_sd_spi_port;
 SdSpiConfig g_sd_spi_config(0, DEDICATED_SPI, SD_SCK_MHZ(25), &g_sd_spi_port);
 
-void bluescsiplatform_set_sd_callback(sd_callback_t func, const uint8_t *buffer)
+void platform_set_sd_callback(sd_callback_t func, const uint8_t *buffer)
 {
 }
 

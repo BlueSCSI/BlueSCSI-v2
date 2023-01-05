@@ -33,7 +33,7 @@ static const uint8_t *m_stream_buffer;
 static uint32_t m_stream_count;
 static uint32_t m_stream_count_start;
 
-void bluescsiplatform_set_sd_callback(sd_callback_t func, const uint8_t *buffer)
+void platform_set_sd_callback(sd_callback_t func, const uint8_t *buffer)
 {
     m_stream_callback = func;
     m_stream_buffer = buffer;

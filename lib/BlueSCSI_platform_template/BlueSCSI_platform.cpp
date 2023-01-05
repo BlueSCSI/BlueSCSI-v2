@@ -7,20 +7,20 @@
 
 extern "C" {
 
-const char *g_bluescsiplatform_name = PLATFORM_NAME;
+const char *g_platform_name = PLATFORM_NAME;
 
 /***************/
 /* GPIO init   */
 /***************/
 
-void bluescsiplatform_init()
+void platform_init()
 {
     /* Initialize SCSI and SD card pins to required modes.
      * SCSI pins should be inactive / input at this point.
      */
 }
 
-void bluescsiplatform_late_init()
+void platform_late_init()
 {
     /* This function can usually be left empty.
      * It can be used for initialization code that should not run in bootloader.
@@ -42,13 +42,13 @@ void platform_disable_led(void)
 // This function is called for every log message.
 // It can e.g. write the log to serial port in real time.
 // It can also be left empty to use only the debug log file on SD card.
-void bluescsiplatform_log(const char *s)
+void platform_log(const char *s)
 {
 }
 
 // This function can be used to periodically reset watchdog timer for crash handling.
 // It can also be left empty if the platform does not use a watchdog timer.
-void bluescsiplatform_reset_watchdog()
+void platform_reset_watchdog()
 {
 }
 
@@ -105,7 +105,7 @@ const uint32_t g_scsi_out_byte_to_bop[256] =
  */
 SdSpiConfig g_sd_spi_config(0, DEDICATED_SPI, SD_SCK_MHZ(25));
 
-void bluescsiplatform_set_sd_callback(sd_callback_t func, const uint8_t *buffer)
+void platform_set_sd_callback(sd_callback_t func, const uint8_t *buffer)
 {
     /* This function can be left empty.
      * If the platform supports DMA for SD card transfers, this function

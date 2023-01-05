@@ -33,7 +33,7 @@ void bluelog_raw(const char *str)
     // Keep buffer null-terminated
     g_logbuffer[g_logpos & LOGBUFMASK] = '\0';
 
-    bluescsiplatform_log(str);
+    platform_log(str);
 }
 
 // Log byte as hex
