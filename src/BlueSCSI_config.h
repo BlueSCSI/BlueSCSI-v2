@@ -6,7 +6,7 @@
 #include <BlueSCSI_platform.h>
 
 // Use variables for version number
-#define FW_VER_NUM      "1.1.4"
+#define FW_VER_NUM      "1.2.1"
 #define FW_VER_SUFFIX   "devel"
 #define BLUESCSI_FW_VERSION FW_VER_NUM "-" FW_VER_SUFFIX
 

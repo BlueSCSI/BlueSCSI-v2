@@ -191,13 +191,13 @@ extern "C" uint32_t scsiEnterPhaseImmediate(int phase)
         scsiLogPhaseChange(phase);
 
         // Select between synchronous vs. asynchronous SCSI writes
-        if (g_scsi_phase == DATA_IN && scsiDev.target->syncOffset > 0)
+        if (scsiDev.target->syncOffset > 0 && (g_scsi_phase == DATA_IN || g_scsi_phase == DATA_OUT))
         {
-            scsi_accel_rp2040_setWriteMode(scsiDev.target->syncOffset, scsiDev.target->syncPeriod);
+            scsi_accel_rp2040_setSyncMode(scsiDev.target->syncOffset, scsiDev.target->syncPeriod);
         }
         else
         {
-            scsi_accel_rp2040_setWriteMode(0, 0);
+            scsi_accel_rp2040_setSyncMode(0, 0);
         }
 
         if (phase < 0)
@@ -300,22 +300,7 @@ extern "C" void scsiWrite(const uint8_t* data, uint32_t count)
 extern "C" void scsiStartWrite(const uint8_t* data, uint32_t count)
 {
     scsiLogDataIn(data, count);
-
-    if ((count & 1) != 0 || ((uint32_t)data & 1) != 0)
-    {
-        // Unaligned write, do it byte-by-byte
-        scsiFinishWrite();
-        for (uint32_t i = 0; i < count; i++)
-        {
-            if (scsiDev.resetFlag) break;
-            scsiWriteOneByte(data[i]);
-        }
-    }
-    else
-    {
-        // Use accelerated routine
-        scsi_accel_rp2040_startWrite(data, count, &scsiDev.resetFlag);
-    }
+    scsi_accel_rp2040_startWrite(data, count, &scsiDev.resetFlag);
 }
 
 extern "C" bool scsiIsWriteFinished(const uint8_t *data)
@@ -361,27 +346,22 @@ extern "C" uint8_t scsiReadByte(void)
 extern "C" void scsiRead(uint8_t* data, uint32_t count, int* parityError)
 {
     *parityError = 0;
+    scsiStartRead(data, count, parityError);
+    scsiFinishRead(data, count, parityError);
+}
 
-    if ((count & 1) != 0 || ((uint32_t)data & 1) != 0)
-    {
-        // Unaligned transfer, do byte by byte
-        for (uint32_t i = 0; i < count; i++)
-        {
-            if (scsiDev.resetFlag) break;
-            data[i] = scsiReadOneByte(parityError);
-        }
-    }
-    else
-    {
-        // Use accelerated routine
-        scsi_accel_rp2040_read(data, count, parityError, &scsiDev.resetFlag);
+extern "C" void scsiStartRead(uint8_t* data, uint32_t count, int *parityError)
+{
+    scsi_accel_rp2040_startRead(data, count, parityError, &scsiDev.resetFlag);
+}
 
-    }
-
-    if(*parityError && (scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY))
-    {
-        bluelog("Parity error in scsiRead()");
-    }
-
+extern "C" void scsiFinishRead(uint8_t* data, uint32_t count, int *parityError)
+{
+    scsi_accel_rp2040_finishRead(data, count, parityError, &scsiDev.resetFlag);
     scsiLogDataOut(data, count);
+}
+
+extern "C" bool scsiIsReadFinished(const uint8_t *data)
+{
+    return scsi_accel_rp2040_isReadFinished(data);
 }
