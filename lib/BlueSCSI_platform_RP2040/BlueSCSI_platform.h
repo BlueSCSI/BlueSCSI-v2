@@ -16,8 +16,8 @@ extern const char *g_bluescsiplatform_name;
 #define PLATFORM_NAME "BlueSCSI RP2040"
 #define PLATFORM_REVISION "2.0"
 #define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_10
-#define PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE 4096
-#define PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE 32768
+#define PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE 32768
+#define PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE 65536
 #define PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE 8192
 #define SD_USE_SDIO 1
 #define PLATFORM_HAS_INITIATOR_MODE 1
@@ -54,6 +54,9 @@ void bluescsiplatform_init();
 // Initialization for main application, not used for bootloader
 void bluescsiplatform_late_init();
 
+// Disable the status LED
+void azplatform_disable_led(void);
+
 // Query whether initiator mode is enabled on targets with PLATFORM_HAS_INITIATOR_MODE
 bool bluescsiplatform_is_initiator_mode_enabled();
 
@@ -88,6 +91,11 @@ bool azplatform_read_romdrive(uint8_t *dest, uint32_t start, uint32_t count);
 bool azplatform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count);
 #endif
 
+// Parity lookup tables for write and read from SCSI bus.
+// These are used by macros below and the code in scsi_accel_rp2040.cpp
+extern const uint16_t g_scsi_parity_lookup[256];
+extern const uint16_t g_scsi_parity_check_lookup[512];
+
 // Below are GPIO access definitions that are used from scsiPhy.cpp.
 
 // Write a single SCSI pin.
@@ -120,7 +128,6 @@ bool azplatform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t cou
      sio_hw->gpio_oe_set = SCSI_IO_DATA_MASK)
 
 // Write SCSI data bus, also sets REQ to inactive.
-extern const uint32_t g_scsi_parity_lookup[256];
 #define SCSI_OUT_DATA(data) \
     gpio_put_masked(SCSI_IO_DATA_MASK | (1 << SCSI_OUT_REQ), \
                     g_scsi_parity_lookup[(uint8_t)(data)] | (1 << SCSI_OUT_REQ)), \

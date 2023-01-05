@@ -447,12 +447,6 @@ static void reinitSCSI()
 
 extern "C" void bluescsi_setup(void)
 {
-// The RP2040 must log FW Version in azplatform_init to avoid hanging  
-#ifndef BLUESCSI_V2_0  
-  bluelog("Platform: ", g_bluescsiplatform_name);
-  bluelog("FW Version: ", g_bluelog_firmwareversion);
-#endif
-
   bluescsiplatform_init();
   bluescsiplatform_late_init();
 
@@ -502,6 +496,10 @@ extern "C" void bluescsi_setup(void)
   if (g_sdcard_present)
   {
     init_logfile();
+    if (ini_getbool("SCSI", "DisableStatusLED", false, CONFIGFILE))
+    {
+      azplatform_disable_led();
+    }
   }
 }
 

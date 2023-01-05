@@ -189,18 +189,6 @@ bool SdioCard::readCSD(csd_t* csd)
     return true;
 }
 
-bool SdioCard::readSCR(scr_t *scr)
-{
-    bluelog("SdioCard::readSCR() called but not implemented!");
-    return false;
-}
-
-bool SdioCard::cardCMD6(uint32_t arg, uint8_t* status)
-{
-    bluelog("SdioCard::cardCMD6() called but not implemented!");
-    return false;
-}
-
 bool SdioCard::readOCR(uint32_t* ocr)
 {
     // SDIO mode does not have CMD58, but main program uses this to
@@ -307,8 +295,18 @@ bool SdioCard::writeStop()
 
 bool SdioCard::erase(uint32_t firstSector, uint32_t lastSector)
 {
+    bluelog("SdioCard::erase() not implemented");
     return false;
-    // return checkReturnOk(sd_erase(firstSector * 512, lastSector * 512));
+}
+
+bool SdioCard::cardCMD6(uint32_t arg, uint8_t* status) {
+    bluelog("SdioCard::cardCMD6() not implemented");
+    return false;
+}
+
+bool SdioCard::readSCR(scr_t* scr) {
+    bluelog("SdioCard::readSCR() not implemented");
+    return false;
 }
 
 /* Writing and reading, with progress callback */

@@ -46,6 +46,9 @@ void bluescsiplatform_init();
 // Initialization for main application, not used for bootloader
 void bluescsiplatform_late_init();
 
+// Disable the status LED
+void azplatform_disable_led(void);
+
 // Setup soft watchdog if supported
 void bluescsiplatform_reset_watchdog();
 

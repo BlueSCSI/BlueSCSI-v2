@@ -27,6 +27,14 @@ void bluescsiplatform_late_init()
      */
 }
 
+void azplatform_disable_led(void)
+{
+    /* This function disables the LED on the ZuluSCSI board
+    *  Generally by switching the pin from output to input.
+    */
+}
+
+
 /*****************************************/
 /* Debug logging and watchdor            */
 /*****************************************/
