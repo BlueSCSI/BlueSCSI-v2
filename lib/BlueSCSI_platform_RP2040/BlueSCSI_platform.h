@@ -55,7 +55,7 @@ void bluescsiplatform_init();
 void bluescsiplatform_late_init();
 
 // Disable the status LED
-void azplatform_disable_led(void);
+void platform_disable_led(void);
 
 // Query whether initiator mode is enabled on targets with PLATFORM_HAS_INITIATOR_MODE
 bool bluescsiplatform_is_initiator_mode_enabled();
@@ -81,14 +81,14 @@ void bluescsiplatform_boot_to_main_firmware();
 #ifndef RP2040_DISABLE_ROMDRIVE
 #define PLATFORM_HAS_ROM_DRIVE 1
 // Check maximum available space for ROM drive in bytes
-uint32_t azplatform_get_romdrive_maxsize();
+uint32_t platform_get_romdrive_maxsize();
 
 // Read ROM drive area
-bool azplatform_read_romdrive(uint8_t *dest, uint32_t start, uint32_t count);
+bool platform_read_romdrive(uint8_t *dest, uint32_t start, uint32_t count);
 
 // Reprogram ROM drive area
-#define AZPLATFORM_ROMDRIVE_PAGE_SIZE 4096
-bool azplatform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count);
+#define PLATFORM_ROMDRIVE_PAGE_SIZE 4096
+bool platform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count);
 #endif
 
 // Parity lookup tables for write and read from SCSI bus.
