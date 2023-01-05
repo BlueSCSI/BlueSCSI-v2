@@ -27,7 +27,7 @@ bool find_firmware_image(FsFile &file, char name[MAX_FILE_PATH + 1])
             strncasecmp(name + namelen - 3, "bin", 3) == 0)
         {
             root.close();
-            bluelog("Found firmware file: ", name);
+            log("Found firmware file: ", name);
             return true;
         }
 
@@ -49,13 +49,13 @@ bool program_firmware(FsFile &file)
 
     if (fwsize > PLATFORM_FLASH_TOTAL_SIZE)
     {
-        bluelog("Firmware too large: ", (int)fwsize, " flash size ", (int)PLATFORM_FLASH_TOTAL_SIZE);
+        log("Firmware too large: ", (int)fwsize, " flash size ", (int)PLATFORM_FLASH_TOTAL_SIZE);
         return false;
     }
 
     if (!file.seek(PLATFORM_BOOTLOADER_SIZE))
     {
-        bluelog("Seek failed");
+        log("Seek failed");
         return false;
     }
 
@@ -68,13 +68,13 @@ bool program_firmware(FsFile &file)
 
         if (file.read(buffer, PLATFORM_FLASH_PAGE_SIZE) <= 0)
         {
-            bluelog("Firmware file read failed on page ", i);
+            log("Firmware file read failed on page ", i);
             return false;
         }
 
         if (!platform_rewrite_flash_page(PLATFORM_BOOTLOADER_SIZE + i * PLATFORM_FLASH_PAGE_SIZE, buffer))
         {
-            bluelog("Flash programming failed on page ", i);
+            log("Flash programming failed on page ", i);
             return false;
         }
     }
@@ -104,9 +104,9 @@ extern "C"
 int bootloader_main(void)
 {
     platform_init();
-    g_bluelog_debug = true;
+    g_log_debug = true;
 
-    bluelog("Bootloader version: " __DATE__ " " __TIME__ " " PLATFORM_NAME);
+    log("Bootloader version: " __DATE__ " " __TIME__ " " PLATFORM_NAME);
 
     if (mountSDCard() || mountSDCard())
     {
@@ -116,16 +116,16 @@ int bootloader_main(void)
         {
             if (program_firmware(fwfile))
             {
-                bluelog("Firmware update successful!");
+                log("Firmware update successful!");
                 fwfile.close();
                 if (!SD.remove(name))
                 {
-                    bluelog("Failed to remove firmware file");
+                    log("Failed to remove firmware file");
                 }
             }
             else
             {
-                bluelog("Firmware update failed!");
+                log("Firmware update failed!");
                 platform_emergency_log_save();
             }
 
@@ -133,10 +133,10 @@ int bootloader_main(void)
     }
     else
     {
-        bluelog("Bootloader SD card init failed");
+        log("Bootloader SD card init failed");
     }
 
-    bluelog("Bootloader continuing to main firmware");
+    log("Bootloader continuing to main firmware");
     platform_boot_to_main_firmware();
 
     return 0;

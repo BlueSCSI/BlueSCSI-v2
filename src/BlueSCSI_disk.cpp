@@ -120,27 +120,27 @@ static bool check_romdrive(romdrive_hdr_t *hdr)
 bool scsiDiskProgramRomDrive(const char *filename, int scsi_id, int blocksize, S2S_CFG_TYPE type)
 {
 #ifndef PLATFORM_HAS_ROM_DRIVE
-    bluelog("---- Platform does not support ROM drive");
+    log("---- Platform does not support ROM drive");
     return false;
 #endif
 
     FsFile file = SD.open(filename, O_RDONLY);
     if (!file.isOpen())
     {
-        bluelog("---- Failed to open: ", filename);
+        log("---- Failed to open: ", filename);
         return false;
     }
 
     uint64_t filesize = file.size();
     uint32_t maxsize = platform_get_romdrive_maxsize() - PLATFORM_ROMDRIVE_PAGE_SIZE;
 
-    bluelog("---- SCSI ID: ", scsi_id, " blocksize ", blocksize, " type ", (int)type);
-    bluelog("---- ROM drive maximum size is ", (int)maxsize,
+    log("---- SCSI ID: ", scsi_id, " blocksize ", blocksize, " type ", (int)type);
+    log("---- ROM drive maximum size is ", (int)maxsize,
           " bytes, image file is ", (int)filesize, " bytes");
     
     if (filesize > maxsize)
     {
-        bluelog("---- Image size exceeds ROM space, not loading");
+        log("---- Image size exceeds ROM space, not loading");
         file.close();
         return false;
     }
@@ -155,7 +155,7 @@ bool scsiDiskProgramRomDrive(const char *filename, int scsi_id, int blocksize, S
     // Program the drive metadata header
     if (!platform_write_romdrive((const uint8_t*)&hdr, 0, PLATFORM_ROMDRIVE_PAGE_SIZE))
     {
-        bluelog("---- Failed to program ROM drive header");
+        log("---- Failed to program ROM drive header");
         file.close();
         return false;
     }
@@ -172,7 +172,7 @@ bool scsiDiskProgramRomDrive(const char *filename, int scsi_id, int blocksize, S
         if (file.read(scsiDev.data, PLATFORM_ROMDRIVE_PAGE_SIZE) <= 0 ||
             !platform_write_romdrive(scsiDev.data, (i + 1) * PLATFORM_ROMDRIVE_PAGE_SIZE, PLATFORM_ROMDRIVE_PAGE_SIZE))
         {
-            bluelog("---- Failed to program ROM drive page ", (int)i);
+            log("---- Failed to program ROM drive page ", (int)i);
             file.close();
             return false;
         }
@@ -186,7 +186,7 @@ bool scsiDiskProgramRomDrive(const char *filename, int scsi_id, int blocksize, S
     strlcat(newname, filename, sizeof(newname));
     strlcat(newname, "_loaded", sizeof(newname));
     SD.rename(filename, newname);
-    bluelog("---- ROM drive programming successful, image file renamed to ", newname);
+    log("---- ROM drive programming successful, image file renamed to ", newname);
 
     return true;
 }
@@ -205,18 +205,18 @@ bool scsiDiskActivateRomDrive()
 #endif
 
     uint32_t maxsize = platform_get_romdrive_maxsize() - PLATFORM_ROMDRIVE_PAGE_SIZE;
-    bluelog("-- Platform supports ROM drive up to ", (int)(maxsize / 1024), " kB");
+    log("-- Platform supports ROM drive up to ", (int)(maxsize / 1024), " kB");
 
     romdrive_hdr_t hdr = {};
     if (!check_romdrive(&hdr))
     {
-        bluelog("---- ROM drive image not detected");
+        log("---- ROM drive image not detected");
         return false;
     }
 
     if (ini_getbool("SCSI", "DisableROMDrive", 0, CONFIGFILE))
     {
-        bluelog("---- ROM drive disabled in ini file, not enabling");
+        log("---- ROM drive disabled in ini file, not enabling");
         return false;
     }
 
@@ -224,23 +224,23 @@ bool scsiDiskActivateRomDrive()
     if (rom_scsi_id >= 0 && rom_scsi_id <= 7)
     {
         hdr.scsi_id = rom_scsi_id;
-        bluelog("---- ROM drive SCSI id overriden in ini file, changed to ", (int)hdr.scsi_id);
+        log("---- ROM drive SCSI id overriden in ini file, changed to ", (int)hdr.scsi_id);
     }
 
     if (s2s_getConfigById(hdr.scsi_id))
     {
-        bluelog("---- ROM drive SCSI id ", (int)hdr.scsi_id, " is already in use, not enabling");
+        log("---- ROM drive SCSI id ", (int)hdr.scsi_id, " is already in use, not enabling");
         return false;
     }
 
 
 
-    bluelog("---- Activating ROM drive, SCSI id ", (int)hdr.scsi_id, " size ", (int)(hdr.imagesize / 1024), " kB");
+    log("---- Activating ROM drive, SCSI id ", (int)hdr.scsi_id, " size ", (int)(hdr.imagesize / 1024), " kB");
     bool status = scsiDiskOpenHDDImage(hdr.scsi_id, "ROM:", hdr.scsi_id, 0, hdr.blocksize, hdr.drivetype);
 
     if (!status)
     {
-        bluelog("---- ROM drive activation failed");
+        log("---- ROM drive activation failed");
         return false;
     }
     else
@@ -286,13 +286,13 @@ public:
 
             if (*endptr != ':' || *endptr2 != '\0')
             {
-                bluelog("Invalid format for raw filename: ", filename);
+                log("Invalid format for raw filename: ", filename);
                 return;
             }
 
             if ((scsi_block_size % SD_SECTOR_SIZE) != 0)
             {
-                bluelog("SCSI block size ", (int)scsi_block_size, " is not supported for RAW partitions (must be divisible by 512 bytes)");
+                log("SCSI block size ", (int)scsi_block_size, " is not supported for RAW partitions (must be divisible by 512 bytes)");
                 return;
             }
 
@@ -302,7 +302,7 @@ public:
             uint32_t sectorCount = SD.card()->sectorCount();
             if (m_endsector >= sectorCount)
             {
-                bluelog("Limiting RAW image mapping to SD card sector count: ", (int)sectorCount);
+                log("Limiting RAW image mapping to SD card sector count: ", (int)sectorCount);
                 m_endsector = sectorCount - 1;
             }
         }
@@ -335,10 +335,10 @@ public:
                 if (end != begin + sectorcount)
                 {
                     uint32_t allocsize = end - begin + 1;
-                    bluelog("---- NOTE: File ", filename, " has FAT allocated size of ", (int)allocsize, " sectors and file size of ", (int)sectorcount, " sectors");
-                    bluelog("---- Due to issue #80 in BlueSCSI version 1.0.8 and 1.0.9 the allocated size was mistakenly reported to SCSI controller.");
-                    bluelog("---- If the drive was formatted using those versions, you may have problems accessing it with newer firmware.");
-                    bluelog("---- The old behavior can be restored with setting  [SCSI] UseFATAllocSize = 1 in " CONFIGFILE);
+                    log("---- NOTE: File ", filename, " has FAT allocated size of ", (int)allocsize, " sectors and file size of ", (int)sectorcount, " sectors");
+                    log("---- Due to issue #80 in BlueSCSI version 1.0.8 and 1.0.9 the allocated size was mistakenly reported to SCSI controller.");
+                    log("---- If the drive was formatted using those versions, you may have problems accessing it with newer firmware.");
+                    log("---- The old behavior can be restored with setting  [SCSI] UseFATAllocSize = 1 in " CONFIGFILE);
 
                     if (ini_getbool("SCSI", "UseFATAllocSize", 0, CONFIGFILE))
                     {
@@ -503,7 +503,7 @@ public:
         }
         else if (m_isrom)
         {
-            bluelog("ERROR: attempted to write to ROM drive");
+            log("ERROR: attempted to write to ROM drive");
             return 0;
         }
         else
@@ -722,7 +722,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
 
         if (img.scsiSectors == 0)
         {
-            bluelog("---- Error: image file ", filename, " is empty");
+            log("---- Error: image file ", filename, " is empty");
             img.file.close();
             return false;
         }
@@ -734,36 +734,36 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
         }
         else if (img.file.contiguousRange(&sector_begin, &sector_end))
         {
-            bluelog("---- Image file is contiguous, SD card sectors ", (int)sector_begin, " to ", (int)sector_end);
+            log("---- Image file is contiguous, SD card sectors ", (int)sector_begin, " to ", (int)sector_end);
         }
         else
         {
-            bluelog("---- WARNING: file ", filename, " is not contiguous. This will increase read latency.");
+            log("---- WARNING: file ", filename, " is not contiguous. This will increase read latency.");
         }
 
         if (type == S2S_CFG_OPTICAL)
         {
-            bluelog("---- Configuring as CD-ROM drive based on image name");
+            log("---- Configuring as CD-ROM drive based on image name");
             img.deviceType = S2S_CFG_OPTICAL;
         }
         else if (type == S2S_CFG_FLOPPY_14MB)
         {
-            bluelog("---- Configuring as floppy drive based on image name");
+            log("---- Configuring as floppy drive based on image name");
             img.deviceType = S2S_CFG_FLOPPY_14MB;
         }
         else if (type == S2S_CFG_MO)
         {
-            bluelog("---- Configuring as magneto-optical based on image name");
+            log("---- Configuring as magneto-optical based on image name");
             img.deviceType = S2S_CFG_MO;
         }
         else if (type == S2S_CFG_REMOVEABLE)
         {
-            bluelog("---- Configuring as removable drive based on image name");
+            log("---- Configuring as removable drive based on image name");
             img.deviceType = S2S_CFG_REMOVEABLE;
         }
         else if (type == S2S_CFG_SEQUENTIAL)
         {
-            bluelog("---- Configuring as tape drive based on image name");
+            log("---- Configuring as tape drive based on image name");
             img.deviceType = S2S_CFG_SEQUENTIAL;
         }
 
@@ -775,11 +775,11 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
 
         if (img.prefetchbytes > 0)
         {
-            bluelog("---- Read prefetch enabled: ", (int)img.prefetchbytes, " bytes");
+            log("---- Read prefetch enabled: ", (int)img.prefetchbytes, " bytes");
         }
         else
         {
-            bluelog("---- Read prefetch disabled");
+            log("---- Read prefetch disabled");
         }
 
         return true;
@@ -795,7 +795,7 @@ static void checkDiskGeometryDivisible(image_config_t &img)
         uint32_t sectorsPerHeadTrack = img.sectorsPerTrack * img.headsPerCylinder;
         if (img.scsiSectors % sectorsPerHeadTrack != 0)
         {
-            bluelog("WARNING: Host used command ", scsiDev.cdb[0],
+            log("WARNING: Host used command ", scsiDev.cdb[0],
                 " which is affected by drive geometry. Current settings are ",
                 (int)img.sectorsPerTrack, " sectors x ", (int)img.headsPerCylinder, " heads = ",
                 (int)sectorsPerHeadTrack, " but image size of ", (int)img.scsiSectors,
@@ -887,7 +887,7 @@ void scsiDiskLoadConfig(int target_idx)
     {
         image_config_t &img = g_DiskImages[target_idx];
         int blocksize = (img.deviceType == S2S_CFG_OPTICAL) ? 2048 : 512;
-        bluelog("-- Opening ", filename, " for id:", target_idx, ", specified in " CONFIGFILE);
+        log("-- Opening ", filename, " for id:", target_idx, ", specified in " CONFIGFILE);
         scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, blocksize);
     }
 }
@@ -914,14 +914,14 @@ void s2s_configInit(S2S_BoardCfg* config)
 {
     if (SD.exists(CONFIGFILE))
     {
-        bluelog("Reading configuration from " CONFIGFILE);
+        log("Reading configuration from " CONFIGFILE);
     }
     else
     {
-        bluelog("Config file " CONFIGFILE " not found, using defaults");
+        log("Config file " CONFIGFILE " not found, using defaults");
     }
 
-    bluelog("Active configuration:");
+    log("Active configuration:");
     memset(config, 0, sizeof(S2S_BoardCfg));
     memcpy(config->magic, "BCFG", 4);
     config->flags = 0;
@@ -936,40 +936,40 @@ void s2s_configInit(S2S_BoardCfg* config)
     else if (maxSyncSpeed < 10 && config->scsiSpeed > S2S_CFG_SPEED_SYNC_5)
         config->scsiSpeed = S2S_CFG_SPEED_SYNC_5;
 
-    bluelog("-- SelectionDelay: ", (int)config->selectionDelay);
+    log("-- SelectionDelay: ", (int)config->selectionDelay);
 
     if (ini_getbool("SCSI", "EnableUnitAttention", false, CONFIGFILE))
     {
-        bluelog("-- EnableUnitAttention is on");
+        log("-- EnableUnitAttention is on");
         config->flags |= S2S_CFG_ENABLE_UNIT_ATTENTION;
     }
 
     if (ini_getbool("SCSI", "EnableSCSI2", true, CONFIGFILE))
     {
-        bluelog("-- EnableSCSI2 is on");
+        log("-- EnableSCSI2 is on");
         config->flags |= S2S_CFG_ENABLE_SCSI2;
     }
 
     if (ini_getbool("SCSI", "EnableSelLatch", false, CONFIGFILE))
     {
-        bluelog("-- EnableSelLatch is on");
+        log("-- EnableSelLatch is on");
         config->flags |= S2S_CFG_ENABLE_SEL_LATCH;
     }
 
     if (ini_getbool("SCSI", "MapLunsToIDs", false, CONFIGFILE))
     {
-        bluelog("-- MapLunsToIDs is on");
+        log("-- MapLunsToIDs is on");
         config->flags |= S2S_CFG_MAP_LUNS_TO_IDS;
     }
 
     if (ini_getbool("SCSI", "Parity", true, CONFIGFILE))
     {
-        bluelog("-- Parity is enabled");
+        log("-- Parity is enabled");
         config->flags |= S2S_CFG_ENABLE_PARITY;
     }
     else
     {
-        bluelog("-- Parity is disabled");
+        log("-- Parity is disabled");
     }
 }
 
@@ -1161,7 +1161,7 @@ static bool checkNextCDImage()
 
     if (filename[0] != '\0')
     {
-        bluelog("Switching to next CD-ROM image for ", target_idx, ": ", filename);
+        log("Switching to next CD-ROM image for ", target_idx, ": ", filename);
         image_config_t &img = g_DiskImages[target_idx];
         img.file.close();
         bool status = scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, 2048);
@@ -1336,14 +1336,14 @@ static void doWrite(uint32_t lba, uint32_t blocks)
     uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
     uint32_t capacity = img.file.size() / bytesPerSector;
 
-    bluedbg("------ Write ", (int)blocks, "x", (int)bytesPerSector, " starting at ", (int)lba);
+    debuglog("------ Write ", (int)blocks, "x", (int)bytesPerSector, " starting at ", (int)lba);
 
     if (unlikely(blockDev.state & DISK_WP) ||
         unlikely(scsiDev.target->cfg->deviceType == S2S_CFG_OPTICAL) ||
         unlikely(!img.file.isWritable()))
 
     {
-        bluelog("WARNING: Host attempted write to read-only drive ID ", (int)(img.scsiId & S2S_CFG_TARGET_ID_BITS));
+        log("WARNING: Host attempted write to read-only drive ID ", (int)(img.scsiId & S2S_CFG_TARGET_ID_BITS));
         scsiDev.status = CHECK_CONDITION;
         scsiDev.target->sense.code = ILLEGAL_REQUEST;
         scsiDev.target->sense.asc = WRITE_PROTECTED;
@@ -1351,7 +1351,7 @@ static void doWrite(uint32_t lba, uint32_t blocks)
     }
     else if (unlikely(((uint64_t) lba) + blocks > capacity))
     {
-        bluelog("WARNING: Host attempted write at sector ", (int)lba, "+", (int)blocks,
+        log("WARNING: Host attempted write at sector ", (int)lba, "+", (int)blocks,
               ", exceeding image size ", (int)capacity, " sectors (",
               (int)bytesPerSector, "B/sector)");
         scsiDev.status = CHECK_CONDITION;
@@ -1378,7 +1378,7 @@ static void doWrite(uint32_t lba, uint32_t blocks)
         image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
         if (!img.file.seek((uint64_t)transfer.lba * bytesPerSector))
         {
-            bluelog("Seek to ", transfer.lba, " failed for SCSI ID", (int)scsiDev.target->targetId);
+            log("Seek to ", transfer.lba, " failed for SCSI ID", (int)scsiDev.target->targetId);
             scsiDev.status = CHECK_CONDITION;
             scsiDev.target->sense.code = MEDIUM_ERROR;
             scsiDev.target->sense.asc = NO_SEEK_COMPLETE;
@@ -1429,7 +1429,7 @@ void diskDataOut_callback(uint32_t bytes_complete)
         if (len == 0)
             return;
 
-        // bluedbg("SCSI read ", (int)start, " + ", (int)len);
+        // debuglog("SCSI read ", (int)start, " + ", (int)len);
         scsiStartRead(&scsiDev.data[start], len, &g_disk_transfer.parityError);
         g_disk_transfer.bytes_scsi_started += len;
     }
@@ -1529,11 +1529,11 @@ void diskDataOut()
             // when buffer space is freed.
             uint8_t *buf = &scsiDev.data[start];
             g_disk_transfer.sd_transfer_start = start;
-            // bluedbg("SD write ", (int)start, " + ", (int)len, " ", bytearray(buf, len));
+            // debuglog("SD write ", (int)start, " + ", (int)len, " ", bytearray(buf, len));
             platform_set_sd_callback(&diskDataOut_callback, buf);
             if (img.file.write(buf, len) != len)
             {
-                bluelog("SD card write failed: ", SD.sdErrorCode());
+                log("SD card write failed: ", SD.sdErrorCode());
                 scsiDev.status = CHECK_CONDITION;
                 scsiDev.target->sense.code = MEDIUM_ERROR;
                 scsiDev.target->sense.asc = WRITE_ERROR_AUTO_REALLOCATION_FAILED;
@@ -1575,11 +1575,11 @@ static void doRead(uint32_t lba, uint32_t blocks)
     uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
     uint32_t capacity = img.file.size() / bytesPerSector;
 
-    bluedbg("------ Read ", (int)blocks, "x", (int)bytesPerSector, " starting at ", (int)lba);
+    debuglog("------ Read ", (int)blocks, "x", (int)bytesPerSector, " starting at ", (int)lba);
 
     if (unlikely(((uint64_t) lba) + blocks > capacity))
     {
-        bluelog("WARNING: Host attempted read at sector ", (int)lba, "+", (int)blocks,
+        log("WARNING: Host attempted read at sector ", (int)lba, "+", (int)blocks,
               ", exceeding image size ", (int)capacity, " sectors (",
               (int)bytesPerSector, "B/sector)");
         scsiDev.status = CHECK_CONDITION;
@@ -1610,7 +1610,7 @@ static void doRead(uint32_t lba, uint32_t blocks)
             uint32_t count = sectors_in_prefetch - start_offset;
             if (count > transfer.blocks) count = transfer.blocks;
             scsiStartWrite(g_scsi_prefetch.buffer + start_offset * bytesPerSector, count * bytesPerSector);
-            bluedbg("------ Found ", (int)count, " sectors in prefetch cache");
+            debuglog("------ Found ", (int)count, " sectors in prefetch cache");
             transfer.currentBlock += count;
         }
 
@@ -1622,7 +1622,7 @@ static void doRead(uint32_t lba, uint32_t blocks)
 
         if (!img.file.seek((uint64_t)(transfer.lba + transfer.currentBlock) * bytesPerSector))
         {
-            bluelog("Seek to ", transfer.lba, " failed for SCSI ID", (int)scsiDev.target->targetId);
+            log("Seek to ", transfer.lba, " failed for SCSI ID", (int)scsiDev.target->targetId);
             scsiDev.status = CHECK_CONDITION;
             scsiDev.target->sense.code = MEDIUM_ERROR;
             scsiDev.target->sense.asc = NO_SEEK_COMPLETE;
@@ -1681,7 +1681,7 @@ static void start_dataInTransfer(uint8_t *buffer, uint32_t count)
     {
         if ((uint32_t)(millis() - start) > 5000)
         {
-            bluelog("start_dataInTransfer() timeout waiting for previous to finish");
+            log("start_dataInTransfer() timeout waiting for previous to finish");
             scsiDev.resetFlag = 1;
         }
     }
@@ -1693,7 +1693,7 @@ static void start_dataInTransfer(uint8_t *buffer, uint32_t count)
 
     if (img.file.read(buffer, count) != count)
     {
-        bluelog("SD card read failed: ", SD.sdErrorCode());
+        log("SD card read failed: ", SD.sdErrorCode());
         scsiDev.status = CHECK_CONDITION;
         scsiDev.target->sense.code = MEDIUM_ERROR;
         scsiDev.target->sense.asc = UNRECOVERED_READ_ERROR;
@@ -1771,7 +1771,7 @@ static void diskDataIn()
             int status = img.file.read(g_disk_transfer.buffer, bytesPerSector);
             if (status <= 0)
             {
-                bluelog("Prefetch read failed");
+                log("Prefetch read failed");
                 prefetch_sectors = 0;
                 break;
             }
@@ -1810,13 +1810,13 @@ int scsiDiskCommand()
         {
             if (start)
             {
-                bluedbg("------ CDROM close tray");
+                debuglog("------ CDROM close tray");
                 img.ejected = false;
                 img.cdrom_events = 2; // New media
             }
             else
             {
-                bluedbg("------ CDROM open tray");
+                debuglog("------ CDROM open tray");
                 img.ejected = true;
                 img.cdrom_events = 3; // Media removal
             }

@@ -44,7 +44,7 @@ bool scsiHostPhySelect(int target_id)
 
         if (SCSI_IN_DATA() != 0)
         {
-            bluedbg("scsiHostPhySelect: bus is busy");
+            debuglog("scsiHostPhySelect: bus is busy");
             scsiLogInitiatorPhaseChange(BUS_FREE);
             SCSI_RELEASE_OUTPUTS();
             return false;
@@ -53,7 +53,7 @@ bool scsiHostPhySelect(int target_id)
 
     // Selection phase
     scsiLogInitiatorPhaseChange(SELECTION);
-    bluedbg("------ SELECTING ", target_id);
+    debuglog("------ SELECTING ", target_id);
     SCSI_OUT(SEL, 1);
     delayMicroseconds(5);
     SCSI_OUT_DATA(1 << target_id);
@@ -179,7 +179,7 @@ static inline uint8_t scsiHostReadOneByte(int* parityError)
 
     if (parityError && r != (g_scsi_parity_lookup[r & 0xFF] ^ SCSI_IO_DATA_MASK))
     {
-        bluelog("Parity error in scsiReadOneByte(): ", (uint32_t)r);
+        log("Parity error in scsiReadOneByte(): ", (uint32_t)r);
         *parityError = 1;
     }
 
@@ -200,7 +200,7 @@ uint32_t scsiHostWrite(const uint8_t *data, uint32_t count)
             if (g_scsiHostPhyReset || SCSI_IN(IO) || SCSI_IN(CD) != cd_start || SCSI_IN(MSG) != msg_start)
             {
                 // Target switched out of DATA_OUT mode
-                bluelog("scsiHostWrite: sent ", (int)i, " bytes, expected ", (int)count);
+                log("scsiHostWrite: sent ", (int)i, " bytes, expected ", (int)count);
                 return i;
             }
         }
@@ -251,7 +251,7 @@ uint32_t scsiHostRead(uint8_t *data, uint32_t count)
     {
         if (count < fullcount)
         {
-            bluelog("scsiHostRead: received ", (int)count, " bytes, expected ", (int)fullcount);
+            log("scsiHostRead: received ", (int)count, " bytes, expected ", (int)fullcount);
         }
 
         return count;

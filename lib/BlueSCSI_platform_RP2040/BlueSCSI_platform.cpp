@@ -72,19 +72,19 @@ void platform_init()
     g_uart_initialized = true;
     mbed_set_error_hook(mbed_error_hook);
 
-    //bluelog("DIP switch settings: debug log ", (int)dbglog, ", termination ", (int)termination);
-    bluelog("Platform: ", g_platform_name);
-    bluelog("FW Version: ", g_bluelog_firmwareversion);
+    //log("DIP switch settings: debug log ", (int)dbglog, ", termination ", (int)termination);
+    log("Platform: ", g_platform_name);
+    log("FW Version: ", g_log_firmwareversion);
 
-    g_bluelog_debug = false; // Debug logging can be handled with a debug firmware, very easy to reflash
+    g_log_debug = false; // Debug logging can be handled with a debug firmware, very easy to reflash
 
     // if (termination)  // Termination is handled by hardware jumper
     // {
-    //     bluelog("SCSI termination is enabled");
+    //     log("SCSI termination is enabled");
     // }
     // else
     // {
-    //     bluelog("NOTE: SCSI termination is disabled");
+    //     log("NOTE: SCSI termination is disabled");
     // }
 
     // Get flash chip size
@@ -92,7 +92,7 @@ void platform_init()
     uint8_t response_jedec[4] = {0};
     flash_do_cmd(cmd_read_jedec_id, response_jedec, 4);
     g_flash_chip_size = (1 << response_jedec[3]);
-    bluelog("Flash chip size: ", (int)(g_flash_chip_size / 1024), " kB");
+    log("Flash chip size: ", (int)(g_flash_chip_size / 1024), " kB");
 
     // SD card pins
     // Card is used in SDIO mode for main program, and in SPI mode for crash handler & bootloader.
@@ -156,12 +156,12 @@ void platform_late_init()
     if (read_initiator_dip_switch())
     {
         g_scsi_initiator = true;
-        bluelog("SCSI initiator mode selected by DIP switch, expecting SCSI disks on the bus");
+        log("SCSI initiator mode selected by DIP switch, expecting SCSI disks on the bus");
     }
     else
     {
         g_scsi_initiator = false;
-        bluelog("SCSI target/disk mode selected by DIP switch, acting as a SCSI disk");
+        log("SCSI target/disk mode selected by DIP switch, acting as a SCSI disk");
     }
 
     /* Initialize SCSI pins to required modes.
@@ -238,7 +238,7 @@ void platform_disable_led(void)
 {   
     //        pin      function       pup   pdown  out    state fast
     gpio_conf(LED_PIN, GPIO_FUNC_SIO, false,false, false, false, false);
-    bluelog("Disabling status LED");
+    log("Disabling status LED");
 }
 
 /*****************************************/
@@ -265,28 +265,28 @@ void platform_emergency_log_save()
     }
 
     uint32_t startpos = 0;
-    crashfile.write(bluelog_get_buffer(&startpos));
-    crashfile.write(bluelog_get_buffer(&startpos));
+    crashfile.write(log_get_buffer(&startpos));
+    crashfile.write(log_get_buffer(&startpos));
     crashfile.flush();
     crashfile.close();
 }
 
 void mbed_error_hook(const mbed_error_ctx * error_context)
 {
-    bluelog("--------------");
-    bluelog("CRASH!");
-    bluelog("Platform: ", g_platform_name);
-    bluelog("FW Version: ", g_bluelog_firmwareversion);
-    bluelog("error_status: ", (uint32_t)error_context->error_status);
-    bluelog("error_address: ", error_context->error_address);
-    bluelog("error_value: ", error_context->error_value);
+    log("--------------");
+    log("CRASH!");
+    log("Platform: ", g_platform_name);
+    log("FW Version: ", g_log_firmwareversion);
+    log("error_status: ", (uint32_t)error_context->error_status);
+    log("error_address: ", error_context->error_address);
+    log("error_value: ", error_context->error_value);
 
     uint32_t *p = (uint32_t*)((uint32_t)error_context->thread_current_sp & ~3);
     for (int i = 0; i < 8; i++)
     {
         if (p == &__StackTop) break; // End of stack
 
-        bluelog("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
+        log("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
         p += 4;
     }
 
@@ -336,16 +336,16 @@ static void watchdog_callback(unsigned alarm_num)
     {
         if (!scsiDev.resetFlag || !g_scsiHostPhyReset)
         {
-            bluelog("--------------");
-            bluelog("WATCHDOG TIMEOUT, attempting bus reset");
-            bluelog("GPIO states: out ", sio_hw->gpio_out, " oe ", sio_hw->gpio_oe, " in ", sio_hw->gpio_in);
+            log("--------------");
+            log("WATCHDOG TIMEOUT, attempting bus reset");
+            log("GPIO states: out ", sio_hw->gpio_out, " oe ", sio_hw->gpio_oe, " in ", sio_hw->gpio_in);
 
             uint32_t *p = (uint32_t*)__get_PSP();
             for (int i = 0; i < 8; i++)
             {
                 if (p == &__StackTop) break; // End of stack
 
-                bluelog("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
+                log("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
                 p += 4;
             }
 
@@ -355,18 +355,18 @@ static void watchdog_callback(unsigned alarm_num)
 
         if (g_watchdog_timeout <= 0)
         {
-            bluelog("--------------");
-            bluelog("WATCHDOG TIMEOUT!");
-            bluelog("Platform: ", g_platform_name);
-            bluelog("FW Version: ", g_bluelog_firmwareversion);
-            bluelog("GPIO states: out ", sio_hw->gpio_out, " oe ", sio_hw->gpio_oe, " in ", sio_hw->gpio_in);
+            log("--------------");
+            log("WATCHDOG TIMEOUT!");
+            log("Platform: ", g_platform_name);
+            log("FW Version: ", g_log_firmwareversion);
+            log("GPIO states: out ", sio_hw->gpio_out, " oe ", sio_hw->gpio_oe, " in ", sio_hw->gpio_in);
 
             uint32_t *p = (uint32_t*)__get_PSP();
             for (int i = 0; i < 8; i++)
             {
                 if (p == &__StackTop) break; // End of stack
 
-                bluelog("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
+                log("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
                 p += 4;
             }
 
@@ -410,12 +410,12 @@ bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_
     {
         if (buffer[3] != 0x20 || buffer[7] != 0x10)
         {
-            bluelog("Invalid firmware file, starts with: ", bytearray(buffer, 16));
+            log("Invalid firmware file, starts with: ", bytearray(buffer, 16));
             return false;
         }
     }
 
-    bluedbg("Writing flash at offset ", offset, " data ", bytearray(buffer, 4));
+    debuglog("Writing flash at offset ", offset, " data ", bytearray(buffer, 4));
     assert(offset % PLATFORM_FLASH_PAGE_SIZE == 0);
     assert(offset >= PLATFORM_BOOTLOADER_SIZE);
 
@@ -442,7 +442,7 @@ bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_
 
         if (actual != expected)
         {
-            bluelog("Flash verify failed at offset ", offset + i * 4, " got ", actual, " expected ", expected);
+            log("Flash verify failed at offset ", offset + i * 4, " got ", actual, " expected ", expected);
             return false;
         }
     }
@@ -657,7 +657,7 @@ public:
         for (int i = 0; i < size; i++)
         {
             char buf[2] = {((const char*)buffer)[i], 0};
-            bluelog_raw(buf);
+            log_raw(buf);
         }
         return size;
     }

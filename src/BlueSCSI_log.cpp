@@ -2,8 +2,8 @@
 #include "BlueSCSI_config.h"
 #include "BlueSCSI_platform.h"
 
-const char *g_bluelog_firmwareversion = BLUESCSI_FW_VERSION " " __DATE__ " " __TIME__;
-bool g_bluelog_debug = true;
+const char *g_log_firmwareversion = BLUESCSI_FW_VERSION " " __DATE__ " " __TIME__;
+bool g_log_debug = true;
 
 // This memory buffer can be read by debugger and is also saved to log.txt
 #define LOGBUFMASK (LOGBUFSIZE - 1)
@@ -14,7 +14,7 @@ uint32_t g_log_magic;
 char g_logbuffer[LOGBUFSIZE + 1];
 uint32_t g_logpos;
 
-void bluelog_raw(const char *str)
+void log_raw(const char *str)
 {
     // Keep log from reboot / bootloader if magic matches expected value
     if (g_log_magic != 0xAA55AA55)
@@ -37,7 +37,7 @@ void bluelog_raw(const char *str)
 }
 
 // Log byte as hex
-void bluelog_raw(uint8_t value)
+void log_raw(uint8_t value)
 {
     const char *nibble = "0123456789ABCDEF";
     char hexbuf[5] = {
@@ -45,11 +45,11 @@ void bluelog_raw(uint8_t value)
         nibble[(value >>  4) & 0xF], nibble[(value >>  0) & 0xF],
         0
     };
-    bluelog_raw(hexbuf);
+    log_raw(hexbuf);
 }
 
 // Log integer as hex
-void bluelog_raw(uint32_t value)
+void log_raw(uint32_t value)
 {
     const char *nibble = "0123456789ABCDEF";
     char hexbuf[11] = {
@@ -60,11 +60,11 @@ void bluelog_raw(uint32_t value)
         nibble[(value >>  4) & 0xF], nibble[(value >>  0) & 0xF],
         0
     };
-    bluelog_raw(hexbuf);
+    log_raw(hexbuf);
 }
 
 // Log integer as hex
-void bluelog_raw(uint64_t value)
+void log_raw(uint64_t value)
 {
     const char *nibble = "0123456789ABCDEF";
     char hexbuf[19] = {
@@ -79,11 +79,11 @@ void bluelog_raw(uint64_t value)
         nibble[(value >>  4) & 0xF], nibble[(value >>  0) & 0xF],
         0
     };
-    bluelog_raw(hexbuf);
+    log_raw(hexbuf);
 }
 
 // Log integer as decimal
-void bluelog_raw(int value)
+void log_raw(int value)
 {
     char decbuf[16] = {0};
     char *p = &decbuf[14];
@@ -99,29 +99,29 @@ void bluelog_raw(int value)
         *--p = '-';
     }
 
-    bluelog_raw(p);
+    log_raw(p);
 }
 
-void bluelog_raw(bytearray array)
+void log_raw(bytearray array)
 {
     for (size_t i = 0; i < array.len; i++)
     {
-        bluelog_raw(array.data[i]);
-        bluelog_raw(" ");
+        log_raw(array.data[i]);
+        log_raw(" ");
         if (i > 32)
         {
-            bluelog_raw("... (total ", (int)array.len, ")");
+            log_raw("... (total ", (int)array.len, ")");
             break;
         }
     }
 }
 
-uint32_t bluelog_get_buffer_len()
+uint32_t log_get_buffer_len()
 {
     return g_logpos;
 }
 
-const char *bluelog_get_buffer(uint32_t *startpos)
+const char *log_get_buffer(uint32_t *startpos)
 {
     uint32_t default_pos = 0;
     if (startpos == NULL)

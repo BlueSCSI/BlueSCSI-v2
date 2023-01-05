@@ -72,15 +72,15 @@ void save_logfile(bool always = false)
   static uint32_t prev_log_pos = 0;
   static uint32_t prev_log_len = 0;
   static uint32_t prev_log_save = 0;
-  uint32_t loglen = bluelog_get_buffer_len();
+  uint32_t loglen = log_get_buffer_len();
 
   if (loglen != prev_log_len && g_sdcard_present)
   {
     // When debug is off, save log at most every LOG_SAVE_INTERVAL_MS
     // When debug is on, save after every SCSI command.
-    if (always || g_bluelog_debug || (LOG_SAVE_INTERVAL_MS > 0 && (uint32_t)(millis() - prev_log_save) > LOG_SAVE_INTERVAL_MS))
+    if (always || g_log_debug || (LOG_SAVE_INTERVAL_MS > 0 && (uint32_t)(millis() - prev_log_save) > LOG_SAVE_INTERVAL_MS))
     {
-      g_logfile.write(bluelog_get_buffer(&prev_log_pos));
+      g_logfile.write(log_get_buffer(&prev_log_pos));
       g_logfile.flush();
 
       prev_log_len = loglen;
@@ -98,7 +98,7 @@ void init_logfile()
   g_logfile = SD.open(LOGFILE, flags);
   if (!g_logfile.isOpen())
   {
-    bluelog("Failed to open log file: ", SD.sdErrorCode());
+    log("Failed to open log file: ", SD.sdErrorCode());
   }
   save_logfile(true);
 
@@ -108,19 +108,19 @@ void init_logfile()
 void print_sd_info()
 {
   uint64_t size = (uint64_t)SD.vol()->clusterCount() * SD.vol()->bytesPerCluster();
-  bluelog("SD card detected, FAT", (int)SD.vol()->fatType(),
+  log("SD card detected, FAT", (int)SD.vol()->fatType(),
           " volume size: ", (int)(size / 1024 / 1024), " MB");
 
   cid_t sd_cid;
 
   if(SD.card()->readCID(&sd_cid))
   {
-    bluelog("SD MID: ", (uint8_t)sd_cid.mid, ", OID: ", (uint8_t)sd_cid.oid[0], " ", (uint8_t)sd_cid.oid[1]);
+    log("SD MID: ", (uint8_t)sd_cid.mid, ", OID: ", (uint8_t)sd_cid.oid[0], " ", (uint8_t)sd_cid.oid[1]);
 
     char sdname[6] = {sd_cid.pnm[0], sd_cid.pnm[1], sd_cid.pnm[2], sd_cid.pnm[3], sd_cid.pnm[4], 0};
-    bluelog("SD Name: ", sdname);
-    bluelog("SD Date: ", (int)sd_cid.mdtMonth(), "/", sd_cid.mdtYear());
-    bluelog("SD Serial: ", sd_cid.psn());
+    log("SD Name: ", sdname);
+    log("SD Date: ", (int)sd_cid.mdtMonth(), "/", sd_cid.mdtYear());
+    log("SD Serial: ", sd_cid.psn());
   }
 }
 
@@ -135,13 +135,13 @@ bool findHDDImages()
   ini_gets("SCSI", "Dir", "/", imgdir, sizeof(imgdir), CONFIGFILE);
   int dirindex = 0;
 
-  bluelog("Finding HDD images in directory ", imgdir, ":");
+  log("Finding HDD images in directory ", imgdir, ":");
 
   SdFile root;
   root.open(imgdir);
   if (!root.isOpen())
   {
-    bluelog("Could not open directory: ", imgdir);
+    log("Could not open directory: ", imgdir);
   }
 
   SdFile file;
@@ -166,11 +166,11 @@ bool findHDDImages()
 
       if (imgdir[0] != '\0')
       {
-        bluelog("Finding HDD images in additional directory Dir", (int)dirindex, " = \"", imgdir, "\":");
+        log("Finding HDD images in additional directory Dir", (int)dirindex, " = \"", imgdir, "\":");
         root.open(imgdir);
         if (!root.isOpen())
         {
-          bluelog("-- Could not open directory: ", imgdir);
+          log("-- Could not open directory: ", imgdir);
         }
         continue;
       }
@@ -218,7 +218,7 @@ bool findHDDImages()
 
         if (is_compressed)
         {
-          bluelog("-- Ignoring compressed file ", name);
+          log("-- Ignoring compressed file ", name);
           continue;
         }
 
@@ -290,7 +290,7 @@ bool findHDDImages()
         // Check whether this SCSI ID has been configured yet
         if (s2s_getConfigById(id))
         {
-          bluelog("-- Ignoring ", fullname, ", SCSI ID ", id, " is already in use!");
+          log("-- Ignoring ", fullname, ", SCSI ID ", id, " is already in use!");
           continue;
         }
 
@@ -306,7 +306,7 @@ bool findHDDImages()
         // Open the image file
         if (id < NUM_SCSIID && is_romdrive)
         {
-          bluelog("-- Loading ROM drive from ", fullname, " for id:", id);
+          log("-- Loading ROM drive from ", fullname, " for id:", id);
           imageReady = scsiDiskProgramRomDrive(fullname, id, blk, type);
           
           if (imageReady)
@@ -315,7 +315,7 @@ bool findHDDImages()
           }
         }
         else if(id < NUM_SCSIID && lun < NUM_SCSILUN) {
-          bluelog("-- Opening ", fullname, " for id:", id, " lun:", lun);
+          log("-- Opening ", fullname, " for id:", id, " lun:", lun);
 
           imageReady = scsiDiskOpenHDDImage(id, fullname, id, lun, blk, type);
           if(imageReady)
@@ -324,17 +324,17 @@ bool findHDDImages()
           }
           else
           {
-            bluelog("---- Failed to load image");
+            log("---- Failed to load image");
           }
         } else {
-          bluelog("-- Invalid lun or id for image ", fullname);
+          log("-- Invalid lun or id for image ", fullname);
         }
       }
     }
   }
 
   if(usedDefaultId > 0) {
-    bluelog("Some images did not specify a SCSI ID. Last file will be used at ID ", usedDefaultId);
+    log("Some images did not specify a SCSI ID. Last file will be used at ID ", usedDefaultId);
   }
   root.close();
 
@@ -348,7 +348,7 @@ bool findHDDImages()
     if (cfg && (cfg->scsiId & S2S_CFG_TARGET_ENABLED))
     {
       int capacity_kB = ((uint64_t)cfg->scsiSectors * cfg->bytesPerSector) / 1024;
-      bluelog("SCSI ID:", (int)(cfg->scsiId & 7),
+      log("SCSI ID:", (int)(cfg->scsiId & 7),
             " BlockSize:", (int)cfg->bytesPerSector,
             " Type:", (int)cfg->deviceType,
             " Quirks:", (int)cfg->quirks,
@@ -399,7 +399,7 @@ static void reinitSCSI()
 {
   if (ini_getbool("SCSI", "Debug", 0, CONFIGFILE))
   {
-    g_bluelog_debug = true;
+    g_log_debug = true;
   }
 
 #ifdef PLATFORM_HAS_INITIATOR_MODE
@@ -430,11 +430,11 @@ static void reinitSCSI()
   else
   {
 #if RAW_FALLBACK_ENABLE
-    bluelog("No images found, enabling RAW fallback partition");
+    log("No images found, enabling RAW fallback partition");
     scsiDiskOpenHDDImage(RAW_FALLBACK_SCSI_ID, "RAW:0:0xFFFFFFFF", RAW_FALLBACK_SCSI_ID, 0,
                          RAW_FALLBACK_BLOCKSIZE);
 #else
-    bluelog("No valid image files found!");
+    log("No valid image files found!");
 #endif
     blinkStatus(BLINK_ERROR_NO_IMAGES);
   }
@@ -454,7 +454,7 @@ extern "C" void bluescsi_setup(void)
 
   if(!g_sdcard_present)
   {
-    bluelog("SD card init failed, sdErrorCode: ", (int)SD.sdErrorCode(),
+    log("SD card init failed, sdErrorCode: ", (int)SD.sdErrorCode(),
            " sdErrorData: ", (int)SD.sdErrorData());
     
     blinkStatus(BLINK_ERROR_NO_SD_CARD);
@@ -464,7 +464,7 @@ extern "C" void bluescsi_setup(void)
       reinitSCSI();
       if (g_romdrive_active)
       {
-        bluelog("Enabled ROM drive without SD card");
+        log("Enabled ROM drive without SD card");
         return;
       }
     }
@@ -476,14 +476,14 @@ extern "C" void bluescsi_setup(void)
       platform_reset_watchdog();
       g_sdcard_present = mountSDCard();
     } while (!g_sdcard_present);
-    bluelog("SD card init succeeded after retry");
+    log("SD card init succeeded after retry");
   }
 
   if (g_sdcard_present)
   {
     if (SD.clusterCount() == 0)
     {
-      bluelog("SD card without filesystem!");
+      log("SD card without filesystem!");
     }
 
     print_sd_info();
@@ -491,7 +491,7 @@ extern "C" void bluescsi_setup(void)
     reinitSCSI();
   }
 
-  bluelog("Initialization complete!");
+  log("Initialization complete!");
 
   if (g_sdcard_present)
   {
@@ -542,7 +542,7 @@ extern "C" void bluescsi_main_loop(void)
         if (!SD.card()->readOCR(&ocr))
         {
           g_sdcard_present = false;
-          bluelog("SD card removed, trying to reinit");
+          log("SD card removed, trying to reinit");
         }
       }
     }
@@ -557,7 +557,7 @@ extern "C" void bluescsi_main_loop(void)
 
       if (g_sdcard_present)
       {
-        bluelog("SD card reinit succeeded");
+        log("SD card reinit succeeded");
         print_sd_info();
 
         reinitSCSI();

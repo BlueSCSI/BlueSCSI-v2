@@ -110,7 +110,7 @@ uint32_t scsi_accel_host_read(uint8_t *buf, uint32_t count, int *parityError, vo
     uint8_t byte1 = ~(paritycheck >> 16);
     if (paritycheck != ((g_scsi_parity_lookup[byte1] << 16) | g_scsi_parity_lookup[byte0]))
     {
-        bluelog("Parity error in scsi_accel_host_read(): ", paritycheck);
+        log("Parity error in scsi_accel_host_read(): ", paritycheck);
         *parityError = 1;
     }
 
