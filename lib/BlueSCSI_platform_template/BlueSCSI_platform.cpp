@@ -29,7 +29,7 @@ void bluescsiplatform_late_init()
 
 void platform_disable_led(void)
 {
-    /* This function disables the LED on the ZuluSCSI board
+    /* This function disables the LED on the BlueSCSI board
     *  Generally by switching the pin from output to input.
     */
 }
