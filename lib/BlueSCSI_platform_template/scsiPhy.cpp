@@ -93,7 +93,7 @@ static void scsi_rst_assert_interrupt()
 
     if (rst1 && rst2)
     {
-        bluedbg("BUS RESET");
+        debuglog("BUS RESET");
         scsiDev.resetFlag = 1;
     }
 }

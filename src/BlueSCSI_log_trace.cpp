@@ -65,7 +65,7 @@ static void printNewPhase(int phase, bool initiator = false)
 {
     g_LogData = false;
     g_LogInitiatorCommand = false;
-    if (!g_bluelog_debug)
+    if (!g_log_debug)
     {
         return;
     }
@@ -73,45 +73,45 @@ static void printNewPhase(int phase, bool initiator = false)
     switch(phase)
     {
         case BUS_FREE:
-            bluedbg("-- BUS_FREE");
+            debuglog("-- BUS_FREE");
             break;
 
         case BUS_BUSY:
-            bluedbg("-- BUS_BUSY");
+            debuglog("-- BUS_BUSY");
             break;
 
         case ARBITRATION:
-            bluedbg("---- ARBITRATION");
+            debuglog("---- ARBITRATION");
             break;
 
         case SELECTION:
             if (initiator)
-                bluedbg("---- SELECTION");
+                debuglog("---- SELECTION");
             else
-                bluedbg("---- SELECTION: ", (int)(*SCSI_STS_SELECTED & 7));
+                debuglog("---- SELECTION: ", (int)(*SCSI_STS_SELECTED & 7));
             break;
 
         case RESELECTION:
-            bluedbg("---- RESELECTION");
+            debuglog("---- RESELECTION");
             break;
 
         case STATUS:
             if (initiator)
             {
-                bluedbg("---- STATUS");
+                debuglog("---- STATUS");
                 g_LogData = true;
             }
             else if (scsiDev.status == GOOD)
             {
-                bluedbg("---- STATUS: 0 GOOD");
+                debuglog("---- STATUS: 0 GOOD");
             }
             else if (scsiDev.status == CHECK_CONDITION && scsiDev.target)
             {
-                bluedbg("---- STATUS: 2 CHECK_CONDITION, sense ", (uint32_t)scsiDev.target->sense.asc);
+                debuglog("---- STATUS: 2 CHECK_CONDITION, sense ", (uint32_t)scsiDev.target->sense.asc);
             }
             else
             {
-                bluedbg("---- STATUS: ", (int)scsiDev.status);
+                debuglog("---- STATUS: ", (int)scsiDev.status);
             }
             break;
 
@@ -122,32 +122,32 @@ static void printNewPhase(int phase, bool initiator = false)
 
         case DATA_IN:
             if (!initiator && scsiDev.target->syncOffset > 0)
-                bluedbg("---- DATA_IN, syncOffset ", (int)scsiDev.target->syncOffset,
+                debuglog("---- DATA_IN, syncOffset ", (int)scsiDev.target->syncOffset,
                                    " syncPeriod ", (int)scsiDev.target->syncPeriod);
             else
-                bluedbg("---- DATA_IN");
+                debuglog("---- DATA_IN");
             break;
 
         case DATA_OUT:
             if (!initiator && scsiDev.target->syncOffset > 0)
-                bluedbg("---- DATA_OUT, syncOffset ", (int)scsiDev.target->syncOffset,
+                debuglog("---- DATA_OUT, syncOffset ", (int)scsiDev.target->syncOffset,
                                     " syncPeriod ", (int)scsiDev.target->syncPeriod);
             else
-                bluedbg("---- DATA_OUT");
+                debuglog("---- DATA_OUT");
             break;
 
         case MESSAGE_IN:
-            bluedbg("---- MESSAGE_IN");
+            debuglog("---- MESSAGE_IN");
             g_LogData = true;
             break;
 
         case MESSAGE_OUT:
-            bluedbg("---- MESSAGE_OUT");
+            debuglog("---- MESSAGE_OUT");
             g_LogData = true;
             break;
 
         default:
-            bluedbg("---- PHASE: ", phase);
+            debuglog("---- PHASE: ", phase);
             break;
     }
 }
@@ -162,7 +162,7 @@ void scsiLogPhaseChange(int new_phase)
     {
         if (old_phase == DATA_IN || old_phase == DATA_OUT)
         {
-            bluedbg("---- Total IN: ", g_InByteCount, " OUT: ", g_OutByteCount, " CHECKSUM: ", (int)g_DataChecksum);
+            debuglog("---- Total IN: ", g_InByteCount, " OUT: ", g_OutByteCount, " CHECKSUM: ", (int)g_DataChecksum);
         }
         g_InByteCount = g_OutByteCount = 0;
         g_DataChecksum = 0;
@@ -176,7 +176,7 @@ void scsiLogPhaseChange(int new_phase)
             int syncper = scsiDev.target->syncPeriod;
             int syncoff = scsiDev.target->syncOffset;
             int mbyte_per_s = (1000 + syncper * 2) / (syncper * 4);
-            bluelog("SCSI ID ", (int)scsiDev.target->targetId,
+            log("SCSI ID ", (int)scsiDev.target->targetId,
                   " negotiated synchronous mode ", mbyte_per_s, " MB/s ",
                   "(period 4x", syncper, " ns, offset ", syncoff, " bytes)");
         }
@@ -196,7 +196,7 @@ void scsiLogInitiatorPhaseChange(int new_phase)
     {
         if (old_phase == DATA_IN || old_phase == DATA_OUT)
         {
-            bluedbg("---- Total IN: ", g_InByteCount, " OUT: ", g_OutByteCount, " CHECKSUM: ", (int)g_DataChecksum);
+            debuglog("---- Total IN: ", g_InByteCount, " OUT: ", g_OutByteCount, " CHECKSUM: ", (int)g_DataChecksum);
         }
         g_InByteCount = g_OutByteCount = 0;
         g_DataChecksum = 0;
@@ -210,10 +210,10 @@ void scsiLogDataIn(const uint8_t *buf, uint32_t length)
 {
     if (g_LogData)
     {
-        bluedbg("------ IN: ", bytearray(buf, length));
+        debuglog("------ IN: ", bytearray(buf, length));
     }
 
-    if (g_bluelog_debug)
+    if (g_log_debug)
     {
         // BSD checksum algorithm
         for (uint32_t i = 0; i < length; i++)
@@ -230,15 +230,15 @@ void scsiLogDataOut(const uint8_t *buf, uint32_t length)
 {
     if (buf == scsiDev.cdb || g_LogInitiatorCommand)
     {
-        bluedbg("---- COMMAND: ", getCommandName(buf[0]));
+        debuglog("---- COMMAND: ", getCommandName(buf[0]));
     }
 
     if (g_LogData)
     {
-        bluedbg("------ OUT: ", bytearray(buf, length));
+        debuglog("------ OUT: ", bytearray(buf, length));
     }
 
-    if (g_bluelog_debug)
+    if (g_log_debug)
     {
         // BSD checksum algorithm
         for (uint32_t i = 0; i < length; i++)
