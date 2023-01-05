@@ -498,7 +498,7 @@ extern "C" void bluescsi_setup(void)
     init_logfile();
     if (ini_getbool("SCSI", "DisableStatusLED", false, CONFIGFILE))
     {
-      azplatform_disable_led();
+      platform_disable_led();
     }
   }
 }

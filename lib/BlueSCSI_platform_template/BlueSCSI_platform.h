@@ -47,7 +47,7 @@ void bluescsiplatform_init();
 void bluescsiplatform_late_init();
 
 // Disable the status LED
-void azplatform_disable_led(void);
+void platform_disable_led(void);
 
 // Setup soft watchdog if supported
 void bluescsiplatform_reset_watchdog();

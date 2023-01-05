@@ -234,7 +234,7 @@ bool bluescsiplatform_is_initiator_mode_enabled()
     return g_scsi_initiator;
 }
 
-void azplatform_disable_led(void)
+void platform_disable_led(void)
 {   
     //        pin      function       pup   pdown  out    state fast
     gpio_conf(LED_PIN, GPIO_FUNC_SIO, false,false, false, false, false);
@@ -493,7 +493,7 @@ const void * btldr_vectors[2] = {&__StackTop, (void*)&btldr_reset_handler};
 // Reserve up to 352 kB for firmware.
 #define ROMDRIVE_OFFSET (352 * 1024)
 
-uint32_t azplatform_get_romdrive_maxsize()
+uint32_t platform_get_romdrive_maxsize()
 {
     if (g_flash_chip_size >= ROMDRIVE_OFFSET)
     {
@@ -506,7 +506,7 @@ uint32_t azplatform_get_romdrive_maxsize()
     }
 }
 
-bool azplatform_read_romdrive(uint8_t *dest, uint32_t start, uint32_t count)
+bool platform_read_romdrive(uint8_t *dest, uint32_t start, uint32_t count)
 {
     xip_ctrl_hw->stream_ctr = 0;
 
@@ -519,7 +519,7 @@ bool azplatform_read_romdrive(uint8_t *dest, uint32_t start, uint32_t count)
     xip_ctrl_hw->stream_ctr = count / 4;
 
     // Transfer happens in multiples of 4 bytes
-    assert(start < azplatform_get_romdrive_maxsize());
+    assert(start < platform_get_romdrive_maxsize());
     assert((count & 3) == 0);
     assert((((uint32_t)dest) & 3) == 0);
 
@@ -537,10 +537,10 @@ bool azplatform_read_romdrive(uint8_t *dest, uint32_t start, uint32_t count)
     return true;
 }
 
-bool azplatform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count)
+bool platform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count)
 {
-    assert(start < azplatform_get_romdrive_maxsize());
-    assert((count % AZPLATFORM_ROMDRIVE_PAGE_SIZE) == 0);
+    assert(start < platform_get_romdrive_maxsize());
+    assert((count % PLATFORM_ROMDRIVE_PAGE_SIZE) == 0);
 
     __disable_irq();
     flash_range_erase(start + ROMDRIVE_OFFSET, count);

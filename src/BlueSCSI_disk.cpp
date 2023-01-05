@@ -57,10 +57,10 @@ extern "C" {
 
 #ifndef PLATFORM_HAS_ROM_DRIVE
 // Dummy defines for platforms without ROM drive support
-#define AZPLATFORM_ROMDRIVE_PAGE_SIZE 1024
-uint32_t azplatform_get_romdrive_maxsize() { return 0; }
-bool azplatform_read_romdrive(uint8_t *dest, uint32_t start, uint32_t count) { return false; }
-bool azplatform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count) { return false; }
+#define PLATFORM_ROMDRIVE_PAGE_SIZE 1024
+uint32_t platform_get_romdrive_maxsize() { return 0; }
+bool platform_read_romdrive(uint8_t *dest, uint32_t start, uint32_t count) { return false; }
+bool platform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count) { return false; }
 #endif
 
 #ifndef PLATFORM_SCSIPHY_HAS_NONBLOCKING_READ
@@ -98,7 +98,7 @@ struct romdrive_hdr_t {
 // Check if the romdrive is present
 static bool check_romdrive(romdrive_hdr_t *hdr)
 {
-    if (!azplatform_read_romdrive((uint8_t*)hdr, 0, sizeof(romdrive_hdr_t)))
+    if (!platform_read_romdrive((uint8_t*)hdr, 0, sizeof(romdrive_hdr_t)))
     {
         return false;
     }
@@ -120,7 +120,7 @@ static bool check_romdrive(romdrive_hdr_t *hdr)
 bool scsiDiskProgramRomDrive(const char *filename, int scsi_id, int blocksize, S2S_CFG_TYPE type)
 {
 #ifndef PLATFORM_HAS_ROM_DRIVE
-    azlog("---- Platform does not support ROM drive");
+    bluelog("---- Platform does not support ROM drive");
     return false;
 #endif
 
@@ -132,7 +132,7 @@ bool scsiDiskProgramRomDrive(const char *filename, int scsi_id, int blocksize, S
     }
 
     uint64_t filesize = file.size();
-    uint32_t maxsize = azplatform_get_romdrive_maxsize() - AZPLATFORM_ROMDRIVE_PAGE_SIZE;
+    uint32_t maxsize = platform_get_romdrive_maxsize() - PLATFORM_ROMDRIVE_PAGE_SIZE;
 
     bluelog("---- SCSI ID: ", scsi_id, " blocksize ", blocksize, " type ", (int)type);
     bluelog("---- ROM drive maximum size is ", (int)maxsize,
@@ -153,7 +153,7 @@ bool scsiDiskProgramRomDrive(const char *filename, int scsi_id, int blocksize, S
     hdr.drivetype = type;
 
     // Program the drive metadata header
-    if (!azplatform_write_romdrive((const uint8_t*)&hdr, 0, AZPLATFORM_ROMDRIVE_PAGE_SIZE))
+    if (!platform_write_romdrive((const uint8_t*)&hdr, 0, PLATFORM_ROMDRIVE_PAGE_SIZE))
     {
         bluelog("---- Failed to program ROM drive header");
         file.close();
@@ -161,7 +161,7 @@ bool scsiDiskProgramRomDrive(const char *filename, int scsi_id, int blocksize, S
     }
     
     // Program the drive contents
-    uint32_t pages = (filesize + AZPLATFORM_ROMDRIVE_PAGE_SIZE - 1) / AZPLATFORM_ROMDRIVE_PAGE_SIZE;
+    uint32_t pages = (filesize + PLATFORM_ROMDRIVE_PAGE_SIZE - 1) / PLATFORM_ROMDRIVE_PAGE_SIZE;
     for (uint32_t i = 0; i < pages; i++)
     {
         if (i % 2)
@@ -169,8 +169,8 @@ bool scsiDiskProgramRomDrive(const char *filename, int scsi_id, int blocksize, S
         else
             LED_OFF();
 
-        if (file.read(scsiDev.data, AZPLATFORM_ROMDRIVE_PAGE_SIZE) <= 0 ||
-            !azplatform_write_romdrive(scsiDev.data, (i + 1) * AZPLATFORM_ROMDRIVE_PAGE_SIZE, AZPLATFORM_ROMDRIVE_PAGE_SIZE))
+        if (file.read(scsiDev.data, PLATFORM_ROMDRIVE_PAGE_SIZE) <= 0 ||
+            !platform_write_romdrive(scsiDev.data, (i + 1) * PLATFORM_ROMDRIVE_PAGE_SIZE, PLATFORM_ROMDRIVE_PAGE_SIZE))
         {
             bluelog("---- Failed to program ROM drive page ", (int)i);
             file.close();
@@ -204,7 +204,7 @@ bool scsiDiskActivateRomDrive()
     return false;
 #endif
 
-    uint32_t maxsize = azplatform_get_romdrive_maxsize() - AZPLATFORM_ROMDRIVE_PAGE_SIZE;
+    uint32_t maxsize = platform_get_romdrive_maxsize() - PLATFORM_ROMDRIVE_PAGE_SIZE;
     bluelog("-- Platform supports ROM drive up to ", (int)(maxsize / 1024), " kB");
 
     romdrive_hdr_t hdr = {};
@@ -468,8 +468,8 @@ public:
         {
             uint32_t sectorcount = count / SD_SECTOR_SIZE;
             assert((uint64_t)sectorcount * SD_SECTOR_SIZE == count);
-            uint32_t start = m_cursector * SD_SECTOR_SIZE + AZPLATFORM_ROMDRIVE_PAGE_SIZE;
-            if (azplatform_read_romdrive((uint8_t*)buf, start, count))
+            uint32_t start = m_cursector * SD_SECTOR_SIZE + PLATFORM_ROMDRIVE_PAGE_SIZE;
+            if (platform_read_romdrive((uint8_t*)buf, start, count))
             {
                 m_cursector += sectorcount;
                 return count;
@@ -1529,7 +1529,7 @@ void diskDataOut()
             // when buffer space is freed.
             uint8_t *buf = &scsiDev.data[start];
             g_disk_transfer.sd_transfer_start = start;
-            // azdbg("SD write ", (int)start, " + ", (int)len, " ", bytearray(buf, len));
+            // bluedbg("SD write ", (int)start, " + ", (int)len, " ", bytearray(buf, len));
             bluescsiplatform_set_sd_callback(&diskDataOut_callback, buf);
             if (img.file.write(buf, len) != len)
             {
