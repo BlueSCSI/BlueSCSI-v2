@@ -464,8 +464,6 @@ extern "C" void bluescsi_setup(void)
   {
     log("SD card init failed, sdErrorCode: ", (int)SD.sdErrorCode(),
            " sdErrorData: ", (int)SD.sdErrorData());
-    
-    blinkStatus(BLINK_ERROR_NO_SD_CARD);
 
     if (scsiDiskCheckRomDrive())
     {

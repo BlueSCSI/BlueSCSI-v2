@@ -970,7 +970,7 @@ void s2s_configInit(S2S_BoardCfg* config)
 
     if (ini_getbool("SCSI", "Debug", 0, CONFIGFILE))
     {
-        bluelog("-- Debug is enabled");
+        log("-- Debug is enabled");
     }
 
     if (ini_getbool("SCSI", "Parity", true, CONFIGFILE))
