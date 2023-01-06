@@ -277,7 +277,7 @@ public:
         m_bgnsector = m_endsector = m_cursector = 0;
     }
 
-    ImageBackingStore(const char *filename, uint32_t scsi_block_size): ImageBackingStore()
+    ImageBackingStore(const char *filename, uint32_t scsi_block_size, S2S_CFG_TYPE type): ImageBackingStore()
     {
         if (strncasecmp(filename, "RAW:", 4) == 0)
         {
@@ -320,7 +320,7 @@ public:
         }
         else
         {
-            if(tolower(filename[0]) == 'c')
+            if(type == S2S_CFG_OPTICAL)
             {
                 m_fsfile = SD.open(filename, O_RDONLY);
                 m_iscdrom = true;
@@ -721,7 +721,7 @@ static void setDefaultDriveInfo(int target_idx)
 bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize, S2S_CFG_TYPE type)
 {
     image_config_t &img = g_DiskImages[target_idx];
-    img.file = ImageBackingStore(filename, blocksize);
+    img.file = ImageBackingStore(filename, blocksize, type);
 
     if (img.file.isOpen())
     {
