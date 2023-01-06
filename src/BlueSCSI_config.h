@@ -55,12 +55,12 @@
 #define DRIVEINFO_TAPE      {"BlueSCSI", "TAPE",      PLATFORM_REVISION, ""}
 
 // Default SCSI drive information when Apple quirks are enabled
-#define APPLE_DRIVEINFO_FIXED     {"QUANTUM",  "BLUESCSI RP2040", "1.0",  ""}
+#define APPLE_DRIVEINFO_FIXED     {"QUANTUM",  "BlueSCSI Pico",   "1.0",  ""}
 #define APPLE_DRIVEINFO_REMOVABLE {"IOMEGA",   "BETA230",         "2.02", ""}
-#define APPLE_DRIVEINFO_OPTICAL   {"BLUESCSI", "CD-ROM CDU-55S",  "1.9a", ""}
+#define APPLE_DRIVEINFO_OPTICAL   {"BlueSCSI", "CD-ROM CDU-55S",  "1.9a", ""}
 #define APPLE_DRIVEINFO_FLOPPY    {"TEAC",     "FD235HS",         "1.44", ""}
 #define APPLE_DRIVEINFO_MAGOPT    {"MOST",     "RMD-5200",        "1.0",  ""}
-#define APPLE_DRIVEINFO_TAPE      {"BLUESCSI", "APPLE_TAPE",      "",     ""}
+#define APPLE_DRIVEINFO_TAPE      {"BlueSCSI", "APPLE_TAPE",      "",     ""}
 
 // Default delay for SCSI phases.
 // Can be adjusted in ini file
