@@ -319,10 +319,14 @@ void mbed_error_hook(const mbed_error_ctx * error_context)
 // This function is called for every log message.
 void platform_log(const char *s)
 {
+    #ifdef IS_STANDALONE_2040
     if (g_uart_initialized)
     {
         uart_puts(uart0, s);
     }
+    #else
+    Serial.print(s);
+    #endif
 }
 
 static int g_watchdog_timeout;
