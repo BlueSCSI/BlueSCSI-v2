@@ -493,8 +493,6 @@ extern "C" void zuluscsi_setup(void)
   {
     azlog("SD card init failed, sdErrorCode: ", (int)SD.sdErrorCode(),
            " sdErrorData: ", (int)SD.sdErrorData());
-    
-    blinkStatus(BLINK_ERROR_NO_SD_CARD);
 
     if (scsiDiskCheckRomDrive())
     {
