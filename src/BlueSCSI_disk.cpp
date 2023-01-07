@@ -363,7 +363,7 @@ public:
 
     bool isWritable()
     {
-        return !m_isrom || !m_iscdrom;
+        return !(m_isrom || m_iscdrom);
     }
 
     bool isRom()
