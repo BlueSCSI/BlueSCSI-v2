@@ -1,4 +1,4 @@
-// Platform-specific definitions for BlueSCSI RP2040 hardware.
+// Platform-specific definitions for BlueSCSI Pico hardware.
 
 #pragma once
 
@@ -13,7 +13,7 @@ extern "C" {
 
 /* These are used in debug output and default SCSI strings */
 extern const char *g_platform_name;
-#define PLATFORM_NAME "BlueSCSI RP2040"
+#define PLATFORM_NAME "BlueSCSI Pico"
 #define PLATFORM_REVISION "2.0"
 #define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_10
 #define PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE 32768

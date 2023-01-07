@@ -1,4 +1,4 @@
-// GPIO definitions for BlueSCSI RP2040-based hardware
+// GPIO definitions for BlueSCSI Pico-based hardware
 
 #pragma once
 
