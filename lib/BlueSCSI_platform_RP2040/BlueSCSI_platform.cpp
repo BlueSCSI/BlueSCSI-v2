@@ -161,7 +161,7 @@ void platform_late_init()
     else
     {
         g_scsi_initiator = false;
-        log("SCSI target/disk mode selected by DIP switch, acting as a SCSI disk");
+        // log("SCSI target/disk mode selected by DIP switch, acting as a SCSI disk");
     }
 
     /* Initialize SCSI pins to required modes.

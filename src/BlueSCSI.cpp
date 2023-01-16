@@ -105,6 +105,8 @@ void init_logfile()
 
 void print_sd_info()
 {
+  log(" ");
+  log("=== SD Card Info ===");
   uint64_t size = (uint64_t)SD.vol()->clusterCount() * SD.vol()->bytesPerCluster();
   log("SD card detected, FAT", (int)SD.vol()->fatType(),
           " volume size: ", (int)(size / 1024 / 1024), " MB");
@@ -113,12 +115,11 @@ void print_sd_info()
 
   if(SD.card()->readCID(&sd_cid))
   {
-    log("SD MID: ", (uint8_t)sd_cid.mid, ", OID: ", (uint8_t)sd_cid.oid[0], " ", (uint8_t)sd_cid.oid[1]);
-
     char sdname[6] = {sd_cid.pnm[0], sd_cid.pnm[1], sd_cid.pnm[2], sd_cid.pnm[3], sd_cid.pnm[4], 0};
-    log("SD Name: ", sdname);
-    log("SD Date: ", (int)sd_cid.mdtMonth(), "/", sd_cid.mdtYear());
-    log("SD Serial: ", sd_cid.psn());
+    log("SD Name: ", sdname, ", MID: ", (uint8_t)sd_cid.mid, ", OID: ", (uint8_t)sd_cid.oid[0], " ", (uint8_t)sd_cid.oid[1]);
+
+    debuglog("SD Date: ", (int)sd_cid.mdtMonth(), "/", sd_cid.mdtYear());
+    debuglog("SD Serial: ", sd_cid.psn());
   }
 }
 
@@ -172,7 +173,8 @@ bool findHDDImages()
   ini_gets("SCSI", "Dir", "/", imgdir, sizeof(imgdir), CONFIGFILE);
   int dirindex = 0;
 
-  log("Finding HDD images in directory ", imgdir, ":");
+  log(" ");
+  log("=== Finding HDD images in ", imgdir, " ===");
 
   SdFile root;
   root.open(imgdir);
@@ -203,7 +205,7 @@ bool findHDDImages()
 
       if (imgdir[0] != '\0')
       {
-        log("Finding HDD images in additional directory Dir", (int)dirindex, " = \"", imgdir, "\":");
+        log("== Finding HDD images in additional Dir", (int)dirindex, " = \"", imgdir, "\" ==");
         root.open(imgdir);
         if (!root.isOpen())
         {
@@ -218,7 +220,8 @@ bool findHDDImages()
     }
 
     char name[MAX_FILE_PATH+1];
-    if(!file.isDir()) {
+    if(!file.isDir()) 
+    {
       file.getName(name, MAX_FILE_PATH+1);
       file.close();
       bool is_hd = (tolower(name[0]) == 'h' && tolower(name[1]) == 'd');
@@ -298,10 +301,12 @@ bool findHDDImages()
         }
 
         // Parse SCSI LUN number
-        if(file_name_length > 3) { // HD0[N]
+        if(file_name_length > 3) // HD0[N]
+        {
           int tmp_lun = name[HDIMG_LUN_POS] - '0';
 
-          if(tmp_lun > -1 && tmp_lun < NUM_SCSILUN) {
+          if(tmp_lun > -1 && tmp_lun < NUM_SCSILUN)
+          {
             lun = tmp_lun; // If valid id, set it, else use default
           }
         }
@@ -351,7 +356,7 @@ bool findHDDImages()
         // Open the image file
         if (id < NUM_SCSIID && is_romdrive)
         {
-          log("-- Loading ROM drive from ", fullname, " for id:", id);
+          log("== Loading ROM drive from ", fullname, " for ID: ", id);
           imageReady = scsiDiskProgramRomDrive(fullname, id, blk, type);
           
           if (imageReady)
@@ -359,8 +364,9 @@ bool findHDDImages()
             foundImage = true;
           }
         }
-        else if(id < NUM_SCSIID && lun < NUM_SCSILUN) {
-          log("-- Opening ", fullname, " for id:", id, " lun:", lun);
+        else if(id < NUM_SCSIID && lun < NUM_SCSILUN)
+        {
+          log("== Opening ", fullname, " for ID: ", id, " LUN: ", lun);
 
           imageReady = scsiDiskOpenHDDImage(id, fullname, id, lun, blk, type);
           if(imageReady)
@@ -371,21 +377,26 @@ bool findHDDImages()
           {
             log("---- Failed to load image");
           }
-        } else {
+        } 
+        else 
+        {
           log("-- Invalid lun or id for image ", fullname);
         }
       }
     }
   }
 
-  if(usedDefaultId > 0) {
-    log("Some images did not specify a SCSI ID. Last file will be used at ID ", usedDefaultId);
+  if(usedDefaultId > 0)
+  {
+    log("-- ", usedDefaultId, " images did not specify a SCSI ID and were assigned one if possible.");
   }
   root.close();
 
   g_romdrive_active = scsiDiskActivateRomDrive();
 
   // Print SCSI drive map
+  log(" ");
+  log("=== Configured SCSI Devices ===");
   for (int i = 0; i < NUM_SCSIID; i++)
   {
     const S2S_TargetCfg* cfg = s2s_getConfigByIndex(i);
@@ -393,11 +404,11 @@ bool findHDDImages()
     if (cfg && (cfg->scsiId & S2S_CFG_TARGET_ENABLED))
     {
       int capacity_kB = ((uint64_t)cfg->scsiSectors * cfg->bytesPerSector) / 1024;
-      log("SCSI ID:", (int)(cfg->scsiId & 7),
-            " BlockSize:", (int)cfg->bytesPerSector,
-            " Type:", typeToChar((int)cfg->deviceType),
-            " Quirks:", quirksToChar((int)cfg->quirks),
-            " ImageSize:", capacity_kB, "kB");
+      log("* ID: ", (int)(cfg->scsiId & 7),
+            ", BlockSize: ", (int)cfg->bytesPerSector,
+            ", Type: ", typeToChar((int)cfg->deviceType),
+            ", Quirks: ", quirksToChar((int)cfg->quirks),
+            ", Size: ", capacity_kB, "kB");
     }
   }
 
@@ -410,6 +421,8 @@ bool findHDDImages()
 
 void readSCSIDeviceConfig()
 {
+  log(" ");
+  log("=== Global Config ===");
   s2s_configInit(&scsiDev.boardCfg);
 
   for (int i = 0; i < NUM_SCSIID; i++)
@@ -461,7 +474,6 @@ static void reinitSCSI()
     return;
   }
 #endif
-
   scsiDiskResetImages();
   readSCSIDeviceConfig();
   findHDDImages();
@@ -534,6 +546,7 @@ extern "C" void bluescsi_setup(void)
     reinitSCSI();
   }
 
+  log(" ");
   log("Initialization complete!");
 
   if (g_sdcard_present)
