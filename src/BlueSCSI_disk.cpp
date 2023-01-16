@@ -779,13 +779,17 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
 
         setDefaultDriveInfo(target_idx);
 
-        if (img.prefetchbytes > 0)
+        if (img.prefetchbytes != PREFETCH_BUFFER_SIZE)
         {
             log("---- Read prefetch enabled: ", (int)img.prefetchbytes, " bytes");
         }
-        else
+        else if(img.prefetchbytes == 0)
         {
             log("---- Read prefetch disabled");
+        }
+        else 
+        {
+            debuglog("---- Read prefetch enabled: ", (int)img.prefetchbytes, " bytes");
         }
 
         return true;
