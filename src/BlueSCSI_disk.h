@@ -17,6 +17,8 @@ void scsiDiskResetImages();
 bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize, S2S_CFG_TYPE type = S2S_CFG_FIXED);
 void scsiDiskLoadConfig(int target_idx);
 
+// Clear the ROM drive header from flash
+bool scsiDiskClearRomDrive();
 // Program ROM drive and rename image file
 bool scsiDiskProgramRomDrive(const char *filename, int scsi_id, int blocksize, S2S_CFG_TYPE type);
 
