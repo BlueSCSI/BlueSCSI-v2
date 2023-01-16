@@ -116,6 +116,26 @@ static bool check_romdrive(romdrive_hdr_t *hdr)
     return true;
 }
 
+// Clear the drive metadata header
+bool scsiDiskClearRomDrive()
+{
+#ifndef PLATFORM_HAS_ROM_DRIVE
+    azlog("---- Platform does not support ROM drive");
+    return false;
+#else
+    romdrive_hdr_t hdr = {0x0};
+
+    if (!azplatform_write_romdrive((const uint8_t*)&hdr, 0, AZPLATFORM_ROMDRIVE_PAGE_SIZE))
+    {
+        azlog("-- Failed to clear ROM drive");
+        return false;
+    }
+    azlog("-- Cleared ROM drive");
+    SD.remove("CLEAR_ROM");
+    return true;
+#endif
+}
+
 // Load an image file to romdrive
 bool scsiDiskProgramRomDrive(const char *filename, int scsi_id, int blocksize, S2S_CFG_TYPE type)
 {
