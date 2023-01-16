@@ -230,6 +230,12 @@ bool findHDDImages()
       bool is_re = (tolower(name[0]) == 'r' && tolower(name[1]) == 'e');
       bool is_tp = (tolower(name[0]) == 't' && tolower(name[1]) == 'p');
 
+      if(strcasecmp(name, "CLEAR_ROM") == 0)
+      {
+        scsiDiskClearRomDrive();
+        continue;
+      }
+
       if (is_hd || is_cd || is_fd || is_mo || is_re || is_tp)
       {
         // Check file extension
