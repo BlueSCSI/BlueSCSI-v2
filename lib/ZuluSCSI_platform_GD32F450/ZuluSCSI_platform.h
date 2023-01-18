@@ -47,7 +47,8 @@ static inline void delay_us(unsigned long us)
 // Approximate fast delay
 static inline void delay_100ns()
 {
-    asm volatile ("nop \n nop \n nop \n nop \n nop");
+//    asm volatile ("nop \n nop \n nop \n nop \n nop");
+   asm volatile ("nop \n nop \n nop \n nop \n nop \n nop");
 }
 
 // Initialize SPI and GPIO configuration

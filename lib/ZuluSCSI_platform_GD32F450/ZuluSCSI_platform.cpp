@@ -36,8 +36,8 @@ void delay(unsigned long ms)
 void delay_ns(unsigned long ns)
 {
     uint32_t CNT_start = DWT->CYCCNT;
-    if (ns <= 100) return; // Approximate call overhead
-    ns -= 100;
+    if (ns <= 50) return; // Approximate call overhead
+    ns -= 50;
 
     uint32_t cycles = ((uint64_t)ns * g_ns_to_cycles) >> 32;
     while ((uint32_t)(DWT->CYCCNT - CNT_start) < cycles);
@@ -226,7 +226,6 @@ void azplatform_init()
     gpio_mode_set(GPIOB, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO_PIN_3);
     gpio_output_options_set(GPIOB, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_3);
     gpio_af_set(GPIOB, GPIO_AF_0, GPIO_PIN_3);   
-
 }
 
 void azplatform_late_init()
