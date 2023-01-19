@@ -48,20 +48,24 @@ void scsi_accel_timer_dma_init()
     // GPIO DMA copies data from memory buffer to GPIO BOP register.
     // The memory buffer is filled by interrupt routine.
 
-    dma_single_data_parameter_struct gpio_dma_config =
+    dma_multi_data_parameter_struct gpio_dma_config =
     {
         .periph_addr = (uint32_t)&GPIO_BOP(SCSI_OUT_PORT),
+        .periph_width = DMA_PERIPH_WIDTH_32BIT,
         .periph_inc = DMA_PERIPH_INCREASE_DISABLE,
         .memory0_addr = 0, // Filled before transfer
+        .memory_width = DMA_MEMORY_WIDTH_32BIT,
         .memory_inc = DMA_MEMORY_INCREASE_ENABLE,
-        .periph_memory_width = DMA_PERIPH_WIDTH_32BIT,
+        .memory_burst_width = DMA_MEMORY_BURST_SINGLE,
+        .periph_burst_width = DMA_PERIPH_BURST_SINGLE,
+        .critical_value = DMA_FIFO_1_WORD,
         .circular_mode = DMA_CIRCULAR_MODE_ENABLE,
         .direction = DMA_MEMORY_TO_PERIPH,
         .number = DMA_BUF_SIZE,
         .priority = DMA_PRIORITY_ULTRA_HIGH
     };
 
-    dma_single_data_mode_init(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA, &gpio_dma_config);
+    dma_multi_data_mode_init(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA, &gpio_dma_config);
     dma_channel_subperipheral_select(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA, SCSI_TIMER_DMACHA_SUB_PERIPH);
     NVIC_SetPriority(SCSI_TIMER_DMACHA_IRQn, 1);
     NVIC_EnableIRQ(SCSI_TIMER_DMACHA_IRQn);
@@ -69,19 +73,24 @@ void scsi_accel_timer_dma_init()
     // DMA Channel B: timer update
     // Timer DMA causes update event to restart timer after
     // GPIO DMA operation is done.
-    dma_single_data_parameter_struct timer_dma_config =
+    dma_multi_data_parameter_struct timer_dma_config =
     {
         .periph_addr = (uint32_t)&TIMER_SWEVG(SCSI_TIMER),
+        .periph_width = DMA_PERIPH_WIDTH_32BIT,
         .periph_inc = DMA_PERIPH_INCREASE_DISABLE,
         .memory0_addr = (uint32_t)&g_scsi_dma.timer_buf,
+        .memory_width = DMA_MEMORY_WIDTH_32BIT,
         .memory_inc = DMA_PERIPH_INCREASE_DISABLE,
-        .periph_memory_width = DMA_PERIPH_WIDTH_32BIT,
+        .memory_burst_width = DMA_MEMORY_BURST_SINGLE,
+        .periph_burst_width = DMA_PERIPH_BURST_SINGLE,
+        .critical_value = DMA_FIFO_1_WORD,
         .circular_mode = DMA_CIRCULAR_MODE_DISABLE,
-        .direction = DMA_MEMORY_TO_PERIPH,
+        .direction = DMA_MEMORY_TO_MEMORY,
         .number = DMA_BUF_SIZE,
         .priority = DMA_PRIORITY_HIGH
+
     };
-    dma_single_data_mode_init(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, &timer_dma_config);
+    dma_multi_data_mode_init(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, &timer_dma_config);
     dma_channel_subperipheral_select(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, SCSI_TIMER_DMACHB_SUB_PERIPH);
     NVIC_SetPriority(SCSI_TIMER_DMACHB_IRQn, 2);
     NVIC_EnableIRQ(SCSI_TIMER_DMACHB_IRQn);
@@ -274,17 +283,18 @@ static void check_dma_next_buffer()
 // Convert new data from application buffer to DMA buffer
 extern "C" void SCSI_TIMER_DMACHA_IRQ()
 {
-    azdbg("DMA irq A, counts: ", dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA), " ",
-                dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB), " ",
-                TIMER_CNT(SCSI_TIMER));
+    // azdbg("DMA irq A, counts: ", dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA), " ",
+    //             dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB), " ",
+    //             TIMER_CNT(SCSI_TIMER));
 
-    uint32_t intf = DMA_INTF1(SCSI_TIMER_DMA);
+    uint32_t intf0 = DMA_INTF1(SCSI_TIMER_DMA);
+    uint32_t intf1 = DMA_INTF1(SCSI_TIMER_DMA);
 
     if (dma_interrupt_flag_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA, DMA_FLAG_HTF))
     {
         if (dma_interrupt_flag_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA, DMA_FLAG_FTF))
         {
-            azlog("ERROR: SCSI DMA overrun: ", intf,
+            azlog("ERROR: SCSI DMA overrun: ", intf0, intf1,
                " bytes_app: ", g_scsi_dma.bytes_app,
                " bytes_dma: ", g_scsi_dma.bytes_dma,
                " dma_idx: ", g_scsi_dma.dma_idx,
@@ -311,9 +321,9 @@ extern "C" void SCSI_TIMER_DMACHA_IRQ()
 // Check if enough data is available to continue DMA transfer
 extern "C" void SCSI_TIMER_DMACHB_IRQ()
 {
-    azdbg("DMA irq B, counts: ", dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA), " ",
-                 dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB), " ",
-                 TIMER_CNT(SCSI_TIMER));
+    // azdbg("DMA irq B, counts: ", dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA), " ",
+    //              dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB), " ",
+    //              TIMER_CNT(SCSI_TIMER));
     if (dma_interrupt_flag_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, DMA_FLAG_FTF))
     {
         dma_interrupt_flag_clear(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, DMA_FLAG_FTF);

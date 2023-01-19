@@ -708,13 +708,12 @@ sd_error_enum sd_multiblocks_read(uint32_t *preadbuffer, uint64_t readaddr, uint
                 if((uint32_t)(millis() - start) > 1000) {
                     return SD_ERROR;
                 }
-                /* @TODO - figure out how to fix the count or remove call back from this function
-                                if (callback)
+                if (callback)
                 {
-                    uint32_t complete = totalnumber_bytes - DMA_CHCNT(DMA1, DMA_CH3) * 4;
-                        callback(complete);
-               }
-               */
+                    uint32_t complete = (0xffff - dma_transfer_number_get(DMA1, DMA_CH3)) * 4;
+                    callback(complete);
+                }
+               
 
             }
             while((0 == transend) && (SD_OK == transerror)) {
