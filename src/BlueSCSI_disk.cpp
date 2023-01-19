@@ -931,7 +931,6 @@ void s2s_configInit(S2S_BoardCfg* config)
         log("Config file " CONFIGFILE " not found, using defaults");
     }
 
-    log("Active configuration:");
     memset(config, 0, sizeof(S2S_BoardCfg));
     memcpy(config->magic, "BCFG", 4);
     config->flags = 0;
@@ -946,18 +945,33 @@ void s2s_configInit(S2S_BoardCfg* config)
     else if (maxSyncSpeed < 10 && config->scsiSpeed > S2S_CFG_SPEED_SYNC_5)
         config->scsiSpeed = S2S_CFG_SPEED_SYNC_5;
 
-    log("-- SelectionDelay: ", (int)config->selectionDelay);
+    if ((int)config->selectionDelay == 255)
+    {
+        debuglog("-- SelectionDelay: ", (int)config->selectionDelay);
+    }
+    else
+    {
+        log("-- SelectionDelay: ", (int)config->selectionDelay);
+    }
 
     if (ini_getbool("SCSI", "EnableUnitAttention", false, CONFIGFILE))
     {
         log("-- EnableUnitAttention is on");
         config->flags |= S2S_CFG_ENABLE_UNIT_ATTENTION;
     }
+    else
+    {
+        debuglog("-- EnableUnitAttention is off");
+    }
 
     if (ini_getbool("SCSI", "EnableSCSI2", true, CONFIGFILE))
     {
-        log("-- EnableSCSI2 is on");
+        debuglog("-- EnableSCSI2 is on");
         config->flags |= S2S_CFG_ENABLE_SCSI2;
+    }
+    else
+    {
+        log("-- EnableSCSI2 is off");
     }
 
     if (ini_getbool("SCSI", "EnableSelLatch", false, CONFIGFILE))
@@ -965,11 +979,19 @@ void s2s_configInit(S2S_BoardCfg* config)
         log("-- EnableSelLatch is on");
         config->flags |= S2S_CFG_ENABLE_SEL_LATCH;
     }
+    else
+    {
+        debuglog("-- EnableSelLatch is off");
+    }
 
     if (ini_getbool("SCSI", "MapLunsToIDs", false, CONFIGFILE))
     {
         log("-- MapLunsToIDs is on");
         config->flags |= S2S_CFG_MAP_LUNS_TO_IDS;
+    }
+    else
+    {
+        debuglog("-- MapLunsToIDs is off");
     }
 
     if (ini_getbool("SCSI", "Debug", 0, CONFIGFILE))
@@ -979,7 +1001,7 @@ void s2s_configInit(S2S_BoardCfg* config)
 
     if (ini_getbool("SCSI", "Parity", true, CONFIGFILE))
     {
-        log("-- Parity is enabled");
+        debuglog("-- Parity is enabled");
         config->flags |= S2S_CFG_ENABLE_PARITY;
     }
     else
