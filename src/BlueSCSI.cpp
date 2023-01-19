@@ -105,12 +105,29 @@ void init_logfile()
   first_open_after_boot = false;
 }
 
+const char * fatTypeToChar(int fatType)
+{
+  switch (fatType)
+  {
+    case FAT_TYPE_EXFAT:
+      return "exFAT";
+    case FAT_TYPE_FAT32:
+      return "FAT32";
+    case FAT_TYPE_FAT16:
+      return "FAT16";
+    case FAT_TYPE_FAT12:
+      return "FAT12";
+    default:
+      return "Unknown";
+  }
+}
+
 void print_sd_info()
 {
   log(" ");
   log("=== SD Card Info ===");
   uint64_t size = (uint64_t)SD.vol()->clusterCount() * SD.vol()->bytesPerCluster();
-  log("SD card detected, FAT", (int)SD.vol()->fatType(),
+  log("SD card detected, ", fatTypeToChar((int)SD.vol()->fatType()),
           " volume size: ", (int)(size / 1024 / 1024), " MB");
 
   cid_t sd_cid;
