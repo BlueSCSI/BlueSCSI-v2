@@ -123,10 +123,11 @@ void azplatform_init()
 
     // Enable debug output on SWO pin
     DBG_CTL0 |= DBG_CTL0_TRACE_IOEN;
-    if (TPI->ACPR == 0)
+    // if (TPI->ACPR == 0)
     {
         CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
-        TPI->ACPR = SystemCoreClock / 2000000 - 1; // 2 Mbps baudrate for SWO
+        TPI->ACPR = SystemCoreClock / 115200 - 1; // Serial speed baudrate for SWO
+        // TPI->ACPR = SystemCoreClock / 2000000 - 1; // 2 Mbps baudrate for SWO
         // TPI->ACPR = SystemCoreClock / 30000000 - 1; // 30 Mbps baudrate for SWO
         TPI->SPPR = 2;
         TPI->FFCR = 0x100; // TPIU packet framing disabled

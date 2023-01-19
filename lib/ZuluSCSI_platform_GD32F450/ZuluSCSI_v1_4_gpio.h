@@ -89,8 +89,9 @@
 #define SCSI_OUT_REQ_EXMC_NOE_PIN   GPIO_PIN_4
 #define SCSI_OUT_REQ_EXMC_NOE_IDX   4
 #define SCSI_EXMC_DATA_SHIFT 5
-#define SCSI_EXMC_DMA DMA0
-#define SCSI_EXMC_DMA_RCU RCU_DMA0
+// DMA1 is the only controller that allows memory to memory transfers
+#define SCSI_EXMC_DMA DMA1  
+#define SCSI_EXMC_DMA_RCU RCU_DMA1
 #define SCSI_EXMC_DMACH DMA_CH0
 #define SCSI_SYNC_TIMER TIMER1
 #define SCSI_SYNC_TIMER_RCU RCU_TIMER1
