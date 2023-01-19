@@ -203,9 +203,10 @@ bool scsiDiskActivateRomDrive()
 #ifndef PLATFORM_HAS_ROM_DRIVE
     return false;
 #endif
-
+    log("");
+    log("=== ROM Drive ===");
     uint32_t maxsize = platform_get_romdrive_maxsize() - PLATFORM_ROMDRIVE_PAGE_SIZE;
-    log("-- Platform supports ROM drive up to ", (int)(maxsize / 1024), " kB");
+    log("Platform supports ROM drive up to ", (int)(maxsize / 1024), " kB");
 
     romdrive_hdr_t hdr = {};
     if (!check_romdrive(&hdr))
@@ -218,6 +219,10 @@ bool scsiDiskActivateRomDrive()
     {
         log("---- ROM drive disabled in ini file, not enabling");
         return false;
+    }
+    else
+    {
+        debuglog("---- ROM drive enabled");
     }
 
     long rom_scsi_id = ini_getl("SCSI", "ROMDriveSCSIID", -1, CONFIGFILE);
@@ -233,9 +238,6 @@ bool scsiDiskActivateRomDrive()
         return false;
     }
 
-
-
-    log("---- Activating ROM drive, SCSI id ", (int)hdr.scsi_id, " size ", (int)(hdr.imagesize / 1024), " kB");
     bool status = scsiDiskOpenHDDImage(hdr.scsi_id, "ROM:", hdr.scsi_id, 0, hdr.blocksize, hdr.drivetype);
 
     if (!status)
@@ -245,6 +247,7 @@ bool scsiDiskActivateRomDrive()
     }
     else
     {
+        log("---- Activated ROM drive, SCSI id ", (int)hdr.scsi_id, " size ", (int)(hdr.imagesize / 1024), " kB");
         return true;
     }
 }
@@ -779,13 +782,17 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
 
         setDefaultDriveInfo(target_idx);
 
-        if (img.prefetchbytes > 0)
+        if (img.prefetchbytes != PREFETCH_BUFFER_SIZE)
         {
             log("---- Read prefetch enabled: ", (int)img.prefetchbytes, " bytes");
         }
-        else
+        else if(img.prefetchbytes == 0)
         {
             log("---- Read prefetch disabled");
+        }
+        else 
+        {
+            debuglog("---- Read prefetch enabled: ", (int)img.prefetchbytes, " bytes");
         }
 
         return true;
@@ -927,7 +934,6 @@ void s2s_configInit(S2S_BoardCfg* config)
         log("Config file " CONFIGFILE " not found, using defaults");
     }
 
-    log("Active configuration:");
     memset(config, 0, sizeof(S2S_BoardCfg));
     memcpy(config->magic, "BCFG", 4);
     config->flags = 0;
@@ -942,18 +948,33 @@ void s2s_configInit(S2S_BoardCfg* config)
     else if (maxSyncSpeed < 10 && config->scsiSpeed > S2S_CFG_SPEED_SYNC_5)
         config->scsiSpeed = S2S_CFG_SPEED_SYNC_5;
 
-    log("-- SelectionDelay: ", (int)config->selectionDelay);
+    if ((int)config->selectionDelay == 255)
+    {
+        debuglog("-- SelectionDelay: ", (int)config->selectionDelay);
+    }
+    else
+    {
+        log("-- SelectionDelay: ", (int)config->selectionDelay);
+    }
 
     if (ini_getbool("SCSI", "EnableUnitAttention", false, CONFIGFILE))
     {
         log("-- EnableUnitAttention is on");
         config->flags |= S2S_CFG_ENABLE_UNIT_ATTENTION;
     }
+    else
+    {
+        debuglog("-- EnableUnitAttention is off");
+    }
 
     if (ini_getbool("SCSI", "EnableSCSI2", true, CONFIGFILE))
     {
-        log("-- EnableSCSI2 is on");
+        debuglog("-- EnableSCSI2 is on");
         config->flags |= S2S_CFG_ENABLE_SCSI2;
+    }
+    else
+    {
+        log("-- EnableSCSI2 is off");
     }
 
     if (ini_getbool("SCSI", "EnableSelLatch", false, CONFIGFILE))
@@ -961,11 +982,19 @@ void s2s_configInit(S2S_BoardCfg* config)
         log("-- EnableSelLatch is on");
         config->flags |= S2S_CFG_ENABLE_SEL_LATCH;
     }
+    else
+    {
+        debuglog("-- EnableSelLatch is off");
+    }
 
     if (ini_getbool("SCSI", "MapLunsToIDs", false, CONFIGFILE))
     {
         log("-- MapLunsToIDs is on");
         config->flags |= S2S_CFG_MAP_LUNS_TO_IDS;
+    }
+    else
+    {
+        debuglog("-- MapLunsToIDs is off");
     }
 
     if (ini_getbool("SCSI", "Debug", 0, CONFIGFILE))
@@ -975,7 +1004,7 @@ void s2s_configInit(S2S_BoardCfg* config)
 
     if (ini_getbool("SCSI", "Parity", true, CONFIGFILE))
     {
-        log("-- Parity is enabled");
+        debuglog("-- Parity is enabled");
         config->flags |= S2S_CFG_ENABLE_PARITY;
     }
     else

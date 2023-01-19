@@ -61,7 +61,10 @@ inline void log_raw(T first, T2 second, Rest... rest)
 template<typename... Params>
 inline void log(Params... params)
 {
-    log_raw("[", (int)millis(), "ms] ");
+    if (g_log_debug)
+    {
+        log_raw("[", (int)millis(), "ms] ");
+    }
     log_raw(params...);
     log_raw("\n");
 }
