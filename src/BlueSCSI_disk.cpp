@@ -116,6 +116,21 @@ static bool check_romdrive(romdrive_hdr_t *hdr)
     return true;
 }
 
+// Clear the drive metadata header
+bool scsiDiskClearRomDrive()
+{
+    romdrive_hdr_t hdr = {0x0};
+
+    if (!platform_write_romdrive((const uint8_t*)&hdr, 0, PLATFORM_ROMDRIVE_PAGE_SIZE))
+    {
+        log("-- Failed to clear ROM drive");
+        return false;
+    }
+    log("-- Cleared ROM drive");
+    SD.remove("CLEAR_ROM");
+    return true;
+}
+
 // Load an image file to romdrive
 bool scsiDiskProgramRomDrive(const char *filename, int scsi_id, int blocksize, S2S_CFG_TYPE type)
 {
