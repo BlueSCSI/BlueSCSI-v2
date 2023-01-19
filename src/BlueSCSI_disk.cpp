@@ -203,9 +203,10 @@ bool scsiDiskActivateRomDrive()
 #ifndef PLATFORM_HAS_ROM_DRIVE
     return false;
 #endif
-
+    log("");
+    log("=== ROM Drive ===");
     uint32_t maxsize = platform_get_romdrive_maxsize() - PLATFORM_ROMDRIVE_PAGE_SIZE;
-    log("-- Platform supports ROM drive up to ", (int)(maxsize / 1024), " kB");
+    log("Platform supports ROM drive up to ", (int)(maxsize / 1024), " kB");
 
     romdrive_hdr_t hdr = {};
     if (!check_romdrive(&hdr))
@@ -218,6 +219,10 @@ bool scsiDiskActivateRomDrive()
     {
         log("---- ROM drive disabled in ini file, not enabling");
         return false;
+    }
+    else
+    {
+        debuglog("---- ROM drive enabled");
     }
 
     long rom_scsi_id = ini_getl("SCSI", "ROMDriveSCSIID", -1, CONFIGFILE);
@@ -233,9 +238,6 @@ bool scsiDiskActivateRomDrive()
         return false;
     }
 
-
-
-    log("---- Activating ROM drive, SCSI id ", (int)hdr.scsi_id, " size ", (int)(hdr.imagesize / 1024), " kB");
     bool status = scsiDiskOpenHDDImage(hdr.scsi_id, "ROM:", hdr.scsi_id, 0, hdr.blocksize, hdr.drivetype);
 
     if (!status)
@@ -245,6 +247,7 @@ bool scsiDiskActivateRomDrive()
     }
     else
     {
+        log("---- Activated ROM drive, SCSI id ", (int)hdr.scsi_id, " size ", (int)(hdr.imagesize / 1024), " kB");
         return true;
     }
 }

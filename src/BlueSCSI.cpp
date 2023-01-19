@@ -391,6 +391,7 @@ bool findHDDImages()
           if(imageReady)
           {
             foundImage = true;
+            log("---- Image ready");
           }
           else
           {
