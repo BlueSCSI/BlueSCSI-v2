@@ -191,7 +191,7 @@ bool findHDDImages()
   int dirindex = 0;
 
   log(" ");
-  log("=== Finding HDD images in ", imgdir, " ===");
+  log("=== Finding images in ", imgdir, " ===");
 
   SdFile root;
   root.open(imgdir);
