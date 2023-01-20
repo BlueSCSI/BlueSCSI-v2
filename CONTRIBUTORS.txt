@@ -1,4 +1,5 @@
-This file contains a list of people who have made contributions to BlueSCSI.
+This file contains a list of people who have made contributions to BlueSCSI
+and projects it is based on. It is generated with `git shortlog --summary`
 
 Eric Helgeson
 Petteri Aimonen
