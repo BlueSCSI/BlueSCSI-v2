@@ -376,21 +376,6 @@ public:
                 m_israw = true;
                 m_blockdev = SD.card();
                 m_bgnsector = begin;
-
-                if (end != begin + sectorcount)
-                {
-                    uint32_t allocsize = end - begin + 1;
-                    log("---- NOTE: File ", filename, " has FAT allocated size of ", (int)allocsize, " sectors and file size of ", (int)sectorcount, " sectors");
-                    log("---- Due to issue #80 in BlueSCSI version 1.0.8 and 1.0.9 the allocated size was mistakenly reported to SCSI controller.");
-                    log("---- If the drive was formatted using those versions, you may have problems accessing it with newer firmware.");
-                    log("---- The old behavior can be restored with setting  [SCSI] UseFATAllocSize = 1 in " CONFIGFILE);
-
-                    if (ini_getbool("SCSI", "UseFATAllocSize", 0, CONFIGFILE))
-                    {
-                        sectorcount = allocsize;
-                    }
-                }
-
                 m_endsector = begin + sectorcount - 1;
                 m_fsfile.close();
             }
