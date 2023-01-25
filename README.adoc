@@ -8,33 +8,6 @@ image::docs/discordbanner.png[link=https://discord.gg/GKcvtgU7P9, 150]
 
 Join us in #bluescsi on https://discord.gg/GKcvtgU7P9[Discord] or open an issue on this repo.
 
-toc::[]
-
-## Compatibility
-
-If your computer is not listed below - it may be compatible but there is no guarantee it will work. This device is designed and tested to work with pre-PowerPC Macs.
-
-### Compatible
-
-https://github.com/erichelgeson/BlueSCSI/wiki/Supported-Systems[Supported-Systems]
-
-## Performance
-
-https://github.com/erichelgeson/BlueSCSI/wiki/Performance[Performance]
-
-## Usage
-
-https://github.com/erichelgeson/BlueSCSI/wiki/Usage[Usage]
-
-### Termination
-
-To enable termination place the a jumper on the TERM block. Termination should be enabled if it is the last device in the SCSI chain, otherwise remove the jumpers if it is not.
-
-## Troubleshooting
-
-https://github.com/erichelgeson/BlueSCSI/wiki/Troubleshooting
-
-
 ## Hardware Versions
 
 ### 2.0 (Latest)
