@@ -24,8 +24,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <BlueSCSI_platform.h>
 
 // Use variables for version number
-#define FW_VER_NUM      "1.2.1"
-#define FW_VER_SUFFIX   "devel"
+#define FW_VER_NUM      "2023.01.25"
+#define FW_VER_SUFFIX   "release"
 #define BLUESCSI_FW_VERSION FW_VER_NUM "-" FW_VER_SUFFIX
 
 // Configuration and log file paths
