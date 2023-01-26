@@ -9,8 +9,13 @@ image::docs/discordbanner.png[link=https://discord.gg/GKcvtgU7P9, 150]
 Join us in #bluescsi on https://discord.gg/GKcvtgU7P9[Discord] or open an issue on this repo.
 
 ## Hardware Versions
+Hardware version numbers are based on when the design was updated plus a sub-revision letter, such as "2022_11b" and "2022_12a".
 
-### 2.0 (Latest)
+### Current Hardware Versions:
+#### Desktop 2022.12a
+#### DB25 2022.12a
+#### Laptop / PowerBook 2022.11b
+
 
 ## Notes
 
