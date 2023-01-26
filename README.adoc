@@ -9,8 +9,7 @@ image::docs/discordbanner.png[link=https://discord.gg/GKcvtgU7P9, 150]
 Join us in #bluescsi on https://discord.gg/GKcvtgU7P9[Discord] or open an issue on this repo.
 
 ## Hardware Versions
-
-### 2.0 (Latest)
+Hardware version numbers are based on when the design was updated plus a sub-revision letter, such as "2022_11b" and "2022_12a".
 
 ## Notes
 
