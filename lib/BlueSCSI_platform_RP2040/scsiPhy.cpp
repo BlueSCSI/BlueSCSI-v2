@@ -208,9 +208,20 @@ extern "C" uint32_t scsiEnterPhaseImmediate(int phase)
         }
         else
         {
-            SCSI_OUT(MSG, phase & __scsiphase_msg);
-            SCSI_OUT(CD,  phase & __scsiphase_cd);
-            SCSI_OUT(IO,  phase & __scsiphase_io);
+            // The phase control signals should be changed close to simultaneously.
+            // The SCSI spec allows 400 ns for this, but some hosts do not seem to be that
+            // tolerant. The Cortex-M0 is also quite slow in bit twiddling.
+            //
+            // To avoid unnecessary delays, precalculate an XOR mask and then apply it
+            // simultaneously to all three signals.
+            uint32_t gpio_new = 0;
+            if (!(phase & __scsiphase_msg)) { gpio_new |= (1 << SCSI_OUT_MSG); }
+            if (!(phase & __scsiphase_cd)) { gpio_new |= (1 << SCSI_OUT_CD); }
+            if (!(phase & __scsiphase_io)) { gpio_new |= (1 << SCSI_OUT_IO); }
+
+            uint32_t mask = (1 << SCSI_OUT_MSG) | (1 << SCSI_OUT_CD) | (1 << SCSI_OUT_IO);
+            uint32_t gpio_xor = (sio_hw->gpio_out ^ gpio_new) & mask;
+            sio_hw->gpio_togl = gpio_xor;
             SCSI_ENABLE_CONTROL_OUT();
 
             int delayNs = 400; // Bus settle delay
