@@ -535,8 +535,9 @@ static void reinitSCSI()
   // Error if there are 0 image files
   if (scsiDiskCheckAnyImagesConfigured())
   {
-    // Ok, there is an image
-    blinkStatus(BLINK_STATUS_OK);
+    // Ok, there is an image, turn LED on for the time it takes to perform init
+    LED_ON();
+    delay(100);
   }
   else
   {
@@ -611,6 +612,9 @@ extern "C" void bluescsi_setup(void)
       platform_disable_led();
     }
   }
+
+  // Counterpart for the LED_ON in reinitSCSI().
+  LED_OFF();
 }
 
 extern "C" void bluescsi_main_loop(void)
