@@ -47,6 +47,7 @@
 
 #include <SdFat.h>
 #include <minIni.h>
+#include <minIni_cache.h>
 #include <string.h>
 #include <strings.h>
 #include <ctype.h>
@@ -491,9 +492,14 @@ void readSCSIDeviceConfig()
 
 static bool mountSDCard()
 {
+  invalidate_ini_cache();
+
   // Check for the common case, FAT filesystem as first partition
   if (SD.begin(SD_CONFIG))
+  {
+    reload_ini_cache(CONFIGFILE);
     return true;
+  }
 
   // Do we have any kind of card?
   if (!SD.card() || SD.sdErrorCode() != 0)
