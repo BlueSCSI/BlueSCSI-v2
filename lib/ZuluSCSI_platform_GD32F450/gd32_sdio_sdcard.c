@@ -554,8 +554,14 @@ sd_error_enum sd_block_read(uint32_t *preadbuffer, uint64_t readaddr, uint16_t b
             }
             if (callback)
             {
-                uint32_t complete = (blocksize - DMA_CHCNT(DMA1, DMA_CH3) * 4);
-                callback(complete);
+                // FIXME: DMA_CHCNT seems to give wrong values on GD32F4
+                // Initial transfer size of e.g. 128 changes to 65535 when DMA channel is enabled.
+                uint32_t remain = DMA_CHCNT(DMA1, DMA_CH3) * 4;
+                if (remain >= 0 && remain <= blocksize)
+                {
+                    uint32_t complete = (blocksize - remain);
+                    callback(complete);
+                }
             }
         }
     } else {
