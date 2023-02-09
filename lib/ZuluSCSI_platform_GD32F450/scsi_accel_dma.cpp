@@ -85,7 +85,7 @@ void scsi_accel_timer_dma_init()
         .periph_burst_width = DMA_PERIPH_BURST_SINGLE,
         .critical_value = DMA_FIFO_1_WORD,
         .circular_mode = DMA_CIRCULAR_MODE_DISABLE,
-        .direction = DMA_MEMORY_TO_MEMORY,
+        .direction = DMA_MEMORY_TO_PERIPH,
         .number = DMA_BUF_SIZE,
         .priority = DMA_PRIORITY_HIGH
 
