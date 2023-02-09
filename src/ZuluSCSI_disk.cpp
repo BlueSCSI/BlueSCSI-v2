@@ -538,6 +538,7 @@ struct image_config_t: public S2S_TargetCfg
     // For CD-ROM drive ejection
     bool ejected;
     uint8_t cdrom_events;
+    bool reinsert_on_inquiry;
 
     // Index of image, for when image on-the-fly switching is used for CD drives
     int image_index;
@@ -832,6 +833,7 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
     img.quirks = ini_getl(section, "Quirks", img.quirks, CONFIGFILE);
     img.rightAlignStrings = ini_getbool(section, "RightAlignStrings", 0, CONFIGFILE);
     img.prefetchbytes = ini_getl(section, "PrefetchBytes", img.prefetchbytes, CONFIGFILE);
+    img.reinsert_on_inquiry = ini_getbool(section, "ReinsertCDOnInquiry", 1, CONFIGFILE);
     
     char tmp[32];
     memset(tmp, 0, sizeof(tmp));
@@ -1164,6 +1166,25 @@ static bool checkNextCDImage()
     }
 
     return false;
+}
+
+// Reinsert any ejected CDROMs on reboot
+static void reinsertCDROM(image_config_t &img)
+{
+    if (img.image_index > 0)
+    {
+        // Multiple images for this drive, force restart from first one
+        azdbg("---- Restarting from first CD-ROM image");
+        img.image_index = 9;
+        checkNextCDImage();
+    }
+    else if (img.ejected)
+    {
+        // Reinsert the single image
+        azdbg("---- Closing CD-ROM tray");
+        img.ejected = false;
+        img.cdrom_events = 2; // New media
+    }
 }
 
 static int doTestUnitReady()
@@ -2044,6 +2065,16 @@ void scsiDiskPoll()
             image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
             checkDiskGeometryDivisible(img);
         }
+
+        // Check for Inquiry command to reinsert CD-ROMs on boot
+        if (command == 0x12)
+        {
+            image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+            if (img.deviceType == S2S_CFG_OPTICAL && img.reinsert_on_inquiry)
+            {
+                reinsertCDROM(img);
+            }
+        }
     }
 }
 
@@ -2069,14 +2100,7 @@ void scsiDiskReset()
         image_config_t &img = g_DiskImages[i];
         if (img.deviceType == S2S_CFG_OPTICAL)
         {
-            img.ejected = false;
-            img.cdrom_events = 2; // New media
-
-            if (img.image_index > 0)
-            {
-                img.image_index = 9; // Force restart back from 0
-                checkNextCDImage();
-            }
+            reinsertCDROM(img);
         }
     }
 }
