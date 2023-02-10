@@ -30,12 +30,12 @@ SECTIONS
   /DISCARD/ :
   {
     *(*DMA1_Channel4_IRQHandler*)
-    *(*DMA1_Channel1_IRQHandler*)
+    *(*DMA1_Channel2_IRQHandler*)
     *(*EXTI3_IRQHandler*)
     *(*EXTI10_15_IRQHandler*)
   }
 
-  DMA1_Channel1_IRQHandler = 0;
+  DMA1_Channel2_IRQHandler = 0;
   DMA1_Channel4_IRQHandler = 0;
   EXTI10_15_IRQHandler = 0;
   EXTI3_IRQHandler = 0;
