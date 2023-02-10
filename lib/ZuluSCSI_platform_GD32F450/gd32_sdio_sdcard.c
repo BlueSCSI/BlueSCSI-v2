@@ -554,12 +554,10 @@ sd_error_enum sd_block_read(uint32_t *preadbuffer, uint64_t readaddr, uint16_t b
             }
             if (callback)
             {
-                // FIXME: DMA_CHCNT seems to give wrong values on GD32F4
-                // Initial transfer size of e.g. 128 changes to 65535 when DMA channel is enabled.
-                uint32_t remain = DMA_CHCNT(DMA1, DMA_CH3) * 4;
-                if (remain >= 0 && remain <= blocksize)
+                // Note: GD32F4 DMA counts down from 0xFFFF when DMA flow control mode is "peripheral"
+                uint32_t complete = (0xFFFF - DMA_CHCNT(DMA1, DMA_CH3) * 4);
+                if (complete <= blocksize)
                 {
-                    uint32_t complete = (blocksize - remain);
                     callback(complete);
                 }
             }
@@ -716,11 +714,13 @@ sd_error_enum sd_multiblocks_read(uint32_t *preadbuffer, uint64_t readaddr, uint
                 }
                 if (callback)
                 {
-                    uint32_t complete = (0xffff - dma_transfer_number_get(DMA1, DMA_CH3)) * 4;
-                    callback(complete);
+                    // Note: GD32F4 DMA counts down from 0xFFFF when DMA flow control mode is "peripheral"
+                    uint32_t complete = (0xFFFF - DMA_CHCNT(DMA1, DMA_CH3) * 4);
+                    if (complete <= blocksize)
+                    {
+                        callback(complete);
+                    }
                 }
-               
-
             }
             while((0 == transend) && (SD_OK == transerror)) {
                 if (callback)
@@ -906,8 +906,12 @@ sd_error_enum sd_block_write(uint32_t *pwritebuffer, uint64_t writeaddr, uint16_
             }
             if (callback)
             {
-                uint32_t complete = (blocksize - DMA_CHCNT(DMA1, DMA_CH3) * 4);
-                callback(complete);
+                // Note: GD32F4 DMA counts down from 0xFFFF when DMA flow control mode is "peripheral"
+                uint32_t complete = (0xFFFF - DMA_CHCNT(DMA1, DMA_CH3) * 4);
+                if (complete <= blocksize)
+                {
+                    callback(complete);
+                }
             }
         }
         while((0 == transend) && (SD_OK == transerror)) {
@@ -1127,8 +1131,12 @@ sd_error_enum sd_multiblocks_write(uint32_t *pwritebuffer, uint64_t writeaddr, u
                 }
                 if (callback)
                 {
-                    uint32_t complete = (totalnumber_bytes - DMA_CHCNT(DMA1, DMA_CH3) * 4);
-                    callback(complete);
+                    // Note: GD32F4 DMA counts down from 0xFFFF when DMA flow control mode is "peripheral"
+                    uint32_t complete = (0xFFFF - DMA_CHCNT(DMA1, DMA_CH3) * 4);
+                    if (complete <= blocksize)
+                    {
+                        callback(complete);
+                    }
                 }
             }
             while((0 == transend) && (SD_OK == transerror)) {
