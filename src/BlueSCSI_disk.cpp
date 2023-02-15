@@ -290,7 +290,7 @@ public:
     {
         m_israw = false;
         m_isrom = false;
-        m_iscdrom = false;
+        m_isreadonly_attr = false;
         m_blockdev = nullptr;
         m_bgnsector = m_endsector = m_cursector = 0;
     }
@@ -338,10 +338,11 @@ public:
         }
         else
         {
-            if(type == S2S_CFG_OPTICAL)
+            m_isreadonly_attr = !!(FS_ATTRIB_READ_ONLY & SD.attrib(filename));
+            if (m_isreadonly_attr)
             {
                 m_fsfile = SD.open(filename, O_RDONLY);
-                m_iscdrom = true;
+                log("---- Image file is read-only, writes disabled");
             }
             else
             {
@@ -366,7 +367,7 @@ public:
 
     bool isWritable()
     {
-        return !(m_isrom || m_iscdrom);
+        return !(m_isrom || m_isreadonly_attr);
     }
 
     bool isRom()
@@ -518,6 +519,11 @@ public:
             log("ERROR: attempted to write to ROM drive");
             return 0;
         }
+        else  if (m_isreadonly_attr)
+        {
+            log("ERROR: attempted to write to a read only image");
+            return 0;
+        }
         else
         {
             return m_fsfile.write(buf, count);
@@ -526,7 +532,7 @@ public:
 
     void flush()
     {
-        if (!m_israw && !m_isrom)
+        if (!m_israw && !m_isrom && !m_isreadonly_attr)
         {
             m_fsfile.flush();
         }
@@ -535,7 +541,7 @@ public:
 private:
     bool m_israw;
     bool m_isrom;
-    bool m_iscdrom;
+    bool m_isreadonly_attr;
     romdrive_hdr_t m_romhdr;
     FsFile m_fsfile;
     SdCard *m_blockdev;
