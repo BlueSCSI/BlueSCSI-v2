@@ -258,6 +258,12 @@ void azplatform_late_init()
     }
 }
 
+void azplatform_disable_led(void)
+{
+    gpio_mode_set(LED_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, LED_PINS);
+    azlog("Disabling status LED");
+}
+
 /*****************************************/
 /* Crash handlers                        */
 /*****************************************/
