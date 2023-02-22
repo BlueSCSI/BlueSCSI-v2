@@ -354,17 +354,21 @@ extern "C" uint8_t scsiReadByte(void)
 extern "C" void scsiRead(uint8_t* data, uint32_t count, int* parityError)
 {
     *parityError = 0;
+    if (!(scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY)) { parityError = NULL; }
+
     scsiStartRead(data, count, parityError);
     scsiFinishRead(data, count, parityError);
 }
 
 extern "C" void scsiStartRead(uint8_t* data, uint32_t count, int *parityError)
 {
+    if (!(scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY)) { parityError = NULL; }
     scsi_accel_rp2040_startRead(data, count, parityError, &scsiDev.resetFlag);
 }
 
 extern "C" void scsiFinishRead(uint8_t* data, uint32_t count, int *parityError)
 {
+    if (!(scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY)) { parityError = NULL; }
     scsi_accel_rp2040_finishRead(data, count, parityError, &scsiDev.resetFlag);
     scsiLogDataOut(data, count);
 }

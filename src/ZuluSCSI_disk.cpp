@@ -978,6 +978,18 @@ void s2s_configInit(S2S_BoardCfg* config)
         azlog("-- MapLunsToIDs is on");
         config->flags |= S2S_CFG_MAP_LUNS_TO_IDS;
     }
+
+#ifdef PLATFORM_HAS_PARITY_CHECK
+    if (ini_getbool("SCSI", "EnableParity", true, CONFIGFILE))
+    {
+        azlog("-- EnableParity is on");
+        config->flags |= S2S_CFG_ENABLE_PARITY;
+    }
+    else
+    {
+        azlog("-- EnableParity is off");
+    }
+#endif
 }
 
 extern "C"
