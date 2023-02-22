@@ -847,7 +847,7 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
     img.quirks = ini_getl(section, "Quirks", img.quirks, CONFIGFILE);
     img.rightAlignStrings = ini_getbool(section, "RightAlignStrings", 0, CONFIGFILE);
     img.prefetchbytes = ini_getl(section, "PrefetchBytes", img.prefetchbytes, CONFIGFILE);
-    img.reinsert_on_inquiry = ini_getbool(section, "ReinsertCDOnInquiry", 1, CONFIGFILE);
+    img.reinsert_on_inquiry = ini_getbool(section, "ReinsertCDOnInquiry", 0, CONFIGFILE);
     
     char tmp[32];
     memset(tmp, 0, sizeof(tmp));
@@ -1012,6 +1012,15 @@ void s2s_configInit(S2S_BoardCfg* config)
     else
     {
         log("-- Parity is disabled");
+    }
+
+    if (ini_getbool("SCSI", "ReinsertCDOnInquiry", 0, CONFIGFILE))
+    {
+        log("-- ReinsertCDOnInquiry is enabled");
+    }
+    else
+    {
+        debuglog("-- ReinsertCDOnInquiry is disabled");
     }
 }
 
