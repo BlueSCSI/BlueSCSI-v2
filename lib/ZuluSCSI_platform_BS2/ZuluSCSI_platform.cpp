@@ -95,55 +95,12 @@ void azplatform_init()
 
 }
 
-static bool read_initiator_dip_switch()
-{
-    /* Revision 2022d hardware has problems reading initiator DIP switch setting.
-     * The 74LVT245 hold current is keeping the GPIO_ACK state too strongly.
-     * Detect this condition by toggling the pin up and down and seeing if it sticks.
-     */
-
-    // Strong output high, then pulldown
-    //        pin             function       pup   pdown   out    state  fast
-    gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, false, false, true,  true,  false);
-    gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, false, true,  false, true,  false);
-    delay(1);
-    bool initiator_state1 = gpio_get(DIP_INITIATOR);
-    
-    // Strong output low, then pullup
-    //        pin             function       pup   pdown   out    state  fast
-    gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, false, false, true,  false, false);
-    gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, true,  false, false, false, false);
-    delay(1);
-    bool initiator_state2 = gpio_get(DIP_INITIATOR);
-
-    if (initiator_state1 == initiator_state2)
-    {
-        // Ok, was able to read the state directly
-        return !initiator_state1;
-    }
-
-    // Enable OUT_BSY for a short time.
-    // If in target mode, this will force GPIO_ACK high.
-    gpio_put(SCSI_OUT_BSY, 0);
-    delay_100ns();
-    gpio_put(SCSI_OUT_BSY, 1);
-
-    return !gpio_get(DIP_INITIATOR);
-}
-
 // late_init() only runs in main application, SCSI not needed in bootloader
 void azplatform_late_init()
 {
-    if (read_initiator_dip_switch())
-    {
-        g_scsi_initiator = true;
-        azlog("SCSI initiator mode selected by DIP switch, expecting SCSI disks on the bus");
-    }
-    else
-    {
-        g_scsi_initiator = false;
-        azlog("SCSI target/disk mode selected by DIP switch, acting as a SCSI disk");
-    }
+
+    g_scsi_initiator = false;
+    azlog("SCSI target/disk mode, acting as a SCSI disk");
 
     /* Initialize SCSI pins to required modes.
      * SCSI pins should be inactive / input at this point.
@@ -162,52 +119,35 @@ void azplatform_late_init()
     gpio_conf(SCSI_IO_DB7,    GPIO_FUNC_SIO, true, false, false, true, true);
     gpio_conf(SCSI_IO_DBP,    GPIO_FUNC_SIO, true, false, false, true, true);
 
-    if (!g_scsi_initiator)
+
+    // Act as SCSI device / target
+
+    // SCSI control outputs
+    //        pin             function       pup   pdown  out    state fast
+    gpio_conf(SCSI_OUT_IO,    GPIO_FUNC_SIO, false,false, true,  true, true);
+    gpio_conf(SCSI_OUT_MSG,   GPIO_FUNC_SIO, false,false, true,  true, true);
+
+    // REQ pin is switched between PIO and SIO, pull-up makes sure no glitches
+    gpio_conf(SCSI_OUT_REQ,   GPIO_FUNC_SIO, true ,false, true,  true, true);
+
+    // Shared pins are changed to input / output depending on communication phase
+    gpio_conf(SCSI_IN_SEL,    GPIO_FUNC_SIO, true, false, false, true, true);
+    if (SCSI_OUT_CD != SCSI_IN_SEL)
     {
-        // Act as SCSI device / target
-
-        // SCSI control outputs
-        //        pin             function       pup   pdown  out    state fast
-        gpio_conf(SCSI_OUT_IO,    GPIO_FUNC_SIO, false,false, true,  true, true);
-        gpio_conf(SCSI_OUT_MSG,   GPIO_FUNC_SIO, false,false, true,  true, true);
-
-        // REQ pin is switched between PIO and SIO, pull-up makes sure no glitches
-        gpio_conf(SCSI_OUT_REQ,   GPIO_FUNC_SIO, true ,false, true,  true, true);
-
-        // Shared pins are changed to input / output depending on communication phase
-        gpio_conf(SCSI_IN_SEL,    GPIO_FUNC_SIO, true, false, false, true, true);
-        if (SCSI_OUT_CD != SCSI_IN_SEL)
-        {
-            gpio_conf(SCSI_OUT_CD,    GPIO_FUNC_SIO, false,false, true,  true, true);
-        }
-
-        gpio_conf(SCSI_IN_BSY,    GPIO_FUNC_SIO, true, false, false, true, true);
-        if (SCSI_OUT_MSG != SCSI_IN_BSY)
-        {
-            gpio_conf(SCSI_OUT_MSG,    GPIO_FUNC_SIO, false,false, true,  true, true);
-        }
-
-        // SCSI control inputs
-        //        pin             function       pup   pdown  out    state fast
-        gpio_conf(SCSI_IN_ACK,    GPIO_FUNC_SIO, false, false, false, true, false);
-        gpio_conf(SCSI_IN_ATN,    GPIO_FUNC_SIO, false, false, false, true, false);
-        gpio_conf(SCSI_IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
+        gpio_conf(SCSI_OUT_CD,    GPIO_FUNC_SIO, false,false, true,  true, true);
     }
-    else
+
+    gpio_conf(SCSI_IN_BSY,    GPIO_FUNC_SIO, true, false, false, true, true);
+    if (SCSI_OUT_MSG != SCSI_IN_BSY)
     {
-        // Act as SCSI initiator
-
-        //        pin             function       pup   pdown  out    state fast
-        gpio_conf(SCSI_IN_IO,     GPIO_FUNC_SIO, true ,false, false, true, false);
-        gpio_conf(SCSI_IN_MSG,    GPIO_FUNC_SIO, true ,false, false, true, false);
-        gpio_conf(SCSI_IN_CD,     GPIO_FUNC_SIO, true ,false, false, true, false);
-        gpio_conf(SCSI_IN_REQ,    GPIO_FUNC_SIO, true ,false, false, true, false);
-        gpio_conf(SCSI_IN_BSY,    GPIO_FUNC_SIO, true, false, false, true, false);
-        gpio_conf(SCSI_IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
-        gpio_conf(SCSI_OUT_SEL,   GPIO_FUNC_SIO, false,false, true,  true, true);
-        gpio_conf(SCSI_OUT_ACK,   GPIO_FUNC_SIO, false,false, true,  true, true);
-        gpio_conf(SCSI_OUT_ATN,   GPIO_FUNC_SIO, false,false, true,  true, true);
+        gpio_conf(SCSI_OUT_MSG,    GPIO_FUNC_SIO, false,false, true,  true, true);
     }
+
+    // SCSI control inputs
+    //        pin             function       pup   pdown  out    state fast
+    gpio_conf(SCSI_IN_ACK,    GPIO_FUNC_SIO, false, false, false, true, false);
+    gpio_conf(SCSI_IN_ATN,    GPIO_FUNC_SIO, false, false, false, true, false);
+    gpio_conf(SCSI_IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
 }
 
 bool azplatform_is_initiator_mode_enabled()
@@ -315,7 +255,7 @@ static void watchdog_callback(unsigned alarm_num)
 
     if (g_watchdog_timeout <= WATCHDOG_CRASH_TIMEOUT - WATCHDOG_BUS_RESET_TIMEOUT)
     {
-        if (!scsiDev.resetFlag || !g_scsiHostPhyReset)
+        if (!scsiDev.resetFlag)
         {
             azlog("--------------");
             azlog("WATCHDOG TIMEOUT, attempting bus reset");
@@ -331,7 +271,6 @@ static void watchdog_callback(unsigned alarm_num)
             }
 
             scsiDev.resetFlag = 1;
-            g_scsiHostPhyReset = true;
         }
 
         if (g_watchdog_timeout <= 0)
