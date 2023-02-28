@@ -5,7 +5,6 @@
 #include <stdint.h>
 #include <Arduino.h>
 #include "ZuluSCSI_platform_gpio.h"
-#include "scsiHostPhy.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,7 +19,6 @@ extern const char *g_azplatform_name;
 #define PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE 65536
 #define PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE 8192
 #define SD_USE_SDIO 1
-#define PLATFORM_HAS_INITIATOR_MODE 1
 #define PLATFORM_HAS_PARITY_CHECK 1
 
 // NOTE: The driver supports synchronous speeds higher than 10MB/s, but this
