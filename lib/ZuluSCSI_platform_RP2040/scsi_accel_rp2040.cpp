@@ -384,7 +384,7 @@ void scsi_accel_rp2040_finishWrite(volatile int *resetFlag)
             break;
         }
 
-        if (g_scsi_dma_state == SCSIDMA_WRITE_DONE)
+        if (g_scsi_dma_state == SCSIDMA_WRITE_DONE || *resetFlag)
         {
             // DMA done, wait for PIO to finish also and reconfig GPIO.
             scsi_accel_rp2040_stopWrite(resetFlag);
