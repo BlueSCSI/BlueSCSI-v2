@@ -747,7 +747,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
         }
         else if (!img.file.contiguousRange(&sector_begin, &sector_end))
         {
-            log("---- WARNING: file ", filename, " is not contiguous. This will increase read latency.");
+            log("---- WARNING: file ", filename, " is fragmented, see https://github.com/BlueSCSI/BlueSCSI-v2/wiki/Image-File-Fragmentation");
         }
 
         if (type == S2S_CFG_OPTICAL)
