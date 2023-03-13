@@ -12,7 +12,7 @@
 extern "C" {
 #endif
 
-extern const char *g_azplatform_name;
+extern const char *g_platform_name;
 
 #if defined(ZULUSCSI_V1_0)
 #   if defined(ZULUSCSI_V1_0_mini)
@@ -34,7 +34,7 @@ extern const char *g_azplatform_name;
 #endif
 
 // Debug logging functions
-void azplatform_log(const char *s);
+void platform_log(const char *s);
 
 // Minimal millis() implementation as GD32F205 does not
 // have an Arduino core yet.
@@ -60,25 +60,25 @@ static inline void delay_100ns()
 }
 
 // Initialize SPI and GPIO configuration
-void azplatform_init();
+void platform_init();
 
 // Initialization for main application, not used for bootloader
-void azplatform_late_init();
+void platform_late_init();
 
 // Disable the status LED
-void azplatform_disable_led(void);
+void platform_disable_led(void);
 
 // Setup soft watchdog
-void azplatform_reset_watchdog();
+void platform_reset_watchdog();
 
 // Reinitialize SD card connection and save log from interrupt context.
 // This can be used in crash handlers.
-void azplatform_emergency_log_save();
+void platform_emergency_log_save();
 
 // Set callback that will be called during data transfer to/from SD card.
 // This can be used to implement simultaneous transfer to SCSI bus.
 typedef void (*sd_callback_t)(uint32_t bytes_complete);
-void azplatform_set_sd_callback(sd_callback_t func, const uint8_t *buffer);
+void platform_set_sd_callback(sd_callback_t func, const uint8_t *buffer);
 
 // This function is called by scsiPhy.cpp.
 // It resets the systick counter to give 1 millisecond of uninterrupted transfer time.
@@ -86,16 +86,16 @@ void azplatform_set_sd_callback(sd_callback_t func, const uint8_t *buffer);
 void SysTick_Handle_PreEmptively();
 
 // Reprogram firmware in main program area.
-#define AZPLATFORM_BOOTLOADER_SIZE 32768
-#define AZPLATFORM_FLASH_TOTAL_SIZE (256 * 1024)
-#define AZPLATFORM_FLASH_PAGE_SIZE 2048
-bool azplatform_rewrite_flash_page(uint32_t offset, uint8_t buffer[AZPLATFORM_FLASH_PAGE_SIZE]);
-void azplatform_boot_to_main_firmware();
+#define PLATFORM_BOOTLOADER_SIZE 32768
+#define PLATFORM_FLASH_TOTAL_SIZE (256 * 1024)
+#define PLATFORM_FLASH_PAGE_SIZE 2048
+bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_PAGE_SIZE]);
+void platform_boot_to_main_firmware();
 
 // Configuration customizations based on DIP switch settings
 // When DIPSW1 is on, Apple quirks are enabled by default.
-void azplatform_config_hook(S2S_TargetCfg *config);
-#define AZPLATFORM_CONFIG_HOOK(cfg) azplatform_config_hook(cfg)
+void platform_config_hook(S2S_TargetCfg *config);
+#define PLATFORM_CONFIG_HOOK(cfg) platform_config_hook(cfg)
 
 // Write a single SCSI pin.
 // Example use: SCSI_OUT(ATN, 1) sets SCSI_ATN to low (active) state.

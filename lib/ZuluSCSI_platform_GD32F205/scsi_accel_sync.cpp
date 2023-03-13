@@ -135,7 +135,7 @@ void scsi_accel_sync_recv(uint8_t *data, uint32_t count, int* parityError, volat
             {
                 // We are in a pinch here: without ACK pulses coming, the EXMC and DMA peripherals
                 // are locked up. The only way out is a whole system reset.
-                azlog("SCSI Synchronous read timeout: resetting system");
+                logmsg("SCSI Synchronous read timeout: resetting system");
                 NVIC_SystemReset();
             }
         }
@@ -450,7 +450,7 @@ void scsi_accel_sync_send(const uint8_t* data, uint32_t count, volatile int *res
     }
     else
     {
-        azdbg("No optimized routine for syncOffset=", syncOffset, " syndPeriod=", syncPeriod, ", using fallback");
+        dbgmsg("No optimized routine for syncOffset=", syncOffset, " syndPeriod=", syncPeriod, ", using fallback");
         while (count-- > 0)
         {
             while (TIMER_CNT(SCSI_SYNC_TIMER) > count + syncOffset && !*resetFlag);
@@ -468,7 +468,7 @@ void scsi_accel_sync_send(const uint8_t* data, uint32_t count, volatile int *res
 
     if (*resetFlag)
     {
-        azdbg("Bus reset during sync transfer, total ", (int)count,
+        dbgmsg("Bus reset during sync transfer, total ", (int)count,
               " bytes, remaining ACK count ", (int)TIMER_CNT(SCSI_SYNC_TIMER));
     }
 

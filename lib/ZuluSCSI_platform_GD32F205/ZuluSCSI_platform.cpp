@@ -10,7 +10,7 @@
 
 extern "C" {
 
-const char *g_azplatform_name = PLATFORM_NAME;
+const char *g_platform_name = PLATFORM_NAME;
 static bool g_enable_apple_quirks = false;
 
 /*************************/
@@ -57,7 +57,7 @@ void SysTick_Handler_inner(uint32_t *sp)
         {
             if (!scsiDev.resetFlag)
             {
-                azlog("WATCHDOG TIMEOUT at PC ", sp[6], " LR ", sp[5], " attempting bus reset");
+                logmsg("WATCHDOG TIMEOUT at PC ", sp[6], " LR ", sp[5], " attempting bus reset");
                 scsiDev.resetFlag = 1;
             }
 
@@ -108,7 +108,7 @@ void SysTick_Handle_PreEmptively()
 
 // Initialize SPI and GPIO configuration
 // Clock has already been initialized by system_gd32f20x.c
-void azplatform_init()
+void platform_init()
 {
     SystemCoreClockUpdate();
 
@@ -201,48 +201,48 @@ void azplatform_init()
     gpio_init(GPIOB, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_3);
 }
 
-void azplatform_late_init()
+void platform_late_init()
 {
-    azlog("Platform: ", g_azplatform_name);
-    azlog("FW Version: ", g_azlog_firmwareversion);
+    logmsg("Platform: ", g_platform_name);
+    logmsg("FW Version: ", g_log_firmwareversion);
     
 #ifdef ZULUSCSI_V1_0_mini
-    azlog("DIPSW3 is ON: Enabling SCSI termination");
+    logmsg("DIPSW3 is ON: Enabling SCSI termination");
 #else
     if (gpio_input_bit_get(DIP_PORT, DIPSW3_PIN))
     {
-        azlog("DIPSW3 is ON: Enabling SCSI termination");
+        logmsg("DIPSW3 is ON: Enabling SCSI termination");
         gpio_bit_reset(SCSI_TERM_EN_PORT, SCSI_TERM_EN_PIN);
     }
     else
     {
-        azlog("DIPSW3 is OFF: SCSI termination disabled");
+        logmsg("DIPSW3 is OFF: SCSI termination disabled");
     }
 #endif // ZULUSCSI_V1_0_mini
 
     if (gpio_input_bit_get(DIP_PORT, DIPSW2_PIN))
     {
-        azlog("DIPSW2 is ON: enabling debug messages");
-        g_azlog_debug = true;
+        logmsg("DIPSW2 is ON: enabling debug messages");
+        g_log_debug = true;
     }
     else
     {
-        g_azlog_debug = false;
+        g_log_debug = false;
     }
 
     if (gpio_input_bit_get(DIP_PORT, DIPSW1_PIN))
     {
-        azlog("DIPSW1 is ON: enabling Apple quirks by default");
+        logmsg("DIPSW1 is ON: enabling Apple quirks by default");
         g_enable_apple_quirks = true;
     }
 
     greenpak_load_firmware();
 }
 
-void azplatform_disable_led(void)
+void platform_disable_led(void)
 {   
     gpio_init(LED_PORT, GPIO_MODE_IPU, 0, LED_PINS);
-    azlog("Disabling status LED");
+    logmsg("Disabling status LED");
 }
 
 /*****************************************/
@@ -252,7 +252,7 @@ void azplatform_disable_led(void)
 extern SdFs SD;
 
 // Writes log data to the PB3 SWO pin
-void azplatform_log(const char *s)
+void platform_log(const char *s)
 {
     while (*s)
     {
@@ -262,9 +262,9 @@ void azplatform_log(const char *s)
     }
 }
 
-void azplatform_emergency_log_save()
+void platform_emergency_log_save()
 {
-    azplatform_set_sd_callback(NULL, NULL);
+    platform_set_sd_callback(NULL, NULL);
 
     SD.begin(SD_CONFIG_CRASH);
     FsFile crashfile = SD.open(CRASHFILE, O_WRONLY | O_CREAT | O_TRUNC);
@@ -279,8 +279,8 @@ void azplatform_emergency_log_save()
     }
 
     uint32_t startpos = 0;
-    crashfile.write(azlog_get_buffer(&startpos));
-    crashfile.write(azlog_get_buffer(&startpos));
+    crashfile.write(log_get_buffer(&startpos));
+    crashfile.write(log_get_buffer(&startpos));
     crashfile.flush();
     crashfile.close();
 }
@@ -294,29 +294,29 @@ void show_hardfault(uint32_t *sp)
     uint32_t lr = sp[5];
     uint32_t cfsr = SCB->CFSR;
     
-    azlog("--------------");
-    azlog("CRASH!");
-    azlog("Platform: ", g_azplatform_name);
-    azlog("FW Version: ", g_azlog_firmwareversion);
-    azlog("CFSR: ", cfsr);
-    azlog("SP: ", (uint32_t)sp);
-    azlog("PC: ", pc);
-    azlog("LR: ", lr);
-    azlog("R0: ", sp[0]);
-    azlog("R1: ", sp[1]);
-    azlog("R2: ", sp[2]);
-    azlog("R3: ", sp[3]);
+    logmsg("--------------");
+    logmsg("CRASH!");
+    logmsg("Platform: ", g_platform_name);
+    logmsg("FW Version: ", g_log_firmwareversion);
+    logmsg("CFSR: ", cfsr);
+    logmsg("SP: ", (uint32_t)sp);
+    logmsg("PC: ", pc);
+    logmsg("LR: ", lr);
+    logmsg("R0: ", sp[0]);
+    logmsg("R1: ", sp[1]);
+    logmsg("R2: ", sp[2]);
+    logmsg("R3: ", sp[3]);
 
     uint32_t *p = (uint32_t*)((uint32_t)sp & ~3);
     for (int i = 0; i < 8; i++)
     {
         if (p == &_estack) break; // End of stack
         
-        azlog("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
+        logmsg("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
         p += 4;
     }
 
-    azplatform_emergency_log_save();
+    platform_emergency_log_save();
 
     while (1)
     {
@@ -371,22 +371,22 @@ void __assert_func(const char *file, int line, const char *func, const char *exp
 {
     uint32_t dummy = 0;
 
-    azlog("--------------");
-    azlog("ASSERT FAILED!");
-    azlog("Platform: ", g_azplatform_name);
-    azlog("FW Version: ", g_azlog_firmwareversion);
-    azlog("Assert failed: ", file , ":", line, " in ", func, ":", expr);
+    logmsg("--------------");
+    logmsg("ASSERT FAILED!");
+    logmsg("Platform: ", g_platform_name);
+    logmsg("FW Version: ", g_log_firmwareversion);
+    logmsg("Assert failed: ", file , ":", line, " in ", func, ":", expr);
 
     uint32_t *p = (uint32_t*)((uint32_t)&dummy & ~3);
     for (int i = 0; i < 8; i++)
     {
         if (p == &_estack) break; // End of stack
 
-        azlog("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
+        logmsg("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
         p += 4;
     }
 
-    azplatform_emergency_log_save();
+    platform_emergency_log_save();
 
     while(1)
     {
@@ -401,11 +401,11 @@ void __assert_func(const char *file, int line, const char *func, const char *exp
 
 static void watchdog_handler(uint32_t *sp)
 {
-    azlog("-------------- WATCHDOG TIMEOUT");
+    logmsg("-------------- WATCHDOG TIMEOUT");
     show_hardfault(sp);
 }
 
-void azplatform_reset_watchdog()
+void platform_reset_watchdog()
 {
     // This uses a software watchdog based on systick timer interrupt.
     // It gives us opportunity to collect better debug info than the
@@ -417,20 +417,20 @@ void azplatform_reset_watchdog()
 /* Flash reprogramming */
 /***********************/
 
-bool azplatform_rewrite_flash_page(uint32_t offset, uint8_t buffer[AZPLATFORM_FLASH_PAGE_SIZE])
+bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_PAGE_SIZE])
 {
     if (offset == 0)
     {
         if (buffer[3] != 0x20 || buffer[7] != 0x08)
         {
-            azlog("Invalid firmware file, starts with: ", bytearray(buffer, 16));
+            logmsg("Invalid firmware file, starts with: ", bytearray(buffer, 16));
             return false;
         }
     }
 
-    azdbg("Writing flash at offset ", offset, " data ", bytearray(buffer, 4));
-    assert(offset % AZPLATFORM_FLASH_PAGE_SIZE == 0);
-    assert(offset >= AZPLATFORM_BOOTLOADER_SIZE);
+    dbgmsg("Writing flash at offset ", offset, " data ", bytearray(buffer, 4));
+    assert(offset % PLATFORM_FLASH_PAGE_SIZE == 0);
+    assert(offset >= PLATFORM_BOOTLOADER_SIZE);
     
     fmc_unlock();
     fmc_bank0_unlock();
@@ -439,18 +439,18 @@ bool azplatform_rewrite_flash_page(uint32_t offset, uint8_t buffer[AZPLATFORM_FL
     status = fmc_page_erase(FLASH_BASE + offset);
     if (status != FMC_READY)
     {
-        azlog("Erase failed: ", (int)status);
+        logmsg("Erase failed: ", (int)status);
         return false;
     }
 
     uint32_t *buf32 = (uint32_t*)buffer;
-    uint32_t num_words = AZPLATFORM_FLASH_PAGE_SIZE / 4;
+    uint32_t num_words = PLATFORM_FLASH_PAGE_SIZE / 4;
     for (int i = 0; i < num_words; i++)
     {
         status = fmc_word_program(FLASH_BASE + offset + i * 4, buf32[i]);
         if (status != FMC_READY)
         {
-            azlog("Flash write failed: ", (int)status);
+            logmsg("Flash write failed: ", (int)status);
             return false;
         }   
     }
@@ -463,16 +463,16 @@ bool azplatform_rewrite_flash_page(uint32_t offset, uint8_t buffer[AZPLATFORM_FL
         uint32_t actual = *(volatile uint32_t*)(FLASH_BASE + offset + i * 4);
         if (actual != expected)
         {
-            azlog("Flash verify failed at offset ", offset + i * 4, " got ", actual, " expected ", expected);
+            logmsg("Flash verify failed at offset ", offset + i * 4, " got ", actual, " expected ", expected);
             return false;
         }
     }
     return true;
 }
 
-void azplatform_boot_to_main_firmware()
+void platform_boot_to_main_firmware()
 {
-    uint32_t *mainprogram_start = (uint32_t*)(0x08000000 + AZPLATFORM_BOOTLOADER_SIZE);
+    uint32_t *mainprogram_start = (uint32_t*)(0x08000000 + PLATFORM_BOOTLOADER_SIZE);
     SCB->VTOR = (uint32_t)mainprogram_start;
   
     __asm__(
@@ -485,7 +485,7 @@ void azplatform_boot_to_main_firmware()
 /* SCSI configuration based on DIPSW1 */
 /**************************************/
 
-void azplatform_config_hook(S2S_TargetCfg *config)
+void platform_config_hook(S2S_TargetCfg *config)
 {
     // Enable Apple quirks by dip switch
     if (g_enable_apple_quirks)
