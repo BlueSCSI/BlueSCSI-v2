@@ -117,7 +117,7 @@ static void scsi_rst_assert_interrupt()
 
     if (rst1 && rst2)
     {
-        azdbg("BUS RESET");
+        dbgmsg("BUS RESET");
         scsiDev.resetFlag = 1;
     }
 }
@@ -164,7 +164,7 @@ static void selectPhyMode()
 
     if (g_scsi_phy_mode != oldmode)
     {
-        azlog("SCSI PHY operating mode: ", g_scsi_phy_mode_names[g_scsi_phy_mode]);
+        logmsg("SCSI PHY operating mode: ", g_scsi_phy_mode_names[g_scsi_phy_mode]);
     }
 }
 
@@ -353,7 +353,7 @@ extern "C" void scsiStartWrite(const uint8_t* data, uint32_t count)
     }
     else
     {
-        azlog("Unknown SCSI PHY mode: ", (int)g_scsi_phy_mode);
+        logmsg("Unknown SCSI PHY mode: ", (int)g_scsi_phy_mode);
     }
 }
 

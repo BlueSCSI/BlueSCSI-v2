@@ -107,7 +107,7 @@ static void scsi_rst_assert_interrupt()
 
     if (rst1 && rst2)
     {
-        azdbg("BUS RESET");
+        dbgmsg("BUS RESET");
         scsiDev.resetFlag = 1;
     }
 }
@@ -337,7 +337,7 @@ static inline uint8_t scsiReadOneByte(int* parityError)
 
     if (parityError && r != (g_scsi_parity_lookup[r & 0xFF] ^ SCSI_IO_DATA_MASK))
     {
-        azlog("Parity error in scsiReadOneByte(): ", (uint32_t)r);
+        logmsg("Parity error in scsiReadOneByte(): ", (uint32_t)r);
         *parityError = 1;
     }
 

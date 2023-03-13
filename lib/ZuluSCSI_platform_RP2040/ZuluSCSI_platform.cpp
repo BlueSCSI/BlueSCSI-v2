@@ -18,7 +18,7 @@ extern "C" {
 #include <hardware/flash.h>
 #include "rp2040_flash_do_cmd.h"
 
-const char *g_azplatform_name = PLATFORM_NAME;
+const char *g_platform_name = PLATFORM_NAME;
 static bool g_scsi_initiator = false;
 static uint32_t g_flash_chip_size = 0;
 static bool g_uart_initialized = false;
@@ -43,7 +43,7 @@ static void gpio_conf(uint gpio, enum gpio_function fn, bool pullup, bool pulldo
     }
 }
 
-void azplatform_init()
+void platform_init()
 {
     // Make sure second core is stopped
     multicore_reset_core1();
@@ -73,20 +73,20 @@ void azplatform_init()
     g_uart_initialized = true;
     mbed_set_error_hook(mbed_error_hook);
 
-    azlog("Platform: ", g_azplatform_name);
-    azlog("FW Version: ", g_azlog_firmwareversion);
+    logmsg("Platform: ", g_platform_name);
+    logmsg("FW Version: ", g_log_firmwareversion);
 
-    azlog("DIP switch settings: debug log ", (int)dbglog, ", termination ", (int)termination);
+    logmsg("DIP switch settings: debug log ", (int)dbglog, ", termination ", (int)termination);
 
-    g_azlog_debug = dbglog;
+    g_log_debug = dbglog;
     
     if (termination)
     {
-        azlog("SCSI termination is enabled");
+        logmsg("SCSI termination is enabled");
     }
     else
     {
-        azlog("NOTE: SCSI termination is disabled");
+        logmsg("NOTE: SCSI termination is disabled");
     }
 
     // Get flash chip size
@@ -94,7 +94,7 @@ void azplatform_init()
     uint8_t response_jedec[4] = {0};
     flash_do_cmd(cmd_read_jedec_id, response_jedec, 4);
     g_flash_chip_size = (1 << response_jedec[3]);
-    azlog("Flash chip size: ", (int)(g_flash_chip_size / 1024), " kB");
+    logmsg("Flash chip size: ", (int)(g_flash_chip_size / 1024), " kB");
 
     // SD card pins
     // Card is used in SDIO mode for main program, and in SPI mode for crash handler & bootloader.
@@ -152,17 +152,17 @@ static bool read_initiator_dip_switch()
 }
 
 // late_init() only runs in main application, SCSI not needed in bootloader
-void azplatform_late_init()
+void platform_late_init()
 {
     if (read_initiator_dip_switch())
     {
         g_scsi_initiator = true;
-        azlog("SCSI initiator mode selected by DIP switch, expecting SCSI disks on the bus");
+        logmsg("SCSI initiator mode selected by DIP switch, expecting SCSI disks on the bus");
     }
     else
     {
         g_scsi_initiator = false;
-        azlog("SCSI target/disk mode selected by DIP switch, acting as a SCSI disk");
+        logmsg("SCSI target/disk mode selected by DIP switch, acting as a SCSI disk");
     }
 
     /* Initialize SCSI pins to required modes.
@@ -230,16 +230,16 @@ void azplatform_late_init()
     }
 }
 
-bool azplatform_is_initiator_mode_enabled()
+bool platform_is_initiator_mode_enabled()
 {
     return g_scsi_initiator;
 }
 
-void azplatform_disable_led(void)
+void platform_disable_led(void)
 {   
     //        pin      function       pup   pdown  out    state fast
     gpio_conf(LED_PIN, GPIO_FUNC_SIO, false,false, false, false, false);
-    azlog("Disabling status LED");
+    logmsg("Disabling status LED");
 }
 
 /*****************************************/
@@ -249,9 +249,9 @@ void azplatform_disable_led(void)
 extern SdFs SD;
 extern uint32_t __StackTop;
 
-void azplatform_emergency_log_save()
+void platform_emergency_log_save()
 {
-    azplatform_set_sd_callback(NULL, NULL);
+    platform_set_sd_callback(NULL, NULL);
 
     SD.begin(SD_CONFIG_CRASH);
     FsFile crashfile = SD.open(CRASHFILE, O_WRONLY | O_CREAT | O_TRUNC);
@@ -266,32 +266,32 @@ void azplatform_emergency_log_save()
     }
 
     uint32_t startpos = 0;
-    crashfile.write(azlog_get_buffer(&startpos));
-    crashfile.write(azlog_get_buffer(&startpos));
+    crashfile.write(log_get_buffer(&startpos));
+    crashfile.write(log_get_buffer(&startpos));
     crashfile.flush();
     crashfile.close();
 }
 
 void mbed_error_hook(const mbed_error_ctx * error_context)
 {
-    azlog("--------------");
-    azlog("CRASH!");
-    azlog("Platform: ", g_azplatform_name);
-    azlog("FW Version: ", g_azlog_firmwareversion);
-    azlog("error_status: ", (uint32_t)error_context->error_status);
-    azlog("error_address: ", error_context->error_address);
-    azlog("error_value: ", error_context->error_value);
+    logmsg("--------------");
+    logmsg("CRASH!");
+    logmsg("Platform: ", g_platform_name);
+    logmsg("FW Version: ", g_log_firmwareversion);
+    logmsg("error_status: ", (uint32_t)error_context->error_status);
+    logmsg("error_address: ", error_context->error_address);
+    logmsg("error_value: ", error_context->error_value);
 
     uint32_t *p = (uint32_t*)((uint32_t)error_context->thread_current_sp & ~3);
     for (int i = 0; i < 8; i++)
     {
         if (p == &__StackTop) break; // End of stack
 
-        azlog("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
+        logmsg("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
         p += 4;
     }
 
-    azplatform_emergency_log_save();
+    platform_emergency_log_save();
 
     while (1)
     {
@@ -318,7 +318,7 @@ void mbed_error_hook(const mbed_error_ctx * error_context)
 /*****************************************/
 
 // This function is called for every log message.
-void azplatform_log(const char *s)
+void platform_log(const char *s)
 {
     if (g_uart_initialized)
     {
@@ -337,16 +337,16 @@ static void watchdog_callback(unsigned alarm_num)
     {
         if (!scsiDev.resetFlag || !g_scsiHostPhyReset)
         {
-            azlog("--------------");
-            azlog("WATCHDOG TIMEOUT, attempting bus reset");
-            azlog("GPIO states: out ", sio_hw->gpio_out, " oe ", sio_hw->gpio_oe, " in ", sio_hw->gpio_in);
+            logmsg("--------------");
+            logmsg("WATCHDOG TIMEOUT, attempting bus reset");
+            logmsg("GPIO states: out ", sio_hw->gpio_out, " oe ", sio_hw->gpio_oe, " in ", sio_hw->gpio_in);
 
             uint32_t *p = (uint32_t*)__get_PSP();
             for (int i = 0; i < 8; i++)
             {
                 if (p == &__StackTop) break; // End of stack
 
-                azlog("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
+                logmsg("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
                 p += 4;
             }
 
@@ -356,24 +356,24 @@ static void watchdog_callback(unsigned alarm_num)
 
         if (g_watchdog_timeout <= 0)
         {
-            azlog("--------------");
-            azlog("WATCHDOG TIMEOUT!");
-            azlog("Platform: ", g_azplatform_name);
-            azlog("FW Version: ", g_azlog_firmwareversion);
-            azlog("GPIO states: out ", sio_hw->gpio_out, " oe ", sio_hw->gpio_oe, " in ", sio_hw->gpio_in);
+            logmsg("--------------");
+            logmsg("WATCHDOG TIMEOUT!");
+            logmsg("Platform: ", g_platform_name);
+            logmsg("FW Version: ", g_log_firmwareversion);
+            logmsg("GPIO states: out ", sio_hw->gpio_out, " oe ", sio_hw->gpio_oe, " in ", sio_hw->gpio_in);
 
             uint32_t *p = (uint32_t*)__get_PSP();
             for (int i = 0; i < 8; i++)
             {
                 if (p == &__StackTop) break; // End of stack
 
-                azlog("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
+                logmsg("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
                 p += 4;
             }
 
-            azplatform_emergency_log_save();
+            platform_emergency_log_save();
 
-            azplatform_boot_to_main_firmware();
+            platform_boot_to_main_firmware();
         }
     }
 
@@ -382,7 +382,7 @@ static void watchdog_callback(unsigned alarm_num)
 
 // This function can be used to periodically reset watchdog timer for crash handling.
 // It can also be left empty if the platform does not use a watchdog timer.
-void azplatform_reset_watchdog()
+void platform_reset_watchdog()
 {
     g_watchdog_timeout = WATCHDOG_CRASH_TIMEOUT;
 
@@ -399,26 +399,26 @@ void azplatform_reset_watchdog()
 /* Flash reprogramming from bootloader   */
 /*****************************************/
 
-#ifdef AZPLATFORM_BOOTLOADER_SIZE
+#ifdef PLATFORM_BOOTLOADER_SIZE
 
 extern uint32_t __real_vectors_start;
 extern uint32_t __StackTop;
 static volatile void *g_bootloader_exit_req;
 
-bool azplatform_rewrite_flash_page(uint32_t offset, uint8_t buffer[AZPLATFORM_FLASH_PAGE_SIZE])
+bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_PAGE_SIZE])
 {
-    if (offset == AZPLATFORM_BOOTLOADER_SIZE)
+    if (offset == PLATFORM_BOOTLOADER_SIZE)
     {
         if (buffer[3] != 0x20 || buffer[7] != 0x10)
         {
-            azlog("Invalid firmware file, starts with: ", bytearray(buffer, 16));
+            logmsg("Invalid firmware file, starts with: ", bytearray(buffer, 16));
             return false;
         }
     }
 
-    azdbg("Writing flash at offset ", offset, " data ", bytearray(buffer, 4));
-    assert(offset % AZPLATFORM_FLASH_PAGE_SIZE == 0);
-    assert(offset >= AZPLATFORM_BOOTLOADER_SIZE);
+    dbgmsg("Writing flash at offset ", offset, " data ", bytearray(buffer, 4));
+    assert(offset % PLATFORM_FLASH_PAGE_SIZE == 0);
+    assert(offset >= PLATFORM_BOOTLOADER_SIZE);
 
     // Avoid any mbed timer interrupts triggering during the flashing.
     __disable_irq();
@@ -431,11 +431,11 @@ bool azplatform_rewrite_flash_page(uint32_t offset, uint8_t buffer[AZPLATFORM_FL
     // flashing, and again after reset to main firmware.
     xip_ctrl_hw->ctrl = 0;
 
-    flash_range_erase(offset, AZPLATFORM_FLASH_PAGE_SIZE);
-    flash_range_program(offset, buffer, AZPLATFORM_FLASH_PAGE_SIZE);
+    flash_range_erase(offset, PLATFORM_FLASH_PAGE_SIZE);
+    flash_range_program(offset, buffer, PLATFORM_FLASH_PAGE_SIZE);
 
     uint32_t *buf32 = (uint32_t*)buffer;
-    uint32_t num_words = AZPLATFORM_FLASH_PAGE_SIZE / 4;
+    uint32_t num_words = PLATFORM_FLASH_PAGE_SIZE / 4;
     for (int i = 0; i < num_words; i++)
     {
         uint32_t expected = buf32[i];
@@ -443,7 +443,7 @@ bool azplatform_rewrite_flash_page(uint32_t offset, uint8_t buffer[AZPLATFORM_FL
 
         if (actual != expected)
         {
-            azlog("Flash verify failed at offset ", offset + i * 4, " got ", actual, " expected ", expected);
+            logmsg("Flash verify failed at offset ", offset + i * 4, " got ", actual, " expected ", expected);
             return false;
         }
     }
@@ -453,7 +453,7 @@ bool azplatform_rewrite_flash_page(uint32_t offset, uint8_t buffer[AZPLATFORM_FL
     return true;
 }
 
-void azplatform_boot_to_main_firmware()
+void platform_boot_to_main_firmware()
 {
     // To ensure that the system state is reset properly, we perform
     // a SYSRESETREQ and jump straight from the reset vector to main application.
@@ -468,7 +468,7 @@ void btldr_reset_handler()
     if (g_bootloader_exit_req == &g_bootloader_exit_req)
     {
         // Boot to main application
-        application_base = (uint32_t*)(XIP_BASE + AZPLATFORM_BOOTLOADER_SIZE);
+        application_base = (uint32_t*)(XIP_BASE + PLATFORM_BOOTLOADER_SIZE);
     }
 
     SCB->VTOR = (uint32_t)application_base;
@@ -494,7 +494,7 @@ const void * btldr_vectors[2] = {&__StackTop, (void*)&btldr_reset_handler};
 // Reserve up to 352 kB for firmware.
 #define ROMDRIVE_OFFSET (352 * 1024)
 
-uint32_t azplatform_get_romdrive_maxsize()
+uint32_t platform_get_romdrive_maxsize()
 {
     if (g_flash_chip_size >= ROMDRIVE_OFFSET)
     {
@@ -507,7 +507,7 @@ uint32_t azplatform_get_romdrive_maxsize()
     }
 }
 
-bool azplatform_read_romdrive(uint8_t *dest, uint32_t start, uint32_t count)
+bool platform_read_romdrive(uint8_t *dest, uint32_t start, uint32_t count)
 {
     xip_ctrl_hw->stream_ctr = 0;
 
@@ -520,7 +520,7 @@ bool azplatform_read_romdrive(uint8_t *dest, uint32_t start, uint32_t count)
     xip_ctrl_hw->stream_ctr = count / 4;
 
     // Transfer happens in multiples of 4 bytes
-    assert(start < azplatform_get_romdrive_maxsize());
+    assert(start < platform_get_romdrive_maxsize());
     assert((count & 3) == 0);
     assert((((uint32_t)dest) & 3) == 0);
 
@@ -538,10 +538,10 @@ bool azplatform_read_romdrive(uint8_t *dest, uint32_t start, uint32_t count)
     return true;
 }
 
-bool azplatform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count)
+bool platform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count)
 {
-    assert(start < azplatform_get_romdrive_maxsize());
-    assert((count % AZPLATFORM_ROMDRIVE_PAGE_SIZE) == 0);
+    assert(start < platform_get_romdrive_maxsize());
+    assert((count % PLATFORM_ROMDRIVE_PAGE_SIZE) == 0);
 
     __disable_irq();
     flash_range_erase(start + ROMDRIVE_OFFSET, count);
@@ -658,7 +658,7 @@ public:
         for (int i = 0; i < size; i++)
         {
             char buf[2] = {((const char*)buffer)[i], 0};
-            azlog_raw(buf);
+            log_raw(buf);
         }
         return size;
     }
