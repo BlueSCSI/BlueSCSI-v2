@@ -365,10 +365,9 @@ public:
                 if (end != begin + sectorcount)
                 {
                     uint32_t allocsize = end - begin + 1;
-                    azlog("---- NOTE: File ", filename, " has FAT allocated size of ", (int)allocsize, " sectors and file size of ", (int)sectorcount, " sectors");
-                    azlog("---- Due to issue #80 in ZuluSCSI version 1.0.8 and 1.0.9 the allocated size was mistakenly reported to SCSI controller.");
-                    azlog("---- If the drive was formatted using those versions, you may have problems accessing it with newer firmware.");
-                    azlog("---- The old behavior can be restored with setting  [SCSI] UseFATAllocSize = 1 in " CONFIGFILE);
+                    // Due to issue #80 in ZuluSCSI version 1.0.8 and 1.0.9 the allocated size was mistakenly reported to SCSI controller.
+                    // If the drive was formatted using those versions, you may have problems accessing it with newer firmware.
+                    // The old behavior can be restored with setting  [SCSI] UseFATAllocSize = 1 in config file.
 
                     if (ini_getbool("SCSI", "UseFATAllocSize", 0, CONFIGFILE))
                     {
