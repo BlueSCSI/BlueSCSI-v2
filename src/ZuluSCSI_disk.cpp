@@ -57,10 +57,10 @@ extern "C" {
 
 #ifndef PLATFORM_HAS_ROM_DRIVE
 // Dummy defines for platforms without ROM drive support
-#define AZPLATFORM_ROMDRIVE_PAGE_SIZE 1024
-uint32_t azplatform_get_romdrive_maxsize() { return 0; }
-bool azplatform_read_romdrive(uint8_t *dest, uint32_t start, uint32_t count) { return false; }
-bool azplatform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count) { return false; }
+#define PLATFORM_ROMDRIVE_PAGE_SIZE 1024
+uint32_t platform_get_romdrive_maxsize() { return 0; }
+bool platform_read_romdrive(uint8_t *dest, uint32_t start, uint32_t count) { return false; }
+bool platform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count) { return false; }
 #endif
 
 #ifndef PLATFORM_SCSIPHY_HAS_NONBLOCKING_READ
@@ -98,7 +98,7 @@ struct romdrive_hdr_t {
 // Check if the romdrive is present
 static bool check_romdrive(romdrive_hdr_t *hdr)
 {
-    if (!azplatform_read_romdrive((uint8_t*)hdr, 0, sizeof(romdrive_hdr_t)))
+    if (!platform_read_romdrive((uint8_t*)hdr, 0, sizeof(romdrive_hdr_t)))
     {
         return false;
     }
@@ -120,17 +120,17 @@ static bool check_romdrive(romdrive_hdr_t *hdr)
 bool scsiDiskClearRomDrive()
 {
 #ifndef PLATFORM_HAS_ROM_DRIVE
-    azlog("---- Platform does not support ROM drive");
+    logmsg("---- Platform does not support ROM drive");
     return false;
 #else
     romdrive_hdr_t hdr = {0x0};
 
-    if (!azplatform_write_romdrive((const uint8_t*)&hdr, 0, AZPLATFORM_ROMDRIVE_PAGE_SIZE))
+    if (!platform_write_romdrive((const uint8_t*)&hdr, 0, PLATFORM_ROMDRIVE_PAGE_SIZE))
     {
-        azlog("-- Failed to clear ROM drive");
+        logmsg("-- Failed to clear ROM drive");
         return false;
     }
-    azlog("-- Cleared ROM drive");
+    logmsg("-- Cleared ROM drive");
     SD.remove("CLEAR_ROM");
     return true;
 #endif
@@ -140,27 +140,27 @@ bool scsiDiskClearRomDrive()
 bool scsiDiskProgramRomDrive(const char *filename, int scsi_id, int blocksize, S2S_CFG_TYPE type)
 {
 #ifndef PLATFORM_HAS_ROM_DRIVE
-    azlog("---- Platform does not support ROM drive");
+    logmsg("---- Platform does not support ROM drive");
     return false;
 #endif
 
     FsFile file = SD.open(filename, O_RDONLY);
     if (!file.isOpen())
     {
-        azlog("---- Failed to open: ", filename);
+        logmsg("---- Failed to open: ", filename);
         return false;
     }
 
     uint64_t filesize = file.size();
-    uint32_t maxsize = azplatform_get_romdrive_maxsize() - AZPLATFORM_ROMDRIVE_PAGE_SIZE;
+    uint32_t maxsize = platform_get_romdrive_maxsize() - PLATFORM_ROMDRIVE_PAGE_SIZE;
 
-    azlog("---- SCSI ID: ", scsi_id, " blocksize ", blocksize, " type ", (int)type);
-    azlog("---- ROM drive maximum size is ", (int)maxsize,
+    logmsg("---- SCSI ID: ", scsi_id, " blocksize ", blocksize, " type ", (int)type);
+    logmsg("---- ROM drive maximum size is ", (int)maxsize,
           " bytes, image file is ", (int)filesize, " bytes");
     
     if (filesize > maxsize)
     {
-        azlog("---- Image size exceeds ROM space, not loading");
+        logmsg("---- Image size exceeds ROM space, not loading");
         file.close();
         return false;
     }
@@ -173,15 +173,15 @@ bool scsiDiskProgramRomDrive(const char *filename, int scsi_id, int blocksize, S
     hdr.drivetype = type;
 
     // Program the drive metadata header
-    if (!azplatform_write_romdrive((const uint8_t*)&hdr, 0, AZPLATFORM_ROMDRIVE_PAGE_SIZE))
+    if (!platform_write_romdrive((const uint8_t*)&hdr, 0, PLATFORM_ROMDRIVE_PAGE_SIZE))
     {
-        azlog("---- Failed to program ROM drive header");
+        logmsg("---- Failed to program ROM drive header");
         file.close();
         return false;
     }
     
     // Program the drive contents
-    uint32_t pages = (filesize + AZPLATFORM_ROMDRIVE_PAGE_SIZE - 1) / AZPLATFORM_ROMDRIVE_PAGE_SIZE;
+    uint32_t pages = (filesize + PLATFORM_ROMDRIVE_PAGE_SIZE - 1) / PLATFORM_ROMDRIVE_PAGE_SIZE;
     for (uint32_t i = 0; i < pages; i++)
     {
         if (i % 2)
@@ -189,10 +189,10 @@ bool scsiDiskProgramRomDrive(const char *filename, int scsi_id, int blocksize, S
         else
             LED_OFF();
 
-        if (file.read(scsiDev.data, AZPLATFORM_ROMDRIVE_PAGE_SIZE) <= 0 ||
-            !azplatform_write_romdrive(scsiDev.data, (i + 1) * AZPLATFORM_ROMDRIVE_PAGE_SIZE, AZPLATFORM_ROMDRIVE_PAGE_SIZE))
+        if (file.read(scsiDev.data, PLATFORM_ROMDRIVE_PAGE_SIZE) <= 0 ||
+            !platform_write_romdrive(scsiDev.data, (i + 1) * PLATFORM_ROMDRIVE_PAGE_SIZE, PLATFORM_ROMDRIVE_PAGE_SIZE))
         {
-            azlog("---- Failed to program ROM drive page ", (int)i);
+            logmsg("---- Failed to program ROM drive page ", (int)i);
             file.close();
             return false;
         }
@@ -206,7 +206,7 @@ bool scsiDiskProgramRomDrive(const char *filename, int scsi_id, int blocksize, S
     strlcat(newname, filename, sizeof(newname));
     strlcat(newname, "_loaded", sizeof(newname));
     SD.rename(filename, newname);
-    azlog("---- ROM drive programming successful, image file renamed to ", newname);
+    logmsg("---- ROM drive programming successful, image file renamed to ", newname);
 
     return true;
 }
@@ -224,19 +224,19 @@ bool scsiDiskActivateRomDrive()
     return false;
 #endif
 
-    uint32_t maxsize = azplatform_get_romdrive_maxsize() - AZPLATFORM_ROMDRIVE_PAGE_SIZE;
-    azlog("-- Platform supports ROM drive up to ", (int)(maxsize / 1024), " kB");
+    uint32_t maxsize = platform_get_romdrive_maxsize() - PLATFORM_ROMDRIVE_PAGE_SIZE;
+    logmsg("-- Platform supports ROM drive up to ", (int)(maxsize / 1024), " kB");
 
     romdrive_hdr_t hdr = {};
     if (!check_romdrive(&hdr))
     {
-        azlog("---- ROM drive image not detected");
+        logmsg("---- ROM drive image not detected");
         return false;
     }
 
     if (ini_getbool("SCSI", "DisableROMDrive", 0, CONFIGFILE))
     {
-        azlog("---- ROM drive disabled in ini file, not enabling");
+        logmsg("---- ROM drive disabled in ini file, not enabling");
         return false;
     }
 
@@ -244,23 +244,23 @@ bool scsiDiskActivateRomDrive()
     if (rom_scsi_id >= 0 && rom_scsi_id <= 7)
     {
         hdr.scsi_id = rom_scsi_id;
-        azlog("---- ROM drive SCSI id overriden in ini file, changed to ", (int)hdr.scsi_id);
+        logmsg("---- ROM drive SCSI id overriden in ini file, changed to ", (int)hdr.scsi_id);
     }
 
     if (s2s_getConfigById(hdr.scsi_id))
     {
-        azlog("---- ROM drive SCSI id ", (int)hdr.scsi_id, " is already in use, not enabling");
+        logmsg("---- ROM drive SCSI id ", (int)hdr.scsi_id, " is already in use, not enabling");
         return false;
     }
 
 
 
-    azlog("---- Activating ROM drive, SCSI id ", (int)hdr.scsi_id, " size ", (int)(hdr.imagesize / 1024), " kB");
+    logmsg("---- Activating ROM drive, SCSI id ", (int)hdr.scsi_id, " size ", (int)(hdr.imagesize / 1024), " kB");
     bool status = scsiDiskOpenHDDImage(hdr.scsi_id, "ROM:", hdr.scsi_id, 0, hdr.blocksize, hdr.drivetype);
 
     if (!status)
     {
-        azlog("---- ROM drive activation failed");
+        logmsg("---- ROM drive activation failed");
         return false;
     }
     else
@@ -307,13 +307,13 @@ public:
 
             if (*endptr != ':' || *endptr2 != '\0')
             {
-                azlog("Invalid format for raw filename: ", filename);
+                logmsg("Invalid format for raw filename: ", filename);
                 return;
             }
 
             if ((scsi_block_size % SD_SECTOR_SIZE) != 0)
             {
-                azlog("SCSI block size ", (int)scsi_block_size, " is not supported for RAW partitions (must be divisible by 512 bytes)");
+                logmsg("SCSI block size ", (int)scsi_block_size, " is not supported for RAW partitions (must be divisible by 512 bytes)");
                 return;
             }
 
@@ -323,7 +323,7 @@ public:
             uint32_t sectorCount = SD.card()->sectorCount();
             if (m_endsector >= sectorCount)
             {
-                azlog("Limiting RAW image mapping to SD card sector count: ", (int)sectorCount);
+                logmsg("Limiting RAW image mapping to SD card sector count: ", (int)sectorCount);
                 m_endsector = sectorCount - 1;
             }
         }
@@ -344,7 +344,7 @@ public:
             if (m_isreadonly_attr)
             {
                 m_fsfile = SD.open(filename, O_RDONLY);
-                azlog("---- Image file is read-only, writes disabled");
+                logmsg("---- Image file is read-only, writes disabled");
             }
             else
             {
@@ -497,8 +497,8 @@ public:
         {
             uint32_t sectorcount = count / SD_SECTOR_SIZE;
             assert((uint64_t)sectorcount * SD_SECTOR_SIZE == count);
-            uint32_t start = m_cursector * SD_SECTOR_SIZE + AZPLATFORM_ROMDRIVE_PAGE_SIZE;
-            if (azplatform_read_romdrive((uint8_t*)buf, start, count))
+            uint32_t start = m_cursector * SD_SECTOR_SIZE + PLATFORM_ROMDRIVE_PAGE_SIZE;
+            if (platform_read_romdrive((uint8_t*)buf, start, count))
             {
                 m_cursector += sectorcount;
                 return count;
@@ -532,12 +532,12 @@ public:
         }
         else if (m_isrom)
         {
-            azlog("ERROR: attempted to write to ROM drive");
+            logmsg("ERROR: attempted to write to ROM drive");
             return 0;
         }
         else  if (m_isreadonly_attr)
         {
-            azlog("ERROR: attempted to write to a read only image");
+            logmsg("ERROR: attempted to write to a read only image");
             return 0;
         }
         else
@@ -757,7 +757,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
         
         if (img.scsiSectors == 0)
         {
-            azlog("---- Error: image file ", filename, " is empty");
+            logmsg("---- Error: image file ", filename, " is empty");
             img.file.close();
             return false;
         }
@@ -769,52 +769,52 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
         }
         else if (img.file.contiguousRange(&sector_begin, &sector_end))
         {
-            azdbg("---- Image file is contiguous, SD card sectors ", (int)sector_begin, " to ", (int)sector_end);
+            dbgmsg("---- Image file is contiguous, SD card sectors ", (int)sector_begin, " to ", (int)sector_end);
         }
         else
         {
-            azlog("---- WARNING: file ", filename, " is not contiguous. This will increase read latency.");
+            logmsg("---- WARNING: file ", filename, " is not contiguous. This will increase read latency.");
         }
 
         if (type == S2S_CFG_OPTICAL)
         {
-            azlog("---- Configuring as CD-ROM drive based on image name");
+            logmsg("---- Configuring as CD-ROM drive based on image name");
             img.deviceType = S2S_CFG_OPTICAL;
         }
         else if (type == S2S_CFG_FLOPPY_14MB)
         {
-            azlog("---- Configuring as floppy drive based on image name");
+            logmsg("---- Configuring as floppy drive based on image name");
             img.deviceType = S2S_CFG_FLOPPY_14MB;
         }
         else if (type == S2S_CFG_MO)
         {
-            azlog("---- Configuring as magneto-optical based on image name");
+            logmsg("---- Configuring as magneto-optical based on image name");
             img.deviceType = S2S_CFG_MO;
         }
         else if (type == S2S_CFG_REMOVEABLE)
         {
-            azlog("---- Configuring as removable drive based on image name");
+            logmsg("---- Configuring as removable drive based on image name");
             img.deviceType = S2S_CFG_REMOVEABLE;
         }
         else if (type == S2S_CFG_SEQUENTIAL)
         {
-            azlog("---- Configuring as tape drive based on image name");
+            logmsg("---- Configuring as tape drive based on image name");
             img.deviceType = S2S_CFG_SEQUENTIAL;
         }
 
-#ifdef AZPLATFORM_CONFIG_HOOK
-        AZPLATFORM_CONFIG_HOOK(&img);
+#ifdef PLATFORM_CONFIG_HOOK
+        PLATFORM_CONFIG_HOOK(&img);
 #endif
 
         setDefaultDriveInfo(target_idx);
 
         if (img.prefetchbytes > 0)
         {
-            azlog("---- Read prefetch enabled: ", (int)img.prefetchbytes, " bytes");
+            logmsg("---- Read prefetch enabled: ", (int)img.prefetchbytes, " bytes");
         }
         else
         {
-            azlog("---- Read prefetch disabled");
+            logmsg("---- Read prefetch disabled");
         }
 
         return true;
@@ -830,7 +830,7 @@ static void checkDiskGeometryDivisible(image_config_t &img)
         uint32_t sectorsPerHeadTrack = img.sectorsPerTrack * img.headsPerCylinder;
         if (img.scsiSectors % sectorsPerHeadTrack != 0)
         {
-            azlog("WARNING: Host used command ", scsiDev.cdb[0],
+            logmsg("WARNING: Host used command ", scsiDev.cdb[0],
                 " which is affected by drive geometry. Current settings are ",
                 (int)img.sectorsPerTrack, " sectors x ", (int)img.headsPerCylinder, " heads = ",
                 (int)sectorsPerHeadTrack, " but image size of ", (int)img.scsiSectors,
@@ -923,7 +923,7 @@ void scsiDiskLoadConfig(int target_idx)
     {
         image_config_t &img = g_DiskImages[target_idx];
         int blocksize = (img.deviceType == S2S_CFG_OPTICAL) ? 2048 : 512;
-        azlog("-- Opening ", filename, " for id:", target_idx, ", specified in " CONFIGFILE);
+        logmsg("-- Opening ", filename, " for id:", target_idx, ", specified in " CONFIGFILE);
         scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, blocksize);
     }
 }
@@ -950,14 +950,14 @@ void s2s_configInit(S2S_BoardCfg* config)
 {
     if (SD.exists(CONFIGFILE))
     {
-        azlog("Reading configuration from " CONFIGFILE);
+        logmsg("Reading configuration from " CONFIGFILE);
     }
     else
     {
-        azlog("Config file " CONFIGFILE " not found, using defaults");
+        logmsg("Config file " CONFIGFILE " not found, using defaults");
     }
 
-    azlog("Active configuration:");
+    logmsg("Active configuration:");
     memset(config, 0, sizeof(S2S_BoardCfg));
     memcpy(config->magic, "BCFG", 4);
     config->flags = 0;
@@ -972,41 +972,41 @@ void s2s_configInit(S2S_BoardCfg* config)
     else if (maxSyncSpeed < 10 && config->scsiSpeed > S2S_CFG_SPEED_SYNC_5)
         config->scsiSpeed = S2S_CFG_SPEED_SYNC_5;
     
-    azlog("-- SelectionDelay: ", (int)config->selectionDelay);
+    logmsg("-- SelectionDelay: ", (int)config->selectionDelay);
 
     if (ini_getbool("SCSI", "EnableUnitAttention", false, CONFIGFILE))
     {
-        azlog("-- EnableUnitAttention is on");
+        logmsg("-- EnableUnitAttention is on");
         config->flags |= S2S_CFG_ENABLE_UNIT_ATTENTION;
     }
 
     if (ini_getbool("SCSI", "EnableSCSI2", true, CONFIGFILE))
     {
-        azlog("-- EnableSCSI2 is on");
+        logmsg("-- EnableSCSI2 is on");
         config->flags |= S2S_CFG_ENABLE_SCSI2;
     }
 
     if (ini_getbool("SCSI", "EnableSelLatch", false, CONFIGFILE))
     {
-        azlog("-- EnableSelLatch is on");
+        logmsg("-- EnableSelLatch is on");
         config->flags |= S2S_CFG_ENABLE_SEL_LATCH;
     }
 
     if (ini_getbool("SCSI", "MapLunsToIDs", false, CONFIGFILE))
     {
-        azlog("-- MapLunsToIDs is on");
+        logmsg("-- MapLunsToIDs is on");
         config->flags |= S2S_CFG_MAP_LUNS_TO_IDS;
     }
 
 #ifdef PLATFORM_HAS_PARITY_CHECK
     if (ini_getbool("SCSI", "EnableParity", true, CONFIGFILE))
     {
-        azlog("-- EnableParity is on");
+        logmsg("-- EnableParity is on");
         config->flags |= S2S_CFG_ENABLE_PARITY;
     }
     else
     {
-        azlog("-- EnableParity is off");
+        logmsg("-- EnableParity is off");
     }
 #endif
 }
@@ -1199,7 +1199,7 @@ static bool checkNextCDImage()
 
     if (filename[0] != '\0')
     {
-        azlog("Switching to next CD-ROM image for ", target_idx, ": ", filename);
+        logmsg("Switching to next CD-ROM image for ", target_idx, ": ", filename);
         image_config_t &img = g_DiskImages[target_idx];
         img.file.close();
         bool status = scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, 2048);
@@ -1221,14 +1221,14 @@ static void reinsertCDROM(image_config_t &img)
     if (img.image_index > 0)
     {
         // Multiple images for this drive, force restart from first one
-        azdbg("---- Restarting from first CD-ROM image");
+        dbgmsg("---- Restarting from first CD-ROM image");
         img.image_index = 9;
         checkNextCDImage();
     }
     else if (img.ejected)
     {
         // Reinsert the single image
-        azdbg("---- Closing CD-ROM tray");
+        dbgmsg("---- Closing CD-ROM tray");
         img.ejected = false;
         img.cdrom_events = 2; // New media
     }
@@ -1393,14 +1393,14 @@ static void doWrite(uint32_t lba, uint32_t blocks)
     uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
     uint32_t capacity = img.file.size() / bytesPerSector;
 
-    azdbg("------ Write ", (int)blocks, "x", (int)bytesPerSector, " starting at ", (int)lba);
+    dbgmsg("------ Write ", (int)blocks, "x", (int)bytesPerSector, " starting at ", (int)lba);
 
     if (unlikely(blockDev.state & DISK_WP) ||
         unlikely(scsiDev.target->cfg->deviceType == S2S_CFG_OPTICAL) ||
         unlikely(!img.file.isWritable()))
 
     {
-        azlog("WARNING: Host attempted write to read-only drive ID ", (int)(img.scsiId & S2S_CFG_TARGET_ID_BITS));
+        logmsg("WARNING: Host attempted write to read-only drive ID ", (int)(img.scsiId & S2S_CFG_TARGET_ID_BITS));
         scsiDev.status = CHECK_CONDITION;
         scsiDev.target->sense.code = ILLEGAL_REQUEST;
         scsiDev.target->sense.asc = WRITE_PROTECTED;
@@ -1408,7 +1408,7 @@ static void doWrite(uint32_t lba, uint32_t blocks)
     }
     else if (unlikely(((uint64_t) lba) + blocks > capacity))
     {
-        azlog("WARNING: Host attempted write at sector ", (int)lba, "+", (int)blocks,
+        logmsg("WARNING: Host attempted write at sector ", (int)lba, "+", (int)blocks,
               ", exceeding image size ", (int)capacity, " sectors (",
               (int)bytesPerSector, "B/sector)");
         scsiDev.status = CHECK_CONDITION;
@@ -1435,7 +1435,7 @@ static void doWrite(uint32_t lba, uint32_t blocks)
         image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
         if (!img.file.seek((uint64_t)transfer.lba * bytesPerSector))
         {
-            azlog("Seek to ", transfer.lba, " failed for SCSI ID", (int)scsiDev.target->targetId);
+            logmsg("Seek to ", transfer.lba, " failed for SCSI ID", (int)scsiDev.target->targetId);
             scsiDev.status = CHECK_CONDITION;
             scsiDev.target->sense.code = MEDIUM_ERROR;
             scsiDev.target->sense.asc = NO_SEEK_COMPLETE;
@@ -1486,7 +1486,7 @@ void diskDataOut_callback(uint32_t bytes_complete)
         if (len == 0)
             return;
 
-        // azdbg("SCSI read ", (int)start, " + ", (int)len);
+        // dbgmsg("SCSI read ", (int)start, " + ", (int)len);
         scsiStartRead(&scsiDev.data[start], len, &g_disk_transfer.parityError);
         g_disk_transfer.bytes_scsi_started += len;
     }
@@ -1586,17 +1586,17 @@ void diskDataOut()
             // when buffer space is freed.
             uint8_t *buf = &scsiDev.data[start];
             g_disk_transfer.sd_transfer_start = start;
-            // azdbg("SD write ", (int)start, " + ", (int)len, " ", bytearray(buf, len));
-            azplatform_set_sd_callback(&diskDataOut_callback, buf);
+            // dbgmsg("SD write ", (int)start, " + ", (int)len, " ", bytearray(buf, len));
+            platform_set_sd_callback(&diskDataOut_callback, buf);
             if (img.file.write(buf, len) != len)
             {
-                azlog("SD card write failed: ", SD.sdErrorCode());
+                logmsg("SD card write failed: ", SD.sdErrorCode());
                 scsiDev.status = CHECK_CONDITION;
                 scsiDev.target->sense.code = MEDIUM_ERROR;
                 scsiDev.target->sense.asc = WRITE_ERROR_AUTO_REALLOCATION_FAILED;
                 scsiDev.phase = STATUS;
             }
-            azplatform_set_sd_callback(NULL, NULL);
+            platform_set_sd_callback(NULL, NULL);
             g_disk_transfer.bytes_sd += len;
         }
     }
@@ -1632,11 +1632,11 @@ static void doRead(uint32_t lba, uint32_t blocks)
     uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
     uint32_t capacity = img.file.size() / bytesPerSector;
     
-    azdbg("------ Read ", (int)blocks, "x", (int)bytesPerSector, " starting at ", (int)lba);
+    dbgmsg("------ Read ", (int)blocks, "x", (int)bytesPerSector, " starting at ", (int)lba);
 
     if (unlikely(((uint64_t) lba) + blocks > capacity))
     {
-        azlog("WARNING: Host attempted read at sector ", (int)lba, "+", (int)blocks,
+        logmsg("WARNING: Host attempted read at sector ", (int)lba, "+", (int)blocks,
               ", exceeding image size ", (int)capacity, " sectors (",
               (int)bytesPerSector, "B/sector)");
         scsiDev.status = CHECK_CONDITION;
@@ -1667,7 +1667,7 @@ static void doRead(uint32_t lba, uint32_t blocks)
             uint32_t count = sectors_in_prefetch - start_offset;
             if (count > transfer.blocks) count = transfer.blocks;
             scsiStartWrite(g_scsi_prefetch.buffer + start_offset * bytesPerSector, count * bytesPerSector);
-            azdbg("------ Found ", (int)count, " sectors in prefetch cache");
+            dbgmsg("------ Found ", (int)count, " sectors in prefetch cache");
             transfer.currentBlock += count;
         }
 
@@ -1679,7 +1679,7 @@ static void doRead(uint32_t lba, uint32_t blocks)
 
         if (!img.file.seek((uint64_t)(transfer.lba + transfer.currentBlock) * bytesPerSector))
         {
-            azlog("Seek to ", transfer.lba, " failed for SCSI ID", (int)scsiDev.target->targetId);
+            logmsg("Seek to ", transfer.lba, " failed for SCSI ID", (int)scsiDev.target->targetId);
             scsiDev.status = CHECK_CONDITION;
             scsiDev.target->sense.code = MEDIUM_ERROR;
             scsiDev.target->sense.asc = NO_SEEK_COMPLETE;
@@ -1738,7 +1738,7 @@ static void start_dataInTransfer(uint8_t *buffer, uint32_t count)
     {
         if ((uint32_t)(millis() - start) > 5000)
         {
-            azlog("start_dataInTransfer() timeout waiting for previous to finish");
+            logmsg("start_dataInTransfer() timeout waiting for previous to finish");
             scsiDev.resetFlag = 1;
         }
     }
@@ -1746,11 +1746,11 @@ static void start_dataInTransfer(uint8_t *buffer, uint32_t count)
 
     // Start transferring from SD card
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-    azplatform_set_sd_callback(&diskDataIn_callback, buffer);
+    platform_set_sd_callback(&diskDataIn_callback, buffer);
 
     if (img.file.read(buffer, count) != count)
     {
-        azlog("SD card read failed: ", SD.sdErrorCode());
+        logmsg("SD card read failed: ", SD.sdErrorCode());
         scsiDev.status = CHECK_CONDITION;
         scsiDev.target->sense.code = MEDIUM_ERROR;
         scsiDev.target->sense.asc = UNRECOVERED_READ_ERROR;
@@ -1758,7 +1758,7 @@ static void start_dataInTransfer(uint8_t *buffer, uint32_t count)
     }
 
     diskDataIn_callback(count);
-    azplatform_set_sd_callback(NULL, NULL);
+    platform_set_sd_callback(NULL, NULL);
 }
 
 static void diskDataIn()
@@ -1824,16 +1824,16 @@ static void diskDataIn()
             // is part of a longer linear read.
             g_disk_transfer.bytes_sd = bytesPerSector;
             g_disk_transfer.bytes_scsi = bytesPerSector; // Tell callback not to send to SCSI
-            azplatform_set_sd_callback(&diskDataIn_callback, g_disk_transfer.buffer);
+            platform_set_sd_callback(&diskDataIn_callback, g_disk_transfer.buffer);
             int status = img.file.read(g_disk_transfer.buffer, bytesPerSector);
             if (status <= 0)
             {
-                azlog("Prefetch read failed");
+                logmsg("Prefetch read failed");
                 prefetch_sectors = 0;
                 break;
             }
             g_scsi_prefetch.bytes += status;
-            azplatform_set_sd_callback(NULL, NULL);
+            platform_set_sd_callback(NULL, NULL);
             prefetch_sectors--;
         }
 #endif
@@ -1867,13 +1867,13 @@ int scsiDiskCommand()
         {
             if (start)
             {
-                azdbg("------ CDROM close tray");
+                dbgmsg("------ CDROM close tray");
                 img.ejected = false;
                 img.cdrom_events = 2; // New media
             }
             else
             {
-                azdbg("------ CDROM open tray");
+                dbgmsg("------ CDROM open tray");
                 img.ejected = true;
                 img.cdrom_events = 3; // Media removal
             }

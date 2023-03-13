@@ -15,13 +15,13 @@ extern "C" {
 #endif
 
 /* These are used in debug output and default SCSI strings */
-extern const char *g_azplatform_name;
+extern const char *g_platform_name;
 #define PLATFORM_NAME "Example"
 #define PLATFORM_REVISION "1.0"
 
 // Debug logging function, can be used to print to e.g. serial port.
 // May get called from interrupt handlers.
-void azplatform_log(const char *s);
+void platform_log(const char *s);
 
 // Timing and delay functions.
 // Arduino platform already provides these
@@ -41,21 +41,21 @@ static inline void delay_100ns()
 }
 
 // Initialize SD card and GPIO configuration
-void azplatform_init();
+void platform_init();
 
 // Initialization for main application, not used for bootloader
-void azplatform_late_init();
+void platform_late_init();
 
 // Disable the status LED
-void azplatform_disable_led(void);
+void platform_disable_led(void);
 
 // Setup soft watchdog if supported
-void azplatform_reset_watchdog();
+void platform_reset_watchdog();
 
 // Set callback that will be called during data transfer to/from SD card.
 // This can be used to implement simultaneous transfer to SCSI bus.
 typedef void (*sd_callback_t)(uint32_t bytes_complete);
-void azplatform_set_sd_callback(sd_callback_t func, const uint8_t *buffer);
+void platform_set_sd_callback(sd_callback_t func, const uint8_t *buffer);
 
 // Below are GPIO access definitions that are used from scsiPhy.cpp.
 // The definitions shown will work for STM32 style devices, other platforms

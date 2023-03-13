@@ -273,7 +273,7 @@ static void check_dma_next_buffer()
 // Convert new data from application buffer to DMA buffer
 extern "C" void SCSI_TIMER_DMACHA_IRQ()
 {
-    // azdbg("DMA irq A, counts: ", DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA), " ",
+    // dbgmsg("DMA irq A, counts: ", DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA), " ",
     //             DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB), " ",
     //             TIMER_CNT(SCSI_TIMER));
 
@@ -284,7 +284,7 @@ extern "C" void SCSI_TIMER_DMACHA_IRQ()
     {
         if (intf & full_flag)
         {
-            azlog("ERROR: SCSI DMA overrun: ", intf,
+            logmsg("ERROR: SCSI DMA overrun: ", intf,
                " bytes_app: ", g_scsi_dma.bytes_app,
                " bytes_dma: ", g_scsi_dma.bytes_dma,
                " dma_idx: ", g_scsi_dma.dma_idx,
@@ -311,7 +311,7 @@ extern "C" void SCSI_TIMER_DMACHA_IRQ()
 // Check if enough data is available to continue DMA transfer
 extern "C" void SCSI_TIMER_DMACHB_IRQ()
 {
-    // azdbg("DMA irq B, counts: ", DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA), " ",
+    // dbgmsg("DMA irq B, counts: ", DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA), " ",
     //             DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB), " ",
     //             TIMER_CNT(SCSI_TIMER));
     uint32_t intf = DMA_INTF(SCSI_TIMER_DMA);
@@ -394,7 +394,7 @@ void scsi_accel_dma_startWrite(const uint8_t* data, uint32_t count, volatile int
         }
     }
 
-    // azdbg("Starting DMA write of ", (int)count, " bytes");
+    // dbgmsg("Starting DMA write of ", (int)count, " bytes");
     scsi_dma_gpio_config(true);
     g_scsi_dma_state = SCSIDMA_WRITE;
     g_scsi_dma.app_buf = (uint8_t*)data;
@@ -452,7 +452,7 @@ void scsi_accel_dma_finishWrite(volatile int *resetFlag)
     {
         if ((uint32_t)(millis() - start) > 5000)
         {
-            azlog("scsi_accel_dma_finishWrite() timeout, DMA counts ",
+            logmsg("scsi_accel_dma_finishWrite() timeout, DMA counts ",
                 DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA), " ",
                 DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB), " ",
                 TIMER_CNT(SCSI_TIMER));

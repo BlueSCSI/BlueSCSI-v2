@@ -141,35 +141,35 @@ void scsiInitiatorMainLoop()
 
             if (readcapok)
             {
-                azlog("SCSI id ", g_initiator_state.target_id,
+                logmsg("SCSI id ", g_initiator_state.target_id,
                     " capacity ", (int)g_initiator_state.sectorcount,
                     " sectors x ", (int)g_initiator_state.sectorsize, " bytes");
 
                 g_initiator_state.sectorcount_all = g_initiator_state.sectorcount;
 
                 uint64_t total_bytes = (uint64_t)g_initiator_state.sectorcount * g_initiator_state.sectorsize;
-                azlog("Drive total size is ", (int)(total_bytes / (1024 * 1024)), " MiB");
+                logmsg("Drive total size is ", (int)(total_bytes / (1024 * 1024)), " MiB");
                 if (total_bytes >= 0xFFFFFFFF && SD.fatType() != FAT_TYPE_EXFAT)
                 {
                     // Note: the FAT32 limit is 4 GiB - 1 byte
-                    azlog("Image files equal or larger than 4 GiB are only possible on exFAT filesystem");
-                    azlog("Please reformat the SD card with exFAT format to image this drive fully");
+                    logmsg("Image files equal or larger than 4 GiB are only possible on exFAT filesystem");
+                    logmsg("Please reformat the SD card with exFAT format to image this drive fully");
 
                     g_initiator_state.sectorcount = (uint32_t)0xFFFFFFFF / g_initiator_state.sectorsize;
-                    azlog("Will image first 4 GiB - 1 = ", (int)g_initiator_state.sectorcount, " sectors");
+                    logmsg("Will image first 4 GiB - 1 = ", (int)g_initiator_state.sectorcount, " sectors");
                 }
             }
             else if (startstopok)
             {
-                azlog("SCSI id ", g_initiator_state.target_id, " responds but ReadCapacity command failed");
-                azlog("Possibly SCSI-1 drive? Attempting to read up to 1 GB.");
+                logmsg("SCSI id ", g_initiator_state.target_id, " responds but ReadCapacity command failed");
+                logmsg("Possibly SCSI-1 drive? Attempting to read up to 1 GB.");
                 g_initiator_state.sectorsize = 512;
                 g_initiator_state.sectorcount = g_initiator_state.sectorcount_all = 2097152;
                 g_initiator_state.max_sector_per_transfer = 128;
             }
             else
             {
-                azdbg("Failed to connect to SCSI id ", g_initiator_state.target_id);
+                dbgmsg("Failed to connect to SCSI id ", g_initiator_state.target_id);
                 g_initiator_state.sectorsize = 0;
                 g_initiator_state.sectorcount = g_initiator_state.sectorcount_all = 0;
             }
@@ -193,7 +193,7 @@ void scsiInitiatorMainLoop()
                 g_initiator_state.target_file = SD.open(filename, O_RDWR | O_CREAT | O_TRUNC);
                 if (!g_initiator_state.target_file.isOpen())
                 {
-                    azlog("Failed to open file for writing: ", filename);
+                    logmsg("Failed to open file for writing: ", filename);
                     return;
                 }
 
@@ -201,11 +201,11 @@ void scsiInitiatorMainLoop()
                 {
                     // Only preallocate on exFAT, on FAT32 preallocating can result in false garbage data in the
                     // file if write is interrupted.
-                    azlog("Preallocating image file");
+                    logmsg("Preallocating image file");
                     g_initiator_state.target_file.preAllocate((uint64_t)g_initiator_state.sectorcount * g_initiator_state.sectorsize);
                 }
 
-                azlog("Starting to copy drive data to ", filename);
+                logmsg("Starting to copy drive data to ", filename);
                 g_initiator_state.imaging = true;
             }
         }
@@ -216,13 +216,13 @@ void scsiInitiatorMainLoop()
         if (g_initiator_state.sectors_done >= g_initiator_state.sectorcount)
         {
             scsiStartStopUnit(g_initiator_state.target_id, false);
-            azlog("Finished imaging drive with id ", g_initiator_state.target_id);
+            logmsg("Finished imaging drive with id ", g_initiator_state.target_id);
             LED_OFF();
 
             if (g_initiator_state.sectorcount != g_initiator_state.sectorcount_all)
             {
-                azlog("NOTE: Image size was limited to first 4 GiB due to SD card filesystem limit");
-                azlog("Please reformat the SD card with exFAT format to image this drive fully");
+                logmsg("NOTE: Image size was limited to first 4 GiB due to SD card filesystem limit");
+                logmsg("Please reformat the SD card with exFAT format to image this drive fully");
             }
 
             g_initiator_state.drives_imaged |= (1 << g_initiator_state.target_id);
@@ -249,11 +249,11 @@ void scsiInitiatorMainLoop()
 
         if (!status)
         {
-            azlog("Failed to transfer ", numtoread, " sectors starting at ", (int)g_initiator_state.sectors_done);
+            logmsg("Failed to transfer ", numtoread, " sectors starting at ", (int)g_initiator_state.sectors_done);
 
             if (g_initiator_state.retrycount < 5)
             {
-                azlog("Retrying.. ", g_initiator_state.retrycount, "/5");
+                logmsg("Retrying.. ", g_initiator_state.retrycount, "/5");
                 delay(200);
                 scsiHostPhyReset();
                 delay(200);
@@ -263,13 +263,13 @@ void scsiInitiatorMainLoop()
 
                 if (g_initiator_state.retrycount > 1 && numtoread > 1)
                 {
-                    azlog("Multiple failures, retrying sector-by-sector");
+                    logmsg("Multiple failures, retrying sector-by-sector");
                     g_initiator_state.failposition = g_initiator_state.sectors_done + numtoread;
                 }
             }
             else
             {
-                azlog("Retry limit exceeded, skipping one sector");
+                logmsg("Retry limit exceeded, skipping one sector");
                 g_initiator_state.retrycount = 0;
                 g_initiator_state.sectors_done++;
                 g_initiator_state.target_file.seek((uint64_t)g_initiator_state.sectors_done * g_initiator_state.sectorsize);
@@ -282,7 +282,7 @@ void scsiInitiatorMainLoop()
             g_initiator_state.target_file.flush();
 
             int speed_kbps = numtoread * g_initiator_state.sectorsize / (millis() - time_start);
-            azlog("SCSI read succeeded, sectors done: ",
+            logmsg("SCSI read succeeded, sectors done: ",
                   (int)g_initiator_state.sectors_done, " / ", (int)g_initiator_state.sectorcount,
                   " speed ", speed_kbps, " kB/s");
         }
@@ -301,7 +301,7 @@ int scsiInitiatorRunCommand(int target_id,
 {
     if (!scsiHostPhySelect(target_id))
     {
-        azdbg("------ Target ", target_id, " did not respond");
+        dbgmsg("------ Target ", target_id, " did not respond");
         scsiHostPhyRelease();
         return -1;
     }
@@ -329,14 +329,14 @@ int scsiInitiatorRunCommand(int target_id,
             if (returnDataPhase) return 0;
             if (bufInLen == 0)
             {
-                azlog("DATA_IN phase but no data to receive!");
+                logmsg("DATA_IN phase but no data to receive!");
                 status = -3;
                 break;
             }
 
             if (scsiHostRead(bufIn, bufInLen) == 0)
             {
-                azlog("scsiHostRead failed, tried to read ", (int)bufInLen, " bytes");
+                logmsg("scsiHostRead failed, tried to read ", (int)bufInLen, " bytes");
                 status = -2;
                 break;
             }
@@ -346,14 +346,14 @@ int scsiInitiatorRunCommand(int target_id,
             if (returnDataPhase) return 0;
             if (bufOutLen == 0)
             {
-                azlog("DATA_OUT phase but no data to send!");
+                logmsg("DATA_OUT phase but no data to send!");
                 status = -3;
                 break;
             }
 
             if (scsiHostWrite(bufOut, bufOutLen) < bufOutLen)
             {
-                azlog("scsiHostWrite failed, was writing ", bytearray(bufOut, bufOutLen));
+                logmsg("scsiHostWrite failed, was writing ", bytearray(bufOut, bufOutLen));
                 status = -2;
                 break;
             }
@@ -363,7 +363,7 @@ int scsiInitiatorRunCommand(int target_id,
             uint8_t tmp = -1;
             scsiHostRead(&tmp, 1);
             status = tmp;
-            azdbg("------ STATUS: ", tmp);
+            dbgmsg("------ STATUS: ", tmp);
         }
     }
 
@@ -401,7 +401,7 @@ bool scsiInitiatorReadCapacity(int target_id, uint32_t *sectorcount, uint32_t *s
     {
         uint8_t sense_key;
         scsiRequestSense(target_id, &sense_key);
-        azlog("READ CAPACITY on target ", target_id, " failed, sense key ", sense_key);
+        logmsg("READ CAPACITY on target ", target_id, " failed, sense key ", sense_key);
         return false;
     }
     else
@@ -422,7 +422,7 @@ bool scsiRequestSense(int target_id, uint8_t *sense_key)
                                          response, sizeof(response),
                                          NULL, 0);
 
-    azdbg("RequestSense response: ", bytearray(response, 18));
+    dbgmsg("RequestSense response: ", bytearray(response, 18));
 
     *sense_key = response[2];
     return status == 0;
@@ -445,7 +445,7 @@ bool scsiStartStopUnit(int target_id, bool start)
     {
         uint8_t sense_key;
         scsiRequestSense(target_id, &sense_key);
-        azlog("START STOP UNIT on target ", target_id, " failed, sense key ", sense_key);
+        logmsg("START STOP UNIT on target ", target_id, " failed, sense key ", sense_key);
     }
 
     return status == 0;
@@ -490,18 +490,18 @@ bool scsiTestUnitReady(int target_id)
             if (sense_key == 6)
             {
                 uint8_t inquiry[36];
-                azlog("Target ", target_id, " reports UNIT_ATTENTION, running INQUIRY");
+                logmsg("Target ", target_id, " reports UNIT_ATTENTION, running INQUIRY");
                 scsiInquiry(target_id, inquiry);
             }
             else if (sense_key == 2)
             {
-                azlog("Target ", target_id, " reports NOT_READY, running STARTSTOPUNIT");
+                logmsg("Target ", target_id, " reports NOT_READY, running STARTSTOPUNIT");
                 scsiStartStopUnit(target_id, true);
             }
         }
         else
         {
-            azlog("Target ", target_id, " TEST UNIT READY response: ", status);
+            logmsg("Target ", target_id, " TEST UNIT READY response: ", status);
         }
     }
 
@@ -571,10 +571,10 @@ static void initiatorReadSDCallback(uint32_t bytes_complete)
         if (len == 0)
             return;
 
-        // azdbg("SCSI read ", (int)start, " + ", (int)len, ", sd ready cnt ", (int)sd_ready_cnt, " ", (int)bytes_complete, ", scsi done ", (int)g_initiator_transfer.bytes_scsi_done);
+        // dbgmsg("SCSI read ", (int)start, " + ", (int)len, ", sd ready cnt ", (int)sd_ready_cnt, " ", (int)bytes_complete, ", scsi done ", (int)g_initiator_transfer.bytes_scsi_done);
         if (scsiHostRead(&scsiDev.data[start], len) != len)
         {
-            azlog("Read failed at byte ", (int)g_initiator_transfer.bytes_scsi_done);
+            logmsg("Read failed at byte ", (int)g_initiator_transfer.bytes_scsi_done);
             g_initiator_transfer.all_ok = false;
         }
         g_initiator_transfer.bytes_scsi_done += len;
@@ -595,20 +595,20 @@ static void scsiInitiatorWriteDataToSd(FsFile &file, bool use_callback)
 
     // Start writing to SD card and simultaneously reading more from SCSI bus
     uint8_t *buf = &scsiDev.data[start];
-    // azdbg("SD write ", (int)start, " + ", (int)len);
+    // dbgmsg("SD write ", (int)start, " + ", (int)len);
 
     if (use_callback)
     {
-        azplatform_set_sd_callback(&initiatorReadSDCallback, buf);
+        platform_set_sd_callback(&initiatorReadSDCallback, buf);
     }
 
     g_initiator_transfer.bytes_sd_scheduled = g_initiator_transfer.bytes_sd + len;
     if (file.write(buf, len) != len)
     {
-        azlog("scsiInitiatorReadDataToFile: SD card write failed");
+        logmsg("scsiInitiatorReadDataToFile: SD card write failed");
         g_initiator_transfer.all_ok = false;
     }
-    azplatform_set_sd_callback(NULL, NULL);
+    platform_set_sd_callback(NULL, NULL);
     g_initiator_transfer.bytes_sd += len;
 }
 
@@ -652,7 +652,7 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
         uint8_t sense_key;
         scsiRequestSense(target_id, &sense_key);
 
-        azlog("scsiInitiatorReadDataToFile: READ failed: ", status, " sense key ", sense_key);
+        logmsg("scsiInitiatorReadDataToFile: READ failed: ", status, " sense key ", sense_key);
         scsiHostPhyRelease();
         return false;
     }
@@ -695,7 +695,7 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
 
     if (g_initiator_transfer.bytes_sd != g_initiator_transfer.bytes_scsi)
     {
-        azlog("SCSI read from sector ", (int)start_sector, " was incomplete: expected ",
+        logmsg("SCSI read from sector ", (int)start_sector, " was incomplete: expected ",
              (int)g_initiator_transfer.bytes_scsi, " got ", (int)g_initiator_transfer.bytes_sd, " bytes");
         g_initiator_transfer.all_ok = false;
     }
@@ -717,7 +717,7 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
             uint8_t tmp = 0;
             scsiHostRead(&tmp, 1);
             status = tmp;
-            azdbg("------ STATUS: ", tmp);
+            dbgmsg("------ STATUS: ", tmp);
         }
     }
 
