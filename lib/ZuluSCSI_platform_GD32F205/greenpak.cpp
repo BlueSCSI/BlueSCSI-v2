@@ -155,22 +155,22 @@ bool greenpak_load_firmware()
 
     if (!greenpak_read(0, &dummy, 1))
     {
-        azlog("Optional GreenPAK not detected");
+        logmsg("Optional GreenPAK not detected");
         return false;
     }
     else
     {
-        azlog("Optional GreenPAK detected, loading firmware");
+        logmsg("Optional GreenPAK detected, loading firmware");
     }
 
     if (!greenpak_write(0, g_greenpak_fw, sizeof(g_greenpak_fw)))
     {
-        azlog("GreenPAK firmware loading failed");
+        logmsg("GreenPAK firmware loading failed");
         return false;
     }
     else
     {
-        azlog("GreenPAK firmware successfully loaded");
+        logmsg("GreenPAK firmware successfully loaded");
         LED_ON();
         delay(10);
         LED_OFF();

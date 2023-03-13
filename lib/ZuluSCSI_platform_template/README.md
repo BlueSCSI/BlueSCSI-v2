@@ -50,7 +50,7 @@ To implement this, one or both of them must be able to execute transfers in back
 On most platforms this is possible for SD card access.
 The SCSI handshake mechanism is harder to implement using DMA.
 
-To implement parallelism with SD card DMA, implement `azplatform_set_sd_callback(func, buffer)`.
+To implement parallelism with SD card DMA, implement `platform_set_sd_callback(func, buffer)`.
 It sets a callback function which should be called by the SD card driver to report how many bytes have
 been transferred to/from `buffer` so far. The SD card driver should call this function in a loop while
 it is waiting for SD card transfer to finish. The code in `ZuluSCSI_disk.cpp` will implement the callback

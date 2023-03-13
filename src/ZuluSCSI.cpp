@@ -95,15 +95,15 @@ void save_logfile(bool always = false)
   static uint32_t prev_log_pos = 0;
   static uint32_t prev_log_len = 0;
   static uint32_t prev_log_save = 0;
-  uint32_t loglen = azlog_get_buffer_len();
+  uint32_t loglen = log_get_buffer_len();
 
   if (loglen != prev_log_len && g_sdcard_present)
   {
     // When debug is off, save log at most every LOG_SAVE_INTERVAL_MS
     // When debug is on, save after every SCSI command.
-    if (always || g_azlog_debug || (LOG_SAVE_INTERVAL_MS > 0 && (uint32_t)(millis() - prev_log_save) > LOG_SAVE_INTERVAL_MS))
+    if (always || g_log_debug || (LOG_SAVE_INTERVAL_MS > 0 && (uint32_t)(millis() - prev_log_save) > LOG_SAVE_INTERVAL_MS))
     {
-      g_logfile.write(azlog_get_buffer(&prev_log_pos));
+      g_logfile.write(log_get_buffer(&prev_log_pos));
       g_logfile.flush();
       
       prev_log_len = loglen;
@@ -121,7 +121,7 @@ void init_logfile()
   g_logfile = SD.open(LOGFILE, flags);
   if (!g_logfile.isOpen())
   {
-    azlog("Failed to open log file: ", SD.sdErrorCode());
+    logmsg("Failed to open log file: ", SD.sdErrorCode());
   }
   save_logfile(true);
 
@@ -131,19 +131,19 @@ void init_logfile()
 void print_sd_info()
 {
   uint64_t size = (uint64_t)SD.vol()->clusterCount() * SD.vol()->bytesPerCluster();
-  azlog("SD card detected, FAT", (int)SD.vol()->fatType(),
+  logmsg("SD card detected, FAT", (int)SD.vol()->fatType(),
           " volume size: ", (int)(size / 1024 / 1024), " MB");
   
   cid_t sd_cid;
 
   if(SD.card()->readCID(&sd_cid))
   {
-    azlog("SD MID: ", (uint8_t)sd_cid.mid, ", OID: ", (uint8_t)sd_cid.oid[0], " ", (uint8_t)sd_cid.oid[1]);
+    logmsg("SD MID: ", (uint8_t)sd_cid.mid, ", OID: ", (uint8_t)sd_cid.oid[0], " ", (uint8_t)sd_cid.oid[1]);
     
     char sdname[6] = {sd_cid.pnm[0], sd_cid.pnm[1], sd_cid.pnm[2], sd_cid.pnm[3], sd_cid.pnm[4], 0};
-    azlog("SD Name: ", sdname);
-    azlog("SD Date: ", (int)sd_cid.mdtMonth(), "/", sd_cid.mdtYear());
-    azlog("SD Serial: ", sd_cid.psn());
+    logmsg("SD Name: ", sdname);
+    logmsg("SD Date: ", (int)sd_cid.mdtMonth(), "/", sd_cid.mdtYear());
+    logmsg("SD Serial: ", sd_cid.psn());
   }
 }
 
@@ -158,13 +158,13 @@ bool findHDDImages()
   ini_gets("SCSI", "Dir", "/", imgdir, sizeof(imgdir), CONFIGFILE);
   int dirindex = 0;
 
-  azlog("Finding HDD images in directory ", imgdir, ":");
+  logmsg("Finding HDD images in directory ", imgdir, ":");
 
   SdFile root;
   root.open(imgdir);
   if (!root.isOpen())
   {
-    azlog("Could not open directory: ", imgdir);
+    logmsg("Could not open directory: ", imgdir);
   }
 
   SdFile file;
@@ -189,11 +189,11 @@ bool findHDDImages()
 
       if (imgdir[0] != '\0')
       {
-        azlog("Finding HDD images in additional directory Dir", (int)dirindex, " = \"", imgdir, "\":");
+        logmsg("Finding HDD images in additional directory Dir", (int)dirindex, " = \"", imgdir, "\":");
         root.open(imgdir);
         if (!root.isOpen())
         {
-          azlog("-- Could not open directory: ", imgdir);
+          logmsg("-- Could not open directory: ", imgdir);
         }
         continue;
       }
@@ -213,6 +213,12 @@ bool findHDDImages()
       bool is_mo = (tolower(name[0]) == 'm' && tolower(name[1]) == 'o');
       bool is_re = (tolower(name[0]) == 'r' && tolower(name[1]) == 'e');
       bool is_tp = (tolower(name[0]) == 't' && tolower(name[1]) == 'p');
+
+      if(strcasecmp(name, "CLEAR_ROM") == 0)
+      {
+        scsiDiskClearRomDrive();
+        continue;
+      }
 
       if (is_hd || is_cd || is_fd || is_mo || is_re || is_tp)
       {
@@ -241,7 +247,7 @@ bool findHDDImages()
 
         if (is_compressed)
         {
-          azlog("-- Ignoring compressed file ", name);
+          logmsg("-- Ignoring compressed file ", name);
           continue;
         }
 
@@ -311,9 +317,17 @@ bool findHDDImages()
         strcat(fullname, name);
 
         // Check whether this SCSI ID has been configured yet
-        if (s2s_getConfigById(id))
+        const S2S_TargetCfg* cfg = s2s_getConfigById(id);
+        if (cfg)
         {
-          azlog("-- Ignoring ", fullname, ", SCSI ID ", id, " is already in use!");
+          logmsg("-- Ignoring ", fullname, ", SCSI ID ", id, " is already in use!");
+          continue;
+        }
+
+        // Apple computers reserve ID 7, so warn the user this configuration wont work
+        if(id == 7 && cfg->quirks == S2S_CFG_QUIRKS_APPLE )
+        {
+          logmsg("-- Ignoring ", fullname, ", SCSI ID ", id, " Quirks set to Apple so can not use SCSI ID 7!");
           continue;
         }
 
@@ -329,7 +343,7 @@ bool findHDDImages()
         // Open the image file
         if (id < NUM_SCSIID && is_romdrive)
         {
-          azlog("-- Loading ROM drive from ", fullname, " for id:", id);
+          logmsg("-- Loading ROM drive from ", fullname, " for id:", id);
           imageReady = scsiDiskProgramRomDrive(fullname, id, blk, type);
           
           if (imageReady)
@@ -338,7 +352,7 @@ bool findHDDImages()
           }
         }
         else if(id < NUM_SCSIID && lun < NUM_SCSILUN) {
-          azlog("-- Opening ", fullname, " for id:", id, " lun:", lun);
+          logmsg("-- Opening ", fullname, " for id:", id, " lun:", lun);
 
           imageReady = scsiDiskOpenHDDImage(id, fullname, id, lun, blk, type);
           if(imageReady)
@@ -347,17 +361,17 @@ bool findHDDImages()
           }
           else
           {
-            azlog("---- Failed to load image");
+            logmsg("---- Failed to load image");
           }
         } else {
-          azlog("-- Invalid lun or id for image ", fullname);
+          logmsg("-- Invalid lun or id for image ", fullname);
         }
       }
     }
   }
 
   if(usedDefaultId > 0) {
-    azlog("Some images did not specify a SCSI ID. Last file will be used at ID ", usedDefaultId);
+    logmsg("Some images did not specify a SCSI ID. Last file will be used at ID ", usedDefaultId);
   }
   root.close();
 
@@ -371,7 +385,7 @@ bool findHDDImages()
     if (cfg && (cfg->scsiId & S2S_CFG_TARGET_ENABLED))
     {
       int capacity_kB = ((uint64_t)cfg->scsiSectors * cfg->bytesPerSector) / 1024;
-      azlog("SCSI ID:", (int)(cfg->scsiId & 7),
+      logmsg("SCSI ID:", (int)(cfg->scsiId & 7),
             " BlockSize:", (int)cfg->bytesPerSector,
             " Type:", (int)cfg->deviceType,
             " Quirks:", (int)cfg->quirks,
@@ -422,11 +436,11 @@ static void reinitSCSI()
 {
   if (ini_getbool("SCSI", "Debug", 0, CONFIGFILE))
   {
-    g_azlog_debug = true;
+    g_log_debug = true;
   }
 
 #ifdef PLATFORM_HAS_INITIATOR_MODE
-  if (azplatform_is_initiator_mode_enabled())
+  if (platform_is_initiator_mode_enabled())
   {
     // Initialize scsiDev to zero values even though it is not used
     scsiInit();
@@ -453,11 +467,11 @@ static void reinitSCSI()
   else
   {
 #if RAW_FALLBACK_ENABLE
-    azlog("No images found, enabling RAW fallback partition");
+    logmsg("No images found, enabling RAW fallback partition");
     scsiDiskOpenHDDImage(RAW_FALLBACK_SCSI_ID, "RAW:0:0xFFFFFFFF", RAW_FALLBACK_SCSI_ID, 0,
                          RAW_FALLBACK_BLOCKSIZE);
 #else
-    azlog("No valid image files found!");
+    logmsg("No valid image files found!");
 #endif
     blinkStatus(BLINK_ERROR_NO_IMAGES);
   }
@@ -470,24 +484,22 @@ static void reinitSCSI()
 
 extern "C" void zuluscsi_setup(void)
 {
-  azplatform_init();
-  azplatform_late_init();
+  platform_init();
+  platform_late_init();
 
   g_sdcard_present = mountSDCard();
 
   if(!g_sdcard_present)
   {
-    azlog("SD card init failed, sdErrorCode: ", (int)SD.sdErrorCode(),
+    logmsg("SD card init failed, sdErrorCode: ", (int)SD.sdErrorCode(),
            " sdErrorData: ", (int)SD.sdErrorData());
-    
-    blinkStatus(BLINK_ERROR_NO_SD_CARD);
 
     if (scsiDiskCheckRomDrive())
     {
       reinitSCSI();
       if (g_romdrive_active)
       {
-        azlog("Enabled ROM drive without SD card");
+        logmsg("Enabled ROM drive without SD card");
         return;
       }
     }
@@ -496,17 +508,17 @@ extern "C" void zuluscsi_setup(void)
     {
       blinkStatus(BLINK_ERROR_NO_SD_CARD);
       delay(1000);
-      azplatform_reset_watchdog();
+      platform_reset_watchdog();
       g_sdcard_present = mountSDCard();
     } while (!g_sdcard_present);
-    azlog("SD card init succeeded after retry");
+    logmsg("SD card init succeeded after retry");
   }
 
   if (g_sdcard_present)
   {
     if (SD.clusterCount() == 0)
     {
-      azlog("SD card without filesystem!");
+      logmsg("SD card without filesystem!");
     }
 
     print_sd_info();
@@ -514,14 +526,14 @@ extern "C" void zuluscsi_setup(void)
     reinitSCSI();
   }
 
-  azlog("Initialization complete!");
+  logmsg("Initialization complete!");
 
   if (g_sdcard_present)
   {
     init_logfile();
     if (ini_getbool("SCSI", "DisableStatusLED", false, CONFIGFILE))
     {
-      azplatform_disable_led();
+      platform_disable_led();
     }
   }
 }
@@ -530,10 +542,10 @@ extern "C" void zuluscsi_main_loop(void)
 {
   static uint32_t sd_card_check_time = 0;
 
-  azplatform_reset_watchdog();
+  platform_reset_watchdog();
   
 #ifdef PLATFORM_HAS_INITIATOR_MODE
-  if (azplatform_is_initiator_mode_enabled())
+  if (platform_is_initiator_mode_enabled())
   {
     scsiInitiatorMainLoop();
     save_logfile();
@@ -565,7 +577,7 @@ extern "C" void zuluscsi_main_loop(void)
         if (!SD.card()->readOCR(&ocr))
         {
           g_sdcard_present = false;
-          azlog("SD card removed, trying to reinit");
+          logmsg("SD card removed, trying to reinit");
         }
       }
     }
@@ -580,7 +592,7 @@ extern "C" void zuluscsi_main_loop(void)
 
       if (g_sdcard_present)
       {
-        azlog("SD card reinit succeeded");
+        logmsg("SD card reinit succeeded");
         print_sd_info();
 
         reinitSCSI();
@@ -590,7 +602,7 @@ extern "C" void zuluscsi_main_loop(void)
       {
         blinkStatus(BLINK_ERROR_NO_SD_CARD);
         delay(1000);
-        azplatform_reset_watchdog();
+        platform_reset_watchdog();
       }
     } while (!g_sdcard_present && !g_romdrive_active);
   }
