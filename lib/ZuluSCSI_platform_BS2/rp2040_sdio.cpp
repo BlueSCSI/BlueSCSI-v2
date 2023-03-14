@@ -134,7 +134,7 @@ uint64_t sdio_crc16_4bit_checksum(uint32_t *data, uint32_t num_words)
 
 static void sdio_send_command(uint8_t command, uint32_t arg, uint8_t response_bits)
 {
-    // dbglog("SDIO Command: ", (int)command, " arg ", arg);
+    // dbg("SDIO Command: ", (int)command, " arg ", arg);
 
     // Format the arguments in the way expected by the PIO code.
     uint32_t word0 =
@@ -183,7 +183,7 @@ sdio_status_t rp2040_sdio_command_R1(uint8_t command, uint32_t arg, uint32_t *re
         {
             if (command != 8) // Don't log for missing SD card
             {
-                dbglog("Timeout waiting for response in rp2040_sdio_command_R1(", (int)command, "), ",
+                dbg("Timeout waiting for response in rp2040_sdio_command_R1(", (int)command, "), ",
                     "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_CMD_SM) - (int)g_sdio.pio_cmd_clk_offset,
                     " RXF: ", (int)pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_CMD_SM),
                     " TXF: ", (int)pio_sm_get_tx_fifo_level(SDIO_PIO, SDIO_CMD_SM));
@@ -201,7 +201,7 @@ sdio_status_t rp2040_sdio_command_R1(uint8_t command, uint32_t arg, uint32_t *re
         // Read out response packet
         uint32_t resp0 = pio_sm_get(SDIO_PIO, SDIO_CMD_SM);
         uint32_t resp1 = pio_sm_get(SDIO_PIO, SDIO_CMD_SM);
-        // dbglog("SDIO R1 response: ", resp0, " ", resp1);
+        // dbg("SDIO R1 response: ", resp0, " ", resp1);
 
         // Calculate response checksum
         uint8_t crc = 0;
@@ -214,14 +214,14 @@ sdio_status_t rp2040_sdio_command_R1(uint8_t command, uint32_t arg, uint32_t *re
         uint8_t actual_crc = ((resp1 >> 0) & 0xFE);
         if (crc != actual_crc)
         {
-            dbglog("rp2040_sdio_command_R1(", (int)command, "): CRC error, calculated ", crc, " packet has ", actual_crc);
+            dbg("rp2040_sdio_command_R1(", (int)command, "): CRC error, calculated ", crc, " packet has ", actual_crc);
             return SDIO_ERR_RESPONSE_CRC;
         }
 
         uint8_t response_cmd = ((resp0 >> 24) & 0xFF);
         if (response_cmd != command && command != 41)
         {
-            dbglog("rp2040_sdio_command_R1(", (int)command, "): received reply for ", (int)response_cmd);
+            dbg("rp2040_sdio_command_R1(", (int)command, "): received reply for ", (int)response_cmd);
             return SDIO_ERR_RESPONSE_CODE;
         }
 
@@ -255,7 +255,7 @@ sdio_status_t rp2040_sdio_command_R2(uint8_t command, uint32_t arg, uint8_t resp
     {
         if ((uint32_t)(millis() - start) > 2)
         {
-            dbglog("Timeout waiting for response in rp2040_sdio_command_R2(", (int)command, "), ",
+            dbg("Timeout waiting for response in rp2040_sdio_command_R2(", (int)command, "), ",
                   "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_CMD_SM) - (int)g_sdio.pio_cmd_clk_offset,
                   " RXF: ", (int)pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_CMD_SM),
                   " TXF: ", (int)pio_sm_get_tx_fifo_level(SDIO_PIO, SDIO_CMD_SM));
@@ -298,14 +298,14 @@ sdio_status_t rp2040_sdio_command_R2(uint8_t command, uint32_t arg, uint8_t resp
     uint8_t actual_crc = response[15] & 0xFE;
     if (crc != actual_crc)
     {
-        dbglog("rp2040_sdio_command_R2(", (int)command, "): CRC error, calculated ", crc, " packet has ", actual_crc);
+        dbg("rp2040_sdio_command_R2(", (int)command, "): CRC error, calculated ", crc, " packet has ", actual_crc);
         return SDIO_ERR_RESPONSE_CRC;
     }
 
     uint8_t response_cmd = ((response_buf[0] >> 24) & 0xFF);
     if (response_cmd != 0x3F)
     {
-        dbglog("rp2040_sdio_command_R2(", (int)command, "): Expected reply code 0x3F");
+        dbg("rp2040_sdio_command_R2(", (int)command, "): Expected reply code 0x3F");
         return SDIO_ERR_RESPONSE_CODE;
     }
 
@@ -323,7 +323,7 @@ sdio_status_t rp2040_sdio_command_R3(uint8_t command, uint32_t arg, uint32_t *re
     {
         if ((uint32_t)(millis() - start) > 2)
         {
-            dbglog("Timeout waiting for response in rp2040_sdio_command_R3(", (int)command, "), ",
+            dbg("Timeout waiting for response in rp2040_sdio_command_R3(", (int)command, "), ",
                   "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_CMD_SM) - (int)g_sdio.pio_cmd_clk_offset,
                   " RXF: ", (int)pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_CMD_SM),
                   " TXF: ", (int)pio_sm_get_tx_fifo_level(SDIO_PIO, SDIO_CMD_SM));
@@ -339,7 +339,7 @@ sdio_status_t rp2040_sdio_command_R3(uint8_t command, uint32_t arg, uint32_t *re
     uint32_t resp0 = pio_sm_get(SDIO_PIO, SDIO_CMD_SM);
     uint32_t resp1 = pio_sm_get(SDIO_PIO, SDIO_CMD_SM);
     *response = ((resp0 & 0xFFFFFF) << 8) | ((resp1 >> 8) & 0xFF);
-    // dbglog("SDIO R3 response: ", resp0, " ", resp1);
+    // dbg("SDIO R3 response: ", resp0, " ", resp1);
 
     return SDIO_OK;
 }
@@ -432,7 +432,7 @@ static void sdio_verify_rx_checksums(uint32_t maxcount)
             g_sdio.checksum_errors++;
             if (g_sdio.checksum_errors == 1)
             {
-                log("SDIO checksum error in reception: block ", blockidx,
+                logmsg("SDIO checksum error in reception: block ", blockidx,
                       " calculated ", checksum, " expected ", expected);
             }
         }
@@ -482,7 +482,7 @@ sdio_status_t rp2040_sdio_rx_poll(uint32_t *bytes_complete)
     }
     else if ((uint32_t)(millis() - g_sdio.transfer_start_time) > 1000)
     {
-        dbglog("rp2040_sdio_rx_poll() timeout, "
+        dbg("rp2040_sdio_rx_poll() timeout, "
             "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_DATA_SM) - (int)g_sdio.pio_data_rx_offset,
             " RXF: ", (int)pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_DATA_SM),
             " TXF: ", (int)pio_sm_get_tx_fifo_level(SDIO_PIO, SDIO_DATA_SM),
@@ -704,7 +704,7 @@ sdio_status_t rp2040_sdio_tx_poll(uint32_t *bytes_complete)
     }
     else if ((uint32_t)(millis() - g_sdio.transfer_start_time) > 1000)
     {
-        dbglog("rp2040_sdio_tx_poll() timeout, "
+        dbg("rp2040_sdio_tx_poll() timeout, "
             "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_DATA_SM) - (int)g_sdio.pio_data_tx_offset,
             " RXF: ", (int)pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_DATA_SM),
             " TXF: ", (int)pio_sm_get_tx_fifo_level(SDIO_PIO, SDIO_DATA_SM),
