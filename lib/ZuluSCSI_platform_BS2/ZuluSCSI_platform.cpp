@@ -257,9 +257,9 @@ static void watchdog_callback(unsigned alarm_num)
     {
         if (!scsiDev.resetFlag)
         {
-            log("--------------");
-            log("WATCHDOG TIMEOUT, attempting bus reset");
-            log("GPIO states: out ", sio_hw->gpio_out, " oe ", sio_hw->gpio_oe, " in ", sio_hw->gpio_in);
+            logmsg("--------------");
+            logmsg("WATCHDOG TIMEOUT, attempting bus reset");
+            logmsg("GPIO states: out ", sio_hw->gpio_out, " oe ", sio_hw->gpio_oe, " in ", sio_hw->gpio_in);
 
             uint32_t *p = (uint32_t*)__get_PSP();
             for (int i = 0; i < 8; i++)
@@ -275,11 +275,11 @@ static void watchdog_callback(unsigned alarm_num)
 
         if (g_watchdog_timeout <= 0)
         {
-            log("--------------");
-            log("WATCHDOG TIMEOUT!");
-            log("Platform: ", g_platform_name);
-            log("FW Version: ", g_log_firmwareversion);
-            log("GPIO states: out ", sio_hw->gpio_out, " oe ", sio_hw->gpio_oe, " in ", sio_hw->gpio_in);
+            logmsg("--------------");
+            logmsg("WATCHDOG TIMEOUT!");
+            logmsg("Platform: ", g_platform_name);
+            logmsg("FW Version: ", g_log_firmwareversion);
+            logmsg("GPIO states: out ", sio_hw->gpio_out, " oe ", sio_hw->gpio_oe, " in ", sio_hw->gpio_in);
 
             uint32_t *p = (uint32_t*)__get_PSP();
             for (int i = 0; i < 8; i++)
@@ -330,7 +330,7 @@ bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_
     {
         if (buffer[3] != 0x20 || buffer[7] != 0x10)
         {
-            log("Invalid firmware file, starts with: ", bytearray(buffer, 16));
+            logmsg("Invalid firmware file, starts with: ", bytearray(buffer, 16));
             return false;
         }
     }
@@ -362,7 +362,7 @@ bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_
 
         if (actual != expected)
         {
-            log("Flash verify failed at offset ", offset + i * 4, " got ", actual, " expected ", expected);
+            logmsg("Flash verify failed at offset ", offset + i * 4, " got ", actual, " expected ", expected);
             return false;
         }
     }
