@@ -54,7 +54,7 @@ static sd_callback_t get_stream_callback(const uint8_t *buf, uint32_t count, con
         }
         else
         {
-            dbg("SD card ", accesstype, "(", (int)sector,
+            dbglog("SD card ", accesstype, "(", (int)sector,
                   ") slow transfer, buffer", (uint32_t)buf, " vs. ", (uint32_t)(m_stream_buffer + m_stream_count));
             return NULL;
         }

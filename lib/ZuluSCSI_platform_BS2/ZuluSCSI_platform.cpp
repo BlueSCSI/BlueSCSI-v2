@@ -286,7 +286,7 @@ static void watchdog_callback(unsigned alarm_num)
             {
                 if (p == &__StackTop) break; // End of stack
 
-                log("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
+                logmsg("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
                 p += 4;
             }
 
