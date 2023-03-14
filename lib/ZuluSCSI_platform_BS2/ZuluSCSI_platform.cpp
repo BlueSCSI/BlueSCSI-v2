@@ -238,7 +238,7 @@ void mbed_error_hook(const mbed_error_ctx * error_context)
 /*****************************************/
 
 // This function is called for every log message.
-voidplatform_log(const char *s)
+void platform_log(const char *s)
 {
     if (g_uart_initialized)
     {
