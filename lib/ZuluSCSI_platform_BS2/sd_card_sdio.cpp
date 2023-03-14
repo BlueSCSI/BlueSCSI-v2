@@ -23,7 +23,7 @@ static uint32_t g_sdio_sector_count;
 static bool logSDError(int line)
 {
     g_sdio_error_line = line;
-    azlog("SDIO SD card error on line ", line, ", error code ", (int)g_sdio_error);
+    log("SDIO SD card error on line ", line, ", error code ", (int)g_sdio_error);
     return false;
 }
 
@@ -33,7 +33,7 @@ static const uint8_t *m_stream_buffer;
 static uint32_t m_stream_count;
 static uint32_t m_stream_count_start;
 
-void azplatform_set_sd_callback(sd_callback_t func, const uint8_t *buffer)
+void platform_set_sd_callback(sd_callback_t func, const uint8_t *buffer)
 {
     m_stream_callback = func;
     m_stream_buffer = buffer;
@@ -54,7 +54,7 @@ static sd_callback_t get_stream_callback(const uint8_t *buf, uint32_t count, con
         }
         else
         {
-            azdbg("SD card ", accesstype, "(", (int)sector,
+            dbg("SD card ", accesstype, "(", (int)sector,
                   ") slow transfer, buffer", (uint32_t)buf, " vs. ", (uint32_t)(m_stream_buffer + m_stream_count));
             return NULL;
         }
@@ -87,7 +87,7 @@ bool SdioCard::begin(SdioConfig sdioConfig)
 
     if (reply != 0x1AA || status != SDIO_OK)
     {
-        // azdbg("SDIO not responding to CMD8 SEND_IF_COND, status ", (int)status, " reply ", reply);
+        // dbg("SDIO not responding to CMD8 SEND_IF_COND, status ", (int)status, " reply ", reply);
         return false;
     }
 
@@ -103,7 +103,7 @@ bool SdioCard::begin(SdioConfig sdioConfig)
 
         if ((uint32_t)(millis() - start) > 1000)
         {
-            azlog("SDIO card initialization timeout");
+            log("SDIO card initialization timeout");
             return false;
         }
     } while (!(g_sdio_ocr & (1 << 31)));
@@ -111,21 +111,21 @@ bool SdioCard::begin(SdioConfig sdioConfig)
     // Get CID
     if (!checkReturnOk(rp2040_sdio_command_R2(CMD2, 0, (uint8_t*)&g_sdio_cid)))
     {
-        azdbg("SDIO failed to read CID");
+        dbg("SDIO failed to read CID");
         return false;
     }
 
     // Get relative card address
     if (!checkReturnOk(rp2040_sdio_command_R1(CMD3, 0, &g_sdio_rca)))
     {
-        azdbg("SDIO failed to get RCA");
+        dbg("SDIO failed to get RCA");
         return false;
     }
 
     // Get CSD
     if (!checkReturnOk(rp2040_sdio_command_R2(CMD9, g_sdio_rca, (uint8_t*)&g_sdio_csd)))
     {
-        azdbg("SDIO failed to read CSD");
+        dbg("SDIO failed to read CSD");
         return false;
     }
 
@@ -134,7 +134,7 @@ bool SdioCard::begin(SdioConfig sdioConfig)
     // Select card
     if (!checkReturnOk(rp2040_sdio_command_R1(CMD7, g_sdio_rca, &reply)))
     {
-        azdbg("SDIO failed to select card");
+        dbg("SDIO failed to select card");
         return false;
     }
 
@@ -142,7 +142,7 @@ bool SdioCard::begin(SdioConfig sdioConfig)
     if (!checkReturnOk(rp2040_sdio_command_R1(CMD55, g_sdio_rca, &reply)) ||
         !checkReturnOk(rp2040_sdio_command_R1(ACMD6, 2, &reply)))
     {
-        azdbg("SDIO failed to set bus width");
+        dbg("SDIO failed to set bus width");
         return false;
     }
 
@@ -198,19 +198,19 @@ bool SdioCard::readOCR(uint32_t* ocr)
 
 bool SdioCard::readData(uint8_t* dst)
 {
-    azlog("SdioCard::readData() called but not implemented!");
+    log("SdioCard::readData() called but not implemented!");
     return false;
 }
 
 bool SdioCard::readStart(uint32_t sector)
 {
-    azlog("SdioCard::readStart() called but not implemented!");
+    log("SdioCard::readStart() called but not implemented!");
     return false;
 }
 
 bool SdioCard::readStop()
 {
-    azlog("SdioCard::readStop() called but not implemented!");
+    log("SdioCard::readStop() called but not implemented!");
     return false;
 }
 
@@ -252,7 +252,7 @@ bool SdioCard::stopTransmission(bool blocking)
         }
         if (isBusy())
         {
-            azlog("SdioCard::stopTransmission() timeout");
+            log("SdioCard::stopTransmission() timeout");
             return false;
         }
         else
@@ -277,35 +277,35 @@ uint8_t SdioCard::type() const
 
 bool SdioCard::writeData(const uint8_t* src)
 {
-    azlog("SdioCard::writeData() called but not implemented!");
+    log("SdioCard::writeData() called but not implemented!");
     return false;
 }
 
 bool SdioCard::writeStart(uint32_t sector)
 {
-    azlog("SdioCard::writeStart() called but not implemented!");
+    log("SdioCard::writeStart() called but not implemented!");
     return false;
 }
 
 bool SdioCard::writeStop()
 {
-    azlog("SdioCard::writeStop() called but not implemented!");
+    log("SdioCard::writeStop() called but not implemented!");
     return false;
 }
 
 bool SdioCard::erase(uint32_t firstSector, uint32_t lastSector)
 {
-    azlog("SdioCard::erase() not implemented");
+    log("SdioCard::erase() not implemented");
     return false;
 }
 
 bool SdioCard::cardCMD6(uint32_t arg, uint8_t* status) {
-    azlog("SdioCard::cardCMD6() not implemented");
+    log("SdioCard::cardCMD6() not implemented");
     return false;
 }
 
 bool SdioCard::readSCR(scr_t* scr) {
-    azlog("SdioCard::readSCR() not implemented");
+    log("SdioCard::readSCR() not implemented");
     return false;
 }
 
@@ -343,7 +343,7 @@ bool SdioCard::writeSector(uint32_t sector, const uint8_t* src)
 
     if (g_sdio_error != SDIO_OK)
     {
-        azlog("SdioCard::writeSector(", sector, ") failed: ", (int)g_sdio_error);
+        log("SdioCard::writeSector(", sector, ") failed: ", (int)g_sdio_error);
     }
 
     return g_sdio_error == SDIO_OK;
@@ -388,7 +388,7 @@ bool SdioCard::writeSectors(uint32_t sector, const uint8_t* src, size_t n)
 
     if (g_sdio_error != SDIO_OK)
     {
-        azlog("SdioCard::writeSectors(", sector, ",...,", (int)n, ") failed: ", (int)g_sdio_error);
+        log("SdioCard::writeSectors(", sector, ",...,", (int)n, ") failed: ", (int)g_sdio_error);
         stopTransmission(true);
         return false;
     }
@@ -429,7 +429,7 @@ bool SdioCard::readSector(uint32_t sector, uint8_t* dst)
 
     if (g_sdio_error != SDIO_OK)
     {
-        azlog("SdioCard::readSector(", sector, ") failed: ", (int)g_sdio_error);
+        log("SdioCard::readSector(", sector, ") failed: ", (int)g_sdio_error);
     }
 
     if (dst != real_dst)
@@ -477,7 +477,7 @@ bool SdioCard::readSectors(uint32_t sector, uint8_t* dst, size_t n)
 
     if (g_sdio_error != SDIO_OK)
     {
-        azlog("SdioCard::readSectors(", sector, ",...,", (int)n, ") failed: ", (int)g_sdio_error);
+        log("SdioCard::readSectors(", sector, ",...,", (int)n, ") failed: ", (int)g_sdio_error);
         stopTransmission(true);
         return false;
     }
