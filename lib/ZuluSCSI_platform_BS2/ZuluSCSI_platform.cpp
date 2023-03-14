@@ -66,19 +66,19 @@ void platform_init()
     g_uart_initialized = true;
     mbed_set_error_hook(mbed_error_hook);
 
-    log("Platform: ", g_platform_name);
-    log("FW Version: ", g_log_firmwareversion);
+    logmsg("Platform: ", g_platform_name);
+    logmsg("FW Version: ", g_log_firmwareversion);
 
     g_log_debug = false;
     
-    log("SCSI termination is handled by a hardware jumper");
+    logmsg ("SCSI termination is handled by a hardware jumper");
 
     // Get flash chip size
     uint8_t cmd_read_jedec_id[4] = {0x9f, 0, 0, 0};
     uint8_t response_jedec[4] = {0};
     flash_do_cmd(cmd_read_jedec_id, response_jedec, 4);
     g_flash_chip_size = (1 << response_jedec[3]);
-    log("Flash chip size: ", (int)(g_flash_chip_size / 1024), " kB");
+    logmsg("Flash chip size: ", (int)(g_flash_chip_size / 1024), " kB");
 
     // SD card pins
     // Card is used in SDIO mode for main program, and in SPI mode for crash handler & bootloader.
@@ -100,7 +100,7 @@ void platform_late_init()
 {
 
     g_scsi_initiator = false;
-    log("SCSI target/disk mode, acting as a SCSI disk");
+    logmsg("SCSI target/disk mode, acting as a SCSI disk");
 
     /* Initialize SCSI pins to required modes.
      * SCSI pins should be inactive / input at this point.
@@ -159,7 +159,7 @@ void platform_disable_led(void)
 {   
     //        pin      function       pup   pdown  out    state fast
     gpio_conf(LED_PIN, GPIO_FUNC_SIO, false,false, false, false, false);
-    log("Disabling status LED");
+    logmsg("Disabling status LED");
 }
 
 /*****************************************/
@@ -194,13 +194,13 @@ void platform_emergency_log_save()
 
 void mbed_error_hook(const mbed_error_ctx * error_context)
 {
-    log("--------------");
-    log("CRASH!");
-    log("Platform: ", g_platform_name);
-    log("FW Version: ", g_log_firmwareversion);
-    log("error_status: ", (uint32_t)error_context->error_status);
-    log("error_address: ", error_context->error_address);
-    log("error_value: ", error_context->error_value);
+    logmsg("--------------");
+    logmsg("CRASH!");
+    logmsg("Platform: ", g_platform_name);
+    logmsg("FW Version: ", g_log_firmwareversion);
+    logmsg("error_status: ", (uint32_t)error_context->error_status);
+    logmsg("error_address: ", error_context->error_address);
+    logmsg("error_value: ", error_context->error_value);
 
     uint32_t *p = (uint32_t*)((uint32_t)error_context->thread_current_sp & ~3);
     for (int i = 0; i < 8; i++)
@@ -335,7 +335,7 @@ bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_
         }
     }
 
-    dbg("Writing flash at offset ", offset, " data ", bytearray(buffer, 4));
+    dbgmsg("Writing flash at offset ", offset, " data ", bytearray(buffer, 4));
     assert(offset % PLATFORM_FLASH_PAGE_SIZE == 0);
     assert(offset >= PLATFORM_BOOTLOADER_SIZE);
 
