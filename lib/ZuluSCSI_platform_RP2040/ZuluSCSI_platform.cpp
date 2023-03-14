@@ -11,6 +11,7 @@
 #include <hardware/structs/xip_ctrl.h>
 #include <platform/mbed_error.h>
 #include <multicore.h>
+#include <USB/PluggableUSBSerial.h>
 
 extern "C" {
 
@@ -313,6 +314,38 @@ void mbed_error_hook(const mbed_error_ctx * error_context)
 /* Debug logging and watchdog            */
 /*****************************************/
 
+// Send log data to USB UART if USB is connected.
+// Data is retrieved from the shared log ring buffer and
+// this function sends as much as fits in USB CDC buffer.
+//
+// This is normally called by platform_reset_watchdog() in
+// the normal polling loop. If code hangs, the watchdog_callback()
+// also starts calling this after 2 seconds.
+// This ensures that log messages get passed even if code hangs,
+// but does not unnecessarily delay normal execution.
+static void usb_log_poll()
+{
+    static uint32_t logpos = 0;
+
+    if (_SerialUSB.ready())
+    {
+        // Retrieve pointer to log start and determine number of bytes available.
+        uint32_t newlogpos = logpos;
+        const char *data = log_get_buffer(&newlogpos);
+
+        // Limit to CDC packet size
+        uint32_t len = (newlogpos - logpos);
+        if (len == 0) return;
+        if (len > CDC_MAX_PACKET_SIZE) len = CDC_MAX_PACKET_SIZE;
+
+        // Update log position by the actual number of bytes sent
+        // If USB CDC buffer is full, this may be 0
+        uint32_t actual = 0;
+        _SerialUSB.send_nb((uint8_t*)data, len, &actual);
+        logpos += actual;
+    }
+}
+
 // This function is called for every log message.
 void platform_log(const char *s)
 {
@@ -328,6 +361,12 @@ static bool g_watchdog_initialized;
 static void watchdog_callback(unsigned alarm_num)
 {
     g_watchdog_timeout -= 1000;
+
+    if (g_watchdog_timeout < WATCHDOG_CRASH_TIMEOUT - 1000)
+    {
+        // Been stuck for at least a second, start dumping USB log
+        usb_log_poll();
+    }
 
     if (g_watchdog_timeout <= WATCHDOG_CRASH_TIMEOUT - WATCHDOG_BUS_RESET_TIMEOUT)
     {
@@ -367,6 +406,7 @@ static void watchdog_callback(unsigned alarm_num)
                 p += 4;
             }
 
+            usb_log_poll();
             platform_emergency_log_save();
 
             platform_boot_to_main_firmware();
@@ -389,6 +429,8 @@ void platform_reset_watchdog()
         hardware_alarm_set_target(3, delayed_by_ms(get_absolute_time(), 1000));
         g_watchdog_initialized = true;
     }
+
+    usb_log_poll();
 }
 
 /*****************************************/
