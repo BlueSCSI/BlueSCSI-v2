@@ -432,7 +432,7 @@ static void sdio_verify_rx_checksums(uint32_t maxcount)
             g_sdio.checksum_errors++;
             if (g_sdio.checksum_errors == 1)
             {
-                azlog("SDIO checksum error in reception: block ", blockidx,
+                log("SDIO checksum error in reception: block ", blockidx,
                       " calculated ", checksum, " expected ", expected);
             }
         }
@@ -604,17 +604,17 @@ sdio_status_t check_sdio_write_response(uint32_t card_response)
     }
     else if (wr_status == 5)
     {
-        azlog("SDIO card reports write CRC error, status ", card_response);
+        log("SDIO card reports write CRC error, status ", card_response);
         return SDIO_ERR_WRITE_CRC;    
     }
     else if (wr_status == 6)
     {
-        azlog("SDIO card reports write failure, status ", card_response);
+        log("SDIO card reports write failure, status ", card_response);
         return SDIO_ERR_WRITE_FAIL;    
     }
     else
     {
-        azlog("SDIO card reports unknown write status ", card_response);
+        log("SDIO card reports unknown write status ", card_response);
         return SDIO_ERR_WRITE_FAIL;    
     }
 }
