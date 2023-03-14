@@ -7,16 +7,12 @@
 #include <hardware/gpio.h>
 #include <hardware/uart.h>
 #include <hardware/spi.h>
+#include <hardware/flash.h>
 #include <hardware/structs/xip_ctrl.h>
 #include <platform/mbed_error.h>
 #include <multicore.h>
 
 extern "C" {
-
-// As of 2022-09-13, the platformio RP2040 core is missing cplusplus guard on flash.h
-// For that reason this has to be inside the extern "C" here.
-#include <hardware/flash.h>
-#include "rp2040_flash_do_cmd.h"
 
 const char *g_platform_name = PLATFORM_NAME;
 static bool g_scsi_initiator = false;
