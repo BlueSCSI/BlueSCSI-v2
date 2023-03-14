@@ -69,9 +69,9 @@ void platform_set_sd_callback(sd_callback_t func, const uint8_t *buffer);
 
 // Reprogram firmware in main program area.
 #ifndef RP2040_DISABLE_BOOTLOADER
-#define platform_BOOTLOADER_SIZE (128 * 1024)
-#define platform_FLASH_TOTAL_SIZE (1024 * 1024)
-#define platform_FLASH_PAGE_SIZE 4096
+#define PLATFORM_BOOTLOADER_SIZE (128 * 1024)
+#define PLATFORM_FLASH_TOTAL_SIZE (1024 * 1024)
+#define PLATFORM_FLASH_PAGE_SIZE 4096
 bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[platform_FLASH_PAGE_SIZE]);
 void platform_boot_to_main_firmware();
 #endif
@@ -86,7 +86,7 @@ uint32_t platform_get_romdrive_maxsize();
 bool platform_read_romdrive(uint8_t *dest, uint32_t start, uint32_t count);
 
 // Reprogram ROM drive area
-#define platform_ROMDRIVE_PAGE_SIZE 4096
+#define PLATFORM_ROMDRIVE_PAGE_SIZE 4096
 bool platform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count);
 #endif
 
