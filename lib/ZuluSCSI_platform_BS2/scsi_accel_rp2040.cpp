@@ -345,7 +345,7 @@ static void scsi_accel_rp2040_stopWrite(volatile int *resetFlag)
     {
         if ((uint32_t)(millis() - start) > 5000)
         {
-            azlog("scsi_accel_rp2040_stopWrite() timeout, FIFO levels ",
+            log("scsi_accel_rp2040_stopWrite() timeout, FIFO levels ",
                 (int)pio_sm_get_tx_fifo_level(SCSI_DMA_PIO, SCSI_DATA_SM), " ",
                 (int)pio_sm_get_rx_fifo_level(SCSI_DMA_PIO, SCSI_DATA_SM), " PC ",
                 (int)pio_sm_get_pc(SCSI_DMA_PIO, SCSI_DATA_SM));
@@ -374,7 +374,7 @@ void scsi_accel_rp2040_finishWrite(volatile int *resetFlag)
     {
         if ((uint32_t)(millis() - start) > 5000)
         {
-            azlog("scsi_accel_rp2040_finishWrite() timeout,"
+            log("scsi_accel_rp2040_finishWrite() timeout,"
              " state: ", (int)g_scsi_dma_state, " ", (int)g_scsi_dma.dma_bytes, "/", (int)g_scsi_dma.app_bytes, ", ", (int)g_scsi_dma.next_app_bytes,
              " PIO PC: ", (int)pio_sm_get_pc(SCSI_DMA_PIO, SCSI_DATA_SM), " ", (int)pio_sm_get_pc(SCSI_DMA_PIO, SCSI_SYNC_SM),
              " PIO FIFO: ", (int)pio_sm_get_tx_fifo_level(SCSI_DMA_PIO, SCSI_DATA_SM), " ", (int)pio_sm_get_tx_fifo_level(SCSI_DMA_PIO, SCSI_SYNC_SM),
@@ -666,7 +666,7 @@ void scsi_accel_rp2040_finishRead(const uint8_t *data, uint32_t count, int *pari
     {
         if ((uint32_t)(millis() - start) > 5000)
         {
-            azlog("scsi_accel_rp2040_finishRead timeout,"
+            log("scsi_accel_rp2040_finishRead timeout,"
              " state: ", (int)g_scsi_dma_state, " ", (int)g_scsi_dma.dma_bytes, "/", (int)g_scsi_dma.app_bytes, ", ", (int)g_scsi_dma.next_app_bytes,
              " PIO PC: ", (int)pio_sm_get_pc(SCSI_DMA_PIO, SCSI_DATA_SM), " ", (int)pio_sm_get_pc(SCSI_DMA_PIO, SCSI_SYNC_SM),
              " PIO FIFO: ", (int)pio_sm_get_rx_fifo_level(SCSI_DMA_PIO, SCSI_DATA_SM), " ", (int)pio_sm_get_tx_fifo_level(SCSI_DMA_PIO, SCSI_DATA_SM),
@@ -686,7 +686,7 @@ void scsi_accel_rp2040_finishRead(const uint8_t *data, uint32_t count, int *pari
     // Check if any parity errors have been detected during the transfer so far
     if (parityError != NULL && (SCSI_DMA_PIO->irq & 1))
     {
-        azdbg("scsi_accel_rp2040_finishRead(", bytearray(data, count), ") detected parity error");
+        dbg("scsi_accel_rp2040_finishRead(", bytearray(data, count), ") detected parity error");
         *parityError = true;
     }
 }
