@@ -198,13 +198,13 @@ bool SdioCard::readOCR(uint32_t* ocr)
 
 bool SdioCard::readData(uint8_t* dst)
 {
-    log("SdioCard::readData() called but not implemented!");
+    logmsg("SdioCard::readData() called but not implemented!");
     return false;
 }
 
 bool SdioCard::readStart(uint32_t sector)
 {
-    log("SdioCard::readStart() called but not implemented!");
+    logmsg("SdioCard::readStart() called but not implemented!");
     return false;
 }
 

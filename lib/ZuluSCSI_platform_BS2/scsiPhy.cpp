@@ -342,7 +342,7 @@ static inline uint8_t scsiReadOneByte(int* parityError)
 
     if (parityError && r != (g_scsi_parity_lookup[r & 0xFF] ^ SCSI_IO_DATA_MASK))
     {
-        log("Parity error in scsiReadOneByte(): ", (uint32_t)r);
+        logmsg("Parity error in scsiReadOneByte(): ", (uint32_t)r);
         *parityError = 1;
     }
 
