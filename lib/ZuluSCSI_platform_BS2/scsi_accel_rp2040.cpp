@@ -686,7 +686,7 @@ void scsi_accel_rp2040_finishRead(const uint8_t *data, uint32_t count, int *pari
     // Check if any parity errors have been detected during the transfer so far
     if (parityError != NULL && (SCSI_DMA_PIO->irq & 1))
     {
-        dbg("scsi_accel_rp2040_finishRead(", bytearray(data, count), ") detected parity error");
+        dbgmsg("scsi_accel_rp2040_finishRead(", bytearray(data, count), ") detected parity error");
         *parityError = true;
     }
 }
