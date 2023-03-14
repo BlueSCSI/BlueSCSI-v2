@@ -207,7 +207,7 @@ void mbed_error_hook(const mbed_error_ctx * error_context)
     {
         if (p == &__StackTop) break; // End of stack
 
-        log("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
+        logmsg("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
         p += 4;
     }
 
@@ -266,7 +266,7 @@ static void watchdog_callback(unsigned alarm_num)
             {
                 if (p == &__StackTop) break; // End of stack
 
-                log("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
+                logmsg("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
                 p += 4;
             }
 
