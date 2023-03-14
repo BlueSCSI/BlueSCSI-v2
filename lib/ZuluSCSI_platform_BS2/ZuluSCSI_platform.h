@@ -11,7 +11,7 @@ extern "C" {
 #endif
 
 /* These are used in debug output and default SCSI strings */
-extern const char *g_azplatform_name;
+extern const char *g_platform_name;
 #define PLATFORM_NAME "ZuluSCSI BS2"
 #define PLATFORM_REVISION "3.0"
 #define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_10
@@ -27,8 +27,8 @@ extern const char *g_azplatform_name;
 
 // Debug logging function, can be used to print to e.g. serial port.
 // May get called from interrupt handlers.
-void azplatform_log(const char *s);
-void azplatform_emergency_log_save();
+void platform_log(const char *s);
+void platform_emergency_log_save();
 
 // Timing and delay functions.
 // Arduino platform already provides these
@@ -48,46 +48,46 @@ static inline void delay_100ns()
 }
 
 // Initialize SD card and GPIO configuration
-void azplatform_init();
+void platform_init();
 
 // Initialization for main application, not used for bootloader
-void azplatform_late_init();
+void platform_late_init();
 
 // Disable the status LED
-void azplatform_disable_led(void);
+void platform_disable_led(void);
 
 // Query whether initiator mode is enabled on targets with PLATFORM_HAS_INITIATOR_MODE
-bool azplatform_is_initiator_mode_enabled();
+bool platform_is_initiator_mode_enabled();
 
 // Setup soft watchdog if supported
-void azplatform_reset_watchdog();
+void platform_reset_watchdog();
 
 // Set callback that will be called during data transfer to/from SD card.
 // This can be used to implement simultaneous transfer to SCSI bus.
 typedef void (*sd_callback_t)(uint32_t bytes_complete);
-void azplatform_set_sd_callback(sd_callback_t func, const uint8_t *buffer);
+void platform_set_sd_callback(sd_callback_t func, const uint8_t *buffer);
 
 // Reprogram firmware in main program area.
 #ifndef RP2040_DISABLE_BOOTLOADER
-#define AZPLATFORM_BOOTLOADER_SIZE (128 * 1024)
-#define AZPLATFORM_FLASH_TOTAL_SIZE (1024 * 1024)
-#define AZPLATFORM_FLASH_PAGE_SIZE 4096
-bool azplatform_rewrite_flash_page(uint32_t offset, uint8_t buffer[AZPLATFORM_FLASH_PAGE_SIZE]);
-void azplatform_boot_to_main_firmware();
+#define platform_BOOTLOADER_SIZE (128 * 1024)
+#define platform_FLASH_TOTAL_SIZE (1024 * 1024)
+#define platform_FLASH_PAGE_SIZE 4096
+bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[platform_FLASH_PAGE_SIZE]);
+void platform_boot_to_main_firmware();
 #endif
 
 // ROM drive in the unused external flash area
 #ifndef RP2040_DISABLE_ROMDRIVE
 #define PLATFORM_HAS_ROM_DRIVE 1
 // Check maximum available space for ROM drive in bytes
-uint32_t azplatform_get_romdrive_maxsize();
+uint32_t platform_get_romdrive_maxsize();
 
 // Read ROM drive area
-bool azplatform_read_romdrive(uint8_t *dest, uint32_t start, uint32_t count);
+bool platform_read_romdrive(uint8_t *dest, uint32_t start, uint32_t count);
 
 // Reprogram ROM drive area
-#define AZPLATFORM_ROMDRIVE_PAGE_SIZE 4096
-bool azplatform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count);
+#define platform_ROMDRIVE_PAGE_SIZE 4096
+bool platform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count);
 #endif
 
 // Parity lookup tables for write and read from SCSI bus.
