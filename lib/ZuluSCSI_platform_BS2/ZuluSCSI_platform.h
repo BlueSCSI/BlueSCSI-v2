@@ -72,7 +72,7 @@ void platform_set_sd_callback(sd_callback_t func, const uint8_t *buffer);
 #define PLATFORM_BOOTLOADER_SIZE (128 * 1024)
 #define PLATFORM_FLASH_TOTAL_SIZE (1024 * 1024)
 #define PLATFORM_FLASH_PAGE_SIZE 4096
-bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[platform_FLASH_PAGE_SIZE]);
+bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_PAGE_SIZE]);
 void platform_boot_to_main_firmware();
 #endif
 
