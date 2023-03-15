@@ -47,9 +47,14 @@ void scsi_accel_sync_init()
         .syn_data_latency = EXMC_DATALAT_2_CLK,
         .syn_clk_division = EXMC_SYN_CLOCK_RATIO_2_CLK,
         .bus_latency = 1,
-        .asyn_data_setuptime = 2,
-        .asyn_address_holdtime = 2,
-        .asyn_address_setuptime = 16
+        .asyn_data_setuptime = 4,
+        .asyn_address_holdtime = 4,
+        .asyn_address_setuptime = 7
+        
+        // .bus_latency = 1,
+        // .asyn_data_setuptime = 2,
+        // .asyn_address_holdtime = 2,
+        // .asyn_address_setuptime = 16
     };
 
     exmc_norsram_parameter_struct sram_param = {
@@ -74,33 +79,48 @@ void scsi_accel_sync_init()
 
     // DMA used to transfer data from EXMC to RAM
     // DMA is used so that if data transfer fails, we can at least abort by resetting CPU.
-    // Accessing EXMC from the CPU directly hangs it totally if ACK pulses are not received.
-    dma_multi_data_parameter_struct exmc_dma_config =
+    // // Accessing EXMC from the CPU directly hangs it totally if ACK pulses are not received.
+    // dma_multi_data_parameter_struct exmc_dma_config =
+    // {
+    //     .periph_addr = EXMC_NOR_PSRAM,
+    //     .periph_width = DMA_PERIPH_WIDTH_16BIT,
+    //     .periph_inc = DMA_PERIPH_INCREASE_DISABLE,
+    //     .memory0_addr = (uint32_t)g_sync_dma_buf,
+    //     .memory_width = DMA_PERIPH_WIDTH_16BIT,
+    //     .memory_inc = DMA_MEMORY_INCREASE_ENABLE,
+    //     .memory_burst_width = DMA_MEMORY_BURST_SINGLE,
+    //     .periph_burst_width = DMA_PERIPH_BURST_SINGLE,
+    //     .critical_value = DMA_FIFO_1_WORD,
+    //     .circular_mode = DMA_CIRCULAR_MODE_DISABLE,
+    //     .direction = DMA_MEMORY_TO_MEMORY,
+    //     .number = 0, // Filled before transfer
+    //     .priority = DMA_PRIORITY_MEDIUM
+    // };
+
+    dma_single_data_parameter_struct exmc_dma_config =
     {
         .periph_addr = EXMC_NOR_PSRAM,
-        .periph_width = DMA_PERIPH_WIDTH_16BIT,
         .periph_inc = DMA_PERIPH_INCREASE_DISABLE,
-        .memory0_addr = (uint32_t)g_sync_dma_buf,
-        .memory_width = DMA_PERIPH_WIDTH_16BIT,
+        .memory0_addr = (uint32_t)g_sync_dma_buf, 
         .memory_inc = DMA_MEMORY_INCREASE_ENABLE,
-        .memory_burst_width = DMA_MEMORY_BURST_SINGLE,
-        .periph_burst_width = DMA_PERIPH_BURST_SINGLE,
-        .critical_value = DMA_FIFO_1_WORD,
+        .periph_memory_width = DMA_MEMORY_WIDTH_16BIT,
         .circular_mode = DMA_CIRCULAR_MODE_DISABLE,
         .direction = DMA_MEMORY_TO_MEMORY,
         .number = 0, // Filled before transfer
         .priority = DMA_PRIORITY_MEDIUM
     };
-    dma_multi_data_mode_init(SCSI_EXMC_DMA, SCSI_EXMC_DMACH, &exmc_dma_config);
+    dma_single_data_mode_init(SCSI_EXMC_DMA, SCSI_EXMC_DMACH, &exmc_dma_config);
+    // dma_multi_data_mode_init(SCSI_EXMC_DMA, SCSI_EXMC_DMACH, &exmc_dma_config);
     // @TODO - figure out how to implement memory to memory DMA transfer
     // dma_memory_to_memory_enable(SCSI_EXMC_DMA, SCSI_EXMC_DMACH);
 
-    gpio_mode_set(SCSI_IN_ACK_EXMC_NWAIT_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_IN_ACK_EXMC_NWAIT_PIN);
-    gpio_mode_set(SCSI_TIMER_IN_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_TIMER_IN_PIN);
+    gpio_mode_set(SCSI_IN_ACK_EXMC_NWAIT_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, SCSI_IN_ACK_EXMC_NWAIT_PIN);
+    gpio_af_set(SCSI_IN_ACK_EXMC_NWAIT_PORT, GPIO_AF_12, SCSI_IN_ACK_EXMC_NWAIT_PIN);
 
-    // @TODO - added this gpio init sequence - figure out if it actually needed
+    // TIMER1 CH0 port and pin enable
     gpio_mode_set(SCSI_ACK_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, SCSI_ACK_PIN);
     gpio_af_set(SCSI_ACK_PORT, GPIO_AF_1, SCSI_ACK_PIN);
+
 
     // TIMER1 is used to count ACK pulses
     TIMER_CTL0(SCSI_SYNC_TIMER) = 0;
@@ -112,9 +132,14 @@ void scsi_accel_sync_init()
 
 void scsi_accel_sync_recv(uint8_t *data, uint32_t count, int* parityError, volatile int *resetFlag)
 {
+    // Set SCSI data IN pins to external memory mode
+    gpio_mode_set(SCSI_IN_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, SCSI_IN_MASK);
+    gpio_af_set(SCSI_IN_PORT, GPIO_AF_12, SCSI_IN_MASK);
+    
     // Enable EXMC to drive REQ from EXMC_NOE pin
     EXMC_SNCTL(EXMC_BANK0_NORSRAM_REGION0) |= EXMC_SNCTL_NRBKEN;
 
+    // save GPIO registers to restore after method is done
     uint32_t oldmode_gpio_ctl = GPIO_CTL(SCSI_OUT_REQ_EXMC_NOE_PORT);
     uint32_t oldmode_gpio_pud = GPIO_PUD(SCSI_OUT_REQ_EXMC_NOE_PORT);
     uint32_t oldmode_gpio_ospd = GPIO_OSPD(SCSI_OUT_REQ_EXMC_NOE_PORT);
@@ -131,8 +156,10 @@ void scsi_accel_sync_recv(uint8_t *data, uint32_t count, int* parityError, volat
         uint32_t blocksize = (count > SYNC_DMA_BUFSIZE * 2) ? (SYNC_DMA_BUFSIZE * 2) : count;
         count -= blocksize;
 
-        DMA_CHCNT(SCSI_EXMC_DMA, SCSI_EXMC_DMACH) = blocksize;
-        DMA_CHCTL(SCSI_EXMC_DMA, SCSI_EXMC_DMACH) |= DMA_CHXCTL_CHEN;
+        dma_transfer_number_config(SCSI_EXMC_DMA, SCSI_EXMC_DMACH, blocksize);
+        // DMA_CHCNT(SCSI_EXMC_DMA, SCSI_EXMC_DMACH) = blocksize;
+        dma_channel_enable(SCSI_EXMC_DMA, SCSI_EXMC_DMACH);
+        // DMA_CHCTL(SCSI_EXMC_DMA, SCSI_EXMC_DMACH) |= DMA_CHXCTL_CHEN;
 
         uint16_t *src = (uint16_t*)g_sync_dma_buf;
         uint8_t *dst = data;
@@ -140,8 +167,7 @@ void scsi_accel_sync_recv(uint8_t *data, uint32_t count, int* parityError, volat
         uint32_t start = millis();
         while (dst < end)
         {
-            uint32_t remain = DMA_CHCNT(SCSI_EXMC_DMA, SCSI_EXMC_DMACH);
-
+            uint32_t remain = dma_transfer_number_get(SCSI_EXMC_DMA, SCSI_EXMC_DMACH);// DMA_CHCNT(SCSI_EXMC_DMA, SCSI_EXMC_DMACH);
             while (dst < end - remain)
             {
                 *dst++ = ~(*src++) >> SCSI_EXMC_DATA_SHIFT;
@@ -155,17 +181,22 @@ void scsi_accel_sync_recv(uint8_t *data, uint32_t count, int* parityError, volat
                 NVIC_SystemReset();
             }
         }
-
-        DMA_CHCTL(SCSI_EXMC_DMA, SCSI_EXMC_DMACH) &= ~DMA_CHXCTL_CHEN;
+        dma_channel_disable(SCSI_EXMC_DMA, SCSI_EXMC_DMACH);
+        // DMA_CHCTL(SCSI_EXMC_DMA, SCSI_EXMC_DMACH) &= ~DMA_CHXCTL_CHEN;
         data = end;
     }
+
+    EXMC_SNCTL(EXMC_BANK0_NORSRAM_REGION0) &= ~EXMC_SNCTL_NRBKEN;
 
     GPIO_CTL(SCSI_OUT_REQ_EXMC_NOE_PORT) = oldmode_gpio_ctl;
     GPIO_OSPD(SCSI_OUT_REQ_EXMC_NOE_PORT) = oldmode_gpio_ospd;
     GPIO_OMODE(SCSI_OUT_REQ_EXMC_NOE_PORT) = oldmode_gpio_omode;
     GPIO_PUD(SCSI_OUT_REQ_EXMC_NOE_PORT) = oldmode_gpio_pud;
     GPIO_AFSEL0(SCSI_OUT_REQ_EXMC_NOE_PORT) = oldmode_gpio_af;
-    EXMC_SNCTL(EXMC_BANK0_NORSRAM_REGION0) &= ~EXMC_SNCTL_NRBKEN;
+
+
+    // Set SCSI data IN pins back to input mode
+    gpio_mode_set(SCSI_IN_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_IN_MASK);
 }
 
 /********************************/
@@ -268,8 +299,8 @@ static void sync_send_100ns_15off(const uint8_t *buf, uint32_t num_bytes, volati
 
 // Delay 1 is typically longest and delay 2 shortest.
 // Tuning these is just trial and error.
-#define ASM_DELAY1() "    nop\n   nop\n   nop\n"
-#define ASM_DELAY2() "    nop\n   nop\n"
+#define ASM_DELAY1() "    nop\n  nop\n  nop\n  nop\n  nop\n  nop\n  nop\n  nop\n  nop\n"
+#define ASM_DELAY2() "    nop\n  nop\n  nop\n  nop\n  nop\n  nop\n"
 
     asm volatile (
     "main_loop_%=: \n"
@@ -331,7 +362,7 @@ static void sync_send_200ns_15off(const uint8_t *buf, uint32_t num_bytes, volati
     register uint32_t tmp2 = 0;
     register uint32_t data = 0;
 
-#define ASM_DELAY1() ASM_DELAY() ASM_DELAY() ASM_DELAY() ASM_DELAY()
+#define ASM_DELAY1() ASM_DELAY() ASM_DELAY() ASM_DELAY() ASM_DELAY() 
 #define ASM_DELAY2() ASM_DELAY() ASM_DELAY() ASM_DELAY()
 
     asm volatile (
