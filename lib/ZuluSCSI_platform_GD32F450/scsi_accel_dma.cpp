@@ -285,7 +285,7 @@ extern "C" void SCSI_TIMER_DMACHA_IRQ()
 {
     // azdbg("DMA irq A, counts: ", dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA), " ",
     //             dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB), " ",
-    //             TIMER_CNT(SCSI_TIMER));
+    //              TIMER_CNT(SCSI_TIMER));
 
     uint32_t intf0 = DMA_INTF1(SCSI_TIMER_DMA);
     uint32_t intf1 = DMA_INTF1(SCSI_TIMER_DMA);
@@ -321,9 +321,10 @@ extern "C" void SCSI_TIMER_DMACHA_IRQ()
 // Check if enough data is available to continue DMA transfer
 extern "C" void SCSI_TIMER_DMACHB_IRQ()
 {
+    azlog("Delaying DMA");
     // azdbg("DMA irq B, counts: ", dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA), " ",
-    //              dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB), " ",
-    //              TIMER_CNT(SCSI_TIMER));
+    //               dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB), " ",
+    //               TIMER_CNT(SCSI_TIMER));
     if (dma_interrupt_flag_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, DMA_FLAG_FTF))
     {
         dma_interrupt_flag_clear(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, DMA_FLAG_FTF);
