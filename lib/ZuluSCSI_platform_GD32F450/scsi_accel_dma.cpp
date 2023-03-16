@@ -285,7 +285,7 @@ static void check_dma_next_buffer()
 // This is higher priority interrupt
 extern "C" void SCSI_TIMER_DMACHA_IRQ()
 {
-    // azdbg("DMA irq A, counts: ", dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA), " ",
+    // dbgmsg("DMA irq A, counts: ", dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA), " ",
     //             dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB), " ",
     //              TIMER_CNT(SCSI_TIMER));
 
@@ -296,7 +296,7 @@ extern "C" void SCSI_TIMER_DMACHA_IRQ()
     {
         if (dma_interrupt_flag_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA, DMA_FLAG_FTF))
         {
-            azlog("ERROR: SCSI DMA overrun: ", intf0, intf1,
+            logmsg("ERROR: SCSI DMA overrun: ", intf0, intf1,
                " bytes_app: ", g_scsi_dma.bytes_app,
                " bytes_dma: ", g_scsi_dma.bytes_dma,
                " dma_idx: ", g_scsi_dma.dma_idx,
@@ -335,7 +335,7 @@ extern "C" void SCSI_TIMER_DMACHA_IRQ()
 // This is lower priority interrupt, to make sure DMA buffer data has already been filled
 extern "C" void SCSI_TIMER_DMACHB_IRQ()
 {
-    // azdbg("DMA irq B, counts: ", dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA), " ",
+    // dbgmsg("DMA irq B, counts: ", dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA), " ",
     //               dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB), " ",
     //               TIMER_CNT(SCSI_TIMER));
     if (dma_interrupt_flag_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, DMA_FLAG_FTF))
@@ -425,7 +425,7 @@ void scsi_accel_dma_startWrite(const uint8_t* data, uint32_t count, volatile int
         }
     }
 
-    // azdbg("Starting DMA write of ", (int)count, " bytes");
+    // dbgmsg("Starting DMA write of ", (int)count, " bytes");
     scsi_dma_gpio_config(true);
     g_scsi_dma_state = SCSIDMA_WRITE;
     g_scsi_dma.app_buf = (uint8_t*)data;
@@ -483,7 +483,7 @@ void scsi_accel_dma_finishWrite(volatile int *resetFlag)
     {
         if ((uint32_t)(millis() - start) > 5000)
         {
-            azlog("scsi_accel_dma_finishWrite() timeout, DMA counts ",
+            logmsg("scsi_accel_dma_finishWrite() timeout, DMA counts ",
                 dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA), " ",
                 dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB), " ",
                 TIMER_CNT(SCSI_TIMER));
