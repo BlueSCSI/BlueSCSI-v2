@@ -26,7 +26,7 @@ static uint32_t g_sdio_sector_count;
 static bool logSDError(int line)
 {
     g_sdio_error_line = line;
-    azlog("SDIO SD card error on line ", line, ", error code ", (int)g_sdio_error);
+    logmsg("SDIO SD card error on line ", line, ", error code ", (int)g_sdio_error);
     return false;
 }
 
@@ -40,7 +40,7 @@ bool SdioCard::begin(SdioConfig sdioConfig)
     if (g_sdio_error != SD_OK)
     {
         // Don't spam the log when main program polls for card insertion.
-        azdbg("sd_init() failed: ", (int)g_sdio_error);
+        dbgmsg("sd_init() failed: ", (int)g_sdio_error);
         return false;
     }
 
@@ -101,19 +101,19 @@ bool SdioCard::readOCR(uint32_t* ocr)
 
 bool SdioCard::readData(uint8_t* dst)
 {
-    azlog("SdioCard::readData() called but not implemented!");
+    logmsg("SdioCard::readData() called but not implemented!");
     return false;
 }
 
 bool SdioCard::readStart(uint32_t sector)
 {
-    azlog("SdioCard::readStart() called but not implemented!");
+    logmsg("SdioCard::readStart() called but not implemented!");
     return false;
 }
 
 bool SdioCard::readStop()
 {
-    azlog("SdioCard::readStop() called but not implemented!");
+    logmsg("SdioCard::readStop() called but not implemented!");
     return false;
 }
 
@@ -150,7 +150,7 @@ bool SdioCard::stopTransmission(bool blocking)
         }
         if (isBusy())
         {
-            azlog("SdioCard::stopTransmission() timeout");
+            logmsg("SdioCard::stopTransmission() timeout");
             return false;
         }
         else
@@ -181,19 +181,19 @@ uint8_t SdioCard::type() const
 
 bool SdioCard::writeData(const uint8_t* src)
 {
-    azlog("SdioCard::writeData() called but not implemented!");
+    logmsg("SdioCard::writeData() called but not implemented!");
     return false;
 }
 
 bool SdioCard::writeStart(uint32_t sector)
 {
-    azlog("SdioCard::writeStart() called but not implemented!");
+    logmsg("SdioCard::writeStart() called but not implemented!");
     return false;
 }
 
 bool SdioCard::writeStop()
 {
-    azlog("SdioCard::writeStop() called but not implemented!");
+    logmsg("SdioCard::writeStop() called but not implemented!");
     return false;
 }
 
@@ -203,12 +203,12 @@ bool SdioCard::erase(uint32_t firstSector, uint32_t lastSector)
 }
 
 bool SdioCard::cardCMD6(uint32_t arg, uint8_t* status) {
-    azlog("SdioCard::cardCMD6() not implemented");
+    logmsg("SdioCard::cardCMD6() not implemented");
     return false;
 }
 
 bool SdioCard::readSCR(scr_t* scr) {
-    azlog("SdioCard::readSCR() not implemented");
+    logmsg("SdioCard::readSCR() not implemented");
     return false;
 }
 
@@ -219,7 +219,7 @@ static const uint8_t *m_stream_buffer;
 static uint32_t m_stream_count;
 static uint32_t m_stream_count_start;
 
-void azplatform_set_sd_callback(sd_callback_t func, const uint8_t *buffer)
+void platform_set_sd_callback(sd_callback_t func, const uint8_t *buffer)
 {
     m_stream_callback = func;
     m_stream_buffer = buffer;
@@ -248,7 +248,7 @@ static sdio_callback_t get_stream_callback(const uint8_t *buf, uint32_t count, c
         }
         else
         {
-            azdbg("SD card ", accesstype, "(", (int)sector,
+            dbgmsg("SD card ", accesstype, "(", (int)sector,
                   ") slow transfer, buffer", (uint32_t)buf, " vs. ", (uint32_t)(m_stream_buffer + m_stream_count));
             return NULL;
         }
@@ -285,7 +285,7 @@ bool SdioCard::readSectors(uint32_t sector, uint8_t* dst, size_t n)
         {
             if (!readSector(sector + i, dst + i * 512))
             {
-                azlog("End of drive read failed at ", sector, " + ", i);
+                logmsg("End of drive read failed at ", sector, " + ", i);
                 return false;
             }
         }
