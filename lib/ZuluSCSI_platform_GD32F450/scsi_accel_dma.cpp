@@ -29,6 +29,7 @@ static struct {
     uint32_t bytes_app; // Bytes available in application buffer
     uint32_t bytes_dma; // Bytes (words) written so far to DMA buffer
     uint32_t scheduled_dma; // Bytes (words) that DMA data count was last set to
+    bool incomplete_buf; // Did not have enough data to fill DMA buffer
 
     uint8_t *next_app_buf; // Next buffer from application after current one finishes
     uint32_t next_app_bytes; // Bytes in next buffer
@@ -92,7 +93,7 @@ void scsi_accel_timer_dma_init()
     };
     dma_multi_data_mode_init(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, &timer_dma_config);
     dma_channel_subperipheral_select(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, SCSI_TIMER_DMACHB_SUB_PERIPH);
-    NVIC_SetPriority(SCSI_TIMER_DMACHB_IRQn, 2);
+    NVIC_SetPriority(SCSI_TIMER_DMACHB_IRQn, 128); // Priority = 128 to make sure this is lower priority independent of priority grouping
     NVIC_EnableIRQ(SCSI_TIMER_DMACHB_IRQn);
 
     g_scsi_dma.timer_buf = TIMER_SWEVG_UPG;
@@ -281,13 +282,14 @@ static void check_dma_next_buffer()
 }
 
 // Convert new data from application buffer to DMA buffer
+// This is higher priority interrupt
 extern "C" void SCSI_TIMER_DMACHA_IRQ()
 {
     // azdbg("DMA irq A, counts: ", dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA), " ",
     //             dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB), " ",
     //              TIMER_CNT(SCSI_TIMER));
 
-    uint32_t intf0 = DMA_INTF1(SCSI_TIMER_DMA);
+    uint32_t intf0 = DMA_INTF0(SCSI_TIMER_DMA);
     uint32_t intf1 = DMA_INTF1(SCSI_TIMER_DMA);
 
     if (dma_interrupt_flag_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA, DMA_FLAG_HTF))
@@ -312,16 +314,27 @@ extern "C" void SCSI_TIMER_DMACHA_IRQ()
         g_scsi_dma.dma_fillto += DMA_BUF_SIZE / 2;
     }
 
-    // Fill DMA buffer with data from current application buffer
-    refill_dmabuf();
+    if (!g_scsi_dma.incomplete_buf)
+    {
+        // Fill DMA buffer with data from current application buffer
+        refill_dmabuf();
 
-    check_dma_next_buffer();
+        check_dma_next_buffer();
+    }
+
+    if (g_scsi_dma.dma_idx < g_scsi_dma.dma_fillto)
+    {
+        // We weren't able to fill the DMA buffer completely during the interrupt.
+        // This can cause DMA to prefetch words that have not yet been written.
+        // The DMA CHA must be restarted in CHB interrupt handler.
+        g_scsi_dma.incomplete_buf = true;
+    }
 }
 
 // Check if enough data is available to continue DMA transfer
+// This is lower priority interrupt, to make sure DMA buffer data has already been filled
 extern "C" void SCSI_TIMER_DMACHB_IRQ()
 {
-    azlog("Delaying DMA");
     // azdbg("DMA irq B, counts: ", dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA), " ",
     //               dma_transfer_number_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB), " ",
     //               TIMER_CNT(SCSI_TIMER));
@@ -331,23 +344,28 @@ extern "C" void SCSI_TIMER_DMACHB_IRQ()
 
         if (g_scsi_dma.bytes_app > g_scsi_dma.scheduled_dma)
         {
-            if (g_scsi_dma.dma_idx < g_scsi_dma.dma_fillto)
+            if (g_scsi_dma.incomplete_buf)
             {
                 // Previous request didn't have a complete buffer worth of data.
-                // Refill the buffer and ensure that the first byte of the new data gets
-                // written to outputs.
+                // The multiword DMA has already loaded next bytes from RAM, so we need
+                // to reinitialize DMA channel A.
                 __disable_irq();
+                dma_channel_disable(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA);
+                dma_memory_address_config(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA, DMA_MEMORY_0, (uint32_t)g_scsi_dma.dma_buf);
+                dma_transfer_number_config(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA, DMA_BUF_SIZE);
+
+                g_scsi_dma.bytes_dma = g_scsi_dma.scheduled_dma;
+                g_scsi_dma.dma_idx = 0;
+                g_scsi_dma.dma_fillto = DMA_BUF_SIZE;
+                g_scsi_dma.incomplete_buf = false;
                 refill_dmabuf();
+
+                // Enable channel and generate event to transfer first byte
+                dma_interrupt_flag_clear(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA, DMA_FLAG_HTF | DMA_FLAG_FTF | DMA_FLAG_FEE);
+                dma_channel_enable(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA);
+                TIMER_SWEVG(SCSI_TIMER) = TIMER_SWEVG_CH1G;
                 __enable_irq();
             }
-
-            // Verify the first byte of the new data has been written to outputs
-            // It may have been updated after the DMA write occurred.
-            __disable_irq();
-            uint32_t first_data_idx = g_scsi_dma.dma_idx - (g_scsi_dma.bytes_dma - g_scsi_dma.scheduled_dma);
-            uint32_t first_data = g_scsi_dma.dma_buf[first_data_idx & DMA_BUF_MASK];
-            GPIO_BOP(SCSI_OUT_PORT) = first_data;
-            __enable_irq();
 
             // Update the total number of bytes available for DMA
             uint32_t dma_to_schedule = g_scsi_dma.bytes_app - g_scsi_dma.scheduled_dma;
@@ -407,7 +425,7 @@ void scsi_accel_dma_startWrite(const uint8_t* data, uint32_t count, volatile int
         }
     }
 
-    azdbg("Starting DMA write of ", (int)count, " bytes");
+    // azdbg("Starting DMA write of ", (int)count, " bytes");
     scsi_dma_gpio_config(true);
     g_scsi_dma_state = SCSIDMA_WRITE;
     g_scsi_dma.app_buf = (uint8_t*)data;
@@ -416,6 +434,7 @@ void scsi_accel_dma_startWrite(const uint8_t* data, uint32_t count, volatile int
     g_scsi_dma.bytes_app = count;
     g_scsi_dma.bytes_dma = 0;
     g_scsi_dma.scheduled_dma = 0;
+    g_scsi_dma.incomplete_buf = false;
     g_scsi_dma.next_app_buf = NULL;
     g_scsi_dma.next_app_bytes = 0;
     refill_dmabuf();
