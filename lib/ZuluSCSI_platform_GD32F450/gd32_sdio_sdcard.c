@@ -1014,7 +1014,7 @@ sd_error_enum sd_multiblocks_write(uint32_t *pwritebuffer, uint64_t writeaddr, u
         return status;
     }
 
-    if(blocksnumber > 1) {
+    if(blocksnumber >= 1) {
         if(blocksnumber * blocksize > SD_MAX_DATA_LENGTH) {
             status = SD_PARAMETER_INVALID;
             return status;
