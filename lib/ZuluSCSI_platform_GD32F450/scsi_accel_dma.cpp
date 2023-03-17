@@ -258,6 +258,14 @@ static void stop_dma()
     // DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA) &= ~(DMA_CHXCTL_FTFIE | DMA_CHXCTL_HTFIE);
     dma_interrupt_disable(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, DMA_CHXCTL_FTFIE);
     //DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) &= ~DMA_CHXCTL_FTFIE;
+
+    // Wait for ACK of the last byte
+    volatile int timeout = 10000;
+    while (TIMER_CNT(SCSI_TIMER) < 2 && timeout > 0)
+    {
+        timeout--;
+    }
+
     timer_disable(SCSI_TIMER);
     //TIMER_CTL0(SCSI_TIMER) &= ~TIMER_CTL0_CEN;
     g_scsi_dma_state = SCSIDMA_IDLE;
