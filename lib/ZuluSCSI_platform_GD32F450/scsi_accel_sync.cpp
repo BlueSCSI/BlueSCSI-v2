@@ -299,8 +299,9 @@ static void sync_send_100ns_15off(const uint8_t *buf, uint32_t num_bytes, volati
 
 // Delay 1 is typically longest and delay 2 shortest.
 // Tuning these is just trial and error.
-#define ASM_DELAY1() "    nop\n  nop\n  nop\n  nop\n  nop\n  nop\n  nop\n  nop\n  nop\n"
-#define ASM_DELAY2() "    nop\n  nop\n  nop\n  nop\n  nop\n  nop\n"
+#define ASM_DELAY1() ASM_DELAY() ASM_DELAY() ASM_DELAY() ASM_DELAY() \
+                     ASM_DELAY() ASM_DELAY()
+#define ASM_DELAY2() ASM_DELAY() ASM_DELAY() ASM_DELAY() ASM_DELAY()
 
     asm volatile (
     "main_loop_%=: \n"
@@ -309,13 +310,17 @@ static void sync_send_100ns_15off(const uint8_t *buf, uint32_t num_bytes, volati
 
         /* At each point make sure there is at most 15 bytes in flight */
         "   ldr   %[data], [%[buf]], #4 \n"
-        ASM_SEND_4BYTES_WAIT("22")
+        ASM_SEND_4BYTES_WAIT("26")
+        ASM_DELAY2()
         "   ldr   %[data], [%[buf]], #4 \n"
-        ASM_SEND_4BYTES()
+        ASM_SEND_4BYTES_WAIT("22")
+        ASM_DELAY2()
+        "   ldr   %[data], [%[buf]], #4 \n"
+        ASM_SEND_4BYTES_WAIT("18")
+        ASM_DELAY2()
         "   ldr   %[data], [%[buf]], #4 \n"
         ASM_SEND_4BYTES_WAIT("14")
-        "   ldr   %[data], [%[buf]], #4 \n"
-        ASM_SEND_4BYTES()
+        ASM_DELAY2()
 
         "   cbz   %[num_bytes], all_done_%= \n"
         "   b     main_loop_%= \n"
@@ -362,8 +367,14 @@ static void sync_send_200ns_15off(const uint8_t *buf, uint32_t num_bytes, volati
     register uint32_t tmp2 = 0;
     register uint32_t data = 0;
 
-#define ASM_DELAY1() ASM_DELAY() ASM_DELAY() ASM_DELAY() ASM_DELAY() 
-#define ASM_DELAY2() ASM_DELAY() ASM_DELAY() ASM_DELAY()
+#define ASM_DELAY1() ASM_DELAY() ASM_DELAY() ASM_DELAY() ASM_DELAY() \
+                     ASM_DELAY() ASM_DELAY() ASM_DELAY() ASM_DELAY() \
+                     ASM_DELAY() ASM_DELAY() ASM_DELAY() ASM_DELAY() \
+                     ASM_DELAY() ASM_DELAY() ASM_DELAY() ASM_DELAY() \
+                     ASM_DELAY() ASM_DELAY() ASM_DELAY() ASM_DELAY()
+#define ASM_DELAY2() ASM_DELAY() ASM_DELAY() ASM_DELAY() ASM_DELAY() \
+                     ASM_DELAY() ASM_DELAY() ASM_DELAY() ASM_DELAY() \
+                     ASM_DELAY() ASM_DELAY() ASM_DELAY() ASM_DELAY()
 
     asm volatile (
     "main_loop_%=: \n"
@@ -372,16 +383,16 @@ static void sync_send_200ns_15off(const uint8_t *buf, uint32_t num_bytes, volati
 
         /* At each point make sure there is at most 15 bytes in flight */
         "   ldr   %[data], [%[buf]], #4 \n"
+        ASM_SEND_4BYTES_WAIT("26")
+        ASM_DELAY2()
+        "   ldr   %[data], [%[buf]], #4 \n"
         ASM_SEND_4BYTES_WAIT("22")
         ASM_DELAY2()
         "   ldr   %[data], [%[buf]], #4 \n"
-        ASM_SEND_4BYTES()
+        ASM_SEND_4BYTES_WAIT("18")
         ASM_DELAY2()
         "   ldr   %[data], [%[buf]], #4 \n"
         ASM_SEND_4BYTES_WAIT("14")
-        ASM_DELAY2()
-        "   ldr   %[data], [%[buf]], #4 \n"
-        ASM_SEND_4BYTES()
 
         "   cbz   %[num_bytes], all_done_%= \n"
         "   b     main_loop_%= \n"
@@ -430,8 +441,14 @@ static void sync_send_260ns_7off(const uint8_t *buf, uint32_t num_bytes, volatil
     register uint32_t data = 0;
 
 #define ASM_DELAY1() ASM_DELAY() ASM_DELAY() ASM_DELAY() ASM_DELAY() \
-                     ASM_DELAY() ASM_DELAY()
+                     ASM_DELAY() ASM_DELAY() ASM_DELAY() ASM_DELAY() \
+                     ASM_DELAY() ASM_DELAY() ASM_DELAY() ASM_DELAY() \
+                     ASM_DELAY() ASM_DELAY() ASM_DELAY() ASM_DELAY() \
+                     ASM_DELAY() ASM_DELAY() ASM_DELAY() ASM_DELAY() \
+                     ASM_DELAY() ASM_DELAY() ASM_DELAY() ASM_DELAY()
 #define ASM_DELAY2() ASM_DELAY() ASM_DELAY() ASM_DELAY() ASM_DELAY() \
+                     ASM_DELAY() ASM_DELAY() ASM_DELAY() ASM_DELAY() \
+                     ASM_DELAY() ASM_DELAY() ASM_DELAY() ASM_DELAY() \
                      ASM_DELAY() ASM_DELAY() ASM_DELAY() ASM_DELAY()
 
     asm volatile (
@@ -442,6 +459,7 @@ static void sync_send_260ns_7off(const uint8_t *buf, uint32_t num_bytes, volatil
         /* At each point make sure there is at most 3 bytes in flight */
         "   ldr   %[data], [%[buf]], #4 \n"
         ASM_SEND_4BYTES_WAIT("7")
+        ASM_DELAY2()
 
         "   cbz   %[num_bytes], all_done_%= \n"
         "   b     main_loop_%= \n"
@@ -508,7 +526,7 @@ void scsi_accel_sync_send(const uint8_t* data, uint32_t count, volatile int *res
 
             SCSI_OUT_DATA(*data++);
             delay_ns(syncPeriod * 2);
-            SCSI_OUT(REQ, 0);
+            SCSI_OUT(REQ, 1);
             delay_ns(syncPeriod * 2);
         }
         delay_ns(syncPeriod * 2);
