@@ -47,14 +47,9 @@ void scsi_accel_sync_init()
         .syn_data_latency = EXMC_DATALAT_2_CLK,
         .syn_clk_division = EXMC_SYN_CLOCK_RATIO_2_CLK,
         .bus_latency = 1,
-        .asyn_data_setuptime = 4,
-        .asyn_address_holdtime = 4,
-        .asyn_address_setuptime = 7
-        
-        // .bus_latency = 1,
-        // .asyn_data_setuptime = 2,
-        // .asyn_address_holdtime = 2,
-        // .asyn_address_setuptime = 16
+        .asyn_data_setuptime = 2,
+        .asyn_address_holdtime = 2,
+        .asyn_address_setuptime = 16
     };
 
     exmc_norsram_parameter_struct sram_param = {
@@ -79,40 +74,21 @@ void scsi_accel_sync_init()
 
     // DMA used to transfer data from EXMC to RAM
     // DMA is used so that if data transfer fails, we can at least abort by resetting CPU.
-    // // Accessing EXMC from the CPU directly hangs it totally if ACK pulses are not received.
-    // dma_multi_data_parameter_struct exmc_dma_config =
+    // Accessing EXMC from the CPU directly hangs it totally if ACK pulses are not received.
+    // TODO: Figure out why DMA does not work correctly with EXMC on GD32F450
+    // dma_single_data_parameter_struct exmc_dma_config =
     // {
     //     .periph_addr = EXMC_NOR_PSRAM,
-    //     .periph_width = DMA_PERIPH_WIDTH_16BIT,
     //     .periph_inc = DMA_PERIPH_INCREASE_DISABLE,
-    //     .memory0_addr = (uint32_t)g_sync_dma_buf,
-    //     .memory_width = DMA_PERIPH_WIDTH_16BIT,
+    //     .memory0_addr = (uint32_t)g_sync_dma_buf, 
     //     .memory_inc = DMA_MEMORY_INCREASE_ENABLE,
-    //     .memory_burst_width = DMA_MEMORY_BURST_SINGLE,
-    //     .periph_burst_width = DMA_PERIPH_BURST_SINGLE,
-    //     .critical_value = DMA_FIFO_1_WORD,
+    //     .periph_memory_width = DMA_PERIPH_WIDTH_16BIT,
     //     .circular_mode = DMA_CIRCULAR_MODE_DISABLE,
     //     .direction = DMA_MEMORY_TO_MEMORY,
     //     .number = 0, // Filled before transfer
     //     .priority = DMA_PRIORITY_MEDIUM
     // };
-
-    dma_single_data_parameter_struct exmc_dma_config =
-    {
-        .periph_addr = EXMC_NOR_PSRAM,
-        .periph_inc = DMA_PERIPH_INCREASE_DISABLE,
-        .memory0_addr = (uint32_t)g_sync_dma_buf, 
-        .memory_inc = DMA_MEMORY_INCREASE_ENABLE,
-        .periph_memory_width = DMA_MEMORY_WIDTH_16BIT,
-        .circular_mode = DMA_CIRCULAR_MODE_DISABLE,
-        .direction = DMA_MEMORY_TO_MEMORY,
-        .number = 0, // Filled before transfer
-        .priority = DMA_PRIORITY_MEDIUM
-    };
-    dma_single_data_mode_init(SCSI_EXMC_DMA, SCSI_EXMC_DMACH, &exmc_dma_config);
-    // dma_multi_data_mode_init(SCSI_EXMC_DMA, SCSI_EXMC_DMACH, &exmc_dma_config);
-    // @TODO - figure out how to implement memory to memory DMA transfer
-    // dma_memory_to_memory_enable(SCSI_EXMC_DMA, SCSI_EXMC_DMACH);
+    // dma_single_data_mode_init(SCSI_EXMC_DMA, SCSI_EXMC_DMACH, &exmc_dma_config);
 
     gpio_mode_set(SCSI_IN_ACK_EXMC_NWAIT_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, SCSI_IN_ACK_EXMC_NWAIT_PIN);
     gpio_af_set(SCSI_IN_ACK_EXMC_NWAIT_PORT, GPIO_AF_12, SCSI_IN_ACK_EXMC_NWAIT_PIN);
@@ -156,33 +132,36 @@ void scsi_accel_sync_recv(uint8_t *data, uint32_t count, int* parityError, volat
         uint32_t blocksize = (count > SYNC_DMA_BUFSIZE * 2) ? (SYNC_DMA_BUFSIZE * 2) : count;
         count -= blocksize;
 
-        dma_transfer_number_config(SCSI_EXMC_DMA, SCSI_EXMC_DMACH, blocksize);
-        // DMA_CHCNT(SCSI_EXMC_DMA, SCSI_EXMC_DMACH) = blocksize;
-        dma_channel_enable(SCSI_EXMC_DMA, SCSI_EXMC_DMACH);
-        // DMA_CHCTL(SCSI_EXMC_DMA, SCSI_EXMC_DMACH) |= DMA_CHXCTL_CHEN;
-
+        // dma_memory_address_config(SCSI_EXMC_DMA, SCSI_EXMC_DMACH, 0, (uint32_t)g_sync_dma_buf);
+        // dma_transfer_number_config(SCSI_EXMC_DMA, SCSI_EXMC_DMACH, blocksize);
+        // dma_channel_enable(SCSI_EXMC_DMA, SCSI_EXMC_DMACH);
+        
         uint16_t *src = (uint16_t*)g_sync_dma_buf;
         uint8_t *dst = data;
         uint8_t *end = data + blocksize;
         uint32_t start = millis();
         while (dst < end)
         {
-            uint32_t remain = dma_transfer_number_get(SCSI_EXMC_DMA, SCSI_EXMC_DMACH);// DMA_CHCNT(SCSI_EXMC_DMA, SCSI_EXMC_DMACH);
-            while (dst < end - remain)
-            {
-                *dst++ = ~(*src++) >> SCSI_EXMC_DATA_SHIFT;
-            }
-
-            if ((uint32_t)(millis() - start) > 500 || *resetFlag)
-            {
-                // We are in a pinch here: without ACK pulses coming, the EXMC and DMA peripherals
-                // are locked up. The only way out is a whole system reset.
-                logmsg("SCSI Synchronous read timeout: resetting system");
-                NVIC_SystemReset();
-            }
+            // Read from EXMC and write to internal RAM
+            // Note that this will hang the CPU if host does not send ACK pulses.
+            uint16_t word = *(uint16_t*)EXMC_NOR_PSRAM;
+            *dst++ = (~word) >> SCSI_EXMC_DATA_SHIFT;
+            
+            // TODO: Figure out why DMA does not work correctly with EXMC on GD32F450
+            // uint32_t remain = DMA_CHCNT(SCSI_EXMC_DMA, SCSI_EXMC_DMACH);
+            // while (dst < end - remain)
+            // {
+            //     *dst++ = ~(*src++) >> SCSI_EXMC_DATA_SHIFT;
+            // }
+            // if ((uint32_t)(millis() - start) > 500 || *resetFlag)
+            // {
+            //     // We are in a pinch here: without ACK pulses coming, the EXMC and DMA peripherals
+            //     // are locked up. The only way out is a whole system reset.
+            //     logmsg("SCSI Synchronous read timeout: resetting system");
+            //     NVIC_SystemReset();
+            // }
         }
-        dma_channel_disable(SCSI_EXMC_DMA, SCSI_EXMC_DMACH);
-        // DMA_CHCTL(SCSI_EXMC_DMA, SCSI_EXMC_DMACH) &= ~DMA_CHXCTL_CHEN;
+        // dma_channel_disable(SCSI_EXMC_DMA, SCSI_EXMC_DMACH);
         data = end;
     }
 
