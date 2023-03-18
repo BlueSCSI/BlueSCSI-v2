@@ -42,6 +42,7 @@
 
 #include <SdFat.h>
 #include <minIni.h>
+#include <minIni_cache.h>
 #include <string.h>
 #include <strings.h>
 #include <ctype.h>
@@ -416,9 +417,14 @@ void readSCSIDeviceConfig()
 
 static bool mountSDCard()
 {
+  invalidate_ini_cache();
+
   // Check for the common case, FAT filesystem as first partition
   if (SD.begin(SD_CONFIG))
+  {
+    reload_ini_cache(CONFIGFILE);
     return true;
+  }
 
   // Do we have any kind of card?
   if (!SD.card() || SD.sdErrorCode() != 0)
@@ -461,8 +467,9 @@ static void reinitSCSI()
   // Error if there are 0 image files
   if (scsiDiskCheckAnyImagesConfigured())
   {
-    // Ok, there is an image
-    blinkStatus(BLINK_STATUS_OK);
+    // Ok, there is an image, turn LED on for the time it takes to perform init
+    LED_ON();
+    delay(100);
   }
   else
   {
@@ -536,6 +543,9 @@ extern "C" void zuluscsi_setup(void)
       platform_disable_led();
     }
   }
+
+  // Counterpart for the LED_ON in reinitSCSI().
+  LED_OFF();
 }
 
 extern "C" void zuluscsi_main_loop(void)
