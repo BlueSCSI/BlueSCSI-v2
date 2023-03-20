@@ -1,5 +1,5 @@
 /*
- *  BlueSCSI
+ *  ZuluSCSI
  *  Copyright (c) 2022 Rabbit Hole Computing
  *
  * Main program for initiator mode.

@@ -23,5 +23,15 @@ Hardware version numbers are based on when the design was updated plus a sub-rev
 
 https://support.jlcpcb.com/article/44-how-to-export-kicad-pcb-to-gerber-files
 
+## Licenses
+
+### Firmware
+
+The BlueSCSI V2 firmware is a fork of ZuluSCSI, which also includes SCSI2SD V6 source code:
+
+* https://github.com/ZuluSCSI/ZuluSCSI-firmware[ZuluSCSI]
+* http://git.codesrc.com/index.cgi?p=SCSI2SD-V6.git;a=summary[SCSI2SD V6]
+* https://github.com/erichelgeson/BlueSCSI[BlueSCSI V1]
+* https://github.com/ztto/ArdSCSino-stm32[ArdSCSIno-stm32]
 
 BlueSCSI(TM) - Eric Helgeson - All rights reserved.
