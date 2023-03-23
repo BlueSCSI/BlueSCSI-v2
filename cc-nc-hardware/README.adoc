@@ -1,0 +1,19 @@
+BlueSCSI V2 Hardware
+© 2022 - 2023 Tech by Androda, LLC
+
+.All files in this cc-nc-hardware folder (and subfolders) are licensed CC BY-NC-SA 4.0:
+* https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode[Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International Public License]
+
+.Translations of the license are available, in a variety of languages:
+* https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode.fr[français]
+* https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode.ja[日本語]
+* https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode.pl[polski]
+* https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode.zh-Hans[中文]
+
+.Explanations of the various rights afforded by this license are also available in many languages:
+* https://creativecommons.org/licenses/by-nc-sa/4.0/[English]
+* https://creativecommons.org/licenses/by-nc-sa/4.0/deed.fr[français]
+* https://creativecommons.org/licenses/by-nc-sa/4.0/deed.ja[日本語]
+* https://creativecommons.org/licenses/by-nc-sa/4.0/deed.pl[polski]
+* https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh[中文]
+
