@@ -1,15 +1,13 @@
-/*  Glue functions for the minIni library to SdFat library */
+/*  Glue functions for the minIni library to the cache functions in minIni_cache.cpp */
 
 #include <SdFat.h>
 
-extern SdFs SD;
-
 #define INI_READONLY 1
 #define INI_FILETYPE                    FsFile
-#define ini_openread(filename,file)     ((file)->open(SD.vol(), filename, O_RDONLY))
-#define ini_close(file)                 ((file)->close())
-#define ini_read(buffer,size,file)      ((file)->fgets((buffer),(size)) > 0)
-
 #define INI_FILEPOS                     fspos_t
-#define ini_tell(file,pos)              ((file)->fgetpos(pos))
-#define ini_seek(file,pos)              ((file)->fsetpos(pos))
+
+bool ini_openread(const char *filename, INI_FILETYPE *fp);
+bool ini_close(INI_FILETYPE *fp);
+bool ini_read(char *buffer, int size, INI_FILETYPE *fp);
+void ini_tell(INI_FILETYPE *fp, INI_FILEPOS *pos);
+void ini_seek(INI_FILETYPE *fp, INI_FILEPOS *pos);
