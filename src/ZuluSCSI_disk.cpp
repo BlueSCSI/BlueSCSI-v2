@@ -100,7 +100,6 @@ bool scsiIsReadFinished(const uint8_t *data)
 #endif
 
 // SD card sector size is always 512 bytes
-extern SdFs SD;
 #define SD_SECTOR_SIZE 512
 
 /************************************************/
