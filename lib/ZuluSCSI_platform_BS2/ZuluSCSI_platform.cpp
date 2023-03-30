@@ -95,7 +95,9 @@ void platform_init()
     // Get flash chip size
     uint8_t cmd_read_jedec_id[4] = {0x9f, 0, 0, 0};
     uint8_t response_jedec[4] = {0};
+    __disable_irq();
     flash_do_cmd(cmd_read_jedec_id, response_jedec, 4);
+    __enable_irq();
     g_flash_chip_size = (1 << response_jedec[3]);
     logmsg("Flash chip size: ", (int)(g_flash_chip_size / 1024), " kB");
 
