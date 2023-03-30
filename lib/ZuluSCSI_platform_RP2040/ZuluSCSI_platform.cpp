@@ -30,6 +30,7 @@
 #include <hardware/spi.h>
 #include <hardware/flash.h>
 #include <hardware/structs/xip_ctrl.h>
+#include <hardware/structs/usb.h>
 #include <platform/mbed_error.h>
 #include <multicore.h>
 #include <USB/PluggableUSBSerial.h>
@@ -464,6 +465,7 @@ extern uint32_t __real_vectors_start;
 extern uint32_t __StackTop;
 static volatile void *g_bootloader_exit_req;
 
+__attribute__((section(".time_critical.platform_rewrite_flash_page")))
 bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_PAGE_SIZE])
 {
     if (offset == PLATFORM_BOOTLOADER_SIZE)
@@ -473,6 +475,13 @@ bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_
             logmsg("Invalid firmware file, starts with: ", bytearray(buffer, 16));
             return false;
         }
+    }
+
+    if (NVIC_GetEnableIRQ(USBCTRL_IRQn))
+    {
+        logmsg("Disabling USB during firmware flashing");
+        NVIC_DisableIRQ(USBCTRL_IRQn);
+        usb_hw->main_ctrl = 0;
     }
 
     dbgmsg("Writing flash at offset ", offset, " data ", bytearray(buffer, 4));
@@ -503,6 +512,7 @@ bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_
         if (actual != expected)
         {
             logmsg("Flash verify failed at offset ", offset + i * 4, " got ", actual, " expected ", expected);
+            __enable_irq();
             return false;
         }
     }
