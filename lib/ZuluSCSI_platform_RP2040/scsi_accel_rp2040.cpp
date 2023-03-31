@@ -30,13 +30,18 @@
 #include "ZuluSCSI_platform.h"
 #include "ZuluSCSI_log.h"
 #include "scsi_accel_rp2040.h"
-#include "scsi_accel.pio.h"
 #include <hardware/pio.h>
 #include <hardware/dma.h>
 #include <hardware/irq.h>
 #include <hardware/structs/iobank0.h>
 #include <hardware/sync.h>
 #include <multicore.h>
+
+#ifdef ZULUSCSI_BS2
+#include "scsi_accel_BS2.pio.h"
+#else
+#include "scsi_accel.pio.h"
+#endif
 
 // SCSI bus write acceleration uses up to 3 PIO state machines:
 // SM0: Convert data bytes to lookup addresses to add parity
@@ -752,8 +757,9 @@ static void scsidma_config_gpio()
     else if (g_scsi_dma_state == SCSIDMA_WRITE)
     {
         // Make sure the initial state of all pins is high and output
-        pio_sm_set_pins(SCSI_DMA_PIO, SCSI_DATA_SM, 0x3FF);
-        pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, 0, 10, true);
+        pio_sm_set_pins(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_IO_DATA_MASK | (1 << SCSI_OUT_REQ));
+        pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_IO_DB0, 9, true);
+        pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_OUT_REQ, 1, true);
 
         iobank0_hw->io[SCSI_IO_DB0].ctrl  = GPIO_FUNC_PIO0;
         iobank0_hw->io[SCSI_IO_DB1].ctrl  = GPIO_FUNC_PIO0;
@@ -772,16 +778,16 @@ static void scsidma_config_gpio()
         {
             // Asynchronous read
             // Data bus as input, REQ pin as output
-            pio_sm_set_pins(SCSI_DMA_PIO, SCSI_DATA_SM, 0x3FF);
-            pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, 0, 9, false);
-            pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, 9, 1, true);
+            pio_sm_set_pins(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_IO_DATA_MASK | (1 << SCSI_OUT_REQ));
+            pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_IO_DB0, 9, false);
+            pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_OUT_REQ, 1, true);
         }
         else
         {
             // Synchronous read, REQ pin is written by SYNC_SM
-            pio_sm_set_pins(SCSI_DMA_PIO, SCSI_SYNC_SM, 0x3FF);
-            pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, 0, 10, false);
-            pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_SYNC_SM, 9, 1, true);
+            pio_sm_set_pins(SCSI_DMA_PIO, SCSI_SYNC_SM, SCSI_IO_DATA_MASK | (1 << SCSI_OUT_REQ));
+            pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_IO_DB0, 9, false);
+            pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_SYNC_SM, SCSI_OUT_REQ, 1, true);
         }
 
         iobank0_hw->io[SCSI_IO_DB0].ctrl  = GPIO_FUNC_SIO;
