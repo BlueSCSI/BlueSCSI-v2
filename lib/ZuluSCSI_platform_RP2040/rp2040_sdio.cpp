@@ -30,12 +30,17 @@
 // "SDIO Physical Layer Simplified Specification Version 8.00"
 
 #include "rp2040_sdio.h"
-#include "rp2040_sdio.pio.h"
 #include <hardware/pio.h>
 #include <hardware/dma.h>
 #include <hardware/gpio.h>
 #include <ZuluSCSI_platform.h>
 #include <ZuluSCSI_log.h>
+
+#ifdef ZULUSCSI_BS2
+#include "rp2040_sdio_BS2.pio.h"
+#else
+#include "rp2040_sdio.pio.h"
+#endif
 
 #define SDIO_PIO pio1
 #define SDIO_CMD_SM 0

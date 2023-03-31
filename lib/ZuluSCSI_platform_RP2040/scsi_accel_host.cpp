@@ -31,6 +31,8 @@
 #include <hardware/structs/iobank0.h>
 #include <hardware/sync.h>
 
+#ifdef PLATFORM_HAS_INITIATOR_MODE
+
 #define SCSI_PIO pio0
 #define SCSI_SM 0
 
@@ -160,3 +162,5 @@ void scsi_accel_host_init()
     sm_config_set_out_shift(&g_scsi_host.pio_cfg_async_read, true, false, 32);
     sm_config_set_in_shift(&g_scsi_host.pio_cfg_async_read, true, true, 32);
 }
+
+#endif

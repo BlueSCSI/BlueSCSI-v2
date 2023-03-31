@@ -77,6 +77,7 @@ void platform_init()
     gpio_conf(SCSI_OUT_SEL,   GPIO_FUNC_SIO, false,false, true,  true, true);
 
     /* Check dip switch settings */
+#ifdef HAS_DIP_SWITCHES
     gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, false, false, false, false, false);
     gpio_conf(DIP_DBGLOG,     GPIO_FUNC_SIO, false, false, false, false, false);
     gpio_conf(DIP_TERM,       GPIO_FUNC_SIO, false, false, false, false, false);
@@ -85,6 +86,9 @@ void platform_init()
 
     bool dbglog = !gpio_get(DIP_DBGLOG);
     bool termination = !gpio_get(DIP_TERM);
+#else
+    delay(10);
+#endif
 
     /* Initialize logging to SWO pin (UART0) */
     gpio_conf(SWO_PIN,        GPIO_FUNC_UART,false,false, true,  false, true);
@@ -95,10 +99,10 @@ void platform_init()
     logmsg("Platform: ", g_platform_name);
     logmsg("FW Version: ", g_log_firmwareversion);
 
+#ifdef HAS_DIP_SWITCHES
     logmsg("DIP switch settings: debug log ", (int)dbglog, ", termination ", (int)termination);
-
     g_log_debug = dbglog;
-    
+
     if (termination)
     {
         logmsg("SCSI termination is enabled");
@@ -107,6 +111,10 @@ void platform_init()
     {
         logmsg("NOTE: SCSI termination is disabled");
     }
+#else
+    g_log_debug = false;
+    logmsg ("SCSI termination is handled by a hardware jumper");
+#endif
 
     // Get flash chip size
     uint8_t cmd_read_jedec_id[4] = {0x9f, 0, 0, 0};
@@ -130,12 +138,15 @@ void platform_init()
     // LED pin
     gpio_conf(LED_PIN,        GPIO_FUNC_SIO, false,false, true,  false, false);
 
+#ifdef GPIO_I2C_SDA
     // I2C pins
     //        pin             function       pup   pdown  out    state fast
     gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_I2C, true,false, false,  true, true);
     gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_I2C, true,false, false,  true, true);
+#endif
 }
 
+#ifdef HAS_DIP_SWITCHES
 static bool read_initiator_dip_switch()
 {
     /* Revision 2022d hardware has problems reading initiator DIP switch setting.
@@ -171,10 +182,12 @@ static bool read_initiator_dip_switch()
 
     return !gpio_get(DIP_INITIATOR);
 }
+#endif
 
 // late_init() only runs in main application, SCSI not needed in bootloader
 void platform_late_init()
 {
+#if defined(HAS_DIP_SWITCHES) && defined(PLATFORM_HAS_INITIATOR_MODE)
     if (read_initiator_dip_switch())
     {
         g_scsi_initiator = true;
@@ -185,6 +198,11 @@ void platform_late_init()
         g_scsi_initiator = false;
         logmsg("SCSI target/disk mode selected by DIP switch, acting as a SCSI disk");
     }
+
+#else
+    g_scsi_initiator = false;
+    logmsg("SCSI target/disk mode, acting as a SCSI disk");
+#endif
 
     /* Initialize SCSI pins to required modes.
      * SCSI pins should be inactive / input at this point.
@@ -236,6 +254,9 @@ void platform_late_init()
     }
     else
     {
+#ifndef PLATFORM_HAS_INITIATOR_MODE
+        assert(false);
+#else
         // Act as SCSI initiator
 
         //        pin             function       pup   pdown  out    state fast
@@ -248,6 +269,7 @@ void platform_late_init()
         gpio_conf(SCSI_OUT_SEL,   GPIO_FUNC_SIO, false,false, true,  true, true);
         gpio_conf(SCSI_OUT_ACK,   GPIO_FUNC_SIO, false,false, true,  true, true);
         gpio_conf(SCSI_OUT_ATN,   GPIO_FUNC_SIO, false,false, true,  true, true);
+#endif
     }
 }
 

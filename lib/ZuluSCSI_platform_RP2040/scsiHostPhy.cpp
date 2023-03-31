@@ -33,6 +33,20 @@ extern "C" {
 
 volatile int g_scsiHostPhyReset;
 
+#ifndef PLATFORM_HAS_INITIATOR_MODE
+
+// Dummy functions for platforms without hardware support for
+// SCSI initiator mode.
+void scsiHostPhyReset(void) {}
+bool scsiHostPhySelect(int target_id) { return false; }
+int scsiHostPhyGetPhase() { return 0; }
+bool scsiHostRequestWaiting() { return false; }
+uint32_t scsiHostWrite(const uint8_t *data, uint32_t count) { return 0; }
+uint32_t scsiHostRead(uint8_t *data, uint32_t count) { return 0; }
+void scsiHostPhyRelease();
+
+#else
+
 // Release bus and pulse RST signal, initialize PHY to host mode.
 void scsiHostPhyReset(void)
 {
@@ -285,3 +299,5 @@ void scsiHostPhyRelease()
     scsiLogInitiatorPhaseChange(BUS_FREE);
     SCSI_RELEASE_OUTPUTS();
 }
+
+#endif
