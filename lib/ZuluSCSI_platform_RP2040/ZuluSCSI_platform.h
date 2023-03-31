@@ -25,8 +25,17 @@
 
 #include <stdint.h>
 #include <Arduino.h>
+
+#ifdef ZULUSCSI_BS2
+// BS2 hardware variant, using Raspberry Pico board on a carrier PCB
+#include "ZuluSCSI_platform_gpio_BS2.h"
+#else
+// Normal RP2040 variant, using RP2040 chip directly
 #include "ZuluSCSI_platform_gpio.h"
+#endif
+
 #include "scsiHostPhy.h"
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,14 +43,21 @@ extern "C" {
 
 /* These are used in debug output and default SCSI strings */
 extern const char *g_platform_name;
-#define PLATFORM_NAME "ZuluSCSI RP2040"
-#define PLATFORM_REVISION "2.0"
+
+#ifdef ZULUSCSI_BS2
+# define PLATFORM_NAME "ZuluSCSI BS2"
+# define PLATFORM_REVISION "1.0"
+#else
+# define PLATFORM_NAME "ZuluSCSI RP2040"
+# define PLATFORM_REVISION "2.0"
+# define PLATFORM_HAS_INITIATOR_MODE 1
+#endif
+
 #define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_10
 #define PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE 32768
 #define PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE 65536
 #define PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE 8192
 #define SD_USE_SDIO 1
-#define PLATFORM_HAS_INITIATOR_MODE 1
 #define PLATFORM_HAS_PARITY_CHECK 1
 
 // NOTE: The driver supports synchronous speeds higher than 10MB/s, but this
@@ -117,65 +133,6 @@ bool platform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count
 // These are used by macros below and the code in scsi_accel_rp2040.cpp
 extern const uint16_t g_scsi_parity_lookup[256];
 extern const uint16_t g_scsi_parity_check_lookup[512];
-
-// Below are GPIO access definitions that are used from scsiPhy.cpp.
-
-// Write a single SCSI pin.
-// Example use: SCSI_OUT(ATN, 1) sets SCSI_ATN to low (active) state.
-#define SCSI_OUT(pin, state) \
-    *(state ? &sio_hw->gpio_clr : &sio_hw->gpio_set) = 1 << (SCSI_OUT_ ## pin)
-
-// Read a single SCSI pin.
-// Example use: SCSI_IN(ATN), returns 1 for active low state.
-#define SCSI_IN(pin) \
-    ((sio_hw->gpio_in & (1 << (SCSI_IN_ ## pin))) ? 0 : 1)
-
-// Set pin directions for initiator vs. target mode
-#define SCSI_ENABLE_INITIATOR() \
-    (sio_hw->gpio_oe_set = (1 << SCSI_OUT_ACK) | \
-                           (1 << SCSI_OUT_ATN)), \
-    (sio_hw->gpio_oe_clr = (1 << SCSI_IN_IO) | \
-                           (1 << SCSI_IN_CD) | \
-                           (1 << SCSI_IN_MSG) | \
-                           (1 << SCSI_IN_REQ))
-
-// Enable driving of shared control pins
-#define SCSI_ENABLE_CONTROL_OUT() \
-    (sio_hw->gpio_oe_set = (1 << SCSI_OUT_CD) | \
-                           (1 << SCSI_OUT_MSG))
-
-// Set SCSI data bus to output
-#define SCSI_ENABLE_DATA_OUT() \
-    (sio_hw->gpio_clr = (1 << SCSI_DATA_DIR), \
-     sio_hw->gpio_oe_set = SCSI_IO_DATA_MASK)
-
-// Write SCSI data bus, also sets REQ to inactive.
-#define SCSI_OUT_DATA(data) \
-    gpio_put_masked(SCSI_IO_DATA_MASK | (1 << SCSI_OUT_REQ), \
-                    g_scsi_parity_lookup[(uint8_t)(data)] | (1 << SCSI_OUT_REQ)), \
-    SCSI_ENABLE_DATA_OUT()
-
-// Release SCSI data bus and REQ signal
-#define SCSI_RELEASE_DATA_REQ() \
-    (sio_hw->gpio_oe_clr = SCSI_IO_DATA_MASK, \
-     sio_hw->gpio_set = (1 << SCSI_DATA_DIR) | (1 << SCSI_OUT_REQ))
-
-// Release all SCSI outputs
-#define SCSI_RELEASE_OUTPUTS() \
-    SCSI_RELEASE_DATA_REQ(), \
-    sio_hw->gpio_oe_clr = (1 << SCSI_OUT_CD) | \
-                          (1 << SCSI_OUT_MSG), \
-    sio_hw->gpio_set = (1 << SCSI_OUT_IO) | \
-                       (1 << SCSI_OUT_CD) | \
-                       (1 << SCSI_OUT_MSG) | \
-                       (1 << SCSI_OUT_RST) | \
-                       (1 << SCSI_OUT_BSY) | \
-                       (1 << SCSI_OUT_REQ) | \
-                       (1 << SCSI_OUT_SEL)
-
-// Read SCSI data bus
-#define SCSI_IN_DATA() \
-    (~sio_hw->gpio_in & SCSI_IO_DATA_MASK) >> SCSI_IO_SHIFT
 
 #ifdef __cplusplus
 }
