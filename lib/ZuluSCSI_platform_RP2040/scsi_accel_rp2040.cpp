@@ -956,9 +956,13 @@ void scsi_accel_rp2040_init()
     irq_set_enabled(DMA_IRQ_0, true);
 }
 
-void scsi_accel_rp2040_setSyncMode(int syncOffset, int syncPeriod)
+bool scsi_accel_rp2040_setSyncMode(int syncOffset, int syncPeriod)
 {
-    assert(g_scsi_dma_state == SCSIDMA_IDLE);
+    if (g_scsi_dma_state != SCSIDMA_IDLE)
+    {
+        logmsg("ERROR: SCSI DMA was in state ", (int)g_scsi_dma_state, " when changing sync mode, forcing bus reset");
+        return false;
+    }
 
     if (syncOffset != g_scsi_dma.syncOffset || syncPeriod != g_scsi_dma.syncPeriod)
     {
@@ -1051,4 +1055,5 @@ void scsi_accel_rp2040_setSyncMode(int syncOffset, int syncPeriod)
         }
     }
 
+    return true;
 }
