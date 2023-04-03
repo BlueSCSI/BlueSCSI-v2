@@ -29,6 +29,7 @@
 #include "ZuluSCSI_disk.h"
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_config.h"
+#include "ZuluSCSI_presets.h"
 #include <minIni.h>
 #include <string.h>
 #include <strings.h>
@@ -864,13 +865,18 @@ static void checkDiskGeometryDivisible(image_config_t &img)
 // Set target configuration to default values
 static void scsiDiskConfigDefaults(int target_idx)
 {
+    // Get default values from system preset, if any
+    char presetName[32];
+    ini_gets("SCSI", "System", "", presetName, sizeof(presetName), CONFIGFILE);
+    preset_config_t defaults = getSystemPreset(presetName);
+
     image_config_t &img = g_DiskImages[target_idx];
     img.deviceType = S2S_CFG_FIXED;
-    img.deviceTypeModifier = 0;
-    img.sectorsPerTrack = 63;
-    img.headsPerCylinder = 255;
-    img.quirks = S2S_CFG_QUIRKS_NONE;
-    img.prefetchbytes = PREFETCH_BUFFER_SIZE;
+    img.deviceTypeModifier = defaults.deviceTypeModifier;
+    img.sectorsPerTrack = defaults.sectorsPerTrack;
+    img.headsPerCylinder = defaults.headsPerCylinder;
+    img.quirks = defaults.quirks;
+    img.prefetchbytes = defaults.prefetchBytes;
     memset(img.vendor, 0, sizeof(img.vendor));
     memset(img.prodId, 0, sizeof(img.prodId));
     memset(img.revision, 0, sizeof(img.revision));
@@ -978,56 +984,85 @@ void s2s_configInit(S2S_BoardCfg* config)
         logmsg("Config file " CONFIGFILE " not found, using defaults");
     }
 
-    logmsg("Active configuration:");
+    // Get default values from system preset, if any
+    char presetName[32];
+    ini_gets("SCSI", "System", "", presetName, sizeof(presetName), CONFIGFILE);
+    preset_config_t defaults = getSystemPreset(presetName);
+
+    if (defaults.presetName)
+    {
+        logmsg("Active configuration (using system preset \"", defaults.presetName, "\"):");
+    }
+    else
+    {
+        logmsg("Active configuration:");
+    }
+
     memset(config, 0, sizeof(S2S_BoardCfg));
     memcpy(config->magic, "BCFG", 4);
     config->flags = 0;
     config->startupDelay = 0;
-    config->selectionDelay = ini_getl("SCSI", "SelectionDelay", 255, CONFIGFILE);
+    config->selectionDelay = ini_getl("SCSI", "SelectionDelay", defaults.selectionDelay, CONFIGFILE);
     config->flags6 = 0;
     config->scsiSpeed = PLATFORM_MAX_SCSI_SPEED;
 
-    int maxSyncSpeed = ini_getl("SCSI", "MaxSyncSpeed", 10, CONFIGFILE);
+    int maxSyncSpeed = ini_getl("SCSI", "MaxSyncSpeed", defaults.maxSyncSpeed, CONFIGFILE);
     if (maxSyncSpeed < 5 && config->scsiSpeed > S2S_CFG_SPEED_ASYNC_50)
         config->scsiSpeed = S2S_CFG_SPEED_ASYNC_50;
     else if (maxSyncSpeed < 10 && config->scsiSpeed > S2S_CFG_SPEED_SYNC_5)
         config->scsiSpeed = S2S_CFG_SPEED_SYNC_5;
     
-    logmsg("-- SelectionDelay: ", (int)config->selectionDelay);
+    logmsg("-- SelectionDelay = ", (int)config->selectionDelay);
 
-    if (ini_getbool("SCSI", "EnableUnitAttention", false, CONFIGFILE))
+    if (ini_getbool("SCSI", "EnableUnitAttention", defaults.enableUnitAttention, CONFIGFILE))
     {
-        logmsg("-- EnableUnitAttention is on");
+        logmsg("-- EnableUnitAttention = Yes");
         config->flags |= S2S_CFG_ENABLE_UNIT_ATTENTION;
     }
-
-    if (ini_getbool("SCSI", "EnableSCSI2", true, CONFIGFILE))
+    else
     {
-        logmsg("-- EnableSCSI2 is on");
+        logmsg("-- EnableUnitAttention = No");
+    }
+
+    if (ini_getbool("SCSI", "EnableSCSI2", defaults.enableSCSI2, CONFIGFILE))
+    {
+        logmsg("-- EnableSCSI2 = Yes");
         config->flags |= S2S_CFG_ENABLE_SCSI2;
     }
-
-    if (ini_getbool("SCSI", "EnableSelLatch", false, CONFIGFILE))
+    else
     {
-        logmsg("-- EnableSelLatch is on");
-        config->flags |= S2S_CFG_ENABLE_SEL_LATCH;
+        logmsg("-- EnableSCSI2 = No");
     }
 
-    if (ini_getbool("SCSI", "MapLunsToIDs", false, CONFIGFILE))
+    if (ini_getbool("SCSI", "EnableSelLatch", defaults.enableSelLatch, CONFIGFILE))
     {
-        logmsg("-- MapLunsToIDs is on");
+        logmsg("-- EnableSelLatch = Yes");
+        config->flags |= S2S_CFG_ENABLE_SEL_LATCH;
+    }
+    else
+    {
+        logmsg("-- EnableSelLatch = No");
+    }
+
+    if (ini_getbool("SCSI", "MapLunsToIDs", defaults.mapLunsToIDs, CONFIGFILE))
+    {
+        logmsg("-- MapLunsToIDs = Yes");
         config->flags |= S2S_CFG_MAP_LUNS_TO_IDS;
+    }
+    else
+    {
+        logmsg("-- MapLunsToIDs = No");
     }
 
 #ifdef PLATFORM_HAS_PARITY_CHECK
-    if (ini_getbool("SCSI", "EnableParity", true, CONFIGFILE))
+    if (ini_getbool("SCSI", "EnableParity", defaults.enableParity, CONFIGFILE))
     {
-        logmsg("-- EnableParity is on");
+        logmsg("-- EnableParity = Yes");
         config->flags |= S2S_CFG_ENABLE_PARITY;
     }
     else
     {
-        logmsg("-- EnableParity is off");
+        logmsg("-- EnableParity = No");
     }
 #endif
 }
