@@ -319,6 +319,8 @@ void show_hardfault(uint32_t *sp)
     logmsg("CRASH!");
     logmsg("Platform: ", g_platform_name);
     logmsg("FW Version: ", g_log_firmwareversion);
+    logmsg("scsiDev.cdb: ", bytearray(scsiDev.cdb, 12));
+    logmsg("scsiDev.phase: ", (int)scsiDev.phase);
     logmsg("CFSR: ", cfsr);
     logmsg("SP: ", (uint32_t)sp);
     logmsg("PC: ", pc);
@@ -396,6 +398,8 @@ void __assert_func(const char *file, int line, const char *func, const char *exp
     logmsg("ASSERT FAILED!");
     logmsg("Platform: ", g_platform_name);
     logmsg("FW Version: ", g_log_firmwareversion);
+    logmsg("scsiDev.cdb: ", bytearray(scsiDev.cdb, 12));
+    logmsg("scsiDev.phase: ", (int)scsiDev.phase);
     logmsg("Assert failed: ", file , ":", line, " in ", func, ":", expr);
 
     uint32_t *p = (uint32_t*)((uint32_t)&dummy & ~3);
