@@ -1866,7 +1866,7 @@ static void diskDataIn()
             prefetch_sectors = img_sector_count - g_scsi_prefetch.sector;
         }
 
-        while (!scsiIsWriteFinished(NULL) && prefetch_sectors > 0)
+        while (!scsiIsWriteFinished(NULL) && prefetch_sectors > 0 && !scsiDev.resetFlag)
         {
             // Check if prefetch buffer is free
             g_disk_transfer.buffer = g_scsi_prefetch.buffer + g_scsi_prefetch.bytes;

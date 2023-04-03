@@ -220,13 +220,21 @@ extern "C" uint32_t scsiEnterPhaseImmediate(int phase)
         scsiLogPhaseChange(phase);
 
         // Select between synchronous vs. asynchronous SCSI writes
+        bool syncstatus = false;
         if (scsiDev.target->syncOffset > 0 && (g_scsi_phase == DATA_IN || g_scsi_phase == DATA_OUT))
         {
-            scsi_accel_rp2040_setSyncMode(scsiDev.target->syncOffset, scsiDev.target->syncPeriod);
+            syncstatus = scsi_accel_rp2040_setSyncMode(scsiDev.target->syncOffset, scsiDev.target->syncPeriod);
         }
         else
         {
-            scsi_accel_rp2040_setSyncMode(0, 0);
+            syncstatus = scsi_accel_rp2040_setSyncMode(0, 0);
+        }
+
+        if (!syncstatus)
+        {
+            // SCSI DMA was not idle, we are in some kind of error state, force bus reset
+            scsiDev.resetFlag = 1;
+            return 0;
         }
 
         if (phase < 0)
