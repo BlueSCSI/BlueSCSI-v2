@@ -9,7 +9,8 @@ void scsi_accel_rp2040_init();
 // Set SCSI access mode for synchronous transfers
 // Setting syncOffset = 0 enables asynchronous SCSI.
 // Setting syncOffset > 0 enables synchronous SCSI.
-void scsi_accel_rp2040_setSyncMode(int syncOffset, int syncPeriod);
+// Returns false if busy, caller should issue bus reset to recover.
+bool scsi_accel_rp2040_setSyncMode(int syncOffset, int syncPeriod);
 
 // Queue a request to write data from the buffer to SCSI bus.
 // This function typically returns immediately and the request will complete in background.
