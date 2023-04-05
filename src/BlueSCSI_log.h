@@ -1,4 +1,5 @@
 // Helpers for log messages.
+// Copyright (c) 2022 Rabbit Hole Computing™
 
 #pragma once
 

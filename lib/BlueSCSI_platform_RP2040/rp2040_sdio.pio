@@ -1,6 +1,8 @@
 ; RP2040 PIO program for implementing SD card access in SDIO mode
 ; Run "pioasm rp2040_sdio.pio rp2040_sdio.pio.h" to regenerate the C header from this.
-
+;
+; Copyright (c) 2022 Rabbit Hole Computing™
+;
 ; The RP2040 official work-in-progress code at
 ; https://github.com/raspberrypi/pico-extras/tree/master/src/rp2_common/pico_sd_card
 ; may be useful reference, but this is independent implementation.

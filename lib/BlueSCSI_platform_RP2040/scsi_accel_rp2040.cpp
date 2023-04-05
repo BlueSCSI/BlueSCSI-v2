@@ -1,3 +1,5 @@
+// Copyright (c) 2022 Rabbit Hole Computing™
+
 /* Data flow in SCSI acceleration:
  *
  * 1. Application provides a buffer of bytes to send.

@@ -1,4 +1,7 @@
 ; RP2040 PIO program for accelerating SCSI initiator / host function
+;
+; Copyright (c) 2022 Rabbit Hole Computing™
+;
 ; Run "pioasm scsi_accel_host.pio scsi_accel_host.pio.h" to regenerate the C header from this.
 ; GPIO mapping:
 ; - 0-7: DB0-DB7

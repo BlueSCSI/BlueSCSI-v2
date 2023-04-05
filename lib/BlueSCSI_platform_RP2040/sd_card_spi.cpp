@@ -1,4 +1,6 @@
 // Driver and interface for accessing SD card in SPI mode
+//
+// Copyright (c) 2022 Rabbit Hole Computing™
 
 #include "BlueSCSI_platform.h"
 #include "BlueSCSI_log.h"

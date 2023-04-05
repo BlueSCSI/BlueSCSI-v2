@@ -1,4 +1,6 @@
 // Driver for accessing SD card in SDIO mode on RP2040.
+//
+// Copyright (c) 2022 Rabbit Hole Computing™
 
 #include "BlueSCSI_platform.h"
 
