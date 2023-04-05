@@ -5,9 +5,9 @@
 # or from github releases.
 #
 # Usage:
-#    utils/analyze_crashlog.sh                    # paste log to console, press ctrl-D to end
-#    utils/analyze_crashlog.sh zululog.txt        # read log from file
-#    utils/analyze_crashlog.sh zululog.txt path   # read log from file and find firmware at path
+#    utils/analyze_crashlog.sh                # paste log to console, press ctrl-D to end
+#    utils/analyze_crashlog.sh log.txt        # read log from file
+#    utils/analyze_crashlog.sh log.txt path   # read log from file and find firmware at path
 
 if [ "x$1" = "x" ]; then
     logfile=$(mktemp /tmp/crashlog-XXXXXXX)
@@ -16,7 +16,7 @@ else
     logfile=$1
 fi
 
-repo="ZuluSCSI/ZuluSCSI-firmware"
+repo="BlueSCSI/BlueSCSI-v2"
 
 # Find firmware compilation time
 fwtime=$(grep 'FW Version' $logfile | tail -n 1 | egrep -o '[A-Z][a-z][a-z] [0-9]+ [0-9]+ [0-9:]+')
