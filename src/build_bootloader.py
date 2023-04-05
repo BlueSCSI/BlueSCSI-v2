@@ -1,6 +1,8 @@
 # Adds a platformio/Scons target to build the bootloader image.
 # It is basically a copy of the main firmware but using BlueSCSI_bootloader.cpp
 # as the main() function.
+#
+# Copyright (c) 2022 Rabbit Hole Computing™
 
 import os
 

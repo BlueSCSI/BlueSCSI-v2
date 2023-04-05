@@ -1,5 +1,8 @@
 // Implements the low level interface to SCSI bus
 // Partially derived from scsiPhy.c from SCSI2SD-V6
+//
+// Copyright (c) 2022 Rabbit Hole Computing™
+// Copyright (c) 2014 Michael McMaster
 
 #include "scsiPhy.h"
 #include "BlueSCSI_platform.h"

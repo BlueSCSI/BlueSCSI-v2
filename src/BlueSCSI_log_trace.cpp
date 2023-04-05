@@ -1,4 +1,6 @@
 // SCSI trace logging
+//
+// Copyright (c) 2022 Rabbit Hole Computing™
 
 #include "BlueSCSI_log_trace.h"
 #include "BlueSCSI_log.h"

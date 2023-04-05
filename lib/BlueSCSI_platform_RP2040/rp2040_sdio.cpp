@@ -1,4 +1,5 @@
 // Implementation of SDIO communication for RP2040
+// Copyright (c) 2022 Rabbit Hole Computing™
 //
 // The RP2040 official work-in-progress code at
 // https://github.com/raspberrypi/pico-extras/tree/master/src/rp2_common/pico_sd_card

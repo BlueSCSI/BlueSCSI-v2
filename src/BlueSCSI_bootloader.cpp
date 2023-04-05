@@ -1,4 +1,6 @@
 // Simple bootloader that loads new firmware from SD card.
+//
+// Copyright (c) 2022 Rabbit Hole Computing™
 
 #include <BlueSCSI_platform.h>
 #include "BlueSCSI_config.h"

@@ -1,4 +1,5 @@
 // Accelerated SCSI subroutines for SCSI initiator/host side communication
+// Copyright (c) 2022 Rabbit Hole Computing™
 
 #include "scsi_accel_host.h"
 #include "BlueSCSI_platform.h"

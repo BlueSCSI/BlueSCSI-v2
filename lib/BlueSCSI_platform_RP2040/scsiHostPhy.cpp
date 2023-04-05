@@ -1,3 +1,5 @@
+// Copyright (c) 2022 Rabbit Hole Computing™
+
 #include "scsiHostPhy.h"
 #include "BlueSCSI_platform.h"
 #include "BlueSCSI_log.h"
