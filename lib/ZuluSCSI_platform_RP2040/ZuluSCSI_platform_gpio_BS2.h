@@ -19,7 +19,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
 
-// GPIO definitions for ZuluSCSI RP2040-based hardware
+// GPIO definitions for BSv2-based hardware are Copyright 2022 The BlueSCSI Whining Squad.
 
 #pragma once
 
