@@ -19,8 +19,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
 
-// GPIO definitions for BSv2-based hardware are Copyright 2022 The BlueSCSI Whining Squad.
-
+// GPIO definitions for BSv2-based hardware 
 #pragma once
 
 #include <hardware/gpio.h>
