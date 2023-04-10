@@ -47,6 +47,13 @@ preset_config_t getSystemPreset(const char *presetName)
         cfg.enableSCSI2 = false;
         cfg.selectionDelay = 0;
     }
+    else if (strequals(presetName, "MegaSTE"))
+    {
+        cfg.presetName = "MegaSTE";
+        cfg.quirks = S2S_CFG_QUIRKS_NONE;
+        cfg.mapLunsToIDs = true;
+        cfg.enableParity = false;
+    }
     else
     {
         log("Unknown preset name ", presetName, ", using default settings");
