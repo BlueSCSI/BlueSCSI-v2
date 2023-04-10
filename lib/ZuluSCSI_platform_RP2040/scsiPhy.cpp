@@ -101,14 +101,6 @@ extern "C" bool scsiStatusSEL()
         // Releasing happens with bus release.
         g_scsi_ctrl_bsy = 0;
 
-#ifdef ZULUSCSI_BS2
-        // @TODO See if needed
-        SCSI_OUT(CD, 0);
-        SCSI_OUT(MSG, 0);
-        SCSI_ENABLE_CONTROL_OUT();
-        // @TODO end
-#endif
-
         SCSI_OUT(BSY, 1);
 
         // On RP2040 hardware the ATN signal is only available after OUT_BSY enables
