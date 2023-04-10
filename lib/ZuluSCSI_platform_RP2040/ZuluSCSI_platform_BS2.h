@@ -1,4 +1,4 @@
-// Platform-specific definitions for BlueSCSI RP2040 hardware.
+// Platform-specific definitions for BlueSCSI Pico hardware.
 
 #pragma once
 
@@ -12,12 +12,12 @@ extern "C" {
 #endif
 
 /* These are used in debug output and default SCSI strings */
-extern const char *g_bluescsiplatform_name;
-#define PLATFORM_NAME "BlueSCSI RP2040"
+extern const char *g_platform_name;
+#define PLATFORM_NAME "BlueSCSI Pico"
 #define PLATFORM_REVISION "2.0"
 #define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_10
-#define PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE 4096
-#define PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE 32768
+#define PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE 32768
+#define PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE 65536
 #define PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE 8192
 #define SD_USE_SDIO 1
 #define PLATFORM_HAS_INITIATOR_MODE 1
@@ -28,8 +28,8 @@ extern const char *g_bluescsiplatform_name;
 
 // Debug logging function, can be used to print to e.g. serial port.
 // May get called from interrupt handlers.
-void bluescsiplatform_log(const char *s);
-void bluescsiplatform_emergency_log_save();
+void platform_log(const char *s);
+void platform_emergency_log_save();
 
 // Timing and delay functions.
 // Arduino platform already provides these
@@ -49,30 +49,52 @@ static inline void delay_100ns()
 }
 
 // Initialize SD card and GPIO configuration
-void bluescsiplatform_init();
+void platform_init();
 
 // Initialization for main application, not used for bootloader
-void bluescsiplatform_late_init();
+void platform_late_init();
+
+// Disable the status LED
+void platform_disable_led(void);
 
 // Query whether initiator mode is enabled on targets with PLATFORM_HAS_INITIATOR_MODE
-bool bluescsiplatform_is_initiator_mode_enabled();
+bool platform_is_initiator_mode_enabled();
 
 // Setup soft watchdog if supported
-void bluescsiplatform_reset_watchdog();
+void platform_reset_watchdog();
 
 // Set callback that will be called during data transfer to/from SD card.
 // This can be used to implement simultaneous transfer to SCSI bus.
 typedef void (*sd_callback_t)(uint32_t bytes_complete);
-void bluescsiplatform_set_sd_callback(sd_callback_t func, const uint8_t *buffer);
+void platform_set_sd_callback(sd_callback_t func, const uint8_t *buffer);
 
 // Reprogram firmware in main program area.
 #ifndef RP2040_DISABLE_BOOTLOADER
-#define BLUESCSIPLATFORM_BOOTLOADER_SIZE (128 * 1024)
-#define BLUESCSIPLATFORM_FLASH_TOTAL_SIZE (1024 * 1024)
-#define BLUESCSIPLATFORM_FLASH_PAGE_SIZE 4096
-bool bluescsiplatform_rewrite_flash_page(uint32_t offset, uint8_t buffer[BLUESCSIPLATFORM_FLASH_PAGE_SIZE]);
-void bluescsiplatform_boot_to_main_firmware();
+#define PLATFORM_BOOTLOADER_SIZE (128 * 1024)
+#define PLATFORM_FLASH_TOTAL_SIZE (1024 * 1024)
+#define PLATFORM_FLASH_PAGE_SIZE 4096
+bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_PAGE_SIZE]);
+void platform_boot_to_main_firmware();
 #endif
+
+// ROM drive in the unused external flash area
+#ifndef RP2040_DISABLE_ROMDRIVE
+#define PLATFORM_HAS_ROM_DRIVE 1
+// Check maximum available space for ROM drive in bytes
+uint32_t platform_get_romdrive_maxsize();
+
+// Read ROM drive area
+bool platform_read_romdrive(uint8_t *dest, uint32_t start, uint32_t count);
+
+// Reprogram ROM drive area
+#define PLATFORM_ROMDRIVE_PAGE_SIZE 4096
+bool platform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count);
+#endif
+
+// Parity lookup tables for write and read from SCSI bus.
+// These are used by macros below and the code in scsi_accel_rp2040.cpp
+extern const uint16_t g_scsi_parity_lookup[256];
+extern const uint16_t g_scsi_parity_check_lookup[512];
 
 // Below are GPIO access definitions that are used from scsiPhy.cpp.
 
@@ -106,7 +128,6 @@ void bluescsiplatform_boot_to_main_firmware();
      sio_hw->gpio_oe_set = SCSI_IO_DATA_MASK)
 
 // Write SCSI data bus, also sets REQ to inactive.
-extern const uint32_t g_scsi_parity_lookup[256];
 #define SCSI_OUT_DATA(data) \
     gpio_put_masked(SCSI_IO_DATA_MASK | (1 << SCSI_OUT_REQ), \
                     g_scsi_parity_lookup[(uint8_t)(data)] | (1 << SCSI_OUT_REQ)), \
