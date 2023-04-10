@@ -102,11 +102,10 @@ extern "C" bool scsiStatusSEL()
         g_scsi_ctrl_bsy = 0;
 
 #ifdef ZULUSCSI_BS2
-        // @TODO See if needed
+        // From BS2 repository commit 8971584485c42, not sure of purpose.
         SCSI_OUT(CD, 0);
         SCSI_OUT(MSG, 0);
         SCSI_ENABLE_CONTROL_OUT();
-        // @TODO end
 #endif
 
         SCSI_OUT(BSY, 1);
