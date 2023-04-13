@@ -88,10 +88,45 @@ static struct {
 enum scsidma_state_t { SCSIDMA_IDLE = 0,
                        SCSIDMA_WRITE, SCSIDMA_WRITE_DONE,
                        SCSIDMA_READ, SCSIDMA_READ_DONE };
+static const char* scsidma_states[5] = {"IDLE", "WRITE", "WRITE_DONE", "READ", "READ_DONE"};
 static volatile scsidma_state_t g_scsi_dma_state;
 static bool g_channels_claimed = false;
 static void scsidma_config_gpio();
 
+void scsi_accel_log_state()
+{
+    log("SCSI DMA state: ", scsidma_states[g_scsi_dma_state]);
+    log("Current buffer: ", g_scsi_dma.dma_bytes, "/", g_scsi_dma.app_bytes, ", next ", g_scsi_dma.next_app_bytes, " bytes");
+    log("SyncOffset: ", g_scsi_dma.syncOffset, " SyncPeriod ", g_scsi_dma.syncPeriod);
+    log("PIO Parity SM:",
+        " tx_fifo ", (int)pio_sm_get_tx_fifo_level(SCSI_DMA_PIO, SCSI_PARITY_SM),
+        ", rx_fifo ", (int)pio_sm_get_rx_fifo_level(SCSI_DMA_PIO, SCSI_PARITY_SM),
+        ", pc ", (int)pio_sm_get_pc(SCSI_DMA_PIO, SCSI_PARITY_SM),
+        ", instr ", SCSI_DMA_PIO->sm[SCSI_PARITY_SM].instr);
+    log("PIO Data SM:",
+        " tx_fifo ", (int)pio_sm_get_tx_fifo_level(SCSI_DMA_PIO, SCSI_DATA_SM),
+        ", rx_fifo ", (int)pio_sm_get_rx_fifo_level(SCSI_DMA_PIO, SCSI_DATA_SM),
+        ", pc ", (int)pio_sm_get_pc(SCSI_DMA_PIO, SCSI_DATA_SM),
+        ", instr ", SCSI_DMA_PIO->sm[SCSI_DATA_SM].instr);
+    log("PIO Sync SM:",
+        " tx_fifo ", (int)pio_sm_get_tx_fifo_level(SCSI_DMA_PIO, SCSI_SYNC_SM),
+        ", rx_fifo ", (int)pio_sm_get_rx_fifo_level(SCSI_DMA_PIO, SCSI_SYNC_SM),
+        ", pc ", (int)pio_sm_get_pc(SCSI_DMA_PIO, SCSI_SYNC_SM),
+        ", instr ", SCSI_DMA_PIO->sm[SCSI_SYNC_SM].instr);
+    log("DMA CH A:",
+        " ctrl: ", dma_hw->ch[SCSI_DMA_CH_A].ctrl_trig,
+        " count: ", dma_hw->ch[SCSI_DMA_CH_A].transfer_count);
+    log("DMA CH B:",
+        " ctrl: ", dma_hw->ch[SCSI_DMA_CH_B].ctrl_trig,
+        " count: ", dma_hw->ch[SCSI_DMA_CH_B].transfer_count);
+    log("DMA CH C:",
+        " ctrl: ", dma_hw->ch[SCSI_DMA_CH_C].ctrl_trig,
+        " count: ", dma_hw->ch[SCSI_DMA_CH_C].transfer_count);
+    log("DMA CH D:",
+        " ctrl: ", dma_hw->ch[SCSI_DMA_CH_D].ctrl_trig,
+        " count: ", dma_hw->ch[SCSI_DMA_CH_D].transfer_count);
+    log("GPIO states: ", sio_hw->gpio_in);
+}
 
 /****************************************/
 /* Accelerated writes to SCSI bus       */
@@ -345,10 +380,8 @@ static void scsi_accel_rp2040_stopWrite(volatile int *resetFlag)
     {
         if ((uint32_t)(millis() - start) > 5000)
         {
-            log("scsi_accel_rp2040_stopWrite() timeout, FIFO levels ",
-                (int)pio_sm_get_tx_fifo_level(SCSI_DMA_PIO, SCSI_DATA_SM), " ",
-                (int)pio_sm_get_rx_fifo_level(SCSI_DMA_PIO, SCSI_DATA_SM), " PC ",
-                (int)pio_sm_get_pc(SCSI_DMA_PIO, SCSI_DATA_SM));
+            log("scsi_accel_rp2040_stopWrite() timeout");
+            scsi_accel_log_state();
             *resetFlag = 1;
             break;
         }
@@ -374,12 +407,8 @@ void scsi_accel_rp2040_finishWrite(volatile int *resetFlag)
     {
         if ((uint32_t)(millis() - start) > 5000)
         {
-            log("scsi_accel_rp2040_finishWrite() timeout,"
-             " state: ", (int)g_scsi_dma_state, " ", (int)g_scsi_dma.dma_bytes, "/", (int)g_scsi_dma.app_bytes, ", ", (int)g_scsi_dma.next_app_bytes,
-             " PIO PC: ", (int)pio_sm_get_pc(SCSI_DMA_PIO, SCSI_DATA_SM), " ", (int)pio_sm_get_pc(SCSI_DMA_PIO, SCSI_SYNC_SM),
-             " PIO FIFO: ", (int)pio_sm_get_tx_fifo_level(SCSI_DMA_PIO, SCSI_DATA_SM), " ", (int)pio_sm_get_tx_fifo_level(SCSI_DMA_PIO, SCSI_SYNC_SM),
-             " DMA counts: ", dma_hw->ch[SCSI_DMA_CH_A].transfer_count, " ", dma_hw->ch[SCSI_DMA_CH_B].transfer_count,
-                         " ", dma_hw->ch[SCSI_DMA_CH_C].transfer_count, " ", dma_hw->ch[SCSI_DMA_CH_D].transfer_count);
+            log("scsi_accel_rp2040_finishWrite() timeout");
+            scsi_accel_log_state();
             *resetFlag = 1;
             break;
         }
@@ -666,12 +695,8 @@ void scsi_accel_rp2040_finishRead(const uint8_t *data, uint32_t count, int *pari
     {
         if ((uint32_t)(millis() - start) > 5000)
         {
-            log("scsi_accel_rp2040_finishRead timeout,"
-             " state: ", (int)g_scsi_dma_state, " ", (int)g_scsi_dma.dma_bytes, "/", (int)g_scsi_dma.app_bytes, ", ", (int)g_scsi_dma.next_app_bytes,
-             " PIO PC: ", (int)pio_sm_get_pc(SCSI_DMA_PIO, SCSI_DATA_SM), " ", (int)pio_sm_get_pc(SCSI_DMA_PIO, SCSI_SYNC_SM),
-             " PIO FIFO: ", (int)pio_sm_get_rx_fifo_level(SCSI_DMA_PIO, SCSI_DATA_SM), " ", (int)pio_sm_get_tx_fifo_level(SCSI_DMA_PIO, SCSI_DATA_SM),
-             " DMA counts: ", dma_hw->ch[SCSI_DMA_CH_A].transfer_count, " ", dma_hw->ch[SCSI_DMA_CH_B].transfer_count,
-                         " ", dma_hw->ch[SCSI_DMA_CH_C].transfer_count, " ", dma_hw->ch[SCSI_DMA_CH_D].transfer_count);
+            log("scsi_accel_rp2040_finishRead timeout");
+            scsi_accel_log_state();
             *resetFlag = 1;
             break;
         }
@@ -941,6 +966,7 @@ bool scsi_accel_rp2040_setSyncMode(int syncOffset, int syncPeriod)
     if (g_scsi_dma_state != SCSIDMA_IDLE)
     {
         log("ERROR: SCSI DMA was in state ", (int)g_scsi_dma_state, " when changing sync mode, forcing bus reset");
+        scsi_accel_log_state();
         return false;
     }
 

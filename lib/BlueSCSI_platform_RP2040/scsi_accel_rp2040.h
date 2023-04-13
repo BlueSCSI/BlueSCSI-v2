@@ -6,6 +6,9 @@
 
 void scsi_accel_rp2040_init();
 
+// Log current state of DMA & PIO hardware for debugging
+void scsi_accel_log_state();
+
 // Set SCSI access mode for synchronous transfers
 // Setting syncOffset = 0 enables asynchronous SCSI.
 // Setting syncOffset > 0 enables synchronous SCSI.

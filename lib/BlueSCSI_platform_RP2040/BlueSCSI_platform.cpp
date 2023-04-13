@@ -13,6 +13,7 @@
 #include <platform/mbed_error.h>
 #include <multicore.h>
 #include <USB/PluggableUSBSerial.h>
+#include "scsi_accel_rp2040.h"
 
 extern "C" {
 
@@ -282,6 +283,7 @@ void mbed_error_hook(const mbed_error_ctx * error_context)
     log("error_value: ", error_context->error_value);
     log("scsiDev.cdb: ", bytearray(scsiDev.cdb, 12));
     log("scsiDev.phase: ", (int)scsiDev.phase);
+    scsi_accel_log_state();
 
     uint32_t *p = (uint32_t*)((uint32_t)error_context->thread_current_sp & ~3);
     for (int i = 0; i < 8; i++)
@@ -383,6 +385,7 @@ static void watchdog_callback(unsigned alarm_num)
             log("GPIO states: out ", sio_hw->gpio_out, " oe ", sio_hw->gpio_oe, " in ", sio_hw->gpio_in);
             log("scsiDev.cdb: ", bytearray(scsiDev.cdb, 12));
             log("scsiDev.phase: ", (int)scsiDev.phase);
+            scsi_accel_log_state();
 
             uint32_t *p = (uint32_t*)__get_PSP();
             for (int i = 0; i < 8; i++)
