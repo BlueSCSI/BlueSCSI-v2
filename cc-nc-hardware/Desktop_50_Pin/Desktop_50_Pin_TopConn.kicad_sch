@@ -2913,16 +2913,11 @@
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 1920d3ac-d078-4f20-ae0d-f8c196c38fc2)
   )
-  (text "December 2022" (at 205.74 194.31 0)
+  (text "March 2023" (at 205.74 194.31 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 4a62707e-7c1a-4a19-b9e8-5644f6594929)
   )
-  (text "© 2022 Tech by Androda, LLC\nLicensed Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)\nhttps://creativecommons.org/licenses/by-nc-sa/4.0/legalcode"
-    (at 177.8 173.99 0)
-    (effects (font (size 1.27 1.27)) (justify left bottom))
-    (uuid 6270377f-6377-462d-af81-75bb46e5ee94)
-  )
-  (text "BlueSCSI V2, Desktop 50 Pin, Top Connector, 2022_12a"
+  (text "BlueSCSI V2, Desktop 50 Pin, Top Connector, 2023.03a"
     (at 186.69 190.5 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 8fca4f10-c950-4b6d-afde-9a61c2ed2d98)
@@ -2935,6 +2930,11 @@
   (text "Opt. PUP\nDidn't need them" (at 115.57 147.32 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid bf25839a-3dc7-49e9-81be-8d36f4cd4d48)
+  )
+  (text "© 2023 Tech by Androda, LLC\nLicensed Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)\nhttps://creativecommons.org/licenses/by-nc-sa/4.0/legalcode"
+    (at 177.8 173.99 0)
+    (effects (font (size 1.27 1.27)) (justify left bottom))
+    (uuid cb396e25-2bc8-48b6-b903-0180a22bbf3d)
   )
   (text "PDN Necessary" (at 115.57 171.45 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
@@ -6305,10 +6305,10 @@
     (property "Datasheet" "http://www.apem.com/int/index.php?controller=attachment&id_attachment=1371" (id 3) (at 163.83 142.24 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (pin "1" (uuid 522a5f93-66b5-4ec1-891c-5a43557baf8d))
-    (pin "1" (uuid 522a5f93-66b5-4ec1-891c-5a43557baf8d))
-    (pin "2" (uuid ec6c1b89-932d-4653-81c7-c489b8b89efc))
-    (pin "2" (uuid ec6c1b89-932d-4653-81c7-c489b8b89efc))
+    (pin "1" (uuid 522a5f93-66b5-4ec1-891c-5a43557baf91))
+    (pin "1" (uuid 522a5f93-66b5-4ec1-891c-5a43557baf91))
+    (pin "2" (uuid ec6c1b89-932d-4653-81c7-c489b8b89f00))
+    (pin "2" (uuid ec6c1b89-932d-4653-81c7-c489b8b89f00))
   )
 
   (symbol (lib_id "power:GND") (at 210.82 121.92 270) (unit 1)
@@ -7401,6 +7401,12 @@
     (path "/574b58d3-0e6f-41ce-8f55-035c1c1fad72"
       (reference "J9") (unit 1) (value "Conn_01x02_Male") (footprint "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical")
     )
+    (path "/d5fc13d4-1ca0-477a-91ea-84605f39f5f9/2de70ce8-1ae0-4c74-b56f-c1191fa8e250"
+      (reference "JP1") (unit 1) (value "SolderJumper_2_Open") (footprint "Jumper:SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm")
+    )
+    (path "/d5fc13d4-1ca0-477a-91ea-84605f39f5f9/2e4317c4-aac7-453f-a079-7fbec4fe7cb0"
+      (reference "JP2") (unit 1) (value "SolderJumper_2_Open") (footprint "Jumper:SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm")
+    )
     (path "/d55cc04d-788a-42ba-a149-99196a85fed4"
       (reference "R1") (unit 1) (value "R") (footprint "Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder")
     )
@@ -7571,6 +7577,12 @@
     )
     (path "/d5fc13d4-1ca0-477a-91ea-84605f39f5f9/e31f8e24-4536-4921-884c-327827af2e08"
       (reference "R57") (unit 1) (value "470") (footprint "Resistor_SMD:R_0402_1005Metric_Pad0.72x0.64mm_HandSolder")
+    )
+    (path "/d5fc13d4-1ca0-477a-91ea-84605f39f5f9/0e7581f4-5fdd-4863-a8e3-8d5161063b63"
+      (reference "R58") (unit 1) (value "150") (footprint "Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder")
+    )
+    (path "/d5fc13d4-1ca0-477a-91ea-84605f39f5f9/03142d3f-f27d-4d9f-9f6c-b0498a9f3df9"
+      (reference "R59") (unit 1) (value "330") (footprint "Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder")
     )
     (path "/00000000-0000-0000-0000-000060ad3c40"
       (reference "RP1") (unit 1) (value "Pico_Footprint") (footprint "CustomFootprints:BluePillModule")
