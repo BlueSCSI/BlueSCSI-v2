@@ -197,10 +197,20 @@ void scsiLogPhaseChange(int new_phase)
             // Add a log message when negotiated synchronous speed changes.
             int syncper = scsiDev.target->syncPeriod;
             int syncoff = scsiDev.target->syncOffset;
-            int mbyte_per_s = (1000 + syncper * 2) / (syncper * 4);
-            logmsg("SCSI ID ", (int)scsiDev.target->targetId,
-                  " negotiated synchronous mode ", mbyte_per_s, " MB/s ",
-                  "(period 4x", syncper, " ns, offset ", syncoff, " bytes)");
+
+            if (syncper > 0)
+            {
+                int mbyte_per_s = (1000 + syncper * 2) / (syncper * 4);
+                logmsg("SCSI ID ", (int)scsiDev.target->targetId,
+                    " negotiated synchronous mode ", mbyte_per_s, " MB/s ",
+                    "(period 4x", syncper, " ns, offset ", syncoff, " bytes)");
+            }
+            else
+            {
+                logmsg("SCSI ID ", (int)scsiDev.target->targetId,
+                    " negotiated asynchronous mode ",
+                    "(period 4x", syncper, " ns, offset ", syncoff, " bytes)");
+            }
         }
 
         printNewPhase(new_phase);
