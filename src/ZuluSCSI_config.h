@@ -36,6 +36,9 @@
 #define LOGFILE     "zululog.txt"
 #define CRASHFILE   "zuluerr.txt"
 
+// Prefix for command file to create new image (case-insensitive)
+#define CREATEFILE "create"
+
 // Log buffer size in bytes, must be a power of 2
 #ifndef LOGBUFSIZE
 #define LOGBUFSIZE 16384
