@@ -152,6 +152,140 @@ void print_sd_info()
 /* Harddisk image file handling  */
 /*********************************/
 
+// When a file is called e.g. "Create_1024M_HD40.txt",
+// create image file with specified size.
+// Returns true if image file creation succeeded.
+//
+// Parsing rules:
+// - Filename must start with "Create", case-insensitive
+// - Separator can be either underscore, dash or space
+// - Size must start with a number. Unit of k, kb, m, mb, g, gb is supported,
+//   case-insensitive, with 1024 as the base. If no unit, assume MB.
+// - If target filename does not have extension (just .txt), use ".bin"
+bool createImage(const char *cmd_filename, char imgname[MAX_FILE_PATH + 1])
+{
+  if (strncasecmp(cmd_filename, CREATEFILE, strlen(CREATEFILE)) != 0)
+  {
+    return false;
+  }
+
+  const char *p = cmd_filename + strlen(CREATEFILE);
+
+  // Skip separator if any
+  while (isspace(*p) || *p == '-' || *p == '_')
+  {
+    p++;
+  }
+
+  char *unit = nullptr;
+  uint64_t size = strtoul(p, &unit, 10);
+
+  if (size <= 0 || unit <= p)
+  {
+    logmsg("---- Could not parse size in filename '", cmd_filename, "'");
+    return false;
+  }
+
+  // Parse k/M/G unit
+  char unitchar = tolower(*unit);
+  if (unitchar == 'k')
+  {
+    size *= 1024;
+    p = unit + 1;
+  }
+  else if (unitchar == 'm')
+  {
+    size *= 1024 * 1024;
+    p = unit + 1;
+  }
+  else if (unitchar == 'g')
+  {
+    size *= 1024 * 1024 * 1024;
+    p = unit + 1;
+  }
+  else
+  {
+    size *= 1024 * 1024;
+    p = unit;
+  }
+
+  // Skip i and B if part of unit
+  if (tolower(*p) == 'i') p++;
+  if (tolower(*p) == 'b') p++;
+
+  // Skip separator if any
+  while (isspace(*p) || *p == '-' || *p == '_')
+  {
+    p++;
+  }
+
+  // Copy target filename to new buffer
+  strncpy(imgname, p, MAX_FILE_PATH);
+  imgname[MAX_FILE_PATH] = '\0';
+  int namelen = strlen(imgname);
+
+  // Strip .txt extension if any
+  if (namelen >= 4 && strncasecmp(imgname + namelen - 4, ".txt", 4) == 0)
+  {
+    namelen -= 4;
+    imgname[namelen] = '\0';
+  }
+
+  // Add .bin if no extension
+  if (!strchr(imgname, '.') && namelen < MAX_FILE_PATH - 4)
+  {
+    namelen += 4;
+    strcat(imgname, ".bin");
+  }
+
+  // Check if file exists
+  if (namelen <= 5 || SD.exists(imgname))
+  {
+    logmsg("---- Image file already exists, skipping '", cmd_filename, "'");
+    return false;
+  }
+
+  // Create file, try to preallocate contiguous sectors
+  LED_ON();
+  FsFile file = SD.open(imgname, O_WRONLY | O_CREAT);
+
+  if (!file.preAllocate(size))
+  {
+    logmsg("---- Preallocation didn't find contiguous set of clusters, continuing anyway");
+  }
+
+  // Write zeros to fill the file
+  uint32_t start = millis();
+  memset(scsiDev.data, 0, sizeof(scsiDev.data));
+  uint64_t remain = size;
+  while (remain > 0)
+  {
+    if (millis() & 128) { LED_ON(); } else { LED_OFF(); }
+    platform_reset_watchdog();
+
+    size_t to_write = sizeof(scsiDev.data);
+    if (to_write > remain) to_write = remain;
+    if (file.write(scsiDev.data, to_write) != to_write)
+    {
+      logmsg("---- File writing to '", imgname, "' failed with ", (int)remain, " bytes remaining");
+      file.close();
+      LED_OFF();
+      return false;
+    }
+
+    remain -= to_write;
+  }
+
+  file.close();
+  uint32_t time = millis() - start;
+  int kb_per_s = size / time;
+  logmsg("---- Image creation successful, write speed ", kb_per_s, " kB/s, removing '", cmd_filename, "'");
+  SD.remove(cmd_filename);
+
+  LED_OFF();
+  return true;
+}
+
 // Iterate over the root path in the SD card looking for candidate image files.
 bool findHDDImages()
 {
@@ -208,19 +342,34 @@ bool findHDDImages()
     if(!file.isDir()) {
       file.getName(name, MAX_FILE_PATH+1);
       file.close();
+
+      // Special filename for clearing any previously programmed ROM drive
+      if(strcasecmp(name, "CLEAR_ROM") == 0)
+      {
+        logmsg("-- Special filename: '", name, "'");
+        scsiDiskClearRomDrive();
+        continue;
+      }
+
+      // Special filename for creating new empty image files
+      if (strncasecmp(name, CREATEFILE, strlen(CREATEFILE)) == 0)
+      {
+        logmsg("-- Special filename: '", name, "'");
+        char imgname[MAX_FILE_PATH+1];
+        if (createImage(name, imgname))
+        {
+          // Created new image file, use its name instead of the name of the command file
+          strncpy(name, imgname, MAX_FILE_PATH);
+          name[MAX_FILE_PATH] = '\0';
+        }
+      }
+
       bool is_hd = (tolower(name[0]) == 'h' && tolower(name[1]) == 'd');
       bool is_cd = (tolower(name[0]) == 'c' && tolower(name[1]) == 'd');
       bool is_fd = (tolower(name[0]) == 'f' && tolower(name[1]) == 'd');
       bool is_mo = (tolower(name[0]) == 'm' && tolower(name[1]) == 'o');
       bool is_re = (tolower(name[0]) == 'r' && tolower(name[1]) == 'e');
       bool is_tp = (tolower(name[0]) == 't' && tolower(name[1]) == 'p');
-
-      if(strcasecmp(name, "CLEAR_ROM") == 0)
-      {
-        scsiDiskClearRomDrive();
-        continue;
-      }
-
       if (is_hd || is_cd || is_fd || is_mo || is_re || is_tp)
       {
         // Check file extension
