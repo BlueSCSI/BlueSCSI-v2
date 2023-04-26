@@ -626,6 +626,7 @@ extern "C" void bluescsi_setup(void)
 extern "C" void bluescsi_main_loop(void)
 {
   static uint32_t sd_card_check_time = 0;
+  static uint32_t last_request_time = 0;
 
   platform_reset_watchdog();
 
@@ -643,9 +644,15 @@ extern "C" void bluescsi_main_loop(void)
     scsiLogPhaseChange(scsiDev.phase);
 
     // Save log periodically during status phase if there are new messages.
-    if (scsiDev.phase == STATUS)
+    // In debug mode, also save every 2 seconds if no SCSI requests come in.
+    // SD card writing takes a while, during which the code can't handle new
+    // SCSI requests, so normally we only want to save during a phase where
+    // the host is waiting for us. But for debugging issues where no requests
+    // come through or a request hangs, it's useful to force saving of log.
+    if (scsiDev.phase == STATUS || (g_log_debug && (uint32_t)(millis() - last_request_time) > 2000))
     {
       save_logfile();
+      last_request_time = millis();
     }
   }
 
