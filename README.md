@@ -15,6 +15,20 @@ In addition to the simplified filenames style above, the ZuluSCSI firmware also 
 The media type can be set in `zuluscsi.ini`, or directly by the file name prefix.
 Supported prefixes are `HD` (hard drive), `CD` (cd-rom), `FD` (floppy), `MO` (magneto-optical), `RE` (generic removeable media), `TP` (sequential tape drive).
 
+Creating new image files
+------------------------
+Empty image files can be created using operating system tools:
+
+* Windows: `fsutil file createnew HD1.img 1073741824` (1 GB)
+* Linux: `fallocate -l 1G HD1.img`
+* Mac OS X: `mkfile -n 1g HD1.img`
+
+ZuluSCSI firmware can also create image files itself.
+To do this, create a text file with filename such as `Create 1024M HD40.txt`.
+The special filename must start with "Create" and be followed by file size and the name of resulting image file.
+The file will be created next time the SD card is inserted.
+The status LED will flash rapidly while image file generation is in progress.
+
 Log files and error indications
 -------------------------------
 Log messages are stored in `zululog.txt`, which is cleared on every boot.
