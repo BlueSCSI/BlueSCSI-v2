@@ -22,6 +22,10 @@ extern const char *g_platform_name;
 #define SD_USE_SDIO 1
 #define PLATFORM_HAS_INITIATOR_MODE 1
 
+#ifndef PLATFORM_VDD_WARNING_LIMIT_mV
+#define PLATFORM_VDD_WARNING_LIMIT_mV 2800
+#endif
+
 // NOTE: The driver supports synchronous speeds higher than 10MB/s, but this
 // has not been tested due to lack of fast enough SCSI adapter.
 // #define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_TURBO
