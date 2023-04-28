@@ -28,6 +28,7 @@
 #include <hardware/gpio.h>
 #include <hardware/uart.h>
 #include <hardware/spi.h>
+#include <hardware/adc.h>
 #include <hardware/flash.h>
 #include <hardware/structs/xip_ctrl.h>
 #include <hardware/structs/usb.h>
@@ -396,6 +397,51 @@ static void usb_log_poll()
     }
 }
 
+// Use ADC to implement supply voltage monitoring for the +3.0V rail.
+// This works by sampling the temperature sensor channel, which has
+// a voltage of 0.7 V, allowing to calculate the VDD voltage.
+static void adc_poll()
+{
+#if PLATFORM_VDD_WARNING_LIMIT_mV > 0
+    static bool initialized = false;
+    static int lowest_vdd_seen = PLATFORM_VDD_WARNING_LIMIT_mV;
+
+    if (!initialized)
+    {
+        adc_init();
+        adc_set_temp_sensor_enabled(true);
+        adc_set_clkdiv(65535); // Lowest samplerate, about 2 kHz
+        adc_select_input(4);
+        adc_fifo_setup(true, false, 0, false, false);
+        adc_run(true);
+        initialized = true;
+    }
+
+    int adc_value_max = 0;
+    while (!adc_fifo_is_empty())
+    {
+        int adc_value = adc_fifo_get();
+        if (adc_value > adc_value_max) adc_value_max = adc_value;
+    }
+
+    // adc_value = 700mV * 4096 / Vdd
+    // => Vdd = 700mV * 4096 / adc_value
+    // To avoid wasting time on division, compare against
+    // limit directly.
+    const int limit = (700 * 4096) / PLATFORM_VDD_WARNING_LIMIT_mV;
+    if (adc_value_max > limit)
+    {
+        // Warn once, and then again if we detect even a lower drop.
+        int vdd_mV = (700 * 4096) / adc_value_max;
+        if (vdd_mV < lowest_vdd_seen)
+        {
+            logmsg("WARNING: Detected supply voltage drop to ", vdd_mV, "mV. Verify power supply is adequate.");
+            lowest_vdd_seen = vdd_mV - 50; // Small hysteresis to avoid excessive warnings
+        }
+    }
+#endif
+}
+
 // This function is called for every log message.
 void platform_log(const char *s)
 {
@@ -488,6 +534,8 @@ void platform_reset_watchdog()
     }
 
     usb_log_poll();
+
+    adc_poll();
 }
 
 /*****************************************/

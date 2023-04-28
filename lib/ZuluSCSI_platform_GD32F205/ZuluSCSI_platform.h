@@ -54,6 +54,10 @@ extern const char *g_platform_name;
 #   include "ZuluSCSI_v1_1_gpio.h"
 #endif
 
+#ifndef PLATFORM_VDD_WARNING_LIMIT_mV
+#define PLATFORM_VDD_WARNING_LIMIT_mV 2800
+#endif
+
 // Debug logging functions
 void platform_log(const char *s);
 
