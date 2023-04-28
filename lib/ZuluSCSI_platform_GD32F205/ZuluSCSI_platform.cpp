@@ -267,6 +267,54 @@ void platform_disable_led(void)
 }
 
 /*****************************************/
+/* Supply voltage monitor                */
+/*****************************************/
+
+// Use ADC to implement supply voltage monitoring for the +3.0V rail.
+// This works by sampling the Vrefint, which has
+// a voltage of 1.2 V, allowing to calculate the VDD voltage.
+static void adc_poll()
+{
+#if PLATFORM_VDD_WARNING_LIMIT_mV > 0
+    static bool initialized = false;
+    static int lowest_vdd_seen = PLATFORM_VDD_WARNING_LIMIT_mV;
+
+    if (!initialized)
+    {
+        rcu_periph_clock_enable(RCU_ADC0);
+        adc_enable(ADC0);
+        adc_calibration_enable(ADC0);
+        adc_tempsensor_vrefint_enable();
+        adc_inserted_channel_config(ADC0, 0, ADC_CHANNEL_17, ADC_SAMPLETIME_239POINT5);
+        adc_external_trigger_source_config(ADC0, ADC_INSERTED_CHANNEL, ADC0_1_2_EXTTRIG_INSERTED_NONE);
+        adc_external_trigger_config(ADC0, ADC_INSERTED_CHANNEL, ENABLE);
+        adc_software_trigger_enable(ADC0, ADC_INSERTED_CHANNEL);
+        initialized = true;
+    }
+
+    // Read previous result and start new one
+    int adc_value = ADC_IDATA0(ADC0);
+    adc_software_trigger_enable(ADC0, ADC_INSERTED_CHANNEL);
+
+    // adc_value = 1200mV * 4096 / Vdd
+    // => Vdd = 1200mV * 4096 / adc_value
+    // To avoid wasting time on division, compare against
+    // limit directly.
+    const int limit = (1200 * 4096) / PLATFORM_VDD_WARNING_LIMIT_mV;
+    if (adc_value > limit)
+    {
+        // Warn once, and then again if we detect even a lower drop.
+        int vdd_mV = (1200 * 4096) / adc_value;
+        if (vdd_mV < lowest_vdd_seen)
+        {
+            logmsg("WARNING: Detected supply voltage drop to ", vdd_mV, "mV. Verify power supply is adequate.");
+            lowest_vdd_seen = vdd_mV - 50; // Small hysteresis to avoid excessive warnings
+        }
+    }
+#endif
+}
+
+/*****************************************/
 /* Crash handlers                        */
 /*****************************************/
 
@@ -436,6 +484,7 @@ void platform_reset_watchdog()
     // It gives us opportunity to collect better debug info than the
     // full hardware reset that would be caused by hardware watchdog.
     g_watchdog_timeout = WATCHDOG_CRASH_TIMEOUT;
+    adc_poll();
 }
 
 /***********************/
