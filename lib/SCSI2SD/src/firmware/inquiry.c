@@ -224,6 +224,11 @@ uint32_t s2s_getStandardInquiry(
 	memcpy(out, StandardResponse, buflen);
 	out[1] = cfg->deviceTypeModifier;
 
+	if (!(scsiDev.boardCfg.flags & S2S_CFG_ENABLE_SCSI2))
+	{
+		out[2] = 1; // Report only SCSI 1 compliance version
+	}
+
 	if (scsiDev.compatMode >= COMPAT_SCSI2)
 	{
 		out[3] = 2; // SCSI 2 response format.
