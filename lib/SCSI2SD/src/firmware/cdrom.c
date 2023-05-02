@@ -40,6 +40,19 @@ static const uint8_t SimpleTOC[] =
 	0x00,0x00,0x00,0x00, // Track start sector (LBA)
 };
 
+static const uint8_t LeadoutTOC[] =
+{
+	0x00, // toc length, MSB
+	0x0A, // toc length, LSB
+	0x01, // First track number
+	0x01, // Last track number,
+	0x00, // reserved
+	0x14, // Q sub-channel encodes current position, Digital track
+	0xAA, // Leadout Track
+	0x00, // Reserved
+	0x00,0x00,0x00,0x00, // Track start sector (LBA)
+};
+
 static const uint8_t SessionTOC[] =
 {
 	0x00, // toc length, MSB
@@ -148,17 +161,41 @@ static void LBA2MSF(uint32_t LBA, uint8_t* MSF)
 
 static void doReadTOC(int MSF, uint8_t track, uint16_t allocationLength)
 {
-	// We only support track 1.
-	// track 0 means "return all tracks"
-	if (track > 1)
+	if (track == 0xAA)
 	{
-		scsiDev.status = CHECK_CONDITION;
-		scsiDev.target->sense.code = ILLEGAL_REQUEST;
-		scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
-		scsiDev.phase = STATUS;
+		// 0xAA requests only lead-out track information (reports capacity)
+		uint32_t len = sizeof(LeadoutTOC);
+		memcpy(scsiDev.data, LeadoutTOC, len);
+
+		uint32_t capacity = getScsiCapacity(
+			scsiDev.target->cfg->sdSectorStart,
+			scsiDev.target->liveCfg.bytesPerSector,
+			scsiDev.target->cfg->scsiSectors);
+
+		// Replace start of leadout track
+		if (MSF)
+		{
+			LBA2MSF(capacity, scsiDev.data + 8);
+		}
+		else
+		{
+			scsiDev.data[8] = capacity >> 24;
+			scsiDev.data[9] = capacity >> 16;
+			scsiDev.data[10] = capacity >> 8;
+			scsiDev.data[11] = capacity;
+		}
+
+		if (len > allocationLength)
+		{
+			len = allocationLength;
+		}
+		scsiDev.dataLen = len;
+		scsiDev.phase = DATA_IN;
 	}
-	else
+	else if (track <= 1)
 	{
+		// We only support track 1.
+		// track 0 means "return all tracks"
 		uint32_t len = sizeof(SimpleTOC);
 		memcpy(scsiDev.data, SimpleTOC, len);
 
@@ -186,6 +223,13 @@ static void doReadTOC(int MSF, uint8_t track, uint16_t allocationLength)
 		}
 		scsiDev.dataLen = len;
 		scsiDev.phase = DATA_IN;
+	}
+	else
+	{
+		scsiDev.status = CHECK_CONDITION;
+		scsiDev.target->sense.code = ILLEGAL_REQUEST;
+		scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+		scsiDev.phase = STATUS;
 	}
 }
 
