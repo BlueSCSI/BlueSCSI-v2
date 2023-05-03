@@ -695,6 +695,7 @@ extern "C" void zuluscsi_main_loop(void)
   static uint32_t last_request_time = 0;
 
   platform_reset_watchdog();
+  platform_poll();
   
 #ifdef PLATFORM_HAS_INITIATOR_MODE
   if (platform_is_initiator_mode_enabled())
@@ -761,6 +762,7 @@ extern "C" void zuluscsi_main_loop(void)
         blinkStatus(BLINK_ERROR_NO_SD_CARD);
         delay(1000);
         platform_reset_watchdog();
+        platform_poll();
       }
     } while (!g_sdcard_present && !g_romdrive_active);
   }
