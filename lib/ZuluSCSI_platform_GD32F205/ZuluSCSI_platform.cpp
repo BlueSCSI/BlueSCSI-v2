@@ -484,6 +484,12 @@ void platform_reset_watchdog()
     // It gives us opportunity to collect better debug info than the
     // full hardware reset that would be caused by hardware watchdog.
     g_watchdog_timeout = WATCHDOG_CRASH_TIMEOUT;
+}
+
+// Poll function that is called every few milliseconds.
+// Can be left empty or used for platform-specific processing.
+void platform_poll()
+{
     adc_poll();
 }
 

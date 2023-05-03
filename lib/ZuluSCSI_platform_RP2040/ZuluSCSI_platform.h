@@ -105,6 +105,11 @@ bool platform_is_initiator_mode_enabled();
 // Setup soft watchdog if supported
 void platform_reset_watchdog();
 
+// Poll function that is called every few milliseconds.
+// The SD card is free to access during this time, and pauses up to
+// few milliseconds shouldn't disturb SCSI communication.
+void platform_poll();
+
 // Set callback that will be called during data transfer to/from SD card.
 // This can be used to implement simultaneous transfer to SCSI bus.
 typedef void (*sd_callback_t)(uint32_t bytes_complete);
