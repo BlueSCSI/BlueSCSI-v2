@@ -52,6 +52,13 @@ void platform_reset_watchdog()
 {
 }
 
+// Poll function that is called every few milliseconds.
+// Can be left empty or used for platform-specific processing.
+void platform_poll()
+{
+
+}
+
 /**********************************************/
 /* Mapping from data bytes to GPIO BOP values */
 /**********************************************/
