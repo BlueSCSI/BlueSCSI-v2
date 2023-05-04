@@ -167,7 +167,7 @@ Main program structure:
 Major changes from BlueSCSI and SCSI2SD include:
 
 * Separation of platform-specific functionality to separate directory to ease porting.
-* Ported to GD32F205.
+* Originally ported to GD32F205 and then RP2040 (See commit [858620f](https://github.com/ZuluSCSI/ZuluSCSI-firmware/commit/858620f2855d29fbd5b3f905972523b4fe65fdea)).
 * Removal of Arduino core dependency, as it was not currently available for GD32F205.
 * Buffered log functions.
 * Simultaneous transfer between SD card and SCSI for improved performance.
