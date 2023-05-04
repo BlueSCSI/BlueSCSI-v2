@@ -316,6 +316,8 @@ int scsiInitiatorRunCommand(int target_id,
     int status = -1;
     while ((phase = (SCSI_PHASE)scsiHostPhyGetPhase()) != BUS_FREE)
     {
+        platform_poll();
+
         if (phase == MESSAGE_IN)
         {
             uint8_t dummy = 0;
@@ -674,6 +676,8 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
 
     while (true)
     {
+        platform_poll();
+
         phase = (SCSI_PHASE)scsiHostPhyGetPhase();
         if (phase != DATA_IN && phase != BUS_BUSY)
         {
@@ -708,6 +712,8 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
 
     while ((phase = (SCSI_PHASE)scsiHostPhyGetPhase()) != BUS_FREE)
     {
+        platform_poll();
+
         if (phase == MESSAGE_IN)
         {
             uint8_t dummy = 0;
