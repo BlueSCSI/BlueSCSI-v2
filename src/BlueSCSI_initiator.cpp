@@ -111,6 +111,12 @@ static void scsiInitiatorUpdateLed()
 // High level logic of the initiator mode
 void scsiInitiatorMainLoop()
 {
+    if (g_scsiHostPhyReset)
+    {
+        log("Executing BUS RESET after aborted command");
+        scsiHostPhyReset();
+    }
+
     if (!g_initiator_state.imaging)
     {
         // Scan for SCSI drives one at a time
