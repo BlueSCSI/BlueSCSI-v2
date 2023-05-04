@@ -1566,6 +1566,8 @@ void diskDataOut()
            && scsiDev.phase == DATA_OUT
            && !scsiDev.resetFlag)
     {
+        platform_poll();
+
         // Figure out how many contiguous bytes are available for writing to SD card.
         uint32_t bufsize = sizeof(scsiDev.data);
         uint32_t start = g_disk_transfer.bytes_sd % bufsize;
@@ -1729,6 +1731,11 @@ static void doRead(uint32_t lba, uint32_t blocks)
 
         if (transfer.currentBlock == transfer.blocks)
         {
+            while (!scsiIsWriteFinished(NULL))
+            {
+                platform_poll();
+            }
+
             scsiFinishWrite();
         }
 #endif
@@ -1797,6 +1804,8 @@ static void start_dataInTransfer(uint8_t *buffer, uint32_t count)
             logmsg("start_dataInTransfer() timeout waiting for previous to finish");
             scsiDev.resetFlag = 1;
         }
+
+        platform_poll();
     }
     if (scsiDev.resetFlag) return;
 
@@ -1815,6 +1824,8 @@ static void start_dataInTransfer(uint8_t *buffer, uint32_t count)
 
     diskDataIn_callback(count);
     platform_set_sd_callback(NULL, NULL);
+
+    platform_poll();
 }
 
 static void diskDataIn()
@@ -1868,6 +1879,8 @@ static void diskDataIn()
 
         while (!scsiIsWriteFinished(NULL) && prefetch_sectors > 0 && !scsiDev.resetFlag)
         {
+            platform_poll();
+
             // Check if prefetch buffer is free
             g_disk_transfer.buffer = g_scsi_prefetch.buffer + g_scsi_prefetch.bytes;
             if (!scsiIsWriteFinished(g_disk_transfer.buffer) ||
@@ -1893,6 +1906,11 @@ static void diskDataIn()
             prefetch_sectors--;
         }
 #endif
+
+        while (!scsiIsWriteFinished(NULL))
+        {
+            platform_poll();
+        }
 
         scsiFinishWrite();
     }

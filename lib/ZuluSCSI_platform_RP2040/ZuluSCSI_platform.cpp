@@ -533,8 +533,16 @@ void platform_reset_watchdog()
         g_watchdog_initialized = true;
     }
 
+    // USB log is polled here also to make sure any log messages in fault states
+    // get passed to USB.
     usb_log_poll();
+}
 
+// Poll function that is called every few milliseconds.
+// Can be left empty or used for platform-specific processing.
+void platform_poll()
+{
+    usb_log_poll();
     adc_poll();
 }
 
