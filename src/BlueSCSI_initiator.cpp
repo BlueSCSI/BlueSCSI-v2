@@ -108,6 +108,16 @@ static void scsiInitiatorUpdateLed()
     }
 }
 
+void delay_with_poll(uint32_t ms)
+{
+    uint32_t start = millis();
+    while ((uint32_t)(millis() - start) < ms)
+    {
+        platform_poll();
+        delay(1);
+    }
+}
+
 // High level logic of the initiator mode
 void scsiInitiatorMainLoop()
 {
@@ -127,7 +137,7 @@ void scsiInitiatorMainLoop()
 
         if (!(g_initiator_state.drives_imaged & (1 << g_initiator_state.target_id)))
         {
-            delay(1000);
+            delay_with_poll(1000);
 
             uint8_t inquiry_data[36];
 
@@ -260,9 +270,9 @@ void scsiInitiatorMainLoop()
             if (g_initiator_state.retrycount < 5)
             {
                 log("Retrying.. ", g_initiator_state.retrycount, "/5");
-                delay(200);
+                delay_with_poll(200);
                 scsiHostPhyReset();
-                delay(200);
+                delay_with_poll(200);
 
                 g_initiator_state.retrycount++;
                 g_initiator_state.target_file.seek((uint64_t)g_initiator_state.sectors_done * g_initiator_state.sectorsize);
@@ -700,6 +710,7 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
     // Write any remaining buffered data
     while (g_initiator_transfer.bytes_sd < g_initiator_transfer.bytes_scsi_done)
     {
+        platform_poll();
         scsiInitiatorWriteDataToSd(file, false);
     }
 

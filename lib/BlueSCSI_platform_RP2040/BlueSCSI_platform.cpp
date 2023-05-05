@@ -337,11 +337,11 @@ static void usb_log_poll()
     if (_SerialUSB.ready())
     {
         // Retrieve pointer to log start and determine number of bytes available.
-        uint32_t newlogpos = logpos;
-        const char *data = log_get_buffer(&newlogpos);
+        uint32_t available = 0;
+        const char *data = log_get_buffer(&logpos, &available);
 
         // Limit to CDC packet size
-        uint32_t len = (newlogpos - logpos);
+        uint32_t len = available;
         if (len == 0) return;
         if (len > CDC_MAX_PACKET_SIZE) len = CDC_MAX_PACKET_SIZE;
 
@@ -349,7 +349,7 @@ static void usb_log_poll()
         // If USB CDC buffer is full, this may be 0
         uint32_t actual = 0;
         _SerialUSB.send_nb((uint8_t*)data, len, &actual);
-        logpos += actual;
+        logpos -= available - actual;
     }
 }
 

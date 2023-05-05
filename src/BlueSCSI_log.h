@@ -10,7 +10,8 @@ uint32_t log_get_buffer_len();
 
 // Get log as a string.
 // If startpos is given, continues log reading from previous position and updates the position.
-const char *log_get_buffer(uint32_t *startpos);
+// If available is given, number of bytes available is written there.
+const char *log_get_buffer(uint32_t *startpos, uint32_t *available = nullptr);
 
 // Whether to enable debug messages
 extern bool g_log_debug;

@@ -121,7 +121,7 @@ uint32_t log_get_buffer_len()
     return g_logpos;
 }
 
-const char *log_get_buffer(uint32_t *startpos)
+const char *log_get_buffer(uint32_t *startpos, uint32_t *available)
 {
     uint32_t default_pos = 0;
     if (startpos == NULL)
@@ -130,27 +130,45 @@ const char *log_get_buffer(uint32_t *startpos)
     }
 
     // Check oldest data available in buffer
-    uint32_t margin = 16;
-    if (g_logpos + margin > LOGBUFSIZE)
+    uint32_t lag = (g_logpos - *startpos);
+    if (lag >= LOGBUFSIZE)
     {
-        uint32_t oldest = g_logpos + margin - LOGBUFSIZE;
-        if (*startpos < oldest)
+        // If we lose data, skip 512 bytes forward to give us time to transmit
+        // pending data before new log messages arrive. Also skip to next line
+        // break to keep formatting consistent.
+        uint32_t oldest = g_logpos - LOGBUFSIZE + 512;
+        while (oldest < g_logpos)
         {
-            *startpos = oldest;
+            char c = g_logbuffer[oldest & LOGBUFMASK];
+            if (c == '\r' || c == '\n') break;
+            oldest++;
         }
+
+        if (oldest > g_logpos)
+        {
+            oldest = g_logpos;
+        }
+
+        *startpos = oldest;
     }
 
     const char *result = &g_logbuffer[*startpos & LOGBUFMASK];
+
+    // Calculate number of bytes available
+    uint32_t len;
     if ((g_logpos & LOGBUFMASK) >= (*startpos & LOGBUFMASK))
     {
-        // Ok, everything has been read now
-        *startpos = g_logpos;
+        // Can read directly to g_logpos
+        len = g_logpos - *startpos;
     }
     else
     {
         // Buffer wraps, read to end of buffer now and start from beginning on next call.
-        *startpos = g_logpos & (~LOGBUFMASK);
+        len = LOGBUFSIZE - (*startpos & LOGBUFMASK);
     }
+
+    if (available) { *available = len; }
+    *startpos += len;
 
     return result;
 }
