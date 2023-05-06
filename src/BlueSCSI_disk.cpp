@@ -1031,7 +1031,7 @@ void s2s_configInit(S2S_BoardCfg* config)
         log("-- Debug is enabled");
     }
 
-    if (ini_getbool("SCSI", "Parity", defaults.enableParity, CONFIGFILE))
+    if (ini_getbool("SCSI", "EnableParity", defaults.enableParity, CONFIGFILE))
     {
         debuglog("-- Parity is enabled");
         config->flags |= S2S_CFG_ENABLE_PARITY;
