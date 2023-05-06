@@ -22,6 +22,8 @@ static uint32_t g_sdio_sector_count;
 #define checkReturnOk(call) ((g_sdio_error = (call)) == SDIO_OK ? true : logSDError(__LINE__))
 static bool logSDError(int line)
 {
+    sio_hw->gpio_set = 1 << SWO_PIN;
+    //sio_hw->gpio_clr = 1 << SWO_PIN;
     g_sdio_error_line = line;
     log("SDIO SD card error on line ", line, ", error code ", (int)g_sdio_error);
     return false;

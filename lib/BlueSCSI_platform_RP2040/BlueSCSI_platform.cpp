@@ -67,7 +67,8 @@ void platform_init()
     bool optionS2 = !gpio_get(SCSI_IN_ACK);
 
     /* Initialize logging to SWO pin (UART0) */
-    gpio_conf(SWO_PIN,        GPIO_FUNC_UART,false,false, true,  false, true);
+    //        pin             function       pup   pdown  out    state fast
+    gpio_conf(SWO_PIN,        GPIO_FUNC_SIO,false,false, true,  false, true);
     uart_init(uart0, 1000000);
     g_uart_initialized = true;
     mbed_set_error_hook(mbed_error_hook);
