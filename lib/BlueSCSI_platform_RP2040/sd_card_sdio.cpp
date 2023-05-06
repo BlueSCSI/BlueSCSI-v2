@@ -315,6 +315,7 @@ bool SdioCard::readSCR(scr_t* scr) {
 
 bool SdioCard::writeSector(uint32_t sector, const uint8_t* src)
 {
+    sio_hw->gpio_clr = 1 << SWO_PIN;
     if (((uint32_t)src & 3) != 0)
     {
         // Buffer is not aligned, need to memcpy() the data to a temporary buffer.
@@ -365,7 +366,7 @@ bool SdioCard::writeSectors(uint32_t sector, const uint8_t* src, size_t n)
         }
         return true;
     }
-
+    sio_hw->gpio_clr = 1 << SWO_PIN;
     sd_callback_t callback = get_stream_callback(src, n * 512, "writeSectors", sector);
 
     uint32_t reply;
@@ -402,6 +403,7 @@ bool SdioCard::writeSectors(uint32_t sector, const uint8_t* src, size_t n)
 
 bool SdioCard::readSector(uint32_t sector, uint8_t* dst)
 {
+    sio_hw->gpio_clr = 1 << SWO_PIN;
     uint8_t *real_dst = dst;
     if (((uint32_t)dst & 3) != 0)
     {
@@ -456,7 +458,7 @@ bool SdioCard::readSectors(uint32_t sector, uint8_t* dst, size_t n)
         }
         return true;
     }
-
+    sio_hw->gpio_clr = 1 << SWO_PIN;
     sd_callback_t callback = get_stream_callback(dst, n * 512, "readSectors", sector);
 
     uint32_t reply;
