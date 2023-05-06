@@ -116,6 +116,13 @@ void log_raw(bytearray array)
     }
 }
 
+void log_raw(double value)
+{
+    char buffer[6];
+    snprintf(buffer, sizeof buffer, "%0.3f", value);
+    log_raw(buffer);
+}
+
 uint32_t log_get_buffer_len()
 {
     return g_logpos;

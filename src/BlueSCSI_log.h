@@ -34,6 +34,9 @@ void log_raw(uint64_t value);
 // Log integer as decimal
 void log_raw(int value);
 
+// Log double
+void log_raw(double value);
+
 // Log array of bytes
 struct bytearray {
     bytearray(const uint8_t *data, size_t len): data(data), len(len) {}

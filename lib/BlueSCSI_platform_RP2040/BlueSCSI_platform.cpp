@@ -356,6 +356,7 @@ static void usb_log_poll()
 // Use ADC to implement supply voltage monitoring for the +3.0V rail.
 // This works by sampling the temperature sensor channel, which has
 // a voltage of 0.7 V, allowing to calculate the VDD voltage.
+static bool adc_initial_log = true;
 static void adc_poll()
 {
 #if PLATFORM_VDD_WARNING_LIMIT_mV > 0
@@ -391,9 +392,15 @@ static void adc_poll()
         int vdd_mV = (700 * 4096) / adc_value_max;
         if (vdd_mV < lowest_vdd_seen)
         {
-            log("WARNING: Detected supply voltage drop to ", vdd_mV, "mV. Verify power supply is adequate.");
+            log("WARNING: Detected voltage drop to ", (vdd_mV / 1000.0), "V - See: https://www.github.com/BlueSCSI/BlueSCSI-v2/wiki/Low-Voltage");
             lowest_vdd_seen = vdd_mV - 50; // Small hysteresis to avoid excessive warnings
         }
+    }
+    else if (adc_initial_log && adc_value_max != 0)
+    {
+        adc_initial_log = false;
+        int vdd_mV = (700 * 4096) / adc_value_max;
+        log("INFO: Pico Voltage: ", (vdd_mV / 1000.0), "V.");
     }
 #endif
 }
