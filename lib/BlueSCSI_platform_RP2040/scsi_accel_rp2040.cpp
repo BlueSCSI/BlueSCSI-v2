@@ -15,6 +15,7 @@
 #include <hardware/irq.h>
 #include <hardware/structs/iobank0.h>
 #include <hardware/sync.h>
+#include <audio.h>
 #include <multicore.h>
 
 // SCSI bus write acceleration uses up to 3 PIO state machines:
@@ -722,7 +723,17 @@ void scsi_accel_rp2040_finishRead(const uint8_t *data, uint32_t count, int *pari
 
 static void scsi_dma_irq()
 {
+#ifndef ENABLE_AUDIO_OUTPUT
     dma_hw->ints0 = (1 << SCSI_DMA_CH_A);
+#else
+    // see audio.h for whats going on here
+    if (dma_hw->intr & (1 << SCSI_DMA_CH_A)) {
+        dma_hw->ints0 = (1 << SCSI_DMA_CH_A);
+    } else {
+        audio_dma_irq();
+        return;
+    }
+#endif
 
     scsidma_state_t state = g_scsi_dma_state;
     if (state == SCSIDMA_WRITE)
