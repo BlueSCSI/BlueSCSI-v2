@@ -52,6 +52,7 @@
 #include "ZuluSCSI_log_trace.h"
 #include "ZuluSCSI_disk.h"
 #include "ZuluSCSI_initiator.h"
+#include "ROMDrive.h"
 
 SdFs SD;
 FsFile g_logfile;
@@ -347,7 +348,7 @@ bool findHDDImages()
       if(strcasecmp(name, "CLEAR_ROM") == 0)
       {
         logmsg("-- Special filename: '", name, "'");
-        scsiDiskClearRomDrive();
+        romDriveClear();
         continue;
       }
 
@@ -642,7 +643,7 @@ extern "C" void zuluscsi_setup(void)
     logmsg("SD card init failed, sdErrorCode: ", (int)SD.sdErrorCode(),
            " sdErrorData: ", (int)SD.sdErrorData());
 
-    if (scsiDiskCheckRomDrive())
+    if (romDriveCheckPresent())
     {
       reinitSCSI();
       if (g_romdrive_active)
