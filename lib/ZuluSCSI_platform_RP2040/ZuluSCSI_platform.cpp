@@ -27,6 +27,8 @@
 #include <assert.h>
 #include <hardware/gpio.h>
 #include <hardware/uart.h>
+#include <hardware/pll.h>
+#include <hardware/clocks.h>
 #include <hardware/spi.h>
 #include <hardware/adc.h>
 #include <hardware/flash.h>
@@ -35,6 +37,7 @@
 #include <platform/mbed_error.h>
 #include <multicore.h>
 #include <USB/PluggableUSBSerial.h>
+#include "audio.h"
 #include "scsi_accel_rp2040.h"
 
 extern "C" {
@@ -63,6 +66,43 @@ static void gpio_conf(uint gpio, enum gpio_function fn, bool pullup, bool pulldo
         padsbank0_hw->io[gpio] |= PADS_BANK0_GPIO0_SLEWFAST_BITS;
     }
 }
+
+#ifdef ENABLE_AUDIO_OUTPUT
+// Increases clk_sys and clk_peri to 135.428571MHz at runtime to support
+// division to audio output rates. Invoke before anything is using clk_peri
+// except for the logging UART, which is handled below.
+static void reclock_for_audio() {
+    // ensure UART is fully drained before we mess up its clock
+    uart_tx_wait_blocking(uart0);
+    // switch clk_sys and clk_peri to pll_usb
+    // see code in 2.15.6.1 of the datasheet for useful comments
+    clock_configure(clk_sys,
+            CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
+            CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_CLKSRC_PLL_USB,
+            48 * MHZ,
+            48 * MHZ);
+    clock_configure(clk_peri,
+            0,
+            CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLKSRC_PLL_USB,
+            48 * MHZ,
+            48 * MHZ);
+    // reset PLL for 135.428571MHz
+    pll_init(pll_sys, 1, 948000000, 7, 1);
+    // switch clocks back to pll_sys
+    clock_configure(clk_sys,
+            CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
+            CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
+            135428571,
+            135428571);
+    clock_configure(clk_peri,
+            0,
+            CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
+            135428571,
+            135428571);
+    // reset UART for the new clock speed
+    uart_init(uart0, 1000000);
+}
+#endif
 
 void platform_init()
 {
@@ -118,6 +158,12 @@ void platform_init()
     logmsg ("SCSI termination is handled by a hardware jumper");
 #endif
 
+#ifdef ENABLE_AUDIO_OUTPUT
+    logmsg("SP/DIF audio to expansion header enabled");
+    logmsg("-- Overclocking to 135.428571MHz");
+    reclock_for_audio();
+#endif
+
     // Get flash chip size
     uint8_t cmd_read_jedec_id[4] = {0x9f, 0, 0, 0};
     uint8_t response_jedec[4] = {0};
@@ -140,11 +186,17 @@ void platform_init()
     // LED pin
     gpio_conf(LED_PIN,        GPIO_FUNC_SIO, false,false, true,  false, false);
 
+#ifndef ENABLE_AUDIO_OUTPUT
 #ifdef GPIO_I2C_SDA
     // I2C pins
     //        pin             function       pup   pdown  out    state fast
     gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_I2C, true,false, false,  true, true);
     gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_I2C, true,false, false,  true, true);
+#endif
+#else
+    //        pin             function       pup   pdown  out    state fast
+    gpio_conf(GPIO_EXP_AUDIO, GPIO_FUNC_SPI, true,false, false,  true, true);
+    // configuration of corresponding SPI unit occurs in audio_setup()
 #endif
 }
 
@@ -253,6 +305,11 @@ void platform_late_init()
         gpio_conf(SCSI_IN_ACK,    GPIO_FUNC_SIO, true, false, false, true, false);
         gpio_conf(SCSI_IN_ATN,    GPIO_FUNC_SIO, true, false, false, true, false);
         gpio_conf(SCSI_IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
+
+#ifdef ENABLE_AUDIO_OUTPUT
+        // one-time control setup for DMA channels and second core
+        audio_setup();
+#endif
     }
     else
     {
@@ -417,6 +474,17 @@ static void adc_poll()
         initialized = true;
     }
 
+#ifdef ENABLE_AUDIO_OUTPUT
+    /*
+    * If ADC sample reads are done, either via direct reading, FIFO, or DMA,
+    * at the same time a SPI DMA write begins, it appears that the first
+    * 16-bit word of the DMA data is lost. This causes the bitstream to glitch
+    * and audio to 'pop' noticably. For now, just disable ADC reads when audio
+    * is playing.
+    */
+   if (audio_is_active()) return;
+#endif
+
     int adc_value_max = 0;
     while (!adc_fifo_is_empty())
     {
@@ -544,6 +612,10 @@ void platform_poll()
 {
     usb_log_poll();
     adc_poll();
+    
+#ifdef ENABLE_AUDIO_OUTPUT
+    audio_poll();
+#endif
 }
 
 /*****************************************/
