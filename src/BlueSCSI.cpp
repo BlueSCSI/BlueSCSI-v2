@@ -57,6 +57,7 @@
 #include "BlueSCSI_log_trace.h"
 #include "BlueSCSI_disk.h"
 #include "BlueSCSI_initiator.h"
+#include "ROMDrive.h"
 
 SdFs SD;
 FsFile g_logfile;
@@ -281,7 +282,7 @@ bool findHDDImages()
 
       if(strcasecmp(name, "CLEAR_ROM") == 0)
       {
-        scsiDiskClearRomDrive();
+        romDriveClear();
         continue;
       }
 
@@ -575,7 +576,7 @@ extern "C" void bluescsi_setup(void)
     log("SD card init failed, sdErrorCode: ", (int)SD.sdErrorCode(),
            " sdErrorData: ", (int)SD.sdErrorData());
 
-    if (scsiDiskCheckRomDrive())
+    if (romDriveCheckPresent())
     {
       reinitSCSI();
       if (g_romdrive_active)

@@ -10,6 +10,8 @@
 #include "BlueSCSI_log.h"
 #include "BlueSCSI_config.h"
 #include "BlueSCSI_presets.h"
+#include "ImageBackingStore.h"
+#include "ROMDrive.h"
 #include <minIni.h>
 #include <string.h>
 #include <strings.h>
@@ -56,14 +58,6 @@ extern "C" {
 #endif
 #endif
 
-#ifndef PLATFORM_HAS_ROM_DRIVE
-// Dummy defines for platforms without ROM drive support
-#define PLATFORM_ROMDRIVE_PAGE_SIZE 1024
-uint32_t platform_get_romdrive_maxsize() { return 0; }
-bool platform_read_romdrive(uint8_t *dest, uint32_t start, uint32_t count) { return false; }
-bool platform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count) { return false; }
-#endif
-
 #ifndef PLATFORM_SCSIPHY_HAS_NONBLOCKING_READ
 // For platforms that do not have non-blocking read from SCSI bus
 void scsiStartRead(uint8_t* data, uint32_t count, int *parityError)
@@ -80,153 +74,24 @@ bool scsiIsReadFinished(const uint8_t *data)
 }
 #endif
 
-// SD card sector size is always 512 bytes
-extern SdFs SD;
-#define SD_SECTOR_SIZE 512
-
 /************************************************/
 /* ROM drive support (in microcontroller flash) */
 /************************************************/
-
-struct romdrive_hdr_t {
-    char magic[8]; // "ROMDRIVE"
-    int scsi_id;
-    uint32_t imagesize;
-    uint32_t blocksize;
-    S2S_CFG_TYPE drivetype;
-    uint32_t reserved[32];
-};
-
-// Check if the romdrive is present
-static bool check_romdrive(romdrive_hdr_t *hdr)
-{
-    if (!platform_read_romdrive((uint8_t*)hdr, 0, sizeof(romdrive_hdr_t)))
-    {
-        return false;
-    }
-
-    if (memcmp(hdr->magic, "ROMDRIVE", 8) != 0)
-    {
-        return false;
-    }
-
-    if (hdr->imagesize <= 0 || hdr->scsi_id < 0 || hdr->scsi_id > 8)
-    {
-        return false;
-    }
-
-    return true;
-}
-
-// Clear the drive metadata header
-bool scsiDiskClearRomDrive()
-{
-    romdrive_hdr_t hdr = {0x0};
-
-    if (!platform_write_romdrive((const uint8_t*)&hdr, 0, PLATFORM_ROMDRIVE_PAGE_SIZE))
-    {
-        log("-- Failed to clear ROM drive");
-        return false;
-    }
-    log("-- Cleared ROM drive");
-    SD.remove("CLEAR_ROM");
-    return true;
-}
-
-// Load an image file to romdrive
-bool scsiDiskProgramRomDrive(const char *filename, int scsi_id, int blocksize, S2S_CFG_TYPE type)
-{
-#ifndef PLATFORM_HAS_ROM_DRIVE
-    log("---- Platform does not support ROM drive");
-    return false;
-#endif
-
-    FsFile file = SD.open(filename, O_RDONLY);
-    if (!file.isOpen())
-    {
-        log("---- Failed to open: ", filename);
-        return false;
-    }
-
-    uint64_t filesize = file.size();
-    uint32_t maxsize = platform_get_romdrive_maxsize() - PLATFORM_ROMDRIVE_PAGE_SIZE;
-
-    log("---- SCSI ID: ", scsi_id, " blocksize ", blocksize, " type ", (int)type);
-    log("---- ROM drive maximum size is ", (int)maxsize,
-          " bytes, image file is ", (int)filesize, " bytes");
-    
-    if (filesize > maxsize)
-    {
-        log("---- Image size exceeds ROM space, not loading");
-        file.close();
-        return false;
-    }
-
-    romdrive_hdr_t hdr = {};
-    memcpy(hdr.magic, "ROMDRIVE", 8);
-    hdr.scsi_id = scsi_id;
-    hdr.imagesize = filesize;
-    hdr.blocksize = blocksize;
-    hdr.drivetype = type;
-
-    // Program the drive metadata header
-    if (!platform_write_romdrive((const uint8_t*)&hdr, 0, PLATFORM_ROMDRIVE_PAGE_SIZE))
-    {
-        log("---- Failed to program ROM drive header");
-        file.close();
-        return false;
-    }
-    
-    // Program the drive contents
-    uint32_t pages = (filesize + PLATFORM_ROMDRIVE_PAGE_SIZE - 1) / PLATFORM_ROMDRIVE_PAGE_SIZE;
-    for (uint32_t i = 0; i < pages; i++)
-    {
-        if (i % 2)
-            LED_ON();
-        else
-            LED_OFF();
-
-        if (file.read(scsiDev.data, PLATFORM_ROMDRIVE_PAGE_SIZE) <= 0 ||
-            !platform_write_romdrive(scsiDev.data, (i + 1) * PLATFORM_ROMDRIVE_PAGE_SIZE, PLATFORM_ROMDRIVE_PAGE_SIZE))
-        {
-            log("---- Failed to program ROM drive page ", (int)i);
-            file.close();
-            return false;
-        }
-    }
-
-    LED_OFF();
-
-    file.close();
-
-    char newname[MAX_FILE_PATH * 2] = "";
-    strlcat(newname, filename, sizeof(newname));
-    strlcat(newname, "_loaded", sizeof(newname));
-    SD.rename(filename, newname);
-    log("---- ROM drive programming successful, image file renamed to ", newname);
-
-    return true;
-}
-
-bool scsiDiskCheckRomDrive()
-{
-    romdrive_hdr_t hdr = {};
-    return check_romdrive(&hdr);
-}
 
 // Check if rom drive exists and activate it
 bool scsiDiskActivateRomDrive()
 {
 #ifndef PLATFORM_HAS_ROM_DRIVE
     return false;
-#endif
+#else
     log("");
     log("=== ROM Drive ===");
+
     uint32_t maxsize = platform_get_romdrive_maxsize() - PLATFORM_ROMDRIVE_PAGE_SIZE;
     log("Platform supports ROM drive up to ", (int)(maxsize / 1024), " kB");
 
     romdrive_hdr_t hdr = {};
-    if (!check_romdrive(&hdr))
+    if (!romDriveCheckPresent(&hdr))
     {
         log("---- ROM drive image not detected");
         return false;
@@ -255,6 +120,7 @@ bool scsiDiskActivateRomDrive()
         return false;
     }
 
+    log("---- Activating ROM drive, SCSI id ", (int)hdr.scsi_id, " size ", (int)(hdr.imagesize / 1024), " kB");
     bool status = scsiDiskOpenHDDImage(hdr.scsi_id, "ROM:", hdr.scsi_id, 0, hdr.blocksize, hdr.drivetype);
 
     if (!status)
@@ -267,311 +133,33 @@ bool scsiDiskActivateRomDrive()
         log("---- Activated ROM drive, SCSI id ", (int)hdr.scsi_id, " size ", (int)(hdr.imagesize / 1024), " kB");
         return true;
     }
+
+#endif
 }
 
 
 /***********************/
-/* Backing image files */
+/* Image configuration */
 /***********************/
 
 extern SdFs SD;
 SdDevice sdDev = {2, 256 * 1024 * 1024 * 2}; /* For SCSI2SD */
 
-// This class wraps SdFat library FsFile to allow access
-// through either FAT filesystem or as a raw sector range.
-//
-// Raw access is activated by using filename like "RAW:0:12345"
-// where the numbers are the first and last sector.
-//
-// If the platform supports a ROM drive, it is activated by using
-// filename "ROM:".
-class ImageBackingStore
-{
-public:
-    ImageBackingStore()
-    {
-        m_israw = false;
-        m_isrom = false;
-        m_isreadonly_attr = false;
-        m_blockdev = nullptr;
-        m_bgnsector = m_endsector = m_cursector = 0;
-    }
-
-    ImageBackingStore(const char *filename, uint32_t scsi_block_size, S2S_CFG_TYPE type): ImageBackingStore()
-    {
-        if (strncasecmp(filename, "RAW:", 4) == 0)
-        {
-            char *endptr, *endptr2;
-            m_bgnsector = strtoul(filename + 4, &endptr, 0);
-            m_endsector = strtoul(endptr + 1, &endptr2, 0);
-
-            if (*endptr != ':' || *endptr2 != '\0')
-            {
-                log("Invalid format for raw filename: ", filename);
-                return;
-            }
-
-            if ((scsi_block_size % SD_SECTOR_SIZE) != 0)
-            {
-                log("SCSI block size ", (int)scsi_block_size, " is not supported for RAW partitions (must be divisible by 512 bytes)");
-                return;
-            }
-
-            m_israw = true;
-            m_blockdev = SD.card();
-
-            uint32_t sectorCount = SD.card()->sectorCount();
-            if (m_endsector >= sectorCount)
-            {
-                log("Limiting RAW image mapping to SD card sector count: ", (int)sectorCount);
-                m_endsector = sectorCount - 1;
-            }
-        }
-        else if (strncasecmp(filename, "ROM:", 4) == 0)
-        {
-            if (!check_romdrive(&m_romhdr))
-            {
-                m_romhdr.imagesize = 0;
-            }
-            else
-            {
-                m_isrom = true;
-            }
-        }
-        else
-        {
-            m_isreadonly_attr = !!(FS_ATTRIB_READ_ONLY & SD.attrib(filename));
-            if (m_isreadonly_attr)
-            {
-                m_fsfile = SD.open(filename, O_RDONLY);
-                log("---- Image file is read-only, writes disabled");
-            }
-            else
-            {
-                m_fsfile = SD.open(filename, O_RDWR);
-            }
-
-            uint32_t sectorcount = m_fsfile.size() / SD_SECTOR_SIZE;
-            uint32_t begin = 0, end = 0;
-            if (m_fsfile.contiguousRange(&begin, &end) && end >= begin + sectorcount
-                && (scsi_block_size % SD_SECTOR_SIZE) == 0)
-            {
-                // Convert to raw mapping, this avoids some unnecessary
-                // access overhead in SdFat library.
-                m_israw = true;
-                m_blockdev = SD.card();
-                m_bgnsector = begin;
-                m_endsector = begin + sectorcount - 1;
-                m_fsfile.close();
-            }
-        }
-    }
-
-    bool isWritable()
-    {
-        return !(m_isrom || m_isreadonly_attr);
-    }
-
-    bool isRom()
-    {
-        return m_isrom;
-    }
-
-    bool isOpen()
-    {
-        if (m_israw)
-            return (m_blockdev != NULL);
-        else if (m_isrom)
-            return (m_romhdr.imagesize > 0);
-        else
-            return m_fsfile.isOpen();
-    }
-
-    bool close()
-    {
-        if (m_israw)
-        {
-            m_blockdev = nullptr;
-            return true;
-        }
-        else if (m_isrom)
-        {
-            m_romhdr.imagesize = 0;
-            return true;
-        }
-        else
-        {
-            return m_fsfile.close();
-        }
-    }
-
-    uint64_t size()
-    {
-        if (m_israw && m_blockdev)
-        {
-            return (uint64_t)(m_endsector - m_bgnsector + 1) * SD_SECTOR_SIZE;
-        }
-        else if (m_isrom)
-        {
-            return m_romhdr.imagesize;
-        }
-        else
-        {
-            return m_fsfile.size();
-        }
-    }
-
-    bool contiguousRange(uint32_t* bgnSector, uint32_t* endSector)
-    {
-        if (m_israw && m_blockdev)
-        {
-            *bgnSector = m_bgnsector;
-            *endSector = m_endsector;
-            return true;
-        }
-        else if (m_isrom)
-        {
-            *bgnSector = 0;
-            *endSector = 0;
-            return true;
-        }
-        else
-        {
-            return m_fsfile.contiguousRange(bgnSector, endSector);
-        }
-    }
-
-    bool seek(uint64_t pos)
-    {
-        if (m_israw)
-        {
-            uint32_t sectornum = pos / SD_SECTOR_SIZE;
-            assert((uint64_t)sectornum * SD_SECTOR_SIZE == pos);
-            m_cursector = m_bgnsector + sectornum;
-            return (m_cursector <= m_endsector);
-        }
-        else if (m_isrom)
-        {
-            uint32_t sectornum = pos / SD_SECTOR_SIZE;
-            assert((uint64_t)sectornum * SD_SECTOR_SIZE == pos);
-            m_cursector = sectornum;
-            return m_cursector * SD_SECTOR_SIZE < m_romhdr.imagesize;
-        }
-        else
-        {
-            return m_fsfile.seek(pos);
-        }
-    }
-
-    int read(void* buf, size_t count)
-    {
-        if (m_israw && m_blockdev)
-        {
-            uint32_t sectorcount = count / SD_SECTOR_SIZE;
-            assert((uint64_t)sectorcount * SD_SECTOR_SIZE == count);
-            if (m_blockdev->readSectors(m_cursector, (uint8_t*)buf, sectorcount))
-            {
-                m_cursector += sectorcount;
-                return count;
-            }
-            else
-            {
-                return -1;
-            }
-        }
-        else if (m_isrom)
-        {
-            uint32_t sectorcount = count / SD_SECTOR_SIZE;
-            assert((uint64_t)sectorcount * SD_SECTOR_SIZE == count);
-            uint32_t start = m_cursector * SD_SECTOR_SIZE + PLATFORM_ROMDRIVE_PAGE_SIZE;
-            if (platform_read_romdrive((uint8_t*)buf, start, count))
-            {
-                m_cursector += sectorcount;
-                return count;
-            }
-            else
-            {
-                return -1;
-            }
-        }
-        else
-        {
-            return m_fsfile.read(buf, count);
-        }
-    }
-
-    size_t write(const void* buf, size_t count)
-    {
-        if (m_israw && m_blockdev)
-        {
-            uint32_t sectorcount = count / SD_SECTOR_SIZE;
-            assert((uint64_t)sectorcount * SD_SECTOR_SIZE == count);
-            if (m_blockdev->writeSectors(m_cursector, (const uint8_t*)buf, sectorcount))
-            {
-                m_cursector += sectorcount;
-                return count;
-            }
-            else
-            {
-                return 0;
-            }
-        }
-        else if (m_isrom)
-        {
-            log("ERROR: attempted to write to ROM drive");
-            return 0;
-        }
-        else  if (m_isreadonly_attr)
-        {
-            log("ERROR: attempted to write to a read only image");
-            return 0;
-        }
-        else
-        {
-            return m_fsfile.write(buf, count);
-        }
-    }
-
-    void flush()
-    {
-        if (!m_israw && !m_isrom && !m_isreadonly_attr)
-        {
-            m_fsfile.flush();
-        }
-    }
-
-private:
-    bool m_israw;
-    bool m_isrom;
-    bool m_isreadonly_attr;
-    romdrive_hdr_t m_romhdr;
-    FsFile m_fsfile;
-    SdCard *m_blockdev;
-    uint32_t m_bgnsector;
-    uint32_t m_endsector;
-    uint32_t m_cursector;
-};
-
 struct image_config_t: public S2S_TargetCfg
 {
     ImageBackingStore file;
-
     // For CD-ROM drive ejection
     bool ejected;
     uint8_t cdrom_events;
     bool reinsert_on_inquiry;
-
     // Index of image, for when image on-the-fly switching is used for CD drives
     int image_index;
-
     // Right-align vendor / product type strings (for Apple)
     // Standard SCSI uses left alignment
     // This field uses -1 for default when field is not set in .ini
     int rightAlignStrings;
-
     // Maximum amount of bytes to prefetch
     int prefetchbytes;
-
     // Warning about geometry settings
     bool geometrywarningprinted;
 };
@@ -733,7 +321,7 @@ static void setDefaultDriveInfo(int target_idx)
 bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize, S2S_CFG_TYPE type)
 {
     image_config_t &img = g_DiskImages[target_idx];
-    img.file = ImageBackingStore(filename, blocksize, type);
+    img.file = ImageBackingStore(filename, blocksize);
 
     if (img.file.isOpen())
     {
