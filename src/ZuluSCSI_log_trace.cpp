@@ -49,6 +49,7 @@ static const char *getCommandName(uint8_t cmd)
         case 0x0A: return "Write6";
         case 0x0B: return "Seek6";
         case 0x0F: return "WriteSectorBuffer";
+        case 0x11: return "Space";
         case 0x12: return "Inquiry";
         case 0x15: return "ModeSelect6";
         case 0x16: return "Reserve";
