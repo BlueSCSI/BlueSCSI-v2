@@ -1,25 +1,44 @@
-//	Copyright (C) 2014 Michael McMaster <michael@codesrc.com>
-//
-//	This file is part of SCSI2SD.
-//
-//	SCSI2SD is free software: you can redistribute it and/or modify
-//	it under the terms of the GNU General Public License as published by
-//	the Free Software Foundation, either version 3 of the License, or
-//	(at your option) any later version.
-//
-//	SCSI2SD is distributed in the hope that it will be useful,
-//	but WITHOUT ANY WARRANTY; without even the implied warranty of
-//	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//	GNU General Public License for more details.
-//
-//	You should have received a copy of the GNU General Public License
-//	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
+/* Advanced CD-ROM drive emulation.
+ * Adds a few capabilities on top of the SCSI2SD CD-ROM emulation:
+ *
+ * - bin/cue support for support of multiple tracks
+ * - on the fly image switching
+ *
+ * SCSI2SD V6 - Copyright (C) 2014 Michael McMaster <michael@codesrc.com>
+ * ZuluSCSI™ - Copyright (c) 2023 Rabbit Hole Computing™
+ *
+ * This file is licensed under the GPL version 3 or any later version. 
+ * It is derived from cdrom.c in SCSI2SD V6
+ *
+ * https://www.gnu.org/licenses/gpl-3.0.html
+ * ----
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version. 
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details. 
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
 
-#include "scsi.h"
-#include "config.h"
-#include "cdrom.h"
 
 #include <string.h>
+#include "BlueSCSI_cdrom.h"
+#include "BlueSCSI_log.h"
+#include "BlueSCSI_config.h"
+
+extern "C" {
+#include <scsi.h>
+}
+
+/******************************************/
+/* Basic TOC generation without cue sheet */
+/******************************************/
 
 static const uint8_t SimpleTOC[] =
 {
@@ -313,14 +332,133 @@ void doReadHeader(int MSF, uint32_t lba, uint16_t allocationLength)
 	scsiDev.phase = DATA_IN;
 }
 
+/**************************************/
+/* Ejection and image switching logic */
+/**************************************/
+
+// Reinsert any ejected CDROMs on reboot
+void cdromReinsertFirstImage(image_config_t &img)
+{
+    if (img.image_index > 0)
+    {
+        // Multiple images for this drive, force restart from first one
+        debuglog("---- Restarting from first CD-ROM image");
+        img.image_index = 9;
+        cdromSwitchNextImage(img);
+    }
+    else if (img.ejected)
+    {
+        // Reinsert the single image
+        debuglog("---- Closing CD-ROM tray");
+        img.ejected = false;
+        img.cdrom_events = 2; // New media
+    }
+}
+
+// Check if we have multiple CD-ROM images to cycle when drive is ejected.
+bool cdromSwitchNextImage(image_config_t &img)
+{
+    // Check if we have a next image to load, so that drive is closed next time the host asks.
+    img.image_index++;
+    char filename[MAX_FILE_PATH];
+    int target_idx = img.scsiId & 7;
+    if (!scsiDiskGetImageNameFromConfig(img, filename, sizeof(filename)))
+    {
+        img.image_index = 0;
+        scsiDiskGetImageNameFromConfig(img, filename, sizeof(filename));
+    }
+
+    if (filename[0] != '\0')
+    {
+        log("Switching to next CD-ROM image for ", target_idx, ": ", filename);
+        img.file.close();
+        bool status = scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, 2048);
+
+        if (status)
+        {
+            img.ejected = false;
+            img.cdrom_events = 2; // New media
+            return true;
+        }
+    }
+
+    return false;
+}
+
+static void doGetEventStatusNotification(bool immed)
+{
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+
+    if (!immed)
+    {
+        // Asynchronous notification not supported
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+        scsiDev.phase = STATUS;
+    }
+    else if (img.cdrom_events)
+    {
+        scsiDev.data[0] = 0;
+        scsiDev.data[1] = 6; // EventDataLength
+        scsiDev.data[2] = 0x04; // Media status events
+        scsiDev.data[3] = 0x04; // Supported events
+        scsiDev.data[4] = img.cdrom_events;
+        scsiDev.data[5] = 0x01; // Power status
+        scsiDev.data[6] = 0; // Start slot
+        scsiDev.data[7] = 0; // End slot
+        scsiDev.dataLen = 8;
+        scsiDev.phase = DATA_IN;
+        img.cdrom_events = 0;
+
+        if (img.ejected)
+        {
+            // We are now reporting to host that the drive is open.
+            // Simulate a "close" for next time the host polls.
+            cdromSwitchNextImage(img);
+        }
+    }
+    else
+    {
+        scsiDev.data[0] = 0;
+        scsiDev.data[1] = 2; // EventDataLength
+        scsiDev.data[2] = 0x00; // Media status events
+        scsiDev.data[3] = 0x04; // Supported events
+        scsiDev.dataLen = 4;
+        scsiDev.phase = DATA_IN;
+    }
+}
+
+
+/**************************************/
+/* CD-ROM command dispatching         */
+/**************************************/
 
 // Handle direct-access scsi device commands
-int scsiCDRomCommand()
+extern "C" int scsiCDRomCommand()
 {
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
 	int commandHandled = 1;
 
 	uint8_t command = scsiDev.cdb[0];
-	if (command == 0x43)
+    if (command == 0x1B && (scsiDev.cdb[4] & 2))
+    {
+        // CD-ROM load & eject
+        int start = scsiDev.cdb[4] & 1;
+        if (start)
+        {
+            debuglog("------ CDROM close tray");
+            img.ejected = false;
+            img.cdrom_events = 2; // New media
+        }
+        else
+        {
+            debuglog("------ CDROM open tray");
+            img.ejected = true;
+            img.cdrom_events = 3; // Media removal
+        }
+    }
+	else if (command == 0x43)
 	{
 		// CD-ROM Read TOC
 		int MSF = scsiDev.cdb[1] & 0x02 ? 1 : 0;
@@ -358,6 +496,12 @@ int scsiCDRomCommand()
 			scsiDev.cdb[8];
 		doReadHeader(MSF, lba, allocationLength);
 	}
+    else if (command == 0x4A)
+    {
+        // Get event status notifications (media change notifications)
+        bool immed = scsiDev.cdb[1] & 1;
+        doGetEventStatusNotification(immed);
+    }
 	else
 	{
 		commandHandled = 0;
@@ -365,4 +509,3 @@ int scsiCDRomCommand()
 
 	return commandHandled;
 }
-

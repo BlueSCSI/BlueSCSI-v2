@@ -10,6 +10,7 @@
 #include "BlueSCSI_log.h"
 #include "BlueSCSI_config.h"
 #include "BlueSCSI_presets.h"
+#include "BlueSCSI_cdrom.h"
 #include "ImageBackingStore.h"
 #include "ROMDrive.h"
 #include <minIni.h>
@@ -144,25 +145,6 @@ bool scsiDiskActivateRomDrive()
 
 extern SdFs SD;
 SdDevice sdDev = {2, 256 * 1024 * 1024 * 2}; /* For SCSI2SD */
-
-struct image_config_t: public S2S_TargetCfg
-{
-    ImageBackingStore file;
-    // For CD-ROM drive ejection
-    bool ejected;
-    uint8_t cdrom_events;
-    bool reinsert_on_inquiry;
-    // Index of image, for when image on-the-fly switching is used for CD drives
-    int image_index;
-    // Right-align vendor / product type strings (for Apple)
-    // Standard SCSI uses left alignment
-    // This field uses -1 for default when field is not set in .ini
-    int rightAlignStrings;
-    // Maximum amount of bytes to prefetch
-    int prefetchbytes;
-    // Warning about geometry settings
-    bool geometrywarningprinted;
-};
 
 static image_config_t g_DiskImages[S2S_MAX_TARGETS];
 
@@ -392,6 +374,24 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
             debuglog("---- Read prefetch enabled: ", (int)img.prefetchbytes, " bytes");
         }
 
+        if (img.deviceType == S2S_CFG_OPTICAL &&
+            strncasecmp(filename + strlen(filename) - 4, ".bin", 4) == 0)
+        {
+            char cuesheetname[MAX_FILE_PATH + 1] = {0};
+            strncpy(cuesheetname, filename, strlen(filename) - 4);
+            strlcat(cuesheetname, ".cue", sizeof(cuesheetname));
+            img.cuesheetfile = SD.open(cuesheetname, O_RDONLY);
+
+            if (img.cuesheetfile.isOpen())
+            {
+                log("---- Found CD-ROM CUE sheet at ", cuesheetname);
+            }
+            else
+            {
+                log("---- No CUE sheet found at ", cuesheetname, ", using as plain binary image");
+            }
+        }
+
         return true;
     }
 
@@ -469,9 +469,9 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
 }
 
 // Check if image file name is overridden in config
-static bool get_image_name(int target_idx, char *buf, size_t buflen)
+bool scsiDiskGetImageNameFromConfig(image_config_t &img, char *buf, size_t buflen)
 {
-    image_config_t &img = g_DiskImages[target_idx];
+    int target_idx = img.scsiId & 7;
 
     char section[6] = "SCSI0";
     section[4] = '0' + target_idx;
@@ -499,9 +499,9 @@ void scsiDiskLoadConfig(int target_idx)
 
     // Check if we have image specified by name
     char filename[MAX_FILE_PATH];
-    if (get_image_name(target_idx, filename, sizeof(filename)))
+    image_config_t &img = g_DiskImages[target_idx];
+    if (scsiDiskGetImageNameFromConfig(img, filename, sizeof(filename)))
     {
-        image_config_t &img = g_DiskImages[target_idx];
         int blocksize = (img.deviceType == S2S_CFG_OPTICAL) ? 2048 : 512;
         log("-- Opening ", filename, " for id:", target_idx, ", specified in " CONFIGFILE);
         scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, blocksize);
@@ -519,6 +519,12 @@ bool scsiDiskCheckAnyImagesConfigured()
     }
 
     return false;
+}
+
+image_config_t &scsiDiskGetImageConfig(int target_idx)
+{
+    assert(target_idx >= 0 && target_idx < S2S_MAX_TARGETS);
+    return g_DiskImages[target_idx];
 }
 
 /*******************************/
@@ -811,57 +817,6 @@ static void doReadCapacity()
 /* TestUnitReady command */
 /*************************/
 
-// Check if we have multiple CD-ROM images to cycle when drive is ejected.
-static bool checkNextCDImage()
-{
-    // Check if we have a next image to load, so that drive is closed next time the host asks.
-    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-    img.image_index++;
-    char filename[MAX_FILE_PATH];
-    int target_idx = img.scsiId & 7;
-    if (!get_image_name(target_idx, filename, sizeof(filename)))
-    {
-        img.image_index = 0;
-        get_image_name(target_idx, filename, sizeof(filename));
-    }
-
-    if (filename[0] != '\0')
-    {
-        log("Switching to next CD-ROM image for ", target_idx, ": ", filename);
-        image_config_t &img = g_DiskImages[target_idx];
-        img.file.close();
-        bool status = scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, 2048);
-
-        if (status)
-        {
-            img.ejected = false;
-            img.cdrom_events = 2; // New media
-            return true;
-        }
-    }
-
-    return false;
-}
-
-// Reinsert any ejected CDROMs on reboot
-static void reinsertCDROM(image_config_t &img)
-{
-    if (img.image_index > 0)
-    {
-        // Multiple images for this drive, force restart from first one
-        debuglog("---- Restarting from first CD-ROM image");
-        img.image_index = 9;
-        checkNextCDImage();
-    }
-    else if (img.ejected)
-    {
-        // Reinsert the single image
-        debuglog("---- Closing CD-ROM tray");
-        img.ejected = false;
-        img.cdrom_events = 2; // New media
-    }
-}
-
 static int doTestUnitReady()
 {
     int ready = 1;
@@ -884,7 +839,7 @@ static int doTestUnitReady()
 
         // We are now reporting to host that the drive is open.
         // Simulate a "close" for next time the host polls.
-        checkNextCDImage();
+        cdromSwitchNextImage(img);
     }
     else if (unlikely(!(blockDev.state & DISK_PRESENT)))
     {
@@ -903,50 +858,6 @@ static int doTestUnitReady()
         scsiDev.phase = STATUS;
     }
     return ready;
-}
-
-static void doGetEventStatusNotification(bool immed)
-{
-    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-
-    if (!immed)
-    {
-        // Asynchronous notification not supported
-        scsiDev.status = CHECK_CONDITION;
-        scsiDev.target->sense.code = ILLEGAL_REQUEST;
-        scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
-        scsiDev.phase = STATUS;
-    }
-    else if (img.cdrom_events)
-    {
-        scsiDev.data[0] = 0;
-        scsiDev.data[1] = 6; // EventDataLength
-        scsiDev.data[2] = 0x04; // Media status events
-        scsiDev.data[3] = 0x04; // Supported events
-        scsiDev.data[4] = img.cdrom_events;
-        scsiDev.data[5] = 0x01; // Power status
-        scsiDev.data[6] = 0; // Start slot
-        scsiDev.data[7] = 0; // End slot
-        scsiDev.dataLen = 8;
-        scsiDev.phase = DATA_IN;
-        img.cdrom_events = 0;
-
-        if (img.ejected)
-        {
-            // We are now reporting to host that the drive is open.
-            // Simulate a "close" for next time the host polls.
-            checkNextCDImage();
-        }
-    }
-    else
-    {
-        scsiDev.data[0] = 0;
-        scsiDev.data[1] = 2; // EventDataLength
-        scsiDev.data[2] = 0x00; // Media status events
-        scsiDev.data[3] = 0x04; // Supported events
-        scsiDev.dataLen = 4;
-        scsiDev.phase = DATA_IN;
-    }
 }
 
 /****************/
@@ -1507,24 +1418,8 @@ int scsiDiskCommand()
         // Enable or disable media access operations.
         //int immed = scsiDev.cdb[1] & 1;
         int start = scsiDev.cdb[4] & 1;
-	    int loadEject = scsiDev.cdb[4] & 2;
 
-        if (loadEject && img.deviceType == S2S_CFG_OPTICAL)
-        {
-            if (start)
-            {
-                debuglog("------ CDROM close tray");
-                img.ejected = false;
-                img.cdrom_events = 2; // New media
-            }
-            else
-            {
-                debuglog("------ CDROM open tray");
-                img.ejected = true;
-                img.cdrom_events = 3; // Media removal
-            }
-        }
-        else if (start)
+        if (start)
         {
             scsiDev.target->started = 1;
         }
@@ -1537,11 +1432,6 @@ int scsiDiskCommand()
     {
         // TEST UNIT READY
         doTestUnitReady();
-    }
-    else if (command == 0x4A)
-    {
-        bool immed = scsiDev.cdb[1] & 1;
-        doGetEventStatusNotification(immed);
     }
     else if (unlikely(!doTestUnitReady()))
     {
@@ -1765,7 +1655,7 @@ void scsiDiskPoll()
             image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
             if (img.deviceType == S2S_CFG_OPTICAL && img.reinsert_on_inquiry)
             {
-                reinsertCDROM(img);
+                cdromReinsertFirstImage(img);
             }
         }
     }
@@ -1793,7 +1683,7 @@ void scsiDiskReset()
         image_config_t &img = g_DiskImages[i];
         if (img.deviceType == S2S_CFG_OPTICAL)
         {
-            reinsertCDROM(img);
+            cdromReinsertFirstImage(img);
         }
     }
 }
