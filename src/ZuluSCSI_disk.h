@@ -31,12 +31,41 @@
 #include <stdint.h>
 #include <scsi2sd.h>
 #include <scsiPhy.h>
+#include "ImageBackingStore.h"
 
 extern "C" {
 #include <disk.h>
 #include <config.h>
 #include <scsi.h>
 }
+
+// Extended configuration stored alongside the normal SCSI2SD target information
+struct image_config_t: public S2S_TargetCfg
+{
+    ImageBackingStore file;
+
+    // For CD-ROM drive ejection
+    bool ejected;
+    uint8_t cdrom_events;
+    bool reinsert_on_inquiry;
+
+    // Index of image, for when image on-the-fly switching is used for CD drives
+    int image_index;
+
+    // Cue sheet file for CD-ROM images
+    FsFile cuesheetfile;
+
+    // Right-align vendor / product type strings (for Apple)
+    // Standard SCSI uses left alignment
+    // This field uses -1 for default when field is not set in .ini
+    int rightAlignStrings;
+
+    // Maximum amount of bytes to prefetch
+    int prefetchbytes;
+
+    // Warning about geometry settings
+    bool geometrywarningprinted;
+};
 
 void scsiDiskResetImages();
 bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize, S2S_CFG_TYPE type = S2S_CFG_FIXED);
@@ -53,3 +82,12 @@ bool scsiDiskActivateRomDrive();
 
 // Returns true if there is at least one image active
 bool scsiDiskCheckAnyImagesConfigured();
+
+// Check if image file name is overridden in config,
+// including image index for multi-image CD-ROM emulation
+bool scsiDiskGetImageNameFromConfig(image_config_t &img, char *buf, size_t buflen);
+
+// Get pointer to extended image configuration based on target idx
+image_config_t &scsiDiskGetImageConfig(int target_idx);
+
+
