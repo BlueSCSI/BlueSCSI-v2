@@ -2,7 +2,7 @@
  * Simple CUE sheet parser suitable for embedded systems.
  *
  *  Copyright (c) 2023 Rabbit Hole Computing
- *  
+ *
  *  This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation, either version 3 of the License, or
@@ -63,6 +63,8 @@ struct CUETrackInfo
 class CUEParser
 {
 public:
+    CUEParser();
+
     // Initialize the class to parse data from string.
     // The string must remain valid for the lifetime of this object.
     CUEParser(const char *cue_sheet);

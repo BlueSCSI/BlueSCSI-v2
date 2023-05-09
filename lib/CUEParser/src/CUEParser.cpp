@@ -2,7 +2,7 @@
  * Simple CUE sheet parser suitable for embedded systems.
  *
  *  Copyright (c) 2023 Rabbit Hole Computing
- *  
+ *
  *  This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation, either version 3 of the License, or
@@ -36,6 +36,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+
+CUEParser::CUEParser(): CUEParser("")
+{
+
+}
 
 CUEParser::CUEParser(const char *cue_sheet):
     m_cue_sheet(cue_sheet)
@@ -154,7 +159,7 @@ const char *CUEParser::read_quoted(const char *src, char *dest, int dest_size)
 
         src++;
     }
-    
+
     src++;
 
     // Copy text until ending quote
