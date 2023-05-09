@@ -31,6 +31,8 @@
 #include "BlueSCSI_cdrom.h"
 #include "BlueSCSI_log.h"
 #include "BlueSCSI_config.h"
+#include "BlueSCSI_cdrom.h"
+#include <CUEParser.h>
 
 extern "C" {
 #include <scsi.h>
@@ -89,82 +91,82 @@ static const uint8_t SessionTOC[] =
 
 static const uint8_t FullTOC[] =
 {
-	0x00, // toc length, MSB
-	0x44, // toc length, LSB
-	0x01, // First session number
-	0x01, // Last session number,
+	0x00, //  0: toc length, MSB
+	0x44, //  1: toc length, LSB
+	0x01, //  2: First session number
+	0x01, //  3: Last session number,
 	// A0 Descriptor
-	0x01, // session number
-	0x14, // ADR/Control
-	0x00, // TNO
-	0xA0, // POINT
-	0x00, // Min
-	0x00, // Sec
-	0x00, // Frame
-	0x00, // Zero
-	0x01, // First Track number.
-	0x00, // Disc type 00 = Mode 1
-	0x00,  // PFRAME
+	0x01, //  4: session number
+	0x14, //  5: ADR/Control
+	0x00, //  6: TNO
+	0xA0, //  7: POINT
+	0x00, //  8: Min
+	0x00, //  9: Sec
+	0x00, // 10: Frame
+	0x00, // 11: Zero
+	0x01, // 12: First Track number.
+	0x00, // 13: Disc type 00 = Mode 1
+	0x00, // 14: PFRAME
 	// A1
-	0x01, // session number
-	0x14, // ADR/Control
-	0x00, // TNO
-	0xA1, // POINT
-	0x00, // Min
-	0x00, // Sec
-	0x00, // Frame
-	0x00, // Zero
-	0x01, // Last Track number
-	0x00, // PSEC
-	0x00,  // PFRAME
+	0x01, // 15: session number
+	0x14, // 16: ADR/Control
+	0x00, // 17: TNO
+	0xA1, // 18: POINT
+	0x00, // 19: Min
+	0x00, // 20: Sec
+	0x00, // 21: Frame
+	0x00, // 22: Zero
+	0x01, // 23: Last Track number
+	0x00, // 24: PSEC
+	0x00, // 25: PFRAME
 	// A2
-	0x01, // session number
-	0x14, // ADR/Control
-	0x00, // TNO
-	0xA2, // POINT
-	0x00, // Min
-	0x00, // Sec
-	0x00, // Frame
-	0x00, // Zero
-	0x79, // LEADOUT position BCD
-	0x59, // leadout PSEC BCD
-	0x74, // leadout PFRAME BCD
+	0x01, // 26: session number
+	0x14, // 27: ADR/Control
+	0x00, // 28: TNO
+	0xA2, // 29: POINT
+	0x00, // 30: Min
+	0x00, // 31: Sec
+	0x00, // 32: Frame
+	0x00, // 33: Zero
+	0x79, // 34: LEADOUT position BCD
+	0x59, // 35: leadout PSEC BCD
+	0x74, // 36: leadout PFRAME BCD
 	// TRACK 1 Descriptor
-	0x01, // session number
-	0x14, // ADR/Control
-	0x00, // TNO
-	0x01, // Point
-	0x00, // Min
-	0x00, // Sec
-	0x00, // Frame
-	0x00, // Zero
-	0x00, // PMIN
-	0x00, // PSEC
-	0x00,  // PFRAME
+	0x01, // 37: session number
+	0x14, // 38: ADR/Control
+	0x00, // 39: TNO
+	0x01, // 40: Point
+	0x00, // 41: Min
+	0x00, // 42: Sec
+	0x00, // 43: Frame
+	0x00, // 44: Zero
+	0x00, // 45: PMIN
+	0x00, // 46: PSEC
+	0x00, // 47: PFRAME
 	// b0
-	0x01, // session number
-	0x54, // ADR/Control
-	0x00, // TNO
-	0xB1, // POINT
-	0x79, // Min BCD
-	0x59, // Sec BCD
-	0x74, // Frame BCD
-	0x00, // Zero
-	0x79, // PMIN BCD
-	0x59, // PSEC BCD
-	0x74,  // PFRAME BCD
+	0x01, // 48: session number
+	0x54, // 49: ADR/Control
+	0x00, // 50: TNO
+	0xB1, // 51: POINT
+	0x79, // 52: Min BCD
+	0x59, // 53: Sec BCD
+	0x74, // 54: Frame BCD
+	0x00, // 55: Zero
+	0x79, // 56: PMIN BCD
+	0x59, // 57: PSEC BCD
+	0x74, // 58: PFRAME BCD
 	// c0
-	0x01, // session number
-	0x54, // ADR/Control
-	0x00, // TNO
-	0xC0, // POINT
-	0x00, // Min
-	0x00, // Sec
-	0x00, // Frame
-	0x00, // Zero
-	0x00, // PMIN
-	0x00, // PSEC
-	0x00  // PFRAME
+	0x01, // 59: session number
+	0x54, // 60: ADR/Control
+	0x00, // 61: TNO
+	0xC0, // 62: POINT
+	0x00, // 63: Min
+	0x00, // 64: Sec
+	0x00, // 65: Frame
+	0x00, // 66: Zero
+	0x00, // 67: PMIN
+	0x00, // 68: PSEC
+	0x00  // 69: PFRAME
 };
 
 static void LBA2MSF(uint32_t LBA, uint8_t* MSF)
@@ -178,7 +180,7 @@ static void LBA2MSF(uint32_t LBA, uint8_t* MSF)
 
 }
 
-static void doReadTOC(int MSF, uint8_t track, uint16_t allocationLength)
+static void doReadTOCSimple(int MSF, uint8_t track, uint16_t allocationLength)
 {
 	if (track == 0xAA)
 	{
@@ -252,7 +254,7 @@ static void doReadTOC(int MSF, uint8_t track, uint16_t allocationLength)
 	}
 }
 
-static void doReadSessionInfo(uint8_t session, uint16_t allocationLength)
+static void doReadSessionInfoSimple(uint8_t session, uint16_t allocationLength)
 {
 	uint32_t len = sizeof(SessionTOC);
 	memcpy(scsiDev.data, SessionTOC, len);
@@ -271,7 +273,7 @@ fromBCD(uint8_t val)
 	return ((val >> 4) * 10) + (val & 0xF);
 }
 
-static void doReadFullTOC(int convertBCD, uint8_t session, uint16_t allocationLength)
+static void doReadFullTOCSimple(int convertBCD, uint8_t session, uint16_t allocationLength)
 {
 	// We only support session 1.
 	if (session > 1)
@@ -320,7 +322,7 @@ static uint8_t SimpleHeader[] =
 	0x00,0x00,0x00,0x00 // Track start sector (LBA or MSF)
 };
 
-void doReadHeader(int MSF, uint32_t lba, uint16_t allocationLength)
+void doReadHeaderSimple(int MSF, uint32_t lba, uint16_t allocationLength)
 {
 	uint32_t len = sizeof(SimpleHeader);
 	memcpy(scsiDev.data, SimpleHeader, len);
@@ -330,6 +332,361 @@ void doReadHeader(int MSF, uint32_t lba, uint16_t allocationLength)
 	}
 	scsiDev.dataLen = len;
 	scsiDev.phase = DATA_IN;
+}
+
+/*********************************/
+/* TOC generation from cue sheet */
+/*********************************/
+
+// Format track info read from cue sheet into the format used by ReadTOC command.
+// Refer to T10/1545-D MMC-4 Revision 5a, "Response Format 0000b: Formatted TOC"
+static void formatTrackInfo(const CUETrackInfo *track, uint8_t *dest, bool use_MSF_time)
+{
+    uint8_t control_adr = 0x14; // Digital track
+
+    if (track->track_mode == CUETrack_AUDIO)
+    {
+        control_adr = 0x10; // Audio track
+    }
+
+    dest[0] = 0; // Reserved
+    dest[1] = control_adr;
+    dest[2] = track->track_number;
+    dest[3] = 0; // Reserved
+
+    if (use_MSF_time)
+    {
+        // Time in minute-second-frame format
+        LBA2MSF(track->data_start, &dest[4]);
+    }
+    else
+    {
+        // Time as logical block address
+        dest[4] = (track->data_start >> 24) & 0xFF;
+        dest[5] = (track->data_start >> 16) & 0xFF;
+        dest[6] = (track->data_start >>  8) & 0xFF;
+        dest[7] = (track->data_start >>  0) & 0xFF;
+    }
+}
+
+// Load data from CUE sheet for the given device,
+// using the second half of scsiDev.data buffer for temporary storage.
+// Returns false if no cue sheet or it could not be opened.
+static bool loadCueSheet(image_config_t &img, CUEParser &parser)
+{
+    if (!img.cuesheetfile.isOpen())
+    {
+        return false;
+    }
+
+    // Use second half of scsiDev.data as the buffer for cue sheet text
+    char *cuebuf = (char*)&scsiDev.data[sizeof(scsiDev.data) / 2];
+    img.cuesheetfile.seek(0);
+    int len = img.cuesheetfile.read(cuebuf, sizeof(cuebuf));
+
+    if (len <= 0)
+    {
+        return false;
+    }
+
+    cuebuf[len] = '\0';
+    parser = CUEParser(cuebuf);
+    return true;
+}
+
+static void doReadTOC(int MSF, uint8_t track, uint16_t allocationLength)
+{
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+    CUEParser parser;
+    if (!loadCueSheet(img, parser))
+    {
+        // No CUE sheet, use hardcoded data
+        return doReadTOCSimple(MSF, track, allocationLength);
+    }
+
+    // Format track info
+    uint8_t *trackdata = &scsiDev.data[4];
+    int trackcount = 0;
+    int firsttrack = -1;
+    int lasttrack = -1;
+    const CUETrackInfo *trackinfo;
+    while ((trackinfo = parser.next_track()) != NULL)
+    {
+        if (firsttrack < 0) firsttrack = trackinfo->track_number;
+        lasttrack = trackinfo->track_number;
+
+        if (track == 0 || track == trackinfo->track_number)
+        {
+            formatTrackInfo(trackinfo, &trackdata[8 * trackcount], MSF);
+            trackcount += 1;
+        }
+    }
+
+    // Format lead-out track info
+    if (track == 0 || track == 0xAA)
+    {
+        CUETrackInfo leadout = {};
+        leadout.track_number = 0xAA;
+        leadout.track_mode = CUETrack_MODE1_2048;
+        leadout.data_start = img.scsiSectors;
+        formatTrackInfo(&leadout, &trackdata[8 * trackcount], MSF);
+        trackcount += 1;
+    }
+
+    // Format response header
+    uint16_t toc_length = 2 + trackcount * 8;
+    scsiDev.data[0] = toc_length >> 8;
+    scsiDev.data[1] = toc_length & 0xFF;
+    scsiDev.data[2] = firsttrack;
+    scsiDev.data[3] = lasttrack;
+
+    if (trackcount == 0)
+    {
+        // Unknown track requested
+        scsiDev.status = CHECK_CONDITION;
+		scsiDev.target->sense.code = ILLEGAL_REQUEST;
+		scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+		scsiDev.phase = STATUS;
+    }
+    else
+    {
+        uint32_t len = 2 + toc_length;
+
+        if (len > allocationLength)
+        {
+            len = allocationLength;
+        }
+
+        scsiDev.dataLen = len;
+        scsiDev.phase = DATA_IN;
+    }
+}
+
+static void doReadSessionInfo(uint8_t session, uint16_t allocationLength)
+{
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+    CUEParser parser;
+    if (!loadCueSheet(img, parser))
+    {
+        // No CUE sheet, use hardcoded data
+        return doReadSessionInfoSimple(session, allocationLength);
+    }
+
+    uint32_t len = sizeof(SessionTOC);
+	memcpy(scsiDev.data, SessionTOC, len);
+
+    // Replace first track info in the session table
+    // based on data from CUE sheet.
+    const CUETrackInfo *trackinfo = parser.next_track();
+    if (trackinfo)
+    {
+        formatTrackInfo(trackinfo, &scsiDev.data[4], false);
+    }
+
+	if (len > allocationLength)
+	{
+		len = allocationLength;
+	}
+	scsiDev.dataLen = len;
+	scsiDev.phase = DATA_IN;
+}
+
+static void LBA2MSFRaw(uint32_t LBA, uint8_t* MSF)
+{
+    MSF[2] = LBA % 75; // M
+	uint32_t rem = LBA / 75;
+
+	MSF[1] = rem % 60; // S
+	MSF[0] = rem / 60;
+}
+
+// Format track info read from cue sheet into the format used by ReadFullTOC command.
+// Refer to T10/1545-D MMC-4 Revision 5a, "Response Format 0010b: Raw TOC"
+static void formatRawTrackInfo(const CUETrackInfo *track, uint8_t *dest)
+{
+    uint8_t control_adr = 0x14; // Digital track
+
+    if (track->track_mode == CUETrack_AUDIO)
+    {
+        control_adr = 0x10; // Audio track
+    }
+
+    dest[0] = 0x01; // Session always 1
+    dest[1] = control_adr;
+    dest[2] = 0x00; // "TNO", always 0?
+    dest[3] = track->track_number; // "POINT", contains track number
+
+    if (track->pregap_start > 0)
+    {
+        LBA2MSFRaw(track->pregap_start, &dest[4]);
+    }
+    else
+    {
+        LBA2MSFRaw(track->data_start, &dest[4]);
+    }
+
+    dest[7] = 0; // HOUR
+
+    LBA2MSFRaw(track->data_start, &dest[8]);
+}
+
+static void doReadFullTOC(int convertBCD, uint8_t session, uint16_t allocationLength)
+{
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+    CUEParser parser;
+    if (!loadCueSheet(img, parser))
+    {
+        // No CUE sheet, use hardcoded data
+        return doReadFullTOCSimple(convertBCD, session, allocationLength);
+    }
+
+    // We only support session 1.
+	if (session > 1)
+	{
+		scsiDev.status = CHECK_CONDITION;
+		scsiDev.target->sense.code = ILLEGAL_REQUEST;
+		scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+		scsiDev.phase = STATUS;
+        return;
+	}
+
+    // Take the beginning of the hardcoded TOC as base
+    uint32_t len = 4 + 11 * 3; // Header, A0, A1, A2
+    memcpy(scsiDev.data, FullTOC, len);
+
+    // Add track descriptors
+    int trackcount = 0;
+    int firsttrack = -1;
+    int lasttrack = -1;
+    const CUETrackInfo *trackinfo;
+    while ((trackinfo = parser.next_track()) != NULL)
+    {
+        if (firsttrack < 0) firsttrack = trackinfo->track_number;
+        lasttrack = trackinfo->track_number;
+
+        formatRawTrackInfo(trackinfo, &scsiDev.data[len]);
+        trackcount += 1;
+        len += 11;
+    }
+
+    // First and last track numbers
+    scsiDev.data[12] = firsttrack;
+    scsiDev.data[23] = lasttrack;
+
+    // Leadout track position
+    LBA2MSFRaw(img.scsiSectors, &scsiDev.data[34]);
+
+    // Append recordable disc records b0 and c0 indicating non-recordable disc
+    memcpy(scsiDev.data + len, &FullTOC[48], 22);
+    len += 22;
+
+    // Correct the record length in header
+    uint16_t toclen = len - 2;
+    scsiDev.data[0] = toclen >> 8;
+    scsiDev.data[1] = toclen & 0xFF;
+
+    if (len > allocationLength)
+    {
+        len = allocationLength;
+    }
+    scsiDev.dataLen = len;
+    scsiDev.phase = DATA_IN;
+}
+
+// SCSI-3 MMC Read Header command, seems to be deprecated in later standards.
+// Refer to ANSI X3.304-1997
+void doReadHeader(int MSF, uint32_t lba, uint16_t allocationLength)
+{
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+    CUEParser parser;
+    if (!loadCueSheet(img, parser))
+    {
+        // No CUE sheet, use hardcoded data
+        return doReadHeaderSimple(MSF, lba, allocationLength);
+    }
+
+    // Take the hardcoded header as base
+    uint32_t len = sizeof(SimpleHeader);
+	memcpy(scsiDev.data, SimpleHeader, len);
+
+    // Search the track with the requested LBA
+    const CUETrackInfo *trackinfo;
+    CUETrackMode trackmode = CUETrack_MODE1_2048;
+    uint32_t trackstart = 0;
+    while ((trackinfo = parser.next_track()) != NULL)
+    {
+        if (trackinfo->data_start < lba)
+        {
+            trackstart = trackinfo->data_start;
+            trackmode = trackinfo->track_mode;
+        }
+    }
+
+    // Track mode (audio / data)
+    if (trackmode == CUETrack_AUDIO)
+    {
+        scsiDev.data[0] = 0;
+    }
+
+    // Track start
+    if (MSF)
+    {
+        LBA2MSF(trackstart, &scsiDev.data[4]);
+    }
+    else
+    {
+        scsiDev.data[4] = (trackstart >> 24) & 0xFF;
+        scsiDev.data[5] = (trackstart >> 16) & 0xFF;
+        scsiDev.data[6] = (trackstart >>  8) & 0xFF;
+        scsiDev.data[7] = (trackstart >>  0) & 0xFF;
+    }
+
+    if (len > allocationLength)
+	{
+		len = allocationLength;
+	}
+	scsiDev.dataLen = len;
+	scsiDev.phase = DATA_IN;
+}
+
+/****************************************/
+/* CUE sheet check at image load time   */
+/****************************************/
+
+bool cdromValidateCueSheet(image_config_t &img)
+{
+    CUEParser parser;
+    if (!loadCueSheet(img, parser))
+    {
+        return false;
+    }
+
+    const CUETrackInfo *trackinfo;
+    int trackcount = 0;
+    while ((trackinfo = parser.next_track()) != NULL)
+    {
+        trackcount++;
+
+        if (trackinfo->track_mode != CUETrack_AUDIO &&
+            trackinfo->track_mode != CUETrack_MODE1_2048)
+        {
+            log("---- Warning: track ", trackinfo->track_number, " has unsupported mode ", (int)trackinfo->track_mode);
+        }
+
+        if (trackinfo->file_mode != CUEFile_BINARY)
+        {
+            log("---- Unsupported CUE data file mode ", (int)trackinfo->file_mode);
+        }
+    }
+
+    if (trackcount == 0)
+    {
+        log("---- Opened cue sheet but no valid tracks found");
+        return false;
+    }
+
+    log("---- Cue sheet loaded with ", (int)trackcount, " tracks");
+    return true;
 }
 
 /**************************************/
@@ -428,7 +785,6 @@ static void doGetEventStatusNotification(bool immed)
         scsiDev.phase = DATA_IN;
     }
 }
-
 
 /**************************************/
 /* CD-ROM command dispatching         */
