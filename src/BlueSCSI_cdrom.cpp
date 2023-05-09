@@ -787,6 +787,26 @@ static void doGetEventStatusNotification(bool immed)
 }
 
 /**************************************/
+/* CD-ROM audio playback              */
+/**************************************/
+
+static void doPlayAudio(uint32_t lba, uint32_t length)
+{
+    log("------ CD-ROM Play Audio starting at ", lba, " for ", length, " sectors");
+
+    scsiDev.status = 0;
+    scsiDev.phase = STATUS;
+}
+
+static void doPauseResumeAudio(bool resume)
+{
+    log("------ CD-ROM ", resume ? "resume" : "pause", " audio playback");
+
+    scsiDev.status = 0;
+    scsiDev.phase = STATUS;
+}
+
+/**************************************/
 /* CD-ROM command dispatching         */
 /**************************************/
 
@@ -857,6 +877,49 @@ extern "C" int scsiCDRomCommand()
         // Get event status notifications (media change notifications)
         bool immed = scsiDev.cdb[1] & 1;
         doGetEventStatusNotification(immed);
+    }
+    else if (command == 0x45)
+    {
+        // PLAY AUDIO (10)
+        uint32_t lba =
+            (((uint32_t) scsiDev.cdb[2]) << 24) +
+            (((uint32_t) scsiDev.cdb[3]) << 16) +
+            (((uint32_t) scsiDev.cdb[4]) << 8) +
+            scsiDev.cdb[5];
+        uint32_t blocks =
+            (((uint32_t) scsiDev.cdb[7]) << 8) +
+            scsiDev.cdb[8];
+
+        doPlayAudio(lba, blocks);
+    }
+    else if (command == 0xA5)
+    {
+        // PLAY AUDIO (12)
+        uint32_t lba =
+            (((uint32_t) scsiDev.cdb[2]) << 24) +
+            (((uint32_t) scsiDev.cdb[3]) << 16) +
+            (((uint32_t) scsiDev.cdb[4]) << 8) +
+            scsiDev.cdb[5];
+        uint32_t blocks =
+            (((uint32_t) scsiDev.cdb[6]) << 24) +
+            (((uint32_t) scsiDev.cdb[7]) << 16) +
+            (((uint32_t) scsiDev.cdb[8]) << 8) +
+            scsiDev.cdb[9];
+
+        doPlayAudio(lba, blocks);
+    }
+    else if (command == 0x47)
+    {
+        // PLAY AUDIO (MSF)
+        uint32_t start = (scsiDev.cdb[3] * 60 + scsiDev.cdb[4]) * 75 + scsiDev.cdb[5];
+        uint32_t end   = (scsiDev.cdb[6] * 60 + scsiDev.cdb[7]) * 75 + scsiDev.cdb[8];
+
+        doPlayAudio(start, end - start);
+    }
+    else if (command == 0x4B)
+    {
+        // PAUSE/RESUME AUDIO
+        doPauseResumeAudio(scsiDev.cdb[8] & 1);
     }
 	else
 	{
