@@ -40,8 +40,10 @@ FILE "Sound.wav" WAVE
     {
         TEST(strcmp(track->filename, "Image Name.bin") == 0);
         TEST(track->file_mode == CUEFile_BINARY);
+        TEST(track->file_offset == 0);
         TEST(track->track_number == 1);
         TEST(track->track_mode == CUETrack_MODE1_2048);
+        TEST(track->sector_length == 2048);
         TEST(track->unstored_pregap_length == 0);
         TEST(track->data_start == 0);
     }
@@ -49,27 +51,33 @@ FILE "Sound.wav" WAVE
     COMMENT("Test TRACK 02 (audio with pregap)");
     track = parser.next_track();
     TEST(track != NULL);
+    uint32_t start2 = ((2 * 60) + 47) * 75 + 20;
     if (track)
     {
         TEST(strcmp(track->filename, "Image Name.bin") == 0);
         TEST(track->file_mode == CUEFile_BINARY);
+        TEST(track->file_offset == 2048 * start2);
         TEST(track->track_number == 2);
         TEST(track->track_mode == CUETrack_AUDIO);
+        TEST(track->sector_length == 2352);
         TEST(track->unstored_pregap_length == 2 * 75);
-        TEST(track->data_start == ((2 * 60) + 47) * 75 + 20);
+        TEST(track->data_start == start2);
     }
 
     COMMENT("Test TRACK 03 (audio with index 0)");
     track = parser.next_track();
     TEST(track != NULL);
+    uint32_t start3 = ((7 * 60) + 55) * 75 + 65;
     if (track)
     {
         TEST(strcmp(track->filename, "Image Name.bin") == 0);
         TEST(track->file_mode == CUEFile_BINARY);
+        TEST(track->file_offset == 2048 * start2 + 2352 * (start3 - start2));
         TEST(track->track_number == 3);
         TEST(track->track_mode == CUETrack_AUDIO);
+        TEST(track->sector_length == 2352);
         TEST(track->pregap_start == ((7 * 60) + 55) * 75 + 58);
-        TEST(track->data_start == ((7 * 60) + 55) * 75 + 65);
+        TEST(track->data_start == start3);
     }
 
     COMMENT("Test TRACK 11 (audio from wav)");
@@ -79,8 +87,10 @@ FILE "Sound.wav" WAVE
     {
         TEST(strcmp(track->filename, "Sound.wav") == 0);
         TEST(track->file_mode == CUEFile_WAVE);
+        TEST(track->file_offset == 0);
         TEST(track->track_number == 11);
         TEST(track->track_mode == CUETrack_AUDIO);
+        TEST(track->sector_length == 0);
         TEST(track->pregap_start == 0);
         TEST(track->data_start == 2 * 75);
     }
