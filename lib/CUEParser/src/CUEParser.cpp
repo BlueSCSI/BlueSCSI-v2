@@ -56,14 +56,22 @@ void CUEParser::restart()
 
 const CUETrackInfo *CUEParser::next_track()
 {
+    // Previous track info is needed to track file offset
+    uint32_t prev_data_start = m_track_info.data_start;
+    uint32_t prev_sector_length = get_sector_length(m_track_info.file_mode, m_track_info.track_mode); // Defaults to 2352 before first track
+
     bool got_track = false;
     bool got_data = false;
-    while(start_line() && !(got_track && got_data))
+    while(!(got_track && got_data) && start_line())
     {
         if (strncasecmp(m_parse_pos, "FILE ", 5) == 0)
         {
             const char *p = read_quoted(m_parse_pos + 5, m_track_info.filename, sizeof(m_track_info.filename));
             m_track_info.file_mode = parse_file_mode(skip_space(p));
+            m_track_info.file_offset = 0;
+            m_track_info.track_mode = CUETrack_AUDIO;
+            prev_data_start = 0;
+            prev_sector_length = get_sector_length(m_track_info.file_mode, m_track_info.track_mode);
         }
         else if (strncasecmp(m_parse_pos, "TRACK ", 6) == 0)
         {
@@ -71,9 +79,11 @@ const CUETrackInfo *CUEParser::next_track()
             char *endptr;
             m_track_info.track_number = strtoul(track_num, &endptr, 10);
             m_track_info.track_mode = parse_track_mode(skip_space(endptr));
+            m_track_info.sector_length = get_sector_length(m_track_info.file_mode, m_track_info.track_mode);
             m_track_info.pregap_start = 0;
             m_track_info.unstored_pregap_length = 0;
             m_track_info.data_start = 0;
+            m_track_info.track_start = 0;
             got_track = true;
             got_data = false;
         }
@@ -81,6 +91,7 @@ const CUETrackInfo *CUEParser::next_track()
         {
             const char *time_str = skip_space(m_parse_pos + 7);
             m_track_info.unstored_pregap_length = parse_time(time_str);
+            m_track_info.pregap_start = 0;
         }
         else if (strncasecmp(m_parse_pos, "INDEX ", 6) == 0)
         {
@@ -94,15 +105,22 @@ const CUETrackInfo *CUEParser::next_track()
             if (index == 0)
             {
                 m_track_info.pregap_start = time;
+                m_track_info.track_start = time;
             }
             else if (index == 1)
             {
+                m_track_info.file_offset += (uint64_t)(time - prev_data_start) * prev_sector_length;
                 m_track_info.data_start = time;
                 got_data = true;
             }
         }
 
         next_line();
+    }
+
+    if (got_data && m_track_info.track_start == 0)
+    {
+        m_track_info.track_start = m_track_info.data_start;
     }
 
     if (got_track && got_data)
@@ -232,4 +250,29 @@ CUETrackMode CUEParser::parse_track_mode(const char *src)
         return CUETrack_CDI_2352;
     else
         return CUETrack_MODE1_2048; // Default to data track
+}
+
+uint32_t CUEParser::get_sector_length(CUEFileMode filemode, CUETrackMode trackmode)
+{
+    if (filemode == CUEFile_BINARY || filemode == CUEFile_MOTOROLA)
+    {
+        switch (trackmode)
+        {
+            case CUETrack_AUDIO:        return 2352;
+            case CUETrack_CDG:          return 2448;
+            case CUETrack_MODE1_2048:   return 2048;
+            case CUETrack_MODE1_2352:   return 2352;
+            case CUETrack_MODE2_2048:   return 2048;
+            case CUETrack_MODE2_2324:   return 2324;
+            case CUETrack_MODE2_2336:   return 2336;
+            case CUETrack_MODE2_2352:   return 2352;
+            case CUETrack_CDI_2336:     return 2336;
+            case CUETrack_CDI_2352:     return 2352;
+            default:                    return 2048;
+        }
+    }
+    else
+    {
+        return 0;
+    }
 }

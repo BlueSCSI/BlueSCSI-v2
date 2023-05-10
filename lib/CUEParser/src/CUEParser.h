@@ -50,14 +50,29 @@ enum CUETrackMode
 
 struct CUETrackInfo
 {
+    // Source file name and file type, and offset to start of track data in bytes.
     char filename[CUE_MAX_FILENAME+1];
     CUEFileMode file_mode;
+    uint64_t file_offset;
+
+    // Track number and mode in CD format
     int track_number;
     CUETrackMode track_mode;
 
+    // Sector length for this track in bytes in the file, or 0 for audio files
+    uint32_t sector_length;
+
+    // Unstored pregap length, in CD frames, or 0
     uint32_t unstored_pregap_length;
+
+    // LBA start position of the pregap of this track (in CD frames)
     uint32_t pregap_start;
+
+    // LBA start position of the data area of this track (in CD frames)
     uint32_t data_start;
+
+    // Track start, either pregap_start or if no pregap, data_start.
+    uint32_t track_start;
 };
 
 class CUEParser
@@ -105,4 +120,7 @@ protected:
 
     // Parse track mode into enum
     CUETrackMode parse_track_mode(const char *src);
+
+    // Get sector length in file from track mode
+    uint32_t get_sector_length(CUEFileMode filemode, CUETrackMode trackmode);
 };
