@@ -830,4 +830,14 @@ void rp2040_sdio_init(int clock_divider)
     // Set up IRQ handler when DMA completes.
     irq_set_exclusive_handler(DMA_IRQ_1, rp2040_sdio_tx_irq);
     irq_set_enabled(DMA_IRQ_1, true);
+#if 0
+#ifndef ENABLE_AUDIO_OUTPUT
+    irq_set_exclusive_handler(DMA_IRQ_1, rp2040_sdio_tx_irq);
+#else
+    // seem to hit assertion in _exclusive_handler call due to DMA_IRQ_0 being shared?
+    // slightly less efficient to do it this way, so investigate further at some point
+    irq_add_shared_handler(DMA_IRQ_1, rp2040_sdio_tx_irq, 0xFF);
+#endif
+    irq_set_enabled(DMA_IRQ_1, true);
+#endif
 }
