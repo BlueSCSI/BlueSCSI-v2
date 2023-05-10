@@ -15,6 +15,17 @@ In addition to the simplified filenames style above, the ZuluSCSI firmware also 
 The media type can be set in `zuluscsi.ini`, or directly by the file name prefix.
 Supported prefixes are `HD` (hard drive), `CD` (cd-rom), `FD` (floppy), `MO` (magneto-optical), `RE` (generic removeable media), `TP` (sequential tape drive).
 
+CD-ROM images in BIN/CUE format
+-------------------------------
+The `.iso` format for CD images only supports data track.
+For audio and mixed mode CDs, two files are needed: `.bin` with data and `.cue` with the list of tracks.
+
+To use a BIN/CUE image with ZuluSCSI, name both files with the same part before the extension.
+For example `CD3.bin` and `CD3.cue`.
+The cue file contains the original file name, but it doesn't matter for ZuluSCSI.
+
+BIN/CUE support is currently experimental. Supported track types are `AUDIO`, `MODE1/2048` and `MODE1/2352`.
+
 Creating new image files
 ------------------------
 Empty image files can be created using operating system tools:
