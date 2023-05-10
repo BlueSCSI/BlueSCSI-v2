@@ -45,138 +45,138 @@ extern "C" {
 
 static const uint8_t SimpleTOC[] =
 {
-	0x00, // toc length, MSB
-	0x12, // toc length, LSB
-	0x01, // First track number
-	0x01, // Last track number,
-	// TRACK 1 Descriptor
-	0x00, // reserved
-	0x14, // Q sub-channel encodes current position, Digital track
-	0x01, // Track 1,
-	0x00, // Reserved
-	0x00,0x00,0x00,0x00, // Track start sector (LBA)
-	0x00, // reserved
-	0x14, // Q sub-channel encodes current position, Digital track
-	0xAA, // Leadout Track
-	0x00, // Reserved
-	0x00,0x00,0x00,0x00, // Track start sector (LBA)
+    0x00, // toc length, MSB
+    0x12, // toc length, LSB
+    0x01, // First track number
+    0x01, // Last track number,
+    // TRACK 1 Descriptor
+    0x00, // reserved
+    0x14, // Q sub-channel encodes current position, Digital track
+    0x01, // Track 1,
+    0x00, // Reserved
+    0x00,0x00,0x00,0x00, // Track start sector (LBA)
+    0x00, // reserved
+    0x14, // Q sub-channel encodes current position, Digital track
+    0xAA, // Leadout Track
+    0x00, // Reserved
+    0x00,0x00,0x00,0x00, // Track start sector (LBA)
 };
 
 static const uint8_t LeadoutTOC[] =
 {
-	0x00, // toc length, MSB
-	0x0A, // toc length, LSB
-	0x01, // First track number
-	0x01, // Last track number,
-	0x00, // reserved
-	0x14, // Q sub-channel encodes current position, Digital track
-	0xAA, // Leadout Track
-	0x00, // Reserved
-	0x00,0x00,0x00,0x00, // Track start sector (LBA)
+    0x00, // toc length, MSB
+    0x0A, // toc length, LSB
+    0x01, // First track number
+    0x01, // Last track number,
+    0x00, // reserved
+    0x14, // Q sub-channel encodes current position, Digital track
+    0xAA, // Leadout Track
+    0x00, // Reserved
+    0x00,0x00,0x00,0x00, // Track start sector (LBA)
 };
 
 static const uint8_t SessionTOC[] =
 {
-	0x00, // toc length, MSB
-	0x0A, // toc length, LSB
-	0x01, // First session number
-	0x01, // Last session number,
-	// TRACK 1 Descriptor
-	0x00, // reserved
-	0x14, // Q sub-channel encodes current position, Digital track
-	0x01, // First track number in last complete session
-	0x00, // Reserved
-	0x00,0x00,0x00,0x00 // LBA of first track in last session
+    0x00, // toc length, MSB
+    0x0A, // toc length, LSB
+    0x01, // First session number
+    0x01, // Last session number,
+    // TRACK 1 Descriptor
+    0x00, // reserved
+    0x14, // Q sub-channel encodes current position, Digital track
+    0x01, // First track number in last complete session
+    0x00, // Reserved
+    0x00,0x00,0x00,0x00 // LBA of first track in last session
 };
 
 
 static const uint8_t FullTOC[] =
 {
-	0x00, //  0: toc length, MSB
-	0x44, //  1: toc length, LSB
-	0x01, //  2: First session number
-	0x01, //  3: Last session number,
-	// A0 Descriptor
-	0x01, //  4: session number
-	0x14, //  5: ADR/Control
-	0x00, //  6: TNO
-	0xA0, //  7: POINT
-	0x00, //  8: Min
-	0x00, //  9: Sec
-	0x00, // 10: Frame
-	0x00, // 11: Zero
-	0x01, // 12: First Track number.
-	0x00, // 13: Disc type 00 = Mode 1
-	0x00, // 14: PFRAME
-	// A1
-	0x01, // 15: session number
-	0x14, // 16: ADR/Control
-	0x00, // 17: TNO
-	0xA1, // 18: POINT
-	0x00, // 19: Min
-	0x00, // 20: Sec
-	0x00, // 21: Frame
-	0x00, // 22: Zero
-	0x01, // 23: Last Track number
-	0x00, // 24: PSEC
-	0x00, // 25: PFRAME
-	// A2
-	0x01, // 26: session number
-	0x14, // 27: ADR/Control
-	0x00, // 28: TNO
-	0xA2, // 29: POINT
-	0x00, // 30: Min
-	0x00, // 31: Sec
-	0x00, // 32: Frame
-	0x00, // 33: Zero
-	0x79, // 34: LEADOUT position BCD
-	0x59, // 35: leadout PSEC BCD
-	0x74, // 36: leadout PFRAME BCD
-	// TRACK 1 Descriptor
-	0x01, // 37: session number
-	0x14, // 38: ADR/Control
-	0x00, // 39: TNO
-	0x01, // 40: Point
-	0x00, // 41: Min
-	0x00, // 42: Sec
-	0x00, // 43: Frame
-	0x00, // 44: Zero
-	0x00, // 45: PMIN
-	0x00, // 46: PSEC
-	0x00, // 47: PFRAME
-	// b0
-	0x01, // 48: session number
-	0x54, // 49: ADR/Control
-	0x00, // 50: TNO
-	0xB1, // 51: POINT
-	0x79, // 52: Min BCD
-	0x59, // 53: Sec BCD
-	0x74, // 54: Frame BCD
-	0x00, // 55: Zero
-	0x79, // 56: PMIN BCD
-	0x59, // 57: PSEC BCD
-	0x74, // 58: PFRAME BCD
-	// c0
-	0x01, // 59: session number
-	0x54, // 60: ADR/Control
-	0x00, // 61: TNO
-	0xC0, // 62: POINT
-	0x00, // 63: Min
-	0x00, // 64: Sec
-	0x00, // 65: Frame
-	0x00, // 66: Zero
-	0x00, // 67: PMIN
-	0x00, // 68: PSEC
-	0x00  // 69: PFRAME
+    0x00, //  0: toc length, MSB
+    0x44, //  1: toc length, LSB
+    0x01, //  2: First session number
+    0x01, //  3: Last session number,
+    // A0 Descriptor
+    0x01, //  4: session number
+    0x14, //  5: ADR/Control
+    0x00, //  6: TNO
+    0xA0, //  7: POINT
+    0x00, //  8: Min
+    0x00, //  9: Sec
+    0x00, // 10: Frame
+    0x00, // 11: Zero
+    0x01, // 12: First Track number.
+    0x00, // 13: Disc type 00 = Mode 1
+    0x00, // 14: PFRAME
+    // A1
+    0x01, // 15: session number
+    0x14, // 16: ADR/Control
+    0x00, // 17: TNO
+    0xA1, // 18: POINT
+    0x00, // 19: Min
+    0x00, // 20: Sec
+    0x00, // 21: Frame
+    0x00, // 22: Zero
+    0x01, // 23: Last Track number
+    0x00, // 24: PSEC
+    0x00, // 25: PFRAME
+    // A2
+    0x01, // 26: session number
+    0x14, // 27: ADR/Control
+    0x00, // 28: TNO
+    0xA2, // 29: POINT
+    0x00, // 30: Min
+    0x00, // 31: Sec
+    0x00, // 32: Frame
+    0x00, // 33: Zero
+    0x79, // 34: LEADOUT position BCD
+    0x59, // 35: leadout PSEC BCD
+    0x74, // 36: leadout PFRAME BCD
+    // TRACK 1 Descriptor
+    0x01, // 37: session number
+    0x14, // 38: ADR/Control
+    0x00, // 39: TNO
+    0x01, // 40: Point
+    0x00, // 41: Min
+    0x00, // 42: Sec
+    0x00, // 43: Frame
+    0x00, // 44: Zero
+    0x00, // 45: PMIN
+    0x00, // 46: PSEC
+    0x00, // 47: PFRAME
+    // b0
+    0x01, // 48: session number
+    0x54, // 49: ADR/Control
+    0x00, // 50: TNO
+    0xB1, // 51: POINT
+    0x79, // 52: Min BCD
+    0x59, // 53: Sec BCD
+    0x74, // 54: Frame BCD
+    0x00, // 55: Zero
+    0x79, // 56: PMIN BCD
+    0x59, // 57: PSEC BCD
+    0x74, // 58: PFRAME BCD
+    // c0
+    0x01, // 59: session number
+    0x54, // 60: ADR/Control
+    0x00, // 61: TNO
+    0xC0, // 62: POINT
+    0x00, // 63: Min
+    0x00, // 64: Sec
+    0x00, // 65: Frame
+    0x00, // 66: Zero
+    0x00, // 67: PMIN
+    0x00, // 68: PSEC
+    0x00  // 69: PFRAME
 };
 
 static uint8_t SimpleHeader[] =
 {
-	0x01, // 2048byte user data, L-EC in 288 byte aux field.
-	0x00, // reserved
-	0x00, // reserved
-	0x00, // reserved
-	0x00,0x00,0x00,0x00 // Track start sector (LBA or MSF)
+    0x01, // 2048byte user data, L-EC in 288 byte aux field.
+    0x00, // reserved
+    0x00, // reserved
+    0x00, // reserved
+    0x00,0x00,0x00,0x00 // Track start sector (LBA or MSF)
 };
 
 static const uint8_t DiscInformation[] =
@@ -220,169 +220,169 @@ static const uint8_t DiscInformation[] =
 // Convert logical block address to CD-ROM time in formatted TOC format
 static void LBA2MSF(uint32_t LBA, uint8_t* MSF)
 {
-	MSF[0] = 0; // reserved.
-	MSF[3] = LBA % 75; // Frames
-	uint32_t rem = LBA / 75;
+    MSF[0] = 0; // reserved.
+    MSF[3] = LBA % 75; // Frames
+    uint32_t rem = LBA / 75;
 
-	MSF[2] = rem % 60; // Seconds
-	MSF[1] = rem / 60; // Minutes
+    MSF[2] = rem % 60; // Seconds
+    MSF[1] = rem / 60; // Minutes
 }
 
 static void doReadTOCSimple(bool MSF, uint8_t track, uint16_t allocationLength)
 {
-	if (track == 0xAA)
-	{
-		// 0xAA requests only lead-out track information (reports capacity)
-		uint32_t len = sizeof(LeadoutTOC);
-		memcpy(scsiDev.data, LeadoutTOC, len);
+    if (track == 0xAA)
+    {
+        // 0xAA requests only lead-out track information (reports capacity)
+        uint32_t len = sizeof(LeadoutTOC);
+        memcpy(scsiDev.data, LeadoutTOC, len);
 
-		uint32_t capacity = getScsiCapacity(
-			scsiDev.target->cfg->sdSectorStart,
-			scsiDev.target->liveCfg.bytesPerSector,
-			scsiDev.target->cfg->scsiSectors);
+        uint32_t capacity = getScsiCapacity(
+            scsiDev.target->cfg->sdSectorStart,
+            scsiDev.target->liveCfg.bytesPerSector,
+            scsiDev.target->cfg->scsiSectors);
 
-		// Replace start of leadout track
-		if (MSF)
-		{
-			LBA2MSF(capacity, scsiDev.data + 8);
-		}
-		else
-		{
-			scsiDev.data[8] = capacity >> 24;
-			scsiDev.data[9] = capacity >> 16;
-			scsiDev.data[10] = capacity >> 8;
-			scsiDev.data[11] = capacity;
-		}
+        // Replace start of leadout track
+        if (MSF)
+        {
+            LBA2MSF(capacity, scsiDev.data + 8);
+        }
+        else
+        {
+            scsiDev.data[8] = capacity >> 24;
+            scsiDev.data[9] = capacity >> 16;
+            scsiDev.data[10] = capacity >> 8;
+            scsiDev.data[11] = capacity;
+        }
 
-		if (len > allocationLength)
-		{
-			len = allocationLength;
-		}
-		scsiDev.dataLen = len;
-		scsiDev.phase = DATA_IN;
-	}
-	else if (track <= 1)
-	{
-		// We only support track 1.
-		// track 0 means "return all tracks"
-		uint32_t len = sizeof(SimpleTOC);
-		memcpy(scsiDev.data, SimpleTOC, len);
+        if (len > allocationLength)
+        {
+            len = allocationLength;
+        }
+        scsiDev.dataLen = len;
+        scsiDev.phase = DATA_IN;
+    }
+    else if (track <= 1)
+    {
+        // We only support track 1.
+        // track 0 means "return all tracks"
+        uint32_t len = sizeof(SimpleTOC);
+        memcpy(scsiDev.data, SimpleTOC, len);
 
-		uint32_t capacity = getScsiCapacity(
-			scsiDev.target->cfg->sdSectorStart,
-			scsiDev.target->liveCfg.bytesPerSector,
-			scsiDev.target->cfg->scsiSectors);
+        uint32_t capacity = getScsiCapacity(
+            scsiDev.target->cfg->sdSectorStart,
+            scsiDev.target->liveCfg.bytesPerSector,
+            scsiDev.target->cfg->scsiSectors);
 
-		// Replace start of leadout track
-		if (MSF)
-		{
-			LBA2MSF(capacity, scsiDev.data + 0x10);
-		}
-		else
-		{
-			scsiDev.data[0x10] = capacity >> 24;
-			scsiDev.data[0x11] = capacity >> 16;
-			scsiDev.data[0x12] = capacity >> 8;
-			scsiDev.data[0x13] = capacity;
-		}
+        // Replace start of leadout track
+        if (MSF)
+        {
+            LBA2MSF(capacity, scsiDev.data + 0x10);
+        }
+        else
+        {
+            scsiDev.data[0x10] = capacity >> 24;
+            scsiDev.data[0x11] = capacity >> 16;
+            scsiDev.data[0x12] = capacity >> 8;
+            scsiDev.data[0x13] = capacity;
+        }
 
-		if (len > allocationLength)
-		{
-			len = allocationLength;
-		}
-		scsiDev.dataLen = len;
-		scsiDev.phase = DATA_IN;
-	}
-	else
-	{
-		scsiDev.status = CHECK_CONDITION;
-		scsiDev.target->sense.code = ILLEGAL_REQUEST;
-		scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
-		scsiDev.phase = STATUS;
-	}
+        if (len > allocationLength)
+        {
+            len = allocationLength;
+        }
+        scsiDev.dataLen = len;
+        scsiDev.phase = DATA_IN;
+    }
+    else
+    {
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+        scsiDev.phase = STATUS;
+    }
 }
 
 static void doReadSessionInfoSimple(uint8_t session, uint16_t allocationLength)
 {
-	uint32_t len = sizeof(SessionTOC);
-	memcpy(scsiDev.data, SessionTOC, len);
+    uint32_t len = sizeof(SessionTOC);
+    memcpy(scsiDev.data, SessionTOC, len);
 
-	if (len > allocationLength)
-	{
-		len = allocationLength;
-	}
-	scsiDev.dataLen = len;
-	scsiDev.phase = DATA_IN;
+    if (len > allocationLength)
+    {
+        len = allocationLength;
+    }
+    scsiDev.dataLen = len;
+    scsiDev.phase = DATA_IN;
 }
 
 static inline uint8_t
 fromBCD(uint8_t val)
 {
-	return ((val >> 4) * 10) + (val & 0xF);
+    return ((val >> 4) * 10) + (val & 0xF);
 }
 
 static void doReadFullTOCSimple(int convertBCD, uint8_t session, uint16_t allocationLength)
 {
-	// We only support session 1.
-	if (session > 1)
-	{
-		scsiDev.status = CHECK_CONDITION;
-		scsiDev.target->sense.code = ILLEGAL_REQUEST;
-		scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
-		scsiDev.phase = STATUS;
-	}
-	else
-	{
-		uint32_t len = sizeof(FullTOC);
-		memcpy(scsiDev.data, FullTOC, len);
+    // We only support session 1.
+    if (session > 1)
+    {
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+        scsiDev.phase = STATUS;
+    }
+    else
+    {
+        uint32_t len = sizeof(FullTOC);
+        memcpy(scsiDev.data, FullTOC, len);
 
-		if (convertBCD)
-		{
-			int descriptor = 4;
-			while (descriptor < len)
-			{
-				int i;
-				for (i = 0; i < 7; ++i)
-				{
-					scsiDev.data[descriptor + i] =
-						fromBCD(scsiDev.data[descriptor + 4 + i]);
-				}
-				descriptor += 11;
-			}
+        if (convertBCD)
+        {
+            int descriptor = 4;
+            while (descriptor < len)
+            {
+                int i;
+                for (i = 0; i < 7; ++i)
+                {
+                    scsiDev.data[descriptor + i] =
+                        fromBCD(scsiDev.data[descriptor + 4 + i]);
+                }
+                descriptor += 11;
+            }
 
-		}
+        }
 
-		if (len > allocationLength)
-		{
-			len = allocationLength;
-		}
-		scsiDev.dataLen = len;
-		scsiDev.phase = DATA_IN;
-	}
+        if (len > allocationLength)
+        {
+            len = allocationLength;
+        }
+        scsiDev.dataLen = len;
+        scsiDev.phase = DATA_IN;
+    }
 }
 
 void doReadHeaderSimple(bool MSF, uint32_t lba, uint16_t allocationLength)
 {
-	uint32_t len = sizeof(SimpleHeader);
-	memcpy(scsiDev.data, SimpleHeader, len);
-	if (len > allocationLength)
-	{
-		len = allocationLength;
-	}
-	scsiDev.dataLen = len;
-	scsiDev.phase = DATA_IN;
+    uint32_t len = sizeof(SimpleHeader);
+    memcpy(scsiDev.data, SimpleHeader, len);
+    if (len > allocationLength)
+    {
+        len = allocationLength;
+    }
+    scsiDev.dataLen = len;
+    scsiDev.phase = DATA_IN;
 }
 
 void doReadDiscInformationSimple(uint16_t allocationLength)
 {
     uint32_t len = sizeof(DiscInformation);
-	memcpy(scsiDev.data, DiscInformation, len);
-	if (len > allocationLength)
-	{
-		len = allocationLength;
-	}
-	scsiDev.dataLen = len;
-	scsiDev.phase = DATA_IN;
+    memcpy(scsiDev.data, DiscInformation, len);
+    if (len > allocationLength)
+    {
+        len = allocationLength;
+    }
+    scsiDev.dataLen = len;
+    scsiDev.phase = DATA_IN;
 }
 
 /*********************************/
@@ -519,9 +519,9 @@ static void doReadTOC(bool MSF, uint8_t track, uint16_t allocationLength)
     {
         // Unknown track requested
         scsiDev.status = CHECK_CONDITION;
-		scsiDev.target->sense.code = ILLEGAL_REQUEST;
-		scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
-		scsiDev.phase = STATUS;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+        scsiDev.phase = STATUS;
     }
     else
     {
@@ -548,7 +548,7 @@ static void doReadSessionInfo(uint8_t session, uint16_t allocationLength)
     }
 
     uint32_t len = sizeof(SessionTOC);
-	memcpy(scsiDev.data, SessionTOC, len);
+    memcpy(scsiDev.data, SessionTOC, len);
 
     // Replace first track info in the session table
     // based on data from CUE sheet.
@@ -558,31 +558,31 @@ static void doReadSessionInfo(uint8_t session, uint16_t allocationLength)
         formatTrackInfo(trackinfo, &scsiDev.data[4], false);
     }
 
-	if (len > allocationLength)
-	{
-		len = allocationLength;
-	}
-	scsiDev.dataLen = len;
-	scsiDev.phase = DATA_IN;
+    if (len > allocationLength)
+    {
+        len = allocationLength;
+    }
+    scsiDev.dataLen = len;
+    scsiDev.phase = DATA_IN;
 }
 
 // Convert logical block address to CD-ROM time in the raw TOC format
 static void LBA2MSFRaw(uint32_t LBA, uint8_t* MSF)
 {
     MSF[2] = LBA % 75; // Frames
-	uint32_t rem = LBA / 75;
+    uint32_t rem = LBA / 75;
 
-	MSF[1] = rem % 60; // Seconds
-	MSF[0] = rem / 60; // Minutes
+    MSF[1] = rem % 60; // Seconds
+    MSF[0] = rem / 60; // Minutes
 }
 
 // Convert logical block address to CD-ROM time in binary coded decimal format
 static void LBA2MSFBCD(uint32_t LBA, uint8_t* MSF)
 {
     uint8_t fra = LBA % 75;
-	uint32_t rem = LBA / 75;
-	uint8_t sec = rem % 60;
-	uint8_t min = rem / 60;
+    uint32_t rem = LBA / 75;
+    uint8_t sec = rem % 60;
+    uint8_t min = rem / 60;
 
     MSF[0] = ((min / 10) << 4) | (min % 10);
     MSF[1] = ((sec / 10) << 4) | (sec % 10);
@@ -630,14 +630,14 @@ static void doReadFullTOC(int convertBCD, uint8_t session, uint16_t allocationLe
     }
 
     // We only support session 1.
-	if (session > 1)
-	{
-		scsiDev.status = CHECK_CONDITION;
-		scsiDev.target->sense.code = ILLEGAL_REQUEST;
-		scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
-		scsiDev.phase = STATUS;
+    if (session > 1)
+    {
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+        scsiDev.phase = STATUS;
         return;
-	}
+    }
 
     // Take the beginning of the hardcoded TOC as base
     uint32_t len = 4 + 11 * 3; // Header, A0, A1, A2
@@ -696,7 +696,7 @@ void doReadHeader(bool MSF, uint32_t lba, uint16_t allocationLength)
 
     // Take the hardcoded header as base
     uint32_t len = sizeof(SimpleHeader);
-	memcpy(scsiDev.data, SimpleHeader, len);
+    memcpy(scsiDev.data, SimpleHeader, len);
 
     // Search the track with the requested LBA
     CUETrackInfo trackinfo = {};
@@ -722,11 +722,11 @@ void doReadHeader(bool MSF, uint32_t lba, uint16_t allocationLength)
     }
 
     if (len > allocationLength)
-	{
-		len = allocationLength;
-	}
-	scsiDev.dataLen = len;
-	scsiDev.phase = DATA_IN;
+    {
+        len = allocationLength;
+    }
+    scsiDev.dataLen = len;
+    scsiDev.phase = DATA_IN;
 }
 
 void doReadDiscInformation(uint16_t allocationLength)
@@ -741,7 +741,7 @@ void doReadDiscInformation(uint16_t allocationLength)
 
     // Take the hardcoded header as base
     uint32_t len = sizeof(DiscInformation);
-	memcpy(scsiDev.data, DiscInformation, len);
+    memcpy(scsiDev.data, DiscInformation, len);
 
     // Find first and last track number
     int firsttrack = -1;
@@ -757,12 +757,12 @@ void doReadDiscInformation(uint16_t allocationLength)
     scsiDev.data[5] = firsttrack;
     scsiDev.data[6] = lasttrack;
 
-	if (len > allocationLength)
-	{
-		len = allocationLength;
-	}
-	scsiDev.dataLen = len;
-	scsiDev.phase = DATA_IN;
+    if (len > allocationLength)
+    {
+        len = allocationLength;
+    }
+    scsiDev.dataLen = len;
+    scsiDev.phase = DATA_IN;
 }
 
 /****************************************/
@@ -1238,9 +1238,9 @@ static void doReadSubchannel(bool time, bool subq, uint8_t parameter, uint8_t tr
 extern "C" int scsiCDRomCommand()
 {
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-	int commandHandled = 1;
+    int commandHandled = 1;
 
-	uint8_t command = scsiDev.cdb[0];
+    uint8_t command = scsiDev.cdb[0];
     if (command == 0x1B && (scsiDev.cdb[4] & 2))
     {
         // CD-ROM load & eject
@@ -1258,49 +1258,49 @@ extern "C" int scsiCDRomCommand()
             img.cdrom_events = 3; // Media removal
         }
     }
-	else if (command == 0x43)
-	{
-		// CD-ROM Read TOC
-		bool MSF = (scsiDev.cdb[1] & 0x02);
-		uint8_t track = scsiDev.cdb[6];
-		uint16_t allocationLength =
-			(((uint32_t) scsiDev.cdb[7]) << 8) +
-			scsiDev.cdb[8];
+    else if (command == 0x43)
+    {
+        // CD-ROM Read TOC
+        bool MSF = (scsiDev.cdb[1] & 0x02);
+        uint8_t track = scsiDev.cdb[6];
+        uint16_t allocationLength =
+            (((uint32_t) scsiDev.cdb[7]) << 8) +
+            scsiDev.cdb[8];
 
-		// Reject MMC commands for now, otherwise the TOC data format
-		// won't be understood.
-		// The "format" field is reserved for SCSI-2
-		uint8_t format = scsiDev.cdb[2] & 0x0F;
-		switch (format)
-		{
-			case 0: doReadTOC(MSF, track, allocationLength); break; // SCSI-2
-			case 1: doReadSessionInfo(MSF, allocationLength); break; // MMC2
-			case 2: doReadFullTOC(0, track, allocationLength); break; // MMC2
-			case 3: doReadFullTOC(1, track, allocationLength); break; // MMC2
-			default:
-			{
-				scsiDev.status = CHECK_CONDITION;
-				scsiDev.target->sense.code = ILLEGAL_REQUEST;
-				scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
-				scsiDev.phase = STATUS;
-			}
-		}
-	}
-	else if (command == 0x44)
-	{
-		// CD-ROM Read Header
-		bool MSF = (scsiDev.cdb[1] & 0x02);
-		uint32_t lba = 0; // IGNORED for now
-		uint16_t allocationLength =
-			(((uint32_t) scsiDev.cdb[7]) << 8) +
-			scsiDev.cdb[8];
-		doReadHeader(MSF, lba, allocationLength);
-	}
+        // Reject MMC commands for now, otherwise the TOC data format
+        // won't be understood.
+        // The "format" field is reserved for SCSI-2
+        uint8_t format = scsiDev.cdb[2] & 0x0F;
+        switch (format)
+        {
+            case 0: doReadTOC(MSF, track, allocationLength); break; // SCSI-2
+            case 1: doReadSessionInfo(MSF, allocationLength); break; // MMC2
+            case 2: doReadFullTOC(0, track, allocationLength); break; // MMC2
+            case 3: doReadFullTOC(1, track, allocationLength); break; // MMC2
+            default:
+            {
+                scsiDev.status = CHECK_CONDITION;
+                scsiDev.target->sense.code = ILLEGAL_REQUEST;
+                scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+                scsiDev.phase = STATUS;
+            }
+        }
+    }
+    else if (command == 0x44)
+    {
+        // CD-ROM Read Header
+        bool MSF = (scsiDev.cdb[1] & 0x02);
+        uint32_t lba = 0; // IGNORED for now
+        uint16_t allocationLength =
+            (((uint32_t) scsiDev.cdb[7]) << 8) +
+            scsiDev.cdb[8];
+        doReadHeader(MSF, lba, allocationLength);
+    }
     else if (command == 0x51)
     {
         uint16_t allocationLength =
-			(((uint32_t) scsiDev.cdb[7]) << 8) +
-			scsiDev.cdb[8];
+            (((uint32_t) scsiDev.cdb[7]) << 8) +
+            scsiDev.cdb[8];
         doReadDiscInformation(allocationLength);
     }
     else if (command == 0x4A)
@@ -1435,9 +1435,9 @@ extern "C" int scsiCDRomCommand()
         doReadCD(lba, blocks, 0, 0x10, 0);
     }
     else
-	{
-		commandHandled = 0;
-	}
+    {
+        commandHandled = 0;
+    }
 
-	return commandHandled;
+    return commandHandled;
 }
