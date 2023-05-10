@@ -100,6 +100,8 @@ ImageBackingStore::ImageBackingStore(const char *filename, uint32_t scsi_block_s
         {
             // Convert to raw mapping, this avoids some unnecessary
             // access overhead in SdFat library.
+            // If non-aligned offsets are later requested, it automatically falls
+            // back to SdFat access mode.
             m_israw = true;
             m_blockdev = SD.card();
             m_bgnsector = begin;
@@ -118,7 +120,7 @@ ImageBackingStore::ImageBackingStore(const char *filename, uint32_t scsi_block_s
             }
 
             m_endsector = begin + sectorcount - 1;
-            m_fsfile.close();
+            m_fsfile.flush(); // Note: m_fsfile is also kept open as a fallback.
         }
     }
 }
@@ -199,10 +201,16 @@ bool ImageBackingStore::contiguousRange(uint32_t* bgnSector, uint32_t* endSector
 
 bool ImageBackingStore::seek(uint64_t pos)
 {
+    uint32_t sectornum = pos / SD_SECTOR_SIZE;
+
+    if (m_israw && (uint64_t)sectornum * SD_SECTOR_SIZE != pos)
+    {
+        dbgmsg("---- Unaligned access to image, falling back to SdFat access mode");
+        m_israw = false;
+    }
+
     if (m_israw)
     {
-        uint32_t sectornum = pos / SD_SECTOR_SIZE;
-        assert((uint64_t)sectornum * SD_SECTOR_SIZE == pos);
         m_cursector = m_bgnsector + sectornum;
         return (m_cursector <= m_endsector);
     }
@@ -221,10 +229,15 @@ bool ImageBackingStore::seek(uint64_t pos)
 
 ssize_t ImageBackingStore::read(void* buf, size_t count)
 {
+    uint32_t sectorcount = count / SD_SECTOR_SIZE;
+    if (m_israw && (uint64_t)sectorcount * SD_SECTOR_SIZE != count)
+    {
+        dbgmsg("---- Unaligned access to image, falling back to SdFat access mode");
+        m_israw = false;
+    }
+
     if (m_israw && m_blockdev)
     {
-        uint32_t sectorcount = count / SD_SECTOR_SIZE;
-        assert((uint64_t)sectorcount * SD_SECTOR_SIZE == count);
         if (m_blockdev->readSectors(m_cursector, (uint8_t*)buf, sectorcount))
         {
             m_cursector += sectorcount;
@@ -258,10 +271,15 @@ ssize_t ImageBackingStore::read(void* buf, size_t count)
 
 ssize_t ImageBackingStore::write(const void* buf, size_t count)
 {
+    uint32_t sectorcount = count / SD_SECTOR_SIZE;
+    if (m_israw && (uint64_t)sectorcount * SD_SECTOR_SIZE != count)
+    {
+        dbgmsg("---- Unaligned access to image, falling back to SdFat access mode");
+        m_israw = false;
+    }
+
     if (m_israw && m_blockdev)
     {
-        uint32_t sectorcount = count / SD_SECTOR_SIZE;
-        assert((uint64_t)sectorcount * SD_SECTOR_SIZE == count);
         if (m_blockdev->writeSectors(m_cursector, (const uint8_t*)buf, sectorcount))
         {
             m_cursector += sectorcount;
