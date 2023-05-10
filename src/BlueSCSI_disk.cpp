@@ -925,7 +925,7 @@ static struct {
 /* Write command */
 /*****************/
 
-static void doWrite(uint32_t lba, uint32_t blocks)
+void scsiDiskStartWrite(uint32_t lba, uint32_t blocks)
 {
     if (unlikely(scsiDev.target->cfg->deviceType == S2S_CFG_FLOPPY_14MB)) {
         // Floppies are supposed to be slow. Some systems can't handle a floppy
@@ -1166,7 +1166,7 @@ void diskDataOut()
 /* Read command */
 /*****************/
 
-static void doRead(uint32_t lba, uint32_t blocks)
+void scsiDiskStartRead(uint32_t lba, uint32_t blocks)
 {
     if (unlikely(scsiDev.target->cfg->deviceType == S2S_CFG_FLOPPY_14MB)) {
         // Floppies are supposed to be slow. Some systems can't handle a floppy
@@ -1451,7 +1451,7 @@ int scsiDiskCommand()
             scsiDev.cdb[3];
         uint32_t blocks = scsiDev.cdb[4];
         if (unlikely(blocks == 0)) blocks = 256;
-        doRead(lba, blocks);
+        scsiDiskStartRead(lba, blocks);
     }
     else if (likely(command == 0x28))
     {
@@ -1467,7 +1467,7 @@ int scsiDiskCommand()
             (((uint32_t) scsiDev.cdb[7]) << 8) +
             scsiDev.cdb[8];
 
-        doRead(lba, blocks);
+        scsiDiskStartRead(lba, blocks);
     }
     else if (likely(command == 0x0A))
     {
@@ -1478,7 +1478,7 @@ int scsiDiskCommand()
             scsiDev.cdb[3];
         uint32_t blocks = scsiDev.cdb[4];
         if (unlikely(blocks == 0)) blocks = 256;
-        doWrite(lba, blocks);
+        scsiDiskStartWrite(lba, blocks);
     }
     else if (likely(command == 0x2A) || // WRITE(10)
         unlikely(command == 0x2E)) // WRITE AND VERIFY
@@ -1496,7 +1496,7 @@ int scsiDiskCommand()
             (((uint32_t) scsiDev.cdb[7]) << 8) +
             scsiDev.cdb[8];
 
-        doWrite(lba, blocks);
+        scsiDiskStartWrite(lba, blocks);
     }
     else if (unlikely(command == 0x04))
     {

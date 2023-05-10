@@ -90,4 +90,9 @@ bool scsiDiskGetImageNameFromConfig(image_config_t &img, char *buf, size_t bufle
 // Get pointer to extended image configuration based on target idx
 image_config_t &scsiDiskGetImageConfig(int target_idx);
 
+// Start data transfer from disk image to SCSI bus
+// Can be called by device type specific command implementations (such as READ CD)
+void scsiDiskStartRead(uint32_t lba, uint32_t blocks);
 
+// Start data transfer from SCSI bus to disk image
+void scsiDiskStartWrite(uint32_t lba, uint32_t blocks);
