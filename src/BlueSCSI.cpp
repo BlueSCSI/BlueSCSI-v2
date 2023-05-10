@@ -317,6 +317,11 @@ bool findHDDImages()
           continue;
         }
 
+        if (strcasecmp(extension, ".cue") == 0)
+        {
+          continue; // .cue will be handled with corresponding .bin
+        }
+
         // Check if the image should be loaded to microcontroller flash ROM drive
         bool is_romdrive = false;
         if (extension && strcasecmp(extension, ".rom") == 0)

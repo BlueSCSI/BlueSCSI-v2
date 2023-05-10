@@ -33,6 +33,7 @@
 #include "BlueSCSI_config.h"
 #include "BlueSCSI_cdrom.h"
 #include <CUEParser.h>
+#include <assert.h>
 
 extern "C" {
 #include <scsi.h>
@@ -169,18 +170,65 @@ static const uint8_t FullTOC[] =
 	0x00  // 69: PFRAME
 };
 
+static uint8_t SimpleHeader[] =
+{
+	0x01, // 2048byte user data, L-EC in 288 byte aux field.
+	0x00, // reserved
+	0x00, // reserved
+	0x00, // reserved
+	0x00,0x00,0x00,0x00 // Track start sector (LBA or MSF)
+};
+
+static const uint8_t DiscInformation[] =
+{
+    0x00,   //  0: disc info length, MSB
+    0x20,   //  1: disc info length, LSB
+    0x0E,   //  2: disc status (finalized, single session non-rewritable)
+    0x01,   //  3: first track number
+    0x01,   //  4: number of sessions (LSB)
+    0x01,   //  5: first track in last session (LSB)
+    0x01,   //  6: last track in last session (LSB)
+    0x00,   //  7: format status (0x00 = non-rewritable, no barcode, no disc id)
+    0x00,   //  8: disc type (0x00 = CD-ROM)
+    0x00,   //  9: number of sessions (MSB)
+    0x00,   // 10: first track in last session (MSB)
+    0x00,   // 11: last track in last session (MSB)
+    0x00,   // 12: disc ID (MSB)
+    0x00,   // 13: .
+    0x00,   // 14: .
+    0x00,   // 15: disc ID (LSB)
+    0x00,   // 16: last session lead-in start (MSB)
+    0x00,   // 17: .
+    0x00,   // 18: .
+    0x00,   // 19: last session lead-in start (LSB)
+    0x00,   // 20: last possible lead-out start (MSB)
+    0x00,   // 21: .
+    0x00,   // 22: .
+    0x00,   // 23: last possible lead-out start (LSB)
+    0x00,   // 24: disc bar code (MSB)
+    0x00,   // 25: .
+    0x00,   // 26: .
+    0x00,   // 27: .
+    0x00,   // 28: .
+    0x00,   // 29: .
+    0x00,   // 30: .
+    0x00,   // 31: disc bar code (LSB)
+    0x00,   // 32: disc application code
+    0x00,   // 33: number of opc tables
+};
+
+// Convert logical block address to CD-ROM time in formatted TOC format
 static void LBA2MSF(uint32_t LBA, uint8_t* MSF)
 {
 	MSF[0] = 0; // reserved.
-	MSF[3] = LBA % 75; // M
+	MSF[3] = LBA % 75; // Frames
 	uint32_t rem = LBA / 75;
 
-	MSF[2] = rem % 60; // S
-	MSF[1] = rem / 60;
-
+	MSF[2] = rem % 60; // Seconds
+	MSF[1] = rem / 60; // Minutes
 }
 
-static void doReadTOCSimple(int MSF, uint8_t track, uint16_t allocationLength)
+static void doReadTOCSimple(bool MSF, uint8_t track, uint16_t allocationLength)
 {
 	if (track == 0xAA)
 	{
@@ -313,16 +361,7 @@ static void doReadFullTOCSimple(int convertBCD, uint8_t session, uint16_t alloca
 	}
 }
 
-static uint8_t SimpleHeader[] =
-{
-	0x01, // 2048byte user data, L-EC in 288 byte aux field.
-	0x00, // reserved
-	0x00, // reserved
-	0x00, // reserved
-	0x00,0x00,0x00,0x00 // Track start sector (LBA or MSF)
-};
-
-void doReadHeaderSimple(int MSF, uint32_t lba, uint16_t allocationLength)
+void doReadHeaderSimple(bool MSF, uint32_t lba, uint16_t allocationLength)
 {
 	uint32_t len = sizeof(SimpleHeader);
 	memcpy(scsiDev.data, SimpleHeader, len);
@@ -334,9 +373,44 @@ void doReadHeaderSimple(int MSF, uint32_t lba, uint16_t allocationLength)
 	scsiDev.phase = DATA_IN;
 }
 
+void doReadDiscInformationSimple(uint16_t allocationLength)
+{
+    uint32_t len = sizeof(DiscInformation);
+	memcpy(scsiDev.data, DiscInformation, len);
+	if (len > allocationLength)
+	{
+		len = allocationLength;
+	}
+	scsiDev.dataLen = len;
+	scsiDev.phase = DATA_IN;
+}
+
 /*********************************/
 /* TOC generation from cue sheet */
 /*********************************/
+
+// Fetch track info based on LBA
+static void getTrackFromLBA(CUEParser &parser, uint32_t lba, CUETrackInfo *result)
+{
+    // Track info in case we have no .cue file
+    result->file_mode = CUEFile_BINARY;
+    result->track_mode = CUETrack_MODE1_2048;
+    result->sector_length = 2048;
+    result->track_number = 1;
+
+    const CUETrackInfo *tmptrack;
+    while ((tmptrack = parser.next_track()) != NULL)
+    {
+        if (tmptrack->track_start <= lba)
+        {
+            *result = *tmptrack;
+        }
+        else
+        {
+            break;
+        }
+    }
+}
 
 // Format track info read from cue sheet into the format used by ReadTOC command.
 // Refer to T10/1545-D MMC-4 Revision 5a, "Response Format 0000b: Formatted TOC"
@@ -380,9 +454,10 @@ static bool loadCueSheet(image_config_t &img, CUEParser &parser)
     }
 
     // Use second half of scsiDev.data as the buffer for cue sheet text
-    char *cuebuf = (char*)&scsiDev.data[sizeof(scsiDev.data) / 2];
+    size_t halfbufsize = sizeof(scsiDev.data) / 2;
+    char *cuebuf = (char*)&scsiDev.data[halfbufsize];
     img.cuesheetfile.seek(0);
-    int len = img.cuesheetfile.read(cuebuf, sizeof(cuebuf));
+    int len = img.cuesheetfile.read(cuebuf, halfbufsize);
 
     if (len <= 0)
     {
@@ -394,7 +469,7 @@ static bool loadCueSheet(image_config_t &img, CUEParser &parser)
     return true;
 }
 
-static void doReadTOC(int MSF, uint8_t track, uint16_t allocationLength)
+static void doReadTOC(bool MSF, uint8_t track, uint16_t allocationLength)
 {
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     CUEParser parser;
@@ -491,13 +566,27 @@ static void doReadSessionInfo(uint8_t session, uint16_t allocationLength)
 	scsiDev.phase = DATA_IN;
 }
 
+// Convert logical block address to CD-ROM time in the raw TOC format
 static void LBA2MSFRaw(uint32_t LBA, uint8_t* MSF)
 {
-    MSF[2] = LBA % 75; // M
+    MSF[2] = LBA % 75; // Frames
 	uint32_t rem = LBA / 75;
 
-	MSF[1] = rem % 60; // S
-	MSF[0] = rem / 60;
+	MSF[1] = rem % 60; // Seconds
+	MSF[0] = rem / 60; // Minutes
+}
+
+// Convert logical block address to CD-ROM time in binary coded decimal format
+static void LBA2MSFBCD(uint32_t LBA, uint8_t* MSF)
+{
+    uint8_t fra = LBA % 75;
+	uint32_t rem = LBA / 75;
+	uint8_t sec = rem % 60;
+	uint8_t min = rem / 60;
+
+    MSF[0] = ((min / 10) << 4) | (min % 10);
+    MSF[1] = ((sec / 10) << 4) | (sec % 10);
+    MSF[2] = ((fra / 10) << 4) | (fra % 10);
 }
 
 // Format track info read from cue sheet into the format used by ReadFullTOC command.
@@ -527,7 +616,7 @@ static void formatRawTrackInfo(const CUETrackInfo *track, uint8_t *dest)
 
     dest[7] = 0; // HOUR
 
-    LBA2MSFRaw(track->data_start, &dest[8]);
+    LBA2MSFBCD(track->data_start, &dest[8]);
 }
 
 static void doReadFullTOC(int convertBCD, uint8_t session, uint16_t allocationLength)
@@ -574,7 +663,7 @@ static void doReadFullTOC(int convertBCD, uint8_t session, uint16_t allocationLe
     scsiDev.data[23] = lasttrack;
 
     // Leadout track position
-    LBA2MSFRaw(img.scsiSectors, &scsiDev.data[34]);
+    LBA2MSFBCD(img.scsiSectors, &scsiDev.data[34]);
 
     // Append recordable disc records b0 and c0 indicating non-recordable disc
     memcpy(scsiDev.data + len, &FullTOC[48], 22);
@@ -595,7 +684,7 @@ static void doReadFullTOC(int convertBCD, uint8_t session, uint16_t allocationLe
 
 // SCSI-3 MMC Read Header command, seems to be deprecated in later standards.
 // Refer to ANSI X3.304-1997
-void doReadHeader(int MSF, uint32_t lba, uint16_t allocationLength)
+void doReadHeader(bool MSF, uint32_t lba, uint16_t allocationLength)
 {
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     CUEParser parser;
@@ -610,20 +699,11 @@ void doReadHeader(int MSF, uint32_t lba, uint16_t allocationLength)
 	memcpy(scsiDev.data, SimpleHeader, len);
 
     // Search the track with the requested LBA
-    const CUETrackInfo *trackinfo;
-    CUETrackMode trackmode = CUETrack_MODE1_2048;
-    uint32_t trackstart = 0;
-    while ((trackinfo = parser.next_track()) != NULL)
-    {
-        if (trackinfo->data_start < lba)
-        {
-            trackstart = trackinfo->data_start;
-            trackmode = trackinfo->track_mode;
-        }
-    }
+    CUETrackInfo trackinfo = {};
+    getTrackFromLBA(parser, lba, &trackinfo);
 
     // Track mode (audio / data)
-    if (trackmode == CUETrack_AUDIO)
+    if (trackinfo.track_mode == CUETrack_AUDIO)
     {
         scsiDev.data[0] = 0;
     }
@@ -631,17 +711,53 @@ void doReadHeader(int MSF, uint32_t lba, uint16_t allocationLength)
     // Track start
     if (MSF)
     {
-        LBA2MSF(trackstart, &scsiDev.data[4]);
+        LBA2MSF(trackinfo.data_start, &scsiDev.data[4]);
     }
     else
     {
-        scsiDev.data[4] = (trackstart >> 24) & 0xFF;
-        scsiDev.data[5] = (trackstart >> 16) & 0xFF;
-        scsiDev.data[6] = (trackstart >>  8) & 0xFF;
-        scsiDev.data[7] = (trackstart >>  0) & 0xFF;
+        scsiDev.data[4] = (trackinfo.data_start >> 24) & 0xFF;
+        scsiDev.data[5] = (trackinfo.data_start >> 16) & 0xFF;
+        scsiDev.data[6] = (trackinfo.data_start >>  8) & 0xFF;
+        scsiDev.data[7] = (trackinfo.data_start >>  0) & 0xFF;
     }
 
     if (len > allocationLength)
+	{
+		len = allocationLength;
+	}
+	scsiDev.dataLen = len;
+	scsiDev.phase = DATA_IN;
+}
+
+void doReadDiscInformation(uint16_t allocationLength)
+{
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+    CUEParser parser;
+    if (!loadCueSheet(img, parser))
+    {
+        // No CUE sheet, use hardcoded data
+        return doReadDiscInformationSimple(allocationLength);
+    }
+
+    // Take the hardcoded header as base
+    uint32_t len = sizeof(DiscInformation);
+	memcpy(scsiDev.data, DiscInformation, len);
+
+    // Find first and last track number
+    int firsttrack = -1;
+    int lasttrack = -1;
+    const CUETrackInfo *trackinfo;
+    while ((trackinfo = parser.next_track()) != NULL)
+    {
+        if (firsttrack < 0) firsttrack = trackinfo->track_number;
+        lasttrack = trackinfo->track_number;
+    }
+
+    scsiDev.data[3] = firsttrack;
+    scsiDev.data[5] = firsttrack;
+    scsiDev.data[6] = lasttrack;
+
+	if (len > allocationLength)
 	{
 		len = allocationLength;
 	}
@@ -668,7 +784,8 @@ bool cdromValidateCueSheet(image_config_t &img)
         trackcount++;
 
         if (trackinfo->track_mode != CUETrack_AUDIO &&
-            trackinfo->track_mode != CUETrack_MODE1_2048)
+            trackinfo->track_mode != CUETrack_MODE1_2048 &&
+            trackinfo->track_mode != CUETrack_MODE1_2352)
         {
             log("---- Warning: track ", trackinfo->track_number, " has unsupported mode ", (int)trackinfo->track_mode);
         }
@@ -790,9 +907,22 @@ static void doGetEventStatusNotification(bool immed)
 /* CD-ROM audio playback              */
 /**************************************/
 
+// TODO: where to store these? Should be updated as playback progresses.
+static CDROMAudioPlaybackStatus g_cdrom_audio_status;
+static uint32_t g_cdrom_audio_lba;
+
+void cdromGetAudioPlaybackStatus(CDROMAudioPlaybackStatus *status, uint32_t *current_lba)
+{
+    if (status) *status = g_cdrom_audio_status;
+    if (current_lba) *current_lba = g_cdrom_audio_lba;
+}
+
 static void doPlayAudio(uint32_t lba, uint32_t length)
 {
     log("------ CD-ROM Play Audio starting at ", lba, " for ", length, " sectors");
+
+    g_cdrom_audio_lba = lba;
+    g_cdrom_audio_status = CDROMAudio_Stopped; // Playback not actually implemented
 
     scsiDev.status = 0;
     scsiDev.phase = STATUS;
@@ -804,6 +934,300 @@ static void doPauseResumeAudio(bool resume)
 
     scsiDev.status = 0;
     scsiDev.phase = STATUS;
+}
+
+static void doMechanismStatus(uint16_t allocation_length)
+{
+    uint8_t *buf = scsiDev.data;
+
+    CDROMAudioPlaybackStatus status;
+    uint32_t lba;
+    cdromGetAudioPlaybackStatus(&status, &lba);
+
+    *buf++ = 0x00; // No fault state
+    *buf++ = (status == CDROMAudio_Playing) ? 0x20 : 0x00; // Currently playing?
+    *buf++ = (lba >> 16) & 0xFF;
+    *buf++ = (lba >> 8) & 0xFF;
+    *buf++ = (lba >> 0) & 0xFF;
+    *buf++ = 0; // No CD changer
+    *buf++ = 0;
+    *buf++ = 0;
+
+    int len = 8;
+    if (len > allocation_length) len = allocation_length;
+
+    scsiDev.dataLen = len;
+    scsiDev.phase = DATA_IN;
+}
+
+/*******************************************/
+/* CD-ROM data reading in low level format */
+/*******************************************/
+
+static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
+                     uint8_t main_channel, uint8_t sub_channel)
+{
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+    CUEParser parser;
+    if (!loadCueSheet(img, parser)
+        && (sector_type == 0 || sector_type == 2)
+        && main_channel == 0x10 && sub_channel == 0)
+    {
+        // Simple case, return sector data directly
+        scsiDiskStartRead(lba, length);
+        return;
+    }
+
+    // Search the track with the requested LBA
+    // Supplies dummy data if no cue sheet is active.
+    CUETrackInfo trackinfo = {};
+    getTrackFromLBA(parser, lba, &trackinfo);
+
+    // Figure out the data offset in the file
+    uint64_t offset = trackinfo.file_offset + trackinfo.sector_length * (lba - trackinfo.data_start);
+    debuglog("------ Read CD: ", (int)length, " sectors starting at ", (int)lba,
+           ", track number ", trackinfo.track_number, ", sector size ", (int)trackinfo.sector_length,
+           ", main channel ", main_channel, ", sub channel ", sub_channel,
+           ", data offset in file ", (int)offset);
+
+    // Verify sector type
+    if (sector_type != 0)
+    {
+        bool sector_type_ok = false;
+        if (sector_type == 1 && trackinfo.track_mode == CUETrack_AUDIO)
+        {
+            sector_type_ok = true;
+        }
+        else if (sector_type == 2 && trackinfo.track_mode == CUETrack_MODE1_2048)
+        {
+            sector_type_ok = true;
+        }
+
+        if (!sector_type_ok)
+        {
+            debuglog("---- Failed sector type check, host requested ", (int)sector_type, " CUE file has ", (int)trackinfo.track_mode);
+            scsiDev.status = CHECK_CONDITION;
+            scsiDev.target->sense.code = ILLEGAL_REQUEST;
+            scsiDev.target->sense.asc = 0x6400; // ILLEGAL MODE FOR THIS TRACK
+            scsiDev.phase = STATUS;
+            return;
+        }
+    }
+
+    // Select fields to transfer
+    // Refer to table 351 in T10/1545-D MMC-4 Revision 5a
+    // Only the mandatory cases are supported.
+    int sector_length = 0;
+    int skip_begin = 0;
+    bool add_fake_headers = false;
+
+    if (main_channel == 0)
+    {
+        // No actual data requested, just sector type check or subchannel
+        sector_length = 0;
+    }
+    else if (trackinfo.track_mode == CUETrack_AUDIO)
+    {
+        // Transfer whole 2352 byte audio sectors from file to host
+        sector_length = 2352;
+    }
+    else if (trackinfo.track_mode == CUETrack_MODE1_2048 && main_channel == 0x10)
+    {
+        // Transfer whole 2048 byte data sectors from file to host
+        sector_length = 2048;
+    }
+    else if (trackinfo.track_mode == CUETrack_MODE1_2048 && (main_channel & 0xB8) == 0xB8)
+    {
+        // Transfer 2048 bytes of data from file and fake the headers
+        sector_length = 2048;
+        add_fake_headers = true;
+        debuglog("------ Host requested ECC data but image file lacks it, replacing with zeros");
+    }
+    else if (trackinfo.track_mode == CUETrack_MODE1_2352 && main_channel == 0x10)
+    {
+        // Transfer the 2048 byte payload of data sector to host.
+        sector_length = 2048;
+        skip_begin = 16;
+    }
+    else if (trackinfo.track_mode == CUETrack_MODE1_2352 && (main_channel & 0xB8) == 0xB8)
+    {
+        // Transfer whole 2352 byte data sector with ECC to host
+        sector_length = 2352;
+    }
+    else
+    {
+        debuglog("---- Unsupported channel request for track type ", (int)trackinfo.track_mode);
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.target->sense.asc = 0x6400; // ILLEGAL MODE FOR THIS TRACK
+        scsiDev.phase = STATUS;
+        return;
+    }
+
+    bool field_q_subchannel = false;
+    if (sub_channel == 2)
+    {
+        // Include position information in Q subchannel
+        field_q_subchannel = true;
+    }
+    else if (sub_channel != 0)
+    {
+        debuglog("---- Unsupported subchannel request");
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+        scsiDev.phase = STATUS;
+        return;
+    }
+
+    scsiDev.phase = DATA_IN;
+    scsiDev.dataLen = 0;
+    scsiDev.dataPtr = 0;
+    scsiEnterPhase(DATA_IN);
+
+    // Use two buffers alternately for formatting sector data
+    uint32_t result_length = sector_length + (field_q_subchannel ? 16 : 0) + (add_fake_headers ? 304 : 0);
+    uint8_t *buf0 = scsiDev.data;
+    uint8_t *buf1 = scsiDev.data + result_length;
+
+    // Format the sectors for transfer
+    for (uint32_t idx = 0; idx < length; idx++)
+    {
+        platform_poll();
+
+        img.file.seek(offset + idx * trackinfo.sector_length + skip_begin);
+
+        // Verify that previous write using this buffer has finished
+        uint8_t *buf = ((idx & 1) ? buf1 : buf0);
+        uint8_t *bufstart = buf;
+        uint32_t start = millis();
+        while (!scsiIsWriteFinished(buf + result_length - 1) && !scsiDev.resetFlag)
+        {
+            if ((uint32_t)(millis() - start) > 5000)
+            {
+                log("doReadCD() timeout waiting for previous to finish");
+                scsiDev.resetFlag = 1;
+            }
+            platform_poll();
+        }
+        if (scsiDev.resetFlag) break;
+
+        if (add_fake_headers)
+        {
+            // 12-byte data sector sync pattern
+            *buf++ = 0x00;
+            for (int i = 0; i < 10; i++)
+            {
+                *buf++ = 0xFF;
+            }
+            *buf++ = 0x00;
+
+            // 4-byte data sector header
+            LBA2MSFBCD(lba + idx, buf);
+            buf += 3;
+            *buf++ = 0x01; // Mode 1
+        }
+
+        if (sector_length > 0)
+        {
+            // User data
+            img.file.read(buf, sector_length);
+            buf += sector_length;
+        }
+
+        if (add_fake_headers)
+        {
+            // 288 bytes of ECC
+            memset(buf, 0, 288);
+            buf += 288;
+        }
+
+        if (field_q_subchannel)
+        {
+            // Formatted Q subchannel data
+            // Refer to table 354 in T10/1545-D MMC-4 Revision 5a
+            *buf++ = (trackinfo.track_mode == CUETrack_AUDIO ? 0x10 : 0x14); // Control & ADR
+            *buf++ = trackinfo.track_number;
+            *buf++ = (lba + idx >= trackinfo.data_start) ? 1 : 0; // Index number (0 = pregap)
+            LBA2MSFRaw(lba + idx, buf); buf += 3;
+            *buf++ = 0;
+            LBA2MSFRaw(lba + idx, buf); buf += 3;
+            *buf++ = 0; *buf++ = 0; // CRC (optional)
+            *buf++ = 0; *buf++ = 0; *buf++ = 0; // (pad)
+            *buf++ = 0; // No P subchannel
+        }
+
+        assert(buf == bufstart + result_length);
+        scsiStartWrite(bufstart, result_length);
+    }
+
+    scsiFinishWrite();
+
+    scsiDev.status = 0;
+    scsiDev.phase = STATUS;
+}
+
+static void doReadSubchannel(bool time, bool subq, uint8_t parameter, uint8_t track_number, uint16_t allocation_length)
+{
+    uint8_t *buf = scsiDev.data;
+
+    if (parameter == 0x01)
+    {
+        CDROMAudioPlaybackStatus audiostatus;
+        uint32_t lba;
+        cdromGetAudioPlaybackStatus(&audiostatus, &lba);
+        debuglog("------ Get audio playback position: status ", (int)audiostatus, " lba ", (int)lba);
+
+        // Fetch current track info
+        image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+        CUEParser parser;
+        CUETrackInfo trackinfo = {};
+        loadCueSheet(img, parser);
+        getTrackFromLBA(parser, lba, &trackinfo);
+
+        // Request sub channel data at current playback position
+        *buf++ = 0; // Reserved
+
+        switch (audiostatus)
+        {
+            case CDROMAudio_Playing: *buf++ = 0x11; break;
+            case CDROMAudio_Paused:  *buf++ = 0x12; break;
+            case CDROMAudio_Stopped: *buf++ = 0x13; break;
+            default: *buf++ = 0; break;
+        }
+
+        int len = 12;
+        *buf++ = 0;  // Subchannel data length (MSB)
+        *buf++ = len; // Subchannel data length (LSB)
+        *buf++ = 0x01; // Subchannel data format
+        *buf++ = (trackinfo.track_mode == CUETrack_AUDIO ? 0x10 : 0x14);
+        *buf++ = trackinfo.track_number;
+        *buf++ = (lba >= trackinfo.data_start) ? 1 : 0; // Index number (0 = pregap)
+        *buf++ = (lba >> 24) & 0xFF; // Absolute block address
+        *buf++ = (lba >> 16) & 0xFF;
+        *buf++ = (lba >>  8) & 0xFF;
+        *buf++ = (lba >>  0) & 0xFF;
+
+        uint32_t relpos = (uint32_t)((int32_t)lba - (int32_t)trackinfo.data_start);
+        *buf++ = (relpos >> 24) & 0xFF; // Track relative position (may be negative)
+        *buf++ = (relpos >> 16) & 0xFF;
+        *buf++ = (relpos >>  8) & 0xFF;
+        *buf++ = (relpos >>  0) & 0xFF;
+
+        if (len > allocation_length) len = allocation_length;
+        scsiDev.dataLen = len;
+        scsiDev.phase = DATA_IN;
+    }
+    else
+    {
+        debuglog("---- Unsupported subchannel request");
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+        scsiDev.phase = STATUS;
+        return;
+    }
+
 }
 
 /**************************************/
@@ -837,7 +1261,7 @@ extern "C" int scsiCDRomCommand()
 	else if (command == 0x43)
 	{
 		// CD-ROM Read TOC
-		int MSF = scsiDev.cdb[1] & 0x02 ? 1 : 0;
+		bool MSF = (scsiDev.cdb[1] & 0x02);
 		uint8_t track = scsiDev.cdb[6];
 		uint16_t allocationLength =
 			(((uint32_t) scsiDev.cdb[7]) << 8) +
@@ -865,13 +1289,20 @@ extern "C" int scsiCDRomCommand()
 	else if (command == 0x44)
 	{
 		// CD-ROM Read Header
-		int MSF = scsiDev.cdb[1] & 0x02 ? 1 : 0;
+		bool MSF = (scsiDev.cdb[1] & 0x02);
 		uint32_t lba = 0; // IGNORED for now
 		uint16_t allocationLength =
 			(((uint32_t) scsiDev.cdb[7]) << 8) +
 			scsiDev.cdb[8];
 		doReadHeader(MSF, lba, allocationLength);
 	}
+    else if (command == 0x51)
+    {
+        uint16_t allocationLength =
+			(((uint32_t) scsiDev.cdb[7]) << 8) +
+			scsiDev.cdb[8];
+        doReadDiscInformation(allocationLength);
+    }
     else if (command == 0x4A)
     {
         // Get event status notifications (media change notifications)
@@ -921,7 +1352,89 @@ extern "C" int scsiCDRomCommand()
         // PAUSE/RESUME AUDIO
         doPauseResumeAudio(scsiDev.cdb[8] & 1);
     }
-	else
+    else if (command == 0xBD)
+    {
+        // Mechanism status
+        uint16_t allocationLength = (((uint32_t) scsiDev.cdb[8]) << 8) + scsiDev.cdb[9];
+        doMechanismStatus(allocationLength);
+    }
+    else if (command == 0xBB)
+    {
+        // Set CD speed (just ignored)
+        scsiDev.status = 0;
+        scsiDev.phase = STATUS;
+    }
+    else if (command == 0xBE)
+    {
+        // ReadCD (in low level format)
+        uint8_t sector_type = (scsiDev.cdb[1] >> 2) & 7;
+        uint32_t lba =
+            (((uint32_t) scsiDev.cdb[2]) << 24) +
+            (((uint32_t) scsiDev.cdb[3]) << 16) +
+            (((uint32_t) scsiDev.cdb[4]) << 8) +
+            scsiDev.cdb[5];
+        uint32_t blocks =
+            (((uint32_t) scsiDev.cdb[6]) << 16) +
+            (((uint32_t) scsiDev.cdb[7]) << 8) +
+            (((uint32_t) scsiDev.cdb[8]));
+        uint8_t main_channel = scsiDev.cdb[9];
+        uint8_t sub_channel = scsiDev.cdb[10];
+
+        doReadCD(lba, blocks, sector_type, main_channel, sub_channel);
+    }
+    else if (command == 0xB9)
+    {
+        // ReadCD MSF
+        uint8_t sector_type = (scsiDev.cdb[1] >> 2) & 7;
+        uint32_t start = (scsiDev.cdb[3] * 60 + scsiDev.cdb[4]) * 75 + scsiDev.cdb[5];
+        uint32_t end   = (scsiDev.cdb[6] * 60 + scsiDev.cdb[7]) * 75 + scsiDev.cdb[8];
+        uint8_t main_channel = scsiDev.cdb[9];
+        uint8_t sub_channel = scsiDev.cdb[10];
+
+        doReadCD(start, end - start, sector_type, main_channel, sub_channel);
+    }
+    else if (command == 0x42)
+    {
+        // Read subchannel data
+        bool time = (scsiDev.cdb[1] & 0x02);
+        bool subq = (scsiDev.cdb[2] & 0x40);
+        uint8_t parameter = scsiDev.cdb[3];
+        uint8_t track_number = scsiDev.cdb[6];
+        uint16_t allocationLength = (((uint32_t) scsiDev.cdb[7]) << 8) + scsiDev.cdb[8];
+
+        doReadSubchannel(time, subq, parameter, track_number, allocationLength);
+    }
+    else if (command == 0x28)
+    {
+        // READ(10) for CDs (may need sector translation for cue file handling)
+        uint32_t lba =
+            (((uint32_t) scsiDev.cdb[2]) << 24) +
+            (((uint32_t) scsiDev.cdb[3]) << 16) +
+            (((uint32_t) scsiDev.cdb[4]) << 8) +
+            scsiDev.cdb[5];
+        uint32_t blocks =
+            (((uint32_t) scsiDev.cdb[7]) << 8) +
+            scsiDev.cdb[8];
+
+        doReadCD(lba, blocks, 0, 0x10, 0);
+    }
+    else if (command == 0xA8)
+    {
+        // READ(12) for CDs (may need sector translation for cue file handling)
+        uint32_t lba =
+            (((uint32_t) scsiDev.cdb[2]) << 24) +
+            (((uint32_t) scsiDev.cdb[3]) << 16) +
+            (((uint32_t) scsiDev.cdb[4]) << 8) +
+            scsiDev.cdb[5];
+        uint32_t blocks =
+            (((uint32_t) scsiDev.cdb[6]) << 24) +
+            (((uint32_t) scsiDev.cdb[7]) << 16) +
+            (((uint32_t) scsiDev.cdb[8]) << 8) +
+            scsiDev.cdb[9];
+
+        doReadCD(lba, blocks, 0, 0x10, 0);
+    }
+    else
 	{
 		commandHandled = 0;
 	}

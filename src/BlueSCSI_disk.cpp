@@ -385,11 +385,11 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
             if (img.cuesheetfile.isOpen())
             {
                 log("---- Found CD-ROM CUE sheet at ", cuesheetname);
-            }
-            else if (!cdromValidateCueSheet(img))
-            {
-                log("---- Failed to parse cue sheet ", cuesheetname, ", using as plain binary image");
-                img.cuesheetfile.close();
+                if (!cdromValidateCueSheet(img))
+                {
+                    log("---- Failed to parse cue sheet, using as plain binary image");
+                    img.cuesheetfile.close();
+                }
             }
             else
             {
