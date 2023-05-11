@@ -278,10 +278,22 @@ static void process_DataOut()
 	}
 }
 
-static const uint8_t CmdGroupBytes[8] = {6, 10, 10, 6, 6, 12, 6, 6};
+static const uint8_t CmdGroupBytes[] = {
+	6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+	10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,
+	10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,
+	10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,
+	10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,
+	10,10,10,10,10,10,10,10,10,10,10,10,10,16,16,16,16,16,16,16,16,
+	16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
+	16,16,16,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,
+	12,12,12,12,12,12,12,12,12,12,12,12,12,12,10,10,10,10,10,10,10,
+	10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,
+	10,10,10,10,10,10,10,10,10,10,10,10,10,10
+};
+
 static void process_Command()
 {
-	int group;
 	uint8_t command;
 	uint8_t control;
 
@@ -291,8 +303,18 @@ static void process_Command()
 	int parityError = 0;
 	scsiRead(scsiDev.cdb, 6, &parityError);
 
-	group = scsiDev.cdb[0] >> 5;
-	scsiDev.cdbLen = CmdGroupBytes[group];
+	// Handle Atari ST ICD extended commands
+	if (scsiDev.cdb[0] == 0x1F)
+	{
+		scsiDev.cdb[0] = scsiDev.cdb[1];
+		scsiDev.cdb[1] = scsiDev.cdb[2];
+		scsiDev.cdb[2] = scsiDev.cdb[3];
+		scsiDev.cdb[3] = scsiDev.cdb[4];
+		scsiDev.cdb[4] = scsiDev.cdb[5];
+		scsiDev.cdb[5] = scsiReadByte();
+	}
+
+	scsiDev.cdbLen = CmdGroupBytes[scsiDev.cdb[0]];
 	if (parityError &&
 		(scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY))
 	{
