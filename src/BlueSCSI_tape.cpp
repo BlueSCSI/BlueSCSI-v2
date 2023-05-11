@@ -65,7 +65,7 @@ extern "C" int scsiTapeCommand()
             bool overlength = (length < blocklen);
             if (overlength || (underlength && !supress_invalid_length))
             {
-                debuglog("Host requested variable block max ", (int)length, " bytes, blocksize is ", (int)blocklen);
+                debuglog("------ Host requested variable block max ", (int)length, " bytes, blocksize is ", (int)blocklen);
                 scsiDev.status = CHECK_CONDITION;
                 scsiDev.target->sense.code = ILLEGAL_REQUEST;
                 scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
@@ -81,11 +81,108 @@ extern "C" int scsiTapeCommand()
             img.tape_pos += blocks_to_read;
         }
     }
+    else if (command == 0x0A)
+    {
+        // WRITE6
+        bool fixed = scsiDev.cdb[1] & 1;
+
+        if (img.quirks == S2S_CFG_QUIRKS_OMTI)
+        {
+            fixed = true;
+        }
+
+        uint32_t length =
+            (((uint32_t) scsiDev.cdb[2]) << 16) +
+            (((uint32_t) scsiDev.cdb[3]) << 8) +
+            scsiDev.cdb[4];
+
+        // Host can request either multiple fixed-length blocks, or a single variable length one.
+        // Only single block length is supported currently.
+        uint32_t blocklen = scsiDev.target->liveCfg.bytesPerSector;
+        uint32_t blocks_to_write = length;
+        if (!fixed)
+        {
+            blocks_to_write = 1;
+
+            if (length != blocklen)
+            {
+                debuglog("------ Host requested variable block ", (int)length, " bytes, blocksize is ", (int)blocklen);
+                scsiDev.status = CHECK_CONDITION;
+                scsiDev.target->sense.code = ILLEGAL_REQUEST;
+                scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+                scsiDev.phase = STATUS;
+                return 1;
+            }
+        }
+
+        if (blocks_to_write > 0)
+        {
+            scsiDiskStartWrite(img.tape_pos, blocks_to_write);
+            img.tape_pos += blocks_to_write;
+        }
+    }
+    else if (command == 0x13)
+    {
+        // VERIFY
+        bool fixed = scsiDev.cdb[1] & 1;
+
+        if (img.quirks == S2S_CFG_QUIRKS_OMTI)
+        {
+            fixed = true;
+        }
+
+        bool byte_compare = scsiDev.cdb[1] & 2;
+        uint32_t length =
+            (((uint32_t) scsiDev.cdb[2]) << 16) +
+            (((uint32_t) scsiDev.cdb[3]) << 8) +
+            scsiDev.cdb[4];
+
+        if (!fixed)
+        {
+            length = 1;
+        }
+
+        if (byte_compare)
+        {
+            debuglog("------ Verify with byte compare is not implemented");
+            scsiDev.status = CHECK_CONDITION;
+            scsiDev.target->sense.code = ILLEGAL_REQUEST;
+            scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+            scsiDev.phase = STATUS;
+        }
+        else
+        {
+            // Host requests ECC check, report that it passed.
+            scsiDev.status = GOOD;
+            scsiDev.phase = STATUS;
+            img.tape_pos += length;
+        }
+    }
     else if (command == 0x01)
     {
         // REWIND
         // Set tape position back to 0.
         img.tape_pos = 0;
+    }
+    else if (command == 0x05)
+    {
+        // READ BLOCK LIMITS
+        uint32_t blocklen = scsiDev.target->liveCfg.bytesPerSector;
+        scsiDev.data[0] = 0; // Reserved
+        scsiDev.data[1] = (blocklen >> 16) & 0xFF; // Maximum block length (MSB)
+        scsiDev.data[2] = (blocklen >>  8) & 0xFF;
+        scsiDev.data[3] = (blocklen >>  0) & 0xFF; // Maximum block length (LSB)
+        scsiDev.data[4] = (blocklen >>  8) & 0xFF; // Minimum block length (MSB)
+        scsiDev.data[5] = (blocklen >>  8) & 0xFF; // Minimum block length (MSB)
+        scsiDev.dataLen = 6;
+        scsiDev.phase = DATA_IN;
+    }
+    else if (command == 0x10)
+    {
+        // WRITE FILEMARKS
+        debuglog("------ Filemarks storage not implemented, reporting ok");
+        scsiDev.status = GOOD;
+        scsiDev.phase = STATUS;
     }
     else if (command == 0x11)
     {

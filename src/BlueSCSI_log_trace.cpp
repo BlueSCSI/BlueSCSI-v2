@@ -23,12 +23,15 @@ static const char *getCommandName(uint8_t cmd)
         case 0x01: return "RezeroUnit";
         case 0x03: return "RequestSense";
         case 0x04: return "FormatUnit";
+        case 0x05: return "ReadBlockLimits";
         case 0x08: return "Read6";
         case 0x0A: return "Write6";
         case 0x0B: return "Seek6";
         case 0x0F: return "WriteSectorBuffer";
+        case 0x10: return "WriteFilemarks";
         case 0x11: return "Space";
         case 0x12: return "Inquiry";
+        case 0x13: return "Verify";
         case 0x15: return "ModeSelect6";
         case 0x16: return "Reserve";
         case 0x17: return "Release";
