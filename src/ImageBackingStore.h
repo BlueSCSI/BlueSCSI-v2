@@ -71,6 +71,9 @@ public:
     // Flush any pending changes to filesystem
     void flush();
 
+    // If available, read filename and return actual length.
+    size_t name(char* filename, size_t len);
+
 protected:
     bool m_israw;
     bool m_isrom;

@@ -134,10 +134,17 @@ static uint16_t wire_buf_a[WIRE_BUFFER_SIZE];
 static uint16_t wire_buf_b[WIRE_BUFFER_SIZE];
 
 // tracking for audio playback
-static bool audio_active = false;
-static volatile bool audio_stopping = false;
+static uint8_t audio_owner; // SCSI ID or 0xFF when idle
+static volatile bool audio_paused = false;
 static FsFile audio_file;
 static uint32_t fleft;
+
+// historical playback status information
+static audio_status_code audio_last_status[8] = {ASC_NO_STATUS};
+static uint32_t audio_bytes_read[8] = {0};
+
+// mechanism for cleanly stopping DMA units
+static volatile bool audio_stopping = false;
 
 // trackers for the below function call
 static uint16_t sfcnt = 0; // sub-frame count; 2 per frame, 192 frames/block
@@ -318,7 +325,15 @@ void audio_dma_irq() {
 }
 
 bool audio_is_active() {
-    return audio_active;
+    return audio_owner != 0xFF;
+}
+
+bool audio_is_paused() {
+    return audio_paused;
+}
+
+uint8_t audio_get_owner() {
+    return audio_owner;
 }
 
 void audio_setup() {
@@ -338,7 +353,8 @@ void audio_setup() {
 }
 
 void audio_poll() {
-    if (!audio_active) return;
+    if (!audio_is_active()) return;
+    if (audio_paused) return;
     if (fleft == 0 && sbufst_a == STALE && sbufst_b == STALE) {
         // out of data and ready to stop
         audio_stop();
@@ -368,6 +384,7 @@ void audio_poll() {
         log("Audio sample data underrun");
     }
     fleft -= toRead;
+    audio_bytes_read[audio_owner] += toRead;
 
     if (sbufst_a == FILLING) {
         sbufst_a = READY;
@@ -376,13 +393,17 @@ void audio_poll() {
     }
 }
 
-bool audio_play(const char* file, uint64_t start, uint64_t end, bool swap) {
+bool audio_play(uint8_t owner, const char* file, uint64_t start, uint64_t end, bool swap) {
     // stop any existing playback first
-    if (audio_active) audio_stop();
+    if (audio_is_active()) audio_stop();
 
     // debuglog("Request to play ('", file, "':", start, ":", end, ")");
 
     // verify audio file is present and inputs are (somewhat) sane
+    if (owner == 0xFF) {
+        log("Illegal audio owner");
+        return false;
+    }
     if (start >= end) {
         log("Invalid range for audio (", start, ":", end, ")");
         return false;
@@ -394,11 +415,17 @@ bool audio_play(const char* file, uint64_t start, uint64_t end, bool swap) {
         return false;
     }
     uint64_t len = audio_file.size();
-    if (start > len || end > len) {
-        log("File '", file, "' playback request (",
-                start, ":", end, ":", len, ") outside bounds");
+    if (start > len) {
+        log("File '", file, "' playback request start (",
+                start, ":", len, ") outside file bounds");
         audio_file.close();
         return false;
+    }
+    // truncate playback end to end of file
+    // we will not consider this to be an error at the moment
+    if (end > len) {
+        dbgmsg("------ Truncate audio play request end ", end, " to file size ", len);
+        end = len;
     }
     fleft = end - start;
     if (fleft <= 2 * AUDIO_BUFFER_SIZE) {
@@ -432,6 +459,9 @@ bool audio_play(const char* file, uint64_t start, uint64_t end, bool swap) {
     sbufswap = swap;
     sbufst_a = READY;
     sbufst_b = READY;
+    audio_owner = owner & 7;
+    audio_bytes_read[audio_owner] = AUDIO_BUFFER_SIZE * 2;
+    audio_last_status[audio_owner] = ASC_PLAYING;
 
     // prepare the wire buffers
     for (uint16_t i = 0; i < WIRE_BUFFER_SIZE; i++) {
@@ -465,12 +495,25 @@ bool audio_play(const char* file, uint64_t start, uint64_t end, bool swap) {
 
     // ready to go
     dma_channel_start(SOUND_DMA_CHA);
-    audio_active = true;
+    return true;
+}
+
+bool audio_set_paused(bool paused) {
+    if (!audio_is_active()) return false;
+    else if (audio_paused && paused) return false;
+    else if (!audio_paused && !paused) return false;
+
+    audio_paused = paused;
+    if (paused) {
+        audio_last_status[audio_owner] = ASC_PAUSED;
+    } else {
+        audio_last_status[audio_owner] = ASC_PLAYING;
+    }
     return true;
 }
 
 void audio_stop() {
-    if (!audio_active) return;
+    if (!audio_is_active()) return;
 
     // to help mute external hardware, send a bunch of '0' samples prior to
     // halting the datastream; easiest way to do this is invalidating the
@@ -490,7 +533,24 @@ void audio_stop() {
     if (audio_file.isOpen()) {
         audio_file.close();
     }
-    audio_active = false;
+    audio_last_status[audio_owner] = ASC_COMPLETED;
+    audio_owner = 0xFF;
+}
+
+audio_status_code audio_get_status_code(uint8_t id) {
+    audio_status_code tmp = audio_last_status[id & 7];
+    if (tmp == ASC_COMPLETED || tmp == ASC_ERRORED) {
+        audio_last_status[id & 7] = ASC_NO_STATUS;
+    }
+    return tmp;
+}
+
+uint32_t audio_get_bytes_read(uint8_t id) {
+    return audio_bytes_read[id & 7];
+}
+
+void audio_clear_bytes_read(uint8_t id) {
+    audio_bytes_read[id & 7] = 0;
 }
 
 #ifdef __cplusplus

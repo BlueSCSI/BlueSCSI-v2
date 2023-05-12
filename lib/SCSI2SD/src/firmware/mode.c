@@ -220,6 +220,23 @@ static const uint8_t ControlModePage[] =
 0x00, 0x00 // AEN holdoff period.
 };
 
+#ifdef ENABLE_AUDIO_OUTPUT
+static const uint8_t CDROMAudioControlParametersPage[] =
+{
+0x0E, // page code
+0x0E, // page length
+0x04, // 'Immed' bit set, 'SOTC' bit not set
+0x00, // reserved
+0x00, // reserved
+0x80, // 1 LBAs/sec multip
+0x00, 0x4B, // 75 LBAs/sec
+0x03, 0xFF, // output port 0 active, max volume
+0x03, 0xFF, // output port 1 active, max volume
+0x00, 0x00, // output port 2 inactive
+0x00, 0x00 // output port 3 inactive
+};
+#endif
+
 static const uint8_t SequentialDeviceConfigPage[] =
 {
 0x10, // page code
@@ -495,6 +512,21 @@ static void doModeSense(
 		pageIn(pc, idx, ControlModePage, sizeof(ControlModePage));
 		idx += sizeof(ControlModePage);
 	}
+
+#ifdef ENABLE_AUDIO_OUTPUT
+	if ((scsiDev.compatMode >= COMPAT_SCSI2)
+		&& (scsiDev.target->cfg->deviceType == S2S_CFG_OPTICAL)
+		&& (pageCode == 0x0E || pageCode == 0x3F))
+	{
+		pageFound = 1;
+		pageIn(
+			pc,
+			idx,
+			CDROMAudioControlParametersPage,
+			sizeof(CDROMAudioControlParametersPage));
+		idx += sizeof(CDROMAudioControlParametersPage);
+	}
+#endif
 
 	if ((scsiDev.target->cfg->deviceType == S2S_CFG_SEQUENTIAL) &&
 		(pageCode == 0x10 || pageCode == 0x3F))
