@@ -930,7 +930,7 @@ void cdromGetAudioPlaybackStatus(uint8_t *status, uint32_t *current_lba, bool cu
     }
     if (current_lba) *current_lba = mechanism_status[target].last_lba
             + audio_get_bytes_read(target) / 2352;
-#elif
+#else
     if (status) *status = 0; // audio status code for 'unsupported/invalid' and not-playing indicator
     if (current_lba) *current_lba = mechanism_status[target].last_lba;
 #endif
@@ -1024,7 +1024,7 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
         scsiDev.target->sense.asc = 0x6400; // ILLEGAL MODE FOR THIS TRACK
         scsiDev.phase = STATUS;
     }
-#elif
+#else
     debuglog("---- Target does not support audio playback");
     // per SCSI-2, targets not supporting audio respond to zero-length
     // PLAY AUDIO commands with ILLEGAL REQUEST; this seems to be a check
@@ -1056,7 +1056,7 @@ static void doPauseResumeAudio(bool resume)
         scsiDev.target->sense.asc = 0x2C00; // COMMAND SEQUENCE ERROR
         scsiDev.phase = STATUS;
     }
-#elif
+#else
     debuglog("---- Target does not support audio pausing");
     scsiDev.status = CHECK_CONDITION;
     scsiDev.target->sense.code = ILLEGAL_REQUEST; // assumed from PLAY AUDIO(10)
