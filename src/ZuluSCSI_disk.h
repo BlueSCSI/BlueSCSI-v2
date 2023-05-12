@@ -49,6 +49,9 @@ struct image_config_t: public S2S_TargetCfg
     uint8_t cdrom_events;
     bool reinsert_on_inquiry;
 
+    // For tape drive emulation, current position in blocks
+    uint32_t tape_pos;
+
     // Index of image, for when image on-the-fly switching is used for CD drives
     int image_index;
 
