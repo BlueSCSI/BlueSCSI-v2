@@ -75,6 +75,7 @@ static const char *getCommandName(uint8_t cmd)
         case 0x37: return "ReadDefectData";
         case 0x3B: return "WriteBuffer";
         case 0x3C: return "ReadBuffer";
+        case 0x42: return "CDROM Read SubChannel";
         case 0x43: return "CDROM Read TOC";
         case 0x44: return "CDROM Read Header";
         case 0x4A: return "GetEventStatusNotification";

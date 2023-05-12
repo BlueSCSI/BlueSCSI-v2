@@ -313,3 +313,15 @@ void ImageBackingStore::flush()
         m_fsfile.flush();
     }
 }
+
+size_t ImageBackingStore::name(char* filename, size_t len)
+{
+    if (!m_israw && !m_isrom)
+    {
+        return m_fsfile.getName(filename, len);
+    }
+    else
+    {
+        return 0;
+    }
+}
