@@ -22,9 +22,6 @@ bool cdromSwitchNextImage(image_config_t &img);
 bool cdromValidateCueSheet(image_config_t &img);
 
 // Audio playback status
-enum CDROMAudioPlaybackStatus {
-    CDROMAudio_Stopped = 0,
-    CDROMAudio_Playing = 1,
-    CDROMAudio_Paused = 2
-};
-void cdromGetAudioPlaybackStatus(CDROMAudioPlaybackStatus *status, uint32_t *current_lba);
+// boolean flag is true if just basic mechanism status (playback true/false)
+// is desired, or false if historical audio status codes should be returned
+void cdromGetAudioPlaybackStatus(uint8_t *status, uint32_t *current_lba, bool current_only);
