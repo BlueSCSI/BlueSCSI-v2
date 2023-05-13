@@ -1511,7 +1511,18 @@ extern "C" int scsiCDRomCommand()
         uint32_t start = (scsiDev.cdb[3] * 60 + scsiDev.cdb[4]) * 75 + scsiDev.cdb[5];
         uint32_t end   = (scsiDev.cdb[6] * 60 + scsiDev.cdb[7]) * 75 + scsiDev.cdb[8];
 
-        doPlayAudio(start, end - start);
+        uint32_t lba = start;
+        if (scsiDev.cdb[3] == 0xFF
+                && scsiDev.cdb[4] == 0xFF
+                && scsiDev.cdb[5] == 0xFF)
+        {
+            // request to start playback from 'current position'
+            image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+            lba = img.file.position() / 2352;
+        }
+
+        uint32_t length = end - lba;
+        doPlayAudio(lba, length);
     }
     else if (command == 0x4B)
     {
@@ -1556,14 +1567,6 @@ extern "C" int scsiCDRomCommand()
         uint32_t end   = (scsiDev.cdb[6] * 60 + scsiDev.cdb[7]) * 75 + scsiDev.cdb[8];
         uint8_t main_channel = scsiDev.cdb[9];
         uint8_t sub_channel = scsiDev.cdb[10];
-
-        if (scsiDev.cdb[3] == 0xFF
-                && scsiDev.cdb[4] == 0xFF
-                && scsiDev.cdb[5] == 0xFF)
-        {
-            // resume from current position
-            start = 0xFFFFFFFF;
-        }
 
         doReadCD(start, end - start, sector_type, main_channel, sub_channel);
     }
