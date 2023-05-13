@@ -462,6 +462,7 @@ bool audio_play(uint8_t owner, ImageBackingStore* img, uint64_t start, uint64_t 
     sbufst_b = READY;
     audio_owner = owner & 7;
     audio_last_status[audio_owner] = ASC_PLAYING;
+    audio_paused = false;
 
     // prepare the wire buffers
     for (uint16_t i = 0; i < WIRE_BUFFER_SIZE; i++) {
@@ -531,6 +532,7 @@ void audio_stop(uint8_t id) {
 
     // idle the subsystem
     audio_last_status[audio_owner] = ASC_COMPLETED;
+    audio_paused = false;
     audio_owner = 0xFF;
 }
 
