@@ -133,7 +133,7 @@ static uint16_t wire_buf_b[WIRE_BUFFER_SIZE];
 // tracking for audio playback
 static uint8_t audio_owner; // SCSI ID or 0xFF when idle
 static volatile bool audio_paused = false;
-static ImageBackingStore audio_file;
+static ImageBackingStore* audio_file;
 static uint64_t fpos;
 static uint32_t fleft;
 
@@ -355,7 +355,7 @@ void audio_poll() {
     } else if (fleft == 0) {
         // out of data to read but still working on remainder
         return;
-    } else if (!audio_file.isOpen()) {
+    } else if (!audio_file->isOpen()) {
         // closed elsewhere, maybe disk ejected?
         debuglog("------ Playback stop due to closed file");
         audio_stop(audio_owner);
@@ -378,16 +378,16 @@ void audio_poll() {
     platform_set_sd_callback(NULL, NULL);
     uint16_t toRead = AUDIO_BUFFER_SIZE;
     if (fleft < toRead) toRead = fleft;
-    if (audio_file.position() != fpos) {
+    if (audio_file->position() != fpos) {
         // should be uncommon due to SCSI command restrictions on devices
         // playing audio; if this is showing up in logs a different approach
         // will be needed to avoid seek performance issues on FAT32 vols
         debuglog("------ Audio seek required on ", audio_owner);
-        if (!audio_file.seek(fpos)) {
+        if (!audio_file->seek(fpos)) {
             log("Audio error, unable to seek to ", fpos, ", ID:", audio_owner);
         }
     }
-    if (audio_file.read(audiobuf, toRead) != toRead) {
+    if (audio_file->read(audiobuf, toRead) != toRead) {
         log("Audio sample data underrun");
     }
     fpos += toRead;
@@ -400,7 +400,7 @@ void audio_poll() {
     }
 }
 
-bool audio_play(uint8_t owner, ImageBackingStore img, uint64_t start, uint64_t end, bool swap) {
+bool audio_play(uint8_t owner, ImageBackingStore* img, uint64_t start, uint64_t end, bool swap) {
     // stop any existing playback first
     if (audio_is_active()) audio_stop(audio_owner);
 
@@ -417,11 +417,11 @@ bool audio_play(uint8_t owner, ImageBackingStore img, uint64_t start, uint64_t e
     }
     platform_set_sd_callback(NULL, NULL);
     audio_file = img;
-    if (!audio_file.isOpen()) {
+    if (!audio_file->isOpen()) {
         log("File not open for audio playback, ", owner);
         return false;
     }
-    uint64_t len = audio_file.size();
+    uint64_t len = audio_file->size();
     if (start > len) {
         log("File playback request start (", start, ":", len, ") outside file bounds");
         return false;
@@ -439,21 +439,21 @@ bool audio_play(uint8_t owner, ImageBackingStore img, uint64_t start, uint64_t e
     }
 
     // read in initial sample buffers
-    if (!audio_file.seek(start)) {
+    if (!audio_file->seek(start)) {
         log("Sample file failed start seek to ", start);
         return false;
     }
-    if (audio_file.read(sample_buf_a, AUDIO_BUFFER_SIZE) != AUDIO_BUFFER_SIZE) {
+    if (audio_file->read(sample_buf_a, AUDIO_BUFFER_SIZE) != AUDIO_BUFFER_SIZE) {
         log("File playback start returned fewer bytes than allowed");
         return false;
     }
-    if (audio_file.read(sample_buf_b, AUDIO_BUFFER_SIZE) != AUDIO_BUFFER_SIZE) {
+    if (audio_file->read(sample_buf_b, AUDIO_BUFFER_SIZE) != AUDIO_BUFFER_SIZE) {
         log("File playback start returned fewer bytes than allowed");
         return false;
     }
 
     // prepare initial tracking state
-    fpos = audio_file.position();
+    fpos = audio_file->position();
     fleft -= AUDIO_BUFFER_SIZE * 2;
     sbufsel = A;
     sbufpos = 0;
