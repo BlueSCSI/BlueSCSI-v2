@@ -43,6 +43,15 @@ extern "C" {
 }
 
 /******************************************/
+/*   CDROM positioning information        */
+/******************************************/
+
+typedef struct {
+    uint32_t last_lba = 0;
+} mechanism_status_t;
+static mechanism_status_t mechanism_status[8];
+
+/******************************************/
 /* Basic TOC generation without cue sheet */
 /******************************************/
 
@@ -690,6 +699,14 @@ static void doReadFullTOC(int convertBCD, uint8_t session, uint16_t allocationLe
 void doReadHeader(bool MSF, uint32_t lba, uint16_t allocationLength)
 {
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+
+#if ENABLE_AUDIO_OUTPUT
+    // terminate audio playback if active on this target (Annex C)
+    if (audio_get_owner() == (img.scsiId & 7)) {
+        audio_stop();
+    }
+#endif
+
     CUEParser parser;
     if (!loadCueSheet(img, parser))
     {
@@ -845,6 +862,17 @@ bool cdromSwitchNextImage(image_config_t &img)
         scsiDiskGetImageNameFromConfig(img, filename, sizeof(filename));
     }
 
+#ifdef ENABLE_AUDIO_OUTPUT
+    // if in progress for this device, terminate audio playback immediately (Annex C)
+    if (audio_get_owner() == target_idx) {
+        audio_stop();
+    }
+    // Reset position tracking for the new image
+    audio_get_status_code(target_idx); // trash audio status code
+    audio_clear_bytes_read(target_idx);
+#endif
+    mechanism_status[target_idx].last_lba = 0;
+
     if (filename[0] != '\0')
     {
         log("Switching to next CD-ROM image for ", target_idx, ": ", filename);
@@ -909,11 +937,6 @@ static void doGetEventStatusNotification(bool immed)
 /**************************************/
 /* CD-ROM audio playback              */
 /**************************************/
-
-typedef struct {
-    uint32_t last_lba = 0;
-} mechanism_status_t;
-static mechanism_status_t mechanism_status[8];
 
 void cdromGetAudioPlaybackStatus(uint8_t *status, uint32_t *current_lba, bool current_only)
 {
@@ -1097,6 +1120,14 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
                      uint8_t main_channel, uint8_t sub_channel)
 {
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+
+#if ENABLE_AUDIO_OUTPUT
+    // terminate audio playback if active on this target (Annex C)
+    if (audio_get_owner() == (img.scsiId & 7)) {
+        audio_stop();
+    }
+#endif
+
     CUEParser parser;
     if (!loadCueSheet(img, parser)
         && (sector_type == 0 || sector_type == 2)
@@ -1363,21 +1394,35 @@ extern "C" int scsiCDRomCommand()
     int commandHandled = 1;
 
     uint8_t command = scsiDev.cdb[0];
-    if (command == 0x1B && (scsiDev.cdb[4] & 2))
+    if (command == 0x1B)
     {
-        // CD-ROM load & eject
-        int start = scsiDev.cdb[4] & 1;
-        if (start)
+#if ENABLE_AUDIO_OUTPUT
+        // terminate audio playback if active on this target (Annex C)
+        if (audio_get_owner() == (img.scsiId & 7)) {
+            audio_stop();
+        }
+#endif
+        if ((scsiDev.cdb[4] & 2))
         {
-            debuglog("------ CDROM close tray");
-            img.ejected = false;
-            img.cdrom_events = 2; // New media
+            // CD-ROM load & eject
+            int start = scsiDev.cdb[4] & 1;
+            if (start)
+            {
+                debuglog("------ CDROM close tray");
+                img.ejected = false;
+                img.cdrom_events = 2; // New media
+            }
+            else
+            {
+                debuglog("------ CDROM open tray");
+                img.ejected = true;
+                img.cdrom_events = 3; // Media removal
+            }
         }
         else
         {
-            debuglog("------ CDROM open tray");
-            img.ejected = true;
-            img.cdrom_events = 3; // Media removal
+            // flow through to disk handler
+            commandHandled = 0;
         }
     }
     else if (command == 0x43)
