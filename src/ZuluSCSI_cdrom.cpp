@@ -1322,23 +1322,50 @@ static void doReadSubchannel(bool time, bool subq, uint8_t parameter, uint8_t tr
         *buf++ = 0; // Reserved
         *buf++ = audiostatus;
 
-        int len = 12;
-        *buf++ = 0;  // Subchannel data length (MSB)
-        *buf++ = len; // Subchannel data length (LSB)
-        *buf++ = 0x01; // Subchannel data format
-        *buf++ = (trackinfo.track_mode == CUETrack_AUDIO ? 0x10 : 0x14);
-        *buf++ = trackinfo.track_number;
-        *buf++ = (lba >= trackinfo.data_start) ? 1 : 0; // Index number (0 = pregap)
-        *buf++ = (lba >> 24) & 0xFF; // Absolute block address
-        *buf++ = (lba >> 16) & 0xFF;
-        *buf++ = (lba >>  8) & 0xFF;
-        *buf++ = (lba >>  0) & 0xFF;
+        int len;
+        if (subq)
+        {
+            len = 12;
+            *buf++ = 0;  // Subchannel data length (MSB)
+            *buf++ = len; // Subchannel data length (LSB)
+            *buf++ = 0x01; // Subchannel data format
+            *buf++ = (trackinfo.track_mode == CUETrack_AUDIO ? 0x10 : 0x14);
+            *buf++ = trackinfo.track_number;
+            *buf++ = (lba >= trackinfo.data_start) ? 1 : 0; // Index number (0 = pregap)
+            if (time)
+            {
+                LBA2MSF(lba, buf);
+                *buf += 4;
+            }
+            else
+            {
+                *buf++ = (lba >> 24) & 0xFF; // Absolute block address
+                *buf++ = (lba >> 16) & 0xFF;
+                *buf++ = (lba >>  8) & 0xFF;
+                *buf++ = (lba >>  0) & 0xFF;
+            }
 
-        uint32_t relpos = (uint32_t)((int32_t)lba - (int32_t)trackinfo.data_start);
-        *buf++ = (relpos >> 24) & 0xFF; // Track relative position (may be negative)
-        *buf++ = (relpos >> 16) & 0xFF;
-        *buf++ = (relpos >>  8) & 0xFF;
-        *buf++ = (relpos >>  0) & 0xFF;
+            uint32_t relpos = (uint32_t)((int32_t)lba - (int32_t)trackinfo.data_start);
+            if (time)
+            {
+                LBA2MSF(relpos, buf);
+                *buf += 4;
+            }
+            else
+            {
+                *buf++ = (relpos >> 24) & 0xFF; // Track relative position (may be negative)
+                *buf++ = (relpos >> 16) & 0xFF;
+                *buf++ = (relpos >>  8) & 0xFF;
+                *buf++ = (relpos >>  0) & 0xFF;
+            }
+        }
+        else
+        {
+            len = 0;
+            *buf++ = 0;
+            *buf++ = 0;
+        }
+        len += 4;
 
         if (len > allocation_length) len = allocation_length;
         scsiDev.dataLen = len;
@@ -1528,6 +1555,14 @@ extern "C" int scsiCDRomCommand()
         uint32_t end   = (scsiDev.cdb[6] * 60 + scsiDev.cdb[7]) * 75 + scsiDev.cdb[8];
         uint8_t main_channel = scsiDev.cdb[9];
         uint8_t sub_channel = scsiDev.cdb[10];
+
+        if (scsiDev.cdb[3] == 0xFF
+                && scsiDev.cdb[4] == 0xFF
+                && scsiDev.cdb[5] == 0xFF)
+        {
+            // resume from current position
+            start = 0xFFFFFFFF;
+        }
 
         doReadCD(start, end - start, sector_type, main_channel, sub_channel);
     }
