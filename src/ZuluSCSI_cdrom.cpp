@@ -1000,7 +1000,7 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
         }
 
         // playback request appears to be sane, so perform it
-        if (!audio_play(target_id, img.file, offset, offset + length * 2352, false))
+        if (!audio_play(target_id, &(img.file), offset, offset + length * 2352, false))
         {
             // Underlying data/media error? Fake a disk scratch, which should
             // be a condition most CD-DA players are expecting
