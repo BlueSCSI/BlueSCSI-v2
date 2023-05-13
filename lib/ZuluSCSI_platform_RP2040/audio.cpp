@@ -24,13 +24,10 @@
 #include <hardware/spi.h>
 #include <pico/multicore.h>
 #include "audio.h"
+#include "ZuluSCSI_audio.h"
 #include "ZuluSCSI_config.h"
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_platform.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 extern SdFs SD;
 
@@ -328,12 +325,8 @@ bool audio_is_active() {
     return audio_owner != 0xFF;
 }
 
-bool audio_is_paused() {
-    return audio_paused;
-}
-
-uint8_t audio_get_owner() {
-    return audio_owner;
+bool audio_is_playing(uint8_t id) {
+    return audio_owner == (id & 7);
 }
 
 void audio_setup() {
@@ -357,7 +350,7 @@ void audio_poll() {
     if (audio_paused) return;
     if (fleft == 0 && sbufst_a == STALE && sbufst_b == STALE) {
         // out of data and ready to stop
-        audio_stop();
+        audio_stop(audio_owner);
         return;
     } else if (fleft == 0) {
         // out of data to read but still working on remainder
@@ -395,7 +388,7 @@ void audio_poll() {
 
 bool audio_play(uint8_t owner, const char* file, uint64_t start, uint64_t end, bool swap) {
     // stop any existing playback first
-    if (audio_is_active()) audio_stop();
+    if (audio_is_active()) audio_stop(audio_owner);
 
     // dbgmsg("Request to play ('", file, "':", start, ":", end, ")");
 
@@ -498,8 +491,8 @@ bool audio_play(uint8_t owner, const char* file, uint64_t start, uint64_t end, b
     return true;
 }
 
-bool audio_set_paused(bool paused) {
-    if (!audio_is_active()) return false;
+bool audio_set_paused(uint8_t id, bool paused) {
+    if (audio_owner != (id & 7)) return false;
     else if (audio_paused && paused) return false;
     else if (!audio_paused && !paused) return false;
 
@@ -512,8 +505,8 @@ bool audio_set_paused(bool paused) {
     return true;
 }
 
-void audio_stop() {
-    if (!audio_is_active()) return;
+void audio_stop(uint8_t id) {
+    if (audio_owner != (id & 7)) return;
 
     // to help mute external hardware, send a bunch of '0' samples prior to
     // halting the datastream; easiest way to do this is invalidating the
@@ -552,9 +545,5 @@ uint32_t audio_get_bytes_read(uint8_t id) {
 void audio_clear_bytes_read(uint8_t id) {
     audio_bytes_read[id & 7] = 0;
 }
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif // ENABLE_AUDIO_OUTPUT
