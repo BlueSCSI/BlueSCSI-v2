@@ -43,15 +43,6 @@ extern "C" {
 }
 
 /******************************************/
-/*   CDROM positioning information        */
-/******************************************/
-
-typedef struct {
-    uint32_t last_lba = 0;
-} mechanism_status_t;
-static mechanism_status_t mechanism_status[8];
-
-/******************************************/
 /* Basic TOC generation without cue sheet */
 /******************************************/
 
@@ -865,9 +856,7 @@ bool cdromSwitchNextImage(image_config_t &img)
     audio_stop(target_idx);
     // Reset position tracking for the new image
     audio_get_status_code(target_idx); // trash audio status code
-    audio_clear_bytes_read(target_idx);
 #endif
-    mechanism_status[target_idx].last_lba = 0;
 
     if (filename[0] != '\0')
     {
@@ -947,12 +936,17 @@ void cdromGetAudioPlaybackStatus(uint8_t *status, uint32_t *current_lba, bool cu
             *status = (uint8_t) audio_get_status_code(target);
         }
     }
-    if (current_lba) *current_lba = mechanism_status[target].last_lba
-            + audio_get_bytes_read(target) / 2352;
 #else
     if (status) *status = 0; // audio status code for 'unsupported/invalid' and not-playing indicator
-    if (current_lba) *current_lba = mechanism_status[target].last_lba;
 #endif
+    if (current_lba)
+    {
+        if (img.file.isOpen()) {
+            *current_lba = img.file.position() / 2352;
+        } else {
+            *current_lba = 0;
+        }
+    }
 }
 
 static void doPlayAudio(uint32_t lba, uint32_t length)
@@ -986,7 +980,7 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
         if (lba == 0xFFFFFFFF)
         {
             // request to start playback from 'current position'
-            lba = mechanism_status[target_id].last_lba + audio_get_bytes_read(target_id) / 2352;
+            lba = img.file.position() / 2352;
         }
 
         // --- TODO --- determine proper track offset, software I tested with had a tendency
@@ -1007,18 +1001,7 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
         }
 
         // playback request appears to be sane, so perform it
-        char filename[MAX_FILE_PATH];
-        if (!img.file.name(filename, sizeof(filename)))
-        {
-            // No underlying file available?
-            log("---- No filename for SCSI ID ", target_id);
-            scsiDev.status = CHECK_CONDITION;
-            scsiDev.target->sense.code = ILLEGAL_REQUEST;
-            scsiDev.target->sense.asc = 0x0000;
-            scsiDev.phase = STATUS;
-            return;
-        }
-        if (!audio_play(target_id, filename, offset, offset + length * 2352, false))
+        if (!audio_play(target_id, img.file, offset, offset + length * 2352, false))
         {
             // Underlying data/media error? Fake a disk scratch, which should
             // be a condition most CD-DA players are expecting
@@ -1028,7 +1011,6 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
             scsiDev.phase = STATUS;
             return;
         }
-        mechanism_status[target_id].last_lba = lba;
         scsiDev.status = 0;
         scsiDev.phase = STATUS;
     }
