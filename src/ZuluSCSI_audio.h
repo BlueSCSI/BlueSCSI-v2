@@ -22,6 +22,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "ImageBackingStore.h"
 
 /*
  * Status codes for audio playback, matching the SCSI 'audio status codes'.
@@ -52,13 +53,13 @@ bool audio_is_playing(uint8_t id);
  * Begins audio playback for a file.
  *
  * \param owner  The SCSI ID that initiated this playback operation.
- * \param file   Path of a file containing PCM samples to play.
+ * \param img    Image containing PCM samples to play.
  * \param start  Byte offset within file where playback will begin, inclusive.
  * \param end    Byte offset within file where playback will end, exclusive.
  * \param swap   If false, little-endian sample order, otherwise big-endian.
  * \return       True if successful, false otherwise.
  */
-bool audio_play(uint8_t owner, const char* file, uint64_t start, uint64_t end, bool swap);
+bool audio_play(uint8_t owner, ImageBackingStore img, uint64_t start, uint64_t end, bool swap);
 
 /**
  * Pauses audio playback. This may be delayed slightly to allow sample buffers
@@ -85,25 +86,3 @@ void audio_stop(uint8_t id);
  * \return      The matching audio status code.
  */
 audio_status_code audio_get_status_code(uint8_t id);
-
-/**
- * Provides the number of sample bytes read in during an individual audio
- * call. This can be combined with a separate starting offset to determine
- * virtual CD positioning information. This may only be an approximation due
- * to platform-specific behavior with sample reading.
- *
- * Data here should not be cleared when audio is stopped. Playback events
- * should reset this information.
- *
- * \param id    The SCSI ID target to return data for.
- * \return      The number of bytes read in during a playback.
- */
-uint32_t audio_get_bytes_read(uint8_t id);
-
-/**
- * Clears the byte counter in the above call. This should be supported even
- * during playback.
- *
- * \param id    The SCSI ID target to clear data for.
- */
-void audio_clear_bytes_read(uint8_t id);

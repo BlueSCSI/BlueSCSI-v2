@@ -314,11 +314,11 @@ void ImageBackingStore::flush()
     }
 }
 
-size_t ImageBackingStore::name(char* filename, size_t len)
+uint64_t ImageBackingStore::position()
 {
     if (!m_israw && !m_isrom)
     {
-        return m_fsfile.getName(filename, len);
+        return m_fsfile.curPosition();
     }
     else
     {
