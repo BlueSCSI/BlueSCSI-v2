@@ -514,8 +514,7 @@ static void doModeSense(
 	}
 
 #ifdef ENABLE_AUDIO_OUTPUT
-	if ((scsiDev.compatMode >= COMPAT_SCSI2)
-		&& (scsiDev.target->cfg->deviceType == S2S_CFG_OPTICAL)
+	if ((scsiDev.target->cfg->deviceType == S2S_CFG_OPTICAL)
 		&& (pageCode == 0x0E || pageCode == 0x3F))
 	{
 		pageFound = 1;
