@@ -53,13 +53,13 @@ bool audio_is_playing(uint8_t id);
  * Begins audio playback for a file.
  *
  * \param owner  The SCSI ID that initiated this playback operation.
- * \param img    Image containing PCM samples to play.
+ * \param img    Pointer to the image containing PCM samples to play.
  * \param start  Byte offset within file where playback will begin, inclusive.
  * \param end    Byte offset within file where playback will end, exclusive.
  * \param swap   If false, little-endian sample order, otherwise big-endian.
  * \return       True if successful, false otherwise.
  */
-bool audio_play(uint8_t owner, ImageBackingStore img, uint64_t start, uint64_t end, bool swap);
+bool audio_play(uint8_t owner, ImageBackingStore* img, uint64_t start, uint64_t end, bool swap);
 
 /**
  * Pauses audio playback. This may be delayed slightly to allow sample buffers
