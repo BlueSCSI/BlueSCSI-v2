@@ -35,7 +35,7 @@
 #include <CUEParser.h>
 #include <assert.h>
 #ifdef ENABLE_AUDIO_OUTPUT
-#include "audio.h"
+#include "BlueSCSI_audio.h"
 #endif
 
 extern "C" {
@@ -702,9 +702,7 @@ void doReadHeader(bool MSF, uint32_t lba, uint16_t allocationLength)
 
 #if ENABLE_AUDIO_OUTPUT
     // terminate audio playback if active on this target (Annex C)
-    if (audio_get_owner() == (img.scsiId & 7)) {
-        audio_stop();
-    }
+    audio_stop(img.scsiId & 7);
 #endif
 
     CUEParser parser;
@@ -864,9 +862,7 @@ bool cdromSwitchNextImage(image_config_t &img)
 
 #ifdef ENABLE_AUDIO_OUTPUT
     // if in progress for this device, terminate audio playback immediately (Annex C)
-    if (audio_get_owner() == target_idx) {
-        audio_stop();
-    }
+    audio_stop(target_idx);
     // Reset position tracking for the new image
     audio_get_status_code(target_idx); // trash audio status code
     audio_clear_bytes_read(target_idx);
@@ -946,7 +942,7 @@ void cdromGetAudioPlaybackStatus(uint8_t *status, uint32_t *current_lba, bool cu
 #ifdef ENABLE_AUDIO_OUTPUT
     if (status) {
         if (current_only) {
-            *status = audio_get_owner() == target ? 1 : 0;
+            *status = audio_is_playing(target) ? 1 : 0;
         } else {
             *status = (uint8_t) audio_get_status_code(target);
         }
@@ -969,9 +965,7 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
     // Per Annex C terminate playback immediately if already in progress on
     // the current target. Non-current targets may also get their audio
     // interrupted later due to hardware limitations
-    if ((img.scsiId & 7) == audio_get_owner()) {
-        audio_stop();
-    }
+    audio_stop(img.scsiId & 7);
 
     // if transfer length is zero no audio playback happens.
     // don't treat as an error per SCSI-2; handle via short-circuit
@@ -1066,9 +1060,9 @@ static void doPauseResumeAudio(bool resume)
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     uint8_t target_id = img.scsiId & 7;
 
-    if (audio_get_owner() == target_id)
+    if (audio_is_playing(target_id))
     {
-        audio_set_paused(!resume);
+        audio_set_paused(target_id, !resume);
         scsiDev.status = 0;
         scsiDev.phase = STATUS;
     }
@@ -1123,9 +1117,7 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
 
 #if ENABLE_AUDIO_OUTPUT
     // terminate audio playback if active on this target (Annex C)
-    if (audio_get_owner() == (img.scsiId & 7)) {
-        audio_stop();
-    }
+    audio_stop(img.scsiId & 7);
 #endif
 
     CUEParser parser;
@@ -1398,9 +1390,7 @@ extern "C" int scsiCDRomCommand()
     {
 #if ENABLE_AUDIO_OUTPUT
         // terminate audio playback if active on this target (Annex C)
-        if (audio_get_owner() == (img.scsiId & 7)) {
-            audio_stop();
-        }
+        audio_stop(img.scsiId & 7);
 #endif
         if ((scsiDev.cdb[4] & 2))
         {
