@@ -24,13 +24,10 @@
 #include <hardware/spi.h>
 #include <pico/multicore.h>
 #include "audio.h"
+#include "ZuluSCSI_audio.h"
 #include "ZuluSCSI_config.h"
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_platform.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 extern SdFs SD;
 
@@ -134,10 +131,17 @@ static uint16_t wire_buf_a[WIRE_BUFFER_SIZE];
 static uint16_t wire_buf_b[WIRE_BUFFER_SIZE];
 
 // tracking for audio playback
-static bool audio_active = false;
-static volatile bool audio_stopping = false;
-static FsFile audio_file;
+static uint8_t audio_owner; // SCSI ID or 0xFF when idle
+static volatile bool audio_paused = false;
+static ImageBackingStore* audio_file;
+static uint64_t fpos;
 static uint32_t fleft;
+
+// historical playback status information
+static audio_status_code audio_last_status[8] = {ASC_NO_STATUS};
+
+// mechanism for cleanly stopping DMA units
+static volatile bool audio_stopping = false;
 
 // trackers for the below function call
 static uint16_t sfcnt = 0; // sub-frame count; 2 per frame, 192 frames/block
@@ -318,7 +322,11 @@ void audio_dma_irq() {
 }
 
 bool audio_is_active() {
-    return audio_active;
+    return audio_owner != 0xFF;
+}
+
+bool audio_is_playing(uint8_t id) {
+    return audio_owner == (id & 7);
 }
 
 void audio_setup() {
@@ -338,13 +346,19 @@ void audio_setup() {
 }
 
 void audio_poll() {
-    if (!audio_active) return;
+    if (!audio_is_active()) return;
+    if (audio_paused) return;
     if (fleft == 0 && sbufst_a == STALE && sbufst_b == STALE) {
         // out of data and ready to stop
-        audio_stop();
+        audio_stop(audio_owner);
         return;
     } else if (fleft == 0) {
         // out of data to read but still working on remainder
+        return;
+    } else if (!audio_file->isOpen()) {
+        // closed elsewhere, maybe disk ejected?
+        dbgmsg("------ Playback stop due to closed file");
+        audio_stop(audio_owner);
         return;
     }
 
@@ -364,9 +378,19 @@ void audio_poll() {
     platform_set_sd_callback(NULL, NULL);
     uint16_t toRead = AUDIO_BUFFER_SIZE;
     if (fleft < toRead) toRead = fleft;
-    if (audio_file.read(audiobuf, toRead) != toRead) {
+    if (audio_file->position() != fpos) {
+        // should be uncommon due to SCSI command restrictions on devices
+        // playing audio; if this is showing up in logs a different approach
+        // will be needed to avoid seek performance issues on FAT32 vols
+        dbgmsg("------ Audio seek required on ", audio_owner);
+        if (!audio_file->seek(fpos)) {
+            logmsg("Audio error, unable to seek to ", fpos, ", ID:", audio_owner);
+        }
+    }
+    if (audio_file->read(audiobuf, toRead) != toRead) {
         logmsg("Audio sample data underrun");
     }
+    fpos += toRead;
     fleft -= toRead;
 
     if (sbufst_a == FILLING) {
@@ -376,62 +400,69 @@ void audio_poll() {
     }
 }
 
-bool audio_play(const char* file, uint64_t start, uint64_t end, bool swap) {
+bool audio_play(uint8_t owner, ImageBackingStore* img, uint64_t start, uint64_t end, bool swap) {
     // stop any existing playback first
-    if (audio_active) audio_stop();
+    if (audio_is_active()) audio_stop(audio_owner);
 
     // dbgmsg("Request to play ('", file, "':", start, ":", end, ")");
 
     // verify audio file is present and inputs are (somewhat) sane
+    if (owner == 0xFF) {
+        logmsg("Illegal audio owner");
+        return false;
+    }
     if (start >= end) {
         logmsg("Invalid range for audio (", start, ":", end, ")");
         return false;
     }
     platform_set_sd_callback(NULL, NULL);
-    audio_file = SD.open(file, O_RDONLY);
-    if (!audio_file.isOpen()) {
-        logmsg("Unable to open file for audio playback: ", file);
+    audio_file = img;
+    if (!audio_file->isOpen()) {
+        logmsg("File not open for audio playback, ", owner);
         return false;
     }
-    uint64_t len = audio_file.size();
-    if (start > len || end > len) {
-        logmsg("File '", file, "' playback request (",
-                start, ":", end, ":", len, ") outside bounds");
-        audio_file.close();
+    uint64_t len = audio_file->size();
+    if (start > len) {
+        logmsg("File playback request start (", start, ":", len, ") outside file bounds");
         return false;
+    }
+    // truncate playback end to end of file
+    // we will not consider this to be an error at the moment
+    if (end > len) {
+        dbgmsg("------ Truncate audio play request end ", end, " to file size ", len);
+        end = len;
     }
     fleft = end - start;
     if (fleft <= 2 * AUDIO_BUFFER_SIZE) {
-        logmsg("File '", file, "' playback request (",
-                start, ":", end, ") too short");
-        audio_file.close();
+        logmsg("File playback request (", start, ":", end, ") too short");
         return false;
     }
 
     // read in initial sample buffers
-    if (!audio_file.seek(start)) {
-        logmsg("Sample file (", file, ") failed start seek to ", start);
-        audio_file.close();
+    if (!audio_file->seek(start)) {
+        logmsg("Sample file failed start seek to ", start);
         return false;
     }
-    if (audio_file.read(sample_buf_a, AUDIO_BUFFER_SIZE) != AUDIO_BUFFER_SIZE) {
-        logmsg("File '", file, "' playback start returned fewer bytes than allowed");
-        audio_file.close();
+    if (audio_file->read(sample_buf_a, AUDIO_BUFFER_SIZE) != AUDIO_BUFFER_SIZE) {
+        logmsg("File playback start returned fewer bytes than allowed");
         return false;
     }
-    if (audio_file.read(sample_buf_b, AUDIO_BUFFER_SIZE) != AUDIO_BUFFER_SIZE) {
-        logmsg("File '", file, "' playback start returned fewer bytes than allowed");
-        audio_file.close();
+    if (audio_file->read(sample_buf_b, AUDIO_BUFFER_SIZE) != AUDIO_BUFFER_SIZE) {
+        logmsg("File playback start returned fewer bytes than allowed");
         return false;
     }
 
     // prepare initial tracking state
+    fpos = audio_file->position();
     fleft -= AUDIO_BUFFER_SIZE * 2;
     sbufsel = A;
     sbufpos = 0;
     sbufswap = swap;
     sbufst_a = READY;
     sbufst_b = READY;
+    audio_owner = owner & 7;
+    audio_last_status[audio_owner] = ASC_PLAYING;
+    audio_paused = false;
 
     // prepare the wire buffers
     for (uint16_t i = 0; i < WIRE_BUFFER_SIZE; i++) {
@@ -465,12 +496,25 @@ bool audio_play(const char* file, uint64_t start, uint64_t end, bool swap) {
 
     // ready to go
     dma_channel_start(SOUND_DMA_CHA);
-    audio_active = true;
     return true;
 }
 
-void audio_stop() {
-    if (!audio_active) return;
+bool audio_set_paused(uint8_t id, bool paused) {
+    if (audio_owner != (id & 7)) return false;
+    else if (audio_paused && paused) return false;
+    else if (!audio_paused && !paused) return false;
+
+    audio_paused = paused;
+    if (paused) {
+        audio_last_status[audio_owner] = ASC_PAUSED;
+    } else {
+        audio_last_status[audio_owner] = ASC_PLAYING;
+    }
+    return true;
+}
+
+void audio_stop(uint8_t id) {
+    if (audio_owner != (id & 7)) return;
 
     // to help mute external hardware, send a bunch of '0' samples prior to
     // halting the datastream; easiest way to do this is invalidating the
@@ -487,14 +531,17 @@ void audio_stop() {
     audio_stopping = false;
 
     // idle the subsystem
-    if (audio_file.isOpen()) {
-        audio_file.close();
-    }
-    audio_active = false;
+    audio_last_status[audio_owner] = ASC_COMPLETED;
+    audio_paused = false;
+    audio_owner = 0xFF;
 }
 
-#ifdef __cplusplus
+audio_status_code audio_get_status_code(uint8_t id) {
+    audio_status_code tmp = audio_last_status[id & 7];
+    if (tmp == ASC_COMPLETED || tmp == ASC_ERRORED) {
+        audio_last_status[id & 7] = ASC_NO_STATUS;
+    }
+    return tmp;
 }
-#endif
 
 #endif // ENABLE_AUDIO_OUTPUT

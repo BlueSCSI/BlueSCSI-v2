@@ -313,3 +313,15 @@ void ImageBackingStore::flush()
         m_fsfile.flush();
     }
 }
+
+uint64_t ImageBackingStore::position()
+{
+    if (!m_israw && !m_isrom)
+    {
+        return m_fsfile.curPosition();
+    }
+    else
+    {
+        return 0;
+    }
+}

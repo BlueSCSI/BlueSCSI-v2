@@ -33,6 +33,9 @@
 #include "ZuluSCSI_config.h"
 #include <CUEParser.h>
 #include <assert.h>
+#ifdef ENABLE_AUDIO_OUTPUT
+#include "ZuluSCSI_audio.h"
+#endif
 
 extern "C" {
 #include <scsi.h>
@@ -686,6 +689,12 @@ static void doReadFullTOC(int convertBCD, uint8_t session, uint16_t allocationLe
 void doReadHeader(bool MSF, uint32_t lba, uint16_t allocationLength)
 {
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+
+#if ENABLE_AUDIO_OUTPUT
+    // terminate audio playback if active on this target (Annex C)
+    audio_stop(img.scsiId & 7);
+#endif
+
     CUEParser parser;
     if (!loadCueSheet(img, parser))
     {
@@ -841,6 +850,13 @@ bool cdromSwitchNextImage(image_config_t &img)
         scsiDiskGetImageNameFromConfig(img, filename, sizeof(filename));
     }
 
+#ifdef ENABLE_AUDIO_OUTPUT
+    // if in progress for this device, terminate audio playback immediately (Annex C)
+    audio_stop(target_idx);
+    // Reset position tracking for the new image
+    audio_get_status_code(target_idx); // trash audio status code
+#endif
+
     if (filename[0] != '\0')
     {
         logmsg("Switching to next CD-ROM image for ", target_idx, ": ", filename);
@@ -906,45 +922,168 @@ static void doGetEventStatusNotification(bool immed)
 /* CD-ROM audio playback              */
 /**************************************/
 
-// TODO: where to store these? Should be updated as playback progresses.
-static CDROMAudioPlaybackStatus g_cdrom_audio_status;
-static uint32_t g_cdrom_audio_lba;
-
-void cdromGetAudioPlaybackStatus(CDROMAudioPlaybackStatus *status, uint32_t *current_lba)
+void cdromGetAudioPlaybackStatus(uint8_t *status, uint32_t *current_lba, bool current_only)
 {
-    if (status) *status = g_cdrom_audio_status;
-    if (current_lba) *current_lba = g_cdrom_audio_lba;
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+
+#ifdef ENABLE_AUDIO_OUTPUT
+    if (status) {
+        uint8_t target = img.scsiId & 7;
+        if (current_only) {
+            *status = audio_is_playing(target) ? 1 : 0;
+        } else {
+            *status = (uint8_t) audio_get_status_code(target);
+        }
+    }
+#else
+    if (status) *status = 0; // audio status code for 'unsupported/invalid' and not-playing indicator
+#endif
+    if (current_lba)
+    {
+        if (img.file.isOpen()) {
+            *current_lba = img.file.position() / 2352;
+        } else {
+            *current_lba = 0;
+        }
+    }
 }
 
 static void doPlayAudio(uint32_t lba, uint32_t length)
 {
-    logmsg("------ CD-ROM Play Audio starting at ", lba, " for ", length, " sectors");
+#ifdef ENABLE_AUDIO_OUTPUT
+    dbgmsg("------ CD-ROM Play Audio request at ", lba, " for ", length, " sectors");
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+    uint8_t target_id = img.scsiId & 7;
 
-    g_cdrom_audio_lba = lba;
-    g_cdrom_audio_status = CDROMAudio_Stopped; // Playback not actually implemented
+    // Per Annex C terminate playback immediately if already in progress on
+    // the current target. Non-current targets may also get their audio
+    // interrupted later due to hardware limitations
+    audio_stop(img.scsiId & 7);
 
-    scsiDev.status = 0;
+    // if transfer length is zero no audio playback happens.
+    // don't treat as an error per SCSI-2; handle via short-circuit
+    if (length == 0)
+    {
+        scsiDev.status = 0;
+        scsiDev.phase = STATUS;
+        return;
+    }
+
+    // if actual playback is requested perform steps to verify prior to playback
+    CUEParser parser;
+    if (loadCueSheet(img, parser))
+    {
+        CUETrackInfo trackinfo = {};
+        getTrackFromLBA(parser, lba, &trackinfo);
+
+        if (lba == 0xFFFFFFFF)
+        {
+            // request to start playback from 'current position'
+            lba = img.file.position() / 2352;
+        }
+
+        // --- TODO --- determine proper track offset, software I tested with had a tendency
+        // to ask for offsets that seem to hint at 2048 here, not the 2352 you'd assume.
+        // Might be due to a mode page reporting something unexpected? Needs investigation.
+        uint64_t offset = trackinfo.file_offset + 2048 * (lba - trackinfo.data_start);
+        dbgmsg("------ Play audio CD: ", (int)length, " sectors starting at ", (int)lba,
+           ", track number ", trackinfo.track_number, ", data offset in file ", (int)offset);
+
+        if (trackinfo.track_mode != CUETrack_AUDIO)
+        {
+            dbgmsg("---- Host tried audio playback on track type ", (int)trackinfo.track_mode);
+            scsiDev.status = CHECK_CONDITION;
+            scsiDev.target->sense.code = ILLEGAL_REQUEST;
+            scsiDev.target->sense.asc = 0x6400; // ILLEGAL MODE FOR THIS TRACK
+            scsiDev.phase = STATUS;
+            return;
+        }
+
+        // playback request appears to be sane, so perform it
+        // see earlier note for context on the block length below
+        if (!audio_play(target_id, &(img.file), offset, offset + length * 2048, false))
+        {
+            // Underlying data/media error? Fake a disk scratch, which should
+            // be a condition most CD-DA players are expecting
+            scsiDev.status = CHECK_CONDITION;
+            scsiDev.target->sense.code = MEDIUM_ERROR;
+            scsiDev.target->sense.asc = 0x1106; // CIRC UNRECOVERED ERROR
+            scsiDev.phase = STATUS;
+            return;
+        }
+        scsiDev.status = 0;
+        scsiDev.phase = STATUS;
+    }
+    else
+    {
+        // virtual drive supports audio, just not with this disk image
+        dbgmsg("---- Request to play audio on non-audio image");
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.target->sense.asc = 0x6400; // ILLEGAL MODE FOR THIS TRACK
+        scsiDev.phase = STATUS;
+    }
+#else
+    dbgmsg("---- Target does not support audio playback");
+    // per SCSI-2, targets not supporting audio respond to zero-length
+    // PLAY AUDIO commands with ILLEGAL REQUEST; this seems to be a check
+    // performed by at least some audio playback software
+    scsiDev.status = CHECK_CONDITION;
+    scsiDev.target->sense.code = ILLEGAL_REQUEST;
+    scsiDev.target->sense.asc = 0x0000; // NO ADDITIONAL SENSE INFORMATION
     scsiDev.phase = STATUS;
+#endif
 }
 
 static void doPauseResumeAudio(bool resume)
 {
+#ifdef ENABLE_AUDIO_OUTPUT
     logmsg("------ CD-ROM ", resume ? "resume" : "pause", " audio playback");
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+    uint8_t target_id = img.scsiId & 7;
 
-    scsiDev.status = 0;
+    if (audio_is_playing(target_id))
+    {
+        audio_set_paused(target_id, !resume);
+        scsiDev.status = 0;
+        scsiDev.phase = STATUS;
+    }
+    else
+    {
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.target->sense.asc = 0x2C00; // COMMAND SEQUENCE ERROR
+        scsiDev.phase = STATUS;
+    }
+#else
+    dbgmsg("---- Target does not support audio pausing");
+    scsiDev.status = CHECK_CONDITION;
+    scsiDev.target->sense.code = ILLEGAL_REQUEST; // assumed from PLAY AUDIO(10)
+    scsiDev.target->sense.asc = 0x0000; // NO ADDITIONAL SENSE INFORMATION
     scsiDev.phase = STATUS;
+#endif
+}
+
+static void doStopAudio()
+{
+    dbgmsg("------ CD-ROM Stop Audio request");
+#ifdef ENABLE_AUDIO_OUTPUT
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+    uint8_t target_id = img.scsiId & 7;
+    audio_stop(target_id);
+#endif
 }
 
 static void doMechanismStatus(uint16_t allocation_length)
 {
     uint8_t *buf = scsiDev.data;
 
-    CDROMAudioPlaybackStatus status;
+    uint8_t status;
     uint32_t lba;
-    cdromGetAudioPlaybackStatus(&status, &lba);
+    cdromGetAudioPlaybackStatus(&status, &lba, true);
 
     *buf++ = 0x00; // No fault state
-    *buf++ = (status == CDROMAudio_Playing) ? 0x20 : 0x00; // Currently playing?
+    *buf++ = (status) ? 0x20 : 0x00; // Currently playing?
     *buf++ = (lba >> 16) & 0xFF;
     *buf++ = (lba >> 8) & 0xFF;
     *buf++ = (lba >> 0) & 0xFF;
@@ -967,6 +1106,12 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
                      uint8_t main_channel, uint8_t sub_channel)
 {
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+
+#if ENABLE_AUDIO_OUTPUT
+    // terminate audio playback if active on this target (Annex C)
+    audio_stop(img.scsiId & 7);
+#endif
+
     CUEParser parser;
     if (!loadCueSheet(img, parser)
         && (sector_type == 0 || sector_type == 2)
@@ -1172,9 +1317,9 @@ static void doReadSubchannel(bool time, bool subq, uint8_t parameter, uint8_t tr
 
     if (parameter == 0x01)
     {
-        CDROMAudioPlaybackStatus audiostatus;
+        uint8_t audiostatus;
         uint32_t lba;
-        cdromGetAudioPlaybackStatus(&audiostatus, &lba);
+        cdromGetAudioPlaybackStatus(&audiostatus, &lba, false);
         dbgmsg("------ Get audio playback position: status ", (int)audiostatus, " lba ", (int)lba);
 
         // Fetch current track info
@@ -1186,32 +1331,54 @@ static void doReadSubchannel(bool time, bool subq, uint8_t parameter, uint8_t tr
 
         // Request sub channel data at current playback position
         *buf++ = 0; // Reserved
+        *buf++ = audiostatus;
 
-        switch (audiostatus)
+        int len;
+        if (subq)
         {
-            case CDROMAudio_Playing: *buf++ = 0x11; break;
-            case CDROMAudio_Paused:  *buf++ = 0x12; break;
-            case CDROMAudio_Stopped: *buf++ = 0x13; break;
-            default: *buf++ = 0; break;
+            len = 12;
+            *buf++ = 0;  // Subchannel data length (MSB)
+            *buf++ = len; // Subchannel data length (LSB)
+            *buf++ = 0x01; // Subchannel data format
+            *buf++ = (trackinfo.track_mode == CUETrack_AUDIO ? 0x10 : 0x14);
+            *buf++ = trackinfo.track_number;
+            *buf++ = (lba >= trackinfo.data_start) ? 1 : 0; // Index number (0 = pregap)
+            if (time)
+            {
+                LBA2MSF(lba, buf);
+                dbgmsg("------ ABS M ", *(buf+1), " S ", *(buf+2), " F ", *(buf+3));
+                *buf += 4;
+            }
+            else
+            {
+                *buf++ = (lba >> 24) & 0xFF; // Absolute block address
+                *buf++ = (lba >> 16) & 0xFF;
+                *buf++ = (lba >>  8) & 0xFF;
+                *buf++ = (lba >>  0) & 0xFF;
+            }
+
+            uint32_t relpos = (uint32_t)((int32_t)lba - (int32_t)trackinfo.data_start);
+            if (time)
+            {
+                LBA2MSF(relpos, buf);
+                dbgmsg("------ REL M ", *(buf+1), " S ", *(buf+2), " F ", *(buf+3));
+                *buf += 4;
+            }
+            else
+            {
+                *buf++ = (relpos >> 24) & 0xFF; // Track relative position (may be negative)
+                *buf++ = (relpos >> 16) & 0xFF;
+                *buf++ = (relpos >>  8) & 0xFF;
+                *buf++ = (relpos >>  0) & 0xFF;
+            }
         }
-
-        int len = 12;
-        *buf++ = 0;  // Subchannel data length (MSB)
-        *buf++ = len; // Subchannel data length (LSB)
-        *buf++ = 0x01; // Subchannel data format
-        *buf++ = (trackinfo.track_mode == CUETrack_AUDIO ? 0x10 : 0x14);
-        *buf++ = trackinfo.track_number;
-        *buf++ = (lba >= trackinfo.data_start) ? 1 : 0; // Index number (0 = pregap)
-        *buf++ = (lba >> 24) & 0xFF; // Absolute block address
-        *buf++ = (lba >> 16) & 0xFF;
-        *buf++ = (lba >>  8) & 0xFF;
-        *buf++ = (lba >>  0) & 0xFF;
-
-        uint32_t relpos = (uint32_t)((int32_t)lba - (int32_t)trackinfo.data_start);
-        *buf++ = (relpos >> 24) & 0xFF; // Track relative position (may be negative)
-        *buf++ = (relpos >> 16) & 0xFF;
-        *buf++ = (relpos >>  8) & 0xFF;
-        *buf++ = (relpos >>  0) & 0xFF;
+        else
+        {
+            len = 0;
+            *buf++ = 0;
+            *buf++ = 0;
+        }
+        len += 4;
 
         if (len > allocation_length) len = allocation_length;
         scsiDev.dataLen = len;
@@ -1240,21 +1407,33 @@ extern "C" int scsiCDRomCommand()
     int commandHandled = 1;
 
     uint8_t command = scsiDev.cdb[0];
-    if (command == 0x1B && (scsiDev.cdb[4] & 2))
+    if (command == 0x1B)
     {
-        // CD-ROM load & eject
-        int start = scsiDev.cdb[4] & 1;
-        if (start)
+#if ENABLE_AUDIO_OUTPUT
+        // terminate audio playback if active on this target (Annex C)
+        audio_stop(img.scsiId & 7);
+#endif
+        if ((scsiDev.cdb[4] & 2))
         {
-            dbgmsg("------ CDROM close tray");
-            img.ejected = false;
-            img.cdrom_events = 2; // New media
+            // CD-ROM load & eject
+            int start = scsiDev.cdb[4] & 1;
+            if (start)
+            {
+                dbgmsg("------ CDROM close tray");
+                img.ejected = false;
+                img.cdrom_events = 2; // New media
+            }
+            else
+            {
+                dbgmsg("------ CDROM open tray");
+                img.ejected = true;
+                img.cdrom_events = 3; // Media removal
+            }
         }
         else
         {
-            dbgmsg("------ CDROM open tray");
-            img.ejected = true;
-            img.cdrom_events = 3; // Media removal
+            // flow through to disk handler
+            commandHandled = 0;
         }
     }
     else if (command == 0x43)
@@ -1344,7 +1523,18 @@ extern "C" int scsiCDRomCommand()
         uint32_t start = (scsiDev.cdb[3] * 60 + scsiDev.cdb[4]) * 75 + scsiDev.cdb[5];
         uint32_t end   = (scsiDev.cdb[6] * 60 + scsiDev.cdb[7]) * 75 + scsiDev.cdb[8];
 
-        doPlayAudio(start, end - start);
+        uint32_t lba = start;
+        if (scsiDev.cdb[3] == 0xFF
+                && scsiDev.cdb[4] == 0xFF
+                && scsiDev.cdb[5] == 0xFF)
+        {
+            // request to start playback from 'current position'
+            image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+            lba = img.file.position() / 2352;
+        }
+
+        uint32_t length = end - lba;
+        doPlayAudio(lba, length);
     }
     else if (command == 0x4B)
     {
@@ -1432,6 +1622,31 @@ extern "C" int scsiCDRomCommand()
             scsiDev.cdb[9];
 
         doReadCD(lba, blocks, 0, 0x10, 0);
+    }
+    else if (command == 0x4E)
+    {
+        // STOP PLAY/SCAN
+        doStopAudio();
+        scsiDev.status = 0;
+        scsiDev.phase = STATUS;
+    }
+    else if (command == 0x01)
+    {
+        // REZERO UNIT
+        // AppleCD Audio Player uses this as a nonstandard
+        // "stop audio playback" command
+        doStopAudio();
+        scsiDev.status = 0;
+        scsiDev.phase = STATUS;
+    }
+    else if (command == 0x0B || command == 0x2B)
+    {
+        // SEEK
+        // implement Annex C termination requirement and pass to disk handler
+        doStopAudio();
+        // this may need more specific handling, the Win9x player appears to
+        // expect a pickup move to the given LBA
+        commandHandled = 0;
     }
     else
     {

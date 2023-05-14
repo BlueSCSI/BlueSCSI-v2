@@ -18,11 +18,7 @@
 #pragma once
 #ifdef ENABLE_AUDIO_OUTPUT
 
-#include <Arduino.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <stdint.h>
 
 // audio subsystem DMA channels
 #define SOUND_DMA_CHA 6
@@ -62,25 +58,5 @@ void audio_setup();
  * Called from platform_poll() to fill sample buffer(s) if needed.
  */
 void audio_poll();
-
-/**
- * Begins audio playback for a file.
- *
- * \param file   Path of a file containing PCM samples to play.
- * \param start  Byte offset within file where playback will begin, inclusive.
- * \param end    Byte offset within file where playback will end, exclusive.
- * \param swap   If false, little-endian sample order, otherwise big-endian.
- * \return       True if successful, false otherwise.
- */
-bool audio_play(const char* file, uint64_t start, uint64_t end, bool swap);
-
-/**
- * Stops audio playback.
- */
-void audio_stop();
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif // ENABLE_AUDIO_OUTPUT
