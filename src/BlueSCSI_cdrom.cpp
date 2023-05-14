@@ -926,10 +926,10 @@ static void doGetEventStatusNotification(bool immed)
 void cdromGetAudioPlaybackStatus(uint8_t *status, uint32_t *current_lba, bool current_only)
 {
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-    uint8_t target = img.scsiId & 7;
 
 #ifdef ENABLE_AUDIO_OUTPUT
     if (status) {
+        uint8_t target = img.scsiId & 7;
         if (current_only) {
             *status = audio_is_playing(target) ? 1 : 0;
         } else {
