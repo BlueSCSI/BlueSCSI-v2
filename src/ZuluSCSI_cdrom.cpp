@@ -1626,6 +1626,11 @@ extern "C" int scsiCDRomCommand()
 
         doReadCD(lba, blocks, 0, 0x10, 0);
     }
+    else if (command == 0x4E)
+    {
+        // STOP PLAY/SCAN
+        doStopAudio();
+    }
     else if (command == 0x01)
     {
         // REZERO UNIT
