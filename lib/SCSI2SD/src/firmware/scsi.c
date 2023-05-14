@@ -145,6 +145,12 @@ void process_Status()
 
 	if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_OMTI)
 	{
+		// All commands have a control byte, except 0xC0
+		if (scsiDev.cdb[0] == 0xC0)
+		{
+			control = 0;
+		}
+
 		// OMTI non-standard LINK control
 		if (control & 0x01)
 		{
@@ -410,6 +416,66 @@ static void process_Command()
 			scsiDev.data[1] = (scsiDev.cdb[1] & 0x20) | ((transfer.lba >> 16) & 0x1F);
 			scsiDev.data[2] = transfer.lba >> 8;
 			scsiDev.data[3] = transfer.lba;
+		}
+		else if (cfg->quirks == S2S_CFG_QUIRKS_OMTI)
+		{
+			// The response is completely non-standard.
+			if (likely(allocLength > 12))
+			    allocLength = 12;
+			else if (unlikely(allocLength < 4))
+				allocLength = 4;
+			if (cfg->deviceType != S2S_CFG_SEQUENTIAL)
+			    allocLength = 4;
+			memset(scsiDev.data, 0, allocLength);
+			if (scsiDev.target->sense.code == NO_SENSE)
+			{
+				// Nothing to report.
+			}
+			else if (scsiDev.target->sense.code == UNIT_ATTENTION &&
+			    cfg->deviceType == S2S_CFG_SEQUENTIAL)
+			{
+				scsiDev.data[0] = 0x10; // Tape exception
+			}
+			else if (scsiDev.target->sense.code == ILLEGAL_REQUEST)
+			{
+				if (scsiDev.target->sense.asc == LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE)
+				{
+					if (cfg->deviceType == S2S_CFG_SEQUENTIAL)
+						scsiDev.data[0] = 0x10; // Tape exception
+					else
+						scsiDev.data[0] = 0x21; // Illegal Parameters
+				}
+				else if (scsiDev.target->sense.asc == INVALID_COMMAND_OPERATION_CODE)
+				{
+					scsiDev.data[0] = 0x20; // Invalid Command
+				}
+			}
+			else if (scsiDev.target->sense.code == NOT_READY)
+			{
+				scsiDev.data[0] = 0x04; // Drive not ready
+			}
+			else if (scsiDev.target->sense.code == BLANK_CHECK)
+			{
+				scsiDev.data[0] = 0x10; // Tape exception
+			}
+			else
+			{
+				scsiDev.data[0] = 0x11; // Uncorrectable data error
+			}
+			scsiDev.data[1] = (scsiDev.cdb[1] & 0x60) | ((transfer.lba >> 16) & 0x1F);
+			scsiDev.data[2] = transfer.lba >> 8;
+			scsiDev.data[3] = transfer.lba;
+			if (cfg->deviceType == S2S_CFG_SEQUENTIAL)
+			{
+				// For the tape drive there are 8 extra sense bytes.
+				if (scsiDev.target->sense.code == BLANK_CHECK)
+					scsiDev.data[11] = 0x88; // End of data recorded on the tape
+				else if (scsiDev.target->sense.code == UNIT_ATTENTION)
+					scsiDev.data[5] = 0x81; // Power On Reset occurred
+				else if (scsiDev.target->sense.code == ILLEGAL_REQUEST &&
+					 scsiDev.target->sense.asc == LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE)
+					scsiDev.data[4] = 0x81; // File Mark detected
+			}
 		}
 		else
 		{
