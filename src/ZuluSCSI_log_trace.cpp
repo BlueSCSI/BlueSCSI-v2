@@ -81,6 +81,7 @@ static const char *getCommandName(uint8_t cmd)
         case 0x46: return "CDROM GetConfiguration";
         case 0x4A: return "GetEventStatusNotification";
         case 0x4B: return "CDROM PauseResume";
+        case 0x4E: return "CDROM StopPlayScan";
         case 0x51: return "CDROM ReadDiscInformation";
         case 0x45: return "CDROM PlayAudio10";
         case 0xA5: return "CDROM PlayAudio12";
