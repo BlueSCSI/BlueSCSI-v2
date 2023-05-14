@@ -1065,6 +1065,19 @@ static void doPauseResumeAudio(bool resume)
 #endif
 }
 
+static void doStopAudio()
+{
+    debuglog("------ CD-ROM Stop Audio request");
+#ifdef ENABLE_AUDIO_OUTPUT
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+    uint8_t target_id = img.scsiId & 7;
+    audio_stop(target_id);
+#endif
+
+    scsiDev.status = 0;
+    scsiDev.phase = STATUS;
+}
+
 static void doMechanismStatus(uint16_t allocation_length)
 {
     uint8_t *buf = scsiDev.data;
@@ -1337,6 +1350,7 @@ static void doReadSubchannel(bool time, bool subq, uint8_t parameter, uint8_t tr
             if (time)
             {
                 LBA2MSF(lba, buf);
+                debuglog("------ ABS M ", *(buf+1), " S ", *(buf+2), " F ", *(buf+3));
                 *buf += 4;
             }
             else
@@ -1351,6 +1365,7 @@ static void doReadSubchannel(bool time, bool subq, uint8_t parameter, uint8_t tr
             if (time)
             {
                 LBA2MSF(relpos, buf);
+                debuglog("------ REL M ", *(buf+1), " S ", *(buf+2), " F ", *(buf+3));
                 *buf += 4;
             }
             else
@@ -1611,6 +1626,13 @@ extern "C" int scsiCDRomCommand()
             scsiDev.cdb[9];
 
         doReadCD(lba, blocks, 0, 0x10, 0);
+    }
+    else if (command == 0x01)
+    {
+        // REZERO UNIT
+        // AppleCD Audio Player uses this as a nonstandard
+        // "stop audio playback" command
+        doStopAudio();
     }
     else
     {
