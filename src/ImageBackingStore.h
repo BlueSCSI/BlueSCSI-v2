@@ -71,6 +71,10 @@ public:
     // Flush any pending changes to filesystem
     void flush();
 
+    // Gets current position for following read/write operations
+    // Result is only valid for regular files, not raw or flash access
+    uint64_t position();
+
 protected:
     bool m_israw;
     bool m_isrom;
