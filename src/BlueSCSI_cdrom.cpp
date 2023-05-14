@@ -1073,9 +1073,6 @@ static void doStopAudio()
     uint8_t target_id = img.scsiId & 7;
     audio_stop(target_id);
 #endif
-
-    scsiDev.status = 0;
-    scsiDev.phase = STATUS;
 }
 
 static void doMechanismStatus(uint16_t allocation_length)
@@ -1631,6 +1628,8 @@ extern "C" int scsiCDRomCommand()
     {
         // STOP PLAY/SCAN
         doStopAudio();
+        scsiDev.status = 0;
+        scsiDev.phase = STATUS;
     }
     else if (command == 0x01)
     {
@@ -1638,6 +1637,17 @@ extern "C" int scsiCDRomCommand()
         // AppleCD Audio Player uses this as a nonstandard
         // "stop audio playback" command
         doStopAudio();
+        scsiDev.status = 0;
+        scsiDev.phase = STATUS;
+    }
+    else if (command == 0x0B || command == 0x2B)
+    {
+        // SEEK
+        // implement Annex C termination requirement and pass to disk handler
+        doStopAudio();
+        // this may need more specific handling, the Win9x player appears to
+        // expect a pickup move to the given LBA
+        commandHandled = 0;
     }
     else
     {
