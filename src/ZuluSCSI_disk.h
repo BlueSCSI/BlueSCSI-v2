@@ -70,7 +70,12 @@ struct image_config_t: public S2S_TargetCfg
     bool geometrywarningprinted;
 };
 
+// Reset all image configuration to empty reset state, close all images.
 void scsiDiskResetImages();
+
+// Close any files opened from SD card (prepare for remounting SD)
+void scsiDiskCloseSDCardImages();
+
 bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize, S2S_CFG_TYPE type = S2S_CFG_FIXED);
 void scsiDiskLoadConfig(int target_idx);
 

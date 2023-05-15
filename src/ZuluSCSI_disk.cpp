@@ -166,6 +166,17 @@ void scsiDiskResetImages()
     memset(g_DiskImages, 0, sizeof(g_DiskImages));
 }
 
+void scsiDiskCloseSDCardImages()
+{
+    for (int i = 0; i < S2S_MAX_TARGETS; i++)
+    {
+        if (!g_DiskImages[i].file.isRom())
+        {
+            g_DiskImages[i].file.close();
+        }
+    }
+}
+
 // Verify format conformance to SCSI spec:
 // - Empty bytes filled with 0x20 (space)
 // - Only values 0x20 to 0x7E
