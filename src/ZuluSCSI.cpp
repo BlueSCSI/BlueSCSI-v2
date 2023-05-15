@@ -564,7 +564,12 @@ void readSCSIDeviceConfig()
 
 static bool mountSDCard()
 {
+  // Prepare for mounting new SD card by closing all old files.
+  // When switching between FAT and exFAT cards the pointers
+  // are invalidated and accessing old files results in crash.
   invalidate_ini_cache();
+  g_logfile.close();
+  scsiDiskCloseSDCardImages();
 
   // Check for the common case, FAT filesystem as first partition
   if (SD.begin(SD_CONFIG))
