@@ -1347,7 +1347,7 @@ static void doReadSubchannel(bool time, bool subq, uint8_t parameter, uint8_t tr
             {
                 LBA2MSF(lba, buf);
                 dbgmsg("------ ABS M ", *(buf+1), " S ", *(buf+2), " F ", *(buf+3));
-                *buf += 4;
+                buf += 4;
             }
             else
             {
@@ -1362,7 +1362,7 @@ static void doReadSubchannel(bool time, bool subq, uint8_t parameter, uint8_t tr
             {
                 LBA2MSF(relpos, buf);
                 dbgmsg("------ REL M ", *(buf+1), " S ", *(buf+2), " F ", *(buf+3));
-                *buf += 4;
+                buf += 4;
             }
             else
             {
