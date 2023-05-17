@@ -173,15 +173,6 @@ static const uint8_t FullTOC[] =
     0x00  // 69: PFRAME
 };
 
-static uint8_t SimpleHeader[] =
-{
-    0x01, // 2048byte user data, L-EC in 288 byte aux field.
-    0x00, // reserved
-    0x00, // reserved
-    0x00, // reserved
-    0x00,0x00,0x00,0x00 // Track start sector (LBA or MSF)
-};
-
 static const uint8_t DiscInformation[] =
 {
     0x00,   //  0: disc info length, MSB
@@ -383,18 +374,6 @@ static void doReadFullTOCSimple(int convertBCD, uint8_t session, uint16_t alloca
         scsiDev.dataLen = len;
         scsiDev.phase = DATA_IN;
     }
-}
-
-void doReadHeaderSimple(bool MSF, uint32_t lba, uint16_t allocationLength)
-{
-    uint32_t len = sizeof(SimpleHeader);
-    memcpy(scsiDev.data, SimpleHeader, len);
-    if (len > allocationLength)
-    {
-        len = allocationLength;
-    }
-    scsiDev.dataLen = len;
-    scsiDev.phase = DATA_IN;
 }
 
 void doReadDiscInformationSimple(uint16_t allocationLength)
@@ -680,6 +659,9 @@ static void doReadFullTOC(int convertBCD, uint8_t session, uint16_t allocationLe
 
 // SCSI-3 MMC Read Header command, seems to be deprecated in later standards.
 // Refer to ANSI X3.304-1997
+// The spec is vague, but based on experimentation with a Matshita drive this
+// command should return the sector header absolute time (see ECMA-130 21).
+// Given 2048-byte block sizes this effectively is 1:1 with the provided LBA.
 void doReadHeader(bool MSF, uint32_t lba, uint16_t allocationLength)
 {
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
@@ -689,41 +671,41 @@ void doReadHeader(bool MSF, uint32_t lba, uint16_t allocationLength)
     audio_stop(img.scsiId & 7);
 #endif
 
+    uint8_t mode = 1;
     CUEParser parser;
-    if (!loadCueSheet(img, parser))
+    if (loadCueSheet(img, parser))
     {
-        // No CUE sheet, use hardcoded data
-        return doReadHeaderSimple(MSF, lba, allocationLength);
+        // Search the track with the requested LBA
+        CUETrackInfo trackinfo = {};
+        getTrackFromLBA(parser, lba, &trackinfo);
+
+        // Track mode (audio / data)
+        if (trackinfo.track_mode == CUETrack_AUDIO)
+        {
+            scsiDev.data[0] = 0;
+        }
     }
 
-    // Take the hardcoded header as base
-    uint32_t len = sizeof(SimpleHeader);
-    memcpy(scsiDev.data, SimpleHeader, len);
-
-    // Search the track with the requested LBA
-    CUETrackInfo trackinfo = {};
-    getTrackFromLBA(parser, lba, &trackinfo);
-
-    // Track mode (audio / data)
-    if (trackinfo.track_mode == CUETrack_AUDIO)
-    {
-        scsiDev.data[0] = 0;
-    }
+    scsiDev.data[0] = mode;
+    scsiDev.data[1] = 0; // reserved
+    scsiDev.data[2] = 0; // reserved
+    scsiDev.data[3] = 0; // reserved
 
     // Track start
     if (MSF)
     {
         scsiDev.data[4] = 0;
-        LBA2MSF(trackinfo.data_start, &scsiDev.data[5]);
+        LBA2MSF(lba, &scsiDev.data[5]);
     }
     else
     {
-        scsiDev.data[4] = (trackinfo.data_start >> 24) & 0xFF;
-        scsiDev.data[5] = (trackinfo.data_start >> 16) & 0xFF;
-        scsiDev.data[6] = (trackinfo.data_start >>  8) & 0xFF;
-        scsiDev.data[7] = (trackinfo.data_start >>  0) & 0xFF;
+        scsiDev.data[4] = (lba >> 24) & 0xFF;
+        scsiDev.data[5] = (lba >> 16) & 0xFF;
+        scsiDev.data[6] = (lba >>  8) & 0xFF;
+        scsiDev.data[7] = (lba >>  0) & 0xFF;
     }
 
+    uint8_t len = 8;
     if (len > allocationLength)
     {
         len = allocationLength;
