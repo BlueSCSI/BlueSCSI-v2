@@ -492,7 +492,7 @@ static void doReadTOC(bool MSF, uint8_t track, uint16_t allocationLength)
         if (firsttrack < 0) firsttrack = trackinfo->track_number;
         lasttrack = trackinfo->track_number;
 
-        if (track == 0 || track == trackinfo->track_number)
+        if (track <= trackinfo->track_number)
         {
             formatTrackInfo(trackinfo, &trackdata[8 * trackcount], MSF);
             trackcount += 1;
@@ -500,15 +500,12 @@ static void doReadTOC(bool MSF, uint8_t track, uint16_t allocationLength)
     }
 
     // Format lead-out track info
-    if (track == 0 || track == 0xAA)
-    {
-        CUETrackInfo leadout = {};
-        leadout.track_number = 0xAA;
-        leadout.track_mode = CUETrack_MODE1_2048;
-        leadout.data_start = img.scsiSectors;
-        formatTrackInfo(&leadout, &trackdata[8 * trackcount], MSF);
-        trackcount += 1;
-    }
+    CUETrackInfo leadout = {};
+    leadout.track_number = 0xAA;
+    leadout.track_mode = CUETrack_MODE1_2048;
+    leadout.data_start = img.scsiSectors;
+    formatTrackInfo(&leadout, &trackdata[8 * trackcount], MSF);
+    trackcount += 1;
 
     // Format response header
     uint16_t toc_length = 2 + trackcount * 8;
@@ -517,7 +514,7 @@ static void doReadTOC(bool MSF, uint8_t track, uint16_t allocationLength)
     scsiDev.data[2] = firsttrack;
     scsiDev.data[3] = lasttrack;
 
-    if (trackcount == 0)
+    if (track != 0xAA && trackcount < 2)
     {
         // Unknown track requested
         scsiDev.status = CHECK_CONDITION;
