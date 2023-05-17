@@ -602,16 +602,13 @@ static void formatRawTrackInfo(const CUETrackInfo *track, uint8_t *dest)
     dest[1] = control_adr;
     dest[2] = 0x00; // "TNO", always 0?
     dest[3] = track->track_number; // "POINT", contains track number
-
-    if (track->pregap_start > 0)
-    {
-        LBA2MSF(track->pregap_start, &dest[4]);
-    }
-    else
-    {
-        LBA2MSF(track->data_start, &dest[4]);
-    }
-
+    // Next three are ATIME. The spec doesn't directly address how these
+    // should be reported in the TOC, just giving a description of Q-channel
+    // data from Red Book/ECMA-130. On all disks tested so far these are
+    // given as 00/00/00.
+    dest[4] = 0x00;
+    dest[5] = 0x00;
+    dest[6] = 0x00;
     dest[7] = 0; // HOUR
 
     LBA2MSFBCD(track->data_start, &dest[8]);
