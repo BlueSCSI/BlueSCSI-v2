@@ -220,15 +220,34 @@ static const uint8_t DiscInformation[] =
     0x00,   // 33: number of opc tables
 };
 
-// Convert logical block address to CD-ROM time in formatted TOC format
+// Convert logical block address to CD-ROM time
 static void LBA2MSF(uint32_t LBA, uint8_t* MSF)
 {
-    MSF[0] = 0; // reserved.
-    MSF[3] = LBA % 75; // Frames
+    MSF[2] = LBA % 75; // Frames
     uint32_t rem = LBA / 75;
 
-    MSF[2] = rem % 60; // Seconds
-    MSF[1] = rem / 60; // Minutes
+    MSF[1] = rem % 60; // Seconds
+    MSF[0] = rem / 60; // Minutes
+}
+
+// Convert logical block address to CD-ROM time in binary coded decimal format
+static void LBA2MSFBCD(uint32_t LBA, uint8_t* MSF)
+{
+    uint8_t fra = LBA % 75;
+    uint32_t rem = LBA / 75;
+    uint8_t sec = rem % 60;
+    uint8_t min = rem / 60;
+
+    MSF[0] = ((min / 10) << 4) | (min % 10);
+    MSF[1] = ((sec / 10) << 4) | (sec % 10);
+    MSF[2] = ((fra / 10) << 4) | (fra % 10);
+}
+
+// Convert CD-ROM time to logical block address
+static uint32_t MSF2LBA(uint8_t m, uint8_t s, uint8_t f)
+{
+    uint32_t lba = (m * 60 + s) * 75 + f;
+    return lba;
 }
 
 static void doReadTOCSimple(bool MSF, uint8_t track, uint16_t allocationLength)
@@ -247,7 +266,8 @@ static void doReadTOCSimple(bool MSF, uint8_t track, uint16_t allocationLength)
         // Replace start of leadout track
         if (MSF)
         {
-            LBA2MSF(capacity, scsiDev.data + 8);
+            scsiDev.data[8] = 0;
+            LBA2MSF(capacity, scsiDev.data + 9);
         }
         else
         {
@@ -279,7 +299,8 @@ static void doReadTOCSimple(bool MSF, uint8_t track, uint16_t allocationLength)
         // Replace start of leadout track
         if (MSF)
         {
-            LBA2MSF(capacity, scsiDev.data + 0x10);
+            scsiDev.data[0x10] = 0;
+            LBA2MSF(capacity, scsiDev.data + 0x11);
         }
         else
         {
@@ -434,7 +455,8 @@ static void formatTrackInfo(const CUETrackInfo *track, uint8_t *dest, bool use_M
     if (use_MSF_time)
     {
         // Time in minute-second-frame format
-        LBA2MSF(track->data_start, &dest[4]);
+        dest[4] = 0;
+        LBA2MSF(track->data_start, &dest[5]);
     }
     else
     {
@@ -566,29 +588,6 @@ static void doReadSessionInfo(uint8_t session, uint16_t allocationLength)
     scsiDev.phase = DATA_IN;
 }
 
-// Convert logical block address to CD-ROM time in the raw TOC format
-static void LBA2MSFRaw(uint32_t LBA, uint8_t* MSF)
-{
-    MSF[2] = LBA % 75; // Frames
-    uint32_t rem = LBA / 75;
-
-    MSF[1] = rem % 60; // Seconds
-    MSF[0] = rem / 60; // Minutes
-}
-
-// Convert logical block address to CD-ROM time in binary coded decimal format
-static void LBA2MSFBCD(uint32_t LBA, uint8_t* MSF)
-{
-    uint8_t fra = LBA % 75;
-    uint32_t rem = LBA / 75;
-    uint8_t sec = rem % 60;
-    uint8_t min = rem / 60;
-
-    MSF[0] = ((min / 10) << 4) | (min % 10);
-    MSF[1] = ((sec / 10) << 4) | (sec % 10);
-    MSF[2] = ((fra / 10) << 4) | (fra % 10);
-}
-
 // Format track info read from cue sheet into the format used by ReadFullTOC command.
 // Refer to T10/1545-D MMC-4 Revision 5a, "Response Format 0010b: Raw TOC"
 static void formatRawTrackInfo(const CUETrackInfo *track, uint8_t *dest)
@@ -607,11 +606,11 @@ static void formatRawTrackInfo(const CUETrackInfo *track, uint8_t *dest)
 
     if (track->pregap_start > 0)
     {
-        LBA2MSFRaw(track->pregap_start, &dest[4]);
+        LBA2MSF(track->pregap_start, &dest[4]);
     }
     else
     {
-        LBA2MSFRaw(track->data_start, &dest[4]);
+        LBA2MSF(track->data_start, &dest[4]);
     }
 
     dest[7] = 0; // HOUR
@@ -717,7 +716,8 @@ void doReadHeader(bool MSF, uint32_t lba, uint16_t allocationLength)
     // Track start
     if (MSF)
     {
-        LBA2MSF(trackinfo.data_start, &scsiDev.data[4]);
+        scsiDev.data[4] = 0;
+        LBA2MSF(trackinfo.data_start, &scsiDev.data[5]);
     }
     else
     {
@@ -1291,9 +1291,9 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
             *buf++ = (trackinfo.track_mode == CUETrack_AUDIO ? 0x10 : 0x14); // Control & ADR
             *buf++ = trackinfo.track_number;
             *buf++ = (lba + idx >= trackinfo.data_start) ? 1 : 0; // Index number (0 = pregap)
-            LBA2MSFRaw(lba + idx, buf); buf += 3;
+            LBA2MSF(lba + idx, buf); buf += 3;
             *buf++ = 0;
-            LBA2MSFRaw(lba + idx, buf); buf += 3;
+            LBA2MSF(lba + idx, buf); buf += 3;
             *buf++ = 0; *buf++ = 0; // CRC (optional)
             *buf++ = 0; *buf++ = 0; *buf++ = 0; // (pad)
             *buf++ = 0; // No P subchannel
@@ -1343,9 +1343,10 @@ static void doReadSubchannel(bool time, bool subq, uint8_t parameter, uint8_t tr
             *buf++ = (lba >= trackinfo.data_start) ? 1 : 0; // Index number (0 = pregap)
             if (time)
             {
+                *buf++ = 0;
                 LBA2MSF(lba, buf);
                 debuglog("------ ABS M ", *(buf+1), " S ", *(buf+2), " F ", *(buf+3));
-                buf += 4;
+                buf += 3;
             }
             else
             {
@@ -1358,9 +1359,10 @@ static void doReadSubchannel(bool time, bool subq, uint8_t parameter, uint8_t tr
             uint32_t relpos = (uint32_t)((int32_t)lba - (int32_t)trackinfo.data_start);
             if (time)
             {
+                *buf++ = 0;
                 LBA2MSF(relpos, buf);
                 debuglog("------ REL M ", *(buf+1), " S ", *(buf+2), " F ", *(buf+3));
-                buf += 4;
+                buf += 3;
             }
             else
             {
@@ -1518,8 +1520,8 @@ extern "C" int scsiCDRomCommand()
     else if (command == 0x47)
     {
         // PLAY AUDIO (MSF)
-        uint32_t start = (scsiDev.cdb[3] * 60 + scsiDev.cdb[4]) * 75 + scsiDev.cdb[5];
-        uint32_t end   = (scsiDev.cdb[6] * 60 + scsiDev.cdb[7]) * 75 + scsiDev.cdb[8];
+        uint32_t start = MSF2LBA(scsiDev.cdb[3], scsiDev.cdb[4], scsiDev.cdb[5]);
+        uint32_t end   = MSF2LBA(scsiDev.cdb[6], scsiDev.cdb[7], scsiDev.cdb[8]);
 
         uint32_t lba = start;
         if (scsiDev.cdb[3] == 0xFF
@@ -1573,8 +1575,8 @@ extern "C" int scsiCDRomCommand()
     {
         // ReadCD MSF
         uint8_t sector_type = (scsiDev.cdb[1] >> 2) & 7;
-        uint32_t start = (scsiDev.cdb[3] * 60 + scsiDev.cdb[4]) * 75 + scsiDev.cdb[5];
-        uint32_t end   = (scsiDev.cdb[6] * 60 + scsiDev.cdb[7]) * 75 + scsiDev.cdb[8];
+        uint32_t start = MSF2LBA(scsiDev.cdb[3], scsiDev.cdb[4], scsiDev.cdb[5]);
+        uint32_t end   = MSF2LBA(scsiDev.cdb[6], scsiDev.cdb[7], scsiDev.cdb[8]);
         uint8_t main_channel = scsiDev.cdb[9];
         uint8_t sub_channel = scsiDev.cdb[10];
 
