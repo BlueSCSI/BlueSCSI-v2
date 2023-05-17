@@ -54,6 +54,13 @@ preset_config_t getSystemPreset(const char *presetName)
         cfg.mapLunsToIDs = true;
         cfg.enableParity = false;
     }
+    else if (strequals(presetName, "X68000"))
+    {
+        cfg.selectionDelay = 0;
+        cfg.quirks = 0;
+        cfg.enableSCSI2 = 0;
+        cfg.maxSyncSpeed = 5;
+    }
     else
     {
         log("Unknown preset name ", presetName, ", using default settings");
