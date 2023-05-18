@@ -146,30 +146,6 @@ static const uint8_t FullTOC[] =
     0x00, // 45: PMIN
     0x00, // 46: PSEC
     0x00, // 47: PFRAME
-    // b0
-    0x01, // 48: session number
-    0x54, // 49: ADR/Control
-    0x00, // 50: TNO
-    0xB1, // 51: POINT
-    0x79, // 52: Min BCD
-    0x59, // 53: Sec BCD
-    0x74, // 54: Frame BCD
-    0x00, // 55: Zero
-    0x79, // 56: PMIN BCD
-    0x59, // 57: PSEC BCD
-    0x74, // 58: PFRAME BCD
-    // c0
-    0x01, // 59: session number
-    0x54, // 60: ADR/Control
-    0x00, // 61: TNO
-    0xC0, // 62: POINT
-    0x00, // 63: Min
-    0x00, // 64: Sec
-    0x00, // 65: Frame
-    0x00, // 66: Zero
-    0x00, // 67: PMIN
-    0x00, // 68: PSEC
-    0x00  // 69: PFRAME
 };
 
 static const uint8_t DiscInformation[] =
@@ -638,10 +614,6 @@ static void doReadFullTOC(int convertBCD, uint8_t session, uint16_t allocationLe
 
     // Leadout track position
     LBA2MSFBCD(img.scsiSectors, &scsiDev.data[34]);
-
-    // Append recordable disc records b0 and c0 indicating non-recordable disc
-    memcpy(scsiDev.data + len, &FullTOC[48], 22);
-    len += 22;
 
     // Correct the record length in header
     uint16_t toclen = len - 2;
