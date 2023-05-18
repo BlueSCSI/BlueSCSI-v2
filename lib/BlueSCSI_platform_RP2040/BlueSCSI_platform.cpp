@@ -576,9 +576,23 @@ void platform_reset_watchdog()
 
     if (!g_watchdog_initialized)
     {
-        hardware_alarm_claim(3);
-        hardware_alarm_set_callback(3, &watchdog_callback);
-        hardware_alarm_set_target(3, delayed_by_ms(get_absolute_time(), 1000));
+        int alarm_num = -1;
+        for (int i = 0; i < NUM_TIMERS; i++)
+        {
+            if (!hardware_alarm_is_claimed(i))
+            {
+                alarm_num = i;
+                break;
+            }
+        }
+        if (alarm_num == -1)
+        {
+            log("No free watchdog hardware alarms to claim");
+            return;
+        }
+        hardware_alarm_claim(alarm_num);
+        hardware_alarm_set_callback(alarm_num, &watchdog_callback);
+        hardware_alarm_set_target(alarm_num, delayed_by_ms(get_absolute_time(), 1000));
         g_watchdog_initialized = true;
     }
 
