@@ -1253,10 +1253,12 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
         {
             // Formatted Q subchannel data
             // Refer to table 354 in T10/1545-D MMC-4 Revision 5a
+            // and ECMA-130 22.3.3
             *buf++ = (trackinfo.track_mode == CUETrack_AUDIO ? 0x10 : 0x14); // Control & ADR
             *buf++ = trackinfo.track_number;
             *buf++ = (lba + idx >= trackinfo.data_start) ? 1 : 0; // Index number (0 = pregap)
-            LBA2MSF(lba + idx, buf, false); buf += 3;
+            int32_t rel = (int32_t)(lba + idx) - (int32_t)trackinfo.data_start;
+            LBA2MSF(rel, buf, true); buf += 3;
             *buf++ = 0;
             LBA2MSF(lba + idx, buf, false); buf += 3;
             *buf++ = 0; *buf++ = 0; // CRC (optional)
