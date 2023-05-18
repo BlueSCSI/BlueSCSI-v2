@@ -327,7 +327,7 @@ fromBCD(uint8_t val)
     return ((val >> 4) * 10) + (val & 0xF);
 }
 
-static void doReadFullTOCSimple(int convertBCD, uint8_t session, uint16_t allocationLength)
+static void doReadFullTOCSimple(uint8_t session, uint16_t allocationLength)
 {
     // We only support session 1.
     if (session > 1)
@@ -342,7 +342,7 @@ static void doReadFullTOCSimple(int convertBCD, uint8_t session, uint16_t alloca
         uint32_t len = sizeof(FullTOC);
         memcpy(scsiDev.data, FullTOC, len);
 
-        if (convertBCD)
+        if (false)
         {
             int descriptor = 4;
             while (descriptor < len)
@@ -585,14 +585,14 @@ static void formatRawTrackInfo(const CUETrackInfo *track, uint8_t *dest)
     LBA2MSFBCD(track->data_start, &dest[8], false);
 }
 
-static void doReadFullTOC(int convertBCD, uint8_t session, uint16_t allocationLength)
+static void doReadFullTOC(uint8_t session, uint16_t allocationLength)
 {
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     CUEParser parser;
     if (!loadCueSheet(img, parser))
     {
         // No CUE sheet, use hardcoded data
-        return doReadFullTOCSimple(convertBCD, session, allocationLength);
+        return doReadFullTOCSimple(session, allocationLength);
     }
 
     // We only support session 1.
@@ -1422,8 +1422,7 @@ extern "C" int scsiCDRomCommand()
         {
             case 0: doReadTOC(MSF, track, allocationLength); break; // SCSI-2
             case 1: doReadSessionInfo(MSF, allocationLength); break; // MMC2
-            case 2: doReadFullTOC(0, track, allocationLength); break; // MMC2
-            case 3: doReadFullTOC(1, track, allocationLength); break; // MMC2
+            case 2: doReadFullTOC(track, allocationLength); break; // MMC2
             default:
             {
                 scsiDev.status = CHECK_CONDITION;
