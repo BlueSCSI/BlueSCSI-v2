@@ -187,6 +187,8 @@ const char * typeToChar(int deviceType)
     return "Floppy1.4MB";
   case S2S_CFG_MO:
     return "MO";
+  case S2S_CFG_NETWORK:
+    return "Network";
   case S2S_CFG_SEQUENTIAL:
     return "Tape";
   case S2S_CFG_REMOVEABLE:
@@ -277,6 +279,7 @@ bool findHDDImages()
       bool is_cd = (tolower(name[0]) == 'c' && tolower(name[1]) == 'd');
       bool is_fd = (tolower(name[0]) == 'f' && tolower(name[1]) == 'd');
       bool is_mo = (tolower(name[0]) == 'm' && tolower(name[1]) == 'o');
+      bool is_ne = (tolower(name[0]) == 'n' && tolower(name[1]) == 'e');
       bool is_re = (tolower(name[0]) == 'r' && tolower(name[1]) == 'e');
       bool is_tp = (tolower(name[0]) == 't' && tolower(name[1]) == 'p');
 
@@ -286,7 +289,7 @@ bool findHDDImages()
         continue;
       }
 
-      if (is_hd || is_cd || is_fd || is_mo || is_re || is_tp)
+      if (is_hd || is_cd || is_fd || is_mo || is_ne || is_re || is_tp)
       {
         // Check if the image should be loaded to microcontroller flash ROM drive
         bool is_romdrive = false;
@@ -351,12 +354,19 @@ bool findHDDImages()
           continue;
         }
 
+        if (is_ne && !platform_network_supported())
+        {
+          log("-- Ignoring ", fullname, ", networking is not supported on this hardware");
+          continue;
+        }
+
         // Type mapping based on filename.
         // If type is FIXED, the type can still be overridden in .ini file.
         S2S_CFG_TYPE type = S2S_CFG_FIXED;
         if (is_cd) type = S2S_CFG_OPTICAL;
         if (is_fd) type = S2S_CFG_FLOPPY_14MB;
         if (is_mo) type = S2S_CFG_MO;
+        if (is_ne) type = S2S_CFG_NETWORK;
         if (is_re) type = S2S_CFG_REMOVEABLE;
         if (is_tp) type = S2S_CFG_SEQUENTIAL;
 
@@ -411,11 +421,21 @@ bool findHDDImages()
     if (cfg && (cfg->scsiId & S2S_CFG_TARGET_ENABLED))
     {
       int capacity_kB = ((uint64_t)cfg->scsiSectors * cfg->bytesPerSector) / 1024;
-      log("* ID: ", (int)(cfg->scsiId & S2S_CFG_TARGET_ID_BITS),
-            ", BlockSize: ", (int)cfg->bytesPerSector,
-            ", Type: ", typeToChar((int)cfg->deviceType),
-            ", Quirks: ", quirksToChar((int)cfg->quirks),
-            ", Size: ", capacity_kB, "kB");
+
+      if (cfg->deviceType == S2S_CFG_NETWORK)
+      {
+        log("* ID: ", (int)(cfg->scsiId & 7),
+              ", Type: ", typeToChar((int)cfg->deviceType),
+              ", Quirks: ", quirksToChar((int)cfg->quirks));
+      }
+      else
+      {
+        log("* ID: ", (int)(cfg->scsiId & S2S_CFG_TARGET_ID_BITS),
+              ", BlockSize: ", (int)cfg->bytesPerSector,
+              ", Type: ", typeToChar((int)cfg->deviceType),
+              ", Quirks: ", quirksToChar((int)cfg->quirks),
+              ", Size: ", capacity_kB, "kB");
+      }
     }
   }
 
@@ -518,6 +538,11 @@ static void reinitSCSI()
   scsiDiskInit();
   scsiInit();
 
+  if (scsiDiskCheckAnyNetworkDevicesConfigured())
+  {
+    platform_network_init(scsiDev.boardCfg.wifiMACAddress);
+    platform_network_wifi_join(scsiDev.boardCfg.wifiSSID, scsiDev.boardCfg.wifiPassword);
+  }
 }
 
 extern "C" void bluescsi_setup(void)
@@ -590,6 +615,7 @@ extern "C" void bluescsi_main_loop(void)
   platform_reset_watchdog();
   platform_poll();
   diskEjectButtonUpdate(true);
+  platform_network_poll();
   
 #ifdef PLATFORM_HAS_INITIATOR_MODE
   if (platform_is_initiator_mode_enabled())

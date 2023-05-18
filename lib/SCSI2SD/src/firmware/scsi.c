@@ -27,6 +27,7 @@
 #include "bsp.h"
 #include "cdrom.h"
 //#include "debug.h"
+#include "network.h"
 #include "tape.h"
 #include "mo.h"
 #include "vendor.h"
@@ -540,7 +541,8 @@ static void process_Command()
 	// write commands. Will fall-through to generic disk handling.
 	else if (((cfg->deviceType == S2S_CFG_OPTICAL) && scsiCDRomCommand()) ||
 		((cfg->deviceType == S2S_CFG_SEQUENTIAL) && scsiTapeCommand()) ||
-		((cfg->deviceType == S2S_CFG_MO) && scsiMOCommand()))
+		((cfg->deviceType == S2S_CFG_MO) && scsiMOCommand()) ||
+		((cfg->deviceType == S2S_CFG_NETWORK && scsiNetworkCommand())))
 	{
 		// Already handled.
 	}
@@ -1368,4 +1370,3 @@ int scsiReconnect()
 	return reconnected;
 }
 */
-

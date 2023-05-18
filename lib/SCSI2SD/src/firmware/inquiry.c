@@ -201,6 +201,11 @@ void s2s_scsiInquiry()
 		case S2S_CFG_REMOVEABLE:
 			scsiDev.data[1] |= 0x80; // Removable bit.
 			break;
+
+		case S2S_CFG_NETWORK:
+			scsiDev.data[2] = 0x01;  // Page code.
+			break;
+
 		default:
 			// Accept defaults for a fixed disk.
 			break;
@@ -264,9 +269,13 @@ uint8_t getDeviceTypeQualifier()
 		return 0;
 		break;
 
+	case S2S_CFG_NETWORK:
+		// processor device
+		return 0x03;
+		break;
+
 	default:
 		// Accept defaults for a fixed disk.
 		return 0;
 	}
 }
-
