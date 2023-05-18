@@ -129,6 +129,38 @@ void log_raw(bool value)
     else log_raw("false");
 }
 
+void log_f(const char *format, ...)
+{
+    static char out[2048];
+
+    va_list ap;
+    va_start(ap, format);
+    vsnprintf(out, sizeof(out), format, ap);
+    va_end(ap);
+
+    log(out);
+}
+
+void log_buf(const unsigned char *buf, unsigned long size)
+{
+    static char tmp[1500 * 3];
+    static char hex[] = "0123456789abcdef";
+    int o = 0;
+
+    for (int j = 0; j < size; j++) {
+        if (o + 3 >= sizeof(tmp))
+            break;
+
+        if (j != 0)
+            tmp[o++] = ' ';
+        tmp[o++] = hex[(buf[j] >> 4) & 0xf];
+        tmp[o++] = hex[buf[j] & 0xf];
+        tmp[o] = 0;
+    }
+
+    log_f("%s", tmp);
+}
+
 uint32_t log_get_buffer_len()
 {
     return g_logpos;
