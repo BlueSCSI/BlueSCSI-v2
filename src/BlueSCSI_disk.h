@@ -140,3 +140,6 @@ void scsiDiskStartRead(uint32_t lba, uint32_t blocks);
 
 // Start data transfer from SCSI bus to disk image
 void scsiDiskStartWrite(uint32_t lba, uint32_t blocks);
+
+// Returns true if there is at least one network device active
+bool scsiDiskCheckAnyNetworkDevicesConfigured();

@@ -262,6 +262,7 @@ static void setDefaultDriveInfo(int target_idx)
     static const char *driveinfo_optical[4]   = DRIVEINFO_OPTICAL;
     static const char *driveinfo_floppy[4]    = DRIVEINFO_FLOPPY;
     static const char *driveinfo_magopt[4]    = DRIVEINFO_MAGOPT;
+    static const char *driveinfo_network[4]   = DRIVEINFO_NETWORK;
     static const char *driveinfo_tape[4]      = DRIVEINFO_TAPE;
 
     static const char *apl_driveinfo_fixed[4]     = APPLE_DRIVEINFO_FIXED;
@@ -269,6 +270,7 @@ static void setDefaultDriveInfo(int target_idx)
     static const char *apl_driveinfo_optical[4]   = APPLE_DRIVEINFO_OPTICAL;
     static const char *apl_driveinfo_floppy[4]    = APPLE_DRIVEINFO_FLOPPY;
     static const char *apl_driveinfo_magopt[4]    = APPLE_DRIVEINFO_MAGOPT;
+    static const char *apl_driveinfo_network[4]   = APPLE_DRIVEINFO_NETWORK;
     static const char *apl_driveinfo_tape[4]      = APPLE_DRIVEINFO_TAPE;
 
     const char **driveinfo = NULL;
@@ -283,6 +285,7 @@ static void setDefaultDriveInfo(int target_idx)
             case S2S_CFG_OPTICAL:       driveinfo = apl_driveinfo_optical; break;
             case S2S_CFG_FLOPPY_14MB:   driveinfo = apl_driveinfo_floppy; break;
             case S2S_CFG_MO:            driveinfo = apl_driveinfo_magopt; break;
+            case S2S_CFG_NETWORK:       driveinfo = apl_driveinfo_network; break;
             case S2S_CFG_SEQUENTIAL:    driveinfo = apl_driveinfo_tape; break;
             default:                    driveinfo = apl_driveinfo_fixed; break;
         }
@@ -297,6 +300,7 @@ static void setDefaultDriveInfo(int target_idx)
             case S2S_CFG_OPTICAL:       driveinfo = driveinfo_optical; break;
             case S2S_CFG_FLOPPY_14MB:   driveinfo = driveinfo_floppy; break;
             case S2S_CFG_MO:            driveinfo = driveinfo_magopt; break;
+            case S2S_CFG_NETWORK:       driveinfo = driveinfo_network; break;
             case S2S_CFG_SEQUENTIAL:    driveinfo = driveinfo_tape; break;
             default:                    driveinfo = driveinfo_fixed; break;
         }
@@ -369,21 +373,24 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
         img.scsiId = scsi_id | S2S_CFG_TARGET_ENABLED;
         img.sdSectorStart = 0;
 
-        if (img.scsiSectors == 0)
+        if (type != S2S_CFG_NETWORK)
         {
-            log("---- Error: image file ", filename, " is empty");
-            img.file.close();
-            return false;
-        }
+            if (img.scsiSectors == 0)
+            {
+                log("---- Error: image file ", filename, " is empty");
+                img.file.close();
+                return false;
+            }
 
-        uint32_t sector_begin = 0, sector_end = 0;
-        if (img.file.isRom())
-        {
-            // ROM is always contiguous, no need to log
-        }
-        else if (!img.file.contiguousRange(&sector_begin, &sector_end))
-        {
-            log("---- WARNING: file ", filename, " is fragmented, see https://github.com/BlueSCSI/BlueSCSI-v2/wiki/Image-File-Fragmentation");
+            uint32_t sector_begin = 0, sector_end = 0;
+            if (img.file.isRom())
+            {
+                // ROM is always contiguous, no need to log
+            }
+            else if (!img.file.contiguousRange(&sector_begin, &sector_end))
+            {
+                log("---- WARNING: file ", filename, " is fragmented, see https://github.com/BlueSCSI/BlueSCSI-v2/wiki/Image-File-Fragmentation");
+            }
         }
 
         if (type == S2S_CFG_OPTICAL)
@@ -400,6 +407,11 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
         {
             log("---- Configuring as magneto-optical based on image name");
             img.deviceType = S2S_CFG_MO;
+        }
+        else if (type == S2S_CFG_NETWORK)
+        {
+            log("---- Configuring as network based on image name");
+            img.deviceType = S2S_CFG_NETWORK;
         }
         else if (type == S2S_CFG_REMOVEABLE)
         {
@@ -878,6 +890,19 @@ uint8_t diskEjectButtonUpdate(bool immediate)
     }
 }
 
+bool scsiDiskCheckAnyNetworkDevicesConfigured()
+{
+    for (int i = 0; i < S2S_MAX_TARGETS; i++)
+    {
+        if (g_DiskImages[i].file.isOpen() && (g_DiskImages[i].scsiId & S2S_CFG_TARGET_ENABLED) && g_DiskImages[i].deviceType == S2S_CFG_NETWORK)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 /*******************************/
 /* Config handling for SCSI2SD */
 /*******************************/
@@ -885,6 +910,8 @@ uint8_t diskEjectButtonUpdate(bool immediate)
 extern "C"
 void s2s_configInit(S2S_BoardCfg* config)
 {
+    char tmp[64];
+
     if (SD.exists(CONFIGFILE))
     {
         log("Reading configuration from " CONFIGFILE);
@@ -895,9 +922,8 @@ void s2s_configInit(S2S_BoardCfg* config)
     }
 
     // Get default values from system preset, if any
-    char presetName[32];
-    ini_gets("SCSI", "System", "", presetName, sizeof(presetName), CONFIGFILE);
-    preset_config_t defaults = getSystemPreset(presetName);
+    ini_gets("SCSI", "System", "", tmp, sizeof(tmp), CONFIGFILE);
+    preset_config_t defaults = getSystemPreset(tmp);
 
     if (defaults.presetName)
     {
@@ -993,6 +1019,42 @@ void s2s_configInit(S2S_BoardCfg* config)
     else
     {
         debuglog("-- ReinsertCDOnInquiry is disabled");
+    }
+
+    memset(tmp, 0, sizeof(tmp));
+    ini_gets("SCSI", "WiFiMACAddress", "", tmp, sizeof(tmp), CONFIGFILE);
+    if (tmp[0])
+    {
+        // convert from "01:23:45:67:89" to { 0x01, 0x23, 0x45, 0x67, 0x89 }
+        int mac[6];
+        if (sscanf(tmp, "%x:%x:%x:%x:%x:%x", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]) == 6)
+        {
+            config->wifiMACAddress[0] = mac[0];
+            config->wifiMACAddress[1] = mac[1];
+            config->wifiMACAddress[2] = mac[2];
+            config->wifiMACAddress[3] = mac[3];
+            config->wifiMACAddress[4] = mac[4];
+            config->wifiMACAddress[5] = mac[5];
+        }
+        else
+        {
+            log("Invalid MAC address format: \"", tmp, "\"");
+            memset(config->wifiMACAddress, 0, sizeof(config->wifiMACAddress));
+        }
+    }
+
+    memset(tmp, 0, sizeof(tmp));
+    ini_gets("SCSI", "WiFiSSID", "", tmp, sizeof(tmp), CONFIGFILE);
+    if (tmp[0])
+    {
+        memcpy(config->wifiSSID, tmp, sizeof(config->wifiSSID));
+    }
+
+    memset(tmp, 0, sizeof(tmp));
+    ini_gets("SCSI", "WiFiPassword", "", tmp, sizeof(tmp), CONFIGFILE);
+    if (tmp[0])
+    {
+        memcpy(config->wifiPassword, tmp, sizeof(config->wifiPassword));
     }
 }
 
@@ -1125,7 +1187,16 @@ static void doReadCapacity()
 
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
-    uint32_t capacity = img.file.size() / bytesPerSector;
+    uint32_t capacity;
+
+    if (unlikely(scsiDev.target->cfg->deviceType == S2S_CFG_NETWORK))
+    {
+        capacity = 1;
+    }
+    else
+    {
+        capacity = img.file.size() / bytesPerSector;
+    }
 
     if (!pmi && lba)
     {
