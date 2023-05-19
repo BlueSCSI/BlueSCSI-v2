@@ -963,10 +963,8 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
             lba = img.file.position() / 2352;
         }
 
-        // --- TODO --- determine proper track offset, software I tested with had a tendency
-        // to ask for offsets that seem to hint at 2048 here, not the 2352 you'd assume.
-        // Might be due to a mode page reporting something unexpected? Needs investigation.
-        uint64_t offset = trackinfo.file_offset + 2048 * (lba - trackinfo.data_start);
+        uint64_t offset = trackinfo.file_offset
+                + trackinfo.sector_length * (lba - trackinfo.data_start);
         debuglog("------ Play audio CD: ", (int)length, " sectors starting at ", (int)lba,
            ", track number ", trackinfo.track_number, ", data offset in file ", (int)offset);
 
@@ -982,7 +980,8 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
 
         // playback request appears to be sane, so perform it
         // see earlier note for context on the block length below
-        if (!audio_play(target_id, &(img.file), offset, offset + length * 2048, false))
+        if (!audio_play(target_id, &(img.file), offset,
+                offset + length * trackinfo.sector_length, false))
         {
             // Underlying data/media error? Fake a disk scratch, which should
             // be a condition most CD-DA players are expecting
