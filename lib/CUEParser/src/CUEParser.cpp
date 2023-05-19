@@ -57,7 +57,7 @@ void CUEParser::restart()
 const CUETrackInfo *CUEParser::next_track()
 {
     // Previous track info is needed to track file offset
-    uint32_t prev_data_start = m_track_info.data_start;
+    uint32_t prev_track_start = m_track_info.track_start;
     uint32_t prev_sector_length = get_sector_length(m_track_info.file_mode, m_track_info.track_mode); // Defaults to 2352 before first track
 
     bool got_track = false;
@@ -71,7 +71,7 @@ const CUETrackInfo *CUEParser::next_track()
             m_track_info.file_mode = parse_file_mode(skip_space(p));
             m_track_info.file_offset = 0;
             m_track_info.track_mode = CUETrack_AUDIO;
-            prev_data_start = 0;
+            prev_track_start = 0;
             prev_sector_length = get_sector_length(m_track_info.file_mode, m_track_info.track_mode);
         }
         else if (strncasecmp(m_parse_pos, "TRACK ", 6) == 0)
@@ -109,7 +109,6 @@ const CUETrackInfo *CUEParser::next_track()
             }
             else if (index == 1)
             {
-                m_track_info.file_offset += (uint64_t)(time - prev_data_start) * prev_sector_length;
                 m_track_info.data_start = time;
                 got_data = true;
             }
@@ -124,9 +123,14 @@ const CUETrackInfo *CUEParser::next_track()
     }
 
     if (got_track && got_data)
+    {
+        m_track_info.file_offset += (uint64_t)(m_track_info.track_start - prev_track_start) * prev_sector_length;
         return &m_track_info;
+    }
     else
+    {
         return nullptr;
+    }
 }
 
 bool CUEParser::start_line()
