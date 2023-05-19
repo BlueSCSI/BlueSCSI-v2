@@ -229,7 +229,7 @@ static uint32_t getLeadOutLBA(const CUETrackInfo* lasttrack)
         image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
         uint32_t lastTrackBlocks = (img.file.size() - lasttrack->file_offset)
                 / lasttrack->sector_length;
-        return lasttrack->data_start + lastTrackBlocks + 1;
+        return lasttrack->track_start + lastTrackBlocks + 1;
     }
     else
     {
@@ -975,7 +975,7 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
         }
 
         uint64_t offset = trackinfo.file_offset
-                + trackinfo.sector_length * (lba - trackinfo.data_start);
+                + trackinfo.sector_length * (lba - trackinfo.track_start);
         dbgmsg("------ Play audio CD: ", (int)length, " sectors starting at ", (int)lba,
            ", track number ", trackinfo.track_number, ", data offset in file ", (int)offset);
 
@@ -1119,7 +1119,7 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
     getTrackFromLBA(parser, lba, &trackinfo);
 
     // Figure out the data offset in the file
-    uint64_t offset = trackinfo.file_offset + trackinfo.sector_length * (lba - trackinfo.data_start);
+    uint64_t offset = trackinfo.file_offset + trackinfo.sector_length * (lba - trackinfo.track_start);
     dbgmsg("------ Read CD: ", (int)length, " sectors starting at ", (int)lba,
            ", track number ", trackinfo.track_number, ", sector size ", (int)trackinfo.sector_length,
            ", main channel ", main_channel, ", sub channel ", sub_channel,
