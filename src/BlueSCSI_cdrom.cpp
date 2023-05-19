@@ -494,12 +494,12 @@ static void doReadTOC(bool MSF, uint8_t track, uint16_t allocationLength)
     uint8_t *trackdata = &scsiDev.data[4];
     int trackcount = 0;
     int firsttrack = -1;
-    int lasttrack = -1;
+    const CUETrackInfo *lasttrack = nullptr;
     const CUETrackInfo *trackinfo;
     while ((trackinfo = parser.next_track()) != NULL)
     {
         if (firsttrack < 0) firsttrack = trackinfo->track_number;
-        lasttrack = trackinfo->track_number;
+        lasttrack = trackinfo;
 
         if (track <= trackinfo->track_number)
         {
@@ -512,7 +512,7 @@ static void doReadTOC(bool MSF, uint8_t track, uint16_t allocationLength)
     CUETrackInfo leadout = {};
     leadout.track_number = 0xAA;
     leadout.track_mode = CUETrack_MODE1_2048;
-    leadout.data_start = img.scsiSectors;
+    leadout.data_start = getLeadOutLBA(lasttrack);
     formatTrackInfo(&leadout, &trackdata[8 * trackcount], MSF);
     trackcount += 1;
 
@@ -521,7 +521,7 @@ static void doReadTOC(bool MSF, uint8_t track, uint16_t allocationLength)
     scsiDev.data[0] = toc_length >> 8;
     scsiDev.data[1] = toc_length & 0xFF;
     scsiDev.data[2] = firsttrack;
-    scsiDev.data[3] = lasttrack;
+    scsiDev.data[3] = (lasttrack != nullptr) ? lasttrack->track_number : 0;
 
     if (track != 0xAA && trackcount < 2)
     {
