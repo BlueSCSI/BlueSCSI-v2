@@ -1113,6 +1113,19 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
            ", main channel ", main_channel, ", sub channel ", sub_channel,
            ", data offset in file ", (int)offset);
 
+    // Ensure read is not out of range of the image
+    uint64_t readend = offset + trackinfo.sector_length * length;
+    if (readend > img.file.size())
+    {
+        logmsg("WARNING: Host attempted CD read at sector ", lba, "+", length,
+              ", exceeding image size ", img.file.size());
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.target->sense.asc = LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
+        scsiDev.phase = STATUS;
+        return;
+    }
+
     // Verify sector type
     if (sector_type != 0)
     {
