@@ -65,9 +65,6 @@ struct CUETrackInfo
     // Unstored pregap length, in CD frames, or 0
     uint32_t unstored_pregap_length;
 
-    // LBA start position of the pregap of this track (in CD frames)
-    uint32_t pregap_start;
-
     // LBA start position of the data area of this track (in CD frames)
     uint32_t data_start;
 
