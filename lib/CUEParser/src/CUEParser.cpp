@@ -62,6 +62,7 @@ const CUETrackInfo *CUEParser::next_track()
 
     bool got_track = false;
     bool got_data = false;
+    bool got_paused = false;
     while(!(got_track && got_data) && start_line())
     {
         if (strncasecmp(m_parse_pos, "FILE ", 5) == 0)
@@ -85,6 +86,7 @@ const CUETrackInfo *CUEParser::next_track()
             m_track_info.track_start = 0;
             got_track = true;
             got_data = false;
+            got_paused = false;
         }
         else if (strncasecmp(m_parse_pos, "PREGAP ", 7) == 0)
         {
@@ -103,6 +105,7 @@ const CUETrackInfo *CUEParser::next_track()
             if (index == 0)
             {
                 m_track_info.track_start = time;
+                got_paused = true;
             }
             else if (index == 1)
             {
@@ -115,7 +118,7 @@ const CUETrackInfo *CUEParser::next_track()
         next_line();
     }
 
-    if (got_data && m_track_info.track_start == 0)
+    if (got_data && !got_paused)
     {
         m_track_info.track_start = m_track_info.data_start;
     }
