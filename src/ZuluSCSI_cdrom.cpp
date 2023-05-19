@@ -336,7 +336,7 @@ static void doReadSessionInfoSimple(bool msf, uint16_t allocationLength)
     scsiDev.phase = DATA_IN;
 }
 
-static void doReadFullTOCSimple(uint8_t session, uint16_t allocationLength)
+static void doReadFullTOCSimple(uint8_t session, uint16_t allocationLength, bool useBCD)
 {
     // We only support session 1.
     if (session > 1)
@@ -357,7 +357,11 @@ static void doReadFullTOCSimple(uint8_t session, uint16_t allocationLength)
             scsiDev.target->cfg->sdSectorStart,
             scsiDev.target->liveCfg.bytesPerSector,
             scsiDev.target->cfg->scsiSectors);
-        LBA2MSF(capacity, &scsiDev.data[34], false);
+        if (useBCD) {
+            LBA2MSFBCD(capacity, &scsiDev.data[34], false);
+        } else {
+            LBA2MSF(capacity, &scsiDev.data[34], false);
+        }
 
         if (len > allocationLength)
         {
@@ -561,7 +565,7 @@ static void doReadSessionInfo(bool msf, uint16_t allocationLength)
 
 // Format track info read from cue sheet into the format used by ReadFullTOC command.
 // Refer to T10/1545-D MMC-4 Revision 5a, "Response Format 0010b: Raw TOC"
-static void formatRawTrackInfo(const CUETrackInfo *track, uint8_t *dest)
+static void formatRawTrackInfo(const CUETrackInfo *track, uint8_t *dest, bool useBCD)
 {
     uint8_t control_adr = 0x14; // Digital track
 
@@ -583,17 +587,21 @@ static void formatRawTrackInfo(const CUETrackInfo *track, uint8_t *dest)
     dest[6] = 0x00;
     dest[7] = 0; // HOUR
 
-    LBA2MSF(track->data_start, &dest[8], false);
+    if (useBCD) {
+        LBA2MSFBCD(track->data_start, &dest[8], false);
+    } else {
+        LBA2MSF(track->data_start, &dest[8], false);
+    }
 }
 
-static void doReadFullTOC(uint8_t session, uint16_t allocationLength)
+static void doReadFullTOC(uint8_t session, uint16_t allocationLength, bool useBCD)
 {
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     CUEParser parser;
     if (!loadCueSheet(img, parser))
     {
         // No CUE sheet, use hardcoded data
-        return doReadFullTOCSimple(session, allocationLength);
+        return doReadFullTOCSimple(session, allocationLength, useBCD);
     }
 
     // We only support session 1.
@@ -627,7 +635,7 @@ static void doReadFullTOC(uint8_t session, uint16_t allocationLength)
         }
         lasttrack = trackinfo;
 
-        formatRawTrackInfo(trackinfo, &scsiDev.data[len]);
+        formatRawTrackInfo(trackinfo, &scsiDev.data[len], useBCD);
         trackcount += 1;
         len += 11;
     }
@@ -645,7 +653,11 @@ static void doReadFullTOC(uint8_t session, uint16_t allocationLength)
     }
 
     // Leadout track position
-    LBA2MSF(getLeadOutLBA(lasttrack), &scsiDev.data[34], false);
+    if (useBCD) {
+        LBA2MSFBCD(getLeadOutLBA(lasttrack), &scsiDev.data[34], false);
+    } else {
+        LBA2MSF(getLeadOutLBA(lasttrack), &scsiDev.data[34], false);
+    }
 
     // Correct the record length in header
     uint16_t toclen = len - 2;
@@ -1520,15 +1532,34 @@ extern "C" int scsiCDRomCommand()
             (((uint32_t) scsiDev.cdb[7]) << 8) +
             scsiDev.cdb[8];
 
-        // Reject MMC commands for now, otherwise the TOC data format
-        // won't be understood.
         // The "format" field is reserved for SCSI-2
         uint8_t format = scsiDev.cdb[2] & 0x0F;
+
+        // Matshita SCSI-2 drives appear to use the high 2 bits of the CDB
+        // control byte to switch on session info (0x40) and full toc (0x80)
+        // responses that are very similar to the standard formats described
+        // in MMC-1. These vendor flags must have been pretty common because
+        // even a modern SATA drive (ASUS DRW-24B1ST j) responds to them
+        // (though it always replies in hex rather than bcd)
+        //
+        // The session information page is identical to MMC. The full TOC page
+        // is identical _except_ it returns addresses in bcd rather than hex.
+        bool useBCD = false;
+        if (format == 0 && scsiDev.cdb[9] == 0x80)
+        {
+            format = 2;
+            useBCD = true;
+        }
+        else if (format == 0 && scsiDev.cdb[9] == 0x40)
+        {
+            format = 1;
+        }
+
         switch (format)
         {
             case 0: doReadTOC(MSF, track, allocationLength); break; // SCSI-2
             case 1: doReadSessionInfo(MSF, allocationLength); break; // MMC2
-            case 2: doReadFullTOC(track, allocationLength); break; // MMC2
+            case 2: doReadFullTOC(track, allocationLength, useBCD); break; // MMC2
             default:
             {
                 scsiDev.status = CHECK_CONDITION;
