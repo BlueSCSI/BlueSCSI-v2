@@ -581,7 +581,7 @@ static void formatRawTrackInfo(const CUETrackInfo *track, uint8_t *dest)
     dest[6] = 0x00;
     dest[7] = 0; // HOUR
 
-    LBA2MSFBCD(track->data_start, &dest[8], false);
+    LBA2MSF(track->data_start, &dest[8], false);
 }
 
 static void doReadFullTOC(uint8_t session, uint16_t allocationLength)
@@ -628,7 +628,7 @@ static void doReadFullTOC(uint8_t session, uint16_t allocationLength)
     scsiDev.data[23] = lasttrack;
 
     // Leadout track position
-    LBA2MSFBCD(img.scsiSectors, &scsiDev.data[34], false);
+    LBA2MSF(img.scsiSectors, &scsiDev.data[34], false);
 
     // Correct the record length in header
     uint16_t toclen = len - 2;
