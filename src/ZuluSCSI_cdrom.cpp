@@ -1708,6 +1708,17 @@ extern "C" int scsiCDRomCommand()
 
         doReadSubchannel(time, subq, parameter, track_number, allocationLength);
     }
+    else if (command == 0x08)
+    {
+        // READ(6) for CDs (may need sector translation for cue file handling)
+        uint32_t lba =
+            (((uint32_t) scsiDev.cdb[1] & 0x1F) << 16) +
+            (((uint32_t) scsiDev.cdb[2]) << 8) +
+            scsiDev.cdb[3];
+        uint32_t blocks = scsiDev.cdb[4];
+
+        doReadCD(lba, blocks, 0, 0x10, 0, true);
+    }
     else if (command == 0x28)
     {
         // READ(10) for CDs (may need sector translation for cue file handling)
