@@ -1094,7 +1094,7 @@ static void doMechanismStatus(uint16_t allocation_length)
 /*******************************************/
 
 static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
-                     uint8_t main_channel, uint8_t sub_channel)
+                     uint8_t main_channel, uint8_t sub_channel, bool data_only)
 {
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
 
@@ -1205,6 +1205,16 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
     else
     {
         dbgmsg("---- Unsupported channel request for track type ", (int)trackinfo.track_mode);
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.target->sense.asc = 0x6400; // ILLEGAL MODE FOR THIS TRACK
+        scsiDev.phase = STATUS;
+        return;
+    }
+
+    if (data_only && sector_length != 2048)
+    {
+        dbgmsg("------ Host tried to read non-data sector with standard READ command");
         scsiDev.status = CHECK_CONDITION;
         scsiDev.target->sense.code = ILLEGAL_REQUEST;
         scsiDev.target->sense.asc = 0x6400; // ILLEGAL MODE FOR THIS TRACK
@@ -1674,7 +1684,7 @@ extern "C" int scsiCDRomCommand()
         uint8_t main_channel = scsiDev.cdb[9];
         uint8_t sub_channel = scsiDev.cdb[10];
 
-        doReadCD(lba, blocks, sector_type, main_channel, sub_channel);
+        doReadCD(lba, blocks, sector_type, main_channel, sub_channel, false);
     }
     else if (command == 0xB9)
     {
@@ -1685,7 +1695,7 @@ extern "C" int scsiCDRomCommand()
         uint8_t main_channel = scsiDev.cdb[9];
         uint8_t sub_channel = scsiDev.cdb[10];
 
-        doReadCD(start, end - start, sector_type, main_channel, sub_channel);
+        doReadCD(start, end - start, sector_type, main_channel, sub_channel, false);
     }
     else if (command == 0x42)
     {
@@ -1710,7 +1720,7 @@ extern "C" int scsiCDRomCommand()
             (((uint32_t) scsiDev.cdb[7]) << 8) +
             scsiDev.cdb[8];
 
-        doReadCD(lba, blocks, 0, 0x10, 0);
+        doReadCD(lba, blocks, 0, 0x10, 0, true);
     }
     else if (command == 0xA8)
     {
@@ -1726,7 +1736,7 @@ extern "C" int scsiCDRomCommand()
             (((uint32_t) scsiDev.cdb[8]) << 8) +
             scsiDev.cdb[9];
 
-        doReadCD(lba, blocks, 0, 0x10, 0);
+        doReadCD(lba, blocks, 0, 0x10, 0, true);
     }
     else if (command == 0x4E)
     {
