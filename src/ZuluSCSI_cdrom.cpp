@@ -1393,6 +1393,56 @@ static void doReadSubchannel(bool time, bool subq, uint8_t parameter, uint8_t tr
 
 }
 
+static bool doReadCapacity(uint32_t lba, uint8_t pmi)
+{
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+
+    CUEParser parser;
+    if (!loadCueSheet(img, parser))
+    {
+        // basic image, let the disk handler resolve
+        return false;
+    }
+
+    // find the last track on the disk
+    const CUETrackInfo *lasttrack = nullptr;
+    const CUETrackInfo *trackinfo;
+    while ((trackinfo = parser.next_track()) != NULL)
+    {
+        lasttrack = trackinfo;
+    }
+
+    uint32_t capacity = 0;
+    if (lasttrack != nullptr)
+    {
+        capacity = getLeadOutLBA(lasttrack);
+        capacity--; // shift to last addressable LBA
+        if (pmi && lba && lba > capacity)
+        {
+            // MMC technically specifies that PMI should be zero, but SCSI-2 allows this
+            // potentially consider treating either out-of-bounds or PMI set as an error
+            // for now just ignore this
+        }
+        dbgmsg("----- Reporting capacity as ", capacity);
+    }
+    else
+    {
+        logmsg("WARNING: unable to find capacity, no cue file found for ID ", img.scsiId);
+    }
+
+    scsiDev.data[0] = capacity >> 24;
+    scsiDev.data[1] = capacity >> 16;
+    scsiDev.data[2] = capacity >> 8;
+    scsiDev.data[3] = capacity;
+    scsiDev.data[4] = 0;
+    scsiDev.data[5] = 0;
+    scsiDev.data[6] = 0x08; // rest of code assumes 2048 here
+    scsiDev.data[7] = 0x00;
+    scsiDev.dataLen = 8;
+    scsiDev.phase = DATA_IN;
+    return true;
+}
+
 /**************************************/
 /* CD-ROM command dispatching         */
 /**************************************/
@@ -1431,6 +1481,34 @@ extern "C" int scsiCDRomCommand()
         {
             // flow through to disk handler
             commandHandled = 0;
+        }
+    }
+    else if (command == 0x25)
+    {
+        // READ CAPACITY
+        uint8_t reladdr = scsiDev.cdb[1] & 1;
+        uint32_t lba = (((uint32_t) scsiDev.cdb[2]) << 24) +
+            (((uint32_t) scsiDev.cdb[3]) << 16) +
+            (((uint32_t) scsiDev.cdb[4]) << 8) +
+            scsiDev.cdb[5];
+        uint8_t pmi = scsiDev.cdb[8] & 1;
+
+        // allow PMI as long as LBA is specified, this is permitted in SCSI-2
+        // we don't link commands, do not allow RELADDR
+        if ((!pmi && lba != 0) || reladdr)
+        {
+            scsiDev.status = CHECK_CONDITION;
+            scsiDev.target->sense.code = ILLEGAL_REQUEST;
+            scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+            scsiDev.phase = STATUS;
+        }
+        else
+        {
+            if (!doReadCapacity(lba, pmi))
+            {
+                // allow disk handler to resolve this one
+                commandHandled = 0;
+            }
         }
     }
     else if (command == 0x43)
