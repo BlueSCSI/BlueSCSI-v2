@@ -95,7 +95,7 @@ static const uint8_t SessionTOC[] =
 static const uint8_t FullTOC[] =
 {
     0x00, //  0: toc length, MSB
-    0x44, //  1: toc length, LSB
+    0x2E, //  1: toc length, LSB
     0x01, //  2: First session number
     0x01, //  3: Last session number,
     // A0 Descriptor
@@ -131,9 +131,9 @@ static const uint8_t FullTOC[] =
     0x00, // 31: Sec
     0x00, // 32: Frame
     0x00, // 33: Zero
-    0x79, // 34: LEADOUT position BCD
-    0x59, // 35: leadout PSEC BCD
-    0x74, // 36: leadout PFRAME BCD
+    0x00, // 34: LEADOUT position
+    0x00, // 35: leadout PSEC
+    0x00, // 36: leadout PFRAME
     // TRACK 1 Descriptor
     0x01, // 37: session number
     0x14, // 38: ADR/Control
@@ -336,12 +336,6 @@ static void doReadSessionInfoSimple(bool msf, uint16_t allocationLength)
     scsiDev.phase = DATA_IN;
 }
 
-static inline uint8_t
-fromBCD(uint8_t val)
-{
-    return ((val >> 4) * 10) + (val & 0xF);
-}
-
 static void doReadFullTOCSimple(uint8_t session, uint16_t allocationLength)
 {
     // We only support session 1.
@@ -357,21 +351,13 @@ static void doReadFullTOCSimple(uint8_t session, uint16_t allocationLength)
         uint32_t len = sizeof(FullTOC);
         memcpy(scsiDev.data, FullTOC, len);
 
-        if (false)
-        {
-            int descriptor = 4;
-            while (descriptor < len)
-            {
-                int i;
-                for (i = 0; i < 7; ++i)
-                {
-                    scsiDev.data[descriptor + i] =
-                        fromBCD(scsiDev.data[descriptor + 4 + i]);
-                }
-                descriptor += 11;
-            }
-
-        }
+        // update leadout position
+        // consistent 2048-byte blocks makes this easier than bin/cue version
+        uint32_t capacity = getScsiCapacity(
+            scsiDev.target->cfg->sdSectorStart,
+            scsiDev.target->liveCfg.bytesPerSector,
+            scsiDev.target->cfg->scsiSectors);
+        LBA2MSF(capacity, &scsiDev.data[34], false);
 
         if (len > allocationLength)
         {
