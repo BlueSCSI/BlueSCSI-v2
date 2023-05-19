@@ -496,7 +496,7 @@ static void doReadTOC(bool MSF, uint8_t track, uint16_t allocationLength)
     // Format lead-out track info
     CUETrackInfo leadout = {};
     leadout.track_number = 0xAA;
-    leadout.track_mode = CUETrack_MODE1_2048;
+    leadout.track_mode = (lasttrack != nullptr) ? lasttrack->track_mode : CUETrack_MODE1_2048;
     leadout.data_start = getLeadOutLBA(lasttrack);
     formatTrackInfo(&leadout, &trackdata[8 * trackcount], MSF);
     trackcount += 1;
@@ -617,7 +617,14 @@ static void doReadFullTOC(uint8_t session, uint16_t allocationLength)
     const CUETrackInfo *trackinfo;
     while ((trackinfo = parser.next_track()) != NULL)
     {
-        if (firsttrack < 0) firsttrack = trackinfo->track_number;
+        if (firsttrack < 0)
+        {
+            firsttrack = trackinfo->track_number;
+            if (trackinfo->track_mode == CUETrack_AUDIO)
+            {
+                scsiDev.data[5] = 0x10;
+            }
+        }
         lasttrack = trackinfo;
 
         formatRawTrackInfo(trackinfo, &scsiDev.data[len]);
@@ -627,8 +634,14 @@ static void doReadFullTOC(uint8_t session, uint16_t allocationLength)
 
     // First and last track numbers
     scsiDev.data[12] = firsttrack;
-    if (lasttrack != nullptr) {
+    if (lasttrack != nullptr)
+    {
         scsiDev.data[23] = lasttrack->track_number;
+        if (lasttrack->track_mode == CUETrack_AUDIO)
+        {
+            scsiDev.data[16] = 0x10;
+            scsiDev.data[27] = 0x10;
+        }
     }
 
     // Leadout track position
