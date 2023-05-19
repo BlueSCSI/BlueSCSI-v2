@@ -221,6 +221,22 @@ static int32_t MSF2LBA(uint8_t m, uint8_t s, uint8_t f, bool relative)
     return lba;
 }
 
+// Gets the LBA position of the lead-out for the current image
+static uint32_t getLeadOutLBA(const CUETrackInfo* lasttrack)
+{
+    if (lasttrack != nullptr)
+    {
+        image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+        uint32_t lastTrackBlocks = (img.file.size() - lasttrack->file_offset)
+                / lasttrack->sector_length;
+        return lasttrack->data_start + lastTrackBlocks + 1;
+    }
+    else
+    {
+        return 1;
+    }
+}
+
 static void doReadTOCSimple(bool MSF, uint8_t track, uint16_t allocationLength)
 {
     if (track == 0xAA)
@@ -611,12 +627,12 @@ static void doReadFullTOC(uint8_t session, uint16_t allocationLength)
     // Add track descriptors
     int trackcount = 0;
     int firsttrack = -1;
-    int lasttrack = -1;
+    const CUETrackInfo *lasttrack = nullptr;
     const CUETrackInfo *trackinfo;
     while ((trackinfo = parser.next_track()) != NULL)
     {
         if (firsttrack < 0) firsttrack = trackinfo->track_number;
-        lasttrack = trackinfo->track_number;
+        lasttrack = trackinfo;
 
         formatRawTrackInfo(trackinfo, &scsiDev.data[len]);
         trackcount += 1;
@@ -625,10 +641,12 @@ static void doReadFullTOC(uint8_t session, uint16_t allocationLength)
 
     // First and last track numbers
     scsiDev.data[12] = firsttrack;
-    scsiDev.data[23] = lasttrack;
+    if (lasttrack != nullptr) {
+        scsiDev.data[23] = lasttrack->track_number;
+    }
 
     // Leadout track position
-    LBA2MSF(img.scsiSectors, &scsiDev.data[34], false);
+    LBA2MSF(getLeadOutLBA(lasttrack), &scsiDev.data[34], false);
 
     // Correct the record length in header
     uint16_t toclen = len - 2;
