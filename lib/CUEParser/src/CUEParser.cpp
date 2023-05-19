@@ -80,7 +80,6 @@ const CUETrackInfo *CUEParser::next_track()
             m_track_info.track_number = strtoul(track_num, &endptr, 10);
             m_track_info.track_mode = parse_track_mode(skip_space(endptr));
             m_track_info.sector_length = get_sector_length(m_track_info.file_mode, m_track_info.track_mode);
-            m_track_info.pregap_start = 0;
             m_track_info.unstored_pregap_length = 0;
             m_track_info.data_start = 0;
             m_track_info.track_start = 0;
@@ -91,7 +90,6 @@ const CUETrackInfo *CUEParser::next_track()
         {
             const char *time_str = skip_space(m_parse_pos + 7);
             m_track_info.unstored_pregap_length = parse_time(time_str);
-            m_track_info.pregap_start = 0;
         }
         else if (strncasecmp(m_parse_pos, "INDEX ", 6) == 0)
         {
@@ -104,7 +102,6 @@ const CUETrackInfo *CUEParser::next_track()
 
             if (index == 0)
             {
-                m_track_info.pregap_start = time;
                 m_track_info.track_start = time;
             }
             else if (index == 1)
