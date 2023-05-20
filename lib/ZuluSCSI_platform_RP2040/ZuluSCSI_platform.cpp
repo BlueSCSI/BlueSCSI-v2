@@ -196,6 +196,7 @@ void platform_init()
 #else
     //        pin             function       pup   pdown  out    state fast
     gpio_conf(GPIO_EXP_AUDIO, GPIO_FUNC_SPI, true,false, false,  true, true);
+    gpio_conf(GPIO_EXP_SPARE, GPIO_FUNC_SIO, true,false, false,  true, false);
     // configuration of corresponding SPI unit occurs in audio_setup()
 #endif
 }
@@ -615,6 +616,18 @@ void platform_poll()
     
 #ifdef ENABLE_AUDIO_OUTPUT
     audio_poll();
+#endif
+}
+
+uint8_t platform_get_buttons()
+{
+#ifdef ENABLE_AUDIO_OUTPUT
+    uint8_t pins = 0x00;
+    // pulled to VCC via resistor, sinking when pressed
+    if (!gpio_get(GPIO_EXP_SPARE)) pins |= 0x01;
+    return pins;
+#else
+    return 0;
 #endif
 }
 
