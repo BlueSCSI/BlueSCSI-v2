@@ -466,7 +466,8 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
     img.rightAlignStrings = ini_getbool(section, "RightAlignStrings", 0, CONFIGFILE);
     img.prefetchbytes = ini_getl(section, "PrefetchBytes", img.prefetchbytes, CONFIGFILE);
     img.reinsert_on_inquiry = ini_getbool(section, "ReinsertCDOnInquiry", 0, CONFIGFILE);
-    
+    img.ejectButton = ini_getl(section, "EjectButton", 0, CONFIGFILE);
+
     char tmp[32];
     memset(tmp, 0, sizeof(tmp));
     ini_gets(section, "Vendor", "", tmp, sizeof(tmp), CONFIGFILE);
@@ -542,6 +543,55 @@ image_config_t &scsiDiskGetImageConfig(int target_idx)
 {
     assert(target_idx >= 0 && target_idx < S2S_MAX_TARGETS);
     return g_DiskImages[target_idx];
+}
+
+static void diskEjectAction(uint8_t buttonId)
+{
+    log("Eject button pressed for channel ", buttonId);
+    for (uint8_t i = 0; i < S2S_MAX_TARGETS; i++)
+    {
+        image_config_t img = g_DiskImages[i];
+        if (img.ejectButton == buttonId)
+        {
+            if (img.deviceType == S2S_CFG_OPTICAL)
+            {
+                cdromPerformEject(img);
+            }
+        }
+    }
+}
+
+uint8_t diskEjectButtonUpdate(bool immediate)
+{
+    // treat '1' to '0' transitions as eject actions
+    static uint8_t previous = 0x00;
+    uint8_t bitmask = platform_get_buttons();
+    uint8_t ejectors = (previous ^ bitmask) & previous;
+    previous = bitmask;
+
+    // defer ejection until the bus is idle
+    static uint8_t deferred = 0x00;
+    if (!immediate)
+    {
+        deferred |= ejectors;
+        return 0;
+    }
+    else
+    {
+        ejectors |= deferred;
+        deferred = 0;
+
+        if (ejectors)
+        {
+            uint8_t mask = 1;
+            for (uint8_t i = 0; i < 8; i++)
+            {
+                if (ejectors & mask) diskEjectAction(i + 1);
+                mask = mask << 1;
+            }
+        }
+        return ejectors;
+    }
 }
 
 /*******************************/
@@ -1067,6 +1117,7 @@ void diskDataOut()
            && !scsiDev.resetFlag)
     {
         platform_poll();
+        diskEjectButtonUpdate(false);
 
         // Figure out how many contiguous bytes are available for writing to SD card.
         uint32_t bufsize = sizeof(scsiDev.data);
@@ -1234,6 +1285,7 @@ void scsiDiskStartRead(uint32_t lba, uint32_t blocks)
             while (!scsiIsWriteFinished(NULL))
             {
                 platform_poll();
+                diskEjectButtonUpdate(false);
             }
 
             scsiFinishWrite();
@@ -1306,6 +1358,7 @@ static void start_dataInTransfer(uint8_t *buffer, uint32_t count)
         }
 
         platform_poll();
+        diskEjectButtonUpdate(false);
     }
     if (scsiDev.resetFlag) return;
 
@@ -1326,6 +1379,7 @@ static void start_dataInTransfer(uint8_t *buffer, uint32_t count)
     platform_set_sd_callback(NULL, NULL);
 
     platform_poll();
+    diskEjectButtonUpdate(false);
 }
 
 static void diskDataIn()
@@ -1380,6 +1434,7 @@ static void diskDataIn()
         while (!scsiIsWriteFinished(NULL) && prefetch_sectors > 0 && !scsiDev.resetFlag)
         {
             platform_poll();
+            diskEjectButtonUpdate(false);
 
             // Check if prefetch buffer is free
             g_disk_transfer.buffer = g_scsi_prefetch.buffer + g_scsi_prefetch.bytes;
@@ -1410,6 +1465,7 @@ static void diskDataIn()
         while (!scsiIsWriteFinished(NULL))
         {
             platform_poll();
+            diskEjectButtonUpdate(false);
         }
 
         scsiFinishWrite();

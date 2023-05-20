@@ -59,6 +59,13 @@ void platform_poll()
 
 }
 
+// Called periodically to get the state of any buttons installed on the platform.
+// If none are installed the below function is fine.
+uint8_t platform_get_buttons()
+{
+    return 0;
+}
+
 /**********************************************/
 /* Mapping from data bytes to GPIO BOP values */
 /**********************************************/
