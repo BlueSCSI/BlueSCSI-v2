@@ -812,6 +812,18 @@ bool cdromValidateCueSheet(image_config_t &img)
 /* Ejection and image switching logic */
 /**************************************/
 
+void cdromPerformEject(image_config_t &img)
+{
+    uint8_t target = img.scsiId & 7;
+#if ENABLE_AUDIO_OUTPUT
+    // terminate audio playback if active on this target (MMC-1 Annex C)
+    audio_stop(target);
+#endif
+    dbgmsg("------ CDROM open tray on ID ", (int)target);
+    img.ejected = true;
+    img.cdrom_events = 3; // Media removal
+}
+
 // Reinsert any ejected CDROMs on reboot
 void cdromReinsertFirstImage(image_config_t &img)
 {
@@ -1232,6 +1244,7 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
     for (uint32_t idx = 0; idx < length; idx++)
     {
         platform_poll();
+        diskEjectButtonUpdate(false);
 
         img.file.seek(offset + idx * trackinfo.sector_length + skip_begin);
 
@@ -1247,6 +1260,7 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
                 scsiDev.resetFlag = 1;
             }
             platform_poll();
+            diskEjectButtonUpdate(false);
         }
         if (scsiDev.resetFlag) break;
 
@@ -1405,25 +1419,19 @@ extern "C" int scsiCDRomCommand()
     uint8_t command = scsiDev.cdb[0];
     if (command == 0x1B)
     {
-#if ENABLE_AUDIO_OUTPUT
-        // terminate audio playback if active on this target (Annex C)
-        audio_stop(img.scsiId & 7);
-#endif
         if ((scsiDev.cdb[4] & 2))
         {
             // CD-ROM load & eject
             int start = scsiDev.cdb[4] & 1;
             if (start)
             {
-                dbgmsg("------ CDROM close tray");
+                dbgmsg("------ CDROM close tray on ID ", (int)(img.scsiId & 7));
                 img.ejected = false;
                 img.cdrom_events = 2; // New media
             }
             else
             {
-                dbgmsg("------ CDROM open tray");
-                img.ejected = true;
-                img.cdrom_events = 3; // Media removal
+                cdromPerformEject(img);
             }
         }
         else

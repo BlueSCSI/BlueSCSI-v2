@@ -493,6 +493,11 @@ void platform_poll()
     adc_poll();
 }
 
+uint8_t platform_get_buttons()
+{
+    return 0;
+}
+
 /***********************/
 /* Flash reprogramming */
 /***********************/

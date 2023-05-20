@@ -11,6 +11,9 @@
 // Called by scsi.c from SCSI2SD
 extern "C" int scsiCDRomCommand(void);
 
+// Eject the given CD-ROM
+void cdromPerformEject(image_config_t &img);
+
 // Reinsert ejected CD-ROM and restart from first image
 void cdromReinsertFirstImage(image_config_t &img);
 
