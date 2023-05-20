@@ -19,53 +19,30 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
 
-// Simple wrapper file that diverts boot from main program to bootloader
-// when building the bootloader image by build_bootloader.py.
+// SCSI subroutines that use hardware DMA for transfer in the background.
+// Uses either GD32 timer or external GreenPAK to implement REQ pin toggling.
 
-#ifdef ZULUSCSI_BOOTLOADER_MAIN
+#pragma once
 
-extern "C" int bootloader_main(void);
+#include <stdint.h>
+#include "ZuluSCSI_platform.h"
+#include "greenpak.h"
 
-#ifdef USE_ARDUINO
-extern "C" void setup(void)
-{
-    bootloader_main();
-}
-extern "C" void loop(void)
-{
-}
-#else
-int main(void)
-{
-    return bootloader_main();
-}
+#ifdef SCSI_TIMER
+#define SCSI_ACCEL_DMA_AVAILABLE 1
 #endif
 
-#else
+/* Initialization function decides whether to use timer or GreenPAK */
+void scsi_accel_greenpak_dma_init();
+void scsi_accel_timer_dma_init();
 
-extern "C" void zuluscsi_setup(void);
-extern "C" void zuluscsi_main_loop(void);
+/* Common functions */
+void scsi_accel_dma_startWrite(const uint8_t* data, uint32_t count, volatile int *resetFlag);
+void scsi_accel_dma_stopWrite();
+void scsi_accel_dma_finishWrite(volatile int *resetFlag);
 
-#ifdef USE_ARDUINO
-extern "C" void setup(void)
-{
-    zuluscsi_setup();
-}
+// Query whether the data at pointer has already been read, i.e. buffer can be reused.
+// If data is NULL, checks if all writes have completed.
+bool scsi_accel_dma_isWriteFinished(const uint8_t* data);
 
-extern "C" void loop(void)
-{
-    zuluscsi_main_loop();
-}
-#else
-int main(void)
-{
-    
-    zuluscsi_setup();
-    while (1)
-    {
-        zuluscsi_main_loop();
-    }
-}
-#endif
 
-#endif
