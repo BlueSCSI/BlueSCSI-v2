@@ -706,6 +706,7 @@ extern "C" void zuluscsi_main_loop(void)
 
   platform_reset_watchdog();
   platform_poll();
+  diskEjectButtonUpdate(true);
   
 #ifdef PLATFORM_HAS_INITIATOR_MODE
   if (platform_is_initiator_mode_enabled())

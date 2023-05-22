@@ -19,7 +19,7 @@ fi
 repo="ZuluSCSI/ZuluSCSI-firmware"
 
 # Find firmware compilation time
-fwtime=$(grep 'FW Version' $logfile | tail -n 1 | egrep -o '[A-Z][a-z][a-z] [0-9]+ [0-9]+ [0-9:]+')
+fwtime=$(grep 'FW Version' $logfile | tail -n 1 | egrep -o '[A-Z][a-z][a-z]\s+[0-9]+\s+[0-9]+\s+[0-9:]+')
 
 # Check if the firmware file is available locally
 echo "Searching for firmware compiled at $fwtime"
