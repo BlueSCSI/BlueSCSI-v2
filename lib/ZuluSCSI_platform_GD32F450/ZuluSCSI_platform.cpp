@@ -554,6 +554,12 @@ void platform_poll()
     usb_log_poll();
 }
 
+uint8_t platform_get_buttons()
+{
+    return 0;
+}
+
+
 /***********************/
 /* Flash reprogramming */
 /***********************/
