@@ -49,6 +49,10 @@ struct image_config_t: public S2S_TargetCfg
     uint8_t cdrom_events;
     bool reinsert_on_inquiry;
 
+    // selects a physical button channel that will cause an eject action
+    // default option of '0' disables this functionality
+    uint8_t ejectButton;
+
     // For tape drive emulation, current position in blocks
     uint32_t tape_pos;
 
@@ -69,6 +73,11 @@ struct image_config_t: public S2S_TargetCfg
     // Warning about geometry settings
     bool geometrywarningprinted;
 };
+
+// Should be polled intermittently to update the platform eject buttons.
+// Call with 'true' only if ejections should be performed immediately (typically when not busy)
+// Returns a mask of the buttons that registered an 'eject' action.
+uint8_t diskEjectButtonUpdate(bool immediate);
 
 // Reset all image configuration to empty reset state, close all images.
 void scsiDiskResetImages();

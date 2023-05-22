@@ -110,6 +110,13 @@ void platform_reset_watchdog();
 // few milliseconds shouldn't disturb SCSI communication.
 void platform_poll();
 
+// Returns the state of any platform-specific buttons.
+// The returned value should be a mask for buttons 1-8 in bits 0-7 respectively,
+// where '1' is a button pressed and '0' is a button released.
+// Debouncing logic is left up to the specific implementation.
+// This function should return without significantly delay.
+uint8_t platform_get_buttons();
+
 // Set callback that will be called during data transfer to/from SD card.
 // This can be used to implement simultaneous transfer to SCSI bus.
 typedef void (*sd_callback_t)(uint32_t bytes_complete);
