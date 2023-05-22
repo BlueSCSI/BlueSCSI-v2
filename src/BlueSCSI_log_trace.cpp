@@ -20,7 +20,7 @@ static const char *getCommandName(uint8_t cmd)
     switch (cmd)
     {
         case 0x00: return "TestUnitReady";
-        case 0x01: return "RezeroUnit";
+        case 0x01: return "RezeroUnit/Rewind";
         case 0x03: return "RequestSense";
         case 0x04: return "FormatUnit";
         case 0x05: return "ReadBlockLimits";
@@ -35,6 +35,7 @@ static const char *getCommandName(uint8_t cmd)
         case 0x15: return "ModeSelect6";
         case 0x16: return "Reserve";
         case 0x17: return "Release";
+        case 0x19: return "Erase";
         case 0x1A: return "ModeSense";
         case 0x1B: return "StartStopUnit";
         case 0x1C: return "ReceiveDiagnostic";
@@ -47,7 +48,7 @@ static const char *getCommandName(uint8_t cmd)
         case 0x2C: return "Erase10";
         case 0x2E: return "WriteVerify";
         case 0x2F: return "Verify";
-        case 0x34: return "PreFetch";
+        case 0x34: return "PreFetch/ReadPosition";
         case 0x35: return "SynchronizeCache";
         case 0x36: return "LockUnlockCache";
         case 0x37: return "ReadDefectData";
