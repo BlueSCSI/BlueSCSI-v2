@@ -31,6 +31,31 @@ extern "C" {
 #include <scsi.h>
 }
 
+static void doSeek(uint32_t lba)
+{
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+    uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+    uint32_t capacity = img.file.size() / bytesPerSector;
+
+    dbgmsg("------ Locate tape to LBA ", (int)lba);
+
+    if (lba >= capacity)
+    {
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.target->sense.asc = LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
+        scsiDev.phase = STATUS;
+    }
+    else
+    {
+        delay(10);
+        img.tape_pos = lba;
+
+        scsiDev.status = GOOD;
+        scsiDev.phase = STATUS;
+    }
+}
+
 extern "C" int scsiTapeCommand()
 {
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
@@ -158,6 +183,12 @@ extern "C" int scsiTapeCommand()
             img.tape_pos += length;
         }
     }
+    else if (command == 0x19)
+    {
+        // Erase
+        // Just a stub implementation, fake erase to end of tape
+        img.tape_pos = img.scsiSectors;
+    }
     else if (command == 0x01)
     {
         // REWIND
@@ -229,6 +260,47 @@ extern "C" int scsiTapeCommand()
             scsiDev.target->sense.asc = 0; // END-OF-DATA DETECTED
             scsiDev.phase = STATUS;
         }
+    }
+    else if (command == 0x2B)
+    {
+        // Seek/Locate 10
+        uint32_t lba =
+            (((uint32_t) scsiDev.cdb[3]) << 24) +
+            (((uint32_t) scsiDev.cdb[4]) << 16) +
+            (((uint32_t) scsiDev.cdb[5]) << 8) +
+            scsiDev.cdb[6];
+
+        doSeek(lba);
+    }
+    else if (command == 0x34)
+    {
+        // ReadPosition
+        uint32_t lba = img.tape_pos;
+        scsiDev.data[0] = 0x00;
+        if (lba == 0) scsiDev.data[0] |= 0x80;
+        if (lba >= img.scsiSectors) scsiDev.data[0] |= 0x40;
+        scsiDev.data[1] = 0x00;
+        scsiDev.data[2] = 0x00;
+        scsiDev.data[3] = 0x00;
+        scsiDev.data[4] = (lba >> 24) & 0xFF; // Next block on tape
+        scsiDev.data[5] = (lba >> 16) & 0xFF;
+        scsiDev.data[6] = (lba >>  8) & 0xFF;
+        scsiDev.data[7] = (lba >>  0) & 0xFF;
+        scsiDev.data[8] = (lba >> 24) & 0xFF; // Last block in buffer
+        scsiDev.data[9] = (lba >> 16) & 0xFF;
+        scsiDev.data[10] = (lba >>  8) & 0xFF;
+        scsiDev.data[11] = (lba >>  0) & 0xFF;
+        scsiDev.data[12] = 0x00;
+        scsiDev.data[13] = 0x00;
+        scsiDev.data[14] = 0x00;
+        scsiDev.data[15] = 0x00;
+        scsiDev.data[16] = 0x00;
+        scsiDev.data[17] = 0x00;
+        scsiDev.data[18] = 0x00;
+        scsiDev.data[19] = 0x00;
+
+        scsiDev.phase = DATA_IN;
+        scsiDev.dataLen = 20;
     }
     else
     {
