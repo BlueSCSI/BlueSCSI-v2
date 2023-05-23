@@ -224,7 +224,7 @@ static int32_t MSF2LBA(uint8_t m, uint8_t s, uint8_t f, bool relative)
 // Gets the LBA position of the lead-out for the current image
 static uint32_t getLeadOutLBA(const CUETrackInfo* lasttrack)
 {
-    if (lasttrack != nullptr)
+    if (lasttrack != nullptr && lasttrack->track_number != 0)
     {
         image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
         uint32_t lastTrackBlocks = (img.file.size() - lasttrack->file_offset)
@@ -483,12 +483,12 @@ static void doReadTOC(bool MSF, uint8_t track, uint16_t allocationLength)
     uint8_t *trackdata = &scsiDev.data[4];
     int trackcount = 0;
     int firsttrack = -1;
-    const CUETrackInfo *lasttrack = nullptr;
+    CUETrackInfo lasttrack = {0};
     const CUETrackInfo *trackinfo;
     while ((trackinfo = parser.next_track()) != NULL)
     {
         if (firsttrack < 0) firsttrack = trackinfo->track_number;
-        lasttrack = trackinfo;
+        lasttrack = *trackinfo;
 
         if (track <= trackinfo->track_number)
         {
@@ -500,8 +500,8 @@ static void doReadTOC(bool MSF, uint8_t track, uint16_t allocationLength)
     // Format lead-out track info
     CUETrackInfo leadout = {};
     leadout.track_number = 0xAA;
-    leadout.track_mode = (lasttrack != nullptr) ? lasttrack->track_mode : CUETrack_MODE1_2048;
-    leadout.data_start = getLeadOutLBA(lasttrack);
+    leadout.track_mode = (lasttrack.track_number != 0) ? lasttrack.track_mode : CUETrack_MODE1_2048;
+    leadout.data_start = getLeadOutLBA(&lasttrack);
     formatTrackInfo(&leadout, &trackdata[8 * trackcount], MSF);
     trackcount += 1;
 
@@ -510,7 +510,7 @@ static void doReadTOC(bool MSF, uint8_t track, uint16_t allocationLength)
     scsiDev.data[0] = toc_length >> 8;
     scsiDev.data[1] = toc_length & 0xFF;
     scsiDev.data[2] = firsttrack;
-    scsiDev.data[3] = (lasttrack != nullptr) ? lasttrack->track_number : 0;
+    scsiDev.data[3] = lasttrack.track_number;
 
     if (track != 0xAA && trackcount < 2)
     {
@@ -621,7 +621,7 @@ static void doReadFullTOC(uint8_t session, uint16_t allocationLength, bool useBC
     // Add track descriptors
     int trackcount = 0;
     int firsttrack = -1;
-    const CUETrackInfo *lasttrack = nullptr;
+    CUETrackInfo lasttrack = {0};
     const CUETrackInfo *trackinfo;
     while ((trackinfo = parser.next_track()) != NULL)
     {
@@ -633,7 +633,7 @@ static void doReadFullTOC(uint8_t session, uint16_t allocationLength, bool useBC
                 scsiDev.data[5] = 0x10;
             }
         }
-        lasttrack = trackinfo;
+        lasttrack = *trackinfo;
 
         formatRawTrackInfo(trackinfo, &scsiDev.data[len], useBCD);
         trackcount += 1;
@@ -642,10 +642,10 @@ static void doReadFullTOC(uint8_t session, uint16_t allocationLength, bool useBC
 
     // First and last track numbers
     scsiDev.data[12] = firsttrack;
-    if (lasttrack != nullptr)
+    if (lasttrack.track_number != 0)
     {
-        scsiDev.data[23] = lasttrack->track_number;
-        if (lasttrack->track_mode == CUETrack_AUDIO)
+        scsiDev.data[23] = lasttrack.track_number;
+        if (lasttrack.track_mode == CUETrack_AUDIO)
         {
             scsiDev.data[16] = 0x10;
             scsiDev.data[27] = 0x10;
@@ -654,9 +654,9 @@ static void doReadFullTOC(uint8_t session, uint16_t allocationLength, bool useBC
 
     // Leadout track position
     if (useBCD) {
-        LBA2MSFBCD(getLeadOutLBA(lasttrack), &scsiDev.data[34], false);
+        LBA2MSFBCD(getLeadOutLBA(&lasttrack), &scsiDev.data[34], false);
     } else {
-        LBA2MSF(getLeadOutLBA(lasttrack), &scsiDev.data[34], false);
+        LBA2MSF(getLeadOutLBA(&lasttrack), &scsiDev.data[34], false);
     }
 
     // Correct the record length in header
@@ -1427,17 +1427,17 @@ static bool doReadCapacity(uint32_t lba, uint8_t pmi)
     }
 
     // find the last track on the disk
-    const CUETrackInfo *lasttrack = nullptr;
+    CUETrackInfo lasttrack = {0};
     const CUETrackInfo *trackinfo;
     while ((trackinfo = parser.next_track()) != NULL)
     {
-        lasttrack = trackinfo;
+        lasttrack = *trackinfo;
     }
 
     uint32_t capacity = 0;
-    if (lasttrack != nullptr)
+    if (lasttrack.track_number != 0)
     {
-        capacity = getLeadOutLBA(lasttrack);
+        capacity = getLeadOutLBA(&lasttrack);
         capacity--; // shift to last addressable LBA
         if (pmi && lba && lba > capacity)
         {
