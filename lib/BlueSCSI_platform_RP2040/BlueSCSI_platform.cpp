@@ -108,8 +108,8 @@ void platform_init()
     gpio_conf(SCSI_IN_ACK,    GPIO_FUNC_SIO, false, false, false, false, false);
     gpio_conf(SCSI_IN_ATN,    GPIO_FUNC_SIO, false, false, false, false, false);
     delay(10); /// Settle time
-    bool optionS1 = !gpio_get(SCSI_IN_ATN);
-    bool optionS2 = !gpio_get(SCSI_IN_ACK);
+    (void)!gpio_get(SCSI_IN_ATN); // S1
+    (void)!gpio_get(SCSI_IN_ACK); // S2
 
     /* Initialize logging to SWO pin (UART0) */
     gpio_conf(SWO_PIN,        GPIO_FUNC_UART,false,false, true,  false, true);
