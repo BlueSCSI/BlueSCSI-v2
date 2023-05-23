@@ -57,11 +57,12 @@ void CUEParser::restart()
 const CUETrackInfo *CUEParser::next_track()
 {
     // Previous track info is needed to track file offset
-    uint32_t prev_data_start = m_track_info.data_start;
+    uint32_t prev_track_start = m_track_info.track_start;
     uint32_t prev_sector_length = get_sector_length(m_track_info.file_mode, m_track_info.track_mode); // Defaults to 2352 before first track
 
     bool got_track = false;
     bool got_data = false;
+    bool got_pause = false; // true if a period of silence (INDEX 00) was encountered for a track
     while(!(got_track && got_data) && start_line())
     {
         if (strncasecmp(m_parse_pos, "FILE ", 5) == 0)
@@ -70,7 +71,7 @@ const CUETrackInfo *CUEParser::next_track()
             m_track_info.file_mode = parse_file_mode(skip_space(p));
             m_track_info.file_offset = 0;
             m_track_info.track_mode = CUETrack_AUDIO;
-            prev_data_start = 0;
+            prev_track_start = 0;
             prev_sector_length = get_sector_length(m_track_info.file_mode, m_track_info.track_mode);
         }
         else if (strncasecmp(m_parse_pos, "TRACK ", 6) == 0)
@@ -80,18 +81,17 @@ const CUETrackInfo *CUEParser::next_track()
             m_track_info.track_number = strtoul(track_num, &endptr, 10);
             m_track_info.track_mode = parse_track_mode(skip_space(endptr));
             m_track_info.sector_length = get_sector_length(m_track_info.file_mode, m_track_info.track_mode);
-            m_track_info.pregap_start = 0;
             m_track_info.unstored_pregap_length = 0;
             m_track_info.data_start = 0;
             m_track_info.track_start = 0;
             got_track = true;
             got_data = false;
+            got_pause = false;
         }
         else if (strncasecmp(m_parse_pos, "PREGAP ", 7) == 0)
         {
             const char *time_str = skip_space(m_parse_pos + 7);
             m_track_info.unstored_pregap_length = parse_time(time_str);
-            m_track_info.pregap_start = 0;
         }
         else if (strncasecmp(m_parse_pos, "INDEX ", 6) == 0)
         {
@@ -104,12 +104,11 @@ const CUETrackInfo *CUEParser::next_track()
 
             if (index == 0)
             {
-                m_track_info.pregap_start = time;
                 m_track_info.track_start = time;
+                got_pause = true;
             }
             else if (index == 1)
             {
-                m_track_info.file_offset += (uint64_t)(time - prev_data_start) * prev_sector_length;
                 m_track_info.data_start = time;
                 got_data = true;
             }
@@ -118,15 +117,20 @@ const CUETrackInfo *CUEParser::next_track()
         next_line();
     }
 
-    if (got_data && m_track_info.track_start == 0)
+    if (got_data && !got_pause)
     {
         m_track_info.track_start = m_track_info.data_start;
     }
 
     if (got_track && got_data)
+    {
+        m_track_info.file_offset += (uint64_t)(m_track_info.track_start - prev_track_start) * prev_sector_length;
         return &m_track_info;
+    }
     else
+    {
         return nullptr;
+    }
 }
 
 bool CUEParser::start_line()
