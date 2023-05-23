@@ -53,25 +53,24 @@ struct CUETrackInfo
     // Source file name and file type, and offset to start of track data in bytes.
     char filename[CUE_MAX_FILENAME+1];
     CUEFileMode file_mode;
-    uint64_t file_offset;
+    uint64_t file_offset; // corresponds to track_start below
 
     // Track number and mode in CD format
     int track_number;
     CUETrackMode track_mode;
 
-    // Sector length for this track in bytes in the file, or 0 for audio files
+    // Sector length for this track in bytes, assuming BINARY or MOTOROLA file modes.
     uint32_t sector_length;
 
-    // Unstored pregap length, in CD frames, or 0
+    // The CD frames of PREGAP time at the start of this track, or 0 if none are present.
+    // These frames of silence are not stored in the underlying data file.
     uint32_t unstored_pregap_length;
 
-    // LBA start position of the pregap of this track (in CD frames)
-    uint32_t pregap_start;
-
-    // LBA start position of the data area of this track (in CD frames)
+    // LBA start position of the data area (INDEX 01) of this track (in CD frames)
     uint32_t data_start;
 
-    // Track start, either pregap_start or if no pregap, data_start.
+    // LBA for the beginning of the track, which will be INDEX 00 if that is present.
+    // Otherwise this will be INDEX 01 matching data_start above.
     uint32_t track_start;
 };
 
