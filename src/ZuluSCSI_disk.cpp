@@ -452,6 +452,7 @@ static void scsiDiskConfigDefaults(int target_idx)
     preset_config_t defaults = getSystemPreset(presetName);
 
     image_config_t &img = g_DiskImages[target_idx];
+    img.scsiId = target_idx;
     img.deviceType = S2S_CFG_FIXED;
     img.deviceTypeModifier = defaults.deviceTypeModifier;
     img.sectorsPerTrack = defaults.sectorsPerTrack;
