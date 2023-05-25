@@ -26,7 +26,8 @@
 
 // size of the two audio sample buffers, in bytes
 // these must be divisible by 1024
-#define AUDIO_BUFFER_SIZE 8192 // ~46.44ms
+// #define AUDIO_BUFFER_SIZE 8192 // ~46.44ms
+#define AUDIO_BUFFER_SIZE 6144 // reduce memory usage
 
 /**
  * Handler for DMA interrupts
