@@ -42,6 +42,10 @@ extern "C" {
 // Extended configuration stored alongside the normal SCSI2SD target information
 struct image_config_t: public S2S_TargetCfg
 {
+    // There should be only one global instance of this struct per device, so disallow copy constructor.
+    image_config_t() = default;
+    image_config_t(const image_config_t&) = delete;
+
     ImageBackingStore file;
 
     // For CD-ROM drive ejection
