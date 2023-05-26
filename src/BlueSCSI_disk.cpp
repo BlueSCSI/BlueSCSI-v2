@@ -550,7 +550,7 @@ static void diskEjectAction(uint8_t buttonId)
     log("Eject button pressed for channel ", buttonId);
     for (uint8_t i = 0; i < S2S_MAX_TARGETS; i++)
     {
-        image_config_t img = g_DiskImages[i];
+        image_config_t &img = g_DiskImages[i];
         if (img.ejectButton == buttonId)
         {
             if (img.deviceType == S2S_CFG_OPTICAL)
