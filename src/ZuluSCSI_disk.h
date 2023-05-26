@@ -42,12 +42,17 @@ extern "C" {
 // Extended configuration stored alongside the normal SCSI2SD target information
 struct image_config_t: public S2S_TargetCfg
 {
+    // There should be only one global instance of this struct per device, so disallow copy constructor.
+    image_config_t() = default;
+    image_config_t(const image_config_t&) = delete;
+
     ImageBackingStore file;
 
     // For CD-ROM drive ejection
     bool ejected;
     uint8_t cdrom_events;
-    bool reinsert_on_inquiry;
+    bool reinsert_on_inquiry; // Reinsert on Inquiry command (to reinsert automatically after boot)
+    bool reinsert_after_eject; // Reinsert next image after ejection
 
     // selects a physical button channel that will cause an eject action
     // default option of '0' disables this functionality

@@ -174,6 +174,8 @@ void scsiDiskCloseSDCardImages()
         {
             g_DiskImages[i].file.close();
         }
+
+        g_DiskImages[i].cuesheetfile.close();
     }
 }
 
@@ -326,6 +328,7 @@ static void setDefaultDriveInfo(int target_idx)
 bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize, S2S_CFG_TYPE type)
 {
     image_config_t &img = g_DiskImages[target_idx];
+    img.cuesheetfile.close();
     img.file = ImageBackingStore(filename, blocksize);
 
     if (img.file.isOpen())
@@ -478,6 +481,7 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
     img.rightAlignStrings = ini_getbool(section, "RightAlignStrings", 0, CONFIGFILE);
     img.prefetchbytes = ini_getl(section, "PrefetchBytes", img.prefetchbytes, CONFIGFILE);
     img.reinsert_on_inquiry = ini_getbool(section, "ReinsertCDOnInquiry", 1, CONFIGFILE);
+    img.reinsert_after_eject = ini_getbool(section, "ReinsertAfterEject", 1, CONFIGFILE);
     img.ejectButton = ini_getl(section, "EjectButton", 0, CONFIGFILE);
 
     char tmp[32];
@@ -559,17 +563,24 @@ image_config_t &scsiDiskGetImageConfig(int target_idx)
 
 static void diskEjectAction(uint8_t buttonId)
 {
-    logmsg("Eject button pressed for channel ", buttonId);
+    bool found = false;
     for (uint8_t i = 0; i < S2S_MAX_TARGETS; i++)
     {
-        image_config_t img = g_DiskImages[i];
+        image_config_t &img = g_DiskImages[i];
         if (img.ejectButton == buttonId)
         {
             if (img.deviceType == S2S_CFG_OPTICAL)
             {
+                found = true;
+                logmsg("Eject button ", (int)buttonId, " pressed, passing to CD drive SCSI", (int)i);
                 cdromPerformEject(img);
             }
         }
+    }
+
+    if (!found)
+    {
+        logmsg("Eject button ", (int)buttonId, " pressed, but no drives with EjectButton=", (int)buttonId, " setting found!");
     }
 }
 
@@ -897,9 +908,12 @@ static int doTestUnitReady()
         scsiDev.target->sense.asc = MEDIUM_NOT_PRESENT;
         scsiDev.phase = STATUS;
 
-        // We are now reporting to host that the drive is open.
-        // Simulate a "close" for next time the host polls.
-        cdromSwitchNextImage(img);
+        if (img.reinsert_after_eject)
+        {
+            // We are now reporting to host that the drive is open.
+            // Simulate a "close" for next time the host polls.
+            cdromSwitchNextImage(img);
+        }
     }
     else if (unlikely(!(blockDev.state & DISK_PRESENT)))
     {
