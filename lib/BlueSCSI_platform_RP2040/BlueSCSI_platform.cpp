@@ -590,14 +590,32 @@ void platform_poll()
 
 uint8_t platform_get_buttons()
 {
-#ifdef ENABLE_AUDIO_OUTPUT
-    uint8_t pins = 0x00;
+    uint8_t buttons = 0;
+
+#if defined(ENABLE_AUDIO_OUTPUT)
     // pulled to VCC via resistor, sinking when pressed
-    if (!gpio_get(GPIO_EXP_SPARE)) pins |= 0x01;
-    return pins;
-#else
-    return 0;
+    if (!gpio_get(GPIO_EXP_SPARE)) buttons |= 1;
+#elif defined(GPIO_I2C_SDA)
+    // SDA = button 1, SCL = button 2
+    if (!gpio_get(GPIO_I2C_SDA)) buttons |= 1;
+    if (!gpio_get(GPIO_I2C_SCL)) buttons |= 2;
 #endif
+
+    // Simple debouncing logic: handle button releases after 100 ms delay.
+    static uint32_t debounce;
+    static uint8_t buttons_debounced = 0;
+
+    if (buttons != 0)
+    {
+        buttons_debounced = buttons;
+        debounce = millis();
+    }
+    else if ((uint32_t)(millis() - debounce) > 100)
+    {
+        buttons_debounced = 0;
+    }
+
+    return buttons_debounced;
 }
 
 /*****************************************/
