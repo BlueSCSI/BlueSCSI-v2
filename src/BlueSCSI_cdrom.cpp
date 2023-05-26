@@ -818,9 +818,22 @@ void cdromPerformEject(image_config_t &img)
     // terminate audio playback if active on this target (MMC-1 Annex C)
     audio_stop(target);
 #endif
-    debuglog("------ CDROM open tray on ID ", (int)target);
-    img.ejected = true;
-    img.cdrom_events = 3; // Media removal
+    if (!img.ejected)
+    {
+        debuglog("------ CDROM open tray on ID ", (int)target);
+        img.ejected = true;
+        img.cdrom_events = 3; // Media removal
+    }
+    else
+    {
+        debuglog("------ CDROM close tray on ID ", (int)target);
+        if (!cdromSwitchNextImage(img))
+        {
+            // Reinsert the single image
+            img.ejected = false;
+            img.cdrom_events = 2; // New media
+        }
+    }
 }
 
 // Reinsert any ejected CDROMs on reboot
@@ -905,7 +918,7 @@ static void doGetEventStatusNotification(bool immed)
         scsiDev.phase = DATA_IN;
         img.cdrom_events = 0;
 
-        if (img.ejected)
+        if (img.ejected && img.reinsert_after_eject)
         {
             // We are now reporting to host that the drive is open.
             // Simulate a "close" for next time the host polls.
