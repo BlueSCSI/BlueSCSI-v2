@@ -162,6 +162,8 @@ void scsiDiskCloseSDCardImages()
         {
             g_DiskImages[i].file.close();
         }
+
+        g_DiskImages[i].cuesheetfile.close();
     }
 }
 
@@ -314,6 +316,7 @@ static void setDefaultDriveInfo(int target_idx)
 bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize, S2S_CFG_TYPE type)
 {
     image_config_t &img = g_DiskImages[target_idx];
+    img.cuesheetfile.close();
     img.file = ImageBackingStore(filename, blocksize);
 
     if (img.file.isOpen())
