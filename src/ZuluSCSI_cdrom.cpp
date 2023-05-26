@@ -1492,6 +1492,10 @@ extern "C" int scsiCDRomCommand()
     uint8_t command = scsiDev.cdb[0];
     if (command == 0x1B)
     {
+#if ENABLE_AUDIO_OUTPUT
+        // terminate audio playback if active on this target (MMC-1 Annex C)
+        audio_stop(img.scsiId & 7);
+#endif
         if ((scsiDev.cdb[4] & 2))
         {
             // CD-ROM load & eject
