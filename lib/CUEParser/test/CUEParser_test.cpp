@@ -7,14 +7,14 @@
 #define TEST(x) \
     if (!(x)) { \
         fprintf(stderr, "\033[31;1mFAILED:\033[22;39m %s:%d %s\n", __FILE__, __LINE__, #x); \
-        status = 1; \
+        status = false; \
     } else { \
         printf("\033[32;1mOK:\033[22;39m %s\n", #x); \
     }
 
-int test_basics()
+bool test_basics()
 {
-    int status = 0;
+    bool status = true;
     const char *cue_sheet = R"(
 FILE "Image Name.bin" BINARY
   TRACK 01 MODE1/2048
@@ -33,6 +33,7 @@ FILE "Sound.wav" WAVE
 
     CUEParser parser(cue_sheet);
 
+    COMMENT("test_basics()");
     COMMENT("Test TRACK 01 (data)");
     const CUETrackInfo *track = parser.next_track();
     TEST(track != NULL);
@@ -108,8 +109,84 @@ FILE "Sound.wav" WAVE
     return status;
 }
 
+bool test_datatracks()
+{
+    bool status = true;
+    const char *cue_sheet = R"(
+FILE "beos-5.0.3-professional-gobe.bin" BINARY
+TRACK 01 MODE1/2352
+    INDEX 01 00:00:00
+TRACK 02 MODE1/2352
+    INDEX 01 10:48:58
+TRACK 03 MODE1/2352
+    INDEX 01 46:07:03
+    )";
+
+    CUEParser parser(cue_sheet);
+
+    COMMENT("test_datatracks()");
+    COMMENT("Test TRACK 01 (data)");
+    const CUETrackInfo *track = parser.next_track();
+    TEST(track != NULL);
+    if (track)
+    {
+        TEST(strcmp(track->filename, "beos-5.0.3-professional-gobe.bin") == 0);
+        TEST(track->file_mode == CUEFile_BINARY);
+        TEST(track->file_offset == 0);
+        TEST(track->track_number == 1);
+        TEST(track->track_mode == CUETrack_MODE1_2352);
+        TEST(track->sector_length == 2352);
+        TEST(track->unstored_pregap_length == 0);
+        TEST(track->data_start == 0);
+        TEST(track->track_start == 0);
+    }
+
+    COMMENT("Test TRACK 02 (data)");
+    track = parser.next_track();
+    TEST(track != NULL);
+    if (track)
+    {
+        TEST(track->file_mode == CUEFile_BINARY);
+        TEST(track->file_offset == 0x6D24560);
+        TEST(track->track_number == 2);
+        TEST(track->track_mode == CUETrack_MODE1_2352);
+        TEST(track->sector_length == 2352);
+        TEST(track->unstored_pregap_length == 0);
+        TEST(track->data_start == ((10 * 60) + 48) * 75 + 58);
+        TEST(track->track_start == ((10 * 60) + 48) * 75 + 58);
+    }
+
+    COMMENT("Test TRACK 03 (data)");
+    track = parser.next_track();
+    TEST(track != NULL);
+    if (track)
+    {
+        TEST(track->file_mode == CUEFile_BINARY);
+        TEST(track->file_offset == 0x1D17E780);
+        TEST(track->track_number == 3);
+        TEST(track->track_mode == CUETrack_MODE1_2352);
+        TEST(track->sector_length == 2352);
+        TEST(track->unstored_pregap_length == 0);
+        TEST(track->data_start == ((46 * 60) + 7) * 75 + 3);
+        TEST(track->track_start == ((46 * 60) + 7) * 75 + 3);
+    }
+
+    track = parser.next_track();
+    TEST(track == NULL);
+
+    return status;
+}
+
 
 int main()
 {
-    return test_basics();
+    if (test_basics() && test_datatracks())
+    {
+        return 0;
+    }
+    else
+    {
+        printf("Some tests failed\n");
+        return 1;
+    }
 }
