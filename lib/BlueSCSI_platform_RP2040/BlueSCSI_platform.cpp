@@ -164,12 +164,8 @@ void platform_init()
 #endif
 #else
     //        pin             function       pup   pdown  out    state fast
-<<<<<<< HEAD:lib/BlueSCSI_platform_RP2040/BlueSCSI_platform.cpp
     //gpio_conf(GPIO_EXP_AUDIO, GPIO_FUNC_SPI, true,false, false,  true, true);
-=======
-    gpio_conf(GPIO_EXP_AUDIO, GPIO_FUNC_SPI, true,false, false,  true, true);
-    gpio_conf(GPIO_EXP_SPARE, GPIO_FUNC_SIO, true,false, false,  true, false);
->>>>>>> 299656a1 (Support for platform eject buttons.):lib/ZuluSCSI_platform_RP2040/ZuluSCSI_platform.cpp
+    //gpio_conf(GPIO_EXP_SPARE, GPIO_FUNC_SIO, true,false, false,  true, false);
     // configuration of corresponding SPI unit occurs in audio_setup()
 #endif
 }
