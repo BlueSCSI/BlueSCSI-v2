@@ -658,6 +658,11 @@ static void doModeSelect(void)
 				}
 			}
 			break;
+			case 0x0E: // CD audio control page
+			{
+				if (!modeSelectCDAudioControlPage(pageLen, idx)) goto bad;
+			}
+			break;
 			//default:
 
 				// Easiest to just ignore for now. We'll get here when changing

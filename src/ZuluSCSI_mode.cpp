@@ -29,6 +29,7 @@
 #include "ZuluSCSI_audio.h"
 #endif
 #include "ZuluSCSI_cdrom.h"
+#include "ZuluSCSI_log.h"
 
 extern "C" {
 #include "ZuluSCSI_mode.h"
@@ -54,8 +55,8 @@ static const uint8_t CDROMAudioControlParametersPage[] =
 0x00, // reserved
 0x80, // 1 LBAs/sec multip
 0x00, 0x4B, // 75 LBAs/sec
-0x03, 0xFF, // output port 0 active, max volume
-0x03, 0xFF, // output port 1 active, max volume
+0x01, 0xFF, // output port 0 active, max volume
+0x02, 0xFF, // output port 1 active, max volume
 0x00, 0x00, // output port 2 inactive
 0x00, 0x00 // output port 3 inactive
 };
@@ -125,6 +126,30 @@ int modeSenseCDAudioControlPage(int pc, int idx, int pageCode, int* pageFound)
             scsiDev.data[idx+11] = DEFAULT_VOLUME_LEVEL;
         }
         return sizeof(CDROMAudioControlParametersPage);
+    }
+    else
+    {
+        return 0;
+    }
+#else
+    return 0;
+#endif
+}
+
+extern "C"
+int modeSelectCDAudioControlPage(int pageLen, int idx)
+{
+#ifdef ENABLE_AUDIO_OUTPUT
+    if (scsiDev.target->cfg->deviceType == S2S_CFG_OPTICAL)
+    {
+        if (pageLen != 0x0E) return 0;
+        uint8_t volL = scsiDev.data[idx+9];
+        uint8_t volR = scsiDev.data[idx+11];
+        // only support setting channels to same volume, just pick higher
+        uint8_t vol = (volL > volR) ? volL : volR;
+        dbgmsg("------ CD audio control page volume (", volL, ",", volR, ")");
+        audio_set_volume(scsiDev.target->targetId, vol);
+        return 1;
     }
     else
     {
