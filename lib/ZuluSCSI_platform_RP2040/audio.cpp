@@ -141,7 +141,7 @@ static uint32_t fleft;
 static audio_status_code audio_last_status[8] = {ASC_NO_STATUS};
 
 // volume information for targets
-static volatile uint8_t volumes[8] = {
+static volatile uint16_t volumes[8] = {
     DEFAULT_VOLUME_LEVEL, DEFAULT_VOLUME_LEVEL, DEFAULT_VOLUME_LEVEL, DEFAULT_VOLUME_LEVEL,
     DEFAULT_VOLUME_LEVEL, DEFAULT_VOLUME_LEVEL, DEFAULT_VOLUME_LEVEL, DEFAULT_VOLUME_LEVEL
 };
@@ -164,7 +164,8 @@ static uint8_t invert = 0; // biphase encode help: set if last wire bit was '1'
  * output.
  */
 static void snd_encode(uint8_t* samples, uint16_t* wire_patterns, uint16_t len, uint8_t swap) {
-    uint8_t vol = volumes[audio_owner & 7];
+    uint16_t wvol = volumes[audio_owner & 7];
+    uint8_t vol = ((wvol >> 8) + (wvol & 0xFF)) >> 1; // average of both values
     // limit maximum volume; with my DACs I've had persistent issues
     // with signal clipping when sending data in the highest bit position
     vol = vol >> 2;
@@ -553,11 +554,11 @@ audio_status_code audio_get_status_code(uint8_t id) {
     return tmp;
 }
 
-uint8_t audio_get_volume(uint8_t id) {
+uint16_t audio_get_volume(uint8_t id) {
     return volumes[id & 7];
 }
 
-void audio_set_volume(uint8_t id, uint8_t vol) {
+void audio_set_volume(uint8_t id, uint16_t vol) {
     volumes[id & 7] = vol;
 }
 
