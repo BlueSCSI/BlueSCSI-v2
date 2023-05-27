@@ -59,6 +59,7 @@ bool find_firmware_image(FsFile &file, char name[MAX_FILE_PATH + 1])
     return false;
 }
 
+#ifndef PLATFORM_FLASH_SECTOR_ERASE
 bool program_firmware(FsFile &file)
 {
     uint32_t fwsize = file.size() - PLATFORM_BOOTLOADER_SIZE;
@@ -102,6 +103,129 @@ bool program_firmware(FsFile &file)
 
     return true;
 }
+#else // PLATFORM_FLASH_SECTOR_ERASE
+bool program_firmware(FsFile &file)
+{
+    uint32_t bootloader_sector_index = 0;
+    uint32_t bootloader_sector_byte_count = 0;
+    const uint32_t map_length = sizeof(platform_flash_sector_map)/sizeof(platform_flash_sector_map[0]);
+    // Find at which sector the bootloader ends so it isn't overwritten
+    for(;;)
+    {
+        if (bootloader_sector_index < map_length)
+        {
+            bootloader_sector_byte_count += platform_flash_sector_map[bootloader_sector_index];
+            if (bootloader_sector_byte_count < PLATFORM_BOOTLOADER_SIZE)
+            {
+                bootloader_sector_index++;
+            }
+            else
+            {
+                break;
+            }    
+        }
+        else
+        {
+            logmsg("Bootloader does not fit in flash");
+            return false;
+        }
+                
+    }
+
+    uint32_t fwsize = file.size();
+    if (fwsize <=  PLATFORM_BOOTLOADER_SIZE )
+    {
+        logmsg("Firmware file size too small: ", fwsize, " bootloader fits in the first : ", PLATFORM_BOOTLOADER_SIZE, " bytes");
+        return false;
+    }
+    fwsize -= PLATFORM_BOOTLOADER_SIZE;
+    
+    // find the last sector the mainline firmware ends
+    uint32_t firmware_sector_start = bootloader_sector_index + 1;
+    uint32_t last_sector_index = firmware_sector_start;
+    uint32_t last_sector_byte_count = 0;
+    for(;;)
+    {
+        if (last_sector_index < map_length)
+        {
+            last_sector_byte_count += platform_flash_sector_map[last_sector_index];
+            if (fwsize > last_sector_byte_count)
+            {
+                last_sector_index++;
+            }
+            else
+            {
+                break;
+            }
+        }
+        else
+        {
+            logmsg("Firmware too large: ", (int) fwsize, 
+                    " space left after the bootloader ",  last_sector_byte_count,
+                    " total flash size ", (int)PLATFORM_FLASH_TOTAL_SIZE);
+            return false;
+        }
+    }
+
+    // Make sure the buffer is aligned to word boundary
+    static uint32_t buffer32[PLATFORM_FLASH_WRITE_BUFFER_SIZE / 4];
+    uint8_t *buffer = (uint8_t*)buffer32;
+
+    if (!file.seek(PLATFORM_BOOTLOADER_SIZE))
+    {
+        logmsg("Seek failed");
+        return false;
+    }
+
+    // Erase the sectors the mainline firmware will be written to
+    for (int i = firmware_sector_start; i <= last_sector_index; i++)
+    {
+        LED_ON();
+        if (!platform_erase_flash_sector(i))
+        {
+            logmsg("Flash failed to erase sector ", i);
+            return false;
+        }
+        LED_OFF();
+    }
+
+    // write the mainline firmware to flash
+    int32_t bytes_read = 0;
+    uint32_t address_offset = 0;
+    for(;;)
+    {
+        if (address_offset / PLATFORM_FLASH_WRITE_BUFFER_SIZE % 2)
+        {
+            LED_ON();
+        }
+        else
+        {
+            LED_OFF();
+        }
+        
+        bytes_read = file.read(buffer, PLATFORM_FLASH_WRITE_BUFFER_SIZE);
+        if ( bytes_read < 0)
+        {
+            logmsg("Firmware file read failed, error code ", (int) bytes_read);
+            return false;
+        }
+        if (!platform_write_flash(address_offset, bytes_read, buffer))
+        {
+            logmsg("Failed to write flash at offset: ", address_offset, " bytes read: ",(int) bytes_read);
+            return false;
+        }
+        if (bytes_read < PLATFORM_FLASH_WRITE_BUFFER_SIZE)
+        {
+            break;
+        }
+        address_offset += bytes_read;
+        
+    }
+    LED_OFF();
+    return true;
+}
+
+#endif // PLATFORM_FLASH_SECTOR_ERASE
 
 static bool mountSDCard()
 {
