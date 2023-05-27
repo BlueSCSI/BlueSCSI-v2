@@ -623,10 +623,16 @@ static void doModeSelect(void)
 
 		while (idx < scsiDev.dataLen)
 		{
+			// Change from SCSI2SD: if code page is 0x0 (vendor-specific) it
+			// will not follow the normal page mode format and cannot be
+			// parsed, but isn't necessarily an error. Instead, just treat it
+			// as an 'end of data' field and allow normal command completion.
+			int pageCode = scsiDev.data[idx] & 0x3F;
+			if (pageCode == 0) goto out;
+
 			int pageLen = scsiDev.data[idx + 1];
 			if (idx + 2 + pageLen > scsiDev.dataLen) goto bad;
 
-			int pageCode = scsiDev.data[idx] & 0x3F;
 			switch (pageCode)
 			{
 			case 0x03: // Format Device Page
