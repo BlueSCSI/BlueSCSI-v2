@@ -25,6 +25,14 @@
 #include "ImageBackingStore.h"
 
 /*
+ * Starting volume level for audio output, with 0 being muted and 255 being
+ * max volume. SCSI-2 says this should be 25% of maximum by default, MMC-1
+ * says 100%. Testing shows this tends to be obnoxious at high volumes, so
+ * go with SCSI-2.
+ */
+#define DEFAULT_VOLUME_LEVEL 63
+
+/*
  * Status codes for audio playback, matching the SCSI 'audio status codes'.
  *
  * The first two are for a live condition and will be returned repeatedly. The
@@ -86,3 +94,21 @@ void audio_stop(uint8_t id);
  * \return      The matching audio status code.
  */
 audio_status_code audio_get_status_code(uint8_t id);
+
+/**
+ * Gets the current volume level for a target. This is a range from 0-255,
+ * with 0 being muted and 255 being max volume. See 0x0E mode page for more.
+ *
+ * \param id    SCSI ID to provide volume for.
+ * \return      The matching volume level.
+ */
+uint8_t audio_get_volume(uint8_t id);
+
+/**
+ * Sets the volume level for a target. This is a range from 0-255, with 0
+ * being muted and 255 being max volume. See 0x0E mode page for more.
+ *
+ * \param id    SCSI ID to set volume for.
+ * \param vol   The new volume level.
+ */
+void audio_set_volume(uint8_t id, uint8_t vol);
