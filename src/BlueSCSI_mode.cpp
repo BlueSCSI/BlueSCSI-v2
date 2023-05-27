@@ -25,6 +25,9 @@
 #include <stdint.h>
 #include <string.h>
 
+#ifdef ENABLE_AUDIO_OUTPUT
+#include "BlueSCSI_audio.h"
+#endif
 #include "BlueSCSI_cdrom.h"
 
 extern "C" {
@@ -101,6 +104,26 @@ int modeSenseCDAudioControlPage(int pc, int idx, int pageCode, int* pageFound)
             idx,
             CDROMAudioControlParametersPage,
             sizeof(CDROMAudioControlParametersPage));
+        if (pc == 0x00)
+        {
+            // report current volume level
+            scsiDev.data[idx+9] = audio_get_volume(scsiDev.target->targetId);
+            scsiDev.data[idx+11] = audio_get_volume(scsiDev.target->targetId);
+        }
+        else if (pc == 0x01)
+        {
+            // report bits that can be set
+            scsiDev.data[idx+9] = 0xFF;
+            scsiDev.data[idx+11] = 0xFF;
+        }
+        else
+        {
+            // report defaults for 0x02
+            // also report same for 0x03, though we are actually supposed
+            // to terminate with CHECK CONDITION and SAVING PARAMETERS NOT SUPPORTED
+            scsiDev.data[idx+9] = DEFAULT_VOLUME_LEVEL;
+            scsiDev.data[idx+11] = DEFAULT_VOLUME_LEVEL;
+        }
         return sizeof(CDROMAudioControlParametersPage);
     }
     else
