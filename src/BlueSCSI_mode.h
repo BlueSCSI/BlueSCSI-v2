@@ -23,3 +23,5 @@
 
 int modeSenseCDDevicePage(int pc, int idx, int pageCode, int* pageFound);
 int modeSenseCDAudioControlPage(int pc, int idx, int pageCode, int* pageFound);
+
+int modeSelectCDAudioControlPage(int pageLen, int idx);
