@@ -21,6 +21,7 @@
 #include "mode.h"
 #include "disk.h"
 #include "inquiry.h"
+#include "BlueSCSI_mode.h"
 
 #include <string.h>
 
@@ -219,33 +220,6 @@ static const uint8_t ControlModePage[] =
 0x00, // Reserved
 0x00, 0x00 // AEN holdoff period.
 };
-
-#ifdef ENABLE_AUDIO_OUTPUT
-static const uint8_t CDROMCDParametersPage[] =
-{
-0x0D, // page code
-0x06, // page length
-0x00, // reserved
-0x0D, // reserved, inactivity time 8 min
-0x00, 0x3C, // 60 seconds per MSF M unit
-0x00, 0x4B  // 75 frames per MSF S unit
-};
-
-static const uint8_t CDROMAudioControlParametersPage[] =
-{
-0x0E, // page code
-0x0E, // page length
-0x04, // 'Immed' bit set, 'SOTC' bit not set
-0x00, // reserved
-0x00, // reserved
-0x80, // 1 LBAs/sec multip
-0x00, 0x4B, // 75 LBAs/sec
-0x03, 0xFF, // output port 0 active, max volume
-0x03, 0xFF, // output port 1 active, max volume
-0x00, 0x00, // output port 2 inactive
-0x00, 0x00 // output port 3 inactive
-};
-#endif
 
 static const uint8_t SequentialDeviceConfigPage[] =
 {
@@ -523,31 +497,8 @@ static void doModeSense(
 		idx += sizeof(ControlModePage);
 	}
 
-#ifdef ENABLE_AUDIO_OUTPUT
-	if ((scsiDev.target->cfg->deviceType == S2S_CFG_OPTICAL)
-		&& (pageCode == 0x0D || pageCode == 0x3F))
-	{
-		pageFound = 1;
-		pageIn(
-			pc,
-			idx,
-			CDROMCDParametersPage,
-			sizeof(CDROMCDParametersPage));
-		idx += sizeof(CDROMCDParametersPage);
-	}
-
-	if ((scsiDev.target->cfg->deviceType == S2S_CFG_OPTICAL)
-		&& (pageCode == 0x0E || pageCode == 0x3F))
-	{
-		pageFound = 1;
-		pageIn(
-			pc,
-			idx,
-			CDROMAudioControlParametersPage,
-			sizeof(CDROMAudioControlParametersPage));
-		idx += sizeof(CDROMAudioControlParametersPage);
-	}
-#endif
+	idx += modeSenseCDDevicePage(pc, idx, pageCode, &pageFound);
+	idx += modeSenseCDAudioControlPage(pc, idx, pageCode, &pageFound);
 
 	if ((scsiDev.target->cfg->deviceType == S2S_CFG_SEQUENTIAL) &&
 		(pageCode == 0x10 || pageCode == 0x3F))
