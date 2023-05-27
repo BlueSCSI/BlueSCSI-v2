@@ -108,8 +108,9 @@ int modeSenseCDAudioControlPage(int pc, int idx, int pageCode, int* pageFound)
         if (pc == 0x00)
         {
             // report current volume level
-            scsiDev.data[idx+9] = audio_get_volume(scsiDev.target->targetId);
-            scsiDev.data[idx+11] = audio_get_volume(scsiDev.target->targetId);
+            uint16_t vol = audio_get_volume(scsiDev.target->targetId);
+            scsiDev.data[idx+9] = vol & 0xFF;
+            scsiDev.data[idx+11] = vol >> 8;
         }
         else if (pc == 0x01)
         {
@@ -122,8 +123,8 @@ int modeSenseCDAudioControlPage(int pc, int idx, int pageCode, int* pageFound)
             // report defaults for 0x02
             // also report same for 0x03, though we are actually supposed
             // to terminate with CHECK CONDITION and SAVING PARAMETERS NOT SUPPORTED
-            scsiDev.data[idx+9] = DEFAULT_VOLUME_LEVEL;
-            scsiDev.data[idx+11] = DEFAULT_VOLUME_LEVEL;
+            scsiDev.data[idx+9] = DEFAULT_VOLUME_LEVEL & 0xFF;
+            scsiDev.data[idx+11] = DEFAULT_VOLUME_LEVEL >> 8;
         }
         return sizeof(CDROMAudioControlParametersPage);
     }
@@ -143,11 +144,8 @@ int modeSelectCDAudioControlPage(int pageLen, int idx)
     if (scsiDev.target->cfg->deviceType == S2S_CFG_OPTICAL)
     {
         if (pageLen != 0x0E) return 0;
-        uint8_t volL = scsiDev.data[idx+9];
-        uint8_t volR = scsiDev.data[idx+11];
-        // only support setting channels to same volume, just pick higher
-        uint8_t vol = (volL > volR) ? volL : volR;
-        debuglog("------ CD audio control page volume (", volL, ",", volR, ")");
+        uint16_t vol = (scsiDev.data[idx+11] << 8) + scsiDev.data[idx+9];
+        debuglog("------ CD audio control page volume (", vol, ")");
         audio_set_volume(scsiDev.target->targetId, vol);
         return 1;
     }
