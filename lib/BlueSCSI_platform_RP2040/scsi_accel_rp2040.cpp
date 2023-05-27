@@ -38,10 +38,10 @@
 // B: Lookup from g_scsi_parity_check_lookup and copy to scsi_read_parity PIO
 // C: Addresses from scsi_accel_read PIO to lookup DMA READ_ADDR register
 // D: From pacer to data state machine to trigger transfers
-#define SCSI_DMA_CH_A 0
-#define SCSI_DMA_CH_B 1
-#define SCSI_DMA_CH_C 2
-#define SCSI_DMA_CH_D 3
+#define SCSI_DMA_CH_A 4
+#define SCSI_DMA_CH_B 5
+#define SCSI_DMA_CH_C 6
+#define SCSI_DMA_CH_D 7
 
 static struct {
     uint8_t *app_buf; // Buffer provided by application

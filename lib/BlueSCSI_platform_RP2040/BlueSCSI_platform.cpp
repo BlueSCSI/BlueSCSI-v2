@@ -12,6 +12,7 @@
 #include <hardware/adc.h>
 #include <hardware/flash.h>
 #include <hardware/structs/xip_ctrl.h>
+#ifdef MBED
 #include <hardware/structs/usb.h>
 #include <platform/mbed_error.h>
 #include <multicore.h>
@@ -20,6 +21,7 @@
 #include "scsi_accel_rp2040.h"
 
 extern "C" {
+#include <pico/cyw43_arch.h>
 
 const char *g_platform_name = PLATFORM_NAME;
 static bool g_scsi_initiator = false;
@@ -900,3 +902,4 @@ mbed::FileHandle *mbed::mbed_override_console(int fd)
 {
     return &g_LogTarget;
 }
+#endif
