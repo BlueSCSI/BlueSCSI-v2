@@ -394,7 +394,8 @@ static void doModeSense(
 		}
 	}
 
-	if (pageCode == 0x03 || pageCode == 0x3F)
+	if ((pageCode == 0x03 || pageCode == 0x3F) &&
+		(scsiDev.target->cfg->deviceType != S2S_CFG_OPTICAL))
 	{
 		pageFound = 1;
 		pageIn(pc, idx, FormatDevicePage, sizeof(FormatDevicePage));
@@ -419,7 +420,8 @@ static void doModeSense(
 		idx += sizeof(FormatDevicePage);
 	}
 
-	if (pageCode == 0x04 || pageCode == 0x3F)
+	if ((pageCode == 0x04 || pageCode == 0x3F) &&
+		(scsiDev.target->cfg->deviceType != S2S_CFG_OPTICAL))
 	{
 		pageFound = 1;
 		if ((scsiDev.compatMode >= COMPAT_SCSI2))
