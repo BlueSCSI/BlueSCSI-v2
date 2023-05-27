@@ -31,7 +31,6 @@ extern "C" {
 #include "ZuluSCSI_mode.h"
 }
 
-#ifdef ENABLE_AUDIO_OUTPUT
 static const uint8_t CDROMCDParametersPage[] =
 {
 0x0D, // page code
@@ -42,6 +41,7 @@ static const uint8_t CDROMCDParametersPage[] =
 0x00, 0x4B  // 75 frames per MSF S unit
 };
 
+#ifdef ENABLE_AUDIO_OUTPUT
 static const uint8_t CDROMAudioControlParametersPage[] =
 {
 0x0E, // page code
@@ -71,7 +71,6 @@ static void pageIn(int pc, int dataIdx, const uint8_t* pageData, int pageLen)
 extern "C"
 int modeSenseCDDevicePage(int pc, int idx, int pageCode, int* pageFound)
 {
-#ifdef ENABLE_AUDIO_OUTPUT
     if ((scsiDev.target->cfg->deviceType == S2S_CFG_OPTICAL)
         && (pageCode == 0x0D || pageCode == 0x3F))
     {
@@ -87,9 +86,6 @@ int modeSenseCDDevicePage(int pc, int idx, int pageCode, int* pageFound)
     {
         return 0;
     }
-#else
-    return 0;
-#endif
 }
 
 extern "C"
