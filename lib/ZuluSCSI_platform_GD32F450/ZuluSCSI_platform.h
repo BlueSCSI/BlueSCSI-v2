@@ -43,6 +43,7 @@ extern const char *g_platform_name;
 #   define PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE 4096
 #   define PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE 65536
 #   define PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE 8192
+#   define PLATFORM_FLASH_SECTOR_ERASE
 #   include "ZuluSCSI_v1_4_gpio.h"
 #endif
 
@@ -119,9 +120,24 @@ void SysTick_Handle_PreEmptively();
 
 // Reprogram firmware in main program area.
 #define PLATFORM_BOOTLOADER_SIZE 32768
-#define PLATFORM_FLASH_TOTAL_SIZE (256 * 1024)
-#define PLATFORM_FLASH_PAGE_SIZE 2048
-bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_PAGE_SIZE]);
+#define PLATFORM_FLASH_TOTAL_SIZE (512 * 1024)
+
+// must be a factor of each sector map size
+#define PLATFORM_FLASH_WRITE_BUFFER_SIZE 2048
+// From GD32F4xx user manual
+const uint32_t platform_flash_sector_map[] =
+    {
+         16 * 1024,
+         16 * 1024,
+         16 * 1024,
+         16 * 1024,
+         64 * 1024,
+        128 * 1024,
+        128 * 1024, 
+        128 * 1024
+    };
+bool platform_erase_flash_sector(uint32_t sector);
+bool platform_write_flash(uint32_t sector_index, uint32_t offset, uint8_t buffer[PLATFORM_FLASH_WRITE_BUFFER_SIZE]);
 void platform_boot_to_main_firmware();
 
 // Configuration customizations based on DIP switch settings

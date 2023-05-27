@@ -367,7 +367,6 @@ static void usb_log_poll()
 
         // Update log position by the actual number of bytes sent
         // If USB CDC buffer is full, this may be 0
-        uint32_t actual = 0;
         usb_hs_send((uint8_t*)data, len);
         logpos -= available - len;
     }
@@ -563,8 +562,42 @@ uint8_t platform_get_buttons()
 /***********************/
 /* Flash reprogramming */
 /***********************/
+#define SECTOR_NUMBER_TO_ID_ERROR 0xFFFFFFFF
 
-bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_PAGE_SIZE])
+static uint32_t sector_number_to_id(uint32_t sector_number)
+{
+    if(11 >= sector_number){
+        return CTL_SN(sector_number);
+    }else if(23 >= sector_number){
+        return CTL_SN(sector_number + 4);
+    }else if(27 >= sector_number){
+        return CTL_SN(sector_number - 12);
+    }
+    return SECTOR_NUMBER_TO_ID_ERROR;
+}
+
+bool platform_erase_flash_sector(uint32_t sector)
+{
+    fmc_unlock();
+    fmc_flag_clear(FMC_FLAG_END | FMC_FLAG_OPERR | FMC_FLAG_WPERR | FMC_FLAG_PGMERR | FMC_FLAG_PGSERR);
+    uint32_t sector_id = sector_number_to_id(sector);
+    if (sector_id == SECTOR_NUMBER_TO_ID_ERROR)
+    {
+        logmsg("Sector ", (int) sector, " does not exist");
+        return false;
+    }
+
+    if (FMC_READY != fmc_sector_erase(sector_id))
+    {
+        logmsg("Failed flash failed to erase sector, ", (int) sector);
+        LED_OFF();
+        return false;
+    }
+    fmc_lock();
+    return true;
+}
+
+bool platform_write_flash(uint32_t offset, uint32_t length, uint8_t buffer[PLATFORM_FLASH_WRITE_BUFFER_SIZE])
 {
     if (offset == 0)
     {
@@ -573,50 +606,51 @@ bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_
             logmsg("Invalid firmware file, starts with: ", bytearray(buffer, 16));
             return false;
         }
+
     }
 
-    dbgmsg("Writing flash at offset ", offset, " data ", bytearray(buffer, 4));
-    assert(offset % PLATFORM_FLASH_PAGE_SIZE == 0);
-    assert(offset >= PLATFORM_BOOTLOADER_SIZE);
-    
-    //TODO rewrite for sector erase , full bank erase, or full chip erase
-    /*
+    dbgmsg("Writing flash at firmware offset ", offset, " data ", bytearray(buffer, 4));
+    assert(offset % PLATFORM_FLASH_WRITE_BUFFER_SIZE == 0);
+    //assert(offset >= PLATFORM_BOOTLOADER_SIZE);
+        
     fmc_unlock();
-    fmc_bank0_unlock();
-
+    fmc_flag_clear(FMC_FLAG_END | FMC_FLAG_OPERR | FMC_FLAG_WPERR | FMC_FLAG_PGMERR | FMC_FLAG_PGSERR);
     fmc_state_enum status;
-    status = fmc_page_erase(FLASH_BASE + offset);
-    if (status != FMC_READY)
-    {
-        logmsg("Erase failed: ", (int)status);
-        return false;
-    }
-
     uint32_t *buf32 = (uint32_t*)buffer;
-    uint32_t num_words = PLATFORM_FLASH_PAGE_SIZE / 4;
-    for (int i = 0; i < num_words; i++)
+    uint32_t memory_address = FLASH_BASE + PLATFORM_BOOTLOADER_SIZE + offset;
+    uint32_t num_words = length / 4;
+    if (length % 4 == 0)
     {
-        status = fmc_word_program(FLASH_BASE + offset + i * 4, buf32[i]);
-        if (status != FMC_READY)
+        for (int i = 0; i < num_words; i++)
         {
-            logmsg("Flash write failed: ", (int)status);
-            return false;
-        }   
+            status = fmc_word_program(memory_address, buf32[i]);
+            if (status != FMC_READY)
+            {
+                logmsg("Flash write failed at address: ", memory_address, " with code ", (int)status);
+                return false;
+            }
+            memory_address += 4;   
+        }
+    }
+    else
+    {
+       logmsg("Firmware size expected to be word (4byte) aligned");
     }
 
     fmc_lock();
-
+    memory_address = FLASH_BASE + PLATFORM_BOOTLOADER_SIZE + offset;
     for (int i = 0; i < num_words; i++)
     {
         uint32_t expected = buf32[i];
-        uint32_t actual = *(volatile uint32_t*)(FLASH_BASE + offset + i * 4);
+        uint32_t actual = *(volatile uint32_t*)(memory_address);
         if (actual != expected)
         {
-            logmsg("Flash verify failed at offset ", offset + i * 4, " got ", actual, " expected ", expected);
+            logmsg("Flash word verify failed memory address ", memory_address, " got ", actual, " expected ", expected);
             return false;
         }
+        memory_address += 4;
     }
-    */
+
     return true;
 }
 
