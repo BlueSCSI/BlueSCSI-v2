@@ -93,6 +93,9 @@ void scsiDiskCloseSDCardImages();
 bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize, S2S_CFG_TYPE type = S2S_CFG_FIXED);
 void scsiDiskLoadConfig(int target_idx);
 
+// During loading, checks if a filename is appropriate for further processing as a disk image
+bool scsiDiskFilenameValid(const char* name);
+
 // Clear the ROM drive header from flash
 bool scsiDiskClearRomDrive();
 // Program ROM drive and rename image file

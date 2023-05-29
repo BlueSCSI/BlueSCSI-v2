@@ -288,51 +288,16 @@ bool findHDDImages()
 
       if (is_hd || is_cd || is_fd || is_mo || is_re || is_tp)
       {
-        // Check file extension
-        // We accept anything except known compressed files
-        bool is_compressed = false;
-        const char *extension = strrchr(name, '.');
-        if (extension)
-        {
-          const char *archive_exts[] = {
-            ".tar", ".tgz", ".gz", ".bz2", ".tbz2", ".xz", ".zst", ".z",
-            ".zip", ".zipx", ".rar", ".lzh", ".lha", ".lzo", ".lz4", ".arj",
-            ".dmg", ".hqx", ".cpt", ".7z", ".s7z",
-            NULL
-          };
-
-          for (int i = 0; archive_exts[i]; i++)
-          {
-            if (strcasecmp(extension, archive_exts[i]) == 0)
-            {
-              is_compressed = true;
-              break;
-            }
-          }
-        }
-
-        if (is_compressed)
-        {
-          log("-- Ignoring compressed file ", name);
-          continue;
-        }
-
-        if (strcasecmp(extension, ".cue") == 0)
-        {
-          continue; // .cue will be handled with corresponding .bin
-        }
-
         // Check if the image should be loaded to microcontroller flash ROM drive
         bool is_romdrive = false;
+        const char *extension = strrchr(name, '.');
         if (extension && strcasecmp(extension, ".rom") == 0)
         {
           is_romdrive = true;
         }
-        else if (extension && strcasecmp(extension, ".rom_loaded") == 0)
-        {
-          // Already loaded ROM drive, ignore the image
-          continue;
-        }
+
+        // skip file if the name indicates it is not a valid image container
+        if (!is_romdrive && !scsiDiskFilenameValid(name)) continue;
 
         // Defaults for Hard Disks
         int id  = 1; // 0 and 3 are common in Macs for physical HD and CD, so avoid them.

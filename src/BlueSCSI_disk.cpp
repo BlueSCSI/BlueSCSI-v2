@@ -434,6 +434,43 @@ static void checkDiskGeometryDivisible(image_config_t &img)
     }
 }
 
+bool scsiDiskFilenameValid(const char* name)
+{
+    // Check file extension
+    const char *extension = strrchr(name, '.');
+    if (extension)
+    {
+        const char *ignore_exts[] = {
+            ".rom_loaded", ".cue",
+            NULL
+        };
+        const char *archive_exts[] = {
+            ".tar", ".tgz", ".gz", ".bz2", ".tbz2", ".xz", ".zst", ".z",
+            ".zip", ".zipx", ".rar", ".lzh", ".lha", ".lzo", ".lz4", ".arj",
+            ".dmg", ".hqx", ".cpt", ".7z", ".s7z",
+            NULL
+        };
+
+        for (int i = 0; ignore_exts[i]; i++)
+        {
+            if (strcasecmp(extension, ignore_exts[i]) == 0)
+            {
+                // ignore these without log message
+                return false;
+            }
+        }
+        for (int i = 0; archive_exts[i]; i++)
+        {
+            if (strcasecmp(extension, archive_exts[i]) == 0)
+            {
+                log("-- Ignoring compressed file ", name);
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 // Set target configuration to default values
 static void scsiDiskConfigDefaults(int target_idx)
 {
