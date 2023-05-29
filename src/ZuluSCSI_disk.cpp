@@ -425,8 +425,11 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
 
         return true;
     }
-
-    return false;
+    else
+    {
+        logmsg("---- Failed to load image '", filename, "', ignoring");
+        return false;
+    }
 }
 
 static void checkDiskGeometryDivisible(image_config_t &img)
@@ -574,7 +577,7 @@ void scsiDiskLoadConfig(int target_idx)
     if (scsiDiskGetImageNameFromConfig(img, filename, sizeof(filename)))
     {
         int blocksize = (img.deviceType == S2S_CFG_OPTICAL) ? 2048 : 512;
-        logmsg("-- Opening ", filename, " for id:", target_idx, ", specified in " CONFIGFILE);
+        logmsg("-- Opening '", filename, "' for id:", target_idx, ", specified in " CONFIGFILE);
         scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, blocksize);
     }
 }
