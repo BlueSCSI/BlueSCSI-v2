@@ -530,10 +530,15 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
     if (tmp[0]) memcpy(img.serial, tmp, sizeof(img.serial));
 }
 
-// Check if image file name is overridden in config
-bool scsiDiskGetImageNameFromConfig(image_config_t &img, char *buf, size_t buflen)
+int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
 {
     int target_idx = img.scsiId & 7;
+
+    img.image_index++;
+    if (img.image_index > 9)
+    {
+        img.image_index = 0;
+    }
 
     char section[6] = "SCSI0";
     section[4] = '0' + target_idx;
@@ -541,8 +546,24 @@ bool scsiDiskGetImageNameFromConfig(image_config_t &img, char *buf, size_t bufle
     char key[5] = "IMG0";
     key[3] = '0' + img.image_index;
 
-    ini_gets(section, key, "", buf, buflen, CONFIGFILE);
-    return buf[0] != '\0';
+    int ret = ini_gets(section, key, "", buf, buflen, CONFIGFILE);
+    if (buf[0] != '\0')
+    {
+        return ret;
+    }
+    else if (img.image_index > 0)
+    {
+        // there may be more than one image but we've ran out of new ones
+        // wrap back to the first image
+        img.image_index = 9;
+        return scsiDiskGetNextImageName(img, buf, buflen);
+    }
+    else
+    {
+        // images are not defined in config
+        img.image_index = 0;
+        return 0;
+    }
 }
 
 void scsiDiskLoadConfig(int target_idx)
@@ -562,7 +583,7 @@ void scsiDiskLoadConfig(int target_idx)
     // Check if we have image specified by name
     char filename[MAX_FILE_PATH];
     image_config_t &img = g_DiskImages[target_idx];
-    if (scsiDiskGetImageNameFromConfig(img, filename, sizeof(filename)))
+    if (scsiDiskGetNextImageName(img, filename, sizeof(filename)))
     {
         int blocksize = (img.deviceType == S2S_CFG_OPTICAL) ? 2048 : 512;
         log("-- Opening '", filename, "' for id:", target_idx, ", specified in " CONFIGFILE);

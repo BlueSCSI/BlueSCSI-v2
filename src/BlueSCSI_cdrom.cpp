@@ -859,14 +859,9 @@ void cdromReinsertFirstImage(image_config_t &img)
 bool cdromSwitchNextImage(image_config_t &img)
 {
     // Check if we have a next image to load, so that drive is closed next time the host asks.
-    img.image_index++;
     char filename[MAX_FILE_PATH];
     int target_idx = img.scsiId & 7;
-    if (!scsiDiskGetImageNameFromConfig(img, filename, sizeof(filename)))
-    {
-        img.image_index = 0;
-        scsiDiskGetImageNameFromConfig(img, filename, sizeof(filename));
-    }
+    scsiDiskGetNextImageName(img, filename, sizeof(filename));
 
 #ifdef ENABLE_AUDIO_OUTPUT
     // if in progress for this device, terminate audio playback immediately (Annex C)
