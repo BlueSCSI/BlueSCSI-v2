@@ -108,9 +108,11 @@ bool scsiDiskActivateRomDrive();
 // Returns true if there is at least one image active
 bool scsiDiskCheckAnyImagesConfigured();
 
-// Check if image file name is overridden in config,
-// including image index for multi-image CD-ROM emulation
-bool scsiDiskGetImageNameFromConfig(image_config_t &img, char *buf, size_t buflen);
+// Gets the next image filename for the target, if configured for multiple
+// images. As a side effect this advances image tracking to the next image.
+// Returns the length of the new image filename, or 0 if the target is not
+// configured for multiple images.
+int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen);
 
 // Get pointer to extended image configuration based on target idx
 image_config_t &scsiDiskGetImageConfig(int target_idx);
