@@ -605,6 +605,7 @@ void scsiDiskLoadConfig(int target_idx)
     // Check if we have image specified by name
     char filename[MAX_FILE_PATH];
     image_config_t &img = g_DiskImages[target_idx];
+    img.image_index = IMAGE_INDEX_MAX;
     if (scsiDiskGetNextImageName(img, filename, sizeof(filename)))
     {
         int blocksize = (img.deviceType == S2S_CFG_OPTICAL) ? 2048 : 512;
