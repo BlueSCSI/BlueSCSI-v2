@@ -218,6 +218,10 @@ void platform_init()
     gpio_bit_set(LED_PORT, LED_PINS);
     gpio_init(LED_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_2MHZ, LED_PINS);
 
+    // Ejection buttons
+    gpio_init(EJECT_1_PORT, GPIO_MODE_IPU, 0, EJECT_1_PIN);
+    gpio_init(EJECT_2_PORT, GPIO_MODE_IPU, 0, EJECT_2_PIN);
+
     // SWO trace pin on PB3
     gpio_init(GPIOB, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_3);
 }
@@ -495,7 +499,27 @@ void platform_poll()
 
 uint8_t platform_get_buttons()
 {
-    return 0;
+    // Buttons are active low: internal pull-up is enabled,
+    // and when button is pressed the pin goes low.
+    uint8_t buttons = 0;
+    if (!gpio_input_bit_get(EJECT_1_PORT, EJECT_1_PIN))   buttons |= 1;
+    if (!gpio_input_bit_get(EJECT_2_PORT, EJECT_2_PIN))   buttons |= 2;
+
+    // Simple debouncing logic: handle button releases after 100 ms delay.
+    static uint32_t debounce;
+    static uint8_t buttons_debounced = 0;
+
+    if (buttons != 0)
+    {
+        buttons_debounced = buttons;
+        debounce = millis();
+    }
+    else if ((uint32_t)(millis() - debounce) > 100)
+    {
+        buttons_debounced = 0;
+    }
+
+    return buttons_debounced;
 }
 
 /***********************/
