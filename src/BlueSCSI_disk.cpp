@@ -544,35 +544,143 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
 {
     int target_idx = img.scsiId & 7;
 
-    img.image_index++;
-    if (img.image_index > IMAGE_INDEX_MAX)
-    {
-        img.image_index = 0;
-    }
-
     char section[6] = "SCSI0";
     section[4] = '0' + target_idx;
 
-    char key[5] = "IMG0";
-    key[3] = '0' + img.image_index;
-
-    int ret = ini_gets(section, key, "", buf, buflen, CONFIGFILE);
-    if (buf[0] != '\0')
+    // sanity check: is provided buffer is long enough to store a filename?
+    if (buflen < MAX_FILE_PATH)
     {
-        return ret;
+        panic("scsiDiskGetNextImageName called with illegal buflen");
     }
-    else if (img.image_index > 0)
+
+    if (img.image_directory)
     {
-        // there may be more than one image but we've ran out of new ones
-        // wrap back to the first image
-        img.image_index = IMAGE_INDEX_MAX;
-        return scsiDiskGetNextImageName(img, buf, buflen);
+        // is this needed to prevent an inadvertent callback during all these opens?
+        platform_set_sd_callback(NULL, NULL);
+
+        // image directory was found during startup
+        FsFile dir;
+        char key[] = "ImgDir";
+        ini_gets(section, key, "", buf, buflen, CONFIGFILE);
+        if (buf[0] != '\0')
+        {
+            if (!dir.open(buf))
+            {
+                log("ImgDir '", buf, "' couldn't be opened.");
+            }
+            if (!dir.isDir())
+            {
+                log("ImgDir '", buf, "' is not a directory.");
+                dir.close();
+                return false;
+            }
+        }
+        else
+        {
+            // If image_directory set but ImageDir is not, could be used to
+            // indicate an image directory configured via folder structure.
+            // Not implemented, so treat this as equivalent to missing ImageDir
+            return false;
+        }
+
+        // Find the filename with the lowest lexical order _after_ the
+        // currently selected file. If there is none, or if there is no
+        // current file, use the lowest filename encountered.
+        char first_name[MAX_FILE_PATH] = {'\0'};
+        char candidate_name[MAX_FILE_PATH] = {'\0'};
+        FsFile file;
+        while (file.openNext(&dir, O_RDONLY))
+        {
+            if (file.isDir()) continue;
+            if (!file.getName(buf, MAX_FILE_PATH))
+            {
+                log("Image directory had invalid file for ID", target_idx);
+                continue;
+            }
+            if (!scsiDiskFilenameValid(buf)) continue;
+
+            // keep track of the first item to allow wrapping
+            // without having to iterate again
+            if (first_name[0] == '\0' || strcmp(buf, first_name) < 0)
+            {
+                strncpy(first_name, buf, sizeof(first_name));
+            }
+
+            // discard if no selected name, or if candidate is before (or is) selected
+            if (img.current_image[0] == '\0' || strcmp(buf, img.current_image) <= 0) continue;
+
+            // if we got this far and the candidate is either 1) not set, or 2) is a
+            // lower item than what has been encountered thus far, it is the best choice
+            if (candidate_name[0] == '\0' || strcmp(buf, candidate_name) < 0)
+            {
+                strncpy(candidate_name, buf, sizeof(candidate_name));
+            }
+        }
+
+        // create base path for the result
+        // *TODO* this needs handling for leading and trailing slashes
+        int dirlen = dir.getName(buf, buflen);
+        dir.close(); // done with this
+        if (dirlen > 0 && dirlen - 1 < buflen)
+        {
+            buf[dirlen] = '/';
+            dirlen++;
+        }
+        else
+        {
+            log("Image directory name invalid for ID", target_idx);
+        }
+
+        // append the filename
+        if (candidate_name[0] != '\0')
+        {
+            strncpy(img.current_image, candidate_name, sizeof(img.current_image));
+            strncpy(buf + dirlen, candidate_name, buflen - dirlen);
+            img.image_index++;
+            return dirlen + strlen(candidate_name);
+        }
+        else if (first_name[0] != '\0')
+        {
+            strncpy(img.current_image, first_name, sizeof(img.current_image));
+            strncpy(buf + dirlen, first_name, buflen - dirlen);
+            img.image_index = 0;
+            return dirlen + strlen(first_name);
+        }
+        else
+        {
+            log("Image directory was empty for ID", target_idx);
+            return 0;
+        }
     }
     else
     {
-        // images are not defined in config
-        img.image_index = IMAGE_INDEX_MAX;
-        return 0;
+        img.image_index++;
+        if (img.image_index > IMAGE_INDEX_MAX)
+        {
+            img.image_index = 0;
+        }
+
+        char key[5] = "IMG0";
+        key[3] = '0' + img.image_index;
+
+        int ret = ini_gets(section, key, "", buf, buflen, CONFIGFILE);
+        if (buf[0] != '\0')
+        {
+            return ret;
+        }
+        else if (img.image_index > 0)
+        {
+            // there may be more than one image but we've ran out of new ones
+            // wrap back to the first image
+            img.image_index = IMAGE_INDEX_MAX;
+            return scsiDiskGetNextImageName(img, buf, buflen);
+        }
+        else
+        {
+            // images are not defined in config
+            img.image_index = IMAGE_INDEX_MAX;
+            return 0;
+        }
     }
 }
 
