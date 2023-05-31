@@ -535,7 +535,7 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
     int target_idx = img.scsiId & 7;
 
     img.image_index++;
-    if (img.image_index > 9)
+    if (img.image_index > IMAGE_INDEX_MAX)
     {
         img.image_index = 0;
     }
