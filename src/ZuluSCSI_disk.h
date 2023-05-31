@@ -63,6 +63,8 @@ struct image_config_t: public S2S_TargetCfg
     // For tape drive emulation, current position in blocks
     uint32_t tape_pos;
 
+    // True if there is a subdirectory of images for this target
+    bool image_directory;
     // Index of image, for when image on-the-fly switching is used for CD drives
     uint8_t image_index = IMAGE_INDEX_MAX;
 

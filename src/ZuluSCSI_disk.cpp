@@ -540,6 +540,16 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
     memset(tmp, 0, sizeof(tmp));
     ini_gets(section, "Serial", "", tmp, sizeof(tmp), CONFIGFILE);
     if (tmp[0]) memcpy(img.serial, tmp, sizeof(img.serial));
+
+    if (strlen(section) == 5 && strncmp(section, "SCSI", 4) == 0) // allow within target [SCSIx] blocks only
+    {
+        ini_gets(section, "ImgDir", "", tmp, sizeof(tmp), CONFIGFILE);
+        if (tmp[0])
+        {
+            logmsg("-- SCSI", target_idx, " using image directory \'", tmp, "'");
+            img.image_directory = true;
+        }
+    }
 }
 
 int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
