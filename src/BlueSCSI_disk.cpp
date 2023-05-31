@@ -555,9 +555,6 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
 
     if (img.image_directory)
     {
-        // is this needed to prevent an inadvertent callback during all these opens?
-        platform_set_sd_callback(NULL, NULL);
-
         // image directory was found during startup
         FsFile dir;
         char key[] = "ImgDir";
