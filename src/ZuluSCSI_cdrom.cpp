@@ -842,7 +842,7 @@ void cdromReinsertFirstImage(image_config_t &img)
     {
         // Multiple images for this drive, force restart from first one
         dbgmsg("---- Restarting from first CD-ROM image");
-        img.image_index = 9;
+        img.image_index = IMAGE_INDEX_MAX;
         cdromSwitchNextImage(img);
     }
     else if (img.ejected)

@@ -39,6 +39,8 @@ extern "C" {
 #include <scsi.h>
 }
 
+#define IMAGE_INDEX_MAX 9
+
 // Extended configuration stored alongside the normal SCSI2SD target information
 struct image_config_t: public S2S_TargetCfg
 {
@@ -62,7 +64,7 @@ struct image_config_t: public S2S_TargetCfg
     uint32_t tape_pos;
 
     // Index of image, for when image on-the-fly switching is used for CD drives
-    int image_index;
+    uint8_t image_index = IMAGE_INDEX_MAX;
 
     // Cue sheet file for CD-ROM images
     FsFile cuesheetfile;
