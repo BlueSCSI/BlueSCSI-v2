@@ -32,6 +32,7 @@
 #include <scsi2sd.h>
 #include <scsiPhy.h>
 #include "ImageBackingStore.h"
+#include "ZuluSCSI_config.h"
 
 extern "C" {
 #include <disk.h>
@@ -65,6 +66,8 @@ struct image_config_t: public S2S_TargetCfg
 
     // True if there is a subdirectory of images for this target
     bool image_directory;
+    // the name of the currently mounted image in a dynamic image directory
+    char current_image[MAX_FILE_PATH] = {'\0'};
     // Index of image, for when image on-the-fly switching is used for CD drives
     uint8_t image_index = IMAGE_INDEX_MAX;
 
