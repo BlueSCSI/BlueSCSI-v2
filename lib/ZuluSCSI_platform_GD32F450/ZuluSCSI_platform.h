@@ -29,7 +29,10 @@
 #include <scsi2sd.h>
 #include "ZuluSCSI_config.h"
 
+
 #ifdef __cplusplus
+#include <SdFat.h>
+
 extern "C" {
 #endif
 
@@ -136,8 +139,7 @@ const uint32_t platform_flash_sector_map[] =
         128 * 1024, 
         128 * 1024
     };
-bool platform_erase_flash_sector(uint32_t sector);
-bool platform_write_flash(uint32_t sector_index, uint32_t offset, uint8_t buffer[PLATFORM_FLASH_WRITE_BUFFER_SIZE]);
+
 void platform_boot_to_main_firmware();
 
 // Configuration customizations based on DIP switch settings
@@ -181,6 +183,8 @@ extern const uint32_t g_scsi_out_byte_to_bop[256];
 #ifdef __cplusplus
 }
 
+bool platform_firmware_erase(FsFile &file);
+bool platform_firmware_program(FsFile &file);
 // SD card driver for SdFat
 
 // SDIO interface, ZuluSCSI v1.4
