@@ -40,8 +40,6 @@ extern "C" {
 #include <scsi.h>
 }
 
-#define IMAGE_INDEX_MAX 9
-
 // Extended configuration stored alongside the normal SCSI2SD target information
 struct image_config_t: public S2S_TargetCfg
 {
