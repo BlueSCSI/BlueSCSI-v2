@@ -107,6 +107,27 @@ ZuluSCSI RP2040 DIP switch settings are:
 - TERMINATION: Enable SCSI termination
 - BOOTLOADER: Enable built-in USB bootloader, this DIP switch MUST remain off during normal operation.
 
+Physical eject button for CDROM
+-------------------------------
+CD-ROM drives can be configured to eject when a physical button is pressed.
+If multiple image files are configured with `IMG0`..`IMG9` config settings, ejection will switch between them.
+Two separate buttons are supported and they can eject different drives.
+
+    [SCSI1]
+    Type=2 # CDROM drive
+    IMG0 = img0.iso
+    IMG1 = ...
+    EjectButton = 1
+
+On GD32-based ZuluSCSI models (V1.0 and V1.1), buttons are connected to J303 12-pin expansion header.
+Button 1 is connected between `PE5` and `GND`, and button 2 is connected between `PE6` and `GND`.
+Pin locations are also shown in [this image](docs/ZuluSCSI_v1_1_buttons.jpg).
+
+On RP2040-based ZuluSCSI models, buttons are connected to the I2C pins.
+Button 1 is connected between `SDA` and `GND` and button 2 is connected between `SCL` and `GND`.
+On full-size models, the pins are available on expansion header J303 ([image](docs/ZuluSCSI_RP2040_buttons.jpg)).
+On compact model, pins are available on 4-pin I2C header J305 ([image](docs/ZuluSCSI_RP2040_compact_buttons.jpg)).
+
 SCSI initiator mode
 -------------------
 The RP2040 model supports SCSI initiator mode for reading SCSI drives.
