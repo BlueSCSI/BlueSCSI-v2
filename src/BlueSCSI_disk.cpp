@@ -534,7 +534,7 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
         ini_gets(section, "ImgDir", "", tmp, sizeof(tmp), CONFIGFILE);
         if (tmp[0])
         {
-            logmsg("-- SCSI", target_idx, " using image directory \'", tmp, "'");
+            log("-- SCSI", target_idx, " using image directory \'", tmp, "'");
             img.image_directory = true;
         }
     }
