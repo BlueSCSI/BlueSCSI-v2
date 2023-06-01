@@ -155,7 +155,7 @@ void platform_init()
     gpio_conf(SDIO_D2,        GPIO_FUNC_SIO, true, false, false, true, true);
 
     // LED pin
-    gpio_conf(LED_PIN,        GPIO_FUNC_SIO, false,false, true,  false, false);
+    //gpio_conf(LED_PIN,        GPIO_FUNC_SIO, false,false, true,  false, false);
 
 #ifndef ENABLE_AUDIO_OUTPUT
 #ifdef GPIO_I2C_SDA
@@ -301,7 +301,7 @@ bool platform_is_initiator_mode_enabled()
 void platform_disable_led(void)
 {   
     //        pin      function       pup   pdown  out    state fast
-    gpio_conf(LED_PIN, GPIO_FUNC_SIO, false,false, false, false, false);
+    //gpio_conf(LED_PIN, GPIO_FUNC_SIO, false,false, false, false, false);
     log("Disabling status LED");
 }
 
