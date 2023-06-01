@@ -664,7 +664,7 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
             logmsg("Image directory was empty for ID", target_idx);
             return 0;
         }
-        else if (buflen < nextlen + dirlen + 1)
+        else if (buflen < nextlen + dirlen + 2)
         {
             logmsg("Directory '", dirname, "' and file '", nextname, "' exceed allowed length");
             return 0;
@@ -673,8 +673,8 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
         {
             // construct a return value
             strncpy(buf, dirname, buflen);
-            buf[dirlen] = '/';
-            strncpy(buf + dirlen + 1, nextname, buflen - dirlen - 1);
+            if (buf[strlen(buf) - 1] != '/') strcat(buf, "/");
+            strcat(buf, nextname);
             return dirlen + nextlen;
         }
     }
