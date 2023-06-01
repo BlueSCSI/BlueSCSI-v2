@@ -99,7 +99,8 @@ void scsiDiskCloseSDCardImages();
 bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize, S2S_CFG_TYPE type = S2S_CFG_FIXED);
 void scsiDiskLoadConfig(int target_idx);
 
-// During loading, checks if a filename is appropriate for further processing as a disk image
+// Checks if a filename extension is appropriate for further processing as a disk image.
+// The current implementation does not check the the filename prefix for validity.
 bool scsiDiskFilenameValid(const char* name);
 
 // Clear the ROM drive header from flash
