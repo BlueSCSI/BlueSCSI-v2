@@ -591,17 +591,17 @@ static int findNextImageAfter(image_config_t &img,
 
         // keep track of the first item to allow wrapping
         // without having to iterate again
-        if (first_name[0] == '\0' || strcmp(buf, first_name) < 0)
+        if (first_name[0] == '\0' || strcasecmp(buf, first_name) < 0)
         {
             strncpy(first_name, buf, sizeof(first_name));
         }
 
         // discard if no selected name, or if candidate is before (or is) selected
-        if (filename[0] == '\0' || strcmp(buf, filename) <= 0) continue;
+        if (filename[0] == '\0' || strcasecmp(buf, filename) <= 0) continue;
 
         // if we got this far and the candidate is either 1) not set, or 2) is a
         // lower item than what has been encountered thus far, it is the best choice
-        if (candidate_name[0] == '\0' || strcmp(buf, candidate_name) < 0)
+        if (candidate_name[0] == '\0' || strcasecmp(buf, candidate_name) < 0)
         {
             strncpy(candidate_name, buf, sizeof(candidate_name));
         }
