@@ -636,10 +636,7 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
     section[4] = '0' + target_idx;
 
     // sanity check: is provided buffer is long enough to store a filename?
-    if (buflen < MAX_FILE_PATH)
-    {
-        panic("scsiDiskGetNextImageName called with illegal buflen");
-    }
+    assert(buflen >= MAX_FILE_PATH);
 
     if (img.image_directory)
     {
