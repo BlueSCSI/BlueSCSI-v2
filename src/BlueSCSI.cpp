@@ -522,6 +522,8 @@ static void reinitSCSI()
 
 extern "C" void bluescsi_setup(void)
 {
+  pio_clear_instruction_memory(pio0);
+  pio_clear_instruction_memory(pio1);
   platform_init();
   platform_late_init();
 
@@ -657,9 +659,5 @@ extern "C" void bluescsi_main_loop(void)
         platform_poll();
       }
     } while (!g_sdcard_present && !g_romdrive_active);
-  }
-  else
-  {
-    
   }
 }
