@@ -56,6 +56,9 @@
 #define HDIMG_BLK_POS 5                 // Position to embed block size numbers
 #define MAX_FILE_PATH 64                // Maximum file name length
 
+// Image definition options
+#define IMAGE_INDEX_MAX 9               // Maximum number of 'IMG0' style statements parsed
+
 // SCSI config
 #define NUM_SCSIID  8          // Maximum number of supported SCSI-IDs (The minimum is 0)
 #define NUM_SCSILUN 1          // Maximum number of LUNs supported     (Currently has to be 1)
