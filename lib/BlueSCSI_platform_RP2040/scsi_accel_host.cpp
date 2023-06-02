@@ -128,9 +128,6 @@ void scsi_accel_host_init()
     g_scsi_host_state = SCSIHOST_IDLE;
     scsi_accel_host_config_gpio();
 
-    // Load PIO programs
-    pio_clear_instruction_memory(SCSI_PIO);
-
     // Asynchronous / synchronous SCSI read
     g_scsi_host.pio_offset_async_read = pio_add_program(SCSI_PIO, &scsi_host_async_read_program);
     g_scsi_host.pio_cfg_async_read = scsi_host_async_read_program_get_default_config(g_scsi_host.pio_offset_async_read);
