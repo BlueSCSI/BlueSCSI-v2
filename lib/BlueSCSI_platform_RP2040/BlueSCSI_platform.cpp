@@ -12,12 +12,13 @@
 #include <hardware/adc.h>
 #include <hardware/flash.h>
 #include <hardware/structs/xip_ctrl.h>
-#ifdef MBED
 #include <hardware/structs/usb.h>
+#ifdef MBED
 #include <platform/mbed_error.h>
-#include <multicore.h>
 #include <USB/PluggableUSBSerial.h>
 #include "audio.h"
+#endif
+#include <pico/multicore.h>
 #include "scsi_accel_rp2040.h"
 
 extern "C" {
@@ -28,7 +29,9 @@ static bool g_scsi_initiator = false;
 static uint32_t g_flash_chip_size = 0;
 static bool g_uart_initialized = false;
 
+#ifdef MBED
 void mbed_error_hook(const mbed_error_ctx * error_context);
+#endif
 
 /***************/
 /* GPIO init   */
@@ -112,7 +115,9 @@ void platform_init()
     gpio_conf(SWO_PIN,        GPIO_FUNC_UART,false,false, true,  false, true);
     uart_init(uart0, 115200);
     g_uart_initialized = true;
+    #ifdef MBED
     mbed_set_error_hook(mbed_error_hook);
+    #endif
 
     //log("DIP switch settings: debug log ", (int)dbglog, ", termination ", (int)termination);
     log("Platform: ", g_platform_name);
@@ -335,6 +340,7 @@ void platform_emergency_log_save()
     crashfile.close();
 }
 
+#ifdef MBED
 void mbed_error_hook(const mbed_error_ctx * error_context)
 {
     log("--------------");
@@ -378,6 +384,7 @@ void mbed_error_hook(const mbed_error_ctx * error_context)
         for (int j = 0; j < base_delay * 10; j++) delay_ns(100000);
     }
 }
+#endif
 
 /*****************************************/
 /* Debug logging and watchdog            */
@@ -392,6 +399,7 @@ void mbed_error_hook(const mbed_error_ctx * error_context)
 // also starts calling this after 2 seconds.
 // This ensures that log messages get passed even if code hangs,
 // but does not unnecessarily delay normal execution.
+#ifdef MBED
 static void usb_log_poll()
 {
     static uint32_t logpos = 0;
@@ -414,6 +422,7 @@ static void usb_log_poll()
         logpos -= available - actual;
     }
 }
+#endif
 
 // Use ADC to implement supply voltage monitoring for the +3.0V rail.
 // This works by sampling the temperature sensor channel, which has
@@ -494,11 +503,13 @@ static void watchdog_callback(unsigned alarm_num)
 {
     g_watchdog_timeout -= 1000;
 
+#ifdef MBED
     if (g_watchdog_timeout < WATCHDOG_CRASH_TIMEOUT - 1000)
     {
         // Been stuck for at least a second, start dumping USB log
         usb_log_poll();
     }
+#endif
 
     if (g_watchdog_timeout <= WATCHDOG_CRASH_TIMEOUT - WATCHDOG_BUS_RESET_TIMEOUT)
     {
@@ -545,7 +556,9 @@ static void watchdog_callback(unsigned alarm_num)
                 p += 4;
             }
 
+#ifdef MBED
             usb_log_poll();
+#endif
             platform_emergency_log_save();
 
             platform_boot_to_main_firmware();
@@ -569,16 +582,20 @@ void platform_reset_watchdog()
         g_watchdog_initialized = true;
     }
 
+#ifdef MBED
     // USB log is polled here also to make sure any log messages in fault states
     // get passed to USB.
     usb_log_poll();
+#endif
 }
 
 // Poll function that is called every few milliseconds.
 // Can be left empty or used for platform-specific processing.
 void platform_poll()
 {
+#ifdef MBED
     usb_log_poll();
+#endif
     adc_poll();
     
 #ifdef ENABLE_AUDIO_OUTPUT
@@ -638,12 +655,14 @@ bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_
         }
     }
 
+#ifdef MBED
     if (NVIC_GetEnableIRQ(USBCTRL_IRQn))
     {
         log("Disabling USB during firmware flashing");
         NVIC_DisableIRQ(USBCTRL_IRQn);
         usb_hw->main_ctrl = 0;
     }
+#endif
 
     debuglog("Writing flash at offset ", offset, " data ", bytearray(buffer, 4));
     assert(offset % PLATFORM_FLASH_PAGE_SIZE == 0);
@@ -876,6 +895,7 @@ const uint16_t g_scsi_parity_check_lookup[512] __attribute__((aligned(1024), sec
 
 } /* extern "C" */
 
+#ifdef MBED
 /* Logging from mbed */
 
 static class LogTarget: public mbed::FileHandle {

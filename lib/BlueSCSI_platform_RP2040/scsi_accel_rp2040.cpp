@@ -16,7 +16,7 @@
 #include <hardware/structs/iobank0.h>
 #include <hardware/sync.h>
 #include <audio.h>
-#include <multicore.h>
+#include <pico/multicore.h>
 
 // SCSI bus write acceleration uses up to 3 PIO state machines:
 // SM0: Convert data bytes to lookup addresses to add parity
