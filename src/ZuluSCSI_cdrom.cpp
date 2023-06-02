@@ -1737,6 +1737,7 @@ extern "C" int scsiCDRomCommand()
             (((uint32_t) scsiDev.cdb[2]) << 8) +
             scsiDev.cdb[3];
         uint32_t blocks = scsiDev.cdb[4];
+        if (blocks == 0) blocks = 256;
 
         doReadCD(lba, blocks, 0, 0x10, 0, true);
     }
