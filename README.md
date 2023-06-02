@@ -7,7 +7,7 @@ ZuluSCSI uses raw hard drive image files, which are stored on a FAT32 or exFAT-f
 
 Examples of valid filenames:
 * `HD5.hda` or `HD5.img`: hard drive with SCSI ID 5
-* `HD20_512.hda`: hard drive with SCSI ID 2, LUN 0, block size 512
+* `HD20_512.hda`: hard drive with SCSI ID 2, LUN 0, block size 512. Currently, ZuluSCSI does not support multiple LUNs, only LUN 0.
 * `CD3.iso`: CD drive with SCSI ID 3
 
 In addition to the simplified filenames style above, the ZuluSCSI firmware also looks for images using the BlueSCSI-style "HDxy_512.hda" filename formatting.
