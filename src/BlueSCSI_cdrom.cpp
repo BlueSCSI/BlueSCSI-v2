@@ -1521,11 +1521,6 @@ extern "C" int scsiCDRomCommand()
                 cdromPerformEject(img);
             }
         }
-        else
-        {
-            // flow through to disk handler
-            commandHandled = 0;
-        }
     }
     else if (command == 0x25)
     {
