@@ -39,7 +39,7 @@ extern "C" {
 
 #include "stdint.h"
 
-#define S2S_MAX_TARGETS 7
+#define S2S_MAX_TARGETS 8
 #define S2S_CFG_SIZE (S2S_MAX_TARGETS * sizeof(S2S_TargetCfg) + sizeof(S2S_BoardCfg))
 
 typedef enum

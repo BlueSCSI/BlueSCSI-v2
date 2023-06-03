@@ -355,17 +355,9 @@ bool findHDDImages()
         strcat(fullname, name);
 
         // Check whether this SCSI ID has been configured yet
-        const S2S_TargetCfg* cfg = s2s_getConfigById(id);
-        if (cfg)
+        if (s2s_getConfigById(id))
         {
           log("-- Ignoring ", fullname, ", SCSI ID ", id, " is already in use!");
-          continue;
-        }
-
-        // Apple computers reserve ID 7, so warn the user this configuration wont work
-        if(id == 7 && cfg->quirks == S2S_CFG_QUIRKS_APPLE )
-        {
-          log("-- Ignoring ", fullname, ", SCSI ID ", id, " Quirks set to Apple so can not use SCSI ID 7!");
           continue;
         }
 
@@ -426,11 +418,10 @@ bool findHDDImages()
   for (int i = 0; i < NUM_SCSIID; i++)
   {
     const S2S_TargetCfg* cfg = s2s_getConfigByIndex(i);
-
     if (cfg && (cfg->scsiId & S2S_CFG_TARGET_ENABLED))
     {
       int capacity_kB = ((uint64_t)cfg->scsiSectors * cfg->bytesPerSector) / 1024;
-      log("* ID: ", (int)(cfg->scsiId & 7),
+      log("* ID: ", (int)(cfg->scsiId & S2S_CFG_TARGET_ID_BITS),
             ", BlockSize: ", (int)cfg->bytesPerSector,
             ", Type: ", typeToChar((int)cfg->deviceType),
             ", Quirks: ", quirksToChar((int)cfg->quirks),
