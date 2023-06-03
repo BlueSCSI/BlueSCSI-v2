@@ -123,6 +123,12 @@ void log_raw(double value)
     log_raw(buffer);
 }
 
+void log_raw(bool value)
+{
+    if(value) log_raw("true");
+    else log_raw("false");
+}
+
 uint32_t log_get_buffer_len()
 {
     return g_logpos;
