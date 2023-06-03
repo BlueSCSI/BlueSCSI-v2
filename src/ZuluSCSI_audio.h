@@ -34,6 +34,13 @@
  * for port 0. The two values are averaged to determine final volume level.
  */
 #define DEFAULT_VOLUME_LEVEL 0x3F3F
+/*
+ * Defines the 'enable' masks for the two audio output ports of each device.
+ * If this mask is matched with audio_get_channel() the relevant port will
+ * have audio output to it, otherwise it will be muted, regardless of the
+ * volume level.
+ */
+#define AUDIO_CHANNEL_ENABLE_MASK 0x0201
 
 /*
  * Status codes for audio playback, matching the SCSI 'audio status codes'.
@@ -117,3 +124,23 @@ uint16_t audio_get_volume(uint8_t id);
  * \param vol   The new volume level.
  */
 void audio_set_volume(uint8_t id, uint16_t vol);
+
+/**
+ * Gets the 0x0E channel information for both audio ports. The high byte
+ * corresponds to port 1 and the low byte to port 0. If the bits defined in
+ * AUDIO_CHANNEL_ENABLE_MASK are not set for the respective ports, that
+ * output will be muted, regardless of volume set.
+ *
+ * \param id    SCSI ID to provide channel information for.
+ * \return      The channel information.
+ */
+uint16_t audio_get_channel(uint8_t id);
+
+/**
+ * Sets the 0x0E channel information for a target, as above. See 0x0E mode
+ * page for more.
+ *
+ * \param id    SCSI ID to set channel information for.
+ * \param chn   The new channel information.
+ */
+void audio_set_channel(uint8_t id, uint16_t chn);
