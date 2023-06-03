@@ -41,7 +41,7 @@
 
 // Log buffer size in bytes, must be a power of 2
 #ifndef LOGBUFSIZE
-#define LOGBUFSIZE 16000
+#define LOGBUFSIZE 16384
 #endif
 #define LOG_SAVE_INTERVAL_MS 1000
 
