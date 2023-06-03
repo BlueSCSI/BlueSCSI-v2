@@ -11,6 +11,7 @@
 #include "BlueSCSI_config.h"
 #include "BlueSCSI_presets.h"
 #include "BlueSCSI_cdrom.h"
+#include "BlueSCSI_platform_config_hook.h"
 #include "ImageBackingStore.h"
 #include "ROMDrive.h"
 #include <minIni.h>
