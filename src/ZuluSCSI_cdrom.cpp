@@ -229,7 +229,7 @@ static uint32_t getLeadOutLBA(const CUETrackInfo* lasttrack)
         image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
         uint32_t lastTrackBlocks = (img.file.size() - lasttrack->file_offset)
                 / lasttrack->sector_length;
-        return lasttrack->track_start + lastTrackBlocks + 1;
+        return lasttrack->track_start + lastTrackBlocks;
     }
     else
     {
