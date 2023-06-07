@@ -514,6 +514,8 @@ static void doModeSense(
 		idx += sizeof(SequentialDeviceConfigPage);
 	}
 
+	idx += modeSenseCDCapabilitiesPage(pc, idx, pageCode, &pageFound);
+
 	if ((
 			(scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_APPLE) ||
 			(idx + sizeof(AppleVendorPage) <= allocLength)
