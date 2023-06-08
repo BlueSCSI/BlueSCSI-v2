@@ -721,7 +721,7 @@ int ini_puts(const TCHAR *Section, const TCHAR *Key, const TCHAR *Value, const T
         ini_tell(&rfp, &tail);
         /* create new buffer (without writing it to file) */
         writekey(LocalBuffer, Key, Value, NULL);
-        if (_tcslen(LocalBuffer) == (size_t)(tail - head)) {
+        if (_tcslen(LocalBuffer) == (size_t)(tail.position - head.position)) {
           /* length matches, close the file & re-open for read/write, then
            * write at the correct position
            */
