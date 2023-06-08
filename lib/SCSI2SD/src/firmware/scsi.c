@@ -587,6 +587,10 @@ static void process_Command()
 	{
 		// Already handled.
 	}
+	else if (scsiBlueSCSIToolboxCommand())
+	{
+		// handled
+	}
 	else if (scsiDiskCommand())
 	{
 		// Already handled.

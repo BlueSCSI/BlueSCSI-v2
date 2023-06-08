@@ -304,6 +304,16 @@ void ImageBackingStore::flush()
     }
 }
 
+void ImageBackingStore::getName(char * name, size_t len)
+{
+    if(m_isrom)
+        name = (char*)"ROM:";
+    else if(m_israw)
+        name = (char*)"RAW:";
+    else
+        m_fsfile.getName(name, len);
+}
+
 uint64_t ImageBackingStore::position()
 {
     if (!m_israw && !m_isrom)
