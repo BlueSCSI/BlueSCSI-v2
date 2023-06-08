@@ -187,6 +187,38 @@ static const uint8_t DiscInformation[] =
     0x00,   // 33: number of opc tables
 };
 
+static const uint8_t TrackInformation[] =
+{
+    0x00,   //  0: data length, MSB
+    0x1A,   //  1: data length, LSB
+    0x01,   //  2: track number
+    0x01,   //  3: session number
+    0x00,   //  4: reserved
+    0x04,   //  5: track mode and flags
+    0x8F,   //  6: data mode and flags
+    0x00,   //  7: nwa_v
+    0x00,   //  8: track start address (MSB)
+    0x00,   //  9: .
+    0x00,   // 10: .
+    0x00,   // 11: track start address (LSB)
+    0xFF,   // 12: next writable address (MSB)
+    0xFF,   // 13: .
+    0xFF,   // 14: .
+    0xFF,   // 15: next writable address (LSB)
+    0x00,   // 16: free blocks (MSB)
+    0x00,   // 17: .
+    0x00,   // 18: .
+    0x00,   // 19: free blocks (LSB)
+    0x00,   // 20: fixed packet size (MSB)
+    0x00,   // 21: .
+    0x00,   // 22: .
+    0x00,   // 23: fixed packet size (LSB)
+    0x00,   // 24: track size (MSB)
+    0x00,   // 25: .
+    0x00,   // 26: .
+    0x00,   // 27: track size (LSB)
+};
+
 // Convert logical block address to CD-ROM time
 static void LBA2MSF(int32_t LBA, uint8_t* MSF, bool relative)
 {
@@ -383,6 +415,39 @@ void doReadDiscInformationSimple(uint16_t allocationLength)
     }
     scsiDev.dataLen = len;
     scsiDev.phase = DATA_IN;
+}
+
+void doReadTrackInformationSimple(bool track, uint32_t lba, uint16_t allocationLength)
+{
+    uint32_t len = sizeof(TrackInformation);
+    memcpy(scsiDev.data, TrackInformation, len);
+
+    uint32_t capacity = getScsiCapacity(
+            scsiDev.target->cfg->sdSectorStart,
+            scsiDev.target->liveCfg.bytesPerSector,
+            scsiDev.target->cfg->scsiSectors);
+    if (!track && lba >= capacity)
+    {
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+        scsiDev.phase = STATUS;
+    }
+    else
+    {
+        // update track size
+        scsiDev.data[24] = capacity >> 24;
+        scsiDev.data[25] = capacity >> 16;
+        scsiDev.data[26] = capacity >> 8;
+        scsiDev.data[27] = capacity;
+
+        if (len > allocationLength)
+        {
+            len = allocationLength;
+        }
+        scsiDev.dataLen = len;
+        scsiDev.phase = DATA_IN;
+    }
 }
 
 /*********************************/
@@ -758,6 +823,94 @@ void doReadDiscInformation(uint16_t allocationLength)
     scsiDev.data[5] = firsttrack;
     scsiDev.data[6] = lasttrack;
 
+    if (len > allocationLength)
+    {
+        len = allocationLength;
+    }
+    scsiDev.dataLen = len;
+    scsiDev.phase = DATA_IN;
+}
+
+void doReadTrackInformation(bool track, uint32_t lba, uint16_t allocationLength)
+{
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+    CUEParser parser;
+    if (!loadCueSheet(img, parser))
+    {
+        // No CUE sheet, use hardcoded data
+        return doReadTrackInformationSimple(track, lba, allocationLength);
+    }
+
+    // Take the hardcoded header as base
+    uint32_t len = sizeof(TrackInformation);
+    memcpy(scsiDev.data, TrackInformation, len);
+
+    // Step through the tracks until the one requested is found
+    // Result will be placed in mtrack for later use if found
+    bool trackfound = false;
+    uint32_t tracklen = 0;
+    CUETrackInfo mtrack = {0};
+    const CUETrackInfo *trackinfo;
+    while ((trackinfo = parser.next_track()) != NULL)
+    {
+        if (mtrack.track_number != 0) // skip 1st track, just store later
+        {
+            if ((track && lba == mtrack.track_number)
+                || (!track && lba < trackinfo->data_start))
+            {
+                trackfound = true;
+                tracklen = trackinfo->data_start - mtrack.data_start;
+                break;
+            }
+        }
+        mtrack = *trackinfo;
+    }
+    // try the last track as a final attempt if no match found beforehand
+    if (!trackfound)
+    {
+        uint32_t lastLba = getLeadOutLBA(&mtrack);
+        if ((track && lba == mtrack.track_number)
+            || (!track && lba < lastLba))
+        {
+            trackfound = true;
+            tracklen = lastLba - mtrack.data_start;
+        }
+    }
+
+    // bail out if no match found
+    if (!trackfound)
+    {
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+        scsiDev.phase = STATUS;
+        return;
+    }
+
+    // rewrite relevant bytes, starting with track number
+    scsiDev.data[3] = mtrack.track_number;
+
+    // track mode
+    if (mtrack.track_mode == CUETrack_AUDIO)
+    {
+        scsiDev.data[5] = 0x00;
+    }
+
+    // track start
+    uint32_t start = mtrack.data_start;
+    scsiDev.data[8] = start >> 24;
+    scsiDev.data[9] = start >> 16;
+    scsiDev.data[10] = start >> 8;
+    scsiDev.data[11] = start;
+
+    // track size
+    scsiDev.data[24] = tracklen >> 24;
+    scsiDev.data[25] = tracklen >> 16;
+    scsiDev.data[26] = tracklen >> 8;
+    scsiDev.data[27] = tracklen;
+
+    debuglog("------ Reporting track ", mtrack.track_number, ", start ", start,
+            ", length ", tracklen);
     if (len > allocationLength)
     {
         len = allocationLength;
@@ -1612,6 +1765,19 @@ extern "C" int scsiCDRomCommand()
             (((uint32_t) scsiDev.cdb[7]) << 8) +
             scsiDev.cdb[8];
         doReadDiscInformation(allocationLength);
+    }
+    else if (command == 0x52)
+    {
+        // READ TRACK INFORMATION
+        bool track = (scsiDev.cdb[1] & 0x01);
+        uint32_t lba = (((uint32_t) scsiDev.cdb[2]) << 24) +
+            (((uint32_t) scsiDev.cdb[3]) << 16) +
+            (((uint32_t) scsiDev.cdb[4]) << 8) +
+            scsiDev.cdb[5];
+        uint16_t allocationLength =
+            (((uint32_t) scsiDev.cdb[7]) << 8) +
+            scsiDev.cdb[8];
+        doReadTrackInformation(track, lba, allocationLength);
     }
     else if (command == 0x4A)
     {
