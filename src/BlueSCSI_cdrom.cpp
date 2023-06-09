@@ -919,6 +919,172 @@ void doReadTrackInformation(bool track, uint32_t lba, uint16_t allocationLength)
     scsiDev.phase = DATA_IN;
 }
 
+void doGetConfiguration(uint8_t rt, uint16_t startFeature, uint16_t allocationLength)
+{
+    // rt = 0 is all features, rt = 1 is current features,
+    // rt = 2 only startFeature, others reserved
+    if (rt > 2)
+    {
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+        scsiDev.phase = STATUS;
+        return;
+    }
+
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+
+    // write feature header
+    uint32_t len = 8; // length bytes set at end of call
+    scsiDev.data[4] = 0; // reserved
+    scsiDev.data[5] = 0; // reserved
+    if (!img.ejected)
+    {
+        // disk in drive, current profile is CD-ROM
+        scsiDev.data[6] = 0;
+        scsiDev.data[7] = 0; // TODO
+    }
+    else
+    {
+        // no disk, report no current profile
+        scsiDev.data[6] = 0;
+        scsiDev.data[7] = 0;
+    }
+
+    // profile list (0)
+    if ((rt == 2 && 0 == startFeature)
+        || (rt == 1 && startFeature <= 0)
+        || (rt == 0 && startFeature <= 0))
+    {
+        scsiDev.data[len++] = 0x00;
+        scsiDev.data[len++] = 0x00;
+        scsiDev.data[len++] = 0x03; // ver 0, persist=1,current=1
+        scsiDev.data[len++] = 8; // 2 more
+        // CD-ROM profile
+        scsiDev.data[len++] = 0x00;
+        scsiDev.data[len++] = 0x08;
+        scsiDev.data[len++] = (img.ejected) ? 0x00 : 0x01;
+        scsiDev.data[len++] = 0;
+        // removable disk profile
+        scsiDev.data[len++] = 0x00;
+        scsiDev.data[len++] = 0x02;
+        scsiDev.data[len++] = 0x00;
+        scsiDev.data[len++] = 0;
+    }
+
+    // core feature (1)
+    if ((rt == 2 && startFeature == 1)
+        || (rt == 1 && startFeature <= 1)
+        || (rt == 0 && startFeature <= 1))
+    {
+        scsiDev.data[len++] = 0x00;
+        scsiDev.data[len++] = 0x01;
+        scsiDev.data[len++] = 0x0B; // ver 2, persist=1,current=1
+        scsiDev.data[len++] = 8;
+        // physical interface standard (SCSI)
+        scsiDev.data[len++] = 0x00;
+        scsiDev.data[len++] = 0x00;
+        scsiDev.data[len++] = 0x00;
+        scsiDev.data[len++] = 0x01;
+        scsiDev.data[len++] = 0x03; // support INQ2 and DBE
+        scsiDev.data[len++] = 0;
+        scsiDev.data[len++] = 0;
+        scsiDev.data[len++] = 0;
+    }
+
+    // morphing feature (2)
+    if ((rt == 2 && startFeature == 2)
+        || (rt == 1 && startFeature <= 2)
+        || (rt == 0 && startFeature <= 2))
+    {
+        scsiDev.data[len++] = 0x00;
+        scsiDev.data[len++] = 0x02;
+        scsiDev.data[len++] = 0x07; // ver 1, persist=1,current=1
+        scsiDev.data[len++] = 4;
+        scsiDev.data[len++] = 0x02; // OCEvent=1,async=0
+        scsiDev.data[len++] = 0;
+        scsiDev.data[len++] = 0;
+        scsiDev.data[len++] = 0;
+    }
+
+    // removable medium feature (3)
+    if ((rt == 2 && startFeature == 3)
+        || (rt == 1 && startFeature <= 3)
+        || (rt == 0 && startFeature <= 3))
+    {
+        scsiDev.data[len++] = 0x00;
+        scsiDev.data[len++] = 0x03;
+        scsiDev.data[len++] = 0x03; // ver 0, persist=1,current=1
+        scsiDev.data[len++] = 4;
+        scsiDev.data[len++] = 0x28; // matches 0x2A mode page version
+        scsiDev.data[len++] = 0;
+        scsiDev.data[len++] = 0;
+        scsiDev.data[len++] = 0;
+    }
+
+    // random readable feature (0x10, 16)
+    if ((rt == 2 && startFeature == 16)
+        || (rt == 1 && startFeature <= 16 && !img.ejected)
+        || (rt == 0 && startFeature <= 16))
+    {
+        scsiDev.data[len++] = 0x00;
+        scsiDev.data[len++] = 0x10;
+        // ver 0, persist=0,current=drive state
+        scsiDev.data[len++] = (img.ejected) ? 0x00 : 0x01;
+        scsiDev.data[len++] = 8;
+        scsiDev.data[len++] = 0x00; // 2048 (MSB)
+        scsiDev.data[len++] = 0x00; // .
+        scsiDev.data[len++] = 0x08; // .
+        scsiDev.data[len++] = 0x00; // 2048 (LSB)
+        scsiDev.data[len++] = 0x00;
+        // one block min when disk in drive only
+        scsiDev.data[len++] = (img.ejected) ? 0x00 : 0x01;
+        scsiDev.data[len++] = 0x00; // no support for PP error correction (TODO?)
+        scsiDev.data[len++] = 0;
+    }
+
+    // multi-read feature (0x1D, 29)
+    if ((rt == 2 && startFeature == 29)
+        || (rt == 1 && startFeature <= 29 && !img.ejected)
+        || (rt == 0 && startFeature <= 29))
+    {
+        scsiDev.data[len++] = 0x00;
+        scsiDev.data[len++] = 0x1D;
+        // ver 0, persist=0,current=drive state
+        scsiDev.data[len++] = (img.ejected) ? 0x00 : 0x01;
+        scsiDev.data[len++] = 0;
+    }
+
+    // CD read feature (0x1E, 30)
+    if ((rt == 2 && startFeature == 30)
+        || (rt == 1 && startFeature <= 30 && !img.ejected)
+        || (rt == 0 && startFeature <= 30))
+    {
+        scsiDev.data[len++] = 0x00;
+        scsiDev.data[len++] = 0x1E;
+        // ver 2, persist=0,current=drive state
+        scsiDev.data[len++] = (img.ejected) ? 0x08 : 0x09;
+        scsiDev.data[len++] = 4;
+        scsiDev.data[len++] = 0x00; // dap=0,c2=0,cd-text=0
+        scsiDev.data[len++] = 0;
+        scsiDev.data[len++] = 0;
+        scsiDev.data[len++] = 0;
+    }
+
+    // finally, rewrite data length to match
+    scsiDev.data[0] = len >> 24;
+    scsiDev.data[1] = len >> 16;
+    scsiDev.data[2] = len >> 8;
+    scsiDev.data[3] = len;
+
+    if (len > allocationLength)
+    {
+        len = allocationLength;
+    }
+    scsiDev.dataLen = len;
+    scsiDev.phase = DATA_IN;
+}
+
 /****************************************/
 /* CUE sheet check at image load time   */
 /****************************************/
@@ -1758,6 +1924,18 @@ extern "C" int scsiCDRomCommand()
             (((uint32_t) scsiDev.cdb[7]) << 8) +
             scsiDev.cdb[8];
         doReadHeader(MSF, lba, allocationLength);
+    }
+    else if (command == 0x46)
+    {
+        // GET CONFIGURATION
+        uint8_t rt = (scsiDev.cdb[1] & 0x03);
+        uint16_t startFeature =
+            (((uint16_t) scsiDev.cdb[2]) << 8) +
+            scsiDev.cdb[3];
+        uint16_t allocationLength =
+            (((uint32_t) scsiDev.cdb[7]) << 8) +
+            scsiDev.cdb[8];
+        doGetConfiguration(rt, startFeature, allocationLength);
     }
     else if (command == 0x51)
     {
