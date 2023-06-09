@@ -506,7 +506,7 @@ bool scsiDiskFilenameValid(const char* name)
         {
             if (strcasecmp(extension, ignore_exts[i]) == 0)
             {
-                // ignore these without log message
+                debuglog("-- Ignoring compressed file ", name);
                 return false;
             }
         }

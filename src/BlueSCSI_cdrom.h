@@ -32,3 +32,6 @@ bool cdromValidateCueSheet(image_config_t &img);
 // boolean flag is true if just basic mechanism status (playback true/false)
 // is desired, or false if historical audio status codes should be returned
 void cdromGetAudioPlaybackStatus(uint8_t *status, uint32_t *current_lba, bool current_only);
+
+// switch to a given filename for the cd.
+bool cdromSwitch(image_config_t &img, const char* filename);
