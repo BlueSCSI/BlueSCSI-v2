@@ -18,6 +18,7 @@
 **/
 #include "BlueSCSI_Toolbox.h"
 #include "BlueSCSI_disk.h"
+#include "BlueSCSI_cdrom.h"
 #include "BlueSCSI_log.h"
 #include <minIni.h>
 #include <SdFat.h>
@@ -46,7 +47,7 @@ static void doCountFiles(const char * dir_name)
         file.getName(name, 32 + 1);
         file.close();
         // only count valid files.
-        if(name[0] != '.')
+        if(!scsiDiskFilenameValid(name))
         {
             file_count = file_count + 1;
             if(file_count > 100) {
@@ -81,7 +82,7 @@ void onListFiles(const char * dir_name) {
         file.getName(name, MAX_MAC_PATH + 1);
         uint64_t size = file.fileSize();
         file.close();
-        if(name[0] == '.')
+        if(!scsiDiskFilenameValid(name))
             continue;
         file_entry[0] = index;
         file_entry[1] = isDir;
@@ -120,9 +121,9 @@ File get_file_from_index(uint8_t index, const char * dir_name)
       file_test.close();
       break;
     }
-    file_test.getName(name, 32 + 1);
+    file_test.getName(name, MAX_MAC_PATH + 1);
 
-    if(name[0] == '.')
+    if(!scsiDiskFilenameValid(name))
       continue;
     if (count == index)
     {
@@ -166,59 +167,13 @@ void onSetNextCD()
 
     uint8_t file_index = scsiDev.cdb[1];
     uint8_t cd_scsi_id = scsiDev.cdb[2];
-    char section[6] = "SCSI0";
-    char key[5] = "IMG0";
-    section[4] = '0' + cd_scsi_id;
 
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-    debuglog("img.image_index: ", img.image_index);
-    int next_image_id = img.image_index + 1;
-
-    if(img.image_index == 0)
-    { // have to check if we have a 0, if not set the current image to 0 so we can cycle back.
-        ini_gets(section, key, "", name, sizeof(name), CONFIGFILE);
-        if(strlen(name) == 0)
-        {
-            img.file.getName(name, MAX_FILE_PATH);
-            log("Nothing in IMG0, so put the current image in it: ", name);
-            ini_puts(section, key, name, CONFIGFILE);
-        }
-        else
-        {
-            log("Something  in IMG0: ", name);
-        }
-    }
-
-    debuglog("next_image_id: ", next_image_id);
-    if(next_image_id > 9)
-        next_image_id = 0;
-
-    key[3] = '0' + next_image_id;
     File next_cd = get_file_from_index(file_index, CD_IMG_DIR);
-    if(!next_cd.isFile())
-    {
-        log("not a file?");
-        next_cd.close();
-        scsiDev.status = CHECK_CONDITION;
-        scsiDev.target->sense.code = ILLEGAL_REQUEST;
-        //SCSI_ASC_INVALID_FIELD_IN_CDB
-        scsiDev.phase = STATUS;
-        return;
-    }
     next_cd.getName(name, sizeof(name));
     next_cd.close();
     snprintf(full_path, (MAX_FILE_PATH * 2), "%s/%s", CD_IMG_DIR, name);
-    debuglog("full_path: ", full_path);
-    debuglog("key: ", key, " section: ", section);
-    // If file doesnt exist, ini_puts() will create it.
-    if(!ini_puts(section, key, full_path, CONFIGFILE))
-    {
-        scsiDev.status = CHECK_CONDITION;
-        scsiDev.target->sense.code = ILLEGAL_REQUEST;
-        //SCSI_ASC_INVALID_FIELD_IN_CDB
-        scsiDev.phase = STATUS;
-        return;
-    }
+    cdromSwitch(img, full_path);
 }
 
 File gFile; // global so we can keep it open while transfering.
