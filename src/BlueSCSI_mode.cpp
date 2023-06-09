@@ -79,7 +79,7 @@ static const uint8_t CDROMCapabilitiesPage[] =
 0x00, // byte 4: no features supported
 #endif
 0x03, // byte 5: CD-DA ok with accurate streaming, no other features
-0x40, // byte 6: tray loader, ejection ok, but prevent/allow not supported
+0x28, // byte 6: tray loader, ejection ok, but prevent/allow not supported
 #ifdef ENABLE_AUDIO_OUTPUT
 0x03, // byte 7: separate channel mute and volumes
 #else
