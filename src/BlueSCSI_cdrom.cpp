@@ -1071,6 +1071,24 @@ void doGetConfiguration(uint8_t rt, uint16_t startFeature, uint16_t allocationLe
         scsiDev.data[len++] = 0;
     }
 
+#ifdef ENABLE_AUDIO_OUTPUT
+    // CD audio feature (0x103, 259)
+    if ((rt == 2 && startFeature == 259)
+        || (rt == 1 && startFeature <= 259 && !img.ejected)
+        || (rt == 0 && startFeature <= 259))
+    {
+        scsiDev.data[len++] = 0x01;
+        scsiDev.data[len++] = 0x03;
+        // ver 1, persist=0,current=drive state
+        scsiDev.data[len++] = (img.ejected) ? 0x04 : 0x05;
+        scsiDev.data[len++] = 4;
+        scsiDev.data[len++] = 0x03; // scan=0,scm=1,sv=1
+        scsiDev.data[len++] = 0;
+        scsiDev.data[len++] = 0x01; // 256 volume levels
+        scsiDev.data[len++] = 0x00; // .
+    }
+#endif
+
     // finally, rewrite data length to match
     scsiDev.data[0] = len >> 24;
     scsiDev.data[1] = len >> 16;
