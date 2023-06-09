@@ -941,8 +941,8 @@ void doGetConfiguration(uint8_t rt, uint16_t startFeature, uint16_t allocationLe
     if (!img.ejected)
     {
         // disk in drive, current profile is CD-ROM
-        scsiDev.data[6] = 0;
-        scsiDev.data[7] = 0; // TODO
+        scsiDev.data[6] = 0x00;
+        scsiDev.data[7] = 0x08;
     }
     else
     {
@@ -1090,10 +1090,11 @@ void doGetConfiguration(uint8_t rt, uint16_t startFeature, uint16_t allocationLe
 #endif
 
     // finally, rewrite data length to match
-    scsiDev.data[0] = len >> 24;
-    scsiDev.data[1] = len >> 16;
-    scsiDev.data[2] = len >> 8;
-    scsiDev.data[3] = len;
+    uint32_t dlen = len - 8;
+    scsiDev.data[0] = dlen >> 24;
+    scsiDev.data[1] = dlen >> 16;
+    scsiDev.data[2] = dlen >> 8;
+    scsiDev.data[3] = dlen;
 
     if (len > allocationLength)
     {
