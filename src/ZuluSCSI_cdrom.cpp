@@ -186,6 +186,38 @@ static const uint8_t DiscInformation[] =
     0x00,   // 33: number of opc tables
 };
 
+static const uint8_t TrackInformation[] =
+{
+    0x00,   //  0: data length, MSB
+    0x1A,   //  1: data length, LSB
+    0x01,   //  2: track number
+    0x01,   //  3: session number
+    0x00,   //  4: reserved
+    0x04,   //  5: track mode and flags
+    0x8F,   //  6: data mode and flags
+    0x00,   //  7: nwa_v
+    0x00,   //  8: track start address (MSB)
+    0x00,   //  9: .
+    0x00,   // 10: .
+    0x00,   // 11: track start address (LSB)
+    0xFF,   // 12: next writable address (MSB)
+    0xFF,   // 13: .
+    0xFF,   // 14: .
+    0xFF,   // 15: next writable address (LSB)
+    0x00,   // 16: free blocks (MSB)
+    0x00,   // 17: .
+    0x00,   // 18: .
+    0x00,   // 19: free blocks (LSB)
+    0x00,   // 20: fixed packet size (MSB)
+    0x00,   // 21: .
+    0x00,   // 22: .
+    0x00,   // 23: fixed packet size (LSB)
+    0x00,   // 24: track size (MSB)
+    0x00,   // 25: .
+    0x00,   // 26: .
+    0x00,   // 27: track size (LSB)
+};
+
 // Convert logical block address to CD-ROM time
 static void LBA2MSF(int32_t LBA, uint8_t* MSF, bool relative)
 {
@@ -229,7 +261,7 @@ static uint32_t getLeadOutLBA(const CUETrackInfo* lasttrack)
         image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
         uint32_t lastTrackBlocks = (img.file.size() - lasttrack->file_offset)
                 / lasttrack->sector_length;
-        return lasttrack->track_start + lastTrackBlocks + 1;
+        return lasttrack->track_start + lastTrackBlocks;
     }
     else
     {
@@ -382,6 +414,39 @@ void doReadDiscInformationSimple(uint16_t allocationLength)
     }
     scsiDev.dataLen = len;
     scsiDev.phase = DATA_IN;
+}
+
+void doReadTrackInformationSimple(bool track, uint32_t lba, uint16_t allocationLength)
+{
+    uint32_t len = sizeof(TrackInformation);
+    memcpy(scsiDev.data, TrackInformation, len);
+
+    uint32_t capacity = getScsiCapacity(
+            scsiDev.target->cfg->sdSectorStart,
+            scsiDev.target->liveCfg.bytesPerSector,
+            scsiDev.target->cfg->scsiSectors);
+    if (!track && lba >= capacity)
+    {
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+        scsiDev.phase = STATUS;
+    }
+    else
+    {
+        // update track size
+        scsiDev.data[24] = capacity >> 24;
+        scsiDev.data[25] = capacity >> 16;
+        scsiDev.data[26] = capacity >> 8;
+        scsiDev.data[27] = capacity;
+
+        if (len > allocationLength)
+        {
+            len = allocationLength;
+        }
+        scsiDev.dataLen = len;
+        scsiDev.phase = DATA_IN;
+    }
 }
 
 /*********************************/
@@ -765,6 +830,279 @@ void doReadDiscInformation(uint16_t allocationLength)
     scsiDev.phase = DATA_IN;
 }
 
+void doReadTrackInformation(bool track, uint32_t lba, uint16_t allocationLength)
+{
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+    CUEParser parser;
+    if (!loadCueSheet(img, parser))
+    {
+        // No CUE sheet, use hardcoded data
+        return doReadTrackInformationSimple(track, lba, allocationLength);
+    }
+
+    // Take the hardcoded header as base
+    uint32_t len = sizeof(TrackInformation);
+    memcpy(scsiDev.data, TrackInformation, len);
+
+    // Step through the tracks until the one requested is found
+    // Result will be placed in mtrack for later use if found
+    bool trackfound = false;
+    uint32_t tracklen = 0;
+    CUETrackInfo mtrack = {0};
+    const CUETrackInfo *trackinfo;
+    while ((trackinfo = parser.next_track()) != NULL)
+    {
+        if (mtrack.track_number != 0) // skip 1st track, just store later
+        {
+            if ((track && lba == mtrack.track_number)
+                || (!track && lba < trackinfo->data_start))
+            {
+                trackfound = true;
+                tracklen = trackinfo->data_start - mtrack.data_start;
+                break;
+            }
+        }
+        mtrack = *trackinfo;
+    }
+    // try the last track as a final attempt if no match found beforehand
+    if (!trackfound)
+    {
+        uint32_t lastLba = getLeadOutLBA(&mtrack);
+        if ((track && lba == mtrack.track_number)
+            || (!track && lba < lastLba))
+        {
+            trackfound = true;
+            tracklen = lastLba - mtrack.data_start;
+        }
+    }
+
+    // bail out if no match found
+    if (!trackfound)
+    {
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+        scsiDev.phase = STATUS;
+        return;
+    }
+
+    // rewrite relevant bytes, starting with track number
+    scsiDev.data[3] = mtrack.track_number;
+
+    // track mode
+    if (mtrack.track_mode == CUETrack_AUDIO)
+    {
+        scsiDev.data[5] = 0x00;
+    }
+
+    // track start
+    uint32_t start = mtrack.data_start;
+    scsiDev.data[8] = start >> 24;
+    scsiDev.data[9] = start >> 16;
+    scsiDev.data[10] = start >> 8;
+    scsiDev.data[11] = start;
+
+    // track size
+    scsiDev.data[24] = tracklen >> 24;
+    scsiDev.data[25] = tracklen >> 16;
+    scsiDev.data[26] = tracklen >> 8;
+    scsiDev.data[27] = tracklen;
+
+    dbgmsg("------ Reporting track ", mtrack.track_number, ", start ", start,
+            ", length ", tracklen);
+    if (len > allocationLength)
+    {
+        len = allocationLength;
+    }
+    scsiDev.dataLen = len;
+    scsiDev.phase = DATA_IN;
+}
+
+void doGetConfiguration(uint8_t rt, uint16_t startFeature, uint16_t allocationLength)
+{
+    // rt = 0 is all features, rt = 1 is current features,
+    // rt = 2 only startFeature, others reserved
+    if (rt > 2)
+    {
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+        scsiDev.phase = STATUS;
+        return;
+    }
+
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+
+    // write feature header
+    uint32_t len = 8; // length bytes set at end of call
+    scsiDev.data[4] = 0; // reserved
+    scsiDev.data[5] = 0; // reserved
+    if (!img.ejected)
+    {
+        // disk in drive, current profile is CD-ROM
+        scsiDev.data[6] = 0x00;
+        scsiDev.data[7] = 0x08;
+    }
+    else
+    {
+        // no disk, report no current profile
+        scsiDev.data[6] = 0;
+        scsiDev.data[7] = 0;
+    }
+
+    // profile list (0)
+    if ((rt == 2 && 0 == startFeature)
+        || (rt == 1 && startFeature <= 0)
+        || (rt == 0 && startFeature <= 0))
+    {
+        scsiDev.data[len++] = 0x00;
+        scsiDev.data[len++] = 0x00;
+        scsiDev.data[len++] = 0x03; // ver 0, persist=1,current=1
+        scsiDev.data[len++] = 8; // 2 more
+        // CD-ROM profile
+        scsiDev.data[len++] = 0x00;
+        scsiDev.data[len++] = 0x08;
+        scsiDev.data[len++] = (img.ejected) ? 0x00 : 0x01;
+        scsiDev.data[len++] = 0;
+        // removable disk profile
+        scsiDev.data[len++] = 0x00;
+        scsiDev.data[len++] = 0x02;
+        scsiDev.data[len++] = 0x00;
+        scsiDev.data[len++] = 0;
+    }
+
+    // core feature (1)
+    if ((rt == 2 && startFeature == 1)
+        || (rt == 1 && startFeature <= 1)
+        || (rt == 0 && startFeature <= 1))
+    {
+        scsiDev.data[len++] = 0x00;
+        scsiDev.data[len++] = 0x01;
+        scsiDev.data[len++] = 0x0B; // ver 2, persist=1,current=1
+        scsiDev.data[len++] = 8;
+        // physical interface standard (SCSI)
+        scsiDev.data[len++] = 0x00;
+        scsiDev.data[len++] = 0x00;
+        scsiDev.data[len++] = 0x00;
+        scsiDev.data[len++] = 0x01;
+        scsiDev.data[len++] = 0x03; // support INQ2 and DBE
+        scsiDev.data[len++] = 0;
+        scsiDev.data[len++] = 0;
+        scsiDev.data[len++] = 0;
+    }
+
+    // morphing feature (2)
+    if ((rt == 2 && startFeature == 2)
+        || (rt == 1 && startFeature <= 2)
+        || (rt == 0 && startFeature <= 2))
+    {
+        scsiDev.data[len++] = 0x00;
+        scsiDev.data[len++] = 0x02;
+        scsiDev.data[len++] = 0x07; // ver 1, persist=1,current=1
+        scsiDev.data[len++] = 4;
+        scsiDev.data[len++] = 0x02; // OCEvent=1,async=0
+        scsiDev.data[len++] = 0;
+        scsiDev.data[len++] = 0;
+        scsiDev.data[len++] = 0;
+    }
+
+    // removable medium feature (3)
+    if ((rt == 2 && startFeature == 3)
+        || (rt == 1 && startFeature <= 3)
+        || (rt == 0 && startFeature <= 3))
+    {
+        scsiDev.data[len++] = 0x00;
+        scsiDev.data[len++] = 0x03;
+        scsiDev.data[len++] = 0x03; // ver 0, persist=1,current=1
+        scsiDev.data[len++] = 4;
+        scsiDev.data[len++] = 0x28; // matches 0x2A mode page version
+        scsiDev.data[len++] = 0;
+        scsiDev.data[len++] = 0;
+        scsiDev.data[len++] = 0;
+    }
+
+    // random readable feature (0x10, 16)
+    if ((rt == 2 && startFeature == 16)
+        || (rt == 1 && startFeature <= 16 && !img.ejected)
+        || (rt == 0 && startFeature <= 16))
+    {
+        scsiDev.data[len++] = 0x00;
+        scsiDev.data[len++] = 0x10;
+        // ver 0, persist=0,current=drive state
+        scsiDev.data[len++] = (img.ejected) ? 0x00 : 0x01;
+        scsiDev.data[len++] = 8;
+        scsiDev.data[len++] = 0x00; // 2048 (MSB)
+        scsiDev.data[len++] = 0x00; // .
+        scsiDev.data[len++] = 0x08; // .
+        scsiDev.data[len++] = 0x00; // 2048 (LSB)
+        scsiDev.data[len++] = 0x00;
+        // one block min when disk in drive only
+        scsiDev.data[len++] = (img.ejected) ? 0x00 : 0x01;
+        scsiDev.data[len++] = 0x00; // no support for PP error correction (TODO?)
+        scsiDev.data[len++] = 0;
+    }
+
+    // multi-read feature (0x1D, 29)
+    if ((rt == 2 && startFeature == 29)
+        || (rt == 1 && startFeature <= 29 && !img.ejected)
+        || (rt == 0 && startFeature <= 29))
+    {
+        scsiDev.data[len++] = 0x00;
+        scsiDev.data[len++] = 0x1D;
+        // ver 0, persist=0,current=drive state
+        scsiDev.data[len++] = (img.ejected) ? 0x00 : 0x01;
+        scsiDev.data[len++] = 0;
+    }
+
+    // CD read feature (0x1E, 30)
+    if ((rt == 2 && startFeature == 30)
+        || (rt == 1 && startFeature <= 30 && !img.ejected)
+        || (rt == 0 && startFeature <= 30))
+    {
+        scsiDev.data[len++] = 0x00;
+        scsiDev.data[len++] = 0x1E;
+        // ver 2, persist=0,current=drive state
+        scsiDev.data[len++] = (img.ejected) ? 0x08 : 0x09;
+        scsiDev.data[len++] = 4;
+        scsiDev.data[len++] = 0x00; // dap=0,c2=0,cd-text=0
+        scsiDev.data[len++] = 0;
+        scsiDev.data[len++] = 0;
+        scsiDev.data[len++] = 0;
+    }
+
+#ifdef ENABLE_AUDIO_OUTPUT
+    // CD audio feature (0x103, 259)
+    if ((rt == 2 && startFeature == 259)
+        || (rt == 1 && startFeature <= 259 && !img.ejected)
+        || (rt == 0 && startFeature <= 259))
+    {
+        scsiDev.data[len++] = 0x01;
+        scsiDev.data[len++] = 0x03;
+        // ver 1, persist=0,current=drive state
+        scsiDev.data[len++] = (img.ejected) ? 0x04 : 0x05;
+        scsiDev.data[len++] = 4;
+        scsiDev.data[len++] = 0x03; // scan=0,scm=1,sv=1
+        scsiDev.data[len++] = 0;
+        scsiDev.data[len++] = 0x01; // 256 volume levels
+        scsiDev.data[len++] = 0x00; // .
+    }
+#endif
+
+    // finally, rewrite data length to match
+    uint32_t dlen = len - 8;
+    scsiDev.data[0] = dlen >> 24;
+    scsiDev.data[1] = dlen >> 16;
+    scsiDev.data[2] = dlen >> 8;
+    scsiDev.data[3] = dlen;
+
+    if (len > allocationLength)
+    {
+        len = allocationLength;
+    }
+    scsiDev.dataLen = len;
+    scsiDev.phase = DATA_IN;
+}
+
 /****************************************/
 /* CUE sheet check at image load time   */
 /****************************************/
@@ -817,9 +1155,22 @@ void cdromPerformEject(image_config_t &img)
     // terminate audio playback if active on this target (MMC-1 Annex C)
     audio_stop(target);
 #endif
-    dbgmsg("------ CDROM open tray on ID ", (int)target);
-    img.ejected = true;
-    img.cdrom_events = 3; // Media removal
+    if (!img.ejected)
+    {
+        dbgmsg("------ CDROM open tray on ID ", (int)target);
+        img.ejected = true;
+        img.cdrom_events = 3; // Media removal
+    }
+    else
+    {
+        dbgmsg("------ CDROM close tray on ID ", (int)target);
+        if (!cdromSwitchNextImage(img))
+        {
+            // Reinsert the single image
+            img.ejected = false;
+            img.cdrom_events = 2; // New media
+        }
+    }
 }
 
 // Reinsert any ejected CDROMs on reboot
@@ -829,7 +1180,8 @@ void cdromReinsertFirstImage(image_config_t &img)
     {
         // Multiple images for this drive, force restart from first one
         dbgmsg("---- Restarting from first CD-ROM image");
-        img.image_index = 9;
+        img.image_index = IMAGE_INDEX_MAX;
+        img.current_image[0] = '\0';
         cdromSwitchNextImage(img);
     }
     else if (img.ejected)
@@ -845,14 +1197,9 @@ void cdromReinsertFirstImage(image_config_t &img)
 bool cdromSwitchNextImage(image_config_t &img)
 {
     // Check if we have a next image to load, so that drive is closed next time the host asks.
-    img.image_index++;
     char filename[MAX_FILE_PATH];
     int target_idx = img.scsiId & 7;
-    if (!scsiDiskGetImageNameFromConfig(img, filename, sizeof(filename)))
-    {
-        img.image_index = 0;
-        scsiDiskGetImageNameFromConfig(img, filename, sizeof(filename));
-    }
+    scsiDiskGetNextImageName(img, filename, sizeof(filename));
 
 #ifdef ENABLE_AUDIO_OUTPUT
     // if in progress for this device, terminate audio playback immediately (Annex C)
@@ -904,7 +1251,7 @@ static void doGetEventStatusNotification(bool immed)
         scsiDev.phase = DATA_IN;
         img.cdrom_events = 0;
 
-        if (img.ejected)
+        if (img.ejected && img.reinsert_after_eject)
         {
             // We are now reporting to host that the drive is open.
             // Simulate a "close" for next time the host polls.
@@ -1492,6 +1839,10 @@ extern "C" int scsiCDRomCommand()
     uint8_t command = scsiDev.cdb[0];
     if (command == 0x1B)
     {
+#if ENABLE_AUDIO_OUTPUT
+        // terminate audio playback if active on this target (MMC-1 Annex C)
+        audio_stop(img.scsiId & 7);
+#endif
         if ((scsiDev.cdb[4] & 2))
         {
             // CD-ROM load & eject
@@ -1506,11 +1857,6 @@ extern "C" int scsiCDRomCommand()
             {
                 cdromPerformEject(img);
             }
-        }
-        else
-        {
-            // flow through to disk handler
-            commandHandled = 0;
         }
     }
     else if (command == 0x25)
@@ -1597,12 +1943,37 @@ extern "C" int scsiCDRomCommand()
             scsiDev.cdb[8];
         doReadHeader(MSF, lba, allocationLength);
     }
+    else if (command == 0x46)
+    {
+        // GET CONFIGURATION
+        uint8_t rt = (scsiDev.cdb[1] & 0x03);
+        uint16_t startFeature =
+            (((uint16_t) scsiDev.cdb[2]) << 8) +
+            scsiDev.cdb[3];
+        uint16_t allocationLength =
+            (((uint32_t) scsiDev.cdb[7]) << 8) +
+            scsiDev.cdb[8];
+        doGetConfiguration(rt, startFeature, allocationLength);
+    }
     else if (command == 0x51)
     {
         uint16_t allocationLength =
             (((uint32_t) scsiDev.cdb[7]) << 8) +
             scsiDev.cdb[8];
         doReadDiscInformation(allocationLength);
+    }
+    else if (command == 0x52)
+    {
+        // READ TRACK INFORMATION
+        bool track = (scsiDev.cdb[1] & 0x01);
+        uint32_t lba = (((uint32_t) scsiDev.cdb[2]) << 24) +
+            (((uint32_t) scsiDev.cdb[3]) << 16) +
+            (((uint32_t) scsiDev.cdb[4]) << 8) +
+            scsiDev.cdb[5];
+        uint16_t allocationLength =
+            (((uint32_t) scsiDev.cdb[7]) << 8) +
+            scsiDev.cdb[8];
+        doReadTrackInformation(track, lba, allocationLength);
     }
     else if (command == 0x4A)
     {
@@ -1724,6 +2095,7 @@ extern "C" int scsiCDRomCommand()
             (((uint32_t) scsiDev.cdb[2]) << 8) +
             scsiDev.cdb[3];
         uint32_t blocks = scsiDev.cdb[4];
+        if (blocks == 0) blocks = 256;
 
         doReadCD(lba, blocks, 0, 0x10, 0, true);
     }

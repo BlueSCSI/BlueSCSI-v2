@@ -138,3 +138,11 @@
 #define LED_PINS     (LED_I_PIN | LED_E_PIN)
 #define LED_ON()     gpio_bit_reset(LED_PORT, LED_PINS)
 #define LED_OFF()    gpio_bit_set(LED_PORT, LED_PINS)
+
+// Ejection buttons are available on expansion header J303.
+// PE5 = channel 1, PE6 = channel 2
+// Connect button between GPIO and GND pin.
+#define EJECT_1_PORT    GPIOE
+#define EJECT_1_PIN     GPIO_PIN_5
+#define EJECT_2_PORT    GPIOE
+#define EJECT_2_PIN     GPIO_PIN_6
