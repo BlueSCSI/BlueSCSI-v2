@@ -1480,7 +1480,7 @@ void scsiDiskStartRead(uint32_t lba, uint32_t blocks)
 
         if (transfer.currentBlock == transfer.blocks)
         {
-            while (!scsiIsWriteFinished(NULL))
+            while (!scsiIsWriteFinished(NULL) && !scsiDev.resetFlag)
             {
                 platform_poll();
                 diskEjectButtonUpdate(false);
@@ -1660,7 +1660,7 @@ static void diskDataIn()
         }
 #endif
 
-        while (!scsiIsWriteFinished(NULL))
+        while (!scsiIsWriteFinished(NULL) && !scsiDev.resetFlag)
         {
             platform_poll();
             diskEjectButtonUpdate(false);
