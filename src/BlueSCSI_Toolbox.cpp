@@ -44,10 +44,10 @@ static void doCountFiles(const char * dir_name)
             file.close();
             break;
         }
-        file.getName(name, 32 + 1);
+        file.getName(name, MAX_MAC_PATH + 1);
         file.close();
         // only count valid files.
-        if(!scsiDiskFilenameValid(name))
+        if(scsiDiskFilenameValid(name))
         {
             file_count = file_count + 1;
             if(file_count > 100) {
@@ -124,7 +124,10 @@ File get_file_from_index(uint8_t index, const char * dir_name)
     file_test.getName(name, MAX_MAC_PATH + 1);
 
     if(!scsiDiskFilenameValid(name))
-      continue;
+    {
+        file_test.close();
+        continue;
+    }
     if (count == index)
     {
       dir.close();
@@ -147,17 +150,16 @@ void onListDevices()
   for (int i = 0; i < NUM_SCSIID; i++)
   {
     const S2S_TargetCfg* cfg = s2s_getConfigById(i);
-    // id, type
     if (cfg && (cfg->scsiId & S2S_CFG_TARGET_ENABLED))
     {
         scsiDev.data[i] = (int)cfg->deviceType; // 2 == cd
     }
     else
     {
-        scsiDev.data[i] = 255; // not enabled target.
+        scsiDev.data[i] = 0xFF; // not enabled target.
     }
   }
-  scsiDev.dataLen = 16;
+  scsiDev.dataLen = NUM_SCSIID;
 }
 
 void onSetNextCD()
@@ -166,7 +168,6 @@ void onSetNextCD()
     char full_path[MAX_FILE_PATH * 2];
 
     uint8_t file_index = scsiDev.cdb[1];
-    uint8_t cd_scsi_id = scsiDev.cdb[2];
 
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     File next_cd = get_file_from_index(file_index, CD_IMG_DIR);
