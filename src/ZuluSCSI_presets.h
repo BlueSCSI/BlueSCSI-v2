@@ -21,6 +21,7 @@ struct preset_config_t {
     // Default settings that apply to all SCSI IDs
     int selectionDelay;
     int maxSyncSpeed;
+    int initPreDelay;
     bool enableUnitAttention;
     bool enableSCSI2;
     bool enableSelLatch;
