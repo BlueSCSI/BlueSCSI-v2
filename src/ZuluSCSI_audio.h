@@ -25,6 +25,24 @@
 #include "ImageBackingStore.h"
 
 /*
+ * Starting volume level for audio output, with 0 being muted and 255 being
+ * max volume. SCSI-2 says this should be 25% of maximum by default, MMC-1
+ * says 100%. Testing shows this tends to be obnoxious at high volumes, so
+ * go with SCSI-2.
+ *
+ * This implementation uses the high byte for output port 1 and the low byte
+ * for port 0. The two values are averaged to determine final volume level.
+ */
+#define DEFAULT_VOLUME_LEVEL 0x3F3F
+/*
+ * Defines the 'enable' masks for the two audio output ports of each device.
+ * If this mask is matched with audio_get_channel() the relevant port will
+ * have audio output to it, otherwise it will be muted, regardless of the
+ * volume level.
+ */
+#define AUDIO_CHANNEL_ENABLE_MASK 0x0201
+
+/*
  * Status codes for audio playback, matching the SCSI 'audio status codes'.
  *
  * The first two are for a live condition and will be returned repeatedly. The
@@ -86,3 +104,43 @@ void audio_stop(uint8_t id);
  * \return      The matching audio status code.
  */
 audio_status_code audio_get_status_code(uint8_t id);
+
+/**
+ * Gets the current volume level for a target. This is a pair of 8-bit values
+ * ranging from 0-255 that are averaged together to determine the final output
+ * level, where 0 is muted and 255 is maximum volume. The high byte corresponds
+ * to 0x0E channel 1 and the low byte to 0x0E channel 0. See the spec's mode
+ * page documentation for more details.
+ *
+ * \param id    SCSI ID to provide volume for.
+ * \return      The matching volume level.
+ */
+uint16_t audio_get_volume(uint8_t id);
+
+/**
+ * Sets the volume level for a target, as above. See 0x0E mode page for more.
+ *
+ * \param id    SCSI ID to set volume for.
+ * \param vol   The new volume level.
+ */
+void audio_set_volume(uint8_t id, uint16_t vol);
+
+/**
+ * Gets the 0x0E channel information for both audio ports. The high byte
+ * corresponds to port 1 and the low byte to port 0. If the bits defined in
+ * AUDIO_CHANNEL_ENABLE_MASK are not set for the respective ports, that
+ * output will be muted, regardless of volume set.
+ *
+ * \param id    SCSI ID to provide channel information for.
+ * \return      The channel information.
+ */
+uint16_t audio_get_channel(uint8_t id);
+
+/**
+ * Sets the 0x0E channel information for a target, as above. See 0x0E mode
+ * page for more.
+ *
+ * \param id    SCSI ID to set channel information for.
+ * \param chn   The new channel information.
+ */
+void audio_set_channel(uint8_t id, uint16_t chn);

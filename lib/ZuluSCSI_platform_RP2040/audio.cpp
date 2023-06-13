@@ -140,6 +140,16 @@ static uint32_t fleft;
 // historical playback status information
 static audio_status_code audio_last_status[8] = {ASC_NO_STATUS};
 
+// volume information for targets
+static volatile uint16_t volumes[8] = {
+    DEFAULT_VOLUME_LEVEL, DEFAULT_VOLUME_LEVEL, DEFAULT_VOLUME_LEVEL, DEFAULT_VOLUME_LEVEL,
+    DEFAULT_VOLUME_LEVEL, DEFAULT_VOLUME_LEVEL, DEFAULT_VOLUME_LEVEL, DEFAULT_VOLUME_LEVEL
+};
+static volatile uint16_t channels[8] = {
+    AUDIO_CHANNEL_ENABLE_MASK, AUDIO_CHANNEL_ENABLE_MASK, AUDIO_CHANNEL_ENABLE_MASK, AUDIO_CHANNEL_ENABLE_MASK,
+    AUDIO_CHANNEL_ENABLE_MASK, AUDIO_CHANNEL_ENABLE_MASK, AUDIO_CHANNEL_ENABLE_MASK, AUDIO_CHANNEL_ENABLE_MASK
+};
+
 // mechanism for cleanly stopping DMA units
 static volatile bool audio_stopping = false;
 
@@ -158,31 +168,46 @@ static uint8_t invert = 0; // biphase encode help: set if last wire bit was '1'
  * output.
  */
 static void snd_encode(uint8_t* samples, uint16_t* wire_patterns, uint16_t len, uint8_t swap) {
+    uint16_t wvol = volumes[audio_owner & 7];
+    uint8_t lvol = ((wvol >> 8) + (wvol & 0xFF)) >> 1; // average of both values
+    // limit maximum volume; with my DACs I've had persistent issues
+    // with signal clipping when sending data in the highest bit position
+    lvol = lvol >> 2;
+    uint8_t rvol = lvol;
+    // enable or disable based on the channel information for both output
+    // ports, where the high byte and mask control the right channel, and
+    // the low control the left channel
+    uint16_t chn = channels[audio_owner & 7] & AUDIO_CHANNEL_ENABLE_MASK;
+    if (!(chn >> 8)) rvol = 0;
+    if (!(chn & 0xFF)) lvol = 0;
+
     uint16_t widx = 0;
     for (uint16_t i = 0; i < len; i += 2) {
         uint32_t sample = 0;
         uint8_t parity = 0;
         if (samples != NULL) {
+            int32_t rsamp;
             if (swap) {
-                sample = samples[i + 1] + (samples[i] << 8);
+                rsamp = (int16_t)(samples[i + 1] + (samples[i] << 8));
             } else {
-                sample = samples[i] + (samples[i + 1] << 8);
+                rsamp = (int16_t)(samples[i] + (samples[i + 1] << 8));
             }
-            // determine parity, simplified to one lookup via an XOR
-            parity = (sample >> 8) ^ sample;
+            // linear scale to requested audio value
+            if (i & 2) {
+                rsamp *= rvol;
+            } else {
+                rsamp *= lvol;
+            }
+            // use 20 bits of value only, which allows ignoring the lowest 8
+            // bits during biphase conversion (after including sample shift)
+            sample = ((uint32_t)rsamp) & 0xFFFFF0;
+
+            // determine parity, simplified to one lookup via XOR
+            parity = ((sample >> 16) ^ (sample >> 8)) ^ sample;
             parity = snd_parity[parity];
 
-            /*
-             * Shift sample into the correct bit positions of the sub-frame. This
-             * would normally be << 12, but with my DACs I've had persistent issues
-             * with signal clipping when sending data in the highest bit position.
-             */
-            sample = sample << 11;
-            if (sample & 0x04000000) {
-                // handle two's complement
-                sample |= 0x08000000;
-                parity++;
-            }
+            // shift sample into the correct bit positions of the sub-frame.
+            sample = sample << 4;
         }
 
         // if needed, establish even parity with P bit
@@ -202,7 +227,7 @@ static void snd_encode(uint8_t* samples, uint16_t* wire_patterns, uint16_t len, 
         if (invert) wp = ~wp;
         invert = wp & 1;
         wire_patterns[widx++] = wp;
-        // next 8 bits (only high 4 have data)
+        // next 8 bits
         wp = biphase[(uint8_t) (sample >> 8)];
         if (invert) wp = ~wp;
         invert = wp & 1;
@@ -542,6 +567,22 @@ audio_status_code audio_get_status_code(uint8_t id) {
         audio_last_status[id & 7] = ASC_NO_STATUS;
     }
     return tmp;
+}
+
+uint16_t audio_get_volume(uint8_t id) {
+    return volumes[id & 7];
+}
+
+void audio_set_volume(uint8_t id, uint16_t vol) {
+    volumes[id & 7] = vol;
+}
+
+uint16_t audio_get_channel(uint8_t id) {
+    return channels[id & 7];
+}
+
+void audio_set_channel(uint8_t id, uint16_t chn) {
+    channels[id & 7] = chn;
 }
 
 #endif // ENABLE_AUDIO_OUTPUT
