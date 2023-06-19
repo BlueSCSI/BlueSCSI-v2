@@ -43,9 +43,7 @@ extern "C" {
 // Extended configuration stored alongside the normal SCSI2SD target information
 struct image_config_t: public S2S_TargetCfg
 {
-    // There should be only one global instance of this struct per device, so disallow copy constructor.
-    image_config_t() = default;
-    image_config_t(const image_config_t&) = delete;
+    image_config_t() {};
 
     ImageBackingStore file;
 
@@ -83,6 +81,13 @@ struct image_config_t: public S2S_TargetCfg
 
     // Warning about geometry settings
     bool geometrywarningprinted;
+
+    // Clear any image state to zeros
+    void clear();
+
+private:
+    // There should be only one global instance of this struct per device, so make copy constructor private.
+    image_config_t(const image_config_t&) = default;
 };
 
 // Should be polled intermittently to update the platform eject buttons.
