@@ -11,7 +11,11 @@
 // Called by scsi.c from SCSI2SD
 extern "C" int scsiCDRomCommand(void);
 
-// Eject the given CD-ROM
+// Close CDROM tray and note media change event
+void cdromCloseTray(image_config_t &img);
+
+// Eject CDROM tray if closed, close if open
+// Switch image on ejection.
 void cdromPerformEject(image_config_t &img);
 
 // Reinsert ejected CD-ROM and restart from first image
