@@ -1120,7 +1120,7 @@ static int doTestUnitReady()
         {
             // We are now reporting to host that the drive is open.
             // Simulate a "close" for next time the host polls.
-            cdromSwitchNextImage(img);
+            cdromCloseTray(img);
         }
     }
     else if (unlikely(!(blockDev.state & DISK_PRESENT)))

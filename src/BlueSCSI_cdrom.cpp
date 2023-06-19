@@ -1149,6 +1149,20 @@ bool cdromValidateCueSheet(image_config_t &img)
 /* Ejection and image switching logic */
 /**************************************/
 
+// Close CDROM tray and note media change event
+void cdromCloseTray(image_config_t &img)
+{
+    if (img.ejected)
+    {
+        uint8_t target = img.scsiId & 7;
+        debuglog("------ CDROM close tray on ID ", (int)target);
+        img.ejected = false;
+        img.cdrom_events = 2; // New media
+    }
+}
+
+// Eject CDROM tray if closed, close if open
+// Switch image on ejection.
 void cdromPerformEject(image_config_t &img)
 {
     uint8_t target = img.scsiId & 7;
@@ -1161,16 +1175,11 @@ void cdromPerformEject(image_config_t &img)
         debuglog("------ CDROM open tray on ID ", (int)target);
         img.ejected = true;
         img.cdrom_events = 3; // Media removal
+        cdromSwitchNextImage(img); // Switch media for next time
     }
     else
     {
-        debuglog("------ CDROM close tray on ID ", (int)target);
-        if (!cdromSwitchNextImage(img))
-        {
-            // Reinsert the single image
-            img.ejected = false;
-            img.cdrom_events = 2; // New media
-        }
+        cdromCloseTray(img);
     }
 }
 
@@ -1189,9 +1198,7 @@ void cdromReinsertFirstImage(image_config_t &img)
     else if (img.ejected)
     {
         // Reinsert the single image
-        debuglog("---- Closing CD-ROM tray");
-        img.ejected = false;
-        img.cdrom_events = 2; // New media
+        cdromCloseTray(img);
     }
 }
 
@@ -1218,8 +1225,6 @@ bool cdromSwitchNextImage(image_config_t &img)
 
         if (status)
         {
-            img.ejected = false;
-            img.cdrom_events = 2; // New media
             return true;
         }
     }
@@ -1257,7 +1262,7 @@ static void doGetEventStatusNotification(bool immed)
         {
             // We are now reporting to host that the drive is open.
             // Simulate a "close" for next time the host polls.
-            cdromSwitchNextImage(img);
+            cdromCloseTray(img);
         }
     }
     else
@@ -1851,12 +1856,11 @@ extern "C" int scsiCDRomCommand()
             int start = scsiDev.cdb[4] & 1;
             if (start)
             {
-                debuglog("------ CDROM close tray on ID ", (int)(img.scsiId & 7));
-                img.ejected = false;
-                img.cdrom_events = 2; // New media
+                cdromCloseTray(img);
             }
             else
             {
+                // Eject and switch image
                 cdromPerformEject(img);
             }
         }
