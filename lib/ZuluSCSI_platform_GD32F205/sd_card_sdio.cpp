@@ -318,6 +318,8 @@ bool SdioCard::readSectors(uint32_t sector, uint8_t* dst, size_t n)
 // This is used to optimize the timing of data transfers on SCSI bus.
 bool check_sd_read_done()
 {
+    if (!m_stream_callback) return false;
+
     return (DMA_CHCTL(DMA1, DMA_CH3) & DMA_CHXCTL_CHEN)
         && (DMA_INTF(DMA1) & DMA_FLAG_ADD(DMA_FLAG_FTF, DMA_CH3));
 }

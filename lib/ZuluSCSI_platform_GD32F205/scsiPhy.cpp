@@ -447,8 +447,17 @@ static bool isPollingWriteFinished(const uint8_t *data)
 extern "C" bool scsiIsWriteFinished(const uint8_t *data)
 {
     // Check if there is still a polling transfer in progress
-    if (!isPollingWriteFinished(data) && !check_sd_read_done())
+    if (!isPollingWriteFinished(data))
     {
+        if (check_sd_read_done())
+        {
+            // Current SD card transfer is finished so return early
+            // to start a new transfer before doing SCSI data transfer.
+            // This is faster because the SD transfer can run on background,
+            // but PIO mode SCSI transfer cannot.
+            return false;
+        }
+
         // Process the transfer piece-by-piece while waiting
         // for SD card to react.
         int max_count = g_scsi_writereq.count / 8;
