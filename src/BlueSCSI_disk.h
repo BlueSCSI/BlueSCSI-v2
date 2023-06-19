@@ -64,9 +64,11 @@ struct image_config_t: public S2S_TargetCfg
     bool image_directory;
     // the name of the currently mounted image in a dynamic image directory
     char current_image[MAX_FILE_PATH];
+
     // Index of image, for when image on-the-fly switching is used for CD drives
     // This is also used for dynamic directories to track how many images have been seen
-    uint8_t image_index;
+    // Negative value forces restart from first image.
+    int image_index;
 
     // Cue sheet file for CD-ROM images
     FsFile cuesheetfile;
