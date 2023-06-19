@@ -511,6 +511,8 @@ static void scsiDiskConfigDefaults(int target_idx)
     img.headsPerCylinder = defaults.headsPerCylinder;
     img.quirks = defaults.quirks;
     img.prefetchbytes = defaults.prefetchBytes;
+    img.reinsert_on_inquiry = true;
+    img.reinsert_after_eject = true;
     memset(img.vendor, 0, sizeof(img.vendor));
     memset(img.prodId, 0, sizeof(img.prodId));
     memset(img.revision, 0, sizeof(img.revision));
@@ -529,8 +531,8 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
     img.quirks = ini_getl(section, "Quirks", img.quirks, CONFIGFILE);
     img.rightAlignStrings = ini_getbool(section, "RightAlignStrings", 0, CONFIGFILE);
     img.prefetchbytes = ini_getl(section, "PrefetchBytes", img.prefetchbytes, CONFIGFILE);
-    img.reinsert_on_inquiry = ini_getbool(section, "ReinsertCDOnInquiry", 1, CONFIGFILE);
-    img.reinsert_after_eject = ini_getbool(section, "ReinsertAfterEject", 1, CONFIGFILE);
+    img.reinsert_on_inquiry = ini_getbool(section, "ReinsertCDOnInquiry", img.reinsert_on_inquiry, CONFIGFILE);
+    img.reinsert_after_eject = ini_getbool(section, "ReinsertAfterEject", img.reinsert_after_eject, CONFIGFILE);
     img.ejectButton = ini_getl(section, "EjectButton", 0, CONFIGFILE);
 
     char tmp[32];
