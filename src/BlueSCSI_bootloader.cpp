@@ -40,16 +40,17 @@ bool find_firmware_image(FsFile &file, char name[MAX_FILE_PATH + 1])
 
 bool program_firmware(FsFile &file)
 {
-    uint32_t fwsize = file.size() - PLATFORM_BOOTLOADER_SIZE;
+    uint32_t filesize = file.size();
+    uint32_t fwsize = filesize - PLATFORM_BOOTLOADER_SIZE;
     uint32_t num_pages = (fwsize + PLATFORM_FLASH_PAGE_SIZE - 1) / PLATFORM_FLASH_PAGE_SIZE;
 
     // Make sure the buffer is aligned to word boundary
     static uint32_t buffer32[PLATFORM_FLASH_PAGE_SIZE / 4];
     uint8_t *buffer = (uint8_t*)buffer32;
 
-    if (fwsize > PLATFORM_FLASH_TOTAL_SIZE)
+    if (filesize > PLATFORM_FLASH_TOTAL_SIZE)
     {
-        log("Firmware too large: ", (int)fwsize, " flash size ", (int)PLATFORM_FLASH_TOTAL_SIZE);
+        log("Firmware too large: ", (int)filesize, " flash size ", (int)PLATFORM_FLASH_TOTAL_SIZE);
         return false;
     }
 
