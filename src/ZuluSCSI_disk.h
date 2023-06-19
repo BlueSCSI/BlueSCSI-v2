@@ -43,9 +43,7 @@ extern "C" {
 // Extended configuration stored alongside the normal SCSI2SD target information
 struct image_config_t: public S2S_TargetCfg
 {
-    // There should be only one global instance of this struct per device, so disallow copy constructor.
-    image_config_t() = default;
-    image_config_t(const image_config_t&) = delete;
+    image_config_t() {};
 
     ImageBackingStore file;
 
@@ -66,9 +64,11 @@ struct image_config_t: public S2S_TargetCfg
     bool image_directory;
     // the name of the currently mounted image in a dynamic image directory
     char current_image[MAX_FILE_PATH];
+
     // Index of image, for when image on-the-fly switching is used for CD drives
     // This is also used for dynamic directories to track how many images have been seen
-    uint8_t image_index;
+    // Negative value forces restart from first image.
+    int image_index;
 
     // Cue sheet file for CD-ROM images
     FsFile cuesheetfile;
@@ -83,6 +83,13 @@ struct image_config_t: public S2S_TargetCfg
 
     // Warning about geometry settings
     bool geometrywarningprinted;
+
+    // Clear any image state to zeros
+    void clear();
+
+private:
+    // There should be only one global instance of this struct per device, so make copy constructor private.
+    image_config_t(const image_config_t&) = default;
 };
 
 // Should be polled intermittently to update the platform eject buttons.
