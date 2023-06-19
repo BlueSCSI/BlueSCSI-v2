@@ -163,7 +163,16 @@ static image_config_t g_DiskImages[S2S_MAX_TARGETS];
 
 void scsiDiskResetImages()
 {
-    memset(g_DiskImages, 0, sizeof(g_DiskImages));
+    for (int i = 0; i < S2S_MAX_TARGETS; i++)
+    {
+        g_DiskImages[i].clear();
+    }
+}
+
+void image_config_t::clear()
+{
+    static const image_config_t empty; // Statically zero-initialized
+    *this = empty;
 }
 
 void scsiDiskCloseSDCardImages()
