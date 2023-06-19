@@ -689,7 +689,7 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
     else
     {
         img.image_index++;
-        if (img.image_index > IMAGE_INDEX_MAX)
+        if (img.image_index > IMAGE_INDEX_MAX || img.image_index < 0)
         {
             img.image_index = 0;
         }
@@ -706,13 +706,13 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
         {
             // there may be more than one image but we've ran out of new ones
             // wrap back to the first image
-            img.image_index = IMAGE_INDEX_MAX;
+            img.image_index = -1;
             return scsiDiskGetNextImageName(img, buf, buflen);
         }
         else
         {
             // images are not defined in config
-            img.image_index = IMAGE_INDEX_MAX;
+            img.image_index = -1;
             return 0;
         }
     }
