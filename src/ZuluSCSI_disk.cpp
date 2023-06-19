@@ -163,7 +163,16 @@ static image_config_t g_DiskImages[S2S_MAX_TARGETS];
 
 void scsiDiskResetImages()
 {
-    memset(g_DiskImages, 0, sizeof(g_DiskImages));
+    for (int i = 0; i < S2S_MAX_TARGETS; i++)
+    {
+        g_DiskImages[i].clear();
+    }
+}
+
+void image_config_t::clear()
+{
+    static const image_config_t empty; // Statically zero-initialized
+    *this = empty;
 }
 
 void scsiDiskCloseSDCardImages()
@@ -502,6 +511,8 @@ static void scsiDiskConfigDefaults(int target_idx)
     img.headsPerCylinder = defaults.headsPerCylinder;
     img.quirks = defaults.quirks;
     img.prefetchbytes = defaults.prefetchBytes;
+    img.reinsert_on_inquiry = true;
+    img.reinsert_after_eject = true;
     memset(img.vendor, 0, sizeof(img.vendor));
     memset(img.prodId, 0, sizeof(img.prodId));
     memset(img.revision, 0, sizeof(img.revision));
@@ -520,8 +531,8 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
     img.quirks = ini_getl(section, "Quirks", img.quirks, CONFIGFILE);
     img.rightAlignStrings = ini_getbool(section, "RightAlignStrings", 0, CONFIGFILE);
     img.prefetchbytes = ini_getl(section, "PrefetchBytes", img.prefetchbytes, CONFIGFILE);
-    img.reinsert_on_inquiry = ini_getbool(section, "ReinsertCDOnInquiry", 1, CONFIGFILE);
-    img.reinsert_after_eject = ini_getbool(section, "ReinsertAfterEject", 1, CONFIGFILE);
+    img.reinsert_on_inquiry = ini_getbool(section, "ReinsertCDOnInquiry", img.reinsert_on_inquiry, CONFIGFILE);
+    img.reinsert_after_eject = ini_getbool(section, "ReinsertAfterEject", img.reinsert_after_eject, CONFIGFILE);
     img.ejectButton = ini_getl(section, "EjectButton", 0, CONFIGFILE);
 
     char tmp[32];
@@ -678,7 +689,7 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
     else
     {
         img.image_index++;
-        if (img.image_index > IMAGE_INDEX_MAX)
+        if (img.image_index > IMAGE_INDEX_MAX || img.image_index < 0)
         {
             img.image_index = 0;
         }
@@ -695,13 +706,13 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
         {
             // there may be more than one image but we've ran out of new ones
             // wrap back to the first image
-            img.image_index = IMAGE_INDEX_MAX;
+            img.image_index = -1;
             return scsiDiskGetNextImageName(img, buf, buflen);
         }
         else
         {
             // images are not defined in config
-            img.image_index = IMAGE_INDEX_MAX;
+            img.image_index = -1;
             return 0;
         }
     }
@@ -1103,7 +1114,7 @@ static int doTestUnitReady()
         {
             // We are now reporting to host that the drive is open.
             // Simulate a "close" for next time the host polls.
-            cdromSwitchNextImage(img);
+            cdromCloseTray(img);
         }
     }
     else if (unlikely(!(blockDev.state & DISK_PRESENT)))
@@ -1920,13 +1931,13 @@ void scsiDiskPoll()
             checkDiskGeometryDivisible(img);
         }
 
-        // Check for Inquiry command to reinsert CD-ROMs on boot
+        // Check for Inquiry command to close CD-ROM tray on boot
         if (command == 0x12)
         {
             image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
             if (img.deviceType == S2S_CFG_OPTICAL && img.reinsert_on_inquiry)
             {
-                cdromReinsertFirstImage(img);
+                cdromCloseTray(img);
             }
         }
     }
@@ -1948,7 +1959,7 @@ void scsiDiskReset()
     g_scsi_prefetch.sector = 0;
 #endif
 
-    // Reinsert any ejected CD-ROMs
+    // Reinsert any ejected CD-ROMs on BUS RESET and restart from first image
     for (int i = 0; i < S2S_MAX_TARGETS; ++i)
     {
         image_config_t &img = g_DiskImages[i];
