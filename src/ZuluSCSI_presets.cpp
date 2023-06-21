@@ -49,7 +49,7 @@ preset_config_t getSystemPreset(const char *presetName)
     }
     else if (strequals(presetName, "MPC3000"))
     {
-        cfg.initPreDelay = 500;
+        cfg.initPreDelay = 600;
     }
     else
     {
