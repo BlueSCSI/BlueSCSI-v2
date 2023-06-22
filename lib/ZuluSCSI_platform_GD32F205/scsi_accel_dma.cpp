@@ -369,6 +369,17 @@ extern "C" void SCSI_TIMER_DMACHB_IRQ()
         }
         else
         {
+            // Wait for final ACK to go low, shouldn't take long.
+            int maxwait = 10000;
+            while (TIMER_CNT(SCSI_TIMER) < 1)
+            {
+                if (maxwait-- < 0)
+                {
+                    logmsg("SCSI_TIMER_DMACHB_IRQ: timeout waiting for final ACK");
+                    break;
+                }
+            }
+
             // No more data available
             stop_dma();
         }
