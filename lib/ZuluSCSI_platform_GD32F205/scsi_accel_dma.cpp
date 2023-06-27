@@ -21,6 +21,8 @@
 
 #include "scsi_accel_dma.h"
 #include <ZuluSCSI_log.h>
+#include <ZuluSCSI_disk.h>
+#include <scsi2sd.h>
 #include <gd32f20x_timer.h>
 #include <gd32f20x_rcu.h>
 #include <assert.h>
@@ -67,6 +69,20 @@ static bool g_scsi_dma_use_greenpak;
 
 void scsi_accel_timer_dma_init()
 {
+    // TODO: find root cause of of DMA timeout
+    // Temporary fix, setting prefetch prefetch buffer to 4k seems to fix a timing issue
+    // in Timer DMA SCSI phy mode only
+    
+    image_config_t* img;
+    for (uint8_t i = 0; i < S2S_MAX_TARGETS; i++)
+    {
+        img = &scsiDiskGetImageConfig(i);
+        if (img->prefetchbytes > 4096)
+        {
+            img->prefetchbytes = 4096;
+        }
+    }
+
     g_scsi_dma_state = SCSIDMA_IDLE;
     g_scsi_dma_use_greenpak = false;
     rcu_periph_clock_enable(SCSI_TIMER_RCU);
