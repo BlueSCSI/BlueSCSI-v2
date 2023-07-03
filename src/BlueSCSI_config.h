@@ -74,3 +74,10 @@
 #ifndef PREFETCH_BUFFER_SIZE
 #define PREFETCH_BUFFER_SIZE 8192
 #endif
+
+/**
+ * @filename - name of the file to be evaluated for block size
+ * @scsiId - ID of the device we're looking to get the block size for
+ * @default_size - if block size cant be determined use this value
+*/
+int getBlockSize(char *filename, int scsiId, int default_size);

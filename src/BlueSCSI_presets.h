@@ -14,6 +14,7 @@ struct preset_config_t {
     int deviceTypeModifier;
     int sectorsPerTrack;
     int headsPerCylinder;
+    int bytesPerSector;
     int prefetchBytes;
     bool rightAlignStrings;
     bool reinsertOnInquiry;
