@@ -11,6 +11,7 @@
 #include "BlueSCSI_config.h"
 #include "BlueSCSI_presets.h"
 #include "BlueSCSI_cdrom.h"
+#include "BlueSCSI_platform_config_hook.h"
 #include "ImageBackingStore.h"
 #include "ROMDrive.h"
 #include <minIni.h>
@@ -377,12 +378,6 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
             img.deviceType = S2S_CFG_SEQUENTIAL;
         }
 
-#ifdef PLATFORM_CONFIG_HOOK
-        PLATFORM_CONFIG_HOOK(&img);
-#endif
-
-        setDefaultDriveInfo(target_idx);
-
         if (img.prefetchbytes != PREFETCH_BUFFER_SIZE)
         {
             log("---- Read prefetch enabled: ", (int)img.prefetchbytes, " bytes");
@@ -395,6 +390,12 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
         {
             debuglog("---- Read prefetch enabled: ", (int)img.prefetchbytes, " bytes");
         }
+
+        setDefaultDriveInfo(target_idx);
+
+#ifdef PLATFORM_CONFIG_HOOK
+        PLATFORM_CONFIG_HOOK(&img);
+#endif
 
         if (img.deviceType == S2S_CFG_OPTICAL &&
             strncasecmp(filename + strlen(filename) - 4, ".bin", 4) == 0)
