@@ -336,17 +336,7 @@ bool findHDDImages()
           }
         }
 
-        // Parse block size (HD00_NNNN)
-        const char *blksize = strchr(name, '_');
-        if (blksize)
-        {
-          int blktmp = strtoul(blksize + 1, NULL, 10);
-          if (blktmp == 256 || blktmp == 512 || blktmp == 1024 ||
-              blktmp == 2048 || blktmp == 4096 || blktmp == 8192)
-          {
-            blk = blktmp;
-          }
-        }
+        blk = getBlockSize(name, id, blk);
 
         // Add the directory name to get the full file path
         char fullname[MAX_FILE_PATH * 2 + 2] = {0};

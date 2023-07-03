@@ -497,6 +497,7 @@ static void scsiDiskConfigDefaults(int target_idx)
     img.deviceTypeModifier = defaults.deviceTypeModifier;
     img.sectorsPerTrack = defaults.sectorsPerTrack;
     img.headsPerCylinder = defaults.headsPerCylinder;
+    img.bytesPerSector = defaults.bytesPerSector;
     img.quirks = defaults.quirks;
     img.prefetchbytes = defaults.prefetchBytes;
     img.reinsert_on_inquiry = false;
@@ -516,6 +517,7 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
     img.deviceTypeModifier = ini_getl(section, "TypeModifier", img.deviceTypeModifier, CONFIGFILE);
     img.sectorsPerTrack = ini_getl(section, "SectorsPerTrack", img.sectorsPerTrack, CONFIGFILE);
     img.headsPerCylinder = ini_getl(section, "HeadsPerCylinder", img.headsPerCylinder, CONFIGFILE);
+    img.bytesPerSector = ini_getl(section, "BlockSize", img.bytesPerSector, CONFIGFILE);
     img.quirks = ini_getl(section, "Quirks", img.quirks, CONFIGFILE);
     img.rightAlignStrings = ini_getbool(section, "RightAlignStrings", 0, CONFIGFILE);
     img.prefetchbytes = ini_getl(section, "PrefetchBytes", img.prefetchbytes, CONFIGFILE);
@@ -726,7 +728,7 @@ void scsiDiskLoadConfig(int target_idx)
     img.image_index = IMAGE_INDEX_MAX;
     if (scsiDiskGetNextImageName(img, filename, sizeof(filename)))
     {
-        int blocksize = (img.deviceType == S2S_CFG_OPTICAL) ? 2048 : 512;
+        int blocksize = getBlockSize(filename, target_idx, (img.deviceType == S2S_CFG_OPTICAL) ? 2048 : 512);
         log("-- Opening '", filename, "' for id:", target_idx, ", specified in " CONFIGFILE);
         scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, blocksize);
     }
