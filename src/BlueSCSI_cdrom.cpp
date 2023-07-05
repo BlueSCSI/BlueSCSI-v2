@@ -1219,7 +1219,7 @@ bool cdromSwitchNextImage(image_config_t &img)
 
     if (filename[0] != '\0')
     {
-        log("Switching to next CD-ROM image for ", target_idx, ": ", filename);
+        log("Switching to next CD-ROM image for SCSI ID: ", target_idx, ": ", filename);
         img.file.close();
         bool status = scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0,
                                            getBlockSize(filename, target_idx, 2048));

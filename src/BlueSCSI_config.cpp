@@ -38,4 +38,27 @@ int getBlockSize(char *filename, int scsiId, int default_size)
     }
   }
   return default_size;
-}
+}
+
+int getImgDir(int scsiId, char* dirname)
+{
+  char section[6] = "SCSI0";
+  section[4] = '0' + scsiId;
+
+  char key[] = "ImgDir";
+  int dirlen = ini_gets(section, key, "", dirname, sizeof(dirname), CONFIGFILE);
+  return dirlen;
+}
+
+
+int getImg(int scsiId, int img_index, char* filename)
+{
+  char section[6] = "SCSI0";
+  section[4] = '0' + scsiId;
+
+  char key[] = "IMG0";
+  key[3] = '0' + img_index;
+
+  int dirlen = ini_gets(section, key, "", filename, sizeof(filename), CONFIGFILE);
+  return dirlen;
+}
