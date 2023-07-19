@@ -749,7 +749,7 @@ void doReadHeader(bool MSF, uint32_t lba, uint16_t allocationLength)
 
 #if ENABLE_AUDIO_OUTPUT
     // terminate audio playback if active on this target (Annex C)
-    audio_stop(img.scsiId & 7);
+    audio_stop(img.scsiId & S2S_CFG_TARGET_ID_BITS);
 #endif
 
     uint8_t mode = 1;
@@ -1154,7 +1154,7 @@ void cdromCloseTray(image_config_t &img)
 {
     if (img.ejected)
     {
-        uint8_t target = img.scsiId & 7;
+        uint8_t target = img.scsiId & S2S_CFG_TARGET_ID_BITS;
         debuglog("------ CDROM close tray on ID ", (int)target);
         img.ejected = false;
         img.cdrom_events = 2; // New media
@@ -1165,7 +1165,7 @@ void cdromCloseTray(image_config_t &img)
 // Switch image on ejection.
 void cdromPerformEject(image_config_t &img)
 {
-    uint8_t target = img.scsiId & 7;
+    uint8_t target = img.scsiId & S2S_CFG_TARGET_ID_BITS;
 #if ENABLE_AUDIO_OUTPUT
     // terminate audio playback if active on this target (MMC-1 Annex C)
     audio_stop(target);
@@ -1189,7 +1189,7 @@ void cdromReinsertFirstImage(image_config_t &img)
     if (img.image_index > 0)
     {
         // Multiple images for this drive, force restart from first one
-        uint8_t target = img.scsiId & 7;
+        uint8_t target = img.scsiId & S2S_CFG_TARGET_ID_BITS;
         debuglog("---- Restarting from first CD-ROM image for ID ", (int)target);
         img.image_index = -1;
         img.current_image[0] = '\0';
@@ -1207,7 +1207,7 @@ bool cdromSwitchNextImage(image_config_t &img)
 {
     // Check if we have a next image to load, so that drive is closed next time the host asks.
     char filename[MAX_FILE_PATH];
-    int target_idx = img.scsiId & 7;
+    int target_idx = img.scsiId & S2S_CFG_TARGET_ID_BITS;
     scsiDiskGetNextImageName(img, filename, sizeof(filename));
 
 #ifdef ENABLE_AUDIO_OUTPUT
@@ -1219,7 +1219,7 @@ bool cdromSwitchNextImage(image_config_t &img)
 
     if (filename[0] != '\0')
     {
-        log("Switching to next CD-ROM image for ", target_idx, ": ", filename);
+        log("Switching to next CD-ROM image for SCSI ID: ", target_idx, ": ", filename);
         img.file.close();
         bool status = scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0,
                                            getBlockSize(filename, target_idx, 2048));
@@ -1287,7 +1287,7 @@ void cdromGetAudioPlaybackStatus(uint8_t *status, uint32_t *current_lba, bool cu
 
 #ifdef ENABLE_AUDIO_OUTPUT
     if (status) {
-        uint8_t target = img.scsiId & 7;
+        uint8_t target = img.scsiId & S2S_CFG_TARGET_ID_BITS;
         if (current_only) {
             *status = audio_is_playing(target) ? 1 : 0;
         } else {
@@ -1312,12 +1312,12 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
 #ifdef ENABLE_AUDIO_OUTPUT
     debuglog("------ CD-ROM Play Audio request at ", lba, " for ", length, " sectors");
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-    uint8_t target_id = img.scsiId & 7;
+    uint8_t target_id = img.scsiId & S2S_CFG_TARGET_ID_BITS;
 
     // Per Annex C terminate playback immediately if already in progress on
     // the current target. Non-current targets may also get their audio
     // interrupted later due to hardware limitations
-    audio_stop(img.scsiId & 7);
+    audio_stop(target_id);
 
     // if transfer length is zero no audio playback happens.
     // don't treat as an error per SCSI-2; handle via short-circuit
@@ -1398,7 +1398,7 @@ static void doPauseResumeAudio(bool resume)
 #ifdef ENABLE_AUDIO_OUTPUT
     log("------ CD-ROM ", resume ? "resume" : "pause", " audio playback");
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-    uint8_t target_id = img.scsiId & 7;
+    uint8_t target_id = img.scsiId & S2S_CFG_TARGET_ID_BITS;
 
     if (audio_is_playing(target_id))
     {
@@ -1427,7 +1427,7 @@ static void doStopAudio()
     debuglog("------ CD-ROM Stop Audio request");
 #ifdef ENABLE_AUDIO_OUTPUT
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-    uint8_t target_id = img.scsiId & 7;
+    uint8_t target_id = img.scsiId & S2S_CFG_TARGET_ID_BITS;
     audio_stop(target_id);
 #endif
 }
@@ -1467,7 +1467,7 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
 
 #if ENABLE_AUDIO_OUTPUT
     // terminate audio playback if active on this target (Annex C)
-    audio_stop(img.scsiId & 7);
+    audio_stop(img.scsiId & S2S_CFG_TARGET_ID_BITS);
 #endif
 
     CUEParser parser;
@@ -1849,7 +1849,7 @@ extern "C" int scsiCDRomCommand()
     {
 #if ENABLE_AUDIO_OUTPUT
         // terminate audio playback if active on this target (MMC-1 Annex C)
-        audio_stop(img.scsiId & 7);
+        audio_stop(img.scsiId & S2S_CFG_TARGET_ID_BITS);
 #endif
         if ((scsiDev.cdb[4] & 2))
         {

@@ -8,3 +8,4 @@ dist/
 .vscode/launch.json
 .vscode/ipch
 .vscode/extensions.json
+cc-nc-hardware/*/*-backups/

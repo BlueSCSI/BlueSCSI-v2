@@ -545,10 +545,29 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
     if (strlen(section) == 5 && strncmp(section, "SCSI", 4) == 0) // allow within target [SCSIx] blocks only
     {
         ini_gets(section, "ImgDir", "", tmp, sizeof(tmp), CONFIGFILE);
+        getImgDir(target_idx, tmp);
         if (tmp[0])
         {
             log("-- SCSI", target_idx, " using image directory \'", tmp, "'");
             img.image_directory = true;
+        }
+        else
+        {
+            strcpy(tmp, "CDX");
+            tmp[2] = '0' + target_idx;
+            if(SD.exists(tmp))
+            {
+                log("-- SCSI ID: ", target_idx, " using Optical image directory \'", tmp, "'");
+                img.deviceType = S2S_CFG_OPTICAL;
+                img.image_directory = true;
+            }
+            strcpy(tmp, "HDX");
+            tmp[2] = '0' + target_idx;
+            if(SD.exists(tmp))
+            {
+                log("-- SCSI ID: ", target_idx, " using Drive image directory \'", tmp, "'");
+                img.image_directory = true;
+            }
         }
     }
 }
@@ -563,7 +582,7 @@ static int findNextImageAfter(image_config_t &img,
     FsFile dir;
     if (dirname[0] == '\0')
     {
-        log("Image directory name invalid for ID", (img.scsiId & 7));
+        log("Image directory name invalid for ID", (img.scsiId & S2S_CFG_TARGET_ID_BITS));
         return 0;
     }
     if (!dir.open(dirname))
@@ -631,10 +650,7 @@ static int findNextImageAfter(image_config_t &img,
 
 int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
 {
-    int target_idx = img.scsiId & 7;
-
-    char section[6] = "SCSI0";
-    section[4] = '0' + target_idx;
+    int target_idx = img.scsiId & S2S_CFG_TARGET_ID_BITS;
 
     // sanity check: is provided buffer is long enough to store a filename?
     assert(buflen >= MAX_FILE_PATH);
@@ -643,14 +659,20 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
     {
         // image directory was found during startup
         char dirname[MAX_FILE_PATH];
-        char key[] = "ImgDir";
-        int dirlen = ini_gets(section, key, "", dirname, sizeof(dirname), CONFIGFILE);
+        int dirlen = getImgDir(target_idx, dirname);
         if (!dirlen)
         {
-            // If image_directory set but ImageDir is not, could be used to
-            // indicate an image directory configured via folder structure.
-            // Not implemented, so treat this as equivalent to missing ImageDir
-            return 0;
+            // If image_directory set but ImgDir is not look for an well known ImgDir
+            if(img.deviceType == S2S_CFG_OPTICAL)
+                strcpy(dirname, "CDX");
+            else
+                strcpy(dirname, "HDX");
+            dirname[2] = '0' + target_idx;
+            if(!SD.exists(dirname))
+            {
+                debuglog("ERROR: Looking for ", dirname, " to load images, but was not found.");
+                return 0;
+            }
         }
 
         // find the next filename
@@ -684,10 +706,7 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
             img.image_index = 0;
         }
 
-        char key[5] = "IMG0";
-        key[3] = '0' + img.image_index;
-
-        int ret = ini_gets(section, key, "", buf, buflen, CONFIGFILE);
+        int ret = getImg(target_idx, img.image_index, buf);
         if (buf[0] != '\0')
         {
             return ret;
@@ -729,7 +748,7 @@ void scsiDiskLoadConfig(int target_idx)
     if (scsiDiskGetNextImageName(img, filename, sizeof(filename)))
     {
         int blocksize = getBlockSize(filename, target_idx, (img.deviceType == S2S_CFG_OPTICAL) ? 2048 : 512);
-        log("-- Opening '", filename, "' for id:", target_idx, ", specified in " CONFIGFILE);
+        log("-- Opening '", filename, "' for ID:", target_idx);
         scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, blocksize);
     }
 }
