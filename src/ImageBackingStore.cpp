@@ -236,7 +236,6 @@ ssize_t ImageBackingStore::read(void* buf, size_t count)
     }
     else if (m_isrom)
     {
-        uint32_t sectorcount = count / SD_SECTOR_SIZE;
         assert((uint64_t)sectorcount * SD_SECTOR_SIZE == count);
         uint32_t start = m_cursector * SD_SECTOR_SIZE;
         if (romDriveRead((uint8_t*)buf, start, count))

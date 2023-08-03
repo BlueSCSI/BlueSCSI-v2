@@ -83,6 +83,11 @@ void platformConfigHook(image_config_t *img)
         debuglog("Skipping platformConfigHook due to DisableConfigHook");
         return;
     }
+    if(img->file.isRom())
+    {
+        debuglog("Skipping platformConfigHook on ROM Drive.");
+        return;
+    }
     if (img->quirks == S2S_CFG_QUIRKS_APPLE)
     {
         if(img->deviceType == S2S_CFG_FIXED)
