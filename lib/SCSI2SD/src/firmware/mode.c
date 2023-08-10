@@ -242,8 +242,8 @@ static const uint8_t SequentialDeviceConfigPage[] =
 static const uint8_t AppleVendorPage[] =
 {
 0x30, // Page code
-23, // Page length
-'A','P','P','L','E',' ','C','O','M','P','U','T','E','R',',',' ','I','N','C',' ',' ',' ',0x00
+0x16, // Page length
+'A','P','P','L','E',' ','C','O','M','P','U','T','E','R',',',' ','I','N','C',' ',' ',' '
 };
 
 static void pageIn(int pc, int dataIdx, const uint8_t* pageData, int pageLen)
