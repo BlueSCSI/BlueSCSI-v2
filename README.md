@@ -31,7 +31,7 @@ Creating new image files
 Empty image files can be created using operating system tools:
 
 * Windows: `fsutil file createnew HD1.img 1073741824` (1 GB)
-* Linux: `fallocate -l 1G HD1.img`
+* Linux: `truncate -s 1G HD1.img`
 * Mac OS X: `mkfile -n 1g HD1.img`
 
 ZuluSCSI firmware can also create image files itself.
