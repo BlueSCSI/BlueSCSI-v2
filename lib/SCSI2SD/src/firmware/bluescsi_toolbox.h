@@ -17,21 +17,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
 
-#pragma once
+#ifndef S2S_BLUESCSI_TOOLBOX_H
+#define S2S_BLUESCSI_TOOLBOX_H
 
-#define MAX_MAC_PATH 32
-#define CD_IMG_DIR "/CDImages"
+int scsiBlueSCSIToolboxCommand(void);
 
-
-#define BLUESCSI_TOOLBOX_COUNT_FILES    0xD2
-#define BLUESCSI_TOOLBOX_LIST_FILES     0xD0
-#define BLUESCSI_TOOLBOX_GET_FILE       0xD1
-#define BLUESCSI_TOOLBOX_SEND_FILE_PREP 0xD3
-#define BLUESCSI_TOOLBOX_SEND_FILE_10   0xD4
-#define BLUESCSI_TOOLBOX_SEND_FILE_END  0xD5
-#define BLUESCSI_TOOLBOX_TOGGLE_DEBUG   0xD6
-#define BLUESCSI_TOOLBOX_LIST_CDS       0xD7
-#define BLUESCSI_TOOLBOX_SET_NEXT_CD    0xD8
-#define BLUESCSI_TOOLBOX_LIST_DEVICES   0xD9
-#define BLUESCSI_TOOLBOX_COUNT_CDS      0xDA
-#define OPEN_RETRO_SCSI_TOO_MANY_FILES 0x0001
+#endif
