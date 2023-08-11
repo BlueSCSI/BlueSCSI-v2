@@ -30,6 +30,7 @@
 #include "tape.h"
 #include "mo.h"
 #include "vendor.h"
+#include "bluescsi_toolbox.h"
 
 #include <string.h>
 
