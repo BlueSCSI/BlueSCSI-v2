@@ -31,7 +31,7 @@ Creating new image files
 Empty image files can be created using operating system tools:
 
 * Windows: `fsutil file createnew HD1.img 1073741824` (1 GB)
-* Linux: `fallocate -l 1G HD1.img`
+* Linux: `truncate -s 1G HD1.img`
 * Mac OS X: `mkfile -n 1g HD1.img`
 
 If you need to use image files larger than 4GB, you _must_ use an exFAT-formatted SD card, as the FAT32 filesystem does not support files larger than 4,294,967,295 bytes (4GB-1 byte).
