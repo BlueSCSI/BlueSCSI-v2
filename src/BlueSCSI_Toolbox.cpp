@@ -284,16 +284,19 @@ void onSendFile10(void)
 }
 void onToggleDebug()
 {
-    if(g_log_debug)
+    if(scsiDev.cdb[1] == 0) // 0 == Set Debug, 1 == Get Debug State
     {
-        debuglog("Turning Debug logs off.");
+        g_log_debug = scsiDev.cdb[2];
+        log("Set debug logs to: ", g_log_debug);
+        scsiDev.phase = STATUS;
     }
     else
     {
-        log("Turning Debug logs on.");
+        log("Debug currently set to: ", g_log_debug);
+        scsiDev.data[0] = g_log_debug ? 0x1 : 0x0;
+        scsiDev.dataLen = 1;
+        scsiDev.phase = DATA_IN;
     }
-    g_log_debug = !g_log_debug;
-    scsiDev.phase = STATUS;
 }
 
 extern "C" int scsiBlueSCSIToolboxCommand()
