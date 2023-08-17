@@ -1157,6 +1157,12 @@ void cdromCloseTray(image_config_t &img)
         dbgmsg("------ CDROM close tray on ID ", (int)target);
         img.ejected = false;
         img.cdrom_events = 2; // New media
+
+        if (scsiDev.boardCfg.flags & S2S_CFG_ENABLE_UNIT_ATTENTION)
+        {
+            dbgmsg("------ Posting UNIT ATTENTION after medium change");
+            scsiDev.targets[target].unitAttention = NOT_READY_TO_READY_TRANSITION_MEDIUM_MAY_HAVE_CHANGED;
+        }
     }
 }
 
