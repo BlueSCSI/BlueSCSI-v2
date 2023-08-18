@@ -20,8 +20,7 @@
 #pragma once
 
 #define MAX_MAC_PATH 32
-#define CD_IMG_DIR "/CDImages"
-
+#define CD_IMG_DIR "CD%d"
 
 #define BLUESCSI_TOOLBOX_COUNT_FILES    0xD2
 #define BLUESCSI_TOOLBOX_LIST_FILES     0xD0

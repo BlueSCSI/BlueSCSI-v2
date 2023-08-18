@@ -162,18 +162,17 @@ void onListDevices()
   scsiDev.dataLen = NUM_SCSIID;
 }
 
-void onSetNextCD()
+void onSetNextCD(const char * img_dir)
 {
     char name[MAX_FILE_PATH];
     char full_path[MAX_FILE_PATH * 2];
-
     uint8_t file_index = scsiDev.cdb[1];
 
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-    File next_cd = get_file_from_index(file_index, CD_IMG_DIR);
+    File next_cd = get_file_from_index(file_index, img_dir);
     next_cd.getName(name, sizeof(name));
     next_cd.close();
-    snprintf(full_path, (MAX_FILE_PATH * 2), "%s/%s", CD_IMG_DIR, name);
+    snprintf(full_path, (MAX_FILE_PATH * 2), "%s/%s", img_dir, name);
     cdromSwitch(img, full_path);
 }
 
@@ -302,6 +301,7 @@ void onToggleDebug()
 extern "C" int scsiBlueSCSIToolboxCommand()
 {
     int commandHandled = 1;
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     uint8_t command = scsiDev.cdb[0];
 
      if (unlikely(command == BLUESCSI_TOOLBOX_COUNT_FILES))
@@ -335,11 +335,15 @@ extern "C" int scsiBlueSCSIToolboxCommand()
     }
     else if(unlikely(command == BLUESCSI_TOOLBOX_LIST_CDS))
     {
-       onListFiles("/CDImages");
+        char img_dir[4];
+        snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, (int)img.scsiId & S2S_CFG_TARGET_ID_BITS);
+        onListFiles(img_dir);
     }
     else if(unlikely(command == BLUESCSI_TOOLBOX_SET_NEXT_CD))
     {
-       onSetNextCD();
+        char img_dir[4];
+        snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, (int)img.scsiId & S2S_CFG_TARGET_ID_BITS);
+        onSetNextCD(img_dir);
     }
     else if(unlikely(command == BLUESCSI_TOOLBOX_LIST_DEVICES))
     {
@@ -347,8 +351,9 @@ extern "C" int scsiBlueSCSIToolboxCommand()
     }
     else if (unlikely(command == BLUESCSI_TOOLBOX_COUNT_CDS))
     {
-        // TODO: Allow user to set dir name via ini
-        doCountFiles("/CDImages");
+        char img_dir[4];
+        snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, (int)img.scsiId & S2S_CFG_TARGET_ID_BITS);
+        doCountFiles(img_dir);
     }
     else
     {
