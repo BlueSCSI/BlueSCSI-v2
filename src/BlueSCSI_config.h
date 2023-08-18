@@ -85,3 +85,5 @@ int getBlockSize(char *filename, int scsiId, int default_size);
 int getImgDir(int scsiId, char* dirname);
 
 int getImg(int scsiId, int img_index, char* filename);
+
+int getToolBoxSharedDir(char * dir_name);
