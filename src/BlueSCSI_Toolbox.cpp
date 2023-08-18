@@ -20,6 +20,7 @@
 #include "BlueSCSI_disk.h"
 #include "BlueSCSI_cdrom.h"
 #include "BlueSCSI_log.h"
+#include "BlueSCSI_config.h"
 #include <minIni.h>
 #include <SdFat.h>
 extern "C" {
@@ -177,14 +178,14 @@ void onSetNextCD(const char * img_dir)
 }
 
 File gFile; // global so we can keep it open while transfering.
-void onGetFile10(void) {
+void onGetFile10(char * dir_name) {
     uint8_t index = scsiDev.cdb[1];
 
     uint32_t offset = ((uint32_t)scsiDev.cdb[2] << 24) | ((uint32_t)scsiDev.cdb[3] << 16) | ((uint32_t)scsiDev.cdb[4] << 8) | scsiDev.cdb[5];
 
     if (offset == 0) // first time, open the file.
     {
-        gFile = get_file_from_index(index, "/shared");
+        gFile = get_file_from_index(index, dir_name);
         if(!gFile.isDirectory() && !gFile.isReadable())
         {
             scsiDev.status = CHECK_CONDITION;
@@ -211,7 +212,7 @@ void onGetFile10(void) {
   Prepares a file for receving. The file name is null terminated in the scsi data.
 */
 File receveFile;
-void onSendFilePrep(void)
+void onSendFilePrep(char * dir_name)
 {
     char file_name[32+1];
     memset(file_name, '\0', 32+1);
@@ -220,7 +221,7 @@ void onSendFilePrep(void)
     {
         file_name[i] = scsiReadByte();
     }
-    SD.chdir("/shared");
+    SD.chdir(dir_name);
     receveFile.open(file_name, FILE_WRITE);
     SD.chdir("/");
     if(receveFile.isOpen() && receveFile.isWritable())
@@ -304,22 +305,29 @@ extern "C" int scsiBlueSCSIToolboxCommand()
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     uint8_t command = scsiDev.cdb[0];
 
-     if (unlikely(command == BLUESCSI_TOOLBOX_COUNT_FILES))
+    if (unlikely(command == BLUESCSI_TOOLBOX_COUNT_FILES))
     {
-        doCountFiles("/shared");
+        char img_dir[MAX_FILE_PATH];
+        getToolBoxSharedDir(img_dir);
+        doCountFiles(img_dir);
     }
     else if (unlikely(command == BLUESCSI_TOOLBOX_LIST_FILES))
     {
-        // TODO: Allow user to set dir name via ini
-        onListFiles("/shared");
+        char img_dir[MAX_FILE_PATH];
+        getToolBoxSharedDir(img_dir);
+        onListFiles(img_dir);
     }
     else if (unlikely(command == BLUESCSI_TOOLBOX_GET_FILE))
     {
-        onGetFile10();
+        char img_dir[MAX_FILE_PATH];
+        getToolBoxSharedDir(img_dir);
+        onGetFile10(img_dir);
     }
     else if (unlikely(command == BLUESCSI_TOOLBOX_SEND_FILE_PREP))
     {
-        onSendFilePrep();
+        char img_dir[MAX_FILE_PATH];
+        getToolBoxSharedDir(img_dir);
+        onSendFilePrep(img_dir);
     }
     else if (unlikely(command == BLUESCSI_TOOLBOX_SEND_FILE_10))
     {
