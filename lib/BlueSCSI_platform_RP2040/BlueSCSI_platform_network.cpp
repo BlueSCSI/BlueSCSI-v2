@@ -131,8 +131,11 @@ bool platform_network_wifi_join(char *ssid, char *password)
 
 void platform_network_poll()
 {
-	if (network_in_use)
-		cyw43_arch_poll();
+	if (!network_in_use)
+		return;
+
+	scsiNetworkPurge();
+	cyw43_arch_poll();
 }
 
 int platform_network_send(uint8_t *buf, size_t len)

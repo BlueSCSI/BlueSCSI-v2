@@ -30,7 +30,7 @@ extern "C" {
 #define SCSI_NETWORK_WIFI_CMD_INFO			0x04
 #define SCSI_NETWORK_WIFI_CMD_JOIN			0x05
 
-#define NETWORK_PACKET_QUEUE_SIZE   30		// must be <= 255
+#define NETWORK_PACKET_QUEUE_SIZE   20		// must be <= 255
 #define NETWORK_PACKET_MAX_SIZE     1520
 
 struct __attribute__((packed)) wifi_network_entry {
@@ -54,6 +54,7 @@ struct __attribute__((packed)) wifi_join_request {
 
 int scsiNetworkCommand(void);
 int scsiNetworkEnqueue(const uint8_t *buf, size_t len);
+int scsiNetworkPurge(void);
 
 extern int platform_network_send(uint8_t *buf, size_t len);
 
