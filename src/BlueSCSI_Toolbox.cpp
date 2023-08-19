@@ -32,8 +32,8 @@ extern "C" {
 
 static void doCountFiles(const char * dir_name)
 {
-    File dir;
-    File file;
+    FsFile dir;
+    FsFile file;
     char name[ MAX_MAC_PATH + 1];
     dir.open(dir_name);
     dir.rewindDirectory();
@@ -67,8 +67,8 @@ static void doCountFiles(const char * dir_name)
 }
 
 void onListFiles(const char * dir_name) {
-    File dir;
-    File file;
+    FsFile dir;
+    FsFile file;
 
     memset(scsiDev.data, 0, 4096);
     int ENTRY_SIZE = 40;
@@ -106,9 +106,9 @@ void onListFiles(const char * dir_name) {
     scsiDev.phase = DATA_IN;
 }
 
-File get_file_from_index(uint8_t index, const char * dir_name)
+FsFile get_file_from_index(uint8_t index, const char * dir_name)
 {
-  File dir;
+  FsFile dir;
   FsFile file_test;
   char name[MAX_MAC_PATH + 1];
 
@@ -170,14 +170,14 @@ void onSetNextCD(const char * img_dir)
     uint8_t file_index = scsiDev.cdb[1];
 
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-    File next_cd = get_file_from_index(file_index, img_dir);
+    FsFile next_cd = get_file_from_index(file_index, img_dir);
     next_cd.getName(name, sizeof(name));
     next_cd.close();
     snprintf(full_path, (MAX_FILE_PATH * 2), "%s/%s", img_dir, name);
     cdromSwitch(img, full_path);
 }
 
-File gFile; // global so we can keep it open while transfering.
+FsFile gFile; // global so we can keep it open while transfering.
 void onGetFile10(char * dir_name) {
     uint8_t index = scsiDev.cdb[1];
 
@@ -211,7 +211,6 @@ void onGetFile10(char * dir_name) {
 /*
   Prepares a file for receving. The file name is null terminated in the scsi data.
 */
-File receveFile;
 void onSendFilePrep(char * dir_name)
 {
     char file_name[32+1];
@@ -222,16 +221,16 @@ void onSendFilePrep(char * dir_name)
         file_name[i] = scsiReadByte();
     }
     SD.chdir(dir_name);
-    receveFile.open(file_name, FILE_WRITE);
+    gFile.open(file_name, FILE_WRITE);
     SD.chdir("/");
-    if(receveFile.isOpen() && receveFile.isWritable())
+    if(gFile.isOpen() && gFile.isWritable())
     {
-        receveFile.rewind();
-        receveFile.sync();
+        gFile.rewind();
+        gFile.sync();
         // do i need to manually set phase to status here?
         return;
     } else {
-        receveFile.close();
+        gFile.close();
         scsiDev.status = CHECK_CONDITION;
         scsiDev.target->sense.code = ILLEGAL_REQUEST;
         //SCSI_ASC_INVALID_FIELD_IN_CDB
@@ -241,14 +240,14 @@ void onSendFilePrep(char * dir_name)
 
 void onSendFileEnd(void)
 {
-    receveFile.sync();
-    receveFile.close();
+    gFile.sync();
+    gFile.close();
     scsiDev.phase = STATUS;
 }
 
 void onSendFile10(void)
 {
-    if(!receveFile.isOpen() || !receveFile.isWritable())
+    if(!gFile.isOpen() || !gFile.isWritable())
     {
         scsiDev.status = CHECK_CONDITION;
         scsiDev.target->sense.code = ILLEGAL_REQUEST;
@@ -271,12 +270,12 @@ void onSendFile10(void)
 
     scsiEnterPhase(DATA_OUT);
     scsiRead(buf, bytes_sent, NULL);
-    receveFile.seekCur(offset * 512);
-    receveFile.write(buf, buf_size);
-    if(receveFile.getWriteError())
+    gFile.seekCur(offset * 512);
+    gFile.write(buf, buf_size);
+    if(gFile.getWriteError())
     {
-        receveFile.clearWriteError();
-        receveFile.close();
+        gFile.clearWriteError();
+        gFile.close();
         scsiDev.status = CHECK_CONDITION;
         scsiDev.target->sense.code = ILLEGAL_REQUEST;
     }
