@@ -29,17 +29,19 @@
 // https://www.sdcard.org/downloads/pls/
 // "SDIO Physical Layer Simplified Specification Version 8.00"
 
-#include "rp2040_sdio.h"
+#include "sdio.h"
 #include <hardware/pio.h>
 #include <hardware/dma.h>
 #include <hardware/gpio.h>
 #include <ZuluSCSI_platform.h>
 #include <ZuluSCSI_log.h>
 
-#ifdef ZULUSCSI_BS2
-#include "rp2040_sdio_BS2.pio.h"
+#ifdef ZULUSCSI_PICO
+#include "sdio_Pico.pio.h"
+#elif defined(ZULUSCSI_BS2)
+#include "sdio_BS2.pio.h"
 #else
-#include "rp2040_sdio.pio.h"
+#include "sdio_RP2040.pio.h"
 #endif
 
 #define SDIO_PIO pio1

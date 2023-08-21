@@ -24,13 +24,17 @@
 #include "scsi_accel_host.h"
 #include "ZuluSCSI_platform.h"
 #include "ZuluSCSI_log.h"
-#include "scsi_accel_host.pio.h"
 #include <hardware/pio.h>
 #include <hardware/dma.h>
 #include <hardware/irq.h>
 #include <hardware/structs/iobank0.h>
 #include <hardware/sync.h>
 
+#ifdef ZULUSCSI_RP2040
+#include "scsi_accel_host_Pico.pio.h"
+#else
+#include "scsi_accel_host_RP2040.pio.h"
+#endif
 #ifdef PLATFORM_HAS_INITIATOR_MODE
 
 #define SCSI_PIO pio0
