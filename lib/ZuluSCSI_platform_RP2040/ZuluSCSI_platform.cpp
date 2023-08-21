@@ -38,7 +38,7 @@
 #include <multicore.h>
 #include <USB/PluggableUSBSerial.h>
 #include "audio.h"
-#include "scsi_accel_rp2040.h"
+#include "scsi_accel.h"
 
 extern "C" {
 
