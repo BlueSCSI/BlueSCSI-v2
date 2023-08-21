@@ -70,7 +70,7 @@
 #define SCSI_IN_REQ   17
 
 // Status LED pins
-#define LED_PIN      15
+#define LED_PIN      16
 #define LED_ON()     sio_hw->gpio_set = 1 << LED_PIN
 #define LED_OFF()    sio_hw->gpio_clr = 1 << LED_PIN
 

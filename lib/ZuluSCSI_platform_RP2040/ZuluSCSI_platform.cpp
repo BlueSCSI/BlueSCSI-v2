@@ -132,10 +132,13 @@ void platform_init()
     delay(10);
 #endif
 
+#ifndef DISABLE_SWO
     /* Initialize logging to SWO pin (UART0) */
     gpio_conf(SWO_PIN,        GPIO_FUNC_UART,false,false, true,  false, true);
     uart_init(uart0, 1000000);
     g_uart_initialized = true;
+#endif
+
     mbed_set_error_hook(mbed_error_hook);
 
     logmsg("Platform: ", g_platform_name);
