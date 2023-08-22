@@ -29,7 +29,7 @@
 
 #include "ZuluSCSI_platform.h"
 #include "ZuluSCSI_log.h"
-#include "scsi_accel.h"
+#include "scsi_accel_target.h"
 #include <hardware/pio.h>
 #include <hardware/dma.h>
 #include <hardware/irq.h>
@@ -39,11 +39,11 @@
 #include <multicore.h>
 
 #ifdef ZULUSCSI_PICO
-#include "scsi_accel_Pico.pio.h"
+#include "scsi_accel_target_Pico.pio.h"
 #elif defined(ZULUSCSI_BS2)
-#include "scsi_accel_BS2.pio.h"
+#include "scsi_accel_target_BS2.pio.h"
 #else
-#include "scsi_accel_RP2040.pio.h"
+#include "scsi_accel_target_RP2040.pio.h"
 #endif
 
 // SCSI bus write acceleration uses up to 3 PIO state machines:
