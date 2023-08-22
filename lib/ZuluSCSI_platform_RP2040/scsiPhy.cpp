@@ -29,7 +29,7 @@
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_log_trace.h"
 #include "ZuluSCSI_config.h"
-#include "scsi_accel.h"
+#include "scsi_accel_target.h"
 #include "hardware/structs/iobank0.h"
 
 #include <scsi2sd.h>

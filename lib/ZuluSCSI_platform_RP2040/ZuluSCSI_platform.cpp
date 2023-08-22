@@ -38,7 +38,7 @@
 #include <multicore.h>
 #include <USB/PluggableUSBSerial.h>
 #include "audio.h"
-#include "scsi_accel.h"
+#include "scsi_accel_target.h"
 
 extern "C" {
 
