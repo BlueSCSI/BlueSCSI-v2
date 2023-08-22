@@ -24,7 +24,7 @@
 #include "scsi_accel_host.h"
 #include "ZuluSCSI_platform.h"
 #include "ZuluSCSI_log.h"
-#include "scsi_accel_host.pio.h"
+#include "scsi_accel_host_RP2040.pio.h"
 #include <hardware/pio.h>
 #include <hardware/dma.h>
 #include <hardware/irq.h>

@@ -31,7 +31,7 @@
 #include "ZuluSCSI_platform_gpio_BS2.h"
 #else
 // Normal RP2040 variant, using RP2040 chip directly
-#include "ZuluSCSI_platform_gpio.h"
+#include "ZuluSCSI_platform_gpio_RP2040.h"
 #endif
 
 #include "scsiHostPhy.h"
