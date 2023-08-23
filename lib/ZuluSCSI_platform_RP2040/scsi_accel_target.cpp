@@ -1,6 +1,9 @@
 /** 
  * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
  * 
+ * This work incorporates work from the following
+ *  Copyright (c) 2023 joshua stein <jcs@jcs.org>
+ * 
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  * 
  * https://www.gnu.org/licenses/gpl-3.0.html
@@ -36,7 +39,11 @@
 #include <hardware/structs/iobank0.h>
 #include <hardware/sync.h>
 #include <audio.h>
+#ifdef __MBED__
 #include <multicore.h>
+#else
+#include <pico/multicore.h>
+#endif
 
 #ifdef ZULUSCSI_PICO
 #include "scsi_accel_target_Pico.pio.h"
@@ -50,10 +57,18 @@
 // SM0: Convert data bytes to lookup addresses to add parity
 // SM1: Write data to SCSI bus
 // SM2: For synchronous mode only, count ACK pulses
-#define SCSI_DMA_PIO pio0
-#define SCSI_PARITY_SM 0
-#define SCSI_DATA_SM 1
-#define SCSI_SYNC_SM 2
+#ifdef ZULUSCSI_NETWORK
+#  define SCSI_DMA_PIO pio0
+#  define SCSI_PARITY_SM 1
+#  define SCSI_DATA_SM 2
+#  define SCSI_SYNC_SM 3
+#else
+#  define SCSI_DMA_PIO pio0
+#  define SCSI_PARITY_SM 0
+#  define SCSI_DATA_SM 1
+#  define SCSI_SYNC_SM 2
+#endif
+
 
 // SCSI bus write acceleration uses 3 or 4 DMA channels (data flow A->B->C->D):
 // A: Bytes from RAM to scsi_parity PIO
@@ -66,10 +81,17 @@
 // B: Lookup from g_scsi_parity_check_lookup and copy to scsi_read_parity PIO
 // C: Addresses from scsi_accel_read PIO to lookup DMA READ_ADDR register
 // D: From pacer to data state machine to trigger transfers
-#define SCSI_DMA_CH_A 0
-#define SCSI_DMA_CH_B 1
-#define SCSI_DMA_CH_C 2
-#define SCSI_DMA_CH_D 3
+#ifdef ZULUSCSI_NETWORK
+#  define SCSI_DMA_CH_A 6
+#  define SCSI_DMA_CH_B 7
+#  define SCSI_DMA_CH_C 8
+#  define SCSI_DMA_CH_D 9
+#else
+#  define SCSI_DMA_CH_A 0
+#  define SCSI_DMA_CH_B 1
+#  define SCSI_DMA_CH_C 2
+#  define SCSI_DMA_CH_D 3
+#endif
 
 static struct {
     uint8_t *app_buf; // Buffer provided by application
@@ -845,10 +867,35 @@ void scsi_accel_rp2040_init()
 {
     g_scsi_dma_state = SCSIDMA_IDLE;
     scsidma_config_gpio();
+    
+        if (g_channels_claimed) {
+        // Un-claim all SCSI state machines
+        pio_sm_unclaim(SCSI_DMA_PIO, SCSI_PARITY_SM);
+        pio_sm_unclaim(SCSI_DMA_PIO, SCSI_DATA_SM);
+        pio_sm_unclaim(SCSI_DMA_PIO, SCSI_SYNC_SM);
 
-    // Mark channels as being in use, unless it has been done already
+        // Remove all SCSI programs
+        pio_remove_program(SCSI_DMA_PIO, &scsi_parity_program, g_scsi_dma.pio_offset_parity);
+        pio_remove_program(SCSI_DMA_PIO, &scsi_accel_async_write_program, g_scsi_dma.pio_offset_async_write);
+        pio_remove_program(SCSI_DMA_PIO, &scsi_sync_write_pacer_program, g_scsi_dma.pio_offset_sync_write_pacer);
+        pio_remove_program(SCSI_DMA_PIO, &scsi_sync_write_program, g_scsi_dma.pio_offset_sync_write);
+        pio_remove_program(SCSI_DMA_PIO, &scsi_accel_read_program, g_scsi_dma.pio_offset_read);
+        pio_remove_program(SCSI_DMA_PIO, &scsi_sync_read_pacer_program, g_scsi_dma.pio_offset_sync_read_pacer);
+        pio_remove_program(SCSI_DMA_PIO, &scsi_read_parity_program, g_scsi_dma.pio_offset_read_parity);
+
+        // Un-claim all SCSI DMA channels
+        dma_channel_unclaim(SCSI_DMA_CH_A);
+        dma_channel_unclaim(SCSI_DMA_CH_B);
+        dma_channel_unclaim(SCSI_DMA_CH_C);
+        dma_channel_unclaim(SCSI_DMA_CH_D);
+
+        // Set flag to re-initialize SCSI PIO system
+        g_channels_claimed = false;
+    }
+    
     if (!g_channels_claimed)
     {
+        // Mark channels as being in use, unless it has been done already
         pio_sm_claim(SCSI_DMA_PIO, SCSI_PARITY_SM);
         pio_sm_claim(SCSI_DMA_PIO, SCSI_DATA_SM);
         pio_sm_claim(SCSI_DMA_PIO, SCSI_SYNC_SM);

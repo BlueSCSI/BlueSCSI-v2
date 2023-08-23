@@ -1,5 +1,6 @@
 /** 
  * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
+ * Copyright (c) 2023 joshua stein <jcs@jcs.org>
  * 
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  * 
@@ -79,6 +80,7 @@
 #define DRIVEINFO_OPTICAL   {"ZULUSCSI", "CDROM",     PLATFORM_REVISION, ""}
 #define DRIVEINFO_FLOPPY    {"ZULUSCSI", "FLOPPY",    PLATFORM_REVISION, ""}
 #define DRIVEINFO_MAGOPT    {"ZULUSCSI", "MO_DRIVE",  PLATFORM_REVISION, ""}
+#define DRIVEINFO_NETWORK   {"ZULUSCSI", "NETWORK",   PLATFORM_REVISION, ""}
 #define DRIVEINFO_TAPE      {"ZULUSCSI", "TAPE",      PLATFORM_REVISION, ""}
 
 // Default SCSI drive information when Apple quirks are enabled
@@ -87,6 +89,7 @@
 #define APPLE_DRIVEINFO_OPTICAL   {"MATSHITA", "CD-ROM CR-8004A",   PLATFORM_REVISION, "2.0a"}
 #define APPLE_DRIVEINFO_FLOPPY    {"TEAC",     "FD235HS",           PLATFORM_REVISION, "1.44"}
 #define APPLE_DRIVEINFO_MAGOPT    {"MOST",     "RMD-5200",          PLATFORM_REVISION, "1.0"}
+#define APPLE_DRIVEINFO_NETWORK   {"Dayna",    "SCSI/Link",       "2.0f", ""}
 #define APPLE_DRIVEINFO_TAPE      {"ZULUSCSI", "APPLE_TAPE",        PLATFORM_REVISION, ""}
 
 // Default delay for SCSI phases.
