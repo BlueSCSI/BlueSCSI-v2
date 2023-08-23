@@ -1,5 +1,6 @@
 /** 
  * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
+ * Copyright (c) 2023 joshua stein <jcs@jcs.org>
  * 
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  * 
@@ -193,5 +194,37 @@ const char *log_get_buffer(uint32_t *startpos, uint32_t *available)
     *startpos += len;
 
     return result;
+}
+
+void logmsg_f(const char *format, ...)
+{
+    static char out[2048];
+
+    va_list ap;
+    va_start(ap, format);
+    vsnprintf(out, sizeof(out), format, ap);
+    va_end(ap);
+
+    logmsg(out);
+}
+
+void logmsg_buf(const unsigned char *buf, unsigned long size)
+{
+    static char tmp[1500 * 3];
+    static char hex[] = "0123456789abcdef";
+    int o = 0;
+
+    for (int j = 0; j < size; j++) {
+        if (o + 3 >= sizeof(tmp))
+            break;
+
+        if (j != 0)
+            tmp[o++] = ' ';
+        tmp[o++] = hex[(buf[j] >> 4) & 0xf];
+        tmp[o++] = hex[buf[j] & 0xf];
+        tmp[o] = 0;
+    }
+
+    logmsg_f("%s", tmp);
 }
 

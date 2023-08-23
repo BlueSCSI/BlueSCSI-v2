@@ -14,6 +14,9 @@
 //
 //	You should have received a copy of the GNU General Public License
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
+//
+// This work incorporates work from the following
+//  Copyright (c) 2023 joshua stein <jcs@jcs.org>
 
 #include "scsi.h"
 #include "scsiPhy.h"
@@ -27,6 +30,7 @@
 #include "bsp.h"
 #include "cdrom.h"
 //#include "debug.h"
+#include "network.h"
 #include "tape.h"
 #include "mo.h"
 #include "vendor.h"
@@ -518,7 +522,8 @@ static void process_Command()
 	// write commands. Will fall-through to generic disk handling.
 	else if (((cfg->deviceType == S2S_CFG_OPTICAL) && scsiCDRomCommand()) ||
 		((cfg->deviceType == S2S_CFG_SEQUENTIAL) && scsiTapeCommand()) ||
-		((cfg->deviceType == S2S_CFG_MO) && scsiMOCommand()))
+		((cfg->deviceType == S2S_CFG_MO) && scsiMOCommand()) ||
+		((cfg->deviceType == S2S_CFG_NETWORK && scsiNetworkCommand())))
 	{
 		// Already handled.
 	}
