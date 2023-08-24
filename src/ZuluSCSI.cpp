@@ -449,13 +449,13 @@ bool findHDDImages()
           logmsg("-- Ignoring ", fullname, ", SCSI ID ", id, " is already in use!");
           continue;
         }
-
+#ifdef ZULUSCSI_NETWORK
         if (is_ne && !platform_network_supported())
         {
           logmsg("-- Ignoring ", fullname, ", networking is not supported on this hardware");
           continue;
         }
-
+#endif // ZULUSCSI_NETWORK
         // Type mapping based on filename.
         // If type is FIXED, the type can still be overridden in .ini file.
         S2S_CFG_TYPE type = S2S_CFG_FIXED;
@@ -627,18 +627,18 @@ static void reinitSCSI()
   scsiDiskInit();
   scsiInit();
 
+#ifdef ZULUSCSI_NETWORK
   if (scsiDiskCheckAnyNetworkDevicesConfigured())
   {
     platform_network_init(scsiDev.boardCfg.wifiMACAddress);
     platform_network_wifi_join(scsiDev.boardCfg.wifiSSID, scsiDev.boardCfg.wifiPassword);
   }
+#endif // ZULUSCSI_NETWORK
   
 }
 
 extern "C" void zuluscsi_setup(void)
 {
-  pio_clear_instruction_memory(pio0);
-  pio_clear_instruction_memory(pio1);
   platform_init();
   platform_late_init();
 
@@ -722,8 +722,11 @@ extern "C" void zuluscsi_main_loop(void)
   platform_reset_watchdog();
   platform_poll();
   diskEjectButtonUpdate(true);
+
+#ifdef ZULUSCSI_NETWORK
   platform_network_poll();
-  
+#endif // ZULUSCSI_NETWORK
+
 #ifdef PLATFORM_HAS_INITIATOR_MODE
   if (platform_is_initiator_mode_enabled())
   {

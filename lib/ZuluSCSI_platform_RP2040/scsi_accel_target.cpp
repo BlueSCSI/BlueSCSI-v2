@@ -38,12 +38,16 @@
 #include <hardware/irq.h>
 #include <hardware/structs/iobank0.h>
 #include <hardware/sync.h>
+
+#ifdef ENABLE_AUDIO_OUTPUT
 #include <audio.h>
-#ifdef __MBED__
-#include <multicore.h>
-#else
+#endif // ENABLE_AUDIO_OUTPUT
+
+#ifdef ZULUSCSI_NETWORK
 #include <pico/multicore.h>
-#endif
+#else
+#include <multicore.h>
+#endif // ZULUSCSI_NETWORK
 
 #ifdef ZULUSCSI_PICO
 #include "scsi_accel_target_Pico.pio.h"
@@ -51,7 +55,7 @@
 #include "scsi_accel_target_BS2.pio.h"
 #else
 #include "scsi_accel_target_RP2040.pio.h"
-#endif
+#endif // ZULUSCSI_PICO
 
 // SCSI bus write acceleration uses up to 3 PIO state machines:
 // SM0: Convert data bytes to lookup addresses to add parity
@@ -67,7 +71,7 @@
 #  define SCSI_PARITY_SM 0
 #  define SCSI_DATA_SM 1
 #  define SCSI_SYNC_SM 2
-#endif
+#endif // ZULUSCSI_NETWORK
 
 
 // SCSI bus write acceleration uses 3 or 4 DMA channels (data flow A->B->C->D):

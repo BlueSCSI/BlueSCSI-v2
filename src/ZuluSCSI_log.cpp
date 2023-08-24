@@ -24,6 +24,8 @@
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_config.h"
 #include "ZuluSCSI_platform.h"
+#include <stdio.h>
+#include <stdarg.h>
 
 const char *g_log_firmwareversion = ZULU_FW_VERSION " " __DATE__ " " __TIME__;
 bool g_log_debug = true;

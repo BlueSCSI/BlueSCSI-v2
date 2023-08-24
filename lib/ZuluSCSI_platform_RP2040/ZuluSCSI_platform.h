@@ -48,9 +48,17 @@ extern "C" {
 extern const char *g_platform_name;
 
 #ifdef ZULUSCSI_PICO
-# define PLATFORM_NAME "ZuluSCSI Pico"
+# ifdef ZULUSCSI_DAYNAPORT
+#   define PLATFORM_NAME "ZuluSCSI Pico DaynaPORT"
+# else
+#   define PLATFORM_NAME "ZuluSCSI Pico"
+# endif
 # define PLATFORM_REVISION "2.0"
 # define PLATFORM_HAS_INITIATOR_MODE 1
+# define DISABLE_SWO
+# ifdef ZULUSCSI_NETWORK
+#   define DISABLE_USB
+# endif
 #elif defined(ZULUSCSI_BS2)
 # define PLATFORM_NAME "ZuluSCSI BS2"
 # define PLATFORM_REVISION "1.0"

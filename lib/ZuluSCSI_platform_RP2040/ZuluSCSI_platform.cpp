@@ -26,6 +26,7 @@
 #include <scsi.h>
 #include <assert.h>
 #include <hardware/gpio.h>
+#include <hardware/pio.h>
 #include <hardware/uart.h>
 #include <hardware/pll.h>
 #include <hardware/clocks.h>
@@ -38,16 +39,24 @@
 
 #ifdef __MBED__
 #  include <platform/mbed_error.h>
-#  include <multicore.h>
+#endif // __MBED__
+
+#ifndef DISABLE_USB
 #  include <USB/PluggableUSBSerial.h>
-#  include "audio.h"
+#endif // DISABLE_USB
+
+#ifndef ZULUSCSI_NETWORK
+#  include <multicore.h>
 #else
 #  include <pico/multicore.h> 
 extern "C" {
 #  include <pico/cyw43_arch.h>
 } 
-#endif // __MBED__
+#endif // ZULUSCSI_NETWORK
 
+#ifdef ENABLE_AUDIO_OUTPUT
+#  include "audio.h"
+#endif // ENABLE_AUDIO_OUTPUT
 
 extern "C" {
 
@@ -120,6 +129,9 @@ void platform_init()
     // Make sure second core is stopped
     multicore_reset_core1();
 
+    pio_clear_instruction_memory(pio0);
+    pio_clear_instruction_memory(pio1);
+    
     /* First configure the pins that affect external buffer directions.
      * RP2040 defaults to pulldowns, while these pins have external pull-ups.
      */
@@ -449,7 +461,7 @@ void mbed_error_hook(const mbed_error_ctx * error_context)
 // also starts calling this after 2 seconds.
 // This ensures that log messages get passed even if code hangs,
 // but does not unnecessarily delay normal execution.
-#ifdef __MBED__
+#ifndef DISABLE_USB
 static void usb_log_poll()
 {
     static uint32_t logpos = 0;
@@ -472,7 +484,7 @@ static void usb_log_poll()
         logpos -= available - actual;
     }
 }
-#endif // __MBED__
+#endif // DISABLE_USB
 
 // Use ADC to implement supply voltage monitoring for the +3.0V rail.
 // This works by sampling the temperature sensor channel, which has
@@ -546,13 +558,13 @@ static void watchdog_callback(unsigned alarm_num)
 {
     g_watchdog_timeout -= 1000;
 
-#ifdef __MBED__
+#ifndef DISABLE_USB
     if (g_watchdog_timeout < WATCHDOG_CRASH_TIMEOUT - 1000)
     {
         // Been stuck for at least a second, start dumping USB log
         usb_log_poll();
     }
-#endif  // __MBED__
+#endif  // DISABLE_USB
 
     if (g_watchdog_timeout <= WATCHDOG_CRASH_TIMEOUT - WATCHDOG_BUS_RESET_TIMEOUT)
     {
@@ -599,9 +611,9 @@ static void watchdog_callback(unsigned alarm_num)
                 p += 4;
             }
 
-#ifdef __MBED__
+#ifndef DISABLE_USB
             usb_log_poll();
-#endif // __MBED__
+#endif // DISABLE_USB
 
             platform_emergency_log_save();
 
@@ -643,18 +655,18 @@ void platform_reset_watchdog()
 
     // USB log is polled here also to make sure any log messages in fault states
     // get passed to USB.
-#ifdef __MBED__
+#ifndef DISABLE_USB
     usb_log_poll();
-#endif // __MBED__
+#endif // DISABLE_USB
 }
 
 // Poll function that is called every few milliseconds.
 // Can be left empty or used for platform-specific processing.
 void platform_poll()
 {
-#ifdef __MBED__
+#ifndef DISABLE_USB
     usb_log_poll();
-#endif
+#endif // DISABLE_USB
 
     adc_poll();
     
@@ -715,14 +727,14 @@ bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_
         }
     }
 
-#ifdef __MBED__
+#ifndef DISABLE_USB
     if (NVIC_GetEnableIRQ(USBCTRL_IRQn))
     {
         logmsg("Disabling USB during firmware flashing");
         NVIC_DisableIRQ(USBCTRL_IRQn);
         usb_hw->main_ctrl = 0;
     }
-#endif // __MBED__
+#endif // DISABLE_USB
 
     dbgmsg("Writing flash at offset ", offset, " data ", bytearray(buffer, 4));
     assert(offset % PLATFORM_FLASH_PAGE_SIZE == 0);
