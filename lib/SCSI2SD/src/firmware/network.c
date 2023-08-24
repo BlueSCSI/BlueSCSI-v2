@@ -26,15 +26,14 @@ extern bool g_log_debug;
 
 static bool scsiNetworkEnabled = false;
 
-static uint8_t scsiNetworkPacketsInbound[NETWORK_PACKET_QUEUE_SIZE][NETWORK_PACKET_MAX_SIZE];
-static uint16_t scsiNetworkPacketInboundSizes[NETWORK_PACKET_QUEUE_SIZE];
-static uint8_t scsiNetworkPacketInboundWriteIndex = 0;
-static uint8_t scsiNetworkPacketInboundReadIndex = 0;
+struct scsiNetworkPacketQueue {
+	uint8_t packets[NETWORK_PACKET_QUEUE_SIZE][NETWORK_PACKET_MAX_SIZE];
+	uint16_t sizes[NETWORK_PACKET_QUEUE_SIZE];
+	uint8_t writeIndex;
+	uint8_t readIndex;
+};
 
-static uint8_t scsiNetworkPacketsOutbound[NETWORK_PACKET_QUEUE_SIZE][NETWORK_PACKET_MAX_SIZE];
-static uint16_t scsiNetworkPacketOutboundSizes[NETWORK_PACKET_QUEUE_SIZE];
-static uint8_t scsiNetworkPacketOutboundWriteIndex = 0;
-static uint8_t scsiNetworkPacketOutboundReadIndex = 0;
+static struct scsiNetworkPacketQueue scsiNetworkInboundQueue, scsiNetworkOutboundQueue;
 
 struct __attribute__((packed)) wifi_network_entry wifi_network_list[WIFI_NETWORK_LIST_ENTRY_COUNT] = { 0 };
 
@@ -120,7 +119,7 @@ int scsiNetworkCommand()
 			break;
 		}
 
-		if (scsiNetworkPacketInboundReadIndex == scsiNetworkPacketInboundWriteIndex)
+		if (scsiNetworkInboundQueue.readIndex == scsiNetworkInboundQueue.writeIndex)
 		{
 			// nothing available
 			memset(scsiDev.data, 0, 6);
@@ -128,7 +127,7 @@ int scsiNetworkCommand()
 		}
 		else
 		{
-			psize = scsiNetworkPacketInboundSizes[scsiNetworkPacketInboundReadIndex];
+			psize = scsiNetworkInboundQueue.sizes[scsiNetworkInboundQueue.readIndex];
 
 			// pad smaller packets
 			if (psize < 64)
@@ -143,25 +142,25 @@ int scsiNetworkCommand()
 
 			if (g_log_debug)
 			{
-				log_f("%s: sending packet[%d] to host of size %zu + 6", __func__, scsiNetworkPacketInboundReadIndex, psize);
+				log_f("%s: sending packet[%d] to host of size %zu + 6", __func__, scsiNetworkInboundQueue.readIndex, psize);
 			}
 
 			scsiDev.dataLen = psize + 6; // 2-byte length + 4-byte flag + packet
-			memcpy(scsiDev.data + 6, scsiNetworkPacketsInbound[scsiNetworkPacketInboundReadIndex], psize);
+			memcpy(scsiDev.data + 6, scsiNetworkInboundQueue.packets[scsiNetworkInboundQueue.readIndex], psize);
 			scsiDev.data[0] = (psize >> 8) & 0xff;
 			scsiDev.data[1] = psize & 0xff;
 
-			if (scsiNetworkPacketInboundReadIndex == NETWORK_PACKET_QUEUE_SIZE - 1)
-				scsiNetworkPacketInboundReadIndex = 0;
+			if (scsiNetworkInboundQueue.readIndex == NETWORK_PACKET_QUEUE_SIZE - 1)
+				scsiNetworkInboundQueue.readIndex = 0;
 			else
-				scsiNetworkPacketInboundReadIndex++;
+				scsiNetworkInboundQueue.readIndex++;
 
 			// flags
 			scsiDev.data[2] = 0;
 			scsiDev.data[3] = 0;
 			scsiDev.data[4] = 0;
 			// more data to read?
-			scsiDev.data[5] = (scsiNetworkPacketInboundReadIndex == scsiNetworkPacketInboundWriteIndex ? 0 : 0x10);
+			scsiDev.data[5] = (scsiNetworkInboundQueue.readIndex == scsiNetworkInboundQueue.writeIndex ? 0 : 0x10);
 
 			if (g_log_debug)
 			{
@@ -230,13 +229,13 @@ int scsiNetworkCommand()
 			off = 4;
 		}
 
-		memcpy(&scsiNetworkPacketsOutbound[scsiNetworkPacketOutboundWriteIndex], scsiDev.data + off, size);
-		scsiNetworkPacketOutboundSizes[scsiNetworkPacketOutboundWriteIndex] = size;
+		memcpy(&scsiNetworkOutboundQueue.packets[scsiNetworkOutboundQueue.writeIndex], scsiDev.data + off, size);
+		scsiNetworkOutboundQueue.sizes[scsiNetworkOutboundQueue.writeIndex] = size;
 
-		if (scsiNetworkPacketOutboundWriteIndex == NETWORK_PACKET_QUEUE_SIZE - 1)
-			scsiNetworkPacketOutboundWriteIndex = 0;
+		if (scsiNetworkOutboundQueue.writeIndex == NETWORK_PACKET_QUEUE_SIZE - 1)
+			scsiNetworkOutboundQueue.writeIndex = 0;
 		else
-			scsiNetworkPacketOutboundWriteIndex++;
+			scsiNetworkOutboundQueue.writeIndex++;
 
 		scsiDev.status = GOOD;
 		scsiDev.phase = STATUS;
@@ -275,10 +274,8 @@ int scsiNetworkCommand()
 				log_f("%s: enable interface", __func__);
 			}
 			scsiNetworkEnabled = true;
-			scsiNetworkPacketInboundWriteIndex = 0;
-			scsiNetworkPacketInboundReadIndex = 0;
-			scsiNetworkPacketOutboundWriteIndex = 0;
-			scsiNetworkPacketOutboundReadIndex = 0;
+			memset(&scsiNetworkInboundQueue, 0, sizeof(scsiNetworkInboundQueue));
+			memset(&scsiNetworkOutboundQueue, 0, sizeof(scsiNetworkOutboundQueue));
 		}
 		else
 		{
@@ -434,28 +431,28 @@ int scsiNetworkEnqueue(const uint8_t *buf, size_t len)
 	if (!scsiNetworkEnabled)
 		return 0;
 
-	if (len + 4 > sizeof(scsiNetworkPacketsInbound[0]))
+	if (len + 4 > sizeof(scsiNetworkInboundQueue.packets[0]))
 	{
 		if (g_log_debug)
-			log_f("%s: dropping incoming network packet, too large (%zu > %zu)", __func__, len, sizeof(scsiNetworkPacketsInbound[0]));
+			log_f("%s: dropping incoming network packet, too large (%zu > %zu)", __func__, len, sizeof(scsiNetworkInboundQueue.packets[0]));
 		return 0;
 	}
 
-	memcpy(scsiNetworkPacketsInbound[scsiNetworkPacketInboundWriteIndex], buf, len);
+	memcpy(scsiNetworkInboundQueue.packets[scsiNetworkInboundQueue.writeIndex], buf, len);
 	uint32_t crc = crc32(buf, len);
-	scsiNetworkPacketsInbound[scsiNetworkPacketInboundWriteIndex][len] = crc & 0xff;
-	scsiNetworkPacketsInbound[scsiNetworkPacketInboundWriteIndex][len + 1] = (crc >> 8) & 0xff;
-	scsiNetworkPacketsInbound[scsiNetworkPacketInboundWriteIndex][len + 2] = (crc >> 16) & 0xff;
-	scsiNetworkPacketsInbound[scsiNetworkPacketInboundWriteIndex][len + 3] = (crc >> 24) & 0xff;
+	scsiNetworkInboundQueue.packets[scsiNetworkInboundQueue.writeIndex][len] = crc & 0xff;
+	scsiNetworkInboundQueue.packets[scsiNetworkInboundQueue.writeIndex][len + 1] = (crc >> 8) & 0xff;
+	scsiNetworkInboundQueue.packets[scsiNetworkInboundQueue.writeIndex][len + 2] = (crc >> 16) & 0xff;
+	scsiNetworkInboundQueue.packets[scsiNetworkInboundQueue.writeIndex][len + 3] = (crc >> 24) & 0xff;
 
-	scsiNetworkPacketInboundSizes[scsiNetworkPacketInboundWriteIndex] = len + 4;
+	scsiNetworkInboundQueue.sizes[scsiNetworkInboundQueue.writeIndex] = len + 4;
 
-	if (scsiNetworkPacketInboundWriteIndex == NETWORK_PACKET_QUEUE_SIZE - 1)
-		scsiNetworkPacketInboundWriteIndex = 0;
+	if (scsiNetworkInboundQueue.writeIndex == NETWORK_PACKET_QUEUE_SIZE - 1)
+		scsiNetworkInboundQueue.writeIndex = 0;
 	else
-		scsiNetworkPacketInboundWriteIndex++;
+		scsiNetworkInboundQueue.writeIndex++;
 
-	if (scsiNetworkPacketInboundWriteIndex == scsiNetworkPacketInboundReadIndex)
+	if (scsiNetworkInboundQueue.writeIndex == scsiNetworkInboundQueue.readIndex)
 	{
 		if (g_log_debug)
 			log_f("%s: dropping packets in ring, write index caught up to read index", __func__);
@@ -471,14 +468,14 @@ int scsiNetworkPurge(void)
 	if (!scsiNetworkEnabled)
 		return 0;
 
-	while (scsiNetworkPacketOutboundReadIndex != scsiNetworkPacketOutboundWriteIndex)
+	while (scsiNetworkOutboundQueue.readIndex != scsiNetworkOutboundQueue.writeIndex)
 	{
-		platform_network_send(scsiNetworkPacketsOutbound[scsiNetworkPacketOutboundReadIndex], scsiNetworkPacketOutboundSizes[scsiNetworkPacketOutboundReadIndex]);
+		platform_network_send(scsiNetworkOutboundQueue.packets[scsiNetworkOutboundQueue.readIndex], scsiNetworkOutboundQueue.sizes[scsiNetworkOutboundQueue.readIndex]);
 
-		if (scsiNetworkPacketOutboundReadIndex == NETWORK_PACKET_QUEUE_SIZE - 1)
-			scsiNetworkPacketOutboundReadIndex = 0;
+		if (scsiNetworkOutboundQueue.readIndex == NETWORK_PACKET_QUEUE_SIZE - 1)
+			scsiNetworkOutboundQueue.readIndex = 0;
 		else
-			scsiNetworkPacketOutboundReadIndex++;
+			scsiNetworkOutboundQueue.readIndex++;
 		
 		sent++;
 	}
