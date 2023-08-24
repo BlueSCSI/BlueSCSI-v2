@@ -410,6 +410,12 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
         }
         else if (type == S2S_CFG_NETWORK)
         {
+            if (!platform_network_supported())
+            {
+                log("---- Error: network not supported on this device, ignoring ", filename);
+                img.file.close();
+                return false;
+            }
             log("---- Configuring as network based on image name");
             img.deviceType = S2S_CFG_NETWORK;
         }
