@@ -18,6 +18,8 @@
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_config.h"
 #include <scsi.h>
+
+#ifdef ZULUSCSI_NETWORK
 #include <network.h>
 
 extern "C" {
@@ -312,3 +314,4 @@ void cyw43_cb_tcpip_set_link_up(cyw43_t *self, int itf)
 }
 
 }
+#endif // ZULUSCSI_NETWORK
