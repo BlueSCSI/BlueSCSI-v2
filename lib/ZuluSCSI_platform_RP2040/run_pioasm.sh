@@ -2,8 +2,10 @@
 
 # This script regenerates the .pio.h files from .pio
 
-pioasm rp2040_sdio.pio rp2040_sdio.pio.h
-pioasm rp2040_sdio_BS2.pio rp2040_sdio_BS2.pio.h
+pioasm sdio_RP2040.pio sdio_RP2040.pio.h
+pioasm sdio_BS2.pio sdio_BS2.pio.h
 
-pioasm scsi_accel.pio scsi_accel.pio.h
-pioasm scsi_accel_BS2.pio scsi_accel_BS2.pio.h
+pioasm scsi_accel_target_RP2040.pio scsi_accel_target_RP2040.pio.h
+pioasm scsi_accel_target_BS2.pio scsi_accel_target_BS2.pio.h
+
+pioasm scsi_accel_host_RP2040.pio scsi_accel_host_RP2040.pio.h
