@@ -26,7 +26,7 @@
 #ifdef SD_USE_SDIO
 
 #include "ZuluSCSI_log.h"
-#include "rp2040_sdio.h"
+#include "sdio.h"
 #include <hardware/gpio.h>
 #include <SdFat.h>
 #include <SdCard/SdCardInfo.h>
