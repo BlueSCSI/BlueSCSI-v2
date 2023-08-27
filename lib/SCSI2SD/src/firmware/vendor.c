@@ -17,7 +17,7 @@
 
 #include "scsi.h"
 #include "vendor.h"
-
+#include "diagnostic.h"
 
 // Callback after the DATA OUT phase is complete.
 static void doAssignDiskParameters(void)
@@ -47,6 +47,14 @@ int scsiVendorCommand()
 		scsiDev.dataLen = 10;
 		scsiDev.phase = DATA_OUT;
 		scsiDev.postDataOutHook = doAssignDiskParameters;
+	}
+	else if (command == 0x0F &&
+		scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_XEBEC)
+	{
+		// XEBEC S1410, WD100x: "Write Sector Buffer"
+		scsiDev.dataLen = scsiDev.target->liveCfg.bytesPerSector;
+		scsiDev.phase = DATA_OUT;
+		scsiDev.postDataOutHook = doWriteBuffer;
 	}
 	else
 	{
