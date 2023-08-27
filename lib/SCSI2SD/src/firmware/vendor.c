@@ -22,7 +22,10 @@
 // Callback after the DATA OUT phase is complete.
 static void doAssignDiskParameters(void)
 {
-	scsiDev.phase = STATUS;
+	if (scsiDev.status == GOOD)
+	{
+		scsiDev.phase = STATUS;
+	}
 }
 
 // XEBEC specific commands
