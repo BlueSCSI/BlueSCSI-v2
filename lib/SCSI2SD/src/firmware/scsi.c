@@ -562,11 +562,6 @@ static void process_Command()
 	{
 		scsiWriteBuffer();
 	}
-	else if (command == 0x0f &&
-		scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_XEBEC)
-	{
-		scsiWriteSectorBuffer();
-	}
 	else if (command == 0x3C)
 	{
 		scsiReadBuffer();
