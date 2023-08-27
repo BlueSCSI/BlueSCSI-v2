@@ -382,14 +382,57 @@ static void process_Command()
 		{
 			// Completely non-standard
 			allocLength = 4;
-			if (scsiDev.target->sense.code == NO_SENSE)
-				scsiDev.data[0] = 0;
-			else if (scsiDev.target->sense.code == ILLEGAL_REQUEST)
-				scsiDev.data[0] = 0x20; // Illegal command
-			else if (scsiDev.target->sense.code == NOT_READY)
-				scsiDev.data[0] = 0x04; // Drive not ready
-			else
-				scsiDev.data[0] = 0x11;  // Uncorrectable data error
+
+			switch (scsiDev.target->sense.code)
+			{
+				case NO_SENSE:
+					scsiDev.data[0] = 0;
+					break;
+				case MEDIUM_ERROR:
+					switch (scsiDev.target->sense.asc)
+					{
+						case NO_SEEK_COMPLETE:
+							scsiDev.data[0] = 0x15; // Seek Error
+							break;
+						case WRITE_ERROR_AUTO_REALLOCATION_FAILED:
+							scsiDev.data[0] = 0x03; // Write fault
+							break;
+						default:
+						case UNRECOVERED_READ_ERROR:
+							scsiDev.data[0] = 0x11; // Uncorrectable read error
+							break;
+					}
+					break;
+				case ILLEGAL_REQUEST:
+					switch (scsiDev.target->sense.asc)
+					{
+						case LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE:
+							scsiDev.data[0] = 0x14; // Target sector not found
+							break;
+						case WRITE_PROTECTED:
+							scsiDev.data[0] = 0x03; // Write fault
+							break;
+						default:
+							scsiDev.data[0] = 0x20; // Invalid command
+							break;
+					}
+					break;
+				case NOT_READY:
+					switch (scsiDev.target->sense.asc)
+					{
+						default:
+						case MEDIUM_NOT_PRESENT:
+							scsiDev.data[0] = 0x04; // Drive not ready
+							break;
+						case LOGICAL_UNIT_NOT_READY_INITIALIZING_COMMAND_REQUIRED:
+							scsiDev.data[0] = 0x1A; // Format Error
+							break;
+					}
+					break;
+				default:
+					scsiDev.data[0] = 0x11;  // Uncorrectable data error
+					break;
+			}
 
 			scsiDev.data[1] = (scsiDev.cdb[1] & 0x20) | ((transfer.lba >> 16) & 0x1F);
 			scsiDev.data[2] = transfer.lba >> 8;
