@@ -49,7 +49,8 @@ static const char *getCommandName(uint8_t cmd)
         case 0x08: return "Read6";
         case 0x0A: return "Write6";
         case 0x0B: return "Seek6";
-        case 0x0F: return "WriteSectorBuffer";
+        case 0x0C: return "Xebec InitializeDriveCharacteristics";
+        case 0x0F: return "Xebec WriteSectorBuffer";
         case 0x10: return "WriteFilemarks";
         case 0x11: return "Space";
         case 0x12: return "Inquiry";
