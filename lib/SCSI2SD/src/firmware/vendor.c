@@ -17,12 +17,27 @@
 
 #include "scsi.h"
 #include "vendor.h"
-
+#include "diagnostic.h"
 
 // Callback after the DATA OUT phase is complete.
 static void doAssignDiskParameters(void)
 {
-	scsiDev.phase = STATUS;
+	if (scsiDev.status == GOOD)
+	{
+		scsiDev.phase = STATUS;
+	}
+}
+
+// XEBEC specific commands
+// http://www.bitsavers.org/pdf/xebec/104524C_S1410Man_Aug83.pdf
+// WD100x seems to be identical to the Xebec but calls this command "Set Parameters"
+// http://www.bitsavers.org/pdf/westernDigital/WD100x/79-000004_WD1002-SHD_OEM_Manual_Aug1984.pdf
+static void doXebecInitializeDriveCharacteristics()
+{
+	if (scsiDev.status == GOOD)
+	{
+		scsiDev.phase = STATUS;
+	}
 }
 
 int scsiVendorCommand()
@@ -47,6 +62,23 @@ int scsiVendorCommand()
 		scsiDev.dataLen = 10;
 		scsiDev.phase = DATA_OUT;
 		scsiDev.postDataOutHook = doAssignDiskParameters;
+	}
+	else if (command == 0x0C &&
+		scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_XEBEC)
+	{
+		// XEBEC S1410: "Initialize Drive Characteristics"
+		// WD100x: "Set Parameters"
+		scsiDev.dataLen = 8;
+		scsiDev.phase = DATA_OUT;
+		scsiDev.postDataOutHook = doXebecInitializeDriveCharacteristics;
+	}
+	else if (command == 0x0F &&
+		scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_XEBEC)
+	{
+		// XEBEC S1410, WD100x: "Write Sector Buffer"
+		scsiDev.dataLen = scsiDev.target->liveCfg.bytesPerSector;
+		scsiDev.phase = DATA_OUT;
+		scsiDev.postDataOutHook = doWriteBuffer;
 	}
 	else
 	{
