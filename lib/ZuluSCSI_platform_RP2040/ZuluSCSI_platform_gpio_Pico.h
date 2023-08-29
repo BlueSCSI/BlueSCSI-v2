@@ -65,7 +65,7 @@
 
 // Status line inputs for initiator mode
 #define SCSI_IN_IO    22
-#define SCSI_IN_CD    24
+#define SCSI_IN_CD    18
 #define SCSI_IN_MSG   20
 #define SCSI_IN_REQ   17
 
@@ -90,9 +90,11 @@
 #define SD_SPI_CS    15
 
 #ifndef ENABLE_AUDIO_OUTPUT
+# ifdef GPIO_I2C_SDA
     // IO expander I2C
     #define GPIO_I2C_SDA 14
     #define GPIO_I2C_SCL 15
+# endif // GPIO_I2C_SDA
 #else
     // IO expander I2C pins being used as SPI for audio
     #define AUDIO_SPI      spi1
