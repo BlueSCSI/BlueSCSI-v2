@@ -84,6 +84,7 @@ int platform_network_init(char *mac)
 		memcpy(scsiDev.boardCfg.wifiMACAddress, mac, sizeof(scsiDev.boardCfg.wifiMACAddress));
 	}
 
+	cyw43_init(&cyw43_state);
 	// setting the MAC requires libpico to be compiled with CYW43_USE_OTP_MAC=0
 	memcpy(cyw43_state.mac, mac, sizeof(cyw43_state.mac));
 	cyw43_arch_enable_sta_mode();

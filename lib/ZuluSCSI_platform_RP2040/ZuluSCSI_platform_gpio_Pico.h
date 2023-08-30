@@ -71,8 +71,13 @@
 
 // Status LED pins
 #define LED_PIN      16
-#define LED_ON()     sio_hw->gpio_set = 1 << LED_PIN
-#define LED_OFF()    sio_hw->gpio_clr = 1 << LED_PIN
+#ifdef ZULUSCSI_DAYNAPORT // disable LEDs, workaround to boot correctly
+# define LED_ON()    (void)0
+# define LED_OFF()   (void)0
+#else
+# define LED_ON()    sio_hw->gpio_set = 1 << LED_PIN
+# define LED_OFF()   sio_hw->gpio_clr = 1 << LED_PIN
+#endif
 
 // SD card pins in SDIO mode
 #define SDIO_CLK 10
