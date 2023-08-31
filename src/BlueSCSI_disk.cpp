@@ -217,9 +217,22 @@ static void formatDriveInfoField(char *field, int fieldsize, bool align_right)
     }
 }
 
+// remove path and extension from filename
+const char* get_image_name(const char* filename)
+{
+    char *j, *r;
+
+    r = (char *)malloc(strlen(filename));
+    strcpy(r, strrchr(filename,'/') + 5);
+    j = strrchr(r, '.');
+    *j = '\0';
+
+   return r;
+}
+
 // Set default drive vendor / product info after the image file
 // is loaded and the device type is known.
-static void setDefaultDriveInfo(int target_idx)
+static void setDefaultDriveInfo(int target_idx, const char* filename)
 {
     image_config_t &img = g_DiskImages[target_idx];
 
@@ -236,6 +249,8 @@ static void setDefaultDriveInfo(int target_idx)
     static const char *apl_driveinfo_floppy[4]    = APPLE_DRIVEINFO_FLOPPY;
     static const char *apl_driveinfo_magopt[4]    = APPLE_DRIVEINFO_MAGOPT;
     static const char *apl_driveinfo_tape[4]      = APPLE_DRIVEINFO_TAPE;
+
+    static const char *image_name;
 
     const char **driveinfo = NULL;
 
@@ -268,16 +283,28 @@ static void setDefaultDriveInfo(int target_idx)
         }
     }
 
-    if (img.vendor[0] == '\0')
+    if (img.quirks == S2S_CFG_QUIRKS_EMU)
     {
-        memset(img.vendor, 0, sizeof(img.vendor));
-        strncpy(img.vendor, driveinfo[0], sizeof(img.vendor));
+            image_name = get_image_name(filename);
+            memset(img.vendor, 0, 8);
+            strncpy(img.vendor, image_name, 8);
+            memset(img.prodId, 0, 8);
+            strncpy(img.prodId, image_name+8, 8);
     }
 
-    if (img.prodId[0] == '\0')
+    else
     {
-        memset(img.prodId, 0, sizeof(img.prodId));
-        strncpy(img.prodId, driveinfo[1], sizeof(img.prodId));
+        if (img.vendor[0] == '\0')
+        {
+            memset(img.vendor, 0, sizeof(img.vendor));
+            strncpy(img.vendor, driveinfo[0], sizeof(img.vendor));
+        }
+
+        if (img.prodId[0] == '\0')
+        {
+            memset(img.prodId, 0, sizeof(img.prodId));
+            strncpy(img.prodId, driveinfo[1], sizeof(img.prodId));
+        }
     }
 
     if (img.revision[0] == '\0')
@@ -391,7 +418,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
             debuglog("---- Read prefetch enabled: ", (int)img.prefetchbytes, " bytes");
         }
 
-        setDefaultDriveInfo(target_idx);
+        setDefaultDriveInfo(target_idx, filename);
 
 #ifdef PLATFORM_CONFIG_HOOK
         PLATFORM_CONFIG_HOOK(&img);
