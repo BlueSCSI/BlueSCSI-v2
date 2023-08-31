@@ -78,6 +78,9 @@ struct image_config_t: public S2S_TargetCfg
     // This field uses -1 for default when field is not set in .ini
     int rightAlignStrings;
 
+    // Set Vendor / Product Id from image file name
+    bool name_from_image;
+
     // Maximum amount of bytes to prefetch
     int prefetchbytes;
 
