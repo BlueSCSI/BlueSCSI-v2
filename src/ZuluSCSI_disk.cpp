@@ -229,6 +229,37 @@ static void formatDriveInfoField(char *field, int fieldsize, bool align_right)
     }
 }
 
+// remove path and extension from filename 
+void extractFileName(const char* path, char* output) {
+
+    const char *lastSlash, *lastDot;
+    int fileNameLength;
+
+    lastSlash = strrchr(path, '/');
+    if (!lastSlash) lastSlash = path;
+        else lastSlash++;
+
+    lastDot = strrchr(lastSlash, '.');
+    if (lastDot && (lastDot > lastSlash)) {
+        fileNameLength = lastDot - lastSlash;
+        strncpy(output, lastSlash, fileNameLength);
+        output[fileNameLength] = '\0';
+    } else {
+        strcpy(output, lastSlash);
+    }
+}
+
+void setNameFromImage(image_config_t &img, const char *filename) {
+
+    char image_name[MAX_FILE_PATH];
+
+    extractFileName(filename, image_name);
+    memset(img.vendor, 0, 8);
+    strncpy(img.vendor, image_name, 8);  
+    memset(img.prodId, 0, 8);
+    strncpy(img.prodId, image_name+8, 8);
+}
+
 // Set default drive vendor / product info after the image file
 // is loaded and the device type is known.
 static void setDefaultDriveInfo(int target_idx)
@@ -398,6 +429,12 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
         PLATFORM_CONFIG_HOOK(&img);
 #endif
 
+        if (img.name_from_image) 
+        { 
+            setNameFromImage(img, filename); 
+            logmsg("Vendor / product id set from image file name");
+        }
+
         setDefaultDriveInfo(target_idx);
 
         if (img.prefetchbytes > 0)
@@ -528,8 +565,9 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
     img.deviceTypeModifier = ini_getl(section, "TypeModifier", img.deviceTypeModifier, CONFIGFILE);
     img.sectorsPerTrack = ini_getl(section, "SectorsPerTrack", img.sectorsPerTrack, CONFIGFILE);
     img.headsPerCylinder = ini_getl(section, "HeadsPerCylinder", img.headsPerCylinder, CONFIGFILE);
-    img.quirks = ini_getl(section, "Quirks", img.quirks, CONFIGFILE);
+    img.quirks = ini_getl(section, "Quirks", img.quirks, CONFIGFILE);  
     img.rightAlignStrings = ini_getbool(section, "RightAlignStrings", 0, CONFIGFILE);
+    img.name_from_image = ini_getbool(section, "NameFromImage", 0, CONFIGFILE);    
     img.prefetchbytes = ini_getl(section, "PrefetchBytes", img.prefetchbytes, CONFIGFILE);
     img.reinsert_on_inquiry = ini_getbool(section, "ReinsertCDOnInquiry", img.reinsert_on_inquiry, CONFIGFILE);
     img.reinsert_after_eject = ini_getbool(section, "ReinsertAfterEject", img.reinsert_after_eject, CONFIGFILE);
