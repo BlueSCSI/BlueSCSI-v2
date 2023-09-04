@@ -27,8 +27,8 @@
 #include <ZuluSCSI_platform.h>
 
 // Use variables for version number
-#define FW_VER_NUM      "23.08.08"
-#define FW_VER_SUFFIX   "devel"
+#define FW_VER_NUM      "23.09.04"
+#define FW_VER_SUFFIX   "release"
 #define ZULU_FW_VERSION FW_VER_NUM "-" FW_VER_SUFFIX
 
 // Configuration and log file paths
