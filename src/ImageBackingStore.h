@@ -49,6 +49,9 @@ public:
     // Is this internal ROM drive in microcontroller flash?
     bool isRom();
 
+    // Is the image using the raw SD card?
+    bool isRaw();
+
     // Close the image so that .isOpen() will return false.
     bool close();
 
