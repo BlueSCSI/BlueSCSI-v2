@@ -109,9 +109,9 @@
 
 // DIP switch pins
 #define HAS_DIP_SWITCHES
-#define DIP_INITIATOR 26
-#define DIP_DBGLOG 16
-#define DIP_TERM 17
+#define DIP_INITIATOR 28
+#define DIP_DBGLOG 20
+#define DIP_TERM 18
 
 // Other pins
 #define SWO_PIN 16
