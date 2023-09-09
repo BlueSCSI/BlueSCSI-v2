@@ -402,7 +402,7 @@ void platform_emergency_log_save()
     crashfile.close();
 }
 
-#ifdef __MBED___
+#ifdef __MBED__
 void mbed_error_hook(const mbed_error_ctx * error_context)
 {
     logmsg("--------------");
@@ -966,6 +966,7 @@ const uint16_t g_scsi_parity_check_lookup[512] __attribute__((aligned(1024), sec
 #undef X
 
 } /* extern "C" */
+
 
 #ifdef __MBED__
 /* Logging from mbed */
