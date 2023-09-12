@@ -480,6 +480,11 @@ bool scsiDiskFilenameValid(const char* name)
             }
         }
     }
+    if(name[0] == '.')
+    {
+        debuglog("-- Ignoring hidden file ", name);
+        return false;
+    }
     return true;
 }
 

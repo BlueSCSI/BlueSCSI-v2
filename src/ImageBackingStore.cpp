@@ -131,6 +131,11 @@ bool ImageBackingStore::isRom()
     return m_isrom;
 }
 
+bool ImageBackingStore::isRaw()
+{
+    return m_israw;
+}
+
 bool ImageBackingStore::close()
 {
     if (m_israw)
