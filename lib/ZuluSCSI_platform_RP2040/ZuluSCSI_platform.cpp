@@ -126,8 +126,14 @@ void platform_init()
 
     delay(10); // 10 ms delay to let pull-ups do their work
 
+// On the ZuluSCSI Pico dbg and term readings are flipped
+# ifdef ZULUSCSI_PICO
+    bool dbglog = gpio_get(DIP_DBGLOG);
+    bool termination = gpio_get(DIP_TERM);
+# else
     bool dbglog = !gpio_get(DIP_DBGLOG);
     bool termination = !gpio_get(DIP_TERM);
+# endif
 #else
     delay(10);
 #endif
@@ -329,6 +335,8 @@ void platform_late_init()
         gpio_conf(SCSI_IN_REQ,    GPIO_FUNC_SIO, true ,false, false, true, false);
         gpio_conf(SCSI_IN_BSY,    GPIO_FUNC_SIO, true, false, false, true, false);
         gpio_conf(SCSI_IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
+        // Reinitialize OUT_RST to output mode. On RP Pico variant the pin is shared with IN_RST.
+        gpio_conf(SCSI_OUT_RST,   GPIO_FUNC_SIO, false, false, true,  true, true);
         gpio_conf(SCSI_OUT_SEL,   GPIO_FUNC_SIO, false,false, true,  true, true);
         gpio_conf(SCSI_OUT_ACK,   GPIO_FUNC_SIO, false,false, true,  true, true);
         gpio_conf(SCSI_OUT_ATN,   GPIO_FUNC_SIO, false,false, true,  true, true);
