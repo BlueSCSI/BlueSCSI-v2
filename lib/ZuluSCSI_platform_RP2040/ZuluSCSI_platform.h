@@ -26,7 +26,10 @@
 #include <stdint.h>
 #include <Arduino.h>
 
-#ifdef ZULUSCSI_BS2
+#ifdef ZULUSCSI_PICO
+// ZuluSCSI Pico carrier board variant
+#include "ZuluSCSI_platform_gpio_Pico.h"
+#elif defined(ZULUSCSI_BS2)
 // BS2 hardware variant, using Raspberry Pico board on a carrier PCB
 #include "ZuluSCSI_platform_gpio_BS2.h"
 #else
@@ -44,7 +47,11 @@ extern "C" {
 /* These are used in debug output and default SCSI strings */
 extern const char *g_platform_name;
 
-#ifdef ZULUSCSI_BS2
+#ifdef ZULUSCSI_PICO
+# define PLATFORM_NAME "ZuluSCSI Pico"
+# define PLATFORM_REVISION "2.0"
+# define PLATFORM_HAS_INITIATOR_MODE 1
+#elif defined(ZULUSCSI_BS2)
 # define PLATFORM_NAME "ZuluSCSI BS2"
 # define PLATFORM_REVISION "1.0"
 #else

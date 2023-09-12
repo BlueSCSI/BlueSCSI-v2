@@ -36,7 +36,9 @@
 #include <ZuluSCSI_platform.h>
 #include <ZuluSCSI_log.h>
 
-#ifdef ZULUSCSI_BS2
+#ifdef ZULUSCSI_PICO
+#include "sdio_Pico.pio.h"
+#elif defined(ZULUSCSI_BS2)
 #include "sdio_BS2.pio.h"
 #else
 #include "sdio_RP2040.pio.h"
