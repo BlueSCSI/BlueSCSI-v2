@@ -24,7 +24,6 @@
 #include "scsi_accel_host.h"
 #include "ZuluSCSI_platform.h"
 #include "ZuluSCSI_log.h"
-#include "scsi_accel_host_RP2040.pio.h"
 #include <hardware/pio.h>
 #include <hardware/dma.h>
 #include <hardware/irq.h>
@@ -32,6 +31,12 @@
 #include <hardware/sync.h>
 
 #ifdef PLATFORM_HAS_INITIATOR_MODE
+#ifdef ZULUSCSI_PICO
+#include "scsi_accel_host_Pico.pio.h"
+#else
+#include "scsi_accel_host_RP2040.pio.h"
+#endif
+
 
 #define SCSI_PIO pio0
 #define SCSI_SM 0
@@ -59,14 +64,16 @@ static void scsi_accel_host_config_gpio()
         iobank0_hw->io[SCSI_IO_DB6].ctrl  = GPIO_FUNC_SIO;
         iobank0_hw->io[SCSI_IO_DB7].ctrl  = GPIO_FUNC_SIO;
         iobank0_hw->io[SCSI_IO_DBP].ctrl  = GPIO_FUNC_SIO;
+        iobank0_hw->io[SCSI_IN_REQ].ctrl  = GPIO_FUNC_SIO;
         iobank0_hw->io[SCSI_OUT_ACK].ctrl = GPIO_FUNC_SIO;
     }
     else if (g_scsi_host_state == SCSIHOST_READ)
     {
         // Data bus and REQ as input, ACK pin as output
-        pio_sm_set_pins(SCSI_PIO, SCSI_SM, 0x7FF);
-        pio_sm_set_consecutive_pindirs(SCSI_PIO, SCSI_SM, 0, 10, false);
-        pio_sm_set_consecutive_pindirs(SCSI_PIO, SCSI_SM, 10, 1, true);
+        pio_sm_set_pins(SCSI_PIO, SCSI_SM, SCSI_IO_DATA_MASK | 1 << SCSI_IN_REQ | 1 << SCSI_OUT_ACK);
+        pio_sm_set_consecutive_pindirs(SCSI_PIO, SCSI_SM, SCSI_IO_DB0, 9, false);
+        pio_sm_set_consecutive_pindirs(SCSI_PIO, SCSI_SM, SCSI_IN_REQ, 1, false);
+        pio_sm_set_consecutive_pindirs(SCSI_PIO, SCSI_SM, SCSI_OUT_ACK, 1, true);
 
         iobank0_hw->io[SCSI_IO_DB0].ctrl  = GPIO_FUNC_SIO;
         iobank0_hw->io[SCSI_IO_DB1].ctrl  = GPIO_FUNC_SIO;
@@ -77,6 +84,7 @@ static void scsi_accel_host_config_gpio()
         iobank0_hw->io[SCSI_IO_DB6].ctrl  = GPIO_FUNC_SIO;
         iobank0_hw->io[SCSI_IO_DB7].ctrl  = GPIO_FUNC_SIO;
         iobank0_hw->io[SCSI_IO_DBP].ctrl  = GPIO_FUNC_SIO;
+        iobank0_hw->io[SCSI_IN_REQ].ctrl  = GPIO_FUNC_SIO;
         iobank0_hw->io[SCSI_OUT_ACK].ctrl = GPIO_FUNC_PIO0;
     }
 }

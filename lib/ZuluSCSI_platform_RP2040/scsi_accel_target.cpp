@@ -38,7 +38,9 @@
 #include <audio.h>
 #include <multicore.h>
 
-#ifdef ZULUSCSI_BS2
+#ifdef ZULUSCSI_PICO
+#include "scsi_accel_target_Pico.pio.h"
+#elif defined(ZULUSCSI_BS2)
 #include "scsi_accel_target_BS2.pio.h"
 #else
 #include "scsi_accel_target_RP2040.pio.h"
