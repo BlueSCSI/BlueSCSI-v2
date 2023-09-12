@@ -121,16 +121,12 @@ void platform_init()
     /* Check dip switch settings */
 #ifdef HAS_DIP_SWITCHES
     gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, false, false, false, false, false);
+# ifndef ZULUSCSI_PICO
     gpio_conf(DIP_DBGLOG,     GPIO_FUNC_SIO, false, false, false, false, false);
     gpio_conf(DIP_TERM,       GPIO_FUNC_SIO, false, false, false, false, false);
-
+# endif    
     delay(10); // 10 ms delay to let pull-ups do their work
-
-// On the ZuluSCSI Pico dbg and term readings are flipped
-# ifdef ZULUSCSI_PICO
-    bool dbglog = gpio_get(DIP_DBGLOG);
-    bool termination = gpio_get(DIP_TERM);
-# else
+# ifndef ZULUSCSI_PICO
     bool dbglog = !gpio_get(DIP_DBGLOG);
     bool termination = !gpio_get(DIP_TERM);
 # endif
@@ -150,7 +146,13 @@ void platform_init()
     logmsg("Platform: ", g_platform_name);
     logmsg("FW Version: ", g_log_firmwareversion);
 
-#ifdef HAS_DIP_SWITCHES
+#ifdef ZULUSCSI_PICO
+    logmsg("SCSI termination is determined by the DIP switch labeled \"TERM\"");
+    logmsg("Debug logging can only be enabled via INI file \"DEBUG=1\" under [SCSI] in zuluscsi.ini");
+    logmsg("-- DEBUG DIP switch setting is ignored on ZuluSCSI Pico FS Rev. 2023b boards");
+    g_log_debug = false;
+
+#elif defined(HAS_DIP_SWITCHES)
     logmsg("DIP switch settings: debug log ", (int)dbglog, ", termination ", (int)termination);
     g_log_debug = dbglog;
 

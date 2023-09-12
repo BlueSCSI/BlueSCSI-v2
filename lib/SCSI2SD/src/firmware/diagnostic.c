@@ -196,7 +196,7 @@ void scsiReadBuffer()
 }
 
 // Callback after the DATA OUT phase is complete.
-static void doWriteBuffer(void)
+void doWriteBuffer(void)
 {
 	if (scsiDev.status == GOOD) // skip if we've already encountered an error
 	{
@@ -232,16 +232,6 @@ void scsiWriteBuffer()
 		scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
 		scsiDev.phase = STATUS;
 	}
-}
-
-// XEBEC specific command. See
-// http://www.bitsavers.org/pdf/westernDigital/WD100x/79-000004_WD1002-SHD_OEM_Manual_Aug1984.pdf
-// Section 4.3.14
-void scsiWriteSectorBuffer()
-{
-	scsiDev.dataLen = scsiDev.target->liveCfg.bytesPerSector;
-	scsiDev.phase = DATA_OUT;
-	scsiDev.postDataOutHook = doWriteBuffer;
 }
 
 
