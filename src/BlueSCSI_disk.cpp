@@ -10,6 +10,9 @@
 #include "BlueSCSI_log.h"
 #include "BlueSCSI_config.h"
 #include "BlueSCSI_presets.h"
+#ifdef ENABLE_AUDIO_OUTPUT
+#include "BlueSCSI_audio.h"
+#endif
 #include "BlueSCSI_cdrom.h"
 #include "BlueSCSI_platform_config_hook.h"
 #include "ImageBackingStore.h"
@@ -566,6 +569,11 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
     img.reinsert_on_inquiry = ini_getbool(section, "ReinsertCDOnInquiry", img.reinsert_on_inquiry, CONFIGFILE);
     img.reinsert_after_eject = ini_getbool(section, "ReinsertAfterEject", img.reinsert_after_eject, CONFIGFILE);
     img.ejectButton = ini_getl(section, "EjectButton", 0, CONFIGFILE);
+#ifdef ENABLE_AUDIO_OUTPUT
+    uint16_t vol = ini_getl(section, "CDAVolume", DEFAULT_VOLUME_LEVEL, CONFIGFILE) & 0xFF;
+    // Set volume on both channels
+    audio_set_volume(target_idx, (vol << 8) | vol);
+#endif
 
     char tmp[32];
     memset(tmp, 0, sizeof(tmp));
