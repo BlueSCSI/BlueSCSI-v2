@@ -171,12 +171,15 @@ void platform_init()
     bool dbglog = false;
     bool termination = false;
 # ifdef ZULUSCSI_PICO
-    working_dip = SETUP_UNDETERMINED != read_setup_ack_pin();
+    // Initiator dip setting works on both rev 2023b and newer rev Pico boards
+    g_scsi_initiator = !gpio_get(DIP_INITIATOR);
+    
+    working_dip = SETUP_UNDETERMINED != read_setup_ack_pin();    
     if (working_dip)
     {
         dbglog = !gpio_get(DIP_DBGLOG);
         termination = !gpio_get(DIP_TERM);
-        g_scsi_initiator = !gpio_get(DIP_INITIATOR);
+        
     }
 # else
     g_scsi_initiator = SETUP_TRUE == read_setup_ack_pin();
@@ -200,15 +203,8 @@ void platform_init()
     logmsg("FW Version: ", g_log_firmwareversion);
 
 #ifdef HAS_DIP_SWITCHES
-    if (!working_dip)
-    {
-        logmsg("SCSI termination is determined by the DIP switch labeled \"TERM\"");
-        logmsg("Debug logging can only be enabled via INI file \"DEBUG=1\" under [SCSI] in zuluscsi.ini");
-        logmsg("-- DEBUG DIP switch setting is ignored on ZuluSCSI Pico FS Rev. 2023b boards");
-        g_log_debug = false;
-    }
-    else
-    {
+    if (working_dip)
+    {       
         logmsg("DIP switch settings: debug log ", (int)dbglog, ", termination ", (int)termination);
         g_log_debug = dbglog;
 
@@ -220,6 +216,13 @@ void platform_init()
         {
             logmsg("NOTE: SCSI termination is disabled");
         }
+    }
+    else
+    {
+        logmsg("SCSI termination is determined by the DIP switch labeled \"TERM\"");
+        logmsg("Debug logging can only be enabled via INI file \"DEBUG=1\" under [SCSI] in zuluscsi.ini");
+        logmsg("-- DEBUG DIP switch setting is ignored on ZuluSCSI Pico FS Rev. 2023b boards");
+        g_log_debug = false;
     }
 #else
     g_log_debug = false;
