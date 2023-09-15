@@ -7,7 +7,7 @@ ZuluSCSI uses raw hard drive image files, which are stored on a FAT32 or exFAT-f
 
 Examples of valid filenames:
 * `HD5.hda` or `HD5.img`: hard drive with SCSI ID 5
-* `HD20_512.hda`: hard drive with SCSI ID 2, LUN 0, block size 512
+* `HD20_512.hda`: hard drive with SCSI ID 2, LUN 0, block size 512. Currently, ZuluSCSI does not support multiple LUNs, only LUN 0.
 * `CD3.iso`: CD drive with SCSI ID 3
 
 In addition to the simplified filenames style above, the ZuluSCSI firmware also looks for images using the BlueSCSI-style "HDxy_512.hda" filename formatting.
@@ -31,8 +31,10 @@ Creating new image files
 Empty image files can be created using operating system tools:
 
 * Windows: `fsutil file createnew HD1.img 1073741824` (1 GB)
-* Linux: `fallocate -l 1G HD1.img`
+* Linux: `truncate -s 1G HD1.img`
 * Mac OS X: `mkfile -n 1g HD1.img`
+
+If you need to use image files larger than 4GB, you _must_ use an exFAT-formatted SD card, as the FAT32 filesystem does not support files larger than 4,294,967,295 bytes (4GB-1 byte).
 
 ZuluSCSI firmware can also create image files itself.
 To do this, create a text file with filename such as `Create 1024M HD40.txt`.
@@ -101,11 +103,13 @@ For ZuluSCSI V1.1, the DIP switch settings are as follows:
 
 ZuluSCSI Mini has no DIP switches, so all optional configuration parameters must be defined in zuluscsi.ini
 
-ZuluSCSI RP2040 DIP switch settings are:
+ZuluSCSI RP2040 Full Size DIP switch settings are:
 - INITIATOR: Enable SCSI initiator mode for imaging SCSI drives
 - DEBUG LOG: Enable verbose debug log (saved to `zululog.txt`)
 - TERMINATION: Enable SCSI termination
 - BOOTLOADER: Enable built-in USB bootloader, this DIP switch MUST remain off during normal operation.
+Later (Rev2023a) ZuluSCSI RP2040 Full Size boards have a bootloader button instead of a DIP switch. 
+
 
 Physical eject button for CDROM
 -------------------------------

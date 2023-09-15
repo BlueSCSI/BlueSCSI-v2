@@ -32,6 +32,7 @@
 #include <scsi2sd.h>
 #include <scsiPhy.h>
 #include "ImageBackingStore.h"
+#include "ZuluSCSI_config.h"
 
 extern "C" {
 #include <disk.h>
@@ -42,9 +43,7 @@ extern "C" {
 // Extended configuration stored alongside the normal SCSI2SD target information
 struct image_config_t: public S2S_TargetCfg
 {
-    // There should be only one global instance of this struct per device, so disallow copy constructor.
-    image_config_t() = default;
-    image_config_t(const image_config_t&) = delete;
+    image_config_t() {};
 
     ImageBackingStore file;
 
@@ -61,7 +60,14 @@ struct image_config_t: public S2S_TargetCfg
     // For tape drive emulation, current position in blocks
     uint32_t tape_pos;
 
+    // True if there is a subdirectory of images for this target
+    bool image_directory;
+    // the name of the currently mounted image in a dynamic image directory
+    char current_image[MAX_FILE_PATH];
+
     // Index of image, for when image on-the-fly switching is used for CD drives
+    // This is also used for dynamic directories to track how many images have been seen
+    // Negative value forces restart from first image.
     int image_index;
 
     // Cue sheet file for CD-ROM images
@@ -72,11 +78,21 @@ struct image_config_t: public S2S_TargetCfg
     // This field uses -1 for default when field is not set in .ini
     int rightAlignStrings;
 
+    // Set Vendor / Product Id from image file name
+    bool name_from_image;
+
     // Maximum amount of bytes to prefetch
     int prefetchbytes;
 
     // Warning about geometry settings
     bool geometrywarningprinted;
+
+    // Clear any image state to zeros
+    void clear();
+
+private:
+    // There should be only one global instance of this struct per device, so make copy constructor private.
+    image_config_t(const image_config_t&) = default;
 };
 
 // Should be polled intermittently to update the platform eject buttons.
@@ -93,6 +109,10 @@ void scsiDiskCloseSDCardImages();
 bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize, S2S_CFG_TYPE type = S2S_CFG_FIXED);
 void scsiDiskLoadConfig(int target_idx);
 
+// Checks if a filename extension is appropriate for further processing as a disk image.
+// The current implementation does not check the the filename prefix for validity.
+bool scsiDiskFilenameValid(const char* name);
+
 // Clear the ROM drive header from flash
 bool scsiDiskClearRomDrive();
 // Program ROM drive and rename image file
@@ -105,9 +125,11 @@ bool scsiDiskActivateRomDrive();
 // Returns true if there is at least one image active
 bool scsiDiskCheckAnyImagesConfigured();
 
-// Check if image file name is overridden in config,
-// including image index for multi-image CD-ROM emulation
-bool scsiDiskGetImageNameFromConfig(image_config_t &img, char *buf, size_t buflen);
+// Gets the next image filename for the target, if configured for multiple
+// images. As a side effect this advances image tracking to the next image.
+// Returns the length of the new image filename, or 0 if the target is not
+// configured for multiple images.
+int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen);
 
 // Get pointer to extended image configuration based on target idx
 image_config_t &scsiDiskGetImageConfig(int target_idx);
