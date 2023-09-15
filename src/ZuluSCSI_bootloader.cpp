@@ -24,8 +24,8 @@
 #include <ZuluSCSI_platform.h>
 #include "ZuluSCSI_config.h"
 #include "ZuluSCSI_log.h"
-#include <SdFat.h>
 #include <string.h>
+#include <SdFat.h>
 
 #ifdef PLATFORM_BOOTLOADER_SIZE
 
@@ -59,6 +59,7 @@ bool find_firmware_image(FsFile &file, char name[MAX_FILE_PATH + 1])
     return false;
 }
 
+#ifndef PLATFORM_FLASH_SECTOR_ERASE
 bool program_firmware(FsFile &file)
 {
     uint32_t filesize = file.size();
@@ -103,6 +104,22 @@ bool program_firmware(FsFile &file)
 
     return true;
 }
+#else // PLATFORM_FLASH_SECTOR_ERASE
+bool program_firmware(FsFile &file)
+{
+    if (!platform_firmware_erase(file))
+    {
+        return false;
+    }
+    if (!platform_firmware_program(file))
+    {
+        return false;
+    }
+    return true;
+    
+}
+
+#endif // PLATFORM_FLASH_SECTOR_ERASE
 
 static bool mountSDCard()
 {
