@@ -625,7 +625,7 @@ void platform_reset_watchdog()
 void platform_poll()
 {
     usb_log_poll();
-    //adc_poll();
+    adc_poll();
     
 #ifdef ENABLE_AUDIO_OUTPUT
     audio_poll();
