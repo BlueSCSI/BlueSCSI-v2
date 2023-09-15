@@ -19,53 +19,16 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
 
-// Simple wrapper file that diverts boot from main program to bootloader
-// when building the bootloader image by build_bootloader.py.
+// External GreenPAK SLG46824 programmable logic can optionally be used to
+// accelerate SCSI communications. This module contains code to load firmware
+// to the GreenPAK through I2C.
 
-#ifdef ZULUSCSI_BOOTLOADER_MAIN
+#pragma once
 
-extern "C" int bootloader_main(void);
+#include <stdint.h>
 
-#ifdef USE_ARDUINO
-extern "C" void setup(void)
-{
-    bootloader_main();
-}
-extern "C" void loop(void)
-{
-}
-#else
-int main(void)
-{
-    return bootloader_main();
-}
-#endif
+bool greenpak_write(uint16_t regaddr, const uint8_t *data, int length);
+bool greenpak_read(uint16_t regaddr, uint8_t *data, int length);
 
-#else
-
-extern "C" void zuluscsi_setup(void);
-extern "C" void zuluscsi_main_loop(void);
-
-#ifdef USE_ARDUINO
-extern "C" void setup(void)
-{
-    zuluscsi_setup();
-}
-
-extern "C" void loop(void)
-{
-    zuluscsi_main_loop();
-}
-#else
-int main(void)
-{
-    
-    zuluscsi_setup();
-    while (1)
-    {
-        zuluscsi_main_loop();
-    }
-}
-#endif
-
-#endif
+bool greenpak_load_firmware();
+bool greenpak_is_ready();

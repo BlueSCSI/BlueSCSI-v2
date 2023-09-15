@@ -606,7 +606,6 @@ static void reinitSCSI()
   scsiInit();
   
 }
-
 extern "C" void zuluscsi_setup(void)
 {
   platform_init();

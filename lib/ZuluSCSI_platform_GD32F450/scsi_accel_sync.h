@@ -19,53 +19,20 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
 
-// Simple wrapper file that diverts boot from main program to bootloader
-// when building the bootloader image by build_bootloader.py.
+// SCSI subroutines that implement synchronous mode SCSI.
+// Uses DMA for data transfer, EXMC for data input and
+// GD32 timer for the REQ pin toggling.
 
-#ifdef ZULUSCSI_BOOTLOADER_MAIN
+#pragma once
 
-extern "C" int bootloader_main(void);
+#include <stdint.h>
+#include "ZuluSCSI_platform.h"
 
-#ifdef USE_ARDUINO
-extern "C" void setup(void)
-{
-    bootloader_main();
-}
-extern "C" void loop(void)
-{
-}
-#else
-int main(void)
-{
-    return bootloader_main();
-}
+#ifdef SCSI_IN_ACK_EXMC_NWAIT_PORT
+#define SCSI_SYNC_MODE_AVAILABLE
 #endif
 
-#else
+void scsi_accel_sync_init();
 
-extern "C" void zuluscsi_setup(void);
-extern "C" void zuluscsi_main_loop(void);
-
-#ifdef USE_ARDUINO
-extern "C" void setup(void)
-{
-    zuluscsi_setup();
-}
-
-extern "C" void loop(void)
-{
-    zuluscsi_main_loop();
-}
-#else
-int main(void)
-{
-    
-    zuluscsi_setup();
-    while (1)
-    {
-        zuluscsi_main_loop();
-    }
-}
-#endif
-
-#endif
+void scsi_accel_sync_recv(uint8_t *data, uint32_t count, int* parityError, volatile int *resetFlag);
+void scsi_accel_sync_send(const uint8_t* data, uint32_t count, volatile int *resetFlag);
