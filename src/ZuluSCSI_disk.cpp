@@ -30,6 +30,9 @@
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_config.h"
 #include "ZuluSCSI_presets.h"
+#ifdef ENABLE_AUDIO_OUTPUT
+#include "ZuluSCSI_audio.h"
+#endif
 #include "ZuluSCSI_cdrom.h"
 #include "ImageBackingStore.h"
 #include "ROMDrive.h"
@@ -163,7 +166,16 @@ static image_config_t g_DiskImages[S2S_MAX_TARGETS];
 
 void scsiDiskResetImages()
 {
-    memset(g_DiskImages, 0, sizeof(g_DiskImages));
+    for (int i = 0; i < S2S_MAX_TARGETS; i++)
+    {
+        g_DiskImages[i].clear();
+    }
+}
+
+void image_config_t::clear()
+{
+    static const image_config_t empty; // Statically zero-initialized
+    *this = empty;
 }
 
 void scsiDiskCloseSDCardImages()
@@ -218,6 +230,37 @@ static void formatDriveInfoField(char *field, int fieldsize, bool align_right)
             field[dst++] = 0x20;
         }
     }
+}
+
+// remove path and extension from filename 
+void extractFileName(const char* path, char* output) {
+
+    const char *lastSlash, *lastDot;
+    int fileNameLength;
+
+    lastSlash = strrchr(path, '/');
+    if (!lastSlash) lastSlash = path;
+        else lastSlash++;
+
+    lastDot = strrchr(lastSlash, '.');
+    if (lastDot && (lastDot > lastSlash)) {
+        fileNameLength = lastDot - lastSlash;
+        strncpy(output, lastSlash, fileNameLength);
+        output[fileNameLength] = '\0';
+    } else {
+        strcpy(output, lastSlash);
+    }
+}
+
+void setNameFromImage(image_config_t &img, const char *filename) {
+
+    char image_name[MAX_FILE_PATH];
+
+    extractFileName(filename, image_name);
+    memset(img.vendor, 0, 8);
+    strncpy(img.vendor, image_name, 8);  
+    memset(img.prodId, 0, 8);
+    strncpy(img.prodId, image_name+8, 8);
 }
 
 // Set default drive vendor / product info after the image file
@@ -389,6 +432,12 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
         PLATFORM_CONFIG_HOOK(&img);
 #endif
 
+        if (img.name_from_image) 
+        { 
+            setNameFromImage(img, filename); 
+            logmsg("Vendor / product id set from image file name");
+        }
+
         setDefaultDriveInfo(target_idx);
 
         if (img.prefetchbytes > 0)
@@ -425,8 +474,11 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
 
         return true;
     }
-
-    return false;
+    else
+    {
+        logmsg("---- Failed to load image '", filename, "', ignoring");
+        return false;
+    }
 }
 
 static void checkDiskGeometryDivisible(image_config_t &img)
@@ -446,6 +498,43 @@ static void checkDiskGeometryDivisible(image_config_t &img)
     }
 }
 
+bool scsiDiskFilenameValid(const char* name)
+{
+    // Check file extension
+    const char *extension = strrchr(name, '.');
+    if (extension)
+    {
+        const char *ignore_exts[] = {
+            ".rom_loaded", ".cue", ".txt", ".rtf", ".md", ".nfo", ".pdf", ".doc",
+            NULL
+        };
+        const char *archive_exts[] = {
+            ".tar", ".tgz", ".gz", ".bz2", ".tbz2", ".xz", ".zst", ".z",
+            ".zip", ".zipx", ".rar", ".lzh", ".lha", ".lzo", ".lz4", ".arj",
+            ".dmg", ".hqx", ".cpt", ".7z", ".s7z",
+            NULL
+        };
+
+        for (int i = 0; ignore_exts[i]; i++)
+        {
+            if (strcasecmp(extension, ignore_exts[i]) == 0)
+            {
+                // ignore these without log message
+                return false;
+            }
+        }
+        for (int i = 0; archive_exts[i]; i++)
+        {
+            if (strcasecmp(extension, archive_exts[i]) == 0)
+            {
+                logmsg("-- Ignoring compressed file ", name);
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 // Set target configuration to default values
 static void scsiDiskConfigDefaults(int target_idx)
 {
@@ -462,6 +551,8 @@ static void scsiDiskConfigDefaults(int target_idx)
     img.headsPerCylinder = defaults.headsPerCylinder;
     img.quirks = defaults.quirks;
     img.prefetchbytes = defaults.prefetchBytes;
+    img.reinsert_on_inquiry = true;
+    img.reinsert_after_eject = true;
     memset(img.vendor, 0, sizeof(img.vendor));
     memset(img.prodId, 0, sizeof(img.prodId));
     memset(img.revision, 0, sizeof(img.revision));
@@ -477,12 +568,18 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
     img.deviceTypeModifier = ini_getl(section, "TypeModifier", img.deviceTypeModifier, CONFIGFILE);
     img.sectorsPerTrack = ini_getl(section, "SectorsPerTrack", img.sectorsPerTrack, CONFIGFILE);
     img.headsPerCylinder = ini_getl(section, "HeadsPerCylinder", img.headsPerCylinder, CONFIGFILE);
-    img.quirks = ini_getl(section, "Quirks", img.quirks, CONFIGFILE);
+    img.quirks = ini_getl(section, "Quirks", img.quirks, CONFIGFILE);  
     img.rightAlignStrings = ini_getbool(section, "RightAlignStrings", 0, CONFIGFILE);
+    img.name_from_image = ini_getbool(section, "NameFromImage", 0, CONFIGFILE);    
     img.prefetchbytes = ini_getl(section, "PrefetchBytes", img.prefetchbytes, CONFIGFILE);
-    img.reinsert_on_inquiry = ini_getbool(section, "ReinsertCDOnInquiry", 1, CONFIGFILE);
-    img.reinsert_after_eject = ini_getbool(section, "ReinsertAfterEject", 1, CONFIGFILE);
+    img.reinsert_on_inquiry = ini_getbool(section, "ReinsertCDOnInquiry", img.reinsert_on_inquiry, CONFIGFILE);
+    img.reinsert_after_eject = ini_getbool(section, "ReinsertAfterEject", img.reinsert_after_eject, CONFIGFILE);
     img.ejectButton = ini_getl(section, "EjectButton", 0, CONFIGFILE);
+#ifdef ENABLE_AUDIO_OUTPUT
+    uint16_t vol = ini_getl(section, "CDAVolume", DEFAULT_VOLUME_LEVEL, CONFIGFILE) & 0xFF;
+    // Set volume on both channels
+    audio_set_volume(target_idx, (vol << 8) | vol);
+#endif
 
     char tmp[32];
     memset(tmp, 0, sizeof(tmp));
@@ -500,21 +597,171 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
     memset(tmp, 0, sizeof(tmp));
     ini_gets(section, "Serial", "", tmp, sizeof(tmp), CONFIGFILE);
     if (tmp[0]) memcpy(img.serial, tmp, sizeof(img.serial));
+
+    if (strlen(section) == 5 && strncmp(section, "SCSI", 4) == 0) // allow within target [SCSIx] blocks only
+    {
+        ini_gets(section, "ImgDir", "", tmp, sizeof(tmp), CONFIGFILE);
+        if (tmp[0])
+        {
+            logmsg("-- SCSI", target_idx, " using image directory \'", tmp, "'");
+            img.image_directory = true;
+        }
+    }
 }
 
-// Check if image file name is overridden in config
-bool scsiDiskGetImageNameFromConfig(image_config_t &img, char *buf, size_t buflen)
+// Finds filename with the lowest lexical order _after_ the given filename in
+// the given folder. If there is no file after the given one, or if there is
+// no current file, this will return the lowest filename encountered.
+static int findNextImageAfter(image_config_t &img,
+        const char* dirname, const char* filename,
+        char* buf, size_t buflen)
+{
+    FsFile dir;
+    if (dirname[0] == '\0')
+    {
+        logmsg("Image directory name invalid for ID", (img.scsiId & 7));
+        return 0;
+    }
+    if (!dir.open(dirname))
+    {
+        logmsg("Image directory '", dirname, "' couldn't be opened");
+    }
+    if (!dir.isDir())
+    {
+        logmsg("Can't find images in '", dirname, "', not a directory");
+        dir.close();
+        return 0;
+    }
+
+    char first_name[MAX_FILE_PATH] = {'\0'};
+    char candidate_name[MAX_FILE_PATH] = {'\0'};
+    FsFile file;
+    while (file.openNext(&dir, O_RDONLY))
+    {
+        if (file.isDir()) continue;
+        if (!file.getName(buf, MAX_FILE_PATH))
+        {
+            logmsg("Image directory '", dirname, "'had invalid file");
+            continue;
+        }
+        if (!scsiDiskFilenameValid(buf)) continue;
+
+        // keep track of the first item to allow wrapping
+        // without having to iterate again
+        if (first_name[0] == '\0' || strcasecmp(buf, first_name) < 0)
+        {
+            strncpy(first_name, buf, sizeof(first_name));
+        }
+
+        // discard if no selected name, or if candidate is before (or is) selected
+        if (filename[0] == '\0' || strcasecmp(buf, filename) <= 0) continue;
+
+        // if we got this far and the candidate is either 1) not set, or 2) is a
+        // lower item than what has been encountered thus far, it is the best choice
+        if (candidate_name[0] == '\0' || strcasecmp(buf, candidate_name) < 0)
+        {
+            strncpy(candidate_name, buf, sizeof(candidate_name));
+        }
+    }
+
+    if (candidate_name[0] != '\0')
+    {
+        img.image_index++;
+        strncpy(img.current_image, candidate_name, sizeof(img.current_image));
+        strncpy(buf, candidate_name, buflen);
+        return strlen(candidate_name);
+    }
+    else if (first_name[0] != '\0')
+    {
+        img.image_index = 0;
+        strncpy(img.current_image, first_name, sizeof(img.current_image));
+        strncpy(buf, first_name, buflen);
+        return strlen(first_name);
+    }
+    else
+    {
+        logmsg("Image directory '", dirname, "' was empty");
+        return 0;
+    }
+}
+
+int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
 {
     int target_idx = img.scsiId & 7;
 
     char section[6] = "SCSI0";
     section[4] = '0' + target_idx;
 
-    char key[5] = "IMG0";
-    key[3] = '0' + img.image_index;
+    // sanity check: is provided buffer is long enough to store a filename?
+    assert(buflen >= MAX_FILE_PATH);
 
-    ini_gets(section, key, "", buf, buflen, CONFIGFILE);
-    return buf[0] != '\0';
+    if (img.image_directory)
+    {
+        // image directory was found during startup
+        char dirname[MAX_FILE_PATH];
+        char key[] = "ImgDir";
+        int dirlen = ini_gets(section, key, "", dirname, sizeof(dirname), CONFIGFILE);
+        if (!dirlen)
+        {
+            // If image_directory set but ImageDir is not, could be used to
+            // indicate an image directory configured via folder structure.
+            // Not implemented, so treat this as equivalent to missing ImageDir
+            return 0;
+        }
+
+        // find the next filename
+        char nextname[MAX_FILE_PATH];
+        int nextlen = findNextImageAfter(img, dirname, img.current_image, nextname, sizeof(nextname));
+
+        if (nextlen == 0)
+        {
+            logmsg("Image directory was empty for ID", target_idx);
+            return 0;
+        }
+        else if (buflen < nextlen + dirlen + 2)
+        {
+            logmsg("Directory '", dirname, "' and file '", nextname, "' exceed allowed length");
+            return 0;
+        }
+        else
+        {
+            // construct a return value
+            strncpy(buf, dirname, buflen);
+            if (buf[strlen(buf) - 1] != '/') strcat(buf, "/");
+            strcat(buf, nextname);
+            return dirlen + nextlen;
+        }
+    }
+    else
+    {
+        img.image_index++;
+        if (img.image_index > IMAGE_INDEX_MAX || img.image_index < 0)
+        {
+            img.image_index = 0;
+        }
+
+        char key[5] = "IMG0";
+        key[3] = '0' + img.image_index;
+
+        int ret = ini_gets(section, key, "", buf, buflen, CONFIGFILE);
+        if (buf[0] != '\0')
+        {
+            return ret;
+        }
+        else if (img.image_index > 0)
+        {
+            // there may be more than one image but we've ran out of new ones
+            // wrap back to the first image
+            img.image_index = -1;
+            return scsiDiskGetNextImageName(img, buf, buflen);
+        }
+        else
+        {
+            // images are not defined in config
+            img.image_index = -1;
+            return 0;
+        }
+    }
 }
 
 void scsiDiskLoadConfig(int target_idx)
@@ -534,10 +781,11 @@ void scsiDiskLoadConfig(int target_idx)
     // Check if we have image specified by name
     char filename[MAX_FILE_PATH];
     image_config_t &img = g_DiskImages[target_idx];
-    if (scsiDiskGetImageNameFromConfig(img, filename, sizeof(filename)))
+    img.image_index = IMAGE_INDEX_MAX;
+    if (scsiDiskGetNextImageName(img, filename, sizeof(filename)))
     {
         int blocksize = (img.deviceType == S2S_CFG_OPTICAL) ? 2048 : 512;
-        logmsg("-- Opening ", filename, " for id:", target_idx, ", specified in " CONFIGFILE);
+        logmsg("-- Opening '", filename, "' for id:", target_idx, ", specified in " CONFIGFILE);
         scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, blocksize);
     }
 }
@@ -912,7 +1160,7 @@ static int doTestUnitReady()
         {
             // We are now reporting to host that the drive is open.
             // Simulate a "close" for next time the host polls.
-            cdromSwitchNextImage(img);
+            cdromCloseTray(img);
         }
     }
     else if (unlikely(!(blockDev.state & DISK_PRESENT)))
@@ -1289,7 +1537,7 @@ void scsiDiskStartRead(uint32_t lba, uint32_t blocks)
 
         if (transfer.currentBlock == transfer.blocks)
         {
-            while (!scsiIsWriteFinished(NULL))
+            while (!scsiIsWriteFinished(NULL) && !scsiDev.resetFlag)
             {
                 platform_poll();
                 diskEjectButtonUpdate(false);
@@ -1469,7 +1717,7 @@ static void diskDataIn()
         }
 #endif
 
-        while (!scsiIsWriteFinished(NULL))
+        while (!scsiIsWriteFinished(NULL) && !scsiDev.resetFlag)
         {
             platform_poll();
             diskEjectButtonUpdate(false);
@@ -1729,13 +1977,13 @@ void scsiDiskPoll()
             checkDiskGeometryDivisible(img);
         }
 
-        // Check for Inquiry command to reinsert CD-ROMs on boot
+        // Check for Inquiry command to close CD-ROM tray on boot
         if (command == 0x12)
         {
             image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
             if (img.deviceType == S2S_CFG_OPTICAL && img.reinsert_on_inquiry)
             {
-                cdromReinsertFirstImage(img);
+                cdromCloseTray(img);
             }
         }
     }
@@ -1757,7 +2005,7 @@ void scsiDiskReset()
     g_scsi_prefetch.sector = 0;
 #endif
 
-    // Reinsert any ejected CD-ROMs
+    // Reinsert any ejected CD-ROMs on BUS RESET and restart from first image
     for (int i = 0; i < S2S_MAX_TARGETS; ++i)
     {
         image_config_t &img = g_DiskImages[i];

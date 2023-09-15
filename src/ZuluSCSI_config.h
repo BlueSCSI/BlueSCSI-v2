@@ -27,7 +27,7 @@
 #include <ZuluSCSI_platform.h>
 
 // Use variables for version number
-#define FW_VER_NUM      "23.05.26"
+#define FW_VER_NUM      "23.09.12"
 #define FW_VER_SUFFIX   "devel"
 #define ZULU_FW_VERSION FW_VER_NUM "-" FW_VER_SUFFIX
 
@@ -55,6 +55,9 @@
 #define HDIMG_LUN_POS 3                 // Position to embed LUN numbers
 #define HDIMG_BLK_POS 5                 // Position to embed block size numbers
 #define MAX_FILE_PATH 64                // Maximum file name length
+
+// Image definition options
+#define IMAGE_INDEX_MAX 9               // Maximum number of 'IMG0' style statements parsed
 
 // SCSI config
 #define NUM_SCSIID  8          // Maximum number of supported SCSI-IDs (The minimum is 0)

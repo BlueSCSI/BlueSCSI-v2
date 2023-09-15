@@ -86,12 +86,15 @@ bool scsiHostPhySelect(int target_id)
         }
     }
 
+    // Choose initiator ID different than target ID
+    uint8_t initiator_id = (target_id == 7) ? 0 : 7;
+
     // Selection phase
     scsiLogInitiatorPhaseChange(SELECTION);
-    dbgmsg("------ SELECTING ", target_id);
+    dbgmsg("------ SELECTING ", target_id, " with initiator ID ", (int)initiator_id);
     SCSI_OUT(SEL, 1);
     delayMicroseconds(5);
-    SCSI_OUT_DATA(1 << target_id);
+    SCSI_OUT_DATA((1 << target_id) | (1 << initiator_id));
     delayMicroseconds(5);
     SCSI_OUT(BSY, 0);
 

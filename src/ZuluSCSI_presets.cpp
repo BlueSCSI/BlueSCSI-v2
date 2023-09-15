@@ -27,6 +27,7 @@ preset_config_t getSystemPreset(const char *presetName)
     cfg.enableSelLatch = false;
     cfg.mapLunsToIDs = false;
     cfg.enableParity = true;
+    cfg.initPreDelay = 0;
 
     // System-specific defaults
     if (strequals(presetName, ""))
@@ -45,6 +46,10 @@ preset_config_t getSystemPreset(const char *presetName)
         cfg.enableSelLatch = true;
         cfg.enableSCSI2 = false;
         cfg.selectionDelay = 0;
+    }
+    else if (strequals(presetName, "MPC3000"))
+    {
+        cfg.initPreDelay = 600;
     }
     else
     {

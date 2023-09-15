@@ -26,7 +26,7 @@
 #ifdef SD_USE_SDIO
 
 #include "ZuluSCSI_log.h"
-#include "rp2040_sdio.h"
+#include "sdio.h"
 #include <hardware/gpio.h>
 #include <SdFat.h>
 #include <SdCard/SdCardInfo.h>
@@ -263,7 +263,7 @@ bool SdioCard::stopTransmission(bool blocking)
     }
     else
     {
-        uint32_t end = millis() + 100;
+        uint32_t end = millis() + 5000;
         while (millis() < end && isBusy())
         {
             if (m_stream_callback)
@@ -421,6 +421,8 @@ bool SdioCard::writeSectors(uint32_t sector, const uint8_t* src, size_t n)
     }
     else
     {
+        // TODO: Instead of CMD12 stopTransmission command, according to SD spec we should send stopTran token.
+        // stopTransmission seems to work in practice.
         return stopTransmission(true);
     }
 }
