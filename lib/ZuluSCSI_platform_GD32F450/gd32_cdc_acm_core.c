@@ -213,10 +213,10 @@ static __ALIGN_BEGIN const usb_desc_str manufacturer_string __ALIGN_END =
 {
     .header = 
      {
-         .bLength         = USB_STRING_LEN(10), 
+         .bLength         = USB_STRING_LEN(19), 
          .bDescriptorType = USB_DESCTYPE_STR,
      },
-    .unicode_string = {'G', 'i', 'g', 'a', 'D', 'e', 'v', 'i', 'c', 'e'}
+    .unicode_string = {'R', 'a', 'b', 'b', 'i', 't', 'H', 'o', 'l','e','C','o','m','p','u','t','i','n','g'}
 };
 
 /* USB product string */
@@ -224,10 +224,10 @@ static __ALIGN_BEGIN const usb_desc_str product_string __ALIGN_END =
 {
     .header = 
      {
-         .bLength         = USB_STRING_LEN(12), 
+         .bLength         = USB_STRING_LEN(11), 
          .bDescriptorType = USB_DESCTYPE_STR,
      },
-    .unicode_string = {'G', 'D', '3', '2', '-', 'C', 'D', 'C', '_', 'A', 'C', 'M'}
+    .unicode_string = {'Z', 'u', 'l', 'u', 'S', 'C', 'S', 'I', '-', 'F', '4'}
 };
 
 /* USBD serial string */
