@@ -104,6 +104,49 @@ static void reclock_for_audio() {
 }
 #endif
 
+#ifdef HAS_DIP_SWITCHES
+enum pin_setup_state_t  {SETUP_FALSE, SETUP_TRUE, SETUP_UNDETERMINED};
+static pin_setup_state_t read_setup_ack_pin()
+{
+    /* Revision 2022d of the RP2040 hardware has problems reading initiator DIP switch setting.
+     * The 74LVT245 hold current is keeping the GPIO_ACK state too strongly.
+     * Detect this condition by toggling the pin up and down and seeing if it sticks.
+     * 
+     * Revision 2023b of the Pico hardware has issues reading TERM and DEBUG DIP switch 
+     * settings. GPIO_ACK is externally pulled down to ground for later revisions.
+     * If the state is detected as undetermined then the board is the 2023b revision.
+     */
+
+    // Strong output high, then pulldown
+    //        pin             function       pup   pdown   out    state  fast
+    gpio_conf(SCSI_IN_ACK,  GPIO_FUNC_SIO, false, false, true,  true,  false);
+    gpio_conf(SCSI_IN_ACK,  GPIO_FUNC_SIO, false, true,  false, true,  false);
+    delay(1);
+    bool ack_state1 = gpio_get(SCSI_IN_ACK);
+    
+    // Strong output low, then pullup
+    //        pin             function       pup   pdown   out    state  fast
+    gpio_conf(SCSI_IN_ACK,  GPIO_FUNC_SIO, false, false, true,  false, false);
+    gpio_conf(SCSI_IN_ACK,  GPIO_FUNC_SIO, true,  false, false, false, false);
+    delay(1);
+    bool ack_state2 = gpio_get(SCSI_IN_ACK);
+
+    if (ack_state1 == ack_state2)
+    {
+        // Ok, was able to read the state directly
+        return !ack_state1 ? SETUP_TRUE : SETUP_FALSE;
+    }
+
+    // Enable OUT_BSY for a short time.
+    // If in target mode, this will force GPIO_ACK high.
+    gpio_put(SCSI_OUT_BSY, 0);
+    delay_100ns();
+    gpio_put(SCSI_OUT_BSY, 1);
+
+    return SETUP_UNDETERMINED;
+}
+#endif
+
 void platform_init()
 {
     // Make sure second core is stopped
@@ -121,14 +164,27 @@ void platform_init()
     /* Check dip switch settings */
 #ifdef HAS_DIP_SWITCHES
     gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, false, false, false, false, false);
-# ifndef ZULUSCSI_PICO
     gpio_conf(DIP_DBGLOG,     GPIO_FUNC_SIO, false, false, false, false, false);
     gpio_conf(DIP_TERM,       GPIO_FUNC_SIO, false, false, false, false, false);
-# endif    
     delay(10); // 10 ms delay to let pull-ups do their work
-# ifndef ZULUSCSI_PICO
-    bool dbglog = !gpio_get(DIP_DBGLOG);
-    bool termination = !gpio_get(DIP_TERM);
+    bool working_dip = true;
+    bool dbglog = false;
+    bool termination = false;
+# ifdef ZULUSCSI_PICO
+    // Initiator dip setting works on both rev 2023b and newer rev Pico boards
+    g_scsi_initiator = !gpio_get(DIP_INITIATOR);
+    
+    working_dip = SETUP_UNDETERMINED != read_setup_ack_pin();    
+    if (working_dip)
+    {
+        dbglog = !gpio_get(DIP_DBGLOG);
+        termination = !gpio_get(DIP_TERM);
+        
+    }
+# else
+    g_scsi_initiator = SETUP_TRUE == read_setup_ack_pin();
+    dbglog = !gpio_get(DIP_DBGLOG);
+    termination = !gpio_get(DIP_TERM);
 # endif
 #else
     delay(10);
@@ -146,23 +202,27 @@ void platform_init()
     logmsg("Platform: ", g_platform_name);
     logmsg("FW Version: ", g_log_firmwareversion);
 
-#ifdef ZULUSCSI_PICO
-    logmsg("SCSI termination is determined by the DIP switch labeled \"TERM\"");
-    logmsg("Debug logging can only be enabled via INI file \"DEBUG=1\" under [SCSI] in zuluscsi.ini");
-    logmsg("-- DEBUG DIP switch setting is ignored on ZuluSCSI Pico FS Rev. 2023b boards");
-    g_log_debug = false;
+#ifdef HAS_DIP_SWITCHES
+    if (working_dip)
+    {       
+        logmsg("DIP switch settings: debug log ", (int)dbglog, ", termination ", (int)termination);
+        g_log_debug = dbglog;
 
-#elif defined(HAS_DIP_SWITCHES)
-    logmsg("DIP switch settings: debug log ", (int)dbglog, ", termination ", (int)termination);
-    g_log_debug = dbglog;
-
-    if (termination)
-    {
-        logmsg("SCSI termination is enabled");
+        if (termination)
+        {
+            logmsg("SCSI termination is enabled");
+        }
+        else
+        {
+            logmsg("NOTE: SCSI termination is disabled");
+        }
     }
     else
     {
-        logmsg("NOTE: SCSI termination is disabled");
+        logmsg("SCSI termination is determined by the DIP switch labeled \"TERM\"");
+        logmsg("Debug logging can only be enabled via INI file \"DEBUG=1\" under [SCSI] in zuluscsi.ini");
+        logmsg("-- DEBUG DIP switch setting is ignored on ZuluSCSI Pico FS Rev. 2023b boards");
+        g_log_debug = false;
     }
 #else
     g_log_debug = false;
@@ -212,59 +272,20 @@ void platform_init()
 #endif
 }
 
-#ifdef HAS_DIP_SWITCHES
-static bool read_initiator_dip_switch()
-{
-    /* Revision 2022d hardware has problems reading initiator DIP switch setting.
-     * The 74LVT245 hold current is keeping the GPIO_ACK state too strongly.
-     * Detect this condition by toggling the pin up and down and seeing if it sticks.
-     */
 
-    // Strong output high, then pulldown
-    //        pin             function       pup   pdown   out    state  fast
-    gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, false, false, true,  true,  false);
-    gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, false, true,  false, true,  false);
-    delay(1);
-    bool initiator_state1 = gpio_get(DIP_INITIATOR);
-    
-    // Strong output low, then pullup
-    //        pin             function       pup   pdown   out    state  fast
-    gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, false, false, true,  false, false);
-    gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, true,  false, false, false, false);
-    delay(1);
-    bool initiator_state2 = gpio_get(DIP_INITIATOR);
-
-    if (initiator_state1 == initiator_state2)
-    {
-        // Ok, was able to read the state directly
-        return !initiator_state1;
-    }
-
-    // Enable OUT_BSY for a short time.
-    // If in target mode, this will force GPIO_ACK high.
-    gpio_put(SCSI_OUT_BSY, 0);
-    delay_100ns();
-    gpio_put(SCSI_OUT_BSY, 1);
-
-    return !gpio_get(DIP_INITIATOR);
-}
-#endif
 
 // late_init() only runs in main application, SCSI not needed in bootloader
 void platform_late_init()
 {
 #if defined(HAS_DIP_SWITCHES) && defined(PLATFORM_HAS_INITIATOR_MODE)
-    if (read_initiator_dip_switch())
+    if (g_scsi_initiator == true)
     {
-        g_scsi_initiator = true;
         logmsg("SCSI initiator mode selected by DIP switch, expecting SCSI disks on the bus");
     }
     else
     {
-        g_scsi_initiator = false;
         logmsg("SCSI target/disk mode selected by DIP switch, acting as a SCSI disk");
     }
-
 #else
     g_scsi_initiator = false;
     logmsg("SCSI target/disk mode, acting as a SCSI disk");
