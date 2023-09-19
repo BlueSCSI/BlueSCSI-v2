@@ -37,6 +37,7 @@
 #include "ZuluSCSI_cdrom.h"
 #include "ImageBackingStore.h"
 #include "ROMDrive.h"
+#include "QuirksCheck.h"
 #include <minIni.h>
 #include <string.h>
 #include <strings.h>
@@ -432,6 +433,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
 #ifdef PLATFORM_CONFIG_HOOK
         PLATFORM_CONFIG_HOOK(&img);
 #endif
+        quirksCheck(&img);
 
         if (img.name_from_image) 
         { 
@@ -669,7 +671,7 @@ static int findNextImageAfter(image_config_t &img,
     FsFile dir;
     if (dirname[0] == '\0')
     {
-        logmsg("Image directory name invalid for ID", (img.scsiId & 7));
+        logmsg("Image directory name invalid for ID", (img.scsiId & S2S_CFG_TARGET_ID_BITS));
         return 0;
     }
     if (!dir.open(dirname))
@@ -749,7 +751,7 @@ static int findNextImageAfter(image_config_t &img,
 
 int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
 {
-    int target_idx = img.scsiId & 7;
+    int target_idx = img.scsiId & S2S_CFG_TARGET_ID_BITS;
 
     char section[6] = "SCSI0";
     section[4] = '0' + target_idx;
