@@ -1,7 +1,8 @@
 /** 
  * SCSI2SD V6 - Copyright (C) 2013 Michael McMaster <michael@codesrc.com>
- * Copyright (C) 2014 Doug Brown <doug@downtowndougbrown.com
- * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
+ * Portions Copyright (C) 2014 Doug Brown <doug@downtowndougbrown.com>
+ * Portions Copyright (C) 2023 Eric Helgeson
+ * ZuluSCSI™ - Copyright (c) 2022-2023 Rabbit Hole Computing™
  *  
  * This file is licensed under the GPL version 3 or any later version. 
  * It is derived from disk.c in SCSI2SD V6
@@ -435,7 +436,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
         if (img.name_from_image) 
         { 
             setNameFromImage(img, filename); 
-            logmsg("Vendor / product id set from image file name");
+            logmsg("---- Vendor / product id set from image file name");
         }
 
         setDefaultDriveInfo(target_idx);
@@ -532,6 +533,12 @@ bool scsiDiskFilenameValid(const char* name)
             }
         }
     }
+    // Check first character
+    if (!isalnum(name[0]))
+    {
+        // ignore files that don't start with a letter or a number
+        return false;
+    }
     return true;
 }
 
@@ -557,6 +564,23 @@ static void scsiDiskConfigDefaults(int target_idx)
     memset(img.prodId, 0, sizeof(img.prodId));
     memset(img.revision, 0, sizeof(img.revision));
     memset(img.serial, 0, sizeof(img.serial));
+}
+
+static void scsiDiskCheckDir(char * dir_name, int target_idx, image_config_t* img, S2S_CFG_TYPE type, const char* type_name)
+{
+    if (SD.exists(dir_name))
+    {
+        if (img->image_directory)
+        {
+            logmsg("-- Already found an image directory, skipping '", dir_name, "'");
+        }
+        else
+        {
+            img->deviceType = type;
+            img->image_directory = true;
+            logmsg("SCSI", target_idx, " searching default ", type_name, " image directory '", dir_name, "'");
+        }
+    }
 }
 
 // Load values for target configuration from given section if they exist.
@@ -603,8 +627,34 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
         ini_gets(section, "ImgDir", "", tmp, sizeof(tmp), CONFIGFILE);
         if (tmp[0])
         {
-            logmsg("-- SCSI", target_idx, " using image directory \'", tmp, "'");
+            logmsg("SCSI", target_idx, " using image directory '", tmp, "'");
             img.image_directory = true;
+        }
+        else
+        {
+            strcpy(tmp, "HD0");
+            tmp[2] += target_idx;
+            scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_FIXED, "disk");
+
+            strcpy(tmp, "CD0");
+            tmp[2] += target_idx;
+            scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_OPTICAL, "optical");
+
+            strcpy(tmp, "RM0");
+            tmp[2] += target_idx;
+            scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_REMOVEABLE, "removable");
+
+            strcpy(tmp, "MO0");
+            tmp[2] += target_idx;
+            scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_MO, "magneto-optical");
+
+            strcpy(tmp, "TP0");
+            tmp[2] += target_idx;
+            scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_SEQUENTIAL, "tape");
+
+            strcpy(tmp, "FP0");
+            tmp[2] += target_idx;
+            scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_FLOPPY_14MB, "floppy");
         }
     }
 }
@@ -625,10 +675,17 @@ static int findNextImageAfter(image_config_t &img,
     if (!dir.open(dirname))
     {
         logmsg("Image directory '", dirname, "' couldn't be opened");
+        return 0;
     }
     if (!dir.isDir())
     {
         logmsg("Can't find images in '", dirname, "', not a directory");
+        dir.close();
+        return 0;
+    }
+    if (dir.isHidden())
+    {
+        logmsg("Image directory '", dirname, "' is hidden, skipping");
         dir.close();
         return 0;
     }
@@ -641,10 +698,14 @@ static int findNextImageAfter(image_config_t &img,
         if (file.isDir()) continue;
         if (!file.getName(buf, MAX_FILE_PATH))
         {
-            logmsg("Image directory '", dirname, "'had invalid file");
+            logmsg("Image directory '", dirname, "' had invalid file");
             continue;
         }
         if (!scsiDiskFilenameValid(buf)) continue;
+        if (file.isHidden()) {
+            logmsg("Image '", dirname, "/", buf, "' is hidden, skipping file");
+            continue;
+        }
 
         // keep track of the first item to allow wrapping
         // without having to iterate again
@@ -681,6 +742,7 @@ static int findNextImageAfter(image_config_t &img,
     else
     {
         logmsg("Image directory '", dirname, "' was empty");
+        img.image_directory = false;
         return 0;
     }
 }
@@ -703,10 +765,36 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
         int dirlen = ini_gets(section, key, "", dirname, sizeof(dirname), CONFIGFILE);
         if (!dirlen)
         {
-            // If image_directory set but ImageDir is not, could be used to
-            // indicate an image directory configured via folder structure.
-            // Not implemented, so treat this as equivalent to missing ImageDir
-            return 0;
+            switch (img.deviceType)
+            {
+                case S2S_CFG_FIXED:
+                    strcpy(dirname ,"HD0");
+                    break;
+                case S2S_CFG_OPTICAL:
+                    strcpy(dirname, "CD0");
+                break;
+                case S2S_CFG_REMOVEABLE:
+                    strcpy(dirname, "RM0");
+                break;
+                case S2S_CFG_MO:
+                    strcpy(dirname, "MO0");
+                break;
+                case S2S_CFG_SEQUENTIAL:
+                    strcpy(dirname ,"TP0");
+                break;
+                case S2S_CFG_FLOPPY_14MB:
+                    strcpy(dirname, "FP0");
+                break;
+                default:
+                    dbgmsg("No matching device type for default directory found");
+                    return 0;
+            }
+            dirname[2] += target_idx;
+            if (!SD.exists(dirname))
+            {
+                dbgmsg("Default image directory, ", dirname, " does not exist");
+                return 0;
+            }
         }
 
         // find the next filename
@@ -785,7 +873,7 @@ void scsiDiskLoadConfig(int target_idx)
     if (scsiDiskGetNextImageName(img, filename, sizeof(filename)))
     {
         int blocksize = (img.deviceType == S2S_CFG_OPTICAL) ? 2048 : 512;
-        logmsg("-- Opening '", filename, "' for id:", target_idx, ", specified in " CONFIGFILE);
+        logmsg("-- Opening '", filename, "' for id: ", target_idx);
         scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, blocksize);
     }
 }
