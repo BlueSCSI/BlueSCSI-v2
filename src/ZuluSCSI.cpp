@@ -1,6 +1,6 @@
 /*  
- *  ZuluSCSI
- *  Copyright (c) 2022 Rabbit Hole Computing
+ *  ZuluSCSI™
+ *  Copyright (c) 2022-2023 Rabbit Hole Computing™
  * 
  * This project is based on BlueSCSI:
  *
@@ -295,7 +295,7 @@ bool findHDDImages()
   ini_gets("SCSI", "Dir", "/", imgdir, sizeof(imgdir), CONFIGFILE);
   int dirindex = 0;
 
-  logmsg("Finding HDD images in directory ", imgdir, ":");
+  logmsg("Finding images in directory ", imgdir, ":");
 
   SdFile root;
   root.open(imgdir);
@@ -326,7 +326,7 @@ bool findHDDImages()
 
       if (imgdir[0] != '\0')
       {
-        logmsg("Finding HDD images in additional directory Dir", (int)dirindex, " = \"", imgdir, "\":");
+        logmsg("Finding images in additional directory Dir", (int)dirindex, " = \"", imgdir, "\":");
         root.open(imgdir);
         if (!root.isOpen())
         {
