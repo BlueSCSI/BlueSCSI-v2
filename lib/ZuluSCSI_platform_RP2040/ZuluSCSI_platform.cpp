@@ -112,9 +112,9 @@ static pin_setup_state_t read_setup_ack_pin()
      * The 74LVT245 hold current is keeping the GPIO_ACK state too strongly.
      * Detect this condition by toggling the pin up and down and seeing if it sticks.
      * 
-     * Revision 2023b of the Pico hardware has issues reading TERM and DEBUG DIP switch 
+     * Revision 2023b and 2023c of the Pico boards have issues reading TERM and DEBUG DIP switch
      * settings. GPIO_ACK is externally pulled down to ground for later revisions.
-     * If the state is detected as undetermined then the board is the 2023b revision.
+     * If the state is detected as undetermined then the board is the 2023b or 2023c revision.
      */
 
     // Strong output high, then pulldown
@@ -171,7 +171,7 @@ void platform_init()
     bool dbglog = false;
     bool termination = false;
 # ifdef ZULUSCSI_PICO
-    // Initiator dip setting works on both rev 2023b and newer rev Pico boards
+    // Initiator dip setting works on all rev 2023b, 2023c, and newer rev Pico boards
     g_scsi_initiator = !gpio_get(DIP_INITIATOR);
     
     working_dip = SETUP_UNDETERMINED != read_setup_ack_pin();    
@@ -221,7 +221,7 @@ void platform_init()
     {
         logmsg("SCSI termination is determined by the DIP switch labeled \"TERM\"");
         logmsg("Debug logging can only be enabled via INI file \"DEBUG=1\" under [SCSI] in zuluscsi.ini");
-        logmsg("-- DEBUG DIP switch setting is ignored on ZuluSCSI Pico FS Rev. 2023b boards");
+        logmsg("-- DEBUG DIP switch setting is ignored on ZuluSCSI Pico FS Rev. 2023b and 2023c boards");
         g_log_debug = false;
     }
 #else
