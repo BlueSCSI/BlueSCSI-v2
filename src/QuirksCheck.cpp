@@ -25,6 +25,7 @@
 #include "ZuluSCSI_disk.h"
 #include "ZuluSCSI_log.h"
 #include "QuirksCheck.h"
+#include <assert.h>
 #include <stdint.h>
 
 
