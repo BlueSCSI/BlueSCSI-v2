@@ -1,8 +1,8 @@
 /**
- * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
+ * ZuluSCSI™ - Copyright (c) 2022-2023 Rabbit Hole Computing™
+ * Portions - Copyright (C) 2023 Eric Helgeson
  *
  * This file is licensed under the GPL version 3 or any later version. 
- * It is derived from disk.c in SCSI2SD V6
  *
  * https://www.gnu.org/licenses/gpl-3.0.html
  * ----
@@ -143,6 +143,12 @@ bool ImageBackingStore::isWritable()
 bool ImageBackingStore::isRom()
 {
     return m_isrom;
+}
+
+
+bool ImageBackingStore::isRaw()
+{
+    return m_israw;
 }
 
 bool ImageBackingStore::close()

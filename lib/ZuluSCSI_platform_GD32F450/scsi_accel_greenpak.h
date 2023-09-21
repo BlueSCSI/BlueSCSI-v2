@@ -19,53 +19,14 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
 
-// Simple wrapper file that diverts boot from main program to bootloader
-// when building the bootloader image by build_bootloader.py.
+// SCSI subroutines using external GreenPAK logic chip for acceleration
 
-#ifdef ZULUSCSI_BOOTLOADER_MAIN
+#pragma once
 
-extern "C" int bootloader_main(void);
+#include <stdint.h>
+#include "greenpak.h"
+/*!< Peripheral base address in the bit-band region for a cortex M4 */
+#define PERIPH_BB_BASE        ((uint32_t)0x42000000)    
 
-#ifdef USE_ARDUINO
-extern "C" void setup(void)
-{
-    bootloader_main();
-}
-extern "C" void loop(void)
-{
-}
-#else
-int main(void)
-{
-    return bootloader_main();
-}
-#endif
-
-#else
-
-extern "C" void zuluscsi_setup(void);
-extern "C" void zuluscsi_main_loop(void);
-
-#ifdef USE_ARDUINO
-extern "C" void setup(void)
-{
-    zuluscsi_setup();
-}
-
-extern "C" void loop(void)
-{
-    zuluscsi_main_loop();
-}
-#else
-int main(void)
-{
-    
-    zuluscsi_setup();
-    while (1)
-    {
-        zuluscsi_main_loop();
-    }
-}
-#endif
-
-#endif
+void scsi_accel_greenpak_send(const uint32_t *buf, uint32_t num_words, volatile int *resetFlag);
+void scsi_accel_greenpak_recv(uint32_t *buf, uint32_t num_words, volatile int *resetFlag);
