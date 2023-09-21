@@ -31,7 +31,6 @@
 #include <hardware/sync.h>
 
 #ifdef PLATFORM_HAS_INITIATOR_MODE
-
 #ifdef ZULUSCSI_PICO
 #include "scsi_accel_host_Pico.pio.h"
 #else

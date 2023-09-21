@@ -95,11 +95,10 @@
 #define SD_SPI_CS    15
 
 #ifndef ENABLE_AUDIO_OUTPUT
-# ifdef GPIO_I2C_SDA
+    // No spare pins for I2C
     // IO expander I2C
-    #define GPIO_I2C_SDA 14
-    #define GPIO_I2C_SCL 15
-# endif // GPIO_I2C_SDA
+    // #define GPIO_I2C_SDA 14
+    // #define GPIO_I2C_SCL 15
 #else
     // IO expander I2C pins being used as SPI for audio
     #define AUDIO_SPI      spi1
@@ -110,8 +109,8 @@
 // DIP switch pins
 #define HAS_DIP_SWITCHES
 #define DIP_INITIATOR 28
-#define DIP_DBGLOG 20
-#define DIP_TERM 18
+#define DIP_DBGLOG 17
+#define DIP_TERM 22
 
 // Other pins
 #define SWO_PIN 16

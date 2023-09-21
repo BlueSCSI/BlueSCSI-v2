@@ -33,7 +33,9 @@
  * This implementation uses the high byte for output port 1 and the low byte
  * for port 0. The two values are averaged to determine final volume level.
  */
-#define DEFAULT_VOLUME_LEVEL 0x3F3F
+#define DEFAULT_VOLUME_LEVEL 0x3F
+#define DEFAULT_VOLUME_LEVEL_2CH DEFAULT_VOLUME_LEVEL << 8 | DEFAULT_VOLUME_LEVEL
+
 /*
  * Defines the 'enable' masks for the two audio output ports of each device.
  * If this mask is matched with audio_get_channel() the relevant port will
