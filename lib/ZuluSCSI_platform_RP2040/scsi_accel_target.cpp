@@ -870,7 +870,7 @@ void scsi_accel_rp2040_init()
     g_scsi_dma_state = SCSIDMA_IDLE;
     scsidma_config_gpio();
     
-        if (g_channels_claimed) {
+    if (g_channels_claimed) {
         // Un-claim all SCSI state machines
         pio_sm_unclaim(SCSI_DMA_PIO, SCSI_PARITY_SM);
         pio_sm_unclaim(SCSI_DMA_PIO, SCSI_DATA_SM);
@@ -908,9 +908,11 @@ void scsi_accel_rp2040_init()
         g_channels_claimed = true;
     }
 
+#ifndef ZULUSCSI_NETWORK
     // Load PIO programs
     pio_clear_instruction_memory(SCSI_DMA_PIO);
-    
+#endif // ZULUSCSI_NETWORK
+
     // Parity lookup generator
     g_scsi_dma.pio_offset_parity = pio_add_program(SCSI_DMA_PIO, &scsi_parity_program);
     g_scsi_dma.pio_cfg_parity = scsi_parity_program_get_default_config(g_scsi_dma.pio_offset_parity);

@@ -84,7 +84,6 @@ int platform_network_init(char *mac)
 		memcpy(scsiDev.boardCfg.wifiMACAddress, mac, sizeof(scsiDev.boardCfg.wifiMACAddress));
 	}
 
-	cyw43_init(&cyw43_state);
 	// setting the MAC requires libpico to be compiled with CYW43_USE_OTP_MAC=0
 	memcpy(cyw43_state.mac, mac, sizeof(cyw43_state.mac));
 	cyw43_arch_enable_sta_mode();
@@ -127,7 +126,9 @@ bool platform_network_wifi_join(char *ssid, char *password)
 		ret = cyw43_arch_wifi_connect_async(ssid, password, CYW43_AUTH_WPA2_MIXED_PSK);
 	}
 	if (ret != 0)
+	{
 		logmsg_f("Wi-Fi connection failed: %d", ret);
+	}
 	
 	return (ret == 0);
 }
@@ -311,7 +312,18 @@ void cyw43_cb_tcpip_set_link_up(cyw43_t *self, int itf)
 	char *ssid = platform_network_wifi_ssid();
 
 	if (ssid)
+	{
 		logmsg_f("Successfully connected to Wi-Fi SSID \"%s\"", ssid);
+		// blink LED 3 times when connected
+		LED_OFF();
+		for (uint8_t i = 0; i < 3; i++)
+		{
+			delay(75);
+			LED_ON();
+			delay(75);
+			LED_OFF();
+		}
+	}
 }
 
 }
