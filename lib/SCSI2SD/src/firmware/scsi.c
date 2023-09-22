@@ -567,9 +567,9 @@ static void process_Command()
 	// write commands. Will fall-through to generic disk handling.
 	else if (((cfg->deviceType == S2S_CFG_OPTICAL) && scsiCDRomCommand()) ||
 		((cfg->deviceType == S2S_CFG_SEQUENTIAL) && scsiTapeCommand()) ||
-#ifdef ZULUSCSI_NETWORK
+#ifdef ZULUSCSI_DAYNAPORT
 		((cfg->deviceType == S2S_CFG_NETWORK && scsiNetworkCommand())) ||
-#endif // ZULUSCSI_NETWORK
+#endif // ZULUSCSI_DAYNAPORT
 		((cfg->deviceType == S2S_CFG_MO) && scsiMOCommand()))
 	{
 		// Already handled.
