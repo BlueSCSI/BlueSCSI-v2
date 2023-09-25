@@ -52,6 +52,14 @@ extern const char *g_platform_name;
 #   define PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE 65536
 #   define PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE 8192
 #   include "ZuluSCSI_v1_1_gpio.h"
+#elif defined(ZULUSCSI_V1_2)
+#   define PLATFORM_NAME "ZuluSCSI v1.2"
+#   define PLATFORM_REVISION "1.2"
+#   define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_10
+#   define PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE 4096
+#   define PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE 65536
+#   define PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE 8192
+#   include "ZuluSCSI_v1_2_gpio.h"
 #endif
 
 #ifndef PLATFORM_VDD_WARNING_LIMIT_mV
