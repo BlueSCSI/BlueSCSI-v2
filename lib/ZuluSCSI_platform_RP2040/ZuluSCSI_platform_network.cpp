@@ -125,9 +125,22 @@ bool platform_network_wifi_join(char *ssid, char *password)
 		logmsg_f("Connecting to Wi-Fi SSID \"%s\" with WPA/WPA2 PSK", ssid);
 		ret = cyw43_arch_wifi_connect_async(ssid, password, CYW43_AUTH_WPA2_MIXED_PSK);
 	}
+
 	if (ret != 0)
 	{
 		logmsg_f("Wi-Fi connection failed: %d", ret);
+	}
+	else
+	{
+		// Blink 2 times at start of connection sequence
+		LED_OFF();
+		for (uint8_t i = 0; i < 2; i++)
+		{
+			delay(75);
+			LED_ON();
+			delay(75);
+			LED_OFF();
+		}
 	}
 	
 	return (ret == 0);
