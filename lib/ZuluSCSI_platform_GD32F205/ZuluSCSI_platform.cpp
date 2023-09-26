@@ -34,6 +34,11 @@ extern "C" {
 const char *g_platform_name = PLATFORM_NAME;
 static bool g_enable_apple_quirks = false;
 
+// hw_config.cpp c functions
+#ifdef ZULUSCSI_HARDWARE_CONFIG
+#include "platform_hw_config.h"
+#endif
+
 /*************************/
 /* Timing functions      */
 /*************************/
@@ -212,16 +217,26 @@ void platform_init()
 #endif
 
     // DIP switches
+#ifdef DIPSW1_PIN
     gpio_init(DIP_PORT, GPIO_MODE_IPD, 0, DIPSW1_PIN | DIPSW2_PIN | DIPSW3_PIN);
+#else
+    // Some boards do not have an Apple quirks dip switch
+    gpio_init(DIP_PORT, GPIO_MODE_IPD, 0, DIPSW2_PIN | DIPSW3_PIN);
+#endif
 
     // LED pins
     gpio_bit_set(LED_PORT, LED_PINS);
     gpio_init(LED_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_2MHZ, LED_PINS);
 
     // Ejection buttons
+#ifdef ZULUSCSI_HARDWARE_CONFIG
+    gpio_init(EJECT_BTN_PORT, GPIO_MODE_IPU, 0, EJECT_BTN_PIN);
+    gpio_init(USER_BTN_PORT,  GPIO_MODE_IPU, 0, USER_BTN_PIN);
+    hw_config_init_gpios();
+#else
     gpio_init(EJECT_1_PORT, GPIO_MODE_IPU, 0, EJECT_1_PIN);
     gpio_init(EJECT_2_PORT, GPIO_MODE_IPU, 0, EJECT_2_PIN);
-
+#endif
     // SWO trace pin on PB3
     gpio_init(GPIOB, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_3);
 }
@@ -254,14 +269,20 @@ void platform_late_init()
     {
         g_log_debug = false;
     }
-
+#ifdef DIPSW1_PIN
     if (gpio_input_bit_get(DIP_PORT, DIPSW1_PIN))
     {
         logmsg("DIPSW1 is ON: enabling Apple quirks by default");
         g_enable_apple_quirks = true;
     }
+#endif
 
+#ifdef ZULUSCSI_HARDWARE_CONFIG
+    hw_config_init_state();
+#else
     greenpak_load_firmware();
+#endif
+
 }
 
 void platform_disable_led(void)
@@ -502,9 +523,13 @@ uint8_t platform_get_buttons()
     // Buttons are active low: internal pull-up is enabled,
     // and when button is pressed the pin goes low.
     uint8_t buttons = 0;
+#ifdef ZULUSCSI_HARDWARE_CONFIG
+    if (!gpio_input_bit_get(EJECT_BTN_PORT, EJECT_BTN_PIN))   buttons |= 1;
+    if (!gpio_input_bit_get(USER_BTN_PORT, USER_BTN_PIN))   buttons |= 4;
+#else
     if (!gpio_input_bit_get(EJECT_1_PORT, EJECT_1_PIN))   buttons |= 1;
     if (!gpio_input_bit_get(EJECT_2_PORT, EJECT_2_PIN))   buttons |= 2;
-
+#endif
     // Simple debouncing logic: handle button releases after 100 ms delay.
     static uint32_t debounce;
     static uint8_t buttons_debounced = 0;

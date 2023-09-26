@@ -404,29 +404,34 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
             logmsg("---- WARNING: file ", filename, " is not contiguous. This will increase read latency.");
         }
 
-        if (type == S2S_CFG_OPTICAL)
+        if (type == S2S_CFG_FIXED)
         {
-            logmsg("---- Configuring as CD-ROM drive based on image name");
+            logmsg("---- Configuring as disk drive drive");
+            img.deviceType = S2S_CFG_FIXED;
+        }
+        else if (type == S2S_CFG_OPTICAL)
+        {
+            logmsg("---- Configuring as CD-ROM drive");
             img.deviceType = S2S_CFG_OPTICAL;
         }
         else if (type == S2S_CFG_FLOPPY_14MB)
         {
-            logmsg("---- Configuring as floppy drive based on image name");
+            logmsg("---- Configuring as floppy drive");
             img.deviceType = S2S_CFG_FLOPPY_14MB;
         }
         else if (type == S2S_CFG_MO)
         {
-            logmsg("---- Configuring as magneto-optical based on image name");
+            logmsg("---- Configuring as magneto-optical");
             img.deviceType = S2S_CFG_MO;
         }
         else if (type == S2S_CFG_REMOVEABLE)
         {
-            logmsg("---- Configuring as removable drive based on image name");
+            logmsg("---- Configuring as removable drive");
             img.deviceType = S2S_CFG_REMOVEABLE;
         }
         else if (type == S2S_CFG_SEQUENTIAL)
         {
-            logmsg("---- Configuring as tape drive based on image name");
+            logmsg("---- Configuring as tape drive");
             img.deviceType = S2S_CFG_SEQUENTIAL;
         }
 
@@ -926,7 +931,7 @@ uint8_t diskEjectButtonUpdate(bool immediate)
 {
     // treat '1' to '0' transitions as eject actions
     static uint8_t previous = 0x00;
-    uint8_t bitmask = platform_get_buttons();
+    uint8_t bitmask = platform_get_buttons() & EJECT_BTN_MASK;
     uint8_t ejectors = (previous ^ bitmask) & previous;
     previous = bitmask;
 
