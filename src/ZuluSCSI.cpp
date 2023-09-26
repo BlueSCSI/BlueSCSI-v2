@@ -54,7 +54,9 @@
 #include "ZuluSCSI_disk.h"
 #include "ZuluSCSI_initiator.h"
 #include "ROMDrive.h"
-
+#ifdef ZULUSCSI_HARDWARE_CONFIG
+# include "platform_hw_config.h"
+#endif
 SdFs SD;
 FsFile g_logfile;
 static bool g_romdrive_active;
@@ -291,6 +293,12 @@ bool createImage(const char *cmd_filename, char imgname[MAX_FILE_PATH + 1])
 // Iterate over the root path in the SD card looking for candidate image files.
 bool findHDDImages()
 {
+#ifdef ZULUSCSI_HARDWARE_CONFIG
+  if (g_hw_config.is_active())
+  {
+    return false;
+  }
+#endif // ZULUSCSI_HARDWARE_CONFIG
   char imgdir[MAX_FILE_PATH];
   ini_gets("SCSI", "Dir", "/", imgdir, sizeof(imgdir), CONFIGFILE);
   int dirindex = 0;
@@ -393,7 +401,7 @@ bool findHDDImages()
         if (is_cd)
         {
           // Use 2048 as the default sector size for CD-ROMs
-          blk = 2048;
+          blk = DEFAULT_BLOCKSIZE_OPTICAL;
         }
 
         // Parse SCSI device ID
@@ -591,14 +599,34 @@ static void reinitSCSI()
   }
   else
   {
-#if RAW_FALLBACK_ENABLE
+#if defined(ZULUSCSI_HARDWARE_CONFIG)
+  if (g_hw_config.is_active())
+  {
+    bool success;
+    logmsg("Direct/Raw mode enabled, using hardware switches for configuration");
+    success = scsiDiskOpenHDDImage(g_hw_config.scsi_id(), "RAW:0:0xFFFFFFFF", g_hw_config.scsi_id(), 0,
+                                   g_hw_config.blocksize(), g_hw_config.device_type());
+    if (success)
+    {
+      blinkStatus(BLINK_STATUS_OK);
+    }
+  }
+#elif defined(RAW_FALLBACK_ENABLE)
     logmsg("No images found, enabling RAW fallback partition");
     scsiDiskOpenHDDImage(RAW_FALLBACK_SCSI_ID, "RAW:0:0xFFFFFFFF", RAW_FALLBACK_SCSI_ID, 0,
                          RAW_FALLBACK_BLOCKSIZE);
 #else
     logmsg("No valid image files found!");
 #endif
+
+#ifdef ZULUSCSI_HARDWARE_CONFIG
+  if (!g_hw_config.is_active())
+  {
     blinkStatus(BLINK_ERROR_NO_IMAGES);
+  }
+#else
+   blinkStatus(BLINK_ERROR_NO_IMAGES);
+#endif
   }
 
   scsiPhyReset();

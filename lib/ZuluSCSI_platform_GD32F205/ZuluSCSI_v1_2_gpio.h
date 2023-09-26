@@ -40,7 +40,7 @@
 #define SCSI_OUT_DATA_MASK (SCSI_OUT_DB0 | SCSI_OUT_DB1 | SCSI_OUT_DB2 | SCSI_OUT_DB3 | SCSI_OUT_DB4 | SCSI_OUT_DB5 | SCSI_OUT_DB6 | SCSI_OUT_DB7 | SCSI_OUT_DBP)
 #define SCSI_OUT_REQ_IDX 4
 
-// Control signals to optional PLD device
+// Control signals to optional PLD device (unused for v1.2 - kept for compilation)
 #define SCSI_OUT_PLD1 GPIO_PIN_15
 #define SCSI_OUT_PLD2 GPIO_PIN_3
 #define SCSI_OUT_PLD3 GPIO_PIN_5
@@ -62,7 +62,7 @@
 #define SCSI_TIMER_DMACHB_IRQ DMA1_Channel1_IRQHandler
 #define SCSI_TIMER_DMACHB_IRQn DMA1_Channel1_IRQn
 
-// GreenPAK logic chip pins
+// GreenPAK logic chip pins (unused for v1.2 - kept for compilation)
 #define GREENPAK_I2C_ADDR 0x10
 #define GREENPAK_I2C_PORT GPIOB
 #define GREENPAK_I2C_SCL GPIO_PIN_8
@@ -76,6 +76,11 @@
 #define GREENPAK_PLD_IO2_EXTI_SOURCE_PIN  GPIO_PIN_SOURCE_3
 #define GREENPAK_IRQ  EXTI3_IRQHandler
 #define GREENPAK_IRQn EXTI3_IRQn
+
+// I2C for v1.2
+#define I2C_PORT GPIOB
+#define I2C_SCL GPIO_PIN_6
+#define I2C_SDA GPIO_PIN_7
 
 // SCSI input data port
 #define SCSI_IN_PORT  GPIOE
@@ -128,13 +133,23 @@
 #define SCSI_SYNC_TIMER_RCU RCU_TIMER1
 
 // SEL pin uses EXTI interrupt
-#define SCSI_SEL_PORT GPIOB
-#define SCSI_SEL_PIN  GPIO_PIN_11
-#define SCSI_SEL_EXTI EXTI_11
-#define SCSI_SEL_EXTI_SOURCE_PORT GPIO_PORT_SOURCE_GPIOB
-#define SCSI_SEL_EXTI_SOURCE_PIN GPIO_PIN_SOURCE_11
+// #define SCSI_SEL_PORT GPIOB
+// #define SCSI_SEL_PIN  GPIO_PIN_11
+// #define SCSI_SEL_EXTI EXTI_11
+// #define SCSI_SEL_EXTI_SOURCE_PORT GPIO_PORT_SOURCE_GPIOB
+// #define SCSI_SEL_EXTI_SOURCE_PIN GPIO_PIN_SOURCE_11
+// #define SCSI_SEL_IRQ EXTI10_15_IRQHandler
+// #define SCSI_SEL_IRQn EXTI10_15_IRQn
+
+// SEL pin for 1.2
+#define SCSI_SEL_PORT GPIOD
+#define SCSI_SEL_PIN  GPIO_PIN_15
+#define SCSI_SEL_EXTI EXTI_15
+#define SCSI_SEL_EXTI_SOURCE_PORT GPIO_PORT_SOURCE_GPIOD
+#define SCSI_SEL_EXTI_SOURCE_PIN GPIO_PIN_SOURCE_15
 #define SCSI_SEL_IRQ EXTI10_15_IRQHandler
 #define SCSI_SEL_IRQn EXTI10_15_IRQn
+
 
 // BSY pin uses EXTI interrupt
 #define SCSI_BSY_PORT GPIOB
@@ -158,6 +173,33 @@
 #define SCSI_TERM_EN_PORT GPIOB
 #define SCSI_TERM_EN_PIN  GPIO_PIN_0
 
+// SPI/I2S Pins
+#define SPI_CS_PORT     GPIOB
+#define SPI_CS_PIN      GPIO_PIN_9
+#define SPI_MISO_PORT   GPIOC
+#define SPI_MISO_PIN    GPIO_PIN_2
+#define SPI_MOSI_PORT   GPIOC
+#define SPI_MOSI_PIN    GPIO_PIN_3
+#define SPI_CK_PORT     GPIOD
+#define SPI_CK_PIN      GPIO_PIN_3
+
+#define I2S_SD_PORT     SPI_MOSI_PORT
+#define I2S_SD_PIN      SPI_MOSI_PIN
+#define I2S_WS_PORT     SPI_CS_PORT
+#define I2S_WS_PIN      SPI_CS_PIN
+#define I2S_CK_PORT     SPI_CK_PORT
+#define I2S_CK_PIN      SPI_CK_PIN
+
+// SPI/I2S DMA
+#define SPI_DMA         DMA0
+#define SPI_DMA_CH      DMA_CH4
+#define SPI_RCU_DMA     RCU_DMA0
+#define SPI_I2S_SPI     SPI1
+#define SPI_RCU_I2S_SPI RCU_SPI1
+#define SPI_IRQHandler  DMA0_Channel4_IRQHandler
+#define SPI_DMA_IRQn    DMA0_Channel4_IRQn
+
+
 // SD card pins
 #define SD_USE_SDIO 1
 #define SD_SDIO_DATA_PORT GPIOC
@@ -171,10 +213,31 @@
 #define SD_SDIO_CMD       GPIO_PIN_2
 
 // DIP switches
+// #define DIP_PORT     GPIOB
+// #define DIPSW1_PIN   GPIO_PIN_4
+// #define DIPSW2_PIN   GPIO_PIN_5
+// #define DIPSW3_PIN   GPIO_PIN_6
+
+// v1.2 DIP switch pins
 #define DIP_PORT     GPIOB
-#define DIPSW1_PIN   GPIO_PIN_4
 #define DIPSW2_PIN   GPIO_PIN_5
-#define DIPSW3_PIN   GPIO_PIN_6
+#define DIPSW3_PIN   GPIO_PIN_4
+// DIPSW DIRECT MODE replaces DIPSW1
+#define DIPSW_DIRECT_MODE_PORT  GPIOB
+#define DIPSW_DIRECT_MODE_PIN   GPIO_PIN_8
+// SCSI ID DIP swtich
+#define DIPSW_SCSI_ID_BIT_PORT  GPIOC
+#define DIPSW_SCSI_ID_BIT1_PIN  GPIO_PIN_13
+#define DIPSW_SCSI_ID_BIT2_PIN  GPIO_PIN_14
+#define DIPSW_SCSI_ID_BIT3_PIN  GPIO_PIN_15
+#define DIPSW_SCSI_ID_BIT_PINS  (DIPSW_SCSI_ID_BIT1_PIN | DIPSW_SCSI_ID_BIT2_PIN | DIPSW_SCSI_ID_BIT3_PIN)
+#define DIPSW_SCSI_ID_BIT_SHIFT 13
+// Rotary DIP switch
+#define DIPROT_DEVICE_SEL_BIT_PORT  GPIOE
+#define DIPROT_DEVICE_SEL_BIT1_PIN  GPIO_PIN_5
+#define DIPROT_DEVICE_SEL_BIT2_PIN  GPIO_PIN_6
+#define DIPROT_DEVICE_SEL_BIT_PINS  (DIPROT_DEVICE_SEL_BIT1_PIN | DIPROT_DEVICE_SEL_BIT2_PIN)
+#define DIPROT_DEVICE_SEL_BIT_SHIFT 5
 
 // Status LED pins
 #define LED_PORT     GPIOC
@@ -183,11 +246,17 @@
 #define LED_PINS     (LED_I_PIN | LED_E_PIN)
 #define LED_ON()     gpio_bit_reset(LED_PORT, LED_PINS)
 #define LED_OFF()    gpio_bit_set(LED_PORT, LED_PINS)
+#define LED_EJECT_PORT  GPIOA
+#define LED_EJECT_PIN   GPIO_PIN_1
+#define LED_EJECT_ON()  gpio_bit_reset(LED_EJECT_PORT, LED_EJECT_PIN)
+#define LED_EJECT_OFF() gpio_bit_set(LED_EJECT_PORT, LED_EJECT_PIN)
 
-// Ejection buttons are available on expansion header J303.
-// PE5 = channel 1, PE6 = channel 2
-// Connect button between GPIO and GND pin.
-#define EJECT_1_PORT    GPIOE
-#define EJECT_1_PIN     GPIO_PIN_5
-#define EJECT_2_PORT    GPIOE
-#define EJECT_2_PIN     GPIO_PIN_6
+// Ejection button is on GPIO PA3 and USER button is on GPIO PA2
+// Eject and user buttons masks
+#define EJECT_BTN_MASK (1|2)
+#define USER_BTN_MASK  (4)
+#define EJECT_BTN_PORT  GPIOA
+#define EJECT_BTN_PIN   GPIO_PIN_3
+#define USER_BTN_PORT   GPIOA
+#define USER_BTN_PIN    GPIO_PIN_2
+
