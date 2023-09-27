@@ -642,7 +642,7 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
             tmp[2] += target_idx;
             scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_OPTICAL, "optical");
 
-            strcpy(tmp, "RM0");
+            strcpy(tmp, "RE0");
             tmp[2] += target_idx;
             scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_REMOVEABLE, "removable");
 
@@ -654,7 +654,7 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
             tmp[2] += target_idx;
             scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_SEQUENTIAL, "tape");
 
-            strcpy(tmp, "FP0");
+            strcpy(tmp, "FD0");
             tmp[2] += target_idx;
             scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_FLOPPY_14MB, "floppy");
         }
@@ -776,7 +776,7 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
                     strcpy(dirname, "CD0");
                 break;
                 case S2S_CFG_REMOVEABLE:
-                    strcpy(dirname, "RM0");
+                    strcpy(dirname, "RE0");
                 break;
                 case S2S_CFG_MO:
                     strcpy(dirname, "MO0");
@@ -785,7 +785,7 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
                     strcpy(dirname ,"TP0");
                 break;
                 case S2S_CFG_FLOPPY_14MB:
-                    strcpy(dirname, "FP0");
+                    strcpy(dirname, "FD0");
                 break;
                 default:
                     dbgmsg("No matching device type for default directory found");
