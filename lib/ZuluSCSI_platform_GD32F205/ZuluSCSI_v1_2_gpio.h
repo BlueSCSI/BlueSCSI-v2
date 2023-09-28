@@ -252,9 +252,6 @@
 #define LED_EJECT_OFF() gpio_bit_set(LED_EJECT_PORT, LED_EJECT_PIN)
 
 // Ejection button is on GPIO PA3 and USER button is on GPIO PA2
-// Eject and user buttons masks
-#define EJECT_BTN_MASK (1|2)
-#define USER_BTN_MASK  (4)
 #define EJECT_BTN_PORT  GPIOA
 #define EJECT_BTN_PIN   GPIO_PIN_3
 #define USER_BTN_PORT   GPIOA

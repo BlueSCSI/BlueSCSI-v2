@@ -27,7 +27,7 @@
 #include <gd32f20x.h>
 #include <gd32f20x_gpio.h>
 #include <scsi2sd.h>
-#include "ZuluSCSI_config.h"
+
 
 #ifdef __cplusplus
 extern "C" {
