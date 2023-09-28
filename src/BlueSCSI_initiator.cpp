@@ -121,6 +121,8 @@ void delay_with_poll(uint32_t ms)
 // High level logic of the initiator mode
 void scsiInitiatorMainLoop()
 {
+    SCSI_RELEASE_OUTPUTS();
+    SCSI_ENABLE_INITIATOR();
     if (g_scsiHostPhyReset)
     {
         log("Executing BUS RESET after aborted command");

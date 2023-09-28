@@ -26,6 +26,8 @@ extern const char *g_platform_name;
 #define PLATFORM_VDD_WARNING_LIMIT_mV 2800
 #endif
 
+extern SCSI_PINS scsi_pins;
+
 // NOTE: The driver supports synchronous speeds higher than 10MB/s, but this
 // has not been tested due to lack of fast enough SCSI adapter.
 // #define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_TURBO
@@ -61,6 +63,9 @@ void platform_late_init();
 // Disable the status LED
 void platform_disable_led(void);
 
+// Enables initiator mode
+void platform_enable_initiator_mode();
+
 // Query whether initiator mode is enabled on targets with PLATFORM_HAS_INITIATOR_MODE
 bool platform_is_initiator_mode_enabled();
 
@@ -78,6 +83,9 @@ void platform_poll();
 // Debouncing logic is left up to the specific implementation.
 // This function should return without significantly delay.
 uint8_t platform_get_buttons();
+
+// Platform method to determine whether this is a certain hardware version
+bool is202309a();
 
 // Set callback that will be called during data transfer to/from SD card.
 // This can be used to implement simultaneous transfer to SCSI bus.
@@ -131,26 +139,34 @@ int platform_network_wifi_channel();
 // Write a single SCSI pin.
 // Example use: SCSI_OUT(ATN, 1) sets SCSI_ATN to low (active) state.
 #define SCSI_OUT(pin, state) \
-    *(state ? &sio_hw->gpio_clr : &sio_hw->gpio_set) = 1 << (SCSI_OUT_ ## pin)
+    *(state ? &sio_hw->gpio_clr : &sio_hw->gpio_set) = 1 << (scsi_pins.OUT_ ## pin)
 
 // Read a single SCSI pin.
 // Example use: SCSI_IN(ATN), returns 1 for active low state.
 #define SCSI_IN(pin) \
-    ((sio_hw->gpio_in & (1 << (SCSI_IN_ ## pin))) ? 0 : 1)
+    ((sio_hw->gpio_in & (1 << (scsi_pins.IN_ ## pin))) ? 0 : 1)
 
 // Set pin directions for initiator vs. target mode
 #define SCSI_ENABLE_INITIATOR() \
     (sio_hw->gpio_oe_set = (1 << SCSI_OUT_ACK) | \
-                           (1 << SCSI_OUT_ATN)), \
+                           (1 << SCSI_OUT_SEL)), \
     (sio_hw->gpio_oe_clr = (1 << SCSI_IN_IO) | \
                            (1 << SCSI_IN_CD) | \
                            (1 << SCSI_IN_MSG) | \
-                           (1 << SCSI_IN_REQ))
+                           (1 << SCSI_OUT_REQ))
+
+#define SCSI_RELEASE_INITIATOR() \
+    (sio_hw->gpio_oe_clr = (1 << scsi_pins.OUT_ACK) | \
+                           (1 << scsi_pins.OUT_SEL)), \
+    (sio_hw->gpio_oe_set = (1 << scsi_pins.IN_IO) | \
+                           (1 << scsi_pins.IN_CD) | \
+                           (1 << scsi_pins.IN_MSG) | \
+                           (1 << scsi_pins.IN_REQ))
 
 // Enable driving of shared control pins
 #define SCSI_ENABLE_CONTROL_OUT() \
-    (sio_hw->gpio_oe_set = (1 << SCSI_OUT_CD) | \
-                           (1 << SCSI_OUT_MSG))
+    (sio_hw->gpio_oe_set = (1 << scsi_pins.OUT_CD) | \
+                           (1 << scsi_pins.OUT_MSG))
 
 // Set SCSI data bus to output
 #define SCSI_ENABLE_DATA_OUT() \
@@ -159,29 +175,29 @@ int platform_network_wifi_channel();
 
 // Write SCSI data bus, also sets REQ to inactive.
 #define SCSI_OUT_DATA(data) \
-    gpio_put_masked(SCSI_IO_DATA_MASK | (1 << SCSI_OUT_REQ), \
-                    g_scsi_parity_lookup[(uint8_t)(data)] | (1 << SCSI_OUT_REQ)), \
+    gpio_put_masked(SCSI_IO_DATA_MASK | (1 << scsi_pins.OUT_REQ), \
+                    g_scsi_parity_lookup[(uint8_t)(data)] | (1 << scsi_pins.OUT_REQ)), \
     SCSI_ENABLE_DATA_OUT()
 
 // Release SCSI data bus and REQ signal
 #define SCSI_RELEASE_DATA_REQ() \
     (sio_hw->gpio_oe_clr = SCSI_IO_DATA_MASK, \
      sio_hw->gpio_clr = (1 << SCSI_DATA_DIR), \
-     sio_hw->gpio_set = ((1 << SCSI_OUT_REQ)))
+     sio_hw->gpio_set = ((1 << scsi_pins.OUT_REQ)))
 
 // Release all SCSI outputs
 #define SCSI_RELEASE_OUTPUTS() \
     SCSI_RELEASE_DATA_REQ(), \
-    sio_hw->gpio_set = (1 << SCSI_OUT_IO) | \
-                       (1 << SCSI_OUT_CD) | \
-                       (1 << SCSI_OUT_MSG) | \
-                       (1 << SCSI_OUT_RST) | \
-                       (1 << SCSI_OUT_BSY) | \
-                       (1 << SCSI_OUT_REQ) | \
-                       (1 << SCSI_OUT_SEL), \
+    sio_hw->gpio_set = (1 << scsi_pins.OUT_IO) | \
+                       (1 << scsi_pins.OUT_CD) | \
+                       (1 << scsi_pins.OUT_MSG) | \
+                       (1 << scsi_pins.OUT_RST) | \
+                       (1 << scsi_pins.OUT_BSY) | \
+                       (1 << scsi_pins.OUT_REQ) | \
+                       (1 << scsi_pins.OUT_SEL), \
                        delay(1), \
-    sio_hw->gpio_oe_clr = (1 << SCSI_OUT_CD) | \
-                          (1 << SCSI_OUT_MSG)
+    sio_hw->gpio_oe_clr = (1 << scsi_pins.OUT_CD) | \
+                          (1 << scsi_pins.OUT_MSG)
 
 // Read SCSI data bus
 #define SCSI_IN_DATA() \

@@ -5,8 +5,8 @@
 ; -   8: DBP
 ; Side set is ACK pin
 
-.define REQ 9
-.define ACK 10
+.define REQ 19
+.define ACK 26
 
 ; Read from SCSI bus using asynchronous handshake.
 ; Data is returned as 16-bit words that contain the 8 data bits + 1 parity bit.

@@ -16,6 +16,9 @@ const char *log_get_buffer(uint32_t *startpos, uint32_t *available = nullptr);
 // Whether to enable debug messages
 extern bool g_log_debug;
 
+// Enables output test mode
+extern bool g_test_mode;
+
 // Firmware version string
 extern const char *g_log_firmwareversion;
 

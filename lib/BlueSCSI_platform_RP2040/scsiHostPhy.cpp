@@ -31,12 +31,14 @@ void scsiHostPhyReset(void)
 // Returns true if the target answers to selection request.
 bool scsiHostPhySelect(int target_id)
 {
+    SCSI_ENABLE_INITIATOR();
     SCSI_RELEASE_OUTPUTS();
 
     // We can't write individual data bus bits, so use a bit modified
     // arbitration scheme. We always yield to any other initiator on
     // the bus.
     scsiLogInitiatorPhaseChange(BUS_BUSY);
+    SCSI_OUT(REQ, 0);
     SCSI_OUT(BSY, 1);
     for (int wait = 0; wait < 10; wait++)
     {
@@ -80,10 +82,9 @@ bool scsiHostPhySelect(int target_id)
         return false;
     }
 
-    // We need to assert OUT_BSY to enable IO buffer U105 to read status signals.
     SCSI_RELEASE_DATA_REQ();
-    SCSI_OUT(BSY, 1);
     SCSI_OUT(SEL, 0);
+    SCSI_ENABLE_INITIATOR();
     return true;
 }
 
@@ -107,8 +108,7 @@ int scsiHostPhyGetPhase()
 
     if (phase == 0 && absolute_time_diff_us(last_online_time, get_absolute_time()) > 100)
     {
-        // Disable OUT_BSY for a short time to see if the target is still on line
-        SCSI_OUT(BSY, 0);
+        // BlueSCSI doesn't need to assert OUT_BSY to check whether the bus is in use
         delayMicroseconds(1);
 
         if (!SCSI_IN(BSY))
@@ -116,9 +116,6 @@ int scsiHostPhyGetPhase()
             scsiLogInitiatorPhaseChange(BUS_FREE);
             return BUS_FREE;
         }
-
-        // Still online, re-enable OUT_BSY to enable IO buffers
-        SCSI_OUT(BSY, 1);
         last_online_time = get_absolute_time();
     }
     else if (phase != 0)

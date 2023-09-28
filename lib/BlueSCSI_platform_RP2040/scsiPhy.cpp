@@ -117,17 +117,18 @@ static void scsi_rst_assert_interrupt()
 
 static void scsiPhyIRQ(uint gpio, uint32_t events)
 {
-    if (gpio == SCSI_IN_BSY || gpio == SCSI_IN_SEL)
+    if (gpio == scsi_pins.IN_BSY || gpio == scsi_pins.IN_SEL)
     {
         // Note BSY / SEL interrupts only when we are not driving OUT_BSY low ourselves.
         // The BSY input pin may be shared with other signals.
-        if (sio_hw->gpio_out & (1 << SCSI_OUT_BSY))
+        if (sio_hw->gpio_out & (1 << scsi_pins.OUT_BSY))
         {
             scsi_bsy_deassert_interrupt();
         }
     }
-    else if (gpio == SCSI_IN_RST)
+    else if (gpio == scsi_pins.IN_RST && ((~sio_hw->gpio_oe) & (1 << scsi_pins.OUT_SEL)))
     {
+        // If oSEL is in input mode, this is a real reset.  Otherwise ignore.
         scsi_rst_assert_interrupt();
     }
 }
@@ -144,14 +145,14 @@ extern "C" void scsiPhyReset(void)
 
     // Enable BSY, RST and SEL interrupts
     // Note: RP2040 library currently supports only one callback,
-    // so it has to be same for both pins.
-    gpio_set_irq_enabled_with_callback(SCSI_IN_BSY, GPIO_IRQ_EDGE_RISE, true, scsiPhyIRQ);
-    gpio_set_irq_enabled(SCSI_IN_RST, GPIO_IRQ_EDGE_FALL, true);
+    // so it has to be same for all pins.
+    gpio_set_irq_enabled_with_callback(scsi_pins.IN_BSY, GPIO_IRQ_EDGE_RISE, true, scsiPhyIRQ);
+    gpio_set_irq_enabled(scsi_pins.IN_RST, GPIO_IRQ_EDGE_FALL, true);
 
     // Check BSY line status when SEL goes active.
     // This is needed to handle SCSI-1 hosts that use the single initiator mode.
     // The host will just assert the SEL directly, without asserting BSY first.
-    gpio_set_irq_enabled(SCSI_IN_SEL, GPIO_IRQ_EDGE_FALL, true);
+    gpio_set_irq_enabled(scsi_pins.IN_SEL, GPIO_IRQ_EDGE_FALL, true);
 }
 
 /************************/
@@ -223,11 +224,11 @@ extern "C" uint32_t scsiEnterPhaseImmediate(int phase)
             // To avoid unnecessary delays, precalculate an XOR mask and then apply it
             // simultaneously to all three signals.
             uint32_t gpio_new = 0;
-            if (!(phase & __scsiphase_msg)) { gpio_new |= (1 << SCSI_OUT_MSG); }
-            if (!(phase & __scsiphase_cd)) { gpio_new |= (1 << SCSI_OUT_CD); }
-            if (!(phase & __scsiphase_io)) { gpio_new |= (1 << SCSI_OUT_IO); }
+            if (!(phase & __scsiphase_msg)) { gpio_new |= (1 << scsi_pins.OUT_MSG); }
+            if (!(phase & __scsiphase_cd)) { gpio_new |= (1 << scsi_pins.OUT_CD); }
+            if (!(phase & __scsiphase_io)) { gpio_new |= (1 << scsi_pins.OUT_IO); }
 
-            uint32_t mask = (1 << SCSI_OUT_MSG) | (1 << SCSI_OUT_CD) | (1 << SCSI_OUT_IO);
+            uint32_t mask = (1 << scsi_pins.OUT_MSG) | (1 << scsi_pins.OUT_CD) | (1 << scsi_pins.OUT_IO);
             uint32_t gpio_xor = (sio_hw->gpio_out ^ gpio_new) & mask;
             sio_hw->gpio_togl = gpio_xor;
             SCSI_ENABLE_CONTROL_OUT();
@@ -297,7 +298,7 @@ static inline void scsiWriteOneByte(uint8_t value)
 {
     SCSI_OUT_DATA(value);
     delay_100ns(); // DB setup time before REQ
-    gpio_acknowledge_irq(SCSI_IN_ACK, GPIO_IRQ_EDGE_FALL);
+    gpio_acknowledge_irq(scsi_pins.IN_ACK, GPIO_IRQ_EDGE_FALL);
     SCSI_OUT(REQ, 1);
     SCSI_WAIT_ACTIVE_EDGE(ACK);
     SCSI_RELEASE_DATA_REQ();
