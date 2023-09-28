@@ -97,6 +97,12 @@ extern "C" void s2s_ledOff()
 
 void save_logfile(bool always = false)
 {
+#ifdef ZULUSCSI_HARDWARE_CONFIG
+  // Disable logging to the SD card when in direct mode
+  if (g_hw_config.is_active())
+    return;
+#endif
+
   static uint32_t prev_log_pos = 0;
   static uint32_t prev_log_len = 0;
   static uint32_t prev_log_save = 0;
@@ -119,6 +125,12 @@ void save_logfile(bool always = false)
 
 void init_logfile()
 {
+#ifdef ZULUSCSI_HARDWARE_CONFIG
+  // Disable logging to the SD card when in direct mode
+  if (g_hw_config.is_active())
+    return;
+#endif
+
   static bool first_open_after_boot = true;
 
   bool truncate = first_open_after_boot;

@@ -24,10 +24,13 @@
 #include "gd32f20x_fmc.h"
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_config.h"
+#include "usbd_conf.h"
+#include "usb_serial.h"
 #include "greenpak.h"
 #include <SdFat.h>
 #include <scsi.h>
 #include <assert.h>
+
 
 extern "C" {
 
@@ -243,6 +246,9 @@ void platform_init()
 
 void platform_late_init()
 {
+    // Initialize usb for CDC serial output
+    usb_fs_init();
+
     logmsg("Platform: ", g_platform_name);
     logmsg("FW Version: ", g_log_firmwareversion);
     
@@ -340,6 +346,35 @@ static void adc_poll()
 }
 
 /*****************************************/
+/* Debug logging and watchdog            */
+/*****************************************/
+
+// Send log data to USB UART if USB is connected.
+// Data is retrieved from the shared log ring buffer and
+// this function sends as much as fits in USB CDC buffer.
+
+static void usb_log_poll()
+{
+    static uint32_t logpos = 0;
+
+    if (usb_serial_ready())
+    {
+        // Retrieve pointer to log start and determine number of bytes available.
+        uint32_t available = 0;
+        const char *data = log_get_buffer(&logpos, &available);
+        // Limit to CDC packet size
+        uint32_t len = available;
+        if (len == 0) return;
+        if (len > USB_CDC_DATA_PACKET_SIZE) len = USB_CDC_DATA_PACKET_SIZE;
+
+        // Update log position by the actual number of bytes sent
+        // If USB CDC buffer is full, this may be 0
+        usb_serial_send((uint8_t*)data, len);
+        logpos -= available - len;
+    }
+}
+
+/*****************************************/
 /* Crash handlers                        */
 /*****************************************/
 
@@ -358,6 +393,10 @@ void platform_log(const char *s)
 
 void platform_emergency_log_save()
 {
+#ifdef ZULUSCSI_HARDWARE_CONFIG
+    if (g_hw_config.is_active())
+        return;
+#endif
     platform_set_sd_callback(NULL, NULL);
 
     SD.begin(SD_CONFIG_CRASH);
@@ -411,11 +450,12 @@ void show_hardfault(uint32_t *sp)
         logmsg("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
         p += 4;
     }
-
+ 
     platform_emergency_log_save();
 
     while (1)
     {
+        usb_log_poll();
         // Flash the crash address on the LED
         // Short pulse means 0, long pulse means 1
         int base_delay = 1000;
@@ -488,6 +528,7 @@ void __assert_func(const char *file, int line, const char *func, const char *exp
 
     while(1)
     {
+        usb_log_poll();
         LED_OFF();
         for (int j = 0; j < 1000; j++) delay_ns(100000);
         LED_ON();
@@ -509,6 +550,10 @@ void platform_reset_watchdog()
     // It gives us opportunity to collect better debug info than the
     // full hardware reset that would be caused by hardware watchdog.
     g_watchdog_timeout = WATCHDOG_CRASH_TIMEOUT;
+
+    // USB log is polled here also to make sure any log messages in fault states
+    // get passed to USB.
+    usb_log_poll();
 }
 
 // Poll function that is called every few milliseconds.
@@ -516,6 +561,7 @@ void platform_reset_watchdog()
 void platform_poll()
 {
     adc_poll();
+    usb_log_poll();
 }
 
 uint8_t platform_get_buttons()

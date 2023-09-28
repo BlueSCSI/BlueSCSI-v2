@@ -101,3 +101,7 @@
 #ifndef PREFETCH_BUFFER_SIZE
 #define PREFETCH_BUFFER_SIZE 8192
 #endif
+
+// Masks for buttons
+#define EJECT_BTN_MASK (1|2)
+#define USER_BTN_MASK  (4)
