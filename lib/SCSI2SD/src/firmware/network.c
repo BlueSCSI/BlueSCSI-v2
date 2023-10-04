@@ -21,6 +21,7 @@
 #include "scsiPhy.h"
 #include "config.h"
 #include "network.h"
+#include <ZuluSCSI_platform_network.h>
 
 extern bool g_log_debug;
 
@@ -35,8 +36,6 @@ static uint8_t scsiNetworkPacketsOutbound[NETWORK_PACKET_QUEUE_SIZE][NETWORK_PAC
 static uint16_t scsiNetworkPacketOutboundSizes[NETWORK_PACKET_QUEUE_SIZE];
 static uint8_t scsiNetworkPacketOutboundWriteIndex = 0;
 static uint8_t scsiNetworkPacketOutboundReadIndex = 0;
-
-struct __attribute__((packed)) wifi_network_entry wifi_network_list[WIFI_NETWORK_LIST_ENTRY_COUNT] = { 0 };
 
 static const uint32_t crc32_tab[] = {
 	0x00000000, 0x77073096, 0xee0e612c, 0x990951ba, 0x076dc419, 0x706af48f,
@@ -425,7 +424,6 @@ int scsiNetworkCommand()
 	default:
 		handled = 0;
 	}
-
 	return handled;
 }
 

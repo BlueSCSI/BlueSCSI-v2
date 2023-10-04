@@ -33,30 +33,9 @@ extern "C" {
 #define NETWORK_PACKET_QUEUE_SIZE   20		// must be <= 255
 #define NETWORK_PACKET_MAX_SIZE     1520
 
-struct __attribute__((packed)) wifi_network_entry {
-	char ssid[64];
-	char bssid[6];
-	int8_t rssi;
-	uint8_t channel;
-	uint8_t flags;
-	uint8_t _padding;
-#define WIFI_NETWORK_FLAGS_AUTH 0x1
-};
-#define WIFI_NETWORK_LIST_ENTRY_COUNT 10
-extern struct wifi_network_entry wifi_network_list[WIFI_NETWORK_LIST_ENTRY_COUNT];
-
-struct __attribute__((packed)) wifi_join_request {
-	char ssid[64];
-	char key[64];
-	uint8_t channel;
-	uint8_t _padding;
-};
-
 int scsiNetworkCommand(void);
 int scsiNetworkEnqueue(const uint8_t *buf, size_t len);
 int scsiNetworkPurge(void);
-
-extern int platform_network_send(uint8_t *buf, size_t len);
 
 #ifdef __cplusplus
 }
