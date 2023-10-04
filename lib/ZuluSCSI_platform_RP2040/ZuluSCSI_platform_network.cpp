@@ -13,13 +13,11 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-
-#include "ZuluSCSI_platform.h"
+#ifdef ZULUSCSI_NETWORK
+#include "ZuluSCSI_platform_network.h"
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_config.h"
 #include <scsi.h>
-
-#ifdef ZULUSCSI_NETWORK
 #include <network.h>
 
 extern "C" {
@@ -30,6 +28,14 @@ extern "C" {
 #ifndef CYW43_IOCTL_GET_RSSI
 #define CYW43_IOCTL_GET_RSSI (0xfe)
 #endif
+
+#define PICO_W_GPIO_LED_PIN 0
+#define PICO_W_LED_ON() cyw43_arch_gpio_put(PICO_W_GPIO_LED_PIN, 1)
+#define PICO_W_LED_OFF() cyw43_arch_gpio_put(PICO_W_GPIO_LED_PIN, 0)
+#define PICO_W_LONG_BLINK_DELAY 200
+#define PICO_W_SHORT_BLINK_DELAY 75
+
+struct __attribute__((packed)) wifi_network_entry wifi_network_list[WIFI_NETWORK_LIST_ENTRY_COUNT] = { 0 };
 
 // A default DaynaPort-compatible MAC
 static const char defaultMAC[] = { 0x00, 0x80, 0x19, 0xc0, 0xff, 0xee };
@@ -55,12 +61,20 @@ int platform_network_init(char *mac)
 	if (!platform_network_supported())
 		return -1;
 
+	// long signal blink at network initialization
+	PICO_W_LED_OFF();
+	PICO_W_LED_ON();
+	delay(PICO_W_LONG_BLINK_DELAY);
+	PICO_W_LED_OFF();
+
+
 	logmsg(" ");
 	logmsg("=== Network Initialization ===");
 
 	memset(wifi_network_list, 0, sizeof(wifi_network_list));
 
 	cyw43_deinit(&cyw43_state);
+	cyw43_init(&cyw43_state);
 
 	if (mac == NULL || (mac[0] == 0 && mac[1] == 0 && mac[2] == 0 && mac[3] == 0 && mac[4] == 0 && mac[5] == 0))
 	{
@@ -92,7 +106,7 @@ int platform_network_init(char *mac)
 	logmsg_f("Wi-Fi MAC: %02X:%02X:%02X:%02X:%02X:%02X",
 		read_mac[0], read_mac[1], read_mac[2], read_mac[3], read_mac[4], read_mac[5]);
 	if (memcmp(mac, read_mac, sizeof(read_mac)) != 0)
-		logmsg("WARNING: Wi-Fi MAC is not what was requested (%02x:%02x:%02x:%02x:%02x:%02x), is libpico not compiled with CYW43_USE_OTP_MAC=0?",
+		logmsg_f("WARNING: Wi-Fi MAC is not what was requested (%02x:%02x:%02x:%02x:%02x:%02x), is libpico not compiled with CYW43_USE_OTP_MAC=0?",
 			mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
 	network_in_use = true;
@@ -132,15 +146,12 @@ bool platform_network_wifi_join(char *ssid, char *password)
 	}
 	else
 	{
-		// Blink 2 times at start of connection sequence
-		LED_OFF();
-		for (uint8_t i = 0; i < 2; i++)
-		{
-			delay(75);
-			LED_ON();
-			delay(75);
-			LED_OFF();
-		}
+		// Short single blink at start of connection sequence
+		PICO_W_LED_OFF();
+		delay(PICO_W_SHORT_BLINK_DELAY);
+		PICO_W_LED_ON();
+		delay(PICO_W_SHORT_BLINK_DELAY);
+		PICO_W_LED_OFF();
 	}
 	
 	return (ret == 0);
@@ -328,13 +339,13 @@ void cyw43_cb_tcpip_set_link_up(cyw43_t *self, int itf)
 	{
 		logmsg_f("Successfully connected to Wi-Fi SSID \"%s\"", ssid);
 		// blink LED 3 times when connected
-		LED_OFF();
+		PICO_W_LED_OFF();
 		for (uint8_t i = 0; i < 3; i++)
 		{
-			delay(75);
-			LED_ON();
-			delay(75);
-			LED_OFF();
+			delay(PICO_W_SHORT_BLINK_DELAY);
+			PICO_W_LED_ON();
+			delay(PICO_W_SHORT_BLINK_DELAY);
+			PICO_W_LED_OFF();
 		}
 	}
 }
