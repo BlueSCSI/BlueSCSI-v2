@@ -21,8 +21,8 @@
 
 MEMORY
 {
-    FLASH(rx) : ORIGIN = 0x10000000, LENGTH = 1m
-    RAM(rwx) : ORIGIN = 0x20000000, LENGTH = 242k  /* Leave space for pico-debug */
+    FLASH(rx) : ORIGIN = 0x10000000, LENGTH = 528k
+    RAM(rwx) : ORIGIN = 0x20000000, LENGTH = 256k  /* Leave space for pico-debug */
     SCRATCH_X(rwx) : ORIGIN = 0x20040000, LENGTH = 4k
     SCRATCH_Y(rwx) : ORIGIN = 0x20041000, LENGTH = 4k
 }
@@ -87,7 +87,7 @@ SECTIONS
         *libc*:*toa*(.text .text*)
         *libminIni.a:(.text .text*)
         *libCUEParser.a:(.text .text*)
-      /*  *libFrameworkArduino.a(.text .text*) */
+
         /* RP2040 breakpoints in RAM code don't always work very well
          * because the boot routine tends to overwrite them.
          * Uncommenting this line puts all code in flash.

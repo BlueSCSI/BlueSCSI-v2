@@ -16,7 +16,7 @@
 
 #ifndef NETWORK_H
 #define NETWORK_H
-
+#ifdef ZULUSCSI_NETWORK
 #include <sys/types.h>
 
 #ifdef __cplusplus
@@ -30,7 +30,10 @@ extern "C" {
 #define SCSI_NETWORK_WIFI_CMD_INFO			0x04
 #define SCSI_NETWORK_WIFI_CMD_JOIN			0x05
 
-#define NETWORK_PACKET_QUEUE_SIZE   7		// must be <= 255
+#ifndef NETWORK_PACKET_QUEUE_SIZE
+# define NETWORK_PACKET_QUEUE_SIZE   10		// must be <= 255
+#endif
+
 #define NETWORK_PACKET_MAX_SIZE     1520
 
 int scsiNetworkCommand(void);
@@ -40,5 +43,5 @@ int scsiNetworkPurge(void);
 #ifdef __cplusplus
 }
 #endif
-
-#endif
+#endif // ZULUSCSI_NETWORK
+#endif // NETWORK_H

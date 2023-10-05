@@ -29,10 +29,7 @@
 #include "scsi2sd_time.h"
 #include "bsp.h"
 #include "cdrom.h"
-//#include "debug.h"
-#ifdef ZULUSCSI_NETWORK
 #include "network.h"
-#endif // ZULUSCSI_NETWORK
 #include "tape.h"
 #include "mo.h"
 #include "vendor.h"
