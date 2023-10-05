@@ -496,7 +496,7 @@ static void reinitSCSI()
   {
     g_log_debug = true;
   }
-  if (ini_getbool("SCSI", "TESTMODE", 0, CONFIGFILE))
+  if (ini_getbool("SCSI", "TestMode", 0, CONFIGFILE))
   {
     g_test_mode = true;
   }

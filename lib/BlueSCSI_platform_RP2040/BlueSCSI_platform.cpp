@@ -135,7 +135,7 @@ void platform_init()
     gpio_conf(scsi_pins.OUT_IO,    GPIO_FUNC_SIO, true, false, true,  true, false);
     gpio_conf(scsi_pins.OUT_REQ,   GPIO_FUNC_SIO, true, false, true,  true, false);
 
-    // Determine whether initiator and I2C are supported
+    // Determine whether I2C is supported
     // If G16 and G17 are high, this is the 2023_09a revision or later desktop board
     gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_I2C, false, false, false,  false, true);
     gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_I2C, false, false, false,  false, true);
@@ -143,7 +143,7 @@ void platform_init()
     bool d50_2023_09a = gpio_get(GPIO_I2C_SCL) && gpio_get(GPIO_I2C_SDA);
 
     if (d50_2023_09a) {
-        log("Initiator and I2C Supported");
+        log("I2C Supported");
         g_supports_initiator = true;
         gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_I2C, true, false, false,  true, true);
         gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_I2C, true, false, false,  true, true);
@@ -156,7 +156,7 @@ void platform_init()
     } else {
         /* Check option switch settings */
         // Option switches: S1 is iATN, S2 is iACK
-        gpio_conf(scsi_pins.IN_ACK,    GPIO_FUNC_SIO, false, false, false, false, false);
+        gpio_conf(scsi_pins.IN_ACK,    GPIO_FUNC_SIO, true, false, false, false, false);
         gpio_conf(scsi_pins.IN_ATN,    GPIO_FUNC_SIO, false, false, false, false, false);
         delay(10); /// Settle time
         // Check option switches
@@ -271,7 +271,7 @@ void platform_late_init()
 
         // SCSI control inputs
         //        pin                   function       pup   pdown  out    state fast
-        gpio_conf(scsi_pins.IN_ACK,    GPIO_FUNC_SIO, false, false, false, true, false);
+        gpio_conf(scsi_pins.IN_ACK,    GPIO_FUNC_SIO, true, false, false, true, false);
         gpio_conf(scsi_pins.IN_ATN,    GPIO_FUNC_SIO, false, false, false, true, false);
         gpio_conf(scsi_pins.IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
 
@@ -292,7 +292,7 @@ void platform_late_init()
         gpio_conf(scsi_pins.IN_BSY,    GPIO_FUNC_SIO, true, false, false, true, false);
         gpio_conf(scsi_pins.IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
         gpio_conf(scsi_pins.OUT_SEL,   GPIO_FUNC_SIO, false,false, true,  true, true);
-        gpio_conf(scsi_pins.OUT_ACK,   GPIO_FUNC_SIO, false,false, true,  true, true);
+        gpio_conf(scsi_pins.OUT_ACK,   GPIO_FUNC_SIO, true,false, true,  true, true);
         //gpio_conf(SCSI_OUT_ATN,   GPIO_FUNC_SIO, false,false, true,  true, true);  // ATN output is unused
     }
 }

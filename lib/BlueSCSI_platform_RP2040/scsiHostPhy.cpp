@@ -263,4 +263,5 @@ void scsiHostPhyRelease()
 {
     scsiLogInitiatorPhaseChange(BUS_FREE);
     SCSI_RELEASE_OUTPUTS();
+    SCSI_RELEASE_DATA_REQ();
 }
