@@ -14,14 +14,13 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#ifdef ZULUSCSI_NETWORK
 #include <string.h>
-
 #include "scsi.h"
 #include "scsi2sd_time.h"
 #include "scsiPhy.h"
 #include "config.h"
 #include "network.h"
-#include <ZuluSCSI_platform_network.h>
 
 extern bool g_log_debug;
 
@@ -483,3 +482,4 @@ int scsiNetworkPurge(void)
 
 	return sent;
 }
+#endif // ZULUSCSI_NETWORK
