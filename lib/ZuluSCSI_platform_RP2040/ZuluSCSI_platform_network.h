@@ -19,6 +19,7 @@
 #ifdef ZULUSCSI_NETWORK
 
 #include <stdint.h>
+#include <stddef.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -55,6 +56,7 @@ int platform_network_wifi_rssi();
 char * platform_network_wifi_ssid();
 char * platform_network_wifi_bssid();
 int platform_network_wifi_channel();
+int platform_network_send(uint8_t *buf, size_t len);
 
 # ifdef __cplusplus
 }

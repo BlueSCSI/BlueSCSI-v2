@@ -35,7 +35,7 @@ extern "C" {
 #define PICO_W_LONG_BLINK_DELAY 200
 #define PICO_W_SHORT_BLINK_DELAY 75
 
-struct __attribute__((packed)) wifi_network_entry wifi_network_list[WIFI_NETWORK_LIST_ENTRY_COUNT] = { 0 };
+struct wifi_network_entry wifi_network_list[WIFI_NETWORK_LIST_ENTRY_COUNT] = { 0 };
 
 // A default DaynaPort-compatible MAC
 static const char defaultMAC[] = { 0x00, 0x80, 0x19, 0xc0, 0xff, 0xee };
