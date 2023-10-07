@@ -203,10 +203,19 @@ void scsiInitiatorMainLoop()
             if (g_initiator_state.sectorcount > 0)
             {
                 char filename[32] = {0};
+                int lun = 0;
+
                 strncpy(filename, filename_format, sizeof(filename) - 1);
                 filename[2] += g_initiator_state.target_id;
 
-                SD.remove(filename);
+                while(SD.exists(filename))
+                {
+                    filename[3] = lun++ + '0';
+                }
+                if(lun != 0)
+                {
+                    log(filename_format, " already exists, using ", filename);
+                }
                 g_initiator_state.target_file = SD.open(filename, O_RDWR | O_CREAT | O_TRUNC);
                 if (!g_initiator_state.target_file.isOpen())
                 {
