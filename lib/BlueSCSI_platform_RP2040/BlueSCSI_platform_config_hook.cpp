@@ -1,5 +1,6 @@
 /** 
  * Copyright (C) 2023 Eric Helgeson
+ * Portions ZuluSCSI™ - Copyright (c) 2023 Rabbit Hole Computing™
  * 
  * This file is part of BlueSCSI
  * 
@@ -29,47 +30,44 @@ static bool isValidMacintoshImage(image_config_t *img)
     const char apple_magic[2] = {0x45, 0x52};
     const char block_size[2]  = {0x02, 0x00};  // 512 BE == 2
     const char lido_sig[4] = {'C', 'M', 'S', '_' };
-    byte tmp[4] = {0};
-
+    uint8_t tmp[SD_SECTOR_SIZE];
     // Check for Apple Magic
     img->file.seek(0);
-    img->file.read(tmp, 2);
-    if(memcmp(apple_magic, tmp, 2) != 0)
+    img->file.read(tmp, SD_SECTOR_SIZE);
+    if (memcmp(apple_magic, tmp, 2) != 0)
     {
-        debuglog("Apple magic not found.");
+        debuglog("---- Apple magic not found.");
         result = false;
     }
     // Check HFS Block size is 512
-    img->file.seek(2);
-    img->file.read(tmp, 2);
-    if(memcmp(block_size, tmp, 2) != 0)
+    if (memcmp(block_size, &tmp[2], 2) != 0)
     {
-        debuglog("Block size not 512", block_size);
+        debuglog("---- Block size is ", block_size, ", should be 512.");
         result = false;
     }
-    // Find SCSI Driver offset
-    img->file.seek(MACINTOSH_SCSI_DRIVER_OFFSET);
-    img->file.read(tmp, 4);
-    uint64_t driver_offset_blocks = int((unsigned char)(tmp[0]) << 24 | (unsigned char)(tmp[1]) << 16 |
-                                        (unsigned char)(tmp[2]) << 8  |  (unsigned char)(tmp[3]));
+    uint8_t *mac_driver = &tmp[MACINTOSH_SCSI_DRIVER_OFFSET];
+    uint32_t driver_offset_blocks = mac_driver[0] << 24 |
+                                    mac_driver[1] << 16 |
+                                    mac_driver[2] << 8  |
+                                    mac_driver[3];
     // Find size of SCSI Driver partition
-    img->file.seek(MACINTOSH_SCSI_DRIVER_SIZE_OFFSET);
-    img->file.read(tmp, 2);
-    int driver_size_blocks = int((unsigned char)(tmp[0]) << 8 | (unsigned char)(tmp[1]));
+    uint8_t *mac_driver_size = &tmp[MACINTOSH_SCSI_DRIVER_SIZE_OFFSET];
+    uint32_t driver_size_blocks = mac_driver_size[0] << 8 | mac_driver_size[1];
     // SCSI Driver sanity checks
     if((driver_size_blocks * MACINTOSH_BLOCK_SIZE) > MACINTOSH_SCSI_DRIVER_MAX_SIZE ||
         (driver_offset_blocks * MACINTOSH_BLOCK_SIZE) > img->file.size())
     {
-        debuglog("Invalid Macintosh SCSI Driver partition detected.");
+        debuglog("---- Invalid Macintosh SCSI Driver partition detected.");
         result = false;
     }
     // Contains Lido Driver - driver causes issues on a Mac Plus and is generally slower than the Apple 4.3 or FWB.
     // Also causes compatibility issues with other drivers.
-    img->file.seek(driver_offset_blocks * MACINTOSH_BLOCK_SIZE + LIDO_SIG_OFFSET);
-    img->file.read(tmp, 4);
-    if(memcmp(lido_sig, tmp, 4) == 0)
+    img->file.seek(driver_offset_blocks * MACINTOSH_BLOCK_SIZE);
+    img->file.read(tmp, SD_SECTOR_SIZE);
+    uint8_t* lido_driver = &tmp[LIDO_SIG_OFFSET];
+    if(memcmp(lido_sig, lido_driver, 4) == 0)
     {
-        log("---- WARNING: This drive contains the LIDO driver and may cause issues.");
+        debuglog("---- WARNING: This drive contains the LIDO driver and may cause issues.");
     }
 
     return result;
@@ -81,11 +79,6 @@ void platformConfigHook(image_config_t *img)
     if(ini_getbool("SCSI", "DisableConfigHook", false, CONFIGFILE))
     {
         debuglog("Skipping platformConfigHook due to DisableConfigHook");
-        return;
-    }
-    if(img->file.isRom() || img->file.isRaw())
-    {
-        debuglog("Skipping platformConfigHook on ROM/Raw Drive.");
         return;
     }
     if (img->quirks == S2S_CFG_QUIRKS_APPLE)
