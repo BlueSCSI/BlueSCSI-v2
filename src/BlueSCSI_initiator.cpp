@@ -171,10 +171,9 @@ void scsiInitiatorMainLoop()
                 {
                     // Note: the FAT32 limit is 4 GiB - 1 byte
                     log("Image files equal or larger than 4 GiB are only possible on exFAT filesystem");
-                    log("Please reformat the SD card with exFAT format to image this drive fully");
-
-                    g_initiator_state.sectorcount = (uint32_t)0xFFFFFFFF / g_initiator_state.sectorsize;
-                    log("Will image first 4 GiB - 1 = ", (int)g_initiator_state.sectorcount, " sectors");
+                    log("Please reformat the SD card with exFAT format to image this drive.");
+                    g_initiator_state.sectorsize = 0;
+                    g_initiator_state.sectorcount = g_initiator_state.sectorcount_all = 0;
                 }
             }
             else if (startstopok)
