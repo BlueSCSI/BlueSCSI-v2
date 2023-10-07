@@ -157,6 +157,7 @@ void scsiInitiatorMainLoop()
                 scsiInquiry(g_initiator_state.target_id, inquiry_data);
             LED_OFF();
 
+            uint64_t total_bytes = 0;
             if (readcapok)
             {
                 log("SCSI ID ", g_initiator_state.target_id,
@@ -165,7 +166,7 @@ void scsiInitiatorMainLoop()
 
                 g_initiator_state.sectorcount_all = g_initiator_state.sectorcount;
 
-                uint64_t total_bytes = (uint64_t)g_initiator_state.sectorcount * g_initiator_state.sectorsize;
+                total_bytes = (uint64_t)g_initiator_state.sectorcount * g_initiator_state.sectorsize;
                 log("Drive total size is ", (int)(total_bytes / (1024 * 1024)), " MiB");
                 if (total_bytes >= 0xFFFFFFFF && SD.fatType() != FAT_TYPE_EXFAT)
                 {
@@ -207,6 +208,14 @@ void scsiInitiatorMainLoop()
 
                 strncpy(filename, filename_format, sizeof(filename) - 1);
                 filename[2] += g_initiator_state.target_id;
+
+                uint64_t sd_card_free_bytes = (uint64_t)SD.vol()->freeClusterCount() * SD.vol()->bytesPerCluster();
+                if(sd_card_free_bytes < total_bytes)
+                {
+                    log("SD Card only has ", (int)(sd_card_free_bytes / (1024 * 1024)), " MiB - not enough free space to image this drive!");
+                    g_initiator_state.imaging = false;
+                    return;
+                }
 
                 while(SD.exists(filename))
                 {
