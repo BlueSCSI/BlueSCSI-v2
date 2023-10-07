@@ -73,7 +73,7 @@ void enter_BusFree()
     // Just waiting the clear delay is sufficient.
 	s2s_delay_ns(800);
 
-	s2s_ledOff();
+	//s2s_ledOff();
 	scsiDev.phase = BUS_FREE;
 	scsiDev.selFlag = 0;
 }
@@ -648,7 +648,7 @@ static uint32_t resetUntil = 0;
 static void scsiReset()
 {
 	scsiDev.rstCount++;
-	s2s_ledOff();
+	//s2s_ledOff();
 
 	scsiPhyReset();
 
@@ -768,7 +768,7 @@ static void process_SelectionPhase()
 		// (Note: the initiator will be waiting the "Selection time-out delay"
 		// for our BSY response, which is actually a very generous 250ms)
 		*SCSI_CTRL_BSY = 1;
-		s2s_ledOn();
+		//s2s_ledOn();
 
 		scsiDev.target = target;
 
