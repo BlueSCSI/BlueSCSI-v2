@@ -159,7 +159,7 @@ void scsiInitiatorMainLoop()
 
             if (readcapok)
             {
-                log("SCSI id ", g_initiator_state.target_id,
+                log("SCSI ID ", g_initiator_state.target_id,
                     " capacity ", (int)g_initiator_state.sectorcount,
                     " sectors x ", (int)g_initiator_state.sectorsize, " bytes");
 
@@ -179,7 +179,7 @@ void scsiInitiatorMainLoop()
             }
             else if (startstopok)
             {
-                log("SCSI id ", g_initiator_state.target_id, " responds but ReadCapacity command failed");
+                log("SCSI ID ", g_initiator_state.target_id, " responds but ReadCapacity command failed");
                 log("Possibly SCSI-1 drive? Attempting to read up to 1 GB.");
                 g_initiator_state.sectorsize = 512;
                 g_initiator_state.sectorcount = g_initiator_state.sectorcount_all = 2097152;
@@ -187,7 +187,7 @@ void scsiInitiatorMainLoop()
             }
             else
             {
-                debuglog("Failed to connect to SCSI id ", g_initiator_state.target_id);
+                debuglog("No response from SCSI ID ", g_initiator_state.target_id);
                 g_initiator_state.sectorsize = 0;
                 g_initiator_state.sectorcount = g_initiator_state.sectorcount_all = 0;
             }
