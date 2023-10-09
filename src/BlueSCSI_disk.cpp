@@ -636,6 +636,14 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
                 log("-- SCSI ID: ", target_idx, " using Drive image directory \'", tmp, "'");
                 img.image_directory = true;
             }
+            strcpy(tmp, "FDX");
+            tmp[2] = '0' + target_idx;
+            if(SD.exists(tmp))
+            {
+                log("-- SCSI ID: ", target_idx, " using Floppy image directory \'", tmp, "'");
+                img.deviceType = S2S_CFG_FLOPPY_14MB;
+                img.image_directory = true;
+            }
         }
     }
 }
