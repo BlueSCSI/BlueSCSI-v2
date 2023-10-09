@@ -61,7 +61,7 @@
 #define APPLE_DRIVEINFO_FIXED     {"QUANTUM",  "BlueSCSI Pico",   "1.0",  ""}
 #define APPLE_DRIVEINFO_REMOVABLE {"IOMEGA",   "BETA230",         "2.02", ""}
 #define APPLE_DRIVEINFO_OPTICAL   {"BlueSCSI", "CD-ROM CDU-55S",  "1.9a", ""}
-#define APPLE_DRIVEINFO_FLOPPY    {"TEAC",     "FD235HS",         "1.44", ""}
+#define APPLE_DRIVEINFO_FLOPPY    {"IOMEGA",     "Io20S         *F", "PP33", ""}
 #define APPLE_DRIVEINFO_MAGOPT    {"MOST",     "RMD-5200",        "1.0",  ""}
 #define APPLE_DRIVEINFO_TAPE      {"BlueSCSI", "APPLE_TAPE",      "",     ""}
 
