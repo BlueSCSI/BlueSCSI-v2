@@ -426,11 +426,13 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
             logmsg("---- Configuring as magneto-optical based on image name");
             img.deviceType = S2S_CFG_MO;
         }
+#ifdef ZULUSCSI_NETWORK
         else if (type == S2S_CFG_NETWORK)
         {
             logmsg("---- Configuring as network based on image name");
             img.deviceType = S2S_CFG_NETWORK;
         }
+#endif // ZULUSCSI_NETWORK
         else if (type == S2S_CFG_REMOVEABLE)
         {
             logmsg("---- Configuring as removable drive based on image name");
