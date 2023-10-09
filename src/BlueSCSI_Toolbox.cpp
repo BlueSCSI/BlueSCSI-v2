@@ -29,6 +29,20 @@ extern "C" {
 #include <mode.h>
 }
 
+bool toolboxFilenameValid(const char* name)
+{
+    if(name[0] == '.')
+    {
+        debuglog("toolbox: Ignoring hidden file ", name);
+        return false;
+    }
+    if(strlen(name) > MAX_MAC_PATH)
+    {
+        debuglog("toolbox: Ignoring filename over ", MAX_MAC_PATH, " in length: ", name, " - ", (int)strlen(name));
+        return false;
+    }
+    return true;
+}
 
 static void doCountFiles(const char * dir_name)
 {
@@ -48,7 +62,7 @@ static void doCountFiles(const char * dir_name)
         file.getName(name, MAX_MAC_PATH + 1);
         file.close();
         // only count valid files.
-        if(scsiDiskFilenameValid(name))
+        if(toolboxFilenameValid(name))
         {
             file_count = file_count + 1;
             if(file_count > 100) {
@@ -83,7 +97,7 @@ void onListFiles(const char * dir_name) {
         file.getName(name, MAX_MAC_PATH + 1);
         uint64_t size = file.fileSize();
         file.close();
-        if(!scsiDiskFilenameValid(name))
+        if(!toolboxFilenameValid(name))
             continue;
         file_entry[0] = index;
         file_entry[1] = isDir;
@@ -124,7 +138,7 @@ FsFile get_file_from_index(uint8_t index, const char * dir_name)
     }
     file_test.getName(name, MAX_MAC_PATH + 1);
 
-    if(!scsiDiskFilenameValid(name))
+    if(!toolboxFilenameValid(name))
     {
         file_test.close();
         continue;
