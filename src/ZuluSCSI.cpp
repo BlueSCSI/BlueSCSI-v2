@@ -373,11 +373,17 @@ bool findHDDImages()
       bool is_cd = (tolower(name[0]) == 'c' && tolower(name[1]) == 'd');
       bool is_fd = (tolower(name[0]) == 'f' && tolower(name[1]) == 'd');
       bool is_mo = (tolower(name[0]) == 'm' && tolower(name[1]) == 'o');
-      bool is_ne = (tolower(name[0]) == 'n' && tolower(name[1]) == 'e');
       bool is_re = (tolower(name[0]) == 'r' && tolower(name[1]) == 'e');
       bool is_tp = (tolower(name[0]) == 't' && tolower(name[1]) == 'p');
+#ifdef ZULUSCSI_NETWORK
+      bool is_ne = (tolower(name[0]) == 'n' && tolower(name[1]) == 'e');
+#endif // ZULUSCSI_NETWORK
 
-      if (is_hd || is_cd || is_fd || is_mo || is_ne || is_re || is_tp)
+      if (is_hd || is_cd || is_fd || is_mo || is_re || is_tp
+#ifdef ZULUSCSI_NETWORK
+        || is_ne
+#endif // ZULUSCSI_NETWORK
+      )
       {
         // Check if the image should be loaded to microcontroller flash ROM drive
         bool is_romdrive = false;
@@ -462,7 +468,9 @@ bool findHDDImages()
         if (is_cd) type = S2S_CFG_OPTICAL;
         if (is_fd) type = S2S_CFG_FLOPPY_14MB;
         if (is_mo) type = S2S_CFG_MO;
+#ifdef ZULUSCSI_NETWORK
         if (is_ne) type = S2S_CFG_NETWORK;
+#endif // ZULUSCSI_NETWORK
         if (is_re) type = S2S_CFG_REMOVEABLE;
         if (is_tp) type = S2S_CFG_SEQUENTIAL;
 
