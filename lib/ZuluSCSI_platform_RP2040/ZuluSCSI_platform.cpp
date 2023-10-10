@@ -42,8 +42,10 @@
 #endif // __MBED__
 
 #ifndef __MBED__
+#ifndef ZULUSCSI_DAYNAPORT
 # include <SerialUSB.h>
 # include <class/cdc/cdc_device.h>
+#endif
 #else
 # include <USB/PluggableUSBSerial.h>
 #endif // __MBED__
@@ -365,7 +367,9 @@ void platform_late_init()
         gpio_conf(SCSI_IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
 
 #ifndef __MBED__
+#ifndef ZULUSCSI_DAYNAPORT
     Serial.begin();
+#endif
 #endif // __MBED__
 
 #ifdef ENABLE_AUDIO_OUTPUT
@@ -501,6 +505,7 @@ static void usb_log_poll()
 {
     static uint32_t logpos = 0;
 #ifndef __MBED__
+# ifndef ZULUSCSI_DAYNAPORT
     if (Serial.availableForWrite())
     {
         // Retrieve pointer to log start and determine number of bytes available.
@@ -517,6 +522,7 @@ static void usb_log_poll()
         actual = Serial.write(data, len);
         logpos -= available - actual;
     }
+# endif
 #else
     if (_SerialUSB.ready())
     {
