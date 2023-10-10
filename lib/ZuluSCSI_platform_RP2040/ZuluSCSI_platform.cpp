@@ -42,7 +42,7 @@
 #endif // __MBED__
 
 #ifndef __MBED__
-#ifndef ZULUSCSI_DAYNAPORT
+#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
 # include <SerialUSB.h>
 # include <class/cdc/cdc_device.h>
 #endif
@@ -367,9 +367,9 @@ void platform_late_init()
         gpio_conf(SCSI_IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
 
 #ifndef __MBED__
-#ifndef ZULUSCSI_DAYNAPORT
+# ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
     Serial.begin();
-#endif
+# endif
 #endif // __MBED__
 
 #ifdef ENABLE_AUDIO_OUTPUT
@@ -505,7 +505,7 @@ static void usb_log_poll()
 {
     static uint32_t logpos = 0;
 #ifndef __MBED__
-# ifndef ZULUSCSI_DAYNAPORT
+# ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
     if (Serial.availableForWrite())
     {
         // Retrieve pointer to log start and determine number of bytes available.
@@ -522,7 +522,7 @@ static void usb_log_poll()
         actual = Serial.write(data, len);
         logpos -= available - actual;
     }
-# endif
+# endif // PIO_FRAMEWORK_ARDUINO_NO_USB
 #else
     if (_SerialUSB.ready())
     {
