@@ -31,7 +31,7 @@ extern "C" {
 #define SCSI_NETWORK_WIFI_CMD_JOIN			0x05
 
 #ifndef NETWORK_PACKET_QUEUE_SIZE
-# define NETWORK_PACKET_QUEUE_SIZE   10		// must be <= 255
+# define NETWORK_PACKET_QUEUE_SIZE   20		// must be <= 255
 #endif
 
 #define NETWORK_PACKET_MAX_SIZE     1520

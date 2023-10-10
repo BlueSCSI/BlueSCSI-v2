@@ -87,13 +87,6 @@ SECTIONS
         *libc*:*toa*(.text .text*)
         *libminIni.a:(.text .text*)
         *libCUEParser.a:(.text .text*)
-        *libpicow*(.text .text*)
-        *libpico.a:*usb*(.text .text*)
-        *libpico.a:*msc*(.text .text*)
-        *libpico.a:*tusb*(.text .text*)
-        *libpico.a:*hid*(.text .text*)
-        *libpico.a:*cdc*(.text .text*)
-        *libpico.a:*dcd*(.text .text*)
         /* RP2040 breakpoints in RAM code don't always work very well
          * because the boot routine tends to overwrite them.
          * Uncommenting this line puts all code in flash.
