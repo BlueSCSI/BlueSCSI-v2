@@ -36,9 +36,9 @@ bool toolboxFilenameValid(const char* name)
         debuglog("toolbox: Ignoring hidden file ", name);
         return false;
     }
-    if(strlen(name) > MAX_MAC_PATH)
+    if(strlen(name) == 0)
     {
-        debuglog("toolbox: Ignoring filename over ", MAX_MAC_PATH, " in length: ", name, " - ", (int)strlen(name));
+        debuglog("toolbox: Ignoring filename empty file name");
         return false;
     }
     return true;
@@ -48,7 +48,7 @@ static void doCountFiles(const char * dir_name)
 {
     FsFile dir;
     FsFile file;
-    char name[ MAX_MAC_PATH + 1];
+    char name[MAX_FILE_PATH] = {0};
     dir.open(dir_name);
     dir.rewindDirectory();
     uint8_t file_count = 0;
@@ -59,7 +59,7 @@ static void doCountFiles(const char * dir_name)
             file.close();
             break;
         }
-        file.getName(name, MAX_MAC_PATH + 1);
+        file.getName(name, MAX_FILE_PATH);
         file.close();
         // only count valid files.
         if(toolboxFilenameValid(name))
@@ -86,7 +86,7 @@ void onListFiles(const char * dir_name) {
 
     memset(scsiDev.data, 0, 4096);
     int ENTRY_SIZE = 40;
-    char name[MAX_MAC_PATH + 1];
+    char name[MAX_FILE_PATH] = {0};
     dir.open(dir_name);
     dir.rewindDirectory();
     uint8_t index = 0;
@@ -94,7 +94,9 @@ void onListFiles(const char * dir_name) {
     while (file.openNext(&dir, O_RDONLY))
     {
         uint8_t isDir = file.isDirectory() ? 0x00 : 0x01;
-        file.getName(name, MAX_MAC_PATH + 1);
+        int len = file.getName(name, MAX_FILE_PATH);
+        if (len > MAX_MAC_PATH)
+            name[MAX_MAC_PATH] = 0x0;
         uint64_t size = file.fileSize();
         file.close();
         if(!toolboxFilenameValid(name))
@@ -124,7 +126,7 @@ FsFile get_file_from_index(uint8_t index, const char * dir_name)
 {
   FsFile dir;
   FsFile file_test;
-  char name[MAX_MAC_PATH + 1];
+  char name[MAX_FILE_PATH] = {0};
 
   dir.open(dir_name);
   dir.rewindDirectory(); // Back to the top
@@ -136,7 +138,7 @@ FsFile get_file_from_index(uint8_t index, const char * dir_name)
       file_test.close();
       break;
     }
-    file_test.getName(name, MAX_MAC_PATH + 1);
+    file_test.getName(name, MAX_FILE_PATH);
 
     if(!toolboxFilenameValid(name))
     {
@@ -179,8 +181,8 @@ void onListDevices()
 
 void onSetNextCD(const char * img_dir)
 {
-    char name[MAX_FILE_PATH];
-    char full_path[MAX_FILE_PATH * 2];
+    char name[MAX_FILE_PATH] = {0};
+    char full_path[MAX_FILE_PATH * 2] = {0};
     uint8_t file_index = scsiDev.cdb[1];
 
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
