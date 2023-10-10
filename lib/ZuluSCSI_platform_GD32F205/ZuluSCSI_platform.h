@@ -28,7 +28,6 @@
 #include <gd32f20x_gpio.h>
 #include <scsi2sd.h>
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -59,6 +58,8 @@ extern const char *g_platform_name;
 #   define PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE 4096
 #   define PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE 65536
 #   define PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE 8192
+#   define ZULUSCSI_HARDWARE_CONFIG
+#   include "platform_hw_config.h"
 #   include "ZuluSCSI_v1_2_gpio.h"
 #endif
 

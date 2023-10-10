@@ -54,9 +54,7 @@
 #include "ZuluSCSI_disk.h"
 #include "ZuluSCSI_initiator.h"
 #include "ROMDrive.h"
-#ifdef ZULUSCSI_HARDWARE_CONFIG
-# include "platform_hw_config.h"
-#endif
+
 SdFs SD;
 FsFile g_logfile;
 static bool g_romdrive_active;

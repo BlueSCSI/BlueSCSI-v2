@@ -33,7 +33,7 @@ usb_core_driver cdc_acm;
 }
 
 
-void usb_fs_init(void)
+void usb_serial_init(void)
 {
     // set USB full speed prescaler and turn on USB clock
     rcu_usbfs_trng_clock_config(RCU_CKUSB_CKPLL_DIV2_5);
