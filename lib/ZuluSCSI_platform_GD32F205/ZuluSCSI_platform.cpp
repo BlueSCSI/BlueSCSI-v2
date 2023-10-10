@@ -247,7 +247,7 @@ void platform_init()
 void platform_late_init()
 {
     // Initialize usb for CDC serial output
-    usb_fs_init();
+    usb_serial_init();
 
     logmsg("Platform: ", g_platform_name);
     logmsg("FW Version: ", g_log_firmwareversion);

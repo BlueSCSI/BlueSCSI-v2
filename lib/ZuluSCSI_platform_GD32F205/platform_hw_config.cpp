@@ -18,10 +18,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
+#include "ZuluSCSI_platform.h"
 
 #ifdef ZULUSCSI_HARDWARE_CONFIG
 #include "platform_hw_config.h"
-#include "ZuluSCSI_platform.h"
 #include "ZuluSCSI_config.h"
 
 HardwareConfig g_hw_config;

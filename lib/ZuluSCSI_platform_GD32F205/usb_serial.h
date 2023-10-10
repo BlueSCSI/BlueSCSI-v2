@@ -19,13 +19,10 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
 
-
 #pragma once
 
-#include <gd32f20x.h>
-
 // init USB full speed interface
-void usb_fs_init(void);
+void usb_serial_init(void);
 // check if the USB serial interface is ready to send data
 bool usb_serial_ready(void);
 // Send data of the USB serial interface
