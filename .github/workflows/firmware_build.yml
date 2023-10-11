@@ -9,8 +9,6 @@ jobs:
   build_firmware:
     name: RHC-internal
     runs-on: self-hosted
-#    name: Build firmware on Ubuntu 20.04
-#    runs-on: ubuntu-20.04
     
     steps:
       - name: Check out code from GitHub
@@ -20,13 +18,13 @@ jobs:
           fetch-depth: "0"
       
       - name: Install platformio
-        run: |
-          sudo pip install platformio
+       run: |
+          pip install platformio
       
       - name: Build firmware
         run: |
           cd ZuluSCSI
-          pio run -ve ZuluSCSI_Pico_DaynaPORT
+          pio run -v
     
       - name: Rename firmware files
         run: |
