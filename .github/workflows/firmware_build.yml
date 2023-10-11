@@ -19,7 +19,7 @@ jobs:
       
       - name: Install platformio
        run: |
-          sudo pip install platformio
+          pip install platformio
       
       - name: Build firmware
         run: |
