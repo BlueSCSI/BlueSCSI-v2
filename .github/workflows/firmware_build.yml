@@ -17,9 +17,9 @@ jobs:
           path: ZuluSCSI
           fetch-depth: "0"
       
-      - name: Install platformio
-        run: |
-          sudo pip install platformio
+#      - name: Install platformio
+#       run: |
+#          sudo pip install platformio
       
       - name: Build firmware
         run: |
