@@ -3,6 +3,7 @@
 #include "BlueSCSI_log_trace.h"
 #include "BlueSCSI_log.h"
 #include <scsi2sd.h>
+#include "BlueSCSI_Toolbox.h"
 
 extern "C" {
 #include <scsi.h>
@@ -78,6 +79,17 @@ static const char *getCommandName(uint8_t cmd)
         case 0xA8: return "Read12";
         case 0xC0: return "OMTI-5204 DefineFlexibleDiskFormat";
         case 0xC2: return "OMTI-5204 AssignDiskParameters";
+        case BLUESCSI_TOOLBOX_COUNT_FILES: return "BLUESCSI_TOOLBOX_COUNT_FILES";
+        case BLUESCSI_TOOLBOX_LIST_FILES: return "BLUESCSI_TOOLBOX_LIST_FILES";
+        case BLUESCSI_TOOLBOX_GET_FILE: return "BLUESCSI_TOOLBOX_GET_FILE";
+        case BLUESCSI_TOOLBOX_SEND_FILE_PREP: return "BLUESCSI_TOOLBOX_SEND_FILE_PREP";
+        case BLUESCSI_TOOLBOX_SEND_FILE_10: return "BLUESCSI_TOOLBOX_SEND_FILE_10";
+        case BLUESCSI_TOOLBOX_SEND_FILE_END: return "BLUESCSI_TOOLBOX_SEND_FILE_END";
+        case BLUESCSI_TOOLBOX_TOGGLE_DEBUG: return "BLUESCSI_TOOLBOX_TOGGLE_DEBUG";
+        case BLUESCSI_TOOLBOX_LIST_CDS: return "BLUESCSI_TOOLBOX_LIST_CDS";
+        case BLUESCSI_TOOLBOX_SET_NEXT_CD: return "BLUESCSI_TOOLBOX_SET_NEXT_CD";
+        case BLUESCSI_TOOLBOX_LIST_DEVICES: return "BLUESCSI_TOOLBOX_LIST_DEVICES";
+        case BLUESCSI_TOOLBOX_COUNT_CDS: return "BLUESCSI_TOOLBOX_COUNT_CDS";
         default:   return "Unknown";
     }
 }

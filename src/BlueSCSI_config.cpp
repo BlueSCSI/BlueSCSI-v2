@@ -62,3 +62,8 @@ int getImg(int scsiId, int img_index, char* filename)
   int dirlen = ini_gets(section, key, "", filename, sizeof(filename), CONFIGFILE);
   return dirlen;
 }
+
+int getToolBoxSharedDir(char * dir_name)
+{
+  return ini_gets("SCSI", "ToolBoxSharedDir", "/shared", dir_name, MAX_FILE_PATH, CONFIGFILE);
+}

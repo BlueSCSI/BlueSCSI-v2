@@ -74,6 +74,9 @@ public:
     // Flush any pending changes to filesystem
     void flush();
 
+    // Get name of the fs_file
+    void getName(char *name, size_t len);
+
     // Gets current position for following read/write operations
     // Result is only valid for regular files, not raw or flash access
     uint64_t position();

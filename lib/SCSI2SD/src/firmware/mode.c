@@ -246,6 +246,14 @@ static const uint8_t AppleVendorPage[] =
 'A','P','P','L','E',' ','C','O','M','P','U','T','E','R',',',' ','I','N','C',' ',' ',' '
 };
 
+static const uint8_t BlueSCSIVendorPage[] =
+{
+0x31, // Page code
+42,   // Page length
+'B','l','u','e','S','C','S','I',' ','i','s',' ','t','h','e',' ','B','E','S','T',' ',
+'S','T','O','L','E','N',' ','F','R','O','M',' ','B','L','U','E','S','C','S','I',0x00
+};
+
 static void pageIn(int pc, int dataIdx, const uint8_t* pageData, int pageLen)
 {
 	memcpy(&scsiDev.data[dataIdx], pageData, pageLen);
@@ -523,6 +531,13 @@ static void doModeSense(
 		pageFound = 1;
 		pageIn(pc, idx, AppleVendorPage, sizeof(AppleVendorPage));
 		idx += sizeof(AppleVendorPage);
+	}
+
+	if (pageCode == 0x31 || pageCode == 0x3F)
+	{
+		pageFound = 1;
+		pageIn(pc, idx, BlueSCSIVendorPage, sizeof(BlueSCSIVendorPage));
+		idx += sizeof(BlueSCSIVendorPage);
 	}
 
 	if (pageCode == 0x38) // Don't send unless requested

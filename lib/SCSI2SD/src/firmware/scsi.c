@@ -30,6 +30,7 @@
 #include "tape.h"
 #include "mo.h"
 #include "vendor.h"
+#include "bluescsi_toolbox.h"
 
 #include <string.h>
 
@@ -586,6 +587,10 @@ static void process_Command()
 		((cfg->deviceType == S2S_CFG_MO) && scsiMOCommand()))
 	{
 		// Already handled.
+	}
+	else if (scsiBlueSCSIToolboxCommand())
+	{
+		// handled
 	}
 	else if (scsiDiskCommand())
 	{

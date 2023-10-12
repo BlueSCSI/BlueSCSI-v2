@@ -71,6 +71,46 @@ bool ini_openread(const char *filename, INI_FILETYPE *fp)
     return fp->open(SD.vol(), filename, O_RDONLY);
 }
 
+// Open .ini file either from cache or from SD card
+bool ini_openwrite(const char *filename, INI_FILETYPE *fp)
+{
+#if INI_CACHE_SIZE > 0
+    if (g_ini_cache.valid &&
+        (filename == g_ini_cache.filename || strcmp(filename, g_ini_cache.filename) == 0))
+    {
+        fp->close();
+        g_ini_cache.fp = fp;
+        g_ini_cache.current_pos.position = 0;
+        return true;
+    }
+#endif
+
+    return fp->open(SD.vol(), filename, O_WRONLY);
+}
+
+// Open .ini file either from cache or from SD card
+bool ini_openrewrite(const char *filename, INI_FILETYPE *fp)
+{
+#if INI_CACHE_SIZE > 0
+    if (g_ini_cache.valid &&
+        (filename == g_ini_cache.filename || strcmp(filename, g_ini_cache.filename) == 0))
+    {
+        fp->close();
+        g_ini_cache.fp = fp;
+        g_ini_cache.current_pos.position = 0;
+        return true;
+    }
+#endif
+
+    return fp->open(SD.vol(), filename, O_RDWR);
+}
+
+void ini_rename(const char * old_name, const char *new_name)
+{
+  SD.rename(old_name, new_name);
+  invalidate_ini_cache();
+}
+
 // Close previously opened file
 bool ini_close(INI_FILETYPE *fp)
 {
@@ -114,6 +154,18 @@ bool ini_read(char *buffer, int size, INI_FILETYPE *fp)
         // Read from SD card
         return fp->fgets(buffer, size) > 0;
     }
+}
+
+// Write to the card and invalidate the cache.
+bool ini_write(char *buffer, INI_FILETYPE *fp)
+{
+    if(fp->write(buffer) > 0)
+    {
+        invalidate_ini_cache();
+        return true;
+    }
+    else
+        return false;
 }
 
 // Get the position inside the file
