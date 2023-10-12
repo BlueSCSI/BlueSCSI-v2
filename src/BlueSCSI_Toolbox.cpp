@@ -41,6 +41,13 @@ bool toolboxFilenameValid(const char* name)
         debuglog("toolbox: Ignoring filename empty file name");
         return false;
     }
+    const char *extension = strrchr(name, '.');
+    if (extension && strcasecmp(extension, ".cue") == 0)
+    {
+        debuglog("toolbox: Ignoring .cue ", name);
+        return false;
+    }
+
     return true;
 }
 
