@@ -7,8 +7,10 @@ on:
 
 jobs:
   build_firmware:
-    name: Build firmware on Ubuntu 20.04
-    runs-on: ubuntu-20.04
+    name: RHC-internal-Z4
+    runs-on: self-hosted
+#    name: Build firmware on Ubuntu 20.04
+#    runs-on: ubuntu-20.04
     
     steps:
       - name: Check out code from GitHub
@@ -19,12 +21,12 @@ jobs:
       
       - name: Install platformio
         run: |
-          sudo pip install platformio
+          pip install -U platformio
       
       - name: Build firmware
         run: |
           cd ZuluSCSI
-          pio run -v
+          pio run -v -j8
     
       - name: Rename firmware files
         run: |
