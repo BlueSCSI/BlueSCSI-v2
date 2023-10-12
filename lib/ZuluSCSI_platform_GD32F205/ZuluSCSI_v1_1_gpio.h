@@ -77,6 +77,13 @@
 #define GREENPAK_IRQ  EXTI3_IRQHandler
 #define GREENPAK_IRQn EXTI3_IRQn
 
+
+// I2C for ODE and v1.2
+#define ODE_I2C_PORT GPIOB
+#define ODE_I2C_SCL GPIO_PIN_6
+#define ODE_I2C_SDA GPIO_PIN_7
+
+
 // SCSI input data port
 #define SCSI_IN_PORT  GPIOE
 #define SCSI_IN_DB7   GPIO_PIN_15
@@ -136,6 +143,15 @@
 #define SCSI_SEL_IRQ EXTI10_15_IRQHandler
 #define SCSI_SEL_IRQn EXTI10_15_IRQn
 
+// SEL pin for ODE and v1.2
+#define SCSI_ODE_SEL_PORT GPIOD
+#define SCSI_ODE_SEL_PIN  GPIO_PIN_15
+#define SCSI_ODE_SEL_EXTI EXTI_15
+#define SCSI_ODE_SEL_EXTI_SOURCE_PORT GPIO_PORT_SOURCE_GPIOD
+#define SCSI_ODE_SEL_EXTI_SOURCE_PIN GPIO_PIN_SOURCE_15
+#define SCSI_ODE_SEL_IRQ EXTI10_15_IRQHandler
+#define SCSI_ODE_SEL_IRQn EXTI10_15_IRQn
+
 // BSY pin uses EXTI interrupt
 #define SCSI_BSY_PORT GPIOB
 #define SCSI_BSY_PIN  GPIO_PIN_10
@@ -170,11 +186,93 @@
 #define SD_SDIO_CMD_PORT  GPIOD
 #define SD_SDIO_CMD       GPIO_PIN_2
 
+// v1.2 has a strong pull up, the ODE has strong pull down, v1.1 vanilla test for a floating pin
+#define DIGITAL_VERSION_DETECT_PORT  GPIOA
+#define DIGITAL_VERSION_DETECT_PIN   GPIO_PIN_15
+
+// v1.2 and future boards detect version via voltage level
+// v1.2: 2.5V
+#define ADC_VERSION_DETECT_PORT GPIOC
+#define ADC_VERSION_DETECT_PIN  GPIO_PIN_0
+#define ADC_VERSION_DETECT_CHANNEL ADC_CHANNEL_10
+#define ADC_VERSION_DETECT_V1_2_LIMIT_LOW 0
+#define ADC_VERSION_DETECT_V1_2_LIMIT_HIGH 4096*1
+
+// SPI Pins: v1.2
+#define SPI_CS_PORT     GPIOB
+#define SPI_CS_PIN      GPIO_PIN_9
+#define SPI_MISO_PORT   GPIOC
+#define SPI_MISO_PIN    GPIO_PIN_2
+#define SPI_MOSI_PORT   GPIOC
+#define SPI_MOSI_PIN    GPIO_PIN_3
+#define SPI_CK_PORT     GPIOD
+#define SPI_CK_PIN      GPIO_PIN_3
+// I2S pins: ODE and v1.2
+#define I2S_SD_PORT     SPI_MOSI_PORT
+#define I2S_SD_PIN      SPI_MOSI_PIN
+#define I2S_WS_PORT     SPI_CS_PORT
+#define I2S_WS_PIN      SPI_CS_PIN
+#define I2S_CK_PORT     SPI_CK_PORT
+#define I2S_CK_PIN      SPI_CK_PIN
+
+// SPI/I2S DMA - ODE and v1.2
+#define SPI_DMA         DMA0
+#define SPI_DMA_CH      DMA_CH4
+#define SPI_RCU_DMA     RCU_DMA0
+#define SPI_I2S_SPI     SPI1
+#define SPI_RCU_I2S_SPI RCU_SPI1
+#define SPI_IRQHandler  DMA0_Channel4_IRQHandler
+#define SPI_DMA_IRQn    DMA0_Channel4_IRQn
+
 // DIP switches
 #define DIP_PORT     GPIOB
 #define DIPSW1_PIN   GPIO_PIN_4
 #define DIPSW2_PIN   GPIO_PIN_5
 #define DIPSW3_PIN   GPIO_PIN_6
+
+// ODE DIP switch pins
+#define ODE_DIP_PORT     GPIOB
+#define ODE_DIPSW1_PIN   GPIO_PIN_8
+#define ODE_DIPSW2_PIN   GPIO_PIN_5
+#define ODE_DIPSW3_PIN   GPIO_PIN_4
+
+// v1.2 DIP switch pins
+#define V1_2_DIPSW_TERM_PORT        GPIOB
+#define V1_2_DIPSW_TERM_PIN         GPIO_PIN_4
+#define V1_2_DIPSW_DBG_PORT         GPIOB
+#define V1_2_DIPSW_DBG_PIN          GPIO_PIN_5
+#define V1_2_DIPSW_QUIRKS_PORT      GPIOE
+#define V1_2_DIPSW_QUIRKS_PIN       GPIO_PIN_0
+#define V1_2_DIPSW_DIRECT_MODE_PORT GPIOB
+#define V1_2_DIPSW_DIRECT_MODE_PIN  GPIO_PIN_8
+// SCSI ID DIP switch
+#define DIPSW_SCSI_ID_BIT_PORT  GPIOC
+#define DIPSW_SCSI_ID_BIT1_PIN  GPIO_PIN_13
+#define DIPSW_SCSI_ID_BIT2_PIN  GPIO_PIN_14
+#define DIPSW_SCSI_ID_BIT3_PIN  GPIO_PIN_15
+#define DIPSW_SCSI_ID_BIT_PINS  (DIPSW_SCSI_ID_BIT1_PIN | DIPSW_SCSI_ID_BIT2_PIN | DIPSW_SCSI_ID_BIT3_PIN)
+#define DIPSW_SCSI_ID_BIT_SHIFT 13
+// Rotary DIP switch
+#define DIPROT_DEVICE_SEL_BIT_PORT  GPIOE
+#define DIPROT_DEVICE_SEL_BIT1_PIN  GPIO_PIN_5
+#define DIPROT_DEVICE_SEL_BIT2_PIN  GPIO_PIN_6
+#define DIPROT_DEVICE_SEL_BIT_PINS  (DIPROT_DEVICE_SEL_BIT1_PIN | DIPROT_DEVICE_SEL_BIT2_PIN)
+#define DIPROT_DEVICE_SEL_BIT_SHIFT 5
+
+// ODE I2S Audio
+#define ODE_I2S_CK_PORT GPIOD
+#define ODE_I2S_CK_PIN  GPIO_PIN_3
+#define ODE_I2S_SD_PORT GPIOC
+#define ODE_I2S_SD_PIN  GPIO_PIN_3
+#define ODE_I2S_WS_PORT GPIOB
+#define ODE_I2S_WS_PIN  GPIO_PIN_9
+#define ODE_DMA         DMA0
+#define ODE_DMA_CH      DMA_CH4
+#define ODE_RCU_DMA     RCU_DMA0
+#define ODE_I2S_SPI     SPI1
+#define ODE_RCU_I2S_SPI RCU_SPI1
+#define ODE_IRQHandler  DMA0_Channel4_IRQHandler
+#define ODE_DMA_IRQn    DMA0_Channel4_IRQn
 
 // Status LED pins
 #define LED_PORT     GPIOC
@@ -183,6 +281,10 @@
 #define LED_PINS     (LED_I_PIN | LED_E_PIN)
 #define LED_ON()     gpio_bit_reset(LED_PORT, LED_PINS)
 #define LED_OFF()    gpio_bit_set(LED_PORT, LED_PINS)
+#define LED_EJECT_PORT  GPIOA
+#define LED_EJECT_PIN   GPIO_PIN_1
+#define LED_EJECT_ON()  gpio_bit_reset(LED_EJECT_PORT, LED_EJECT_PIN)
+#define LED_EJECT_OFF() gpio_bit_set(LED_EJECT_PORT, LED_EJECT_PIN)
 
 // Ejection buttons are available on expansion header J303.
 // PE5 = channel 1, PE6 = channel 2
@@ -191,3 +293,9 @@
 #define EJECT_1_PIN     GPIO_PIN_5
 #define EJECT_2_PORT    GPIOE
 #define EJECT_2_PIN     GPIO_PIN_6
+
+// Ejection button is on GPIO PA3 and USER button is on GPIO PA2
+#define EJECT_BTN_PORT  GPIOA
+#define EJECT_BTN_PIN   GPIO_PIN_3
+#define USER_BTN_PORT   GPIOA
+#define USER_BTN_PIN    GPIO_PIN_2

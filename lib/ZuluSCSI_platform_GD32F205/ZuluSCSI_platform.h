@@ -43,25 +43,30 @@ extern const char *g_platform_name;
 #   define PLATFORM_REVISION "1.0"
 #   define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_ASYNC_50
 #   include "ZuluSCSI_v1_0_gpio.h"
-#elif defined(ZULUSCSI_V1_1)
-#   define PLATFORM_NAME "ZuluSCSI v1.1"
-#   define PLATFORM_REVISION "1.1"
+#else
+#   define PLATFORM_NAME "ZuluSCSI v1.1+"
+#   define PLATFORM_REVISION "1.1+"
 #   define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_10
 #   define PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE 4096
 #   define PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE 65536
 #   define PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE 8192
-#   include "ZuluSCSI_v1_1_gpio.h"
-#elif defined(ZULUSCSI_V1_2)
-#   define PLATFORM_NAME "ZuluSCSI v1.2"
-#   define PLATFORM_REVISION "1.2"
-#   define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_10
-#   define PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE 4096
-#   define PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE 65536
-#   define PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE 8192
+#   define PLATFORM_VERSION_1_1_PLUS
 #   define ZULUSCSI_HARDWARE_CONFIG
-#   include "platform_hw_config.h"
-#   include "ZuluSCSI_v1_2_gpio.h"
+#   include "ZuluSCSI_v1_1_gpio.h"
 #endif
+
+#include "platform_hw_config.h"
+
+enum ZuluSCSIVersion_t
+{
+    ZSVersion_unknown,
+    ZSVersion_v1_1,
+    ZSVersion_v1_1_ODE,
+    ZSVersion_v1_2
+
+};
+
+extern enum ZuluSCSIVersion_t g_zuluscsi_version;
 
 #ifndef PLATFORM_VDD_WARNING_LIMIT_mV
 #define PLATFORM_VDD_WARNING_LIMIT_mV 2800

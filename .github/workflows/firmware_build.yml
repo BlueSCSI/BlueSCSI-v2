@@ -24,7 +24,7 @@ jobs:
       - name: Build firmware
         run: |
           cd ZuluSCSI
-          pio run -ve ZuluSCSIv1_2
+          pio run -ve ZuluSCSIv1_1
     
       - name: Rename firmware files
         run: |
