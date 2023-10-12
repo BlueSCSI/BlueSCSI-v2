@@ -186,12 +186,19 @@
 #define SD_SDIO_CMD_PORT  GPIOD
 #define SD_SDIO_CMD       GPIO_PIN_2
 
+// V1.2 SD Card write protect and card detect
+#define SD_WP_PORT GPIOE
+#define SD_WP_PIN  GPIO_PIN_2
+#define SD_CD_PORT GPIOE
+#define SD_CD_PIN  GPIO_PIN_3
+
 // v1.2 has a strong pull up, the ODE has strong pull down, v1.1 vanilla test for a floating pin
 #define DIGITAL_VERSION_DETECT_PORT  GPIOA
 #define DIGITAL_VERSION_DETECT_PIN   GPIO_PIN_15
 
 // v1.2 and future boards detect version via voltage level
 // v1.2: 2.5V
+// TODO get ADC version detection working
 #define ADC_VERSION_DETECT_PORT GPIOC
 #define ADC_VERSION_DETECT_PIN  GPIO_PIN_0
 #define ADC_VERSION_DETECT_CHANNEL ADC_CHANNEL_10
@@ -273,6 +280,7 @@
 #define ODE_RCU_I2S_SPI RCU_SPI1
 #define ODE_IRQHandler  DMA0_Channel4_IRQHandler
 #define ODE_DMA_IRQn    DMA0_Channel4_IRQn
+
 
 // Status LED pins
 #define LED_PORT     GPIOC

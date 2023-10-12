@@ -65,7 +65,8 @@ static bool g_sdcard_present;
 /************************************/
 
 #define BLINK_STATUS_OK 1
-#define BLINK_ERROR_NO_IMAGES  3 
+#define BLINK_ERROR_NO_IMAGES  3
+#define BLINK_DIRECT_MODE      4
 #define BLINK_ERROR_NO_SD_CARD 5
 
 void blinkStatus(int count)
@@ -621,16 +622,26 @@ static void reinitSCSI()
       blinkStatus(BLINK_STATUS_OK);
     }
   }
-#elif defined(RAW_FALLBACK_ENABLE)
+  else
+#endif // ZULUSCSI_HARDWARE_CONFIG
+#ifdef RAW_FALLBACK_ENABLE
+  {
     logmsg("No images found, enabling RAW fallback partition");
     scsiDiskOpenHDDImage(RAW_FALLBACK_SCSI_ID, "RAW:0:0xFFFFFFFF", RAW_FALLBACK_SCSI_ID, 0,
                          RAW_FALLBACK_BLOCKSIZE);
+  }
 #else
     logmsg("No valid image files found!");
-#endif
+#endif // RAW_FALLBACK_ENABLE
 
 #ifdef ZULUSCSI_HARDWARE_CONFIG
-  if (!g_hw_config.is_active())
+  if (g_hw_config.is_active())
+  {
+    // At this point the board has already blinked once for ok
+    // So subtracting 1 to blink the correct amount
+    blinkStatus(BLINK_DIRECT_MODE - 1);
+  }
+  else
   {
     blinkStatus(BLINK_ERROR_NO_IMAGES);
   }
