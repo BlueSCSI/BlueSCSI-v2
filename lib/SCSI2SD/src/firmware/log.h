@@ -1,4 +1,4 @@
-//	Copyright (C) 2013 Michael McMaster <michael@codesrc.com>
+//	Copyright (C) 2023 joshua stein <jcs@jcs.org>
 //
 //	This file is part of SCSI2SD.
 //
@@ -14,18 +14,14 @@
 //
 //	You should have received a copy of the GNU General Public License
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
-#ifndef S2S_Config_H
-#define S2S_Config_H
 
-#include "scsi2sd.h"
-#include "log.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-void s2s_configInit(S2S_BoardCfg* config);
-void s2s_debugInit(void);
-void s2s_configPoll(void);
-void s2s_configSave(int scsiId, uint16_t byesPerSector);
+extern void log_buf(const unsigned char *buf, unsigned long size);
+extern void log_f(const char *format, ...);
 
-const S2S_TargetCfg* s2s_getConfigByIndex(int index);
-const S2S_TargetCfg* s2s_getConfigById(int scsiId);
-
+#ifdef __cplusplus
+}
 #endif

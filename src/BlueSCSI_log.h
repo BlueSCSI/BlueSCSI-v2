@@ -53,6 +53,16 @@ inline void log_raw()
     // End of template recursion
 }
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+void log_buf(const unsigned char *buf, unsigned long size);
+// Log formatted string
+void log_f(const char *format, ...);
+#ifdef __cplusplus
+}
+#endif
+
 extern "C" unsigned long millis();
 
 // Variadic template for printing multiple items

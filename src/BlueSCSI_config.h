@@ -55,6 +55,7 @@
 #define DRIVEINFO_OPTICAL   {"BlueSCSI", "CDROM",     PLATFORM_REVISION, ""}
 #define DRIVEINFO_FLOPPY    {"BlueSCSI", "FLOPPY",    PLATFORM_REVISION, ""}
 #define DRIVEINFO_MAGOPT    {"BlueSCSI", "MO_DRIVE",  PLATFORM_REVISION, ""}
+#define DRIVEINFO_NETWORK   {"Dayna",    "SCSI/Link", "2.0f", ""}
 #define DRIVEINFO_TAPE      {"BlueSCSI", "TAPE",      PLATFORM_REVISION, ""}
 
 // Default SCSI drive information when Apple quirks are enabled
@@ -63,6 +64,7 @@
 #define APPLE_DRIVEINFO_OPTICAL   {"BlueSCSI", "CD-ROM CDU-55S",  "1.9a", ""}
 #define APPLE_DRIVEINFO_FLOPPY    {"TEAC",     "FD235HS",         "1.44", ""}
 #define APPLE_DRIVEINFO_MAGOPT    {"MOST",     "RMD-5200",        "1.0",  ""}
+#define APPLE_DRIVEINFO_NETWORK   {"Dayna",    "SCSI/Link",       "2.0f", ""}
 #define APPLE_DRIVEINFO_TAPE      {"BlueSCSI", "APPLE_TAPE",      "",     ""}
 
 // Default delay for SCSI phases.

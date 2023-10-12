@@ -13,20 +13,25 @@
 #include <hardware/flash.h>
 #include <hardware/structs/xip_ctrl.h>
 #include <hardware/structs/usb.h>
+#ifdef MBED
 #include <platform/mbed_error.h>
-#include <multicore.h>
 #include <USB/PluggableUSBSerial.h>
 #include "audio.h"
+#endif
+#include <pico/multicore.h>
 #include "scsi_accel_rp2040.h"
 
 extern "C" {
+#include <pico/cyw43_arch.h>
 
 const char *g_platform_name = PLATFORM_NAME;
 static bool g_scsi_initiator = false;
 static uint32_t g_flash_chip_size = 0;
 static bool g_uart_initialized = false;
 
+#ifdef MBED
 void mbed_error_hook(const mbed_error_ctx * error_context);
+#endif
 
 /***************/
 /* GPIO init   */
@@ -103,14 +108,16 @@ void platform_init()
     gpio_conf(SCSI_IN_ACK,    GPIO_FUNC_SIO, false, false, false, false, false);
     gpio_conf(SCSI_IN_ATN,    GPIO_FUNC_SIO, false, false, false, false, false);
     delay(10); /// Settle time
-    bool optionS1 = !gpio_get(SCSI_IN_ATN);
-    bool optionS2 = !gpio_get(SCSI_IN_ACK);
+    (void)!gpio_get(SCSI_IN_ATN); // S1
+    (void)!gpio_get(SCSI_IN_ACK); // S2
 
     /* Initialize logging to SWO pin (UART0) */
     gpio_conf(SWO_PIN,        GPIO_FUNC_UART,false,false, true,  false, true);
-    uart_init(uart0, 1000000);
+    uart_init(uart0, 115200);
     g_uart_initialized = true;
+    #ifdef MBED
     mbed_set_error_hook(mbed_error_hook);
+    #endif
 
     //log("DIP switch settings: debug log ", (int)dbglog, ", termination ", (int)termination);
     log("Platform: ", g_platform_name);
@@ -152,8 +159,10 @@ void platform_init()
     gpio_conf(SDIO_D1,        GPIO_FUNC_SIO, true, false, false, true, true);
     gpio_conf(SDIO_D2,        GPIO_FUNC_SIO, true, false, false, true, true);
 
-    // LED pin
-    gpio_conf(LED_PIN,        GPIO_FUNC_SIO, false,false, true,  false, false);
+    if (!platform_network_supported()) {
+        // LED pin
+        gpio_conf(LED_PIN,        GPIO_FUNC_SIO, false,false, true,  false, false);
+    }
 
 #ifndef ENABLE_AUDIO_OUTPUT
 #ifdef GPIO_I2C_SDA
@@ -297,9 +306,11 @@ bool platform_is_initiator_mode_enabled()
 }
 
 void platform_disable_led(void)
-{   
-    //        pin      function       pup   pdown  out    state fast
-    gpio_conf(LED_PIN, GPIO_FUNC_SIO, false,false, false, false, false);
+{
+    if (!platform_network_supported()) {
+        //        pin      function       pup   pdown  out    state fast
+        gpio_conf(LED_PIN, GPIO_FUNC_SIO, false,false, false, false, false);
+    }
     log("Disabling status LED");
 }
 
@@ -333,6 +344,7 @@ void platform_emergency_log_save()
     crashfile.close();
 }
 
+#ifdef MBED
 void mbed_error_hook(const mbed_error_ctx * error_context)
 {
     log("--------------");
@@ -376,6 +388,7 @@ void mbed_error_hook(const mbed_error_ctx * error_context)
         for (int j = 0; j < base_delay * 10; j++) delay_ns(100000);
     }
 }
+#endif
 
 /*****************************************/
 /* Debug logging and watchdog            */
@@ -390,6 +403,7 @@ void mbed_error_hook(const mbed_error_ctx * error_context)
 // also starts calling this after 2 seconds.
 // This ensures that log messages get passed even if code hangs,
 // but does not unnecessarily delay normal execution.
+#ifdef MBED
 static void usb_log_poll()
 {
     static uint32_t logpos = 0;
@@ -412,6 +426,7 @@ static void usb_log_poll()
         logpos -= available - actual;
     }
 }
+#endif
 
 // Use ADC to implement supply voltage monitoring for the +3.0V rail.
 // This works by sampling the temperature sensor channel, which has
@@ -492,11 +507,13 @@ static void watchdog_callback(unsigned alarm_num)
 {
     g_watchdog_timeout -= 1000;
 
+#ifdef MBED
     if (g_watchdog_timeout < WATCHDOG_CRASH_TIMEOUT - 1000)
     {
         // Been stuck for at least a second, start dumping USB log
         usb_log_poll();
     }
+#endif
 
     if (g_watchdog_timeout <= WATCHDOG_CRASH_TIMEOUT - WATCHDOG_BUS_RESET_TIMEOUT)
     {
@@ -543,7 +560,9 @@ static void watchdog_callback(unsigned alarm_num)
                 p += 4;
             }
 
+#ifdef MBED
             usb_log_poll();
+#endif
             platform_emergency_log_save();
 
             platform_boot_to_main_firmware();
@@ -561,22 +580,40 @@ void platform_reset_watchdog()
 
     if (!g_watchdog_initialized)
     {
-        hardware_alarm_claim(3);
-        hardware_alarm_set_callback(3, &watchdog_callback);
-        hardware_alarm_set_target(3, delayed_by_ms(get_absolute_time(), 1000));
+        int alarm_num = -1;
+        for (int i = 0; i < NUM_TIMERS; i++)
+        {
+            if (!hardware_alarm_is_claimed(i))
+            {
+                alarm_num = i;
+                break;
+            }
+        }
+        if (alarm_num == -1)
+        {
+            log("No free watchdog hardware alarms to claim");
+            return;
+        }
+        hardware_alarm_claim(alarm_num);
+        hardware_alarm_set_callback(alarm_num, &watchdog_callback);
+        hardware_alarm_set_target(alarm_num, delayed_by_ms(get_absolute_time(), 1000));
         g_watchdog_initialized = true;
     }
 
+#ifdef MBED
     // USB log is polled here also to make sure any log messages in fault states
     // get passed to USB.
     usb_log_poll();
+#endif
 }
 
 // Poll function that is called every few milliseconds.
 // Can be left empty or used for platform-specific processing.
 void platform_poll()
 {
+#ifdef MBED
     usb_log_poll();
+#endif
     adc_poll();
     
 #ifdef ENABLE_AUDIO_OUTPUT
@@ -636,12 +673,14 @@ bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_
         }
     }
 
+#ifdef MBED
     if (NVIC_GetEnableIRQ(USBCTRL_IRQn))
     {
         log("Disabling USB during firmware flashing");
         NVIC_DisableIRQ(USBCTRL_IRQn);
         usb_hw->main_ctrl = 0;
     }
+#endif
 
     debuglog("Writing flash at offset ", offset, " data ", bytearray(buffer, 4));
     assert(offset % PLATFORM_FLASH_PAGE_SIZE == 0);
@@ -874,6 +913,7 @@ const uint16_t g_scsi_parity_check_lookup[512] __attribute__((aligned(1024), sec
 
 } /* extern "C" */
 
+#ifdef MBED
 /* Logging from mbed */
 
 static class LogTarget: public mbed::FileHandle {
@@ -900,3 +940,4 @@ mbed::FileHandle *mbed::mbed_override_console(int fd)
 {
     return &g_LogTarget;
 }
+#endif

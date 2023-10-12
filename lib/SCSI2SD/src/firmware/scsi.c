@@ -27,6 +27,7 @@
 #include "bsp.h"
 #include "cdrom.h"
 //#include "debug.h"
+#include "network.h"
 #include "tape.h"
 #include "mo.h"
 #include "vendor.h"
@@ -73,7 +74,7 @@ void enter_BusFree()
     // Just waiting the clear delay is sufficient.
 	s2s_delay_ns(800);
 
-	s2s_ledOff();
+	//s2s_ledOff();
 	scsiDev.phase = BUS_FREE;
 	scsiDev.selFlag = 0;
 }
@@ -584,7 +585,8 @@ static void process_Command()
 	// write commands. Will fall-through to generic disk handling.
 	else if (((cfg->deviceType == S2S_CFG_OPTICAL) && scsiCDRomCommand()) ||
 		((cfg->deviceType == S2S_CFG_SEQUENTIAL) && scsiTapeCommand()) ||
-		((cfg->deviceType == S2S_CFG_MO) && scsiMOCommand()))
+		((cfg->deviceType == S2S_CFG_MO) && scsiMOCommand()) ||
+		((cfg->deviceType == S2S_CFG_NETWORK && scsiNetworkCommand())))
 	{
 		// Already handled.
 	}
@@ -689,7 +691,7 @@ static uint32_t resetUntil = 0;
 static void scsiReset()
 {
 	scsiDev.rstCount++;
-	s2s_ledOff();
+	//s2s_ledOff();
 
 	scsiPhyReset();
 
@@ -809,7 +811,7 @@ static void process_SelectionPhase()
 		// (Note: the initiator will be waiting the "Selection time-out delay"
 		// for our BSY response, which is actually a very generous 250ms)
 		*SCSI_CTRL_BSY = 1;
-		s2s_ledOn();
+		//s2s_ledOn();
 
 		scsiDev.target = target;
 
@@ -1411,4 +1413,3 @@ int scsiReconnect()
 	return reconnected;
 }
 */
-

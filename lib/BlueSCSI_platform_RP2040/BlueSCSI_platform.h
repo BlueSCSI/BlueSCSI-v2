@@ -112,6 +112,20 @@ bool platform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count
 extern const uint16_t g_scsi_parity_lookup[256];
 extern const uint16_t g_scsi_parity_check_lookup[512];
 
+// Network functions
+bool platform_network_supported();
+void platform_network_poll();
+int platform_network_init(char *mac);
+void platform_network_add_multicast_address(uint8_t *mac);
+bool platform_network_wifi_join(char *ssid, char *password);
+int platform_network_wifi_start_scan();
+int platform_network_wifi_scan_finished();
+void platform_network_wifi_dump_scan_list();
+int platform_network_wifi_rssi();
+char * platform_network_wifi_ssid();
+char * platform_network_wifi_bssid();
+int platform_network_wifi_channel();
+
 // Below are GPIO access definitions that are used from scsiPhy.cpp.
 
 // Write a single SCSI pin.

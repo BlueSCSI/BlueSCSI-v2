@@ -3,6 +3,7 @@
 #pragma once
 
 #include <hardware/gpio.h>
+#include <pico/cyw43_arch.h>
 
 // SCSI data input/output port.
 // The data bus uses external bidirectional buffer, with
@@ -53,8 +54,8 @@
 
 // Status LED pins
 #define LED_PIN      25
-#define LED_ON()     sio_hw->gpio_set = 1 << LED_PIN
-#define LED_OFF()    sio_hw->gpio_clr = 1 << LED_PIN
+#define LED_ON()     platform_network_supported() ? cyw43_gpio_set(&cyw43_state, 0, true) : sio_hw->gpio_set = 1 << LED_PIN
+#define LED_OFF()    platform_network_supported() ? cyw43_gpio_set(&cyw43_state, 0, false) : sio_hw->gpio_clr = 1 << LED_PIN
 
 // SDIO and SPI block
 #define SD_SPI_SCK   10
