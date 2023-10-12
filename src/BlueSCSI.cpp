@@ -195,6 +195,8 @@ const char * typeToChar(int deviceType)
     return "Removable";
   case S2S_CFG_ZIP100:
     return "ZIP100";
+  case S2S_CFG_TLS:
+    return "TLS";
   default:
     return "Unknown";
   }
@@ -287,6 +289,7 @@ bool findHDDImages()
       bool is_re = (tolower(name[0]) == 'r' && tolower(name[1]) == 'e');
       bool is_tp = (tolower(name[0]) == 't' && tolower(name[1]) == 'p');
       bool is_zp = (tolower(name[0]) == 'z' && tolower(name[1]) == 'p');
+      bool is_tls = (tolower(name[0]) == 't' && tolower(name[1]) == 'l' && tolower(name[2]) == 's');
 
       if(strcasecmp(name, "CLEAR_ROM") == 0)
       {
@@ -294,7 +297,7 @@ bool findHDDImages()
         continue;
       }
 
-      if (is_hd || is_cd || is_fd || is_mo || is_ne || is_re || is_tp || is_zp)
+      if (is_hd || is_cd || is_fd || is_mo || is_ne || is_re || is_tp || is_zp || is_tls)
       {
         // Check if the image should be loaded to microcontroller flash ROM drive
         bool is_romdrive = false;
@@ -320,27 +323,43 @@ bool findHDDImages()
 
         // Parse SCSI device ID
         int file_name_length = strlen(name);
-        if(file_name_length > 2) { // HD[N]
-          int tmp_id = name[HDIMG_ID_POS] - '0';
-
-          if(tmp_id > -1 && tmp_id < 8)
-          {
-            id = tmp_id; // If valid id, set it, else use default
-          }
-          else
-          {
-            id = usedDefaultId++;
-          }
-        }
-
-        // Parse SCSI LUN number
-        if(file_name_length > 3) // HD0[N]
+        if(is_tls) // TLS0[N]
         {
-          int tmp_lun = name[HDIMG_LUN_POS] - '0';
+          int tmp_id = name[3] - '0';
 
-          if(tmp_lun > -1 && tmp_lun < NUM_SCSILUN)
+            if(tmp_id > -1 && tmp_id < 8)
+            {
+              id = tmp_id; // If valid id, set it, else use default
+            }
+            else
+            {
+              id = usedDefaultId++;
+            }
+        }
+        else
+        {
+          if(file_name_length > 2) { // HD[N]
+            int tmp_id = name[HDIMG_ID_POS] - '0';
+
+            if(tmp_id > -1 && tmp_id < 8)
+            {
+              id = tmp_id; // If valid id, set it, else use default
+            }
+            else
+            {
+              id = usedDefaultId++;
+            }
+          }
+
+          // Parse SCSI LUN number
+          if(file_name_length > 3) // HD0[N]
           {
-            lun = tmp_lun; // If valid id, set it, else use default
+            int tmp_lun = name[HDIMG_LUN_POS] - '0';
+
+            if(tmp_lun > -1 && tmp_lun < NUM_SCSILUN)
+            {
+              lun = tmp_lun; // If valid id, set it, else use default
+            }
           }
         }
 
@@ -375,6 +394,7 @@ bool findHDDImages()
         if (is_re) type = S2S_CFG_REMOVEABLE;
         if (is_tp) type = S2S_CFG_SEQUENTIAL;
         if (is_zp) type = S2S_CFG_ZIP100;
+        if (is_tls) type = S2S_CFG_TLS;
 
         // Open the image file
         if (id < NUM_SCSIID && is_romdrive)
@@ -428,7 +448,7 @@ bool findHDDImages()
     {
       int capacity_kB = ((uint64_t)cfg->scsiSectors * cfg->bytesPerSector) / 1024;
 
-      if (cfg->deviceType == S2S_CFG_NETWORK)
+      if (cfg->deviceType == S2S_CFG_NETWORK || cfg->deviceType == S2S_CFG_TLS)
       {
         log("* ID: ", (int)(cfg->scsiId & S2S_CFG_TARGET_ID_BITS),
               ", Type: ", typeToChar((int)cfg->deviceType),
@@ -556,6 +576,10 @@ static void reinitSCSI()
       platform_network_wifi_join(scsiDev.boardCfg.wifiSSID, scsiDev.boardCfg.wifiPassword);
     }
   }
+#endif
+
+#ifdef BLUESCSI_TLS
+  platform_tls_init();
 #endif
 }
 
@@ -721,7 +745,7 @@ extern "C" void bluescsi_main_loop(void)
 #ifdef BLUESCSI_NETWORK
   platform_network_poll();
 #endif
-  
+
 #ifdef PLATFORM_HAS_INITIATOR_MODE
   if (unlikely(platform_is_initiator_mode_enabled()))
   {

@@ -20,6 +20,7 @@
 #ifdef ENABLE_AUDIO_OUTPUT
 #include "audio.h"
 #endif
+#include "tls.h"
 
 #ifndef __MBED__
 #include <Adafruit_TinyUSB.h>
@@ -366,6 +367,11 @@ void platform_disable_led(void)
         gpio_conf(LED_PIN, GPIO_FUNC_SIO, false,false, false, false, false);
     }
     log("Disabling status LED");
+}
+
+void platform_tls_init(void)
+{
+	scsiTLSInit();
 }
 
 /*****************************************/

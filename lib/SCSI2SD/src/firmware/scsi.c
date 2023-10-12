@@ -32,6 +32,7 @@
 #include "mo.h"
 #include "network.h"
 #include "tape.h"
+#include "tls.h"
 #include "vendor.h"
 
 #include <string.h>
@@ -627,8 +628,10 @@ static void process_Command()
 #ifdef BLUESCSI_NETWORK
                || ((cfg->deviceType == S2S_CFG_NETWORK && scsiNetworkCommand()))
 #endif
+#ifdef BLUESCSI_TLS
+	       || ((cfg->deviceType == S2S_CFG_TLS && scsiTLSCommand()))
+#endif
         )
-
 	{
 		// Already handled.
 	}

@@ -40,6 +40,10 @@ bool __not_in_flash_func(platform_network_supported)()
 	return __isPicoW;
 }
 
+extern "C" uint32_t __picoRand() {
+    return rp2040.hwrand32();
+}
+
 #ifdef BLUESCSI_NETWORK
 int platform_network_init(char *mac)
 {

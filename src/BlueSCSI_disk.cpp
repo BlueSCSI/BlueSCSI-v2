@@ -268,6 +268,7 @@ static void setDefaultDriveInfo(int target_idx)
     static const char *driveinfo_magopt[4]    = DRIVEINFO_MAGOPT;
     static const char *driveinfo_network[4]   = DRIVEINFO_NETWORK;
     static const char *driveinfo_tape[4]      = DRIVEINFO_TAPE;
+    static const char *driveinfo_tls[4]       = DRIVEINFO_TLS;
 
     static const char *apl_driveinfo_fixed[4]     = APPLE_DRIVEINFO_FIXED;
     static const char *apl_driveinfo_removable[4] = APPLE_DRIVEINFO_REMOVABLE;
@@ -294,6 +295,7 @@ static void setDefaultDriveInfo(int target_idx)
             case S2S_CFG_NETWORK:       driveinfo = apl_driveinfo_network; break;
             case S2S_CFG_SEQUENTIAL:    driveinfo = apl_driveinfo_tape; break;
             case S2S_CFG_ZIP100:        driveinfo = iomega_driveinfo_removeable; break;
+            case S2S_CFG_TLS:           driveinfo = driveinfo_tls; break;
             default:                    driveinfo = apl_driveinfo_fixed; break;
         }
     }
@@ -310,6 +312,7 @@ static void setDefaultDriveInfo(int target_idx)
             case S2S_CFG_NETWORK:       driveinfo = driveinfo_network; break;
             case S2S_CFG_SEQUENTIAL:    driveinfo = driveinfo_tape; break;
             case S2S_CFG_ZIP100:        driveinfo = iomega_driveinfo_removeable; break;
+            case S2S_CFG_TLS:           driveinfo = driveinfo_tls; break;
             default:                    driveinfo = driveinfo_fixed; break;
         }
     }
@@ -381,7 +384,7 @@ bool scsiDiskOpenHDDImage(const char *filename, int scsi_id, int scsi_lun, int b
         img.scsiId = scsi_id | S2S_CFG_TARGET_ENABLED;
         img.sdSectorStart = 0;
 
-        if (type != S2S_CFG_NETWORK)
+        if (type != S2S_CFG_NETWORK && type != S2S_CFG_TLS)
         {
             if (img.scsiSectors == 0)
             {
@@ -426,6 +429,11 @@ bool scsiDiskOpenHDDImage(const char *filename, int scsi_id, int scsi_lun, int b
             }
             log("---- Configuring as network based on image name");
             img.deviceType = S2S_CFG_NETWORK;
+        }
+        else if (type == S2S_CFG_TLS)
+        {
+            log("---- Configuring as TLS based on image name");
+            img.deviceType = S2S_CFG_TLS;
         }
         else if (type == S2S_CFG_REMOVEABLE)
         {
@@ -1316,7 +1324,7 @@ static void doReadCapacity()
     uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
     uint32_t capacity;
 
-    if (unlikely(scsiDev.target->cfg->deviceType == S2S_CFG_NETWORK))
+    if (unlikely(scsiDev.target->cfg->deviceType == S2S_CFG_NETWORK || scsiDev.target->cfg->deviceType == S2S_CFG_TLS))
     {
         capacity = 1;
     }

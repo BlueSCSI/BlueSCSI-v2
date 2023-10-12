@@ -37,8 +37,8 @@ extern "C" {
 #define AMIGASCSI_PATCH_24BYTE_BLOCKSIZE 	0xA8   // In this mode, data written is rounded up to the nearest 24-byte boundary
 #define AMIGASCSI_PATCH_SINGLEWRITE_ONLY 	0xA9   // In this mode, data written is always ONLY as one single write command
 
-#define NETWORK_PACKET_QUEUE_SIZE   20		// must be <= 255
-#define NETWORK_PACKET_MAX_SIZE     1520
+#define NETWORK_PACKET_QUEUE_SIZE			10		// must be <= 255
+#define NETWORK_PACKET_MAX_SIZE				1520
 
 struct __attribute__((packed)) wifi_network_entry {
 	char ssid[64];

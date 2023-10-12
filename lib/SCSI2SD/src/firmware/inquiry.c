@@ -211,6 +211,7 @@ void s2s_scsiInquiry()
 		case S2S_CFG_FLOPPY_14MB:
 		case S2S_CFG_REMOVEABLE:
 		case S2S_CFG_ZIP100:
+		case S2S_CFG_TLS:
 			scsiDev.data[1] |= 0x80; // Removable bit.
 			break;
 
@@ -302,6 +303,10 @@ uint8_t getDeviceTypeQualifier()
 		// processor device
 		return 0x03;
 		break;
+
+	case S2S_CFG_TLS:
+		// communications device
+		return 0x09;
 
 	default:
 		// Accept defaults for a fixed disk.

@@ -138,6 +138,8 @@ char * platform_network_wifi_ssid();
 char * platform_network_wifi_bssid();
 int platform_network_wifi_channel();
 
+void platform_tls_init();
+
 // Below are GPIO access definitions that are used from scsiPhy.cpp.
 
 // Write a single SCSI pin.
