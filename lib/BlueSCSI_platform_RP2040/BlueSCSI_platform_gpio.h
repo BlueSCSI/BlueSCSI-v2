@@ -83,6 +83,9 @@
 // Other pins
 #define SWO_PIN 16
 
+#define SCSI_ACCEL_SETPINS 0x801FF
+#define SCSI_ACCEL_SETPINS_PRE09A 0x201FF
+
 typedef struct __attribute__((packed))
 {
 	uint8_t OUT_IO;
@@ -104,4 +107,5 @@ typedef struct __attribute__((packed))
 	uint8_t IN_ACK;
 	uint8_t IN_ATN;
 
+	uint32_t SCSI_ACCEL_PINMASK;
 } SCSI_PINS;

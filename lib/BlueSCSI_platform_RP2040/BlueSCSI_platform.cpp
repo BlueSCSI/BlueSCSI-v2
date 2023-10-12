@@ -48,7 +48,9 @@ SCSI_PINS scsi_pins = {  // Default values, to be tweaked later as needed
     .IN_BSY = SCSI_IN_BSY,
     .IN_RST = SCSI_IN_RST,
     .IN_ACK = SCSI_IN_ACK,
-    .IN_ATN = SCSI_IN_ATN
+    .IN_ATN = SCSI_IN_ATN,
+
+    .SCSI_ACCEL_PINMASK = SCSI_ACCEL_SETPINS
 };
 
 #ifdef MBED
@@ -165,6 +167,7 @@ void platform_init()
 
         // Reset REQ to appropriate pin for older hardware
         scsi_pins.OUT_REQ = SCSI_OUT_REQ_BEFORE_2023_09a;
+        scsi_pins.SCSI_ACCEL_PINMASK = SCSI_ACCEL_SETPINS_PRE09A;
 
         // Initialize logging to SWO pin (UART0) 
         gpio_conf(SWO_PIN,        GPIO_FUNC_UART,false,false, true,  false, true);
