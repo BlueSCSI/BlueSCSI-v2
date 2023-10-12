@@ -3,7 +3,8 @@
 #include "BlueSCSI_platform.h"
 
 const char *g_log_firmwareversion = BLUESCSI_FW_VERSION " " __DATE__ " " __TIME__;
-bool g_log_debug = true;
+bool g_log_debug = false;
+bool g_test_mode = false;
 
 // This memory buffer can be read by debugger and is also saved to log.txt
 #define LOGBUFMASK (LOGBUFSIZE - 1)

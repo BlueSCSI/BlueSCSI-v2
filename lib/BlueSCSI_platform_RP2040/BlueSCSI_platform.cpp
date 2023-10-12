@@ -20,14 +20,38 @@
 #endif
 #include <pico/multicore.h>
 #include "scsi_accel_rp2040.h"
+#include "hardware/i2c.h"
 
 extern "C" {
 #include <pico/cyw43_arch.h>
 
 const char *g_platform_name = PLATFORM_NAME;
 static bool g_scsi_initiator = false;
+static bool g_supports_initiator = false;
 static uint32_t g_flash_chip_size = 0;
 static bool g_uart_initialized = false;
+SCSI_PINS scsi_pins = {  // Default values, to be tweaked later as needed
+    .OUT_IO = SCSI_OUT_IO,
+    .OUT_CD = SCSI_OUT_CD,
+    .OUT_REQ = SCSI_OUT_REQ,
+    .OUT_SEL = SCSI_OUT_SEL,
+    .OUT_MSG = SCSI_OUT_MSG,
+    .OUT_RST = SCSI_OUT_RST,
+    .OUT_BSY = SCSI_OUT_BSY,
+    .OUT_ACK = SCSI_OUT_ACK,
+
+    .IN_IO = SCSI_IN_IO,
+    .IN_CD = SCSI_IN_CD,
+    .IN_MSG = SCSI_IN_MSG,
+    .IN_REQ = SCSI_IN_REQ,
+    .IN_SEL = SCSI_IN_SEL,
+    .IN_BSY = SCSI_IN_BSY,
+    .IN_RST = SCSI_IN_RST,
+    .IN_ACK = SCSI_IN_ACK,
+    .IN_ATN = SCSI_IN_ATN,
+
+    .SCSI_ACCEL_PINMASK = SCSI_ACCEL_SETPINS
+};
 
 #ifdef MBED
 void mbed_error_hook(const mbed_error_ctx * error_context);
@@ -93,46 +117,69 @@ void platform_init()
     // Make sure second core is stopped
     multicore_reset_core1();
 
+    // Default debug logging to disabled
+    g_log_debug = false;
+
+    // Report platform and firmware version
+    log("Platform: ", g_platform_name);
+    log("FW Version: ", g_log_firmwareversion);
+
     /* First configure the pins that affect external buffer directions.
      * RP2040 defaults to pulldowns, while these pins have external pull-ups.
      */
     //        pin             function       pup   pdown  out    state fast
     gpio_conf(SCSI_DATA_DIR,  GPIO_FUNC_SIO, false,false, true,  false, true);
-    //gpio_conf(SCSI_OUT_RST,   GPIO_FUNC_SIO, false,false, true,  true, true);
-    gpio_conf(SCSI_OUT_BSY,   GPIO_FUNC_SIO, false,false, true,  true, false);   
+    
+    gpio_conf(scsi_pins.OUT_BSY,   GPIO_FUNC_SIO, false,false, true,  true, false);   
     //gpio_set_drive_strength(SCSI_OUT_BSY, GPIO_DRIVE_STRENGTH_8MA);
-    gpio_conf(SCSI_OUT_SEL,   GPIO_FUNC_SIO, false,false, true,  true, false);
+    gpio_conf(scsi_pins.OUT_SEL,   GPIO_FUNC_SIO, true, false, true,  true, false);
+    gpio_conf(scsi_pins.OUT_ACK,   GPIO_FUNC_SIO, true, false, true,  true, false);
+    gpio_conf(scsi_pins.OUT_IO,    GPIO_FUNC_SIO, true, false, true,  true, false);
+    gpio_conf(scsi_pins.OUT_REQ,   GPIO_FUNC_SIO, true, false, true,  true, false);
 
-    /* Check dip switch settings */
-    // Option switches: S1 is iATN, S2 is iACK
-    gpio_conf(SCSI_IN_ACK,    GPIO_FUNC_SIO, false, false, false, false, false);
-    gpio_conf(SCSI_IN_ATN,    GPIO_FUNC_SIO, false, false, false, false, false);
-    delay(10); /// Settle time
-    (void)!gpio_get(SCSI_IN_ATN); // S1
-    (void)!gpio_get(SCSI_IN_ACK); // S2
+    // Determine whether I2C is supported
+    // If G16 and G17 are high, this is the 2023_09a revision or later desktop board
+    gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_I2C, false, false, false,  false, true);
+    gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_I2C, false, false, false,  false, true);
+    delay(10);
+    bool d50_2023_09a = gpio_get(GPIO_I2C_SCL) && gpio_get(GPIO_I2C_SDA);
 
-    /* Initialize logging to SWO pin (UART0) */
-    gpio_conf(SWO_PIN,        GPIO_FUNC_UART,false,false, true,  false, true);
-    uart_init(uart0, 115200);
-    g_uart_initialized = true;
+    if (d50_2023_09a) {
+        log("I2C Supported");
+        g_supports_initiator = true;
+        gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_I2C, true, false, false,  true, true);
+        gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_I2C, true, false, false,  true, true);
+
+        // Use Pico SDK methods
+        gpio_set_function(GPIO_I2C_SCL, GPIO_FUNC_I2C);
+        gpio_set_function(GPIO_I2C_SDA, GPIO_FUNC_I2C);
+        // gpio_pull_up(GPIO_I2C_SCL);  // TODO necessary?
+        // gpio_pull_up(GPIO_I2C_SDA);
+    } else {
+        /* Check option switch settings */
+        // Option switches: S1 is iATN, S2 is iACK
+        gpio_conf(scsi_pins.IN_ACK,    GPIO_FUNC_SIO, true, false, false, false, false);
+        gpio_conf(scsi_pins.IN_ATN,    GPIO_FUNC_SIO, false, false, false, false, false);
+        delay(10); /// Settle time
+        // Check option switches
+        bool optionS1 = !gpio_get(scsi_pins.IN_ATN);
+        bool optionS2 = !gpio_get(scsi_pins.IN_ACK);
+
+        // Reset REQ to appropriate pin for older hardware
+        scsi_pins.OUT_REQ = SCSI_OUT_REQ_BEFORE_2023_09a;
+        scsi_pins.SCSI_ACCEL_PINMASK = SCSI_ACCEL_SETPINS_PRE09A;
+
+        // Initialize logging to SWO pin (UART0) 
+        gpio_conf(SWO_PIN,        GPIO_FUNC_UART,false,false, true,  false, true);
+        uart_init(uart0, 1000000);
+        g_uart_initialized = true;
     #ifdef MBED
-    mbed_set_error_hook(mbed_error_hook);
+        mbed_set_error_hook(mbed_error_hook);
     #endif
+    }
+    // TODO Disable I2C if debug logging is enabled later?  Switch to Serial output mode?
 
     //log("DIP switch settings: debug log ", (int)dbglog, ", termination ", (int)termination);
-    log("Platform: ", g_platform_name);
-    log("FW Version: ", g_log_firmwareversion);
-
-    g_log_debug = false; // Debug logging can be handled with a debug firmware, very easy to reflash
-
-    // if (termination)  // Termination is handled by hardware jumper
-    // {
-    //     log("SCSI termination is enabled");
-    // }
-    // else
-    // {
-    //     log("NOTE: SCSI termination is disabled");
-    // }
 
 #ifdef ENABLE_AUDIO_OUTPUT
     log("SP/DIF audio to expansion header enabled");
@@ -179,57 +226,10 @@ void platform_init()
 #endif
 }
 
-static bool read_initiator_dip_switch()
-{
-    /* Revision 2022d hardware has problems reading initiator DIP switch setting.
-     * The 74LVT245 hold current is keeping the GPIO_ACK state too strongly.
-     * Detect this condition by toggling the pin up and down and seeing if it sticks.
-     */
-
-    // Strong output high, then pulldown
-    //        pin             function       pup   pdown   out    state  fast
-    //gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, false, false, true,  true,  false);
-    //gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, false, true,  false, true,  false);
-    //delay(1);
-    //bool initiator_state1 = gpio_get(DIP_INITIATOR);
-
-    // Strong output low, then pullup
-    //        pin             function       pup   pdown   out    state  fast
-    //gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, false, false, true,  false, false);
-    //gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, true,  false, false, false, false);
-    //delay(1);
-    //bool initiator_state2 = gpio_get(DIP_INITIATOR);
-
-    //if (initiator_state1 == initiator_state2)
-    //{
-        // Ok, was able to read the state directly
-        //return !initiator_state1;
-    //}
-
-    // Enable OUT_BSY for a short time.
-    // If in target mode, this will force GPIO_ACK high.
-    gpio_put(SCSI_OUT_BSY, 0);
-    delay_100ns();
-    gpio_put(SCSI_OUT_BSY, 1);
-
-    //return !gpio_get(DIP_INITIATOR);
-    return false;
-}
 
 // late_init() only runs in main application, SCSI not needed in bootloader
 void platform_late_init()
 {
-    if (read_initiator_dip_switch())
-    {
-        g_scsi_initiator = true;
-        log("SCSI initiator mode selected by DIP switch, expecting SCSI disks on the bus");
-    }
-    else
-    {
-        g_scsi_initiator = false;
-        // log("SCSI target/disk mode selected by DIP switch, acting as a SCSI disk");
-    }
-
     /* Initialize SCSI pins to required modes.
      * SCSI pins should be inactive / input at this point.
      */
@@ -252,31 +252,31 @@ void platform_late_init()
         // Act as SCSI device / target
 
         // SCSI control outputs
-        //        pin             function       pup   pdown  out    state fast
-        gpio_conf(SCSI_OUT_IO,    GPIO_FUNC_SIO, false,false, true,  true, true);
-        gpio_conf(SCSI_OUT_MSG,   GPIO_FUNC_SIO, false,false, true,  true, true);
+        //        pin                   function       pup   pdown  out    state fast
+        gpio_conf(scsi_pins.OUT_IO,    GPIO_FUNC_SIO, false,false, true,  true, true);
+        gpio_conf(scsi_pins.OUT_MSG,   GPIO_FUNC_SIO, false,false, true,  true, true);
 
         // REQ pin is switched between PIO and SIO, pull-up makes sure no glitches
-        gpio_conf(SCSI_OUT_REQ,   GPIO_FUNC_SIO, true ,false, true,  true, true);
+        gpio_conf(scsi_pins.OUT_REQ,   GPIO_FUNC_SIO, true ,false, true,  true, true);
 
         // Shared pins are changed to input / output depending on communication phase
-        gpio_conf(SCSI_IN_SEL,    GPIO_FUNC_SIO, true, false, false, true, true);
-        if (SCSI_OUT_CD != SCSI_IN_SEL)
+        gpio_conf(scsi_pins.IN_SEL,    GPIO_FUNC_SIO, true, false, false, true, true);
+        if (scsi_pins.OUT_CD != scsi_pins.IN_SEL)
         {
-            gpio_conf(SCSI_OUT_CD,    GPIO_FUNC_SIO, false,false, true,  true, true);
+            gpio_conf(scsi_pins.OUT_CD,    GPIO_FUNC_SIO, false,false, true,  true, true);
         }
 
-        gpio_conf(SCSI_IN_BSY,    GPIO_FUNC_SIO, true, false, false, true, true);
-        if (SCSI_OUT_MSG != SCSI_IN_BSY)
+        gpio_conf(scsi_pins.IN_BSY,    GPIO_FUNC_SIO, true, false, false, true, true);
+        if (scsi_pins.OUT_MSG != scsi_pins.IN_BSY)
         {
-            gpio_conf(SCSI_OUT_MSG,    GPIO_FUNC_SIO, false,false, true,  true, true);
+            gpio_conf(scsi_pins.OUT_MSG,    GPIO_FUNC_SIO, false,false, true,  true, true);
         }
 
         // SCSI control inputs
-        //        pin             function       pup   pdown  out    state fast
-        gpio_conf(SCSI_IN_ACK,    GPIO_FUNC_SIO, false, false, false, true, false);
-        gpio_conf(SCSI_IN_ATN,    GPIO_FUNC_SIO, false, false, false, true, false);
-        gpio_conf(SCSI_IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
+        //        pin                   function       pup   pdown  out    state fast
+        gpio_conf(scsi_pins.IN_ACK,    GPIO_FUNC_SIO, true, false, false, true, false);
+        gpio_conf(scsi_pins.IN_ATN,    GPIO_FUNC_SIO, false, false, false, true, false);
+        gpio_conf(scsi_pins.IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
 
 #ifdef ENABLE_AUDIO_OUTPUT
         // one-time control setup for DMA channels and second core
@@ -285,18 +285,27 @@ void platform_late_init()
     }
     else
     {
-        // Act as SCSI initiator
+        // Act as SCSI Initiator
 
-        //        pin             function       pup   pdown  out    state fast
-        gpio_conf(SCSI_IN_IO,     GPIO_FUNC_SIO, true ,false, false, true, false);
-        gpio_conf(SCSI_IN_MSG,    GPIO_FUNC_SIO, true ,false, false, true, false);
-        gpio_conf(SCSI_IN_CD,     GPIO_FUNC_SIO, true ,false, false, true, false);
-        gpio_conf(SCSI_IN_REQ,    GPIO_FUNC_SIO, true ,false, false, true, false);
-        gpio_conf(SCSI_IN_BSY,    GPIO_FUNC_SIO, true, false, false, true, false);
-        gpio_conf(SCSI_IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
-        gpio_conf(SCSI_OUT_SEL,   GPIO_FUNC_SIO, false,false, true,  true, true);
-        gpio_conf(SCSI_OUT_ACK,   GPIO_FUNC_SIO, false,false, true,  true, true);
-        gpio_conf(SCSI_OUT_ATN,   GPIO_FUNC_SIO, false,false, true,  true, true);
+        //        pin                   function       pup   pdown  out    state fast
+        gpio_conf(scsi_pins.IN_IO,     GPIO_FUNC_SIO, true ,false, false, true, false);
+        gpio_conf(scsi_pins.IN_MSG,    GPIO_FUNC_SIO, true ,false, false, true, false);
+        gpio_conf(scsi_pins.IN_CD,     GPIO_FUNC_SIO, true ,false, false, true, false);
+        gpio_conf(scsi_pins.IN_REQ,    GPIO_FUNC_SIO, true ,false, false, true, false);
+        gpio_conf(scsi_pins.IN_BSY,    GPIO_FUNC_SIO, true, false, false, true, false);
+        gpio_conf(scsi_pins.IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
+        gpio_conf(scsi_pins.OUT_SEL,   GPIO_FUNC_SIO, false,false, true,  true, true);
+        gpio_conf(scsi_pins.OUT_ACK,   GPIO_FUNC_SIO, true,false, true,  true, true);
+        //gpio_conf(SCSI_OUT_ATN,   GPIO_FUNC_SIO, false,false, true,  true, true);  // ATN output is unused
+    }
+}
+
+void platform_enable_initiator_mode() {
+    if (g_supports_initiator) {
+        g_scsi_initiator = true;
+        log("SCSI Initiator Mode.  Will scan the bus for drives to image.");
+    } else {
+        log("SCSI Initiator Mode requested, but not supported.");
     }
 }
 
@@ -621,7 +630,9 @@ void platform_poll()
 #endif
 }
 
-uint8_t platform_get_buttons()
+uint8_t platform_get_buttons() {return 0;}
+// TODO figure this out
+/*uint8_t platform_get_buttons()
 {
     uint8_t buttons = 0;
 
@@ -649,6 +660,11 @@ uint8_t platform_get_buttons()
     }
 
     return buttons_debounced;
+}*/
+
+// Used by setup methods to determine which hardware version is in use
+bool is202309a() {
+    return scsi_pins.OUT_REQ == SCSI_OUT_REQ;
 }
 
 /*****************************************/

@@ -762,20 +762,20 @@ static void scsidma_config_gpio()
         iobank0_hw->io[SCSI_IO_DB6].ctrl  = GPIO_FUNC_SIO;
         iobank0_hw->io[SCSI_IO_DB7].ctrl  = GPIO_FUNC_SIO;
         iobank0_hw->io[SCSI_IO_DBP].ctrl  = GPIO_FUNC_SIO;
-        iobank0_hw->io[SCSI_OUT_REQ].ctrl = GPIO_FUNC_SIO;
+        iobank0_hw->io[scsi_pins.OUT_REQ].ctrl = GPIO_FUNC_SIO;
     }
     else if (g_scsi_dma_state == SCSIDMA_WRITE)
     {
         // Make sure the initial state of all pins is high and output
-        pio_sm_set_pins(SCSI_DMA_PIO, SCSI_DATA_SM, 0x201FF);  // 3FF
+        pio_sm_set_pins(SCSI_DMA_PIO, SCSI_DATA_SM, scsi_pins.SCSI_ACCEL_PINMASK);
         // Binary of 0x3FF is is 0 0 1 1 11111111
         //                       ? A R P DBP
         // A = ACK, R = REQ, DBP are the data pins
         // REQ internal state needs to be set 'high'
-        // 100000000111111111
+        // 100000010000000000111111111
         // Probably right to left here, so 0 - 9 are set 'high' and 10/11 are set 'low'
         pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, 0, 9, true);
-        pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, 17, 1, true);
+        pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, scsi_pins.OUT_REQ, 1, true);
 
         iobank0_hw->io[SCSI_IO_DB0].ctrl  = GPIO_FUNC_PIO0;
         iobank0_hw->io[SCSI_IO_DB1].ctrl  = GPIO_FUNC_PIO0;
@@ -786,7 +786,7 @@ static void scsidma_config_gpio()
         iobank0_hw->io[SCSI_IO_DB6].ctrl  = GPIO_FUNC_PIO0;
         iobank0_hw->io[SCSI_IO_DB7].ctrl  = GPIO_FUNC_PIO0;
         iobank0_hw->io[SCSI_IO_DBP].ctrl  = GPIO_FUNC_PIO0;
-        iobank0_hw->io[SCSI_OUT_REQ].ctrl = GPIO_FUNC_PIO0;
+        iobank0_hw->io[scsi_pins.OUT_REQ].ctrl = GPIO_FUNC_PIO0;
     }
     else if (g_scsi_dma_state == SCSIDMA_READ)
     {
@@ -794,16 +794,16 @@ static void scsidma_config_gpio()
         {
             // Asynchronous read
             // Data bus as input, REQ pin as output
-            pio_sm_set_pins(SCSI_DMA_PIO, SCSI_DATA_SM, 0x201FF);
+            pio_sm_set_pins(SCSI_DMA_PIO, SCSI_DATA_SM, scsi_pins.SCSI_ACCEL_PINMASK);
             pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, 0, 9, false);
-            pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, 17, 1, true);
+            pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, scsi_pins.OUT_REQ, 1, true);
         }
         else
         {
             // Synchronous read, REQ pin is written by SYNC_SM
-            pio_sm_set_pins(SCSI_DMA_PIO, SCSI_SYNC_SM, 0x201FF);
+            pio_sm_set_pins(SCSI_DMA_PIO, SCSI_SYNC_SM, scsi_pins.SCSI_ACCEL_PINMASK);
             pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, 0, 9, false);
-            pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_SYNC_SM, 17, 1, true);
+            pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_SYNC_SM, scsi_pins.OUT_REQ, 1, true);
         }
 
         iobank0_hw->io[SCSI_IO_DB0].ctrl  = GPIO_FUNC_SIO;
@@ -815,7 +815,7 @@ static void scsidma_config_gpio()
         iobank0_hw->io[SCSI_IO_DB6].ctrl  = GPIO_FUNC_SIO;
         iobank0_hw->io[SCSI_IO_DB7].ctrl  = GPIO_FUNC_SIO;
         iobank0_hw->io[SCSI_IO_DBP].ctrl  = GPIO_FUNC_SIO;
-        iobank0_hw->io[SCSI_OUT_REQ].ctrl = GPIO_FUNC_PIO0;
+        iobank0_hw->io[scsi_pins.OUT_REQ].ctrl = GPIO_FUNC_PIO0;
     }
 }
 
@@ -870,7 +870,7 @@ void scsi_accel_rp2040_init()
     g_scsi_dma.pio_offset_async_write = pio_add_program(SCSI_DMA_PIO, &scsi_accel_async_write_program);
     g_scsi_dma.pio_cfg_async_write = scsi_accel_async_write_program_get_default_config(g_scsi_dma.pio_offset_async_write);
     sm_config_set_out_pins(&g_scsi_dma.pio_cfg_async_write, SCSI_IO_DB0, 9);
-    sm_config_set_sideset_pins(&g_scsi_dma.pio_cfg_async_write, SCSI_OUT_REQ);
+    sm_config_set_sideset_pins(&g_scsi_dma.pio_cfg_async_write, scsi_pins.OUT_REQ);
     sm_config_set_fifo_join(&g_scsi_dma.pio_cfg_async_write, PIO_FIFO_JOIN_TX);
     sm_config_set_out_shift(&g_scsi_dma.pio_cfg_async_write, true, false, 32);
 
@@ -883,7 +883,7 @@ void scsi_accel_rp2040_init()
     g_scsi_dma.pio_offset_sync_write = pio_add_program(SCSI_DMA_PIO, &scsi_sync_write_program);
     g_scsi_dma.pio_cfg_sync_write = scsi_sync_write_program_get_default_config(g_scsi_dma.pio_offset_sync_write);
     sm_config_set_out_pins(&g_scsi_dma.pio_cfg_sync_write, SCSI_IO_DB0, 9);
-    sm_config_set_sideset_pins(&g_scsi_dma.pio_cfg_sync_write, SCSI_OUT_REQ);
+    sm_config_set_sideset_pins(&g_scsi_dma.pio_cfg_sync_write, scsi_pins.OUT_REQ);
     sm_config_set_out_shift(&g_scsi_dma.pio_cfg_sync_write, true, true, 32);
     sm_config_set_in_shift(&g_scsi_dma.pio_cfg_sync_write, true, true, 1);
 
@@ -891,14 +891,14 @@ void scsi_accel_rp2040_init()
     g_scsi_dma.pio_offset_read = pio_add_program(SCSI_DMA_PIO, &scsi_accel_read_program);
     g_scsi_dma.pio_cfg_read = scsi_accel_read_program_get_default_config(g_scsi_dma.pio_offset_read);
     sm_config_set_in_pins(&g_scsi_dma.pio_cfg_read, SCSI_IO_DB0);
-    sm_config_set_sideset_pins(&g_scsi_dma.pio_cfg_read, SCSI_OUT_REQ);
+    sm_config_set_sideset_pins(&g_scsi_dma.pio_cfg_read, scsi_pins.OUT_REQ);
     sm_config_set_out_shift(&g_scsi_dma.pio_cfg_read, true, false, 32);
     sm_config_set_in_shift(&g_scsi_dma.pio_cfg_read, true, true, 32);
 
     // Synchronous SCSI read pacer
     g_scsi_dma.pio_offset_sync_read_pacer = pio_add_program(SCSI_DMA_PIO, &scsi_sync_read_pacer_program);
     g_scsi_dma.pio_cfg_sync_read_pacer = scsi_sync_read_pacer_program_get_default_config(g_scsi_dma.pio_offset_sync_read_pacer);
-    sm_config_set_sideset_pins(&g_scsi_dma.pio_cfg_sync_read_pacer, SCSI_OUT_REQ);
+    sm_config_set_sideset_pins(&g_scsi_dma.pio_cfg_sync_read_pacer, scsi_pins.OUT_REQ);
 
     // Read parity check
     g_scsi_dma.pio_offset_read_parity = pio_add_program(SCSI_DMA_PIO, &scsi_read_parity_program);

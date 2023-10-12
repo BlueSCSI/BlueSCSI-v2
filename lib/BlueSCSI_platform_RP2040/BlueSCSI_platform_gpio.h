@@ -22,35 +22,37 @@
 
 // Data direction control
 #define SCSI_DATA_DIR 9
+#define SCSI_OUT_DIRECTIONPIN 9
 
 // SCSI control lines
-#define SCSI_OUT_IO   22  // Used to be 16
-#define SCSI_OUT_REQ  17
+#define SCSI_OUT_IO   22
+#define SCSI_OUT_REQ  19
+#define SCSI_OUT_REQ_BEFORE_2023_09a  17
 
-#define SCSI_OUT_CD   18  // TODO hardware design
+#define SCSI_OUT_CD   18
 #define SCSI_IN_SEL  18
 
-#define SCSI_OUT_SEL  19
+#define SCSI_OUT_SEL  21
 
 #define SCSI_OUT_MSG  20
-#define SCSI_IN_BSY  20  // TODO hardware design
+#define SCSI_IN_BSY  20
 
 #define SCSI_IN_RST  21
-#define SCSI_OUT_RST  22  // Same as IO currently, not initialized or used
+#define SCSI_OUT_RST  22  // No RST pin, manual or expander only
 
 #define SCSI_IN_ACK  26
 #define SCSI_OUT_BSY  27
 #define SCSI_IN_ATN  28
 
 // Status line outputs for initiator mode
-#define SCSI_OUT_ACK  10
-#define SCSI_OUT_ATN  29
+#define SCSI_OUT_ACK  26
+//#define SCSI_OUT_ATN  29  // ATN output is unused
 
 // Status line inputs for initiator mode
-#define SCSI_IN_IO    12
-#define SCSI_IN_CD    11
-#define SCSI_IN_MSG   13
-#define SCSI_IN_REQ   9
+#define SCSI_IN_IO    22
+#define SCSI_IN_CD    18
+#define SCSI_IN_MSG   28
+#define SCSI_IN_REQ   19
 
 // Status LED pins
 #define LED_PIN      25
@@ -75,13 +77,35 @@
 #define SD_SPI_CS    15
 
 // IO expander I2C
-// #define GPIO_I2C_SDA 14
-// #define GPIO_I2C_SCL 15
-
-// DIP switch pins
-// #define DIP_INITIATOR 10
-// #define DIP_DBGLOG 28
-// #define DIP_TERM 9
+#define GPIO_I2C_SDA 16
+#define GPIO_I2C_SCL 17
 
 // Other pins
 #define SWO_PIN 16
+
+#define SCSI_ACCEL_SETPINS 0x801FF
+#define SCSI_ACCEL_SETPINS_PRE09A 0x201FF
+
+typedef struct __attribute__((packed))
+{
+	uint8_t OUT_IO;
+	uint8_t OUT_CD;
+	uint8_t OUT_REQ;
+	uint8_t OUT_SEL;
+	uint8_t OUT_MSG;
+	uint8_t OUT_RST;
+	uint8_t OUT_BSY;
+	uint8_t OUT_ACK;
+
+	uint8_t IN_IO;
+	uint8_t IN_CD;
+	uint8_t IN_MSG;
+	uint8_t IN_REQ;
+	uint8_t IN_SEL;
+	uint8_t IN_BSY;
+	uint8_t IN_RST;
+	uint8_t IN_ACK;
+	uint8_t IN_ATN;
+
+	uint32_t SCSI_ACCEL_PINMASK;
+} SCSI_PINS;

@@ -121,6 +121,8 @@ void delay_with_poll(uint32_t ms)
 // High level logic of the initiator mode
 void scsiInitiatorMainLoop()
 {
+    SCSI_RELEASE_OUTPUTS();
+    SCSI_ENABLE_INITIATOR();
     if (g_scsiHostPhyReset)
     {
         log("Executing BUS RESET after aborted command");
@@ -155,29 +157,29 @@ void scsiInitiatorMainLoop()
                 scsiInquiry(g_initiator_state.target_id, inquiry_data);
             LED_OFF();
 
+            uint64_t total_bytes = 0;
             if (readcapok)
             {
-                log("SCSI id ", g_initiator_state.target_id,
+                log("SCSI ID ", g_initiator_state.target_id,
                     " capacity ", (int)g_initiator_state.sectorcount,
                     " sectors x ", (int)g_initiator_state.sectorsize, " bytes");
 
                 g_initiator_state.sectorcount_all = g_initiator_state.sectorcount;
 
-                uint64_t total_bytes = (uint64_t)g_initiator_state.sectorcount * g_initiator_state.sectorsize;
+                total_bytes = (uint64_t)g_initiator_state.sectorcount * g_initiator_state.sectorsize;
                 log("Drive total size is ", (int)(total_bytes / (1024 * 1024)), " MiB");
                 if (total_bytes >= 0xFFFFFFFF && SD.fatType() != FAT_TYPE_EXFAT)
                 {
                     // Note: the FAT32 limit is 4 GiB - 1 byte
                     log("Image files equal or larger than 4 GiB are only possible on exFAT filesystem");
-                    log("Please reformat the SD card with exFAT format to image this drive fully");
-
-                    g_initiator_state.sectorcount = (uint32_t)0xFFFFFFFF / g_initiator_state.sectorsize;
-                    log("Will image first 4 GiB - 1 = ", (int)g_initiator_state.sectorcount, " sectors");
+                    log("Please reformat the SD card with exFAT format to image this drive.");
+                    g_initiator_state.sectorsize = 0;
+                    g_initiator_state.sectorcount = g_initiator_state.sectorcount_all = 0;
                 }
             }
             else if (startstopok)
             {
-                log("SCSI id ", g_initiator_state.target_id, " responds but ReadCapacity command failed");
+                log("SCSI ID ", g_initiator_state.target_id, " responds but ReadCapacity command failed");
                 log("Possibly SCSI-1 drive? Attempting to read up to 1 GB.");
                 g_initiator_state.sectorsize = 512;
                 g_initiator_state.sectorcount = g_initiator_state.sectorcount_all = 2097152;
@@ -185,7 +187,7 @@ void scsiInitiatorMainLoop()
             }
             else
             {
-                debuglog("Failed to connect to SCSI id ", g_initiator_state.target_id);
+                debuglog("No response from SCSI ID ", g_initiator_state.target_id);
                 g_initiator_state.sectorsize = 0;
                 g_initiator_state.sectorcount = g_initiator_state.sectorcount_all = 0;
             }
@@ -202,10 +204,27 @@ void scsiInitiatorMainLoop()
             if (g_initiator_state.sectorcount > 0)
             {
                 char filename[32] = {0};
+                int lun = 0;
+
                 strncpy(filename, filename_format, sizeof(filename) - 1);
                 filename[2] += g_initiator_state.target_id;
 
-                SD.remove(filename);
+                uint64_t sd_card_free_bytes = (uint64_t)SD.vol()->freeClusterCount() * SD.vol()->bytesPerCluster();
+                if(sd_card_free_bytes < total_bytes)
+                {
+                    log("SD Card only has ", (int)(sd_card_free_bytes / (1024 * 1024)), " MiB - not enough free space to image this drive!");
+                    g_initiator_state.imaging = false;
+                    return;
+                }
+
+                while(SD.exists(filename))
+                {
+                    filename[3] = lun++ + '0';
+                }
+                if(lun != 0)
+                {
+                    log(filename_format, " already exists, using ", filename);
+                }
                 g_initiator_state.target_file = SD.open(filename, O_RDWR | O_CREAT | O_TRUNC);
                 if (!g_initiator_state.target_file.isOpen())
                 {
@@ -440,7 +459,7 @@ bool scsiRequestSense(int target_id, uint8_t *sense_key)
                                          response, sizeof(response),
                                          NULL, 0);
 
-    debuglog("RequestSense response: ", bytearray(response, 18));
+    log("RequestSense response: ", bytearray(response, 18));
 
     *sense_key = response[2];
     return status == 0;
@@ -449,10 +468,14 @@ bool scsiRequestSense(int target_id, uint8_t *sense_key)
 // Execute UNIT START STOP command to load/unload media
 bool scsiStartStopUnit(int target_id, bool start)
 {
-    uint8_t command[6] = {0x1B, 0, 0, 0, 0, 0};
+    uint8_t command[6] = {0x1B, 0x1, 0, 0, 0, 0};
     uint8_t response[4] = {0};
 
-    if (start) command[4] |= 1;
+    if (start)
+    {
+        command[4] |= 1; // Start
+        command[1] = 0;  // Immediate
+    }
 
     int status = scsiInitiatorRunCommand(target_id,
                                          command, sizeof(command),

@@ -496,6 +496,10 @@ static void reinitSCSI()
   {
     g_log_debug = true;
   }
+  if (ini_getbool("SCSI", "TestMode", 0, CONFIGFILE))
+  {
+    g_test_mode = true;
+  }
 
 #ifdef PLATFORM_HAS_INITIATOR_MODE
   if (platform_is_initiator_mode_enabled())
@@ -550,7 +554,6 @@ extern "C" void bluescsi_setup(void)
   pio_clear_instruction_memory(pio0);
   pio_clear_instruction_memory(pio1);
   platform_init();
-  platform_late_init();
 
   g_sdcard_present = mountSDCard();
 
@@ -581,6 +584,11 @@ extern "C" void bluescsi_setup(void)
 
   if (g_sdcard_present)
   {
+    platform_late_init();
+    if (ini_getbool("SCSI", "InitiatorMode", false, CONFIGFILE))
+    {
+      platform_enable_initiator_mode();
+    }
     if (SD.clusterCount() == 0)
     {
       log("SD card without filesystem!");
@@ -607,8 +615,58 @@ extern "C" void bluescsi_setup(void)
   LED_OFF();
 }
 
+void bluescsi_test_loop(void) {
+  while(g_test_mode) {
+    // Initiator Mode Pin Test First (BSY not asserted)
+    SCSI_ENABLE_INITIATOR();
+    SCSI_OUT(SEL, 1);
+    delay(500);
+    SCSI_OUT(SEL, 0);
+    SCSI_OUT(ACK, 1);
+    delay(500);
+    SCSI_OUT(ACK, 0);
+    delay(500);
+    // ATN not tested here, there's no ATN output
+    SCSI_RELEASE_INITIATOR();
+
+    delay(1000);
+    // Switch to target mode with BSY_OUT
+    SCSI_OUT(BSY, 1);
+    SCSI_ENABLE_CONTROL_OUT();
+    delay(500);
+    SCSI_OUT(IO, 1);
+    delay(500);
+    SCSI_OUT(IO, 0);
+    SCSI_OUT(REQ, 1);
+    delay(500);
+    SCSI_OUT(REQ, 0);
+    SCSI_OUT(CD, 1);
+    delay(500);
+    SCSI_OUT(CD, 0);
+    SCSI_OUT(SEL, 1);
+    delay(500);
+    SCSI_OUT(SEL, 0);
+    SCSI_OUT(MSG, 1);
+    delay(500);
+    SCSI_OUT(MSG, 0);
+    SCSI_OUT(ACK, 1);
+    delay(500);
+    SCSI_OUT(ACK, 0);
+    // SCSI_OUT(ATN, 1);
+    // delay(500);
+    // SCSI_OUT(ATN, 0);
+    delay(500);
+    SCSI_OUT(BSY, 0);
+    SCSI_RELEASE_OUTPUTS();
+  }
+}
+
 extern "C" void bluescsi_main_loop(void)
 {
+  if (unlikely(g_test_mode)) {
+    bluescsi_test_loop();
+  }
+
   static uint32_t sd_card_check_time = 0;
   static uint32_t last_request_time = 0;
 

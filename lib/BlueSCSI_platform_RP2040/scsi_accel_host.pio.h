@@ -19,10 +19,10 @@ static const uint16_t scsi_host_async_read_program_instructions[] = {
             //     .wrap_target
     0x90a0, //  0: pull   block           side 1     
     0xb027, //  1: mov    x, osr          side 1     
-    0x3009, //  2: wait   0 gpio, 9       side 1     
+    0x3013, //  2: wait   0 gpio, 19      side 1     
     0x4009, //  3: in     pins, 9         side 0     
     0x4067, //  4: in     null, 7         side 0     
-    0x2089, //  5: wait   1 gpio, 9       side 0     
+    0x2093, //  5: wait   1 gpio, 19      side 0     
     0x1042, //  6: jmp    x--, 2          side 1     
             //     .wrap
 };
@@ -41,4 +41,3 @@ static inline pio_sm_config scsi_host_async_read_program_get_default_config(uint
     return c;
 }
 #endif
-
