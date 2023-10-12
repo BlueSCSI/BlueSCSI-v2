@@ -704,7 +704,7 @@ uint8_t platform_get_buttons()
     // Buttons are active low: internal pull-up is enabled,
     // and when button is pressed the pin goes low.
     uint8_t buttons = 0;
-#ifdef ZULUSCSI_HARDWARE_CONFIG
+#ifdef PLATFORM_VERSION_1_1_PLUS
     if (g_zuluscsi_version == ZSVersion_v1_1_ODE || g_zuluscsi_version == ZSVersion_v1_2)
     {
         if (!gpio_input_bit_get(EJECT_BTN_PORT, EJECT_BTN_PIN))   buttons |= 1;
