@@ -55,7 +55,7 @@
 #define DRIVEINFO_OPTICAL   {"BlueSCSI", "CDROM",     PLATFORM_REVISION, ""}
 #define DRIVEINFO_FLOPPY    {"BlueSCSI", "FLOPPY",    PLATFORM_REVISION, ""}
 #define DRIVEINFO_MAGOPT    {"BlueSCSI", "MO_DRIVE",  PLATFORM_REVISION, ""}
-#define DRIVEINFO_NETWORK   {"BlueSCSI", "NETWORK",   PLATFORM_REVISION, ""}
+#define DRIVEINFO_NETWORK   {"Dayna",    "SCSI/Link", "2.0f", ""}
 #define DRIVEINFO_TAPE      {"BlueSCSI", "TAPE",      PLATFORM_REVISION, ""}
 
 // Default SCSI drive information when Apple quirks are enabled
