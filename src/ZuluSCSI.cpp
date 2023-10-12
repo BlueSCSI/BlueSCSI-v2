@@ -469,7 +469,7 @@ bool findHDDImages()
         if (is_cd) type = S2S_CFG_OPTICAL;
         if (is_fd) type = S2S_CFG_FLOPPY_14MB;
         if (is_mo) type = S2S_CFG_MO;
-        if (is_re) type = S2S_CFG_REMOVEABLE;
+        if (is_re) type = S2S_CFG_REMOVABLE;
         if (is_tp) type = S2S_CFG_SEQUENTIAL;
 
         // Open the image file

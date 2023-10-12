@@ -35,7 +35,7 @@ extern "C"
     S2S_CFG_TYPE hw_config_selected_device();
     bool hw_config_is_active();
     void hw_config_init_gpios();
-    void hw_config_init_state();
+    void hw_config_init_state(bool is_active);
     
 #ifdef __cplusplus
 }
@@ -49,7 +49,7 @@ public:
     void init_gpios();
 
     // Initialize device state settings
-    void init_state();
+    void init_state(bool is_active);
 
     // get the device type
     // @returns the device type

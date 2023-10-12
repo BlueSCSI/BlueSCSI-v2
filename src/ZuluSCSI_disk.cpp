@@ -293,7 +293,7 @@ static void setDefaultDriveInfo(int target_idx)
         switch (img.deviceType)
         {
             case S2S_CFG_FIXED:         driveinfo = apl_driveinfo_fixed; break;
-            case S2S_CFG_REMOVEABLE:    driveinfo = apl_driveinfo_removable; break;
+            case S2S_CFG_REMOVABLE:    driveinfo = apl_driveinfo_removable; break;
             case S2S_CFG_OPTICAL:       driveinfo = apl_driveinfo_optical; break;
             case S2S_CFG_FLOPPY_14MB:   driveinfo = apl_driveinfo_floppy; break;
             case S2S_CFG_MO:            driveinfo = apl_driveinfo_magopt; break;
@@ -307,7 +307,7 @@ static void setDefaultDriveInfo(int target_idx)
         switch (img.deviceType)
         {
             case S2S_CFG_FIXED:         driveinfo = driveinfo_fixed; break;
-            case S2S_CFG_REMOVEABLE:    driveinfo = driveinfo_removable; break;
+            case S2S_CFG_REMOVABLE:    driveinfo = driveinfo_removable; break;
             case S2S_CFG_OPTICAL:       driveinfo = driveinfo_optical; break;
             case S2S_CFG_FLOPPY_14MB:   driveinfo = driveinfo_floppy; break;
             case S2S_CFG_MO:            driveinfo = driveinfo_magopt; break;
@@ -424,10 +424,10 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
             logmsg("---- Configuring as magneto-optical");
             img.deviceType = S2S_CFG_MO;
         }
-        else if (type == S2S_CFG_REMOVEABLE)
+        else if (type == S2S_CFG_REMOVABLE)
         {
             logmsg("---- Configuring as removable drive");
-            img.deviceType = S2S_CFG_REMOVEABLE;
+            img.deviceType = S2S_CFG_REMOVABLE;
         }
         else if (type == S2S_CFG_SEQUENTIAL)
         {
@@ -649,7 +649,7 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
 
             strcpy(tmp, "RM0");
             tmp[2] += target_idx;
-            scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_REMOVEABLE, "removable");
+            scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_REMOVABLE, "removable");
 
             strcpy(tmp, "MO0");
             tmp[2] += target_idx;
@@ -780,7 +780,7 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
                 case S2S_CFG_OPTICAL:
                     strcpy(dirname, "CD0");
                 break;
-                case S2S_CFG_REMOVEABLE:
+                case S2S_CFG_REMOVABLE:
                     strcpy(dirname, "RM0");
                 break;
                 case S2S_CFG_MO:
