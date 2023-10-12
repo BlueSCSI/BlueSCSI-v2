@@ -367,6 +367,7 @@ static bool get_quirks(uint32_t port, uint32_t pin, const char *switch_name)
     return false;
 }
 
+#ifdef PLATFORM_VERSION_1_1_PLUS
 static bool get_direct_mode(uint32_t port, uint32_t pin, const char *switch_name)
 {
     if (!gpio_input_bit_get(port, pin))
@@ -377,6 +378,7 @@ static bool get_direct_mode(uint32_t port, uint32_t pin, const char *switch_name
     logmsg(switch_name, " is ON: Disabling direct/raw mode");
     return false;
 }
+#endif
 
 void platform_late_init()
 {
