@@ -93,6 +93,11 @@
 #define SCSI_SEL_IRQ EXTI10_15_IRQHandler
 #define SCSI_SEL_IRQn EXTI10_15_IRQn
 
+// Unused place holders for compiling
+#define SCSI_ODE_SEL_PORT   SCSI_SEL_PORT
+#define SCSI_ODE_SEL_PIN    SCSI_SEL_PIN
+
+
 // BSY pin uses EXTI interrupt
 #define SCSI_BSY_PORT GPIOB
 #define SCSI_BSY_PIN  GPIO_PIN_10
