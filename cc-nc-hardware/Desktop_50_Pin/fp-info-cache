@@ -1,4 +1,4 @@
-20161419856280723
+20168201044005103
 Audio_Module
 Reverb_BTDR-1H
 Digital Reverberation Unit, http://www.belton.co.kr/inc/downfile.php?seq=17&file=pdf (footprint from http://www.uk-electronic.de/PDF/BTDR-1.pdf)
@@ -57574,6 +57574,34 @@ Yellow 5381 Series LED
 0
 2
 2
+Library
+BergFloppy_RightAngle
+Floppy Power, Right Angle
+
+0
+4
+4
+Library
+JST_SM04B-SRSS-TB(LF)(SN)
+
+
+0
+6
+6
+Library
+Raspberry_Pi_PicoW_SMT_THT
+Raspberry Pi Pico (W), RP2040-based microcontroller board (with wireless)
+Pico-W RPL RPTL RPi module RP2040 CYW43439 2.4GHz RF radio Wi-Fi WiFi SMD
+0
+86
+46
+Library
+TF-06_MicroSD
+
+
+0
+13
+10
 Library
 TS-1187A-B-A-B
 

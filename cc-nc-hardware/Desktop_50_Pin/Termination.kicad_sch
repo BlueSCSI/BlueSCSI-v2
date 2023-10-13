@@ -1,0 +1,20 @@
+(kicad_sch (version 20211123) (generator eeschema)
+
+  (uuid bf71d8d4-09ca-4c28-b50b-1cd4951f9525)
+
+  (paper "A4")
+
+  (lib_symbols
+  )
+
+
+  (text "© 2022 - 2023 Tech by Androda, LLC\nUse of this design for sale is subject to license agreement."
+    (at 179.705 172.085 0)
+    (effects (font (size 1.27 1.27)) (justify left bottom))
+    (uuid 8bcba115-d2ed-431d-9f78-5db47a2d5cea)
+  )
+  (text "Termination" (at 186.055 190.5 0)
+    (effects (font (size 1.27 1.27)) (justify left bottom))
+    (uuid e846c610-300d-41f7-ac7e-e1a41f348a38)
+  )
+)

@@ -1,0 +1,26 @@
+BlueSCSI V2 Desktop 50 Pin
+© 2022 - 2023 Tech by Androda, LLC
+
+.All files in this cc-nc-hardware folder (and subfolders) are licensed CC BY-NC-SA 4.0:
+* https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode[Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International Public License]
+
+.The Dekstop 50 Pin hardware design contains one element which is © SnapEDA, as follows:
+* SM04B-SRSS-TB(LF)(SN) Symbol And Footprint Copyright SnapEDA
+* https://www.snapeda.com/parts/SM04B-SRSS-TB%28LF%29%28SN%29/JST%20Sales/view-part/
+* License For This Symbol and Footprint Only: CC-BY-SA 4.0
+* https://creativecommons.org/licenses/by-sa/4.0/
+* This license contains a warranty disclaimer, please read it in full
+
+.Translations of the CC BY-NC-SA 4.0 license are available, in a variety of languages:
+* https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode.fr[français]
+* https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode.ja[日本語]
+* https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode.pl[polski]
+* https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode.zh-Hans[中文]
+
+.Explanations of the various rights afforded by this CC BY-NC-SA 4.0 license are also available in many languages:
+* https://creativecommons.org/licenses/by-nc-sa/4.0/[English]
+* https://creativecommons.org/licenses/by-nc-sa/4.0/deed.fr[français]
+* https://creativecommons.org/licenses/by-nc-sa/4.0/deed.ja[日本語]
+* https://creativecommons.org/licenses/by-nc-sa/4.0/deed.pl[polski]
+* https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh[中文]
+
