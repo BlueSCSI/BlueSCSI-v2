@@ -80,7 +80,7 @@
 #define DRIVEINFO_OPTICAL   {"ZULUSCSI", "CDROM",     PLATFORM_REVISION, ""}
 #define DRIVEINFO_FLOPPY    {"ZULUSCSI", "FLOPPY",    PLATFORM_REVISION, ""}
 #define DRIVEINFO_MAGOPT    {"ZULUSCSI", "MO_DRIVE",  PLATFORM_REVISION, ""}
-#define DRIVEINFO_NETWORK   {"ZULUSCSI", "NETWORK",   PLATFORM_REVISION, ""}
+#define DRIVEINFO_NETWORK   {"Dayna",    "SCSI/Link",       "2.0f", ""}
 #define DRIVEINFO_TAPE      {"ZULUSCSI", "TAPE",      PLATFORM_REVISION, ""}
 
 // Default SCSI drive information when Apple quirks are enabled
