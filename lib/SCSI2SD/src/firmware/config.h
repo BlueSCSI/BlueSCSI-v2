@@ -1,4 +1,5 @@
 //	Copyright (C) 2013 Michael McMaster <michael@codesrc.com>
+//  Copyright (c) 2023 joshua stein <jcs@jcs.org>
 //
 //	This file is part of SCSI2SD.
 //
@@ -14,9 +15,7 @@
 //
 //	You should have received a copy of the GNU General Public License
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
-//
-// This work incorporates work from the following
-//  Copyright (c) 2023 joshua stein <jcs@jcs.org>
+
 
 #ifndef S2S_Config_H
 #define S2S_Config_H
