@@ -34,8 +34,10 @@ extern volatile int g_scsiHostPhyReset;
 void scsiHostPhyReset(void);
 
 // Select a device, id 0-7.
+// target_id - target device id 0-7
+// initiator_id - host device id 0-7
 // Returns true if the target answers to selection request.
-bool scsiHostPhySelect(int target_id);
+bool scsiHostPhySelect(int target_id, uint8_t initiator_id);
 
 // Read the current communication phase as signaled by the target
 // Matches SCSI_PHASE enumeration from scsi.h.
