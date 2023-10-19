@@ -1,5 +1,6 @@
 //	Copyright (C) 2013 Michael McMaster <michael@codesrc.com>
 //	Copyright (C) 2019 Landon Rodgers  <g.landon.rodgers@gmail.com>
+//  Copyright (c) 2023 joshua stein <jcs@jcs.org>
 //
 //	This file is part of SCSI2SD.
 //
@@ -17,7 +18,7 @@
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
 //
 // This work incorporates work from the following
-//  Copyright (c) 2023 joshua stein <jcs@jcs.org>
+
 
 #include "scsi.h"
 #include "config.h"
