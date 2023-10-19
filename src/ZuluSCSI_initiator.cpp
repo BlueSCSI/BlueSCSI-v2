@@ -201,11 +201,11 @@ void scsiInitiatorMainLoop()
                 if (total_bytes >= 0xFFFFFFFF && SD.fatType() != FAT_TYPE_EXFAT)
                 {
                     // Note: the FAT32 limit is 4 GiB - 1 byte
-                    logmsg("Image files equal or larger than 4 GiB are only possible on exFAT filesystem");
-                    logmsg("Please reformat the SD card with exFAT format to image this drive fully");
-
-                    g_initiator_state.sectorcount = (uint32_t)0xFFFFFFFF / g_initiator_state.sectorsize;
-                    logmsg("Will image first 4 GiB - 1 = ", (int)g_initiator_state.sectorcount, " sectors");
+                    logmsg("Target SCSI ID ", g_initiator_state.target_id, " image size is equal or larger than 4 GiB.");
+                    logmsg("This is larger than the max filesize supported by SD card's filesystem");
+                    logmsg("Please reformat the SD card with exFAT format to image this target");
+                    g_initiator_state.drives_imaged |= 1 << g_initiator_state.target_id;
+                    return;
                 }
             }
             else if (startstopok)
@@ -312,7 +312,7 @@ void scsiInitiatorMainLoop()
                 {
                     logmsg("SD Card only has ", (int)(sd_card_free_bytes / (1024 * 1024)),
                            " MiB - not enough free space to image SCSI ID ", g_initiator_state.target_id);
-                    g_initiator_state.drives_imaged = 1 << g_initiator_state.target_id;
+                    g_initiator_state.drives_imaged |= 1 << g_initiator_state.target_id;
                     return;
                 }
 
