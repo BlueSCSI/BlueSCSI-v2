@@ -387,16 +387,12 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
         img.scsiId = scsi_id | S2S_CFG_TARGET_ENABLED;
         img.sdSectorStart = 0;
         
-        if (type != S2S_CFG_NETWORK)
+        if (type != S2S_CFG_NETWORK && img.scsiSectors == 0)
         {
-
-            if (img.scsiSectors == 0)
-            {
-                logmsg("---- Error: image file ", filename, " is empty");
-                img.file.close();
-                return false;
-            }
-
+            logmsg("---- Error: image file ", filename, " is empty");
+            img.file.close();
+            return false;
+        }
         uint32_t sector_begin = 0, sector_end = 0;
         if (img.file.isRom())
         {
