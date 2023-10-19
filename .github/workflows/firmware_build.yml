@@ -7,7 +7,7 @@ on:
 
 jobs:
   build_firmware:
-    name: RHC-internal
+    name: RHC-internal-Z4
     runs-on: self-hosted
 #    name: Build firmware on Ubuntu 20.04
 #    runs-on: ubuntu-20.04
@@ -26,7 +26,7 @@ jobs:
       - name: Build firmware
         run: |
           cd ZuluSCSI
-          pio run -j 8 -ve ZuluSCSI_Pico_DaynaPORT
+          pio run -v -j8
     
       - name: Rename firmware files
         run: |

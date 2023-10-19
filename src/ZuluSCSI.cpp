@@ -68,17 +68,22 @@ static bool g_sdcard_present;
 /************************************/
 
 #define BLINK_STATUS_OK 1
-#define BLINK_ERROR_NO_IMAGES  3 
+#define BLINK_ERROR_NO_IMAGES  3
+#define BLINK_DIRECT_MODE      4
 #define BLINK_ERROR_NO_SD_CARD 5
 
 void blinkStatus(int count)
 {
+  uint8_t blink_delay = 250;
+  if (count == BLINK_DIRECT_MODE)
+    blink_delay = 100;
+
   for (int i = 0; i < count; i++)
   {
     LED_ON();
-    delay(250);
+    delay(blink_delay);
     LED_OFF();
-    delay(250);
+    delay(blink_delay);
   }
 }
 
@@ -98,6 +103,12 @@ extern "C" void s2s_ledOff()
 
 void save_logfile(bool always = false)
 {
+#ifdef ZULUSCSI_HARDWARE_CONFIG
+  // Disable logging to the SD card when in direct mode
+  if (g_hw_config.is_active())
+    return;
+#endif
+
   static uint32_t prev_log_pos = 0;
   static uint32_t prev_log_len = 0;
   static uint32_t prev_log_save = 0;
@@ -120,6 +131,12 @@ void save_logfile(bool always = false)
 
 void init_logfile()
 {
+#ifdef ZULUSCSI_HARDWARE_CONFIG
+  // Disable logging to the SD card when in direct mode
+  if (g_hw_config.is_active())
+    return;
+#endif
+
   static bool first_open_after_boot = true;
 
   bool truncate = first_open_after_boot;
@@ -294,6 +311,12 @@ bool createImage(const char *cmd_filename, char imgname[MAX_FILE_PATH + 1])
 // Iterate over the root path in the SD card looking for candidate image files.
 bool findHDDImages()
 {
+#ifdef ZULUSCSI_HARDWARE_CONFIG
+  if (g_hw_config.is_active())
+  {
+    return false;
+  }
+#endif // ZULUSCSI_HARDWARE_CONFIG
   char imgdir[MAX_FILE_PATH];
   ini_gets("SCSI", "Dir", "/", imgdir, sizeof(imgdir), CONFIGFILE);
   int dirindex = 0;
@@ -404,7 +427,7 @@ bool findHDDImages()
         if (is_cd)
         {
           // Use 2048 as the default sector size for CD-ROMs
-          blk = 2048;
+          blk = DEFAULT_BLOCKSIZE_OPTICAL;
         }
 
         // Parse SCSI device ID
@@ -471,7 +494,7 @@ bool findHDDImages()
 #ifdef ZULUSCSI_NETWORK
         if (is_ne) type = S2S_CFG_NETWORK;
 #endif // ZULUSCSI_NETWORK
-        if (is_re) type = S2S_CFG_REMOVEABLE;
+        if (is_re) type = S2S_CFG_REMOVABLE;
         if (is_tp) type = S2S_CFG_SEQUENTIAL;
 
         // Open the image file
@@ -588,10 +611,17 @@ static bool mountSDCard()
 
 static void reinitSCSI()
 {
+#if defined(ZULUSCSI_HARDWARE_CONFIG)
+  if (!g_hw_config.is_active() && ini_getbool("SCSI", "Debug", 0, CONFIGFILE))
+  {
+    g_log_debug = true;
+  }
+#else
   if (ini_getbool("SCSI", "Debug", 0, CONFIGFILE))
   {
     g_log_debug = true;
   }
+#endif
 
 #ifdef PLATFORM_HAS_INITIATOR_MODE
   if (platform_is_initiator_mode_enabled())
@@ -609,26 +639,44 @@ static void reinitSCSI()
 #endif
 
   scsiDiskResetImages();
-  readSCSIDeviceConfig();
-  findHDDImages();
-
-  // Error if there are 0 image files
-  if (scsiDiskCheckAnyImagesConfigured())
+#if defined(ZULUSCSI_HARDWARE_CONFIG)
+  if (g_hw_config.is_active())
   {
-    // Ok, there is an image, turn LED on for the time it takes to perform init
-    LED_ON();
-    delay(100);
+    bool success;
+    logmsg("Direct/Raw mode enabled, using hardware switches for configuration");
+    success = scsiDiskOpenHDDImage(g_hw_config.scsi_id(), "RAW:0:0xFFFFFFFF", g_hw_config.scsi_id(), 0,
+                                   g_hw_config.blocksize(), g_hw_config.device_type());
+    if (success)
+    {
+      blinkStatus(BLINK_STATUS_OK);
+    }
+    delay(250);
+    blinkStatus(BLINK_DIRECT_MODE);
   }
   else
-  {
-#if RAW_FALLBACK_ENABLE
-    logmsg("No images found, enabling RAW fallback partition");
-    scsiDiskOpenHDDImage(RAW_FALLBACK_SCSI_ID, "RAW:0:0xFFFFFFFF", RAW_FALLBACK_SCSI_ID, 0,
-                         RAW_FALLBACK_BLOCKSIZE);
-#else
-    logmsg("No valid image files found!");
-#endif
-    blinkStatus(BLINK_ERROR_NO_IMAGES);
+#endif // ZULUSCSI_HARDWARE_CONFIG
+  { 
+    readSCSIDeviceConfig();
+    findHDDImages();
+
+    // Error if there are 0 image files
+    if (scsiDiskCheckAnyImagesConfigured())
+    {
+      // Ok, there is an image, turn LED on for the time it takes to perform init
+      LED_ON();
+      delay(100);
+    }
+    else
+    {
+  #ifdef RAW_FALLBACK_ENABLE
+      logmsg("No images found, enabling RAW fallback partition");
+      scsiDiskOpenHDDImage(RAW_FALLBACK_SCSI_ID, "RAW:0:0xFFFFFFFF", RAW_FALLBACK_SCSI_ID, 0,
+                          RAW_FALLBACK_BLOCKSIZE);
+  #else
+      logmsg("No valid image files found!");
+  #endif // RAW_FALLBACK_ENABLE
+      blinkStatus(BLINK_ERROR_NO_IMAGES);
+    }
   }
 
   scsiPhyReset();

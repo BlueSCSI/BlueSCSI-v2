@@ -295,7 +295,7 @@ static void setDefaultDriveInfo(int target_idx)
         switch (img.deviceType)
         {
             case S2S_CFG_FIXED:         driveinfo = apl_driveinfo_fixed; break;
-            case S2S_CFG_REMOVEABLE:    driveinfo = apl_driveinfo_removable; break;
+            case S2S_CFG_REMOVABLE:    driveinfo = apl_driveinfo_removable; break;
             case S2S_CFG_OPTICAL:       driveinfo = apl_driveinfo_optical; break;
             case S2S_CFG_FLOPPY_14MB:   driveinfo = apl_driveinfo_floppy; break;
             case S2S_CFG_MO:            driveinfo = apl_driveinfo_magopt; break;
@@ -310,7 +310,7 @@ static void setDefaultDriveInfo(int target_idx)
         switch (img.deviceType)
         {
             case S2S_CFG_FIXED:         driveinfo = driveinfo_fixed; break;
-            case S2S_CFG_REMOVEABLE:    driveinfo = driveinfo_removable; break;
+            case S2S_CFG_REMOVABLE:    driveinfo = driveinfo_removable; break;
             case S2S_CFG_OPTICAL:       driveinfo = driveinfo_optical; break;
             case S2S_CFG_FLOPPY_14MB:   driveinfo = driveinfo_floppy; break;
             case S2S_CFG_MO:            driveinfo = driveinfo_magopt; break;
@@ -397,33 +397,38 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
                 return false;
             }
 
-            uint32_t sector_begin = 0, sector_end = 0;
-            if (img.file.isRom())
-            {
-                // ROM is always contiguous, no need to log
-            }
-            else if (img.file.contiguousRange(&sector_begin, &sector_end))
-            {
-                dbgmsg("---- Image file is contiguous, SD card sectors ", (int)sector_begin, " to ", (int)sector_end);
-            }
-            else
-            {
-                logmsg("---- WARNING: file ", filename, " is not contiguous. This will increase read latency.");
-            }
-        }
-        if (type == S2S_CFG_OPTICAL)
+        uint32_t sector_begin = 0, sector_end = 0;
+        if (img.file.isRom())
         {
-            logmsg("---- Configuring as CD-ROM drive based on image name");
+            // ROM is always contiguous, no need to log
+        }
+        else if (img.file.contiguousRange(&sector_begin, &sector_end))
+        {
+            dbgmsg("---- Image file is contiguous, SD card sectors ", (int)sector_begin, " to ", (int)sector_end);
+        }
+        else
+        {
+            logmsg("---- WARNING: file ", filename, " is not contiguous. This will increase read latency.");
+        }
+
+        if (type == S2S_CFG_FIXED)
+        {
+            logmsg("---- Configuring as disk drive drive");
+            img.deviceType = S2S_CFG_FIXED;
+        }
+        else if (type == S2S_CFG_OPTICAL)
+        {
+            logmsg("---- Configuring as CD-ROM drive");
             img.deviceType = S2S_CFG_OPTICAL;
         }
         else if (type == S2S_CFG_FLOPPY_14MB)
         {
-            logmsg("---- Configuring as floppy drive based on image name");
+            logmsg("---- Configuring as floppy drive");
             img.deviceType = S2S_CFG_FLOPPY_14MB;
         }
         else if (type == S2S_CFG_MO)
         {
-            logmsg("---- Configuring as magneto-optical based on image name");
+            logmsg("---- Configuring as magneto-optical");
             img.deviceType = S2S_CFG_MO;
         }
 #ifdef ZULUSCSI_NETWORK
@@ -433,14 +438,14 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
             img.deviceType = S2S_CFG_NETWORK;
         }
 #endif // ZULUSCSI_NETWORK
-        else if (type == S2S_CFG_REMOVEABLE)
+        else if (type == S2S_CFG_REMOVABLE)
         {
-            logmsg("---- Configuring as removable drive based on image name");
-            img.deviceType = S2S_CFG_REMOVEABLE;
+            logmsg("---- Configuring as removable drive");
+            img.deviceType = S2S_CFG_REMOVABLE;
         }
         else if (type == S2S_CFG_SEQUENTIAL)
         {
-            logmsg("---- Configuring as tape drive based on image name");
+            logmsg("---- Configuring as tape drive");
             img.deviceType = S2S_CFG_SEQUENTIAL;
         }
 
@@ -658,7 +663,7 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
 
             strcpy(tmp, "RE0");
             tmp[2] += target_idx;
-            scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_REMOVEABLE, "removable");
+            scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_REMOVABLE, "removable");
 
             strcpy(tmp, "MO0");
             tmp[2] += target_idx;
@@ -789,7 +794,7 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
                 case S2S_CFG_OPTICAL:
                     strcpy(dirname, "CD0");
                 break;
-                case S2S_CFG_REMOVEABLE:
+                case S2S_CFG_REMOVABLE:
                     strcpy(dirname, "RE0");
                 break;
                 case S2S_CFG_MO:
@@ -940,7 +945,7 @@ uint8_t diskEjectButtonUpdate(bool immediate)
 {
     // treat '1' to '0' transitions as eject actions
     static uint8_t previous = 0x00;
-    uint8_t bitmask = platform_get_buttons();
+    uint8_t bitmask = platform_get_buttons() & EJECT_BTN_MASK;
     uint8_t ejectors = (previous ^ bitmask) & previous;
     previous = bitmask;
 

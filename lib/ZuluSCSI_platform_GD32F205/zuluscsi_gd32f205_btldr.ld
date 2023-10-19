@@ -54,12 +54,14 @@ SECTIONS
     *(*DMA1_Channel1_IRQHandler*)
     *(*EXTI3_IRQHandler*)
     *(*EXTI10_15_IRQHandler*)
+    *(*USBFS_IRQHandler*)
   }
 
   DMA1_Channel1_IRQHandler = 0;
   DMA1_Channel4_IRQHandler = 0;
   EXTI10_15_IRQHandler = 0;
   EXTI3_IRQHandler = 0;
+  USBFS_IRQHandler = 0;
 
   /* The startup code goes first into FLASH */
   .isr_vector :

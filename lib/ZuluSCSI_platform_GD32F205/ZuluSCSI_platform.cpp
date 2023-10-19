@@ -24,15 +24,28 @@
 #include "gd32f20x_fmc.h"
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_config.h"
+#include "usbd_conf.h"
+#include "usb_serial.h"
 #include "greenpak.h"
 #include <SdFat.h>
 #include <scsi.h>
 #include <assert.h>
+#include <audio.h>
+#include <ZuluSCSI_audio.h>
+
+extern SdFs SD;
 
 extern "C" {
 
 const char *g_platform_name = PLATFORM_NAME;
 static bool g_enable_apple_quirks = false;
+bool g_direct_mode = false;
+ZuluSCSIVersion_t g_zuluscsi_version = ZSVersion_unknown;
+
+// hw_config.cpp c functions
+#include "platform_hw_config.h"
+
+
 
 /*************************/
 /* Timing functions      */
@@ -127,6 +140,47 @@ void SysTick_Handle_PreEmptively()
 /* GPIO init   */
 /***************/
 
+#ifdef PLATFORM_VERSION_1_1_PLUS
+static void init_audio_gpio()
+{
+        gpio_pin_remap1_config(GPIO_PCF5, GPIO_PCF5_SPI1_IO_REMAP1, ENABLE);
+        gpio_pin_remap1_config(GPIO_PCF5, GPIO_PCF5_SPI1_NSCK_REMAP1, ENABLE);
+        gpio_pin_remap1_config(GPIO_PCF4, GPIO_PCF4_SPI1_SCK_PD3_REMAP, ENABLE);
+        gpio_init(I2S_CK_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, I2S_CK_PIN);
+        gpio_init(I2S_SD_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, I2S_SD_PIN);
+        gpio_init(I2S_WS_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, I2S_WS_PIN);
+}
+#endif
+
+// Method of determining whichi scsi board is being used
+static ZuluSCSIVersion_t get_zuluscsi_version()
+{
+#ifdef DIGITAL_VERSION_DETECT_PORT
+    bool pull_down;
+    bool pull_up;
+
+    gpio_init(DIGITAL_VERSION_DETECT_PORT, GPIO_MODE_IPU, 0, DIGITAL_VERSION_DETECT_PIN);
+    delay_us(10);
+    pull_up  = SET == gpio_input_bit_get(DIGITAL_VERSION_DETECT_PORT, DIGITAL_VERSION_DETECT_PIN);
+
+    gpio_init(DIGITAL_VERSION_DETECT_PORT, GPIO_MODE_IPD, 0, DIGITAL_VERSION_DETECT_PIN);
+    delay_us(10);
+    pull_down = RESET ==  gpio_input_bit_get(DIGITAL_VERSION_DETECT_PORT, DIGITAL_VERSION_DETECT_PIN);
+
+    if (pull_up && pull_down)
+        return ZSVersion_v1_1;
+    if (pull_down && !pull_up)
+        return ZSVersion_v1_1_ODE;
+    if (pull_up && !pull_down)
+    {
+        return ZSVersion_v1_2;
+    }
+#endif // DIGITAL_DETECT_VERSION
+
+    return ZSVersion_unknown;
+}
+
+
 // Initialize SPI and GPIO configuration
 // Clock has already been initialized by system_gd32f20x.c
 void platform_init()
@@ -179,6 +233,11 @@ void platform_init()
     // SCSI pins.
     // Initialize open drain outputs to high.
     SCSI_RELEASE_OUTPUTS();
+
+    // determine the ZulusSCSI board version
+    g_zuluscsi_version = get_zuluscsi_version();
+
+    // Init SCSI pins GPIOs
     gpio_init(SCSI_OUT_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_DATA_MASK | SCSI_OUT_REQ);
     gpio_init(SCSI_OUT_IO_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_IO_PIN);
     gpio_init(SCSI_OUT_CD_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_CD_PIN);
@@ -190,7 +249,6 @@ void platform_init()
     gpio_init(SCSI_IN_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_IN_MASK);
     gpio_init(SCSI_ATN_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_ATN_PIN);
     gpio_init(SCSI_BSY_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_BSY_PIN);
-    gpio_init(SCSI_SEL_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_SEL_PIN);
     gpio_init(SCSI_ACK_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_ACK_PIN);
     gpio_init(SCSI_RST_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_RST_PIN);
 
@@ -211,57 +269,163 @@ void platform_init()
     gpio_init(SD_SDIO_CMD_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, SD_SDIO_CMD);
 #endif
 
+#ifdef PLATFORM_VERSION_1_1_PLUS
+    if (g_zuluscsi_version == ZSVersion_v1_1)
+    {
+        // SCSI Select
+        gpio_init(SCSI_SEL_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_SEL_PIN);
+
+        // DIP switches
+        gpio_init(DIP_PORT, GPIO_MODE_IPD, 0, DIPSW1_PIN | DIPSW2_PIN | DIPSW3_PIN);
+        gpio_init(EJECT_1_PORT, GPIO_MODE_IPU, 0, EJECT_1_PIN);
+        gpio_init(EJECT_2_PORT, GPIO_MODE_IPU, 0, EJECT_2_PIN);
+
+    }
+    else if (g_zuluscsi_version == ZSVersion_v1_1_ODE)
+    {
+        // SCSI Select
+        gpio_init(SCSI_ODE_SEL_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_ODE_SEL_PIN);
+        // DIP switches
+        gpio_init(ODE_DIP_PORT, GPIO_MODE_IPD, 0, ODE_DIPSW1_PIN | ODE_DIPSW2_PIN | ODE_DIPSW3_PIN);
+        // Buttons
+        gpio_init(EJECT_BTN_PORT, GPIO_MODE_IPU, 0, EJECT_BTN_PIN);
+        gpio_init(USER_BTN_PORT, GPIO_MODE_IPU, 0, USER_BTN_PIN);
+        init_audio_gpio();
+        g_audio_enabled = true;
+    }
+    else if (g_zuluscsi_version == ZSVersion_v1_2)
+    {
+        // SCSI Select
+        gpio_init(SCSI_ODE_SEL_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_ODE_SEL_PIN);
+        // General settings DIP switch
+        gpio_init(V1_2_DIPSW_TERM_PORT, GPIO_MODE_IPD, 0, V1_2_DIPSW_TERM_PIN);
+        gpio_init(V1_2_DIPSW_DBG_PORT, GPIO_MODE_IPD, 0, V1_2_DIPSW_DBG_PIN);
+        gpio_init(V1_2_DIPSW_QUIRKS_PORT, GPIO_MODE_IPD, 0, V1_2_DIPSW_QUIRKS_PIN);
+        // Direct/Raw Mode Select
+        gpio_init(V1_2_DIPSW_DIRECT_MODE_PORT, GPIO_MODE_IPD, 0, V1_2_DIPSW_DIRECT_MODE_PIN);
+        // SCSI ID dip switch
+        gpio_init(DIPSW_SCSI_ID_BIT_PORT, GPIO_MODE_IPD, 0, DIPSW_SCSI_ID_BIT_PINS);
+        // Device select BCD rotary DIP switch
+        gpio_init(DIPROT_DEVICE_SEL_BIT_PORT, GPIO_MODE_IPD, 0, DIPROT_DEVICE_SEL_BIT_PINS);
+
+        // Buttons
+        gpio_init(EJECT_BTN_PORT, GPIO_MODE_IPU, 0, EJECT_BTN_PIN);
+        gpio_init(USER_BTN_PORT,  GPIO_MODE_IPU, 0, USER_BTN_PIN);
+
+        LED_EJECT_OFF();
+        gpio_init(LED_EJECT_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_2MHZ, LED_EJECT_PIN);
+    }
+#else
+    // SCSI Select
+    gpio_init(SCSI_SEL_PORT, GPIO_MODE_IN_FLOATING, 0, SCSI_SEL_PIN);
     // DIP switches
     gpio_init(DIP_PORT, GPIO_MODE_IPD, 0, DIPSW1_PIN | DIPSW2_PIN | DIPSW3_PIN);
+    // Ejection buttons
+    gpio_init(EJECT_1_PORT, GPIO_MODE_IPU, 0, EJECT_1_PIN);
+    gpio_init(EJECT_2_PORT, GPIO_MODE_IPU, 0, EJECT_2_PIN);
 
+#endif // PLATFORM_VERSION_1_1_PLUS
     // LED pins
     gpio_bit_set(LED_PORT, LED_PINS);
     gpio_init(LED_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_2MHZ, LED_PINS);
 
-    // Ejection buttons
-    gpio_init(EJECT_1_PORT, GPIO_MODE_IPU, 0, EJECT_1_PIN);
-    gpio_init(EJECT_2_PORT, GPIO_MODE_IPU, 0, EJECT_2_PIN);
 
     // SWO trace pin on PB3
     gpio_init(GPIOB, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_3);
 }
 
-void platform_late_init()
+static void set_termination(uint32_t port, uint32_t pin, const char *switch_name)
 {
-    logmsg("Platform: ", g_platform_name);
-    logmsg("FW Version: ", g_log_firmwareversion);
-    
-#ifdef ZULUSCSI_V1_0_mini
-    logmsg("DIPSW3 is ON: Enabling SCSI termination");
-#else
-    if (gpio_input_bit_get(DIP_PORT, DIPSW3_PIN))
+    if (gpio_input_bit_get(port, pin))
     {
-        logmsg("DIPSW3 is ON: Enabling SCSI termination");
+        logmsg(switch_name, " is ON: Enabling SCSI termination");
         gpio_bit_reset(SCSI_TERM_EN_PORT, SCSI_TERM_EN_PIN);
     }
     else
     {
-        logmsg("DIPSW3 is OFF: SCSI termination disabled");
+        logmsg(switch_name, "is OFF: SCSI termination disabled");
     }
-#endif // ZULUSCSI_V1_0_mini
+}
 
-    if (gpio_input_bit_get(DIP_PORT, DIPSW2_PIN))
+static bool get_debug(uint32_t port, uint32_t pin, const char *switch_name)
+{
+    if (gpio_input_bit_get(port, pin))
     {
-        logmsg("DIPSW2 is ON: enabling debug messages");
-        g_log_debug = true;
+        logmsg(switch_name, " is ON: enabling debug messages");
+        return true;
     }
-    else
-    {
-        g_log_debug = false;
-    }
+    return false;
+}
 
-    if (gpio_input_bit_get(DIP_PORT, DIPSW1_PIN))
+static bool get_quirks(uint32_t port, uint32_t pin, const char *switch_name)
+{
+    if (gpio_input_bit_get(port, pin))
     {
-        logmsg("DIPSW1 is ON: enabling Apple quirks by default");
-        g_enable_apple_quirks = true;
+        logmsg(switch_name, " is ON: enabling Apple quirks by default");
+        return true;
     }
+    return false;
+}
 
-    greenpak_load_firmware();
+#ifdef PLATFORM_VERSION_1_1_PLUS
+static bool get_direct_mode(uint32_t port, uint32_t pin, const char *switch_name)
+{
+    if (!gpio_input_bit_get(port, pin))
+    {
+        logmsg(switch_name, " is OFF: Enabling direct/raw mode");
+        return true;
+    }
+    logmsg(switch_name, " is ON: Disabling direct/raw mode");
+    return false;
+}
+#endif
+
+void platform_late_init()
+{
+    // Initialize usb for CDC serial output
+    usb_serial_init();
+
+    logmsg("Platform: ", g_platform_name);
+    logmsg("FW Version: ", g_log_firmwareversion);
+
+#ifdef PLATFORM_VERSION_1_1_PLUS
+    if (ZSVersion_v1_1 == g_zuluscsi_version)
+    {
+        logmsg("Board Version: ZuluSCSI v1.1 Standard Edition");
+        set_termination(DIP_PORT, DIPSW3_PIN, "DIPSW3");
+        g_log_debug = get_debug(DIP_PORT, DIPSW2_PIN, "DIPSW2");
+        g_enable_apple_quirks = get_quirks(DIP_PORT, DIPSW1_PIN, "DIPSW1");
+        greenpak_load_firmware();
+    }
+    else if (ZSVersion_v1_1_ODE == g_zuluscsi_version)
+    {
+        logmsg("Board Version: ZuluSCSI v1.1 ODE");
+        logmsg("ODE - Optical Drive Emulator");
+        set_termination(ODE_DIP_PORT, ODE_DIPSW3_PIN, "DIPSW3");
+        g_log_debug = get_debug(ODE_DIP_PORT, ODE_DIPSW2_PIN, "DIPSW2");
+        g_enable_apple_quirks = get_quirks(ODE_DIP_PORT, ODE_DIPSW1_PIN, "DIPSW1");
+        audio_setup();
+    }
+    else if (ZSVersion_v1_2 == g_zuluscsi_version)
+    {
+        logmsg("Board Version: ZuluSCSI v1.2");
+        hw_config_init_gpios();
+        set_termination(V1_2_DIPSW_TERM_PORT, V1_2_DIPSW_TERM_PIN, "DIPSW4");
+        g_log_debug = get_debug(V1_2_DIPSW_DBG_PORT, V1_2_DIPSW_DBG_PIN, "DIPSW3");
+        g_direct_mode = get_direct_mode(V1_2_DIPSW_DIRECT_MODE_PORT, V1_2_DIPSW_DIRECT_MODE_PIN, "DIPSW2");
+        g_enable_apple_quirks = get_quirks(V1_2_DIPSW_QUIRKS_PORT, V1_2_DIPSW_QUIRKS_PIN, "DIPSW1");
+        hw_config_init_state(g_direct_mode);
+    }
+#else // PLATFORM_VERSION_1_1_PLUS - ZuluSCSI v1.0 and v1.0 minis gpio config
+    #ifdef ZULUSCSI_V1_0_mini
+        logmsg("SCSI termination is always on");
+    #elif defined(ZULUSCSI_V1_0)
+        set_termination(DIP_PORT, DIPSW3_PIN, "DIPSW3");
+        g_log_debug = get_debug(DIP_PORT, DIPSW2_PIN, "DIPSW2");
+        g_enable_apple_quirks = get_quirks(DIP_PORT, DIPSW1_PIN, "DIPSW1");
+    #endif // ZULUSCSI_V1_0_mini
+#endif // PLATFORM_VERSION_1_1_PLUS
+    
 }
 
 void platform_disable_led(void)
@@ -319,11 +483,37 @@ static void adc_poll()
 }
 
 /*****************************************/
-/* Crash handlers                        */
+/* Debug logging and watchdog            */
 /*****************************************/
 
-extern SdFs SD;
+// Send log data to USB UART if USB is connected.
+// Data is retrieved from the shared log ring buffer and
+// this function sends as much as fits in USB CDC buffer.
 
+static void usb_log_poll()
+{
+    static uint32_t logpos = 0;
+
+    if (usb_serial_ready())
+    {
+        // Retrieve pointer to log start and determine number of bytes available.
+        uint32_t available = 0;
+        const char *data = log_get_buffer(&logpos, &available);
+        // Limit to CDC packet size
+        uint32_t len = available;
+        if (len == 0) return;
+        if (len > USB_CDC_DATA_PACKET_SIZE) len = USB_CDC_DATA_PACKET_SIZE;
+
+        // Update log position by the actual number of bytes sent
+        // If USB CDC buffer is full, this may be 0
+        usb_serial_send((uint8_t*)data, len);
+        logpos -= available - len;
+    }
+}
+
+/*****************************************/
+/* Crash handlers                        */
+/*****************************************/
 // Writes log data to the PB3 SWO pin
 void platform_log(const char *s)
 {
@@ -337,6 +527,10 @@ void platform_log(const char *s)
 
 void platform_emergency_log_save()
 {
+#ifdef ZULUSCSI_HARDWARE_CONFIG
+    if (g_hw_config.is_active())
+        return;
+#endif
     platform_set_sd_callback(NULL, NULL);
 
     SD.begin(SD_CONFIG_CRASH);
@@ -390,11 +584,12 @@ void show_hardfault(uint32_t *sp)
         logmsg("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
         p += 4;
     }
-
+ 
     platform_emergency_log_save();
 
     while (1)
     {
+        usb_log_poll();
         // Flash the crash address on the LED
         // Short pulse means 0, long pulse means 1
         int base_delay = 1000;
@@ -467,6 +662,7 @@ void __assert_func(const char *file, int line, const char *func, const char *exp
 
     while(1)
     {
+        usb_log_poll();
         LED_OFF();
         for (int j = 0; j < 1000; j++) delay_ns(100000);
         LED_ON();
@@ -488,13 +684,21 @@ void platform_reset_watchdog()
     // It gives us opportunity to collect better debug info than the
     // full hardware reset that would be caused by hardware watchdog.
     g_watchdog_timeout = WATCHDOG_CRASH_TIMEOUT;
+
+    // USB log is polled here also to make sure any log messages in fault states
+    // get passed to USB.
+    usb_log_poll();
 }
 
 // Poll function that is called every few milliseconds.
 // Can be left empty or used for platform-specific processing.
 void platform_poll()
 {
+#ifdef ENABLE_AUDIO_OUTPUT
+    audio_poll();
+#endif
     adc_poll();
+    usb_log_poll();
 }
 
 uint8_t platform_get_buttons()
@@ -502,9 +706,21 @@ uint8_t platform_get_buttons()
     // Buttons are active low: internal pull-up is enabled,
     // and when button is pressed the pin goes low.
     uint8_t buttons = 0;
+#ifdef PLATFORM_VERSION_1_1_PLUS
+    if (g_zuluscsi_version == ZSVersion_v1_1_ODE || g_zuluscsi_version == ZSVersion_v1_2)
+    {
+        if (!gpio_input_bit_get(EJECT_BTN_PORT, EJECT_BTN_PIN))   buttons |= 1;
+        if (!gpio_input_bit_get(USER_BTN_PORT, USER_BTN_PIN))   buttons |= 4;
+    }
+    else
+    {
+        if (!gpio_input_bit_get(EJECT_1_PORT, EJECT_1_PIN))   buttons |= 1;
+        if (!gpio_input_bit_get(EJECT_2_PORT, EJECT_2_PIN))   buttons |= 2;
+    }
+#else
     if (!gpio_input_bit_get(EJECT_1_PORT, EJECT_1_PIN))   buttons |= 1;
     if (!gpio_input_bit_get(EJECT_2_PORT, EJECT_2_PIN))   buttons |= 2;
-
+#endif
     // Simple debouncing logic: handle button releases after 100 ms delay.
     static uint32_t debounce;
     static uint8_t buttons_debounced = 0;
