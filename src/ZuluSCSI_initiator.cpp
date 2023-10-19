@@ -187,15 +187,16 @@ void scsiInitiatorMainLoop()
                 scsiInquiry(g_initiator_state.target_id, inquiry_data);
             LED_OFF();
 
+            uint64_t total_bytes = 0;
             if (readcapok)
             {
-                logmsg("SCSI id ", g_initiator_state.target_id,
+                logmsg("SCSI ID ", g_initiator_state.target_id,
                     " capacity ", (int)g_initiator_state.sectorcount,
                     " sectors x ", (int)g_initiator_state.sectorsize, " bytes");
 
                 g_initiator_state.sectorcount_all = g_initiator_state.sectorcount;
 
-                uint64_t total_bytes = (uint64_t)g_initiator_state.sectorcount * g_initiator_state.sectorsize;
+                total_bytes = (uint64_t)g_initiator_state.sectorcount * g_initiator_state.sectorsize;
                 logmsg("Drive total size is ", (int)(total_bytes / (1024 * 1024)), " MiB");
                 if (total_bytes >= 0xFFFFFFFF && SD.fatType() != FAT_TYPE_EXFAT)
                 {
@@ -303,6 +304,15 @@ void scsiInitiatorMainLoop()
                         logmsg("InitiatorImageHandling is set to, ", handling, ", which is invalid");
                         invalid_logged_once = true;
                     }
+                    return;
+                }
+
+                uint64_t sd_card_free_bytes = (uint64_t)SD.vol()->freeClusterCount() * SD.vol()->bytesPerCluster();
+                if (sd_card_free_bytes < total_bytes)
+                {
+                    logmsg("SD Card only has ", (int)(sd_card_free_bytes / (1024 * 1024)),
+                           " MiB - not enough free space to image SCSI ID ", g_initiator_state.target_id);
+                    g_initiator_state.drives_imaged = 1 << g_initiator_state.target_id;
                     return;
                 }
 
