@@ -85,7 +85,7 @@ volatile uint8_t g_scsi_ctrl_bsy;
 
 static void scsi_bsy_deassert_interrupt()
 {
-    if (SCSI_IN(SEL) && !SCSI_IN(BSY))
+    if (!SCSI_IN(BSY) && (((g_zuluscsi_version == ZSVersion_v1_1_ODE || g_zuluscsi_version == ZSVersion_v1_2) && SCSI_IN(ODE_SEL)) || SCSI_IN(SEL)) )
     {
         uint8_t sel_bits = SCSI_IN_DATA();
         int sel_id = -1;
@@ -125,7 +125,12 @@ extern "C" bool scsiStatusSEL()
         SCSI_OUT(BSY, 1);
     }
 
+    if (g_zuluscsi_version == ZSVersion_v1_1_ODE || g_zuluscsi_version == ZSVersion_v1_2)
+    {
+        return SCSI_IN(ODE_SEL);
+    }
     return SCSI_IN(SEL);
+     
 }
 
 /************************/

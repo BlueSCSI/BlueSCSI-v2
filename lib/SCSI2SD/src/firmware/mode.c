@@ -272,7 +272,7 @@ static void doModeSense(
 	switch (scsiDev.target->cfg->deviceType)
 	{
 	case S2S_CFG_FIXED:
-	case S2S_CFG_REMOVEABLE:
+	case S2S_CFG_REMOVABLE:
 		mediumType = 0; // We should support various floppy types here!
 		// Contains cache bits (0) and a Write-Protect bit.
 		deviceSpecificParam =

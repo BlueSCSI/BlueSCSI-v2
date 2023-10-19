@@ -28,8 +28,8 @@
 #include <ZuluSCSI_platform.h>
 
 // Use variables for version number
-#define FW_VER_NUM      "23.10.05"
-#define FW_VER_SUFFIX   "wifi-dev"
+#define FW_VER_NUM      "23.10.19"
+#define FW_VER_SUFFIX   "dev"
 #define ZULU_FW_VERSION FW_VER_NUM "-" FW_VER_SUFFIX
 
 // Configuration and log file paths
@@ -83,6 +83,9 @@
 #define DRIVEINFO_NETWORK   {"Dayna",    "SCSI/Link",       "2.0f", ""}
 #define DRIVEINFO_TAPE      {"ZULUSCSI", "TAPE",      PLATFORM_REVISION, ""}
 
+// Default optical drive blocksize
+#define DEFAULT_BLOCKSIZE_OPTICAL 2048
+
 // Default SCSI drive information when Apple quirks are enabled
 #define APPLE_DRIVEINFO_FIXED     {"CDC",      "ZuluSCSI HDD",      PLATFORM_REVISION, "1.0"}
 #define APPLE_DRIVEINFO_REMOVABLE {"IOMEGA",   "BETA230",           PLATFORM_REVISION, "2.02"}
@@ -101,3 +104,7 @@
 #ifndef PREFETCH_BUFFER_SIZE
 #define PREFETCH_BUFFER_SIZE 8192
 #endif
+
+// Masks for buttons
+#define EJECT_BTN_MASK (1|2)
+#define USER_BTN_MASK  (4)
