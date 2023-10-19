@@ -29,6 +29,7 @@
 #include "ZuluSCSI_log_trace.h"
 #include "ZuluSCSI_initiator.h"
 #include <ZuluSCSI_platform.h>
+#include <minIni.h>
 #include "SdFat.h"
 
 #include <scsi2sd.h>
@@ -68,6 +69,8 @@ static struct {
     // Bitmap of all drives that have been imaged
     uint32_t drives_imaged;
 
+    uint8_t initiator_id;
+
     // Is imaging a drive in progress, or are we scanning?
     bool imaging;
 
@@ -94,7 +97,15 @@ void scsiInitiatorInit()
 {
     scsiHostPhyReset();
 
-    g_initiator_state.drives_imaged = 0;
+    g_initiator_state.initiator_id = ini_getl("SCSI", "InitiatorID", 7, CONFIGFILE);
+    if (g_initiator_state.initiator_id > 7)
+    {
+        logmsg("InitiatorID set to illegal value in, ", CONFIGFILE, ", defaulting to 7");
+        g_initiator_state.initiator_id = 7;
+    }
+    // treat initiator id as already imaged drive so it gets skipped
+    g_initiator_state.drives_imaged = 1 << g_initiator_state.initiator_id;
+
     g_initiator_state.imaging = false;
     g_initiator_state.target_id = -1;
     g_initiator_state.sectorsize = 0;
@@ -103,6 +114,8 @@ void scsiInitiatorInit()
     g_initiator_state.retrycount = 0;
     g_initiator_state.failposition = 0;
     g_initiator_state.max_sector_per_transfer = 512;
+
+
 }
 
 // Update progress bar LED during transfers
@@ -209,22 +222,90 @@ void scsiInitiatorMainLoop()
                 g_initiator_state.sectorcount = g_initiator_state.sectorcount_all = 0;
             }
 
-            const char *filename_format = "HD00_imaged.hda";
+            char filename_base[12];
+            strncpy(filename_base, "HD00_imaged", sizeof(filename_base));
+            const char *filename_extention = ".hda";
             if (inquiryok)
             {
                 if ((inquiry_data[0] & 0x1F) == 5)
                 {
-                    filename_format = "CD00_imaged.iso";
+                    strncpy(filename_base, "CD00_imaged", sizeof(filename_base));
+                    filename_extention = ".iso";
                 }
             }
 
             if (g_initiator_state.sectorcount > 0)
             {
                 char filename[32] = {0};
-                strncpy(filename, filename_format, sizeof(filename) - 1);
-                filename[2] += g_initiator_state.target_id;
+                filename_base[2] += g_initiator_state.target_id;
+                strncpy(filename, filename_base, sizeof(filename) - 1);
+                strncat(filename, filename_extention, sizeof(filename) - 1);
+                static int handling = -1;
+                if (handling == -1)
+                {
+                    handling = ini_getl("SCSI", "InitiatorImageHandling", 0, CONFIGFILE);
+                }
+                // Stop if a file already exists
+                if (handling == 0)
+                {
+                    if (SD.exists(filename))
+                    {
+                        logmsg("File, ", filename, ", already exists, InitiatorImageHandling set to stop if file exists.");
+                        g_initiator_state.drives_imaged |= (1 << g_initiator_state.target_id);
+                        return;
+                    }
+                }
+                // Create a new copy to the file 002-999
+                else if (handling == 1)
+                {
+                    for (uint32_t i = 1; i <= 1000; i++)
+                    {
+                        if (i == 1)
+                        {
+                            if (SD.exists(filename))
+                                continue;
+                            break;
+                        }
+                        else if(i >= 1000)
+                        {
+                            logmsg("Max images created from SCSI ID ", g_initiator_state.target_id, ", skipping image creation");
+                            g_initiator_state.drives_imaged |= (1 << g_initiator_state.target_id);
+                            return;
+                        }
+                        char filename_copy[6] = {0};
+                        snprintf(filename_copy, sizeof(filename_copy), "_%03lu", i);
 
-                SD.remove(filename);
+                        strncpy(filename, filename_base, sizeof(filename) - 1);
+                        strncat(filename, filename_copy, sizeof(filename) - 1);
+                        strncat(filename, filename_extention, sizeof(filename) - 1);
+
+                        if (SD.exists(filename))
+                            continue;
+                        break;
+                    }
+
+                }
+                // overwrite file if it exists
+                else if (handling == 2)
+                {
+                    if (SD.exists(filename))
+                    {
+                        logmsg("File, ",filename, " already exists, InitiatorImageHandling set to overwrite file");
+                        SD.remove(filename);
+                    }
+                }
+                // InitiatorImageHandling invalid setting
+                else
+                {
+                    static bool invalid_logged_once = false;
+                    if (!invalid_logged_once)
+                    {
+                        logmsg("InitiatorImageHandling is set to, ", handling, ", which is invalid");
+                        invalid_logged_once = true;
+                    }
+                    return;
+                }
+
                 g_initiator_state.target_file = SD.open(filename, O_RDWR | O_CREAT | O_TRUNC);
                 if (!g_initiator_state.target_file.isOpen())
                 {
@@ -334,7 +415,8 @@ int scsiInitiatorRunCommand(int target_id,
                             const uint8_t *bufOut, size_t bufOutLen,
                             bool returnDataPhase)
 {
-    if (!scsiHostPhySelect(target_id))
+
+    if (!scsiHostPhySelect(target_id, g_initiator_state.initiator_id))
     {
         dbgmsg("------ Target ", target_id, " did not respond");
         scsiHostPhyRelease();
