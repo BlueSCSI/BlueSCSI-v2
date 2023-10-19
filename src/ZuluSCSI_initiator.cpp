@@ -560,10 +560,14 @@ bool scsiRequestSense(int target_id, uint8_t *sense_key)
 // Execute UNIT START STOP command to load/unload media
 bool scsiStartStopUnit(int target_id, bool start)
 {
-    uint8_t command[6] = {0x1B, 0, 0, 0, 0, 0};
+    uint8_t command[6] = {0x1B, 0x1, 0, 0, 0, 0};
     uint8_t response[4] = {0};
 
-    if (start) command[4] |= 1;
+    if (start)
+    {
+        command[4] |= 1; // Start
+        command[1] = 0;  // Immediate
+    }
 
     int status = scsiInitiatorRunCommand(target_id,
                                          command, sizeof(command),
