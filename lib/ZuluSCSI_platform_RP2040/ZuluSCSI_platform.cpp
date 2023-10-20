@@ -26,6 +26,7 @@
 #include <scsi.h>
 #include <assert.h>
 #include <hardware/gpio.h>
+#include <hardware/pio.h>
 #include <hardware/uart.h>
 #include <hardware/pll.h>
 #include <hardware/clocks.h>
@@ -34,11 +35,33 @@
 #include <hardware/flash.h>
 #include <hardware/structs/xip_ctrl.h>
 #include <hardware/structs/usb.h>
-#include <platform/mbed_error.h>
-#include <multicore.h>
-#include <USB/PluggableUSBSerial.h>
-#include "audio.h"
 #include "scsi_accel_target.h"
+
+#ifdef __MBED__
+#  include <platform/mbed_error.h>
+#endif // __MBED__
+
+#ifndef __MBED__
+#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
+# include <SerialUSB.h>
+# include <class/cdc/cdc_device.h>
+#endif
+#else
+# include <USB/PluggableUSBSerial.h>
+#endif // __MBED__
+
+#ifndef ZULUSCSI_NETWORK
+#  include <multicore.h>
+#else
+#  include <pico/multicore.h> 
+extern "C" {
+#  include <pico/cyw43_arch.h>
+} 
+#endif // ZULUSCSI_NETWORK
+
+#ifdef ENABLE_AUDIO_OUTPUT
+#  include "audio.h"
+#endif // ENABLE_AUDIO_OUTPUT
 
 extern "C" {
 
@@ -47,7 +70,9 @@ static bool g_scsi_initiator = false;
 static uint32_t g_flash_chip_size = 0;
 static bool g_uart_initialized = false;
 
+#ifdef __MBED__
 void mbed_error_hook(const mbed_error_ctx * error_context);
+#endif // __MBED__
 
 /***************/
 /* GPIO init   */
@@ -102,7 +127,7 @@ static void reclock_for_audio() {
     // reset UART for the new clock speed
     uart_init(uart0, 1000000);
 }
-#endif
+#endif  // ENABLE_AUDIO_OUT
 
 #ifdef HAS_DIP_SWITCHES
 enum pin_setup_state_t  {SETUP_FALSE, SETUP_TRUE, SETUP_UNDETERMINED};
@@ -152,6 +177,9 @@ void platform_init()
     // Make sure second core is stopped
     multicore_reset_core1();
 
+    pio_clear_instruction_memory(pio0);
+    pio_clear_instruction_memory(pio1);
+    
     /* First configure the pins that affect external buffer directions.
      * RP2040 defaults to pulldowns, while these pins have external pull-ups.
      */
@@ -188,17 +216,18 @@ void platform_init()
 # endif
 #else
     delay(10);
-#endif
+#endif // HAS_DIP_SWITCHES
 
 #ifndef DISABLE_SWO
     /* Initialize logging to SWO pin (UART0) */
     gpio_conf(SWO_PIN,        GPIO_FUNC_UART,false,false, true,  false, true);
     uart_init(uart0, 1000000);
     g_uart_initialized = true;
-#endif
+#endif // DISABLE_SWO
 
+#ifdef __MBED__
     mbed_set_error_hook(mbed_error_hook);
-
+#endif // __MBED__
     logmsg("Platform: ", g_platform_name);
     logmsg("FW Version: ", g_log_firmwareversion);
 
@@ -227,13 +256,13 @@ void platform_init()
 #else
     g_log_debug = false;
     logmsg ("SCSI termination is handled by a hardware jumper");
-#endif
+#endif  // HAS_DIP_SWITCHES
 
 #ifdef ENABLE_AUDIO_OUTPUT
     logmsg("SP/DIF audio to expansion header enabled");
     logmsg("-- Overclocking to 135.428571MHz");
     reclock_for_audio();
-#endif
+#endif // ENABLE_AUDIO_OUTPUT
 
     // Get flash chip size
     uint8_t cmd_read_jedec_id[4] = {0x9f, 0, 0, 0};
@@ -263,16 +292,14 @@ void platform_init()
     //        pin             function       pup   pdown  out    state fast
     gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_I2C, true,false, false,  true, true);
     gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_I2C, true,false, false,  true, true);
-#endif
+#endif  // GPIO_I2C_SDA
 #else
     //        pin             function       pup   pdown  out    state fast
     gpio_conf(GPIO_EXP_AUDIO, GPIO_FUNC_SPI, true,false, false,  true, true);
     gpio_conf(GPIO_EXP_SPARE, GPIO_FUNC_SIO, true,false, false,  true, false);
     // configuration of corresponding SPI unit occurs in audio_setup()
-#endif
+#endif  // ENABLE_AUDIO_OUTPUT
 }
-
-
 
 // late_init() only runs in main application, SCSI not needed in bootloader
 void platform_late_init()
@@ -289,7 +316,7 @@ void platform_late_init()
 #else
     g_scsi_initiator = false;
     logmsg("SCSI target/disk mode, acting as a SCSI disk");
-#endif
+#endif // defined(HAS_DIP_SWITCHES) && defined(PLATFORM_HAS_INITIATOR_MODE)
 
     /* Initialize SCSI pins to required modes.
      * SCSI pins should be inactive / input at this point.
@@ -339,10 +366,16 @@ void platform_late_init()
         gpio_conf(SCSI_IN_ATN,    GPIO_FUNC_SIO, true, false, false, true, false);
         gpio_conf(SCSI_IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
 
+#ifndef __MBED__
+# ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
+    Serial.begin();
+# endif
+#endif // __MBED__
+
 #ifdef ENABLE_AUDIO_OUTPUT
         // one-time control setup for DMA channels and second core
         audio_setup();
-#endif
+#endif // ENABLE_AUDIO_OUTPUT
     }
     else
     {
@@ -363,7 +396,7 @@ void platform_late_init()
         gpio_conf(SCSI_OUT_SEL,   GPIO_FUNC_SIO, false,false, true,  true, true);
         gpio_conf(SCSI_OUT_ACK,   GPIO_FUNC_SIO, false,false, true,  true, true);
         gpio_conf(SCSI_OUT_ATN,   GPIO_FUNC_SIO, false,false, true,  true, true);
-#endif
+#endif  // PLATFORM_HAS_INITIATOR_MODE
     }
 }
 
@@ -409,6 +442,7 @@ void platform_emergency_log_save()
     crashfile.close();
 }
 
+#ifdef __MBED__
 void mbed_error_hook(const mbed_error_ctx * error_context)
 {
     logmsg("--------------");
@@ -452,6 +486,7 @@ void mbed_error_hook(const mbed_error_ctx * error_context)
         for (int j = 0; j < base_delay * 10; j++) delay_ns(100000);
     }
 }
+#endif // __MBED__
 
 /*****************************************/
 /* Debug logging and watchdog            */
@@ -469,7 +504,26 @@ void mbed_error_hook(const mbed_error_ctx * error_context)
 static void usb_log_poll()
 {
     static uint32_t logpos = 0;
-
+#ifndef __MBED__
+# ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
+    if (Serial.availableForWrite())
+    {
+        // Retrieve pointer to log start and determine number of bytes available.
+        uint32_t available = 0;
+        const char *data = log_get_buffer(&logpos, &available);
+                // Limit to CDC packet size
+        uint32_t len = available;
+        if (len == 0) return;
+        if (len > CFG_TUD_CDC_EP_BUFSIZE) len = CFG_TUD_CDC_EP_BUFSIZE;
+        
+        // Update log position by the actual number of bytes sent
+        // If USB CDC buffer is full, this may be 0
+        uint32_t actual = 0;
+        actual = Serial.write(data, len);
+        logpos -= available - actual;
+    }
+# endif // PIO_FRAMEWORK_ARDUINO_NO_USB
+#else
     if (_SerialUSB.ready())
     {
         // Retrieve pointer to log start and determine number of bytes available.
@@ -487,7 +541,9 @@ static void usb_log_poll()
         _SerialUSB.send_nb((uint8_t*)data, len, &actual);
         logpos -= available - actual;
     }
+#endif // __MBED__
 }
+
 
 // Use ADC to implement supply voltage monitoring for the +3.0V rail.
 // This works by sampling the temperature sensor channel, which has
@@ -518,7 +574,7 @@ static void adc_poll()
     * is playing.
     */
    if (audio_is_active()) return;
-#endif
+#endif  // ENABLE_AUDIO_OUTPUT
 
     int adc_value_max = 0;
     while (!adc_fifo_is_empty())
@@ -542,7 +598,7 @@ static void adc_poll()
             lowest_vdd_seen = vdd_mV - 50; // Small hysteresis to avoid excessive warnings
         }
     }
-#endif
+#endif // PLATFORM_VDD_WARNING_LIMIT_mV > 0
 }
 
 // This function is called for every log message.
@@ -613,6 +669,7 @@ static void watchdog_callback(unsigned alarm_num)
             }
 
             usb_log_poll();
+
             platform_emergency_log_save();
 
             platform_boot_to_main_firmware();
@@ -628,11 +685,26 @@ void platform_reset_watchdog()
 {
     g_watchdog_timeout = WATCHDOG_CRASH_TIMEOUT;
 
+
     if (!g_watchdog_initialized)
     {
-        hardware_alarm_claim(3);
-        hardware_alarm_set_callback(3, &watchdog_callback);
-        hardware_alarm_set_target(3, delayed_by_ms(get_absolute_time(), 1000));
+        int alarm_num = -1;
+        for (int i = 0; i < NUM_TIMERS; i++)
+        {
+            if (!hardware_alarm_is_claimed(i))
+            {
+                alarm_num = i;
+                break;
+            }
+        }
+        if (alarm_num == -1)
+        {
+            logmsg("No free watchdog hardware alarms to claim");
+            return;
+        }
+        hardware_alarm_claim(alarm_num);
+        hardware_alarm_set_callback(alarm_num, &watchdog_callback);
+        hardware_alarm_set_target(alarm_num, delayed_by_ms(get_absolute_time(), 1000));
         g_watchdog_initialized = true;
     }
 
@@ -650,7 +722,7 @@ void platform_poll()
     
 #ifdef ENABLE_AUDIO_OUTPUT
     audio_poll();
-#endif
+#endif // ENABLE_AUDIO_OUTPUT
 }
 
 uint8_t platform_get_buttons()
@@ -664,7 +736,7 @@ uint8_t platform_get_buttons()
     // SDA = button 1, SCL = button 2
     if (!gpio_get(GPIO_I2C_SDA)) buttons |= 1;
     if (!gpio_get(GPIO_I2C_SCL)) buttons |= 2;
-#endif
+#endif // defined(ENABLE_AUDIO_OUTPUT)
 
     // Simple debouncing logic: handle button releases after 100 ms delay.
     static uint32_t debounce;
@@ -705,12 +777,15 @@ bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_
         }
     }
 
+
+#ifdef __MBED__
     if (NVIC_GetEnableIRQ(USBCTRL_IRQn))
     {
         logmsg("Disabling USB during firmware flashing");
         NVIC_DisableIRQ(USBCTRL_IRQn);
         usb_hw->main_ctrl = 0;
     }
+#endif // __MBED__
 
     dbgmsg("Writing flash at offset ", offset, " data ", bytearray(buffer, 4));
     assert(offset % PLATFORM_FLASH_PAGE_SIZE == 0);
@@ -780,7 +855,7 @@ void btldr_reset_handler()
 __attribute__((section(".btldr_vectors")))
 const void * btldr_vectors[2] = {&__StackTop, (void*)&btldr_reset_handler};
 
-#endif
+#endif // PLATFORM_BOOTLOADER_SIZE
 
 /************************************/
 /* ROM drive in extra flash space   */
@@ -847,7 +922,7 @@ bool platform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count
     return true;
 }
 
-#endif
+#endif // PLATFORM_HAS_ROM_DRIVE
 
 /**********************************************/
 /* Mapping from data bytes to GPIO BOP values */
@@ -943,6 +1018,8 @@ const uint16_t g_scsi_parity_check_lookup[512] __attribute__((aligned(1024), sec
 
 } /* extern "C" */
 
+
+#ifdef __MBED__
 /* Logging from mbed */
 
 static class LogTarget: public mbed::FileHandle {
@@ -969,3 +1046,4 @@ mbed::FileHandle *mbed::mbed_override_console(int fd)
 {
     return &g_LogTarget;
 }
+#endif // __MBED__

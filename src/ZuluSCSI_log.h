@@ -1,5 +1,6 @@
 /** 
  * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
+ * Copyright (c) 2023 joshua stein <jcs@jcs.org>
  * 
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  * 
@@ -68,6 +69,7 @@ inline void log_raw()
     // End of template recursion
 }
 
+
 extern "C" unsigned long millis();
 
 // Variadic template for printing multiple items
@@ -99,3 +101,14 @@ inline void dbgmsg(Params... params)
         log_raw("\r\n");
     }
 }
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+// Log long hex string
+void logmsg_buf(const unsigned char *buf, unsigned long size);
+// Log formatted string
+void logmsg_f(const char *format, ...);
+#ifdef __cplusplus
+}
+#endif

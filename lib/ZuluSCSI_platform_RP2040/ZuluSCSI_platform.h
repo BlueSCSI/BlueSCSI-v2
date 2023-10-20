@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 #include <Arduino.h>
+#include "ZuluSCSI_platform_network.h"
 
 #ifdef ZULUSCSI_PICO
 // ZuluSCSI Pico carrier board variant
@@ -48,9 +49,14 @@ extern "C" {
 extern const char *g_platform_name;
 
 #ifdef ZULUSCSI_PICO
-# define PLATFORM_NAME "ZuluSCSI Pico"
+# ifdef ZULUSCSI_DAYNAPORT
+#   define PLATFORM_NAME "ZuluSCSI Pico DaynaPORT"
+# else
+#   define PLATFORM_NAME "ZuluSCSI Pico"
+# endif
 # define PLATFORM_REVISION "2.0"
 # define PLATFORM_HAS_INITIATOR_MODE 1
+# define DISABLE_SWO
 #elif defined(ZULUSCSI_BS2)
 # define PLATFORM_NAME "ZuluSCSI BS2"
 # define PLATFORM_REVISION "1.0"
@@ -157,8 +163,12 @@ bool platform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count
 extern const uint16_t g_scsi_parity_lookup[256];
 extern const uint16_t g_scsi_parity_check_lookup[512];
 
+
+
 #ifdef __cplusplus
 }
+
+
 
 // SD card driver for SdFat
 
