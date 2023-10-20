@@ -62,9 +62,9 @@ void scsiHostPhyReset(void)
     g_scsiHostPhyReset = false;
 }
 
-// Select a device, id 0-7.
+// Select a device and an initiator, ids 0-7.
 // Returns true if the target answers to selection request.
-bool scsiHostPhySelect(int target_id)
+bool scsiHostPhySelect(int target_id, uint8_t initiator_id)
 {
     SCSI_RELEASE_OUTPUTS();
 
@@ -85,9 +85,6 @@ bool scsiHostPhySelect(int target_id)
             return false;
         }
     }
-
-    // Choose initiator ID different than target ID
-    uint8_t initiator_id = (target_id == 7) ? 0 : 7;
 
     // Selection phase
     scsiLogInitiatorPhaseChange(SELECTION);
