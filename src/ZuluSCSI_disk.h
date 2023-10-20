@@ -2,6 +2,7 @@
  * SCSI2SD V6 - Copyright (C) 2013 Michael McMaster <michael@codesrc.com>
  * Copyright (C) 2014 Doug Brown <doug@downtowndougbrown.com
  * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
+ * Copyright (c) 2023 joshua stein <jcs@jcs.org>
  * 
  * It is derived from disk.h in SCSI2SD V6.
  * 
@@ -140,3 +141,6 @@ void scsiDiskStartRead(uint32_t lba, uint32_t blocks);
 
 // Start data transfer from SCSI bus to disk image
 void scsiDiskStartWrite(uint32_t lba, uint32_t blocks);
+
+// Returns true if there is at least one network device active
+bool scsiDiskCheckAnyNetworkDevicesConfigured();

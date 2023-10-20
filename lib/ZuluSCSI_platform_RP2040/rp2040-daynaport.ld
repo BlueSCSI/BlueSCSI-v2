@@ -1,5 +1,5 @@
 /** 
- * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
+ * ZuluSCSI™ - Copyright (c) 2023 Rabbit Hole Computing™
  * 
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  * 
@@ -19,20 +19,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
 
-
-/*
- *
- * Customized linker script for building bootloader
- *
- */
-
- MEMORY
+MEMORY
 {
-    /* The bootloader is linked to begin at 0x12000100.
-     * First 256 bytes are reserved for RP2040 second stage bootloader,
-     * which comes as part of the main firmware.elf and is never overwritten.
-     */
-    FLASH(rx) : ORIGIN = 0x10000100, LENGTH = 128k-256
+    FLASH(rx) : ORIGIN = 0x10000000, LENGTH = 576k
     RAM(rwx) : ORIGIN = 0x20000000, LENGTH = 256k  /* Leave space for pico-debug */
     SCRATCH_X(rwx) : ORIGIN = 0x20040000, LENGTH = 4k
     SCRATCH_Y(rwx) : ORIGIN = 0x20041000, LENGTH = 4k
@@ -43,15 +32,28 @@ SECTIONS
     .flash_begin : {
         __flash_binary_start = .;
     } > FLASH
+    .boot2 : {
+        __boot2_start__ = .;
+        KEEP (*(.boot2))
+        __boot2_end__ = .;
+    } > FLASH
+    ASSERT(__boot2_end__ - __boot2_start__ == 256,
+        "ERROR: Pico second stage bootloader must be 256 bytes in size")
+    /* If ZuluSCSI SD card bootloader is included, it goes in first 128 kB */
+    
+    .text.bootloader : ALIGN(16) SUBALIGN(16)
+    {
+        KEEP(*(.text.btldr*))
+        . = ALIGN(131072);
+        CHECK_BOOTLOADER_SIZE = 1 / (. <= 131072);
+    } > FLASH
 
     .text : {
         __logical_binary_start = .;
-        KEEP (*(.btldr_vectors))
-        KEEP (*(.binary_info_header))
-        __binary_info_header_end = .;
-        . = ALIGN(256);
         __real_vectors_start = .;
         KEEP (*(.vectors))
+        KEEP (*(.binary_info_header))
+        __binary_info_header_end = .;
         KEEP (*(.reset))
         KEEP (*(.init))
         *(.fini)
@@ -66,8 +68,30 @@ SECTIONS
         *(SORT(.dtors.*))
         *(.dtors)
         *(.eh_frame*)
-        *(.text .text*)
         . = ALIGN(4);
+
+        /* Put only non-timecritical code in flash
+         * This includes e.g. floating point math routines.
+         */
+        *libm*:(.text .text*)
+        *libc*:(.text .text*)
+        *libgcc*:*df*(.text .text*)
+        *USB*(.text .text*)
+        *SPI*(.text .text*)
+        *Spi*(.text .text*)
+        *spi*(.text .text*)
+        *stdc*:(.text .text*)
+        *supc*:(.text .text*)
+        *nosys*:(.text .text*)
+        *libc*:*printf*(.text .text*)
+        *libc*:*toa*(.text .text*)
+        *libminIni.a:(.text .text*)
+        *libCUEParser.a:(.text .text*)
+        /* RP2040 breakpoints in RAM code don't always work very well
+         * because the boot routine tends to overwrite them.
+         * Uncommenting this line puts all code in flash.
+         */
+        /* *(.text .text*) */
     } > FLASH
     .rodata : {
         . = ALIGN(4);
@@ -105,6 +129,9 @@ SECTIONS
 
         /* Time critical code will go here to avoid external flash latency */
         *(.time_critical*)
+        . = ALIGN(4);
+        *(.text)
+        *(.text*)
 
         . = ALIGN(4);
         *(.data*)

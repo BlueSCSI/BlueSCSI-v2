@@ -1,5 +1,6 @@
 //	Copyright (C) 2013 Michael McMaster <michael@codesrc.com>
 //	Copyright (C) 2019 Landon Rodgers  <g.landon.rodgers@gmail.com>
+//	Copyright (c) 2023 joshua stein <jcs@jcs.org>
 //
 //	This file is part of SCSI2SD.
 //
@@ -15,6 +16,9 @@
 //
 //	You should have received a copy of the GNU General Public License
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
+//
+// This work incorporates work from the following
+
 
 #include "scsi.h"
 #include "config.h"
@@ -201,6 +205,11 @@ void s2s_scsiInquiry()
 		case S2S_CFG_REMOVABLE:
 			scsiDev.data[1] |= 0x80; // Removable bit.
 			break;
+
+		case S2S_CFG_NETWORK:
+			scsiDev.data[2] = 0x01;  // Page code.
+			break;
+		
 		default:
 			// Accept defaults for a fixed disk.
 			break;
@@ -262,6 +271,11 @@ uint8_t getDeviceTypeQualifier()
 	case S2S_CFG_FLOPPY_14MB:
 	case S2S_CFG_REMOVABLE:
 		return 0;
+		break;
+
+	case S2S_CFG_NETWORK:
+		// processor device
+		return 0x03;
 		break;
 
 	default:

@@ -1,4 +1,5 @@
 //	Copyright (C) 2014 Michael McMaster <michael@codesrc.com>
+//	Copyright (c) 2023 joshua stein <jcs@jcs.org>
 //
 //	This file is part of SCSI2SD.
 //
@@ -14,6 +15,8 @@
 //
 //	You should have received a copy of the GNU General Public License
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
+
+
 #ifndef scsi2sd_h
 #define scsi2sd_h
 
@@ -73,7 +76,8 @@ typedef enum
 	S2S_CFG_OPTICAL,
 	S2S_CFG_FLOPPY_14MB,
 	S2S_CFG_MO,
-	S2S_CFG_SEQUENTIAL
+	S2S_CFG_SEQUENTIAL,
+	S2S_CFG_NETWORK,
 
 } S2S_CFG_TYPE;
 
@@ -140,7 +144,11 @@ typedef struct __attribute__((packed))
 
 	uint8_t scsiSpeed;
 
-	uint8_t reserved[119]; // Pad out to 128 bytes
+	char wifiMACAddress[6];
+	char wifiSSID[32];
+	char wifiPassword[63];
+
+	uint8_t reserved[18]; // Pad out to 128 bytes
 } S2S_BoardCfg;
 
 typedef enum

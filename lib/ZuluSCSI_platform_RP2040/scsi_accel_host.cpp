@@ -37,7 +37,6 @@
 #include "scsi_accel_host_RP2040.pio.h"
 #endif
 
-
 #define SCSI_PIO pio0
 #define SCSI_SM 0
 

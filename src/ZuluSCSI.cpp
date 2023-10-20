@@ -7,6 +7,9 @@
  *  BlueSCSI
  *  Copyright (c) 2021  Eric Helgeson, Androda
  *  
+ * This work incorporates work by following
+ *  Copyright (c) 2023 joshua stein <jcs@jcs.org>
+ * 
  *  This file is free software: you may copy, redistribute and/or modify it  
  *  under the terms of the GNU General Public License as published by the  
  *  Free Software Foundation, either version 2 of the License, or (at your  
@@ -395,7 +398,15 @@ bool findHDDImages()
       bool is_mo = (tolower(name[0]) == 'm' && tolower(name[1]) == 'o');
       bool is_re = (tolower(name[0]) == 'r' && tolower(name[1]) == 'e');
       bool is_tp = (tolower(name[0]) == 't' && tolower(name[1]) == 'p');
-      if (is_hd || is_cd || is_fd || is_mo || is_re || is_tp)
+#ifdef ZULUSCSI_NETWORK
+      bool is_ne = (tolower(name[0]) == 'n' && tolower(name[1]) == 'e');
+#endif // ZULUSCSI_NETWORK
+
+      if (is_hd || is_cd || is_fd || is_mo || is_re || is_tp
+#ifdef ZULUSCSI_NETWORK
+        || is_ne
+#endif // ZULUSCSI_NETWORK
+      )
       {
         // Check if the image should be loaded to microcontroller flash ROM drive
         bool is_romdrive = false;
@@ -467,13 +478,22 @@ bool findHDDImages()
           logmsg("-- Ignoring ", fullname, ", SCSI ID ", id, " is already in use!");
           continue;
         }
-
+#ifdef ZULUSCSI_NETWORK
+        if (is_ne && !platform_network_supported())
+        {
+          logmsg("-- Ignoring ", fullname, ", networking is not supported on this hardware");
+          continue;
+        }
+#endif // ZULUSCSI_NETWORK
         // Type mapping based on filename.
         // If type is FIXED, the type can still be overridden in .ini file.
         S2S_CFG_TYPE type = S2S_CFG_FIXED;
         if (is_cd) type = S2S_CFG_OPTICAL;
         if (is_fd) type = S2S_CFG_FLOPPY_14MB;
         if (is_mo) type = S2S_CFG_MO;
+#ifdef ZULUSCSI_NETWORK
+        if (is_ne) type = S2S_CFG_NETWORK;
+#endif // ZULUSCSI_NETWORK
         if (is_re) type = S2S_CFG_REMOVABLE;
         if (is_tp) type = S2S_CFG_SEQUENTIAL;
 
@@ -522,11 +542,21 @@ bool findHDDImages()
     if (cfg && (cfg->scsiId & S2S_CFG_TARGET_ENABLED))
     {
       int capacity_kB = ((uint64_t)cfg->scsiSectors * cfg->bytesPerSector) / 1024;
-      logmsg("SCSI ID:", (int)(cfg->scsiId & 7),
-            " BlockSize:", (int)cfg->bytesPerSector,
-            " Type:", (int)cfg->deviceType,
-            " Quirks:", (int)cfg->quirks,
-            " ImageSize:", capacity_kB, "kB");
+
+      if (cfg->deviceType == S2S_CFG_NETWORK)
+      {
+        logmsg("SCSI ID: ", (int)(cfg->scsiId & 7),
+              ", Type: ", (int)cfg->deviceType,
+              ", Quirks: ", (int)cfg->quirks);
+      }
+      else
+      {
+        logmsg("SCSI ID: ", (int)(cfg->scsiId & S2S_CFG_TARGET_ID_BITS),
+              ", BlockSize: ", (int)cfg->bytesPerSector,
+              ", Type: ", (int)cfg->deviceType,
+              ", Quirks: ", (int)cfg->quirks,
+              ", Size: ", capacity_kB, "kB");
+      };
     }
   }
 
@@ -652,6 +682,14 @@ static void reinitSCSI()
   scsiPhyReset();
   scsiDiskInit();
   scsiInit();
+
+#ifdef ZULUSCSI_NETWORK
+  if (scsiDiskCheckAnyNetworkDevicesConfigured())
+  {
+    platform_network_init(scsiDev.boardCfg.wifiMACAddress);
+    platform_network_wifi_join(scsiDev.boardCfg.wifiSSID, scsiDev.boardCfg.wifiPassword);
+  }
+#endif // ZULUSCSI_NETWORK
   
 }
 extern "C" void zuluscsi_setup(void)
@@ -739,7 +777,11 @@ extern "C" void zuluscsi_main_loop(void)
   platform_reset_watchdog();
   platform_poll();
   diskEjectButtonUpdate(true);
-  
+
+#ifdef ZULUSCSI_NETWORK
+  platform_network_poll();
+#endif // ZULUSCSI_NETWORK
+
 #ifdef PLATFORM_HAS_INITIATOR_MODE
   if (platform_is_initiator_mode_enabled())
   {
@@ -808,9 +850,5 @@ extern "C" void zuluscsi_main_loop(void)
         platform_poll();
       }
     } while (!g_sdcard_present && !g_romdrive_active);
-  }
-  else
-  {
-    
   }
 }
