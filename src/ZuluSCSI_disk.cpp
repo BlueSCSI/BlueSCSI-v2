@@ -295,7 +295,7 @@ static void setDefaultDriveInfo(int target_idx)
         switch (img.deviceType)
         {
             case S2S_CFG_FIXED:         driveinfo = apl_driveinfo_fixed; break;
-            case S2S_CFG_REMOVABLE:    driveinfo = apl_driveinfo_removable; break;
+            case S2S_CFG_REMOVABLE:     driveinfo = apl_driveinfo_removable; break;
             case S2S_CFG_OPTICAL:       driveinfo = apl_driveinfo_optical; break;
             case S2S_CFG_FLOPPY_14MB:   driveinfo = apl_driveinfo_floppy; break;
             case S2S_CFG_MO:            driveinfo = apl_driveinfo_magopt; break;
@@ -310,12 +310,12 @@ static void setDefaultDriveInfo(int target_idx)
         switch (img.deviceType)
         {
             case S2S_CFG_FIXED:         driveinfo = driveinfo_fixed; break;
-            case S2S_CFG_REMOVABLE:    driveinfo = driveinfo_removable; break;
+            case S2S_CFG_REMOVABLE:     driveinfo = driveinfo_removable; break;
             case S2S_CFG_OPTICAL:       driveinfo = driveinfo_optical; break;
             case S2S_CFG_FLOPPY_14MB:   driveinfo = driveinfo_floppy; break;
             case S2S_CFG_MO:            driveinfo = driveinfo_magopt; break;
-            case S2S_CFG_SEQUENTIAL:    driveinfo = driveinfo_tape; break;
             case S2S_CFG_NETWORK:       driveinfo = driveinfo_network; break;
+            case S2S_CFG_SEQUENTIAL:    driveinfo = driveinfo_tape; break;
             default:                    driveinfo = driveinfo_fixed; break;
         }
     }
