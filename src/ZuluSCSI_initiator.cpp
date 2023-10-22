@@ -172,6 +172,8 @@ void scsiInitiatorMainLoop()
             delay_with_poll(1000);
 
             uint8_t inquiry_data[36];
+	    char vendor[9], product[17], revision[5];
+	    int type;
 
             LED_ON();
             bool startstopok =
@@ -185,6 +187,15 @@ void scsiInitiatorMainLoop()
 
             bool inquiryok = startstopok &&
                 scsiInquiry(g_initiator_state.target_id, inquiry_data);
+
+	    memcpy(vendor, &inquiry_data[8], 8);
+	    vendor[8]=0;
+	    memcpy(product, &inquiry_data[16], 16);
+	    product[16]=0;
+	    memcpy(revision, &inquiry_data[32], 4);
+	    revision[4]=0;
+	    type=inquiry_data[0]&0x1f;
+
             LED_OFF();
 
             uint64_t total_bytes = 0;
@@ -193,6 +204,12 @@ void scsiInitiatorMainLoop()
                 logmsg("SCSI ID ", g_initiator_state.target_id,
                     " capacity ", (int)g_initiator_state.sectorcount,
                     " sectors x ", (int)g_initiator_state.sectorsize, " bytes");
+
+		logmsg("[SCSI", g_initiator_state.target_id,"]");
+		logmsg("  Vendor = \"", vendor,"\"");
+		logmsg("  Product = \"", product,"\"");
+		logmsg("  Version = \"", revision,"\"");
+		logmsg("  Type = ", type);
 
                 g_initiator_state.sectorcount_all = g_initiator_state.sectorcount;
 
