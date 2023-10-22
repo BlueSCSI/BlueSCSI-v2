@@ -1,26 +1,26 @@
-/** 
+/**
  * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
- * 
+ *
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
- * 
+ *
  * https://www.gnu.org/licenses/gpl-3.0.html
  * ----
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version. 
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details. 
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
 
 
-/* 
+/*
  * Main program for initiator mode.
  */
 
@@ -509,14 +509,14 @@ bool scsiInitiatorReadCapacity(int target_id, uint32_t *sectorcount, uint32_t *s
                                          command, sizeof(command),
                                          response, sizeof(response),
                                          NULL, 0);
-    
+
     if (status == 0)
     {
         *sectorcount = ((uint32_t)response[0] << 24)
                     | ((uint32_t)response[1] << 16)
                     | ((uint32_t)response[2] <<  8)
                     | ((uint32_t)response[3] <<  0);
-        
+
         *sectorcount += 1; // SCSI reports last sector address
 
         *sectorsize = ((uint32_t)response[4] << 24)
@@ -538,7 +538,7 @@ bool scsiInitiatorReadCapacity(int target_id, uint32_t *sectorcount, uint32_t *s
         *sectorcount = *sectorsize = 0;
         return false;
     }
-} 
+}
 
 // Execute REQUEST SENSE command to get more information about error status
 bool scsiRequestSense(int target_id, uint8_t *sense_key)
@@ -647,7 +647,7 @@ static struct {
     uint32_t bytes_sd_scheduled; // Number of bytes scheduled for transfer on SD card side
     uint32_t bytes_scsi; // Number of bytes that have been scheduled for transfer on SCSI side
     uint32_t bytes_scsi_done; // Number of bytes that have been transferred on SCSI side
-    
+
     uint32_t bytes_per_sector;
     bool all_ok;
 } g_initiator_transfer;
@@ -686,7 +686,7 @@ static void initiatorReadSDCallback(uint32_t bytes_complete)
         uint32_t sd_ready_cnt = g_initiator_transfer.bytes_sd + bytes_complete;
         if (g_initiator_transfer.bytes_scsi_done + len > sd_ready_cnt + bufsize)
             len = sd_ready_cnt + bufsize - g_initiator_transfer.bytes_scsi_done;
-        
+
         if (sd_ready_cnt == g_initiator_transfer.bytes_sd_scheduled &&
             g_initiator_transfer.bytes_sd_scheduled + bytesPerSector <= g_initiator_transfer.bytes_scsi_done)
         {
