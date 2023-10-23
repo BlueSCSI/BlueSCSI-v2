@@ -1,24 +1,24 @@
-/** 
+/**
  * SCSI2SD V6 - Copyright (C) 2013 Michael McMaster <michael@codesrc.com>
  * Portions Copyright (C) 2014 Doug Brown <doug@downtowndougbrown.com>
  * Portions Copyright (C) 2023 Eric Helgeson
  * ZuluSCSI™ - Copyright (c) 2022-2023 Rabbit Hole Computing™
- *  
+ *
  * This file is licensed under the GPL version 3 or any later version. 
  * It is derived from disk.c in SCSI2SD V6
- * 
+ *
  * https://www.gnu.org/licenses/gpl-3.0.html
  * ----
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version. 
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details. 
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
@@ -92,7 +92,7 @@ void scsiStartRead(uint8_t* data, uint32_t count, int *parityError)
 }
 void scsiFinishRead(uint8_t* data, uint32_t count, int *parityError)
 {
-    
+
 }
 bool scsiIsReadFinished(const uint8_t *data)
 {
@@ -234,7 +234,7 @@ static void formatDriveInfoField(char *field, int fieldsize, bool align_right)
     }
 }
 
-// remove path and extension from filename 
+// remove path and extension from filename
 void extractFileName(const char* path, char* output) {
 
     const char *lastSlash, *lastDot;
@@ -260,7 +260,7 @@ void setNameFromImage(image_config_t &img, const char *filename) {
 
     extractFileName(filename, image_name);
     memset(img.vendor, 0, 8);
-    strncpy(img.vendor, image_name, 8);  
+    strncpy(img.vendor, image_name, 8);
     memset(img.prodId, 0, 8);
     strncpy(img.prodId, image_name+8, 8);
 }
@@ -295,7 +295,7 @@ static void setDefaultDriveInfo(int target_idx)
         switch (img.deviceType)
         {
             case S2S_CFG_FIXED:         driveinfo = apl_driveinfo_fixed; break;
-            case S2S_CFG_REMOVABLE:    driveinfo = apl_driveinfo_removable; break;
+            case S2S_CFG_REMOVABLE:     driveinfo = apl_driveinfo_removable; break;
             case S2S_CFG_OPTICAL:       driveinfo = apl_driveinfo_optical; break;
             case S2S_CFG_FLOPPY_14MB:   driveinfo = apl_driveinfo_floppy; break;
             case S2S_CFG_MO:            driveinfo = apl_driveinfo_magopt; break;
@@ -310,12 +310,12 @@ static void setDefaultDriveInfo(int target_idx)
         switch (img.deviceType)
         {
             case S2S_CFG_FIXED:         driveinfo = driveinfo_fixed; break;
-            case S2S_CFG_REMOVABLE:    driveinfo = driveinfo_removable; break;
+            case S2S_CFG_REMOVABLE:     driveinfo = driveinfo_removable; break;
             case S2S_CFG_OPTICAL:       driveinfo = driveinfo_optical; break;
             case S2S_CFG_FLOPPY_14MB:   driveinfo = driveinfo_floppy; break;
             case S2S_CFG_MO:            driveinfo = driveinfo_magopt; break;
-            case S2S_CFG_SEQUENTIAL:    driveinfo = driveinfo_tape; break;
             case S2S_CFG_NETWORK:       driveinfo = driveinfo_network; break;
+            case S2S_CFG_SEQUENTIAL:    driveinfo = driveinfo_tape; break;
             default:                    driveinfo = driveinfo_fixed; break;
         }
     }
@@ -386,7 +386,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
         img.scsiSectors = img.file.size() / blocksize;
         img.scsiId = scsi_id | S2S_CFG_TARGET_ENABLED;
         img.sdSectorStart = 0;
-        
+
         if (type != S2S_CFG_NETWORK && img.scsiSectors == 0)
         {
             logmsg("---- Error: image file ", filename, " is empty");
@@ -450,9 +450,9 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
 #endif
         quirksCheck(&img);
 
-        if (img.name_from_image) 
-        { 
-            setNameFromImage(img, filename); 
+        if (img.name_from_image)
+        {
+            setNameFromImage(img, filename);
             logmsg("---- Vendor / product id set from image file name");
         }
 
@@ -609,9 +609,9 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
     img.deviceTypeModifier = ini_getl(section, "TypeModifier", img.deviceTypeModifier, CONFIGFILE);
     img.sectorsPerTrack = ini_getl(section, "SectorsPerTrack", img.sectorsPerTrack, CONFIGFILE);
     img.headsPerCylinder = ini_getl(section, "HeadsPerCylinder", img.headsPerCylinder, CONFIGFILE);
-    img.quirks = ini_getl(section, "Quirks", img.quirks, CONFIGFILE);  
+    img.quirks = ini_getl(section, "Quirks", img.quirks, CONFIGFILE);
     img.rightAlignStrings = ini_getbool(section, "RightAlignStrings", 0, CONFIGFILE);
-    img.name_from_image = ini_getbool(section, "NameFromImage", 0, CONFIGFILE);    
+    img.name_from_image = ini_getbool(section, "NameFromImage", 0, CONFIGFILE);
     img.prefetchbytes = ini_getl(section, "PrefetchBytes", img.prefetchbytes, CONFIGFILE);
     img.reinsert_on_inquiry = ini_getbool(section, "ReinsertCDOnInquiry", img.reinsert_on_inquiry, CONFIGFILE);
     img.reinsert_after_eject = ini_getbool(section, "ReinsertAfterEject", img.reinsert_after_eject, CONFIGFILE);
@@ -634,7 +634,7 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
     memset(tmp, 0, sizeof(tmp));
     ini_gets(section, "Version", "", tmp, sizeof(tmp), CONFIGFILE);
     if (tmp[0]) memcpy(img.revision, tmp, sizeof(img.revision));
-    
+
     memset(tmp, 0, sizeof(tmp));
     ini_gets(section, "Serial", "", tmp, sizeof(tmp), CONFIGFILE);
     if (tmp[0]) memcpy(img.serial, tmp, sizeof(img.serial));
@@ -1028,7 +1028,7 @@ void s2s_configInit(S2S_BoardCfg* config)
         config->scsiSpeed = S2S_CFG_SPEED_ASYNC_50;
     else if (maxSyncSpeed < 10 && config->scsiSpeed > S2S_CFG_SPEED_SYNC_5)
         config->scsiSpeed = S2S_CFG_SPEED_SYNC_5;
-    
+
     logmsg("-- SelectionDelay = ", (int)config->selectionDelay);
 
     if (ini_getbool("SCSI", "EnableUnitAttention", defaults.enableUnitAttention, CONFIGFILE))
@@ -1477,7 +1477,7 @@ void diskDataOut_callback(uint32_t bytes_complete)
         // How many bytes remaining in the transfer?
         uint32_t remain = g_disk_transfer.bytes_scsi - g_disk_transfer.bytes_scsi_started;
         uint32_t len = remain;
-        
+
         // Split read so that it doesn't wrap around buffer edge
         uint32_t bufsize = sizeof(scsiDev.data);
         uint32_t start = (g_disk_transfer.bytes_scsi_started % bufsize);
@@ -1581,7 +1581,7 @@ void diskDataOut()
             }
 
             if (len < min_write_size)
-            {                
+            {
                 len = 0;
             }
         }
@@ -1655,7 +1655,7 @@ void scsiDiskStartRead(uint32_t lba, uint32_t blocks)
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
     uint32_t capacity = img.file.size() / bytesPerSector;
-    
+
     dbgmsg("------ Read ", (int)blocks, "x", (int)bytesPerSector, " starting at ", (int)lba);
 
     if (unlikely(((uint64_t) lba) + blocks > capacity))
@@ -1749,7 +1749,7 @@ void diskDataIn_callback(uint32_t bytes_complete)
         scsiStartWrite(g_disk_transfer.buffer + g_disk_transfer.bytes_scsi, len);
         g_disk_transfer.bytes_scsi += len;
     }
-    
+
     // Provide a chance for polling request processing
     scsiIsWriteFinished(NULL);
 }
@@ -1761,7 +1761,7 @@ static void start_dataInTransfer(uint8_t *buffer, uint32_t count)
     g_disk_transfer.buffer = buffer;
     g_disk_transfer.bytes_scsi = 0;
     g_disk_transfer.bytes_sd = count;
-    
+
     // Verify that previous write using this buffer has finished
     uint32_t start = millis();
     while (!scsiIsWriteFinished(buffer + count - 1) && !scsiDev.resetFlag)
@@ -1803,7 +1803,7 @@ static void diskDataIn()
     uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
     uint32_t maxblocks = sizeof(scsiDev.data) / bytesPerSector;
     uint32_t maxblocks_half = maxblocks / 2;
-    
+
     // Start transfer in first half of buffer
     // Waits for the previous first half transfer to finish first.
     uint32_t remain = (transfer.blocks - transfer.currentBlock);
@@ -1839,7 +1839,7 @@ static void diskDataIn()
         g_scsi_prefetch.sector = transfer.lba + transfer.blocks;
         g_scsi_prefetch.bytes = 0;
         g_scsi_prefetch.scsiId = scsiDev.target->cfg->scsiId;
-        
+
         if (g_scsi_prefetch.sector + prefetch_sectors > img_sector_count)
         {
             // Don't try to read past image end.
