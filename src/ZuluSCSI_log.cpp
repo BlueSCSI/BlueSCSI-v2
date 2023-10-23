@@ -28,6 +28,7 @@
 #include <stdarg.h>
 
 const char *g_log_firmwareversion = ZULU_FW_VERSION " " __DATE__ " " __TIME__;
+
 bool g_log_debug = true;
 
 // This memory buffer can be read by debugger and is also saved to zululog.txt
@@ -198,35 +199,73 @@ const char *log_get_buffer(uint32_t *startpos, uint32_t *available)
     return result;
 }
 
-void logmsg_f(const char *format, ...)
+// TODO write directly global log buffer to save some memory
+static char shared_log_buf[1500 * 3];
+
+// core method for variadic printf like logging
+static void log_va(bool debug, const char *format, va_list ap)
 {
-    static char out[2048];
-
-    va_list ap;
-    va_start(ap, format);
-    vsnprintf(out, sizeof(out), format, ap);
-    va_end(ap);
-
-    logmsg(out);
+    vsnprintf(shared_log_buf, sizeof(shared_log_buf), format, ap);
+    if (debug)
+    {
+        dbgmsg(shared_log_buf);
+    }
+    else
+    {
+        logmsg(shared_log_buf);
+    }
 }
 
-void logmsg_buf(const unsigned char *buf, unsigned long size)
+void logmsg_f(const char *format, ...)
 {
-    static char tmp[1500 * 3];
+    va_list ap;
+    va_start(ap, format);
+    log_va(false, format, ap);
+    va_end(ap);
+}
+
+void dbgmsg_f(const char *format, ...)
+{
+    if (!g_log_debug)
+        return;
+    va_list ap;
+    va_start(ap, format);
+    log_va(true, format, ap);
+    va_end(ap);
+}
+
+// core method for logging a data buffer into a hex string
+void log_hex_buf(const unsigned char *buf, unsigned long size, bool debug)
+{
     static char hex[] = "0123456789abcdef";
     int o = 0;
 
     for (int j = 0; j < size; j++) {
-        if (o + 3 >= sizeof(tmp))
+        if (o + 3 >= sizeof(shared_log_buf))
             break;
 
         if (j != 0)
-            tmp[o++] = ' ';
-        tmp[o++] = hex[(buf[j] >> 4) & 0xf];
-        tmp[o++] = hex[buf[j] & 0xf];
-        tmp[o] = 0;
+            shared_log_buf[o++] = ' ';
+        shared_log_buf[o++] = hex[(buf[j] >> 4) & 0xf];
+        shared_log_buf[o++] = hex[buf[j] & 0xf];
+        shared_log_buf[o] = 0;
     }
-
-    logmsg_f("%s", tmp);
+    if (debug)
+        dbgmsg(shared_log_buf);
+    else
+        logmsg(shared_log_buf);
 }
+
+void logmsg_buf(const unsigned char *buf, unsigned long size)
+{
+    log_hex_buf(buf, size, false);
+}
+
+void dbgmsg_buf(const unsigned char *buf, unsigned long size)
+{
+    if (!g_log_debug)
+        return;
+    log_hex_buf(buf, size, true);
+}
+
 
