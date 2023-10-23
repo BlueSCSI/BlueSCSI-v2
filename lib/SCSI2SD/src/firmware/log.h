@@ -14,14 +14,32 @@
 //
 //	You should have received a copy of the GNU General Public License
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
+#ifndef SCSI2SD_LOG_H
+#define SCSI2SD_LOG_H
+#include <stdbool.h>
+
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+extern bool g_log_debug;
+
 extern void logmsg_buf(const unsigned char *buf, unsigned long size);
 extern void logmsg_f(const char *format, ...);
+
+extern void dbgmsg_buf(const unsigned char *buf, unsigned long size);
+extern void dbgmsg_f(const char *format, ...);
+
+// check if debug is enabled before calling the logging function
+#define DBGMSG_BUF(buf, size) \
+	if (g_log_debug) {dbgmsg_buf(buf, size);}
+
+#define DBGMSG_F(format, ...) \
+	if (g_log_debug) {dbgmsg_f(format, __VA_ARGS__);}
 
 #ifdef __cplusplus
 }
 #endif
+
+#endif // SCSI2SD_LOG_H
