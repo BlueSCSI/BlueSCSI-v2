@@ -24,26 +24,6 @@
 extern "C" {
 #endif
 
-struct __attribute__((packed)) wifi_network_entry {
-	char ssid[64];
-	char bssid[6];
-	int8_t rssi;
-	uint8_t channel;
-	uint8_t flags;
-	uint8_t _padding;
-#define WIFI_NETWORK_FLAGS_AUTH 0x1
-};
-
-#define WIFI_NETWORK_LIST_ENTRY_COUNT 10
-extern struct wifi_network_entry wifi_network_list[WIFI_NETWORK_LIST_ENTRY_COUNT];
-
-struct __attribute__((packed)) wifi_join_request {
-	char ssid[64];
-	char key[64];
-	uint8_t channel;
-	uint8_t _padding;
-};
-
 bool platform_network_supported();
 void platform_network_poll();
 int platform_network_init(char *mac);
