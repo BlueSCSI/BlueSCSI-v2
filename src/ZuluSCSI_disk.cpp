@@ -394,7 +394,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
             return false;
         }
         uint32_t sector_begin = 0, sector_end = 0;
-        if (img.file.isRom())
+        if (img.file.isRom() || type == S2S_CFG_NETWORK)
         {
             // ROM is always contiguous, no need to log
         }
@@ -458,7 +458,11 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
 
         setDefaultDriveInfo(target_idx);
 
-        if (img.prefetchbytes > 0)
+        if (type == S2S_CFG_NETWORK)
+        {
+            // prefetch not used, skip emitting log message
+        }
+        else if (img.prefetchbytes > 0)
         {
             logmsg("---- Read prefetch enabled: ", (int)img.prefetchbytes, " bytes");
         }

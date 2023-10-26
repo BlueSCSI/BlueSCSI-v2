@@ -35,8 +35,6 @@ extern "C" {
 #define PICO_W_LONG_BLINK_DELAY 200
 #define PICO_W_SHORT_BLINK_DELAY 75
 
-struct wifi_network_entry wifi_network_list[WIFI_NETWORK_LIST_ENTRY_COUNT] = { 0 };
-
 // A default DaynaPort-compatible MAC
 static const char defaultMAC[] = { 0x00, 0x80, 0x19, 0xc0, 0xff, 0xee };
 
@@ -225,7 +223,7 @@ static int platform_network_wifi_scan_result(void *env, const cyw43_ev_scan_resu
 		entry->rssi = result->rssi;
 	}
 	if (result->auth_mode & 7)
-		entry->flags = WIFI_NETWORK_FLAGS_AUTH;
+		entry->flags = WIFI_NETWORK_FLAG_AUTH;
 	strncpy(entry->ssid, (const char *)result->ssid, sizeof(entry->ssid));
 	entry->ssid[sizeof(entry->ssid) - 1] = '\0';
 	memcpy(entry->bssid, result->bssid, sizeof(entry->bssid));
