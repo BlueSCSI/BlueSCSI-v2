@@ -895,7 +895,7 @@ void scsiDiskLoadConfig(int target_idx)
     {
         int blocksize = (img.deviceType == S2S_CFG_OPTICAL) ? 2048 : 512;
         logmsg("-- Opening '", filename, "' for id: ", target_idx);
-        scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, blocksize);
+        scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, blocksize, (S2S_CFG_TYPE) img.deviceType);
     }
 }
 
