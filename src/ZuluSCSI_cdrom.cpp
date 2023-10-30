@@ -1226,7 +1226,7 @@ bool cdromSwitchNextImage(image_config_t &img)
     {
         logmsg("Switching to next CD-ROM image for ", target_idx, ": ", filename);
         img.file.close();
-        bool status = scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, 2048);
+        bool status = scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, 2048, S2S_CFG_OPTICAL);
 
         if (status)
         {
