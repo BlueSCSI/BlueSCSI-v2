@@ -72,15 +72,23 @@ void HardwareConfig::init_state(bool is_active)
         m_device_type = S2S_CFG_FIXED;
     break;
     case 1:
-        m_device_type = S2S_CFG_SEQUENTIAL;
+        m_device_type = S2S_CFG_OPTICAL;
     break;
     case 2:
-        m_device_type = S2S_CFG_OPTICAL;
+        m_device_type = S2S_CFG_FLOPPY_14MB;
     break;
     case 3:
         m_device_type = S2S_CFG_REMOVABLE;
     break;
-
+    case 4:
+        m_device_type = S2S_CFG_MO;
+    break;
+    case 5:
+        m_device_type = S2S_CFG_FIXED;
+    break;
+    case 6:
+        m_device_type = S2S_CFG_SEQUENTIAL;
+    break;
     default:
         m_device_type = S2S_CFG_FIXED;
     }
