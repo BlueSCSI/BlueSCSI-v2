@@ -20,6 +20,7 @@
 
 start:
     wait 0 gpio REQ             side 1  ; Wait for REQ low
+    nop                 [1]     side 1  ; Wait for signals to settle
     in pins, 9                  side 0  ; Assert ACK, read GPIO
     in null, 7                  side 0  ; Padding bits
     wait 1 gpio REQ             side 0  ; Wait for REQ high
