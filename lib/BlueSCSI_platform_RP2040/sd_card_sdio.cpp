@@ -244,8 +244,8 @@ bool SdioCard::stopTransmission(bool blocking)
     }
     else
     {
-        uint32_t end = millis() + 5000;
-        while (millis() < end && isBusy())
+        uint32_t start = millis();
+        while ((uint32_t)(millis() - start) < 5000 && isBusy())
         {
             if (m_stream_callback)
             {
