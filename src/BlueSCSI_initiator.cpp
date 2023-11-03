@@ -671,7 +671,9 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
 {
     int status = -1;
 
-    if (start_sector < 0xFFFFFF && sectorcount <= 256)
+    // Read6 command supports 21 bit LBA - max of 0x1FFFFF
+    // ref: https://www.seagate.com/files/staticfiles/support/docs/manual/Interface%20manuals/100293068j.pdf pg 134
+    if (start_sector < 0x1FFFFF && sectorcount <= 256)
     {
         // Use READ6 command for compatibility with old SCSI1 drives
         uint8_t command[6] = {0x08,
