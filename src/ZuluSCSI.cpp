@@ -53,7 +53,7 @@
 #include "ZuluSCSI_platform.h"
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_log_trace.h"
-#include "ZuluSCSI_presets.h"
+#include "ZuluSCSI_settings.h"
 #include "ZuluSCSI_disk.h"
 #include "ZuluSCSI_initiator.h"
 #include "ROMDrive.h"
@@ -511,6 +511,12 @@ bool findHDDImages()
         else if(id < NUM_SCSIID && lun < NUM_SCSILUN) {
           logmsg("-- Opening ", fullname, " for id:", id, " lun:", lun);
 
+          const char* devPresetName = getDevicePresetName(id);
+          if (devPresetName[0])
+          {
+              logmsg("---- Using device preset: ", devPresetName);
+          }
+
           imageReady = scsiDiskOpenHDDImage(id, fullname, id, lun, blk, type);
           if(imageReady)
           {
@@ -735,17 +741,17 @@ extern "C" void zuluscsi_setup(void)
     
     char presetName[32];
     ini_gets("SCSI", "System", "", presetName, sizeof(presetName), CONFIGFILE);
-    preset_config_t defaults = getSystemPreset(presetName);
-    int boot_delay_ms = ini_getl("SCSI", "InitPreDelay", defaults.initPreDelay, CONFIGFILE);
-
+    scsi_system_settings_t *cfg = initSystemSetting(presetName);
+    int boot_delay_ms = cfg->initPreDelay;
     if (boot_delay_ms > 0)
     {
-    logmsg("Pre SCSI init boot delay in millis: ", boot_delay_ms);
+      logmsg("Pre SCSI init boot delay in millis: ", boot_delay_ms);
       delay(boot_delay_ms);
     }
     reinitSCSI();
-
-    boot_delay_ms = ini_getl("SCSI", "InitPostDelay", 0, CONFIGFILE);
+    
+    
+    boot_delay_ms = cfg->initPostDelay;
     if (boot_delay_ms > 0)
     {
       logmsg("Post SCSI init boot delay in millis: ", boot_delay_ms);

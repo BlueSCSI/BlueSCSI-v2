@@ -30,7 +30,7 @@
 #include "ZuluSCSI_disk.h"
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_config.h"
-#include "ZuluSCSI_presets.h"
+#include "ZuluSCSI_settings.h"
 #ifdef ENABLE_AUDIO_OUTPUT
 #include "ZuluSCSI_audio.h"
 #endif
@@ -193,46 +193,6 @@ void scsiDiskCloseSDCardImages()
     }
 }
 
-// Verify format conformance to SCSI spec:
-// - Empty bytes filled with 0x20 (space)
-// - Only values 0x20 to 0x7E
-// - Left alignment for vendor/product/revision, right alignment for serial.
-static void formatDriveInfoField(char *field, int fieldsize, bool align_right)
-{
-    if (align_right)
-    {
-        // Right align and trim spaces on either side
-        int dst = fieldsize - 1;
-        for (int src = fieldsize - 1; src >= 0; src--)
-        {
-            char c = field[src];
-            if (c < 0x20 || c > 0x7E) c = 0x20;
-            if (c != 0x20 || dst != fieldsize - 1)
-            {
-                field[dst--] = c;
-            }
-        }
-        while (dst >= 0)
-        {
-            field[dst--] = 0x20;
-        }
-    }
-    else
-    {
-        // Left align, preserve spaces in case config tries to manually right-align
-        int dst = 0;
-        for (int src = 0; src < fieldsize; src++)
-        {
-            char c = field[src];
-            if (c < 0x20 || c > 0x7E) c = 0x20;
-            field[dst++] = c;
-        }
-        while (dst < fieldsize)
-        {
-            field[dst++] = 0x20;
-        }
-    }
-}
 
 // remove path and extension from filename
 void extractFileName(const char* path, char* output) {
@@ -263,115 +223,6 @@ void setNameFromImage(image_config_t &img, const char *filename) {
     strncpy(img.vendor, image_name, 8);
     memset(img.prodId, 0, 8);
     strncpy(img.prodId, image_name+8, 8);
-}
-
-// Set default drive vendor / product info after the image file
-// is loaded and the device type is known.
-static void setDefaultDriveInfo(int target_idx)
-{
-    image_config_t &img = g_DiskImages[target_idx];
-
-    static const char *driveinfo_fixed[4]     = DRIVEINFO_FIXED;
-    static const char *driveinfo_removable[4] = DRIVEINFO_REMOVABLE;
-    static const char *driveinfo_optical[4]   = DRIVEINFO_OPTICAL;
-    static const char *driveinfo_floppy[4]    = DRIVEINFO_FLOPPY;
-    static const char *driveinfo_magopt[4]    = DRIVEINFO_MAGOPT;
-    static const char *driveinfo_network[4]   = DRIVEINFO_NETWORK;
-    static const char *driveinfo_tape[4]      = DRIVEINFO_TAPE;
-
-    static const char *apl_driveinfo_fixed[4]     = APPLE_DRIVEINFO_FIXED;
-    static const char *apl_driveinfo_removable[4] = APPLE_DRIVEINFO_REMOVABLE;
-    static const char *apl_driveinfo_optical[4]   = APPLE_DRIVEINFO_OPTICAL;
-    static const char *apl_driveinfo_floppy[4]    = APPLE_DRIVEINFO_FLOPPY;
-    static const char *apl_driveinfo_magopt[4]    = APPLE_DRIVEINFO_MAGOPT;
-    static const char *apl_driveinfo_network[4]   = APPLE_DRIVEINFO_NETWORK;
-    static const char *apl_driveinfo_tape[4]      = APPLE_DRIVEINFO_TAPE;
-
-    const char **driveinfo = NULL;
-
-    if (img.quirks == S2S_CFG_QUIRKS_APPLE)
-    {
-        // Use default drive IDs that are recognized by Apple machines
-        switch (img.deviceType)
-        {
-            case S2S_CFG_FIXED:         driveinfo = apl_driveinfo_fixed; break;
-            case S2S_CFG_REMOVABLE:     driveinfo = apl_driveinfo_removable; break;
-            case S2S_CFG_OPTICAL:       driveinfo = apl_driveinfo_optical; break;
-            case S2S_CFG_FLOPPY_14MB:   driveinfo = apl_driveinfo_floppy; break;
-            case S2S_CFG_MO:            driveinfo = apl_driveinfo_magopt; break;
-            case S2S_CFG_NETWORK:       driveinfo = apl_driveinfo_network; break;
-            case S2S_CFG_SEQUENTIAL:    driveinfo = apl_driveinfo_tape; break;
-            default:                    driveinfo = apl_driveinfo_fixed; break;
-        }
-    }
-    else
-    {
-        // Generic IDs
-        switch (img.deviceType)
-        {
-            case S2S_CFG_FIXED:         driveinfo = driveinfo_fixed; break;
-            case S2S_CFG_REMOVABLE:     driveinfo = driveinfo_removable; break;
-            case S2S_CFG_OPTICAL:       driveinfo = driveinfo_optical; break;
-            case S2S_CFG_FLOPPY_14MB:   driveinfo = driveinfo_floppy; break;
-            case S2S_CFG_MO:            driveinfo = driveinfo_magopt; break;
-            case S2S_CFG_NETWORK:       driveinfo = driveinfo_network; break;
-            case S2S_CFG_SEQUENTIAL:    driveinfo = driveinfo_tape; break;
-            default:                    driveinfo = driveinfo_fixed; break;
-        }
-    }
-
-    if (img.vendor[0] == '\0')
-    {
-        memset(img.vendor, 0, sizeof(img.vendor));
-        strncpy(img.vendor, driveinfo[0], sizeof(img.vendor));
-    }
-
-    if (img.prodId[0] == '\0')
-    {
-        memset(img.prodId, 0, sizeof(img.prodId));
-        strncpy(img.prodId, driveinfo[1], sizeof(img.prodId));
-    }
-
-    if (img.revision[0] == '\0')
-    {
-        memset(img.revision, 0, sizeof(img.revision));
-        strncpy(img.revision, driveinfo[2], sizeof(img.revision));
-    }
-
-    if (img.serial[0] == '\0')
-    {
-        memset(img.serial, 0, sizeof(img.serial));
-        strncpy(img.serial, driveinfo[3], sizeof(img.serial));
-    }
-
-    if (img.serial[0] == '\0')
-    {
-        // Use SD card serial number
-        cid_t sd_cid;
-        uint32_t sd_sn = 0;
-        if (SD.card()->readCID(&sd_cid))
-        {
-            sd_sn = sd_cid.psn();
-        }
-
-        memset(img.serial, 0, sizeof(img.serial));
-        const char *nibble = "0123456789ABCDEF";
-        img.serial[0] = nibble[(sd_sn >> 28) & 0xF];
-        img.serial[1] = nibble[(sd_sn >> 24) & 0xF];
-        img.serial[2] = nibble[(sd_sn >> 20) & 0xF];
-        img.serial[3] = nibble[(sd_sn >> 16) & 0xF];
-        img.serial[4] = nibble[(sd_sn >> 12) & 0xF];
-        img.serial[5] = nibble[(sd_sn >>  8) & 0xF];
-        img.serial[6] = nibble[(sd_sn >>  4) & 0xF];
-        img.serial[7] = nibble[(sd_sn >>  0) & 0xF];
-    }
-
-    int rightAlign = img.rightAlignStrings;
-
-    formatDriveInfoField(img.vendor, sizeof(img.vendor), rightAlign);
-    formatDriveInfoField(img.prodId, sizeof(img.prodId), rightAlign);
-    formatDriveInfoField(img.revision, sizeof(img.revision), rightAlign);
-    formatDriveInfoField(img.serial, sizeof(img.serial), true);
 }
 
 bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize, S2S_CFG_TYPE type)
@@ -445,9 +296,6 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
             img.deviceType = S2S_CFG_SEQUENTIAL;
         }
 
-#ifdef PLATFORM_CONFIG_HOOK
-        PLATFORM_CONFIG_HOOK(&img);
-#endif
         quirksCheck(&img);
 
         if (img.name_from_image)
@@ -455,8 +303,6 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
             setNameFromImage(img, filename);
             logmsg("---- Vendor / product id set from image file name");
         }
-
-        setDefaultDriveInfo(target_idx);
 
         if (type == S2S_CFG_NETWORK)
         {
@@ -563,30 +409,6 @@ bool scsiDiskFilenameValid(const char* name)
     return true;
 }
 
-// Set target configuration to default values
-static void scsiDiskConfigDefaults(int target_idx)
-{
-    // Get default values from system preset, if any
-    char presetName[32];
-    ini_gets("SCSI", "System", "", presetName, sizeof(presetName), CONFIGFILE);
-    preset_config_t defaults = getSystemPreset(presetName);
-
-    image_config_t &img = g_DiskImages[target_idx];
-    img.scsiId = target_idx;
-    img.deviceType = S2S_CFG_FIXED;
-    img.deviceTypeModifier = defaults.deviceTypeModifier;
-    img.sectorsPerTrack = defaults.sectorsPerTrack;
-    img.headsPerCylinder = defaults.headsPerCylinder;
-    img.quirks = defaults.quirks;
-    img.prefetchbytes = defaults.prefetchBytes;
-    img.reinsert_on_inquiry = true;
-    img.reinsert_after_eject = true;
-    memset(img.vendor, 0, sizeof(img.vendor));
-    memset(img.prodId, 0, sizeof(img.prodId));
-    memset(img.revision, 0, sizeof(img.revision));
-    memset(img.serial, 0, sizeof(img.serial));
-}
-
 static void scsiDiskCheckDir(char * dir_name, int target_idx, image_config_t* img, S2S_CFG_TYPE type, const char* type_name)
 {
     if (SD.exists(dir_name))
@@ -606,77 +428,76 @@ static void scsiDiskCheckDir(char * dir_name, int target_idx, image_config_t* im
 
 // Load values for target configuration from given section if they exist.
 // Otherwise keep current settings.
-static void scsiDiskLoadConfig(int target_idx, const char *section)
+static void scsiDiskSetConfig(int target_idx)
 {
+  
     image_config_t &img = g_DiskImages[target_idx];
-    img.deviceType = ini_getl(section, "Type", img.deviceType, CONFIGFILE);
-    img.deviceTypeModifier = ini_getl(section, "TypeModifier", img.deviceTypeModifier, CONFIGFILE);
-    img.sectorsPerTrack = ini_getl(section, "SectorsPerTrack", img.sectorsPerTrack, CONFIGFILE);
-    img.headsPerCylinder = ini_getl(section, "HeadsPerCylinder", img.headsPerCylinder, CONFIGFILE);
-    img.quirks = ini_getl(section, "Quirks", img.quirks, CONFIGFILE);
-    img.rightAlignStrings = ini_getbool(section, "RightAlignStrings", 0, CONFIGFILE);
-    img.name_from_image = ini_getbool(section, "NameFromImage", 0, CONFIGFILE);
-    img.prefetchbytes = ini_getl(section, "PrefetchBytes", img.prefetchbytes, CONFIGFILE);
-    img.reinsert_on_inquiry = ini_getbool(section, "ReinsertCDOnInquiry", img.reinsert_on_inquiry, CONFIGFILE);
-    img.reinsert_after_eject = ini_getbool(section, "ReinsertAfterEject", img.reinsert_after_eject, CONFIGFILE);
-    img.ejectButton = ini_getl(section, "EjectButton", 0, CONFIGFILE);
+    scsi_system_settings_t *devSys = getSystemSetting();
+    scsi_device_settings_t *devCfg = getDeviceSettings(target_idx);
+    img.scsiId = target_idx;
+    memset(img.vendor, 0, sizeof(img.vendor));
+    memset(img.prodId, 0, sizeof(img.prodId));
+    memset(img.revision, 0, sizeof(img.revision));
+    memset(img.serial, 0, sizeof(img.serial));
+
+    img.deviceType = devCfg->deviceType;
+    img.deviceTypeModifier = devCfg->deviceTypeModifier;
+    img.sectorsPerTrack = devCfg->sectorsPerTrack;
+    img.headsPerCylinder = devCfg->headsPerCylinder;
+    img.quirks = devSys->quirks;
+    img.rightAlignStrings = devCfg->rightAlignStrings;
+    img.name_from_image = devCfg->nameFromImage;
+    img.prefetchbytes = devCfg->prefetchBytes;
+    img.reinsert_on_inquiry = devCfg->reinsertOnInquiry;
+    img.reinsert_after_eject = devCfg->reinsertAfterEject;
+    img.ejectButton = devCfg->ejectButton;
 #ifdef ENABLE_AUDIO_OUTPUT
-    uint16_t vol = ini_getl(section, "CDAVolume", DEFAULT_VOLUME_LEVEL, CONFIGFILE) & 0xFF;
+    uint16_t vol = devCfg->vol;
     // Set volume on both channels
     audio_set_volume(target_idx, (vol << 8) | vol);
 #endif
 
+    memcpy(img.vendor, devCfg->vendor, sizeof(img.vendor));
+    memcpy(img.prodId, devCfg->prodId, sizeof(img.prodId));
+    memcpy(img.revision, devCfg->revision, sizeof(img.revision));
+    memcpy(img.serial, devCfg->serial, sizeof(img.serial));
+
+
+    char section[6] = "SCSI0";
+    section[4] += target_idx;
     char tmp[32];
-    memset(tmp, 0, sizeof(tmp));
-    ini_gets(section, "Vendor", "", tmp, sizeof(tmp), CONFIGFILE);
-    if (tmp[0]) memcpy(img.vendor, tmp, sizeof(img.vendor));
 
-    memset(tmp, 0, sizeof(tmp));
-    ini_gets(section, "Product", "", tmp, sizeof(tmp), CONFIGFILE);
-    if (tmp[0]) memcpy(img.prodId, tmp, sizeof(img.prodId));
-
-    memset(tmp, 0, sizeof(tmp));
-    ini_gets(section, "Version", "", tmp, sizeof(tmp), CONFIGFILE);
-    if (tmp[0]) memcpy(img.revision, tmp, sizeof(img.revision));
-
-    memset(tmp, 0, sizeof(tmp));
-    ini_gets(section, "Serial", "", tmp, sizeof(tmp), CONFIGFILE);
-    if (tmp[0]) memcpy(img.serial, tmp, sizeof(img.serial));
-
-    if (strlen(section) == 5 && strncmp(section, "SCSI", 4) == 0) // allow within target [SCSIx] blocks only
+    ini_gets(section, "ImgDir", "", tmp, sizeof(tmp), CONFIGFILE);
+    if (tmp[0])
     {
-        ini_gets(section, "ImgDir", "", tmp, sizeof(tmp), CONFIGFILE);
-        if (tmp[0])
-        {
-            logmsg("SCSI", target_idx, " using image directory '", tmp, "'");
-            img.image_directory = true;
-        }
-        else
-        {
-            strcpy(tmp, "HD0");
-            tmp[2] += target_idx;
-            scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_FIXED, "disk");
+        logmsg("SCSI", target_idx, " using image directory '", tmp, "'");
+        img.image_directory = true;
+    }
+    else
+    {
+        strcpy(tmp, "HD0");
+        tmp[2] += target_idx;
+        scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_FIXED, "disk");
 
-            strcpy(tmp, "CD0");
-            tmp[2] += target_idx;
-            scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_OPTICAL, "optical");
+        strcpy(tmp, "CD0");
+        tmp[2] += target_idx;
+        scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_OPTICAL, "optical");
 
-            strcpy(tmp, "RE0");
-            tmp[2] += target_idx;
-            scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_REMOVABLE, "removable");
+        strcpy(tmp, "RE0");
+        tmp[2] += target_idx;
+        scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_REMOVABLE, "removable");
 
-            strcpy(tmp, "MO0");
-            tmp[2] += target_idx;
-            scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_MO, "magneto-optical");
+        strcpy(tmp, "MO0");
+        tmp[2] += target_idx;
+        scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_MO, "magneto-optical");
 
-            strcpy(tmp, "TP0");
-            tmp[2] += target_idx;
-            scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_SEQUENTIAL, "tape");
+        strcpy(tmp, "TP0");
+        tmp[2] += target_idx;
+        scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_SEQUENTIAL, "tape");
 
-            strcpy(tmp, "FD0");
-            tmp[2] += target_idx;
-            scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_FLOPPY_14MB, "floppy");
-        }
+        strcpy(tmp, "FD0");
+        tmp[2] += target_idx;
+        scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_FLOPPY_14MB, "floppy");
     }
 }
 
@@ -875,17 +696,17 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
 
 void scsiDiskLoadConfig(int target_idx)
 {
+    // Get values from system preset, if any
+    char presetName[32];
+
+    // Get values from device preset, if any
     char section[6] = "SCSI0";
     section[4] = '0' + target_idx;
-
-    // Set default settings
-    scsiDiskConfigDefaults(target_idx);
-
-    // First load global settings
-    scsiDiskLoadConfig(target_idx, "SCSI");
+    ini_gets(section, "Device", "", presetName, sizeof(presetName), CONFIGFILE);
+    initDeviceSettings(target_idx, presetName);
 
     // Then settings specific to target ID
-    scsiDiskLoadConfig(target_idx, section);
+    scsiDiskSetConfig(target_idx);
 
     // Check if we have image specified by name
     char filename[MAX_FILE_PATH];
@@ -1008,11 +829,11 @@ void s2s_configInit(S2S_BoardCfg* config)
 
     // Get default values from system preset, if any
     ini_gets("SCSI", "System", "", tmp, sizeof(tmp), CONFIGFILE);
-    preset_config_t defaults = getSystemPreset(tmp);
-
-    if (defaults.presetName)
+    scsi_system_settings_t *sysCfg = initSystemSetting(tmp);
+    const char* sysPresetName = getSystemPresetName(); 
+    if (sysPresetName[0])
     {
-        logmsg("Active configuration (using system preset \"", defaults.presetName, "\"):");
+        logmsg("Active configuration (using system preset \"", sysPresetName, "\"):");
     }
     else
     {
@@ -1023,11 +844,11 @@ void s2s_configInit(S2S_BoardCfg* config)
     memcpy(config->magic, "BCFG", 4);
     config->flags = 0;
     config->startupDelay = 0;
-    config->selectionDelay = ini_getl("SCSI", "SelectionDelay", defaults.selectionDelay, CONFIGFILE);
+    config->selectionDelay = sysCfg->selectionDelay;
     config->flags6 = 0;
     config->scsiSpeed = PLATFORM_MAX_SCSI_SPEED;
 
-    int maxSyncSpeed = ini_getl("SCSI", "MaxSyncSpeed", defaults.maxSyncSpeed, CONFIGFILE);
+    int maxSyncSpeed = sysCfg->maxSyncSpeed;
     if (maxSyncSpeed < 5 && config->scsiSpeed > S2S_CFG_SPEED_ASYNC_50)
         config->scsiSpeed = S2S_CFG_SPEED_ASYNC_50;
     else if (maxSyncSpeed < 10 && config->scsiSpeed > S2S_CFG_SPEED_SYNC_5)
@@ -1035,7 +856,7 @@ void s2s_configInit(S2S_BoardCfg* config)
 
     logmsg("-- SelectionDelay = ", (int)config->selectionDelay);
 
-    if (ini_getbool("SCSI", "EnableUnitAttention", defaults.enableUnitAttention, CONFIGFILE))
+    if (sysCfg->enableUnitAttention)
     {
         logmsg("-- EnableUnitAttention = Yes");
         config->flags |= S2S_CFG_ENABLE_UNIT_ATTENTION;
@@ -1045,7 +866,7 @@ void s2s_configInit(S2S_BoardCfg* config)
         logmsg("-- EnableUnitAttention = No");
     }
 
-    if (ini_getbool("SCSI", "EnableSCSI2", defaults.enableSCSI2, CONFIGFILE))
+    if (sysCfg->enableSCSI2)
     {
         logmsg("-- EnableSCSI2 = Yes");
         config->flags |= S2S_CFG_ENABLE_SCSI2;
@@ -1055,7 +876,7 @@ void s2s_configInit(S2S_BoardCfg* config)
         logmsg("-- EnableSCSI2 = No");
     }
 
-    if (ini_getbool("SCSI", "EnableSelLatch", defaults.enableSelLatch, CONFIGFILE))
+    if (sysCfg->enableSelLatch)
     {
         logmsg("-- EnableSelLatch = Yes");
         config->flags |= S2S_CFG_ENABLE_SEL_LATCH;
@@ -1065,7 +886,7 @@ void s2s_configInit(S2S_BoardCfg* config)
         logmsg("-- EnableSelLatch = No");
     }
 
-    if (ini_getbool("SCSI", "MapLunsToIDs", defaults.mapLunsToIDs, CONFIGFILE))
+    if (sysCfg->mapLunsToIDs)
     {
         logmsg("-- MapLunsToIDs = Yes");
         config->flags |= S2S_CFG_MAP_LUNS_TO_IDS;
@@ -1076,7 +897,7 @@ void s2s_configInit(S2S_BoardCfg* config)
     }
 
 #ifdef PLATFORM_HAS_PARITY_CHECK
-    if (ini_getbool("SCSI", "EnableParity", defaults.enableParity, CONFIGFILE))
+    if (sysCfg->enableParity)
     {
         logmsg("-- EnableParity = Yes");
         config->flags |= S2S_CFG_ENABLE_PARITY;
@@ -1086,7 +907,6 @@ void s2s_configInit(S2S_BoardCfg* config)
         logmsg("-- EnableParity = No");
     }
 #endif
-
     memset(tmp, 0, sizeof(tmp));
     ini_gets("SCSI", "WiFiMACAddress", "", tmp, sizeof(tmp), CONFIGFILE);
     if (tmp[0])

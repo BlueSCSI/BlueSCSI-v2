@@ -33,6 +33,7 @@
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_log_trace.h"
 #include "ZuluSCSI_config.h"
+#include "ZuluSCSI_settings.h"
 #include <minIni.h>
 
 #include <scsi2sd.h>
@@ -154,10 +155,8 @@ static void selectPhyMode()
 {
     int oldmode = g_scsi_phy_mode;
 
-    int default_mode = PHY_MODE_BEST_AVAILABLE;
-
     // Read overriding setting from configuration file
-    int wanted_mode = ini_getl("SCSI", "PhyMode", default_mode, CONFIGFILE);
+    int wanted_mode = getSystemSetting()->phyMode;
 
     // Default: software GPIO bitbang, available on all revisions
     g_scsi_phy_mode = PHY_MODE_PIO;
@@ -194,6 +193,7 @@ static void selectPhyMode()
     {
         logmsg("SCSI PHY operating mode: ", g_scsi_phy_mode_names[g_scsi_phy_mode]);
     }
+    getSystemSetting()->phyMode = g_scsi_phy_mode;
 }
 
 extern "C" void scsiPhyReset(void)

@@ -25,6 +25,7 @@
 #include <ZuluSCSI_platform.h>
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_config.h"
+#include "ZuluSCSI_settings.h"
 #include <minIni.h>
 #include <strings.h>
 #include <string.h>
@@ -113,7 +114,7 @@ ImageBackingStore::ImageBackingStore(const char *filename, uint32_t scsi_block_s
                 // If the drive was formatted using those versions, you may have problems accessing it with newer firmware.
                 // The old behavior can be restored with setting  [SCSI] UseFATAllocSize = 1 in config file.
 
-                if (ini_getbool("SCSI", "UseFATAllocSize", 0, CONFIGFILE))
+                if (getSystemSetting()->useFATAllocSize)
                 {
                     sectorcount = allocsize;
                 }
