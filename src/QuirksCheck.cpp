@@ -24,6 +24,7 @@
 #include <minIni.h>
 #include "ZuluSCSI_disk.h"
 #include "ZuluSCSI_log.h"
+#include "ZuluSCSI_settings.h"
 #include "QuirksCheck.h"
 #include <assert.h>
 #include <stdint.h>
@@ -84,7 +85,7 @@ static bool isValidMacintoshImage(image_config_t *img)
 static void macQuirksSanityCheck(image_config_t *img)
 {
 
-    if(ini_getbool("SCSI", "DisableMacSanityCheck", false, CONFIGFILE))
+    if(getDeviceSettings(img->scsiId & 7)->disableMacSanityCheck)
     {
         dbgmsg("---- Skipping Mac sanity check due to DisableMacSanityCheck");
         return;
