@@ -497,7 +497,11 @@ static void reinitSCSI()
     g_log_debug = true;
   }
   if (ini_getbool("SCSI", "TestMode", 0, CONFIGFILE))
-  {
+  {  // Test mode for manual probing of signals
+    g_test_mode = true;
+  }
+  if (ini_getbool("SCSI", "PreTest", 0, CONFIGFILE))
+  {  // Test mode for BlueSCSI Distributors, higher speed pin flickering
     g_test_mode = true;
   }
 
@@ -617,45 +621,73 @@ extern "C" void bluescsi_setup(void)
 
 void bluescsi_test_loop(void) {
   while(g_test_mode) {
+    long delayms = 8;
+    if (ini_getbool("SCSI", "TestMode", 0, CONFIGFILE))
+    {
+      // Blink each pin for longer in manual test mode
+      delayms = ini_getl("SCSI", "TestBlinkLength", 500, CONFIGFILE);
+    }
+
     // Initiator Mode Pin Test First (BSY not asserted)
+    delay(delayms);
     SCSI_ENABLE_INITIATOR();
     SCSI_OUT(SEL, 1);
-    delay(500);
+    delay(delayms);
     SCSI_OUT(SEL, 0);
     SCSI_OUT(ACK, 1);
-    delay(500);
+    delay(delayms);
     SCSI_OUT(ACK, 0);
-    delay(500);
+    delay(delayms);
     // ATN not tested here, there's no ATN output
     SCSI_RELEASE_INITIATOR();
 
-    delay(1000);
+    delay(delayms);
     // Switch to target mode with BSY_OUT
     SCSI_OUT(BSY, 1);
     SCSI_ENABLE_CONTROL_OUT();
-    delay(500);
+    delay(delayms);
     SCSI_OUT(IO, 1);
-    delay(500);
+    delay(delayms);
     SCSI_OUT(IO, 0);
     SCSI_OUT(REQ, 1);
-    delay(500);
+    delay(delayms);
     SCSI_OUT(REQ, 0);
     SCSI_OUT(CD, 1);
-    delay(500);
+    delay(delayms);
     SCSI_OUT(CD, 0);
     SCSI_OUT(SEL, 1);
-    delay(500);
+    delay(delayms);
     SCSI_OUT(SEL, 0);
     SCSI_OUT(MSG, 1);
-    delay(500);
+    delay(delayms);
     SCSI_OUT(MSG, 0);
     SCSI_OUT(ACK, 1);
-    delay(500);
+    delay(delayms);
     SCSI_OUT(ACK, 0);
     // SCSI_OUT(ATN, 1);
-    // delay(500);
+    // delay(25);
     // SCSI_OUT(ATN, 0);
-    delay(500);
+
+    // Verify data + parity
+    SCSI_OUT_DATA(0);
+    delay(delayms);
+    SCSI_OUT_DATA(1);
+    delay(delayms);
+    SCSI_OUT_DATA(2);
+    delay(delayms);
+    SCSI_OUT_DATA(4);
+    delay(delayms);
+    SCSI_OUT_DATA(8);
+    delay(delayms);
+    SCSI_OUT_DATA(16);
+    delay(delayms);
+    SCSI_OUT_DATA(32);
+    delay(delayms);
+    SCSI_OUT_DATA(64);
+    delay(delayms);
+    SCSI_OUT_DATA(128);
+    delay(delayms);
+    SCSI_OUT_DATA(0);
     SCSI_OUT(BSY, 0);
     SCSI_RELEASE_OUTPUTS();
   }
