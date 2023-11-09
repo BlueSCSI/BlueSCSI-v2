@@ -502,7 +502,6 @@ bool findHDDImages()
         {
           logmsg("-- Loading ROM drive from ", fullname, " for id:", id);
           imageReady = scsiDiskProgramRomDrive(fullname, id, blk, type);
-          
           if (imageReady)
           {
             foundImage = true;
@@ -511,10 +510,9 @@ bool findHDDImages()
         else if(id < NUM_SCSIID && lun < NUM_SCSILUN) {
           logmsg("-- Opening ", fullname, " for id:", id, " lun:", lun);
 
-          const char* devPresetName = getDevicePresetName(id);
-          if (devPresetName[0])
+          if (g_scsi_settings.getDevicePreset(id) != DEV_PRESET_NONE)
           {
-              logmsg("---- Using device preset: ", devPresetName);
+              logmsg("---- Using device preset: ", g_scsi_settings.getDevicePresetName(id));
           }
 
           imageReady = scsiDiskOpenHDDImage(id, fullname, id, lun, blk, type);
@@ -649,11 +647,18 @@ static void reinitSCSI()
   if (g_hw_config.is_active())
   {
     bool success;
+    uint8_t scsiId = g_hw_config.scsi_id();
+    g_scsi_settings.initDevicePreset(scsiId, g_hw_config.device_preset());
+
     logmsg("Direct/Raw mode enabled, using hardware switches for configuration");
-    success = scsiDiskOpenHDDImage(g_hw_config.scsi_id(), "RAW:0:0xFFFFFFFF", g_hw_config.scsi_id(), 0,
+    success = scsiDiskOpenHDDImage(scsiId, "RAW:0:0xFFFFFFFF",scsiId, 0,
                                    g_hw_config.blocksize(), g_hw_config.device_type());
     if (success)
     {
+      if (g_scsi_settings.getDevicePreset(scsiId) != DEV_PRESET_NONE)
+      {
+        logmsg("---- Using device preset: ", g_scsi_settings.getDevicePresetName(scsiId));
+      }
       blinkStatus(BLINK_STATUS_OK);
     }
     delay(250);
@@ -741,7 +746,7 @@ extern "C" void zuluscsi_setup(void)
     
     char presetName[32];
     ini_gets("SCSI", "System", "", presetName, sizeof(presetName), CONFIGFILE);
-    scsi_system_settings_t *cfg = initSystemSetting(presetName);
+    scsi_system_settings_t *cfg = g_scsi_settings.initSystem(presetName);
     int boot_delay_ms = cfg->initPreDelay;
     if (boot_delay_ms > 0)
     {

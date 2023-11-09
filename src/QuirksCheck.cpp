@@ -85,7 +85,7 @@ static bool isValidMacintoshImage(image_config_t *img)
 static void macQuirksSanityCheck(image_config_t *img)
 {
 
-    if(getDeviceSettings(img->scsiId & 7)->disableMacSanityCheck)
+    if(g_scsi_settings.getDevice(img->scsiId & 7)->disableMacSanityCheck)
     {
         dbgmsg("---- Skipping Mac sanity check due to DisableMacSanityCheck");
         return;
