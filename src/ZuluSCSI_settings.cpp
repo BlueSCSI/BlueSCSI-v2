@@ -20,17 +20,21 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
 
-#include "ZuluSCSI_settings.h"
+
 #include "ZuluSCSI_disk.h"
 #include "ZuluSCSI_audio.h"
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_config.h"
+#include "ZuluSCSI_settings.h"
 #include <strings.h>
 #include <minIni.h>
 #include <minIni_cache.h>
 
 // SCSI system and device settings
-static scsi_settings_t scsiSetting;
+ZuluSCSISettings g_scsi_settings;
+
+const char *systemPresetName[] = {"", "Mac", "MacPlus", "MPC3000"};
+const char *devicePresetName[] = {"", "ST32430N"};
 
 // Helper function for case-insensitive string compare
 static bool strequals(const char *a, const char *b)
@@ -79,16 +83,22 @@ static void formatDriveInfoField(char *field, int fieldsize, bool align_right)
     }
 }
 
+const char **ZuluSCSISettings::deviceInitST32430N(uint8_t scsiId)
+{
+    static const char *st32430n[4] = {"SEAGATE", devicePresetName[DEV_PRESET_ST32430N], PLATFORM_REVISION, ""};
+    m_dev[scsiId].deviceType = S2S_CFG_FIXED;
+    m_devPreset[scsiId] = DEV_PRESET_ST32430N;
+    return st32430n;
+}
 
-// Set default drive vendor / product info after the image file
-// is loaded and the device type is known.
-static void setDefaultDriveInfo(uint8_t scsiId, const char *presetName)
+
+void ZuluSCSISettings::setDefaultDriveInfo(uint8_t scsiId, const char *presetName)
 {
     char section[6] = "SCSI0";
     section[4] += scsiId;
 
-    scsi_device_settings_t &cfg = scsiSetting.dev[scsiId];
-    scsi_device_settings_t &cfgDefault = scsiSetting.dev[SCSI_SETTINGS_SYS_IDX];
+    scsi_device_settings_t &cfgDev = m_dev[scsiId];
+    scsi_device_settings_t &cfgDefault = m_dev[SCSI_SETTINGS_SYS_IDX];
 
     static const char *driveinfo_fixed[4]     = DRIVEINFO_FIXED;
     static const char *driveinfo_removable[4] = DRIVEINFO_REMOVABLE;
@@ -108,70 +118,84 @@ static void setDefaultDriveInfo(uint8_t scsiId, const char *presetName)
 
     const char **driveinfo = NULL;
     bool known_preset = false;
-    scsi_system_settings_t& cfgSys = scsiSetting.sys;
+    scsi_system_settings_t& cfgSys = m_sys;
 
-    strncpy(scsiSetting.presetName[scsiId], presetName, sizeof(scsiSetting.presetName[scsiId]));
-    // Make sure string is null terminated
-    scsiSetting.presetName[scsiId][sizeof(scsiSetting.presetName[scsiId])-1] = '\0';
 
-    if (strequals("", presetName))
+#ifdef ZULUSCSI_HARDWARE_CONFIG
+    if (g_hw_config.is_active() && g_hw_config.device_preset() ==  DEV_PRESET_NONE)
     {
         // empty preset, use default
         known_preset = true;
+        m_devPreset[scsiId] = DEV_PRESET_NONE;
     }
-
-    if (strequals("ST32430N", presetName))
+    else if (g_hw_config.is_active() && g_hw_config.device_preset() ==  DEV_PRESET_ST32430N)
     {
-        static const char *st32430n[4] = {"SEAGATE", "STN32F30N", PLATFORM_REVISION, ""};
-        driveinfo = st32430n;
+        driveinfo = deviceInitST32430N(scsiId);
         known_preset = true;
     }
-    else if (cfgSys.quirks == S2S_CFG_QUIRKS_APPLE)
-    {
-        // Use default drive IDs that are recognized by Apple machines
-        switch (cfg.deviceType)
-        {
-            case S2S_CFG_FIXED:         driveinfo = apl_driveinfo_fixed; break;
-            case S2S_CFG_REMOVABLE:     driveinfo = apl_driveinfo_removable; break;
-            case S2S_CFG_OPTICAL:       driveinfo = apl_driveinfo_optical; break;
-            case S2S_CFG_FLOPPY_14MB:   driveinfo = apl_driveinfo_floppy; break;
-            case S2S_CFG_MO:            driveinfo = apl_driveinfo_magopt; break;
-            case S2S_CFG_NETWORK:       driveinfo = apl_driveinfo_network; break;
-            case S2S_CFG_SEQUENTIAL:    driveinfo = apl_driveinfo_tape; break;
-            default:                    driveinfo = apl_driveinfo_fixed; break;
-        }
-    }
     else
+#endif //ZULUSCSI_HARDWARE_CONFIG
+    if (strequals(devicePresetName[DEV_PRESET_NONE], presetName))
     {
-        // Generic IDs
-        switch (cfg.deviceType)
-        {
-            case S2S_CFG_FIXED:         driveinfo = driveinfo_fixed; break;
-            case S2S_CFG_REMOVABLE:     driveinfo = driveinfo_removable; break;
-            case S2S_CFG_OPTICAL:       driveinfo = driveinfo_optical; break;
-            case S2S_CFG_FLOPPY_14MB:   driveinfo = driveinfo_floppy; break;
-            case S2S_CFG_MO:            driveinfo = driveinfo_magopt; break;
-            case S2S_CFG_NETWORK:       driveinfo = driveinfo_network; break;
-            case S2S_CFG_SEQUENTIAL:    driveinfo = driveinfo_tape; break;
-            default:                    driveinfo = driveinfo_fixed; break;
-        }
+        // empty preset, use default
+        known_preset = true;
+        m_devPreset[scsiId] = DEV_PRESET_NONE;
+    }
+    else if (strequals(devicePresetName[DEV_PRESET_ST32430N], presetName))
+    {
+        driveinfo = deviceInitST32430N(scsiId);
+        known_preset = true;
     }
 
     if (!known_preset)
     {
-        scsiSetting.presetName[scsiId][0] = '\0';
+        m_devPreset[scsiId] = DEV_PRESET_NONE;
         logmsg("Unknown Device preset name ", presetName, ", using default settings");
+    }
+
+    if (m_devPreset[scsiId] == DEV_PRESET_NONE)
+    {
+            if (cfgSys.quirks == S2S_CFG_QUIRKS_APPLE)
+        {
+            // Use default drive IDs that are recognized by Apple machines
+            switch (cfgDev.deviceType)
+            {
+                case S2S_CFG_FIXED:         driveinfo = apl_driveinfo_fixed; break;
+                case S2S_CFG_REMOVABLE:     driveinfo = apl_driveinfo_removable; break;
+                case S2S_CFG_OPTICAL:       driveinfo = apl_driveinfo_optical; break;
+                case S2S_CFG_FLOPPY_14MB:   driveinfo = apl_driveinfo_floppy; break;
+                case S2S_CFG_MO:            driveinfo = apl_driveinfo_magopt; break;
+                case S2S_CFG_NETWORK:       driveinfo = apl_driveinfo_network; break;
+                case S2S_CFG_SEQUENTIAL:    driveinfo = apl_driveinfo_tape; break;
+                default:                    driveinfo = apl_driveinfo_fixed; break;
+            }
+        }
+        else
+        {
+            // Generic IDs
+            switch (cfgDev.deviceType)
+            {
+                case S2S_CFG_FIXED:         driveinfo = driveinfo_fixed; break;
+                case S2S_CFG_REMOVABLE:     driveinfo = driveinfo_removable; break;
+                case S2S_CFG_OPTICAL:       driveinfo = driveinfo_optical; break;
+                case S2S_CFG_FLOPPY_14MB:   driveinfo = driveinfo_floppy; break;
+                case S2S_CFG_MO:            driveinfo = driveinfo_magopt; break;
+                case S2S_CFG_NETWORK:       driveinfo = driveinfo_network; break;
+                case S2S_CFG_SEQUENTIAL:    driveinfo = driveinfo_tape; break;
+                default:                    driveinfo = driveinfo_fixed; break;
+            }
+        }
     }
 
     // If the scsi string has not been set system wide use default scsi string
     if (!cfgDefault.vendor[0] && driveinfo[0][0])
-        strncpy(cfg.vendor, driveinfo[0], sizeof(cfg.vendor));
-    if (!cfgDefault.prodId[0] &&driveinfo[1][0])
-        strncpy(cfg.prodId, driveinfo[1], sizeof(cfg.prodId));
-    if (!cfgDefault.revision[0] &&driveinfo[2][0])
-        strncpy(cfg.revision, driveinfo[2], sizeof(cfg.revision));
-    if (!cfgDefault.serial[0] &&driveinfo[3][0])
-        strncpy(cfg.serial, driveinfo[3], sizeof(cfg.serial));
+        strncpy(cfgDev.vendor, driveinfo[0], sizeof(cfgDev.vendor));
+    if (!cfgDefault.prodId[0] && driveinfo[1][0])
+        strncpy(cfgDev.prodId, driveinfo[1], sizeof(cfgDev.prodId));
+    if (!cfgDefault.revision[0] && driveinfo[2][0])
+        strncpy(cfgDev.revision, driveinfo[2], sizeof(cfgDev.revision));
+    if (!cfgDefault.serial[0] && driveinfo[3][0])
+        strncpy(cfgDev.serial, driveinfo[3], sizeof(cfgDev.serial));
 }
 
 // Read device settings
@@ -226,10 +250,10 @@ static void readIniSCSIDeviceSetting(scsi_device_settings_t &cfg, const char *se
     }
 }
 
-scsi_system_settings_t *initSystemSetting(const char *presetName)
+scsi_system_settings_t *ZuluSCSISettings::initSystem(const char *presetName)
 {
-    scsi_system_settings_t &cfgSys = scsiSetting.sys;
-    scsi_device_settings_t &cfgDev = scsiSetting.dev[SCSI_SETTINGS_SYS_IDX];
+    scsi_system_settings_t &cfgSys = m_sys;
+    scsi_device_settings_t &cfgDev = m_dev[SCSI_SETTINGS_SYS_IDX];
     // This is a hack to figure out if apple quirks is on via a dip switch
     S2S_TargetCfg img;
 
@@ -269,34 +293,32 @@ scsi_system_settings_t *initSystemSetting(const char *presetName)
     cfgDev.disableMacSanityCheck = false;
 
     // System-specific defaults
-    strncpy(scsiSetting.presetName[SCSI_SETTINGS_SYS_IDX],
-            presetName,
-            sizeof(scsiSetting.presetName[SCSI_SETTINGS_SYS_IDX]));
-    // Make sure string is null terminated
-    scsiSetting.presetName[SCSI_SETTINGS_SYS_IDX][sizeof(scsiSetting.presetName[SCSI_SETTINGS_SYS_IDX])-1] = '\0';
 
-    if (strequals(presetName, ""))
+    if (strequals(systemPresetName[SYS_PRESET_NONE], ""))
     {
         // Preset name is empty, use default configuration
+        m_sysPreset = SYS_PRESET_NONE;
     }
-    else if (strequals(presetName, "Mac"))
+    else if (strequals(systemPresetName[SYS_PRESET_MAC], "Mac"))
     {
+        m_sysPreset = SYS_PRESET_MAC;
         cfgSys.quirks = S2S_CFG_QUIRKS_APPLE;
     }
-    else if (strequals(presetName, "MacPlus"))
+    else if (strequals(systemPresetName[SYS_PRESET_MACPLUS], "MacPlus"))
     {
+        m_sysPreset = SYS_PRESET_MACPLUS;
         cfgSys.quirks = S2S_CFG_QUIRKS_APPLE;
         cfgSys.enableSelLatch = true;
         cfgSys.enableSCSI2 = false;
         cfgSys.selectionDelay = 0;
     }
-    else if (strequals(presetName, "MPC3000"))
+    else if (strequals(systemPresetName[SYS_PRESET_MPC3000], "MPC3000"))
     {
         cfgSys.initPreDelay = 600;
     }
     else
     {
-        scsiSetting.presetName[SCSI_SETTINGS_SYS_IDX][0] = '\0';
+        m_sysPreset = SYS_PRESET_NONE;
         logmsg("Unknown System preset name ", presetName, ", using default settings");
     }
 
@@ -327,12 +349,12 @@ scsi_system_settings_t *initSystemSetting(const char *presetName)
     return &cfgSys;
 }
 
-scsi_device_settings_t* initDeviceSettings(uint8_t scsiId, const char *presetName)
+scsi_device_settings_t* ZuluSCSISettings::initDevicePName(uint8_t scsiId, const char *presetName)
 {
-    scsi_device_settings_t& cfg = scsiSetting.dev[scsiId];
+    scsi_device_settings_t& cfg = m_dev[scsiId];
 
     // Write default configuration from system setting initialization
-    memcpy(&cfg, &scsiSetting.dev[SCSI_SETTINGS_SYS_IDX], sizeof(cfg));
+    memcpy(&cfg, &m_dev[SCSI_SETTINGS_SYS_IDX], sizeof(cfg));
     
     char section[6] = "SCSI0";
     section[4] += scsiId;
@@ -370,22 +392,38 @@ scsi_device_settings_t* initDeviceSettings(uint8_t scsiId, const char *presetNam
     return &cfg;
 }
 
-scsi_system_settings_t* getSystemSetting()
+scsi_device_settings_t *ZuluSCSISettings::initDevicePreset(uint8_t scsiId, const scsi_device_preset_t preset)
 {
-    return &scsiSetting.sys;
+    return initDevicePName(scsiId, devicePresetName[preset]);
 }
 
-scsi_device_settings_t *getDeviceSettings(uint8_t scsiId)
+
+scsi_system_settings_t *ZuluSCSISettings::getSystem()
 {
-    return &scsiSetting.dev[scsiId];
+    return &m_sys;
 }
 
-const char* getSystemPresetName()
+scsi_device_settings_t *ZuluSCSISettings::getDevice(uint8_t scsiId)
 {
-    return scsiSetting.presetName[SCSI_SETTINGS_SYS_IDX];
+    return &m_dev[scsiId];
 }
 
-const char* getDevicePresetName(uint8_t scsiId)
+scsi_system_preset_t ZuluSCSISettings::getSystemPreset()
 {
-    return scsiSetting.presetName[scsiId];
+    return m_sysPreset;
+}
+
+const char* ZuluSCSISettings::getSystemPresetName()
+{
+    return systemPresetName[m_sysPreset];
+}
+
+scsi_device_preset_t ZuluSCSISettings::getDevicePreset(uint8_t scsiId)
+{
+    return m_devPreset[scsiId];
+}
+
+const char* ZuluSCSISettings::getDevicePresetName(uint8_t scsiId)
+{
+    return devicePresetName[m_devPreset[scsiId]];
 }

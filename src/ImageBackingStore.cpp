@@ -66,7 +66,7 @@ ImageBackingStore::ImageBackingStore(const char *filename, uint32_t scsi_block_s
         uint32_t sectorCount = SD.card()->sectorCount();
         if (m_endsector >= sectorCount)
         {
-            logmsg("Limiting RAW image mapping to SD card sector count: ", (int)sectorCount);
+            logmsg("---- Limiting RAW image mapping to SD card sector count: ", (int)sectorCount);
             m_endsector = sectorCount - 1;
         }
     }
@@ -114,7 +114,7 @@ ImageBackingStore::ImageBackingStore(const char *filename, uint32_t scsi_block_s
                 // If the drive was formatted using those versions, you may have problems accessing it with newer firmware.
                 // The old behavior can be restored with setting  [SCSI] UseFATAllocSize = 1 in config file.
 
-                if (getSystemSetting()->useFATAllocSize)
+                if (g_scsi_settings.getSystem()->useFATAllocSize)
                 {
                     sectorcount = allocsize;
                 }

@@ -225,10 +225,47 @@ void setNameFromImage(image_config_t &img, const char *filename) {
     strncpy(img.prodId, image_name+8, 8);
 }
 
+// Load values for target image configuration from given section if they exist.
+// Otherwise keep current settings.
+static void scsiDiskSetImageConfig(uint8_t target_idx)
+{
+    image_config_t &img = g_DiskImages[target_idx];
+    scsi_system_settings_t *devSys = g_scsi_settings.getSystem();
+    scsi_device_settings_t *devCfg = g_scsi_settings.getDevice(target_idx);
+    img.scsiId = target_idx;
+    memset(img.vendor, 0, sizeof(img.vendor));
+    memset(img.prodId, 0, sizeof(img.prodId));
+    memset(img.revision, 0, sizeof(img.revision));
+    memset(img.serial, 0, sizeof(img.serial));
+
+    img.deviceType = devCfg->deviceType;
+    img.deviceTypeModifier = devCfg->deviceTypeModifier;
+    img.sectorsPerTrack = devCfg->sectorsPerTrack;
+    img.headsPerCylinder = devCfg->headsPerCylinder;
+    img.quirks = devSys->quirks;
+    img.rightAlignStrings = devCfg->rightAlignStrings;
+    img.name_from_image = devCfg->nameFromImage;
+    img.prefetchbytes = devCfg->prefetchBytes;
+    img.reinsert_on_inquiry = devCfg->reinsertOnInquiry;
+    img.reinsert_after_eject = devCfg->reinsertAfterEject;
+    img.ejectButton = devCfg->ejectButton;
+#ifdef ENABLE_AUDIO_OUTPUT
+    uint16_t vol = devCfg->vol;
+    // Set volume on both channels
+    audio_set_volume(target_idx, (vol << 8) | vol);
+#endif
+
+    memcpy(img.vendor, devCfg->vendor, sizeof(img.vendor));
+    memcpy(img.prodId, devCfg->prodId, sizeof(img.prodId));
+    memcpy(img.revision, devCfg->revision, sizeof(img.revision));
+    memcpy(img.serial, devCfg->serial, sizeof(img.serial));
+}
+
 bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize, S2S_CFG_TYPE type)
 {
     image_config_t &img = g_DiskImages[target_idx];
     img.cuesheetfile.close();
+    scsiDiskSetImageConfig(target_idx);
     img.file = ImageBackingStore(filename, blocksize);
 
     if (img.file.isOpen())
@@ -426,42 +463,16 @@ static void scsiDiskCheckDir(char * dir_name, int target_idx, image_config_t* im
     }
 }
 
+
 // Load values for target configuration from given section if they exist.
 // Otherwise keep current settings.
 static void scsiDiskSetConfig(int target_idx)
 {
   
     image_config_t &img = g_DiskImages[target_idx];
-    scsi_system_settings_t *devSys = getSystemSetting();
-    scsi_device_settings_t *devCfg = getDeviceSettings(target_idx);
     img.scsiId = target_idx;
-    memset(img.vendor, 0, sizeof(img.vendor));
-    memset(img.prodId, 0, sizeof(img.prodId));
-    memset(img.revision, 0, sizeof(img.revision));
-    memset(img.serial, 0, sizeof(img.serial));
 
-    img.deviceType = devCfg->deviceType;
-    img.deviceTypeModifier = devCfg->deviceTypeModifier;
-    img.sectorsPerTrack = devCfg->sectorsPerTrack;
-    img.headsPerCylinder = devCfg->headsPerCylinder;
-    img.quirks = devSys->quirks;
-    img.rightAlignStrings = devCfg->rightAlignStrings;
-    img.name_from_image = devCfg->nameFromImage;
-    img.prefetchbytes = devCfg->prefetchBytes;
-    img.reinsert_on_inquiry = devCfg->reinsertOnInquiry;
-    img.reinsert_after_eject = devCfg->reinsertAfterEject;
-    img.ejectButton = devCfg->ejectButton;
-#ifdef ENABLE_AUDIO_OUTPUT
-    uint16_t vol = devCfg->vol;
-    // Set volume on both channels
-    audio_set_volume(target_idx, (vol << 8) | vol);
-#endif
-
-    memcpy(img.vendor, devCfg->vendor, sizeof(img.vendor));
-    memcpy(img.prodId, devCfg->prodId, sizeof(img.prodId));
-    memcpy(img.revision, devCfg->revision, sizeof(img.revision));
-    memcpy(img.serial, devCfg->serial, sizeof(img.serial));
-
+    scsiDiskSetImageConfig(target_idx);
 
     char section[6] = "SCSI0";
     section[4] += target_idx;
@@ -697,13 +708,26 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
 void scsiDiskLoadConfig(int target_idx)
 {
     // Get values from system preset, if any
-    char presetName[32];
+    char presetName[32] = {};
 
     // Get values from device preset, if any
     char section[6] = "SCSI0";
     section[4] = '0' + target_idx;
-    ini_gets(section, "Device", "", presetName, sizeof(presetName), CONFIGFILE);
-    initDeviceSettings(target_idx, presetName);
+#ifdef ZULUSCSI_HARDWARE_CONFIG
+    const char *hwDevicePresetName = g_scsi_settings.getDevicePresetName(target_idx);
+    if (g_hw_config.is_active())
+    {
+        if (strlen(hwDevicePresetName) < sizeof(presetName))
+        {
+            strncpy(presetName, hwDevicePresetName, sizeof(presetName) - 1);
+        }
+    }
+    else
+#endif
+    {
+        ini_gets(section, "Device", "", presetName, sizeof(presetName), CONFIGFILE);
+    }
+    g_scsi_settings.initDevicePName(target_idx, presetName);
 
     // Then settings specific to target ID
     scsiDiskSetConfig(target_idx);
@@ -804,7 +828,6 @@ bool scsiDiskCheckAnyNetworkDevicesConfigured()
             return true;
         }
     }
-
     return false;
 }
 
@@ -829,11 +852,11 @@ void s2s_configInit(S2S_BoardCfg* config)
 
     // Get default values from system preset, if any
     ini_gets("SCSI", "System", "", tmp, sizeof(tmp), CONFIGFILE);
-    scsi_system_settings_t *sysCfg = initSystemSetting(tmp);
-    const char* sysPresetName = getSystemPresetName(); 
-    if (sysPresetName[0])
+    scsi_system_settings_t *sysCfg = g_scsi_settings.initSystem(tmp);
+
+    if (g_scsi_settings.getSystemPreset() != SYS_PRESET_NONE)
     {
-        logmsg("Active configuration (using system preset \"", sysPresetName, "\"):");
+        logmsg("Active configuration (using system preset \"", g_scsi_settings.getSystemPresetName(), "\"):");
     }
     else
     {

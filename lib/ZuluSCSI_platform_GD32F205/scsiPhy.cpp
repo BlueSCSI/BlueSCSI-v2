@@ -156,7 +156,7 @@ static void selectPhyMode()
     int oldmode = g_scsi_phy_mode;
 
     // Read overriding setting from configuration file
-    int wanted_mode = getSystemSetting()->phyMode;
+    int wanted_mode = g_scsi_settings.getSystem()->phyMode;
 
     // Default: software GPIO bitbang, available on all revisions
     g_scsi_phy_mode = PHY_MODE_PIO;
@@ -193,7 +193,6 @@ static void selectPhyMode()
     {
         logmsg("SCSI PHY operating mode: ", g_scsi_phy_mode_names[g_scsi_phy_mode]);
     }
-    getSystemSetting()->phyMode = g_scsi_phy_mode;
 }
 
 extern "C" void scsiPhyReset(void)

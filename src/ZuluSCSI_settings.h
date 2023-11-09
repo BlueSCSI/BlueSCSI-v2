@@ -20,15 +20,32 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
 #pragma once
+#ifdef __cplusplus
+
 #include <stdint.h>
 
 // Index 8 is the system defaults
 // Index 0-7 represent device settings
 #define SCSI_SETTINGS_SYS_IDX 8
 
+typedef enum
+{
+    SYS_PRESET_NONE = 0,
+    SYS_PRESET_MAC,
+    SYS_PRESET_MACPLUS,
+    SYS_PRESET_MPC3000
+} scsi_system_preset_t;
+
+typedef enum
+{
+    DEV_PRESET_NONE = 0,
+    DEV_PRESET_ST32430N
+} scsi_device_preset_t;
+
+
 // This struct should only have new settings added to the end
 // as it maybe saved and restored directly from flash memory
-struct __attribute__((__packed__)) scsi_system_settings_t 
+typedef struct __attribute__((__packed__)) scsi_system_settings_t
 {
     // Settings for host compatibility 
     uint8_t quirks;
@@ -44,11 +61,11 @@ struct __attribute__((__packed__)) scsi_system_settings_t
     bool mapLunsToIDs;
     bool enableParity;
     bool useFATAllocSize;
-};
+} scsi_system_settings_t;
 
 // This struct should only have new setting added to the end
 // as it maybe saved and restored directly from flash memory
-struct __attribute__((__packed__)) scsi_device_settings_t
+typedef struct __attribute__((__packed__)) scsi_device_settings_t
 {
     // Settings that can be set on all or specific device
     int prefetchBytes;
@@ -69,42 +86,61 @@ struct __attribute__((__packed__)) scsi_device_settings_t
     bool reinsertOnInquiry;
     bool reinsertAfterEject;
     bool disableMacSanityCheck;
-};
+} scsi_device_settings_t;
 
 
-struct scsi_settings_t {
+class ZuluSCSISettings
+{
+public:
+    // Initialize settings for all devices with a preset configuration,
+    //  or return the default config if unknown system type.
+    // Then overwrite any settings with those in the CONFIGFILE
+    scsi_system_settings_t *initSystem(const char *presetName);
+
+    // Copy any shared device setting done the initSystemSettings as default settings, 
+    // or return the default config if unknown device type.
+    // Then overwrite any settings with those in the CONFIGFILE
+    scsi_device_settings_t *initDevicePName(uint8_t scsiId, const char *presetName);
+    scsi_device_settings_t *initDevicePreset(uint8_t scsiId, const scsi_device_preset_t preset);
+    // return the system settings struct to read values
+    scsi_system_settings_t *getSystem();
+
+    // return the device settings struct to read values
+    scsi_device_settings_t *getDevice(uint8_t scsiId);
+
+    // return the system preset enum
+    scsi_system_preset_t getSystemPreset();
+
+    // return the system preset name
+    const char* getSystemPresetName();
+
+    // return the device preset enum
+    scsi_device_preset_t getDevicePreset(uint8_t scsiId);
+
+    // return the device preset name
+    const char* getDevicePresetName(uint8_t scsiId);
+
+protected:
+    // Set default drive vendor / product info after the image file
+    // is loaded and the device type is known.
+    void setDefaultDriveInfo(uint8_t scsiId, const char *presetName);
+
+    // Settings for the specific device
+    const char **deviceInitST32430N(uint8_t scsiId);
+
     // Informative name of the preset configuration, or NULL for defaults
     // The last presetName is for the System preset name. The rest are for
     // corresponding SCSI Ids.
-    char presetName[9][32];
+    scsi_system_preset_t m_sysPreset;
+    scsi_device_preset_t m_devPreset[8];
 
     // These are setting for host compatibility
-    scsi_system_settings_t sys;
+    scsi_system_settings_t m_sys;
 
     // The last dev will be copied over the other dev scsi Id for device defaults.
     // It is set during when the system settings are initialized
-    scsi_device_settings_t dev[9];
-};
+    scsi_device_settings_t m_dev[9];
+} ;
 
-
-// Initialize settings for all devices with a preset configuration,
-//  or return the default config if unknown system type.
-// Then overwrite any settings with those in the CONFIGFILE
-scsi_system_settings_t *initSystemSetting(const char *presetName);
-
-// Copy any shared device setting done the initSystemSettings as default settings, 
-// or return the default config if unknown device type.
-// Then overwrite any settings with those in the CONFIGFILE
-scsi_device_settings_t *initDeviceSettings(uint8_t scsiId, const char *presetName);
-
-// return the system settings struct to read values
-scsi_system_settings_t *getSystemSetting();
-
-// return the device settings struct to read values
-scsi_device_settings_t *getDeviceSettings(uint8_t scsiId);
-
-// return the system preset name
-const char* getSystemPresetName();
-
-// return the device preset name
-const char* getDevicePresetName(uint8_t scsiId);
+extern ZuluSCSISettings g_scsi_settings;
+#endif // __cplusplus
