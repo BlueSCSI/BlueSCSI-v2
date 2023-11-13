@@ -386,10 +386,10 @@ extern "C" void SCSI_TIMER_DMACHB_IRQ()
         else
         {
             // Wait for final ACK to go low, shouldn't take long.
-            int maxwait = 10000;
+            uint32_t start = millis();
             while (TIMER_CNT(SCSI_TIMER) < 1)
             {
-                if (maxwait-- < 0)
+                if ((uint32_t)(millis() - start) > 500)
                 {
                     logmsg("SCSI_TIMER_DMACHB_IRQ: timeout waiting for final ACK");
                     break;

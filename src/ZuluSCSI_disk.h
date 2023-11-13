@@ -74,9 +74,8 @@ struct image_config_t: public S2S_TargetCfg
     // Cue sheet file for CD-ROM images
     FsFile cuesheetfile;
 
-    // Right-align vendor / product type strings (for Apple)
+    // Right-align vendor / product type strings
     // Standard SCSI uses left alignment
-    // This field uses -1 for default when field is not set in .ini
     int rightAlignStrings;
 
     // Set Vendor / Product Id from image file name
