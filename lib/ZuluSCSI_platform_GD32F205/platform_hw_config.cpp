@@ -24,13 +24,9 @@
 #include "platform_hw_config.h"
 #include <ZuluSCSI_config.h>
 #include <ZuluSCSI_log.h>
+#include <ZuluSCSI_settings.h>
 
 HardwareConfig g_hw_config;
-
-S2S_CFG_TYPE hw_config_selected_device()
-{
-    return g_hw_config.device_type();
-};
 
 bool hw_config_is_active()
 {
@@ -63,37 +59,40 @@ void HardwareConfig::init_state(bool is_active)
 {
     m_is_active = is_active;
     m_scsi_id = (gpio_input_port_get(DIPSW_SCSI_ID_BIT_PORT) & DIPSW_SCSI_ID_BIT_PINS) >> DIPSW_SCSI_ID_BIT_SHIFT;
+    m_device_preset = DEV_PRESET_NONE;
     logmsg("SCSI ID set via DIP switch to ", m_scsi_id);
-    
+    scsi_device_settings_t &cfg_dev = *g_scsi_settings.getDevice(m_scsi_id);
+
     uint8_t rotary_select = (gpio_input_port_get(DIPROT_DEVICE_SEL_BIT_PORT) & DIPROT_DEVICE_SEL_BIT_PINS) >> DIPROT_DEVICE_SEL_BIT_SHIFT;
     switch (rotary_select)
     {
     case 0:
-        m_device_type = S2S_CFG_FIXED;
+         cfg_dev.deviceType = S2S_CFG_FIXED;
     break;
     case 1:
-        m_device_type = S2S_CFG_OPTICAL;
+        cfg_dev.deviceType = S2S_CFG_OPTICAL;
     break;
     case 2:
-        m_device_type = S2S_CFG_FLOPPY_14MB;
+        cfg_dev.deviceType = S2S_CFG_FLOPPY_14MB;
     break;
     case 3:
-        m_device_type = S2S_CFG_REMOVABLE;
+        cfg_dev.deviceType = S2S_CFG_REMOVABLE;
     break;
     case 4:
-        m_device_type = S2S_CFG_MO;
+        cfg_dev.deviceType = S2S_CFG_MO;
     break;
     case 5:
-        m_device_type = S2S_CFG_FIXED;
+        m_device_preset = DEV_PRESET_ST32430N;
+        cfg_dev.deviceType = S2S_CFG_FIXED;
     break;
     case 6:
-        m_device_type = S2S_CFG_SEQUENTIAL;
+        cfg_dev.deviceType = S2S_CFG_SEQUENTIAL;
     break;
     default:
-        m_device_type = S2S_CFG_FIXED;
+        cfg_dev.deviceType = S2S_CFG_FIXED;
     }
     
-    if (m_device_type == S2S_CFG_OPTICAL)
+    if (cfg_dev.deviceType == S2S_CFG_OPTICAL)
     {
         m_blocksize = DEFAULT_BLOCKSIZE_OPTICAL;
     }
@@ -101,6 +100,8 @@ void HardwareConfig::init_state(bool is_active)
     {
         m_blocksize = RAW_FALLBACK_BLOCKSIZE;
     }
+
+//    initDeviceSettingsPreset(m_scsi_id, m_device_preset);
 }
 
 #endif // ZULUSCSI_HARDWARE_CONFIG
