@@ -26,6 +26,7 @@
 
 #pragma once
 #include <scsi2sd.h>
+#include <ZuluSCSI_settings.h>
 
 // C wrappers
 #ifdef __cplusplus
@@ -54,15 +55,17 @@ public:
     // get the device type
     // @returns the device type
     const S2S_CFG_TYPE& device_type() const {return m_device_type;}
-    const uint8_t& scsi_id()    const {return m_scsi_id;}
-    const bool& is_active()     const {return m_is_active;}
-    const int blocksize()       const {return m_blocksize;}
+    const uint8_t& scsi_id()          const {return m_scsi_id;}
+    const bool& is_active()           const {return m_is_active;}
+    const int blocksize()             const {return m_blocksize;}
+    const scsi_device_preset_t device_preset() const {return m_device_preset;}
 
 protected:
     S2S_CFG_TYPE m_device_type;
     uint8_t m_scsi_id;
     bool m_is_active;
     int m_blocksize;
+    scsi_device_preset_t m_device_preset;
 };
 
 
