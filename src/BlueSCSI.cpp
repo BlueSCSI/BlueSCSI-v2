@@ -619,9 +619,29 @@ extern "C" void bluescsi_setup(void)
   LED_OFF();
 }
 
+int waitForPin(uint32_t asserted, uint32_t pin, uint32_t maxDelay) {
+  for (int i = 0; i < maxDelay; i++) {
+    if ((asserted ? SCSI_TEST_IN(pin) : ! SCSI_TEST_IN(pin))) {
+      return 1;
+    } else {
+      delay(1);
+    }
+  }
+  return 0;
+}
+
+void inputPinTest(uint32_t pin, uint32_t feedbackPin, uint32_t delayms) {
+  if (waitForPin(1, pin, delayms * 2)) {  // Wait for test input assert
+    SCSI_TEST_OUT(feedbackPin, 1);  // Assert the feedback pin
+    waitForPin(0, pin, delayms * 2);  // Wait for test input deassert
+    SCSI_TEST_OUT(feedbackPin, 0);  // Deassert the feedback pin regardless of whether the test input deasserted
+  }
+}
+
 void bluescsi_test_loop(void) {
   while(g_test_mode) {
-    long delayms = 8;
+    uint8_t defaultDelay = 8;
+    long delayms = defaultDelay;
     if (ini_getbool("SCSI", "TestMode", 0, CONFIGFILE))
     {
       // Blink each pin for longer in manual test mode
@@ -638,7 +658,19 @@ void bluescsi_test_loop(void) {
     delay(delayms);
     SCSI_OUT(ACK, 0);
     delay(delayms);
-    // ATN not tested here, there's no ATN output
+
+    if (delayms == defaultDelay) {
+      // Now waiting for signals from test harness
+      inputPinTest(scsi_pins.IN_IO, scsi_pins.OUT_ACK, delayms);
+      inputPinTest(scsi_pins.IN_REQ, scsi_pins.OUT_ACK, delayms);
+      inputPinTest(scsi_pins.IN_CD, scsi_pins.OUT_ACK, delayms);
+      inputPinTest(scsi_pins.IN_MSG, scsi_pins.OUT_ACK, delayms);
+
+      sio_hw->gpio_oe_clr = (1 << scsi_pins.IN_BSY);
+      inputPinTest(scsi_pins.IN_SEL, scsi_pins.OUT_ACK, delayms);
+      inputPinTest(scsi_pins.IN_BSY, scsi_pins.OUT_ACK, delayms);
+    }
+
     SCSI_RELEASE_INITIATOR();
 
     delay(delayms);
@@ -667,6 +699,13 @@ void bluescsi_test_loop(void) {
     // SCSI_OUT(ATN, 1);
     // delay(25);
     // SCSI_OUT(ATN, 0);
+
+    if (delayms == defaultDelay) {
+      // Test harness signals
+      sio_hw->gpio_oe_clr = (1 << scsi_pins.IN_ATN);
+      inputPinTest(scsi_pins.IN_ACK, scsi_pins.OUT_REQ, delayms);
+      inputPinTest(scsi_pins.IN_ATN, scsi_pins.OUT_REQ, delayms);
+    }
 
     // Verify data + parity
     SCSI_OUT_DATA(0);

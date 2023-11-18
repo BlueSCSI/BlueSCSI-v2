@@ -146,6 +146,17 @@ int platform_network_wifi_channel();
 #define SCSI_IN(pin) \
     ((sio_hw->gpio_in & (1 << (scsi_pins.IN_ ## pin))) ? 0 : 1)
 
+
+// Write a single SCSI pin with raw GPIO number
+// state 1 is asserted, state 0 is deasserted
+#define SCSI_TEST_OUT(pin, state) \
+    *(state ? &sio_hw->gpio_clr : &sio_hw->gpio_set) = 1 << (pin)
+
+// Read a single SCSI pin specifying raw GPIO number
+// Returns 1 for asserted, 0 for deasserted
+#define SCSI_TEST_IN(pin) \
+    ((sio_hw->gpio_in & (1 << (pin))) ? 0 : 1)
+
 // Set pin directions for initiator vs. target mode
 #define SCSI_ENABLE_INITIATOR() \
     (sio_hw->gpio_oe_set = (1 << SCSI_OUT_ACK) | \
