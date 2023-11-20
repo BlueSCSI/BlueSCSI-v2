@@ -1,8 +1,8 @@
 /**
  * ZuluSCSI™ - Copyright (c) 2023 Rabbit Hole Computing™
+ * Copyright (c) 2023 Eric Helgeson
  * 
  * This file is licensed under the GPL version 3 or any later version.  
- * It is derived from scsiPhy.c in SCSI2SD V6.
  * 
  * https://www.gnu.org/licenses/gpl-3.0.html
  * ----
@@ -33,7 +33,9 @@ typedef enum
     SYS_PRESET_NONE = 0,
     SYS_PRESET_MAC,
     SYS_PRESET_MACPLUS,
-    SYS_PRESET_MPC3000
+    SYS_PRESET_MPC3000,
+    SYS_PRESET_MEGASTE,
+    SYS_PRESET_X68000
 } scsi_system_preset_t;
 
 typedef enum
