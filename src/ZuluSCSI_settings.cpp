@@ -1,8 +1,8 @@
 /**
  * ZuluSCSI™ - Copyright (c) 2023 Rabbit Hole Computing™
+ * Copyright (c) 2023 Eric Helgeson
  * 
  * This file is licensed under the GPL version 3 or any later version.  
- * It is derived from scsiPhy.c in SCSI2SD V6.
  * 
  * https://www.gnu.org/licenses/gpl-3.0.html
  * ----
@@ -33,7 +33,7 @@
 // SCSI system and device settings
 ZuluSCSISettings g_scsi_settings;
 
-const char *systemPresetName[] = {"", "Mac", "MacPlus", "MPC3000"};
+const char *systemPresetName[] = {"", "Mac", "MacPlus", "MPC3000", "MegaSTE", "X68000"};
 const char *devicePresetName[] = {"", "ST32430N"};
 
 // Helper function for case-insensitive string compare
@@ -294,17 +294,17 @@ scsi_system_settings_t *ZuluSCSISettings::initSystem(const char *presetName)
 
     // System-specific defaults
 
-    if (strequals(systemPresetName[SYS_PRESET_NONE], ""))
+    if (strequals(systemPresetName[SYS_PRESET_NONE], presetName))
     {
         // Preset name is empty, use default configuration
         m_sysPreset = SYS_PRESET_NONE;
     }
-    else if (strequals(systemPresetName[SYS_PRESET_MAC], "Mac"))
+    else if (strequals(systemPresetName[SYS_PRESET_MAC], presetName))
     {
         m_sysPreset = SYS_PRESET_MAC;
         cfgSys.quirks = S2S_CFG_QUIRKS_APPLE;
     }
-    else if (strequals(systemPresetName[SYS_PRESET_MACPLUS], "MacPlus"))
+    else if (strequals(systemPresetName[SYS_PRESET_MACPLUS], presetName))
     {
         m_sysPreset = SYS_PRESET_MACPLUS;
         cfgSys.quirks = S2S_CFG_QUIRKS_APPLE;
@@ -312,9 +312,25 @@ scsi_system_settings_t *ZuluSCSISettings::initSystem(const char *presetName)
         cfgSys.enableSCSI2 = false;
         cfgSys.selectionDelay = 0;
     }
-    else if (strequals(systemPresetName[SYS_PRESET_MPC3000], "MPC3000"))
+    else if (strequals(systemPresetName[SYS_PRESET_MPC3000], presetName))
     {
+        m_sysPreset = SYS_PRESET_MPC3000;
         cfgSys.initPreDelay = 600;
+    }
+    else if (strequals(systemPresetName[SYS_PRESET_MEGASTE], presetName))
+    {
+        m_sysPreset = SYS_PRESET_MEGASTE;
+        cfgSys.quirks = S2S_CFG_QUIRKS_NONE;
+        cfgSys.mapLunsToIDs = true;
+        cfgSys.enableParity = false;
+    }
+    else if (strequals(systemPresetName[SYS_PRESET_X68000], presetName))
+    {
+        m_sysPreset = SYS_PRESET_X68000;
+        cfgSys.selectionDelay = 0;
+        cfgSys.quirks = S2S_CFG_QUIRKS_NONE;
+        cfgSys.enableSCSI2 = false;
+        cfgSys.maxSyncSpeed = 5;
     }
     else
     {
