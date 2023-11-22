@@ -1,6 +1,6 @@
 /** 
  * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
- * Copyright (c) 2023 joshua stein <jcs@jcs.org>
+ * Portions copyright (c) 2023 joshua stein <jcs@jcs.org>
  * 
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  * 
@@ -28,8 +28,8 @@
 #include <ZuluSCSI_platform.h>
 
 // Use variables for version number
-#define FW_VER_NUM      "23.11.20"
-#define FW_VER_SUFFIX   "dev"
+#define FW_VER_NUM      "23.11.22"
+#define FW_VER_SUFFIX   "release"
 #define ZULU_FW_VERSION FW_VER_NUM "-" FW_VER_SUFFIX
 
 // Configuration and log file paths
