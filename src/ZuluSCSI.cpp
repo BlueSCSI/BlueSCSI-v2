@@ -497,6 +497,7 @@ bool findHDDImages()
         if (is_re) type = S2S_CFG_REMOVABLE;
         if (is_tp) type = S2S_CFG_SEQUENTIAL;
 
+        g_scsi_settings.initDevice(id & 7, type);
         // Open the image file
         if (id < NUM_SCSIID && is_romdrive)
         {
@@ -648,7 +649,7 @@ static void reinitSCSI()
   {
     bool success;
     uint8_t scsiId = g_hw_config.scsi_id();
-    g_scsi_settings.initDevicePreset(scsiId, g_hw_config.device_preset());
+    g_scsi_settings.initDevice(scsiId, g_hw_config.device_type());
 
     logmsg("Direct/Raw mode enabled, using hardware switches for configuration");
     success = scsiDiskOpenHDDImage(scsiId, "RAW:0:0xFFFFFFFF",scsiId, 0,
@@ -681,6 +682,7 @@ static void reinitSCSI()
     {
   #ifdef RAW_FALLBACK_ENABLE
       logmsg("No images found, enabling RAW fallback partition");
+      g_scsi_settings.initDevice(RAW_FALLBACK_SCSI_ID, S2S_CFG_FIXED);
       scsiDiskOpenHDDImage(RAW_FALLBACK_SCSI_ID, "RAW:0:0xFFFFFFFF", RAW_FALLBACK_SCSI_ID, 0,
                           RAW_FALLBACK_BLOCKSIZE);
   #else

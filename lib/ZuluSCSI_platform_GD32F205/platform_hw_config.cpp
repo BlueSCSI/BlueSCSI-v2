@@ -101,7 +101,7 @@ void HardwareConfig::init_state(bool is_active)
         m_blocksize = RAW_FALLBACK_BLOCKSIZE;
     }
 
-//    initDeviceSettingsPreset(m_scsi_id, m_device_preset);
+
 }
 
 #endif // ZULUSCSI_HARDWARE_CONFIG

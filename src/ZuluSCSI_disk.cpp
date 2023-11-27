@@ -510,6 +510,7 @@ static void scsiDiskSetConfig(int target_idx)
         tmp[2] += target_idx;
         scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_FLOPPY_14MB, "floppy");
     }
+    g_scsi_settings.initDevice(target_idx, (S2S_CFG_TYPE)img.deviceType);
 }
 
 // Finds filename with the lowest lexical order _after_ the given filename in
@@ -707,28 +708,6 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
 
 void scsiDiskLoadConfig(int target_idx)
 {
-    // Get values from system preset, if any
-    char presetName[32] = {};
-
-    // Get values from device preset, if any
-    char section[6] = "SCSI0";
-    section[4] = '0' + target_idx;
-#ifdef ZULUSCSI_HARDWARE_CONFIG
-    const char *hwDevicePresetName = g_scsi_settings.getDevicePresetName(target_idx);
-    if (g_hw_config.is_active())
-    {
-        if (strlen(hwDevicePresetName) < sizeof(presetName))
-        {
-            strncpy(presetName, hwDevicePresetName, sizeof(presetName) - 1);
-        }
-    }
-    else
-#endif
-    {
-        ini_gets(section, "Device", "", presetName, sizeof(presetName), CONFIGFILE);
-    }
-    g_scsi_settings.initDevicePName(target_idx, presetName);
-
     // Then settings specific to target ID
     scsiDiskSetConfig(target_idx);
 
