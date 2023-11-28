@@ -123,18 +123,19 @@ Two separate buttons are supported and they can eject different drives.
     IMG1 = ...
     EjectButton = 1
 
-On GD32-based ZuluSCSI models (V1.0 and V1.1), buttons are connected to J303 12-pin expansion header.
+On ZuluSCSI V1.0 and V1.1 models, buttons are connected to J303 12-pin expansion header.
 Button 1 is connected between `PE5` and `GND`, and button 2 is connected between `PE6` and `GND`.
 Pin locations are also shown in [this image](docs/ZuluSCSI_v1_1_buttons.jpg).
 
-On RP2040-based ZuluSCSI models, buttons are connected to the I2C pins.
+On red RP2040-based ZuluSCSI models, buttons are connected to the I2C pins.
+
 Button 1 is connected between `SDA` and `GND` and button 2 is connected between `SCL` and `GND`.
 On full-size models, the pins are available on expansion header J303 ([image](docs/ZuluSCSI_RP2040_buttons.jpg)).
 On compact model, pins are available on 4-pin I2C header J305 ([image](docs/ZuluSCSI_RP2040_compact_buttons.jpg)).
 
 SCSI initiator mode
 -------------------
-The RP2040 model supports SCSI initiator mode for reading SCSI drives.
+The full-size RP2040 and RP2040 Pico models supports SCSI initiator mode for reading SCSI drives.
 When enabled by the DIP switch, ZuluSCSI RP2040 will scan for SCSI drives on the bus and copy the data as `HDxx_imaged.hda` to the SD card.
 
 LED indications in initiator mode:
