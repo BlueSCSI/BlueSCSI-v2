@@ -92,13 +92,15 @@ const char **ZuluSCSISettings::deviceInitST32430N(uint8_t scsiId)
 }
 
 
-void ZuluSCSISettings::setDefaultDriveInfo(uint8_t scsiId, const char *presetName)
+void ZuluSCSISettings::setDefaultDriveInfo(uint8_t scsiId, const char *presetName, S2S_CFG_TYPE type)
 {
     char section[6] = "SCSI0";
     section[4] += scsiId;
 
     scsi_device_settings_t &cfgDev = m_dev[scsiId];
     scsi_device_settings_t &cfgDefault = m_dev[SCSI_SETTINGS_SYS_IDX];
+    
+
 
     static const char *driveinfo_fixed[4]     = DRIVEINFO_FIXED;
     static const char *driveinfo_removable[4] = DRIVEINFO_REMOVABLE;
@@ -155,7 +157,8 @@ void ZuluSCSISettings::setDefaultDriveInfo(uint8_t scsiId, const char *presetNam
 
     if (m_devPreset[scsiId] == DEV_PRESET_NONE)
     {
-            if (cfgSys.quirks == S2S_CFG_QUIRKS_APPLE)
+        cfgDev.deviceType = type;
+        if (cfgSys.quirks == S2S_CFG_QUIRKS_APPLE)
         {
             // Use default drive IDs that are recognized by Apple machines
             switch (cfgDev.deviceType)
@@ -365,16 +368,32 @@ scsi_system_settings_t *ZuluSCSISettings::initSystem(const char *presetName)
     return &cfgSys;
 }
 
-scsi_device_settings_t* ZuluSCSISettings::initDevicePName(uint8_t scsiId, const char *presetName)
+scsi_device_settings_t* ZuluSCSISettings::initDevice(uint8_t scsiId, S2S_CFG_TYPE type)
 {
     scsi_device_settings_t& cfg = m_dev[scsiId];
+    char presetName[32] = {};
+    char section[6] = "SCSI0";
+    section[4] = '0' + scsiId;
+
+#ifdef ZULUSCSI_HARDWARE_CONFIG
+    const char *hwDevicePresetName = g_scsi_settings.getDevicePresetName(scsiId);
+    if (g_hw_config.is_active())
+    {
+        if (strlen(hwDevicePresetName) < sizeof(presetName))
+        {
+            strncpy(presetName, hwDevicePresetName, sizeof(presetName) - 1);
+        }
+    }
+    else
+#endif
+    {
+        ini_gets(section, "Device", "", presetName, sizeof(presetName), CONFIGFILE);
+    }
+
 
     // Write default configuration from system setting initialization
     memcpy(&cfg, &m_dev[SCSI_SETTINGS_SYS_IDX], sizeof(cfg));
-    
-    char section[6] = "SCSI0";
-    section[4] += scsiId;
-    setDefaultDriveInfo(scsiId, presetName);
+    setDefaultDriveInfo(scsiId, presetName, type);
     readIniSCSIDeviceSetting(cfg, section);
 
     if (cfg.serial[0] == '\0')
@@ -407,12 +426,6 @@ scsi_device_settings_t* ZuluSCSISettings::initDevicePName(uint8_t scsiId, const 
 
     return &cfg;
 }
-
-scsi_device_settings_t *ZuluSCSISettings::initDevicePreset(uint8_t scsiId, const scsi_device_preset_t preset)
-{
-    return initDevicePName(scsiId, devicePresetName[preset]);
-}
-
 
 scsi_system_settings_t *ZuluSCSISettings::getSystem()
 {
