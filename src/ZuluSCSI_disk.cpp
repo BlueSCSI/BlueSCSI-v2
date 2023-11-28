@@ -141,6 +141,7 @@ bool scsiDiskActivateRomDrive()
     }
 
     logmsg("---- Activating ROM drive, SCSI id ", (int)hdr.scsi_id, " size ", (int)(hdr.imagesize / 1024), " kB");
+    g_scsi_settings.initDevice(hdr.scsi_id, hdr.drivetype);
     bool status = scsiDiskOpenHDDImage(hdr.scsi_id, "ROM:", hdr.scsi_id, 0, hdr.blocksize, hdr.drivetype);
 
     if (!status)
