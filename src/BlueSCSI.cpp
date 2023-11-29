@@ -667,7 +667,6 @@ void bluescsi_test_loop(void) {
       inputPinTest(scsi_pins.IN_MSG, scsi_pins.OUT_ACK, delayms);
 
       sio_hw->gpio_oe_clr = (1 << scsi_pins.IN_BSY);
-      inputPinTest(scsi_pins.IN_SEL, scsi_pins.OUT_ACK, delayms);
       inputPinTest(scsi_pins.IN_BSY, scsi_pins.OUT_ACK, delayms);
     }
 
@@ -676,6 +675,9 @@ void bluescsi_test_loop(void) {
     delay(delayms);
     // Switch to target mode with BSY_OUT
     SCSI_OUT(BSY, 1);
+
+    inputPinTest(scsi_pins.IN_SEL, scsi_pins.OUT_REQ, delayms);
+
     SCSI_ENABLE_CONTROL_OUT();
     delay(delayms);
     SCSI_OUT(IO, 1);
