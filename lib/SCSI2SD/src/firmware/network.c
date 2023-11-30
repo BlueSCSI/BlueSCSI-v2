@@ -33,7 +33,7 @@ struct scsiNetworkPacketQueue {
 	uint8_t readIndex;
 };
 
-static struct scsiNetworkPacketQueue scsiNetworkInboundQueue, scsiNetworkOutboundQueue;
+static struct scsiNetworkPacketQueue scsiNetworkInboundQueue;
 
 struct __attribute__((packed)) wifi_network_entry wifi_network_list[WIFI_NETWORK_LIST_ENTRY_COUNT] = { 0 };
 
@@ -229,13 +229,7 @@ int scsiNetworkCommand()
 			off = 4;
 		}
 
-		memcpy(&scsiNetworkOutboundQueue.packets[scsiNetworkOutboundQueue.writeIndex], scsiDev.data + off, size);
-		scsiNetworkOutboundQueue.sizes[scsiNetworkOutboundQueue.writeIndex] = size;
-
-		if (scsiNetworkOutboundQueue.writeIndex == NETWORK_PACKET_QUEUE_SIZE - 1)
-			scsiNetworkOutboundQueue.writeIndex = 0;
-		else
-			scsiNetworkOutboundQueue.writeIndex++;
+		platform_network_send(scsiDev.data + off, size);
 
 		scsiDev.status = GOOD;
 		scsiDev.phase = STATUS;
@@ -275,7 +269,6 @@ int scsiNetworkCommand()
 			}
 			scsiNetworkEnabled = true;
 			memset(&scsiNetworkInboundQueue, 0, sizeof(scsiNetworkInboundQueue));
-			memset(&scsiNetworkOutboundQueue, 0, sizeof(scsiNetworkOutboundQueue));
 		}
 		else
 		{
@@ -461,24 +454,3 @@ int scsiNetworkEnqueue(const uint8_t *buf, size_t len)
 	return 1;
 }
 
-int scsiNetworkPurge(void)
-{
-	int sent = 0;
-
-	if (!scsiNetworkEnabled)
-		return 0;
-
-	while (scsiNetworkOutboundQueue.readIndex != scsiNetworkOutboundQueue.writeIndex)
-	{
-		platform_network_send(scsiNetworkOutboundQueue.packets[scsiNetworkOutboundQueue.readIndex], scsiNetworkOutboundQueue.sizes[scsiNetworkOutboundQueue.readIndex]);
-
-		if (scsiNetworkOutboundQueue.readIndex == NETWORK_PACKET_QUEUE_SIZE - 1)
-			scsiNetworkOutboundQueue.readIndex = 0;
-		else
-			scsiNetworkOutboundQueue.readIndex++;
-		
-		sent++;
-	}
-
-	return sent;
-}

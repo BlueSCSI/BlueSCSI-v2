@@ -134,7 +134,6 @@ void platform_network_poll()
 	if (!network_in_use)
 		return;
 
-	scsiNetworkPurge();
 	cyw43_arch_poll();
 }
 
