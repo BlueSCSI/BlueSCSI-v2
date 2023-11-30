@@ -1062,6 +1062,8 @@ void s2s_configInit(S2S_BoardCfg* config)
     {
         memcpy(config->wifiPassword, tmp, sizeof(config->wifiPassword));
     }
+
+    config->wifiSCSISleep = ini_getl("SCSI", "WiFiSCSISleep", 0, CONFIGFILE);
 }
 
 extern "C"

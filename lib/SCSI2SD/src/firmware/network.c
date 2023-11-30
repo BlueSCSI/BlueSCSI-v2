@@ -179,7 +179,7 @@ int scsiNetworkCommand()
 
 		if (scsiDev.dataLen > 6)
 		{
-			s2s_delay_us(80);
+			s2s_delay_us(scsiDev.boardCfg.wifiSCSISleep);
 
 			scsiWrite(scsiDev.data + 6, scsiDev.dataLen - 6);
 			while (!scsiIsWriteFinished(NULL))

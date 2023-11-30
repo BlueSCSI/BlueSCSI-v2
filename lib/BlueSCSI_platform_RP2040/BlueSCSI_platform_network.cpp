@@ -93,6 +93,9 @@ int platform_network_init(char *mac)
 		log("WARNING: Wi-Fi MAC is not what was requested (%02x:%02x:%02x:%02x:%02x:%02x), is libpico not compiled with CYW43_USE_OTP_MAC=0?",
 			mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
+	if (scsiDev.boardCfg.wifiSCSISleep < 1)
+		scsiDev.boardCfg.wifiSCSISleep = NETWORK_DEFAULT_SCSI_SLEEP;
+		
 	network_in_use = true;
 
 	return 0;

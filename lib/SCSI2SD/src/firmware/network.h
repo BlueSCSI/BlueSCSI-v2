@@ -32,6 +32,7 @@ extern "C" {
 
 #define NETWORK_PACKET_QUEUE_SIZE   20		// must be <= 255
 #define NETWORK_PACKET_MAX_SIZE     1520
+#define NETWORK_DEFAULT_SCSI_SLEEP	60
 
 struct __attribute__((packed)) wifi_network_entry {
 	char ssid[64];
