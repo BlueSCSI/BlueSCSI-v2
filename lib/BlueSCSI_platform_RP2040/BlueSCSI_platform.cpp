@@ -171,7 +171,7 @@ void platform_init()
 
         // Initialize logging to SWO pin (UART0) 
         gpio_conf(SWO_PIN,        GPIO_FUNC_UART,false,false, true,  false, true);
-        uart_init(uart0, 1000000);
+        uart_init(uart0, 115200);
         g_uart_initialized = true;
     #ifdef MBED
         mbed_set_error_hook(mbed_error_hook);
