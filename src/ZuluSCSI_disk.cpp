@@ -296,6 +296,12 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
             logmsg("---- WARNING: file ", filename, " is not contiguous. This will increase read latency.");
         }
 
+        S2S_CFG_TYPE setting_type = (S2S_CFG_TYPE) g_scsi_settings.getDevice(target_idx)->deviceType;
+        if ( setting_type != S2S_CFG_NOT_SET)
+        {
+            type = setting_type;
+        }
+
         if (type == S2S_CFG_FIXED)
         {
             logmsg("---- Configuring as disk drive drive");
