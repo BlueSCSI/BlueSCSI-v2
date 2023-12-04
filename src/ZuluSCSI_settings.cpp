@@ -281,7 +281,7 @@ scsi_system_settings_t *ZuluSCSISettings::initSystem(const char *presetName)
     cfgSys.useFATAllocSize = false;
     
     // setting set for all or specific devices
-    cfgDev.deviceType = 0;
+    cfgDev.deviceType = S2S_CFG_NOT_SET;
     cfgDev.deviceTypeModifier = 0;
     cfgDev.sectorsPerTrack = 63;
     cfgDev.headsPerCylinder = 255;
