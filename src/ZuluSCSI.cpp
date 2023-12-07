@@ -652,7 +652,20 @@ static void reinitSCSI()
     g_scsi_settings.initDevice(scsiId, g_hw_config.device_type());
 
     logmsg("Direct/Raw mode enabled, using hardware switches for configuration");
-    success = scsiDiskOpenHDDImage(scsiId, "RAW:0:0xFFFFFFFF",scsiId, 0,
+    char raw_filename[32];  
+    uint32_t start =  g_scsi_settings.getDevice(scsiId)->sectorSDBegin; 
+    uint32_t end = g_scsi_settings.getDevice(scsiId)->sectorSDEnd;
+
+    if (start == end && end == 0)
+    {
+      strcpy(raw_filename, "RAW:0:0xFFFFFFFF");
+    } 
+    else
+    {
+      snprintf(raw_filename, sizeof(raw_filename), "RAW:0x%X:0x%X", start, end);
+    }
+    
+    success = scsiDiskOpenHDDImage(scsiId, raw_filename, scsiId, 0,
                                    g_hw_config.blocksize(), g_hw_config.device_type());
     if (success)
     {
