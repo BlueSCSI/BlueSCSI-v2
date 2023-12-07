@@ -87,6 +87,8 @@ const char **ZuluSCSISettings::deviceInitST32430N(uint8_t scsiId)
 {
     static const char *st32430n[4] = {"SEAGATE", devicePresetName[DEV_PRESET_ST32430N], PLATFORM_REVISION, ""};
     m_dev[scsiId].deviceType = S2S_CFG_FIXED;
+    m_dev[scsiId].sectorSDBegin = 0;
+    m_dev[scsiId].sectorSDEnd = 4397055; // 2147MB into bytes and divide 512 - 1
     m_devPreset[scsiId] = DEV_PRESET_ST32430N;
     return st32430n;
 }
@@ -133,6 +135,7 @@ void ZuluSCSISettings::setDefaultDriveInfo(uint8_t scsiId, const char *presetNam
     else if (g_hw_config.is_active() && g_hw_config.device_preset() ==  DEV_PRESET_ST32430N)
     {
         driveinfo = deviceInitST32430N(scsiId);
+        m_devPreset[scsiId] = DEV_PRESET_ST32430N;
         known_preset = true;
     }
     else
@@ -219,6 +222,9 @@ static void readIniSCSIDeviceSetting(scsi_device_settings_t &cfg, const char *se
     cfg.reinsertAfterEject = ini_getbool(section, "ReinsertAfterEject", cfg.reinsertAfterEject, CONFIGFILE);
     cfg.disableMacSanityCheck = ini_getbool(section, "DisableMacSanityCheck", cfg.disableMacSanityCheck, CONFIGFILE);
 
+    cfg.sectorSDBegin = ini_getl(section, "SectorSDBegin", cfg.sectorSDBegin, CONFIGFILE);
+    cfg.sectorSDEnd = ini_getl(section, "SectorSDEnd", cfg.sectorSDEnd, CONFIGFILE);
+
     char tmp[32];
     ini_gets(section, "Vendor", "", tmp, sizeof(tmp), CONFIGFILE);
     if (tmp[0])
@@ -294,6 +300,9 @@ scsi_system_settings_t *ZuluSCSISettings::initSystem(const char *presetName)
     cfgDev.reinsertOnInquiry = true;
     cfgDev.reinsertAfterEject = true;
     cfgDev.disableMacSanityCheck = false;
+
+    cfgDev.sectorSDBegin = 0;
+    cfgDev.sectorSDEnd = 0;
 
     // System-specific defaults
 

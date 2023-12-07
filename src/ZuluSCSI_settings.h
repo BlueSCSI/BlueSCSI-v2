@@ -89,6 +89,9 @@ typedef struct __attribute__((__packed__)) scsi_device_settings_t
     bool reinsertOnInquiry;
     bool reinsertAfterEject;
     bool disableMacSanityCheck;
+
+    uint32_t sectorSDBegin;
+    uint32_t sectorSDEnd;
 } scsi_device_settings_t;
 
 
@@ -131,9 +134,9 @@ protected:
     const char **deviceInitST32430N(uint8_t scsiId);
 
     // Informative name of the preset configuration, or NULL for defaults
-    // The last presetName is for the System preset name. The rest are for
-    // corresponding SCSI Ids.
     scsi_system_preset_t m_sysPreset;
+    // The last preset is for the device specific under [SCSI] in the CONFIGFILE
+    // The rest are for corresponding SCSI Ids e.g. [SCSI0] in the CONFIGFILE.
     scsi_device_preset_t m_devPreset[8];
 
     // These are setting for host compatibility
