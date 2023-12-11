@@ -415,6 +415,7 @@ void platform_late_init()
         g_direct_mode = get_direct_mode(V1_2_DIPSW_DIRECT_MODE_PORT, V1_2_DIPSW_DIRECT_MODE_PIN, "DIPSW2");
         g_enable_apple_quirks = get_quirks(V1_2_DIPSW_QUIRKS_PORT, V1_2_DIPSW_QUIRKS_PIN, "DIPSW1");
         hw_config_init_state(g_direct_mode);
+
     }
 #else // PLATFORM_VERSION_1_1_PLUS - ZuluSCSI v1.0 and v1.0 minis gpio config
     #ifdef ZULUSCSI_V1_0_mini
@@ -426,6 +427,19 @@ void platform_late_init()
     #endif // ZULUSCSI_V1_0_mini
 #endif // PLATFORM_VERSION_1_1_PLUS
     
+}
+
+void platform_post_sd_card_init()
+{
+    #ifdef PLATFORM_VERSION_1_1_PLUS
+    if (ZSVersion_v1_2 == g_zuluscsi_version && g_scsi_settings.getSystem()->enableCDAudio)
+    {
+        logmsg("Audio enabled - an external audio DAC is required on the I2S expansion header");
+        init_audio_gpio();
+        g_audio_enabled = true;
+        audio_setup();
+    }
+    #endif
 }
 
 void platform_disable_led(void)
@@ -734,6 +748,20 @@ uint8_t platform_get_buttons()
     {
         buttons_debounced = 0;
     }
+
+#ifdef PLATFORM_VERSION_1_1_PLUS
+    if(g_zuluscsi_version == ZSVersion_v1_1_ODE || g_zuluscsi_version == ZSVersion_v1_2)
+    {
+        static uint8_t previous = 0x00;
+        uint8_t bitmask = buttons_debounced & USER_BTN_MASK;
+        uint8_t ejectors = (previous ^ bitmask) & previous;
+        previous = bitmask;
+        if (ejectors & USER_BTN_MASK)
+        {
+            logmsg("User button pressed - feature not yet implemented");
+        }
+    }
+#endif
 
     return buttons_debounced;
 }

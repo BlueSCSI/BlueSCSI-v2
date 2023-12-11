@@ -281,6 +281,8 @@ void platform_late_init()
     greenpak_load_firmware();
 }
 
+void platform_post_sd_card_init() {}
+
 void platform_disable_led(void)
 {   
     gpio_mode_set(LED_PORT, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, LED_PINS);

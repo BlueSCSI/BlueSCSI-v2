@@ -285,6 +285,7 @@ scsi_system_settings_t *ZuluSCSISettings::initSystem(const char *presetName)
     cfgSys.mapLunsToIDs = false;
     cfgSys.enableParity = true;
     cfgSys.useFATAllocSize = false;
+    cfgSys.enableCDAudio = false;
     
     // setting set for all or specific devices
     cfgDev.deviceType = S2S_CFG_NOT_SET;
@@ -373,7 +374,7 @@ scsi_system_settings_t *ZuluSCSISettings::initSystem(const char *presetName)
     cfgSys.mapLunsToIDs = ini_getbool("SCSI", "MapLunsToIDs", cfgSys.mapLunsToIDs, CONFIGFILE);
     cfgSys.enableParity =  ini_getbool("SCSI", "EnableParity", cfgSys.enableParity, CONFIGFILE);
     cfgSys.useFATAllocSize = ini_getbool("SCSI", "UseFATAllocSize", cfgSys.useFATAllocSize, CONFIGFILE);
-
+    cfgSys.enableCDAudio = ini_getbool("SCSI", "EnableCDAudio", cfgSys.enableCDAudio, CONFIGFILE);
     return &cfgSys;
 }
 
