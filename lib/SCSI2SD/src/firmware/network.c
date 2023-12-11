@@ -22,8 +22,6 @@
 #include "config.h"
 #include "network.h"
 
-extern bool g_log_debug;
-
 static bool scsiNetworkEnabled = false;
 
 struct scsiNetworkPacketQueue {
@@ -104,10 +102,7 @@ int scsiNetworkCommand()
 	uint8_t command = scsiDev.cdb[0];
 	uint8_t cont = (scsiDev.cdb[5] == 0x80);
 
-	if (g_log_debug)
-	{
-		log_f("in scsiNetworkCommand with command 0x%02x (size %d)", command, size);
-	}
+	DBGMSG_F("------ in scsiNetworkCommand with command 0x%02x (size %d)", command, size);
 
 	switch (command) {
 	case 0x08:
@@ -140,10 +135,7 @@ int scsiNetworkCommand()
 				psize = size - 6;
 			}
 
-			if (g_log_debug)
-			{
-				log_f("%s: sending packet[%d] to host of size %zu + 6", __func__, scsiNetworkInboundQueue.readIndex, psize);
-			}
+			DBGMSG_F("%s: sending packet[%d] to host of size %zu + 6", __func__, scsiNetworkInboundQueue.readIndex, psize);
 
 			scsiDev.dataLen = psize + 6; // 2-byte length + 4-byte flag + packet
 			memcpy(scsiDev.data + 6, scsiNetworkInboundQueue.packets[scsiNetworkInboundQueue.readIndex], psize);
@@ -162,10 +154,7 @@ int scsiNetworkCommand()
 			// more data to read?
 			scsiDev.data[5] = (scsiNetworkInboundQueue.readIndex == scsiNetworkInboundQueue.writeIndex ? 0 : 0x10);
 
-			if (g_log_debug)
-			{
-				log_buf(scsiDev.data, scsiDev.dataLen);
-			}
+			DBGMSG_BUF(scsiDev.data, scsiDev.dataLen);
 		}
 
 		// DaynaPort driver needs a delay between reading the initial packet size and the data so manually do two transfers
@@ -217,10 +206,14 @@ int scsiNetworkCommand()
 		parityError = 0;
 		scsiRead(scsiDev.data, size, &parityError);
 
-		if (g_log_debug)
+		if (parityError)
 		{
-			log_f("%s: read packet from host of size %zu - %d (parity error %d)", __func__, size, (cont ? 4 : 0), parityError);
-			log_buf(scsiDev.data, size);
+			DBGMSG_F("%s: read packet from host of size %zu - %d (parity error %d)", __func__, size, (cont ? 4 : 0), parityError);
+			DBGMSG_F(scsiDev.data, size);
+		}
+		else
+		{
+			DBGMSG_F("------ %s: read packet from host of size %zu - %d", __func__, size, (cont ? 4 : 0));
 		}
 
 		if (cont)
@@ -253,11 +246,8 @@ int scsiNetworkCommand()
 		parityError = 0;
 		scsiRead(scsiDev.data, size, &parityError);
 
-		if (g_log_debug)
-		{
-			log_f("%s: adding multicast address %02x:%02x:%02x:%02x:%02x:%02x", __func__,
+		DBGMSG_F("%s: adding multicast address %02x:%02x:%02x:%02x:%02x:%02x", __func__,
 			  scsiDev.data[0], scsiDev.data[1], scsiDev.data[2], scsiDev.data[3], scsiDev.data[4], scsiDev.data[5]);
-		}
 
 		platform_network_add_multicast_address(scsiDev.data);
 
@@ -269,20 +259,16 @@ int scsiNetworkCommand()
 		// toggle interface
 		if (scsiDev.cdb[5] & 0x80)
 		{
-			if (g_log_debug)
-			{
-				log_f("%s: enable interface", __func__);
-			}
+
+			DBGMSG_F("%s: enable interface", __func__);
 			scsiNetworkEnabled = true;
 			memset(&scsiNetworkInboundQueue, 0, sizeof(scsiNetworkInboundQueue));
 			memset(&scsiNetworkOutboundQueue, 0, sizeof(scsiNetworkOutboundQueue));
 		}
 		else
 		{
-			if (g_log_debug)
-			{
-				log_f("%s: disable interface", __func__);
-			}
+
+			DBGMSG_F("%s: disable interface", __func__);
 			scsiNetworkEnabled = false;
 		}
 		break;
@@ -303,10 +289,7 @@ int scsiNetworkCommand()
 
 	// custom wifi commands all using the same opcode, with a sub-command in cdb[2]
 	case SCSI_NETWORK_WIFI_CMD:
-		if (g_log_debug)
-		{
-			log_f("in scsiNetworkCommand with wi-fi command 0x%02x (size %d)", scsiDev.cdb[1], size);
-		}
+		DBGMSG_F("in scsiNetworkCommand with wi-fi command 0x%02x (size %d)", scsiDev.cdb[1], size);
 
 		switch (scsiDev.cdb[1]) {
 		case SCSI_NETWORK_WIFI_CMD_SCAN:
@@ -404,11 +387,8 @@ int scsiNetworkCommand()
 			parityError = 0;
 			scsiRead((uint8_t *)&req, sizeof(req), &parityError);
 
-			if (g_log_debug)
-			{
-				log_f("%s: read join request from host:", __func__);
-				log_buf(scsiDev.data, size);
-			}
+			DBGMSG_F("%s: read join request from host:", __func__);
+			DBGMSG_BUF(scsiDev.data, size);
 
 			platform_network_wifi_join(req.ssid, req.key);
 
@@ -433,8 +413,7 @@ int scsiNetworkEnqueue(const uint8_t *buf, size_t len)
 
 	if (len + 4 > sizeof(scsiNetworkInboundQueue.packets[0]))
 	{
-		if (g_log_debug)
-			log_f("%s: dropping incoming network packet, too large (%zu > %zu)", __func__, len, sizeof(scsiNetworkInboundQueue.packets[0]));
+		DBGMSG_F("%s: dropping incoming network packet, too large (%zu > %zu)", __func__, len, sizeof(scsiNetworkInboundQueue.packets[0]));
 		return 0;
 	}
 
@@ -454,8 +433,7 @@ int scsiNetworkEnqueue(const uint8_t *buf, size_t len)
 
 	if (scsiNetworkInboundQueue.writeIndex == scsiNetworkInboundQueue.readIndex)
 	{
-		if (g_log_debug)
-			log_f("%s: dropping packets in ring, write index caught up to read index", __func__);
+		DBGMSG_F("%s: dropping packets in ring, write index caught up to read index", __func__);
 	}
 	
 	return 1;

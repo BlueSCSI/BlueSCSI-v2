@@ -17,11 +17,18 @@
 #include <hardware/flash.h>
 #include <hardware/structs/xip_ctrl.h>
 #include <hardware/structs/usb.h>
-#ifdef MBED
-#include <platform/mbed_error.h>
-#include <USB/PluggableUSBSerial.h>
+#ifdef ENABLE_AUDIO_OUTPUT
 #include "audio.h"
 #endif
+
+#ifndef __MBED__
+# include <SerialUSB.h>
+# include <class/cdc/cdc_device.h>
+#else
+# include <platform/mbed_error.h>
+# include <USB/PluggableUSBSerial.h>
+#endif // __MBED__
+
 #include <pico/multicore.h>
 #include "scsi_accel_rp2040.h"
 #include "hardware/i2c.h"
@@ -282,6 +289,11 @@ void platform_late_init()
         gpio_conf(scsi_pins.IN_ATN,    GPIO_FUNC_SIO, false, false, false, true, false);
         gpio_conf(scsi_pins.IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
 
+
+#ifndef __MBED__
+    Serial.begin();
+#endif // __MBED__
+
 #ifdef ENABLE_AUDIO_OUTPUT
         // one-time control setup for DMA channels and second core
         audio_setup();
@@ -416,11 +428,27 @@ void mbed_error_hook(const mbed_error_ctx * error_context)
 // also starts calling this after 2 seconds.
 // This ensures that log messages get passed even if code hangs,
 // but does not unnecessarily delay normal execution.
-#ifdef MBED
 static void usb_log_poll()
 {
     static uint32_t logpos = 0;
+#ifndef __MBED__
+    if (Serial.availableForWrite())
+    {
+        // Retrieve pointer to log start and determine number of bytes available.
+        uint32_t available = 0;
+        const char *data = log_get_buffer(&logpos, &available);
+                // Limit to CDC packet size
+        uint32_t len = available;
+        if (len == 0) return;
+        if (len > CFG_TUD_CDC_EP_BUFSIZE) len = CFG_TUD_CDC_EP_BUFSIZE;
 
+        // Update log position by the actual number of bytes sent
+        // If USB CDC buffer is full, this may be 0
+        uint32_t actual = 0;
+        actual = Serial.write(data, len);
+        logpos -= available - actual;
+    }
+#else
     if (_SerialUSB.ready())
     {
         // Retrieve pointer to log start and determine number of bytes available.
@@ -438,8 +466,8 @@ static void usb_log_poll()
         _SerialUSB.send_nb((uint8_t*)data, len, &actual);
         logpos -= available - actual;
     }
+#endif // __MBED__
 }
-#endif
 
 // Use ADC to implement supply voltage monitoring for the +3.0V rail.
 // This works by sampling the temperature sensor channel, which has
@@ -520,13 +548,11 @@ static void watchdog_callback(unsigned alarm_num)
 {
     g_watchdog_timeout -= 1000;
 
-#ifdef MBED
     if (g_watchdog_timeout < WATCHDOG_CRASH_TIMEOUT - 1000)
     {
         // Been stuck for at least a second, start dumping USB log
         usb_log_poll();
     }
-#endif
 
     if (g_watchdog_timeout <= WATCHDOG_CRASH_TIMEOUT - WATCHDOG_BUS_RESET_TIMEOUT)
     {
@@ -573,9 +599,8 @@ static void watchdog_callback(unsigned alarm_num)
                 p += 4;
             }
 
-#ifdef MBED
             usb_log_poll();
-#endif
+
             platform_emergency_log_save();
 
             platform_boot_to_main_firmware();
@@ -613,20 +638,17 @@ void platform_reset_watchdog()
         g_watchdog_initialized = true;
     }
 
-#ifdef MBED
     // USB log is polled here also to make sure any log messages in fault states
     // get passed to USB.
     usb_log_poll();
-#endif
 }
 
 // Poll function that is called every few milliseconds.
 // Can be left empty or used for platform-specific processing.
 void platform_poll()
 {
-#ifdef MBED
     usb_log_poll();
-#endif
+
     adc_poll();
     
 #ifdef ENABLE_AUDIO_OUTPUT
@@ -692,15 +714,14 @@ bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_
             return false;
         }
     }
-
-#ifdef MBED
+#ifdef __MBED__
     if (NVIC_GetEnableIRQ(USBCTRL_IRQn))
     {
         log("Disabling USB during firmware flashing");
         NVIC_DisableIRQ(USBCTRL_IRQn);
         usb_hw->main_ctrl = 0;
     }
-#endif
+#endif // __MBED__
 
     debuglog("Writing flash at offset ", offset, " data ", bytearray(buffer, 4));
     assert(offset % PLATFORM_FLASH_PAGE_SIZE == 0);

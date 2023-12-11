@@ -16,7 +16,7 @@ uint32_t log_get_buffer_len();
 const char *log_get_buffer(uint32_t *startpos, uint32_t *available = nullptr);
 
 // Whether to enable debug messages
-extern bool g_log_debug;
+extern "C" bool g_log_debug;
 
 // Enables output test mode
 extern bool g_test_mode;
@@ -102,3 +102,23 @@ inline void debuglog(Params... params)
         log_raw("\n");
     }
 }
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+// Log long hex string
+void logmsg_buf(const unsigned char *buf, unsigned long size);
+
+// Log long hex string
+void dbgmsg_buf(const unsigned char *buf, unsigned long size);
+
+// Log formatted string
+void logmsg_f(const char *format, ...);
+
+// Log formatted string
+void dbgmsg_f(const char *format, ...);
+
+
+#ifdef __cplusplus
+}
+#endif
