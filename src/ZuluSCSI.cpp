@@ -768,6 +768,7 @@ extern "C" void zuluscsi_setup(void)
       logmsg("Pre SCSI init boot delay in millis: ", boot_delay_ms);
       delay(boot_delay_ms);
     }
+    platform_post_sd_card_init();
     reinitSCSI();
     
     

@@ -400,6 +400,8 @@ void platform_late_init()
     }
 }
 
+void platform_post_sd_card_init() {}
+
 bool platform_is_initiator_mode_enabled()
 {
     return g_scsi_initiator;
