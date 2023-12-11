@@ -86,6 +86,9 @@ void platform_init();
 // Initialization for main application, not used for bootloader
 void platform_late_init();
 
+// Initialization after the SD Card has been found
+void platform_post_sd_card_init();
+
 // Hooks
 void platform_end_of_loop_hook(void);
 

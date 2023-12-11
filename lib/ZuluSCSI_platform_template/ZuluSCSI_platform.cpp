@@ -48,6 +48,13 @@ void platform_late_init()
      */
 }
 
+void platform_post_sd_card_init()
+{
+    /* This function can usually be left empty.
+     * It can be used for initialization code that should be run after the SD card is ready
+     */
+}
+
 void platform_disable_led(void)
 {
     /* This function disables the LED on the ZuluSCSI board

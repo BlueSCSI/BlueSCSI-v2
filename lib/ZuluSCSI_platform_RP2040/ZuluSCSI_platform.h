@@ -109,6 +109,9 @@ void platform_init();
 // Initialization for main application, not used for bootloader
 void platform_late_init();
 
+// Initialization after the SD Card has been found
+void platform_post_sd_card_init();
+
 // Disable the status LED
 void platform_disable_led(void);
 
