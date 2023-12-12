@@ -343,7 +343,7 @@ static void set_termination(uint32_t port, uint32_t pin, const char *switch_name
     }
     else
     {
-        logmsg(switch_name, "is OFF: SCSI termination disabled");
+        logmsg(switch_name, " is OFF: Disabling SCSI termination");
     }
 }
 
@@ -351,9 +351,10 @@ static bool get_debug(uint32_t port, uint32_t pin, const char *switch_name)
 {
     if (gpio_input_bit_get(port, pin))
     {
-        logmsg(switch_name, " is ON: enabling debug messages");
+        logmsg(switch_name, " is ON: Enabling debug messages");
         return true;
     }
+    logmsg(switch_name, " is OFF: Disabling debug messages");
     return false;
 }
 
@@ -361,9 +362,10 @@ static bool get_quirks(uint32_t port, uint32_t pin, const char *switch_name)
 {
     if (gpio_input_bit_get(port, pin))
     {
-        logmsg(switch_name, " is ON: enabling Apple quirks by default");
+        logmsg(switch_name, " is ON: Enabling Apple quirks by default");
         return true;
     }
+    logmsg(switch_name, " is OFF: Disabling Apple quirks mode by default");
     return false;
 }
 
