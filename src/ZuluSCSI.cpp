@@ -652,6 +652,7 @@ static void reinitSCSI()
     g_scsi_settings.initDevice(scsiId, g_hw_config.device_type());
 
     logmsg("Direct/Raw mode enabled, using hardware switches for configuration");
+    logmsg("-- SCSI ID set via DIP switch to ", (int) g_hw_config.scsi_id());
     char raw_filename[32];  
     uint32_t start =  g_scsi_settings.getDevice(scsiId)->sectorSDBegin; 
     uint32_t end = g_scsi_settings.getDevice(scsiId)->sectorSDEnd;
