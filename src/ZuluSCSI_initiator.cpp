@@ -568,7 +568,7 @@ bool scsiRequestSense(int target_id, uint8_t *sense_key)
                                          response, sizeof(response),
                                          NULL, 0);
 
-    dbgmsg("RequestSense response: ", bytearray(response, 18));
+    logmsg("RequestSense response: ", bytearray(response, 18));
 
     *sense_key = response[2];
     return status == 0;
