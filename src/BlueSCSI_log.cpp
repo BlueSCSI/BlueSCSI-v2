@@ -1,4 +1,5 @@
 // Copyright (c) 2022 Rabbit Hole Computing™
+// Copyright (c) 2023 Eric Helgeson
 
 #include "BlueSCSI_log.h"
 #include "BlueSCSI_config.h"

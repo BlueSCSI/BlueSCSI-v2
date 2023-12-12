@@ -1,4 +1,6 @@
 // Copyright (c) 2022 Rabbit Hole Computing™
+// Copyright (c) 2023 Eric Helgeson
+// Copyright (c) 2023 Tech by Androda, LLC
 
 #include "BlueSCSI_platform.h"
 #include "BlueSCSI_log.h"
