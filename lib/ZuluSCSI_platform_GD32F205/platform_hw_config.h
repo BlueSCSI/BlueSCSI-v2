@@ -25,6 +25,7 @@
 */
 
 #pragma once
+#ifdef ZULUSCSI_HARDWARE_CONFIG
 #include <scsi2sd.h>
 #include <ZuluSCSI_settings.h>
 
@@ -73,4 +74,4 @@ protected:
 extern HardwareConfig g_hw_config;
 
 #endif // __cplusplus
-
+#endif // ZULUSCSI_HARDWARE_CONFIG

@@ -62,38 +62,37 @@ void HardwareConfig::init_state(bool is_active)
     {
         m_scsi_id = (gpio_input_port_get(DIPSW_SCSI_ID_BIT_PORT) & DIPSW_SCSI_ID_BIT_PINS) >> DIPSW_SCSI_ID_BIT_SHIFT;
         m_device_preset = DEV_PRESET_NONE;
-        scsi_device_settings_t &cfg_dev = *g_scsi_settings.getDevice(m_scsi_id);
 
         uint8_t rotary_select = (gpio_input_port_get(DIPROT_DEVICE_SEL_BIT_PORT) & DIPROT_DEVICE_SEL_BIT_PINS) >> DIPROT_DEVICE_SEL_BIT_SHIFT;
         switch (rotary_select)
         {
         case 0:
-            cfg_dev.deviceType = S2S_CFG_FIXED;
+            m_device_type = S2S_CFG_FIXED;
         break;
         case 1:
-            cfg_dev.deviceType = S2S_CFG_OPTICAL;
+            m_device_type = S2S_CFG_OPTICAL;
         break;
         case 2:
-            cfg_dev.deviceType = S2S_CFG_FLOPPY_14MB;
+            m_device_type = S2S_CFG_FLOPPY_14MB;
         break;
         case 3:
-            cfg_dev.deviceType = S2S_CFG_REMOVABLE;
+            m_device_type = S2S_CFG_REMOVABLE;
         break;
         case 4:
-            cfg_dev.deviceType = S2S_CFG_MO;
+            m_device_type = S2S_CFG_MO;
         break;
         case 5:
             m_device_preset = DEV_PRESET_ST32430N;
-            cfg_dev.deviceType = S2S_CFG_FIXED;
+            m_device_type = S2S_CFG_FIXED;
         break;
         case 6:
-            cfg_dev.deviceType = S2S_CFG_SEQUENTIAL;
+            m_device_type = S2S_CFG_SEQUENTIAL;
         break;
         default:
-            cfg_dev.deviceType = S2S_CFG_FIXED;
+            m_device_type = S2S_CFG_FIXED;
         }
 
-        if (cfg_dev.deviceType == S2S_CFG_OPTICAL)
+        if (m_device_type == S2S_CFG_OPTICAL)
         {
             m_blocksize = DEFAULT_BLOCKSIZE_OPTICAL;
         }
