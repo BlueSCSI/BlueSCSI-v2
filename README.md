@@ -85,10 +85,13 @@ For RP2040-based boards, the USB programming uses `.uf2` format file that can be
 - Firmware update takes about 1 second, during which the LED will flash rapidly.
 - When successful, the bootloader removes the update file and continues to main firmware.
 
-For ZuluSCSI V1.1:
+For ZuluSCSI V1.1 and V1.2:
 
 - Alternatively, ZuluSCSI V1.x can be programmed using USB connection in DFU mode by setting DIP switch 4.
+- For later-revision ZuluSCSI RP2040 boards, there is a "BOOTLDR" momentary-contact switch, which can be held down at initial power-on, to enable .uf2 firmware to be loaded.
+- For ZuluSCSI V1.2 boards, there is a "BOOTLDR" momentary-contact switch, which can be held down at initial power-on, to enable DFU mode, needed for firmware recovery mode.
 - The necessary programmer utility for Windows can be downloaded from [GD32 website](http://www.gd32mcu.com/en/download?kw=dfu&lan=en). On Linux and MacOS, the standard 'dfu-util' can be used. It can be installed via your package manager under Linux. On MacOS, it is available through MacPorts and Brew as a package.
+- For ZuluSCSI V1.x boards, firmware can be flashed with the following command:
 - `dfu-util --alt 0 --dfuse-address 0x08000000 --download ZuluSCSIv1_1_XXXXXX.bin`
 
 
@@ -100,6 +103,13 @@ For ZuluSCSI V1.1, the DIP switch settings are as follows:
 - TERM: Enable SCSI termination
 - BOOT: Enable built-in USB bootloader, this DIP switch MUST remain off during normal operation.
 - SW1: Enables/disables Macintosh/Apple specific mode-pages and device strings, which eases disk initialization when performing fresh installs on legacy Macintosh computers.
+
+For ZuluSCSI V1.2, the DIP switch settings at SW301 are as follows:
+
+- TERM: Enable SCSI termination
+- DEBUG: Enable verbose debug logging via USB serial console
+- DIRECT/RAW: when in the factory-default OFF position
+- QUIRKS: Enables/disables Macintosh/Apple specific mode-pages and device strings, which eases disk initialization when performing fresh installs on legacy Macintosh computers.
 
 ZuluSCSI Mini has no DIP switches, so all optional configuration parameters must be defined in zuluscsi.ini
 
