@@ -289,7 +289,16 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
         }
         else if (img.file.contiguousRange(&sector_begin, &sector_end))
         {
-            dbgmsg("---- Image file is contiguous, SD card sectors ", (int)sector_begin, " to ", (int)sector_end);
+#ifdef ZULUSCSI_HARDWARE_CONFIG
+            if (g_hw_config.is_active())
+            {
+                dbgmsg("----  Device spans SD card sectors ", (int)sector_begin, " to ", (int)sector_end);
+            }
+            else
+#endif // ZULUSCSI_HARDWARE_CONFIG
+            {
+                dbgmsg("---- Image file is contiguous, SD card sectors ", (int)sector_begin, " to ", (int)sector_end);
+            }
         }
         else
         {
