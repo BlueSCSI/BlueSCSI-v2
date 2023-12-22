@@ -678,7 +678,7 @@ static void watchdog_callback(unsigned alarm_num)
         }
     }
 
-    hardware_alarm_set_target(3, delayed_by_ms(get_absolute_time(), 1000));
+    hardware_alarm_set_target(alarm_num, delayed_by_ms(get_absolute_time(), 1000));
 }
 
 // This function can be used to periodically reset watchdog timer for crash handling.
