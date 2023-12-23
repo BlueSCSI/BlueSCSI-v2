@@ -210,6 +210,8 @@ const char * quirksToChar(int quirks)
     return "VMS";
   case S2S_CFG_QUIRKS_XEBEC:
     return "XEBEC";
+  case S2S_CFG_QUIRKS_X68000:
+    return "X68000";
   case S2S_CFG_QUIRKS_NONE:
     return "None";
   default:
