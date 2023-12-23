@@ -377,7 +377,11 @@ static void process_Command()
 		memset(scsiDev.cdb, 0xff, sizeof(scsiDev.cdb));
 		return;
 	}
+<<<<<<< HEAD
 		// X68000 and strange "0x00 0xXX .. .. .. .." command
+=======
+	// X68000 and strange "0x00 0xXX .. .. .. .." command
+>>>>>>> 1465e0ad65fceefdfee4a73a6ec4e9936b0802fb
 	else if ((command == 0x00) && likely(scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_X68000))
 	{
 		if (scsiDev.cdb[1] == 0x28) 
