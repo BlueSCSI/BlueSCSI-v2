@@ -56,8 +56,9 @@ preset_config_t getSystemPreset(const char *presetName)
     }
     else if (strequals(presetName, "X68000"))
     {
+        cfg.presetName = "X68000";
         cfg.selectionDelay = 0;
-        cfg.quirks = 0;
+        cfg.quirks = S2S_CFG_QUIRKS_X68000;
         cfg.enableSCSI2 = 0;
         cfg.maxSyncSpeed = 5;
     }
