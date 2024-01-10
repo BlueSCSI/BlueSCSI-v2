@@ -107,8 +107,8 @@ For ZuluSCSI V1.1, the DIP switch settings are as follows:
 For ZuluSCSI V1.2, the DIP switch settings at SW301 are as follows:
 
 - TERM: Enable SCSI termination
-- DEBUG: Enable verbose debug logging via USB serial console
-- DIRECT/RAW: when in the factory-default OFF position
+- DEBUG: Enable verbose debug logging via USB serial console.
+- DIRECT/RAW: when in the factory-default OFF position, the entirety of the SD card is exposed as a single block device, and the device type is defined by the setting of the rotary DIP switch at SW404.
 - QUIRKS: Enables/disables Macintosh/Apple specific mode-pages and device strings, which eases disk initialization when performing fresh installs on legacy Macintosh computers.
 
 ZuluSCSI Mini has no DIP switches, so all optional configuration parameters must be defined in zuluscsi.ini
