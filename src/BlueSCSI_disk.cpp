@@ -955,6 +955,8 @@ void s2s_configInit(S2S_BoardCfg* config)
     config->selectionDelay = ini_getl("SCSI", "SelectionDelay", defaults.selectionDelay, CONFIGFILE);
     config->flags6 = 0;
     config->scsiSpeed = PLATFORM_MAX_SCSI_SPEED;
+    config->sendDelay = 80;
+    config->inquiry37 = 0;
 
     int maxSyncSpeed = ini_getl("SCSI", "MaxSyncSpeed", defaults.maxSyncSpeed, CONFIGFILE);
     if (maxSyncSpeed < 5 && config->scsiSpeed > S2S_CFG_SPEED_ASYNC_50)

@@ -125,9 +125,9 @@ int scsiNetworkCommand()
 			psize = scsiNetworkInboundQueue.sizes[scsiNetworkInboundQueue.readIndex];
 
 			// pad smaller packets
-			if (psize < 64)
+			if (psize < 128)
 			{
-				psize = 64;
+				psize = 128;
 			}
 			else if (psize + 6 > size)
 			{
@@ -157,25 +157,37 @@ int scsiNetworkCommand()
 			DBGMSG_BUF(scsiDev.data, scsiDev.dataLen);
 		}
 
-		// DaynaPort driver needs a delay between reading the initial packet size and the data so manually do two transfers
+		// For MacOS, DaynaPort driver needs a delay between reading the initial packet size and the data so manually do two transfers
 		scsiEnterPhase(DATA_IN);
-		scsiWrite(scsiDev.data, 6);
-		while (!scsiIsWriteFinished(NULL))
+		if (scsiDev.boardCfg.sendDelay == 0)
 		{
-			platform_poll();
-		}
-		scsiFinishWrite();
-
-		if (scsiDev.dataLen > 6)
-		{
-			s2s_delay_us(80);
-
-			scsiWrite(scsiDev.data + 6, scsiDev.dataLen - 6);
+			scsiWrite(scsiDev.data, scsiDev.dataLen);
 			while (!scsiIsWriteFinished(NULL))
 			{
 				platform_poll();
 			}
 			scsiFinishWrite();
+		}
+		else
+		{
+			scsiWrite(scsiDev.data, 6);
+			while (!scsiIsWriteFinished(NULL))
+			{
+				platform_poll();
+			}
+			scsiFinishWrite();
+
+			if (scsiDev.dataLen > 6)
+			{
+				s2s_delay_us(scsiDev.boardCfg.sendDelay);
+
+				scsiWrite(scsiDev.data + 6, scsiDev.dataLen - 6);
+				while (!scsiIsWriteFinished(NULL))
+				{
+					platform_poll();
+				}
+				scsiFinishWrite();
+			}
 		}
 
 		scsiDev.status = GOOD;
@@ -264,6 +276,24 @@ int scsiNetworkCommand()
 			scsiNetworkEnabled = true;
 			memset(&scsiNetworkInboundQueue, 0, sizeof(scsiNetworkInboundQueue));
 			memset(&scsiNetworkOutboundQueue, 0, sizeof(scsiNetworkOutboundQueue));
+		
+			/*
+			 * An ENABLE preceded by an INQUIRY for 37 bytes
+			 * indicates that the client is MacOS which requires a send delay of 80us
+			 * after the transmission of 6 bytes of data (this includes the transfer
+			 * length). Otherwise, no send delay is required (particularly for NetBSD).
+			 */
+			if (scsiDev.boardCfg.inquiry37)
+			{
+				DBGMSG_F("%s: Setting send delay 80", __func__);
+				scsiDev.boardCfg.sendDelay = 80;
+				scsiDev.boardCfg.inquiry37 = 0;
+			}
+			else
+			{
+				DBGMSG_F("%s: Setting send delay 0", __func__);
+				scsiDev.boardCfg.sendDelay = 0;
+			}
 		}
 		else
 		{

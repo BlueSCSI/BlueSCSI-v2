@@ -163,6 +163,8 @@ void s2s_scsiInquiry()
 		{
 			allocationLength = 254;
 		}
+		if (allocationLength == 37)
+			scsiDev.boardCfg.inquiry37 = 1;
 
 		// "real" hard drives send back exactly allocationLenth bytes, padded
 		// with zeroes. This only seems to happen for Inquiry responses, and not

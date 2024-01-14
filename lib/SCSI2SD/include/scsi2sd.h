@@ -143,7 +143,10 @@ typedef struct __attribute__((packed))
 	char wifiSSID[32];
 	char wifiPassword[63];
 
-	uint8_t reserved[18]; // Pad out to 128 bytes
+	uint8_t sendDelay;
+	uint8_t inquiry37;
+	
+	uint8_t reserved[16]; // Pad out to 128 bytes
 } S2S_BoardCfg;
 
 typedef enum
