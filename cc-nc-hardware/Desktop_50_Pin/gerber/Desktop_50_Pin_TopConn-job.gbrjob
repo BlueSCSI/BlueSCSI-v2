@@ -3,9 +3,9 @@
     "GenerationSoftware": {
       "Vendor": "KiCad",
       "Application": "Pcbnew",
-      "Version": "6.0.5-a6ca702e91~116~ubuntu21.10.1"
+      "Version": "7.0.10-7.0.10~ubuntu22.04.1"
     },
-    "CreationDate": "2023-10-13T08:30:06-06:00"
+    "CreationDate": "2024-01-13T05:18:43-07:00"
   },
   "GeneralSpecs": {
     "ProjectId": {
@@ -14,11 +14,11 @@
       "Revision": "rev?"
     },
     "Size": {
-      "X": 93.78,
+      "X": 89.3046,
       "Y": 82.71
     },
-    "LayerNumber": 4,
-    "BoardThickness": 4.69,
+    "LayerNumber": 2,
+    "BoardThickness": 1.6,
     "Finish": "None"
   },
   "DesignRules": [
@@ -27,16 +27,7 @@
       "PadToPad": 0.0,
       "PadToTrack": 0.0,
       "TrackToTrack": 0.2,
-      "MinLineWidth": 0.2,
-      "TrackToRegion": 0.508,
-      "RegionToRegion": 0.508
-    },
-    {
-      "Layers": "Inner",
-      "PadToPad": 0.0,
-      "PadToTrack": 0.0,
-      "TrackToTrack": 0.2,
-      "MinLineWidth": 0.2,
+      "MinLineWidth": 0.15,
       "TrackToRegion": 0.508,
       "RegionToRegion": 0.508
     }
@@ -48,18 +39,8 @@
       "FilePolarity": "Positive"
     },
     {
-      "Path": "Desktop_50_Pin_TopConn-In1_Cu.gbr",
-      "FileFunction": "Copper,L2,Inr",
-      "FilePolarity": "Positive"
-    },
-    {
-      "Path": "Desktop_50_Pin_TopConn-In2_Cu.gbr",
-      "FileFunction": "Copper,L3,Inr",
-      "FilePolarity": "Positive"
-    },
-    {
       "Path": "Desktop_50_Pin_TopConn-B_Cu.gbr",
-      "FileFunction": "Copper,L4,Bot",
+      "FileFunction": "Copper,L2,Bot",
       "FilePolarity": "Positive"
     },
     {
@@ -121,32 +102,8 @@
       "Type": "Dielectric",
       "Thickness": 1.51,
       "Material": "FR4",
-      "Name": "F.Cu/In1.Cu",
-      "Notes": "Type: dielectric layer 1 (from F.Cu to In1.Cu)"
-    },
-    {
-      "Type": "Copper",
-      "Thickness": 0.035,
-      "Name": "In1.Cu"
-    },
-    {
-      "Type": "Dielectric",
-      "Thickness": 1.51,
-      "Material": "FR4",
-      "Name": "In1.Cu/In2.Cu",
-      "Notes": "Type: dielectric layer 2 (from In1.Cu to In2.Cu)"
-    },
-    {
-      "Type": "Copper",
-      "Thickness": 0.035,
-      "Name": "In2.Cu"
-    },
-    {
-      "Type": "Dielectric",
-      "Thickness": 1.51,
-      "Material": "FR4",
-      "Name": "In2.Cu/B.Cu",
-      "Notes": "Type: dielectric layer 3 (from In2.Cu to B.Cu)"
+      "Name": "F.Cu/B.Cu",
+      "Notes": "Type: dielectric layer 1 (from F.Cu to B.Cu)"
     },
     {
       "Type": "Copper",
