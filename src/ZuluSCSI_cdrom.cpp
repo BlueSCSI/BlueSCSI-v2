@@ -2140,6 +2140,43 @@ extern "C" int scsiCDRomCommand()
 
         doReadCD(lba, blocks, 0, 0x10, 0, true);
     }
+    else if (command == 0xD8)
+    {
+        const uint32_t CD_DATA_SIZE = 2352;
+        const uint32_t CD_C2_SIZE = 294;
+        const uint32_t CD_SUBCODE_SIZE = 96;
+        const uint32_t CD_RAW_DATA_SIZE = CD_DATA_SIZE + CD_C2_SIZE + CD_SUBCODE_SIZE;
+        uint8_t lun = scsiDev.cdb[1] & 0x7;
+        uint8_t subcode = scsiDev.cdb[10];
+        if (lun != 0)
+        {
+            logmsg("Error - only LUN 0 supported for plextor vender 0xD8 command CDDA Read. Given ", (int)lun);
+            commandHandled = 0;
+        }
+        else if (subcode != 0)
+        {
+            logmsg("Error - Subcodes not supported yet. Given ", subcode);
+            commandHandled = 0;
+        }
+        else
+        {
+            uint32_t lba =
+                (((uint32_t) scsiDev.cdb[2]) << 24) +
+                (((uint32_t) scsiDev.cdb[3]) << 16) +
+                (((uint32_t) scsiDev.cdb[4]) << 8) +
+                scsiDev.cdb[5];
+            uint32_t blocks =
+                (((uint32_t) scsiDev.cdb[6]) << 24) +
+                (((uint32_t) scsiDev.cdb[7]) << 16) +
+                (((uint32_t) scsiDev.cdb[8]) << 8) +
+                scsiDev.cdb[9];
+            uint32_t original_bytes_per_sector = scsiDev.target->liveCfg.bytesPerSector;
+            scsiDev.target->liveCfg.bytesPerSector = CD_RAW_DATA_SIZE; 
+            dbgmsg("Doing a Plextor 0xD8 CDDA Read, starting: ", (int)lba, " length: ",(int)blocks, " byte-per-sector:", (int) CD_RAW_DATA_SIZE );
+            scsiDiskStartRead(lba, blocks);
+            scsiDev.target->liveCfg.bytesPerSector = original_bytes_per_sector;
+        }
+    }
     else if (command == 0x4E)
     {
         // STOP PLAY/SCAN
