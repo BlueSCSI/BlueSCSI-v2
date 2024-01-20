@@ -301,6 +301,12 @@ static void process_Command()
 
 	group = scsiDev.cdb[0] >> 5;
 	scsiDev.cdbLen = CmdGroupBytes[group];
+	// vendor specific SCSI command lengths
+	if (scsiDev.cdb[0] == 0xD8)
+	{
+		// Plextor CD-ROM drive - Vendor Read Command
+		scsiDev.cdbLen =  12;
+	}
 	if (parityError &&
 		(scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY))
 	{
