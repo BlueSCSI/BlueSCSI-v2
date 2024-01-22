@@ -1,5 +1,6 @@
 //	Copyright (C) 2014 Michael McMaster <michael@codesrc.com>
 //	Copyright (c) 2023 joshua stein <jcs@jcs.org>
+//  Copyright (c) 2023 Andrea Ottaviani <andrea.ottaviani.69@gmail.com>
 //
 //	This file is part of SCSI2SD.
 //
@@ -354,6 +355,23 @@ static void process_Command()
 		scsiDev.cmdCount--;
 		memset(scsiDev.cdb, 0xff, sizeof(scsiDev.cdb));
 		return;
+	}
+	// X68000 and strange "0x00 0xXX .. .. .. .." command
+	else if ((command == 0x00) && likely(scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_X68000))
+	{
+		if (scsiDev.cdb[1] == 0x28)
+		{
+			scsiDev.target->sense.code = NO_SENSE;
+			scsiDev.target->sense.asc = NO_ADDITIONAL_SENSE_INFORMATION;
+			enter_Status(CHECK_CONDITION);
+			return;
+		} 	else if (scsiDev.cdb[1] == 0x03)
+		{
+			scsiDev.target->sense.code = NO_SENSE;
+			scsiDev.target->sense.asc = NO_ADDITIONAL_SENSE_INFORMATION;
+			enter_Status(GOOD);
+			return;
+		}
 	}
 	else if (parityError &&
 		(scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY))
