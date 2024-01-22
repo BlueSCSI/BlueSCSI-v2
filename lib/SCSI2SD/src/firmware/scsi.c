@@ -1,6 +1,6 @@
 //	Copyright (C) 2014 Michael McMaster <michael@codesrc.com>
 //	Copyright (c) 2023 joshua stein <jcs@jcs.org>
-//  Copyright (c) 2023 Andrea Ottaviani <andrea.ottaviani.69@gmail.com>
+//	Copyright (c) 2023 Andrea Ottaviani <andrea.ottaviani.69@gmail.com>
 //
 //	This file is part of SCSI2SD.
 //
@@ -72,7 +72,7 @@ void enter_BusFree()
 
 	// Wait for the initiator to cease driving signals
 	// Bus settle delay + bus clear delay = 1200ns
-    // Just waiting the clear delay is sufficient.
+	// Just waiting the clear delay is sufficient.
 	s2s_delay_ns(800);
 
 	s2s_ledOff();
@@ -462,18 +462,18 @@ static void process_Command()
 		{
 			// The response is completely non-standard.
 			if (likely(allocLength > 12))
-			    allocLength = 12;
+				allocLength = 12;
 			else if (unlikely(allocLength < 4))
 				allocLength = 4;
 			if (cfg->deviceType != S2S_CFG_SEQUENTIAL)
-			    allocLength = 4;
+				allocLength = 4;
 			memset(scsiDev.data, 0, allocLength);
 			if (scsiDev.target->sense.code == NO_SENSE)
 			{
 				// Nothing to report.
 			}
 			else if (scsiDev.target->sense.code == UNIT_ATTENTION &&
-			    cfg->deviceType == S2S_CFG_SEQUENTIAL)
+				cfg->deviceType == S2S_CFG_SEQUENTIAL)
 			{
 				scsiDev.data[0] = 0x10; // Tape exception
 			}
@@ -1407,4 +1407,3 @@ int scsiReconnect()
 	return reconnected;
 }
 */
-
