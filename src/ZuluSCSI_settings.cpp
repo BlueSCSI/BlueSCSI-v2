@@ -341,7 +341,7 @@ scsi_system_settings_t *ZuluSCSISettings::initSystem(const char *presetName)
     {
         m_sysPreset = SYS_PRESET_X68000;
         cfgSys.selectionDelay = 0;
-        cfgSys.quirks = S2S_CFG_QUIRKS_NONE;
+        cfgSys.quirks = S2S_CFG_QUIRKS_X68000;
         cfgSys.enableSCSI2 = false;
         cfgSys.maxSyncSpeed = 5;
     }
