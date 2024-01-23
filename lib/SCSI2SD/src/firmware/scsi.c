@@ -1,5 +1,6 @@
 //	Copyright (C) 2014 Michael McMaster <michael@codesrc.com>
 //	Copyright (c) 2023 joshua stein <jcs@jcs.org>
+//	Copyright (c) 2023 Andrea Ottaviani <andrea.ottaviani.69@gmail.com>
 //
 //	This file is part of SCSI2SD.
 //
@@ -71,7 +72,7 @@ void enter_BusFree()
 
 	// Wait for the initiator to cease driving signals
 	// Bus settle delay + bus clear delay = 1200ns
-    // Just waiting the clear delay is sufficient.
+	// Just waiting the clear delay is sufficient.
 	s2s_delay_ns(800);
 
 	s2s_ledOff();
@@ -355,6 +356,23 @@ static void process_Command()
 		memset(scsiDev.cdb, 0xff, sizeof(scsiDev.cdb));
 		return;
 	}
+	// X68000 and strange "0x00 0xXX .. .. .. .." command
+	else if ((command == 0x00) && likely(scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_X68000))
+	{
+		if (scsiDev.cdb[1] == 0x28)
+		{
+			scsiDev.target->sense.code = NO_SENSE;
+			scsiDev.target->sense.asc = NO_ADDITIONAL_SENSE_INFORMATION;
+			enter_Status(CHECK_CONDITION);
+			return;
+		} 	else if (scsiDev.cdb[1] == 0x03)
+		{
+			scsiDev.target->sense.code = NO_SENSE;
+			scsiDev.target->sense.asc = NO_ADDITIONAL_SENSE_INFORMATION;
+			enter_Status(GOOD);
+			return;
+		}
+	}
 	else if (parityError &&
 		(scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY))
 	{
@@ -444,18 +462,18 @@ static void process_Command()
 		{
 			// The response is completely non-standard.
 			if (likely(allocLength > 12))
-			    allocLength = 12;
+				allocLength = 12;
 			else if (unlikely(allocLength < 4))
 				allocLength = 4;
 			if (cfg->deviceType != S2S_CFG_SEQUENTIAL)
-			    allocLength = 4;
+				allocLength = 4;
 			memset(scsiDev.data, 0, allocLength);
 			if (scsiDev.target->sense.code == NO_SENSE)
 			{
 				// Nothing to report.
 			}
 			else if (scsiDev.target->sense.code == UNIT_ATTENTION &&
-			    cfg->deviceType == S2S_CFG_SEQUENTIAL)
+				cfg->deviceType == S2S_CFG_SEQUENTIAL)
 			{
 				scsiDev.data[0] = 0x10; // Tape exception
 			}
@@ -1389,4 +1407,3 @@ int scsiReconnect()
 	return reconnected;
 }
 */
-

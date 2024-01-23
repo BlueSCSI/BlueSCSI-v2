@@ -163,7 +163,7 @@ void s2s_scsiInquiry()
 	{
 		// VAX workaround
 		if (allocationLength == 255 &&
-			(scsiDev.target->cfg->quirks & S2S_CFG_QUIRKS_VMS))
+			(scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_VMS))
 		{
 			allocationLength = 254;
 		}
