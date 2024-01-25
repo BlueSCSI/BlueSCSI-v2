@@ -18,5 +18,6 @@
 #define S2S_VENDOR_H
 
 int scsiVendorCommand(void);
-
+// Set the command length for applicable vendor commands
+void scsiVendorCommandSetLen(uint8_t command, uint8_t* command_length);
 #endif

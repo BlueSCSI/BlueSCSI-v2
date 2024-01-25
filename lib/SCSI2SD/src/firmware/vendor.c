@@ -18,6 +18,7 @@
 #include "scsi.h"
 #include "vendor.h"
 #include "diagnostic.h"
+#include "toolbox.h"
 
 // Callback after the DATA OUT phase is complete.
 static void doAssignDiskParameters(void)
@@ -80,6 +81,10 @@ int scsiVendorCommand()
 		scsiDev.phase = DATA_OUT;
 		scsiDev.postDataOutHook = doWriteBuffer;
 	}
+	else if (scsiToolboxEnabled() && scsiToolboxCommand())
+	{
+		// already handled
+	}
 	else
 	{
 		commandHandled = 0;
@@ -88,3 +93,10 @@ int scsiVendorCommand()
 	return commandHandled;
 }
 
+void scsiVendorCommandSetLen(uint8_t command, uint8_t* command_length)
+{
+	if (scsiToolboxEnabled())
+	{
+		scsiToolboxCBDLen(command, command_length);
+	}
+}

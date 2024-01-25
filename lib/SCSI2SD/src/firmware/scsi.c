@@ -33,8 +33,8 @@
 #include "tape.h"
 #include "mo.h"
 #include "vendor.h"
-
 #include <string.h>
+#include "toolbox.h"
 
 // Global SCSI device state.
 ScsiDevice scsiDev S2S_DMA_ALIGN;
@@ -287,7 +287,7 @@ static void process_DataOut()
 	}
 }
 
-static const uint8_t CmdGroupBytes[8] = {6, 10, 10, 6, 6, 12, 6, 6};
+static const uint8_t CmdGroupBytes[8] = {6, 10, 10, 6, 16, 12, 6, 6};
 static void process_Command()
 {
 	int group;
@@ -302,6 +302,8 @@ static void process_Command()
 
 	group = scsiDev.cdb[0] >> 5;
 	scsiDev.cdbLen = CmdGroupBytes[group];
+	scsiVendorCommandSetLen(scsiDev.cdb[0], &scsiDev.cdbLen);
+	
 	if (parityError &&
 		(scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY))
 	{
@@ -610,7 +612,25 @@ static void process_Command()
 	{
 		scsiReadBuffer();
 	}
-	else if (!scsiModeCommand() && !scsiVendorCommand())
+	else if (scsiModeCommand())
+	{
+		// handled
+	}
+	else if (scsiVendorCommand())
+	{
+		// handled
+	}
+	else if (unlikely(command == 0x00))
+    {
+        // TEST UNIT READY
+        doTestUnitReady();
+    }
+    else if (unlikely(!doTestUnitReady()))
+    {
+		// This should be last as it can override other commands 
+        // Status and sense codes already set by doTestUnitReady
+    }
+	else
 	{
 		scsiDev.target->sense.code = ILLEGAL_REQUEST;
 		scsiDev.target->sense.asc = INVALID_COMMAND_OPERATION_CODE;

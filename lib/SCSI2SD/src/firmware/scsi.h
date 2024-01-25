@@ -145,7 +145,7 @@ typedef struct
 	int savedDataPtr; // Index into data, initially 0.
 	int dataLen;
 
-	uint8_t cdb[12]; // command descriptor block
+	uint8_t cdb[16]; // command descriptor block
 	uint8_t cdbLen; // 6, 10, or 12 byte message.
 	int8_t lun; // Target lun, set by IDENTIFY message.
 	uint8_t discPriv; // Disconnect priviledge.

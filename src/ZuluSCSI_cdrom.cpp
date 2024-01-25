@@ -1208,12 +1208,20 @@ void cdromReinsertFirstImage(image_config_t &img)
 }
 
 // Check if we have multiple CD-ROM images to cycle when drive is ejected.
-bool cdromSwitchNextImage(image_config_t &img)
+bool cdromSwitchNextImage(image_config_t &img, const char* next_filename)
 {
     // Check if we have a next image to load, so that drive is closed next time the host asks.
-    char filename[MAX_FILE_PATH];
+    
     int target_idx = img.scsiId & 7;
-    scsiDiskGetNextImageName(img, filename, sizeof(filename));
+    char filename[MAX_FILE_PATH];
+    if (next_filename == nullptr)
+    {
+        scsiDiskGetNextImageName(img, filename, sizeof(filename));
+    }
+    else
+    {
+        strncpy(filename, next_filename, MAX_FILE_PATH);
+    }
 
 #ifdef ENABLE_AUDIO_OUTPUT
     // if in progress for this device, terminate audio playback immediately (Annex C)
@@ -1230,6 +1238,11 @@ bool cdromSwitchNextImage(image_config_t &img)
 
         if (status)
         {
+            if (next_filename != nullptr)
+            {
+                img.ejected = false;
+                img.cdrom_events = 2; // New Media
+            }
             return true;
         }
     }

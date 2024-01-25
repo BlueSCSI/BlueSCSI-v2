@@ -22,6 +22,7 @@
 #include "disk.h"
 #include "inquiry.h"
 #include "ZuluSCSI_mode.h"
+#include "toolbox.h"
 
 #include <string.h>
 
@@ -245,6 +246,15 @@ static const uint8_t AppleVendorPage[] =
 0x16, // Page length
 'A','P','P','L','E',' ','C','O','M','P','U','T','E','R',',',' ','I','N','C',' ',' ',' '
 };
+
+static const uint8_t ToolboxVendorPage[] =
+{
+0x31, // Page code
+42,   // Page length
+'Z','u','l','u','S','C','S','I',' ','i','s',' ','G','P','L','v','3',' ','F','T','W',
+' ','R','a','b','b','i','t','H','o','l','e','C','o','m','p','u','t','i','n','g',0x00
+};
+
 
 static void pageIn(int pc, int dataIdx, const uint8_t* pageData, int pageLen)
 {
@@ -523,6 +533,13 @@ static void doModeSense(
 		pageFound = 1;
 		pageIn(pc, idx, AppleVendorPage, sizeof(AppleVendorPage));
 		idx += sizeof(AppleVendorPage);
+	}
+
+	if (scsiToolboxEnabled() && (pageCode == 0x31 || pageCode == 0x3F))
+	{
+		pageFound = 1;
+		pageIn(pc, idx, ToolboxVendorPage, sizeof(ToolboxVendorPage));
+		idx += sizeof(ToolboxVendorPage);
 	}
 
 	if (pageCode == 0x38) // Don't send unless requested
