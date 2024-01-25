@@ -54,5 +54,6 @@ void scsiDiskInit(void);
 void scsiDiskReset(void);
 void scsiDiskPoll(void);
 int scsiDiskCommand(void);
+int doTestUnitReady();
 
 #endif
