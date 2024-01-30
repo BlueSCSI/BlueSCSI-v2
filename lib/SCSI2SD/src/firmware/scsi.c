@@ -564,10 +564,22 @@ static void process_Command()
 			scsiDev.data[0] = 0xF0;
 			scsiDev.data[2] = scsiDev.target->sense.code & 0x0F;
 
-			scsiDev.data[3] = transfer.lba >> 24;
-			scsiDev.data[4] = transfer.lba >> 16;
-			scsiDev.data[5] = transfer.lba >> 8;
-			scsiDev.data[6] = transfer.lba;
+			if (scsiDev.target->cfg->deviceType != S2S_CFG_SEQUENTIAL)
+			{
+				// LBA is Valid Information for direct access devices.
+				scsiDev.data[3] = transfer.lba >> 24;
+				scsiDev.data[4] = transfer.lba >> 16;
+				scsiDev.data[5] = transfer.lba >> 8;
+				scsiDev.data[6] = transfer.lba;
+			}
+			else
+			{
+				// Set Valid field to false.
+				scsiDev.data[0] &= 0b01111111;
+				// TODO:
+				//  For S2S_CFG_SEQUENTIAL use the difference of the requested length minus the actual length
+				//  in either bytes or blocks, as determined by the command.
+			}
 
 			// Additional bytes if there are errors to report
 			scsiDev.data[7] = 10; // additional length
