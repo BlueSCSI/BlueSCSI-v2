@@ -33,6 +33,7 @@
 #include "ZuluSCSI_config.h"
 #include <CUEParser.h>
 #include <assert.h>
+#include <minIni.h>
 #ifdef ENABLE_AUDIO_OUTPUT
 #include "ZuluSCSI_audio.h"
 #endif
@@ -1838,6 +1839,73 @@ static bool doReadCapacity(uint32_t lba, uint8_t pmi)
     return true;
 }
 
+static void doReadD8(uint32_t lba, uint32_t length, int sector_length, int read_size)
+{
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+    uint8_t *buf0 = scsiDev.data;
+    uint8_t *buf1;// = scsiDev.data + read_length;
+    // Adjust for plextor d8 offset
+    if (lba - 2 < 0)
+    {
+        logmsg("Error - lba is negative after plextor d8 2 sector adjustment");
+    }
+    lba = lba -2;
+
+    uint64_t offset = lba * sector_length;
+
+
+    scsiDev.phase = DATA_IN;
+    scsiDev.dataLen = 0;
+    scsiDev.dataPtr = 0;
+    scsiEnterPhase(DATA_IN);
+    // Format the sectors for transfer
+    for (uint32_t idx = 0; idx < length; idx++)
+    {
+        platform_poll();
+        diskEjectButtonUpdate(false);
+
+        // Where in bytes the sector starts in the image file
+        uint64_t sector_start = offset + idx * sector_length;
+        // Where to start reading the image file in bytes, aligned at or before sector start
+        uint64_t aligned_start = (sector_start / read_size) * read_size; 
+        // The difference between the sector start and aligned start
+        uint32_t sector_start_offset = (uint32_t)(sector_start - aligned_start);
+        // Where the sector on the CD ends in bytes
+        uint64_t sector_end = sector_start + sector_length - 1;
+        // The number of aligned blocks on the image file to read rounded up
+        uint32_t number_of_read_sectors = (sector_end - aligned_start + read_size - 1) / read_size;
+        // How many bytes to read from the image file
+        uint32_t aligned_read_length = number_of_read_sectors * read_size;
+        img.file.seek(aligned_start);
+
+        // Verify that previous write using this buffer has finished
+        uint8_t *buf = ((idx & 1) ? buf1 : buf0);
+        uint8_t *bufstart = buf + sector_start_offset;
+        uint32_t start = millis();
+        while (!scsiIsWriteFinished(bufstart + sector_length - 1) && !scsiDev.resetFlag)
+        {
+            if ((uint32_t)(millis() - start) > 5000)
+            {
+                logmsg("doReadD8() timeout waiting for previous to finish");
+                scsiDev.resetFlag = 1;
+            }
+            platform_poll();
+            diskEjectButtonUpdate(false);
+        }
+        if (scsiDev.resetFlag) break;
+
+        // User data
+        img.file.read(buf, aligned_read_length);
+
+        scsiStartWrite(bufstart, sector_length);
+    }
+
+    scsiFinishWrite();
+
+    scsiDev.status = 0;
+    scsiDev.phase = STATUS;
+}
+
 /**************************************/
 /* CD-ROM command dispatching         */
 /**************************************/
@@ -2146,6 +2214,10 @@ extern "C" int scsiCDRomCommand()
         const uint32_t CD_C2_SIZE = 294;
         const uint32_t CD_SUBCODE_SIZE = 96;
         const uint32_t CD_RAW_DATA_SIZE = CD_DATA_SIZE + CD_C2_SIZE + CD_SUBCODE_SIZE;
+        uint32_t bytes_per_sector = 0;
+        bytes_per_sector = ini_getl("SCSI","PlextorBytesPerSector", 0, CONFIGFILE);
+        uint32_t bytes_per_block = ini_getl("SCSI", "PlextorBytesPerBlock", 512 , CONFIGFILE);
+        if (bytes_per_sector == 0) bytes_per_sector = CD_DATA_SIZE;
         uint8_t lun = scsiDev.cdb[1] & 0x7;
         uint8_t subcode = scsiDev.cdb[10];
         if (lun != 0)
@@ -2170,11 +2242,8 @@ extern "C" int scsiCDRomCommand()
                 (((uint32_t) scsiDev.cdb[7]) << 16) +
                 (((uint32_t) scsiDev.cdb[8]) << 8) +
                 scsiDev.cdb[9];
-            uint32_t original_bytes_per_sector = scsiDev.target->liveCfg.bytesPerSector;
-            scsiDev.target->liveCfg.bytesPerSector = CD_RAW_DATA_SIZE; 
-            dbgmsg("Doing a Plextor 0xD8 CDDA Read, starting: ", (int)lba, " length: ",(int)blocks, " byte-per-sector:", (int) CD_RAW_DATA_SIZE );
-            scsiDiskStartRead(lba, blocks);
-            scsiDev.target->liveCfg.bytesPerSector = original_bytes_per_sector;
+            dbgmsg("Doing a Plextor 0xD8 CDDA Read, starting: ", (int)lba, " length: ",(int)blocks, " byte-per-sector: ", (int) bytes_per_sector, " byte=per=block: ", (int) bytes_per_block );
+            doReadD8(lba, blocks, bytes_per_sector, bytes_per_block);
         }
     }
     else if (command == 0x4E)
