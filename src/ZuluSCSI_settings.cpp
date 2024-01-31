@@ -161,6 +161,8 @@ void ZuluSCSISettings::setDefaultDriveInfo(uint8_t scsiId, const char *presetNam
     if (m_devPreset[scsiId] == DEV_PRESET_NONE)
     {
         cfgDev.deviceType = type;
+        cfgDev.deviceType = ini_getl(section, "Type", cfgDev.deviceType, CONFIGFILE);
+        
         if (cfgSys.quirks == S2S_CFG_QUIRKS_APPLE)
         {
             // Use default drive IDs that are recognized by Apple machines
@@ -207,7 +209,6 @@ void ZuluSCSISettings::setDefaultDriveInfo(uint8_t scsiId, const char *presetNam
 // Read device settings
 static void readIniSCSIDeviceSetting(scsi_device_settings_t &cfg, const char *section)
 {
-    cfg.deviceType = ini_getl(section, "Type", cfg.deviceType, CONFIGFILE);
     cfg.deviceTypeModifier = ini_getl(section, "TypeModifier", cfg.deviceTypeModifier, CONFIGFILE);
     cfg.sectorsPerTrack = ini_getl(section, "SectorsPerTrack", cfg.sectorsPerTrack, CONFIGFILE);
     cfg.headsPerCylinder = ini_getl(section, "HeadsPerCylinder", cfg.headsPerCylinder, CONFIGFILE);
