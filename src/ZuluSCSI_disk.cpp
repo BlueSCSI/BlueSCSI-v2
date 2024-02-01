@@ -704,6 +704,7 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
         int ret = ini_gets(section, key, "", buf, buflen, CONFIGFILE);
         if (buf[0] != '\0')
         {
+            img.deviceType = g_scsi_settings.getDevice(target_idx)->deviceType;
             return ret;
         }
         else if (img.image_index > 0)
