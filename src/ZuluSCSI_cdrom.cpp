@@ -1839,19 +1839,29 @@ static bool doReadCapacity(uint32_t lba, uint8_t pmi)
     return true;
 }
 
-static void doReadD8(uint32_t lba, uint32_t length, int sector_length, int read_size)
+static void doReadD8(uint32_t lba, uint32_t length)
 {
+    const uint32_t CD_SECTOR_SIZE = 2352;
+    const uint32_t SD_BLOCKSIZE =  512;
+    const uint32_t bytes_per_sector = CD_SECTOR_SIZE;
+    const uint32_t bytes_per_block = SD_BLOCKSIZE;
+
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     uint8_t *buf0 = scsiDev.data;
-    uint8_t *buf1;// = scsiDev.data + read_length;
+    uint8_t *buf1 = buf0 + (sizeof(scsiDev.data)/2);
     // Adjust for plextor d8 offset
-    if (lba - 2 < 0)
+    if ((int)lba - 2 < 0)
     {
-        logmsg("Error - lba is negative after plextor d8 2 sector adjustment");
+        logmsg("ERROR: Plextor vendor 0xD8 command LBA must be greater than 2, given: ", (int)lba);
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+        scsiDev.phase = STATUS;
+        return;
     }
     lba = lba -2;
 
-    uint64_t offset = lba * sector_length;
+    uint64_t offset = lba * bytes_per_sector;
 
 
     scsiDev.phase = DATA_IN;
@@ -1865,24 +1875,24 @@ static void doReadD8(uint32_t lba, uint32_t length, int sector_length, int read_
         diskEjectButtonUpdate(false);
 
         // Where in bytes the sector starts in the image file
-        uint64_t sector_start = offset + idx * sector_length;
+        uint64_t sector_start = offset + idx * bytes_per_sector;
         // Where to start reading the image file in bytes, aligned at or before sector start
-        uint64_t aligned_start = (sector_start / read_size) * read_size; 
+        uint64_t aligned_start = (sector_start / bytes_per_block) * bytes_per_block;
         // The difference between the sector start and aligned start
         uint32_t sector_start_offset = (uint32_t)(sector_start - aligned_start);
         // Where the sector on the CD ends in bytes
-        uint64_t sector_end = sector_start + sector_length - 1;
+        uint64_t sector_end = sector_start + bytes_per_sector - 1;
         // The number of aligned blocks on the image file to read rounded up
-        uint32_t number_of_read_sectors = (sector_end - aligned_start + read_size - 1) / read_size;
+        uint32_t number_of_read_sectors = (sector_end - aligned_start + bytes_per_block - 1) / bytes_per_block;
         // How many bytes to read from the image file
-        uint32_t aligned_read_length = number_of_read_sectors * read_size;
+        uint32_t aligned_read_length = number_of_read_sectors * bytes_per_block;
         img.file.seek(aligned_start);
 
         // Verify that previous write using this buffer has finished
         uint8_t *buf = ((idx & 1) ? buf1 : buf0);
         uint8_t *bufstart = buf + sector_start_offset;
         uint32_t start = millis();
-        while (!scsiIsWriteFinished(bufstart + sector_length - 1) && !scsiDev.resetFlag)
+        while (!scsiIsWriteFinished(bufstart + bytes_per_sector - 1) && !scsiDev.resetFlag)
         {
             if ((uint32_t)(millis() - start) > 5000)
             {
@@ -1894,14 +1904,12 @@ static void doReadD8(uint32_t lba, uint32_t length, int sector_length, int read_
         }
         if (scsiDev.resetFlag) break;
 
-        // User data
         img.file.read(buf, aligned_read_length);
 
-        scsiStartWrite(bufstart, sector_length);
+        scsiStartWrite(bufstart, bytes_per_sector);
     }
 
     scsiFinishWrite();
-
     scsiDev.status = 0;
     scsiDev.phase = STATUS;
 }
@@ -2208,27 +2216,26 @@ extern "C" int scsiCDRomCommand()
 
         doReadCD(lba, blocks, 0, 0x10, 0, true);
     }
-    else if (command == 0xD8)
+    else if (unlikely(scsiDev.target->cfg->vendorExtensions & VENDOR_EXTENSION_OPTICAL_PLEXTOR) && 
+            command == 0xD8)
     {
-        const uint32_t CD_DATA_SIZE = 2352;
-        const uint32_t CD_C2_SIZE = 294;
-        const uint32_t CD_SUBCODE_SIZE = 96;
-        const uint32_t CD_RAW_DATA_SIZE = CD_DATA_SIZE + CD_C2_SIZE + CD_SUBCODE_SIZE;
-        uint32_t bytes_per_sector = 0;
-        bytes_per_sector = ini_getl("SCSI","PlextorBytesPerSector", 0, CONFIGFILE);
-        uint32_t bytes_per_block = ini_getl("SCSI", "PlextorBytesPerBlock", 512 , CONFIGFILE);
-        if (bytes_per_sector == 0) bytes_per_sector = CD_DATA_SIZE;
         uint8_t lun = scsiDev.cdb[1] & 0x7;
         uint8_t subcode = scsiDev.cdb[10];
         if (lun != 0)
         {
-            logmsg("Error - only LUN 0 supported for plextor vender 0xD8 command CDDA Read. Given ", (int)lun);
-            commandHandled = 0;
+            logmsg("ERROR: Plextor vendor 0xD8 command only supports LUN 0. Given ", (int)lun);
+            scsiDev.status = CHECK_CONDITION;
+            scsiDev.target->sense.code = ILLEGAL_REQUEST;
+            scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+            scsiDev.phase = STATUS;
         }
         else if (subcode != 0)
         {
-            logmsg("Error - Subcodes not supported yet. Given ", subcode);
-            commandHandled = 0;
+            logmsg("ERROR: Plextor vendor 0xD8 command subcodes not supported. Given ", subcode);
+            scsiDev.status = CHECK_CONDITION;
+            scsiDev.target->sense.code = ILLEGAL_REQUEST;
+            scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+            scsiDev.phase = STATUS;
         }
         else
         {
@@ -2242,8 +2249,8 @@ extern "C" int scsiCDRomCommand()
                 (((uint32_t) scsiDev.cdb[7]) << 16) +
                 (((uint32_t) scsiDev.cdb[8]) << 8) +
                 scsiDev.cdb[9];
-            dbgmsg("Doing a Plextor 0xD8 CDDA Read, starting: ", (int)lba, " length: ",(int)blocks, " byte-per-sector: ", (int) bytes_per_sector, " byte=per=block: ", (int) bytes_per_block );
-            doReadD8(lba, blocks, bytes_per_sector, bytes_per_block);
+            dbgmsg("Plextor vendor 0xD8 command CDDA Read, starting: ", (int)lba, " length: ",(int)blocks);
+            doReadD8(lba, blocks);
         }
     }
     else if (command == 0x4E)
