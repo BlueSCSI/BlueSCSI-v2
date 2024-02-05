@@ -1113,6 +1113,10 @@ static void doReadCapacity()
     {
         uint32_t highestBlock = capacity - 1;
 
+	if (pmi && scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_EWSD)
+	{
+		highestBlock = 0x00001053;
+	}
         scsiDev.data[0] = highestBlock >> 24;
         scsiDev.data[1] = highestBlock >> 16;
         scsiDev.data[2] = highestBlock >> 8;
