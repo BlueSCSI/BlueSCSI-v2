@@ -562,14 +562,14 @@ static void process_Command()
 	// on receiving the unit attention response on boot, thus
 	// triggering another unit attention condition.
 	else if (scsiDev.target->unitAttention &&
-		scsiDev.target->unitAttention_stop == 0 &&
+		scsiDev.target->unitAttentionStop == 0 &&
 		((scsiDev.boardCfg.flags & S2S_CFG_ENABLE_UNIT_ATTENTION) ||
 		(scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_EWSD)))
 	{
 		/* EWSD requires unitAttention to be sent only once. */
 		if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_EWSD)
 		{
-			scsiDev.target->unitAttention_stop = 1;
+			scsiDev.target->unitAttentionStop = 1;
 		}
 		scsiDev.target->sense.code = UNIT_ATTENTION;
 		scsiDev.target->sense.asc = scsiDev.target->unitAttention;
