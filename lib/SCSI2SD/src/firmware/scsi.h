@@ -102,6 +102,7 @@ typedef struct
 	ScsiSense sense;
 
 	uint16_t unitAttention; // Set to the sense qualifier key to be returned.
+	uint8_t unitAttention_stop; // Indicates if unit attention has to be stopped.
 
 	// Only let the reserved initiator talk to us.
 	// A 3rd party may be sending the RESERVE/RELEASE commands
