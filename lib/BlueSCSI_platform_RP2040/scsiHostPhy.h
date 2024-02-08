@@ -14,7 +14,7 @@ void scsiHostPhyReset(void);
 
 // Select a device, id 0-7.
 // Returns true if the target answers to selection request.
-bool scsiHostPhySelect(int target_id);
+bool scsiHostPhySelect(int target_id, int initiator_id);
 
 // Read the current communication phase as signaled by the target
 // Matches SCSI_PHASE enumeration from scsi.h.

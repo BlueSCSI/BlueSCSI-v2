@@ -10,6 +10,7 @@
 #include "BlueSCSI_log_trace.h"
 #include "BlueSCSI_initiator.h"
 #include <BlueSCSI_platform.h>
+#include <minIni.h>
 #include "SdFat.h"
 
 #include <scsi2sd.h>
@@ -49,6 +50,8 @@ static struct {
     // Bitmap of all drives that have been imaged
     uint32_t drives_imaged;
 
+    uint8_t initiator_id;
+
     // Is imaging a drive in progress, or are we scanning?
     bool imaging;
 
@@ -75,7 +78,17 @@ void scsiInitiatorInit()
 {
     scsiHostPhyReset();
 
-    g_initiator_state.drives_imaged = 0;
+    g_initiator_state.initiator_id = ini_getl("SCSI", "InitiatorID", 7, CONFIGFILE);
+    if (g_initiator_state.initiator_id > 7)
+    {
+        log("InitiatorID set to illegal value in, ", CONFIGFILE, ", defaulting to 7");
+        g_initiator_state.initiator_id = 7;
+    } else
+    {
+        log_f("InitiatorID set to ID %d", g_initiator_state.initiator_id);
+    }
+    // treat initiator id as already imaged drive so it gets skipped
+    g_initiator_state.drives_imaged = 1 << g_initiator_state.initiator_id;
     g_initiator_state.imaging = false;
     g_initiator_state.target_id = -1;
     g_initiator_state.sectorsize = 0;
@@ -347,7 +360,7 @@ int scsiInitiatorRunCommand(int target_id,
                             const uint8_t *bufOut, size_t bufOutLen,
                             bool returnDataPhase)
 {
-    if (!scsiHostPhySelect(target_id))
+    if (!scsiHostPhySelect(target_id, g_initiator_state.initiator_id))
     {
         debuglog("------ Target ", target_id, " did not respond");
         scsiHostPhyRelease();
