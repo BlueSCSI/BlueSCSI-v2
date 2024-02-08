@@ -186,6 +186,7 @@ void scsiInitiatorMainLoop()
                 log("SCSI ID ", g_initiator_state.target_id,
                     " capacity ", (int)g_initiator_state.sectorcount,
                     " sectors x ", (int)g_initiator_state.sectorsize, " bytes");
+                log_f("Vendor: %.8s, Product: %.16s, Version: %.4s", &inquiry_data[8], &inquiry_data[16], &inquiry_data[32]);
 
                 g_initiator_state.sectorcount_all = g_initiator_state.sectorcount;
 
@@ -210,7 +211,7 @@ void scsiInitiatorMainLoop()
             }
             else
             {
-                debuglog("No response from SCSI ID ", g_initiator_state.target_id);
+                log("* No response from SCSI ID ", g_initiator_state.target_id);
                 g_initiator_state.sectorsize = 0;
                 g_initiator_state.sectorcount = g_initiator_state.sectorcount_all = 0;
             }
@@ -246,7 +247,7 @@ void scsiInitiatorMainLoop()
                 }
                 if(lun != 0)
                 {
-                    log(filename_format, " already exists, using ", filename);
+                    log("Using filename: ", filename, " to avoid overwriting existing file.");
                 }
                 g_initiator_state.target_file = SD.open(filename, O_RDWR | O_CREAT | O_TRUNC);
                 if (!g_initiator_state.target_file.isOpen())
