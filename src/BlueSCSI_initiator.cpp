@@ -113,15 +113,11 @@ static void scsiInitiatorUpdateLed()
 
     if (phase <= duty)
     {
-        if (!platform_network_supported()) {
-            STANDARD_LED_ON;
-        }
+        LED_ON();
     }
     else
     {
-        if (!platform_network_supported()) {
-            STANDARD_LED_OFF;
-        }
+        LED_OFF();
     }
 }
 
@@ -160,10 +156,7 @@ void scsiInitiatorMainLoop()
 
             uint8_t inquiry_data[36];
 
-            if (!platform_network_supported()) {
-                STANDARD_LED_ON;
-            }
-
+            LED_ON();
             bool startstopok =
                 scsiTestUnitReady(g_initiator_state.target_id) &&
                 scsiStartStopUnit(g_initiator_state.target_id, true);
@@ -175,10 +168,7 @@ void scsiInitiatorMainLoop()
 
             bool inquiryok = startstopok &&
                 scsiInquiry(g_initiator_state.target_id, inquiry_data);
-
-            if (!platform_network_supported()) {
-                STANDARD_LED_OFF;
-            }
+            LED_OFF();
 
             uint64_t total_bytes = 0;
             if (readcapok)
@@ -276,10 +266,7 @@ void scsiInitiatorMainLoop()
         {
             scsiStartStopUnit(g_initiator_state.target_id, false);
             log("Finished imaging drive with id ", g_initiator_state.target_id);
-
-            if (!platform_network_supported()) {
-                STANDARD_LED_OFF;
-            }
+            LED_OFF();
 
             if (g_initiator_state.sectorcount != g_initiator_state.sectorcount_all)
             {

@@ -678,7 +678,7 @@ extern "C" void bluescsi_main_loop(void)
   platform_network_poll();
   
 #ifdef PLATFORM_HAS_INITIATOR_MODE
-  if (unlikely(platform_is_initiator_mode_enabled()))
+  if (platform_is_initiator_mode_enabled())
   {
     scsiInitiatorMainLoop();
     save_logfile();
