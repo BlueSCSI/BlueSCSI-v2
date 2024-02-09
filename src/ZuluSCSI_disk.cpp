@@ -1947,6 +1947,19 @@ int scsiDiskCommand()
         commandHandled = scsiModeCommand();
         blockDev.state &= ~DISK_WP;
     }
+    else if (unlikely(command == 0xE0))
+    {
+        // RAM Diagnostic
+        // XEBEC S1410 controller
+        // http://bitsavers.informatik.uni-stuttgart.de/pdf/xebec/104524C_S1410Man_Aug83.pdf
+        // Stub, return success
+    }
+    else if (unlikely(command == 0xE4))
+    {
+        // Drive Diagnostic
+        // XEBEC S1410 controller
+        // Stub, return success
+    }       
     else
     {
         commandHandled = 0;
