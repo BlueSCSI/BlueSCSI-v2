@@ -26,7 +26,8 @@
 #include "scsi2sd_time.h"
 #include "bsp.h"
 #include "cdrom.h"
-//#include "debug.h"
+// #include "debug.h"
+// #include "log.h"
 #include "network.h"
 #include "tape.h"
 #include "mo.h"
@@ -412,7 +413,14 @@ static void process_Command()
 	}
 	else if (command == 0x12)
 	{
-		s2s_scsiInquiry();
+		if(scsiDev.lun)
+		{
+			scsiDev.target->sense.code = ILLEGAL_REQUEST;
+			scsiDev.target->sense.asc = LOGICAL_UNIT_NOT_SUPPORTED;
+			enter_Status(CHECK_CONDITION);
+		} else {
+			s2s_scsiInquiry();
+		}
 	}
 	else if (command == 0x03)
 	{
@@ -545,14 +553,33 @@ static void process_Command()
 			// Newer initiators won't be specifying 0 anyway.
 			if (allocLength == 0) allocLength = 4;
 
+			// If we receve a stand alone REQUEST SENSE to a bad LUN we still need to respond
+			// with LUN not supported. SCSI-2 Spec 7.5.3.
+			if (scsiDev.lun && scsiDev.lastStatus != CHECK_CONDITION)
+			{
+				scsiDev.target->sense.code = ILLEGAL_REQUEST;
+				scsiDev.target->sense.asc = LOGICAL_UNIT_NOT_SUPPORTED;
+			}
 			memset(scsiDev.data, 0, 256); // Max possible alloc length
 			scsiDev.data[0] = 0xF0;
 			scsiDev.data[2] = scsiDev.target->sense.code & 0x0F;
 
-			scsiDev.data[3] = transfer.lba >> 24;
-			scsiDev.data[4] = transfer.lba >> 16;
-			scsiDev.data[5] = transfer.lba >> 8;
-			scsiDev.data[6] = transfer.lba;
+			if (scsiDev.target->cfg->deviceType != S2S_CFG_SEQUENTIAL)
+			{
+				// LBA is Valid Information for direct access devices.
+				scsiDev.data[3] = transfer.lba >> 24;
+				scsiDev.data[4] = transfer.lba >> 16;
+				scsiDev.data[5] = transfer.lba >> 8;
+				scsiDev.data[6] = transfer.lba;
+			}
+			else
+			{
+				// Set Valid field to false.
+				scsiDev.data[0] &= 0b01111111;
+				// TODO:
+				//  For S2S_CFG_SEQUENTIAL use the difference of the requested length minus the actual length
+				//  in either bytes or blocks, as determined by the command.
+			}
 
 			// Additional bytes if there are errors to report
 			scsiDev.data[7] = 10; // additional length
