@@ -59,12 +59,6 @@
 #define LED_ON()     platform_network_supported() ? cyw43_gpio_set(&cyw43_state, 0, true) : sio_hw->gpio_set = 1 << LED_PIN
 #define LED_OFF()    platform_network_supported() ? cyw43_gpio_set(&cyw43_state, 0, false) : sio_hw->gpio_clr = 1 << LED_PIN
 
-#define STANDARD_LED_ON 	sio_hw->gpio_set = 1 << LED_PIN
-#define STANDARD_LED_OFF 	sio_hw->gpio_clr = 1 << LED_PIN
-
-#define W_LED_ON 	cyw43_gpio_set(&cyw43_state, 0, true)
-#define W_LED_OFF 	cyw43_gpio_set(&cyw43_state, 0, false)
-
 // SDIO and SPI block
 #define SD_SPI_SCK   10
 #define SDIO_CLK 10

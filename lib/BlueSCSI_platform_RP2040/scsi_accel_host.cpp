@@ -12,7 +12,7 @@
 #include <hardware/sync.h>
 
 #define SCSI_PIO pio0
-#define SCSI_SM 0
+#define SCSI_SM 1
 
 static struct {
     // PIO configurations

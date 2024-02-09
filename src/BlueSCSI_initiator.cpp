@@ -10,6 +10,7 @@
 #include "BlueSCSI_log_trace.h"
 #include "BlueSCSI_initiator.h"
 #include <BlueSCSI_platform.h>
+#include <minIni.h>
 #include "SdFat.h"
 
 #include <scsi2sd.h>
@@ -49,6 +50,8 @@ static struct {
     // Bitmap of all drives that have been imaged
     uint32_t drives_imaged;
 
+    uint8_t initiator_id;
+
     // Is imaging a drive in progress, or are we scanning?
     bool imaging;
 
@@ -75,7 +78,17 @@ void scsiInitiatorInit()
 {
     scsiHostPhyReset();
 
-    g_initiator_state.drives_imaged = 0;
+    g_initiator_state.initiator_id = ini_getl("SCSI", "InitiatorID", 7, CONFIGFILE);
+    if (g_initiator_state.initiator_id > 7)
+    {
+        log("InitiatorID set to illegal value in, ", CONFIGFILE, ", defaulting to 7");
+        g_initiator_state.initiator_id = 7;
+    } else
+    {
+        log_f("InitiatorID set to ID %d", g_initiator_state.initiator_id);
+    }
+    // treat initiator id as already imaged drive so it gets skipped
+    g_initiator_state.drives_imaged = 1 << g_initiator_state.initiator_id;
     g_initiator_state.imaging = false;
     g_initiator_state.target_id = -1;
     g_initiator_state.sectorsize = 0;
@@ -100,15 +113,11 @@ static void scsiInitiatorUpdateLed()
 
     if (phase <= duty)
     {
-        if (!platform_network_supported()) {
-            STANDARD_LED_ON;
-        }
+        LED_ON();
     }
     else
     {
-        if (!platform_network_supported()) {
-            STANDARD_LED_OFF;
-        }
+        LED_OFF();
     }
 }
 
@@ -147,10 +156,7 @@ void scsiInitiatorMainLoop()
 
             uint8_t inquiry_data[36];
 
-            if (!platform_network_supported()) {
-                STANDARD_LED_ON;
-            }
-
+            LED_ON();
             bool startstopok =
                 scsiTestUnitReady(g_initiator_state.target_id) &&
                 scsiStartStopUnit(g_initiator_state.target_id, true);
@@ -162,10 +168,7 @@ void scsiInitiatorMainLoop()
 
             bool inquiryok = startstopok &&
                 scsiInquiry(g_initiator_state.target_id, inquiry_data);
-
-            if (!platform_network_supported()) {
-                STANDARD_LED_OFF;
-            }
+            LED_OFF();
 
             uint64_t total_bytes = 0;
             if (readcapok)
@@ -173,6 +176,7 @@ void scsiInitiatorMainLoop()
                 log("SCSI ID ", g_initiator_state.target_id,
                     " capacity ", (int)g_initiator_state.sectorcount,
                     " sectors x ", (int)g_initiator_state.sectorsize, " bytes");
+                log_f("Vendor: %.8s, Product: %.16s, Version: %.4s", &inquiry_data[8], &inquiry_data[16], &inquiry_data[32]);
 
                 g_initiator_state.sectorcount_all = g_initiator_state.sectorcount;
 
@@ -197,7 +201,7 @@ void scsiInitiatorMainLoop()
             }
             else
             {
-                debuglog("No response from SCSI ID ", g_initiator_state.target_id);
+                log("* No response from SCSI ID ", g_initiator_state.target_id);
                 g_initiator_state.sectorsize = 0;
                 g_initiator_state.sectorcount = g_initiator_state.sectorcount_all = 0;
             }
@@ -233,7 +237,7 @@ void scsiInitiatorMainLoop()
                 }
                 if(lun != 0)
                 {
-                    log(filename_format, " already exists, using ", filename);
+                    log("Using filename: ", filename, " to avoid overwriting existing file.");
                 }
                 g_initiator_state.target_file = SD.open(filename, O_RDWR | O_CREAT | O_TRUNC);
                 if (!g_initiator_state.target_file.isOpen())
@@ -262,10 +266,7 @@ void scsiInitiatorMainLoop()
         {
             scsiStartStopUnit(g_initiator_state.target_id, false);
             log("Finished imaging drive with id ", g_initiator_state.target_id);
-
-            if (!platform_network_supported()) {
-                STANDARD_LED_OFF;
-            }
+            LED_OFF();
 
             if (g_initiator_state.sectorcount != g_initiator_state.sectorcount_all)
             {
@@ -347,7 +348,7 @@ int scsiInitiatorRunCommand(int target_id,
                             const uint8_t *bufOut, size_t bufOutLen,
                             bool returnDataPhase)
 {
-    if (!scsiHostPhySelect(target_id))
+    if (!scsiHostPhySelect(target_id, g_initiator_state.initiator_id))
     {
         debuglog("------ Target ", target_id, " did not respond");
         scsiHostPhyRelease();
