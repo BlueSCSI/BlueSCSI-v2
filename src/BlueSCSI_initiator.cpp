@@ -65,6 +65,7 @@ static struct {
     uint32_t badSectorCount;
     uint8_t ansiVersion;
     uint8_t maxRetryCount;
+    uint8_t deviceType;
 
     // Retry information for sector reads.
     // If a large read fails, retry is done sector-by-sector.
@@ -104,6 +105,7 @@ void scsiInitiatorInit()
     g_initiator_state.max_sector_per_transfer = 512;
     g_initiator_state.ansiVersion = 0;
     g_initiator_state.badSectorCount = 0;
+    g_initiator_state.deviceType = DEVICE_TYPE_DIRECT_ACCESS;
 }
 
 // Update progress bar LED during transfers
@@ -227,9 +229,14 @@ void scsiInitiatorMainLoop()
             const char *filename_format = "HD00_imaged.hda";
             if (inquiryok)
             {
-                if ((inquiry_data[0] & 0x1F) == 5)
+                g_initiator_state.deviceType = inquiry_data[0] & 0x1F;
+                if (g_initiator_state.deviceType == DEVICE_TYPE_CD)
                 {
                     filename_format = "CD00_imaged.iso";
+                }
+                else if(g_initiator_state.deviceType != DEVICE_TYPE_DIRECT_ACCESS)
+                {
+                    log("Unhandled device type: ", g_initiator_state.deviceType, ". Handling it as Direct Access Device.");
                 }
             }
 
@@ -297,7 +304,11 @@ void scsiInitiatorMainLoop()
                 log_f("NOTE: There were %d bad sectors that could not be read off this drive.", g_initiator_state.badSectorCount);
             }
 
-            g_initiator_state.drives_imaged |= (1 << g_initiator_state.target_id);
+            if(g_initiator_state.deviceType != DEVICE_TYPE_CD)
+            {
+                log("Marking this ID as imaged, wont ask it again.");
+                g_initiator_state.drives_imaged |= (1 << g_initiator_state.target_id);
+            }
             g_initiator_state.imaging = false;
             g_initiator_state.target_file.close();
             return;
@@ -514,6 +525,13 @@ bool scsiStartStopUnit(int target_id, bool start)
     {
         command[4] |= 1; // Start
         command[1] = 0;  // Immediate
+    }
+    else // stop
+    {
+        if(g_initiator_state.deviceType == DEVICE_TYPE_CD)
+        {
+            command[4] = 0b00000010; // eject(6), stop(7).
+        }
     }
 
     int status = scsiInitiatorRunCommand(target_id,
