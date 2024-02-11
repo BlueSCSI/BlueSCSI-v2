@@ -511,7 +511,7 @@ bool scsiRequestSense(int target_id, uint8_t *sense_key)
 
     log("RequestSense response: ", bytearray(response, 18));
 
-    *sense_key = response[2];
+    *sense_key = response[2] & 0x0F;
     return status == 0;
 }
 
