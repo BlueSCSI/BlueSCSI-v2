@@ -251,7 +251,7 @@ void scsiInitiatorMainLoop()
                 {
                     log("Using filename: ", filename, " to avoid overwriting existing file.");
                 }
-                g_initiator_state.target_file = SD.open(filename, O_RDWR | O_CREAT | O_TRUNC);
+                g_initiator_state.target_file = SD.open(filename, O_WRONLY | O_CREAT | O_TRUNC);
                 if (!g_initiator_state.target_file.isOpen())
                 {
                     log("Failed to open file for writing: ", filename);
