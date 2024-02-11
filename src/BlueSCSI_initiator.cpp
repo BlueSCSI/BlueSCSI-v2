@@ -353,9 +353,9 @@ void scsiInitiatorMainLoop()
             g_initiator_state.target_file.flush();
 
             int speed_kbps = numtoread * g_initiator_state.sectorsize / (millis() - time_start);
-            log("SCSI read succeeded, sectors done: ",
-                  (int)g_initiator_state.sectors_done, " / ", (int)g_initiator_state.sectorcount,
-                  " speed ", speed_kbps, " kB/s");
+            log_f("SCSI read succeeded, sectors done: %d / %d speed %d kB/s - %.2f%%",
+                  g_initiator_state.sectors_done, g_initiator_state.sectorcount, speed_kbps,
+                  (float)(((float)g_initiator_state.sectors_done / (float)g_initiator_state.sectorcount) * 100.0));
         }
     }
 }
