@@ -62,6 +62,7 @@ static struct {
     uint32_t sectorcount_all;
     uint32_t sectors_done;
     uint32_t max_sector_per_transfer;
+    uint8_t ansiVersion;
 
     // Retry information for sector reads.
     // If a large read fails, retry is done sector-by-sector.
@@ -97,6 +98,7 @@ void scsiInitiatorInit()
     g_initiator_state.retrycount = 0;
     g_initiator_state.failposition = 0;
     g_initiator_state.max_sector_per_transfer = 512;
+    g_initiator_state.ansiVersion = 0;
 }
 
 // Update progress bar LED during transfers
@@ -154,7 +156,7 @@ void scsiInitiatorMainLoop()
         {
             delay_with_poll(1000);
 
-            uint8_t inquiry_data[36];
+            uint8_t inquiry_data[36] = {0};
 
             LED_ON();
             bool startstopok =
@@ -168,6 +170,7 @@ void scsiInitiatorMainLoop()
 
             bool inquiryok = startstopok &&
                 scsiInquiry(g_initiator_state.target_id, inquiry_data);
+            g_initiator_state.ansiVersion = inquiry_data[2] & 0x7;
             LED_OFF();
 
             uint64_t total_bytes = 0;
@@ -176,7 +179,11 @@ void scsiInitiatorMainLoop()
                 log("SCSI ID ", g_initiator_state.target_id,
                     " capacity ", (int)g_initiator_state.sectorcount,
                     " sectors x ", (int)g_initiator_state.sectorsize, " bytes");
-                log_f("Vendor: %.8s, Product: %.16s, Version: %.4s", &inquiry_data[8], &inquiry_data[16], &inquiry_data[32]);
+                log_f("SCSI-%d: Vendor: %.8s, Product: %.16s, Version: %.4s",
+                    g_initiator_state.ansiVersion,
+                    &inquiry_data[8],
+                    &inquiry_data[16],
+                    &inquiry_data[32]);
 
                 g_initiator_state.sectorcount_all = g_initiator_state.sectorcount;
 
@@ -189,6 +196,11 @@ void scsiInitiatorMainLoop()
                     log("Please reformat the SD card with exFAT format to image this drive.");
                     g_initiator_state.sectorsize = 0;
                     g_initiator_state.sectorcount = g_initiator_state.sectorcount_all = 0;
+                }
+                if(g_initiator_state.ansiVersion != 0x02)
+                {
+                    // this is a SCSI-1 drive, use READ6 and 256 bytes to be safe.
+                    g_initiator_state.max_sector_per_transfer = 256;
                 }
             }
             else if (startstopok)
@@ -674,7 +686,7 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
 
     // Read6 command supports 21 bit LBA - max of 0x1FFFFF
     // ref: https://www.seagate.com/files/staticfiles/support/docs/manual/Interface%20manuals/100293068j.pdf pg 134
-    if (start_sector < 0x1FFFFF && sectorcount <= 256)
+    if (g_initiator_state.ansiVersion != 0x02 || (start_sector < 0x1FFFFF && sectorcount <= 256))
     {
         // Use READ6 command for compatibility with old SCSI1 drives
         uint8_t command[6] = {0x08,
