@@ -62,6 +62,7 @@ static struct {
     uint32_t sectorcount_all;
     uint32_t sectors_done;
     uint32_t max_sector_per_transfer;
+    uint32_t badSectorCount;
     uint8_t ansiVersion;
 
     // Retry information for sector reads.
@@ -99,6 +100,7 @@ void scsiInitiatorInit()
     g_initiator_state.failposition = 0;
     g_initiator_state.max_sector_per_transfer = 512;
     g_initiator_state.ansiVersion = 0;
+    g_initiator_state.badSectorCount = 0;
 }
 
 // Update progress bar LED during transfers
@@ -151,6 +153,7 @@ void scsiInitiatorMainLoop()
         g_initiator_state.sectors_done = 0;
         g_initiator_state.retrycount = 0;
         g_initiator_state.max_sector_per_transfer = 512;
+        g_initiator_state.badSectorCount = 0;
 
         if (!(g_initiator_state.drives_imaged & (1 << g_initiator_state.target_id)))
         {
@@ -286,6 +289,11 @@ void scsiInitiatorMainLoop()
                 log("Please reformat the SD card with exFAT format to image this drive fully");
             }
 
+            if(g_initiator_state.badSectorCount != 0)
+            {
+                log_f("NOTE: There were %d bad sectors that could not be read off this drive.", g_initiator_state.badSectorCount);
+            }
+
             g_initiator_state.drives_imaged |= (1 << g_initiator_state.target_id);
             g_initiator_state.imaging = false;
             g_initiator_state.target_file.close();
@@ -334,6 +342,7 @@ void scsiInitiatorMainLoop()
                 log("Retry limit exceeded, skipping one sector");
                 g_initiator_state.retrycount = 0;
                 g_initiator_state.sectors_done++;
+                g_initiator_state.badSectorCount++;
                 g_initiator_state.target_file.seek((uint64_t)g_initiator_state.sectors_done * g_initiator_state.sectorsize);
             }
         }
