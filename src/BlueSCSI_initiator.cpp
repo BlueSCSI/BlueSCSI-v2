@@ -64,6 +64,7 @@ static struct {
     uint32_t max_sector_per_transfer;
     uint32_t badSectorCount;
     uint8_t ansiVersion;
+    uint8_t maxRetryCount;
 
     // Retry information for sector reads.
     // If a large read fails, retry is done sector-by-sector.
@@ -89,6 +90,8 @@ void scsiInitiatorInit()
     {
         log_f("InitiatorID set to ID %d", g_initiator_state.initiator_id);
     }
+    g_initiator_state.maxRetryCount = ini_getl("SCSI", "InitiatorMaxRetry", 5, CONFIGFILE);
+
     // treat initiator id as already imaged drive so it gets skipped
     g_initiator_state.drives_imaged = 1 << g_initiator_state.initiator_id;
     g_initiator_state.imaging = false;
@@ -320,9 +323,9 @@ void scsiInitiatorMainLoop()
         {
             log("Failed to transfer ", numtoread, " sectors starting at ", (int)g_initiator_state.sectors_done);
 
-            if (g_initiator_state.retrycount < 5)
+            if (g_initiator_state.retrycount < g_initiator_state.maxRetryCount)
             {
-                log("Retrying.. ", g_initiator_state.retrycount + 1, "/5");
+                log("Retrying.. ", g_initiator_state.retrycount + 1, "/", (int)g_initiator_state.maxRetryCount);
                 delay_with_poll(200);
                 // This reset causes some drives to hang and seems to have no effect if left off.
                 // scsiHostPhyReset();
