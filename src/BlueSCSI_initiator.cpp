@@ -314,7 +314,7 @@ void scsiInitiatorMainLoop()
 
             if (g_initiator_state.retrycount < 5)
             {
-                log("Retrying.. ", g_initiator_state.retrycount, "/5");
+                log("Retrying.. ", g_initiator_state.retrycount + 1, "/5");
                 delay_with_poll(200);
                 // This reset causes some drives to hang and seems to have no effect if left off.
                 // scsiHostPhyReset();
