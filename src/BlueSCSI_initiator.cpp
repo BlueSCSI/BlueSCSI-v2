@@ -71,6 +71,7 @@ static struct {
     // If a large read fails, retry is done sector-by-sector.
     int retrycount;
     uint32_t failposition;
+    bool ejectWhenDone;
 
     FsFile target_file;
 } g_initiator_state;
@@ -106,6 +107,7 @@ void scsiInitiatorInit()
     g_initiator_state.ansiVersion = 0;
     g_initiator_state.badSectorCount = 0;
     g_initiator_state.deviceType = DEVICE_TYPE_DIRECT_ACCESS;
+    g_initiator_state.ejectWhenDone = false;
 }
 
 // Update progress bar LED during transfers
@@ -159,6 +161,7 @@ void scsiInitiatorMainLoop()
         g_initiator_state.retrycount = 0;
         g_initiator_state.max_sector_per_transfer = 512;
         g_initiator_state.badSectorCount = 0;
+        g_initiator_state.ejectWhenDone = false;
 
         if (!(g_initiator_state.drives_imaged & (1 << g_initiator_state.target_id)))
         {
@@ -193,6 +196,12 @@ void scsiInitiatorMainLoop()
                     &inquiry_data[16],
                     &inquiry_data[32]);
 
+                // Check for well known ejectable media.
+                if(strncmp((char*)(&inquiry_data[8]), "IOMEGA", 6) == 0 &&
+                   strncmp((char*)(&inquiry_data[16]), "ZIP", 3) == 0)
+                {
+                    g_initiator_state.ejectWhenDone = true;
+                }
                 g_initiator_state.sectorcount_all = g_initiator_state.sectorcount;
 
                 total_bytes = (uint64_t)g_initiator_state.sectorcount * g_initiator_state.sectorsize;
@@ -233,6 +242,7 @@ void scsiInitiatorMainLoop()
                 if (g_initiator_state.deviceType == DEVICE_TYPE_CD)
                 {
                     filename_format = "CD00_imaged.iso";
+                    g_initiator_state.ejectWhenDone = true;
                 }
                 else if(g_initiator_state.deviceType != DEVICE_TYPE_DIRECT_ACCESS)
                 {
@@ -304,7 +314,7 @@ void scsiInitiatorMainLoop()
                 log_f("NOTE: There were %d bad sectors that could not be read off this drive.", g_initiator_state.badSectorCount);
             }
 
-            if(g_initiator_state.deviceType != DEVICE_TYPE_CD)
+            if(!g_initiator_state.ejectWhenDone)
             {
                 log("Marking this ID as imaged, wont ask it again.");
                 g_initiator_state.drives_imaged |= (1 << g_initiator_state.target_id);
