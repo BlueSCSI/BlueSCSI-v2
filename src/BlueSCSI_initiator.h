@@ -5,6 +5,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#define DEVICE_TYPE_CD 5
+#define DEVICE_TYPE_DIRECT_ACCESS 0
+
 void scsiInitiatorInit();
 
 void scsiInitiatorMainLoop();

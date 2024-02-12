@@ -62,11 +62,16 @@ static struct {
     uint32_t sectorcount_all;
     uint32_t sectors_done;
     uint32_t max_sector_per_transfer;
+    uint32_t badSectorCount;
+    uint8_t ansiVersion;
+    uint8_t maxRetryCount;
+    uint8_t deviceType;
 
     // Retry information for sector reads.
     // If a large read fails, retry is done sector-by-sector.
     int retrycount;
     uint32_t failposition;
+    bool ejectWhenDone;
 
     FsFile target_file;
 } g_initiator_state;
@@ -87,6 +92,8 @@ void scsiInitiatorInit()
     {
         log_f("InitiatorID set to ID %d", g_initiator_state.initiator_id);
     }
+    g_initiator_state.maxRetryCount = ini_getl("SCSI", "InitiatorMaxRetry", 5, CONFIGFILE);
+
     // treat initiator id as already imaged drive so it gets skipped
     g_initiator_state.drives_imaged = 1 << g_initiator_state.initiator_id;
     g_initiator_state.imaging = false;
@@ -97,6 +104,10 @@ void scsiInitiatorInit()
     g_initiator_state.retrycount = 0;
     g_initiator_state.failposition = 0;
     g_initiator_state.max_sector_per_transfer = 512;
+    g_initiator_state.ansiVersion = 0;
+    g_initiator_state.badSectorCount = 0;
+    g_initiator_state.deviceType = DEVICE_TYPE_DIRECT_ACCESS;
+    g_initiator_state.ejectWhenDone = false;
 }
 
 // Update progress bar LED during transfers
@@ -149,12 +160,14 @@ void scsiInitiatorMainLoop()
         g_initiator_state.sectors_done = 0;
         g_initiator_state.retrycount = 0;
         g_initiator_state.max_sector_per_transfer = 512;
+        g_initiator_state.badSectorCount = 0;
+        g_initiator_state.ejectWhenDone = false;
 
         if (!(g_initiator_state.drives_imaged & (1 << g_initiator_state.target_id)))
         {
             delay_with_poll(1000);
 
-            uint8_t inquiry_data[36];
+            uint8_t inquiry_data[36] = {0};
 
             LED_ON();
             bool startstopok =
@@ -168,6 +181,7 @@ void scsiInitiatorMainLoop()
 
             bool inquiryok = startstopok &&
                 scsiInquiry(g_initiator_state.target_id, inquiry_data);
+            g_initiator_state.ansiVersion = inquiry_data[2] & 0x7;
             LED_OFF();
 
             uint64_t total_bytes = 0;
@@ -176,8 +190,18 @@ void scsiInitiatorMainLoop()
                 log("SCSI ID ", g_initiator_state.target_id,
                     " capacity ", (int)g_initiator_state.sectorcount,
                     " sectors x ", (int)g_initiator_state.sectorsize, " bytes");
-                log_f("Vendor: %.8s, Product: %.16s, Version: %.4s", &inquiry_data[8], &inquiry_data[16], &inquiry_data[32]);
+                log_f("SCSI-%d: Vendor: %.8s, Product: %.16s, Version: %.4s",
+                    g_initiator_state.ansiVersion,
+                    &inquiry_data[8],
+                    &inquiry_data[16],
+                    &inquiry_data[32]);
 
+                // Check for well known ejectable media.
+                if(strncmp((char*)(&inquiry_data[8]), "IOMEGA", 6) == 0 &&
+                   strncmp((char*)(&inquiry_data[16]), "ZIP", 3) == 0)
+                {
+                    g_initiator_state.ejectWhenDone = true;
+                }
                 g_initiator_state.sectorcount_all = g_initiator_state.sectorcount;
 
                 total_bytes = (uint64_t)g_initiator_state.sectorcount * g_initiator_state.sectorsize;
@@ -189,6 +213,11 @@ void scsiInitiatorMainLoop()
                     log("Please reformat the SD card with exFAT format to image this drive.");
                     g_initiator_state.sectorsize = 0;
                     g_initiator_state.sectorcount = g_initiator_state.sectorcount_all = 0;
+                }
+                if(g_initiator_state.ansiVersion != 0x02)
+                {
+                    // this is a SCSI-1 drive, use READ6 and 256 bytes to be safe.
+                    g_initiator_state.max_sector_per_transfer = 256;
                 }
             }
             else if (startstopok)
@@ -209,9 +238,15 @@ void scsiInitiatorMainLoop()
             const char *filename_format = "HD00_imaged.hda";
             if (inquiryok)
             {
-                if ((inquiry_data[0] & 0x1F) == 5)
+                g_initiator_state.deviceType = inquiry_data[0] & 0x1F;
+                if (g_initiator_state.deviceType == DEVICE_TYPE_CD)
                 {
                     filename_format = "CD00_imaged.iso";
+                    g_initiator_state.ejectWhenDone = true;
+                }
+                else if(g_initiator_state.deviceType != DEVICE_TYPE_DIRECT_ACCESS)
+                {
+                    log("Unhandled device type: ", g_initiator_state.deviceType, ". Handling it as Direct Access Device.");
                 }
             }
 
@@ -239,7 +274,7 @@ void scsiInitiatorMainLoop()
                 {
                     log("Using filename: ", filename, " to avoid overwriting existing file.");
                 }
-                g_initiator_state.target_file = SD.open(filename, O_RDWR | O_CREAT | O_TRUNC);
+                g_initiator_state.target_file = SD.open(filename, O_WRONLY | O_CREAT | O_TRUNC);
                 if (!g_initiator_state.target_file.isOpen())
                 {
                     log("Failed to open file for writing: ", filename);
@@ -274,7 +309,16 @@ void scsiInitiatorMainLoop()
                 log("Please reformat the SD card with exFAT format to image this drive fully");
             }
 
-            g_initiator_state.drives_imaged |= (1 << g_initiator_state.target_id);
+            if(g_initiator_state.badSectorCount != 0)
+            {
+                log_f("NOTE: There were %d bad sectors that could not be read off this drive.", g_initiator_state.badSectorCount);
+            }
+
+            if(!g_initiator_state.ejectWhenDone)
+            {
+                log("Marking this ID as imaged, wont ask it again.");
+                g_initiator_state.drives_imaged |= (1 << g_initiator_state.target_id);
+            }
             g_initiator_state.imaging = false;
             g_initiator_state.target_file.close();
             return;
@@ -300,11 +344,12 @@ void scsiInitiatorMainLoop()
         {
             log("Failed to transfer ", numtoread, " sectors starting at ", (int)g_initiator_state.sectors_done);
 
-            if (g_initiator_state.retrycount < 5)
+            if (g_initiator_state.retrycount < g_initiator_state.maxRetryCount)
             {
-                log("Retrying.. ", g_initiator_state.retrycount, "/5");
+                log("Retrying.. ", g_initiator_state.retrycount + 1, "/", (int)g_initiator_state.maxRetryCount);
                 delay_with_poll(200);
-                scsiHostPhyReset();
+                // This reset causes some drives to hang and seems to have no effect if left off.
+                // scsiHostPhyReset();
                 delay_with_poll(200);
 
                 g_initiator_state.retrycount++;
@@ -321,6 +366,7 @@ void scsiInitiatorMainLoop()
                 log("Retry limit exceeded, skipping one sector");
                 g_initiator_state.retrycount = 0;
                 g_initiator_state.sectors_done++;
+                g_initiator_state.badSectorCount++;
                 g_initiator_state.target_file.seek((uint64_t)g_initiator_state.sectors_done * g_initiator_state.sectorsize);
             }
         }
@@ -331,9 +377,9 @@ void scsiInitiatorMainLoop()
             g_initiator_state.target_file.flush();
 
             int speed_kbps = numtoread * g_initiator_state.sectorsize / (millis() - time_start);
-            log("SCSI read succeeded, sectors done: ",
-                  (int)g_initiator_state.sectors_done, " / ", (int)g_initiator_state.sectorcount,
-                  " speed ", speed_kbps, " kB/s");
+            log_f("SCSI read succeeded, sectors done: %d / %d speed %d kB/s - %.2f%%",
+                  g_initiator_state.sectors_done, g_initiator_state.sectorcount, speed_kbps,
+                  (float)(((float)g_initiator_state.sectors_done / (float)g_initiator_state.sectorcount) * 100.0));
         }
     }
 }
@@ -475,7 +521,7 @@ bool scsiRequestSense(int target_id, uint8_t *sense_key)
 
     log("RequestSense response: ", bytearray(response, 18));
 
-    *sense_key = response[2];
+    *sense_key = response[2] & 0x0F;
     return status == 0;
 }
 
@@ -489,6 +535,13 @@ bool scsiStartStopUnit(int target_id, bool start)
     {
         command[4] |= 1; // Start
         command[1] = 0;  // Immediate
+    }
+    else // stop
+    {
+        if(g_initiator_state.deviceType == DEVICE_TYPE_CD)
+        {
+            command[4] = 0b00000010; // eject(6), stop(7).
+        }
     }
 
     int status = scsiInitiatorRunCommand(target_id,
@@ -674,7 +727,7 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
 
     // Read6 command supports 21 bit LBA - max of 0x1FFFFF
     // ref: https://www.seagate.com/files/staticfiles/support/docs/manual/Interface%20manuals/100293068j.pdf pg 134
-    if (start_sector < 0x1FFFFF && sectorcount <= 256)
+    if (g_initiator_state.ansiVersion != 0x02 || (start_sector < 0x1FFFFF && sectorcount <= 256))
     {
         // Use READ6 command for compatibility with old SCSI1 drives
         uint8_t command[6] = {0x08,
