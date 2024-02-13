@@ -80,6 +80,21 @@ int scsiVendorCommand()
 		scsiDev.phase = DATA_OUT;
 		scsiDev.postDataOutHook = doWriteBuffer;
 	}
+	else if (command == 0xE0 && 
+		scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_XEBEC)
+	{
+	  // RAM Diagnostic
+	  // XEBEC S1410 controller
+	  // http://bitsavers.informatik.uni-stuttgart.de/pdf/xebec/104524C_S1410Man_Aug83.pdf
+	  // Stub, return success
+	}
+	else if (command == 0xE4 && 
+		scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_XEBEC)
+	{
+	  // Drive Diagnostic
+	  // XEBEC S1410 controller
+	  // Stub, return success
+	}   	
 	else
 	{
 		commandHandled = 0;
