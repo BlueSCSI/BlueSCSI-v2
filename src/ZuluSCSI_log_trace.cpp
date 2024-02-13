@@ -100,13 +100,8 @@ static const char *getCommandName(uint8_t cmd)
         case 0xA8: return "Read12";
         case 0xC0: return "OMTI-5204 DefineFlexibleDiskFormat";
         case 0xC2: return "OMTI-5204 AssignDiskParameters";
-<<<<<<< Updated upstream
-        case 0xE0: return "RAM Diagnostic";
-        case 0xE4: return "Drive Diagnostic";    
-=======
         case 0xE0: return "Xebec RAM Diagnostic";
         case 0xE4: return "Xebec Drive Diagnostic";              
->>>>>>> Stashed changes
         default:   return "Unknown";
     }
 }
