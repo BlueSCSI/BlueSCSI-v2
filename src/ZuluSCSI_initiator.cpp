@@ -311,7 +311,7 @@ void scsiInitiatorMainLoop()
                 else if (g_initiator_state.device_type == SCSI_DEVICE_TYPE_MO)
                 {
                     strncpy(filename_base, "MO00_imaged", sizeof(filename_base));
-                    filename_extension = ".ing";
+                    filename_extension = ".img";
                 }
                 else if (g_initiator_state.device_type != SCSI_DEVICE_TYPE_DIRECT_ACCESS)
                 {
@@ -671,7 +671,7 @@ bool scsiRequestSense(int target_id, uint8_t *sense_key)
                                          response, sizeof(response),
                                          NULL, 0);
 
-    logmsg("RequestSense response: ", bytearray(response, 18));
+    dbgmsg("RequestSense response: ", bytearray(response, 18));
 
     *sense_key = response[2] % 0xF;
     return status == 0;
@@ -692,7 +692,7 @@ bool scsiStartStopUnit(int target_id, bool start)
     {
         if(g_initiator_state.eject_when_done)
         {
-            logmsg("Ejecting media");
+            logmsg("Ejecting media on SCSI ID: ", target_id);
             g_initiator_state.removable_count[g_initiator_state.target_id]++;
             command[4] = 0b00000010; // eject(6), stop(7).
         }
@@ -707,7 +707,7 @@ bool scsiStartStopUnit(int target_id, bool start)
     {
         uint8_t sense_key;
         scsiRequestSense(target_id, &sense_key);
-        logmsg("START STOP UNIT on target ", target_id, " failed, sense key ", sense_key);
+        dbgmsg("START STOP UNIT on target ", target_id, " failed, sense key ", sense_key);
     }
 
     return status == 0;
@@ -752,18 +752,18 @@ bool scsiTestUnitReady(int target_id)
             if (sense_key == 6)
             {
                 uint8_t inquiry[36];
-                logmsg("Target ", target_id, " reports UNIT_ATTENTION, running INQUIRY");
+                dbgmsg("Target ", target_id, " reports UNIT_ATTENTION, running INQUIRY");
                 scsiInquiry(target_id, inquiry);
             }
             else if (sense_key == 2)
             {
-                logmsg("Target ", target_id, " reports NOT_READY, running STARTSTOPUNIT");
+                dbgmsg("Target ", target_id, " reports NOT_READY, running STARTSTOPUNIT");
                 scsiStartStopUnit(target_id, true);
             }
         }
         else
         {
-            logmsg("Target ", target_id, " TEST UNIT READY response: ", status);
+            dbgmsg("Target ", target_id, " TEST UNIT READY response: ", status);
         }
     }
 
