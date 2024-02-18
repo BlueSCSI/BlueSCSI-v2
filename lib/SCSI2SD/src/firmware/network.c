@@ -149,7 +149,7 @@ int scsiNetworkCommand()
 
 			// flags
 			scsiDev.data[2] = 0;
-			scsiDev.data[3] = 0;
+			scsiDev.data[3] = 0;  
 			scsiDev.data[4] = 0;
 			// more data to read?
 			scsiDev.data[5] = (scsiNetworkInboundQueue.readIndex == scsiNetworkInboundQueue.writeIndex ? 0 : 0x10);
@@ -157,25 +157,57 @@ int scsiNetworkCommand()
 			DBGMSG_BUF(scsiDev.data, scsiDev.dataLen);
 		}
 
-		// DaynaPort driver needs a delay between reading the initial packet size and the data so manually do two transfers
-		scsiEnterPhase(DATA_IN);
-		scsiWrite(scsiDev.data, 6);
-		while (!scsiIsWriteFinished(NULL))
-		{
-			platform_poll();
-		}
-		scsiFinishWrite();
-
-		if (scsiDev.dataLen > 6)
-		{
-			s2s_delay_us(80);
-
-			scsiWrite(scsiDev.data + 6, scsiDev.dataLen - 6);
+		// Some weird thing in the scsi.device on the Amiga requiring the data to be in multiples of 24 bytes
+		if (scsiDev.cdb[2] == 0xF8) {
+			scsiDev.data[2] = 0xF8;    // just a flag to say this is running the right firmware
+			if (scsiDev.dataLen<90) scsiDev.dataLen = 90;
+			int missing = (scsiDev.dataLen-90) % 24;
+			int extra = 0;
+			if (missing) {
+				scsiDev.dataLen += 24 - missing;
+				if (scsiDev.dataLen>NETWORK_PACKET_MAX_SIZE) {
+					extra = scsiDev.dataLen - NETWORK_PACKET_MAX_SIZE;
+					scsiDev.dataLen = NETWORK_PACKET_MAX_SIZE;
+				}
+			}
+			scsiEnterPhase(DATA_IN);		
+			scsiWrite(scsiDev.data, scsiDev.dataLen);
 			while (!scsiIsWriteFinished(NULL))
 			{
 				platform_poll();
 			}
 			scsiFinishWrite();
+
+			if (extra) {
+				// Just write the extra data to make the padding work for such a large packet
+				scsiWrite(scsiDev.data, extra);
+				while (!scsiIsWriteFinished(NULL))
+				{
+					platform_poll();
+				}
+				scsiFinishWrite();
+			}
+		} else {
+			// DaynaPort driver needs a delay between reading the initial packet size and the data so manually do two transfers
+			scsiEnterPhase(DATA_IN);
+			scsiWrite(scsiDev.data, 6);
+			while (!scsiIsWriteFinished(NULL))
+			{
+				platform_poll();
+			}
+			scsiFinishWrite();
+
+			if (scsiDev.dataLen > 6)
+			{
+				s2s_delay_us(80);
+
+				scsiWrite(scsiDev.data + 6, scsiDev.dataLen - 6);
+				while (!scsiIsWriteFinished(NULL))
+				{
+					platform_poll();
+				}
+				scsiFinishWrite();
+			}
 		}
 
 		scsiDev.status = GOOD;
@@ -396,12 +428,21 @@ int scsiNetworkCommand()
 			scsiDev.phase = STATUS;
 			break;
 		}
+
+		case SCSI_NETWORK_WIFI_GETMACADDRESS: 
+			// Update for the gvpscsi.device on the Amiga
+			memcpy(scsiDev.data, scsiDev.boardCfg.wifiMACAddress, sizeof(scsiDev.boardCfg.wifiMACAddress));
+			memset(scsiDev.data + sizeof(scsiDev.boardCfg.wifiMACAddress), 0, sizeof(scsiDev.data) - sizeof(scsiDev.boardCfg.wifiMACAddress));
+
+			scsiDev.dataLen = 6;
+			scsiDev.phase = DATA_IN;
 		}
 		break;
 
 	default:
 		handled = 0;
 	}
+	
 
 	return handled;
 }
