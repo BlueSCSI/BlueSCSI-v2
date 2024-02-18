@@ -29,6 +29,7 @@ extern "C" {
 #define SCSI_NETWORK_WIFI_CMD_SCAN_RESULTS	0x03
 #define SCSI_NETWORK_WIFI_CMD_INFO			0x04
 #define SCSI_NETWORK_WIFI_CMD_JOIN			0x05
+#define SCSI_NETWORK_WIFI_GETMACADDRESS     0x09   // gvpscsi.device on AMIGA doesnt like the standard version
 
 #define NETWORK_PACKET_QUEUE_SIZE   20		// must be <= 255
 #define NETWORK_PACKET_MAX_SIZE     1520
