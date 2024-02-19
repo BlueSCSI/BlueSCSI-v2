@@ -430,7 +430,7 @@ int scsiNetworkCommand()
 		}
 
 		case SCSI_NETWORK_WIFI_GETMACADDRESS: 
-			// Update for the gvpscsi.device on the Amiga
+			// Update for the gvpscsi.device on the Amiga as it doesn't like 0x09 command being called!
 			memcpy(scsiDev.data, scsiDev.boardCfg.wifiMACAddress, sizeof(scsiDev.boardCfg.wifiMACAddress));
 			memset(scsiDev.data + sizeof(scsiDev.boardCfg.wifiMACAddress), 0, sizeof(scsiDev.data) - sizeof(scsiDev.boardCfg.wifiMACAddress));
 
