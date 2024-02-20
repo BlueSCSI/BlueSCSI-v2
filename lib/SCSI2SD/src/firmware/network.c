@@ -104,6 +104,12 @@ int scsiNetworkCommand()
 
 	DBGMSG_F("------ in scsiNetworkCommand with command 0x%02x (size %d)", command, size);
 
+	// Rather than duplicating code, this just diverts a 'fake' read request to make the gvpscsi.device happy on the Amiga
+	if ((command == SCSI_NETWORK_WIFI_CMD) && (scsiDev.cdb[1] == SCSI_METWORK_WIFI_CMD_ALTREAD)) {
+		// Redirect the command as a READ.
+		command = 0x08;
+	}
+
 	switch (command) {
 	case 0x08:
 		// read(6)
@@ -156,27 +162,31 @@ int scsiNetworkCommand()
 
 			DBGMSG_BUF(scsiDev.data, scsiDev.dataLen);
 		}
-
-		// Some weird thing in the scsi.device on the Amiga requiring the data to be in multiples of 24 bytes
-		if (scsiDev.cdb[2] == 0xF8) {
-			scsiDev.data[2] = 0xF8;    // just a flag to say this is running the right firmware
-			if (scsiDev.dataLen<90) scsiDev.dataLen = 90;
-			int missing = (scsiDev.dataLen-90) % 24;
+		// Patches around the weirdness on the Amiga SCSI devices
+		if ((scsiDev.cdb[2] == AMIGASCSI_PATCH_24BYTE_BLOCKSIZE) || (scsiDev.cdb[2] == AMIGASCSI_PATCH_SINGLEWRITE_ONLY)) {
+			scsiDev.data[2] = scsiDev.cdb[2];    // for me really
 			int extra = 0;
-			if (missing) {
-				scsiDev.dataLen += 24 - missing;
-				if (scsiDev.dataLen>NETWORK_PACKET_MAX_SIZE) {
-					extra = scsiDev.dataLen - NETWORK_PACKET_MAX_SIZE;
-					scsiDev.dataLen = NETWORK_PACKET_MAX_SIZE;
+			if (scsiDev.cdb[2] == AMIGASCSI_PATCH_24BYTE_BLOCKSIZE) {        
+				if (scsiDev.dataLen<90) scsiDev.dataLen = 90;
+				int missing = (scsiDev.dataLen-90) % 24;
+				if (missing) {
+					scsiDev.dataLen += 24 - missing;
+					if (scsiDev.dataLen>NETWORK_PACKET_MAX_SIZE) {
+						extra = scsiDev.dataLen - NETWORK_PACKET_MAX_SIZE;
+						scsiDev.dataLen = NETWORK_PACKET_MAX_SIZE;
+					}
 				}
+				scsiEnterPhase(DATA_IN);		
+				scsiWrite(scsiDev.data, scsiDev.dataLen);
+				while (!scsiIsWriteFinished(NULL))
+				{
+					platform_poll();
+				}
+				scsiFinishWrite();
+			} else {
+				extra = scsiDev.dataLen;     // F9 means send in ONE transaction
+				if (extra) scsiEnterPhase(DATA_IN);		
 			}
-			scsiEnterPhase(DATA_IN);		
-			scsiWrite(scsiDev.data, scsiDev.dataLen);
-			while (!scsiIsWriteFinished(NULL))
-			{
-				platform_poll();
-			}
-			scsiFinishWrite();
 
 			if (extra) {
 				// Just write the extra data to make the padding work for such a large packet
@@ -429,8 +439,8 @@ int scsiNetworkCommand()
 			break;
 		}
 
-		case SCSI_NETWORK_WIFI_GETMACADDRESS: 
-			// Update for the gvpscsi.device on the Amiga as it doesn't like 0x09 command being called!
+		case SCSI_NETWORK_WIFI_CMD_GETMACADDRESS: 
+			// Update for the gvpscsi.device on the Amiga as it doesn't like 0x09 command being called! - NOTE this only sends 6 bytes back
 			memcpy(scsiDev.data, scsiDev.boardCfg.wifiMACAddress, sizeof(scsiDev.boardCfg.wifiMACAddress));
 			memset(scsiDev.data + sizeof(scsiDev.boardCfg.wifiMACAddress), 0, sizeof(scsiDev.data) - sizeof(scsiDev.boardCfg.wifiMACAddress));
 
