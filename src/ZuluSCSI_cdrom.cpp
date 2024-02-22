@@ -31,6 +31,7 @@
 #include "ZuluSCSI_cdrom.h"
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_config.h"
+#include "ZuluSCSI_settings.h"
 #include <CUEParser.h>
 #include <assert.h>
 #include <minIni.h>
@@ -217,6 +218,11 @@ static const uint8_t TrackInformation[] =
     0x00,   // 25: .
     0x00,   // 26: .
     0x00,   // 27: track size (LSB)
+};
+
+enum sector_type_t
+{
+     SECTOR_TYPE_VENDOR_PLEXTOR = 100,
 };
 
 // Convert logical block address to CD-ROM time
@@ -1491,12 +1497,38 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
     getTrackFromLBA(parser, lba, &trackinfo);
 
     // Figure out the data offset in the file
-    uint64_t offset = trackinfo.file_offset + trackinfo.sector_length * (lba - trackinfo.track_start);
-    dbgmsg("------ Read CD: ", (int)length, " sectors starting at ", (int)lba,
-           ", track number ", trackinfo.track_number, ", sector size ", (int)trackinfo.sector_length,
-           ", main channel ", main_channel, ", sub channel ", sub_channel,
-           ", data offset in file ", (int)offset);
+    uint64_t offset;
+    if (sector_type == SECTOR_TYPE_VENDOR_PLEXTOR &&
+         g_scsi_settings.getDevice(img.scsiId & 0x7)->vendorExtensions & VENDOR_EXTENSION_OPTICAL_PLEXTOR)
+    {
+        // This overrides values so doReadCD can be used with the
+        // Vendor specific Plextor 0xD8 command to read raw CD data
+        if (lba < 2)
+        {
+            logmsg("WARNING: Plextor CD-ROM vendor extension 0xd8 lba start below 2 is not implemented. LBA is ", lba);
+            scsiDev.status = CHECK_CONDITION;
+            scsiDev.target->sense.code = ILLEGAL_REQUEST;
+            scsiDev.target->sense.asc = LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
+            scsiDev.phase = STATUS;
+            return;
+        }
 
+        const uint16_t PLEXTOR_D8_SECTOR_LENGTH =  2352;
+        trackinfo.sector_length = PLEXTOR_D8_SECTOR_LENGTH;
+        trackinfo.track_mode = CUETrack_AUDIO;
+        offset = (uint64_t)(lba - 2) * trackinfo.sector_length;
+        dbgmsg("------ Read CD Vendor Plextor (0xd8): ", (int)length, " sectors starting at ", (int)lba -2,
+               ", sector size ", (int) PLEXTOR_D8_SECTOR_LENGTH,
+               ", data offset in file ", (int)offset);
+    }
+    else
+    {
+        offset = trackinfo.file_offset + trackinfo.sector_length * (lba - trackinfo.track_start);
+        dbgmsg("------ Read CD: ", (int)length, " sectors starting at ", (int)lba,
+            ", track number ", trackinfo.track_number, ", sector size ", (int)trackinfo.sector_length,
+            ", main channel ", main_channel, ", sub channel ", sub_channel,
+            ", data offset in file ", (int)offset);
+    }
     // Ensure read is not out of range of the image
     uint64_t readend = offset + trackinfo.sector_length * length;
     if (readend > img.file.size())
@@ -1519,6 +1551,11 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
             sector_type_ok = true;
         }
         else if (sector_type == 2 && trackinfo.track_mode == CUETrack_MODE1_2048)
+        {
+            sector_type_ok = true;
+        }
+        else if (sector_type == SECTOR_TYPE_VENDOR_PLEXTOR && 
+            g_scsi_settings.getDevice(img.scsiId & 0x7)->vendorExtensions & VENDOR_EXTENSION_OPTICAL_PLEXTOR)
         {
             sector_type_ok = true;
         }
@@ -1841,77 +1878,7 @@ static bool doReadCapacity(uint32_t lba, uint8_t pmi)
 
 static void doReadD8(uint32_t lba, uint32_t length)
 {
-    const uint32_t CD_SECTOR_SIZE = 2352;
-    const uint32_t SD_BLOCKSIZE =  512;
-    const uint32_t bytes_per_sector = CD_SECTOR_SIZE;
-    const uint32_t bytes_per_block = SD_BLOCKSIZE;
-
-    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-    uint8_t *buf0 = scsiDev.data;
-    uint8_t *buf1 = buf0 + (sizeof(scsiDev.data)/2);
-    // Adjust for plextor d8 offset
-    if ((int)lba - 2 < 0)
-    {
-        logmsg("ERROR: Plextor vendor 0xD8 command LBA must be greater than 2, given: ", (int)lba);
-        scsiDev.status = CHECK_CONDITION;
-        scsiDev.target->sense.code = ILLEGAL_REQUEST;
-        scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
-        scsiDev.phase = STATUS;
-        return;
-    }
-    lba = lba -2;
-
-    uint64_t offset = lba * bytes_per_sector;
-
-
-    scsiDev.phase = DATA_IN;
-    scsiDev.dataLen = 0;
-    scsiDev.dataPtr = 0;
-    scsiEnterPhase(DATA_IN);
-    // Format the sectors for transfer
-    for (uint32_t idx = 0; idx < length; idx++)
-    {
-        platform_poll();
-        diskEjectButtonUpdate(false);
-
-        // Where in bytes the sector starts in the image file
-        uint64_t sector_start = offset + idx * bytes_per_sector;
-        // Where to start reading the image file in bytes, aligned at or before sector start
-        uint64_t aligned_start = (sector_start / bytes_per_block) * bytes_per_block;
-        // The difference between the sector start and aligned start
-        uint32_t sector_start_offset = (uint32_t)(sector_start - aligned_start);
-        // Where the sector on the CD ends in bytes
-        uint64_t sector_end = sector_start + bytes_per_sector - 1;
-        // The number of aligned blocks on the image file to read rounded up
-        uint32_t number_of_read_sectors = (sector_end - aligned_start + bytes_per_block - 1) / bytes_per_block;
-        // How many bytes to read from the image file
-        uint32_t aligned_read_length = number_of_read_sectors * bytes_per_block;
-        img.file.seek(aligned_start);
-
-        // Verify that previous write using this buffer has finished
-        uint8_t *buf = ((idx & 1) ? buf1 : buf0);
-        uint8_t *bufstart = buf + sector_start_offset;
-        uint32_t start = millis();
-        while (!scsiIsWriteFinished(bufstart + bytes_per_sector - 1) && !scsiDev.resetFlag)
-        {
-            if ((uint32_t)(millis() - start) > 5000)
-            {
-                logmsg("doReadD8() timeout waiting for previous to finish");
-                scsiDev.resetFlag = 1;
-            }
-            platform_poll();
-            diskEjectButtonUpdate(false);
-        }
-        if (scsiDev.resetFlag) break;
-
-        img.file.read(buf, aligned_read_length);
-
-        scsiStartWrite(bufstart, bytes_per_sector);
-    }
-
-    scsiFinishWrite();
-    scsiDev.status = 0;
-    scsiDev.phase = STATUS;
+    doReadCD(lba, length, SECTOR_TYPE_VENDOR_PLEXTOR, true, false, false );
 }
 
 /**************************************/
@@ -2249,7 +2216,6 @@ extern "C" int scsiCDRomCommand()
                 (((uint32_t) scsiDev.cdb[7]) << 16) +
                 (((uint32_t) scsiDev.cdb[8]) << 8) +
                 scsiDev.cdb[9];
-            dbgmsg("Plextor vendor 0xD8 command CDDA Read, starting: ", (int)lba, " length: ",(int)blocks);
             doReadD8(lba, blocks);
         }
     }
