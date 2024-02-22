@@ -29,7 +29,7 @@
 
 const char *g_log_firmwareversion = ZULU_FW_VERSION " " __DATE__ " " __TIME__;
 
-bool g_log_debug = true;
+bool g_log_debug = false;
 
 // This memory buffer can be read by debugger and is also saved to zululog.txt
 #define LOGBUFMASK (LOGBUFSIZE - 1)
