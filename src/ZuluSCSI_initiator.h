@@ -26,6 +26,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#define SCSI_DEVICE_TYPE_CD 0x5
+#define SCSI_DEVICE_TYPE_MO 0x7
+#define SCSI_DEVICE_TYPE_DIRECT_ACCESS 0x0
+
 void scsiInitiatorInit();
 
 void scsiInitiatorMainLoop();

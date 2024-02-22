@@ -101,6 +101,8 @@ static const char *getCommandName(uint8_t cmd)
         case 0xC0: return "OMTI-5204 DefineFlexibleDiskFormat";
         case 0xC2: return "OMTI-5204 AssignDiskParameters";
         case 0xD8: return "Plextor ReadCD";
+        case 0xE0: return "Xebec RAM Diagnostic";
+        case 0xE4: return "Xebec Drive Diagnostic";              
         default:   return "Unknown";
     }
 }
