@@ -13,8 +13,9 @@ extern "C" {
 
 /* These are used in debug output and default SCSI strings */
 extern const char *g_platform_name;
-#define PLATFORM_NAME "BlueSCSI Pico"
+#define PLATFORM_NAME "BlueSCSI"
 #define PLATFORM_REVISION "2.0"
+#define PLATFORM_INQUIRY PLATFORM_NAME " v" BLUESCSI_FW_VERSION
 #define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_10
 #define PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE 32768
 #define PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE 65536
