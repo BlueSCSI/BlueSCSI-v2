@@ -105,7 +105,7 @@ int scsiNetworkCommand()
 	DBGMSG_F("------ in scsiNetworkCommand with command 0x%02x (size %d)", command, size);
 
 	// Rather than duplicating code, this just diverts a 'fake' read request to make the gvpscsi.device happy on the Amiga
-	if ((command == SCSI_NETWORK_WIFI_CMD) && (scsiDev.cdb[1] == SCSI_METWORK_WIFI_CMD_ALTREAD)) {
+	if ((scsiDev.cdb[0] == SCSI_NETWORK_WIFI_CMD) && (scsiDev.cdb[1] == SCSI_NETWORK_WIFI_CMD_ALTREAD)) {
 		// Redirect the command as a READ.
 		command = 0x08;
 	}
@@ -163,7 +163,7 @@ int scsiNetworkCommand()
 			DBGMSG_BUF(scsiDev.data, scsiDev.dataLen);
 		}
 		// Patches around the weirdness on the Amiga SCSI devices
-		if ((scsiDev.cdb[2] == AMIGASCSI_PATCH_24BYTE_BLOCKSIZE) || (scsiDev.cdb[2] == AMIGASCSI_PATCH_SINGLEWRITE_ONLY)) {
+		if ((scsiDev.cdb[0] == SCSI_NETWORK_WIFI_CMD) && (scsiDev.cdb[1] == SCSI_NETWORK_WIFI_CMD_ALTREAD)) {
 			scsiDev.data[2] = scsiDev.cdb[2];    // for me really
 			int extra = 0;
 			if (scsiDev.cdb[2] == AMIGASCSI_PATCH_24BYTE_BLOCKSIZE) {        
