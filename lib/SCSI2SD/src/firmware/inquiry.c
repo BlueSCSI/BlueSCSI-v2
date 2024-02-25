@@ -18,6 +18,7 @@
 
 #include "scsi.h"
 #include "config.h"
+#include "BlueSCSI_config.h"
 #include "inquiry.h"
 
 #include <string.h>
@@ -223,6 +224,7 @@ uint32_t s2s_getStandardInquiry(
 	const S2S_TargetCfg* cfg, uint8_t* out, uint32_t maxlen
 	)
 {
+	uint32_t size = 0;
 	uint32_t buflen = sizeof(StandardResponse);
 	if (buflen > maxlen) buflen = maxlen;
 
@@ -241,10 +243,17 @@ uint32_t s2s_getStandardInquiry(
 	memcpy(&out[8], cfg->vendor, sizeof(cfg->vendor));
 	memcpy(&out[16], cfg->prodId, sizeof(cfg->prodId));
 	memcpy(&out[32], cfg->revision, sizeof(cfg->revision));
-	return sizeof(StandardResponse) +
+	size = sizeof(StandardResponse) +
 		sizeof(cfg->vendor) +
 		sizeof(cfg->prodId) +
 		sizeof(cfg->revision);
+
+	// Mac Daynaport Driver does not like this added.
+	if(cfg->deviceType != S2S_CFG_NETWORK) {
+		memcpy(&out[36], PLATFORM_INQUIRY, sizeof(PLATFORM_INQUIRY));
+		size += sizeof(PLATFORM_INQUIRY);
+	}
+	return size;
 }
 
 uint8_t getDeviceTypeQualifier()
