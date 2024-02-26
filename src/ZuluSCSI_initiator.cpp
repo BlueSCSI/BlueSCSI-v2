@@ -287,7 +287,7 @@ void scsiInitiatorMainLoop()
                 memcpy(revision, &inquiry_data[32], 4);
                 revision[4]=0;
 
-                if(g_initiator_state.ansi_version != 0x02)
+                if(g_initiator_state.ansi_version < 0x02)
                 {
                     // this is a SCSI-1 drive, use READ6 and 256 bytes to be safe.
                     g_initiator_state.max_sector_per_transfer = 256;
@@ -881,7 +881,7 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
 
     // Read6 command supports 21 bit LBA - max of 0x1FFFFF
     // ref: https://www.seagate.com/files/staticfiles/support/docs/manual/Interface%20manuals/100293068j.pdf pg 134
-    if (g_initiator_state.ansi_version != 0x02 || (start_sector < 0x1FFFFF && sectorcount <= 256))
+    if (g_initiator_state.ansi_version < 0x02 || (start_sector < 0x1FFFFF && sectorcount <= 256))
     {
         // Use READ6 command for compatibility with old SCSI1 drives
         uint8_t command[6] = {0x08,
