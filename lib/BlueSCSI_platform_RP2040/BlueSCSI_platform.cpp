@@ -567,10 +567,14 @@ static void watchdog_callback(unsigned alarm_num)
             log("scsiDev.phase: ", (int)scsiDev.phase);
             scsi_accel_log_state();
 
-            uint32_t *p = (uint32_t*)__get_PSP();
+#ifdef __MBED__
+            uint32_t *p =  (uint32_t*)__get_PSP();
+#else
+            uint32_t *p =  (uint32_t*)__get_MSP();
+#endif
             for (int i = 0; i < 8; i++)
             {
-                if (p == &__StackTop) break; // End of stack
+            if (p == &__StackTop) break; // End of stack
 
                 log("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
                 p += 4;
@@ -583,14 +587,18 @@ static void watchdog_callback(unsigned alarm_num)
         if (g_watchdog_timeout <= 0)
         {
             log("--------------");
-            log("WATCHDOG TIMEOUT!");
+            log("WATCHDOG TIMEOUT, already attempted bus reset, rebooting");
             log("Platform: ", g_platform_name);
             log("FW Version: ", g_log_firmwareversion);
             log("GPIO states: out ", sio_hw->gpio_out, " oe ", sio_hw->gpio_oe, " in ", sio_hw->gpio_in);
             log("scsiDev.cdb: ", bytearray(scsiDev.cdb, 12));
             log("scsiDev.phase: ", (int)scsiDev.phase);
 
-            uint32_t *p = (uint32_t*)__get_PSP();
+#ifdef __MBED__
+            uint32_t *p =  (uint32_t*)__get_PSP();
+#else
+            uint32_t *p =  (uint32_t*)__get_MSP();
+#endif
             for (int i = 0; i < 8; i++)
             {
                 if (p == &__StackTop) break; // End of stack
@@ -607,7 +615,7 @@ static void watchdog_callback(unsigned alarm_num)
         }
     }
 
-    hardware_alarm_set_target(3, delayed_by_ms(get_absolute_time(), 1000));
+    hardware_alarm_set_target(alarm_num, delayed_by_ms(get_absolute_time(), 1000));
 }
 
 // This function can be used to periodically reset watchdog timer for crash handling.

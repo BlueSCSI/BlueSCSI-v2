@@ -413,14 +413,7 @@ static void process_Command()
 	}
 	else if (command == 0x12)
 	{
-		if(scsiDev.lun)
-		{
-			scsiDev.target->sense.code = ILLEGAL_REQUEST;
-			scsiDev.target->sense.asc = LOGICAL_UNIT_NOT_SUPPORTED;
-			enter_Status(CHECK_CONDITION);
-		} else {
-			s2s_scsiInquiry();
-		}
+		s2s_scsiInquiry();
 	}
 	else if (command == 0x03)
 	{
@@ -559,6 +552,7 @@ static void process_Command()
 			{
 				scsiDev.target->sense.code = ILLEGAL_REQUEST;
 				scsiDev.target->sense.asc = LOGICAL_UNIT_NOT_SUPPORTED;
+				transfer.lba = 0;
 			}
 			memset(scsiDev.data, 0, 256); // Max possible alloc length
 			scsiDev.data[0] = 0xF0;
