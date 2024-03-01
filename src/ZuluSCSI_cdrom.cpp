@@ -1089,7 +1089,7 @@ void doGetConfiguration(uint8_t rt, uint16_t startFeature, uint16_t allocationLe
 #endif
 
     // finally, rewrite data length to match
-    uint32_t dlen = len - 8;
+    uint32_t dlen = len - 4;
     scsiDev.data[0] = dlen >> 24;
     scsiDev.data[1] = dlen >> 16;
     scsiDev.data[2] = dlen >> 8;
@@ -1301,14 +1301,7 @@ void cdromGetAudioPlaybackStatus(uint8_t *status, uint32_t *current_lba, bool cu
 #else
     if (status) *status = 0; // audio status code for 'unsupported/invalid' and not-playing indicator
 #endif
-    if (current_lba)
-    {
-        if (img.file.isOpen()) {
-            *current_lba = img.file.position() / 2352;
-        } else {
-            *current_lba = 0;
-        }
-    }
+    *current_lba = audio_get_file_position() / 2352;
 }
 
 static void doPlayAudio(uint32_t lba, uint32_t length)
@@ -1325,8 +1318,10 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
 
     // if transfer length is zero no audio playback happens.
     // don't treat as an error per SCSI-2; handle via short-circuit
+
     if (length == 0)
     {
+        audio_set_file_position(lba);
         scsiDev.status = 0;
         scsiDev.phase = STATUS;
         return;
@@ -1342,7 +1337,7 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
         if (lba == 0xFFFFFFFF)
         {
             // request to start playback from 'current position'
-            lba = img.file.position() / 2352;
+            lba = audio_get_file_position() / 2352;
         }
 
         uint64_t offset = trackinfo.file_offset
@@ -1400,7 +1395,7 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
 static void doPauseResumeAudio(bool resume)
 {
 #ifdef ENABLE_AUDIO_OUTPUT
-    logmsg("------ CD-ROM ", resume ? "resume" : "pause", " audio playback");
+    dbgmsg("------ CD-ROM ", resume ? "resume" : "pause", " audio playback");
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     uint8_t target_id = img.scsiId & 7;
 
@@ -1707,7 +1702,7 @@ static void doReadSubchannel(bool time, bool subq, uint8_t parameter, uint8_t tr
     if (parameter == 0x01)
     {
         uint8_t audiostatus;
-        uint32_t lba;
+        uint32_t lba = 0;
         cdromGetAudioPlaybackStatus(&audiostatus, &lba, false);
         dbgmsg("------ Get audio playback position: status ", (int)audiostatus, " lba ", (int)lba);
 
@@ -2035,7 +2030,7 @@ extern "C" int scsiCDRomCommand()
         {
             // request to start playback from 'current position'
             image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-            lba = img.file.position() / 2352;
+            lba = audio_get_file_position() / 2352;
         }
 
         uint32_t length = end - lba;
