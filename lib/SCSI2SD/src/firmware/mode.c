@@ -288,9 +288,18 @@ static void doModeSense(
 		break;
 
 	case S2S_CFG_OPTICAL:
-		mediumType = 0x02; // 120mm CDROM, data only.
-		deviceSpecificParam = 0;
-		density = 0x01; // User data only, 2048bytes per sector.
+		if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_APPLE)
+		{
+			mediumType = 0x00;
+			deviceSpecificParam = 0;
+			density = 0x00;
+		}
+		else
+		{
+			mediumType = 0x02; // 120mm CDROM, data only.
+			deviceSpecificParam = 0;
+			density = 0x01; // User data only, 2048bytes per sector.
+		}
 		break;
 
 	case S2S_CFG_SEQUENTIAL:
