@@ -1287,9 +1287,9 @@ static void doGetEventStatusNotification(bool immed)
 
 void cdromGetAudioPlaybackStatus(uint8_t *status, uint32_t *current_lba, bool current_only)
 {
-    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-
+    
 #ifdef ENABLE_AUDIO_OUTPUT
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     if (status) {
         uint8_t target = img.scsiId & 7;
         if (current_only) {
@@ -1298,10 +1298,11 @@ void cdromGetAudioPlaybackStatus(uint8_t *status, uint32_t *current_lba, bool cu
             *status = (uint8_t) audio_get_status_code(target);
         }
     }
+    *current_lba = audio_get_file_position() / 2352;
 #else
     if (status) *status = 0; // audio status code for 'unsupported/invalid' and not-playing indicator
 #endif
-    *current_lba = audio_get_file_position() / 2352;
+    
 }
 
 static void doPlayAudio(uint32_t lba, uint32_t length)
@@ -1436,7 +1437,7 @@ static void doMechanismStatus(uint16_t allocation_length)
     uint8_t *buf = scsiDev.data;
 
     uint8_t status;
-    uint32_t lba;
+    uint32_t lba = 0;
     cdromGetAudioPlaybackStatus(&status, &lba, true);
 
     *buf++ = 0x00; // No fault state
@@ -2029,8 +2030,9 @@ extern "C" int scsiCDRomCommand()
                 && scsiDev.cdb[5] == 0xFF)
         {
             // request to start playback from 'current position'
-            image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+#ifdef ENABLE_AUDIO_OUTPUT
             lba = audio_get_file_position() / 2352;
+#endif
         }
 
         uint32_t length = end - lba;
@@ -2175,6 +2177,15 @@ extern "C" int scsiCDRomCommand()
         // Byte 5: 'F' in hex
         commandHandled = 0;
     }
+    else if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_APPLE
+            && command == 0xD8)
+    {
+    }
+    else if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_APPLE
+            && command == 0xD9)
+    {
+    }
+
     else
     {
         commandHandled = 0;
