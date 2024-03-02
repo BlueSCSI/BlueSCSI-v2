@@ -250,6 +250,8 @@ static void scsiDiskSetImageConfig(uint8_t target_idx)
     img.reinsert_on_inquiry = devCfg->reinsertOnInquiry;
     img.reinsert_after_eject = devCfg->reinsertAfterEject;
     img.ejectButton = devCfg->ejectButton;
+    img.vendorExtensions = devCfg->vendorExtensions;
+
 #ifdef ENABLE_AUDIO_OUTPUT
     uint16_t vol = devCfg->vol;
     // Set volume on both channels

@@ -226,6 +226,8 @@ static void readIniSCSIDeviceSetting(scsi_device_settings_t &cfg, const char *se
     cfg.sectorSDBegin = ini_getl(section, "SectorSDBegin", cfg.sectorSDBegin, CONFIGFILE);
     cfg.sectorSDEnd = ini_getl(section, "SectorSDEnd", cfg.sectorSDEnd, CONFIGFILE);
 
+    cfg.vendorExtensions = ini_getl(section, "VendorExtensions", cfg.vendorExtensions, CONFIGFILE);
+
     char tmp[32];
     ini_gets(section, "Vendor", "", tmp, sizeof(tmp), CONFIGFILE);
     if (tmp[0])
@@ -305,6 +307,8 @@ scsi_system_settings_t *ZuluSCSISettings::initSystem(const char *presetName)
 
     cfgDev.sectorSDBegin = 0;
     cfgDev.sectorSDEnd = 0;
+
+    cfgDev.vendorExtensions = 0;
 
     // System-specific defaults
 
