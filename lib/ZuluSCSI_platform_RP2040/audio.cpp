@@ -140,7 +140,6 @@ static uint32_t fleft;
 // historical playback status information
 static audio_status_code audio_last_status[8] = {ASC_NO_STATUS, ASC_NO_STATUS, ASC_NO_STATUS, ASC_NO_STATUS,
                                                  ASC_NO_STATUS, ASC_NO_STATUS, ASC_NO_STATUS, ASC_NO_STATUS};
-.
 // volume information for targets
 static volatile uint16_t volumes[8] = {
     DEFAULT_VOLUME_LEVEL_2CH, DEFAULT_VOLUME_LEVEL_2CH, DEFAULT_VOLUME_LEVEL_2CH, DEFAULT_VOLUME_LEVEL_2CH,
