@@ -183,6 +183,12 @@ typedef struct
 	int hostSpeedMeasured;
 } ScsiDevice;
 
+typedef enum
+{
+	VENDOR_EXTENSION_OPTICAL_PLEXTOR = 1 << 0,
+} VENDOR_EXTENSION_OPTICAL;
+
+
 extern ScsiDevice scsiDev;
 
 void process_Status(void);

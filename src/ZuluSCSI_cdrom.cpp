@@ -31,8 +31,10 @@
 #include "ZuluSCSI_cdrom.h"
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_config.h"
+#include "ZuluSCSI_settings.h"
 #include <CUEParser.h>
 #include <assert.h>
+#include <minIni.h>
 #ifdef ENABLE_AUDIO_OUTPUT
 #include "ZuluSCSI_audio.h"
 #endif
@@ -216,6 +218,11 @@ static const uint8_t TrackInformation[] =
     0x00,   // 25: .
     0x00,   // 26: .
     0x00,   // 27: track size (LSB)
+};
+
+enum sector_type_t
+{
+     SECTOR_TYPE_VENDOR_PLEXTOR = 100,
 };
 
 // Convert logical block address to CD-ROM time
@@ -1490,12 +1497,38 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
     getTrackFromLBA(parser, lba, &trackinfo);
 
     // Figure out the data offset in the file
-    uint64_t offset = trackinfo.file_offset + trackinfo.sector_length * (lba - trackinfo.track_start);
-    dbgmsg("------ Read CD: ", (int)length, " sectors starting at ", (int)lba,
-           ", track number ", trackinfo.track_number, ", sector size ", (int)trackinfo.sector_length,
-           ", main channel ", main_channel, ", sub channel ", sub_channel,
-           ", data offset in file ", (int)offset);
+    uint64_t offset;
+    if (sector_type == SECTOR_TYPE_VENDOR_PLEXTOR &&
+         g_scsi_settings.getDevice(img.scsiId & 0x7)->vendorExtensions & VENDOR_EXTENSION_OPTICAL_PLEXTOR)
+    {
+        // This overrides values so doReadCD can be used with the
+        // Vendor specific Plextor 0xD8 command to read raw CD data
+        if (lba < 2)
+        {
+            logmsg("WARNING: Plextor CD-ROM vendor extension 0xd8 lba start below 2 is not implemented. LBA is ", lba);
+            scsiDev.status = CHECK_CONDITION;
+            scsiDev.target->sense.code = ILLEGAL_REQUEST;
+            scsiDev.target->sense.asc = LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
+            scsiDev.phase = STATUS;
+            return;
+        }
 
+        const uint16_t PLEXTOR_D8_SECTOR_LENGTH =  2352;
+        trackinfo.sector_length = PLEXTOR_D8_SECTOR_LENGTH;
+        trackinfo.track_mode = CUETrack_AUDIO;
+        offset = (uint64_t)(lba - 2) * trackinfo.sector_length;
+        dbgmsg("------ Read CD Vendor Plextor (0xd8): ", (int)length, " sectors starting at ", (int)lba -2,
+               ", sector size ", (int) PLEXTOR_D8_SECTOR_LENGTH,
+               ", data offset in file ", (int)offset);
+    }
+    else
+    {
+        offset = trackinfo.file_offset + trackinfo.sector_length * (lba - trackinfo.track_start);
+        dbgmsg("------ Read CD: ", (int)length, " sectors starting at ", (int)lba,
+            ", track number ", trackinfo.track_number, ", sector size ", (int)trackinfo.sector_length,
+            ", main channel ", main_channel, ", sub channel ", sub_channel,
+            ", data offset in file ", (int)offset);
+    }
     // Ensure read is not out of range of the image
     uint64_t readend = offset + trackinfo.sector_length * length;
     if (readend > img.file.size())
@@ -1518,6 +1551,11 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
             sector_type_ok = true;
         }
         else if (sector_type == 2 && trackinfo.track_mode == CUETrack_MODE1_2048)
+        {
+            sector_type_ok = true;
+        }
+        else if (sector_type == SECTOR_TYPE_VENDOR_PLEXTOR && 
+            g_scsi_settings.getDevice(img.scsiId & 0x7)->vendorExtensions & VENDOR_EXTENSION_OPTICAL_PLEXTOR)
         {
             sector_type_ok = true;
         }
@@ -1838,6 +1876,11 @@ static bool doReadCapacity(uint32_t lba, uint8_t pmi)
     return true;
 }
 
+static void doReadD8(uint32_t lba, uint32_t length)
+{
+    doReadCD(lba, length, SECTOR_TYPE_VENDOR_PLEXTOR, true, false, false );
+}
+
 /**************************************/
 /* CD-ROM command dispatching         */
 /**************************************/
@@ -2139,6 +2182,42 @@ extern "C" int scsiCDRomCommand()
             scsiDev.cdb[9];
 
         doReadCD(lba, blocks, 0, 0x10, 0, true);
+    }
+    else if (unlikely(scsiDev.target->cfg->vendorExtensions & VENDOR_EXTENSION_OPTICAL_PLEXTOR) && 
+            command == 0xD8)
+    {
+        uint8_t lun = scsiDev.cdb[1] & 0x7;
+        uint8_t subcode = scsiDev.cdb[10];
+        if (lun != 0)
+        {
+            logmsg("ERROR: Plextor vendor 0xD8 command only supports LUN 0. Given ", (int)lun);
+            scsiDev.status = CHECK_CONDITION;
+            scsiDev.target->sense.code = ILLEGAL_REQUEST;
+            scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+            scsiDev.phase = STATUS;
+        }
+        else if (subcode != 0)
+        {
+            logmsg("ERROR: Plextor vendor 0xD8 command subcodes not supported. Given ", subcode);
+            scsiDev.status = CHECK_CONDITION;
+            scsiDev.target->sense.code = ILLEGAL_REQUEST;
+            scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+            scsiDev.phase = STATUS;
+        }
+        else
+        {
+            uint32_t lba =
+                (((uint32_t) scsiDev.cdb[2]) << 24) +
+                (((uint32_t) scsiDev.cdb[3]) << 16) +
+                (((uint32_t) scsiDev.cdb[4]) << 8) +
+                scsiDev.cdb[5];
+            uint32_t blocks =
+                (((uint32_t) scsiDev.cdb[6]) << 24) +
+                (((uint32_t) scsiDev.cdb[7]) << 16) +
+                (((uint32_t) scsiDev.cdb[8]) << 8) +
+                scsiDev.cdb[9];
+            doReadD8(lba, blocks);
+        }
     }
     else if (command == 0x4E)
     {

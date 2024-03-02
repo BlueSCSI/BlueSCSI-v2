@@ -133,7 +133,10 @@ typedef struct __attribute__((packed))
 
 	uint16_t quirks; // S2S_CFG_QUIRKS
 
-	uint8_t reserved[64]; // Pad out to 128 bytes for main section.
+	// bit flags vendor extention for specific device types
+	uint32_t vendorExtensions;
+
+	uint8_t reserved[60]; // Pad out to 128 bytes for main section.
 } S2S_TargetCfg;
 
 typedef struct __attribute__((packed))

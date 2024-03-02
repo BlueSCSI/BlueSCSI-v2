@@ -93,6 +93,8 @@ typedef struct __attribute__((__packed__)) scsi_device_settings_t
 
     uint32_t sectorSDBegin;
     uint32_t sectorSDEnd;
+
+    uint32_t vendorExtensions;
 } scsi_device_settings_t;
 
 

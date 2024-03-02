@@ -307,6 +307,17 @@ static void process_Command()
 
 	group = scsiDev.cdb[0] >> 5;
 	scsiDev.cdbLen = CmdGroupBytes[group];
+
+	if (scsiDev.target->cfg->deviceType == S2S_CFG_OPTICAL)
+	{
+		// Plextor CD-ROM vendor extensions 0xD8
+		if (unlikely(scsiDev.target->cfg->vendorExtensions & VENDOR_EXTENSION_OPTICAL_PLEXTOR))
+
+			if (scsiDev.cdb[0] == 0xD8)
+			{
+				scsiDev.cdbLen =  12;
+			}
+	}
 	if (parityError &&
 		(scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY))
 	{
