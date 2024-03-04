@@ -1099,7 +1099,7 @@ void doGetConfiguration(uint8_t rt, uint16_t startFeature, uint16_t allocationLe
 #endif
 
     // finally, rewrite data length to match
-    uint32_t dlen = len - 8;
+    uint32_t dlen = len - 4;
     scsiDev.data[0] = dlen >> 24;
     scsiDev.data[1] = dlen >> 16;
     scsiDev.data[2] = dlen >> 8;
@@ -1297,9 +1297,9 @@ static void doGetEventStatusNotification(bool immed)
 
 void cdromGetAudioPlaybackStatus(uint8_t *status, uint32_t *current_lba, bool current_only)
 {
-    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-
+    
 #ifdef ENABLE_AUDIO_OUTPUT
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     if (status) {
         uint8_t target = img.scsiId & 7;
         if (current_only) {
@@ -1308,17 +1308,11 @@ void cdromGetAudioPlaybackStatus(uint8_t *status, uint32_t *current_lba, bool cu
             *status = (uint8_t) audio_get_status_code(target);
         }
     }
+    *current_lba = audio_get_file_position() / 2352;
 #else
     if (status) *status = 0; // audio status code for 'unsupported/invalid' and not-playing indicator
 #endif
-    if (current_lba)
-    {
-        if (img.file.isOpen()) {
-            *current_lba = img.file.position() / AUDIO_CD_SECTOR_LEN;
-        } else {
-            *current_lba = 0;
-        }
-    }
+    
 }
 
 static void doPlayAudio(uint32_t lba, uint32_t length)
@@ -1335,8 +1329,10 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
 
     // if transfer length is zero no audio playback happens.
     // don't treat as an error per SCSI-2; handle via short-circuit
+
     if (length == 0)
     {
+        audio_set_file_position(lba);
         scsiDev.status = 0;
         scsiDev.phase = STATUS;
         return;
@@ -1352,7 +1348,7 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
         if (lba == 0xFFFFFFFF)
         {
             // request to start playback from 'current position'
-            lba = img.file.position() / AUDIO_CD_SECTOR_LEN;
+            lba = audio_get_file_position() / AUDIO_CD_SECTOR_LEN;
         }
 
         uint64_t offset = trackinfo.file_offset
@@ -1410,7 +1406,7 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
 static void doPauseResumeAudio(bool resume)
 {
 #ifdef ENABLE_AUDIO_OUTPUT
-    logmsg("------ CD-ROM ", resume ? "resume" : "pause", " audio playback");
+    dbgmsg("------ CD-ROM ", resume ? "resume" : "pause", " audio playback");
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     uint8_t target_id = img.scsiId & 7;
 
@@ -1451,7 +1447,7 @@ static void doMechanismStatus(uint16_t allocation_length)
     uint8_t *buf = scsiDev.data;
 
     uint8_t status;
-    uint32_t lba;
+    uint32_t lba = 0;
     cdromGetAudioPlaybackStatus(&status, &lba, true);
 
     *buf++ = 0x00; // No fault state
@@ -1760,7 +1756,7 @@ static void doReadSubchannel(bool time, bool subq, uint8_t parameter, uint8_t tr
     if (parameter == 0x01)
     {
         uint8_t audiostatus;
-        uint32_t lba;
+        uint32_t lba = 0;
         cdromGetAudioPlaybackStatus(&audiostatus, &lba, false);
         dbgmsg("------ Get audio playback position: status ", (int)audiostatus, " lba ", (int)lba);
 
@@ -2097,8 +2093,9 @@ extern "C" int scsiCDRomCommand()
                 && scsiDev.cdb[5] == 0xFF)
         {
             // request to start playback from 'current position'
-            image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-            lba = img.file.position() / AUDIO_CD_SECTOR_LEN;
+#ifdef ENABLE_AUDIO_OUTPUT
+            lba = audio_get_file_position() / AUDIO_CD_SECTOR_LEN;
+#endif
         }
 
         uint32_t length = end - lba;
@@ -2339,6 +2336,15 @@ extern "C" int scsiCDRomCommand()
         // Byte 5: 'F' in hex
         commandHandled = 0;
     }
+    else if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_APPLE
+            && command == 0xD8)
+    {
+    }
+    else if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_APPLE
+            && command == 0xD9)
+    {
+    }
+
     else
     {
         commandHandled = 0;
