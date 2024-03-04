@@ -2321,30 +2321,6 @@ extern "C" int scsiCDRomCommand()
 
         doAppleD8(lba, blocks);
     }
-    else if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_APPLE
-            && command == 0xCD)
-    {
-        // vendor-specific command issued by the AppleCD Audio Player in
-        // response to fast-forward or rewind commands. Might be seek,
-        // might be reposition. Exact MSF value below is unknown.
-        //
-        // Byte 0: 0xCD
-        // Byte 1: 0x10 for rewind, 0x00 for fast-forward
-        // Byte 2: 0x00
-        // Byte 3: 'M' in hex
-        // Byte 4: 'S' in hex
-        // Byte 5: 'F' in hex
-        commandHandled = 0;
-    }
-    else if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_APPLE
-            && command == 0xD8)
-    {
-    }
-    else if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_APPLE
-            && command == 0xD9)
-    {
-    }
-
     else
     {
         commandHandled = 0;
