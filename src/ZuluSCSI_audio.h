@@ -146,3 +146,16 @@ uint16_t audio_get_channel(uint8_t id);
  * \param chn   The new channel information.
  */
 void audio_set_channel(uint8_t id, uint16_t chn);
+
+/**
+ * Gets the byte position in the audio image
+ * 
+ * \return byte position in the audio image
+*/
+uint64_t audio_get_file_position();
+
+/**
+ * Sets the playback position in the audio image via the lba
+ * 
+*/
+void audio_set_file_position(uint32_t lba);
