@@ -1,6 +1,7 @@
 //	Copyright (C) 2014 Michael McMaster <michael@codesrc.com>
 //	Copyright (c) 2023 joshua stein <jcs@jcs.org>
 //	Copyright (c) 2023 Andrea Ottaviani <andrea.ottaviani.69@gmail.com>
+//	Copyright (C) 2024 Rabbit Hole Computing LLC
 //
 //	This file is part of SCSI2SD.
 //
@@ -304,16 +305,21 @@ static void process_Command()
 	memset(scsiDev.cdb + 6, 0, sizeof(scsiDev.cdb) - 6);
 	int parityError = 0;
 	scsiRead(scsiDev.cdb, 6, &parityError);
+	command = scsiDev.cdb[0];
 
 	group = scsiDev.cdb[0] >> 5;
 	scsiDev.cdbLen = CmdGroupBytes[group];
 
 	if (scsiDev.target->cfg->deviceType == S2S_CFG_OPTICAL)
 	{
+		if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_APPLE && (command == 0xD8 || command == 0xD9))
+		{
+			scsiDev.cdbLen =  12;
+		}
 		// Plextor CD-ROM vendor extensions 0xD8
 		if (unlikely(scsiDev.target->cfg->vendorExtensions & VENDOR_EXTENSION_OPTICAL_PLEXTOR))
 
-			if (scsiDev.cdb[0] == 0xD8)
+			if (command == 0xD8)
 			{
 				scsiDev.cdbLen =  12;
 			}
@@ -328,7 +334,7 @@ static void process_Command()
 	{
 		scsiRead(scsiDev.cdb + 6, scsiDev.cdbLen - 6, &parityError);
 	}
-	command = scsiDev.cdb[0];
+
 
 	// Prefer LUN's set by IDENTIFY messages for newer hosts.
 	if (scsiDev.lun < 0)

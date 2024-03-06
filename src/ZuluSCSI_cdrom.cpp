@@ -43,6 +43,8 @@ extern "C" {
 #include <scsi.h>
 }
 
+static const uint16_t AUDIO_CD_SECTOR_LEN = 2352;
+
 /******************************************/
 /* Basic TOC generation without cue sheet */
 /******************************************/
@@ -223,6 +225,7 @@ static const uint8_t TrackInformation[] =
 enum sector_type_t
 {
      SECTOR_TYPE_VENDOR_PLEXTOR = 100,
+     SECTOR_TYPE_VENDOR_APPLE_300plus = 200
 };
 
 // Convert logical block address to CD-ROM time
@@ -1096,7 +1099,7 @@ void doGetConfiguration(uint8_t rt, uint16_t startFeature, uint16_t allocationLe
 #endif
 
     // finally, rewrite data length to match
-    uint32_t dlen = len - 8;
+    uint32_t dlen = len - 4;
     scsiDev.data[0] = dlen >> 24;
     scsiDev.data[1] = dlen >> 16;
     scsiDev.data[2] = dlen >> 8;
@@ -1294,9 +1297,9 @@ static void doGetEventStatusNotification(bool immed)
 
 void cdromGetAudioPlaybackStatus(uint8_t *status, uint32_t *current_lba, bool current_only)
 {
-    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-
+    
 #ifdef ENABLE_AUDIO_OUTPUT
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     if (status) {
         uint8_t target = img.scsiId & 7;
         if (current_only) {
@@ -1305,17 +1308,11 @@ void cdromGetAudioPlaybackStatus(uint8_t *status, uint32_t *current_lba, bool cu
             *status = (uint8_t) audio_get_status_code(target);
         }
     }
+    *current_lba = audio_get_file_position() / 2352;
 #else
     if (status) *status = 0; // audio status code for 'unsupported/invalid' and not-playing indicator
 #endif
-    if (current_lba)
-    {
-        if (img.file.isOpen()) {
-            *current_lba = img.file.position() / 2352;
-        } else {
-            *current_lba = 0;
-        }
-    }
+    
 }
 
 static void doPlayAudio(uint32_t lba, uint32_t length)
@@ -1332,8 +1329,10 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
 
     // if transfer length is zero no audio playback happens.
     // don't treat as an error per SCSI-2; handle via short-circuit
+
     if (length == 0)
     {
+        audio_set_file_position(lba);
         scsiDev.status = 0;
         scsiDev.phase = STATUS;
         return;
@@ -1349,7 +1348,7 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
         if (lba == 0xFFFFFFFF)
         {
             // request to start playback from 'current position'
-            lba = img.file.position() / 2352;
+            lba = audio_get_file_position() / AUDIO_CD_SECTOR_LEN;
         }
 
         uint64_t offset = trackinfo.file_offset
@@ -1407,7 +1406,7 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
 static void doPauseResumeAudio(bool resume)
 {
 #ifdef ENABLE_AUDIO_OUTPUT
-    logmsg("------ CD-ROM ", resume ? "resume" : "pause", " audio playback");
+    dbgmsg("------ CD-ROM ", resume ? "resume" : "pause", " audio playback");
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     uint8_t target_id = img.scsiId & 7;
 
@@ -1448,7 +1447,7 @@ static void doMechanismStatus(uint16_t allocation_length)
     uint8_t *buf = scsiDev.data;
 
     uint8_t status;
-    uint32_t lba;
+    uint32_t lba = 0;
     cdromGetAudioPlaybackStatus(&status, &lba, true);
 
     *buf++ = 0x00; // No fault state
@@ -1513,12 +1512,20 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
             return;
         }
 
-        const uint16_t PLEXTOR_D8_SECTOR_LENGTH =  2352;
-        trackinfo.sector_length = PLEXTOR_D8_SECTOR_LENGTH;
+        trackinfo.sector_length = AUDIO_CD_SECTOR_LEN;
         trackinfo.track_mode = CUETrack_AUDIO;
         offset = (uint64_t)(lba - 2) * trackinfo.sector_length;
         dbgmsg("------ Read CD Vendor Plextor (0xd8): ", (int)length, " sectors starting at ", (int)lba -2,
-               ", sector size ", (int) PLEXTOR_D8_SECTOR_LENGTH,
+               ", sector size ", (int) AUDIO_CD_SECTOR_LEN,
+               ", data offset in file ", (int)offset);
+    }
+    if (sector_type == SECTOR_TYPE_VENDOR_APPLE_300plus)
+    {
+        trackinfo.sector_length = AUDIO_CD_SECTOR_LEN;
+        trackinfo.track_mode = CUETrack_AUDIO;
+        offset = (uint64_t)(lba) * trackinfo.sector_length;
+        dbgmsg("------ Read CD Vendor Apple CDROM 300 plus (0xd8): ", (int)length, " sectors starting at ", (int)lba,
+               ", sector size ", (int) AUDIO_CD_SECTOR_LEN,
                ", data offset in file ", (int)offset);
     }
     else
@@ -1559,6 +1566,10 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
         {
             sector_type_ok = true;
         }
+        else if (sector_type == SECTOR_TYPE_VENDOR_APPLE_300plus )
+        {
+            sector_type_ok = true;
+        }
 
         if (!sector_type_ok)
         {
@@ -1586,7 +1597,7 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
     else if (trackinfo.track_mode == CUETrack_AUDIO)
     {
         // Transfer whole 2352 byte audio sectors from file to host
-        sector_length = 2352;
+        sector_length = AUDIO_CD_SECTOR_LEN;
     }
     else if (trackinfo.track_mode == CUETrack_MODE1_2048 && main_channel == 0x10)
     {
@@ -1609,7 +1620,7 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
     else if (trackinfo.track_mode == CUETrack_MODE1_2352 && (main_channel & 0xB8) == 0xB8)
     {
         // Transfer whole 2352 byte data sector with ECC to host
-        sector_length = 2352;
+        sector_length = AUDIO_CD_SECTOR_LEN;
     }
     else
     {
@@ -1745,7 +1756,7 @@ static void doReadSubchannel(bool time, bool subq, uint8_t parameter, uint8_t tr
     if (parameter == 0x01)
     {
         uint8_t audiostatus;
-        uint32_t lba;
+        uint32_t lba = 0;
         cdromGetAudioPlaybackStatus(&audiostatus, &lba, false);
         dbgmsg("------ Get audio playback position: status ", (int)audiostatus, " lba ", (int)lba);
 
@@ -1876,9 +1887,14 @@ static bool doReadCapacity(uint32_t lba, uint8_t pmi)
     return true;
 }
 
-static void doReadD8(uint32_t lba, uint32_t length)
+static void doReadPlextorD8(uint32_t lba, uint32_t length)
 {
     doReadCD(lba, length, SECTOR_TYPE_VENDOR_PLEXTOR, true, false, false );
+}
+
+static void doAppleD8(uint32_t lba, uint32_t blocks)
+{
+    doReadCD(lba, blocks, SECTOR_TYPE_VENDOR_APPLE_300plus, true, false, false );
 }
 
 /**************************************/
@@ -2077,8 +2093,9 @@ extern "C" int scsiCDRomCommand()
                 && scsiDev.cdb[5] == 0xFF)
         {
             // request to start playback from 'current position'
-            image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-            lba = img.file.position() / 2352;
+#ifdef ENABLE_AUDIO_OUTPUT
+            lba = audio_get_file_position() / AUDIO_CD_SECTOR_LEN;
+#endif
         }
 
         uint32_t length = end - lba;
@@ -2216,7 +2233,7 @@ extern "C" int scsiCDRomCommand()
                 (((uint32_t) scsiDev.cdb[7]) << 16) +
                 (((uint32_t) scsiDev.cdb[8]) << 8) +
                 scsiDev.cdb[9];
-            doReadD8(lba, blocks);
+            doReadPlextorD8(lba, blocks);
         }
     }
     else if (command == 0x4E)
@@ -2258,6 +2275,51 @@ extern "C" int scsiCDRomCommand()
         // Byte 4: 'S' in hex
         // Byte 5: 'F' in hex
         commandHandled = 0;
+    }
+    else if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_APPLE
+            && command == 0xD8)
+    {
+        // vendor-specific command for Apple 300 plus
+        // plays CD audio over the SCSI bus
+        uint32_t lba =
+            (((uint32_t) scsiDev.cdb[2]) << 24) +
+            (((uint32_t) scsiDev.cdb[3]) << 16) +
+            (((uint32_t) scsiDev.cdb[4]) << 8) +
+            scsiDev.cdb[5];
+        uint32_t blocks =
+            (((uint32_t) scsiDev.cdb[6]) << 24) +
+            (((uint32_t) scsiDev.cdb[7]) << 16) +
+            (((uint32_t) scsiDev.cdb[8]) << 8) +
+            scsiDev.cdb[9];
+        uint8_t sub_sector_type = scsiDev.cdb[10];
+        if (sub_sector_type != 0)
+        {
+            dbgmsg("For Apple CD-ROM 0xD8 command, only 2352 sector length supported (type 0), got subsector type: ", sub_sector_type);
+        }
+        doAppleD8(lba, blocks);
+    }
+    else if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_APPLE
+            && command == 0xD9)
+    {
+        // vendor-specific command for Apple 300 plus
+        // plays CD audio over the SCSI bus using MSF
+
+        uint8_t m = scsiDev.cdb[3];
+        uint8_t s = scsiDev.cdb[4];
+        uint8_t f = scsiDev.cdb[5];
+        uint32_t lba = MSF2LBA(m, s, f, false);
+
+        m = scsiDev.cdb[7];
+        s = scsiDev.cdb[8];
+        f = scsiDev.cdb[9];
+        uint32_t blocks = MSF2LBA(m, s, f, false) - lba;
+        uint8_t sub_sector_type = scsiDev.cdb[10];
+        if (sub_sector_type != 0)
+        {
+            dbgmsg("For Apple CD-ROM 0xD9 command, only 2352 sector length supported (type 0), got subsector type: ", sub_sector_type);
+        }
+
+        doAppleD8(lba, blocks);
     }
     else
     {
