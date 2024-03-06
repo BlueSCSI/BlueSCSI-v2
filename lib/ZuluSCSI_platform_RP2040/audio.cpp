@@ -138,8 +138,8 @@ static uint64_t fpos;
 static uint32_t fleft;
 
 // historical playback status information
-static audio_status_code audio_last_status[8] = {ASC_NO_STATUS};
-
+static audio_status_code audio_last_status[8] = {ASC_NO_STATUS, ASC_NO_STATUS, ASC_NO_STATUS, ASC_NO_STATUS,
+                                                 ASC_NO_STATUS, ASC_NO_STATUS, ASC_NO_STATUS, ASC_NO_STATUS};
 // volume information for targets
 static volatile uint16_t volumes[8] = {
     DEFAULT_VOLUME_LEVEL_2CH, DEFAULT_VOLUME_LEVEL_2CH, DEFAULT_VOLUME_LEVEL_2CH, DEFAULT_VOLUME_LEVEL_2CH,
@@ -585,4 +585,14 @@ void audio_set_channel(uint8_t id, uint16_t chn) {
     channels[id & 7] = chn;
 }
 
+uint64_t audio_get_file_position()
+{
+    return fpos;
+}
+
+void audio_set_file_position(uint32_t lba)
+{
+    fpos = 2352 * (uint64_t)lba;
+
+}
 #endif // ENABLE_AUDIO_OUTPUT

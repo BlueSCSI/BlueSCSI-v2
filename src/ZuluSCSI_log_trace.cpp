@@ -100,7 +100,8 @@ static const char *getCommandName(uint8_t cmd)
         case 0xA8: return "Read12";
         case 0xC0: return "OMTI-5204 DefineFlexibleDiskFormat";
         case 0xC2: return "OMTI-5204 AssignDiskParameters";
-        case 0xD8: return "Plextor ReadCD";
+        case 0xD8: return "Vendor 0xD8 Command";
+        case 0xD9: return "Vendor 0xD9 Command";
         case 0xE0: return "Xebec RAM Diagnostic";
         case 0xE4: return "Xebec Drive Diagnostic";              
         default:   return "Unknown";
@@ -178,9 +179,9 @@ static void printNewPhase(int phase, bool initiator = false)
             if (!initiator && scsiDev.target->syncOffset > 0)
                 dbgmsg("---- DATA_OUT, syncOffset ", (int)scsiDev.target->syncOffset,
                                     " syncPeriod ", (int)scsiDev.target->syncPeriod);
-	    // log Xebec vendor commands data
-	    else if (scsiDev.cdb[0] == 0x0C || scsiDev.cdb[0] == 0x0F)
-		    g_LogData = true;
+            // log Xebec vendor commands data
+            else if (scsiDev.cdb[0] == 0x0C || scsiDev.cdb[0] == 0x0F)
+                g_LogData = true;
             else
                 dbgmsg("---- DATA_OUT");
             break;
@@ -213,17 +214,17 @@ void scsiLogPhaseChange(int new_phase)
         {
             dbgmsg("---- Total IN: ", g_InByteCount, " OUT: ", g_OutByteCount, " CHECKSUM: ", (int)g_DataChecksum);
         }
-	// log Xebec vendor command
+        // log Xebec vendor command
         if (old_phase == DATA_OUT && scsiDev.cdb[0] == 0x0C && g_OutByteCount == 8)
-	{
-		int cylinders = ((uint16_t)scsiDev.data[0] << 8) + scsiDev.data[1];
-		int heads = scsiDev.data[2];
-		int reducedWrite = ((uint16_t)scsiDev.data[3] << 8) + scsiDev.data[4];
-		int writePrecomp = ((uint16_t)scsiDev.data[5] << 8) + scsiDev.data[6];
-		int eccBurst = scsiDev.data[7];
-		dbgmsg("---- Xebec Initialize Drive Characteristics: cylinders=", cylinders, " heads=", heads,
-				" reducedWrite=", reducedWrite, " writePrecomp=", writePrecomp, " eccBurst=", eccBurst);
-	}
+        {
+            int cylinders = ((uint16_t)scsiDev.data[0] << 8) + scsiDev.data[1];
+            int heads = scsiDev.data[2];
+            int reducedWrite = ((uint16_t)scsiDev.data[3] << 8) + scsiDev.data[4];
+            int writePrecomp = ((uint16_t)scsiDev.data[5] << 8) + scsiDev.data[6];
+            int eccBurst = scsiDev.data[7];
+            dbgmsg("---- Xebec Initialize Drive Characteristics: cylinders=", cylinders, " heads=", heads,
+                    " reducedWrite=", reducedWrite, " writePrecomp=", writePrecomp, " eccBurst=", eccBurst);
+        }
         g_InByteCount = g_OutByteCount = 0;
         g_DataChecksum = 0;
 
