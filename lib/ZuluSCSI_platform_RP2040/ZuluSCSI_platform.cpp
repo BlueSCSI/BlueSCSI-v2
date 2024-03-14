@@ -772,8 +772,10 @@ uint8_t platform_get_buttons()
 
 #ifdef PLATFORM_HAS_ROM_DRIVE
 
-// Reserve up to 352 kB for firmware.
-#define ROMDRIVE_OFFSET (352 * 1024)
+# ifndef ROMDRIVE_OFFSET
+    // Reserve up to 352 kB for firmware by default.
+    #define ROMDRIVE_OFFSET (352 * 1024)
+# endif
 
 uint32_t platform_get_romdrive_maxsize()
 {

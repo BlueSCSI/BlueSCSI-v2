@@ -21,7 +21,7 @@
 
 MEMORY
 {
-    FLASH(rx) : ORIGIN = 0x10000000, LENGTH = 352k
+    FLASH(rx) : ORIGIN = 0x10000000, LENGTH = $program_size
     RAM(rwx) : ORIGIN = 0x20000000, LENGTH = 256k  /* Leave space for pico-debug */
     SCRATCH_X(rwx) : ORIGIN = 0x20040000, LENGTH = 4k
     SCRATCH_Y(rwx) : ORIGIN = 0x20041000, LENGTH = 4k
@@ -73,10 +73,10 @@ SECTIONS
         /* Put only non-timecritical code in flash
          * This includes e.g. floating point math routines.
          */
-        .pio/build/ZuluSCSI_RP2040/src/ZuluSCSI_log.cpp.o(.text .text*)
-        .pio/build/ZuluSCSI_RP2040/src/ZuluSCSI_log_trace.cpp.o(.text .text*)
-        .pio/build/ZuluSCSI_RP2040/src/ZuluSCSI_settings.cpp.o(.text .text*)
-        .pio/build/ZuluSCSI_RP2040/src/QuirksCheck.cpp.o(.text .text*)
+        .pio/build/$project_name/src/ZuluSCSI_log.cpp.o(.text .text*)
+        .pio/build/$project_name/src/ZuluSCSI_log_trace.cpp.o(.text .text*)
+        .pio/build/$project_name/src/ZuluSCSI_settings.cpp.o(.text .text*)
+        .pio/build/$project_name/src/QuirksCheck.cpp.o(.text .text*)
         *libZuluSCSI_platform_RP2040.a:ZuluSCSI_platform.cpp.o(.text .text*)
         *libm*:(.text .text*)
         *libc*:(.text .text*)
