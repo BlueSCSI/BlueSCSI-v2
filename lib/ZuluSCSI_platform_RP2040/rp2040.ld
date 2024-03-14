@@ -73,6 +73,11 @@ SECTIONS
         /* Put only non-timecritical code in flash
          * This includes e.g. floating point math routines.
          */
+        .pio/build/ZuluSCSI_RP2040/src/ZuluSCSI_log.cpp.o(.text .text*)
+        .pio/build/ZuluSCSI_RP2040/src/ZuluSCSI_log_trace.cpp.o(.text .text*)
+        .pio/build/ZuluSCSI_RP2040/src/ZuluSCSI_settings.cpp.o(.text .text*)
+        .pio/build/ZuluSCSI_RP2040/src/QuirksCheck.cpp.o(.text .text*)
+        *libZuluSCSI_platform_RP2040.a:ZuluSCSI_platform.cpp.o(.text .text*)
         *libm*:(.text .text*)
         *libc*:(.text .text*)
         *libgcc*:*df*(.text .text*)
@@ -86,6 +91,7 @@ SECTIONS
         *libc*:*printf*(.text .text*)
         *libc*:*toa*(.text .text*)
         *libminIni.a:(.text .text*)
+        *libCUEParser.a:(.text .text*)
 
         /* RP2040 breakpoints in RAM code don't always work very well
          * because the boot routine tends to overwrite them.
@@ -132,7 +138,6 @@ SECTIONS
         . = ALIGN(4);
         *(.text)
         *(.text*)
-
         . = ALIGN(4);
         *(.data*)
         . = ALIGN(4);
