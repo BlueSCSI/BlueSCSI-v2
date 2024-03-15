@@ -199,6 +199,8 @@ const char *log_get_buffer(uint32_t *startpos, uint32_t *available)
     return result;
 }
 
+
+#ifdef NETWORK_DEBUG_LOGGING
 // TODO write directly global log buffer to save some memory
 static char shared_log_buf[1500 * 3];
 
@@ -215,7 +217,7 @@ static void log_va(bool debug, const char *format, va_list ap)
         logmsg(shared_log_buf);
     }
 }
-#ifdef NETWORK_DEBUG_LOGGING
+
 void logmsg_f(const char *format, ...)
 {
     va_list ap;
