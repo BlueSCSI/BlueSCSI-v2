@@ -215,7 +215,7 @@ static void log_va(bool debug, const char *format, va_list ap)
         logmsg(shared_log_buf);
     }
 }
-
+#ifdef NETWORK_DEBUG_LOGGING
 void logmsg_f(const char *format, ...)
 {
     va_list ap;
@@ -267,5 +267,5 @@ void dbgmsg_buf(const unsigned char *buf, unsigned long size)
         return;
     log_hex_buf(buf, size, true);
 }
-
+#endif // NETWORK_DEBUG_LOGGING
 

@@ -38,16 +38,11 @@
 #include <hardware/irq.h>
 #include <hardware/structs/iobank0.h>
 #include <hardware/sync.h>
+#include <pico/multicore.h>
 
 #ifdef ENABLE_AUDIO_OUTPUT
 #include <audio.h>
 #endif // ENABLE_AUDIO_OUTPUT
-
-#ifdef ZULUSCSI_NETWORK
-#include <pico/multicore.h>
-#else
-#include <multicore.h>
-#endif // ZULUSCSI_NETWORK
 
 #if defined(ZULUSCSI_PICO) || defined(ZULUSCSI_BS2)
 #include "scsi_accel_target_Pico.pio.h"

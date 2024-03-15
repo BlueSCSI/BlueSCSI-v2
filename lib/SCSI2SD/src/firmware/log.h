@@ -23,6 +23,7 @@
 extern "C" {
 #endif
 
+#ifdef NETWORK_DEBUG_LOGGING
 extern bool g_log_debug;
 
 extern void logmsg_buf(const unsigned char *buf, unsigned long size);
@@ -31,12 +32,19 @@ extern void logmsg_f(const char *format, ...);
 extern void dbgmsg_buf(const unsigned char *buf, unsigned long size);
 extern void dbgmsg_f(const char *format, ...);
 
-// check if debug is enabled before calling the logging function
-#define DBGMSG_BUF(buf, size) \
-	if (g_log_debug) {dbgmsg_buf(buf, size);}
+#define DBGMSG_BUF(buf, size) dbgmsg_buf(buf, size)
+#define DBGMSG_F(format, ...) dbgmsg_f(format, __VA_ARGS__);
+#define LOGMSG_BUF(buf, size) logmsg_buf(buf, size)
+#define LOGMSG_F(format, ...) logmsg_f(format, __VA_ARGS__);
 
-#define DBGMSG_F(format, ...) \
-	if (g_log_debug) {dbgmsg_f(format, __VA_ARGS__);}
+#else
+
+#define DBGMSG_BUF(buf, size) // Empty
+#define DBGMSG_F(format, ...) // Empty
+#define LOGMSG_BUF(buf, size) // Empty
+#define LOGMSG_F(format, ...) // Empty
+
+#endif // NETWORK_DEBUG_LOGGING
 
 #ifdef __cplusplus
 }
