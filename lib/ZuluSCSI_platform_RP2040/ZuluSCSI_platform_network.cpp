@@ -82,9 +82,8 @@ int platform_network_init(char *mac)
 		// retain Dayna vendor but use a device id specific to this board
 		pico_get_unique_board_id(&board_id);
 		if (g_log_debug)
-			logmsg_f("Unique board id: %02x %02x %02x %02x  %02x %02x %02x %02x",
-				board_id.id[0], board_id.id[1], board_id.id[2], board_id.id[3],
-				board_id.id[4], board_id.id[5], board_id.id[6], board_id.id[7]);
+			logmsg("Unique board id: ", board_id.id[0], " ", board_id.id[1], " ", board_id.id[2], " ", board_id.id[3], " ", 
+										board_id.id[4], " ", board_id.id[5], " ", board_id.id[6], " ", board_id.id[7]);
 
 		if (board_id.id[3] != 0 && board_id.id[4] != 0 && board_id.id[5] != 0)
 		{
@@ -101,11 +100,11 @@ int platform_network_init(char *mac)
 	cyw43_arch_enable_sta_mode();
 
 	cyw43_wifi_get_mac(&cyw43_state, CYW43_ITF_STA, read_mac);
-	logmsg_f("Wi-Fi MAC: %02X:%02X:%02X:%02X:%02X:%02X",
-		read_mac[0], read_mac[1], read_mac[2], read_mac[3], read_mac[4], read_mac[5]);
+	logmsg("Wi-Fi MAC: ", read_mac[0],":",read_mac[1], ":", read_mac[2], ":", read_mac[3], ":", read_mac[4], ":", read_mac[5]);
 	if (memcmp(mac, read_mac, sizeof(read_mac)) != 0)
-		logmsg_f("WARNING: Wi-Fi MAC is not what was requested (%02x:%02x:%02x:%02x:%02x:%02x), is libpico not compiled with CYW43_USE_OTP_MAC=0?",
-			mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+		logmsg("WARNING: Wi-Fi MAC is not what was requested (", 
+				(uint8_t)mac[0], ":", (uint8_t)mac[1], ":", (uint8_t)mac[2], ":", (uint8_t)mac[3], ":", (uint8_t)mac[4], ":", (uint8_t)mac[5],
+				"), is libpico not compiled with CYW43_USE_OTP_MAC=0?");
 
 	network_in_use = true;
 
@@ -117,7 +116,7 @@ void platform_network_add_multicast_address(uint8_t *mac)
 	int ret;
 
 	if ((ret = cyw43_wifi_update_multicast_filter(&cyw43_state, mac, true)) != 0)
-		logmsg_f("%s: cyw43_wifi_update_multicast_filter: %d", __func__, ret);
+		logmsg( __func__, ": cyw43_wifi_update_multicast_filter: ", ret);
 }
 
 bool platform_network_wifi_join(char *ssid, char *password)
@@ -129,18 +128,18 @@ bool platform_network_wifi_join(char *ssid, char *password)
 
 	if (password == NULL || password[0] == 0)
 	{
-		logmsg_f("Connecting to Wi-Fi SSID \"%s\" with no authentication", ssid);
+		logmsg("Connecting to Wi-Fi SSID \"", ssid, "\" with no authentication");
 		ret = cyw43_arch_wifi_connect_async(ssid, NULL, CYW43_AUTH_OPEN);
 	}
 	else
 	{
-		logmsg_f("Connecting to Wi-Fi SSID \"%s\" with WPA/WPA2 PSK", ssid);
+		logmsg("Connecting to Wi-Fi SSID \"", ssid, "\" with WPA/WPA2 PSK");
 		ret = cyw43_arch_wifi_connect_async(ssid, password, CYW43_AUTH_WPA2_MIXED_PSK);
 	}
 
 	if (ret != 0)
 	{
-		logmsg_f("Wi-Fi connection failed: %d", ret);
+		logmsg("Wi-Fi connection failed: ", ret);
 	}
 	else
 	{
@@ -168,7 +167,7 @@ int platform_network_send(uint8_t *buf, size_t len)
 {
 	int ret = cyw43_send_ethernet(&cyw43_state, 0, len, buf, 0);
 	if (ret != 0)
-		logmsg_f("cyw43_send_ethernet failed: %d", ret);
+		logmsg("cyw43_send_ethernet failed: ", ret);
 
 	return ret;
 }
@@ -257,11 +256,9 @@ void platform_network_wifi_dump_scan_list()
 		if (entry->ssid[0] == '\0')
 			break;
 			
-		logmsg_f("wifi[%d] = %s, channel %d, rssi %d, bssid %02x:%02x:%02x:%02x:%02x:%02x, flags %d",
-			i, entry->ssid, entry->channel, entry->rssi,
-			entry->bssid[0], entry->bssid[1], entry->bssid[2],
-			entry->bssid[3], entry->bssid[4], entry->bssid[5],
-			entry->flags);
+		logmsg("wifi[",i,"] = ",entry->ssid,", channel ",(int)entry->channel,", rssi ",(int)entry->rssi,
+				", bssid ",(uint8_t) entry->bssid[0],":",(uint8_t) entry->bssid[1],":",(uint8_t) entry->bssid[2],":",
+				(uint8_t) entry->bssid[3],":",(uint8_t) entry->bssid[4],":",(uint8_t) entry->bssid[5],", flags ", entry->flags);
 	}
 }
 
@@ -286,7 +283,7 @@ char * platform_network_wifi_ssid()
 	int ret = cyw43_ioctl(&cyw43_state, CYW43_IOCTL_GET_SSID, sizeof(ssid), (uint8_t *)&ssid, CYW43_ITF_STA);
 	if (ret)
 	{
-		logmsg_f("Failed getting Wi-Fi SSID: %d", ret);
+		logmsg("Failed getting Wi-Fi SSID: ", ret);
 		return NULL;
 	}
 
@@ -326,7 +323,7 @@ void cyw43_cb_process_ethernet(void *cb_data, int itf, size_t len, const uint8_t
 
 void cyw43_cb_tcpip_set_link_down(cyw43_t *self, int itf)
 {
-	logmsg_f("Disassociated from Wi-Fi SSID \"%s\"", self->ap_ssid);
+	logmsg("Disassociated from Wi-Fi SSID \"",  (char *)self->ap_ssid,"\"");
 }
 
 void cyw43_cb_tcpip_set_link_up(cyw43_t *self, int itf)
@@ -335,7 +332,7 @@ void cyw43_cb_tcpip_set_link_up(cyw43_t *self, int itf)
 
 	if (ssid)
 	{
-		logmsg_f("Successfully connected to Wi-Fi SSID \"%s\"", ssid);
+		logmsg("Successfully connected to Wi-Fi SSID \"",ssid,"\"");
 		// blink LED 3 times when connected
 		PICO_W_LED_OFF();
 		for (uint8_t i = 0; i < 3; i++)

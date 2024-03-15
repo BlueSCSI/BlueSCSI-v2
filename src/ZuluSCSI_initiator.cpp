@@ -462,7 +462,7 @@ void scsiInitiatorMainLoop()
 
             if(g_initiator_state.bad_sector_count != 0)
             {
-                logmsg_f("NOTE: There were %d bad sectors that could not be read off this drive.", g_initiator_state.bad_sector_count);
+                logmsg("NOTE: There were ",  (int) g_initiator_state.bad_sector_count, " bad sectors that could not be read off this drive.");
             }
 
             if (!g_initiator_state.eject_when_done)
