@@ -29,14 +29,11 @@
 #include <hardware/flash.h>
 #include <hardware/structs/xip_ctrl.h>
 #include <hardware/structs/usb.h>
-#ifndef __MBED__
 #ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
-# include <SerialUSB.h>
-# include <class/cdc/cdc_device.h>
+#include <SerialUSB.h>
+#include <class/cdc/cdc_device.h>
 #endif
-#else
-# include <USB/PluggableUSBSerial.h>
-#endif // __MBED__
+
 
 /*****************************************/
 /* Flash reprogramming from bootloader   */
@@ -61,14 +58,12 @@ bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_
     }
 
 
-#ifdef __MBED__
-    if (NVIC_GetEnableIRQ(USBCTRL_IRQn))
+    if (NVIC_GetEnableIRQ(USBCTRL_IRQ_IRQn))
     {
         logmsg("Disabling USB during firmware flashing");
-        NVIC_DisableIRQ(USBCTRL_IRQn);
+        NVIC_DisableIRQ(USBCTRL_IRQ_IRQn);
         usb_hw->main_ctrl = 0;
     }
-#endif // __MBED__
 
     dbgmsg("Writing flash at offset ", offset, " data ", bytearray(buffer, 4));
     assert(offset % PLATFORM_FLASH_PAGE_SIZE == 0);
