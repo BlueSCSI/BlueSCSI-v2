@@ -138,7 +138,7 @@ int scsiNetworkCommand()
 			}
 			else if (psize + 6 > size)
 			{
-				logmsg_f("%s: packet size too big (%d)", __func__, psize);
+				LOGMSG_F("%s: packet size too big (%d)", __func__, psize);
 				psize = size - 6;
 			}
 
@@ -371,7 +371,7 @@ int scsiNetworkCommand()
 				int size = sizeof(struct wifi_network_entry) * nets;
 				if (size + 2 > sizeof(scsiDev.data))
 				{
-					logmsg_f("WARNING: wifi_network_list is bigger than scsiDev.data, truncating");
+					LOGMSG_F("WARNING: wifi_network_list is bigger than scsiDev.data, truncating");
 					size = sizeof(scsiDev.data) - 2;
 					size -= (size % (sizeof(struct wifi_network_entry)));
 				}
@@ -420,7 +420,7 @@ int scsiNetworkCommand()
 			struct wifi_join_request req = { 0 };
 
 			if (size != sizeof(req)) {
-				logmsg_f("wifi_join_request bad size (%zu != %zu), ignoring", size, sizeof(req));
+				LOGMSG_F("wifi_join_request bad size (%zu != %zu), ignoring", size, sizeof(req));
 				scsiDev.status = CHECK_CONDITION;
 				scsiDev.phase = STATUS;
 				break;
