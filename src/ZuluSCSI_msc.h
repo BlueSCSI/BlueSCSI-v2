@@ -32,6 +32,6 @@ enum  MSC_LEDState { LED_SOLIDON = 0, LED_BLINK_FAST, LED_BLINK_SLOW };
 extern volatile MSC_LEDState MSC_LEDMode;
 
 // run cardreader main loop (blocking)
-void zuluscsi_MSC_loop();
+void zuluscsi_msc_loop();
 
 #endif

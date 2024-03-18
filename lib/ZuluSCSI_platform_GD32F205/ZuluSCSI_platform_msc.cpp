@@ -42,28 +42,28 @@ extern "C" {
 
 
 /* local function prototypes ('static') */
-static int8_t STORAGE_Init(uint8_t Lun);
-static int8_t STORAGE_IsReady(uint8_t Lun);
-static int8_t STORAGE_IsWriteProtected(uint8_t Lun);
-static int8_t STORAGE_GetMaxLun(void);
-static int8_t STORAGE_Read(uint8_t Lun,
+static int8_t storageInit(uint8_t Lun);
+static int8_t storageIsReady(uint8_t Lun);
+static int8_t storageIsWriteProtected(uint8_t Lun);
+static int8_t storageGetMaxLun(void);
+static int8_t storageRead(uint8_t Lun,
                            uint8_t *buf,
                            uint32_t BlkAddr,
                            uint16_t BlkLen);
-static int8_t STORAGE_Write(uint8_t Lun,
+static int8_t storageWrite(uint8_t Lun,
                             uint8_t *buf,
                             uint32_t BlkAddr,
                             uint16_t BlkLen);
 
 usbd_mem_cb USBD_SD_fops = {
-    .mem_init      = STORAGE_Init,
-    .mem_ready     = STORAGE_IsReady,
-    .mem_protected = STORAGE_IsWriteProtected,
-    .mem_read      = STORAGE_Read,
-    .mem_write     = STORAGE_Write,
-    .mem_maxlun    = STORAGE_GetMaxLun,
+    .mem_init      = storageInit,
+    .mem_ready     = storageIsReady,
+    .mem_protected = storageIsWriteProtected,
+    .mem_read      = storageRead,
+    .mem_write     = storageWrite,
+    .mem_maxlun    = storageGetMaxLun,
 
-    .mem_inquiry_data = {(uint8_t *)STORAGE_InquiryData},
+    .mem_inquiry_data = {(uint8_t *)storageInquiryData},
     .mem_block_size   = {SD_SECTOR_SIZE},
     .mem_block_len    = {0}
 };
@@ -80,7 +80,7 @@ extern SdFs SD;
 static bool unitReady = false;
 
 /* returns true if card reader mode should be entered. sd card is available. */
-bool platform_senseMSC() {
+bool platform_sense_msc() {
 
   // kill usb serial.
   usbd_disconnect (&cdc_acm);
@@ -109,7 +109,7 @@ bool platform_senseMSC() {
 }
 
 /* perform MSC-specific init tasks */
-void platform_enterMSC() {
+void platform_enter_msc() {
   dbgmsg("USB MSC buffer size: ", (uint32_t) MSC_MEDIA_PACKET_SIZE);
 
   // give the host a moment to finish enumerate and "load" media
@@ -119,7 +119,7 @@ void platform_enterMSC() {
 }
 
 /* return true while remaining in msc mode, and perform periodic tasks */
-bool platform_runMSC() {
+bool platform_run_msc() {
   usbd_msc_handler *msc = (usbd_msc_handler *)cdc_acm.dev.class_data[USBD_MSC_INTERFACE];
 
   // stupid windows doesn't send start_stop_unit events if it is ejected via safely remove devices. 
@@ -134,7 +134,7 @@ bool platform_runMSC() {
   return (! msc->scsi_disk_pop) && !is_suspended;
 }
 
-void platform_exitMSC() {
+void platform_exit_msc() {
   unitReady = false;
 
   // disconnect msc....
@@ -153,7 +153,7 @@ void platform_exitMSC() {
     \param[out] none
     \retval     status
 */
-static int8_t STORAGE_Init(uint8_t Lun)
+static int8_t storageInit(uint8_t Lun)
 {
     return 0;
 }
@@ -164,7 +164,7 @@ static int8_t STORAGE_Init(uint8_t Lun)
     \param[out] none
     \retval     status
 */
-static int8_t STORAGE_IsReady(uint8_t Lun)
+static int8_t storageIsReady(uint8_t Lun)
 {
     return ! unitReady; // 0 = success / unit is ready
 }
@@ -175,7 +175,7 @@ static int8_t STORAGE_IsReady(uint8_t Lun)
     \param[out] none
     \retval     status
 */
-static int8_t STORAGE_IsWriteProtected(uint8_t Lun)
+static int8_t storageIsWriteProtected(uint8_t Lun)
 {
     return ! unitReady; // 0 = read/write
 }
@@ -189,7 +189,7 @@ static int8_t STORAGE_IsWriteProtected(uint8_t Lun)
     \param[out] none
     \retval     status
 */
-static int8_t STORAGE_Read(uint8_t Lun,
+static int8_t storageRead(uint8_t Lun,
                            uint8_t *buf,
                            uint32_t BlkAddr,
                            uint16_t BlkLen)
@@ -213,7 +213,7 @@ static int8_t STORAGE_Read(uint8_t Lun,
     \param[out] none
     \retval     status
 */
-static int8_t STORAGE_Write(uint8_t Lun,
+static int8_t storageWrite(uint8_t Lun,
                             uint8_t *buf,
                             uint32_t BlkAddr,
                             uint16_t BlkLen)
@@ -233,7 +233,7 @@ static int8_t STORAGE_Write(uint8_t Lun,
     \param[out] none
     \retval     number of logical unit
 */
-static int8_t STORAGE_GetMaxLun(void)
+static int8_t storageGetMaxLun(void)
 {
     return 0; // number of LUNs supported - 1
 }

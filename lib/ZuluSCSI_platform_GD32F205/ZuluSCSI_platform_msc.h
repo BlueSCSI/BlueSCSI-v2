@@ -45,15 +45,15 @@ const uint8_t STORAGE_InquiryData[] = {
 };
 
 /* return true if USB presence detected / eligble to enter CR mode */
-bool platform_senseMSC();
+bool platform_sense_msc();
 
 /* perform MSC-specific init tasks */
-void platform_enterMSC();
+void platform_enter_msc();
 
 /* return true if we should remain in card reader mode. called in a loop. */
-bool platform_runMSC();
+bool platform_run_msc();
 
 /* perform any cleanup tasks for the MSC-specific functionality */
-void platform_exitMSC();
+void platform_exit_msc();
 
 #endif

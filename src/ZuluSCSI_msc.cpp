@@ -34,21 +34,21 @@ volatile MSC_LEDState MSC_LEDMode;
 
 // card reader operation loop
 // assumption that SD card was enumerated and is working
-void zuluscsi_MSC_loop() {
+void zuluscsi_msc_loop() {
 
   // turn LED on to indicate entering card reader mode.
   LED_ON();
   
   logmsg("Entering USB Mass storage mode. Eject the USB disk to exit.");
 
-  platform_enterMSC();
+  platform_enter_msc();
   
   uint32_t sd_card_check_time = 0;
   uint16_t syncCounter = 0;
         
   // steady state operation / indication loop
   // led remains steady on
-  while(platform_runMSC()) {
+  while(platform_run_msc()) {
     platform_reset_watchdog(); // also sends log to USB serial
 
     if ((uint32_t)(millis() - sd_card_check_time) > 5000) {
@@ -92,7 +92,7 @@ void zuluscsi_MSC_loop() {
   LED_OFF();
   
   logmsg("USB Mass Storage mode exited: resuming standard functionality.");
-  platform_exitMSC();
+  platform_exit_msc();
   
   SD.card()->syncDevice();
 
