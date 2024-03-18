@@ -810,9 +810,9 @@ extern "C" void zuluscsi_setup(void)
     check_mass_storage = false;
     
     // perform checks to see if a computer is attached and return true if we should enter MSC mode.
-    if (platform_senseMSC())
+    if (platform_sense_msc())
     {
-      zuluscsi_MSC_loop();
+      zuluscsi_msc_loop();
       logmsg("Re-processing filenames and zuluscsi.ini config parameters");
       zuluscsi_setup_sd_card();
     }

@@ -29,8 +29,8 @@
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_msc.h"
 
-#include "msc.h"
-#include "msc_device.h"
+#include <class/msc/msc.h>
+#include <class/msc/msc_device.h>
 
 #if CFG_TUD_MSC_EP_BUFSIZE < SD_SECTOR_SIZE
   #error "CFG_TUD_MSC_EP_BUFSIZE is too small! It needs to be at least 512 (SD_SECTOR_SIZE)"
@@ -41,7 +41,7 @@ extern SdFs SD;
 static bool unitReady = false;
 
 /* return true if USB presence detected / eligble to enter CR mode */
-bool platform_senseMSC() {
+bool platform_sense_msc() {
 
 #ifdef ZULUSCSI_PICO
   // check if we're USB powered, if not, exit immediately
@@ -66,12 +66,12 @@ bool platform_senseMSC() {
 }
 
 /* return true if we should remain in card reader mode and perform periodic tasks */
-bool platform_runMSC() {
+bool platform_run_msc() {
   return unitReady;
 }
 
 /* perform MSC class preinit tasks */
-void platform_enterMSC() {
+void platform_enter_msc() {
   dbgmsg("USB MSC buffer size: ", CFG_TUD_MSC_EP_BUFSIZE);
   // MSC is ready for read/write
   // we don't need any prep, but the var is requried as the MSC callbacks are always active
@@ -79,7 +79,7 @@ void platform_enterMSC() {
 }
 
 /* perform any cleanup tasks for the MSC-specific functionality */
-void platform_exitMSC() {
+void platform_exit_msc() {
   unitReady = false;
 }
 
@@ -200,16 +200,7 @@ extern "C" int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset,
   // only blink fast on reads; writes will override this
   if (MSC_LEDMode == LED_SOLIDON)
     MSC_LEDMode = LED_BLINK_FAST;
-    
- /*
- // debug check: only needed if changed the TUD MSC buffer, but did not recompile tinyusb  code
- if (bufsize < SD_SECTOR_SIZE)
-    logmsg ("ERROR: USB MSC CFG_TUD_MSC_EP_BUFSIZE (",bufsize,") is smaller than SD card sector size! Card reader will not work.");
-
-  if (bufsize % SD_SECTOR_SIZE)
-    logmsg ("ERROR: USB MSC CFG_TUD_MSC_EP_BUFSIZE (",bufsize,") is not a multiple of SD card sector size! Card reader will not work.");   
-  */
-
+  
   return rc ? bufsize : -1;
 }
 
