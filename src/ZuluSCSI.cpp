@@ -9,6 +9,7 @@
  *  
  * This work incorporates work by following
  *  Copyright (c) 2023 joshua stein <jcs@jcs.org>
+ *  Copyright (c) 2023 zigzagjoe
  * 
  *  This file is free software: you may copy, redistribute and/or modify it  
  *  under the terms of the GNU General Public License as published by the  
@@ -56,6 +57,7 @@
 #include "ZuluSCSI_settings.h"
 #include "ZuluSCSI_disk.h"
 #include "ZuluSCSI_initiator.h"
+#include "ZuluSCSI_msc.h"
 #include "ROMDrive.h"
 
 SdFs SD;
@@ -719,10 +721,10 @@ static void reinitSCSI()
 #endif // ZULUSCSI_NETWORK
   
 }
-extern "C" void zuluscsi_setup(void)
+// Place all the setup code that requires the SD card to be initialized here
+// Which is pretty much everything after platform_init and and platform_late_init
+static void zuluscsi_setup_sd_card()
 {
-  platform_init();
-  platform_late_init();
 
   g_sdcard_present = mountSDCard();
 
@@ -782,8 +784,6 @@ extern "C" void zuluscsi_setup(void)
 
   }
 
-  logmsg("Initialization complete!");
-
   if (g_sdcard_present)
   {
     init_logfile();
@@ -795,6 +795,31 @@ extern "C" void zuluscsi_setup(void)
 
   // Counterpart for the LED_ON in reinitSCSI().
   LED_OFF();
+}
+
+extern "C" void zuluscsi_setup(void)
+{
+  platform_init();
+  platform_late_init();
+  zuluscsi_setup_sd_card();
+
+#ifdef PLATFORM_MASS_STORAGE
+  static bool check_mass_storage = true;
+  if (check_mass_storage && g_scsi_settings.getSystem()->enableUSBMassStorage)
+  {
+    check_mass_storage = false;
+    
+    // perform checks to see if a computer is attached and return true if we should enter MSC mode.
+    if (platform_senseMSC())
+    {
+      zuluscsi_MSC_loop();
+      logmsg("Re-processing filenames and zuluscsi.ini config parameters");
+      zuluscsi_setup_sd_card();
+    }
+  }
+#endif
+
+  logmsg("Initialization complete!");
 }
 
 extern "C" void zuluscsi_main_loop(void)
