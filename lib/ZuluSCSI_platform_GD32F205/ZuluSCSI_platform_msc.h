@@ -28,7 +28,7 @@
 #define SD_SECTOR_SIZE 512
 
 /* USB Mass storage Standard Inquiry Data */
-const uint8_t STORAGE_InquiryData[] = {
+const uint8_t storageInquiryData[] = {
     /* LUN 0 */
     0x00,
     0x80,
