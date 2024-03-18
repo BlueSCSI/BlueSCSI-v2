@@ -38,6 +38,7 @@ void usb_serial_init(void)
     // set USB full speed prescaler and turn on USB clock
     rcu_usbfs_trng_clock_config(RCU_CKUSB_CKPLL_DIV2_5);
     rcu_periph_clock_enable(RCU_USBFS);
+    
     usbd_init(&cdc_acm, USB_CORE_ENUM_FS, &gd32_cdc_desc, &gd32_cdc_class);
 
     // USB full speed Interrupt config
@@ -48,7 +49,8 @@ void usb_serial_init(void)
 
 bool usb_serial_ready(void)
 {
-    if (USBD_CONFIGURED == cdc_acm.dev.cur_status) 
+    // check that (our) serial is the currently active class
+    if ((USBD_CONFIGURED == cdc_acm.dev.cur_status) && (cdc_acm.dev.desc == &gd32_cdc_desc)) 
     {
         if (1U == gd32_cdc_acm_check_ready(&cdc_acm)) 
         {
@@ -72,7 +74,6 @@ void usb_udelay (const uint32_t usec)
 {
     delay_us(usec);
 }
-
 
 void usb_mdelay (const uint32_t msec)
 {

@@ -59,4 +59,30 @@ OF SUCH DAMAGE.
 #define USB_CDC_DATA_PACKET_SIZE            64U   /* Endpoint IN & OUT Packet size */
 #define CDC_IN_FRAME_INTERVAL               5U   /* Number of frames between IN transfers */
 
+#ifdef PLATFORM_MASS_STORAGE
+    /* MSC  */
+
+    #define USBD_MSC_INTERFACE              0U
+
+    /* class layer parameter */
+    #define MSC_IN_EP                       EP1_IN
+    #define MSC_OUT_EP                      EP1_OUT
+
+    #define MSC_DATA_PACKET_SIZE            64U
+    /* recommend 4096 as a minimum - SD real sector size */
+    #define MSC_MEDIA_PACKET_SIZE           4096U
+
+    #define MEM_LUN_NUM                     1U
+
+#else
+    /* minimums to compile but not allocate storage */
+    #define USBD_MSC_INTERFACE              0xF
+    #define MEM_LUN_NUM                     0U
+    #define MSC_DATA_PACKET_SIZE            0U
+    #define MSC_MEDIA_PACKET_SIZE           0U
+    #define MSC_IN_EP                       0U
+    #define MSC_OUT_EP                      0U
+
+#endif
+
 #endif /* __USBD_CONF_H */
