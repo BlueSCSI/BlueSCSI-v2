@@ -111,11 +111,13 @@ void scsi_accel_sync_init()
     // };
     // dma_single_data_mode_init(SCSI_EXMC_DMA, SCSI_EXMC_DMACH, &exmc_dma_config);
     gpio_mode_set(SCSI_IN_ACK_EXMC_NWAIT_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, SCSI_IN_ACK_EXMC_NWAIT_PIN);
+    gpio_output_options_set(SCSI_IN_ACK_EXMC_NWAIT_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_200MHZ, SCSI_IN_ACK_EXMC_NWAIT_PIN);
     gpio_af_set(SCSI_IN_ACK_EXMC_NWAIT_PORT, GPIO_AF_12, SCSI_IN_ACK_EXMC_NWAIT_PIN);
 
     // TIMER1 CH0 port and pin enable
     gpio_mode_set(SCSI_ACK_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, SCSI_ACK_PIN);
     gpio_af_set(SCSI_ACK_PORT, GPIO_AF_1, SCSI_ACK_PIN);
+    
     // TIMER1 is used to count ACK pulses
     TIMER_CTL0(SCSI_SYNC_TIMER) = 0;
     TIMER_SMCFG(SCSI_SYNC_TIMER) = TIMER_SLAVE_MODE_EXTERNAL0 | TIMER_SMCFG_TRGSEL_CI0FE0;
@@ -126,6 +128,12 @@ void scsi_accel_sync_init()
 
 void scsi_accel_sync_recv(uint8_t *data, uint32_t count, int* parityError, volatile int *resetFlag)
 {
+    // Set SCSI data IN pins to external memory mode
+    gpio_mode_set(SCSI_IN_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, SCSI_IN_MASK);
+    gpio_output_options_set(SCSI_IN_PORT, GPIO_PUPD_NONE, GPIO_OSPEED_200MHZ, SCSI_IN_MASK);
+    gpio_af_set(SCSI_IN_PORT, GPIO_AF_12, SCSI_IN_MASK);
+
+    
     // Enable EXMC to drive REQ from EXMC_NOE pin
     EXMC_SNCTL(EXMC_BANK0_NORSRAM_REGION0) |= EXMC_SNCTL_NRBKEN;
 
@@ -136,9 +144,8 @@ void scsi_accel_sync_recv(uint8_t *data, uint32_t count, int* parityError, volat
     uint32_t oldmode_gpio_omode = GPIO_OMODE(SCSI_OUT_REQ_EXMC_NOE_PORT);
     uint32_t oldmode_gpio_af = GPIO_AFSEL0(SCSI_OUT_REQ_EXMC_NOE_PORT);
 
-    // @TODO figure out ouput speed should be set to 200MHz
     gpio_af_set(SCSI_OUT_REQ_EXMC_NOE_PORT, GPIO_AF_12, SCSI_OUT_REQ_EXMC_NOE_PIN);
-    gpio_output_options_set(SCSI_OUT_REQ_EXMC_NOE_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_REQ_EXMC_NOE_PIN);
+    gpio_output_options_set(SCSI_OUT_REQ_EXMC_NOE_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_200MHZ, SCSI_OUT_REQ_EXMC_NOE_PIN);
     gpio_mode_set(SCSI_OUT_REQ_EXMC_NOE_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, SCSI_OUT_REQ_EXMC_NOE_PIN);
     
     while (count > 0)
@@ -149,11 +156,11 @@ void scsi_accel_sync_recv(uint8_t *data, uint32_t count, int* parityError, volat
         // dma_memory_address_config(SCSI_EXMC_DMA, SCSI_EXMC_DMACH, 0, (uint32_t)g_sync_dma_buf);
         // dma_transfer_number_config(SCSI_EXMC_DMA, SCSI_EXMC_DMACH, blocksize);
         // dma_channel_enable(SCSI_EXMC_DMA, SCSI_EXMC_DMACH);
-
         uint16_t *src = (uint16_t*)g_sync_dma_buf;
         uint8_t *dst = data;
         uint8_t *end = data + blocksize;
         uint32_t start = millis();
+
         while (dst < end)
         {
             // Read from EXMC and write to internal RAM
@@ -187,7 +194,6 @@ void scsi_accel_sync_recv(uint8_t *data, uint32_t count, int* parityError, volat
     GPIO_OMODE(SCSI_OUT_REQ_EXMC_NOE_PORT) = oldmode_gpio_omode;
     GPIO_PUD(SCSI_OUT_REQ_EXMC_NOE_PORT) = oldmode_gpio_pud;
     GPIO_AFSEL0(SCSI_OUT_REQ_EXMC_NOE_PORT) = oldmode_gpio_af;
-
 
 
 }
@@ -301,7 +307,7 @@ static void sync_send_100ns_15off(const uint8_t *buf, uint32_t num_bytes, volati
         "   subs  %[num_bytes], %[num_bytes], #16 \n"
         "   bmi     last_bytes_%= \n"
 
-       /* At each point make sure there is at most 15 bytes in flight */
+        /* At each point make sure there is at most 15 bytes in flight */
         "   ldr   %[data], [%[buf]], #4 \n"
         ASM_SEND_4BYTES_WAIT("26")
         ASM_DELAY2()

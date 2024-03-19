@@ -38,7 +38,6 @@ extern "C" {
 
 extern const char *g_platform_name;
 
-
 #if defined(ZULUSCSI_V1_4)
 #   define PLATFORM_NAME "ZuluSCSI v1.4"
 #   define PLATFORM_REVISION "1.4"
@@ -77,7 +76,8 @@ static inline void delay_us(unsigned long us)
 // Approximate fast delay
 static inline void delay_100ns()
 {
-    asm volatile ("nop \n nop \n nop \n nop \n nop");
+//    asm volatile ("nop \n nop \n nop \n nop \n nop");
+   asm volatile ("nop \n nop \n nop \n nop \n nop");
 }
 
 // Initialize SPI and GPIO configuration
