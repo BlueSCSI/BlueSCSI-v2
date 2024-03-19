@@ -47,6 +47,8 @@
 #define SCSI_OUT_PLD4 GPIO_PIN_7
 
 // Control signals for timer based DMA acceleration
+// TIMER7_CH1 triggers DMACHA
+// TIMER7_CH3 triggers DMACHB
 #define SCSI_TIMER TIMER7
 #define SCSI_TIMER_RCU RCU_TIMER7
 #define SCSI_TIMER_OUT_PORT GPIOB

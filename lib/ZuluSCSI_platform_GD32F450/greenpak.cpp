@@ -63,7 +63,7 @@ static void greenpak_gpio_init()
     uint32_t greenpak_io = GREENPAK_PLD_IO1 | GREENPAK_PLD_IO2 | GREENPAK_PLD_IO3;
     gpio_bit_reset(SCSI_OUT_PORT, greenpak_io);
     gpio_mode_set(GREENPAK_PLD_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, greenpak_io);
-    gpio_output_options_set(GREENPAK_PLD_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, greenpak_io);
+    gpio_output_options_set(GREENPAK_PLD_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_200MHZ, greenpak_io);
     
 }
 
