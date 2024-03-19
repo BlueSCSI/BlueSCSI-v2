@@ -25,8 +25,6 @@
 #include "ZuluSCSI_platform.h"
 
 #ifdef SD_USE_SDIO
-
-
 extern "C"
 {
 #include "gd32f4xx_sdio.h"

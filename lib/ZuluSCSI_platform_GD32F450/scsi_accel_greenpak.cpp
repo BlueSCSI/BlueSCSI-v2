@@ -141,7 +141,7 @@ void scsi_accel_greenpak_send(const uint32_t *buf, uint32_t num_words, volatile 
     // Disable external logic and set REQ pin as output
     GPIO_BC(SCSI_OUT_PORT) = GREENPAK_PLD_IO2;
     gpio_mode_set(SCSI_OUT_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE , SCSI_OUT_REQ);
-    gpio_output_options_set(SCSI_OUT_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_REQ);
+    gpio_output_options_set(SCSI_OUT_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_200MHZ, SCSI_OUT_REQ);
 }
 
 /**********************************************/
@@ -381,7 +381,7 @@ void scsi_accel_greenpak_recv(uint32_t *buf, uint32_t num_words, volatile int *r
     // Disable external logic and set REQ pin as output
     GPIO_BC(SCSI_OUT_PORT) = GREENPAK_PLD_IO2;
     gpio_mode_set(SCSI_OUT_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, SCSI_OUT_REQ);
-    gpio_output_options_set(SCSI_OUT_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_REQ);
+    gpio_output_options_set(SCSI_OUT_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_200MHZ, SCSI_OUT_REQ);
     GPIO_BC(SCSI_OUT_PORT) = GREENPAK_PLD_IO3;
 }
 
