@@ -153,7 +153,7 @@ static void selectPhyMode()
     int default_mode = PHY_MODE_BEST_AVAILABLE;
 
     // Read overriding setting from configuration file
-    int wanted_mode = getSystemSettings()->deviceType;
+    int wanted_mode = g_scsi_settings.getSystem()->phyMode;
 
     // Default: software GPIO bitbang, available on all revisions
     g_scsi_phy_mode = PHY_MODE_PIO;
@@ -602,6 +602,9 @@ void SCSI_SEL_IRQ (void)
 
 static void init_irqs()
 {
+    // Enable SYSCFG clock to set EXTI lines
+    rcu_periph_clock_enable(RCU_SYSCFG);
+
     // Falling edge of RST pin
     gpio_mode_set(SCSI_RST_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_RST_PIN);
     syscfg_exti_line_config(SCSI_RST_EXTI_SOURCE_PORT, SCSI_RST_EXTI_SOURCE_PIN);
@@ -610,14 +613,16 @@ static void init_irqs()
     NVIC_EnableIRQ(SCSI_RST_IRQn);
 
     // Rising edge of BSY pin
-    gpio_mode_set(SCSI_BSY_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_BSY_PIN);
+    // \todo unsure if this should be commented out
+    // gpio_mode_set(SCSI_BSY_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_BSY_PIN);
     syscfg_exti_line_config(SCSI_BSY_EXTI_SOURCE_PORT, SCSI_BSY_EXTI_SOURCE_PIN);
     exti_init(SCSI_BSY_EXTI, EXTI_INTERRUPT, EXTI_TRIG_RISING);
     NVIC_SetPriority(SCSI_BSY_IRQn, 1);
     NVIC_EnableIRQ(SCSI_BSY_IRQn);
 
     // Falling edge of SEL pin
-    gpio_mode_set(SCSI_SEL_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_SEL_PIN);
+    // \todo unsure if this should be commented out
+    // gpio_mode_set(SCSI_SEL_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_SEL_PIN);
     syscfg_exti_line_config(SCSI_SEL_EXTI_SOURCE_PORT, SCSI_SEL_EXTI_SOURCE_PIN);
     exti_init(SCSI_SEL_EXTI, EXTI_INTERRUPT, EXTI_TRIG_FALLING);
     NVIC_SetPriority(SCSI_SEL_IRQn, 1);

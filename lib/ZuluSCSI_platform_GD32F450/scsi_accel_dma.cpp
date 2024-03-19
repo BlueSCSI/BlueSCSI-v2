@@ -121,7 +121,7 @@ void scsi_accel_timer_dma_init()
     };
     dma_multi_data_mode_init(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, &timer_dma_config);
     dma_channel_subperipheral_select(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, SCSI_TIMER_DMACHB_SUB_PERIPH);
-    NVIC_SetPriority(SCSI_TIMER_DMACHB_IRQn, 2);
+    NVIC_SetPriority(SCSI_TIMER_DMACHB_IRQn, 128); // Priority = 128 to make sure this is lower priority independent of priority grouping
     NVIC_EnableIRQ(SCSI_TIMER_DMACHB_IRQn);
 
     g_scsi_dma.timer_buf = TIMER_SWEVG_UPG;
@@ -145,8 +145,9 @@ void scsi_accel_timer_dma_init()
     TIMER_CH1CV(SCSI_TIMER) = 1; // Copy data when ACK goes low
     TIMER_CH2CV(SCSI_TIMER) = 1; // REQ is low until ACK goes low
     TIMER_CH3CV(SCSI_TIMER) = 2; // Reset timer after ACK goes high & previous DMA is complete
+
     gpio_mode_set(SCSI_TIMER_IN_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, SCSI_TIMER_IN_PIN);
-    gpio_af_set(SCSI_TIMER_IN_PORT, SCSI_TIMER_IN_AF, SCSI_TIMER_IN_PIN);   
+    gpio_af_set(SCSI_TIMER_IN_PORT, SCSI_TIMER_IN_AF, SCSI_TIMER_IN_PIN);    
     scsi_accel_dma_stopWrite();
 }
 
@@ -155,12 +156,6 @@ static void scsi_dma_gpio_config(bool enable)
 {
     if (enable)
     {
-        //gpio_init(SCSI_OUT_PORT, GPIO_MODE_IPU, GPIO_OSPEED_50MHZ, SCSI_OUT_REQ);
-
-        gpio_mode_set(SCSI_OUT_PORT, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, SCSI_OUT_REQ);
-        
-
-
         if (g_scsi_dma_use_greenpak)
         {
             GPIO_BC(SCSI_OUT_PORT) = GREENPAK_PLD_IO1;
@@ -168,9 +163,9 @@ static void scsi_dma_gpio_config(bool enable)
         }
         else
         {
+            gpio_mode_set(SCSI_OUT_PORT, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, SCSI_OUT_REQ);
             gpio_mode_set(SCSI_TIMER_OUT_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, SCSI_TIMER_OUT_PIN);
-            // @TODO determine if the output should be set to 200MHZ instead of 50MHZ
-            gpio_output_options_set(SCSI_TIMER_OUT_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SCSI_TIMER_OUT_PIN);
+            gpio_output_options_set(SCSI_TIMER_OUT_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_200MHZ, SCSI_TIMER_OUT_PIN);
             gpio_af_set(SCSI_TIMER_OUT_PORT, SCSI_TIMER_OUT_AF, SCSI_TIMER_OUT_PIN);
         }
     }
@@ -178,10 +173,10 @@ static void scsi_dma_gpio_config(bool enable)
     {
         GPIO_BC(SCSI_OUT_PORT) = GREENPAK_PLD_IO2;
         gpio_mode_set(SCSI_TIMER_OUT_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, SCSI_TIMER_OUT_PIN);
-        gpio_output_options_set(SCSI_TIMER_OUT_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SCSI_TIMER_OUT_PIN);
+        gpio_output_options_set(SCSI_TIMER_OUT_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_200MHZ, SCSI_TIMER_OUT_PIN);
         
         gpio_mode_set(SCSI_OUT_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, SCSI_OUT_REQ);
-        gpio_output_options_set(SCSI_OUT_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_REQ);
+        gpio_output_options_set(SCSI_OUT_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_200MHZ, SCSI_OUT_REQ);
     }
 }
 
@@ -292,13 +287,9 @@ static void stop_dma()
     greenpak_stop_dma();
 
     dma_channel_disable(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA);
-    // DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA) &= ~DMA_CHXCTL_CHEN;
     dma_channel_disable(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB);
-    // DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) &= ~DMA_CHXCTL_CHEN;
     dma_interrupt_disable(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA, DMA_CHXCTL_FTFIE | DMA_CHXCTL_HTFIE);
-    // DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA) &= ~(DMA_CHXCTL_FTFIE | DMA_CHXCTL_HTFIE);
     dma_interrupt_disable(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, DMA_CHXCTL_FTFIE);
-    //DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) &= ~DMA_CHXCTL_FTFIE;
 
     // Wait for ACK of the last byte
     volatile int timeout = 10000;
@@ -333,12 +324,7 @@ static void check_dma_next_buffer()
 // Convert new data from application buffer to DMA buffer
 extern "C" void SCSI_TIMER_DMACHA_IRQ()
 {
-    // dbgmsg("DMA irq A, counts: ", DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA), " ",
-    //             DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB), " ",
-    //             TIMER_CNT(SCSI_TIMER));
-
- 
-   uint32_t intf0 = DMA_INTF0(SCSI_TIMER_DMA);
+    uint32_t intf0 = DMA_INTF0(SCSI_TIMER_DMA);
     uint32_t intf1 = DMA_INTF1(SCSI_TIMER_DMA);
 
     if (dma_interrupt_flag_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA, DMA_FLAG_HTF))
@@ -413,57 +399,11 @@ extern "C" void SCSI_TIMER_DMACHB_IRQ()
                 __enable_irq();
             }
 
-            // Verify the first byte of the new data has been written to outputs
-            // It may have been updated after the DMA write occurred.
-/*  @TODO Is this still needed?
-            __disable_irq();
-            uint32_t first_data_idx = g_scsi_dma.dma_idx - (g_scsi_dma.bytes_dma - g_scsi_dma.scheduled_dma);
-            uint32_t first_data = g_scsi_dma.dma_buf[first_data_idx & DMA_BUF_MASK];
-            GPIO_BOP(SCSI_OUT_PORT) = first_data;
-            __enable_irq();
-*/
             // Update the total number of bytes available for DMA
             uint32_t dma_to_schedule = g_scsi_dma.bytes_app - g_scsi_dma.scheduled_dma;
             dma_channel_disable(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB);
             dma_transfer_number_config(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, dma_to_schedule);
             dma_channel_enable(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB);
-            g_scsi_dma.scheduled_dma += dma_to_schedule;
-        }
-        else
-        {
-            // No more data available
-            stop_dma();
-        }
-    }
-
-
-
-    // dbgmsg("DMA irq B, counts: ", DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHA), " ",
-    //             DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB), " ",
-    //             TIMER_CNT(SCSI_TIMER));
-    if (dma_interrupt_flag_get(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, DMA_FLAG_FTF))
-    {
-        dma_interrupt_flag_clear(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB, DMA_FLAG_FTF);
-
-        if (g_scsi_dma.bytes_app > g_scsi_dma.scheduled_dma)
-        {
-            if (g_scsi_dma.dma_idx < g_scsi_dma.dma_fillto)
-            {
-                // Previous request didn't have a complete buffer worth of data.
-                // Refill the buffer and ensure that the first byte of the new data gets
-                // written to outputs.
-                __disable_irq();
-                refill_dmabuf();
-                __enable_irq();
-            }
-
-
-
-            // Update the total number of bytes available for DMA
-            uint32_t dma_to_schedule = g_scsi_dma.bytes_app - g_scsi_dma.scheduled_dma;
-            DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) &= ~DMA_CHXCTL_CHEN;
-            DMA_CHCNT(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) = dma_to_schedule;
-            DMA_CHCTL(SCSI_TIMER_DMA, SCSI_TIMER_DMACHB) |= DMA_CHXCTL_CHEN;
             g_scsi_dma.scheduled_dma += dma_to_schedule;
         }
         else
