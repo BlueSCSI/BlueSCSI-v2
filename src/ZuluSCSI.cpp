@@ -461,10 +461,10 @@ bool findHDDImages()
         if (blksize)
         {
           int blktmp = strtoul(blksize + 1, NULL, 10);
-          if (blktmp == 256 || blktmp == 512 || blktmp == 1024 ||
-              blktmp == 2048 || blktmp == 4096 || blktmp == 8192)
+          if (8 <= blktmp && blktmp <= 64 * 1024)
           {
             blk = blktmp;
+            logmsg("-- Using custom block size, ",(int) blk," from filename: ", name);
           }
         }
 
