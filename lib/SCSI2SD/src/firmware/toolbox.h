@@ -22,7 +22,6 @@
 #define S2S_TOOLBOX_H
 #include <inttypes.h>
 int8_t scsiToolboxEnabled(void);
-void scsiToolboxCBDLen(uint8_t command, uint8_t *command_length);
 int scsiToolboxCommand(void);
 
 #endif

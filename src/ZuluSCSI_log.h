@@ -102,6 +102,7 @@ inline void dbgmsg(Params... params)
     }
 }
 
+#ifdef NETWORK_DEBUG_LOGGING
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -120,4 +121,5 @@ void dbgmsg_f(const char *format, ...);
 
 #ifdef __cplusplus
 }
+#endif
 #endif

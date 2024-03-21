@@ -161,6 +161,8 @@ void ZuluSCSISettings::setDefaultDriveInfo(uint8_t scsiId, const char *presetNam
     if (m_devPreset[scsiId] == DEV_PRESET_NONE)
     {
         cfgDev.deviceType = type;
+        cfgDev.deviceType = ini_getl(section, "Type", cfgDev.deviceType, CONFIGFILE);
+        
         if (cfgSys.quirks == S2S_CFG_QUIRKS_APPLE)
         {
             // Use default drive IDs that are recognized by Apple machines
@@ -207,7 +209,6 @@ void ZuluSCSISettings::setDefaultDriveInfo(uint8_t scsiId, const char *presetNam
 // Read device settings
 static void readIniSCSIDeviceSetting(scsi_device_settings_t &cfg, const char *section)
 {
-    cfg.deviceType = ini_getl(section, "Type", cfg.deviceType, CONFIGFILE);
     cfg.deviceTypeModifier = ini_getl(section, "TypeModifier", cfg.deviceTypeModifier, CONFIGFILE);
     cfg.sectorsPerTrack = ini_getl(section, "SectorsPerTrack", cfg.sectorsPerTrack, CONFIGFILE);
     cfg.headsPerCylinder = ini_getl(section, "HeadsPerCylinder", cfg.headsPerCylinder, CONFIGFILE);
@@ -224,6 +225,8 @@ static void readIniSCSIDeviceSetting(scsi_device_settings_t &cfg, const char *se
 
     cfg.sectorSDBegin = ini_getl(section, "SectorSDBegin", cfg.sectorSDBegin, CONFIGFILE);
     cfg.sectorSDEnd = ini_getl(section, "SectorSDEnd", cfg.sectorSDEnd, CONFIGFILE);
+
+    cfg.vendorExtensions = ini_getl(section, "VendorExtensions", cfg.vendorExtensions, CONFIGFILE);
 
     char tmp[32];
     ini_gets(section, "Vendor", "", tmp, sizeof(tmp), CONFIGFILE);
@@ -286,6 +289,7 @@ scsi_system_settings_t *ZuluSCSISettings::initSystem(const char *presetName)
     cfgSys.enableParity = true;
     cfgSys.useFATAllocSize = false;
     cfgSys.enableCDAudio = false;
+    cfgSys.enableUSBMassStorage = false;
     
     // setting set for all or specific devices
     cfgDev.deviceType = S2S_CFG_NOT_SET;
@@ -304,6 +308,8 @@ scsi_system_settings_t *ZuluSCSISettings::initSystem(const char *presetName)
 
     cfgDev.sectorSDBegin = 0;
     cfgDev.sectorSDEnd = 0;
+
+    cfgDev.vendorExtensions = 0;
 
     // System-specific defaults
 
@@ -375,6 +381,9 @@ scsi_system_settings_t *ZuluSCSISettings::initSystem(const char *presetName)
     cfgSys.enableParity =  ini_getbool("SCSI", "EnableParity", cfgSys.enableParity, CONFIGFILE);
     cfgSys.useFATAllocSize = ini_getbool("SCSI", "UseFATAllocSize", cfgSys.useFATAllocSize, CONFIGFILE);
     cfgSys.enableCDAudio = ini_getbool("SCSI", "EnableCDAudio", cfgSys.enableCDAudio, CONFIGFILE);
+
+    cfgSys.enableUSBMassStorage = ini_getbool("SCSI", "EnableUSBMassStorage", cfgSys.enableUSBMassStorage, CONFIGFILE);
+    
     return &cfgSys;
 }
 

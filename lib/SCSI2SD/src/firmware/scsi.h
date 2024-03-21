@@ -102,6 +102,7 @@ typedef struct
 	ScsiSense sense;
 
 	uint16_t unitAttention; // Set to the sense qualifier key to be returned.
+	uint8_t unitAttentionStop; // Indicates if unit attention has to be stopped.
 
 	// Only let the reserved initiator talk to us.
 	// A 3rd party may be sending the RESERVE/RELEASE commands
@@ -181,6 +182,12 @@ typedef struct
 	uint32_t hostSpeedKBs;
 	int hostSpeedMeasured;
 } ScsiDevice;
+
+typedef enum
+{
+	VENDOR_EXTENSION_OPTICAL_PLEXTOR = 1 << 0,
+} VENDOR_EXTENSION_OPTICAL;
+
 
 extern ScsiDevice scsiDev;
 

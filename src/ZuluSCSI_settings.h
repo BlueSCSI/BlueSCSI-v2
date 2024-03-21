@@ -65,6 +65,7 @@ typedef struct __attribute__((__packed__)) scsi_system_settings_t
     bool enableParity;
     bool useFATAllocSize;
     bool enableCDAudio;
+    bool enableUSBMassStorage;
 } scsi_system_settings_t;
 
 // This struct should only have new setting added to the end
@@ -93,6 +94,8 @@ typedef struct __attribute__((__packed__)) scsi_device_settings_t
 
     uint32_t sectorSDBegin;
     uint32_t sectorSDEnd;
+
+    uint32_t vendorExtensions;
 } scsi_device_settings_t;
 
 

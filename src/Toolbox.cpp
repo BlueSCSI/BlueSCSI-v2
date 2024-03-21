@@ -40,13 +40,6 @@ extern "C" int8_t scsiToolboxEnabled()
     return enabled == 1;
 }
 
-extern "C" void scsiToolboxCBDLen(uint8_t command, uint8_t* command_length)
-{
-  if (0xD0 <= command && command <= 0xDA)
-  {
-    *command_length = 10;
-  }
-}
 
 static bool toolboxFilenameValid(const char* name, bool isCD = false)
 {

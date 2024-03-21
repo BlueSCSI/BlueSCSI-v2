@@ -29,7 +29,7 @@
 
 const char *g_log_firmwareversion = ZULU_FW_VERSION " " __DATE__ " " __TIME__;
 
-bool g_log_debug = true;
+bool g_log_debug = false;
 
 // This memory buffer can be read by debugger and is also saved to zululog.txt
 #define LOGBUFMASK (LOGBUFSIZE - 1)
@@ -199,6 +199,8 @@ const char *log_get_buffer(uint32_t *startpos, uint32_t *available)
     return result;
 }
 
+
+#ifdef NETWORK_DEBUG_LOGGING
 // TODO write directly global log buffer to save some memory
 static char shared_log_buf[1500 * 3];
 
@@ -267,5 +269,5 @@ void dbgmsg_buf(const unsigned char *buf, unsigned long size)
         return;
     log_hex_buf(buf, size, true);
 }
-
+#endif // NETWORK_DEBUG_LOGGING
 

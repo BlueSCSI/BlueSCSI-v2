@@ -133,17 +133,14 @@ void SysTick_Handle_PreEmptively()
 // Clock has already been initialized by system_gd32f20x.c
 void platform_init()
 {
-
     SystemCoreClockUpdate();
-    nvic_priority_group_set(NVIC_PRIGROUP_PRE2_SUB2);
+
     // Enable SysTick to drive millis()
+    // \todo not sure if this is needed
+    // nvic_priority_group_set(NVIC_PRIGROUP_PRE2_SUB2);
     g_millisecond_counter = 0;
     SysTick_Config(SystemCoreClock / 1000U);
-    nvic_irq_enable(SysTick_IRQn, 0x00U, 0x00U);
-    //NVIC_SetPriority(SysTick_IRQn, 0x00U);
-    //NVIC_EnableIRQ(SysTick_IRQn);
-
-    
+    NVIC_SetPriority(SysTick_IRQn, 0x00U);
 
     // Enable DWT counter to drive delay_ns()
     g_ns_to_cycles = ((uint64_t)SystemCoreClock << 32) / 1000000000;
@@ -152,11 +149,11 @@ void platform_init()
 
     // Enable debug output on SWO pin
     DBG_CTL0 |= DBG_CTL0_TRACE_IOEN;
-    //TODO figure out if this code needs to execute - TPI_ACPR == 99 at the if statement below
-    //if (TPI->ACPR == 0)
+    // if (TPI->ACPR == 0)
     {
         CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
-        TPI->ACPR = SystemCoreClock / 2000000 - 1; // 2 Mbps baudrate for SWO
+        TPI->ACPR = SystemCoreClock / 115200 - 1; // Serial speed baudrate for SWO
+        // TPI->ACPR = SystemCoreClock / 2000000 - 1; // 2 Mbps baudrate for SWO
         // TPI->ACPR = SystemCoreClock / 30000000 - 1; // 30 Mbps baudrate for SWO
         TPI->SPPR = 2;
         TPI->FFCR = 0x100; // TPIU packet framing disabled
@@ -218,31 +215,45 @@ void platform_init()
     gpio_mode_set(SCSI_TERM_EN_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, SCSI_TERM_EN_PIN);
     gpio_output_options_set(SCSI_TERM_EN_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_2MHZ, SCSI_TERM_EN_PIN);
 
+#ifndef SD_USE_SDIO
+    // SD card pins using SPI
+    gpio_init(SD_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SD_CS_PIN);
+    gpio_init(SD_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, SD_CLK_PIN);
+    gpio_init(SD_PORT, GPIO_MODE_IPU, 0, SD_MISO_PIN);
+    gpio_init(SD_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, SD_MOSI_PIN);
+#else
     // SD card pins using SDIO
     gpio_mode_set(SD_SDIO_DATA_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, SD_SDIO_D0 | SD_SDIO_D1 | SD_SDIO_D2 | SD_SDIO_D3);
-    gpio_output_options_set(SD_SDIO_DATA_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SD_SDIO_D0 | SD_SDIO_D1 | SD_SDIO_D2 | SD_SDIO_D3);
+    gpio_output_options_set(SD_SDIO_DATA_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_200MHZ, SD_SDIO_D0 | SD_SDIO_D1 | SD_SDIO_D2 | SD_SDIO_D3);
     gpio_af_set(SD_SDIO_DATA_PORT, GPIO_AF_12, SD_SDIO_D0 | SD_SDIO_D1 | SD_SDIO_D2 | SD_SDIO_D3);
 
     gpio_mode_set(SD_SDIO_CLK_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, SD_SDIO_CLK);
-    gpio_output_options_set(SD_SDIO_CLK_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SD_SDIO_CLK);
+    gpio_output_options_set(SD_SDIO_CLK_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_200MHZ, SD_SDIO_CLK);
     gpio_af_set(SD_SDIO_CLK_PORT, GPIO_AF_12, SD_SDIO_CLK);
 
     gpio_mode_set(SD_SDIO_CMD_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, SD_SDIO_CMD);
-    gpio_output_options_set(SD_SDIO_CMD_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, SD_SDIO_CMD);
+    gpio_output_options_set(SD_SDIO_CMD_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_200MHZ, SD_SDIO_CMD);
     gpio_af_set(SD_SDIO_CMD_PORT, GPIO_AF_12, SD_SDIO_CMD);
+
+#endif
+
+    // @TODO confirm dip switch 1 is not longer JTAG NJTRST
+    // Switch to SWD debug port (disable JTAG) to release PB4 as GPIO
+    //gpio_pin_remap_config(GPIO_SWJ_SWDPENABLE_REMAP, ENABLE);   
 
     // DIP switches
     gpio_mode_set(DIP_PORT, GPIO_MODE_INPUT, GPIO_PUPD_PULLDOWN, DIPSW1_PIN | DIPSW2_PIN | DIPSW3_PIN);
+
 
     // LED pins
     gpio_bit_set(LED_PORT, LED_PINS);
     gpio_mode_set(LED_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, LED_PINS);
     gpio_output_options_set(LED_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_2MHZ, LED_PINS);
-
-    // SWO trace pin on PB3  
+ 
+    // SWO trace pin on PB3
     gpio_mode_set(GPIOB, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO_PIN_3);
-    gpio_output_options_set(GPIOB, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_3);
-    gpio_af_set(GPIOB, GPIO_AF_0, GPIO_PIN_3);  
+    gpio_output_options_set(GPIOB, GPIO_OTYPE_PP, GPIO_OSPEED_200MHZ, GPIO_PIN_3);
+    gpio_af_set(GPIOB, GPIO_AF_0, GPIO_PIN_3);   
 }
 
 void platform_late_init()
@@ -250,8 +261,6 @@ void platform_late_init()
     logmsg("Platform: ", g_platform_name);
     logmsg("FW Version: ", g_log_firmwareversion);
     
-    
-
     if (gpio_input_bit_get(DIP_PORT, DIPSW3_PIN))
     {
         logmsg("DIPSW3 is ON: Enabling SCSI termination");
@@ -290,92 +299,34 @@ void platform_disable_led(void)
 }
 
 /*****************************************/
-/* Supply voltage monitor                */
-/*****************************************/
-
-// Use ADC to implement supply voltage monitoring for the +3.0V rail.
-// This works by sampling the Vrefint, which has
-// a voltage of 1.2 V, allowing to calculate the VDD voltage.
-static void adc_poll()
-{
-#if PLATFORM_VDD_WARNING_LIMIT_mV > 0
-    static bool initialized = false;
-    static int lowest_vdd_seen = PLATFORM_VDD_WARNING_LIMIT_mV;
-
-    if (!initialized)
-    {
-        rcu_periph_clock_enable(RCU_ADC0);
-        adc_enable(ADC0);
-        adc_calibration_enable(ADC0);
-        adc_channel_16_to_18(ADC_TEMP_VREF_CHANNEL_SWITCH, ENABLE);
-        adc_inserted_channel_config(ADC0, 0, ADC_CHANNEL_17, ADC_SAMPLETIME_144);
-        //TODO can these be safely removed
-        /*
-        adc_external_trigger_source_config(ADC0, ADC_INSERTED_CHANNEL, ADC0_1_2_EXTTRIG_INSERTED_NONE);
-        adc_external_trigger_config(ADC0, ADC_INSERTED_CHANNEL, ENABLE);
-        */
-        adc_software_trigger_enable(ADC0, ADC_INSERTED_CHANNEL);
-        initialized = true;
-    }
-
-    // Read previous result and start new one
-    int adc_value = ADC_IDATA0(ADC0);
-    adc_software_trigger_enable(ADC0, ADC_INSERTED_CHANNEL);
-
-    // adc_value = 1200mV * 4096 / Vdd
-    // => Vdd = 1200mV * 4096 / adc_value
-    // To avoid wasting time on division, compare against
-    // limit directly.
-    const int limit = (1200 * 4096) / PLATFORM_VDD_WARNING_LIMIT_mV;
-    if (adc_value > limit)
-    {
-        // Warn once, and then again if we detect even a lower drop.
-        int vdd_mV = (1200 * 4096) / adc_value;
-        if (vdd_mV < lowest_vdd_seen)
-        {
-            logmsg("WARNING: Detected supply voltage drop to ", vdd_mV, "mV. Verify power supply is adequate.");
-            lowest_vdd_seen = vdd_mV - 50; // Small hysteresis to avoid excessive warnings
-        }
-    }
-#endif
-}
-
-/*****************************************/
 /* Debug logging and watchdog            */
 /*****************************************/
 
 // Send log data to USB UART if USB is connected.
 // Data is retrieved from the shared log ring buffer and
 // this function sends as much as fits in USB CDC buffer.
-//
-// This is normally called by platform_reset_watchdog() in
-// the normal polling loop. If code hangs, the watchdog_callback()
-// also starts calling this after 2 seconds.
-// This ensures that log messages get passed even if code hangs,
-// but does not unnecessarily delay normal execution.
-static void usb_log_poll()
-{
-    static uint32_t logpos = 0;
 
-    if (usb_hs_ready())
-    {
-        // Retrieve pointer to log start and determine number of bytes available.
-        uint32_t available = 0;
-        const char *data = log_get_buffer(&logpos, &available);
-        // Limit to CDC packet size
-        uint32_t len = available;
-        if (len == 0) return;
-        if (len > USB_CDC_EP_IN_WORKING_SIZE) len = USB_CDC_EP_IN_WORKING_SIZE;
+// \todo add serial logging for the F4
+// static void usb_log_poll()
+// {
+//     static uint32_t logpos = 0;
 
-        // Update log position by the actual number of bytes sent
-        // If USB CDC buffer is full, this may be 0
-        usb_hs_send((uint8_t*)data, len);
-        logpos -= available - len;
-    }
-}
+//     if (usb_serial_ready())
+//     {
+//         // Retrieve pointer to log start and determine number of bytes available.
+//         uint32_t available = 0;
+//         const char *data = log_get_buffer(&logpos, &available);
+//         // Limit to CDC packet size
+//         uint32_t len = available;
+//         if (len == 0) return;
+//         if (len > USB_CDC_DATA_PACKET_SIZE) len = USB_CDC_DATA_PACKET_SIZE;
 
-
-
+//         // Update log position by the actual number of bytes sent
+//         // If USB CDC buffer is full, this may be 0
+//         usb_serial_send((uint8_t*)data, len);
+//         logpos -= available - len;
+//     }
+// }
 
 /*****************************************/
 /* Crash handlers                        */
@@ -554,7 +505,7 @@ void platform_reset_watchdog()
 void platform_poll()
 {
     // adc_poll();
-    usb_log_poll();
+    // usb_log_poll();
 }
 
 uint8_t platform_get_buttons()
