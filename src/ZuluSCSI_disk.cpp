@@ -250,6 +250,8 @@ static void scsiDiskSetImageConfig(uint8_t target_idx)
     img.reinsert_on_inquiry = devCfg->reinsertOnInquiry;
     img.reinsert_after_eject = devCfg->reinsertAfterEject;
     img.ejectButton = devCfg->ejectButton;
+    img.vendorExtensions = devCfg->vendorExtensions;
+
 #ifdef ENABLE_AUDIO_OUTPUT
     uint16_t vol = devCfg->vol;
     // Set volume on both channels
@@ -704,6 +706,7 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
         int ret = ini_gets(section, key, "", buf, buflen, CONFIGFILE);
         if (buf[0] != '\0')
         {
+            img.deviceType = g_scsi_settings.getDevice(target_idx)->deviceType;
             return ret;
         }
         else if (img.image_index > 0)
@@ -1112,6 +1115,10 @@ static void doReadCapacity()
     {
         uint32_t highestBlock = capacity - 1;
 
+	if (pmi && scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_EWSD)
+	{
+		highestBlock = 0x00001053;
+	}
         scsiDev.data[0] = highestBlock >> 24;
         scsiDev.data[1] = highestBlock >> 16;
         scsiDev.data[2] = highestBlock >> 8;

@@ -89,7 +89,8 @@ typedef enum
 	S2S_CFG_QUIRKS_OMTI = 2,
 	S2S_CFG_QUIRKS_XEBEC = 4,
 	S2S_CFG_QUIRKS_VMS = 8,
-	S2S_CFG_QUIRKS_X68000 = 16
+	S2S_CFG_QUIRKS_X68000 = 16,
+	S2S_CFG_QUIRKS_EWSD = 32
 } S2S_CFG_QUIRKS;
 
 typedef enum
@@ -132,7 +133,10 @@ typedef struct __attribute__((packed))
 
 	uint16_t quirks; // S2S_CFG_QUIRKS
 
-	uint8_t reserved[64]; // Pad out to 128 bytes for main section.
+	// bit flags vendor extention for specific device types
+	uint32_t vendorExtensions;
+
+	uint8_t reserved[60]; // Pad out to 128 bytes for main section.
 } S2S_TargetCfg;
 
 typedef struct __attribute__((packed))

@@ -28,7 +28,7 @@
 #include <ZuluSCSI_platform.h>
 
 // Use variables for version number
-#define FW_VER_NUM      "23.12.14"
+#define FW_VER_NUM      "24.03.19"
 #define FW_VER_SUFFIX   "dev"
 #define ZULU_FW_VERSION FW_VER_NUM "-" FW_VER_SUFFIX
 
@@ -89,7 +89,7 @@
 // Default SCSI drive information when Apple quirks are enabled
 #define APPLE_DRIVEINFO_FIXED     {"CDC",      "ZuluSCSI HDD",      PLATFORM_REVISION, "1.0"}
 #define APPLE_DRIVEINFO_REMOVABLE {"IOMEGA",   "BETA230",           PLATFORM_REVISION, "2.02"}
-#define APPLE_DRIVEINFO_OPTICAL   {"MATSHITA", "CD-ROM CR-8004A",   PLATFORM_REVISION, "2.0a"}
+#define APPLE_DRIVEINFO_OPTICAL   {"MATSHITA", "CD-ROM CR-8004",    PLATFORM_REVISION, "1.1f"}
 #define APPLE_DRIVEINFO_FLOPPY    {"IOMEGA",     "Io20S         *F", "PP33", ""}
 #define APPLE_DRIVEINFO_MAGOPT    {"MOST",     "RMD-5200",          PLATFORM_REVISION, "1.0"}
 #define APPLE_DRIVEINFO_NETWORK   {"Dayna",    "SCSI/Link",       "2.0f", ""}

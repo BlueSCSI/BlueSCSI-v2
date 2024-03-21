@@ -1,5 +1,5 @@
 /** 
- * ZuluSCSI™ - Copyright (c) 2023 Rabbit Hole Computing™
+ * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
  * 
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  * 
@@ -21,7 +21,7 @@
 
 MEMORY
 {
-    FLASH(rx) : ORIGIN = 0x10000000, LENGTH = 576k
+    FLASH(rx) : ORIGIN = 0x10000000, LENGTH = $program_size
     RAM(rwx) : ORIGIN = 0x20000000, LENGTH = 256k  /* Leave space for pico-debug */
     SCRATCH_X(rwx) : ORIGIN = 0x20040000, LENGTH = 4k
     SCRATCH_Y(rwx) : ORIGIN = 0x20041000, LENGTH = 4k
@@ -39,8 +39,8 @@ SECTIONS
     } > FLASH
     ASSERT(__boot2_end__ - __boot2_start__ == 256,
         "ERROR: Pico second stage bootloader must be 256 bytes in size")
+
     /* If ZuluSCSI SD card bootloader is included, it goes in first 128 kB */
-    
     .text.bootloader : ALIGN(16) SUBALIGN(16)
     {
         KEEP(*(.text.btldr*))
@@ -73,6 +73,11 @@ SECTIONS
         /* Put only non-timecritical code in flash
          * This includes e.g. floating point math routines.
          */
+        .pio/build/$project_name/src/ZuluSCSI_log.cpp.o(.text .text*)
+        .pio/build/$project_name/src/ZuluSCSI_log_trace.cpp.o(.text .text*)
+        .pio/build/$project_name/src/ZuluSCSI_settings.cpp.o(.text .text*)
+        .pio/build/$project_name/src/QuirksCheck.cpp.o(.text .text*)
+        *libZuluSCSI_platform_RP2040.a:ZuluSCSI_platform.cpp.o(.text .text*)
         *libm*:(.text .text*)
         *libc*:(.text .text*)
         *libgcc*:*df*(.text .text*)
@@ -87,6 +92,7 @@ SECTIONS
         *libc*:*toa*(.text .text*)
         *libminIni.a:(.text .text*)
         *libCUEParser.a:(.text .text*)
+
         /* RP2040 breakpoints in RAM code don't always work very well
          * because the boot routine tends to overwrite them.
          * Uncommenting this line puts all code in flash.
@@ -132,7 +138,6 @@ SECTIONS
         . = ALIGN(4);
         *(.text)
         *(.text*)
-
         . = ALIGN(4);
         *(.data*)
         . = ALIGN(4);

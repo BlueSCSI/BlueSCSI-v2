@@ -37,23 +37,14 @@
 #include <hardware/structs/usb.h>
 #include "scsi_accel_target.h"
 
-#ifdef __MBED__
-#  include <platform/mbed_error.h>
-#endif // __MBED__
-
-#ifndef __MBED__
 #ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
 # include <SerialUSB.h>
 # include <class/cdc/cdc_device.h>
 #endif
-#else
-# include <USB/PluggableUSBSerial.h>
-#endif // __MBED__
 
-#ifndef ZULUSCSI_NETWORK
-#  include <multicore.h>
-#else
-#  include <pico/multicore.h> 
+#include <pico/multicore.h>
+
+#ifdef ZULUSCSI_NETWORK
 extern "C" {
 #  include <pico/cyw43_arch.h>
 } 
@@ -69,10 +60,6 @@ const char *g_platform_name = PLATFORM_NAME;
 static bool g_scsi_initiator = false;
 static uint32_t g_flash_chip_size = 0;
 static bool g_uart_initialized = false;
-
-#ifdef __MBED__
-void mbed_error_hook(const mbed_error_ctx * error_context);
-#endif // __MBED__
 
 /***************/
 /* GPIO init   */
@@ -225,9 +212,6 @@ void platform_init()
     g_uart_initialized = true;
 #endif // DISABLE_SWO
 
-#ifdef __MBED__
-    mbed_set_error_hook(mbed_error_hook);
-#endif // __MBED__
     logmsg("Platform: ", g_platform_name);
     logmsg("FW Version: ", g_log_firmwareversion);
 
@@ -366,11 +350,10 @@ void platform_late_init()
         gpio_conf(SCSI_IN_ATN,    GPIO_FUNC_SIO, true, false, false, true, false);
         gpio_conf(SCSI_IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
 
-#ifndef __MBED__
-# ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
+#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
     Serial.begin();
-# endif
-#endif // __MBED__
+#endif
+
 
 #ifdef ENABLE_AUDIO_OUTPUT
         // one-time control setup for DMA channels and second core
@@ -424,7 +407,6 @@ extern uint32_t __StackTop;
 void platform_emergency_log_save()
 {
     platform_set_sd_callback(NULL, NULL);
-
     SD.begin(SD_CONFIG_CRASH);
     FsFile crashfile = SD.open(CRASHFILE, O_WRONLY | O_CREAT | O_TRUNC);
 
@@ -444,21 +426,31 @@ void platform_emergency_log_save()
     crashfile.close();
 }
 
-#ifdef __MBED__
-void mbed_error_hook(const mbed_error_ctx * error_context)
+
+static void usb_log_poll();
+
+__attribute__((noinline))
+void show_hardfault(uint32_t *sp)
 {
+    uint32_t pc = sp[6];
+    uint32_t lr = sp[5];
+
     logmsg("--------------");
     logmsg("CRASH!");
     logmsg("Platform: ", g_platform_name);
     logmsg("FW Version: ", g_log_firmwareversion);
-    logmsg("error_status: ", (uint32_t)error_context->error_status);
-    logmsg("error_address: ", error_context->error_address);
-    logmsg("error_value: ", error_context->error_value);
     logmsg("scsiDev.cdb: ", bytearray(scsiDev.cdb, 12));
     logmsg("scsiDev.phase: ", (int)scsiDev.phase);
-    scsi_accel_log_state();
+    logmsg("SP: ", (uint32_t)sp);
+    logmsg("PC: ", pc);
+    logmsg("LR: ", lr);
+    logmsg("R0: ", sp[0]);
+    logmsg("R1: ", sp[1]);
+    logmsg("R2: ", sp[2]);
+    logmsg("R3: ", sp[3]);
 
-    uint32_t *p = (uint32_t*)((uint32_t)error_context->thread_current_sp & ~3);
+    uint32_t *p = (uint32_t*)((uint32_t)sp & ~3);
+
     for (int i = 0; i < 8; i++)
     {
         if (p == &__StackTop) break; // End of stack
@@ -471,24 +463,33 @@ void mbed_error_hook(const mbed_error_ctx * error_context)
 
     while (1)
     {
+        usb_log_poll();
         // Flash the crash address on the LED
         // Short pulse means 0, long pulse means 1
-        int base_delay = 1000;
+        int base_delay = 500;
         for (int i = 31; i >= 0; i--)
         {
             LED_OFF();
-            for (int j = 0; j < base_delay; j++) delay_ns(100000);
+            for (int j = 0; j < base_delay; j++) busy_wait_ms(1);
 
-            int delay = (error_context->error_address & (1 << i)) ? (3 * base_delay) : base_delay;
+            int delay = (pc & (1 << i)) ? (3 * base_delay) : base_delay;
             LED_ON();
-            for (int j = 0; j < delay; j++) delay_ns(100000);
+            for (int j = 0; j < delay; j++) busy_wait_ms(1);
             LED_OFF();
         }
 
-        for (int j = 0; j < base_delay * 10; j++) delay_ns(100000);
+        for (int j = 0; j < base_delay * 10; j++) busy_wait_ms(1);
     }
 }
-#endif // __MBED__
+
+__attribute__((naked, interrupt))
+void isr_hardfault(void)
+{
+    // Copies stack pointer into first argument
+    asm("mrs r0, msp\n"
+        "bl show_hardfault": : : "r0");
+}
+
 
 /*****************************************/
 /* Debug logging and watchdog            */
@@ -505,9 +506,8 @@ void mbed_error_hook(const mbed_error_ctx * error_context)
 // but does not unnecessarily delay normal execution.
 static void usb_log_poll()
 {
+#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
     static uint32_t logpos = 0;
-#ifndef __MBED__
-# ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
     if (Serial.availableForWrite())
     {
         // Retrieve pointer to log start and determine number of bytes available.
@@ -524,26 +524,7 @@ static void usb_log_poll()
         actual = Serial.write(data, len);
         logpos -= available - actual;
     }
-# endif // PIO_FRAMEWORK_ARDUINO_NO_USB
-#else
-    if (_SerialUSB.ready())
-    {
-        // Retrieve pointer to log start and determine number of bytes available.
-        uint32_t available = 0;
-        const char *data = log_get_buffer(&logpos, &available);
-
-        // Limit to CDC packet size
-        uint32_t len = available;
-        if (len == 0) return;
-        if (len > CDC_MAX_PACKET_SIZE) len = CDC_MAX_PACKET_SIZE;
-
-        // Update log position by the actual number of bytes sent
-        // If USB CDC buffer is full, this may be 0
-        uint32_t actual = 0;
-        _SerialUSB.send_nb((uint8_t*)data, len, &actual);
-        logpos -= available - actual;
-    }
-#endif // __MBED__
+#endif // PIO_FRAMEWORK_ARDUINO_NO_USB
 }
 
 
@@ -638,10 +619,11 @@ static void watchdog_callback(unsigned alarm_num)
             logmsg("scsiDev.phase: ", (int)scsiDev.phase);
             scsi_accel_log_state();
 
-            uint32_t *p = (uint32_t*)__get_PSP();
+            uint32_t *p =  (uint32_t*)__get_MSP();
+
             for (int i = 0; i < 8; i++)
             {
-                if (p == &__StackTop) break; // End of stack
+            if (p == &__StackTop) break; // End of stack
 
                 logmsg("STACK ", (uint32_t)p, ":    ", p[0], " ", p[1], " ", p[2], " ", p[3]);
                 p += 4;
@@ -654,14 +636,15 @@ static void watchdog_callback(unsigned alarm_num)
         if (g_watchdog_timeout <= 0)
         {
             logmsg("--------------");
-            logmsg("WATCHDOG TIMEOUT!");
+            logmsg("WATCHDOG TIMEOUT, already attempted bus reset, rebooting");
             logmsg("Platform: ", g_platform_name);
             logmsg("FW Version: ", g_log_firmwareversion);
             logmsg("GPIO states: out ", sio_hw->gpio_out, " oe ", sio_hw->gpio_oe, " in ", sio_hw->gpio_in);
             logmsg("scsiDev.cdb: ", bytearray(scsiDev.cdb, 12));
             logmsg("scsiDev.phase: ", (int)scsiDev.phase);
 
-            uint32_t *p = (uint32_t*)__get_PSP();
+            uint32_t *p =  (uint32_t*)__get_MSP();
+
             for (int i = 0; i < 8; i++)
             {
                 if (p == &__StackTop) break; // End of stack
@@ -678,7 +661,7 @@ static void watchdog_callback(unsigned alarm_num)
         }
     }
 
-    hardware_alarm_set_target(3, delayed_by_ms(get_absolute_time(), 1000));
+    hardware_alarm_set_target(alarm_num, delayed_by_ms(get_absolute_time(), 1000));
 }
 
 // This function can be used to periodically reset watchdog timer for crash handling.
@@ -686,7 +669,6 @@ static void watchdog_callback(unsigned alarm_num)
 void platform_reset_watchdog()
 {
     g_watchdog_timeout = WATCHDOG_CRASH_TIMEOUT;
-
 
     if (!g_watchdog_initialized)
     {
@@ -757,107 +739,7 @@ uint8_t platform_get_buttons()
     return buttons_debounced;
 }
 
-/*****************************************/
-/* Flash reprogramming from bootloader   */
-/*****************************************/
 
-#ifdef PLATFORM_BOOTLOADER_SIZE
-
-extern uint32_t __real_vectors_start;
-extern uint32_t __StackTop;
-static volatile void *g_bootloader_exit_req;
-
-__attribute__((section(".time_critical.platform_rewrite_flash_page")))
-bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_PAGE_SIZE])
-{
-    if (offset == PLATFORM_BOOTLOADER_SIZE)
-    {
-        if (buffer[3] != 0x20 || buffer[7] != 0x10)
-        {
-            logmsg("Invalid firmware file, starts with: ", bytearray(buffer, 16));
-            return false;
-        }
-    }
-
-
-#ifdef __MBED__
-    if (NVIC_GetEnableIRQ(USBCTRL_IRQn))
-    {
-        logmsg("Disabling USB during firmware flashing");
-        NVIC_DisableIRQ(USBCTRL_IRQn);
-        usb_hw->main_ctrl = 0;
-    }
-#endif // __MBED__
-
-    dbgmsg("Writing flash at offset ", offset, " data ", bytearray(buffer, 4));
-    assert(offset % PLATFORM_FLASH_PAGE_SIZE == 0);
-    assert(offset >= PLATFORM_BOOTLOADER_SIZE);
-
-    // Avoid any mbed timer interrupts triggering during the flashing.
-    __disable_irq();
-
-    // For some reason any code executed after flashing crashes
-    // unless we disable the XIP cache.
-    // Not sure why this happens, as flash_range_program() is flushing
-    // the cache correctly.
-    // The cache is now enabled from bootloader start until it starts
-    // flashing, and again after reset to main firmware.
-    xip_ctrl_hw->ctrl = 0;
-
-    flash_range_erase(offset, PLATFORM_FLASH_PAGE_SIZE);
-    flash_range_program(offset, buffer, PLATFORM_FLASH_PAGE_SIZE);
-
-    uint32_t *buf32 = (uint32_t*)buffer;
-    uint32_t num_words = PLATFORM_FLASH_PAGE_SIZE / 4;
-    for (int i = 0; i < num_words; i++)
-    {
-        uint32_t expected = buf32[i];
-        uint32_t actual = *(volatile uint32_t*)(XIP_NOCACHE_BASE + offset + i * 4);
-
-        if (actual != expected)
-        {
-            logmsg("Flash verify failed at offset ", offset + i * 4, " got ", actual, " expected ", expected);
-            __enable_irq();
-            return false;
-        }
-    }
-
-    __enable_irq();
-
-    return true;
-}
-
-void platform_boot_to_main_firmware()
-{
-    // To ensure that the system state is reset properly, we perform
-    // a SYSRESETREQ and jump straight from the reset vector to main application.
-    g_bootloader_exit_req = &g_bootloader_exit_req;
-    SCB->AIRCR = 0x05FA0004;
-    while(1);
-}
-
-void btldr_reset_handler()
-{
-    uint32_t* application_base = &__real_vectors_start;
-    if (g_bootloader_exit_req == &g_bootloader_exit_req)
-    {
-        // Boot to main application
-        application_base = (uint32_t*)(XIP_BASE + PLATFORM_BOOTLOADER_SIZE);
-    }
-
-    SCB->VTOR = (uint32_t)application_base;
-    __asm__(
-        "msr msp, %0\n\t"
-        "bx %1" : : "r" (application_base[0]),
-                    "r" (application_base[1]) : "memory");
-}
-
-// Replace the reset handler when building the bootloader
-// The rp2040_btldr.ld places real vector table at an offset.
-__attribute__((section(".btldr_vectors")))
-const void * btldr_vectors[2] = {&__StackTop, (void*)&btldr_reset_handler};
-
-#endif // PLATFORM_BOOTLOADER_SIZE
 
 /************************************/
 /* ROM drive in extra flash space   */
@@ -865,8 +747,10 @@ const void * btldr_vectors[2] = {&__StackTop, (void*)&btldr_reset_handler};
 
 #ifdef PLATFORM_HAS_ROM_DRIVE
 
-// Reserve up to 352 kB for firmware.
-#define ROMDRIVE_OFFSET (352 * 1024)
+# ifndef ROMDRIVE_OFFSET
+    // Reserve up to 352 kB for firmware by default.
+    #define ROMDRIVE_OFFSET (352 * 1024)
+# endif
 
 uint32_t platform_get_romdrive_maxsize()
 {
@@ -1019,33 +903,3 @@ const uint16_t g_scsi_parity_check_lookup[512] __attribute__((aligned(1024), sec
 #undef X
 
 } /* extern "C" */
-
-
-#ifdef __MBED__
-/* Logging from mbed */
-
-static class LogTarget: public mbed::FileHandle {
-public:
-    virtual ssize_t read(void *buffer, size_t size) { return 0; }
-    virtual ssize_t write(const void *buffer, size_t size)
-    {
-        // A bit inefficient but mbed seems to write() one character
-        // at a time anyways.
-        for (int i = 0; i < size; i++)
-        {
-            char buf[2] = {((const char*)buffer)[i], 0};
-            log_raw(buf);
-        }
-        return size;
-    }
-
-    virtual off_t seek(off_t offset, int whence = SEEK_SET) { return offset; }
-    virtual int close() { return 0; }
-    virtual off_t size() { return 0; }
-} g_LogTarget;
-
-mbed::FileHandle *mbed::mbed_override_console(int fd)
-{
-    return &g_LogTarget;
-}
-#endif // __MBED__

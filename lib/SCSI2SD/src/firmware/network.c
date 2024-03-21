@@ -105,6 +105,12 @@ int scsiNetworkCommand()
 
 	DBGMSG_F("------ in scsiNetworkCommand with command 0x%02x (size %d)", command, size);
 
+	// Rather than duplicating code, this just diverts a 'fake' read request to make the gvpscsi.device happy on the Amiga
+	if ((scsiDev.cdb[0] == SCSI_NETWORK_WIFI_CMD) && (scsiDev.cdb[1] == SCSI_NETWORK_WIFI_CMD_ALTREAD)) {
+		// Redirect the command as a READ.
+		command = 0x08;
+	}
+
 	switch (command) {
 	case 0x08:
 		// read(6)
@@ -132,7 +138,7 @@ int scsiNetworkCommand()
 			}
 			else if (psize + 6 > size)
 			{
-				logmsg_f("%s: packet size too big (%d)", __func__, psize);
+				LOGMSG_F("%s: packet size too big (%d)", __func__, psize);
 				psize = size - 6;
 			}
 
@@ -157,26 +163,62 @@ int scsiNetworkCommand()
 
 			DBGMSG_BUF(scsiDev.data, scsiDev.dataLen);
 		}
+		// Patches around the weirdness on the Amiga SCSI devices
+		if ((scsiDev.cdb[0] == SCSI_NETWORK_WIFI_CMD) && (scsiDev.cdb[1] == SCSI_NETWORK_WIFI_CMD_ALTREAD)) {
+			scsiDev.data[2] = scsiDev.cdb[2];	// for me really
+			int extra = 0;
+			if (scsiDev.cdb[2] == AMIGASCSI_PATCH_24BYTE_BLOCKSIZE) {
+				if (scsiDev.dataLen<90) scsiDev.dataLen = 90;
+				int missing = (scsiDev.dataLen-90) % 24;
+				if (missing) {
+					scsiDev.dataLen += 24 - missing;
+					if (scsiDev.dataLen>NETWORK_PACKET_MAX_SIZE) {
+						extra = scsiDev.dataLen - NETWORK_PACKET_MAX_SIZE;
+						scsiDev.dataLen = NETWORK_PACKET_MAX_SIZE;
+					}
+				}
+				scsiEnterPhase(DATA_IN);
+				scsiWrite(scsiDev.data, scsiDev.dataLen);
+				while (!scsiIsWriteFinished(NULL))
+				{
+					platform_poll();
+				}
+				scsiFinishWrite();
+			} else {
+				extra = scsiDev.dataLen;     // F9 means send in ONE transaction
+				if (extra) scsiEnterPhase(DATA_IN);
+			}
 
-		// DaynaPort driver needs a delay between reading the initial packet size and the data so manually do two transfers
-		scsiEnterPhase(DATA_IN);
-		scsiWrite(scsiDev.data, 6);
-		while (!scsiIsWriteFinished(NULL))
-		{
-			platform_poll();
-		}
-		scsiFinishWrite();
-
-		if (scsiDev.dataLen > 6)
-		{
-			s2s_delay_us(80);
-
-			scsiWrite(scsiDev.data + 6, scsiDev.dataLen - 6);
+			if (extra) {
+				// Just write the extra data to make the padding work for such a large packet
+				scsiWrite(scsiDev.data, extra);
+				while (!scsiIsWriteFinished(NULL))
+				{
+					platform_poll();
+				}
+				scsiFinishWrite();
+			}
+		} else {
+			// DaynaPort driver needs a delay between reading the initial packet size and the data so manually do two transfers
+			scsiEnterPhase(DATA_IN);
+			scsiWrite(scsiDev.data, 6);
 			while (!scsiIsWriteFinished(NULL))
 			{
 				platform_poll();
 			}
 			scsiFinishWrite();
+
+			if (scsiDev.dataLen > 6)
+			{
+				s2s_delay_us(80);
+
+				scsiWrite(scsiDev.data + 6, scsiDev.dataLen - 6);
+				while (!scsiIsWriteFinished(NULL))
+				{
+					platform_poll();
+				}
+				scsiFinishWrite();
+			}
 		}
 
 		scsiDev.status = GOOD;
@@ -329,7 +371,7 @@ int scsiNetworkCommand()
 				int size = sizeof(struct wifi_network_entry) * nets;
 				if (size + 2 > sizeof(scsiDev.data))
 				{
-					logmsg_f("WARNING: wifi_network_list is bigger than scsiDev.data, truncating");
+					LOGMSG_F("WARNING: wifi_network_list is bigger than scsiDev.data, truncating");
 					size = sizeof(scsiDev.data) - 2;
 					size -= (size % (sizeof(struct wifi_network_entry)));
 				}
@@ -378,7 +420,7 @@ int scsiNetworkCommand()
 			struct wifi_join_request req = { 0 };
 
 			if (size != sizeof(req)) {
-				logmsg_f("wifi_join_request bad size (%zu != %zu), ignoring", size, sizeof(req));
+				LOGMSG_F("wifi_join_request bad size (%zu != %zu), ignoring", size, sizeof(req));
 				scsiDev.status = CHECK_CONDITION;
 				scsiDev.phase = STATUS;
 				break;
@@ -395,6 +437,14 @@ int scsiNetworkCommand()
 			scsiDev.phase = STATUS;
 			break;
 		}
+
+		case SCSI_NETWORK_WIFI_CMD_GETMACADDRESS:
+			// Update for the gvpscsi.device on the Amiga as it doesn't like 0x09 command being called! - NOTE this only sends 6 bytes back
+			memcpy(scsiDev.data, scsiDev.boardCfg.wifiMACAddress, sizeof(scsiDev.boardCfg.wifiMACAddress));
+			memset(scsiDev.data + sizeof(scsiDev.boardCfg.wifiMACAddress), 0, sizeof(scsiDev.data) - sizeof(scsiDev.boardCfg.wifiMACAddress));
+
+			scsiDev.dataLen = 6;
+			scsiDev.phase = DATA_IN;
 		}
 		break;
 
@@ -434,7 +484,7 @@ int scsiNetworkEnqueue(const uint8_t *buf, size_t len)
 	{
 		DBGMSG_F("%s: dropping packets in ring, write index caught up to read index", __func__);
 	}
-	
+
 	return 1;
 }
 
@@ -453,7 +503,7 @@ int scsiNetworkPurge(void)
 			scsiNetworkOutboundQueue.readIndex = 0;
 		else
 			scsiNetworkOutboundQueue.readIndex++;
-		
+
 		sent++;
 	}
 

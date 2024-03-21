@@ -81,11 +81,19 @@ static struct {
     uint32_t sectorcount_all;
     uint32_t sectors_done;
     uint32_t max_sector_per_transfer;
+    uint32_t bad_sector_count;
+    uint8_t ansi_version;
+    uint8_t max_retry_count;
+    uint8_t device_type;
 
     // Retry information for sector reads.
     // If a large read fails, retry is done sector-by-sector.
     int retrycount;
     uint32_t failposition;
+    bool eject_when_done;
+    bool removable;
+
+    uint32_t removable_count[8];
 
     FsFile target_file;
 } g_initiator_state;
@@ -103,6 +111,12 @@ void scsiInitiatorInit()
         logmsg("InitiatorID set to illegal value in, ", CONFIGFILE, ", defaulting to 7");
         g_initiator_state.initiator_id = 7;
     }
+    else
+    {
+        logmsg("InitiatorID set to ID ", g_initiator_state.initiator_id);
+    }
+    g_initiator_state.max_retry_count = ini_getl("SCSI", "InitiatorMaxRetry", 5, CONFIGFILE);
+
     // treat initiator id as already imaged drive so it gets skipped
     g_initiator_state.drives_imaged = 1 << g_initiator_state.initiator_id;
 
@@ -114,7 +128,12 @@ void scsiInitiatorInit()
     g_initiator_state.retrycount = 0;
     g_initiator_state.failposition = 0;
     g_initiator_state.max_sector_per_transfer = 512;
-
+    g_initiator_state.ansi_version = 0;
+    g_initiator_state.bad_sector_count = 0;
+    g_initiator_state.device_type = SCSI_DEVICE_TYPE_DIRECT_ACCESS;
+    g_initiator_state.removable = false;
+    g_initiator_state.eject_when_done = false;
+    memset(g_initiator_state.removable_count, 0, sizeof(g_initiator_state.removable_count));
 
 }
 
@@ -150,6 +169,30 @@ void delay_with_poll(uint32_t ms)
     }
 }
 
+static int scsiTypeToIniType(int scsi_type, bool removable)
+{
+    int ini_type = -1;
+    switch (scsi_type)
+    {
+        case SCSI_DEVICE_TYPE_DIRECT_ACCESS:
+            ini_type = removable ? S2S_CFG_REMOVABLE : S2S_CFG_FIXED;
+            break;
+        case 1:
+            ini_type = -1; // S2S_CFG_SEQUENTIAL
+            break;
+        case SCSI_DEVICE_TYPE_CD:
+            ini_type = S2S_CFG_OPTICAL;
+            break;
+        case SCSI_DEVICE_TYPE_MO:
+            ini_type = S2S_CFG_MO;
+            break;
+        default:
+            ini_type = -1;
+            break;
+    }
+    return ini_type;
+}
+
 // High level logic of the initiator mode
 void scsiInitiatorMainLoop()
 {
@@ -166,14 +209,14 @@ void scsiInitiatorMainLoop()
         g_initiator_state.sectors_done = 0;
         g_initiator_state.retrycount = 0;
         g_initiator_state.max_sector_per_transfer = 512;
+        g_initiator_state.bad_sector_count = 0;
+        g_initiator_state.eject_when_done = false;
 
         if (!(g_initiator_state.drives_imaged & (1 << g_initiator_state.target_id)))
         {
             delay_with_poll(1000);
 
-            uint8_t inquiry_data[36];
-	    char vendor[9], product[17], revision[5];
-	    int type;
+            uint8_t inquiry_data[36] = {0};
 
             LED_ON();
             bool startstopok =
@@ -188,14 +231,6 @@ void scsiInitiatorMainLoop()
             bool inquiryok = startstopok &&
                 scsiInquiry(g_initiator_state.target_id, inquiry_data);
 
-	    memcpy(vendor, &inquiry_data[8], 8);
-	    vendor[8]=0;
-	    memcpy(product, &inquiry_data[16], 16);
-	    product[16]=0;
-	    memcpy(revision, &inquiry_data[32], 4);
-	    revision[4]=0;
-	    type=inquiry_data[0]&0x1f;
-
             LED_OFF();
 
             uint64_t total_bytes = 0;
@@ -204,12 +239,6 @@ void scsiInitiatorMainLoop()
                 logmsg("SCSI ID ", g_initiator_state.target_id,
                     " capacity ", (int)g_initiator_state.sectorcount,
                     " sectors x ", (int)g_initiator_state.sectorsize, " bytes");
-
-		logmsg("[SCSI", g_initiator_state.target_id,"]");
-		logmsg("  Vendor = \"", vendor,"\"");
-		logmsg("  Product = \"", product,"\"");
-		logmsg("  Version = \"", revision,"\"");
-		logmsg("  Type = ", type);
 
                 g_initiator_state.sectorcount_all = g_initiator_state.sectorcount;
 
@@ -235,29 +264,88 @@ void scsiInitiatorMainLoop()
             }
             else
             {
+#ifndef ZULUSCSI_NETWORK
                 dbgmsg("Failed to connect to SCSI ID ", g_initiator_state.target_id);
+#endif
                 g_initiator_state.sectorsize = 0;
                 g_initiator_state.sectorcount = g_initiator_state.sectorcount_all = 0;
             }
 
             char filename_base[12];
             strncpy(filename_base, "HD00_imaged", sizeof(filename_base));
-            const char *filename_extention = ".hda";
+            const char *filename_extension = ".hda";
+
             if (inquiryok)
             {
-                if ((inquiry_data[0] & 0x1F) == 5)
+                char vendor[9], product[17], revision[5];
+                g_initiator_state.device_type=inquiry_data[0] & 0x1f;
+                g_initiator_state.ansi_version = inquiry_data[2] & 0x7;
+                g_initiator_state.removable = !!(inquiry_data[1] & 0x80);
+                g_initiator_state.eject_when_done = g_initiator_state.removable;
+                memcpy(vendor, &inquiry_data[8], 8);
+                vendor[8]=0;
+                memcpy(product, &inquiry_data[16], 16);
+                product[16]=0;
+                memcpy(revision, &inquiry_data[32], 4);
+                revision[4]=0;
+
+                if(g_initiator_state.ansi_version < 0x02)
+                {
+                    // this is a SCSI-1 drive, use READ6 and 256 bytes to be safe.
+                    g_initiator_state.max_sector_per_transfer = 256;
+                }
+                int ini_type = scsiTypeToIniType(g_initiator_state.device_type, g_initiator_state.removable);
+                logmsg("SCSI Version ", (int) g_initiator_state.ansi_version);
+                logmsg("[SCSI", g_initiator_state.target_id,"]");
+                logmsg("  Vendor = \"", vendor,"\"");
+                logmsg("  Product = \"", product,"\"");
+                logmsg("  Version = \"", revision,"\"");
+                if (ini_type == -1)
+                    logmsg("Type = Not Supported, trying direct access");
+                else
+                    logmsg("  Type = ", ini_type);
+
+                if (g_initiator_state.device_type == SCSI_DEVICE_TYPE_CD)
                 {
                     strncpy(filename_base, "CD00_imaged", sizeof(filename_base));
-                    filename_extention = ".iso";
+                    filename_extension = ".iso";
                 }
+                else if (g_initiator_state.device_type == SCSI_DEVICE_TYPE_MO)
+                {
+                    strncpy(filename_base, "MO00_imaged", sizeof(filename_base));
+                    filename_extension = ".img";
+                }
+                else if (g_initiator_state.device_type != SCSI_DEVICE_TYPE_DIRECT_ACCESS)
+                {
+                    logmsg("Unhandled scsi device type: ", g_initiator_state.device_type, ". Handling it as Direct Access Device.");
+                    g_initiator_state.device_type = SCSI_DEVICE_TYPE_DIRECT_ACCESS;
+                }
+
+                if (g_initiator_state.device_type == SCSI_DEVICE_TYPE_DIRECT_ACCESS && g_initiator_state.removable)
+                {
+                    strncpy(filename_base, "RM00_imaged", sizeof(filename_base));
+                    filename_extension = ".img";
+                }
+            }
+
+            if (g_initiator_state.eject_when_done && g_initiator_state.removable_count[g_initiator_state.target_id] == 0)
+            {
+                g_initiator_state.removable_count[g_initiator_state.target_id] = 1;
             }
 
             if (g_initiator_state.sectorcount > 0)
             {
                 char filename[32] = {0};
                 filename_base[2] += g_initiator_state.target_id;
-                strncpy(filename, filename_base, sizeof(filename) - 1);
-                strncat(filename, filename_extention, sizeof(filename) - 1);
+                if (g_initiator_state.eject_when_done)
+                {
+                    auto removable_count = g_initiator_state.removable_count[g_initiator_state.target_id];
+                    snprintf(filename, sizeof(filename), "%s(%lu)%s",filename_base, removable_count, filename_extension);
+                }
+                else
+                {
+                    snprintf(filename, sizeof(filename), "%s%s", filename_base, filename_extension);
+                }
                 static int handling = -1;
                 if (handling == -1)
                 {
@@ -291,12 +379,16 @@ void scsiInitiatorMainLoop()
                             return;
                         }
                         char filename_copy[6] = {0};
-                        snprintf(filename_copy, sizeof(filename_copy), "_%03lu", i);
-
-                        strncpy(filename, filename_base, sizeof(filename) - 1);
-                        strncat(filename, filename_copy, sizeof(filename) - 1);
-                        strncat(filename, filename_extention, sizeof(filename) - 1);
-
+                        if (g_initiator_state.eject_when_done)
+                        {
+                            auto removable_count = g_initiator_state.removable_count[g_initiator_state.target_id];
+                            snprintf(filename, sizeof(filename), "%s(%lu)-%03lu%s", filename_base, removable_count, i, filename_extension);
+                        }
+                        else
+                        {
+                            snprintf(filename, sizeof(filename), "%s-%03lu%s", filename_base, i, filename_extension);
+                        }
+                        snprintf(filename_copy, sizeof(filename_copy), "-%03lu", i);
                         if (SD.exists(filename))
                             continue;
                         break;
@@ -333,7 +425,7 @@ void scsiInitiatorMainLoop()
                     return;
                 }
 
-                g_initiator_state.target_file = SD.open(filename, O_RDWR | O_CREAT | O_TRUNC);
+                g_initiator_state.target_file = SD.open(filename, O_WRONLY | O_CREAT | O_TRUNC);
                 if (!g_initiator_state.target_file.isOpen())
                 {
                     logmsg("Failed to open file for writing: ", filename);
@@ -368,7 +460,17 @@ void scsiInitiatorMainLoop()
                 logmsg("Please reformat the SD card with exFAT format to image this drive fully");
             }
 
-            g_initiator_state.drives_imaged |= (1 << g_initiator_state.target_id);
+            if(g_initiator_state.bad_sector_count != 0)
+            {
+                logmsg("NOTE: There were ",  (int) g_initiator_state.bad_sector_count, " bad sectors that could not be read off this drive.");
+            }
+
+            if (!g_initiator_state.eject_when_done)
+            {
+                logmsg("Marking SCSI ID, ", g_initiator_state.target_id, ", as imaged, wont ask it again.");
+                g_initiator_state.drives_imaged |= (1 << g_initiator_state.target_id);
+            }
+
             g_initiator_state.imaging = false;
             g_initiator_state.target_file.close();
             return;
@@ -394,11 +496,12 @@ void scsiInitiatorMainLoop()
         {
             logmsg("Failed to transfer ", numtoread, " sectors starting at ", (int)g_initiator_state.sectors_done);
 
-            if (g_initiator_state.retrycount < 5)
+            if (g_initiator_state.retrycount < g_initiator_state.max_retry_count)
             {
-                logmsg("Retrying.. ", g_initiator_state.retrycount, "/5");
+                logmsg("Retrying.. ", g_initiator_state.retrycount + 1, "/", (int) g_initiator_state.max_retry_count);
                 delay_with_poll(200);
-                scsiHostPhyReset();
+                // This reset causes some drives to hang and seems to have no effect if left off.
+                // scsiHostPhyReset();
                 delay_with_poll(200);
 
                 g_initiator_state.retrycount++;
@@ -415,6 +518,7 @@ void scsiInitiatorMainLoop()
                 logmsg("Retry limit exceeded, skipping one sector");
                 g_initiator_state.retrycount = 0;
                 g_initiator_state.sectors_done++;
+                g_initiator_state.bad_sector_count++;
                 g_initiator_state.target_file.seek((uint64_t)g_initiator_state.sectors_done * g_initiator_state.sectorsize);
             }
         }
@@ -427,7 +531,8 @@ void scsiInitiatorMainLoop()
             int speed_kbps = numtoread * g_initiator_state.sectorsize / (millis() - time_start);
             logmsg("SCSI read succeeded, sectors done: ",
                   (int)g_initiator_state.sectors_done, " / ", (int)g_initiator_state.sectorcount,
-                  " speed ", speed_kbps, " kB/s");
+                  " speed ", speed_kbps, " kB/s - ", 
+                  (int)(100 * g_initiator_state.sectors_done / g_initiator_state.sectorcount), "%");
         }
     }
 }
@@ -445,7 +550,9 @@ int scsiInitiatorRunCommand(int target_id,
 
     if (!scsiHostPhySelect(target_id, g_initiator_state.initiator_id))
     {
+#ifndef ZULUSCSI_NETWORK
         dbgmsg("------ Target ", target_id, " did not respond");
+#endif
         scsiHostPhyRelease();
         return -1;
     }
@@ -509,7 +616,9 @@ int scsiInitiatorRunCommand(int target_id,
             uint8_t tmp = -1;
             scsiHostRead(&tmp, 1);
             status = tmp;
+#ifndef ZULUSCSI_NETWORK
             dbgmsg("------ STATUS: ", tmp);
+#endif
         }
     }
 
@@ -568,9 +677,9 @@ bool scsiRequestSense(int target_id, uint8_t *sense_key)
                                          response, sizeof(response),
                                          NULL, 0);
 
-    logmsg("RequestSense response: ", bytearray(response, 18));
+    dbgmsg("RequestSense response: ", bytearray(response, 18));
 
-    *sense_key = response[2];
+    *sense_key = response[2] % 0xF;
     return status == 0;
 }
 
@@ -585,6 +694,15 @@ bool scsiStartStopUnit(int target_id, bool start)
         command[4] |= 1; // Start
         command[1] = 0;  // Immediate
     }
+    else // stop
+    {
+        if(g_initiator_state.eject_when_done)
+        {
+            logmsg("Ejecting media on SCSI ID: ", target_id);
+            g_initiator_state.removable_count[g_initiator_state.target_id]++;
+            command[4] = 0b00000010; // eject(6), stop(7).
+        }
+    }
 
     int status = scsiInitiatorRunCommand(target_id,
                                          command, sizeof(command),
@@ -595,7 +713,7 @@ bool scsiStartStopUnit(int target_id, bool start)
     {
         uint8_t sense_key;
         scsiRequestSense(target_id, &sense_key);
-        logmsg("START STOP UNIT on target ", target_id, " failed, sense key ", sense_key);
+        dbgmsg("START STOP UNIT on target ", target_id, " failed, sense key ", sense_key);
     }
 
     return status == 0;
@@ -640,18 +758,18 @@ bool scsiTestUnitReady(int target_id)
             if (sense_key == 6)
             {
                 uint8_t inquiry[36];
-                logmsg("Target ", target_id, " reports UNIT_ATTENTION, running INQUIRY");
+                dbgmsg("Target ", target_id, " reports UNIT_ATTENTION, running INQUIRY");
                 scsiInquiry(target_id, inquiry);
             }
             else if (sense_key == 2)
             {
-                logmsg("Target ", target_id, " reports NOT_READY, running STARTSTOPUNIT");
+                dbgmsg("Target ", target_id, " reports NOT_READY, running STARTSTOPUNIT");
                 scsiStartStopUnit(target_id, true);
             }
         }
         else
         {
-            logmsg("Target ", target_id, " TEST UNIT READY response: ", status);
+            dbgmsg("Target ", target_id, " TEST UNIT READY response: ", status);
         }
     }
 
@@ -769,7 +887,7 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
 
     // Read6 command supports 21 bit LBA - max of 0x1FFFFF
     // ref: https://www.seagate.com/files/staticfiles/support/docs/manual/Interface%20manuals/100293068j.pdf pg 134
-    if (start_sector < 0x1FFFFF && sectorcount <= 256)
+    if (g_initiator_state.ansi_version < 0x02 || (start_sector < 0x1FFFFF && sectorcount <= 256))
     {
         // Use READ6 command for compatibility with old SCSI1 drives
         uint8_t command[6] = {0x08,

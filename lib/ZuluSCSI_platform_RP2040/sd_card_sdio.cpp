@@ -95,7 +95,10 @@ bool SdioCard::begin(SdioConfig sdioConfig)
     // Establish initial connection with the card
     for (int retries = 0; retries < 5; retries++)
     {
-        delayMicroseconds(1000);
+        // After a hard fault crash, delayMicroseconds hangs
+        // using busy_wait_us_32 instead
+        // delayMicroseconds(1000);
+        busy_wait_us_32(1000);
         reply = 0;
         rp2040_sdio_command_R1(CMD0, 0, NULL); // GO_IDLE_STATE
         status = rp2040_sdio_command_R1(CMD8, 0x1AA, &reply); // SEND_IF_COND
