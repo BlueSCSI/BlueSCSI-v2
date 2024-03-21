@@ -18,6 +18,7 @@
 #include "scsi.h"
 #include "vendor.h"
 #include "diagnostic.h"
+#include "toolbox.h"
 
 // Callback after the DATA OUT phase is complete.
 static void doAssignDiskParameters(void)
@@ -95,6 +96,10 @@ int scsiVendorCommand()
 	  // XEBEC S1410 controller
 	  // Stub, return success
 	}   	
+	else if (scsiToolboxEnabled() && scsiToolboxCommand())
+	{
+		// already handled
+	}
 	else
 	{
 		commandHandled = 0;
@@ -103,3 +108,29 @@ int scsiVendorCommand()
 	return commandHandled;
 }
 
+void scsiVendorCommandSetLen(uint8_t command, uint8_t* command_length)
+{
+	if (scsiDev.target->cfg->deviceType == S2S_CFG_OPTICAL)
+	{
+		// Apple CD-ROM with CD audio over the SCSI bus
+		if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_APPLE && (command == 0xD8 || command == 0xD9))
+		{
+			scsiDev.cdbLen =  12;
+		}
+		// Plextor CD-ROM vendor extensions 0xD8
+		if (unlikely(scsiDev.target->cfg->vendorExtensions & VENDOR_EXTENSION_OPTICAL_PLEXTOR) && command == 0xD8)
+		{
+			scsiDev.cdbLen =  12;
+		}
+	}
+
+	if (scsiToolboxEnabled())
+	{
+		// Conflicts with Apple CD-ROM audio over SCSI bus and Plextor CD-ROM D8 extension
+		// Will override those commands if enabled
+		if (0xD0 <= command && command <= 0xDA)
+		{
+			*command_length = 10;
+		}
+	}
+}

@@ -902,12 +902,7 @@ void scsi_accel_rp2040_init()
         dma_channel_claim(SCSI_DMA_CH_D);
         g_channels_claimed = true;
     }
-
-#ifndef ZULUSCSI_NETWORK
-    // Load PIO programs
-    pio_clear_instruction_memory(SCSI_DMA_PIO);
-#endif // ZULUSCSI_NETWORK
-
+    
     // Parity lookup generator
     g_scsi_dma.pio_offset_parity = pio_add_program(SCSI_DMA_PIO, &scsi_parity_program);
     g_scsi_dma.pio_cfg_parity = scsi_parity_program_get_default_config(g_scsi_dma.pio_offset_parity);
