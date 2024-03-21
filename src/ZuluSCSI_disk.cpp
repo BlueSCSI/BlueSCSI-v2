@@ -1144,8 +1144,8 @@ static void doReadCapacity()
 /*************************/
 /* TestUnitReady command */
 /*************************/
-
-static int doTestUnitReady()
+extern "C"
+int doTestUnitReady()
 {
     int ready = 1;
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
@@ -1764,15 +1764,6 @@ int scsiDiskCommand()
         {
             scsiDev.target->started = 0;
         }
-    }
-    else if (unlikely(command == 0x00))
-    {
-        // TEST UNIT READY
-        doTestUnitReady();
-    }
-    else if (unlikely(!doTestUnitReady()))
-    {
-        // Status and sense codes already set by doTestUnitReady
     }
     else if (likely(command == 0x08))
     {

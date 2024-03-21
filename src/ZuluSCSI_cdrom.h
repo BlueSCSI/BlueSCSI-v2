@@ -22,7 +22,7 @@ void cdromPerformEject(image_config_t &img);
 void cdromReinsertFirstImage(image_config_t &img);
 
 // Switch to next CD-ROM image if multiple have been configured
-bool cdromSwitchNextImage(image_config_t &img);
+bool cdromSwitchNextImage(image_config_t &img,  const char* next_filename = nullptr);
 
 // Check if the currently loaded cue sheet for the image can be parsed
 // and print warnings about unsupported track types
