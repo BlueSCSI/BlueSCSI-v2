@@ -43,6 +43,7 @@ OF SUCH DAMAGE.
 #define USBD_ITF_MAX_NUM                    1
 
 #define CDC_COM_INTERFACE                   0
+#define USBD_MSC_INTERFACE              0U
 
 #define USB_STR_DESC_MAX_SIZE               255
 
@@ -50,12 +51,29 @@ OF SUCH DAMAGE.
 #define CDC_DATA_OUT_EP                     EP3_OUT /* EP3 for data OUT */
 #define CDC_CMD_EP                          EP2_IN  /* EP2 for CDC commands */
 
+#define MSC_IN_EP                       EP1_IN
+#define MSC_OUT_EP                      EP1_OUT
+
 #define USB_STRING_COUNT                    4
 
 #define USB_CDC_CMD_PACKET_SIZE             8    /* Control Endpoint Packet size */
 
 #define APP_RX_DATA_SIZE                    2048 /* Total size of IN buffer: 
                                                     APP_RX_DATA_SIZE*8 / MAX_BAUDARATE * 1000 should be > CDC_IN_FRAME_INTERVAL*8 */
+
+#ifdef USE_USB_HS
+    #ifdef USE_ULPI_PHY
+        #define MSC_DATA_PACKET_SIZE    512U
+    #else
+        #define MSC_DATA_PACKET_SIZE    64U
+    #endif
+#else /*USE_USB_FS*/
+    #define MSC_DATA_PACKET_SIZE        64U
+#endif
+
+#define MSC_MEDIA_PACKET_SIZE           4096U
+
+#define MEM_LUN_NUM                     1U
 
 /* CDC endpoints parameters: you can fine tune these values depending on the needed baud rate and performance */
 #ifdef USE_USB_HS
