@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2023-2024 zigzagjoe
+/** 
+ * ZuluSCSI™ - Copyright (c) 2023 Rabbit Hole Computing™
  * 
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  * 
@@ -19,19 +19,17 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
 
-#ifdef PLATFORM_MASS_STORAGE
 #pragma once
 
-// include platform-specific defines
-#include "ZuluSCSI_platform_msc.h"
+// init USB full speed interface
+void usb_serial_init(void);
+// check if the USB serial interface is ready to send data
+bool usb_serial_ready(void);
+// Send data of the USB serial interface
+void usb_serial_send(uint8_t *data, uint32_t length);
 
-// wait up to this long during init sequence for USB enumeration to enter card reader
-#define CR_ENUM_TIMEOUT 1000
-
-enum  MSC_LEDState { LED_SOLIDON = 0, LED_BLINK_FAST, LED_BLINK_SLOW };
-extern volatile enum MSC_LEDState MSC_LEDMode;
-
-// run cardreader main loop (blocking)
-void zuluscsi_msc_loop();
-
-#endif
+extern "C"
+{
+    // The USB full speed IRQ handler
+    void USBHS_IRQHandler(void);
+}

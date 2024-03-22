@@ -26,15 +26,3 @@
 void usb_hs_init(void);
 bool usb_hs_ready(void);
 void usb_hs_send(uint8_t *data, uint32_t length);
-
-extern "C"
-{
-// Interrupt handlers
-void USBHS_IRQHandler(void);
-#ifdef USB_HS_DEDICATED_EP1_ENABLED
-/* this function handles EP1_IN IRQ Handler */
-void USBHS_EP1_In_IRQHandler(void);
-/* this function handles EP1_OUT IRQ Handler */
-void USBHS_EP1_Out_IRQHandler(void);
-#endif /* USB_HS_DEDICATED_EP1_ENABLED */
-}
