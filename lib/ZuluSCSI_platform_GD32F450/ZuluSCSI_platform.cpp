@@ -30,6 +30,7 @@
 #include <SdFat.h>
 #include <scsi.h>
 #include <assert.h>
+#include "usb_serial.h"
 
 extern "C" {
 
@@ -307,26 +308,26 @@ void platform_disable_led(void)
 // this function sends as much as fits in USB CDC buffer.
 
 // \todo add serial logging for the F4
-// static void usb_log_poll()
-// {
-//     static uint32_t logpos = 0;
+static void usb_log_poll()
+{
+    static uint32_t logpos = 0;
 
-//     if (usb_serial_ready())
-//     {
-//         // Retrieve pointer to log start and determine number of bytes available.
-//         uint32_t available = 0;
-//         const char *data = log_get_buffer(&logpos, &available);
-//         // Limit to CDC packet size
-//         uint32_t len = available;
-//         if (len == 0) return;
-//         if (len > USB_CDC_DATA_PACKET_SIZE) len = USB_CDC_DATA_PACKET_SIZE;
+    if (usb_serial_ready())
+    {
+        // Retrieve pointer to log start and determine number of bytes available.
+        uint32_t available = 0;
+        const char *data = log_get_buffer(&logpos, &available);
+        // Limit to CDC packet size
+        uint32_t len = available;
+        if (len == 0) return;
+        if (len > USB_CDC_DATA_PACKET_SIZE) len = USB_CDC_DATA_PACKET_SIZE;
 
-//         // Update log position by the actual number of bytes sent
-//         // If USB CDC buffer is full, this may be 0
-//         usb_serial_send((uint8_t*)data, len);
-//         logpos -= available - len;
-//     }
-// }
+        // Update log position by the actual number of bytes sent
+        // If USB CDC buffer is full, this may be 0
+        usb_serial_send((uint8_t*)data, len);
+        logpos -= available - len;
+    }
+}
 
 /*****************************************/
 /* Crash handlers                        */
@@ -505,7 +506,7 @@ void platform_reset_watchdog()
 void platform_poll()
 {
     // adc_poll();
-    // usb_log_poll();
+    usb_log_poll();
 }
 
 uint8_t platform_get_buttons()
