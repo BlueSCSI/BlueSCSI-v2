@@ -544,7 +544,7 @@ sd_error_enum sd_block_read(uint32_t *preadbuffer, uint64_t readaddr, uint16_t b
     } else if(SD_DMA_MODE == transmode) {
         /* DMA mode */
         /* enable the SDIO corresponding interrupts and DMA function */
-        sdio_interrupt_enable(SDIO_INT_CCRCERR | SDIO_INT_DTTMOUT | SDIO_INT_RXORE | SDIO_INT_DTEND | SDIO_INT_STBITE);
+        sdio_interrupt_enable(SDIO_INT_DTCRCERR | SDIO_INT_DTTMOUT | SDIO_INT_RXORE | SDIO_INT_DTEND | SDIO_INT_STBITE);
         sdio_dma_enable();
         dma_receive_config(preadbuffer, blocksize);
         uint32_t start = millis();
@@ -716,14 +716,11 @@ sd_error_enum sd_multiblocks_read(uint32_t *preadbuffer, uint64_t readaddr, uint
                 if (callback)
                 {
                     // Note: GD32F4 DMA counts down from 0xFFFF when DMA flow control mode is "peripheral"
-                    uint32_t complete = (0xFFFF - DMA_CHCNT(DMA1, DMA_CH3) * 4);
+                    uint32_t complete = ((0xFFFF - DMA_CHCNT(DMA1, DMA_CH3)) * 4);
                     if (complete <= blocksize)
                     {
                         callback(complete);
                     }
-                    // \todo Figure out why the SDIO interrupt isn't firing
-                    // Forcing interrupt processing because interrupt doesn't seem to fire
-                    // sd_interrupts_process();
                 }
             }
             while((0 == transend) && (SD_OK == transerror)) {
@@ -731,8 +728,7 @@ sd_error_enum sd_multiblocks_read(uint32_t *preadbuffer, uint64_t readaddr, uint
                 {
                     callback(totalnumber_bytes);
                 }
-                // \todo Figure out why the SDIO interrupt isn't firing
-                // Forcing interrupt processing because interrupt doesn't seem to fire
+                // \todo delete me
                 sd_interrupts_process();
             }
             if(SD_OK != transerror) {
@@ -903,8 +899,8 @@ sd_error_enum sd_block_write(uint32_t *pwritebuffer, uint64_t writeaddr, uint16_
         /* DMA mode */
         /* enable the SDIO corresponding interrupts and DMA */
         sdio_interrupt_enable(SDIO_INT_DTCRCERR | SDIO_INT_DTTMOUT | SDIO_INT_TXURE | SDIO_INT_DTEND | SDIO_INT_STBITE);
-        dma_transfer_config(pwritebuffer, blocksize);
         sdio_dma_enable();
+        dma_transfer_config(pwritebuffer, blocksize);
 
         uint32_t start = millis();
         while((RESET == dma_flag_get(DMA1, DMA_CH3, DMA_FLAG_FTF))) {
@@ -926,6 +922,8 @@ sd_error_enum sd_block_write(uint32_t *pwritebuffer, uint64_t writeaddr, uint16_
             {
                 callback(blocksize);
             }
+            // \todo delete me
+            sd_interrupts_process();
         }
 
         if(SD_OK != transerror) {
@@ -1151,8 +1149,7 @@ sd_error_enum sd_multiblocks_write(uint32_t *pwritebuffer, uint64_t writeaddr, u
                 {
                     callback(totalnumber_bytes);
                 }
-                // \todo Figure out why the SDIO interrupt isn't firing
-                // Forcing interrupt processing because interrupt doesn't seem to fire
+                // \todo delete me
                 sd_interrupts_process();
             }
             if(SD_OK != transerror) {
