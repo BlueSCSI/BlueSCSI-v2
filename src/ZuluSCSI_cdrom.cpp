@@ -1244,7 +1244,7 @@ bool cdromSwitchNextImage(image_config_t &img, const char* next_filename)
     {
         logmsg("Switching to next CD-ROM image for ", target_idx, ": ", filename);
         img.file.close();
-        bool status = scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, 2048, S2S_CFG_OPTICAL);
+        bool status = scsiDiskOpenHDDImage(target_idx, filename, 0, 2048, S2S_CFG_OPTICAL);
 
         if (status)
         {
@@ -1532,7 +1532,7 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
                ", sector size ", (int) AUDIO_CD_SECTOR_LEN,
                ", data offset in file ", (int)offset);
     }
-    if (sector_type == SECTOR_TYPE_VENDOR_APPLE_300plus)
+    else if (sector_type == SECTOR_TYPE_VENDOR_APPLE_300plus)
     {
         trackinfo.sector_length = AUDIO_CD_SECTOR_LEN;
         trackinfo.track_mode = CUETrack_AUDIO;
