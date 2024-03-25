@@ -518,7 +518,7 @@ bool findHDDImages()
               logmsg("---- Using device preset: ", g_scsi_settings.getDevicePresetName(id));
           }
 
-          imageReady = scsiDiskOpenHDDImage(id, fullname, id, lun, blk, type);
+          imageReady = scsiDiskOpenHDDImage(id, fullname, lun, blk, type);
           if(imageReady)
           {
             foundImage = true;
@@ -668,7 +668,7 @@ static void reinitSCSI()
       snprintf(raw_filename, sizeof(raw_filename), "RAW:0x%X:0x%X", start, end);
     }
     
-    success = scsiDiskOpenHDDImage(scsiId, raw_filename, scsiId, 0,
+    success = scsiDiskOpenHDDImage(scsiId, raw_filename, 0,
                                    g_hw_config.blocksize(), g_hw_config.device_type());
     if (success)
     {
@@ -699,7 +699,7 @@ static void reinitSCSI()
   #ifdef RAW_FALLBACK_ENABLE
       logmsg("No images found, enabling RAW fallback partition");
       g_scsi_settings.initDevice(RAW_FALLBACK_SCSI_ID, S2S_CFG_FIXED);
-      scsiDiskOpenHDDImage(RAW_FALLBACK_SCSI_ID, "RAW:0:0xFFFFFFFF", RAW_FALLBACK_SCSI_ID, 0,
+      scsiDiskOpenHDDImage(RAW_FALLBACK_SCSI_ID, "RAW:0:0xFFFFFFFF", 0,
                           RAW_FALLBACK_BLOCKSIZE);
   #else
       logmsg("No valid image files found!");
