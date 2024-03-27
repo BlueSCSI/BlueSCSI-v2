@@ -142,7 +142,7 @@ bool scsiDiskActivateRomDrive()
 
     logmsg("---- Activating ROM drive, SCSI id ", (int)hdr.scsi_id, " size ", (int)(hdr.imagesize / 1024), " kB");
     g_scsi_settings.initDevice(hdr.scsi_id, hdr.drivetype);
-    bool status = scsiDiskOpenHDDImage(hdr.scsi_id, "ROM:", hdr.scsi_id, 0, hdr.blocksize, hdr.drivetype);
+    bool status = scsiDiskOpenHDDImage(hdr.scsi_id, "ROM:", 0, hdr.blocksize, hdr.drivetype);
 
     if (!status)
     {
@@ -264,7 +264,7 @@ static void scsiDiskSetImageConfig(uint8_t target_idx)
     memcpy(img.serial, devCfg->serial, sizeof(img.serial));
 }
 
-bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize, S2S_CFG_TYPE type)
+bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, int blocksize, S2S_CFG_TYPE type)
 {
     image_config_t &img = g_DiskImages[target_idx];
     img.cuesheetfile.close();
@@ -275,7 +275,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
     {
         img.bytesPerSector = blocksize;
         img.scsiSectors = img.file.size() / blocksize;
-        img.scsiId = scsi_id | S2S_CFG_TARGET_ENABLED;
+        img.scsiId = target_idx | S2S_CFG_TARGET_ENABLED;
         img.sdSectorStart = 0;
 
         if (type != S2S_CFG_NETWORK && img.scsiSectors == 0)
@@ -322,6 +322,10 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
         {
             logmsg("---- Configuring as CD-ROM drive");
             img.deviceType = S2S_CFG_OPTICAL;
+            if (g_scsi_settings.getDevice(target_idx)->vendorExtensions & VENDOR_EXTENSION_OPTICAL_PLEXTOR)
+            {
+                logmsg("---- Plextor 0xD8 vendor extension enabled");
+            }
         }
         else if (type == S2S_CFG_FLOPPY_14MB)
         {
@@ -738,7 +742,7 @@ void scsiDiskLoadConfig(int target_idx)
     {
         int blocksize = (img.deviceType == S2S_CFG_OPTICAL) ? 2048 : 512;
         logmsg("-- Opening '", filename, "' for id: ", target_idx);
-        scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, blocksize, (S2S_CFG_TYPE) img.deviceType);
+        scsiDiskOpenHDDImage(target_idx, filename, 0, blocksize, (S2S_CFG_TYPE) img.deviceType);
     }
 }
 

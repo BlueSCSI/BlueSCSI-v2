@@ -1244,7 +1244,7 @@ bool cdromSwitchNextImage(image_config_t &img, const char* next_filename)
     {
         logmsg("Switching to next CD-ROM image for ", target_idx, ": ", filename);
         img.file.close();
-        bool status = scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, 2048, S2S_CFG_OPTICAL);
+        bool status = scsiDiskOpenHDDImage(target_idx, filename, 0, 2048, S2S_CFG_OPTICAL);
 
         if (status)
         {
@@ -1532,7 +1532,7 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
                ", sector size ", (int) AUDIO_CD_SECTOR_LEN,
                ", data offset in file ", (int)offset);
     }
-    if (sector_type == SECTOR_TYPE_VENDOR_APPLE_300plus)
+    else if (sector_type == SECTOR_TYPE_VENDOR_APPLE_300plus)
     {
         trackinfo.sector_length = AUDIO_CD_SECTOR_LEN;
         trackinfo.track_mode = CUETrack_AUDIO;
@@ -1704,54 +1704,64 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
             diskEjectButtonUpdate(false);
         }
         if (scsiDev.resetFlag) break;
-
-        if (add_fake_headers)
+        if ((g_scsi_settings.getDevice(img.scsiId & 0x7)->vendorExtensions & VENDOR_EXTENSION_OPTICAL_PLEXTOR))
         {
-            // 12-byte data sector sync pattern
-            *buf++ = 0x00;
-            for (int i = 0; i < 10; i++)
+            if (sector_length > 0)
             {
-                *buf++ = 0xFF;
+                // User data
+                img.file.read(buf, sector_length);
+                buf += sector_length;
             }
-            *buf++ = 0x00;
-
-            // 4-byte data sector header
-            LBA2MSFBCD(lba + idx, buf, false);
-            buf += 3;
-            *buf++ = 0x01; // Mode 1
         }
-
-        if (sector_length > 0)
+        else 
         {
-            // User data
-            img.file.read(buf, sector_length);
-            buf += sector_length;
-        }
+            if (add_fake_headers)
+            {
+                // 12-byte data sector sync pattern
+                *buf++ = 0x00;
+                for (int i = 0; i < 10; i++)
+                {
+                    *buf++ = 0xFF;
+                }
+                *buf++ = 0x00;
 
-        if (add_fake_headers)
-        {
-            // 288 bytes of ECC
-            memset(buf, 0, 288);
-            buf += 288;
-        }
+                // 4-byte data sector header
+                LBA2MSFBCD(lba + idx, buf, false);
+                buf += 3;
+                *buf++ = 0x01; // Mode 1
+            }
 
-        if (field_q_subchannel)
-        {
-            // Formatted Q subchannel data
-            // Refer to table 354 in T10/1545-D MMC-4 Revision 5a
-            // and ECMA-130 22.3.3
-            *buf++ = (trackinfo.track_mode == CUETrack_AUDIO ? 0x10 : 0x14); // Control & ADR
-            *buf++ = trackinfo.track_number;
-            *buf++ = (lba + idx >= trackinfo.data_start) ? 1 : 0; // Index number (0 = pregap)
-            int32_t rel = (int32_t)(lba + idx) - (int32_t)trackinfo.data_start;
-            LBA2MSF(rel, buf, true); buf += 3;
-            *buf++ = 0;
-            LBA2MSF(lba + idx, buf, false); buf += 3;
-            *buf++ = 0; *buf++ = 0; // CRC (optional)
-            *buf++ = 0; *buf++ = 0; *buf++ = 0; // (pad)
-            *buf++ = 0; // No P subchannel
-        }
+            if (sector_length > 0)
+            {
+                // User data
+                img.file.read(buf, sector_length);
+                buf += sector_length;
+            }
 
+            if (add_fake_headers)
+            {
+                // 288 bytes of ECC
+                memset(buf, 0, 288);
+                buf += 288;
+            }
+
+            if (field_q_subchannel)
+            {
+                // Formatted Q subchannel data
+                // Refer to table 354 in T10/1545-D MMC-4 Revision 5a
+                // and ECMA-130 22.3.3
+                *buf++ = (trackinfo.track_mode == CUETrack_AUDIO ? 0x10 : 0x14); // Control & ADR
+                *buf++ = trackinfo.track_number;
+                *buf++ = (lba + idx >= trackinfo.data_start) ? 1 : 0; // Index number (0 = pregap)
+                int32_t rel = (int32_t)(lba + idx) - (int32_t)trackinfo.data_start;
+                LBA2MSF(rel, buf, true); buf += 3;
+                *buf++ = 0;
+                LBA2MSF(lba + idx, buf, false); buf += 3;
+                *buf++ = 0; *buf++ = 0; // CRC (optional)
+                *buf++ = 0; *buf++ = 0; *buf++ = 0; // (pad)
+                *buf++ = 0; // No P subchannel
+            }
+        }
         assert(buf == bufstart + result_length);
         scsiStartWrite(bufstart, result_length);
     }
