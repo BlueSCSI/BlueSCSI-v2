@@ -284,6 +284,7 @@ bool findHDDImages()
       bool is_ne = (tolower(name[0]) == 'n' && tolower(name[1]) == 'e');
       bool is_re = (tolower(name[0]) == 'r' && tolower(name[1]) == 'e');
       bool is_tp = (tolower(name[0]) == 't' && tolower(name[1]) == 'p');
+      bool is_zp = (tolower(name[0]) == 'z' && tolower(name[1]) == 'p');
 
       if(strcasecmp(name, "CLEAR_ROM") == 0)
       {
@@ -291,7 +292,7 @@ bool findHDDImages()
         continue;
       }
 
-      if (is_hd || is_cd || is_fd || is_mo || is_ne || is_re || is_tp)
+      if (is_hd || is_cd || is_fd || is_mo || is_ne || is_re || is_tp || is_zp)
       {
         // Check if the image should be loaded to microcontroller flash ROM drive
         bool is_romdrive = false;
@@ -371,6 +372,7 @@ bool findHDDImages()
         if (is_ne) type = S2S_CFG_NETWORK;
         if (is_re) type = S2S_CFG_REMOVEABLE;
         if (is_tp) type = S2S_CFG_SEQUENTIAL;
+        if (is_zp) type = S2S_CFG_ZIP100;
 
         // Open the image file
         if (id < NUM_SCSIID && is_romdrive)

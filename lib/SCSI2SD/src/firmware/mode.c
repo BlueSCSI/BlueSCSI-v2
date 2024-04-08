@@ -254,6 +254,20 @@ static const uint8_t BlueSCSIVendorPage[] =
 'S','T','O','L','E','N',' ','F','R','O','M',' ','B','L','U','E','S','C','S','I',0x00
 };
 
+static const uint8_t IomegaZip100VendorPage[] =
+{
+0x2f, // Page Code
+4, // Page Length
+0x5c, 0xf, 0xff, 0xf
+};
+
+static const uint8_t IomegaZip250VendorPage[] =
+{
+0x2f, // Page Code
+4, // Page Length
+0x5c, 0xf, 0x3c, 0xf
+};
+
 static void pageIn(int pc, int dataIdx, const uint8_t* pageData, int pageLen)
 {
 	memcpy(&scsiDev.data[dataIdx], pageData, pageLen);
@@ -510,6 +524,14 @@ static void doModeSense(
 	idx += modeSenseCDDevicePage(pc, idx, pageCode, &pageFound);
 	idx += modeSenseCDAudioControlPage(pc, idx, pageCode, &pageFound);
 
+	if ((scsiDev.target->cfg->deviceType == S2S_CFG_ZIP100) &&
+		(pageCode == 0x2f || pageCode == 0x3f))
+	{
+		pageFound = 1;
+		pageIn(pc, idx, IomegaZip100VendorPage, sizeof(IomegaZip100VendorPage));
+		idx += sizeof(IomegaZip100VendorPage);
+	}
+	
 	if ((scsiDev.target->cfg->deviceType == S2S_CFG_SEQUENTIAL) &&
 		(pageCode == 0x10 || pageCode == 0x3F))
 	{

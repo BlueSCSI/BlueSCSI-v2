@@ -273,6 +273,8 @@ static void setDefaultDriveInfo(int target_idx)
     static const char *apl_driveinfo_network[4]   = APPLE_DRIVEINFO_NETWORK;
     static const char *apl_driveinfo_tape[4]      = APPLE_DRIVEINFO_TAPE;
 
+    static const char *iomega_driveinfo_removeable[4] = IOMEGA_DRIVEINFO_ZIP100;
+
     const char **driveinfo = NULL;
 
     if (img.quirks == S2S_CFG_QUIRKS_APPLE)
@@ -302,6 +304,7 @@ static void setDefaultDriveInfo(int target_idx)
             case S2S_CFG_MO:            driveinfo = driveinfo_magopt; break;
             case S2S_CFG_NETWORK:       driveinfo = driveinfo_network; break;
             case S2S_CFG_SEQUENTIAL:    driveinfo = driveinfo_tape; break;
+            case S2S_CFG_ZIP100:        driveinfo = iomega_driveinfo_removeable; break;
             default:                    driveinfo = driveinfo_fixed; break;
         }
     }
@@ -428,6 +431,18 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
         {
             log("---- Configuring as tape drive based on image name");
             img.deviceType = S2S_CFG_SEQUENTIAL;
+        }
+        else if (type == S2S_CFG_ZIP100)
+        {
+            log("---- Configuration as Iomega ZIP100 drive based on image name");
+            img.deviceType = S2S_CFG_ZIP100;
+            if(img.file.size() != ZIP100_DISC_SIZE)
+            {
+                log("---- ZIP100 disc (", (int)img.file.size(), " bytes) is not exactly ", ZIP100_DISC_SIZE, " bytes, drive is ignored");
+                img.file.close();
+                img.clear();
+                return false;
+            }
         }
 
         if (img.prefetchbytes != PREFETCH_BUFFER_SIZE)
@@ -1863,14 +1878,20 @@ int scsiDiskCommand()
         // Enable or disable media access operations.
         //int immed = scsiDev.cdb[1] & 1;
         int start = scsiDev.cdb[4] & 1;
-
-        if (start)
+        
+        if (scsiDev.target->cfg->deviceType == S2S_CFG_ZIP100)
         {
-            scsiDev.target->started = 1;
+            if (start)
+            {
+                scsiDev.target->started = 1;
+            }
+            else
+            {
+                scsiDev.target->started = 0;
+            }
         }
-        else
-        {
-            scsiDev.target->started = 0;
+        else {
+            scsiDev.target->started = 1;
         }
     }
     else if (unlikely(command == 0x00))

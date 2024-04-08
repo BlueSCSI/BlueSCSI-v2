@@ -17,6 +17,9 @@
 #ifndef S2S_VENDOR_H
 #define S2S_VENDOR_H
 
+#define ZIP100_DISC_SIZE    100663296 // bytes
+#define ZIP250_DISC_SIZE    250640384 // bytes
+
 int scsiVendorCommand(void);
 
 #endif
