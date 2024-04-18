@@ -533,7 +533,7 @@ static void reinitSCSI()
 #if RAW_FALLBACK_ENABLE
     log("No images found, enabling RAW fallback partition");
     scsiDiskOpenHDDImage(RAW_FALLBACK_SCSI_ID, "RAW:0:0xFFFFFFFF", RAW_FALLBACK_SCSI_ID, 0,
-                         RAW_FALLBACK_BLOCKSIZE);
+                         RAW_FALLBACK_BLOCKSIZE, S2S_CFG_MO);
 #else
     log("No valid image files found!");
 #endif
