@@ -3,18 +3,18 @@
     "GenerationSoftware": {
       "Vendor": "KiCad",
       "Application": "Pcbnew",
-      "Version": "6.0.5-a6ca702e91~116~ubuntu21.10.1"
+      "Version": "8.0.2-8.0.2-0~ubuntu22.04.1"
     },
-    "CreationDate": "2023-04-15T06:22:21-06:00"
+    "CreationDate": "2024-05-01T06:16:36-06:00"
   },
   "GeneralSpecs": {
     "ProjectId": {
       "Name": "Centronics_50Pin",
       "GUID": "43656e74-726f-46e6-9963-735f35305069",
-      "Revision": "rev?"
+      "Revision": "1"
     },
     "Size": {
-      "X": 78.1384,
+      "X": 60.04,
       "Y": 82.6
     },
     "LayerNumber": 2,
@@ -24,10 +24,10 @@
   "DesignRules": [
     {
       "Layers": "Outer",
-      "PadToPad": 0.0,
-      "PadToTrack": 0.0,
+      "PadToPad": 0.2,
+      "PadToTrack": 0.2,
       "TrackToTrack": 0.2,
-      "MinLineWidth": 0.15,
+      "MinLineWidth": 0.142,
       "TrackToRegion": 0.508,
       "RegionToRegion": 0.508
     }

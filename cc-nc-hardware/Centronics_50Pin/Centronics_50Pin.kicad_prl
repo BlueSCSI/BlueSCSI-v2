@@ -3,10 +3,12 @@
     "active_layer": 37,
     "active_layer_preset": "",
     "auto_track_width": false,
+    "hidden_netclasses": [],
     "hidden_nets": [],
     "high_contrast_mode": 0,
     "net_color_mode": 1,
     "opacity": {
+      "images": 0.6,
       "pads": 1.0,
       "tracks": 1.0,
       "vias": 1.0,
@@ -64,8 +66,14 @@
       35,
       36
     ],
-    "visible_layers": "003ffff_80000001",
+    "visible_layers": "001ffff_80000001",
     "zone_display_mode": 0
+  },
+  "git": {
+    "repo_password": "",
+    "repo_type": "",
+    "repo_username": "",
+    "ssh_key": ""
   },
   "meta": {
     "filename": "Centronics_50Pin.kicad_prl",
