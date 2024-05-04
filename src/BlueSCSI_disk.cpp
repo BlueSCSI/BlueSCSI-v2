@@ -1878,9 +1878,11 @@ int scsiDiskCommand()
         // Enable or disable media access operations.
         //int immed = scsiDev.cdb[1] & 1;
         int start = scsiDev.cdb[4] & 1;
-        
+
         if (scsiDev.target->cfg->deviceType == S2S_CFG_ZIP100)
         {
+            // If it's a ZIP drive, it likes to eject all the time so this
+            // little dance helps keep a disc loaded
             if (start)
             {
                 scsiDev.target->started = 1;
@@ -1890,7 +1892,8 @@ int scsiDiskCommand()
                 scsiDev.target->started = 0;
             }
         }
-        else {
+        else
+        {
             scsiDev.target->started = 1;
         }
     }
