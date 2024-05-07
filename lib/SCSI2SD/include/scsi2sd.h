@@ -75,6 +75,7 @@ typedef enum
 	S2S_CFG_MO,
 	S2S_CFG_SEQUENTIAL,
 	S2S_CFG_NETWORK,
+	S2S_CFG_ZIP100,
 } S2S_CFG_TYPE;
 
 typedef enum

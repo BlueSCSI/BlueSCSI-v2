@@ -19,6 +19,7 @@
 
 #include "geometry.h"
 #include "sense.h"
+#include "vendor.h"
 
 #include <stdint.h>
 

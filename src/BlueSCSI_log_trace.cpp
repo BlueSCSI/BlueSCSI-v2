@@ -28,6 +28,7 @@ static const char *getCommandName(uint8_t cmd)
         case 0x03: return "RequestSense";
         case 0x04: return "FormatUnit";
         case 0x05: return "ReadBlockLimits";
+        case 0x06: return "IomegaVendorCommand";
         case 0x08: return "Read6";
         case 0x0A: return "Write6";
         case 0x0B: return "Seek6";

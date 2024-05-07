@@ -67,6 +67,11 @@
 #define APPLE_DRIVEINFO_NETWORK   {"Dayna",    "SCSI/Link",       "2.0f", ""}
 #define APPLE_DRIVEINFO_TAPE      {"BlueSCSI", "APPLE_TAPE",      "",     ""}
 
+// Default Iomega ZIP drive information
+#define IOMEGA_DRIVEINFO_ZIP100     {"IOMEGA", "ZIP 100", "E.08", ""}
+#define IOMEGA_DRIVEINFO_ZIP250     {"IOMEGA", "ZIP 250", "42.S", ""}
+#define IOMEGA_DRIVEINFO_JAZ        {"iomega", "jaz", "", ""}
+
 // Default delay for SCSI phases.
 // Can be adjusted in ini file
 #define DEFAULT_SCSI_DELAY_US 10
