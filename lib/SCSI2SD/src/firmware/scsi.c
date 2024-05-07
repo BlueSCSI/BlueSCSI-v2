@@ -28,11 +28,11 @@
 #include "cdrom.h"
 // #include "debug.h"
 // #include "log.h"
+#include "bluescsi_toolbox.h"
+#include "mo.h"
 #include "network.h"
 #include "tape.h"
-#include "mo.h"
 #include "vendor.h"
-#include "bluescsi_toolbox.h"
 
 #include <string.h>
 
@@ -546,7 +546,7 @@ static void process_Command()
 			// Newer initiators won't be specifying 0 anyway.
 			if (allocLength == 0) allocLength = 4;
 
-			// If we receve a stand alone REQUEST SENSE to a bad LUN we still need to respond
+			// If we receive a stand-alone REQUEST SENSE to a bad LUN we still need to respond
 			// with LUN not supported. SCSI-2 Spec 7.5.3.
 			if (scsiDev.lun && scsiDev.lastStatus != CHECK_CONDITION)
 			{

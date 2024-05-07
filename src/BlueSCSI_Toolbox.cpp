@@ -200,7 +200,7 @@ void onSetNextCD(const char * img_dir)
     cdromSwitch(img, full_path);
 }
 
-FsFile gFile; // global so we can keep it open while transfering.
+FsFile gFile; // global so we can keep it open while transferring.
 void onGetFile10(char * dir_name) {
     uint8_t index = scsiDev.cdb[1];
 
@@ -232,7 +232,7 @@ void onGetFile10(char * dir_name) {
 }
 
 /*
-  Prepares a file for receving. The file name is null terminated in the scsi data.
+  Prepares a file for receiving. The file name is null terminated in the scsi data.
 */
 void onSendFilePrep(char * dir_name)
 {
