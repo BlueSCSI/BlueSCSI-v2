@@ -36,6 +36,7 @@ extern "C" int8_t scsiToolboxEnabled()
     if (enabled == -1)
     {
         enabled = ini_getbool("SCSI", "EnableToolbox", 0, CONFIGFILE);
+        logmsg("Toolbox enabled = ", enabled);
     }
     return enabled == 1;
 }
@@ -348,58 +349,69 @@ extern "C" int scsiToolboxCommand()
     if (unlikely(command == TOOLBOX_COUNT_FILES))
     {
         char img_dir[MAX_FILE_PATH];
+        dbgmsg("TOOLBOX_COUNT_FILES");
         getToolBoxSharedDir(img_dir);
         doCountFiles(img_dir);
     }
     else if (unlikely(command == TOOLBOX_LIST_FILES))
     {
         char img_dir[MAX_FILE_PATH];
+        dbgmsg("TOOLBOX_LIST_FILES");
         getToolBoxSharedDir(img_dir);
         onListFiles(img_dir);
     }
     else if (unlikely(command == TOOLBOX_GET_FILE))
     {
         char img_dir[MAX_FILE_PATH];
+        dbgmsg("TOOLBOX_GET_FILE");
         getToolBoxSharedDir(img_dir);
         onGetFile10(img_dir);
     }
     else if (unlikely(command == TOOLBOX_SEND_FILE_PREP))
     {
         char img_dir[MAX_FILE_PATH];
+        dbgmsg("TOOLBOX_SEND_FILE_PREP");
         getToolBoxSharedDir(img_dir);
         onSendFilePrep(img_dir);
     }
     else if (unlikely(command == TOOLBOX_SEND_FILE_10))
     {
+        dbgmsg("TOOLBOX_SEND_FILE_10");
         onSendFile10();
     }
     else if (unlikely(command == TOOLBOX_SEND_FILE_END))
     {
+        dbgmsg("TOOLBOX_SEND_FILE_END");
         onSendFileEnd();
     }
     else if(unlikely(command == TOOLBOX_TOGGLE_DEBUG))
     {
+        dbgmsg("TOOLBOX_TOGGLE_DEBUG");
         onToggleDebug();
     }
     else if(unlikely(command == TOOLBOX_LIST_CDS))
     {
         char img_dir[4];
+        dbgmsg("TOOLBOX_LIST_CDS");
         snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, (int)img.scsiId & S2S_CFG_TARGET_ID_BITS);
         onListFiles(img_dir, true);
     }
     else if(unlikely(command == TOOLBOX_SET_NEXT_CD))
     {
         char img_dir[4];
+        dbgmsg("TOOLBOX_SET_NEXT_CD");
         snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, (int)img.scsiId & S2S_CFG_TARGET_ID_BITS);
         onSetNextCD(img_dir);
     }
     else if(unlikely(command == TOOLBOX_LIST_DEVICES))
     {
+        dbgmsg("TOOLBOX_LIST_DEVICES");
         onListDevices();
     }
     else if (unlikely(command == TOOLBOX_COUNT_CDS))
     {
         char img_dir[4];
+        dbgmsg("TOOLBOX_COUNT_CDS");
         snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, (int)img.scsiId & S2S_CFG_TARGET_ID_BITS);
         doCountFiles(img_dir, true);
     }
