@@ -211,7 +211,7 @@ void onSetNextCD(const char * img_dir)
     next_cd.getName(name, sizeof(name));
     next_cd.close();
     snprintf(full_path, (MAX_FILE_PATH * 2), "%s/%s", img_dir, name);
-    cdromSwitch(img, full_path);
+    cdromSwitchNextImage(img, full_path);
 }
 
 FsFile gFile; // global so we can keep it open while transferring.

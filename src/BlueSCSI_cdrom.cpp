@@ -1181,7 +1181,7 @@ void cdromPerformEject(image_config_t &img)
         debuglog("------ CDROM open tray on ID ", (int)target);
         img.ejected = true;
         img.cdrom_events = 3; // Media removal
-        cdromSwitchNextImage(img); // Switch media for next time
+        cdromSwitchNextImage(img, nullptr); // Switch media for next time
     }
     else
     {
@@ -1199,7 +1199,7 @@ void cdromReinsertFirstImage(image_config_t &img)
         debuglog("---- Restarting from first CD-ROM image for ID ", (int)target);
         img.image_index = -1;
         img.current_image[0] = '\0';
-        cdromSwitchNextImage(img);
+        cdromSwitchNextImage(img, nullptr);
     }
     else if (img.ejected)
     {
@@ -1209,12 +1209,19 @@ void cdromReinsertFirstImage(image_config_t &img)
 }
 
 // Check if we have multiple CD-ROM images to cycle when drive is ejected.
-bool cdromSwitchNextImage(image_config_t &img)
+bool cdromSwitchNextImage(image_config_t &img, const char* next_filename)
 {
     // Check if we have a next image to load, so that drive is closed next time the host asks.
     char filename[MAX_FILE_PATH];
     int target_idx = img.scsiId & S2S_CFG_TARGET_ID_BITS;
-    scsiDiskGetNextImageName(img, filename, sizeof(filename));
+    if (next_filename == nullptr)
+    {
+        scsiDiskGetNextImageName(img, filename, sizeof(filename));
+    }
+    else
+    {
+        strncpy(filename, next_filename, MAX_FILE_PATH);
+    }
 
     if (filename[0] != '\0')
     {
@@ -1231,36 +1238,14 @@ bool cdromSwitchNextImage(image_config_t &img)
 
         if (status)
         {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-// Check if we have multiple CD-ROM images to cycle when drive is ejected.
-bool cdromSwitch(image_config_t &img, const char* filename)
-{
-    // Check if we have a next image to load, so that drive is closed next time the host asks.
-    int target_idx = img.scsiId & S2S_CFG_TARGET_ID_BITS;
-
-    if (filename[0] != '\0')
-    {
-#ifdef ENABLE_AUDIO_OUTPUT
-        // if in progress for this device, terminate audio playback immediately (Annex C)
-        audio_stop(target_idx);
-        // Reset position tracking for the new image
-        audio_get_status_code(target_idx); // trash audio status code
-#endif
-        log("Switching to next CD-ROM image for ", target_idx, ": ", filename);
-        img.file.close();
-        int block_size = getBlockSize(const_cast<char*>(filename), target_idx, 2048);
-        bool status = scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, block_size);
-
-        if (status)
-        {
-            img.ejected = false;
-            img.cdrom_events = 2; // New media
+            if (next_filename != nullptr)
+            {
+                // present the drive as ejected until the host queries it again,
+                // to make sure host properly detects the media change
+                img.ejected = true;
+                img.reinsert_after_eject = true;
+                img.cdrom_events = 2; // New Media
+            }
             return true;
         }
     }
