@@ -21,6 +21,7 @@
 
 #define MAX_MAC_PATH 32
 #define ENTRY_SIZE 40
+#define MAX_FILE_LISTING_FILES 100
 
 #define CD_IMG_DIR "CD%d"
 

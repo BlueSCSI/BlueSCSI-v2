@@ -66,13 +66,20 @@ static void doCountFiles(const char * dir_name)
             file.close();
             break;
         }
-        file.getName(name, MAX_FILE_PATH);
+        bool isDir = file.isDirectory();
+        size_t len = file.getName(name, MAX_FILE_PATH);
         file.close();
+        if (isDir)
+            continue;
+        // truncate filename the same way listing does, before validating name
+        if (len > MAX_MAC_PATH)
+            name[MAX_MAC_PATH] = 0x0;
+        debuglog("TOOLBOX COUNT FILES: truncated filename is '", name, "'");
         // only count valid files.
         if(toolboxFilenameValid(name))
         {
             file_count = file_count + 1;
-            if(file_count > 100) {
+            if(file_count > MAX_FILE_LISTING_FILES) {
                 scsiDev.status = CHECK_CONDITION;
                 scsiDev.target->sense.code = ILLEGAL_REQUEST;
                 scsiDev.target->sense.asc = OPEN_RETRO_SCSI_TOO_MANY_FILES;
