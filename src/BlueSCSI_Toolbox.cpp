@@ -153,8 +153,11 @@ FsFile get_file_from_index(uint8_t index, const char * dir_name)
       file_test.close();
       break;
     }
-    file_test.getName(name, MAX_FILE_PATH);
 
+    // truncate filename the same way listing does, before validating name
+    size_t len = file_test.getName(name, MAX_FILE_PATH);
+    if (len > MAX_MAC_PATH)
+        name[MAX_MAC_PATH] = 0x0;
     if(!toolboxFilenameValid(name))
     {
         file_test.close();
