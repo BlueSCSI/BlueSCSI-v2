@@ -157,23 +157,28 @@ static FsFile get_file_from_index(uint8_t index, const char * dir_name, bool isC
   int count = 0;
   while (file_test.openNext(&dir, O_RDONLY))
   {
-    
     // If error there is no next file to open.
     if(file_test.getError() > 0) {
       file_test.close();
       break;
     }
-    file_test.getName(name, MAX_FILE_PATH);
+        // no directories in CD image listing
     if (isCD && file_test.isDirectory())
     {
         file_test.close();
         continue;
     }
+        // truncate filename the same way listing does, before validating name
+        size_t len = file_test.getName(name, MAX_FILE_PATH);
+        if (len > MAX_MAC_PATH)
+            name[MAX_MAC_PATH] = 0x0;
+        // validate filename
     if(!toolboxFilenameValid(name, isCD))
     {
         file_test.close();
         continue;
     }
+        // found file?
     if (count == index)
     {
       dir.close();
