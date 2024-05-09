@@ -30,6 +30,9 @@ extern "C" {
 }
 
 
+const uint8_t MAX_FILE_LISTING_FILES = 100;
+
+
 extern "C" int8_t scsiToolboxEnabled()
 {
     static int8_t enabled = -1;
@@ -72,15 +75,19 @@ static void doCountFiles(const char * dir_name, bool isCD = false)
             break;
         }
         bool isDir = file.isDirectory();
-        file.getName(name, MAX_FILE_PATH);
+        size_t len = file.getName(name, MAX_FILE_PATH);
         file.close();
         if (isCD && isDir)
             continue;
+        // truncate filename the same way listing does, before validating name
+        if (len > MAX_MAC_PATH)
+            name[MAX_MAC_PATH] = 0x0;
+        dbgmsg("TOOLBOX COUNT FILES: truncated filename is '", name, "'");
         // only count valid files.
         if(toolboxFilenameValid(name, isCD))
         {
             file_count = file_count + 1;
-            if(file_count > 100) {
+            if(file_count > MAX_FILE_LISTING_FILES) {
                 scsiDev.status = CHECK_CONDITION;
                 scsiDev.target->sense.code = ILLEGAL_REQUEST;
                 scsiDev.target->sense.asc = OPEN_RETRO_SCSI_TOO_MANY_FILES;
