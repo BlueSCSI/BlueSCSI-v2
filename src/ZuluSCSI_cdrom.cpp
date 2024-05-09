@@ -1250,7 +1250,10 @@ bool cdromSwitchNextImage(image_config_t &img, const char* next_filename)
         {
             if (next_filename != nullptr)
             {
-                img.ejected = false;
+                // present the drive as ejected until the host queries it again,
+                // to make sure host properly detects the media change
+                img.ejected = true;
+                img.reinsert_after_eject = true;
                 img.cdrom_events = 2; // New Media
             }
             return true;
