@@ -105,112 +105,121 @@ static void doCountFiles(const char * dir_name, bool isCD = false)
 static void onListFiles(const char * dir_name, bool isCD = false) {
     FsFile dir;
     FsFile file;
+    const size_t ENTRY_SIZE = 40;
 
-    memset(scsiDev.data, 0, 4096);
-    int ENTRY_SIZE = 40;
+    memset(scsiDev.data, 0, ENTRY_SIZE * (MAX_FILE_LISTING_FILES + 1));
     char name[MAX_FILE_PATH] = {0};
+    uint8_t index = 0;
+    uint8_t file_entry[ENTRY_SIZE] = {0};
+
     dir.open(dir_name);
     dir.rewindDirectory();
-    uint8_t index = 0;
-    uint8_t file_entry[40] = {0};
     while (file.openNext(&dir, O_RDONLY))
     {   
+        memset(name, 0, sizeof(name));
+        // get base information
         uint8_t isDir = file.isDirectory() ? 0x00 : 0x01;
-        int len = file.getName(name, MAX_FILE_PATH);
-        if (len > MAX_MAC_PATH)
-            name[MAX_MAC_PATH] = 0x0;
+        size_t len = file.getName(name, MAX_FILE_PATH);
         uint64_t size = file.fileSize();
         file.close();
+        // truncate filename to fit in destination buffer
+        if (len > MAX_MAC_PATH)
+            name[MAX_MAC_PATH] = 0x0;
+        dbgmsg("TOOLBOX LIST FILES: truncated filename is '", name, "'");
+        // validate file is allowed for this listing
         if (!toolboxFilenameValid(name, isCD))
             continue;
         if (isCD && isDir == 0x00)
             continue;
+        // fill output buffer
         file_entry[0] = index;
         file_entry[1] = isDir;
-        int c = 0; // Index of char in name[]
-
-        for(int i = 2; i < (MAX_MAC_PATH + 1 + 2); i++) {   // bytes 2 - 34
-            file_entry[i] = name[c++];
+        for(int i = 0; i < MAX_MAC_PATH + 1 ; i++) {
+            file_entry[i + 2] = name[i];   // bytes 2 - 34
         }
         file_entry[35] = 0; //(size >> 32) & 0xff;
         file_entry[36] = (size >> 24) & 0xff;
         file_entry[37] = (size >> 16) & 0xff;
         file_entry[38] = (size >> 8) & 0xff;
         file_entry[39] = (size) & 0xff;
+        // send to SCSI output buffer
         memcpy(&(scsiDev.data[ENTRY_SIZE * index]), file_entry, ENTRY_SIZE);
+        // increment index
         index = index + 1;
+        if (index >= MAX_FILE_LISTING_FILES) break;
     }
     dir.close();
 
-    scsiDev.dataLen = 4096;
+    scsiDev.dataLen = ENTRY_SIZE * index;
     scsiDev.phase = DATA_IN;
+    dbgmsg("TOOLBOX LIST FILES: returning ", index, " files for size ", scsiDev.dataLen);
 }
 
 static FsFile get_file_from_index(uint8_t index, const char * dir_name, bool isCD = false)
 {
-  FsFile dir;
-  FsFile file_test;
-  char name[MAX_FILE_PATH] = {0};
+    FsFile dir;
+    FsFile file_test;
+    char name[MAX_FILE_PATH] = {0};
 
-  dir.open(dir_name);
-  dir.rewindDirectory(); // Back to the top
-  int count = 0;
-  while (file_test.openNext(&dir, O_RDONLY))
-  {
-    // If error there is no next file to open.
-    if(file_test.getError() > 0) {
-      file_test.close();
-      break;
-    }
-        // no directories in CD image listing
-    if (isCD && file_test.isDirectory())
+    dir.open(dir_name);
+    dir.rewindDirectory(); // Back to the top
+    int count = 0;
+    while (file_test.openNext(&dir, O_RDONLY))
     {
-        file_test.close();
-        continue;
-    }
+        // If error there is no next file to open.
+        if(file_test.getError() > 0) {
+            file_test.close();
+            break;
+        }
+        // no directories in CD image listing
+        if (isCD && file_test.isDirectory())
+        {
+            file_test.close();
+            continue;
+        }
         // truncate filename the same way listing does, before validating name
         size_t len = file_test.getName(name, MAX_FILE_PATH);
         if (len > MAX_MAC_PATH)
             name[MAX_MAC_PATH] = 0x0;
         // validate filename
-    if(!toolboxFilenameValid(name, isCD))
-    {
-        file_test.close();
-        continue;
-    }
+        if(!toolboxFilenameValid(name, isCD))
+        {
+            file_test.close();
+            continue;
+        }
         // found file?
-    if (count == index)
-    {
-      dir.close();
-      return file_test;
+        if (count == index)
+        {
+            dir.close();
+            return file_test;
+        }
+        else
+        {
+            file_test.close();
+        }
+        count++;
     }
-    else
-    {
-      file_test.close();
-    }
-    count++;
-  }
-  file_test.close();
-  dir.close();
-  return file_test;
+    file_test.close();
+    dir.close();
+    return file_test;
 }
 
 // Devices that are active on this SCSI device.
 static void onListDevices()
 {
-  for (int i = 0; i < NUM_SCSIID; i++)
-  {
-    const S2S_TargetCfg* cfg = s2s_getConfigById(i);
-    if (cfg && (cfg->scsiId & S2S_CFG_TARGET_ENABLED))
+    for (int i = 0; i < NUM_SCSIID; i++)
     {
-        scsiDev.data[i] = (int)cfg->deviceType; // 2 == cd
+        const S2S_TargetCfg* cfg = s2s_getConfigById(i);
+        if (cfg && (cfg->scsiId & S2S_CFG_TARGET_ENABLED))
+        {
+            scsiDev.data[i] = (int)cfg->deviceType; // 2 == cd
+        }
+        else
+        {
+            scsiDev.data[i] = 0xFF; // not enabled target.
+        }
     }
-    else
-    {
-        scsiDev.data[i] = 0xFF; // not enabled target.
-    }
-  }
-  scsiDev.dataLen = NUM_SCSIID;
+    scsiDev.dataLen = NUM_SCSIID;
 }
 
 static void onSetNextCD(const char * img_dir)
