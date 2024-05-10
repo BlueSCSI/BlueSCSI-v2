@@ -659,6 +659,14 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
                 img.deviceType = S2S_CFG_FLOPPY_14MB;
                 img.image_directory = true;
             }
+            strcpy(tmp, "ZPX");
+            tmp[2] = '0' + target_idx;
+            if(SD.exists(tmp))
+            {
+                log("-- SCSI ID: ", target_idx, " using Zip 100 image directory \'", tmp, "'");
+                img.deviceType = S2S_CFG_ZIP100;
+                img.image_directory = true;
+            }
         }
     }
 }
