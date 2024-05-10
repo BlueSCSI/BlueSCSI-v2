@@ -604,7 +604,7 @@ static void process_Command()
 
 		enter_Status(CHECK_CONDITION);
 	}
-	else if (scsiDev.lun && (command < 0xD0)) // Temp workaround for Toolbox API v0
+	else if (scsiDev.lun && (command < 0xD0))
 	{
 		scsiDev.target->sense.code = ILLEGAL_REQUEST;
 		scsiDev.target->sense.asc = LOGICAL_UNIT_NOT_SUPPORTED;

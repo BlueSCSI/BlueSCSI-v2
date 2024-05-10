@@ -250,8 +250,10 @@ uint32_t s2s_getStandardInquiry(
 
 	// Mac Daynaport Driver does not like this added.
 	if(cfg->deviceType != S2S_CFG_NETWORK) {
-		memcpy(&out[36], PLATFORM_INQUIRY, sizeof(PLATFORM_INQUIRY));
+		memcpy(&out[size], PLATFORM_INQUIRY, sizeof(PLATFORM_INQUIRY));
 		size += sizeof(PLATFORM_INQUIRY);
+		out[size] = PLATFORM_TOOLBOX_API;
+		size += 1;
 	}
 	return size;
 }
