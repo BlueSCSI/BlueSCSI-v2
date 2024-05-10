@@ -1254,7 +1254,8 @@ bool cdromSwitch(image_config_t &img, const char* filename)
 #endif
         log("Switching to next CD-ROM image for ", target_idx, ": ", filename);
         img.file.close();
-        bool status = scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, 2048);
+        int block_size = getBlockSize(const_cast<char*>(filename), target_idx, 2048);
+        bool status = scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, block_size);
 
         if (status)
         {
