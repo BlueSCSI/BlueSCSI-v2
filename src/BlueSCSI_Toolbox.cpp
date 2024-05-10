@@ -92,14 +92,15 @@ void onListFiles(const char * dir_name) {
     FsFile file;
 
     memset(scsiDev.data, 0, 4096);
-    int ENTRY_SIZE = 40;
     char name[MAX_FILE_PATH] = {0};
     dir.open(dir_name);
     dir.rewindDirectory();
     uint8_t index = 0;
-    byte file_entry[40] = {0};
+    byte file_entry[ENTRY_SIZE] = {0};
     while (file.openNext(&dir, O_RDONLY))
     {
+        memset(name, 0, MAX_FILE_PATH);
+        memset(file_entry, 0, ENTRY_SIZE);
         uint8_t isDir = file.isDirectory() ? 0x00 : 0x01;
         int len = file.getName(name, MAX_FILE_PATH);
         if (len > MAX_MAC_PATH)
@@ -125,7 +126,7 @@ void onListFiles(const char * dir_name) {
     }
     dir.close();
 
-    scsiDev.dataLen = 4096;
+    scsiDev.dataLen = ENTRY_SIZE * index;
     scsiDev.phase = DATA_IN;
 }
 
@@ -184,6 +185,7 @@ void onListDevices()
     }
   }
   scsiDev.dataLen = NUM_SCSIID;
+  scsiDev.phase = DATA_IN;
 }
 
 void onSetNextCD(const char * img_dir)
