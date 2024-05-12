@@ -80,6 +80,16 @@ static const uint8_t AscImpOperatingDefinition[] =
 'S','C','S','I','-','2'
 };
 
+static const uint8_t IOMegaVendorInquiry[] =
+{
+'0', '8', '/', '2', '0', '/', '9', '6', 0x0, 0x0, 0x0, 0x0,
+0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+'(', 'c', ')', ' ', 'C', 'o', 'p', 'y', 'r', 'i', 'g', 'h', 't', ' ', 'I', 'O',
+'M', 'E', 'G', 'A', ' ', '1', '9', '9', '5', ' '
+};
+
 void s2s_scsiInquiry()
 {
 	uint8_t evpd = scsiDev.cdb[1] & 1; // enable vital product data.
@@ -200,6 +210,7 @@ void s2s_scsiInquiry()
 
 		case S2S_CFG_FLOPPY_14MB:
 		case S2S_CFG_REMOVEABLE:
+		case S2S_CFG_ZIP100:
 			scsiDev.data[1] |= 0x80; // Removable bit.
 			break;
 
@@ -248,8 +259,15 @@ uint32_t s2s_getStandardInquiry(
 		sizeof(cfg->prodId) +
 		sizeof(cfg->revision);
 
+    if(cfg->deviceType == S2S_CFG_ZIP100) {
+        memcpy(&out[size], IOMegaVendorInquiry, sizeof(IOMegaVendorInquiry));
+        size += sizeof(IOMegaVendorInquiry);
+        out[7] = 0x00; // Disable sync and linked commands
+        out[4] = 0x75; // 117 length
+    }
 	// Mac Daynaport Driver does not like this added.
-	if(cfg->deviceType != S2S_CFG_NETWORK) {
+    // IOMega already has a vendor inquiry
+	if(cfg->deviceType != S2S_CFG_NETWORK && cfg->deviceType != S2S_CFG_ZIP100) {
 		memcpy(&out[size], PLATFORM_INQUIRY, sizeof(PLATFORM_INQUIRY));
 		size += sizeof(PLATFORM_INQUIRY);
 		out[size] = PLATFORM_TOOLBOX_API;

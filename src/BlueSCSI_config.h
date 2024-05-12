@@ -68,7 +68,7 @@
 #define APPLE_DRIVEINFO_TAPE      {"BlueSCSI", "APPLE_TAPE",      "",     ""}
 
 // Default Iomega ZIP drive information
-#define IOMEGA_DRIVEINFO_ZIP100     {"IOMEGA", "ZIP 100", "E.08", ""}
+#define IOMEGA_DRIVEINFO_ZIP100     {"IOMEGA", "ZIP 100", "D.13", ""}
 #define IOMEGA_DRIVEINFO_ZIP250     {"IOMEGA", "ZIP 250", "42.S", ""}
 #define IOMEGA_DRIVEINFO_JAZ        {"iomega", "jaz", "", ""}
 

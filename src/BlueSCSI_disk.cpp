@@ -289,6 +289,7 @@ static void setDefaultDriveInfo(int target_idx)
             case S2S_CFG_MO:            driveinfo = apl_driveinfo_magopt; break;
             case S2S_CFG_NETWORK:       driveinfo = apl_driveinfo_network; break;
             case S2S_CFG_SEQUENTIAL:    driveinfo = apl_driveinfo_tape; break;
+            case S2S_CFG_ZIP100:        driveinfo = iomega_driveinfo_removeable; break;
             default:                    driveinfo = apl_driveinfo_fixed; break;
         }
     }
@@ -1887,22 +1888,13 @@ int scsiDiskCommand()
         //int immed = scsiDev.cdb[1] & 1;
         int start = scsiDev.cdb[4] & 1;
 
-        if (scsiDev.target->cfg->deviceType == S2S_CFG_ZIP100)
+        if (start)
         {
-            // If it's a ZIP drive, it likes to eject all the time so this
-            // little dance helps keep a disc loaded
-            if (start)
-            {
-                scsiDev.target->started = 1;
-            }
-            else
-            {
-                scsiDev.target->started = 0;
-            }
+            scsiDev.target->started = 1;
         }
         else
         {
-            scsiDev.target->started = 1;
+            scsiDev.target->started = 0;
         }
     }
     else if (unlikely(command == 0x00))
