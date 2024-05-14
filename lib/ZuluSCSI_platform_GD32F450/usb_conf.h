@@ -162,8 +162,8 @@ OF SUCH DAMAGE.
 
 #ifdef USB_HS_INTERNAL_DMA_ENABLED
     #if defined (__GNUC__)         /* GNU Compiler */
-        #define __ALIGN_END __attribute__ ((aligned (4)))
-        #define __ALIGN_BEGIN
+        #define __ALIGN_BEGIN __attribute__ ((aligned (4)))
+        #define __ALIGN_END
     #else
         #define __ALIGN_END
 

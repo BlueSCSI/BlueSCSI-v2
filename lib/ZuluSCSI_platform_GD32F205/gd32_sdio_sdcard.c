@@ -544,7 +544,7 @@ sd_error_enum sd_block_read(uint32_t *preadbuffer, uint64_t readaddr, uint16_t b
     } else if(SD_DMA_MODE == transmode) {
         /* DMA mode */
         /* enable the SDIO corresponding interrupts and DMA function */
-        sdio_interrupt_enable(SDIO_INT_CCRCERR | SDIO_INT_DTTMOUT | SDIO_INT_RXORE | SDIO_INT_DTEND | SDIO_INT_STBITE);
+        sdio_interrupt_enable(SDIO_INT_DTCRCERR | SDIO_INT_DTTMOUT | SDIO_INT_RXORE | SDIO_INT_DTEND | SDIO_INT_STBITE);
         sdio_dma_enable();
         dma_receive_config(preadbuffer, blocksize);
         uint32_t start = millis();
