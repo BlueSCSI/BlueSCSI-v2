@@ -119,13 +119,10 @@ void usb_mdelay(const uint32_t msec)
     delay(msec);
 }
 
-
-
 void USBHS_IRQHandler(void)
 {
     usbd_isr(&cdc_acm);
 }
-
 #ifdef USB_HS_DEDICATED_EP1_ENABLED
 
 /*!
