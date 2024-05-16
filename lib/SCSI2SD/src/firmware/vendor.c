@@ -115,12 +115,12 @@ void scsiVendorCommandSetLen(uint8_t command, uint8_t* command_length)
 		// Apple CD-ROM with CD audio over the SCSI bus
 		if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_APPLE && (command == 0xD8 || command == 0xD9))
 		{
-			scsiDev.cdbLen =  12;
+			*command_length =  12;
 		}
 		// Plextor CD-ROM vendor extensions 0xD8
 		if (unlikely(scsiDev.target->cfg->vendorExtensions & VENDOR_EXTENSION_OPTICAL_PLEXTOR) && command == 0xD8)
 		{
-			scsiDev.cdbLen =  12;
+			*command_length =  12;
 		}
 	}
 
