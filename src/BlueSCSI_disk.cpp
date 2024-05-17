@@ -1038,6 +1038,11 @@ void s2s_configInit(S2S_BoardCfg* config)
     if (ini_getbool("SCSI", "Debug", 0, CONFIGFILE))
     {
         log("-- Debug is enabled");
+        g_scsi_log_mask = ini_getl("SCSI", "DebugLogMask", 0xFF, CONFIGFILE) & 0b11111111;
+        if(g_scsi_log_mask != 0xFF)
+        {
+            log("--- DebugLogMask set to ", g_scsi_log_mask, " only SCSI IDs matching this mask will be logged.");
+        }
     }
 
     if (ini_getbool("SCSI", "EnableParity", defaults.enableParity, CONFIGFILE))
