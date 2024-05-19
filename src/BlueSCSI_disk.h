@@ -143,3 +143,6 @@ void scsiDiskStartWrite(uint32_t lba, uint32_t blocks);
 
 // Returns true if there is at least one network device active
 bool scsiDiskCheckAnyNetworkDevicesConfigured();
+
+// Switch to next Drive image if multiple have been configured
+bool switchNextImage(image_config_t &img, const char* next_filename = nullptr);

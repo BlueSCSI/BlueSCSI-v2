@@ -762,9 +762,11 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
         int dirlen = getImgDir(target_idx, dirname);
         if (!dirlen)
         {
-            // If image_directory set but ImgDir is not look for an well known ImgDir
+            // If image_directory set but ImgDir is not look for a well known ImgDir
             if(img.deviceType == S2S_CFG_OPTICAL)
                 strcpy(dirname, "CDX");
+            else if(img.deviceType == S2S_CFG_ZIP100)
+                strcpy(dirname, "ZPX");
             else
                 strcpy(dirname, "HDX");
             dirname[2] = '0' + target_idx;
@@ -851,6 +853,49 @@ void scsiDiskLoadConfig(int target_idx)
         log("-- Opening '", filename, "' for ID:", target_idx);
         scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, blocksize);
     }
+}
+
+// Check if we have multiple drive images to cycle when drive is ejected.
+bool switchNextImage(image_config_t &img, const char* next_filename)
+{
+    // Check if we have a next image to load, so that drive is closed next time the host asks.
+    char filename[MAX_FILE_PATH];
+    int target_idx = img.scsiId & S2S_CFG_TARGET_ID_BITS;
+    if (next_filename == nullptr)
+    {
+        scsiDiskGetNextImageName(img, filename, sizeof(filename));
+    }
+    else
+    {
+        strncpy(filename, next_filename, MAX_FILE_PATH);
+    }
+
+    if (filename[0] != '\0')
+    {
+        log("Switching to next image for ", target_idx, ": ", filename);
+        img.file.close();
+        int block_size = getBlockSize(filename, target_idx, (img.deviceType == S2S_CFG_OPTICAL) ? 2048 : 512);
+        bool status = scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, block_size);
+
+        if (status)
+        {
+            if (next_filename != nullptr && img.deviceType == S2S_CFG_OPTICAL)
+            {
+                // present the drive as ejected until the host queries it again,
+                // to make sure host properly detects the media change
+                img.ejected = true;
+                img.reinsert_after_eject = true;
+                img.cdrom_events = 2; // New Media
+            }
+            return true;
+        }
+    }
+    else
+    {
+        log("Could not switch to image as provide filename was empty.");
+    }
+
+    return false;
 }
 
 bool scsiDiskCheckAnyImagesConfigured()
