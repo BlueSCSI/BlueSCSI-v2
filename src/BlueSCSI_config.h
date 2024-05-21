@@ -6,8 +6,8 @@
 #include <BlueSCSI_platform.h>
 
 // Use variables for version number
-#define FW_VER_NUM      "2024.04.03"
-#define FW_VER_SUFFIX   "dev"
+#define FW_VER_NUM      "2024.05.21"
+#define FW_VER_SUFFIX   "rel" // 3 char only - 'dev' or 'rel'
 #define BLUESCSI_FW_VERSION FW_VER_NUM "-" FW_VER_SUFFIX
 
 // Configuration and log file paths
