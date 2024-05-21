@@ -850,7 +850,7 @@ void scsiDiskLoadConfig(int target_idx)
     if (scsiDiskGetNextImageName(img, filename, sizeof(filename)))
     {
         int blocksize = getBlockSize(filename, target_idx, (img.deviceType == S2S_CFG_OPTICAL) ? 2048 : 512);
-        log("-- Opening '", filename, "' for ID:", target_idx);
+        log("-- Opening '", filename, "' for ID: ", target_idx);
         scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, blocksize);
     }
 }
@@ -872,7 +872,7 @@ bool switchNextImage(image_config_t &img, const char* next_filename)
 
     if (filename[0] != '\0')
     {
-        log("Switching to next image for ", target_idx, ": ", filename);
+        log("Switching to next image for ID: ", target_idx, ": ", filename);
         img.file.close();
         int block_size = getBlockSize(filename, target_idx, (img.deviceType == S2S_CFG_OPTICAL) ? 2048 : 512);
         bool status = scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, block_size);
