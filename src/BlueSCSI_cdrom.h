@@ -21,9 +21,6 @@ void cdromPerformEject(image_config_t &img);
 // Reinsert ejected CD-ROM and restart from first image
 void cdromReinsertFirstImage(image_config_t &img);
 
-// Switch to next CD-ROM image if multiple have been configured
-bool cdromSwitchNextImage(image_config_t &img);
-
 // Check if the currently loaded cue sheet for the image can be parsed
 // and print warnings about unsupported track types
 bool cdromValidateCueSheet(image_config_t &img);
@@ -32,6 +29,3 @@ bool cdromValidateCueSheet(image_config_t &img);
 // boolean flag is true if just basic mechanism status (playback true/false)
 // is desired, or false if historical audio status codes should be returned
 void cdromGetAudioPlaybackStatus(uint8_t *status, uint32_t *current_lba, bool current_only);
-
-// switch to a given filename for the cd.
-bool cdromSwitch(image_config_t &img, const char* filename);

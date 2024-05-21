@@ -4,8 +4,9 @@
 
 #pragma once
 
-#include <stdint.h>
+#include "scsiPhy.h"
 #include <stddef.h>
+#include <stdint.h>
 
 // Get total number of bytes that have been written to log
 uint32_t log_get_buffer_len();
@@ -17,6 +18,7 @@ const char *log_get_buffer(uint32_t *startpos, uint32_t *available = nullptr);
 
 // Whether to enable debug messages
 extern "C" bool g_log_debug;
+extern "C" uint8_t g_scsi_log_mask;
 
 // Enables output test mode
 extern bool g_test_mode;
@@ -97,6 +99,11 @@ inline void debuglog(Params... params)
 {
     if (g_log_debug)
     {
+        uint8_t log_for_id = (0x01 << (*SCSI_STS_SELECTED & 7)) & g_scsi_log_mask;
+        if(log_for_id == 0)
+        {
+            return;
+        }
         log_raw("[", (int)millis(), "ms] DBG ");
         log_raw(params...);
         log_raw("\n");

@@ -7,6 +7,7 @@
 
 const char *g_log_firmwareversion = BLUESCSI_FW_VERSION " " __DATE__ " " __TIME__;
 bool g_log_debug = false;
+uint8_t g_scsi_log_mask = 0;
 bool g_test_mode = false;
 
 // This memory buffer can be read by debugger and is also saved to log.txt

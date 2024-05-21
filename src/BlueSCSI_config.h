@@ -6,8 +6,8 @@
 #include <BlueSCSI_platform.h>
 
 // Use variables for version number
-#define FW_VER_NUM      "2024.04.03"
-#define FW_VER_SUFFIX   "dev"
+#define FW_VER_NUM      "2024.05.22"
+#define FW_VER_SUFFIX   "dev" // 3 char only - 'dev' or 'rel'
 #define BLUESCSI_FW_VERSION FW_VER_NUM "-" FW_VER_SUFFIX
 
 // Configuration and log file paths
@@ -68,7 +68,7 @@
 #define APPLE_DRIVEINFO_TAPE      {"BlueSCSI", "APPLE_TAPE",      "",     ""}
 
 // Default Iomega ZIP drive information
-#define IOMEGA_DRIVEINFO_ZIP100     {"IOMEGA", "ZIP 100", "E.08", ""}
+#define IOMEGA_DRIVEINFO_ZIP100     {"IOMEGA", "ZIP 100", "D.13", ""}
 #define IOMEGA_DRIVEINFO_ZIP250     {"IOMEGA", "ZIP 250", "42.S", ""}
 #define IOMEGA_DRIVEINFO_JAZ        {"iomega", "jaz", "", ""}
 

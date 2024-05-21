@@ -66,13 +66,20 @@ static void doCountFiles(const char * dir_name)
             file.close();
             break;
         }
-        file.getName(name, MAX_FILE_PATH);
+        bool isDir = file.isDirectory();
+        size_t len = file.getName(name, MAX_FILE_PATH);
         file.close();
+        if (isDir)
+            continue;
+        // truncate filename the same way listing does, before validating name
+        if (len > MAX_MAC_PATH)
+            name[MAX_MAC_PATH] = 0x0;
+        debuglog("TOOLBOX COUNT FILES: truncated filename is '", name, "'");
         // only count valid files.
         if(toolboxFilenameValid(name))
         {
             file_count = file_count + 1;
-            if(file_count > 100) {
+            if(file_count > MAX_FILE_LISTING_FILES) {
                 scsiDev.status = CHECK_CONDITION;
                 scsiDev.target->sense.code = ILLEGAL_REQUEST;
                 scsiDev.target->sense.asc = OPEN_RETRO_SCSI_TOO_MANY_FILES;
@@ -91,15 +98,17 @@ void onListFiles(const char * dir_name) {
     FsFile dir;
     FsFile file;
 
-    memset(scsiDev.data, 0, 4096);
-    int ENTRY_SIZE = 40;
+    memset(scsiDev.data, 0, ENTRY_SIZE * (MAX_FILE_LISTING_FILES + 1));
     char name[MAX_FILE_PATH] = {0};
+    uint8_t index = 0;
+    byte file_entry[ENTRY_SIZE] = {0};
+
     dir.open(dir_name);
     dir.rewindDirectory();
-    uint8_t index = 0;
-    byte file_entry[40] = {0};
     while (file.openNext(&dir, O_RDONLY))
     {
+        memset(name, 0, MAX_FILE_PATH);
+        memset(file_entry, 0, ENTRY_SIZE);
         uint8_t isDir = file.isDirectory() ? 0x00 : 0x01;
         int len = file.getName(name, MAX_FILE_PATH);
         if (len > MAX_MAC_PATH)
@@ -122,10 +131,11 @@ void onListFiles(const char * dir_name) {
         file_entry[39] = (size) & 0xff;
         memcpy(&(scsiDev.data[ENTRY_SIZE * index]), file_entry, ENTRY_SIZE);
         index = index + 1;
+        if (index >= MAX_FILE_LISTING_FILES) break;
     }
     dir.close();
 
-    scsiDev.dataLen = 4096;
+    scsiDev.dataLen = ENTRY_SIZE * index;
     scsiDev.phase = DATA_IN;
 }
 
@@ -145,8 +155,11 @@ FsFile get_file_from_index(uint8_t index, const char * dir_name)
       file_test.close();
       break;
     }
-    file_test.getName(name, MAX_FILE_PATH);
 
+    // truncate filename the same way listing does, before validating name
+    size_t len = file_test.getName(name, MAX_FILE_PATH);
+    if (len > MAX_MAC_PATH)
+        name[MAX_MAC_PATH] = 0x0;
     if(!toolboxFilenameValid(name))
     {
         file_test.close();
@@ -184,6 +197,7 @@ void onListDevices()
     }
   }
   scsiDev.dataLen = NUM_SCSIID;
+  scsiDev.phase = DATA_IN;
 }
 
 void onSetNextCD(const char * img_dir)
@@ -197,10 +211,10 @@ void onSetNextCD(const char * img_dir)
     next_cd.getName(name, sizeof(name));
     next_cd.close();
     snprintf(full_path, (MAX_FILE_PATH * 2), "%s/%s", img_dir, name);
-    cdromSwitch(img, full_path);
+    switchNextImage(img, full_path);
 }
 
-FsFile gFile; // global so we can keep it open while transfering.
+FsFile gFile; // global so we can keep it open while transferring.
 void onGetFile10(char * dir_name) {
     uint8_t index = scsiDev.cdb[1];
 
@@ -232,7 +246,7 @@ void onGetFile10(char * dir_name) {
 }
 
 /*
-  Prepares a file for receving. The file name is null terminated in the scsi data.
+  Prepares a file for receiving. The file name is null terminated in the scsi data.
 */
 void onSendFilePrep(char * dir_name)
 {

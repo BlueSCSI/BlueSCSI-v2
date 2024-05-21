@@ -193,6 +193,8 @@ const char * typeToChar(int deviceType)
     return "Tape";
   case S2S_CFG_REMOVEABLE:
     return "Removable";
+  case S2S_CFG_ZIP100:
+    return "ZIP100";
   default:
     return "Unknown";
   }

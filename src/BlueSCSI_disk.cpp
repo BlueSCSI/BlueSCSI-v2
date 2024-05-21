@@ -289,6 +289,7 @@ static void setDefaultDriveInfo(int target_idx)
             case S2S_CFG_MO:            driveinfo = apl_driveinfo_magopt; break;
             case S2S_CFG_NETWORK:       driveinfo = apl_driveinfo_network; break;
             case S2S_CFG_SEQUENTIAL:    driveinfo = apl_driveinfo_tape; break;
+            case S2S_CFG_ZIP100:        driveinfo = iomega_driveinfo_removeable; break;
             default:                    driveinfo = apl_driveinfo_fixed; break;
         }
     }
@@ -659,6 +660,14 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
                 img.deviceType = S2S_CFG_FLOPPY_14MB;
                 img.image_directory = true;
             }
+            strcpy(tmp, "ZPX");
+            tmp[2] = '0' + target_idx;
+            if(SD.exists(tmp))
+            {
+                log("-- SCSI ID: ", target_idx, " using Zip 100 image directory \'", tmp, "'");
+                img.deviceType = S2S_CFG_ZIP100;
+                img.image_directory = true;
+            }
         }
     }
 }
@@ -753,9 +762,11 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
         int dirlen = getImgDir(target_idx, dirname);
         if (!dirlen)
         {
-            // If image_directory set but ImgDir is not look for an well known ImgDir
+            // If image_directory set but ImgDir is not look for a well known ImgDir
             if(img.deviceType == S2S_CFG_OPTICAL)
                 strcpy(dirname, "CDX");
+            else if(img.deviceType == S2S_CFG_ZIP100)
+                strcpy(dirname, "ZPX");
             else
                 strcpy(dirname, "HDX");
             dirname[2] = '0' + target_idx;
@@ -839,9 +850,52 @@ void scsiDiskLoadConfig(int target_idx)
     if (scsiDiskGetNextImageName(img, filename, sizeof(filename)))
     {
         int blocksize = getBlockSize(filename, target_idx, (img.deviceType == S2S_CFG_OPTICAL) ? 2048 : 512);
-        log("-- Opening '", filename, "' for ID:", target_idx);
+        log("-- Opening '", filename, "' for ID: ", target_idx);
         scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, blocksize);
     }
+}
+
+// Check if we have multiple drive images to cycle when drive is ejected.
+bool switchNextImage(image_config_t &img, const char* next_filename)
+{
+    // Check if we have a next image to load, so that drive is closed next time the host asks.
+    char filename[MAX_FILE_PATH];
+    int target_idx = img.scsiId & S2S_CFG_TARGET_ID_BITS;
+    if (next_filename == nullptr)
+    {
+        scsiDiskGetNextImageName(img, filename, sizeof(filename));
+    }
+    else
+    {
+        strncpy(filename, next_filename, MAX_FILE_PATH);
+    }
+
+    if (filename[0] != '\0')
+    {
+        log("Switching to next image for ID: ", target_idx, ": ", filename);
+        img.file.close();
+        int block_size = getBlockSize(filename, target_idx, (img.deviceType == S2S_CFG_OPTICAL) ? 2048 : 512);
+        bool status = scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, block_size);
+
+        if (status)
+        {
+            if (next_filename != nullptr && img.deviceType == S2S_CFG_OPTICAL)
+            {
+                // present the drive as ejected until the host queries it again,
+                // to make sure host properly detects the media change
+                img.ejected = true;
+                img.reinsert_after_eject = true;
+                img.cdrom_events = 2; // New Media
+            }
+            return true;
+        }
+    }
+    else
+    {
+        log("Could not switch to image as provide filename was empty.");
+    }
+
+    return false;
 }
 
 bool scsiDiskCheckAnyImagesConfigured()
@@ -1029,6 +1083,11 @@ void s2s_configInit(S2S_BoardCfg* config)
     if (ini_getbool("SCSI", "Debug", 0, CONFIGFILE))
     {
         log("-- Debug is enabled");
+        g_scsi_log_mask = ini_getl("SCSI", "DebugLogMask", 0xFF, CONFIGFILE) & 0b11111111;
+        if(g_scsi_log_mask != 0xFF)
+        {
+            log("--- DebugLogMask set to ", g_scsi_log_mask, " only SCSI IDs matching this mask will be logged.");
+        }
     }
 
     if (ini_getbool("SCSI", "EnableParity", defaults.enableParity, CONFIGFILE))
@@ -1879,22 +1938,13 @@ int scsiDiskCommand()
         //int immed = scsiDev.cdb[1] & 1;
         int start = scsiDev.cdb[4] & 1;
 
-        if (scsiDev.target->cfg->deviceType == S2S_CFG_ZIP100)
+        if (start)
         {
-            // If it's a ZIP drive, it likes to eject all the time so this
-            // little dance helps keep a disc loaded
-            if (start)
-            {
-                scsiDev.target->started = 1;
-            }
-            else
-            {
-                scsiDev.target->started = 0;
-            }
+            scsiDev.target->started = 1;
         }
         else
         {
-            scsiDev.target->started = 1;
+            scsiDev.target->started = 0;
         }
     }
     else if (unlikely(command == 0x00))
