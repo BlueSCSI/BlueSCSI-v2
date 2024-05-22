@@ -391,7 +391,7 @@ bool findHDDImages()
         {
           log("== Opening ", fullname, " for ID: ", id, " LUN: ", lun);
 
-          imageReady = scsiDiskOpenHDDImage(id, fullname, id, lun, blk, type);
+          imageReady = scsiDiskOpenHDDImage(fullname, id, lun, blk, type);
           if(imageReady)
           {
             foundImage = true;
@@ -536,7 +536,7 @@ static void reinitSCSI()
   {
 #if RAW_FALLBACK_ENABLE
     log("No images found, enabling RAW fallback partition");
-    scsiDiskOpenHDDImage(RAW_FALLBACK_SCSI_ID, "RAW:0:0xFFFFFFFF", RAW_FALLBACK_SCSI_ID, 0,
+    scsiDiskOpenHDDImage("RAW:0:0xFFFFFFFF", RAW_FALLBACK_SCSI_ID, 0,
                          RAW_FALLBACK_BLOCKSIZE);
 #else
     log("No valid image files found!");
