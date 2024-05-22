@@ -129,7 +129,7 @@ bool scsiDiskActivateRomDrive()
     }
 
     log("---- Activating ROM drive, SCSI id ", (int)hdr.scsi_id, " size ", (int)(hdr.imagesize / 1024), " kB");
-    bool status = scsiDiskOpenHDDImage(hdr.scsi_id, "ROM:", hdr.scsi_id, 0, hdr.blocksize, hdr.drivetype);
+    bool status = scsiDiskOpenHDDImage("ROM:", hdr.scsi_id, 0, hdr.blocksize, hdr.drivetype);
 
     if (!status)
     {
@@ -367,16 +367,16 @@ static void setDefaultDriveInfo(int target_idx)
     formatDriveInfoField(img.serial, sizeof(img.serial), true);
 }
 
-bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize, S2S_CFG_TYPE type)
+bool scsiDiskOpenHDDImage(const char *filename, int scsi_id, int scsi_lun, int block_size, S2S_CFG_TYPE type)
 {
-    image_config_t &img = g_DiskImages[target_idx];
+    image_config_t &img = g_DiskImages[scsi_id];
     img.cuesheetfile.close();
-    img.file = ImageBackingStore(filename, blocksize);
+    img.file = ImageBackingStore(filename, block_size);
 
     if (img.file.isOpen())
     {
-        img.bytesPerSector = blocksize;
-        img.scsiSectors = img.file.size() / blocksize;
+        img.bytesPerSector = block_size;
+        img.scsiSectors = img.file.size() / block_size;
         img.scsiId = scsi_id | S2S_CFG_TARGET_ENABLED;
         img.sdSectorStart = 0;
 
@@ -467,7 +467,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
             log("Vendor / product id set from image file name");
         }
 
-        setDefaultDriveInfo(target_idx);
+        setDefaultDriveInfo(scsi_id);
 
 #ifdef PLATFORM_CONFIG_HOOK
         PLATFORM_CONFIG_HOOK(&img);
@@ -854,7 +854,7 @@ void scsiDiskLoadConfig(int target_idx)
     {
         int blocksize = getBlockSize(filename, target_idx, (img.deviceType == S2S_CFG_OPTICAL) ? 2048 : 512);
         log("-- Opening '", filename, "' for ID: ", target_idx);
-        scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, blocksize);
+        scsiDiskOpenHDDImage(filename, target_idx, 0, blocksize);
     }
 }
 
@@ -878,7 +878,7 @@ bool switchNextImage(image_config_t &img, const char* next_filename)
         log("Switching to next image for ID: ", target_idx, ": ", filename);
         img.file.close();
         int block_size = getBlockSize(filename, target_idx, (img.deviceType == S2S_CFG_OPTICAL) ? 2048 : 512);
-        bool status = scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, block_size);
+        bool status = scsiDiskOpenHDDImage(filename, target_idx, 0, block_size);
 
         if (status)
         {
