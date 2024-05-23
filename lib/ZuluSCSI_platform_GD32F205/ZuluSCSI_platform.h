@@ -67,6 +67,7 @@ enum ZuluSCSIVersion_t
 };
 
 extern enum ZuluSCSIVersion_t g_zuluscsi_version;
+extern bool g_moved_select_in;
 
 #ifndef PLATFORM_VDD_WARNING_LIMIT_mV
 #define PLATFORM_VDD_WARNING_LIMIT_mV 2800

@@ -41,7 +41,7 @@ const char *g_platform_name = PLATFORM_NAME;
 static bool g_enable_apple_quirks = false;
 bool g_direct_mode = false;
 ZuluSCSIVersion_t g_zuluscsi_version = ZSVersion_unknown;
-
+bool g_moved_select_in = false;
 // hw_config.cpp c functions
 #include "platform_hw_config.h"
 
@@ -236,6 +236,7 @@ void platform_init()
 
     // determine the ZulusSCSI board version
     g_zuluscsi_version = get_zuluscsi_version();
+    g_moved_select_in = g_zuluscsi_version == ZSVersion_v1_1_ODE || g_zuluscsi_version == ZSVersion_v1_2;
 
     // Init SCSI pins GPIOs
     gpio_init(SCSI_OUT_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, SCSI_OUT_DATA_MASK | SCSI_OUT_REQ);
