@@ -86,7 +86,7 @@ volatile uint8_t g_scsi_ctrl_bsy;
 
 static void scsi_bsy_deassert_interrupt()
 {
-    if (!SCSI_IN(BSY) && (((g_zuluscsi_version == ZSVersion_v1_1_ODE || g_zuluscsi_version == ZSVersion_v1_2) && SCSI_IN(ODE_SEL)) || SCSI_IN(SEL)) )
+    if (!SCSI_IN(BSY) && ((g_moved_select_in && SCSI_IN(ODE_SEL)) || (!g_moved_select_in && SCSI_IN(SEL))))
     {
         uint8_t sel_bits = SCSI_IN_DATA();
         int sel_id = -1;
@@ -126,7 +126,7 @@ extern "C" bool scsiStatusSEL()
         SCSI_OUT(BSY, 1);
     }
 
-    if (g_zuluscsi_version == ZSVersion_v1_1_ODE || g_zuluscsi_version == ZSVersion_v1_2)
+    if (g_moved_select_in)
     {
         return SCSI_IN(ODE_SEL);
     }
@@ -586,12 +586,14 @@ void SCSI_RST_IRQ (void)
         scsi_bsy_deassert_interrupt();
     }
 
-    if (exti_interrupt_flag_get(SCSI_SEL_EXTI))
+    if ((g_moved_select_in && exti_interrupt_flag_get(SCSI_ODE_SEL_EXTI)) ||
+        (!g_moved_select_in && exti_interrupt_flag_get(SCSI_SEL_EXTI))
+       )
     {
         // Check BSY line status when SEL goes active.
         // This is needed to handle SCSI-1 hosts that use the single initiator mode.
         // The host will just assert the SEL directly, without asserting BSY first.
-        exti_interrupt_flag_clear(SCSI_SEL_EXTI);
+        exti_interrupt_flag_clear(g_moved_select_in ? SCSI_ODE_SEL_EXTI : SCSI_SEL_EXTI);
         scsi_bsy_deassert_interrupt();
     }
 }
@@ -627,10 +629,20 @@ static void init_irqs()
     NVIC_EnableIRQ(SCSI_BSY_IRQn);
 
     // Falling edge of SEL pin
-    gpio_exti_source_select(SCSI_SEL_EXTI_SOURCE_PORT, SCSI_SEL_EXTI_SOURCE_PIN);
-    exti_init(SCSI_SEL_EXTI, EXTI_INTERRUPT, EXTI_TRIG_FALLING);
-    NVIC_SetPriority(SCSI_SEL_IRQn, 1);
-    NVIC_EnableIRQ(SCSI_SEL_IRQn);
+    if (g_moved_select_in)
+    {
+        gpio_exti_source_select(SCSI_ODE_SEL_EXTI_SOURCE_PORT, SCSI_ODE_SEL_EXTI_SOURCE_PIN);
+        exti_init(SCSI_ODE_SEL_EXTI, EXTI_INTERRUPT, EXTI_TRIG_FALLING);
+        NVIC_SetPriority(SCSI_ODE_SEL_IRQn, 1);
+        NVIC_EnableIRQ(SCSI_ODE_SEL_IRQn);
+    }
+    else 
+    {
+        gpio_exti_source_select(SCSI_SEL_EXTI_SOURCE_PORT, SCSI_SEL_EXTI_SOURCE_PIN);
+        exti_init(SCSI_SEL_EXTI, EXTI_INTERRUPT, EXTI_TRIG_FALLING);
+        NVIC_SetPriority(SCSI_SEL_IRQn, 1);
+        NVIC_EnableIRQ(SCSI_SEL_IRQn);
+    }
 }
 
 
