@@ -18,8 +18,7 @@
 #define GEOMETRY_H
 
 #include "config.h"
-// TODO #include "sd.h"
-#define SD_SECTOR_SIZE 512
+#include "sd.h"
 
 typedef enum
 {

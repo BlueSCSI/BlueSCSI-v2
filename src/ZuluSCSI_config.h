@@ -31,6 +31,8 @@
 #define FW_VER_NUM      "24.05.17"
 #define FW_VER_SUFFIX   "release"
 #define ZULU_FW_VERSION FW_VER_NUM "-" FW_VER_SUFFIX
+#define INQUIRY_NAME  PLATFORM_NAME " v" ZULU_FW_VERSION
+#define TOOLBOX_API 0
 
 // Configuration and log file paths
 #define CONFIGFILE  "zuluscsi.ini"
@@ -83,6 +85,9 @@
 #define DRIVEINFO_NETWORK   {"Dayna",    "SCSI/Link",       "2.0f", ""}
 #define DRIVEINFO_TAPE      {"ZULUSCSI", "TAPE",      PLATFORM_REVISION, ""}
 
+// Default block size
+#define DEFAULT_BLOCKSIZE 512
+
 // Default optical drive blocksize
 #define DEFAULT_BLOCKSIZE_OPTICAL 2048
 
@@ -94,6 +99,11 @@
 #define APPLE_DRIVEINFO_MAGOPT    {"MOST",     "RMD-5200",          PLATFORM_REVISION, "1.0"}
 #define APPLE_DRIVEINFO_NETWORK   {"Dayna",    "SCSI/Link",       "2.0f", ""}
 #define APPLE_DRIVEINFO_TAPE      {"ZULUSCSI", "APPLE_TAPE",        PLATFORM_REVISION, ""}
+
+// Default Iomega ZIP drive information
+#define IOMEGA_DRIVEINFO_ZIP100     {"IOMEGA", "ZIP 100", "D.13", ""}
+#define IOMEGA_DRIVEINFO_ZIP250     {"IOMEGA", "ZIP 250", "42.S", ""}
+#define IOMEGA_DRIVEINFO_JAZ        {"iomega", "jaz", "", ""}
 
 // Default delay for SCSI phases.
 // Can be adjusted in ini file
@@ -108,3 +118,8 @@
 // Masks for buttons
 #define EJECT_BTN_MASK (1|2)
 #define USER_BTN_MASK  (4)
+
+
+// Zip disk  media sizes
+#define ZIP100_DISK_SIZE    100663296 // bytes
+#define ZIP250_DISK_SIZE    250640384 // bytes
