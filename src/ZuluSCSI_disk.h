@@ -106,6 +106,9 @@ void scsiDiskResetImages();
 // Close any files opened from SD card (prepare for remounting SD)
 void scsiDiskCloseSDCardImages();
 
+// Get blocksize from filename or use device setting in ini file
+uint32_t getBlockSize(char *filename, uint8_t scsi_id);
+
 bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, int blocksize, S2S_CFG_TYPE type = S2S_CFG_FIXED);
 void scsiDiskLoadConfig(int target_idx);
 
@@ -143,3 +146,7 @@ void scsiDiskStartWrite(uint32_t lba, uint32_t blocks);
 
 // Returns true if there is at least one network device active
 bool scsiDiskCheckAnyNetworkDevicesConfigured();
+
+
+// Switch to next Drive image if multiple have been configured
+bool switchNextImage(image_config_t &img, const char* next_filename = nullptr);

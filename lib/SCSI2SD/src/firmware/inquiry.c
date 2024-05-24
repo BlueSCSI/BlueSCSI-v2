@@ -1,6 +1,7 @@
 //	Copyright (C) 2013 Michael McMaster <michael@codesrc.com>
 //	Copyright (C) 2019 Landon Rodgers  <g.landon.rodgers@gmail.com>
 //	Copyright (c) 2023 joshua stein <jcs@jcs.org>
+//	Copyright (c) 2024 Eric Helgeson <erichelgeson@gmail.com>
 //
 //	This file is part of SCSI2SD.
 //
@@ -23,6 +24,7 @@
 #include "scsi.h"
 #include "config.h"
 #include "inquiry.h"
+#include "ZuluSCSI_config.h"
 
 #include <string.h>
 
@@ -83,6 +85,17 @@ static const uint8_t AscImpOperatingDefinition[] =
 'S','C','S','I','-','2'
 };
 
+static const uint8_t IomegaVendorInquiry[] =
+{
+'0', '8', '/', '2', '0', '/', '9', '6', 0x0, 0x0, 0x0, 0x0,
+0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+'(', 'c', ')', ' ', 'C', 'o', 'p', 'y', 'r', 'i', 'g', 'h', 't', ' ', 'I', 'O',
+'M', 'E', 'G', 'A', ' ', '1', '9', '9', '5', ' '
+};
+
+
 void s2s_scsiInquiry()
 {
 	uint8_t evpd = scsiDev.cdb[1] & 1; // enable vital product data.
@@ -127,8 +140,8 @@ void s2s_scsiInquiry()
 	{
 		memcpy(scsiDev.data, UnitSerialNumber, sizeof(UnitSerialNumber));
 		scsiDev.dataLen = sizeof(UnitSerialNumber);
-        const S2S_TargetCfg* config = scsiDev.target->cfg;
-        memcpy(&scsiDev.data[4], config->serial, sizeof(config->serial));
+		const S2S_TargetCfg* config = scsiDev.target->cfg;
+		memcpy(&scsiDev.data[4], config->serial, sizeof(config->serial));
 		scsiDev.phase = DATA_IN;
 	}
 	else if (pageCode == 0x81)
@@ -203,6 +216,7 @@ void s2s_scsiInquiry()
 
 		case S2S_CFG_FLOPPY_14MB:
 		case S2S_CFG_REMOVABLE:
+		case S2S_CFG_ZIP100:
 			scsiDev.data[1] |= 0x80; // Removable bit.
 			break;
 
@@ -227,6 +241,7 @@ uint32_t s2s_getStandardInquiry(
 	const S2S_TargetCfg* cfg, uint8_t* out, uint32_t maxlen
 	)
 {
+	uint32_t size = 0;
 	uint32_t buflen = sizeof(StandardResponse);
 	if (buflen > maxlen) buflen = maxlen;
 
@@ -245,10 +260,26 @@ uint32_t s2s_getStandardInquiry(
 	memcpy(&out[8], cfg->vendor, sizeof(cfg->vendor));
 	memcpy(&out[16], cfg->prodId, sizeof(cfg->prodId));
 	memcpy(&out[32], cfg->revision, sizeof(cfg->revision));
-	return sizeof(StandardResponse) +
+	size =  sizeof(StandardResponse) +
 		sizeof(cfg->vendor) +
 		sizeof(cfg->prodId) +
 		sizeof(cfg->revision);
+
+	if(cfg->deviceType == S2S_CFG_ZIP100)
+	{
+		memcpy(&out[size], IomegaVendorInquiry, sizeof(IomegaVendorInquiry));
+		size += sizeof(IomegaVendorInquiry);
+		out[7] = 0x00; // Disable sync and linked commands
+		out[4] = 0x75; // 117 length
+	}
+	// Iomega already has a vendor inquiry
+	if(cfg->deviceType != S2S_CFG_NETWORK && cfg->deviceType != S2S_CFG_ZIP100) {
+		memcpy(&out[size], INQUIRY_NAME, sizeof(INQUIRY_NAME));
+		size += sizeof(INQUIRY_NAME);
+		out[size] = TOOLBOX_API;
+		size += 1;
+	}
+	return size;
 }
 
 uint8_t getDeviceTypeQualifier()
@@ -270,6 +301,7 @@ uint8_t getDeviceTypeQualifier()
 
 	case S2S_CFG_FLOPPY_14MB:
 	case S2S_CFG_REMOVABLE:
+	case S2S_CFG_ZIP100:
 		return 0;
 		break;
 

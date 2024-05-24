@@ -354,6 +354,15 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
             logmsg("---- Configuring as tape drive");
             img.deviceType = S2S_CFG_SEQUENTIAL;
         }
+                else if (type == S2S_CFG_ZIP100)
+        {
+            logmsg("---- Configuration as Iomega Zip100");
+            img.deviceType = S2S_CFG_ZIP100;
+            if(img.file.size() != ZIP100_DISK_SIZE)
+            {
+                logmsg("---- Zip 100 disk (", (int)img.file.size(), " bytes) is not exactly ", ZIP100_DISK_SIZE, " bytes, may not work correctly");
+            }
+        }
 
         quirksCheck(&img);
 
@@ -531,6 +540,11 @@ static void scsiDiskSetConfig(int target_idx)
         strcpy(tmp, "FD0");
         tmp[2] += target_idx;
         scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_FLOPPY_14MB, "floppy");
+
+        strcpy(tmp, "ZP0");
+        tmp[2] += target_idx;
+        scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_ZIP100, "Iomega Zip 100");
+
     }
     g_scsi_settings.initDevice(target_idx, (S2S_CFG_TYPE)img.deviceType);
 }
@@ -661,6 +675,9 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
                 case S2S_CFG_FLOPPY_14MB:
                     strcpy(dirname, "FD0");
                 break;
+                case S2S_CFG_ZIP100:
+                    strcpy(dirname, "ZP0");
+                break;
                 default:
                     dbgmsg("No matching device type for default directory found");
                     return 0;
@@ -745,6 +762,76 @@ void scsiDiskLoadConfig(int target_idx)
         scsiDiskOpenHDDImage(target_idx, filename, 0, blocksize, (S2S_CFG_TYPE) img.deviceType);
     }
 }
+
+uint32_t getBlockSize(char *filename, uint8_t scsi_id)
+{
+    // Parse block size (HD00_NNNN)
+    uint32_t block_size = g_scsi_settings.getDevice(scsi_id)->blockSize;
+    const char *blksizestr = strchr(filename, '_');
+    if (blksizestr)
+    {
+        int blktmp = strtoul(blksizestr + 1, NULL, 10);
+        if (8 <= blktmp && blktmp <= 64 * 1024)
+        {
+        block_size = blktmp;
+        logmsg("-- Using custom block size, ",(int) block_size," from filename: ", filename);
+        }
+    }
+    return block_size;
+}
+// Check if we have multiple drive images to cycle when drive is ejected.
+bool switchNextImage(image_config_t &img, const char* next_filename)
+{
+    // Check if we have a next image to load, so that drive is closed next time the host asks.
+    
+    int target_idx = img.scsiId & 7;
+    char filename[MAX_FILE_PATH];
+    if (next_filename == nullptr)
+    {
+        scsiDiskGetNextImageName(img, filename, sizeof(filename));
+    }
+    else
+    {
+        strncpy(filename, next_filename, MAX_FILE_PATH);
+    }
+
+#ifdef ENABLE_AUDIO_OUTPUT
+    // if in progress for this device, terminate audio playback immediately (Annex C)
+    audio_stop(target_idx);
+    // Reset position tracking for the new image
+    audio_get_status_code(target_idx); // trash audio status code
+#endif
+
+    if (filename[0] != '\0')
+    {
+        logmsg("Switching to next image for id ", target_idx, ": ", filename);
+        img.file.close();
+
+        // set default blocksize for CDs
+        int block_size = getBlockSize(filename, target_idx);
+        bool status = scsiDiskOpenHDDImage(target_idx, filename, 0, block_size, (S2S_CFG_TYPE) img.deviceType);
+
+        if (status)
+        {
+            if (next_filename != nullptr && img.deviceType == S2S_CFG_OPTICAL)
+            {
+                // present the drive as ejected until the host queries it again,
+                // to make sure host properly detects the media change
+                img.ejected = true;
+                img.reinsert_after_eject = true;
+                img.cdrom_events = 2; // New Media
+            }
+            return true;
+        }
+    }
+    else
+    {
+        logmsg("Switch to next image failed because target filename was empty.");
+    }
+
+    return false;
+}
+
 
 bool scsiDiskCheckAnyImagesConfigured()
 {
@@ -1223,6 +1310,43 @@ static void doSeek(uint32_t lba)
         {
             s2s_delay_us(10);
         }
+    }
+}
+
+
+/***********************/
+/* Start/stop commands */
+/***********************/
+static void doCloseTray(image_config_t &img)
+{
+    if (img.ejected)
+    {
+        uint8_t target = img.scsiId & 7;
+        dbgmsg("------ Device close tray on ID ", (int)target);
+        img.ejected = false;
+
+        if (scsiDev.boardCfg.flags & S2S_CFG_ENABLE_UNIT_ATTENTION)
+        {
+            dbgmsg("------ Posting UNIT ATTENTION after medium change");
+            scsiDev.targets[target].unitAttention = NOT_READY_TO_READY_TRANSITION_MEDIUM_MAY_HAVE_CHANGED;
+        }
+    }
+}
+
+ 
+// Eject and switch image
+static void doPerformEject(image_config_t &img)
+{
+    uint8_t target = img.scsiId & 7;
+    if (!img.ejected)
+    {
+        dbgmsg("------ Device open tray on ID ", (int)target);
+        img.ejected = true;
+        switchNextImage(img); // Switch media for next time
+    }
+    else
+    {
+        doCloseTray(img);
     }
 }
 
@@ -1767,6 +1891,21 @@ int scsiDiskCommand()
         else
         {
             scsiDev.target->started = 0;
+        }
+
+        if ((scsiDev.cdb[4] & 2))
+        {
+            // Device load & eject
+            int start = scsiDev.cdb[4] & 1;
+            if (start)
+            {
+                doCloseTray(img);
+            }
+            else
+            {
+                // Eject and switch image
+                doPerformEject(img);
+            }
         }
     }
     else if (likely(command == 0x08))
