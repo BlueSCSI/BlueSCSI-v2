@@ -332,3 +332,16 @@ uint64_t ImageBackingStore::position()
         return 0;
     }
 }
+
+size_t ImageBackingStore::getFilename(char* buf, size_t buflen)
+{
+    if (m_fsfile.isOpen())
+    {
+        size_t name_length = m_fsfile.getName(buf, buflen);
+        if (name_length + 1 > buflen)
+            return 0;
+        else
+            return name_length;
+    }
+    return 0;
+}

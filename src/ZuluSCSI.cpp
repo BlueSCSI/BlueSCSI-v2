@@ -393,7 +393,7 @@ bool findHDDImages()
           name[MAX_FILE_PATH] = '\0';
         }
       }
-
+      bool use_prefix = false;
       bool is_hd = (tolower(name[0]) == 'h' && tolower(name[1]) == 'd');
       bool is_cd = (tolower(name[0]) == 'c' && tolower(name[1]) == 'd');
       bool is_fd = (tolower(name[0]) == 'f' && tolower(name[1]) == 'd');
@@ -434,6 +434,7 @@ bool findHDDImages()
           if(tmp_id > -1 && tmp_id < 8)
           {
             id = tmp_id; // If valid id, set it, else use default
+            use_prefix = true;
           }
           else
           {
@@ -465,7 +466,7 @@ bool findHDDImages()
           continue;
         }
 
-        // set the default block size now that we know the device type 
+        // set the default block size now that we know the device type
         if (g_scsi_settings.getDevice(id)->blockSize == 0)
         {
           g_scsi_settings.getDevice(id)->blockSize = is_cd ?  DEFAULT_BLOCKSIZE_OPTICAL : DEFAULT_BLOCKSIZE;
@@ -511,7 +512,7 @@ bool findHDDImages()
               logmsg("---- Using device preset: ", g_scsi_settings.getDevicePresetName(id));
           }
 
-          imageReady = scsiDiskOpenHDDImage(id, fullname, lun, blk, type);
+          imageReady = scsiDiskOpenHDDImage(id, fullname, lun, blk, type, use_prefix);
           if(imageReady)
           {
             foundImage = true;
