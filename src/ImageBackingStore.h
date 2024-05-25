@@ -100,6 +100,8 @@ public:
     // Result is only valid for regular files, not raw or flash access
     uint64_t position();
 
+    size_t getFilename(char* buf, size_t buflen);
+
 protected:
     bool m_israw;
     bool m_isrom;

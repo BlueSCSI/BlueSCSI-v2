@@ -63,6 +63,10 @@ struct image_config_t: public S2S_TargetCfg
 
     // True if there is a subdirectory of images for this target
     bool image_directory;
+
+    // True if the device type was determined by the drive prefix
+    bool use_prefix;
+
     // the name of the currently mounted image in a dynamic image directory
     char current_image[MAX_FILE_PATH];
 
@@ -109,7 +113,7 @@ void scsiDiskCloseSDCardImages();
 // Get blocksize from filename or use device setting in ini file
 uint32_t getBlockSize(char *filename, uint8_t scsi_id);
 
-bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, int blocksize, S2S_CFG_TYPE type = S2S_CFG_FIXED);
+bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, int blocksize, S2S_CFG_TYPE type = S2S_CFG_FIXED, bool use_prefix = false);
 void scsiDiskLoadConfig(int target_idx);
 
 // Checks if a filename extension is appropriate for further processing as a disk image.
