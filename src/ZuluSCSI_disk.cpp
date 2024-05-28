@@ -552,7 +552,7 @@ static void scsiDiskSetConfig(int target_idx)
 
 // Compares the prefix of both files and the scsi ID
 // cd3-name.iso and CD3-otherfile.bin matches, zp3.img or cd4-name.iso would not
-bool compare_prefix(const char* name, const char* compare)
+static bool compare_prefix(const char* name, const char* compare)
 {
     if (strlen(name) >= 3 && strlen(compare) >= 3)
     {
@@ -564,6 +564,43 @@ bool compare_prefix(const char* name, const char* compare)
     }
     return false;
 }
+
+/***********************/
+/* Start/stop commands */
+/***********************/
+static void doCloseTray(image_config_t &img)
+{
+    if (img.ejected)
+    {
+        uint8_t target = img.scsiId & 7;
+        dbgmsg("------ Device close tray on ID ", (int)target);
+        img.ejected = false;
+
+        if (scsiDev.boardCfg.flags & S2S_CFG_ENABLE_UNIT_ATTENTION)
+        {
+            dbgmsg("------ Posting UNIT ATTENTION after medium change");
+            scsiDev.targets[target].unitAttention = NOT_READY_TO_READY_TRANSITION_MEDIUM_MAY_HAVE_CHANGED;
+        }
+    }
+}
+
+ 
+// Eject and switch image
+static void doPerformEject(image_config_t &img)
+{
+    uint8_t target = img.scsiId & 7;
+    if (!img.ejected)
+    {
+        dbgmsg("------ Device open tray on ID ", (int)target);
+        img.ejected = true;
+        switchNextImage(img); // Switch media for next time
+    }
+    else
+    {
+        doCloseTray(img);
+    }
+}
+
 
 // Finds filename with the lowest lexical order _after_ the given filename in
 // the given folder. If there is no file after the given one, or if there is
@@ -1372,42 +1409,6 @@ static void doSeek(uint32_t lba)
     }
 }
 
-
-/***********************/
-/* Start/stop commands */
-/***********************/
-static void doCloseTray(image_config_t &img)
-{
-    if (img.ejected)
-    {
-        uint8_t target = img.scsiId & 7;
-        dbgmsg("------ Device close tray on ID ", (int)target);
-        img.ejected = false;
-
-        if (scsiDev.boardCfg.flags & S2S_CFG_ENABLE_UNIT_ATTENTION)
-        {
-            dbgmsg("------ Posting UNIT ATTENTION after medium change");
-            scsiDev.targets[target].unitAttention = NOT_READY_TO_READY_TRANSITION_MEDIUM_MAY_HAVE_CHANGED;
-        }
-    }
-}
-
- 
-// Eject and switch image
-static void doPerformEject(image_config_t &img)
-{
-    uint8_t target = img.scsiId & 7;
-    if (!img.ejected)
-    {
-        dbgmsg("------ Device open tray on ID ", (int)target);
-        img.ejected = true;
-        switchNextImage(img); // Switch media for next time
-    }
-    else
-    {
-        doCloseTray(img);
-    }
-}
 
 /********************************************/
 /* Transfer state for read / write commands */
