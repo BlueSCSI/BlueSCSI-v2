@@ -1888,6 +1888,7 @@ extern "C" int scsiCDRomCommand()
     int commandHandled = 1;
 
     uint8_t command = scsiDev.cdb[0];
+    // Start/stop command
     if (command == 0x1B)
     {
 #if ENABLE_AUDIO_OUTPUT
