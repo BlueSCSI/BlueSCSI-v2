@@ -863,6 +863,18 @@ uint32_t getBlockSize(char *filename, uint8_t scsi_id)
     }
     return block_size;
 }
+
+uint8_t getEjectButton(uint8_t idx)
+{
+    return g_DiskImages[idx].ejectButton;
+}
+
+void setEjectButton(uint8_t idx, int8_t eject_button)
+{
+    g_DiskImages[idx].ejectButton = eject_button;
+    g_scsi_settings.getDevice(idx)->ejectButton = eject_button;
+}
+
 // Check if we have multiple drive images to cycle when drive is ejected.
 bool switchNextImage(image_config_t &img, const char* next_filename)
 {
@@ -942,7 +954,7 @@ static void diskEjectAction(uint8_t buttonId)
     for (uint8_t i = 0; i < S2S_MAX_TARGETS; i++)
     {
         image_config_t &img = g_DiskImages[i];
-        if (img.ejectButton == buttonId)
+        if (img.ejectButton & buttonId)
         {
             if (img.deviceType == S2S_CFG_OPTICAL)
             {
@@ -994,7 +1006,7 @@ uint8_t diskEjectButtonUpdate(bool immediate)
             uint8_t mask = 1;
             for (uint8_t i = 0; i < 8; i++)
             {
-                if (ejectors & mask) diskEjectAction(i + 1);
+                if (ejectors & mask) diskEjectAction(ejectors & mask);
                 mask = mask << 1;
             }
         }
