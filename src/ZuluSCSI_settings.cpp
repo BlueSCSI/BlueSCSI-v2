@@ -266,6 +266,7 @@ static void readIniSCSIDeviceSetting(scsi_device_settings_t &cfg, const char *se
         memset(cfg.serial, 0, sizeof(cfg.serial));
         strncpy(cfg.serial, tmp, sizeof(cfg.serial));
     }
+
 }
 
 scsi_system_settings_t *ZuluSCSISettings::initSystem(const char *presetName)

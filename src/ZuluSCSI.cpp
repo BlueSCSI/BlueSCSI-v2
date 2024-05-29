@@ -310,6 +310,22 @@ bool createImage(const char *cmd_filename, char imgname[MAX_FILE_PATH + 1])
   return true;
 }
 
+static bool typeIsRemovable(S2S_CFG_TYPE type)
+{
+  switch (type)
+  {
+  case S2S_CFG_OPTICAL:
+  case S2S_CFG_MO:
+  case S2S_CFG_FLOPPY_14MB:
+  case S2S_CFG_ZIP100:
+  case S2S_CFG_REMOVABLE:
+  case S2S_CFG_SEQUENTIAL:
+    return true;
+  default:
+    return false;
+  }
+}
+
 // Iterate over the root path in the SD card looking for candidate image files.
 bool findHDDImages()
 {
@@ -336,6 +352,9 @@ bool findHDDImages()
   bool imageReady;
   bool foundImage = false;
   int usedDefaultId = 0;
+  uint8_t removable_count = 0;
+  uint8_t eject_btn_set = 0;
+  uint8_t last_removable_device = 255;
   while (1)
   {
     if (!file.openNext(&root, O_READ))
@@ -451,8 +470,6 @@ bool findHDDImages()
           }
         }
 
-
-
         // Add the directory name to get the full file path
         char fullname[MAX_FILE_PATH * 2 + 2] = {0};
         strncpy(fullname, imgdir, MAX_FILE_PATH);
@@ -556,11 +573,63 @@ bool findHDDImages()
               ", BlockSize: ", (int)cfg->bytesPerSector,
               ", Type: ", (int)cfg->deviceType,
               ", Quirks: ", (int)cfg->quirks,
-              ", Size: ", capacity_kB, "kB");
-      };
+              ", Size: ", capacity_kB, "kB",
+              typeIsRemovable((S2S_CFG_TYPE)cfg->deviceType) ? ", Removable" : ""
+              );
+       }
     }
   }
+  // count the removable drives and drive with eject enabled
+  for (uint8_t id; id < S2S_MAX_TARGETS; id++)
+  {
+    const S2S_TargetCfg* cfg = s2s_getConfigByIndex(id);
+    if (cfg  && (cfg->scsiId & S2S_CFG_TARGET_ENABLED ))
+    {
+       if (typeIsRemovable((S2S_CFG_TYPE)cfg->deviceType))
+        {
+          removable_count++;
+          last_removable_device = id;
+          if ( getEjectButton(id) !=0 )
+          {
+            eject_btn_set++;
+          }
+        }
+    }
+  } 
 
+  if (removable_count == 1)
+  {
+    // If there is a removable device
+    if (eject_btn_set == 1)
+      logmsg("Eject set to device with ID: ", last_removable_device);
+    else if (eject_btn_set == 0)
+    {
+      logmsg("Found 1 removable device, to set an eject button see EjectButton in the, '", CONFIGFILE,"', or the http://zuluscsi.com/manual");
+    } 
+  }
+  else if (removable_count > 1)
+  {
+
+    if (removable_count >= eject_btn_set && eject_btn_set > 0)
+    {
+      if (eject_btn_set == removable_count)
+        logmsg("Eject set on all removable devices:");
+      else
+        logmsg("Eject set on the following SCSI IDs:");
+
+      for (uint8_t id = 0; id < S2S_MAX_TARGETS; id++)
+      {
+        if( getEjectButton(id) != 0)
+        {
+          logmsg("-- SCSI ID: ", (int)id, " type: ", (int) s2s_getConfigById(id)->deviceType, " button mask: ", getEjectButton(id));
+        }
+      }
+    }
+    else
+    {
+      logmsg("Multiple removable devices, to set an eject button see EjectButton in the, '", CONFIGFILE,"', or the http://zuluscsi.com/manual");
+    }
+  }
   return foundImage;
 }
 
