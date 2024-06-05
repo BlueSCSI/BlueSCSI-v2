@@ -310,6 +310,22 @@ bool createImage(const char *cmd_filename, char imgname[MAX_FILE_PATH + 1])
   return true;
 }
 
+static bool typeIsRemovable(S2S_CFG_TYPE type)
+{
+  switch (type)
+  {
+  case S2S_CFG_OPTICAL:
+  case S2S_CFG_MO:
+  case S2S_CFG_FLOPPY_14MB:
+  case S2S_CFG_ZIP100:
+  case S2S_CFG_REMOVABLE:
+  case S2S_CFG_SEQUENTIAL:
+    return true;
+  default:
+    return false;
+  }
+}
+
 // Iterate over the root path in the SD card looking for candidate image files.
 bool findHDDImages()
 {
@@ -336,6 +352,9 @@ bool findHDDImages()
   bool imageReady;
   bool foundImage = false;
   int usedDefaultId = 0;
+  uint8_t removable_count = 0;
+  uint8_t eject_btn_set = 0;
+  uint8_t last_removable_device = 255;
   while (1)
   {
     if (!file.openNext(&root, O_READ))
@@ -393,18 +412,19 @@ bool findHDDImages()
           name[MAX_FILE_PATH] = '\0';
         }
       }
-
+      bool use_prefix = false;
       bool is_hd = (tolower(name[0]) == 'h' && tolower(name[1]) == 'd');
       bool is_cd = (tolower(name[0]) == 'c' && tolower(name[1]) == 'd');
       bool is_fd = (tolower(name[0]) == 'f' && tolower(name[1]) == 'd');
       bool is_mo = (tolower(name[0]) == 'm' && tolower(name[1]) == 'o');
       bool is_re = (tolower(name[0]) == 'r' && tolower(name[1]) == 'e');
       bool is_tp = (tolower(name[0]) == 't' && tolower(name[1]) == 'p');
+      bool is_zp = (tolower(name[0]) == 'z' && tolower(name[1]) == 'p');
 #ifdef ZULUSCSI_NETWORK
       bool is_ne = (tolower(name[0]) == 'n' && tolower(name[1]) == 'e');
 #endif // ZULUSCSI_NETWORK
 
-      if (is_hd || is_cd || is_fd || is_mo || is_re || is_tp
+      if (is_hd || is_cd || is_fd || is_mo || is_re || is_tp || is_zp
 #ifdef ZULUSCSI_NETWORK
         || is_ne
 #endif // ZULUSCSI_NETWORK
@@ -424,13 +444,6 @@ bool findHDDImages()
         // Defaults for Hard Disks
         int id  = 1; // 0 and 3 are common in Macs for physical HD and CD, so avoid them.
         int lun = 0;
-        int blk = 512;
-
-        if (is_cd)
-        {
-          // Use 2048 as the default sector size for CD-ROMs
-          blk = DEFAULT_BLOCKSIZE_OPTICAL;
-        }
 
         // Parse SCSI device ID
         int file_name_length = strlen(name);
@@ -440,6 +453,7 @@ bool findHDDImages()
           if(tmp_id > -1 && tmp_id < 8)
           {
             id = tmp_id; // If valid id, set it, else use default
+            use_prefix = true;
           }
           else
           {
@@ -456,18 +470,6 @@ bool findHDDImages()
           }
         }
 
-        // Parse block size (HD00_NNNN)
-        const char *blksize = strchr(name, '_');
-        if (blksize)
-        {
-          int blktmp = strtoul(blksize + 1, NULL, 10);
-          if (8 <= blktmp && blktmp <= 64 * 1024)
-          {
-            blk = blktmp;
-            logmsg("-- Using custom block size, ",(int) blk," from filename: ", name);
-          }
-        }
-
         // Add the directory name to get the full file path
         char fullname[MAX_FILE_PATH * 2 + 2] = {0};
         strncpy(fullname, imgdir, MAX_FILE_PATH);
@@ -480,6 +482,14 @@ bool findHDDImages()
           logmsg("-- Ignoring ", fullname, ", SCSI ID ", id, " is already in use!");
           continue;
         }
+
+        // set the default block size now that we know the device type
+        if (g_scsi_settings.getDevice(id)->blockSize == 0)
+        {
+          g_scsi_settings.getDevice(id)->blockSize = is_cd ?  DEFAULT_BLOCKSIZE_OPTICAL : DEFAULT_BLOCKSIZE;
+        }
+        int blk = getBlockSize(name, id);
+
 #ifdef ZULUSCSI_NETWORK
         if (is_ne && !platform_network_supported())
         {
@@ -498,6 +508,7 @@ bool findHDDImages()
 #endif // ZULUSCSI_NETWORK
         if (is_re) type = S2S_CFG_REMOVABLE;
         if (is_tp) type = S2S_CFG_SEQUENTIAL;
+        if (is_zp) type = S2S_CFG_ZIP100;
 
         g_scsi_settings.initDevice(id & 7, type);
         // Open the image file
@@ -518,7 +529,7 @@ bool findHDDImages()
               logmsg("---- Using device preset: ", g_scsi_settings.getDevicePresetName(id));
           }
 
-          imageReady = scsiDiskOpenHDDImage(id, fullname, lun, blk, type);
+          imageReady = scsiDiskOpenHDDImage(id, fullname, lun, blk, type, use_prefix);
           if(imageReady)
           {
             foundImage = true;
@@ -562,11 +573,63 @@ bool findHDDImages()
               ", BlockSize: ", (int)cfg->bytesPerSector,
               ", Type: ", (int)cfg->deviceType,
               ", Quirks: ", (int)cfg->quirks,
-              ", Size: ", capacity_kB, "kB");
-      };
+              ", Size: ", capacity_kB, "kB",
+              typeIsRemovable((S2S_CFG_TYPE)cfg->deviceType) ? ", Removable" : ""
+              );
+       }
     }
   }
+  // count the removable drives and drive with eject enabled
+  for (uint8_t id; id < S2S_MAX_TARGETS; id++)
+  {
+    const S2S_TargetCfg* cfg = s2s_getConfigByIndex(id);
+    if (cfg  && (cfg->scsiId & S2S_CFG_TARGET_ENABLED ))
+    {
+       if (typeIsRemovable((S2S_CFG_TYPE)cfg->deviceType))
+        {
+          removable_count++;
+          last_removable_device = id;
+          if ( getEjectButton(id) !=0 )
+          {
+            eject_btn_set++;
+          }
+        }
+    }
+  } 
 
+  if (removable_count == 1)
+  {
+    // If there is a removable device
+    if (eject_btn_set == 1)
+      logmsg("Eject set to device with ID: ", last_removable_device);
+    else if (eject_btn_set == 0)
+    {
+      logmsg("Found 1 removable device, to set an eject button see EjectButton in the, '", CONFIGFILE,"', or the http://zuluscsi.com/manual");
+    } 
+  }
+  else if (removable_count > 1)
+  {
+
+    if (removable_count >= eject_btn_set && eject_btn_set > 0)
+    {
+      if (eject_btn_set == removable_count)
+        logmsg("Eject set on all removable devices:");
+      else
+        logmsg("Eject set on the following SCSI IDs:");
+
+      for (uint8_t id = 0; id < S2S_MAX_TARGETS; id++)
+      {
+        if( getEjectButton(id) != 0)
+        {
+          logmsg("-- SCSI ID: ", (int)id, " type: ", (int) s2s_getConfigById(id)->deviceType, " button mask: ", getEjectButton(id));
+        }
+      }
+    }
+    else
+    {
+      logmsg("Multiple removable devices, to set an eject button see EjectButton in the, '", CONFIGFILE,"', or the http://zuluscsi.com/manual");
+    }
+  }
   return foundImage;
 }
 

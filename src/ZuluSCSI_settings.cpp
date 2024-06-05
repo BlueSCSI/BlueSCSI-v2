@@ -120,6 +120,8 @@ void ZuluSCSISettings::setDefaultDriveInfo(uint8_t scsiId, const char *presetNam
     static const char *apl_driveinfo_network[4]   = APPLE_DRIVEINFO_NETWORK;
     static const char *apl_driveinfo_tape[4]      = APPLE_DRIVEINFO_TAPE;
 
+    static const char *iomega_driveinfo_removeable[4] = IOMEGA_DRIVEINFO_ZIP100;
+    
     const char **driveinfo = NULL;
     bool known_preset = false;
     scsi_system_settings_t& cfgSys = m_sys;
@@ -175,6 +177,7 @@ void ZuluSCSISettings::setDefaultDriveInfo(uint8_t scsiId, const char *presetNam
                 case S2S_CFG_MO:            driveinfo = apl_driveinfo_magopt; break;
                 case S2S_CFG_NETWORK:       driveinfo = apl_driveinfo_network; break;
                 case S2S_CFG_SEQUENTIAL:    driveinfo = apl_driveinfo_tape; break;
+                case S2S_CFG_ZIP100:        driveinfo = iomega_driveinfo_removeable; break;
                 default:                    driveinfo = apl_driveinfo_fixed; break;
             }
         }
@@ -190,6 +193,7 @@ void ZuluSCSISettings::setDefaultDriveInfo(uint8_t scsiId, const char *presetNam
                 case S2S_CFG_MO:            driveinfo = driveinfo_magopt; break;
                 case S2S_CFG_NETWORK:       driveinfo = driveinfo_network; break;
                 case S2S_CFG_SEQUENTIAL:    driveinfo = driveinfo_tape; break;
+                case S2S_CFG_ZIP100:        driveinfo = iomega_driveinfo_removeable; break;
                 default:                    driveinfo = driveinfo_fixed; break;
             }
         }
@@ -228,6 +232,8 @@ static void readIniSCSIDeviceSetting(scsi_device_settings_t &cfg, const char *se
 
     cfg.vendorExtensions = ini_getl(section, "VendorExtensions", cfg.vendorExtensions, CONFIGFILE);
 
+    cfg.blockSize = ini_getl(section, "BlockSize", cfg.blockSize, CONFIGFILE);
+
     char tmp[32];
     ini_gets(section, "Vendor", "", tmp, sizeof(tmp), CONFIGFILE);
     if (tmp[0])
@@ -260,6 +266,7 @@ static void readIniSCSIDeviceSetting(scsi_device_settings_t &cfg, const char *se
         memset(cfg.serial, 0, sizeof(cfg.serial));
         strncpy(cfg.serial, tmp, sizeof(cfg.serial));
     }
+
 }
 
 scsi_system_settings_t *ZuluSCSISettings::initSystem(const char *presetName)
@@ -310,6 +317,8 @@ scsi_system_settings_t *ZuluSCSISettings::initSystem(const char *presetName)
     cfgDev.sectorSDEnd = 0;
 
     cfgDev.vendorExtensions = 0;
+
+    cfgDev.blockSize = 0;
 
     // System-specific defaults
 

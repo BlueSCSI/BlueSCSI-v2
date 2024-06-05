@@ -264,7 +264,7 @@ static void scsiDiskSetImageConfig(uint8_t target_idx)
     memcpy(img.serial, devCfg->serial, sizeof(img.serial));
 }
 
-bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, int blocksize, S2S_CFG_TYPE type)
+bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, int blocksize, S2S_CFG_TYPE type, bool use_prefix)
 {
     image_config_t &img = g_DiskImages[target_idx];
     img.cuesheetfile.close();
@@ -354,6 +354,15 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
             logmsg("---- Configuring as tape drive");
             img.deviceType = S2S_CFG_SEQUENTIAL;
         }
+                else if (type == S2S_CFG_ZIP100)
+        {
+            logmsg("---- Configuration as Iomega Zip100");
+            img.deviceType = S2S_CFG_ZIP100;
+            if(img.file.size() != ZIP100_DISK_SIZE)
+            {
+                logmsg("---- Zip 100 disk (", (int)img.file.size(), " bytes) is not exactly ", ZIP100_DISK_SIZE, " bytes, may not work correctly");
+            }
+        }
 
         quirksCheck(&img);
 
@@ -398,7 +407,8 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
                 logmsg("---- No CUE sheet found at ", cuesheetname, ", using as plain binary image");
             }
         }
-
+        img.use_prefix = use_prefix;
+        img.file.getFilename(img.current_image, sizeof(img.current_image));
         return true;
     }
     else
@@ -432,7 +442,7 @@ bool scsiDiskFilenameValid(const char* name)
     if (extension)
     {
         const char *ignore_exts[] = {
-            ".rom_loaded", ".cue", ".txt", ".rtf", ".md", ".nfo", ".pdf", ".doc",
+            ".rom_loaded", ".cue", ".txt", ".rtf", ".md", ".nfo", ".pdf", ".doc", ".ini",
             NULL
         };
         const char *archive_exts[] = {
@@ -531,9 +541,66 @@ static void scsiDiskSetConfig(int target_idx)
         strcpy(tmp, "FD0");
         tmp[2] += target_idx;
         scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_FLOPPY_14MB, "floppy");
+
+        strcpy(tmp, "ZP0");
+        tmp[2] += target_idx;
+        scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_ZIP100, "Iomega Zip 100");
+
     }
     g_scsi_settings.initDevice(target_idx, (S2S_CFG_TYPE)img.deviceType);
 }
+
+// Compares the prefix of both files and the scsi ID
+// cd3-name.iso and CD3-otherfile.bin matches, zp3.img or cd4-name.iso would not
+static bool compare_prefix(const char* name, const char* compare)
+{
+    if (strlen(name) >= 3 && strlen(compare) >= 3)
+    {
+        if (tolower(name[0]) == tolower(compare[0])
+            && tolower(name[1]) == tolower(compare[1])
+            && tolower(name[2]) == tolower(compare[2])
+        )
+        return true;
+    }
+    return false;
+}
+
+/***********************/
+/* Start/stop commands */
+/***********************/
+static void doCloseTray(image_config_t &img)
+{
+    if (img.ejected)
+    {
+        uint8_t target = img.scsiId & 7;
+        dbgmsg("------ Device close tray on ID ", (int)target);
+        img.ejected = false;
+
+        if (scsiDev.boardCfg.flags & S2S_CFG_ENABLE_UNIT_ATTENTION)
+        {
+            dbgmsg("------ Posting UNIT ATTENTION after medium change");
+            scsiDev.targets[target].unitAttention = NOT_READY_TO_READY_TRANSITION_MEDIUM_MAY_HAVE_CHANGED;
+        }
+    }
+}
+
+ 
+// Eject and switch image
+static void doPerformEject(image_config_t &img)
+{
+    uint8_t target = img.scsiId & 7;
+    if (!img.ejected)
+    {
+        dbgmsg("------ Device open tray on ID ", (int)target);
+        img.ejected = true;
+        switchNextImage(img); // Switch media for next time
+    }
+    else
+    {
+        doCloseTray(img);
+    }
+}
+
 
 // Finds filename with the lowest lexical order _after_ the given filename in
 // the given folder. If there is no file after the given one, or if there is
@@ -583,6 +650,8 @@ static int findNextImageAfter(image_config_t &img,
             continue;
         }
 
+        if (img.use_prefix && !compare_prefix(filename, buf)) continue;
+
         // keep track of the first item to allow wrapping
         // without having to iterate again
         if (first_name[0] == '\0' || strcasecmp(buf, first_name) < 0)
@@ -591,6 +660,7 @@ static int findNextImageAfter(image_config_t &img,
         }
 
         // discard if no selected name, or if candidate is before (or is) selected
+        // or prefix searching is enabled and file doesn't contain current prefix
         if (filename[0] == '\0' || strcasecmp(buf, filename) <= 0) continue;
 
         // if we got this far and the candidate is either 1) not set, or 2) is a
@@ -633,6 +703,10 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
     // sanity check: is provided buffer is long enough to store a filename?
     assert(buflen >= MAX_FILE_PATH);
 
+    // find the next filename
+    char nextname[MAX_FILE_PATH];
+    int nextlen;
+
     if (img.image_directory)
     {
         // image directory was found during startup
@@ -661,6 +735,9 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
                 case S2S_CFG_FLOPPY_14MB:
                     strcpy(dirname, "FD0");
                 break;
+                case S2S_CFG_ZIP100:
+                    strcpy(dirname, "ZP0");
+                break;
                 default:
                     dbgmsg("No matching device type for default directory found");
                     return 0;
@@ -674,8 +751,7 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
         }
 
         // find the next filename
-        char nextname[MAX_FILE_PATH];
-        int nextlen = findNextImageAfter(img, dirname, img.current_image, nextname, sizeof(nextname));
+        nextlen = findNextImageAfter(img, dirname, img.current_image, nextname, sizeof(nextname));
 
         if (nextlen == 0)
         {
@@ -695,6 +771,26 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
             strcat(buf, nextname);
             return dirlen + nextlen;
         }
+    }
+    else if (img.use_prefix)
+    {
+        nextlen = findNextImageAfter(img, "/", img.current_image, nextname, sizeof(nextname));
+        if (nextlen == 0)
+        {
+            logmsg("Next file with the same prefix as ", img.current_image," not found for ID", target_idx);
+        }
+        else if (buflen < nextlen + 1)
+        {
+            logmsg("Next file exceeds, '",nextname, "' exceed allowed length");
+        }
+        else
+        {
+            // construct a return value
+            strncpy(buf, nextname, buflen);
+            return nextlen;
+        }
+        img.image_index = -1;
+        return 0;
     }
     else
     {
@@ -722,7 +818,7 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
         }
         else
         {
-            // images are not defined in config
+
             img.image_index = -1;
             return 0;
         }
@@ -740,11 +836,98 @@ void scsiDiskLoadConfig(int target_idx)
     img.image_index = IMAGE_INDEX_MAX;
     if (scsiDiskGetNextImageName(img, filename, sizeof(filename)))
     {
-        int blocksize = (img.deviceType == S2S_CFG_OPTICAL) ? 2048 : 512;
+        // set the default block size now that we know the device type
+        if (g_scsi_settings.getDevice(target_idx)->blockSize == 0)
+        {
+          g_scsi_settings.getDevice(target_idx)->blockSize = img.deviceType == S2S_CFG_OPTICAL ?  DEFAULT_BLOCKSIZE_OPTICAL : DEFAULT_BLOCKSIZE;
+        }
+        int blocksize = getBlockSize(filename, target_idx);
         logmsg("-- Opening '", filename, "' for id: ", target_idx);
-        scsiDiskOpenHDDImage(target_idx, filename, 0, blocksize, (S2S_CFG_TYPE) img.deviceType);
+        scsiDiskOpenHDDImage(target_idx, filename, 0, blocksize, (S2S_CFG_TYPE) img.deviceType, img.use_prefix);
     }
 }
+
+uint32_t getBlockSize(char *filename, uint8_t scsi_id)
+{
+    // Parse block size (HD00_NNNN)
+    uint32_t block_size = g_scsi_settings.getDevice(scsi_id)->blockSize;
+    const char *blksizestr = strchr(filename, '_');
+    if (blksizestr)
+    {
+        int blktmp = strtoul(blksizestr + 1, NULL, 10);
+        if (8 <= blktmp && blktmp <= 64 * 1024)
+        {
+            block_size = blktmp;
+            logmsg("-- Using custom block size, ",(int) block_size," from filename: ", filename);
+        }
+    }
+    return block_size;
+}
+
+uint8_t getEjectButton(uint8_t idx)
+{
+    return g_DiskImages[idx].ejectButton;
+}
+
+void setEjectButton(uint8_t idx, int8_t eject_button)
+{
+    g_DiskImages[idx].ejectButton = eject_button;
+    g_scsi_settings.getDevice(idx)->ejectButton = eject_button;
+}
+
+// Check if we have multiple drive images to cycle when drive is ejected.
+bool switchNextImage(image_config_t &img, const char* next_filename)
+{
+    // Check if we have a next image to load, so that drive is closed next time the host asks.
+    
+    int target_idx = img.scsiId & 7;
+    char filename[MAX_FILE_PATH];
+    if (next_filename == nullptr)
+    {
+        scsiDiskGetNextImageName(img, filename, sizeof(filename));
+    }
+    else
+    {
+        strncpy(filename, next_filename, MAX_FILE_PATH);
+    }
+
+#ifdef ENABLE_AUDIO_OUTPUT
+    // if in progress for this device, terminate audio playback immediately (Annex C)
+    audio_stop(target_idx);
+    // Reset position tracking for the new image
+    audio_get_status_code(target_idx); // trash audio status code
+#endif
+
+    if (filename[0] != '\0')
+    {
+        logmsg("Switching to next image for id ", target_idx, ": ", filename);
+        img.file.close();
+
+        // set default blocksize for CDs
+        int block_size = getBlockSize(filename, target_idx);
+        bool status = scsiDiskOpenHDDImage(target_idx, filename, 0, block_size, (S2S_CFG_TYPE) img.deviceType, img.use_prefix);
+
+        if (status)
+        {
+            if (next_filename != nullptr)
+            {
+                // present the drive as ejected until the host queries it again,
+                // to make sure host properly detects the media change
+                img.ejected = true;
+                img.reinsert_after_eject = true;
+                if (img.deviceType == S2S_CFG_OPTICAL) img.cdrom_events = 2; // New Media
+            }
+            return true;
+        }
+    }
+    else
+    {
+        logmsg("Switch to next image failed because target filename was empty.");
+    }
+
+    return false;
+}
+
 
 bool scsiDiskCheckAnyImagesConfigured()
 {
@@ -771,13 +954,23 @@ static void diskEjectAction(uint8_t buttonId)
     for (uint8_t i = 0; i < S2S_MAX_TARGETS; i++)
     {
         image_config_t &img = g_DiskImages[i];
-        if (img.ejectButton == buttonId)
+        if (img.ejectButton & buttonId)
         {
             if (img.deviceType == S2S_CFG_OPTICAL)
             {
                 found = true;
                 logmsg("Eject button ", (int)buttonId, " pressed, passing to CD drive SCSI", (int)i);
                 cdromPerformEject(img);
+            }
+            else if (img.deviceType == S2S_CFG_ZIP100 
+                    || img.deviceType == S2S_CFG_REMOVABLE 
+                    || img.deviceType == S2S_CFG_FLOPPY_14MB 
+                    || img.deviceType == S2S_CFG_MO
+                    || img.deviceType == S2S_CFG_SEQUENTIAL)
+            {
+                found = true;
+                logmsg("Eject button ", (int)buttonId, " pressed, passing to SCSI device", (int)i);
+                doPerformEject(img);
             }
         }
     }
@@ -813,7 +1006,7 @@ uint8_t diskEjectButtonUpdate(bool immediate)
             uint8_t mask = 1;
             for (uint8_t i = 0; i < 8; i++)
             {
-                if (ejectors & mask) diskEjectAction(i + 1);
+                if (ejectors & mask) diskEjectAction(ejectors & mask);
                 mask = mask << 1;
             }
         }
@@ -1173,7 +1366,9 @@ int doTestUnitReady()
         {
             // We are now reporting to host that the drive is open.
             // Simulate a "close" for next time the host polls.
-            cdromCloseTray(img);
+            if (img.deviceType == S2S_CFG_OPTICAL) cdromCloseTray(img);
+            else doCloseTray(img);
+
         }
     }
     else if (unlikely(!(blockDev.state & DISK_PRESENT)))
@@ -1225,6 +1420,7 @@ static void doSeek(uint32_t lba)
         }
     }
 }
+
 
 /********************************************/
 /* Transfer state for read / write commands */
@@ -1759,8 +1955,20 @@ int scsiDiskCommand()
         // Enable or disable media access operations.
         //int immed = scsiDev.cdb[1] & 1;
         int start = scsiDev.cdb[4] & 1;
-
-        if (start)
+        if ((scsiDev.cdb[4] & 2) || img.deviceType == S2S_CFG_ZIP100)
+        {
+            // Device load & eject
+            if (start)
+            {
+                doCloseTray(img);
+            }
+            else
+            {
+                // Eject and switch image
+                doPerformEject(img);
+            }
+        }
+        else if (start)
         {
             scsiDev.target->started = 1;
         }
@@ -1768,6 +1976,7 @@ int scsiDiskCommand()
         {
             scsiDev.target->started = 0;
         }
+
     }
     else if (likely(command == 0x08))
     {
@@ -1985,9 +2194,10 @@ void scsiDiskPoll()
         if (command == 0x12)
         {
             image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-            if (img.deviceType == S2S_CFG_OPTICAL && img.reinsert_on_inquiry)
+            if (img.reinsert_on_inquiry)
             {
-                cdromCloseTray(img);
+                if (img.deviceType == S2S_CFG_OPTICAL) cdromCloseTray(img);
+                else doCloseTray(img);
             }
         }
     }

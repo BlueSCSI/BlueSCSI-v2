@@ -2,7 +2,7 @@
 //  Copyright (C) 2014 Doug Brown <doug@downtowndougbrown.com>
 //  Copyright (C) 2019 Landon Rodgers <g.landon.rodgers@gmail.com>
 //	Copyright (C) 2024 Rabbit Hole Computing LLC
-//
+//	Copyright (C) 2024 jokker <jokker@gmail.com>
 //	This file is part of SCSI2SD.
 //
 //	SCSI2SD is free software: you can redistribute it and/or modify
@@ -256,6 +256,19 @@ static const uint8_t ToolboxVendorPage[] =
 ' ','R','a','b','b','i','t','H','o','l','e','C','o','m','p','u','t','i','n','g',0x00
 };
 
+static const uint8_t IomegaZip100VendorPage[] =
+{
+	0x2f, // Page Code
+	4, // Page Length
+	0x5c, 0xf, 0xff, 0xf
+};
+
+static const uint8_t IomegaZip250VendorPage[] =
+{
+	0x2f, // Page Code
+	4, // Page Length
+	0x5c, 0xf, 0x3c, 0xf
+};
 
 static void pageIn(int pc, int dataIdx, const uint8_t* pageData, int pageLen)
 {
@@ -284,6 +297,7 @@ static void doModeSense(
 	{
 	case S2S_CFG_FIXED:
 	case S2S_CFG_REMOVABLE:
+	case S2S_CFG_ZIP100:
 		mediumType = 0; // We should support various floppy types here!
 		// Contains cache bits (0) and a Write-Protect bit.
 		deviceSpecificParam =
@@ -521,6 +535,15 @@ static void doModeSense(
 
 	idx += modeSenseCDDevicePage(pc, idx, pageCode, &pageFound);
 	idx += modeSenseCDAudioControlPage(pc, idx, pageCode, &pageFound);
+
+	
+	if ((scsiDev.target->cfg->deviceType == S2S_CFG_ZIP100) &&
+		(pageCode == 0x2f || pageCode == 0x3f))
+	{
+		pageFound = 1;
+		pageIn(pc, idx, IomegaZip100VendorPage, sizeof(IomegaZip100VendorPage));
+		idx += sizeof(IomegaZip100VendorPage);
+	}
 
 	if ((scsiDev.target->cfg->deviceType == S2S_CFG_SEQUENTIAL) &&
 		(pageCode == 0x10 || pageCode == 0x3F))
