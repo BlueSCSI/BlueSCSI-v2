@@ -63,6 +63,10 @@ struct image_config_t: public S2S_TargetCfg
 
     // True if there is a subdirectory of images for this target
     bool image_directory;
+
+    // True if the device type was determined by the drive prefix
+    bool use_prefix;
+
     // the name of the currently mounted image in a dynamic image directory
     char current_image[MAX_FILE_PATH];
 
@@ -106,7 +110,14 @@ void scsiDiskResetImages();
 // Close any files opened from SD card (prepare for remounting SD)
 void scsiDiskCloseSDCardImages();
 
-bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, int blocksize, S2S_CFG_TYPE type = S2S_CFG_FIXED);
+// Get blocksize from filename or use device setting in ini file
+uint32_t getBlockSize(char *filename, uint8_t scsi_id);
+
+// Get and set the eject button bit flags
+uint8_t getEjectButton(uint8_t idx);
+void    setEjectButton(uint8_t idx, int8_t eject_button);
+
+bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, int blocksize, S2S_CFG_TYPE type = S2S_CFG_FIXED, bool use_prefix = false);
 void scsiDiskLoadConfig(int target_idx);
 
 // Checks if a filename extension is appropriate for further processing as a disk image.
@@ -143,3 +154,7 @@ void scsiDiskStartWrite(uint32_t lba, uint32_t blocks);
 
 // Returns true if there is at least one network device active
 bool scsiDiskCheckAnyNetworkDevicesConfigured();
+
+
+// Switch to next Drive image if multiple have been configured
+bool switchNextImage(image_config_t &img, const char* next_filename = nullptr);

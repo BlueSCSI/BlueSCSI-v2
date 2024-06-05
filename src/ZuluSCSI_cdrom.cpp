@@ -1190,7 +1190,7 @@ void cdromPerformEject(image_config_t &img)
         dbgmsg("------ CDROM open tray on ID ", (int)target);
         img.ejected = true;
         img.cdrom_events = 3; // Media removal
-        cdromSwitchNextImage(img); // Switch media for next time
+        switchNextImage(img); // Switch media for next time
     }
     else
     {
@@ -1208,59 +1208,13 @@ void cdromReinsertFirstImage(image_config_t &img)
         dbgmsg("---- Restarting from first CD-ROM image for ID ", (int)target);
         img.image_index = -1;
         img.current_image[0] = '\0';
-        cdromSwitchNextImage(img);
+        switchNextImage(img);
     }
     else if (img.ejected)
     {
         // Reinsert the single image
         cdromCloseTray(img);
     }
-}
-
-// Check if we have multiple CD-ROM images to cycle when drive is ejected.
-bool cdromSwitchNextImage(image_config_t &img, const char* next_filename)
-{
-    // Check if we have a next image to load, so that drive is closed next time the host asks.
-    
-    int target_idx = img.scsiId & 7;
-    char filename[MAX_FILE_PATH];
-    if (next_filename == nullptr)
-    {
-        scsiDiskGetNextImageName(img, filename, sizeof(filename));
-    }
-    else
-    {
-        strncpy(filename, next_filename, MAX_FILE_PATH);
-    }
-
-#ifdef ENABLE_AUDIO_OUTPUT
-    // if in progress for this device, terminate audio playback immediately (Annex C)
-    audio_stop(target_idx);
-    // Reset position tracking for the new image
-    audio_get_status_code(target_idx); // trash audio status code
-#endif
-
-    if (filename[0] != '\0')
-    {
-        logmsg("Switching to next CD-ROM image for ", target_idx, ": ", filename);
-        img.file.close();
-        bool status = scsiDiskOpenHDDImage(target_idx, filename, 0, 2048, S2S_CFG_OPTICAL);
-
-        if (status)
-        {
-            if (next_filename != nullptr)
-            {
-                // present the drive as ejected until the host queries it again,
-                // to make sure host properly detects the media change
-                img.ejected = true;
-                img.reinsert_after_eject = true;
-                img.cdrom_events = 2; // New Media
-            }
-            return true;
-        }
-    }
-
-    return false;
 }
 
 static void doGetEventStatusNotification(bool immed)
@@ -1934,6 +1888,7 @@ extern "C" int scsiCDRomCommand()
     int commandHandled = 1;
 
     uint8_t command = scsiDev.cdb[0];
+    // Start/stop command
     if (command == 0x1B)
     {
 #if ENABLE_AUDIO_OUTPUT
