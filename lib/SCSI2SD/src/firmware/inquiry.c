@@ -29,13 +29,13 @@ static uint8_t StandardResponse[] =
 0x00, // device type modifier
 0x02, // Complies with ANSI SCSI-2.
 0x01, // Response format is compatible with the old CCS format.
-0x1f, // standard length.
+INQUIRY_STD_RESPONSE_LEN, // Additional data size. standard length: 0x1f (31)
 0, 0, // Reserved
 0x18 // Enable sync and linked commands
 };
-// Vendor set by config 'c','o','d','e','s','r','c',' ',
-// prodId set by config'S','C','S','I','2','S','D',' ',' ',' ',' ',' ',' ',' ',' ',' ',
-// Revision set by config'2','.','0','a'
+// Vendor set by config - 8
+// prodId set by config - 16
+// Revision set by config - 4
 
 
 static const uint8_t SupportedVitalPages[] =
@@ -258,22 +258,22 @@ uint32_t s2s_getStandardInquiry(
 		sizeof(cfg->vendor) +
 		sizeof(cfg->prodId) +
 		sizeof(cfg->revision);
-
+    // Vendor Unique Parameters
     if(cfg->deviceType == S2S_CFG_ZIP100) {
         memcpy(&out[size], IOMegaVendorInquiry, sizeof(IOMegaVendorInquiry));
         size += sizeof(IOMegaVendorInquiry);
         out[7] = 0x00; // Disable sync and linked commands
-        out[4] = 0x75; // 117 length
+        out[INQUIRY_STD_RESPONSE_LEN_OFFSET] = 0x75; // 117 length
+    } else if(cfg->deviceType != S2S_CFG_NETWORK) {
+        // Mac Daynaport Driver does not like this added.
+        memcpy(&out[size], PLATFORM_INQUIRY, sizeof(PLATFORM_INQUIRY) - 1);
+        size += sizeof(PLATFORM_INQUIRY) - 1;
+        out[size++] = PLATFORM_TOOLBOX_API;
+        out[INQUIRY_STD_RESPONSE_LEN_OFFSET] = INQUIRY_STD_RESPONSE_LEN +
+                                               (sizeof(PLATFORM_INQUIRY) - 1)
+                                               + 1; // PLATFORM_TOOLBOX_API
     }
-	// Mac Daynaport Driver does not like this added.
-    // IOMega already has a vendor inquiry
-	if(cfg->deviceType != S2S_CFG_NETWORK && cfg->deviceType != S2S_CFG_ZIP100) {
-		memcpy(&out[size], PLATFORM_INQUIRY, sizeof(PLATFORM_INQUIRY));
-		size += sizeof(PLATFORM_INQUIRY);
-		out[size] = PLATFORM_TOOLBOX_API;
-		size += 1;
-	}
-	return size;
+    return size;
 }
 
 uint8_t getDeviceTypeQualifier()
