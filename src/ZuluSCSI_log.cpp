@@ -1,6 +1,7 @@
 /** 
- * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
+ * ZuluSCSI™ - Copyright (c) 2022-2024 Rabbit Hole Computing™
  * Copyright (c) 2023 joshua stein <jcs@jcs.org>
+ * Copyright (c) 2024 Eric Helgeson <erichelgeson@gmail.com>
  * 
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  * 
@@ -30,6 +31,8 @@
 const char *g_log_firmwareversion = ZULU_FW_VERSION " " __DATE__ " " __TIME__;
 
 bool g_log_debug = false;
+bool g_log_ignore_busy_free = false;
+uint8_t g_scsi_log_mask = 0xFF;
 
 // This memory buffer can be read by debugger and is also saved to zululog.txt
 #define LOGBUFMASK (LOGBUFSIZE - 1)
