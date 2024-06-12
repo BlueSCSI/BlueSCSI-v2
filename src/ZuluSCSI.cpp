@@ -1,6 +1,6 @@
 /*  
  *  ZuluSCSI™
- *  Copyright (c) 2022-2023 Rabbit Hole Computing™
+ *  Copyright (c) 2022-2024 Rabbit Hole Computing™
  * 
  * This project is based on BlueSCSI:
  *
@@ -692,7 +692,24 @@ static void reinitSCSI()
     g_log_debug = true;
   }
 #endif
+  if (g_log_debug)
+  {
+    g_scsi_log_mask = ini_getl("SCSI", "DebugLogMask", 0xFF, CONFIGFILE) & 0xFF;
+    if (g_scsi_log_mask == 0)
+    {
+      dbgmsg("DebugLogMask set to 0x00, this will silence all debug messages when a SCSI ID has been selected");
+    }
+    else if (g_scsi_log_mask != 0xFF)
+    {
+      dbgmsg("DebugLogMask set to ", (uint8_t) g_scsi_log_mask, " only SCSI ID's matching the bit mask will be logged");
+    }
 
+    g_log_ignore_busy_free = ini_getbool("SCSI", "DebugIgnoreBusyFree", 0, CONFIGFILE);
+    if (g_log_ignore_busy_free)
+    {
+      dbgmsg("DebugIgnoreBusyFree enabled, BUS_FREE/BUS_BUSY messages suppressed");
+    }
+  }
 #ifdef PLATFORM_HAS_INITIATOR_MODE
   if (platform_is_initiator_mode_enabled())
   {

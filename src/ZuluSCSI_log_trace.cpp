@@ -130,11 +130,11 @@ static void printNewPhase(int phase, bool initiator = false)
     switch(phase)
     {
         case BUS_FREE:
-            dbgmsg("-- BUS_FREE");
+            if (!g_log_ignore_busy_free) dbgmsg("-- BUS_FREE");
             break;
         
         case BUS_BUSY:
-            dbgmsg("-- BUS_BUSY");
+            if (!g_log_ignore_busy_free) dbgmsg("-- BUS_BUSY");
             break;
         
         case ARBITRATION:

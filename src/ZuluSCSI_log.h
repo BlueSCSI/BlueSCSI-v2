@@ -1,6 +1,7 @@
 /** 
- * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
+ * ZuluSCSI™ - Copyright (c) 2022-2024 Rabbit Hole Computing™
  * Copyright (c) 2023 joshua stein <jcs@jcs.org>
+ * Copyright (c) 2024 Eric Helgeson <erichelgeson@gmail.com>
  * 
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  * 
@@ -26,6 +27,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <scsiPhy.h>
 
 // Get total number of bytes that have been written to log
 uint32_t log_get_buffer_len();
@@ -37,6 +39,8 @@ const char *log_get_buffer(uint32_t *startpos, uint32_t *available = nullptr);
 
 // Whether to enable debug messages
 extern "C" bool g_log_debug;
+extern "C" bool g_log_ignore_busy_free;
+extern "C" uint8_t g_scsi_log_mask;
 
 // Firmware version string
 extern const char *g_log_firmwareversion;
@@ -96,6 +100,14 @@ inline void dbgmsg(Params... params)
 {
     if (g_log_debug)
     {
+        // Check if log mask is not the default value, the selection was a success, and the selected ID was not match, then skip logging
+        if ( g_scsi_log_mask != 0xFF
+            && (SCSI_STS_SELECTION_SUCCEEDED & *SCSI_STS_SELECTED)
+            && (0 == (g_scsi_log_mask & (1 << (*SCSI_STS_SELECTED & 7))))
+           )
+        {
+            return;
+        }
         log_raw("[", (int)millis(), "ms] DBG ");
         log_raw(params...);
         log_raw("\r\n");
