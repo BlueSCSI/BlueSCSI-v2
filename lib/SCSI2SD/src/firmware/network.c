@@ -32,7 +32,15 @@ struct scsiNetworkPacketQueue {
 	uint8_t readIndex;
 };
 
-static struct scsiNetworkPacketQueue scsiNetworkInboundQueue, scsiNetworkOutboundQueue;
+struct scsiNetworkPacket
+{
+	uint8_t packet[NETWORK_PACKET_MAX_SIZE];
+	uint16_t size;
+	bool full;
+};
+
+static struct scsiNetworkPacketQueue scsiNetworkInboundQueue;
+static struct scsiNetworkPacket scsiNetworkOutbound;
 
 struct __attribute__((packed)) wifi_network_entry wifi_network_list[WIFI_NETWORK_LIST_ENTRY_COUNT] = { 0 };
 
@@ -265,13 +273,9 @@ int scsiNetworkCommand()
 			off = 4;
 		}
 
-		memcpy(&scsiNetworkOutboundQueue.packets[scsiNetworkOutboundQueue.writeIndex], scsiDev.data + off, size);
-		scsiNetworkOutboundQueue.sizes[scsiNetworkOutboundQueue.writeIndex] = size;
-
-		if (scsiNetworkOutboundQueue.writeIndex == NETWORK_PACKET_QUEUE_SIZE - 1)
-			scsiNetworkOutboundQueue.writeIndex = 0;
-		else
-			scsiNetworkOutboundQueue.writeIndex++;
+		memcpy(&scsiNetworkOutbound.packet, scsiDev.data + off, size);
+		scsiNetworkOutbound.size = size;
+		scsiNetworkOutbound.full = true;
 
 		scsiDev.status = GOOD;
 		scsiDev.phase = STATUS;
@@ -307,7 +311,7 @@ int scsiNetworkCommand()
 			DBGMSG_F("%s: enable interface", __func__);
 			scsiNetworkEnabled = true;
 			memset(&scsiNetworkInboundQueue, 0, sizeof(scsiNetworkInboundQueue));
-			memset(&scsiNetworkOutboundQueue, 0, sizeof(scsiNetworkOutboundQueue));
+			memset(&scsiNetworkOutbound, 0, sizeof(scsiNetworkOutbound));
 		}
 		else
 		{
@@ -495,15 +499,10 @@ int scsiNetworkPurge(void)
 	if (!scsiNetworkEnabled)
 		return 0;
 
-	while (scsiNetworkOutboundQueue.readIndex != scsiNetworkOutboundQueue.writeIndex)
+	if (scsiNetworkOutbound.full)
 	{
-		platform_network_send(scsiNetworkOutboundQueue.packets[scsiNetworkOutboundQueue.readIndex], scsiNetworkOutboundQueue.sizes[scsiNetworkOutboundQueue.readIndex]);
-
-		if (scsiNetworkOutboundQueue.readIndex == NETWORK_PACKET_QUEUE_SIZE - 1)
-			scsiNetworkOutboundQueue.readIndex = 0;
-		else
-			scsiNetworkOutboundQueue.readIndex++;
-
+		platform_network_send(scsiNetworkOutbound.packet, scsiNetworkOutbound.size);
+		scsiNetworkOutbound.full = false;
 		sent++;
 	}
 
