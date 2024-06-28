@@ -175,11 +175,21 @@ void scsiInitiatorMainLoop()
                 scsiTestUnitReady(g_initiator_state.target_id) &&
                 scsiStartStopUnit(g_initiator_state.target_id, true);
 
-            bool readcapok = startstopok &&
-                scsiInitiatorReadCapacity(g_initiator_state.target_id,
-                                          &g_initiator_state.sectorcount,
-                                          &g_initiator_state.sectorsize);
 
+            bool readcapok = false;
+
+            if(g_initiator_state.audioMode){
+                readcapok = startstopok;
+                g_initiator_state.sectorsize = ini_getl("SCSI", "AudioFrameSize", 5822, "bluescsi.ini");
+                g_initiator_state.sectorcount = 1000000;//I dunno how to get this yet
+            }
+            else
+            {
+                readcapok = startstopok &&
+                    scsiInitiatorReadCapacity(g_initiator_state.target_id,
+                                             &g_initiator_state.sectorcount,
+                                             &g_initiator_state.sectorsize);
+            }
             bool inquiryok = startstopok &&
                 scsiInquiry(g_initiator_state.target_id, inquiry_data);
             g_initiator_state.ansiVersion = inquiry_data[2] & 0x7;
@@ -274,6 +284,10 @@ void scsiInitiatorMainLoop()
                 scsiGetMode(&Mode, g_initiator_state.target_id);
                 if(Mode == AUDIO_MODE) log("The SCSI is in Audio Mode");
                 if(Mode == DATA_MODE)  log("The SCSI is in Data  Mode");
+                if(g_initiator_state.audioMode){
+                    g_initiator_state.max_sector_per_transfer = 1;
+                }
+
                 while(SD.exists(filename))
                 {
                     filename[3] = lun++ + '0';
@@ -743,14 +757,21 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
     // ref: https://www.seagate.com/files/staticfiles/support/docs/manual/Interface%20manuals/100293068j.pdf pg 134
     if (g_initiator_state.ansiVersion < 0x02 || (start_sector < 0x1FFFFF && sectorcount <= 256))
     {
+        uint8_t command[6] = {0x08, 0, 0, 0, 0, 0};
+
+        if(g_initiator_state.audioMode){
+            //command[1] = 0b00000001; //cant get multiblock reading to work
+            command[2] = (uint8_t) (sectorsize >> 16);
+            command[3] = (uint8_t) (sectorsize >> 8);
+            command[4] = (uint8_t) sectorsize;
+        }
+        else{
         // Use READ6 command for compatibility with old SCSI1 drives
-        uint8_t command[6] = {0x08,
-            (uint8_t)(start_sector >> 16),
-            (uint8_t)(start_sector >> 8),
-            (uint8_t)start_sector,
-            (uint8_t)sectorcount,
-            0x00
-        };
+            command[1] = (uint8_t)(start_sector >> 16);
+            command[2] = (uint8_t)(start_sector >> 8);
+            command[3] = (uint8_t)start_sector;
+            command[4] = (uint8_t)sectorcount;
+        }
 
         // Start executing command, return in data phase
         status = scsiInitiatorRunCommand(target_id, command, sizeof(command), NULL, 0, NULL, 0, true);
