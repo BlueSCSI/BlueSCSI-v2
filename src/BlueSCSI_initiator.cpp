@@ -54,7 +54,7 @@ static struct {
 
     // Is imaging a drive in progress, or are we scanning?
     bool imaging;
-
+    bool audioMode;
     // Information about currently selected drive
     int target_id;
     uint32_t sectorsize;
@@ -94,6 +94,7 @@ void scsiInitiatorInit()
     }
     g_initiator_state.maxRetryCount = ini_getl("SCSI", "InitiatorMaxRetry", 5, CONFIGFILE);
 
+    g_initiator_state.audioMode = ini_getbool("SCSI", "AudioMode", 0, CONFIGFILE);
     // treat initiator id as already imaged drive so it gets skipped
     g_initiator_state.drives_imaged = 1 << g_initiator_state.initiator_id;
     g_initiator_state.imaging = false;
@@ -266,6 +267,13 @@ void scsiInitiatorMainLoop()
                     return;
                 }
 
+                int Mode = -1;
+                if(g_initiator_state.audioMode) scsiSetMode(AUDIO_MODE, g_initiator_state.target_id);
+                else                            scsiSetMode(DATA_MODE,  g_initiator_state.target_id);
+                
+                scsiGetMode(&Mode, g_initiator_state.target_id);
+                if(Mode == AUDIO_MODE) log("The SCSI is in Audio Mode");
+                if(Mode == DATA_MODE)  log("The SCSI is in Data  Mode");
                 while(SD.exists(filename))
                 {
                     filename[3] = lun++ + '0';
@@ -1279,6 +1287,83 @@ bool Log_Error(uint8_t sense_key, uint16_t sense_code)
 
     log(str);
     return true;
+}
+
+int scsiSetMode(int Mode, int target_id){
+    
+    uint8_t mode_setting[12] =
+        {0x00, 0x00, 0x10, 0x08, 0x00, 0x00,
+         0x00, 0x00, 0x00, 0x00, 0x00, 0x02};
+
+    uint8_t command[6] = {0x15, 0, 0, 0, 12, 0};
+
+    if(!(Mode == DATA_MODE || Mode == AUDIO_MODE))return -1;
+
+    if(Mode == DATA_MODE)mode_setting[4] = 0x13;
+    else 
+    {
+        mode_setting[ 4] = 0x80;
+        //mode_setting[ 9] = (uint8_t) (g_initiator_state.sectorsize >> 16);
+        //mode_setting[10] = (uint8_t) (g_initiator_state.sectorsize >> 8);
+        //mode_setting[11] = (uint8_t) g_initiator_state.sectorsize;
+
+        //log("Sector size on the block count, ", mode_setting[9], mode_setting[10], mode_setting[11]);
+    }
+
+    int status = scsiInitiatorRunCommand(target_id,
+                                         command, sizeof(command),
+                                         NULL, 0,
+                                         mode_setting, sizeof(mode_setting));
+
+    if(status == 0){
+        log("Mode Set!");
+    }
+    else{
+        uint8_t sense_key;
+        uint16_t sense_code;
+        scsiRequestSense(target_id, &sense_key, &sense_code);
+        log("Set mode on target ", target_id, " failed, sense key ", sense_key);
+
+        Log_Error(sense_key, sense_code);
+        return 1;
+    }
+    return 0;
+}
+
+int scsiGetMode(int * Mode, int target_id){
+    uint8_t senseResult[12];
+    uint8_t command[6] = {0x1a, 0, 0, 0, 12, 0};
+    int result = -1;
+    *Mode = -1;
+    int status = scsiInitiatorRunCommand(target_id,
+                                         command, sizeof(command),
+                                         senseResult, sizeof(senseResult),
+                                         NULL, 0);
+
+    if(status == 0){
+        //There is code that checks if TranserCount >= 5 before grabbing result, Not sure where that is found in this implementation
+        if(senseResult[4] == 0x80){
+            *Mode = AUDIO_MODE;
+            result = 0;
+        }
+        else if (senseResult[4] == 0x13){
+            *Mode = DATA_MODE;
+            result = 0;
+        }
+    }
+    log("GET MODE Status: ", status);
+
+    if (status != 0)
+    {
+        uint8_t sense_key;
+        uint16_t sense_code;
+        scsiRequestSense(target_id, &sense_key, &sense_code);
+        log("Get mode failed: ", status, " sense key ", sense_key);
+        Log_Error(sense_key, sense_code);
+        scsiHostPhyRelease();
+        return false;
+    }
+    return result;
 }
 
 

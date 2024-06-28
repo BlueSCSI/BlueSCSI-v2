@@ -7,6 +7,8 @@
 
 #define DEVICE_TYPE_CD 5
 #define DEVICE_TYPE_DIRECT_ACCESS 0
+#define DATA_MODE 0
+#define AUDIO_MODE 1
 
 void scsiInitiatorInit();
 
@@ -40,4 +42,7 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
                                  FsFile &file);
 
 bool Log_Error(uint8_t sense_key, uint16_t sense_code);
+
+int scsiGetMode(int * Mode, int target_id);
+int scsiSetMode(int Mode, int target_id);
 
