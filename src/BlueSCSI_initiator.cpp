@@ -63,6 +63,13 @@ static struct {
     uint32_t sectors_done;
     uint32_t max_sector_per_transfer;
     uint32_t badSectorCount;
+    uint32_t interpolationLeft;
+    uint32_t interpolationRight;
+    uint32_t interpolationBoth;
+    uint32_t goodFrames;
+    uint32_t allFrames;
+    uint32_t nullFrames;
+    uint32_t nullFramesMax;
     uint8_t ansiVersion;
     uint8_t maxRetryCount;
     uint8_t deviceType;
@@ -109,6 +116,7 @@ void scsiInitiatorInit()
     g_initiator_state.badSectorCount = 0;
     g_initiator_state.deviceType = DEVICE_TYPE_DIRECT_ACCESS;
     g_initiator_state.ejectWhenDone = false;
+    g_initiator_state.nullFramesMax = ini_getl("SCSI", "InitiatorMaxNullTrys", 10, CONFIGFILE);
 }
 
 // Update progress bar LED during transfers
@@ -336,6 +344,10 @@ void scsiInitiatorMainLoop()
                 log_f("NOTE: There were %d bad sectors that could not be read off this drive.", g_initiator_state.badSectorCount);
             }
 
+            if(g_initiator_state.interpolationLeft)log_f("There are %d left interpolations",g_initiator_state.interpolationLeft);
+            if(g_initiator_state.interpolationRight)log_f("There are %d right interpolations",g_initiator_state.interpolationRight);
+            if(g_initiator_state.interpolationBoth)log_f("There are %d both interpolations",g_initiator_state.interpolationBoth);
+
             if(!g_initiator_state.ejectWhenDone)
             {
                 log("Marking this ID as imaged, wont ask it again.");
@@ -399,9 +411,12 @@ void scsiInitiatorMainLoop()
             g_initiator_state.target_file.flush();
 
             int speed_kbps = numtoread * g_initiator_state.sectorsize / (millis() - time_start);
-            log_f("SCSI read succeeded, sectors done: %d / %d speed %d kB/s - %.2f%%",
+            log_f("SCSI read succeeded, sectors done: %d / %d speed %d kB/s - %.2f%%, [left: %d, right: %d, both: %d]",
                   g_initiator_state.sectors_done, g_initiator_state.sectorcount, speed_kbps,
-                  (float)(((float)g_initiator_state.sectors_done / (float)g_initiator_state.sectorcount) * 100.0));
+                  (float)(((float)g_initiator_state.sectors_done / (float)g_initiator_state.sectorcount) * 100.0), 
+                  g_initiator_state.interpolationLeft,
+                  g_initiator_state.interpolationRight, 
+                  g_initiator_state.interpolationBoth);
         }
     }
 }
@@ -848,6 +863,45 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
         log("SCSI read from sector ", (int)start_sector, " was incomplete: expected ",
              (int)g_initiator_transfer.bytes_scsi, " got ", (int)g_initiator_transfer.bytes_sd, " bytes");
         g_initiator_transfer.all_ok = false;
+    }else{
+
+        if(scsiDev.data[0x16BB] & 0b00000010){
+            g_initiator_state.interpolationLeft++;
+            g_initiator_transfer.all_ok = false;
+            
+        }
+        if(scsiDev.data[0x16BB] & 0b00000001){
+            g_initiator_state.interpolationRight++;
+            g_initiator_transfer.all_ok = false;
+        }
+
+        if(scsiDev.data[0x16BB] & 0b00000001 && scsiDev.data[0x16BB] & 0b00000010){
+            g_initiator_state.interpolationBoth++;
+            g_initiator_transfer.all_ok = false;
+        }
+
+        if(!(scsiDev.data[0x16BB] & 0b00000001 || scsiDev.data[0x16BB] & 0b00000010)){
+            g_initiator_state.goodFrames++;
+        }
+
+        g_initiator_state.allFrames++;
+
+        bool NullFrame = true;
+        for(int i = 0x1680; i < 0x17BC; i++){
+            if(scsiDev.data[i]){
+                NullFrame = false;
+                break;
+            }
+        }
+        if(NullFrame){
+            g_initiator_state.nullFrames++;
+            log("NULL FRAME!!!!");
+            if(g_initiator_state.nullFrames > g_initiator_state.nullFramesMax){
+                //Quit somehow!
+            }
+        }else{
+            g_initiator_state.nullFrames = 0;
+        }
     }
 
     while ((phase = (SCSI_PHASE)scsiHostPhyGetPhase()) != BUS_FREE)
