@@ -671,6 +671,30 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
                 img.deviceType = S2S_CFG_ZIP100;
                 img.image_directory = true;
             }
+            strcpy(tmp, "MOX");
+            tmp[2] = '0' + target_idx;
+            if(SD.exists(tmp))
+            {
+              log("-- SCSI ID: ", target_idx, " using Magneto-optical image directory \'", tmp, "'");
+              img.deviceType = S2S_CFG_MO;
+              img.image_directory = true;
+            }
+            strcpy(tmp, "REX");
+            tmp[2] = '0' + target_idx;
+            if(SD.exists(tmp))
+            {
+              log("-- SCSI ID: ", target_idx, " using Removable image directory \'", tmp, "'");
+              img.deviceType = S2S_CFG_REMOVEABLE;
+              img.image_directory = true;
+            }
+            strcpy(tmp, "TPX");
+            tmp[2] = '0' + target_idx;
+            if(SD.exists(tmp))
+            {
+              log("-- SCSI ID: ", target_idx, " using Tape image directory \'", tmp, "'");
+              img.deviceType = S2S_CFG_SEQUENTIAL;
+              img.image_directory = true;
+            }
         }
     }
 }
@@ -770,6 +794,14 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
                 strcpy(dirname, "CDX");
             else if(img.deviceType == S2S_CFG_ZIP100)
                 strcpy(dirname, "ZPX");
+            else if(img.deviceType == S2S_CFG_FLOPPY_14MB)
+                strcpy(dirname, "FDX");
+            else if(img.deviceType == S2S_CFG_MO)
+                strcpy(dirname, "MOX");
+            else if(img.deviceType == S2S_CFG_REMOVEABLE)
+                strcpy(dirname, "REX");
+            else if(img.deviceType == S2S_CFG_SEQUENTIAL)
+                strcpy(dirname, "TPX");
             else
                 strcpy(dirname, "HDX");
             dirname[2] = '0' + target_idx;
