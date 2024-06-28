@@ -66,7 +66,7 @@ Example config file is available here: [zuluscsi.ini](zuluscsi.ini).
 
 Performance
 -----------
-Performance information for the various ZuluSCSI hardware models is [documented separately, here](Performance.md)
+Performance information for the various ZuluSCSI hardware models is [documented separately, here](https://github.com/ZuluSCSI/ZuluSCSI-firmware/wiki/Performance)
 
 Hotplugging
 -----------
