@@ -24,8 +24,8 @@
 ; edge, it is preferrable to have a long 0 state and short 1 state.
 ;.define CLKDIV 3
 .define CLKDIV 5
-.define D0 ((CLKDIV + 1) / 2 - 1)
-.define D1 (CLKDIV/2 - 1)
+.define D0 (((CLKDIV + 1) /2) - 1)
+.define D1 ((CLKDIV/2) - 1)
 .define SDIO_CLK_GPIO 10
 
 ; State machine 0 is used to:

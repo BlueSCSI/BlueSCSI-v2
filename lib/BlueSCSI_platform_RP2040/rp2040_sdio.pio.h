@@ -64,8 +64,7 @@ static const uint16_t sdio_data_rx_program_instructions[] = {
             //     .wrap_target
     0xa022, //  0: mov    x, y                       
     0x2020, //  1: wait   0 pin, 0                   
-    //0x2492, //  2: wait   1 gpio, 18             [4] 
-    0x248A, // 2: wait 1 gpio 10
+    0x248a, //  2: wait   1 gpio, 10             [4] 
     0x4304, //  3: in     pins, 4                [3] 
     0x0043, //  4: jmp    x--, 3                     
             //     .wrap
@@ -93,10 +92,8 @@ static inline pio_sm_config sdio_data_rx_program_get_default_config(uint offset)
 #define sdio_data_tx_wrap 8
 
 static const uint16_t sdio_data_tx_program_instructions[] = {
-    // 0x2012, //  0: wait   0 gpio, 18                 
-    0x200A,  // 0: wait 0 GPIO 10
-   // 0x2592, //  1: wait   1 gpio, 18             [5] 
-    0x258A, // 1: wait 1 gpio 10
+    0x200a, //  0: wait   0 gpio, 10                 
+    0x258a, //  1: wait   1 gpio, 10             [5] 
     0x6204, //  2: out    pins, 4                [2] 
     0x0142, //  3: jmp    x--, 2                 [1] 
     0xe280, //  4: set    pindirs, 0             [2] 
