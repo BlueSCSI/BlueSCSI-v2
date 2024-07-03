@@ -28,8 +28,8 @@
 #include <ZuluSCSI_platform.h>
 
 // Use variables for version number
-#define FW_VER_NUM      "24.06.21"
-#define FW_VER_SUFFIX   "BETA"
+#define FW_VER_NUM      "24.07.03"
+#define FW_VER_SUFFIX   "release"
 #define ZULU_FW_VERSION FW_VER_NUM "-" FW_VER_SUFFIX
 #define INQUIRY_NAME  PLATFORM_NAME " v" ZULU_FW_VERSION
 #define TOOLBOX_API 0
