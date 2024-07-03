@@ -580,7 +580,7 @@ bool findHDDImages()
     }
   }
   // count the removable drives and drive with eject enabled
-  for (uint8_t id; id < S2S_MAX_TARGETS; id++)
+  for (uint8_t id = 0; id < S2S_MAX_TARGETS; id++)
   {
     const S2S_TargetCfg* cfg = s2s_getConfigByIndex(id);
     if (cfg  && (cfg->scsiId & S2S_CFG_TARGET_ENABLED ))
