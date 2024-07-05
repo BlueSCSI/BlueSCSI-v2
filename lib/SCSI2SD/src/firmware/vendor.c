@@ -171,10 +171,6 @@ int scsiVendorCommand()
 	  // XEBEC S1410 controller
 	  // Stub, return success
 	}   	
-	else if (scsiToolboxEnabled() && scsiToolboxCommand())
-	{
-		// already handled
-	}
 	else
 	{
 		commandHandled = 0;

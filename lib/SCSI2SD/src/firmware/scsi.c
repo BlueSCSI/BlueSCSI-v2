@@ -599,8 +599,15 @@ static void process_Command()
 	{
 		enter_Status(CONFLICT);
 	}
+	// Handle Toolbox commands, overriding other vendor commands if enabled
+	else if (scsiToolboxEnabled() && scsiToolboxCommand())
+	{
+		// already handled
+	}
 	// Handle odd device types first that may override basic read and
 	// write commands. Will fall-through to generic disk handling.
+	// Some device specific vendor commands are located here instead
+	// of in scsiVendorCommand()
 	else if (((cfg->deviceType == S2S_CFG_OPTICAL) && scsiCDRomCommand()) ||
 		((cfg->deviceType == S2S_CFG_SEQUENTIAL) && scsiTapeCommand()) ||
 #ifdef ZULUSCSI_NETWORK
