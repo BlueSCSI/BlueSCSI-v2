@@ -775,7 +775,9 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
         uint8_t command[6] = {0x08, 0, 0, 0, 0, 0};
 
         if(g_initiator_state.audioMode){
-            //command[1] = 0b00000001; //cant get multiblock reading to work
+            //ReadCommand for audio mode has 2 ways of access,
+            //Here I ask for data of the sector size, this works
+            //Another avenue is to ask for a number of blocks, Im not certain BLUESCSI supports that
             command[2] = (uint8_t) (sectorsize >> 16);
             command[3] = (uint8_t) (sectorsize >> 8);
             command[4] = (uint8_t) sectorsize;
@@ -932,6 +934,7 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
     return status == 0 && g_initiator_transfer.all_ok;
 }
 
+// Decodes Sense keys and sense codes and prints the corresponding error message to the log file
 bool Log_Error(uint8_t sense_key, uint16_t sense_code)
 {
     char str[200];
@@ -1364,6 +1367,7 @@ bool Log_Error(uint8_t sense_key, uint16_t sense_code)
     return true;
 }
 
+//Changes the SCSI to Audio mode or DATA mode, (data mode is the default)
 int scsiSetMode(int Mode, int target_id){
     
     uint8_t mode_setting[12] =
@@ -1375,15 +1379,7 @@ int scsiSetMode(int Mode, int target_id){
     if(!(Mode == DATA_MODE || Mode == AUDIO_MODE))return -1;
 
     if(Mode == DATA_MODE)mode_setting[4] = 0x13;
-    else 
-    {
-        mode_setting[ 4] = 0x80;
-        //mode_setting[ 9] = (uint8_t) (g_initiator_state.sectorsize >> 16);
-        //mode_setting[10] = (uint8_t) (g_initiator_state.sectorsize >> 8);
-        //mode_setting[11] = (uint8_t) g_initiator_state.sectorsize;
-
-        //log("Sector size on the block count, ", mode_setting[9], mode_setting[10], mode_setting[11]);
-    }
+    else mode_setting[ 4] = 0x80;
 
     int status = scsiInitiatorRunCommand(target_id,
                                          command, sizeof(command),
@@ -1405,6 +1401,7 @@ int scsiSetMode(int Mode, int target_id){
     return 0;
 }
 
+//Gets the Game Mode we are in AUDIO or DATA
 int scsiGetMode(int * Mode, int target_id){
     uint8_t senseResult[12];
     uint8_t command[6] = {0x1a, 0, 0, 0, 12, 0};
