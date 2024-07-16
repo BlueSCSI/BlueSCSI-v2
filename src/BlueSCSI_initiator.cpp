@@ -867,6 +867,9 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
         g_initiator_transfer.all_ok = false;
     }else{
 
+        //Audio mode data has interpolation flags, little checksums that determine if the data was 
+        //Read Properly
+        //TODO: Rerecord a frame if we record an interpolation flag
         if(scsiDev.data[0x16BB] & 0b00000010){
             g_initiator_state.interpolationLeft++;
             g_initiator_transfer.all_ok = false;
