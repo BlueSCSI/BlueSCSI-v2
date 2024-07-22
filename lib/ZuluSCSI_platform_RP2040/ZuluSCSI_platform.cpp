@@ -54,6 +54,8 @@ extern "C" {
 #  include "audio.h"
 #endif // ENABLE_AUDIO_OUTPUT
 
+extern bool g_rawdrive_active;
+
 extern "C" {
 
 const char *g_platform_name = PLATFORM_NAME;
@@ -406,6 +408,8 @@ extern uint32_t __StackTop;
 
 void platform_emergency_log_save()
 {
+    if (g_rawdrive_active)
+        return;
     platform_set_sd_callback(NULL, NULL);
     SD.begin(SD_CONFIG_CRASH);
     FsFile crashfile = SD.open(CRASHFILE, O_WRONLY | O_CREAT | O_TRUNC);
