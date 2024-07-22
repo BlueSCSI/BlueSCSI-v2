@@ -34,6 +34,7 @@
 #include <ZuluSCSI_audio.h>
 
 extern SdFs SD;
+extern bool g_rawdrive_active;
 
 extern "C" {
 
@@ -544,6 +545,8 @@ void platform_log(const char *s)
 
 void platform_emergency_log_save()
 {
+    if (g_rawdrive_active)
+        return;
 #ifdef ZULUSCSI_HARDWARE_CONFIG
     if (g_hw_config.is_active())
         return;

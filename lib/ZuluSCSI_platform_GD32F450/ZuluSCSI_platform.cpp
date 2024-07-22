@@ -32,6 +32,8 @@
 #include <assert.h>
 #include "usb_serial.h"
 
+extern bool g_rawdrive_active;
+
 extern "C" {
 
 const char *g_platform_name = PLATFORM_NAME;
@@ -348,6 +350,9 @@ void platform_log(const char *s)
 
 void platform_emergency_log_save()
 {
+    if (g_rawdrive_active)
+        return;
+
     platform_set_sd_callback(NULL, NULL);
 
     SD.begin(SD_CONFIG_CRASH);
