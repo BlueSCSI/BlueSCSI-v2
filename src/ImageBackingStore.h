@@ -68,11 +68,14 @@ public:
     // Can the image be written?
     bool isWritable();
 
+    // Is this in Raw mode? by passing the file system
+    bool isRaw();
+
     // Is this internal ROM drive in microcontroller flash?
     bool isRom();
 
-    // Is this backed by raw passthrough
-    bool isRaw();
+    // Is this a contigious block on the SD card? Allowing less overhead
+    bool isContiguous();
 
     // Close the image so that .isOpen() will return false.
     bool close();
@@ -103,6 +106,7 @@ public:
     size_t getFilename(char* buf, size_t buflen);
 
 protected:
+    bool m_iscontiguous;
     bool m_israw;
     bool m_isrom;
     bool m_isreadonly_attr;

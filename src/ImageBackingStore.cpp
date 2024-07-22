@@ -31,9 +31,13 @@
 #include <string.h>
 #include <assert.h>
 
+extern bool g_rawdrive_active;
+
 ImageBackingStore::ImageBackingStore()
 {
+    m_iscontiguous = false;
     m_israw = false;
+    g_rawdrive_active = m_israw;
     m_isrom = false;
     m_isreadonly_attr = false;
     m_blockdev = nullptr;
@@ -60,7 +64,9 @@ ImageBackingStore::ImageBackingStore(const char *filename, uint32_t scsi_block_s
             return;
         }
 
+        m_iscontiguous = true;
         m_israw = true;
+        g_rawdrive_active = m_israw;
         m_blockdev = SD.card();
 
         uint32_t sectorCount = SD.card()->sectorCount();
@@ -103,7 +109,7 @@ ImageBackingStore::ImageBackingStore(const char *filename, uint32_t scsi_block_s
             // access overhead in SdFat library.
             // If non-aligned offsets are later requested, it automatically falls
             // back to SdFat access mode.
-            m_israw = true;
+            m_iscontiguous = true;
             m_blockdev = SD.card();
             m_bgnsector = begin;
 
@@ -128,7 +134,7 @@ ImageBackingStore::ImageBackingStore(const char *filename, uint32_t scsi_block_s
 
 bool ImageBackingStore::isOpen()
 {
-    if (m_israw)
+    if (m_iscontiguous)
         return (m_blockdev != NULL);
     else if (m_isrom)
         return (m_romhdr.imagesize > 0);
@@ -141,20 +147,25 @@ bool ImageBackingStore::isWritable()
     return !m_isrom && !m_isreadonly_attr;
 }
 
+bool ImageBackingStore::isRaw()
+{
+    return m_israw;
+}
+
 bool ImageBackingStore::isRom()
 {
     return m_isrom;
 }
 
 
-bool ImageBackingStore::isRaw()
+bool ImageBackingStore::isContiguous()
 {
-    return m_israw;
+    return m_iscontiguous;
 }
 
 bool ImageBackingStore::close()
 {
-    if (m_israw)
+    if (m_iscontiguous)
     {
         m_blockdev = nullptr;
         return true;
@@ -172,7 +183,7 @@ bool ImageBackingStore::close()
 
 uint64_t ImageBackingStore::size()
 {
-    if (m_israw && m_blockdev)
+    if (m_iscontiguous && m_blockdev)
     {
         return (uint64_t)(m_endsector - m_bgnsector + 1) * SD_SECTOR_SIZE;
     }
@@ -188,7 +199,7 @@ uint64_t ImageBackingStore::size()
 
 bool ImageBackingStore::contiguousRange(uint32_t* bgnSector, uint32_t* endSector)
 {
-    if (m_israw && m_blockdev)
+    if (m_iscontiguous && m_blockdev)
     {
         *bgnSector = m_bgnsector;
         *endSector = m_endsector;
@@ -210,13 +221,13 @@ bool ImageBackingStore::seek(uint64_t pos)
 {
     uint32_t sectornum = pos / SD_SECTOR_SIZE;
 
-    if (m_israw && (uint64_t)sectornum * SD_SECTOR_SIZE != pos)
+    if (m_iscontiguous && (uint64_t)sectornum * SD_SECTOR_SIZE != pos)
     {
         dbgmsg("---- Unaligned access to image, falling back to SdFat access mode");
-        m_israw = false;
+        m_iscontiguous = false;
     }
 
-    if (m_israw)
+    if (m_iscontiguous)
     {
         m_cursector = m_bgnsector + sectornum;
         return (m_cursector <= m_endsector);
@@ -237,13 +248,13 @@ bool ImageBackingStore::seek(uint64_t pos)
 ssize_t ImageBackingStore::read(void* buf, size_t count)
 {
     uint32_t sectorcount = count / SD_SECTOR_SIZE;
-    if (m_israw && (uint64_t)sectorcount * SD_SECTOR_SIZE != count)
+    if (m_iscontiguous && (uint64_t)sectorcount * SD_SECTOR_SIZE != count)
     {
         dbgmsg("---- Unaligned access to image, falling back to SdFat access mode");
-        m_israw = false;
+        m_iscontiguous = false;
     }
 
-    if (m_israw && m_blockdev)
+    if (m_iscontiguous && m_blockdev)
     {
         if (m_blockdev->readSectors(m_cursector, (uint8_t*)buf, sectorcount))
         {
@@ -279,13 +290,13 @@ ssize_t ImageBackingStore::read(void* buf, size_t count)
 ssize_t ImageBackingStore::write(const void* buf, size_t count)
 {
     uint32_t sectorcount = count / SD_SECTOR_SIZE;
-    if (m_israw && (uint64_t)sectorcount * SD_SECTOR_SIZE != count)
+    if (m_iscontiguous && (uint64_t)sectorcount * SD_SECTOR_SIZE != count)
     {
         dbgmsg("---- Unaligned access to image, falling back to SdFat access mode");
-        m_israw = false;
+        m_iscontiguous = false;
     }
 
-    if (m_israw && m_blockdev)
+    if (m_iscontiguous && m_blockdev)
     {
         if (m_blockdev->writeSectors(m_cursector, (const uint8_t*)buf, sectorcount))
         {
@@ -315,7 +326,7 @@ ssize_t ImageBackingStore::write(const void* buf, size_t count)
 
 void ImageBackingStore::flush()
 {
-    if (!m_israw && !m_isrom && !m_isreadonly_attr)
+    if (!m_iscontiguous && !m_isrom && !m_isreadonly_attr)
     {
         m_fsfile.flush();
     }
@@ -323,7 +334,7 @@ void ImageBackingStore::flush()
 
 uint64_t ImageBackingStore::position()
 {
-    if (!m_israw && !m_isrom)
+    if (!m_iscontiguous && !m_isrom)
     {
         return m_fsfile.curPosition();
     }
