@@ -316,6 +316,13 @@ int scsiNetworkCommand()
 				break;
 			}
 
+			if (unlikely(size < 2))
+			{
+				scsiDev.status = CHECK_CONDITION;
+				scsiDev.phase = STATUS;
+				break;
+			}
+
 			int nets = 0;
 			for (int i = 0; i < WIFI_NETWORK_LIST_ENTRY_COUNT; i++)
 			{
@@ -325,17 +332,23 @@ int scsiNetworkCommand()
 			}
 
 			if (nets) {
-				int size = sizeof(struct wifi_network_entry) * nets;
-				if (size + 2 > sizeof(scsiDev.data))
+				unsigned int netsize = sizeof(struct wifi_network_entry) * nets;
+				if (netsize + 2 > sizeof(scsiDev.data))
 				{
 					log_f("WARNING: wifi_network_list is bigger than scsiDev.data, truncating");
-					size = sizeof(scsiDev.data) - 2;
-					size -= (size % (sizeof(struct wifi_network_entry)));
+					netsize = sizeof(scsiDev.data) - 2;
+					netsize -= (netsize % (sizeof(struct wifi_network_entry)));
 				}
-				scsiDev.data[0] = (size >> 8) & 0xff;
-				scsiDev.data[1] = size & 0xff;
-				memcpy(scsiDev.data + 2, wifi_network_list, size);
-				scsiDev.dataLen = size + 2;
+				if (netsize + 2 > size)
+				{
+					log_f("WARNING: wifi_network_list is bigger than requested dataLen, truncating");
+					netsize = size - 2;
+					netsize -= (netsize % (sizeof(struct wifi_network_entry)));
+				}
+				scsiDev.data[0] = (netsize >> 8) & 0xff;
+				scsiDev.data[1] = netsize & 0xff;
+				memcpy(scsiDev.data + 2, wifi_network_list, netsize);
+				scsiDev.dataLen = netsize + 2;
 			}
 			else
 			{
