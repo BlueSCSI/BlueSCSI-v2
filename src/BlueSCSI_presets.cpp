@@ -1,7 +1,7 @@
 #include "BlueSCSI_presets.h"
+#include "BlueSCSI_config.h"
 #include "BlueSCSI_disk.h"
 #include "BlueSCSI_log.h"
-#include "BlueSCSI_config.h"
 #include <strings.h>
 
 // Helper function for case-insensitive string compare
@@ -59,8 +59,15 @@ preset_config_t getSystemPreset(const char *presetName)
         cfg.presetName = "X68000";
         cfg.selectionDelay = 0;
         cfg.quirks = S2S_CFG_QUIRKS_X68000;
-        cfg.enableSCSI2 = 0;
+        cfg.enableSCSI2 = false;
         cfg.maxSyncSpeed = 5;
+    }
+    else if (strequals(presetName, "NeXT"))
+    {
+        cfg.presetName = "NeXT";
+        cfg.quirks = S2S_CFG_QUIRKS_NONE;
+        cfg.sectorsPerTrack = 139;
+        cfg.headsPerCylinder = 4;
     }
     else
     {

@@ -591,7 +591,7 @@ static void scsiDiskConfigDefaults(int target_idx)
 }
 
 // Load values for target configuration from given section if they exist.
-// Otherwise keep current settings.
+// Otherwise, keep current settings.
 static void scsiDiskLoadConfig(int target_idx, const char *section)
 {
     image_config_t &img = g_DiskImages[target_idx];
