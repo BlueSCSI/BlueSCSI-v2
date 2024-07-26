@@ -73,7 +73,7 @@ static bool isValidMacintoshImage(image_config_t *img)
     return result;
 }
 
-// Called from BlueSCSI_disk after image is initalized.
+// Called from BlueSCSI_disk after image is initialized.
 void platformConfigHook(image_config_t *img)
 {
     if(ini_getbool("SCSI", "DisableConfigHook", false, CONFIGFILE))
@@ -94,7 +94,7 @@ void platformConfigHook(image_config_t *img)
                 debuglog("---- Valid Macintosh Device Image detected.");
             }
         }
-        // Macintosh hosts reserve ID 7, so warn the user this configuration wont work
+        // Macintosh hosts reserve ID 7, so warn the user this configuration won't work
         if((img->scsiId & S2S_CFG_TARGET_ID_BITS) == 7)
         {
           log("---- WARNING: Quirks set to Apple so can not use SCSI ID 7!");
