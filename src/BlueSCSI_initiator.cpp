@@ -816,6 +816,13 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
         scsiRequestSense(target_id, &sense_key, &sense_code);
 
         log("scsiInitiatorReadDataToFile: READ failed: ", status, " sense key ", sense_key, ", sense code ", sense_code);
+        if(sense_key == 0x08 && sense_code == 5 && g_initiator_state.audioMode){
+            //Hit end of data
+            g_initiator_state.sectorcount = g_initiator_state.sectors_done;
+            g_initiator_state.sectorcount_all = g_initiator_state.sectors_done;
+            return true; 
+        }
+        
         Log_Error(sense_key, sense_code);
         scsiHostPhyRelease();
         return false;
@@ -872,17 +879,14 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
         //TODO: Rerecord a frame if we record an interpolation flag
         if(scsiDev.data[0x16BB] & 0b00000010){
             g_initiator_state.interpolationLeft++;
-            g_initiator_transfer.all_ok = false;
             
         }
         if(scsiDev.data[0x16BB] & 0b00000001){
             g_initiator_state.interpolationRight++;
-            g_initiator_transfer.all_ok = false;
         }
 
         if(scsiDev.data[0x16BB] & 0b00000001 && scsiDev.data[0x16BB] & 0b00000010){
             g_initiator_state.interpolationBoth++;
-            g_initiator_transfer.all_ok = false;
         }
 
         if(!(scsiDev.data[0x16BB] & 0b00000001 || scsiDev.data[0x16BB] & 0b00000010)){
@@ -898,13 +902,16 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
                 break;
             }
         }
-        if(NullFrame){
+        if(NullFrame && g_initiator_state.nullFramesMax > 0){
+            if(!g_initiator_state.nullFrames)log("Start of Null Frames");
             g_initiator_state.nullFrames++;
-            log("NULL FRAME!!!!");
-            if(g_initiator_state.nullFrames > g_initiator_state.nullFramesMax){
-                //Quit somehow!
+            if(g_initiator_state.nullFrames >= g_initiator_state.nullFramesMax){
+                log("Consequetive Null Frame Maximum has been reached");
+                g_initiator_state.sectorcount = g_initiator_state.sectors_done;
+                g_initiator_state.sectorcount_all = g_initiator_state.sectors_done;
             }
         }else{
+            if(g_initiator_state.nullFrames)log("End of Null Frames");
             g_initiator_state.nullFrames = 0;
         }
     }
