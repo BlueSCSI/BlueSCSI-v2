@@ -442,13 +442,14 @@ bool scsiDiskFilenameValid(const char* name)
     if (extension)
     {
         const char *ignore_exts[] = {
-            ".rom_loaded", ".cue", ".txt", ".rtf", ".md", ".nfo", ".pdf", ".doc", ".ini",
+            ".rom_loaded", ".cue", ".txt", ".rtf", ".md", ".nfo", ".pdf", ".doc", 
+	    ".ini", ".mid", ".midi", ".aiff", ".mp3", ".m4a",
             NULL
         };
         const char *archive_exts[] = {
             ".tar", ".tgz", ".gz", ".bz2", ".tbz2", ".xz", ".zst", ".z",
             ".zip", ".zipx", ".rar", ".lzh", ".lha", ".lzo", ".lz4", ".arj",
-            ".dmg", ".hqx", ".cpt", ".7z", ".s7z",
+            ".dmg", ".hqx", ".cpt", ".7z", ".s7z", ".mid", ".wav", ".aiff",
             NULL
         };
 
