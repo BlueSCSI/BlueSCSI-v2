@@ -560,7 +560,6 @@ static void doModeSense(
 	idx += modeSenseCDCapabilitiesPage(pc, idx, pageCode, &pageFound);
 
 	if ((scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_APPLE) &&
-	    (idx + sizeof(AppleVendorPage) <= allocLength) &&
 		(pageCode == 0x30 || pageCode == 0x3F))
 	{
 		pageFound = 1;
