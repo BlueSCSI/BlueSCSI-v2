@@ -143,7 +143,7 @@ static void scsiInitiatorUpdateLed()
     // Update status indicator, the led blinks every 5 seconds and is on the longer the more data has been transferred
     const int period = 256;
     int phase = (millis() % period);
-    int duty = g_initiator_state.sectors_done * period / g_initiator_state.sectorcount;
+    int duty = (int64_t)g_initiator_state.sectors_done * period / g_initiator_state.sectorcount;
 
     // Minimum and maximum time to verify that the blink is visible
     if (duty < 50) duty = 50;
@@ -532,7 +532,7 @@ void scsiInitiatorMainLoop()
             logmsg("SCSI read succeeded, sectors done: ",
                   (int)g_initiator_state.sectors_done, " / ", (int)g_initiator_state.sectorcount,
                   " speed ", speed_kbps, " kB/s - ", 
-                  (int)(100 * g_initiator_state.sectors_done / g_initiator_state.sectorcount), "%");
+                  (int)(100 * (int64_t)g_initiator_state.sectors_done / g_initiator_state.sectorcount), "%");
         }
     }
 }
