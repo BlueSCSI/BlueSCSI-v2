@@ -17606,7 +17606,7 @@
 		(uuid "62c44c01-7068-4c81-b47c-8706805b2a9d")
 		(at 116.6876 106.3244 180)
 		(property "Reference" "G***"
-			(at 0 0 360)
+			(at 0 0 0)
 			(layer "B.SilkS")
 			(hide yes)
 			(uuid "f5ad3a90-d203-4900-b202-2cd698dab328")
@@ -17619,7 +17619,7 @@
 			)
 		)
 		(property "Value" "LOGO"
-			(at 0.75 0 360)
+			(at 0.75 0 0)
 			(layer "B.SilkS")
 			(hide yes)
 			(uuid "0d39013b-02d0-4742-8e71-3d64a1337514")
@@ -17632,7 +17632,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 0 0 360)
+			(at 0 0 0)
 			(layer "B.Fab")
 			(hide yes)
 			(uuid "0c28f4fc-3de8-477b-8419-edc05e7ee01d")
@@ -17645,7 +17645,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 0 0 360)
+			(at 0 0 0)
 			(layer "B.Fab")
 			(hide yes)
 			(uuid "c5b77eb2-a6e9-4e71-bb58-e7f9829a532e")
@@ -17658,7 +17658,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 0 0 360)
+			(at 0 0 0)
 			(layer "B.Fab")
 			(hide yes)
 			(uuid "b873f822-f4f6-4e0f-b534-0dc77c4eafbb")
@@ -19141,18 +19141,6 @@
 				(size 1 1)
 				(thickness 0.15)
 			)
-		)
-	)
-	(gr_text "© 2023 Tech by Androda, LLC\nLicensed Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)\nhttps://creativecommons.org/licenses/by-nc-sa/4.0/legalcode"
-		(at 180.75 174.18 0)
-		(layer "Cmts.User")
-		(uuid "0b1f86dc-88c9-4b42-8a26-3a68c0d7db38")
-		(effects
-			(font
-				(size 1 1)
-				(thickness 0.15)
-			)
-			(justify left bottom)
 		)
 	)
 	(gr_text "BlueSCSI © Eric Helgeson\nPCB © Tech by Androda, LLC\n\nLicensed under CERN-OHL-S v2\nhttps://ohwr.org/cern_ohl_s_v2.txt\n\nThis source is distributed WITHOUT ANY EXPRESS OR IMPLIED WARRANTY,          \nINCLUDING OF MERCHANTABILITY, SATISFACTORY QUALITY AND FITNESS FOR A         \nPARTICULAR PURPOSE. Please see the CERN-OHL-S v2 for applicable conditions.\n\nAs per CERN-OHL-S v2 section 4, should You produce hardware based on this    \nsource, You must where practicable maintain the Source Location visible      \non the external case of the Device or other products you make using this source.  \n"
