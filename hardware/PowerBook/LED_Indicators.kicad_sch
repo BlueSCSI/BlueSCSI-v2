@@ -1,0 +1,3397 @@
+(kicad_sch
+	(version 20231120)
+	(generator "eeschema")
+	(generator_version "8.0")
+	(uuid "0926c58e-ca76-41bd-882f-a299dc90494c")
+	(paper "A4")
+	(title_block
+		(title "BlueSCSI V2, PowerBook 2023_10a")
+		(date "October 2023")
+		(company "Tech by Androda, LLC")
+	)
+	(lib_symbols
+		(symbol "74xx:74HC14"
+			(pin_names
+				(offset 1.016)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "U"
+				(at 0 1.27 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "74HC14"
+				(at 0 -1.27 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "http://www.ti.com/lit/gpn/sn74HC14"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Hex inverter schmitt trigger"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_locked" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "HCMOS not inverter"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_fp_filters" "DIP*W7.62mm*"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "74HC14_1_0"
+				(polyline
+					(pts
+						(xy -3.81 3.81) (xy -3.81 -3.81) (xy 3.81 0) (xy -3.81 3.81)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+				(pin input line
+					(at -7.62 0 0)
+					(length 3.81)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin output inverted
+					(at 7.62 0 180)
+					(length 3.81)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(symbol "74HC14_1_1"
+				(polyline
+					(pts
+						(xy -1.905 -1.27) (xy -1.905 1.27) (xy -0.635 1.27)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -2.54 -1.27) (xy -0.635 -1.27) (xy -0.635 1.27) (xy 0 1.27)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "74HC14_2_0"
+				(polyline
+					(pts
+						(xy -3.81 3.81) (xy -3.81 -3.81) (xy 3.81 0) (xy -3.81 3.81)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+				(pin input line
+					(at -7.62 0 0)
+					(length 3.81)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin output inverted
+					(at 7.62 0 180)
+					(length 3.81)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "4"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(symbol "74HC14_2_1"
+				(polyline
+					(pts
+						(xy -1.905 -1.27) (xy -1.905 1.27) (xy -0.635 1.27)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -2.54 -1.27) (xy -0.635 -1.27) (xy -0.635 1.27) (xy 0 1.27)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "74HC14_3_0"
+				(polyline
+					(pts
+						(xy -3.81 3.81) (xy -3.81 -3.81) (xy 3.81 0) (xy -3.81 3.81)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+				(pin input line
+					(at -7.62 0 0)
+					(length 3.81)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "5"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin output inverted
+					(at 7.62 0 180)
+					(length 3.81)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "6"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(symbol "74HC14_3_1"
+				(polyline
+					(pts
+						(xy -1.905 -1.27) (xy -1.905 1.27) (xy -0.635 1.27)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -2.54 -1.27) (xy -0.635 -1.27) (xy -0.635 1.27) (xy 0 1.27)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "74HC14_4_0"
+				(polyline
+					(pts
+						(xy -3.81 3.81) (xy -3.81 -3.81) (xy 3.81 0) (xy -3.81 3.81)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+				(pin output inverted
+					(at 7.62 0 180)
+					(length 3.81)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "8"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -7.62 0 0)
+					(length 3.81)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "9"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(symbol "74HC14_4_1"
+				(polyline
+					(pts
+						(xy -1.905 -1.27) (xy -1.905 1.27) (xy -0.635 1.27)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -2.54 -1.27) (xy -0.635 -1.27) (xy -0.635 1.27) (xy 0 1.27)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "74HC14_5_0"
+				(polyline
+					(pts
+						(xy -3.81 3.81) (xy -3.81 -3.81) (xy 3.81 0) (xy -3.81 3.81)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+				(pin output inverted
+					(at 7.62 0 180)
+					(length 3.81)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "10"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -7.62 0 0)
+					(length 3.81)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "11"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(symbol "74HC14_5_1"
+				(polyline
+					(pts
+						(xy -1.905 -1.27) (xy -1.905 1.27) (xy -0.635 1.27)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -2.54 -1.27) (xy -0.635 -1.27) (xy -0.635 1.27) (xy 0 1.27)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "74HC14_6_0"
+				(polyline
+					(pts
+						(xy -3.81 3.81) (xy -3.81 -3.81) (xy 3.81 0) (xy -3.81 3.81)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+				(pin output inverted
+					(at 7.62 0 180)
+					(length 3.81)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "12"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -7.62 0 0)
+					(length 3.81)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "13"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(symbol "74HC14_6_1"
+				(polyline
+					(pts
+						(xy -1.905 -1.27) (xy -1.905 1.27) (xy -0.635 1.27)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -2.54 -1.27) (xy -0.635 -1.27) (xy -0.635 1.27) (xy 0 1.27)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "74HC14_7_0"
+				(pin power_in line
+					(at 0 12.7 270)
+					(length 5.08)
+					(name "VCC"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "14"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 0 -12.7 90)
+					(length 5.08)
+					(name "GND"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "7"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(symbol "74HC14_7_1"
+				(rectangle
+					(start -5.08 7.62)
+					(end 5.08 -7.62)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+		)
+		(symbol "Device:LED"
+			(pin_numbers hide)
+			(pin_names
+				(offset 1.016) hide)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "D"
+				(at 0 2.54 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "LED"
+				(at 0 -2.54 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "~"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Light emitting diode"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "LED diode"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_fp_filters" "LED* LED_SMD:* LED_THT:*"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "LED_0_1"
+				(polyline
+					(pts
+						(xy -1.27 -1.27) (xy -1.27 1.27)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -1.27 0) (xy 1.27 0)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 1.27 -1.27) (xy 1.27 1.27) (xy -1.27 0) (xy 1.27 -1.27)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -3.048 -0.762) (xy -4.572 -2.286) (xy -3.81 -2.286) (xy -4.572 -2.286) (xy -4.572 -1.524)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -1.778 -0.762) (xy -3.302 -2.286) (xy -2.54 -2.286) (xy -3.302 -2.286) (xy -3.302 -1.524)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "LED_1_1"
+				(pin passive line
+					(at -3.81 0 0)
+					(length 2.54)
+					(name "K"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 3.81 0 180)
+					(length 2.54)
+					(name "A"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+		)
+		(symbol "Device:R"
+			(pin_numbers hide)
+			(pin_names
+				(offset 0)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "R"
+				(at 2.032 0 90)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "R"
+				(at 0 0 90)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at -1.778 0 90)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "~"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Resistor"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "R res resistor"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_fp_filters" "R_*"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "R_0_1"
+				(rectangle
+					(start -1.016 -2.54)
+					(end 1.016 2.54)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "R_1_1"
+				(pin passive line
+					(at 0 3.81 270)
+					(length 1.27)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 0 -3.81 90)
+					(length 1.27)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+		)
+		(symbol "Jumper:Jumper_2_Open"
+			(pin_names
+				(offset 0) hide)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "JP"
+				(at 0 2.794 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "Jumper_2_Open"
+				(at 0 -2.286 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "~"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Jumper, 2-pole, open"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "Jumper SPST"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_fp_filters" "Jumper* TestPoint*2Pads* TestPoint*Bridge*"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "Jumper_2_Open_0_0"
+				(circle
+					(center -2.032 0)
+					(radius 0.508)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(circle
+					(center 2.032 0)
+					(radius 0.508)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "Jumper_2_Open_0_1"
+				(arc
+					(start 1.524 1.27)
+					(mid 0 1.778)
+					(end -1.524 1.27)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "Jumper_2_Open_1_1"
+				(pin passive line
+					(at -5.08 0 0)
+					(length 2.54)
+					(name "A"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 5.08 0 180)
+					(length 2.54)
+					(name "B"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+		)
+		(symbol "power:+3.3V"
+			(power)
+			(pin_names
+				(offset 0)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "#PWR"
+				(at 0 -3.81 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Value" "+3.3V"
+				(at 0 3.556 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Power symbol creates a global label with name \"+3.3V\""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "power-flag"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "+3.3V_0_1"
+				(polyline
+					(pts
+						(xy -0.762 1.27) (xy 0 2.54)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0 0) (xy 0 2.54)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0 2.54) (xy 0.762 1.27)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "+3.3V_1_1"
+				(pin power_in line
+					(at 0 0 90)
+					(length 0) hide
+					(name "+3V3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+		)
+		(symbol "power:+5F"
+			(power)
+			(pin_names
+				(offset 0)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "#PWR"
+				(at 0 -3.81 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Value" "+5F"
+				(at 0 3.556 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Power symbol creates a global label with name \"+5F\""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "power-flag"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "+5F_0_1"
+				(polyline
+					(pts
+						(xy -0.762 1.27) (xy 0 2.54)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0 0) (xy 0 2.54)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0 2.54) (xy 0.762 1.27)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "+5F_1_1"
+				(pin power_in line
+					(at 0 0 90)
+					(length 0) hide
+					(name "+5F"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+		)
+		(symbol "power:GND"
+			(power)
+			(pin_names
+				(offset 0)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "#PWR"
+				(at 0 -6.35 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Value" "GND"
+				(at 0 -3.81 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "power-flag"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "GND_0_1"
+				(polyline
+					(pts
+						(xy 0 0) (xy 0 -1.27) (xy 1.27 -1.27) (xy 0 -2.54) (xy -1.27 -1.27) (xy 0 -1.27)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "GND_1_1"
+				(pin power_in line
+					(at 0 0 270)
+					(length 0) hide
+					(name "GND"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+		)
+	)
+	(polyline
+		(pts
+			(xy 99.695 78.105) (xy 40.64 78.105)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "179be5cf-f89c-4d46-8bf5-db9412ebe315")
+	)
+	(polyline
+		(pts
+			(xy 126.365 67.945) (xy 126.365 134.62)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1bde2eed-1702-4373-be24-f0b9a71fca48")
+	)
+	(polyline
+		(pts
+			(xy 159.385 41.275) (xy 159.385 60.325)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "22e0469e-8778-4625-81ed-40f307da0253")
+	)
+	(polyline
+		(pts
+			(xy 127 67.945) (xy 156.21 67.945)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "26bf09cf-32a8-47b2-abab-8e0311970dde")
+	)
+	(polyline
+		(pts
+			(xy 40.64 78.105) (xy 40.64 41.275)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "68a06bd5-c49d-4885-b0be-1b5e30450a85")
+	)
+	(polyline
+		(pts
+			(xy 40.64 41.275) (xy 99.695 41.275)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7a778171-4c20-4f64-8dd2-b9588784bc5d")
+	)
+	(polyline
+		(pts
+			(xy 123.825 41.275) (xy 159.385 41.275)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7bbe5190-13c3-4fb1-8400-d4591e4e7d86")
+	)
+	(polyline
+		(pts
+			(xy 123.825 41.275) (xy 123.825 60.325)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7bfdff50-001a-4e8d-8ec4-3615b82abea8")
+	)
+	(polyline
+		(pts
+			(xy 159.385 60.325) (xy 123.825 60.325)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a50fd069-32e3-41ed-aa73-8873c4d52242")
+	)
+	(polyline
+		(pts
+			(xy 99.695 41.275) (xy 99.695 43.815)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e96eee6b-8c9f-48b9-a5a2-fbd43d407a47")
+	)
+	(polyline
+		(pts
+			(xy 99.695 43.815) (xy 99.695 78.105)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "f1395e28-33f1-46a3-a0c8-3b0b242efb5f")
+	)
+	(polyline
+		(pts
+			(xy 156.21 134.62) (xy 156.21 67.945)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "f7cdb652-d5a3-49f4-9e64-7082fe59b90c")
+	)
+	(polyline
+		(pts
+			(xy 126.365 134.62) (xy 156.21 134.62)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "faf3fdae-64ae-4c50-812e-1e8b5d5ce63b")
+	)
+	(text "BlueSCSI © Eric Helgeson\nPCB © Tech by Androda, LLC\n\nLicensed under CERN-OHL-S v2\nhttps://ohwr.org/cern_ohl_s_v2.txt\n\nThis source is distributed WITHOUT ANY EXPRESS OR IMPLIED WARRANTY,          \nINCLUDING OF MERCHANTABILITY, SATISFACTORY QUALITY AND FITNESS FOR A         \nPARTICULAR PURPOSE. Please see the CERN-OHL-S v2 for applicable conditions.\n\nAs per CERN-OHL-S v2 section 4, should You produce hardware based on this    \nsource, You must where practicable maintain the Source Location visible      \non the external case of the Device or other products you make using this source.  \n"
+		(exclude_from_sim no)
+		(at 232.156 147.066 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+		(uuid "3ef90509-6eb3-4ca7-a0ac-5ba78aaf3b51")
+	)
+	(text "Power LED"
+		(exclude_from_sim no)
+		(at 134.62 45.72 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "82d07db4-97ea-400b-a9af-475f4aee7817")
+	)
+	(text "External Activity LED"
+		(exclude_from_sim no)
+		(at 67.945 74.93 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "8dd9d84b-3e7f-4b59-b943-db9191305d16")
+	)
+	(text "Unused Inverter Pins"
+		(exclude_from_sim no)
+		(at 130.81 132.715 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "b263cc88-baf7-4273-9f04-36ad345420e3")
+	)
+	(text "Activity LED"
+		(exclude_from_sim no)
+		(at 71.12 45.72 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "c5e0f9fd-15d9-48b9-817e-70309407e467")
+	)
+	(global_label "oBSY"
+		(shape input)
+		(at 53.34 54.61 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "1572034c-f735-4fe5-9646-eb25b96312fd")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 46.2987 54.5306 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "oBSY"
+		(shape input)
+		(at 53.34 69.85 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "3c7a444f-79b4-4c89-8e4b-9e200c0335fb")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 46.2987 69.7706 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+				(hide yes)
+			)
+		)
+	)
+	(symbol
+		(lib_id "74xx:74HC14")
+		(at 141.605 95.25 0)
+		(unit 4)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "030414a6-84f7-4cef-8037-6bb3cad53a9c")
+		(property "Reference" "U8"
+			(at 141.605 86.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "74HC14"
+			(at 141.605 88.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 141.605 95.25 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "http://www.ti.com/lit/gpn/sn74HC14"
+			(at 141.605 95.25 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 141.605 95.25 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "7d5ea25f-02e0-4249-b28b-d8c5d4b0386d")
+		)
+		(pin "2"
+			(uuid "269bc05a-1842-423c-9b9b-c832f5e706bb")
+		)
+		(pin "3"
+			(uuid "c3fc6a52-11de-4b95-85a8-923524c5fbbd")
+		)
+		(pin "4"
+			(uuid "9198c45f-6652-484f-88c6-105109eff699")
+		)
+		(pin "5"
+			(uuid "9860ef2f-07b0-438d-aead-134a02aeace8")
+		)
+		(pin "6"
+			(uuid "dcacc0bc-0174-469d-8481-fad2bd7a95b8")
+		)
+		(pin "8"
+			(uuid "bba8118a-eba3-47d8-b512-c7c67323f1d3")
+		)
+		(pin "9"
+			(uuid "e925d8c9-a2ea-481c-8a90-9e152a141a4e")
+		)
+		(pin "10"
+			(uuid "1ab06f6e-d3bf-411c-8d28-1695be035ad2")
+		)
+		(pin "11"
+			(uuid "6dde7e17-2736-4f1c-8005-d7c797d80b5a")
+		)
+		(pin "12"
+			(uuid "56b5c8ca-abdc-47ea-a484-2a614a07a505")
+		)
+		(pin "13"
+			(uuid "b288300c-694c-4328-98bc-025d22eff9dd")
+		)
+		(pin "14"
+			(uuid "8605a61c-e817-433a-8545-d496c05484e1")
+		)
+		(pin "7"
+			(uuid "b26a8cf2-c90b-4d0e-8842-a0dc8234f180")
+		)
+		(instances
+			(project "PowerBook"
+				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/fdcde0ff-5e8f-44b0-a02c-21e908a3ec10"
+					(reference "U8")
+					(unit 4)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 133.985 125.73 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "09e5af85-fa15-4f16-a00b-505a6921dea4")
+		(property "Reference" "#PWR071"
+			(at 133.985 132.08 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 136.525 126.9999 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 133.985 125.73 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 133.985 125.73 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 133.985 125.73 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "34153131-d02b-49c6-b6e4-7c3746f65874")
+		)
+		(instances
+			(project "PowerBook"
+				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/fdcde0ff-5e8f-44b0-a02c-21e908a3ec10"
+					(reference "#PWR071")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "74xx:74HC14")
+		(at 141.605 80.01 0)
+		(unit 3)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "0d67463b-3f4e-4e64-85a8-97bd31503254")
+		(property "Reference" "U8"
+			(at 141.605 71.12 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "74HC14"
+			(at 141.605 73.66 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 141.605 80.01 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "http://www.ti.com/lit/gpn/sn74HC14"
+			(at 141.605 80.01 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 141.605 80.01 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "59430525-9ca5-49cb-b7e0-ea02895ad01c")
+		)
+		(pin "2"
+			(uuid "aacf85a2-b509-4134-89c0-aeea840becce")
+		)
+		(pin "3"
+			(uuid "fb41b802-9034-4aa1-8815-060d5e5bfaa1")
+		)
+		(pin "4"
+			(uuid "90f2be13-c0eb-474b-849c-86324340e925")
+		)
+		(pin "5"
+			(uuid "83e061cf-3bea-490f-8a2e-3b6186f424a0")
+		)
+		(pin "6"
+			(uuid "19fcdfd1-263a-4d5e-afcb-efe7f00076d1")
+		)
+		(pin "8"
+			(uuid "14161a31-2769-4573-bce0-d28ff49b8e5a")
+		)
+		(pin "9"
+			(uuid "a778119b-7450-4dc3-add6-d600024dec29")
+		)
+		(pin "10"
+			(uuid "e4ae11e1-2263-4ac1-b344-10cd336c79da")
+		)
+		(pin "11"
+			(uuid "219ad4b0-06f6-411f-bf6f-0b9374086393")
+		)
+		(pin "12"
+			(uuid "36e587dc-3c16-4737-9957-c4b6ca47eac4")
+		)
+		(pin "13"
+			(uuid "ced03c42-a392-4571-b581-dac67d298526")
+		)
+		(pin "14"
+			(uuid "9851e733-7329-49d0-96ef-65b5ba4e6c3b")
+		)
+		(pin "7"
+			(uuid "0e894e66-5502-4a4f-840f-bff6498bfd45")
+		)
+		(instances
+			(project "PowerBook"
+				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/fdcde0ff-5e8f-44b0-a02c-21e908a3ec10"
+					(reference "U8")
+					(unit 3)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 133.985 110.49 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "30b8f85e-e70f-4613-975e-fc919173e66d")
+		(property "Reference" "#PWR070"
+			(at 133.985 116.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 136.525 111.7599 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 133.985 110.49 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 133.985 110.49 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 133.985 110.49 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "ad01bfe2-93ed-4c38-bfab-83c396042d25")
+		)
+		(instances
+			(project "PowerBook"
+				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/fdcde0ff-5e8f-44b0-a02c-21e908a3ec10"
+					(reference "#PWR070")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 133.985 80.01 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "505006ae-3aac-4c80-bd24-0067581dd15f")
+		(property "Reference" "#PWR068"
+			(at 133.985 86.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 136.525 81.2799 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 133.985 80.01 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 133.985 80.01 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 133.985 80.01 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "3dd6127b-1f64-4409-83e6-d45429a16d4d")
+		)
+		(instances
+			(project "PowerBook"
+				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/fdcde0ff-5e8f-44b0-a02c-21e908a3ec10"
+					(reference "#PWR068")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "74xx:74HC14")
+		(at 60.96 69.85 0)
+		(unit 2)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "5c44acf0-977e-4b1b-aa69-a1628101d8b3")
+		(property "Reference" "U8"
+			(at 60.96 60.96 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "74HC14"
+			(at 60.96 63.5 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 60.96 69.85 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "http://www.ti.com/lit/gpn/sn74HC14"
+			(at 60.96 69.85 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 60.96 69.85 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "464aa427-f033-40b0-b4ee-53d3fcc47b57")
+		)
+		(pin "2"
+			(uuid "3fc6c408-0543-4b49-98a6-6ffbca48cd48")
+		)
+		(pin "3"
+			(uuid "ecaa60ea-6f36-4047-b918-ba13822ce9d6")
+		)
+		(pin "4"
+			(uuid "d38f3c9e-8555-4a64-946a-63fc45cc8e11")
+		)
+		(pin "5"
+			(uuid "821b572a-879e-4275-802f-3d4dfbb35a4d")
+		)
+		(pin "6"
+			(uuid "a160444d-bc03-4c98-bac6-7076076f44e2")
+		)
+		(pin "8"
+			(uuid "34007dfa-63bf-4995-8f3d-b5b1a7e52902")
+		)
+		(pin "9"
+			(uuid "36f04860-c56e-48c7-98c2-15962e5d6a44")
+		)
+		(pin "10"
+			(uuid "dfa91e19-fc69-4cf3-9145-a626ef0bca39")
+		)
+		(pin "11"
+			(uuid "c0f0d82a-123b-4495-9b34-aea0ede28cc8")
+		)
+		(pin "12"
+			(uuid "763351b8-bab6-4f7f-ba2b-e27a6488b63e")
+		)
+		(pin "13"
+			(uuid "e077c34d-6d68-4c7e-9108-2b73033b161e")
+		)
+		(pin "14"
+			(uuid "1b78a8de-5c8c-4480-918d-ef56925ec407")
+		)
+		(pin "7"
+			(uuid "0ad79e4e-0271-4a0b-afb5-51fa6deed3fe")
+		)
+		(instances
+			(project "PowerBook"
+				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/fdcde0ff-5e8f-44b0-a02c-21e908a3ec10"
+					(reference "U8")
+					(unit 2)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 148.59 53.34 90)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "5f216df2-9913-43cb-8650-1476ade6ac8d")
+		(property "Reference" "#PWR075"
+			(at 154.94 53.34 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 153.67 53.34 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 148.59 53.34 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 148.59 53.34 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 148.59 53.34 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "e9f38786-f983-435c-acca-865051567d6b")
+		)
+		(instances
+			(project "PowerBook"
+				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/fdcde0ff-5e8f-44b0-a02c-21e908a3ec10"
+					(reference "#PWR075")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+5F")
+		(at 133.35 53.34 90)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "5fbbab8d-3021-4901-b0fd-39b771b3e267")
+		(property "Reference" "#PWR0104"
+			(at 137.16 53.34 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "+5F"
+			(at 129.54 53.3399 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 133.35 53.34 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 133.35 53.34 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 133.35 53.34 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "bd84ce56-5603-4ae6-923d-b0f74d57cc4f")
+		)
+		(instances
+			(project "PowerBook"
+				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/fdcde0ff-5e8f-44b0-a02c-21e908a3ec10"
+					(reference "#PWR0104")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 137.16 53.34 90)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "6da048c9-f0c8-4f1b-8efc-3f455f48f5a5")
+		(property "Reference" "R56"
+			(at 137.16 46.99 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "4.7k"
+			(at 137.16 49.53 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder"
+			(at 137.16 55.118 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 137.16 53.34 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 137.16 53.34 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "a2f7ad60-e4c7-4ae8-9a2b-84e8eb0cbc78")
+		)
+		(pin "2"
+			(uuid "4bb15ae4-c1c8-4b61-bda3-22145f8c72e3")
+		)
+		(instances
+			(project "PowerBook"
+				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/fdcde0ff-5e8f-44b0-a02c-21e908a3ec10"
+					(reference "R56")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 72.39 69.85 90)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "76792fd2-eb96-4ff1-8b87-dc7f3fb3877b")
+		(property "Reference" "R57"
+			(at 72.39 63.5 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "470"
+			(at 72.39 66.04 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric_Pad0.72x0.64mm_HandSolder"
+			(at 72.39 71.628 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 72.39 69.85 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 72.39 69.85 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "08d1e81a-e928-4ffb-8c66-133b17117593")
+		)
+		(pin "2"
+			(uuid "b46209ec-1fcf-4385-a9dc-0fc82ecf349d")
+		)
+		(instances
+			(project "PowerBook"
+				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/fdcde0ff-5e8f-44b0-a02c-21e908a3ec10"
+					(reference "R57")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 90.805 111.125 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "89c9db85-7e1b-4d6b-ac82-349cad9970bc")
+		(property "Reference" "#PWR072"
+			(at 90.805 117.475 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 93.345 112.3949 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 90.805 111.125 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 90.805 111.125 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 90.805 111.125 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "67ca855b-722e-4e8a-9dae-f560c031e298")
+		)
+		(instances
+			(project "PowerBook"
+				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/fdcde0ff-5e8f-44b0-a02c-21e908a3ec10"
+					(reference "#PWR072")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "74xx:74HC14")
+		(at 141.605 125.73 0)
+		(unit 6)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "8d0fec02-db29-44a3-8d38-c6b7074e1b00")
+		(property "Reference" "U8"
+			(at 141.605 116.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "74HC14"
+			(at 141.605 119.38 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 141.605 125.73 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "http://www.ti.com/lit/gpn/sn74HC14"
+			(at 141.605 125.73 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 141.605 125.73 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "713cda88-14f8-4fdf-bea1-64b8bff160ea")
+		)
+		(pin "2"
+			(uuid "c9669d06-34ba-400e-8bdf-252cda44e077")
+		)
+		(pin "3"
+			(uuid "b5024643-f69c-4463-97c3-78916474e142")
+		)
+		(pin "4"
+			(uuid "901d319a-f7b8-43bd-bdb2-abda6c1fc6b9")
+		)
+		(pin "5"
+			(uuid "2b63f888-ae31-4d92-be86-08099b8a1bb4")
+		)
+		(pin "6"
+			(uuid "c2534118-ce52-4a53-84cf-dae203b600dc")
+		)
+		(pin "8"
+			(uuid "5013863c-9fea-4b5c-ab22-2f5f5a05ff1e")
+		)
+		(pin "9"
+			(uuid "732babb7-5f36-4b07-9add-6841f7a3108c")
+		)
+		(pin "10"
+			(uuid "abc5bc0e-be76-4912-8ee4-dea25df26b6f")
+		)
+		(pin "11"
+			(uuid "fde71dbf-2c9b-47a2-b74e-61ac4e6bcfcc")
+		)
+		(pin "12"
+			(uuid "e11990cd-aae1-425d-96fc-1808f71ba2cb")
+		)
+		(pin "13"
+			(uuid "ed90d1c9-b60c-4e6b-bdeb-71e36a66c06a")
+		)
+		(pin "14"
+			(uuid "ee5bad2e-e38f-4de2-8e22-433fb3d4162c")
+		)
+		(pin "7"
+			(uuid "35b7d904-eb61-4421-b52b-71ad42dbcc15")
+		)
+		(instances
+			(project "PowerBook"
+				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/fdcde0ff-5e8f-44b0-a02c-21e908a3ec10"
+					(reference "U8")
+					(unit 6)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "74xx:74HC14")
+		(at 60.96 54.61 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "92fbae86-3a73-41d1-bf13-9e9d80c8f2c9")
+		(property "Reference" "U8"
+			(at 60.96 45.72 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "74HC14"
+			(at 60.96 48.26 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 60.96 54.61 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "http://www.ti.com/lit/gpn/sn74HC14"
+			(at 60.96 54.61 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 60.96 54.61 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "b9c3a02f-07b6-49a3-b784-0d2b3bcd7d83")
+		)
+		(pin "2"
+			(uuid "3cb1f2ec-cff2-4e45-a9e5-946aeaecb45e")
+		)
+		(pin "3"
+			(uuid "ed02a5d6-0910-40e4-b1d5-5e722f5de6d0")
+		)
+		(pin "4"
+			(uuid "cb39c562-0e86-4364-962a-f98a28c7b276")
+		)
+		(pin "5"
+			(uuid "6482f0f3-ba3b-4420-b3bb-d506f6b676d0")
+		)
+		(pin "6"
+			(uuid "ff7fb2a9-8455-4c33-bbc2-859df08015c3")
+		)
+		(pin "8"
+			(uuid "d95872ab-4e3b-47ae-af27-7274efff822a")
+		)
+		(pin "9"
+			(uuid "1f2b7d25-4e7a-4c6c-a66f-ba585bceebe9")
+		)
+		(pin "10"
+			(uuid "c710bd9e-8483-4ff8-95b2-9423afc61e03")
+		)
+		(pin "11"
+			(uuid "3276c513-050d-4264-8ac4-35785f58e45c")
+		)
+		(pin "12"
+			(uuid "5d4c6549-d63f-423b-9a49-68f6bb6b0069")
+		)
+		(pin "13"
+			(uuid "a0782025-9b19-457a-af22-61380d9b012c")
+		)
+		(pin "14"
+			(uuid "34292787-c7c5-4025-b6f1-93b231bc8615")
+		)
+		(pin "7"
+			(uuid "b803281b-eebd-4942-97bb-7df11db5186d")
+		)
+		(instances
+			(project "PowerBook"
+				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/fdcde0ff-5e8f-44b0-a02c-21e908a3ec10"
+					(reference "U8")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:LED")
+		(at 80.01 54.61 180)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "9cfb703e-ccbb-4a40-be4f-dd7895fb1422")
+		(property "Reference" "D4"
+			(at 80.3274 50.8 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(property "Value" "LED"
+			(at 82.8674 50.8 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(property "Footprint" "LED_SMD:LED_0603_1608Metric_Pad1.05x0.95mm_HandSolder"
+			(at 80.01 54.61 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 80.01 54.61 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 80.01 54.61 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "cdb5d72b-52e3-48d8-885a-2e20ce08a9cf")
+		)
+		(pin "2"
+			(uuid "e529a37e-8088-44cc-9b8b-a39baf5a8b71")
+		)
+		(instances
+			(project "PowerBook"
+				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/fdcde0ff-5e8f-44b0-a02c-21e908a3ec10"
+					(reference "D4")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Jumper:Jumper_2_Open")
+		(at 81.28 69.85 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "a4a17b51-6e17-4a02-9aea-8e9d13874e4a")
+		(property "Reference" "JP1"
+			(at 81.28 63.5 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "Jumper_2_Open"
+			(at 83.82 66.04 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Jumper:SolderJumper-2_P1.3mm_Open_Pad1.0x1.5mm"
+			(at 81.28 69.85 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 81.28 69.85 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 81.28 69.85 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "ed2b5a48-e4da-47ba-959f-0b18a8b83668")
+		)
+		(pin "2"
+			(uuid "bb5b2b14-13c2-477f-b49f-81dfde031c7e")
+		)
+		(instances
+			(project "PowerBook"
+				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/fdcde0ff-5e8f-44b0-a02c-21e908a3ec10"
+					(reference "JP1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 72.39 54.61 90)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "adb874a3-18c5-4ab0-a3f0-9670f10f659a")
+		(property "Reference" "R30"
+			(at 72.39 48.26 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "470"
+			(at 72.39 50.8 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric_Pad0.72x0.64mm_HandSolder"
+			(at 72.39 56.388 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 72.39 54.61 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 72.39 54.61 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "4bbc1728-3ee4-4814-b632-dca9c06c49ae")
+		)
+		(pin "2"
+			(uuid "c9a5d97d-86ed-4054-ba87-877a73ec7cd9")
+		)
+		(instances
+			(project "PowerBook"
+				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/fdcde0ff-5e8f-44b0-a02c-21e908a3ec10"
+					(reference "R30")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 133.985 95.25 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "c39680dd-95ef-4a21-ba8b-fb50d1a80b1e")
+		(property "Reference" "#PWR069"
+			(at 133.985 101.6 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 136.525 96.5199 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 133.985 95.25 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 133.985 95.25 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 133.985 95.25 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "931f8a47-858b-4cd4-918b-3cf89364bf47")
+		)
+		(instances
+			(project "PowerBook"
+				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/fdcde0ff-5e8f-44b0-a02c-21e908a3ec10"
+					(reference "#PWR069")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:LED")
+		(at 144.78 53.34 180)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "d00adb1c-a0e3-4b8a-8f7c-e1b1f3d1a010")
+		(property "Reference" "D5"
+			(at 145.0974 49.53 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(property "Value" "LED"
+			(at 147.6374 49.53 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(property "Footprint" "LED_SMD:LED_0603_1608Metric_Pad1.05x0.95mm_HandSolder"
+			(at 144.78 53.34 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 144.78 53.34 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 144.78 53.34 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "e134a167-9fb7-4f19-9a11-ddde311b9bdd")
+		)
+		(pin "2"
+			(uuid "4a90f66e-1b46-469b-bcb2-7d8fb18c73c5")
+		)
+		(instances
+			(project "PowerBook"
+				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/fdcde0ff-5e8f-44b0-a02c-21e908a3ec10"
+					(reference "D5")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "74xx:74HC14")
+		(at 141.605 110.49 0)
+		(unit 5)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "da1bd2ba-22d3-4cbd-a2b3-306d8f14919c")
+		(property "Reference" "U8"
+			(at 141.605 101.6 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "74HC14"
+			(at 141.605 104.14 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 141.605 110.49 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "http://www.ti.com/lit/gpn/sn74HC14"
+			(at 141.605 110.49 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 141.605 110.49 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "ec0d151a-a3b3-433b-bc9b-3df4c3b2a7a0")
+		)
+		(pin "2"
+			(uuid "1fb373fc-ccbf-48e6-989d-9326aaa45572")
+		)
+		(pin "3"
+			(uuid "a2633325-7d17-4cd3-9469-6c28c021b9e9")
+		)
+		(pin "4"
+			(uuid "ef08cb05-caeb-4d1f-bbd5-18aedd829327")
+		)
+		(pin "5"
+			(uuid "a759680b-99cd-4937-88d5-8532bf73cd95")
+		)
+		(pin "6"
+			(uuid "5a8b0ae4-ab82-4d69-9e4a-727b68b68b75")
+		)
+		(pin "8"
+			(uuid "3e600a6e-84ee-4b2a-947c-d1fbf99beee8")
+		)
+		(pin "9"
+			(uuid "ad3ba132-205a-4377-9a01-1232f2ca432a")
+		)
+		(pin "10"
+			(uuid "b0b3e838-dd36-4846-a92a-02cbb7ade071")
+		)
+		(pin "11"
+			(uuid "eb28e1e5-d7f8-4a20-a5fd-d5a4f52ce657")
+		)
+		(pin "12"
+			(uuid "947ebd5b-35cd-479a-bec8-e949f89a2cce")
+		)
+		(pin "13"
+			(uuid "2454ff28-bb00-492b-a3bf-1621a2adc030")
+		)
+		(pin "14"
+			(uuid "db5e918f-537d-41e2-8b15-6b1631d64ced")
+		)
+		(pin "7"
+			(uuid "6220c7c5-523c-4a26-8aed-1e218943315f")
+		)
+		(instances
+			(project "PowerBook"
+				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/fdcde0ff-5e8f-44b0-a02c-21e908a3ec10"
+					(reference "U8")
+					(unit 5)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "74xx:74HC14")
+		(at 78.105 111.125 90)
+		(unit 7)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "e39d8de4-556b-4dd7-946c-2ae5a7f37215")
+		(property "Reference" "U8"
+			(at 78.105 100.965 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "74HC14"
+			(at 78.105 103.505 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Package_SO:SO-14_3.9x8.65mm_P1.27mm"
+			(at 78.105 111.125 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "http://www.ti.com/lit/gpn/sn74HC14"
+			(at 78.105 111.125 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 78.105 111.125 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "2d680092-2918-49d4-87be-88d7c3a3ea31")
+		)
+		(pin "2"
+			(uuid "57a75823-55c5-461e-a980-6f6934d129e5")
+		)
+		(pin "3"
+			(uuid "edad66dc-a065-49c8-9619-dcb3dd12e24b")
+		)
+		(pin "4"
+			(uuid "2a457201-623f-4dd2-a61c-0402b60cbfe9")
+		)
+		(pin "5"
+			(uuid "8381dc48-7fc0-4a77-a77b-9763417b1d04")
+		)
+		(pin "6"
+			(uuid "3fe1951b-38c9-4b39-9517-873599cf23e9")
+		)
+		(pin "8"
+			(uuid "f3f6e179-79b2-4197-8c42-c6920dd538f4")
+		)
+		(pin "9"
+			(uuid "f8305a6a-6dd4-40da-8e5b-81c9bb83869a")
+		)
+		(pin "10"
+			(uuid "7938c4d1-be21-4c16-8f82-5de69890b170")
+		)
+		(pin "11"
+			(uuid "c6b33cd4-6869-434a-8922-76ad2aa2dd91")
+		)
+		(pin "12"
+			(uuid "b6be5829-ce3c-4552-862b-3a0ae0f69c8e")
+		)
+		(pin "13"
+			(uuid "fbcc1161-952c-4667-82a5-c4f2d629a92b")
+		)
+		(pin "14"
+			(uuid "7aefb7f2-b9cf-4e6c-af8f-5dbc1e8015cc")
+		)
+		(pin "7"
+			(uuid "b7e87801-88a6-4f5d-b0e5-61d47586fc1f")
+		)
+		(instances
+			(project "PowerBook"
+				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/fdcde0ff-5e8f-44b0-a02c-21e908a3ec10"
+					(reference "U8")
+					(unit 7)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 86.36 69.85 90)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "e559ff9b-dcf9-4dcf-b4c8-4ab448f87cc9")
+		(property "Reference" "#PWR03"
+			(at 92.71 69.85 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 91.44 69.85 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 86.36 69.85 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 86.36 69.85 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 86.36 69.85 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "af0459df-359f-4541-b912-f0658d66a63c")
+		)
+		(instances
+			(project "PowerBook"
+				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/fdcde0ff-5e8f-44b0-a02c-21e908a3ec10"
+					(reference "#PWR03")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+3.3V")
+		(at 65.405 111.125 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "ec40f99c-1b32-4f56-a021-9233dee0cda0")
+		(property "Reference" "#PWR051"
+			(at 65.405 114.935 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "+3V3"
+			(at 65.405 106.045 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 65.405 111.125 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 65.405 111.125 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 65.405 111.125 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "36246545-19d2-4758-903b-d29addeb7488")
+		)
+		(instances
+			(project "PowerBook"
+				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/fdcde0ff-5e8f-44b0-a02c-21e908a3ec10"
+					(reference "#PWR051")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 83.82 54.61 90)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "fb7b6d67-63a4-41e8-97be-1c58f6129a46")
+		(property "Reference" "#PWR073"
+			(at 90.17 54.61 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 88.9 54.61 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 83.82 54.61 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 83.82 54.61 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 83.82 54.61 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "b5197f65-e839-42f3-a736-8559d55167c2")
+		)
+		(instances
+			(project "PowerBook"
+				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/fdcde0ff-5e8f-44b0-a02c-21e908a3ec10"
+					(reference "#PWR073")
+					(unit 1)
+				)
+			)
+		)
+	)
+)

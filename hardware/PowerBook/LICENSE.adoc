@@ -1,0 +1,1 @@
+https://ohwr.org/cern_ohl_s_v2.txt[CERN Open Hardware Licence Version 2 - Strongly Reciprocal]
