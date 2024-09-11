@@ -353,6 +353,8 @@ int scsiNetworkCommand()
 			// return wi-fi scan results
 			if (!platform_network_wifi_scan_finished())
 			{
+				scsiDev.target->sense.code = ILLEGAL_REQUEST;
+				scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
 				scsiDev.status = CHECK_CONDITION;
 				scsiDev.phase = STATUS;
 				break;
@@ -360,6 +362,8 @@ int scsiNetworkCommand()
 
 			if (unlikely(size < 2))
 			{
+				scsiDev.target->sense.code = ILLEGAL_REQUEST;
+				scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
 				scsiDev.status = CHECK_CONDITION;
 				scsiDev.phase = STATUS;
 				break;
