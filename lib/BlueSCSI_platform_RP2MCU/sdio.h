@@ -76,6 +76,9 @@ sdio_status_t rp2040_sdio_stop();
 // Receives the SD Status register.  Does not return until the register has been received.
 sdio_status_t receive_status_register(uint8_t* sds);
 
+// Performs one full CLK line cycle
+void cycleSdClock();
+
 // (Re)initialize the SDIO interface
 void rp2040_sdio_init(int clock_divider = 1);
 
