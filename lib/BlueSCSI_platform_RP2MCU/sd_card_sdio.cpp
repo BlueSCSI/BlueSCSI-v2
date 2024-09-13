@@ -44,6 +44,7 @@ static int g_sdio_error_line;
 static sdio_status_t g_sdio_error;
 static uint32_t g_sdio_dma_buf[128];
 static uint32_t g_sdio_sector_count;
+static uint8_t cardType;
 
 #define checkReturnOk(call) ((g_sdio_error = (call)) == SDIO_OK ? true : logSDError(__LINE__))
 static bool logSDError(int line)
@@ -107,7 +108,6 @@ bool SdioCard::begin(SdioConfig sdioConfig)
         reply = 0;
         rp2040_sdio_command_R1(CMD0, 0, NULL); // GO_IDLE_STATE
         status = rp2040_sdio_command_R1(CMD8, 0x1AA, &reply); // SEND_IF_COND
-
         if (status == SDIO_OK && reply == 0x1AA)
         {
             break;
@@ -295,6 +295,7 @@ bool SdioCard::stopTransmission(bool blocking)
         uint32_t start = millis();
         while ((uint32_t)(millis() - start) < 5000 && isBusy())
         {
+            cycleSdClock();
             if (m_stream_callback)
             {
                 m_stream_callback(m_stream_count);
@@ -471,9 +472,14 @@ bool SdioCard::readSector(uint32_t sector, uint8_t* dst)
     uint32_t address = (type() == SD_CARD_TYPE_SDHC) ? sector : (sector * 512);
 
     uint32_t reply;
-    if (!checkReturnOk(rp2040_sdio_command_R1(16, 512, &reply)) || // SET_BLOCKLEN
-        !checkReturnOk(rp2040_sdio_rx_start(dst, 1)) || // Prepare for reception
-        !checkReturnOk(rp2040_sdio_command_R1(CMD17, address, &reply))) // READ_SINGLE_BLOCK
+    // Honestly CMD16 feels partially unnecessary.  Default block length is 512.  SDHC, SDXC, SDUC, *always* use 512 and this does nothing.
+    // Set length is valid for memory access commands only if partial block read operation are allowed in CSD.
+    // We do have the CSD, so CMD16 should only be run if actually necessary
+    if (
+        !checkReturnOk(rp2040_sdio_command_R1(16, 512, &reply)) || // SET_BLOCKLEN
+        !checkReturnOk(rp2040_sdio_command_R1(CMD17, address, &reply)) || // READ_SINGLE_BLOCK
+        !checkReturnOk(rp2040_sdio_rx_start(dst, 1)) // Prepare for reception
+        )
     {
         return false;
     }
@@ -522,9 +528,11 @@ bool SdioCard::readSectors(uint32_t sector, uint8_t* dst, size_t n)
     uint32_t address = (type() == SD_CARD_TYPE_SDHC) ? sector : (sector * 512);
 
     uint32_t reply;
-    if (!checkReturnOk(rp2040_sdio_command_R1(16, 512, &reply)) || // SET_BLOCKLEN
-        !checkReturnOk(rp2040_sdio_rx_start(dst, n)) || // Prepare for reception
-        !checkReturnOk(rp2040_sdio_command_R1(CMD18, address, &reply))) // READ_MULTIPLE_BLOCK
+    if (
+        !checkReturnOk(rp2040_sdio_command_R1(16, 512, &reply)) || // SET_BLOCKLEN
+        !checkReturnOk(rp2040_sdio_command_R1(CMD18, address, &reply)) || // READ_MULTIPLE_BLOCK
+        !checkReturnOk(rp2040_sdio_rx_start(dst, n)) // Prepare for reception
+        )
     {
         return false;
     }
