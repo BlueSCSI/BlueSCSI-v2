@@ -425,9 +425,6 @@ bool SdioCard::readSector(uint32_t sector, uint8_t* dst)
     uint32_t address = (type() == SD_CARD_TYPE_SDHC) ? sector : (sector * 512);
 
     uint32_t reply;
-    // Honestly CMD16 feels partially unnecessary.  Default block length is 512.  SDHC, SDXC, SDUC, *always* use 512 and this does nothing.
-    // Set length is valid for memory access commands only if partial block read operation are allowed in CSD.
-    // We do have the CSD, so CMD16 should only be run if actually necessary
     if (
         !checkReturnOk(rp2040_sdio_command_R1(16, 512, &reply)) || // SET_BLOCKLEN
         !checkReturnOk(rp2040_sdio_command_R1(CMD17, address, &reply)) || // READ_SINGLE_BLOCK
