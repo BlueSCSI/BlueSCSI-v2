@@ -8,114 +8,151 @@
 #include "hardware/pio.h"
 #endif
 
-// ------------ //
-// sdio_cmd_clk //
-// ------------ //
+#define SDIO_IRQ 7
 
-#define sdio_cmd_clk_wrap_target 0
-#define sdio_cmd_clk_wrap 17
+// ------- //
+// cmd_rsp //
+// ------- //
 
-static const uint16_t sdio_cmd_clk_program_instructions[] = {
+#define cmd_rsp_wrap_target 0
+#define cmd_rsp_wrap 9
+
+static const uint16_t cmd_rsp_program_instructions[] = {
             //     .wrap_target
-    0xb1e3, //  0: mov    osr, null       side 1 [1] 
-    0xa24d, //  1: mov    y, !status      side 0 [2] 
-    0x1161, //  2: jmp    !y, 1           side 1 [1] 
-    0x6260, //  3: out    null, 32        side 0 [2] 
-    0x7128, //  4: out    x, 8            side 1 [1] 
-    0xe201, //  5: set    pins, 1         side 0 [2] 
-    0xf181, //  6: set    pindirs, 1      side 1 [1] 
-    0x6201, //  7: out    pins, 1         side 0 [2] 
-    0x1147, //  8: jmp    x--, 7          side 1 [1] 
-    0xe280, //  9: set    pindirs, 0      side 0 [2] 
-    0x7128, // 10: out    x, 8            side 1 [1] 
-    0xa242, // 11: nop                    side 0 [2] 
-    0x1131, // 12: jmp    !x, 17          side 1 [1] 
-    0xa242, // 13: nop                    side 0 [2] 
-    0x11cd, // 14: jmp    pin, 13         side 1 [1] 
-    0x4201, // 15: in     pins, 1         side 0 [2] 
-    0x114f, // 16: jmp    x--, 15         side 1 [1] 
-    0x8220, // 17: push   block           side 0 [2] 
+    0x7101, //  0: out    pins, 1         side 0 [1] 
+    0x1940, //  1: jmp    x--, 0          side 1 [1] 
+    0x1160, //  2: jmp    !y, 0           side 0 [1] 
+    0xfb80, //  3: set    pindirs, 0      side 1 [3] 
+    0xb342, //  4: nop                    side 0 [3] 
+    0xba42, //  5: nop                    side 1 [2] 
+    0x00c4, //  6: jmp    pin, 4                     
+    0x4001, //  7: in     pins, 1                    
+    0x9260, //  8: push   iffull block    side 0 [2] 
+    0x1987, //  9: jmp    y--, 7          side 1 [1] 
             //     .wrap
 };
 
 #if !PICO_NO_HARDWARE
-static const struct pio_program sdio_cmd_clk_program = {
-    .instructions = sdio_cmd_clk_program_instructions,
-    .length = 18,
+static const struct pio_program cmd_rsp_program = {
+    .instructions = cmd_rsp_program_instructions,
+    .length = 10,
     .origin = -1,
 };
 
-static inline pio_sm_config sdio_cmd_clk_program_get_default_config(uint offset) {
+static inline pio_sm_config cmd_rsp_program_get_default_config(uint offset) {
     pio_sm_config c = pio_get_default_sm_config();
-    sm_config_set_wrap(&c, offset + sdio_cmd_clk_wrap_target, offset + sdio_cmd_clk_wrap);
+    sm_config_set_wrap(&c, offset + cmd_rsp_wrap_target, offset + cmd_rsp_wrap);
+    sm_config_set_sideset(&c, 2, true, false);
+    return c;
+}
+
+static inline pio_sm_config pio_cmd_rsp_program_config(uint offset, uint cmd_pin, uint clk_pin, uint16_t div_int, uint8_t div_frac) {
+    pio_sm_config c = cmd_rsp_program_get_default_config(offset);
+    sm_config_set_sideset_pins(&c, clk_pin);
+    sm_config_set_out_pins(&c, cmd_pin, 1);
+    sm_config_set_in_pins(&c, cmd_pin);
+    sm_config_set_set_pins(&c, cmd_pin, 1);
+    sm_config_set_jmp_pin(&c, cmd_pin);
+    sm_config_set_in_shift(&c, false, false, 8);
+    sm_config_set_out_shift(&c, false, true, 8);
+    sm_config_set_clkdiv_int_frac(&c, div_int, div_frac);
+    return c;
+}
+
+#endif
+
+// --------------- //
+// rd_data_w_clock //
+// --------------- //
+
+#define rd_data_w_clock_wrap_target 0
+#define rd_data_w_clock_wrap 7
+
+static const uint16_t rd_data_w_clock_program_instructions[] = {
+            //     .wrap_target
+    0xa022, //  0: mov    x, y            side 0     
+    0xa342, //  1: nop                    side 0 [3] 
+    0x13c1, //  2: jmp    pin, 1          side 1 [3] 
+    0xa242, //  3: nop                    side 0 [2] 
+    0xb142, //  4: nop                    side 1 [1] 
+    0x4204, //  5: in     pins, 4         side 0 [2] 
+    0x9060, //  6: push   iffull block    side 1     
+    0x1045, //  7: jmp    x--, 5          side 1     
+            //     .wrap
+};
+
+#if !PICO_NO_HARDWARE
+static const struct pio_program rd_data_w_clock_program = {
+    .instructions = rd_data_w_clock_program_instructions,
+    .length = 8,
+    .origin = -1,
+};
+
+static inline pio_sm_config rd_data_w_clock_program_get_default_config(uint offset) {
+    pio_sm_config c = pio_get_default_sm_config();
+    sm_config_set_wrap(&c, offset + rd_data_w_clock_wrap_target, offset + rd_data_w_clock_wrap);
     sm_config_set_sideset(&c, 1, false, false);
     return c;
 }
+
+static inline pio_sm_config pio_rd_data_w_clock_program_config(uint offset, uint d0_pin, uint clk_pin, float clk_div) {
+  pio_sm_config c = rd_data_w_clock_program_get_default_config(offset);
+  sm_config_set_sideset_pins(&c, clk_pin);
+  sm_config_set_in_pins(&c, d0_pin);
+  sm_config_set_jmp_pin(&c, d0_pin);
+  sm_config_set_in_shift(&c, false, false, 32);
+  sm_config_set_out_shift(&c, false, true, 32);
+  sm_config_set_clkdiv(&c, clk_div);
+  return c;
+}
+
 #endif
 
-// ------------ //
-// sdio_data_rx //
-// ------------ //
+// --------------- //
+// sdio_tx_w_clock //
+// --------------- //
 
-#define sdio_data_rx_wrap_target 0
-#define sdio_data_rx_wrap 4
+#define sdio_tx_w_clock_wrap_target 7
+#define sdio_tx_w_clock_wrap 7
 
-static const uint16_t sdio_data_rx_program_instructions[] = {
+static const uint16_t sdio_tx_w_clock_program_instructions[] = {
+    0x7204, //  0: out    pins, 4         side 0 [2] 
+    0x1940, //  1: jmp    x--, 0          side 1 [1] 
+    0xfa80, //  2: set    pindirs, 0      side 1 [2] 
+    0x5c01, //  3: in     pins, 1         side 1 [4] 
+    0x1483, //  4: jmp    y--, 3          side 0 [4] 
+    0x1cc7, //  5: jmp    pin, 7          side 1 [4] 
+    0x1405, //  6: jmp    5               side 0 [4] 
             //     .wrap_target
-    0xa022, //  0: mov    x, y                       
-    0x2020, //  1: wait   0 pin, 0                   
-    0x248a, //  2: wait   1 gpio, 10             [4] 
-    0x4304, //  3: in     pins, 4                [3] 
-    0x0043, //  4: jmp    x--, 3                     
+    0x9040, //  7: push   iffull noblock  side 0     
             //     .wrap
 };
 
 #if !PICO_NO_HARDWARE
-static const struct pio_program sdio_data_rx_program = {
-    .instructions = sdio_data_rx_program_instructions,
-    .length = 5,
+static const struct pio_program sdio_tx_w_clock_program = {
+    .instructions = sdio_tx_w_clock_program_instructions,
+    .length = 8,
     .origin = -1,
 };
 
-static inline pio_sm_config sdio_data_rx_program_get_default_config(uint offset) {
+static inline pio_sm_config sdio_tx_w_clock_program_get_default_config(uint offset) {
     pio_sm_config c = pio_get_default_sm_config();
-    sm_config_set_wrap(&c, offset + sdio_data_rx_wrap_target, offset + sdio_data_rx_wrap);
+    sm_config_set_wrap(&c, offset + sdio_tx_w_clock_wrap_target, offset + sdio_tx_w_clock_wrap);
+    sm_config_set_sideset(&c, 2, true, false);
     return c;
 }
-#endif
 
-// ------------ //
-// sdio_data_tx //
-// ------------ //
-
-#define sdio_data_tx_wrap_target 5
-#define sdio_data_tx_wrap 8
-
-static const uint16_t sdio_data_tx_program_instructions[] = {
-    0x200a, //  0: wait   0 gpio, 10                 
-    0x258a, //  1: wait   1 gpio, 10             [5] 
-    0x6204, //  2: out    pins, 4                [2] 
-    0x0142, //  3: jmp    x--, 2                 [1] 
-    0xe280, //  4: set    pindirs, 0             [2] 
-            //     .wrap_target
-    0x4101, //  5: in     pins, 1                [1] 
-    0x0285, //  6: jmp    y--, 5                 [2] 
-    0x21a0, //  7: wait   1 pin, 0               [1] 
-    0x8220, //  8: push   block                  [2] 
-            //     .wrap
-};
-
-#if !PICO_NO_HARDWARE
-static const struct pio_program sdio_data_tx_program = {
-    .instructions = sdio_data_tx_program_instructions,
-    .length = 9,
-    .origin = -1,
-};
-
-static inline pio_sm_config sdio_data_tx_program_get_default_config(uint offset) {
-    pio_sm_config c = pio_get_default_sm_config();
-    sm_config_set_wrap(&c, offset + sdio_data_tx_wrap_target, offset + sdio_data_tx_wrap);
+static inline pio_sm_config pio_sdio_tx_w_clock_program_config(uint offset, uint data_pin, uint clk_pin, int clk_div) {
+    pio_sm_config c = sdio_tx_w_clock_program_get_default_config(offset);
+    sm_config_set_sideset_pins(&c, clk_pin);
+    sm_config_set_out_pins(&c, data_pin, 4);
+    sm_config_set_in_pins(&c, data_pin);
+    sm_config_set_set_pins(&c, data_pin, 4);
+    sm_config_set_in_shift(&c, false, false, 8);
+    sm_config_set_out_shift(&c, false, true, 32);
+    sm_config_set_jmp_pin(&c, data_pin);
+    sm_config_set_clkdiv_int_frac(&c, clk_div, 0);
     return c;
 }
-#endif
 
+#endif
