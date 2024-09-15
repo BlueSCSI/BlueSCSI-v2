@@ -14,6 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#ifdef ENABLE_NETWORK
 #include <string.h>
 
 #include "scsi.h"
@@ -528,3 +529,4 @@ int scsiNetworkPurge(void)
 
 	return sent;
 }
+#endif

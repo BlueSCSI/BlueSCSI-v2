@@ -59,7 +59,7 @@
 #define DRIVEINFO_TAPE      {"BlueSCSI", "TAPE",      PLATFORM_REVISION, ""}
 
 // Default SCSI drive information when Apple quirks are enabled
-#define APPLE_DRIVEINFO_FIXED     {"QUANTUM",  "BlueSCSI Pico",   "1.0",  ""}
+#define APPLE_DRIVEINFO_FIXED     {"QUANTUM",  "BlueSCSI Pico2",   "1.0",  ""}
 #define APPLE_DRIVEINFO_REMOVABLE {"IOMEGA",   "BETA230",         "2.02", ""}
 #define APPLE_DRIVEINFO_OPTICAL   {"BlueSCSI", "CD-ROM CDU-55S",  "1.9a", ""}
 #define APPLE_DRIVEINFO_FLOPPY    {"TEAC",     "FD235HS",         "1.44", ""}

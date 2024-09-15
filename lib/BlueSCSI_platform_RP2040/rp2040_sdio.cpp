@@ -18,6 +18,11 @@
 #include <BlueSCSI_platform.h>
 #include <BlueSCSI_log.h>
 
+//#ifndef ENABLE_NETWORK
+//#include <core_cm33.h>
+// #include <core_cm0plus.h>
+//#endif
+
 #define SDIO_PIO pio1
 #define SDIO_CMD_SM 0
 #define SDIO_DATA_SM 1
@@ -811,7 +816,7 @@ static void rp2040_sdio_tx_irq()
 // Check if transmission is complete
 sdio_status_t rp2040_sdio_tx_poll(uint32_t *bytes_complete)
 {
-    if (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk)
+//    if (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) // FIXME:
     {
         // Verify that IRQ handler gets called even if we are in hardfault handler
         rp2040_sdio_tx_irq();
