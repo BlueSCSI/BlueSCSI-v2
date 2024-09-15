@@ -48,5 +48,8 @@ sdio_status_t rp2040_sdio_tx_poll(uint32_t *bytes_complete = nullptr);
 // Force everything to idle state
 sdio_status_t rp2040_sdio_stop();
 
+// Performs one full CLK line cycle
+void cycleSdClock();
+
 // (Re)initialize the SDIO interface
 void rp2040_sdio_init(int clock_divider = 1);
