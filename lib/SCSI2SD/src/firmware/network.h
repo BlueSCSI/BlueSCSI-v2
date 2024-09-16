@@ -30,6 +30,13 @@ extern "C" {
 #define SCSI_NETWORK_WIFI_CMD_INFO			0x04
 #define SCSI_NETWORK_WIFI_CMD_JOIN			0x05
 
+// Patches to make the DaynaPORT (or whats left of it) work on the Amiga - RobSmithDev
+#define SCSI_NETWORK_WIFI_CMD_ALTREAD       0x08   // gvpscsi.device on AMIGA doesnt like the standard version
+#define SCSI_NETWORK_WIFI_CMD_GETMACADDRESS 0x09   // gvpscsi.device on AMIGA doesnt like the standard version
+
+#define AMIGASCSI_PATCH_24BYTE_BLOCKSIZE 	0xA8   // In this mode, data written is rounded up to the nearest 24-byte boundary
+#define AMIGASCSI_PATCH_SINGLEWRITE_ONLY 	0xA9   // In this mode, data written is always ONLY as one single write command
+
 #define NETWORK_PACKET_QUEUE_SIZE   20		// must be <= 255
 #define NETWORK_PACKET_MAX_SIZE     1520
 
