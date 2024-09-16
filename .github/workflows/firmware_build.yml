@@ -6,12 +6,12 @@ on:
 
 jobs:
   build_firmware:
-    name: Build firmware on Ubuntu 20.04
-    runs-on: ubuntu-20.04
+    name: Build firmware on Ubuntu
+    runs-on: ubuntu-latest
 
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: BlueSCSI
           fetch-depth: "0"
@@ -31,7 +31,7 @@ jobs:
           utils/rename_binaries.sh
 
       - name: Upload binaries into build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           path: BlueSCSI/distrib/*
           name: BlueSCSI binaries
@@ -39,7 +39,7 @@ jobs:
       - name: Upload to latest release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: github.ref == 'refs/heads/main'
+        if: ${{ github.ref == 'refs/heads/main' && github.repository == 'BlueSCSI/BlueSCSI-v2' }}
         run: |
           cd BlueSCSI
           git tag -d latest
@@ -52,8 +52,7 @@ jobs:
       - name: Upload to newly created release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        if: ${{ startsWith(github.ref, 'refs/tags/') && github.repository == 'BlueSCSI/BlueSCSI-v2' }}
         run: |
-          cd BlueSCSI/distrib
           RELEASE=$(basename ${{github.ref}})
-          gh release upload --repo ${GITHUB_REPOSITORY} $RELEASE *
+          gh release create --repo ${GITHUB_REPOSITORY} -t $RELEASE $RELEASE BlueSCSI/distrib/*
