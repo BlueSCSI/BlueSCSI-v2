@@ -7,6 +7,8 @@
 
 #define DEVICE_TYPE_CD 5
 #define DEVICE_TYPE_DIRECT_ACCESS 0
+#define DATA_MODE 0
+#define AUDIO_MODE 1
 
 void scsiInitiatorInit();
 
@@ -23,7 +25,7 @@ int scsiInitiatorRunCommand(int target_id,
 bool scsiInitiatorReadCapacity(int target_id, uint32_t *sectorcount, uint32_t *sectorsize);
 
 // Execute REQUEST SENSE command to get more information about error status
-bool scsiRequestSense(int target_id, uint8_t *sense_key);
+bool scsiRequestSense(int target_id, uint8_t *sense_key, uint16_t *sense_code);
 
 // Execute UNIT START STOP command to load/unload media
 bool scsiStartStopUnit(int target_id, bool start);
@@ -38,3 +40,9 @@ bool scsiTestUnitReady(int target_id);
 class FsFile;
 bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t sectorcount, uint32_t sectorsize,
                                  FsFile &file);
+
+bool Log_Error(uint8_t sense_key, uint16_t sense_code);
+
+int scsiGetMode(int * Mode, int target_id);
+int scsiSetMode(int Mode, int target_id);
+
