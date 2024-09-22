@@ -21,7 +21,7 @@ static int g_sdio_error_line;
 static sdio_status_t g_sdio_error;
 static uint32_t g_sdio_dma_buf[128];
 static uint32_t g_sdio_sector_count;
-static uint8_t cardType;
+uint8_t sdSpeedClass;
 
 #define checkReturnOk(call) ((g_sdio_error = (call)) == SDIO_OK ? true : logSDError(__LINE__))
 static bool logSDError(int line)
@@ -148,6 +148,19 @@ bool SdioCard::begin(SdioConfig sdioConfig)
         debuglog("SDIO failed to set bus width");
         return false;
     }
+
+    // Read SD Status field
+    sds_t sd_stat;
+    memset(&sd_stat, 0, sizeof(sds_t));
+    uint8_t* stat_pointer = (uint8_t*) &sd_stat;
+    if (!checkReturnOk(rp2040_sdio_command_R1(CMD55, g_sdio_rca, &reply)) ||
+        !checkReturnOk(rp2040_sdio_command_R1(ACMD13, 0, &reply)) ||
+        !checkReturnOk(receive_status_register(stat_pointer)))
+    {
+        debuglog("SDIO failed to get SD Status");
+        return false;
+    }
+    sdSpeedClass = sd_stat.speedClass();
 
     // Increase to 25 MHz clock rate
     rp2040_sdio_init(1);
@@ -428,7 +441,7 @@ bool SdioCard::readSector(uint32_t sector, uint8_t* dst)
     if (
         !checkReturnOk(rp2040_sdio_command_R1(16, 512, &reply)) || // SET_BLOCKLEN
         !checkReturnOk(rp2040_sdio_command_R1(CMD17, address, &reply)) || // READ_SINGLE_BLOCK
-        !checkReturnOk(rp2040_sdio_rx_start(dst, 1)) // Prepare for reception
+        !checkReturnOk(rp2040_sdio_rx_start(dst, 1, SDIO_BLOCK_SIZE)) // Prepare for reception
         )
     {
         return false;
@@ -481,7 +494,7 @@ bool SdioCard::readSectors(uint32_t sector, uint8_t* dst, size_t n)
     if (
         !checkReturnOk(rp2040_sdio_command_R1(16, 512, &reply)) || // SET_BLOCKLEN
         !checkReturnOk(rp2040_sdio_command_R1(CMD18, address, &reply)) || // READ_MULTIPLE_BLOCK
-        !checkReturnOk(rp2040_sdio_rx_start(dst, n)) // Prepare for reception
+        !checkReturnOk(rp2040_sdio_rx_start(dst, n, SDIO_BLOCK_SIZE)) // Prepare for reception
         )
     {
         return false;

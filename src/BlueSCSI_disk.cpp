@@ -23,6 +23,9 @@
 #include <assert.h>
 #include <SdFat.h>
 
+extern uint8_t sdSpeedClass;
+#define SD_SPEED_CLASS_WARN_BELOW 10
+
 extern "C" {
 #include <scsi2sd_time.h>
 #include <sd.h>
@@ -1026,6 +1029,9 @@ void s2s_configInit(S2S_BoardCfg* config)
     config->scsiSpeed = PLATFORM_MAX_SCSI_SPEED;
 
     int maxSyncSpeed = ini_getl("SCSI", "MaxSyncSpeed", defaults.maxSyncSpeed, CONFIGFILE);
+    if (sdSpeedClass < SD_SPEED_CLASS_WARN_BELOW) {
+		log_f("---- WARNING: Your SD Card Speed Class is %d.  Class 10 or better is recommended for best performance.", sdSpeedClass);
+    }
     if (maxSyncSpeed < 5 && config->scsiSpeed > S2S_CFG_SPEED_ASYNC_50)
         config->scsiSpeed = S2S_CFG_SPEED_ASYNC_50;
     else if (maxSyncSpeed < 10 && config->scsiSpeed > S2S_CFG_SPEED_SYNC_5)
