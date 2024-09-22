@@ -9,3 +9,4 @@ dist/
 .vscode/ipch
 .vscode/extensions.json
 cc-nc-hardware/*/*-backups/
+.idea/

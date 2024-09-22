@@ -512,11 +512,11 @@ static void checkDiskGeometryDivisible(image_config_t &img)
         uint32_t sectorsPerHeadTrack = img.sectorsPerTrack * img.headsPerCylinder;
         if (img.scsiSectors % sectorsPerHeadTrack != 0)
         {
-            log("WARNING: Host used command ", scsiDev.cdb[0],
-                " which is affected by drive geometry. Current settings are ",
-                (int)img.sectorsPerTrack, " sectors x ", (int)img.headsPerCylinder, " heads = ",
-                (int)sectorsPerHeadTrack, " but image size of ", (int)img.scsiSectors,
-                " sectors is not divisible. This can cause error messages in diagnostics tools.");
+            debuglog("WARNING: Host used command ", scsiDev.cdb[0],
+                     " which is affected by drive geometry. Current settings are ",
+                     (int)img.sectorsPerTrack, " sectors x ", (int)img.headsPerCylinder, " heads = ",
+                     (int)sectorsPerHeadTrack, " but image size of ", (int)img.scsiSectors,
+                     " sectors is not divisible. This can cause error messages in diagnostics tools.");
             img.geometrywarningprinted = true;
         }
     }

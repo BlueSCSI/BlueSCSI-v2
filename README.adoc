@@ -10,7 +10,7 @@ Join us in #bluescsi on https://discord.gg/GKcvtgU7P9[Discord] or open an issue 
 
 ## Hardware
 
-Hardware schematics, designs, and production files can be found under the `cc-nc-hardware` folder.
+Hardware schematics, designs, and production files can be found under the `hardware` folder.
 
 Hardware version numbers are based on when the design was updated plus a sub-revision letter, such as "2022_11b" and "2022_12a".
 

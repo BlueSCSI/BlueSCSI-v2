@@ -235,13 +235,12 @@ void scsiInitiatorMainLoop()
                 g_initiator_state.sectorcount = g_initiator_state.sectorcount_all = 0;
             }
 
-            const char *filename_format = "HD00_imaged.hda";
+            char filename[18] = "";
             if (inquiryok)
             {
                 g_initiator_state.deviceType = inquiry_data[0] & 0x1F;
                 if (g_initiator_state.deviceType == DEVICE_TYPE_CD)
                 {
-                    filename_format = "CD00_imaged.iso";
                     g_initiator_state.ejectWhenDone = true;
                 }
                 else if(g_initiator_state.deviceType != DEVICE_TYPE_DIRECT_ACCESS)
@@ -252,11 +251,7 @@ void scsiInitiatorMainLoop()
 
             if (g_initiator_state.sectorcount > 0)
             {
-                char filename[32] = {0};
-                int lun = 0;
-
-                strncpy(filename, filename_format, sizeof(filename) - 1);
-                filename[2] += g_initiator_state.target_id;
+                int image_num = 0;
 
                 uint64_t sd_card_free_bytes = (uint64_t)SD.vol()->freeClusterCount() * SD.vol()->bytesPerCluster();
                 if(sd_card_free_bytes < total_bytes)
@@ -266,14 +261,14 @@ void scsiInitiatorMainLoop()
                     return;
                 }
 
-                while(SD.exists(filename))
-                {
-                    filename[3] = lun++ + '0';
-                }
-                if(lun != 0)
-                {
-                    log("Using filename: ", filename, " to avoid overwriting existing file.");
-                }
+                do {
+                    sprintf(filename, "%s%d_imaged-%03d.%s",
+                            (g_initiator_state.deviceType == DEVICE_TYPE_CD) ? "CD" : "HD",
+                            g_initiator_state.target_id,
+                            ++image_num,
+                            (g_initiator_state.deviceType == DEVICE_TYPE_CD) ? "iso" : "hda");
+                } while(SD.exists(filename));
+                log("Imaging filename: ", filename, ".");
                 g_initiator_state.target_file = SD.open(filename, O_WRONLY | O_CREAT | O_TRUNC);
                 if (!g_initiator_state.target_file.isOpen())
                 {
