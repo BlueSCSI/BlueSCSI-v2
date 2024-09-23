@@ -430,7 +430,7 @@ bool findHDDImages()
 
       if (cfg->deviceType == S2S_CFG_NETWORK)
       {
-        log("* ID: ", (int)(cfg->scsiId & 7),
+        log("* ID: ", (int)(cfg->scsiId & S2S_CFG_TARGET_ID_BITS),
               ", Type: ", typeToChar((int)cfg->deviceType),
               ", Quirks: ", quirksToChar((int)cfg->quirks));
       }
