@@ -8,9 +8,9 @@ on:
 jobs:
   build_firmware:
     name: RHC-internal-Z4
-    runs-on: self-hosted
-#    name: Build firmware on Ubuntu 20.04
-#    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
+#    runs-on: self-hosted
+#    name: Build firmware on latest Ubuntu 
     
     steps:
       - name: Check out code from GitHub
