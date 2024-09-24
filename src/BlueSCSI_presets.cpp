@@ -54,12 +54,21 @@ preset_config_t getSystemPreset(const char *presetName)
         cfg.mapLunsToIDs = true;
         cfg.enableParity = false;
     }
-    else if (strequals(presetName, "X68000"))
+    else if (strequals(presetName, "X68000") || strequals(presetName, "X68000-SCSI"))
     {
-        cfg.presetName = "X68000";
+        cfg.presetName = "X68000-SCSI";
         cfg.selectionDelay = 0;
         cfg.quirks = S2S_CFG_QUIRKS_X68000;
         cfg.enableSCSI2 = false;
+        cfg.maxSyncSpeed = 5;
+    }
+    else if (strequals(presetName, "X68000-SASI"))
+    {
+        cfg.presetName = "X68000-SASI";
+        cfg.selectionDelay = 0;
+        cfg.quirks = S2S_CFG_QUIRKS_X68000;
+        cfg.enableSCSI2 = false;
+        cfg.enableParity = false;
         cfg.maxSyncSpeed = 5;
     }
     else if (strequals(presetName, "NeXT"))
