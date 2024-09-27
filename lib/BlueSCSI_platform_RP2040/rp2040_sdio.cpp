@@ -24,6 +24,12 @@
 #define SDIO_DMA_CH 4
 #define SDIO_DMA_CHB 5
 
+#define PIO_INSTR_MASK_REMOVE_DELAY 0xF8FF
+#define PIO_INSTR_MASK_GET_DELAY 0x700
+
+#define PIO_INSTR_JMP_MASK 0xE000
+#define PIO_INSTR_JMP_ADDR 0x1F
+
 // Maximum number of 512 byte blocks to transfer in one request
 #define SDIO_MAX_BLOCKS 256
 
@@ -930,4 +936,39 @@ void rp2040_sdio_init(int clock_divider)
 #endif
     irq_set_enabled(DMA_IRQ_1, true);
 #endif
+}
+
+void rp2040_sdio_update_delays(pio_program program, uint32_t offset, uint16_t additional_delay) {
+    //log("Offset:", offset);
+    uint16_t instr_to_rewrite;
+    uint16_t existing_delay;
+    for (int i = 0; i < program.length; i++) {
+        instr_to_rewrite = program.instructions[i];
+        //log("Old Instr:", i, ":", (uint32_t)instr_to_rewrite);
+        if (instr_to_rewrite & PIO_INSTR_MASK_GET_DELAY) {  // If there's a delay, increment it.  Otherwise, leave it alone.
+            existing_delay = (instr_to_rewrite & PIO_INSTR_MASK_GET_DELAY) >> 8;
+            existing_delay += additional_delay;
+            instr_to_rewrite = (instr_to_rewrite & PIO_INSTR_MASK_REMOVE_DELAY) | (existing_delay << 8);
+
+            // Canonicalize JMP addresses
+            if ((instr_to_rewrite & PIO_INSTR_JMP_MASK) == 0) {  // Highest three bits are zero on a JMP
+                uint32_t jmp_address = instr_to_rewrite & PIO_INSTR_JMP_ADDR;
+                jmp_address += offset;
+                instr_to_rewrite = (instr_to_rewrite & (~ PIO_INSTR_JMP_ADDR)) | jmp_address;
+            }
+
+            //log("New Instr:", i, ":", (uint32_t)instr_to_rewrite);
+            SDIO_PIO->instr_mem[offset + i] = instr_to_rewrite;
+        }
+    }
+}
+
+void rp2040_sdio_delay_increment(uint16_t additional_delay) {
+    /*
+    Rewrite in-place every SDIO instruction for all the SDIO programs.
+    These additional delay cycles effectively decrease the SDIO clock rate, which can be helpful in electrically noisy environments.
+    */
+    rp2040_sdio_update_delays(cmd_rsp_program, g_sdio.pio_cmd_rsp_clk_offset, additional_delay);
+    rp2040_sdio_update_delays(rd_data_w_clock_program, g_sdio.pio_data_rx_offset, additional_delay);
+    rp2040_sdio_update_delays(sdio_tx_w_clock_program, g_sdio.pio_data_tx_offset, additional_delay);
 }

@@ -45,6 +45,10 @@ void platform_set_sd_callback(sd_callback_t func, const uint8_t *buffer)
     m_stream_count_start = 0;
 }
 
+void add_extra_sdio_delay(uint16_t additional_delay) {
+    rp2040_sdio_delay_increment(additional_delay);
+}
+
 static sd_callback_t get_stream_callback(const uint8_t *buf, uint32_t count, const char *accesstype, uint32_t sector)
 {
     m_stream_count_start = m_stream_count;
