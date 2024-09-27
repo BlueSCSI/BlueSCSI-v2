@@ -7,10 +7,10 @@ on:
 
 jobs:
   build_firmware:
-    name: RHC-internal-Z4
-    runs-on: ubuntu-latest
+#    name: RHC-internal-Z4
 #    runs-on: self-hosted
-#    name: Build firmware on latest Ubuntu 
+    name: Build firmware on GitHub using latest Ubuntu
+    runs-on: ubuntu-latest
     
     steps:
       - name: Check out code from GitHub
@@ -39,18 +39,18 @@ jobs:
           path: ZuluSCSI/distrib/*
           name: ZuluSCSI binaries
       
-      - name: Upload to latest release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: github.ref == 'refs/heads/main'
-        run: |
-          cd ZuluSCSI
-          git tag -d latest
-          git tag latest
-          git push origin --force latest
-          cd distrib
-          gh api repos/${GITHUB_REPOSITORY}/releases/tags/latest | jq -r '.assets[] | [.url] | @tsv' | xargs -n 1 gh api -X DELETE || true
-          gh release upload --repo ${GITHUB_REPOSITORY} --clobber latest *
+      # - name: Upload to latest release
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   if: github.ref == 'refs/heads/main'
+      #   run: |
+      #     cd ZuluSCSI
+      #     git tag -d latest
+      #     git tag latest
+      #     git push origin --force latest
+      #     cd distrib
+      #     gh api repos/${GITHUB_REPOSITORY}/releases/tags/latest | jq -r '.assets[] | [.url] | @tsv' | xargs -n 1 gh api -X DELETE || true
+      #     gh release upload --repo ${GITHUB_REPOSITORY} --clobber latest *
 
       - name: Upload to newly created release
         env:
