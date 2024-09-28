@@ -758,6 +758,7 @@ extern "C" void bluescsi_main_loop(void)
 
         reinitSCSI();
         init_logfile();
+        LED_OFF();
       }
       else if (!g_romdrive_active)
       {
