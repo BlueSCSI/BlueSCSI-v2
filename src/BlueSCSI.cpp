@@ -559,8 +559,8 @@ void check_and_apply_sdio_delay() {
   long add_sdio_delay = ini_getl("SDIO", "AddClockDelay", 0, CONFIGFILE);
   if (add_sdio_delay) {
     if (add_sdio_delay < 0) {
-      add_sdio_delay = 0;
       log("---- WARNING: Negative numbers are not valid for AddClockDelay. Setting value to 0");
+      return;
     }
     if (add_sdio_delay > 2) {
       add_sdio_delay = 2;
