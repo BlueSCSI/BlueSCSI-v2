@@ -93,6 +93,7 @@ bool is202309a();
 // This can be used to implement simultaneous transfer to SCSI bus.
 typedef void (*sd_callback_t)(uint32_t bytes_complete);
 void platform_set_sd_callback(sd_callback_t func, const uint8_t *buffer);
+void add_extra_sdio_delay(uint16_t additional_delay);
 
 // Reprogram firmware in main program area.
 #ifndef RP2040_DISABLE_BOOTLOADER

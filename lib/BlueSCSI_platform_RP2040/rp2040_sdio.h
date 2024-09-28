@@ -58,3 +58,6 @@ sdio_status_t receive_status_register(uint8_t* sds);
 
 // (Re)initialize the SDIO interface
 void rp2040_sdio_init(int clock_divider = 1);
+
+// Adds extra clock delay as specified in additional_delay
+void rp2040_sdio_delay_increment(uint16_t additional_delay);
