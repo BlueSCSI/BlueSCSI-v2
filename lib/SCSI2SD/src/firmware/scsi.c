@@ -621,10 +621,13 @@ static void process_Command()
 	}
 	// Handle odd device types first that may override basic read and
 	// write commands. Will fall-through to generic disk handling.
-	else if (((cfg->deviceType == S2S_CFG_OPTICAL) && scsiCDRomCommand()) ||
-		((cfg->deviceType == S2S_CFG_SEQUENTIAL) && scsiTapeCommand()) ||
-		((cfg->deviceType == S2S_CFG_MO) && scsiMOCommand()) ||
-		((cfg->deviceType == S2S_CFG_NETWORK && scsiNetworkCommand())))
+	else if (((cfg->deviceType == S2S_CFG_OPTICAL) && scsiCDRomCommand())
+		|| ((cfg->deviceType == S2S_CFG_SEQUENTIAL) && scsiTapeCommand())
+		|| ((cfg->deviceType == S2S_CFG_MO) && scsiMOCommand())
+#ifdef ENABLE_NETWORK
+		|| ((cfg->deviceType == S2S_CFG_NETWORK && scsiNetworkCommand()))
+#endif
+        )
 	{
 		// Already handled.
 	}

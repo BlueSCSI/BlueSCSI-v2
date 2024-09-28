@@ -548,11 +548,13 @@ static void reinitSCSI()
   scsiDiskInit();
   scsiInit();
 
+#ifdef ENABLE_NETWORK
   if (scsiDiskCheckAnyNetworkDevicesConfigured())
   {
     platform_network_init(scsiDev.boardCfg.wifiMACAddress);
     platform_network_wifi_join(scsiDev.boardCfg.wifiSSID, scsiDev.boardCfg.wifiPassword);
   }
+#endif
 }
 
 extern "C" void bluescsi_setup(void)
@@ -679,7 +681,9 @@ extern "C" void bluescsi_main_loop(void)
   platform_reset_watchdog();
   platform_poll();
   diskEjectButtonUpdate(true);
+#ifdef ENABLE_NETWORK
   platform_network_poll();
+#endif
   
 #ifdef PLATFORM_HAS_INITIATOR_MODE
   if (unlikely(platform_is_initiator_mode_enabled()))

@@ -22,13 +22,13 @@
 
 extern "C" {
 
-#include <cyw43.h>
-#include <pico/cyw43_arch.h>
-
-#ifndef CYW43_IOCTL_GET_RSSI
-#define CYW43_IOCTL_GET_RSSI (0xfe)
+#ifdef ENABLE_NETWORK
+    #include <cyw43.h>
+    #include <pico/cyw43_arch.h>
+    #ifndef CYW43_IOCTL_GET_RSSI
+        #define CYW43_IOCTL_GET_RSSI (0xfe)
+    #endif
 #endif
-
 // A default DaynaPort-compatible MAC
 static const char defaultMAC[] = { 0x00, 0x80, 0x19, 0xc0, 0xff, 0xee };
 
@@ -45,6 +45,7 @@ bool platform_network_supported()
 #endif
 }
 
+#ifdef ENABLE_NETWORK
 int platform_network_init(char *mac)
 {
 	pico_unique_board_id_t board_id;
@@ -311,4 +312,5 @@ void cyw43_cb_tcpip_set_link_up(cyw43_t *self, int itf)
 		log_f("Successfully connected to Wi-Fi SSID \"%s\"", ssid);
 }
 
-}
+#endif
+} //extern c

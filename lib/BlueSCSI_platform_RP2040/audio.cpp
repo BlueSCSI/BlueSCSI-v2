@@ -63,7 +63,7 @@ const uint8_t snd_parity[256] __attribute__((aligned(256), section(".scratch_y.s
  * receiver.
  * 
  * To facilitate fast lookups this table should be put in SRAM with low
- * contention, aligned to an apppropriate boundry.
+ * contention, aligned to an appropriate boundary.
  */
 const uint16_t biphase[256] __attribute__((aligned(512), section(".scratch_y.biphase"))) = {
     0xCCCC, 0xB333, 0xD333, 0xACCC, 0xCB33, 0xB4CC, 0xD4CC, 0xAB33,
@@ -306,7 +306,7 @@ static void snd_process_b() {
 }
 
 // Allows execution on Core1 via function pointers. Each function can take
-// no parameters and should return nothing, operating via side-effects only.
+// no parameters and should return nothing, operating via side effects only.
 static void core1_handler() {
     while (1) {
         void (*function)() = (void (*)()) multicore_fifo_pop_blocking();
@@ -357,6 +357,7 @@ bool audio_is_playing(uint8_t id) {
 void audio_setup() {
     // setup SPI to blast SP/DIF data over the TX pin
     spi_set_baudrate(AUDIO_SPI, 5644800); // will be slightly wrong, ~0.03% slow
+
     hw_write_masked(&spi_get_hw(AUDIO_SPI)->cr0,
             0x1F, // TI mode with 16 bits
             SPI_SSPCR0_DSS_BITS | SPI_SSPCR0_FRF_BITS);
@@ -497,7 +498,7 @@ bool audio_play(uint8_t owner, ImageBackingStore* img, uint64_t start, uint64_t 
     sfcnt = 0;
     invert = 0;
 
-    // setup the two DMA units to hand-off to each other
+    // setup the two DMA units to hand off to each other
     // to maintain a stable bitstream these need to run without interruption
 	snd_dma_a_cfg = dma_channel_get_default_config(SOUND_DMA_CHA);
 	channel_config_set_transfer_data_size(&snd_dma_a_cfg, DMA_SIZE_16);
