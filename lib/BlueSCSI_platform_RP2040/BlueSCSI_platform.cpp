@@ -573,7 +573,9 @@ static void watchdog_callback(unsigned alarm_num)
 #ifdef __MBED__
             uint32_t *p =  (uint32_t*)__get_PSP();
 #else
-            uint32_t *p = 0; // (uint32_t*)__get_MSP(); //FIXME
+            uint32_t msp;
+            asm volatile ("MRS %0, msp" : "=r" (msp) );
+            uint32_t *p = (uint32_t*)msp;
 #endif
             for (int i = 0; i < 8; i++)
             {
@@ -600,7 +602,9 @@ static void watchdog_callback(unsigned alarm_num)
 #ifdef __MBED__
             uint32_t *p =  (uint32_t*)__get_PSP();
 #else
-            uint32_t *p = 0; // -(uint32_t*)__get_MSP();
+            uint32_t msp;
+            asm volatile ("MRS %0, msp" : "=r" (msp) );
+            uint32_t *p = (uint32_t*)msp;
 #endif
             for (int i = 0; i < 8; i++)
             {
@@ -777,7 +781,7 @@ void platform_boot_to_main_firmware()
     // To ensure that the system state is reset properly, we perform
     // a SYSRESETREQ and jump straight from the reset vector to main application.
     g_bootloader_exit_req = &g_bootloader_exit_req;
-//    SCB->AIRCR = 0x05FA0004;
+    scb_hw->aircr = 0x05FA0004;
     while(1);
 }
 
@@ -790,7 +794,7 @@ void btldr_reset_handler()
         application_base = (uint32_t*)(XIP_BASE + PLATFORM_BOOTLOADER_SIZE);
     }
 
-//    SCB->VTOR = (uint32_t)application_base;
+    scb_hw->aircr = (uint32_t)application_base;
     __asm__(
         "msr msp, %0\n\t"
         "bx %1" : : "r" (application_base[0]),

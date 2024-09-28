@@ -816,7 +816,7 @@ static void rp2040_sdio_tx_irq()
 // Check if transmission is complete
 sdio_status_t rp2040_sdio_tx_poll(uint32_t *bytes_complete)
 {
-//    if (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) // FIXME:
+    if (scb_hw->icsr & (0x1FFUL))
     {
         // Verify that IRQ handler gets called even if we are in hardfault handler
         rp2040_sdio_tx_irq();
