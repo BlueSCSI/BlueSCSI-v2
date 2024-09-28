@@ -555,6 +555,22 @@ static void reinitSCSI()
   }
 }
 
+void check_and_apply_sdio_delay() {
+  long add_sdio_delay = ini_getl("SDIO", "AddClockDelay", 0, CONFIGFILE);
+  if (add_sdio_delay) {
+    if (add_sdio_delay < 0) {
+      add_sdio_delay = 0;
+      log("---- WARNING: Negative numbers are not valid for AddClockDelay. Setting value to 0");
+    }
+    if (add_sdio_delay > 2) {
+      add_sdio_delay = 2;
+      log("---- WARNING: Max value 2 exceeded for AddClockDelay. Setting value to 2.");
+    }
+    log("INFO: Injecting ", (uint16_t)add_sdio_delay, " additional wait state(s) on SDIO");
+    add_extra_sdio_delay((uint16_t) add_sdio_delay);
+  }
+}
+
 extern "C" void bluescsi_setup(void)
 {
   pio_clear_instruction_memory(pio0);
@@ -599,20 +615,7 @@ extern "C" void bluescsi_setup(void)
     {
       log("SD card without filesystem!");
     }
-
-    long add_sdio_delay = ini_getl("SDIO", "AddClockDelay", 0, CONFIGFILE);
-    if (add_sdio_delay) {
-      if (add_sdio_delay < 0) {
-        add_sdio_delay = 0;
-        log("---- WARNING: Negative numbers are not valid for AddClockDelay. Setting value to 0");
-      }
-      if (add_sdio_delay > 2) {
-        add_sdio_delay = 2;
-        log("---- WARNING: Max value 2 exceeded for AddClockDelay. Setting value to 2.");
-      }
-      log("INFO: Injecting ", (uint16_t)add_sdio_delay, " additional wait state(s) on SDIO");
-      add_extra_sdio_delay((uint16_t) add_sdio_delay);
-    }
+    check_and_apply_sdio_delay();
 
     print_sd_info();
   
@@ -750,6 +753,7 @@ extern "C" void bluescsi_main_loop(void)
       if (g_sdcard_present)
       {
         log("SD card reinit succeeded");
+        check_and_apply_sdio_delay();
         print_sd_info();
 
         reinitSCSI();
