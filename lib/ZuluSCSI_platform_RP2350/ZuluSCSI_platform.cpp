@@ -165,8 +165,7 @@ static pin_setup_state_t read_setup_ack_pin()
 
 void platform_init()
 {
-    gpio_conf(LED_PIN,        GPIO_FUNC_SIO, false,false, true,  true, false);
-    for (;;);
+    gpio_conf(LED_PIN,        GPIO_FUNC_SIO, false,false, true,  false, false);
     // Make sure second core is stopped
     multicore_reset_core1();
 
