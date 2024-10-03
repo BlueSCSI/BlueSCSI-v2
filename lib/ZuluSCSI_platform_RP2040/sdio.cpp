@@ -155,6 +155,35 @@ uint64_t sdio_crc16_4bit_checksum(uint32_t *data, uint32_t num_words)
 }
 
 /*******************************************************
+ * Status Register Receiver
+ *******************************************************/
+sdio_status_t receive_status_register(uint8_t* sds) {
+    rp2040_sdio_rx_start(sds, 1, 64);
+    // Wait for the DMA operation to complete, or fail if it took too long
+waitagain:
+    while (dma_channel_is_busy(SDIO_DMA_CHB) || dma_channel_is_busy(SDIO_DMA_CH))
+    {
+        if ((uint32_t)(millis() - g_sdio.transfer_start_time) > 2)
+        {
+            // Reset the state machine program
+            dma_channel_abort(SDIO_DMA_CHB);
+            pio_sm_set_enabled(SDIO_PIO, SDIO_CMD_SM, false);
+            pio_sm_clear_fifos(SDIO_PIO, SDIO_CMD_SM);
+            return SDIO_ERR_RESPONSE_TIMEOUT;
+        }
+    }
+    // Assert that both DMA channels are complete
+    if(dma_channel_is_busy(SDIO_DMA_CHB) || dma_channel_is_busy(SDIO_DMA_CH)) {
+        // Wait failure, go back.
+        goto waitagain;
+    }
+    pio_sm_set_enabled(SDIO_PIO, SDIO_DATA_SM, false);
+    g_sdio.transfer_state = SDIO_IDLE;
+    return SDIO_OK;
+}
+
+
+/*******************************************************
  * Basic SDIO command execution
  *******************************************************/
 
@@ -374,7 +403,7 @@ sdio_status_t rp2040_sdio_command_R3(uint8_t command, uint32_t arg, uint32_t *re
  * Data reception from SD card
  *******************************************************/
 
-sdio_status_t rp2040_sdio_rx_start(uint8_t *buffer, uint32_t num_blocks)
+sdio_status_t rp2040_sdio_rx_start(uint8_t *buffer, uint32_t num_blocks, uint32_t block_size)
 {
     // Buffer must be aligned
     assert(((uint32_t)buffer & 3) == 0 && num_blocks <= SDIO_MAX_BLOCKS);
@@ -387,12 +416,12 @@ sdio_status_t rp2040_sdio_rx_start(uint8_t *buffer, uint32_t num_blocks)
     g_sdio.blocks_checksumed = 0;
     g_sdio.checksum_errors = 0;
 
-    // Create DMA block descriptors to store each block of 512 bytes of data to buffer
+    // Create DMA block descriptors to store each block of block_size bytes of data to buffer
     // and then 8 bytes to g_sdio.received_checksums.
     for (int i = 0; i < num_blocks; i++)
     {
-        g_sdio.dma_blocks[i * 2].write_addr = buffer + i * SDIO_BLOCK_SIZE;
-        g_sdio.dma_blocks[i * 2].transfer_count = SDIO_BLOCK_SIZE / sizeof(uint32_t);
+        g_sdio.dma_blocks[i * 2].write_addr = buffer + i * block_size;
+        g_sdio.dma_blocks[i * 2].transfer_count = block_size / sizeof(uint32_t);
 
         g_sdio.dma_blocks[i * 2 + 1].write_addr = &g_sdio.received_checksums[i];
         g_sdio.dma_blocks[i * 2 + 1].transfer_count = 2;
@@ -424,7 +453,7 @@ sdio_status_t rp2040_sdio_rx_start(uint8_t *buffer, uint32_t num_blocks)
     pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_DATA_SM, SDIO_D0, 4, false);
 
     // Write number of nibbles to receive to Y register
-    pio_sm_put(SDIO_PIO, SDIO_DATA_SM, SDIO_BLOCK_SIZE * 2 + 16 - 1);
+    pio_sm_put(SDIO_PIO, SDIO_DATA_SM, block_size * 2 + 16 - 1);
     pio_sm_exec(SDIO_PIO, SDIO_DATA_SM, pio_encode_out(pio_y, 32));
 
     // Enable RX FIFO join because we don't need the TX FIFO during transfer.

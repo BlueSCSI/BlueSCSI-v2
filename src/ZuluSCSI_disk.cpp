@@ -44,6 +44,10 @@
 #include <assert.h>
 #include <SdFat.h>
 
+#ifndef SD_SPEED_CLASS_WARN_BELOW
+#define SD_SPEED_CLASS_WARN_BELOW 10
+#endif
+
 extern "C" {
 #include <scsi2sd_time.h>
 #include <sd.h>
@@ -1049,6 +1053,12 @@ void s2s_configInit(S2S_BoardCfg* config)
     // Get default values from system preset, if any
     ini_gets("SCSI", "System", "", tmp, sizeof(tmp), CONFIGFILE);
     scsi_system_settings_t *sysCfg = g_scsi_settings.initSystem(tmp);
+    sds_t sds = {0};
+    SD.card()->readSDS(&sds);
+    if ( sds.speedClass() < SD_SPEED_CLASS_WARN_BELOW)
+    {
+		logmsg("WARNING: Your SD Card Speed Class is ", (int)sds.speedClass(), ". Class ", (int) SD_SPEED_CLASS_WARN_BELOW," or better is recommended for best performance.");
+    }
 
     if (g_scsi_settings.getSystemPreset() != SYS_PRESET_NONE)
     {
@@ -1066,7 +1076,6 @@ void s2s_configInit(S2S_BoardCfg* config)
     config->selectionDelay = sysCfg->selectionDelay;
     config->flags6 = 0;
     config->scsiSpeed = PLATFORM_MAX_SCSI_SPEED;
-
     int maxSyncSpeed = sysCfg->maxSyncSpeed;
     if (maxSyncSpeed < 5 && config->scsiSpeed > S2S_CFG_SPEED_ASYNC_50)
         config->scsiSpeed = S2S_CFG_SPEED_ASYNC_50;
