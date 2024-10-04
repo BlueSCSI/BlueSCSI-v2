@@ -1,5 +1,6 @@
 /** 
- * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
+ * ZuluSCSI™ - Copyright (c) 2022-2024 Rabbit Hole Computing™
+ * Copyright (c) 2024 Tech by Androda, LLC
  * 
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  * 
@@ -35,7 +36,7 @@ static uint32_t g_sdio_ocr; // Operating condition register from card
 static uint32_t g_sdio_rca; // Relative card address
 static cid_t g_sdio_cid;
 static csd_t g_sdio_csd;
-static sds_t g_sdio_sds;
+static sds_t __attribute__((aligned(4))) g_sdio_sds;
 static int g_sdio_error_line;
 static sdio_status_t g_sdio_error;
 static uint32_t g_sdio_dma_buf[128];
