@@ -66,6 +66,10 @@ bool g_rawdrive_active;
 static bool g_romdrive_active;
 static bool g_sdcard_present;
 
+#ifndef SD_SPEED_CLASS_WARN_BELOW
+#define SD_SPEED_CLASS_WARN_BELOW 10
+#endif
+
 /************************************/
 /* Status reporting by blinking led */
 /************************************/
@@ -174,6 +178,13 @@ void print_sd_info()
     logmsg("SD Date: ", (int)sd_cid.mdtMonth(), "/", sd_cid.mdtYear());
     logmsg("SD Serial: ", sd_cid.psn());
   }
+
+  sds_t sds = {0};
+  if (SD.card()->readSDS(&sds) && sds.speedClass() < SD_SPEED_CLASS_WARN_BELOW)
+  {
+    logmsg("-- WARNING: Your SD Card Speed Class is ", (int)sds.speedClass(), ". Class ", (int) SD_SPEED_CLASS_WARN_BELOW," or better is recommended for best performance.");
+  }
+
 }
 
 /*********************************/
