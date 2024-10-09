@@ -28,13 +28,9 @@
 
  MEMORY
 {
-    /* The bootloader is linked to begin at 0x12000100.
-     * First 256 bytes are reserved for RP2040 second stage bootloader,
-     * which comes as part of the main firmware.elf and is never overwritten.
-     */
-    FLASH(rx) : ORIGIN = 0x10000100, LENGTH = 128k-256
+    FLASH(rx) : ORIGIN = 0x10000000, LENGTH = 128k
     PSRAM(rwx) : ORIGIN = 0x11000000, LENGTH = 0
-    RAM(rwx) : ORIGIN = 0x20000000, LENGTH = 512k  /* Leave space for pico-debug */
+    RAM(rwx) : ORIGIN = 0x20000000, LENGTH = 512k
     SCRATCH_X(rwx) : ORIGIN = 0x20080000, LENGTH = 4k
     SCRATCH_Y(rwx) : ORIGIN = 0x20081000, LENGTH = 4k
 }
@@ -57,6 +53,7 @@ SECTIONS
         . = ALIGN(256);
         __real_vectors_start = .;
         KEEP (*(.vectors))
+
         KEEP (*(.embedded_block))
         __embedded_block_end = .;
         KEEP (*(.reset))
@@ -116,15 +113,6 @@ SECTIONS
        refers to its dual-purpose on RP2040, where it also handled vectoring
        from the bootrom into the user image.
     */
-
-    .boot2 : {
-        __boot2_start__ = .;
-        *(.boot2)
-        __boot2_end__ = .;
-    } > FLASH
-
-    ASSERT(__boot2_end__ - __boot2_start__ <= 256,
-        "ERROR: Pico second stage bootloader must be no more than 256 bytes in size")
 
     .rodata : {
         *(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *libm.a:) .rodata*)

@@ -627,7 +627,6 @@ static void watchdog_callback(unsigned alarm_num)
             scsi_accel_log_state();
 
 
-            // uint32_t *p =  (uint32_t*)__get_MSP();
             uint32_t msp;
             asm volatile ("MRS %0, msp" : "=r" (msp) );
 
@@ -655,7 +654,6 @@ static void watchdog_callback(unsigned alarm_num)
             logmsg("scsiDev.cdb: ", bytearray(scsiDev.cdb, 12));
             logmsg("scsiDev.phase: ", (int)scsiDev.phase);
 
-            // uint32_t *p =  (uint32_t*)__get_MSP();
             uint32_t msp;
             asm volatile ("MRS %0, msp" : "=r" (msp) );
             uint32_t *p =  (uint32_t*)msp;

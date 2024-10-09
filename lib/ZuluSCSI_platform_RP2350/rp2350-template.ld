@@ -25,9 +25,9 @@ MEMORY
 {
     FLASH(rx) : ORIGIN = 0x10000000, LENGTH = $program_size
     PSRAM(rwx) : ORIGIN = 0x11000000, LENGTH = 0
-    RAM(rwx) : ORIGIN = 0x20000000, LENGTH = 256k  /* Leave space for pico-debug */
-    SCRATCH_X(rwx) : ORIGIN = 0x20040000, LENGTH = 4k
-    SCRATCH_Y(rwx) : ORIGIN = 0x20041000, LENGTH = 4k
+    RAM(rwx) : ORIGIN = 0x20000000, LENGTH = 512k  /* Leave space for pico-debug */
+    SCRATCH_X(rwx) : ORIGIN = 0x20080000, LENGTH = 4k
+    SCRATCH_Y(rwx) : ORIGIN = 0x20081000, LENGTH = 4k
 }
 
 PROVIDE ( _EEPROM_start = __EEPROM_START__ );
