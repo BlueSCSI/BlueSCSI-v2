@@ -62,7 +62,7 @@ bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_
     }
 
 
-//    if (NVIC_GetEnableIRQ(USBCTRL_IRQ_IRQn))
+    //if (NVIC_GetEnableIRQ(USBCTRL_IRQ_IRQn))
     if (nvic_hw->iser[0] & 1 << 14)
     {
         logmsg("Disabling USB during firmware flashing");
@@ -115,7 +115,6 @@ void platform_boot_to_main_firmware()
     // To ensure that the system state is reset properly, we perform
     // a SYSRESETREQ and jump straight from the reset vector to main application.
     g_bootloader_exit_req = &g_bootloader_exit_req;
-    // SCB->AIRCR = 0x05FA0004;
     scb_hw->aircr = 0x05FA0004;
     while(1);
 }
@@ -129,7 +128,6 @@ void btldr_reset_handler()
         application_base = (uint32_t*)(XIP_BASE + PLATFORM_BOOTLOADER_SIZE);
     }
 
-    // SCB->VTOR = (uint32_t)application_base;
     scb_hw->vtor = (uint32_t)application_base;
     __asm__(
         "msr msp, %0\n\t"
