@@ -62,7 +62,7 @@ FILE "Sound.wav" WAVE
         TEST(track->track_mode == CUETrack_AUDIO);
         TEST(track->sector_length == 2352);
         TEST(track->unstored_pregap_length == 2 * 75);
-        TEST(track->data_start == start2);
+        TEST(track->data_start == start2 + 2 * 75);
     }
 
     COMMENT("Test TRACK 03 (audio with index 0)");
@@ -177,10 +177,63 @@ TRACK 03 MODE1/2352
     return status;
 }
 
+bool test_datatrackpregap()
+{
+    bool status = true;
+    const char *cue_sheet = R"(
+FILE "issue422.bin" BINARY
+  TRACK 01 AUDIO
+    INDEX 01 00:00:00
+  TRACK 02 MODE1/2352
+    PREGAP 00:02:00
+    INDEX 01 01:06:19
+    )";
+
+    CUEParser parser(cue_sheet);
+
+    COMMENT("test_datatrackpregap()");
+    COMMENT("Test TRACK 01 (audio)");
+    const CUETrackInfo *track = parser.next_track();
+    TEST(track != NULL);
+    if (track)
+    {
+        TEST(strcmp(track->filename, "issue422.bin") == 0);
+        TEST(track->file_mode == CUEFile_BINARY);
+        TEST(track->file_offset == 0);
+        TEST(track->track_number == 1);
+        TEST(track->track_mode == CUETrack_AUDIO);
+        TEST(track->sector_length == 2352);
+        TEST(track->unstored_pregap_length == 0);
+        TEST(track->data_start == 0);
+        TEST(track->track_start == 0);
+    }
+
+    COMMENT("Test TRACK 02 (data)");
+    track = parser.next_track();
+    TEST(track != NULL);
+    if (track)
+    {
+        TEST(strcmp(track->filename, "issue422.bin") == 0);
+        TEST(track->file_mode == CUEFile_BINARY);
+        TEST(track->file_offset == 0xB254B0);
+        TEST(track->track_number == 2);
+        TEST(track->track_mode == CUETrack_MODE1_2352);
+        TEST(track->sector_length == 2352);
+        TEST(track->unstored_pregap_length == 75 * 2);
+        TEST(track->data_start == (60 + 6 + 2) * 75 + 19);
+        TEST(track->track_start == (60 + 6) * 75 + 19);
+    }
+
+    track = parser.next_track();
+    TEST(track == NULL);
+
+    return status;
+}
+
 
 int main()
 {
-    if (test_basics() && test_datatracks())
+    if (test_basics() && test_datatracks() && test_datatrackpregap())
     {
         return 0;
     }

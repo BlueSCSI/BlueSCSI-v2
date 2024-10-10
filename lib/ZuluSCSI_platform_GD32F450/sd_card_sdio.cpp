@@ -112,6 +112,19 @@ bool SdioCard::readCSD(csd_t* csd)
     return true;
 }
 
+bool SdioCard::readSDS(sds_t* sds)
+{
+    uint32_t raw_sds[64/4];
+    if (!checkReturnOk(sd_sdstatus_get(raw_sds)))
+        return false;
+    // SdFat expects the data in big endian format.
+    for (int i = 0; i < 16; i++)
+    {
+        ((uint8_t*)sds)[i] = (raw_sds[i / 4] >> (24 - (i % 4) * 8)) & 0xFF;
+    }
+    return true;
+}
+
 bool SdioCard::readOCR(uint32_t* ocr)
 {
     // SDIO mode does not have CMD58, but main program uses this to

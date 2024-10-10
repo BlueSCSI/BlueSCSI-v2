@@ -183,7 +183,7 @@ bool ImageBackingStore::close()
 
 uint64_t ImageBackingStore::size()
 {
-    if (m_iscontiguous && m_blockdev)
+    if (m_iscontiguous && m_blockdev && m_israw)
     {
         return (uint64_t)(m_endsector - m_bgnsector + 1) * SD_SECTOR_SIZE;
     }

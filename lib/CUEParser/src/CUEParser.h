@@ -53,7 +53,7 @@ struct CUETrackInfo
     // Source file name and file type, and offset to start of track data in bytes.
     char filename[CUE_MAX_FILENAME+1];
     CUEFileMode file_mode;
-    uint64_t file_offset; // corresponds to track_start below
+    uint64_t file_offset; // corresponds to data_start below
 
     // Track number and mode in CD format
     int track_number;
@@ -70,6 +70,7 @@ struct CUETrackInfo
     uint32_t data_start;
 
     // LBA for the beginning of the track, which will be INDEX 00 if that is present.
+    // If there is unstored PREGAP, it's added between track_start and data_start.
     // Otherwise this will be INDEX 01 matching data_start above.
     uint32_t track_start;
 };
