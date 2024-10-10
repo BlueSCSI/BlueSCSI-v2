@@ -35,6 +35,7 @@ static uint32_t g_sdio_ocr; // Operating condition register from card
 static uint32_t g_sdio_rca; // Relative card address
 static cid_t g_sdio_cid;
 static csd_t g_sdio_csd;
+static sds_t __attribute__((aligned(4))) g_sdio_sds;
 static int g_sdio_error_line;
 static sdio_status_t g_sdio_error;
 static uint32_t g_sdio_dma_buf[128];
@@ -170,6 +171,17 @@ bool SdioCard::begin(SdioConfig sdioConfig)
         return false;
     }
 
+    // Read SD Status field
+    memset(&g_sdio_sds, 0, sizeof(sds_t));
+    uint8_t* stat_pointer = (uint8_t*) &g_sdio_sds;
+    if (!checkReturnOk(rp2040_sdio_command_R1(CMD55, g_sdio_rca, &reply)) ||
+        !checkReturnOk(rp2040_sdio_command_R1(ACMD13, 0, &reply)) ||
+        !checkReturnOk(receive_status_register(stat_pointer)))
+    {
+        dbgmsg("SDIO failed to get SD Status");
+        return false;
+    }
+
     // Increase to 25 MHz clock rate
     rp2040_sdio_init(1);
 
@@ -210,6 +222,12 @@ bool SdioCard::readCID(cid_t* cid)
 bool SdioCard::readCSD(csd_t* csd)
 {
     *csd = g_sdio_csd;
+    return true;
+}
+
+bool SdioCard::readSDS(sds_t* sds)
+{
+    *sds = g_sdio_sds;
     return true;
 }
 
