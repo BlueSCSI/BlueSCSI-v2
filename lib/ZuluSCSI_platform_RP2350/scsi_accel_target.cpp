@@ -1087,20 +1087,20 @@ bool scsi_accel_rp2040_setSyncMode(int syncOffset, int syncPeriod)
 
             // Set up the timing parameters to PIO program
             // The scsi_sync_write PIO program consists of three instructions.
-            // The delays are in clock cycles, each taking 8 ns.
+            // The delays are in clock cycles, each taking 6.66 ns. (@150 MHz)
             // delay0: Delay from data write to REQ assertion
             // delay1: Delay from REQ assert to REQ deassert
             // delay2: Delay from REQ deassert to data write
             int delay0, delay1, delay2;
-            int totalDelay = syncPeriod * 4 / 8;
+            int totalDelay = syncPeriod * 4 * 100 / 667 + 1;    //The +1 is empyrical to get the right transfer speed
 
             if (syncPeriod <= 25)
             {
                 // Fast SCSI timing: 30 ns assertion period, 25 ns skew delay
                 // The hardware rise and fall time require some extra delay,
                 // the values below are tuned based on oscilloscope measurements.
-                delay0 = 3;
-                delay1 = 5;
+                delay0 = 4;
+                delay1 = 6;
                 delay2 = totalDelay - delay0 - delay1 - 3;
                 if (delay2 < 0) delay2 = 0;
                 if (delay2 > 15) delay2 = 15;
@@ -1108,8 +1108,8 @@ bool scsi_accel_rp2040_setSyncMode(int syncOffset, int syncPeriod)
             else
             {
                 // Slow SCSI timing: 90 ns assertion period, 55 ns skew delay
-                delay0 = 6;
-                delay1 = 12;
+                delay0 = 7;
+                delay1 = 14;
                 delay2 = totalDelay - delay0 - delay1 - 3;
                 if (delay2 < 0) delay2 = 0;
                 if (delay2 > 15) delay2 = 15;
