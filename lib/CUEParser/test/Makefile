@@ -4,4 +4,4 @@ all: CUEParser_test
 	./CUEParser_test
 
 CUEParser_test: CUEParser_test.cpp ../src/CUEParser.cpp
-	g++ -Wall -Wextra -o $@ -I ../src $^
+	g++ -Wall -Wextra -g -ggdb -o $@ -I ../src $^
