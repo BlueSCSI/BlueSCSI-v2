@@ -28,8 +28,8 @@
 #include <ZuluSCSI_platform.h>
 
 // Use variables for version number
-#define FW_VER_NUM      "24.10.10"
-#define FW_VER_SUFFIX   "pico2-alpha"
+#define FW_VER_NUM      "24.10.11"
+#define FW_VER_SUFFIX   "pico2-beta"
 
 #define ZULU_FW_VERSION FW_VER_NUM "-" FW_VER_SUFFIX
 #define INQUIRY_NAME  PLATFORM_NAME " v" ZULU_FW_VERSION
