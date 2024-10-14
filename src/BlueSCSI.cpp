@@ -610,6 +610,11 @@ extern "C" void bluescsi_setup(void)
     if (ini_getbool("SCSI", "InitiatorMode", false, CONFIGFILE))
     {
       platform_enable_initiator_mode();
+      if (! ini_getbool("SCSI", "InitiatorParity", true, CONFIGFILE))
+      {
+        log("Initiator Mode Skipping Parity Check.");
+        setInitiatorModeParityCheck(false);
+      }
     }
     if (SD.clusterCount() == 0)
     {

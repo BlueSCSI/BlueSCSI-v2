@@ -1,4 +1,5 @@
 // Copyright (c) 2022 Rabbit Hole Computing™
+// Copyright (c) 2024 Tech by Androda, LLC
 
 #include "scsiHostPhy.h"
 #include "BlueSCSI_platform.h"
@@ -13,6 +14,7 @@ extern "C" {
 }
 
 volatile int g_scsiHostPhyReset;
+bool perform_parity_checking = true;
 
 // Release bus and pulse RST signal, initialize PHY to host mode.
 void scsiHostPhyReset(void)
@@ -168,7 +170,7 @@ static inline void scsiHostWriteOneByte(uint8_t value)
 }
 
 // Read one byte from SCSI target using the handshake mechanism.
-static inline uint8_t scsiHostReadOneByte(int* parityError)
+static inline uint8_t scsiHostReadOneByte(int* parityError, uint32_t *parityResult)
 {
     SCSIHOST_WAIT_ACTIVE(REQ);
     uint16_t r = SCSI_IN_DATA();
@@ -178,8 +180,8 @@ static inline uint8_t scsiHostReadOneByte(int* parityError)
 
     if (parityError && r != (g_scsi_parity_lookup[r & 0xFF] ^ SCSI_IO_DATA_MASK))
     {
-        log("Parity error in scsiReadOneByte(): ", (uint32_t)r);
         *parityError = 1;
+        *parityResult = (uint32_t)r;
     }
 
     return (uint8_t)r;
@@ -213,6 +215,7 @@ uint32_t scsiHostWrite(const uint8_t *data, uint32_t count)
 uint32_t scsiHostRead(uint8_t *data, uint32_t count)
 {
     int parityError = 0;
+    uint32_t parityResult;
     uint32_t fullcount = count;
 
     int cd_start = SCSI_IN(CD);
@@ -221,7 +224,12 @@ uint32_t scsiHostRead(uint8_t *data, uint32_t count)
     if ((count & 1) == 0 && ((uint32_t)data & 1) == 0)
     {
         // Even number of bytes, use accelerated routine
-        count = scsi_accel_host_read(data, count, &parityError, &g_scsiHostPhyReset);
+        count = scsi_accel_host_read(data, count, &parityError, &parityResult, &g_scsiHostPhyReset);
+        if (parityError && perform_parity_checking) {
+            log("Parity error in scsi_accel_host_read(): ", parityResult);
+        } else {
+            parityError = 0;
+        }
     }
     else
     {
@@ -235,8 +243,12 @@ uint32_t scsiHostRead(uint8_t *data, uint32_t count)
                     count = i;
                 }
             }
-
-            data[i] = scsiHostReadOneByte(&parityError);
+            data[i] = scsiHostReadOneByte(&parityError, &parityResult);
+            if (parityError && perform_parity_checking) {
+                log("Parity error in scsiReadOneByte(): ", parityResult);
+            } else {
+                parityError = 0;
+            }
         }
     }
 
@@ -263,4 +275,8 @@ void scsiHostPhyRelease()
     scsiLogInitiatorPhaseChange(BUS_FREE);
     SCSI_RELEASE_OUTPUTS();
     SCSI_RELEASE_DATA_REQ();
+}
+
+void setInitiatorModeParityCheck(bool checkParity) {
+    perform_parity_checking = checkParity;
 }
