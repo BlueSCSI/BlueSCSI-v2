@@ -1,5 +1,6 @@
 // Accelerated SCSI subroutines for SCSI initiator/host side communication
 // Copyright (c) 2022 Rabbit Hole Computing™
+// Copyright (c) 2024 Tech by Androda, LLC
 
 #include "scsi_accel_host.h"
 #include "BlueSCSI_platform.h"
@@ -65,7 +66,7 @@ static void scsi_accel_host_config_gpio()
     }
 }
 
-uint32_t scsi_accel_host_read(uint8_t *buf, uint32_t count, int *parityError, volatile int *resetFlag)
+uint32_t scsi_accel_host_read(uint8_t *buf, uint32_t count, int *parityError, uint32_t *parityResult, volatile int *resetFlag)
 {
     // Currently this method just reads from the PIO RX fifo directly in software loop.
     // The SD card access is parallelized using DMA, so there is limited benefit from using DMA here.
@@ -117,8 +118,8 @@ uint32_t scsi_accel_host_read(uint8_t *buf, uint32_t count, int *parityError, vo
     uint8_t byte1 = ~(paritycheck >> 16);
     if (paritycheck != ((g_scsi_parity_lookup[byte1] << 16) | g_scsi_parity_lookup[byte0]))
     {
-        log("Parity error in scsi_accel_host_read(): ", paritycheck);
         *parityError = 1;
+        *parityResult = paritycheck;
     }
 
     g_scsi_host_state = SCSIHOST_IDLE;
