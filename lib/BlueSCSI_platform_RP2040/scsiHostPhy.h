@@ -30,3 +30,5 @@ uint32_t scsiHostRead(uint8_t *data, uint32_t count);
 
 // Release all bus signals
 void scsiHostPhyRelease();
+
+void setInitiatorModeParityCheck(bool checkParity);
