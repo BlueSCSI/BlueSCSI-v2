@@ -175,7 +175,7 @@ void s2s_scsiInquiry()
 			allocationLength = 254;
 		}
 
-		// "real" hard drives send back exactly allocationLenth bytes, padded
+		// "real" hard drives send back exactly allocationLength bytes, padded
 		// with zeroes. This only seems to happen for Inquiry responses, and not
 		// other commands that also supply an allocation length such as Mode Sense or
 		// Request Sense.

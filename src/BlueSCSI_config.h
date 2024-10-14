@@ -12,6 +12,7 @@
 
 // Configuration and log file paths
 #define CONFIGFILE  "bluescsi.ini"
+#define CONFIGFILE_BAD  "bluescsi.ini.txt"
 #define LOGFILE     "log.txt"
 #define CRASHFILE   "err.txt"
 

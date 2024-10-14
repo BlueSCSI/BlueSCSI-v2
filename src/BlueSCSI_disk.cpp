@@ -1031,12 +1031,12 @@ void s2s_configInit(S2S_BoardCfg* config)
 {
     char tmp[64];
 
-    if (SD.exists(CONFIGFILE))
-    {
+    if (SD.exists(CONFIGFILE)) {
         log("Reading configuration from " CONFIGFILE);
-    }
-    else
-    {
+    } else {
+        if (SD.exists(CONFIGFILE_BAD)) {
+          log("ERROR: Please remove the .txt file extension from the config file: ", CONFIGFILE_BAD);
+        }
         log("Config file " CONFIGFILE " not found, using defaults");
     }
 
