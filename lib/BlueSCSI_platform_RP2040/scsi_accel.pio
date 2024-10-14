@@ -13,9 +13,12 @@
 
 ; Delay from data setup to REQ assertion.
 ; deskew delay + cable skew delay = 55 ns minimum
+;  Pico 1
 ; One clock cycle is 8 ns => delay 7 clocks
-.define REQ_DLY 7
-
+; .define REQ_DLY 7
+;  Pico 2
+; One clock cycle is 6.67 ns (150MHz) => delay 8.25 clocks or 9 clocks
+.define REQ_DLY 9
 ; Adds parity to data that is to be written to SCSI
 ; This works by generating addresses for DMA to fetch data from.
 ; Register X should be initialized to the base address of the lookup table.
