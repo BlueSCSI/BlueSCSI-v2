@@ -1721,6 +1721,12 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
         }
         assert(buf == bufstart + result_length);
         scsiStartWrite(bufstart, result_length);
+
+        // Reset the watchdog while the transfer is progressing.
+        // If the host stops transferring, the watchdog will eventually expire.
+        // This is needed to avoid hitting the watchdog if the host performs
+        // a large transfer compared to its transfer speed.
+        platform_reset_watchdog();
     }
 
     scsiFinishWrite();
