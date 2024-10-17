@@ -1088,15 +1088,36 @@ bool scsi_accel_rp2040_setSyncMode(int syncOffset, int syncPeriod)
             // Set up the timing parameters to PIO program
             // The scsi_sync_write PIO program consists of three instructions.
             // The delays are in clock cycles, each taking 6.66 ns. (@150 MHz)
-            // delay0: Delay from data write to REQ assertion
-            // delay1: Delay from REQ assert to REQ deassert
-            // delay2: Delay from REQ deassert to data write
-            int delay0, delay1, delay2;
-            int totalDelay = syncPeriod * 4 * 100 / 667 + 1;    //The +1 is empyrical to get the right transfer speed
+            // delay0: Delay from data write to REQ assertion (data setup)
+            // delay1: Delay from REQ assert to REQ deassert (req pulse width)
+            // delay2: Delay from REQ deassert to data write (data hold)
+            int delay0, delay1, delay2, initialDelay, remainderDelay;
+            int totalDelay = (syncPeriod * 4 * 100 + 333) / 667 ;    //The +333 is equivalent to rounding to the nearest integer
 
-            if (syncPeriod <= 25)
+            if (syncPeriod <= 21)
             {
-                // Fast SCSI timing: 30 ns assertion period, 25 ns skew delay
+                // Fast-20 SCSI timing: 15 ns assertion period
+                // The hardware rise and fall time require some extra delay,
+                // the values below are tuned based on oscilloscope measurements.
+                // These delays are in addition to the 1 cycle that the PIO takes to execute the instruction
+                initialDelay = totalDelay / 3;
+                remainderDelay = totalDelay % 3;    //ReminderDelay will be 0, 1 or 2
+                delay0 = initialDelay - 1; //Data setup time, should be min 11.5ns according to the spec for FAST-20
+                delay2 = initialDelay - 1; //Data hold time, should be min 16.5ns according to the spec for FAST-20
+                delay1 = initialDelay - 1; //pulse width, should be min 15ns according to the spec for FAST-20
+                if (remainderDelay){
+                    delay2++;   //if we have "unassigned" delay time, give it to the one requiring the longest (hold time)
+                    remainderDelay--;
+                }
+                if (remainderDelay){
+                    delay1++;   //if we still have "unassigned" delay time, give it to the one requiring it the next (pulse width)
+                }
+                if (delay1 < 0) delay2 = 0;
+                if (delay1 > 15) delay2 = 15;
+            }
+            else if (syncPeriod <= 25)
+            {
+                // Fast-10 SCSI timing: 30 ns assertion period, 25 ns skew delay
                 // The hardware rise and fall time require some extra delay,
                 // the values below are tuned based on oscilloscope measurements.
                 delay0 = 4;
