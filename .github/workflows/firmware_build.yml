@@ -15,6 +15,12 @@ jobs:
         with:
           path: BlueSCSI
           fetch-depth: "0"
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.platformio/.cache
+          key: ${{ runner.os }}-pio
 
       - uses: actions/setup-python@v5
         with:
@@ -27,7 +33,7 @@ jobs:
       - name: Build firmware
         run: |
           cd BlueSCSI
-          pio run -v
+          pio run -v -e BlueSCSI_Pico
 
       - name: Rename firmware files
         run: |
