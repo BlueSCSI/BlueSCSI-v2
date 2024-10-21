@@ -1149,7 +1149,7 @@ bool cdromValidateCueSheet(image_config_t &img)
 /* Ejection and image switching logic */
 /**************************************/
 
-// Close CDROM tray and note media change event
+// Close CD-ROM tray and note media change event
 void cdromCloseTray(image_config_t &img)
 {
     if (img.ejected)
@@ -1167,7 +1167,7 @@ void cdromCloseTray(image_config_t &img)
     }
 }
 
-// Eject CDROM tray if closed, close if open
+// Eject CD-ROM tray if closed, close if open
 // Switch image on ejection.
 void cdromPerformEject(image_config_t &img)
 {
@@ -1189,7 +1189,7 @@ void cdromPerformEject(image_config_t &img)
     }
 }
 
-// Reinsert any ejected CDROMs on reboot
+// Reinsert any ejected CD-ROMs on reboot
 void cdromReinsertFirstImage(image_config_t &img)
 {
     if (img.image_index > 0)

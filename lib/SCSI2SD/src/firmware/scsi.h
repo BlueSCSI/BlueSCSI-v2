@@ -112,7 +112,7 @@ typedef struct
 	uint8_t syncOffset;
 	uint8_t syncPeriod;
 
-	uint8_t started; // Controlled by START STOP UNIT
+	bool started; // Controlled by START STOP UNIT
 } TargetState;
 
 typedef struct
