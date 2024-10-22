@@ -571,6 +571,18 @@ void check_and_apply_sdio_delay() {
   }
 }
 
+void check_and_apply_sdio_drive_strength() {
+  long sdio_drive_strength = ini_getl("SDIO", "GPIODriveStrength", 0, CONFIGFILE);
+  if (sdio_drive_strength) {
+    if (sdio_drive_strength < 1 || sdio_drive_strength > 4) {
+      log("---- WARNING: GPIODriveStrength setting invalid (Expected 1 - 4), defaulting to setting 2.");
+      return;
+    }
+    log("INFO: Setting SDIO GPIO drive strength level ", (uint16_t)sdio_drive_strength, ".");
+    set_sdio_drive_strength(sdio_drive_strength);
+  }
+}
+
 extern "C" void bluescsi_setup(void)
 {
   pio_clear_instruction_memory(pio0);
@@ -621,6 +633,7 @@ extern "C" void bluescsi_setup(void)
       log("SD card without filesystem!");
     }
     check_and_apply_sdio_delay();
+    check_and_apply_sdio_drive_strength();
 
     print_sd_info();
   
@@ -759,6 +772,7 @@ extern "C" void bluescsi_main_loop(void)
       {
         log("SD card reinit succeeded");
         check_and_apply_sdio_delay();
+        check_and_apply_sdio_drive_strength();
         print_sd_info();
 
         reinitSCSI();
