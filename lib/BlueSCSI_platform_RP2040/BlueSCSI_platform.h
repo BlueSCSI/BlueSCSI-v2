@@ -94,6 +94,7 @@ bool is202309a();
 typedef void (*sd_callback_t)(uint32_t bytes_complete);
 void platform_set_sd_callback(sd_callback_t func, const uint8_t *buffer);
 void add_extra_sdio_delay(uint16_t additional_delay);
+void set_sdio_drive_strength(long ini_setting);
 
 // Reprogram firmware in main program area.
 #ifndef RP2040_DISABLE_BOOTLOADER

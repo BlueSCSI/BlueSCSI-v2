@@ -49,6 +49,31 @@ void add_extra_sdio_delay(uint16_t additional_delay) {
     rp2040_sdio_delay_increment(additional_delay);
 }
 
+void set_sdio_drive_strength(long ini_setting) {
+    gpio_drive_strength drive_strength;
+    switch (ini_setting) {
+      case 1:
+        drive_strength = GPIO_DRIVE_STRENGTH_2MA;
+        break;
+      default:
+      case 2:
+        drive_strength = GPIO_DRIVE_STRENGTH_4MA;
+        break;
+      case 3:
+        drive_strength = GPIO_DRIVE_STRENGTH_8MA;
+        break;
+      case 4:
+        drive_strength = GPIO_DRIVE_STRENGTH_12MA;
+        break;
+    }
+    gpio_set_drive_strength(SDIO_CMD, drive_strength);
+    gpio_set_drive_strength(SDIO_CLK, drive_strength);
+    gpio_set_drive_strength(SDIO_D0, drive_strength);
+    gpio_set_drive_strength(SDIO_D1, drive_strength);
+    gpio_set_drive_strength(SDIO_D2, drive_strength);
+    gpio_set_drive_strength(SDIO_D3, drive_strength);
+}
+
 static sd_callback_t get_stream_callback(const uint8_t *buf, uint32_t count, const char *accesstype, uint32_t sector)
 {
     m_stream_count_start = m_stream_count;
