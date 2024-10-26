@@ -39,10 +39,10 @@
 // \todo find a better way
 #include <hardware/structs/scb.h>
 
-#if defined(ZULUSCSI_PICO) || defined(ZULUSCSI_BS2)
-#include "sdio_Pico.pio.h"
+#if defined(ZULUSCSI_PICO_2) || defined(ZULUSCSI_BS2)
+#include "sdio_Pico_2.pio.h"
 #else
-#include "sdio_RP2040.pio.h"
+#include "sdio_RP2350.pio.h"
 #endif
 
 #define SDIO_PIO pio1

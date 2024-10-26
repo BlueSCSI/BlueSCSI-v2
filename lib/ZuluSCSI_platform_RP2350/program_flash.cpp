@@ -62,11 +62,11 @@ bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_
     }
 
 
-    //if (NVIC_GetEnableIRQ(USBCTRL_IRQ_IRQn))
+    // if USB NVIC is enabled
     if (nvic_hw->iser[0] & 1 << 14)
     {
         logmsg("Disabling USB during firmware flashing");
-        //NVIC_DisableIRQ(USBCTRL_IRQ_IRQn);
+        // Disabled USB NVIC
         nvic_hw->icer[0] = 1 << 14;
         usb_hw->main_ctrl = 0;
     }

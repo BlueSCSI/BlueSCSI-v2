@@ -27,15 +27,15 @@
 #include <Arduino.h>
 #include "ZuluSCSI_platform_network.h"
 
-#ifdef ZULUSCSI_PICO
+#ifdef ZULUSCSI_PICO_2
 // ZuluSCSI Pico carrier board variant
-#include "ZuluSCSI_platform_gpio_Pico.h"
+#include "ZuluSCSI_platform_gpio_Pico_2.h"
 #elif defined(ZULUSCSI_BS2)
 // BS2 hardware variant, using Raspberry Pico board on a carrier PCB
 #include "ZuluSCSI_platform_gpio_BS2.h"
 #else
 // Normal RP2040 variant, using RP2040 chip directly
-#include "ZuluSCSI_platform_gpio_RP2040.h"
+#include "ZuluSCSI_platform_gpio_RP2350.h"
 #endif
 
 #include "scsiHostPhy.h"
@@ -48,7 +48,7 @@ extern "C" {
 /* These are used in debug output and default SCSI strings */
 extern const char *g_platform_name;
 
-#ifdef ZULUSCSI_PICO
+#ifdef ZULUSCSI_PICO_2
 # ifdef ZULUSCSI_DAYNAPORT
 #   define PLATFORM_NAME "ZuluSCSI Pico DaynaPORT"
 # else

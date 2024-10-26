@@ -297,6 +297,7 @@ scsi_system_settings_t *ZuluSCSISettings::initSystem(const char *presetName)
     cfgSys.useFATAllocSize = false;
     cfgSys.enableCDAudio = false;
     cfgSys.enableUSBMassStorage = false;
+    cfgSys.usbMassStorageWaitPeriod = 1000;
     
     // setting set for all or specific devices
     cfgDev.deviceType = S2S_CFG_NOT_SET;
@@ -392,6 +393,7 @@ scsi_system_settings_t *ZuluSCSISettings::initSystem(const char *presetName)
     cfgSys.enableCDAudio = ini_getbool("SCSI", "EnableCDAudio", cfgSys.enableCDAudio, CONFIGFILE);
 
     cfgSys.enableUSBMassStorage = ini_getbool("SCSI", "EnableUSBMassStorage", cfgSys.enableUSBMassStorage, CONFIGFILE);
+    cfgSys.usbMassStorageWaitPeriod = ini_getl("SCSI", "USBMassStorageWaitPeriod", cfgSys.usbMassStorageWaitPeriod, CONFIGFILE);
     
     return &cfgSys;
 }

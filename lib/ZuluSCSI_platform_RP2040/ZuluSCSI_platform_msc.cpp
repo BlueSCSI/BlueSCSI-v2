@@ -28,6 +28,8 @@
 #include "ZuluSCSI_platform.h"
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_msc.h"
+#include "ZuluSCSI_config.h"
+#include "ZuluSCSI_settings.h"
 
 #include <class/msc/msc.h>
 #include <class/msc/msc_device.h>
@@ -57,8 +59,21 @@ bool platform_sense_msc() {
 
   // wait for up to a second to be enumerated
   uint32_t start = millis();
-  while (!tud_connected() && ((uint32_t)(millis() - start) < CR_ENUM_TIMEOUT)) 
+  bool timed_out = false;
+  uint16_t usb_timeout =  g_scsi_settings.getSystem()->usbMassStorageWaitPeriod;
+  while (!tud_connected())
+  {
+    if ((uint32_t)(millis() - start) > usb_timeout)
+    {
+      logmsg("Waiting for USB enumeration timed out after ", usb_timeout, "ms.");
+      logmsg("-- Try increasing 'USBMassStorageWaitPeriod' in the ", CONFIGFILE);
+      timed_out = true;
+      break;
+    } 
     delay(100);
+  }
+  if (!timed_out)
+    dbgmsg("USB enumeration took ", (int)((uint32_t)(millis() - start)), "ms");
 
   // tud_connected returns True if just got out of Bus Reset and received the very first data from host
   // https://github.com/hathach/tinyusb/blob/master/src/device/usbd.h#L63
