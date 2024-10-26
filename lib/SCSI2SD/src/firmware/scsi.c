@@ -1340,7 +1340,7 @@ void scsiInit()
 		// won't respond properly to
 		// LOGICAL_UNIT_NOT_READY_INITIALIZING_COMMAND_REQUIRED sense
 		// code
-		scsiDev.targets[i].started = 1;
+		scsiDev.targets[i].started = true;
 	}
 	firstInit = 0;
 }

@@ -2,6 +2,7 @@
  * SCSI2SD V6 - Copyright (C) 2013 Michael McMaster <michael@codesrc.com>
  * Copyright (C) 2014 Doug Brown <doug@downtowndougbrown.com
  * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
+ * Copyright (C) 2024 Eric Helgeson <erichelgeson@gmail.com>
  * 
  * It is derived from disk.h in SCSI2SD V6.
  * 
@@ -106,7 +107,7 @@ void scsiDiskResetImages();
 // Close any files opened from SD card (prepare for remounting SD)
 void scsiDiskCloseSDCardImages();
 
-bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize, S2S_CFG_TYPE type = S2S_CFG_FIXED);
+bool scsiDiskOpenHDDImage(const char *filename, int scsi_id, int scsi_lun, int block_size, S2S_CFG_TYPE type = S2S_CFG_FIXED);
 void scsiDiskLoadConfig(int target_idx);
 
 // Checks if a filename extension is appropriate for further processing as a disk image.
@@ -129,7 +130,7 @@ bool scsiDiskCheckAnyImagesConfigured();
 // images. As a side effect this advances image tracking to the next image.
 // Returns the length of the new image filename, or 0 if the target is not
 // configured for multiple images.
-int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen);
+int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buf_len);
 
 // Get pointer to extended image configuration based on target idx
 image_config_t &scsiDiskGetImageConfig(int target_idx);
@@ -146,3 +147,9 @@ bool scsiDiskCheckAnyNetworkDevicesConfigured();
 
 // Switch to next Drive image if multiple have been configured
 bool switchNextImage(image_config_t &img, const char* next_filename = nullptr);
+
+// For removable, non-CD based images
+void removableInsert(image_config_t &img);
+
+// For removable, non-CD based images
+void removableEject(image_config_t &img);

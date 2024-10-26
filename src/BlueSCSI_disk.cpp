@@ -5,6 +5,7 @@
 //    Copyright (C) 2013 Michael McMaster <michael@codesrc.com>
 //    Copyright (C) 2014 Doug Brown <doug@downtowndougbrown.com>
 //    Copyright (C) 2022 Rabbit Hole Computing
+//    Copyright (C) 2024 Eric Helgeson <erichelgeson@gmail.com>
 
 #include "BlueSCSI_disk.h"
 #include "BlueSCSI_log.h"
@@ -129,7 +130,7 @@ bool scsiDiskActivateRomDrive()
     }
 
     log("---- Activating ROM drive, SCSI id ", (int)hdr.scsi_id, " size ", (int)(hdr.imagesize / 1024), " kB");
-    bool status = scsiDiskOpenHDDImage(hdr.scsi_id, "ROM:", hdr.scsi_id, 0, hdr.blocksize, hdr.drivetype);
+    bool status = scsiDiskOpenHDDImage("ROM:", hdr.scsi_id, 0, hdr.blocksize, hdr.drivetype);
 
     if (!status)
     {
@@ -367,16 +368,16 @@ static void setDefaultDriveInfo(int target_idx)
     formatDriveInfoField(img.serial, sizeof(img.serial), true);
 }
 
-bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int scsi_lun, int blocksize, S2S_CFG_TYPE type)
+bool scsiDiskOpenHDDImage(const char *filename, int scsi_id, int scsi_lun, int block_size, S2S_CFG_TYPE type)
 {
-    image_config_t &img = g_DiskImages[target_idx];
+    image_config_t &img = g_DiskImages[scsi_id];
     img.cuesheetfile.close();
-    img.file = ImageBackingStore(filename, blocksize);
+    img.file = ImageBackingStore(filename, block_size);
 
     if (img.file.isOpen())
     {
-        img.bytesPerSector = blocksize;
-        img.scsiSectors = img.file.size() / blocksize;
+        img.bytesPerSector = block_size;
+        img.scsiSectors = img.file.size() / block_size;
         img.scsiId = scsi_id | S2S_CFG_TARGET_ENABLED;
         img.sdSectorStart = 0;
 
@@ -467,7 +468,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_id, int
             log("Vendor / product id set from image file name");
         }
 
-        setDefaultDriveInfo(target_idx);
+        setDefaultDriveInfo(scsi_id);
 
 #ifdef PLATFORM_CONFIG_HOOK
         PLATFORM_CONFIG_HOOK(&img);
@@ -590,7 +591,7 @@ static void scsiDiskConfigDefaults(int target_idx)
 }
 
 // Load values for target configuration from given section if they exist.
-// Otherwise keep current settings.
+// Otherwise, keep current settings.
 static void scsiDiskLoadConfig(int target_idx, const char *section)
 {
     image_config_t &img = g_DiskImages[target_idx];
@@ -670,6 +671,30 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
                 log("-- SCSI ID: ", target_idx, " using Zip 100 image directory \'", tmp, "'");
                 img.deviceType = S2S_CFG_ZIP100;
                 img.image_directory = true;
+            }
+            strcpy(tmp, "MOX");
+            tmp[2] = '0' + target_idx;
+            if(SD.exists(tmp))
+            {
+              log("-- SCSI ID: ", target_idx, " using Magneto-optical image directory \'", tmp, "'");
+              img.deviceType = S2S_CFG_MO;
+              img.image_directory = true;
+            }
+            strcpy(tmp, "REX");
+            tmp[2] = '0' + target_idx;
+            if(SD.exists(tmp))
+            {
+              log("-- SCSI ID: ", target_idx, " using Removable image directory \'", tmp, "'");
+              img.deviceType = S2S_CFG_REMOVEABLE;
+              img.image_directory = true;
+            }
+            strcpy(tmp, "TPX");
+            tmp[2] = '0' + target_idx;
+            if(SD.exists(tmp))
+            {
+              log("-- SCSI ID: ", target_idx, " using Tape image directory \'", tmp, "'");
+              img.deviceType = S2S_CFG_SEQUENTIAL;
+              img.image_directory = true;
             }
         }
     }
@@ -751,31 +776,39 @@ static int findNextImageAfter(image_config_t &img,
     }
 }
 
-int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
+int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buf_len)
 {
     int target_idx = img.scsiId & S2S_CFG_TARGET_ID_BITS;
 
     // sanity check: is provided buffer is long enough to store a filename?
-    assert(buflen >= MAX_FILE_PATH);
+    assert(buf_len >= MAX_FILE_PATH);
 
     if (img.image_directory)
     {
         // image directory was found during startup
         char dirname[MAX_FILE_PATH];
-        int dirlen = getImgDir(target_idx, dirname);
-        if (!dirlen)
+        int dir_len = getImgDir(target_idx, dirname);
+        if (!dir_len)
         {
             // If image_directory set but ImgDir is not look for a well known ImgDir
             if(img.deviceType == S2S_CFG_OPTICAL)
                 strcpy(dirname, "CDX");
             else if(img.deviceType == S2S_CFG_ZIP100)
                 strcpy(dirname, "ZPX");
+            else if(img.deviceType == S2S_CFG_FLOPPY_14MB)
+                strcpy(dirname, "FDX");
+            else if(img.deviceType == S2S_CFG_MO)
+                strcpy(dirname, "MOX");
+            else if(img.deviceType == S2S_CFG_REMOVEABLE)
+                strcpy(dirname, "REX");
+            else if(img.deviceType == S2S_CFG_SEQUENTIAL)
+                strcpy(dirname, "TPX");
             else
                 strcpy(dirname, "HDX");
             dirname[2] = '0' + target_idx;
             if(!SD.exists(dirname))
             {
-                debuglog("ERROR: Looking for ", dirname, " to load images, but was not found.");
+                log("ERROR: Looking for ", dirname, " to load images, but was not found.");
                 return 0;
             }
         }
@@ -789,7 +822,7 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
             log("Image directory was empty for ID", target_idx);
             return 0;
         }
-        else if (buflen < nextlen + dirlen + 2)
+        else if (buf_len < nextlen + dir_len + 2)
         {
             log("Directory '", dirname, "' and file '", nextname, "' exceed allowed length");
             return 0;
@@ -797,10 +830,10 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
         else
         {
             // construct a return value
-            strncpy(buf, dirname, buflen);
+            strncpy(buf, dirname, buf_len);
             if (buf[strlen(buf) - 1] != '/') strcat(buf, "/");
             strcat(buf, nextname);
-            return dirlen + nextlen;
+            return dir_len + nextlen;
         }
     }
     else
@@ -821,7 +854,7 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
             // there may be more than one image but we've ran out of new ones
             // wrap back to the first image
             img.image_index = -1;
-            return scsiDiskGetNextImageName(img, buf, buflen);
+            return scsiDiskGetNextImageName(img, buf, buf_len);
         }
         else
         {
@@ -854,7 +887,7 @@ void scsiDiskLoadConfig(int target_idx)
     {
         int blocksize = getBlockSize(filename, target_idx, (img.deviceType == S2S_CFG_OPTICAL) ? 2048 : 512);
         log("-- Opening '", filename, "' for ID: ", target_idx);
-        scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, blocksize);
+        scsiDiskOpenHDDImage(filename, target_idx, 0, blocksize);
     }
 }
 
@@ -878,7 +911,7 @@ bool switchNextImage(image_config_t &img, const char* next_filename)
         log("Switching to next image for ID: ", target_idx, ": ", filename);
         img.file.close();
         int block_size = getBlockSize(filename, target_idx, (img.deviceType == S2S_CFG_OPTICAL) ? 2048 : 512);
-        bool status = scsiDiskOpenHDDImage(target_idx, filename, target_idx, 0, block_size);
+        bool status = scsiDiskOpenHDDImage(filename, target_idx, 0, block_size);
 
         if (status)
         {
@@ -998,12 +1031,12 @@ void s2s_configInit(S2S_BoardCfg* config)
 {
     char tmp[64];
 
-    if (SD.exists(CONFIGFILE))
-    {
+    if (SD.exists(CONFIGFILE)) {
         log("Reading configuration from " CONFIGFILE);
-    }
-    else
-    {
+    } else {
+        if (SD.exists(CONFIGFILE_BAD)) {
+          log("ERROR: Please remove the .txt file extension from the config file: ", CONFIGFILE_BAD);
+        }
         log("Config file " CONFIGFILE " not found, using defaults");
     }
 
@@ -1333,9 +1366,9 @@ static void doReadCapacity()
 /* TestUnitReady command */
 /*************************/
 
-static int doTestUnitReady()
+static bool doTestUnitReady()
 {
-    int ready = 1;
+    bool ready = true;
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     if (unlikely(!scsiDev.target->started || !img.file.isOpen()))
     {
@@ -1347,7 +1380,7 @@ static int doTestUnitReady()
     }
     else if (img.ejected)
     {
-        ready = 0;
+        ready = false;
         scsiDev.status = CHECK_CONDITION;
         scsiDev.target->sense.code = NOT_READY;
         scsiDev.target->sense.asc = MEDIUM_NOT_PRESENT;
@@ -1357,12 +1390,15 @@ static int doTestUnitReady()
         {
             // We are now reporting to host that the drive is open.
             // Simulate a "close" for next time the host polls.
-            cdromCloseTray(img);
+            if(img.deviceType == S2S_CFG_OPTICAL)
+                cdromCloseTray(img);
+            else if(img.deviceType != S2S_CFG_FIXED)
+                removableInsert(img);
         }
     }
     else if (unlikely(!(blockDev.state & DISK_PRESENT)))
     {
-        ready = 0;
+        ready = false;
         scsiDev.status = CHECK_CONDITION;
         scsiDev.target->sense.code = NOT_READY;
         scsiDev.target->sense.asc = MEDIUM_NOT_PRESENT;
@@ -1370,7 +1406,7 @@ static int doTestUnitReady()
     }
     else if (unlikely(!(blockDev.state & DISK_INITIALISED)))
     {
-        ready = 0;
+        ready = false;
         scsiDev.status = CHECK_CONDITION;
         scsiDev.target->sense.code = NOT_READY;
         scsiDev.target->sense.asc = LOGICAL_UNIT_NOT_READY_CAUSE_NOT_REPORTABLE;
@@ -1924,6 +1960,31 @@ static void diskDataIn()
     }
 }
 
+void removableInsert(image_config_t &img) {
+    if(img.ejected) {
+      uint8_t target = img.scsiId & S2S_CFG_TARGET_ID_BITS;
+      debuglog("------ Removable inserted on ID ", (int)target);
+      img.ejected = false;
+
+      if (scsiDev.boardCfg.flags & S2S_CFG_ENABLE_UNIT_ATTENTION)
+      {
+        debuglog("------ Posting UNIT ATTENTION after medium change");
+        scsiDev.targets[target].unitAttention = NOT_READY_TO_READY_TRANSITION_MEDIUM_MAY_HAVE_CHANGED;
+      }
+    }
+}
+
+void removableEject(image_config_t &img)
+{
+    uint8_t target = img.scsiId & S2S_CFG_TARGET_ID_BITS;
+    if(!img.ejected) {
+        debuglog(" ----- Ejecting target ID ", (int)target);
+        img.ejected = true;
+        switchNextImage(img);
+    } else {
+        removableInsert(img);
+    }
+}
 
 /********************/
 /* Command dispatch */
@@ -1946,11 +2007,17 @@ int scsiDiskCommand()
 
         if (start)
         {
-            scsiDev.target->started = 1;
+            if(img.deviceType == S2S_CFG_FIXED)
+                scsiDev.target->started = true;
+            else
+                removableInsert(img);
         }
-        else
+        else // Stop
         {
-            scsiDev.target->started = 0;
+            if(img.deviceType == S2S_CFG_FIXED)
+                scsiDev.target->started = false;
+            else
+                removableEject(img);
         }
     }
     else if (unlikely(command == 0x00))
