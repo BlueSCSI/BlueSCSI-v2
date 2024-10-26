@@ -165,7 +165,6 @@ static pin_setup_state_t read_setup_ack_pin()
 
 void platform_init()
 {
-    gpio_conf(LED_PIN,        GPIO_FUNC_SIO, false,false, true,  false, false);
     // Make sure second core is stopped
     multicore_reset_core1();
 
@@ -190,7 +189,7 @@ void platform_init()
     bool working_dip = true;
     bool dbglog = false;
     bool termination = false;
-# ifdef ZULUSCSI_PICO
+# ifdef ZULUSCSI_PICO_2
     // Initiator dip setting works on all rev 2023b, 2023c, and newer rev Pico boards
     g_scsi_initiator = !gpio_get(DIP_INITIATOR);
     
@@ -288,6 +287,11 @@ void platform_init()
     gpio_conf(GPIO_EXP_SPARE, GPIO_FUNC_SIO, true,false, false,  true, false);
     // configuration of corresponding SPI unit occurs in audio_setup()
 #endif  // ENABLE_AUDIO_OUTPUT
+
+#ifdef GPIO_USB_POWER
+    gpio_conf(GPIO_USB_POWER, GPIO_FUNC_SIO, false, false, false,  false, false);
+#endif
+
 }
 
 // late_init() only runs in main application, SCSI not needed in bootloader

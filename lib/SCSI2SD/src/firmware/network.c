@@ -375,7 +375,7 @@ int scsiNetworkCommand()
 				int size = sizeof(struct wifi_network_entry) * nets;
 				if (size + 2 > sizeof(scsiDev.data))
 				{
-					LOGMSG_F("WARNING: wifi_network_list is bigger than scsiDev.data, truncating");
+					LOGMSG_F("WARNING: wifi_network_list is bigger than scsiDev.data, truncating", 0);
 					size = sizeof(scsiDev.data) - 2;
 					size -= (size % (sizeof(struct wifi_network_entry)));
 				}

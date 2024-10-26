@@ -28,9 +28,11 @@
 #include "ZuluSCSI_platform.h"
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_msc.h"
-
+#include "ZuluSCSI_config.h"
+#include "ZuluSCSI_settings.h"
 #include <class/msc/msc.h>
 #include <class/msc/msc_device.h>
+
 
 #if CFG_TUD_MSC_EP_BUFSIZE < SD_SECTOR_SIZE
   #error "CFG_TUD_MSC_EP_BUFSIZE is too small! It needs to be at least 512 (SD_SECTOR_SIZE)"
@@ -43,7 +45,10 @@ static bool unitReady = false;
 /* return true if USB presence detected / eligble to enter CR mode */
 bool platform_sense_msc() {
 
-#ifdef ZULUSCSI_PICO
+#ifdef ZULUSCSI_PICO_2
+  if (!gpio_get(GPIO_USB_POWER))
+    return false;
+#else
   // check if we're USB powered, if not, exit immediately
   // pin on the wireless module, see https://github.com/earlephilhower/arduino-pico/discussions/835
   if (rp2040.isPicoW() && !digitalRead(34))
@@ -57,9 +62,21 @@ bool platform_sense_msc() {
 
   // wait for up to a second to be enumerated
   uint32_t start = millis();
-  while (!tud_connected() && ((uint32_t)(millis() - start) < CR_ENUM_TIMEOUT)) 
+  bool timed_out = false;
+  uint16_t usb_timeout =  g_scsi_settings.getSystem()->usbMassStorageWaitPeriod;
+  while (!tud_connected())
+  {
+    if ((uint32_t)(millis() - start) > usb_timeout)
+    {
+      logmsg("Waiting for USB enumeration timed out after ", usb_timeout, "ms.");
+      logmsg("-- Try increasing 'USBMassStorageWaitPeriod' in the ", CONFIGFILE);
+      timed_out = true;
+      break;
+    } 
     delay(100);
-
+  }
+  if (!timed_out)
+    dbgmsg("USB enumeration took ", (int)((uint32_t)(millis() - start)), "ms");
   // tud_connected returns True if just got out of Bus Reset and received the very first data from host
   // https://github.com/hathach/tinyusb/blob/master/src/device/usbd.h#L63
   return tud_connected();
@@ -95,7 +112,7 @@ extern "C" void tud_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8],
 
   // TODO: We could/should use strings from the platform, but they are too long
   const char vid[] = "ZuluSCSI";
-  const char pid[] = "Pico"; 
+  const char pid[] = "Pico 2"; 
   const char rev[] = "1.0";
 
   memcpy(vendor_id, vid, tu_min32(strlen(vid), 8));

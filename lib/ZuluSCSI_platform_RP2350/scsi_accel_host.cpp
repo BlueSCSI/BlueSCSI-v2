@@ -31,10 +31,10 @@
 #include <hardware/sync.h>
 
 #ifdef PLATFORM_HAS_INITIATOR_MODE
-#ifdef ZULUSCSI_PICO
-#include "scsi_accel_host_Pico.pio.h"
+#ifdef ZULUSCSI_PICO_2
+#include "scsi_accel_host_Pico_2.pio.h"
 #else
-#include "scsi_accel_host_RP2040.pio.h"
+#include "scsi_accel_host_RP2350.pio.h"
 #endif
 
 #define SCSI_PIO pio0

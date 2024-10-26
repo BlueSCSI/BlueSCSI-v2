@@ -29,6 +29,10 @@
 #include <hardware/flash.h>
 #include <hardware/structs/xip_ctrl.h>
 #include <hardware/structs/usb.h>
+#include <hardware/structs/nvic.h>
+#include <hardware/structs/scb.h>
+#include <hardware/sync.h>
+
 #ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
 #include <SerialUSB.h>
 #include <class/cdc/cdc_device.h>
@@ -58,10 +62,10 @@ bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_
     }
 
 
-    if (NVIC_GetEnableIRQ(USBCTRL_IRQ_IRQn))
+    if (nvic_hw->iser & 1 << 14)
     {
         logmsg("Disabling USB during firmware flashing");
-        NVIC_DisableIRQ(USBCTRL_IRQ_IRQn);
+        nvic_hw->icer = 1 << 14;
         usb_hw->main_ctrl = 0;
     }
 
@@ -70,7 +74,7 @@ bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_
     assert(offset >= PLATFORM_BOOTLOADER_SIZE);
 
     // Avoid any mbed timer interrupts triggering during the flashing.
-    __disable_irq();
+    uint32_t saved_irq = save_and_disable_interrupts();
 
     // For some reason any code executed after flashing crashes
     // unless we disable the XIP cache.
@@ -93,12 +97,12 @@ bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_
         if (actual != expected)
         {
             logmsg("Flash verify failed at offset ", offset + i * 4, " got ", actual, " expected ", expected);
-            __enable_irq();
+            restore_interrupts(saved_irq);
             return false;
         }
     }
 
-    __enable_irq();
+    restore_interrupts(saved_irq);
 
     return true;
 }
@@ -109,7 +113,7 @@ void platform_boot_to_main_firmware()
     // To ensure that the system state is reset properly, we perform
     // a SYSRESETREQ and jump straight from the reset vector to main application.
     g_bootloader_exit_req = &g_bootloader_exit_req;
-    SCB->AIRCR = 0x05FA0004;
+    scb_hw->aircr = 0x05FA0004;
     while(1);
 }
 
@@ -122,7 +126,7 @@ void btldr_reset_handler()
         application_base = (uint32_t*)(XIP_BASE + PLATFORM_BOOTLOADER_SIZE);
     }
 
-    SCB->VTOR = (uint32_t)application_base;
+    scb_hw->vtor = (uint32_t)application_base;
     __asm__(
         "msr msp, %0\n\t"
         "bx %1" : : "r" (application_base[0]),

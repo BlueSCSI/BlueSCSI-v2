@@ -35,6 +35,7 @@
 #include <hardware/flash.h>
 #include <hardware/structs/xip_ctrl.h>
 #include <hardware/structs/usb.h>
+#include <hardware/sync.h>
 #include "scsi_accel_target.h"
 
 #ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
@@ -68,7 +69,7 @@ static bool g_uart_initialized = false;
 /***************/
 
 // Helper function to configure whole GPIO in one line
-static void gpio_conf(uint gpio, enum gpio_function fn, bool pullup, bool pulldown, bool output, bool initial_state, bool fast_slew)
+static void gpio_conf(uint gpio, gpio_function_t fn, bool pullup, bool pulldown, bool output, bool initial_state, bool fast_slew)
 {
     gpio_put(gpio, initial_state);
     gpio_set_dir(gpio, output);
@@ -77,7 +78,7 @@ static void gpio_conf(uint gpio, enum gpio_function fn, bool pullup, bool pulldo
 
     if (fast_slew)
     {
-        padsbank0_hw->io[gpio] |= PADS_BANK0_GPIO0_SLEWFAST_BITS;
+        pads_bank0_hw->io[gpio] |= PADS_BANK0_GPIO0_SLEWFAST_BITS;
     }
 }
 
@@ -253,9 +254,9 @@ void platform_init()
     // Get flash chip size
     uint8_t cmd_read_jedec_id[4] = {0x9f, 0, 0, 0};
     uint8_t response_jedec[4] = {0};
-    __disable_irq();
+    uint32_t saved_irq = save_and_disable_interrupts();
     flash_do_cmd(cmd_read_jedec_id, response_jedec, 4);
-    __enable_irq();
+    restore_interrupts(saved_irq);
     g_flash_chip_size = (1 << response_jedec[3]);
     logmsg("Flash chip size: ", (int)(g_flash_chip_size / 1024), " kB");
 
@@ -623,7 +624,11 @@ static void watchdog_callback(unsigned alarm_num)
             logmsg("scsiDev.phase: ", (int)scsiDev.phase);
             scsi_accel_log_state();
 
-            uint32_t *p =  (uint32_t*)__get_MSP();
+
+            uint32_t msp;
+            asm volatile ("MRS %0, msp" : "=r" (msp) );
+
+            uint32_t *p =  (uint32_t*)msp;
 
             for (int i = 0; i < 8; i++)
             {
@@ -647,7 +652,9 @@ static void watchdog_callback(unsigned alarm_num)
             logmsg("scsiDev.cdb: ", bytearray(scsiDev.cdb, 12));
             logmsg("scsiDev.phase: ", (int)scsiDev.phase);
 
-            uint32_t *p =  (uint32_t*)__get_MSP();
+            uint32_t msp;
+            asm volatile ("MRS %0, msp" : "=r" (msp) );
+            uint32_t *p =  (uint32_t*)msp;
 
             for (int i = 0; i < 8; i++)
             {
@@ -677,7 +684,7 @@ void platform_reset_watchdog()
     if (!g_watchdog_initialized)
     {
         int alarm_num = -1;
-        for (int i = 0; i < NUM_TIMERS; i++)
+        for (int i = 0; i < NUM_GENERIC_TIMERS; i++)
         {
             if (!hardware_alarm_is_claimed(i))
             {
@@ -805,10 +812,10 @@ bool platform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count
     assert(start < platform_get_romdrive_maxsize());
     assert((count % PLATFORM_ROMDRIVE_PAGE_SIZE) == 0);
 
-    __disable_irq();
+    uint32_t saved_irq = save_and_disable_interrupts();
     flash_range_erase(start + ROMDRIVE_OFFSET, count);
     flash_range_program(start + ROMDRIVE_OFFSET, data, count);
-    __enable_irq();
+    restore_interrupts(saved_irq);
     return true;
 }
 

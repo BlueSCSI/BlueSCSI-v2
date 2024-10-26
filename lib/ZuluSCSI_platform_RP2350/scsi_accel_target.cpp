@@ -44,11 +44,11 @@
 #include <audio.h>
 #endif // ENABLE_AUDIO_OUTPUT
 
-#if defined(ZULUSCSI_PICO) || defined(ZULUSCSI_BS2)
-#include "scsi_accel_target_Pico.pio.h"
+#if defined(ZULUSCSI_PICO_2) || defined(ZULUSCSI_BS2)
+#include "scsi_accel_target_Pico_2.pio.h"
 #else
-#include "scsi_accel_target_RP2040.pio.h"
-#endif // ZULUSCSI_PICO
+#include "scsi_accel_target_RP2350.pio.h"
+#endif // ZULUSCSI_PICO_2
 
 // SCSI bus write acceleration uses up to 3 PIO state machines:
 // SM0: Convert data bytes to lookup addresses to add parity

@@ -249,7 +249,7 @@ void scsi_accel_rp2040_startWrite(const uint8_t* data, uint32_t count, volatile 
     // Any read requests should be matched with a stopRead()
     assert(g_scsi_dma_state != SCSIDMA_READ && g_scsi_dma_state != SCSIDMA_READ_DONE);
 
-    __disable_irq();
+    uint32_t saved_irq = save_and_disable_interrupts();
     if (g_scsi_dma_state == SCSIDMA_WRITE)
     {
         if (!g_scsi_dma.next_app_buf && data == g_scsi_dma.app_buf + g_scsi_dma.app_bytes)
@@ -272,7 +272,7 @@ void scsi_accel_rp2040_startWrite(const uint8_t* data, uint32_t count, volatile 
             count = 0;
         }
     }
-    __enable_irq();
+    restore_interrupts(saved_irq);
 
     // Check if the request was combined
     if (count == 0) return;
@@ -371,7 +371,7 @@ bool scsi_accel_rp2040_isWriteFinished(const uint8_t* data)
     
     // Check if this data item is still in queue.
     bool finished = true;
-    __disable_irq();
+    uint32_t saved_irq = save_and_disable_interrupts();
     if (data >= g_scsi_dma.app_buf &&
         data < g_scsi_dma.app_buf + g_scsi_dma.app_bytes &&
         (uint32_t)data >= dma_hw->ch[SCSI_DMA_CH_A].al1_read_addr)
@@ -383,7 +383,7 @@ bool scsi_accel_rp2040_isWriteFinished(const uint8_t* data)
     {
         finished = false; // In queued transfer
     }
-    __enable_irq();
+    restore_interrupts(saved_irq);
 
     return finished;
 }
@@ -634,7 +634,7 @@ void scsi_accel_rp2040_startRead(uint8_t *data, uint32_t count, int *parityError
     // Any write requests should be matched with a stopWrite()
     assert(g_scsi_dma_state != SCSIDMA_WRITE && g_scsi_dma_state != SCSIDMA_WRITE_DONE);
 
-    __disable_irq();
+    uint32_t saved_irq = save_and_disable_interrupts();
     if (g_scsi_dma_state == SCSIDMA_READ)
     {
         if (!g_scsi_dma.next_app_buf && data == g_scsi_dma.app_buf + g_scsi_dma.app_bytes)
@@ -657,7 +657,7 @@ void scsi_accel_rp2040_startRead(uint8_t *data, uint32_t count, int *parityError
             count = 0;
         }
     }
-    __enable_irq();
+    restore_interrupts(saved_irq);
 
     // Check if the request was combined
     if (count == 0) return;
@@ -703,7 +703,7 @@ bool scsi_accel_rp2040_isReadFinished(const uint8_t* data)
 
     // Check if this data item is still in queue.
     bool finished = true;
-    __disable_irq();
+    uint32_t saved_irq = save_and_disable_interrupts();
     if (data >= g_scsi_dma.app_buf &&
         data < g_scsi_dma.app_buf + g_scsi_dma.app_bytes &&
         (uint32_t)data >= dma_hw->ch[SCSI_DMA_CH_A].write_addr)
@@ -715,7 +715,7 @@ bool scsi_accel_rp2040_isReadFinished(const uint8_t* data)
     {
         finished = false; // In queued transfer
     }
-    __enable_irq();
+    restore_interrupts(saved_irq);
 
     return finished;
 }

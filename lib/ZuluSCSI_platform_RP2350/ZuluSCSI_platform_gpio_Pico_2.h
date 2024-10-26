@@ -110,7 +110,7 @@
 
 // Other pins
 #define SWO_PIN 16
-
+#define GPIO_USB_POWER 24
 // Below are GPIO access definitions that are used from scsiPhy.cpp.
 
 // Write a single SCSI pin.
