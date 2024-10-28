@@ -31,11 +31,15 @@
 #include <hardware/sync.h>
 
 #ifdef PLATFORM_HAS_INITIATOR_MODE
-#ifdef ZULUSCSI_PICO
-#include "scsi_accel_host_Pico.pio.h"
-#else
-#include "scsi_accel_host_RP2040.pio.h"
-#endif
+# ifdef ZULUSCSI_PICO_2
+#  include "scsi_accel_host_Pico_2.pio.h"
+# elif defined(ZULUSCSI_PICO)
+#  include "scsi_accel_host_Pico.pio.h"
+# elif defined(ZULUSCSI_RP2350A)
+#  include "scsi_accel_host_RP2350A.pio.h"
+# else
+#  include "scsi_accel_host_RP2040.pio.h"
+# endif
 
 #define SCSI_PIO pio0
 #define SCSI_SM 0
@@ -170,4 +174,4 @@ void scsi_accel_host_init()
     sm_config_set_in_shift(&g_scsi_host.pio_cfg_async_read, true, true, 32);
 }
 
-#endif
+#endif // PLATFORM_HAS_INITIATOR_MODE

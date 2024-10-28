@@ -62,12 +62,22 @@ bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_
     }
 
 
+#ifdef ZULUSCSI_MCU_RP23XX
+
+    if (nvic_hw->iser[0] & 1 << 14)
+    {
+        logmsg("Disabling USB during firmware flashing");
+        nvic_hw->icer[0] = 1 << 14;
+        usb_hw->main_ctrl = 0;
+    }
+#else
     if (nvic_hw->iser & 1 << 14)
     {
         logmsg("Disabling USB during firmware flashing");
         nvic_hw->icer = 1 << 14;
         usb_hw->main_ctrl = 0;
     }
+#endif
 
     dbgmsg("Writing flash at offset ", offset, " data ", bytearray(buffer, 4));
     assert(offset % PLATFORM_FLASH_PAGE_SIZE == 0);
@@ -92,8 +102,11 @@ bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_
     for (int i = 0; i < num_words; i++)
     {
         uint32_t expected = buf32[i];
+#ifdef ZULUSCSI_MCU_RP23XX
+        uint32_t actual = *(volatile uint32_t*)(XIP_NOCACHE_NOALLOC_BASE + offset + i * 4);
+#else
         uint32_t actual = *(volatile uint32_t*)(XIP_NOCACHE_BASE + offset + i * 4);
-
+#endif
         if (actual != expected)
         {
             logmsg("Flash verify failed at offset ", offset + i * 4, " got ", actual, " expected ", expected);

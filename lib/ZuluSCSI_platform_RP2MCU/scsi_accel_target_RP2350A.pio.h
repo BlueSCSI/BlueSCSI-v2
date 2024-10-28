@@ -49,7 +49,7 @@ static const uint16_t scsi_accel_async_write_program_instructions[] = {
             //     .wrap_target
     0x90e0, //  0: pull   ifempty block   side 1     
     0x7009, //  1: out    pins, 9         side 1     
-    0x7577, //  2: out    null, 23        side 1 [5] 
+    0x7777, //  2: out    null, 23        side 1 [7] 
     0x308a, //  3: wait   1 gpio, 10      side 1     
     0x200a, //  4: wait   0 gpio, 10      side 0     
             //     .wrap
@@ -222,4 +222,3 @@ static inline pio_sm_config scsi_read_parity_program_get_default_config(uint off
     return c;
 }
 #endif
-
