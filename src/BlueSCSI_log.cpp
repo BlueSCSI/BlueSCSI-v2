@@ -148,22 +148,24 @@ void log_f(const char *format, ...)
 
 void log_buf(const unsigned char *buf, unsigned long size)
 {
-    static char tmp[1500 * 3];
+    static char tmp[256 * 3];
     static char hex[] = "0123456789abcdef";
-    int o = 0;
+    int o, j;
 
-    for (int j = 0; j < size; j++) {
-        if (o + 3 >= sizeof(tmp))
-            break;
+    for (j = 0, o = 0; j < size + 1; j++) {
+        if (o + 3 >= sizeof(tmp) || j == size) {
+            log_f("%s", tmp);
+            o = 0;
+            if (j == size)
+                break;
+        }
 
-        if (j != 0)
+        if (o != 0)
             tmp[o++] = ' ';
         tmp[o++] = hex[(buf[j] >> 4) & 0xf];
         tmp[o++] = hex[buf[j] & 0xf];
-        tmp[o] = 0;
+        tmp[o] = '\0';
     }
-
-    log_f("%s", tmp);
 }
 
 uint32_t log_get_buffer_len()

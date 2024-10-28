@@ -251,7 +251,7 @@ int scsiNetworkCommand()
 		if (parityError)
 		{
 			DBGMSG_F("%s: read packet from host of size %zu - %d (parity error %d)", __func__, size, (cont ? 4 : 0), parityError);
-			DBGMSG_F(scsiDev.data, size);
+			DBGMSG_BUF(scsiDev.data, size);
 		}
 		else
 		{
