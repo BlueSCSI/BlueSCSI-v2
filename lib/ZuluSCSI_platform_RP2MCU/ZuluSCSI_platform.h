@@ -30,9 +30,15 @@
 #ifdef ZULUSCSI_PICO
 // ZuluSCSI Pico carrier board variant
 #include "ZuluSCSI_platform_gpio_Pico.h"
+#elif defined(ZULUSCSI_PICO_2)
+// ZuluSCSI Pico 2 carrier board variant
+#include "ZuluSCSI_platform_gpio_Pico_2.h"
 #elif defined(ZULUSCSI_BS2)
 // BS2 hardware variant, using Raspberry Pico board on a carrier PCB
 #include "ZuluSCSI_platform_gpio_BS2.h"
+#elif defined(ZULUSCSI_RP2350A)
+// RP2350A variant, using mcu chip directly
+#include "ZuluSCSI_platform_gpio_RP2350A.h"
 #else
 // Normal RP2040 variant, using RP2040 chip directly
 #include "ZuluSCSI_platform_gpio_RP2040.h"
@@ -54,19 +60,37 @@ extern const char *g_platform_name;
 # else
 #   define PLATFORM_NAME "ZuluSCSI Pico"
 # endif
+# define PLATFORM_PID "Pico"
 # define PLATFORM_REVISION "2.0"
 # define PLATFORM_HAS_INITIATOR_MODE 1
 # define DISABLE_SWO
-#elif defined(ZULUSCSI_BS2)
-# define PLATFORM_NAME "ZuluSCSI BS2"
-# define PLATFORM_REVISION "1.0"
-#else
-# define PLATFORM_NAME "ZuluSCSI RP2040"
+#define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_10
+#elif defined(ZULUSCSI_PICO_2)
+# define PLATFORM_NAME "ZuluSCSI Pico 2"
+# define PLATFORM_PID "Pico 2"
 # define PLATFORM_REVISION "2.0"
 # define PLATFORM_HAS_INITIATOR_MODE 1
+# define DISABLE_SWO
+#define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_TURBO
+#elif defined(ZULUSCSI_RP2350A)
+# define PLATFORM_NAME "ZuluSCSI RP2350A"
+# define PLATFORM_PID "RP2350A"
+# define PLATFORM_REVISION "2.0"
+# define PLATFORM_HAS_INITIATOR_MODE 1
+#define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_TURBO
+#elif defined(ZULUSCSI_BS2)
+# define PLATFORM_NAME "ZuluSCSI BS2"
+# define PLATFORM_PID "BS2"
+# define PLATFORM_REVISION "1.0"
+#define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_10
+#else
+# define PLATFORM_NAME "ZuluSCSI RP2040"
+# define PLATFORM_PID "RP2040"
+# define PLATFORM_REVISION "2.0"
+# define PLATFORM_HAS_INITIATOR_MODE 1
+#define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_10
 #endif
 
-#define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_10
 #define PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE 32768
 #define PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE 65536
 #define PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE 8192

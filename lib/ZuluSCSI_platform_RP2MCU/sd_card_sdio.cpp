@@ -1,5 +1,6 @@
 /** 
  * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
+ * Copyright (c) 2024 Tech by Androda, LLC
  * 
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  * 
@@ -19,7 +20,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
 
-// Driver for accessing SD card in SDIO mode on RP2040.
+// Driver for accessing SD card in SDIO mode on RP2040 and RP23XX.
 
 #include "ZuluSCSI_platform.h"
 

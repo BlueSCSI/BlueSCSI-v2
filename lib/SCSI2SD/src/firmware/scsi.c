@@ -1106,9 +1106,9 @@ static void process_MessageOut()
 				//We will set the syncPeriod and syncOffset to the fastest we 
 				//can support if the initiator requests a faster speed
 				if ((scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_TURBO) &&
-					(transferPeriod <= 20))
+					(transferPeriod <= 18))
 				{
-					scsiDev.target->syncPeriod = 20; // 20 corresponds to 12.5 MB/s
+					scsiDev.target->syncPeriod = 18; // 20 corresponds to 12.5 MB/s
 				}
 				else if (scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_TURBO)
 				{

@@ -44,11 +44,15 @@
 #include <audio.h>
 #endif // ENABLE_AUDIO_OUTPUT
 
-#if defined(ZULUSCSI_PICO_2) || defined(ZULUSCSI_BS2)
-#include "scsi_accel_target_Pico_2.pio.h"
+#if defined(ZULUSCSI_PICO) || defined(ZULUSCSI_BS2)
+# include "scsi_accel_target_Pico.pio.h"
+#elif defined(ZULUSCSI_PICO_2)
+# include "scsi_accel_target_Pico_2.pio.h"
+#elif defined(ZULUSCSI_RP2350A)
+# include "scsi_accel_target_RP2350A.pio.h"
 #else
-#include "scsi_accel_target_RP2350.pio.h"
-#endif // ZULUSCSI_PICO_2
+# include "scsi_accel_target_RP2040.pio.h"
+#endif
 
 // SCSI bus write acceleration uses up to 3 PIO state machines:
 // SM0: Convert data bytes to lookup addresses to add parity
@@ -1092,9 +1096,12 @@ bool scsi_accel_rp2040_setSyncMode(int syncOffset, int syncPeriod)
             // delay1: Delay from REQ assert to REQ deassert (req pulse width)
             // delay2: Delay from REQ deassert to data write (data hold)
             int delay0, delay1, delay2, initialDelay, remainderDelay;
+#ifdef ZULUSCSI_MCU_RP23XX
             int totalDelay = (syncPeriod * 4 * 100 + 333) / 667 ;    //The +333 is equivalent to rounding to the nearest integer
-
-            if (syncPeriod <= 21)
+#else
+            int totalDelay = syncPeriod * 4 / 8;
+#endif            
+            if (syncPeriod < 25)
             {
                 // Fast-20 SCSI timing: 15 ns assertion period
                 // The hardware rise and fall time require some extra delay,
@@ -1112,11 +1119,13 @@ bool scsi_accel_rp2040_setSyncMode(int syncOffset, int syncPeriod)
                 if (remainderDelay){
                     delay1++;   //if we still have "unassigned" delay time, give it to the one requiring it the next (pulse width)
                 }
-                if (delay1 < 0) delay2 = 0;
-                if (delay1 > 15) delay2 = 15;
+                if (delay2 < 0) delay2 = 0;
+                if (delay2 > 15) delay2 = 15;
             }
-            else if (syncPeriod <= 25)
+            else if (syncPeriod < 50 )
             {
+                // \TODO set RP23XX timings here
+
                 // Fast-10 SCSI timing: 30 ns assertion period, 25 ns skew delay
                 // The hardware rise and fall time require some extra delay,
                 // the values below are tuned based on oscilloscope measurements.
@@ -1128,6 +1137,8 @@ bool scsi_accel_rp2040_setSyncMode(int syncOffset, int syncPeriod)
             }
             else
             {
+                // \TODO set RP23XX timings here
+
                 // Slow SCSI timing: 90 ns assertion period, 55 ns skew delay
                 delay0 = 7;
                 delay1 = 14;
