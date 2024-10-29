@@ -389,6 +389,7 @@ void platform_late_init()
         gpio_conf(SCSI_OUT_ATN,   GPIO_FUNC_SIO, false,false, true,  true, true);
 #endif  // PLATFORM_HAS_INITIATOR_MODE
     }
+    scsi_accel_rp2040_init();
 }
 
 void platform_post_sd_card_init() {}

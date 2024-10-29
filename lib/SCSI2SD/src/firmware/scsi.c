@@ -28,6 +28,7 @@
 #include "led.h"
 #include "mode.h"
 #include "scsi2sd_time.h"
+#include "scsi2sd_timings.h"
 #include "bsp.h"
 #include "cdrom.h"
 #include "network.h"
@@ -1105,31 +1106,26 @@ static void process_MessageOut()
 				//The speeds above correspond to syncPeriod values of 25, 18, 15 and 12 (maybe, the last 3 are truncated)
 				//We will set the syncPeriod and syncOffset to the fastest we 
 				//can support if the initiator requests a faster speed
-				if ((scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_TURBO) &&
-					(transferPeriod <= 18))
+				if (scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_SYNC_20 || S2S_CFG_SPEED_NoLimit)
 				{
-					scsiDev.target->syncPeriod = 18; // 20 corresponds to 12.5 MB/s
+					if (transferPeriod <= g_max_sync_20_period)
+						scsiDev.target->syncPeriod = g_max_sync_20_period;
+					else 
+						scsiDev.target->syncPeriod = transferPeriod;	
 				}
-				else if (scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_TURBO)
+				else if (scsiDev.boardCfg.scsiSpeed >= S2S_CFG_SPEED_SYNC_10)
 				{
-					scsiDev.target->syncPeriod = transferPeriod;
+					if (transferPeriod <= g_max_sync_10_period)
+						scsiDev.target->syncPeriod = g_max_sync_10_period;
+					else
+						scsiDev.target->syncPeriod = transferPeriod;
 				}
-				else if (transferPeriod <= 25 &&
-					((scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_NoLimit) ||
-						(scsiDev.boardCfg.scsiSpeed >= S2S_CFG_SPEED_SYNC_10)))
+				else if (scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_SYNC_5)
 				{
-					scsiDev.target->syncPeriod = 25; // 100ns, 10MB/s
-
-				} else if (transferPeriod < 50 &&
-					((scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_NoLimit) ||
-						(scsiDev.boardCfg.scsiSpeed >= S2S_CFG_SPEED_SYNC_10)))
-				{
-					scsiDev.target->syncPeriod = transferPeriod;
-				} else if (transferPeriod >= 50)
-				{
-					scsiDev.target->syncPeriod = transferPeriod;
-				} else {
-					scsiDev.target->syncPeriod = 50;
+					if (transferPeriod <= g_max_sync_5_period)
+						scsiDev.target->syncPeriod = g_max_sync_5_period;
+					else
+						scsiDev.target->syncPeriod = transferPeriod;
 				}
 			}
 
