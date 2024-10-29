@@ -70,42 +70,42 @@
 .program sdio_cmd_clk
     .side_set 1
 
-    mov OSR, NULL       side 1 [D1]    ; Make sure OSR is full of zeros to prevent autopull
+    mov OSR, NULL       side 1 [0] ;[D1]    ; Make sure OSR is full of zeros to prevent autopull
 
 wait_cmd:
-    mov Y, !STATUS      side 0 [D0]    ; Check if TX FIFO has data
-    jmp !Y wait_cmd     side 1 [D1]
+    mov Y, !STATUS      side 0 [0]; [D0]    ; Check if TX FIFO has data
+    jmp !Y wait_cmd     side 1 [0]; [D1]
 
 load_cmd:
-    out NULL, 32        side 0 [D0]    ; Load first word (trigger autopull)
-    out X, 8            side 1 [D1]    ; Number of bits to send
-    set pins, 1         side 0 [D0]    ; Initial state of CMD is high
-    set pindirs, 1      side 1 [D1]    ; Set SDIO_CMD as output
+    out NULL, 32        side 0 [0]; [D0]    ; Load first word (trigger autopull)
+    out X, 8            side 1 [0]; [D1]    ; Number of bits to send
+    set pins, 1         side 0 [0]; [D0]    ; Initial state of CMD is high
+    set pindirs, 1      side 1 [0]; [D1]    ; Set SDIO_CMD as output
 
 send_cmd:
-    out pins, 1         side 0 [D0]    ; Write output on falling edge of CLK
-    jmp X-- send_cmd    side 1 [D1]
+    out pins, 1         side 0 [0]; [D0]    ; Write output on falling edge of CLK
+    jmp X-- send_cmd    side 1 [0]; [D1]
 
 prep_resp:
-    set pindirs, 0      side 0 [D0]    ; Set SDIO_CMD as input
-    out X, 8            side 1 [D1]    ; Get number of bits in response
-    nop                 side 0 [D0]    ; For clock alignment
-    jmp !X resp_done    side 1 [D1]    ; Check if we expect a response
+    set pindirs, 0      side 0 [0]; [D0]    ; Set SDIO_CMD as input
+    out X, 8            side 1 [0]; [D1]    ; Get number of bits in response
+    nop                 side 0 [0]; [D0]    ; For clock alignment
+    jmp !X resp_done    side 1 [0]; [D1]    ; Check if we expect a response
 
 wait_resp:
-    nop                  side 0 [D0]
-    jmp PIN wait_resp    side 1 [D1]    ; Loop until SDIO_CMD = 0
+    nop                  side 0 [0]; [D0]
+    jmp PIN wait_resp    side 1 [0]; [D1]    ; Loop until SDIO_CMD = 0
 
     ; Note: input bits are read at the same time as we write CLK=0.
     ; Because the host controls the clock, the read happens before
     ; the card sees the falling clock edge. This gives maximum time
     ; for the data bit to settle.
 read_resp:
-    in PINS, 1          side 0 [D0]    ; Read input data bit
-    jmp X-- read_resp   side 1 [D1]    ; Loop to receive all data bits
+    in PINS, 1          side 0 [0]; [D0]    ; Read input data bit
+    jmp X-- read_resp   side 1 [0]; [D1]    ; Loop to receive all data bits
 
 resp_done:
-    push                side 0 [D0]    ; Push the remaining part of response
+    push                side 0 [0]; [D0]    ; Push the remaining part of response
 
 ; State machine 1 is used to send and receive data blocks.
 ; Pin mapping for this state machine:
@@ -121,10 +121,10 @@ resp_done:
 wait_start:
     mov X, Y                               ; Reinitialize number of nibbles to receive
     wait 0 pin 0                           ; Wait for zero state on D0
-    wait 1 gpio SDIO_CLK_GPIO  [CLKDIV-1]  ; Wait for rising edge and then whole clock cycle
+    wait 1 gpio SDIO_CLK_GPIO  [0]; [CLKDIV-1]  ; Wait for rising edge and then whole clock cycle
 
 rx_data:
-    in PINS, 4                 [CLKDIV-2]  ; Read nibble
+    in PINS, 4                 [0]; [CLKDIV-2]  ; Read nibble
     jmp X--, rx_data
 
 ; Data transmission program
@@ -145,20 +145,20 @@ rx_data:
 
 .program sdio_data_tx
     wait 0 gpio SDIO_CLK_GPIO  
-    wait 1 gpio SDIO_CLK_GPIO  [CLKDIV + D1 - 1]; Synchronize so that write occurs on falling edge
+    wait 1 gpio SDIO_CLK_GPIO  [0]; [CLKDIV + D1 - 1]; Synchronize so that write occurs on falling edge
 
 tx_loop:
-    out PINS, 4                [D0]    ; Write nibble and wait for whole clock cycle
-    jmp X-- tx_loop            [D1]
+    out PINS, 4                [0]; [D0]    ; Write nibble and wait for whole clock cycle
+    jmp X-- tx_loop            [0]; [D1]
 
-    set pindirs, 0x00          [D0]    ; Set data bus as input
+    set pindirs, 0x00          [0]; [D0]    ; Set data bus as input
 
 .wrap_target
 response_loop:
-    in PINS, 1                 [D1]    ; Read D0 on rising edge
-    jmp Y--, response_loop     [D0]
-
+    in PINS, 1                 [0]; [D1]    ; Read D0 on rising edge
+    jmp Y--, response_loop     [0]; [D0]
+    
 wait_idle:
-    wait 1 pin 0               [D1]    ; Wait for card to indicate idle condition
-    push                       [D0]    ; Push the response token
+    wait 1 pin 0               [0]; [D1]    ; Wait for card to indicate idle condition
+    push                       [0]; [D0]    ; Push the response token
 .wrap

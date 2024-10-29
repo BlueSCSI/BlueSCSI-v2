@@ -71,13 +71,13 @@ extern const char *g_platform_name;
 # define PLATFORM_REVISION "2.0"
 # define PLATFORM_HAS_INITIATOR_MODE 1
 # define DISABLE_SWO
-#define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_TURBO
+#define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_20
 #elif defined(ZULUSCSI_RP2350A)
 # define PLATFORM_NAME "ZuluSCSI RP2350A"
 # define PLATFORM_PID "RP2350A"
 # define PLATFORM_REVISION "2.0"
 # define PLATFORM_HAS_INITIATOR_MODE 1
-#define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_TURBO
+#define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_20
 #elif defined(ZULUSCSI_BS2)
 # define PLATFORM_NAME "ZuluSCSI BS2"
 # define PLATFORM_PID "BS2"
@@ -103,7 +103,7 @@ extern const char *g_platform_name;
 
 // NOTE: The driver supports synchronous speeds higher than 10MB/s, but this
 // has not been tested due to lack of fast enough SCSI adapter.
-// #define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_TURBO
+// #define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_20
 
 // Debug logging function, can be used to print to e.g. serial port.
 // May get called from interrupt handlers.
