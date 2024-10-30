@@ -105,6 +105,12 @@ static void gpio_conf(uint gpio, gpio_function_t fn, bool pullup, bool pulldown,
 
 
 static void reclock() {
+    gpio_set_drive_strength(SDIO_CLK,  GPIO_DRIVE_STRENGTH_12MA);
+    gpio_set_drive_strength(SDIO_CMD,  GPIO_DRIVE_STRENGTH_12MA);
+    gpio_set_drive_strength(SDIO_D0,  GPIO_DRIVE_STRENGTH_12MA);
+    gpio_set_drive_strength(SDIO_D1,  GPIO_DRIVE_STRENGTH_12MA);
+    gpio_set_drive_strength(SDIO_D2,  GPIO_DRIVE_STRENGTH_12MA);
+    gpio_set_drive_strength(SDIO_D3,  GPIO_DRIVE_STRENGTH_12MA);
     // ensure UART is fully drained before we mess up its clock
     uart_tx_wait_blocking(uart0);
     // switch clk_sys and clk_peri to pll_usb
@@ -121,22 +127,22 @@ static void reclock() {
             48 * MHZ);
     // reset PLL
     pll_init(pll_sys,
-        g_zuluscsi_timings.pll.refdiv,
-        g_zuluscsi_timings.pll.vco_freq,
-        g_zuluscsi_timings.pll.post_div1,
-        g_zuluscsi_timings.pll.post_div2);
+        g_zuluscsi_timings->pll.refdiv,
+        g_zuluscsi_timings->pll.vco_freq,
+        g_zuluscsi_timings->pll.post_div1,
+        g_zuluscsi_timings->pll.post_div2);
 
     // switch clocks back to pll_sys
     clock_configure(clk_sys,
             CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
             CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
-            g_zuluscsi_timings.clk_hz,
-            g_zuluscsi_timings.clk_hz);
+            g_zuluscsi_timings->clk_hz,
+            g_zuluscsi_timings->clk_hz);
     clock_configure(clk_peri,
             0,
             CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
-            g_zuluscsi_timings.clk_hz,
-            g_zuluscsi_timings.clk_hz);
+            g_zuluscsi_timings->clk_hz,
+            g_zuluscsi_timings->clk_hz);
     // reset UART for the new clock speed
     uart_init(uart0, 1000000);
 }

@@ -39,15 +39,7 @@
 #include <ZuluSCSI_log.h>
 #include "timings.h"
 
-#if defined(ZULUSCSI_PICO) || defined(ZULUSCSI_BS2)
-# include "sdio_Pico.pio.h"
-#elif defined(ZULUSCSI_PICO_2)
-# include "sdio_Pico_2.pio.h"
-#elif defined(ZULUSCSI_RP2350A)
-# include "sdio_RP2350A.pio.h"
-#else
-# include "sdio_RP2040.pio.h"
-#endif
+# include "sdio_RP2MCU.pio.h"
 
 #define SDIO_PIO pio1
 #define SDIO_CMD_SM 0
@@ -816,13 +808,17 @@ void rp2040_sdio_init(int clock_divider)
 
     // Command & clock state machine
     uint16_t temp_program_instr[32];
-    pio_program rewrite_sdio_cmd_clk_program = { temp_program_instr, sdio_cmd_clk_program.length,  sdio_cmd_clk_program.origin, sdio_cmd_clk_program.pio_version };
+    pio_program rewrite_sdio_cmd_clk_program = {
+        temp_program_instr,
+        sdio_cmd_clk_program.length,
+        sdio_cmd_clk_program.origin,
+        sdio_cmd_clk_program.pio_version };
     memcpy(temp_program_instr, sdio_cmd_clk_program_instructions, sizeof(sdio_cmd_clk_program_instructions));
     // Set the delays for the sdio_cmd_clk SDIO state machine
     for (uint8_t i = 0; i < sizeof(sdio_cmd_clk_program_instructions) / sizeof(sdio_cmd_clk_program_instructions[0]); i++)
     {
         uint16_t instr = sdio_cmd_clk_program_instructions[i]
-            | ((i & 1) ? pio_encode_delay(g_zuluscsi_timings.sdio.delay0) : pio_encode_delay(g_zuluscsi_timings.sdio.delay1));
+            | ((i & 1) ? pio_encode_delay(g_zuluscsi_timings->sdio.delay0) : pio_encode_delay(g_zuluscsi_timings->sdio.delay1));
         temp_program_instr[i] = instr;
     }
     g_sdio.pio_cmd_clk_offset = pio_add_program(SDIO_PIO, &rewrite_sdio_cmd_clk_program);
@@ -844,11 +840,17 @@ void rp2040_sdio_init(int clock_divider)
     // Data reception program
 
     // Set delays for sdio_data_rx PIO state machine
-    pio_program rewrite_sdio_data_rx_program = { temp_program_instr, sdio_data_rx_program.length,  sdio_data_rx_program.origin, sdio_data_rx_program.pio_version };
+    pio_program rewrite_sdio_data_rx_program = {
+        temp_program_instr,
+        sdio_data_rx_program.length,
+        sdio_data_rx_program.origin,
+        sdio_data_rx_program.pio_version };
     memcpy(temp_program_instr, sdio_data_rx_program_instructions, sizeof(sdio_data_rx_program_instructions));
-    uint16_t instr = sdio_data_rx_program_instructions[2] | pio_encode_delay(g_zuluscsi_timings.sdio.clk_div_pio - 1);
+    // wait 1 gpio SDIO_CLK_GPIO  [0]; [CLKDIV-1]
+    uint16_t instr = pio_encode_wait_gpio(true, SDIO_CLK) | pio_encode_delay(g_zuluscsi_timings->sdio.clk_div_pio - 1);
     temp_program_instr[2] = instr;
-    instr = sdio_data_rx_program_instructions[3] | pio_encode_delay(g_zuluscsi_timings.sdio.clk_div_pio - 2);
+    // in PINS, 4                 [0]; [CLKDIV-2]
+    instr = sdio_data_rx_program_instructions[3] | pio_encode_delay(g_zuluscsi_timings->sdio.clk_div_pio - 2);
     temp_program_instr[3] = instr;
 
     g_sdio.pio_data_rx_offset = pio_add_program(SDIO_PIO, &rewrite_sdio_data_rx_program);
@@ -861,16 +863,23 @@ void rp2040_sdio_init(int clock_divider)
     // Data transmission program
 
     // Set delays for sdio_data_tx PIO state machine
-    pio_program rewrite_sdio_data_tx_program = { temp_program_instr, sdio_data_tx_program.length,  sdio_data_tx_program.origin, sdio_data_tx_program.pio_version };
+    pio_program rewrite_sdio_data_tx_program = {
+        temp_program_instr,
+        sdio_data_tx_program.length,
+        sdio_data_tx_program.origin,
+        sdio_data_tx_program.pio_version };
     memcpy(temp_program_instr, sdio_data_tx_program_instructions, sizeof(sdio_data_tx_program_instructions));
-
-    instr = sdio_data_tx_program_instructions[1] | pio_encode_delay(g_zuluscsi_timings.sdio.clk_div_pio + g_zuluscsi_timings.sdio.delay1 - 1);
+    // wait 0 gpio SDIO_CLK_GPIO  
+    instr = pio_encode_wait_gpio(false, SDIO_CLK);
+    temp_program_instr[0] = instr;
+    // wait 1 gpio SDIO_CLK_GPIO;  [0]; [CLKDIV + D1 - 1];
+    instr = pio_encode_wait_gpio(true, SDIO_CLK) | pio_encode_delay(g_zuluscsi_timings->sdio.clk_div_pio + g_zuluscsi_timings->sdio.delay1 - 1);
     temp_program_instr[1] = instr;
     
     for (uint8_t i = 2; i < sizeof(sdio_data_tx_program_instructions) / sizeof(sdio_data_tx_program_instructions[0]); i++)
     {    
         uint16_t instr = sdio_data_tx_program_instructions[i]
-            | ((i & 1) ? pio_encode_delay(g_zuluscsi_timings.sdio.delay1) : pio_encode_delay(g_zuluscsi_timings.sdio.delay0));
+            | ((i & 1) ? pio_encode_delay(g_zuluscsi_timings->sdio.delay1) : pio_encode_delay(g_zuluscsi_timings->sdio.delay0));
         temp_program_instr[i] = instr;
     }
     g_sdio.pio_data_tx_offset = pio_add_program(SDIO_PIO, &rewrite_sdio_data_tx_program);
