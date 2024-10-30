@@ -58,7 +58,7 @@ extern "C" {
 extern bool g_rawdrive_active;
 
 extern "C" {
-
+#include "timings.h"
 const char *g_platform_name = PLATFORM_NAME;
 static bool g_scsi_initiator = false;
 static uint32_t g_flash_chip_size = 0;
@@ -82,11 +82,29 @@ static void gpio_conf(uint gpio, gpio_function_t fn, bool pullup, bool pulldown,
     }
 }
 
+// \todo setup up timing for audio
 #ifdef ENABLE_AUDIO_OUTPUT
 // Increases clk_sys and clk_peri to 135.428571MHz at runtime to support
 // division to audio output rates. Invoke before anything is using clk_peri
 // except for the logging UART, which is handled below.
-static void reclock_for_audio() {
+    // reset PLL for 135.428571MHz
+    pll_init(pll_sys, 1, 948000000, 7, 1);
+    // switch clocks back to pll_sys
+    clock_configure(clk_sys,
+            CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
+            CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
+            135428571,
+            135428571);
+    clock_configure(clk_peri,
+            0,
+            CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
+            135428571,
+            135428571);
+
+#endif
+
+
+static void reclock() {
     // ensure UART is fully drained before we mess up its clock
     uart_tx_wait_blocking(uart0);
     // switch clk_sys and clk_peri to pll_usb
@@ -101,23 +119,37 @@ static void reclock_for_audio() {
             CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLKSRC_PLL_USB,
             48 * MHZ,
             48 * MHZ);
-    // reset PLL for 135.428571MHz
-    pll_init(pll_sys, 1, 948000000, 7, 1);
+    // reset PLL
+    pll_init(pll_sys,
+        g_zuluscsi_timings.pll.refdiv,
+        g_zuluscsi_timings.pll.vco_freq,
+        g_zuluscsi_timings.pll.post_div1,
+        g_zuluscsi_timings.pll.post_div2);
+
     // switch clocks back to pll_sys
     clock_configure(clk_sys,
             CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
             CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
-            135428571,
-            135428571);
+            g_zuluscsi_timings.clk_hz,
+            g_zuluscsi_timings.clk_hz);
     clock_configure(clk_peri,
             0,
             CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
-            135428571,
-            135428571);
+            g_zuluscsi_timings.clk_hz,
+            g_zuluscsi_timings.clk_hz);
     // reset UART for the new clock speed
     uart_init(uart0, 1000000);
 }
-#endif  // ENABLE_AUDIO_OUT
+
+zuluscsi_reclock_status_t platform_reclock(uint32_t clock_in_khz)
+{
+    if (set_timings(clock_in_khz))
+    {
+        reclock();
+        return ZULUSCSI_RECLOCK_SUCCESS;
+    }
+    return ZULUSCSI_RECLOCK_FAILED;
+}
 
 #ifdef HAS_DIP_SWITCHES
 enum pin_setup_state_t  {SETUP_FALSE, SETUP_TRUE, SETUP_UNDETERMINED};

@@ -53,6 +53,7 @@ extern const char *g_platform_name;
 #define PLATFORM_VDD_WARNING_LIMIT_mV 2800
 #endif
 
+#define PLATFORM_DEFAULT_SCSI_SPEED_SETTING 10
 // Debug logging functions
 void platform_log(const char *s);
 
@@ -109,6 +110,16 @@ void platform_poll();
 // Debouncing logic is left up to the specific implementation.
 // This function should return without significantly delay.
 uint8_t platform_get_buttons();
+
+// Attempt to reclock the MCU - unsupported
+typedef enum
+{
+    ZULUSCSI_RECLOCK_SUCCESS,
+    ZULUSCSI_RECLOCK_NOT_SUPPORTED,
+    ZULUSCSI_RECLOCK_FAILED
+} zuluscsi_reclock_status_t;
+zuluscsi_reclock_status_t platform_reclock(uint32_t clk_in_khz){return ZULUSCSI_RECLOCK_NOT_SUPPORTED;}
+
 
 // Reinitialize SD card connection and save log from interrupt context.
 // This can be used in crash handlers.

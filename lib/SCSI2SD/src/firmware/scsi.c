@@ -1106,7 +1106,7 @@ static void process_MessageOut()
 				//The speeds above correspond to syncPeriod values of 25, 18, 15 and 12 (maybe, the last 3 are truncated)
 				//We will set the syncPeriod and syncOffset to the fastest we 
 				//can support if the initiator requests a faster speed
-				if (scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_SYNC_20 || S2S_CFG_SPEED_NoLimit)
+				if (scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_SYNC_20 || scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_NoLimit)
 				{
 					if (transferPeriod <= g_max_sync_20_period)
 						scsiDev.target->syncPeriod = g_max_sync_20_period;
