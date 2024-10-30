@@ -21,6 +21,10 @@
 #ifndef ZULUSCSI_PLATFORM_TIMINGS_H
 #define ZULUSCSI_PLATFORM_TIMINGS_H
 #include <stdint.h>
+
+// This is actually a minimum number
+// 1/4 of the lowest sync period
+// that keeps the scsi interface stable
 extern uint8_t g_max_sync_20_period;
 extern uint8_t g_max_sync_10_period;
 extern uint8_t g_max_sync_5_period;

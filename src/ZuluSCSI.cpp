@@ -850,6 +850,25 @@ static void zuluscsi_setup_sd_card()
 
   if (g_sdcard_present)
   {
+    int32_t clock_khz = ini_getl("SCSI", "ReclockInKHz", 0, CONFIGFILE);
+    if ( clock_khz > 0)
+    {
+      zuluscsi_reclock_status_t status = platform_reclock(clock_khz);
+      switch (status)
+      {
+        case ZULUSCSI_RECLOCK_NOT_SUPPORTED:
+          logmsg("Reclocking this board is not supported");
+          break;
+        case ZULUSCSI_RECLOCK_FAILED:
+          logmsg("Reclocking at ", (int) clock_khz , " KHz is not supported");
+          break;
+        case ZULUSCSI_RECLOCK_SUCCESS:
+          logmsg("Reclocking at ", (int) clock_khz , " KHz was successful");
+      }
+      g_sdcard_present = mountSDCard();
+      reinitSCSI();
+    }
+
     if (SD.clusterCount() == 0)
     {
       logmsg("SD card without filesystem!");

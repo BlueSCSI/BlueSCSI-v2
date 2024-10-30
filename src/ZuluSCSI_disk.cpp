@@ -1071,6 +1071,8 @@ void s2s_configInit(S2S_BoardCfg* config)
         config->scsiSpeed = S2S_CFG_SPEED_ASYNC_50;
     else if (maxSyncSpeed < 10 && config->scsiSpeed > S2S_CFG_SPEED_SYNC_5)
         config->scsiSpeed = S2S_CFG_SPEED_SYNC_5;
+    else if (maxSyncSpeed < 20 && config->scsiSpeed > S2S_CFG_SPEED_SYNC_10)
+        config->scsiSpeed = S2S_CFG_SPEED_SYNC_10;
 
     logmsg("-- SelectionDelay = ", (int)config->selectionDelay);
 
