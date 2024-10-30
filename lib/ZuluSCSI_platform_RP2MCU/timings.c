@@ -22,88 +22,8 @@
 #include <string.h>
 #include "scsi2sd_timings.h"
 
-#ifdef ZULUSCSI_MCU_RP23XX
-    zuluscsi_timings_t g_zuluscsi_timings =
-    {
-        .clk_hz = 150000000,
-        .scsi =
-        {
-            .delay0 = 0,
-            .delay1 = 0,
-            .req_delay = 0,
-            .gpio_ack = 0,
-            .gpio_req = 0,
-            .mode = ZULUSCSI_PIO_TARGET_MODE_SIMPLE
 
-        },
-        .sdio =
-        {
-            .clk_div_1mhz = 0,
-            .clk_div_pio = 0,
-            .delay0 = 0,
-            .delay1 = 0
-        }
-    };
-#else
-    zuluscsi_timings_t g_zuluscsi_timings =
-    {
-        .clk_hz = 125000000,
-
-        .pll =
-        {
-            .refdiv = 1,
-            .vco_freq = 1500000000,
-            .post_div1 = 6,
-            .post_div2 = 2
-        },
-
-        .scsi =
-        {
-            .req_delay = 7,
-            .clk_period_ps = 5000
-        },
-
-        .scsi_20 =
-        {
-            .delay0 = 4,
-            .delay1 = 6,
-            .mode = ZULUSCSI_PIO_TARGET_MODE_SIMPLE,
-            .total_delay_adjust = -1,
-            .max_sync = 25,
-
-        },
-
-        .scsi_10 =
-        {
-            .delay0 = 4,
-            .delay1 = 6,
-            .mode = ZULUSCSI_PIO_TARGET_MODE_SIMPLE,
-            .total_delay_adjust = -1,
-            .max_sync = 25,
-
-        },
-
-        .scsi_5 =
-        {
-            .delay0 = 7,
-            .delay1 = 14,
-            .mode = ZULUSCSI_PIO_TARGET_MODE_SIMPLE,
-            .total_delay_adjust = -1,
-            .max_sync = 50,
-
-        },
-
-        .sdio =
-        {
-            .clk_div_1mhz = 25, // = 125MHz clk / clk_div_pio
-            .clk_div_pio = 5,
-            .delay0 = 3 - 1, // subtract one for the instruction delay
-            .delay1 = 2 - 1  // clk_div_pio - delay0 and subtract one for the instruction delay
-        }
-    };
-#endif
-
-static zuluscsi_timings_t predefined_timings[] = {
+static zuluscsi_timings_t  predefined_timings[]  = {
     {
         .clk_hz = 125000000,
 
@@ -142,8 +62,8 @@ static zuluscsi_timings_t predefined_timings[] = {
 
         .scsi_5 =
         {
-            .delay0 = 7,
-            .delay1 = 14,
+            .delay0 = 10 - 1,
+            .delay1 = 15 - 1,
             .mode = ZULUSCSI_PIO_TARGET_MODE_SIMPLE,
             .total_delay_adjust = -1,
             .max_sync = 50,
@@ -176,8 +96,8 @@ static zuluscsi_timings_t predefined_timings[] = {
 
         .scsi_20 =
         {
-            .delay0 = 3,
-            .delay1 = 4,
+            .delay0 = 3 - 1,
+            .delay1 = 4 - 1,
             .mode = ZULUSCSI_PIO_TARGET_MODE_SIMPLE,
             .total_delay_adjust = 0,
             .max_sync = 18,
@@ -186,8 +106,8 @@ static zuluscsi_timings_t predefined_timings[] = {
 
         .scsi_10 =
         {
-            .delay0 = 4,
-            .delay1 = 6,
+            .delay0 = 4 - 1,
+            .delay1 = 5 - 1,
             .mode = ZULUSCSI_PIO_TARGET_MODE_SIMPLE,
             .total_delay_adjust = 0,
             .max_sync = 25,
@@ -196,8 +116,8 @@ static zuluscsi_timings_t predefined_timings[] = {
 
         .scsi_5 =
         {
-            .delay0 = 7,
-            .delay1 = 14,
+            .delay0 = 10 - 1,
+            .delay1 = 15, // should be 18 - 1 but max currently is 15
             .mode = ZULUSCSI_PIO_TARGET_MODE_SIMPLE,
             .total_delay_adjust = 0,
             .max_sync = 50,
@@ -206,7 +126,7 @@ static zuluscsi_timings_t predefined_timings[] = {
 
         .sdio =
         {
-            .clk_div_1mhz = 25, // = 125MHz clk / clk_div_pio
+            .clk_div_1mhz = 30, // = 150MHz clk / clk_div_pio
             .clk_div_pio = 5,
             .delay0 = 3 - 1, // subtract one for the instruction delay
             .delay1 = 2 - 1  // clk_div_pio - delay0 and subtract one for the instruction delay
@@ -231,8 +151,8 @@ static zuluscsi_timings_t predefined_timings[] = {
 
         .scsi_20 =
         {
-            .delay0 = 2,
-            .delay1 = 4,
+            .delay0 = 3 - 1,
+            .delay1 = 5 - 1,
             .mode = ZULUSCSI_PIO_TARGET_MODE_SIMPLE,
             .total_delay_adjust = 1,
             .max_sync = 12,
@@ -241,8 +161,8 @@ static zuluscsi_timings_t predefined_timings[] = {
 
         .scsi_10 =
         {
-            .delay0 = 8,
-            .delay1 = 10,
+            .delay0 = 6 - 1,
+            .delay1 = 9 - 1,
             .mode = ZULUSCSI_PIO_TARGET_MODE_SIMPLE,
             .total_delay_adjust = 1,
             .max_sync = 25,
@@ -250,13 +170,21 @@ static zuluscsi_timings_t predefined_timings[] = {
 
         .scsi_5 =
         {
-            .delay0 = 14,
-            .delay1 = 15,
+            .delay0 = 15, // maxed out should be 16
+            .delay1 = 15, // maxed out should be 30
             .mode = ZULUSCSI_PIO_TARGET_MODE_SIMPLE,
             .total_delay_adjust = 1,
             .max_sync = 50,
         },
-
+#ifdef ZULUSCSI_PICO_2
+        .sdio =
+        {
+            .clk_div_1mhz = 30, // set by trail and error
+            .clk_div_pio = 6, // SDIO at 41.7MHz
+            .delay0 = 4 - 1, // subtract one for the instruction delay
+            .delay1 = 2 - 1  // clk_div_pio - delay0 and subtract one for the instruction delay
+        }
+#else
         .sdio =
         {
             .clk_div_1mhz = 50, // = 250MHz clk / clk_div_pio
@@ -264,8 +192,18 @@ static zuluscsi_timings_t predefined_timings[] = {
             .delay0 = 4 - 1, // subtract one for the instruction delay
             .delay1 = 1 - 1  // clk_div_pio - delay0 and subtract one for the instruction delay
         }
+
+#endif
     }
 };
+    zuluscsi_timings_t  current_timings;
+#ifdef ZULUSCSI_MCU_RP23XX
+    zuluscsi_timings_t *g_zuluscsi_timings = &predefined_timings[1];
+#else
+    zuluscsi_timings_t *g_zuluscsi_timings = &predefined_timings[0];
+    
+#endif
+
 
 bool set_timings(uint32_t target_clk_in_khz)
 {
@@ -274,10 +212,11 @@ bool set_timings(uint32_t target_clk_in_khz)
     {
         if (target_clk_in_khz == predefined_timings[i].clk_hz / 1000)
         {
-            memcpy(&g_zuluscsi_timings, &predefined_timings[i], sizeof(g_zuluscsi_timings));
-            g_max_sync_10_period = g_zuluscsi_timings.scsi_10.max_sync;
-            g_max_sync_20_period = g_zuluscsi_timings.scsi_20.max_sync;
-            g_max_sync_5_period = g_zuluscsi_timings.scsi_5.max_sync;
+            g_zuluscsi_timings = &current_timings;
+            memcpy(g_zuluscsi_timings, &predefined_timings[i], sizeof(current_timings));
+            g_max_sync_10_period = g_zuluscsi_timings->scsi_10.max_sync;
+            g_max_sync_20_period = g_zuluscsi_timings->scsi_20.max_sync;
+            g_max_sync_5_period = g_zuluscsi_timings->scsi_5.max_sync;
             return true;
         }
     }

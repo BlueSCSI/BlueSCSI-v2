@@ -33,6 +33,9 @@ typedef struct
     uint32_t clk_hz;
     struct
     {
+        // These numbers are for pico-sdk's pll_init() function
+        // their values can be obtained using the script:
+        // "/src/rp2_common/hardware_clocks/scripts/vcocalc.py" 
         uint8_t refdiv;
         uint32_t vco_freq;
         uint8_t post_div1;
@@ -49,11 +52,15 @@ typedef struct
     } scsi;
 
 
-    // delay0: Delay from data write to REQ assertion (data setup)
-    // delay1: Delay from REQ assert to REQ deassert (req pulse width)
+    // delay0: Data Setup Time - Delay from data write to REQ assertion
+    // delay1  Transmit Assertion time from REQ assert to REQ deassert (req pulse) 
+    // delay2: Negation period - (total_delay - d0 - d1): total_delay spec is the sync value * 4 in ns width)
     // both values are in clock cycles minus 1 for the pio instruction delay
+    // delay0 spec: Ultra(20):  11.5ns  Fast(10): 23ns  SCSI-1(5): 23ns
+    // delay1 spec: Ultra(20):  16.5ns  Fast(10): 33ns  SCSI-1(5): 53ns 
+    // delay2 spec: Ultra(20):  15ns    Fast(10): 30ns  SCSI-1(5): 80ns 
     // total_delay_adjust is manual adjustment value, when checked with a scope
-    // Max sync - the max sync period that is supported at this clock rate, the number is 1/4 the actual value in ns
+    // Max sync - the minimum sync period ("max" clock rate) that is supported at this clock rate, the number is 1/4 the actual value in ns
     struct
     {
         zuluscsi_pio_target_mode_t mode;
@@ -101,7 +108,7 @@ typedef struct
 
 } zuluscsi_timings_t;
 
-extern  zuluscsi_timings_t g_zuluscsi_timings;
+extern  zuluscsi_timings_t *g_zuluscsi_timings;
 
 bool set_timings(uint32_t target_clk_in_khz);
 #endif // ZULUSCSI_RP2MCU_TIMINGS_H

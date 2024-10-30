@@ -45,15 +45,7 @@
 #include <audio.h>
 #endif // ENABLE_AUDIO_OUTPUT
 
-#if defined(ZULUSCSI_PICO) || defined(ZULUSCSI_BS2)
-# include "scsi_accel_target_Pico.pio.h"
-#elif defined(ZULUSCSI_PICO_2)
-# include "scsi_accel_target_Pico_2.pio.h"
-#elif defined(ZULUSCSI_RP2350A)
-# include "scsi_accel_target_RP2350A.pio.h"
-#else
-# include "scsi_accel_target_RP2040.pio.h"
-#endif
+#include "scsi_accel_target_RP2MCU.pio.h"
 
 // SCSI bus write acceleration uses up to 3 PIO state machines:
 // SM0: Convert data bytes to lookup addresses to add parity
@@ -806,7 +798,7 @@ static int pio_add_scsi_accel_async_write_program()
         sizeof(scsi_accel_async_write_program_instructions));
 
     // out null, 23         side 1  [0] ;[REQ_DLY-2]      ; Discard unused bits, wait for data preset time
-    uint8_t delay = g_zuluscsi_timings.scsi.req_delay - 2;
+    uint8_t delay = g_zuluscsi_timings->scsi.req_delay - 2;
     assert( delay <= 0xF);
     rewrote_instructions[2] |= pio_encode_delay(delay);
     // wait 1 gpio ACK      side 1      ; Wait for ACK to be inactive
@@ -1235,22 +1227,23 @@ bool scsi_accel_rp2040_setSyncMode(int syncOffset, int syncPeriod)
             // The delays are in clock cycles, each taking 6.66 ns. (@150 MHz)
             // delay0: Delay from data write to REQ assertion (data setup)
             // delay1: Delay from REQ assert to REQ deassert (req pulse width)
-            // delay2: Delay from REQ deassert to data write (data hold)
-            int delay0, delay1, delay2, initialDelay, remainderDelay;
-            uint32_t up_rounder = g_zuluscsi_timings.scsi.clk_period_ps / 2 + 1;
+            // delay2: Delay from REQ deassert to data write (negation period)
+            // see timings.c for delay periods in clock cycles
+            int delay0, delay1, delay2;
+            uint32_t up_rounder = g_zuluscsi_timings->scsi.clk_period_ps / 2 + 1;
             uint32_t delay_in_ps = (syncPeriod * 4) * 1000;
             // This is the delay in clock cycles rounded up
-            int totalDelay = (delay_in_ps + up_rounder) / g_zuluscsi_timings.scsi.clk_period_ps;
+            int totalDelay = (delay_in_ps + up_rounder) / g_zuluscsi_timings->scsi.clk_period_ps;
 
             if (syncPeriod < 25)
             {
                 // Fast-20 SCSI timing: 15 ns assertion period
                 // The hardware rise and fall time require some extra delay,
                 // These delays are in addition to the 1 cycle that the PIO takes to execute the instruction
-                totalDelay += g_zuluscsi_timings.scsi_20.total_delay_adjust;
-                delay0 = g_zuluscsi_timings.scsi_20.delay0; //Data setup time, should be min 11.5ns according to the spec for FAST-20
-                delay1 = g_zuluscsi_timings.scsi_20.delay1; //Data hold time, should be min 16.5ns according to the spec for FAST-20
-                delay2 = totalDelay - delay0 - delay1 - 3; //pulse width, should be min 15ns according to the spec for FAST-20
+                totalDelay += g_zuluscsi_timings->scsi_20.total_delay_adjust;
+                delay0 = g_zuluscsi_timings->scsi_20.delay0; //Data setup time, should be min 11.5ns according to the spec for FAST-20
+                delay1 = g_zuluscsi_timings->scsi_20.delay1; //pulse width, should be min 15ns according to the spec for FAST-20
+                delay2 = totalDelay - delay0 - delay1 - 3;  //Data hold time, should be min 16.5ns according to the spec for FAST-20
                 if (delay2 < 0) delay2 = 0;
                 if (delay2 > 15) delay2 = 15;
             }
@@ -1258,21 +1251,19 @@ bool scsi_accel_rp2040_setSyncMode(int syncOffset, int syncPeriod)
             {
                 // Fast-10 SCSI timing: 30 ns assertion period, 25 ns skew delay
                 // The hardware rise and fall time require some extra delay,
-                totalDelay += g_zuluscsi_timings.scsi_10.total_delay_adjust;
-                delay0 = g_zuluscsi_timings.scsi_10.delay0; // 4;
-                delay1 = g_zuluscsi_timings.scsi_10.delay1; // 6;
+                totalDelay += g_zuluscsi_timings->scsi_10.total_delay_adjust;
+                delay0 = g_zuluscsi_timings->scsi_10.delay0; // 4;
+                delay1 = g_zuluscsi_timings->scsi_10.delay1; // 6;
                 delay2 = totalDelay - delay0 - delay1 - 3;
                 if (delay2 < 0) delay2 = 0;
                 if (delay2 > 15) delay2 = 15;
             }
             else
             {
-                // \TODO set RP23XX timings here
-
                 // Slow SCSI timing: 90 ns assertion period, 55 ns skew delay
-                totalDelay += g_zuluscsi_timings.scsi_5.total_delay_adjust;
-                delay0 = g_zuluscsi_timings.scsi_5.delay0;
-                delay1 = g_zuluscsi_timings.scsi_5.delay1;
+                totalDelay += g_zuluscsi_timings->scsi_5.total_delay_adjust;
+                delay0 = g_zuluscsi_timings->scsi_5.delay0;
+                delay1 = g_zuluscsi_timings->scsi_5.delay1;
                 delay2 = totalDelay - delay0 - delay1 - 3;
                 if (delay2 < 0) delay2 = 0;
                 if (delay2 > 15) delay2 = 15;
