@@ -27,33 +27,13 @@
 #include <gd32f20x.h>
 #include <gd32f20x_gpio.h>
 #include <scsi2sd.h>
+#include <ZuluSCSI_config.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 extern const char *g_platform_name;
-
-#if defined(ZULUSCSI_V1_0)
-#   if defined(ZULUSCSI_V1_0_mini)
-#       define PLATFORM_NAME "ZuluSCSI mini v1.0"
-#   else
-#       define PLATFORM_NAME "ZuluSCSI v1.0"
-#   endif
-#   define PLATFORM_REVISION "1.0"
-#   define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_ASYNC_50
-#   include "ZuluSCSI_v1_0_gpio.h"
-#else
-#   define PLATFORM_NAME "ZuluSCSI v1.1+"
-#   define PLATFORM_REVISION "1.1+"
-#   define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_10
-#   define PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE 4096
-#   define PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE 65536
-#   define PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE 8192
-#   define PLATFORM_VERSION_1_1_PLUS
-#   define ZULUSCSI_HARDWARE_CONFIG
-#   include "ZuluSCSI_v1_1_gpio.h"
-#endif
 
 #include "platform_hw_config.h"
 
@@ -68,12 +48,6 @@ enum ZuluSCSIVersion_t
 
 extern enum ZuluSCSIVersion_t g_zuluscsi_version;
 extern bool g_moved_select_in;
-
-#ifndef PLATFORM_VDD_WARNING_LIMIT_mV
-#define PLATFORM_VDD_WARNING_LIMIT_mV 2800
-#endif
-
-#define PLATFORM_DEFAULT_SCSI_SPEED_SETTING 10
 
 // Debug logging functions
 void platform_log(const char *s);
@@ -128,14 +102,11 @@ void platform_poll();
 // This function should return without significantly delay.
 uint8_t platform_get_buttons();
 
+// Return system clock in Hz
+uint32_t platform_sys_clock_in_hz();
+
 // Attempt to reclock the MCU - unsupported
-typedef enum
-{
-    ZULUSCSI_RECLOCK_SUCCESS,
-    ZULUSCSI_RECLOCK_NOT_SUPPORTED,
-    ZULUSCSI_RECLOCK_FAILED
-} zuluscsi_reclock_status_t;
-zuluscsi_reclock_status_t platform_reclock(uint32_t clk_in_khz){return ZULUSCSI_RECLOCK_NOT_SUPPORTED;}
+inline zuluscsi_reclock_status_t platform_reclock(uint32_t clk_in_khz){return ZULUSCSI_RECLOCK_NOT_SUPPORTED;}
 
 
 // Reinitialize SD card connection and save log from interrupt context.

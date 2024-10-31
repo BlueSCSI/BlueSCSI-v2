@@ -18,15 +18,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
-#ifndef ZULUSCSI_RP2MCU_TIMINGS_H
-#define ZULUSCSI_RP2MCU_TIMINGS_H
+#ifndef ZULUSCSI_TIMINGS_RP2MCU_H
+#define ZULUSCSI_TIMINGS_RP2MCU_H
 #include <stdint.h>
 #include <stdbool.h>
-typedef enum
-{
-    ZULUSCSI_PIO_TARGET_MODE_SIMPLE,
-    ZULUSCSI_PIO_TARGET_MODE_EXTRA_DELAY,
-} zuluscsi_pio_target_mode_t;
 
 typedef struct
 {
@@ -63,7 +58,6 @@ typedef struct
     // Max sync - the minimum sync period ("max" clock rate) that is supported at this clock rate, the number is 1/4 the actual value in ns
     struct
     {
-        zuluscsi_pio_target_mode_t mode;
         uint8_t delay0;
         uint8_t delay1;
         int16_t total_delay_adjust;
@@ -72,7 +66,6 @@ typedef struct
 
     struct
     {
-        zuluscsi_pio_target_mode_t mode;
         uint8_t delay0;
         uint8_t delay1;
         int16_t total_delay_adjust;
@@ -81,7 +74,6 @@ typedef struct
 
     struct
     {
-        zuluscsi_pio_target_mode_t mode;
         uint8_t delay0;
         uint8_t delay1;
         int16_t total_delay_adjust;
@@ -111,4 +103,4 @@ typedef struct
 extern  zuluscsi_timings_t *g_zuluscsi_timings;
 
 bool set_timings(uint32_t target_clk_in_khz);
-#endif // ZULUSCSI_RP2MCU_TIMINGS_H
+#endif // ZULUSCSI_TIMINGS_RP2MCU_H

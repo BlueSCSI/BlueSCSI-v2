@@ -28,7 +28,7 @@
 
 #include "ZuluSCSI_log.h"
 #include "sdio.h"
-#include "timings.h"
+#include "timings_RP2MCU.h"
 #include <hardware/gpio.h>
 #include <SdFat.h>
 #include <SdCard/SdCardInfo.h>

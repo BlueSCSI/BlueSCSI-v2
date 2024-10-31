@@ -31,6 +31,7 @@
 #include "ZuluSCSI_cdrom.h"
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_config.h"
+#include "ZuluSCSI_platform.h"
 #include "ZuluSCSI_settings.h"
 #include <CUEParser.h>
 #include <assert.h>

@@ -28,7 +28,7 @@
 #include "led.h"
 #include "mode.h"
 #include "scsi2sd_time.h"
-#include "scsi2sd_timings.h"
+#include "timings.h"
 #include "bsp.h"
 #include "cdrom.h"
 #include "network.h"

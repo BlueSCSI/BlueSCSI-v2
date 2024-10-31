@@ -21,7 +21,6 @@
 
 #include "ZuluSCSI_platform.h"
 #include "ZuluSCSI_log.h"
-#include "ZuluSCSI_config.h"
 #include <SdFat.h>
 #include <scsi.h>
 #include <assert.h>
@@ -58,7 +57,7 @@ extern "C" {
 extern bool g_rawdrive_active;
 
 extern "C" {
-#include "timings.h"
+#include "timings_RP2MCU.h"
 const char *g_platform_name = PLATFORM_NAME;
 static bool g_scsi_initiator = false;
 static uint32_t g_flash_chip_size = 0;
@@ -82,37 +81,10 @@ static void gpio_conf(uint gpio, gpio_function_t fn, bool pullup, bool pulldown,
     }
 }
 
-// \todo setup up timing for audio
-#ifdef ENABLE_AUDIO_OUTPUT
-// Increases clk_sys and clk_peri to 135.428571MHz at runtime to support
-// division to audio output rates. Invoke before anything is using clk_peri
-// except for the logging UART, which is handled below.
-    // reset PLL for 135.428571MHz
-    pll_init(pll_sys, 1, 948000000, 7, 1);
-    // switch clocks back to pll_sys
-    clock_configure(clk_sys,
-            CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
-            CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
-            135428571,
-            135428571);
-    clock_configure(clk_peri,
-            0,
-            CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
-            135428571,
-            135428571);
-
-#endif
-
-
 static void reclock() {
-    gpio_set_drive_strength(SDIO_CLK,  GPIO_DRIVE_STRENGTH_12MA);
-    gpio_set_drive_strength(SDIO_CMD,  GPIO_DRIVE_STRENGTH_12MA);
-    gpio_set_drive_strength(SDIO_D0,  GPIO_DRIVE_STRENGTH_12MA);
-    gpio_set_drive_strength(SDIO_D1,  GPIO_DRIVE_STRENGTH_12MA);
-    gpio_set_drive_strength(SDIO_D2,  GPIO_DRIVE_STRENGTH_12MA);
-    gpio_set_drive_strength(SDIO_D3,  GPIO_DRIVE_STRENGTH_12MA);
     // ensure UART is fully drained before we mess up its clock
-    uart_tx_wait_blocking(uart0);
+    if (uart_is_enabled(uart0))
+        uart_tx_wait_blocking(uart0);
     // switch clk_sys and clk_peri to pll_usb
     // see code in 2.15.6.1 of the datasheet for useful comments
     clock_configure(clk_sys,
@@ -144,14 +116,22 @@ static void reclock() {
             g_zuluscsi_timings->clk_hz,
             g_zuluscsi_timings->clk_hz);
     // reset UART for the new clock speed
-    uart_init(uart0, 1000000);
+    if (uart_is_enabled(uart0))
+        uart_init(uart0, 1000000);
+}
+
+uint32_t platform_sys_clock_in_hz()
+{
+    return clock_get_hz(clk_sys);
 }
 
 zuluscsi_reclock_status_t platform_reclock(uint32_t clock_in_khz)
 {
     if (set_timings(clock_in_khz))
     {
+        logmsg("Initial Clock set to ", (int) platform_sys_clock_in_hz(), "Hz");
         reclock();
+        logmsg("SDIO clock set to ", (int)((g_zuluscsi_timings->clk_hz / g_zuluscsi_timings->sdio.clk_div_pio + (5 * MHZ / 10)) / MHZ) , "MHz");
         return ZULUSCSI_RECLOCK_SUCCESS;
     }
     return ZULUSCSI_RECLOCK_FAILED;
@@ -285,8 +265,14 @@ void platform_init()
 
 #ifdef ENABLE_AUDIO_OUTPUT
     logmsg("SP/DIF audio to expansion header enabled");
-    logmsg("-- Overclocking to 135.428571MHz");
-    reclock_for_audio();
+    if (platform_reclock(135428) == ZULUSCSI_RECLOCK_SUCCESS)
+    {
+        logmsg("Reclocked for Audio Ouput at ", (int) platform_sys_clock_in_hz(), "Hz");
+    }
+    else
+    {
+        logmsg("Audio Output timings not found");
+    }
 #endif // ENABLE_AUDIO_OUTPUT
 
     // Get flash chip size

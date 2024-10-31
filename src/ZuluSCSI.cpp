@@ -619,7 +619,7 @@ bool findHDDImages()
       logmsg("Eject set to device with ID: ", last_removable_device);
     else if (eject_btn_set == 0)
     {
-      logmsg("Found 1 removable device, to set an eject button see EjectButton in the, '", CONFIGFILE,"', or the http://zuluscsi.com/manual");
+      logmsg("Found 1 removable device, to set an eject button see EjectButton in the '", CONFIGFILE,"', or the http://zuluscsi.com/manual");
     } 
   }
   else if (removable_count > 1)
@@ -642,7 +642,7 @@ bool findHDDImages()
     }
     else
     {
-      logmsg("Multiple removable devices, to set an eject button see EjectButton in the, '", CONFIGFILE,"', or the http://zuluscsi.com/manual");
+      logmsg("Multiple removable devices, to set an eject button see EjectButton in the '", CONFIGFILE,"', or the http://zuluscsi.com/manual");
     }
   }
   return foundImage;
@@ -932,7 +932,7 @@ extern "C" void zuluscsi_setup(void)
     }
   }
 #endif
-
+  logmsg("Clock set to: ", (int) platform_sys_clock_in_hz(), "Hz");
   logmsg("Initialization complete!");
 }
 

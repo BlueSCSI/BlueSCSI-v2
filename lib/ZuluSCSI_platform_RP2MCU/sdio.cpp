@@ -37,7 +37,7 @@
 #include <hardware/structs/scb.h>
 #include <ZuluSCSI_platform.h>
 #include <ZuluSCSI_log.h>
-#include "timings.h"
+#include "timings_RP2MCU.h"
 
 # include "sdio_RP2MCU.pio.h"
 

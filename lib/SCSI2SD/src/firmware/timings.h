@@ -18,10 +18,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
-#ifndef ZULUSCSI_PLATFORM_TIMINGS_H
-#define ZULUSCSI_PLATFORM_TIMINGS_H
+#ifndef ZULUSCSI_SCSI2SD_TIMINGS_H
+#define ZULUSCSI_SCSI2SD_TIMINGS_H
 #include <stdint.h>
 extern uint8_t g_max_sync_20_period;
 extern uint8_t g_max_sync_10_period;
 extern uint8_t g_max_sync_5_period;
-#endif // ZULUSCSI_RP2MCU_TIMINGS_H
+#endif // ZULUSCSI_SCSI2SD_TIMINGS_H
