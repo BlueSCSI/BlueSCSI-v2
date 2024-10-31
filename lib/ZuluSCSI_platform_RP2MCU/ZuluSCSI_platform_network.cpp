@@ -14,6 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #ifdef ZULUSCSI_NETWORK
+#include <Arduino.h>
 #include "ZuluSCSI_platform_network.h"
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_config.h"
@@ -24,6 +25,7 @@ extern "C" {
 
 #include <cyw43.h>
 #include <pico/cyw43_arch.h>
+#include <pico/unique_id.h>
 
 #ifndef CYW43_IOCTL_GET_RSSI
 #define CYW43_IOCTL_GET_RSSI (0xfe)

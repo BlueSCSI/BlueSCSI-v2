@@ -25,10 +25,10 @@
 
 #pragma once
 
-#include <ZuluSCSI_platform.h>
+#include <ZuluSCSI_platform_config.h>
 
 // Use variables for version number
-#define FW_VER_NUM      "24.10.28"
+#define FW_VER_NUM      "24.10.31"
 #define FW_VER_SUFFIX   "devel"
 
 #define ZULU_FW_VERSION FW_VER_NUM "-" FW_VER_SUFFIX
@@ -124,3 +124,11 @@
 // Zip disk  media sizes
 #define ZIP100_DISK_SIZE    100663296 // bytes
 #define ZIP250_DISK_SIZE    250640384 // bytes
+
+// Reclocking return status
+typedef enum
+{
+    ZULUSCSI_RECLOCK_SUCCESS,
+    ZULUSCSI_RECLOCK_NOT_SUPPORTED,
+    ZULUSCSI_RECLOCK_FAILED
+} zuluscsi_reclock_status_t;

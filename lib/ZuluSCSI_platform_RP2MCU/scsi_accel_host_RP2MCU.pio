@@ -24,9 +24,9 @@
 ; - 0-7: DB0-DB7
 ; -   8: DBP
 ; Side set is ACK pin
-
-.define REQ 17
-.define ACK 26
+; REQ is a dummy value, set by via pico-sdk encode functions
+.define REQ 9
+.define ACK 10
 
 ; Read from SCSI bus using asynchronous handshake.
 ; Data is returned as 16-bit words that contain the 8 data bits + 1 parity bit.

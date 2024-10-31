@@ -137,6 +137,12 @@ void SysTick_Handle_PreEmptively()
     __enable_irq();
 }
 
+uint32_t platform_sys_clock_in_hz()
+{
+    return rcu_clock_freq_get(CK_SYS);
+}
+
+
 /***************/
 /* GPIO init   */
 /***************/

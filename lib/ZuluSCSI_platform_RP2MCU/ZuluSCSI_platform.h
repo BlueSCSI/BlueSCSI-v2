@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 #include <Arduino.h>
+#include "ZuluSCSI_config.h"
 #include "ZuluSCSI_platform_network.h"
 
 #ifdef ZULUSCSI_PICO
@@ -53,58 +54,6 @@ extern "C" {
 
 /* These are used in debug output and default SCSI strings */
 extern const char *g_platform_name;
-
-#ifdef ZULUSCSI_PICO
-# ifdef ZULUSCSI_DAYNAPORT
-#   define PLATFORM_NAME "ZuluSCSI Pico DaynaPORT"
-# else
-#   define PLATFORM_NAME "ZuluSCSI Pico"
-# endif
-# define PLATFORM_PID "Pico"
-# define PLATFORM_REVISION "2.0"
-# define PLATFORM_HAS_INITIATOR_MODE 1
-# define DISABLE_SWO
-# define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_20
-# define PLATFORM_DEFAULT_SCSI_SPEED_SETTING 10
-#elif defined(ZULUSCSI_PICO_2)
-# define PLATFORM_NAME "ZuluSCSI Pico 2"
-# define PLATFORM_PID "Pico 2"
-# define PLATFORM_REVISION "2.0"
-# define PLATFORM_HAS_INITIATOR_MODE 1
-# define DISABLE_SWO
-# define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_20
-# define PLATFORM_DEFAULT_SCSI_SPEED_SETTING 20
-#elif defined(ZULUSCSI_RP2350A)
-# define PLATFORM_NAME "ZuluSCSI RP2350A"
-# define PLATFORM_PID "RP2350A"
-# define PLATFORM_REVISION "2.0"
-# define PLATFORM_HAS_INITIATOR_MODE 1
-# define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_20
-# define PLATFORM_DEFAULT_SCSI_SPEED_SETTING 20
-#elif defined(ZULUSCSI_BS2)
-# define PLATFORM_NAME "ZuluSCSI BS2"
-# define PLATFORM_PID "BS2"
-# define PLATFORM_REVISION "1.0"
-# define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_20
-# define PLATFORM_DEFAULT_SCSI_SPEED_SETTING 10
-#else
-# define PLATFORM_NAME "ZuluSCSI RP2040"
-# define PLATFORM_PID "RP2040"
-# define PLATFORM_REVISION "2.0"
-# define PLATFORM_HAS_INITIATOR_MODE 1
-# define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_20
-# define PLATFORM_DEFAULT_SCSI_SPEED_SETTING 10
-#endif
-
-#define PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE 32768
-#define PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE 65536
-#define PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE 8192
-#define SD_USE_SDIO 1
-#define PLATFORM_HAS_PARITY_CHECK 1
-
-#ifndef PLATFORM_VDD_WARNING_LIMIT_mV
-#define PLATFORM_VDD_WARNING_LIMIT_mV 2800
-#endif
 
 // NOTE: The driver supports synchronous speeds higher than 10MB/s, but this
 // has not been tested due to lack of fast enough SCSI adapter.
@@ -162,13 +111,9 @@ void platform_poll();
 // This function should return without significantly delay.
 uint8_t platform_get_buttons();
 
+uint32_t platform_sys_clock_in_hz();
+
 // Attempt to reclock the MCU
-typedef enum
-{
-    ZULUSCSI_RECLOCK_SUCCESS,
-    ZULUSCSI_RECLOCK_NOT_SUPPORTED,
-    ZULUSCSI_RECLOCK_FAILED
-} zuluscsi_reclock_status_t;
 zuluscsi_reclock_status_t platform_reclock(uint32_t clk_in_khz);
 
 // Set callback that will be called during data transfer to/from SD card.

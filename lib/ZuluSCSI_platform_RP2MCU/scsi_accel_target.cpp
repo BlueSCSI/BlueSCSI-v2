@@ -33,7 +33,7 @@
 #include "ZuluSCSI_platform.h"
 #include "ZuluSCSI_log.h"
 #include "scsi_accel_target.h"
-#include "timings.h"
+#include "timings_RP2MCU.h"
 #include <hardware/pio.h>
 #include <hardware/dma.h>
 #include <hardware/irq.h>
