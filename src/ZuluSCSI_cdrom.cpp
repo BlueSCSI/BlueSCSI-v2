@@ -463,26 +463,85 @@ void doReadTrackInformationSimple(bool track, uint32_t lba, uint16_t allocationL
 /* TOC generation from cue sheet */
 /*********************************/
 
-// Fetch track info based on LBA
-static void getTrackFromLBA(CUEParser &parser, uint32_t lba, CUETrackInfo *result)
-{
-    // Track info in case we have no .cue file
-    result->file_mode = CUEFile_BINARY;
-    result->track_mode = CUETrack_MODE1_2048;
-    result->sector_length = 2048;
-    result->track_number = 1;
+static bool loadCueSheet(image_config_t &img, CUEParser &parser);
 
-    const CUETrackInfo *tmptrack;
-    while ((tmptrack = parser.next_track()) != NULL)
+// Switch BIN file if the CUE sheet uses multiple separate BIN files in a folder.
+// Otherwise does nothing.
+static bool cdromSelectBinFileForTrack(image_config_t &img, const CUETrackInfo *track)
+{
+    if (track->filename[0] == '\0' || !img.file.isFolder())
     {
-        if (tmptrack->track_start <= lba)
+        // Using a single image, no need to switch anything.
+        return true;
+    }
+    else if (img.cdrom_binfile_index == track->file_index)
+    {
+        // Haven't switched files
+        return true;
+    }
+
+    img.cdrom_binfile_index = track->file_index;
+    bool open_ok = img.file.selectImageFile(track->filename);
+
+    if (!open_ok)
+    {
+        logmsg("CUE sheet specified track file '", track->filename, "' not found");
+    }
+
+    return open_ok;
+}
+
+// Fetch track info based on LBA
+// Returns with the requested track already selected for bin file
+static void getTrackFromLBA(image_config_t &img, uint32_t lba, CUETrackInfo *result, CUEParser *parser = nullptr)
+{
+    if (!img.cuesheetfile.isOpen())
+    {
+        // Track info in case we have no .cue file
+        result->file_mode = CUEFile_BINARY;
+        result->track_mode = CUETrack_MODE1_2048;
+        result->sector_length = 2048;
+        result->track_number = 1;
+    }
+    else if (img.cdrom_binfile_index == img.cdrom_trackinfo.file_index &&
+             lba >= img.cdrom_trackinfo.track_start &&
+             lba < img.cdrom_trackinfo.data_start + img.file.size() / img.cdrom_trackinfo.sector_length)
+    {
+        // Same track as previous time
+        *result = img.cdrom_trackinfo;
+    }
+    else
+    {
+        // We can use either temporary parser or parser provided by caller
+        CUEParser tmp_parser;
+        if (!parser)
         {
-            *result = *tmptrack;
+            loadCueSheet(img, tmp_parser);
+            parser = &tmp_parser;
         }
         else
         {
-            break;
+            parser->restart();
         }
+
+        const CUETrackInfo *tmptrack;
+        uint64_t prev_capacity = 0;
+        while ((tmptrack = parser->next_track(prev_capacity)) != NULL)
+        {
+            if (tmptrack->track_start <= lba)
+            {
+                *result = *tmptrack;
+            }
+            else
+            {
+                break;
+            }
+
+            cdromSelectBinFileForTrack(img, tmptrack);
+            prev_capacity = img.file.size();
+        }
+
+        img.cdrom_trackinfo = *result;
     }
 }
 
@@ -560,7 +619,8 @@ static void doReadTOC(bool MSF, uint8_t track, uint16_t allocationLength)
     int firsttrack = -1;
     CUETrackInfo lasttrack = {0};
     const CUETrackInfo *trackinfo;
-    while ((trackinfo = parser.next_track()) != NULL)
+    uint64_t prev_capacity = 0;
+    while ((trackinfo = parser.next_track(prev_capacity)) != NULL)
     {
         if (firsttrack < 0) firsttrack = trackinfo->track_number;
         lasttrack = *trackinfo;
@@ -570,6 +630,9 @@ static void doReadTOC(bool MSF, uint8_t track, uint16_t allocationLength)
             formatTrackInfo(trackinfo, &trackdata[8 * trackcount], MSF);
             trackcount += 1;
         }
+
+        cdromSelectBinFileForTrack(img, trackinfo);
+        prev_capacity = img.file.size();
     }
 
     // Format lead-out track info
@@ -698,7 +761,8 @@ static void doReadFullTOC(uint8_t session, uint16_t allocationLength, bool useBC
     int firsttrack = -1;
     CUETrackInfo lasttrack = {0};
     const CUETrackInfo *trackinfo;
-    while ((trackinfo = parser.next_track()) != NULL)
+    uint64_t prev_capacity = 0;
+    while ((trackinfo = parser.next_track(prev_capacity)) != NULL)
     {
         if (firsttrack < 0)
         {
@@ -713,6 +777,9 @@ static void doReadFullTOC(uint8_t session, uint16_t allocationLength, bool useBC
         formatRawTrackInfo(trackinfo, &scsiDev.data[len], useBCD);
         trackcount += 1;
         len += 11;
+
+        cdromSelectBinFileForTrack(img, trackinfo);
+        prev_capacity = img.file.size();
     }
 
     // First and last track numbers
@@ -762,12 +829,11 @@ void doReadHeader(bool MSF, uint32_t lba, uint16_t allocationLength)
 #endif
 
     uint8_t mode = 1;
-    CUEParser parser;
-    if (loadCueSheet(img, parser))
+    if (img.cuesheetfile.isOpen())
     {
         // Search the track with the requested LBA
         CUETrackInfo trackinfo = {};
-        getTrackFromLBA(parser, lba, &trackinfo);
+        getTrackFromLBA(img, lba, &trackinfo);
 
         // Track mode (audio / data)
         if (trackinfo.track_mode == CUETrack_AUDIO)
@@ -860,7 +926,8 @@ void doReadTrackInformation(bool track, uint32_t lba, uint16_t allocationLength)
     uint32_t tracklen = 0;
     CUETrackInfo mtrack = {0};
     const CUETrackInfo *trackinfo;
-    while ((trackinfo = parser.next_track()) != NULL)
+    uint64_t prev_capacity = 0;
+    while ((trackinfo = parser.next_track(prev_capacity)) != NULL)
     {
         if (mtrack.track_number != 0) // skip 1st track, just store later
         {
@@ -873,6 +940,9 @@ void doReadTrackInformation(bool track, uint32_t lba, uint16_t allocationLength)
             }
         }
         mtrack = *trackinfo;
+
+        cdromSelectBinFileForTrack(img, trackinfo);
+        prev_capacity = img.file.size();
     }
     // try the last track as a final attempt if no match found beforehand
     if (!trackfound)
@@ -1127,7 +1197,8 @@ bool cdromValidateCueSheet(image_config_t &img)
 
     const CUETrackInfo *trackinfo;
     int trackcount = 0;
-    while ((trackinfo = parser.next_track()) != NULL)
+    uint64_t prev_capacity = 0;
+    while ((trackinfo = parser.next_track(prev_capacity)) != NULL)
     {
         trackcount++;
 
@@ -1142,6 +1213,14 @@ bool cdromValidateCueSheet(image_config_t &img)
         {
             logmsg("---- Unsupported CUE data file mode ", (int)trackinfo->file_mode);
         }
+
+        // Check that the bin file is available
+        if (!cdromSelectBinFileForTrack(img, trackinfo))
+        {
+            return false;
+        }
+
+        prev_capacity = img.file.size();
     }
 
     if (trackcount == 0)
@@ -1309,11 +1388,10 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
     }
 
     // if actual playback is requested perform steps to verify prior to playback
-    CUEParser parser;
-    if (loadCueSheet(img, parser))
+    if (img.cuesheetfile.isOpen())
     {
         CUETrackInfo trackinfo = {};
-        getTrackFromLBA(parser, lba, &trackinfo);
+        getTrackFromLBA(img, lba, &trackinfo);
 
         if (lba == 0xFFFFFFFF)
         {
@@ -1450,8 +1528,7 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
     audio_stop(img.scsiId & 7);
 #endif
 
-    CUEParser parser;
-    if (!loadCueSheet(img, parser)
+    if (!img.cuesheetfile.isOpen()
         && (sector_type == 0 || sector_type == 2)
         && main_channel == 0x10 && sub_channel == 0)
     {
@@ -1463,10 +1540,10 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
     // Search the track with the requested LBA
     // Supplies dummy data if no cue sheet is active.
     CUETrackInfo trackinfo = {};
-    getTrackFromLBA(parser, lba, &trackinfo);
+    getTrackFromLBA(img, lba, &trackinfo);
 
     // Figure out the data offset in the file
-    uint64_t offset;
+    int64_t offset;
     if (sector_type == SECTOR_TYPE_VENDOR_PLEXTOR &&
          g_scsi_settings.getDevice(img.scsiId & 0x7)->vendorExtensions & VENDOR_EXTENSION_OPTICAL_PLEXTOR)
     {
@@ -1484,7 +1561,7 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
 
         trackinfo.sector_length = AUDIO_CD_SECTOR_LEN;
         trackinfo.track_mode = CUETrack_AUDIO;
-        offset = (uint64_t)(lba - 2) * trackinfo.sector_length;
+        offset = ((int64_t)lba - 2 - trackinfo.file_start) * trackinfo.sector_length;
         dbgmsg("------ Read CD Vendor Plextor (0xd8): ", (int)length, " sectors starting at ", (int)lba -2,
                ", sector size ", (int) AUDIO_CD_SECTOR_LEN,
                ", data offset in file ", (int)offset);
@@ -1493,30 +1570,48 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
     {
         trackinfo.sector_length = AUDIO_CD_SECTOR_LEN;
         trackinfo.track_mode = CUETrack_AUDIO;
-        offset = (uint64_t)(lba) * trackinfo.sector_length;
+        offset = ((int64_t)lba - trackinfo.file_start) * trackinfo.sector_length;
         dbgmsg("------ Read CD Vendor Apple CDROM 300 plus (0xd8): ", (int)length, " sectors starting at ", (int)lba,
                ", sector size ", (int) AUDIO_CD_SECTOR_LEN,
                ", data offset in file ", (int)offset);
     }
     else
     {
-        offset = trackinfo.file_offset + trackinfo.sector_length * (lba - trackinfo.data_start);
+        offset = trackinfo.file_offset + trackinfo.sector_length * ((int64_t)lba - trackinfo.data_start);
         dbgmsg("------ Read CD: ", (int)length, " sectors starting at ", (int)lba,
             ", track number ", trackinfo.track_number, ", sector size ", (int)trackinfo.sector_length,
             ", main channel ", main_channel, ", sub channel ", sub_channel,
             ", data offset in file ", (int)offset);
     }
+
     // Ensure read is not out of range of the image
+    uint32_t total_length = length;
     uint64_t readend = offset + trackinfo.sector_length * length;
-    if (readend > img.file.size())
+    if (offset < 0 && -offset > trackinfo.unstored_pregap_length * trackinfo.sector_length)
     {
-        logmsg("WARNING: Host attempted CD read at sector ", lba, "+", length,
+        // It doesn't really matter what data we give for the unstored pregap
+        offset = 0;
+    }
+    else if (readend > img.file.size())
+    {
+        uint32_t sectors_available = (img.file.size() - offset) / trackinfo.sector_length;
+        if (!img.file.isFolder() || sectors_available == 0)
+        {
+            // This is really past the end of the CD
+            logmsg("WARNING: Host attempted CD read at sector ", lba, "+", length,
               ", exceeding image size ", img.file.size());
-        scsiDev.status = CHECK_CONDITION;
-        scsiDev.target->sense.code = ILLEGAL_REQUEST;
-        scsiDev.target->sense.asc = LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
-        scsiDev.phase = STATUS;
-        return;
+            scsiDev.status = CHECK_CONDITION;
+            scsiDev.target->sense.code = ILLEGAL_REQUEST;
+            scsiDev.target->sense.asc = LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
+            scsiDev.phase = STATUS;
+            return;
+        }
+        else
+        {
+            // Read as much as we can and continue with next file
+            dbgmsg("------ Splitting read request at image file end");
+            length = sectors_available;
+        }
     }
 
     // Verify sector type
@@ -1731,6 +1826,14 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
 
     scsiFinishWrite();
 
+    if (length != total_length)
+    {
+        // This read request was split across multiple .bin files
+        // Tail recurse to read the next track.
+        doReadCD(lba + length, total_length - length, sector_type, main_channel, sub_channel, data_only);
+        return;
+    }
+
     scsiDev.status = 0;
     scsiDev.phase = STATUS;
 }
@@ -1748,10 +1851,8 @@ static void doReadSubchannel(bool time, bool subq, uint8_t parameter, uint8_t tr
 
         // Fetch current track info
         image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-        CUEParser parser;
         CUETrackInfo trackinfo = {};
-        loadCueSheet(img, parser);
-        getTrackFromLBA(parser, lba, &trackinfo);
+        getTrackFromLBA(img, lba, &trackinfo);
 
         // Request sub channel data at current playback position
         *buf++ = 0; // Reserved
@@ -1837,9 +1938,12 @@ static bool doReadCapacity(uint32_t lba, uint8_t pmi)
     // find the last track on the disk
     CUETrackInfo lasttrack = {0};
     const CUETrackInfo *trackinfo;
-    while ((trackinfo = parser.next_track()) != NULL)
+    uint64_t prev_capacity = 0;
+    while ((trackinfo = parser.next_track(prev_capacity)) != NULL)
     {
         lasttrack = *trackinfo;
+        cdromSelectBinFileForTrack(img, trackinfo);
+        prev_capacity = img.file.size();
     }
 
     uint32_t capacity = 0;
