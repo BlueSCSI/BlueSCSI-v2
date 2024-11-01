@@ -104,25 +104,25 @@ void ZuluSCSISettings::setDefaultDriveInfo(uint8_t scsiId, const char *presetNam
     
 
 
-    static const char *driveinfo_fixed[4]     = DRIVEINFO_FIXED;
-    static const char *driveinfo_removable[4] = DRIVEINFO_REMOVABLE;
-    static const char *driveinfo_optical[4]   = DRIVEINFO_OPTICAL;
-    static const char *driveinfo_floppy[4]    = DRIVEINFO_FLOPPY;
-    static const char *driveinfo_magopt[4]    = DRIVEINFO_MAGOPT;
-    static const char *driveinfo_network[4]   = DRIVEINFO_NETWORK;
-    static const char *driveinfo_tape[4]      = DRIVEINFO_TAPE;
+    static const char * const driveinfo_fixed[4]     = DRIVEINFO_FIXED;
+    static const char * const driveinfo_removable[4] = DRIVEINFO_REMOVABLE;
+    static const char * const driveinfo_optical[4]   = DRIVEINFO_OPTICAL;
+    static const char * const driveinfo_floppy[4]    = DRIVEINFO_FLOPPY;
+    static const char * const driveinfo_magopt[4]    = DRIVEINFO_MAGOPT;
+    static const char * const driveinfo_network[4]   = DRIVEINFO_NETWORK;
+    static const char * const driveinfo_tape[4]      = DRIVEINFO_TAPE;
 
-    static const char *apl_driveinfo_fixed[4]     = APPLE_DRIVEINFO_FIXED;
-    static const char *apl_driveinfo_removable[4] = APPLE_DRIVEINFO_REMOVABLE;
-    static const char *apl_driveinfo_optical[4]   = APPLE_DRIVEINFO_OPTICAL;
-    static const char *apl_driveinfo_floppy[4]    = APPLE_DRIVEINFO_FLOPPY;
-    static const char *apl_driveinfo_magopt[4]    = APPLE_DRIVEINFO_MAGOPT;
-    static const char *apl_driveinfo_network[4]   = APPLE_DRIVEINFO_NETWORK;
-    static const char *apl_driveinfo_tape[4]      = APPLE_DRIVEINFO_TAPE;
+    static const char * const apl_driveinfo_fixed[4]     = APPLE_DRIVEINFO_FIXED;
+    static const char * const apl_driveinfo_removable[4] = APPLE_DRIVEINFO_REMOVABLE;
+    static const char * const apl_driveinfo_optical[4]   = APPLE_DRIVEINFO_OPTICAL;
+    static const char * const apl_driveinfo_floppy[4]    = APPLE_DRIVEINFO_FLOPPY;
+    static const char * const apl_driveinfo_magopt[4]    = APPLE_DRIVEINFO_MAGOPT;
+    static const char * const apl_driveinfo_network[4]   = APPLE_DRIVEINFO_NETWORK;
+    static const char * const apl_driveinfo_tape[4]      = APPLE_DRIVEINFO_TAPE;
 
-    static const char *iomega_driveinfo_removeable[4] = IOMEGA_DRIVEINFO_ZIP100;
+    static const char * const iomega_driveinfo_removeable[4] = IOMEGA_DRIVEINFO_ZIP100;
     
-    const char **driveinfo = NULL;
+    const char * const * driveinfo = NULL;
     bool known_preset = false;
     scsi_system_settings_t& cfgSys = m_sys;
 

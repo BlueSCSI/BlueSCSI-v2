@@ -34,6 +34,7 @@
 #include <scsiPhy.h>
 #include "ImageBackingStore.h"
 #include "ZuluSCSI_config.h"
+#include <CUEParser.h>
 
 extern "C" {
 #include <disk.h>
@@ -74,6 +75,13 @@ struct image_config_t: public S2S_TargetCfg
     // This is also used for dynamic directories to track how many images have been seen
     // Negative value forces restart from first image.
     int image_index;
+
+    // Previously accessed CD-ROM track, cached for performance
+    CUETrackInfo cdrom_trackinfo;
+
+    // Loaded .bin file index for .cue/.bin with multiple files
+    // Matches trackinfo.file_index
+    int cdrom_binfile_index;
 
     // Cue sheet file for CD-ROM images
     FsFile cuesheetfile;
@@ -123,6 +131,10 @@ void scsiDiskLoadConfig(int target_idx);
 // Checks if a filename extension is appropriate for further processing as a disk image.
 // The current implementation does not check the the filename prefix for validity.
 bool scsiDiskFilenameValid(const char* name);
+
+// Check if a directory contains a .cue sheet file.
+// This is used when single .cue sheet references multiple .bin files.
+bool scsiDiskFolderContainsCueSheet(FsFile *dir);
 
 // Clear the ROM drive header from flash
 bool scsiDiskClearRomDrive();
