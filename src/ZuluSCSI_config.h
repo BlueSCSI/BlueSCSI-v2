@@ -1,21 +1,21 @@
-/** 
+/**
  * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
  * Portions copyright (c) 2023 joshua stein <jcs@jcs.org>
- * 
- * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
- * 
+ *
+ * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version.
+ *
  * https://www.gnu.org/licenses/gpl-3.0.html
  * ----
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version. 
- * 
+ * (at your option) any later version.
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details. 
- * 
+ * GNU General Public License for more details.
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
@@ -124,6 +124,9 @@
 // Zip disk  media sizes
 #define ZIP100_DISK_SIZE    100663296 // bytes
 #define ZIP250_DISK_SIZE    250640384 // bytes
+
+// Settings for rebooting
+#define REBOOT_INTO_MASS_STORAGE_MAGIC_NUM 0x5eeded
 
 // Reclocking return status
 typedef enum

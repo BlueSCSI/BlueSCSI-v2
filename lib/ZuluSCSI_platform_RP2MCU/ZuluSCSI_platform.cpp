@@ -1,20 +1,20 @@
-/** 
+/**
  * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
- * 
- * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
- * 
+ *
+ * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version.
+ *
  * https://www.gnu.org/licenses/gpl-3.0.html
  * ----
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version. 
- * 
+ * (at your option) any later version.
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details. 
- * 
+ * GNU General Public License for more details.
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
@@ -48,7 +48,7 @@
 #ifdef ZULUSCSI_NETWORK
 extern "C" {
 #  include <pico/cyw43_arch.h>
-} 
+}
 #endif // ZULUSCSI_NETWORK
 
 #ifdef ENABLE_AUDIO_OUTPUT
@@ -153,6 +153,17 @@ zuluscsi_reclock_status_t platform_reclock(uint32_t clock_in_khz)
     return ZULUSCSI_RECLOCK_FAILED;
 }
 
+bool platform_rebooted_into_mass_storage()
+{
+    volatile uint32_t* scratch0 = (uint32_t *)(WATCHDOG_BASE + WATCHDOG_SCRATCH0_OFFSET);
+    if (*scratch0 == REBOOT_INTO_MASS_STORAGE_MAGIC_NUM)
+    {
+        *scratch0 = 0;
+        return true;
+    }
+    return false;
+}
+
 #ifdef HAS_DIP_SWITCHES
 enum pin_setup_state_t  {SETUP_FALSE, SETUP_TRUE, SETUP_UNDETERMINED};
 static pin_setup_state_t read_setup_ack_pin()
@@ -160,7 +171,7 @@ static pin_setup_state_t read_setup_ack_pin()
     /* Revision 2022d of the RP2040 hardware has problems reading initiator DIP switch setting.
      * The 74LVT245 hold current is keeping the GPIO_ACK state too strongly.
      * Detect this condition by toggling the pin up and down and seeing if it sticks.
-     * 
+     *
      * Revision 2023b and 2023c of the Pico boards have issues reading TERM and DEBUG DIP switch
      * settings. GPIO_ACK is externally pulled down to ground for later revisions.
      * If the state is detected as undetermined then the board is the 2023b or 2023c revision.
@@ -172,7 +183,7 @@ static pin_setup_state_t read_setup_ack_pin()
     gpio_conf(SCSI_IN_ACK,  GPIO_FUNC_SIO, false, true,  false, true,  false);
     delay(1);
     bool ack_state1 = gpio_get(SCSI_IN_ACK);
-    
+
     // Strong output low, then pullup
     //        pin             function       pup   pdown   out    state  fast
     gpio_conf(SCSI_IN_ACK,  GPIO_FUNC_SIO, false, false, true,  false, false);
@@ -203,7 +214,7 @@ void platform_init()
 
     pio_clear_instruction_memory(pio0);
     pio_clear_instruction_memory(pio1);
-    
+
     /* First configure the pins that affect external buffer directions.
      * RP2040 defaults to pulldowns, while these pins have external pull-ups.
      */
@@ -225,13 +236,13 @@ void platform_init()
 # if defined(ZULUSCSI_PICO) || defined(ZULUSCSI_PICO_2)
     // Initiator dip setting works on all rev 2023b, 2023c, and newer rev Pico boards
     g_scsi_initiator = !gpio_get(DIP_INITIATOR);
-    
-    working_dip = SETUP_UNDETERMINED != read_setup_ack_pin();    
+
+    working_dip = SETUP_UNDETERMINED != read_setup_ack_pin();
     if (working_dip)
     {
         dbglog = !gpio_get(DIP_DBGLOG);
         termination = !gpio_get(DIP_TERM);
-        
+
     }
 # else
     g_scsi_initiator = SETUP_TRUE == read_setup_ack_pin();
@@ -254,7 +265,7 @@ void platform_init()
 
 #ifdef HAS_DIP_SWITCHES
     if (working_dip)
-    {       
+    {
         logmsg("DIP switch settings: debug log ", (int)dbglog, ", termination ", (int)termination);
         g_log_debug = dbglog;
 
@@ -440,7 +451,7 @@ bool platform_is_initiator_mode_enabled()
 }
 
 void platform_disable_led(void)
-{   
+{
     //        pin      function       pup   pdown  out    state fast
     gpio_conf(LED_PIN, GPIO_FUNC_SIO, false,false, false, false, false);
     logmsg("Disabling status LED");
@@ -479,6 +490,7 @@ void platform_emergency_log_save()
 
 
 static void usb_log_poll();
+static void usb_input_poll();
 
 __attribute__((noinline))
 void show_hardfault(uint32_t *sp)
@@ -568,17 +580,64 @@ static void usb_log_poll()
         uint32_t len = available;
         if (len == 0) return;
         if (len > CFG_TUD_CDC_EP_BUFSIZE) len = CFG_TUD_CDC_EP_BUFSIZE;
-        
+
         // Update log position by the actual number of bytes sent
         // If USB CDC buffer is full, this may be 0
         uint32_t actual = 0;
         actual = Serial.write(data, len);
         logpos -= available - actual;
     }
+
 #endif // PIO_FRAMEWORK_ARDUINO_NO_USB
 }
 
+// Grab input from USB Serial terminal
+static void usb_input_poll()
+{
+    #ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
+    // Caputure reboot key sequence
+    static bool mass_storage_reboot_keyed = false;
+    static bool basic_reboot_keyed = false;
+    volatile uint32_t* scratch0 = (uint32_t *)(WATCHDOG_BASE + WATCHDOG_SCRATCH0_OFFSET);
+    int32_t available = Serial.available();
+    if(available > 0)
+    {
+        int32_t read = Serial.read();
+        switch((char) read)
+        {
+            case 'R':
+            case 'r':
+                basic_reboot_keyed = true;
+                mass_storage_reboot_keyed = false;
+                logmsg("Basic reboot requested, press 'y' to engage or any key to clear");
+                break;
+            case 'M':
+            case 'm':
+                mass_storage_reboot_keyed = true;
+                basic_reboot_keyed = false;
+                logmsg("Boot into mass storage requested, press 'y' to engage or any key to clear");
+                *scratch0 = REBOOT_INTO_MASS_STORAGE_MAGIC_NUM;
+                break;
+            case 'Y':
+            case 'y':
+                if (basic_reboot_keyed || mass_storage_reboot_keyed)
+                {
+                    logmsg("Rebooting", mass_storage_reboot_keyed ? " into mass storage": "");
+                    watchdog_reboot(0, 0, 2000);
+                }
+                break;
+            case '\n':
+                break;
 
+            default:
+                if (basic_reboot_keyed || mass_storage_reboot_keyed)
+                    logmsg("Cleared reboot setting");
+                mass_storage_reboot_keyed = false;
+                basic_reboot_keyed = false;
+        }
+    }
+#endif // PIO_FRAMEWORK_ARDUINO_NO_USB
+}
 // Use ADC to implement supply voltage monitoring for the +3.0V rail.
 // This works by sampling the temperature sensor channel, which has
 // a voltage of 0.7 V, allowing to calculate the VDD voltage.
@@ -758,9 +817,10 @@ void platform_reset_watchdog()
 // Can be left empty or used for platform-specific processing.
 void platform_poll()
 {
+    usb_input_poll();
     usb_log_poll();
     adc_poll();
-    
+
 #ifdef ENABLE_AUDIO_OUTPUT
     audio_poll();
 #endif // ENABLE_AUDIO_OUTPUT

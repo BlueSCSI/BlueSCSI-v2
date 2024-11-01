@@ -108,6 +108,8 @@ uint32_t platform_sys_clock_in_hz();
 // Attempt to reclock the MCU - unsupported
 inline zuluscsi_reclock_status_t platform_reclock(uint32_t clk_in_khz){return ZULUSCSI_RECLOCK_NOT_SUPPORTED;}
 
+// Returns true if reboot was for mass storage - unsupported
+inline bool platform_rebooted_into_mass_storage() {return false;}
 
 // Reinitialize SD card connection and save log from interrupt context.
 // This can be used in crash handlers.

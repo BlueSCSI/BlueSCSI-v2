@@ -1,47 +1,47 @@
-/*  
+/*
  *  ZuluSCSI™
  *  Copyright (c) 2022-2024 Rabbit Hole Computing™
- * 
+ *
  * This project is based on BlueSCSI:
  *
  *  BlueSCSI
  *  Copyright (c) 2021  Eric Helgeson, Androda
- *  
+ *
  * This work incorporates work by following
  *  Copyright (c) 2023 joshua stein <jcs@jcs.org>
  *  Copyright (c) 2023 zigzagjoe
- * 
- *  This file is free software: you may copy, redistribute and/or modify it  
- *  under the terms of the GNU General Public License as published by the  
- *  Free Software Foundation, either version 2 of the License, or (at your  
- *  option) any later version.  
- *  
- *  This file is distributed in the hope that it will be useful, but  
- *  WITHOUT ANY WARRANTY; without even the implied warranty of  
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU  
- *  General Public License for more details.  
- *  
- *  You should have received a copy of the GNU General Public License  
- *  along with this program.  If not, see https://github.com/erichelgeson/bluescsi.  
- *  
- * This file incorporates work covered by the following copyright and  
- * permission notice:  
- *  
- *     Copyright (c) 2019 komatsu   
- *  
- *     Permission to use, copy, modify, and/or distribute this software  
- *     for any purpose with or without fee is hereby granted, provided  
- *     that the above copyright notice and this permission notice appear  
- *     in all copies.  
- *  
- *     THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL  
- *     WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED  
- *     WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE  
- *     AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR  
- *     CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS  
- *     OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,  
- *     NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN  
- *     CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.  
+ *
+ *  This file is free software: you may copy, redistribute and/or modify it
+ *  under the terms of the GNU General Public License as published by the
+ *  Free Software Foundation, either version 2 of the License, or (at your
+ *  option) any later version.
+ *
+ *  This file is distributed in the hope that it will be useful, but
+ *  WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see https://github.com/erichelgeson/bluescsi.
+ *
+ * This file incorporates work covered by the following copyright and
+ * permission notice:
+ *
+ *     Copyright (c) 2019 komatsu
+ *
+ *     Permission to use, copy, modify, and/or distribute this software
+ *     for any purpose with or without fee is hereby granted, provided
+ *     that the above copyright notice and this permission notice appear
+ *     in all copies.
+ *
+ *     THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ *     WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ *     WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ *     AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR
+ *     CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
+ *     OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
+ *     NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+ *     CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
 #include <SdFat.h>
@@ -129,7 +129,7 @@ void save_logfile(bool always = false)
     {
       g_logfile.write(log_get_buffer(&prev_log_pos));
       g_logfile.flush();
-      
+
       prev_log_len = loglen;
       prev_log_save = millis();
     }
@@ -166,13 +166,13 @@ void print_sd_info()
   uint64_t size = (uint64_t)SD.vol()->clusterCount() * SD.vol()->bytesPerCluster();
   logmsg("SD card detected, FAT", (int)SD.vol()->fatType(),
           " volume size: ", (int)(size / 1024 / 1024), " MB");
-  
+
   cid_t sd_cid;
 
   if(SD.card()->readCID(&sd_cid))
   {
     logmsg("SD MID: ", (uint8_t)sd_cid.mid, ", OID: ", (uint8_t)sd_cid.oid[0], " ", (uint8_t)sd_cid.oid[1]);
-    
+
     char sdname[6] = {sd_cid.pnm[0], sd_cid.pnm[1], sd_cid.pnm[2], sd_cid.pnm[3], sd_cid.pnm[4], 0};
     logmsg("SD Name: ", sdname);
     logmsg("SD Date: ", (int)sd_cid.mdtMonth(), "/", sd_cid.mdtYear());
@@ -571,7 +571,7 @@ bool findHDDImages()
   for (int i = 0; i < NUM_SCSIID; i++)
   {
     const S2S_TargetCfg* cfg = s2s_getConfigByIndex(i);
-    
+
     if (cfg && (cfg->scsiId & S2S_CFG_TARGET_ENABLED))
     {
       int capacity_kB = ((uint64_t)cfg->scsiSectors * cfg->bytesPerSector) / 1024;
@@ -610,7 +610,7 @@ bool findHDDImages()
           }
         }
     }
-  } 
+  }
 
   if (removable_count == 1)
   {
@@ -620,7 +620,7 @@ bool findHDDImages()
     else if (eject_btn_set == 0)
     {
       logmsg("Found 1 removable device, to set an eject button see EjectButton in the '", CONFIGFILE,"', or the http://zuluscsi.com/manual");
-    } 
+    }
   }
   else if (removable_count > 1)
   {
@@ -750,19 +750,19 @@ static void reinitSCSI()
 
     logmsg("Direct/Raw mode enabled, using hardware switches for configuration");
     logmsg("-- SCSI ID set via DIP switch to ", (int) g_hw_config.scsi_id());
-    char raw_filename[32];  
-    uint32_t start =  g_scsi_settings.getDevice(scsiId)->sectorSDBegin; 
+    char raw_filename[32];
+    uint32_t start =  g_scsi_settings.getDevice(scsiId)->sectorSDBegin;
     uint32_t end = g_scsi_settings.getDevice(scsiId)->sectorSDEnd;
 
     if (start == end && end == 0)
     {
       strcpy(raw_filename, "RAW:0:0xFFFFFFFF");
-    } 
+    }
     else
     {
       snprintf(raw_filename, sizeof(raw_filename), "RAW:0x%X:0x%X", start, end);
     }
-    
+
     success = scsiDiskOpenHDDImage(scsiId, raw_filename, 0,
                                    g_hw_config.blocksize(), g_hw_config.device_type());
     if (success)
@@ -778,7 +778,7 @@ static void reinitSCSI()
   }
   else
 #endif // ZULUSCSI_HARDWARE_CONFIG
-  { 
+  {
     readSCSIDeviceConfig();
     findHDDImages();
 
@@ -814,7 +814,7 @@ static void reinitSCSI()
     platform_network_wifi_join(scsiDev.boardCfg.wifiSSID, scsiDev.boardCfg.wifiPassword);
   }
 #endif // ZULUSCSI_NETWORK
-  
+
 }
 // Place all the setup code that requires the SD card to be initialized here
 // Which is pretty much everything after platform_init and and platform_late_init
@@ -879,7 +879,7 @@ static void zuluscsi_setup_sd_card()
     }
 
     print_sd_info();
-    
+
     char presetName[32];
     ini_gets("SCSI", "System", "", presetName, sizeof(presetName), CONFIGFILE);
     scsi_system_settings_t *cfg = g_scsi_settings.initSystem(presetName);
@@ -891,8 +891,8 @@ static void zuluscsi_setup_sd_card()
     }
     platform_post_sd_card_init();
     reinitSCSI();
-    
-    
+
+
     boot_delay_ms = cfg->initPostDelay;
     if (boot_delay_ms > 0)
     {
@@ -923,10 +923,11 @@ extern "C" void zuluscsi_setup(void)
 
 #ifdef PLATFORM_MASS_STORAGE
   static bool check_mass_storage = true;
-  if (check_mass_storage && g_scsi_settings.getSystem()->enableUSBMassStorage)
+  if (check_mass_storage && g_scsi_settings.getSystem()->enableUSBMassStorage
+      || platform_rebooted_into_mass_storage())
   {
     check_mass_storage = false;
-    
+
     // perform checks to see if a computer is attached and return true if we should enter MSC mode.
     if (platform_sense_msc())
     {
@@ -1001,7 +1002,7 @@ extern "C" void zuluscsi_main_loop(void)
   if (!g_sdcard_present)
   {
     // Try to remount SD card
-    do 
+    do
     {
       g_sdcard_present = mountSDCard();
 
