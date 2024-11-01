@@ -42,6 +42,8 @@ ImageBackingStore::ImageBackingStore()
     m_isreadonly_attr = false;
     m_blockdev = nullptr;
     m_bgnsector = m_endsector = m_cursector = 0;
+    m_isfolder = false;
+    m_foldername[0] = '\0';
 }
 
 ImageBackingStore::ImageBackingStore(const char *filename, uint32_t scsi_block_size): ImageBackingStore()
@@ -89,47 +91,79 @@ ImageBackingStore::ImageBackingStore(const char *filename, uint32_t scsi_block_s
     }
     else
     {
-        m_isreadonly_attr = !!(FS_ATTRIB_READ_ONLY & SD.attrib(filename));
-        if (m_isreadonly_attr)
+        if (SD.open(filename, O_RDONLY).isDir())
         {
-            m_fsfile = SD.open(filename, O_RDONLY);
-            logmsg("---- Image file is read-only, writes disabled");
+            // Folder that contains .cue sheet and multiple .bin files
+            m_isfolder = true;
+            strncpy(m_foldername, filename, sizeof(m_foldername));
+            m_foldername[sizeof(m_foldername)-1] = '\0';
         }
         else
         {
-            m_fsfile = SD.open(filename, O_RDWR);
-        }
-
-        uint32_t sectorcount = m_fsfile.size() / SD_SECTOR_SIZE;
-        uint32_t begin = 0, end = 0;
-        if (m_fsfile.contiguousRange(&begin, &end) && end >= begin + sectorcount
-            && (scsi_block_size % SD_SECTOR_SIZE) == 0)
-        {
-            // Convert to raw mapping, this avoids some unnecessary
-            // access overhead in SdFat library.
-            // If non-aligned offsets are later requested, it automatically falls
-            // back to SdFat access mode.
-            m_iscontiguous = true;
-            m_blockdev = SD.card();
-            m_bgnsector = begin;
-
-            if (end != begin + sectorcount)
-            {
-                uint32_t allocsize = end - begin + 1;
-                // Due to issue #80 in ZuluSCSI version 1.0.8 and 1.0.9 the allocated size was mistakenly reported to SCSI controller.
-                // If the drive was formatted using those versions, you may have problems accessing it with newer firmware.
-                // The old behavior can be restored with setting  [SCSI] UseFATAllocSize = 1 in config file.
-
-                if (g_scsi_settings.getSystem()->useFATAllocSize)
-                {
-                    sectorcount = allocsize;
-                }
-            }
-
-            m_endsector = begin + sectorcount - 1;
-            m_fsfile.flush(); // Note: m_fsfile is also kept open as a fallback.
+            // Regular image file
+            _internal_open(filename);
         }
     }
+}
+
+bool ImageBackingStore::_internal_open(const char *filename)
+{
+    m_isreadonly_attr = !!(FS_ATTRIB_READ_ONLY & SD.attrib(filename));
+    oflag_t open_flag = O_RDWR;
+    if (m_isreadonly_attr && !m_isfolder)
+    {
+        open_flag = O_RDONLY;
+        logmsg("---- Image file is read-only, writes disabled");
+    }
+
+    if (m_isfolder)
+    {
+        char fullpath[MAX_FILE_PATH * 2];
+        strncpy(fullpath, m_foldername, sizeof(fullpath) - strlen(fullpath));
+        strncat(fullpath, "/", sizeof(fullpath) - strlen(fullpath));
+        strncat(fullpath, filename, sizeof(fullpath) - strlen(fullpath));
+        m_fsfile = SD.open(fullpath, open_flag);
+    }
+    else
+    {
+        m_fsfile = SD.open(filename, open_flag);
+    }
+
+    if (!m_fsfile.isOpen())
+    {
+        return false;
+    }
+
+    uint32_t sectorcount = m_fsfile.size() / SD_SECTOR_SIZE;
+    uint32_t begin = 0, end = 0;
+    if (m_fsfile.contiguousRange(&begin, &end) && end >= begin + sectorcount)
+    {
+        // Convert to raw mapping, this avoids some unnecessary
+        // access overhead in SdFat library.
+        // If non-aligned offsets are later requested, it automatically falls
+        // back to SdFat access mode.
+        m_iscontiguous = true;
+        m_blockdev = SD.card();
+        m_bgnsector = begin;
+
+        if (end != begin + sectorcount)
+        {
+            uint32_t allocsize = end - begin + 1;
+            // Due to issue #80 in ZuluSCSI version 1.0.8 and 1.0.9 the allocated size was mistakenly reported to SCSI controller.
+            // If the drive was formatted using those versions, you may have problems accessing it with newer firmware.
+            // The old behavior can be restored with setting  [SCSI] UseFATAllocSize = 1 in config file.
+
+            if (g_scsi_settings.getSystem()->useFATAllocSize)
+            {
+                sectorcount = allocsize;
+            }
+        }
+
+        m_endsector = begin + sectorcount - 1;
+        m_fsfile.flush(); // Note: m_fsfile is also kept open as a fallback.
+    }
+
+    return true;
 }
 
 bool ImageBackingStore::isOpen()
@@ -138,6 +172,8 @@ bool ImageBackingStore::isOpen()
         return (m_blockdev != NULL);
     else if (m_isrom)
         return (m_romhdr.imagesize > 0);
+    else if (m_isfolder)
+        return m_foldername[0] != '\0';
     else
         return m_fsfile.isOpen();
 }
@@ -157,6 +193,10 @@ bool ImageBackingStore::isRom()
     return m_isrom;
 }
 
+bool ImageBackingStore::isFolder()
+{
+    return m_isfolder;
+}
 
 bool ImageBackingStore::isContiguous()
 {
@@ -165,6 +205,7 @@ bool ImageBackingStore::isContiguous()
 
 bool ImageBackingStore::close()
 {
+    m_isfolder = false;
     if (m_iscontiguous)
     {
         m_blockdev = nullptr;
@@ -354,5 +395,30 @@ size_t ImageBackingStore::getFilename(char* buf, size_t buflen)
         else
             return name_length;
     }
+    return 0;
+}
+
+bool ImageBackingStore::selectImageFile(const char *filename)
+{
+    if (!m_isfolder)
+    {
+        logmsg("Attempted selectImageFile() but image is not a folder");
+        return false;
+    }
+    return _internal_open(filename);
+}
+
+size_t ImageBackingStore::getFoldername(char* buf, size_t buflen)
+{
+    if (m_isfolder)
+    {
+        size_t name_length = strlen(m_foldername);
+        if (name_length + 1 > buflen)
+            return 0;
+
+        strncpy(buf, m_foldername, buflen);
+        return name_length;
+    }
+
     return 0;
 }
