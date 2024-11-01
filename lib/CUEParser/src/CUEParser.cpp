@@ -90,6 +90,8 @@ const CUETrackInfo *CUEParser::next_track()
         }
         else if (strncasecmp(m_parse_pos, "PREGAP ", 7) == 0)
         {
+            // Unstored pregap, which offsets the data start on CD but does not
+            // affect the offset in data file.
             const char *time_str = skip_space(m_parse_pos + 7);
             m_track_info.unstored_pregap_length = parse_time(time_str);
         }
@@ -104,11 +106,13 @@ const CUETrackInfo *CUEParser::next_track()
 
             if (index == 0)
             {
+                // Stored pregap that is present both on CD and in data file
                 m_track_info.track_start = time;
                 got_pause = true;
             }
             else if (index == 1)
             {
+                // Data content of the track
                 m_track_info.data_start = time;
                 got_data = true;
             }
@@ -120,6 +124,7 @@ const CUETrackInfo *CUEParser::next_track()
     if (got_data && !got_pause)
     {
         m_track_info.track_start = m_track_info.data_start;
+        m_track_info.data_start += m_track_info.unstored_pregap_length;
     }
 
     if (got_track && got_data)

@@ -1066,7 +1066,6 @@ void s2s_configInit(S2S_BoardCfg* config)
     config->selectionDelay = sysCfg->selectionDelay;
     config->flags6 = 0;
     config->scsiSpeed = PLATFORM_MAX_SCSI_SPEED;
-
     int maxSyncSpeed = sysCfg->maxSyncSpeed;
     if (maxSyncSpeed < 5 && config->scsiSpeed > S2S_CFG_SPEED_ASYNC_50)
         config->scsiSpeed = S2S_CFG_SPEED_ASYNC_50;
@@ -1672,6 +1671,12 @@ void diskDataOut()
             }
             platform_set_sd_callback(NULL, NULL);
             g_disk_transfer.bytes_sd += len;
+
+            // Reset the watchdog while the transfer is progressing.
+            // If the host stops transferring, the watchdog will eventually expire.
+            // This is needed to avoid hitting the watchdog if the host performs
+            // a large transfer compared to its transfer speed.
+            platform_reset_watchdog();
         }
     }
 
@@ -1845,6 +1850,12 @@ static void start_dataInTransfer(uint8_t *buffer, uint32_t count)
 
     platform_poll();
     diskEjectButtonUpdate(false);
+
+    // Reset the watchdog while the transfer is progressing.
+    // If the host stops transferring, the watchdog will eventually expire.
+    // This is needed to avoid hitting the watchdog if the host performs
+    // a large transfer compared to its transfer speed.
+    platform_reset_watchdog();
 }
 
 static void diskDataIn()

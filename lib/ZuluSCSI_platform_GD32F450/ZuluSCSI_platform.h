@@ -130,18 +130,7 @@ void SysTick_Handle_PreEmptively();
 
 // must be a factor of each sector map size
 #define PLATFORM_FLASH_WRITE_BUFFER_SIZE 2048
-// From GD32F4xx user manual
-const uint32_t platform_flash_sector_map[] =
-    {
-         16 * 1024,
-         16 * 1024,
-         16 * 1024,
-         16 * 1024,
-         64 * 1024,
-        128 * 1024,
-        128 * 1024, 
-        128 * 1024
-    };
+
 
 void platform_boot_to_main_firmware();
 
@@ -185,6 +174,19 @@ extern const uint32_t g_scsi_out_byte_to_bop[256];
 
 #ifdef __cplusplus
 }
+
+// From GD32F4xx user manual
+const uint32_t platform_flash_sector_map[] =
+    {
+         16 * 1024,
+         16 * 1024,
+         16 * 1024,
+         16 * 1024,
+         64 * 1024,
+        128 * 1024,
+        128 * 1024, 
+        128 * 1024
+    };
 
 bool platform_firmware_erase(FsFile &file);
 bool platform_firmware_program(FsFile &file);

@@ -48,6 +48,7 @@ static bool logSDError(int line)
     return false;
 }
 
+
 bool SdioCard::begin(SdioConfig sdioConfig)
 {
     rcu_periph_clock_enable(RCU_SDIO);
@@ -110,6 +111,19 @@ bool SdioCard::readCSD(csd_t* csd)
     return true;
 }
 
+bool SdioCard::readSDS(sds_t* sds)
+{
+    uint32_t raw_sds[64/4];
+    if (!checkReturnOk(sd_sdstatus_get(raw_sds)))
+        return false;
+    // SdFat expects the data in big endian format.
+    for (int i = 0; i < 16; i++)
+    {
+        ((uint8_t*)sds)[i] = (raw_sds[i / 4] >> (24 - (i % 4) * 8)) & 0xFF;
+    }
+    return true;
+}
+
 bool SdioCard::readOCR(uint32_t* ocr)
 {
     // SDIO mode does not have CMD58, but main program uses this to
@@ -119,19 +133,19 @@ bool SdioCard::readOCR(uint32_t* ocr)
 
 bool SdioCard::readData(uint8_t* dst)
 {
-    logmsg("SdioCard::readData() called but not implemented!");
+    // logmsg("SdioCard::readData() called but not implemented!");
     return false;
 }
 
 bool SdioCard::readStart(uint32_t sector)
 {
-    logmsg("SdioCard::readStart() called but not implemented!");
+    // logmsg("SdioCard::readStart() called but not implemented!");
     return false;
 }
 
 bool SdioCard::readStop()
 {
-    logmsg("SdioCard::readStop() called but not implemented!");
+    // logmsg("SdioCard::readStop() called but not implemented!");
     return false;
 }
 
@@ -199,19 +213,19 @@ uint8_t SdioCard::type() const
 
 bool SdioCard::writeData(const uint8_t* src)
 {
-    logmsg("SdioCard::writeData() called but not implemented!");
+    // logmsg("SdioCard::writeData() called but not implemented!");
     return false;
 }
 
 bool SdioCard::writeStart(uint32_t sector)
 {
-    logmsg("SdioCard::writeStart() called but not implemented!");
+    // logmsg("SdioCard::writeStart() called but not implemented!");
     return false;
 }
 
 bool SdioCard::writeStop()
 {
-    logmsg("SdioCard::writeStop() called but not implemented!");
+    // logmsg("SdioCard::writeStop() called but not implemented!");
     return false;
 }
 
@@ -221,12 +235,12 @@ bool SdioCard::erase(uint32_t firstSector, uint32_t lastSector)
 }
 
 bool SdioCard::cardCMD6(uint32_t arg, uint8_t* status) {
-    logmsg("SdioCard::cardCMD6() not implemented");
+    // logmsg("SdioCard::cardCMD6() not implemented");
     return false;
 }
 
 bool SdioCard::readSCR(scr_t* scr) {
-    logmsg("SdioCard::readSCR() not implemented");
+    // logmsg("SdioCard::readSCR() not implemented");
     return false;
 }
 
