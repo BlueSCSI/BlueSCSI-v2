@@ -759,8 +759,16 @@ static void scsiReset()
 
 	for (int i = 0; i < S2S_MAX_TARGETS; ++i)
 	{
-		scsiDev.targets[i].syncOffset = 0;
-		scsiDev.targets[i].syncPeriod = 0;
+		if (g_force_sync > 0)
+		{
+			scsiDev.targets[i].syncPeriod = g_force_sync;
+			scsiDev.targets[i].syncOffset = g_force_offset;
+		}
+		else
+		{
+			scsiDev.targets[i].syncOffset = 0;
+			scsiDev.targets[i].syncPeriod = 0;
+		}
 	}
 	scsiDev.minSyncPeriod = 0;
 
@@ -1346,8 +1354,16 @@ void scsiInit()
 		scsiDev.targets[i].sense.code = NO_SENSE;
 		scsiDev.targets[i].sense.asc = NO_ADDITIONAL_SENSE_INFORMATION;
 
-		scsiDev.targets[i].syncOffset = 0;
-		scsiDev.targets[i].syncPeriod = 0;
+		if (g_force_sync > 0)
+		{
+			scsiDev.targets[i].syncPeriod = g_force_sync;
+			scsiDev.targets[i].syncOffset = g_force_offset;
+		}
+		else
+		{
+			scsiDev.targets[i].syncOffset = 0;
+			scsiDev.targets[i].syncPeriod = 0;
+		}
 
 		// Always "start" the device. Many systems (eg. Apple System 7)
 		// won't respond properly to
