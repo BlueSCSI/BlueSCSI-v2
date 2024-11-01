@@ -22,3 +22,5 @@
 uint8_t g_max_sync_20_period = 25;
 uint8_t g_max_sync_10_period = 25;
 uint8_t g_max_sync_5_period  = 50; 
+uint8_t g_force_sync = 0;
+uint8_t g_force_offset = 15;

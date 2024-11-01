@@ -860,10 +860,14 @@ static void zuluscsi_setup_sd_card()
           logmsg("Reclocking this board is not supported");
           break;
         case ZULUSCSI_RECLOCK_FAILED:
-          logmsg("Reclocking at ", (int) clock_khz , " KHz is not supported");
+          logmsg("Reclocking failed");
           break;
         case ZULUSCSI_RECLOCK_SUCCESS:
           logmsg("Reclocking at ", (int) clock_khz , " KHz was successful");
+          break;
+        case ZULUSCSI_RECLOCK_CUSTOM:
+          logmsg("Custom reclocking timings used");
+          break;
       }
       g_sdcard_present = mountSDCard();
       reinitSCSI();

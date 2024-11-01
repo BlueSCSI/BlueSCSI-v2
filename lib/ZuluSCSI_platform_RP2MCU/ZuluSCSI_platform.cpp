@@ -36,6 +36,7 @@
 #include <hardware/structs/usb.h>
 #include <hardware/sync.h>
 #include "scsi_accel_target.h"
+#include "custom_timings.h"
 
 #ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
 # include <SerialUSB.h>
@@ -62,7 +63,6 @@ const char *g_platform_name = PLATFORM_NAME;
 static bool g_scsi_initiator = false;
 static uint32_t g_flash_chip_size = 0;
 static bool g_uart_initialized = false;
-
 /***************/
 /* GPIO init   */
 /***************/
@@ -127,13 +127,29 @@ uint32_t platform_sys_clock_in_hz()
 
 zuluscsi_reclock_status_t platform_reclock(uint32_t clock_in_khz)
 {
-    if (set_timings(clock_in_khz))
+    CustomTimings ct;
+    if (ct.use_custom_timings())
+    {
+        logmsg("Custom timings found in \"", CUSTOM_TIMINGS_FILE, "\" overriding reclocking");
+        logmsg("Initial Clock set to ", (int) platform_sys_clock_in_hz(), "Hz");
+        if (ct.set_timings_from_file())
+        {
+            reclock();
+            logmsg("SDIO clock set to ", (int)((g_zuluscsi_timings->clk_hz / g_zuluscsi_timings->sdio.clk_div_pio + (5 * MHZ / 10)) / MHZ) , "MHz");
+            return ZULUSCSI_RECLOCK_CUSTOM;
+        }
+        else
+            return ZULUSCSI_RECLOCK_FAILED;
+    }
+    else if (set_timings(clock_in_khz))
     {
         logmsg("Initial Clock set to ", (int) platform_sys_clock_in_hz(), "Hz");
         reclock();
         logmsg("SDIO clock set to ", (int)((g_zuluscsi_timings->clk_hz / g_zuluscsi_timings->sdio.clk_div_pio + (5 * MHZ / 10)) / MHZ) , "MHz");
         return ZULUSCSI_RECLOCK_SUCCESS;
     }
+    else
+        logmsg("Could not find matching clock rate: ", (int) clock_in_khz, "KHz in presets");
     return ZULUSCSI_RECLOCK_FAILED;
 }
 

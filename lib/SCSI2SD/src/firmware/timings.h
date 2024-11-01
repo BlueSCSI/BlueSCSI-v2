@@ -24,4 +24,6 @@
 extern uint8_t g_max_sync_20_period;
 extern uint8_t g_max_sync_10_period;
 extern uint8_t g_max_sync_5_period;
+extern uint8_t g_force_sync;
+extern uint8_t g_force_offset;
 #endif // ZULUSCSI_SCSI2SD_TIMINGS_H
