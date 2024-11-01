@@ -24,7 +24,11 @@ To use a BIN/CUE image with ZuluSCSI, name both files with the same part before 
 For example `CD3.bin` and `CD3.cue`.
 The cue file contains the original file name, but it doesn't matter for ZuluSCSI.
 
-BIN/CUE support is currently experimental. Supported track types are `AUDIO`, `MODE1/2048` and `MODE1/2352`.
+If the image consists of one `.cue` file and multiple `.bin` files, they need to be placed in a separate subfolder.
+For example, create `CD3` folder, then `MyGame` subfolder and put the `.cue` and `.bin` files there.
+The `.bin` file names must then match the names specified in the `.cue` file.
+
+Supported track types are `AUDIO`, `MODE1/2048` and `MODE1/2352`.
 
 Creating new image files
 ------------------------
