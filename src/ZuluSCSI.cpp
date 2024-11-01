@@ -356,14 +356,14 @@ bool findHDDImages()
 
   logmsg("Finding images in directory ", imgdir, ":");
 
-  SdFile root;
+  FsFile root;
   root.open(imgdir);
   if (!root.isOpen())
   {
     logmsg("Could not open directory: ", imgdir);
   }
 
-  SdFile file;
+  FsFile file;
   bool imageReady;
   bool foundImage = false;
   int usedDefaultId = 0;
@@ -403,7 +403,7 @@ bool findHDDImages()
     }
 
     char name[MAX_FILE_PATH+1];
-    if(!file.isDir()) {
+    if(!file.isDir() || scsiDiskFolderContainsCueSheet(&file)) {
       file.getName(name, MAX_FILE_PATH+1);
       file.close();
 

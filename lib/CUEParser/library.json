@@ -1,9 +1,0 @@
-{
-    "name": "CUEParser",
-    "version": "1.0.0",
-    "repository": { "type": "git", "url": "https://github.com/ZuluSCSI/ZuluSCSI-firmware.git"},
-    "authors": [{ "name": "Petteri Aimonen", "email": "jpa@git.mail.kapsi.fi" }],
-    "license": "GPL-3.0-or-later",
-    "frameworks": "*",
-    "platforms": "*"
-}
