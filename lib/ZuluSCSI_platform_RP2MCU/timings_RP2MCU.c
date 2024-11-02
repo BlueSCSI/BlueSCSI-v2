@@ -74,7 +74,7 @@ static zuluscsi_timings_t  predefined_timings[]  = {
             .delay1 = 2 - 1  // clk_div_pio - delay0 and subtract one for the instruction delay
         }
     },
-        {
+    {
         .clk_hz = 133000000,
 
         .pll =
@@ -300,20 +300,34 @@ static zuluscsi_timings_t  predefined_timings[]  = {
 #endif
 
 
-bool set_timings(uint32_t target_clk_in_khz)
+bool set_timings(zuluscsi_speed_grade_t speed_grade)
 {
-    uint32_t number_of_timings = sizeof(predefined_timings)/sizeof( predefined_timings[0]);
-    for (uint8_t i = 0; i < number_of_timings; i++)
+    uint8_t timings_index;
+
+    switch (speed_grade)
     {
-        if (target_clk_in_khz == predefined_timings[i].clk_hz / 1000)
-        {
-            g_zuluscsi_timings = &current_timings;
-            memcpy(g_zuluscsi_timings, &predefined_timings[i], sizeof(current_timings));
-            g_max_sync_10_period = g_zuluscsi_timings->scsi_10.max_sync;
-            g_max_sync_20_period = g_zuluscsi_timings->scsi_20.max_sync;
-            g_max_sync_5_period = g_zuluscsi_timings->scsi_5.max_sync;
-            return true;
-        }
+        case SPEED_GRADE_MAX:
+        case SPEED_GRADE_A:
+            timings_index = 4;
+            break;
+        case SPEED_GRADE_B:
+            timings_index = 3;
+            break;
+        case SPEED_GRADE_C:
+            timings_index  = 1;
+            break;
+        case SPEED_GRADE_AUDIO:
+            timings_index = 2;
+            break;
+    }   
+    if (speed_grade != SPEED_GRADE_DEFAULT && speed_grade != SPEED_GRADE_CUSTOM)
+    {
+        g_zuluscsi_timings = &current_timings;
+        memcpy(g_zuluscsi_timings, &predefined_timings[timings_index], sizeof(current_timings));
+        g_max_sync_10_period = g_zuluscsi_timings->scsi_10.max_sync;
+        g_max_sync_20_period = g_zuluscsi_timings->scsi_20.max_sync;
+        g_max_sync_5_period = g_zuluscsi_timings->scsi_5.max_sync;
+        return true;
     }
     return false;
 }

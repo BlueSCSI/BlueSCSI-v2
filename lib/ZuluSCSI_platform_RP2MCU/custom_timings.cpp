@@ -23,6 +23,7 @@
 #include <SdFat.h>
 #include <minIni.h>
 #include <ZuluSCSI_log.h>
+#include <ZuluSCSI_platform.h>
 extern SdFs SD;
 
 extern "C"
@@ -68,22 +69,18 @@ bool CustomTimings::set_timings_from_file()
         return false;
     }
 
-    int32_t template_khz = ini_getl(settings_section, "extends_khz", 0, CUSTOM_TIMINGS_FILE);
-    if (template_khz > 0)
-    {
-        if (!set_timings(template_khz))
-        {
-            logmsg("Count not load extends_khz with a value of ", (int) template_khz);
-            return false;
-        }
-    }
-
     g_zuluscsi_timings->pll.vco_freq = vco;
     g_zuluscsi_timings->pll.post_div1 = post_div1;
     g_zuluscsi_timings->pll.post_div2 = post_div2;
     g_zuluscsi_timings->pll.refdiv =  ini_getl(pll_section, "refdiv", g_zuluscsi_timings->pll.refdiv, CUSTOM_TIMINGS_FILE);
 
+    char speed_grade_str[10];
+    ini_gets(settings_section, "extends_speed_grade", "Default", speed_grade_str, sizeof(speed_grade_str), CUSTOM_TIMINGS_FILE);
+    zuluscsi_speed_grade_t speed_grade =  platform_string_to_speed_grade(speed_grade_str, sizeof(speed_grade_str));
+    set_timings(speed_grade);
+
     int32_t number_setting = ini_getl(settings_section, "boot_with_sync_value", 0, CUSTOM_TIMINGS_FILE);
+
     if (number_setting > 0)
     {
         g_force_sync = number_setting;
@@ -92,7 +89,6 @@ bool CustomTimings::set_timings_from_file()
         logmsg("Forcing sync of ", (int) g_force_sync, " and offset of ", (int) g_force_offset);
     }
     g_zuluscsi_timings->clk_hz = ini_getl(settings_section, "clk_hz", g_zuluscsi_timings->clk_hz, CUSTOM_TIMINGS_FILE);
-
 
 
     // scsi
