@@ -136,3 +136,14 @@ typedef enum
     ZULUSCSI_RECLOCK_NOT_SUPPORTED,
     ZULUSCSI_RECLOCK_FAILED
 } zuluscsi_reclock_status_t;
+
+typedef enum
+{
+    SPEED_GRADE_DEFAULT,
+    SPEED_GRADE_MAX,
+    SPEED_GRADE_CUSTOM,
+    SPEED_GRADE_A,
+    SPEED_GRADE_B,
+    SPEED_GRADE_C,
+    SPEED_GRADE_AUDIO,
+} zuluscsi_speed_grade_t;

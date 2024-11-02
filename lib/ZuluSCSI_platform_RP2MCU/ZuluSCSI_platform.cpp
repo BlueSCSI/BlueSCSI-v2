@@ -125,31 +125,68 @@ uint32_t platform_sys_clock_in_hz()
     return clock_get_hz(clk_sys);
 }
 
-zuluscsi_reclock_status_t platform_reclock(uint32_t clock_in_khz)
+zuluscsi_speed_grade_t platform_string_to_speed_grade(const char *speed_grade_str, size_t length)
+{
+    static const char sg_default[] = "Default";
+    zuluscsi_speed_grade_t grade;
+
+#ifdef ENABLE_AUDIO_OUTPUT
+    logmsg("Audio output enabled, reclocking isn't possible");
+    return SPEED_GRADE_DEFAULT;
+#endif;
+
+    if (strcasecmp(speed_grade_str, sg_default) == 0)
+      grade = SPEED_GRADE_DEFAULT;
+    else if (strcasecmp(speed_grade_str, "TurboMax") == 0)
+      grade = SPEED_GRADE_MAX;
+    else if (strcasecmp(speed_grade_str, "TurboA") == 0)
+      grade = SPEED_GRADE_A;
+    else if (strcasecmp(speed_grade_str, "TurboB") == 0)
+      grade = SPEED_GRADE_B;
+    else if (strcasecmp(speed_grade_str, "TurboC") == 0)
+      grade = SPEED_GRADE_C;
+    else if (strcasecmp(speed_grade_str, "Custom") == 0)
+      grade = SPEED_GRADE_CUSTOM;
+    else
+    {
+      logmsg("Setting \"", speed_grade_str, "\" does not match any know speed grade, using default");
+      grade = SPEED_GRADE_DEFAULT;
+    }
+    return grade;
+}
+
+zuluscsi_reclock_status_t platform_reclock(zuluscsi_speed_grade_t speed_grade)
 {
     CustomTimings ct;
-    if (ct.use_custom_timings())
+    if (speed_grade == SPEED_GRADE_CUSTOM)
     {
-        logmsg("Custom timings found in \"", CUSTOM_TIMINGS_FILE, "\" overriding reclocking");
-        logmsg("Initial Clock set to ", (int) platform_sys_clock_in_hz(), "Hz");
-        if (ct.set_timings_from_file())
+        if (ct.use_custom_timings())
         {
-            reclock();
-            logmsg("SDIO clock set to ", (int)((g_zuluscsi_timings->clk_hz / g_zuluscsi_timings->sdio.clk_div_pio + (5 * MHZ / 10)) / MHZ) , "MHz");
-            return ZULUSCSI_RECLOCK_CUSTOM;
+            logmsg("Custom timings found in \"", CUSTOM_TIMINGS_FILE, "\" overriding reclocking");
+            logmsg("Initial Clock set to ", (int) platform_sys_clock_in_hz(), "Hz");
+            if (ct.set_timings_from_file())
+            {
+                reclock();
+                logmsg("SDIO clock set to ", (int)((g_zuluscsi_timings->clk_hz / g_zuluscsi_timings->sdio.clk_div_pio + (5 * MHZ / 10)) / MHZ) , "MHz");
+                return ZULUSCSI_RECLOCK_CUSTOM;
+            }
+            else
+                return ZULUSCSI_RECLOCK_FAILED;
         }
         else
+        {
+            logmsg("Custom timings file, \"", CUSTOM_TIMINGS_FILE, "\" not found or disabled");
             return ZULUSCSI_RECLOCK_FAILED;
+        }
+
     }
-    else if (set_timings(clock_in_khz))
+    else if (set_timings(speed_grade))
     {
         logmsg("Initial Clock set to ", (int) platform_sys_clock_in_hz(), "Hz");
         reclock();
         logmsg("SDIO clock set to ", (int)((g_zuluscsi_timings->clk_hz / g_zuluscsi_timings->sdio.clk_div_pio + (5 * MHZ / 10)) / MHZ) , "MHz");
         return ZULUSCSI_RECLOCK_SUCCESS;
     }
-    else
-        logmsg("Could not find matching clock rate: ", (int) clock_in_khz, "KHz in presets");
     return ZULUSCSI_RECLOCK_FAILED;
 }
 
@@ -292,7 +329,7 @@ void platform_init()
 
 #ifdef ENABLE_AUDIO_OUTPUT
     logmsg("SP/DIF audio to expansion header enabled");
-    if (platform_reclock(135428) == ZULUSCSI_RECLOCK_SUCCESS)
+    if (platform_reclock(SPEED_GRADE_AUDIO) == ZULUSCSI_RECLOCK_SUCCESS)
     {
         logmsg("Reclocked for Audio Ouput at ", (int) platform_sys_clock_in_hz(), "Hz");
     }

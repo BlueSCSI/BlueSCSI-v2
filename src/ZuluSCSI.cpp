@@ -847,13 +847,16 @@ static void zuluscsi_setup_sd_card()
     } while (!g_sdcard_present);
     logmsg("SD card init succeeded after retry");
   }
-
+  
+  static const char sg_default[] = "Default"; 
   if (g_sdcard_present)
   {
-    int32_t clock_khz = ini_getl("SCSI", "ReclockInKHz", 0, CONFIGFILE);
-    if ( clock_khz > 0)
+    char speed_grade_str[10];
+    ini_gets("SCSI", "SpeedGrade", sg_default, speed_grade_str, sizeof(speed_grade_str), CONFIGFILE);
+    zuluscsi_speed_grade_t grade = platform_string_to_speed_grade(speed_grade_str, sizeof(speed_grade_str));
+    if (grade != SPEED_GRADE_DEFAULT)
     {
-      zuluscsi_reclock_status_t status = platform_reclock(clock_khz);
+      zuluscsi_reclock_status_t status = platform_reclock(grade);
       switch (status)
       {
         case ZULUSCSI_RECLOCK_NOT_SUPPORTED:
@@ -863,7 +866,7 @@ static void zuluscsi_setup_sd_card()
           logmsg("Reclocking failed");
           break;
         case ZULUSCSI_RECLOCK_SUCCESS:
-          logmsg("Reclocking at ", (int) clock_khz , " KHz was successful");
+          logmsg("Reclocking was successful");
           break;
         case ZULUSCSI_RECLOCK_CUSTOM:
           logmsg("Custom reclocking timings used");
@@ -923,7 +926,7 @@ extern "C" void zuluscsi_setup(void)
 
 #ifdef PLATFORM_MASS_STORAGE
   static bool check_mass_storage = true;
-  if (check_mass_storage && g_scsi_settings.getSystem()->enableUSBMassStorage
+  if ((check_mass_storage && g_scsi_settings.getSystem()->enableUSBMassStorage)
       || platform_rebooted_into_mass_storage())
   {
     check_mass_storage = false;

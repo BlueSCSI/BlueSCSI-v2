@@ -114,7 +114,10 @@ uint8_t platform_get_buttons();
 uint32_t platform_sys_clock_in_hz();
 
 // Attempt to reclock the MCU
-zuluscsi_reclock_status_t platform_reclock(uint32_t clk_in_khz);
+zuluscsi_reclock_status_t platform_reclock(zuluscsi_speed_grade_t speed_grade);
+
+// convert string to speed grade
+zuluscsi_speed_grade_t platform_string_to_speed_grade(const char *speed_grade_str, size_t length);
 
 // Returns true if reboot was for mass storage
 bool platform_rebooted_into_mass_storage();
