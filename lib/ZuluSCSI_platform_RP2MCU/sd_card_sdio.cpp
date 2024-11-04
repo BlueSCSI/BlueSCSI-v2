@@ -28,6 +28,7 @@
 
 #include "ZuluSCSI_log.h"
 #include "sdio.h"
+#include "timings_RP2MCU.h"
 #include <hardware/gpio.h>
 #include <SdFat.h>
 #include <SdCard/SdCardInfo.h>
@@ -92,7 +93,7 @@ bool SdioCard::begin(SdioConfig sdioConfig)
     sdio_status_t status;
     
     // Initialize at 1 MHz clock speed
-    rp2040_sdio_init(25);
+    rp2040_sdio_init(g_zuluscsi_timings->sdio.clk_div_1mhz);
 
     // Establish initial connection with the card
     for (int retries = 0; retries < 5; retries++)

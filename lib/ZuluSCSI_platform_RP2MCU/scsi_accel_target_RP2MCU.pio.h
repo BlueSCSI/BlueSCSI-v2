@@ -49,9 +49,9 @@ static const uint16_t scsi_accel_async_write_program_instructions[] = {
             //     .wrap_target
     0x90e0, //  0: pull   ifempty block   side 1     
     0x7009, //  1: out    pins, 9         side 1     
-    0x7577, //  2: out    null, 23        side 1 [5] 
-    0x309a, //  3: wait   1 gpio, 26      side 1     
-    0x201a, //  4: wait   0 gpio, 26      side 0     
+    0x7077, //  2: out    null, 23        side 1     
+    0x308a, //  3: wait   1 gpio, 10      side 1     
+    0x200a, //  4: wait   0 gpio, 10      side 0     
             //     .wrap
 };
 
@@ -80,9 +80,9 @@ static inline pio_sm_config scsi_accel_async_write_program_get_default_config(ui
 static const uint16_t scsi_accel_read_program_instructions[] = {
             //     .wrap_target
     0x90a0, //  0: pull   block           side 1     
-    0x309a, //  1: wait   1 gpio, 26      side 1     
+    0x308a, //  1: wait   1 gpio, 10      side 1     
     0x4061, //  2: in     null, 1         side 0     
-    0x201a, //  3: wait   0 gpio, 26      side 0     
+    0x200a, //  3: wait   0 gpio, 10      side 0     
     0x5009, //  4: in     pins, 9         side 1     
     0x5056, //  5: in     y, 22           side 1     
             //     .wrap
@@ -103,36 +103,6 @@ static inline pio_sm_config scsi_accel_read_program_get_default_config(uint offs
 }
 #endif
 
-// --------------- //
-// scsi_sync_write //
-// --------------- //
-
-#define scsi_sync_write_wrap_target 0
-#define scsi_sync_write_wrap 2
-
-static const uint16_t scsi_sync_write_program_instructions[] = {
-            //     .wrap_target
-    0x7009, //  0: out    pins, 9         side 1     
-    0x6077, //  1: out    null, 23        side 0     
-    0x5061, //  2: in     null, 1         side 1     
-            //     .wrap
-};
-
-#if !PICO_NO_HARDWARE
-static const struct pio_program scsi_sync_write_program = {
-    .instructions = scsi_sync_write_program_instructions,
-    .length = 3,
-    .origin = -1,
-};
-
-static inline pio_sm_config scsi_sync_write_program_get_default_config(uint offset) {
-    pio_sm_config c = pio_get_default_sm_config();
-    sm_config_set_wrap(&c, offset + scsi_sync_write_wrap_target, offset + scsi_sync_write_wrap);
-    sm_config_set_sideset(&c, 1, false, false);
-    return c;
-}
-#endif
-
 // --------------------- //
 // scsi_sync_write_pacer //
 // --------------------- //
@@ -142,8 +112,8 @@ static inline pio_sm_config scsi_sync_write_program_get_default_config(uint offs
 
 static const uint16_t scsi_sync_write_pacer_program_instructions[] = {
             //     .wrap_target
-    0x209a, //  0: wait   1 gpio, 26                 
-    0x201a, //  1: wait   0 gpio, 26                 
+    0x208a, //  0: wait   1 gpio, 10                 
+    0x200a, //  1: wait   0 gpio, 10                 
     0x6061, //  2: out    null, 1                    
             //     .wrap
 };
@@ -223,3 +193,32 @@ static inline pio_sm_config scsi_read_parity_program_get_default_config(uint off
 }
 #endif
 
+// --------------- //
+// scsi_sync_write //
+// --------------- //
+
+#define scsi_sync_write_wrap_target 0
+#define scsi_sync_write_wrap 2
+
+static const uint16_t scsi_sync_write_program_instructions[] = {
+            //     .wrap_target
+    0x7009, //  0: out    pins, 9         side 1     
+    0x6077, //  1: out    null, 23        side 0     
+    0x5061, //  2: in     null, 1         side 1     
+            //     .wrap
+};
+
+#if !PICO_NO_HARDWARE
+static const struct pio_program scsi_sync_write_program = {
+    .instructions = scsi_sync_write_program_instructions,
+    .length = 3,
+    .origin = -1,
+};
+
+static inline pio_sm_config scsi_sync_write_program_get_default_config(uint offset) {
+    pio_sm_config c = pio_get_default_sm_config();
+    sm_config_set_wrap(&c, offset + scsi_sync_write_wrap_target, offset + scsi_sync_write_wrap);
+    sm_config_set_sideset(&c, 1, false, false);
+    return c;
+}
+#endif

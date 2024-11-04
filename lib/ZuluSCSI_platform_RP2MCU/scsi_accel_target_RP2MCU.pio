@@ -24,13 +24,13 @@
 ; - 0-7: DB0-DB7
 ; -   8: DBP
 ; Side set is REQ pin
-
-.define REQ 9
+; ACK is a dummy value, Will be rewritten on initialization
 .define ACK 10
 
 ; Delay from data setup to REQ assertion.
 ; deskew delay + cable skew delay = 55 ns minimum
-; One clock cycle is 8 ns => delay 7 clocks
+; One clock cycle is x ns => delay (55 / x) clocks
+; REQ_DLY is a dummy value, will be rewritten
 .define REQ_DLY 7
 
 ; Adds parity to data that is to be written to SCSI
@@ -49,11 +49,11 @@
 .program scsi_accel_async_write
     .side_set 1
 
-    pull ifempty block          side 1  ; Get data from TX FIFO
-    out pins, 9                 side 1  ; Write data and parity bit
-    out null, 23 [REQ_DLY-2]    side 1  ; Discard unused bits, wait for data preset time
-    wait 1 gpio ACK             side 1  ; Wait for ACK to be inactive
-    wait 0 gpio ACK             side 0  ; Assert REQ, wait for ACK low
+    pull ifempty block   side 1      ; Get data from TX FIFO
+    out pins, 9          side 1      ; Write data and parity bit
+    out null, 23         side 1  [0] ;[REQ_DLY-2]      ; Discard unused bits, wait for data preset time
+    wait 1 gpio ACK      side 1      ; Wait for ACK to be inactive
+    wait 0 gpio ACK      side 0      ; Assert REQ, wait for ACK low
 
 ; Read from SCSI bus using sync or async handshake.
 ; Data is returned as 32-bit words:
@@ -73,19 +73,6 @@
     in pins, 9                  side 1  ; Deassert REQ, read GPIO
     in y, 22                    side 1  ; Copy parity lookup table address
 
-; Data state machine for synchronous writes.
-; Takes the lowest 9 bits of each 32 bit word and writes them to bus with REQ pulse.
-; The delay times will be rewritten by C code to match the negotiated SCSI sync speed.
-;
-; Shifts one bit to ISR per every byte transmitted. This is used to control the transfer
-; pace, the RX fifo acts as a counter to keep track of unacknowledged bytes. The C code
-; can set the syncOffset by changing autopush threshold, e.g. threshold 3 = 12 bytes offset.
-.program scsi_sync_write
-    .side_set 1
-
-    out pins, 9      [0]        side 1  ; Write data and parity bit, wait for deskew delay
-    out null, 23     [0]        side 0  ; Assert REQ, wait for assert time
-    in null, 1       [0]        side 1  ; Deassert REQ, wait for transfer period, wait for space in ACK buffer
 
 ; Data pacing state machine for synchronous writes.
 ; Takes one bit from ISR on every falling edge of ACK.
@@ -122,3 +109,17 @@ parity_valid:
     out x, 24                 ; Take the parity valid bit, and the rest of 32-bit word
     jmp x-- parity_valid      ; If parity valid bit is 1, repeat from start
     irq set 0                 ; Parity error, set interrupt flag
+
+; Data state machine for synchronous writes.
+; Takes the lowest 9 bits of each 32 bit word and writes them to bus with REQ pulse.
+; The delay times will be rewritten by C code to match the negotiated SCSI sync speed.
+;
+; Shifts one bit to ISR per every byte transmitted. This is used to control the transfer
+; pace, the RX fifo acts as a counter to keep track of unacknowledged bytes. The C code
+; can set the syncOffset by changing autopush threshold, e.g. threshold 3 = 12 bytes offset.
+.program scsi_sync_write
+    .side_set 1
+
+    out pins, 9      [0]        side 1  ; Write data and parity bit, wait for deskew delay
+    out null, 23     [0]        side 0  ; Assert REQ, wait for assert time
+    in null, 1       [0]        side 1  ; Deassert REQ, wait for transfer period, wait for space in ACK buffer

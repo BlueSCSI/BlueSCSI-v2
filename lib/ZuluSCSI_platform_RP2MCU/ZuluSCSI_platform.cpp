@@ -1,27 +1,26 @@
-/** 
+/**
  * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
- * 
- * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
- * 
+ *
+ * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version.
+ *
  * https://www.gnu.org/licenses/gpl-3.0.html
  * ----
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version. 
- * 
+ * (at your option) any later version.
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details. 
- * 
+ * GNU General Public License for more details.
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
 
 #include "ZuluSCSI_platform.h"
 #include "ZuluSCSI_log.h"
-#include "ZuluSCSI_config.h"
 #include <SdFat.h>
 #include <scsi.h>
 #include <assert.h>
@@ -37,6 +36,7 @@
 #include <hardware/structs/usb.h>
 #include <hardware/sync.h>
 #include "scsi_accel_target.h"
+#include "custom_timings.h"
 
 #ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
 # include <SerialUSB.h>
@@ -48,7 +48,7 @@
 #ifdef ZULUSCSI_NETWORK
 extern "C" {
 #  include <pico/cyw43_arch.h>
-} 
+}
 #endif // ZULUSCSI_NETWORK
 
 #ifdef ENABLE_AUDIO_OUTPUT
@@ -58,12 +58,11 @@ extern "C" {
 extern bool g_rawdrive_active;
 
 extern "C" {
-
+#include "timings_RP2MCU.h"
 const char *g_platform_name = PLATFORM_NAME;
 static bool g_scsi_initiator = false;
 static uint32_t g_flash_chip_size = 0;
 static bool g_uart_initialized = false;
-
 /***************/
 /* GPIO init   */
 /***************/
@@ -82,13 +81,10 @@ static void gpio_conf(uint gpio, gpio_function_t fn, bool pullup, bool pulldown,
     }
 }
 
-#ifdef ENABLE_AUDIO_OUTPUT
-// Increases clk_sys and clk_peri to 135.428571MHz at runtime to support
-// division to audio output rates. Invoke before anything is using clk_peri
-// except for the logging UART, which is handled below.
-static void reclock_for_audio() {
+static void reclock() {
     // ensure UART is fully drained before we mess up its clock
-    uart_tx_wait_blocking(uart0);
+    if (uart_is_enabled(uart0))
+        uart_tx_wait_blocking(uart0);
     // switch clk_sys and clk_peri to pll_usb
     // see code in 2.15.6.1 of the datasheet for useful comments
     clock_configure(clk_sys,
@@ -101,23 +97,109 @@ static void reclock_for_audio() {
             CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLKSRC_PLL_USB,
             48 * MHZ,
             48 * MHZ);
-    // reset PLL for 135.428571MHz
-    pll_init(pll_sys, 1, 948000000, 7, 1);
+    // reset PLL
+    pll_init(pll_sys,
+        g_zuluscsi_timings->pll.refdiv,
+        g_zuluscsi_timings->pll.vco_freq,
+        g_zuluscsi_timings->pll.post_div1,
+        g_zuluscsi_timings->pll.post_div2);
+
     // switch clocks back to pll_sys
     clock_configure(clk_sys,
             CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
             CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
-            135428571,
-            135428571);
+            g_zuluscsi_timings->clk_hz,
+            g_zuluscsi_timings->clk_hz);
     clock_configure(clk_peri,
             0,
             CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
-            135428571,
-            135428571);
+            g_zuluscsi_timings->clk_hz,
+            g_zuluscsi_timings->clk_hz);
     // reset UART for the new clock speed
-    uart_init(uart0, 1000000);
+    if (uart_is_enabled(uart0))
+        uart_init(uart0, 1000000);
 }
-#endif  // ENABLE_AUDIO_OUT
+
+uint32_t platform_sys_clock_in_hz()
+{
+    return clock_get_hz(clk_sys);
+}
+
+zuluscsi_speed_grade_t platform_string_to_speed_grade(const char *speed_grade_str, size_t length)
+{
+    static const char sg_default[] = "Default";
+    zuluscsi_speed_grade_t grade;
+
+#ifdef ENABLE_AUDIO_OUTPUT
+    logmsg("Audio output enabled, reclocking isn't possible");
+    return SPEED_GRADE_DEFAULT;
+#endif;
+
+    if (strcasecmp(speed_grade_str, sg_default) == 0)
+      grade = SPEED_GRADE_DEFAULT;
+    else if (strcasecmp(speed_grade_str, "TurboMax") == 0)
+      grade = SPEED_GRADE_MAX;
+    else if (strcasecmp(speed_grade_str, "TurboA") == 0)
+      grade = SPEED_GRADE_A;
+    else if (strcasecmp(speed_grade_str, "TurboB") == 0)
+      grade = SPEED_GRADE_B;
+    else if (strcasecmp(speed_grade_str, "TurboC") == 0)
+      grade = SPEED_GRADE_C;
+    else if (strcasecmp(speed_grade_str, "Custom") == 0)
+      grade = SPEED_GRADE_CUSTOM;
+    else
+    {
+      logmsg("Setting \"", speed_grade_str, "\" does not match any know speed grade, using default");
+      grade = SPEED_GRADE_DEFAULT;
+    }
+    return grade;
+}
+
+zuluscsi_reclock_status_t platform_reclock(zuluscsi_speed_grade_t speed_grade)
+{
+    CustomTimings ct;
+    if (speed_grade == SPEED_GRADE_CUSTOM)
+    {
+        if (ct.use_custom_timings())
+        {
+            logmsg("Custom timings found in \"", CUSTOM_TIMINGS_FILE, "\" overriding reclocking");
+            logmsg("Initial Clock set to ", (int) platform_sys_clock_in_hz(), "Hz");
+            if (ct.set_timings_from_file())
+            {
+                reclock();
+                logmsg("SDIO clock set to ", (int)((g_zuluscsi_timings->clk_hz / g_zuluscsi_timings->sdio.clk_div_pio + (5 * MHZ / 10)) / MHZ) , "MHz");
+                return ZULUSCSI_RECLOCK_CUSTOM;
+            }
+            else
+                return ZULUSCSI_RECLOCK_FAILED;
+        }
+        else
+        {
+            logmsg("Custom timings file, \"", CUSTOM_TIMINGS_FILE, "\" not found or disabled");
+            return ZULUSCSI_RECLOCK_FAILED;
+        }
+
+    }
+    else if (set_timings(speed_grade))
+    {
+        logmsg("Initial Clock set to ", (int) platform_sys_clock_in_hz(), "Hz");
+        reclock();
+        logmsg("SDIO clock set to ", (int)((g_zuluscsi_timings->clk_hz / g_zuluscsi_timings->sdio.clk_div_pio + (5 * MHZ / 10)) / MHZ) , "MHz");
+        return ZULUSCSI_RECLOCK_SUCCESS;
+    }
+    return ZULUSCSI_RECLOCK_FAILED;
+}
+
+bool platform_rebooted_into_mass_storage()
+{
+    volatile uint32_t* scratch0 = (uint32_t *)(WATCHDOG_BASE + WATCHDOG_SCRATCH0_OFFSET);
+    if (*scratch0 == REBOOT_INTO_MASS_STORAGE_MAGIC_NUM)
+    {
+        *scratch0 = 0;
+        return true;
+    }
+    return false;
+}
 
 #ifdef HAS_DIP_SWITCHES
 enum pin_setup_state_t  {SETUP_FALSE, SETUP_TRUE, SETUP_UNDETERMINED};
@@ -126,7 +208,7 @@ static pin_setup_state_t read_setup_ack_pin()
     /* Revision 2022d of the RP2040 hardware has problems reading initiator DIP switch setting.
      * The 74LVT245 hold current is keeping the GPIO_ACK state too strongly.
      * Detect this condition by toggling the pin up and down and seeing if it sticks.
-     * 
+     *
      * Revision 2023b and 2023c of the Pico boards have issues reading TERM and DEBUG DIP switch
      * settings. GPIO_ACK is externally pulled down to ground for later revisions.
      * If the state is detected as undetermined then the board is the 2023b or 2023c revision.
@@ -138,7 +220,7 @@ static pin_setup_state_t read_setup_ack_pin()
     gpio_conf(SCSI_IN_ACK,  GPIO_FUNC_SIO, false, true,  false, true,  false);
     delay(1);
     bool ack_state1 = gpio_get(SCSI_IN_ACK);
-    
+
     // Strong output low, then pullup
     //        pin             function       pup   pdown   out    state  fast
     gpio_conf(SCSI_IN_ACK,  GPIO_FUNC_SIO, false, false, true,  false, false);
@@ -169,7 +251,7 @@ void platform_init()
 
     pio_clear_instruction_memory(pio0);
     pio_clear_instruction_memory(pio1);
-    
+
     /* First configure the pins that affect external buffer directions.
      * RP2040 defaults to pulldowns, while these pins have external pull-ups.
      */
@@ -191,13 +273,13 @@ void platform_init()
 # if defined(ZULUSCSI_PICO) || defined(ZULUSCSI_PICO_2)
     // Initiator dip setting works on all rev 2023b, 2023c, and newer rev Pico boards
     g_scsi_initiator = !gpio_get(DIP_INITIATOR);
-    
-    working_dip = SETUP_UNDETERMINED != read_setup_ack_pin();    
+
+    working_dip = SETUP_UNDETERMINED != read_setup_ack_pin();
     if (working_dip)
     {
         dbglog = !gpio_get(DIP_DBGLOG);
         termination = !gpio_get(DIP_TERM);
-        
+
     }
 # else
     g_scsi_initiator = SETUP_TRUE == read_setup_ack_pin();
@@ -220,7 +302,7 @@ void platform_init()
 
 #ifdef HAS_DIP_SWITCHES
     if (working_dip)
-    {       
+    {
         logmsg("DIP switch settings: debug log ", (int)dbglog, ", termination ", (int)termination);
         g_log_debug = dbglog;
 
@@ -247,8 +329,14 @@ void platform_init()
 
 #ifdef ENABLE_AUDIO_OUTPUT
     logmsg("SP/DIF audio to expansion header enabled");
-    logmsg("-- Overclocking to 135.428571MHz");
-    reclock_for_audio();
+    if (platform_reclock(SPEED_GRADE_AUDIO) == ZULUSCSI_RECLOCK_SUCCESS)
+    {
+        logmsg("Reclocked for Audio Ouput at ", (int) platform_sys_clock_in_hz(), "Hz");
+    }
+    else
+    {
+        logmsg("Audio Output timings not found");
+    }
 #endif // ENABLE_AUDIO_OUTPUT
 
     // Get flash chip size
@@ -389,6 +477,7 @@ void platform_late_init()
         gpio_conf(SCSI_OUT_ATN,   GPIO_FUNC_SIO, false,false, true,  true, true);
 #endif  // PLATFORM_HAS_INITIATOR_MODE
     }
+    scsi_accel_rp2040_init();
 }
 
 void platform_post_sd_card_init() {}
@@ -399,7 +488,7 @@ bool platform_is_initiator_mode_enabled()
 }
 
 void platform_disable_led(void)
-{   
+{
     //        pin      function       pup   pdown  out    state fast
     gpio_conf(LED_PIN, GPIO_FUNC_SIO, false,false, false, false, false);
     logmsg("Disabling status LED");
@@ -438,6 +527,7 @@ void platform_emergency_log_save()
 
 
 static void usb_log_poll();
+static void usb_input_poll();
 
 __attribute__((noinline))
 void show_hardfault(uint32_t *sp)
@@ -527,17 +617,64 @@ static void usb_log_poll()
         uint32_t len = available;
         if (len == 0) return;
         if (len > CFG_TUD_CDC_EP_BUFSIZE) len = CFG_TUD_CDC_EP_BUFSIZE;
-        
+
         // Update log position by the actual number of bytes sent
         // If USB CDC buffer is full, this may be 0
         uint32_t actual = 0;
         actual = Serial.write(data, len);
         logpos -= available - actual;
     }
+
 #endif // PIO_FRAMEWORK_ARDUINO_NO_USB
 }
 
+// Grab input from USB Serial terminal
+static void usb_input_poll()
+{
+    #ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
+    // Caputure reboot key sequence
+    static bool mass_storage_reboot_keyed = false;
+    static bool basic_reboot_keyed = false;
+    volatile uint32_t* scratch0 = (uint32_t *)(WATCHDOG_BASE + WATCHDOG_SCRATCH0_OFFSET);
+    int32_t available = Serial.available();
+    if(available > 0)
+    {
+        int32_t read = Serial.read();
+        switch((char) read)
+        {
+            case 'R':
+            case 'r':
+                basic_reboot_keyed = true;
+                mass_storage_reboot_keyed = false;
+                logmsg("Basic reboot requested, press 'y' to engage or any key to clear");
+                break;
+            case 'M':
+            case 'm':
+                mass_storage_reboot_keyed = true;
+                basic_reboot_keyed = false;
+                logmsg("Boot into mass storage requested, press 'y' to engage or any key to clear");
+                *scratch0 = REBOOT_INTO_MASS_STORAGE_MAGIC_NUM;
+                break;
+            case 'Y':
+            case 'y':
+                if (basic_reboot_keyed || mass_storage_reboot_keyed)
+                {
+                    logmsg("Rebooting", mass_storage_reboot_keyed ? " into mass storage": "");
+                    watchdog_reboot(0, 0, 2000);
+                }
+                break;
+            case '\n':
+                break;
 
+            default:
+                if (basic_reboot_keyed || mass_storage_reboot_keyed)
+                    logmsg("Cleared reboot setting");
+                mass_storage_reboot_keyed = false;
+                basic_reboot_keyed = false;
+        }
+    }
+#endif // PIO_FRAMEWORK_ARDUINO_NO_USB
+}
 // Use ADC to implement supply voltage monitoring for the +3.0V rail.
 // This works by sampling the temperature sensor channel, which has
 // a voltage of 0.7 V, allowing to calculate the VDD voltage.
@@ -717,9 +854,10 @@ void platform_reset_watchdog()
 // Can be left empty or used for platform-specific processing.
 void platform_poll()
 {
+    usb_input_poll();
     usb_log_poll();
     adc_poll();
-    
+
 #ifdef ENABLE_AUDIO_OUTPUT
     audio_poll();
 #endif // ENABLE_AUDIO_OUTPUT

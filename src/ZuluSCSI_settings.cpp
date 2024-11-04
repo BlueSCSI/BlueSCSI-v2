@@ -26,6 +26,7 @@
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_config.h"
 #include "ZuluSCSI_settings.h"
+#include "ZuluSCSI_platform.h"
 #include <strings.h>
 #include <minIni.h>
 #include <minIni_cache.h>
@@ -284,7 +285,7 @@ scsi_system_settings_t *ZuluSCSISettings::initSystem(const char *presetName)
     // Default settings for host compatibility 
     cfgSys.quirks = img.quirks;
     cfgSys.selectionDelay = 255;
-    cfgSys.maxSyncSpeed = 10;
+    cfgSys.maxSyncSpeed = PLATFORM_DEFAULT_SCSI_SPEED_SETTING;
     cfgSys.initPreDelay = 0;
     cfgSys.initPostDelay = 0;
     cfgSys.phyMode = 0;

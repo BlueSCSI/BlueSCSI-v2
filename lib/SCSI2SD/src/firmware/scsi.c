@@ -28,6 +28,7 @@
 #include "led.h"
 #include "mode.h"
 #include "scsi2sd_time.h"
+#include "timings.h"
 #include "bsp.h"
 #include "cdrom.h"
 #include "network.h"
@@ -758,8 +759,16 @@ static void scsiReset()
 
 	for (int i = 0; i < S2S_MAX_TARGETS; ++i)
 	{
-		scsiDev.targets[i].syncOffset = 0;
-		scsiDev.targets[i].syncPeriod = 0;
+		if (g_force_sync > 0)
+		{
+			scsiDev.targets[i].syncPeriod = g_force_sync;
+			scsiDev.targets[i].syncOffset = g_force_offset;
+		}
+		else
+		{
+			scsiDev.targets[i].syncOffset = 0;
+			scsiDev.targets[i].syncPeriod = 0;
+		}
 	}
 	scsiDev.minSyncPeriod = 0;
 
@@ -1105,31 +1114,26 @@ static void process_MessageOut()
 				//The speeds above correspond to syncPeriod values of 25, 18, 15 and 12 (maybe, the last 3 are truncated)
 				//We will set the syncPeriod and syncOffset to the fastest we 
 				//can support if the initiator requests a faster speed
-				if ((scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_TURBO) &&
-					(transferPeriod <= 18))
+				if (scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_SYNC_20 || scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_NoLimit)
 				{
-					scsiDev.target->syncPeriod = 18; // 20 corresponds to 12.5 MB/s
+					if (transferPeriod <= g_max_sync_20_period)
+						scsiDev.target->syncPeriod = g_max_sync_20_period;
+					else 
+						scsiDev.target->syncPeriod = transferPeriod;	
 				}
-				else if (scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_TURBO)
+				else if (scsiDev.boardCfg.scsiSpeed >= S2S_CFG_SPEED_SYNC_10)
 				{
-					scsiDev.target->syncPeriod = transferPeriod;
+					if (transferPeriod <= g_max_sync_10_period)
+						scsiDev.target->syncPeriod = g_max_sync_10_period;
+					else
+						scsiDev.target->syncPeriod = transferPeriod;
 				}
-				else if (transferPeriod <= 25 &&
-					((scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_NoLimit) ||
-						(scsiDev.boardCfg.scsiSpeed >= S2S_CFG_SPEED_SYNC_10)))
+				else if (scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_SYNC_5)
 				{
-					scsiDev.target->syncPeriod = 25; // 100ns, 10MB/s
-
-				} else if (transferPeriod < 50 &&
-					((scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_NoLimit) ||
-						(scsiDev.boardCfg.scsiSpeed >= S2S_CFG_SPEED_SYNC_10)))
-				{
-					scsiDev.target->syncPeriod = transferPeriod;
-				} else if (transferPeriod >= 50)
-				{
-					scsiDev.target->syncPeriod = transferPeriod;
-				} else {
-					scsiDev.target->syncPeriod = 50;
+					if (transferPeriod <= g_max_sync_5_period)
+						scsiDev.target->syncPeriod = g_max_sync_5_period;
+					else
+						scsiDev.target->syncPeriod = transferPeriod;
 				}
 			}
 
@@ -1350,8 +1354,16 @@ void scsiInit()
 		scsiDev.targets[i].sense.code = NO_SENSE;
 		scsiDev.targets[i].sense.asc = NO_ADDITIONAL_SENSE_INFORMATION;
 
-		scsiDev.targets[i].syncOffset = 0;
-		scsiDev.targets[i].syncPeriod = 0;
+		if (g_force_sync > 0)
+		{
+			scsiDev.targets[i].syncPeriod = g_force_sync;
+			scsiDev.targets[i].syncOffset = g_force_offset;
+		}
+		else
+		{
+			scsiDev.targets[i].syncOffset = 0;
+			scsiDev.targets[i].syncPeriod = 0;
+		}
 
 		// Always "start" the device. Many systems (eg. Apple System 7)
 		// won't respond properly to
