@@ -1,20 +1,20 @@
-/** 
+/**
  * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
- * 
- * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
- * 
+ *
+ * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version.
+ *
  * https://www.gnu.org/licenses/gpl-3.0.html
  * ----
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version. 
- * 
+ * (at your option) any later version.
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details. 
- * 
+ * GNU General Public License for more details.
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 #include <Arduino.h>
+#include "ZuluSCSI_config.h"
 #include "ZuluSCSI_platform_network.h"
 
 #ifdef ZULUSCSI_PICO
@@ -54,56 +55,9 @@ extern "C" {
 /* These are used in debug output and default SCSI strings */
 extern const char *g_platform_name;
 
-#ifdef ZULUSCSI_PICO
-# ifdef ZULUSCSI_DAYNAPORT
-#   define PLATFORM_NAME "ZuluSCSI Pico DaynaPORT"
-# else
-#   define PLATFORM_NAME "ZuluSCSI Pico"
-# endif
-# define PLATFORM_PID "Pico"
-# define PLATFORM_REVISION "2.0"
-# define PLATFORM_HAS_INITIATOR_MODE 1
-# define DISABLE_SWO
-#define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_10
-#elif defined(ZULUSCSI_PICO_2)
-# define PLATFORM_NAME "ZuluSCSI Pico 2"
-# define PLATFORM_PID "Pico 2"
-# define PLATFORM_REVISION "2.0"
-# define PLATFORM_HAS_INITIATOR_MODE 1
-# define DISABLE_SWO
-#define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_TURBO
-#elif defined(ZULUSCSI_RP2350A)
-# define PLATFORM_NAME "ZuluSCSI RP2350A"
-# define PLATFORM_PID "RP2350A"
-# define PLATFORM_REVISION "2.0"
-# define PLATFORM_HAS_INITIATOR_MODE 1
-#define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_TURBO
-#elif defined(ZULUSCSI_BS2)
-# define PLATFORM_NAME "ZuluSCSI BS2"
-# define PLATFORM_PID "BS2"
-# define PLATFORM_REVISION "1.0"
-#define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_10
-#else
-# define PLATFORM_NAME "ZuluSCSI RP2040"
-# define PLATFORM_PID "RP2040"
-# define PLATFORM_REVISION "2.0"
-# define PLATFORM_HAS_INITIATOR_MODE 1
-#define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_10
-#endif
-
-#define PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE 32768
-#define PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE 65536
-#define PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE 8192
-#define SD_USE_SDIO 1
-#define PLATFORM_HAS_PARITY_CHECK 1
-
-#ifndef PLATFORM_VDD_WARNING_LIMIT_mV
-#define PLATFORM_VDD_WARNING_LIMIT_mV 2800
-#endif
-
 // NOTE: The driver supports synchronous speeds higher than 10MB/s, but this
 // has not been tested due to lack of fast enough SCSI adapter.
-// #define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_TURBO
+// #define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_20
 
 // Debug logging function, can be used to print to e.g. serial port.
 // May get called from interrupt handlers.
@@ -156,6 +110,17 @@ void platform_poll();
 // Debouncing logic is left up to the specific implementation.
 // This function should return without significantly delay.
 uint8_t platform_get_buttons();
+
+uint32_t platform_sys_clock_in_hz();
+
+// Attempt to reclock the MCU
+zuluscsi_reclock_status_t platform_reclock(zuluscsi_speed_grade_t speed_grade);
+
+// convert string to speed grade
+zuluscsi_speed_grade_t platform_string_to_speed_grade(const char *speed_grade_str, size_t length);
+
+// Returns true if reboot was for mass storage
+bool platform_rebooted_into_mass_storage();
 
 // Set callback that will be called during data transfer to/from SD card.
 // This can be used to implement simultaneous transfer to SCSI bus.

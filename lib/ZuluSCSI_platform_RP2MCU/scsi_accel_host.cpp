@@ -31,15 +31,7 @@
 #include <hardware/sync.h>
 
 #ifdef PLATFORM_HAS_INITIATOR_MODE
-# ifdef ZULUSCSI_PICO_2
-#  include "scsi_accel_host_Pico_2.pio.h"
-# elif defined(ZULUSCSI_PICO)
-#  include "scsi_accel_host_Pico.pio.h"
-# elif defined(ZULUSCSI_RP2350A)
-#  include "scsi_accel_host_RP2350A.pio.h"
-# else
-#  include "scsi_accel_host_RP2040.pio.h"
-# endif
+# include "scsi_accel_host_RP2MCU.pio.h"
 
 #define SCSI_PIO pio0
 #define SCSI_SM 0
@@ -167,6 +159,11 @@ void scsi_accel_host_init()
 
     // Asynchronous / synchronous SCSI read
     g_scsi_host.pio_offset_async_read = pio_add_program(SCSI_PIO, &scsi_host_async_read_program);
+    //    wait 0 gpio REQ             side 1  ; Wait for REQ low
+    uint16_t instr = pio_encode_wait_gpio(false, SCSI_IN_REQ) | pio_encode_sideset(1, 1);
+    SCSI_PIO->instr_mem[g_scsi_host.pio_offset_async_read + 2] = instr;
+    instr =   pio_encode_wait_gpio(true, SCSI_IN_REQ) | pio_encode_sideset(1, 0);
+    SCSI_PIO->instr_mem[g_scsi_host.pio_offset_async_read + 5] = instr;
     g_scsi_host.pio_cfg_async_read = scsi_host_async_read_program_get_default_config(g_scsi_host.pio_offset_async_read);
     sm_config_set_in_pins(&g_scsi_host.pio_cfg_async_read, SCSI_IO_DB0);
     sm_config_set_sideset_pins(&g_scsi_host.pio_cfg_async_read, SCSI_OUT_ACK);
