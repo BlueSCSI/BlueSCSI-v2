@@ -976,7 +976,7 @@ static void process_MessageOut()
 	}
 	else if (scsiDev.msgOut == 0x05)
 	{
-		// Initiate Detected Error
+		// Initiator Detected Error
 		// Ignore for now
 	}
 	else if (scsiDev.msgOut == 0x0F)
@@ -992,7 +992,7 @@ static void process_MessageOut()
 	}
 	else if (scsiDev.msgOut == MSG_REJECT)
 	{
-		// Message Reject
+		// Message Rejected
 		// Oh well.
 
 		if (wasNeedSyncNegotiationAck)
@@ -1046,7 +1046,7 @@ static void process_MessageOut()
 	{
 		int i;
 
-		// Extended message.
+		// Extended message. These include speed negotiation
 		int msgLen = scsiReadByte();
 		if (msgLen == 0) msgLen = 256;
 		uint8_t extmsg[256];
@@ -1072,8 +1072,8 @@ static void process_MessageOut()
 			int oldPeriod = scsiDev.target->syncPeriod;
 			int oldOffset = scsiDev.target->syncOffset;
 
-			int transferPeriod = extmsg[1];
-			int offset = extmsg[2];
+			int transferPeriod = extmsg[1];	//This is actually 1/4 of the duration of transfer speed in ns
+			int offset = extmsg[2];	//Req/Ack offset
 
 			if ((
 					(transferPeriod > 0) &&
@@ -1100,10 +1100,15 @@ static void process_MessageOut()
 				// data corruption while reading data. We can count the
 				// ACK's correctly, but can't save the data to a register
 				// before it changes. (ie. transferPeriod == 12)
+				//****TODO Try to get higher speeds
+				//The Adaptec AHA2940-UW seems to support 10, 13.4, 16 and 20 MHz
+				//The speeds above correspond to syncPeriod values of 25, 18, 15 and 12 (maybe, the last 3 are truncated)
+				//We will set the syncPeriod and syncOffset to the fastest we 
+				//can support if the initiator requests a faster speed
 				if ((scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_TURBO) &&
-					(transferPeriod <= 16))
+					(transferPeriod <= 18))
 				{
-					scsiDev.target->syncPeriod = 16; // 15.6MB/s
+					scsiDev.target->syncPeriod = 18; // 20 corresponds to 12.5 MB/s
 				}
 				else if (scsiDev.boardCfg.scsiSpeed == S2S_CFG_SPEED_TURBO)
 				{
@@ -1128,6 +1133,9 @@ static void process_MessageOut()
 				}
 			}
 
+			//Reply back with negotiation speed (if different from previous one)
+			//Reply should be the same as request (if we support it) or slower if we don't
+			//Slower in this context means a higher syncPeriod or lower syncOffset 
 			if (transferPeriod != oldPeriod ||
 				scsiDev.target->syncPeriod != oldPeriod ||
 				offset != oldOffset ||

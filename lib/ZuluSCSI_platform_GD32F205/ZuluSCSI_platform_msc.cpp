@@ -25,6 +25,7 @@
 #include "ZuluSCSI_platform.h"
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_msc.h"
+#include "ZuluSCSI_config.h"
 #include "ZuluSCSI_settings.h"
 #include "usb_serial.h"
 
@@ -93,12 +94,20 @@ bool platform_sense_msc() {
 
   logmsg("Waiting for USB enumeration to expose SD card as a mass storage device");
 
-  // wait for up to a second to be begin to be enumerated
+  // wait to be begin to be enumerated
   uint32_t start = millis();
-  while ((uint32_t)(millis() - start) < CR_ENUM_TIMEOUT)
+  uint16_t usb_timeout =  g_scsi_settings.getSystem()->usbMassStorageWaitPeriod;
+  while ((uint32_t)(millis() - start) < usb_timeout)
+  {
     if (cdc_acm.dev.cur_status >= USBD_ADDRESSED)
+    {
+      dbgmsg("USB enumeration took ", (int)((uint32_t)(millis() - start)), "ms");
       return true;
+    }
+  }
 
+  logmsg("Waiting for USB enumeration timed out after ", usb_timeout, "ms.");
+  logmsg("-- Try increasing 'USBMassStorageWaitPeriod' in the ", CONFIGFILE);
   //if not, disconnect MSC class...
   usbd_disconnect (&cdc_acm);
 
@@ -114,7 +123,8 @@ void platform_enter_msc() {
 
   // give the host a moment to finish enumerate and "load" media
   uint32_t start = millis();
-  while ((USBD_CONFIGURED != cdc_acm.dev.cur_status) && ((uint32_t)(millis() - start) < CR_ENUM_TIMEOUT) ) 
+  uint16_t usb_timeout =  g_scsi_settings.getSystem()->usbMassStorageWaitPeriod;
+  while ((USBD_CONFIGURED != cdc_acm.dev.cur_status) && ((uint32_t)(millis() - start) < usb_timeout ) ) 
     delay(100);
 }
 

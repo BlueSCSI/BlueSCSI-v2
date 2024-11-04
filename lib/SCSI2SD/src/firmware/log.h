@@ -33,9 +33,9 @@ extern void dbgmsg_buf(const unsigned char *buf, unsigned long size);
 extern void dbgmsg_f(const char *format, ...);
 
 #define DBGMSG_BUF(buf, size) dbgmsg_buf(buf, size)
-#define DBGMSG_F(format, ...) dbgmsg_f(format, __VA_ARGS__);
+#define DBGMSG_F(format, ...) dbgmsg_f(format, __VA_ARGS__)
 #define LOGMSG_BUF(buf, size) logmsg_buf(buf, size)
-#define LOGMSG_F(format, ...) logmsg_f(format, __VA_ARGS__);
+#define LOGMSG_F(format, ...) logmsg_f(format, __VA_ARGS__)
 
 #else
 
