@@ -45,10 +45,14 @@
 #endif // ENABLE_AUDIO_OUTPUT
 
 #if defined(ZULUSCSI_PICO) || defined(ZULUSCSI_BS2)
-#include "scsi_accel_target_Pico.pio.h"
+# include "scsi_accel_target_Pico.pio.h"
+#elif defined(ZULUSCSI_PICO_2)
+# include "scsi_accel_target_Pico_2.pio.h"
+#elif defined(ZULUSCSI_RP2350A)
+# include "scsi_accel_target_RP2350A.pio.h"
 #else
-#include "scsi_accel_target_RP2040.pio.h"
-#endif // ZULUSCSI_PICO
+# include "scsi_accel_target_RP2040.pio.h"
+#endif
 
 // SCSI bus write acceleration uses up to 3 PIO state machines:
 // SM0: Convert data bytes to lookup addresses to add parity
@@ -249,7 +253,7 @@ void scsi_accel_rp2040_startWrite(const uint8_t* data, uint32_t count, volatile 
     // Any read requests should be matched with a stopRead()
     assert(g_scsi_dma_state != SCSIDMA_READ && g_scsi_dma_state != SCSIDMA_READ_DONE);
 
-    __disable_irq();
+    uint32_t saved_irq = save_and_disable_interrupts();
     if (g_scsi_dma_state == SCSIDMA_WRITE)
     {
         if (!g_scsi_dma.next_app_buf && data == g_scsi_dma.app_buf + g_scsi_dma.app_bytes)
@@ -272,7 +276,7 @@ void scsi_accel_rp2040_startWrite(const uint8_t* data, uint32_t count, volatile 
             count = 0;
         }
     }
-    __enable_irq();
+    restore_interrupts(saved_irq);
 
     // Check if the request was combined
     if (count == 0) return;
@@ -371,7 +375,7 @@ bool scsi_accel_rp2040_isWriteFinished(const uint8_t* data)
     
     // Check if this data item is still in queue.
     bool finished = true;
-    __disable_irq();
+    uint32_t saved_irq = save_and_disable_interrupts();
     if (data >= g_scsi_dma.app_buf &&
         data < g_scsi_dma.app_buf + g_scsi_dma.app_bytes &&
         (uint32_t)data >= dma_hw->ch[SCSI_DMA_CH_A].al1_read_addr)
@@ -383,7 +387,7 @@ bool scsi_accel_rp2040_isWriteFinished(const uint8_t* data)
     {
         finished = false; // In queued transfer
     }
-    __enable_irq();
+    restore_interrupts(saved_irq);
 
     return finished;
 }
@@ -634,7 +638,7 @@ void scsi_accel_rp2040_startRead(uint8_t *data, uint32_t count, int *parityError
     // Any write requests should be matched with a stopWrite()
     assert(g_scsi_dma_state != SCSIDMA_WRITE && g_scsi_dma_state != SCSIDMA_WRITE_DONE);
 
-    __disable_irq();
+    uint32_t saved_irq = save_and_disable_interrupts();
     if (g_scsi_dma_state == SCSIDMA_READ)
     {
         if (!g_scsi_dma.next_app_buf && data == g_scsi_dma.app_buf + g_scsi_dma.app_bytes)
@@ -657,7 +661,7 @@ void scsi_accel_rp2040_startRead(uint8_t *data, uint32_t count, int *parityError
             count = 0;
         }
     }
-    __enable_irq();
+    restore_interrupts(saved_irq);
 
     // Check if the request was combined
     if (count == 0) return;
@@ -703,7 +707,7 @@ bool scsi_accel_rp2040_isReadFinished(const uint8_t* data)
 
     // Check if this data item is still in queue.
     bool finished = true;
-    __disable_irq();
+    uint32_t saved_irq = save_and_disable_interrupts();
     if (data >= g_scsi_dma.app_buf &&
         data < g_scsi_dma.app_buf + g_scsi_dma.app_bytes &&
         (uint32_t)data >= dma_hw->ch[SCSI_DMA_CH_A].write_addr)
@@ -715,7 +719,7 @@ bool scsi_accel_rp2040_isReadFinished(const uint8_t* data)
     {
         finished = false; // In queued transfer
     }
-    __enable_irq();
+    restore_interrupts(saved_irq);
 
     return finished;
 }
@@ -1087,29 +1091,57 @@ bool scsi_accel_rp2040_setSyncMode(int syncOffset, int syncPeriod)
 
             // Set up the timing parameters to PIO program
             // The scsi_sync_write PIO program consists of three instructions.
-            // The delays are in clock cycles, each taking 8 ns.
-            // delay0: Delay from data write to REQ assertion
-            // delay1: Delay from REQ assert to REQ deassert
-            // delay2: Delay from REQ deassert to data write
-            int delay0, delay1, delay2;
+            // The delays are in clock cycles, each taking 6.66 ns. (@150 MHz)
+            // delay0: Delay from data write to REQ assertion (data setup)
+            // delay1: Delay from REQ assert to REQ deassert (req pulse width)
+            // delay2: Delay from REQ deassert to data write (data hold)
+            int delay0, delay1, delay2, initialDelay, remainderDelay;
+#ifdef ZULUSCSI_MCU_RP23XX
+            int totalDelay = (syncPeriod * 4 * 100 + 333) / 667 ;    //The +333 is equivalent to rounding to the nearest integer
+#else
             int totalDelay = syncPeriod * 4 / 8;
-
-            if (syncPeriod <= 25)
+#endif            
+            if (syncPeriod < 25)
             {
-                // Fast SCSI timing: 30 ns assertion period, 25 ns skew delay
+                // Fast-20 SCSI timing: 15 ns assertion period
                 // The hardware rise and fall time require some extra delay,
                 // the values below are tuned based on oscilloscope measurements.
-                delay0 = 3;
-                delay1 = 5;
+                // These delays are in addition to the 1 cycle that the PIO takes to execute the instruction
+                initialDelay = totalDelay / 3;
+                remainderDelay = totalDelay % 3;    //ReminderDelay will be 0, 1 or 2
+                delay0 = initialDelay - 1; //Data setup time, should be min 11.5ns according to the spec for FAST-20
+                delay2 = initialDelay - 1; //Data hold time, should be min 16.5ns according to the spec for FAST-20
+                delay1 = initialDelay - 1; //pulse width, should be min 15ns according to the spec for FAST-20
+                if (remainderDelay){
+                    delay2++;   //if we have "unassigned" delay time, give it to the one requiring the longest (hold time)
+                    remainderDelay--;
+                }
+                if (remainderDelay){
+                    delay1++;   //if we still have "unassigned" delay time, give it to the one requiring it the next (pulse width)
+                }
+                if (delay2 < 0) delay2 = 0;
+                if (delay2 > 15) delay2 = 15;
+            }
+            else if (syncPeriod < 50 )
+            {
+                // \TODO set RP23XX timings here
+
+                // Fast-10 SCSI timing: 30 ns assertion period, 25 ns skew delay
+                // The hardware rise and fall time require some extra delay,
+                // the values below are tuned based on oscilloscope measurements.
+                delay0 = 4;
+                delay1 = 6;
                 delay2 = totalDelay - delay0 - delay1 - 3;
                 if (delay2 < 0) delay2 = 0;
                 if (delay2 > 15) delay2 = 15;
             }
             else
             {
+                // \TODO set RP23XX timings here
+
                 // Slow SCSI timing: 90 ns assertion period, 55 ns skew delay
-                delay0 = 6;
-                delay1 = 12;
+                delay0 = 7;
+                delay1 = 14;
                 delay2 = totalDelay - delay0 - delay1 - 3;
                 if (delay2 < 0) delay2 = 0;
                 if (delay2 > 15) delay2 = 15;

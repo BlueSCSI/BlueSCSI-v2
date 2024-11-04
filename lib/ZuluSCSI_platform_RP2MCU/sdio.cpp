@@ -1,7 +1,7 @@
 /** 
- * ZuluSCSI™ - Copyright (c) 2022-2024 Rabbit Hole Computing™
+ * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
  * Copyright (c) 2024 Tech by Androda, LLC
- * 
+ *  
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  * 
  * https://www.gnu.org/licenses/gpl-3.0.html
@@ -20,7 +20,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
 
-// Implementation of SDIO communication for RP2040
+// Implementation of SDIO communication for RP2040 and RP23XX
 //
 // The RP2040 official work-in-progress code at
 // https://github.com/raspberrypi/pico-extras/tree/master/src/rp2_common/pico_sd_card
@@ -34,13 +34,18 @@
 #include <hardware/pio.h>
 #include <hardware/dma.h>
 #include <hardware/gpio.h>
+#include <hardware/structs/scb.h>
 #include <ZuluSCSI_platform.h>
 #include <ZuluSCSI_log.h>
 
 #if defined(ZULUSCSI_PICO) || defined(ZULUSCSI_BS2)
-#include "sdio_Pico.pio.h"
+# include "sdio_Pico.pio.h"
+#elif defined(ZULUSCSI_PICO_2)
+# include "sdio_Pico_2.pio.h"
+#elif defined(ZULUSCSI_RP2350A)
+# include "sdio_RP2350A.pio.h"
 #else
-#include "sdio_RP2040.pio.h"
+# include "sdio_RP2040.pio.h"
 #endif
 
 #define SDIO_PIO pio1
@@ -182,7 +187,6 @@ waitagain:
     g_sdio.transfer_state = SDIO_IDLE;
     return SDIO_OK;
 }
-
 
 /*******************************************************
  * Basic SDIO command execution
@@ -742,7 +746,8 @@ static void rp2040_sdio_tx_irq()
 // Check if transmission is complete
 sdio_status_t rp2040_sdio_tx_poll(uint32_t *bytes_complete)
 {
-    if (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk)
+    // SCB_ICSR_VECTACTIVE_Msk (0x1FFUL)
+    if (scb_hw->icsr & (0x1FFUL))
     {
         // Verify that IRQ handler gets called even if we are in hardfault handler
         rp2040_sdio_tx_irq();

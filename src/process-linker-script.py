@@ -19,8 +19,8 @@
 from string import Template 
 Import ("env")
 
-template_file = 'lib/ZuluSCSI_platform_RP2040/rp2040-template.ld'
-linker_file = env.subst('$BUILD_DIR') + '/rp2040.ld'
+template_file =  env.GetProjectOption('linker_script_template')
+linker_file = env.subst('$BUILD_DIR') + '/rp_linker.ld'
 
 def process_template(source, target, env):
     values = {

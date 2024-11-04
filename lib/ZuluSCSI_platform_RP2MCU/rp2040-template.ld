@@ -77,7 +77,6 @@ SECTIONS
         .pio/build/$project_name/src/ZuluSCSI_log_trace.cpp.o(.text .text*)
         .pio/build/$project_name/src/ZuluSCSI_settings.cpp.o(.text .text*)
         .pio/build/$project_name/src/QuirksCheck.cpp.o(.text .text*)
-        *libZuluSCSI_platform_RP2040.a:ZuluSCSI_platform.cpp.o(.text .text*)
         *libm*:(.text .text*)
         *libc*:(.text .text*)
         *libgcc*:*df*(.text .text*)
