@@ -73,7 +73,7 @@ void mbed_error_hook(const mbed_error_ctx * error_context);
 /***************/
 
 // Helper function to configure whole GPIO in one line
-static void gpio_conf(uint gpio, enum gpio_function fn, bool pullup, bool pulldown, bool output, bool initial_state, bool fast_slew)
+static void gpio_conf(uint gpio, gpio_function_t fn, bool pullup, bool pulldown, bool output, bool initial_state, bool fast_slew)
 {
     gpio_put(gpio, initial_state);
     gpio_set_dir(gpio, output);
@@ -82,7 +82,7 @@ static void gpio_conf(uint gpio, enum gpio_function fn, bool pullup, bool pulldo
 
     if (fast_slew)
     {
-        padsbank0_hw->io[gpio] |= PADS_BANK0_GPIO0_SLEWFAST_BITS;
+        pads_bank0_hw->io[gpio] |= PADS_BANK0_GPIO0_SLEWFAST_BITS;
     }
 }
 
@@ -134,6 +134,7 @@ void platform_init()
     // Report platform and firmware version
     log("Platform: ", g_platform_name);
     log("FW Version: ", g_log_firmwareversion);
+    debuglog("PicoSDK: ", PICO_SDK_VERSION_STRING);
 
     /* First configure the pins that affect external buffer directions.
      * RP2040 defaults to pulldowns, while these pins have external pull-ups.
@@ -201,9 +202,9 @@ void platform_init()
     // Get flash chip size
     uint8_t cmd_read_jedec_id[4] = {0x9f, 0, 0, 0};
     uint8_t response_jedec[4] = {0};
-    __disable_irq();
+    uint32_t status = save_and_disable_interrupts();
     flash_do_cmd(cmd_read_jedec_id, response_jedec, 4);
-    __enable_irq();
+    restore_interrupts_from_disabled(status);
     g_flash_chip_size = (1 << response_jedec[3]);
     log("Flash chip size: ", (int)(g_flash_chip_size / 1024), " kB");
 
@@ -495,7 +496,7 @@ static void adc_poll()
     * If ADC sample reads are done, either via direct reading, FIFO, or DMA,
     * at the same time a SPI DMA write begins, it appears that the first
     * 16-bit word of the DMA data is lost. This causes the bitstream to glitch
-    * and audio to 'pop' noticably. For now, just disable ADC reads when audio
+    * and audio to 'pop' noticeably. For now, just disable ADC reads when audio
     * is playing.
     */
    if (audio_is_active()) return;
@@ -570,7 +571,9 @@ static void watchdog_callback(unsigned alarm_num)
 #ifdef __MBED__
             uint32_t *p =  (uint32_t*)__get_PSP();
 #else
-            uint32_t *p =  (uint32_t*)__get_MSP();
+            uint32_t msp;
+            asm volatile ("MRS %0, msp" : "=r" (msp) );
+            uint32_t *p = (uint32_t*)msp;
 #endif
             for (int i = 0; i < 8; i++)
             {
@@ -597,7 +600,9 @@ static void watchdog_callback(unsigned alarm_num)
 #ifdef __MBED__
             uint32_t *p =  (uint32_t*)__get_PSP();
 #else
-            uint32_t *p =  (uint32_t*)__get_MSP();
+            uint32_t msp;
+            asm volatile ("MRS %0, msp" : "=r" (msp) );
+            uint32_t *p = (uint32_t*)msp;
 #endif
             for (int i = 0; i < 8; i++)
             {
@@ -627,7 +632,7 @@ void platform_reset_watchdog()
     if (!g_watchdog_initialized)
     {
         int alarm_num = -1;
-        for (int i = 0; i < NUM_TIMERS; i++)
+        for (int i = 0; i < NUM_GENERIC_TIMERS; i++)
         {
             if (!hardware_alarm_is_claimed(i))
             {
@@ -736,7 +741,7 @@ bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_
     assert(offset >= PLATFORM_BOOTLOADER_SIZE);
 
     // Avoid any mbed timer interrupts triggering during the flashing.
-    __disable_irq();
+    uint32_t status = save_and_disable_interrupts();
 
     // For some reason any code executed after flashing crashes
     // unless we disable the XIP cache.
@@ -754,17 +759,17 @@ bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_
     for (int i = 0; i < num_words; i++)
     {
         uint32_t expected = buf32[i];
-        uint32_t actual = *(volatile uint32_t*)(XIP_NOCACHE_BASE + offset + i * 4);
+        uint32_t actual = *(volatile uint32_t*)(XIP_SRAM_BASE + offset + i * 4);
 
         if (actual != expected)
         {
             log("Flash verify failed at offset ", offset + i * 4, " got ", actual, " expected ", expected);
-            __enable_irq();
+            restore_interrupts_from_disabled(status);
             return false;
         }
     }
 
-    __enable_irq();
+    restore_interrupts_from_disabled(status);
 
     return true;
 }
@@ -774,7 +779,7 @@ void platform_boot_to_main_firmware()
     // To ensure that the system state is reset properly, we perform
     // a SYSRESETREQ and jump straight from the reset vector to main application.
     g_bootloader_exit_req = &g_bootloader_exit_req;
-    SCB->AIRCR = 0x05FA0004;
+    scb_hw->aircr = 0x05FA0004;
     while(1);
 }
 
@@ -787,7 +792,7 @@ void btldr_reset_handler()
         application_base = (uint32_t*)(XIP_BASE + PLATFORM_BOOTLOADER_SIZE);
     }
 
-    SCB->VTOR = (uint32_t)application_base;
+    scb_hw->aircr = (uint32_t)application_base;
     __asm__(
         "msr msp, %0\n\t"
         "bx %1" : : "r" (application_base[0]),
@@ -859,10 +864,10 @@ bool platform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count
     assert(start < platform_get_romdrive_maxsize());
     assert((count % PLATFORM_ROMDRIVE_PAGE_SIZE) == 0);
 
-    __disable_irq();
+    uint32_t status = save_and_disable_interrupts();
     flash_range_erase(start + ROMDRIVE_OFFSET, count);
     flash_range_program(start + ROMDRIVE_OFFSET, data, count);
-    __enable_irq();
+    restore_interrupts_from_disabled(status);
     return true;
 }
 
