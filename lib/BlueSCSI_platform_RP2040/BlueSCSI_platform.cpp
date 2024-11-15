@@ -174,8 +174,8 @@ void platform_init()
         gpio_conf(scsi_pins.IN_ATN,    GPIO_FUNC_SIO, false, false, false, false, false);
         delay(10); /// Settle time
         // Check option switches
-        bool optionS1 = !gpio_get(scsi_pins.IN_ATN);
-        bool optionS2 = !gpio_get(scsi_pins.IN_ACK);
+        [[maybe_unused]] bool optionS1 = !gpio_get(scsi_pins.IN_ATN);
+        [[maybe_unused]] bool optionS2 = !gpio_get(scsi_pins.IN_ACK);
 
         // Reset REQ to appropriate pin for older hardware
         scsi_pins.OUT_REQ = SCSI_OUT_REQ_BEFORE_2023_09a;

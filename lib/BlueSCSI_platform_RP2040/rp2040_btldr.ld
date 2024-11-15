@@ -11,7 +11,7 @@
      * which comes as part of the main firmware.elf and is never overwritten.
      */
     FLASH(rx) : ORIGIN = 0x10000100, LENGTH = 128k-256
-    RAM(rwx) : ORIGIN = 0x20000000, LENGTH = 240k  /* Leave space for pico-debug */
+    RAM(rwx) : ORIGIN = 0x20000000, LENGTH = 256k  /* Leave space for pico-debug */
     SCRATCH_X(rwx) : ORIGIN = 0x20040000, LENGTH = 4k
     SCRATCH_Y(rwx) : ORIGIN = 0x20041000, LENGTH = 4k
 }

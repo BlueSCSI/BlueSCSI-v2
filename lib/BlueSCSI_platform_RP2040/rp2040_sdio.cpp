@@ -881,7 +881,7 @@ void __not_in_flash_func(rp2040_sdio_init)(int clock_divider)
 
     // Load PIO programs
     pio_clear_instruction_memory(SDIO_PIO);
-    
+
     // Set pull resistors for all SD data lines
     gpio_set_pulls(SDIO_CLK, true, false);
     gpio_set_pulls(SDIO_CMD, true, false);

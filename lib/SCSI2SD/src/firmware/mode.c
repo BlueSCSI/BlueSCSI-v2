@@ -261,7 +261,7 @@ static const uint8_t IomegaZip100VendorPage[] =
 0x5c, 0xf, 0xff, 0xf
 };
 
-static const uint8_t IomegaZip250VendorPage[] =
+__attribute__((unused)) static const uint8_t IomegaZip250VendorPage[] =
 {
 0x2f, // Page Code
 4, // Page Length
