@@ -34,7 +34,6 @@
 #include "hardware/i2c.h"
 
 extern "C" {
-#include <pico/cyw43_arch.h>
 
 const char *g_platform_name = PLATFORM_NAME;
 static bool g_scsi_initiator = false;
