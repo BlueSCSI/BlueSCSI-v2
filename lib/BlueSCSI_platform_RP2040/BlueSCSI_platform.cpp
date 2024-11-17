@@ -22,7 +22,7 @@
 #endif
 
 #ifndef __MBED__
-# include <SerialUSB.h>
+#include <Adafruit_TinyUSB.h>
 # include <class/cdc/cdc_device.h>
 #else
 # include <platform/mbed_error.h>
@@ -126,6 +126,9 @@ void platform_init()
 {
     // Make sure second core is stopped
     multicore_reset_core1();
+#ifndef __MBED__
+    Serial.begin(115200);
+#endif // __MBED__
 
     // Default debug logging to disabled
     g_log_debug = false;
@@ -290,9 +293,6 @@ void platform_late_init()
         gpio_conf(scsi_pins.IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
 
 
-#ifndef __MBED__
-    Serial.begin();
-#endif // __MBED__
 
 #ifdef ENABLE_AUDIO_OUTPUT
         // one-time control setup for DMA channels and second core
