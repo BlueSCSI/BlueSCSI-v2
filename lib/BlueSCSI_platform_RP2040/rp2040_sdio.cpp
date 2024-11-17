@@ -120,7 +120,7 @@ static const uint8_t crc7_table[256] = {
 // is applied to each line separately and generates total of
 // 4 x 16 = 64 bits of checksum.
 __attribute__((optimize("O3")))
-uint64_t sdio_crc16_4bit_checksum(uint32_t *data, uint32_t num_words)
+uint64_t __not_in_flash_func(sdio_crc16_4bit_checksum)(uint32_t *data, uint32_t num_words)
 {
     uint64_t crc = 0;
     uint32_t *end = data + num_words;
@@ -157,7 +157,7 @@ uint64_t sdio_crc16_4bit_checksum(uint32_t *data, uint32_t num_words)
 /*******************************************************
  * Clock Runner
  *******************************************************/
-void cycleSdClock() {
+void __not_in_flash_func(cycleSdClock)() {
     pio_sm_exec(SDIO_PIO, SDIO_CMD_SM, pio_encode_nop() | pio_encode_sideset_opt(1, 1) | pio_encode_delay(1));
     pio_sm_exec(SDIO_PIO, SDIO_CMD_SM, pio_encode_nop() | pio_encode_sideset_opt(1, 0) | pio_encode_delay(1));
 }
@@ -165,7 +165,7 @@ void cycleSdClock() {
 /*******************************************************
  * Status Register Receiver
  *******************************************************/
-sdio_status_t receive_status_register(uint8_t* sds) {
+sdio_status_t __not_in_flash_func(receive_status_register)(uint8_t* sds) {
     rp2040_sdio_rx_start(sds, 1, 64);
 
     // Wait for the DMA operation to complete, or fail if it took too long
@@ -199,7 +199,7 @@ waitagain:
  * Basic SDIO command execution
  *******************************************************/
 
-static void sdio_send_command(uint8_t command, uint32_t arg, uint8_t response_bits)
+static void __not_in_flash_func(sdio_send_command)(uint8_t command, uint32_t arg, uint8_t response_bits)
 {
     // if (command != 41 && command != 55) {
     //     log("C: ", (int)command, " A: ", arg);
@@ -249,7 +249,7 @@ static void sdio_send_command(uint8_t command, uint32_t arg, uint8_t response_bi
     dma_channel_configure(SDIO_DMA_CH, &dmacfg, &SDIO_PIO->txf[SDIO_CMD_SM], &g_sdio.cmdBuf, 6, true);
 }
 
-sdio_status_t rp2040_sdio_command_R1(uint8_t command, uint32_t arg, uint32_t *response)
+sdio_status_t __not_in_flash_func(rp2040_sdio_command_R1)(uint8_t command, uint32_t arg, uint32_t *response)
 {
     uint32_t resp[2];
     if (response) {
@@ -343,7 +343,7 @@ sdio_status_t rp2040_sdio_command_R1(uint8_t command, uint32_t arg, uint32_t *re
     return SDIO_OK;
 }
 
-sdio_status_t rp2040_sdio_command_R2(uint8_t command, uint32_t arg, uint8_t response[16])
+sdio_status_t __not_in_flash_func(rp2040_sdio_command_R2)(uint8_t command, uint32_t arg, uint8_t response[16])
 {
     // The response is too long to fit in the PIO FIFO, so use DMA to receive it.
     uint32_t response_buf[5];
@@ -428,7 +428,7 @@ sdio_status_t rp2040_sdio_command_R2(uint8_t command, uint32_t arg, uint8_t resp
 }
 
 
-sdio_status_t rp2040_sdio_command_R3(uint8_t command, uint32_t arg, uint32_t *response)
+sdio_status_t __not_in_flash_func(rp2040_sdio_command_R3)(uint8_t command, uint32_t arg, uint32_t *response)
 {
     uint32_t resp[2];
     dma_channel_config dmacfg = dma_channel_get_default_config(SDIO_DMA_CHB);
@@ -476,7 +476,7 @@ sdio_status_t rp2040_sdio_command_R3(uint8_t command, uint32_t arg, uint32_t *re
  * Data reception from SD card
  *******************************************************/
 
-sdio_status_t rp2040_sdio_rx_start(uint8_t *buffer, uint32_t num_blocks, uint32_t block_size)
+sdio_status_t __not_in_flash_func(rp2040_sdio_rx_start)(uint8_t *buffer, uint32_t num_blocks, uint32_t block_size)
 {
     // Buffer must be aligned
     assert(((uint32_t)buffer & 3) == 0 && num_blocks <= SDIO_MAX_BLOCKS);
@@ -542,7 +542,7 @@ sdio_status_t rp2040_sdio_rx_start(uint8_t *buffer, uint32_t num_blocks, uint32_
 }
 
 // Check checksums for received blocks
-static void sdio_verify_rx_checksums(uint32_t maxcount)
+static void __not_in_flash_func(sdio_verify_rx_checksums)(uint32_t maxcount)
 {
     while (g_sdio.blocks_checksumed < g_sdio.blocks_done && maxcount-- > 0)
     {
@@ -568,7 +568,7 @@ static void sdio_verify_rx_checksums(uint32_t maxcount)
     }
 }
 
-sdio_status_t rp2040_sdio_rx_poll(uint32_t *bytes_complete)
+sdio_status_t __not_in_flash_func(rp2040_sdio_rx_poll)(uint32_t *bytes_complete)
 {
     // Was everything done when the previous rx_poll() finished?
     if (g_sdio.blocks_done >= g_sdio.total_blocks)
@@ -630,7 +630,7 @@ sdio_status_t rp2040_sdio_rx_poll(uint32_t *bytes_complete)
  * Data transmission to SD card
  *******************************************************/
 
-static void sdio_start_next_block_tx()
+static void __not_in_flash_func(sdio_start_next_block_tx)()
 {
     // Initialize PIOs
     pio_sm_init(SDIO_PIO, SDIO_CMD_SM, g_sdio.pio_data_tx_offset, &g_sdio.pio_cfg_data_tx);
@@ -685,7 +685,7 @@ static void sdio_start_next_block_tx()
     pio_set_sm_mask_enabled(SDIO_PIO, (1ul << SDIO_CMD_SM)/* | (1ul << SDIO_DATA_SM)*/, true);
 }
 
-static void sdio_compute_next_tx_checksum()
+static void __not_in_flash_func(sdio_compute_next_tx_checksum)()
 {
     assert (g_sdio.blocks_done < g_sdio.total_blocks && g_sdio.blocks_checksumed < g_sdio.total_blocks);
     int blockidx = g_sdio.blocks_checksumed++;
@@ -694,7 +694,7 @@ static void sdio_compute_next_tx_checksum()
 }
 
 // Start transferring data from memory to SD card
-sdio_status_t rp2040_sdio_tx_start(const uint8_t *buffer, uint32_t num_blocks)
+sdio_status_t __not_in_flash_func(rp2040_sdio_tx_start)(const uint8_t *buffer, uint32_t num_blocks)
 {
     // Buffer must be aligned
     assert(((uint32_t)buffer & 3) == 0 && num_blocks <= SDIO_MAX_BLOCKS);
@@ -722,7 +722,7 @@ sdio_status_t rp2040_sdio_tx_start(const uint8_t *buffer, uint32_t num_blocks)
     return SDIO_OK;
 }
 
-sdio_status_t check_sdio_write_response(uint32_t card_response)
+sdio_status_t __not_in_flash_func(check_sdio_write_response)(uint32_t card_response)
 {
     uint8_t wr_status = card_response & 0x1F;
     //  5 = 0b0101 = data accepted  (11100101)
@@ -751,7 +751,7 @@ sdio_status_t check_sdio_write_response(uint32_t card_response)
 }
 
 // When a block finishes, this IRQ handler starts the next one
-static void rp2040_sdio_tx_irq()
+static void __not_in_flash_func(rp2040_sdio_tx_irq)()
 {
     dma_hw->ints1 = 1 << SDIO_DMA_CHB;
 
@@ -815,9 +815,9 @@ static void rp2040_sdio_tx_irq()
 }
 
 // Check if transmission is complete
-sdio_status_t rp2040_sdio_tx_poll(uint32_t *bytes_complete)
+sdio_status_t __not_in_flash_func(rp2040_sdio_tx_poll)(uint32_t *bytes_complete)
 {
-    if (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk)
+    if (scb_hw->icsr & (0x1FFUL))
     {
         // Verify that IRQ handler gets called even if we are in hardfault handler
         rp2040_sdio_tx_irq();
@@ -849,7 +849,7 @@ sdio_status_t rp2040_sdio_tx_poll(uint32_t *bytes_complete)
 }
 
 // Force everything to idle state
-sdio_status_t rp2040_sdio_stop()
+sdio_status_t __not_in_flash_func(rp2040_sdio_stop)()
 {
     dma_channel_abort(SDIO_DMA_CH);
     dma_channel_abort(SDIO_DMA_CHB);
@@ -859,7 +859,7 @@ sdio_status_t rp2040_sdio_stop()
     return SDIO_OK;
 }
 
-void rp2040_sdio_init(int clock_divider)
+void __not_in_flash_func(rp2040_sdio_init)(int clock_divider)
 {
     // Mark resources as being in use, unless it has been done already.
     static bool resources_claimed = false;
@@ -881,7 +881,7 @@ void rp2040_sdio_init(int clock_divider)
 
     // Load PIO programs
     pio_clear_instruction_memory(SDIO_PIO);
-    
+
     // Set pull resistors for all SD data lines
     gpio_set_pulls(SDIO_CLK, true, false);
     gpio_set_pulls(SDIO_CMD, true, false);
@@ -938,7 +938,7 @@ void rp2040_sdio_init(int clock_divider)
 #endif
 }
 
-void rp2040_sdio_update_delays(pio_program program, uint32_t offset, uint16_t additional_delay) {
+void __not_in_flash_func(rp2040_sdio_update_delays)(pio_program program, uint32_t offset, uint16_t additional_delay) {
     //log("Offset:", offset);
     uint16_t instr_to_rewrite;
     uint16_t existing_delay;
@@ -963,7 +963,7 @@ void rp2040_sdio_update_delays(pio_program program, uint32_t offset, uint16_t ad
     }
 }
 
-void rp2040_sdio_delay_increment(uint16_t additional_delay) {
+void __not_in_flash_func(rp2040_sdio_delay_increment)(uint16_t additional_delay) {
     /*
     Rewrite in-place every SDIO instruction for all the SDIO programs.
     These additional delay cycles effectively decrease the SDIO clock rate, which can be helpful in electrically noisy environments.

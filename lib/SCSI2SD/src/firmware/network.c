@@ -13,7 +13,7 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-
+#ifdef BLUESCSI_NETWORK
 #include <string.h>
 
 #include "scsi.h"
@@ -528,3 +528,4 @@ int scsiNetworkPurge(void)
 
 	return sent;
 }
+#endif

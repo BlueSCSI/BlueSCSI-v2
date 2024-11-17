@@ -21,9 +21,10 @@
 #include <network.h>
 
 extern "C" {
-
+#ifdef BLUESCSI_NETWORK
 #include <cyw43.h>
 #include <pico/cyw43_arch.h>
+#endif
 
 #ifndef CYW43_IOCTL_GET_RSSI
 #define CYW43_IOCTL_GET_RSSI (0xfe)
@@ -34,17 +35,12 @@ static const char defaultMAC[] = { 0x00, 0x80, 0x19, 0xc0, 0xff, 0xee };
 
 static bool network_in_use = false;
 
-bool platform_network_supported()
+bool __not_in_flash_func(platform_network_supported)()
 {
-	/* from cores/rp2040/RP2040Support.h */
-#if !defined(ARDUINO_RASPBERRY_PI_PICO_W)
-	return false;
-#else
-	extern bool __isPicoW;
-	return __isPicoW;
-#endif
+	return rp2040.isPicoW();
 }
 
+#ifdef BLUESCSI_NETWORK
 int platform_network_init(char *mac)
 {
 	pico_unique_board_id_t board_id;
@@ -311,4 +307,5 @@ void cyw43_cb_tcpip_set_link_up(cyw43_t *self, int itf)
 		log_f("Successfully connected to Wi-Fi SSID \"%s\"", ssid);
 }
 
+#endif
 }
