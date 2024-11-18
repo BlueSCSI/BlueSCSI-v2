@@ -233,7 +233,7 @@ static const usb_desc_str product_string =
 };
 
 /* USBD serial string */
-static usb_desc_str serial_string = 
+static const usb_desc_str serial_string =
 {
     .header = 
      {

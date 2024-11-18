@@ -9,7 +9,7 @@
       },
       "core": "earlephilhower",
       "cpu": "cortex-m0plus",
-      "extra_flags": "-D ARDUINO_RHC_ZULUSCSI_RP2040 -DARDUINO_ARCH_RP2040 -DUSBD_MAX_POWER_MA=500",
+      "extra_flags": "-DARDUINO_GENERIC_RP2040 -DARDUINO_ARCH_RP2040 -DUSBD_MAX_POWER_MA=500 ",
       "f_cpu": "125000000L",
       "hwids": [
         [
@@ -22,7 +22,7 @@
         ]
       ],
       "mcu": "rp2040",
-      "variant": "zuluscsi_rp2040"
+      "variant": "generic"
     },
     "debug": {
       "jlink_device": "RP2040_M0_0",
@@ -32,7 +32,7 @@
     "frameworks": [
       "arduino"
     ],
-    "name": "ZuluSCSI",
+    "name": "ZuluSCSI RP2040",
     "upload": {
       "maximum_ram_size": 270336,
       "maximum_size": 2097152,
@@ -40,7 +40,7 @@
       "native_usb": true,
       "use_1200bps_touch": true,
       "wait_for_upload_port": false,
-      "protocol": "picotool",
+      "protocol": "cmsis-dap",
       "protocols": [
         "blackmagic",
         "cmsis-dap",
@@ -51,7 +51,7 @@
         "pico-debug"
       ]
     },
-    "url": "https://www.raspberrypi.org/products/raspberry-pi-pico/",
-    "vendor": "Rabbit Hole Computing"
+    "url": "http://zuluscsi.com",
+    "vendor": "Rabbit Hole Computing LLC"
   }
   
