@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2023-2024 zigzagjoe
+/** 
+ * ZuluSCSI™ - Copyright (c) 2024 Rabbit Hole Computing™
  * 
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  * 
@@ -18,17 +18,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
-
-#ifdef PLATFORM_MASS_STORAGE
-#pragma once
-
-// include platform-specific defines
-#include "ZuluSCSI_platform_msc.h"
-
-enum  MSC_LEDState { LED_SOLIDON = 0, LED_BLINK_FAST, LED_BLINK_SLOW };
-extern volatile enum MSC_LEDState MSC_LEDMode;
-
-// run cardreader main loop (blocking)
-void zuluscsi_msc_loop();
-
-#endif
+#ifndef ZULUSCSI_SCSI2SD_TIMINGS_H
+#define ZULUSCSI_SCSI2SD_TIMINGS_H
+#include <stdint.h>
+extern uint8_t g_max_sync_20_period;
+extern uint8_t g_max_sync_10_period;
+extern uint8_t g_max_sync_5_period;
+extern uint8_t g_force_sync;
+extern uint8_t g_force_offset;
+#endif // ZULUSCSI_SCSI2SD_TIMINGS_H

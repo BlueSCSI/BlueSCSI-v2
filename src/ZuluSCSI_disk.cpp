@@ -268,6 +268,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
 {
     image_config_t &img = g_DiskImages[target_idx];
     img.cuesheetfile.close();
+    img.cdrom_binfile_index = -1;
     scsiDiskSetImageConfig(target_idx);
     img.file = ImageBackingStore(filename, blocksize);
 
@@ -278,14 +279,14 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
         img.scsiId = target_idx | S2S_CFG_TARGET_ENABLED;
         img.sdSectorStart = 0;
 
-        if (type != S2S_CFG_NETWORK && img.scsiSectors == 0)
+        if (img.scsiSectors == 0 && type != S2S_CFG_NETWORK && !img.file.isFolder())
         {
             logmsg("---- Error: image file ", filename, " is empty");
             img.file.close();
             return false;
         }
         uint32_t sector_begin = 0, sector_end = 0;
-        if (img.file.isRom() || type == S2S_CFG_NETWORK)
+        if (img.file.isRom() || type == S2S_CFG_NETWORK || img.file.isFolder())
         {
             // ROM is always contiguous, no need to log
         }
@@ -388,6 +389,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
         if (img.deviceType == S2S_CFG_OPTICAL &&
             strncasecmp(filename + strlen(filename) - 4, ".bin", 4) == 0)
         {
+            // Check for .cue sheet with single .bin file
             char cuesheetname[MAX_FILE_PATH + 1] = {0};
             strncpy(cuesheetname, filename, strlen(filename) - 4);
             strlcat(cuesheetname, ".cue", sizeof(cuesheetname));
@@ -407,6 +409,31 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
                 logmsg("---- No CUE sheet found at ", cuesheetname, ", using as plain binary image");
             }
         }
+        else if (img.deviceType == S2S_CFG_OPTICAL && img.file.isFolder())
+        {
+            // The folder should contain .cue sheet and one or several .bin files
+            char foldername[MAX_FILE_PATH + 1] = {0};
+            char cuesheetname[MAX_FILE_PATH + 1] = {0};
+            img.file.getFoldername(foldername, sizeof(foldername));
+            FsFile folder = SD.open(foldername, O_RDONLY);
+            bool valid = false;
+            img.cuesheetfile.close();
+            while (!valid && img.cuesheetfile.openNext(&folder, O_RDONLY))
+            {
+                img.cuesheetfile.getName(cuesheetname, sizeof(cuesheetname));
+                if (strncasecmp(cuesheetname + strlen(cuesheetname) - 4, ".cue", 4) == 0)
+                {
+                    valid = cdromValidateCueSheet(img);
+                }
+            }
+
+            if (!valid)
+            {
+                logmsg("No valid .cue sheet found in folder '", foldername, "'");
+                img.cuesheetfile.close();
+            }
+        }
+
         img.use_prefix = use_prefix;
         img.file.getFilename(img.current_image, sizeof(img.current_image));
         return true;
@@ -477,6 +504,22 @@ bool scsiDiskFilenameValid(const char* name)
         return false;
     }
     return true;
+}
+
+bool scsiDiskFolderContainsCueSheet(FsFile *dir)
+{
+    FsFile file;
+    char filename[MAX_FILE_PATH + 1];
+    while (file.openNext(dir, O_RDONLY))
+    {
+        if (file.getName(filename, sizeof(filename)) &&
+            (strncasecmp(filename + strlen(filename) - 4, ".cue", 4) == 0))
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 static void scsiDiskCheckDir(char * dir_name, int target_idx, image_config_t* img, S2S_CFG_TYPE type, const char* type_name)
@@ -639,7 +682,7 @@ static int findNextImageAfter(image_config_t &img,
     FsFile file;
     while (file.openNext(&dir, O_RDONLY))
     {
-        if (file.isDir()) continue;
+        if (file.isDir() && !scsiDiskFolderContainsCueSheet(&file)) continue;
         if (!file.getName(buf, MAX_FILE_PATH))
         {
             logmsg("Image directory '", dirname, "' had invalid file");
@@ -1071,6 +1114,8 @@ void s2s_configInit(S2S_BoardCfg* config)
         config->scsiSpeed = S2S_CFG_SPEED_ASYNC_50;
     else if (maxSyncSpeed < 10 && config->scsiSpeed > S2S_CFG_SPEED_SYNC_5)
         config->scsiSpeed = S2S_CFG_SPEED_SYNC_5;
+    else if (maxSyncSpeed < 20 && config->scsiSpeed > S2S_CFG_SPEED_SYNC_10)
+        config->scsiSpeed = S2S_CFG_SPEED_SYNC_10;
 
     logmsg("-- SelectionDelay = ", (int)config->selectionDelay);
 
@@ -1671,6 +1716,12 @@ void diskDataOut()
             }
             platform_set_sd_callback(NULL, NULL);
             g_disk_transfer.bytes_sd += len;
+
+            // Reset the watchdog while the transfer is progressing.
+            // If the host stops transferring, the watchdog will eventually expire.
+            // This is needed to avoid hitting the watchdog if the host performs
+            // a large transfer compared to its transfer speed.
+            platform_reset_watchdog();
         }
     }
 
@@ -1844,6 +1895,12 @@ static void start_dataInTransfer(uint8_t *buffer, uint32_t count)
 
     platform_poll();
     diskEjectButtonUpdate(false);
+
+    // Reset the watchdog while the transfer is progressing.
+    // If the host stops transferring, the watchdog will eventually expire.
+    // This is needed to avoid hitting the watchdog if the host performs
+    // a large transfer compared to its transfer speed.
+    platform_reset_watchdog();
 }
 
 static void diskDataIn()

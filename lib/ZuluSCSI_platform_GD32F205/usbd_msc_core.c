@@ -167,7 +167,7 @@ static __ALIGN_BEGIN const usb_desc_str product_string __ALIGN_END = {
 };
 
 /* USBD serial string */
-static __ALIGN_BEGIN usb_desc_str serial_string __ALIGN_END = {
+static __ALIGN_BEGIN const usb_desc_str serial_string __ALIGN_END = {
     .header =
     {
         .bLength         = USB_STRING_LEN(12U),

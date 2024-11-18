@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2023-2024 zigzagjoe
+/** 
+ * ZuluSCSI™ - Copyright (c) 2024 Rabbit Hole Computing™
  * 
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  * 
@@ -18,17 +18,21 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
-
-#ifdef PLATFORM_MASS_STORAGE
 #pragma once
 
-// include platform-specific defines
-#include "ZuluSCSI_platform_msc.h"
-
-enum  MSC_LEDState { LED_SOLIDON = 0, LED_BLINK_FAST, LED_BLINK_SLOW };
-extern volatile enum MSC_LEDState MSC_LEDMode;
-
-// run cardreader main loop (blocking)
-void zuluscsi_msc_loop();
-
+#if defined(ZULUSCSI_V1_4)
+#   define PLATFORM_NAME "ZuluSCSI v1.4"
+#   define PLATFORM_REVISION "1.4"
+#   define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_10
+#   define PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE 4096
+#   define PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE 65536
+#   define PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE 8192
+#   define PLATFORM_FLASH_SECTOR_ERASE
+#   include "ZuluSCSI_v1_4_gpio.h"
 #endif
+
+#ifndef PLATFORM_VDD_WARNING_LIMIT_mV
+#define PLATFORM_VDD_WARNING_LIMIT_mV 2800
+#endif
+
+#define PLATFORM_DEFAULT_SCSI_SPEED_SETTING 10

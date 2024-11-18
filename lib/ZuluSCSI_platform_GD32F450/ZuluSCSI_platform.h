@@ -27,8 +27,7 @@
 #include <gd32f4xx.h>
 #include <gd32f4xx_gpio.h>
 #include <scsi2sd.h>
-#include "ZuluSCSI_config.h"
-
+#include <ZuluSCSI_config.h>
 
 #ifdef __cplusplus
 #include <SdFat.h>
@@ -37,21 +36,6 @@ extern "C" {
 #endif
 
 extern const char *g_platform_name;
-
-#if defined(ZULUSCSI_V1_4)
-#   define PLATFORM_NAME "ZuluSCSI v1.4"
-#   define PLATFORM_REVISION "1.4"
-#   define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_10
-#   define PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE 4096
-#   define PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE 65536
-#   define PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE 8192
-#   define PLATFORM_FLASH_SECTOR_ERASE
-#   include "ZuluSCSI_v1_4_gpio.h"
-#endif
-
-#ifndef PLATFORM_VDD_WARNING_LIMIT_mV
-#define PLATFORM_VDD_WARNING_LIMIT_mV 2800
-#endif
 
 // Debug logging functions
 void platform_log(const char *s);
@@ -109,6 +93,19 @@ void platform_poll();
 // Debouncing logic is left up to the specific implementation.
 // This function should return without significantly delay.
 uint8_t platform_get_buttons();
+
+uint32_t platform_sys_clock_in_hz();
+
+// Attempt to reclock the MCU - unsupported
+inline zuluscsi_reclock_status_t platform_reclock(zuluscsi_speed_grade_t speed_grade){return ZULUSCSI_RECLOCK_NOT_SUPPORTED;}
+
+// match string to speed grade - unsupported
+inline zuluscsi_speed_grade_t platform_string_to_speed_grade(const char *speed_grade_str, size_t length){return SPEED_GRADE_DEFAULT;}
+
+// Returns true if reboot was for mass storage - unsupported
+inline bool platform_rebooted_into_mass_storage() {return false;}
+
+
 
 // Reinitialize SD card connection and save log from interrupt context.
 // This can be used in crash handlers.
