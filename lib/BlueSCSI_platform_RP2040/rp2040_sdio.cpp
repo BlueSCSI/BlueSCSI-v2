@@ -56,6 +56,7 @@ static struct {
     uint32_t end_token_buf[3]; // CRC and end token for write block
     sdio_status_t wr_status;
     uint32_t card_response;
+    uint8_t retries;
 
     // Variables for block reads
     // This is used to perform DMA into data buffers and checksum buffers separately.
@@ -706,18 +707,14 @@ sdio_status_t __not_in_flash_func(rp2040_sdio_tx_start)(const uint8_t *buffer, u
     g_sdio.total_blocks = num_blocks;
     g_sdio.blocks_checksumed = 0;
     g_sdio.checksum_errors = 0;
+    g_sdio.retries = 0;
+    g_sdio.wr_status = SDIO_OK;
 
     // Compute first block checksum
     sdio_compute_next_tx_checksum();
 
     // Start first DMA transfer and PIO
     sdio_start_next_block_tx();
-
-    if (g_sdio.blocks_checksumed < g_sdio.total_blocks)
-    {
-        // Precompute second block checksum
-        sdio_compute_next_tx_checksum();
-    }
 
     return SDIO_OK;
 }
@@ -788,10 +785,25 @@ static void __not_in_flash_func(rp2040_sdio_tx_irq)()
             g_sdio.wr_status = check_sdio_write_response(g_sdio.card_response);
 
             if (g_sdio.wr_status != SDIO_OK)
-            {
-                rp2040_sdio_stop();
-                return;
-            }
+	    {
+		g_sdio.retries++;
+		if (g_sdio.retries > 3)
+		{
+                    rp2040_sdio_stop();
+                    return;
+		}
+            	else if (g_sdio.blocks_done < g_sdio.total_blocks)
+            	{
+		    g_sdio.wr_status = SDIO_OK;
+                    sdio_start_next_block_tx();
+                    g_sdio.transfer_state = SDIO_TX;
+		    return;
+		}
+	    }
+
+    	    g_sdio.retries = 0;
+            if (g_sdio.blocks_checksumed < g_sdio.total_blocks)
+                sdio_compute_next_tx_checksum();
 
             g_sdio.blocks_done++;
             if (g_sdio.blocks_done < g_sdio.total_blocks)
@@ -799,12 +811,6 @@ static void __not_in_flash_func(rp2040_sdio_tx_irq)()
                 sdio_start_next_block_tx();
                 g_sdio.transfer_state = SDIO_TX;
 
-                if (g_sdio.blocks_checksumed < g_sdio.total_blocks)
-                {
-                    // Precompute the CRC for next block so that it is ready when
-                    // we want to send it.
-                    sdio_compute_next_tx_checksum();
-                }
             }
             else
             {
