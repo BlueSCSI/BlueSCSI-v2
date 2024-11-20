@@ -314,6 +314,14 @@ void ImageBackingStore::getName(char * name, size_t len)
         m_fsfile.getName(name, len);
 }
 
+void ImageBackingStore::rename(char *new_name)
+{
+    if(m_isrom || m_israw)
+        return;
+    else
+        m_fsfile.rename(new_name);
+}
+
 uint64_t ImageBackingStore::position()
 {
     if (!m_israw && !m_isrom)

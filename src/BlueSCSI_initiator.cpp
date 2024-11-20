@@ -1,7 +1,10 @@
 /*
- *  ZuluSCSI
- *  Copyright (c) 2022 Rabbit Hole Computing
+ *  BlueSCSI_initiator.cpp
  *
+ *  Copyright (c) 2022 Rabbit Hole Computing
+ *  Copyright (c) 2023-2024 Eric Helgeson
+ *
+ * File originally derived from ZuluSCSI_initiator.cpp
  * Main program for initiator mode.
  */
 
@@ -12,6 +15,7 @@
 #include <BlueSCSI_platform.h>
 #include <minIni.h>
 #include "SdFat.h"
+#include "BlueSCSI_console.h"
 
 #include <scsi2sd.h>
 extern "C" {
@@ -41,40 +45,6 @@ bool scsiInitiatorReadCapacity(int target_id, uint32_t *sectorcount, uint32_t *s
 }
 
 #else
-
-/*************************************
- * High level initiator mode logic   *
- *************************************/
-
-static struct {
-    // Bitmap of all drives that have been imaged
-    uint32_t drives_imaged;
-
-    uint8_t initiator_id;
-
-    // Is imaging a drive in progress, or are we scanning?
-    bool imaging;
-
-    // Information about currently selected drive
-    int target_id;
-    uint32_t sectorsize;
-    uint32_t sectorcount;
-    uint32_t sectorcount_all;
-    uint32_t sectors_done;
-    uint32_t max_sector_per_transfer;
-    uint32_t badSectorCount;
-    uint8_t ansiVersion;
-    uint8_t maxRetryCount;
-    uint8_t deviceType;
-
-    // Retry information for sector reads.
-    // If a large read fails, retry is done sector-by-sector.
-    int retrycount;
-    uint32_t failposition;
-    bool ejectWhenDone;
-
-    FsFile target_file;
-} g_initiator_state;
 
 extern SdFs SD;
 
@@ -155,6 +125,7 @@ void scsiInitiatorMainLoop()
 
     if (!g_initiator_state.imaging)
     {
+        handleUsbInputInitiatorMode();
         // Scan for SCSI drives one at a time
         g_initiator_state.target_id = (g_initiator_state.target_id + 1) % 8;
         g_initiator_state.sectors_done = 0;

@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "SdFat.h"
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -38,3 +39,37 @@ bool scsiTestUnitReady(int target_id);
 class FsFile;
 bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t sectorcount, uint32_t sectorsize,
                                  FsFile &file);
+
+/*************************************
+ * High level initiator mode logic   *
+ *************************************/
+
+static struct {
+    // Bitmap of all drives that have been imaged
+    uint32_t drives_imaged;
+
+    uint8_t initiator_id;
+
+    // Is imaging a drive in progress, or are we scanning?
+    bool imaging;
+
+    // Information about currently selected drive
+    int target_id;
+    uint32_t sectorsize;
+    uint32_t sectorcount;
+    uint32_t sectorcount_all;
+    uint32_t sectors_done;
+    uint32_t max_sector_per_transfer;
+    uint32_t badSectorCount;
+    uint8_t ansiVersion;
+    uint8_t maxRetryCount;
+    uint8_t deviceType;
+
+    // Retry information for sector reads.
+    // If a large read fails, retry is done sector-by-sector.
+    int retrycount;
+    uint32_t failposition;
+    bool ejectWhenDone;
+
+    FsFile target_file;
+} g_initiator_state;
