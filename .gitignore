@@ -10,3 +10,4 @@ dist/
 .vscode/extensions.json
 cc-nc-hardware/*/*-backups/
 .idea/
+build
