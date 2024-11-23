@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workspace
+   version = "1.0">
+   <Group
+      location = "group:"
+      name = "RP2040">
+      <Group
+         location = "group:App-Template"
+         name = "App-Template">
+         <FileRef
+            location = "group:CMakeLists.txt">
+         </FileRef>
+         <FileRef
+            location = "group:main.h">
+         </FileRef>
+         <FileRef
+            location = "group:main.c">
+         </FileRef>
+      </Group>
+      <Group
+         location = "group:App-Scheduling"
+         name = "App-Scheduling">
+         <FileRef
+            location = "group:CMakeLists.txt">
+         </FileRef>
+         <FileRef
+            location = "group:main.h">
+         </FileRef>
+         <FileRef
+            location = "group:main.cpp">
+         </FileRef>
+      </Group>
+      <Group
+         location = "group:App-IRQs"
+         name = "App-IRQs">
+         <FileRef
+            location = "group:CMakeLists.txt">
+         </FileRef>
+         <FileRef
+            location = "group:main.h">
+         </FileRef>
+         <FileRef
+            location = "group:main.cpp">
+         </FileRef>
+      </Group>
+      <Group
+         location = "group:App-Timers"
+         name = "App-Timers">
+         <FileRef
+            location = "group:CMakeLists.txt">
+         </FileRef>
+         <FileRef
+            location = "group:main.h">
+         </FileRef>
+         <FileRef
+            location = "group:main.cpp">
+         </FileRef>
+      </Group>
+      <Group
+         location = "group:Common"
+         name = "Common">
+         <FileRef
+            location = "group:ht16k33.h">
+         </FileRef>
+         <FileRef
+            location = "group:ht16k33.cpp">
+         </FileRef>
+         <FileRef
+            location = "group:mcp9808.h">
+         </FileRef>
+         <FileRef
+            location = "group:mcp9808.cpp">
+         </FileRef>
+         <FileRef
+            location = "group:i2c_utils.h">
+         </FileRef>
+         <FileRef
+            location = "group:i2c_utils.cpp">
+         </FileRef>
+         <FileRef
+            location = "group:utils.h">
+         </FileRef>
+         <FileRef
+            location = "group:utils.cpp">
+         </FileRef>
+      </Group>
+      <Group
+         location = "group:Config"
+         name = "Config">
+         <FileRef
+            location = "group:FreeRTOSConfig.h">
+         </FileRef>
+      </Group>
+      <FileRef
+         location = "group:CMakeLists.txt">
+      </FileRef>
+      <FileRef
+         location = "group:deploy.sh">
+      </FileRef>
+      <FileRef
+         location = "group:README.md">
+      </FileRef>
+   </Group>
+</Workspace>
