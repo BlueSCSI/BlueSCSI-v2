@@ -22,7 +22,7 @@
 #endif
 
 #ifndef __MBED__
-#include <Adafruit_TinyUSB.h>
+# include <Adafruit_TinyUSB.h>
 # include <class/cdc/cdc_device.h>
 #else
 # include <platform/mbed_error.h>
@@ -32,6 +32,7 @@
 #include <pico/multicore.h>
 #include "scsi_accel_rp2040.h"
 #include "hardware/i2c.h"
+#include "BlueSCSI_console.h"
 
 extern "C" {
 
@@ -469,6 +470,11 @@ static void usb_log_poll()
 #endif // __MBED__
 }
 
+static void usb_input_poll()
+{
+    serialPoll();
+}
+
 // Use ADC to implement supply voltage monitoring for the +3.0V rail.
 // This works by sampling the temperature sensor channel, which has
 // a voltage of 0.7 V, allowing to calculate the VDD voltage.
@@ -659,6 +665,8 @@ void platform_reset_watchdog()
 // Can be left empty or used for platform-specific processing.
 void platform_poll()
 {
+    usb_input_poll();
+
     usb_log_poll();
 
     adc_poll();
