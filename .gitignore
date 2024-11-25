@@ -12,3 +12,5 @@ cc-nc-hardware/*/*-backups/
 .idea/
 distrib/
 build
+.DS_Store
+
