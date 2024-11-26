@@ -26,20 +26,22 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
+#include "timers.h"
+#include "queue.h"
 
 #include <pico/stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
-#if PICO_SDK_VERSION_MAJOR >= 2
+// #if PICO_SDK_VERSION_MAJOR >= 2
 #include "bsp/board_api.h"
-#else
-#include "bsp/board.h"
-#endif
+// #else
+// #include "bsp/board.h"
+// #endif
 #include "tusb.h"
 
-#include "probe_config.h"
-#include "probe.h"
+// #include "probe_config.h"
+// #include "probe.h"
 #include "cdc_uart.h"
 #include "get_serial.h"
 #include "led.h"
@@ -52,30 +54,86 @@
 // static uint8_t TxDataBuffer[CFG_TUD_HID_EP_BUFSIZE];
 // static uint8_t RxDataBuffer[CFG_TUD_HID_EP_BUFSIZE];
 
-#define THREADED 1
+/* Blink pattern
+ * - 250 ms  : device not mounted
+ * - 1000 ms : device mounted
+ * - 2500 ms : device is suspended
+ */
+enum {
+  BLINK_NOT_MOUNTED = 250,
+  BLINK_MOUNTED = 1000,
+  BLINK_SUSPENDED = 2500,
+};
 
-#define UART_TASK_PRIO (tskIDLE_PRIORITY + 3)
-#define TUD_TASK_PRIO  (tskIDLE_PRIORITY + 2)
-#define DAP_TASK_PRIO  (tskIDLE_PRIORITY + 1)
+static uint32_t blink_interval_ms = BLINK_NOT_MOUNTED;
+
+// #define THREADED 1
+
+// #define UART_TASK_PRIO (tskIDLE_PRIORITY + 3)
+// #define TUD_TASK_PRIO  (tskIDLE_PRIORITY + 2)
+// #define DAP_TASK_PRIO  (tskIDLE_PRIORITY + 1)
+
+// Increase stack size when debug log is enabled
+#define USBD_STACK_SIZE    (3*configMINIMAL_STACK_SIZE/2) * (CFG_TUSB_DEBUG ? 2 : 1)
+#define CDC_STACK_SIZE      configMINIMAL_STACK_SIZE
+#define BLINKY_STACK_SIZE   configMINIMAL_STACK_SIZE
 
 TaskHandle_t dap_taskhandle, tud_taskhandle;
 
-void usb_thread(void *ptr)
+static void usb_device_task(void *param)
 {
-    TickType_t wake;
-    wake = xTaskGetTickCount();
+
+  // init device stack on configured roothub port
+  // This should be called after scheduler/kernel is started.
+  // Otherwise it could cause kernel issue since USB IRQ handler does use RTOS queue API.
+  tud_init(BOARD_TUD_RHPORT);
+  
+    if (board_init_after_tusb) {
+    board_init_after_tusb();
+  }
+    // TickType_t wake;
+    // wake = xTaskGetTickCount();
     do {
         tud_task();
-#ifdef PROBE_USB_CONNECTED_LED
-        if (!gpio_get(PROBE_USB_CONNECTED_LED) && tud_ready())
-            gpio_put(PROBE_USB_CONNECTED_LED, 1);
-        else
-            gpio_put(PROBE_USB_CONNECTED_LED, 0);
-#endif
-        // Go to sleep for up to a tick if nothing to do
-        if (!tud_task_event_ready())
-            xTaskDelayUntil(&wake, 1);
+        // following code only run if tud_task() process at least 1 event
+       tud_cdc_write_flush();
+// #ifdef PROBE_USB_CONNECTED_LED
+//         if (!gpio_get(PROBE_USB_CONNECTED_LED) && tud_ready())
+//             gpio_put(PROBE_USB_CONNECTED_LED, 1);
+//         else
+//             gpio_put(PROBE_USB_CONNECTED_LED, 0);
+// #endif
+//         // Go to sleep for up to a tick if nothing to do
+//         if (!tud_task_event_ready())
+//             xTaskDelayUntil(&wake, 1);
     } while (1);
+}
+
+//--------------------------------------------------------------------+
+// Device callbacks
+//--------------------------------------------------------------------+
+
+// Invoked when device is mounted
+void tud_mount_cb(void) {
+  blink_interval_ms = BLINK_MOUNTED;
+}
+
+// Invoked when device is unmounted
+void tud_umount_cb(void) {
+  blink_interval_ms = BLINK_NOT_MOUNTED;
+}
+
+// Invoked when usb bus is suspended
+// remote_wakeup_en : if host allow us  to perform remote wakeup
+// Within 7ms, device must draw an average of current less than 2.5 mA from bus
+void tud_suspend_cb(bool remote_wakeup_en) {
+  (void) remote_wakeup_en;
+  blink_interval_ms = BLINK_SUSPENDED;
+}
+
+// Invoked when usb bus is resumed
+void tud_resume_cb(void) {
+  blink_interval_ms = tud_mounted() ? BLINK_MOUNTED : BLINK_NOT_MOUNTED;
 }
 
 // Workaround API change in 0.13
@@ -83,34 +141,68 @@ void usb_thread(void *ptr)
 #define tud_vendor_flush(x) ((void)0)
 #endif
 
+//--------------------------------------------------------------------+
+// BLINKING TASK
+//--------------------------------------------------------------------+
+void led_blinking_task(void* param) {
+  (void) param;
+  static uint32_t start_ms = 0;
+  static bool led_state = false;
+
+  while (1) {
+    // Blink every interval ms
+    // vTaskDelay(blink_interval_ms / portTICK_PERIOD_MS);
+    vTaskDelay(blink_interval_ms / 10);
+    start_ms += blink_interval_ms;
+
+    board_led_write(led_state);
+    led_state = 1 - led_state; // toggle
+  }
+}
+
+
 int main(void) {
-    // Declare pins in binary information
-    bi_decl_config();
 
     board_init();
-    usb_serial_init();
-    cdc_uart_init();
-    tusb_init();
-    stdio_uart_init();
+    // usb_serial_init();
+    // cdc_uart_init();
+    // tusb_init();
+    // stdio_uart_init();
 
-    // DAP_Setup();
+    // led_init();
 
-    led_init();
+    printf("Welcome to BlueSCSI Bridge!\n");
 
-    probe_info("Welcome to debugprobe!\n");
+#if configSUPPORT_STATIC_ALLOCATION
+  // blinky task
+  xTaskCreateStatic(led_blinking_task, "blinky", BLINKY_STACK_SIZE, NULL, 1, blinky_stack, &blinky_taskdef);
 
-    if (THREADED) {
-        /* UART needs to preempt USB as if we don't, characters get lost */
-        xTaskCreate(cdc_thread, "UART", configMINIMAL_STACK_SIZE, NULL, UART_TASK_PRIO, &uart_taskhandle);
-        xTaskCreate(usb_thread, "TUD", configMINIMAL_STACK_SIZE, NULL, TUD_TASK_PRIO, &tud_taskhandle);
-        /* Lowest priority thread is debug - need to shuffle buffers before we can toggle swd... */
-        // xTaskCreate(dap_thread, "DAP", configMINIMAL_STACK_SIZE, NULL, DAP_TASK_PRIO, &dap_taskhandle);
-        vTaskStartScheduler();
-    }
+  // Create a task for tinyusb device stack
+  xTaskCreateStatic(usb_device_task, "usbd", USBD_STACK_SIZE, NULL, configMAX_PRIORITIES-1, usb_device_stack, &usb_device_taskdef);
 
-    while (!THREADED) {
-        tud_task();
-        cdc_task();
+  // Create CDC task
+  xTaskCreateStatic(cdc_task, "cdc", CDC_STACK_SIZE, NULL, configMAX_PRIORITIES - 2, cdc_stack, &cdc_taskdef);
+#else
+  xTaskCreate(led_blinking_task, "blinky", BLINKY_STACK_SIZE, NULL, 1, NULL);
+  xTaskCreate(usb_device_task, "usbd", USBD_STACK_SIZE, NULL, configMAX_PRIORITIES - 1, NULL);
+  xTaskCreate(cdc_task, "cdc", CDC_STACK_SIZE, NULL, configMAX_PRIORITIES - 2, NULL);
+#endif
+
+    // if (THREADED) {
+    //     /* UART needs to preempt USB as if we don't, characters get lost */
+    //     xTaskCreate(cdc_thread, "UART", configMINIMAL_STACK_SIZE, NULL, UART_TASK_PRIO, &uart_taskhandle);
+    //     xTaskCreate(usb_thread, "TUD", configMINIMAL_STACK_SIZE, NULL, TUD_TASK_PRIO, &tud_taskhandle);
+    //     /* Lowest priority thread is debug - need to shuffle buffers before we can toggle swd... */
+    //     // xTaskCreate(dap_thread, "DAP", configMINIMAL_STACK_SIZE, NULL, DAP_TASK_PRIO, &dap_taskhandle);
+    //     vTaskStartScheduler();
+    // }
+
+  // skip starting scheduler (and return) for ESP32-S2 or ESP32-S3
+#if !TUP_MCU_ESPRESSIF
+  vTaskStartScheduler();
+#endif
+
+  return 0;
 
 // #if (PROBE_DEBUG_PROTOCOL == PROTO_DAP_V2)
 //         if (tud_vendor_available()) {
@@ -122,82 +214,71 @@ int main(void) {
 // #endif
     }
 
-    return 0;
-}
-
-// uint16_t tud_hid_get_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen)
-// {
-//   // TODO not Implemented
-//   (void) itf;
-//   (void) report_id;
-//   (void) report_type;
-//   (void) buffer;
-//   (void) reqlen;
-
-//   return 0;
+    // return 0;
 // }
 
-// void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t const* RxDataBuffer, uint16_t bufsize)
-// {
-//   // uint32_t response_size = TU_MIN(CFG_TUD_HID_EP_BUFSIZE, bufsize);
+// // uint16_t tud_hid_get_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen)
+// // {
+// //   // TODO not Implemented
+// //   (void) itf;
+// //   (void) report_id;
+// //   (void) report_type;
+// //   (void) buffer;
+// //   (void) reqlen;
 
-//   // This doesn't use multiple report and report ID
-//   (void) itf;
-//   (void) report_id;
-//   (void) report_type;
+// //   return 0;
+// // }
 
-//   // DAP_ProcessCommand(RxDataBuffer, TxDataBuffer);
+// // void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t const* RxDataBuffer, uint16_t bufsize)
+// // {
+// //   // uint32_t response_size = TU_MIN(CFG_TUD_HID_EP_BUFSIZE, bufsize);
 
-//   // tud_hid_report(0, TxDataBuffer, response_size);
-// }
+// //   // This doesn't use multiple report and report ID
+// //   (void) itf;
+// //   (void) report_id;
+// //   (void) report_type;
 
-#if (PROBE_DEBUG_PROTOCOL == PROTO_DAP_V2)
-// extern uint8_t const desc_ms_os_20[];
+// //   // DAP_ProcessCommand(RxDataBuffer, TxDataBuffer);
 
-bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_request_t const * request)
-{
-  // nothing to with DATA & ACK stage
-  if (stage != CONTROL_STAGE_SETUP) return true;
+// //   // tud_hid_report(0, TxDataBuffer, response_size);
+// // }
 
-  switch (request->bmRequestType_bit.type)
-  {
-    case TUSB_REQ_TYPE_VENDOR:
-      switch (request->bRequest)
-      {
-        case 1:
-          // if ( request->wIndex == 7 )
-          // {
-          //   // Get Microsoft OS 2.0 compatible descriptor
-          //   uint16_t total_len;
-          //   memcpy(&total_len, desc_ms_os_20+8, 2);
+// #if (PROBE_DEBUG_PROTOCOL == PROTO_DAP_V2)
+// // extern uint8_t const desc_ms_os_20[];
 
-          //   return tud_control_xfer(rhport, request, (void*) desc_ms_os_20, total_len);
-          // }else
-          // {
-            return false;
-          // }
+// // bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_request_t const * request)
+// // {
+// //   // nothing to with DATA & ACK stage
+// //   if (stage != CONTROL_STAGE_SETUP) return true;
 
-        default: break;
-      }
-    break;
-    default: break;
-  }
+// //   switch (request->bmRequestType_bit.type)
+// //   {
+// //     case TUSB_REQ_TYPE_VENDOR:
+// //       switch (request->bRequest)
+// //       {
+// //         case 1:
+// //           // if ( request->wIndex == 7 )
+// //           // {
+// //           //   // Get Microsoft OS 2.0 compatible descriptor
+// //           //   uint16_t total_len;
+// //           //   memcpy(&total_len, desc_ms_os_20+8, 2);
 
-  // stall unknown request
-  return false;
-}
-#endif
+// //           //   return tud_control_xfer(rhport, request, (void*) desc_ms_os_20, total_len);
+// //           // }else
+// //           // {
+// //             return false;
+// //           // }
 
-void vApplicationTickHook (void)
-{
-};
+// //         default: break;
+// //       }
+// //     break;
+// //     default: break;
+// //   }
 
-void vApplicationStackOverflowHook(TaskHandle_t Task, char *pcTaskName)
-{
-  panic("stack overflow (not the helpful kind) for %s\n", *pcTaskName);
-}
+// //   // stall unknown request
+// //   return false;
+// // }
+// #endif
 
-void vApplicationMallocFailedHook(void)
-{
-  panic("Malloc Failed\n");
-};
+
+
