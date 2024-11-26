@@ -67,6 +67,7 @@ add_executable(debugprobe
         src/cdc_uart.c
         src/get_serial.c
         src/sw_dp_pio.c
+        src/msc_disk.c
         # src/tusb_edpt_handler.c
 )
 

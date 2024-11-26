@@ -13,7 +13,8 @@ cc-nc-hardware/*/*-backups/
 .idea/
 distrib/
 build
-
+.vscode
 .fake
 .DS_Store
 .pio
+*-Backups
