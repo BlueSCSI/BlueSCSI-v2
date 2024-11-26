@@ -30,27 +30,63 @@
  extern "C" {
 #endif
 
+//--------------------------------------------------------------------+
+// Board Specific Configuration
+//--------------------------------------------------------------------+
+
+// RHPort number used for device can be defined by board.mk, default to port 0
+#ifndef BOARD_TUD_RHPORT
+#define BOARD_TUD_RHPORT     0
+#endif
+
+// RHPort max operational speed can defined by board.mk
+#ifndef BOARD_TUD_MAX_SPEED
+#define BOARD_TUD_MAX_SPEED   OPT_MODE_DEFAULT_SPEED
+#endif
+
 //--------------------------------------------------------------------
 // COMMON CONFIGURATION
 //--------------------------------------------------------------------
 
-// defined by compiler flags for flexibility
+// defined by board.mk
 #ifndef CFG_TUSB_MCU
-  #error CFG_TUSB_MCU must be defined
+#error CFG_TUSB_MCU must be defined
 #endif
 
-#define CFG_TUSB_RHPORT0_MODE     OPT_MODE_DEVICE
-
+// This examples use FreeRTOS
 #ifndef CFG_TUSB_OS
-#define CFG_TUSB_OS                 OPT_OS_PICO
+#define CFG_TUSB_OS           OPT_OS_FREERTOS
 #endif
 
+// Espressif IDF requires "freertos/" prefix in include path
+#if TUP_MCU_ESPRESSIF
+#define CFG_TUSB_OS_INC_PATH  freertos/
+#endif
+
+// can be defined by compiler in DEBUG build
+#ifndef CFG_TUSB_DEBUG
+#define CFG_TUSB_DEBUG        0
+#endif
+
+// Enable Device stack
+#define CFG_TUD_ENABLED       1
+
+// Default is max speed that hardware controller could support with on-chip PHY
+#define CFG_TUD_MAX_SPEED     BOARD_TUD_MAX_SPEED
+
+/* USB DMA on some MCUs can only access a specific SRAM region with restriction on alignment.
+ * Tinyusb use follows macros to declare transferring memory so that they can be put
+ * into those specific section.
+ * e.g
+ * - CFG_TUSB_MEM SECTION : __attribute__ (( section(".usb_ram") ))
+ * - CFG_TUSB_MEM_ALIGN   : __attribute__ ((aligned(4)))
+ */
 #ifndef CFG_TUSB_MEM_SECTION
 #define CFG_TUSB_MEM_SECTION
 #endif
 
 #ifndef CFG_TUSB_MEM_ALIGN
-#define CFG_TUSB_MEM_ALIGN          __attribute__ ((aligned(4)))
+#define CFG_TUSB_MEM_ALIGN    __attribute__ ((aligned(4)))
 #endif
 
 //--------------------------------------------------------------------
@@ -58,32 +94,25 @@
 //--------------------------------------------------------------------
 
 #ifndef CFG_TUD_ENDPOINT0_SIZE
-#define CFG_TUD_ENDPOINT0_SIZE    64
+#define CFG_TUD_ENDPOINT0_SIZE   64
 #endif
 
 //------------- CLASS -------------//
-#define CFG_TUD_HID             1
-#define CFG_TUD_CDC             1
-#define CFG_TUD_MSC             0
-#define CFG_TUD_MIDI            0
-#define CFG_TUD_VENDOR          1
+#define CFG_TUD_CDC              1
+#define CFG_TUD_MSC              1
+#define CFG_TUD_HID              0
+#define CFG_TUD_MIDI             0
+#define CFG_TUD_VENDOR           0
 
-/*
- * TX bufsize (actually UART RX) is oversized because the Windows CDC-ACM
- * driver submits a grand total of _one_ URB at any one time.
- * This means the application must consume the data before the next IN token
- * is issued. At high datarates this leads to huge variation in instantaneous
- * throughput on USB, so a large runway is needed.
- */
-#define CFG_TUD_CDC_RX_BUFSIZE 128
-#define CFG_TUD_CDC_TX_BUFSIZE 4096
+// CDC FIFO size of TX and RX
+#define CFG_TUD_CDC_RX_BUFSIZE   (TUD_OPT_HIGH_SPEED ? 512 : 64)
+#define CFG_TUD_CDC_TX_BUFSIZE   (TUD_OPT_HIGH_SPEED ? 512 : 64)
 
-#define CFG_TUD_VENDOR_RX_BUFSIZE 8192
-#define CFG_TUD_VENDOR_TX_BUFSIZE 8192
+// CDC Endpoint transfer buffer size, more is faster
+#define CFG_TUD_CDC_EP_BUFSIZE   (TUD_OPT_HIGH_SPEED ? 512 : 64)
 
-#ifndef TUD_OPT_RP2040_USB_DEVICE_UFRAME_FIX
-#define TUD_OPT_RP2040_USB_DEVICE_UFRAME_FIX 1
-#endif
+// MSC Buffer size of Device Mass storage
+#define CFG_TUD_MSC_EP_BUFSIZE   512
 
 #ifdef __cplusplus
  }
