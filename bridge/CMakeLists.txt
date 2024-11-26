@@ -11,6 +11,13 @@ set(CMAKE_CXX_STANDARD 17)
 
 pico_sdk_init()
 
+# TEMPORARY - Use the I2C pins for STDIO
+target_compile_definitions(TARGET PRIVATE
+	PICO_DEFAULT_UART_TX_PIN=16
+	PICO_DEFAULT_UART_RX_PIN=17
+	)
+
+
 add_library(on_either_core_common INTERFACE)
 target_sources(on_either_core_common INTERFACE
         main.c)
