@@ -29,10 +29,8 @@
 #include "probe_config.h"
 
 void led_init(void) {
-#ifdef PROBE_USB_CONNECTED_LED
     gpio_init(PROBE_USB_CONNECTED_LED);
     gpio_set_dir(PROBE_USB_CONNECTED_LED, GPIO_OUT);
-#endif
 #ifdef PROBE_DAP_CONNECTED_LED
     gpio_init(PROBE_DAP_CONNECTED_LED);
     gpio_set_dir(PROBE_DAP_CONNECTED_LED, GPIO_OUT);

@@ -12,14 +12,43 @@ if (EXISTS ${picoVscode})
     include(${picoVscode})
 endif()
 # ====================================================================================
+# == DO NOT EDIT THE FOLLOWING LINES for the Raspberry Pi Pico VS Code Extension to work ==
+if(WIN32)
+    set(USERHOME $ENV{USERPROFILE})
+else()
+    set(USERHOME $ENV{HOME})
+endif()
+set(sdkVersion 2.1.0)
+set(toolchainVersion 13_3_Rel1)
+set(picotoolVersion 2.1.0)
+set(picoVscode ${USERHOME}/.pico-sdk/cmake/pico-vscode.cmake)
+if (EXISTS ${picoVscode})
+    include(${picoVscode})
+endif()
+# ====================================================================================
+# == DO NOT EDIT THE FOLLOWING LINES for the Raspberry Pi Pico VS Code Extension to work ==
+if(WIN32)
+    set(USERHOME $ENV{USERPROFILE})
+else()
+    set(USERHOME $ENV{HOME})
+endif()
+set(sdkVersion 2.1.0)
+set(toolchainVersion 13_3_Rel1)
+set(picotoolVersion 2.1.0)
+set(picoVscode ${USERHOME}/.pico-sdk/cmake/pico-vscode.cmake)
+if (EXISTS ${picoVscode})
+    include(${picoVscode})
+endif()
+# ====================================================================================
 set(PICO_BOARD pico CACHE STRING "Board type")
+set(CMAKE_BUILD_TYPE "Debug")
 
 cmake_minimum_required(VERSION 3.12)
 
 include(pico_sdk_import.cmake)
 
 set(FREERTOS_KERNEL_PATH ${CMAKE_CURRENT_LIST_DIR}/freertos)
-include(freertos/portable/ThirdParty/GCC/RP2350_ARM_NTZ/FreeRTOS_Kernel_import.cmake)
+include(FreeRTOS_Kernel_import.cmake)
 
 project(debugprobe)
 
@@ -38,20 +67,20 @@ add_executable(debugprobe
         src/cdc_uart.c
         src/get_serial.c
         src/sw_dp_pio.c
-        src/tusb_edpt_handler.c
+        # src/tusb_edpt_handler.c
 )
 
-target_sources(debugprobe PRIVATE
-        CMSIS_5/CMSIS/DAP/Firmware/Source/DAP.c
-        CMSIS_5/CMSIS/DAP/Firmware/Source/JTAG_DP.c
-        CMSIS_5/CMSIS/DAP/Firmware/Source/DAP_vendor.c
-        CMSIS_5/CMSIS/DAP/Firmware/Source/SWO.c
-        #CMSIS_5/CMSIS/DAP/Firmware/Source/SW_DP.c
-        )
+# target_sources(debugprobe PRIVATE
+#         CMSIS_5/CMSIS/DAP/Firmware/Source/DAP.c
+#         CMSIS_5/CMSIS/DAP/Firmware/Source/JTAG_DP.c
+#         CMSIS_5/CMSIS/DAP/Firmware/Source/DAP_vendor.c
+#         CMSIS_5/CMSIS/DAP/Firmware/Source/SWO.c
+#         #CMSIS_5/CMSIS/DAP/Firmware/Source/SW_DP.c
+#         )
 
 target_include_directories(debugprobe PRIVATE
-        CMSIS_5/CMSIS/DAP/Firmware/Include/
-        CMSIS_5/CMSIS/Core/Include/
+        # CMSIS_5/CMSIS/DAP/Firmware/Include/
+        # CMSIS_5/CMSIS/Core/Include/
         include/
         )
 

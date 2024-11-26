@@ -50,6 +50,6 @@
 #define PROBE_UART_RX_LED 7
 #define PROBE_UART_TX_LED 8
 
-#define PROBE_PRODUCT_STRING "Debug Probe (CMSIS-DAP)"
+#define PROBE_PRODUCT_STRING "Cody Jo inc."
 
 #endif

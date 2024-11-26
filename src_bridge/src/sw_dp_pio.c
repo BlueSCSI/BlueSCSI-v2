@@ -24,9 +24,9 @@
  */
 
 #include <stdio.h>
-
-#include "DAP_config.h"
-#include "DAP.h"
+#include <stdint.h>
+// #include "DAP_config.h"
+// #include "DAP.h"
 #include "probe.h"
 
 /* Slight hack - we're not bitbashing so we need to set baudrate off the DAP's delay cycles.

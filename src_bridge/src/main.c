@@ -43,14 +43,14 @@
 #include "cdc_uart.h"
 #include "get_serial.h"
 #include "led.h"
-#include "tusb_edpt_handler.h"
-#include "DAP.h"
+// #include "tusb_edpt_handler.h"
+// #include "DAP.h"
 
 // UART0 for debugprobe debug
 // UART1 for debugprobe to target device
 
-static uint8_t TxDataBuffer[CFG_TUD_HID_EP_BUFSIZE];
-static uint8_t RxDataBuffer[CFG_TUD_HID_EP_BUFSIZE];
+// static uint8_t TxDataBuffer[CFG_TUD_HID_EP_BUFSIZE];
+// static uint8_t RxDataBuffer[CFG_TUD_HID_EP_BUFSIZE];
 
 #define THREADED 1
 
@@ -93,7 +93,7 @@ int main(void) {
     tusb_init();
     stdio_uart_init();
 
-    DAP_Setup();
+    // DAP_Setup();
 
     led_init();
 
@@ -104,7 +104,7 @@ int main(void) {
         xTaskCreate(cdc_thread, "UART", configMINIMAL_STACK_SIZE, NULL, UART_TASK_PRIO, &uart_taskhandle);
         xTaskCreate(usb_thread, "TUD", configMINIMAL_STACK_SIZE, NULL, TUD_TASK_PRIO, &tud_taskhandle);
         /* Lowest priority thread is debug - need to shuffle buffers before we can toggle swd... */
-        xTaskCreate(dap_thread, "DAP", configMINIMAL_STACK_SIZE, NULL, DAP_TASK_PRIO, &dap_taskhandle);
+        // xTaskCreate(dap_thread, "DAP", configMINIMAL_STACK_SIZE, NULL, DAP_TASK_PRIO, &dap_taskhandle);
         vTaskStartScheduler();
     }
 
@@ -112,14 +112,14 @@ int main(void) {
         tud_task();
         cdc_task();
 
-#if (PROBE_DEBUG_PROTOCOL == PROTO_DAP_V2)
-        if (tud_vendor_available()) {
-            uint32_t resp_len;
-            tud_vendor_read(RxDataBuffer, sizeof(RxDataBuffer));
-            resp_len = DAP_ProcessCommand(RxDataBuffer, TxDataBuffer);
-            tud_vendor_write(TxDataBuffer, resp_len);
-        }
-#endif
+// #if (PROBE_DEBUG_PROTOCOL == PROTO_DAP_V2)
+//         if (tud_vendor_available()) {
+//             uint32_t resp_len;
+//             // tud_vendor_read(RxDataBuffer, sizeof(RxDataBuffer));
+//             // // resp_len = DAP_ProcessCommand(RxDataBuffer, TxDataBuffer);
+//             // tud_vendor_write(TxDataBuffer, resp_len);
+//         }
+// #endif
     }
 
     return 0;
@@ -139,16 +139,16 @@ uint16_t tud_hid_get_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t
 
 void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t const* RxDataBuffer, uint16_t bufsize)
 {
-  uint32_t response_size = TU_MIN(CFG_TUD_HID_EP_BUFSIZE, bufsize);
+  // uint32_t response_size = TU_MIN(CFG_TUD_HID_EP_BUFSIZE, bufsize);
 
   // This doesn't use multiple report and report ID
   (void) itf;
   (void) report_id;
   (void) report_type;
 
-  DAP_ProcessCommand(RxDataBuffer, TxDataBuffer);
+  // DAP_ProcessCommand(RxDataBuffer, TxDataBuffer);
 
-  tud_hid_report(0, TxDataBuffer, response_size);
+  // tud_hid_report(0, TxDataBuffer, response_size);
 }
 
 #if (PROBE_DEBUG_PROTOCOL == PROTO_DAP_V2)

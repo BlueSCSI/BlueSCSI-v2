@@ -36,18 +36,14 @@ tusb_desc_device_t const desc_device =
 {
     .bLength            = sizeof(tusb_desc_device_t),
     .bDescriptorType    = TUSB_DESC_DEVICE,
-#if (PROBE_DEBUG_PROTOCOL == PROTO_DAP_V2)
     .bcdUSB             = 0x0210, // USB Specification version 2.1 for BOS
-#else
-    .bcdUSB             = 0x0110,
-#endif
     .bDeviceClass       = 0x00, // Each interface specifies its own
     .bDeviceSubClass    = 0x00, // Each interface specifies its own
     .bDeviceProtocol    = 0x00,
     .bMaxPacketSize0    = CFG_TUD_ENDPOINT0_SIZE,
 
-    .idVendor           = 0x2E8A, // Pi
-    .idProduct          = 0x000c, // CMSIS-DAP Debug Probe
+    .idVendor           = 0xEEEE, // Pi
+    .idProduct          = 0xEEEE, // CMSIS-DAP Debug Probe
     .bcdDevice          = 0x0201, // Version 02.01
     .iManufacturer      = 0x01,
     .iProduct           = 0x02,
@@ -134,12 +130,12 @@ uint8_t const * tud_descriptor_configuration_cb(uint8_t index)
 char const* string_desc_arr [] =
 {
   (const char[]) { 0x09, 0x04 }, // 0: is supported language is English (0x0409)
-  "Raspberry Pi", // 1: Manufacturer
+  "DJo", // 1: Manufacturer
   PROBE_PRODUCT_STRING, // 2: Product
   usb_serial,     // 3: Serial, uses flash unique ID
-  "CMSIS-DAP v1 Interface", // 4: Interface descriptor for HID transport
-  "CMSIS-DAP v2 Interface", // 5: Interface descriptor for Bulk transport
-  "CDC-ACM UART Interface", // 6: Interface descriptor for CDC
+  "asdf", // 4: Interface descriptor for HID transport
+  "zxcv", // 5: Interface descriptor for Bulk transport
+  "qwer", // 6: Interface descriptor for CDC
 };
 
 static uint16_t _desc_str[32];
