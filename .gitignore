@@ -18,3 +18,5 @@ build
 .DS_Store
 .pio
 *-Backups
+fp-info-cache
+

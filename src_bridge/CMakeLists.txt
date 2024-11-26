@@ -86,15 +86,16 @@ target_compile_definitions (debugprobe PRIVATE
 	PICO_RP2040_USB_DEVICE_ENUMERATION_FIX=1
 )
 
-option (DEBUG_ON_PICO "Compile firmware for the Pico instead of Debug Probe" OFF)
-if (DEBUG_ON_PICO)
-    target_compile_definitions (debugprobe PRIVATE 
-	DEBUG_ON_PICO=1
-    )
-    set_target_properties(debugprobe PROPERTIES 
-        OUTPUT_NAME "debugprobe_on_pico"
-    )
-endif ()
+# TODO: Carry-over from debugprobe. Shouldn't do anything
+option (DEBUG_ON_PICO "Compile firmware for the Pico instead of Debug Probe" ON)
+# if (DEBUG_ON_PICO)
+#     target_compile_definitions (debugprobe PRIVATE 
+# 	DEBUG_ON_PICO=1
+#     )
+#     set_target_properties(debugprobe PROPERTIES 
+#         OUTPUT_NAME "debugprobe_on_pico"
+#     )
+# endif ()
 
 
 target_link_libraries(debugprobe PRIVATE
