@@ -40,7 +40,7 @@ if (EXISTS ${picoVscode})
     include(${picoVscode})
 endif()
 # ====================================================================================
-set(PICO_BOARD pico CACHE STRING "Board type")
+set(PICO_BOARD pico_w CACHE STRING "Board type")
 set(CMAKE_BUILD_TYPE "Debug")
 
 cmake_minimum_required(VERSION 3.12)
@@ -59,25 +59,15 @@ if (${PICO_SDK_VERSION_MAJOR} LESS 2)
 endif ()
 
 add_executable(debugprobe
-        src/probe_config.c
         src/led.c
         src/main.c
         src/usb_descriptors.c
-        src/probe.c
         src/cdc_uart.c
         src/get_serial.c
         src/sw_dp_pio.c
         src/msc_disk.c
-        # src/tusb_edpt_handler.c
+        src/freertos_hook.c
 )
-
-# target_sources(debugprobe PRIVATE
-#         CMSIS_5/CMSIS/DAP/Firmware/Source/DAP.c
-#         CMSIS_5/CMSIS/DAP/Firmware/Source/JTAG_DP.c
-#         CMSIS_5/CMSIS/DAP/Firmware/Source/DAP_vendor.c
-#         CMSIS_5/CMSIS/DAP/Firmware/Source/SWO.c
-#         #CMSIS_5/CMSIS/DAP/Firmware/Source/SW_DP.c
-#         )
 
 target_include_directories(debugprobe PRIVATE
         # CMSIS_5/CMSIS/DAP/Firmware/Include/
