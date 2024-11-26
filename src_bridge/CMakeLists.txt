@@ -1,77 +1,93 @@
-cmake_minimum_required(VERSION 3.14)
+# == DO NOT EDIT THE FOLLOWING LINES for the Raspberry Pi Pico VS Code Extension to work ==
+if(WIN32)
+    set(USERHOME $ENV{USERPROFILE})
+else()
+    set(USERHOME $ENV{HOME})
+endif()
+set(sdkVersion 2.1.0)
+set(toolchainVersion 13_3_Rel1)
+set(picotoolVersion 2.1.0)
+set(picoVscode ${USERHOME}/.pico-sdk/cmake/pico-vscode.cmake)
+if (EXISTS ${picoVscode})
+    include(${picoVscode})
+endif()
+# ====================================================================================
+set(PICO_BOARD pico CACHE STRING "Board type")
 
-# Set project data
-set(PROJECT_NAME "RP2040_FREERTOS_PROJECT")
-set(BUILD_NUMBER "1")
+cmake_minimum_required(VERSION 3.12)
 
-# Set app name(s) and version(s)
-set(APP_1_NAME "TEMPLATE")
-set(APP_1_VERSION_NUMBER "1.5.0")
-
-set(APP_2_NAME "SCHEDULING_DEMO")
-set(APP_2_VERSION_NUMBER "1.5.0")
-
-set(APP_3_NAME "IRQS_DEMO")
-set(APP_3_VERSION_NUMBER "1.5.0")
-
-set(APP_4_NAME "TIMERS_DEMO")
-set(APP_4_VERSION_NUMBER "1.5.0")
-
-# Specify the app(s) source code
-set(APP_1_SRC_DIRECTORY "${CMAKE_SOURCE_DIR}/App-Template")
-set(APP_2_SRC_DIRECTORY "${CMAKE_SOURCE_DIR}/App-Scheduling")
-set(APP_3_SRC_DIRECTORY "${CMAKE_SOURCE_DIR}/App-IRQs")
-set(APP_4_SRC_DIRECTORY "${CMAKE_SOURCE_DIR}/App-Timers")
-
-# FROM 1.3.0 -- Move common source code to a separate directory
-set(COMMON_CODE_DIRECTORY "${CMAKE_SOURCE_DIR}/Common")
-
-# FROM 1.4.2 -- Set app-side debugging on debug builds
-# Now uses CMake generator expression to extract config type
-add_compile_definitions($<$<CONFIG:Debug>:DEBUG=1>)
-
-# Set env variable 'PICO_SDK_PATH' to the local Pico SDK
-# Comment out the set() if you have a global copy of the
-# SDK set and $PICO_SDK_PATH defined in your $PATH
-set(ENV{PICO_SDK_PATH} "${CMAKE_SOURCE_DIR}/pico-sdk")
-
-# Set flags and directory variables
-set(FREERTOS_CFG_DIRECTORY "${CMAKE_SOURCE_DIR}/Config")
-set(FREERTOS_SRC_DIRECTORY "${CMAKE_SOURCE_DIR}/FreeRTOS-Kernel")
-
-# Include the Pico SDK
 include(pico_sdk_import.cmake)
 
-# Name the project
-project(${PROJECT_NAME}
-        LANGUAGES C CXX ASM
-        DESCRIPTION "FreeRTOS-based RP2040 applications"
-)
+set(FREERTOS_KERNEL_PATH ${CMAKE_CURRENT_LIST_DIR}/freertos)
+include(freertos/portable/ThirdParty/GCC/RP2350_ARM_NTZ/FreeRTOS_Kernel_import.cmake)
 
-# Initialise the Pico SDK
+project(debugprobe)
+
 pico_sdk_init()
 
-# Add FreeRTOS as a library
-add_library(FreeRTOS STATIC
-    ${FREERTOS_SRC_DIRECTORY}/event_groups.c
-    ${FREERTOS_SRC_DIRECTORY}/list.c
-    ${FREERTOS_SRC_DIRECTORY}/queue.c
-    ${FREERTOS_SRC_DIRECTORY}/stream_buffer.c
-    ${FREERTOS_SRC_DIRECTORY}/tasks.c
-    ${FREERTOS_SRC_DIRECTORY}/timers.c
-    ${FREERTOS_SRC_DIRECTORY}/portable/MemMang/heap_3.c
-    ${FREERTOS_SRC_DIRECTORY}/portable/GCC/ARM_CM0/port.c
+if (${PICO_SDK_VERSION_MAJOR} LESS 2)
+	message(SEND_ERROR "Version 2 of the Pico SDK is required to compile this project. Please update your installation at ${PICO_SDK_PATH}")
+endif ()
+
+add_executable(debugprobe
+        src/probe_config.c
+        src/led.c
+        src/main.c
+        src/usb_descriptors.c
+        src/probe.c
+        src/cdc_uart.c
+        src/get_serial.c
+        src/sw_dp_pio.c
+        src/tusb_edpt_handler.c
 )
 
-# Build FreeRTOS
-target_include_directories(FreeRTOS PUBLIC
-    ${FREERTOS_CFG_DIRECTORY}/
-    ${FREERTOS_SRC_DIRECTORY}/include
-    ${FREERTOS_SRC_DIRECTORY}/portable/GCC/ARM_CM0
+target_sources(debugprobe PRIVATE
+        CMSIS_5/CMSIS/DAP/Firmware/Source/DAP.c
+        CMSIS_5/CMSIS/DAP/Firmware/Source/JTAG_DP.c
+        CMSIS_5/CMSIS/DAP/Firmware/Source/DAP_vendor.c
+        CMSIS_5/CMSIS/DAP/Firmware/Source/SWO.c
+        #CMSIS_5/CMSIS/DAP/Firmware/Source/SW_DP.c
+        )
+
+target_include_directories(debugprobe PRIVATE
+        CMSIS_5/CMSIS/DAP/Firmware/Include/
+        CMSIS_5/CMSIS/Core/Include/
+        include/
+        )
+
+target_compile_options(debugprobe PRIVATE -Wall)
+
+pico_generate_pio_header(debugprobe ${CMAKE_CURRENT_LIST_DIR}/src/probe.pio)
+pico_generate_pio_header(debugprobe ${CMAKE_CURRENT_LIST_DIR}/src/probe_oen.pio)
+
+target_include_directories(debugprobe PRIVATE src)
+
+target_compile_definitions (debugprobe PRIVATE
+	PICO_RP2040_USB_DEVICE_ENUMERATION_FIX=1
 )
 
-# Include the apps' source code
-add_subdirectory(${APP_1_SRC_DIRECTORY})
-add_subdirectory(${APP_2_SRC_DIRECTORY})
-add_subdirectory(${APP_3_SRC_DIRECTORY})
-add_subdirectory(${APP_4_SRC_DIRECTORY})
+option (DEBUG_ON_PICO "Compile firmware for the Pico instead of Debug Probe" OFF)
+if (DEBUG_ON_PICO)
+    target_compile_definitions (debugprobe PRIVATE 
+	DEBUG_ON_PICO=1
+    )
+    set_target_properties(debugprobe PROPERTIES 
+        OUTPUT_NAME "debugprobe_on_pico"
+    )
+endif ()
+
+
+target_link_libraries(debugprobe PRIVATE
+        pico_multicore
+        pico_stdlib
+        pico_unique_id
+        tinyusb_device
+        tinyusb_board
+        hardware_pio
+        FreeRTOS-Kernel
+        FreeRTOS-Kernel-Heap1
+)
+
+pico_set_binary_type(debugprobe copy_to_ram)
+
+pico_add_extra_outputs(debugprobe)
