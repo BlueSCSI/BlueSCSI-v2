@@ -28,6 +28,7 @@
 #include "task.h"
 #include "timers.h"
 #include "queue.h"
+#include <ctype.h>
 
 #include <pico/stdlib.h>
 #include <stdio.h>
@@ -79,7 +80,7 @@ static uint32_t blink_interval_ms = BLINK_NOT_MOUNTED;
 #define BLINKY_STACK_SIZE   configMINIMAL_STACK_SIZE
 
 TaskHandle_t dap_taskhandle, tud_taskhandle;
-
+static void local_cdc_task(void);
 static void usb_device_task(void *param)
 {
 
@@ -95,6 +96,7 @@ static void usb_device_task(void *param)
     // wake = xTaskGetTickCount();
     do {
         tud_task();
+        local_cdc_task();
         // following code only run if tud_task() process at least 1 event
        tud_cdc_write_flush();
 // #ifdef PROBE_USB_CONNECTED_LED
@@ -109,9 +111,45 @@ static void usb_device_task(void *param)
     } while (1);
 }
 
-//--------------------------------------------------------------------+
-// Device callbacks
-//--------------------------------------------------------------------+
+// static void led_blinking_task(void);
+// static void cdc_task(void);
+
+// /*------------- MAIN -------------*/
+// int main(void) {
+//   board_init();
+
+//   // init device stack on configured roothub port
+//   tud_init(BOARD_TUD_RHPORT);
+
+//   if (board_init_after_tusb) {
+//     board_init_after_tusb();
+//   }
+
+//   while (1) {
+//     tud_task(); // tinyusb device task
+//     cdc_task();
+//     led_blinking_task();
+//   }
+// }
+
+// echo to either Serial0 or Serial1
+// with Serial0 as all lower case, Serial1 as all upper case
+static void echo_serial_port(uint8_t itf, uint8_t buf[], uint32_t count) {
+  uint8_t const case_diff = 'a' - 'A';
+// uint8_t counter=0;
+  for (uint32_t i = 0; i < count; i++) {
+    if (itf == 0) {
+      // echo back 1st port as lower case
+      if (isupper(buf[i])) buf[i] += case_diff;
+    } else {
+      // echo back 2nd port as upper case
+      if (islower(buf[i])) buf[i] -= case_diff;
+    }
+
+    tud_cdc_n_write_char(itf, buf[i]);
+  }
+  tud_cdc_n_write_flush(itf);
+}
 
 // Invoked when device is mounted
 void tud_mount_cb(void) {
@@ -131,15 +169,57 @@ void tud_suspend_cb(bool remote_wakeup_en) {
   blink_interval_ms = BLINK_SUSPENDED;
 }
 
-// Invoked when usb bus is resumed
-void tud_resume_cb(void) {
-  blink_interval_ms = tud_mounted() ? BLINK_MOUNTED : BLINK_NOT_MOUNTED;
+
+//--------------------------------------------------------------------+
+// USB CDC
+//--------------------------------------------------------------------+
+static void local_cdc_task(void) {
+  uint8_t itf;
+// while(1){
+  for (itf = 0; itf < CFG_TUD_CDC; itf++) {
+    // connected() check for DTR bit
+    // Most but not all terminal client set this when making connection
+    // if ( tud_cdc_n_connected(itf) )
+    {
+      if (tud_cdc_n_available(itf)) {
+        uint8_t buf[64];
+
+        uint32_t count = tud_cdc_n_read(itf, buf, sizeof(buf));
+
+        // echo back to both serial ports
+        echo_serial_port(0, buf, count);
+        echo_serial_port(1, buf, count);
+      }
+      static uint32_t counter = 0;
+    char temp_str[128];
+    sprintf(temp_str, "Hello World %ld\n", counter++);
+    tud_cdc_n_write_str(itf, temp_str);
+    tud_cdc_n_write_flush(itf);
+
+    // }
+  }
+  }
 }
 
-// Workaround API change in 0.13
-#if (TUSB_VERSION_MAJOR == 0) && (TUSB_VERSION_MINOR <= 12)
-#define tud_vendor_flush(x) ((void)0)
-#endif
+// Invoked when cdc when line state changed e.g connected/disconnected
+// Use to reset to DFU when disconnect with 1200 bps
+void tud_cdc_line_state_cb(uint8_t instance, bool dtr, bool rts) {
+  (void)rts;
+
+  // DTR = false is counted as disconnected
+  if (!dtr) {
+    // touch1200 only with first CDC instance (Serial)
+    if (instance == 0) {
+      cdc_line_coding_t coding;
+      tud_cdc_get_line_coding(&coding);
+      if (coding.bit_rate == 1200) {
+        if (board_reset_to_bootloader) {
+          board_reset_to_bootloader();
+        }
+      }
+    }
+  }
+}
 
 //--------------------------------------------------------------------+
 // BLINKING TASK
@@ -181,11 +261,11 @@ int main(void) {
   xTaskCreateStatic(usb_device_task, "usbd", USBD_STACK_SIZE, NULL, configMAX_PRIORITIES-1, usb_device_stack, &usb_device_taskdef);
 
   // Create CDC task
-  xTaskCreateStatic(cdc_task, "cdc", CDC_STACK_SIZE, NULL, configMAX_PRIORITIES - 2, cdc_stack, &cdc_taskdef);
+  // xTaskCreateStatic(cdc_task, "cdc", CDC_STACK_SIZE, NULL, configMAX_PRIORITIES - 2, cdc_stack, &cdc_taskdef);
 #else
   xTaskCreate(led_blinking_task, "blinky", BLINKY_STACK_SIZE, NULL, 1, NULL);
   xTaskCreate(usb_device_task, "usbd", USBD_STACK_SIZE, NULL, configMAX_PRIORITIES - 1, NULL);
-  xTaskCreate(cdc_task, "cdc", CDC_STACK_SIZE, NULL, configMAX_PRIORITIES - 2, NULL);
+  // xTaskCreate(cdc_task, "cdc", CDC_STACK_SIZE, NULL, configMAX_PRIORITIES - 2, NULL);
 #endif
 
     // if (THREADED) {
