@@ -45,7 +45,7 @@ static bool network_in_use = false;
 bool platform_network_supported()
 {
 	/* from cores/rp2040/RP2040Support.h */
-#if !defined(ARDUINO_RASPBERRY_PI_PICO_W)
+#if !defined(PICO_CYW43_SUPPORTED)
 	return false;
 #else
 	extern bool __isPicoW;

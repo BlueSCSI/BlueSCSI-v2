@@ -2,15 +2,15 @@
     "build": {
         "arduino": {
             "earlephilhower": {
-                "boot2_source": "boot2_w25q080_2_padded_checksum.S",
+                "boot2_source": "none.S",
                 "usb_vid": "0x2E8A",
-                "usb_pid": "0xF00A"
+                "usb_pid": "0xF00F"
             }
         },
         "core": "earlephilhower",
-        "cpu": "cortex-m0plus",
-        "extra_flags": "-DARDUINO_RASPBERRY_PI_PICO_W -DARDUINO_ARCH_RP2040 -DUSBD_MAX_POWER_MA=250  -DPICO_CYW43_SUPPORTED=1 -DCYW43_PIN_WL_DYNAMIC=1 ",
-        "f_cpu": "133000000L",
+        "cpu": "cortex-m33",
+        "extra_flags": "-DARDUINO_RASPBERRY_PI_PICO_2W -DARDUINO_ARCH_RP2040 -DUSBD_MAX_POWER_MA=250  -DPICO_CYW43_SUPPORTED=1 -DCYW43_PIN_WL_DYNAMIC=1",
+        "f_cpu": "150000000L",
         "hwids": [
             [
                 "0x2E8A",
@@ -18,27 +18,27 @@
             ],
             [
                 "0x2E8A",
-                "0xF00A"
+                "0xF00F"
             ]
         ],
-        "mcu": "rp2040",
-        "variant": "rpipicow"
+        "mcu": "rp2350",
+        "variant": "rpipico2w"
     },
     "debug": {
-        "jlink_device": "RP2040_M0_0",
-        "openocd_target": "rp2040.cfg",
-        "svd_path": "rp2040.svd"
+        "jlink_device": "RP2350_0",
+        "openocd_target": "rp2350.cfg",
+        "svd_path": "rp2350.svd"
     },
     "frameworks": [
         "arduino"
     ],
-    "name": "ZuluSCSI Pico DaynaPORT",
+    "name": "ZuluSCSI Pico 2 DaynaPORT",
     "upload": {
-        "maximum_ram_size": 262144,
-        "maximum_size": 2097152,
+        "maximum_ram_size": 524288,
+        "maximum_size": 4194304,
         "require_upload_port": true,
         "native_usb": true,
-        "use_1200bps_touch": true,
+        "use_1200bps_touch": false,
         "wait_for_upload_port": false,
         "protocol": "cmsis-dap",
         "protocols": [
