@@ -113,6 +113,9 @@ bool cdc_task(void)
             tud_cdc_write_flush();
           }
         } else {
+          tud_cdc_write("Woof woof\n", written);
+          tud_cdc_write_flush();
+
 #ifdef PROBE_UART_RX_LED
           if (rx_led_debounce)
             rx_led_debounce--;

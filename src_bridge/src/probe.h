@@ -34,19 +34,19 @@
 #include "probe_oen.pio.h"
 #endif
 
-void probe_set_swclk_freq(uint freq_khz);
+// void probe_set_swclk_freq(uint freq_khz);
 
-// Bit counts in the range 1..256
-void probe_write_bits(uint bit_count, uint32_t data_byte);
-uint32_t probe_read_bits(uint bit_count);
-void probe_hiz_clocks(uint bit_count);
+// // Bit counts in the range 1..256
+// void probe_write_bits(uint bit_count, uint32_t data_byte);
+// uint32_t probe_read_bits(uint bit_count);
+// void probe_hiz_clocks(uint bit_count);
 
 void probe_read_mode(void);
 void probe_write_mode(void);
 
 void probe_init(void);
 void probe_deinit(void);
-void probe_assert_reset(bool state);
+// void probe_assert_reset(bool state);
 int probe_reset_level(void);
 
 #endif

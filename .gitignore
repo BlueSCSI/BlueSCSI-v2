@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 .pio
 .DS_Store
 .vscode/
@@ -12,5 +13,7 @@ cc-nc-hardware/*/*-backups/
 .idea/
 distrib/
 build
-.DS_Store
 
+.fake
+.DS_Store
+.pio
