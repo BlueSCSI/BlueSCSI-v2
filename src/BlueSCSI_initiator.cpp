@@ -322,7 +322,7 @@ void scsiInitiatorMainLoop()
         scsiInitiatorUpdateLed();
 
         // How many sectors to read in one batch?
-        int numtoread = g_initiator_state.sectorcount - g_initiator_state.sectors_done;
+        uint32_t numtoread = g_initiator_state.sectorcount - g_initiator_state.sectors_done;
         if (numtoread > g_initiator_state.max_sector_per_transfer)
             numtoread = g_initiator_state.max_sector_per_transfer;
 

@@ -3,7 +3,12 @@
 #pragma once
 
 #include <stdint.h>
+#ifndef LIB_FREERTOS_KERNEL
 #include <Arduino.h>
+#else
+#include <FreeRTOS.h>
+#include <task.h>
+#endif
 #include "BlueSCSI_platform_gpio.h"
 #include "scsiHostPhy.h"
 
@@ -47,7 +52,13 @@ void delay(unsigned long ms);
 // Short delays, can be called from interrupt mode
 static inline void delay_ns(unsigned long ns)
 {
+#ifdef LIB_FREERTOS_KERNEL
+    /* Block for 500ms. */
+    const TickType_t xDelay = 500 / portTICK_PERIOD_MS;
+    vTaskDelay( xDelay );
+#else
     delayMicroseconds((ns + 999) / 1000);
+#endif
 }
 
 // Approximate fast delay
