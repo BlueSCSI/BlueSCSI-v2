@@ -1,6 +1,10 @@
 // Copyright (c) 2022 Rabbit Hole Computing™
 // Copyright (c) 2023 Eric Helgeson
 
+#ifdef LIB_FREERTOS_KERNEL
+#include <cstdio>
+#include <stdarg.h> 
+#endif
 #include "BlueSCSI_log.h"
 #include "BlueSCSI_config.h"
 #include "BlueSCSI_platform.h"
@@ -150,9 +154,9 @@ void log_buf(const unsigned char *buf, unsigned long size)
 {
     static char tmp[1500 * 3];
     static char hex[] = "0123456789abcdef";
-    int o = 0;
+    unsigned long o = 0;
 
-    for (int j = 0; j < size; j++) {
+    for (unsigned long j = 0; j < size; j++) {
         if (o + 3 >= sizeof(tmp))
             break;
 
@@ -262,9 +266,9 @@ void dbgmsg_f(const char *format, ...)
 void log_hex_buf(const unsigned char *buf, unsigned long size, bool debug)
 {
     static char hex[] = "0123456789abcdef";
-    int o = 0;
+    unsigned long o = 0;
 
-    for (int j = 0; j < size; j++) {
+    for (unsigned long j = 0; j < size; j++) {
         if (o + 3 >= sizeof(shared_log_buf))
             break;
 
