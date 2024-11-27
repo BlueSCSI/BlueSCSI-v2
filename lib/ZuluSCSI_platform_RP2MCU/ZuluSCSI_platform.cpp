@@ -133,7 +133,7 @@ zuluscsi_speed_grade_t platform_string_to_speed_grade(const char *speed_grade_st
 #ifdef ENABLE_AUDIO_OUTPUT
     logmsg("Audio output enabled, reclocking isn't possible");
     return SPEED_GRADE_DEFAULT;
-#endif;
+#endif
 
     if (strcasecmp(speed_grade_str, sg_default) == 0)
       grade = SPEED_GRADE_DEFAULT;

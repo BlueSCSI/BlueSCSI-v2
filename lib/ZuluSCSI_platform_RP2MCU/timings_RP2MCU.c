@@ -302,7 +302,7 @@ static zuluscsi_timings_t  predefined_timings[]  = {
 
 bool set_timings(zuluscsi_speed_grade_t speed_grade)
 {
-    uint8_t timings_index;
+    uint8_t timings_index = 0;
 
     switch (speed_grade)
     {

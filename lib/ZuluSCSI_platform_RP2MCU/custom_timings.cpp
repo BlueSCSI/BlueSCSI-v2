@@ -46,10 +46,6 @@ bool CustomTimings::set_timings_from_file()
     const char scsi_5_section[] = "scsi_5";
     const char sdio_section[] = "sdio";
 
-
-    zuluscsi_timings_t custom_timings;
-
-
     // pll
     int32_t vco = ini_getl(pll_section, "vco_freq_hz", g_zuluscsi_timings->pll.vco_freq, CUSTOM_TIMINGS_FILE);
     int32_t post_div1 = ini_getl(pll_section, "pd1", g_zuluscsi_timings->pll.post_div1, CUSTOM_TIMINGS_FILE);
