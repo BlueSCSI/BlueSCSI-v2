@@ -188,11 +188,11 @@ SECTIONS
     __binary_info_end = .;
     . = ALIGN(4);
 
-    .ram_vector_table (NOLOAD): {
+    .ram_vector_table (COPY): {
         *(.ram_vector_table)
     } > RAM
 
-    .uninitialized_data (NOLOAD): {
+    .uninitialized_data (COPY): {
         . = ALIGN(4);
         *(.uninitialized_data*)
     } > RAM
@@ -202,17 +202,16 @@ SECTIONS
         *(vtable)
 
         *(.time_critical*)
-
+        . = ALIGN(4);
         /* remaining .text and .rodata; i.e. stuff we exclude above because we want it in RAM */
         *(.text)
         *(.text*)
         . = ALIGN(4);
         *(.rodata*)
         . = ALIGN(4);
-
         *(.data*)
+        . = ALIGN(4);
         *(.sdata*)
-
         . = ALIGN(4);
         *(.after_data.*)
         . = ALIGN(4);
