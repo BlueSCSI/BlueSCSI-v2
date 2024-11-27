@@ -67,6 +67,10 @@ add_executable(debugprobe
         src/sw_dp_pio.c
         src/msc_disk.c
         src/freertos_hook.c
+        src/usb/configuration_descriptor.cpp
+        src/usb/device_descriptor.cpp
+        src/usb/endpoint_descriptor.cpp
+        src/usb/interface_descriptor.cpp
 )
 
 target_include_directories(debugprobe PRIVATE
@@ -112,3 +116,12 @@ target_link_libraries(debugprobe PRIVATE
 pico_set_binary_type(debugprobe copy_to_ram)
 
 pico_add_extra_outputs(debugprobe)
+
+
+# Add option to enable/disable tests
+option(BUILD_TESTS "Build unit tests" OFF)
+
+# Only build tests if enabled and not building for Pico
+if(BUILD_TESTS)
+    add_subdirectory(test)
+endif()
