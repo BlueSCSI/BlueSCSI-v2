@@ -1474,28 +1474,140 @@
 				)
 			)
 		)
+		(symbol "power:PWR_FLAG"
+			(power)
+			(pin_numbers hide)
+			(pin_names
+				(offset 0) hide)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "#FLG"
+				(at 0 1.905 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Value" "PWR_FLAG"
+				(at 0 3.81 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "~"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Special symbol for telling ERC where power comes from"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "flag power"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "PWR_FLAG_0_0"
+				(pin power_out line
+					(at 0 0 90)
+					(length 0)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(symbol "PWR_FLAG_0_1"
+				(polyline
+					(pts
+						(xy 0 0) (xy 0 1.27) (xy -1.016 1.905) (xy 0 2.54) (xy 1.016 1.905) (xy 0 1.27)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+		)
 	)
 	(junction
-		(at 147.32 113.03)
+		(at 156.21 146.05)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "2ed1a769-d4d8-4b33-9c53-0d87af569d17")
+	)
+	(junction
+		(at 140.97 115.57)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "c0f7dcb4-f69d-43b2-a2a4-193cf483a0f1")
 	)
 	(junction
-		(at 154.94 113.03)
+		(at 128.27 38.1)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "c57c29bf-e325-4e3e-9269-5b09b9f8df19")
+	)
+	(junction
+		(at 148.59 115.57)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "d11cbda7-214d-4792-8d5e-6080a0759efa")
 	)
 	(junction
-		(at 139.7 113.03)
+		(at 133.35 115.57)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "d5196dff-d5be-4da0-8f4a-63009cfaffae")
 	)
+	(no_connect
+		(at 171.45 146.05)
+		(uuid "61c41405-23f0-44b6-960b-677d96b57ed5")
+	)
 	(polyline
 		(pts
-			(xy 188.595 95.25) (xy 106.045 95.25)
+			(xy 182.245 97.79) (xy 99.695 97.79)
 		)
 		(stroke
 			(width 0)
@@ -1505,7 +1617,7 @@
 	)
 	(polyline
 		(pts
-			(xy 188.595 130.81) (xy 188.595 95.25)
+			(xy 182.245 133.35) (xy 182.245 97.79)
 		)
 		(stroke
 			(width 0)
@@ -1515,7 +1627,17 @@
 	)
 	(wire
 		(pts
-			(xy 154.94 113.03) (xy 173.99 113.03)
+			(xy 156.21 146.05) (xy 154.94 146.05)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "2affa607-c16a-4fe9-9d28-867df72f3054")
+	)
+	(wire
+		(pts
+			(xy 148.59 115.57) (xy 167.64 115.57)
 		)
 		(stroke
 			(width 0)
@@ -1525,7 +1647,7 @@
 	)
 	(wire
 		(pts
-			(xy 147.32 105.41) (xy 147.32 113.03)
+			(xy 140.97 107.95) (xy 140.97 115.57)
 		)
 		(stroke
 			(width 0)
@@ -1535,7 +1657,7 @@
 	)
 	(polyline
 		(pts
-			(xy 188.595 49.53) (xy 188.595 71.755)
+			(xy 182.245 52.07) (xy 182.245 74.295)
 		)
 		(stroke
 			(width 0)
@@ -1545,7 +1667,7 @@
 	)
 	(wire
 		(pts
-			(xy 137.16 113.03) (xy 139.7 113.03)
+			(xy 130.81 115.57) (xy 133.35 115.57)
 		)
 		(stroke
 			(width 0)
@@ -1555,7 +1677,7 @@
 	)
 	(polyline
 		(pts
-			(xy 106.045 49.53) (xy 106.045 151.13)
+			(xy 99.695 52.07) (xy 99.695 153.67)
 		)
 		(stroke
 			(width 0)
@@ -1565,7 +1687,7 @@
 	)
 	(polyline
 		(pts
-			(xy 188.595 95.25) (xy 188.595 71.755)
+			(xy 182.245 97.79) (xy 182.245 74.295)
 		)
 		(stroke
 			(width 0)
@@ -1573,9 +1695,19 @@
 		)
 		(uuid "6a3ca8d2-286c-4d6b-96b7-f273b09a833b")
 	)
+	(wire
+		(pts
+			(xy 156.21 146.05) (xy 157.48 146.05)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6d0bb68a-3540-43e5-8775-7685f7570a09")
+	)
 	(polyline
 		(pts
-			(xy 106.045 49.53) (xy 188.595 49.53)
+			(xy 99.695 52.07) (xy 182.245 52.07)
 		)
 		(stroke
 			(width 0)
@@ -1585,7 +1717,7 @@
 	)
 	(polyline
 		(pts
-			(xy 106.045 130.81) (xy 188.595 130.81)
+			(xy 99.695 133.35) (xy 182.245 133.35)
 		)
 		(stroke
 			(width 0)
@@ -1595,7 +1727,7 @@
 	)
 	(wire
 		(pts
-			(xy 154.94 105.41) (xy 154.94 113.03)
+			(xy 148.59 107.95) (xy 148.59 115.57)
 		)
 		(stroke
 			(width 0)
@@ -1605,7 +1737,7 @@
 	)
 	(wire
 		(pts
-			(xy 147.32 113.03) (xy 147.32 119.38)
+			(xy 140.97 115.57) (xy 140.97 121.92)
 		)
 		(stroke
 			(width 0)
@@ -1615,7 +1747,7 @@
 	)
 	(polyline
 		(pts
-			(xy 188.595 151.13) (xy 188.595 130.81)
+			(xy 182.245 153.67) (xy 182.245 133.35)
 		)
 		(stroke
 			(width 0)
@@ -1625,7 +1757,7 @@
 	)
 	(polyline
 		(pts
-			(xy 147.955 130.81) (xy 147.955 151.13)
+			(xy 141.605 133.35) (xy 141.605 153.67)
 		)
 		(stroke
 			(width 0)
@@ -1635,7 +1767,7 @@
 	)
 	(wire
 		(pts
-			(xy 139.7 113.03) (xy 139.7 119.38)
+			(xy 133.35 115.57) (xy 133.35 121.92)
 		)
 		(stroke
 			(width 0)
@@ -1645,7 +1777,7 @@
 	)
 	(polyline
 		(pts
-			(xy 106.045 151.13) (xy 188.595 151.13)
+			(xy 99.695 153.67) (xy 182.245 153.67)
 		)
 		(stroke
 			(width 0)
@@ -1655,7 +1787,7 @@
 	)
 	(polyline
 		(pts
-			(xy 188.595 71.755) (xy 106.045 71.755)
+			(xy 182.245 74.295) (xy 99.695 74.295)
 		)
 		(stroke
 			(width 0)
@@ -1665,7 +1797,7 @@
 	)
 	(text "Onboard Power LED"
 		(exclude_from_sim no)
-		(at 129.54 76.835 0)
+		(at 123.19 79.375 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -1676,7 +1808,7 @@
 	)
 	(text "Unused Inverter Pin"
 		(exclude_from_sim no)
-		(at 159.385 133.985 0)
+		(at 153.035 136.525 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -1687,7 +1819,7 @@
 	)
 	(text "oBSY Signal Inverter"
 		(exclude_from_sim no)
-		(at 115.57 133.985 0)
+		(at 109.22 136.525 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -1698,7 +1830,7 @@
 	)
 	(text "Onboard Activity LED"
 		(exclude_from_sim no)
-		(at 136.525 55.245 0)
+		(at 130.175 57.785 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -1709,7 +1841,7 @@
 	)
 	(text "BlueSCSI © Eric Helgeson\nPCB © Tech by Androda, LLC\n\nLicensed under CERN-OHL-S v2\nhttps://ohwr.org/cern_ohl_s_v2.txt\n\nThis source is distributed WITHOUT ANY EXPRESS OR IMPLIED WARRANTY,          \nINCLUDING OF MERCHANTABILITY, SATISFACTORY QUALITY AND FITNESS FOR A         \nPARTICULAR PURPOSE. Please see the CERN-OHL-S v2 for applicable conditions.\n\nAs per CERN-OHL-S v2 section 4, should You produce hardware based on this    \nsource, You must where practicable maintain the Source Location visible      \non the external case of the Device or other products you make using this source.  \n"
 		(exclude_from_sim no)
-		(at 233.934 147.066 0)
+		(at 227.584 149.606 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -1719,7 +1851,7 @@
 	)
 	(text "Adjustable Brightness"
 		(exclude_from_sim no)
-		(at 148.59 121.285 0)
+		(at 142.24 123.825 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -1730,7 +1862,7 @@
 	)
 	(text "External Activity LED"
 		(exclude_from_sim no)
-		(at 113.665 99.695 0)
+		(at 107.315 102.235 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -1741,7 +1873,7 @@
 	)
 	(global_label "oBSY"
 		(shape input)
-		(at 132.715 65.405 180)
+		(at 126.365 67.945 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -1751,7 +1883,7 @@
 		)
 		(uuid "274580f6-0c65-4978-9582-90f81497c9d2")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 125.6737 65.3256 0)
+			(at 119.3237 67.8656 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -1763,7 +1895,7 @@
 	)
 	(global_label "!oBSY"
 		(shape input)
-		(at 133.35 144.145 0)
+		(at 127 146.685 0)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -1773,7 +1905,7 @@
 		)
 		(uuid "5f66b9c2-d9fe-410d-a319-f466c328eb51")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 140.9961 144.0656 0)
+			(at 134.6461 146.6056 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -1785,7 +1917,7 @@
 	)
 	(global_label "oBSY"
 		(shape input)
-		(at 118.11 144.145 180)
+		(at 111.76 146.685 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -1795,7 +1927,7 @@
 		)
 		(uuid "95dc2d8d-bcdf-4655-8f98-130c39c38dfb")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 111.0687 144.0656 0)
+			(at 104.7187 146.6056 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -1807,7 +1939,7 @@
 	)
 	(global_label "oBSY"
 		(shape input)
-		(at 121.92 113.03 180)
+		(at 115.57 115.57 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -1817,7 +1949,7 @@
 		)
 		(uuid "e99bbad7-6d19-429e-b0f4-fd3463d16a40")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 114.8787 112.9506 0)
+			(at 108.5287 115.4906 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -1829,7 +1961,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 151.13 113.03 90)
+		(at 144.78 115.57 90)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -1837,7 +1969,7 @@
 		(dnp no)
 		(uuid "03142d3f-f27d-4d9f-9f6c-b0498a9f3df9")
 		(property "Reference" "R27"
-			(at 149.86 110.49 90)
+			(at 143.51 113.03 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -1845,7 +1977,7 @@
 			)
 		)
 		(property "Value" "330"
-			(at 151.13 113.03 90)
+			(at 144.78 115.57 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -1853,7 +1985,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder"
-			(at 151.13 114.808 90)
+			(at 144.78 117.348 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -1862,7 +1994,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 151.13 113.03 0)
+			(at 144.78 115.57 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -1871,7 +2003,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 151.13 113.03 0)
+			(at 144.78 115.57 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -1961,7 +2093,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 143.51 113.03 90)
+		(at 137.16 115.57 90)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -1969,7 +2101,7 @@
 		(dnp no)
 		(uuid "0e7581f4-5fdd-4863-a8e3-8d5161063b63")
 		(property "Reference" "R26"
-			(at 142.24 110.49 90)
+			(at 135.89 113.03 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -1977,7 +2109,7 @@
 			)
 		)
 		(property "Value" "150"
-			(at 143.51 113.03 90)
+			(at 137.16 115.57 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -1985,7 +2117,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder"
-			(at 143.51 114.808 90)
+			(at 137.16 117.348 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -1994,7 +2126,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 143.51 113.03 0)
+			(at 137.16 115.57 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2003,7 +2135,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 143.51 113.03 0)
+			(at 137.16 115.57 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2028,7 +2160,7 @@
 	)
 	(symbol
 		(lib_id "74xx:74HC14")
-		(at 140.335 65.405 0)
+		(at 133.985 67.945 0)
 		(unit 4)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -2037,7 +2169,7 @@
 		(fields_autoplaced yes)
 		(uuid "141b1b15-36f3-451e-b947-2e9470712c8d")
 		(property "Reference" "U5"
-			(at 140.335 57.785 0)
+			(at 133.985 60.325 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2045,7 +2177,7 @@
 			)
 		)
 		(property "Value" "74HC14"
-			(at 140.335 60.325 0)
+			(at 133.985 62.865 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2053,7 +2185,7 @@
 			)
 		)
 		(property "Footprint" "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm"
-			(at 140.335 65.405 0)
+			(at 133.985 67.945 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2062,7 +2194,7 @@
 			)
 		)
 		(property "Datasheet" "http://www.ti.com/lit/gpn/sn74HC14"
-			(at 140.335 65.405 0)
+			(at 133.985 67.945 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2071,7 +2203,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 140.335 65.405 0)
+			(at 133.985 67.945 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2080,7 +2212,7 @@
 			)
 		)
 		(property "LCSC" "C5605"
-			(at 140.335 65.405 0)
+			(at 133.985 67.945 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2141,7 +2273,7 @@
 	)
 	(symbol
 		(lib_id "74xx:74HC14")
-		(at 170.815 144.145 0)
+		(at 163.83 146.05 0)
 		(unit 3)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -2150,7 +2282,7 @@
 		(fields_autoplaced yes)
 		(uuid "1c997544-c68d-4ebb-bcb7-971a5922e34c")
 		(property "Reference" "U5"
-			(at 170.815 136.525 0)
+			(at 163.83 138.43 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2158,7 +2290,7 @@
 			)
 		)
 		(property "Value" "74HC14"
-			(at 170.815 139.065 0)
+			(at 163.83 140.97 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2166,7 +2298,7 @@
 			)
 		)
 		(property "Footprint" "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm"
-			(at 170.815 144.145 0)
+			(at 163.83 146.05 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2175,7 +2307,7 @@
 			)
 		)
 		(property "Datasheet" "http://www.ti.com/lit/gpn/sn74HC14"
-			(at 170.815 144.145 0)
+			(at 163.83 146.05 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2184,7 +2316,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 170.815 144.145 0)
+			(at 163.83 146.05 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2193,7 +2325,7 @@
 			)
 		)
 		(property "LCSC" "C5605"
-			(at 170.815 144.145 0)
+			(at 163.83 146.05 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2254,7 +2386,7 @@
 	)
 	(symbol
 		(lib_id "Jumper:SolderJumper_2_Open")
-		(at 143.51 119.38 0)
+		(at 137.16 121.92 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -2262,7 +2394,7 @@
 		(dnp no)
 		(uuid "2de70ce8-1ae0-4c74-b56f-c1191fa8e250")
 		(property "Reference" "JP2"
-			(at 143.51 128.27 0)
+			(at 137.16 130.81 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2270,7 +2402,7 @@
 			)
 		)
 		(property "Value" "SolderJumper_2_Open"
-			(at 143.51 124.46 0)
+			(at 137.16 127 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2278,7 +2410,7 @@
 			)
 		)
 		(property "Footprint" "Jumper:SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm"
-			(at 143.51 119.38 0)
+			(at 137.16 121.92 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2287,7 +2419,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 143.51 119.38 0)
+			(at 137.16 121.92 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2296,7 +2428,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 143.51 119.38 0)
+			(at 137.16 121.92 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2321,7 +2453,7 @@
 	)
 	(symbol
 		(lib_id "Jumper:SolderJumper_2_Open")
-		(at 151.13 105.41 0)
+		(at 144.78 107.95 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -2330,7 +2462,7 @@
 		(fields_autoplaced yes)
 		(uuid "2e4317c4-aac7-453f-a079-7fbec4fe7cb0")
 		(property "Reference" "JP1"
-			(at 151.13 99.06 0)
+			(at 144.78 101.6 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2338,7 +2470,7 @@
 			)
 		)
 		(property "Value" "SolderJumper_2_Open"
-			(at 151.13 101.6 0)
+			(at 144.78 104.14 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2346,7 +2478,7 @@
 			)
 		)
 		(property "Footprint" "Jumper:SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm"
-			(at 151.13 105.41 0)
+			(at 144.78 107.95 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2355,7 +2487,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 151.13 105.41 0)
+			(at 144.78 107.95 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2364,7 +2496,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 151.13 105.41 0)
+			(at 144.78 107.95 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2389,7 +2521,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 173.99 115.57 270)
+		(at 167.64 118.11 270)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -2397,7 +2529,7 @@
 		(dnp no)
 		(uuid "2efea9f0-7cc8-422a-a8fd-5b3e4f07e3f9")
 		(property "Reference" "#PWR041"
-			(at 167.64 115.57 0)
+			(at 161.29 118.11 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2406,7 +2538,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 169.5958 115.697 90)
+			(at 163.2458 118.237 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2414,7 +2546,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 173.99 115.57 0)
+			(at 167.64 118.11 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2423,7 +2555,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 173.99 115.57 0)
+			(at 167.64 118.11 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2432,7 +2564,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 173.99 115.57 0)
+			(at 167.64 118.11 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2454,7 +2586,7 @@
 	)
 	(symbol
 		(lib_id "74xx:74HC14")
-		(at 132.08 87.63 0)
+		(at 125.73 90.17 0)
 		(unit 6)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -2463,7 +2595,7 @@
 		(fields_autoplaced yes)
 		(uuid "62f81cd8-d464-4ba8-95bb-cac38e9a3906")
 		(property "Reference" "U5"
-			(at 132.08 80.01 0)
+			(at 125.73 82.55 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2471,7 +2603,7 @@
 			)
 		)
 		(property "Value" "74HC14"
-			(at 132.08 82.55 0)
+			(at 125.73 85.09 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2479,7 +2611,7 @@
 			)
 		)
 		(property "Footprint" "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm"
-			(at 132.08 87.63 0)
+			(at 125.73 90.17 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2488,7 +2620,7 @@
 			)
 		)
 		(property "Datasheet" "http://www.ti.com/lit/gpn/sn74HC14"
-			(at 132.08 87.63 0)
+			(at 125.73 90.17 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2497,7 +2629,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 132.08 87.63 0)
+			(at 125.73 90.17 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2506,7 +2638,7 @@
 			)
 		)
 		(property "LCSC" "C5605"
-			(at 132.08 87.63 0)
+			(at 125.73 90.17 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2567,7 +2699,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 158.75 87.63 90)
+		(at 152.4 90.17 90)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -2575,7 +2707,7 @@
 		(dnp no)
 		(uuid "6ca8997b-a36f-4abc-8df3-7255061bc846")
 		(property "Reference" "R25"
-			(at 157.48 85.09 90)
+			(at 151.13 87.63 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2583,7 +2715,7 @@
 			)
 		)
 		(property "Value" "4.7k"
-			(at 158.75 87.63 90)
+			(at 152.4 90.17 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2591,7 +2723,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
-			(at 158.75 89.408 90)
+			(at 152.4 91.948 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2600,7 +2732,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 158.75 87.63 0)
+			(at 152.4 90.17 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2609,7 +2741,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 158.75 87.63 0)
+			(at 152.4 90.17 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2699,7 +2831,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 170.18 87.63 90)
+		(at 163.83 90.17 90)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -2707,7 +2839,7 @@
 		(dnp no)
 		(uuid "73356ba7-efc3-4b42-ac5c-6a8d7efb2002")
 		(property "Reference" "#PWR039"
-			(at 176.53 87.63 0)
+			(at 170.18 90.17 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2716,7 +2848,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 174.5742 87.503 90)
+			(at 168.2242 90.043 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2724,7 +2856,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 170.18 87.63 0)
+			(at 163.83 90.17 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2733,7 +2865,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 170.18 87.63 0)
+			(at 163.83 90.17 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2742,7 +2874,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 170.18 87.63 0)
+			(at 163.83 90.17 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2764,7 +2896,7 @@
 	)
 	(symbol
 		(lib_id "74xx:74HC14")
-		(at 129.54 113.03 0)
+		(at 123.19 115.57 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -2773,7 +2905,7 @@
 		(fields_autoplaced yes)
 		(uuid "7fef15f8-6850-412e-9c4d-3c06bb5765f1")
 		(property "Reference" "U5"
-			(at 129.54 105.41 0)
+			(at 123.19 107.95 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2781,7 +2913,7 @@
 			)
 		)
 		(property "Value" "74HC14"
-			(at 129.54 107.95 0)
+			(at 123.19 110.49 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2789,7 +2921,7 @@
 			)
 		)
 		(property "Footprint" "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm"
-			(at 129.54 113.03 0)
+			(at 123.19 115.57 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2798,7 +2930,7 @@
 			)
 		)
 		(property "Datasheet" "http://www.ti.com/lit/gpn/sn74HC14"
-			(at 129.54 113.03 0)
+			(at 123.19 115.57 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2807,7 +2939,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 129.54 113.03 0)
+			(at 123.19 115.57 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2816,7 +2948,7 @@
 			)
 		)
 		(property "LCSC" "C5605"
-			(at 129.54 113.03 0)
+			(at 123.19 115.57 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2990,7 +3122,7 @@
 	)
 	(symbol
 		(lib_id "Device:LED")
-		(at 159.385 65.405 180)
+		(at 153.035 67.945 180)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -2999,7 +3131,7 @@
 		(fields_autoplaced yes)
 		(uuid "8d0a51c9-9e20-4a99-b2e5-75425b930be7")
 		(property "Reference" "D1"
-			(at 160.9725 59.055 0)
+			(at 154.6225 61.595 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3007,7 +3139,7 @@
 			)
 		)
 		(property "Value" "LED"
-			(at 160.9725 61.595 0)
+			(at 154.6225 64.135 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3015,7 +3147,7 @@
 			)
 		)
 		(property "Footprint" "LED_SMD:LED_0603_1608Metric_Pad1.05x0.95mm_HandSolder"
-			(at 159.385 65.405 0)
+			(at 153.035 67.945 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3024,7 +3156,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 159.385 65.405 0)
+			(at 153.035 67.945 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3033,7 +3165,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 159.385 65.405 0)
+			(at 153.035 67.945 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3058,7 +3190,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 163.195 144.145 270)
+		(at 154.94 146.05 270)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -3066,7 +3198,7 @@
 		(dnp no)
 		(uuid "8dad90a8-bdcd-4452-b63b-3cbb02090de4")
 		(property "Reference" "#PWR042"
-			(at 156.845 144.145 0)
+			(at 148.59 146.05 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3075,7 +3207,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 158.8008 144.272 90)
+			(at 149.987 145.415 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3083,7 +3215,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 163.195 144.145 0)
+			(at 154.94 146.05 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3092,7 +3224,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 163.195 144.145 0)
+			(at 154.94 146.05 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3101,7 +3233,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 163.195 144.145 0)
+			(at 154.94 146.05 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3123,7 +3255,7 @@
 	)
 	(symbol
 		(lib_id "74xx:74HC14")
-		(at 125.73 144.145 0)
+		(at 119.38 146.685 0)
 		(unit 2)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -3132,7 +3264,7 @@
 		(fields_autoplaced yes)
 		(uuid "97aa4e0d-8b58-42e7-a51b-e21522a5aa78")
 		(property "Reference" "U5"
-			(at 125.73 136.525 0)
+			(at 119.38 139.065 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3140,7 +3272,7 @@
 			)
 		)
 		(property "Value" "74HC14"
-			(at 125.73 139.065 0)
+			(at 119.38 141.605 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3148,7 +3280,7 @@
 			)
 		)
 		(property "Footprint" "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm"
-			(at 125.73 144.145 0)
+			(at 119.38 146.685 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3157,7 +3289,7 @@
 			)
 		)
 		(property "Datasheet" "http://www.ti.com/lit/gpn/sn74HC14"
-			(at 125.73 144.145 0)
+			(at 119.38 146.685 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3166,7 +3298,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 125.73 144.145 0)
+			(at 119.38 146.685 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3175,7 +3307,7 @@
 			)
 		)
 		(property "LCSC" "C5605"
-			(at 125.73 144.145 0)
+			(at 119.38 146.685 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3236,7 +3368,7 @@
 	)
 	(symbol
 		(lib_id "Device:LED")
-		(at 166.37 87.63 180)
+		(at 160.02 90.17 180)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -3245,7 +3377,7 @@
 		(fields_autoplaced yes)
 		(uuid "98a58317-1c0f-4f61-b2e6-224f79d56787")
 		(property "Reference" "D2"
-			(at 167.9575 81.28 0)
+			(at 161.6075 83.82 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3253,7 +3385,7 @@
 			)
 		)
 		(property "Value" "LED"
-			(at 167.9575 83.82 0)
+			(at 161.6075 86.36 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3261,7 +3393,7 @@
 			)
 		)
 		(property "Footprint" "LED_SMD:LED_0603_1608Metric_Pad1.05x0.95mm_HandSolder"
-			(at 166.37 87.63 0)
+			(at 160.02 90.17 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3270,7 +3402,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 166.37 87.63 0)
+			(at 160.02 90.17 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3279,7 +3411,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 166.37 87.63 0)
+			(at 160.02 90.17 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3304,7 +3436,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 151.765 65.405 90)
+		(at 145.415 67.945 90)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -3312,7 +3444,7 @@
 		(dnp no)
 		(uuid "9f41e0b8-7a06-4a29-9f5f-e5231c34c97e")
 		(property "Reference" "R24"
-			(at 150.495 62.865 90)
+			(at 144.145 65.405 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3320,7 +3452,7 @@
 			)
 		)
 		(property "Value" "470"
-			(at 151.765 65.405 90)
+			(at 145.415 67.945 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3328,7 +3460,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0402_1005Metric_Pad0.72x0.64mm_HandSolder"
-			(at 151.765 67.183 90)
+			(at 145.415 69.723 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3337,7 +3469,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 151.765 65.405 0)
+			(at 145.415 67.945 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3346,7 +3478,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 151.765 65.405 0)
+			(at 145.415 67.945 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3371,7 +3503,7 @@
 	)
 	(symbol
 		(lib_id "Connector:Conn_01x03_Male")
-		(at 179.07 113.03 180)
+		(at 172.72 115.57 180)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -3379,7 +3511,7 @@
 		(dnp no)
 		(uuid "a414ff08-189a-4004-8a5d-041c3b067e5c")
 		(property "Reference" "J5"
-			(at 172.72 104.14 0)
+			(at 166.37 106.68 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3387,7 +3519,7 @@
 			)
 		)
 		(property "Value" "Conn_01x03_Male"
-			(at 172.72 106.68 0)
+			(at 166.37 109.22 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3395,7 +3527,7 @@
 			)
 		)
 		(property "Footprint" "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"
-			(at 179.07 113.03 0)
+			(at 172.72 115.57 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3404,7 +3536,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 179.07 113.03 0)
+			(at 172.72 115.57 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3413,7 +3545,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 179.07 113.03 0)
+			(at 172.72 115.57 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3440,8 +3572,73 @@
 		)
 	)
 	(symbol
+		(lib_id "power:PWR_FLAG")
+		(at 128.27 38.1 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "a52bb0ef-1d68-4410-9a08-e9c067f2a9a1")
+		(property "Reference" "#FLG06"
+			(at 128.27 36.195 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "PWR_FLAG"
+			(at 128.27 30.734 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 128.27 38.1 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 128.27 38.1 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Special symbol for telling ERC where power comes from"
+			(at 128.27 38.1 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "3498d968-ffbf-45e9-9c41-c04dd40fad17")
+		)
+		(instances
+			(project "Desktop_50_Pin_TopConn"
+				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/d5fc13d4-1ca0-477a-91ea-84605f39f5f9"
+					(reference "#FLG06")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:+5F")
-		(at 124.46 87.63 90)
+		(at 118.11 90.17 90)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -3449,7 +3646,7 @@
 		(dnp no)
 		(uuid "aea32f12-6a9e-4985-9c35-b2338aa502e3")
 		(property "Reference" "#PWR038"
-			(at 128.27 87.63 0)
+			(at 121.92 90.17 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3458,7 +3655,7 @@
 			)
 		)
 		(property "Value" "+5F"
-			(at 120.0658 87.249 90)
+			(at 113.7158 89.789 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3466,7 +3663,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 124.46 87.63 0)
+			(at 118.11 90.17 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3475,7 +3672,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 124.46 87.63 0)
+			(at 118.11 90.17 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3484,7 +3681,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 124.46 87.63 0)
+			(at 118.11 90.17 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3506,7 +3703,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 163.195 65.405 90)
+		(at 156.845 67.945 90)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -3514,7 +3711,7 @@
 		(dnp no)
 		(uuid "ebb76b7e-c643-40cc-a2ba-b8249780a53c")
 		(property "Reference" "#PWR037"
-			(at 169.545 65.405 0)
+			(at 163.195 67.945 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3523,7 +3720,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 167.5892 65.278 90)
+			(at 161.2392 67.818 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3531,7 +3728,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 163.195 65.405 0)
+			(at 156.845 67.945 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3540,7 +3737,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 163.195 65.405 0)
+			(at 156.845 67.945 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3549,7 +3746,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 163.195 65.405 0)
+			(at 156.845 67.945 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3571,7 +3768,7 @@
 	)
 	(symbol
 		(lib_id "74xx:74HC14")
-		(at 147.32 87.63 0)
+		(at 140.97 90.17 0)
 		(unit 5)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -3580,7 +3777,7 @@
 		(fields_autoplaced yes)
 		(uuid "f13cd28c-60ea-402d-9a58-02c4e004be93")
 		(property "Reference" "U5"
-			(at 147.32 80.01 0)
+			(at 140.97 82.55 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3588,7 +3785,7 @@
 			)
 		)
 		(property "Value" "74HC14"
-			(at 147.32 82.55 0)
+			(at 140.97 85.09 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3596,7 +3793,7 @@
 			)
 		)
 		(property "Footprint" "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm"
-			(at 147.32 87.63 0)
+			(at 140.97 90.17 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3605,7 +3802,7 @@
 			)
 		)
 		(property "Datasheet" "http://www.ti.com/lit/gpn/sn74HC14"
-			(at 147.32 87.63 0)
+			(at 140.97 90.17 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3614,7 +3811,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 147.32 87.63 0)
+			(at 140.97 90.17 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3623,7 +3820,7 @@
 			)
 		)
 		(property "LCSC" "C5605"
-			(at 147.32 87.63 0)
+			(at 140.97 90.17 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3684,7 +3881,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 173.99 110.49 270)
+		(at 167.64 113.03 270)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -3692,7 +3889,7 @@
 		(dnp no)
 		(uuid "fff78d24-24db-4cd7-ae59-a9a1e7f0a3bd")
 		(property "Reference" "#PWR040"
-			(at 167.64 110.49 0)
+			(at 161.29 113.03 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3701,7 +3898,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 169.5958 110.617 90)
+			(at 163.2458 113.157 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3709,7 +3906,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 173.99 110.49 0)
+			(at 167.64 113.03 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3718,7 +3915,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 173.99 110.49 0)
+			(at 167.64 113.03 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3727,7 +3924,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 173.99 110.49 0)
+			(at 167.64 113.03 0)
 			(effects
 				(font
 					(size 1.27 1.27)
