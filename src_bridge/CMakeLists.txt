@@ -32,14 +32,15 @@ FetchContent_Declare(
     GIT_TAG v1.5
 )
 FetchContent_MakeAvailable(minini)
-FetchContent_GetProperties(sdfat)
-FetchContent_Declare(
-    sdfat
-    GIT_REPOSITORY https://github.com/akuker/SdFat.git
-    GIT_TAG a8a6cb042fb1fb3fa4e7e2aa05bb3c68163ce4d1
-)
-FetchContent_MakeAvailable(sdfat)
-FetchContent_GetProperties(sdfat)
+# .... doesn't seem to work without Arduino framework.... revisit this later
+# FetchContent_GetProperties(sdfat)
+# FetchContent_Declare(
+#     sdfat
+#     GIT_REPOSITORY https://github.com/akuker/SdFat.git
+#     GIT_TAG a8a6cb042fb1fb3fa4e7e2aa05bb3c68163ce4d1
+# )
+# FetchContent_MakeAvailable(sdfat)
+# FetchContent_GetProperties(sdfat)
 
 project(scsibridge)
 
@@ -69,6 +70,10 @@ add_executable(scsibridge
         src/scsi/BlueSCSI_log_trace.cpp
         src/scsi/BlueSCSI_initiator.cpp
         src/CUEParser/src/CUEParser.cpp
+        src/scsi/BlueSCSI_usbbridge.cpp
+        BlueSCSI_platform/BlueSCSI_platform.cpp
+        BlueSCSI_platform/scsiHostPhy.cpp
+        BlueSCSI_platform/scsi_accel_host.cpp
 )
 target_include_directories(scsibridge PRIVATE
         include/
@@ -78,7 +83,7 @@ target_include_directories(scsibridge PRIVATE
         src/SCSI2SD/include/
         src/SCSI2SD/src/firmware/
         ${minini_SOURCE_DIR}/dev/
-        ${sdfat_SOURCE_DIR}/src/
+        # ${sdfat_SOURCE_DIR}/src/
         )
 
 
@@ -118,9 +123,13 @@ target_link_libraries(scsibridge PRIVATE
         pico_multicore
         pico_stdlib
         pico_unique_id
+        hardware_dma
+        hardware_spi
+        hardware_pio
+        hardware_adc
+        hardware_i2c
         tinyusb_device
         tinyusb_board
-        hardware_pio
         FreeRTOS-Kernel
         FreeRTOS-Kernel-Heap1
 )
