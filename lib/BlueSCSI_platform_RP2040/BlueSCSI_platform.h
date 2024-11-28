@@ -8,6 +8,8 @@
 #else
 #include <FreeRTOS.h>
 #include <task.h>
+#include "pico/time.h"
+#include "pico/types.h"
 #endif
 #include "BlueSCSI_platform_gpio.h"
 #include "scsiHostPhy.h"
@@ -44,21 +46,49 @@ extern SCSI_PINS scsi_pins;
 void platform_log(const char *s);
 void platform_emergency_log_save();
 
+#ifndef LIB_FREERTOS_KERNEL
 // Timing and delay functions.
 // Arduino platform already provides these
 unsigned long millis(void);
 void delay(unsigned long ms);
+#else
+static inline long millis(void){
+    return to_ms_since_boot(get_absolute_time());
+}
+
+static inline void delay(unsigned long ms){
+    sleep_ms(1);
+}
+
+static inline void delayMicroseconds(unsigned long us){
+    // Use the pico-sdk busy wait
+    busy_wait_us(us);
+}
+#endif
 
 // Short delays, can be called from interrupt mode
 static inline void delay_ns(unsigned long ns)
 {
 #ifdef LIB_FREERTOS_KERNEL
-    /* Block for 500ms. */
-    const TickType_t xDelay = 500 / portTICK_PERIOD_MS;
-    vTaskDelay( xDelay );
+    sleep_us(ns / 1000);
+    // /* Block for 500ms. */
+    // const TickType_t xDelay = 500 / portTICK_PERIOD_MS;
+    // vTaskDelay( xDelay );
 #else
     delayMicroseconds((ns + 999) / 1000);
 #endif
+}
+
+#define WAIT_FOR_EXPRESSION_TIMEOUT(expr, timeout_us) \
+{ \
+    absolute_time_t timeout_time = make_timeout_time_us(timeout_us);\
+    do {\
+        /* each time round the loop, we check to see if the condition */\
+        /* we are waiting on has happened */\
+        if (expr) { \
+            break; \
+        } \
+    } while (!best_effort_wfe_or_timeout(timeout_time));\
 }
 
 // Approximate fast delay

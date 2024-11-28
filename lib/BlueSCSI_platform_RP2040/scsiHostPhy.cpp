@@ -46,7 +46,11 @@ bool scsiHostPhySelect(int target_id, int initiator_id)
     SCSI_OUT(BSY, 1);
     for (int wait = 0; wait < 10; wait++)
     {
+#ifndef LIB_FREERTOS_KERNEL
         delayMicroseconds(1);
+#else
+        delay_100ns();
+#endif
 
         if (SCSI_IN_DATA() != 0)
         {
@@ -66,6 +70,7 @@ bool scsiHostPhySelect(int target_id, int initiator_id)
     delayMicroseconds(5);
     SCSI_OUT(BSY, 0);
 
+#ifndef LIB_FREERTOS_KERNEL
     // Wait for target to respond
     for (int wait = 0; wait < 2500; wait++)
     {
@@ -75,6 +80,9 @@ bool scsiHostPhySelect(int target_id, int initiator_id)
             break;
         }
     }
+#else
+    WAIT_FOR_EXPRESSION_TIMEOUT(SCSI_IN(BSY), 2500*100);
+#endif
 
     if (!SCSI_IN(BSY))
     {
