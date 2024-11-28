@@ -5,7 +5,9 @@
 #include "BlueSCSI_platform.h"
 #include "BlueSCSI_log.h"
 #include "BlueSCSI_config.h"
+#ifndef LIB_FREERTOS_KERNEL
 #include <SdFat.h>
+#endif
 #include <scsi.h>
 #include <assert.h>
 #include <hardware/gpio.h>
@@ -21,6 +23,7 @@
 #include "audio.h"
 #endif
 
+#ifndef LIB_FREERTOS_KERNEL
 #ifndef __MBED__
 #include <Adafruit_TinyUSB.h>
 # include <class/cdc/cdc_device.h>
@@ -28,6 +31,7 @@
 # include <platform/mbed_error.h>
 # include <USB/PluggableUSBSerial.h>
 #endif // __MBED__
+#endif // LIB_FREERTOS_KERNEL
 
 #include <pico/multicore.h>
 #include "scsi_accel_rp2040.h"
@@ -151,9 +155,11 @@ void platform_init()
 {
     // Make sure second core is stopped
     multicore_reset_core1();
+#ifndef LIB_FREERTOS_KERNEL
 #ifndef __MBED__
     Serial.begin(115200);
 #endif // __MBED__
+#endif // LIB_FREERTOS_KERNEL
 
     // Default debug logging to disabled
     g_log_debug = false;
@@ -372,13 +378,16 @@ void platform_disable_led(void)
 /* Crash handlers                        */
 /*****************************************/
 
+#ifndef LIB_FREERTOS_KERNEL
 extern SdFs SD;
+#endif
 extern uint32_t __StackTop;
 
 void platform_emergency_log_save()
 {
     platform_set_sd_callback(NULL, NULL);
 
+#ifndef LIB_FREERTOS_KERNEL
     SD.begin(SD_CONFIG_CRASH);
     FsFile crashfile = SD.open(CRASHFILE, O_WRONLY | O_CREAT | O_TRUNC);
 
@@ -396,6 +405,7 @@ void platform_emergency_log_save()
     crashfile.write(log_get_buffer(&startpos));
     crashfile.flush();
     crashfile.close();
+#endif
 }
 
 #ifdef MBED
@@ -447,7 +457,7 @@ void mbed_error_hook(const mbed_error_ctx * error_context)
 /*****************************************/
 /* Debug logging and watchdog            */
 /*****************************************/
-
+#ifndef LIB_FREERTOS_KERNEL
 // Send log data to USB UART if USB is connected.
 // Data is retrieved from the shared log ring buffer and
 // this function sends as much as fits in USB CDC buffer.
@@ -497,6 +507,7 @@ static void usb_log_poll()
     }
 #endif // __MBED__
 }
+#endif //LIB_FREERTOS_KERNEL
 
 // Use ADC to implement supply voltage monitoring for the +3.0V rail.
 // This works by sampling the temperature sensor channel, which has
@@ -577,11 +588,13 @@ static void watchdog_callback(unsigned alarm_num)
 {
     g_watchdog_timeout -= 1000;
 
+#ifndef LIB_FREERTOS_KERNEL
     if (g_watchdog_timeout < WATCHDOG_CRASH_TIMEOUT - 1000)
     {
         // Been stuck for at least a second, start dumping USB log
         usb_log_poll();
     }
+#endif
 
     if (g_watchdog_timeout <= WATCHDOG_CRASH_TIMEOUT - WATCHDOG_BUS_RESET_TIMEOUT)
     {
@@ -640,7 +653,9 @@ static void watchdog_callback(unsigned alarm_num)
                 p += 4;
             }
 
+#ifndef LIB_FREERTOS_KERNEL
             usb_log_poll();
+#endif
 
             platform_emergency_log_save();
 
@@ -660,7 +675,7 @@ void platform_reset_watchdog()
     if (!g_watchdog_initialized)
     {
         int alarm_num = -1;
-        for (int i = 0; i < NUM_GENERIC_TIMERS; i++)
+        for (unsigned int i = 0; i < NUM_GENERIC_TIMERS; i++)
         {
             if (!hardware_alarm_is_claimed(i))
             {
@@ -679,17 +694,20 @@ void platform_reset_watchdog()
         g_watchdog_initialized = true;
     }
 
+#ifndef LIB_FREERTOS_KERNEL
     // USB log is polled here also to make sure any log messages in fault states
     // get passed to USB.
     usb_log_poll();
+#endif
 }
 
 // Poll function that is called every few milliseconds.
 // Can be left empty or used for platform-specific processing.
 void platform_poll()
 {
+#ifndef LIB_FREERTOS_KERNEL
     usb_log_poll();
-
+#endif
     adc_poll();
     
 #ifdef ENABLE_AUDIO_OUTPUT
@@ -784,7 +802,7 @@ bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_
 
     uint32_t *buf32 = (uint32_t*)buffer;
     uint32_t num_words = PLATFORM_FLASH_PAGE_SIZE / 4;
-    for (int i = 0; i < num_words; i++)
+    for (uint32_t i = 0; i < num_words; i++)
     {
         uint32_t expected = buf32[i];
         uint32_t actual = *(volatile uint32_t*)(XIP_SRAM_BASE + offset + i * 4);

@@ -7,6 +7,9 @@
 #include "scsiPhy.h"
 #include <stddef.h>
 #include <stdint.h>
+#ifdef LIB_FREERTOS_KERNEL
+#include "BlueSCSI_platform.h"
+#endif
 
 // Get total number of bytes that have been written to log
 uint32_t log_get_buffer_len();
@@ -70,7 +73,7 @@ void log_f(const char *format, ...);
 }
 #endif
 
-extern "C" unsigned long millis();
+// extern "C" unsigned long millis();
 
 // Variadic template for printing multiple items
 template<typename T, typename T2, typename... Rest>

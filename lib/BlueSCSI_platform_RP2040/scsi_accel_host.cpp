@@ -116,7 +116,7 @@ uint32_t scsi_accel_host_read(uint8_t *buf, uint32_t count, int *parityError, ui
     // This doesn't detect if there is even number of parity errors in block.
     uint8_t byte0 = ~(paritycheck & 0xFF);
     uint8_t byte1 = ~(paritycheck >> 16);
-    if (paritycheck != ((g_scsi_parity_lookup[byte1] << 16) | g_scsi_parity_lookup[byte0]))
+    if (paritycheck != (uint32_t)((g_scsi_parity_lookup[byte1] << 16) | g_scsi_parity_lookup[byte0]))
     {
         *parityError = 1;
         *parityResult = paritycheck;
