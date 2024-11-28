@@ -40,6 +40,7 @@
 // #include "bsp/board.h"
 // #endif
 #include "tusb.h"
+#include "BlueSCSI_usbbridge.h"
 
 // #include "probe_config.h"
 // #include "probe.h"
@@ -250,6 +251,10 @@ int main(void) {
     // stdio_uart_init();
 
     // led_init();
+
+  /// This causes the rp2040 to crash for right now............
+  /// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    scsiUsbBridgeInit();
 
     printf("Welcome to BlueSCSI Bridge!\n");
 
