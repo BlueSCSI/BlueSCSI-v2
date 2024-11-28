@@ -2891,12 +2891,6 @@
 		(uuid "b3b2ed67-b1c2-40aa-b059-77a04c8e1704")
 	)
 	(junction
-		(at 85.725 144.145)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "ccc35298-5dc4-4d87-8bde-915ec013740e")
-	)
-	(junction
 		(at 229.235 64.77)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -3112,16 +3106,6 @@
 	)
 	(wire
 		(pts
-			(xy 85.725 146.685) (xy 85.725 144.145)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "5261500c-a9ed-48b0-8896-fff313b0fca0")
-	)
-	(wire
-		(pts
 			(xy 114.3 76.2) (xy 121.285 76.2)
 		)
 		(stroke
@@ -3202,16 +3186,6 @@
 	)
 	(wire
 		(pts
-			(xy 85.725 144.145) (xy 90.805 144.145)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "6f7319e1-5d08-4e2e-b150-ce1ee06c50c9")
-	)
-	(wire
-		(pts
 			(xy 86.36 88.265) (xy 86.36 92.075)
 		)
 		(stroke
@@ -3272,16 +3246,6 @@
 	)
 	(polyline
 		(pts
-			(xy 68.58 157.48) (xy 101.6 157.48)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "9060b546-97b4-44ee-8bbe-24aa3a2afd94")
-	)
-	(polyline
-		(pts
 			(xy 276.86 85.725) (xy 206.375 85.725)
 		)
 		(stroke
@@ -3289,16 +3253,6 @@
 			(type default)
 		)
 		(uuid "96aa7e26-b7c2-465e-843e-78d9caab2081")
-	)
-	(polyline
-		(pts
-			(xy 101.6 157.48) (xy 101.6 133.985)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "988a5800-e740-451e-b8d0-4a255b20bfc4")
 	)
 	(wire
 		(pts
@@ -3400,16 +3354,6 @@
 		)
 		(uuid "c233da23-e6bc-4126-b509-1c08d3230e14")
 	)
-	(wire
-		(pts
-			(xy 90.805 144.145) (xy 90.805 145.415)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "c23c74d2-0d56-46be-8368-fc6d17f0510f")
-	)
 	(polyline
 		(pts
 			(xy 206.375 50.165) (xy 206.375 85.725)
@@ -3469,26 +3413,6 @@
 			(type default)
 		)
 		(uuid "db186b37-30e7-4fd8-88e7-27a10f797531")
-	)
-	(polyline
-		(pts
-			(xy 68.58 133.985) (xy 68.58 157.48)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "dc8d3136-4c7a-416f-9af3-7f88f78e3bbf")
-	)
-	(polyline
-		(pts
-			(xy 68.58 133.985) (xy 101.6 133.985)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "defd5871-c526-4890-8f99-8cfa9e08c7b3")
 	)
 	(wire
 		(pts
@@ -3601,17 +3525,6 @@
 			(justify left bottom)
 		)
 		(uuid "7074678c-f250-4ada-80ca-4c8f7cf2200a")
-	)
-	(text "Mysterious Connector"
-		(exclude_from_sim no)
-		(at 74.295 154.94 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "89464f77-acf5-471c-bd24-f38cd7d93c29")
 	)
 	(text "More Decoupling Caps"
 		(exclude_from_sim no)
@@ -4402,71 +4315,6 @@
 			(project "Desktop_50_Pin_TopConn"
 				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/f03a5fc0-9798-4033-842c-4371c8fa3a63"
 					(reference "#PWR079")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "power:GND")
-		(at 90.805 145.415 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(uuid "1f5bea96-63a2-4648-8a42-5edf1c71f43f")
-		(property "Reference" "#PWR085"
-			(at 90.805 151.765 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Value" "GND"
-			(at 90.932 149.8092 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" ""
-			(at 90.805 145.415 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" ""
-			(at 90.805 145.415 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" ""
-			(at 90.805 145.415 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "b7d9a3c7-3c9d-4470-a220-fa217f368104")
-		)
-		(instances
-			(project "Desktop_50_Pin_TopConn"
-				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/f03a5fc0-9798-4033-842c-4371c8fa3a63"
-					(reference "#PWR085")
 					(unit 1)
 				)
 			)
@@ -6547,73 +6395,6 @@
 			(project "Desktop_50_Pin_TopConn"
 				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/f03a5fc0-9798-4033-842c-4371c8fa3a63"
 					(reference "#PWR083")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Connector:Conn_01x02_Male")
-		(at 80.645 144.145 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(uuid "e7a6d264-4a19-4bd6-b147-5816403cbb5d")
-		(property "Reference" "J11"
-			(at 78.105 145.415 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "Conn_01x02_Male"
-			(at 80.645 149.225 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical"
-			(at 80.645 144.145 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" "~"
-			(at 80.645 144.145 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" ""
-			(at 80.645 144.145 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "44b5d41c-ed80-4a62-be3f-5533aef53510")
-		)
-		(pin "2"
-			(uuid "16b1a983-9e7a-4060-9666-f0d5411e0dbc")
-		)
-		(instances
-			(project "Desktop_50_Pin_TopConn"
-				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/f03a5fc0-9798-4033-842c-4371c8fa3a63"
-					(reference "J11")
 					(unit 1)
 				)
 			)

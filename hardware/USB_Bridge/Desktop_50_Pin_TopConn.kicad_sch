@@ -4852,7 +4852,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "CustomFootprints:SOFNG_SD-001"
+		(property "Footprint" "Connector_Card:microSD_HC_Molex_104031-0811"
 			(at 39.37 93.98 0)
 			(effects
 				(font
@@ -4871,6 +4871,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 39.37 99.06 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C2982548"
 			(at 39.37 99.06 0)
 			(effects
 				(font
