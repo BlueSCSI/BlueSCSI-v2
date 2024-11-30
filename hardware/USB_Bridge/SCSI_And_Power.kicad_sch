@@ -163,22 +163,22 @@
 				)
 			)
 		)
-		(symbol "Connector:DB25_Plug_MountingHoles"
+		(symbol "Connector:DB25_Plug"
 			(pin_names
 				(offset 1.016) hide)
 			(exclude_from_sim no)
 			(in_bom yes)
 			(on_board yes)
 			(property "Reference" "J"
-				(at 0 36.83 0)
+				(at 0 34.29 0)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
 				)
 			)
-			(property "Value" "DB25_Plug_MountingHoles"
-				(at 0 34.925 0)
+			(property "Value" "DB25_Plug"
+				(at 0 -34.925 0)
 				(effects
 					(font
 						(size 1.27 1.27)
@@ -203,7 +203,7 @@
 					(hide yes)
 				)
 			)
-			(property "Description" "25-pin male plug pin D-SUB connector, Mounting Hole"
+			(property "Description" "25-pin male plug pin D-SUB connector"
 				(at 0 0 0)
 				(effects
 					(font
@@ -230,7 +230,7 @@
 					(hide yes)
 				)
 			)
-			(symbol "DB25_Plug_MountingHoles_0_1"
+			(symbol "DB25_Plug_0_1"
 				(circle
 					(center -1.778 -30.48)
 					(radius 0.762)
@@ -819,25 +819,7 @@
 					)
 				)
 			)
-			(symbol "DB25_Plug_MountingHoles_1_1"
-				(pin passive line
-					(at 0 -35.56 90)
-					(length 3.81)
-					(name "PAD"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "0"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
+			(symbol "DB25_Plug_1_1"
 				(pin passive line
 					(at -7.62 -30.48 0)
 					(length 3.81)
@@ -4110,6 +4092,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C883111"
+			(at 105.41 80.01 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "3e5bf7c9-3a3f-4b77-991e-4f7c7fb8de24")
 		)
@@ -4347,7 +4338,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
 			(at 77.1652 75.565 0)
 			(effects
 				(font
@@ -4366,6 +4357,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 76.2 71.755 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C1705"
 			(at 76.2 71.755 0)
 			(effects
 				(font
@@ -4480,7 +4480,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 119.6848 138.43 0)
 			(effects
 				(font
@@ -4499,6 +4499,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 120.65 142.24 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C307331"
 			(at 120.65 142.24 0)
 			(effects
 				(font
@@ -4679,7 +4688,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_1206_3216Metric"
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
 			(at 122.2502 83.82 0)
 			(effects
 				(font
@@ -4698,6 +4707,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 121.285 80.01 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C59461"
 			(at 121.285 80.01 0)
 			(effects
 				(font
@@ -4739,7 +4757,7 @@
 				(justify right)
 			)
 		)
-		(property "Value" "D"
+		(property "Value" "Schottky Diode"
 			(at 83.312 72.898 90)
 			(effects
 				(font
@@ -4748,7 +4766,7 @@
 				(justify right)
 			)
 		)
-		(property "Footprint" "Diode_SMD:D_SMA"
+		(property "Footprint" "Diode_SMD:D_SOD-123"
 			(at 81.28 71.755 0)
 			(effects
 				(font
@@ -4767,6 +4785,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 81.28 71.755 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C8598"
 			(at 81.28 71.755 0)
 			(effects
 				(font
@@ -4945,7 +4972,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 270.2052 72.39 0)
 			(effects
 				(font
@@ -4964,6 +4991,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 269.24 68.58 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C307331"
 			(at 269.24 68.58 0)
 			(effects
 				(font
@@ -5077,7 +5113,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 248.5898 64.77 0)
 			(effects
 				(font
@@ -5096,6 +5132,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 249.555 68.58 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C307331"
 			(at 249.555 68.58 0)
 			(effects
 				(font
@@ -5165,6 +5210,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 85.09 106.68 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "--"
 			(at 85.09 106.68 0)
 			(effects
 				(font
@@ -5416,7 +5470,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 228.2698 64.77 0)
 			(effects
 				(font
@@ -5435,6 +5489,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 229.235 68.58 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C307331"
 			(at 229.235 68.58 0)
 			(effects
 				(font
@@ -5579,6 +5642,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C883111"
+			(at 64.77 79.375 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "daedac02-3547-4aaa-a32d-17493629af56")
 		)
@@ -5595,7 +5667,7 @@
 		)
 	)
 	(symbol
-		(lib_id "Connector:DB25_Plug_MountingHoles")
+		(lib_id "Connector:DB25_Plug")
 		(at 181.61 88.9 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -5622,7 +5694,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Connector_Dsub:DSUB-25_Male_Horizontal_P2.77x2.84mm_EdgePinOffset4.94mm_Housed_MountingHolesOffset7.48mm"
+		(property "Footprint" "Connector_Dsub:DSUB-25_Male_EdgeMount_P2.77mm"
 			(at 181.61 88.9 0)
 			(effects
 				(font
@@ -5640,7 +5712,16 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "25-pin male plug pin D-SUB connector, Mounting Hole"
+		(property "Description" "25-pin male plug pin D-SUB connector"
+			(at 181.61 88.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C75745"
 			(at 181.61 88.9 0)
 			(effects
 				(font
@@ -5712,9 +5793,6 @@
 		(pin "8"
 			(uuid "701c964a-8f77-464f-a15d-f70f0e6a93e5")
 		)
-		(pin "0"
-			(uuid "f13b0c87-8c6c-4c80-aa1f-46a61f4c5fc9")
-		)
 		(pin "7"
 			(uuid "c262e3ad-c9e3-4efa-9119-6e00bbf4bf78")
 		)
@@ -5754,7 +5832,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "D"
+		(property "Value" "Schottky Diode"
 			(at 83.312 88.773 90)
 			(effects
 				(font
@@ -5763,7 +5841,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Diode_SMD:D_SMA"
+		(property "Footprint" "Diode_SMD:D_SOD-123"
 			(at 81.28 87.63 0)
 			(effects
 				(font
@@ -5782,6 +5860,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 81.28 87.63 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C8598"
 			(at 81.28 87.63 0)
 			(effects
 				(font
@@ -5897,7 +5984,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
 			(at 111.4552 83.82 0)
 			(effects
 				(font
@@ -5916,6 +6003,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 110.49 80.01 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C1705"
 			(at 110.49 80.01 0)
 			(effects
 				(font
@@ -6029,7 +6125,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 238.4298 64.77 0)
 			(effects
 				(font
@@ -6048,6 +6144,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 239.395 68.58 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C307331"
 			(at 239.395 68.58 0)
 			(effects
 				(font
@@ -6117,6 +6222,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 99.06 74.93 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "--"
 			(at 99.06 74.93 0)
 			(effects
 				(font
@@ -6336,71 +6450,6 @@
 		)
 	)
 	(symbol
-		(lib_id "power:GND")
-		(at 181.61 124.46 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(uuid "e3e12ec9-81c3-4197-80ad-e1dbc86e9852")
-		(property "Reference" "#PWR083"
-			(at 181.61 130.81 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Value" "GND"
-			(at 181.737 128.8542 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" ""
-			(at 181.61 124.46 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" ""
-			(at 181.61 124.46 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" ""
-			(at 181.61 124.46 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "10295147-0b67-4a87-948b-a169da50d9bf")
-		)
-		(instances
-			(project "Desktop_50_Pin_TopConn"
-				(path "/e40e8cef-4fb0-4fc3-be09-3875b2cc8469/f03a5fc0-9798-4033-842c-4371c8fa3a63"
-					(reference "#PWR083")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "Device:C")
 		(at 125.73 142.24 0)
 		(unit 1)
@@ -6427,7 +6476,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
 			(at 126.6952 146.05 0)
 			(effects
 				(font
@@ -6446,6 +6495,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 125.73 142.24 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C1705"
 			(at 125.73 142.24 0)
 			(effects
 				(font
@@ -6563,7 +6621,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
 			(at 92.4052 83.185 0)
 			(effects
 				(font
@@ -6582,6 +6640,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 91.44 79.375 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C1705"
 			(at 91.44 79.375 0)
 			(effects
 				(font
@@ -6630,7 +6697,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 218.1098 64.77 0)
 			(effects
 				(font
@@ -6649,6 +6716,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 219.075 68.58 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C307331"
 			(at 219.075 68.58 0)
 			(effects
 				(font
@@ -6716,6 +6792,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 59.69 73.025 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "--"
 			(at 59.69 73.025 0)
 			(effects
 				(font
@@ -6832,7 +6917,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
 			(at 258.7752 72.39 0)
 			(effects
 				(font
@@ -6851,6 +6936,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 257.81 68.58 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C1705"
 			(at 257.81 68.58 0)
 			(effects
 				(font
