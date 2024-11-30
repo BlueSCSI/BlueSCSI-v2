@@ -1,6 +1,6 @@
 name: Build ZuluSCSI firmware
 
-on: 
+on:
   push:
   workflow_dispatch:
   pull_request:
@@ -11,46 +11,56 @@ jobs:
 #    runs-on: self-hosted
     name: Build firmware on GitHub using latest Ubuntu
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Check out code from GitHub
         uses: actions/checkout@v4
         with:
           path: ZuluSCSI
           fetch-depth: "0"
-      
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install zip
+
       - name: Install platformio
         run: |
           pip install -U platformio
-      
+
       - name: Build firmware
         run: |
           cd ZuluSCSI
           pio run -v -j8
-    
+
       - name: Rename firmware files
         run: |
           cd ZuluSCSI
           utils/rename_binaries.sh
+
+      - name: Create bin package zip file
+        run: |
+          cd ZuluSCSI
+          utils/create_bin_package_zip.sh
 
       - name: Upload binaries into build artifacts
         uses: actions/upload-artifact@v4
         with:
           path: ZuluSCSI/distrib/*
           name: ZuluSCSI binaries
-      
-      # - name: Upload to latest release
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   if: github.ref == 'refs/heads/main'
-      #   run: |
-      #     cd ZuluSCSI
-      #     git tag -d latest
-      #     git tag latest
-      #     git push origin --force latest
-      #     cd distrib
-      #     gh api repos/${GITHUB_REPOSITORY}/releases/tags/latest | jq -r '.assets[] | [.url] | @tsv' | xargs -n 1 gh api -X DELETE || true
-      #     gh release upload --repo ${GITHUB_REPOSITORY} --clobber latest *
+
+      - name: Upload to latest release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: github.ref == 'refs/heads/main'
+        run: |
+          cd ZuluSCSI
+          git tag -d latest
+          git tag latest
+          git push origin --force latest
+          cd distrib
+          gh api repos/${GITHUB_REPOSITORY}/releases/tags/latest | jq -r '.assets[] | [.url] | @tsv' | xargs -n 1 gh api -X DELETE || true
+          gh release upload --repo ${GITHUB_REPOSITORY} --clobber latest *
 
       - name: Upload to newly created release
         env:

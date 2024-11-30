@@ -22,6 +22,7 @@
 #include "ZuluSCSI_platform.h"
 #include "gd32f4xx_sdio.h"
 #include "gd32f4xx_fmc.h"
+#include "gd32f4xx_fwdgt.h"
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_config.h"
 #include "usb_hs.h"
@@ -509,6 +510,14 @@ void platform_reset_watchdog()
     // It gives us opportunity to collect better debug info than the
     // full hardware reset that would be caused by hardware watchdog.
     g_watchdog_timeout = WATCHDOG_CRASH_TIMEOUT;
+}
+
+void platform_reset_mcu()
+{
+    // reset in 2 sec ( 1 / (32KHz / 32) * 2000 == 2sec)
+    fwdgt_config(2000, FWDGT_PSC_DIV32);
+    fwdgt_enable();
+
 }
 
 // Poll function that is called every few milliseconds.
