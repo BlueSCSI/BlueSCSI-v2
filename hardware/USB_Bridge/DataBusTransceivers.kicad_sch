@@ -3786,7 +3786,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 261.3152 141.605 0)
 			(effects
 				(font
@@ -3805,6 +3805,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 260.35 137.795 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C307331"
 			(at 260.35 137.795 0)
 			(effects
 				(font
@@ -4441,7 +4450,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 87.3252 49.53 0)
 			(effects
 				(font
@@ -4460,6 +4469,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 86.36 45.72 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C307331"
 			(at 86.36 45.72 0)
 			(effects
 				(font
@@ -4510,7 +4528,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 192.1002 142.24 0)
 			(effects
 				(font
@@ -4529,6 +4547,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 191.135 138.43 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C307331"
 			(at 191.135 138.43 0)
 			(effects
 				(font
@@ -4964,6 +4991,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C15127"
+			(at 141.605 97.155 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "059bd472-eac5-4087-8615-154f36b50d7f")
 		)
@@ -5204,7 +5240,7 @@
 				(justify right)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_1206_3216Metric"
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
 			(at 225.7552 141.605 0)
 			(effects
 				(font
@@ -5223,6 +5259,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 224.79 137.795 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C59461"
 			(at 224.79 137.795 0)
 			(effects
 				(font
@@ -5703,7 +5748,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 203.5302 142.24 0)
 			(effects
 				(font
@@ -5722,6 +5767,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 202.565 138.43 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C307331"
 			(at 202.565 138.43 0)
 			(effects
 				(font
@@ -5854,6 +5908,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 150.495 125.73 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C23162"
 			(at 150.495 125.73 0)
 			(effects
 				(font
@@ -6099,7 +6162,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
 			(at 92.4052 49.53 0)
 			(effects
 				(font
@@ -6118,6 +6181,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 91.44 45.72 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C1705"
 			(at 91.44 45.72 0)
 			(effects
 				(font
@@ -6519,7 +6591,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 176.8602 73.66 0)
 			(effects
 				(font
@@ -6538,6 +6610,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 175.895 69.85 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C307331"
 			(at 175.895 69.85 0)
 			(effects
 				(font
@@ -6611,6 +6692,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 219.71 93.345 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C15127"
 			(at 219.71 93.345 0)
 			(effects
 				(font
@@ -6807,7 +6897,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 188.2902 73.66 0)
 			(effects
 				(font
@@ -6826,6 +6916,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 187.325 69.85 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C307331"
 			(at 187.325 69.85 0)
 			(effects
 				(font
@@ -7527,7 +7626,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
 			(at 92.4052 86.36 0)
 			(effects
 				(font
@@ -7546,6 +7645,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 91.44 82.55 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C1705"
 			(at 91.44 82.55 0)
 			(effects
 				(font
@@ -7594,7 +7702,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 87.3252 86.36 0)
 			(effects
 				(font
@@ -7613,6 +7721,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 86.36 82.55 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C307331"
 			(at 86.36 82.55 0)
 			(effects
 				(font
@@ -8253,6 +8370,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "--"
+			(at 139.7 135.89 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "5cb44f09-89ea-425c-9fd1-4f66fb6abc7d")
 		)
@@ -8376,7 +8502,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_1206_3216Metric"
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
 			(at 249.8852 141.605 0)
 			(effects
 				(font
@@ -8395,6 +8521,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 248.92 137.795 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C59461"
 			(at 248.92 137.795 0)
 			(effects
 				(font

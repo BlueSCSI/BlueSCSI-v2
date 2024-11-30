@@ -2011,6 +2011,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C25104"
+			(at 144.78 115.57 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "e7101d2f-ab9d-404e-9ca4-564bb4cfbb23")
 		)
@@ -2143,6 +2152,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C25082"
+			(at 137.16 115.57 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "8c91fa9e-9ea9-483d-ad47-5be33505966e")
 		)
@@ -2184,7 +2202,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm"
+		(property "Footprint" "Package_SO:TSSOP-14_4.4x5mm_P0.65mm"
 			(at 133.985 67.945 0)
 			(effects
 				(font
@@ -2211,7 +2229,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C5605"
+		(property "LCSC" "C6821"
 			(at 133.985 67.945 0)
 			(effects
 				(font
@@ -2297,7 +2315,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm"
+		(property "Footprint" "Package_SO:TSSOP-14_4.4x5mm_P0.65mm"
 			(at 163.83 146.05 0)
 			(effects
 				(font
@@ -2324,7 +2342,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C5605"
+		(property "LCSC" "C6821"
 			(at 163.83 146.05 0)
 			(effects
 				(font
@@ -2436,6 +2454,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "--"
+			(at 137.16 121.92 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "5d98f46e-f53d-4d71-875d-a99eb75da47a")
 		)
@@ -2496,6 +2523,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 144.78 107.95 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "--"
 			(at 144.78 107.95 0)
 			(effects
 				(font
@@ -2610,7 +2646,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm"
+		(property "Footprint" "Package_SO:TSSOP-14_4.4x5mm_P0.65mm"
 			(at 125.73 90.17 0)
 			(effects
 				(font
@@ -2637,7 +2673,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C5605"
+		(property "LCSC" "C6821"
 			(at 125.73 90.17 0)
 			(effects
 				(font
@@ -2741,6 +2777,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 152.4 90.17 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C23162"
 			(at 152.4 90.17 0)
 			(effects
 				(font
@@ -2920,7 +2965,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm"
+		(property "Footprint" "Package_SO:TSSOP-14_4.4x5mm_P0.65mm"
 			(at 123.19 115.57 0)
 			(effects
 				(font
@@ -2947,7 +2992,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C5605"
+		(property "LCSC" "C6821"
 			(at 123.19 115.57 0)
 			(effects
 				(font
@@ -3033,7 +3078,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm"
+		(property "Footprint" "Package_SO:TSSOP-14_4.4x5mm_P0.65mm"
 			(at 140.97 38.1 0)
 			(effects
 				(font
@@ -3060,7 +3105,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C5605"
+		(property "LCSC" "C6821"
 			(at 140.97 38.1 0)
 			(effects
 				(font
@@ -3146,7 +3191,7 @@
 				)
 			)
 		)
-		(property "Footprint" "LED_SMD:LED_0603_1608Metric_Pad1.05x0.95mm_HandSolder"
+		(property "Footprint" "LED_SMD:LED_0805_2012Metric"
 			(at 153.035 67.945 0)
 			(effects
 				(font
@@ -3165,6 +3210,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 153.035 67.945 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C2297"
 			(at 153.035 67.945 0)
 			(effects
 				(font
@@ -3279,7 +3333,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm"
+		(property "Footprint" "Package_SO:TSSOP-14_4.4x5mm_P0.65mm"
 			(at 119.38 146.685 0)
 			(effects
 				(font
@@ -3306,7 +3360,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C5605"
+		(property "LCSC" "C6821"
 			(at 119.38 146.685 0)
 			(effects
 				(font
@@ -3392,7 +3446,7 @@
 				)
 			)
 		)
-		(property "Footprint" "LED_SMD:LED_0603_1608Metric_Pad1.05x0.95mm_HandSolder"
+		(property "Footprint" "LED_SMD:LED_0805_2012Metric"
 			(at 160.02 90.17 0)
 			(effects
 				(font
@@ -3411,6 +3465,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 160.02 90.17 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C2297"
 			(at 160.02 90.17 0)
 			(effects
 				(font
@@ -3486,6 +3549,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C25117"
+			(at 145.415 67.945 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "0933b6c8-6a69-482b-b6f6-86535e99de24")
 		)
@@ -3545,6 +3617,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 172.72 115.57 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "--"
 			(at 172.72 115.57 0)
 			(effects
 				(font
@@ -3792,7 +3873,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm"
+		(property "Footprint" "Package_SO:TSSOP-14_4.4x5mm_P0.65mm"
 			(at 140.97 90.17 0)
 			(effects
 				(font
@@ -3819,7 +3900,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C5605"
+		(property "LCSC" "C6821"
 			(at 140.97 90.17 0)
 			(effects
 				(font
