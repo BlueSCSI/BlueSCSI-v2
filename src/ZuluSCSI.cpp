@@ -884,7 +884,7 @@ static void firmware_update()
 
     logmsg("Unzipping matching firmware with prefix: ", FIRMWARE_NAME_PREFIX);
     FsFile target_firmware;
-    target_firmware.open(&root, "zuluscsi.bin", O_BINARY | O_WRONLY | O_CREAT | O_TRUNC);
+    target_firmware.open(&root, "ZuluSCSI.bin", O_BINARY | O_WRONLY | O_CREAT | O_TRUNC);
     uint32_t position = 0;
     while ((bytes_read = file.read(buf, sizeof(buf))) > 0)
     {
@@ -913,7 +913,7 @@ static void firmware_update()
     {
       target_firmware.close();
       logmsg("Error reading firmware package file");
-      root.remove("zuluscsi.bin");
+      root.remove("ZuluSCSI.bin");
     }
   }
   else
