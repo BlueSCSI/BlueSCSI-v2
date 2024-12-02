@@ -31,6 +31,10 @@
 #define FW_VER_NUM      "24.12.02"
 #define FW_VER_SUFFIX   "devel"
 
+#define DEF_STRINGFY(DEF) STRINGFY(DEF)
+#define STRINGFY(STR) #STR
+#define FIRMWARE_NAME_PREFIX DEF_STRINGFY(BUILD_ENV)
+
 #define ZULU_FW_VERSION FW_VER_NUM "-" FW_VER_SUFFIX
 #define INQUIRY_NAME  PLATFORM_NAME " v" ZULU_FW_VERSION
 #define TOOLBOX_API 0
@@ -39,6 +43,7 @@
 #define CONFIGFILE  "zuluscsi.ini"
 #define LOGFILE     "zululog.txt"
 #define CRASHFILE   "zuluerr.txt"
+#define FIRMWARE_PREFIX "ZuluSCSI-FW"
 
 // Prefix for command file to create new image (case-insensitive)
 #define CREATEFILE "create"

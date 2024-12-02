@@ -22,6 +22,7 @@
 #include "ZuluSCSI_platform.h"
 #include "gd32f20x_sdio.h"
 #include "gd32f20x_fmc.h"
+#include "gd32f20x_fwdgt.h"
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_config.h"
 #include "usbd_conf.h"
@@ -396,6 +397,7 @@ static bool get_direct_mode(uint32_t port, uint32_t pin, const char *switch_name
 
 void platform_late_init()
 {
+
     // Initialize usb for CDC serial output
     usb_serial_init();
     g_usb_log_poll_func = &usb_log_poll;
@@ -719,6 +721,14 @@ void platform_reset_watchdog()
     // USB log is polled here also to make sure any log messages in fault states
     // get passed to USB.
     usb_log_poll();
+}
+
+void platform_reset_mcu()
+{
+    // reset in 2 sec ( 1 / (40KHz / 32) * 2500 == 2sec)
+    fwdgt_config(2500, FWDGT_PSC_DIV32);
+    fwdgt_enable();
+
 }
 
 // Poll function that is called every few milliseconds.

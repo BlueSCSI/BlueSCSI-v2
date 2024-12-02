@@ -863,6 +863,11 @@ void platform_poll()
 #endif // ENABLE_AUDIO_OUTPUT
 }
 
+void platform_reset_mcu()
+{
+    watchdog_reboot(0, 0, 2000);
+}
+
 uint8_t platform_get_buttons()
 {
     uint8_t buttons = 0;
