@@ -45,8 +45,8 @@ namespace zipparser
             // \returns the number of bytes processed or -1 if an error ocurred
             int32_t Parse(uint8_t const *buf, const size_t size);
             bool FoundMatch();
-            uint32_t GetCompressedSize();
-            
+            inline uint32_t GetCompressedSize() {return compressed_data_size;}
+
         protected:
             bool filename_match;
             char const *filename;
@@ -57,7 +57,6 @@ namespace zipparser
             uint32_t uncompressed_data_size;
             parsing_target target;
             size_t position;
-            bool deflate;
             uint32_t crc;
 
     };
