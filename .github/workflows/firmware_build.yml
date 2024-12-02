@@ -7,7 +7,7 @@ on:
 
 jobs:
   build_firmware:
-    name: RHC-internal-Z4
+#    name: RHC-internal-Z4
 #    runs-on: self-hosted
     name: Build firmware on GitHub using latest Ubuntu
     runs-on: ubuntu-latest
