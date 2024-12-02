@@ -47,6 +47,10 @@ bool g_moved_select_in = false;
 // hw_config.cpp c functions
 #include "platform_hw_config.h"
 
+// usb_log_poll() is called through function pointer to
+// avoid including USB in SD card bootloader.
+static void (*g_usb_log_poll_func)(void);
+static void usb_log_poll();
 
 
 /*************************/
@@ -396,6 +400,7 @@ void platform_late_init()
 
     // Initialize usb for CDC serial output
     usb_serial_init();
+    g_usb_log_poll_func = &usb_log_poll;
 
     logmsg("Platform: ", g_platform_name);
     logmsg("FW Version: ", g_log_firmwareversion);
@@ -617,7 +622,7 @@ void show_hardfault(uint32_t *sp)
 
     while (1)
     {
-        usb_log_poll();
+        if (g_usb_log_poll_func) g_usb_log_poll_func();
         // Flash the crash address on the LED
         // Short pulse means 0, long pulse means 1
         int base_delay = 1000;
@@ -690,7 +695,7 @@ void __assert_func(const char *file, int line, const char *func, const char *exp
 
     while(1)
     {
-        usb_log_poll();
+        if (g_usb_log_poll_func) g_usb_log_poll_func();
         LED_OFF();
         for (int j = 0; j < 1000; j++) delay_ns(100000);
         LED_ON();

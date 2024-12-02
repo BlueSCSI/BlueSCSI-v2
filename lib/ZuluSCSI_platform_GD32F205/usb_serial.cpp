@@ -52,6 +52,15 @@ bool usb_serial_ready(void)
     // check that (our) serial is the currently active class
     if ((USBD_CONFIGURED == cdc_acm.dev.cur_status) && (cdc_acm.dev.desc == &gd32_cdc_desc)) 
     {
+        gd32_usb_cdc_handler *cdc = (gd32_usb_cdc_handler *)cdc_acm.dev.class_data[CDC_COM_INTERFACE];
+        if (cdc->packet_receive)
+        {
+            // Discard any received data.
+            // Otherwise it queues up on the host side and can cause the port to hang.
+            cdc->packet_receive = 0;
+            gd32_cdc_acm_data_receive(&cdc_acm);
+        }
+
         if (1U == gd32_cdc_acm_check_ready(&cdc_acm)) 
         {
             return true;
