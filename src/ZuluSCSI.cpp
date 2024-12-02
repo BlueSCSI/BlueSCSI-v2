@@ -50,6 +50,7 @@
 #include <string.h>
 #include <strings.h>
 #include <ctype.h>
+#include <zip_parser.h>
 #include "ZuluSCSI_config.h"
 #include "ZuluSCSI_platform.h"
 #include "ZuluSCSI_log.h"
@@ -816,6 +817,112 @@ static void reinitSCSI()
 #endif // ZULUSCSI_NETWORK
 
 }
+
+// Update firmware by unzipping the firmware package
+static void firmware_update()
+{
+  const char firmware_prefix[] = FIRMWARE_PREFIX;
+  FsFile root = SD.open("/");
+  FsFile file;
+  char name[MAX_FILE_PATH + 1];
+  while (1)
+  {
+    if (!file.openNext(&root, O_RDONLY))
+    {
+      file.close();
+      root.close();
+      return;
+    }
+    if (file.isDir())
+      continue;
+
+    file.getName(name, sizeof(name));
+    if (strlen(name) + 1 < sizeof(firmware_prefix))
+      continue;
+    if ( strncasecmp(firmware_prefix, name, sizeof(firmware_prefix) -1) == 0)
+    {
+      break;
+    }
+  }
+
+  logmsg("Found firmware package ", name);
+
+  zipparser::Parser parser = zipparser::Parser(FIRMWARE_NAME_PREFIX, sizeof(FIRMWARE_NAME_PREFIX) - 1);
+  uint8_t buf[512];
+  int32_t parsed_length;
+  int bytes_read = 0;
+  while ((bytes_read = file.read(buf, sizeof(buf))) > 0)
+  {
+    parsed_length = parser.Parse(buf, bytes_read);
+    if (parsed_length == sizeof(buf))
+       continue;
+    if (parsed_length >= 0)
+    {
+      if (!parser.FoundMatch())
+      {
+        parser.Reset();
+        file.seekSet(file.position() - (sizeof(buf) - parsed_length) + parser.GetCompressedSize());
+      }
+      else
+      {
+        // seek to start of compressed data in matching file
+        file.seekSet(file.position() - (sizeof(buf) - parsed_length));
+        break;
+      }
+    }
+    if (parsed_length < 0)
+    {
+      file.close();
+      root.close();
+      return;
+    }
+  }
+
+
+  if (parser.FoundMatch())
+  {
+
+    logmsg("Unzipping matching firmware with prefix: ", FIRMWARE_NAME_PREFIX);
+    FsFile target_firmware;
+    target_firmware.open(&root, "ZuluSCSI.bin", O_BINARY | O_WRONLY | O_CREAT | O_TRUNC);
+    uint32_t position = 0;
+    while ((bytes_read = file.read(buf, sizeof(buf))) > 0)
+    {
+      if (bytes_read > parser.GetCompressedSize() - position)
+        bytes_read =  parser.GetCompressedSize() - position;
+      target_firmware.write(buf, bytes_read);
+      position += bytes_read;
+      if (position >= parser.GetCompressedSize())
+      {
+        break;
+      }
+    }
+    // zip file has a central directory at the end of the file,
+    // so the compressed data should never hit the end of the file
+    // so bytes read should always be greater than 0 for a valid datastream
+    if (bytes_read > 0)
+    {
+      target_firmware.close();
+      file.close();
+      root.remove(name);
+      root.close();
+      logmsg("Update extracted from package, rebooting MCU");
+      platform_reset_mcu();
+    }
+    else
+    {
+      target_firmware.close();
+      logmsg("Error reading firmware package file");
+      root.remove("ZuluSCSI.bin");
+    }
+  }
+  else
+    logmsg("Updater did not find matching file in package: ", name);
+  file.close();
+  root.close();
+}
+
+
 // Place all the setup code that requires the SD card to be initialized here
 // Which is pretty much everything after platform_init and and platform_late_init
 static void zuluscsi_setup_sd_card()
@@ -847,8 +954,10 @@ static void zuluscsi_setup_sd_card()
     } while (!g_sdcard_present);
     logmsg("SD card init succeeded after retry");
   }
-  
-  static const char sg_default[] = "Default"; 
+
+  firmware_update();
+
+  static const char sg_default[] = "Default";
   if (g_sdcard_present)
   {
     char speed_grade_str[10];
