@@ -166,14 +166,32 @@ static __ALIGN_BEGIN const usb_desc_str product_string __ALIGN_END = {
     .unicode_string = {'G', 'D', '3', '2', '-', 'U', 'S', 'B', '_', 'M', 'S', 'C'}
 };
 
-/* USBD serial string */
-static __ALIGN_BEGIN const usb_desc_str serial_string __ALIGN_END = {
+#ifdef USB_ENABLE_SERIALNUMBER
+/* USBD serial string
+ * This gets set by serial_string_get() in GD32 SPL usbd_enum.c */
+static usb_desc_str serial_string =
+{
     .header =
-    {
-        .bLength         = USB_STRING_LEN(12U),
-        .bDescriptorType = USB_DESCTYPE_STR,
-    }
+     {
+         .bLength         = USB_STRING_LEN(12U),
+         .bDescriptorType = USB_DESCTYPE_STR,
+     }
 };
+#else
+/* Save some RAM by disabling the serial number.
+ * Note that contents must not have null bytes or Windows gets confused
+ * Having non-empty fake serial number avoids Windows recreating the
+ * device every time it moves between USB ports. */
+static const usb_desc_str serial_string =
+{
+    .header =
+     {
+         .bLength         = USB_STRING_LEN(4U),
+         .bDescriptorType = USB_DESCTYPE_STR,
+     },
+     .unicode_string = {'1', '2', '3', '4'}
+};
+#endif
 
 /* USB string descriptor */
 void *const usbd_msc_strings[] = {
