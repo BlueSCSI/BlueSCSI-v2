@@ -1,3 +1,10 @@
+# Generated Cmake Pico project file
+cmake_minimum_required(VERSION 3.13)
+
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # ====================================================================================
 # == DO NOT EDIT THE FOLLOWING LINES for the Raspberry Pi Pico VS Code Extension to work ==
 if(WIN32)
@@ -13,7 +20,7 @@ if (EXISTS ${picoVscode})
     include(${picoVscode})
 endif()
 # ====================================================================================
-set(PICO_BOARD pico_w CACHE STRING "Board type")
+set(PICO_BOARD pico CACHE STRING "Board type")
 set(CMAKE_BUILD_TYPE "Debug")
 
 cmake_minimum_required(VERSION 3.12)
@@ -22,7 +29,6 @@ include(pico_sdk_import.cmake)
 
 set(FREERTOS_KERNEL_PATH ${CMAKE_CURRENT_LIST_DIR}/freertos)
 include(FreeRTOS_Kernel_import.cmake)
-
 
 # Fetch MiniINI testing framework
 include(FetchContent)
@@ -42,15 +48,13 @@ FetchContent_MakeAvailable(minini)
 # FetchContent_MakeAvailable(sdfat)
 # FetchContent_GetProperties(sdfat)
 
-project(scsibridge)
+project(scsibridge C CXX ASM)
 
 pico_sdk_init()
 
 if (${PICO_SDK_VERSION_MAJOR} LESS 2)
 	message(SEND_ERROR "Version 2 of the Pico SDK is required to compile this project. Please update your installation at ${PICO_SDK_PATH}")
 endif ()
-
-
 
 add_executable(scsibridge
         src/led.c
@@ -89,8 +93,8 @@ target_include_directories(scsibridge PRIVATE
 
 target_compile_options(scsibridge PRIVATE -Wall)
 
-pico_generate_pio_header(scsibridge ${CMAKE_CURRENT_LIST_DIR}/src/probe.pio)
-pico_generate_pio_header(scsibridge ${CMAKE_CURRENT_LIST_DIR}/src/probe_oen.pio)
+pico_generate_pio_header(scsibridge ${CMAKE_CURRENT_LIST_DIR}/BlueSCSI_platform/rp2040_sdio.pio)
+pico_generate_pio_header(scsibridge ${CMAKE_CURRENT_LIST_DIR}/BlueSCSI_platform/scsi_accel_host.pio)
 
 target_include_directories(scsibridge PRIVATE src)
 
@@ -104,19 +108,7 @@ target_compile_definitions (scsibridge PUBLIC
     ENABLE_ARDUINO_STRING=0
     # Select the generic spi driver in sdfat
     SPI_DRIVER_SELECT=3
-
 )
-
-# TODO: Carry-over from scsibridge. Shouldn't do anything
-option (DEBUG_ON_PICO "Compile firmware for the Pico instead of Debug Probe" ON)
-# if (DEBUG_ON_PICO)
-#     target_compile_definitions (scsibridge PRIVATE 
-# 	DEBUG_ON_PICO=1
-#     )
-#     set_target_properties(scsibridge PROPERTIES 
-#         OUTPUT_NAME "scsibridge_on_pico"
-#     )
-# endif ()
 
 
 target_link_libraries(scsibridge PRIVATE
@@ -134,15 +126,13 @@ target_link_libraries(scsibridge PRIVATE
         FreeRTOS-Kernel-Heap1
 )
 
-pico_set_binary_type(scsibridge copy_to_ram)
-
 pico_add_extra_outputs(scsibridge)
 
 
-# Add option to enable/disable tests
-option(BUILD_TESTS "Build unit tests" OFF)
+# # Add option to enable/disable tests
+# option(BUILD_TESTS "Build unit tests" OFF)
 
-# Only build tests if enabled and not building for Pico
-if(BUILD_TESTS)
-    add_subdirectory(test)
-endif()
+# # Only build tests if enabled and not building for Pico
+# if(BUILD_TESTS)
+#     add_subdirectory(test)
+# endif()
