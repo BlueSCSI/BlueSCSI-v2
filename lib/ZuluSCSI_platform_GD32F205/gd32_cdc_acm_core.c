@@ -469,7 +469,7 @@ static uint8_t cdc_acm_req (usb_dev *udev, usb_req *req)
         break;
 
     default:
-        break;
+        return REQ_NOTSUPP;
     }
 
     return USBD_OK;
