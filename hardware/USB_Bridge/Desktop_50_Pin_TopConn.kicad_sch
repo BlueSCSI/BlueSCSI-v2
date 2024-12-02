@@ -163,16 +163,15 @@
 				)
 			)
 		)
-		(symbol "Device:C"
+		(symbol "Device:C_Small"
 			(pin_numbers hide)
 			(pin_names
-				(offset 0.254)
-			)
+				(offset 0.254) hide)
 			(exclude_from_sim no)
 			(in_bom yes)
 			(on_board yes)
 			(property "Reference" "C"
-				(at 0.635 2.54 0)
+				(at 0.254 1.778 0)
 				(effects
 					(font
 						(size 1.27 1.27)
@@ -180,8 +179,8 @@
 					(justify left)
 				)
 			)
-			(property "Value" "C"
-				(at 0.635 -2.54 0)
+			(property "Value" "C_Small"
+				(at 0.254 -2.032 0)
 				(effects
 					(font
 						(size 1.27 1.27)
@@ -190,7 +189,7 @@
 				)
 			)
 			(property "Footprint" ""
-				(at 0.9652 -3.81 0)
+				(at 0 0 0)
 				(effects
 					(font
 						(size 1.27 1.27)
@@ -207,7 +206,7 @@
 					(hide yes)
 				)
 			)
-			(property "Description" "Unpolarized capacitor"
+			(property "Description" "Unpolarized capacitor, small symbol"
 				(at 0 0 0)
 				(effects
 					(font
@@ -216,7 +215,7 @@
 					(hide yes)
 				)
 			)
-			(property "ki_keywords" "cap capacitor"
+			(property "ki_keywords" "capacitor cap"
 				(at 0 0 0)
 				(effects
 					(font
@@ -234,13 +233,13 @@
 					(hide yes)
 				)
 			)
-			(symbol "C_0_1"
+			(symbol "C_Small_0_1"
 				(polyline
 					(pts
-						(xy -2.032 -0.762) (xy 2.032 -0.762)
+						(xy -1.524 -0.508) (xy 1.524 -0.508)
 					)
 					(stroke
-						(width 0.508)
+						(width 0.3302)
 						(type default)
 					)
 					(fill
@@ -249,10 +248,10 @@
 				)
 				(polyline
 					(pts
-						(xy -2.032 0.762) (xy 2.032 0.762)
+						(xy -1.524 0.508) (xy 1.524 0.508)
 					)
 					(stroke
-						(width 0.508)
+						(width 0.3048)
 						(type default)
 					)
 					(fill
@@ -260,10 +259,10 @@
 					)
 				)
 			)
-			(symbol "C_1_1"
+			(symbol "C_Small_1_1"
 				(pin passive line
-					(at 0 3.81 270)
-					(length 2.794)
+					(at 0 2.54 270)
+					(length 2.032)
 					(name "~"
 						(effects
 							(font
@@ -280,8 +279,8 @@
 					)
 				)
 				(pin passive line
-					(at 0 -3.81 90)
-					(length 2.794)
+					(at 0 -2.54 90)
+					(length 2.032)
 					(name "~"
 						(effects
 							(font
@@ -1750,6 +1749,16 @@
 		)
 		(uuid "230dd4dd-d5ca-4822-a12e-f9ea6c7aac17")
 	)
+	(wire
+		(pts
+			(xy 25.4 166.37) (xy 32.385 166.37)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "31a73098-655a-489f-bdf7-06d81dd695ea")
+	)
 	(polyline
 		(pts
 			(xy 17.78 95.25) (xy 44.45 95.25)
@@ -1799,16 +1808,6 @@
 			(type default)
 		)
 		(uuid "90437e3e-c7b8-4c0f-b2e0-653fefdd796f")
-	)
-	(wire
-		(pts
-			(xy 26.035 166.37) (xy 32.385 166.37)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "9bcfd20e-7a5c-4c7a-a651-f830b731d1cf")
 	)
 	(polyline
 		(pts
@@ -1870,6 +1869,16 @@
 		)
 		(uuid "c6bb6088-699c-404e-9532-5f31cdf02d4a")
 	)
+	(wire
+		(pts
+			(xy 25.4 172.72) (xy 25.4 173.99)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d7b04879-85a3-4443-a74c-27b070593822")
+	)
 	(polyline
 		(pts
 			(xy 84.455 13.97) (xy 93.345 13.97)
@@ -1909,6 +1918,16 @@
 			(type default)
 		)
 		(uuid "fd1a19be-e116-4723-bf96-986b95506bc6")
+	)
+	(wire
+		(pts
+			(xy 25.4 167.64) (xy 25.4 166.37)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "feb3ce9b-f2a0-405d-8cc9-4bb0a814c8f5")
 	)
 	(text "Target Mode\nOn Left"
 		(exclude_from_sim no)
@@ -3857,8 +3876,8 @@
 		)
 	)
 	(symbol
-		(lib_id "Device:C")
-		(at 26.035 170.18 180)
+		(lib_id "Device:C_Small")
+		(at 25.4 170.18 180)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -3866,7 +3885,7 @@
 		(dnp no)
 		(uuid "3868fb3c-60ef-4f7a-a8de-4d19896ee4c1")
 		(property "Reference" "C1"
-			(at 19.6342 170.18 90)
+			(at 18.9992 170.18 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3874,7 +3893,7 @@
 			)
 		)
 		(property "Value" "0.1uF"
-			(at 21.9456 170.18 90)
+			(at 21.3106 170.18 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3882,7 +3901,7 @@
 			)
 		)
 		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
-			(at 25.0698 166.37 0)
+			(at 25.4 170.18 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3891,7 +3910,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 26.035 170.18 0)
+			(at 25.4 170.18 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3899,8 +3918,8 @@
 				(hide yes)
 			)
 		)
-		(property "Description" ""
-			(at 26.035 170.18 0)
+		(property "Description" "Unpolarized capacitor, small symbol"
+			(at 25.4 170.18 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -3909,7 +3928,7 @@
 			)
 		)
 		(property "LCSC" "C307331"
-			(at 26.035 170.18 0)
+			(at 25.4 170.18 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -4738,7 +4757,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 26.035 173.99 0)
+		(at 25.4 173.99 0)
 		(mirror y)
 		(unit 1)
 		(exclude_from_sim no)
@@ -4747,7 +4766,7 @@
 		(dnp no)
 		(uuid "7a641dcf-077b-4439-bc12-983e2f7e4b6f")
 		(property "Reference" "#PWR034"
-			(at 26.035 180.34 0)
+			(at 25.4 180.34 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -4756,7 +4775,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 25.908 178.3842 90)
+			(at 25.273 178.3842 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -4764,7 +4783,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 26.035 173.99 0)
+			(at 25.4 173.99 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -4773,7 +4792,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 26.035 173.99 0)
+			(at 25.4 173.99 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -4782,7 +4801,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 26.035 173.99 0)
+			(at 25.4 173.99 0)
 			(effects
 				(font
 					(size 1.27 1.27)
