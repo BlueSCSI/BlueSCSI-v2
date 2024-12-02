@@ -93,8 +93,8 @@ static void usb_device_task(void *param)
     if (board_init_after_tusb) {
     board_init_after_tusb();
   }
-    // TickType_t wake;
-    // wake = xTaskGetTickCount();
+    TickType_t wake;
+    wake = xTaskGetTickCount();
     do {
         tud_task();
         local_cdc_task();
@@ -106,9 +106,10 @@ static void usb_device_task(void *param)
 //         else
 //             gpio_put(PROBE_USB_CONNECTED_LED, 0);
 // #endif
-//         // Go to sleep for up to a tick if nothing to do
-//         if (!tud_task_event_ready())
-//             xTaskDelayUntil(&wake, 1);
+        // Go to sleep for up to a tick if nothing to do
+        if (!tud_task_event_ready())
+            xTaskDelayUntil(&wake, 1);
+
     } while (1);
 }
 
@@ -244,6 +245,16 @@ void led_blinking_task(void* param) {
 
 int main(void) {
 
+    // gpio_init(25);
+    // gpio_set_dir(25, GPIO_OUT);
+    // while (true) {
+    //     printf("Hello, world!\n");
+    //     sleep_ms(500);
+    //     gpio_put(25, 1);
+    //     sleep_ms(500);
+    //     gpio_put(25, 0);
+    // }
+
     board_init();
     // usb_serial_init();
     // cdc_uart_init();
@@ -251,6 +262,7 @@ int main(void) {
     // stdio_uart_init();
 
     // led_init();
+    printf("Welcome to BlueSCSI Bridge!\n");
 
   /// This causes the rp2040 to crash for right now............
   /// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
