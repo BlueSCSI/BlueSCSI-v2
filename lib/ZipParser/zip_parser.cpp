@@ -21,6 +21,8 @@
 
 #include "zip_parser.h"
 
+#define ZIP_PARSER_METHOD_DEFLATE_BYTE 0x08
+#define ZIP_PARSER_METHOD_UNCOMPRESSED_BYTE 0x00
 
 namespace zipparser
 {
@@ -40,7 +42,6 @@ namespace zipparser
     {
         target = parsing_target::signature;
         position = 0;
-        deflate = false;
         filename_match = false;
         crc = 0;
     }
@@ -64,6 +65,7 @@ namespace zipparser
 
         static bool matching = true;
         static bool central_dir = false;
+        static bool local_file_header = false;
         for (size_t idx = 0; idx < size; idx++)
         {
             switch (target)
@@ -73,21 +75,25 @@ namespace zipparser
                         break;
                     if (position == 2 && buf[idx] == 'K')
                     {
+                        local_file_header = false;
                         central_dir = false;
                         break;
                     }
                     if (position == 3 && buf[idx] == 0x03)
+                    {
+                        local_file_header = true;
                         break;
+                    }
                     if (position == 3 && buf[idx] == 0x01)
                     {
                         central_dir = true;
                         break;
                     }
-                    if (position == 4 && central_dir && buf[idx] == 0x2)
+                    if (central_dir && position == 4 && buf[idx] == 0x2)
                     {
                         return PARSE_CENTRAL_DIR;
                     }
-                    if (position == 4 && buf[idx] == 0x04)
+                    if (local_file_header &&  position == 4 && buf[idx] == 0x04)
                     {
                         position = 0;
                         target = parsing_target::version;
@@ -112,10 +118,11 @@ namespace zipparser
                 case parsing_target::method:
                     if (++position == 1)
                     {
-                        if (buf[idx] == 0x08 || buf[idx] == 0x00)
-                            deflate = buf[idx] == 0x08;
-                        else
+                        // Currently only uncompresseed files in the zip package are supported
+                        if (!buf[idx] == ZIP_PARSER_METHOD_UNCOMPRESSED_BYTE)
+                        {
                             return PARSE_UNSUPPORTED_COMPRESSION;
+                        }
                     }
                     if (position == 2)
                     {
@@ -229,11 +236,6 @@ namespace zipparser
     bool Parser::FoundMatch()
     {
         return filename_match;
-    }
-
-    uint32_t Parser::GetCompressedSize()
-    {
-        return compressed_data_size;
     }
 }
 
