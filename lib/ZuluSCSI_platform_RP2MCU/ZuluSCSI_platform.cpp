@@ -63,6 +63,7 @@ const char *g_platform_name = PLATFORM_NAME;
 static bool g_scsi_initiator = false;
 static uint32_t g_flash_chip_size = 0;
 static bool g_uart_initialized = false;
+static bool g_led_blinking = false;
 /***************/
 /* GPIO init   */
 /***************/
@@ -485,6 +486,24 @@ void platform_post_sd_card_init() {}
 bool platform_is_initiator_mode_enabled()
 {
     return g_scsi_initiator;
+}
+
+void platform_write_led(bool state)
+{
+    if (g_led_blinking) return;
+
+    gpio_put(LED_PIN, state);
+}
+
+void platform_set_blink_status(bool status)
+{
+    g_led_blinking = status;
+}
+
+void platform_write_led_override(bool state)
+{
+    gpio_put(LED_PIN, state);
+
 }
 
 void platform_disable_led(void)

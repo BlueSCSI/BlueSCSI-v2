@@ -39,6 +39,7 @@ extern "C" {
 
 const char *g_platform_name = PLATFORM_NAME;
 static bool g_enable_apple_quirks = false;
+static bool g_led_blinking = false;
 
 /*************************/
 /* Timing functions      */
@@ -300,6 +301,29 @@ void platform_late_init()
 }
 
 void platform_post_sd_card_init() {}
+
+void platform_write_led(bool state)
+{
+    if (g_led_blinking) return;
+    if (state)
+        gpio_bit_reset(LED_PORT, LED_PINS);
+    else
+        gpio_bit_set(LED_PORT, LED_PINS);
+}
+
+void platform_set_blink_status(bool status)
+{
+    g_led_blinking = status;
+}
+
+void platform_write_led_override(bool state)
+{
+    if (state)
+        gpio_bit_reset(LED_PORT, LED_PINS);
+    else
+        gpio_bit_set(LED_PORT, LED_PINS);
+}
+
 
 void platform_disable_led(void)
 {   

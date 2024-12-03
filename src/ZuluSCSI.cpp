@@ -80,19 +80,57 @@ static bool g_sdcard_present;
 #define BLINK_DIRECT_MODE      4
 #define BLINK_ERROR_NO_SD_CARD 5
 
-void blinkStatus(int count)
-{
-  uint8_t blink_delay = 250;
-  if (count == BLINK_DIRECT_MODE)
-    blink_delay = 100;
+static uint16_t blink_count = 0;
+static uint32_t blink_start = 0;
+static uint32_t blink_delay = 0;
+static uint32_t blink_end_delay= 0;
 
-  for (int i = 0; i < count; i++)
-  {
-    LED_ON();
-    delay(blink_delay);
-    LED_OFF();
-    delay(blink_delay);
-  }
+bool blink_poll()
+{
+    bool is_blinking = true;
+
+    if (blink_count == 0)
+    {
+        is_blinking = false;
+    }
+    else if (blink_count == 1 && ((uint32_t)(millis() - blink_start)) > blink_end_delay )
+    {
+        LED_OFF_OVERRIDE();
+        blink_count = 0;
+        is_blinking = false;
+    }
+    else if (blink_count > 1 && ((uint32_t)(millis() - blink_start)) > blink_delay)
+    {
+        if (1 & blink_count)
+            LED_ON_OVERRIDE();
+        else
+            LED_OFF_OVERRIDE();
+        blink_count--;
+        blink_start = millis();
+    }
+
+    if (!is_blinking)
+        platform_set_blink_status(false);
+    return is_blinking;
+}
+
+void blink_cancel()
+{
+    blink_count = 0;
+    platform_set_blink_status(false);
+}
+
+void blinkStatus(uint8_t times, uint32_t delay = 500, uint32_t end_delay = 1250)
+{
+    if (!blink_poll() && blink_count == 0)
+    {
+        blink_start = millis();
+        blink_count = 2 * times + 1;
+        blink_delay = delay / 2;
+        blink_end_delay =  end_delay;
+        platform_set_blink_status(true);
+        LED_OFF_OVERRIDE();
+    }
 }
 
 extern "C" void s2s_ledOn()
@@ -772,9 +810,7 @@ static void reinitSCSI()
       {
         logmsg("---- Using device preset: ", g_scsi_settings.getDevicePresetName(scsiId));
       }
-      blinkStatus(BLINK_STATUS_OK);
     }
-    delay(250);
     blinkStatus(BLINK_DIRECT_MODE);
   }
   else
@@ -784,13 +820,7 @@ static void reinitSCSI()
     findHDDImages();
 
     // Error if there are 0 image files
-    if (scsiDiskCheckAnyImagesConfigured())
-    {
-      // Ok, there is an image, turn LED on for the time it takes to perform init
-      LED_ON();
-      delay(100);
-    }
-    else
+    if (!scsiDiskCheckAnyImagesConfigured())
     {
   #ifdef RAW_FALLBACK_ENABLE
       logmsg("No images found, enabling RAW fallback partition");
@@ -948,10 +978,12 @@ static void zuluscsi_setup_sd_card()
     do
     {
       blinkStatus(BLINK_ERROR_NO_SD_CARD);
-      delay(1000);
       platform_reset_watchdog();
       g_sdcard_present = mountSDCard();
     } while (!g_sdcard_present);
+    blink_cancel();
+    LED_OFF();
+
     logmsg("SD card init succeeded after retry");
   }
 
@@ -1023,8 +1055,7 @@ static void zuluscsi_setup_sd_card()
     }
   }
 
-  // Counterpart for the LED_ON in reinitSCSI().
-  LED_OFF();
+  blinkStatus(BLINK_STATUS_OK);
 }
 
 extern "C" void zuluscsi_setup(void)
@@ -1061,6 +1092,7 @@ extern "C" void zuluscsi_main_loop(void)
   platform_reset_watchdog();
   platform_poll();
   diskEjectButtonUpdate(true);
+  blink_poll();
 
 #ifdef ZULUSCSI_NETWORK
   platform_network_poll();
@@ -1120,16 +1152,17 @@ extern "C" void zuluscsi_main_loop(void)
 
       if (g_sdcard_present)
       {
+        blink_cancel();
+        LED_OFF();
         logmsg("SD card reinit succeeded");
         print_sd_info();
-
         reinitSCSI();
         init_logfile();
+        blinkStatus(BLINK_STATUS_OK);
       }
       else if (!g_romdrive_active)
       {
         blinkStatus(BLINK_ERROR_NO_SD_CARD);
-        delay(1000);
         platform_reset_watchdog();
         platform_poll();
       }
