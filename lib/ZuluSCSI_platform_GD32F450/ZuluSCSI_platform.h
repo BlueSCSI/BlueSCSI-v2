@@ -76,6 +76,15 @@ void platform_post_sd_card_init();
 // Hooks
 void platform_end_of_loop_hook(void);
 
+// Write the status LED
+void platform_write_led(bool state);
+#define LED_ON()  platform_write_led(true)
+#define LED_OFF() platform_write_led(false)
+void platform_set_blink_status(bool status);
+void platform_write_led_override(bool state);
+#define LED_ON_OVERRIDE()  platform_write_led_override(true)
+#define LED_OFF_OVERRIDE()  platform_write_led_override(false)
+
 // Disable the status LED
 void platform_disable_led(void);
 

@@ -71,8 +71,6 @@
 
 // Status LED pins
 #define LED_PIN      25
-#define LED_ON()     sio_hw->gpio_set = 1 << LED_PIN
-#define LED_OFF()    sio_hw->gpio_clr = 1 << LED_PIN
 
 // SD card pins in SDIO mode
 #define SDIO_CLK 18
