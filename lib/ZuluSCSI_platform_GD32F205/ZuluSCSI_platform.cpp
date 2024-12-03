@@ -44,6 +44,7 @@ static bool g_enable_apple_quirks = false;
 bool g_direct_mode = false;
 ZuluSCSIVersion_t g_zuluscsi_version = ZSVersion_unknown;
 bool g_moved_select_in = false;
+static bool g_led_blinking = false;
 // hw_config.cpp c functions
 #include "platform_hw_config.h"
 
@@ -457,6 +458,28 @@ void platform_post_sd_card_init()
         audio_setup();
     }
     #endif
+}
+
+void platform_write_led(bool state)
+{
+    if (g_led_blinking) return;
+    if (state)
+        gpio_bit_reset(LED_PORT, LED_PINS);
+    else
+        gpio_bit_set(LED_PORT, LED_PINS);
+}
+
+void platform_set_blink_status(bool status)
+{
+    g_led_blinking = status;
+}
+
+void platform_write_led_override(bool state)
+{
+    if (state)
+        gpio_bit_reset(LED_PORT, LED_PINS);
+    else
+        gpio_bit_set(LED_PORT, LED_PINS);
 }
 
 void platform_disable_led(void)
