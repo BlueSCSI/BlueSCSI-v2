@@ -113,7 +113,7 @@ static void usb_device_task(void *param)
           counter++;
         }
         tud_task();
-        stdio_tinyusb_cdc_task(NULL);
+        // stdio_tinyusb_cdc_task(NULL);
       //   local_cdc_task();
       //   // following code only run if tud_task() process at least 1 event
       //  tud_cdc_write_flush();
@@ -309,7 +309,7 @@ int main(void) {
 #else
   xTaskCreate(led_blinking_task, "blinky", BLINKY_STACK_SIZE, NULL, 1, NULL);
   xTaskCreate(usb_device_task, "usbd", USBD_STACK_SIZE, NULL, configMAX_PRIORITIES - 1, NULL);
-  // stdio_tinyusb_cdc_start_task(configMAX_PRIORITIES-2);
+  stdio_tinyusb_cdc_start_task(configMAX_PRIORITIES-2);
   // xTaskCreate(cdc_task, "cdc", CDC_STACK_SIZE, NULL, configMAX_PRIORITIES - 2, NULL);
 #endif
 
