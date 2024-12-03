@@ -7,6 +7,8 @@
 #include "BlueSCSI_config.h"
 #ifndef LIB_FREERTOS_KERNEL
 #include <SdFat.h>
+#else
+#include <stdio.h>
 #endif
 #include <scsi.h>
 #include <assert.h>
@@ -546,10 +548,14 @@ static void adc_poll()
 // This function is called for every log message.
 void platform_log(const char *s)
 {
+#ifdef LIB_FREERTOS_KERNEL
+    printf(s);
+#else
     if (g_uart_initialized)
     {
         uart_puts(uart0, s);
     }
+#endif
 }
 
 static int g_watchdog_timeout;

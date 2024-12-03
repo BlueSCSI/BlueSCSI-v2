@@ -144,10 +144,13 @@ int main(void)
   scsiUsbBridgeInit();
 
   xTaskCreate(led_blinking_task, "blinky", BLINKY_STACK_SIZE, NULL, 1, NULL);
-  xTaskCreate(usb_device_task, "usbd", USBD_STACK_SIZE, NULL, configMAX_PRIORITIES - 1, NULL);
-  stdio_tinyusb_cdc_start_task(configMAX_PRIORITIES - 2);
-  xTaskCreate(vCommandConsoleTask, "cli", configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES - 2, NULL);
+  xTaskCreate(usb_device_task, "usbd", USBD_STACK_SIZE, NULL, configMAX_PRIORITIES - 2, NULL);
+  stdio_tinyusb_cdc_start_task(configMAX_PRIORITIES - 3);
+  xTaskCreate(vCommandConsoleTask, "cli", configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES - 4, NULL);
 
+  // This should be the highest priority task
+  xTaskCreate(scsiUsbBridgeMainLoop, "scsiusb", configMINIMAL_STACK_SIZE*4, NULL, configMAX_PRIORITIES-1, NULL);
+  
   // This should never return.....
   vTaskStartScheduler();
 
