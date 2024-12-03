@@ -102,7 +102,7 @@ char stdio_tinyusb_cdc_readchar(){
 void stdio_tinyusb_cdc_task(void* params) {
     (void)params;  // Unused parameter
     
-    // while (cdc_task_running) {
+    while (cdc_task_running) {
         // Check for new USB CDC data
         if (tud_cdc_available()) {
             char buf[64];
@@ -135,13 +135,13 @@ void stdio_tinyusb_cdc_task(void* params) {
             }
         }
         
-    //     // Small delay to prevent tight loop
-    //     vTaskDelay(pdMS_TO_TICKS(1));
-    // }
+        // Small delay to prevent tight loop
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
 
-    // // We need to kill the CDC USB task
-    // cdc_task_handle = nullptr;
-    // vTaskDelete(nullptr);
+    // We need to kill the CDC USB task
+    cdc_task_handle = nullptr;
+    vTaskDelete(nullptr);
 }
 
 bool stdio_tinyusb_cdc_start_task(uint8_t priority) {

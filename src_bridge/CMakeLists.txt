@@ -47,6 +47,31 @@ FetchContent_MakeAvailable(minini)
 # )
 # FetchContent_MakeAvailable(sdfat)
 # FetchContent_GetProperties(sdfat)
+#-------------
+# Fetch the FreeRTOS CLI library
+#    Currently, the Plus-CLI code is only included in the full
+#    FreeRTOS repository. In the future, we could try to just
+#    download the subdirectory FreeRTOS-Plus/Source/FreeRTOS-Plus-CLI
+# FetchContent_Declare(
+#     freertos-plus-cli
+#     URL      https://download-directory.github.io/?url=https://github.com/FreeRTOS/FreeRTOS/tree/main/FreeRTOS-Plus/Source/FreeRTOS-Plus-CLI
+#     URL_HASH MD5=14c4bff04ee2a4f55ec510967dc97c28
+# )
+# We only need two files.... so manually pulling those instead of the whole FreeRTOS repo
+FetchContent_Declare(
+    freertos-plus-cli-source
+    URL      https://raw.githubusercontent.com/FreeRTOS/FreeRTOS/refs/tags/V10.4.1/FreeRTOS-Plus/Source/FreeRTOS-Plus-CLI/FreeRTOS_CLI.c
+    URL_HASH MD5=41570a37ac99b996ccbca5f5eeeea794
+    DOWNLOAD_NO_EXTRACT TRUE
+)
+FetchContent_MakeAvailable(freertos-plus-cli-source)
+FetchContent_Declare(
+    freertos-plus-cli-header
+    URL      https://raw.githubusercontent.com/FreeRTOS/FreeRTOS/refs/tags/V10.4.1/FreeRTOS-Plus/Source/FreeRTOS-Plus-CLI/FreeRTOS_CLI.h
+    URL_HASH MD5=bec1e2660f8a4589a99a1ddfa92be9b1
+    DOWNLOAD_NO_EXTRACT TRUE
+)
+FetchContent_MakeAvailable(freertos-plus-cli-header)
 
 project(scsibridge C CXX ASM)
 
@@ -64,6 +89,7 @@ add_executable(scsibridge
         src/get_serial.c
         src/sw_dp_pio.c
         src/msc_disk.c
+        src/command_line.cpp
         src/freertos_hook.c
         src/stdio_tinyusb_cdc.cpp
         src/ringbuffer.cpp
@@ -80,6 +106,7 @@ add_executable(scsibridge
         BlueSCSI_platform/BlueSCSI_platform.cpp
         BlueSCSI_platform/scsiHostPhy.cpp
         BlueSCSI_platform/scsi_accel_host.cpp
+        ${freertos-plus-cli-source_SOURCE_DIR}/FreeRTOS_CLI.c
 )
 target_include_directories(scsibridge PRIVATE
         include/
@@ -89,6 +116,7 @@ target_include_directories(scsibridge PRIVATE
         src/SCSI2SD/include/
         src/SCSI2SD/src/firmware/
         ${minini_SOURCE_DIR}/dev/
+        ${freertos-plus-cli-header_SOURCE_DIR}/
         # ${sdfat_SOURCE_DIR}/src/
         )
 
