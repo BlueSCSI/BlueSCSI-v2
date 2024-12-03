@@ -65,6 +65,8 @@ add_executable(scsibridge
         src/sw_dp_pio.c
         src/msc_disk.c
         src/freertos_hook.c
+        src/stdio_tinyusb_cdc.cpp
+        src/ringbuffer.cpp
         src/usb/configuration_descriptor.cpp
         src/usb/device_descriptor.cpp
         src/usb/endpoint_descriptor.cpp
@@ -95,6 +97,12 @@ target_compile_options(scsibridge PRIVATE -Wall)
 
 pico_generate_pio_header(scsibridge ${CMAKE_CURRENT_LIST_DIR}/BlueSCSI_platform/rp2040_sdio.pio)
 pico_generate_pio_header(scsibridge ${CMAKE_CURRENT_LIST_DIR}/BlueSCSI_platform/scsi_accel_host.pio)
+
+# We are going to use our own STDIO handler
+set(PICO_STDIO_UART 0)
+set(PICO_STDIO_USB 0)
+set(PICO_DEFAULT_UART_RX_PIN -1)
+set(PICO_DEFAULT_UART_TX_PIN -1)
 
 target_include_directories(scsibridge PRIVATE src)
 
