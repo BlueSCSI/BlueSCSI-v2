@@ -90,6 +90,7 @@ add_executable(scsibridge
         src/sw_dp_pio.c
         src/msc_disk.c
         src/command_line.cpp
+        src/freertos_cli_commands.cpp
         src/freertos_hook.c
         src/stdio_tinyusb_cdc.cpp
         src/ringbuffer.cpp
@@ -108,6 +109,7 @@ add_executable(scsibridge
         BlueSCSI_platform/scsi_accel_host.cpp
         ${freertos-plus-cli-source_SOURCE_DIR}/FreeRTOS_CLI.c
 )
+
 target_include_directories(scsibridge PRIVATE
         include/
         src/scsi/
@@ -121,7 +123,7 @@ target_include_directories(scsibridge PRIVATE
         )
 
 
-#target_compile_options(scsibridge PRIVATE -Wall)
+target_compile_options(scsibridge PRIVATE -Wall)
 
 pico_generate_pio_header(scsibridge ${CMAKE_CURRENT_LIST_DIR}/BlueSCSI_platform/rp2040_sdio.pio)
 pico_generate_pio_header(scsibridge ${CMAKE_CURRENT_LIST_DIR}/BlueSCSI_platform/scsi_accel_host.pio)
@@ -159,16 +161,11 @@ target_link_libraries(scsibridge PRIVATE
         tinyusb_device
         tinyusb_board
         FreeRTOS-Kernel
-        FreeRTOS-Kernel-Heap1
+        # TODO: This should be changed back to Heap1 at a later date
+        # Heap1 is basically a simple allocate-only heap manager, but
+        # is much more efficient and deterministic.
+        # Currently, vTaskList() is trying to "free" memory
+        FreeRTOS-Kernel-Heap3
 )
 
 pico_add_extra_outputs(scsibridge)
-
-
-# # Add option to enable/disable tests
-# option(BUILD_TESTS "Build unit tests" OFF)
-
-# # Only build tests if enabled and not building for Pico
-# if(BUILD_TESTS)
-#     add_subdirectory(test)
-# endif()
