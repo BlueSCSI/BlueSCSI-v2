@@ -28,6 +28,7 @@
 #include "task.h"
 #include "timers.h"
 #include "queue.h"
+#include "stdio_tinyusb_cdc.h"
 #include <ctype.h>
 
 #include <pico/stdlib.h>
@@ -62,7 +63,7 @@
  * - 2500 ms : device is suspended
  */
 enum {
-  BLINK_NOT_MOUNTED = 250,
+  BLINK_NOT_MOUNTED = 1000,
   BLINK_MOUNTED = 1000,
   BLINK_SUSPENDED = 2500,
 };
@@ -81,7 +82,11 @@ static uint32_t blink_interval_ms = BLINK_NOT_MOUNTED;
 #define BLINKY_STACK_SIZE   configMINIMAL_STACK_SIZE
 
 TaskHandle_t dap_taskhandle, tud_taskhandle;
+#if 0
 static void local_cdc_task(void);
+#endif
+
+extern volatile bool cdc_task_running;
 static void usb_device_task(void *param)
 {
 
@@ -89,23 +94,42 @@ static void usb_device_task(void *param)
   // This should be called after scheduler/kernel is started.
   // Otherwise it could cause kernel issue since USB IRQ handler does use RTOS queue API.
   tud_init(BOARD_TUD_RHPORT);
-  
+  cdc_task_running = true;
     if (board_init_after_tusb) {
     board_init_after_tusb();
   }
     TickType_t wake;
     wake = xTaskGetTickCount();
+
     do {
+
+        // char temp_str[128];
+        static uint32_t counter = 0;
+        static uint32_t counter2 = 0;
+        if(counter > 1000){
+        printf("Hello World %ld\n", counter2++);
+        counter = 0;
+        }else{
+          counter++;
+        }
         tud_task();
-        local_cdc_task();
-        // following code only run if tud_task() process at least 1 event
-       tud_cdc_write_flush();
+        stdio_tinyusb_cdc_task(NULL);
+      //   local_cdc_task();
+      //   // following code only run if tud_task() process at least 1 event
+      //  tud_cdc_write_flush();
 // #ifdef PROBE_USB_CONNECTED_LED
 //         if (!gpio_get(PROBE_USB_CONNECTED_LED) && tud_ready())
 //             gpio_put(PROBE_USB_CONNECTED_LED, 1);
 //         else
 //             gpio_put(PROBE_USB_CONNECTED_LED, 0);
 // #endif
+        // char my_buffer[128];
+        volatile char rx_char = stdio_tinyusb_cdc_readchar();
+        if (rx_char != (char)EOF) {
+            printf("You typed: %c\n", rx_char);
+        }
+
+
         // Go to sleep for up to a tick if nothing to do
         if (!tud_task_event_ready())
             xTaskDelayUntil(&wake, 1);
@@ -133,7 +157,7 @@ static void usb_device_task(void *param)
 //     led_blinking_task();
 //   }
 // }
-
+#if 0
 // echo to either Serial0 or Serial1
 // with Serial0 as all lower case, Serial1 as all upper case
 static void echo_serial_port(uint8_t itf, uint8_t buf[], uint32_t count) {
@@ -152,6 +176,7 @@ static void echo_serial_port(uint8_t itf, uint8_t buf[], uint32_t count) {
   }
   tud_cdc_n_write_flush(itf);
 }
+#endif
 
 // Invoked when device is mounted
 void tud_mount_cb(void) {
@@ -171,7 +196,7 @@ void tud_suspend_cb(bool remote_wakeup_en) {
   blink_interval_ms = BLINK_SUSPENDED;
 }
 
-
+#if 0
 //--------------------------------------------------------------------+
 // USB CDC
 //--------------------------------------------------------------------+
@@ -202,6 +227,7 @@ static void local_cdc_task(void) {
   }
   }
 }
+#endif
 
 // Invoked when cdc when line state changed e.g connected/disconnected
 // Use to reset to DFU when disconnect with 1200 bps
@@ -234,7 +260,7 @@ void led_blinking_task(void* param) {
   while (1) {
     // Blink every interval ms
     // vTaskDelay(blink_interval_ms / portTICK_PERIOD_MS);
-    vTaskDelay(blink_interval_ms / 10);
+    vTaskDelay(blink_interval_ms / portTICK_PERIOD_MS);
     start_ms += blink_interval_ms;
 
     board_led_write(led_state);
@@ -260,7 +286,8 @@ int main(void) {
     // cdc_uart_init();
     // tusb_init();
     // stdio_uart_init();
-
+    stdio_tinyusb_cdc_init();
+  // stdio_usb_init();
     // led_init();
     printf("Welcome to BlueSCSI Bridge!\n");
 
@@ -282,6 +309,7 @@ int main(void) {
 #else
   xTaskCreate(led_blinking_task, "blinky", BLINKY_STACK_SIZE, NULL, 1, NULL);
   xTaskCreate(usb_device_task, "usbd", USBD_STACK_SIZE, NULL, configMAX_PRIORITIES - 1, NULL);
+  // stdio_tinyusb_cdc_start_task(configMAX_PRIORITIES-2);
   // xTaskCreate(cdc_task, "cdc", CDC_STACK_SIZE, NULL, configMAX_PRIORITIES - 2, NULL);
 #endif
 
