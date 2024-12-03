@@ -90,11 +90,13 @@ void platform_late_init();
 // Initialization after the SD Card has been found
 void platform_post_sd_card_init();
 
-// Write the status LED
+// Set the status LED only if it is not in a blinking routine
 void platform_write_led(bool state);
 #define LED_ON()  platform_write_led(true)
 #define LED_OFF() platform_write_led(false)
+// Used by the blinking routine
 void platform_set_blink_status(bool status);
+// LED override will set the status LED regardless of the blinking routine
 void platform_write_led_override(bool state);
 #define LED_ON_OVERRIDE()  platform_write_led_override(true)
 #define LED_OFF_OVERRIDE()  platform_write_led_override(false)
