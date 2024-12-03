@@ -121,7 +121,7 @@ target_include_directories(scsibridge PRIVATE
         )
 
 
-target_compile_options(scsibridge PRIVATE -Wall)
+#target_compile_options(scsibridge PRIVATE -Wall)
 
 pico_generate_pio_header(scsibridge ${CMAKE_CURRENT_LIST_DIR}/BlueSCSI_platform/rp2040_sdio.pio)
 pico_generate_pio_header(scsibridge ${CMAKE_CURRENT_LIST_DIR}/BlueSCSI_platform/scsi_accel_host.pio)

@@ -120,6 +120,9 @@
 #define configRUN_FREERTOS_SECURE_ONLY          1
 #define configMAX_SYSCALL_INTERRUPT_PRIORITY    16
 
+/* command line processing........ */
+#define configCOMMAND_INT_MAX_OUTPUT_SIZE       1024
+
 #include <assert.h>
 /* Define to trap errors during development. */
 #define configASSERT(x)                         assert(x)
