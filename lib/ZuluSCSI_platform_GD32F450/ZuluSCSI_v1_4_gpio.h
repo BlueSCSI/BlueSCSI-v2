@@ -170,8 +170,6 @@
 #define LED_I_PIN    GPIO_PIN_4
 #define LED_E_PIN    GPIO_PIN_5
 #define LED_PINS     (LED_I_PIN | LED_E_PIN)
-#define LED_ON()     gpio_bit_reset(LED_PORT, LED_PINS)
-#define LED_OFF()    gpio_bit_set(LED_PORT, LED_PINS)
 
 // User LEDs
 #define USER_LED_PORT       GPIOC
