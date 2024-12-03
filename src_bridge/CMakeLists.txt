@@ -94,6 +94,7 @@ add_executable(scsibridge
         src/freertos_hook.c
         src/stdio_tinyusb_cdc.cpp
         src/ringbuffer.cpp
+
         src/usb/configuration_descriptor.cpp
         src/usb/device_descriptor.cpp
         src/usb/endpoint_descriptor.cpp
@@ -102,8 +103,10 @@ add_executable(scsibridge
         src/scsi/BlueSCSI_log.cpp
         src/scsi/BlueSCSI_log_trace.cpp
         src/scsi/BlueSCSI_initiator.cpp
+        src/SCSI2SD/src/firmware/scsi.c
         src/CUEParser/src/CUEParser.cpp
         src/scsi/BlueSCSI_usbbridge.cpp
+        BlueSCSI_platform/scsiPhy.cpp
         BlueSCSI_platform/BlueSCSI_platform.cpp
         BlueSCSI_platform/scsiHostPhy.cpp
         BlueSCSI_platform/scsi_accel_host.cpp
@@ -146,6 +149,7 @@ target_compile_definitions (scsibridge PUBLIC
     ENABLE_ARDUINO_STRING=0
     # Select the generic spi driver in sdfat
     SPI_DRIVER_SELECT=3
+    PLATFORM_HAS_INITIATOR_MODE
 )
 
 

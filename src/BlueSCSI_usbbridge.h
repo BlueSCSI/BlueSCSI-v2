@@ -8,7 +8,7 @@
 extern "C" {
 #endif
 void scsiUsbBridgeInit();
-void scsiUsbBridgeMainLoop();
+void scsiUsbBridgeMainLoop(void *param);
 
 
 // // Select target and execute SCSI command

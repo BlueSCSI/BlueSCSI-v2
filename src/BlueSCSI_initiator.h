@@ -8,6 +8,10 @@
 #define DEVICE_TYPE_CD 5
 #define DEVICE_TYPE_DIRECT_ACCESS 0
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void scsiInitiatorInit();
 
 void scsiInitiatorMainLoop();
@@ -40,8 +44,19 @@ class FsFile;
 #else
 typedef  int FsFile;
 #endif
+
+
+#ifdef LIB_FREERTOS_KERNEL
+bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t sectorcount, uint32_t sectorsize,
+                                 int file);
+#else
 bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t sectorcount, uint32_t sectorsize,
                                  FsFile &file);
+#endif
+
+#ifdef __cplusplus
+}
+#endif
 
 void scsiInitiatorUpdateLed();
 void delay_with_poll(uint32_t ms);

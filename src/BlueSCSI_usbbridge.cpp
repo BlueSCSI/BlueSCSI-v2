@@ -133,8 +133,15 @@ void scsiUsbBridgeInit()
 
 
 // High level logic of the initiator mode
+#ifndef LIB_FREERTOS_KERNEL
 void scsiUsbBridgeMainLoop()
 {
+#else
+void scsiUsbBridgeMainLoop(void *param)
+{
+    (void)param;
+    while(1){
+#endif
     SCSI_RELEASE_OUTPUTS();
     SCSI_ENABLE_INITIATOR();
     if (g_scsiHostPhyReset)
@@ -380,6 +387,11 @@ void scsiUsbBridgeMainLoop()
                   (int)(100 * (int64_t)g_initiator_state.sectors_done / g_initiator_state.sectorcount), "%");
         }
     }
+#ifdef LIB_FREERTOS_KERNEL
+        vTaskDelay(1);
+    }
+#endif
+
 }
 
 
