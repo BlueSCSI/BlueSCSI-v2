@@ -100,8 +100,18 @@ char stdio_tinyusb_cdc_readchar(){
 
 void stdio_tinyusb_cdc_task(void* params) {
     (void)params;  // Unused parameter
-    
+     TickType_t wake;
+    wake = xTaskGetTickCount();
     while (cdc_task_running) {
+
+        static uint32_t stdio_tinyusb_cdc_task_counter = 0;
+        static uint32_t stdio_tinyusb_cdc_task_counter2 = 0;
+        if (stdio_tinyusb_cdc_task_counter >1000)
+        {
+            printf("stdio_tinyusb_cdc_task() running %ld\n", stdio_tinyusb_cdc_task_counter2++);
+            stdio_tinyusb_cdc_task_counter = 0;
+        }
+        stdio_tinyusb_cdc_task_counter++;
         // Check for new USB CDC data
         if (tud_cdc_available()) {
             char buf[64];
@@ -135,7 +145,9 @@ void stdio_tinyusb_cdc_task(void* params) {
         }
         
         // Small delay to prevent tight loop
-        vTaskDelay(pdMS_TO_TICKS(10));
+        // vTaskDelay(pdMS_TO_TICKS(10));
+
+        xTaskDelayUntil(&wake, 10);
     }
 
     // We need to kill the CDC USB task

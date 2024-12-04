@@ -39,20 +39,10 @@ bool scsiInquiry(int target_id, uint8_t inquiry_data[36]);
 bool scsiTestUnitReady(int target_id);
 
 // Read a block of data from SCSI device and write to file on SD card
-#ifndef LIB_FREERTOS_KERNEL
 class FsFile;
-#else
-typedef  int FsFile;
-#endif
 
-
-#ifdef LIB_FREERTOS_KERNEL
-bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t sectorcount, uint32_t sectorsize,
-                                 int file);
-#else
 bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t sectorcount, uint32_t sectorsize,
                                  FsFile &file);
-#endif
 
 #ifdef __cplusplus
 }

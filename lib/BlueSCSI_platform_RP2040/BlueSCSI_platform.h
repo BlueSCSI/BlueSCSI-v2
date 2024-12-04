@@ -46,18 +46,16 @@ extern SCSI_PINS scsi_pins;
 void platform_log(const char *s);
 void platform_emergency_log_save();
 
+unsigned long millis(void);
 #ifndef LIB_FREERTOS_KERNEL
 // Timing and delay functions.
 // Arduino platform already provides these
-unsigned long millis(void);
+
 void delay(unsigned long ms);
 #else
-static inline long millis(void){
-    return to_ms_since_boot(get_absolute_time());
-}
-
 static inline void delay(unsigned long ms){
-    sleep_ms(1);
+	// Delay the thread using the FreeRTOS scheduler
+    sleep_ms(ms);// / portTICK_PERIOD_MS);
 }
 
 static inline void delayMicroseconds(unsigned long us){
@@ -70,10 +68,7 @@ static inline void delayMicroseconds(unsigned long us){
 static inline void delay_ns(unsigned long ns)
 {
 #ifdef LIB_FREERTOS_KERNEL
-    sleep_us(ns / 1000);
-    // /* Block for 500ms. */
-    // const TickType_t xDelay = 500 / portTICK_PERIOD_MS;
-    // vTaskDelay( xDelay );
+    sleep_us((ns + 999) / 1000);
 #else
     delayMicroseconds((ns + 999) / 1000);
 #endif

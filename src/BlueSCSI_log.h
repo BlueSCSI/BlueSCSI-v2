@@ -73,7 +73,9 @@ void log_f(const char *format, ...);
 }
 #endif
 
-// extern "C" unsigned long millis();
+#ifndef LIB_FREERTOS_KERNEL
+extern "C" unsigned long millis();
+#endif 
 
 // Variadic template for printing multiple items
 template<typename T, typename T2, typename... Rest>
