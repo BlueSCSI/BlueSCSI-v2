@@ -49,24 +49,7 @@
 #define USBD_STACK_SIZE (3 * configMINIMAL_STACK_SIZE / 2) * (CFG_TUSB_DEBUG ? 2 : 1)
 #define BLINKY_STACK_SIZE configMINIMAL_STACK_SIZE
 
-static void usb_device_task(void *param)
-{
-
-  // init device stack on configured roothub port
-  // This should be called after scheduler/kernel is started.
-  // Otherwise it could cause kernel issue since USB IRQ handler does use RTOS queue API.
-  tud_init(BOARD_TUD_RHPORT);
-  // if (board_init_after_tusb)
-  // {
-  //   board_init_after_tusb();
-  // }
-  TickType_t wake;
-  wake = xTaskGetTickCount();
-
-  do
-  {
-
-    // char temp_str[128];
+void usb_task_debug(){
     static uint32_t usb_device_task_counter = 0;
     static uint32_t usb_device_task_counter2 = 0;
     if (usb_device_task_counter > 10000)
@@ -75,17 +58,28 @@ static void usb_device_task(void *param)
       usb_device_task_counter = 0;
     }
     usb_device_task_counter++;
-    tud_task();
+}
 
-    // volatile char rx_char = stdio_tinyusb_cdc_readchar();
-    // if (rx_char != (char)EOF) {
-    //     printf("You typed: %c\n", rx_char);
-    // }
+static void usb_device_task(void *param)
+{
+
+  // init device stack on configured roothub port
+  // This should be called after scheduler/kernel is started.
+  // Otherwise it could cause kernel issue since USB IRQ handler does use RTOS queue API.
+  tud_init(BOARD_TUD_RHPORT);
+
+  TickType_t wake;
+  wake = xTaskGetTickCount();
+
+  do
+  {
+
+    usb_task_debug(); 
+    tud_task();
 
     // Go to sleep for up to a tick if nothing to do
     if (!tud_task_event_ready())
       xTaskDelayUntil(&wake, 1);
-
   } while (1);
 }
 
@@ -112,57 +106,18 @@ void tud_suspend_cb(bool remote_wakeup_en)
   // blink_interval_ms = BLINK_SUSPENDED;
   printf("tud_suspend_cb\n");
 }
-#define LED_STATE_ON 0
-#define LED_PIN 25
-//--------------------------------------------------------------------+
-// BLINKING TASK
-//--------------------------------------------------------------------+
-void led_blinking_task(void *param)
-{
-
-  // bi_decl(bi_1pin_with_name(LED_PIN, "LED"));
-  gpio_init(LED_PIN);
-  gpio_set_dir(LED_PIN, GPIO_OUT);
-  (void)param;
-  static bool led_state = false;
-  uint32_t blink_interval_ms = 500;
-
-  while (1)
-  {
-
-    static uint32_t counter = 0;
-    static uint32_t counter2 = 0;
-    if (counter > 40)
-    {
-      printf("led_blinking_task() running %ld\n", counter2++);
-      counter = 0;
-    }
-      counter++;
-    // Blink every interval ms
-    vTaskDelay(blink_interval_ms / portTICK_PERIOD_MS);
-    // board_led_write(led_state);
-
-    gpio_put(LED_PIN, led_state ? LED_STATE_ON : (1 - LED_STATE_ON));
-
-    led_state = 1 - led_state; // toggle
-  }
-}
-
 
 void bluescsi_main(void *param);
+extern "C" void bluescsi_setup(void);
 
 int main(void)
 {
 
-  // board_init();
   platform_init();
   stdio_tinyusb_cdc_init();
 
   printf("Welcome to BlueSCSI Bridge!\n");
 
-  // scsiUsbBridgeInit();
-
-  // xTaskCreate(led_blinking_task, "blinky", BLINKY_STACK_SIZE, NULL, 1, NULL);
   xTaskCreate(usb_device_task, "usbd", USBD_STACK_SIZE, NULL, configMAX_PRIORITIES - 2, NULL);
   stdio_tinyusb_cdc_start_task(configMAX_PRIORITIES - 3);
   xTaskCreate(vCommandConsoleTask, "cli", configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES - 4, NULL);

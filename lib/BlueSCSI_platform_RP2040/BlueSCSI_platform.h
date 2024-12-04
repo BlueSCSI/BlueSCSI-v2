@@ -74,18 +74,6 @@ static inline void delay_ns(unsigned long ns)
 #endif
 }
 
-#define WAIT_FOR_EXPRESSION_TIMEOUT(expr, timeout_us) \
-{ \
-    absolute_time_t timeout_time = make_timeout_time_us(timeout_us);\
-    do {\
-        /* each time round the loop, we check to see if the condition */\
-        /* we are waiting on has happened */\
-        if (expr) { \
-            break; \
-        } \
-    } while (!best_effort_wfe_or_timeout(timeout_time));\
-}
-
 // Approximate fast delay
 static inline void delay_100ns()
 {

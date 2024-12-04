@@ -108,7 +108,7 @@ add_executable(scsibridge
         src/SCSI2SD/src/firmware/mo.c
         src/SCSI2SD/src/firmware/diagnostic.c
         src/CUEParser/src/CUEParser.cpp
-        # src/scsi/BlueSCSI_usbbridge.cpp
+        src/scsi/BlueSCSI_usbbridge.cpp
         BlueSCSI_platform/scsiPhy.cpp
         src/scsi/BlueSCSI_tape.cpp
         BlueSCSI_platform/BlueSCSI_platform.cpp
@@ -121,7 +121,6 @@ add_executable(scsibridge
         BlueSCSI_platform/rp2040_sdio.cpp
         BlueSCSI_platform/scsi_accel_rp2040.cpp
         BlueSCSI_platform/scsiPhy.cpp
-        # BlueSCSI_platform/picow_init.cpp
         ${freertos-plus-cli-source_SOURCE_DIR}/FreeRTOS_CLI.c
 )
 
