@@ -30,23 +30,7 @@ include(pico_sdk_import.cmake)
 set(FREERTOS_KERNEL_PATH ${CMAKE_CURRENT_LIST_DIR}/freertos)
 include(FreeRTOS_Kernel_import.cmake)
 
-# Fetch MiniINI testing framework
-include(FetchContent)
-FetchContent_Declare(
-    minini
-    GIT_REPOSITORY https://github.com/compuphase/minIni.git
-    GIT_TAG v1.5
-)
-FetchContent_MakeAvailable(minini)
-# .... doesn't seem to work without Arduino framework.... revisit this later
-# FetchContent_GetProperties(sdfat)
-# FetchContent_Declare(
-#     sdfat
-#     GIT_REPOSITORY https://github.com/akuker/SdFat.git
-#     GIT_TAG a8a6cb042fb1fb3fa4e7e2aa05bb3c68163ce4d1
-# )
-# FetchContent_MakeAvailable(sdfat)
-# FetchContent_GetProperties(sdfat)
+
 #-------------
 # Fetch the FreeRTOS CLI library
 #    Currently, the Plus-CLI code is only included in the full
@@ -58,6 +42,7 @@ FetchContent_MakeAvailable(minini)
 #     URL_HASH MD5=14c4bff04ee2a4f55ec510967dc97c28
 # )
 # We only need two files.... so manually pulling those instead of the whole FreeRTOS repo
+include(FetchContent)
 FetchContent_Declare(
     freertos-plus-cli-source
     URL      https://raw.githubusercontent.com/FreeRTOS/FreeRTOS/refs/tags/V10.4.1/FreeRTOS-Plus/Source/FreeRTOS-Plus-CLI/FreeRTOS_CLI.c
@@ -75,6 +60,10 @@ FetchContent_MakeAvailable(freertos-plus-cli-header)
 
 project(scsibridge C CXX ASM)
 
+# These must be kept in this order, since libminini depends on libsdfat
+include(libsdfat-config.cmake)
+include(libminini-config.cmake)
+
 pico_sdk_init()
 
 if (${PICO_SDK_VERSION_MAJOR} LESS 2)
@@ -83,7 +72,7 @@ endif ()
 
 add_executable(scsibridge
         src/led.c
-        src/main.c
+        src/main.cpp
         src/usb_descriptors.c
         src/cdc_uart.c
         src/get_serial.c
@@ -94,22 +83,45 @@ add_executable(scsibridge
         src/freertos_hook.c
         src/stdio_tinyusb_cdc.cpp
         src/ringbuffer.cpp
-
         src/usb/configuration_descriptor.cpp
         src/usb/device_descriptor.cpp
         src/usb/endpoint_descriptor.cpp
         src/usb/interface_descriptor.cpp
+        src/scsi/BlueSCSI.cpp
         src/scsi/BlueSCSI_Config.cpp
         src/scsi/BlueSCSI_log.cpp
+        src/scsi/BlueSCSI_main.cpp
         src/scsi/BlueSCSI_log_trace.cpp
         src/scsi/BlueSCSI_initiator.cpp
+        src/scsi/BlueSCSI_disk.cpp
+        src/scsi/BlueSCSI_cdrom.cpp
+        src/scsi/BlueSCSI_mode.cpp
+        src/scsi/BlueSCSI_presets.cpp
+        src/scsi/BlueSCSI_Toolbox.cpp
+        src/scsi/ImageBackingStore.cpp
+        src/scsi/ROMDrive.cpp
+        src/SCSI2SD/src/firmware/mode.c
+        src/SCSI2SD/src/firmware/vendor.c
+        src/SCSI2SD/src/firmware/inquiry.c
+        src/SCSI2SD/src/firmware/geometry.c
         src/SCSI2SD/src/firmware/scsi.c
+        src/SCSI2SD/src/firmware/mo.c
+        src/SCSI2SD/src/firmware/diagnostic.c
         src/CUEParser/src/CUEParser.cpp
-        src/scsi/BlueSCSI_usbbridge.cpp
+        # src/scsi/BlueSCSI_usbbridge.cpp
         BlueSCSI_platform/scsiPhy.cpp
+        src/scsi/BlueSCSI_tape.cpp
         BlueSCSI_platform/BlueSCSI_platform.cpp
+        BlueSCSI_platform/BlueSCSI_platform_config_hook.cpp
+        BlueSCSI_platform/BlueSCSI_platform_network.cpp
         BlueSCSI_platform/scsiHostPhy.cpp
         BlueSCSI_platform/scsi_accel_host.cpp
+        BlueSCSI_platform/sd_card_sdio.cpp
+        BlueSCSI_platform/sd_card_spi.cpp
+        BlueSCSI_platform/rp2040_sdio.cpp
+        BlueSCSI_platform/scsi_accel_rp2040.cpp
+        BlueSCSI_platform/scsiPhy.cpp
+        # BlueSCSI_platform/picow_init.cpp
         ${freertos-plus-cli-source_SOURCE_DIR}/FreeRTOS_CLI.c
 )
 
@@ -120,13 +132,16 @@ target_include_directories(scsibridge PRIVATE
         src/CUEParser/src/CUEParser/
         src/SCSI2SD/include/
         src/SCSI2SD/src/firmware/
-        ${minini_SOURCE_DIR}/dev/
+        src/CUEParser/src/
         ${freertos-plus-cli-header_SOURCE_DIR}/
-        # ${sdfat_SOURCE_DIR}/src/
+        ${MININI_LIB_PATH}/
+        ${SDFAT_LIB_PATH}/
         )
 
-
-target_compile_options(scsibridge PRIVATE -Wall)
+#sdfat throws an "overloaded-virtual" warning. Inhibit it
+target_compile_options(scsibridge PRIVATE 
+    $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wno-overloaded-virtual>
+    $<$<COMPILE_LANGUAGE:C>:-Wall>)
 
 pico_generate_pio_header(scsibridge ${CMAKE_CURRENT_LIST_DIR}/BlueSCSI_platform/rp2040_sdio.pio)
 pico_generate_pio_header(scsibridge ${CMAKE_CURRENT_LIST_DIR}/BlueSCSI_platform/scsi_accel_host.pio)
@@ -141,15 +156,16 @@ target_include_directories(scsibridge PRIVATE src)
 
 target_compile_definitions (scsibridge PUBLIC
 	PICO_RP2040_USB_DEVICE_ENUMERATION_FIX=1
+    PLATFORM_HAS_INITIATOR_MODE
+    HAS_SDIO_CLASS
+    # minini configuration
     INI_ANSIONLY=1
     INI_READONLY=1
-    # Disable arduino junk in sdfat
-    ENABLE_ARDUINO_FEATURES=0
-    DISABLE_ARDUINO_USB=1
-    ENABLE_ARDUINO_STRING=0
-    # Select the generic spi driver in sdfat
+    # UART_TX_PIN=-1
+    # UART_RX_PIN=-1
     SPI_DRIVER_SELECT=3
-    PLATFORM_HAS_INITIATOR_MODE
+    SD_CHIP_SELECT_MODE=2
+    ENABLE_DEDICATED_SPI=1
 )
 
 
@@ -169,7 +185,9 @@ target_link_libraries(scsibridge PRIVATE
         # Heap1 is basically a simple allocate-only heap manager, but
         # is much more efficient and deterministic.
         # Currently, vTaskList() is trying to "free" memory
-        FreeRTOS-Kernel-Heap3
+        FreeRTOS-Kernel-Heap4
+        libminini
+        libsdfat
 )
 
 pico_add_extra_outputs(scsibridge)

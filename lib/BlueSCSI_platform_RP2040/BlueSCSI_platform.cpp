@@ -5,9 +5,8 @@
 #include "BlueSCSI_platform.h"
 #include "BlueSCSI_log.h"
 #include "BlueSCSI_config.h"
-#ifndef LIB_FREERTOS_KERNEL
 #include <SdFat.h>
-#else
+#ifdef LIB_FREERTOS_KERNEL
 #include <stdio.h>
 #endif
 #include <scsi.h>
@@ -127,12 +126,19 @@ static void reclock_for_audio() {
     uart_init(uart0, 1000000);
 }
 #endif
+#ifdef LIB_FREERTOS_KERNEL
+unsigned long millis(void){
+    return to_ms_since_boot(get_absolute_time());
+}
+#endif
 
 void platform_init()
 {
+#ifndef LIB_FREERTOS_KERNEL
     // Make sure second core is stopped
     multicore_reset_core1();
-#ifndef LIB_FREERTOS_KERNEL
+	// In FreeRTOS, the console port is provided via USB and handled as
+	// its own thread.
 #ifndef __MBED__
     Serial.begin(115200);
 #endif // __MBED__
@@ -351,16 +357,13 @@ void platform_disable_led(void)
 /* Crash handlers                        */
 /*****************************************/
 
-#ifndef LIB_FREERTOS_KERNEL
 extern SdFs SD;
-#endif
 extern uint32_t __StackTop;
 
 void platform_emergency_log_save()
 {
     platform_set_sd_callback(NULL, NULL);
 
-#ifndef LIB_FREERTOS_KERNEL
     SD.begin(SD_CONFIG_CRASH);
     FsFile crashfile = SD.open(CRASHFILE, O_WRONLY | O_CREAT | O_TRUNC);
 
@@ -378,7 +381,6 @@ void platform_emergency_log_save()
     crashfile.write(log_get_buffer(&startpos));
     crashfile.flush();
     crashfile.close();
-#endif
 }
 
 #ifdef MBED

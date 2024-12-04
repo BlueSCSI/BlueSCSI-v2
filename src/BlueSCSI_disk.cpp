@@ -166,8 +166,29 @@ void scsiDiskResetImages()
 
 void image_config_t::clear()
 {
-    static const image_config_t empty; // Statically zero-initialized
-    *this = empty;
+    // static const image_config_t empty; // Statically zero-initialized
+    // *this = empty;
+    file.close();
+
+    ejected = false;
+    cdrom_events = 0;
+    reinsert_on_inquiry = false; 
+    reinsert_after_eject = false;
+    ejectButton = 0;
+    tape_pos = 0;
+    image_directory = false;
+    strcpy(current_image,"");
+    image_index=0;
+    cuesheetfile.close();
+    rightAlignStrings = -1;
+    name_from_image = false;
+    prefetchbytes = 0;
+    geometrywarningprinted = false;
+
+
+
+
+
 }
 
 void scsiDiskCloseSDCardImages()
@@ -822,7 +843,7 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buf_len)
             log("Image directory was empty for ID", target_idx);
             return 0;
         }
-        else if (buf_len < nextlen + dir_len + 2)
+        else if (buf_len < (size_t)(nextlen + dir_len + 2))
         {
             log("Directory '", dirname, "' and file '", nextname, "' exceed allowed length");
             return 0;
@@ -1685,7 +1706,7 @@ void diskDataOut()
             g_disk_transfer.sd_transfer_start = start;
             // debuglog("SD write ", (int)start, " + ", (int)len, " ", bytearray(buf, len));
             platform_set_sd_callback(&diskDataOut_callback, buf);
-            if (img.file.write(buf, len) != len)
+            if (img.file.write(buf, len) != (ssize_t)len)
             {
                 log("SD card write failed: ", SD.sdErrorCode());
                 scsiDev.status = CHECK_CONDITION;
@@ -1860,7 +1881,7 @@ static void start_dataInTransfer(uint8_t *buffer, uint32_t count)
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     platform_set_sd_callback(&diskDataIn_callback, buffer);
 
-    if (img.file.read(buffer, count) != count)
+    if (img.file.read(buffer, count) != (ssize_t)count)
     {
         log("SD card read failed: ", SD.sdErrorCode());
         scsiDev.status = CHECK_CONDITION;
@@ -2202,9 +2223,9 @@ int scsiDiskCommand()
         scsiDev.data[3] = 0;
         scsiDev.dataLen = 4;
 
-        if (scsiDev.dataLen > allocLength)
+        if (scsiDev.dataLen > (int)allocLength)
         {
-            scsiDev.dataLen = allocLength;
+            scsiDev.dataLen = (int)allocLength;
         }
 
         scsiDev.phase = DATA_IN;

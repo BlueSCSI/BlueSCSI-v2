@@ -23,7 +23,9 @@
 extern "C" {
 #ifdef BLUESCSI_NETWORK
 #include <cyw43.h>
+#ifndef LIB_FREERTOS_KERNEL
 #include <pico/cyw43_arch.h>
+#endif
 #endif
 
 #ifndef CYW43_IOCTL_GET_RSSI
@@ -33,11 +35,17 @@ extern "C" {
 // A default DaynaPort-compatible MAC
 static const char defaultMAC[] = { 0x00, 0x80, 0x19, 0xc0, 0xff, 0xee };
 
+#ifdef BLUESCSI_NETWORK
 static bool network_in_use = false;
+#endif 
 
 bool __not_in_flash_func(platform_network_supported)()
 {
+#ifndef LIB_FREERTOS_KERNEL
 	return rp2040.isPicoW();
+#else
+	return false;
+#endif
 }
 
 #ifdef BLUESCSI_NETWORK

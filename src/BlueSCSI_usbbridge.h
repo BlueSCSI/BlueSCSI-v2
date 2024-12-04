@@ -34,11 +34,8 @@ void scsiUsbBridgeMainLoop(void *param);
 // bool scsiTestUnitReady(int target_id);
 
 // Read a block of data from SCSI device and write to file on SD card
-#ifndef LIB_FREERTOS_KERNEL
-class FsFile;
-#else
-typedef  int FsFile;
-#endif
+// class FsFile;
+
 // bool scsiUsbBridgeReadDataToFile(int target_id, uint32_t start_sector, uint32_t sectorcount, uint32_t sectorsize,
 //                                  FsFile &file);
 #ifdef __cplusplus

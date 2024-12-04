@@ -11,9 +11,8 @@
 #include "BlueSCSI_initiator.h"
 #include <BlueSCSI_platform.h>
 #include <minIni.h>
-#ifndef LIB_FREERTOS_KERNEL
 #include "SdFat.h"
-#else
+#ifdef LIB_FREERTOS_KERNEL
 #include <string.h>
 #endif
 
@@ -80,7 +79,7 @@ static struct {
     FsFile target_file;
 } g_initiator_state;
 
-// extern SdFs SD;
+extern SdFs SD;
 
 // Initialization of initiator mode
 void scsiInitiatorInit()
@@ -210,8 +209,6 @@ void scsiInitiatorMainLoop()
 
                 total_bytes = (uint64_t)g_initiator_state.sectorcount * g_initiator_state.sectorsize;
                 log("Drive total size is ", (int)(total_bytes / (1024 * 1024)), " MiB");
-#ifndef LIB_FREERTOS_KERNEL
-                // TODO: sdcard support is not working in FreeRTOS
                 if (total_bytes >= 0xFFFFFFFF && SD.fatType() != FAT_TYPE_EXFAT)
                 {
                     // Note: the FAT32 limit is 4 GiB - 1 byte
@@ -220,7 +217,6 @@ void scsiInitiatorMainLoop()
                     g_initiator_state.sectorsize = 0;
                     g_initiator_state.sectorcount = g_initiator_state.sectorcount_all = 0;
                 }
-#endif
                 if(g_initiator_state.ansiVersion < 0x02)
                 {
                     // this is a SCSI-1 drive, use READ6 and 256 bytes to be safe.
@@ -242,6 +238,7 @@ void scsiInitiatorMainLoop()
                 g_initiator_state.sectorcount = g_initiator_state.sectorcount_all = 0;
             }
 
+            char filename[30] = "";
             if (inquiryok)
             {
                 g_initiator_state.deviceType = inquiry_data[0] & 0x1F;
@@ -257,9 +254,8 @@ void scsiInitiatorMainLoop()
 
             if (g_initiator_state.sectorcount > 0)
             {
-#ifndef LIB_FREERTOS_KERNEL
-                char filename[18] = "";
                 int image_num = 0;
+
                 uint64_t sd_card_free_bytes = (uint64_t)SD.vol()->freeClusterCount() * SD.vol()->bytesPerCluster();
                 if(sd_card_free_bytes < total_bytes)
                 {
@@ -269,10 +265,10 @@ void scsiInitiatorMainLoop()
                 }
 
                 do {
-                    sprintf(filename, "%s%d_imaged-%03d.%s",
+                    snprintf(filename, sizeof(filename), "%s%1d_imaged-%03d.%s",
                             (g_initiator_state.deviceType == DEVICE_TYPE_CD) ? "CD" : "HD",
                             g_initiator_state.target_id,
-                            ++image_num,
+                            (uint8_t)++image_num,
                             (g_initiator_state.deviceType == DEVICE_TYPE_CD) ? "iso" : "hda");
                 } while(SD.exists(filename));
                 log("Imaging filename: ", filename, ".");
@@ -292,7 +288,6 @@ void scsiInitiatorMainLoop()
                 }
 
                 log("Starting to copy drive data to ", filename);
-#endif
                 g_initiator_state.imaging = true;
             }
         }
@@ -323,9 +318,7 @@ void scsiInitiatorMainLoop()
                 g_initiator_state.drives_imaged |= (1 << g_initiator_state.target_id);
             }
             g_initiator_state.imaging = false;
-#ifndef LIB_FREERTOS_KERNEL
             g_initiator_state.target_file.close();
-#endif
             return;
         }
 
@@ -358,9 +351,7 @@ void scsiInitiatorMainLoop()
                 delay_with_poll(200);
 
                 g_initiator_state.retrycount++;
-#ifndef LIB_FREERTOS_KERNEL
                 g_initiator_state.target_file.seek((uint64_t)g_initiator_state.sectors_done * g_initiator_state.sectorsize);
-#endif
 
                 if (g_initiator_state.retrycount > 1 && numtoread > 1)
                 {
@@ -374,18 +365,14 @@ void scsiInitiatorMainLoop()
                 g_initiator_state.retrycount = 0;
                 g_initiator_state.sectors_done++;
                 g_initiator_state.badSectorCount++;
-    #ifndef LIB_FREERTOS_KERNEL
                 g_initiator_state.target_file.seek((uint64_t)g_initiator_state.sectors_done * g_initiator_state.sectorsize);
-    #endif
             }
         }
         else
         {
             g_initiator_state.retrycount = 0;
             g_initiator_state.sectors_done += numtoread;
-#ifndef LIB_FREERTOS_KERNEL
             g_initiator_state.target_file.flush();
-#endif
 
             int speed_kbps = numtoread * g_initiator_state.sectorsize / (millis() - time_start);
             log("SCSI read succeeded, sectors done: ",
@@ -701,12 +688,6 @@ static void initiatorReadSDCallback(uint32_t bytes_complete)
     }
 }
 
-#ifdef LIB_FREERTOS_KERNEL
-static void scsiInitiatorWriteDataToSd(int file, bool use_callback){
-    (void)file;
-    (void)use_callback;
-}
-#else
 static void scsiInitiatorWriteDataToSd(FsFile &file, bool use_callback)
 {
     // Figure out longest continuous block in buffer
@@ -737,15 +718,9 @@ static void scsiInitiatorWriteDataToSd(FsFile &file, bool use_callback)
     platform_set_sd_callback(NULL, NULL);
     g_initiator_transfer.bytes_sd += len;
 }
-#endif
 
-#ifdef LIB_FREERTOS_KERNEL
-bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t sectorcount, uint32_t sectorsize,
-                                 int file)
-#else
 bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t sectorcount, uint32_t sectorsize,
                                  FsFile &file)
-#endif
 {
     int status = -1;
 

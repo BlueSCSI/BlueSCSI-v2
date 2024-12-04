@@ -92,7 +92,8 @@
         "cfenv": "cpp",
         "cinttypes": "cpp",
         "typeinfo": "cpp",
-        "get_serial.h": "c"
+        "get_serial.h": "c",
+        "board.h": "c"
     },
     "cortex-debug.openocdPath": "/opt/homebrew/bin/openocd",
     "cortex-debug.gdbPath": "arm-none-eabi-gdb",

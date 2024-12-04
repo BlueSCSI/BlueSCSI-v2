@@ -12,6 +12,7 @@
 #include <hardware/gpio.h>
 #include <SdFat.h>
 #include <SdCard/SdCardInfo.h>
+#include <stdio.h>
 
 static uint32_t g_sdio_ocr; // Operating condition register from card
 static uint32_t g_sdio_rca; // Relative card address
@@ -94,6 +95,12 @@ static sd_callback_t get_stream_callback(const uint8_t *buf, uint32_t count, con
     }
 
     return NULL;
+}
+
+bool SdioCard::readSDS(sds_t* sds){
+    (void)sds;
+    printf("This function should not be used!! Only stubbed out for now\n\r");
+    return false;
 }
 
 bool SdioCard::begin(SdioConfig sdioConfig)

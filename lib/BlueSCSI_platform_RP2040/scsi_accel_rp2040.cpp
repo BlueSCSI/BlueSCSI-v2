@@ -357,7 +357,7 @@ static bool scsi_accel_rp2040_isWriteDone()
     if (g_scsi_dma.syncOffset > 0)
     {
         // Check if all bytes of synchronous write have been acknowledged
-        if (pio_sm_get_rx_fifo_level(SCSI_DMA_PIO, SCSI_DATA_SM) > g_scsi_dma.syncOffsetPreload)
+        if (pio_sm_get_rx_fifo_level(SCSI_DMA_PIO, SCSI_DATA_SM) > (uint32_t)g_scsi_dma.syncOffsetPreload)
             return false;
     }
     else

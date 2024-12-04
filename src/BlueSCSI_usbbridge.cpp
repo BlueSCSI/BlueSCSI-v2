@@ -12,11 +12,8 @@
 #include "BlueSCSI_usbbridge.h"
 #include <BlueSCSI_platform.h>
 #include <minIni.h>
-#ifndef LIB_FREERTOS_KERNEL
 #include "SdFat.h"
-#else
 #include <string.h>
-#endif
 
 #include <scsi2sd.h>
 extern "C" {
