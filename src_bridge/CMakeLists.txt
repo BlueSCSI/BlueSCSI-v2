@@ -73,7 +73,8 @@ endif ()
 add_executable(scsibridge
         src/led.c
         src/main.cpp
-        src/usb_descriptors.c
+        src/usb_descriptors.cpp
+        src/usb_descriptors_test.cpp
         src/cdc_uart.c
         src/get_serial.c
         src/sw_dp_pio.c
@@ -100,6 +101,13 @@ add_executable(scsibridge
         src/scsi/BlueSCSI_Toolbox.cpp
         src/scsi/ImageBackingStore.cpp
         src/scsi/ROMDrive.cpp
+        src/scsi/BlueSCSI_usbbridge.cpp
+        src/scsi/BlueSCSI_tape.cpp
+        src/usb/configuration_descriptor.cpp
+        src/usb/device_descriptor.cpp
+        src/usb/endpoint_descriptor.cpp
+        src/usb/interface_descriptor.cpp
+        src/usb/string_descriptor.cpp
         src/SCSI2SD/src/firmware/mode.c
         src/SCSI2SD/src/firmware/vendor.c
         src/SCSI2SD/src/firmware/inquiry.c
@@ -108,9 +116,7 @@ add_executable(scsibridge
         src/SCSI2SD/src/firmware/mo.c
         src/SCSI2SD/src/firmware/diagnostic.c
         src/CUEParser/src/CUEParser.cpp
-        src/scsi/BlueSCSI_usbbridge.cpp
         BlueSCSI_platform/scsiPhy.cpp
-        src/scsi/BlueSCSI_tape.cpp
         BlueSCSI_platform/BlueSCSI_platform.cpp
         BlueSCSI_platform/BlueSCSI_platform_config_hook.cpp
         BlueSCSI_platform/BlueSCSI_platform_network.cpp
