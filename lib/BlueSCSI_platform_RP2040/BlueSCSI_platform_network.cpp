@@ -16,7 +16,6 @@
 
 #include "BlueSCSI_platform.h"
 #include "BlueSCSI_log.h"
-#include "BlueSCSI_config.h"
 #include <scsi.h>
 #include <network.h>
 
@@ -37,9 +36,8 @@ static bool network_in_use = false;
 
 bool __not_in_flash_func(platform_network_supported)()
 {
-	// FIXME: This method currently incorrectly returns true on the Pico2 (non-wifi)
-	//   Track here: https://github.com/earlephilhower/arduino-pico/issues/2671
-	return rp2040.isPicoW();
+	extern bool __isPicoW;
+	return __isPicoW;
 }
 
 #ifdef BLUESCSI_NETWORK
