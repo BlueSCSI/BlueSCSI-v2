@@ -9,22 +9,27 @@
 
 extern "C" void bluescsi_setup(void);
 extern "C" void bluescsi_main_loop(void);
+void dump_usb_desc_data();
+extern "C" void run_usb_desc_tests();
 
 void bluescsi_main(void *param)
 {
     bluescsi_setup();
 
-    #if FORCE_BRIDGE
+#if FORCE_BRIDGE
+    // USB Descriptor test code....
+    dump_usb_desc_data();
+    run_usb_desc_tests();
 
-    //   bluescsi_setup();
     auto bridge = BlueScsiBridge();
     bridge.init();
+
     bridge.mainLoop();
-    #endif
+#endif
 
     while (1)
     {
-        
+
         bluescsi_main_loop();
         vTaskDelay((const TickType_t)1);
     }
