@@ -33,7 +33,7 @@ jobs:
       - name: Build firmware
         run: |
           cd BlueSCSI
-          pio run -v -e BlueSCSI_Pico
+          pio run -v -e BlueSCSI_Pico -e BlueSCSI_Pico2
 
       - name: Rename firmware files
         run: |
