@@ -294,6 +294,7 @@ uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid)
     if (chr_count > max_count)
       chr_count = max_count;
 
+    memset(_desc_str, 0, sizeof(_desc_str));
     // Convert ASCII string into UTF-16
     for (size_t i = 0; i < chr_count; i++)
     {
@@ -373,11 +374,22 @@ void save_descriptor(const char *name, const uint8_t *buf, size_t len)
 
 void dump_usb_desc_data()
 {
+  uint8_t* string_desc = (uint8_t*)_desc_str;
+  char filename[128] = "";
+
+  for (int i = 0; i < 6; i++)
+  {
+    log("string_desc_arr[", i, "]: ", string_desc_arr[i]);
+    snprintf(filename, sizeof(filename), "string_desc_arr-%d", i);
+    string_desc = (uint8_t*)tud_descriptor_string_cb(i, 0);
+    save_descriptor(filename, (uint8_t *)string_desc, ((tusb_desc_string_t*)string_desc)->bLength);
+  }
+  
   save_descriptor("desc_device", (uint8_t const *)&desc_device, sizeof(tusb_desc_device_t));
   save_descriptor("desc_fs_configuration", (uint8_t *)&desc_fs_configuration, sizeof(desc_fs_configuration));
 #if TUD_OPT_HIGH_SPEED
   save_descriptor("desc_hs_configuration", (uint8_t *)&desc_hs_configuration, sizeof(desc_hs_configuration));
   save_descriptor("desc_device_qualifier", (uint8_t *)&desc_device_qualifier, sizeof(desc_device_qualifier));
 #endif
-  save_descriptor("string_desc_arr", (uint8_t *)&string_desc_arr, sizeof(string_desc_arr));
+  // save_descriptor("string_desc_arr", (uint8_t *)&string_desc_arr, sizeof(string_desc_arr));
 }

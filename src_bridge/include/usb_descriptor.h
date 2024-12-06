@@ -154,8 +154,8 @@ namespace USB
         void setAttributes(uint8_t attributes) { desc_.bmAttributes = attributes; }
         void setMaxPower(uint8_t maxPower) { desc_.bMaxPower = maxPower; }
 
-        bool addInterface(const InterfaceDescriptor &interface);
-        const std::vector<InterfaceDescriptor> &getInterfaces() const { return interfaces_; }
+        bool addInterface(const InterfaceDescriptor *interface);
+        // const std::vector<InterfaceDescriptor> &getInterfaces() const { return interfaces_; }
         const InterfaceDescriptor *getInterface(uint8_t interfaceNumber) const;
         std::vector<uint8_t> generateDescriptorBlock() const;
 
@@ -163,7 +163,7 @@ namespace USB
 
     protected:
         tusb_desc_configuration_t desc_;
-        std::vector<InterfaceDescriptor> interfaces_;
+        std::vector<const InterfaceDescriptor*> interfaces_;
 
         void updateDescriptor();
     };
