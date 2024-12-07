@@ -140,6 +140,16 @@ void build_cdc_interface(USB::ConfigurationDescriptor *cfg_desc){
     iface_control->setName("TinyUSB CDC");
     iface_associate->addChildDescriptor(iface_control);
 
+    // ** Needs to be created early so we can associate its iface number below.
+    //   CDC Data Interface
+    //   9, TUSB_DESC_INTERFACE, (uint8_t)((_itfnum)+1), 0, 2, TUSB_CLASS_CDC_DATA, 0, 0, 0,
+    USB::InterfaceDescriptor *iface_data = new USB::InterfaceDescriptor();
+    iface_data->setAlternateSetting(0);
+    iface_data->setInterfaceClass(TUSB_CLASS_CDC_DATA);
+    iface_data->setInterfaceSubClass(0);
+    iface_data->setInterfaceProtocol(0);
+    iface_associate->addChildDescriptor(iface_data);
+
     //   CDC Header
     //   5, TUSB_DESC_CS_INTERFACE, CDC_FUNC_DESC_HEADER, U16_TO_U8S_LE(0x0120),
     USB::CDC::HeaderFunctionalDescriptor *header = new USB::CDC::HeaderFunctionalDescriptor();
@@ -151,6 +161,7 @@ void build_cdc_interface(USB::ConfigurationDescriptor *cfg_desc){
     USB::CDC::CallManagementFunctionalDescriptor *call = new USB::CDC::CallManagementFunctionalDescriptor();
     call->setHandleCall(false);
     call->setSendRecvCall(false);
+    call->setDataInterface(iface_data->getInterfaceNumber());
     iface_control->addChildDescriptor(call);
 
     //   CDC ACM: support line request + send break 
@@ -166,7 +177,7 @@ void build_cdc_interface(USB::ConfigurationDescriptor *cfg_desc){
     //   5, TUSB_DESC_CS_INTERFACE, CDC_FUNC_DESC_UNION, _itfnum, (uint8_t)((_itfnum) + 1),
     USB::CDC::UnionFunctionalDescriptor *union_desc = new USB::CDC::UnionFunctionalDescriptor();
     union_desc->setControlInterface(iface_control->getInterfaceNumber());
-    // union_desc->setSubordinateInterface(call->getInterfaceNumber());
+    union_desc->setSubordinateInterface(iface_data->getInterfaceNumber());
     iface_control->addChildDescriptor(union_desc);
 
     //   Endpoint Notification
@@ -177,14 +188,7 @@ void build_cdc_interface(USB::ConfigurationDescriptor *cfg_desc){
     ep_notif->setInterval(16);
     iface_control->addChildDescriptor(ep_notif);
 
-    //   CDC Data Interface
-    //   9, TUSB_DESC_INTERFACE, (uint8_t)((_itfnum)+1), 0, 2, TUSB_CLASS_CDC_DATA, 0, 0, 0,
-    USB::InterfaceDescriptor *iface_data = new USB::InterfaceDescriptor();
-    iface_data->setAlternateSetting(0);
-    iface_data->setInterfaceClass(TUSB_CLASS_CDC_DATA);
-    iface_data->setInterfaceSubClass(0);
-    iface_data->setInterfaceProtocol(0);
-    iface_associate->addChildDescriptor(iface_data);
+
 
     //   Endpoint Out
     //   7, TUSB_DESC_ENDPOINT, _epout, TUSB_XFER_BULK, U16_TO_U8S_LE(_epsize), 0,
@@ -211,8 +215,10 @@ extern "C" void run_usb_desc_tests(){
 
     char filename[128] = "";
 
-    save_descriptor("generated_device_descriptor", dd->generateDescriptorBlock().data(), dd->getDescriptorSizeBytes());
-    save_descriptor("generated_config_descriptor", config_desc->generateDescriptorBlock().data(), config_desc->getDescriptorSizeBytes());
+    std::vector<uint8_t> temp_block = dd->generateDescriptorBlock();
+    save_descriptor("generated_device_descriptor", temp_block.data(), temp_block.size());
+    temp_block = config_desc->generateDescriptorBlock();
+    save_descriptor("generated_config_descriptor", temp_block.data(), temp_block.size());
 
     for (int i = 0; i < 6; i++)
     {
