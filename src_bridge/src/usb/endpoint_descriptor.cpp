@@ -4,3 +4,5 @@
 
 // Note: EndpointDescriptor is currently all inline in the header
 // due to its simple implementation.
+
+USB::NumberManager USB::EndpointDescriptor::number_manager;

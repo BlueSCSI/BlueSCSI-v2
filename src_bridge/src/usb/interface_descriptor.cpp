@@ -1,15 +1,40 @@
 #include "usb_descriptors.h"
 #include <algorithm>
 
+USB::NumberManager USB::InterfaceDescriptor::number_manager;
+
 namespace USB
 {
 
-    static NumberManager g_interface_number_manager;
-
-    void InterfaceDescriptor::addEndpoint(const EndpointDescriptor *ep)
+   void InterfaceDescriptor::addChildDescriptor(BasicDescriptor *child)
     {
-        endpoints_.push_back(ep);
-        desc_.bNumEndpoints = static_cast<uint8_t>(endpoints_.size());
+        BasicDescriptor::addChildDescriptor(child);
+        if(child->getDescriptorType() == TUSB_DESC_ENDPOINT)
+        {
+            desc_.bNumEndpoints++;
+        }
     }
+
+
+    void InterfaceAssociationDescriptor::addChildDescriptor(BasicDescriptor *child)
+    {
+        if(child->getDescriptorType() != TUSB_DESC_INTERFACE){
+            log("ERROR: InterfaceAssociationDescriptor::addChildDescriptor: child is not InterfaceDescriptor");
+        }
+
+        BasicDescriptor::addChildDescriptor(child);
+        if(desc_.bFirstInterface == 0xFF)
+        {
+            desc_.bFirstInterface = static_cast<InterfaceDescriptor*>(child)->getInterfaceNumber();
+        }
+        desc_.bInterfaceCount++;
+    }
+
+    // void InterfaceAssociationDescriptor::generateDescriptorBlock(){
+    //     desc_.bLength = sizeof(desc_);
+    //     desc_.bDescriptorType = DESCRIPTOR_TYPE_INTERFACE_ASSOCIATION;
+    //     desc_.bNumInterfaces = static_cast<uint8_t>(getChildDescriptors().size());
+    //     asdf
+    // }
 
 } // namespace USB
