@@ -61,7 +61,6 @@ void build_device_descriptor(){
     dd->setSerialStringIndex(0x03);
 
     std::vector<uint8_t> descriptor_block = dd->generateDescriptorBlock();
-    save_descriptor("generated_device_descriptor", descriptor_block.data(), descriptor_block.size());
 }
 
 USB::ConfigurationDescriptor * check_configuration_descriptors(){
@@ -189,6 +188,9 @@ void build_cdc_interface(USB::ConfigurationDescriptor *cfg_desc){
     iface_control->addChildDescriptor(ep_notif);
 
 
+    // The example TUSB descriptor reserves the corresponding out EP number. Not sure if this
+    // is necesary, but we'll do it...
+    USB::EndpointDescriptor::reserveEndpointNumber(ep_notif->getEndpointAddress() & ~TUSB_DIR_IN_MASK);
 
     //   Endpoint Out
     //   7, TUSB_DESC_ENDPOINT, _epout, TUSB_XFER_BULK, U16_TO_U8S_LE(_epsize), 0,
