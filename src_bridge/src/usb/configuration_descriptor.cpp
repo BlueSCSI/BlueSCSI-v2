@@ -43,12 +43,9 @@ namespace USB
     const size_t ConfigurationDescriptor::getDescriptorSizeBytes()
     {
         // Calculate total length
-        desc_.wTotalLength = sizeof(tusb_desc_configuration_t);
-        for (BasicDescriptor* interface : getChildDescriptors())
-        {
-            desc_.wTotalLength += interface->getDescriptorSizeBytes();
-        }
-        return (size_t)desc_.wTotalLength;
+        size_t mysize = BasicDescriptor::getDescriptorSizeBytes();
+        desc_.wTotalLength = mysize;
+        return mysize;
     }
 
     // std::vector<uint8_t> ConfigurationDescriptor::generateDescriptorBlock()
