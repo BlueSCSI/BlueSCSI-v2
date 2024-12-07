@@ -46,6 +46,7 @@
 #include "get_serial.h"
 #include "led.h"
 
+bool delay_usb_task = true;
 // Increase stack size when debug log is enabled
 #define USBD_STACK_SIZE (3 * configMINIMAL_STACK_SIZE / 2) * (CFG_TUSB_DEBUG ? 2 : 1)
 #define BLINKY_STACK_SIZE configMINIMAL_STACK_SIZE
@@ -63,7 +64,12 @@ void usb_task_debug(){
 
 static void usb_device_task(void *param)
 {
+  // Wait for SCSI Scan to complete
+  while(delay_usb_task){
+    vTaskDelay(100);
+  }
 
+  printf("usb_device_task()\n");
   // init device stack on configured roothub port
   // This should be called after scheduler/kernel is started.
   // Otherwise it could cause kernel issue since USB IRQ handler does use RTOS queue API.

@@ -21,7 +21,7 @@ extern "C"
 #include <scsi.h>
 }
 
-
+extern bool delay_usb_task;
 // TODO: Do something better with these....
 #define DEVICE_TYPE_CD 5
 #define DEVICE_TYPE_DIRECT_ACCESS 0
@@ -208,6 +208,7 @@ void BlueScsiBridge::init()
             delay(1000);
         } // end if(diskInfoList.size() > 0)
     }
+    delay_usb_task = false;
 }
 
 // Update progress bar LED during transfers
@@ -260,7 +261,7 @@ void BlueScsiBridge::mainLoop(void)
             log("Executing BUS RESET after aborted command");
             scsiHostPhyReset();
         }
-        vTaskDelay(10);
+        vTaskDelay(100);
     }
 }
 
