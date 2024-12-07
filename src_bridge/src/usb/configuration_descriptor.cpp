@@ -1,11 +1,13 @@
-#include "usb_descriptor.h"
+#include "usb_descriptors.h"
 #include <algorithm>
 #include "BlueSCSI_log.h"
 
 namespace USB
 {
 
-    bool ConfigurationDescriptor::addInterface(const InterfaceDescriptor *interface)
+    NumberManager ConfigurationDescriptor::number_manager;
+
+    void ConfigurationDescriptor::addChildDescriptor(BasicDescriptor *interface)
     {
         // // Check for duplicate interface numbers
         //////// Not all class-specific interfaces have assigned interface numbers
@@ -19,9 +21,12 @@ namespace USB
         //     }
         // }
 
-        interfaces_.push_back(interface);
-        updateDescriptor();
-        return true;
+        getChildDescriptors().push_back(interface);
+        // Only include the interfaces that can have endpoints
+        if (interface->supportsChildren())
+        {
+            desc_.bNumInterfaces++;
+        }
     }
 
     // const InterfaceDescriptor *ConfigurationDescriptor::getInterface(uint8_t interfaceNumber) const
@@ -35,53 +40,43 @@ namespace USB
     //     return (it != interfaces_.end()) ? &(*it) : nullptr;
     // }
 
-    std::vector<uint8_t> ConfigurationDescriptor::generateDescriptorBlock() const
+    const size_t ConfigurationDescriptor::getDescriptorSizeBytes()
     {
-        // TODO......
-        // std::vector<uint8_t> block;
-
-        // // Configuration descriptor
-        // block.insert(block.end(), (uint8_t *)&desc_, (uint8_t *)(&desc_ + 1));
-
-        // // Add each interface and its endpoints
-        // for (const auto interface : interfaces_)
-        // {
-        //     // Interface descriptor
-        //     const tusb_desc_interface_t *iface = interface;
-        //     block.insert(block.end(), (uint8_t *)iface, (uint8_t *)(iface + 1));
-
-        //     // Add endpoints for this interface
-        //     for (const auto &endpoint : interface.getEndpoints())
-        //     {
-        //         const tusb_desc_endpoint_t &ep = endpoint;
-        //         block.insert(block.end(), (uint8_t *)&ep, (uint8_t *)(&ep + 1));
-        //     }
-        // }
-
-        // // Update total length in configuration descriptor
-        // if (block.size() >= 2)
-        // {
-        //     uint16_t totalLength = static_cast<uint16_t>(block.size());
-        //     block[2] = TU_U16_LOW(totalLength);
-        //     block[3] = TU_U16_HIGH(totalLength);
-        // }
-
-        // return block;
-        return std::vector<uint8_t>();
+        // Calculate total length
+        desc_.wTotalLength = sizeof(tusb_desc_configuration_t);
+        for (BasicDescriptor* interface : getChildDescriptors())
+        {
+            desc_.wTotalLength += interface->getDescriptorSizeBytes();
+        }
+        return (size_t)desc_.wTotalLength;
     }
 
-    void ConfigurationDescriptor::updateDescriptor()
-    {
-        // TODO.....
-        // desc_.bNumInterfaces = static_cast<uint8_t>(interfaces_.size());
+    // std::vector<uint8_t> ConfigurationDescriptor::generateDescriptorBlock()
+    // {
 
-        // // Calculate total length
-        // desc_.wTotalLength = sizeof(tusb_desc_configuration_t);
-        // for (const auto &interface : interfaces_)
-        // {
-        //     desc_.wTotalLength += sizeof(tusb_desc_interface_t);
-        //     desc_.wTotalLength += static_cast<uint16_t>(interface.getEndpoints().size() * sizeof(tusb_desc_endpoint_t));
-        // }
-    }
+    //     return BasicDescriptor::generateDescriptorBlock();
+    // }
+//         // TODO......
+
+
+// countChildrenOfType
+
+//         // Check that total length matches what we expected
+//         if (block.size() != desc_.wTotalLength)
+//         {
+//             log("ERROR: Configuration descriptor size mismatch");
+//         }
+
+//         // // Update total length in configuration descriptor
+//         // if (block.size() >= 2)
+//         // {
+//         //     uint16_t totalLength = static_cast<uint16_t>(block.size());
+//         //     block[2] = TU_U16_LOW(totalLength);
+//         //     block[3] = TU_U16_HIGH(totalLength);
+//         // }
+
+//         return block;
+//         // return std::vector<uint8_t>();
+//     }
 
 } // namespace USB

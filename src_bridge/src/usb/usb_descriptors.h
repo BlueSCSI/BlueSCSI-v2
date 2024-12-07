@@ -20,6 +20,7 @@
 extern "C"
 {
     void save_descriptor(const char *name, const uint8_t *buf, size_t len);
+    std::string get_desc_block_type(tusb_desc_type_t mytype);
 }
 
 namespace USB
@@ -114,6 +115,17 @@ namespace USB
 
         std::shared_ptr<tusb_desc_string_fixed_len_t> generateDescriptor(uint8_t index)
         {
+
+            // Special case for "0", which is the language ID
+            if (index == 0)
+            {
+                auto fixed_desc = std::make_shared<tusb_desc_string_fixed_len_t>();
+                fixed_desc->bLength = 4;
+                fixed_desc->bDescriptorType = TUSB_DESC_STRING;
+                fixed_desc->unicode_string[0] = 0x0409;
+                return fixed_desc;
+            }
+
             xSemaphoreTake(mutex_, portMAX_DELAY);
 
             if (index < string_list_.size())
@@ -208,7 +220,61 @@ namespace USB
         std::vector<uint8_t> interface_num_list;
     };
 
-    class EndpointDescriptor
+    class BasicDescriptor
+    {
+    public:
+        // Abstract class that is used as the basis for the specific
+        // descriptors
+        virtual ~BasicDescriptor() = default;
+
+        virtual const bool supportsChildren() const = 0;
+        virtual const size_t getDescriptorSizeBytes() { return 0; };
+        virtual std::vector<uint8_t> generateDescriptorBlock()
+        {
+
+            printf("Generating descriptor block for %s\n", get_desc_block_type(getDescriptorType()).c_str());
+
+            std::vector<uint8_t> block;
+
+            std::vector<uint8_t> desc_block = getDescriptorBlockBytes();
+            // Configuration descriptor
+            block.insert(block.end(), desc_block.begin(), desc_block.end());
+
+            // Add each interface and its endpoints
+            for (const auto child : getChildDescriptors())
+            {
+                // Interface descriptor
+                std::vector<uint8_t> child_block = child->generateDescriptorBlock();
+                block.insert(block.end(), child_block.begin(), child_block.end());
+            }
+            return block;
+        }
+        virtual void addChildDescriptor(BasicDescriptor *child) { child_descriptors_.push_back(child); };
+        int countChildrenOfType(tusb_desc_type_t type){
+            int count = 0;
+            if (getDescriptorType() == type){
+                count++;
+            }
+            for (const auto child : getChildDescriptors()){
+                volatile tusb_desc_type_t mytype = child->getDescriptorType();
+                count += child->countChildrenOfType(type);
+            }
+            return count;
+        }
+
+        std::vector<BasicDescriptor *> &getChildDescriptors() { return child_descriptors_; }
+        const size_t getNumChildrenDescriptors() const { return child_descriptors_.size(); }
+        virtual const tusb_desc_type_t getDescriptorType() const = 0;
+
+    protected:
+        // Prevent this class from being instantiated on its own
+        BasicDescriptor() = default;
+
+        std::vector<BasicDescriptor *> child_descriptors_;
+        virtual std::vector<uint8_t> getDescriptorBlockBytes() = 0;
+    };
+
+    class EndpointDescriptor : public BasicDescriptor
     {
     public:
         enum class Attributes : uint8_t
@@ -230,12 +296,14 @@ namespace USB
         EndpointDescriptor(tusb_dir_t direction)
         {
             desc_.bLength = sizeof(tusb_desc_endpoint_t);
-            desc_.bDescriptorType = TUSB_DESC_ENDPOINT;
+            desc_.bDescriptorType = getDescriptorType();
             // If the direction is "IN" we need to assign a number with the MSB set
-            if(direction == TUSB_DIR_IN)
+            if (direction == TUSB_DIR_IN)
             {
                 desc_.bEndpointAddress = EndpointDescriptor::number_manager.assignNumber(TUSB_DIR_IN_MASK);
-            }else{
+            }
+            else
+            {
                 desc_.bEndpointAddress = EndpointDescriptor::number_manager.assignNumber();
             }
             attr_conv_union_t attr;
@@ -244,8 +312,6 @@ namespace USB
             desc_.bInterval = 0;
             desc_.wMaxPacketSize = 0;
         }
-
-        // explicit EndpointDescriptor(const tusb_desc_endpoint_t& desc) : desc_(desc) {}
 
         // Getters
         uint8_t getEndpointAddress() const { return desc_.bEndpointAddress; }
@@ -260,11 +326,14 @@ namespace USB
         uint16_t getMaxPacketSize() const { return desc_.wMaxPacketSize; }
         uint8_t getInterval() const { return desc_.bInterval; }
         tusb_dir_t getDirection() const { return (tusb_dir_t)(desc_.bEndpointAddress & TUSB_DIR_IN_MASK); }
+        const size_t getDescriptorSizeBytes() override { return sizeof(tusb_desc_endpoint_t); }
+        const bool supportsChildren() const override { return false; };
+        const tusb_desc_type_t getDescriptorType() const override { return TUSB_DESC_ENDPOINT; };
 
         // Setters
         void setMaxPacketSize(uint16_t size) { desc_.wMaxPacketSize = size; }
         void setInterval(uint8_t interval) { desc_.bInterval = interval; }
-        void setTransferType(tusb_xfer_type_t type){desc_.bmAttributes.xfer = type;}
+        void setTransferType(tusb_xfer_type_t type) { desc_.bmAttributes.xfer = type; }
 
         void setAttributes(uint8_t attributes)
         {
@@ -290,22 +359,33 @@ namespace USB
             decltype(tusb_desc_endpoint_t::bmAttributes) attributes;
         } attr_conv_union_t;
         static NumberManager number_manager;
+        std::vector<uint8_t> getDescriptorBlockBytes()
+        {
+            return std::vector<uint8_t>((uint8_t *)&desc_, ((uint8_t *)&desc_) + sizeof(desc_));
+        }
     };
 
-    class InterfaceDescriptor
+    class InterfaceDescriptor : public BasicDescriptor
     {
     public:
         InterfaceDescriptor()
         {
             desc_.bLength = sizeof(tusb_desc_interface_t);
-            desc_.bDescriptorType = TUSB_DESC_INTERFACE;
+            desc_.bDescriptorType = getDescriptorType();
+            desc_.bInterfaceNumber = InterfaceDescriptor::number_manager.assignNumber();
+            desc_.bAlternateSetting = 0;
             desc_.bNumEndpoints = 0;
+            desc_.bInterfaceClass = 0;
+            desc_.bInterfaceSubClass = 0;
+            desc_.bInterfaceProtocol = 0;
             desc_.iInterface = 0;
         }
 
-        explicit InterfaceDescriptor(const tusb_desc_interface_t &desc) : desc_(desc) {}
+        // explicit InterfaceDescriptor(const tusb_desc_interface_t &desc) : desc_(desc) {}
 
         // Getters
+        const bool supportsChildren() const override { return true; };
+
         uint8_t getInterfaceNumber() const { return desc_.bInterfaceNumber; }
         uint8_t getAlternateSetting() const { return desc_.bAlternateSetting; }
         uint8_t getNumEndpoints() const { return desc_.bNumEndpoints; }
@@ -314,6 +394,7 @@ namespace USB
         uint8_t getInterfaceProtocol() const { return desc_.bInterfaceProtocol; }
         uint8_t getNameIdx() const { return desc_.iInterface; }
         std::string getName() const { return g_usb_string_descriptor.getString(desc_.iInterface); }
+        const tusb_desc_type_t getDescriptorType() const override { return TUSB_DESC_INTERFACE; };
 
         // Setters
         // Interface number should be set automatically
@@ -325,30 +406,37 @@ namespace USB
         void setInterfaceSubClass(uint8_t subcls) { desc_.bInterfaceSubClass = subcls; }
         void setInterfaceProtocol(uint8_t protocol) { desc_.bInterfaceProtocol = protocol; }
         // void setStringIndex(uint8_t index) { desc_.iInterface = index; }
-        void setName(const std::string& name) { 
+        void setName(const std::string &name)
+        {
             desc_.iInterface = g_usb_string_descriptor.addString(name);
         }
 
-        void addEndpoint(const EndpointDescriptor *ep);
-        // const std::vector<EndpointDescriptor> &getEndpoints() const { return endpoints_; }
+        void addChildDescriptor(BasicDescriptor *child) override;
+
+        const size_t getDescriptorSizeBytes() override { return sizeof(tusb_desc_interface_t); }
 
         operator tusb_desc_interface_t() const { return desc_; }
 
     protected:
         tusb_desc_interface_t desc_;
-        std::vector<const EndpointDescriptor*> endpoints_;
+        // std::vector<const BasicDescriptor *> functional_descriptors_;
         static NumberManager number_manager;
+        std::vector<uint8_t> getDescriptorBlockBytes() override
+        {
+            desc_.bNumEndpoints = countChildrenOfType(TUSB_DESC_ENDPOINT);
+            return std::vector<uint8_t>((uint8_t *)&desc_, ((uint8_t *)&desc_) + sizeof(desc_));
+        }
     };
 
-    class InterfaceAssociationDescriptor : public InterfaceDescriptor
+    class InterfaceAssociationDescriptor : public BasicDescriptor
     {
     public:
         InterfaceAssociationDescriptor()
         {
             desc_.bLength = sizeof(tusb_desc_interface_assoc_t);
-            desc_.bDescriptorType = TUSB_DESC_INTERFACE_ASSOCIATION;
-            desc_.bFirstInterface = InterfaceDescriptor::number_manager.assignNumber();
-            desc_.bInterfaceCount = 2;
+            desc_.bDescriptorType = getDescriptorType();
+            desc_.bFirstInterface = 0xFF;
+            desc_.bInterfaceCount = 0;
             desc_.bFunctionClass = 0;
             desc_.bFunctionSubClass = 0;
             desc_.bFunctionProtocol = 0;
@@ -364,49 +452,66 @@ namespace USB
             int index = g_usb_string_descriptor.addString(fn_name);
             desc_.iFunction = index;
         }
+        void addChildDescriptor(BasicDescriptor *child) override;
 
         uint8_t getInterfaceNumber() const { return desc_.bFirstInterface; }
         uint8_t getFunctionClass() { return desc_.bFunctionClass; }
         uint8_t getFunctionSubClass() { return desc_.bFunctionSubClass; }
         uint8_t getFunctionProtocol() { return desc_.bFunctionProtocol; }
         std::string getFunction() { return g_usb_string_descriptor.getString(desc_.iFunction); }
+        const bool supportsChildren() const override { return true; }
+        const tusb_desc_type_t getDescriptorType() const override { return TUSB_DESC_INTERFACE_ASSOCIATION; }
+        const size_t getDescriptorSizeBytes() override { return sizeof(tusb_desc_interface_assoc_t); }
 
     protected:
         tusb_desc_interface_assoc_t desc_;
+        // std::vector<const InterfaceDescriptor *> interfaces_;
+        std::vector<uint8_t> getDescriptorBlockBytes() override
+        {
+            return std::vector<uint8_t>((uint8_t *)&desc_, ((uint8_t *)&desc_) + sizeof(desc_));
+        }
     };
 
     namespace CDC
     {
 
-        class HeaderFunctionalDescriptor : public InterfaceDescriptor
+        class HeaderFunctionalDescriptor : public BasicDescriptor
         {
         public:
             HeaderFunctionalDescriptor()
             {
                 desc_.bLength = sizeof(cdc_desc_func_header_t);
-                desc_.bDescriptorType = CDC_FUNC_DESC_HEADER;
+                desc_.bDescriptorType = getDescriptorType();
+                desc_.bDescriptorSubType = CDC_FUNC_DESC_HEADER;
                 desc_.bcdCDC = 0x0120;
             }
             explicit HeaderFunctionalDescriptor(const cdc_desc_func_header_t &desc) : desc_(desc) {}
 
             void setBcdCdc(uint16_t bcd) { desc_.bcdCDC = bcd; }
             uint16_t getBcdCdc() { return desc_.bcdCDC; }
+            const size_t getDescriptorSizeBytes() override { return sizeof(cdc_desc_func_header_t); }
+            const bool supportsChildren() const override { return false; }
+            const tusb_desc_type_t getDescriptorType() const override { return TUSB_DESC_FUNCTIONAL; }
+
         protected:
             cdc_desc_func_header_t desc_;
+            std::vector<uint8_t> getDescriptorBlockBytes() override
+            {
+                return std::vector<uint8_t>((uint8_t *)&desc_, ((uint8_t *)&desc_) + sizeof(desc_));
+            }
         };
 
-        class UnionFunctionalDescriptor : public InterfaceDescriptor
+        class UnionFunctionalDescriptor : public BasicDescriptor
         {
         public:
             UnionFunctionalDescriptor()
             {
                 desc_.bLength = sizeof(cdc_desc_func_union_t);
-                desc_.bDescriptorType = CDC_FUNC_DESC_UNION;
-                desc_.bDescriptorSubType = 0;
+                desc_.bDescriptorType = getDescriptorType();
+                desc_.bDescriptorSubType = CDC_FUNC_DESC_UNION;
                 desc_.bControlInterface = 0;
                 desc_.bSubordinateInterface = 0;
             }
-            // TODO: Setters/Getters..... (If we need more CDC configurability)
 
             void setSubtype(uint8_t subtype) { desc_.bDescriptorSubType = subtype; }
             void setControlInterface(uint8_t interface) { desc_.bControlInterface = interface; }
@@ -415,20 +520,28 @@ namespace USB
             uint8_t getSubtype() { return desc_.bDescriptorSubType; }
             uint8_t getControlInterface() { return desc_.bControlInterface; }
             uint8_t getSubordinateInterface() { return desc_.bSubordinateInterface; }
+            const size_t getDescriptorSizeBytes() override { return sizeof(cdc_desc_func_union_t); }
+            const bool supportsChildren() const override { return false; }
+            const tusb_desc_type_t getDescriptorType() const override { return TUSB_DESC_FUNCTIONAL; }
 
         private:
             cdc_desc_func_union_t desc_;
+            std::vector<uint8_t> getDescriptorBlockBytes() override
+            {
+                return std::vector<uint8_t>((uint8_t *)&desc_, ((uint8_t *)&desc_) + sizeof(desc_));
+            }
         };
 
-        class CallManagementFunctionalDescriptor : public InterfaceDescriptor
+        class CallManagementFunctionalDescriptor : public BasicDescriptor
         {
         public:
             CallManagementFunctionalDescriptor()
             {
                 desc_.bLength = sizeof(cdc_desc_func_call_management_t);
-                desc_.bDescriptorType = CDC_FUNC_DESC_CALL_MANAGEMENT;
+                desc_.bDescriptorType = getDescriptorType();
+                desc_.bDescriptorSubType = CDC_FUNC_DESC_CALL_MANAGEMENT;
                 desc_.bmCapabilities = {0};
-                desc_.bDataInterface = InterfaceDescriptor::number_manager.assignNumber();
+                desc_.bDataInterface = 0; // InterfaceDescriptor::number_manager.assignNumber();
             }
 
             void setHandleCall(bool handle) { desc_.bmCapabilities.handle_call = handle; }
@@ -436,19 +549,32 @@ namespace USB
 
             bool getHandleCall() { return desc_.bmCapabilities.handle_call; }
             bool getSendRecvCall() { return desc_.bmCapabilities.send_recv_call; }
-            uint8_t getInterfaceNumber() { return desc_.bDataInterface; }
+            // uint8_t getInterfaceNumber() { return desc_.bDataInterface; }
+            const size_t getDescriptorSizeBytes() override { return sizeof(cdc_desc_func_call_management_t); }
+            const bool supportsChildren() const override { return false; }
+            const tusb_desc_type_t getDescriptorType() const override { return TUSB_DESC_FUNCTIONAL; }
+
+            // std::vector<uint8_t> generateDescriptorBlock() const override
+            // {
+            //     return std::vector<uint8_t>((uint8_t *)&desc_, ((uint8_t *)&desc_) + sizeof(cdc_desc_func_call_management_t));
+            // }
 
         protected:
             cdc_desc_func_call_management_t desc_;
+            std::vector<uint8_t> getDescriptorBlockBytes() override
+            {
+                return std::vector<uint8_t>((uint8_t *)&desc_, ((uint8_t *)&desc_) + sizeof(desc_));
+            }
         };
 
-        class AbstractControlManagementFunctionalDescriptor : public InterfaceDescriptor
+        class AbstractControlManagementFunctionalDescriptor : public BasicDescriptor
         {
         public:
             AbstractControlManagementFunctionalDescriptor()
             {
                 desc_.bLength = sizeof(cdc_desc_func_acm_t);
-                desc_.bDescriptorType = CDC_FUNC_DESC_ABSTRACT_CONTROL_MANAGEMENT;
+                desc_.bDescriptorType = getDescriptorType();
+                desc_.bDescriptorSubType = CDC_FUNC_DESC_ABSTRACT_CONTROL_MANAGEMENT;
                 desc_.bmCapabilities.support_comm_request = 0;
                 desc_.bmCapabilities.support_line_request = 0;
                 desc_.bmCapabilities.support_send_break = 0;
@@ -464,22 +590,36 @@ namespace USB
             bool getSupportLineRequest() { return desc_.bmCapabilities.support_line_request; }
             bool getSupportSendBreak() { return desc_.bmCapabilities.support_send_break; }
             bool getSupportNotificationNetworkConnection() { return desc_.bmCapabilities.support_notification_network_connection; }
+            const size_t getDescriptorSizeBytes() override { return sizeof(cdc_desc_func_acm_t); }
+            const bool supportsChildren() const override { return false; }
+            const tusb_desc_type_t getDescriptorType() const override { return TUSB_DESC_FUNCTIONAL; }
+
+            // std::vector<uint8_t> generateDescriptorBlock() const override
+            // {
+            //     return std::vector<uint8_t>((uint8_t *)&desc_, ((uint8_t *)&desc_) + sizeof(cdc_desc_func_acm_t));
+            // }
 
         protected:
             cdc_desc_func_acm_t desc_;
+            std::vector<uint8_t> getDescriptorBlockBytes() override
+            {
+                return std::vector<uint8_t>((uint8_t *)&desc_, ((uint8_t *)&desc_) + sizeof(desc_));
+            }
         };
     }
 
-    class ConfigurationDescriptor
+    class ConfigurationDescriptor : public BasicDescriptor
     {
     public:
         ConfigurationDescriptor()
         {
             desc_.bLength = sizeof(tusb_desc_configuration_t);
-            desc_.bDescriptorType = TUSB_DESC_CONFIGURATION;
+            desc_.bDescriptorType = getDescriptorType();
             desc_.bNumInterfaces = 0;
-            desc_.bConfigurationValue = 1;
-            desc_.bmAttributes = TU_BIT(7) | TUSB_DESC_CONFIG_ATT_SELF_POWERED;
+            // Configuration numbers should start at "1". (There probably will only
+            // ever be 1 configuration value, so..... whatever.)
+            desc_.bConfigurationValue = number_manager.assignNumber(1);
+            desc_.bmAttributes = TU_BIT(7);
             desc_.bMaxPower = TUSB_DESC_CONFIG_POWER_MA(500);
             desc_.iConfiguration = 0;
         }
@@ -493,37 +633,74 @@ namespace USB
         uint8_t getNameIdx() const { return desc_.iConfiguration; }
         std::string getName() const { return g_usb_string_descriptor.getString(desc_.iConfiguration); }
         uint8_t getAttributes() const { return desc_.bmAttributes; }
-        uint8_t getMaxPower() const { return desc_.bMaxPower; }
+        // There isn't a macro for performing the inverse of TUSB_DESC_CONFIG_POWER_MA, so this will
+        // need to be manually maintained.
+        TU_VERIFY_STATIC(TUSB_DESC_CONFIG_POWER_MA(100) == 50, "TUSB_DESC_CONFIG_POWER_MA macro definition has changed");
+        uint8_t getMaxPower() const { return desc_.bMaxPower * 2; }
+        const tusb_desc_type_t getDescriptorType() const override { return TUSB_DESC_CONFIGURATION; }
+        const bool supportsChildren() const override { return true; }
 
         // Setters
-        void setConfigurationValue(uint8_t value) { desc_.bConfigurationValue = value; }
+        // void setConfigurationValue(uint8_t value) { desc_.bConfigurationValue = value; }
         void setAttributes(uint8_t attributes) { desc_.bmAttributes = attributes; }
-        void setMaxPower(uint8_t maxPower) { desc_.bMaxPower = maxPower; }
-        void setName(const std::string& name)
+        void setSelfPowered(bool selfPowered)
+        {
+            if (selfPowered)
+            {
+                desc_.bmAttributes |= TUSB_DESC_CONFIG_ATT_SELF_POWERED;
+            }
+            else
+            {
+                desc_.bmAttributes &= ~TUSB_DESC_CONFIG_ATT_SELF_POWERED;
+            }
+        }
+        void setRemoteWakeup(bool remoteWakeup)
+        {
+            if (remoteWakeup)
+            {
+                desc_.bmAttributes |= TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP;
+            }
+            else
+            {
+                desc_.bmAttributes &= ~TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP;
+            }
+        }
+        void setMaxPower(uint8_t maxPower) { desc_.bMaxPower = TUSB_DESC_CONFIG_POWER_MA(maxPower); }
+        void setName(const std::string &name)
         {
             desc_.iConfiguration = g_usb_string_descriptor.addString(name);
         }
 
-        bool addInterface(const InterfaceDescriptor *interface);
+        // bool addInterface(const InterfaceDescriptor *interface);
         // const InterfaceDescriptor *getInterface(uint8_t interfaceNumber) const;
-        std::vector<uint8_t> generateDescriptorBlock() const;
+
+        void addChildDescriptor(BasicDescriptor *interface) override;
+
+        // const bool supportsChildren() const override { return true; }
+        // std::vector<uint8_t> generateDescriptorBlock() override;
+        const size_t getDescriptorSizeBytes() override;
 
         operator tusb_desc_configuration_t() const { return desc_; }
 
     protected:
         tusb_desc_configuration_t desc_;
-        std::vector<InterfaceDescriptor*> interfaces_;
-
-        void updateDescriptor();
+        static NumberManager number_manager;
+        std::vector<uint8_t> getDescriptorBlockBytes() override
+        {
+            volatile auto num_children = getChildDescriptors().size();
+            desc_.bNumInterfaces = (uint8_t)BasicDescriptor::countChildrenOfType(TUSB_DESC_INTERFACE);
+            desc_.wTotalLength = getDescriptorSizeBytes();
+            return std::vector<uint8_t>((uint8_t *)&desc_, ((uint8_t *)&desc_) + sizeof(desc_));
+        }
     };
 
-    class DeviceDescriptor
+    class DeviceDescriptor : public BasicDescriptor
     {
     public:
         DeviceDescriptor(std::string manufacturer = "TinyUSB", std::string product = "TinyUSB Device", std::string serial_num = "")
         {
             desc_.bLength = sizeof(tusb_desc_device_t);
-            desc_.bDescriptorType = TUSB_DESC_DEVICE;
+            desc_.bDescriptorType = getDescriptorType();
             desc_.bNumConfigurations = 0;
 
             // First string needs to be language ID
@@ -551,6 +728,8 @@ namespace USB
         uint8_t getProductStringIndex() const { return desc_.iProduct; }
         uint8_t getSerialStringIndex() const { return desc_.iSerialNumber; }
         uint8_t getNumConfigurations() const { return desc_.bNumConfigurations; }
+        const bool supportsChildren() const { return true; }
+        const tusb_desc_type_t getDescriptorType() const override { return TUSB_DESC_DEVICE; }
 
         // Setters
         void setUSBVersion(uint16_t version) { desc_.bcdUSB = version; }
@@ -565,19 +744,23 @@ namespace USB
         void setProductStringIndex(uint8_t index) { desc_.iProduct = index; }
         void setSerialStringIndex(uint8_t index) { desc_.iSerialNumber = index; }
 
-        bool addConfiguration(const ConfigurationDescriptor &config);
-        const std::vector<ConfigurationDescriptor> &getConfigurations() const { return configurations_; }
-        std::vector<uint8_t> generateDescriptorBlock() const;
+        void addChildDescriptor(BasicDescriptor *child) override;
+
+        // bool addConfiguration(const ConfigurationDescriptor *config);
+        // const std::vector<ConfigurationDescriptor> &getConfigurations() const { return configurations_; }
+        const size_t getDescriptorSizeBytes() override { return sizeof(tusb_desc_device_t); }
+        // std::vector<uint8_t> generateDescriptorBlock() const override;
 
         operator tusb_desc_device_t() const { return desc_; }
-        uint8_t *getDescriptorBlock() const { return (uint8_t *)&desc_; }
-        ssize_t getDescriptorBlockLength() const { return sizeof(tusb_desc_device_t); }
+        // // uint8_t *getDescriptorBlock() const { return (uint8_t *)&desc_; }
+        // ssize_t getDescriptorBlockLength() const { return sizeof(tusb_desc_device_t); }
 
     protected:
         tusb_desc_device_t desc_;
-        std::vector<ConfigurationDescriptor> configurations_;
-
-        void updateDescriptor();
+        std::vector<uint8_t> getDescriptorBlockBytes() override
+        {
+            return std::vector<uint8_t>((uint8_t *)&desc_, ((uint8_t *)&desc_) + sizeof(desc_));
+        }
 
         std::string getSerialNumber()
         {
@@ -585,11 +768,12 @@ namespace USB
             size_t unicode_char_count = board_usb_get_serial((uint16_t *)desc_str, sizeof(desc_str) / 2);
             // The returned serial number will be hex numbers, so we can just convert
             // those to 8 bit characters
-            char desc_str_char[unicode_char_count];
+            char desc_str_char[unicode_char_count + 1];
             for (size_t i = 0; i < unicode_char_count; i++)
             {
-                desc_str_char[i] =(char)(desc_str[i] & 0xFF);
+                desc_str_char[i] = (char)(desc_str[i] & 0xFF);
             }
+            desc_str_char[unicode_char_count] = '\0';
             return std::string(desc_str_char);
         }
     };

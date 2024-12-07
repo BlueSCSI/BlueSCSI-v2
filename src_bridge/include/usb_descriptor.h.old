@@ -105,6 +105,7 @@ namespace USB
         uint8_t getInterfaceSubClass() const { return desc_.bInterfaceSubClass; }
         uint8_t getInterfaceProtocol() const { return desc_.bInterfaceProtocol; }
         uint8_t getStringIndex() const { return desc_.iInterface; }
+        virtual uint32_t getSizeBytes() const { return sizeof(desc_);}
 
         // Setters
         void setInterfaceNumber(uint8_t num) { desc_.bInterfaceNumber = num; }
@@ -147,6 +148,8 @@ namespace USB
         uint8_t getStringIndex() const { return desc_.iConfiguration; }
         uint8_t getAttributes() const { return desc_.bmAttributes; }
         uint8_t getMaxPower() const { return desc_.bMaxPower; }
+   uint32_t getSizeBytes() const { return sizeof(desc_);}
+
 
         // Setters
         void setConfigurationValue(uint8_t value) { desc_.bConfigurationValue = value; }
@@ -207,15 +210,15 @@ namespace USB
         void setProductStringIndex(uint8_t index) { desc_.iProduct = index; }
         void setSerialStringIndex(uint8_t index) { desc_.iSerialNumber = index; }
 
-        bool addConfiguration(const ConfigurationDescriptor &config);
-        const std::vector<ConfigurationDescriptor> &getConfigurations() const { return configurations_; }
+        bool addConfiguration(const ConfigurationDescriptor *config);
+        // const std::vector<ConfigurationDescriptor> &getConfigurations() const { return configurations_; }
         std::vector<uint8_t> generateDescriptorBlock() const;
 
         operator tusb_desc_device_t() const { return desc_; }
 
     protected:
         tusb_desc_device_t desc_;
-        std::vector<ConfigurationDescriptor> configurations_;
+        std::vector<const ConfigurationDescriptor*> configurations_;
 
         void updateDescriptor();
     };
