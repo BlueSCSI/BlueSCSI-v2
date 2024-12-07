@@ -4,6 +4,7 @@
 #include "task.h"
 #include "BlueSCSI_usbbridge.h"
 #include <stdio.h>
+#include "usb/usb_descriptors.h"
 
 #define FORCE_BRIDGE 1
 
@@ -17,9 +18,10 @@ void bluescsi_main(void *param)
     bluescsi_setup();
 
 #if FORCE_BRIDGE
-    // USB Descriptor test code....
-    dump_usb_desc_data();
-    run_usb_desc_tests();
+    // // USB Descriptor test code....
+    // dump_usb_desc_data();
+    // run_usb_desc_tests();
+
 
     auto bridge = BlueScsiBridge();
     bridge.init();
