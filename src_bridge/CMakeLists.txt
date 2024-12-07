@@ -73,8 +73,8 @@ endif ()
 add_executable(scsibridge
         src/led.c
         src/main.cpp
-        src/usb_descriptors.cpp
-        src/usb_descriptors_test.cpp
+        # src/usb_descriptors.cpp
+        # src/usb_descriptors_test.cpp
         src/cdc_uart.c
         src/get_serial.c
         src/sw_dp_pio.c
@@ -108,6 +108,8 @@ add_executable(scsibridge
         src/usb/endpoint_descriptor.cpp
         src/usb/interface_descriptor.cpp
         src/usb/string_descriptor.cpp
+        
+        src/usb/usb_descriptor_cbs.cpp
         src/SCSI2SD/src/firmware/mode.c
         src/SCSI2SD/src/firmware/vendor.c
         src/SCSI2SD/src/firmware/inquiry.c

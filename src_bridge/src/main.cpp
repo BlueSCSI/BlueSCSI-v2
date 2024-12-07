@@ -30,6 +30,7 @@
 #include "queue.h"
 #include "stdio_tinyusb_cdc.h"
 #include "command_line.h"
+#include "usb/usb_descriptors.h"
 #include <ctype.h>
 
 #include <pico/stdlib.h>
@@ -114,6 +115,8 @@ int main(void)
 {
 
   platform_init();
+
+  usb_descriptors_init();
   stdio_tinyusb_cdc_init();
 
   printf("Welcome to BlueSCSI Bridge!\n");

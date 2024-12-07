@@ -5,6 +5,7 @@
 #include <vector>
 #include <algorithm>
 #include <cstdint>
+#include <cstring>
 #include <memory>
 #include <map>
 #include <string>
@@ -20,8 +21,36 @@
 extern "C"
 {
     void save_descriptor(const char *name, const uint8_t *buf, size_t len);
-    std::string get_desc_block_type(tusb_desc_type_t mytype);
+    // std::string get_desc_block_type(tusb_desc_type_t mytype);
 }
+
+void usb_descriptors_init();
+
+namespace USB{
+class StringDescriptor;
+}
+extern USB::StringDescriptor g_usb_string_descriptor;
+
+    template <typename T>
+    std::vector<uint8_t> shared_ptr_to_bytes(const std::shared_ptr<T> &ptr)
+    {
+        std::vector<uint8_t> bytes;
+
+        if (ptr)
+        {
+            // Get size of the underlying data
+            size_t size = sizeof(T);
+
+            // Resize vector to accommodate the data
+            bytes.resize(size);
+
+            // Copy memory from the pointer to the vector
+            std::memcpy(bytes.data(), ptr.get(), size);
+        }
+
+        return bytes;
+    }
+
 
 namespace USB
 {
@@ -113,7 +142,7 @@ namespace USB
             }
         }
 
-        std::shared_ptr<tusb_desc_string_fixed_len_t> generateDescriptor(uint8_t index)
+        std::vector<uint8_t> generateDescriptorBlock(uint8_t index)
         {
 
             // Special case for "0", which is the language ID
@@ -123,7 +152,7 @@ namespace USB
                 fixed_desc->bLength = 4;
                 fixed_desc->bDescriptorType = TUSB_DESC_STRING;
                 fixed_desc->unicode_string[0] = 0x0409;
-                return fixed_desc;
+                return shared_ptr_to_bytes<tusb_desc_string_fixed_len_t>(fixed_desc);
             }
 
             xSemaphoreTake(mutex_, portMAX_DELAY);
@@ -151,7 +180,7 @@ namespace USB
                 }
                 xSemaphoreGive(mutex_);
 
-                return fixed_desc;
+                return shared_ptr_to_bytes(fixed_desc);
             }
             else
             {
@@ -160,7 +189,7 @@ namespace USB
                 auto inv_desc = std::make_shared<tusb_desc_string_fixed_len_t>();
                 inv_desc->bLength = 0;
                 inv_desc->bDescriptorType = TUSB_DESC_STRING;
-                return inv_desc;
+                return shared_ptr_to_bytes(inv_desc);
             }
         }
 
@@ -185,8 +214,6 @@ namespace USB
         }
     };
 
-    extern StringDescriptor g_usb_string_descriptor;
-
     // Generic number manager for assigning unique interface/endpoint numbers
     class NumberManager
     {
@@ -201,10 +228,11 @@ namespace USB
         {
             vSemaphoreDelete(mutex);
         }
-        uint8_t assignNumber(uint8_t requested_number=0xFF)
+        uint8_t assignNumber(uint8_t requested_number = 0xFF)
         {
             uint8_t assigned_num = 0;
-            if(requested_number != 0xFF){
+            if (requested_number != 0xFF)
+            {
                 assigned_num = requested_number;
             }
 
@@ -219,7 +247,8 @@ namespace USB
             return assigned_num;
         }
 
-        bool reserveNumber(int res_num){
+        bool reserveNumber(int res_num)
+        {
             xSemaphoreTake(mutex, portMAX_DELAY);
             // If the interface list already has this number, return false
             if (std::find(reserved_number_list.begin(), reserved_number_list.end(), res_num) != reserved_number_list.end())
@@ -246,9 +275,10 @@ namespace USB
         virtual ~BasicDescriptor() = default;
 
         virtual const bool supportsChildren() const = 0;
-        virtual const size_t getDescriptorSizeBytes() { 
+        virtual const size_t getDescriptorSizeBytes()
+        {
             size_t calc_size = _getDescriptorSizeBytes();
-            for (BasicDescriptor* child : getChildDescriptors())
+            for (BasicDescriptor *child : getChildDescriptors())
             {
                 calc_size += child->getDescriptorSizeBytes();
             }
@@ -257,7 +287,7 @@ namespace USB
         virtual std::vector<uint8_t> generateDescriptorBlock()
         {
 
-            printf("Generating descriptor block for %s\n", get_desc_block_type(getDescriptorType()).c_str());
+            // printf("Generating descriptor block for %s\n", get_desc_block_type(getDescriptorType()).c_str());
 
             std::vector<uint8_t> block;
 
@@ -336,7 +366,7 @@ namespace USB
             // Ignore the result, because this will fail after the first endpoint
             // is created.
             (void)EndpointDescriptor::number_manager.reserveNumber(0);
-            (void)EndpointDescriptor::number_manager.reserveNumber(0|TUSB_DIR_IN_MASK);
+            (void)EndpointDescriptor::number_manager.reserveNumber(0 | TUSB_DIR_IN_MASK);
             desc_.bLength = sizeof(tusb_desc_endpoint_t);
             desc_.bDescriptorType = getDescriptorType();
             // If the direction is "IN" we need to assign a number with the MSB set
@@ -392,7 +422,8 @@ namespace USB
 
         operator tusb_desc_endpoint_t() const { return desc_; }
 
-        static bool reserveEndpointNumber(int ep){
+        static bool reserveEndpointNumber(int ep)
+        {
             return number_manager.reserveNumber(ep);
         }
 
@@ -630,7 +661,7 @@ namespace USB
                 desc_.bDescriptorType = getDescriptorType();
                 desc_.bDescriptorSubType = CDC_FUNC_DESC_ABSTRACT_CONTROL_MANAGEMENT;
                 desc_.bmCapabilities = {0};
-             }
+            }
 
             void setSupportCommRequest(bool support) { desc_.bmCapabilities.support_comm_request = support; }
             void setSupportLineRequest(bool support) { desc_.bmCapabilities.support_line_request = support; }
@@ -802,7 +833,22 @@ namespace USB
         // const std::vector<ConfigurationDescriptor> &getConfigurations() const { return configurations_; }
         const size_t getDescriptorSizeBytes() override { return sizeof(tusb_desc_device_t); }
         // Descriptor block is special - we don't want to include the children.
-        std::vector<uint8_t> generateDescriptorBlock() override { return _getDescriptorBlockBytes();}
+        std::vector<uint8_t> generateDescriptorBlock() override { return _getDescriptorBlockBytes(); }
+        std::vector<uint8_t> generateDeviceQualifierBlock() {
+
+            // device qualifier is mostly similar to device descriptor since we don't change configuration based on speed
+            std::shared_ptr<tusb_desc_device_qualifier_t> desc_qualifier = std::make_shared<tusb_desc_device_qualifier_t>();
+            desc_qualifier->bLength = sizeof(tusb_desc_device_qualifier_t);
+            desc_qualifier->bDescriptorType = TUSB_DESC_DEVICE_QUALIFIER;
+            desc_qualifier->bcdUSB = desc_.bcdUSB;
+            desc_qualifier->bDeviceClass = desc_.bDeviceClass;
+            desc_qualifier->bDeviceSubClass = desc_.bDeviceSubClass;
+            desc_qualifier->bDeviceProtocol = desc_.bDeviceProtocol;
+            desc_qualifier->bMaxPacketSize0 = desc_.bMaxPacketSize0;
+            desc_qualifier->bNumConfigurations = desc_.bNumConfigurations;
+            desc_qualifier->bReserved = 0;
+            return shared_ptr_to_bytes(desc_qualifier);
+        }
 
         operator tusb_desc_device_t() const { return desc_; }
         // // uint8_t *getDescriptorBlock() const { return (uint8_t *)&desc_; }
@@ -833,3 +879,6 @@ namespace USB
     };
 
 } // namespace USB
+
+
+
