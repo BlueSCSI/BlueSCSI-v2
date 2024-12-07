@@ -201,23 +201,41 @@ namespace USB
         {
             vSemaphoreDelete(mutex);
         }
-        uint8_t assignNumber(int starting_num = 0)
+        uint8_t assignNumber(uint8_t requested_number=0xFF)
         {
-            uint8_t interface_num = starting_num;
-            xSemaphoreTake(mutex, portMAX_DELAY);
-            // loop until we find the first unused interface number
-            while (std::find(interface_num_list.begin(), interface_num_list.end(), interface_num) != interface_num_list.end())
-            {
-                interface_num++;
+            uint8_t assigned_num = 0;
+            if(requested_number != 0xFF){
+                assigned_num = requested_number;
             }
-            interface_num_list.push_back(interface_num);
+
+            xSemaphoreTake(mutex, portMAX_DELAY);
+            // loop until we find the first unused number
+            while (std::find(reserved_number_list.begin(), reserved_number_list.end(), assigned_num) != reserved_number_list.end())
+            {
+                assigned_num++;
+            }
+            reserved_number_list.push_back(assigned_num);
             xSemaphoreGive(mutex);
-            return interface_num;
+            return assigned_num;
+        }
+
+        bool reserveNumber(int res_num){
+            xSemaphoreTake(mutex, portMAX_DELAY);
+            // If the interface list already has this number, return false
+            if (std::find(reserved_number_list.begin(), reserved_number_list.end(), res_num) != reserved_number_list.end())
+            {
+                xSemaphoreGive(mutex);
+                return false;
+            }
+            // Otherwise, add it to the list and return true
+            reserved_number_list.push_back(res_num);
+            xSemaphoreGive(mutex);
+            return true;
         }
 
     private:
         SemaphoreHandle_t mutex;
-        std::vector<uint8_t> interface_num_list;
+        std::vector<uint8_t> reserved_number_list;
     };
 
     class BasicDescriptor
@@ -247,8 +265,6 @@ namespace USB
             // Configuration descriptor
             block.insert(block.end(), desc_block.begin(), desc_block.end());
 
-            volatile auto block_size = block.size();
-
             // Add each interface and its endpoints
             for (const auto child : getChildDescriptors())
             {
@@ -264,7 +280,6 @@ namespace USB
                 // Interface descriptor
                 std::vector<uint8_t> child_block = child->generateDescriptorBlock();
                 block.insert(block.end(), child_block.begin(), child_block.end());
-                block_size = block.size();
             }
             return block;
         }
@@ -278,7 +293,6 @@ namespace USB
             }
             for (const auto child : getChildDescriptors())
             {
-                volatile tusb_desc_type_t mytype = child->getDescriptorType();
                 count += child->countChildrenOfType(type);
             }
             return count;
@@ -316,18 +330,23 @@ namespace USB
             USAGE_TYPE_RESERVED = 0b00110000,
         };
 
-        EndpointDescriptor(tusb_dir_t direction)
+        EndpointDescriptor(tusb_dir_t direction, int requested_ep_addr = 0)
         {
+            // Endpoints start numbering at 1, so we'll reserve 0 so its skipped
+            // Ignore the result, because this will fail after the first endpoint
+            // is created.
+            (void)EndpointDescriptor::number_manager.reserveNumber(0);
+            (void)EndpointDescriptor::number_manager.reserveNumber(0|TUSB_DIR_IN_MASK);
             desc_.bLength = sizeof(tusb_desc_endpoint_t);
             desc_.bDescriptorType = getDescriptorType();
             // If the direction is "IN" we need to assign a number with the MSB set
             if (direction == TUSB_DIR_IN)
             {
-                desc_.bEndpointAddress = EndpointDescriptor::number_manager.assignNumber(TUSB_DIR_IN_MASK);
+                desc_.bEndpointAddress = EndpointDescriptor::number_manager.assignNumber(requested_ep_addr | TUSB_DIR_IN_MASK);
             }
             else
             {
-                desc_.bEndpointAddress = EndpointDescriptor::number_manager.assignNumber();
+                desc_.bEndpointAddress = EndpointDescriptor::number_manager.assignNumber(requested_ep_addr);
             }
             attr_conv_union_t attr;
             attr.enum_attr = Attributes::XFER_TYPE_BULK;
@@ -372,6 +391,10 @@ namespace USB
         }
 
         operator tusb_desc_endpoint_t() const { return desc_; }
+
+        static bool reserveEndpointNumber(int ep){
+            return number_manager.reserveNumber(ep);
+        }
 
     protected:
         tusb_desc_endpoint_t desc_;
@@ -606,11 +629,8 @@ namespace USB
                 desc_.bLength = sizeof(cdc_desc_func_acm_t);
                 desc_.bDescriptorType = getDescriptorType();
                 desc_.bDescriptorSubType = CDC_FUNC_DESC_ABSTRACT_CONTROL_MANAGEMENT;
-                desc_.bmCapabilities.support_comm_request = 0;
-                desc_.bmCapabilities.support_line_request = 0;
-                desc_.bmCapabilities.support_send_break = 0;
-                desc_.bmCapabilities.support_notification_network_connection = 0;
-            }
+                desc_.bmCapabilities = {0};
+             }
 
             void setSupportCommRequest(bool support) { desc_.bmCapabilities.support_comm_request = support; }
             void setSupportLineRequest(bool support) { desc_.bmCapabilities.support_line_request = support; }
@@ -719,7 +739,6 @@ namespace USB
         static NumberManager number_manager;
         std::vector<uint8_t> _getDescriptorBlockBytes() override
         {
-            volatile auto num_children = getChildDescriptors().size();
             desc_.bNumInterfaces = (uint8_t)BasicDescriptor::countChildrenOfType(TUSB_DESC_INTERFACE);
             desc_.wTotalLength = getDescriptorSizeBytes();
             return std::vector<uint8_t>((uint8_t *)&desc_, ((uint8_t *)&desc_) + sizeof(desc_));
@@ -782,7 +801,8 @@ namespace USB
         // bool addConfiguration(const ConfigurationDescriptor *config);
         // const std::vector<ConfigurationDescriptor> &getConfigurations() const { return configurations_; }
         const size_t getDescriptorSizeBytes() override { return sizeof(tusb_desc_device_t); }
-        // std::vector<uint8_t> generateDescriptorBlock() const override;
+        // Descriptor block is special - we don't want to include the children.
+        std::vector<uint8_t> generateDescriptorBlock() override { return _getDescriptorBlockBytes();}
 
         operator tusb_desc_device_t() const { return desc_; }
         // // uint8_t *getDescriptorBlock() const { return (uint8_t *)&desc_; }
