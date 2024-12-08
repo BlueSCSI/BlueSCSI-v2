@@ -16,7 +16,6 @@
 
 #include "BlueSCSI_platform.h"
 #include "BlueSCSI_log.h"
-#include "BlueSCSI_config.h"
 #include <scsi.h>
 #include <network.h>
 
@@ -37,7 +36,8 @@ static bool network_in_use = false;
 
 bool __not_in_flash_func(platform_network_supported)()
 {
-	return rp2040.isPicoW();
+	extern bool __isPicoW;
+	return __isPicoW;
 }
 
 #ifdef BLUESCSI_NETWORK
