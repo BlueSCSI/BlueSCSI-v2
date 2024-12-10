@@ -15,6 +15,8 @@
 #include <hardware/spi.h>
 #include <hardware/adc.h>
 #include <hardware/flash.h>
+#include <hardware/sync.h>
+#include "custom_timings.h"
 #include <hardware/structs/xip_ctrl.h>
 #include <hardware/structs/usb.h>
 #ifdef ENABLE_AUDIO_OUTPUT
@@ -34,7 +36,7 @@
 #include "hardware/i2c.h"
 
 extern "C" {
-
+#include "timings_RP2MCU.h"
 const char *g_platform_name = PLATFORM_NAME;
 static bool g_scsi_initiator = false;
 static bool g_supports_initiator = false;
@@ -110,13 +112,10 @@ static void CheckPicoW() {
 }
 #endif
 
-#ifdef ENABLE_AUDIO_OUTPUT
-// Increases clk_sys and clk_peri to 135.428571MHz at runtime to support
-// division to audio output rates. Invoke before anything is using clk_peri
-// except for the logging UART, which is handled below.
-static void reclock_for_audio() {
+static void reclock() {
     // ensure UART is fully drained before we mess up its clock
-    uart_tx_wait_blocking(uart0);
+    if (uart_is_enabled(uart0))
+        uart_tx_wait_blocking(uart0);
     // switch clk_sys and clk_peri to pll_usb
     // see code in 2.15.6.1 of the datasheet for useful comments
     clock_configure(clk_sys,
@@ -129,23 +128,99 @@ static void reclock_for_audio() {
             CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLKSRC_PLL_USB,
             48 * MHZ,
             48 * MHZ);
-    // reset PLL for 135.428571MHz
-    pll_init(pll_sys, 1, 948000000, 7, 1);
+    // reset PLL
+    pll_init(pll_sys,
+        g_bluescsi_timings->pll.refdiv,
+        g_bluescsi_timings->pll.vco_freq,
+        g_bluescsi_timings->pll.post_div1,
+        g_bluescsi_timings->pll.post_div2);
+
     // switch clocks back to pll_sys
     clock_configure(clk_sys,
             CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
             CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
-            135428571,
-            135428571);
+            g_bluescsi_timings->clk_hz,
+            g_bluescsi_timings->clk_hz);
     clock_configure(clk_peri,
             0,
             CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
-            135428571,
-            135428571);
+            g_bluescsi_timings->clk_hz,
+            g_bluescsi_timings->clk_hz);
     // reset UART for the new clock speed
-    uart_init(uart0, 1000000);
+    if (uart_is_enabled(uart0))
+        uart_init(uart0, 1000000);
 }
+
+uint32_t platform_sys_clock_in_hz()
+{
+    return clock_get_hz(clk_sys);
+}
+
+bluescsi_speed_grade_t platform_string_to_speed_grade(const char *speed_grade_str, size_t length)
+{
+    static const char sg_default[] = "Default";
+    bluescsi_speed_grade_t grade;
+
+#ifdef ENABLE_AUDIO_OUTPUT
+    log("Audio output enabled, reclocking isn't possible");
+    return SPEED_GRADE_DEFAULT;
 #endif
+
+    if (strcasecmp(speed_grade_str, sg_default) == 0)
+      grade = SPEED_GRADE_DEFAULT;
+    else if (strcasecmp(speed_grade_str, "TurboMax") == 0)
+      grade = SPEED_GRADE_MAX;
+    else if (strcasecmp(speed_grade_str, "TurboA") == 0)
+      grade = SPEED_GRADE_A;
+    else if (strcasecmp(speed_grade_str, "TurboB") == 0)
+      grade = SPEED_GRADE_B;
+    else if (strcasecmp(speed_grade_str, "TurboC") == 0)
+      grade = SPEED_GRADE_C;
+    else if (strcasecmp(speed_grade_str, "Custom") == 0)
+      grade = SPEED_GRADE_CUSTOM;
+    else
+    {
+      log("Setting \"", speed_grade_str, "\" does not match any know speed grade, using default");
+      grade = SPEED_GRADE_DEFAULT;
+    }
+    return grade;
+}
+
+bluescsi_reclock_status_t platform_reclock(bluescsi_speed_grade_t speed_grade)
+{
+    CustomTimings ct;
+    if (speed_grade == SPEED_GRADE_CUSTOM)
+    {
+        if (ct.use_custom_timings())
+        {
+            log("Custom timings found in \"", CUSTOM_TIMINGS_FILE, "\" overriding reclocking");
+            log("Initial Clock set to ", (int) platform_sys_clock_in_hz(), "Hz");
+            if (ct.set_timings_from_file())
+            {
+                reclock();
+                log("SDIO clock set to ", (int)((g_bluescsi_timings->clk_hz / g_bluescsi_timings->sdio.clk_div_pio + (5 * MHZ / 10)) / MHZ) , "MHz");
+                return BLUESCSI_RECLOCK_CUSTOM;
+            }
+            else
+                return BLUESCSI_RECLOCK_FAILED;
+        }
+        else
+        {
+            log("Custom timings file, \"", CUSTOM_TIMINGS_FILE, "\" not found or disabled");
+            return BLUESCSI_RECLOCK_FAILED;
+        }
+
+    }
+    else if (set_timings(speed_grade))
+    {
+        log("Initial Clock set to ", (int) platform_sys_clock_in_hz(), "Hz");
+        reclock();
+        log("SDIO clock set to ", (int)((g_bluescsi_timings->clk_hz / g_bluescsi_timings->sdio.clk_div_pio + (5 * MHZ / 10)) / MHZ) , "MHz");
+        return BLUESCSI_RECLOCK_SUCCESS;
+    }
+    return BLUESCSI_RECLOCK_FAILED;
+}
+
 
 void platform_init()
 {
@@ -222,8 +297,14 @@ void platform_init()
 
 #ifdef ENABLE_AUDIO_OUTPUT
     log("SP/DIF audio to expansion header enabled");
-    log("-- Overclocking to 135.428571MHz");
-    reclock_for_audio();
+    if (platform_reclock(SPEED_GRADE_AUDIO) == BLUESCSI_RECLOCK_SUCCESS)
+    {
+        log("Reclocked for Audio Ouput at ", (int) platform_sys_clock_in_hz(), "Hz");
+    }
+    else
+    {
+        log("Audio Output timings not found");
+    }
 #endif
 
     // Get flash chip size
@@ -343,6 +424,7 @@ void platform_late_init()
         gpio_conf(scsi_pins.OUT_ACK,   GPIO_FUNC_SIO, true,false, true,  true, true);
         //gpio_conf(SCSI_OUT_ATN,   GPIO_FUNC_SIO, false,false, true,  true, true);  // ATN output is unused
     }
+    scsi_accel_rp2040_init();
 }
 
 void platform_enable_initiator_mode() {

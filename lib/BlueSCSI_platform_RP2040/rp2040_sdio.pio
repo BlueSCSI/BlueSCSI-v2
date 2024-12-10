@@ -47,34 +47,35 @@
 ; Because data is written on the falling edge and read on the rising
 ; edge, it is preferrable to have a long 0 state and short 1 state.
 ;.define CLKDIV 3
-.define CLKDIV 5
-.define D0 (((CLKDIV + 1) /2) - 1)
-.define D1 ((CLKDIV/2) - 1)
-.define SDIO_CLK_GPIO 10
-.define public SDIO_IRQ 7
+;.define CLKDIV 5
+;.define D0 (((CLKDIV + 1) /2) - 1)     ; Used to be 2 clocks
+;.define D1 ((CLKDIV/2) - 1)            ; Used to be 1 clock
+;.define SDIO_CLK_GPIO 10
+;.define public SDIO_IRQ 7
 
 ; State Machine 0 is for the Command / Response
 ; This State Machine will stall with clock low after sending a command and receiving the response
 ; Note that the FIFOs are set to 8 bit mode here, because 8 bits evenly divides all command and response sizes
+; NOTE: Any changes to cmd_rsp will require updates in rp2040_sdio to set delay values appropriately for speed config
 .program cmd_rsp
 .side_set 1 opt
 .wrap_target
 cmd_begin:
 send_cmd:
-    out pins, 1         side 0 [1]  ; When TX FIFO is empty, this command will stall with clock low
-    jmp X-- send_cmd    side 1 [1]
+    out pins, 1         side 0 [0]  ; When TX FIFO is empty, this command will stall with clock low
+    jmp X-- send_cmd    side 1 [0]
 
-    jmp !Y cmd_begin    side 0 [1]  ; If no response, go back to the beginning and stall
-    set pindirs, 0      side 1 [3]
+    jmp !Y cmd_begin    side 0 [0]  ; If no response, go back to the beginning and stall
+    set pindirs, 0      side 1 [0]
 wait_resp:
-    nop                 side 0 [3]
-    nop                 side 1 [2]
+    nop                 side 0 [0]
+    nop                 side 1 [0]
     jmp PIN wait_resp               ; Run the SD clock until CMD pin goes low (First bit of response)
     
 read_resp:
     in pins, 1          
-    push iffull block   side 0 [2]  ; Read command response
-    jmp Y-- read_resp   side 1 [1]
+    push iffull block   side 0 [0]  ; Read command response
+    jmp Y-- read_resp   side 1 [0]
 .wrap
 
 % c-sdk {
@@ -95,16 +96,17 @@ static inline pio_sm_config pio_cmd_rsp_program_config(uint offset, uint cmd_pin
 ; Program which reads data and provides its own clock signal
 ; Use direct-execute PIO instructions to place the number of 4-bit nibbles to receive
 ; into the X register before enabling the state machine
+; NOTE: Any changes to rd_data_w_clock will require updates in rp2040_sdio to set delay values appropriately for speed config
 .program rd_data_w_clock
 .side_set 1
 mov X, Y                side 0      ; Reinitialize number of nibbles to receive
 wait_d0:
-    nop                 side 0 [3]  ; Run the clock...
-    jmp PIN wait_d0     side 1 [3]  ; Until the first response nibble (all zeroes)
-    nop                 side 0 [2]  ; Clock transition low to make the SD card write out the first actual data nibble
-    nop                 side 1 [1]  ; Transition clock high to stick data value
+    nop                 side 0 [0]  ; Run the clock...
+    jmp PIN wait_d0     side 1 [0]  ; Until the first response nibble (all zeroes)
+    nop                 side 0 [0]  ; Clock transition low to make the SD card write out the first actual data nibble
+    nop                 side 1 [0]  ; Transition clock high to stick data value
 read_loop:
-    in pins, 4          side 0 [2]  ; Read in the nibble and transition the clock low
+    in pins, 4          side 0 [0]  ; Read in the nibble and transition the clock low
     push iffull block   side 1      ; Transition the clock high and block execution if rx fifo is full
     jmp X--, read_loop  side 1      ; No delays here or previous instruction, because instr [1] = two instr execution time
 
@@ -135,28 +137,29 @@ static inline pio_sm_config pio_rd_data_w_clock_program_config(uint offset, uint
 ; - Word 1-128: transmitted data (512 bytes)
 ; - Word 129-130: CRC checksum
 ; - Word 131: end token 0xFFFFFFFF
-.program sdio_tx_w_clock
+; NOTE: Any changes to sdio_tx_w_clock will require updates in rp2040_sdio to set delay values appropriately for speed config
+.program tx_data_w_clock
 .side_set 1 opt
 tx_loop:
-    out PINS, 4             side 0 [2]      ; Write nibble value and transition clock low
-    jmp X-- tx_loop         side 1 [1]      ; Transition clock high, and check if more data needs to be sent
+    out PINS, 4             side 0 [0]      ; Write nibble value and transition clock low
+    jmp X-- tx_loop         side 1 [0]      ; Transition clock high, and check if more data needs to be sent
 
-    set pindirs, 0          side 1 [2]      ; Set input mode to receive CRC token, without changing clock phase
+    set pindirs, 0          side 1 [0]      ; Set input mode to receive CRC token, without changing clock phase
 
 crc_get:
-    in pins, 1              side 1 [4]      ; Input the first bit of CRC response
-    jmp Y-- crc_get         side 0 [4]      ; Read the CRC bits
+    in pins, 1              side 1 [0]      ; Input the first bit of CRC response
+    jmp Y-- crc_get         side 0 [0]      ; Read the CRC bits
 bsy_wait:
-    jmp PIN done            side 1 [4]
-    jmp bsy_wait            side 0 [4]      ; Clock until no longer BSY
+    jmp PIN done            side 1 [0]
+    jmp bsy_wait            side 0 [0]      ; Clock until no longer BSY
 done:
 .wrap_target
     push iffull noblock     side 0         ; Unconditional, just push the response token
 .wrap
 
 % c-sdk {
-static inline pio_sm_config pio_sdio_tx_w_clock_program_config(uint offset, uint data_pin, uint clk_pin, int clk_div) {
-    pio_sm_config c = sdio_tx_w_clock_program_get_default_config(offset);
+static inline pio_sm_config pio_tx_w_clock_program_config(uint offset, uint data_pin, uint clk_pin, int clk_div) {
+    pio_sm_config c = tx_data_w_clock_program_get_default_config(offset);
     sm_config_set_sideset_pins(&c, clk_pin);
     sm_config_set_out_pins(&c, data_pin, 4);
     sm_config_set_in_pins(&c, data_pin);

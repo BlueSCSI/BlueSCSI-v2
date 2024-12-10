@@ -4,7 +4,17 @@
 #pragma once
 
 #include <string.h>
-#include <BlueSCSI_platform.h>
+// #include <BlueSCSI_platform.h>
+
+#define PLATFORM_NAME "BlueSCSI"
+#define PLATFORM_REVISION "2.0"
+#define PLATFORM_TOOLBOX_API 0
+#define PLATFORM_INQUIRY PLATFORM_NAME "v" FW_VER_NUM
+#define PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE 32768
+#define PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE 65536
+#define PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE 8192
+#define SD_USE_SDIO 1
+#define PLATFORM_HAS_INITIATOR_MODE 1
 
 // Use variables for version number
 #define FW_VER_NUM      "2024.12.09"
@@ -83,6 +93,17 @@
 #ifndef PREFETCH_BUFFER_SIZE
 #define PREFETCH_BUFFER_SIZE 8192
 #endif
+
+typedef enum
+{
+    SPEED_GRADE_DEFAULT,
+    SPEED_GRADE_MAX,
+    SPEED_GRADE_CUSTOM,
+    SPEED_GRADE_A,
+    SPEED_GRADE_B,
+    SPEED_GRADE_C,
+    SPEED_GRADE_AUDIO,
+} bluescsi_speed_grade_t;
 
 /**
  * @filename - name of the file to be evaluated for block size
