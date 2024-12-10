@@ -471,7 +471,7 @@ void scsi_accel_sync_send(const uint8_t* data, uint32_t count, volatile int *res
     }
     else
     {
-        dbgmsg("No optimized routine for syncOffset=", syncOffset, " syndPeriod=", syncPeriod, ", using fallback");
+        dbgmsg("No optimized routine for syncOffset=", syncOffset, " syncPeriod=", syncPeriod, ", using fallback");
         while (count-- > 0)
         {
             while (TIMER_CNT(SCSI_SYNC_TIMER) > count + syncOffset && !*resetFlag);
