@@ -56,10 +56,17 @@ bool SdioCard::begin(SdioConfig sdioConfig)
     nvic_irq_enable(SDIO_IRQn, 0, 0);
 
     g_sdio_error = sd_init();
+    static sd_error_enum last_error = SD_OK;
     if (g_sdio_error != SD_OK)
     {
-        // Don't spam the log when main program polls for card insertion.
-        dbgmsg("sd_init() failed: ", (int)g_sdio_error);
+        static uint32_t redisplay_error_start = millis();
+        // Don't spam the log when main program polls for card insertion, redisplay retry every 5 seconds.
+        if (last_error != g_sdio_error || (uint32_t)(millis() - redisplay_error_start) > 5000)
+        {
+            dbgmsg("sd_init() failed: ", (int)g_sdio_error);
+            last_error = g_sdio_error;
+            redisplay_error_start = millis();
+        }
         return false;
     }
 
