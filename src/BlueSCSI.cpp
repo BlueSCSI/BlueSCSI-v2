@@ -632,6 +632,31 @@ extern "C" void bluescsi_setup(void)
         setInitiatorModeParityCheck(false);
       }
     }
+    char speed_grade_str[10];
+    static const char sg_default[] = "Default"; 
+    ini_gets("SCSI", "SpeedGrade", sg_default, speed_grade_str, sizeof(speed_grade_str), CONFIGFILE);
+    bluescsi_speed_grade_t grade = platform_string_to_speed_grade(speed_grade_str, sizeof(speed_grade_str));
+    if (grade != SPEED_GRADE_DEFAULT)
+    {
+      bluescsi_reclock_status_t status = platform_reclock(grade);
+      switch (status)
+      {
+        case BLUESCSI_RECLOCK_NOT_SUPPORTED:
+          log("Reclocking this board is not supported");
+          break;
+        case BLUESCSI_RECLOCK_FAILED:
+          log("Reclocking failed");
+          break;
+        case BLUESCSI_RECLOCK_SUCCESS:
+          log("Reclocking was successful");
+          break;
+        case BLUESCSI_RECLOCK_CUSTOM:
+          log("Custom reclocking timings used");
+          break;
+      }
+      g_sdcard_present = mountSDCard();
+      reinitSCSI();
+    }    
     if (SD.clusterCount() == 0)
     {
       log("SD card without filesystem!");

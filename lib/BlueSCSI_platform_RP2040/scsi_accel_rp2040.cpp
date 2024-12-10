@@ -12,6 +12,7 @@
 #include "BlueSCSI_log.h"
 #include "scsi_accel_rp2040.h"
 #include "scsi_accel.pio.h"
+#include "timings_RP2MCU.h"
 #include <hardware/pio.h>
 #include <hardware/dma.h>
 #include <hardware/irq.h>
@@ -74,6 +75,15 @@ static struct {
     pio_sm_config pio_cfg_read;
     pio_sm_config pio_cfg_read_parity;
     pio_sm_config pio_cfg_sync_read_pacer;
+
+    // PIO Program States
+    bool pio_removed_parity;
+    bool pio_removed_async_write;
+    bool pio_removed_sync_write_pacer;
+    bool pio_removed_sync_write;
+    bool pio_removed_read;
+    bool pio_removed_read_parity;
+    bool pio_removed_sync_read_pacer;
     
     // DMA configurations for write
     dma_channel_config dmacfg_write_chA; // Data from RAM to scsi_parity PIO
@@ -720,6 +730,126 @@ void scsi_accel_rp2040_finishRead(const uint8_t *data, uint32_t count, int *pari
 }
 
 /*******************************************************/
+/* Write SCSI PIO program timings and ACK pin          */
+/*******************************************************/
+static void platform_pio_remove_program(PIO pio, const pio_program_t *program, uint loaded_offset, bool &removed)
+{
+    if (!removed)
+    {
+        pio_remove_program(pio, program, loaded_offset);
+        removed = true;
+    }
+}
+
+static int pio_add_scsi_accel_async_write_program()
+{
+    platform_pio_remove_program(SCSI_DMA_PIO,
+        &scsi_accel_async_write_program,
+        g_scsi_dma.pio_offset_async_write,
+        g_scsi_dma.pio_removed_async_write);
+
+    uint16_t rewrote_instructions[sizeof(scsi_accel_async_write_program_instructions)/sizeof(scsi_accel_async_write_program_instructions[0])];
+    pio_program rewrote_program = {rewrote_instructions,
+        scsi_accel_async_write_program.length,
+        scsi_accel_async_write_program.origin,
+        scsi_accel_async_write_program.pio_version};
+
+    memcpy(rewrote_instructions,
+        scsi_accel_async_write_program_instructions,
+        sizeof(scsi_accel_async_write_program_instructions));
+
+    // out null, 23         side 1  [0] ;[REQ_DLY-2]      ; Discard unused bits, wait for data preset time
+    uint8_t delay = g_bluescsi_timings->scsi.req_delay - 2;
+    assert( delay <= 0xF);
+    rewrote_instructions[2] |= pio_encode_delay(delay);
+    // wait 1 gpio ACK      side 1      ; Wait for ACK to be inactive
+    rewrote_instructions[3] = pio_encode_wait_gpio(true, SCSI_IN_ACK) | pio_encode_sideset(1, 1);
+    // wait 0 gpio ACK      side 0      ; Assert REQ, wait for ACK low
+    rewrote_instructions[4] = pio_encode_wait_gpio(false, SCSI_IN_ACK) | pio_encode_sideset(1, 0);
+
+    g_scsi_dma.pio_removed_async_write = false;
+    return pio_add_program(SCSI_DMA_PIO, &rewrote_program);
+}
+
+static int pio_add_scsi_accel_read_program()
+{
+    platform_pio_remove_program(SCSI_DMA_PIO,
+        &scsi_accel_read_program,
+        g_scsi_dma.pio_offset_read,
+        g_scsi_dma.pio_removed_read);
+
+    uint16_t rewrote_instructions[sizeof(scsi_accel_read_program_instructions)/sizeof(scsi_accel_read_program_instructions[0])];
+
+    pio_program rewrote_program = {
+        rewrote_instructions,
+        scsi_accel_read_program.length,
+        scsi_accel_read_program.origin,
+        scsi_accel_read_program.pio_version};
+
+    memcpy(rewrote_instructions,
+        scsi_accel_read_program_instructions,
+        sizeof(scsi_accel_read_program_instructions));
+
+    // wait 1 gpio ACK             side 1  ; Wait for ACK high
+    rewrote_instructions[1] = pio_encode_wait_gpio(true, SCSI_IN_ACK) | pio_encode_sideset(1, 1);
+    // wait 0 gpio ACK             side 0  ; Assert REQ, wait for ACK low
+    rewrote_instructions[3] = pio_encode_wait_gpio(false, SCSI_IN_ACK) | pio_encode_sideset(1, 0);
+    g_scsi_dma.pio_removed_read = false;
+    return pio_add_program(SCSI_DMA_PIO, &rewrote_program);
+}
+
+static int pio_add_scsi_sync_write_pacer_program()
+{
+    platform_pio_remove_program(SCSI_DMA_PIO,
+        &scsi_sync_write_pacer_program,
+        g_scsi_dma.pio_offset_sync_write_pacer,
+        g_scsi_dma.pio_removed_sync_write_pacer);
+
+    uint16_t rewrote_instructions[sizeof(scsi_sync_write_pacer_program_instructions)/sizeof(scsi_sync_write_pacer_program_instructions[0])];
+
+    pio_program rewrote_program = {
+        rewrote_instructions,
+        scsi_sync_write_pacer_program.length,
+        scsi_sync_write_pacer_program.origin,
+        scsi_sync_write_pacer_program.pio_version};
+
+    memcpy(rewrote_instructions,
+        scsi_sync_write_pacer_program_instructions,
+        sizeof(scsi_sync_write_pacer_program_instructions));
+
+    // wait 1 gpio ACK
+    rewrote_instructions[0] = pio_encode_wait_gpio(true, SCSI_IN_ACK);
+    // wait 0 gpio ACK   ; Wait for falling edge on ACK
+    rewrote_instructions[1] = pio_encode_wait_gpio(false, SCSI_IN_ACK);
+    g_scsi_dma.pio_removed_sync_write_pacer = false;
+    return pio_add_program(SCSI_DMA_PIO, &rewrote_program);
+}
+
+static int pio_add_scsi_parity_program()
+{
+    g_scsi_dma.pio_removed_parity = false;
+    return pio_add_program(SCSI_DMA_PIO, &scsi_parity_program);
+}
+
+static int pio_add_scsi_sync_read_pacer_program()
+{
+    g_scsi_dma.pio_removed_sync_read_pacer = false;
+    return pio_add_program(SCSI_DMA_PIO, &scsi_sync_read_pacer_program);
+}
+
+static int pio_add_scsi_read_parity_program()
+{
+    g_scsi_dma.pio_removed_read_parity = false;
+    return pio_add_program(SCSI_DMA_PIO, &scsi_read_parity_program);
+}
+
+static int pio_add_scsi_sync_write_program()
+{
+    g_scsi_dma.pio_removed_sync_write = false;
+    return pio_add_program(SCSI_DMA_PIO, &scsi_sync_write_program);
+}
+
+/*******************************************************/
 /* Initialization functions common to read/write       */
 /*******************************************************/
 
@@ -826,6 +956,19 @@ void scsi_accel_rp2040_init()
     g_scsi_dma_state = SCSIDMA_IDLE;
     scsidma_config_gpio();
 
+    static bool first_init = true;
+    if (first_init)
+    {
+        g_scsi_dma.pio_removed_parity = true;
+        g_scsi_dma.pio_removed_async_write = true;
+        g_scsi_dma.pio_removed_sync_write_pacer = true;
+        g_scsi_dma.pio_removed_sync_write = true;
+        g_scsi_dma.pio_removed_read = true;
+        g_scsi_dma.pio_removed_read_parity = true;
+        g_scsi_dma.pio_removed_sync_read_pacer = true;
+        first_init = false;
+    }
+
     if (g_channels_claimed) {
         // Un-claim all SCSI state machines
         pio_sm_unclaim(SCSI_DMA_PIO, SCSI_PARITY_SM);
@@ -833,13 +976,13 @@ void scsi_accel_rp2040_init()
         pio_sm_unclaim(SCSI_DMA_PIO, SCSI_SYNC_SM);
 
         // Remove all SCSI programs
-        pio_remove_program(SCSI_DMA_PIO, &scsi_parity_program, g_scsi_dma.pio_offset_parity);
-        pio_remove_program(SCSI_DMA_PIO, &scsi_accel_async_write_program, g_scsi_dma.pio_offset_async_write);
-        pio_remove_program(SCSI_DMA_PIO, &scsi_sync_write_pacer_program, g_scsi_dma.pio_offset_sync_write_pacer);
-        pio_remove_program(SCSI_DMA_PIO, &scsi_sync_write_program, g_scsi_dma.pio_offset_sync_write);
-        pio_remove_program(SCSI_DMA_PIO, &scsi_accel_read_program, g_scsi_dma.pio_offset_read);
-        pio_remove_program(SCSI_DMA_PIO, &scsi_sync_read_pacer_program, g_scsi_dma.pio_offset_sync_read_pacer);
-        pio_remove_program(SCSI_DMA_PIO, &scsi_read_parity_program, g_scsi_dma.pio_offset_read_parity);
+        platform_pio_remove_program(SCSI_DMA_PIO, &scsi_parity_program, g_scsi_dma.pio_offset_parity, g_scsi_dma.pio_removed_parity);
+        platform_pio_remove_program(SCSI_DMA_PIO, &scsi_accel_async_write_program, g_scsi_dma.pio_offset_async_write, g_scsi_dma.pio_removed_async_write);
+        platform_pio_remove_program(SCSI_DMA_PIO, &scsi_sync_write_pacer_program, g_scsi_dma.pio_offset_sync_write_pacer, g_scsi_dma.pio_removed_sync_write_pacer);
+        platform_pio_remove_program(SCSI_DMA_PIO, &scsi_accel_read_program, g_scsi_dma.pio_offset_read, g_scsi_dma.pio_removed_read);
+        platform_pio_remove_program(SCSI_DMA_PIO, &scsi_sync_read_pacer_program, g_scsi_dma.pio_offset_sync_read_pacer, g_scsi_dma.pio_removed_sync_read_pacer);
+        platform_pio_remove_program(SCSI_DMA_PIO, &scsi_read_parity_program, g_scsi_dma.pio_offset_read_parity, g_scsi_dma.pio_removed_read_parity);
+        platform_pio_remove_program(SCSI_DMA_PIO, &scsi_sync_write_program, g_scsi_dma.pio_offset_sync_write, g_scsi_dma.pio_removed_sync_write);
 
         // Un-claim all SCSI DMA channels
         dma_channel_unclaim(SCSI_DMA_CH_A);
@@ -863,13 +1006,13 @@ void scsi_accel_rp2040_init()
     }
     
     // Parity lookup generator
-    g_scsi_dma.pio_offset_parity = pio_add_program(SCSI_DMA_PIO, &scsi_parity_program);
+    g_scsi_dma.pio_offset_parity = pio_add_scsi_parity_program();
     g_scsi_dma.pio_cfg_parity = scsi_parity_program_get_default_config(g_scsi_dma.pio_offset_parity);
     sm_config_set_out_shift(&g_scsi_dma.pio_cfg_parity, true, false, 32);
     sm_config_set_in_shift(&g_scsi_dma.pio_cfg_parity, true, true, 32);
 
     // Asynchronous SCSI write
-    g_scsi_dma.pio_offset_async_write = pio_add_program(SCSI_DMA_PIO, &scsi_accel_async_write_program);
+    g_scsi_dma.pio_offset_async_write = pio_add_scsi_accel_async_write_program();
     g_scsi_dma.pio_cfg_async_write = scsi_accel_async_write_program_get_default_config(g_scsi_dma.pio_offset_async_write);
     sm_config_set_out_pins(&g_scsi_dma.pio_cfg_async_write, SCSI_IO_DB0, 9);
     sm_config_set_sideset_pins(&g_scsi_dma.pio_cfg_async_write, scsi_pins.OUT_REQ);
@@ -877,12 +1020,12 @@ void scsi_accel_rp2040_init()
     sm_config_set_out_shift(&g_scsi_dma.pio_cfg_async_write, true, false, 32);
 
     // Synchronous SCSI write pacer / ACK handler
-    g_scsi_dma.pio_offset_sync_write_pacer = pio_add_program(SCSI_DMA_PIO, &scsi_sync_write_pacer_program);
+    g_scsi_dma.pio_offset_sync_write_pacer = pio_add_scsi_sync_write_pacer_program();
     g_scsi_dma.pio_cfg_sync_write_pacer = scsi_sync_write_pacer_program_get_default_config(g_scsi_dma.pio_offset_sync_write_pacer);
     sm_config_set_out_shift(&g_scsi_dma.pio_cfg_sync_write_pacer, true, true, 1);
 
     // Synchronous SCSI data writer
-    g_scsi_dma.pio_offset_sync_write = pio_add_program(SCSI_DMA_PIO, &scsi_sync_write_program);
+    g_scsi_dma.pio_offset_sync_write = pio_add_scsi_sync_write_program();
     g_scsi_dma.pio_cfg_sync_write = scsi_sync_write_program_get_default_config(g_scsi_dma.pio_offset_sync_write);
     sm_config_set_out_pins(&g_scsi_dma.pio_cfg_sync_write, SCSI_IO_DB0, 9);
     sm_config_set_sideset_pins(&g_scsi_dma.pio_cfg_sync_write, scsi_pins.OUT_REQ);
@@ -890,7 +1033,7 @@ void scsi_accel_rp2040_init()
     sm_config_set_in_shift(&g_scsi_dma.pio_cfg_sync_write, true, true, 1);
 
     // Asynchronous / synchronous SCSI read
-    g_scsi_dma.pio_offset_read = pio_add_program(SCSI_DMA_PIO, &scsi_accel_read_program);
+    g_scsi_dma.pio_offset_read = pio_add_scsi_accel_read_program();
     g_scsi_dma.pio_cfg_read = scsi_accel_read_program_get_default_config(g_scsi_dma.pio_offset_read);
     sm_config_set_in_pins(&g_scsi_dma.pio_cfg_read, SCSI_IO_DB0);
     sm_config_set_sideset_pins(&g_scsi_dma.pio_cfg_read, scsi_pins.OUT_REQ);
@@ -898,12 +1041,12 @@ void scsi_accel_rp2040_init()
     sm_config_set_in_shift(&g_scsi_dma.pio_cfg_read, true, true, 32);
 
     // Synchronous SCSI read pacer
-    g_scsi_dma.pio_offset_sync_read_pacer = pio_add_program(SCSI_DMA_PIO, &scsi_sync_read_pacer_program);
+    g_scsi_dma.pio_offset_sync_read_pacer = pio_add_scsi_sync_read_pacer_program();
     g_scsi_dma.pio_cfg_sync_read_pacer = scsi_sync_read_pacer_program_get_default_config(g_scsi_dma.pio_offset_sync_read_pacer);
     sm_config_set_sideset_pins(&g_scsi_dma.pio_cfg_sync_read_pacer, scsi_pins.OUT_REQ);
 
     // Read parity check
-    g_scsi_dma.pio_offset_read_parity = pio_add_program(SCSI_DMA_PIO, &scsi_read_parity_program);
+    g_scsi_dma.pio_offset_read_parity = pio_add_scsi_read_parity_program();
     g_scsi_dma.pio_cfg_read_parity = scsi_read_parity_program_get_default_config(g_scsi_dma.pio_offset_read_parity);
     sm_config_set_out_shift(&g_scsi_dma.pio_cfg_read_parity, true, true, 32);
     sm_config_set_in_shift(&g_scsi_dma.pio_cfg_read_parity, true, false, 32);
@@ -1046,20 +1189,36 @@ bool scsi_accel_rp2040_setSyncMode(int syncOffset, int syncPeriod)
 
             // Set up the timing parameters to PIO program
             // The scsi_sync_write PIO program consists of three instructions.
-            // The delays are in clock cycles, each taking 8 ns.
-            // delay0: Delay from data write to REQ assertion
-            // delay1: Delay from REQ assert to REQ deassert
-            // delay2: Delay from REQ deassert to data write
+            // The delays are in clock cycles, each taking 8 ns (@100MHz) or 6.66ns (@150MHz).
+            // delay0: Delay from data write to REQ assertion (data setup)
+            // delay1: Delay from REQ assert to REQ deassert (req pulse width)
+            // delay2: Delay from REQ deassert to data write (negation period)
+            // see timings.c for delay periods in clock cycles
             int delay0, delay1, delay2;
-            int totalDelay = syncPeriod * 4 / 8;
+            uint32_t up_rounder = g_bluescsi_timings->scsi.clk_period_ps / 2 + 1;
+            uint32_t delay_in_ps = (syncPeriod * 4) * 1000;
+            // This is the delay in clock cycles rounded up
+            int totalDelay = (delay_in_ps + up_rounder) / g_bluescsi_timings->scsi.clk_period_ps;
 
-            if (syncPeriod <= 25)
+            if (syncPeriod < 25)
             {
-                // Fast SCSI timing: 30 ns assertion period, 25 ns skew delay
+                // Fast-20 SCSI timing: 15 ns assertion period
                 // The hardware rise and fall time require some extra delay,
-                // the values below are tuned based on oscilloscope measurements.
-                delay0 = 3;
-                delay1 = 5;
+                // These delays are in addition to the 1 cycle that the PIO takes to execute the instruction
+                totalDelay += g_bluescsi_timings->scsi_20.total_delay_adjust;
+                delay0 = g_bluescsi_timings->scsi_20.delay0; //Data setup time, should be min 11.5ns according to the spec for FAST-20
+                delay1 = g_bluescsi_timings->scsi_20.delay1; //pulse width, should be min 15ns according to the spec for FAST-20
+                delay2 = totalDelay - delay0 - delay1 - 3;  //Data hold time, should be min 16.5ns according to the spec for FAST-20
+                if (delay2 < 0) delay2 = 0;
+                if (delay2 > 15) delay2 = 15;
+            }
+            else if (syncPeriod < 50 )
+            {
+                // Fast-10 SCSI timing: 30 ns assertion period, 25 ns skew delay
+                // The hardware rise and fall time require some extra delay,
+                totalDelay += g_bluescsi_timings->scsi_10.total_delay_adjust;
+                delay0 = g_bluescsi_timings->scsi_10.delay0; // 4;
+                delay1 = g_bluescsi_timings->scsi_10.delay1; // 6;
                 delay2 = totalDelay - delay0 - delay1 - 3;
                 if (delay2 < 0) delay2 = 0;
                 if (delay2 > 15) delay2 = 15;
@@ -1067,8 +1226,9 @@ bool scsi_accel_rp2040_setSyncMode(int syncOffset, int syncPeriod)
             else
             {
                 // Slow SCSI timing: 90 ns assertion period, 55 ns skew delay
-                delay0 = 6;
-                delay1 = 12;
+                totalDelay += g_bluescsi_timings->scsi_5.total_delay_adjust;
+                delay0 = g_bluescsi_timings->scsi_5.delay0;
+                delay1 = g_bluescsi_timings->scsi_5.delay1;
                 delay2 = totalDelay - delay0 - delay1 - 3;
                 if (delay2 < 0) delay2 = 0;
                 if (delay2 > 15) delay2 = 15;

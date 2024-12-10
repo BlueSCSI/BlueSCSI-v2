@@ -4,6 +4,8 @@
 
 #include <stdint.h>
 #include <Arduino.h>
+#include <BlueSCSI_config.h>
+
 #include "BlueSCSI_platform_gpio.h"
 #include "scsiHostPhy.h"
 
@@ -13,16 +15,14 @@ extern "C" {
 
 /* These are used in debug output and default SCSI strings */
 extern const char *g_platform_name;
-#define PLATFORM_NAME "BlueSCSI"
-#define PLATFORM_REVISION "2.0"
-#define PLATFORM_TOOLBOX_API 0
-#define PLATFORM_INQUIRY PLATFORM_NAME "v" FW_VER_NUM
-#define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_10
-#define PLATFORM_OPTIMAL_MIN_SD_WRITE_SIZE 32768
-#define PLATFORM_OPTIMAL_MAX_SD_WRITE_SIZE 65536
-#define PLATFORM_OPTIMAL_LAST_SD_WRITE_SIZE 8192
-#define SD_USE_SDIO 1
-#define PLATFORM_HAS_INITIATOR_MODE 1
+
+
+#define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_20
+#ifdef PICO_RP2040
+#define PLATFORM_DEFAULT_SCSI_SPEED_SETTING 10
+#else
+#define PLATFORM_DEFAULT_SCSI_SPEED_SETTING 20
+#endif
 
 #ifndef PLATFORM_VDD_WARNING_LIMIT_mV
 #define PLATFORM_VDD_WARNING_LIMIT_mV 2800
@@ -32,7 +32,7 @@ extern SCSI_PINS scsi_pins;
 
 // NOTE: The driver supports synchronous speeds higher than 10MB/s, but this
 // has not been tested due to lack of fast enough SCSI adapter.
-// #define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_TURBO
+// #define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_20
 
 // Debug logging function, can be used to print to e.g. serial port.
 // May get called from interrupt handlers.
@@ -85,6 +85,22 @@ void platform_poll();
 // Debouncing logic is left up to the specific implementation.
 // This function should return without significantly delay.
 uint8_t platform_get_buttons();
+
+uint32_t platform_sys_clock_in_hz();
+    // Reclocking return status
+typedef enum
+{
+    BLUESCSI_RECLOCK_SUCCESS,
+    BLUESCSI_RECLOCK_CUSTOM,
+    BLUESCSI_RECLOCK_NOT_SUPPORTED,
+    BLUESCSI_RECLOCK_FAILED
+} bluescsi_reclock_status_t;
+
+// Attempt to reclock the MCU
+bluescsi_reclock_status_t platform_reclock(bluescsi_speed_grade_t speed_grade);
+
+// convert string to speed grade
+bluescsi_speed_grade_t platform_string_to_speed_grade(const char *speed_grade_str, size_t length);
 
 // Platform method to determine whether this is a certain hardware version
 bool is202309a();

@@ -13,7 +13,8 @@
 
 ; Delay from data setup to REQ assertion.
 ; deskew delay + cable skew delay = 55 ns minimum
-; One clock cycle is 8 ns => delay 7 clocks
+; One clock cycle is x ns => delay (55 / x) clocks
+; REQ_DLY is a dummy value, will be rewritten
 .define REQ_DLY 7
 
 ; Adds parity to data that is to be written to SCSI
@@ -34,7 +35,7 @@
 
     pull ifempty block          side 1  ; Get data from TX FIFO
     out pins, 9                 side 1  ; Write data and parity bit
-    out null, 23 [REQ_DLY-2]    side 1  ; Discard unused bits, wait for data preset time
+    out null, 23    [0]         side 1  ; Discard unused bits, wait for data preset time
     wait 1 gpio ACK             side 1  ; Wait for ACK to be inactive
     wait 0 gpio ACK             side 0  ; Assert REQ, wait for ACK low
 

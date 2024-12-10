@@ -17,6 +17,7 @@
 //#include <hardware/gpio.h>
 #include <BlueSCSI_platform.h>
 #include <BlueSCSI_log.h>
+#include "timings_RP2MCU.h"
 
 #define SDIO_PIO pio1
 #define SDIO_CMD_SM 0
@@ -890,8 +891,35 @@ void __not_in_flash_func(rp2040_sdio_init)(int clock_divider)
     gpio_set_pulls(SDIO_D2, true, false);
     gpio_set_pulls(SDIO_D3, true, false);
 
+    //
     // Command state machine
-    g_sdio.pio_cmd_rsp_clk_offset = pio_add_program(SDIO_PIO, &cmd_rsp_program);
+    //
+    uint16_t rw_prg_instr[cmd_rsp_program.length];
+    memcpy(rw_prg_instr, cmd_rsp_program_instructions, sizeof(cmd_rsp_program_instructions));
+    // If the instruction is a side-set 0 use delay0
+    // If the instruction is a side-set 1 use delay1
+    // cmd_rsp does not follow a certain pattern, so bluntly set delay values here.
+    // NOTE: Any changes to cmd_rsp will require updates here as well
+    rw_prg_instr[0] = cmd_rsp_program_instructions[0] | pio_encode_delay(g_bluescsi_timings->sdio.delay0);
+    rw_prg_instr[1] = cmd_rsp_program_instructions[1] | pio_encode_delay(g_bluescsi_timings->sdio.delay1);
+
+    rw_prg_instr[2] = cmd_rsp_program_instructions[2] | pio_encode_delay(g_bluescsi_timings->sdio.delay0);
+    rw_prg_instr[3] = cmd_rsp_program_instructions[3] | pio_encode_delay(g_bluescsi_timings->sdio.delay1 + 1);
+
+    rw_prg_instr[4] = cmd_rsp_program_instructions[4] | pio_encode_delay(g_bluescsi_timings->sdio.delay0);
+    rw_prg_instr[5] = cmd_rsp_program_instructions[5] | pio_encode_delay(g_bluescsi_timings->sdio.delay1);
+
+    rw_prg_instr[8] = cmd_rsp_program_instructions[8] | pio_encode_delay(g_bluescsi_timings->sdio.delay0);
+    rw_prg_instr[9] = cmd_rsp_program_instructions[9] | pio_encode_delay(g_bluescsi_timings->sdio.delay1);
+
+    pio_program cmd_rsp_prg_w_delays = {
+        rw_prg_instr,
+        cmd_rsp_program.length,
+        cmd_rsp_program.origin,
+        cmd_rsp_program.pio_version
+    };
+
+    g_sdio.pio_cmd_rsp_clk_offset = pio_add_program(SDIO_PIO, &cmd_rsp_prg_w_delays);
     g_sdio.pio_cfg_cmd_rsp = pio_cmd_rsp_program_config(g_sdio.pio_cmd_rsp_clk_offset, SDIO_CMD, SDIO_CLK, clock_divider, 0);
 
     pio_sm_init(SDIO_PIO, SDIO_CMD_SM, g_sdio.pio_cmd_rsp_clk_offset, &g_sdio.pio_cfg_cmd_rsp);
@@ -900,13 +928,51 @@ void __not_in_flash_func(rp2040_sdio_init)(int clock_divider)
     pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_CMD_SM, SDIO_CMD, 1, true);
     pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_CMD_SM, SDIO_D0, 4, false);
 
+    //
     // Data reception program
-    g_sdio.pio_data_rx_offset = pio_add_program(SDIO_PIO, &rd_data_w_clock_program);
+    //
+    // Clear the temp memory array
+    memset(rw_prg_instr, cmd_rsp_program.length, sizeof(rw_prg_instr[0]));
+    memcpy(rw_prg_instr, rd_data_w_clock_program_instructions, sizeof(rd_data_w_clock_program_instructions));
+    rw_prg_instr[1] = rd_data_w_clock_program_instructions[1] | pio_encode_delay(g_bluescsi_timings->sdio.delay0 + 1);
+    rw_prg_instr[2] = rd_data_w_clock_program_instructions[2] | pio_encode_delay(g_bluescsi_timings->sdio.delay1 + 1);
+    rw_prg_instr[3] = rd_data_w_clock_program_instructions[3] | pio_encode_delay(g_bluescsi_timings->sdio.delay0);
+    rw_prg_instr[4] = rd_data_w_clock_program_instructions[4] | pio_encode_delay(g_bluescsi_timings->sdio.delay1);
+    rw_prg_instr[5] = rd_data_w_clock_program_instructions[5] | pio_encode_delay(g_bluescsi_timings->sdio.delay0);
+
+    pio_program rd_data_w_delays = {
+        rw_prg_instr,
+        rd_data_w_clock_program.length,
+        rd_data_w_clock_program.origin,
+        rd_data_w_clock_program.pio_version
+    };
+
+    g_sdio.pio_data_rx_offset = pio_add_program(SDIO_PIO, &rd_data_w_delays);
     g_sdio.pio_cfg_data_rx = pio_rd_data_w_clock_program_config(g_sdio.pio_data_rx_offset, SDIO_D0, SDIO_CLK, clock_divider);
 
+    //
     // Data transmission program
-    g_sdio.pio_data_tx_offset = pio_add_program(SDIO_PIO, &sdio_tx_w_clock_program);
-    g_sdio.pio_cfg_data_tx = pio_sdio_tx_w_clock_program_config(g_sdio.pio_data_tx_offset, SDIO_D0, SDIO_CLK, clock_divider);
+    //
+    // Clear the temp memory array
+    memset(rw_prg_instr, cmd_rsp_program.length, sizeof(rw_prg_instr[0]));
+    memcpy(rw_prg_instr, tx_data_w_clock_program_instructions, sizeof(tx_data_w_clock_program_instructions));
+    rw_prg_instr[0] = tx_data_w_clock_program_instructions[0] | pio_encode_delay(g_bluescsi_timings->sdio.delay0);
+    rw_prg_instr[1] = tx_data_w_clock_program_instructions[1] | pio_encode_delay(g_bluescsi_timings->sdio.delay1);
+    rw_prg_instr[2] = tx_data_w_clock_program_instructions[2] | pio_encode_delay(g_bluescsi_timings->sdio.delay1);
+    rw_prg_instr[3] = tx_data_w_clock_program_instructions[3] | pio_encode_delay(g_bluescsi_timings->sdio.delay1 + 1);
+    rw_prg_instr[4] = tx_data_w_clock_program_instructions[4] | pio_encode_delay(g_bluescsi_timings->sdio.delay0 + 1);
+    rw_prg_instr[5] = tx_data_w_clock_program_instructions[5] | pio_encode_delay(g_bluescsi_timings->sdio.delay1 + 1);
+    rw_prg_instr[6] = tx_data_w_clock_program_instructions[6] | pio_encode_delay(g_bluescsi_timings->sdio.delay0 + 1);
+
+    pio_program tx_data_w_delays = {
+        rw_prg_instr,
+        tx_data_w_clock_program.length,
+        tx_data_w_clock_program.origin,
+        tx_data_w_clock_program.pio_version
+    };
+
+    g_sdio.pio_data_tx_offset = pio_add_program(SDIO_PIO, &tx_data_w_delays);
+    g_sdio.pio_cfg_data_tx = pio_tx_w_clock_program_config(g_sdio.pio_data_tx_offset, SDIO_D0, SDIO_CLK, clock_divider);
 
     // Disable SDIO pins input synchronizer.
     // This reduces input delay.
@@ -970,5 +1036,5 @@ void __not_in_flash_func(rp2040_sdio_delay_increment)(uint16_t additional_delay)
     */
     rp2040_sdio_update_delays(cmd_rsp_program, g_sdio.pio_cmd_rsp_clk_offset, additional_delay);
     rp2040_sdio_update_delays(rd_data_w_clock_program, g_sdio.pio_data_rx_offset, additional_delay);
-    rp2040_sdio_update_delays(sdio_tx_w_clock_program, g_sdio.pio_data_tx_offset, additional_delay);
+    rp2040_sdio_update_delays(tx_data_w_clock_program, g_sdio.pio_data_tx_offset, additional_delay);
 }
