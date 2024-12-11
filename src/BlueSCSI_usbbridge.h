@@ -5,8 +5,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <list>
+#include "FreeRTOS.h"
 #include <semphr.h>
 #include "scsi2sd.h"
+#include <memory>
+#include "usb/msc_disk.h"
 // #ifdef __cplusplus
 // extern "C" {
 // #endif
@@ -15,11 +18,8 @@
 
 using namespace std;
 
-class BlueScsiBridge{
-
-
-
-
+class BlueScsiBridge
+{
 
 public:
     // BlueScsiBridge() {}
@@ -28,71 +28,63 @@ public:
     // void mainLoop(void *param);
     void mainLoop(void);
 
+    // Should be moved to msc_disk.h ??
+    static std::shared_ptr<USB::DiskInfo> GetDiskInfo(int target_id);
 
+    // Select target and execute SCSI command
+    static int RunCommand(int target_id,
+                          const uint8_t *command, size_t cmdLen,
+                          uint8_t *bufIn, size_t bufInLen,
+                          const uint8_t *bufOut, size_t bufOutLen,
+                          bool returnDataPhase = false);
+
+    // Execute READ CAPACITY command
+    static bool ReadCapacity(int target_id, uint32_t *sectorcount, uint32_t *sectorsize);
+
+    // Execute REQUEST SENSE command to get more information about error status
+    static bool RequestSense(int target_id, uint8_t *sense_key);
+
+    // Execute UNIT START STOP command to load/unload media
+    static bool StartStopUnit(uint8_t lun, uint8_t power_condition, bool start, bool load_eject);
+
+    // Execute INQUIRY command
+    static bool Inquiry(int target_id, uint8_t inquiry_data[36]);
+
+    // Execute TEST UNIT READY command and handle unit attention state
+    static bool TestUnitReady(int target_id);
+
+    static uint32_t Read10(int lun, uint32_t lba, uint32_t offset, uint8_t *buffer, uint32_t buffersize);
+
+    static uint32_t Write10(int lun, uint32_t lba, uint32_t offset, uint8_t *buffer, uint32_t buffersize);
+
+    static bool IsWritable(int lun);
 
 private:
-    uint8_t initiator_id;
+    static uint8_t initiator_id;
     bool initialization_complete = false;
-    uint8_t configured_retry_count;
-    
-
-    class DiskInfo{
-        public:
-            // Information about drive
-            int target_id = -1;
-            uint32_t sectorsize = 0;
-            uint32_t sectorcount = 0;
-            uint32_t sectorcount_all = 0;
-            uint32_t sectors_done = 0;
-            uint32_t max_sector_per_transfer = 512;
-            uint32_t badSectorCount = 0;
-            uint8_t ansiVersion = 0;
-            uint8_t maxRetryCount = 0;
-            uint8_t deviceType = 0;
-            uint8_t inquiry_data[36] = {0};
-    };
-
-    list<DiskInfo*> diskInfoList;
+    static uint8_t configured_retry_count;
 
     SemaphoreHandle_t mutex;
     StaticSemaphore_t mutexBuffer;
 
-void UpdateLed();
-void DebugPrint();
-void ReadConfiguration();
+    void UpdateLed();
+    void DebugPrint();
+    void ReadConfiguration();
 
-DiskInfo* GetDiskInfo(int target_id);
+    // shared_ptr<USB::DiskInfo> BlueScsiBridge::GetDiskInfo(int target_id){
 
-// Select target and execute SCSI command
-int RunCommand(int target_id,
-                            const uint8_t *command, size_t cmdLen,
-                            uint8_t *bufIn, size_t bufInLen,
-                            const uint8_t *bufOut, size_t bufOutLen,
-                            bool returnDataPhase = false);
+    //     // Retry information for sector reads.
+    //     // If a large read fails, retry is done sector-by-sector.
+    //     int retrycount;
+    //     uint32_t failposition;
+    //     bool ejectWhenDone;
 
-// Execute READ CAPACITY command
-bool ReadCapacity(int target_id, uint32_t *sectorcount, uint32_t *sectorsize);
+    //     FsFile target_file;
+    // } g_initiator_state;
 
-// Execute REQUEST SENSE command to get more information about error status
-bool RequestSense(int target_id, uint8_t *sense_key);
-
-// Execute UNIT START STOP command to load/unload media
-bool StartStopUnit(int target_id, bool start);
-
-// Execute INQUIRY command
-bool Inquiry(int target_id, uint8_t inquiry_data[36]);
-
-// Execute TEST UNIT READY command and handle unit attention state
-bool TestUnitReady(int target_id);
-
-//     // Retry information for sector reads.
-//     // If a large read fails, retry is done sector-by-sector.
-//     int retrycount;
-//     uint32_t failposition;
-//     bool ejectWhenDone;
-
-//     FsFile target_file;
-// } g_initiator_state;
+protected:
+    static const uint8_t SCSI_COMMAND_READ10 = 0x28;
+    static const uint8_t SCSI_COMMAND_WRITE10 = 0x2A;
 };
 
 // // Select target and execute SCSI command

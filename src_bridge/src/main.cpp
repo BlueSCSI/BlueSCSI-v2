@@ -117,7 +117,7 @@ void tud_suspend_cb(bool remote_wakeup_en)
 void bluescsi_main(void *param);
 extern "C" void bluescsi_setup(void);
 
-int main(void)
+int main(void) 
 {
 
   platform_init();
