@@ -54,6 +54,9 @@
 #endif
 #define LOG_SAVE_INTERVAL_MS 1000
 
+// How often to check for SD card presence
+#define SDCARD_POLL_INTERVAL 5000
+
 // Watchdog timeout
 // Watchdog will first issue a bus reset and if that does not help, crashdump.
 #define WATCHDOG_BUS_RESET_TIMEOUT 15000
