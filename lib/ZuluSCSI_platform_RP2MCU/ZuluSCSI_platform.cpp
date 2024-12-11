@@ -283,9 +283,24 @@ void platform_init()
 
     }
 # else
-    g_scsi_initiator = SETUP_TRUE == read_setup_ack_pin();
+    pin_setup_state_t dip_state = read_setup_ack_pin();
+    if (dip_state == SETUP_UNDETERMINED)
+    {
+        // This path is used for the few early RP2040 boards assembled with
+        // Diodes Incorporated 74LVT245B, which has higher bus hold
+        // current.
+        working_dip = false;
+        g_scsi_initiator = !gpio_get(DIP_INITIATOR); // Read fallback value
+    }
+    else
+    {
+        g_scsi_initiator = (SETUP_TRUE == dip_state);
+        termination = !gpio_get(DIP_TERM);
+    }
+
+    // dbglog DIP switch works in any case, as it does not have bus hold.
     dbglog = !gpio_get(DIP_DBGLOG);
-    termination = !gpio_get(DIP_TERM);
+    g_log_debug = dbglog;
 # endif
 #else
     delay(10);
@@ -319,9 +334,13 @@ void platform_init()
     else
     {
         logmsg("SCSI termination is determined by the DIP switch labeled \"TERM\"");
+
+#if defined(ZULUSCSI_PICO) || defined(ZULUSCSI_PICO_2)
         logmsg("Debug logging can only be enabled via INI file \"DEBUG=1\" under [SCSI] in zuluscsi.ini");
         logmsg("-- DEBUG DIP switch setting is ignored on ZuluSCSI Pico FS Rev. 2023b and 2023c boards");
         g_log_debug = false;
+#endif
+
     }
 #else
     g_log_debug = false;
