@@ -28,11 +28,11 @@
 #include "ZuluSCSI_platform.h"
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_msc.h"
+#include "ZuluSCSI_msc_initiator.h"
 #include "ZuluSCSI_config.h"
 #include "ZuluSCSI_settings.h"
 #include <class/msc/msc.h>
 #include <class/msc/msc_device.h>
-
 
 #if CFG_TUD_MSC_EP_BUFSIZE < SD_SECTOR_SIZE
   #error "CFG_TUD_MSC_EP_BUFSIZE is too small! It needs to be at least 512 (SD_SECTOR_SIZE)"
@@ -111,6 +111,8 @@ void __USBInstallMassStorage() { }
 extern "C" void tud_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8],
                         uint8_t product_id[16], uint8_t product_rev[4]) {
 
+  if (g_msc_initiator) return init_msc_inquiry_cb(lun, vendor_id, product_id, product_rev);
+
   const char vid[] = "ZuluSCSI";
   const char pid[] = PLATFORM_PID; 
   const char rev[] = "1.0";
@@ -123,6 +125,8 @@ extern "C" void tud_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8],
 // max LUN supported
 // we only have the one SD card
 extern "C" uint8_t tud_msc_get_maxlun_cb(void) {
+  if (g_msc_initiator) return init_msc_get_maxlun_cb();
+
   return 1; // number of LUNs supported
 }
 
@@ -131,6 +135,8 @@ extern "C" uint8_t tud_msc_get_maxlun_cb(void) {
 // otherwise this is not actually needed
 extern "C" bool tud_msc_is_writable_cb (uint8_t lun)
 {
+  if (g_msc_initiator) return init_msc_is_writable_cb(lun);
+
   (void) lun;
   return unitReady;
 }
@@ -138,8 +144,7 @@ extern "C" bool tud_msc_is_writable_cb (uint8_t lun)
 // see https://www.seagate.com/files/staticfiles/support/docs/manual/Interface%20manuals/100293068j.pdf pg 221
 extern "C" bool tud_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, bool load_eject)
 {
-  (void) lun;
-  (void) power_condition;
+  if (g_msc_initiator) return init_msc_start_stop_cb(lun, power_condition, start, load_eject);
 
   if (load_eject)  {
     if (start) {
@@ -155,7 +160,7 @@ extern "C" bool tud_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool
 
 // return true if we are ready to service reads/writes
 extern "C" bool tud_msc_test_unit_ready_cb(uint8_t lun) {
-  (void) lun;
+  if (g_msc_initiator) return init_msc_test_unit_ready_cb(lun);
 
   return unitReady;
 }
@@ -163,7 +168,7 @@ extern "C" bool tud_msc_test_unit_ready_cb(uint8_t lun) {
 // return size in blocks and block size
 extern "C" void tud_msc_capacity_cb(uint8_t lun, uint32_t *block_count,
                          uint16_t *block_size) {
-  (void) lun;
+  if (g_msc_initiator) return init_msc_capacity_cb(lun, block_count, block_size);
 
   *block_count = unitReady ? (SD.card()->sectorCount()) : 0;
   *block_size = SD_SECTOR_SIZE;
@@ -173,6 +178,7 @@ extern "C" void tud_msc_capacity_cb(uint8_t lun, uint32_t *block_count,
 // - READ_CAPACITY10, READ_FORMAT_CAPACITY, INQUIRY, MODE_SENSE6, REQUEST_SENSE, READ10 and WRITE10
 extern "C" int32_t tud_msc_scsi_cb(uint8_t lun, const uint8_t scsi_cmd[16], void *buffer,
                         uint16_t bufsize) {
+  if (g_msc_initiator) return init_msc_scsi_cb(lun, scsi_cmd, buffer, bufsize);
 
   const void *response = NULL;
   uint16_t resplen = 0;
@@ -210,7 +216,7 @@ extern "C" int32_t tud_msc_scsi_cb(uint8_t lun, const uint8_t scsi_cmd[16], void
 extern "C" int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, 
                             void* buffer, uint32_t bufsize)
 {
-  (void) lun;
+  if (g_msc_initiator) return init_msc_read10_cb(lun, lba, offset, buffer, bufsize);
 
   bool rc = SD.card()->readSectors(lba, (uint8_t*) buffer, bufsize/SD_SECTOR_SIZE);
 
@@ -225,7 +231,7 @@ extern "C" int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset,
 // Process data in buffer to disk's storage and return number of written bytes (must be multiple of block size)
 extern "C" int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset,
                            uint8_t *buffer, uint32_t bufsize) {
-  (void) lun;
+  if (g_msc_initiator) return init_msc_read10_cb(lun, lba, offset, buffer, bufsize);
 
   bool rc = SD.card()->writeSectors(lba, buffer, bufsize/SD_SECTOR_SIZE);
 
@@ -238,7 +244,7 @@ extern "C" int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset
 // Callback invoked when WRITE10 command is completed (status received and accepted by host).
 // used to flush any pending cache to storage
 extern "C" void tud_msc_write10_complete_cb(uint8_t lun) {
-  (void) lun;
+  if (g_msc_initiator) return init_msc_write10_complete_cb(lun);
 }
 
 #endif
