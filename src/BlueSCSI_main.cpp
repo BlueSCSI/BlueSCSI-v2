@@ -12,9 +12,14 @@ extern "C" void bluescsi_setup(void);
 extern "C" void bluescsi_main_loop(void);
 void dump_usb_desc_data();
 extern "C" void run_usb_desc_tests();
+extern bool delay_usb_task;
 
 void bluescsi_main(void *param)
 {
+#if !FORCE_BRIDGE
+delay_usb_task = false;
+#endif
+
     bluescsi_setup();
 
 #if FORCE_BRIDGE

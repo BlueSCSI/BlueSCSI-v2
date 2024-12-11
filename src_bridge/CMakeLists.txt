@@ -22,6 +22,7 @@ endif()
 # ====================================================================================
 set(PICO_BOARD pico CACHE STRING "Board type")
 set(CMAKE_BUILD_TYPE "Debug")
+set(PICO_DEOPTIMIZED_DEBUG "1")
 
 cmake_minimum_required(VERSION 3.12)
 
@@ -78,7 +79,7 @@ add_executable(scsibridge
         src/cdc_uart.c
         src/get_serial.c
         src/sw_dp_pio.c
-        src/msc_disk.c
+        src/usb/msc_disk.cpp
         src/command_line.cpp
         src/freertos_cli_commands.cpp
         src/freertos_hook.c
@@ -88,6 +89,7 @@ add_executable(scsibridge
         src/usb/device_descriptor.cpp
         src/usb/endpoint_descriptor.cpp
         src/usb/interface_descriptor.cpp
+        src/usb/msc_example_disk.cpp
         src/scsi/BlueSCSI.cpp
         src/scsi/BlueSCSI_Config.cpp
         src/scsi/BlueSCSI_log.cpp

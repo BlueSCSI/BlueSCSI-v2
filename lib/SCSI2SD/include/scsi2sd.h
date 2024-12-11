@@ -231,7 +231,59 @@ typedef enum
 } S2S_CFG_STATUS;
 
 
-
+enum scsi_command {
+    eCmdTestUnitReady  = 0x00,
+    eCmdRezero         = 0x01,
+    eCmdRequestSense   = 0x03,
+    eCmdFormatUnit     = 0x04,
+    eCmdReassignBlocks = 0x07,
+    eCmdRead6          = 0x08,
+    // Bridge specific command
+    eCmdGetMessage10 = 0x08,
+    // DaynaPort specific command
+    eCmdRetrieveStats = 0x09,
+    eCmdWrite6        = 0x0A,
+    // Bridge specific ommand
+    eCmdSendMessage10 = 0x0A,
+    eCmdPrint         = 0x0A,
+    eCmdSeek6         = 0x0B,
+    // DaynaPort specific command
+    eCmdSetIfaceMode = 0x0C,
+    // DaynaPort specific command
+    eCmdSetMcastAddr = 0x0D,
+    // DaynaPort specific command
+    eCmdEnableInterface            = 0x0E,
+    eCmdSynchronizeBuffer          = 0x10,
+    eCmdInquiry                    = 0x12,
+    eCmdModeSelect6                = 0x15,
+    eCmdReserve6                   = 0x16,
+    eCmdRelease6                   = 0x17,
+    eCmdModeSense6                 = 0x1A,
+    eCmdStartStop                  = 0x1B,
+    eCmdStopPrint                  = 0x1B,
+    eCmdSendDiagnostic             = 0x1D,
+    eCmdPreventAllowMediumRemoval  = 0x1E,
+    eCmdReadCapacity10             = 0x25,
+    eCmdRead10                     = 0x28,
+    eCmdWrite10                    = 0x2A,
+    eCmdSeek10                     = 0x2B,
+    eCmdVerify10                   = 0x2F,
+    eCmdSynchronizeCache10         = 0x35,
+    eCmdReadDefectData10           = 0x37,
+    eCmdReadLong10                 = 0x3E,
+    eCmdWriteLong10                = 0x3F,
+    eCmdReadToc                    = 0x43,
+    eCmdGetEventStatusNotification = 0x4A,
+    eCmdModeSelect10               = 0x55,
+    eCmdModeSense10                = 0x5A,
+    eCmdRead16                     = 0x88,
+    eCmdWrite16                    = 0x8A,
+    eCmdVerify16                   = 0x8F,
+    eCmdSynchronizeCache16         = 0x91,
+    eCmdReadCapacity16_ReadLong16  = 0x9E,
+    eCmdWriteLong16                = 0x9F,
+    eCmdReportLuns                 = 0xA0
+};
 
 #ifdef __cplusplus
 } // extern "C"
