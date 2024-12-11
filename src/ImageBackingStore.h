@@ -77,6 +77,9 @@ public:
     // Get name of the fs_file
     void getName(char *name, size_t len);
 
+    // Rename file
+    void rename(char *new_name);
+
     // Gets current position for following read/write operations
     // Result is only valid for regular files, not raw or flash access
     uint64_t position();
