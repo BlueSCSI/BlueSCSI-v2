@@ -79,13 +79,14 @@ int platform_network_init(char *mac)
 	if (mac == NULL || (mac[0] == 0 && mac[1] == 0 && mac[2] == 0 && mac[3] == 0 && mac[4] == 0 && mac[5] == 0))
 	{
 		mac = (char *)&set_mac;
+		char octal_strings[8][4] = {0};
 		memcpy(mac, defaultMAC, sizeof(set_mac));
 
 		// retain Dayna vendor but use a device id specific to this board
 		pico_get_unique_board_id(&board_id);
-		if (g_log_debug)
-			logmsg("Unique board id: ", board_id.id[0], " ", board_id.id[1], " ", board_id.id[2], " ", board_id.id[3], " ", 
-										board_id.id[4], " ", board_id.id[5], " ", board_id.id[6], " ", board_id.id[7]);
+
+		dbgmsg("Unique board id: ", board_id.id[0], " ", board_id.id[1], " ", board_id.id[2], " ", board_id.id[3], " ",
+									board_id.id[4], " ", board_id.id[5], " ", board_id.id[6], " ", board_id.id[7]);
 
 		if (board_id.id[3] != 0 && board_id.id[4] != 0 && board_id.id[5] != 0)
 		{
@@ -102,11 +103,11 @@ int platform_network_init(char *mac)
 	cyw43_arch_enable_sta_mode();
 
 	cyw43_wifi_get_mac(&cyw43_state, CYW43_ITF_STA, read_mac);
-	logmsg("Wi-Fi MAC: ", read_mac[0],":",read_mac[1], ":", read_mac[2], ":", read_mac[3], ":", read_mac[4], ":", read_mac[5]);
+	char mac_hex_string[4*6] = {0};
+	sprintf(mac_hex_string, "%02X:%02X:%02X:%02X:%02X:%02X", read_mac[0], read_mac[1], read_mac[2], read_mac[3], read_mac[4], read_mac[5]);
+	logmsg("Wi-Fi MAC: ", mac_hex_string);
 	if (memcmp(mac, read_mac, sizeof(read_mac)) != 0)
-		logmsg("WARNING: Wi-Fi MAC is not what was requested (", 
-				(uint8_t)mac[0], ":", (uint8_t)mac[1], ":", (uint8_t)mac[2], ":", (uint8_t)mac[3], ":", (uint8_t)mac[4], ":", (uint8_t)mac[5],
-				"), is libpico not compiled with CYW43_USE_OTP_MAC=0?");
+		logmsg("WARNING: Wi-Fi MAC is not what was requested (", mac_hex_string,"), is libpico not compiled with CYW43_USE_OTP_MAC=0?");
 
 	network_in_use = true;
 
