@@ -24,45 +24,49 @@
  */
 
 #include "bsp/board_api.h"
-#include "msc_example_disk.h"
+// #include "msc_example_disk.h"
 #include "tusb.h"
 #include <algorithm>
 #include "BlueSCSI_usbbridge.h"
 
 #include "msc_disk.h"
+#include "msc_scsi_disk.h"
+#include "msc_ram_disk.h"
+
+bool g_scsi_msc_mode;
+bool g_disable_usb_cdc;
 
 #define VERBOSE 0
 
 namespace USB
 {
-  std::vector<std::shared_ptr<USB::DiskInfo>> DiskInfoList;
+  // USB supports a maximum of 16 LUNs
+  std::vector<std::shared_ptr<USB::MscDisk>> DiskList(16);
 }
 
-#if CFG_TUD_MSC
+void msc_disk_init(void){
+  USB::MscScsiDisk::StaticInit();
+  USB::MscRamDisk::StaticInit();
 
-// When button is pressed, LUN1 will be set to not ready to simulate
-// medium not present (e.g SD card removed)
+  // If there was no SCSI device detected, create a RAM disk
+  // with a README.txt with further details.
+  if (USB::MscDisk::DiskList.size() < 1)
+      {
+        printf("SCSI bus scan failed. Adding RAM Disk");
+        auto ram_disk = std::make_shared<USB::MscRamDisk>();
+      }
 
-// Some MCU doesn't have enough 8KB SRAM to store the whole disk
-// We will use Flash as read-only disk with board that has
-// CFG_EXAMPLE_MSC_READONLY defined
-#if defined(CFG_EXAMPLE_MSC_READONLY) || defined(CFG_EXAMPLE_MSC_DUAL_READONLY)
-#define MSC_CONST const
-#else
-#define MSC_CONST
-#endif
 
-enum
-{
-  DISK_BLOCK_NUM = 16, // 8KB is the smallest size that windows allow to mount
-  DISK_BLOCK_SIZE = 512
-};
+      // TEMPORARY
+        auto ram_disk2 = std::make_shared<USB::MscRamDisk>();
+
+}
 
 // Invoked to determine max LUN
 uint8_t tud_msc_get_maxlun_cb(void)
 {
-  printf("%s size: %d\n", __func__, USB::DiskInfoList.size());
-  return USB::DiskInfoList.size();
+  printf("%s size: %d\n", __func__, USB::DiskList.size());
+  return USB::DiskList.size();
   // return 2; // dual LUN
 }
 
@@ -70,60 +74,40 @@ uint8_t tud_msc_get_maxlun_cb(void)
 // Application fill vendor id, product id and revision with string up to 8, 16, 4 characters respectively
 void tud_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8], uint8_t product_id[16], uint8_t product_rev[4])
 {
-  #if VERBOSE
+#if VERBOSE
   printf("%s lun %d\n", __func__, lun);
-  #endif
-  if (lun >= USB::DiskInfoList.size())
+#endif
+
+  std::shared_ptr<USB::MscDisk> disk = USB::MscDisk::GetMscDiskByLun(lun);
+  if (disk == nullptr)
   {
-    printf("%s invalid lun requested %d\n", __func__, lun);
     return;
   }
-  std::shared_ptr<USB::DiskInfo> diskInfo = USB::DiskInfoList[lun];
+
+  disk->Inquiry();
 
   // We need to limit the size of the inquiry strings
-  size_t len = std::min((size_t)diskInfo->vendor_id.size(), (size_t)8);
-  memcpy(vendor_id, diskInfo->vendor_id.c_str(), len);
-  len = std::min((size_t)diskInfo->product_id.size(), (size_t)16);
-  memcpy(product_id, diskInfo->product_id.c_str(), len);
-  len = std::min((size_t)diskInfo->product_rev.size(), (size_t)4);
-  memcpy(product_rev, diskInfo->product_rev.c_str(), len);
-
-  // (void) lun; // use same ID for both LUNs
-
-  // const char vid[] = "TinyUSB";
-  // const char pid[] = "Mass Storage";
-  // const char rev[] = "1.0";
-
-  // memcpy(vendor_id  , vid, strlen(vid));
-  // memcpy(product_id , pid, strlen(pid));
-  // memcpy(product_rev, rev, strlen(rev));
+  size_t len = std::min((size_t)disk->getVendorId().size(), (size_t)8);
+  memcpy(vendor_id, disk->getVendorId().c_str(), len);
+  len = std::min((size_t)disk->getProductId().size(), (size_t)16);
+  memcpy(product_id, disk->getProductId().c_str(), len);
+  len = std::min((size_t)disk->getProductRev().size(), (size_t)4);
+  memcpy(product_rev, disk->getProductRev().c_str(), len);
 }
 
 // Invoked when received Test Unit Ready command.
 // return true allowing host to read/write this LUN e.g SD card inserted
 bool tud_msc_test_unit_ready_cb(uint8_t lun)
 {
-  #if VERBOSE
+#if VERBOSE
   printf("%s lun %d\n", __func__, lun);
-  #endif
-  if (lun >= USB::DiskInfoList.size())
+#endif
+  std::shared_ptr<USB::MscDisk> disk = USB::MscDisk::GetMscDiskByLun(lun);
+  if (disk == nullptr)
   {
-    printf("%s invalid lun requested %d\n", __func__, lun);
     return false;
   }
-  std::shared_ptr<USB::DiskInfo> diskInfo = USB::DiskInfoList[lun];
-
-  // If this is a ram disk, its always read
-  if (diskInfo->target_id == USB::DiskInfo::RAM_DISK)
-  {
-    return true;
-  }
-  else
-  {
-    bool test_result = BlueScsiBridge::TestUnitReady(diskInfo->target_id);
-    printf("\t%s test_result %d\n", __func__, test_result);
-    return test_result;
-  }
+  return disk->TestUnitReady();
 }
 
 // Invoked when received SCSI_CMD_READ_CAPACITY_10 and SCSI_CMD_READ_FORMAT_CAPACITY to determine the disk size
@@ -131,18 +115,18 @@ bool tud_msc_test_unit_ready_cb(uint8_t lun)
 void tud_msc_capacity_cb(uint8_t lun, uint32_t *block_count, uint16_t *block_size)
 {
 
-#if VERBOSE
-  printf("%s lun %d\n", __func__, lun);
-  #endif
-  if (lun >= USB::DiskInfoList.size())
+  std::shared_ptr<USB::MscDisk> disk = USB::MscDisk::GetMscDiskByLun(lun);
+  if (disk == nullptr)
   {
-    printf("\t%s invalid lun requested %d\n", __func__, lun);
     return;
   }
-  std::shared_ptr<USB::DiskInfo> diskInfo = USB::DiskInfoList[lun];
-  printf("\t%s sectorcount %d sectorsize %d\n", __func__, (int)diskInfo->sectorcount, (int)diskInfo->sectorsize);
-  *block_count = diskInfo->sectorcount;
-  *block_size = diskInfo->sectorsize;
+
+#if VERBOSE
+  printf("%s sectorcount %d sectorsize %d\n", __func__, (int)diskInfo->sectorcount, (int)diskInfo->sectorsize);
+#endif
+
+  *block_count = disk->sectorcount;
+  *block_size = disk->sectorsize;
 }
 
 // Invoked when received Start Stop Unit command
@@ -150,129 +134,80 @@ void tud_msc_capacity_cb(uint8_t lun, uint32_t *block_count, uint16_t *block_siz
 // - Start = 1 : active mode, if load_eject = 1 : load disk storage
 bool tud_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, bool load_eject)
 {
-  #if VERBOSE
+#if VERBOSE
   printf("%s lun %d power_condition %d start %d load_eject %d\n", __func__, lun, power_condition, start, load_eject);
-  #endif
-  if (lun >= USB::DiskInfoList.size())
+#endif
+
+  std::shared_ptr<USB::MscDisk> disk = USB::MscDisk::GetMscDiskByLun(lun);
+  if (disk == nullptr)
   {
-    printf("\t%s invalid lun requested %d\n", __func__, lun);
     return false;
   }
-  std::shared_ptr<USB::DiskInfo> diskInfo = USB::DiskInfoList[lun];
 
-  // If this is a ram disk, just return true
-  if (diskInfo->target_id == USB::DiskInfo::RAM_DISK)
-  {
-    return true;
-  }
-  else
-  {
-    bool startstopok = BlueScsiBridge::StartStopUnit(lun, power_condition, start, load_eject);
-    printf("\t%s startstopok %d\n", __func__, startstopok);
-    return startstopok;
-  }
+  bool startstopok = disk->StartStopUnit(power_condition, start, load_eject);
+  return startstopok;
 }
 
 // Callback invoked when received READ10 command.
 // Copy disk's data to buffer (up to bufsize) and return number of copied bytes.
 int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void *buffer, uint32_t bufsize)
 {
-  #if VERBOSE
+#if VERBOSE
   printf("%s lun %d lba %d offset %d bufsize %d\n", __func__, lun, (int)lba, (int)offset, (int)bufsize);
-  #endif
-  if (lun >= USB::DiskInfoList.size())
-  {
-    printf("\t%s invalid lun requested %d\n", __func__, lun);
-    return false;
-  }
-  std::shared_ptr<USB::DiskInfo> diskInfo = USB::DiskInfoList[lun];
+#endif
 
-  if (diskInfo->target_id == USB::DiskInfo::RAM_DISK)
+  std::shared_ptr<USB::MscDisk> disk = USB::MscDisk::GetMscDiskByLun(lun);
+  if (disk == nullptr)
   {
-    // out of ramdisk
-    if (lba >= diskInfo->sectorcount)
-      return -1;
-
-    uint8_t const *addr = &diskInfo->ram_disk_buffer[lba] + offset;
-    memcpy(buffer, addr, bufsize);
-
-    return (int32_t)bufsize;
+    return 0;
   }
-  else
-  {
-    // printf("\t%s lba %d offset %d bufsize %d\n", __func__, (int)lba, (int)offset, (int)bufsize);
-    uint32_t read_bytes = BlueScsiBridge::Read10(lun, lba, offset, (uint8_t *)buffer, bufsize);
-    // for(int i=0; i<bufsize; i++){
-    //   printf("%02x ", ((uint8_t *)buffer)[i]);
-    //   if(i%16==15) printf("\n");
-    //   if(i%10)vTaskDelay(1);
-    // }
-    printf("\t%s read_bytes %d\n", __func__, (int)read_bytes);
-    return (int32_t)read_bytes;
-  }
+  uint32_t read_bytes = disk->Read10(lba, offset, (uint8_t *)buffer, bufsize);
+  // for(int i=0; i<bufsize; i++){
+  //   printf("%02x ", ((uint8_t *)buffer)[i]);
+  //   if(i%16==15) printf("\n");
+  //   if(i%10)vTaskDelay(1);
+  // }
+  // printf("\t%s read_bytes %d\n", __func__, (int)read_bytes);
+  return (int32_t)read_bytes;
 }
 
 bool tud_msc_is_writable_cb(uint8_t lun)
 {
-  #if VERBOSE
+#if VERBOSE
   printf("%s lun %d \n", __func__, lun);
-  #endif
+#endif
 
- if (lun >= USB::DiskInfoList.size())
+  std::shared_ptr<USB::MscDisk> disk = USB::MscDisk::GetMscDiskByLun(lun);
+  if (disk == nullptr)
   {
-    printf("\t%s invalid lun requested %d\n", __func__, lun);
     return false;
   }
-  std::shared_ptr<USB::DiskInfo> diskInfo = USB::DiskInfoList[lun];
 
-  if (diskInfo->target_id == USB::DiskInfo::RAM_DISK)
-  {
-    // The RAM disk can always be writable
-    return true;
-  }
-  else{
-    return BlueScsiBridge::IsWritable(lun);
-  }
+  return disk->IsWritable();
 }
 
 // Callback invoked when received WRITE10 command.
 // Process data in buffer to disk's storage and return number of written bytes
 int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t *buffer, uint32_t bufsize)
 {
-  #if VERBOSE
+#if VERBOSE
   printf("%s lun %d lba %d offset %d bufsize %d\n", __func__, lun, (int)lba, (int)offset, (int)bufsize);
-  #endif
+#endif
 
- if (lun >= USB::DiskInfoList.size())
+  std::shared_ptr<USB::MscDisk> disk = USB::MscDisk::GetMscDiskByLun(lun);
+  if (disk == nullptr)
   {
-    printf("\t%s invalid lun requested %d\n", __func__, lun);
     return false;
   }
-  std::shared_ptr<USB::DiskInfo> diskInfo = USB::DiskInfoList[lun];
 
-  if(diskInfo->target_id == USB::DiskInfo::RAM_DISK){
-    // out of ramdisk
-    if (lba >= diskInfo->sectorcount){
-        printf("\t%s invalid lba requested %d\n", __func__, (int)lba);
-      return -1;
-    }
-
-    uint8_t *addr = &diskInfo->ram_disk_buffer[lba] + offset;
-    memcpy(addr, buffer, bufsize);
-
-    return (int32_t)bufsize;
+  static int counter = 0;
+  if (++counter > 100)
+  {
+    printf("%s lba %d offset %d bufsize %d\n", __func__, (int)lba, (int)offset, (int)bufsize);
+    counter = 0;
   }
-  else{
-    static int counter = 0;
-    if(++counter > 100){
-      printf("%s lba %d offset %d bufsize %d\n", __func__, (int)lba, (int)offset, (int)bufsize);
-      counter = 0;
-    }
-    //SCSI Disk
-    uint32_t written_bytes = BlueScsiBridge::Write10(lun, lba, offset, buffer, bufsize);
-    // printf("\t%s written_bytes %d\n", __func__, (int)written_bytes);
-    return (int32_t)written_bytes;
-  }
+  uint32_t written_bytes = disk->Write10(lba, offset, buffer, bufsize);
+  return (int32_t)written_bytes;
 }
 
 // Callback invoked when received an SCSI command not in built-in list below
@@ -280,8 +215,15 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t *
 // - READ10 and WRITE10 has their own callbacks (MUST not be handled here)
 int32_t tud_msc_scsi_cb(uint8_t lun, uint8_t const scsi_cmd[16], void *buffer, uint16_t bufsize)
 {
-  printf("%s lun %d scsi_cmd %02X %02X %02X %02X %02X %02X %02X\n", __func__, lun, scsi_cmd[0], 
-    scsi_cmd[1], scsi_cmd[2], scsi_cmd[3], scsi_cmd[4], scsi_cmd[5], scsi_cmd[6]);
+  printf("%s lun %d scsi_cmd %02X %02X %02X %02X %02X %02X %02X\n", __func__, lun, scsi_cmd[0],
+         scsi_cmd[1], scsi_cmd[2], scsi_cmd[3], scsi_cmd[4], scsi_cmd[5], scsi_cmd[6]);
+
+
+  std::shared_ptr<USB::MscDisk> disk = USB::MscDisk::GetMscDiskByLun(lun);
+  if (disk == nullptr)
+  {
+    return 0;
+  }
   void const *response = NULL;
   int32_t resplen = 0;
 
@@ -317,5 +259,3 @@ int32_t tud_msc_scsi_cb(uint8_t lun, uint8_t const scsi_cmd[16], void *buffer, u
 
   return resplen;
 }
-
-#endif

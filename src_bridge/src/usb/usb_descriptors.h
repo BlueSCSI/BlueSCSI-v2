@@ -1,3 +1,24 @@
+// Classes and structures for dynamically creating USB descriptor blocks.
+// These can be used when the USB descriptor blocks need to be created/
+// modified at startup time instead of compile time.
+//
+// Copyright (C) 2024 akuker
+//
+// This program is free software: you can redistribute it and/or modify it
+// under the terms of the GNU General Public License as published by the Free
+// Software Foundation, either version 3 of the License, or (at your option)
+// any later version.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+// more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program. If not, see <https://www.gnu.org/licenses/>.
+//
+// Note: Some portions of this class may have been generated using the Claude.AI LLM
+
 #pragma once
 #include <stdint.h>
 #include <stdlib.h>
@@ -15,45 +36,41 @@
 #include "semphr.h"
 #include <climits>
 #include "bsp/board_api.h"
-// #include "tusb_common.h"
 
-// temporary
+#ifdef DEBUG
 extern "C"
 {
     void save_descriptor(const char *name, const uint8_t *buf, size_t len);
-    // std::string get_desc_block_type(tusb_desc_type_t mytype);
+    std::string get_desc_block_type(tusb_desc_type_t mytype);
 }
+#endif
 
 void usb_descriptors_init();
 
-namespace USB{
-class StringDescriptor;
-}
-extern USB::StringDescriptor g_usb_string_descriptor;
-
-    template <typename T>
-    std::vector<uint8_t> shared_ptr_to_bytes(const std::shared_ptr<T> &ptr)
-    {
-        std::vector<uint8_t> bytes;
-
-        if (ptr)
-        {
-            // Get size of the underlying data
-            size_t size = sizeof(T);
-
-            // Resize vector to accommodate the data
-            bytes.resize(size);
-
-            // Copy memory from the pointer to the vector
-            std::memcpy(bytes.data(), ptr.get(), size);
-        }
-
-        return bytes;
-    }
-
-
 namespace USB
 {
+    class StringDescriptor;
+    extern StringDescriptor g_usb_string_descriptor;
+
+template <typename T>
+std::vector<uint8_t> shared_ptr_to_bytes(const std::shared_ptr<T> &ptr)
+{
+    std::vector<uint8_t> bytes;
+
+    if (ptr)
+    {
+        // Get size of the underlying data
+        size_t size = sizeof(T);
+
+        // Resize vector to accommodate the data
+        bytes.resize(size);
+
+        // Copy memory from the pointer to the vector
+        std::memcpy(bytes.data(), ptr.get(), size);
+    }
+
+    return bytes;
+}
 
     class StringDescriptor
     {
@@ -491,13 +508,10 @@ namespace USB
 
         void addChildDescriptor(BasicDescriptor *child) override;
 
-        // const size_t getDescriptorSizeBytes() override { return sizeof(tusb_desc_interface_t); }
-
         operator tusb_desc_interface_t() const { return desc_; }
 
     protected:
         tusb_desc_interface_t desc_;
-        // std::vector<const BasicDescriptor *> functional_descriptors_;
         static NumberManager number_manager;
         std::vector<uint8_t> _getDescriptorBlockBytes() override
         {
@@ -834,7 +848,8 @@ namespace USB
         const size_t getDescriptorSizeBytes() override { return sizeof(tusb_desc_device_t); }
         // Descriptor block is special - we don't want to include the children.
         std::vector<uint8_t> generateDescriptorBlock() override { return _getDescriptorBlockBytes(); }
-        std::vector<uint8_t> generateDeviceQualifierBlock() {
+        std::vector<uint8_t> generateDeviceQualifierBlock()
+        {
 
             // device qualifier is mostly similar to device descriptor since we don't change configuration based on speed
             std::shared_ptr<tusb_desc_device_qualifier_t> desc_qualifier = std::make_shared<tusb_desc_device_qualifier_t>();
@@ -879,6 +894,3 @@ namespace USB
     };
 
 } // namespace USB
-
-
-

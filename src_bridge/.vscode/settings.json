@@ -93,7 +93,16 @@
         "cinttypes": "cpp",
         "typeinfo": "cpp",
         "get_serial.h": "c",
-        "board.h": "c"
+        "board.h": "c",
+        "board_api.h": "c",
+        "tusb.h": "c",
+        "tusb_fifo.h": "c",
+        "osal.h": "c",
+        "tusb_common.h": "c",
+        "tusb_types.h": "c",
+        "list": "cpp",
+        "freertos.h": "c",
+        "portmacro.h": "c"
     },
     "cortex-debug.openocdPath": "/opt/homebrew/bin/openocd",
     "cortex-debug.gdbPath": "arm-none-eabi-gdb",
