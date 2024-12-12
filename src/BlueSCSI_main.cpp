@@ -5,6 +5,9 @@
 #include "BlueSCSI_usbbridge.h"
 #include <stdio.h>
 #include "usb/usb_descriptors.h"
+#include "usb/stdio_tinyusb_cdc.h"
+#include "usb/msc_disk.h"
+#include "usb/usb_task.h"
 
 #define FORCE_BRIDGE 1
 
@@ -12,34 +15,44 @@ extern "C" void bluescsi_setup(void);
 extern "C" void bluescsi_main_loop(void);
 void dump_usb_desc_data();
 extern "C" void run_usb_desc_tests();
+// This will hold off the USB initialization until we have figured out
+// our configuration
 extern bool delay_usb_task;
+extern bool g_scsi_msc_mode;
+extern bool g_disable_usb_cdc;
 
-void bluescsi_main(void *param)
+void bluescsi_main_task(void *param)
 {
-#if !FORCE_BRIDGE
-delay_usb_task = false;
-#endif
 
     bluescsi_setup();
 
 #if FORCE_BRIDGE
-    // // USB Descriptor test code....
-    // dump_usb_desc_data();
-    // run_usb_desc_tests();
-
-
-    auto bridge = BlueScsiBridge();
-    bridge.init();
-
-    bridge.mainLoop();
+    g_scsi_msc_mode = true;
+    g_disable_usb_cdc = false;
 #endif
+
+    if (g_scsi_msc_mode)
+    {
+        msc_disk_init();
+    }
+    // Release the USB task
+    g_delay_usb_task = false;
+
+    printf("Welcome to BlueSCSI!\n");
 
     while (1)
     {
-
-        bluescsi_main_loop();
-        vTaskDelay((const TickType_t)1);
+        if (!g_scsi_msc_mode)
+        {
+            bluescsi_main_loop();
+            vTaskDelay((const TickType_t)1);
+        }
+        else
+        {
+            // While in MSC mode, we all of the action happens in the
+            // USB tasks. So, we'll just sleep here.
+            vTaskDelay((const TickType_t)1000);
+        }
     }
 }
-
-// #endif
+    // #endif

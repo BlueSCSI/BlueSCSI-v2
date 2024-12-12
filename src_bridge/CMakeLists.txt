@@ -72,24 +72,11 @@ if (${PICO_SDK_VERSION_MAJOR} LESS 2)
 endif ()
 
 add_executable(scsibridge
-        src/led.c
-        src/main.cpp
-        # src/usb_descriptors.cpp
-        # src/usb_descriptors_test.cpp
-        src/cdc_uart.c
-        src/get_serial.c
-        src/sw_dp_pio.c
-        src/usb/msc_disk.cpp
-        src/command_line.cpp
+        src/cmd_console_task.cpp
         src/freertos_cli_commands.cpp
         src/freertos_hook.c
-        src/stdio_tinyusb_cdc.cpp
+        src/main.cpp
         src/ringbuffer.cpp
-        src/usb/configuration_descriptor.cpp
-        src/usb/device_descriptor.cpp
-        src/usb/endpoint_descriptor.cpp
-        src/usb/interface_descriptor.cpp
-        src/usb/msc_example_disk.cpp
         src/scsi/BlueSCSI.cpp
         src/scsi/BlueSCSI_Config.cpp
         src/scsi/BlueSCSI_log.cpp
@@ -105,13 +92,19 @@ add_executable(scsibridge
         src/scsi/ROMDrive.cpp
         src/scsi/BlueSCSI_usbbridge.cpp
         src/scsi/BlueSCSI_tape.cpp
+
         src/usb/configuration_descriptor.cpp
         src/usb/device_descriptor.cpp
         src/usb/endpoint_descriptor.cpp
         src/usb/interface_descriptor.cpp
+        src/usb/msc_base_disk.cpp
+        src/usb/msc_disk.cpp
+        src/usb/msc_ram_disk.cpp
+        src/usb/msc_scsi_disk.cpp
+        src/usb/stdio_tinyusb_cdc.cpp
         src/usb/string_descriptor.cpp
-        
         src/usb/usb_descriptor_cbs.cpp
+        src/usb/usb_task.cpp
         src/SCSI2SD/src/firmware/mode.c
         src/SCSI2SD/src/firmware/vendor.c
         src/SCSI2SD/src/firmware/inquiry.c

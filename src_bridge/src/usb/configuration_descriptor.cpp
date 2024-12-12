@@ -1,6 +1,20 @@
-#include "usb_descriptors.h"
+// Copyright (C) 2024 akuker
+//
+// This program is free software: you can redistribute it and/or modify it
+// under the terms of the GNU General Public License as published by the Free
+// Software Foundation, either version 3 of the License, or (at your option)
+// any later version.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+// more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program. If not, see <https://www.gnu.org/licenses/>.
+
 #include <algorithm>
-#include "BlueSCSI_log.h"
+#include "usb_descriptors.h"
 
 namespace USB
 {
@@ -9,18 +23,6 @@ namespace USB
 
     void ConfigurationDescriptor::addChildDescriptor(BasicDescriptor *interface)
     {
-        // // Check for duplicate interface numbers
-        //////// Not all class-specific interfaces have assigned interface numbers
-        // for (const auto &existing : interfaces_)
-        // {
-        //     if (existing->getInterfaceNumber() == interface->getInterfaceNumber())
-        //     {
-        //         log("WARNING!!! DUPLICATE INTERFACE NUMBER!!!");
-        //         // return false; // Interface number already exists
-        //         // I think this is OK. There are interfaces in the CDC configurati
-        //     }
-        // }
-
         getChildDescriptors().push_back(interface);
         // Only include the interfaces that can have endpoints
         if (interface->supportsChildren())
@@ -29,17 +31,6 @@ namespace USB
         }
     }
 
-    // const InterfaceDescriptor *ConfigurationDescriptor::getInterface(uint8_t interfaceNumber) const
-    // {
-    //     auto it = std::find_if(interfaces_.begin(), interfaces_.end(),
-    //                            [interfaceNumber](const InterfaceDescriptor &iface)
-    //                            {
-    //                                return iface.getInterfaceNumber() == interfaceNumber;
-    //                            });
-
-    //     return (it != interfaces_.end()) ? &(*it) : nullptr;
-    // }
-
     const size_t ConfigurationDescriptor::getDescriptorSizeBytes()
     {
         // Calculate total length
@@ -47,33 +38,5 @@ namespace USB
         desc_.wTotalLength = mysize;
         return mysize;
     }
-
-    // std::vector<uint8_t> ConfigurationDescriptor::generateDescriptorBlock()
-    // {
-
-    //     return BasicDescriptor::generateDescriptorBlock();
-    // }
-//         // TODO......
-
-
-// countChildrenOfType
-
-//         // Check that total length matches what we expected
-//         if (block.size() != desc_.wTotalLength)
-//         {
-//             log("ERROR: Configuration descriptor size mismatch");
-//         }
-
-//         // // Update total length in configuration descriptor
-//         // if (block.size() >= 2)
-//         // {
-//         //     uint16_t totalLength = static_cast<uint16_t>(block.size());
-//         //     block[2] = TU_U16_LOW(totalLength);
-//         //     block[3] = TU_U16_HIGH(totalLength);
-//         // }
-
-//         return block;
-//         // return std::vector<uint8_t>();
-//     }
 
 } // namespace USB

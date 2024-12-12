@@ -64,6 +64,8 @@ SdFs SD;
 FsFile g_logfile;
 static bool g_romdrive_active;
 static bool g_sdcard_present;
+extern bool g_scsi_msc_mode;
+extern bool g_disable_usb_cdc;
 
 /************************************/
 /* Status reporting by blinking led */
@@ -630,6 +632,13 @@ extern "C" void bluescsi_setup(void)
         setInitiatorModeParityCheck(false);
       }
     }
+
+
+    g_scsi_msc_mode = ini_getbool("SCSI", "UsbBridgeMode", false, CONFIGFILE);
+    // For older machines, the USB CDC interface may confuse the host if we
+    // also have USB MSC devices defined.
+    g_disable_usb_cdc = ini_getbool("SCSI", "InhibitUsbCdc", false, CONFIGFILE);
+
     if (SD.clusterCount() == 0)
     {
       log("SD card without filesystem!");
