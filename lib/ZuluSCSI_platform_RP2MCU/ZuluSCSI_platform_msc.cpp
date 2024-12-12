@@ -38,6 +38,8 @@
   #error "CFG_TUD_MSC_EP_BUFSIZE is too small! It needs to be at least 512 (SD_SECTOR_SIZE)"
 #endif
 
+#define DIGITAL_PIN_CYW43_OFFSET 64
+
 // external global SD variable
 extern SdFs SD;
 static bool unitReady = false;
@@ -48,7 +50,9 @@ bool platform_sense_msc() {
 #if defined(ZULUSCSI_PICO) || defined(ZULUSCSI_PICO_2)
   // check if we're USB powered, if not, exit immediately
   // pin on the wireless module, see https://github.com/earlephilhower/arduino-pico/discussions/835
-  if (rp2040.isPicoW() && !digitalRead(64 + 2))
+  // Update: from the above discussion the offset 32 has been changed to 64 to access CYW43 GPIO pins
+  // since the addition of the RP2350 chips, now stored in the DIGITAL_PIN_CYW43_OFFSET define
+  if (rp2040.isPicoW() && !digitalRead(DIGITAL_PIN_CYW43_OFFSET + 2))
     return false;
 
   if (!rp2040.isPicoW() && !digitalRead(24))
