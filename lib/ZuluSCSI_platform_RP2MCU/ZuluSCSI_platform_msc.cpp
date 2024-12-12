@@ -45,13 +45,10 @@ static bool unitReady = false;
 /* return true if USB presence detected / eligble to enter CR mode */
 bool platform_sense_msc() {
 
-#ifdef ZULUSCSI_PICO_2
-  if (!gpio_get(GPIO_USB_POWER))
-    return false;
-#elif defined(ZULUSCSI_PICO)
+#if defined(ZULUSCSI_PICO) || defined(ZULUSCSI_PICO_2)
   // check if we're USB powered, if not, exit immediately
   // pin on the wireless module, see https://github.com/earlephilhower/arduino-pico/discussions/835
-  if (rp2040.isPicoW() && !digitalRead(34))
+  if (rp2040.isPicoW() && !digitalRead(64 + 2))
     return false;
 
   if (!rp2040.isPicoW() && !digitalRead(24))
