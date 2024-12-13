@@ -52,7 +52,7 @@ extern "C"
 }
 #endif
 
-#include "freertos_cli_commands.h"
+#include "cmd_console_examples.h"
 
 #ifndef configINCLUDE_TRACE_RELATED_CLI_COMMANDS
 #define configINCLUDE_TRACE_RELATED_CLI_COMMANDS 0

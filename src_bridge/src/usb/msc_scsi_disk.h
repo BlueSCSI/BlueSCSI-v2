@@ -1,3 +1,21 @@
+// Provides a SCSI based MSC disk that can be used by the USB host to read/
+// write to the SCSI device.
+//
+// Copyright (C) 2024 akuker
+//
+// This program is free software: you can redistribute it and/or modify it
+// under the terms of the GNU General Public License as published by the Free
+// Software Foundation, either version 3 of the License, or (at your option)
+// any later version.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+// more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program. If not, see <https://www.gnu.org/licenses/>.
+
 #include <stdint.h>
 #include "msc_disk.h"
 namespace USB
@@ -31,13 +49,5 @@ namespace USB
             uint8_t *bufIn, size_t bufInLen,
             const uint8_t *bufOut, size_t bufOutLen,
             bool returnDataPhase = false);
-
-        // bool is_writable_;
-        // uint8_t *msc_disk_;
-        // static const uint32_t DISK_BLOCK_SIZE = 512;
-        // static const uint32_t DISK_BLOCK_COUNT = 16; // 8KB is the smallest size that windows allow to mount
-        // uint8_t *ram_disk_[DISK_BLOCK_COUNT][DISK_BLOCK_SIZE];
-
-        // static const uint8_t readme_disk_[DISK_BLOCK_COUNT][DISK_BLOCK_SIZE];
     };
 }

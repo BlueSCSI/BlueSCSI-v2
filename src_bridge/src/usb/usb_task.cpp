@@ -1,3 +1,20 @@
+// FreeRTOS task that will periodically call the TinyUSB stack
+//
+// Copyright (C) 2024 akuker
+//
+// This program is free software: you can redistribute it and/or modify it
+// under the terms of the GNU General Public License as published by the Free
+// Software Foundation, either version 3 of the License, or (at your option)
+// any later version.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+// more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program. If not, see <https://www.gnu.org/licenses/>.
+//
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -28,7 +45,7 @@ void usb_device_task(void *param)
     {
         vTaskDelay(100);
     }
-    
+
     usb_descriptors_init();
     printf("usb_device_task()\n");
     // init device stack on configured roothub port
@@ -51,6 +68,7 @@ void usb_device_task(void *param)
     } while (1);
 }
 
+//-------------------------------------------------------
 // Callbacks that are used by TinyUSB...
 
 // Invoked when device is mounted

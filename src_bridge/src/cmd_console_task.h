@@ -1,3 +1,7 @@
+// Periodic FreeRTOS task that will run the FreeRTOS CLI framework. Since this
+// runs asynchronously with the rest of the tasks, pay attention to thread-
+// safety.
+//
 // Copyright (C) 2024 akuker
 //
 // This program is free software: you can redistribute it and/or modify it

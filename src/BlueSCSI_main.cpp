@@ -2,7 +2,6 @@
 // when building the bootloader image by build_bootloader.py.
 #include "FreeRTOS.h"
 #include "task.h"
-#include "BlueSCSI_usbbridge.h"
 #include <stdio.h>
 #include "usb/usb_descriptors.h"
 #include "usb/stdio_tinyusb_cdc.h"
@@ -13,10 +12,7 @@
 
 extern "C" void bluescsi_setup(void);
 extern "C" void bluescsi_main_loop(void);
-void dump_usb_desc_data();
-extern "C" void run_usb_desc_tests();
-// This will hold off the USB initialization until we have figured out
-// our configuration
+
 extern bool delay_usb_task;
 extern bool g_scsi_msc_mode;
 extern bool g_disable_usb_cdc;

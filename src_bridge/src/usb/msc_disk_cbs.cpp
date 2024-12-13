@@ -1,33 +1,23 @@
-/*
- * The MIT License (MIT)
- *
- * Copyright (c) 2019 Ha Thach (tinyusb.org)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- */
+// Call-backs for TinyUSB to interface with the SCSI disks
+//
+// Copyright (C) 2024 akuker
+//
+// This program is free software: you can redistribute it and/or modify it
+// under the terms of the GNU General Public License as published by the Free
+// Software Foundation, either version 3 of the License, or (at your option)
+// any later version.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+// more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program. If not, see <https://www.gnu.org/licenses/>.
 
-#include "bsp/board_api.h"
-// #include "msc_example_disk.h"
-#include "tusb.h"
 #include <algorithm>
-#include "BlueSCSI_usbbridge.h"
+#include "bsp/board_api.h"
+#include "tusb.h"
 
 #include "msc_disk.h"
 #include "msc_scsi_disk.h"
@@ -40,27 +30,27 @@ bool g_disable_usb_cdc;
 
 namespace USB
 {
-  // USB supports a maximum of 16 LUNs
+  // Note: USB supports a maximum of 16 LUNs
   std::vector<std::shared_ptr<USB::MscDisk>> DiskList();
 }
 
-void msc_disk_init(void){
+void msc_disk_init(void)
+{
   USB::MscScsiDisk::StaticInit();
   USB::MscRamDisk::StaticInit();
 
   // If there was no SCSI device detected, create a RAM disk
   // with a README.txt with further details.
   if (USB::MscDisk::DiskList.size() < 1)
-      {
-        printf("SCSI bus scan failed. Adding RAM Disk");
-        auto ram_disk = std::make_shared<USB::MscRamDisk>();
-        USB::MscDisk::DiskList.push_back(ram_disk);
-      }
+  {
+    printf("SCSI bus scan failed. Adding RAM Disk");
+    auto ram_disk = std::make_shared<USB::MscRamDisk>();
+    USB::MscDisk::DiskList.push_back(ram_disk);
+  }
 
-
-      // TEMPORARY
-        auto ram_disk2 = std::make_shared<USB::MscRamDisk>();
-        USB::MscDisk::DiskList.push_back(ram_disk2);
+  // TEMPORARY
+  auto ram_disk2 = std::make_shared<USB::MscRamDisk>();
+  USB::MscDisk::DiskList.push_back(ram_disk2);
 }
 
 // Invoked to determine max LUN
@@ -68,7 +58,6 @@ uint8_t tud_msc_get_maxlun_cb(void)
 {
   printf("%s size: %d\n", __func__, USB::MscDisk::DiskList.size());
   return USB::MscDisk::DiskList.size();
-  // return 2; // dual LUN
 }
 
 // Invoked when received SCSI_CMD_INQUIRY
@@ -162,12 +151,6 @@ int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void *buff
     return 0;
   }
   uint32_t read_bytes = disk->Read10(lba, offset, (uint8_t *)buffer, bufsize);
-  // for(int i=0; i<bufsize; i++){
-  //   printf("%02x ", ((uint8_t *)buffer)[i]);
-  //   if(i%16==15) printf("\n");
-  //   if(i%10)vTaskDelay(1);
-  // }
-  // printf("\t%s read_bytes %d\n", __func__, (int)read_bytes);
   return (int32_t)read_bytes;
 }
 
@@ -217,7 +200,6 @@ int32_t tud_msc_scsi_cb(uint8_t lun, uint8_t const scsi_cmd[16], void *buffer, u
 {
   printf("%s lun %d scsi_cmd %02X %02X %02X %02X %02X %02X %02X\n", __func__, lun, scsi_cmd[0],
          scsi_cmd[1], scsi_cmd[2], scsi_cmd[3], scsi_cmd[4], scsi_cmd[5], scsi_cmd[6]);
-
 
   std::shared_ptr<USB::MscDisk> disk = USB::MscDisk::GetMscDiskByLun(lun);
   if (disk == nullptr)
