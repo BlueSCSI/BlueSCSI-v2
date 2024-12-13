@@ -794,7 +794,7 @@ std::vector<uint8_t> shared_ptr_to_bytes(const std::shared_ptr<T> &ptr)
     class DeviceDescriptor : public BasicDescriptor
     {
     public:
-        DeviceDescriptor(std::string manufacturer = "TinyUSB", std::string product = "TinyUSB Device", std::string serial_num = "")
+        DeviceDescriptor(std::string manufacturer = "BlueSCSI", std::string product = "BlueSCSI v2", std::string serial_num = "")
         {
             desc_.bLength = sizeof(tusb_desc_device_t);
             desc_.bDescriptorType = getDescriptorType();

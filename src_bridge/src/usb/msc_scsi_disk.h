@@ -3,7 +3,7 @@
 namespace USB
 {
 
-    class MscScsiDisk : MscDisk
+    class MscScsiDisk : public MscDisk
     {
     public:
         MscScsiDisk(uint8_t id) : MscDisk(id) {}
@@ -31,8 +31,6 @@ namespace USB
             uint8_t *bufIn, size_t bufInLen,
             const uint8_t *bufOut, size_t bufOutLen,
             bool returnDataPhase = false);
-
-
 
         // bool is_writable_;
         // uint8_t *msc_disk_;

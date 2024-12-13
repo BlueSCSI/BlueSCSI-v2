@@ -66,17 +66,15 @@ namespace USB
 
         static std::shared_ptr<USB::MscDisk> GetMscDiskByScsiId(uint8_t target_id);
         static std::shared_ptr<USB::MscDisk> GetMscDiskByLun(uint8_t lun);
+        static void AddMscDisk(std::shared_ptr<USB::MscDisk> disk){
+            DiskList.push_back(disk);
+        }
         static std::vector<std::shared_ptr<MscDisk>> DiskList;
 
     protected:
-        std::shared_ptr<MscDisk> shared_from_this()
-        {
-            return std::shared_ptr<MscDisk>(this);
-        }
         // Constructor can't be called directly, since this is an abstract class
-        MscDisk(uint8_t id) : target_id(id)
+        explicit MscDisk(uint8_t id) : target_id(id)
         {
-            DiskList.push_back(shared_from_this());
         }
     };
 

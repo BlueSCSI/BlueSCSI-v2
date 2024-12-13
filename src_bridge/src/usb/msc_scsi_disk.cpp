@@ -77,10 +77,8 @@ namespace USB
           scsiHostPhyReset();
         }
 
-        // vTaskDelay(50/portTICK_PERIOD_MS);
-
         // TODO: Probably should handle multiple LUNs?
-        shared_ptr<MscScsiDisk> cur_target = make_shared<MscScsiDisk>(target_id);
+        auto cur_target = std::make_shared<USB::MscScsiDisk>(target_id);
 
         LED_ON();
         bool startstopok =
@@ -113,6 +111,7 @@ namespace USB
           LED_OFF();
           continue;
         }
+        MscDisk::AddMscDisk(cur_target);
         cur_target->ansiVersion = cur_target->inquiry_data[2] & 0x7;
 
         log("SCSI ID ", cur_target->target_id,
@@ -173,7 +172,6 @@ namespace USB
         delay(1000);
       } // end if(diskInfoList.size() > 0)
     }
-
   }
 
   bool MscScsiDisk::ReadCapacity(uint32_t *sectorcount, uint32_t *sectorsize)
@@ -221,7 +219,8 @@ namespace USB
   // Execute INQUIRY command
   bool MscScsiDisk::Inquiry(bool refresh_required)
   {
-    if(!refresh_required && inquiry_data[0] != 0){
+    if (!refresh_required && inquiry_data[0] != 0)
+    {
       // We already have inquiry data. Don't need to re-poll the drive
       return true;
     }
@@ -256,18 +255,18 @@ namespace USB
       else if (status == 2)
       {
         uint8_t sense_key;
-            RequestSense(&sense_key);
+        RequestSense(&sense_key);
 
-            if (sense_key == 6)
-            {
-              log("Target ", target_id, " reports UNIT_ATTENTION, running INQUIRY");
-              Inquiry();
-            }
-            else if (sense_key == 2)
-            {
-              log("Target ", target_id, " reports NOT_READY, running STARTSTOPUNIT");
-              StartStopUnit(0, true, false);
-            }
+        if (sense_key == 6)
+        {
+          log("Target ", target_id, " reports UNIT_ATTENTION, running INQUIRY");
+          Inquiry();
+        }
+        else if (sense_key == 2)
+        {
+          log("Target ", target_id, " reports NOT_READY, running STARTSTOPUNIT");
+          StartStopUnit(0, true, false);
+        }
       }
       else
       {

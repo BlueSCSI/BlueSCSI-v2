@@ -126,6 +126,9 @@ char stdio_tinyusb_cdc_readchar()
 void stdio_tinyusb_cdc_task(void *params)
 {
     (void)params; // Unused parameter
+
+    stdio_tinyusb_cdc_init();
+    
     TickType_t wake;
     wake = xTaskGetTickCount();
     while (cdc_task_running)

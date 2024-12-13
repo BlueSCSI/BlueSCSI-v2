@@ -633,8 +633,8 @@ extern "C" void bluescsi_setup(void)
       }
     }
 
-
-    g_scsi_msc_mode = ini_getbool("SCSI", "UsbBridgeMode", false, CONFIGFILE);
+// TODO: Return this back to false in the future!!!
+    g_scsi_msc_mode = ini_getbool("SCSI", "UsbBridgeMode", true, CONFIGFILE);
     // For older machines, the USB CDC interface may confuse the host if we
     // also have USB MSC devices defined.
     g_disable_usb_cdc = ini_getbool("SCSI", "InhibitUsbCdc", false, CONFIGFILE);

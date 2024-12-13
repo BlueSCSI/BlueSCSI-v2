@@ -45,10 +45,11 @@ namespace USB
   }
 
   std::shared_ptr<MscDisk> MscDisk::GetMscDiskByLun(uint8_t lun){
-    if(DiskList.at(lun)){
-      return DiskList.at(lun);
+    if(DiskList.size() <= lun){
+      printf("WARNING: GetMscDiskByLun lun %d not found", (int)lun);
+      return nullptr;
     }
-    return nullptr;
+    return DiskList[lun];
   }
 
   // void MscDisk::Inquiry(uint8_t vendor_id[8], uint8_t product_id[16], uint8_t product_rev[4]);
