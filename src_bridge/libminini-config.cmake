@@ -1,4 +1,5 @@
-# BlueSCSI has a custom version of MiniINI, so we need to use that.
+# BlueSCSI has a custom version of MiniINI, so we need to use that instead of
+# the mainline version.
 
 # # Fetch MiniINI testing framework
 # include(FetchContent)

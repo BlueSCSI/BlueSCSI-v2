@@ -182,12 +182,12 @@ void usb_descriptors_init()
     // // Create default devices
     // if (!g_disable_usb_cdc)
     // {
-        build_cdc_interface(config_desc);
-        build_cdc_interface(config_desc);
+    build_cdc_interface(config_desc);
+    build_cdc_interface(config_desc);
     // }
     // if (g_scsi_msc_mode)
     // {
-        build_msc_interface(config_desc);
+    build_msc_interface(config_desc);
     // }
 }
 

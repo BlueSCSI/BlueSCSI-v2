@@ -1,3 +1,7 @@
+// Periodic FreeRTOS task that will run the FreeRTOS CLI framework. Since this
+// runs asynchronously with the rest of the tasks, pay attention to thread-
+// safety.
+//
 // Copyright (C) 2024 akuker
 // Copyright (C) 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
@@ -22,7 +26,7 @@
 #include "FreeRTOS.h"
 #include <stdio.h>
 #include <memory.h>
-#include "freertos_cli_commands.h"
+#include "cmd_console_examples.h"
 
 #ifdef __cplusplus
 extern "C"

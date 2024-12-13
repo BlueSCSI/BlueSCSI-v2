@@ -21,16 +21,21 @@ if (EXISTS ${picoVscode})
 endif()
 # ====================================================================================
 set(PICO_BOARD pico CACHE STRING "Board type")
-set(CMAKE_BUILD_TYPE "Debug")
-set(PICO_DEOPTIMIZED_DEBUG "1")
+
+##### Uncommend the following for development:
+# set(CMAKE_BUILD_TYPE "Debug")
 
 cmake_minimum_required(VERSION 3.12)
 
 include(pico_sdk_import.cmake)
 
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# !! If cmake fails at this point, you probably don't have the
+# !! FreeRTOS git submodule checked out. Run the following
+# !! command to populate the ./freertos directory.
+# !!       git submodule update --init --recursive
 set(FREERTOS_KERNEL_PATH ${CMAKE_CURRENT_LIST_DIR}/freertos)
 include(FreeRTOS_Kernel_import.cmake)
-
 
 #-------------
 # Fetch the FreeRTOS CLI library
@@ -73,8 +78,8 @@ endif ()
 
 add_executable(scsibridge
         src/cmd_console_task.cpp
-        src/freertos_cli_commands.cpp
-        src/freertos_hook.c
+        src/cmd_console_examples.cpp
+        src/freertos_error_cbs.c
         src/main.cpp
         src/ringbuffer.cpp
         src/scsi/BlueSCSI.cpp
@@ -90,15 +95,13 @@ add_executable(scsibridge
         src/scsi/BlueSCSI_Toolbox.cpp
         src/scsi/ImageBackingStore.cpp
         src/scsi/ROMDrive.cpp
-        src/scsi/BlueSCSI_usbbridge.cpp
         src/scsi/BlueSCSI_tape.cpp
-
         src/usb/configuration_descriptor.cpp
         src/usb/device_descriptor.cpp
         src/usb/endpoint_descriptor.cpp
         src/usb/interface_descriptor.cpp
         src/usb/msc_base_disk.cpp
-        src/usb/msc_disk.cpp
+        src/usb/msc_disk_cbs.cpp
         src/usb/msc_ram_disk.cpp
         src/usb/msc_scsi_disk.cpp
         src/usb/stdio_tinyusb_cdc.cpp

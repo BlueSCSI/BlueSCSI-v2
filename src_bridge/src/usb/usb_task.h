@@ -1,3 +1,5 @@
+// FreeRTOS task that will periodically call the TinyUSB stack
+//
 // Copyright (C) 2024 akuker
 //
 // This program is free software: you can redistribute it and/or modify it
