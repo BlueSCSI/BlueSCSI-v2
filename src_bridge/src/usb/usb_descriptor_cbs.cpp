@@ -18,8 +18,8 @@
 extern bool g_disable_usb_cdc;
 extern bool g_scsi_msc_mode;
 
-#define USB_VID 0xCafe
-#define USB_BCD 0x0200
+#define USB_VID 0x1209
+#define USB_BCD 0xB551
 #define _PID_MAP(itf, n) ((CFG_TUD_##itf) << (n))
 #define USB_PID (0x4000 | _PID_MAP(CDC, 0) | _PID_MAP(MSC, 1) | _PID_MAP(HID, 2) | \
                  _PID_MAP(MIDI, 3) | _PID_MAP(VENDOR, 4))
@@ -29,7 +29,6 @@ static void build_msc_interface(USB::ConfigurationDescriptor *cfg_desc);
 
 static USB::DeviceDescriptor *device_desc;
 static USB::ConfigurationDescriptor *config_desc;
-USB::StringDescriptor g_usb_string_descriptor;
 
 static void build_device_descriptor()
 {
@@ -254,6 +253,6 @@ extern "C" uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t lang
 {
     (void)langid;
     static std::vector<uint8_t> usb_string_desc;
-    usb_string_desc = g_usb_string_descriptor.generateDescriptorBlock(index);
+    usb_string_desc = USB::g_usb_string_descriptor.generateDescriptorBlock(index);
     return (uint16_t *)usb_string_desc.data();
 }

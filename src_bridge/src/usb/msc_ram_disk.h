@@ -4,12 +4,13 @@
 namespace USB
 {
 
-    class MscRamDisk : MscDisk
+    class MscRamDisk : public MscDisk
     {
     public:
         MscRamDisk(bool is_writable = true);
         ~MscRamDisk() {};
-        bool Inquiry(bool refresh_required = false) override {
+        bool Inquiry(bool refresh_required = false) override
+        {
             (void)refresh_required;
             return true;
         }
@@ -23,7 +24,7 @@ namespace USB
 
         static void StaticInit() {}
 
-        protected:
+    protected:
         bool is_writable_;
         // uint8_t *msc_disk_;
         static const uint32_t DISK_BLOCK_SIZE = 512;
@@ -31,6 +32,5 @@ namespace USB
         uint8_t ram_disk_[DISK_BLOCK_COUNT][DISK_BLOCK_SIZE];
 
         static const uint8_t readme_disk_[DISK_BLOCK_COUNT][DISK_BLOCK_SIZE];
-
     };
 }

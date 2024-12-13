@@ -29,25 +29,20 @@
 #define USBD_STACK_SIZE (3 * configMINIMAL_STACK_SIZE / 2) * (CFG_TUSB_DEBUG ? 2 : 1)
 
 void bluescsi_main_task(void *param);
-extern "C" void bluescsi_setup(void);
 
-int main(void) 
+int main(void)
 {
 
   platform_init();
 
-  usb_descriptors_init();
-  stdio_tinyusb_cdc_init();
-
   printf("Welcome to BlueSCSI Bridge!\n");
 
-  xTaskCreate(usb_device_task, "usbd", USBD_STACK_SIZE, NULL, configMAX_PRIORITIES - 2, NULL);
-  //xTaskCreate(stdio_tinyusb_cdc_task, "cdcd", configMINIMAL_STACK_SIZE * 2, NULL, configMAX_PRIORITIES - 3, NULL);
-  stdio_tinyusb_cdc_start_task(configMAX_PRIORITIES - 3);
+  xTaskCreate(usb_device_task, "usbd", USBD_STACK_SIZE * 2, NULL, configMAX_PRIORITIES - 2, NULL);
+  xTaskCreate(stdio_tinyusb_cdc_task, "cdcd", configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES - 3, NULL);
   xTaskCreate(vCommandConsoleTask, "cli", configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES - 4, NULL);
   // This should be the highest priority task
-  xTaskCreate(bluescsi_main_task, "scsiusb", configMINIMAL_STACK_SIZE*4, NULL, configMAX_PRIORITIES-1, NULL);
-  
+  xTaskCreate(bluescsi_main_task, "scsiusb", configMINIMAL_STACK_SIZE * 4, NULL, configMAX_PRIORITIES - 1, NULL);
+
   // This should never return.....
   vTaskStartScheduler();
 

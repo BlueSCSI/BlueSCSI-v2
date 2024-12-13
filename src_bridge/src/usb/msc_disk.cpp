@@ -41,7 +41,7 @@ bool g_disable_usb_cdc;
 namespace USB
 {
   // USB supports a maximum of 16 LUNs
-  std::vector<std::shared_ptr<USB::MscDisk>> DiskList(16);
+  std::vector<std::shared_ptr<USB::MscDisk>> DiskList();
 }
 
 void msc_disk_init(void){
@@ -54,19 +54,20 @@ void msc_disk_init(void){
       {
         printf("SCSI bus scan failed. Adding RAM Disk");
         auto ram_disk = std::make_shared<USB::MscRamDisk>();
+        USB::MscDisk::DiskList.push_back(ram_disk);
       }
 
 
       // TEMPORARY
         auto ram_disk2 = std::make_shared<USB::MscRamDisk>();
-
+        USB::MscDisk::DiskList.push_back(ram_disk2);
 }
 
 // Invoked to determine max LUN
 uint8_t tud_msc_get_maxlun_cb(void)
 {
-  printf("%s size: %d\n", __func__, USB::DiskList.size());
-  return USB::DiskList.size();
+  printf("%s size: %d\n", __func__, USB::MscDisk::DiskList.size());
+  return USB::MscDisk::DiskList.size();
   // return 2; // dual LUN
 }
 
@@ -77,7 +78,6 @@ void tud_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8], uint8_t product_id[16
 #if VERBOSE
   printf("%s lun %d\n", __func__, lun);
 #endif
-
   std::shared_ptr<USB::MscDisk> disk = USB::MscDisk::GetMscDiskByLun(lun);
   if (disk == nullptr)
   {
@@ -102,7 +102,7 @@ bool tud_msc_test_unit_ready_cb(uint8_t lun)
 #if VERBOSE
   printf("%s lun %d\n", __func__, lun);
 #endif
-  std::shared_ptr<USB::MscDisk> disk = USB::MscDisk::GetMscDiskByLun(lun);
+  auto disk = USB::MscDisk::GetMscDiskByLun(lun);
   if (disk == nullptr)
   {
     return false;

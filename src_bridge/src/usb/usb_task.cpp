@@ -20,6 +20,7 @@ static void usb_task_debug()
     usb_device_task_counter++;
 }
 
+void usb_descriptors_init();
 void usb_device_task(void *param)
 {
     // Wait for SCSI Scan to complete
@@ -27,7 +28,8 @@ void usb_device_task(void *param)
     {
         vTaskDelay(100);
     }
-
+    
+    usb_descriptors_init();
     printf("usb_device_task()\n");
     // init device stack on configured roothub port
     // This should be called after scheduler/kernel is started.
