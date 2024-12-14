@@ -47,10 +47,6 @@ void msc_disk_init(void)
     auto ram_disk = std::make_shared<USB::MscRamDisk>();
     USB::MscDisk::DiskList.push_back(ram_disk);
   }
-
-  // TEMPORARY
-  auto ram_disk2 = std::make_shared<USB::MscRamDisk>();
-  USB::MscDisk::DiskList.push_back(ram_disk2);
 }
 
 // Invoked to determine max LUN

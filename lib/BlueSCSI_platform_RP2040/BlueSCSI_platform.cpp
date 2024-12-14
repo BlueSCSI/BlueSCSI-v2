@@ -1,6 +1,7 @@
 // Copyright (c) 2022 Rabbit Hole Computing™
 // Copyright (c) 2023 Eric Helgeson
 // Copyright (c) 2023 Tech by Androda, LLC
+// Copyright (c) 2024 akuker
 
 #include "BlueSCSI_platform.h"
 #include "BlueSCSI_log.h"
@@ -27,10 +28,10 @@
 #ifndef LIB_FREERTOS_KERNEL
 #ifndef __MBED__
 #include <Adafruit_TinyUSB.h>
-# include <class/cdc/cdc_device.h>
+#include <class/cdc/cdc_device.h>
 #else
-# include <platform/mbed_error.h>
-# include <USB/PluggableUSBSerial.h>
+#include <platform/mbed_error.h>
+#include <USB/PluggableUSBSerial.h>
 #endif // __MBED__
 #endif // LIB_FREERTOS_KERNEL
 
@@ -67,6 +68,11 @@ SCSI_PINS scsi_pins = {  // Default values, to be tweaked later as needed
 
     .SCSI_ACCEL_PINMASK = SCSI_ACCEL_SETPINS
 };
+    // For some BlueSCSI devices that are exclusively used in USB MSC mode,
+    // the sd card slot may be depopulated. Instead, a pull-up resistor
+    // will be connected on SDIO_D1. (This is NOT the same as having a SD
+    // card slot, but not a card installed)
+    bool g_sd_card_slot_installed = true;
 
 #ifdef MBED
 void mbed_error_hook(const mbed_error_ctx * error_context);
@@ -76,13 +82,13 @@ void mbed_error_hook(const mbed_error_ctx * error_context);
 /* GPIO init   */
 /***************/
 
-// Helper function to configure whole GPIO in one line
-static void gpio_conf(uint gpio, gpio_function_t fn, bool pullup, bool pulldown, bool output, bool initial_state, bool fast_slew)
-{
-    gpio_put(gpio, initial_state);
-    gpio_set_dir(gpio, output);
-    gpio_set_pulls(gpio, pullup, pulldown);
-    gpio_set_function(gpio, fn);
+    // Helper function to configure whole GPIO in one line
+    static void gpio_conf(uint gpio, gpio_function_t fn, bool pullup, bool pulldown, bool output, bool initial_state, bool fast_slew)
+    {
+        gpio_put(gpio, initial_state);
+        gpio_set_dir(gpio, output);
+        gpio_set_pulls(gpio, pullup, pulldown);
+        gpio_set_function(gpio, fn);
 
     if (fast_slew)
     {
@@ -116,40 +122,41 @@ static void CheckPicoW() {
 #endif
 
 #ifdef ENABLE_AUDIO_OUTPUT
-// Increases clk_sys and clk_peri to 135.428571MHz at runtime to support
-// division to audio output rates. Invoke before anything is using clk_peri
-// except for the logging UART, which is handled below.
-static void reclock_for_audio() {
-    // ensure UART is fully drained before we mess up its clock
-    uart_tx_wait_blocking(uart0);
-    // switch clk_sys and clk_peri to pll_usb
-    // see code in 2.15.6.1 of the datasheet for useful comments
-    clock_configure(clk_sys,
-            CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
-            CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_CLKSRC_PLL_USB,
-            48 * MHZ,
-            48 * MHZ);
-    clock_configure(clk_peri,
-            0,
-            CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLKSRC_PLL_USB,
-            48 * MHZ,
-            48 * MHZ);
-    // reset PLL for 135.428571MHz
-    pll_init(pll_sys, 1, 948000000, 7, 1);
-    // switch clocks back to pll_sys
-    clock_configure(clk_sys,
-            CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
-            CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
-            135428571,
-            135428571);
-    clock_configure(clk_peri,
-            0,
-            CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
-            135428571,
-            135428571);
-    // reset UART for the new clock speed
-    uart_init(uart0, 1000000);
-}
+    // Increases clk_sys and clk_peri to 135.428571MHz at runtime to support
+    // division to audio output rates. Invoke before anything is using clk_peri
+    // except for the logging UART, which is handled below.
+    static void reclock_for_audio()
+    {
+        // ensure UART is fully drained before we mess up its clock
+        uart_tx_wait_blocking(uart0);
+        // switch clk_sys and clk_peri to pll_usb
+        // see code in 2.15.6.1 of the datasheet for useful comments
+        clock_configure(clk_sys,
+                        CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
+                        CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_CLKSRC_PLL_USB,
+                        48 * MHZ,
+                        48 * MHZ);
+        clock_configure(clk_peri,
+                        0,
+                        CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLKSRC_PLL_USB,
+                        48 * MHZ,
+                        48 * MHZ);
+        // reset PLL for 135.428571MHz
+        pll_init(pll_sys, 1, 948000000, 7, 1);
+        // switch clocks back to pll_sys
+        clock_configure(clk_sys,
+                        CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
+                        CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
+                        135428571,
+                        135428571);
+        clock_configure(clk_peri,
+                        0,
+                        CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
+                        135428571,
+                        135428571);
+        // reset UART for the new clock speed
+        uart_init(uart0, 1000000);
+    }
 #endif
 #ifdef LIB_FREERTOS_KERNEL
 unsigned long millis(void){
@@ -194,8 +201,20 @@ void platform_init()
     // If G16 and G17 are high, this is the 2023_09a revision or later desktop board
     gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_I2C, false, false, false,  false, true);
     gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_I2C, false, false, false,  false, true);
+    // Determine whether the SD Card slot is present - SDIO_D1 will be pulled high
+    // if the SD Card slot is not installed
+    gpio_conf(SDIO_D1, GPIO_FUNC_SIO, true, false, false, false, true);
     delay(10);
     bool d50_2023_09a = gpio_get(GPIO_I2C_SCL) && gpio_get(GPIO_I2C_SDA);
+    g_sd_card_slot_installed = gpio_get(SDIO_D1);
+    if (g_sd_card_slot_installed)
+    {
+        log("SD Card slot detected");
+    }
+    else
+    {
+        log("No SD Card slot detected");
+    }
 
     if (d50_2023_09a) {
         log("I2C Supported");
