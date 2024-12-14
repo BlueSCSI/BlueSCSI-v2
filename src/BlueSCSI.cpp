@@ -3,46 +3,46 @@
  *  Copyright (c) 2023 Eric Helgeson, Androda, and contributors.
  *
  *  This project is based on ZuluSCSI, BlueSCSI v1, and SCSI2SD:
- * 
+ *
  *  ZuluSCSI
  *  Copyright (c) 2022 Rabbit Hole Computing
- * 
+ *
  * This project is based on BlueSCSI:
  *
  *  BlueSCSI
  *  Copyright (c) 2021  Eric Helgeson, Androda
- *  
- *  This file is free software: you may copy, redistribute and/or modify it  
- *  under the terms of the GNU General Public License as published by the  
- *  Free Software Foundation, either version 2 of the License, or (at your  
- *  option) any later version.  
- *  
- *  This file is distributed in the hope that it will be useful, but  
- *  WITHOUT ANY WARRANTY; without even the implied warranty of  
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU  
- *  General Public License for more details.  
- *  
- *  You should have received a copy of the GNU General Public License  
- *  along with this program.  If not, see https://github.com/erichelgeson/bluescsi.  
- *  
- * This file incorporates work covered by the following copyright and  
- * permission notice:  
- *  
- *     Copyright (c) 2019 komatsu   
- *  
- *     Permission to use, copy, modify, and/or distribute this software  
- *     for any purpose with or without fee is hereby granted, provided  
- *     that the above copyright notice and this permission notice appear  
- *     in all copies.  
- *  
- *     THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL  
- *     WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED  
- *     WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE  
- *     AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR  
- *     CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS  
- *     OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,  
- *     NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN  
- *     CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.  
+ *
+ *  This file is free software: you may copy, redistribute and/or modify it
+ *  under the terms of the GNU General Public License as published by the
+ *  Free Software Foundation, either version 2 of the License, or (at your
+ *  option) any later version.
+ *
+ *  This file is distributed in the hope that it will be useful, but
+ *  WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see https://github.com/erichelgeson/bluescsi.
+ *
+ * This file incorporates work covered by the following copyright and
+ * permission notice:
+ *
+ *     Copyright (c) 2019 komatsu
+ *
+ *     Permission to use, copy, modify, and/or distribute this software
+ *     for any purpose with or without fee is hereby granted, provided
+ *     that the above copyright notice and this permission notice appear
+ *     in all copies.
+ *
+ *     THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ *     WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ *     WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ *     AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR
+ *     CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
+ *     OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
+ *     NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+ *     CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
 #include <SdFat.h>
@@ -128,6 +128,10 @@ void init_logfile()
 
   bool truncate = first_open_after_boot;
   int flags = O_WRONLY | O_CREAT | (truncate ? O_TRUNC : O_APPEND);
+  if(!SD.card()){
+    // If there isn't an SD Card installed, we can't do anything here.
+    return;
+  }
   g_logfile = SD.open(LOGFILE, flags);
   if (!g_logfile.isOpen())
   {
@@ -587,70 +591,87 @@ void check_and_apply_sdio_drive_strength() {
   }
 }
 
+extern bool g_sd_card_slot_installed;
 extern "C" void bluescsi_setup(void)
 {
   pio_clear_instruction_memory(pio0);
   pio_clear_instruction_memory(pio1);
   platform_init();
 
-  g_sdcard_present = mountSDCard();
-
-  if(!g_sdcard_present)
+  if (!g_sd_card_slot_installed)
   {
-    log("SD card init failed, sdErrorCode: ", (int)SD.sdErrorCode(),
-           " sdErrorData: ", (int)SD.sdErrorData());
-
-    if (romDriveCheckPresent())
-    {
-      reinitSCSI();
-      if (g_romdrive_active)
-      {
-        log("Enabled ROM drive without SD card");
-        return;
-      }
-    }
-
-    do
-    {
-      blinkStatus(BLINK_ERROR_NO_SD_CARD);
-      delay(1000);
-      platform_reset_watchdog();
-      g_sdcard_present = mountSDCard();
-    } while (!g_sdcard_present);
-    log("SD card init succeeded after retry");
-  }
-
-  if (g_sdcard_present)
-  {
+    log("SD Card slot is depopulated. Defaulting to USB MSC Mode");
+    // The SD Card slot is depopulated
+    g_sdcard_present = false;
     platform_late_init();
-    if (ini_getbool("SCSI", "InitiatorMode", false, CONFIGFILE))
-    {
-      platform_enable_initiator_mode();
-      if (! ini_getbool("SCSI", "InitiatorParity", true, CONFIGFILE))
-      {
-        log("Initiator Mode Skipping Parity Check.");
-        setInitiatorModeParityCheck(false);
-      }
-    }
+    platform_enable_initiator_mode();
+    setInitiatorModeParityCheck(false);
 
-// TODO: Return this back to false in the future!!!
-    g_scsi_msc_mode = ini_getbool("SCSI", "UsbBridgeMode", true, CONFIGFILE);
-    // For older machines, the USB CDC interface may confuse the host if we
-    // also have USB MSC devices defined.
-    g_disable_usb_cdc = ini_getbool("SCSI", "InhibitUsbCdc", false, CONFIGFILE);
-
-    if (SD.clusterCount() == 0)
-    {
-      log("SD card without filesystem!");
-    }
-    check_and_apply_sdio_delay();
-    check_and_apply_sdio_drive_strength();
-
-    print_sd_info();
-  
+    g_scsi_msc_mode = true;
+    g_disable_usb_cdc = false;
     reinitSCSI();
-  }
 
+  }
+  else
+  {
+    g_sdcard_present = mountSDCard();
+
+    if (!g_sdcard_present)
+    {
+      log("SD card init failed, sdErrorCode: ", (int)SD.sdErrorCode(),
+          " sdErrorData: ", (int)SD.sdErrorData());
+
+      if (romDriveCheckPresent())
+      {
+        reinitSCSI();
+        if (g_romdrive_active)
+        {
+          log("Enabled ROM drive without SD card");
+          return;
+        }
+      }
+
+      do
+      {
+        blinkStatus(BLINK_ERROR_NO_SD_CARD);
+        delay(1000);
+        platform_reset_watchdog();
+        g_sdcard_present = mountSDCard();
+      } while (!g_sdcard_present);
+      log("SD card init succeeded after retry");
+    }
+
+    if (g_sdcard_present)
+    {
+      platform_late_init();
+      if (ini_getbool("SCSI", "InitiatorMode", false, CONFIGFILE))
+      {
+        platform_enable_initiator_mode();
+        if (!ini_getbool("SCSI", "InitiatorParity", true, CONFIGFILE))
+        {
+          log("Initiator Mode Skipping Parity Check.");
+          setInitiatorModeParityCheck(false);
+        }
+      }
+
+      // TODO: Return this back to false in the future!!!
+      g_scsi_msc_mode = ini_getbool("SCSI", "UsbBridgeMode", true, CONFIGFILE);
+      // For older machines, the USB CDC interface may confuse the host if we
+      // also have USB MSC devices defined.
+      g_disable_usb_cdc = ini_getbool("SCSI", "InhibitUsbCdc", false, CONFIGFILE);
+
+      if (SD.clusterCount() == 0)
+      {
+        log("SD card without filesystem!");
+      }
+      check_and_apply_sdio_delay();
+      check_and_apply_sdio_drive_strength();
+
+      print_sd_info();
+
+      reinitSCSI();
+    }
+  }
   log(" ");
   log("Initialization complete!");
 
