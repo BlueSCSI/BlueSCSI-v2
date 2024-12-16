@@ -32,7 +32,7 @@ namespace USB
     sectorsize = DISK_BLOCK_SIZE;
     sectorcount = DISK_BLOCK_COUNT;
     ansiVersion = 0;
-    deviceType = RAM_DISK;
+    deviceType = S2S_CFG_FIXED;
     // Initialize with a file system
     memcpy(ram_disk_, readme_disk_, sizeof(readme_disk_));
   }
