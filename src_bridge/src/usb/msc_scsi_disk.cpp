@@ -77,7 +77,7 @@ namespace USB
       scsiHostPhyReset();
 
       // Scan the SCSI bus to see which devices exist
-      for (int target_id = 0; target_id < 8; target_id++)
+      for (int target_id = 6; target_id < 8; target_id++)
       {
 
         // Skip ourselves
@@ -99,14 +99,28 @@ namespace USB
         auto cur_target = std::make_shared<USB::MscScsiDisk>(target_id);
 
         LED_ON();
-        bool startstopok =
-            cur_target->TestUnitReady();
-        startstopok &= cur_target->StartStopUnit(0, true, false);
+        bool inquiryok = cur_target->Inquiry();
+        LED_OFF();
+        if (!inquiryok)
+        {
+          printf("Inquiry failed for ID %d", target_id);
+          LED_OFF();
+          continue;
+        }
+
+
+
+        int ready_status = cur_target->TestUnitReadyStatus();
+        if (ready_status == eNotReady){
+          // Device responded, but is not ready. Could be removable
+          // drive
+        }
+        bool startstopok = cur_target->StartStopUnit(0, true, false);
         if (!startstopok)
         {
           log("      Device did not respond - SCSI ID", target_id);
           LED_OFF();
-          continue;
+          // continue;
         }
 
         cur_target->target_id = target_id;
@@ -118,17 +132,9 @@ namespace USB
         {
           printf("ReadCapacity failed for ID %d", target_id);
           LED_OFF();
-          continue;
+          // continue;
         }
 
-        bool inquiryok = cur_target->Inquiry();
-        LED_OFF();
-        if (!inquiryok)
-        {
-          printf("Inquiry failed for ID %d", target_id);
-          LED_OFF();
-          continue;
-        }
         MscDisk::AddMscDisk(cur_target);
         cur_target->ansiVersion = cur_target->inquiry_data[2] & 0x7;
 
@@ -251,15 +257,21 @@ namespace USB
   }
 
   // Execute TEST UNIT READY command and handle unit attention state
+  int MscScsiDisk::TestUnitReadyStatus()
+  {
+    uint8_t command[6] = {0x00, 0, 0, 0, 0, 0};
+    int status = RunCommand(
+        command, sizeof(command),
+        NULL, 0,
+        NULL, 0);
+    return status;
+  }
+
   bool MscScsiDisk::TestUnitReady()
   {
     for (int retries = 0; retries < 2; retries++)
     {
-      uint8_t command[6] = {0x00, 0, 0, 0, 0, 0};
-      int status = RunCommand(
-          command, sizeof(command),
-          NULL, 0,
-          NULL, 0);
+      int status = TestUnitReadyStatus();
 
       if (status == 0)
       {
@@ -275,12 +287,12 @@ namespace USB
         uint8_t sense_key;
         RequestSense(&sense_key);
 
-        if (sense_key == 6)
+        if (sense_key == eUnitAttention)
         {
           log("Target ", target_id, " reports UNIT_ATTENTION, running INQUIRY");
           Inquiry();
         }
-        else if (sense_key == 2)
+        else if (sense_key == eNotReady)
         {
           log("Target ", target_id, " reports NOT_READY, running STARTSTOPUNIT");
           StartStopUnit(0, true, false);
@@ -423,6 +435,7 @@ namespace USB
         command, sizeof(command),
         response, sizeof(response),
         NULL, 0);
+    printf("%s status: %d\n", __func__, (int)status);
 
     if (status == 2)
     {

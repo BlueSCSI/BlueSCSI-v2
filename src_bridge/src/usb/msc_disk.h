@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <memory>
 #include <string>
+#include "scsi2sd.h"
 
 #pragma once
 
@@ -47,12 +48,13 @@ namespace USB
         uint32_t badSectorCount = 0;
         uint8_t ansiVersion = 0;
         uint8_t maxRetryCount = 0;
-        uint8_t deviceType = 0;
+        int deviceType = (int)S2S_CFG_FIXED;
         uint8_t inquiry_data[36] = {0};
 
         std::string vendor_id = "TinyUSB";
         std::string product_id = "Mass Storage";
         std::string product_rev = "1.0";
+
 
         const std::string getVendorId() const
         {
