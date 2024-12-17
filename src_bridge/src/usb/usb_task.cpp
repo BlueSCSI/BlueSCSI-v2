@@ -40,11 +40,6 @@ static void usb_task_debug()
 void usb_descriptors_init();
 void usb_device_task(void *param)
 {
-    // Wait for SCSI Scan to complete
-    while (g_delay_usb_task)
-    {
-        vTaskDelay(100);
-    }
 
     usb_descriptors_init();
     printf("usb_device_task()\n");
