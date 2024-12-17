@@ -77,7 +77,7 @@ namespace USB
       scsiHostPhyReset();
 
       // Scan the SCSI bus to see which devices exist
-      for (int target_id = 6; target_id < 8; target_id++)
+      for (int target_id = 0; target_id < 8; target_id++)
       {
 
         // Skip ourselves

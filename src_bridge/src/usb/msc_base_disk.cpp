@@ -39,26 +39,21 @@ namespace USB
     return nullptr;
   }
 
+  static uint32_t printf_flags = 0;
   std::shared_ptr<MscDisk> MscDisk::GetMscDiskByLun(uint8_t lun)
   {
     if (DiskList.size() <= lun)
     {
-      printf("WARNING: GetMscDiskByLun lun %d not found", (int)lun);
+      if (! (printf_flags & (1 << lun))){
+        // Only print the warning ONCE
+        printf("WARNING: GetMscDiskByLun lun %d not found\n\r", (int)lun);
+        printf_flags |= (1 << lun);
+      }
       return nullptr;
     }
     return DiskList[lun];
   }
 
-  // void MscDisk::Inquiry(uint8_t vendor_id[8], uint8_t product_id[16], uint8_t product_rev[4]);
-  // {
-  //   // We need to limit the size of the inquiry strings
-  //   size_t len = std::min((size_t)vendor_id.size(), (size_t)8);
-  //   memcpy(vendor_id, vendor_id.c_str(), len);
-  //   len = std::min((size_t)product_id.size(), (size_t)16);
-  //   memcpy(product_id, product_id.c_str(), len);
-  //   len = std::min((size_t)product_rev.size(), (size_t)4);
-  //   memcpy(product_rev, product_rev.c_str(), len);
-  // }
 
   int32_t MscDisk::UnhandledScsiCommand(uint8_t const scsi_cmd[16], void *buffer, uint16_t bufsize)
   {

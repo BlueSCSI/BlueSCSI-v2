@@ -22,11 +22,15 @@
 #include "msc_disk.h"
 #include "msc_scsi_disk.h"
 #include "msc_ram_disk.h"
+#include "BlueSCSI_config.h"
+#include <minIni.h>
 
 bool g_scsi_msc_mode;
 bool g_disable_usb_cdc;
 
 #define VERBOSE 0
+extern bool g_delay_usb_task;
+uint8_t max_allowed_usb_luns = UINT8_MAX;
 
 namespace USB
 {
@@ -52,7 +56,23 @@ void msc_disk_init(void)
 // Invoked to determine max LUN
 uint8_t tud_msc_get_maxlun_cb(void)
 {
+  if (g_delay_usb_task)
+  {
+    if(max_allowed_usb_luns == UINT8_MAX){
+      max_allowed_usb_luns = (uint8_t)ini_getl("SCSI", "MaxBridgeLuns", 4, CONFIGFILE);
+      printf("%s: Max allowed USB LUNs: %d", __func__, (int)max_allowed_usb_luns);
+    }
+
+    // Currently, this isn't known at startup when the host starts
+    // polling the USB device. We need to set it to a number greater
+    // than the maximum actual devices that are expected. 16 is a
+    // safe number, but will result in the host continuously testing
+    // if the unused LUN numbers are "ready"
+    return max_allowed_usb_luns;
+  }
+#if VERBOSE
   printf("%s size: %d\n", __func__, USB::MscDisk::DiskList.size());
+#endif
   return USB::MscDisk::DiskList.size();
 }
 
@@ -63,6 +83,16 @@ void tud_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8], uint8_t product_id[16
 #if VERBOSE
   printf("%s lun %d\n", __func__, lun);
 #endif
+
+  if (g_delay_usb_task)
+  {
+    // Fill with spaces to indicate no device
+    memset(vendor_id, ' ', 8);
+    memset(product_id, ' ', 16);
+    memset(product_rev, ' ', 4);
+    return;
+  }
+
   std::shared_ptr<USB::MscDisk> disk = USB::MscDisk::GetMscDiskByLun(lun);
   if (disk == nullptr)
   {
@@ -87,10 +117,21 @@ bool tud_msc_test_unit_ready_cb(uint8_t lun)
 #if VERBOSE
   printf("%s lun %d\n", __func__, lun);
 #endif
+  if (g_delay_usb_task)
+  {
+    // Response with "Not ready"
+    tud_msc_set_sense(lun, SCSI_SENSE_NOT_READY, 0x3A, 0x00);
+    return false;
+  }
   auto disk = USB::MscDisk::GetMscDiskByLun(lun);
   if (disk == nullptr)
   {
+    // if (lun >= num_active_luns) {
+    // Tell host this LUN doesn't exist
+    tud_msc_set_sense(lun, SCSI_SENSE_ILLEGAL_REQUEST, 0x25, 0x00);
     return false;
+    // }
+    // return false;
   }
   return disk->TestUnitReady();
 }
@@ -107,7 +148,7 @@ void tud_msc_capacity_cb(uint8_t lun, uint32_t *block_count, uint16_t *block_siz
   }
 
 #if VERBOSE
-  printf("%s sectorcount %d sectorsize %d\n", __func__, (int)diskInfo->sectorcount, (int)diskInfo->sectorsize);
+  printf("%s sectorcount %d sectorsize %d\n", __func__, (int)disk->sectorcount, (int)disk->sectorsize);
 #endif
 
   *block_count = disk->sectorcount;
@@ -122,6 +163,12 @@ bool tud_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, boo
 #if VERBOSE
   printf("%s lun %d power_condition %d start %d load_eject %d\n", __func__, lun, power_condition, start, load_eject);
 #endif
+
+  if (g_delay_usb_task)
+  {
+    tud_msc_set_sense(lun, SCSI_SENSE_NOT_READY, 0x3A, 0x00);
+    return false;
+  }
 
   std::shared_ptr<USB::MscDisk> disk = USB::MscDisk::GetMscDiskByLun(lun);
   if (disk == nullptr)
