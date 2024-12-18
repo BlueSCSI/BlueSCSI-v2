@@ -138,6 +138,8 @@ static int get_target(uint8_t lun)
 
 void init_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8], uint8_t product_id[16], uint8_t product_rev[4])
 {
+    LED_ON();
+
     int target = get_target(lun);
     uint8_t response[36] = {0};
     bool status = scsiInquiry(target, response);
@@ -149,6 +151,8 @@ void init_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8], uint8_t product_id[1
     memcpy(vendor_id, &response[8], 8);
     memcpy(product_id, &response[16], 16);
     memcpy(product_rev, &response[32], 4);
+
+    LED_OFF();
 }
 
 uint8_t init_msc_get_maxlun_cb(void)
@@ -167,6 +171,8 @@ bool init_msc_is_writable_cb (uint8_t lun)
 
 bool init_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, bool load_eject)
 {
+    LED_ON();
+
     int target = get_target(lun);
     uint8_t command[6] = {0x1B, 0x1, 0, 0, 0, 0};
     uint8_t response[4] = {0};
@@ -195,6 +201,8 @@ bool init_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, bo
         scsiRequestSense(target, &sense_key);
         logmsg("START STOP UNIT on target ", target, " failed, sense key ", sense_key);
     }
+
+    LED_OFF();
 
     return status == 0;
 }
@@ -233,6 +241,8 @@ int32_t init_msc_scsi_cb(uint8_t lun, const uint8_t scsi_cmd[16], void *buffer, 
 
 int32_t init_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buffer, uint32_t bufsize)
 {
+    LED_ON();
+
     int status = -1;
 
     int target_id = get_target(lun);
@@ -275,6 +285,7 @@ int32_t init_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buf
         status = scsiInitiatorRunCommand(target_id, command, sizeof(command), (uint8_t*)buffer, bufsize, NULL, 0);
     }
 
+    LED_OFF();
 
     if (status != 0)
     {
@@ -302,6 +313,8 @@ int32_t init_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t 
         // Not a complete sector
         return 0;
     }
+
+    LED_ON();
 
     // Write6 command supports 21 bit LBA - max of 0x1FFFFF
     if (start_sector < 0x1FFFFF && sectorcount <= 256)
@@ -331,6 +344,7 @@ int32_t init_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t 
         status = scsiInitiatorRunCommand(target_id, command, sizeof(command), NULL, 0, buffer, bufsize);
     }
 
+    LED_OFF();
 
     if (status != 0)
     {
