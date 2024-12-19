@@ -51,6 +51,10 @@ extern "C" {
 }
 #endif // ZULUSCSI_NETWORK
 
+#ifdef PLATFORM_MASS_STORAGE
+#include "ZuluSCSI_platform_msc.h"
+#endif
+
 #ifdef ENABLE_AUDIO_OUTPUT
 #  include "audio.h"
 #endif // ENABLE_AUDIO_OUTPUT
@@ -646,6 +650,11 @@ static void usb_log_poll()
 {
 #ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
     static uint32_t logpos = 0;
+
+#ifdef PLATFORM_MASS_STORAGE
+    if (platform_msc_lock_get()) return; // Avoid re-entrant USB events
+#endif
+
     if (Serial.availableForWrite())
     {
         // Retrieve pointer to log start and determine number of bytes available.
@@ -670,6 +679,11 @@ static void usb_log_poll()
 static void usb_input_poll()
 {
     #ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
+
+#ifdef PLATFORM_MASS_STORAGE
+    if (platform_msc_lock_get()) return; // Avoid re-entrant USB events
+#endif
+
     // Caputure reboot key sequence
     static bool mass_storage_reboot_keyed = false;
     static bool basic_reboot_keyed = false;
