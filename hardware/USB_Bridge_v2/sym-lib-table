@@ -1,0 +1,6 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "TS-1187A-B-A-B")(type "KiCad")(uri "${KIPRJMOD}/TS-1187A-B-A-B/TS-1187A-B-A-B.kicad_sym")(options "")(descr ""))
+  (lib (name "agausmann")(type "KiCad")(uri "${KIPRJMOD}/agausmann.kicad_sym")(options "")(descr ""))
+  (lib (name "W25Q16JVUXIQ")(type "KiCad")(uri "${KIPRJMOD}/W25Q16JVUXIQ/W25Q16JVUXIQ.kicad_sym")(options "")(descr ""))
+)
