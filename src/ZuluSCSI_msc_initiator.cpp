@@ -29,6 +29,8 @@
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_log_trace.h"
 #include "ZuluSCSI_initiator.h"
+#include "ZuluSCSI_platform_msc.h"
+#include <scsi.h>
 #include <ZuluSCSI_platform.h>
 #include <minIni.h>
 #include "SdFat.h"
@@ -60,6 +62,19 @@ static struct {
     uint32_t sectorcount;
 } g_msc_initiator_targets[NUM_SCSIID];
 static int g_msc_initiator_target_count;
+
+// Prefetch next sector in main loop while USB is transferring previous one.
+static struct {
+    uint8_t *prefetch_buffer; // Buffer to use for storing the data
+    uint32_t prefetch_bufsize;
+    uint32_t prefetch_lba; // First sector to fetch
+    int prefetch_target_id; // Target to read from
+    size_t prefetch_sectorcount; // Number of sectors to fetch
+    size_t prefetch_sectorsize;
+    bool prefetch_done; // True after prefetch is complete
+} g_msc_initiator_state;
+
+static int do_read6_or_10(int target_id, uint32_t start_sector, uint32_t sectorcount, uint32_t sectorsize, void *buffer);
 
 static void scan_targets()
 {
@@ -105,6 +120,13 @@ bool setup_msc_initiator()
     logmsg("SCSI Initiator: activating USB MSC mode");
     g_msc_initiator = true;
 
+    if (!ini_getbool("SCSI", "InitiatorMSCDisablePrefetch", false, CONFIGFILE))
+    {
+        // We can use the device mode buffer for prefetching data in initiator mode
+        g_msc_initiator_state.prefetch_buffer = scsiDev.data;
+        g_msc_initiator_state.prefetch_bufsize = sizeof(scsiDev.data);
+    }
+
     scsiInitiatorInit();
 
     // Scan for targets
@@ -121,6 +143,36 @@ void poll_msc_initiator()
         // Scan for targets until we find one
         scan_targets();
     }
+
+    platform_poll();
+    platform_msc_lock_set(true); // Cannot handle new MSC commands while running prefetch
+    if (g_msc_initiator_state.prefetch_sectorcount > 0
+        && !g_msc_initiator_state.prefetch_done)
+    {
+        LED_ON();
+
+        dbgmsg("Prefetch ", (int)g_msc_initiator_state.prefetch_lba, " + ",
+                (int)g_msc_initiator_state.prefetch_sectorcount, "x",
+                (int)g_msc_initiator_state.prefetch_sectorsize);
+        // Read next block while USB is transferring
+        int status = do_read6_or_10(g_msc_initiator_state.prefetch_target_id,
+                                    g_msc_initiator_state.prefetch_lba,
+                                    g_msc_initiator_state.prefetch_sectorcount,
+                                    g_msc_initiator_state.prefetch_sectorsize,
+                                    g_msc_initiator_state.prefetch_buffer);
+        if (status == 0)
+        {
+            g_msc_initiator_state.prefetch_done = true;
+        }
+        else
+        {
+            logmsg("Prefetch of sector ", g_msc_initiator_state.prefetch_lba, " failed: status ", status);
+            g_msc_initiator_state.prefetch_sectorcount = 0;
+        }
+
+        LED_OFF();
+    }
+    platform_msc_lock_set(false);
 }
 
 static int get_target(uint8_t lun)
@@ -239,22 +291,9 @@ int32_t init_msc_scsi_cb(uint8_t lun, const uint8_t scsi_cmd[16], void *buffer, 
     return status;
 }
 
-int32_t init_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buffer, uint32_t bufsize)
+static int do_read6_or_10(int target_id, uint32_t start_sector, uint32_t sectorcount, uint32_t sectorsize, void *buffer)
 {
-    LED_ON();
-
-    int status = -1;
-
-    int target_id = get_target(lun);
-    int sectorsize = g_msc_initiator_targets[lun].sectorsize;
-    uint32_t start_sector = lba;
-    uint32_t sectorcount = bufsize / sectorsize;
-
-    if (sectorcount == 0)
-    {
-        // Not enough buffer left for a full sector
-        return 0;
-    }
+    int status;
 
     // Read6 command supports 21 bit LBA - max of 0x1FFFFF
     // ref: https://www.seagate.com/files/staticfiles/support/docs/manual/Interface%20manuals/100293068j.pdf pg 134
@@ -269,7 +308,8 @@ int32_t init_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buf
             0x00
         };
 
-        status = scsiInitiatorRunCommand(target_id, command, sizeof(command), (uint8_t*)buffer, bufsize, NULL, 0);
+        // Note: we must not call platform poll in the commands,
+        status = scsiInitiatorRunCommand(target_id, command, sizeof(command), (uint8_t*)buffer, sectorcount * sectorsize, NULL, 0);
     }
     else
     {
@@ -282,7 +322,55 @@ int32_t init_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buf
             0x00
         };
 
-        status = scsiInitiatorRunCommand(target_id, command, sizeof(command), (uint8_t*)buffer, bufsize, NULL, 0);
+        status = scsiInitiatorRunCommand(target_id, command, sizeof(command), (uint8_t*)buffer, sectorcount * sectorsize, NULL, 0);
+    }
+
+    return status;
+}
+
+int32_t init_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buffer, uint32_t bufsize)
+{
+    LED_ON();
+
+    int status = 0;
+
+    int target_id = get_target(lun);
+    int sectorsize = g_msc_initiator_targets[lun].sectorsize;
+    uint32_t sectorcount = bufsize / sectorsize;
+    uint32_t total_sectorcount = sectorcount;
+    uint32_t orig_lba = lba;
+
+    if (sectorcount == 0)
+    {
+        // Not enough buffer left for a full sector
+        return 0;
+    }
+
+    if (g_msc_initiator_state.prefetch_done)
+    {
+        int32_t offset = (int32_t)lba - (int32_t)g_msc_initiator_state.prefetch_lba;
+        uint8_t *dest = (uint8_t*)buffer;
+        while (offset >= 0 && offset < g_msc_initiator_state.prefetch_sectorcount && sectorcount > 0)
+        {
+            // Copy sectors from prefetch
+            memcpy(dest, g_msc_initiator_state.prefetch_buffer + sectorsize * offset, sectorsize);
+            dest += sectorsize;
+            offset += 1;
+            lba += 1;
+            sectorcount -= 1;
+        }
+    }
+
+    if (sectorcount > 0)
+    {
+        dbgmsg("USB Read command ", (int)orig_lba, " + ", (int)total_sectorcount, "x", (int)sectorsize,
+               " got ", (int)(total_sectorcount - sectorcount), " sectors from prefetch");
+        status = do_read6_or_10(target_id, lba, sectorcount, sectorsize, buffer);
+        lba += sectorcount;
+    }
+    else
+    {
+        dbgmsg("USB Read command ", (int)orig_lba, " + ", (int)total_sectorcount, "x", (int)sectorsize, " fully satisfied from prefetch");
     }
 
     LED_OFF();
@@ -296,7 +384,23 @@ int32_t init_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buf
         return -1;
     }
 
-    return sectorcount * sectorsize;
+    if (lba + total_sectorcount <= g_msc_initiator_targets[lun].sectorcount)
+    {
+        int prefetch_sectorcount = total_sectorcount;
+        if (prefetch_sectorcount * sectorsize > g_msc_initiator_state.prefetch_bufsize)
+        {
+            prefetch_sectorcount = g_msc_initiator_state.prefetch_bufsize / sectorsize;
+        }
+
+        // Request prefetch of the next block while USB transfers the previous one
+        g_msc_initiator_state.prefetch_lba = lba;
+        g_msc_initiator_state.prefetch_target_id = target_id;
+        g_msc_initiator_state.prefetch_sectorcount = total_sectorcount;
+        g_msc_initiator_state.prefetch_sectorsize = sectorsize;
+        g_msc_initiator_state.prefetch_done = false;
+    }
+
+    return total_sectorcount * sectorsize;
 }
 
 int32_t init_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t *buffer, uint32_t bufsize)
@@ -332,7 +436,7 @@ int32_t init_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t 
     }
     else
     {
-        // Use READ10 command for larger number of blocks
+        // Use WRITE10 command for larger number of blocks
         uint8_t command[10] = {0x2A, 0x00,
             (uint8_t)(start_sector >> 24), (uint8_t)(start_sector >> 16),
             (uint8_t)(start_sector >> 8), (uint8_t)start_sector,
