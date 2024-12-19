@@ -28,6 +28,8 @@
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_log_trace.h"
 #include "ZuluSCSI_initiator.h"
+#include "ZuluSCSI_msc_initiator.h"
+#include "ZuluSCSI_msc.h"
 #include <ZuluSCSI_platform.h>
 #include <minIni.h>
 #include "SdFat.h"
@@ -60,6 +62,9 @@ bool scsiInitiatorReadCapacity(int target_id, uint32_t *sectorcount, uint32_t *s
 }
 
 #else
+
+// From ZuluSCSI.cpp
+extern bool g_sdcard_present;
 
 /*************************************
  * High level initiator mode logic   *
@@ -137,6 +142,11 @@ void scsiInitiatorInit()
 
 }
 
+int scsiInitiatorGetOwnID()
+{
+    return g_initiator_state.initiator_id;
+}
+
 // Update progress bar LED during transfers
 static void scsiInitiatorUpdateLed()
 {
@@ -200,6 +210,31 @@ void scsiInitiatorMainLoop()
     {
         logmsg("Executing BUS RESET after aborted command");
         scsiHostPhyReset();
+    }
+
+#ifdef PLATFORM_MASS_STORAGE
+    if (g_msc_initiator)
+    {
+        poll_msc_initiator();
+        platform_run_msc();
+        return;
+    }
+    else
+    {
+        if (!g_sdcard_present || ini_getbool("SCSI", "InitiatorMSC", false, CONFIGFILE))
+        {
+            logmsg("Entering USB MSC initiator mode");
+            platform_enter_msc();
+            setup_msc_initiator();
+            return;
+        }
+    }
+#endif
+
+    if (!g_sdcard_present)
+    {
+        // Wait for SD card
+        return;
     }
 
     if (!g_initiator_state.imaging)

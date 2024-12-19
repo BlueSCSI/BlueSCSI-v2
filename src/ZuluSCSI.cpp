@@ -58,6 +58,7 @@
 #include "ZuluSCSI_settings.h"
 #include "ZuluSCSI_disk.h"
 #include "ZuluSCSI_initiator.h"
+#include "ZuluSCSI_msc_initiator.h"
 #include "ZuluSCSI_msc.h"
 #include "ROMDrive.h"
 
@@ -65,7 +66,7 @@ SdFs SD;
 FsFile g_logfile;
 bool g_rawdrive_active;
 static bool g_romdrive_active;
-static bool g_sdcard_present;
+bool g_sdcard_present;
 
 #ifndef SD_SPEED_CLASS_WARN_BELOW
 #define SD_SPEED_CLASS_WARN_BELOW 10
@@ -955,7 +956,7 @@ static void firmware_update()
 
 // Place all the setup code that requires the SD card to be initialized here
 // Which is pretty much everything after platform_init and and platform_late_init
-static void zuluscsi_setup_sd_card()
+static void zuluscsi_setup_sd_card(bool wait_for_card = true)
 {
 
   g_sdcard_present = mountSDCard();
@@ -980,11 +981,18 @@ static void zuluscsi_setup_sd_card()
       blinkStatus(BLINK_ERROR_NO_SD_CARD);
       platform_reset_watchdog();
       g_sdcard_present = mountSDCard();
-    } while (!g_sdcard_present);
+    } while (!g_sdcard_present && wait_for_card);
     blink_cancel();
     LED_OFF();
 
-    logmsg("SD card init succeeded after retry");
+    if (g_sdcard_present)
+    {
+      logmsg("SD card init succeeded after retry");
+    }
+    else
+    {
+      logmsg("Continuing without SD card");
+    }
   }
 
   firmware_update();
@@ -1062,12 +1070,18 @@ extern "C" void zuluscsi_setup(void)
 {
   platform_init();
   platform_late_init();
-  zuluscsi_setup_sd_card();
+
+  bool is_initiator = false;
+#ifdef PLATFORM_HAS_INITIATOR_MODE
+  is_initiator = platform_is_initiator_mode_enabled();
+#endif
+
+  zuluscsi_setup_sd_card(!is_initiator);
 
 #ifdef PLATFORM_MASS_STORAGE
   static bool check_mass_storage = true;
-  if ((check_mass_storage && g_scsi_settings.getSystem()->enableUSBMassStorage)
-      || platform_rebooted_into_mass_storage())
+  if (((check_mass_storage && g_scsi_settings.getSystem()->enableUSBMassStorage)
+      || platform_rebooted_into_mass_storage()) && !is_initiator)
   {
     check_mass_storage = false;
 
@@ -1089,6 +1103,11 @@ extern "C" void zuluscsi_main_loop(void)
   static uint32_t sd_card_check_time = 0;
   static uint32_t last_request_time = 0;
 
+  bool is_initiator = false;
+#ifdef PLATFORM_HAS_INITIATOR_MODE
+  is_initiator = platform_is_initiator_mode_enabled();
+#endif
+
   platform_reset_watchdog();
   platform_poll();
   diskEjectButtonUpdate(true);
@@ -1099,7 +1118,7 @@ extern "C" void zuluscsi_main_loop(void)
 #endif // ZULUSCSI_NETWORK
 
 #ifdef PLATFORM_HAS_INITIATOR_MODE
-  if (platform_is_initiator_mode_enabled())
+  if (is_initiator)
   {
     scsiInitiatorMainLoop();
     save_logfile();
@@ -1128,7 +1147,7 @@ extern "C" void zuluscsi_main_loop(void)
   {
     // Check SD card status for hotplug
     if (scsiDev.phase == BUS_FREE &&
-        (uint32_t)(millis() - sd_card_check_time) > 5000)
+        (uint32_t)(millis() - sd_card_check_time) > SDCARD_POLL_INTERVAL)
     {
       sd_card_check_time = millis();
       uint32_t ocr;
@@ -1143,8 +1162,11 @@ extern "C" void zuluscsi_main_loop(void)
     }
   }
 
-  if (!g_sdcard_present)
+  if (!g_sdcard_present && (uint32_t)(millis() - sd_card_check_time) > SDCARD_POLL_INTERVAL
+      && !g_msc_initiator)
   {
+    sd_card_check_time = millis();
+
     // Try to remount SD card
     do
     {
@@ -1166,6 +1188,6 @@ extern "C" void zuluscsi_main_loop(void)
         platform_reset_watchdog();
         platform_poll();
       }
-    } while (!g_sdcard_present && !g_romdrive_active);
+    } while (!g_sdcard_present && !g_romdrive_active && !is_initiator);
   }
 }

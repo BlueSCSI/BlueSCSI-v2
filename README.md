@@ -160,6 +160,10 @@ LED indications in initiator mode:
 The firmware retries reads up to 5 times and attempts to skip any sectors that have problems.
 Any read errors are logged into `zululog.txt`.
 
+Alternatively, if SD card is not inserted, the SCSI drive will be available to PC through USB connection.
+The drive shows up as mass storage device (USB MSC).
+Currently this primarily supports SCSI harddrives, but basic read access is supported for CD-ROM and other SCSI devices.
+
 Depending on hardware setup, you may need to mount diode `D205` and jumper `JP201` to supply `TERMPWR` to the SCSI bus.
 This is necessary if the drives do not supply their own SCSI terminator power.
 
