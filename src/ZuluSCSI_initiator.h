@@ -34,6 +34,9 @@ void scsiInitiatorInit();
 
 void scsiInitiatorMainLoop();
 
+// Get the SCSI ID used by the initiator itself
+int scsiInitiatorGetOwnID();
+
 // Select target and execute SCSI command
 int scsiInitiatorRunCommand(int target_id,
                             const uint8_t *command, size_t cmdLen,

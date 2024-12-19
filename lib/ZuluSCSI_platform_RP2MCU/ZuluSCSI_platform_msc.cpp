@@ -28,11 +28,14 @@
 #include "ZuluSCSI_platform.h"
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_msc.h"
+#include "ZuluSCSI_msc_initiator.h"
 #include "ZuluSCSI_config.h"
 #include "ZuluSCSI_settings.h"
 #include <class/msc/msc.h>
 #include <class/msc/msc_device.h>
 
+#include <pico/mutex.h>
+extern mutex_t __usb_mutex;
 
 #if CFG_TUD_MSC_EP_BUFSIZE < SD_SECTOR_SIZE
   #error "CFG_TUD_MSC_EP_BUFSIZE is too small! It needs to be at least 512 (SD_SECTOR_SIZE)"
@@ -43,6 +46,51 @@
 // external global SD variable
 extern SdFs SD;
 static bool unitReady = false;
+
+static bool g_msc_lock; // To block re-entrant calls
+static bool g_msc_usb_mutex_held;
+
+void platform_msc_lock_set(bool block)
+{
+  if (block)
+  {
+    if (g_msc_lock)
+    {
+      logmsg("Re-entrant MSC lock!");
+      assert(false);
+    }
+
+    g_msc_usb_mutex_held = mutex_try_enter(&__usb_mutex, NULL); // Blocks USB IRQ if not already blocked
+    g_msc_lock = true; // Blocks platform USB polling
+  }
+  else
+  {
+    if (!g_msc_lock)
+    {
+      logmsg("MSC lock released when not held!");
+      assert(false);
+    }
+
+    g_msc_lock = false;
+
+    if (g_msc_usb_mutex_held)
+    {
+      g_msc_usb_mutex_held = false;
+      mutex_exit(&__usb_mutex);
+    }
+  }
+}
+
+bool platform_msc_lock_get()
+{
+  return g_msc_lock;
+}
+
+struct MSCScopedLock {
+public:
+  MSCScopedLock() {  platform_msc_lock_set(true); }
+  ~MSCScopedLock() { platform_msc_lock_set(false); }
+};
 
 /* return true if USB presence detected / eligble to enter CR mode */
 bool platform_sense_msc() {
@@ -111,6 +159,9 @@ void __USBInstallMassStorage() { }
 extern "C" void tud_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8],
                         uint8_t product_id[16], uint8_t product_rev[4]) {
 
+  MSCScopedLock lock;
+  if (g_msc_initiator) return init_msc_inquiry_cb(lun, vendor_id, product_id, product_rev);
+
   const char vid[] = "ZuluSCSI";
   const char pid[] = PLATFORM_PID; 
   const char rev[] = "1.0";
@@ -122,7 +173,11 @@ extern "C" void tud_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8],
 
 // max LUN supported
 // we only have the one SD card
-extern "C" uint8_t tud_msc_get_maxlun_cb(void) {
+extern "C" uint8_t tud_msc_get_maxlun_cb(void)
+{
+  MSCScopedLock lock;
+  if (g_msc_initiator) return init_msc_get_maxlun_cb();
+
   return 1; // number of LUNs supported
 }
 
@@ -131,6 +186,9 @@ extern "C" uint8_t tud_msc_get_maxlun_cb(void) {
 // otherwise this is not actually needed
 extern "C" bool tud_msc_is_writable_cb (uint8_t lun)
 {
+  MSCScopedLock lock;
+  if (g_msc_initiator) return init_msc_is_writable_cb(lun);
+
   (void) lun;
   return unitReady;
 }
@@ -138,8 +196,8 @@ extern "C" bool tud_msc_is_writable_cb (uint8_t lun)
 // see https://www.seagate.com/files/staticfiles/support/docs/manual/Interface%20manuals/100293068j.pdf pg 221
 extern "C" bool tud_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, bool load_eject)
 {
-  (void) lun;
-  (void) power_condition;
+  MSCScopedLock lock;
+  if (g_msc_initiator) return init_msc_start_stop_cb(lun, power_condition, start, load_eject);
 
   if (load_eject)  {
     if (start) {
@@ -154,16 +212,20 @@ extern "C" bool tud_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool
 }
 
 // return true if we are ready to service reads/writes
-extern "C" bool tud_msc_test_unit_ready_cb(uint8_t lun) {
-  (void) lun;
+extern "C" bool tud_msc_test_unit_ready_cb(uint8_t lun)
+{
+  MSCScopedLock lock;
+  if (g_msc_initiator) return init_msc_test_unit_ready_cb(lun);
 
   return unitReady;
 }
 
 // return size in blocks and block size
 extern "C" void tud_msc_capacity_cb(uint8_t lun, uint32_t *block_count,
-                         uint16_t *block_size) {
-  (void) lun;
+                         uint16_t *block_size)
+{
+  MSCScopedLock lock;
+  if (g_msc_initiator) return init_msc_capacity_cb(lun, block_count, block_size);
 
   *block_count = unitReady ? (SD.card()->sectorCount()) : 0;
   *block_size = SD_SECTOR_SIZE;
@@ -172,7 +234,10 @@ extern "C" void tud_msc_capacity_cb(uint8_t lun, uint32_t *block_count,
 // Callback invoked when received an SCSI command not in built-in list (below) which have their own callbacks
 // - READ_CAPACITY10, READ_FORMAT_CAPACITY, INQUIRY, MODE_SENSE6, REQUEST_SENSE, READ10 and WRITE10
 extern "C" int32_t tud_msc_scsi_cb(uint8_t lun, const uint8_t scsi_cmd[16], void *buffer,
-                        uint16_t bufsize) {
+                        uint16_t bufsize)
+{
+  MSCScopedLock lock;
+  if (g_msc_initiator) return init_msc_scsi_cb(lun, scsi_cmd, buffer, bufsize);
 
   const void *response = NULL;
   uint16_t resplen = 0;
@@ -210,7 +275,8 @@ extern "C" int32_t tud_msc_scsi_cb(uint8_t lun, const uint8_t scsi_cmd[16], void
 extern "C" int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, 
                             void* buffer, uint32_t bufsize)
 {
-  (void) lun;
+  MSCScopedLock lock;
+  if (g_msc_initiator) return init_msc_read10_cb(lun, lba, offset, buffer, bufsize);
 
   bool rc = SD.card()->readSectors(lba, (uint8_t*) buffer, bufsize/SD_SECTOR_SIZE);
 
@@ -224,8 +290,10 @@ extern "C" int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset,
 // Callback invoked when receive WRITE10 command.
 // Process data in buffer to disk's storage and return number of written bytes (must be multiple of block size)
 extern "C" int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset,
-                           uint8_t *buffer, uint32_t bufsize) {
-  (void) lun;
+                           uint8_t *buffer, uint32_t bufsize)
+{
+  MSCScopedLock lock;
+  if (g_msc_initiator) return init_msc_read10_cb(lun, lba, offset, buffer, bufsize);
 
   bool rc = SD.card()->writeSectors(lba, buffer, bufsize/SD_SECTOR_SIZE);
 
@@ -237,8 +305,10 @@ extern "C" int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset
 
 // Callback invoked when WRITE10 command is completed (status received and accepted by host).
 // used to flush any pending cache to storage
-extern "C" void tud_msc_write10_complete_cb(uint8_t lun) {
-  (void) lun;
+extern "C" void tud_msc_write10_complete_cb(uint8_t lun)
+{
+  MSCScopedLock lock;
+  if (g_msc_initiator) return init_msc_write10_complete_cb(lun);
 }
 
 #endif
