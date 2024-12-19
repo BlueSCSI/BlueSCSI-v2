@@ -37,4 +37,10 @@ bool platform_run_msc();
 /* perform any cleanup tasks for the MSC-specific functionality */
 void platform_exit_msc();
 
+/* Block re-entrant msc poll calls.
+   This avoids starting another command handler while first one is running.
+   */
+void platform_msc_lock_set(bool block);
+bool platform_msc_lock_get();
+
 #endif
