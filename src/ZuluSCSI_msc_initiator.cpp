@@ -72,6 +72,12 @@ static struct {
     size_t prefetch_sectorcount; // Number of sectors to fetch
     size_t prefetch_sectorsize;
     bool prefetch_done; // True after prefetch is complete
+
+    // Periodic status reporting to log output
+    uint32_t status_prev_time;
+    uint32_t status_interval;
+    uint32_t status_reqcount;
+    uint32_t status_bytecount;
 } g_msc_initiator_state;
 
 static int do_read6_or_10(int target_id, uint32_t start_sector, uint32_t sectorcount, uint32_t sectorsize, void *buffer);
@@ -127,6 +133,8 @@ bool setup_msc_initiator()
         g_msc_initiator_state.prefetch_bufsize = sizeof(scsiDev.data);
     }
 
+    g_msc_initiator_state.status_interval = ini_getl("SCSI", "InitiatorMSCStatusInterval", 5000, CONFIGFILE);
+
     scsiInitiatorInit();
 
     // Scan for targets
@@ -143,6 +151,23 @@ void poll_msc_initiator()
         // Scan for targets until we find one
         scan_targets();
     }
+
+    uint32_t time_now = millis();
+    uint32_t delta = time_now - g_msc_initiator_state.status_prev_time;
+    if (g_msc_initiator_state.status_interval > 0 &&
+        delta > g_msc_initiator_state.status_interval)
+    {
+        if (g_msc_initiator_state.status_reqcount > 0)
+        {
+            logmsg("USB MSC: ", (int)g_msc_initiator_state.status_reqcount, " commands, ",
+                   (int)(g_msc_initiator_state.status_bytecount / delta), " kB/s");
+        }
+
+        g_msc_initiator_state.status_reqcount = 0;
+        g_msc_initiator_state.status_bytecount = 0;
+        g_msc_initiator_state.status_prev_time = time_now;
+    }
+
 
     platform_poll();
     platform_msc_lock_set(true); // Cannot handle new MSC commands while running prefetch
@@ -191,6 +216,7 @@ static int get_target(uint8_t lun)
 void init_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8], uint8_t product_id[16], uint8_t product_rev[4])
 {
     LED_ON();
+    g_msc_initiator_state.status_reqcount++;
 
     int target = get_target(lun);
     uint8_t response[36] = {0};
@@ -214,16 +240,22 @@ uint8_t init_msc_get_maxlun_cb(void)
 
 bool init_msc_is_writable_cb (uint8_t lun)
 {
+    LED_ON();
+    g_msc_initiator_state.status_reqcount++;
+
     int target = get_target(lun);
     uint8_t command[6] = {0x1A, 0x08, 0, 0, 4, 0}; // MODE SENSE(6)
     uint8_t response[4] = {0};
     scsiInitiatorRunCommand(target, command, 6, response, 4, NULL, 0);
+
+    LED_OFF();
     return (response[2] & 0x80) == 0; // Check write protected bit
 }
 
 bool init_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, bool load_eject)
 {
     LED_ON();
+    g_msc_initiator_state.status_reqcount++;
 
     int target = get_target(lun);
     uint8_t command[6] = {0x1B, 0x1, 0, 0, 0, 0};
@@ -261,11 +293,14 @@ bool init_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, bo
 
 bool init_msc_test_unit_ready_cb(uint8_t lun)
 {
+    g_msc_initiator_state.status_reqcount++;
     return scsiTestUnitReady(get_target(lun));
 }
 
 void init_msc_capacity_cb(uint8_t lun, uint32_t *block_count, uint16_t *block_size)
 {
+    g_msc_initiator_state.status_reqcount++;
+
     uint32_t sectorcount = 0;
     uint32_t sectorsize = 0;
     scsiInitiatorReadCapacity(get_target(lun), &sectorcount, &sectorsize);
@@ -275,6 +310,9 @@ void init_msc_capacity_cb(uint8_t lun, uint32_t *block_count, uint16_t *block_si
 
 int32_t init_msc_scsi_cb(uint8_t lun, const uint8_t scsi_cmd[16], void *buffer, uint16_t bufsize)
 {
+    LED_ON();
+    g_msc_initiator_state.status_reqcount++;
+
     // NOTE: the TinyUSB API around free-form commands is not very good,
     // this function could need improvement.
     
@@ -287,6 +325,8 @@ int32_t init_msc_scsi_cb(uint8_t lun, const uint8_t scsi_cmd[16], void *buffer, 
                                          scsi_cmd, cmdlen,
                                          NULL, 0,
                                          (const uint8_t*)buffer, bufsize);
+
+    LED_OFF();
 
     return status;
 }
@@ -331,7 +371,6 @@ static int do_read6_or_10(int target_id, uint32_t start_sector, uint32_t sectorc
 int32_t init_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buffer, uint32_t bufsize)
 {
     LED_ON();
-
     int status = 0;
 
     int target_id = get_target(lun);
@@ -373,6 +412,8 @@ int32_t init_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buf
         dbgmsg("USB Read command ", (int)orig_lba, " + ", (int)total_sectorcount, "x", (int)sectorsize, " fully satisfied from prefetch");
     }
 
+    g_msc_initiator_state.status_reqcount++;
+    g_msc_initiator_state.status_bytecount += total_sectorcount * sectorsize;
     LED_OFF();
 
     if (status != 0)
@@ -448,6 +489,8 @@ int32_t init_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t 
         status = scsiInitiatorRunCommand(target_id, command, sizeof(command), NULL, 0, buffer, bufsize);
     }
 
+    g_msc_initiator_state.status_reqcount++;
+    g_msc_initiator_state.status_bytecount += sectorcount * sectorsize;
     LED_OFF();
 
     if (status != 0)
