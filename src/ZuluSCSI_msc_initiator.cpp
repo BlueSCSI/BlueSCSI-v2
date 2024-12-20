@@ -78,6 +78,9 @@ static struct {
     uint32_t status_interval;
     uint32_t status_reqcount;
     uint32_t status_bytecount;
+
+    // Scan new targets if none found
+    uint32_t last_scan_time;
 } g_msc_initiator_state;
 
 static int do_read6_or_10(int target_id, uint32_t start_sector, uint32_t sectorcount, uint32_t sectorsize, void *buffer);
@@ -146,13 +149,16 @@ bool setup_msc_initiator()
 
 void poll_msc_initiator()
 {
-    if (g_msc_initiator_target_count == 0)
+    uint32_t time_now = millis();
+    uint32_t time_since_scan = time_now - g_msc_initiator_state.last_scan_time;
+    if (g_msc_initiator_target_count == 0 && time_since_scan > 5000)
     {
         // Scan for targets until we find one
+        platform_reset_watchdog();
         scan_targets();
+        g_msc_initiator_state.last_scan_time = time_now;
     }
 
-    uint32_t time_now = millis();
     uint32_t delta = time_now - g_msc_initiator_state.status_prev_time;
     if (g_msc_initiator_state.status_interval > 0 &&
         delta > g_msc_initiator_state.status_interval)
@@ -254,6 +260,11 @@ bool init_msc_is_writable_cb (uint8_t lun)
 
 bool init_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, bool load_eject)
 {
+    if (g_msc_initiator_target_count == 0)
+    {
+        return false;
+    }
+
     LED_ON();
     g_msc_initiator_state.status_reqcount++;
 
@@ -293,6 +304,11 @@ bool init_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, bo
 
 bool init_msc_test_unit_ready_cb(uint8_t lun)
 {
+    if (g_msc_initiator_target_count == 0)
+    {
+        return false;
+    }
+
     g_msc_initiator_state.status_reqcount++;
     return scsiTestUnitReady(get_target(lun));
 }
