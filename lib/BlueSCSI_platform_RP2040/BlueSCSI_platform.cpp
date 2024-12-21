@@ -376,6 +376,9 @@ void platform_late_init()
         gpio_conf(scsi_pins.OUT_ACK,   GPIO_FUNC_SIO, true,false, true,  true, true);
         //gpio_conf(SCSI_OUT_ATN,   GPIO_FUNC_SIO, false,false, true,  true, true);  // ATN output is unused
     }
+#ifdef LIB_FREERTOS_KERNEL
+    platform_register_cli();
+#endif
 }
 
 void platform_enable_initiator_mode() {

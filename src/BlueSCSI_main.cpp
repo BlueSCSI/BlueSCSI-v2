@@ -27,12 +27,15 @@ void bluescsi_main_task(void *param)
     g_disable_usb_cdc = false;
 #endif
 
+    if (!g_scsi_setup_complete){
+        printf("WARNING: USB intiailization continuing before SCSI init has completed.\n");
+        printf("This is OK if you're doing software development\n");
+    }
+
     if (g_scsi_msc_mode)
     {
         msc_disk_init();
     }
-    // Release the USB task
-    g_delay_usb_task = false;
 
     printf("Welcome to BlueSCSI!\n");
 

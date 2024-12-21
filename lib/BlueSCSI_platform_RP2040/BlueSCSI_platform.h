@@ -110,6 +110,10 @@ void platform_poll();
 // This function should return without significantly delay.
 uint8_t platform_get_buttons();
 
+#ifdef LIB_FREERTOS_KERNEL
+void platform_register_cli(void);
+#endif 
+
 // Platform method to determine whether this is a certain hardware version
 bool is202309a();
 
