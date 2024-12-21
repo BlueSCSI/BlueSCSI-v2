@@ -81,9 +81,9 @@ void sprintf_disk(char *buffer, size_t buffer_len, std::shared_ptr<MscDisk> disk
     snprintf(buffer, buffer_len, " %d (%.2f MB) %s %s %s\n",
              disk->getTotalSize(),
              (float)disk->getTotalSize() / 1024 / 1024, "x", "y", "z");
-            //  disk->getVendorId().c_str(),
-            //  disk->getProductId().c_str(),
-            //  disk->getProductRev().c_str());
+    //  disk->getVendorId().c_str(),
+    //  disk->getProductId().c_str(),
+    //  disk->getProductRev().c_str());
 }
 
 // One lines printed before the disk information
@@ -97,7 +97,7 @@ static BaseType_t prvListDevicesCommand(char *pcWriteBuffer, size_t xWriteBuffer
     BaseType_t moreLines = pdFALSE;
     static const char disk_separator_line[] = "----+----------+---------------------";
 
-    int last_disk = USB::MscDisk::DiskList.size()-1;
+    int last_disk = USB::MscDisk::DiskList.size() - 1;
     switch (list_devices_line_counter)
     {
     case FIRST_LINE:
@@ -107,7 +107,7 @@ static BaseType_t prvListDevicesCommand(char *pcWriteBuffer, size_t xWriteBuffer
         break;
     case (LAST_LINE):
         // Last line... print total disks
-        snprintf(pcWriteBuffer, xWriteBufferLen, "%s\nTotal Disks: %d\n",disk_separator_line, USB::MscDisk::DiskList.size());
+        snprintf(pcWriteBuffer, xWriteBufferLen, "%s\nTotal Disks: %d\n", disk_separator_line, USB::MscDisk::DiskList.size());
         // Reset to first line
         list_devices_line_counter = FIRST_LINE;
         moreLines = pdFALSE; // No more data to print
@@ -121,8 +121,8 @@ static BaseType_t prvListDevicesCommand(char *pcWriteBuffer, size_t xWriteBuffer
             return pdFALSE;
         }
 
-        snprintf(pcWriteBuffer, xWriteBufferLen, "%3d | %5s | %d bytes (%.2f MB)\n", \
-            list_devices_line_counter, current_disk->toString(), current_disk->getTotalSize(), ((float)current_disk->getTotalSize())/1024/1024);
+        snprintf(pcWriteBuffer, xWriteBufferLen, "%3d | %5s | %d bytes (%.2f MB)\n",
+                 list_devices_line_counter, current_disk->toString(), current_disk->getTotalSize(), ((float)current_disk->getTotalSize()) / 1024 / 1024);
         if (list_devices_line_counter >= last_disk)
         {
             list_devices_line_counter = LAST_LINE;

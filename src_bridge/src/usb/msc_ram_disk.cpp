@@ -1,5 +1,5 @@
 // Provides a RAM-backed MSC disk that can be connected to the host. This is
-// intended to be very small, just big enough for a README.txt or to do 
+// intended to be very small, just big enough for a README.txt or to do
 // basic testing.
 //
 // Copyright (C) 2024 akuker
@@ -42,7 +42,8 @@ namespace USB
   {
     *sectorcount = DISK_BLOCK_COUNT;
     *sectorsize = DISK_BLOCK_SIZE;
-    if(sense_key != nullptr){
+    if (sense_key != nullptr)
+    {
       *sense_key = eNoSense; // No error
     }
     return status_byte_t::eGood;
@@ -53,14 +54,16 @@ namespace USB
   }
   status_byte_t MscRamDisk::TestUnitReady(sense_key_type *sense_key)
   {
-    if(sense_key != nullptr){
+    if (sense_key != nullptr)
+    {
       *sense_key = eNoSense; // No error
     }
     return status_byte_t::eGood;
   }
   status_byte_t MscRamDisk::RequestSense(sense_key_type *sense_key)
   {
-    if(sense_key != nullptr){
+    if (sense_key != nullptr)
+    {
       *sense_key = eNoSense; // No error
     }
     return status_byte_t::eGood;
@@ -70,7 +73,8 @@ namespace USB
     (void)power_condition;
     (void)start;
     (void)load_eject;
-    if(sense_key != nullptr){
+    if (sense_key != nullptr)
+    {
       *sense_key = eNoSense; // No error
     }
     return status_byte_t::eGood;
@@ -99,16 +103,17 @@ namespace USB
   }
 
   static const char ram_disk[] = "RAM Disk";
-  char* MscRamDisk::toString(){
-    return (char*)ram_disk;
+  char *MscRamDisk::toString()
+  {
+    return (char *)ram_disk;
   }
 
 //--------------------------------------------------------------------+
 // LUN 0
 //--------------------------------------------------------------------+
-#define BLUESCSI_README_CONTENTS \
-  "Welcome to BlueSCSI!\n\r\n\rIf you're seeing this message, your "\
-  "BlueSCSI didn't detect any SCSI drives.\n\r\n\rPlease visit the following "\
+#define BLUESCSI_README_CONTENTS                                               \
+  "Welcome to BlueSCSI!\n\r\n\rIf you're seeing this message, your "           \
+  "BlueSCSI didn't detect any SCSI drives.\n\r\n\rPlease visit the following " \
   "URL for more info:\n\r       https://bluescsi.com/docs/Troubleshooting"
 
   const uint8_t MscRamDisk::readme_disk_[DISK_BLOCK_COUNT][DISK_BLOCK_SIZE] =
@@ -125,7 +130,7 @@ namespace USB
               0xEB, 0x3C, 0x90, 0x4D, 0x53, 0x44, 0x4F, 0x53, 0x35, 0x2E, 0x30, 0x00, 0x02, 0x01, 0x01, 0x00,
               0x01, 0x10, 0x00, 0x10, 0x00, 0xF8, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
               0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x29, 0x34, 0x12, 0x00, 0x00, 'B', 'l', 'u', 'e', 'S',
-              'C', 'S', 'I', ' ', ' ',  ' ', 0x46, 0x41, 0x54, 0x31, 0x32, 0x20, 0x20, 0x20, 0x00, 0x00,
+              'C', 'S', 'I', ' ', ' ', ' ', 0x46, 0x41, 0x54, 0x31, 0x32, 0x20, 0x20, 0x20, 0x00, 0x00,
 
               // Zero up to 2 last bytes of FAT magic code
               0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -168,7 +173,7 @@ namespace USB
           //------------- Block2: Root Directory -------------//
           {
               // first entry is volume label
-              'B', 'l', 'u', 'e', 'S', 'C', 'S', 'I', ' ' , ' ', ' ', 0x08, 0x00, 0x00, 0x00, 0x00,
+              'B', 'l', 'u', 'e', 'S', 'C', 'S', 'I', ' ', ' ', ' ', 0x08, 0x00, 0x00, 0x00, 0x00,
               0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x4F, 0x6D, 0x65, 0x43, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
               // second entry is readme file
               'R', 'E', 'A', 'D', '_', 'M', 'E', ' ', 'T', 'X', 'T', 0x20, 0x00, 0xC6, 0x52, 0x6D,
