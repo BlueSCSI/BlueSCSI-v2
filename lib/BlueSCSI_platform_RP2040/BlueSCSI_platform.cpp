@@ -99,6 +99,31 @@ void mbed_error_hook(const mbed_error_ctx * error_context);
     }
 }
 
+# ifndef PICO_RP2040
+/**
+ * This is a workaround until arduino framework can be updated to handle all 4 variations of
+ * Pico1/1w/2/2w. In testing this works on all for BlueSCSI.
+ * Tracking here https://github.com/earlephilhower/arduino-pico/issues/2671
+ */
+static void CheckPicoW() {
+    extern bool __isPicoW;
+    adc_init();
+    auto dir = gpio_get_dir(CYW43_PIN_WL_CLOCK);
+    auto fnc = gpio_get_function(CYW43_PIN_WL_CLOCK);
+    adc_gpio_init(CYW43_PIN_WL_CLOCK);
+    adc_select_input(3);
+    auto adc29 = adc_read();
+    gpio_set_function(CYW43_PIN_WL_CLOCK, fnc);
+    gpio_set_dir(CYW43_PIN_WL_CLOCK, dir);
+    debuglog("CheckPicoW adc29: %d", adc29);
+    if (adc29 < 200) {
+        __isPicoW = true; // PicoW || Pico2W
+    } else {
+        __isPicoW = false;
+    }
+}
+#endif
+
 #ifdef ENABLE_AUDIO_OUTPUT
     // Increases clk_sys and clk_peri to 135.428571MHz at runtime to support
     // division to audio output rates. Invoke before anything is using clk_peri
@@ -259,6 +284,10 @@ void platform_init()
     gpio_conf(SD_SPI_CS,      GPIO_FUNC_SIO, true, false, true,  true, true);
     gpio_conf(SDIO_D1,        GPIO_FUNC_SIO, true, false, false, true, true);
     gpio_conf(SDIO_D2,        GPIO_FUNC_SIO, true, false, false, true, true);
+
+# ifndef PICO_RP2040
+    CheckPicoW(); // Override default Wi-Fi check for the Pico2 line.
+# endif
 
     if (!platform_network_supported()) {
         // LED pin
