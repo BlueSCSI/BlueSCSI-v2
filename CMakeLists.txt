@@ -77,69 +77,71 @@ if (${PICO_SDK_VERSION_MAJOR} LESS 2)
 endif ()
 
 add_executable(scsibridge
-        src/cmd_console_task.cpp
-        src/cmd_console_examples.cpp
-        src/freertos_error_cbs.c
-        src/main.cpp
-        src/ringbuffer.cpp
-        src/scsi/BlueSCSI.cpp
-        src/scsi/BlueSCSI_Config.cpp
-        src/scsi/BlueSCSI_log.cpp
-        src/scsi/BlueSCSI_main.cpp
-        src/scsi/BlueSCSI_log_trace.cpp
-        src/scsi/BlueSCSI_initiator.cpp
-        src/scsi/BlueSCSI_disk.cpp
-        src/scsi/BlueSCSI_cdrom.cpp
-        src/scsi/BlueSCSI_mode.cpp
-        src/scsi/BlueSCSI_presets.cpp
-        src/scsi/BlueSCSI_Toolbox.cpp
-        src/scsi/ImageBackingStore.cpp
-        src/scsi/ROMDrive.cpp
-        src/scsi/BlueSCSI_tape.cpp
+        src/BlueSCSI.cpp
+        src/BlueSCSI_Config.cpp
+        src/BlueSCSI_log.cpp
+        src/BlueSCSI_main.cpp
+        src/BlueSCSI_log_trace.cpp
+        src/BlueSCSI_initiator.cpp
+        src/BlueSCSI_disk.cpp
+        src/BlueSCSI_cdrom.cpp
+        src/BlueSCSI_mode.cpp
+        src/BlueSCSI_presets.cpp
+        src/BlueSCSI_Toolbox.cpp
+        src/ImageBackingStore.cpp
+        src/ROMDrive.cpp
+        src/BlueSCSI_tape.cpp
+        src/cli/cmd_console_task.cpp
+        src/cli/cmd_console_examples.cpp
+        src/cli/ringbuffer.cpp
         src/usb/configuration_descriptor.cpp
         src/usb/device_descriptor.cpp
         src/usb/endpoint_descriptor.cpp
         src/usb/interface_descriptor.cpp
         src/usb/msc_base_disk.cpp
         src/usb/msc_disk_cbs.cpp
-        src/usb/msc_disk_commands.cpp
+        src/usb/msc_disk_cli.cpp
         src/usb/msc_ram_disk.cpp
         src/usb/msc_scsi_disk.cpp
         src/usb/stdio_tinyusb_cdc.cpp
         src/usb/string_descriptor.cpp
         src/usb/usb_descriptor_cbs.cpp
         src/usb/usb_task.cpp
-        src/SCSI2SD/src/firmware/mode.c
-        src/SCSI2SD/src/firmware/vendor.c
-        src/SCSI2SD/src/firmware/inquiry.c
-        src/SCSI2SD/src/firmware/geometry.c
-        src/SCSI2SD/src/firmware/scsi.c
-        src/SCSI2SD/src/firmware/mo.c
-        src/SCSI2SD/src/firmware/diagnostic.c
-        src/CUEParser/src/CUEParser.cpp
-        BlueSCSI_platform/scsiPhy.cpp
-        BlueSCSI_platform/BlueSCSI_platform.cpp
-        BlueSCSI_platform/BlueSCSI_platform_config_hook.cpp
-        BlueSCSI_platform/BlueSCSI_platform_network.cpp
-        BlueSCSI_platform/BlueSCSI_platform_commands.cpp
-        BlueSCSI_platform/scsiHostPhy.cpp
-        BlueSCSI_platform/scsi_accel_host.cpp
-        BlueSCSI_platform/sd_card_sdio.cpp
-        BlueSCSI_platform/sd_card_spi.cpp
-        BlueSCSI_platform/rp2040_sdio.cpp
-        BlueSCSI_platform/scsi_accel_rp2040.cpp
-        BlueSCSI_platform/scsiPhy.cpp
+        lib/SCSI2SD/src/firmware/mode.c
+        lib/SCSI2SD/src/firmware/vendor.c
+        lib/SCSI2SD/src/firmware/inquiry.c
+        lib/SCSI2SD/src/firmware/geometry.c
+        lib/SCSI2SD/src/firmware/scsi.c
+        lib/SCSI2SD/src/firmware/mo.c
+        lib/SCSI2SD/src/firmware/diagnostic.c
+        lib/CUEParser/src/CUEParser.cpp
+        lib/BlueSCSI_platform_RP2040/main.cpp
+        lib/BlueSCSI_platform_RP2040/freertos_error_cbs.c
+        lib/BlueSCSI_platform_RP2040/scsiPhy.cpp
+        lib/BlueSCSI_platform_RP2040/BlueSCSI_platform.cpp
+        lib/BlueSCSI_platform_RP2040/BlueSCSI_platform_config_hook.cpp
+        lib/BlueSCSI_platform_RP2040/BlueSCSI_platform_network.cpp
+        lib/BlueSCSI_platform_RP2040/BlueSCSI_platform_commands.cpp
+        lib/BlueSCSI_platform_RP2040/scsiHostPhy.cpp
+        lib/BlueSCSI_platform_RP2040/scsi_accel_host.cpp
+        lib/BlueSCSI_platform_RP2040/sd_card_sdio.cpp
+        lib/BlueSCSI_platform_RP2040/sd_card_spi.cpp
+        lib/BlueSCSI_platform_RP2040/rp2040_sdio.cpp
+        lib/BlueSCSI_platform_RP2040/scsi_accel_rp2040.cpp
+        lib/BlueSCSI_platform_RP2040/scsiPhy.cpp
         ${freertos-plus-cli-source_SOURCE_DIR}/FreeRTOS_CLI.c
 )
 
 target_include_directories(scsibridge PRIVATE
         include/
-        src/scsi/
-        BlueSCSI_Platform
-        src/CUEParser/src/CUEParser/
-        src/SCSI2SD/include/
-        src/SCSI2SD/src/firmware/
-        src/CUEParser/src/
+        src/
+        src/cli
+        src/usb
+        lib/BlueSCSI_Platform_RP2040
+        lib/CUEParser/src/CUEParser/
+        lib/SCSI2SD/include/
+        lib/SCSI2SD/src/firmware/
+        lib/CUEParser/src/
         ${freertos-plus-cli-header_SOURCE_DIR}/
         ${MININI_LIB_PATH}/
         ${SDFAT_LIB_PATH}/
@@ -150,8 +152,8 @@ target_compile_options(scsibridge PRIVATE
     $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wno-overloaded-virtual>
     $<$<COMPILE_LANGUAGE:C>:-Wall>)
 
-pico_generate_pio_header(scsibridge ${CMAKE_CURRENT_LIST_DIR}/BlueSCSI_platform/rp2040_sdio.pio)
-pico_generate_pio_header(scsibridge ${CMAKE_CURRENT_LIST_DIR}/BlueSCSI_platform/scsi_accel_host.pio)
+pico_generate_pio_header(scsibridge ${CMAKE_CURRENT_LIST_DIR}/lib/BlueSCSI_platform_RP2040/rp2040_sdio.pio)
+pico_generate_pio_header(scsibridge ${CMAKE_CURRENT_LIST_DIR}/lib/BlueSCSI_platform_RP2040/scsi_accel_host.pio)
 
 # We are going to use our own STDIO handler
 set(PICO_STDIO_UART 0)

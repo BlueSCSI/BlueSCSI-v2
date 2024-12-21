@@ -16,7 +16,7 @@
 # )
 # find_package(libsdfat REQUIRED) 
 
-set(MININI_LIB_PATH "${CMAKE_CURRENT_LIST_DIR}/../lib/minIni")
+set(MININI_LIB_PATH "${CMAKE_CURRENT_LIST_DIR}/lib/minIni")
 
 
 # Define the library

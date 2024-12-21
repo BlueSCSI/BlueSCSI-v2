@@ -1,3 +1,3 @@
-[submodule "src_bridge/freertos"]
-	path = src_bridge/freertos
+[submodule "freertos"]
+	path = freertos
 	url = https://github.com/raspberrypi/FreeRTOS-Kernel.git
