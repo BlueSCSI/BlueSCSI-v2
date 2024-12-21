@@ -19,6 +19,7 @@
 #include "bsp/board_api.h"
 #include "tusb.h"
 
+#include "usb_task.h"
 #include "msc_disk.h"
 #include "msc_scsi_disk.h"
 #include "msc_ram_disk.h"
@@ -29,13 +30,17 @@ bool g_scsi_msc_mode;
 bool g_disable_usb_cdc;
 
 #define VERBOSE 0
-extern bool g_delay_usb_task;
 uint8_t max_allowed_usb_luns = UINT8_MAX;
 
 namespace USB
 {
   // Note: USB supports a maximum of 16 LUNs
   std::vector<std::shared_ptr<USB::MscDisk>> DiskList();
+}
+
+static bool inline usb_task_delayed()
+{
+  return g_early_usb_initialization && !g_scsi_msc_mode;
 }
 
 void msc_disk_init(void)
@@ -51,24 +56,19 @@ void msc_disk_init(void)
     auto ram_disk = std::make_shared<USB::MscRamDisk>();
     USB::MscDisk::DiskList.push_back(ram_disk);
   }
+  msc_disk_register_cli();
 }
 
 // Invoked to determine max LUN
 uint8_t tud_msc_get_maxlun_cb(void)
 {
-  if (g_delay_usb_task)
+  if (g_early_usb_initialization)
   {
-    if(max_allowed_usb_luns == UINT8_MAX){
-      max_allowed_usb_luns = (uint8_t)ini_getl("SCSI", "MaxBridgeLuns", 4, CONFIGFILE);
-      printf("%s: Max allowed USB LUNs: %d", __func__, (int)max_allowed_usb_luns);
-    }
-
-    // Currently, this isn't known at startup when the host starts
-    // polling the USB device. We need to set it to a number greater
-    // than the maximum actual devices that are expected. 16 is a
-    // safe number, but will result in the host continuously testing
-    // if the unused LUN numbers are "ready"
-    return max_allowed_usb_luns;
+    // If early usb initialization is enabled, this will get called before
+    // the SCSI bus has been scanned. Return the maximum number of LUNs
+    // allowed (16). This should only be used during development, as the
+    // host will test the readiness of all 16 LUNs.
+    return 16;
   }
 #if VERBOSE
   printf("%s size: %d\n", __func__, USB::MscDisk::DiskList.size());
@@ -84,7 +84,7 @@ void tud_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8], uint8_t product_id[16
   printf("%s lun %d\n", __func__, lun);
 #endif
 
-  if (g_delay_usb_task)
+  if (usb_task_delayed())
   {
     // Fill with spaces to indicate no device
     memset(vendor_id, ' ', 8);
@@ -117,7 +117,7 @@ bool tud_msc_test_unit_ready_cb(uint8_t lun)
 #if VERBOSE
   printf("%s lun %d\n", __func__, lun);
 #endif
-  if (g_delay_usb_task)
+  if (usb_task_delayed())
   {
     // Response with "Not ready"
     tud_msc_set_sense(lun, SCSI_SENSE_NOT_READY, 0x3A, 0x00);
@@ -133,7 +133,7 @@ bool tud_msc_test_unit_ready_cb(uint8_t lun)
     // }
     // return false;
   }
-  return disk->TestUnitReady();
+  return (disk->TestUnitReady().isGood());
 }
 
 // Invoked when received SCSI_CMD_READ_CAPACITY_10 and SCSI_CMD_READ_FORMAT_CAPACITY to determine the disk size
@@ -164,7 +164,7 @@ bool tud_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, boo
   printf("%s lun %d power_condition %d start %d load_eject %d\n", __func__, lun, power_condition, start, load_eject);
 #endif
 
-  if (g_delay_usb_task)
+  if (usb_task_delayed())
   {
     tud_msc_set_sense(lun, SCSI_SENSE_NOT_READY, 0x3A, 0x00);
     return false;
@@ -176,7 +176,7 @@ bool tud_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, boo
     return false;
   }
 
-  bool startstopok = disk->StartStopUnit(power_condition, start, load_eject);
+  bool startstopok = disk->StartStopUnit(power_condition, start, load_eject).isGood();
   return startstopok;
 }
 

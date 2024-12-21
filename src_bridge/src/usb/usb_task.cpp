@@ -23,7 +23,8 @@
 #include "bsp/board_api.h"
 #include "tusb.h"
 
-bool g_delay_usb_task = true;
+bool g_scsi_setup_complete = false;
+bool g_early_usb_initialization = false;
 
 static void usb_task_debug()
 {
@@ -40,6 +41,13 @@ static void usb_task_debug()
 void usb_descriptors_init();
 void usb_device_task(void *param)
 {
+    // If we haven't been configured "early" usb initialization, wait for
+    // the rest of the initialization (ex: scanning SCSI bus) to happen before
+    // we start the USB task.
+    while (!g_early_usb_initialization && !g_scsi_setup_complete)
+    {
+        vTaskDelay(100);
+    }
 
     usb_descriptors_init();
     printf("usb_device_task()\n");

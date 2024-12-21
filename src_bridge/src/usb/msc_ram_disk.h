@@ -29,18 +29,20 @@ namespace USB
     public:
         MscRamDisk(bool is_writable = true);
         ~MscRamDisk() {};
-        bool Inquiry(bool refresh_required = false) override
+        status_byte_t Inquiry(bool refresh_required = false, sense_key_type *sense_key=nullptr) override
         {
             (void)refresh_required;
+            (void)sense_key;
             return true;
         }
-        bool ReadCapacity(uint32_t *sectorcount, uint32_t *sectorsize) override;
+        status_byte_t ReadCapacity(uint32_t *sectorcount, uint32_t *sectorsize, sense_key_type *sense_key=nullptr) override;
         bool IsWritable() override;
-        bool TestUnitReady() override;
-        bool RequestSense(uint8_t *sense_key) override;
-        bool StartStopUnit(uint8_t power_condition, bool start, bool load_eject) override;
+        status_byte_t TestUnitReady(sense_key_type *sense_key=nullptr) override;
+        status_byte_t RequestSense(sense_key_type *sense_key=nullptr) override;
+        status_byte_t StartStopUnit(uint8_t power_condition, bool start, bool load_eject, sense_key_type *sense_key=nullptr) override;
         uint32_t Read10(uint32_t lba, uint32_t offset, uint8_t *buffer, uint32_t buffersize) override;
         uint32_t Write10(uint32_t lba, uint32_t offset, uint8_t *buffer, uint32_t buffersize) override;
+        char* toString() override;
 
         static void StaticInit() {}
 
