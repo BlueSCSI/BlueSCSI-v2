@@ -33,35 +33,47 @@ namespace USB
     sectorcount = DISK_BLOCK_COUNT;
     ansiVersion = 0;
     deviceType = S2S_CFG_FIXED;
+    target_id = MscDisk::RAM_DISK;
     // Initialize with a file system
     memcpy(ram_disk_, readme_disk_, sizeof(readme_disk_));
   }
 
-  bool MscRamDisk::ReadCapacity(uint32_t *sectorcount, uint32_t *sectorsize)
+  status_byte_t MscRamDisk::ReadCapacity(uint32_t *sectorcount, uint32_t *sectorsize, sense_key_type *sense_key)
   {
     *sectorcount = DISK_BLOCK_COUNT;
     *sectorsize = DISK_BLOCK_SIZE;
-    return true;
+    if(sense_key != nullptr){
+      *sense_key = eNoSense; // No error
+    }
+    return status_byte_t::eGood;
   }
   bool MscRamDisk::IsWritable()
   {
     return is_writable_;
   }
-  bool MscRamDisk::TestUnitReady()
+  status_byte_t MscRamDisk::TestUnitReady(sense_key_type *sense_key)
   {
-    return true;
+    if(sense_key != nullptr){
+      *sense_key = eNoSense; // No error
+    }
+    return status_byte_t::eGood;
   }
-  bool MscRamDisk::RequestSense(uint8_t *sense_key)
+  status_byte_t MscRamDisk::RequestSense(sense_key_type *sense_key)
   {
-    (void)sense_key;
-    return true;
+    if(sense_key != nullptr){
+      *sense_key = eNoSense; // No error
+    }
+    return status_byte_t::eGood;
   }
-  bool MscRamDisk::StartStopUnit(uint8_t power_condition, bool start, bool load_eject)
+  status_byte_t MscRamDisk::StartStopUnit(uint8_t power_condition, bool start, bool load_eject, sense_key_type *sense_key)
   {
     (void)power_condition;
     (void)start;
     (void)load_eject;
-    return true;
+    if(sense_key != nullptr){
+      *sense_key = eNoSense; // No error
+    }
+    return status_byte_t::eGood;
   }
   uint32_t MscRamDisk::Read10(uint32_t lba, uint32_t offset, uint8_t *buffer, uint32_t buffersize)
   {
@@ -84,6 +96,11 @@ namespace USB
     memcpy(addr, buffer, buffersize);
 
     return (int32_t)buffersize;
+  }
+
+  static const char ram_disk[] = "RAM Disk";
+  char* MscRamDisk::toString(){
+    return (char*)ram_disk;
   }
 
 //--------------------------------------------------------------------+

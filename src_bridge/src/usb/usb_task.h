@@ -17,9 +17,18 @@
 //
 #pragma once
 
+// The following flag will change the startup behavior of the USB task.
+// By setting this flag the rp2040 will immediately release the USB task
+// but will hard-code the maximum number of USB LUNs to 16. This will
+// cause performance issues, since the host will continuously run TEST 
+// UNIT READY approximately every second to wait for these other LUNs to
+// come online. Typically, this is only used for debugging purposes.
+extern bool g_early_usb_initialization;
+
 // The following flag is used to delay the usb task while we're configuring
-// the rest of the system
-extern bool g_delay_usb_task;
+// the rest of the system. In most cases, we don't want to start the USB 
+// task to start until we know how many drives/devices are attached.
+extern bool g_scsi_setup_complete;
 
 // This is the main TinyUSB task that handles USB events
 void usb_device_task(void *param);

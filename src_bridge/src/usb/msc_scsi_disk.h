@@ -24,65 +24,19 @@ namespace USB
     class MscScsiDisk : public MscDisk
     {
     public:
-        // enum peripheral_type : uint8_t
-        // {
-        //     eDirectAccessDevice = 0x00,
-        //     eSequentialAccessDevice = 0x01,
-        //     ePrinterDevice = 0x02,
-        //     eProcessorDevice = 0x03,
-        //     eWriteOnceDevice = 0x04,
-        //     eCDRomDevice = 0x05,
-        //     eScannerDevice = 0x06,
-        //     OpticalMemoryDevice = 0x07,
-        //     eMediumChangerDevice = 0x08,
-        //     eCommunicationsDevice = 0x09,
-        //     eUnknownOrNoDevicType = 0x1F,
-        // };
-// S2S_CFG_TYPE
-
-        enum sense_key_type : uint8_t
-        {
-            eNoSense = 0x00,
-            eRecoveredError = 0x01,
-            eNotReady = 0x02,
-            eMediumError = 0x03,
-            eHardwareError = 0x04,
-            eIllegalRequest = 0x05,
-            eUnitAttention = 0x06,
-            eDataProtect = 0x07,
-            eBlankCheck = 0x08,
-            eVendorSpecific = 0x09,
-            eCopyAborted = 0x0A,
-            eAbortedCommand = 0x0B,
-            eVolumeOverflow = 0x0D,
-            eMiscompare = 0x0E,
-            eReserved = 0x0F
-        };
-
-        enum class status_byte_code :uint8_t{
-            eGood = 0x00,
-            eCheckCondition = 0x02,
-            eConditionMet = 0x04,
-            eBusy = 0x08,
-            eReservationConflict = 0x0A,
-            eCommandTerminated = 0x0C,
-            eQueueFull = 0x0E
-        };
-
-                    static uint8_t mask_reserved(uint8_t status) { return status & 0b001111110; }
 
 
         MscScsiDisk(uint8_t id) : MscDisk(id) {}
         ~MscScsiDisk() {};
-        bool Inquiry(bool refresh_required = false) override;
-        bool ReadCapacity(uint32_t *sectorcount, uint32_t *sectorsize) override;
+        status_byte_t Inquiry(bool refresh_required = false, sense_key_type *sense_key=nullptr) override;
+        status_byte_t ReadCapacity(uint32_t *sectorcount, uint32_t *sectorsize, sense_key_type *sense_key = nullptr) override;
         bool IsWritable() override;
-        bool TestUnitReady() override;
-        int TestUnitReadyStatus(); // Same as TestUnitReady, but returns the status
-        bool RequestSense(uint8_t *sense_key) override;
-        bool StartStopUnit(uint8_t power_condition, bool start, bool load_eject) override;
+        status_byte_t TestUnitReady(sense_key_type *sense_key=nullptr) override;
+        status_byte_t RequestSense(sense_key_type *sense_key=nullptr) override;
+        status_byte_t StartStopUnit(uint8_t power_condition, bool start, bool load_eject, sense_key_type *sense_key=nullptr) override;
         uint32_t Read10(uint32_t lba, uint32_t offset, uint8_t *buffer, uint32_t buffersize) override;
         uint32_t Write10(uint32_t lba, uint32_t offset, uint8_t *buffer, uint32_t buffersize) override;
+        char* toString() override;
 
         static void StaticInit();
 
@@ -110,9 +64,10 @@ namespace USB
     protected:
         static void ReadConfiguration();
         static uint8_t initiator_id_;
-        static uint8_t configured_retry_count_;
+        static int configured_retry_count_;
         static bool initialization_complete_;
         uint8_t inquiry_data_[36] = {0};
+        char disk_string_[16] = {0};
 
         int RunCommand(
             const uint8_t *command, size_t cmdLen,

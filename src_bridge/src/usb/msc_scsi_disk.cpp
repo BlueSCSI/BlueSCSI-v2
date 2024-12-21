@@ -17,6 +17,7 @@
 // You should have received a copy of the GNU General Public License along
 // with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <stdint.h>
+#include "usb_task.h"
 #include "msc_scsi_disk.h"
 #include <minIni.h>
 #include "SdFat.h"
@@ -40,7 +41,7 @@ namespace USB
 {
 
   uint8_t MscScsiDisk::initiator_id_ = 7;
-  uint8_t MscScsiDisk::configured_retry_count_ = 0;
+  int MscScsiDisk::configured_retry_count_ = 5;
   bool MscScsiDisk::initialization_complete_ = false;
 
   /*************************************
@@ -59,7 +60,7 @@ namespace USB
       log_f("InitiatorID set to ID %d", initiator_id_);
     }
 
-    configured_retry_count_ = ini_getl("SCSI", "InitiatorMaxRetry", 5, CONFIGFILE);
+    configured_retry_count_ = ini_getl("SCSI", "InitiatorMaxRetry", 1, CONFIGFILE);
   }
 
   void MscScsiDisk::StaticInit()
@@ -85,7 +86,7 @@ namespace USB
         {
           continue;
         }
-        log("** Looking for SCSI ID:", target_id);
+        printf("%s ** Looking for SCSI ID: %d\n", __func__, target_id);
 
         SCSI_RELEASE_OUTPUTS();
         SCSI_ENABLE_INITIATOR();
@@ -95,44 +96,45 @@ namespace USB
           scsiHostPhyReset();
         }
 
-        // TODO: Probably should handle multiple LUNs?
         auto cur_target = std::make_shared<USB::MscScsiDisk>(target_id);
+        cur_target->target_id = target_id;
 
         LED_ON();
-        bool inquiryok = cur_target->Inquiry();
+        sense_key_type test_unit_read_sense;
+        status_byte_t test_unit_ready_status = cur_target->TestUnitReady(&test_unit_read_sense);
+
+        sense_key_type start_stop_sense;
+        status_byte_t start_stop_status = cur_target->StartStopUnit(0, true, false, &start_stop_sense);
+
+        sense_key_type read_capacity_sense;
+        status_byte_t read_capacity_status = cur_target->ReadCapacity(&cur_target->sectorcount,
+                                                                      &cur_target->sectorsize, &read_capacity_sense);
+        sense_key_type inquiry_sense;
+        status_byte_t inquiry_status = cur_target->Inquiry(true, &inquiry_sense);
         LED_OFF();
-        if (!inquiryok)
+
+        if (!read_capacity_status.isGood())
         {
-          printf("Inquiry failed for ID %d", target_id);
-          LED_OFF();
+          printf("%s Read capacity failed. Skipping SCSI ID %d\n", __func__, target_id);
+          continue;
+        }
+        else if (!start_stop_status.isGood())
+        {
+
+          printf("%s SCSI ID %d responds but ReadCapacity command failed\n", __func__, target_id);
+          printf("Possibly SCSI-1 drive or removable media? NOT HANDLED YET!!!\n");
+          continue;
+        }
+        else if (!test_unit_ready_status.isGood())
+        {
+          printf("%s SCSI ID %d responds but TestUnitReady command failed with sense key %d\n", __func__, target_id, test_unit_read_sense);
           continue;
         }
 
-
-
-        int ready_status = cur_target->TestUnitReadyStatus();
-        if (ready_status == eNotReady){
-          // Device responded, but is not ready. Could be removable
-          // drive
-        }
-        bool startstopok = cur_target->StartStopUnit(0, true, false);
-        if (!startstopok)
+        if (!inquiry_status.isGood())
         {
-          log("      Device did not respond - SCSI ID", target_id);
-          LED_OFF();
-          // continue;
-        }
-
-        cur_target->target_id = target_id;
-
-        bool readcapok =
-            cur_target->ReadCapacity(&cur_target->sectorcount,
-                                     &cur_target->sectorsize);
-        if (!readcapok)
-        {
-          printf("ReadCapacity failed for ID %d", target_id);
-          LED_OFF();
-          // continue;
+          printf("Inquiry failed for ID %d\n", target_id);
+          continue;
         }
 
         MscDisk::AddMscDisk(cur_target);
@@ -186,19 +188,20 @@ namespace USB
 
       } // end for each target ID
 
-      if ((MscDisk::DiskList.size() > 0) || (retry_count > 5))
+      if ((MscDisk::DiskList.size() > 0) || (retry_count > configured_retry_count_))
       {
         initialization_complete_ = true;
+        g_scsi_setup_complete = true;
       }
       else
       {
         log("No SCSI devices found, retrying...");
-        delay(1000);
+        delay(250);
       } // end if(diskInfoList.size() > 0)
     }
   }
 
-  bool MscScsiDisk::ReadCapacity(uint32_t *sectorcount, uint32_t *sectorsize)
+  status_byte_t MscScsiDisk::ReadCapacity(uint32_t *sectorcount, uint32_t *sectorsize, sense_key_type *sense_key)
   {
     uint8_t command[10] = {0x25, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     uint8_t response[8] = {0};
@@ -215,19 +218,19 @@ namespace USB
 
       *sectorsize = ((uint32_t)response[4] << 24) | ((uint32_t)response[5] << 16) | ((uint32_t)response[6] << 8) | ((uint32_t)response[7] << 0);
 
-      return true;
+      return status_byte_t::eGood;
     }
     else if (status == 2)
     {
-      uint8_t sense_key;
+      sense_key_type sense_key;
       RequestSense(&sense_key);
       log("READ CAPACITY on target ", target_id, " failed, sense key ", sense_key);
-      return false;
+      return status_byte_t::eCheckCondition;
     }
     else
     {
       *sectorcount = *sectorsize = 0;
-      return false;
+      return status_byte_t::eCommandTerminated;
     }
   }
 
@@ -241,7 +244,7 @@ namespace USB
   }
 
   // Execute INQUIRY command
-  bool MscScsiDisk::Inquiry(bool refresh_required)
+  status_byte_t MscScsiDisk::Inquiry(bool refresh_required, sense_key_type *sense_key)
   {
     if (!refresh_required && inquiry_data[0] != 0)
     {
@@ -253,25 +256,42 @@ namespace USB
         command, sizeof(command),
         inquiry_data, 36,
         NULL, 0);
-    return status == 0;
+    // TODO: should set sense_key to something meaningful
+    if (sense_key != nullptr)
+    {
+      *sense_key = eNoError;
+    }
+    return (status == 0) ? status_byte_t::eGood : status_byte_t::eCheckCondition;
   }
 
-  // Execute TEST UNIT READY command and handle unit attention state
-  int MscScsiDisk::TestUnitReadyStatus()
-  {
-    uint8_t command[6] = {0x00, 0, 0, 0, 0, 0};
-    int status = RunCommand(
-        command, sizeof(command),
-        NULL, 0,
-        NULL, 0);
-    return status;
-  }
+  // // Execute TEST UNIT READY command and handle unit attention state
+  // status_byte_t MscScsiDisk::TestUnitReadyStatus(sense_key_type *sense_key)
+  // {
+  //   uint8_t command[6] = {0x00, 0, 0, 0, 0, 0};
+  //   int status = RunCommand(
+  //       command, sizeof(command),
+  //       NULL, 0,
+  //       NULL, 0);
+  //   return status;
+  // }
 
-  bool MscScsiDisk::TestUnitReady()
+  status_byte_t MscScsiDisk::TestUnitReady(sense_key_type *sense_key)
   {
     for (int retries = 0; retries < 2; retries++)
     {
-      int status = TestUnitReadyStatus();
+      uint8_t command[6] = {0x00, 0, 0, 0, 0, 0};
+      int status = RunCommand(
+          command, sizeof(command),
+          NULL, 0,
+          NULL, 0);
+
+      // If the caller didn't pass in a pointer for sense_key, we
+      // should use a local stack variable
+      sense_key_type local_sense_key;
+      if (sense_key == nullptr)
+      {
+        sense_key = &local_sense_key;
+      }
 
       if (status == 0)
       {
@@ -284,15 +304,14 @@ namespace USB
       }
       else if (status == 2)
       {
-        uint8_t sense_key;
-        RequestSense(&sense_key);
+        RequestSense(sense_key);
 
-        if (sense_key == eUnitAttention)
+        if (*sense_key == eUnitAttention)
         {
           log("Target ", target_id, " reports UNIT_ATTENTION, running INQUIRY");
           Inquiry();
         }
-        else if (sense_key == eNotReady)
+        else if (*sense_key == eNotReady)
         {
           log("Target ", target_id, " reports NOT_READY, running STARTSTOPUNIT");
           StartStopUnit(0, true, false);
@@ -392,7 +411,7 @@ namespace USB
   }
 
   // Execute REQUEST SENSE command to get more information about error status
-  bool MscScsiDisk::RequestSense(uint8_t *sense_key)
+  status_byte_t MscScsiDisk::RequestSense(sense_key_type *sense_key)
   {
     uint8_t command[6] = {0x03, 0, 0, 0, 18, 0};
     uint8_t response[18] = {0};
@@ -402,14 +421,17 @@ namespace USB
         response, sizeof(response),
         NULL, 0);
 
-    // log("RequestSense response: ", bytearray(response, 18));
-
-    *sense_key = response[2] & 0x0F;
-    return status == 0;
+    if (sense_key != nullptr)
+    {
+      *sense_key = sense_key_type(response[2] & 0x0F);
+    }
+    // TODO: eCheckCondition isn't necessarily the right error status. Need to
+    // decode this from RunCommand
+    return (status == 0) ? status_byte_t::eGood : status_byte_t::eCheckCondition;
   }
 
   // Execute UNIT START STOP command to load/unload media
-  bool MscScsiDisk::StartStopUnit(uint8_t power_condition, bool start, bool load_eject)
+  status_byte_t MscScsiDisk::StartStopUnit(uint8_t power_condition, bool start, bool load_eject, sense_key_type *sense_key)
   {
     // uint8_t target_id = disk->target_id;
     uint8_t command[6] = {0x1B, 0x1, 0, 0, 0, 0};
@@ -435,16 +457,24 @@ namespace USB
         command, sizeof(command),
         response, sizeof(response),
         NULL, 0);
-    printf("%s status: %d\n", __func__, (int)status);
+    // printf("%s status: %d\n", __func__, (int)status);
 
-    if (status == 2)
+    if (status == status_byte_t::eCheckCondition)
     {
-      uint8_t sense_key;
-      RequestSense(&sense_key);
+      // Even if the caller doesn't want the sense key status, we'll pull it ourselves
+      sense_key_type local_sense_key;
+      if (sense_key == nullptr)
+      {
+        sense_key = &local_sense_key;
+      }
+      RequestSense(sense_key);
       log("START STOP UNIT on target ", target_id, " failed, sense key ", sense_key);
+      return status_byte_t::eCheckCondition;
     }
 
-    return status == 0;
+    // TODO: eCheckCondition isn't REALLY the correct thing to return here. We need to
+    // decypher the real error from RunCommand()
+    return (status == 0) ? status_byte_t::eGood : status_byte_t::eCheckCondition;
   }
 
   uint32_t MscScsiDisk::Read10(uint32_t lba, uint32_t offset, uint8_t *buffer, uint32_t buffersize)
@@ -490,10 +520,10 @@ namespace USB
 
     if (status != 0)
     {
-      uint8_t sense_key;
+      sense_key_type sense_key;
       RequestSense(&sense_key);
 
-      log("scsiInitiatorReadDataToFile: READ failed: ", status, " sense key ", sense_key);
+      log("scsiInitiatorReadDataToFile: READ failed: ", status, " sense key ", (int)sense_key);
       scsiHostPhyRelease();
       return 0;
     }
@@ -525,13 +555,20 @@ namespace USB
 
     if (status != 0)
     {
-      uint8_t sense_key;
+      sense_key_type sense_key;
       RequestSense(&sense_key);
 
-      log("scsiInitiatorReadDataToFile: WRITE failed: ", status, " sense key ", sense_key);
+      log("scsiInitiatorReadDataToFile: WRITE failed: ", status, " sense key ", (int)sense_key);
       scsiHostPhyRelease();
       return 0;
     }
     return sectorcount * sector_size;
   }
+
+  char *MscScsiDisk::toString()
+  {
+    snprintf(disk_string_, sizeof(disk_string_), "SCSI%d-%d", getAnsiVersion(), getTargetId());
+    return disk_string_;
+  }
+
 } // end USB namespace

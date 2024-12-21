@@ -17,12 +17,16 @@
 // You should have received a copy of the GNU General Public License along
 // with this program. If not, see <https://www.gnu.org/licenses/>.
 //
-
+#pragma once
 #include "FreeRTOS.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define FREERTOS_CLI_MAX_INPUT_LENGTH 50
+#define FREERTOS_CLI_MAX_OUTPUT_LENGTH 100
+
 
 void vCommandConsoleTask( void *pvParameters );
 

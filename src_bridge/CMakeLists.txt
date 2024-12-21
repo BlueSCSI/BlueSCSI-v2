@@ -102,6 +102,7 @@ add_executable(scsibridge
         src/usb/interface_descriptor.cpp
         src/usb/msc_base_disk.cpp
         src/usb/msc_disk_cbs.cpp
+        src/usb/msc_disk_commands.cpp
         src/usb/msc_ram_disk.cpp
         src/usb/msc_scsi_disk.cpp
         src/usb/stdio_tinyusb_cdc.cpp
@@ -120,6 +121,7 @@ add_executable(scsibridge
         BlueSCSI_platform/BlueSCSI_platform.cpp
         BlueSCSI_platform/BlueSCSI_platform_config_hook.cpp
         BlueSCSI_platform/BlueSCSI_platform_network.cpp
+        BlueSCSI_platform/BlueSCSI_platform_commands.cpp
         BlueSCSI_platform/scsiHostPhy.cpp
         BlueSCSI_platform/scsi_accel_host.cpp
         BlueSCSI_platform/sd_card_sdio.cpp
