@@ -18,7 +18,7 @@
 //
 // Note: Some portions of this class were generated using the Claude.AI LLM
 
-#include "RingBuffer.h"
+#include "ring_buffer.h"
 #include "FreeRTOS.h"
 #include "semphr.h"
 

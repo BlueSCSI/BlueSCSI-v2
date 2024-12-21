@@ -26,7 +26,7 @@
 #include "FreeRTOS.h"
 #include <stdio.h>
 #include <memory.h>
-#include "cmd_console_examples.h"
+#include "freertos_os_cli.h"
 
 #ifdef __cplusplus
 extern "C"

@@ -68,11 +68,14 @@ SCSI_PINS scsi_pins = {  // Default values, to be tweaked later as needed
 
     .SCSI_ACCEL_PINMASK = SCSI_ACCEL_SETPINS
 };
+
+#ifdef LIB_FREERTOS_KERNEL
     // For some BlueSCSI devices that are exclusively used in USB MSC mode,
     // the sd card slot may be depopulated. Instead, a pull-up resistor
     // will be connected on SDIO_D1. (This is NOT the same as having a SD
     // card slot, but not a card installed)
     bool g_sd_card_slot_installed = true;
+#endif
 
 #ifdef MBED
 void mbed_error_hook(const mbed_error_ctx * error_context);
@@ -176,11 +179,14 @@ void platform_init()
     // If G16 and G17 are high, this is the 2023_09a revision or later desktop board
     gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_I2C, false, false, false,  false, true);
     gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_I2C, false, false, false,  false, true);
+#ifdef LIB_FREERTOS_KERNEL
     // Determine whether the SD Card slot is present - SDIO_D1 will be pulled high
     // if the SD Card slot is not installed
     gpio_conf(SDIO_D1, GPIO_FUNC_SIO, true, false, false, false, true);
+#endif
     delay(10);
     bool d50_2023_09a = gpio_get(GPIO_I2C_SCL) && gpio_get(GPIO_I2C_SDA);
+#ifdef LIB_FREERTOS_KERNEL
     g_sd_card_slot_installed = gpio_get(SDIO_D1);
     if (g_sd_card_slot_installed)
     {
@@ -190,6 +196,7 @@ void platform_init()
     {
         log("No SD Card slot detected");
     }
+#endif
 
     if (d50_2023_09a) {
         log("I2C Supported");

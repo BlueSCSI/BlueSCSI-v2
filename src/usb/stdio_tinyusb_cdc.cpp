@@ -31,7 +31,7 @@
 #include "pico/binary_info.h"
 #include "FreeRTOSConfig.h"
 #include "FreeRTOS.h"
-#include "ringbuffer.h"
+#include "ring_buffer.h"
 #include "tusb.h"
 #include "stdio_tinyusb_cdc.h"
 #include "bsp/board_api.h"

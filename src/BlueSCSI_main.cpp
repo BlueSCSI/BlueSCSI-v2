@@ -1,5 +1,62 @@
 // Simple wrapper file that diverts boot from main program to bootloader
 // when building the bootloader image by build_bootloader.py.
+#ifndef LIB_FREERTOS_KERNEL
+// This file is broken up into two "halves". The first half is the original
+// Arduino functionality. The second half is the FreeRTOS functionality.
+// The Arduino functionality should be dumped at some point.
+
+#ifdef BlueSCSI_BOOTLOADER_MAIN
+
+extern "C" int bootloader_main(void);
+
+#ifdef USE_ARDUINO
+extern "C" void setup(void)
+{
+    bootloader_main();
+}
+extern "C" void loop(void)
+{
+}
+#else
+int main(void)
+{
+    return bootloader_main();
+}
+#endif
+
+#else
+
+extern "C" void bluescsi_setup(void);
+extern "C" void bluescsi_main_loop(void);
+
+#ifdef USE_ARDUINO
+extern "C" void setup(void)
+{
+    bluescsi_setup();
+}
+
+extern "C" void loop(void)
+{
+    bluescsi_main_loop();
+}
+#else
+int main(void)
+{
+    bluescsi_setup();
+    while (1)
+    {
+        bluescsi_main_loop();
+    }
+}
+#endif
+
+#endif
+
+#else // LIB_FREERTOS_KERNEL
+
+// This file is broken up into two "halves". The first half is the original
+// Arduino functionality. The second half is the FreeRTOS functionality.
+// The Arduino functionality should be dumped at some point.
 #include "FreeRTOS.h"
 #include "task.h"
 #include <stdio.h>
@@ -8,7 +65,8 @@
 #include "usb/msc_disk.h"
 #include "usb/usb_task.h"
 
-#define FORCE_BRIDGE 1
+// ONLY ENABLE THIS FOR TESTING!!! SHOULDN"T BE NEEDEED
+#define FORCE_BRIDGE 0
 
 extern "C" void bluescsi_setup(void);
 extern "C" void bluescsi_main_loop(void);
@@ -54,4 +112,4 @@ void bluescsi_main_task(void *param)
         }
     }
 }
-    // #endif
+#endif // LIB_FREERTOS_KERNEL
