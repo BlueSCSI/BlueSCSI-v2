@@ -92,8 +92,8 @@ add_executable(scsibridge
         src/ROMDrive.cpp
         src/BlueSCSI_tape.cpp
         src/cli/cmd_console_task.cpp
-        src/cli/cmd_console_examples.cpp
-        src/cli/ringbuffer.cpp
+        src/cli/freertos_os_cli.cpp
+        src/cli/ring_buffer.cpp
         src/usb/configuration_descriptor.cpp
         src/usb/device_descriptor.cpp
         src/usb/endpoint_descriptor.cpp
@@ -121,7 +121,7 @@ add_executable(scsibridge
         lib/BlueSCSI_platform_RP2040/BlueSCSI_platform.cpp
         lib/BlueSCSI_platform_RP2040/BlueSCSI_platform_config_hook.cpp
         lib/BlueSCSI_platform_RP2040/BlueSCSI_platform_network.cpp
-        lib/BlueSCSI_platform_RP2040/BlueSCSI_platform_commands.cpp
+        lib/BlueSCSI_platform_RP2040/BlueSCSI_platform_cli.cpp
         lib/BlueSCSI_platform_RP2040/scsiHostPhy.cpp
         lib/BlueSCSI_platform_RP2040/scsi_accel_host.cpp
         lib/BlueSCSI_platform_RP2040/sd_card_sdio.cpp

@@ -97,11 +97,14 @@ static sd_callback_t get_stream_callback(const uint8_t *buf, uint32_t count, con
     return NULL;
 }
 
+#ifdef LIB_FREERTOS_KERNEL
+// This is not used, but is needed to link SdFat
 bool SdioCard::readSDS(sds_t* sds){
     (void)sds;
-    printf("This function should not be used!! Only stubbed out for now\n\r");
+    printf("This function should not be used!!\n");
     return false;
 }
+#endif
 
 bool SdioCard::begin(SdioConfig sdioConfig)
 {

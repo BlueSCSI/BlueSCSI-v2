@@ -25,19 +25,9 @@ void scsiHostPhyReset(void)
     scsi_accel_host_init();
 
     SCSI_OUT(RST, 1);
-#ifndef LIB_FREERTOS_KERNEL
     delay(2);
-#else
-    // In FreeRTOS, this function runs before the schedule has started. We need to 
-    // use the pico SDK delay instead of the task delay
-    sleep_ms(2);
-#endif
     SCSI_OUT(RST, 0);
-#ifndef LIB_FREERTOS_KERNEL
     delay(250);
-#else
-    sleep_ms(250);
-#endif
     g_scsiHostPhyReset = false;
 }
 
@@ -56,11 +46,7 @@ bool scsiHostPhySelect(int target_id, int initiator_id)
     SCSI_OUT(BSY, 1);
     for (int wait = 0; wait < 10; wait++)
     {
-#ifndef LIB_FREERTOS_KERNEL
         delayMicroseconds(1);
-#else
-        vTaskDelay(1);
-#endif
 
         if (SCSI_IN_DATA() != 0)
         {
@@ -106,7 +92,7 @@ bool scsiHostPhySelect(int target_id, int initiator_id)
 // Read the current communication phase as signaled by the target
 int scsiHostPhyGetPhase()
 {
-    volatile static absolute_time_t last_online_time;
+    static absolute_time_t last_online_time;
 
     if (g_scsiHostPhyReset)
     {
@@ -115,8 +101,8 @@ int scsiHostPhyGetPhase()
         return BUS_FREE;
     }
 
-    volatile int phase = 0;
-    volatile bool req_in = SCSI_IN(REQ);
+    int phase = 0;
+    bool req_in = SCSI_IN(REQ);
     if (SCSI_IN(CD)) phase |= __scsiphase_cd;
     if (SCSI_IN(IO)) phase |= __scsiphase_io;
     if (SCSI_IN(MSG)) phase |= __scsiphase_msg;

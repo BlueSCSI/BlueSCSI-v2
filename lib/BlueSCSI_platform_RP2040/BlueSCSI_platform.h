@@ -46,16 +46,16 @@ extern SCSI_PINS scsi_pins;
 void platform_log(const char *s);
 void platform_emergency_log_save();
 
-unsigned long millis(void);
-#ifndef LIB_FREERTOS_KERNEL
 // Timing and delay functions.
 // Arduino platform already provides these
+unsigned long millis(void);
+#ifndef LIB_FREERTOS_KERNEL
 
 void delay(unsigned long ms);
 #else
 static inline void delay(unsigned long ms){
-	// Delay the thread using the FreeRTOS scheduler
-    sleep_ms(ms);// / portTICK_PERIOD_MS);
+	// Use the pico-SDK sleep function
+    sleep_ms(ms);
 }
 
 static inline void delayMicroseconds(unsigned long us){

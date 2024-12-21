@@ -64,8 +64,10 @@ SdFs SD;
 FsFile g_logfile;
 static bool g_romdrive_active;
 static bool g_sdcard_present;
+#ifdef LIB_FREERTOS_KERNEL
 extern bool g_scsi_msc_mode;
 extern bool g_disable_usb_cdc;
+#endif
 
 /************************************/
 /* Status reporting by blinking led */
@@ -128,10 +130,12 @@ void init_logfile()
 
   bool truncate = first_open_after_boot;
   int flags = O_WRONLY | O_CREAT | (truncate ? O_TRUNC : O_APPEND);
+#ifdef LIB_FREERTOS_KERNEL
   if(!SD.card()){
     // If there isn't an SD Card installed, we can't do anything here.
     return;
   }
+#endif
   g_logfile = SD.open(LOGFILE, flags);
   if (!g_logfile.isOpen())
   {

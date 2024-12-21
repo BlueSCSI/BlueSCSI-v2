@@ -40,7 +40,6 @@ int main(void)
   xTaskCreate(usb_device_task, "usbd", USBD_STACK_SIZE * 2, NULL, configMAX_PRIORITIES - 2, NULL);
   xTaskCreate(stdio_tinyusb_cdc_task, "cdcd", configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES - 3, NULL);
   xTaskCreate(vCommandConsoleTask, "cli", configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES - 4, NULL);
-  // This should be the highest priority task
   xTaskCreate(bluescsi_main_task, "scsiusb", configMINIMAL_STACK_SIZE * 4, NULL, configMAX_PRIORITIES - 1, NULL);
 
   // This should never return.....
