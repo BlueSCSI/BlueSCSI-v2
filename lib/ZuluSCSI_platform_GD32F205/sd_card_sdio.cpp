@@ -44,7 +44,7 @@ static uint32_t g_sdio_sector_count;
 static bool logSDError(int line)
 {
     g_sdio_error_line = line;
-    logmsg("SDIO SD card error on line ", line, ", error code ", (int)g_sdio_error);
+    dbgmsg("SDIO SD card error on line ", line, ", error code ", (int)g_sdio_error);
     return false;
 }
 

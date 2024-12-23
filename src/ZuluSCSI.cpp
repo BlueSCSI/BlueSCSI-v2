@@ -958,12 +958,24 @@ static void firmware_update()
 // Which is pretty much everything after platform_init and and platform_late_init
 static void zuluscsi_setup_sd_card(bool wait_for_card = true)
 {
-
   g_sdcard_present = mountSDCard();
 
   if(!g_sdcard_present)
   {
-    logmsg("SD card init failed, sdErrorCode: ", (int)SD.sdErrorCode(),
+    if (SD.sdErrorCode() == platform_no_sd_card_on_init_error_code())
+    {
+  #ifdef PLATFORM_HAS_INITIATOR_MODE
+      if (platform_is_initiator_mode_enabled())
+      {
+        logmsg("No SD card detected, imaging to SD card not possible");
+      }
+      else
+  #endif
+      {
+        logmsg("No SD card detected, please check SD card slot to make sure it is in correctly");
+      }
+    }
+    dbgmsg("SD card init failed, sdErrorCode: ", (int)SD.sdErrorCode(),
            " sdErrorData: ", (int)SD.sdErrorData());
 
     if (romDriveCheckPresent())
