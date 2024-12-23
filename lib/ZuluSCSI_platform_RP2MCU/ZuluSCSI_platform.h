@@ -104,6 +104,9 @@ void platform_write_led_override(bool state);
 // Disable the status LED
 void platform_disable_led(void);
 
+// Specific error code tied to the MCU when the SD card is not detected
+uint8_t platform_no_sd_card_on_init_error_code();
+
 // Query whether initiator mode is enabled on targets with PLATFORM_HAS_INITIATOR_MODE
 bool platform_is_initiator_mode_enabled();
 
