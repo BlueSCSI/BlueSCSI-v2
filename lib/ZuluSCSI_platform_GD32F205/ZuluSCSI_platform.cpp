@@ -23,6 +23,7 @@
 #include "gd32f20x_sdio.h"
 #include "gd32f20x_fmc.h"
 #include "gd32f20x_fwdgt.h"
+#include "gd32_sdio_sdcard.h"
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_config.h"
 #include "usbd_conf.h"
@@ -488,6 +489,10 @@ void platform_disable_led(void)
     logmsg("Disabling status LED");
 }
 
+uint8_t platform_no_sd_card_on_init_error_code()
+{
+    return 0x80 | SD_CMD_RESP_TIMEOUT;
+}
 /*****************************************/
 /* Supply voltage monitor                */
 /*****************************************/

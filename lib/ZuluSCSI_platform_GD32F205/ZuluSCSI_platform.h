@@ -98,6 +98,9 @@ void platform_write_led_override(bool state);
 // Disable the status LED
 void platform_disable_led(void);
 
+// Specific error code tied to the MCU when the SD card is not detected
+uint8_t platform_no_sd_card_on_init_error_code();
+
 // Setup soft watchdog
 void platform_reset_watchdog();
 

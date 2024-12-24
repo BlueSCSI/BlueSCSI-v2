@@ -22,6 +22,7 @@
 #include "ZuluSCSI_platform.h"
 #include "ZuluSCSI_log.h"
 #include <SdFat.h>
+#include <sdio.h>
 #include <scsi.h>
 #include <assert.h>
 #include <hardware/gpio.h>
@@ -534,6 +535,11 @@ void platform_disable_led(void)
     //        pin      function       pup   pdown  out    state fast
     gpio_conf(LED_PIN, GPIO_FUNC_SIO, false,false, false, false, false);
     logmsg("Disabling status LED");
+}
+
+uint8_t platform_no_sd_card_on_init_error_code()
+{
+    return SDIO_ERR_RESPONSE_TIMEOUT;
 }
 
 /*****************************************/
