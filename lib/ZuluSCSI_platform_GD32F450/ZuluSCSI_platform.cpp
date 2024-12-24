@@ -23,6 +23,7 @@
 #include "gd32f4xx_sdio.h"
 #include "gd32f4xx_fmc.h"
 #include "gd32f4xx_fwdgt.h"
+#include "gd32_sdio_sdcard.h"
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_config.h"
 #include "usb_hs.h"
@@ -329,6 +330,11 @@ void platform_disable_led(void)
 {   
     gpio_mode_set(LED_PORT, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, LED_PINS);
     logmsg("Disabling status LED");
+}
+
+uint8_t platform_no_sd_card_on_init_error_code()
+{
+    return 0x80 | SD_CMD_RESP_TIMEOUT;
 }
 
 /*****************************************/
