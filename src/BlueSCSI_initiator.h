@@ -46,3 +46,9 @@ bool Log_Error(uint8_t sense_key, uint16_t sense_code);
 int scsiGetMode(int * Mode, int target_id);
 int scsiSetMode(int Mode, int target_id);
 
+int scsiGetBlockLimits(uint32_t * sector_size, int target_id);
+int scsiLocate(uint32_t position, int target_id);
+int scsiReadPosition(uint32_t * position, int target_id);
+int scsiGetTapeLength(uint32_t * length, int target_id);
+int scsiGoBackAFrame(int target_id, uint32_t framesize);
+int scsiRewind(int target_id);
