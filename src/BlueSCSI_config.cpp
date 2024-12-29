@@ -40,27 +40,26 @@ int getBlockSize(char *filename, int scsiId, int default_size)
   return default_size;
 }
 
-int getImgDir(int scsiId, char* dirname)
+int getImgDir(int scsiId, char* dirname, size_t dname_len)
 {
   char section[6] = "SCSI0";
   section[4] = '0' + scsiId;
 
   char key[] = "ImgDir";
-  int dirlen = ini_gets(section, key, "", dirname, sizeof(dirname), CONFIGFILE);
+  int dirlen = ini_gets(section, key, "", dirname, dname_len, CONFIGFILE);
   return dirlen;
 }
 
 
-int getImg(int scsiId, int img_index, char* filename)
+int getImg(int scsiId, int img_index, char* filename, size_t fname_len)
 {
   char section[6] = "SCSI0";
   section[4] = '0' + scsiId;
 
   char key[] = "IMG0";
   key[3] = '0' + img_index;
-
-  int dirlen = ini_gets(section, key, "", filename, sizeof(filename), CONFIGFILE);
-  return dirlen;
+  int fnlen = ini_gets(section, key, "", filename, fname_len, CONFIGFILE);
+  return fnlen;
 }
 
 int getToolBoxSharedDir(char * dir_name)

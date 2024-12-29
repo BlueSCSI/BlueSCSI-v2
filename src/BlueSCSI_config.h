@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <string.h>
 #include <BlueSCSI_platform.h>
 
 // Use variables for version number
@@ -90,8 +91,8 @@
 */
 int getBlockSize(char *filename, int scsiId, int default_size);
 
-int getImgDir(int scsiId, char* dirname);
+int getImgDir(int scsiId, char* dirname, size_t dname_len);
 
-int getImg(int scsiId, int img_index, char* filename);
+int getImg(int scsiId, int img_index, char* filename, size_t fname_len);
 
 int getToolBoxSharedDir(char * dir_name);

@@ -633,7 +633,7 @@ static void scsiDiskLoadConfig(int target_idx, const char *section)
     if (strlen(section) == 5 && strncmp(section, "SCSI", 4) == 0) // allow within target [SCSIx] blocks only
     {
         ini_gets(section, "ImgDir", "", tmp, sizeof(tmp), CONFIGFILE);
-        getImgDir(target_idx, tmp);
+        getImgDir(target_idx, tmp, sizeof(tmp));
         if (tmp[0])
         {
             log("-- SCSI", target_idx, " using image directory \'", tmp, "'");
@@ -787,7 +787,7 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buf_len)
     {
         // image directory was found during startup
         char dirname[MAX_FILE_PATH];
-        int dir_len = getImgDir(target_idx, dirname);
+        int dir_len = getImgDir(target_idx, dirname, sizeof(dirname));
         if (!dir_len)
         {
             // If image_directory set but ImgDir is not look for a well known ImgDir
@@ -844,7 +844,7 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buf_len)
             img.image_index = 0;
         }
 
-        int ret = getImg(target_idx, img.image_index, buf);
+        int ret = getImg(target_idx, img.image_index, buf, buf_len);
         if (buf[0] != '\0')
         {
             return ret;
