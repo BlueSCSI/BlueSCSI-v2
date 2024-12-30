@@ -251,12 +251,12 @@ void onGetFile10(char * dir_name) {
 void onSendFilePrep(char * dir_name)
 {
     char file_name[32+1];
-    memset(file_name, '\0', 32+1);
+
     scsiEnterPhase(DATA_OUT);
-    for (int i = 0; i < 32+1; ++i)
-    {
-        file_name[i] = scsiReadByte();
-    }
+    scsiRead(static_cast<uint8_t *>(static_cast<void *>(file_name)), 32+1, NULL);
+    file_name[32] = '\0';
+
+    debuglog("TOOLBOX OPEN FILE FOR WRITE: '", file_name, "'");
     SD.chdir(dir_name);
     gFile.open(file_name, FILE_WRITE);
     SD.chdir("/");
