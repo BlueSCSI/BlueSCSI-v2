@@ -296,19 +296,22 @@ void onSendFile10(void)
     uint16_t bytes_sent = ((uint16_t)scsiDev.cdb[1] << 8)  | scsiDev.cdb[2];
     // 512 byte offset of where to put these bytes.
     uint32_t offset     = ((uint32_t)scsiDev.cdb[3] << 16) | ((uint32_t)scsiDev.cdb[4] << 8) | scsiDev.cdb[5];
-    uint16_t buf_size   = 512;
-    uint8_t buf[512];
+    const uint16_t BUFSIZE   = 512;
+    uint8_t buf[BUFSIZE];
 
-    // Check if last block of file, and not the only bock in file.
-    if(bytes_sent < buf_size)
+    // Do not allow buffer overrun
+    if (bytes_sent > BUFSIZE)
     {
-        buf_size = bytes_sent;
+        debuglog("TOOLBOX SEND FILE 10 ILLEGAL DATA SIZE");
+        gFile.close();
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
     }
 
     scsiEnterPhase(DATA_OUT);
     scsiRead(buf, bytes_sent, NULL);
     gFile.seekCur(offset * 512);
-    gFile.write(buf, buf_size);
+    gFile.write(buf, bytes_sent);
     if(gFile.getWriteError())
     {
         gFile.clearWriteError();
