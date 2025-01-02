@@ -213,8 +213,38 @@ bluescsi_reclock_status_t platform_reclock(bluescsi_speed_grade_t speed_grade)
     }
     else if (set_timings(speed_grade))
     {
-        log("Initial Clock set to ", (int) platform_sys_clock_in_hz(), "Hz");
+        log("=== Clock Config ===");
+        log("Current CPU Clock: ", (int) platform_sys_clock_in_hz(), "Hz");
+        char* grade_string;
+        switch (speed_grade) {
+            case SPEED_GRADE_DEFAULT:
+            grade_string = "DEFAULT";
+            break;
+            case SPEED_GRADE_AUDIO:
+            grade_string = "AUDIO";
+            break;
+            case SPEED_GRADE_CUSTOM:
+            grade_string = "CUSTOM";
+            break;
+            case SPEED_GRADE_C:
+            grade_string = "C";
+            break;
+            case SPEED_GRADE_B:
+            grade_string = "B";
+            break;
+            case SPEED_GRADE_A:
+            grade_string = "A";
+            break;
+            case SPEED_GRADE_MAX:
+            grade_string = "MAX";
+            break;
+            default:
+            grade_string = "WARNING : UNSPECIFIED";
+            break;
+        }
+        log("Attempting CPU Reclock To Speed Grade: ", grade_string);
         reclock();
+        log("Updated CPU Clock: ", (int) platform_sys_clock_in_hz(), "Hz");
         log("SDIO clock set to ", (int)((g_bluescsi_timings->clk_hz / g_bluescsi_timings->sdio.clk_div_pio + (5 * MHZ / 10)) / MHZ) , "MHz");
         return BLUESCSI_RECLOCK_SUCCESS;
     }
