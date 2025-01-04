@@ -2,6 +2,7 @@ name: Build BlueSCSI firmware
 
 on:
   push:
+  pull_request:
   workflow_dispatch:
 
 jobs:
