@@ -551,7 +551,10 @@ static void reinitSCSI()
   if (scsiDiskCheckAnyNetworkDevicesConfigured())
   {
     platform_network_init(scsiDev.boardCfg.wifiMACAddress);
-    platform_network_wifi_join(scsiDev.boardCfg.wifiSSID, scsiDev.boardCfg.wifiPassword);
+    if (scsiDev.boardCfg.wifiSSID[0] != '\0')
+    {
+      platform_network_wifi_join(scsiDev.boardCfg.wifiSSID, scsiDev.boardCfg.wifiPassword);
+    }
   }
 #endif
 }
