@@ -101,7 +101,8 @@ static void scan_targets()
 
             bool inquiryok =
                 scsiStartStopUnit(target_id, true) &&
-                scsiInquiry(target_id, inquiry_data) &&
+                scsiInquiry(target_id, inquiry_data);
+            bool readcapok =
                 scsiInitiatorReadCapacity(target_id, &sectorcount, &sectorsize);
 
             char vendor_id[9] = {0};
@@ -111,11 +112,24 @@ static void scan_targets()
 
             if (inquiryok)
             {
-                logmsg("Found SCSI drive with ID ", target_id, ": ", vendor_id, " ", product_id);
-                g_msc_initiator_targets[g_msc_initiator_target_count].target_id = target_id;
-                g_msc_initiator_targets[g_msc_initiator_target_count].sectorcount = sectorcount;
-                g_msc_initiator_targets[g_msc_initiator_target_count].sectorsize = sectorsize;
-                g_msc_initiator_target_count++;
+                if (readcapok)
+                {
+                    logmsg("Found SCSI drive with ID ", target_id, ": ", vendor_id, " ", product_id,
+                        " capacity ", (int)(((uint64_t)sectorcount * sectorsize) / 1024 / 1024), " MB");
+                    g_msc_initiator_targets[found_count].target_id = target_id;
+                    g_msc_initiator_targets[found_count].sectorcount = sectorcount;
+                    g_msc_initiator_targets[found_count].sectorsize = sectorsize;
+                    found_count++;
+                }
+                else
+                {
+                    logmsg("Found SCSI drive with ID ", target_id, ": ", vendor_id, " ", product_id,
+                           " but failed to read capacity. Assuming SCSI-1 drive up to 1 GB.");
+                    g_msc_initiator_targets[found_count].target_id = target_id;
+                    g_msc_initiator_targets[found_count].sectorcount = 2097152;
+                    g_msc_initiator_targets[found_count].sectorsize = 512;
+                    found_count++;
+                }
             }
             else
             {
