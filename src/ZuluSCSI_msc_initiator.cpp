@@ -494,8 +494,19 @@ int32_t init_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buf
         uint8_t sense_key;
         scsiRequestSense(target_id, &sense_key);
 
-        logmsg("SCSI Initiator read failed: ", status, " sense key ", sense_key);
-        return -1;
+        if (sense_key == RECOVERED_ERROR)
+        {
+            dbgmsg("SCSI Initiator read: RECOVERED_ERROR at ", (int)orig_lba);
+        }
+        else if (sense_key == UNIT_ATTENTION)
+        {
+            dbgmsg("SCSI Initiator read: UNIT_ATTENTION");
+        }
+        else
+        {
+            logmsg("SCSI Initiator read failed: ", status, " sense key ", sense_key);
+            return -1;
+        }
     }
 
     if (lba + total_sectorcount <= g_msc_initiator_targets[lun].sectorcount)
@@ -576,8 +587,19 @@ int32_t init_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t 
         uint8_t sense_key;
         scsiRequestSense(target_id, &sense_key);
 
-        logmsg("SCSI Initiator write failed: ", status, " sense key ", sense_key);
-        return -1;
+        if (sense_key == RECOVERED_ERROR)
+        {
+            dbgmsg("SCSI Initiator write: RECOVERED_ERROR at ", (int)start_sector);
+        }
+        else if (sense_key == UNIT_ATTENTION)
+        {
+            dbgmsg("SCSI Initiator write: UNIT_ATTENTION");
+        }
+        else
+        {
+            logmsg("SCSI Initiator write failed: ", status, " sense key ", sense_key);
+            return -1;
+        }
     }
 
     return sectorcount * sectorsize;

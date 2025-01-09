@@ -1033,7 +1033,36 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
 
     scsiHostPhyRelease();
 
-    return status == 0 && g_initiator_transfer.all_ok;
+    if (!g_initiator_transfer.all_ok)
+    {
+        dbgmsg("scsiInitiatorReadDataToFile: Incomplete transfer");
+        return false;
+    }
+    else if (status == 2)
+    {
+        uint8_t sense_key;
+        scsiRequestSense(target_id, &sense_key);
+
+        if (sense_key == RECOVERED_ERROR)
+        {
+            dbgmsg("scsiInitiatorReadDataToFile: RECOVERED_ERROR at ", (int)start_sector);
+            return true;
+        }
+        else if (sense_key == UNIT_ATTENTION)
+        {
+            dbgmsg("scsiInitiatorReadDataToFile: UNIT_ATTENTION");
+            return true;
+        }
+        else
+        {
+            logmsg("scsiInitiatorReadDataToFile: READ failed: ", status, " sense key ", sense_key);
+            return false;
+        }
+    }
+    else
+    {
+        return status == 0;
+    }
 }
 
 
