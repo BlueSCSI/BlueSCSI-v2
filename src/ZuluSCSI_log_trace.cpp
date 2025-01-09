@@ -331,3 +331,31 @@ void scsiLogDataOut(const uint8_t *buf, uint32_t length)
 
     g_OutByteCount += length;
 }
+
+static const char *get_sense_key_name(uint8_t sense_key)
+{
+    switch (sense_key)
+    {
+        case RECOVERED_ERROR:              return "RECOVERED_ERROR";
+        case NOT_READY      :              return "NOT_READY";
+        case MEDIUM_ERROR   :              return "MEDIUM_ERROR";
+        case HARDWARE_ERROR :              return "HARDWARE_ERROR";
+        case ILLEGAL_REQUEST:              return "ILLEGAL_REQUEST";
+        case UNIT_ATTENTION :              return "UNIT_ATTENTION";
+        case DATA_PROTECT   :              return "DATA_PROTECT";
+        case BLANK_CHECK    :              return "BLANK_CHECK";
+        case VENDOR_SPECIFIC:              return "VENDOR_SPECIFIC";
+        case COPY_ABORTED   :              return "COPY_ABORTED";
+        case ABORTED_COMMAND:              return "ABORTED_COMMAND";
+        case EQUAL          :              return "EQUAL";
+        case VOLUME_OVERFLOW:              return "VOLUME_OVERFLOW";
+        case MISCOMPARE     :              return "MISCOMPARE";
+        case RESERVED       :              return "RESERVED";
+        default: return "UNKNOWN";
+    }
+}
+
+void scsiLogInitiatorCommandFailure(const char *command_text, int target_id, int status, uint8_t sense_key)
+{
+    logmsg("-- ", command_text, " on target ", target_id, " failed with status ", status, " and sense_key ", sense_key, " (", get_sense_key_name(sense_key), ")");
+}

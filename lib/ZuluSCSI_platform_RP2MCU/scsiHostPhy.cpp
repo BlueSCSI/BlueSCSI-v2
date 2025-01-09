@@ -263,13 +263,27 @@ uint32_t scsiHostRead(uint8_t *data, uint32_t count)
     {
         for (uint32_t i = 0; i < count; i++)
         {
-            while (!SCSI_IN(REQ))
+            uint32_t start = millis();
+            while (!SCSI_IN(REQ) && (millis() - start) < 10000)
             {
-                if (g_scsiHostPhyReset || !SCSI_IN(IO) || SCSI_IN(CD) != cd_start || SCSI_IN(MSG) != msg_start)
-                {
-                    // Target switched out of DATA_IN mode
-                    count = i;
-                }
+                // Wait for REQ asserted
+            }
+
+            int io = SCSI_IN(IO);
+            int cd = SCSI_IN(CD);
+            int msg = SCSI_IN(MSG);
+
+            if (g_scsiHostPhyReset)
+            {
+                dbgmsg("sciHostRead: aborting due to reset request");
+                count = i;
+                break;
+            }
+            else if (!io || cd != cd_start || msg != msg_start)
+            {
+                dbgmsg("scsiHostRead: aborting because target switched transfer phase (IO: ", io, ", CD: ", cd, ", MSG: ", msg, ")");
+                count = i;
+                break;
             }
 
             data[i] = scsiHostReadOneByte(&parityError);
