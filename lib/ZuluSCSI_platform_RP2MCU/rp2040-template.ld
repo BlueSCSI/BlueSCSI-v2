@@ -73,6 +73,8 @@ SECTIONS
         /* Put only non-timecritical code in flash
          * This includes e.g. floating point math routines.
          */
+        .pio/build/$project_name/src/ZuluSCSI_initiator.cpp.o(.text .text*)
+        .pio/build/$project_name/src/ZuluSCSI_msc_initiator.cpp.o(.text .text*)
         .pio/build/$project_name/src/ZuluSCSI_log.cpp.o(.text .text*)
         .pio/build/$project_name/src/ZuluSCSI_log_trace.cpp.o(.text .text*)
         .pio/build/$project_name/src/ZuluSCSI_settings.cpp.o(.text .text*)
