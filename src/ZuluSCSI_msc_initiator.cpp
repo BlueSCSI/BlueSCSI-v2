@@ -330,7 +330,7 @@ bool init_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, bo
     {
         uint8_t sense_key;
         scsiRequestSense(target, &sense_key);
-        logmsg("START STOP UNIT on target ", target, " failed, sense key ", sense_key);
+        scsiLogInitiatorCommandFailure("START STOP UNIT", target, status, sense_key);
     }
 
     LED_OFF();
@@ -504,7 +504,7 @@ int32_t init_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buf
         }
         else
         {
-            logmsg("SCSI Initiator read failed: ", status, " sense key ", sense_key);
+            scsiLogInitiatorCommandFailure("SCSI Initiator read", target_id, status, sense_key);
             return -1;
         }
     }
@@ -597,7 +597,7 @@ int32_t init_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t 
         }
         else
         {
-            logmsg("SCSI Initiator write failed: ", status, " sense key ", sense_key);
+            scsiLogInitiatorCommandFailure("SCSI Initiator write", target_id, status, sense_key);
             return -1;
         }
     }
