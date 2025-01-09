@@ -105,15 +105,50 @@ uint32_t scsi_accel_host_read(uint8_t *buf, uint32_t count, int *parityError, vo
     uint8_t *dst = buf;
     uint8_t *end = buf + count;
     uint32_t paritycheck = 0;
+    uint32_t prev_rx_time = millis();
     while (dst < end)
     {
         uint32_t available = pio_sm_get_rx_fifo_level(SCSI_PIO, SCSI_SM);
 
         if (available == 0)
         {
-            if (*resetFlag || !SCSI_IN(IO) || SCSI_IN(CD) != cd_start || SCSI_IN(MSG) != msg_start)
+            // No new data has been received by PIO, check if there is a need to abort
+
+            bool abort = false;
+            if (*resetFlag)
             {
-                // Target switched out of DATA_IN mode
+                dbgmsg("scsi_accel_host_read: Aborting due to reset request");
+                abort = true;
+            }
+            else if ((millis() - prev_rx_time) > 10000)
+            {
+                dbgmsg("scsi_accel_host_read: Aborting due to timeout");
+                abort = true;
+            }
+            else
+            {
+                // Some drives such as ST-296N may have glitches on phase signals in between
+                // byte transfers. This is allowed by SCSI spec, and officially we should only
+                // check the phase signals when REQ is active. However the PIO logic currently
+                // does not do this. Instead, when we detect a phase change, wait for 10 milliseconds
+                // to see if it is real.
+                int debounce = 100;
+                while (debounce > 0 && (!SCSI_IN(IO) || SCSI_IN(CD) != cd_start || SCSI_IN(MSG) != msg_start))
+                {
+                    debounce--;
+                    delayMicroseconds(100);
+                }
+
+                if (debounce == 0)
+                {
+                    dbgmsg("scsi_accel_host_read: aborting because target switched transfer phase (IO: ",
+                        (int)SCSI_IN(IO), ", CD: ", (int)SCSI_IN(CD), ", MSG: ", (int)SCSI_IN(MSG), ")");
+                    abort = true;
+                }
+            }
+
+            if (abort)
+            {
                 count = dst - buf;
                 break;
             }
