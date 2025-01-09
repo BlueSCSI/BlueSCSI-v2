@@ -34,6 +34,7 @@
 #include <assert.h>
 #include <audio.h>
 #include <ZuluSCSI_audio.h>
+#include <ZuluSCSI_settings.h>
 
 extern SdFs SD;
 extern bool g_rawdrive_active;
@@ -464,6 +465,10 @@ void platform_post_sd_card_init()
 void platform_write_led(bool state)
 {
     if (g_led_blinking) return;
+
+    if (g_scsi_settings.getSystem()->invertStatusLed)
+        state = !state;
+
     if (state)
         gpio_bit_reset(LED_PORT, LED_PINS);
     else
@@ -477,6 +482,9 @@ void platform_set_blink_status(bool status)
 
 void platform_write_led_override(bool state)
 {
+    if (g_scsi_settings.getSystem()->invertStatusLed)
+        state = !state;
+
     if (state)
         gpio_bit_reset(LED_PORT, LED_PINS);
     else
