@@ -38,6 +38,7 @@
 #include <hardware/sync.h>
 #include "scsi_accel_target.h"
 #include "custom_timings.h"
+#include <ZuluSCSI_settings.h>
 
 #ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
 # include <SerialUSB.h>
@@ -516,6 +517,8 @@ void platform_write_led(bool state)
 {
     if (g_led_blinking) return;
 
+    if (g_scsi_settings.getSystem()->invertStatusLed)
+        state = !state;
     gpio_put(LED_PIN, state);
 }
 
@@ -526,6 +529,8 @@ void platform_set_blink_status(bool status)
 
 void platform_write_led_override(bool state)
 {
+    if (g_scsi_settings.getSystem()->invertStatusLed)
+        state = !state;
     gpio_put(LED_PIN, state);
 
 }
