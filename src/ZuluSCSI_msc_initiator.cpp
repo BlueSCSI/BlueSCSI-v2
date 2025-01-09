@@ -87,6 +87,7 @@ static int do_read6_or_10(int target_id, uint32_t start_sector, uint32_t sectorc
 
 static void scan_targets()
 {
+    int found_count = 0;
     int initiator_id = scsiInitiatorGetOwnID();
     uint8_t inquiry_data[36] = {0};
     g_msc_initiator_target_count = 0;
@@ -122,6 +123,9 @@ static void scan_targets()
             }
         }
     }
+
+    // USB MSC requests can start processing after we set this
+    g_msc_initiator_target_count = found_count;
 }
 
 bool setup_msc_initiator()
@@ -153,7 +157,8 @@ void poll_msc_initiator()
     uint32_t time_since_scan = time_now - g_msc_initiator_state.last_scan_time;
     if (g_msc_initiator_target_count == 0 && time_since_scan > 5000)
     {
-        // Scan for targets until we find one
+        // Scan for targets until we find one - drive might be slow to start up.
+        // MSC lock is not required here because commands will early exit when target_count is 0.
         platform_reset_watchdog();
         scan_targets();
         g_msc_initiator_state.last_scan_time = time_now;
@@ -221,6 +226,16 @@ static int get_target(uint8_t lun)
 
 void init_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8], uint8_t product_id[16], uint8_t product_rev[4])
 {
+    dbgmsg("-- MSC Inquiry");
+
+    if (g_msc_initiator_target_count == 0)
+    {
+        memset(vendor_id, 0, 8);
+        memset(product_id, 0, 8);
+        memset(product_rev, 0, 8);
+        return;
+    }
+
     LED_ON();
     g_msc_initiator_state.status_reqcount++;
 
@@ -246,6 +261,11 @@ uint8_t init_msc_get_maxlun_cb(void)
 
 bool init_msc_is_writable_cb (uint8_t lun)
 {
+    if (g_msc_initiator_target_count == 0)
+    {
+        return false;
+    }
+
     LED_ON();
     g_msc_initiator_state.status_reqcount++;
 
@@ -260,6 +280,8 @@ bool init_msc_is_writable_cb (uint8_t lun)
 
 bool init_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, bool load_eject)
 {
+    dbgmsg("-- MSC Start Stop, start: ", (int)start, ", load_eject: ", (int)load_eject);
+
     if (g_msc_initiator_target_count == 0)
     {
         return false;
@@ -304,6 +326,8 @@ bool init_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, bo
 
 bool init_msc_test_unit_ready_cb(uint8_t lun)
 {
+    dbgmsg("-- MSC Test Unit Ready");
+
     if (g_msc_initiator_target_count == 0)
     {
         return false;
@@ -315,7 +339,15 @@ bool init_msc_test_unit_ready_cb(uint8_t lun)
 
 void init_msc_capacity_cb(uint8_t lun, uint32_t *block_count, uint16_t *block_size)
 {
+    dbgmsg("-- MSC Get Capacity");
     g_msc_initiator_state.status_reqcount++;
+
+    if (g_msc_initiator_target_count == 0)
+    {
+        *block_count = 0;
+        *block_size = 0;
+        return;
+    }
 
     uint32_t sectorcount = 0;
     uint32_t sectorsize = 0;
@@ -326,6 +358,12 @@ void init_msc_capacity_cb(uint8_t lun, uint32_t *block_count, uint16_t *block_si
 
 int32_t init_msc_scsi_cb(uint8_t lun, const uint8_t scsi_cmd[16], void *buffer, uint16_t bufsize)
 {
+    if (g_msc_initiator_target_count == 0)
+    {
+        return -1;
+    }
+
+    dbgmsg("-- MSC Raw SCSI command ", bytearray(scsi_cmd, 16));
     LED_ON();
     g_msc_initiator_state.status_reqcount++;
 
@@ -386,6 +424,11 @@ static int do_read6_or_10(int target_id, uint32_t start_sector, uint32_t sectorc
 
 int32_t init_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buffer, uint32_t bufsize)
 {
+    if (g_msc_initiator_target_count == 0)
+    {
+        return -1;
+    }
+
     LED_ON();
     int status = 0;
 
@@ -462,6 +505,11 @@ int32_t init_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buf
 
 int32_t init_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t *buffer, uint32_t bufsize)
 {
+    if (g_msc_initiator_target_count == 0)
+    {
+        return -1;
+    }
+
     int status = -1;
 
     int target_id = get_target(lun);
