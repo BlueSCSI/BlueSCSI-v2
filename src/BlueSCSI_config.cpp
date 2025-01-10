@@ -17,6 +17,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#ifdef LIB_FREERTOS_KERNEL
+#include <cstring>
+#endif
 #include "minIni.h"
 #include "BlueSCSI_config.h"
 

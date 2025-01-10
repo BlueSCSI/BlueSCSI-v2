@@ -1,0 +1,6 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "Library")(type "KiCad")(uri "${KIPRJMOD}/Library.pretty")(options "")(descr ""))
+  (lib (name "agausmann")(type "KiCad")(uri "${KIPRJMOD}/agausmann.pretty")(options "")(descr ""))
+  (lib (name "TS-1187A-B-A-B")(type "KiCad")(uri "${KIPRJMOD}/TS-1187A-B-A-B")(options "")(descr ""))
+)

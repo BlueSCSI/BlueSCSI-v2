@@ -14,6 +14,7 @@
 #include "rp2040_sdio.pio.h"
 #include <hardware/pio.h>
 #include <hardware/dma.h>
+#include <cstring>
 //#include <hardware/gpio.h>
 #include <BlueSCSI_platform.h>
 #include <BlueSCSI_log.h>
@@ -491,7 +492,7 @@ sdio_status_t __not_in_flash_func(rp2040_sdio_rx_start)(uint8_t *buffer, uint32_
 
     // Create DMA block descriptors to store each block of block_size bytes of data to buffer
     // and then 8 bytes to g_sdio.received_checksums.
-    for (int i = 0; i < num_blocks; i++)
+    for (uint32_t i = 0; i < num_blocks; i++)
     {
         g_sdio.dma_blocks[i * 2].write_addr = buffer + (i * block_size);
         g_sdio.dma_blocks[i * 2].transfer_count = block_size / sizeof(uint32_t);

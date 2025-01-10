@@ -45,7 +45,7 @@ void reload_ini_cache(const char *filename)
     g_ini_cache.filelen = config.fileSize();
     if (config.isOpen() && g_ini_cache.filelen <= INI_CACHE_SIZE)
     {
-        if (config.read(g_ini_cache.cachedata, g_ini_cache.filelen) == g_ini_cache.filelen)
+        if (config.read(g_ini_cache.cachedata, g_ini_cache.filelen) == (int)g_ini_cache.filelen)
         {
             g_ini_cache.valid = true;
         }

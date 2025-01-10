@@ -855,7 +855,7 @@ void doReadTrackInformation(bool track, uint32_t lba, uint16_t allocationLength)
     {
         if (mtrack.track_number != 0) // skip 1st track, just store later
         {
-            if ((track && lba == mtrack.track_number)
+            if ((track && lba == (uint32_t)mtrack.track_number)
                 || (!track && lba < trackinfo->data_start))
             {
                 trackfound = true;
@@ -869,7 +869,7 @@ void doReadTrackInformation(bool track, uint32_t lba, uint16_t allocationLength)
     if (!trackfound)
     {
         uint32_t lastLba = getLeadOutLBA(&mtrack);
-        if ((track && lba == mtrack.track_number)
+        if ((track && lba == (uint32_t)mtrack.track_number)
             || (!track && lba < lastLba))
         {
             trackfound = true;

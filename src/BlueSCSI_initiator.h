@@ -8,6 +8,10 @@
 #define DEVICE_TYPE_CD 5
 #define DEVICE_TYPE_DIRECT_ACCESS 0
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void scsiInitiatorInit();
 
 void scsiInitiatorMainLoop();
@@ -36,5 +40,13 @@ bool scsiTestUnitReady(int target_id);
 
 // Read a block of data from SCSI device and write to file on SD card
 class FsFile;
+
 bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t sectorcount, uint32_t sectorsize,
                                  FsFile &file);
+
+#ifdef __cplusplus
+}
+#endif
+
+void scsiInitiatorUpdateLed();
+void delay_with_poll(uint32_t ms);

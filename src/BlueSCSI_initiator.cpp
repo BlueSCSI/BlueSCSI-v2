@@ -12,6 +12,9 @@
 #include <BlueSCSI_platform.h>
 #include <minIni.h>
 #include "SdFat.h"
+#ifdef LIB_FREERTOS_KERNEL
+#include <string.h>
+#endif
 
 #include <scsi2sd.h>
 extern "C" {
@@ -111,7 +114,7 @@ void scsiInitiatorInit()
 }
 
 // Update progress bar LED during transfers
-static void scsiInitiatorUpdateLed()
+void scsiInitiatorUpdateLed()
 {
     // Update status indicator, the led blinks every 5 seconds and is on the longer the more data has been transferred
     const int period = 256;
@@ -235,7 +238,7 @@ void scsiInitiatorMainLoop()
                 g_initiator_state.sectorcount = g_initiator_state.sectorcount_all = 0;
             }
 
-            char filename[18] = "";
+            char filename[30] = "";
             if (inquiryok)
             {
                 g_initiator_state.deviceType = inquiry_data[0] & 0x1F;
@@ -262,10 +265,10 @@ void scsiInitiatorMainLoop()
                 }
 
                 do {
-                    sprintf(filename, "%s%d_imaged-%03d.%s",
+                    snprintf(filename, sizeof(filename), "%s%1d_imaged-%03d.%s",
                             (g_initiator_state.deviceType == DEVICE_TYPE_CD) ? "CD" : "HD",
                             g_initiator_state.target_id,
-                            ++image_num,
+                            (uint8_t)++image_num,
                             (g_initiator_state.deviceType == DEVICE_TYPE_CD) ? "iso" : "hda");
                 } while(SD.exists(filename));
                 log("Imaging filename: ", filename, ".");
@@ -322,7 +325,7 @@ void scsiInitiatorMainLoop()
         scsiInitiatorUpdateLed();
 
         // How many sectors to read in one batch?
-        int numtoread = g_initiator_state.sectorcount - g_initiator_state.sectors_done;
+        uint32_t numtoread = g_initiator_state.sectorcount - g_initiator_state.sectors_done;
         if (numtoread > g_initiator_state.max_sector_per_transfer)
             numtoread = g_initiator_state.max_sector_per_transfer;
 

@@ -3,7 +3,14 @@
 #pragma once
 
 #include <stdint.h>
+#ifndef LIB_FREERTOS_KERNEL
 #include <Arduino.h>
+#else
+#include <FreeRTOS.h>
+#include <task.h>
+#include "pico/time.h"
+#include "pico/types.h"
+#endif
 #include "BlueSCSI_platform_gpio.h"
 #include "scsiHostPhy.h"
 
@@ -42,12 +49,29 @@ void platform_emergency_log_save();
 // Timing and delay functions.
 // Arduino platform already provides these
 unsigned long millis(void);
+#ifndef LIB_FREERTOS_KERNEL
+
 void delay(unsigned long ms);
+#else
+static inline void delay(unsigned long ms){
+	// Use the pico-SDK sleep function
+    sleep_ms(ms);
+}
+
+static inline void delayMicroseconds(unsigned long us){
+    // Use the pico-sdk busy wait
+    busy_wait_us(us);
+}
+#endif
 
 // Short delays, can be called from interrupt mode
 static inline void delay_ns(unsigned long ns)
 {
+#ifdef LIB_FREERTOS_KERNEL
+    sleep_us((ns + 999) / 1000);
+#else
     delayMicroseconds((ns + 999) / 1000);
+#endif
 }
 
 // Approximate fast delay
@@ -85,6 +109,10 @@ void platform_poll();
 // Debouncing logic is left up to the specific implementation.
 // This function should return without significantly delay.
 uint8_t platform_get_buttons();
+
+#ifdef LIB_FREERTOS_KERNEL
+void platform_register_cli(void);
+#endif 
 
 // Platform method to determine whether this is a certain hardware version
 bool is202309a();

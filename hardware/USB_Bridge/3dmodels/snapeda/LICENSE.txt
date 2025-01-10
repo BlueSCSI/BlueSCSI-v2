@@ -1,0 +1,12 @@
+Files in this folder are obtained from Snap EDA <https://snapeda.com>,
+and are made available under the terms of the Creative Commons
+Attribution-ShareAlike 4.0 International License (CC BY-SA), with the addition
+of the Design Exception 1.0 clause:
+
+> You have permission to propagate a work of a design, design file(s) and/or
+> manufactured board(s) formed by combining CAD symbols, footprints, and 3D
+> models provided by SnapEDA, even if such propagation would otherwise violate
+> the terms of CC BY-SA. You may then convey such a combination under terms of
+> your choice.
+
+You can find more information at <https://www.snapeda.com/about/FAQ>

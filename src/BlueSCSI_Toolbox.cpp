@@ -101,7 +101,7 @@ void onListFiles(const char * dir_name) {
     memset(scsiDev.data, 0, ENTRY_SIZE * (MAX_FILE_LISTING_FILES + 1));
     char name[MAX_FILE_PATH] = {0};
     uint8_t index = 0;
-    byte file_entry[ENTRY_SIZE] = {0};
+    uint8_t file_entry[ENTRY_SIZE] = {0};
 
     dir.open(dir_name);
     dir.rewindDirectory();

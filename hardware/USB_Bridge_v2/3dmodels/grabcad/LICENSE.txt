@@ -1,0 +1,5 @@
+Files in this directory are downloaded from GrabCAD <https://grabcad.com>,
+and are made available subject to the GrabCAD Terms of Use:
+
+<https://grabcad.com/terms>
+<https://help.grabcad.com/article/246-how-can-models-be-used-and-shared>
