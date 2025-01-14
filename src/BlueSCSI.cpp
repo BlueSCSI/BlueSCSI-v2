@@ -58,6 +58,7 @@
 #include "BlueSCSI_disk.h"
 #include "BlueSCSI_initiator.h"
 #include "ROMDrive.h"
+#include "BlueSCSI.h"
 
 SdFs SD;
 FsFile g_logfile;
@@ -418,35 +419,41 @@ bool findHDDImages()
 
   g_romdrive_active = scsiDiskActivateRomDrive();
 
-  // Print SCSI drive map
-  log(" ");
-  log("=== Configured SCSI Devices ===");
-  for (int i = 0; i < NUM_SCSIID; i++)
-  {
-    const S2S_TargetCfg* cfg = s2s_getConfigByIndex(i);
-    if (cfg && (cfg->scsiId & S2S_CFG_TARGET_ENABLED))
-    {
-      int capacity_kB = ((uint64_t)cfg->scsiSectors * cfg->bytesPerSector) / 1024;
-
-      if (cfg->deviceType == S2S_CFG_NETWORK)
-      {
-        log("* ID: ", (int)(cfg->scsiId & S2S_CFG_TARGET_ID_BITS),
-              ", Type: ", typeToChar((int)cfg->deviceType),
-              ", Quirks: ", quirksToChar((int)cfg->quirks));
-      }
-      else
-      {
-        log("* ID: ", (int)(cfg->scsiId & S2S_CFG_TARGET_ID_BITS),
-              ", BlockSize: ", (int)cfg->bytesPerSector,
-              ", Type: ", typeToChar((int)cfg->deviceType),
-              ", Quirks: ", quirksToChar((int)cfg->quirks),
-              ", Size: ", capacity_kB, "kB");
-      }
-    }
-  }
+  printConfiguredDevices();
 
   return foundImage;
 }
+
+void printConfiguredDevices()
+{
+    // Print SCSI drive map
+    log(" ");
+    log("=== Configured SCSI Devices ===");
+    for (int i = 0; i < NUM_SCSIID; i++)
+    {
+        const S2S_TargetCfg* cfg = s2s_getConfigByIndex(i);
+        if (cfg && (cfg->scsiId & S2S_CFG_TARGET_ENABLED))
+        {
+            int capacity_kB = ((uint64_t)cfg->scsiSectors * cfg->bytesPerSector) / 1024;
+
+            if (cfg->deviceType == S2S_CFG_NETWORK)
+            {
+                log("* ID: ", (int)(cfg->scsiId & S2S_CFG_TARGET_ID_BITS),
+                    ", Type: ", typeToChar((int)cfg->deviceType),
+                    ", Quirks: ", quirksToChar((int)cfg->quirks));
+            }
+            else
+            {
+                log("* ID: ", (int)(cfg->scsiId & S2S_CFG_TARGET_ID_BITS),
+                    ", BlockSize: ", (int)cfg->bytesPerSector,
+                    ", Type: ", typeToChar((int)cfg->deviceType),
+                    ", Quirks: ", quirksToChar((int)cfg->quirks),
+                    ", Size: ", capacity_kB, "kB");
+            }
+        }
+    }
+}
+
 
 /************************/
 /* Config file loading  */
