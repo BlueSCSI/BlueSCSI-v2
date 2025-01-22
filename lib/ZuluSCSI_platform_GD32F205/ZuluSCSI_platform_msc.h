@@ -50,6 +50,9 @@ bool platform_sense_msc();
 /* perform MSC-specific init tasks */
 void platform_enter_msc();
 
+/* set to present images as storage rather than SD */
+void platform_set_msc_image_mode(bool image_mode);
+
 /* return true if we should remain in card reader mode. called in a loop. */
 bool platform_run_msc();
 

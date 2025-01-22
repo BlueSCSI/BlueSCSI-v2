@@ -165,7 +165,7 @@ bool scsiDiskActivateRomDrive()
 extern SdFs SD;
 SdDevice sdDev = {2, 256 * 1024 * 1024 * 2}; /* For SCSI2SD */
 
-static image_config_t g_DiskImages[S2S_MAX_TARGETS];
+image_config_t g_DiskImages[S2S_MAX_TARGETS];
 
 void scsiDiskResetImages()
 {
