@@ -153,6 +153,25 @@ void platform_set_msc_image_mode(bool image_mode) {
   g_MSC.SDMode = !image_mode;
 }
 
+/* return true if the image type makes sense as a mass-storage device */
+bool msc_image_eligble(uint8_t t) {
+  switch (t) {
+    case S2S_CFG_FIXED:
+    case S2S_CFG_REMOVABLE:
+    case S2S_CFG_MO: /* not actually sure about this and zip */
+    case S2S_CFG_ZIP100:
+      return true;
+
+    case S2S_CFG_OPTICAL: /* will not contain a MBR */
+    case S2S_CFG_FLOPPY_14MB: /* will not contain a MBR */ 
+    case S2S_CFG_SEQUENTIAL: /* tape drive */
+    case S2S_CFG_NETWORK: /* always empty */
+    case S2S_CFG_NOT_SET:
+    default:
+      return false;
+  } 
+}
+
 /* perform MSC class preinit tasks */
 void platform_enter_msc() {
   dbgmsg("USB MSC buffer size: ", CFG_TUD_MSC_EP_BUFSIZE);
@@ -161,7 +180,7 @@ void platform_enter_msc() {
   if (!g_MSC.SDMode) {
     logmsg("Presenting configured images as USB storage devices");
     for (int i = 0; i < S2S_MAX_TARGETS; i++) {
-      if (g_DiskImages[i].file.isOpen()) {
+      if (msc_image_eligble(g_DiskImages[i].deviceType) && g_DiskImages[i].file.isOpen()) {
           logmsg("USB LUN ", (int)g_MSC.lun_count," => ",g_DiskImages[i].current_image);
 
           // anything but linux probably won't deal gracefully with nonstandard or odd sector sizes, present a warning
@@ -283,7 +302,7 @@ extern "C" void tud_msc_capacity_cb(uint8_t lun, uint32_t *block_count,
     *block_count = g_MSC.unitReady ? (SD.card()->sectorCount()) : 0;
     *block_size = SD_SECTOR_SIZE;
   } else { // present the bytesPerSector of file, though it remains to be seen if host will like this
-    *block_count = (g_MSC.unitReady && g_MSC.lun_unitReady[lun]) ? (g_MSC.lun_config[lun]->file.size() / SD_SECTOR_SIZE) : 0;
+    *block_count = (g_MSC.unitReady && g_MSC.lun_unitReady[lun]) ? (g_MSC.lun_config[lun]->file.size() / g_MSC.lun_config[lun]->bytesPerSector) : 0;
     *block_size = g_MSC.lun_config[lun]->bytesPerSector;
   }
 }
