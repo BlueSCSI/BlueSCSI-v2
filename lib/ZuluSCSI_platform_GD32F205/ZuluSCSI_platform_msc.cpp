@@ -117,6 +117,11 @@ bool platform_sense_msc() {
   return false;
 }
 
+void platform_set_msc_image_mode(bool image_mode) {
+  if (image_mode) logmsg("Warning: USB Image mounting not supported on this platform!");
+  //g_MSC.SDMode = !image_mode;
+}
+
 /* perform MSC-specific init tasks */
 void platform_enter_msc() {
   dbgmsg("USB MSC buffer size: ", (uint32_t) MSC_MEDIA_PACKET_SIZE);

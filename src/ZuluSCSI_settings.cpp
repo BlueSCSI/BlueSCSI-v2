@@ -299,6 +299,7 @@ scsi_system_settings_t *ZuluSCSISettings::initSystem(const char *presetName)
     cfgSys.enableCDAudio = false;
     cfgSys.enableUSBMassStorage = false;
     cfgSys.usbMassStorageWaitPeriod = 1000;
+    cfgSys.usbMassStoragePresentImages = false;
     cfgSys.invertStatusLed = false;
 
     // setting set for all or specific devices
@@ -396,6 +397,7 @@ scsi_system_settings_t *ZuluSCSISettings::initSystem(const char *presetName)
 
     cfgSys.enableUSBMassStorage = ini_getbool("SCSI", "EnableUSBMassStorage", cfgSys.enableUSBMassStorage, CONFIGFILE);
     cfgSys.usbMassStorageWaitPeriod = ini_getl("SCSI", "USBMassStorageWaitPeriod", cfgSys.usbMassStorageWaitPeriod, CONFIGFILE);
+    cfgSys.usbMassStoragePresentImages = ini_getbool("SCSI", "USBMassStoragePresentImages", cfgSys.usbMassStoragePresentImages, CONFIGFILE);
 
     cfgSys.invertStatusLed = ini_getbool("SCSI", "InvertStatusLED", cfgSys.invertStatusLed, CONFIGFILE);
 
