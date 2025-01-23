@@ -25,9 +25,13 @@
 #include "ZuluSCSI_platform.h"
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_msc.h"
+#include "ZuluSCSI_settings.h"
 
 // external global SD variable
 extern SdFs SD;
+
+// SCSI system and device settings
+extern ZuluSCSISettings g_scsi_settings;
 
 // public globals
 volatile MSC_LEDState MSC_LEDMode;
@@ -39,7 +43,13 @@ void zuluscsi_msc_loop() {
   // turn LED on to indicate entering card reader mode.
   LED_ON();
   
-  logmsg("Entering USB Mass storage mode. Eject the USB disk to exit.");
+  logmsg("Entering USB Mass storage mode. Eject the USB disk(s) to exit.");
+  
+  // force blink status to inactive (may inhibit our blinking otherwise)
+  platform_set_blink_status(0);
+
+  // pull in the setting for presenting images as USB devices
+  platform_set_msc_image_mode(g_scsi_settings.getSystem()->usbMassStoragePresentImages);
 
   platform_enter_msc();
   
