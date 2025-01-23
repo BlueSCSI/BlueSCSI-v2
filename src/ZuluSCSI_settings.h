@@ -67,7 +67,8 @@ typedef struct __attribute__((__packed__)) scsi_system_settings_t
     bool enableCDAudio;
     bool enableUSBMassStorage;
     uint16_t usbMassStorageWaitPeriod;
-
+    bool usbMassStoragePresentImages;
+    
     bool invertStatusLed;
 
 } scsi_system_settings_t;
