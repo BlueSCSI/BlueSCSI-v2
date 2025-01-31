@@ -1009,33 +1009,10 @@ static void zuluscsi_setup_sd_card(bool wait_for_card = true)
 
   firmware_update();
 
-  static const char sg_default[] = "Default";
+
   if (g_sdcard_present)
   {
-    char speed_grade_str[10];
-    ini_gets("SCSI", "SpeedGrade", sg_default, speed_grade_str, sizeof(speed_grade_str), CONFIGFILE);
-    zuluscsi_speed_grade_t grade = platform_string_to_speed_grade(speed_grade_str, sizeof(speed_grade_str));
-    if (grade != SPEED_GRADE_DEFAULT)
-    {
-      zuluscsi_reclock_status_t status = platform_reclock(grade);
-      switch (status)
-      {
-        case ZULUSCSI_RECLOCK_NOT_SUPPORTED:
-          logmsg("Reclocking this board is not supported");
-          break;
-        case ZULUSCSI_RECLOCK_FAILED:
-          logmsg("Reclocking failed");
-          break;
-        case ZULUSCSI_RECLOCK_SUCCESS:
-          logmsg("Reclocking was successful");
-          break;
-        case ZULUSCSI_RECLOCK_CUSTOM:
-          logmsg("Custom reclocking timings used");
-          break;
-      }
-      g_sdcard_present = mountSDCard();
-      reinitSCSI();
-    }
+
 
     if (SD.clusterCount() == 0)
     {
@@ -1047,6 +1024,26 @@ static void zuluscsi_setup_sd_card(bool wait_for_card = true)
     char presetName[32];
     ini_gets("SCSI", "System", "", presetName, sizeof(presetName), CONFIGFILE);
     scsi_system_settings_t *cfg = g_scsi_settings.initSystem(presetName);
+
+#ifdef RECLOCKING_SUPPORTED
+    zuluscsi_speed_grade_t speed_grade = (zuluscsi_speed_grade_t) g_scsi_settings.getSystem()->speedGrade;
+    if (speed_grade != zuluscsi_speed_grade_t::SPEED_GRADE_DEFAULT)
+    { 
+      logmsg("Speed grade set to ", g_scsi_settings.getSpeedGradeString(), " reclocking system");
+      if (platform_reclock(speed_grade))
+      {
+        logmsg("======== Reinitializing ZuluSCSI after reclock ========");
+        g_sdcard_present = mountSDCard();
+      }
+    }
+    else
+    {
+#ifndef ENABLE_AUDIO_OUTPUT // if audio is enabled, skip message because reclocking ocurred earlier
+      logmsg("Speed grade set to Default, skipping reclocking");
+#endif
+    }
+#endif
+
     int boot_delay_ms = cfg->initPreDelay;
     if (boot_delay_ms > 0)
     {
