@@ -37,6 +37,18 @@ ZuluSCSISettings g_scsi_settings;
 const char *systemPresetName[] = {"", "Mac", "MacPlus", "MPC3000", "MegaSTE", "X68000"};
 const char *devicePresetName[] = {"", "ST32430N"};
 
+// must be in the same order as zuluscsi_speed_grade_t in ZuluSCSI_settings.h
+const char * const speed_grade_strings[7] =
+{
+    "Default",
+    "TurboMax",
+    "Custom",
+    "TurboA",
+    "TurboB",
+    "TurboC",
+    "Audio"
+};
+
 // Helper function for case-insensitive string compare
 static bool strequals(const char *a, const char *b)
 {
@@ -302,6 +314,8 @@ scsi_system_settings_t *ZuluSCSISettings::initSystem(const char *presetName)
     cfgSys.usbMassStoragePresentImages = false;
     cfgSys.invertStatusLed = false;
 
+    cfgSys.speedGrade = zuluscsi_speed_grade_t::SPEED_GRADE_DEFAULT;
+
     // setting set for all or specific devices
     cfgDev.deviceType = S2S_CFG_NOT_SET;
     cfgDev.deviceTypeModifier = 0;
@@ -400,6 +414,20 @@ scsi_system_settings_t *ZuluSCSISettings::initSystem(const char *presetName)
     cfgSys.usbMassStoragePresentImages = ini_getbool("SCSI", "USBMassStoragePresentImages", cfgSys.usbMassStoragePresentImages, CONFIGFILE);
 
     cfgSys.invertStatusLed = ini_getbool("SCSI", "InvertStatusLED", cfgSys.invertStatusLed, CONFIGFILE);
+    
+    char tmp[32];
+    ini_gets("SCSI", "SpeedGrade", "", tmp, sizeof(tmp), CONFIGFILE);
+    if (tmp[0] != '\0')
+    {
+        if (platform_reclock_supported())
+        {
+            cfgSys.speedGrade = stringToSpeedGrade(tmp, sizeof(tmp));
+        }
+        else
+        {
+            logmsg("Speed grade setting ignored, reclocking the MCU is not supported by this device");
+        }
+    }
 
     return &cfgSys;
 }
@@ -491,4 +519,37 @@ scsi_device_preset_t ZuluSCSISettings::getDevicePreset(uint8_t scsiId)
 const char* ZuluSCSISettings::getDevicePresetName(uint8_t scsiId)
 {
     return devicePresetName[m_devPreset[scsiId]];
+}
+
+
+zuluscsi_speed_grade_t ZuluSCSISettings::stringToSpeedGrade(const char *speed_grade_target, size_t length)
+{
+    zuluscsi_speed_grade_t grade = zuluscsi_speed_grade_t::SPEED_GRADE_DEFAULT;
+
+#ifdef ENABLE_AUDIO_OUTPUT
+    logmsg("Audio output enabled, reclocking isn't possible");
+    return SPEED_GRADE_DEFAULT;
+#endif
+    bool found_speed_grade = false;
+    // search the list of speed grade strings for a matching target
+    for (uint8_t i = 0; i < sizeof(speed_grade_strings)/sizeof(speed_grade_strings[0]); i++)
+    {
+        if (strncasecmp(speed_grade_target, speed_grade_strings[i], length) == 0)
+        {
+            grade = (zuluscsi_speed_grade_t)i;
+            found_speed_grade = true;
+            break;
+        }
+    }
+    if (!found_speed_grade)
+    {
+      logmsg("Setting \"", speed_grade_target, "\" does not match any known speed grade, using default");
+      grade = SPEED_GRADE_DEFAULT;
+    }
+    return grade;
+}
+
+const char *ZuluSCSISettings::getSpeedGradeString()
+{
+    return speed_grade_strings[m_sys.speedGrade];
 }
