@@ -27,7 +27,7 @@
 #include <ZuluSCSI_platform_config.h>
 
 // Use variables for version number
-#define FW_VER_NUM      "25.01.26"
+#define FW_VER_NUM      "25.02.01"
 #define FW_VER_SUFFIX   "devel"
 
 #define DEF_STRINGFY(DEF) STRINGFY(DEF)
