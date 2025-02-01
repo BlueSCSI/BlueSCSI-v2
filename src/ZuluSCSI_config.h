@@ -24,7 +24,6 @@
 // Other settings can be set by ini file at runtime.
 
 #pragma once
-
 #include <ZuluSCSI_platform_config.h>
 
 // Use variables for version number
@@ -136,22 +135,3 @@
 // Settings for rebooting
 #define REBOOT_INTO_MASS_STORAGE_MAGIC_NUM 0x5eeded
 
-// Reclocking return status
-typedef enum
-{
-    ZULUSCSI_RECLOCK_SUCCESS,
-    ZULUSCSI_RECLOCK_CUSTOM,
-    ZULUSCSI_RECLOCK_NOT_SUPPORTED,
-    ZULUSCSI_RECLOCK_FAILED
-} zuluscsi_reclock_status_t;
-
-typedef enum
-{
-    SPEED_GRADE_DEFAULT,
-    SPEED_GRADE_MAX,
-    SPEED_GRADE_CUSTOM,
-    SPEED_GRADE_A,
-    SPEED_GRADE_B,
-    SPEED_GRADE_C,
-    SPEED_GRADE_AUDIO,
-} zuluscsi_speed_grade_t;

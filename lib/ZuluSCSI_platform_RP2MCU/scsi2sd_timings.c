@@ -19,7 +19,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
 #include "timings.h"
-#include "ZuluSCSI_platform.h"
 #if defined(ZULUSCSI_MCU_RP23XX)
 uint8_t g_max_sync_20_period = 18;
 uint8_t g_max_sync_10_period = 25;

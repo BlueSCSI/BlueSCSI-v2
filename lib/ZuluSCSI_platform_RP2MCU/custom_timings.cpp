@@ -72,7 +72,7 @@ bool CustomTimings::set_timings_from_file()
 
     char speed_grade_str[10];
     ini_gets(settings_section, "extends_speed_grade", "Default", speed_grade_str, sizeof(speed_grade_str), CUSTOM_TIMINGS_FILE);
-    zuluscsi_speed_grade_t speed_grade =  platform_string_to_speed_grade(speed_grade_str, sizeof(speed_grade_str));
+    zuluscsi_speed_grade_t speed_grade =  g_scsi_settings.stringToSpeedGrade(speed_grade_str, sizeof(speed_grade_str));
     set_timings(speed_grade);
 
     int32_t number_setting = ini_getl(settings_section, "boot_with_sync_value", 0, CUSTOM_TIMINGS_FILE);

@@ -20,10 +20,25 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
 #pragma once
+
+typedef enum
+{
+    SPEED_GRADE_DEFAULT = 0,
+    SPEED_GRADE_MAX,
+    SPEED_GRADE_CUSTOM,
+    SPEED_GRADE_AUDIO,
+    SPEED_GRADE_A,
+    SPEED_GRADE_B,
+    SPEED_GRADE_C,
+
+} zuluscsi_speed_grade_t;
+
 #ifdef __cplusplus
 
 #include <stdint.h>
+#include <stddef.h>
 #include <scsi2sd.h>
+
 
 // Index 8 is the system defaults
 // Index 0-7 represent device settings
@@ -70,6 +85,8 @@ typedef struct __attribute__((__packed__)) scsi_system_settings_t
     bool usbMassStoragePresentImages;
     
     bool invertStatusLed;
+
+    uint8_t speedGrade; // memory allocation for zuluscsi_speed_grade_t enum
 
 } scsi_system_settings_t;
 
@@ -136,6 +153,11 @@ public:
     // return the device preset name
     const char* getDevicePresetName(uint8_t scsiId);
 
+    // convert string to speed grade
+    zuluscsi_speed_grade_t stringToSpeedGrade(const char *speed_grade_str, size_t length);
+
+    const char* getSpeedGradeString();
+
 protected:
     // Set default drive vendor / product info after the image file
     // is loaded and the device type is known.
@@ -157,6 +179,8 @@ protected:
     // It is set during when the system settings are initialized
     scsi_device_settings_t m_dev[9];
 } ;
+
+
 
 extern ZuluSCSISettings g_scsi_settings;
 #endif // __cplusplus
