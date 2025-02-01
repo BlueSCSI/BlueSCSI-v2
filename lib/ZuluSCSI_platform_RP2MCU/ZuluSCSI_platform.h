@@ -27,6 +27,7 @@
 #include <Arduino.h>
 #include "ZuluSCSI_config.h"
 #include "ZuluSCSI_platform_network.h"
+#include <ZuluSCSI_settings.h>
 
 #ifdef ZULUSCSI_PICO
 // ZuluSCSI Pico carrier board variant
@@ -131,11 +132,13 @@ uint8_t platform_get_buttons();
 
 uint32_t platform_sys_clock_in_hz();
 
-// Attempt to reclock the MCU
-zuluscsi_reclock_status_t platform_reclock(zuluscsi_speed_grade_t speed_grade);
+// Return whether device supports reclocking the MCU
+inline bool platform_reclock_supported(){return true;}
 
-// convert string to speed grade
-zuluscsi_speed_grade_t platform_string_to_speed_grade(const char *speed_grade_str, size_t length);
+#ifdef RECLOCKING_SUPPORTED
+// reclock the MCU
+bool platform_reclock(zuluscsi_speed_grade_t speed_grade);
+#endif
 
 // Returns true if reboot was for mass storage
 bool platform_rebooted_into_mass_storage();
@@ -151,8 +154,8 @@ void platform_set_sd_callback(sd_callback_t func, const uint8_t *buffer);
 #define PLATFORM_FLASH_TOTAL_SIZE (1024 * 1024)
 #define PLATFORM_FLASH_PAGE_SIZE 4096
 bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_PAGE_SIZE]);
-void platform_boot_to_main_firmware();
 #endif
+void platform_boot_to_main_firmware();
 
 // ROM drive in the unused external flash area
 #ifndef RP2040_DISABLE_ROMDRIVE

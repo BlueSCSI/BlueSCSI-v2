@@ -40,6 +40,7 @@
 #include "custom_timings.h"
 #include <ZuluSCSI_settings.h>
 
+
 #ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
 # include <SerialUSB.h>
 # include <class/cdc/cdc_device.h>
@@ -70,6 +71,9 @@ static bool g_scsi_initiator = false;
 static uint32_t g_flash_chip_size = 0;
 static bool g_uart_initialized = false;
 static bool g_led_blinking = false;
+
+static void usb_log_poll();
+
 /***************/
 /* GPIO init   */
 /***************/
@@ -132,69 +136,43 @@ uint32_t platform_sys_clock_in_hz()
     return clock_get_hz(clk_sys);
 }
 
-zuluscsi_speed_grade_t platform_string_to_speed_grade(const char *speed_grade_str, size_t length)
-{
-    static const char sg_default[] = "Default";
-    zuluscsi_speed_grade_t grade;
-
-#ifdef ENABLE_AUDIO_OUTPUT
-    logmsg("Audio output enabled, reclocking isn't possible");
-    return SPEED_GRADE_DEFAULT;
-#endif
-
-    if (strcasecmp(speed_grade_str, sg_default) == 0)
-      grade = SPEED_GRADE_DEFAULT;
-    else if (strcasecmp(speed_grade_str, "TurboMax") == 0)
-      grade = SPEED_GRADE_MAX;
-    else if (strcasecmp(speed_grade_str, "TurboA") == 0)
-      grade = SPEED_GRADE_A;
-    else if (strcasecmp(speed_grade_str, "TurboB") == 0)
-      grade = SPEED_GRADE_B;
-    else if (strcasecmp(speed_grade_str, "TurboC") == 0)
-      grade = SPEED_GRADE_C;
-    else if (strcasecmp(speed_grade_str, "Custom") == 0)
-      grade = SPEED_GRADE_CUSTOM;
-    else
-    {
-      logmsg("Setting \"", speed_grade_str, "\" does not match any know speed grade, using default");
-      grade = SPEED_GRADE_DEFAULT;
-    }
-    return grade;
-}
-
-zuluscsi_reclock_status_t platform_reclock(zuluscsi_speed_grade_t speed_grade)
+bool platform_reclock(zuluscsi_speed_grade_t speed_grade)
 {
     CustomTimings ct;
-    if (speed_grade == SPEED_GRADE_CUSTOM)
+    bool do_reclock = false;
+    if (speed_grade != SPEED_GRADE_DEFAULT)
     {
-        if (ct.use_custom_timings())
+        if (speed_grade == SPEED_GRADE_CUSTOM)
         {
-            logmsg("Custom timings found in \"", CUSTOM_TIMINGS_FILE, "\" overriding reclocking");
-            logmsg("Initial Clock set to ", (int) platform_sys_clock_in_hz(), "Hz");
-            if (ct.set_timings_from_file())
+            if (ct.use_custom_timings())
             {
-                reclock();
-                logmsg("SDIO clock set to ", (int)((g_zuluscsi_timings->clk_hz / g_zuluscsi_timings->sdio.clk_div_pio + (5 * MHZ / 10)) / MHZ) , "MHz");
-                return ZULUSCSI_RECLOCK_CUSTOM;
+
+                logmsg("Using custom timings found in \"", CUSTOM_TIMINGS_FILE, "\" for reclocking");
+                ct.set_timings_from_file();
+                do_reclock = true;
             }
             else
-                return ZULUSCSI_RECLOCK_FAILED;
+            {
+                logmsg("Custom timings file, \"", CUSTOM_TIMINGS_FILE, "\" not found or disabled");
+            }
         }
-        else
-        {
-            logmsg("Custom timings file, \"", CUSTOM_TIMINGS_FILE, "\" not found or disabled");
-            return ZULUSCSI_RECLOCK_FAILED;
-        }
+        else if (set_timings(speed_grade))
+            do_reclock = true;
 
+        if (do_reclock)
+        {
+            logmsg("Initial Clock set to ", (int) platform_sys_clock_in_hz(), "Hz");
+            logmsg("Attempting reclock the MCU to ",(int) g_zuluscsi_timings->clk_hz, "Hz");
+            logmsg("Attempting to set SDIO clock to ", (int)((g_zuluscsi_timings->clk_hz / g_zuluscsi_timings->sdio.clk_div_pio + (5 * MHZ / 10)) / MHZ) , "MHz");
+            usb_log_poll();
+            reclock();
+            logmsg("After reclocking, system reports clock set to ", (int) platform_sys_clock_in_hz(), "Hz");
+        }
     }
-    else if (set_timings(speed_grade))
-    {
-        logmsg("Initial Clock set to ", (int) platform_sys_clock_in_hz(), "Hz");
-        reclock();
-        logmsg("SDIO clock set to ", (int)((g_zuluscsi_timings->clk_hz / g_zuluscsi_timings->sdio.clk_div_pio + (5 * MHZ / 10)) / MHZ) , "MHz");
-        return ZULUSCSI_RECLOCK_SUCCESS;
-    }
-    return ZULUSCSI_RECLOCK_FAILED;
+    else
+        logmsg("Speed grade is set to default, reclocking skipped");
+
+    return do_reclock;
 }
 
 bool platform_rebooted_into_mass_storage()
@@ -355,9 +333,10 @@ void platform_init()
 
 #ifdef ENABLE_AUDIO_OUTPUT
     logmsg("SP/DIF audio to expansion header enabled");
-    if (platform_reclock(SPEED_GRADE_AUDIO) == ZULUSCSI_RECLOCK_SUCCESS)
+    logmsg("Reclocking MCU for audio timings");
+    if (platform_reclock(SPEED_GRADE_AUDIO))
     {
-        logmsg("Reclocked for Audio Ouput at ", (int) platform_sys_clock_in_hz(), "Hz");
+        logmsg("Reclocked for Audio Ouput finished");
     }
     else
     {

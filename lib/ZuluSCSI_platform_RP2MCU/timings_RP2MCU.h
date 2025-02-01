@@ -20,9 +20,17 @@
 **/
 #ifndef ZULUSCSI_TIMINGS_RP2MCU_H
 #define ZULUSCSI_TIMINGS_RP2MCU_H
+
+#include <ZuluSCSI_settings.h>
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdint.h>
 #include <stdbool.h>
-#include <ZuluSCSI_config.h>
+
 
 typedef struct
 {
@@ -105,4 +113,9 @@ extern  zuluscsi_timings_t *g_zuluscsi_timings;
 
 // Sets timings to the speed_grade, returns false on SPEED_GRADE_DEFAULT and SPEED_GRADE_CUSTOM
 bool set_timings(zuluscsi_speed_grade_t speed_grade);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif // ZULUSCSI_TIMINGS_RP2MCU_H

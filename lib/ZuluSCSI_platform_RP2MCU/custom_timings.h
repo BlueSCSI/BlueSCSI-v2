@@ -22,10 +22,9 @@
 
 #define CUSTOM_TIMINGS_FILE "zuluscsi_timings.ini"
 
-extern "C"
-{
-    #include "timings_RP2MCU.h"
-}
+
+#include "timings_RP2MCU.h"
+
 
 class CustomTimings
 {
