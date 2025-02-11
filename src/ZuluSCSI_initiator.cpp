@@ -241,10 +241,16 @@ void scsiInitiatorMainLoop()
     {
         // Scan for SCSI drives one at a time
         g_initiator_state.target_id = (g_initiator_state.target_id + 1) % 8;
+        g_initiator_state.sectorsize = 0;
+        g_initiator_state.sectorcount = 0;
         g_initiator_state.sectors_done = 0;
         g_initiator_state.retrycount = 0;
+        g_initiator_state.failposition = 0;
         g_initiator_state.max_sector_per_transfer = 512;
+        g_initiator_state.ansi_version = 0;
         g_initiator_state.bad_sector_count = 0;
+        g_initiator_state.device_type = SCSI_DEVICE_TYPE_DIRECT_ACCESS;
+        g_initiator_state.removable = false;
         g_initiator_state.eject_when_done = false;
 
         if (!(g_initiator_state.drives_imaged & (1 << g_initiator_state.target_id)))
@@ -580,7 +586,7 @@ int scsiInitiatorRunCommand(int target_id,
                             const uint8_t *command, size_t cmdLen,
                             uint8_t *bufIn, size_t bufInLen,
                             const uint8_t *bufOut, size_t bufOutLen,
-                            bool returnDataPhase)
+                            bool returnDataPhase, uint32_t timeout)
 {
 
     if (!scsiHostPhySelect(target_id, g_initiator_state.initiator_id))
@@ -594,8 +600,15 @@ int scsiInitiatorRunCommand(int target_id,
 
     SCSI_PHASE phase;
     int status = -1;
+    uint32_t start = millis();
     while ((phase = (SCSI_PHASE)scsiHostPhyGetPhase()) != BUS_FREE)
     {
+        // If explicit timeout is specified, prevent watchdog from triggering too early.
+        if ((uint32_t)(millis() - start) < timeout)
+        {
+            platform_reset_watchdog();
+        }
+
         platform_poll();
 
         if (phase == MESSAGE_IN)
@@ -702,7 +715,7 @@ bool scsiInitiatorReadCapacity(int target_id, uint32_t *sectorcount, uint32_t *s
 }
 
 // Execute REQUEST SENSE command to get more information about error status
-bool scsiRequestSense(int target_id, uint8_t *sense_key)
+bool scsiRequestSense(int target_id, uint8_t *sense_key, uint8_t *sense_asc, uint8_t *sense_ascq)
 {
     uint8_t command[6] = {0x03, 0, 0, 0, 18, 0};
     uint8_t response[18] = {0};
@@ -712,9 +725,14 @@ bool scsiRequestSense(int target_id, uint8_t *sense_key)
                                          response, sizeof(response),
                                          NULL, 0);
 
-    dbgmsg("RequestSense response: ", bytearray(response, 18));
+    dbgmsg("RequestSense response: ", bytearray(response, 18),
+        " sense_key ", (int)(response[2] & 0xF),
+        " asc ", response[12], " ascq ", response[13]);
 
-    *sense_key = response[2] % 0xF;
+    if (sense_key) *sense_key = response[2] & 0xF;
+    if (sense_asc) *sense_asc = response[12];
+    if (sense_ascq) *sense_ascq = response[13];
+
     return status == 0;
 }
 
@@ -739,16 +757,30 @@ bool scsiStartStopUnit(int target_id, bool start)
         }
     }
 
+    uint32_t timeout = 60000; // Some drives can take long to initialize
     int status = scsiInitiatorRunCommand(target_id,
                                          command, sizeof(command),
                                          response, sizeof(response),
-                                         NULL, 0);
+                                         NULL, 0, false, timeout);
 
     if (status == 2)
     {
         uint8_t sense_key;
         scsiRequestSense(target_id, &sense_key);
         scsiLogInitiatorCommandFailure("START STOP UNIT", target_id, status, sense_key);
+
+        if (sense_key == NOT_READY)
+        {
+            dbgmsg("--- Device reports NOT_READY, running STOP to attempt restart");
+            // Some devices will only leave NOT_READY state after they have been
+            // commanded to stop state first.
+            delay(1000);
+            uint8_t cmd_stop[6] = {0x1B, 0x1, 0, 0, 0, 0};
+            scsiInitiatorRunCommand(target_id,
+                                    cmd_stop, sizeof(cmd_stop),
+                                    response, sizeof(response),
+                                    NULL, 0);
+        }
     }
 
     return status == 0;
