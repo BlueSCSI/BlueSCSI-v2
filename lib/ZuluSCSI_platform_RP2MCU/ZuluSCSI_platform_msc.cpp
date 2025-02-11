@@ -245,7 +245,16 @@ extern "C" uint8_t tud_msc_get_maxlun_cb(void)
   MSCScopedLock lock;
   if (g_msc_initiator) return init_msc_get_maxlun_cb();
 
-  return g_MSC.lun_count; // number of LUNs supported
+  if (g_MSC.lun_count != 0)
+  {
+    return g_MSC.lun_count; // number of LUNs supported
+  }
+  else
+  {
+    // Returning 0 makes TU_VERIFY(maxlun); fail in tinyusb/src/class/msc/msc_device.c:378
+    // This stalls the endpoint and causes an unnecessary enumeration delay on Windows.
+    return 1;
+  }
 }
 
 // return writable status
