@@ -586,7 +586,7 @@ int scsiInitiatorRunCommand(int target_id,
                             const uint8_t *command, size_t cmdLen,
                             uint8_t *bufIn, size_t bufInLen,
                             const uint8_t *bufOut, size_t bufOutLen,
-                            bool returnDataPhase)
+                            bool returnDataPhase, uint32_t timeout)
 {
 
     if (!scsiHostPhySelect(target_id, g_initiator_state.initiator_id))
@@ -600,8 +600,15 @@ int scsiInitiatorRunCommand(int target_id,
 
     SCSI_PHASE phase;
     int status = -1;
+    uint32_t start = millis();
     while ((phase = (SCSI_PHASE)scsiHostPhyGetPhase()) != BUS_FREE)
     {
+        // If explicit timeout is specified, prevent watchdog from triggering too early.
+        if ((uint32_t)(millis() - start) < timeout)
+        {
+            platform_reset_watchdog();
+        }
+
         platform_poll();
 
         if (phase == MESSAGE_IN)
@@ -750,10 +757,11 @@ bool scsiStartStopUnit(int target_id, bool start)
         }
     }
 
+    uint32_t timeout = 60000; // Some drives can take long to initialize
     int status = scsiInitiatorRunCommand(target_id,
                                          command, sizeof(command),
                                          response, sizeof(response),
-                                         NULL, 0);
+                                         NULL, 0, false, timeout);
 
     if (status == 2)
     {
