@@ -702,7 +702,7 @@ bool scsiInitiatorReadCapacity(int target_id, uint32_t *sectorcount, uint32_t *s
 }
 
 // Execute REQUEST SENSE command to get more information about error status
-bool scsiRequestSense(int target_id, uint8_t *sense_key)
+bool scsiRequestSense(int target_id, uint8_t *sense_key, uint8_t *sense_asc, uint8_t *sense_ascq)
 {
     uint8_t command[6] = {0x03, 0, 0, 0, 18, 0};
     uint8_t response[18] = {0};
@@ -712,9 +712,14 @@ bool scsiRequestSense(int target_id, uint8_t *sense_key)
                                          response, sizeof(response),
                                          NULL, 0);
 
-    dbgmsg("RequestSense response: ", bytearray(response, 18));
+    dbgmsg("RequestSense response: ", bytearray(response, 18),
+        " sense_key ", (int)(response[2] & 0xF),
+        " asc ", response[12], " ascq ", response[13]);
 
-    *sense_key = response[2] % 0xF;
+    if (sense_key) *sense_key = response[2] & 0xF;
+    if (sense_asc) *sense_asc = response[12];
+    if (sense_ascq) *sense_ascq = response[13];
+
     return status == 0;
 }
 
@@ -749,6 +754,19 @@ bool scsiStartStopUnit(int target_id, bool start)
         uint8_t sense_key;
         scsiRequestSense(target_id, &sense_key);
         scsiLogInitiatorCommandFailure("START STOP UNIT", target_id, status, sense_key);
+
+        if (sense_key == NOT_READY)
+        {
+            dbgmsg("--- Device reports NOT_READY, running STOP to attempt restart");
+            // Some devices will only leave NOT_READY state after they have been
+            // commanded to stop state first.
+            delay(1000);
+            uint8_t cmd_stop[6] = {0x1B, 0x1, 0, 0, 0, 0};
+            scsiInitiatorRunCommand(target_id,
+                                    cmd_stop, sizeof(cmd_stop),
+                                    response, sizeof(response),
+                                    NULL, 0);
+        }
     }
 
     return status == 0;
