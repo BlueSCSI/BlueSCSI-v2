@@ -241,10 +241,16 @@ void scsiInitiatorMainLoop()
     {
         // Scan for SCSI drives one at a time
         g_initiator_state.target_id = (g_initiator_state.target_id + 1) % 8;
+        g_initiator_state.sectorsize = 0;
+        g_initiator_state.sectorcount = 0;
         g_initiator_state.sectors_done = 0;
         g_initiator_state.retrycount = 0;
+        g_initiator_state.failposition = 0;
         g_initiator_state.max_sector_per_transfer = 512;
+        g_initiator_state.ansi_version = 0;
         g_initiator_state.bad_sector_count = 0;
+        g_initiator_state.device_type = SCSI_DEVICE_TYPE_DIRECT_ACCESS;
+        g_initiator_state.removable = false;
         g_initiator_state.eject_when_done = false;
 
         if (!(g_initiator_state.drives_imaged & (1 << g_initiator_state.target_id)))
