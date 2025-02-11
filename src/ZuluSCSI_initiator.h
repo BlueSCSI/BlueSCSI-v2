@@ -38,17 +38,19 @@ void scsiInitiatorMainLoop();
 int scsiInitiatorGetOwnID();
 
 // Select target and execute SCSI command
+// If timeout is specified, it overrides the default watchdog timeout.
 int scsiInitiatorRunCommand(int target_id,
                             const uint8_t *command, size_t cmdLen,
                             uint8_t *bufIn, size_t bufInLen,
                             const uint8_t *bufOut, size_t bufOutLen,
-                            bool returnDataPhase = false);
+                            bool returnDataPhase = false,
+                            uint32_t timeout = 0);
 
 // Execute READ CAPACITY command
 bool scsiInitiatorReadCapacity(int target_id, uint32_t *sectorcount, uint32_t *sectorsize);
 
 // Execute REQUEST SENSE command to get more information about error status
-bool scsiRequestSense(int target_id, uint8_t *sense_key);
+bool scsiRequestSense(int target_id, uint8_t *sense_key, uint8_t *sense_asc = nullptr, uint8_t *sense_ascq = nullptr);
 
 // Execute UNIT START STOP command to load/unload media
 bool scsiStartStopUnit(int target_id, bool start);
