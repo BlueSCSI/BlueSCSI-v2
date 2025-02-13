@@ -267,24 +267,13 @@ static zuluscsi_timings_t  predefined_timings[]  = {
             .total_delay_adjust = 1,
             .max_sync = 50,
         },
-#ifdef ZULUSCSI_PICO_2
         .sdio =
         {
             .clk_div_1mhz = 30, // set by trail and error
-            .clk_div_pio = 6, // SDIO at 41.7MHz
-            .delay0 = 4 - 1, // subtract one for the instruction delay
-            .delay1 = 2 - 1  // clk_div_pio - delay0 and subtract one for the instruction delay
-        }
-#else
-        .sdio =
-        {
-            .clk_div_1mhz = 50, // = 250MHz clk / clk_div_pio
             .clk_div_pio = 5, // SDIO at 50MHz
             .delay0 = 4 - 1, // subtract one for the instruction delay
             .delay1 = 1 - 1  // clk_div_pio - delay0 and subtract one for the instruction delay
         }
-
-#endif
     },
 };
     zuluscsi_timings_t  current_timings;
