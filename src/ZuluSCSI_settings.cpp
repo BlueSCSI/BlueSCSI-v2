@@ -43,10 +43,10 @@ const char * const speed_grade_strings[7] =
     "Default",
     "TurboMax",
     "Custom",
+    "Audio",
     "TurboA",
     "TurboB",
     "TurboC",
-    "Audio"
 };
 
 // Helper function for case-insensitive string compare
