@@ -38,13 +38,13 @@ void scsiInitiatorMainLoop();
 int scsiInitiatorGetOwnID();
 
 // Select target and execute SCSI command
-// If timeout is specified, it overrides the default watchdog timeout.
+// If timeout is non-zero, it is added to the default watchdog timeout.
 int scsiInitiatorRunCommand(int target_id,
                             const uint8_t *command, size_t cmdLen,
                             uint8_t *bufIn, size_t bufInLen,
                             const uint8_t *bufOut, size_t bufOutLen,
                             bool returnDataPhase = false,
-                            uint32_t timeout = 0);
+                            uint32_t timeout = 30000);
 
 // Execute READ CAPACITY command
 bool scsiInitiatorReadCapacity(int target_id, uint32_t *sectorcount, uint32_t *sectorsize);
