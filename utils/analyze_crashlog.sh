@@ -29,7 +29,7 @@ fwfile=$(find $scriptdir/.. $2 -name '*.elf' -exec grep -q "$fwtime" {} \; -prin
 # Search Github for artifacts uploaded within few minutes of the compilation time
 if [ "x$fwfile" = "x" ]; then
     echo "Searching on Github"
-    enddate=$(date "+%Y-%m-%dT%H:%M" -d "$fwtime 180 seconds")
+    enddate=$(date "+%Y-%m-%dT%H:%M" -d "$fwtime 600 seconds")
     runid=$(gh api repos/$repo/actions/artifacts \
         --jq ".artifacts[] | select(.created_at <= \"$enddate\") | .workflow_run.id" | head -n 1)
     if [ "x$runid" != "x" ]; then
