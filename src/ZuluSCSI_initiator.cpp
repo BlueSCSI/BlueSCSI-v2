@@ -635,9 +635,10 @@ int scsiInitiatorRunCommand(int target_id,
                 break;
             }
 
-            if (scsiHostRead(bufIn, bufInLen) == 0)
+            uint32_t readCount = scsiHostRead(bufIn, bufInLen);
+            if (readCount != bufInLen)
             {
-                logmsg("scsiHostRead failed, tried to read ", (int)bufInLen, " bytes");
+                logmsg("scsiHostRead failed, tried to read ", (int)bufInLen, " bytes, got ", (int)readCount);
                 status = -2;
                 break;
             }
@@ -652,9 +653,10 @@ int scsiInitiatorRunCommand(int target_id,
                 break;
             }
 
-            if (scsiHostWrite(bufOut, bufOutLen) < bufOutLen)
+            uint32_t writeCount = scsiHostWrite(bufOut, bufOutLen);
+            if (writeCount != bufOutLen)
             {
-                logmsg("scsiHostWrite failed, was writing ", bytearray(bufOut, bufOutLen));
+                logmsg("scsiHostWrite failed, was writing ", bytearray(bufOut, bufOutLen), " return value ", (int)writeCount);
                 status = -2;
                 break;
             }
