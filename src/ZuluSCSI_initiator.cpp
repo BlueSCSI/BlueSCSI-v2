@@ -613,8 +613,13 @@ int scsiInitiatorRunCommand(int target_id,
 
         if (phase == MESSAGE_IN)
         {
-            uint8_t dummy = 0;
-            scsiHostRead(&dummy, 1);
+            uint8_t msg = 0;
+            scsiHostRead(&msg, 1);
+
+            if (msg == MSG_COMMAND_COMPLETE)
+            {
+                break;
+            }
         }
         else if (phase == MESSAGE_OUT)
         {
@@ -672,7 +677,7 @@ int scsiInitiatorRunCommand(int target_id,
         }
     }
 
-    scsiHostPhyRelease();
+    scsiHostWaitBusFree();
 
     return status;
 }
@@ -1048,8 +1053,13 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
 
         if (phase == MESSAGE_IN)
         {
-            uint8_t dummy = 0;
-            scsiHostRead(&dummy, 1);
+            uint8_t msg = 0;
+            scsiHostRead(&msg, 1);
+
+            if (msg == MSG_COMMAND_COMPLETE)
+            {
+                break;
+            }
         }
         else if (phase == MESSAGE_OUT)
         {
@@ -1065,7 +1075,7 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
         }
     }
 
-    scsiHostPhyRelease();
+    scsiHostWaitBusFree();
 
     if (!g_initiator_transfer.all_ok)
     {
