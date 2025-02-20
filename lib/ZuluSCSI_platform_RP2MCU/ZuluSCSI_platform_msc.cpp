@@ -389,7 +389,7 @@ extern "C" int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset
                            uint8_t *buffer, uint32_t bufsize)
 {
   MSCScopedLock lock;
-  if (g_msc_initiator) return init_msc_read10_cb(lun, lba, offset, buffer, bufsize);
+  if (g_msc_initiator) return init_msc_write10_cb(lun, lba, offset, buffer, bufsize);
 
   bool rc = 0;
 
