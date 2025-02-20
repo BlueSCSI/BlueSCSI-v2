@@ -51,5 +51,9 @@ bool scsiHostRequestWaiting();
 uint32_t scsiHostWrite(const uint8_t *data, uint32_t count);
 uint32_t scsiHostRead(uint8_t *data, uint32_t count);
 
+// Release bus signals and expect the target to do the same.
+// Cycles ACK in case target still holds BSY and REQ.
+void scsiHostWaitBusFree();
+
 // Release all bus signals
 void scsiHostPhyRelease();
