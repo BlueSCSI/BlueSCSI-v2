@@ -578,6 +578,8 @@ int32_t init_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t 
         status = scsiInitiatorRunCommand(target_id, command, sizeof(command), NULL, 0, buffer, bufsize);
     }
 
+    g_msc_initiator_state.prefetch_sectorcount = 0; // Invalidate prefetch cache
+
     g_msc_initiator_state.status_reqcount++;
     g_msc_initiator_state.status_bytecount += sectorcount * sectorsize;
     LED_OFF();
