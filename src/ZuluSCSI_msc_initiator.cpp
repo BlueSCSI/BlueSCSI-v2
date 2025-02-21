@@ -75,6 +75,8 @@ static struct {
     bool prefetch_use_read10;
     bool prefetch_done; // True after prefetch is complete
 
+    bool readonly; // Disable writing to any drives
+
     // Periodic status reporting to log output
     uint32_t status_prev_time;
     uint32_t status_interval;
@@ -159,6 +161,12 @@ bool setup_msc_initiator()
     }
 
     g_msc_initiator_state.status_interval = ini_getl("SCSI", "InitiatorMSCStatusInterval", 5000, CONFIGFILE);
+    g_msc_initiator_state.readonly = ini_getbool("SCSI", "InitiatorMSCReadOnly", false, CONFIGFILE);
+
+    if (g_msc_initiator_state.readonly)
+    {
+        logmsg("--- Initiator is configured in read-only mode: writes to device are prevented");
+    }
 
     scsiInitiatorInit();
 
@@ -281,6 +289,11 @@ uint8_t init_msc_get_maxlun_cb(void)
 bool init_msc_is_writable_cb (uint8_t lun)
 {
     if (g_msc_initiator_target_count == 0)
+    {
+        return false;
+    }
+
+    if (g_msc_initiator_state.readonly)
     {
         return false;
     }
@@ -542,6 +555,12 @@ int32_t init_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t 
 {
     if (g_msc_initiator_target_count == 0)
     {
+        return -1;
+    }
+
+    if (g_msc_initiator_state.readonly)
+    {
+        logmsg("--- Refusing host write request, InitiatorMSCReadOnly is set.");
         return -1;
     }
 
