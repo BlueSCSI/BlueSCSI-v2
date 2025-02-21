@@ -74,7 +74,10 @@ static struct {
     // Bitmap of all drives that have been imaged
     uint32_t drives_imaged;
 
+    // Configuration from .ini
     uint8_t initiator_id;
+    uint8_t max_retry_count;
+    bool use_read10; // Always use read10 commands
 
     // Is imaging a drive in progress, or are we scanning?
     bool imaging;
@@ -88,7 +91,6 @@ static struct {
     uint32_t max_sector_per_transfer;
     uint32_t bad_sector_count;
     uint8_t ansi_version;
-    uint8_t max_retry_count;
     uint8_t device_type;
 
     // Retry information for sector reads.
@@ -121,6 +123,7 @@ void scsiInitiatorInit()
         logmsg("InitiatorID set to ID ", g_initiator_state.initiator_id);
     }
     g_initiator_state.max_retry_count = ini_getl("SCSI", "InitiatorMaxRetry", 5, CONFIGFILE);
+    g_initiator_state.use_read10 = ini_getbool("SCSI", "InitiatorUseRead10", false, CONFIGFILE);
 
     // treat initiator id as already imaged drive so it gets skipped
     g_initiator_state.drives_imaged = 1 << g_initiator_state.initiator_id;
@@ -252,6 +255,7 @@ void scsiInitiatorMainLoop()
         g_initiator_state.device_type = SCSI_DEVICE_TYPE_DIRECT_ACCESS;
         g_initiator_state.removable = false;
         g_initiator_state.eject_when_done = false;
+        g_initiator_state.use_read10 = false;
 
         if (!(g_initiator_state.drives_imaged & (1 << g_initiator_state.target_id)))
         {
@@ -330,11 +334,13 @@ void scsiInitiatorMainLoop()
                 memcpy(revision, &inquiry_data[32], 4);
                 revision[4]=0;
 
-                if(g_initiator_state.ansi_version < 0x02)
+                g_initiator_state.use_read10 = scsiInitiatorTestSupportsRead10(g_initiator_state.target_id, g_initiator_state.sectorsize);
+                if(!g_initiator_state.use_read10)
                 {
-                    // this is a SCSI-1 drive, use READ6 and 256 bytes to be safe.
+                    // READ6 command can transfer up to 256 sectors
                     g_initiator_state.max_sector_per_transfer = 256;
                 }
+
                 int ini_type = scsiTypeToIniType(g_initiator_state.device_type, g_initiator_state.removable);
                 logmsg("SCSI Version ", (int) g_initiator_state.ansi_version);
                 logmsg("[SCSI", g_initiator_state.target_id,"]");
@@ -682,6 +688,29 @@ int scsiInitiatorRunCommand(int target_id,
     return status;
 }
 
+bool scsiInitiatorTestSupportsRead10(int target_id, uint32_t sectorsize)
+{
+    if (ini_haskey("SCSI", "InitiatorUseRead10", CONFIGFILE))
+    {
+        return ini_getbool("SCSI", "InitiatorUseRead10", false, CONFIGFILE);
+    }
+
+    uint8_t command[10] = {0x28, 0x00, 0, 0, 0, 0, 0, 0, 1, 0}; // READ10, LBA 0, 1 sector
+    int status = scsiInitiatorRunCommand(target_id, command, sizeof(command),
+        scsiDev.data, sectorsize, NULL, 0);
+
+    if (status == 0)
+    {
+        dbgmsg("Target supports READ10 command");
+        return true;
+    }
+    else
+    {
+        dbgmsg("Target does not support READ10 command");
+        return false;
+    }
+}
+
 bool scsiInitiatorReadCapacity(int target_id, uint32_t *sectorcount, uint32_t *sectorsize)
 {
     uint8_t command[10] = {0x25, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -961,9 +990,12 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
 
     // Read6 command supports 21 bit LBA - max of 0x1FFFFF
     // ref: https://www.seagate.com/files/staticfiles/support/docs/manual/Interface%20manuals/100293068j.pdf pg 134
-    if (g_initiator_state.ansi_version < 0x02 || (start_sector < 0x1FFFFF && sectorcount <= 256))
+    bool fits_read6 = (start_sector < 0x1FFFFF && sectorcount <= 256);
+    if (!g_initiator_state.use_read10 && fits_read6)
     {
         // Use READ6 command for compatibility with old SCSI1 drives
+        // Note that even with SCSI1 drives we have no choice but to use READ10 if the drive
+        // size is larger than 1 GB, as the sector number wouldn't fit in the command.
         uint8_t command[6] = {0x08,
             (uint8_t)(start_sector >> 16),
             (uint8_t)(start_sector >> 8),

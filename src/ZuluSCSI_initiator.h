@@ -46,6 +46,11 @@ int scsiInitiatorRunCommand(int target_id,
                             bool returnDataPhase = false,
                             uint32_t timeout = 30000);
 
+// Detect support of read10 commands.
+// Returns true if supported.
+// Return value can be overridden by .ini file, in which case test is not done.
+bool scsiInitiatorTestSupportsRead10(int target_id, uint32_t sectorsize);
+
 // Execute READ CAPACITY command
 bool scsiInitiatorReadCapacity(int target_id, uint32_t *sectorcount, uint32_t *sectorsize);
 
