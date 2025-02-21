@@ -60,6 +60,7 @@ static struct {
     int target_id;
     uint32_t sectorsize;
     uint32_t sectorcount;
+    bool use_read10; // Always use read10/write10 commands for this target
 } g_msc_initiator_targets[NUM_SCSIID];
 static int g_msc_initiator_target_count;
 
@@ -71,7 +72,10 @@ static struct {
     int prefetch_target_id; // Target to read from
     size_t prefetch_sectorcount; // Number of sectors to fetch
     size_t prefetch_sectorsize;
+    bool prefetch_use_read10;
     bool prefetch_done; // True after prefetch is complete
+
+    bool readonly; // Disable writing to any drives
 
     // Periodic status reporting to log output
     uint32_t status_prev_time;
@@ -83,7 +87,7 @@ static struct {
     uint32_t last_scan_time;
 } g_msc_initiator_state;
 
-static int do_read6_or_10(int target_id, uint32_t start_sector, uint32_t sectorcount, uint32_t sectorsize, void *buffer);
+static int do_read6_or_10(int target_id, uint32_t start_sector, uint32_t sectorcount, uint32_t sectorsize, void *buffer, bool use_read10);
 
 static void scan_targets()
 {
@@ -119,6 +123,7 @@ static void scan_targets()
                     g_msc_initiator_targets[found_count].target_id = target_id;
                     g_msc_initiator_targets[found_count].sectorcount = sectorcount;
                     g_msc_initiator_targets[found_count].sectorsize = sectorsize;
+                    g_msc_initiator_targets[found_count].use_read10 = scsiInitiatorTestSupportsRead10(target_id, sectorsize);
                     found_count++;
                 }
                 else
@@ -128,6 +133,7 @@ static void scan_targets()
                     g_msc_initiator_targets[found_count].target_id = target_id;
                     g_msc_initiator_targets[found_count].sectorcount = 2097152;
                     g_msc_initiator_targets[found_count].sectorsize = 512;
+                    g_msc_initiator_targets[found_count].use_read10 = false;
                     found_count++;
                 }
             }
@@ -155,6 +161,12 @@ bool setup_msc_initiator()
     }
 
     g_msc_initiator_state.status_interval = ini_getl("SCSI", "InitiatorMSCStatusInterval", 5000, CONFIGFILE);
+    g_msc_initiator_state.readonly = ini_getbool("SCSI", "InitiatorMSCReadOnly", false, CONFIGFILE);
+
+    if (g_msc_initiator_state.readonly)
+    {
+        logmsg("--- Initiator is configured in read-only mode: writes to device are prevented");
+    }
 
     scsiInitiatorInit();
 
@@ -209,7 +221,8 @@ void poll_msc_initiator()
                                     g_msc_initiator_state.prefetch_lba,
                                     g_msc_initiator_state.prefetch_sectorcount,
                                     g_msc_initiator_state.prefetch_sectorsize,
-                                    g_msc_initiator_state.prefetch_buffer);
+                                    g_msc_initiator_state.prefetch_buffer,
+                                    g_msc_initiator_state.prefetch_use_read10);
         if (status == 0)
         {
             g_msc_initiator_state.prefetch_done = true;
@@ -276,6 +289,11 @@ uint8_t init_msc_get_maxlun_cb(void)
 bool init_msc_is_writable_cb (uint8_t lun)
 {
     if (g_msc_initiator_target_count == 0)
+    {
+        return false;
+    }
+
+    if (g_msc_initiator_state.readonly)
     {
         return false;
     }
@@ -399,15 +417,18 @@ int32_t init_msc_scsi_cb(uint8_t lun, const uint8_t scsi_cmd[16], void *buffer, 
     return status;
 }
 
-static int do_read6_or_10(int target_id, uint32_t start_sector, uint32_t sectorcount, uint32_t sectorsize, void *buffer)
+static int do_read6_or_10(int target_id, uint32_t start_sector, uint32_t sectorcount, uint32_t sectorsize, void *buffer, bool use_read10)
 {
     int status;
 
     // Read6 command supports 21 bit LBA - max of 0x1FFFFF
     // ref: https://www.seagate.com/files/staticfiles/support/docs/manual/Interface%20manuals/100293068j.pdf pg 134
-    if (start_sector < 0x1FFFFF && sectorcount <= 256)
+    bool fits_read6 = (start_sector < 0x1FFFFF && sectorcount <= 256);
+    if (!use_read10 && fits_read6)
     {
         // Use READ6 command for compatibility with old SCSI1 drives
+        // Note that even with SCSI1 drives we have no choice but to use READ10 if the drive
+        // size is larger than 1 GB, as the sector number wouldn't fit in the command.
         uint8_t command[6] = {0x08,
             (uint8_t)(start_sector >> 16),
             (uint8_t)(start_sector >> 8),
@@ -448,6 +469,7 @@ int32_t init_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buf
 
     int target_id = get_target(lun);
     int sectorsize = g_msc_initiator_targets[lun].sectorsize;
+    bool use_read10 = g_msc_initiator_targets[lun].use_read10;
     uint32_t sectorcount = bufsize / sectorsize;
     uint32_t total_sectorcount = sectorcount;
     uint32_t orig_lba = lba;
@@ -477,7 +499,7 @@ int32_t init_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buf
     {
         dbgmsg("USB Read command ", (int)orig_lba, " + ", (int)total_sectorcount, "x", (int)sectorsize,
                " got ", (int)(total_sectorcount - sectorcount), " sectors from prefetch");
-        status = do_read6_or_10(target_id, lba, sectorcount, sectorsize, buffer);
+        status = do_read6_or_10(target_id, lba, sectorcount, sectorsize, buffer, use_read10);
         lba += sectorcount;
     }
     else
@@ -522,6 +544,7 @@ int32_t init_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buf
         g_msc_initiator_state.prefetch_target_id = target_id;
         g_msc_initiator_state.prefetch_sectorcount = total_sectorcount;
         g_msc_initiator_state.prefetch_sectorsize = sectorsize;
+        g_msc_initiator_state.prefetch_use_read10 = use_read10;
         g_msc_initiator_state.prefetch_done = false;
     }
 
@@ -535,10 +558,17 @@ int32_t init_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t 
         return -1;
     }
 
+    if (g_msc_initiator_state.readonly)
+    {
+        logmsg("--- Refusing host write request, InitiatorMSCReadOnly is set.");
+        return -1;
+    }
+
     int status = -1;
 
     int target_id = get_target(lun);
     int sectorsize = g_msc_initiator_targets[lun].sectorsize;
+    bool use_read10 = g_msc_initiator_targets[lun].use_read10;
     uint32_t start_sector = lba;
     uint32_t sectorcount = bufsize / sectorsize;
 
@@ -551,7 +581,8 @@ int32_t init_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t 
     LED_ON();
 
     // Write6 command supports 21 bit LBA - max of 0x1FFFFF
-    if (start_sector < 0x1FFFFF && sectorcount <= 256)
+    bool fits_write6 = (start_sector < 0x1FFFFF && sectorcount <= 256);
+    if (!use_read10 && fits_write6)
     {
         // Use WRITE6 command for compatibility with old SCSI1 drives
         uint8_t command[6] = {0x0A,
