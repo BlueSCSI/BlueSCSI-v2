@@ -231,7 +231,7 @@ extern "C" void tud_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8],
 
   const char vid[] = "ZuluSCSI";
   const char pid[] = PLATFORM_PID; 
-  const char rev[] = "1.0";
+  const char rev[] = PLATFORM_REVISION;
 
   memcpy(vendor_id, vid, tu_min32(strlen(vid), 8));
   memcpy(product_id, pid, tu_min32(strlen(pid), 16));

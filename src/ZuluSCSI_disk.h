@@ -86,6 +86,9 @@ struct image_config_t: public S2S_TargetCfg
     // Cue sheet file for CD-ROM images
     FsFile cuesheetfile;
 
+    // the bin file for the cue sheet, the directory for multi bin files, or closed if neither
+    FsFile bin_container;
+
     // Right-align vendor / product type strings
     // Standard SCSI uses left alignment
     int rightAlignStrings;
@@ -101,6 +104,8 @@ struct image_config_t: public S2S_TargetCfg
 
     // Clear any image state to zeros
     void clear();
+
+    uint32_t get_capacity_lba();
 
 private:
     // There should be only one global instance of this struct per device, so make copy constructor private.

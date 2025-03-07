@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
 
-#ifdef ENABLE_AUDIO_OUTPUT
+#ifdef ENABLE_AUDIO_OUTPUT_SPDIF
 
 #include <SdFat.h>
 #include <stdbool.h>
@@ -23,7 +23,7 @@
 #include <hardware/irq.h>
 #include <hardware/spi.h>
 #include <pico/multicore.h>
-#include "audio.h"
+#include "audio_spdif.h"
 #include "ZuluSCSI_audio.h"
 #include "ZuluSCSI_config.h"
 #include "ZuluSCSI_log.h"
@@ -32,7 +32,7 @@
 extern SdFs SD;
 
 // Table with the number of '1' bits for each index.
-// Used for SP/DIF parity calculations.
+// Used for S/PDIF parity calculations.
 // Placed in SRAM5 for the second core to use with reduced contention.
 const uint8_t snd_parity[256] __attribute__((aligned(256), section(".scratch_y.snd_parity"))) = {
     0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, 
@@ -99,7 +99,7 @@ const uint16_t biphase[256] __attribute__((aligned(512), section(".scratch_y.bip
     0xCCAA, 0xB355, 0xD355, 0xACAA, 0xCB55, 0xB4AA, 0xD4AA, 0xAB55,
     0xCD55, 0xB2AA, 0xD2AA, 0xAD55, 0xCAAA, 0xB555, 0xD555, 0xAAAA };
 /*
- * Biphase frame headers for SP/DIF, including the special bit framing
+ * Biphase frame headers for S/PDIF, including the special bit framing
  * errors used to detect (sub)frame start conditions. See above table
  * for details.
  */
@@ -159,7 +159,7 @@ static uint8_t invert = 0; // biphase encode help: set if last wire bit was '1'
 
 /*
  * Translates 16-bit stereo sound samples to biphase wire patterns for the
- * SPI peripheral. Produces 8 patterns (128 bits, or 1 SP/DIF frame) per pair
+ * SPI peripheral. Produces 8 patterns (128 bits, or 1 S/PDIF frame) per pair
  * of input samples. Provided length is the total number of sample bytes present,
  * _twice_ the number of samples (little-endian order assumed)
  * 
@@ -355,7 +355,7 @@ bool audio_is_playing(uint8_t id) {
 }
 
 void audio_setup() {
-    // setup SPI to blast SP/DIF data over the TX pin
+    // setup SPI to blast S/PDIF data over the TX pin
     spi_set_baudrate(AUDIO_SPI, 5644800); // will be slightly wrong, ~0.03% slow
     hw_write_masked(&spi_get_hw(AUDIO_SPI)->cr0,
             0x1F, // TI mode with 16 bits
@@ -425,7 +425,7 @@ void audio_poll() {
     }
 }
 
-bool audio_play(uint8_t owner, ImageBackingStore* img, uint64_t start, uint64_t end, bool swap) {
+bool audio_play(uint8_t owner, image_config_t* img, uint64_t start, uint64_t end, bool swap) {
     // stop any existing playback first
     if (audio_is_active()) audio_stop(audio_owner);
 
@@ -441,7 +441,7 @@ bool audio_play(uint8_t owner, ImageBackingStore* img, uint64_t start, uint64_t 
         return false;
     }
     platform_set_sd_callback(NULL, NULL);
-    audio_file = img;
+    audio_file = &img->file;
     if (!audio_file->isOpen()) {
         logmsg("File not open for audio playback, ", owner);
         return false;
@@ -590,9 +590,9 @@ uint64_t audio_get_file_position()
     return fpos;
 }
 
-void audio_set_file_position(uint32_t lba)
+void audio_set_file_position(uint8_t id, uint32_t lba)
 {
     fpos = 2352 * (uint64_t)lba;
 
 }
-#endif // ENABLE_AUDIO_OUTPUT
+#endif // ENABLE_AUDIO_OUTPUT_SPDIF

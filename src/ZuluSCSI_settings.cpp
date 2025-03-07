@@ -38,15 +38,16 @@ const char *systemPresetName[] = {"", "Mac", "MacPlus", "MPC3000", "MegaSTE", "X
 const char *devicePresetName[] = {"", "ST32430N"};
 
 // must be in the same order as zuluscsi_speed_grade_t in ZuluSCSI_settings.h
-const char * const speed_grade_strings[7] =
+const char * const speed_grade_strings[] =
 {
     "Default",
     "TurboMax",
     "Custom",
-    "Audio",
-    "TurboA",
-    "TurboB",
-    "TurboC",
+    "AudioSPDIF",
+    "AudioI2S",
+    "A",
+    "B",
+    "C",
 };
 
 // Helper function for case-insensitive string compare
@@ -309,6 +310,7 @@ scsi_system_settings_t *ZuluSCSISettings::initSystem(const char *presetName)
     cfgSys.enableParity = true;
     cfgSys.useFATAllocSize = false;
     cfgSys.enableCDAudio = false;
+    cfgSys.maxVolume = 100;
     cfgSys.enableUSBMassStorage = false;
     cfgSys.usbMassStorageWaitPeriod = 1000;
     cfgSys.usbMassStoragePresentImages = false;
@@ -408,6 +410,7 @@ scsi_system_settings_t *ZuluSCSISettings::initSystem(const char *presetName)
     cfgSys.enableParity =  ini_getbool("SCSI", "EnableParity", cfgSys.enableParity, CONFIGFILE);
     cfgSys.useFATAllocSize = ini_getbool("SCSI", "UseFATAllocSize", cfgSys.useFATAllocSize, CONFIGFILE);
     cfgSys.enableCDAudio = ini_getbool("SCSI", "EnableCDAudio", cfgSys.enableCDAudio, CONFIGFILE);
+    cfgSys.maxVolume =  ini_getl("SCSI", "MaxVolume", cfgSys.maxVolume, CONFIGFILE);
 
     cfgSys.enableUSBMassStorage = ini_getbool("SCSI", "EnableUSBMassStorage", cfgSys.enableUSBMassStorage, CONFIGFILE);
     cfgSys.usbMassStorageWaitPeriod = ini_getl("SCSI", "USBMassStorageWaitPeriod", cfgSys.usbMassStorageWaitPeriod, CONFIGFILE);
@@ -526,10 +529,6 @@ zuluscsi_speed_grade_t ZuluSCSISettings::stringToSpeedGrade(const char *speed_gr
 {
     zuluscsi_speed_grade_t grade = zuluscsi_speed_grade_t::SPEED_GRADE_DEFAULT;
 
-#ifdef ENABLE_AUDIO_OUTPUT
-    logmsg("Audio output enabled, reclocking isn't possible");
-    return SPEED_GRADE_DEFAULT;
-#endif
     bool found_speed_grade = false;
     // search the list of speed grade strings for a matching target
     for (uint8_t i = 0; i < sizeof(speed_grade_strings)/sizeof(speed_grade_strings[0]); i++)
@@ -546,6 +545,7 @@ zuluscsi_speed_grade_t ZuluSCSISettings::stringToSpeedGrade(const char *speed_gr
       logmsg("Setting \"", speed_grade_target, "\" does not match any known speed grade, using default");
       grade = SPEED_GRADE_DEFAULT;
     }
+
     return grade;
 }
 

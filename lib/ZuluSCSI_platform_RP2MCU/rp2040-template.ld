@@ -97,6 +97,8 @@ SECTIONS
         /* RP2040 breakpoints in RAM code don't always work very well
          * because the boot routine tends to overwrite them.
          * Uncommenting this line puts all code in flash.
+         * You may have to delete "firmware.elf" for the next build
+         * to use this linker file's changes
          */
         /* *(.text .text*) */
     } > FLASH

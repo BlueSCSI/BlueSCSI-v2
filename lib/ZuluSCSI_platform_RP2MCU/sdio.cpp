@@ -47,6 +47,14 @@
 #define SDIO_DMA_CH 4
 #define SDIO_DMA_CHB 5
 
+// If the highest SD pin is beyond the first 32 GPIOs, 
+// set the base GPIO to 16 to use GPIOs 16-47
+#if SDIO_D3 > 31
+# define SDIO_GPIO_BASE_HIGH
+# define SDIO_BASE_OFFSET 16
+#else
+# define SDIO_BASE_OFFSET 0
+#endif
 // Maximum number of 512 byte blocks to transfer in one request
 #define SDIO_MAX_BLOCKS 256
 
@@ -784,6 +792,10 @@ sdio_status_t rp2040_sdio_stop()
 
 void rp2040_sdio_init(int clock_divider)
 {
+    #ifdef SDIO_GPIO_BASE_HIGH
+        pio_set_gpio_base(SDIO_PIO, 16);
+    #endif
+
     // Mark resources as being in use, unless it has been done already.
     static bool resources_claimed = false;
     if (!resources_claimed)
@@ -846,7 +858,7 @@ void rp2040_sdio_init(int clock_divider)
         sdio_data_rx_program.pio_version };
     memcpy(temp_program_instr, sdio_data_rx_program_instructions, sizeof(sdio_data_rx_program_instructions));
     // wait 1 gpio SDIO_CLK_GPIO  [0]; [CLKDIV-1]
-    uint16_t instr = pio_encode_wait_gpio(true, SDIO_CLK) | pio_encode_delay(g_zuluscsi_timings->sdio.clk_div_pio - 1);
+    uint16_t instr = pio_encode_wait_gpio(true, SDIO_CLK - SDIO_BASE_OFFSET) | pio_encode_delay(g_zuluscsi_timings->sdio.clk_div_pio - 1);
     temp_program_instr[2] = instr;
     // in PINS, 4                 [0]; [CLKDIV-2]
     instr = sdio_data_rx_program_instructions[3] | pio_encode_delay(g_zuluscsi_timings->sdio.clk_div_pio - 2);
@@ -869,10 +881,10 @@ void rp2040_sdio_init(int clock_divider)
         sdio_data_tx_program.pio_version };
     memcpy(temp_program_instr, sdio_data_tx_program_instructions, sizeof(sdio_data_tx_program_instructions));
     // wait 0 gpio SDIO_CLK_GPIO  
-    instr = pio_encode_wait_gpio(false, SDIO_CLK);
+    instr = pio_encode_wait_gpio(false, SDIO_CLK - SDIO_BASE_OFFSET);
     temp_program_instr[0] = instr;
     // wait 1 gpio SDIO_CLK_GPIO;  [0]; [CLKDIV + D1 - 1];
-    instr = pio_encode_wait_gpio(true, SDIO_CLK) | pio_encode_delay(g_zuluscsi_timings->sdio.clk_div_pio + g_zuluscsi_timings->sdio.delay1 - 1);
+    instr = pio_encode_wait_gpio(true, SDIO_CLK - SDIO_BASE_OFFSET) | pio_encode_delay(g_zuluscsi_timings->sdio.clk_div_pio + g_zuluscsi_timings->sdio.delay1 - 1);
     temp_program_instr[1] = instr;
     
     for (uint8_t i = 2; i < sizeof(sdio_data_tx_program_instructions) / sizeof(sdio_data_tx_program_instructions[0]); i++)
@@ -894,8 +906,9 @@ void rp2040_sdio_init(int clock_divider)
     // This reduces input delay.
     // Because the CLK is driven synchronously to CPU clock,
     // there should be no metastability problems.
-    SDIO_PIO->input_sync_bypass |= (1 << SDIO_CLK) | (1 << SDIO_CMD)
-                                 | (1 << SDIO_D0) | (1 << SDIO_D1) | (1 << SDIO_D2) | (1 << SDIO_D3);
+    SDIO_PIO->input_sync_bypass |= (1 << (SDIO_CLK - SDIO_BASE_OFFSET)) | (1 << (SDIO_CMD - SDIO_BASE_OFFSET))
+                                 | (1 << (SDIO_D0 - SDIO_BASE_OFFSET)) | (1 << (SDIO_D1 - SDIO_BASE_OFFSET)) 
+                                 | (1 << (SDIO_D2 - SDIO_BASE_OFFSET)) | (1 << (SDIO_D3 - SDIO_BASE_OFFSET));
 
     // Redirect GPIOs to PIO
     gpio_set_function(SDIO_CMD, GPIO_FUNC_PIO1);
@@ -909,7 +922,7 @@ void rp2040_sdio_init(int clock_divider)
     irq_set_exclusive_handler(DMA_IRQ_1, rp2040_sdio_tx_irq);
     irq_set_enabled(DMA_IRQ_1, true);
 #if 0
-#ifndef ENABLE_AUDIO_OUTPUT
+#ifndef ENABLE_AUDIO_OUTPUT_SPDIF
     irq_set_exclusive_handler(DMA_IRQ_1, rp2040_sdio_tx_irq);
 #else
     // seem to hit assertion in _exclusive_handler call due to DMA_IRQ_0 being shared?

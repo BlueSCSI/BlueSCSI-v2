@@ -20,6 +20,7 @@
 **/
 
 #include "zip_parser.h"
+#include <ctype.h>
 
 #define ZIP_PARSER_METHOD_DEFLATE_BYTE 0x08
 #define ZIP_PARSER_METHOD_UNCOMPRESSED_BYTE 0x00
@@ -32,10 +33,10 @@ namespace zipparser
         filename_len = 0;
         Reset();
     }
-    Parser::Parser(char const *filename, const size_t length)
+    Parser::Parser(char const *filename, const size_t length, const size_t target_total_length)
     {
         Reset();
-        SetMatchingFilename(filename, length);
+        SetMatchingFilename(filename, length, target_total_length);
     }
 
     void Parser::Reset()
@@ -46,7 +47,7 @@ namespace zipparser
         crc = 0;
     }
 
-    void Parser::SetMatchingFilename(char const *filename, const size_t length)
+    void Parser::SetMatchingFilename(char const *filename, const size_t length, const size_t target_total_length)
     {
         if (filename[0] == '\0')
             filename_len = 0;
@@ -54,6 +55,7 @@ namespace zipparser
         {
             this->filename = filename;
             filename_len = length;
+            target_zip_filename_len = target_total_length;
         }
     }
 
@@ -198,15 +200,17 @@ namespace zipparser
                 break;
                 case parsing_target::filename:
                     if (position <= current_zip_filename_len - 1)
-                    {    
-                        if (matching && position < filename_len && filename[position] != buf[idx])
+                    {
+                        // make sure zipped filename is the correct length
+                        if (current_zip_filename_len != target_zip_filename_len)
+                            matching = false; 
+                        if (matching && position < filename_len && tolower(filename[position]) != tolower(buf[idx]))
                             matching = false;
                         if (position == filename_len - 1 && matching)
                             filename_match = true;
                         if (position == current_zip_filename_len -1)
                         {
                             target = parsing_target::extra_field;
-                            matching = true;
                             position = 0;
                             if (extra_field_len == 0)
                             {

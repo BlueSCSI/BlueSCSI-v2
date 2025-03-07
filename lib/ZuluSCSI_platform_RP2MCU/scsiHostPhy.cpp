@@ -212,7 +212,7 @@ static inline uint8_t scsiHostReadOneByte(int* parityError)
     SCSIHOST_WAIT_INACTIVE(REQ);
     SCSI_OUT(ACK, 0);
 
-    if (parityError && r != (g_scsi_parity_lookup[r & 0xFF] ^ SCSI_IO_DATA_MASK))
+    if (parityError && r != (g_scsi_parity_lookup[r & 0xFF] ^ (SCSI_IO_DATA_MASK >> SCSI_IO_SHIFT)))
     {
         logmsg("Parity error in scsiReadOneByte(): ", (uint32_t)r);
         *parityError = 1;

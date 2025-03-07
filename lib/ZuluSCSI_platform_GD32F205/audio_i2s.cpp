@@ -19,8 +19,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
-#ifdef ENABLE_AUDIO_OUTPUT
-#include "audio.h"
+#ifdef ENABLE_AUDIO_OUTPUT_I2S
+#include "audio_i2s.h"
 #include "ZuluSCSI_platform.h"
 #include "ZuluSCSI_audio.h"
 #include "ZuluSCSI_v1_1_gpio.h"
@@ -255,7 +255,7 @@ void audio_poll()
     }
 }
 
-bool audio_play(uint8_t owner, ImageBackingStore* img, uint64_t start, uint64_t end, bool swap)
+bool audio_play(uint8_t owner, image_config_t* img, uint64_t start, uint64_t end, bool swap)
 {
     if (audio_is_active()) audio_stop(audio_owner);
 
@@ -272,7 +272,7 @@ bool audio_play(uint8_t owner, ImageBackingStore* img, uint64_t start, uint64_t 
         return false;
     }
 
-    audio_file = img;
+    audio_file = &img->file;
     if (!audio_file->isOpen()) {
         logmsg("File not open for audio playback, ", owner);
         return false;
@@ -416,9 +416,9 @@ uint64_t audio_get_file_position()
     return fpos;
 }
 
-void audio_set_file_position(uint32_t lba)
+void audio_set_file_position(uint8_t id, uint32_t lba)
 {
     fpos = 2352 * (uint64_t)lba;
 }
 
-#endif // ENABLE_AUDIO_OUTPUT
+#endif // ENABLE_AUDIO_OUTPUT_I2S

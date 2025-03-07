@@ -32,7 +32,7 @@
     "frameworks": [
         "arduino"
     ],
-    "name": "ZuluSCSI RP2350A",
+    "name": "ZuluSCSI Blaster",
     "upload": {
         "maximum_ram_size": 524288,
         "maximum_size": 16777216,

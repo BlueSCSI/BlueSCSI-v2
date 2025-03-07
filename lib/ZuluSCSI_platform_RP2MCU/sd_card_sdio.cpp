@@ -207,7 +207,11 @@ uint32_t SdioCard::errorLine() const
 
 bool SdioCard::isBusy() 
 {
-    return (sio_hw->gpio_in & (1 << SDIO_D0)) == 0;
+#if SDIO_D0 > 31
+    return 0 == (sio_hw->gpio_hi_in & (1 << (SDIO_D0 - 32)));
+#else
+    return 0 == (sio_hw->gpio_in & (1 << SDIO_D0));
+#endif
 }
 
 uint32_t SdioCard::kHzSdClk()
