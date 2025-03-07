@@ -20,11 +20,11 @@
 **/
 #include "timings.h"
 #if defined(ZULUSCSI_MCU_RP23XX)
-uint8_t g_max_sync_20_period = 18;
+uint8_t g_max_sync_20_period = 12;
 uint8_t g_max_sync_10_period = 25;
 uint8_t g_max_sync_5_period  = 50; 
 #elif defined(ZULUSCSI_MCU_RP20XX)
-uint8_t g_max_sync_20_period = 25;
+uint8_t g_max_sync_20_period = 12;
 uint8_t g_max_sync_10_period = 25;
 uint8_t g_max_sync_5_period  = 50; 
 #endif

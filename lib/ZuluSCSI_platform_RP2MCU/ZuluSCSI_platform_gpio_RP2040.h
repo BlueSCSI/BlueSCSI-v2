@@ -87,7 +87,7 @@
 #define SD_SPI_MISO  20
 #define SD_SPI_CS    23
 
-#ifndef ENABLE_AUDIO_OUTPUT
+#ifndef ENABLE_AUDIO_OUTPUT_SPDIF
     // IO expander I2C
     #define GPIO_I2C_SDA 14
     #define GPIO_I2C_SCL 15

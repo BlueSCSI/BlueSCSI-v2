@@ -32,7 +32,7 @@
 #include <SdFat.h>
 #include <scsi.h>
 #include <assert.h>
-#include <audio.h>
+#include <audio_i2s.h>
 #include <ZuluSCSI_audio.h>
 #include <ZuluSCSI_settings.h>
 

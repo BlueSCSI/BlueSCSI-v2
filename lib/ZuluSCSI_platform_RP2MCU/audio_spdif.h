@@ -16,7 +16,7 @@
 **/
 
 #pragma once
-#ifdef ENABLE_AUDIO_OUTPUT
+#ifdef ENABLE_AUDIO_OUTPUT_SPDIF
 
 #include <stdint.h>
 
@@ -60,4 +60,4 @@ void audio_setup();
  */
 void audio_poll();
 
-#endif // ENABLE_AUDIO_OUTPUT
+#endif // ENABLE_AUDIO_OUTPUT_SPDIF

@@ -1,45 +1,37 @@
-/** 
+/**
  * Copyright (C) 2023 saybur
- * ZuluSCSI™ - Copyright (c) 2023 Rabbit Hole Computing™
- * 
- * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
- * 
- * https://www.gnu.org/licenses/gpl-3.0.html
- * ----
+ * Copyright (C) 2024 Rabbit Hole Computing LLC
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version. 
- * 
+ * (at your option) any later version.
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details. 
- * 
+ * GNU General Public License for more details.
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
 
-
 #pragma once
-#ifdef ENABLE_AUDIO_OUTPUT
+#ifdef ENABLE_AUDIO_OUTPUT_I2S
 
-extern bool g_audio_enabled;
-extern bool g_ode_audio_stopped;
-
-// size of the a circular audio sample buffer, in bytes
-// these must be divisible by 1024
-#define AUDIO_BUFFER_SIZE 16384
-// #define AUDIO_BUFFER_SIZE 8192 // ~46.44ms 
-// # define AUDIO_BUFFER_SIZE 4096 // reduce memory usage
-#define AUDIO_BUFFER_HALF_SIZE AUDIO_BUFFER_SIZE / 2
-
-/**
- * Handler for I2S DMA interrupts
- */
-void ODE_IRQHandler();
+#include <stdint.h>
 
 
+// i2s PIO settings
+#define I2S_PIO_HW pio2_hw
+#define I2S_PIO_SM 0
+
+// audio subsystem DMA channels
+#define SOUND_DMA_CHA 6
+#define SOUND_DMA_CHB 7
+
+// size of the two audio sample buffers, in bytes
+// #define AUDIO_BUFFER_SIZE 8192 // reduce memory usage
+#define AUDIO_BUFFER_SIZE 2352 * 12
 /**
  * Indicates if the audio subsystem is actively streaming, including if it is
  * sending silent data during sample stall events.
@@ -58,4 +50,7 @@ void audio_setup();
  * Called from platform_poll() to fill sample buffer(s) if needed.
  */
 void audio_poll();
-#endif //ENABLE_AUDIO_OUTPUT
+
+
+extern "C" void audio_dma_irq();
+#endif // ENABLE_AUDIO_OUTPUT_SPDIF

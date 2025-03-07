@@ -45,6 +45,7 @@ bool CustomTimings::set_timings_from_file()
     const char scsi_10_section[] = "scsi_10";
     const char scsi_5_section[] = "scsi_5";
     const char sdio_section[] = "sdio";
+    const char audio_section[] = "audio";
 
     // pll
     int32_t vco = ini_getl(pll_section, "vco_freq_hz", g_zuluscsi_timings->pll.vco_freq, CUSTOM_TIMINGS_FILE);
@@ -53,9 +54,9 @@ bool CustomTimings::set_timings_from_file()
 
     if (vco > 0 && post_div1 > 0 && post_div2 > 0)
     {
-        if (vco / post_div1 / post_div2 > 250000000)
+        if (vco / post_div1 / post_div2 > 252000000)
         {
-            logmsg("Reclocking over 250MHz with the PLL settings is not allowed using ", CUSTOM_TIMINGS_FILE);
+            logmsg("Reclocking over 252MHz with the PLL settings is not allowed using ", CUSTOM_TIMINGS_FILE);
             return false;
         }
     }
@@ -94,20 +95,26 @@ bool CustomTimings::set_timings_from_file()
     // scsi 20
     g_zuluscsi_timings->scsi_20.delay0 = ini_getl(scsi_20_section, "delay0_cc", g_zuluscsi_timings->scsi_20.delay0, CUSTOM_TIMINGS_FILE);
     g_zuluscsi_timings->scsi_20.delay1 = ini_getl(scsi_20_section, "delay1_cc", g_zuluscsi_timings->scsi_20.delay1, CUSTOM_TIMINGS_FILE);
-    g_zuluscsi_timings->scsi_20.total_delay_adjust = ini_getl(scsi_20_section, "total_delay_adjust_cc", g_zuluscsi_timings->scsi_20.total_delay_adjust, CUSTOM_TIMINGS_FILE);
+    g_zuluscsi_timings->scsi_20.total_period_adjust = ini_getl(scsi_20_section, "total_period_adjust_cc", g_zuluscsi_timings->scsi_20.total_period_adjust, CUSTOM_TIMINGS_FILE);
     g_zuluscsi_timings->scsi_20.max_sync = ini_getl(scsi_20_section, "max_sync", g_zuluscsi_timings->scsi_20.max_sync, CUSTOM_TIMINGS_FILE);
+    g_zuluscsi_timings->scsi_20.rdelay1 = ini_getl(scsi_20_section, "read_delay1_cc", g_zuluscsi_timings->scsi_20.rdelay1, CUSTOM_TIMINGS_FILE);
+    g_zuluscsi_timings->scsi_20.rtotal_period_adjust = ini_getl(scsi_20_section, "read_total_period_adjust_cc", g_zuluscsi_timings->scsi_20.rtotal_period_adjust, CUSTOM_TIMINGS_FILE);
 
     // scsi 10
     g_zuluscsi_timings->scsi_10.delay0 = ini_getl(scsi_10_section, "delay0_cc", g_zuluscsi_timings->scsi_10.delay0, CUSTOM_TIMINGS_FILE);
     g_zuluscsi_timings->scsi_10.delay1 = ini_getl(scsi_10_section, "delay1_cc", g_zuluscsi_timings->scsi_10.delay1, CUSTOM_TIMINGS_FILE);
-    g_zuluscsi_timings->scsi_10.total_delay_adjust = ini_getl(scsi_10_section, "total_delay_adjust_cc", g_zuluscsi_timings->scsi_10.total_delay_adjust, CUSTOM_TIMINGS_FILE);
+    g_zuluscsi_timings->scsi_10.total_period_adjust = ini_getl(scsi_10_section, "total_period_adjust_cc", g_zuluscsi_timings->scsi_10.total_period_adjust, CUSTOM_TIMINGS_FILE);
     g_zuluscsi_timings->scsi_10.max_sync = ini_getl(scsi_10_section, "max_sync", g_zuluscsi_timings->scsi_10.max_sync, CUSTOM_TIMINGS_FILE);
+    g_zuluscsi_timings->scsi_10.rdelay1 = ini_getl(scsi_10_section, "read_delay1_cc", g_zuluscsi_timings->scsi_10.rdelay1, CUSTOM_TIMINGS_FILE);
+    g_zuluscsi_timings->scsi_10.rtotal_period_adjust = ini_getl(scsi_10_section, "read_total_period_adjust_cc", g_zuluscsi_timings->scsi_10.rtotal_period_adjust, CUSTOM_TIMINGS_FILE);
 
     // scsi 5
     g_zuluscsi_timings->scsi_5.delay0 = ini_getl(scsi_5_section, "delay0_cc", g_zuluscsi_timings->scsi_5.delay0, CUSTOM_TIMINGS_FILE);
     g_zuluscsi_timings->scsi_5.delay1 = ini_getl(scsi_5_section, "delay1_cc", g_zuluscsi_timings->scsi_5.delay1, CUSTOM_TIMINGS_FILE);
-    g_zuluscsi_timings->scsi_5.total_delay_adjust = ini_getl(scsi_5_section, "total_delay_adjust_cc", g_zuluscsi_timings->scsi_5.total_delay_adjust, CUSTOM_TIMINGS_FILE);
+    g_zuluscsi_timings->scsi_5.total_period_adjust = ini_getl(scsi_5_section, "total_period_adjust_cc", g_zuluscsi_timings->scsi_5.total_period_adjust, CUSTOM_TIMINGS_FILE);
     g_zuluscsi_timings->scsi_5.max_sync = ini_getl(scsi_5_section, "max_sync", g_zuluscsi_timings->scsi_5.max_sync, CUSTOM_TIMINGS_FILE);
+    g_zuluscsi_timings->scsi_5.rdelay1 = ini_getl(scsi_5_section, "read_delay1_cc", g_zuluscsi_timings->scsi_5.rdelay1, CUSTOM_TIMINGS_FILE);
+    g_zuluscsi_timings->scsi_5.rtotal_period_adjust = ini_getl(scsi_5_section, "read_total_period_adjust_cc", g_zuluscsi_timings->scsi_5.rtotal_period_adjust, CUSTOM_TIMINGS_FILE);
 
     // sdio
     g_zuluscsi_timings->sdio.clk_div_pio = ini_getl(sdio_section, "clk_div_pio", g_zuluscsi_timings->sdio.clk_div_pio, CUSTOM_TIMINGS_FILE);
@@ -115,5 +122,8 @@ bool CustomTimings::set_timings_from_file()
     g_zuluscsi_timings->sdio.delay0 = ini_getl(sdio_section, "delay0", g_zuluscsi_timings->sdio.delay0, CUSTOM_TIMINGS_FILE);
     g_zuluscsi_timings->sdio.delay1 = ini_getl(sdio_section, "delay1", g_zuluscsi_timings->sdio.delay1, CUSTOM_TIMINGS_FILE);
 
+    // audio
+    g_zuluscsi_timings->audio.clk_div_pio = ini_getl(audio_section, "clk_div_pio", g_zuluscsi_timings->audio.clk_div_pio, CUSTOM_TIMINGS_FILE);
+    g_zuluscsi_timings->audio.audio_clocked = ini_getbool(audio_section, "clk_for_audio", g_zuluscsi_timings->audio.audio_clocked, CUSTOM_TIMINGS_FILE);
     return true;
 }
