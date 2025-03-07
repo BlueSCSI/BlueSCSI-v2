@@ -264,6 +264,85 @@ static void scsiDiskSetImageConfig(uint8_t target_idx)
     memcpy(img.serial, devCfg->serial, sizeof(img.serial));
 }
 
+static bool find_chs_capacity(uint64_t lba, uint16_t max_cylinders, uint8_t min_heads, uint16_t &c, uint8_t &h, uint8_t &s)
+{
+    bool found_chs = false;
+    uint32_t cylinders;
+    for (uint8_t heads = 16 ; heads >= min_heads; heads--)
+    {
+        if (lba % heads != 0)
+            continue;
+        for (uint8_t sectors = 63; sectors >= 1; sectors--)
+        {
+            if (lba % (heads * sectors) == 0)
+            {
+                cylinders = lba / (heads * sectors);
+                if (cylinders > max_cylinders)
+                    continue;
+                found_chs = true;
+                c = (uint16_t) cylinders;
+                h = heads;
+                s = sectors;
+                break;
+            }
+        }
+        if (found_chs)
+            break;
+    }
+    return found_chs;
+}
+
+static void autoConfigGeometry(image_config_t &img)
+{
+    const char *method = "INI config";
+    if (img.sectorsPerTrack == 0 || img.headsPerCylinder == 0)
+    {
+        uint16_t cyl = 0;
+        uint8_t head = 255;
+        uint8_t sect = 63;
+        bool found_chs = false;
+
+        if (img.deviceType == S2S_CFG_FLOPPY_14MB && img.scsiSectors <= 2880)
+        {
+            method = "device type floppy";
+            sect = 18;
+            head = 80;
+        }
+        else if (img.scsiSectors <= 1032192)
+        {
+            found_chs = find_chs_capacity(img.scsiSectors, 1024, 1, cyl, head, sect);
+            method = "image size";
+        }
+        else if (img.scsiSectors <= 16514064)
+        {
+            found_chs = find_chs_capacity(img.scsiSectors, 16383, 9, cyl, head, sect);
+            if (!found_chs)
+                found_chs = find_chs_capacity(img.scsiSectors, 32767, 5, cyl, head, sect);
+            if (!found_chs)
+                found_chs = find_chs_capacity(img.scsiSectors, 65535, 1, cyl, head, sect);
+            method = "image size";
+        }
+
+        if (!found_chs)
+        {
+            head = 255;
+            sect = 63;
+            method = "defaults";
+        }
+
+        img.sectorsPerTrack = sect;
+        img.headsPerCylinder = head;
+    }
+
+    bool divisible = (img.scsiSectors % ((uint32_t)img.sectorsPerTrack * img.headsPerCylinder)) == 0;
+    logmsg("---- Drive geometry from ", method,
+        ": SectorsPerTrack=", (int)img.sectorsPerTrack,
+        " HeadsPerCylinder=", (int)img.headsPerCylinder,
+        " total sectors ", (int)img.scsiSectors,
+        divisible ? " (divisible)" : " (not divisible)"
+        );
+}
+
 bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, int blocksize, S2S_CFG_TYPE type, bool use_prefix)
 {
     image_config_t &img = g_DiskImages[target_idx];
@@ -363,6 +442,11 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
             {
                 logmsg("---- Zip 100 disk (", (int)img.file.size(), " bytes) is not exactly ", ZIP100_DISK_SIZE, " bytes, may not work correctly");
             }
+        }
+
+        if (type != S2S_CFG_OPTICAL && type != S2S_CFG_NETWORK)
+        {
+            autoConfigGeometry(img);
         }
 
         quirksCheck(&img);

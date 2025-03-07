@@ -319,8 +319,8 @@ scsi_system_settings_t *ZuluSCSISettings::initSystem(const char *presetName)
     // setting set for all or specific devices
     cfgDev.deviceType = S2S_CFG_NOT_SET;
     cfgDev.deviceTypeModifier = 0;
-    cfgDev.sectorsPerTrack = 63;
-    cfgDev.headsPerCylinder = 255;
+    cfgDev.sectorsPerTrack = 0;
+    cfgDev.headsPerCylinder = 0;
     cfgDev.prefetchBytes = PREFETCH_BUFFER_SIZE;
     cfgDev.ejectButton = 0;
     cfgDev.vol = DEFAULT_VOLUME_LEVEL;
