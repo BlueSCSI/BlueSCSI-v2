@@ -1,5 +1,5 @@
 /** 
- * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
+ * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
  * 
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  * 
@@ -43,8 +43,8 @@ bool find_firmware_image(FsFile &file, char name[MAX_FILE_PATH + 1])
 
         int namelen = file.getName(name, MAX_FILE_PATH);
 
-        if (namelen >= 11 &&
-            strncasecmp(name, "zuluscsi", 8) == 0 &&
+        if (namelen >= sizeof(FIRMWARE_NAME_PREFIX) + 3 &&
+            strncasecmp(name, FIRMWARE_NAME_PREFIX, sizeof(FIRMWARE_NAME_PREFIX) - 1) == 0 &&
             strncasecmp(name + namelen - 3, "bin", 3) == 0)
         {
             root.close();

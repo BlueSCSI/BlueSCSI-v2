@@ -1,6 +1,6 @@
 /**
  * Portions - Copyright (C) 2023 Eric Helgeson
- * ZuluSCSI™ - Copyright (c) 2022-2023 Rabbit Hole Computing™
+ * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
  *
  * This file is licensed under the GPL version 3 or any later version. 
  *

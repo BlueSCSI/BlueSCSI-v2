@@ -3,7 +3,7 @@
  * SCSI bus interface. The call structure is modeled after TinyUSB, but
  * should be usable with other USB libraries.
  *
- * ZuluSCSI™ - Copyright (c) 2023 Rabbit Hole Computing™
+ * ZuluSCSI™ - Copyright (c) 2023-2025 Rabbit Hole Computing™
  *
  * This file is licensed under the GPL version 3 or any later version. 
  * It is derived from cdrom.c in SCSI2SD V6

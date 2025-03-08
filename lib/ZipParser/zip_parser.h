@@ -1,5 +1,5 @@
 /**
- * ZuluSCSI™ - Copyright (c) 2024 Rabbit Hole Computing™
+ * ZuluSCSI™ - Copyright (c) 2024-2025 Rabbit Hole Computing™
  *
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  *
@@ -33,8 +33,8 @@ namespace zipparser
     {
         public:
             Parser();
-            Parser(char const *filename, const size_t length);
-            void SetMatchingFilename(char const *filename, const size_t length);
+            Parser(char const *filename, const size_t length, const size_t target_total_length);
+            void SetMatchingFilename(char const *filename, const size_t length, const size_t target_total_length);
             void Reset();
             static const int32_t PARSE_ERROR = -1;
             static const int32_t PARSE_CENTRAL_DIR = -2;
@@ -52,6 +52,7 @@ namespace zipparser
             char const *filename;
             size_t filename_len;
             size_t current_zip_filename_len;
+            size_t target_zip_filename_len;
             size_t extra_field_len;
             uint32_t compressed_data_size;
             uint32_t uncompressed_data_size;
