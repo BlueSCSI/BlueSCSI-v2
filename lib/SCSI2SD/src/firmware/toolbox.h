@@ -1,6 +1,6 @@
 /** 
  * Copyright (C) 2023 Eric Helgeson
- * Copyright (C) 2024 Rabbit Hole Computing
+ * Copyright (c) 2024-2025 Rabbit Hole Computing™
  * 
  * This file is originally part of BlueSCSI adopted for ZuluSCSI
  * 

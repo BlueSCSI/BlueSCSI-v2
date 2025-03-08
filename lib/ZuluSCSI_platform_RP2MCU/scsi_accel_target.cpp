@@ -1,5 +1,5 @@
 /**
- * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
+ * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
  *
  * This work incorporates work from the following
  *  Copyright (c) 2023 joshua stein <jcs@jcs.org>

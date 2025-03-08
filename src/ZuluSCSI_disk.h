@@ -1,7 +1,7 @@
 /** 
  * SCSI2SD V6 - Copyright (C) 2013 Michael McMaster <michael@codesrc.com>
  * Copyright (C) 2014 Doug Brown <doug@downtowndougbrown.com
- * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
+ * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
  * Copyright (c) 2023 joshua stein <jcs@jcs.org>
  * 
  * It is derived from disk.h in SCSI2SD V6.
