@@ -73,7 +73,18 @@ SECTIONS
          * FLASH ... we will include any thing excluded here in .data below by default */
         *(.init)
         *libgcc.a:cmse_nonsecure_call.o
-        *(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *libm.a:) .text*)
+
+/* =============================================================== */
+    /* Exclude as much code from flash as possible as the RP2350 series has twice as much SRAM */
+        *(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *libm.a: *libZuluIDE_platform_RPMCU.a:  *libSdFat.a: *libSCSI2SD.a: *CUEParser.a: *minIni.a: *.cpp.o) .text*)
+
+    /* ---------------------------------------------------------
+    Uncomment the EXCLUDE_FILE line below and comment the EXCLUDE_FILE line above for debug to work properly,
+    the initial break point to main seems to get clobbered when everything is in SRAM.
+    You may have to delete the "firmware.elf" file so the next build links with newly modified linker script
+    ------------------------------------------------------------*/
+        /* *(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *libm.a:) .text*) */
+/* =============================================================== */
         *(.fini)
         /* Pull all c'tors into .text */
         *crtbegin.o(.ctors)
@@ -112,28 +123,6 @@ SECTIONS
         *(.eh_frame*)
         . = ALIGN(4);
 
-               /* Put only non-timecritical code in flash
-         * This includes e.g. floating point math routines.
-         */
-        .pio/build/$project_name/src/ZuluSCSI_log.cpp.o(.text .text*)
-        .pio/build/$project_name/src/ZuluSCSI_log_trace.cpp.o(.text .text*)
-        .pio/build/$project_name/src/ZuluSCSI_settings.cpp.o(.text .text*)
-        .pio/build/$project_name/src/QuirksCheck.cpp.o(.text .text*)
-        *libZuluSCSI_platform_RP2350.a:ZuluSCSI_platform.cpp.o(.text .text*)
-        *libm*:(.text .text*)
-        *libc*:(.text .text*)
-        *libgcc*:*df*(.text .text*)
-        *USB*(.text .text*)
-        *SPI*(.text .text*)
-        *Spi*(.text .text*)
-        *spi*(.text .text*)
-        *stdc*:(.text .text*)
-        *supc*:(.text .text*)
-        *nosys*:(.text .text*)
-        *libc*:*printf*(.text .text*)
-        *libc*:*toa*(.text .text*)
-        *libminIni.a:(.text .text*)
-        *libCUEParser.a:(.text .text*)
     } > FLASH
 
     /* Note the boot2 section is optional, and should be discarded if there is
@@ -158,7 +147,12 @@ SECTIONS
         "ERROR: Pico second stage bootloader must be no more than 256 bytes in size")
 
     .rodata : {
-        *(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *libm.a:) .rodata*)
+        /* Exclude as many constants as possible from flash as corresponding to the code that has been removed from flash
+            to keep the MCU from having to hit flash while it is executing in SRAM */
+        *(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *libm.a:  *libZuluIDE_platform_RPMCU.a:  *libSdFat.a: *libSCSI2SD.a: *CUEParser.a: *minIni.a: *.cpp.o) .rodata*)
+/* Uncomment below and comment above lines for debugging */
+        /* *(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *libm.a:) .rodata*) */
+
         *(.srodata*)
         . = ALIGN(4);
         *(SORT_BY_ALIGNMENT(SORT_BY_NAME(.flashdata*)))

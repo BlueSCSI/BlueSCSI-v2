@@ -1,5 +1,5 @@
 /** 
- * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
+ * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
  * 
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  * 
@@ -22,7 +22,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "ImageBackingStore.h"
+#include "ZuluSCSI_disk.h"
 
 /*
  * Starting volume level for audio output, with 0 being muted and 255 being
@@ -69,6 +69,7 @@ enum audio_status_code {
  */
 bool audio_is_playing(uint8_t id);
 
+#if defined(ENABLE_AUDIO_OUTPUT) && !defined(ZULUSCSI_BLASTER)
 /**
  * Begins audio playback for a file.
  *
@@ -79,7 +80,23 @@ bool audio_is_playing(uint8_t id);
  * \param swap   If false, little-endian sample order, otherwise big-endian.
  * \return       True if successful, false otherwise.
  */
-bool audio_play(uint8_t owner, ImageBackingStore* img, uint64_t start, uint64_t end, bool swap);
+bool audio_play(uint8_t owner, image_config_t* img, uint64_t start, uint64_t end, bool swap);
+
+#elif defined(ENABLE_AUDIO_OUTPUT_I2S) && defined(ZULUSCSI_BLASTER)
+/**
+ * Begins audio playback for a file.
+ *
+ * \param owner  The SCSI ID that initiated this playback operation.
+ * \param img    Pointer to the image container that can load PCM samples to play.
+ * \param start  LBA offset within file where playback will begin, inclusive.
+ * \param length LBA length of play .
+ * \param swap   If false, little-endian sample order, otherwise big-endian.
+ * \return       True if successful, false otherwise.
+ */
+bool audio_play(uint8_t owner, image_config_t* img, uint32_t start, uint32_t length, bool swap);
+
+#endif
+
 
 /**
  * Pauses audio playback. This may be delayed slightly to allow sample buffers
@@ -154,8 +171,17 @@ void audio_set_channel(uint8_t id, uint16_t chn);
 */
 uint64_t audio_get_file_position();
 
+#ifdef ZULUSCSI_BLASTER
+/**
+ * Gets the LBA position in the audio image
+ * 
+ * \return LBA position in the audio image
+*/
+uint32_t audio_get_lba_position();
+#endif
+
 /**
  * Sets the playback position in the audio image via the lba
  * 
 */
-void audio_set_file_position(uint32_t lba);
+void audio_set_file_position(uint8_t id, uint32_t lba);

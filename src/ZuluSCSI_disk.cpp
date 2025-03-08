@@ -2,7 +2,7 @@
  * SCSI2SD V6 - Copyright (C) 2013 Michael McMaster <michael@codesrc.com>
  * Portions Copyright (C) 2014 Doug Brown <doug@downtowndougbrown.com>
  * Portions Copyright (C) 2023 Eric Helgeson
- * ZuluSCSI™ - Copyright (c) 2022-2023 Rabbit Hole Computing™
+ * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
  *
  * This file is licensed under the GPL version 3 or any later version. 
  * It is derived from disk.c in SCSI2SD V6
@@ -32,7 +32,7 @@
 #include "ZuluSCSI_config.h"
 #include "ZuluSCSI_settings.h"
 #ifdef ENABLE_AUDIO_OUTPUT
-#include "ZuluSCSI_audio.h"
+#  include "ZuluSCSI_audio.h"
 #endif
 #include "ZuluSCSI_cdrom.h"
 #include "ImageBackingStore.h"
@@ -179,6 +179,52 @@ void image_config_t::clear()
 {
     static const image_config_t empty; // Statically zero-initialized
     *this = empty;
+}
+
+uint32_t image_config_t::get_capacity_lba()
+{
+    if (bin_container.isOpen() && cuesheetfile.isOpen())
+    {
+        size_t halfbufsize = sizeof(scsiDev.data) / 2;
+        char *cuebuf = (char*)&scsiDev.data[halfbufsize];
+        cuesheetfile.seekSet(0);
+        int len = cuesheetfile.read(cuebuf, halfbufsize);
+        if (len == 0)
+            return 0;
+        CUEParser parser(cuebuf);
+        CUETrackInfo const *track;
+        CUETrackInfo last_track = {0};
+        if (bin_container.isDir())
+        {
+            FsFile bin_file;
+            uint64_t prev_capacity = 0;
+            // Find last track
+            while((track = parser.next_track(prev_capacity)) != nullptr)
+            {
+                last_track = *track;
+                if (!bin_file.open(&bin_container, track->filename, O_RDONLY | O_BINARY))
+                {
+                    dbgmsg("Unable to open cue/multi-bin image file \"", track->filename, "\" to determine total capacity");
+                    return 0;
+                }
+                prev_capacity = bin_file.size();
+                bin_file.close();
+            }
+            if (last_track.track_number != 0)
+                return last_track.data_start + prev_capacity / last_track.sector_length;
+            else
+                return 0;
+        }
+        else
+        {
+            // Single bin file
+            track = parser.next_track();
+            return track->data_start + bin_container.size() / track->sector_length;
+        }
+    }
+    else
+        return file.size() / bytesPerSector;
+
 }
 
 void scsiDiskCloseSDCardImages()
@@ -347,6 +393,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
 {
     image_config_t &img = g_DiskImages[target_idx];
     img.cuesheetfile.close();
+    img.bin_container.close();
     img.cdrom_binfile_index = -1;
     scsiDiskSetImageConfig(target_idx);
     img.file = ImageBackingStore(filename, blocksize);
@@ -487,6 +534,14 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
                     logmsg("---- Failed to parse cue sheet, using as plain binary image");
                     img.cuesheetfile.close();
                 }
+                else
+                {
+                    // Set bin container to single bin file
+                    img.bin_container.open(filename);
+                    // If bin container is a directory close the file
+                    if (img.bin_container.isDir())
+                        img.bin_container.close();
+                }
             }
             else
             {
@@ -511,7 +566,11 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
                 }
             }
 
-            if (!valid)
+            if (valid)
+            {
+                img.bin_container.open(foldername);
+            }
+            else
             {
                 logmsg("No valid .cue sheet found in folder '", foldername, "'");
                 img.cuesheetfile.close();
@@ -1527,7 +1586,7 @@ static void doSeek(uint32_t lba)
 {
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
-    uint32_t capacity = img.file.size() / bytesPerSector;
+    uint32_t capacity = img.get_capacity_lba();
 
     if (lba >= capacity)
     {
@@ -1545,6 +1604,15 @@ static void doSeek(uint32_t lba)
         }
         else
         {
+#ifdef ENABLE_AUDIO_OUTPUT
+            if (scsiDev.target->cfg->deviceType == S2S_CFG_OPTICAL)
+            {
+                // Uses audio play with a length of 0. CD audio won't actually play,
+                // but Read Subchannel will report the proper LBA location 
+                if (!audio_play(scsiDev.target->targetId, &img, lba, 0, false))
+                    dbgmsg("Failed to seek to audio track lba position ", (int) lba);
+            }
+#endif
             s2s_delay_us(10);
         }
     }

@@ -1,6 +1,6 @@
 /** 
  * Copyright (C) 2023 Eric Helgeson
- * Portions ZuluSCSI™ - Copyright (c) 2023 Rabbit Hole Computing™
+ * Portions ZuluSCSI™ - Copyright (c) 2023-2025 Rabbit Hole Computing™
  * 
  * This file is licensed under the GPL version 3 or any later version. 
  * It is derived from BlueSCSI_platform_config_hook.cpp in BluSCSI-v2

@@ -1,5 +1,5 @@
 /** 
- * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
+ * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
  * 
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  * 
@@ -97,6 +97,8 @@ SECTIONS
         /* RP2040 breakpoints in RAM code don't always work very well
          * because the boot routine tends to overwrite them.
          * Uncommenting this line puts all code in flash.
+         * You may have to delete "firmware.elf" for the next build
+         * to use this linker file's changes
          */
         /* *(.text .text*) */
     } > FLASH

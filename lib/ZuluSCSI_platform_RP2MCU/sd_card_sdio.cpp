@@ -1,5 +1,5 @@
 /** 
- * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
+ * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
  * Copyright (c) 2024 Tech by Androda, LLC
  * 
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
@@ -207,7 +207,11 @@ uint32_t SdioCard::errorLine() const
 
 bool SdioCard::isBusy() 
 {
-    return (sio_hw->gpio_in & (1 << SDIO_D0)) == 0;
+#if SDIO_D0 > 31
+    return 0 == (sio_hw->gpio_hi_in & (1 << (SDIO_D0 - 32)));
+#else
+    return 0 == (sio_hw->gpio_in & (1 << SDIO_D0));
+#endif
 }
 
 uint32_t SdioCard::kHzSdClk()

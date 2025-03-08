@@ -1,5 +1,5 @@
 /**
- * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
+ * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
  *
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version.
  *
@@ -38,9 +38,9 @@
 #elif defined(ZULUSCSI_BS2)
 // BS2 hardware variant, using Raspberry Pico board on a carrier PCB
 #include "ZuluSCSI_platform_gpio_BS2.h"
-#elif defined(ZULUSCSI_RP2350A)
-// RP2350A variant, using mcu chip directly
-#include "ZuluSCSI_platform_gpio_RP2350A.h"
+#elif defined(ZULUSCSI_BLASTER)
+// RP2350B variant, using mcu chip directly
+#include "ZuluSCSI_platform_gpio_Blaster.h"
 #else
 // Normal RP2040 variant, using RP2040 chip directly
 #include "ZuluSCSI_platform_gpio_RP2040.h"

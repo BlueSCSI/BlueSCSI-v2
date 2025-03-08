@@ -1,6 +1,11 @@
 /** 
  * Copyright (C) 2023 saybur
+ * ZuluSCSI™ - Copyright (c) 2023-2025 Rabbit Hole Computing™
  * 
+ * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
+ * 
+ * https://www.gnu.org/licenses/gpl-3.0.html
+ * ----
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -15,31 +20,25 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
 
+
 #pragma once
-#ifdef ENABLE_AUDIO_OUTPUT
+#ifdef ENABLE_AUDIO_OUTPUT_I2S
 
-#include <stdint.h>
+extern bool g_audio_enabled;
+extern bool g_ode_audio_stopped;
 
-// audio subsystem DMA channels
-#define SOUND_DMA_CHA 6
-#define SOUND_DMA_CHB 7
-
-// size of the two audio sample buffers, in bytes
+// size of the a circular audio sample buffer, in bytes
 // these must be divisible by 1024
-// #define AUDIO_BUFFER_SIZE 8192 // ~46.44ms
-#define AUDIO_BUFFER_SIZE 4096 // reduce memory usage
+#define AUDIO_BUFFER_SIZE 16384
+// #define AUDIO_BUFFER_SIZE 8192 // ~46.44ms 
+// # define AUDIO_BUFFER_SIZE 4096 // reduce memory usage
+#define AUDIO_BUFFER_HALF_SIZE AUDIO_BUFFER_SIZE / 2
 
 /**
- * Handler for DMA interrupts
- *
- * This is called from scsi_dma_irq() in scsi_accel_rp2040.cpp. That is
- * obviously a silly way to handle things. However, using
- * irq_add_shared_handler() causes a lockup, likely due to pico-sdk issue #724
- * fixed in 1.3.1. Current builds use pico-sdk 1.3.0 and are affected by
- * the bug. To work around the problem the above exclusive handler
- * delegates to this function if its normal mask is not matched.
+ * Handler for I2S DMA interrupts
  */
-void audio_dma_irq();
+void ODE_IRQHandler();
+
 
 /**
  * Indicates if the audio subsystem is actively streaming, including if it is
@@ -59,5 +58,4 @@ void audio_setup();
  * Called from platform_poll() to fill sample buffer(s) if needed.
  */
 void audio_poll();
-
-#endif // ENABLE_AUDIO_OUTPUT
+#endif //ENABLE_AUDIO_OUTPUT_I2S

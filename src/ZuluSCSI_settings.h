@@ -1,5 +1,5 @@
 /**
- * ZuluSCSI™ - Copyright (c) 2023 Rabbit Hole Computing™
+ * ZuluSCSI™ - Copyright (c) 2023-2025 Rabbit Hole Computing™
  * Copyright (c) 2023 Eric Helgeson
  * 
  * This file is licensed under the GPL version 3 or any later version.  
@@ -26,7 +26,8 @@ typedef enum
     SPEED_GRADE_DEFAULT = 0,
     SPEED_GRADE_MAX,
     SPEED_GRADE_CUSTOM,
-    SPEED_GRADE_AUDIO,
+    SPEED_GRADE_AUDIO_SPDIF,
+    SPEED_GRADE_AUDIO_I2S,
     SPEED_GRADE_A,
     SPEED_GRADE_B,
     SPEED_GRADE_C,
@@ -80,6 +81,7 @@ typedef struct __attribute__((__packed__)) scsi_system_settings_t
     bool enableParity;
     bool useFATAllocSize;
     bool enableCDAudio;
+    uint8_t maxVolume;
     bool enableUSBMassStorage;
     uint16_t usbMassStorageWaitPeriod;
     bool usbMassStoragePresentImages;

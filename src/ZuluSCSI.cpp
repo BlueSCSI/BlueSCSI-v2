@@ -1,6 +1,6 @@
 /*
  *  ZuluSCSI™
- *  Copyright (c) 2022-2024 Rabbit Hole Computing™
+ *  Copyright (c) 2022-2025 Rabbit Hole Computing™
  *
  * This project is based on BlueSCSI:
  *
@@ -850,6 +850,33 @@ static void reinitSCSI()
 
 }
 
+// Alert user that update bin file not used
+static void check_for_unused_update_files()
+{
+  FsFile root = SD.open("/");
+  FsFile file;
+  char filename[MAX_FILE_PATH + 1];
+  bool bin_files_found = false;
+  while (file.openNext(&root, O_RDONLY))
+  {
+    if (!file.isDir())
+    {
+      size_t filename_len = file.getName(filename, sizeof(filename));
+      if (strncasecmp(filename, "zuluscsi", sizeof("zuluscsi" - 1)) == 0 &&
+          strncasecmp(filename + filename_len - 4, ".bin", 4) == 0)
+      {
+        bin_files_found = true;
+        logmsg("Firmware update file \"", filename, "\" does not contain the board model string \"", FIRMWARE_NAME_PREFIX, "\"");
+      }
+    }
+  }
+  if (bin_files_found)
+  {
+    logmsg("Please use the ", FIRMWARE_PREFIX ,"*.zip firmware bundle, or the proper .bin or .uf2 file to update the firmware.");
+    logmsg("See http://zuluscsi.com/manual for more information");
+  }
+}
+
 // Update firmware by unzipping the firmware package
 static void firmware_update()
 {
@@ -878,8 +905,10 @@ static void firmware_update()
   }
 
   logmsg("Found firmware package ", name);
-
-  zipparser::Parser parser = zipparser::Parser(FIRMWARE_NAME_PREFIX, sizeof(FIRMWARE_NAME_PREFIX) - 1);
+  // example fixed length at the end of the filename
+  const uint32_t postfix_filename_length = sizeof("_2025-02-21_e4be9ed.bin") - 1;
+  const uint32_t target_filename_length = sizeof(FIRMWARE_NAME_PREFIX) - 1 + postfix_filename_length;
+  zipparser::Parser parser = zipparser::Parser(FIRMWARE_NAME_PREFIX, sizeof(FIRMWARE_NAME_PREFIX) - 1, target_filename_length);
   uint8_t buf[512];
   int32_t parsed_length;
   int bytes_read = 0;
@@ -897,13 +926,14 @@ static void firmware_update()
       }
       else
       {
-        // seek to start of compressed data in matching file
+        // seek to start of data in matching file
         file.seekSet(file.position() - (sizeof(buf) - parsed_length));
         break;
       }
     }
     if (parsed_length < 0)
     {
+      logmsg("Filename character length of ", (int)target_filename_length , " with a prefix of ", FIRMWARE_NAME_PREFIX, " not found in ", name);
       file.close();
       root.close();
       return;
@@ -916,7 +946,10 @@ static void firmware_update()
 
     logmsg("Unzipping matching firmware with prefix: ", FIRMWARE_NAME_PREFIX);
     FsFile target_firmware;
-    target_firmware.open(&root, "ZuluSCSI.bin", O_BINARY | O_WRONLY | O_CREAT | O_TRUNC);
+    char firmware_name[64] = {0};
+    memcpy(firmware_name, FIRMWARE_NAME_PREFIX, sizeof(FIRMWARE_NAME_PREFIX) - 1);
+    memcpy(firmware_name + sizeof(FIRMWARE_NAME_PREFIX) - 1, ".bin", sizeof(".bin"));
+    target_firmware.open(&root, firmware_name, O_BINARY | O_WRONLY | O_CREAT | O_TRUNC);
     uint32_t position = 0;
     while ((bytes_read = file.read(buf, sizeof(buf))) > 0)
     {
@@ -945,11 +978,9 @@ static void firmware_update()
     {
       target_firmware.close();
       logmsg("Error reading firmware package file");
-      root.remove("ZuluSCSI.bin");
+      root.remove(firmware_name);
     }
   }
-  else
-    logmsg("Updater did not find matching file in package: ", name);
   file.close();
   root.close();
 }
@@ -1007,8 +1038,9 @@ static void zuluscsi_setup_sd_card(bool wait_for_card = true)
       logmsg("Continuing without SD card");
     }
   }
-
+  check_for_unused_update_files();
   firmware_update();
+
 
 
   if (g_sdcard_present)

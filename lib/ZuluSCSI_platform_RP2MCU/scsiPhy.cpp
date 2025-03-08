@@ -1,6 +1,6 @@
 /** 
  * SCSI2SD V6 - Copyright (C) 2013 Michael McMaster <michael@codesrc.com>
- * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
+ * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
  * 
  * This file is licensed under the GPL version 3 or any later version.  
  * It is derived from scsiPhy.c in SCSI2SD V6.
@@ -149,7 +149,11 @@ static void scsiPhyIRQ(uint gpio, uint32_t events)
     {
         // Note BSY / SEL interrupts only when we are not driving OUT_BSY low ourselves.
         // The BSY input pin may be shared with other signals.
+#if SCSI_OUT_BSY > 31
+        if (sio_hw->gpio_hi_out & (1 << (SCSI_OUT_BSY - 32)))
+#else
         if (sio_hw->gpio_out & (1 << SCSI_OUT_BSY))
+#endif
         {
             scsi_bsy_deassert_interrupt();
         }
@@ -374,7 +378,7 @@ static inline uint8_t scsiReadOneByte(int* parityError)
     SCSI_OUT(REQ, 0);
     SCSI_WAIT_INACTIVE(ACK);
 
-    if (parityError && r != (g_scsi_parity_lookup[r & 0xFF] ^ SCSI_IO_DATA_MASK))
+    if (parityError && r != (g_scsi_parity_lookup[r & 0xFF] ^ (SCSI_IO_DATA_MASK >> SCSI_IO_SHIFT)))
     {
         logmsg("Parity error in scsiReadOneByte(): ", (uint32_t)r);
         *parityError = 1;
