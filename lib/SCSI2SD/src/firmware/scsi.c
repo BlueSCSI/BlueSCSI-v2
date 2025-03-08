@@ -1,7 +1,7 @@
 //	Copyright (C) 2014 Michael McMaster <michael@codesrc.com>
 //	Copyright (c) 2023 joshua stein <jcs@jcs.org>
 //	Copyright (c) 2023 Andrea Ottaviani <andrea.ottaviani.69@gmail.com>
-//	Copyright (C) 2024 Rabbit Hole Computing LLC
+//	Copyright (c) 2024-2025 Rabbit Hole Computing™
 //
 //	This file is part of SCSI2SD.
 //

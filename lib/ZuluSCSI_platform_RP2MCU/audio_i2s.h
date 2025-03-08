@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2023 saybur
- * Copyright (C) 2024 Rabbit Hole Computing LLC
+ * Copyright (C) 2024-2025 Rabbit Hole Computing™
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or

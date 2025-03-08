@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 '''
-  ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
+  ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
   
   ZuluSCSI™ file is licensed under the GPL version 3 or any later version. 
   

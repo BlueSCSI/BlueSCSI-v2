@@ -1,7 +1,7 @@
 /* Tape device emulation
  * Will be called by scsi.c from SCSI2SD.
  *
- * ZuluSCSI™ - Copyright (c) 2023 Rabbit Hole Computing™
+ * ZuluSCSI™ - Copyright (c) 2023-2025 Rabbit Hole Computing™
  * Copyright (c) 2023 Kars de Jong
  *
  * This file is licensed under the GPL version 3 or any later version. 

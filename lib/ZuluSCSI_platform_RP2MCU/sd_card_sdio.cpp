@@ -1,5 +1,5 @@
 /** 
- * ZuluSCSI™ - Copyright (c) 2022 Rabbit Hole Computing™
+ * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
  * Copyright (c) 2024 Tech by Androda, LLC
  * 
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 

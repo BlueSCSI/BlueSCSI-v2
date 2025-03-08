@@ -1,6 +1,6 @@
 /*
  *  ZuluSCSI™
- *  Copyright (c) 2022-2024 Rabbit Hole Computing™
+ *  Copyright (c) 2022-2025 Rabbit Hole Computing™
  *
  * This project is based on BlueSCSI:
  *
