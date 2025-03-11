@@ -232,6 +232,8 @@ static void readIniSCSIDeviceSetting(scsi_device_settings_t &cfg, const char *se
     cfg.headsPerCylinder = ini_getl(section, "HeadsPerCylinder", cfg.headsPerCylinder, CONFIGFILE);
     cfg.prefetchBytes = ini_getl(section, "PrefetchBytes", cfg.prefetchBytes, CONFIGFILE);
     cfg.ejectButton = ini_getl(section, "EjectButton", cfg.ejectButton, CONFIGFILE);
+    cfg.ejectBlinkTimes = ini_getl(section, "EjectBlinkTimes", cfg.ejectBlinkTimes, CONFIGFILE);
+    cfg.ejectBlinkPeriod = ini_getl(section, "EjectBlinkPeriod", cfg.ejectBlinkPeriod, CONFIGFILE);
 
     cfg.vol = ini_getl(section, "CDAVolume", cfg.vol, CONFIGFILE) & 0xFF;
 
@@ -325,6 +327,8 @@ scsi_system_settings_t *ZuluSCSISettings::initSystem(const char *presetName)
     cfgDev.headsPerCylinder = 0;
     cfgDev.prefetchBytes = PREFETCH_BUFFER_SIZE;
     cfgDev.ejectButton = 0;
+    cfgDev.ejectBlinkTimes = 20;
+    cfgDev.ejectBlinkPeriod = 50;
     cfgDev.vol = DEFAULT_VOLUME_LEVEL;
     
     cfgDev.nameFromImage = false;

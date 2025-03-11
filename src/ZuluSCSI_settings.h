@@ -110,6 +110,8 @@ typedef struct __attribute__((__packed__)) scsi_device_settings_t
     uint8_t deviceType;
     uint8_t deviceTypeModifier;
     uint8_t ejectButton;
+    uint32_t ejectBlinkTimes;
+    uint32_t ejectBlinkPeriod;
     bool nameFromImage;
     bool rightAlignStrings;
     bool reinsertOnInquiry;
