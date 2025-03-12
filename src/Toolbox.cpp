@@ -124,15 +124,15 @@ static void onListFiles(const char * dir_name, bool isCD = false) {
         size_t len = file.getName(name, MAX_FILE_PATH);
         uint64_t size = file.fileSize();
         file.close();
-        // truncate filename to fit in destination buffer
-        if (len > MAX_MAC_PATH)
-            name[MAX_MAC_PATH] = 0x0;
-        dbgmsg("TOOLBOX LIST FILES: truncated filename is '", name, "'");
         // validate file is allowed for this listing
         if (!toolboxFilenameValid(name, isCD))
             continue;
         if (isCD && isDir == 0x00)
             continue;
+        // truncate filename to fit in destination buffer
+        if (len > MAX_MAC_PATH)
+            name[MAX_MAC_PATH] = 0x0;
+        dbgmsg("TOOLBOX LIST FILES: truncated filename is '", name, "'");
         // fill output buffer
         file_entry[0] = index;
         file_entry[1] = isDir;
