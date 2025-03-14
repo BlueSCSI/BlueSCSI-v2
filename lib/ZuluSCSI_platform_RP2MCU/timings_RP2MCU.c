@@ -21,6 +21,7 @@
 #include "timings_RP2MCU.h"
 #include <string.h>
 #include "timings.h"
+#include <hardware/vreg.h>
 
 
 static zuluscsi_timings_t  predefined_timings[]  = {
@@ -332,6 +333,13 @@ static zuluscsi_timings_t  predefined_timings[]  = {
             .clk_div_pio = 5, // SDIO at 50MHz
             .delay0 = 4 - 1, // subtract one for the instruction delay
             .delay1 = 1 - 1  // clk_div_pio - delay0 and subtract one for the instruction delay
+        },
+        .audio =
+        {
+            // Divider for 44.1KHz to the nearest integer with a sys clk divided by 2 x 16-bit samples with the pio clock running 2x I2S clock
+            // 200.4Mhz / 16 / 2 / 2 / 44.1KHz = 71.003 ~= 71
+            .clk_div_pio = 89,
+            .audio_clocked = false,
         }
     },
     // predefined_timings[5] - 155250000 - Default clocks for Blaster I2S Audio
@@ -534,6 +542,70 @@ static zuluscsi_timings_t  predefined_timings[]  = {
             .audio_clocked = true,
         }
     },
+    // predefined_timings[8] - 251200000 - Alternate clocking for I2S Audio
+    {
+        .clk_hz = 251200000,
+
+        .pll =
+        {
+            .refdiv = 3,
+            .vco_freq = 1256000000,
+            .post_div1 = 5,
+            .post_div2 = 1
+        },
+
+        .scsi =
+        {
+            .req_delay = 14,
+            .clk_period_ps = 3981,
+        },
+
+        .scsi_20 =
+        {
+            .delay0 = 3 - 1,
+            .delay1 = 5 - 1,
+            .total_period_adjust = 1,
+            .rdelay1 = 5 - 1,
+            .rtotal_period_adjust = -1,
+            .max_sync = 12,
+
+        },
+
+        .scsi_10 =
+        {
+            .delay0 = 6 - 1,
+            .delay1 = 8 - 1,
+            .total_period_adjust = 0,
+            .rdelay1 = 8 - 1,
+            .rtotal_period_adjust = 0,
+            .max_sync = 25,
+        },
+
+        .scsi_5 =
+        {
+            .delay0 = 15, // maxed out should be 16
+            .delay1 = 15, // maxed out should be 30
+            .total_period_adjust = 1,
+            .rdelay1 = 15,
+            .rtotal_period_adjust = 1,
+            .max_sync = 50,
+        },
+        .sdio =
+        {
+            .clk_div_1mhz = 30,// set by trail and error
+            .clk_div_pio = 5, // SDIO at 50MHz
+            .delay0 = 4 - 1, // subtract one for the instruction delay
+            .delay1 = 1 - 1  // clk_div_pio - delay0 and subtract one for the instruction delay
+        },
+        .audio =
+        {
+            // Divider for 44.1KHz to the nearest integer with a sys clk divided by 2 x 16-bit samples with the pio clock running 2x I2S clock
+            // 200.4Mhz / 16 / 2 / 2 / 44.1KHz = 71.003 ~= 71
+            .clk_div_pio = 89,
+            .audio_clocked = true,
+        }
+    },
+    
 };
 static zuluscsi_timings_t  current_timings;
 
@@ -559,7 +631,7 @@ bool set_timings(zuluscsi_speed_grade_t speed_grade)
 #ifdef ENABLE_AUDIO_OUTPUT_I2S
     case SPEED_GRADE_MAX:
     case SPEED_GRADE_A:
-        timings_index = 4;
+        timings_index = 8;
         break;
     case SPEED_GRADE_B:
         timings_index = 6;
