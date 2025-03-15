@@ -480,8 +480,11 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
         {
             logmsg("---- Configuring as tape drive");
             img.deviceType = S2S_CFG_SEQUENTIAL;
+            img.tape_mark_count = 0;
+            scsiDev.target->sense.filemark = false;
+            scsiDev.target->sense.eom = false;
         }
-                else if (type == S2S_CFG_ZIP100)
+        else if (type == S2S_CFG_ZIP100)
         {
             logmsg("---- Configuration as Iomega Zip100");
             img.deviceType = S2S_CFG_ZIP100;
@@ -576,6 +579,34 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
                 img.cuesheetfile.close();
             }
         }
+        else if (img.deviceType == S2S_CFG_SEQUENTIAL && img.file.isFolder())
+        {
+            // multi file tape that implements tape markers
+            char name[MAX_FILE_PATH + 1] = {0};
+            img.file.getFoldername(name, sizeof(name));
+            img.bin_container.open(name);
+            FsFile file;
+            bool valid = false;
+
+            while(file.openNext(&img.bin_container))
+            {
+                file.getName(name, sizeof(name));
+                if(!file.isDir() && !file.isHidden() && scsiDiskFilenameValid(name))
+                {
+                    valid = true;
+                    img.tape_mark_count++;
+                }
+            }
+            if (!valid)
+            {
+                // if there are no valid image files, create one
+                file.open(&img.bin_container, TAPE_DEFAULT_NAME, O_CREAT);
+                file.close();
+            }
+            img.tape_mark_index = 0;
+            img.tape_mark_block_offset = 0;
+            img.tape_load_next_file = false;
+        }
 
         img.use_prefix = use_prefix;
         img.file.getFilename(img.current_image, sizeof(img.current_image));
@@ -662,6 +693,20 @@ bool scsiDiskFolderContainsCueSheet(FsFile *dir)
         }
     }
 
+    return false;
+}
+
+bool scsiDiskFolderIsTapeFolder(FsFile *dir)
+{
+    char filename[MAX_FILE_PATH + 1];
+    dir->getName(filename, sizeof(filename));
+    // string starts with 'tp', the 3rd character is a SCSI ID, and it has more 3 charters
+    // e.g. "tp0 - tape 01"
+    if (strlen(filename) > 3 && strncasecmp("tp", filename, 2) == 0 
+        && filename[2] >= '0' && filename[2] - '0' < NUM_SCSIID)
+    {
+        return true;
+    }
     return false;
 }
 
@@ -788,13 +833,9 @@ static void doPerformEject(image_config_t &img)
     }
 }
 
-
-// Finds filename with the lowest lexical order _after_ the given filename in
-// the given folder. If there is no file after the given one, or if there is
-// no current file, this will return the lowest filename encountered.
-static int findNextImageAfter(image_config_t &img,
+int findNextImageAfter(image_config_t &img,
         const char* dirname, const char* filename,
-        char* buf, size_t buflen)
+        char* buf, size_t buflen, bool ignore_prefix)
 {
     FsFile dir;
     if (dirname[0] == '\0')
@@ -837,7 +878,7 @@ static int findNextImageAfter(image_config_t &img,
             continue;
         }
 
-        if (img.use_prefix && !compare_prefix(filename, buf)) continue;
+        if (!ignore_prefix && img.use_prefix && !compare_prefix(filename, buf)) continue;
 
         // keep track of the first item to allow wrapping
         // without having to iterate again

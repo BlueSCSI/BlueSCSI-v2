@@ -59,9 +59,12 @@ struct image_config_t: public S2S_TargetCfg
     // default option of '0' disables this functionality
     uint8_t ejectButton;
 
-    // For tape drive emulation, current position in blocks
-    uint32_t tape_pos;
-
+    // For tape drive emulation
+    uint32_t tape_pos; // current position in blocks
+    uint32_t tape_mark_index; // a direct relationship to the file in a multi image file tape 
+    uint32_t tape_mark_count; // the number of marks
+    uint32_t tape_mark_block_offset; // Sum of the the previous image file sizes at the current mark
+    bool     tape_load_next_file;
     // True if there is a subdirectory of images for this target
     bool image_directory;
 
@@ -141,6 +144,9 @@ bool scsiDiskFilenameValid(const char* name);
 // This is used when single .cue sheet references multiple .bin files.
 bool scsiDiskFolderContainsCueSheet(FsFile *dir);
 
+// Checks if the directory name is for multi tagged tapes
+bool scsiDiskFolderIsTapeFolder(FsFile *dir);
+
 // Clear the ROM drive header from flash
 bool scsiDiskClearRomDrive();
 // Program ROM drive and rename image file
@@ -152,6 +158,11 @@ bool scsiDiskActivateRomDrive();
 
 // Returns true if there is at least one image active
 bool scsiDiskCheckAnyImagesConfigured();
+
+// Finds filename with the lowest lexical order _after_ the given filename in
+// the given folder. If there is no file after the given one, or if there is
+// no current file, this will return the lowest filename encountered.
+int findNextImageAfter(image_config_t &img, const char* dirname, const char* filename, char* buf, size_t buflen, bool ignore_prefix = false);
 
 // Gets the next image filename for the target, if configured for multiple
 // images. As a side effect this advances image tracking to the next image.

@@ -171,6 +171,9 @@ typedef enum
 
 typedef struct
 {
+	bool filemark;
+	bool eom;
+	uint32_t info;
 	uint8_t code;
 	uint16_t asc;
 } ScsiSense;
