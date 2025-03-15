@@ -131,6 +131,8 @@
 #define ZIP100_DISK_SIZE    100663296 // bytes
 #define ZIP250_DISK_SIZE    250640384 // bytes
 
+#define TAPE_DEFAULT_NAME  "tape.000"
+
 // Settings for rebooting
 #define REBOOT_INTO_MASS_STORAGE_MAGIC_NUM 0x5eeded
 

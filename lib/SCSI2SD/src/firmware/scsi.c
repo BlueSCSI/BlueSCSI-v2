@@ -537,12 +537,25 @@ static void process_Command()
 			memset(scsiDev.data, 0, 256); // Max possible alloc length
 			scsiDev.data[0] = 0xF0;
 			scsiDev.data[2] = scsiDev.target->sense.code & 0x0F;
-
-			scsiDev.data[3] = transfer.lba >> 24;
-			scsiDev.data[4] = transfer.lba >> 16;
-			scsiDev.data[5] = transfer.lba >> 8;
-			scsiDev.data[6] = transfer.lba;
-
+			if (cfg->deviceType == S2S_CFG_SEQUENTIAL)
+			{
+				scsiDev.data[2] |= scsiDev.target->sense.filemark ? 1 << 7 : 0;
+				scsiDev.data[3] |= scsiDev.target->sense.eom ? 1 << 6 : 0;
+			}
+			if (cfg->deviceType == S2S_CFG_SEQUENTIAL)
+			{
+				scsiDev.data[3] = scsiDev.target->sense.info >> 24;
+				scsiDev.data[4] = scsiDev.target->sense.info >> 16;
+				scsiDev.data[5] = scsiDev.target->sense.info >> 8;
+				scsiDev.data[6] = scsiDev.target->sense.info;
+			}
+			else
+			{
+				scsiDev.data[3] = transfer.lba >> 24;
+				scsiDev.data[4] = transfer.lba >> 16;
+				scsiDev.data[5] = transfer.lba >> 8;
+				scsiDev.data[6] = transfer.lba;
+			}
 			// Additional bytes if there are errors to report
 			scsiDev.data[7] = 10; // additional length
 			scsiDev.data[12] = scsiDev.target->sense.asc >> 8;
