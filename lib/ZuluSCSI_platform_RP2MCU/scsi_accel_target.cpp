@@ -1272,11 +1272,12 @@ bool scsi_accel_rp2040_setSyncMode(int syncOffset, int syncPeriod)
             else
             {
                 // Slow SCSI timing: 90 ns assertion period, 55 ns skew delay
+                // Delay2 must be at least 2 to keep negation period well above the 90 ns minimum
                 totalPeriod += g_zuluscsi_timings->scsi_5.total_period_adjust;
                 delay0 = g_zuluscsi_timings->scsi_5.delay0;
                 delay1 = g_zuluscsi_timings->scsi_5.delay1;
                 delay2 = totalPeriod - delay0 - delay1 - 3;
-                if (delay2 < 0) delay2 = 0;
+                if (delay2 < 2) delay2 = 2;
                 if (delay2 > 15) delay2 = 15;
                 rdelay1 = g_zuluscsi_timings->scsi_5.rdelay1;
                 rtotalPeriod += g_zuluscsi_timings->scsi_5.rtotal_period_adjust;
