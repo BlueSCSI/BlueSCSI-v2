@@ -2355,7 +2355,7 @@ int scsiDiskCommand()
 
         scsiDev.phase = DATA_IN;
     }
-    else if (img.file.isRom())
+    else if (!img.file.isWritable())
     {
         // Special handling for ROM drive to make SCSI2SD code report it as read-only
         blockDev.state |= DISK_WP;
