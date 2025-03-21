@@ -530,7 +530,133 @@ void audio_poll() {
     }
 }
 
+bool  audio_play_track_index(uint8_t owner,      image_config_t* img, 
+                            uint8_t start_track, uint8_t start_index, 
+                            uint8_t end_track,   uint8_t end_index)
+{
+    if(!img->cuesheetfile && img->cuesheetfile.isOpen())
+    {
+        logmsg("Error attempting to play CD Audio with no cue/bin image(s)");
+        return false;
+    }
+    if (img->bin_container.isOpen() && img->bin_container.isDir())
+    {
+        audio_parent.close();
+        audio_file.close();
+        audio_parent = img->bin_container;
+        single_bin_file = false;
+    }
+    else if (img->bin_container.isOpen())
+    {
+        audio_parent.close();
+        audio_file.close();
+        audio_file = img->bin_container;
+        single_bin_file = true;
+    }
+    else
+        return false;
+
+    if (&img->cuesheetfile != cuesheet_file)
+    {
+        cuesheet_file = &img->cuesheetfile;
+        cuesheet_file->seek(0);
+        cuesheet_file->read(g_cuesheet, sizeof(g_cuesheet));
+        delete g_cue_parser;
+        g_cue_parser = new CUEParser(g_cuesheet);
+    }
+
+    // read in the first track and report errors
+    const CUETrackInfo *find_track_info;
+
+    // Init globals
+    within_gap = false;
+    last_track_reached = false;
+    gap_length = 0;
+    gap_read = 0;
+
+    uint64_t file_size = 0;
+    CUETrackInfo track_info = {0};
+    int file_index = -1;
+    uint32_t start_lba = 0;
+    uint32_t end_lba = 0;
+    bool found_start = false;
+    bool found_end = false;
+    bool searched_past_last_track = false;
+    uint64_t last_file_size_lba = 0;
+    g_cue_parser->restart();
+
+    while ((find_track_info = g_cue_parser->next_track(file_size)) != nullptr )
+    {
+
+        if (!single_bin_file)
+        {
+            // opening the file for getting file size
+            if (find_track_info->file_index != file_index)
+            {
+                if (!(audio_parent.isDir() && audio_file.open(&audio_parent, find_track_info->filename, O_RDONLY)))
+                {
+                    dbgmsg("------ Audio playback - could not open the next track's bin file: ", find_track_info->filename);
+                    audio_file.close();
+                    return false;
+                }
+                file_index = find_track_info->file_index;
+            }
+        }
+        file_size = audio_file.size();
+
+        if (!found_start && start_track == find_track_info->track_number)
+        {
+            // current we only handle index 0 and index 1 in CUEParser
+            // because index can only be 1 - 99, start_lba will always be data_start
+            start_lba = find_track_info->data_start;
+            end_lba = find_track_info->data_start;
+            last_file_size_lba = (file_size - find_track_info->file_offset) / find_track_info->sector_length;
+            found_start = true;
+            if (end_track == find_track_info->track_number)
+            {
+                found_end = true;
+            }
+        }
+        else if (found_start && !found_end)
+        {
+            last_file_size_lba = (file_size - find_track_info->file_offset) / find_track_info->sector_length;
+            end_lba = find_track_info->data_start;
+
+            if (end_track == find_track_info->track_number)
+            {
+                found_end = true;
+                if (!single_bin_file)
+                {
+                    end_lba += last_file_size_lba;
+                    break;
+                }
+            }
+        }
+        else if (found_end)
+        {
+            end_lba = find_track_info->track_start;
+            searched_past_last_track = true;
+            break;
+        }
+        track_info = *find_track_info;
+    }
+
+    if (!found_start)
+    {
+        dbgmsg("------ Audio playback - could not find starting track");
+        return false;
+    }
+    
+    if (single_bin_file && !searched_past_last_track)
+    {
+        end_lba += last_file_size_lba;
+    }
+
+    return audio_play(owner, img, start_lba, end_lba - start_lba, false);
+}
+
 bool audio_play(uint8_t owner, image_config_t* img, uint32_t start, uint32_t length, bool swap) {
+    dbgmsg("------ Audio playback lba start ", (int) start, ", length ", (int)(length));
     // Per Annex C terminate playback immediately if already in progress on
     // the current target. Non-current targets may also get their audio
     // interrupted later due to hardware limitations

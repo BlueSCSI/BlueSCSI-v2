@@ -89,7 +89,7 @@ static const char *getCommandName(uint8_t cmd)
         case 0x45: return "CDROM PlayAudio10";
         case 0xA5: return "CDROM PlayAudio12";
         case 0x47: return "CDROM PlayAudioMSF";
-        case 0x48: return "CDROM PauseResume";
+        case 0x48: return "CDROM PlayAudioTrackIndex";
         case 0x52: return "CDROM ReadTrackInformation";
         case 0xBB: return "CDROM SetCDSpeed";
         case 0xBD: return "CDROM MechanismStatus";
