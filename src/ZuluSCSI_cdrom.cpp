@@ -1445,7 +1445,7 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
         scsiDev.phase = STATUS;
     }
 #elif defined(ENABLE_AUDIO_OUTPUT_I2S) && defined(ZULUSCSI_BLASTER)
-    dbgmsg("------ CD-ROM Play Audio request at ", lba, " for ", length, " sectors");
+    dbgmsg("------ CD-ROM Play Audio request at ", (int)lba, " for ", (int)length, " sectors");
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     uint8_t target_id = img.scsiId & 7;
 
@@ -1458,6 +1458,46 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
         lba = audio_get_lba_position();
     }
     if (audio_play(target_id, &img, lba, length , false))
+    {
+        scsiDev.status = 0;
+        scsiDev.phase = STATUS;
+    }
+    else
+    {
+        // // Underlying data/media error? Fake a disk scratch, which should
+        // // be a condition most CD-DA players are expecting
+        // scsiDev.status = CHECK_CONDITION;
+        // scsiDev.target->sense.code = MEDIUM_ERROR;
+        // scsiDev.target->sense.asc = 0x1106; // CIRC UNRECOVERED ERROR
+        // scsiDev.phase = STATUS;
+        // return;
+        
+        // virtual drive supports audio, just not with this disk image
+        dbgmsg("---- Request to play audio on non-audio image");
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.target->sense.asc = 0x6400; // ILLEGAL MODE FOR THIS TRACK
+        scsiDev.phase = STATUS;
+    }
+#else
+    dbgmsg("---- Target does not support audio playback");
+    // per SCSI-2, targets not supporting audio respond to zero-length
+    // PLAY AUDIO commands with ILLEGAL REQUEST; this seems to be a check
+    // performed by at least some audio playback software
+    scsiDev.status = CHECK_CONDITION;
+    scsiDev.target->sense.code = ILLEGAL_REQUEST;
+    scsiDev.target->sense.asc = 0x0000; // NO ADDITIONAL SENSE INFORMATION
+    scsiDev.phase = STATUS;
+#endif
+}
+
+static void doPlayAudioTrackIndex(uint8_t start_track, uint8_t start_index, uint8_t end_track, uint8_t end_index)
+{
+#if defined(ENABLE_AUDIO_OUTPUT)
+    dbgmsg("------ CD-ROM Play Audio request at track:index ", (int)start_track, ":", (int)start_index, " until ", (int)end_track, ":", (int)end_index);
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+    uint8_t target_id = img.scsiId & 7;
+    if (audio_play_track_index(target_id, &img, start_track, start_index, end_track, end_index))
     {
         scsiDev.status = 0;
         scsiDev.phase = STATUS;
@@ -2211,6 +2251,17 @@ extern "C" int scsiCDRomCommand()
 
         uint32_t length = end - lba;
         doPlayAudio(lba, length);
+    }
+    else if (command == 0x48)
+    {
+        // PLAY AUDIO (Track/Index)
+        uint8_t start_track = scsiDev.cdb[4];
+        uint8_t start_index = scsiDev.cdb[5];
+        uint8_t end_track   = scsiDev.cdb[7];
+        uint8_t end_index   = scsiDev.cdb[8];
+
+        doPlayAudioTrackIndex(start_track, start_index, end_track, end_index);
+
     }
     else if (command == 0x4B)
     {
