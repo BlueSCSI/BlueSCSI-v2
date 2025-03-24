@@ -1494,6 +1494,7 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
 static void doPlayAudioTrackIndex(uint8_t start_track, uint8_t start_index, uint8_t end_track, uint8_t end_index)
 {
 #if defined(ENABLE_AUDIO_OUTPUT)
+# if defined(ZULUSCSI_BLASTER)
     dbgmsg("------ CD-ROM Play Audio request at track:index ", (int)start_track, ":", (int)start_index, " until ", (int)end_track, ":", (int)end_index);
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     uint8_t target_id = img.scsiId & 7;
@@ -1519,6 +1520,14 @@ static void doPlayAudioTrackIndex(uint8_t start_track, uint8_t start_index, uint
         scsiDev.target->sense.asc = 0x6400; // ILLEGAL MODE FOR THIS TRACK
         scsiDev.phase = STATUS;
     }
+# else
+    logmsg("---- Request to play audio via track and index has not been implemented for this board");
+    scsiDev.status = CHECK_CONDITION;
+    scsiDev.target->sense.code = ILLEGAL_REQUEST;
+    scsiDev.target->sense.asc = NO_ADDITIONAL_SENSE_INFORMATION;
+    scsiDev.phase = STATUS;
+# endif
+
 #else
     dbgmsg("---- Target does not support audio playback");
     // per SCSI-2, targets not supporting audio respond to zero-length
@@ -1526,7 +1535,7 @@ static void doPlayAudioTrackIndex(uint8_t start_track, uint8_t start_index, uint
     // performed by at least some audio playback software
     scsiDev.status = CHECK_CONDITION;
     scsiDev.target->sense.code = ILLEGAL_REQUEST;
-    scsiDev.target->sense.asc = 0x0000; // NO ADDITIONAL SENSE INFORMATION
+    scsiDev.target->sense.asc = NO_ADDITIONAL_SENSE_INFORMATION;
     scsiDev.phase = STATUS;
 #endif
 }
