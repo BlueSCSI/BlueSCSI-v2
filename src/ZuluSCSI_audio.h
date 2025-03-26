@@ -95,6 +95,19 @@ bool audio_play(uint8_t owner, image_config_t* img, uint64_t start, uint64_t end
  */
 bool audio_play(uint8_t owner, image_config_t* img, uint32_t start, uint32_t length, bool swap);
 
+/**
+ * Begins audio playback for a file using the track and index.
+ *
+ * \param owner         The SCSI ID that initiated this playback operation.
+ * \param img           Pointer to the image container that can load PCM samples to play.
+ * \param start_track   Starting track
+ * \param start_index   Starting index
+ * \param end_track     LBA offset within file where playback will begin, inclusive.
+ * \param end_index     LBA length of play .
+ * \return       True if successful, false otherwise.
+ */
+
+bool audio_play_track_index(uint8_t owner, image_config_t* img, uint8_t start_track, uint8_t start_index, uint8_t end_track, uint8_t end_index);
 #endif
 
 
