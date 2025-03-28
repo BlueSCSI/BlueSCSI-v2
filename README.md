@@ -82,13 +82,12 @@ Any IO requests issued when card is removed will be timeouted.
 
 Programming & bootloader
 ------------------------
-For RP2040/RP2350-based boards, the USB programming uses `.uf2` format file that can be copied to the virtual USB drive that shows up in bootloader mode.
+For ZuluSCSI Blaster and RP2040-based boards, the USB programming uses `.uf2` format file that can be copied to the virtual USB drive that shows up in bootloader mode.
 
 - There is a custom bootloader that loads new firmware from SD card on boot.
-- The firmware file must be e.g. `ZuluSCSI.bin` or `ZuluSCSIv1_0_2022-xxxxx.bin`.
 - Firmware update takes about 1 second, during which the LED will flash rapidly.
 - When successful, the bootloader removes the update file and continues to main firmware.
-- On ZuluSCSI RP2040/RP2350 Blaster boards, there is a "BOOTLDR" momentary-contact switch, which can be held down at initial power-on, to enable .uf2 firmware to be loaded.
+- On ZuluSCSI Blaster and RP2040 boards, there is a "BOOTLDR" momentary-contact switch, which can be held down at initial power-on, to enable .uf2 firmware to be loaded.
 
 
 For ZuluSCSI V1.1 and V1.2:
@@ -102,6 +101,12 @@ For ZuluSCSI V1.1 and V1.2:
 
 DIP switches
 ------------
+ZuluSCSI Blaster and RP2040 (Full Size) DIP switch settings are:
+- INITIATOR: Enable SCSI initiator mode for imaging SCSI drives
+- DEBUG LOG: Enable verbose debug log (saved to `zululog.txt`)
+- TERMINATION: Enable SCSI termination
+Later (Rev2023a) ZuluSCSI RP2040 and all ZuluSCSI Blaster Full Size boards have a bootloader button instead of a DIP switch. 
+
 For ZuluSCSI V1.1, the DIP switch settings are as follows:
 
 - DEBUG: Enable verbose debug log (saved to `zululog.txt`)
@@ -117,14 +122,6 @@ For ZuluSCSI V1.2, the DIP switch settings at SW301 are as follows:
 - QUIRKS: Enables/disables Macintosh/Apple specific mode-pages and device strings, which eases disk initialization when performing fresh installs on legacy Macintosh computers.
 
 ZuluSCSI Mini has no DIP switches, so all optional configuration parameters must be defined in zuluscsi.ini
-
-ZuluSCSI RP2040/RP2350 Blaster Full Size DIP switch settings are:
-- INITIATOR: Enable SCSI initiator mode for imaging SCSI drives
-- DEBUG LOG: Enable verbose debug log (saved to `zululog.txt`)
-- TERMINATION: Enable SCSI termination
-- BOOTLOADER: Enable built-in USB bootloader, this DIP switch MUST remain off during normal operation.
-Later (Rev2023a) ZuluSCSI RP2040 and all ZuluSCSI Blaster Full Size boards have a bootloader button instead of a DIP switch. 
-
 
 Physical eject button for CDROM
 -------------------------------
@@ -142,7 +139,7 @@ On ZuluSCSI V1.0 and V1.1 models, buttons are connected to J303 12-pin expansion
 Button 1 is connected between `PE5` and `GND`, and button 2 is connected between `PE6` and `GND`.
 Pin locations are also shown in [this image](docs/ZuluSCSI_v1_1_buttons.jpg).
 
-On red RP2040/RP2350 Blaster-based ZuluSCSI models, buttons are connected to the I2C pins.
+On red ZuluSCSI Blaster and RP2040-based ZuluSCSI models, buttons are connected to the I2C pins.
 
 Button 1 is connected between `SDA` and `GND` and button 2 is connected between `SCL` and `GND`.
 On full-size models, the pins are available on expansion header J303 ([image](docs/ZuluSCSI_RP2040_buttons.jpg)).
@@ -150,8 +147,8 @@ On compact model, pins are available on 4-pin I2C header J305 ([image](docs/Zulu
 
 SCSI initiator mode
 -------------------
-The full-size RP2040, RP2350 Blaster, and Pico models support SCSI initiator mode for reading SCSI drives.
-When enabled by the DIP switch, the ZuluSCSI RP2040/2350 will scan for SCSI drives on the bus and copy the data as `HDxx_imaged.hda` to the SD card.
+The **full-size** ZuluSCSI Blaster, ZuluSCSI RP2040, and Pico OSHW models support SCSI initiator mode for reading SCSI drives.
+When enabled by the DIP switch, the ZuluSCSI Blaster/RP2040 will scan for SCSI drives on the bus and copy the data as `HDxx_imaged.hda` to the SD card.
 
 LED indications in initiator mode:
 
@@ -170,11 +167,9 @@ This is necessary if the drives do not supply their own SCSI terminator power.
 
 ROM drive in microcontroller flash
 ----------------------------------
-All ZuluSCSI RP2040 models support storing up to 1660kB image as a read-only drive in the
-flash chip on the PCB itself. This can be used as e.g. a boot floppy that is available
-even without SD card.
+The new ZuluSCSI Blaster model supports storing up to 15.8 **megabytes** in flash, which can be used as a read-only bootable ROM drive.
 
-The new ZuluSCSI Blaster model supports storing up to 15.8 **megabytes** in flash, which can be used as a read-only bootable ROM drive, if desired.
+All older ZuluSCSI RP2040 models support storing up to 1660kB image as a read-only drive in the flash chip on the PCB itself. This can be used as e.g. a boot floppy that is available even without SD card.
 
 To initialize a ROM drive, name your image file as e.g. `HD0.rom`.
 The drive type, SCSI ID and blocksize can be set in the filename the same way as for normal images.
