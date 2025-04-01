@@ -60,6 +60,7 @@
 #include "ZuluSCSI_initiator.h"
 #include "ZuluSCSI_msc_initiator.h"
 #include "ZuluSCSI_msc.h"
+#include "ZuluSCSI_blink.h"
 #include "ROMDrive.h"
 
 SdFs SD;
@@ -72,77 +73,7 @@ bool g_sdcard_present;
 #define SD_SPEED_CLASS_WARN_BELOW 10
 #endif
 
-/************************************/
-/* Status reporting by blinking led */
-/************************************/
 
-#define BLINK_STATUS_OK 1
-#define BLINK_ERROR_NO_IMAGES  3
-#define BLINK_DIRECT_MODE      4
-#define BLINK_ERROR_NO_SD_CARD 5
-
-static uint16_t blink_count = 0;
-static uint32_t blink_start = 0;
-static uint32_t blink_delay = 0;
-static uint32_t blink_end_delay= 0;
-
-bool blink_poll()
-{
-    bool is_blinking = true;
-
-    if (blink_count == 0)
-    {
-        is_blinking = false;
-    }
-    else if (blink_count == 1 && ((uint32_t)(millis() - blink_start)) > blink_end_delay )
-    {
-        LED_OFF_OVERRIDE();
-        blink_count = 0;
-        is_blinking = false;
-    }
-    else if (blink_count > 1 && ((uint32_t)(millis() - blink_start)) > blink_delay)
-    {
-        if (1 & blink_count)
-            LED_ON_OVERRIDE();
-        else
-            LED_OFF_OVERRIDE();
-        blink_count--;
-        blink_start = millis();
-    }
-
-    if (!is_blinking)
-        platform_set_blink_status(false);
-    return is_blinking;
-}
-
-void blink_cancel()
-{
-    blink_count = 0;
-    platform_set_blink_status(false);
-}
-
-void blinkStatus(uint8_t times, uint32_t delay = 500, uint32_t end_delay = 1250)
-{
-    if (!blink_poll() && blink_count == 0)
-    {
-        blink_start = millis();
-        blink_count = 2 * times + 1;
-        blink_delay = delay / 2;
-        blink_end_delay =  end_delay;
-        platform_set_blink_status(true);
-        LED_OFF_OVERRIDE();
-    }
-}
-
-extern "C" void s2s_ledOn()
-{
-  LED_ON();
-}
-
-extern "C" void s2s_ledOff()
-{
-  LED_OFF();
-}
 
 /**************/
 /* Log saving */
