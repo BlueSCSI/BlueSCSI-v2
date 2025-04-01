@@ -33,6 +33,7 @@
 #include "ZuluSCSI_config.h"
 #include "ZuluSCSI_platform.h"
 #include "ZuluSCSI_settings.h"
+#include "ZuluSCSI_blink.h"
 #include <CUEParser.h>
 #include <assert.h>
 #include <minIni.h>
@@ -1267,6 +1268,8 @@ void cdromPerformEject(image_config_t &img)
 #endif
     if (!img.ejected)
     {
+        blink_cancel();
+        blinkStatus(g_scsi_settings.getDevice(target)->ejectBlinkTimes, g_scsi_settings.getDevice(target)->ejectBlinkPeriod);
         dbgmsg("------ CDROM open tray on ID ", (int)target);
         img.ejected = true;
         img.cdrom_events = 3; // Media removal

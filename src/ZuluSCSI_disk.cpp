@@ -31,6 +31,7 @@
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_config.h"
 #include "ZuluSCSI_settings.h"
+#include "ZuluSCSI_blink.h"
 #ifdef ENABLE_AUDIO_OUTPUT
 #  include "ZuluSCSI_audio.h"
 #endif
@@ -823,6 +824,8 @@ static void doPerformEject(image_config_t &img)
     uint8_t target = img.scsiId & 7;
     if (!img.ejected)
     {
+        blink_cancel();
+        blinkStatus(g_scsi_settings.getDevice(target)->ejectBlinkTimes, g_scsi_settings.getDevice(target)->ejectBlinkPeriod);;
         dbgmsg("------ Device open tray on ID ", (int)target);
         img.ejected = true;
         switchNextImage(img); // Switch media for next time
