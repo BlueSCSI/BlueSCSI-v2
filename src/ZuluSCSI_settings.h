@@ -21,6 +21,7 @@
 **/
 #pragma once
 
+// must be in the same order as speed_grade_strings[]  in ZuluSCSI_settings.cpp
 typedef enum
 {
     SPEED_GRADE_DEFAULT = 0,
@@ -31,7 +32,7 @@ typedef enum
     SPEED_GRADE_A,
     SPEED_GRADE_B,
     SPEED_GRADE_C,
-
+    SPEED_GRADE_WIFI_RM2
 } zuluscsi_speed_grade_t;
 
 #ifdef __cplusplus

@@ -37,7 +37,10 @@ char * platform_network_wifi_ssid();
 char * platform_network_wifi_bssid();
 int platform_network_wifi_channel();
 int platform_network_send(uint8_t *buf, size_t len);
-
+// Test if the communication between the network device and the ZuluIDE works
+bool platform_network_iface_check();
+// Tears down the interface, mainly used to turn off the LED on the RM2 Pico 1W/2W
+void platform_network_deinit();
 # ifdef __cplusplus
 }
 # endif

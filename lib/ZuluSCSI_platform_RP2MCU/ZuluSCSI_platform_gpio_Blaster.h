@@ -115,6 +115,12 @@
 #define DIP_DBGLOG      SWO_PIN
 #define DIP_TERM        SCSI_OUT_REQ
 
+// RM2 pins
+#define GPIO_RM2_ON   0
+#define GPIO_RM2_DATA 1
+#define GPIO_RM2_CS   2
+#define GPIO_RM2_CLK  4
+
 // Below are GPIO access definitions that are used from scsiPhy.cpp.
 
 // Write a single SCSI pin.
@@ -181,4 +187,3 @@
 // Read SCSI data bus
 #define SCSI_IN_DATA() \
     (~sio_hw->gpio_in & SCSI_IO_DATA_MASK) >> SCSI_IO_SHIFT
-

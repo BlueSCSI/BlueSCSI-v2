@@ -9,7 +9,7 @@
         },
         "core": "earlephilhower",
         "cpu": "cortex-m33",
-        "extra_flags": "-DARDUINO_GENERIC_RP2350 -DARDUINO_ARCH_RP2040 -DUSBD_MAX_POWER_MA=500 ",
+        "extra_flags": "-DARDUINO_GENERIC_RP2350 -DARDUINO_ARCH_RP2040 -DUSBD_MAX_POWER_MA=500 -DPICO_CYW43_SUPPORTED=1 -DCYW43_PIN_WL_DYNAMIC=1",
         "f_cpu": "150000000L",
         "hwids": [
             [
@@ -22,7 +22,7 @@
             ]
         ],
         "mcu": "rp2350",
-        "variant": "generic_rp2350"
+        "variant": "rpipico2w"
     },
     "debug": {
         "jlink_device": "RP2350_0",

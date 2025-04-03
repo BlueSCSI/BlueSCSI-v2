@@ -47,6 +47,8 @@ bool platform_network_supported()
 	/* from cores/rp2040/RP2040Support.h */
 #if !defined(PICO_CYW43_SUPPORTED)
 	return false;
+#elif defined(ZULUSCSI_BLASTER)
+	return true;
 #else
 	extern bool __isPicoW;
 	return __isPicoW;
@@ -173,6 +175,20 @@ int platform_network_send(uint8_t *buf, size_t len)
 		logmsg("cyw43_send_ethernet failed: ", ret);
 
 	return ret;
+}
+
+bool platform_network_iface_check()
+{
+	cyw43_deinit(&cyw43_state);
+	cyw43_init(&cyw43_state);
+	return 0 == cyw43_gpio_set(&cyw43_state, PICO_W_GPIO_LED_PIN, 1);
+}
+
+void platform_network_deinit()
+{
+	cyw43_init(&cyw43_state);
+	cyw43_gpio_set(&cyw43_state, PICO_W_GPIO_LED_PIN, 0);
+	cyw43_deinit(&cyw43_state);
 }
 
 static int platform_network_wifi_scan_result(void *env, const cyw43_ev_scan_result_t *result)
