@@ -48,6 +48,7 @@ const char * const speed_grade_strings[] =
     "A",
     "B",
     "C",
+    "WifiRM2"
 };
 
 // Helper function for case-insensitive string compare
