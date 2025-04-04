@@ -645,6 +645,28 @@ void isr_hardfault(void)
 /* Debug logging and watchdog            */
 /*****************************************/
 
+static bool usb_serial_connected()
+{
+#ifdef PIO_FRAMEWORK_ARDUINO_NO_USB
+    return false;
+#endif
+
+    static bool connected;
+    static uint32_t last_check_time;
+
+#ifdef PLATFORM_MASS_STORAGE
+    if (platform_msc_lock_get()) return connected; // Avoid re-entrant USB events
+#endif
+
+    if (last_check_time == 0 || (uint32_t)(millis() - last_check_time) > 1000)
+    {
+        connected = bool(Serial);
+        last_check_time = millis();
+    }
+
+    return connected;
+}
+
 // Send log data to USB UART if USB is connected.
 // Data is retrieved from the shared log ring buffer and
 // this function sends as much as fits in USB CDC buffer.
@@ -658,6 +680,8 @@ static void usb_log_poll()
 {
 #ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
     static uint32_t logpos = 0;
+
+    if (!usb_serial_connected()) return;
 
 #ifdef PLATFORM_MASS_STORAGE
     if (platform_msc_lock_get()) return; // Avoid re-entrant USB events
@@ -686,7 +710,9 @@ static void usb_log_poll()
 // Grab input from USB Serial terminal
 static void usb_input_poll()
 {
-    #ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
+#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
+
+    if (!usb_serial_connected()) return;
 
 #ifdef PLATFORM_MASS_STORAGE
     if (platform_msc_lock_get()) return; // Avoid re-entrant USB events
