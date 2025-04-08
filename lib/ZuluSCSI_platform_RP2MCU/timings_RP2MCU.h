@@ -74,7 +74,7 @@ typedef struct
     {
         uint8_t delay0;
         uint8_t delay1;
-        uint8_t rtotal_period_adjust;
+        int8_t rtotal_period_adjust;
         uint8_t rdelay1;
         int16_t total_period_adjust;
         uint8_t max_sync;
@@ -84,7 +84,7 @@ typedef struct
     {
         uint8_t delay0;
         uint8_t delay1;
-        uint8_t rtotal_period_adjust;
+        int8_t rtotal_period_adjust;
         uint8_t rdelay1;
         int16_t total_period_adjust;
         uint8_t max_sync;
@@ -94,7 +94,7 @@ typedef struct
     {
         uint8_t delay0;
         uint8_t delay1;
-        uint8_t rtotal_period_adjust;
+        int8_t rtotal_period_adjust;
         uint8_t rdelay1;
         int16_t total_period_adjust;
         uint8_t max_sync;
