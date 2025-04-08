@@ -649,6 +649,16 @@ static bool mountSDCard()
   // Check for the common case, FAT filesystem as first partition
   if (SD.begin(SD_CONFIG))
   {
+#ifdef HAS_SDIO_CLASS
+    int speed = ((SdioCard*)SD.card())->kHzSdClk();
+    if (speed > 0)
+    {
+      logmsg("SD card communication speed: ",
+        (int)((speed + 500) / 1000), " MHz, ",
+        (int)((speed + 1000) / 2000), " MB/s");
+    }
+#endif
+
     reload_ini_cache(CONFIGFILE);
     return true;
   }
