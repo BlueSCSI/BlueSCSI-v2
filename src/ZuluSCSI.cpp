@@ -649,7 +649,7 @@ static bool mountSDCard()
   // Check for the common case, FAT filesystem as first partition
   if (SD.begin(SD_CONFIG))
   {
-#ifdef HAS_SDIO_CLASS
+#if defined(HAS_SDIO_CLASS) && HAS_SDIO_CLASS
     int speed = ((SdioCard*)SD.card())->kHzSdClk();
     if (speed > 0)
     {
