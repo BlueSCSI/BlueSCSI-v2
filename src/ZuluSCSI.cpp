@@ -649,6 +649,16 @@ static bool mountSDCard()
   // Check for the common case, FAT filesystem as first partition
   if (SD.begin(SD_CONFIG))
   {
+#ifdef HAS_SDIO_CLASS
+    int speed = ((SdioCard*)SD.card())->kHzSdClk();
+    if (speed > 0)
+    {
+      logmsg("SD card communication speed: ",
+        (int)((speed + 500) / 1000), " MHz, ",
+        (int)((speed + 1000) / 2000), " MB/s");
+    }
+#endif
+
     reload_ini_cache(CONFIGFILE);
     return true;
   }
@@ -916,6 +926,16 @@ static void firmware_update()
   root.close();
 }
 
+// Checks if SD card is still present
+static bool poll_sd_card()
+{
+#ifdef SD_USE_SDIO
+  return SD.card()->status() != 0 && SD.card()->errorCode() == 0;
+#else
+  uint32_t ocr;
+  return SD.card()->readOCR(&ocr);
+#endif
+}
 
 // Place all the setup code that requires the SD card to be initialized here
 // Which is pretty much everything after platform_init and and platform_late_init
@@ -1123,10 +1143,9 @@ extern "C" void zuluscsi_main_loop(void)
         (uint32_t)(millis() - sd_card_check_time) > SDCARD_POLL_INTERVAL)
     {
       sd_card_check_time = millis();
-      uint32_t ocr;
-      if (!SD.card()->readOCR(&ocr))
+      if (!poll_sd_card())
       {
-        if (!SD.card()->readOCR(&ocr))
+        if (!poll_sd_card())
         {
           g_sdcard_present = false;
           logmsg("SD card removed, trying to reinit");

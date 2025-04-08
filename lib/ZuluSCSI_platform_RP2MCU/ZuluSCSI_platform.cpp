@@ -40,6 +40,11 @@
 #include "custom_timings.h"
 #include <ZuluSCSI_settings.h>
 
+#ifdef SD_USE_RP2350_SDIO
+#include <sdio_rp2350.h>
+#else
+#include <sdio.h>
+#endif
 
 #ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
 # include <SerialUSB.h>
@@ -171,7 +176,9 @@ bool platform_reclock(zuluscsi_speed_grade_t speed_grade)
 #endif
             logmsg("Initial Clock set to ", (int) platform_sys_clock_in_hz(), "Hz");
             logmsg("Reclocking the MCU to ",(int) g_zuluscsi_timings->clk_hz, "Hz");
+#ifndef SD_USE_RP2350_SDIO
             logmsg("Setting the SDIO clock to ", (int)((g_zuluscsi_timings->clk_hz / g_zuluscsi_timings->sdio.clk_div_pio + (5 * MHZ / 10)) / MHZ) , "MHz");
+#endif
             usb_log_poll();
             reclock();
             logmsg("After reclocking, system reports clock set to ", (int) platform_sys_clock_in_hz(), "Hz");
@@ -645,6 +652,28 @@ void isr_hardfault(void)
 /* Debug logging and watchdog            */
 /*****************************************/
 
+static bool usb_serial_connected()
+{
+#ifdef PIO_FRAMEWORK_ARDUINO_NO_USB
+    return false;
+#endif
+
+    static bool connected;
+    static uint32_t last_check_time;
+
+#ifdef PLATFORM_MASS_STORAGE
+    if (platform_msc_lock_get()) return connected; // Avoid re-entrant USB events
+#endif
+
+    if (last_check_time == 0 || (uint32_t)(millis() - last_check_time) > 1000)
+    {
+        connected = bool(Serial);
+        last_check_time = millis();
+    }
+
+    return connected;
+}
+
 // Send log data to USB UART if USB is connected.
 // Data is retrieved from the shared log ring buffer and
 // this function sends as much as fits in USB CDC buffer.
@@ -658,6 +687,8 @@ static void usb_log_poll()
 {
 #ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
     static uint32_t logpos = 0;
+
+    if (!usb_serial_connected()) return;
 
 #ifdef PLATFORM_MASS_STORAGE
     if (platform_msc_lock_get()) return; // Avoid re-entrant USB events
@@ -686,7 +717,9 @@ static void usb_log_poll()
 // Grab input from USB Serial terminal
 static void usb_input_poll()
 {
-    #ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
+#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
+
+    if (!usb_serial_connected()) return;
 
 #ifdef PLATFORM_MASS_STORAGE
     if (platform_msc_lock_get()) return; // Avoid re-entrant USB events
@@ -1140,3 +1173,20 @@ const uint16_t g_scsi_parity_check_lookup[512] __attribute__((aligned(1024), sec
 #undef X
 
 } /* extern "C" */
+
+
+#ifdef SD_USE_SDIO
+// These functions are not used for SDIO mode but are needed to avoid build error.
+void sdCsInit(SdCsPin_t pin) {}
+void sdCsWrite(SdCsPin_t pin, bool level) {}
+
+// SDIO configuration for main program
+SdioConfig g_sd_sdio_config(DMA_SDIO);
+
+#ifdef SD_USE_RP2350_SDIO
+void platform_set_sd_callback(sd_callback_t func, const uint8_t *buffer)
+{
+    rp2350_sdio_sdfat_set_callback(func, buffer);
+}
+#endif
+#endif
