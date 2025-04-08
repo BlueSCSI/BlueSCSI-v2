@@ -417,7 +417,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
         {
             // ROM is always contiguous, no need to log
         }
-        else if (img.file.contiguousRange(&sector_begin, &sector_end))
+        else if (img.file.isContiguous() && img.file.contiguousRange(&sector_begin, &sector_end))
         {
 #ifdef ZULUSCSI_HARDWARE_CONFIG
             if (g_hw_config.is_active())

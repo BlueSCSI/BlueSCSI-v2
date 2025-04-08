@@ -82,6 +82,9 @@ SECTIONS
     Uncomment the EXCLUDE_FILE line below and comment the EXCLUDE_FILE line above for debug to work properly,
     the initial break point to main seems to get clobbered when everything is in SRAM.
     You may have to delete the "firmware.elf" file so the next build links with newly modified linker script
+
+    Alternatively, use "hbreak" in gdb to force hardware
+    breakpoints instead of RAM breakpoints.
     ------------------------------------------------------------*/
         /* *(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *libm.a:) .text*) */
 /* =============================================================== */

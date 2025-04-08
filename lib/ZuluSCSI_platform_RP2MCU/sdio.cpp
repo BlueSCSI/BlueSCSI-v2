@@ -30,12 +30,14 @@
 // https://www.sdcard.org/downloads/pls/
 // "SDIO Physical Layer Simplified Specification Version 8.00"
 
+#include <ZuluSCSI_platform.h>
+#if defined(SD_USE_SDIO) && !defined(SD_USE_RP2350_SDIO)
+
 #include "sdio.h"
 #include <hardware/pio.h>
 #include <hardware/dma.h>
 #include <hardware/gpio.h>
 #include <hardware/structs/scb.h>
-#include <ZuluSCSI_platform.h>
 #include <ZuluSCSI_log.h>
 #include "timings_RP2MCU.h"
 
@@ -932,3 +934,5 @@ void rp2040_sdio_init(int clock_divider)
     irq_set_enabled(DMA_IRQ_1, true);
 #endif
 }
+
+#endif

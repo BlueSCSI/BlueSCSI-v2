@@ -99,6 +99,9 @@ SECTIONS
          * Uncommenting this line puts all code in flash.
          * You may have to delete "firmware.elf" for the next build
          * to use this linker file's changes
+         *
+         * Alternatively, use "hbreak" in gdb to force hardware
+         * breakpoints instead of RAM breakpoints.
          */
         /* *(.text .text*) */
     } > FLASH
