@@ -24,7 +24,7 @@
 
 #include "ZuluSCSI_platform.h"
 
-#ifdef SD_USE_SDIO
+#if defined(SD_USE_SDIO) && !defined(SD_USE_RP2350_SDIO)
 
 #include "ZuluSCSI_log.h"
 #include "sdio.h"
@@ -548,12 +548,5 @@ bool SdioCard::readSectors(uint32_t sector, uint8_t* dst, size_t n)
         return stopTransmission(true);
     }
 }
-
-// These functions are not used for SDIO mode but are needed to avoid build error.
-void sdCsInit(SdCsPin_t pin) {}
-void sdCsWrite(SdCsPin_t pin, bool level) {}
-
-// SDIO configuration for main program
-SdioConfig g_sd_sdio_config(DMA_SDIO);
 
 #endif
