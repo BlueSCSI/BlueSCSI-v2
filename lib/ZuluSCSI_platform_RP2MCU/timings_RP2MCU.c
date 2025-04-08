@@ -46,10 +46,10 @@ static zuluscsi_timings_t  predefined_timings[]  = {
         .scsi_20 =
         {
             .delay0 = 3 - 1,
-            .delay1 = 3 - 1,
+            .delay1 = 4 - 1,
             .total_period_adjust = -1,
-            .rdelay1 = 3 - 1,
-            .rtotal_period_adjust = -1,
+            .rdelay1 = 5 - 1,
+            .rtotal_period_adjust = 0,
             .max_sync = 12,
         },
 
@@ -59,7 +59,7 @@ static zuluscsi_timings_t  predefined_timings[]  = {
             .delay1 = 7 - 1,
             .total_period_adjust = -1,
             .rdelay1 = 6,
-            .rtotal_period_adjust = -1,
+            .rtotal_period_adjust = 0,
             .max_sync = 25,
         },
 
@@ -69,7 +69,7 @@ static zuluscsi_timings_t  predefined_timings[]  = {
             .delay1 = 15 - 1,
             .total_period_adjust = -1,
             .rdelay1 = 15 - 1,
-            .rtotal_period_adjust = -1,
+            .rtotal_period_adjust = 0,
             .max_sync = 50,
         },
 
@@ -108,10 +108,10 @@ static zuluscsi_timings_t  predefined_timings[]  = {
         .scsi_20 =
         {
             .delay0 = 3 - 1,
-            .delay1 = 3 - 1,
+            .delay1 = 4 - 1,
             .total_period_adjust = -1,
-            .rdelay1 = 3 - 1,
-            .rtotal_period_adjust = -1,
+            .rdelay1 = 5 - 1,
+            .rtotal_period_adjust = 1,
             .max_sync = 12,
         },
 
@@ -170,10 +170,10 @@ static zuluscsi_timings_t  predefined_timings[]  = {
         .scsi_20 =
         {
             .delay0 = 3 - 1,
-            .delay1 = 3 - 1,
+            .delay1 = 4 - 1,
             .total_period_adjust = -1,
-            .rdelay1 = 3 - 1,
-            .rtotal_period_adjust = -1,
+            .rdelay1 = 5 - 1,
+            .rtotal_period_adjust = 1,
             .max_sync = 12,
         },
 
@@ -183,7 +183,7 @@ static zuluscsi_timings_t  predefined_timings[]  = {
             .delay1 = 7 - 1,
             .total_period_adjust = -1,
             .rdelay1 = 7 - 1,
-            .rtotal_period_adjust = -1,
+            .rtotal_period_adjust = 0,
             .max_sync = 25,
         },
 
@@ -193,7 +193,7 @@ static zuluscsi_timings_t  predefined_timings[]  = {
             .delay1 = 15 - 1,
             .total_period_adjust = -1,
             .rdelay1 = 15 - 1,
-            .rtotal_period_adjust = -1,
+            .rtotal_period_adjust = 0,
             .max_sync = 50,
         },
 
@@ -235,10 +235,10 @@ static zuluscsi_timings_t  predefined_timings[]  = {
         .scsi_20 =
         {
             .delay0 = 2 - 1,
-            .delay1 = 3 - 1,
+            .delay1 = 4 - 1,
             .total_period_adjust = 0,
-            .rdelay1 = 3 - 1,
-            .rtotal_period_adjust = -1,
+            .rdelay1 = 5 - 1,
+            .rtotal_period_adjust = 1,
             .max_sync = 12,
 
         },
@@ -300,10 +300,10 @@ static zuluscsi_timings_t  predefined_timings[]  = {
         .scsi_20 =
         {
             .delay0 = 3 - 1,
-            .delay1 = 5 - 1,
+            .delay1 = 7 - 1,
             .total_period_adjust = 1,
-            .rdelay1 = 5 - 1,
-            .rtotal_period_adjust = -1,
+            .rdelay1 = 7 - 1,
+            .rtotal_period_adjust = 0,
             .max_sync = 12,
 
         },
@@ -363,10 +363,10 @@ static zuluscsi_timings_t  predefined_timings[]  = {
         .scsi_20 =
         {
             .delay0 = 2 - 1,
-            .delay1 = 3 - 1,
+            .delay1 = 4 - 1,
             .total_period_adjust = 0,
-            .rdelay1 = 3 - 1,
-            .rtotal_period_adjust = -1,
+            .rdelay1 = 5 - 1,
+            .rtotal_period_adjust = 0,
             .max_sync = 12,
 
         },
@@ -431,10 +431,10 @@ static zuluscsi_timings_t  predefined_timings[]  = {
         .scsi_20 =
         {
             .delay0 = 3 - 1,
-            .delay1 = 4 - 1,
+            .delay1 = 5 - 1,
             .total_period_adjust = -1,
-            .rdelay1 = 3 - 1,
-            .rtotal_period_adjust = -1,
+            .rdelay1 = 5 - 1,
+            .rtotal_period_adjust = 1,
             .max_sync = 12,
         },
 
@@ -495,11 +495,11 @@ static zuluscsi_timings_t  predefined_timings[]  = {
 
         .scsi_20 =
         {
-            .delay0 = 3 - 1,
-            .delay1 = 4 - 1,
-            .total_period_adjust = 1,
-            .rdelay1 = 5 - 1,
-            .rtotal_period_adjust = -1,
+            .delay0 = 2 - 1,
+            .delay1 = 5 - 1,
+            .total_period_adjust = 0,
+            .rdelay1 = 7 - 1,
+            .rtotal_period_adjust = 1,
             .max_sync = 12,
 
         },
@@ -563,10 +563,10 @@ static zuluscsi_timings_t  predefined_timings[]  = {
         .scsi_20 =
         {
             .delay0 = 3 - 1,
-            .delay1 = 5 - 1,
+            .delay1 = 7 - 1,
             .total_period_adjust = 1,
-            .rdelay1 = 5 - 1,
-            .rtotal_period_adjust = -1,
+            .rdelay1 = 7 - 1,
+            .rtotal_period_adjust = 0,
             .max_sync = 12,
 
         },
