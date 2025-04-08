@@ -1154,6 +1154,7 @@ void scsi_accel_rp2040_init()
     channel_config_set_transfer_data_size(&cfg, DMA_SIZE_32);
     channel_config_set_read_increment(&cfg, false);
     channel_config_set_write_increment(&cfg, false);
+    channel_config_set_high_priority(&cfg, true);
     channel_config_set_dreq(&cfg, pio_get_dreq(SCSI_DMA_PIO, SCSI_DATA_SM, false));
     g_scsi_dma.dmacfg_read_chC = cfg;
 
@@ -1250,7 +1251,7 @@ bool scsi_accel_rp2040_setSyncMode(int syncOffset, int syncPeriod)
                 totalPeriod += g_zuluscsi_timings->scsi_20.total_period_adjust;
                 delay0 = g_zuluscsi_timings->scsi_20.delay0; //Data setup time, should be min 11.5ns according to the spec for FAST-20
                 delay1 = g_zuluscsi_timings->scsi_20.delay1; //pulse width, should be min 15ns according to the spec for FAST-20
-                delay2 = totalPeriod - delay0 - delay1 - 3;  //Data hold time, should be min 16.5ns according to the spec for FAST-20
+                delay2 = totalPeriod - delay0 - delay1 - 3;  //Data hold time, should be min 16.5ns from REQ falling edge according to the spec for FAST-20
                 if (delay2 < 0) delay2 = 0;
                 if (delay2 > 15) delay2 = 15;
                 rdelay1 = g_zuluscsi_timings->scsi_20.rdelay1;
@@ -1291,6 +1292,15 @@ bool scsi_accel_rp2040_setSyncMode(int syncOffset, int syncPeriod)
             SCSI_DMA_PIO->instr_mem[g_scsi_dma.pio_offset_sync_write + 0] = instr0;
             SCSI_DMA_PIO->instr_mem[g_scsi_dma.pio_offset_sync_write + 1] = instr1;
             SCSI_DMA_PIO->instr_mem[g_scsi_dma.pio_offset_sync_write + 2] = instr2;
+
+            // The DMA-based parity verification method will start dropping bytes
+            // if total period for read from SCSI bus is less than 13 clock cycles.
+            // Limit it to 14 to be safe.
+#ifdef ZULUSCSI_MCU_RP23XX
+            if (rtotalPeriod < 14) rtotalPeriod = 14;
+#else
+            if (rtotalPeriod < 18) rtotalPeriod = 18; // RP2040 DMA is slightly slower
+#endif
 
             // And similar patching for scsi_sync_read_pacer
             int rdelay0 = rtotalPeriod - rdelay1 - 2;
