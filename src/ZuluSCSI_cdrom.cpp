@@ -2020,30 +2020,9 @@ static bool doReadCapacity(uint32_t lba, uint8_t pmi)
 {
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
 
-    CUEParser parser;
-    if (!loadCueSheet(img, parser))
-    // uint32_t capacity = img.get_capacity_lba();
-    // if (capacity > 0)
+    uint32_t capacity = img.get_capacity_lba();
+    if (capacity > 0)
     {
-        // basic image, let the disk handler resolve
-        return false;
-    }
-
-    // find the last track on the disk
-    CUETrackInfo lasttrack = {0};
-    const CUETrackInfo *trackinfo;
-    uint64_t prev_capacity = 0;
-    while ((trackinfo = parser.next_track(prev_capacity)) != NULL)
-    {
-        lasttrack = *trackinfo;
-        cdromSelectBinFileForTrack(img, trackinfo);
-        prev_capacity = img.file.size();
-    }
-
-    uint32_t capacity = 0;
-    if (lasttrack.track_number != 0)
-    {
-        capacity = getLeadOutLBA(&lasttrack);
         capacity--; // shift to last addressable LBA
         if (pmi && lba && lba > capacity)
         {
@@ -2057,15 +2036,15 @@ static bool doReadCapacity(uint32_t lba, uint8_t pmi)
     {
         logmsg("WARNING: unable to find capacity of device ID ", (int) 7 & img.scsiId);
     }
-
+    uint32_t bytes_per_sector  = scsiDev.target->liveCfg.bytesPerSector;
     scsiDev.data[0] = capacity >> 24;
     scsiDev.data[1] = capacity >> 16;
     scsiDev.data[2] = capacity >> 8;
     scsiDev.data[3] = capacity;
-    scsiDev.data[4] = 0;
-    scsiDev.data[5] = 0;
-    scsiDev.data[6] = 0x08; // rest of code assumes 2048 here
-    scsiDev.data[7] = 0x00;
+    scsiDev.data[4] = bytes_per_sector >> 24;
+    scsiDev.data[5] = bytes_per_sector >> 16;
+    scsiDev.data[6] = bytes_per_sector >> 8;
+    scsiDev.data[7] = bytes_per_sector;
     scsiDev.dataLen = 8;
     scsiDev.phase = DATA_IN;
     return true;

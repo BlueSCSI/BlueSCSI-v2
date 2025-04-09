@@ -212,19 +212,22 @@ uint32_t image_config_t::get_capacity_lba()
                 bin_file.close();
             }
             if (last_track.track_number != 0)
-                return last_track.data_start + prev_capacity / last_track.sector_length;
+                return last_track.data_start  + prev_capacity / last_track.sector_length;
             else
                 return 0;
         }
         else
         {
             // Single bin file
-            track = parser.next_track();
-            return track->data_start + bin_container.size() / track->sector_length;
+            while((track = parser.next_track()) != nullptr)
+            {
+                last_track = *track;
+            }
+            return last_track.track_number == 0 ? 0 : last_track.data_start + (bin_container.size() - last_track.file_offset) / last_track.sector_length;
         }
     }
     else
-        return file.size() / bytesPerSector;
+        return file.size() / scsiDev.target->liveCfg.bytesPerSector;
 
 }
 
@@ -1560,9 +1563,6 @@ static void doReadCapacity()
         scsiDev.data[7] = bytesPerSector;
         scsiDev.dataLen = 8;
         scsiDev.phase = DATA_IN;
-
-        // \todo get rid of me
-        dbgmsg("doReadCapacity - disk.cpp highest block: ", highestBlock, " bytes per sector: ", bytesPerSector);
     }
     else
     {
