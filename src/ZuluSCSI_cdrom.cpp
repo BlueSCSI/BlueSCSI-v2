@@ -2019,9 +2019,31 @@ static void doReadSubchannel(bool time, bool subq, uint8_t parameter, uint8_t tr
 static bool doReadCapacity(uint32_t lba, uint8_t pmi)
 {
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-    uint32_t capacity = img.get_capacity_lba();
-    if (capacity > 0)
+
+    CUEParser parser;
+    if (!loadCueSheet(img, parser))
+    // uint32_t capacity = img.get_capacity_lba();
+    // if (capacity > 0)
     {
+        // basic image, let the disk handler resolve
+        return false;
+    }
+
+    // find the last track on the disk
+    CUETrackInfo lasttrack = {0};
+    const CUETrackInfo *trackinfo;
+    uint64_t prev_capacity = 0;
+    while ((trackinfo = parser.next_track(prev_capacity)) != NULL)
+    {
+        lasttrack = *trackinfo;
+        cdromSelectBinFileForTrack(img, trackinfo);
+        prev_capacity = img.file.size();
+    }
+
+    uint32_t capacity = 0;
+    if (lasttrack.track_number != 0)
+    {
+        capacity = getLeadOutLBA(&lasttrack);
         capacity--; // shift to last addressable LBA
         if (pmi && lba && lba > capacity)
         {
