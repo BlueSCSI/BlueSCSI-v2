@@ -665,7 +665,7 @@ static bool usb_serial_connected()
     if (platform_msc_lock_get()) return connected; // Avoid re-entrant USB events
 #endif
 
-    if (last_check_time == 0 || (uint32_t)(millis() - last_check_time) > 1000)
+    if (last_check_time == 0 || (uint32_t)(millis() - last_check_time) > 50)
     {
         connected = bool(Serial);
         last_check_time = millis();
