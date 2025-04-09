@@ -1560,6 +1560,9 @@ static void doReadCapacity()
         scsiDev.data[7] = bytesPerSector;
         scsiDev.dataLen = 8;
         scsiDev.phase = DATA_IN;
+
+        // \todo get rid of me
+        dbgmsg("doReadCapacity - disk.cpp highest block: ", highestBlock, " bytes per sector: ", bytesPerSector);
     }
     else
     {
@@ -1629,7 +1632,6 @@ int doTestUnitReady()
 static void doSeek(uint32_t lba)
 {
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-    uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
     uint32_t capacity = img.get_capacity_lba();
 
     if (lba >= capacity)
