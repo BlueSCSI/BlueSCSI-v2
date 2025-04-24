@@ -781,11 +781,15 @@ static void reinitSCSI()
   scsiInit();
 
 #ifdef ZULUSCSI_NETWORK
-  if (scsiDiskCheckAnyNetworkDevicesConfigured())
+  if (scsiDiskCheckAnyNetworkDevicesConfigured() && platform_network_supported())
   {
     platform_network_init(scsiDev.boardCfg.wifiMACAddress);
     if (scsiDev.boardCfg.wifiSSID[0] != '\0')
       platform_network_wifi_join(scsiDev.boardCfg.wifiSSID, scsiDev.boardCfg.wifiPassword);
+  }
+  else
+  {
+    platform_network_deinit();
   }
 #endif // ZULUSCSI_NETWORK
 

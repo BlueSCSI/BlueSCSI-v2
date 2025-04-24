@@ -645,6 +645,8 @@ bool set_timings(zuluscsi_speed_grade_t speed_grade)
     case SPEED_GRADE_AUDIO_I2S:
         timings_index = 7;
         break;
+    case SPEED_GRADE_WIFI_RM2:
+        timings_index = 5;
 #elif defined(ZULUSCSI_MCU_RP23XX)
     case SPEED_GRADE_MAX:
     case SPEED_GRADE_A:

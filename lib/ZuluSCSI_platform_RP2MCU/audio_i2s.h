@@ -26,8 +26,8 @@
 #define I2S_PIO_SM 0
 
 // audio subsystem DMA channels
-#define SOUND_DMA_CHA 6
-#define SOUND_DMA_CHB 7
+#define SOUND_DMA_CHA 10
+#define SOUND_DMA_CHB 11
 
 // size of the two audio sample buffers, in bytes
 // #define AUDIO_BUFFER_SIZE 8192 // reduce memory usage
