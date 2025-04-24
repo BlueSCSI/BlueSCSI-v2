@@ -368,7 +368,7 @@ scsi_system_settings_t *ZuluSCSISettings::initSystem(const char *presetName)
     else if (strequals(systemPresetName[SYS_PRESET_MPC3000], presetName))
     {
         m_sysPreset = SYS_PRESET_MPC3000;
-        cfgSys.initPreDelay = 600;
+        cfgSys.initPreDelay = 700;
     }
     else if (strequals(systemPresetName[SYS_PRESET_MEGASTE], presetName))
     {
