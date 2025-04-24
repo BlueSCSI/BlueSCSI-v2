@@ -57,6 +57,9 @@
 extern "C" {
 #  include <pico/cyw43_arch.h>
 }
+#  ifdef ZULUSCSI_RM2
+#    include <pico/cyw43_driver.h>
+#  endif
 #endif // ZULUSCSI_NETWORK
 
 #ifdef PLATFORM_MASS_STORAGE
@@ -459,14 +462,44 @@ void platform_late_init()
         gpio_conf(SCSI_IN_ATN,    GPIO_FUNC_SIO, true, false, false, true, false);
         gpio_conf(SCSI_IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
 
-#ifdef ENABLE_AUDIO_OUTPUT_I2S
+#ifdef ZULUSCSI_RM2
+    uint rm2_pins[CYW43_PIN_INDEX_WL_COUNT] = {0};
+    rm2_pins[CYW43_PIN_INDEX_WL_REG_ON] = GPIO_RM2_ON;
+    rm2_pins[CYW43_PIN_INDEX_WL_DATA_OUT] = GPIO_RM2_DATA;
+    rm2_pins[CYW43_PIN_INDEX_WL_DATA_IN] = GPIO_RM2_DATA;
+    rm2_pins[CYW43_PIN_INDEX_WL_HOST_WAKE] = GPIO_RM2_DATA;
+    rm2_pins[CYW43_PIN_INDEX_WL_CLOCK] = GPIO_RM2_CLK;
+    rm2_pins[CYW43_PIN_INDEX_WL_CS] = GPIO_RM2_CS;
+    assert(PICO_OK == cyw43_set_pins_wl(rm2_pins));
+    if (platform_reclock(SPEED_GRADE_WIFI_RM2))
+    {
+        // The iface check turns on the LED on the RM2 early in the init process
+        // Should tell the user that the RM2 is working
+        if(platform_network_iface_check())
+        {
+            logmsg("RM2 found");
+        }
+        else
+        {
+# ifdef ZULUSCSI_BLASTER
+            logmsg("RM2 not found, upclocking");
+            platform_reclock(SPEED_GRADE_AUDIO_I2S);
+# else
+            logmsg("RM2 not found");
+# endif
+        }
+    }
+    else
+    {
+        logmsg("WiFi RM2 timings not found");
+    }
+#elif defined(ENABLE_AUDIO_OUTPUT_I2S)
     logmsg("I2S audio to expansion header enabled");
     if (!platform_reclock(SPEED_GRADE_AUDIO_I2S))
     {
         logmsg("Audio output timings not found");
     }
-#endif
-#ifdef ENABLE_AUDIO_OUTPUT_SPDIF
+#elif defined(ENABLE_AUDIO_OUTPUT_SPDIF)
     logmsg("S/PDIF audio to expansion header enabled");
     if (platform_reclock(SPEED_GRADE_AUDIO_SPDIF))
     {
@@ -477,6 +510,13 @@ void platform_late_init()
         logmsg("Audio Output timings not found");
     }
 #endif // ENABLE_AUDIO_OUTPUT_SPDIF
+
+// This should turn on the LED for Pico 1/2 W devices early in the init process
+// It should help indicate to the user that interface is working and the board is ready for DaynaPORT
+#if  defined(ZULUSCSI_NETWORK) && ! defined(ZULUSCSI_RM2)
+    platform_network_iface_check();
+#endif
+
 
 #ifdef ENABLE_AUDIO_OUTPUT
         // one-time control setup for DMA channels and second core
@@ -504,6 +544,7 @@ void platform_late_init()
         gpio_conf(SCSI_OUT_ATN,   GPIO_FUNC_SIO, false,false, true,  true, true);
 #endif  // PLATFORM_HAS_INITIATOR_MODE
     }
+
 #ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
     Serial.begin();
 #endif
