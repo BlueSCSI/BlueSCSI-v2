@@ -354,6 +354,10 @@ void platform_init()
     logmsg ("SCSI termination is handled by a hardware jumper");
 #endif  // HAS_DIP_SWITCHES
 
+        logmsg("===========================================================");
+        logmsg(" Powered by Raspberry Pi");
+        logmsg("            Raspberry Pi is a trademark of Raspberry Pi Ltd");
+        logmsg("===========================================================");
 
     // Get flash chip size
     uint8_t cmd_read_jedec_id[4] = {0x9f, 0, 0, 0};
