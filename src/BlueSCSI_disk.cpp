@@ -1900,7 +1900,7 @@ void diskDataOut()
             scsiFinishRead(&scsiDev.data[start], len, &g_disk_transfer.parityError);
 
             // Check parity error status before writing to SD card
-            if (g_disk_transfer.parityError)
+            if (g_disk_transfer.parityError && (scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY))
             {
                 scsiDev.status = CHECK_CONDITION;
                 scsiDev.target->sense.code = ABORTED_COMMAND;
