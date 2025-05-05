@@ -23,9 +23,9 @@
 
 #include "ROMDrive.h"
 #include <SdFat.h>
-#include <ZuluSCSI_platform.h>
-#include "ZuluSCSI_log.h"
-#include "ZuluSCSI_config.h"
+#include <BlueSCSI_platform.h>
+#include "BlueSCSI_log.h"
+#include "BlueSCSI_config.h"
 #include <strings.h>
 #include <string.h>
 

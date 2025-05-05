@@ -22,10 +22,10 @@
 
 #include "ImageBackingStore.h"
 #include <SdFat.h>
-#include <ZuluSCSI_platform.h>
-#include "ZuluSCSI_log.h"
-#include "ZuluSCSI_config.h"
-#include "ZuluSCSI_settings.h"
+#include <BlueSCSI_platform.h>
+#include "BlueSCSI_log.h"
+#include "BlueSCSI_config.h"
+#include "BlueSCSI_settings.h"
 #include <minIni.h>
 #include <strings.h>
 #include <string.h>
@@ -149,7 +149,7 @@ bool ImageBackingStore::_internal_open(const char *filename)
         if (end != begin + sectorcount)
         {
             uint32_t allocsize = end - begin + 1;
-            // Due to issue #80 in ZuluSCSI version 1.0.8 and 1.0.9 the allocated size was mistakenly reported to SCSI controller.
+            // Due to issue #80 in BlueSCSI version 1.0.8 and 1.0.9 the allocated size was mistakenly reported to SCSI controller.
             // If the drive was formatted using those versions, you may have problems accessing it with newer firmware.
             // The old behavior can be restored with setting  [SCSI] UseFATAllocSize = 1 in config file.
 

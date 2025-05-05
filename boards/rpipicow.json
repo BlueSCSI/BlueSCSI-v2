@@ -32,7 +32,7 @@
     "frameworks": [
         "arduino"
     ],
-    "name": "ZuluSCSI Pico DaynaPORT",
+    "name": "BlueSCSI Pico DaynaPORT",
     "upload": {
         "maximum_ram_size": 262144,
         "maximum_size": 2097152,
@@ -50,6 +50,6 @@
             "picoprobe"
         ]
     },
-    "url": "http://zuluscsi.com",
+    "url": "http://bluescsi.com",
     "vendor": "Rabbit Hole Computing LLC"
 }

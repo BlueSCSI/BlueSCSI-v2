@@ -24,4 +24,4 @@ arm-none-eabi-gdb \
        -iex 'mon s' -iex 'att 1' \
        -iex 'set mem inaccessible-by-default off' \
        -iex 'source utils/rp2040_gdb_macros' \
-       .pio/build/ZuluSCSI_RP2040/firmware.elf
+       .pio/build/BlueSCSI_RP2040/firmware.elf

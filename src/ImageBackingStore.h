@@ -33,7 +33,7 @@
 #include <unistd.h>
 #include <SdFat.h>
 #include "ROMDrive.h"
-#include "ZuluSCSI_config.h"
+#include "BlueSCSI_config.h"
 
 extern "C" {
 #include <scsi.h>

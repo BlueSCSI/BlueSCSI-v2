@@ -22,7 +22,7 @@
 #include "mode.h"
 #include "disk.h"
 #include "inquiry.h"
-#include "ZuluSCSI_mode.h"
+#include "BlueSCSI_mode.h"
 #include "toolbox.h"
 
 #include <string.h>

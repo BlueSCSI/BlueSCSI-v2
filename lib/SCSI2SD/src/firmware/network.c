@@ -14,7 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifdef ZULUSCSI_NETWORK
+#ifdef BLUESCSI_NETWORK
 #include <string.h>
 #include "scsi.h"
 #include "scsi2sd_time.h"
@@ -508,4 +508,4 @@ int scsiNetworkPurge(void)
 
 	return sent;
 }
-#endif // ZULUSCSI_NETWORK
+#endif // BLUESCSI_NETWORK

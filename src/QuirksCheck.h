@@ -23,7 +23,7 @@
 **/
 
 #pragma once
-#include "ZuluSCSI_disk.h"
+#include "BlueSCSI_disk.h"
 
 void quirksCheck(image_config_t *img);
 

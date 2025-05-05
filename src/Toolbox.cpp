@@ -3,7 +3,7 @@
  * Copyright (c) 2024-2025 Rabbit Hole Computing
  * Copyright (C) 2025 Niels Martin Hansen
  * 
- * This file is originally part of BlueSCSI adopted for ZuluSCSI
+ * This file is originally part of BlueSCSI adopted for BlueSCSI
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,9 +19,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
 #include "Toolbox.h"
-#include "ZuluSCSI_disk.h"
-#include "ZuluSCSI_cdrom.h"
-#include "ZuluSCSI_log.h"
+#include "BlueSCSI_disk.h"
+#include "BlueSCSI_cdrom.h"
+#include "BlueSCSI_log.h"
 #include <minIni.h>
 #include <SdFat.h>
 extern "C" {

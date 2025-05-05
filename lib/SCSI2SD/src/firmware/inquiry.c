@@ -24,7 +24,7 @@
 #include "scsi.h"
 #include "config.h"
 #include "inquiry.h"
-#include "ZuluSCSI_config.h"
+#include "BlueSCSI_config.h"
 
 #include <string.h>
 

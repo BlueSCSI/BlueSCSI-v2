@@ -22,9 +22,9 @@
 **/
 
 #include <minIni.h>
-#include "ZuluSCSI_disk.h"
-#include "ZuluSCSI_log.h"
-#include "ZuluSCSI_settings.h"
+#include "BlueSCSI_disk.h"
+#include "BlueSCSI_log.h"
+#include "BlueSCSI_settings.h"
 #include "QuirksCheck.h"
 #include <assert.h>
 #include <stdint.h>
@@ -81,7 +81,7 @@ static bool isValidMacintoshImage(image_config_t *img)
     return result;
 }
 
-// Called from ZuluSCSI_disk after image is initalized.
+// Called from BlueSCSI_disk after image is initalized.
 static void macQuirksSanityCheck(image_config_t *img)
 {
 
