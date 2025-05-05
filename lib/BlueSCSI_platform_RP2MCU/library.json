@@ -1,0 +1,14 @@
+{
+    "name": "BlueSCSI_platform_RP2MCU",
+    "version": "1.0",
+    "repository": { "type": "git", "url": "git://github.com/BluesCSI/BlueSCSI-v2.git" },
+    "authors": [{ "name": "BlueSCSI", "email": "support@bluescsi.com" }],
+    "license": "GPL-3.0-or-later",
+    "homepage": "https://bluescsi.com",
+    "frameworks": "*",
+    "platforms": "*",
+    "dependencies":
+    {
+        "CUEParser": "https://github.com/BlueSCSI/CUEParser#v2025.02.25"
+    }
+}

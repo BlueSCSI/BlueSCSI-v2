@@ -2,7 +2,7 @@
  * Copyright (C) 2023 Eric Helgeson
  * Copyright (c) 2024-2025 Rabbit Hole Computing™
  * 
- * This file is originally part of BlueSCSI adopted for ZuluSCSI
+ * This file is originally part of BlueSCSI adopted for BlueSCSI
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

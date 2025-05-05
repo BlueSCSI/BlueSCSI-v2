@@ -32,7 +32,7 @@
     "frameworks": [
         "arduino"
     ],
-    "name": "ZuluSCSI Pico 2",
+    "name": "BlueSCSI Pico 2",
     "upload": {
         "psram_length": 0,
         "maximum_ram_size": 524288,
@@ -52,6 +52,6 @@
             "pico-debug"
         ]
     },
-    "url": "http://zuluscsi.com",
+    "url": "http://bluescsi.com",
     "vendor": "Rabbit Hole Computing LLC"
 }

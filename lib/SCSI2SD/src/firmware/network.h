@@ -16,7 +16,7 @@
 
 #ifndef NETWORK_H
 #define NETWORK_H
-#ifdef ZULUSCSI_NETWORK
+#ifdef BLUESCSI_NETWORK
 #include <sys/types.h>
 
 #ifdef __cplusplus
@@ -70,5 +70,5 @@ int scsiNetworkPurge(void);
 #ifdef __cplusplus
 }
 #endif
-#endif // ZULUSCSI_NETWORK
+#endif // BLUESCSI_NETWORK
 #endif // NETWORK_H

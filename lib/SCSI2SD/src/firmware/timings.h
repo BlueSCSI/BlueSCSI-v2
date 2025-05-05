@@ -18,12 +18,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
-#ifndef ZULUSCSI_SCSI2SD_TIMINGS_H
-#define ZULUSCSI_SCSI2SD_TIMINGS_H
+#ifndef BLUESCSI_SCSI2SD_TIMINGS_H
+#define BLUESCSI_SCSI2SD_TIMINGS_H
 #include <stdint.h>
 extern uint8_t g_max_sync_20_period;
 extern uint8_t g_max_sync_10_period;
 extern uint8_t g_max_sync_5_period;
 extern uint8_t g_force_sync;
 extern uint8_t g_force_offset;
-#endif // ZULUSCSI_SCSI2SD_TIMINGS_H
+#endif // BLUESCSI_SCSI2SD_TIMINGS_H

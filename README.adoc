@@ -1,0 +1,36 @@
+# BlueSCSI
+:toc: macro
+
+BlueSCSI is hardware that reproduces SCSI devices (hard disks, optical, etc) with an Pico 2040 dev board.
+
+image::docs/buynow.png[link=https://scsi.blue, 150]
+image::docs/discordbanner.png[link=https://discord.gg/GKcvtgU7P9, 150]
+
+Join us in #bluescsi on https://discord.gg/GKcvtgU7P9[Discord] or open an issue on this repo.
+
+## Hardware
+
+Hardware schematics, designs, and production files can be found under the `hardware` folder.
+
+Hardware version numbers are based on when the design was updated plus a sub-revision letter, such as "2022_11b" and "2022_12a".
+
+You can find an errta of all the current and former versions in the wiki https://github.com/BlueSCSI/BlueSCSI-v2/wiki/Hardware
+
+## Notes
+
+### Making Gerbers for JLCPCB
+
+https://support.jlcpcb.com/article/44-how-to-export-kicad-pcb-to-gerber-files
+
+## Licenses
+
+### Firmware
+
+The BlueSCSI V2 firmware is a fork of ZuluSCSI, which also includes SCSI2SD V6 source code:
+
+* https://github.com/ZuluSCSI/ZuluSCSI-firmware[ZuluSCSI]
+* http://git.codesrc.com/index.cgi?p=SCSI2SD-V6.git;a=summary[SCSI2SD V6]
+* https://github.com/erichelgeson/BlueSCSI[BlueSCSI V1]
+* https://github.com/ztto/ArdSCSino-stm32[ArdSCSIno-stm32]
+
+BlueSCSI(TM) - Eric Helgeson - All rights reserved.

@@ -624,9 +624,9 @@ static void process_Command()
 	// of in scsiVendorCommand()
 	else if (((cfg->deviceType == S2S_CFG_OPTICAL) && scsiCDRomCommand()) ||
 		((cfg->deviceType == S2S_CFG_SEQUENTIAL) && scsiTapeCommand()) ||
-#ifdef ZULUSCSI_NETWORK
+#ifdef BLUESCSI_NETWORK
 		((cfg->deviceType == S2S_CFG_NETWORK && scsiNetworkCommand())) ||
-#endif // ZULUSCSI_NETWORK
+#endif // BLUESCSI_NETWORK
 		((cfg->deviceType == S2S_CFG_MO) && scsiMOCommand()))
 	{
 		// Already handled.

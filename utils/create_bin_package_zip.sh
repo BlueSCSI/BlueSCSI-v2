@@ -26,5 +26,5 @@
 cd distrib
 DATE=$(date +%Y-%m-%d)
 VERSION=$(git describe --always)
-FWPACKAGE=ZuluSCSI-FW_"$DATE"_"$VERSION".zip
+FWPACKAGE=BlueSCSI-FW_"$DATE"_"$VERSION".zip
 zip -0 "$FWPACKAGE" *.bin
