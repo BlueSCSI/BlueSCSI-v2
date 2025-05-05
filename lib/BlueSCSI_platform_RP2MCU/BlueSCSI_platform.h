@@ -35,9 +35,9 @@
 #elif defined(BLUESCSI_PICO_2)
 // BlueSCSI Pico 2 carrier board variant
 #include "BlueSCSI_platform_gpio_Pico_2.h"
-#elif defined(BLUESCSI_BS2)
+#elif defined(BLUESCSI_V2)
 // BS2 hardware variant, using Raspberry Pico board on a carrier PCB
-#include "BlueSCSI_platform_gpio_BS2.h"
+#include "BlueSCSI_platform_gpio_v2.h"
 #elif defined(BLUESCSI_BLASTER)
 // RP2350B variant, using mcu chip directly
 #include "BlueSCSI_platform_gpio_Blaster.h"
