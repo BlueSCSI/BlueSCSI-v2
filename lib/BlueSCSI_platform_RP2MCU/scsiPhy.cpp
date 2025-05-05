@@ -104,8 +104,7 @@ extern "C" bool scsiStatusSEL()
         // Releasing happens with bus release.
         g_scsi_ctrl_bsy = 0;
 
-#ifdef BLUESCSI_BS2
-        // From BS2 repository commit 8971584485c42, not sure of purpose.
+#ifdef BLUESCSI_V2
         SCSI_OUT(CD, 0);
         SCSI_OUT(MSG, 0);
         SCSI_ENABLE_CONTROL_OUT();

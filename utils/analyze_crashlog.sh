@@ -6,8 +6,8 @@
 #
 # Usage:
 #    utils/analyze_crashlog.sh                    # paste log to console, press ctrl-D to end
-#    utils/analyze_crashlog.sh bluelog.txt        # read log from file
-#    utils/analyze_crashlog.sh bluelog.txt path   # read log from file and find firmware at path
+#    utils/analyze_crashlog.sh log.txt            # read log from file
+#    utils/analyze_crashlog.sh log.txt path       # read log from file and find firmware at path
 
 if [ "x$1" = "x" ]; then
     logfile=$(mktemp /tmp/crashlog-XXXXXXX)

@@ -295,7 +295,7 @@ scsi_system_settings_t *BlueSCSISettings::initSystem(const char *presetName)
     // This is a hack to figure out if apple quirks is on via a dip switch
     S2S_TargetCfg img;
 
-    img.quirks = S2S_CFG_QUIRKS_NONE;
+    img.quirks = S2S_CFG_QUIRKS_APPLE;
     #ifdef PLATFORM_CONFIG_HOOK
             PLATFORM_CONFIG_HOOK(&img);
     #endif

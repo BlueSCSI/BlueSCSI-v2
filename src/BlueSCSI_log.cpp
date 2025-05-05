@@ -34,7 +34,7 @@ bool g_log_debug = false;
 bool g_log_ignore_busy_free = false;
 uint8_t g_scsi_log_mask = 0xFF;
 
-// This memory buffer can be read by debugger and is also saved to bluelog.txt
+// This memory buffer can be read by debugger and is also saved to log.txt
 #define LOGBUFMASK (LOGBUFSIZE - 1)
 
 // The log buffer is in special uninitialized RAM section so that it is not reset
@@ -129,6 +129,19 @@ void log_raw(int value)
     }
 
     log_raw(p);
+}
+
+void log_raw(double value)
+{
+    char buffer[6];
+    snprintf(buffer, sizeof buffer, "%0.3f", value);
+    log_raw(buffer);
+}
+
+void log_raw(bool value)
+{
+    if(value) log_raw("true");
+    else log_raw("false");
 }
 
 void log_raw(bytearray array)

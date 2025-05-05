@@ -123,7 +123,7 @@ void scsiInitiatorInit()
     }
     else
     {
-        logmsg("InitiatorID set to ID ", g_initiator_state.initiator_id);
+        logmsg("InitiatorID set to ID ", static_cast<int>(g_initiator_state.initiator_id));
     }
     g_initiator_state.max_retry_count = ini_getl("SCSI", "InitiatorMaxRetry", 5, CONFIGFILE);
     g_initiator_state.use_read10 = ini_getbool("SCSI", "InitiatorUseRead10", false, CONFIGFILE);
@@ -771,7 +771,7 @@ bool scsiRequestSense(int target_id, uint8_t *sense_key, uint8_t *sense_asc, uin
                                          response, sizeof(response),
                                          NULL, 0);
 
-    dbgmsg("RequestSense response: ", bytearray(response, 18),
+    logmsg("RequestSense response: ", bytearray(response, 18),
         " sense_key ", (int)(response[2] & 0xF),
         " asc ", response[12], " ascq ", response[13]);
 

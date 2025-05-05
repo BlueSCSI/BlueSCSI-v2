@@ -188,7 +188,7 @@ bool platform_reclock(bluescsi_speed_grade_t speed_grade)
         }
     }
     else
-        logmsg("Speed grade is set to default, reclocking skipped");
+        dbgmsg("Speed grade is set to default, reclocking skipped");
 
     return do_reclock;
 }
@@ -351,7 +351,7 @@ void platform_init()
     }
 #else
     g_log_debug = false;
-    logmsg ("SCSI termination is handled by a hardware jumper");
+    //logmsg ("SCSI termination is handled by a hardware jumper");
 #endif  // HAS_DIP_SWITCHES
 
         logmsg("===========================================================");
@@ -772,7 +772,7 @@ static void usb_input_poll()
     if (platform_msc_lock_get()) return; // Avoid re-entrant USB events
 #endif
 
-    // Caputure reboot key sequence
+    // Capture reboot key sequence
     static bool mass_storage_reboot_keyed = false;
     static bool basic_reboot_keyed = false;
     volatile uint32_t* scratch0 = (uint32_t *)(WATCHDOG_BASE + WATCHDOG_SCRATCH0_OFFSET);
@@ -822,6 +822,7 @@ static void adc_poll()
 {
 #if PLATFORM_VDD_WARNING_LIMIT_mV > 0
     static bool initialized = false;
+    static bool adc_initial_logged = false;
     static int lowest_vdd_seen = PLATFORM_VDD_WARNING_LIMIT_mV;
 
     if (!initialized)
@@ -871,6 +872,12 @@ static void adc_poll()
             logmsg("WARNING: Detected supply voltage drop to ", vdd_mV, "mV. Verify power supply is adequate.");
             lowest_vdd_seen = vdd_mV - 50; // Small hysteresis to avoid excessive warnings
         }
+    }
+    else if (!adc_initial_logged && adc_value_max != 0)
+    {
+            adc_initial_logged = true;
+            int vdd_mV = (700 * 4096) / adc_value_max;
+            logmsg("INFO: Pico Voltage: ", (vdd_mV / 1000.0), "V.");
     }
 #endif // PLATFORM_VDD_WARNING_LIMIT_mV > 0
 }

@@ -113,12 +113,13 @@ bool scsiDiskActivateRomDrive()
 #else
 
     uint32_t maxsize = platform_get_romdrive_maxsize() - PLATFORM_ROMDRIVE_PAGE_SIZE;
-    logmsg("-- Platform supports ROM drive up to ", (int)(maxsize / 1024), " kB");
+    logmsg("");
+    logmsg("== Platform supports ROM drive up to ", (int)(maxsize / 1024), " kB");
 
     romdrive_hdr_t hdr = {};
     if (!romDriveCheckPresent(&hdr))
     {
-        logmsg("---- ROM drive image not detected");
+        dbgmsg("---- ROM drive image not detected");
         return false;
     }
 
@@ -132,7 +133,7 @@ bool scsiDiskActivateRomDrive()
     if (rom_scsi_id >= 0 && rom_scsi_id <= 7)
     {
         hdr.scsi_id = rom_scsi_id;
-        logmsg("---- ROM drive SCSI id overriden in ini file, changed to ", (int)hdr.scsi_id);
+        logmsg("---- ROM drive SCSI id overridden in ini file, changed to ", (int)hdr.scsi_id);
     }
 
     if (s2s_getConfigById(hdr.scsi_id))
@@ -357,6 +358,7 @@ static void autoConfigGeometry(image_config_t &img)
             method = "device type floppy";
             sect = 18;
             head = 80;
+            found_chs = true;
         }
         else if (img.scsiSectors <= 1032192)
         {
@@ -385,11 +387,19 @@ static void autoConfigGeometry(image_config_t &img)
     }
 
     bool divisible = (img.scsiSectors % ((uint32_t)img.sectorsPerTrack * img.headsPerCylinder)) == 0;
-    logmsg("---- Drive geometry from ", method,
-        ": SectorsPerTrack=", (int)img.sectorsPerTrack,
-        " HeadsPerCylinder=", (int)img.headsPerCylinder,
-        " total sectors ", (int)img.scsiSectors,
-        divisible ? " (divisible)" : " (not divisible)"
+    if (!divisible)
+        logmsg("---- Geometry set from ", method,
+               ": SectorsPerTrack=", (int) img.sectorsPerTrack,
+               " HeadsPerCylinder=", (int) img.headsPerCylinder,
+               " total sectors ", (int) img.scsiSectors,
+               " (not divisible)"
+        );
+    else
+        dbgmsg("---- Geometry set from ", method,
+               ": SectorsPerTrack=", (int) img.sectorsPerTrack,
+               " HeadsPerCylinder=", (int) img.headsPerCylinder,
+               " total sectors ", (int) img.scsiSectors,
+               " (divisible)"
         );
 }
 
@@ -435,7 +445,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
         }
         else
         {
-            logmsg("---- WARNING: file ", filename, " is not contiguous. This will increase read latency.");
+            logmsg("---- WARNING: ", filename, " is fragmented, see https://github.com/BlueSCSI/BlueSCSI-v2/wiki/Image-File-Fragmentation");
         }
 
         S2S_CFG_TYPE setting_type = (S2S_CFG_TYPE) g_scsi_settings.getDevice(target_idx)->deviceType;
@@ -446,7 +456,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
 
         if (type == S2S_CFG_FIXED)
         {
-            logmsg("---- Configuring as disk drive drive");
+            logmsg("---- Configuring as disk drive");
             img.deviceType = S2S_CFG_FIXED;
         }
         else if (type == S2S_CFG_OPTICAL)
@@ -517,7 +527,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
         }
         else if (img.prefetchbytes > 0)
         {
-            logmsg("---- Read prefetch enabled: ", (int)img.prefetchbytes, " bytes");
+            dbgmsg("---- Read prefetch enabled: ", (int)img.prefetchbytes, " bytes");
         }
         else
         {
@@ -726,7 +736,7 @@ static void scsiDiskCheckDir(char * dir_name, int target_idx, image_config_t* im
         {
             img->deviceType = type;
             img->image_directory = true;
-            logmsg("SCSI", target_idx, " searching default ", type_name, " image directory '", dir_name, "'");
+            dbgmsg("== ID ", target_idx, " ", type_name, " image directory '", dir_name, "' ==");
         }
     }
 }
@@ -1075,8 +1085,8 @@ void scsiDiskLoadConfig(int target_idx)
         {
           g_scsi_settings.getDevice(target_idx)->blockSize = img.deviceType == S2S_CFG_OPTICAL ?  DEFAULT_BLOCKSIZE_OPTICAL : DEFAULT_BLOCKSIZE;
         }
+        logmsg("== Opening '", filename, "' for ID ", target_idx);
         int blocksize = getBlockSize(filename, target_idx);
-        logmsg("-- Opening '", filename, "' for id: ", target_idx);
         scsiDiskOpenHDDImage(target_idx, filename, 0, blocksize, (S2S_CFG_TYPE) img.deviceType, img.use_prefix);
     }
 }
@@ -1092,7 +1102,7 @@ uint32_t getBlockSize(char *filename, uint8_t scsi_id)
         if (8 <= blktmp && blktmp <= 64 * 1024)
         {
             block_size = blktmp;
-            logmsg("-- Using custom block size, ",(int) block_size," from filename: ", filename);
+            dbgmsg("-- Using block size, ",(int) block_size," from filename: ", filename);
         }
     }
     return block_size;
@@ -1269,14 +1279,19 @@ extern "C"
 void s2s_configInit(S2S_BoardCfg* config)
 {
     char tmp[64];
-
+    logmsg("");
+    logmsg("=== Global Config ===");
     if (SD.exists(CONFIGFILE))
     {
         logmsg("Reading configuration from " CONFIGFILE);
     }
+    else if (SD.exists(CONFIGFILE ".txt") || SD.exists(CONFIGFILE ".rtf"))
+    {
+        logmsg("WARNING: Config file with incorrect file extension found: " CONFIGFILE ".txt/rtf");
+    }
     else
     {
-        logmsg("Config file " CONFIGFILE " not found, using defaults");
+        logmsg("" CONFIGFILE " not found, using defaults");
     }
 
     // Get default values from system preset, if any
@@ -1285,11 +1300,7 @@ void s2s_configInit(S2S_BoardCfg* config)
 
     if (g_scsi_settings.getSystemPreset() != SYS_PRESET_NONE)
     {
-        logmsg("Active configuration (using system preset \"", g_scsi_settings.getSystemPresetName(), "\"):");
-    }
-    else
-    {
-        logmsg("Active configuration:");
+        logmsg("Using system preset \"", g_scsi_settings.getSystemPresetName(), "\")");
     }
 
     memset(config, 0, sizeof(S2S_BoardCfg));
@@ -1307,7 +1318,7 @@ void s2s_configInit(S2S_BoardCfg* config)
     else if (maxSyncSpeed < 20 && config->scsiSpeed > S2S_CFG_SPEED_SYNC_10)
         config->scsiSpeed = S2S_CFG_SPEED_SYNC_10;
 
-    logmsg("-- SelectionDelay = ", (int)config->selectionDelay);
+    dbgmsg("-- SelectionDelay = ", (int)config->selectionDelay);
 
     if (sysCfg->enableUnitAttention)
     {
@@ -1316,12 +1327,12 @@ void s2s_configInit(S2S_BoardCfg* config)
     }
     else
     {
-        logmsg("-- EnableUnitAttention = No");
+        dbgmsg("-- EnableUnitAttention = No");
     }
 
     if (sysCfg->enableSCSI2)
     {
-        logmsg("-- EnableSCSI2 = Yes");
+        dbgmsg("-- EnableSCSI2 = Yes");
         config->flags |= S2S_CFG_ENABLE_SCSI2;
     }
     else
@@ -1336,7 +1347,7 @@ void s2s_configInit(S2S_BoardCfg* config)
     }
     else
     {
-        logmsg("-- EnableSelLatch = No");
+        dbgmsg("-- EnableSelLatch = No");
     }
 
     if (sysCfg->mapLunsToIDs)
@@ -1346,13 +1357,13 @@ void s2s_configInit(S2S_BoardCfg* config)
     }
     else
     {
-        logmsg("-- MapLunsToIDs = No");
+        dbgmsg("-- MapLunsToIDs = No");
     }
 
 #ifdef PLATFORM_HAS_PARITY_CHECK
     if (sysCfg->enableParity)
     {
-        logmsg("-- EnableParity = Yes");
+        dbgmsg("-- EnableParity = Yes");
         config->flags |= S2S_CFG_ENABLE_PARITY;
     }
     else

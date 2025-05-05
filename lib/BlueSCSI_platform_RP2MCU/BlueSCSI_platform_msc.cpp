@@ -105,7 +105,7 @@ public:
   ~MSCScopedLock() { platform_msc_lock_set(false); }
 };
 
-/* return true if USB presence detected / eligble to enter CR mode */
+/* return true if USB presence detected / eligible to enter CR mode */
 bool platform_sense_msc() {
 
 #if defined(BLUESCSI_PICO) || defined(BLUESCSI_PICO_2)

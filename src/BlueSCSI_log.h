@@ -60,6 +60,12 @@ void log_raw(uint64_t value);
 // Log integer as decimal
 void log_raw(int value);
 
+// Log integer as decimal
+void log_raw(double value);
+
+// Log boolean
+void log_raw(bool value);
+
 // Log array of bytes
 struct bytearray {
     bytearray(const uint8_t *data, size_t len): data(data), len(len) {}
@@ -97,7 +103,8 @@ inline void log_raw(T first, T2 second, Rest... rest)
 template<typename... Params>
 inline void logmsg(Params... params)
 {
-    logmsg_start();
+    if (g_log_debug)
+        log_raw("[", (int)millis(), "ms] ");
     log_raw(params...);
     logmsg_end();
 }

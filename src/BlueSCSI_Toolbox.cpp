@@ -38,8 +38,8 @@ extern "C" int8_t scsiToolboxEnabled()
     static int8_t enabled = -1;
     if (enabled == -1)
     {
-        enabled = ini_getbool("SCSI", "EnableToolbox", 0, CONFIGFILE);
-        logmsg("Toolbox enabled = ", enabled);
+        enabled = ini_getbool("SCSI", "EnableToolbox", 1, CONFIGFILE);
+        dbgmsg("BlueSCSI Toolbox enabled = ", enabled);
     }
     return enabled == 1;
 }
