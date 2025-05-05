@@ -133,22 +133,39 @@ void init_logfile()
   first_open_after_boot = false;
 }
 
+static const char * fatTypeToChar(int fatType)
+{
+  switch (fatType)
+  {
+    case FAT_TYPE_EXFAT:
+      return "exFAT";
+    case FAT_TYPE_FAT32:
+      return "FAT32";
+    case FAT_TYPE_FAT16:
+      return "FAT16";
+    case FAT_TYPE_FAT12:
+      return "FAT12";
+    default:
+      return "Unknown";
+  }
+}
+
 void print_sd_info()
 {
+  logmsg(" ");
+  logmsg("=== SD Card Info ===");
   uint64_t size = (uint64_t)SD.vol()->clusterCount() * SD.vol()->bytesPerCluster();
-  logmsg("SD card detected, FAT", (int)SD.vol()->fatType(),
+  logmsg("SD card detected, ", fatTypeToChar((int)SD.vol()->fatType()),
           " volume size: ", (int)(size / 1024 / 1024), " MB");
 
   cid_t sd_cid;
 
   if(SD.card()->readCID(&sd_cid))
   {
-    logmsg("SD MID: ", (uint8_t)sd_cid.mid, ", OID: ", (uint8_t)sd_cid.oid[0], " ", (uint8_t)sd_cid.oid[1]);
-
     char sdname[6] = {sd_cid.pnm[0], sd_cid.pnm[1], sd_cid.pnm[2], sd_cid.pnm[3], sd_cid.pnm[4], 0};
-    logmsg("SD Name: ", sdname);
-    logmsg("SD Date: ", (int)sd_cid.mdtMonth(), "/", sd_cid.mdtYear());
-    logmsg("SD Serial: ", sd_cid.psn());
+    logmsg("SD Name: ", sdname, ", MID: ", (uint8_t)sd_cid.mid, ", OID: ", (uint8_t)sd_cid.oid[0], " ", (uint8_t)sd_cid.oid[1]);
+    dbgmsg("SD Date: ", (int)sd_cid.mdtMonth(), "/", sd_cid.mdtYear());
+    dbgmsg("SD Serial: ", sd_cid.psn());
   }
 
   sds_t sds = {0};
@@ -156,7 +173,52 @@ void print_sd_info()
   {
     logmsg("-- WARNING: Your SD Card Speed Class is ", (int)sds.speedClass(), ". Class ", (int) SD_SPEED_CLASS_WARN_BELOW," or better is recommended for best performance.");
   }
+}
 
+static const char * typeToChar(int deviceType)
+{
+  switch (deviceType)
+  {
+    case S2S_CFG_OPTICAL:
+      return "Optical";
+    case S2S_CFG_FIXED:
+      return "Fixed";
+    case S2S_CFG_FLOPPY_14MB:
+      return "Floppy1.4MB";
+    case S2S_CFG_MO:
+      return "MO";
+    case S2S_CFG_NETWORK:
+      return "Network";
+    case S2S_CFG_SEQUENTIAL:
+      return "Tape";
+    case S2S_CFG_REMOVABLE:
+      return "Removable";
+    case S2S_CFG_ZIP100:
+      return "ZIP100";
+    default:
+      return "Unknown";
+  }
+}
+
+static const char * quirksToChar(int quirks)
+{
+  switch (quirks)
+  {
+    case S2S_CFG_QUIRKS_APPLE:
+      return "Apple";
+    case S2S_CFG_QUIRKS_OMTI:
+      return "OMTI";
+    case S2S_CFG_QUIRKS_VMS:
+      return "VMS";
+    case S2S_CFG_QUIRKS_XEBEC:
+      return "XEBEC";
+    case S2S_CFG_QUIRKS_X68000:
+      return "X68000";
+    case S2S_CFG_QUIRKS_NONE:
+      return "None";
+    default:
+      return "Unknown";
+  }
 }
 
 /*********************************/
@@ -326,8 +388,7 @@ bool findHDDImages()
   ini_gets("SCSI", "Dir", "/", imgdir, sizeof(imgdir), CONFIGFILE);
   int dirindex = 0;
 
-  logmsg("Finding images in directory ", imgdir, ":");
-
+  logmsg("=== Finding images in ", imgdir, " ===");
   FsFile root;
   root.open(imgdir);
   if (!root.isOpen())
@@ -341,7 +402,9 @@ bool findHDDImages()
   int usedDefaultId = 0;
   uint8_t removable_count = 0;
   uint8_t eject_btn_set = 0;
+#ifdef BLUESCSI_BUTTONS
   uint8_t last_removable_device = 255;
+#endif // BLUESCSI_BUTTONS
   while (1)
   {
     if (!file.openNext(&root, O_READ))
@@ -509,7 +572,7 @@ bool findHDDImages()
           }
         }
         else if(id < NUM_SCSIID && lun < NUM_SCSILUN) {
-          logmsg("-- Opening ", fullname, " for id:", id, " lun:", lun);
+          logmsg("== Opening ", fullname, " for ID:", id, " LUN:", lun);
 
           if (g_scsi_settings.getDevicePreset(id) != DEV_PRESET_NONE)
           {
@@ -540,6 +603,8 @@ bool findHDDImages()
   g_romdrive_active = scsiDiskActivateRomDrive();
 
   // Print SCSI drive map
+  logmsg(" ");
+  logmsg("=== Configured SCSI Devices ===");
   for (int i = 0; i < NUM_SCSIID; i++)
   {
     const S2S_TargetCfg* cfg = s2s_getConfigByIndex(i);
@@ -550,16 +615,15 @@ bool findHDDImages()
 
       if (cfg->deviceType == S2S_CFG_NETWORK)
       {
-        logmsg("SCSI ID: ", (int)(cfg->scsiId & 7),
-              ", Type: ", (int)cfg->deviceType,
-              ", Quirks: ", (int)cfg->quirks);
+        logmsg("ID: ", (int)(cfg->scsiId & S2S_CFG_TARGET_ID_BITS),
+              ", Type: ", typeToChar((int)cfg->deviceType));
       }
       else
       {
-        logmsg("SCSI ID: ", (int)(cfg->scsiId & S2S_CFG_TARGET_ID_BITS),
+        logmsg("ID: ", (int)(cfg->scsiId & S2S_CFG_TARGET_ID_BITS),
               ", BlockSize: ", (int)cfg->bytesPerSector,
-              ", Type: ", (int)cfg->deviceType,
-              ", Quirks: ", (int)cfg->quirks,
+              ", Type: ", typeToChar((int)cfg->deviceType),
+              ", Quirks: ", quirksToChar((int)cfg->quirks),
               ", Size: ", capacity_kB, "kB",
               typeIsRemovable((S2S_CFG_TYPE)cfg->deviceType) ? ", Removable" : ""
               );
@@ -575,15 +639,17 @@ bool findHDDImages()
        if (typeIsRemovable((S2S_CFG_TYPE)cfg->deviceType))
         {
           removable_count++;
+#ifdef BLUESCSI_BUTTONS
           last_removable_device = id;
           if ( getEjectButton(id) !=0 )
           {
             eject_btn_set++;
           }
+#endif // BLUESCSI_BUTTONS
         }
     }
   }
-
+#ifdef BLUESCSI_BUTTONS
   if (removable_count == 1)
   {
     // If there is a removable device
@@ -591,7 +657,7 @@ bool findHDDImages()
       logmsg("Eject set to device with ID: ", last_removable_device);
     else if (eject_btn_set == 0 && !platform_has_phy_eject_button())
     {
-      logmsg("Found 1 removable device, to set an eject button see EjectButton in the '", CONFIGFILE,"', or the http://bluescsi.com/manual");
+      logmsg("Found 1 removable device, to set an eject button see EjectButton in the '", CONFIGFILE,"', or the https://github.com/BlueSCSI/BlueSCSI-v2/wiki/Buttons");
     }
   }
   else if (removable_count > 1)
@@ -608,15 +674,16 @@ bool findHDDImages()
       {
         if( getEjectButton(id) != 0)
         {
-          logmsg("-- SCSI ID: ", (int)id, " type: ", (int) s2s_getConfigById(id)->deviceType, " button mask: ", getEjectButton(id));
+          logmsg("-- ID: ", (int)id, " type: ", (int) s2s_getConfigById(id)->deviceType, " button mask: ", getEjectButton(id));
         }
       }
     }
     else
     {
-      logmsg("Multiple removable devices, to set an eject button see EjectButton in the '", CONFIGFILE,"', or the http://bluescsi.com/manual");
+      logmsg("Multiple removable devices, to set an eject button see EjectButton in the '", CONFIGFILE,"', or the https://github.com/BlueSCSI/BlueSCSI-v2/wiki/Buttons");
     }
   }
+#endif // BLUESCSI_BUTTONS
   return foundImage;
 }
 
@@ -628,6 +695,8 @@ void readSCSIDeviceConfig()
 {
   s2s_configInit(&scsiDev.boardCfg);
 
+  logmsg("");
+  logmsg("=== Finding images ===");
   for (int i = 0; i < NUM_SCSIID; i++)
   {
     scsiDiskLoadConfig(i);
@@ -787,13 +856,15 @@ static void reinitSCSI()
     platform_network_init(scsiDev.boardCfg.wifiMACAddress);
     if (scsiDev.boardCfg.wifiSSID[0] != '\0')
       platform_network_wifi_join(scsiDev.boardCfg.wifiSSID, scsiDev.boardCfg.wifiPassword);
+    else
+      logmsg("No Wi-Fi SSID or Password found. Use the BlueSCSI Wi-Fi DA to configure the network.");
   }
   else
   {
     platform_network_deinit();
   }
 #endif // BLUESCSI_NETWORK
-
+  logmsg("");
 }
 
 // Alert user that update bin file not used
@@ -819,7 +890,7 @@ static void check_for_unused_update_files()
   if (bin_files_found)
   {
     logmsg("Please use the ", FIRMWARE_PREFIX ,"*.zip firmware bundle, or the proper .bin or .uf2 file to update the firmware.");
-    logmsg("See http://bluescsi.com/manual for more information");
+    logmsg("See https://github.com/blueSCSI/BlueSCSI-v2/wiki/Updating-Firmware for more information");
   }
 }
 
@@ -1051,7 +1122,7 @@ static void bluescsi_setup_sd_card(bool wait_for_card = true)
     else
     {
 #ifndef ENABLE_AUDIO_OUTPUT // if audio is enabled, skip message because reclocking ocurred earlier
-      logmsg("Speed grade set to Default, skipping reclocking");
+      dbgmsg("Speed grade set to Default, skipping reclocking");
 #endif
     }
 #endif
@@ -1113,12 +1184,12 @@ extern "C" void bluescsi_setup(void)
     )
     {
       bluescsi_msc_loop();
-      logmsg("Re-processing filenames and bluescsi.ini config parameters");
+      logmsg("Re-processing filenames and " CONFIGFILE " config parameters");
       bluescsi_setup_sd_card();
     }
   }
 #endif
-  logmsg("Clock set to: ", (int) platform_sys_clock_in_hz(), "Hz");
+  logmsg("Clock set to: ", static_cast<int>(platform_sys_clock_in_hz() / 1000000), "MHz");
   logmsg("Initialization complete!");
 }
 

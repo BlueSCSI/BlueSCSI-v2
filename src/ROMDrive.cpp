@@ -113,7 +113,7 @@ bool scsiDiskProgramRomDrive(const char *filename, int scsi_id, int blocksize, S
     uint64_t filesize = file.size();
     uint32_t maxsize = platform_get_romdrive_maxsize() - PLATFORM_ROMDRIVE_PAGE_SIZE;
 
-    logmsg("---- SCSI ID: ", scsi_id, " blocksize ", blocksize, " type ", (int)type);
+    logmsg("---- ID: ", scsi_id, " blocksize ", blocksize, " type ", (int)type);
     logmsg("---- ROM drive maximum size is ", (int)maxsize,
           " bytes, image file is ", (int)filesize, " bytes");
 

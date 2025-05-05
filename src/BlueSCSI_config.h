@@ -30,7 +30,8 @@
 
 // Use variables for version number
 #define FW_VER_NUM      "25.06.17"
-#define FW_VER_SUFFIX   "release"
+// rel or dev only.
+#define FW_VER_SUFFIX   "dev"
 
 #define DEF_STRINGFY(DEF) STRINGFY(DEF)
 #define STRINGFY(STR) #STR
@@ -41,8 +42,8 @@
 
 // Configuration and log file paths
 #define CONFIGFILE  "bluescsi.ini"
-#define LOGFILE     "bluelog.txt"
-#define CRASHFILE   "blueerr.txt"
+#define LOGFILE     "log.txt"
+#define CRASHFILE   "err.txt"
 #define FIRMWARE_PREFIX "BlueSCSI-FW"
 
 // Prefix for command file to create new image (case-insensitive)
@@ -101,13 +102,13 @@
 #define DEFAULT_BLOCKSIZE_OPTICAL 2048
 
 // Default SCSI drive information when Apple quirks are enabled
-#define APPLE_DRIVEINFO_FIXED     {"DEC",      "BlueSCSI HDD",      PLATFORM_REVISION, "1.0"}
+#define APPLE_DRIVEINFO_FIXED     {"QUANTUM",  "BlueSCSI Pico",      PLATFORM_REVISION, "1.0"}
 #define APPLE_DRIVEINFO_REMOVABLE {"IOMEGA",   "BETA230",           PLATFORM_REVISION, "2.02"}
 #define APPLE_DRIVEINFO_OPTICAL   {"MATSHITA", "CD-ROM CR-8004",    PLATFORM_REVISION, "1.1f"}
-#define APPLE_DRIVEINFO_FLOPPY    {"IOMEGA",   "Io20S         *F",  "PP33",            ""}
+#define APPLE_DRIVEINFO_FLOPPY    {"IOMEGA",   "Io20S         *F", "PP33", ""}
 #define APPLE_DRIVEINFO_MAGOPT    {"MOST",     "RMD-5200",          PLATFORM_REVISION, "1.0"}
-#define APPLE_DRIVEINFO_NETWORK   {"Dayna",    "SCSI/Link",         "2.0f",            ""}
-#define APPLE_DRIVEINFO_TAPE      {"BLUESCSI", "APPLE_TAPE",        PLATFORM_REVISION, ""}
+#define APPLE_DRIVEINFO_NETWORK   {"Dayna",    "SCSI/Link",       "2.0f", ""}
+#define APPLE_DRIVEINFO_TAPE      {"BlueSCSI", "APPLE_TAPE",        PLATFORM_REVISION, ""}
 
 // Default Iomega ZIP drive information
 #define IOMEGA_DRIVEINFO_ZIP100     {"IOMEGA", "ZIP 100", "D.13", ""}
