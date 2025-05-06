@@ -39,6 +39,7 @@
 #include "scsi_accel_target.h"
 #include "custom_timings.h"
 #include <BlueSCSI_settings.h>
+#include <minIni.h>
 
 #ifdef SD_USE_RP2350_SDIO
 #include <sdio_rp2350.h>
@@ -52,6 +53,10 @@
 #endif
 
 #include <pico/multicore.h>
+
+// Definitions of Global PIN definitions that may change depending on hardware rev
+uint32_t SCSI_ACCEL_PINMASK = SCSI_ACCEL_SETPINS;
+uint8_t SCSI_OUT_REQ = SCSI_OUT_REQ_CURRENT;
 
 #ifdef BLUESCSI_NETWORK
 extern "C" {
@@ -78,10 +83,10 @@ extern "C" {
 #include "timings_RP2MCU.h"
 const char *g_platform_name = PLATFORM_NAME;
 static bool g_scsi_initiator = false;
+static bool g_supports_initiator = false;
 static uint32_t g_flash_chip_size = 0;
 static bool g_uart_initialized = false;
 static bool g_led_blinking = false;
-
 static void usb_log_poll();
 
 /***************/
@@ -247,6 +252,46 @@ static pin_setup_state_t read_setup_ack_pin()
 }
 #endif
 
+bool is2023a() {
+    gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_I2C, false, false, false,  false, true);
+    gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_I2C, false, false, false,  false, true);
+    delay(10);
+    bool d50_2023_09a = gpio_get(GPIO_I2C_SCL) && gpio_get(GPIO_I2C_SDA);
+
+    if (d50_2023_09a) {
+        logmsg("I2C Supported");
+        g_supports_initiator = true;
+        gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_I2C, true, false, false,  true, true);
+        gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_I2C, true, false, false,  true, true);
+
+        // Use Pico SDK methods
+        gpio_set_function(GPIO_I2C_SCL, GPIO_FUNC_I2C);
+        gpio_set_function(GPIO_I2C_SDA, GPIO_FUNC_I2C);
+        // gpio_pull_up(GPIO_I2C_SCL);  // TODO necessary?
+        // gpio_pull_up(GPIO_I2C_SDA);
+    } else {
+        logmsg("I2C Not Supported on this rev of hardware");
+        /* Check option switch settings */
+        // Option switches: S1 is iATN, S2 is iACK
+        gpio_conf(SCSI_IN_ACK,    GPIO_FUNC_SIO, true, false, false, false, false);
+        gpio_conf(SCSI_IN_ATN,    GPIO_FUNC_SIO, false, false, false, false, false);
+        delay(10); /// Settle time
+        // Check option switches
+        [[maybe_unused]] bool optionS1 = !gpio_get(SCSI_IN_ATN);
+        [[maybe_unused]] bool optionS2 = !gpio_get(SCSI_IN_ACK);
+
+        // Reset REQ to the appropriate pin for older hardware
+        SCSI_OUT_REQ = SCSI_OUT_REQ_PRE09A;
+        SCSI_ACCEL_PINMASK = SCSI_ACCEL_SETPINS_PRE09A;
+
+        // Initialize logging to SWO pin (UART0)
+        gpio_conf(SWO_PIN,        GPIO_FUNC_UART,false,false, true,  false, true);
+        uart_init(uart0, 115200);
+        g_uart_initialized = true;
+    }
+    return d50_2023_09a;
+}
+
 void platform_init()
 {
     // Make sure second core is stopped
@@ -315,11 +360,10 @@ void platform_init()
 
 #ifndef DISABLE_SWO
     /* Initialize logging to SWO pin (UART0) */
-    gpio_conf(SWO_PIN,        GPIO_FUNC_UART,false,false, true,  false, true);
-    uart_init(uart0, 1000000);
-    g_uart_initialized = true;
+    // gpio_conf(SWO_PIN,        GPIO_FUNC_UART,false,false, true,  false, true);
+    // uart_init(uart0, 1000000);
+    // g_uart_initialized = true;
 #endif // DISABLE_SWO
-
     logmsg("Platform: ", g_platform_name);
     logmsg("FW Version: ", g_log_firmwareversion);
 
@@ -398,7 +442,28 @@ void platform_init()
 #ifdef GPIO_USB_POWER
     gpio_conf(GPIO_USB_POWER, GPIO_FUNC_SIO, false, false, false,  false, false);
 #endif
+    is2023a();
 
+}
+void platform_enable_initiator_mode()
+{
+    logmsg("platform_enable_initiator_mode");
+    if (ini_getbool("SCSI", "InitiatorMode", false, CONFIGFILE))
+    {
+        logmsg("InitiatorMode true");
+
+        if (g_supports_initiator) {
+            g_scsi_initiator = true;
+            logmsg("SCSI Initiator Mode");
+            if (! ini_getbool("SCSI", "InitiatorParity", true, CONFIGFILE))
+            {
+                logmsg("Initiator Mode Skipping Parity Check.");
+                // setInitiatorModeParityCheck(false);
+            }
+        } else {
+            logmsg("SCSI Initiator Mode not supported.");
+        }
+    }
 }
 
 // late_init() only runs in main application, SCSI not needed in bootloader
@@ -416,8 +481,8 @@ void platform_late_init()
         logmsg("SCSI target/disk mode selected by DIP switch, acting as a SCSI disk");
     }
 #else
-    g_scsi_initiator = false;
-    logmsg("SCSI target/disk mode, acting as a SCSI disk");
+    // Initiator mode detected via ini.
+    platform_enable_initiator_mode();
 #endif // defined(HAS_DIP_SWITCHES) && defined(PLATFORM_HAS_INITIATOR_MODE)
 
     /* Initialize SCSI pins to required modes.
@@ -561,6 +626,7 @@ void platform_post_sd_card_init() {}
 
 bool platform_is_initiator_mode_enabled()
 {
+    // logmsg("Initiator mode enabled: ", g_scsi_initiator);
     return g_scsi_initiator;
 }
 

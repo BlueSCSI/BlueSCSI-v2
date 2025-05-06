@@ -38,7 +38,6 @@
 #define SCSI_IO_DBP  8
 #define SCSI_IO_DATA_MASK 0x1FF
 #define SCSI_IO_SHIFT 0
-
 // Data direction control
 #define SCSI_DATA_DIR 9
 
@@ -48,8 +47,14 @@
 #define SCSI_OUT_MSG  20
 #define SCSI_OUT_RST  22
 #define SCSI_OUT_BSY  27
-#define SCSI_OUT_REQ  17
-#define SCSI_OUT_SEL  19
+#define SCSI_OUT_REQ_CURRENT  19
+#define SCSI_OUT_REQ_PRE09A  17
+extern uint8_t SCSI_OUT_REQ;
+#define SCSI_OUT_SEL  21
+
+#define SCSI_ACCEL_SETPINS 0x801FF
+#define SCSI_ACCEL_SETPINS_PRE09A 0x201FF
+extern uint32_t SCSI_ACCEL_PINMASK;
 
 // SCSI input status signals
 #define SCSI_IN_SEL  18
@@ -76,10 +81,22 @@
 #define SD_SPI_MISO  12
 #define SD_SPI_CS    15
 
+// IO expander I2C
+#define GPIO_I2C_SDA 16
+#define GPIO_I2C_SCL 17
 
 // Other pins
 #define SWO_PIN 16
 
+// Status line outputs for initiator mode
+#define SCSI_OUT_ACK  26
+#define SCSI_OUT_ATN  29  // ATN output is unused
+
+// Status line inputs for initiator mode
+#define SCSI_IN_IO    22
+#define SCSI_IN_CD    18
+#define SCSI_IN_MSG   28
+#define SCSI_IN_REQ   19
 
 // Below are GPIO access definitions that are used from scsiPhy.cpp.
 
@@ -92,6 +109,15 @@
 // Example use: SCSI_IN(ATN), returns 1 for active low state.
 #define SCSI_IN(pin) \
     ((sio_hw->gpio_in & (1 << (SCSI_IN_ ## pin))) ? 0 : 1)
+
+// Set pin directions for initiator vs. target mode
+#define SCSI_ENABLE_INITIATOR() \
+    (sio_hw->gpio_oe_set = (1 << SCSI_OUT_ACK) | \
+    (1 << SCSI_OUT_ATN)), \
+    (sio_hw->gpio_oe_clr = (1 << SCSI_IN_IO) | \
+    (1 << SCSI_IN_CD) | \
+    (1 << SCSI_IN_MSG) | \
+    (1 << SCSI_IN_REQ))
 
 // Enable driving of shared control pins
 #define SCSI_ENABLE_CONTROL_OUT() \
