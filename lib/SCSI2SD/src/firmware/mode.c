@@ -248,12 +248,12 @@ static const uint8_t AppleVendorPage[] =
 'A','P','P','L','E',' ','C','O','M','P','U','T','E','R',',',' ','I','N','C',' ',' ',' '
 };
 
-static const uint8_t ToolboxVendorPage[] =
+static const uint8_t BlueSCSIVendorPage[] =
 {
 0x31, // Page code
 42,   // Page length
-'Z','u','l','u','S','C','S','I',' ','i','s',' ','G','P','L','v','3',' ','F','T','W',
-' ','R','a','b','b','i','t','H','o','l','e','C','o','m','p','u','t','i','n','g',0x00
+'B','l','u','e','S','C','S','I',' ','i','s',' ','t','h','e',' ','B','E','S','T',' ',
+'S','T','O','L','E','N',' ','F','R','O','M',' ','B','L','U','E','S','C','S','I',0x00
 };
 
 static const uint8_t IomegaZip100VendorPage[] =
@@ -570,8 +570,8 @@ static void doModeSense(
 	if (scsiToolboxEnabled() && (pageCode == 0x31 || pageCode == 0x3F))
 	{
 		pageFound = 1;
-		pageIn(pc, idx, ToolboxVendorPage, sizeof(ToolboxVendorPage));
-		idx += sizeof(ToolboxVendorPage);
+		pageIn(pc, idx, BlueSCSIVendorPage, sizeof(BlueSCSIVendorPage));
+		idx += sizeof(BlueSCSIVendorPage);
 	}
 
 	if (pageCode == 0x38) // Don't send unless requested
