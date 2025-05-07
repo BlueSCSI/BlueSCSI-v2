@@ -841,6 +841,7 @@ static void usb_input_poll()
     // Capture reboot key sequence
     static bool mass_storage_reboot_keyed = false;
     static bool basic_reboot_keyed = false;
+    static bool uf2_reboot_keyed = false;
     volatile uint32_t* scratch0 = (uint32_t *)(WATCHDOG_BASE + WATCHDOG_SCRATCH0_OFFSET);
     int32_t available = Serial.available();
     if(available > 0)
@@ -851,15 +852,26 @@ static void usb_input_poll()
             case 'R':
             case 'r':
                 basic_reboot_keyed = true;
-                mass_storage_reboot_keyed = false;
+                mass_storage_reboot_keyed = uf2_reboot_keyed = false;
                 logmsg("Basic reboot requested, press 'y' to engage or any key to clear");
                 break;
             case 'M':
             case 'm':
                 mass_storage_reboot_keyed = true;
-                basic_reboot_keyed = false;
+                basic_reboot_keyed = uf2_reboot_keyed = false;
                 logmsg("Boot into mass storage requested, press 'y' to engage or any key to clear");
                 *scratch0 = REBOOT_INTO_MASS_STORAGE_MAGIC_NUM;
+                break;
+            case 'B':
+            case 'b':
+                uf2_reboot_keyed = true;
+                basic_reboot_keyed = mass_storage_reboot_keyed = false;
+                logmsg("Boot into uf2 bootloader requested, press 'y' to engage or any key to clear");
+                break;
+            case 'd':
+            case 'D':
+                g_log_debug = !g_log_debug;
+                logmsg("Debug logging ", g_log_debug ? "enabled" : "disabled");
                 break;
             case 'Y':
             case 'y':
@@ -867,16 +879,17 @@ static void usb_input_poll()
                 {
                     logmsg("Rebooting", mass_storage_reboot_keyed ? " into mass storage": "");
                     watchdog_reboot(0, 0, 2000);
+                } else if (uf2_reboot_keyed) {
+                    rom_reset_usb_boot(0, 0);
                 }
                 break;
             case '\n':
                 break;
 
             default:
-                if (basic_reboot_keyed || mass_storage_reboot_keyed)
+                if (basic_reboot_keyed || mass_storage_reboot_keyed || uf2_reboot_keyed)
                     logmsg("Cleared reboot setting");
-                mass_storage_reboot_keyed = false;
-                basic_reboot_keyed = false;
+                mass_storage_reboot_keyed =basic_reboot_keyed = uf2_reboot_keyed = false;
         }
     }
 #endif // PIO_FRAMEWORK_ARDUINO_NO_USB
