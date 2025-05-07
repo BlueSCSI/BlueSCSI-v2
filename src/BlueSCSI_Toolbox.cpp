@@ -1,5 +1,6 @@
 /**
- * Copyright (C) 2023 Eric Helgeson
+ * Copyright (C) 2023-2025 Eric Helgeson
+ * Copyright (c) 2024-2025 Rabbit Hole Computing
  *
  * This file is part of BlueSCSI
  *
@@ -29,10 +30,6 @@ extern "C" {
 #include <mode.h>
 }
 
-
-const uint8_t MAX_FILE_LISTING_FILES = 100;
-
-
 extern "C" int8_t scsiToolboxEnabled()
 {
     static int8_t enabled = -1;
@@ -50,6 +47,11 @@ static bool toolboxFilenameValid(const char* name, bool isCD = false)
     if(strlen(name) == 0)
     {
         dbgmsg("toolbox: Ignoring filename empty file name");
+        return false;
+    }
+    if(name[0] == '.')
+    {
+        dbgmsg("toolbox: Ignoring hidden file ", name);
         return false;
     }
     if (isCD)
@@ -105,7 +107,6 @@ static void doCountFiles(const char * dir_name, bool isCD = false)
 static void onListFiles(const char * dir_name, bool isCD = false) {
     FsFile dir;
     FsFile file;
-    const size_t ENTRY_SIZE = 40;
 
     memset(scsiDev.data, 0, ENTRY_SIZE * (MAX_FILE_LISTING_FILES + 1));
     char name[MAX_FILE_PATH] = {0};
@@ -220,6 +221,7 @@ static void onListDevices()
         }
     }
     scsiDev.dataLen = NUM_SCSIID;
+    scsiDev.phase = DATA_IN;
 }
 
 static void onSetNextCD(const char * img_dir)
@@ -267,7 +269,7 @@ void onGetFile10(char * dir_name) {
 }
 
 /*
-  Prepares a file for receving. The file name is null terminated in the scsi data.
+  Prepares a file for receiving. The file name is null terminated in the scsi data.
 */
 static void onSendFilePrep(char * dir_name)
 {
@@ -370,73 +372,73 @@ extern "C" int scsiToolboxCommand()
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     uint8_t command = scsiDev.cdb[0];
 
-    if (unlikely(command == TOOLBOX_COUNT_FILES))
+    if (unlikely(command == BLUESCSI_TOOLBOX_COUNT_FILES))
     {
         char img_dir[MAX_FILE_PATH];
-        dbgmsg("TOOLBOX_COUNT_FILES");
+        dbgmsg("BLUESCSI_TOOLBOX_COUNT_FILES");
         getToolBoxSharedDir(img_dir);
         doCountFiles(img_dir);
     }
-    else if (unlikely(command == TOOLBOX_LIST_FILES))
+    else if (unlikely(command == BLUESCSI_TOOLBOX_LIST_FILES))
     {
         char img_dir[MAX_FILE_PATH];
-        dbgmsg("TOOLBOX_LIST_FILES");
+        dbgmsg("BLUESCSI_TOOLBOX_LIST_FILES");
         getToolBoxSharedDir(img_dir);
         onListFiles(img_dir);
     }
-    else if (unlikely(command == TOOLBOX_GET_FILE))
+    else if (unlikely(command == BLUESCSI_TOOLBOX_GET_FILE))
     {
         char img_dir[MAX_FILE_PATH];
-        dbgmsg("TOOLBOX_GET_FILE");
+        dbgmsg("BLUESCSI_TOOLBOX_GET_FILE");
         getToolBoxSharedDir(img_dir);
         onGetFile10(img_dir);
     }
-    else if (unlikely(command == TOOLBOX_SEND_FILE_PREP))
+    else if (unlikely(command == BLUESCSI_TOOLBOX_SEND_FILE_PREP))
     {
         char img_dir[MAX_FILE_PATH];
-        dbgmsg("TOOLBOX_SEND_FILE_PREP");
+        dbgmsg("BLUESCSI_TOOLBOX_SEND_FILE_PREP");
         getToolBoxSharedDir(img_dir);
         onSendFilePrep(img_dir);
     }
-    else if (unlikely(command == TOOLBOX_SEND_FILE_10))
+    else if (unlikely(command == BLUESCSI_TOOLBOX_SEND_FILE_10))
     {
-        dbgmsg("TOOLBOX_SEND_FILE_10");
+        dbgmsg("BLUESCSI_TOOLBOX_SEND_FILE_10");
         onSendFile10();
     }
-    else if (unlikely(command == TOOLBOX_SEND_FILE_END))
+    else if (unlikely(command == BLUESCSI_TOOLBOX_SEND_FILE_END))
     {
-        dbgmsg("TOOLBOX_SEND_FILE_END");
+        dbgmsg("BLUESCSI_TOOLBOX_SEND_FILE_END");
         onSendFileEnd();
     }
-    else if(unlikely(command == TOOLBOX_TOGGLE_DEBUG))
+    else if(unlikely(command == BLUESCSI_TOOLBOX_TOGGLE_DEBUG))
     {
-        dbgmsg("TOOLBOX_TOGGLE_DEBUG");
+        dbgmsg("BLUESCSI_TOOLBOX_TOGGLE_DEBUG");
         onToggleDebug();
     }
-    else if(unlikely(command == TOOLBOX_LIST_CDS))
+    else if(unlikely(command == BLUESCSI_TOOLBOX_LIST_CDS))
     {
         char img_dir[4];
-        dbgmsg("TOOLBOX_LIST_CDS");
-        snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, (int)img.scsiId & S2S_CFG_TARGET_ID_BITS);
+        dbgmsg("BLUESCSI_TOOLBOX_LIST_CDS");
+        snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, static_cast<int>(img.scsiId) & S2S_CFG_TARGET_ID_BITS);
         onListFiles(img_dir, true);
     }
-    else if(unlikely(command == TOOLBOX_SET_NEXT_CD))
+    else if(unlikely(command == BLUESCSI_TOOLBOX_SET_NEXT_CD))
     {
         char img_dir[4];
-        dbgmsg("TOOLBOX_SET_NEXT_CD");
-        snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, (int)img.scsiId & S2S_CFG_TARGET_ID_BITS);
+        dbgmsg("BLUESCSI_TOOLBOX_SET_NEXT_CD");
+        snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, static_cast<int>(img.scsiId) & S2S_CFG_TARGET_ID_BITS);
         onSetNextCD(img_dir);
     }
-    else if(unlikely(command == TOOLBOX_LIST_DEVICES))
+    else if(unlikely(command == BLUESCSI_TOOLBOX_LIST_DEVICES))
     {
-        dbgmsg("TOOLBOX_LIST_DEVICES");
+        dbgmsg("BLUESCSI_TOOLBOX_LIST_DEVICES");
         onListDevices();
     }
-    else if (unlikely(command == TOOLBOX_COUNT_CDS))
+    else if (unlikely(command == BLUESCSI_TOOLBOX_COUNT_CDS))
     {
         char img_dir[4];
-        dbgmsg("TOOLBOX_COUNT_CDS");
-        snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, (int)img.scsiId & S2S_CFG_TARGET_ID_BITS);
+        dbgmsg("BLUESCSI_TOOLBOX_COUNT_CDS");
+        snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, static_cast<int>(img.scsiId) & S2S_CFG_TARGET_ID_BITS);
         doCountFiles(img_dir, true);
     }
     else
