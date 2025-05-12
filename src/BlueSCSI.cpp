@@ -1177,15 +1177,22 @@ extern "C" void bluescsi_setup(void)
 
 #ifdef PLATFORM_MASS_STORAGE
   static bool check_mass_storage = true;
-  if ((check_mass_storage || platform_rebooted_into_mass_storage()) && !is_initiator)
+  if (check_mass_storage && !is_initiator)
   {
-    if (g_scsi_settings.getSystem()->enableUSBMassStorage
+    if (platform_rebooted_into_mass_storage()
+       || g_scsi_settings.getSystem()->enableUSBMassStorage
        || g_scsi_settings.getSystem()->usbMassStoragePresentImages
     )
     {
-      bluescsi_msc_loop();
-      logmsg("Re-processing filenames and " CONFIGFILE " config parameters");
-      bluescsi_setup_sd_card();
+      check_mass_storage = false;
+
+      // perform checks to see if a computer is attached and return true if we should enter MSC mode.
+      if (platform_sense_msc())
+      {
+        bluescsi_msc_loop();
+        logmsg("Re-processing filenames and bluescsi.ini config parameters");
+        bluescsi_setup_sd_card();
+      }
     }
   }
 #endif
