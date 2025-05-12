@@ -1077,17 +1077,21 @@ extern "C" void zuluscsi_setup(void)
 
 #ifdef PLATFORM_MASS_STORAGE
   static bool check_mass_storage = true;
-  if (((check_mass_storage && g_scsi_settings.getSystem()->enableUSBMassStorage)
-      || platform_rebooted_into_mass_storage()) && !is_initiator)
+  if ((check_mass_storage || platform_rebooted_into_mass_storage()) && !is_initiator)
   {
-    check_mass_storage = false;
-
-    // perform checks to see if a computer is attached and return true if we should enter MSC mode.
-    if (platform_sense_msc())
+    if (g_scsi_settings.getSystem()->enableUSBMassStorage
+       || g_scsi_settings.getSystem()->usbMassStoragePresentImages
+    )
     {
-      zuluscsi_msc_loop();
-      logmsg("Re-processing filenames and zuluscsi.ini config parameters");
-      zuluscsi_setup_sd_card();
+      check_mass_storage = false;
+
+      // perform checks to see if a computer is attached and return true if we should enter MSC mode.
+      if (platform_sense_msc())
+      {
+        zuluscsi_msc_loop();
+        logmsg("Re-processing filenames and zuluscsi.ini config parameters");
+        zuluscsi_setup_sd_card();
+      }
     }
   }
 #endif
