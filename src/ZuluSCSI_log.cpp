@@ -145,6 +145,42 @@ void log_raw(bytearray array)
     }
 }
 
+void logmsg_start()
+{
+    log_raw("[", (int)millis(), "ms] ");
+}
+
+void logmsg_end()
+{
+    log_raw("\r\n");
+}
+
+bool dbgmsg_start()
+{
+    if (g_log_debug)
+    {
+        // Check if log mask is not the default value, the selection was a success, and the selected ID was not match, then skip logging
+        if ( g_scsi_log_mask != 0xFF
+            && (SCSI_STS_SELECTION_SUCCEEDED & *SCSI_STS_SELECTED)
+            && (0 == (g_scsi_log_mask & (1 << (*SCSI_STS_SELECTED & 7))))
+           )
+        {
+            return false;
+        }
+
+        log_raw("[", (int)millis(), "ms] DBG ");
+
+        return true;
+    }
+
+    return false;
+}
+
+void dbgmsg_end()
+{
+    log_raw("\r\n");
+}
+
 uint32_t log_get_buffer_len()
 {
     return g_logpos;
