@@ -73,6 +73,14 @@ inline void log_raw()
     // End of template recursion
 }
 
+// These functions contain the common prefix and end of each
+// log message, and check if debug messages are enabled.
+// Having them in separate functions avoids inlining the code
+// into every call.
+void logmsg_start();
+void logmsg_end();
+bool dbgmsg_start();
+void dbgmsg_end();
 
 extern "C" unsigned long millis();
 
@@ -89,28 +97,19 @@ inline void log_raw(T first, T2 second, Rest... rest)
 template<typename... Params>
 inline void logmsg(Params... params)
 {
-    log_raw("[", (int)millis(), "ms] ");
+    logmsg_start();
     log_raw(params...);
-    log_raw("\r\n");
+    logmsg_end();
 }
 
 // Format a complete debug message
 template<typename... Params>
 inline void dbgmsg(Params... params)
 {
-    if (g_log_debug)
+    if (g_log_debug && dbgmsg_start())
     {
-        // Check if log mask is not the default value, the selection was a success, and the selected ID was not match, then skip logging
-        if ( g_scsi_log_mask != 0xFF
-            && (SCSI_STS_SELECTION_SUCCEEDED & *SCSI_STS_SELECTED)
-            && (0 == (g_scsi_log_mask & (1 << (*SCSI_STS_SELECTED & 7))))
-           )
-        {
-            return;
-        }
-        log_raw("[", (int)millis(), "ms] DBG ");
         log_raw(params...);
-        log_raw("\r\n");
+        dbgmsg_end();
     }
 }
 
