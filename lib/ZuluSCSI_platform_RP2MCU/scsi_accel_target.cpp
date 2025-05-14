@@ -1243,6 +1243,7 @@ bool scsi_accel_rp2040_setSyncMode(int syncOffset, int syncPeriod)
             // This is the period in clock cycles rounded up
             int totalPeriod = (delay_in_ps + up_rounder) / g_zuluscsi_timings->scsi.clk_period_ps;
             int rtotalPeriod = totalPeriod;
+            int clkdiv = 0;
             if (syncPeriod < 25)
             {
                 // Fast-20 SCSI timing: 15 ns assertion period
@@ -1274,6 +1275,8 @@ bool scsi_accel_rp2040_setSyncMode(int syncOffset, int syncPeriod)
             {
                 // Slow SCSI timing: 90 ns assertion period, 55 ns skew delay
                 // Delay2 must be at least 2 to keep negation period well above the 90 ns minimum
+                clkdiv = g_zuluscsi_timings->scsi_5.clkdiv;
+                if (clkdiv > 0) { totalPeriod /= clkdiv; rtotalPeriod /= clkdiv; }
                 totalPeriod += g_zuluscsi_timings->scsi_5.total_period_adjust;
                 delay0 = g_zuluscsi_timings->scsi_5.delay0;
                 delay1 = g_zuluscsi_timings->scsi_5.delay1;
@@ -1310,6 +1313,20 @@ bool scsi_accel_rp2040_setSyncMode(int syncOffset, int syncPeriod)
             uint16_t rinstr1 = (scsi_sync_read_pacer_program_instructions[1] + g_scsi_dma.pio_offset_sync_read_pacer) | pio_encode_delay(rdelay1);
             SCSI_DMA_PIO->instr_mem[g_scsi_dma.pio_offset_sync_read_pacer + 0] = rinstr0;
             SCSI_DMA_PIO->instr_mem[g_scsi_dma.pio_offset_sync_read_pacer + 1] = rinstr1;
+
+            if (clkdiv > 0)
+            {
+                // Add divider to REQ controlling programs in order to satisfy slowest
+                // SCSI-5 timing requirements.
+                sm_config_set_clkdiv_int_frac(&g_scsi_dma.pio_cfg_sync_read_pacer, clkdiv, 0);
+                sm_config_set_clkdiv_int_frac(&g_scsi_dma.pio_cfg_sync_write, clkdiv, 0);
+            }
+            else
+            {
+                // No clock divider
+                sm_config_set_clkdiv_int_frac(&g_scsi_dma.pio_cfg_sync_read_pacer, 1, 0);
+                sm_config_set_clkdiv_int_frac(&g_scsi_dma.pio_cfg_sync_write, 1, 0);
+            }
         }
     }
 

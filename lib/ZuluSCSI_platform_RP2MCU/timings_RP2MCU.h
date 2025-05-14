@@ -98,6 +98,7 @@ typedef struct
         uint8_t rdelay1;
         int16_t total_period_adjust;
         uint8_t max_sync;
+        uint8_t clkdiv;
     } scsi_5;
 
 

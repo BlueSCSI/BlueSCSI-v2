@@ -256,13 +256,13 @@ static zuluscsi_timings_t  predefined_timings[]  = {
 
         .scsi_5 =
         {
-            .delay0 = 10 - 1,
-            .delay1 = 15, // should be 18 - 1 but max currently is 15
+            .delay0 = 5 - 1,
+            .delay1 = 8 - 1,
             .total_period_adjust = 0,
-            .rdelay1 = 15,
+            .rdelay1 = 8 - 1,
             .rtotal_period_adjust = 0,
             .max_sync = 50,
-
+            .clkdiv = 2,
         },
 
         .sdio =
@@ -320,12 +320,13 @@ static zuluscsi_timings_t  predefined_timings[]  = {
 
         .scsi_5 =
         {
-            .delay0 = 15, // maxed out should be 16
-            .delay1 = 15, // maxed out should be 30
+            .delay0 = 8 - 1,
+            .delay1 = 12 - 1,
             .total_period_adjust = 1,
-            .rdelay1 = 15,
+            .rdelay1 = 12 - 1,
             .rtotal_period_adjust = 1,
             .max_sync = 50,
+            .clkdiv = 2,
         },
         .sdio =
         {
@@ -384,13 +385,13 @@ static zuluscsi_timings_t  predefined_timings[]  = {
 
         .scsi_5 =
         {
-            .delay0 = 10 - 1,
-            .delay1 = 15, // should be 18 - 1 but max currently is 15
+            .delay0 = 5 - 1,
+            .delay1 = 8 - 1,
             .total_period_adjust = 0,
-            .rdelay1 = 15,
+            .rdelay1 = 8 - 1,
             .rtotal_period_adjust = 0,
             .max_sync = 50,
-
+            .clkdiv = 2,
         },
 
         .sdio =
@@ -451,12 +452,12 @@ static zuluscsi_timings_t  predefined_timings[]  = {
         .scsi_5 =
         {
             .delay0 = 4 - 1,
-            .delay1 = 10 - 1,
+            .delay1 = 8 - 1,
             .total_period_adjust = 0,
-            .rdelay1 = 10 - 1,
+            .rdelay1 = 8 - 1,
             .rtotal_period_adjust = 0,
             .max_sync = 50,
-
+            .clkdiv = 2,
         },
 
         .sdio =
@@ -518,12 +519,12 @@ static zuluscsi_timings_t  predefined_timings[]  = {
         .scsi_5 =
         {
             .delay0 = 5 - 1,
-            .delay1 = 11 - 1,
+            .delay1 = 10 - 1,
             .total_period_adjust = 0,
-            .rdelay1 = 11 - 1,
+            .rdelay1 = 10 - 1,
             .rtotal_period_adjust = 0,
             .max_sync = 50,
-
+            .clkdiv = 2,
         },
 
         .sdio =
@@ -583,12 +584,13 @@ static zuluscsi_timings_t  predefined_timings[]  = {
 
         .scsi_5 =
         {
-            .delay0 = 15, // maxed out should be 16
-            .delay1 = 15, // maxed out should be 30
+            .delay0 = 8 - 1,
+            .delay1 = 12 - 1,
             .total_period_adjust = 1,
-            .rdelay1 = 15,
+            .rdelay1 = 12 -1,
             .rtotal_period_adjust = 1,
             .max_sync = 50,
+            .clkdiv = 2,
         },
         .sdio =
         {
