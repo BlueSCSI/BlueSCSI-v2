@@ -1,10 +1,8 @@
-/** 
+/**
  * Copyright (C) 2023 Eric Helgeson
- * Copyright (c) 2024-2025 Rabbit Hole Computing
- * Copyright (C) 2025 Niels Martin Hansen
- * 
- * This file is originally part of BlueSCSI adopted for BlueSCSI
- * 
+ *
+ * This file is part of BlueSCSI
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -18,14 +16,14 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
-#include "Toolbox.h"
+#include "BlueSCSI_Toolbox.h"
 #include "BlueSCSI_disk.h"
 #include "BlueSCSI_cdrom.h"
 #include "BlueSCSI_log.h"
 #include <minIni.h>
 #include <SdFat.h>
 extern "C" {
-#include <toolbox.h>
+#include <bluescsi_toolbox.h>
 #include <scsi2sd_time.h>
 #include <sd.h>
 #include <mode.h>

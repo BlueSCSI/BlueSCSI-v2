@@ -1,15 +1,16 @@
 /*
- *  ZuluSCSI™
- *  Copyright (c) 2022-2025 Rabbit Hole Computing™
+ *  BlueSCSI v2
+ *  Copyright (c) 2023 Eric Helgeson, Androda, and contributors.
+ *
+ *  This project is based on ZuluSCSI, BlueSCSI v1, and SCSI2SD:
+ *
+ *  ZuluSCSI
+ *  Copyright (c) 2022 Rabbit Hole Computing
  *
  * This project is based on BlueSCSI:
  *
  *  BlueSCSI
  *  Copyright (c) 2021  Eric Helgeson, Androda
- *
- * This work incorporates work by following
- *  Copyright (c) 2023 joshua stein <jcs@jcs.org>
- *  Copyright (c) 2023 zigzagjoe
  *
  *  This file is free software: you may copy, redistribute and/or modify it
  *  under the terms of the GNU General Public License as published by the
