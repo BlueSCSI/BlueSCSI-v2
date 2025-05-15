@@ -358,6 +358,17 @@ int scsiNetworkCommand()
 			// return wi-fi scan results
 			if (!platform_network_wifi_scan_finished())
 			{
+				scsiDev.target->sense.code = ILLEGAL_REQUEST;
+				scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+				scsiDev.status = CHECK_CONDITION;
+				scsiDev.phase = STATUS;
+				break;
+			}
+
+			if (unlikely(size < 2))
+			{
+				scsiDev.target->sense.code = ILLEGAL_REQUEST;
+				scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
 				scsiDev.status = CHECK_CONDITION;
 				scsiDev.phase = STATUS;
 				break;
@@ -372,17 +383,25 @@ int scsiNetworkCommand()
 			}
 
 			if (nets) {
-				int size = sizeof(struct wifi_network_entry) * nets;
-				if (size + 2 > sizeof(scsiDev.data))
+				// th-otto
+				// https://github.com/BlueSCSI/BlueSCSI-v2/commit/26ee114f2542f822850b88ed5999efd79cb60350
+				unsigned int netsize = sizeof(struct wifi_network_entry) * nets;
+				if (netsize + 2 > sizeof(scsiDev.data))
 				{
 					LOGMSG_F("WARNING: wifi_network_list is bigger than scsiDev.data, truncating", 0);
-					size = sizeof(scsiDev.data) - 2;
-					size -= (size % (sizeof(struct wifi_network_entry)));
+					netsize = sizeof(scsiDev.data) - 2;
+					netsize -= (netsize % (sizeof(struct wifi_network_entry)));
 				}
-				scsiDev.data[0] = (size >> 8) & 0xff;
-				scsiDev.data[1] = size & 0xff;
-				memcpy(scsiDev.data + 2, wifi_network_list, size);
-				scsiDev.dataLen = size + 2;
+				if (netsize + 2 > size)
+				{
+					LOGMSG_F("WARNING: wifi_network_list is bigger than requested dataLen, truncating");
+					netsize = size - 2;
+					netsize -= (netsize % (sizeof(struct wifi_network_entry)));
+				}
+				scsiDev.data[0] = (netsize >> 8) & 0xff;
+				scsiDev.data[1] = netsize & 0xff;
+				memcpy(scsiDev.data + 2, wifi_network_list, netsize);
+				scsiDev.dataLen = netsize + 2;
 			}
 			else
 			{
