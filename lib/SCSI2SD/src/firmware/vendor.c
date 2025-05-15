@@ -19,7 +19,7 @@
 #include "scsi.h"
 #include "vendor.h"
 #include "diagnostic.h"
-#include "toolbox.h"
+#include "bluescsi_toolbox.h"
 #include <string.h>
 
 // Callback after the DATA OUT phase is complete.

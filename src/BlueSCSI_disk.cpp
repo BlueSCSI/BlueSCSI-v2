@@ -1,7 +1,7 @@
 /**
  * SCSI2SD V6 - Copyright (C) 2013 Michael McMaster <michael@codesrc.com>
  * Portions Copyright (C) 2014 Doug Brown <doug@downtowndougbrown.com>
- * Portions Copyright (C) 2023 Eric Helgeson
+ * Copyright (C) 2023 Eric Helgeson
  * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
  *
  * This file is licensed under the GPL version 3 or any later version. 

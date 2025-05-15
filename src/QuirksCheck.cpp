@@ -1,4 +1,6 @@
-/** 
+/**
+ * This file is part of BlueSCSI
+ *
  * Copyright (C) 2023 Eric Helgeson
  * Portions ZuluSCSI™ - Copyright (c) 2023-2025 Rabbit Hole Computing™
  * 

@@ -36,7 +36,7 @@
 #include "mo.h"
 #include "vendor.h"
 #include <string.h>
-#include "toolbox.h"
+#include "bluescsi_toolbox.h"
 
 // Global SCSI device state.
 ScsiDevice scsiDev S2S_DMA_ALIGN;
