@@ -55,7 +55,10 @@ typedef enum
     SYS_PRESET_MACPLUS,
     SYS_PRESET_MPC3000,
     SYS_PRESET_MEGASTE,
-    SYS_PRESET_X68000
+    SYS_PRESET_X68000,
+    SYS_PRESET_X68000_SCSI,
+    SYS_PRESET_X68000_SASI,
+    SYS_PRESET_NeXT
 } scsi_system_preset_t;
 
 typedef enum
