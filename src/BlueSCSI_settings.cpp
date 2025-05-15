@@ -36,7 +36,7 @@
 // SCSI system and device settings
 BlueSCSISettings g_scsi_settings;
 
-const char *systemPresetName[] = {"", "Mac", "MacPlus", "MPC3000", "MegaSTE", "X68000"};
+const char *systemPresetName[] = {"", "Mac", "MacPlus", "MPC3000", "MegaSTE", "X68000", "X68000-SCSI", "X68000-SASI", "NeXT"};
 const char *devicePresetName[] = {"", "ST32430N"};
 
 // must be in the same order as bluescsi_speed_grade_t in BlueSCSI_settings.h
@@ -379,13 +379,30 @@ scsi_system_settings_t *BlueSCSISettings::initSystem(const char *presetName)
         cfgSys.mapLunsToIDs = true;
         cfgSys.enableParity = false;
     }
-    else if (strequals(systemPresetName[SYS_PRESET_X68000], presetName))
+    else if (strequals(systemPresetName[SYS_PRESET_X68000], presetName) ||
+             strequals(systemPresetName[SYS_PRESET_X68000_SCSI], presetName))
     {
         m_sysPreset = SYS_PRESET_X68000;
         cfgSys.selectionDelay = 0;
         cfgSys.quirks = S2S_CFG_QUIRKS_X68000;
         cfgSys.enableSCSI2 = false;
         cfgSys.maxSyncSpeed = 5;
+    }
+    else if (strequals(systemPresetName[SYS_PRESET_X68000_SASI], presetName))
+    {
+        m_sysPreset = SYS_PRESET_X68000_SASI;
+        cfgSys.selectionDelay = 0;
+        cfgSys.quirks = S2S_CFG_QUIRKS_X68000;
+        cfgSys.enableSCSI2 = false;
+        cfgSys.enableParity = false;
+        cfgSys.maxSyncSpeed = 5;
+    }
+    else if (strequals(systemPresetName[SYS_PRESET_NeXT], presetName))
+    {
+        m_sysPreset = SYS_PRESET_NeXT;
+        cfgSys.quirks = S2S_CFG_QUIRKS_NONE;
+        cfgDev.sectorsPerTrack = 139;
+        cfgDev.headsPerCylinder = 4;
     }
     else
     {
