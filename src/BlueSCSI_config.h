@@ -29,7 +29,7 @@
 #include <BlueSCSI_platform_config.h>
 
 // Use variables for version number
-#define FW_VER_NUM      "25.06.17"
+#define FW_VER_NUM      "2025.06.00"
 // rel or dev only.
 #define FW_VER_SUFFIX   "dev"
 
@@ -37,7 +37,7 @@
 #define STRINGFY(STR) #STR
 #define FIRMWARE_NAME_PREFIX DEF_STRINGFY(BUILD_ENV)
 #define BLUE_FW_VERSION FW_VER_NUM "-" FW_VER_SUFFIX
-#define INQUIRY_NAME  PLATFORM_NAME " v" BLUE_FW_VERSION
+#define INQUIRY_NAME  PLATFORM_NAME "v" FW_VER_NUM
 #define TOOLBOX_API 0
 
 // Configuration and log file paths

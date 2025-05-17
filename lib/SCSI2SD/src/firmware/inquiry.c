@@ -274,10 +274,11 @@ uint32_t s2s_getStandardInquiry(
 	}
 	// Iomega already has a vendor inquiry
 	if(cfg->deviceType != S2S_CFG_NETWORK && cfg->deviceType != S2S_CFG_ZIP100) {
-		memcpy(&out[size], INQUIRY_NAME, sizeof(INQUIRY_NAME));
-		size += sizeof(INQUIRY_NAME);
-		out[size] = TOOLBOX_API;
-		size += 1;
+		memcpy(&out[size], INQUIRY_NAME, sizeof(INQUIRY_NAME) - 1);
+		size += sizeof(INQUIRY_NAME) - 1;
+		out[size++] = TOOLBOX_API;
+		out[4] = 0x1f + (sizeof(INQUIRY_NAME) - 1)
+		              + 1; // PLATFORM_TOOLBOX_API
 	}
 	return size;
 }

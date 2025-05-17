@@ -1,6 +1,5 @@
 /**
- * Copyright (C) 2023-2025 Eric Helgeson
- * Copyright (c) 2024-2025 Rabbit Hole Computing
+ * Copyright (C) 2023 Eric Helgeson
  *
  * This file is part of BlueSCSI
  *
@@ -42,7 +41,7 @@ extern "C" int8_t scsiToolboxEnabled()
 }
 
 
-static bool toolboxFilenameValid(const char* name, bool isCD = false)
+static bool toolboxFilenameValid(const char* name, const bool isCD = false)
 {
     if(strlen(name) == 0)
     {
@@ -213,7 +212,7 @@ static void onListDevices()
         const S2S_TargetCfg* cfg = s2s_getConfigById(i);
         if (cfg && (cfg->scsiId & S2S_CFG_TARGET_ENABLED))
         {
-            scsiDev.data[i] = (int)cfg->deviceType; // 2 == cd
+            scsiDev.data[i] = static_cast<int>(cfg->deviceType); // 2 == cd
         }
         else
         {
@@ -237,7 +236,7 @@ static void onSetNextCD(const char * img_dir)
     switchNextImage(img, full_path);
 }
 
-FsFile gFile; // global so we can keep it open while transfering.
+FsFile gFile; // global so we can keep it open while transferring.
 void onGetFile10(char * dir_name) {
     uint8_t index = scsiDev.cdb[1];
 
