@@ -665,6 +665,7 @@ bool scsiDiskFilenameValid(const char* name)
             ".tar", ".tgz", ".gz", ".bz2", ".tbz2", ".xz", ".zst", ".z",
             ".zip", ".zipx", ".rar", ".lzh", ".lha", ".lzo", ".lz4", ".arj",
             ".dmg", ".hqx", ".cpt", ".7z", ".s7z", ".mid", ".wav", ".aiff",
+            ".mar",
             NULL
         };
 
@@ -2221,7 +2222,7 @@ int scsiDiskCommand()
         // Enable or disable media access operations.
         //int immed = scsiDev.cdb[1] & 1;
         int start = scsiDev.cdb[4] & 1;
-        if ((scsiDev.cdb[4] & 2) || img.deviceType == S2S_CFG_ZIP100)
+        if ((scsiDev.cdb[4] & 2) || img.deviceType != S2S_CFG_FIXED)
         {
             // Device load & eject
             if (start)
