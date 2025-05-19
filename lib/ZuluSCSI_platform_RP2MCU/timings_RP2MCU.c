@@ -246,9 +246,9 @@ static zuluscsi_timings_t  predefined_timings[]  = {
         .scsi_10 =
         {
             .delay0 = 4 - 1,
-            .delay1 = 5 - 1,
+            .delay1 = 8 - 1,
             .total_period_adjust = 0,
-            .rdelay1 = 5 - 1,
+            .rdelay1 = 8 - 1,
             .rtotal_period_adjust = 0,
             .max_sync = 25,
 
@@ -311,9 +311,9 @@ static zuluscsi_timings_t  predefined_timings[]  = {
         .scsi_10 =
         {
             .delay0 = 6 - 1,
-            .delay1 = 8 - 1,
+            .delay1 = 12 - 1,
             .total_period_adjust = 0,
-            .rdelay1 = 8 - 1,
+            .rdelay1 = 12 - 1,
             .rtotal_period_adjust = 0,
             .max_sync = 25,
         },
@@ -375,9 +375,9 @@ static zuluscsi_timings_t  predefined_timings[]  = {
         .scsi_10 =
         {
             .delay0 = 4 - 1,
-            .delay1 = 5 - 1,
+            .delay1 = 7 - 1,
             .total_period_adjust = 0,
-            .rdelay1 = 5 - 1,
+            .rdelay1 = 7 - 1,
             .rtotal_period_adjust = 0,
             .max_sync = 25,
 
@@ -442,9 +442,9 @@ static zuluscsi_timings_t  predefined_timings[]  = {
         .scsi_10 =
         {
             .delay0 = 4 - 1,
-            .delay1 = 6 - 1,
+            .delay1 = 8 - 1,
             .total_period_adjust = 0,
-            .rdelay1 = 6 - 1,
+            .rdelay1 = 8 - 1,
             .rtotal_period_adjust = 0,
             .max_sync = 25,
         },
@@ -508,9 +508,9 @@ static zuluscsi_timings_t  predefined_timings[]  = {
         .scsi_10 =
         {
             .delay0 = 5 - 1,
-            .delay1 = 7 - 1,
+            .delay1 = 9 - 1,
             .total_period_adjust = 0,
-            .rdelay1 = 7- 1,
+            .rdelay1 = 9 - 1,
             .rtotal_period_adjust = 0,
             .max_sync = 25,
 
@@ -575,9 +575,9 @@ static zuluscsi_timings_t  predefined_timings[]  = {
         .scsi_10 =
         {
             .delay0 = 6 - 1,
-            .delay1 = 8 - 1,
+            .delay1 = 12 - 1,
             .total_period_adjust = 0,
-            .rdelay1 = 8 - 1,
+            .rdelay1 = 12 - 1,
             .rtotal_period_adjust = 0,
             .max_sync = 25,
         },
