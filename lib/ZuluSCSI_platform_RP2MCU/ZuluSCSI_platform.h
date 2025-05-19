@@ -176,7 +176,8 @@ bool platform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count
 extern const uint16_t g_scsi_parity_lookup[256];
 extern const uint16_t g_scsi_parity_check_lookup[512];
 
-
+// Returns true if the board has a physical eject button 
+bool platform_has_phy_eject_button();
 
 #ifdef __cplusplus
 }
