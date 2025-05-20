@@ -199,6 +199,9 @@ const uint32_t platform_flash_sector_map[] =
 
 bool platform_firmware_erase(FsFile &file);
 bool platform_firmware_program(FsFile &file);
+
+bool platform_has_phy_eject_button(){return false};
+
 // SD card driver for SdFat
 
 // SDIO interface, ZuluSCSI v1.4
