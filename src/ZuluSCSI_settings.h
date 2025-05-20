@@ -163,6 +163,9 @@ public:
 
     const char* getSpeedGradeString();
 
+    // see if any SCSI devices have an eject button set
+    const bool isEjectButtonSet();
+
 protected:
     // Set default drive vendor / product info after the image file
     // is loaded and the device type is known.
@@ -175,14 +178,14 @@ protected:
     scsi_system_preset_t m_sysPreset;
     // The last preset is for the device specific under [SCSI] in the CONFIGFILE
     // The rest are for corresponding SCSI Ids e.g. [SCSI0] in the CONFIGFILE.
-    scsi_device_preset_t m_devPreset[8];
+    scsi_device_preset_t m_devPreset[S2S_MAX_TARGETS];
 
     // These are setting for host compatibility
     scsi_system_settings_t m_sys;
 
     // The last dev will be copied over the other dev scsi Id for device defaults.
     // It is set during when the system settings are initialized
-    scsi_device_settings_t m_dev[9];
+    scsi_device_settings_t m_dev[S2S_MAX_TARGETS+1];
 } ;
 
 

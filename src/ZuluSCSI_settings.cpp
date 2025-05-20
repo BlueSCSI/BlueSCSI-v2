@@ -558,3 +558,18 @@ const char *ZuluSCSISettings::getSpeedGradeString()
 {
     return speed_grade_strings[m_sys.speedGrade];
 }
+
+
+const bool ZuluSCSISettings::isEjectButtonSet()
+{
+    bool is_set = false;
+    for (uint8_t i = 0; i < S2S_MAX_TARGETS; i++)
+    {
+        if (m_dev[i].ejectButton != 0)
+        {
+            is_set = true;
+            break;
+        }
+    }
+    return is_set;
+}

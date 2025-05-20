@@ -149,6 +149,9 @@ void SysTick_Handle_PreEmptively();
 bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_PAGE_SIZE]);
 void platform_boot_to_main_firmware();
 
+// True if the board has a physical eject button
+bool platform_has_phy_eject_button();
+
 // Configuration customizations based on DIP switch settings
 // When DIPSW1 is on, Apple quirks are enabled by default.
 void platform_config_hook(S2S_TargetCfg *config);

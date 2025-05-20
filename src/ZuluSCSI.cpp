@@ -588,7 +588,7 @@ bool findHDDImages()
     // If there is a removable device
     if (eject_btn_set == 1)
       logmsg("Eject set to device with ID: ", last_removable_device);
-    else if (eject_btn_set == 0)
+    else if (eject_btn_set == 0 && !platform_has_phy_eject_button())
     {
       logmsg("Found 1 removable device, to set an eject button see EjectButton in the '", CONFIGFILE,"', or the http://zuluscsi.com/manual");
     }
@@ -613,7 +613,10 @@ bool findHDDImages()
     }
     else
     {
-      logmsg("Multiple removable devices, to set an eject button see EjectButton in the '", CONFIGFILE,"', or the http://zuluscsi.com/manual");
+      if (platform_has_phy_eject_button())
+        logmsg("Other removable devices found, to set an eject button for different SCSI IDs see EjectButton in the '", CONFIGFILE,"', or the http://zuluscsi.com/manual");
+      else
+        logmsg("Multiple removable devices, to set an eject button see EjectButton in the '", CONFIGFILE,"', or the http://zuluscsi.com/manual");
     }
   }
   return foundImage;
@@ -941,6 +944,29 @@ static bool poll_sd_card()
 #endif
 }
 
+static void init_eject_button()
+{
+  if (platform_has_phy_eject_button() &&  !g_scsi_settings.isEjectButtonSet())
+  {
+    for (uint8_t i = 0; i < S2S_MAX_TARGETS; i++)
+    {
+      S2S_CFG_TYPE dev_type = (S2S_CFG_TYPE)scsiDev.targets[i].cfg->deviceType;
+      if (dev_type == S2S_CFG_OPTICAL
+          ||dev_type == S2S_CFG_ZIP100
+          || dev_type == S2S_CFG_REMOVABLE
+          || dev_type == S2S_CFG_FLOPPY_14MB
+          || dev_type == S2S_CFG_MO
+          || dev_type == S2S_CFG_SEQUENTIAL
+      )
+      {
+          setEjectButton(i, 1);
+          logmsg("Setting hardware eject button to the first ejectable device on SCSI ID ", (int)i);
+          break;
+      }
+    }
+  }
+}
+
 // Place all the setup code that requires the SD card to be initialized here
 // Which is pretty much everything after platform_init and and platform_late_init
 static void zuluscsi_setup_sd_card(bool wait_for_card = true)
@@ -1041,7 +1067,6 @@ static void zuluscsi_setup_sd_card(bool wait_for_card = true)
     platform_post_sd_card_init();
     reinitSCSI();
 
-
     boot_delay_ms = cfg->initPostDelay;
     if (boot_delay_ms > 0)
     {
@@ -1058,6 +1083,12 @@ static void zuluscsi_setup_sd_card(bool wait_for_card = true)
     {
       platform_disable_led();
     }
+  }
+#ifdef PLATFORM_HAS_INITIATOR_MODE
+  if (!platform_is_initiator_mode_enabled())
+#endif
+  {
+    init_eject_button();
   }
 
   blinkStatus(BLINK_STATUS_OK);

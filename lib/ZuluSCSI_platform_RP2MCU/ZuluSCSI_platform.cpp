@@ -1040,7 +1040,10 @@ uint8_t platform_get_buttons()
     return buttons_debounced;
 }
 
-
+bool platform_has_phy_eject_button()
+{
+    return false;
+}
 
 /************************************/
 /* ROM drive in extra flash space   */
