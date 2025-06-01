@@ -407,7 +407,9 @@ void platform_late_init()
 #if defined(HAS_DIP_SWITCHES) && defined(PLATFORM_HAS_INITIATOR_MODE)
     if (g_scsi_initiator == true)
     {
-        logmsg("SCSI initiator mode selected by DIP switch, expecting SCSI disks on the bus");
+        logmsg("***************************************************************************");
+        logmsg("        SCSI initiator mode enabled, expecting SCSI disks on the bus       ");
+        logmsg("***************************************************************************");
     }
     else
     {
