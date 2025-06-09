@@ -253,10 +253,14 @@ static pin_setup_state_t read_setup_ack_pin()
 #endif
 
 bool is2023a() {
+    // Force out low for RP2350 errata
+    gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_SIO, false, false, true,  false, true);
+    gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_SIO, false, false, true,  false, true);
+    delay(10);
     gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_I2C, false, false, false,  false, true);
     gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_I2C, false, false, false,  false, true);
-    delay(10);
-    bool d50_2023_09a = gpio_get(GPIO_I2C_SCL) && gpio_get(GPIO_I2C_SDA);
+
+    const bool d50_2023_09a = gpio_get(GPIO_I2C_SCL) && gpio_get(GPIO_I2C_SDA);
 
     if (d50_2023_09a) {
         logmsg("I2C Supported");
@@ -447,7 +451,6 @@ void platform_init()
 }
 void platform_enable_initiator_mode()
 {
-    logmsg("platform_enable_initiator_mode");
     if (ini_getbool("SCSI", "InitiatorMode", false, CONFIGFILE))
     {
         logmsg("InitiatorMode true");
@@ -1107,8 +1110,8 @@ uint8_t platform_get_buttons()
     if (!gpio_get(GPIO_EXP_SPARE)) buttons |= 1;
 #elif defined(GPIO_I2C_SDA)
     // SDA = button 1, SCL = button 2
-    if (!gpio_get(GPIO_I2C_SDA)) buttons |= 1;
-    if (!gpio_get(GPIO_I2C_SCL)) buttons |= 2;
+    // if (!gpio_get(GPIO_I2C_SDA)) buttons |= 1;
+    // if (!gpio_get(GPIO_I2C_SCL)) buttons |= 2;
 #endif // defined(ENABLE_AUDIO_OUTPUT_SPDIF)
 
     // Simple debouncing logic: handle button releases after 100 ms delay.
