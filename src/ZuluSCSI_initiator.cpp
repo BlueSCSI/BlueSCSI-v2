@@ -23,7 +23,6 @@
 /*
  * Main program for initiator mode.
  */
-
 #include "ZuluSCSI_config.h"
 #include "ZuluSCSI_log.h"
 #include "ZuluSCSI_log_trace.h"
@@ -226,6 +225,13 @@ void scsiInitiatorMainLoop()
     {
         if (!g_sdcard_present || ini_getbool("SCSI", "InitiatorMSC", false, CONFIGFILE))
         {
+            // This delay allows the USB serial console to connect immediately to the host
+            // It also decreases the delay in callback processing of MSC commands
+            int32_t msc_init_delay = ini_getl("SCSI", "InitiatorMSCInitDelay", MSC_INIT_DELAY, CONFIGFILE);
+            if (msc_init_delay != MSC_INIT_DELAY)
+                logmsg("Initiator init delay set in ", CONFIGFILE ," to ", (int)msc_init_delay, " milliseconds");
+            delay(msc_init_delay);
+
             logmsg("Entering USB MSC initiator mode");
             platform_enter_msc();
             setup_msc_initiator();
