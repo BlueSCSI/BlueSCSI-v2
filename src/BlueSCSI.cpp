@@ -851,17 +851,19 @@ static void reinitSCSI()
   scsiInit();
 
 #ifdef BLUESCSI_NETWORK
-  if (scsiDiskCheckAnyNetworkDevicesConfigured() && platform_network_supported())
-  {
-    platform_network_init(scsiDev.boardCfg.wifiMACAddress);
-    if (scsiDev.boardCfg.wifiSSID[0] != '\0')
-      platform_network_wifi_join(scsiDev.boardCfg.wifiSSID, scsiDev.boardCfg.wifiPassword);
+  if (platform_network_supported()) {
+    if (scsiDiskCheckAnyNetworkDevicesConfigured())
+    {
+      platform_network_init(scsiDev.boardCfg.wifiMACAddress);
+      if (scsiDev.boardCfg.wifiSSID[0] != '\0')
+        platform_network_wifi_join(scsiDev.boardCfg.wifiSSID, scsiDev.boardCfg.wifiPassword);
+      else
+        logmsg("No Wi-Fi SSID or Password found. Use the BlueSCSI Wi-Fi DA to configure the network.");
+    }
     else
-      logmsg("No Wi-Fi SSID or Password found. Use the BlueSCSI Wi-Fi DA to configure the network.");
-  }
-  else
-  {
-    platform_network_deinit();
+    {
+      platform_network_deinit();
+    }
   }
 #endif // BLUESCSI_NETWORK
   logmsg("");
