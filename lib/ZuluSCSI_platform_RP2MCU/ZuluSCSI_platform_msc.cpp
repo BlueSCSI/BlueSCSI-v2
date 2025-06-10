@@ -437,5 +437,4 @@ extern "C" void tud_msc_write10_complete_cb(uint8_t lun)
   MSCScopedLock lock;
   if (g_msc_initiator) return init_msc_write10_complete_cb(lun);
 }
-
 #endif
