@@ -588,7 +588,8 @@ void platform_late_init()
 // This should turn on the LED for Pico 1/2 W devices early in the init process
 // It should help indicate to the user that interface is working and the board is ready for DaynaPORT
 #if  defined(BLUESCSI_NETWORK) && ! defined(BLUESCSI_RM2)
-    platform_network_iface_check();
+    if (platform_network_supported())
+        platform_network_iface_check();
 #endif
 
 
