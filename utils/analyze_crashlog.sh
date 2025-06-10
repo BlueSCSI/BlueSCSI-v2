@@ -24,7 +24,7 @@ fwtime=$(grep 'FW Version' $logfile | tail -n 1 | egrep -o '[A-Z][a-z][a-z]\s+[0
 # Check if the firmware file is available locally
 echo "Searching for firmware compiled at $fwtime"
 scriptdir=$( dirname -- "${BASH_SOURCE[0]}" )
-fwfile=$(find $scriptdir/.. $2 -name '*.elf' -exec grep -q "$fwtime" {} \; -print -quit)
+fwfile=$(find $scriptdir/.. $2 -name 'firmware.elf' -exec grep -q "$fwtime" {} \; -print -quit)
 
 # Search Github for artifacts uploaded within few minutes of the compilation time
 if [ "x$fwfile" = "x" ]; then
