@@ -753,10 +753,7 @@ static void reinitSCSI()
     g_log_debug = true;
   }
 #else
-  if (ini_getbool("SCSI", "Debug", 0, CONFIGFILE))
-  {
-    g_log_debug = true;
-  }
+  g_log_debug = ini_getbool("SCSI", "Debug", false, CONFIGFILE);
 #endif
   if (g_log_debug)
   {
