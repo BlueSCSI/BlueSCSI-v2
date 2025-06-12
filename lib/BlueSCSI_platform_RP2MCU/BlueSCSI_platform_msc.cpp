@@ -107,7 +107,6 @@ public:
 
 /* return true if USB presence detected / eligible to enter CR mode */
 bool platform_sense_msc() {
-  logmsg("platform_sense_msc");
 #if defined(BLUESCSI_PICO) || defined(BLUESCSI_PICO_2) || defined(BLUESCSI_V2)
   // check if we're USB powered, if not, exit immediately
   // pin on the wireless module, see https://github.com/earlephilhower/arduino-pico/discussions/835
