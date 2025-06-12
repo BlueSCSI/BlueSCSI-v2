@@ -182,14 +182,14 @@ bool platform_reclock(bluescsi_speed_grade_t speed_grade)
             else
                 logmsg("Reclocking with these settings may cause audio playback to be too fast or slow ");
 #endif
-            logmsg("Initial Clock set to ", (int) platform_sys_clock_in_hz(), "Hz");
-            logmsg("Reclocking the MCU to ",(int) g_bluescsi_timings->clk_hz, "Hz");
+            logmsg("Initial Clock set to ", (int) platform_sys_clock_in_hz() / MHZ, "MHz");
+            logmsg("Reclocking the MCU to ",(int) g_bluescsi_timings->clk_hz / MHZ, "MHz");
 #ifndef SD_USE_RP2350_SDIO
             logmsg("Setting the SDIO clock to ", (int)((g_bluescsi_timings->clk_hz / g_bluescsi_timings->sdio.clk_div_pio + (5 * MHZ / 10)) / MHZ) , "MHz");
 #endif
             usb_log_poll();
             reclock();
-            logmsg("After reclocking, system reports clock set to ", (int) platform_sys_clock_in_hz(), "Hz");
+            logmsg("After reclocking, system reports clock set to ", (int) platform_sys_clock_in_hz() / MHZ, "MHz");
         }
     }
     else
@@ -402,10 +402,10 @@ void platform_init()
     //logmsg ("SCSI termination is handled by a hardware jumper");
 #endif  // HAS_DIP_SWITCHES
 
-        logmsg("===========================================================");
-        logmsg(" Powered by Raspberry Pi");
-        logmsg("            Raspberry Pi is a trademark of Raspberry Pi Ltd");
-        logmsg("===========================================================");
+        // logmsg("===========================================================");
+        // logmsg(" Powered by Raspberry Pi");
+        // logmsg("            Raspberry Pi is a trademark of Raspberry Pi Ltd");
+        // logmsg("===========================================================");
 
     // Get flash chip size
     uint8_t cmd_read_jedec_id[4] = {0x9f, 0, 0, 0};
