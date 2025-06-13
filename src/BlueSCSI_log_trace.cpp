@@ -217,6 +217,7 @@ void scsiLogPhaseChange(int new_phase)
     static int old_scsi_id = 0;
     static int old_phase = BUS_FREE;
     static int old_sync_period = 0;
+    static bool logged_oc_info = false;
 
     if (new_phase != old_phase)
     {
@@ -253,6 +254,10 @@ void scsiLogPhaseChange(int new_phase)
                 logmsg("SCSI ID ", (int)scsiDev.target->targetId,
                     " negotiated synchronous mode ", mbyte_per_s, " MB/s ",
                     "(period 4x", syncper, " ns, offset ", syncoff, " bytes)");
+                if (!logged_oc_info) {
+                    logmsg("INFO: You may get a boost from overclocking as your system supports synchronous SCSI speeds. https://bluescsi.com/docs/Ultra-SCSI-Fast20-OverClock");
+                    logged_oc_info = true;
+                }
             }
             else
             {
