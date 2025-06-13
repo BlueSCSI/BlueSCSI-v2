@@ -57,6 +57,7 @@
 // Definitions of Global PIN definitions that may change depending on hardware rev
 uint32_t SCSI_ACCEL_PINMASK = SCSI_ACCEL_SETPINS;
 uint8_t SCSI_OUT_REQ = SCSI_OUT_REQ_CURRENT;
+uint8_t SCSI_OUT_SEL = SCSI_OUT_SEL_CURRENT;
 
 #ifdef BLUESCSI_NETWORK
 extern "C" {
@@ -287,12 +288,16 @@ bool is2023a() {
         // Reset REQ to the appropriate pin for older hardware
         SCSI_OUT_REQ = SCSI_OUT_REQ_PRE09A;
         SCSI_ACCEL_PINMASK = SCSI_ACCEL_SETPINS_PRE09A;
+        SCSI_OUT_SEL = SCSI_OUT_SEL_PRE09A;
 
         // Initialize logging to SWO pin (UART0)
         gpio_conf(SWO_PIN,        GPIO_FUNC_UART,false,false, true,  false, true);
         uart_init(uart0, 115200);
         g_uart_initialized = true;
     }
+
+    gpio_conf(SCSI_OUT_SEL,   GPIO_FUNC_SIO, false,false, true,  true, true);
+
     return d50_2023_09a;
 }
 
@@ -311,7 +316,6 @@ void platform_init()
     gpio_conf(SCSI_DATA_DIR,  GPIO_FUNC_SIO, false,false, true,  true, true);
     gpio_conf(SCSI_OUT_RST,   GPIO_FUNC_SIO, false,false, true,  true, true);
     gpio_conf(SCSI_OUT_BSY,   GPIO_FUNC_SIO, false,false, true,  true, true);
-    gpio_conf(SCSI_OUT_SEL,   GPIO_FUNC_SIO, false,false, true,  true, true);
 
     /* Check dip switch settings */
 #ifdef HAS_DIP_SWITCHES

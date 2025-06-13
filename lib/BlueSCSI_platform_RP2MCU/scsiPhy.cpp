@@ -160,7 +160,7 @@ static void scsiPhyIRQ(uint gpio, uint32_t events)
             scsi_bsy_deassert_interrupt();
         }
     }
-    else if (gpio == SCSI_IN_RST)
+    else if (gpio == SCSI_IN_RST && ((~sio_hw->gpio_oe) & (1 << SCSI_OUT_SEL)))
     {
         scsi_rst_assert_interrupt();
     }
