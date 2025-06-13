@@ -87,6 +87,10 @@ extern uint32_t SCSI_ACCEL_PINMASK;
 #define GPIO_I2C_SDA 16
 #define GPIO_I2C_SCL 17
 
+// SW1/SW2 buttons on pre-202309a hardware
+#define BUTTON_SW1_PRE202309a SCSI_IN_ATN
+#define BUTTON_SW2_PRE202309a SCSI_IN_ACK
+
 // Other pins
 #define SWO_PIN 16
 
