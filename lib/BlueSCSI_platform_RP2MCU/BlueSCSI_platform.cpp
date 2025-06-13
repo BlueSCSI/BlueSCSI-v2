@@ -252,18 +252,20 @@ static pin_setup_state_t read_setup_ack_pin()
     return SETUP_UNDETERMINED;
 }
 #endif
-
-bool is2023a() {
+static bool is2023a = false;
+bool checkIs2023a() {
+#ifdef BLUESCSI_MCU_RP23XX
     // Force out low for RP2350 errata
     gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_SIO, false, false, true,  false, true);
     gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_SIO, false, false, true,  false, true);
     delay(10);
+#endif
     gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_I2C, false, false, false,  false, true);
     gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_I2C, false, false, false,  false, true);
 
-    const bool d50_2023_09a = gpio_get(GPIO_I2C_SCL) && gpio_get(GPIO_I2C_SDA);
+    is2023a = gpio_get(GPIO_I2C_SCL) && gpio_get(GPIO_I2C_SDA);
 
-    if (d50_2023_09a) {
+    if (is2023a) {
         logmsg("I2C Supported");
         g_supports_initiator = true;
         gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_I2C, true, false, false,  true, true);
@@ -275,15 +277,12 @@ bool is2023a() {
         // gpio_pull_up(GPIO_I2C_SCL);  // TODO necessary?
         // gpio_pull_up(GPIO_I2C_SDA);
     } else {
-        logmsg("I2C Not Supported on this rev of hardware");
+        dbgmsg("I2C not supported on this rev of hardware");
         /* Check option switch settings */
         // Option switches: S1 is iATN, S2 is iACK
-        gpio_conf(SCSI_IN_ACK,    GPIO_FUNC_SIO, true, false, false, false, false);
-        gpio_conf(SCSI_IN_ATN,    GPIO_FUNC_SIO, false, false, false, false, false);
+        gpio_conf(BUTTON_SW1_PRE202309a,    GPIO_FUNC_SIO, true, false, false, false, false);
+        gpio_conf(BUTTON_SW1_PRE202309a,    GPIO_FUNC_SIO, false, false, false, false, false);
         delay(10); /// Settle time
-        // Check option switches
-        [[maybe_unused]] bool optionS1 = !gpio_get(SCSI_IN_ATN);
-        [[maybe_unused]] bool optionS2 = !gpio_get(SCSI_IN_ACK);
 
         // Reset REQ to the appropriate pin for older hardware
         SCSI_OUT_REQ = SCSI_OUT_REQ_PRE09A;
@@ -298,7 +297,7 @@ bool is2023a() {
 
     gpio_conf(SCSI_OUT_SEL,   GPIO_FUNC_SIO, false,false, true,  true, true);
 
-    return d50_2023_09a;
+    return is2023a;
 }
 
 void platform_init()
@@ -450,7 +449,7 @@ void platform_init()
 #ifdef GPIO_USB_POWER
     gpio_conf(GPIO_USB_POWER, GPIO_FUNC_SIO, false, false, false,  false, false);
 #endif
-    is2023a();
+    checkIs2023a();
 
 }
 void platform_enable_initiator_mode()
@@ -1119,6 +1118,10 @@ uint8_t platform_get_buttons()
     // if (!gpio_get(GPIO_I2C_SCL)) buttons |= 2;
 #endif // defined(ENABLE_AUDIO_OUTPUT_SPDIF)
 
+    if (!is2023a) {
+        if (!gpio_get(BUTTON_SW1_PRE202309a)) buttons |= 1;
+        if (!gpio_get(BUTTON_SW2_PRE202309a)) buttons |= 2;
+    }
     // Simple debouncing logic: handle button releases after 100 ms delay.
     static uint32_t debounce;
     static uint8_t buttons_debounced = 0;
