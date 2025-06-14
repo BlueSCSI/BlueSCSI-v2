@@ -388,7 +388,7 @@ static void autoConfigGeometry(image_config_t &img)
 
     bool divisible = (img.scsiSectors % ((uint32_t)img.sectorsPerTrack * img.headsPerCylinder)) == 0;
     if (!divisible)
-        logmsg("---- Geometry set from ", method,
+        dbgmsg("---- Geometry set from ", method,
                ": SectorsPerTrack=", (int) img.sectorsPerTrack,
                " HeadsPerCylinder=", (int) img.headsPerCylinder,
                " total sectors ", (int) img.scsiSectors,
