@@ -1141,7 +1141,8 @@ uint8_t platform_get_buttons()
 
 bool platform_has_phy_eject_button()
 {
-    return false;
+    // 2023a and later boards have i2c buttons
+    return !is2023a;
 }
 
 /************************************/

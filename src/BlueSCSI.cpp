@@ -401,8 +401,8 @@ bool findHDDImages()
   bool foundImage = false;
   int usedDefaultId = 0;
   uint8_t removable_count = 0;
-  uint8_t eject_btn_set = 0;
 #ifdef BLUESCSI_BUTTONS
+  uint8_t eject_btn_set = 0;
   uint8_t last_removable_device = 255;
 #endif // BLUESCSI_BUTTONS
   while (1)
@@ -1011,11 +1011,12 @@ static bool poll_sd_card()
   return SD.card()->readOCR(&ocr);
 #endif
 }
-
+#define NUM_EJECT_BUTTONS 2
 static void init_eject_button()
 {
-  if (platform_has_phy_eject_button() &&  !g_scsi_settings.isEjectButtonSet())
+  if (platform_has_phy_eject_button() && !g_scsi_settings.isEjectButtonSet())
   {
+    int8_t eject_button = 1;
     for (uint8_t i = 0; i < S2S_MAX_TARGETS; i++)
     {
       S2S_CFG_TYPE dev_type = (S2S_CFG_TYPE)scsiDev.targets[i].cfg->deviceType;
@@ -1027,11 +1028,16 @@ static void init_eject_button()
           || dev_type == S2S_CFG_SEQUENTIAL
       )
       {
-          setEjectButton(i, 1);
-          logmsg("Setting hardware eject button to the first ejectable device on SCSI ID ", (int)i);
-          break;
+          setEjectButton(i, eject_button);
+          logmsg("ID: ", (int)i, ", Eject button: #", (int)eject_button);
+
+          if (++eject_button > NUM_EJECT_BUTTONS) {
+            logmsg("");
+            return;
+          }
       }
     }
+    dbgmsg("No removable media found for ", NUM_EJECT_BUTTONS, " eject buttons, skipping.");
   }
 }
 
