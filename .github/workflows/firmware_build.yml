@@ -1,0 +1,69 @@
+name: Build BlueSCSI firmware
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build_firmware:
+    name: Build firmware on Ubuntu
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v4
+        with:
+          path: BlueSCSI
+          fetch-depth: "0"
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.platformio/.cache
+          key: ${{ runner.os }}-pio
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install platformio
+        run: |
+          pip install --upgrade platformio
+
+      - name: Build firmware
+        run: |
+          cd BlueSCSI
+          pio run -v -e BlueSCSI_Pico_DaynaPORT -e BlueSCSI_Pico_2_DaynaPORT
+
+      - name: Rename firmware files
+        run: |
+          cd BlueSCSI
+          utils/rename_binaries.sh
+
+      - name: Upload binaries into build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          path: BlueSCSI/distrib/*
+          name: BlueSCSI binaries
+
+      - name: Upload to latest release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: ${{ github.ref == 'refs/heads/main' && github.repository == 'BlueSCSI/BlueSCSI-v2' }}
+        run: |
+          cd BlueSCSI
+          git tag -d latest
+          git tag latest
+          git push origin --force latest
+          cd distrib
+          gh api repos/${GITHUB_REPOSITORY}/releases/tags/latest | jq -r '.assets[] | [.url] | @tsv' | xargs -n 1 gh api -X DELETE || true
+          gh release upload --repo ${GITHUB_REPOSITORY} --clobber latest *
+
+      - name: Upload to newly created release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: ${{ startsWith(github.ref, 'refs/tags/') && github.repository == 'BlueSCSI/BlueSCSI-v2' }}
+        run: |
+          RELEASE=$(basename ${{github.ref}})
+          gh release create --repo ${GITHUB_REPOSITORY} -t $RELEASE $RELEASE BlueSCSI/distrib/*

@@ -1,0 +1,54 @@
+name: Analyze crash logs
+
+on:
+  issue_comment:
+    types: [created]
+  issues:
+    types: [opened, edited]
+
+jobs:
+  analyze_crashlog:
+    name: Analyze crash log
+    runs-on: ubuntu-20.04
+    if: |
+      (github.event_name == 'issue_comment' && (
+        contains(github.event.comment.body, 'CRASH') ||
+        contains(github.event.comment.body, 'WATCHDOG'))) ||
+      (github.event_name == 'issues' && (
+          contains(github.event.issue.body, 'CRASH') ||
+          contains(github.event.issue.body, 'WATCHDOG')))
+    permissions:
+      issues: write
+
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v3
+
+      - name: Install tools
+        run: |
+          sudo apt-get install binutils-arm-none-eabi
+
+      - name: Analyze crash log from issue body
+        if: github.event_name == 'issues'
+        env:
+          ISSUE_ID: ${{ github.event.issue.number }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/${GITHUB_REPOSITORY}/issues/${ISSUE_ID}/comments --jq '.[-1].body' | grep Automatic && exit 0 # Comment only once
+          gh api repos/${GITHUB_REPOSITORY}/issues/${ISSUE_ID} --jq '.body' > comment.txt
+          echo -e 'Automatic analysis of the crash log:\n\n<pre>' > output.txt
+          utils/analyze_crashlog.sh comment.txt | tee -a output.txt
+          echo '</pre>' >> output.txt
+          grep '^0x' output.txt && gh issue comment ${ISSUE_ID} --body-file output.txt
+
+      - name: Analyze crash log from issue comment
+        if: github.event_name == 'issue_comment'
+        env:
+          ISSUE_ID: ${{ github.event.issue.number }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/${GITHUB_REPOSITORY}/issues/${ISSUE_ID}/comments --jq '.[-1].body' > comment.txt
+          echo -e 'Automatic analysis of the crash log:\n\n<pre>' > output.txt
+          utils/analyze_crashlog.sh comment.txt | tee -a output.txt
+          echo '</pre>' >> output.txt
+          grep '^0x' output.txt && gh issue comment ${ISSUE_ID} --body-file output.txt
