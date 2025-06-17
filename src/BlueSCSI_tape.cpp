@@ -116,7 +116,7 @@ static void doTapeRead(uint32_t blocks)
     }
 
     bool passed_filemarker = false;
-    bool end_of_tape = false;
+    // bool end_of_tape = false;
     if (unlikely(((uint64_t) img.tape_pos) - img.tape_mark_block_offset + blocks >= capacity))
     {
         // reading past a file, set blocks to end of file
@@ -131,8 +131,8 @@ static void doTapeRead(uint32_t blocks)
         {
             img.tape_load_next_file = true;
         }
-        else
-            end_of_tape = true;
+        // else
+        //     end_of_tape = true;
     }
 
     dbgmsg("------ Read tape ", (int)blocks, "x", (int)bytesPerSector, " tape position ",(int)img.tape_pos, " file position ", (int)(img.tape_pos - img.tape_mark_block_offset), " ends with file mark ", (int)img.tape_mark_index);
