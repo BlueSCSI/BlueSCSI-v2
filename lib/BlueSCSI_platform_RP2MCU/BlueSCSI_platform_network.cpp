@@ -81,7 +81,7 @@ int platform_network_init(char *mac)
 	if (mac == NULL || (mac[0] == 0 && mac[1] == 0 && mac[2] == 0 && mac[3] == 0 && mac[4] == 0 && mac[5] == 0))
 	{
 		mac = (char *)&set_mac;
-		char octal_strings[8][4] = {0};
+		// char octal_strings[8][4] = {0};
 		memcpy(mac, defaultMAC, sizeof(set_mac));
 
 		// retain Dayna vendor but use a device id specific to this board
