@@ -2133,24 +2133,29 @@ extern "C" int scsiCDRomCommand()
         // The "format" field is reserved for SCSI-2
         uint8_t format = scsiDev.cdb[2] & 0x0F;
 
-        // Matshita SCSI-2 drives appear to use the high 2 bits of the CDB
-        // control byte to switch on session info (0x40) and full toc (0x80)
-        // responses that are very similar to the standard formats described
-        // in MMC-1. These vendor flags must have been pretty common because
-        // even a modern SATA drive (ASUS DRW-24B1ST j) responds to them
-        // (though it always replies in hex rather than bcd)
-        //
-        // The session information page is identical to MMC. The full TOC page
-        // is identical _except_ it returns addresses in bcd rather than hex.
         bool useBCD = false;
-        if (format == 0 && scsiDev.cdb[9] == 0x80)
+
+        if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_APPLE)
         {
-            format = 2;
-            useBCD = true;
-        }
-        else if (format == 0 && scsiDev.cdb[9] == 0x40)
-        {
-            format = 1;
+            // Matshita SCSI-2 drives appear to use the high 2 bits of the CDB
+            // control byte to switch on session info (0x40) and full toc (0x80)
+            // responses that are very similar to the standard formats described
+            // in MMC-1. These vendor flags must have been pretty common because
+            // even a modern SATA drive (ASUS DRW-24B1ST j) responds to them
+            // (though it always replies in hex rather than bcd)
+            //
+            // The session information page is identical to MMC. The full TOC page
+            // is identical _except_ it returns addresses in bcd rather than hex.
+
+            if (format == 0 && scsiDev.cdb[9] == 0x80)
+            {
+                format = 2;
+                useBCD = true;
+            }
+            else if (format == 0 && scsiDev.cdb[9] == 0x40)
+            {
+                format = 1;
+            }
         }
 
         switch (format)
