@@ -89,7 +89,7 @@
 #define DRIVEINFO_OPTICAL   {"ZULUSCSI", "CDROM",     PLATFORM_REVISION, ""}
 #define DRIVEINFO_FLOPPY    {"ZULUSCSI", "FLOPPY",    PLATFORM_REVISION, ""}
 #define DRIVEINFO_MAGOPT    {"ZULUSCSI", "MO_DRIVE",  PLATFORM_REVISION, ""}
-#define DRIVEINFO_NETWORK   {"Dayna",    "SCSI/Link",       "2.0f", ""}
+#define DRIVEINFO_NETWORK   {"Dayna",    "SCSI/Link", "2.0f",            ""}
 #define DRIVEINFO_TAPE      {"ZULUSCSI", "TAPE",      PLATFORM_REVISION, ""}
 
 // Default block size
@@ -99,12 +99,12 @@
 #define DEFAULT_BLOCKSIZE_OPTICAL 2048
 
 // Default SCSI drive information when Apple quirks are enabled
-#define APPLE_DRIVEINFO_FIXED     {"CDC",      "ZuluSCSI HDD",      PLATFORM_REVISION, "1.0"}
+#define APPLE_DRIVEINFO_FIXED     {"DEC",      "ZuluSCSI HDD",      PLATFORM_REVISION, "1.0"}
 #define APPLE_DRIVEINFO_REMOVABLE {"IOMEGA",   "BETA230",           PLATFORM_REVISION, "2.02"}
 #define APPLE_DRIVEINFO_OPTICAL   {"MATSHITA", "CD-ROM CR-8004",    PLATFORM_REVISION, "1.1f"}
-#define APPLE_DRIVEINFO_FLOPPY    {"IOMEGA",     "Io20S         *F", "PP33", ""}
+#define APPLE_DRIVEINFO_FLOPPY    {"IOMEGA",   "Io20S         *F",  "PP33",            ""}
 #define APPLE_DRIVEINFO_MAGOPT    {"MOST",     "RMD-5200",          PLATFORM_REVISION, "1.0"}
-#define APPLE_DRIVEINFO_NETWORK   {"Dayna",    "SCSI/Link",       "2.0f", ""}
+#define APPLE_DRIVEINFO_NETWORK   {"Dayna",    "SCSI/Link",         "2.0f",            ""}
 #define APPLE_DRIVEINFO_TAPE      {"ZULUSCSI", "APPLE_TAPE",        PLATFORM_REVISION, ""}
 
 // Default Iomega ZIP drive information
