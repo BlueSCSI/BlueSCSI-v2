@@ -316,7 +316,7 @@ scsi_system_settings_t *BlueSCSISettings::initSystem(const char *presetName)
     cfgSys.useFATAllocSize = false;
     cfgSys.enableCDAudio = false;
     cfgSys.maxVolume = 100;
-    cfgSys.enableUSBMassStorage = false;
+    cfgSys.enableUSBMassStorage = true;
     cfgSys.usbMassStorageWaitPeriod = 1000;
     cfgSys.usbMassStoragePresentImages = false;
     cfgSys.invertStatusLed = false;
