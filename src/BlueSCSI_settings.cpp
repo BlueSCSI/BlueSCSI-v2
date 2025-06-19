@@ -36,7 +36,7 @@
 // SCSI system and device settings
 BlueSCSISettings g_scsi_settings;
 
-const char *systemPresetName[] = {"", "Mac", "MacPlus", "MPC3000", "MegaSTE", "X68000", "X68000-SCSI", "X68000-SASI", "NeXT"};
+const char *systemPresetName[] = {"", "Mac", "MacPlus", "MPC3000", "MegaSTE", "X68000", "X68000-SCSI", "X68000-SASI", "NeXT", "Generic"};
 const char *devicePresetName[] = {"", "ST32430N"};
 
 // must be in the same order as bluescsi_speed_grade_t in BlueSCSI_settings.h
@@ -403,6 +403,11 @@ scsi_system_settings_t *BlueSCSISettings::initSystem(const char *presetName)
         cfgSys.quirks = S2S_CFG_QUIRKS_NONE;
         cfgDev.sectorsPerTrack = 139;
         cfgDev.headsPerCylinder = 4;
+    }
+    else if (strequals(systemPresetName[SYS_PRESET_GENERIC], presetName))
+    {
+        m_sysPreset = SYS_PRESET_GENERIC;
+        cfgSys.quirks = S2S_CFG_QUIRKS_NONE;
     }
     else
     {
