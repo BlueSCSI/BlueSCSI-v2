@@ -1301,7 +1301,7 @@ void s2s_configInit(S2S_BoardCfg* config)
 
     if (g_scsi_settings.getSystemPreset() != SYS_PRESET_NONE)
     {
-        logmsg("Using system preset \"", g_scsi_settings.getSystemPresetName(), "\")");
+        logmsg("Using system preset \"", g_scsi_settings.getSystemPresetName(), "\"");
     }
 
     memset(config, 0, sizeof(S2S_BoardCfg));
