@@ -880,6 +880,15 @@ static void usb_input_poll()
                 g_log_debug = !g_log_debug;
                 logmsg("Debug logging ", g_log_debug ? "enabled" : "disabled");
                 break;
+            case 'H':
+            case 'h':
+                logmsg("Available commands:");
+                logmsg("  r - Reboot");
+                logmsg("  m - Reboot into mass storage mode");
+                logmsg("  b - Reboot into uf2 bootloader");
+                logmsg("  d - Toggle debug logging");
+                logmsg("  h - Show this help message");
+                break;
             case 'Y':
             case 'y':
                 if (basic_reboot_keyed || mass_storage_reboot_keyed)
