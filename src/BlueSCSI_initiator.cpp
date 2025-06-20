@@ -69,22 +69,21 @@ static struct
     uint32_t interpolationRight;
     uint32_t interpolationBoth;
 
-
-    bool    frameMetaDataTimeIncluded;
+    bool frameMetaDataTimeIncluded;
     uint8_t frameMetaDataTimeHour;
     uint8_t frameMetaDataTimeMinutes;
     uint8_t frameMetaDataTimeSeconds;
     uint8_t frameMetaDataTimeIndex;
 
-    bool    frameMetaDataDateIncluded;
+    bool frameMetaDataDateIncluded;
     uint8_t frameMetaDataDateYear;
     uint8_t frameMetaDataDateMonth;
     uint8_t frameMetaDataDateDay;
 
     uint32_t goodFrames;
     uint32_t allFrames;
-    uint32_t nullFrames;
-    uint32_t nullFramesMax;
+    uint8_t nullFrames;
+    uint8_t nullFramesMax;
     uint8_t ansiVersion;
     uint8_t maxRetryCount;
     uint8_t deviceType;
@@ -133,7 +132,7 @@ void scsiInitiatorInit()
     g_initiator_state.deviceType = DEVICE_TYPE_DIRECT_ACCESS;
     g_initiator_state.ejectWhenDone = false;
 
-    //Audio mode frame data for dt
+    // Audio mode frame data for dt
     g_initiator_state.frameMetaDataDateIncluded = 0;
     g_initiator_state.frameMetaDataDateYear = 0;
     g_initiator_state.frameMetaDataDateMonth = 0;
@@ -143,6 +142,7 @@ void scsiInitiatorInit()
     g_initiator_state.frameMetaDataTimeMinutes = 0;
     g_initiator_state.frameMetaDataTimeSeconds = 0;
     g_initiator_state.frameMetaDataTimeIndex = 0;
+    g_initiator_state.nullFrames = 0;
     g_initiator_state.nullFramesMax = ini_getl("SCSI", "InitiatorMaxNullTrys", 10, CONFIGFILE);
 }
 
@@ -396,6 +396,8 @@ void scsiInitiatorMainLoop()
                 g_initiator_state.drives_imaged |= (1 << g_initiator_state.target_id);
             }
             g_initiator_state.imaging = false;
+            if (g_initiator_state.audioMode)
+                g_initiator_state.target_file.truncate();
             g_initiator_state.target_file.close();
             return;
         }
@@ -418,16 +420,6 @@ void scsiInitiatorMainLoop()
 
         if (!status)
         {
-            if (g_initiator_state.audioMode && false)
-            { // WIP
-                uint32_t position = 0;
-                log("Read Position");
-                scsiReadPosition(&position, g_initiator_state.target_id);
-                log("Error at position: ", position);
-                position -= g_initiator_state.sectorsize;
-                log("Locate: ", position);
-                scsiLocate(position, g_initiator_state.target_id);
-            }
             log("Failed to transfer ", numtoread, " sectors starting at ", (int)g_initiator_state.sectors_done);
 
             if (g_initiator_state.retrycount < g_initiator_state.maxRetryCount)
@@ -463,26 +455,12 @@ void scsiInitiatorMainLoop()
             g_initiator_state.target_file.flush();
 
             int speed_kbps = numtoread * g_initiator_state.sectorsize / (millis() - time_start);
-            if (g_initiator_state.audioMode){
-                char * responceFormatStringIntro = "SCSI read succeeded";
-                char * responceFormatStringDate = " %2d/%2d/%4d";
-                char * responceFormatStringNoDate = " %n%n%n";
-                char * responceFormatStringTime = " %2d:%2d:%2d-Frame: %d";
-                char * responceFormatStringNoTime = "%n%n%n%n";
-                char * responceFormatStringEnding = ", sectors done: %dj speed %d kB/s - %.2f%%, [left: %d, right: %d, both: %d]";
-
-                char responce[200];
-                for(int i = 0; i < 200; i++)responce[i] = 0;
-
-                strcat(responce, responceFormatStringIntro);
-                strcat(responce, g_initiator_state.frameMetaDataDateIncluded ? responceFormatStringDate : responceFormatStringNoDate);
-                strcat(responce, g_initiator_state.frameMetaDataTimeIncluded ? responceFormatStringTime : responceFormatStringNoTime);
-                strcat(responce, responceFormatStringEnding);
-                log_f(responce,
-                      g_initiator_state.frameMetaDataDateMonth, g_initiator_state.frameMetaDataDateDay, g_initiator_state.frameMetaDataDateYear+1970,
-                      g_initiator_state.frameMetaDataTimeHour,g_initiator_state.frameMetaDataTimeMinutes,g_initiator_state.frameMetaDataTimeSeconds,g_initiator_state.frameMetaDataTimeIndex,
+            if (g_initiator_state.audioMode)
+            {
+                log_f("SCSI read succeeded %02d/%02d/%04d %02d:%02d:%02d-Frame: %02d, sectors done: %d speed %d kB/s, [left: %d, right: %d, both: %d]",
+                      g_initiator_state.frameMetaDataDateMonth, g_initiator_state.frameMetaDataDateDay, g_initiator_state.frameMetaDataDateYear + 1970,
+                      g_initiator_state.frameMetaDataTimeHour, g_initiator_state.frameMetaDataTimeMinutes, g_initiator_state.frameMetaDataTimeSeconds, g_initiator_state.frameMetaDataTimeIndex,
                       g_initiator_state.sectors_done, speed_kbps,
-                      (float)(((float)g_initiator_state.sectors_done / (float)g_initiator_state.sectorcount) * 100.0),
                       g_initiator_state.interpolationLeft,
                       g_initiator_state.interpolationRight,
                       g_initiator_state.interpolationBoth);
@@ -831,8 +809,10 @@ static void scsiInitiatorWriteDataToSd(FsFile &file, bool use_callback)
     }
 
     g_initiator_transfer.bytes_sd_scheduled = g_initiator_transfer.bytes_sd + len;
+
     if (file.write(buf, len) != len)
     {
+        
         log("scsiInitiatorReadDataToFile: SD card write failed");
         g_initiator_transfer.all_ok = false;
     }
@@ -840,7 +820,8 @@ static void scsiInitiatorWriteDataToSd(FsFile &file, bool use_callback)
     g_initiator_transfer.bytes_sd += len;
 }
 
-uint8_t HexToDec(uint8_t hex){
+uint8_t HexToDec(uint8_t hex)
+{
     return 10 * ((hex & 0xF0) >> 4) + hex & 0x0F;
 }
 
@@ -895,11 +876,6 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
 
     if (status != 0)
     {
-        if (false)
-        { // on END OF DATA ERRORS
-            g_initiator_state.sectorcount == g_initiator_state.sectors_done;
-            return false;
-        }
 
         uint8_t sense_key;
         uint16_t sense_code;
@@ -982,9 +958,9 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
             g_initiator_state.frameMetaDataDateYear = HexToDec(scsiDev.data[0x1699]);
             g_initiator_state.frameMetaDataDateMonth = HexToDec(scsiDev.data[0x169A]);
             g_initiator_state.frameMetaDataDateDay = HexToDec(scsiDev.data[0x169B]);
-            //g_initiator_state.frameMetaDataDateHour = HexToDec(scsiDev.data[0x169C]);
-            //g_initiator_state.frameMetaDataDateMinutes = HexToDec(scsiDev.data[0x169D]);
-            //g_initiator_state.frameMetaDataDateSeconds = HexToDec(scsiDev.data[0x169E]);
+            // g_initiator_state.frameMetaDataDateHour = HexToDec(scsiDev.data[0x169C]);
+            // g_initiator_state.frameMetaDataDateMinutes = HexToDec(scsiDev.data[0x169D]);
+            // g_initiator_state.frameMetaDataDateSeconds = HexToDec(scsiDev.data[0x169E]);
 
             if (scsiDev.data[0x16BB] & 0b00000010)
             {
