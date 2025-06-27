@@ -104,7 +104,7 @@
 // Default SCSI drive information when Apple quirks are enabled
 #define APPLE_DRIVEINFO_FIXED     {"QUANTUM",  "BlueSCSI Pico",      PLATFORM_REVISION, "1.0"}
 #define APPLE_DRIVEINFO_REMOVABLE {"IOMEGA",   "BETA230",           PLATFORM_REVISION, "2.02"}
-#define APPLE_DRIVEINFO_OPTICAL   {"MATSHITA", "CD-ROM CR-8004",    PLATFORM_REVISION, "1.1f"}
+#define APPLE_DRIVEINFO_OPTICAL   {"BlueSCSI", "CD-ROM CDU-55S",   "1.9a", ""}
 #define APPLE_DRIVEINFO_FLOPPY    {"IOMEGA",   "Io20S         *F", "PP33", ""}
 #define APPLE_DRIVEINFO_MAGOPT    {"MOST",     "RMD-5200",          PLATFORM_REVISION, "1.0"}
 #define APPLE_DRIVEINFO_NETWORK   {"Dayna",    "SCSI/Link",       "2.0f", ""}
