@@ -136,7 +136,7 @@ bool ImageBackingStore::_internal_open(const char *filename)
         return false;
     }
 
-    uint32_t sectorcount = m_fsfile.size() / SD_SECTOR_SIZE;
+    uint32_t sectorcount = m_fsfile.dataLength() / SD_SECTOR_SIZE;
     uint32_t begin = 0, end = 0;
     if (m_fsfile.contiguousRange(&begin, &end) && end >= begin + sectorcount - 1)
     {
@@ -236,7 +236,7 @@ uint64_t ImageBackingStore::size()
     }
     else
     {
-        return m_fsfile.size();
+        return m_fsfile.dataLength();
     }
 }
 
