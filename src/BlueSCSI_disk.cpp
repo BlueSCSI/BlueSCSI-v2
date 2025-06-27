@@ -467,6 +467,11 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
             {
                 logmsg("---- Plextor 0xD8 vendor extension enabled");
             }
+            if (g_scsi_settings.getDevice(target_idx)->startEjected)
+            {
+                img.ejected = true;
+                logmsg("---- CD-ROM drive starts ejected");
+            }
         }
         else if (type == S2S_CFG_FLOPPY_14MB)
         {
@@ -819,7 +824,7 @@ static void doCloseTray(image_config_t &img)
 {
     if (img.ejected)
     {
-        uint8_t target = img.scsiId & 7;
+        uint8_t target = img.scsiId & S2S_CFG_TARGET_ID_BITS;
         dbgmsg("------ Device close tray on ID ", (int)target);
         img.ejected = false;
 
@@ -833,13 +838,17 @@ static void doCloseTray(image_config_t &img)
 
  
 // Eject and switch image
+// This is really press eject button for close and open.
 static void doPerformEject(image_config_t &img)
 {
-    uint8_t target = img.scsiId & 7;
+    const uint8_t target = img.scsiId & S2S_CFG_TARGET_ID_BITS;
+    // Now that we have a request from a button or an explicit start SCSI command to close the drive,
+    g_scsi_settings.getDevice(target)->startEjected = false;
+
     if (!img.ejected)
     {
         blink_cancel();
-        blinkStatus(g_scsi_settings.getDevice(target)->ejectBlinkTimes, g_scsi_settings.getDevice(target)->ejectBlinkPeriod);;
+        blinkStatus(g_scsi_settings.getDevice(target)->ejectBlinkTimes, g_scsi_settings.getDevice(target)->ejectBlinkPeriod);
         dbgmsg("------ Device open tray on ID ", (int)target);
         img.ejected = true;
         switchNextImage(img); // Switch media for next time
@@ -852,7 +861,7 @@ static void doPerformEject(image_config_t &img)
 
 int findNextImageAfter(image_config_t &img,
         const char* dirname, const char* filename,
-        char* buf, size_t buflen, bool ignore_prefix)
+        char* nextname, size_t nextname_len, bool ignore_prefix)
 {
     FsFile dir;
     if (dirname[0] == '\0')
@@ -881,38 +890,52 @@ int findNextImageAfter(image_config_t &img,
     char first_name[MAX_FILE_PATH] = {'\0'};
     char candidate_name[MAX_FILE_PATH] = {'\0'};
     FsFile file;
+    const uint8_t target = img.scsiId & S2S_CFG_TARGET_ID_BITS;
+    char section[6] = "SCSI0";
+    section[4] = '0' + target;
+
+    // See if we have a current image set in the ini file:
+    ini_gets(section, "Img0", "", candidate_name, sizeof(candidate_name), CONFIGFILE);
+    if (candidate_name[0] != '\0')
+    {
+        img.image_index++;
+        strncpy(img.current_image, candidate_name, sizeof(img.current_image));
+        strncpy(nextname, candidate_name, nextname_len);
+        return strlen(candidate_name);
+    }
+
     while (file.openNext(&dir, O_RDONLY))
     {
         if (file.isDir() && !scsiDiskFolderContainsCueSheet(&file)) continue;
-        if (!file.getName(buf, MAX_FILE_PATH))
+        if (!file.getName(nextname, MAX_FILE_PATH))
         {
             logmsg("Image directory '", dirname, "' had invalid file");
             continue;
         }
-        if (!scsiDiskFilenameValid(buf)) continue;
+        if (!scsiDiskFilenameValid(nextname)) continue;
         if (file.isHidden()) {
-            logmsg("Image '", dirname, "/", buf, "' is hidden, skipping file");
+            logmsg("Image '", dirname, "/", nextname, "' is hidden, skipping file");
             continue;
         }
 
-        if (!ignore_prefix && img.use_prefix && !compare_prefix(filename, buf)) continue;
+        if (!ignore_prefix && img.use_prefix && !compare_prefix(filename, nextname)) continue;
 
         // keep track of the first item to allow wrapping
         // without having to iterate again
-        if (first_name[0] == '\0' || strcasecmp(buf, first_name) < 0)
+        if (first_name[0] == '\0' || strcasecmp(nextname, first_name) < 0)
         {
-            strncpy(first_name, buf, sizeof(first_name));
+            strncpy(first_name, nextname, sizeof(first_name));
         }
 
         // discard if no selected name, or if candidate is before (or is) selected
         // or prefix searching is enabled and file doesn't contain current prefix
-        if (filename[0] == '\0' || strcasecmp(buf, filename) <= 0) continue;
+        if (filename[0] == '\0' || strcasecmp(nextname, filename) <= 0) continue;
 
         // if we got this far and the candidate is either 1) not set, or 2) is a
         // lower item than what has been encountered thus far, it is the best choice
-        if (candidate_name[0] == '\0' || strcasecmp(buf, candidate_name) < 0)
+        if (candidate_name[0] == '\0' || strcasecmp(nextname, candidate_name) < 0)
         {
-            strncpy(candidate_name, buf, sizeof(candidate_name));
+            strncpy(candidate_name, nextname, sizeof(candidate_name));
         }
     }
 
@@ -920,14 +943,14 @@ int findNextImageAfter(image_config_t &img,
     {
         img.image_index++;
         strncpy(img.current_image, candidate_name, sizeof(img.current_image));
-        strncpy(buf, candidate_name, buflen);
+        strncpy(nextname, candidate_name, nextname_len);
         return strlen(candidate_name);
     }
     else if (first_name[0] != '\0')
     {
         img.image_index = 0;
         strncpy(img.current_image, first_name, sizeof(img.current_image));
-        strncpy(buf, first_name, buflen);
+        strncpy(nextname, first_name, nextname_len);
         return strlen(first_name);
     }
     else
@@ -1124,8 +1147,7 @@ void setEjectButton(uint8_t idx, int8_t eject_button)
 bool switchNextImage(image_config_t &img, const char* next_filename)
 {
     // Check if we have a next image to load, so that drive is closed next time the host asks.
-    
-    int target_idx = img.scsiId & 7;
+    int target_idx = img.scsiId & S2S_CFG_TARGET_ID_BITS;
     char filename[MAX_FILE_PATH];
     if (next_filename == nullptr)
     {
@@ -1160,6 +1182,8 @@ bool switchNextImage(image_config_t &img, const char* next_filename)
                 // to make sure host properly detects the media change
                 img.ejected = true;
                 img.reinsert_after_eject = true;
+                // Now that we have a request from the BlueSCSI Toolbox app, don't block close tray.
+                g_scsi_settings.getDevice(target_idx & S2S_CFG_TARGET_ID_BITS)->startEjected = false;
                 if (img.deviceType == S2S_CFG_OPTICAL) img.cdrom_events = 2; // New Media
             }
             return true;

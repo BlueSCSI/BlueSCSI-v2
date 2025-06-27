@@ -244,6 +244,7 @@ static void readIniSCSIDeviceSetting(scsi_device_settings_t &cfg, const char *se
     cfg.rightAlignStrings = ini_getbool(section, "RightAlignStrings", cfg.rightAlignStrings , CONFIGFILE);
     cfg.reinsertOnInquiry = ini_getbool(section, "ReinsertCDOnInquiry", cfg.reinsertOnInquiry, CONFIGFILE);
     cfg.reinsertAfterEject = ini_getbool(section, "ReinsertAfterEject", cfg.reinsertAfterEject, CONFIGFILE);
+    cfg.startEjected = ini_getbool(section, "StartEjected", cfg.startEjected, CONFIGFILE);
     cfg.disableMacSanityCheck = ini_getbool(section, "DisableMacSanityCheck", cfg.disableMacSanityCheck, CONFIGFILE);
 
     cfg.sectorSDBegin = ini_getl(section, "SectorSDBegin", cfg.sectorSDBegin, CONFIGFILE);
@@ -338,6 +339,7 @@ scsi_system_settings_t *BlueSCSISettings::initSystem(const char *presetName)
     cfgDev.rightAlignStrings = false;
     cfgDev.reinsertOnInquiry = true;
     cfgDev.reinsertAfterEject = true;
+    cfgDev.startEjected = false; // if true, reinsert after eject and reinsert on inquiry will be set to false.
     cfgDev.disableMacSanityCheck = false;
 
     cfgDev.sectorSDBegin = 0;
