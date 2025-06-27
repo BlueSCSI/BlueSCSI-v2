@@ -8,6 +8,9 @@
 
 #include "BlueSCSI_disk.h"
 
+#define LOAD_EJECT_BIT 2
+#define START_STOP_BIT 1
+
 // Called by scsi.c from SCSI2SD
 extern "C" int scsiCDRomCommand(void);
 

@@ -1242,9 +1242,13 @@ bool cdromValidateCueSheet(image_config_t &img)
 // Close CDROM tray and note media change event
 void cdromCloseTray(image_config_t &img)
 {
+    const uint8_t target = img.scsiId & S2S_CFG_TARGET_ID_BITS;
+
+    if (g_scsi_settings.getDevice(target)->startEjected) {
+        return;
+    }
     if (img.ejected)
     {
-        uint8_t target = img.scsiId & 7;
         dbgmsg("------ CDROM close tray on ID ", (int)target);
         img.ejected = false;
         img.cdrom_events = 2; // New media
@@ -1261,7 +1265,7 @@ void cdromCloseTray(image_config_t &img)
 // Switch image on ejection.
 void cdromPerformEject(image_config_t &img)
 {
-    uint8_t target = img.scsiId & 7;
+    uint8_t target = img.scsiId & S2S_CFG_TARGET_ID_BITS;
 #if ENABLE_AUDIO_OUTPUT
     // terminate audio playback if active on this target (MMC-1 Annex C)
     audio_stop(target);
@@ -1284,11 +1288,15 @@ void cdromPerformEject(image_config_t &img)
 // Reinsert any ejected CDROMs on reboot
 void cdromReinsertFirstImage(image_config_t &img)
 {
+    const uint8_t target = img.scsiId & S2S_CFG_TARGET_ID_BITS;
+    if (g_scsi_settings.getDevice(target)->startEjected) {
+        return;
+    }
+
     if (img.image_index > 0)
     {
         // Multiple images for this drive, force restart from first one
-        uint8_t target = img.scsiId & 7;
-        dbgmsg("---- Restarting from first CD-ROM image for ID ", (int)target);
+        logmsg("---- Restarting from first CD-ROM image for ID ", (int)target);
         img.image_index = -1;
         img.current_image[0] = '\0';
         switchNextImage(img);
@@ -2078,11 +2086,10 @@ extern "C" int scsiCDRomCommand()
         // terminate audio playback if active on this target (MMC-1 Annex C)
         audio_stop(img.scsiId & 7);
 #endif
-        if ((scsiDev.cdb[4] & 2))
+        if (scsiDev.cdb[4] & LOAD_EJECT_BIT)
         {
             // CD-ROM load & eject
-            int start = scsiDev.cdb[4] & 1;
-            if (start)
+            if (scsiDev.cdb[4] & START_STOP_BIT)
             {
                 cdromCloseTray(img);
             }

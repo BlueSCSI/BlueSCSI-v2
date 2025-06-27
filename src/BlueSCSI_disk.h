@@ -162,7 +162,7 @@ bool scsiDiskCheckAnyImagesConfigured();
 // Finds filename with the lowest lexical order _after_ the given filename in
 // the given folder. If there is no file after the given one, or if there is
 // no current file, this will return the lowest filename encountered.
-int findNextImageAfter(image_config_t &img, const char* dirname, const char* filename, char* buf, size_t buflen, bool ignore_prefix = false);
+int findNextImageAfter(image_config_t &img, const char* dirname, const char* filename, char* nextname, size_t nextname_len, bool ignore_prefix = false);
 
 // Gets the next image filename for the target, if configured for multiple
 // images. As a side effect this advances image tracking to the next image.

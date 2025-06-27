@@ -123,6 +123,7 @@ typedef struct __attribute__((__packed__)) scsi_device_settings_t
     bool rightAlignStrings;
     bool reinsertOnInquiry;
     bool reinsertAfterEject;
+    bool startEjected;
     bool disableMacSanityCheck;
 
     uint32_t sectorSDBegin;
