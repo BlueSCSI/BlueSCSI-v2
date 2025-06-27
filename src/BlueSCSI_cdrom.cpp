@@ -1942,7 +1942,9 @@ static void doReadSubchannel(bool time, bool subq, uint8_t parameter, uint8_t tr
 {
     uint8_t *buf = scsiDev.data;
 
-    if (parameter == 0x01)
+    // DOS for a game Screamer was requesting parameter list 0x00. This defined in the SCSI-2 spec
+    // but later as a reserved value in subsequent SCSI MMCs. Currently treating is as playback position request
+    if (parameter == 0x01 || parameter == 0x00)
     {
         uint8_t audiostatus;
         uint32_t lba = 0;
@@ -1964,7 +1966,7 @@ static void doReadSubchannel(bool time, bool subq, uint8_t parameter, uint8_t tr
             len = 12;
             *buf++ = 0;  // Subchannel data length (MSB)
             *buf++ = len; // Subchannel data length (LSB)
-            *buf++ = 0x01; // Subchannel data format
+            *buf++ = parameter; // Subchannel data format
             *buf++ = (trackinfo.track_mode == CUETrack_AUDIO ? 0x10 : 0x14);
             *buf++ = trackinfo.track_number;
             *buf++ = (lba >= trackinfo.data_start) ? 1 : 0; // Index number (0 = pregap)
