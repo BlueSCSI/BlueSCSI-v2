@@ -663,7 +663,7 @@ static int close_rename(INI_FILETYPE *rfp, INI_FILETYPE *wfp, const TCHAR *filen
   (void)ini_tempname(buffer, filename, INI_BUFFERSIZE);
   #if defined ini_remove || defined INI_REMOVE
     (void)ini_remove(filename);
-  #endif
+ #endif
   (void)ini_rename(buffer, filename);
   return 1;
 }
@@ -721,7 +721,7 @@ int ini_puts(const TCHAR *Section, const TCHAR *Key, const TCHAR *Value, const T
         ini_tell(&rfp, &tail);
         /* create new buffer (without writing it to file) */
         writekey(LocalBuffer, Key, Value, NULL);
-        if (_tcslen(LocalBuffer) == (size_t)(tail - head)) {
+        if (_tcslen(LocalBuffer) == (size_t)(tail.position - head.position)) {
           /* length matches, close the file & re-open for read/write, then
            * write at the correct position
            */
