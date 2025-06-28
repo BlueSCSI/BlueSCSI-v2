@@ -107,26 +107,30 @@ bool ini_close(INI_FILETYPE *fp)
 bool ini_read(char *buffer, int size, INI_FILETYPE *fp)
 {
 #if INI_CACHE_SIZE > 0
-    if (!g_ini_cache.valid && g_ini_cache.fp == fp)
+    if (g_ini_cache.fp == fp)
     {
-        reload_ini_cache(g_ini_cache.filename);
-    }
-    else if (g_ini_cache.valid && g_ini_cache.fp == fp)
-    {
-        // Read one line from cache
-        uint32_t srcpos = g_ini_cache.current_pos.position;
-        int dstpos = 0;
-        while (srcpos < g_ini_cache.filelen &&
-               dstpos < size - 1)
+        if (!g_ini_cache.valid)
         {
-            char b = g_ini_cache.cachedata[srcpos++];
-            buffer[dstpos++] = b;
-
-            if (b == '\n') break;
+            reload_ini_cache(g_ini_cache.filename);
         }
-        buffer[dstpos] = 0;
-        g_ini_cache.current_pos.position = srcpos;
-        return dstpos > 0;
+
+        if (g_ini_cache.valid)
+        {
+            // Read one line from cache
+            uint32_t srcpos = g_ini_cache.current_pos.position;
+            int dstpos = 0;
+            while (srcpos < g_ini_cache.filelen &&
+                   dstpos < size - 1)
+            {
+                char b = g_ini_cache.cachedata[srcpos++];
+                buffer[dstpos++] = b;
+
+                if (b == '\n') break;
+            }
+            buffer[dstpos] = 0;
+            g_ini_cache.current_pos.position = srcpos;
+            return dstpos > 0;
+        }
     }
 #endif
     {
@@ -179,7 +183,7 @@ void ini_rename(const char *source, const char *destination) {
 
 void ini_write(char *buffer, INI_FILETYPE *fp) {
     fp->write(buffer);
-    // invalidate_ini_cache(); // for next open
+    invalidate_ini_cache(); // for next open
 }
 
 

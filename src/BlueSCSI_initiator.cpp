@@ -245,7 +245,6 @@ void scsiInitiatorMainLoop()
         }
     }
 #endif
-
     if (!g_sdcard_present)
     {
         // Wait for SD card
