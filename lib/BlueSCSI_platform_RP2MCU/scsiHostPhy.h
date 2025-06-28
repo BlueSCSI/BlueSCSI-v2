@@ -57,3 +57,6 @@ void scsiHostWaitBusFree();
 
 // Release all bus signals
 void scsiHostPhyRelease();
+
+// Set whether to perform parity checking on SCSI transfers.
+void setInitiatorModeParityCheck(bool checkParity);
