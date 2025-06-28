@@ -65,5 +65,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: ${{ startsWith(github.ref, 'refs/tags/') && github.repository == 'BlueSCSI/BlueSCSI-v2' }}
         run: |
+          set +e
           RELEASE=$(basename ${{github.ref}})
           gh release create --repo ${GITHUB_REPOSITORY} -t $RELEASE $RELEASE BlueSCSI/distrib/*
+          status=$?
+          set -e
+          if [ $status -ne 0 ]; then
+            gh release upload --repo ${GITHUB_REPOSITORY} $RELEASE BlueSCSI/distrib/*
+          fi
+
