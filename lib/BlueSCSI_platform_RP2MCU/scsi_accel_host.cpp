@@ -64,11 +64,13 @@ static void scsi_accel_host_config_gpio()
     }
     else if (g_scsi_host_state == SCSIHOST_READ)
     {
-        // Data bus and REQ as input, ACK pin as output
-        pio_sm_set_pins(SCSI_PIO, SCSI_SM, SCSI_IO_DATA_MASK | 1 << SCSI_IN_REQ | 1 << SCSI_OUT_ACK);
-        pio_sm_set_consecutive_pindirs(SCSI_PIO, SCSI_SM, SCSI_IO_DB0, 9, false);
-        pio_sm_set_consecutive_pindirs(SCSI_PIO, SCSI_SM, SCSI_IN_REQ, 1, false);
-        pio_sm_set_consecutive_pindirs(SCSI_PIO, SCSI_SM, SCSI_OUT_ACK, 1, true);
+        // 100000010000000000111111111
+        // ACK    REQ        PDB
+        //
+        pio_sm_set_pins(SCSI_PIO, SCSI_SM, 0x40801FF);
+        pio_sm_set_consecutive_pindirs(SCSI_PIO, SCSI_SM, 0, 9, false);  // DBP Input
+        pio_sm_set_consecutive_pindirs(SCSI_PIO, SCSI_SM, SCSI_IN_REQ, 1, false);  // REQ Input
+        pio_sm_set_consecutive_pindirs(SCSI_PIO, SCSI_SM, SCSI_OUT_ACK, 1, true);  // ACK Output
 
         iobank0_hw->io[SCSI_IO_DB0].ctrl  = GPIO_FUNC_SIO;
         iobank0_hw->io[SCSI_IO_DB1].ctrl  = GPIO_FUNC_SIO;
@@ -79,7 +81,7 @@ static void scsi_accel_host_config_gpio()
         iobank0_hw->io[SCSI_IO_DB6].ctrl  = GPIO_FUNC_SIO;
         iobank0_hw->io[SCSI_IO_DB7].ctrl  = GPIO_FUNC_SIO;
         iobank0_hw->io[SCSI_IO_DBP].ctrl  = GPIO_FUNC_SIO;
-        iobank0_hw->io[SCSI_IN_REQ].ctrl  = GPIO_FUNC_SIO;
+        // iobank0_hw->io[SCSI_IN_REQ].ctrl  = GPIO_FUNC_SIO;
         iobank0_hw->io[SCSI_OUT_ACK].ctrl = GPIO_FUNC_PIO0;
     }
 }

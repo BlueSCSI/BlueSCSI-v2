@@ -111,6 +111,9 @@ uint8_t platform_no_sd_card_on_init_error_code();
 // Query whether initiator mode is enabled on targets with PLATFORM_HAS_INITIATOR_MODE
 bool platform_is_initiator_mode_enabled();
 
+void platform_initiator_gpio_setup();
+bool platform_supports_initiator_mode();
+void platform_enable_initiator_mode();
 // Setup soft watchdog if supported
 void platform_reset_watchdog();
 

@@ -212,6 +212,8 @@ static int scsiTypeToIniType(int scsi_type, bool removable)
 // High level logic of the initiator mode
 void scsiInitiatorMainLoop()
 {
+    SCSI_RELEASE_OUTPUTS();
+    SCSI_ENABLE_INITIATOR();
     if (g_scsiHostPhyReset)
     {
         logmsg("Executing BUS RESET after aborted command");
@@ -269,6 +271,7 @@ void scsiInitiatorMainLoop()
 
         if (!(g_initiator_state.drives_imaged & (1 << g_initiator_state.target_id)))
         {
+            logmsg("Scanning SCSI ID ", g_initiator_state.target_id);
             delay_with_poll(1000);
 
             uint8_t inquiry_data[36] = {0};
@@ -277,14 +280,17 @@ void scsiInitiatorMainLoop()
             bool startstopok =
                 scsiTestUnitReady(g_initiator_state.target_id) &&
                 scsiStartStopUnit(g_initiator_state.target_id, true);
+            dbgmsg("startstop: ", startstopok ? "OK" : "FAILED");
 
             bool readcapok = startstopok &&
                 scsiInitiatorReadCapacity(g_initiator_state.target_id,
                                           &g_initiator_state.sectorcount,
                                           &g_initiator_state.sectorsize);
+            dbgmsg("read capacity: ", readcapok ? "OK" : "FAILED");
 
             bool inquiryok = startstopok &&
                 scsiInquiry(g_initiator_state.target_id, inquiry_data);
+            dbgmsg("inquiry: ", inquiryok ? "OK" : "FAILED");
 
             LED_OFF();
 

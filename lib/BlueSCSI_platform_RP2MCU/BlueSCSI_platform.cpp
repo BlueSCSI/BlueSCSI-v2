@@ -454,22 +454,7 @@ void platform_init()
 }
 void platform_enable_initiator_mode()
 {
-    if (ini_getbool("SCSI", "InitiatorMode", false, CONFIGFILE))
-    {
-        logmsg("InitiatorMode true");
-
-        if (g_supports_initiator) {
-            g_scsi_initiator = true;
-            logmsg("SCSI Initiator Mode");
-            if (! ini_getbool("SCSI", "InitiatorParity", true, CONFIGFILE))
-            {
-                logmsg("Initiator Mode Skipping Parity Check.");
-                // setInitiatorModeParityCheck(false);
-            }
-        } else {
-            logmsg("SCSI Initiator Mode not supported.");
-        }
-    }
+    g_scsi_initiator = true;
 }
 
 // late_init() only runs in main application, SCSI not needed in bootloader
@@ -487,8 +472,7 @@ void platform_late_init()
         logmsg("SCSI target/disk mode selected by DIP switch, acting as a SCSI disk");
     }
 #else
-    // Initiator mode detected via ini.
-    platform_enable_initiator_mode();
+    // Initiator mode detected will be detected via ini.
 #endif // defined(HAS_DIP_SWITCHES) && defined(PLATFORM_HAS_INITIATOR_MODE)
 
     /* Initialize SCSI pins to required modes.
@@ -606,20 +590,7 @@ void platform_late_init()
 #ifndef PLATFORM_HAS_INITIATOR_MODE
         assert(false);
 #else
-        // Act as SCSI initiator
-
-        //        pin             function       pup   pdown  out    state fast
-        gpio_conf(SCSI_IN_IO,     GPIO_FUNC_SIO, true ,false, false, true, false);
-        gpio_conf(SCSI_IN_MSG,    GPIO_FUNC_SIO, true ,false, false, true, false);
-        gpio_conf(SCSI_IN_CD,     GPIO_FUNC_SIO, true ,false, false, true, false);
-        gpio_conf(SCSI_IN_REQ,    GPIO_FUNC_SIO, true ,false, false, true, false);
-        gpio_conf(SCSI_IN_BSY,    GPIO_FUNC_SIO, true, false, false, true, false);
-        gpio_conf(SCSI_IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
-        // Reinitialize OUT_RST to output mode. On RP Pico variant the pin is shared with IN_RST.
-        gpio_conf(SCSI_OUT_RST,   GPIO_FUNC_SIO, false, false, true,  true, true);
-        gpio_conf(SCSI_OUT_SEL,   GPIO_FUNC_SIO, false,false, true,  true, true);
-        gpio_conf(SCSI_OUT_ACK,   GPIO_FUNC_SIO, false,false, true,  true, true);
-        gpio_conf(SCSI_OUT_ATN,   GPIO_FUNC_SIO, false,false, true,  true, true);
+        platform_initiator_gpio_setup();
 #endif  // PLATFORM_HAS_INITIATOR_MODE
     }
 
@@ -629,6 +600,23 @@ void platform_late_init()
     scsi_accel_rp2040_init();
 }
 
+// Act as SCSI initiator
+void platform_initiator_gpio_setup() {
+    //        pin                   function       pup   pdown  out    state fast
+    gpio_conf(SCSI_IN_IO,     GPIO_FUNC_SIO, true ,false, false, true, false);
+    gpio_conf(SCSI_IN_MSG,    GPIO_FUNC_SIO, true ,false, false, true, false);
+    gpio_conf(SCSI_IN_CD,     GPIO_FUNC_SIO, true ,false, false, true, false);
+    gpio_conf(SCSI_IN_REQ,    GPIO_FUNC_SIO, true ,false, false, true, false);
+    gpio_conf(SCSI_IN_BSY,    GPIO_FUNC_SIO, true, false, false, true, false);
+    gpio_conf(SCSI_IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
+    gpio_conf(SCSI_OUT_RST,   GPIO_FUNC_SIO, false,false, true,  true, true);
+    gpio_conf(SCSI_OUT_ACK,   GPIO_FUNC_SIO, true,false, true,  true, true);
+    //gpio_conf(SCSI_OUT_ATN,   GPIO_FUNC_SIO, false,false, true,  true, true);  // ATN output is unused
+}
+
+bool platform_supports_initiator_mode() {
+    return g_supports_initiator;
+}
 void platform_post_sd_card_init() {}
 
 bool platform_is_initiator_mode_enabled()
