@@ -1238,7 +1238,7 @@ static void diskEjectAction(uint8_t buttonId)
                     || img.deviceType == S2S_CFG_SEQUENTIAL)
             {
                 found = true;
-                logmsg("Eject button ", (int)buttonId, " pressed, passing to SCSI device", (int)i);
+                logmsg("Eject button ", (int)buttonId, " pressed, passing to SCSI ID: ", (int)i);
                 doPerformEject(img);
             }
         }
@@ -1252,10 +1252,10 @@ static void diskEjectAction(uint8_t buttonId)
 
 uint8_t diskEjectButtonUpdate(bool immediate)
 {
-    // treat '1' to '0' transitions as eject actions
+    // treat '0' to '1' transitions as eject actions
     static uint8_t previous = 0x00;
     uint8_t bitmask = platform_get_buttons() & EJECT_BTN_MASK;
-    uint8_t ejectors = (previous ^ bitmask) & previous;
+    uint8_t ejectors = (previous ^ bitmask) & bitmask;
     previous = bitmask;
 
     // defer ejection until the bus is idle
@@ -1275,7 +1275,9 @@ uint8_t diskEjectButtonUpdate(bool immediate)
             uint8_t mask = 1;
             for (uint8_t i = 0; i < 8; i++)
             {
-                if (ejectors & mask) diskEjectAction(ejectors & mask);
+                if (ejectors & mask) {
+                    diskEjectAction(ejectors & mask);
+                }
                 mask = mask << 1;
             }
         }
