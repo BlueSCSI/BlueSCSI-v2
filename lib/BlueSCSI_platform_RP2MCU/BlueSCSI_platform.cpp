@@ -283,6 +283,8 @@ bool checkIs2023a() {
         // gpio_conf(BUTTON_SW1_PRE202309a,    GPIO_FUNC_SIO, true, false, false, false, false);
         // gpio_conf(BUTTON_SW1_PRE202309a,    GPIO_FUNC_SIO, false, false, false, false, false);
         // delay(10); /// Settle time
+        gpio_conf(BUTTON_SW1_PRE202309a,    GPIO_FUNC_SIO, true, false, false, false, false);
+        gpio_conf(BUTTON_SW2_PRE202309a,    GPIO_FUNC_SIO, true, false, false, false, false);
 
         // Reset REQ to the appropriate pin for older hardware
         SCSI_OUT_REQ = SCSI_OUT_REQ_PRE09A;
@@ -1115,32 +1117,31 @@ uint8_t platform_get_buttons()
     // if (!gpio_get(GPIO_I2C_SCL)) buttons |= 2;
 #endif // defined(ENABLE_AUDIO_OUTPUT_SPDIF)
 
-    // if (!is2023a) {
-    //     if (!gpio_get(BUTTON_SW1_PRE202309a)) buttons |= 1;
-    //     if (!gpio_get(BUTTON_SW2_PRE202309a)) buttons |= 2;
-    // }
-    // Simple debouncing logic: handle button releases after 100 ms delay.
-    static uint32_t debounce;
-    static uint8_t buttons_debounced = 0;
-
-    if (buttons != 0)
-    {
-        buttons_debounced = buttons;
-        debounce = millis();
-    }
-    else if ((uint32_t)(millis() - debounce) > 100)
-    {
-        buttons_debounced = 0;
+    if (!is2023a) {
+        if (!gpio_get(BUTTON_SW1_PRE202309a)) buttons |= 1;
+        if (!gpio_get(BUTTON_SW2_PRE202309a)) buttons |= 2;
     }
 
-    return buttons_debounced;
+    static uint8_t debounced_state = 0;
+    static uint8_t last_state = 0;
+    static uint32_t last_debounce_time = 0;
+
+    if (buttons != last_state) {
+        last_debounce_time = millis();
+    }
+
+    if ((millis() - last_debounce_time) > 50) { // 50ms debounce
+        debounced_state = buttons;
+    }
+
+    last_state = buttons;
+    return debounced_state;
 }
 
 bool platform_has_phy_eject_button()
 {
-    return false;
     // 2023a and later boards have i2c buttons
-    // return !is2023a;
+    return !is2023a;
 }
 
 /************************************/
