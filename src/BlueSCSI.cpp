@@ -1178,6 +1178,10 @@ static void bluescsi_setup_sd_card(bool wait_for_card = true)
   if (!platform_is_initiator_mode_enabled())
 #endif
   {
+    if (platform_supports_initiator_mode() && ini_getbool("SCSI", "DisableI2C", false, CONFIGFILE)) {
+      logmsg("Disabling I2C bus for simple buttons instead.");
+      platform_disable_i2c();
+    }
     init_eject_button();
   }
 

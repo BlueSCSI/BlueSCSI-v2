@@ -1103,6 +1103,15 @@ void platform_reset_mcu()
 {
     watchdog_reboot(0, 0, 2000);
 }
+bool platform_has_i2c() {
+    return is2023a;
+}
+bool disable_i2c = false;
+void platform_disable_i2c() {
+    gpio_conf(GPIO_I2C_SCL, GPIO_FUNC_SIO, true, false, false, false, false);
+    gpio_conf(GPIO_I2C_SDA, GPIO_FUNC_SIO, true, false, false, false, false);
+    disable_i2c = true;
+}
 
 uint8_t platform_get_buttons()
 {
@@ -1117,9 +1126,13 @@ uint8_t platform_get_buttons()
     // if (!gpio_get(GPIO_I2C_SCL)) buttons |= 2;
 #endif // defined(ENABLE_AUDIO_OUTPUT_SPDIF)
 
-    if (!is2023a) {
+    if (!is2023a) { // Pre-2023a boards have buttons on GPIO pins labeled SW1 and SW2
         if (!gpio_get(BUTTON_SW1_PRE202309a)) buttons |= 1;
         if (!gpio_get(BUTTON_SW2_PRE202309a)) buttons |= 2;
+    } else if (disable_i2c) // User wants simple buttons instead of an i2c panel
+    {
+        if (!gpio_get(GPIO_I2C_SCL)) buttons |= 1;
+        if (!gpio_get(GPIO_I2C_SDA)) buttons |= 2;
     }
 
     static uint8_t debounced_state = 0;
@@ -1141,7 +1154,7 @@ uint8_t platform_get_buttons()
 bool platform_has_phy_eject_button()
 {
     // 2023a and later boards have i2c buttons
-    return !is2023a;
+    return !is2023a || (is2023a && disable_i2c);
 }
 
 /************************************/
