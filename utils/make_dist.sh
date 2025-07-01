@@ -42,16 +42,35 @@ do
 
     VARIANT=""
     if [[ "$BUILD_ENV" == *"DaynaPORT"* ]]; then
-        VARIANT="-DaynaPORT"
+        VARIANT="_DaynaPORT"
     fi
 
     EXT="${file##*.}"
 
-    RENAME="BlueSCSI-${BOARD}${VARIANT}-${DATE}-${VERSION}.${EXT}"
+    RENAME="BlueSCSI_${BOARD}${VARIANT}_${DATE}_${VERSION}.${EXT}"
 
     echo "$file to $OUT_DIR/$RENAME"
     cp "$file" "$OUT_DIR/$RENAME"
 done
+set -e
+set -x
+
+# Create universal UF2 by combining the Pico1 and Pico2 UF2 files;
+cat "$OUT_DIR/BlueSCSI_Pico1_DaynaPORT_${DATE}_${VERSION}.uf2" \
+    "$OUT_DIR/BlueSCSI_Pico2_DaynaPORT_${DATE}_${VERSION}.uf2" > "$OUT_DIR/BlueSCSI_Universal_${DATE}_${VERSION}.uf2"
+# Remove unused UF2 files
+rm "$OUT_DIR/BlueSCSI_Pico1_DaynaPORT_${DATE}_${VERSION}.uf2"
+rm "$OUT_DIR/BlueSCSI_Pico2_DaynaPORT_${DATE}_${VERSION}.uf2"
+rm "$OUT_DIR/BlueSCSI_Pico1_${DATE}_${VERSION}.uf2"
+rm "$OUT_DIR/BlueSCSI_Pico2_${DATE}_${VERSION}.uf2"
+
+# Zip up elf files for each board variant
+zip -j "$OUT_DIR/BlueSCSI_*${DATE}_${VERSION}-elfs.zip" "$OUT_DIR"/*.elf
+rm "$OUT_DIR/"*.elf
+
+# Rename bins for SD Card update.
+mv "$OUT_DIR/BlueSCSI_Pico1_DaynaPORT_${DATE}_${VERSION}.bin" "$OUT_DIR/BlueSCSI_Pico1_${DATE}_${VERSION}.bin"
+mv "$OUT_DIR/BlueSCSI_Pico2_DaynaPORT_${DATE}_${VERSION}.bin" "$OUT_DIR/BlueSCSI_Pico2_${DATE}_${VERSION}.bin"
 
 # Make a zip file with all the pico1 and pico2 files together by variant such as DaynaPORT
 #zip -j "dist/BlueSCSI-Universal-DaynaPORT-${DATE}-${VERSION}.zip" dist/BlueSCSI-Pico*-DaynaPORT-${DATE}-${VERSION}.*

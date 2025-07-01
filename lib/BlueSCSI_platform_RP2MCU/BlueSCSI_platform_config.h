@@ -56,10 +56,10 @@
 # define PLATFORM_NAME "BlueSCSI"
 #ifdef BLUESCSI_MCU_RP20XX
 # define PLATFORM_PID "Pico1"
-#define FIRMWARE_PREFIX "BlueSCSI-Pico1"
+#define FIRMWARE_PREFIX "BlueSCSI_Pico1"
 #else
 # define PLATFORM_PID "Pico2"
-#define FIRMWARE_PREFIX "BlueSCSI-Pico2"
+#define FIRMWARE_PREFIX "BlueSCSI_Pico2"
 #endif
 # define PLATFORM_REVISION "1.0"
 # define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_20
