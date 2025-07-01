@@ -322,7 +322,11 @@ scsi_system_settings_t *BlueSCSISettings::initSystem(const char *presetName)
     cfgSys.usbMassStoragePresentImages = false;
     cfgSys.invertStatusLed = false;
 
+#if defined(BLUESCSI_MCU_RP23XX) || defined(BLUESCSI_MCU_RP20XX)
+    cfgSys.speedGrade = bluescsi_speed_grade_t::SPEED_GRADE_200MHZ;
+#else
     cfgSys.speedGrade = bluescsi_speed_grade_t::SPEED_GRADE_DEFAULT;
+#endif
 
     // setting set for all or specific devices
     cfgDev.deviceType = S2S_CFG_NOT_SET;
