@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # ZuluSCSI™ - Copyright (c) 2024-2025 Rabbit Hole Computing™
 #

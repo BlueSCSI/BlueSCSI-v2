@@ -884,14 +884,14 @@ static void check_for_unused_update_files()
           strncasecmp(filename + filename_len - 4, ".bin", 4) == 0)
       {
         bin_files_found = true;
-        logmsg("Firmware update file \"", filename, "\" does not contain the board model string \"", FIRMWARE_NAME_PREFIX, "\"");
+        logmsg("Firmware update file \"", filename, "\" does not contain the board model string \"", FIRMWARE_PREFIX, "\"");
       }
     }
   }
   if (bin_files_found)
   {
-    logmsg("Please use the ", FIRMWARE_PREFIX ,"*.zip firmware bundle, or the proper .bin or .uf2 file to update the firmware.");
-    logmsg("See https://github.com/blueSCSI/BlueSCSI-v2/wiki/Updating-Firmware for more information");
+    logmsg("Please use the ", FIRMWARE_PREFIX ,"*.bin or .uf2 file to update the firmware.");
+    logmsg("See https://github.com/BlueSCSI/BlueSCSI-v2/wiki/Updating-Firmware for more information");
   }
 }
 
@@ -951,7 +951,7 @@ static void firmware_update()
     }
     if (parsed_length < 0)
     {
-      logmsg("Filename character length of ", (int)target_filename_length , " with a prefix of ", FIRMWARE_NAME_PREFIX, " not found in ", name);
+      logmsg("A firmware file for this board model was not found in ", name);
       file.close();
       root.close();
       return;

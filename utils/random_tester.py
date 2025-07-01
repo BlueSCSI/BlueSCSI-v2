@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 '''
   ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™

@@ -40,12 +40,12 @@ jobs:
       - name: Rename firmware files
         run: |
           cd BlueSCSI
-          utils/rename_binaries.sh
+          utils/make_dist.sh
 
       - name: Upload binaries into build artifacts
         uses: actions/upload-artifact@v4
         with:
-          path: BlueSCSI/distrib/*
+          path: BlueSCSI/dist/*
           name: BlueSCSI binaries
 
       - name: Upload to latest release
@@ -57,7 +57,7 @@ jobs:
           git tag -d latest
           git tag latest
           git push origin --force latest
-          cd distrib
+          cd dist
           gh api repos/${GITHUB_REPOSITORY}/releases/tags/latest | jq -r '.assets[] | [.url] | @tsv' | xargs -n 1 gh api -X DELETE || true
           gh release upload --repo ${GITHUB_REPOSITORY} --clobber latest *
 
@@ -68,10 +68,10 @@ jobs:
         run: |
           set +e
           RELEASE=$(basename ${{github.ref}})
-          gh release create --repo ${GITHUB_REPOSITORY} -t $RELEASE $RELEASE BlueSCSI/distrib/*
+          gh release create --repo ${GITHUB_REPOSITORY} -t $RELEASE $RELEASE BlueSCSI/dist/*
           status=$?
           set -e
           if [ $status -ne 0 ]; then
-            gh release upload --repo ${GITHUB_REPOSITORY} $RELEASE BlueSCSI/distrib/*
+            gh release upload --repo ${GITHUB_REPOSITORY} $RELEASE BlueSCSI/dist/*
           fi
 

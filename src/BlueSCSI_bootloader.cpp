@@ -42,9 +42,11 @@ bool find_firmware_image(FsFile &file, char name[MAX_FILE_PATH + 1])
         if (file.isDir()) continue;
 
         int namelen = file.getName(name, MAX_FILE_PATH);
+        const char* board_name = PLATFORM_PID;
 
-        if (namelen >= sizeof(FIRMWARE_NAME_PREFIX) + 3 &&
-            strncasecmp(name, FIRMWARE_NAME_PREFIX, sizeof(FIRMWARE_NAME_PREFIX) - 1) == 0 &&
+        if (namelen >= sizeof(FIRMWARE_PREFIX) + 3 &&
+            strncasecmp(name, FIRMWARE_PREFIX, sizeof(FIRMWARE_PREFIX) - 1) == 0 &&
+            strstr(name, board_name) != NULL &&
             strncasecmp(name + namelen - 3, "bin", 3) == 0)
         {
             root.close();

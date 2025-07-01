@@ -182,6 +182,7 @@ extern const uint16_t g_scsi_parity_check_lookup[512];
 // Returns true if the board has a physical eject button 
 bool platform_has_phy_eject_button();
 void platform_disable_i2c();
+bool platform_check_picow();
 #ifdef __cplusplus
 }
 
