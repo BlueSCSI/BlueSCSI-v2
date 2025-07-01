@@ -44,7 +44,6 @@
 #define CONFIGFILE  "bluescsi.ini"
 #define LOGFILE     "log.txt"
 #define CRASHFILE   "err.txt"
-#define FIRMWARE_PREFIX "BlueSCSI-FW"
 
 // Prefix for command file to create new image (case-insensitive)
 #define CREATEFILE "create"

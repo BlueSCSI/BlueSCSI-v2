@@ -89,7 +89,9 @@ static uint32_t g_flash_chip_size = 0;
 static bool g_uart_initialized = false;
 static bool g_led_blinking = false;
 static void usb_log_poll();
-
+#if !defined(PICO_CYW43_SUPPORTED)
+extern bool __isPicoW;
+#endif
 /***************/
 /* GPIO init   */
 /***************/
@@ -197,6 +199,43 @@ bool platform_reclock(bluescsi_speed_grade_t speed_grade)
         dbgmsg("Speed grade is set to default, reclocking skipped");
 
     return do_reclock;
+}
+
+/**
+ * This is a workaround until arduino framework can be updated to handle all 4 variations of
+ * Pico1/1w/2/2w. In testing this works on all for BlueSCSI.
+ * Tracking here https://github.com/earlephilhower/arduino-pico/issues/2671
+ */
+bool platform_check_picow() {
+    static int8_t isPicoW = -1; // -1 = unchecked, 0 = false, 1 = true
+    if (isPicoW != -1)
+        return isPicoW == 1;
+
+#ifndef CYW43_PIN_WL_CLOCK
+    uint8_t cyw43_pin_wl_clock = 29; // Default to GPIO 29, which is the CYW43_PIN_WL_CLOCK
+#else
+    uint8_t cyw43_pin_wl_clock = CYW43_PIN_WL_CLOCK;
+#endif
+    adc_init();
+    const auto dir = gpio_get_dir(cyw43_pin_wl_clock);
+    const auto fnc = gpio_get_function(cyw43_pin_wl_clock);
+    adc_gpio_init(cyw43_pin_wl_clock);
+    adc_select_input(3);
+    const auto adc29 = adc_read();
+    gpio_set_function(cyw43_pin_wl_clock, fnc);
+    gpio_set_dir(cyw43_pin_wl_clock, dir);
+    if (adc29 < 200) {
+#ifdef CYW43_PIN_WL_CLOCK
+        __isPicoW = true; // Set the global if available for PicoW || Pico2W
+#endif
+        isPicoW = 1;
+    } else {
+#ifdef CYW43_PIN_WL_CLOCK
+        __isPicoW = false;
+#endif
+        isPicoW = 0;
+    }
+    return isPicoW == 1;
 }
 
 bool platform_rebooted_into_mass_storage()
@@ -373,7 +412,7 @@ void platform_init()
     // uart_init(uart0, 1000000);
     // g_uart_initialized = true;
 #endif // DISABLE_SWO
-    logmsg("Platform: ", g_platform_name);
+    logmsg("Platform: ", g_platform_name, " (", PLATFORM_PID, platform_check_picow() ? "/W" : "", ")");
     logmsg("FW Version: ", g_log_firmwareversion);
 
 #ifdef HAS_DIP_SWITCHES

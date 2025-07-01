@@ -112,11 +112,13 @@ bool platform_sense_msc() {
   // pin on the wireless module, see https://github.com/earlephilhower/arduino-pico/discussions/835
   // Update: from the above discussion the offset 32 has been changed to 64 to access CYW43 GPIO pins
   // since the addition of the RP2350 chips, now stored in the DIGITAL_PIN_CYW43_OFFSET define
-  if (rp2040.isPicoW() && !digitalRead(DIGITAL_PIN_CYW43_OFFSET + 2))
+  if (platform_check_picow() && !digitalRead(DIGITAL_PIN_CYW43_OFFSET + 2)) {
     return false;
+  }
 
-  if (!rp2040.isPicoW() && !digitalRead(24))
+  if (!platform_check_picow() && !digitalRead(24)) {
     return false;
+  }
 #endif
 
   logmsg("Waiting for USB enumeration to enter Card Reader mode.");

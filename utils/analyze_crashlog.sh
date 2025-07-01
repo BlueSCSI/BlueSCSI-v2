@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script can be used for analyzing a crash report.
 # It tries to find a matching binary .elf either locally
