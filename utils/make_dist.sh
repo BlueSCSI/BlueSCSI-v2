@@ -54,19 +54,19 @@ do
 done
 set -e
 set -x
+ls -1 "$OUT_DIR"
 
+# Zip up elf/uf2 files for each board variant
+zip -j "$OUT_DIR/BlueSCSI_${DATE}_${VERSION}-dev.zip" "$OUT_DIR"/*.elf "$OUT_DIR"/*.uf2
+rm "$OUT_DIR/"*.elf
 # Create universal UF2 by combining the Pico1 and Pico2 UF2 files;
 cat "$OUT_DIR/BlueSCSI_Pico1_DaynaPORT_${DATE}_${VERSION}.uf2" \
     "$OUT_DIR/BlueSCSI_Pico2_DaynaPORT_${DATE}_${VERSION}.uf2" > "$OUT_DIR/BlueSCSI_Universal_${DATE}_${VERSION}.uf2"
 # Remove unused UF2 files
+#rm "$OUT_DIR/BlueSCSI_Pico1_${DATE}_${VERSION}.uf2"
+#rm "$OUT_DIR/BlueSCSI_Pico2_${DATE}_${VERSION}.uf2"
 rm "$OUT_DIR/BlueSCSI_Pico1_DaynaPORT_${DATE}_${VERSION}.uf2"
 rm "$OUT_DIR/BlueSCSI_Pico2_DaynaPORT_${DATE}_${VERSION}.uf2"
-rm "$OUT_DIR/BlueSCSI_Pico1_${DATE}_${VERSION}.uf2"
-rm "$OUT_DIR/BlueSCSI_Pico2_${DATE}_${VERSION}.uf2"
-
-# Zip up elf files for each board variant
-zip -j "$OUT_DIR/BlueSCSI_*${DATE}_${VERSION}-elfs.zip" "$OUT_DIR"/*.elf
-rm "$OUT_DIR/"*.elf
 
 # Rename bins for SD Card update.
 mv "$OUT_DIR/BlueSCSI_Pico1_DaynaPORT_${DATE}_${VERSION}.bin" "$OUT_DIR/BlueSCSI_Pico1_${DATE}_${VERSION}.bin"
