@@ -609,7 +609,6 @@ static bluescsi_timings_t  predefined_timings[]  = {
     },
     
 };
-static bluescsi_timings_t  current_timings;
 
 #ifdef ENABLE_AUDIO_OUTPUT_SPDIF
 bluescsi_timings_t *g_bluescsi_timings = &predefined_timings[2];
@@ -644,6 +643,7 @@ bool set_timings(bluescsi_speed_grade_t speed_grade)
     case SPEED_GRADE_AUDIO_SPDIF:
         timings_index = 2;
         break;
+    case SPEED_GRADE_200MHZ:
     case SPEED_GRADE_AUDIO_I2S:
         timings_index = 7;
         break;
@@ -683,13 +683,14 @@ case SPEED_GRADE_MAX:
     case SPEED_GRADE_AUDIO_I2S:
         timings_index = 5;
         break;
+    case SPEED_GRADE_200MHZ:
+        timings_index = 7;
 #endif
         default:
             break;
     }
     if (speed_grade != SPEED_GRADE_DEFAULT && speed_grade != SPEED_GRADE_CUSTOM)
     {
-        g_bluescsi_timings = &current_timings;
         memcpy(g_bluescsi_timings, &predefined_timings[timings_index], sizeof(*g_bluescsi_timings));
         g_max_sync_10_period = g_bluescsi_timings->scsi_10.max_sync;
         g_max_sync_20_period = g_bluescsi_timings->scsi_20.max_sync;

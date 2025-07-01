@@ -34,7 +34,8 @@ typedef enum
     SPEED_GRADE_A,
     SPEED_GRADE_B,
     SPEED_GRADE_C,
-    SPEED_GRADE_WIFI_RM2
+    SPEED_GRADE_WIFI_RM2,
+    SPEED_GRADE_200MHZ,
 } bluescsi_speed_grade_t;
 
 #ifdef __cplusplus
