@@ -20,6 +20,13 @@
 **/
 
 #include "BlueSCSI_platform.h"
+
+#if PICO_CYW43_SUPPORTED
+extern "C" {
+#  include "pico/cyw43_arch.h"
+}
+#endif
+
 #include "BlueSCSI_log.h"
 #include <SdFat.h>
 #include <sdio.h>
@@ -89,6 +96,12 @@ static uint32_t g_flash_chip_size = 0;
 static bool g_uart_initialized = false;
 static bool g_led_blinking = false;
 static void usb_log_poll();
+
+typedef void (*led_write_func_t)(bool state);
+static led_write_func_t g_led_write_func;
+static void platform_write_led_gpio(bool state);
+static void platform_write_led_picow(bool state);
+
 #if !defined(PICO_CYW43_SUPPORTED)
 extern bool __isPicoW;
 #endif
@@ -343,6 +356,8 @@ bool checkIs2023a() {
 
 void platform_init()
 {
+    g_led_write_func = platform_write_led_gpio;
+
     // Make sure second core is stopped
     multicore_reset_core1();
 
@@ -414,6 +429,12 @@ void platform_init()
 #endif // DISABLE_SWO
     logmsg("Platform: ", g_platform_name, " (", PLATFORM_PID, platform_check_picow() ? "/W" : "", ")");
     logmsg("FW Version: ", g_log_firmwareversion);
+
+#if PICO_CYW43_SUPPORTED && !defined(BLUESCSI_NETWORK)
+    if (cyw43_arch_init()) {
+        logmsg("CYW43 driver init failed");
+    }
+#endif
 
 #ifdef HAS_DIP_SWITCHES
     if (working_dip)
@@ -501,6 +522,12 @@ void platform_enable_initiator_mode()
 // late_init() only runs in main application, SCSI not needed in bootloader
 void platform_late_init()
 {
+#if PICO_CYW43_SUPPORTED
+    if (platform_check_picow()) {
+        g_led_write_func = platform_write_led_picow;
+    }
+#endif
+
 #if defined(HAS_DIP_SWITCHES) && defined(PLATFORM_HAS_INITIATOR_MODE)
     if (g_scsi_initiator == true)
     {
@@ -672,7 +699,7 @@ void platform_write_led(bool state)
 
     if (g_scsi_settings.getSystem()->invertStatusLed)
         state = !state;
-    gpio_put(LED_PIN, state);
+    g_led_write_func(state);
 }
 
 void platform_set_blink_status(bool status)
@@ -684,8 +711,21 @@ void platform_write_led_override(bool state)
 {
     if (g_scsi_settings.getSystem()->invertStatusLed)
         state = !state;
-    gpio_put(LED_PIN, state);
+    g_led_write_func(state);
 
+}
+
+static void platform_write_led_picow(bool state)
+{
+#if PICO_CYW43_SUPPORTED
+    // CYW43_WL_GPIO_LED_PIN: 0 but we dont want to pull in the cyw43 driver/header/etc
+    cyw43_arch_gpio_put(0, state);
+#endif
+}
+
+static void platform_write_led_gpio(bool state)
+{
+    gpio_put(LED_PIN, state);
 }
 
 void platform_disable_led(void)
