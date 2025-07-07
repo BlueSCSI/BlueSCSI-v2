@@ -63,6 +63,7 @@
 #include "BlueSCSI_msc.h"
 #include "BlueSCSI_blink.h"
 #include "ROMDrive.h"
+#include "BlueSCSI_partitions.h"
 
 SdFs SD;
 FsFile g_logfile;
@@ -831,17 +832,19 @@ static void reinitSCSI()
     findHDDImages();
 
     // Error if there are 0 image files
-    if (!scsiDiskCheckAnyImagesConfigured())
-    {
-  #ifdef RAW_FALLBACK_ENABLE
-      logmsg("No images found, enabling RAW fallback partition");
-      g_scsi_settings.initDevice(RAW_FALLBACK_SCSI_ID, S2S_CFG_FIXED);
-      scsiDiskOpenHDDImage(RAW_FALLBACK_SCSI_ID, "RAW:0:0xFFFFFFFF", 0,
-                          RAW_FALLBACK_BLOCKSIZE);
-  #else
-      logmsg("No valid image files found!");
-  #endif // RAW_FALLBACK_ENABLE
-      blinkStatus(BLINK_ERROR_NO_IMAGES);
+    if (!scsiDiskCheckAnyImagesConfigured()) {
+#ifdef RAW_FALLBACK_ENABLE
+      logmsg("No images found, checking for MBR/GPT partitions...");
+      if (!checkAndConfigureMBRPartitions()) {
+        logmsg("No partitions configured, using full SD card.");
+        g_scsi_settings.initDevice(RAW_FALLBACK_SCSI_ID, S2S_CFG_FIXED);
+        scsiDiskOpenHDDImage(RAW_FALLBACK_SCSI_ID, "RAW:0:0xFFFFFFFF", 0,
+                            RAW_FALLBACK_BLOCKSIZE);
+#else
+        logmsg("No valid image files found!");
+#endif // RAW_FALLBACK_ENABLE
+        blinkStatus(BLINK_ERROR_NO_IMAGES);
+      }
     }
   }
 

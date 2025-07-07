@@ -76,7 +76,7 @@ ImageBackingStore::ImageBackingStore(const char *filename, uint32_t scsi_block_s
         uint32_t sectorCount = SD.card()->sectorCount();
         if (m_endsector >= sectorCount)
         {
-            logmsg("---- Limiting RAW image mapping to SD card sector count: ", (int)sectorCount);
+            logmsg("---- RAW image mapping set to SD card sector count: ", (int)sectorCount);
             m_endsector = sectorCount - 1;
         }
     }
