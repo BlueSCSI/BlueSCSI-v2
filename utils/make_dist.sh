@@ -57,7 +57,7 @@ set -x
 ls -1 "$OUT_DIR"
 
 # Zip up elf/uf2 files for each board variant
-zip -j "$OUT_DIR/BlueSCSI_${DATE}_${VERSION}-dev.zip" "$OUT_DIR"/*.elf "$OUT_DIR"/*.uf2
+zip -j "$OUT_DIR/dev-BlueSCSI_${DATE}_${VERSION}.zip" "$OUT_DIR"/*.elf "$OUT_DIR"/*.uf2
 rm "$OUT_DIR/"*.elf
 # Create universal UF2 by combining the Pico1 and Pico2 UF2 files;
 cat "$OUT_DIR/BlueSCSI_Pico1_DaynaPORT_${DATE}_${VERSION}.uf2" \
