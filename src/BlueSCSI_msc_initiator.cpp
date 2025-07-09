@@ -150,6 +150,7 @@ static void scan_targets()
 
 bool setup_msc_initiator()
 {
+    platform_disable_led();
     logmsg("SCSI Initiator: activating USB MSC mode");
     g_msc_initiator = true;
 
