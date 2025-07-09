@@ -101,6 +101,7 @@ typedef void (*led_write_func_t)(bool state);
 static led_write_func_t g_led_write_func;
 static void platform_write_led_gpio(bool state);
 static void platform_write_led_picow(bool state);
+static void platform_write_led_noop(bool state) {}
 
 #if !defined(PICO_CYW43_SUPPORTED)
 extern bool __isPicoW;
@@ -731,7 +732,8 @@ static void platform_write_led_gpio(bool state)
 void platform_disable_led(void)
 {
     //        pin      function       pup   pdown  out    state fast
-    gpio_conf(LED_PIN, GPIO_FUNC_SIO, false,false, false, false, false);
+    // gpio_conf(LED_PIN, GPIO_FUNC_SIO, false,false, false, false, false);
+    g_led_write_func = platform_write_led_noop;
     logmsg("Disabling status LED");
 }
 
