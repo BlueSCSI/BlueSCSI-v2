@@ -98,10 +98,10 @@ static bool g_led_blinking = false;
 static void usb_log_poll();
 
 typedef void (*led_write_func_t)(bool state);
-static led_write_func_t g_led_write_func;
 static void platform_write_led_gpio(bool state);
 static void platform_write_led_picow(bool state);
 static void platform_write_led_noop(bool state) {}
+static led_write_func_t g_led_write_func = platform_write_led_noop;
 
 #if !defined(PICO_CYW43_SUPPORTED)
 extern bool __isPicoW;
@@ -123,6 +123,31 @@ static void gpio_conf(uint gpio, gpio_function_t fn, bool pullup, bool pulldown,
         pads_bank0_hw->io[gpio] |= PADS_BANK0_GPIO0_SLEWFAST_BITS;
     }
 }
+
+# ifndef PICO_RP2040
+    /**
+     * This is a workaround until arduino framework can be updated to handle all 4 variations of
+     * Pico1/1w/2/2w. In testing this works on all for BlueSCSI.
+     * Tracking here https://github.com/earlephilhower/arduino-pico/issues/2671
+     */
+static void CheckPicoW() {
+    extern bool __isPicoW;
+    adc_init();
+    auto dir = gpio_get_dir(CYW43_PIN_WL_CLOCK);
+    auto fnc = gpio_get_function(CYW43_PIN_WL_CLOCK);
+    adc_gpio_init(CYW43_PIN_WL_CLOCK);
+    adc_select_input(3);
+    auto adc29 = adc_read();
+    gpio_set_function(CYW43_PIN_WL_CLOCK, fnc);
+    gpio_set_dir(CYW43_PIN_WL_CLOCK, dir);
+    dbgmsg("CheckPicoW adc29: %d", adc29);
+    if (adc29 < 200) {
+        __isPicoW = true; // PicoW || Pico2W
+    } else {
+        __isPicoW = false;
+    }
+}
+#endif
 
 static void reclock() {
     // ensure UART is fully drained before we mess up its clock
@@ -213,43 +238,6 @@ bool platform_reclock(bluescsi_speed_grade_t speed_grade)
         dbgmsg("Speed grade is set to default, reclocking skipped");
 
     return do_reclock;
-}
-
-/**
- * This is a workaround until arduino framework can be updated to handle all 4 variations of
- * Pico1/1w/2/2w. In testing this works on all for BlueSCSI.
- * Tracking here https://github.com/earlephilhower/arduino-pico/issues/2671
- */
-bool platform_check_picow() {
-    static int8_t isPicoW = -1; // -1 = unchecked, 0 = false, 1 = true
-    if (isPicoW != -1)
-        return isPicoW == 1;
-
-#ifndef CYW43_PIN_WL_CLOCK
-    uint8_t cyw43_pin_wl_clock = 29; // Default to GPIO 29, which is the CYW43_PIN_WL_CLOCK
-#else
-    uint8_t cyw43_pin_wl_clock = CYW43_PIN_WL_CLOCK;
-#endif
-    adc_init();
-    const auto dir = gpio_get_dir(cyw43_pin_wl_clock);
-    const auto fnc = gpio_get_function(cyw43_pin_wl_clock);
-    adc_gpio_init(cyw43_pin_wl_clock);
-    adc_select_input(3);
-    const auto adc29 = adc_read();
-    gpio_set_function(cyw43_pin_wl_clock, fnc);
-    gpio_set_dir(cyw43_pin_wl_clock, dir);
-    if (adc29 < 200) {
-#ifdef CYW43_PIN_WL_CLOCK
-        __isPicoW = true; // Set the global if available for PicoW || Pico2W
-#endif
-        isPicoW = 1;
-    } else {
-#ifdef CYW43_PIN_WL_CLOCK
-        __isPicoW = false;
-#endif
-        isPicoW = 0;
-    }
-    return isPicoW == 1;
 }
 
 bool platform_rebooted_into_mass_storage()
@@ -357,8 +345,9 @@ bool checkIs2023a() {
 
 void platform_init()
 {
-    g_led_write_func = platform_write_led_gpio;
-
+#ifndef PICO_RP2040
+    CheckPicoW(); // Override default Wi-Fi check for the Pico2 line.
+#endif
     // Make sure second core is stopped
     multicore_reset_core1();
 
@@ -428,7 +417,7 @@ void platform_init()
     // uart_init(uart0, 1000000);
     // g_uart_initialized = true;
 #endif // DISABLE_SWO
-    logmsg("Platform: ", g_platform_name, " (", PLATFORM_PID, platform_check_picow() ? "/W" : "", ")");
+    logmsg("Platform: ", g_platform_name, " (", PLATFORM_PID, rp2040.isPicoW() ? "/W" : "", ")");
     logmsg("FW Version: ", g_log_firmwareversion);
 
 #if PICO_CYW43_SUPPORTED && !defined(BLUESCSI_NETWORK)
@@ -493,7 +482,8 @@ void platform_init()
     gpio_conf(SDIO_D2,        GPIO_FUNC_SIO, true, false, false, true, true);
 
     // LED pin
-    gpio_conf(LED_PIN,        GPIO_FUNC_SIO, false,false, true,  false, false);
+    if (!rp2040.isPicoW())
+        gpio_conf(LED_PIN,    GPIO_FUNC_SIO, false,false, true,  false, false);
 
 #ifndef ENABLE_AUDIO_OUTPUT_SPDIF
 #ifdef GPIO_I2C_SDA
@@ -524,10 +514,13 @@ void platform_enable_initiator_mode()
 void platform_late_init()
 {
 #if PICO_CYW43_SUPPORTED
-    if (platform_check_picow()) {
+    if (rp2040.isPicoW()) {
         g_led_write_func = platform_write_led_picow;
-    }
+    } else
 #endif
+    {
+        g_led_write_func = platform_write_led_gpio;
+    }
 
 #if defined(HAS_DIP_SWITCHES) && defined(PLATFORM_HAS_INITIATOR_MODE)
     if (g_scsi_initiator == true)
@@ -731,8 +724,10 @@ static void platform_write_led_gpio(bool state)
 
 void platform_disable_led(void)
 {
-    //        pin      function       pup   pdown  out    state fast
-    // gpio_conf(LED_PIN, GPIO_FUNC_SIO, false,false, false, false, false);
+    if (!rp2040.isPicoW()) {
+        //        pin      function       pup   pdown  out    state fast
+        gpio_conf(LED_PIN, GPIO_FUNC_SIO, false,false, false, false, false);
+    }
     g_led_write_func = platform_write_led_noop;
     logmsg("Disabling status LED");
 }
