@@ -1223,6 +1223,10 @@ extern "C" void bluescsi_setup(void)
 #endif
   logmsg("Clock set to: ", static_cast<int>(platform_sys_clock_in_hz() / 1000000), "MHz");
   logmsg("Initialization complete!");
+  // There is an issue with using the PicoW LED during SCSI activity.
+  // Trn it off and rely on the LED pins on the BlueSCSI.
+  if (platform_network_supported())
+    platform_disable_led();
 }
 
 extern "C" void bluescsi_main_loop(void)
