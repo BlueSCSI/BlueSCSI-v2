@@ -780,7 +780,6 @@ static void reinitSCSI()
     scsiInit();
 
     // Setup GPIO pins for initiator mode
-    platform_initiator_gpio_setup();
     // Initializer initiator mode state machine
     scsiInitiatorInit();
 
@@ -1166,6 +1165,7 @@ static void bluescsi_setup_sd_card(bool wait_for_card = true)
     if (platform_supports_initiator_mode()) {
       logmsg("SCSI Initiator Mode");
       platform_enable_initiator_mode();
+      reinitSCSI();
       if (! ini_getbool("SCSI", "InitiatorParity", true, CONFIGFILE))
       {
         logmsg("Initiator Mode Skipping Parity Check.");
