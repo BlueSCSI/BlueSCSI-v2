@@ -119,20 +119,20 @@ extern uint32_t SCSI_ACCEL_PINMASK;
 // Set pin directions for initiator vs. target mode
 #define SCSI_ENABLE_INITIATOR() \
     (sio_hw->gpio_oe_set = (1 << SCSI_OUT_ACK) | \
-    (1 << SCSI_OUT_SEL)), \
+                           (1 << SCSI_OUT_SEL)), \
     (sio_hw->gpio_oe_clr = (1 << SCSI_IN_IO) | \
-    (1 << SCSI_IN_CD) | \
-    (1 << SCSI_IN_MSG) | \
-    (1 << SCSI_OUT_REQ))
+                           (1 << SCSI_IN_CD) | \
+                           (1 << SCSI_IN_MSG) | \
+                           (1 << SCSI_OUT_REQ))
 
 // Used in test mode only
 #define SCSI_RELEASE_INITIATOR() \
     (sio_hw->gpio_oe_clr = (1 << SCSI_OUT_ACK) | \
-    (1 << SCSI_OUT_SEL)), \
+                           (1 << SCSI_OUT_SEL)), \
     (sio_hw->gpio_oe_set = (1 << SCSI_IN_IO) | \
-    (1 << SCSI_IN_CD) | \
-    (1 << SCSI_IN_MSG) | \
-    (1 << SCSI_OUT_REQ))
+                           (1 << SCSI_IN_CD) | \
+                           (1 << SCSI_IN_MSG) | \
+                           (1 << SCSI_OUT_REQ))
 
 // Enable driving of shared control pins
 #define SCSI_ENABLE_CONTROL_OUT() \

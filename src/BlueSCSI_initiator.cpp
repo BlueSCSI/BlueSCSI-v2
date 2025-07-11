@@ -411,10 +411,10 @@ void scsiInitiatorMainLoop()
                 static int handling = -1;
                 if (handling == -1)
                 {
-                    handling = ini_getl("SCSI", "InitiatorImageHandling", 0, CONFIGFILE);
+                    handling = ini_getl("SCSI", "InitiatorImageHandling", INITIATOR_IMAGE_INCREMENT_IF_EXISTS, CONFIGFILE);
                 }
                 // Stop if a file already exists
-                if (handling == 0)
+                if (handling == INITIATOR_IMAGE_SKIP_IF_EXISTS)
                 {
                     if (SD.exists(filename))
                     {
@@ -424,7 +424,7 @@ void scsiInitiatorMainLoop()
                     }
                 }
                 // Create a new copy to the file 002-999
-                else if (handling == 1)
+                else if (handling == INITIATOR_IMAGE_INCREMENT_IF_EXISTS)
                 {
                     for (uint32_t i = 1; i <= 1000; i++)
                     {
@@ -458,7 +458,7 @@ void scsiInitiatorMainLoop()
 
                 }
                 // overwrite file if it exists
-                else if (handling == 2)
+                else if (handling == INITIATOR_IMAGE_OVERWRITE_IF_EXISTS)
                 {
                     if (SD.exists(filename))
                     {

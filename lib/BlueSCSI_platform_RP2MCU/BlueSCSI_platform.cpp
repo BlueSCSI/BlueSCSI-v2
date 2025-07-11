@@ -508,6 +508,7 @@ void platform_init()
 void platform_enable_initiator_mode()
 {
     g_scsi_initiator = true;
+    platform_initiator_gpio_setup();
 }
 
 // late_init() only runs in main application, SCSI not needed in bootloader
@@ -671,7 +672,7 @@ void platform_initiator_gpio_setup() {
     gpio_conf(SCSI_IN_REQ,    GPIO_FUNC_SIO, true ,false, false, true, false);
     gpio_conf(SCSI_IN_BSY,    GPIO_FUNC_SIO, true, false, false, true, false);
     gpio_conf(SCSI_IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
-    gpio_conf(SCSI_OUT_RST,   GPIO_FUNC_SIO, false,false, true,  true, true);
+    gpio_conf(SCSI_OUT_SEL,   GPIO_FUNC_SIO, false,false, true,  true, true);
     gpio_conf(SCSI_OUT_ACK,   GPIO_FUNC_SIO, true,false, true,  true, true);
     //gpio_conf(SCSI_OUT_ATN,   GPIO_FUNC_SIO, false,false, true,  true, true);  // ATN output is unused
 }
@@ -683,7 +684,6 @@ void platform_post_sd_card_init() {}
 
 bool platform_is_initiator_mode_enabled()
 {
-    // logmsg("Initiator mode enabled: ", g_scsi_initiator);
     return g_scsi_initiator;
 }
 
