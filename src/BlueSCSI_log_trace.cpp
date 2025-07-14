@@ -164,7 +164,7 @@ static void printNewPhase(int phase, bool initiator = false)
             }
             else if (scsiDev.status == CHECK_CONDITION && scsiDev.target)
             {
-                dbgmsg("---- STATUS: 2 CHECK_CONDITION, sense ", (uint32_t)scsiDev.target->sense.asc);
+                dbgmsg("---- STATUS: 2 CHECK_CONDITION, sense code ", scsiDev.target->sense.code, ", asc ", (uint32_t)scsiDev.target->sense.asc);
             }
             else
             {

@@ -113,6 +113,7 @@ typedef struct
 	uint8_t syncPeriod;
 
 	uint8_t started; // Controlled by START STOP UNIT
+	uint8_t tapeMarkCount; // Number of times tape mark has been reached
 } TargetState;
 
 typedef struct

@@ -499,9 +499,12 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
         {
             logmsg("---- Configuring as tape drive");
             img.deviceType = S2S_CFG_SEQUENTIAL;
-            img.tape_mark_count = 0;
+            img.tape_mark_count = 1;
             scsiDev.target->sense.filemark = false;
             scsiDev.target->sense.eom = false;
+            img.tape_mark_index = 0;
+            img.tape_mark_block_offset = 0;
+            img.tape_load_next_file = true;
         }
         else if (type == S2S_CFG_ZIP100)
         {
@@ -606,7 +609,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
             img.bin_container.open(name);
             FsFile file;
             bool valid = false;
-
+            img.tape_mark_count = 0;
             while(file.openNext(&img.bin_container))
             {
                 file.getName(name, sizeof(name));
@@ -622,9 +625,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
                 file.open(&img.bin_container, TAPE_DEFAULT_NAME, O_CREAT);
                 file.close();
             }
-            img.tape_mark_index = 0;
-            img.tape_mark_block_offset = 0;
-            img.tape_load_next_file = false;
+
         }
 
         img.use_prefix = use_prefix;
