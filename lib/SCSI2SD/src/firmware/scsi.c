@@ -570,10 +570,7 @@ static void process_Command()
 			if (cfg->deviceType == S2S_CFG_SEQUENTIAL)
 			{
 				scsiDev.data[2] |= scsiDev.target->sense.filemark ? 1 << 7 : 0;
-				scsiDev.data[3] |= scsiDev.target->sense.eom ? 1 << 6 : 0;
-			}
-			if (cfg->deviceType == S2S_CFG_SEQUENTIAL)
-			{
+				scsiDev.data[2] |= scsiDev.target->sense.eom ? 1 << 6 : 0;
 				scsiDev.data[3] = scsiDev.target->sense.info >> 24;
 				scsiDev.data[4] = scsiDev.target->sense.info >> 16;
 				scsiDev.data[5] = scsiDev.target->sense.info >> 8;
@@ -602,8 +599,7 @@ static void process_Command()
 		enter_DataIn(allocLength);
 
 		// This is a good time to clear out old sense information.
-		scsiDev.target->sense.code = NO_SENSE;
-		scsiDev.target->sense.asc = NO_ADDITIONAL_SENSE_INFORMATION;
+		memset(&scsiDev.target->sense, 0, sizeof(ScsiSense));
 	}
 	// Some old SCSI drivers do NOT properly support
 	// unitAttention. eg. the Mac Plus would trigger a SCSI reset
@@ -1394,8 +1390,8 @@ void scsiInit()
 		{
 			scsiDev.targets[i].unitAttention = PARAMETERS_CHANGED;
 		}
-		scsiDev.targets[i].sense.code = NO_SENSE;
-		scsiDev.targets[i].sense.asc = NO_ADDITIONAL_SENSE_INFORMATION;
+		// reset sense
+		memset(&scsiDev.targets[i].sense, 0, sizeof(scsiDev.targets[i].sense));
 
 		if (g_force_sync > 0)
 		{
@@ -1407,6 +1403,8 @@ void scsiInit()
 			scsiDev.targets[i].syncOffset = 0;
 			scsiDev.targets[i].syncPeriod = 0;
 		}
+
+		scsiDev.targets[i].tapeMarkCount = 0;
 
 		// Always "start" the device. Many systems (eg. Apple System 7)
 		// won't respond properly to

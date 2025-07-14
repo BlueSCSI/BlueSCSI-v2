@@ -63,11 +63,9 @@ static void doSeek(uint32_t lba)
 static void doTapeRead(uint32_t blocks)
 {
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-    uint32_t bytesPerSector = 0;
-    uint32_t capacity = 0;
-    bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+    uint32_t capacity_lba = img.get_capacity_lba();
 
-    if (img.bin_container.isOpen())
+    if (img.tape_load_next_file && img.bin_container.isOpen())
     {
         // multifile tape - multiple file markers
         char dir_name[MAX_FILE_PATH + 1];
@@ -76,79 +74,98 @@ static void doTapeRead(uint32_t blocks)
         int filename_len = 0;
         img.bin_container.getName(dir_name, sizeof(dir_name));
         img.file.getFilename(current_filename, sizeof(current_filename));
-        if (current_filename[0] == '\0' || img.tape_load_next_file)
+        img.tape_load_next_file = false;
+        // load first file in directory or load next file
+
+        filename_len = findNextImageAfter(img, dir_name, current_filename, next_filename, sizeof(next_filename), true);
+        if (filename_len > 0 && img.file.selectImageFile(next_filename))
         {
-            // load first file in directory or load next file
-            if (img.tape_load_next_file)
+            if (img.tape_mark_index > 0)
             {
-                capacity = img.file.size() / bytesPerSector;
-            }
-            filename_len = findNextImageAfter(img, dir_name, current_filename, next_filename, sizeof(next_filename), true);
-            if (filename_len > 0 && img.file.selectImageFile(next_filename))
-            {
-                if (img.tape_load_next_file)
-                {
-                    img.tape_mark_block_offset += capacity;
-                    img.tape_mark_index++;
-                }
-                capacity = img.file.size() / bytesPerSector;
-                dbgmsg("------ Read tape loaded file ", next_filename, " has ", (int) capacity, " sectors with filemark ", (int) img.tape_mark_index ," at the end");
-                img.tape_load_next_file = false;
+                img.tape_mark_block_offset += capacity_lba;
             }
             else
             {
-                img.tape_load_next_file = false;
-                logmsg("No tape element images found or openable in tape directory ", dir_name);
-                scsiDev.target->sense.filemark = true;
-                scsiDev.status = CHECK_CONDITION;
-                scsiDev.target->sense.code = MEDIUM_ERROR;
-                scsiDev.target->sense.asc = MEDIUM_NOT_PRESENT;
-                scsiDev.phase = STATUS;
-                return;
+                img.tape_mark_block_offset = 0;
             }
+            capacity_lba = img.get_capacity_lba();
+
+            dbgmsg("------ Read tape loaded file ", next_filename, " has ", (int) capacity_lba, " sectors with filemark ", (int) img.tape_mark_index ," at the end");
         }
         else
-            capacity = img.file.size() / bytesPerSector;
+        {
+            logmsg("No tape element images found or openable in tape directory ", dir_name);
+            scsiDev.target->sense.filemark = true;
+            scsiDev.status = CHECK_CONDITION;
+            scsiDev.target->sense.code = MEDIUM_ERROR;
+            scsiDev.target->sense.asc = MEDIUM_NOT_PRESENT;
+            scsiDev.phase = STATUS;
+            return;
+        }
+    }
+
+    if (img.file.isOpen())
+    {
+        bool passed_filemarker = false;
+        uint32_t blocks_till_eof = 0;
+        if (unlikely(((uint64_t) img.tape_pos) - img.tape_mark_block_offset + blocks >= capacity_lba))
+        {
+            // reading past a file, set blocks to end of file
+            blocks_till_eof =  capacity_lba - (img.tape_pos - img.tape_mark_block_offset);
+            passed_filemarker = true;
+            // SCSI-2 Spec: "If the fixed bit is one, the information field shall be set to the requested transfer length minus the
+            //               actual number of blocks read (not including the filemark)"
+            scsiDev.target->sense.info = blocks - blocks_till_eof;
+            dbgmsg("------ Read tape went past file marker, blocks left to be read ", (int) blocks_till_eof, " out of ", (int) blocks, " sense info set to ", (int) scsiDev.target->sense.info);
+
+            blocks = blocks_till_eof;
+        }
+
+        if (blocks > 0)
+        {
+            dbgmsg("------ Read tape ", (int)blocks, "x", (int)scsiDev.target->liveCfg.bytesPerSector, " tape position ",(int)img.tape_pos,
+                            " file position ", (int)(img.tape_pos - img.tape_mark_block_offset), " ends with file mark ",
+                            (int)(img.tape_mark_index + 1), "/", (int) img.tape_mark_count, passed_filemarker ? " reached" : " not reached");
+            scsiDiskStartRead(img.tape_pos - img.tape_mark_block_offset, blocks);
+            scsiFinishWrite();
+            img.tape_pos += blocks;
+        }
+
+        if (passed_filemarker)
+        {
+            if (img.tape_mark_index < img.tape_mark_count)
+            {
+                img.tape_mark_index++;
+                if(img.tape_mark_index < img.tape_mark_count)
+                    img.tape_load_next_file = true;
+
+                scsiDev.target->sense.filemark = true;
+                scsiDev.status = CHECK_CONDITION;
+                scsiDev.target->sense.code = NO_SENSE;
+                scsiDev.target->sense.asc = NO_ADDITIONAL_SENSE_INFORMATION;
+                scsiDev.phase = STATUS;
+
+            }
+            else if (blocks_till_eof == 0)
+            {
+                dbgmsg("------ Reached end of tape");
+                scsiDev.target->sense.eom = true;
+                scsiDev.status = CHECK_CONDITION;
+                scsiDev.target->sense.code = BLANK_CHECK;
+                scsiDev.target->sense.asc = NO_ADDITIONAL_SENSE_INFORMATION;
+                scsiDev.phase = STATUS;
+            }
+        }
     }
     else
     {
-        capacity = img.file.size() / bytesPerSector;
-    }
-
-    bool passed_filemarker = false;
-    // bool end_of_tape = false;
-    if (unlikely(((uint64_t) img.tape_pos) - img.tape_mark_block_offset + blocks >= capacity))
-    {
-        // reading past a file, set blocks to end of file
-        uint32_t blocks_till_eof =  capacity - (img.tape_pos - img.tape_mark_block_offset);
-        dbgmsg("------ Read tape went past file marker, blocks left to be read ", (int) blocks_till_eof, " out of ", (int) blocks);
-        passed_filemarker = true;
-        // SCSI-2 Spec: "If the fixed bit is one, the information field shall be set to the requested transfer length minus the
-        //               actual number of blocks read (not including the filemark)"
-        scsiDev.target->sense.info = blocks - blocks_till_eof;
-        blocks = blocks_till_eof;
-        if (img.tape_mark_index < img.tape_mark_count - 1)
-        {
-            img.tape_load_next_file = true;
-        }
-        // else
-        //     end_of_tape = true;
-    }
-
-    dbgmsg("------ Read tape ", (int)blocks, "x", (int)bytesPerSector, " tape position ",(int)img.tape_pos, " file position ", (int)(img.tape_pos - img.tape_mark_block_offset), " ends with file mark ", (int)img.tape_mark_index);
-    if (blocks > 0)
-        scsiDiskStartRead(img.tape_pos - img.tape_mark_block_offset, blocks);
-
-    if (passed_filemarker)
-    {
-        scsiFinishWrite();
+        dbgmsg("------ No image open");
         scsiDev.target->sense.filemark = true;
         scsiDev.status = CHECK_CONDITION;
-        scsiDev.target->sense.code = NO_SENSE;
-        scsiDev.target->sense.asc = NO_ADDITIONAL_SENSE_INFORMATION;
+        scsiDev.target->sense.code = MEDIUM_ERROR;
+        scsiDev.target->sense.asc = MEDIUM_NOT_PRESENT;
         scsiDev.phase = STATUS;
     }
-    img.tape_pos += blocks;
 }
 
 static void doRewind()
@@ -157,13 +174,7 @@ static void doRewind()
     img.tape_mark_block_offset = 0;
     img.tape_mark_index = 0;
     img.tape_pos = 0;
-    img.tape_load_next_file = false;
-    if (img.bin_container.isOpen())
-    {
-        // multifile tape - multiple
-        char emptyfile[] = "";
-        img.file.selectImageFile(emptyfile);
-    }
+    img.tape_load_next_file = true;
 }
 
 extern "C" int scsiTapeCommand()
