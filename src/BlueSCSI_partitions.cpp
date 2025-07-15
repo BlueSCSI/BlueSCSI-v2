@@ -75,13 +75,15 @@ struct MbrPartitionEntry {
 bool checkAndConfigureGPTPartitions() {
     logmsg("--- Detected GPT, scanning for partitions...");
 
+    uint8_t buffer[512];
+
     // Read GPT Header at LBA 1
-    if (!SD.card()->readSector(GPT_HEADER_LBA, scsiDev.data)) {
+    if (!SD.card()->readSector(GPT_HEADER_LBA, buffer)) {
         logmsg("Error reading GPT header!");
         return false;
     }
 
-    const auto *gptHeader = reinterpret_cast<GptHeader *>(scsiDev.data);
+    const auto *gptHeader = reinterpret_cast<GptHeader *>(buffer);
 
     // Verify GPT signature
     if (gptHeader->signature != GPT_SIGNATURE) {
@@ -89,25 +91,32 @@ bool checkAndConfigureGPTPartitions() {
         return false;
     }
 
-    logmsg("--- GPT Header valid. Found ", static_cast<int>(gptHeader->numberOfPartitionEntries),
-           " partition entries starting at LBA ", static_cast<unsigned long>(gptHeader->partitionEntryLba));
+    // Copy header info to local variables before the buffer is overwritten
+    const uint32_t partitionsToRead = gptHeader->numberOfPartitionEntries;
+    const uint64_t partitionEntryLba = gptHeader->partitionEntryLba;
+    const uint64_t lastUsableLba = gptHeader->lastUsableLba;
+
+    logmsg("--- GPT Header valid.");
+    dbgmsg("Found ", static_cast<int>(partitionsToRead),
+           " partition entries starting at LBA ", static_cast<unsigned long>(partitionEntryLba));
 
     bool found = false;
-    uint8_t scsiId = 0;
-    const uint32_t partitionsToRead = gptHeader->numberOfPartitionEntries;
-    uint64_t currentLba = gptHeader->partitionEntryLba;
+    uint8_t scsiId = RAW_FALLBACK_SCSI_ID;
+    uint64_t currentLba = partitionEntryLba;
     char raw_img_str[64];
+    bool skipFirstPartition = ini_getbool("SCSI", "SkipFirstPartition", false, CONFIGFILE);
+    bool firstPartitionSkipped = false;
 
     // Read and process partition entries
     for (uint32_t i = 0; i < partitionsToRead && scsiId < NUM_SCSIID;) {
-        if (!SD.card()->readSector(currentLba, scsiDev.data)) {
+        if (!SD.card()->readSector(currentLba, buffer)) {
             logmsg("Error reading GPT partition entry block at LBA ", static_cast<unsigned long>(currentLba));
             break; // Stop if we can't read a sector
         }
 
         const uint32_t entriesPerSector = 512 / sizeof(GptPartitionEntry);
         for (uint32_t j = 0; j < entriesPerSector && i < partitionsToRead && scsiId < NUM_SCSIID; j++, i++) {
-            const auto *p = reinterpret_cast<GptPartitionEntry *>(scsiDev.data) + j;
+            const auto *p = reinterpret_cast<const GptPartitionEntry *>(buffer) + j;
 
             // Check for an empty partition type GUID (all zeros)
             bool isEmpty = true;
@@ -122,26 +131,25 @@ bool checkAndConfigureGPTPartitions() {
                 continue; // Skip unused entries
             }
 
-            if (scsiId == 0 && ini_getbool("SCSI", "SkipFirstPartition", false, CONFIGFILE)) {
+            if (skipFirstPartition && !firstPartitionSkipped) {
                 logmsg("- First partition not configured as requested: SkipFirstPartition=true.");
-                scsiId++;
+                firstPartitionSkipped = true;
                 continue;
             }
 
-            if (p->firstLba > 0 && p->lastLba >= p->firstLba) {
+            if (p->firstLba > 0 && p->lastLba >= p->firstLba && p->lastLba <= lastUsableLba) {
                 snprintf(raw_img_str, sizeof(raw_img_str), "RAW:%llu:%llu", p->firstLba, p->lastLba);
-
-                // Safely copy and convert partition name for logging
+                /*
                 char partitionNameStr[37];
                 for (int k = 0; k < 36; ++k) {
                     // Basic conversion from UTF-16LE to ASCII, assuming basic characters
                     partitionNameStr[k] = (char) p->partitionName[k];
-                    if (p->partitionName[k] == 0) break; // Null terminator
+                    if (p->partitionName[k] == 0) break;
                 }
-                partitionNameStr[36] = '\0'; // Ensure null termination
+                partitionNameStr[36] = '\0';
+                */
 
-                logmsg("--- SCSI ID ", static_cast<int>(scsiId), ": ", raw_img_str, " Partition Name: ",
-                       partitionNameStr);
+                logmsg("--- SCSI ID ", static_cast<int>(scsiId), ": ", raw_img_str);
                 found = true;
                 g_scsi_settings.initDevice(scsiId, S2S_CFG_FIXED);
                 scsiDiskOpenHDDImage(scsiId, raw_img_str, 0, RAW_FALLBACK_BLOCKSIZE);

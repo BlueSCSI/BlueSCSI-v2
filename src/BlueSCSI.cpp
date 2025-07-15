@@ -116,9 +116,14 @@ void init_logfile()
   if (g_hw_config.is_active())
     return;
 #endif
+  const bool create_log_file = ini_getbool("SCSI", "SkipFirstPartition", false, CONFIGFILE);
 
-  if (g_rawdrive_active)
-    return;
+  if (g_rawdrive_active) {
+    if (!create_log_file) {
+      dbgmsg("Not creating logfile as nowhere to write in RAW mode.");
+      return;
+    }
+  }
 
   static bool first_open_after_boot = true;
 
