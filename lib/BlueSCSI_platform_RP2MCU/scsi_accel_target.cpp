@@ -188,6 +188,7 @@ void scsi_accel_log_state()
 // Also sets up DMA channels B and C
 static void config_parity_sm_for_write()
 {
+#ifndef BLUESCSI_ULTRA_WIDE // TODO: Port 16-bit code
     // Load base address to state machine register X
     uint32_t addrbase = (uint32_t)&g_scsi_parity_lookup[0];
     assert((addrbase & 0x1FF) == 0);
@@ -195,6 +196,7 @@ static void config_parity_sm_for_write()
     pio_sm_put(SCSI_DMA_PIO, SCSI_PARITY_SM, addrbase >> 9);
     pio_sm_exec(SCSI_DMA_PIO, SCSI_PARITY_SM, pio_encode_pull(false, false));
     pio_sm_exec(SCSI_DMA_PIO, SCSI_PARITY_SM, pio_encode_mov(pio_x, pio_osr));
+#endif
 
     // DMA channel B will copy addresses from parity PIO to DMA channel C read address register.
     // It is triggered by the parity SM RX FIFO request
@@ -485,12 +487,15 @@ static void config_parity_sm_for_read()
     pio_sm_init(SCSI_DMA_PIO, SCSI_PARITY_SM, g_scsi_dma.pio_offset_read_parity, &g_scsi_dma.pio_cfg_read_parity);
 
     // Load base address to state machine register X
+    // TODO: Port 16-bit code
+#ifndef BLUESCSI_ULTRA_WIDE
     uint32_t addrbase = (uint32_t)&g_scsi_parity_check_lookup[0];
     assert((addrbase & 0x3FF) == 0);
     pio_sm_init(SCSI_DMA_PIO, SCSI_DATA_SM, g_scsi_dma.pio_offset_read, &g_scsi_dma.pio_cfg_read);
     pio_sm_put(SCSI_DMA_PIO, SCSI_DATA_SM, addrbase >> 10);
     pio_sm_exec(SCSI_DMA_PIO, SCSI_DATA_SM, pio_encode_pull(false, false) | pio_encode_sideset(1, 1));
     pio_sm_exec(SCSI_DMA_PIO, SCSI_DATA_SM, pio_encode_mov(pio_y, pio_osr) | pio_encode_sideset(1, 1));
+#endif
 
     // For synchronous mode, the REQ pin is driven by SCSI_SYNC_SM, so disable it in SCSI_DATA_SM
     if (g_scsi_dma.syncOffset > 0)

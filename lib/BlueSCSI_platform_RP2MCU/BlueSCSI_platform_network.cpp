@@ -47,7 +47,7 @@ bool platform_network_supported()
 	/* from cores/rp2040/RP2040Support.h */
 #if !defined(PICO_CYW43_SUPPORTED)
 	return false;
-#elif defined(BLUESCSI_BLASTER)
+#elif defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
 	return true;
 #else
 	extern bool __isPicoW;
@@ -60,15 +60,15 @@ int platform_network_init(char *mac)
 	pico_unique_board_id_t board_id;
 	uint8_t set_mac[6], read_mac[6];
 
-	if (!platform_network_supported())
+	if (!platform_network_supported()) {
 		return -1;
+	}
 
 	// long signal blink at network initialization
 	PICO_W_LED_OFF();
 	PICO_W_LED_ON();
 	delay(PICO_W_LONG_BLINK_DELAY);
 	PICO_W_LED_OFF();
-
 
 	logmsg(" ");
 	logmsg("=== Network Initialization ===");

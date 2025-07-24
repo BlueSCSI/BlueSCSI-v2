@@ -1,0 +1,314 @@
+; Copyright (c) 2011-2025 Bill Greiman
+; This file is part of the SdFat library for SD memory cards.
+;
+; MIT License
+;
+; Permission is hereby granted, free of charge, to any person obtaining a
+; copy of this software and associated documentation files (the "Software"),
+; to deal in the Software without restriction, including without limitation
+; the rights to use, copy, modify, merge, publish, distribute, sublicense,
+; and/or sell copies of the Software, and to permit persons to whom the
+; Software is furnished to do so, subject to the following conditions:
+;
+; The above copyright notice and this permission notice shall be included
+; in all copies or substantial portions of the Software.
+;
+; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+; OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+; FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+; AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+; DEALINGS IN THE SOFTWARE.
+;
+; Online assembler used to produce PioSdioCard.pio.h
+; https://wokwi.com/tools/pioasm
+;
+; --------------------------
+;
+; This file is based on PioSdioCard.pio from Bill Greiman's SdFat library,
+; which is available here under MIT license: https://github.com/greiman/SdFat
+; Copyright (c) 2024-2025 Tech by Androda LLC
+; 
+; Changes from Tech by Androda, LLC are licensed under the GPL version 3 or any later version.
+; Original work by Bill Greiman uses the MIT License (shown above).
+;
+; https://www.gnu.org/licenses/gpl-3.0.html
+; ----
+; This program is free software: you can redistribute it and/or modify
+; it under the terms of the GNU General Public License as published by
+; the Free Software Foundation, either version 3 of the License, or
+; (at your option) any later version. 
+;
+; This program is distributed in the hope that it will be useful,
+; but WITHOUT ANY WARRANTY; without even the implied warranty of
+; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+; GNU General Public License for more details. 
+;
+; You should have received a copy of the GNU General Public License
+; along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+; PIO side-set notes: Lowest bit is the first sideset pin
+; Then second bit is second sideset pin
+; And third sideset bit is the final sideset pin
+; Thus "side 1", "side 2", "side 4" are for the first, second, and third sideset pins
+; This is "first" on the right, second in the middle, and third on the left
+; DAT_DIR is first sideset
+; CMD_DIR is the second sideset
+; SD_CLK is the third sideset
+
+; This State Machine is for the Command / Response cycle
+; It will stall with clock low after sending a command and receiving the response
+; Note that the FIFOs are set to 8 bit mode here, because 8 bits evenly divides all command and response sizes
+.program cmd_rsp
+.side_set 3
+.wrap_target
+cmd_begin:
+send_cmd:
+    out pins, 1         side 0b011 [1]  ; When TX FIFO is empty, this command will stall with clock low
+    jmp X-- send_cmd    side 0b111 [1]
+
+    jmp !Y cmd_begin    side 0b011 [1]  ; If no response, go back to the beginning and stall
+    set pindirs, 0      side 0b101 [3]
+wait_resp:
+    set pindirs, 0      side 0b001 [3]
+    nop                 side 0b101 [1]
+    jmp PIN wait_resp   side 0b101      ; Run the SD clock until CMD pin goes low (First bit of response)
+    
+read_resp:
+    in pins, 1          side 0b101
+    push iffull block   side 0b001 [2]  ; Read command response, and stall with clock low
+    jmp Y-- read_resp   side 0b101 [1]
+.wrap
+
+% c-sdk {
+static inline pio_sm_config pio_cmd_rsp_program_config(uint offset, uint cmd_pin, uint clk_pin, uint16_t div_int, uint8_t div_frac) {
+    pio_sm_config c = cmd_rsp_program_get_default_config(offset);
+    sm_config_set_sideset_pins(&c, clk_pin - 2);
+    sm_config_set_out_pins(&c, cmd_pin, 5);
+    sm_config_set_in_pins(&c, cmd_pin);
+    sm_config_set_set_pins(&c, cmd_pin, 5);
+    sm_config_set_jmp_pin(&c, cmd_pin);
+    sm_config_set_in_shift(&c, false, false, 8);
+    sm_config_set_out_shift(&c, false, true, 8);
+    sm_config_set_clkdiv_int_frac(&c, div_int, div_frac);
+    return c;
+}
+%}
+
+; Program which reads data and provides its own clock signal (Default Speed Mode)
+; Read In Data After Clock High
+; Use direct-execute PIO instructions to place the number of 4-bit nibbles to receive
+; into the X register before enabling the state machine
+.program rd_data_w_clock_default
+.side_set 3
+mov X, Y                side 0b010      ; Reinitialize number of nibbles to receive
+wait_d0:
+    nop                 side 0b010 [3]  ; Run the clock...
+    jmp PIN wait_d0     side 0b110 [3]  ; Until the first response nibble (all zeroes)
+    nop                 side 0b010 [2]  ; Clock transition low to make the SD card write out the first actual data nibble
+    nop                 side 0b110 [1]  ; Transition clock high to stick data value
+read_loop:
+    in pins, 4          side 0b010 [2]  ; Read in the nibble and transition the clock low
+    push iffull block   side 0b110      ; Transition the clock high and block execution if rx fifo is full
+    jmp X--, read_loop  side 0b110      ; 
+
+% c-sdk {
+
+static inline pio_sm_config pio_rd_data_w_clock_default_program_config(uint offset, uint d0_pin, uint clk_pin, float clk_div) {
+  pio_sm_config c = rd_data_w_clock_default_program_get_default_config(offset);
+  sm_config_set_sideset_pins(&c, clk_pin - 2);
+  sm_config_set_in_pins(&c, d0_pin);
+  sm_config_set_jmp_pin(&c, d0_pin);
+  sm_config_set_in_shift(&c, false, false, 32);
+  sm_config_set_out_shift(&c, false, true, 32);
+  sm_config_set_clkdiv(&c, clk_div);
+  return c;
+}
+%}
+
+; Program which reads data and provides its own clock signal (High Speed Mode)
+; Read In Data On Clock Transition High
+; Use direct-execute PIO instructions to place the number of 4-bit nibbles to receive
+; into the X register before enabling the state machine
+.program rd_data_w_clock_high_speed
+.side_set 3
+mov X, Y                side 0b010      ; Reinitialize number of nibbles to receive
+wait_d0:
+    nop                 side 0b010 [3]  ; Run the clock...
+    jmp PIN wait_d0     side 0b110 [3]  ; Until the first response nibble (all zeroes)
+    nop                 side 0b010 [2]  ; Clock transition low to make the SD card write out the first actual data nibble
+read_loop:
+    in pins, 4          side 0b110 [1]  ; Read in the nibble and transition the clock high
+    jmp X--, read_loop  side 0b010 [2]  ; 
+
+% c-sdk {
+
+static inline pio_sm_config pio_rd_data_w_clock_high_speed_program_config(uint offset, uint d0_pin, uint clk_pin, float clk_div) {
+  pio_sm_config c = rd_data_w_clock_high_speed_program_get_default_config(offset);
+  sm_config_set_sideset_pins(&c, clk_pin - 2);
+  sm_config_set_in_pins(&c, d0_pin);
+  sm_config_set_jmp_pin(&c, d0_pin);
+  sm_config_set_in_shift(&c, false, true, 32);
+  sm_config_set_out_shift(&c, false, true, 32);
+  sm_config_set_clkdiv(&c, clk_div);
+  return c;
+}
+%}
+
+; Program which reads data and provides its own clock signal (Ultra High Speed Mode)
+; Read In Data On Clock Transition High
+; Use direct-execute PIO instructions to place the number of 4-bit nibbles to receive
+; into the X register before enabling the state machine
+.program rd_data_w_clock_ultra_high_speed
+.side_set 3
+mov X, Y                side 0b010      ; Reinitialize number of nibbles to receive
+wait_d0:
+    nop                 side 0b010 [1]  ; Run the clock...
+    jmp PIN wait_d0     side 0b110 [1]  ; Until the first response nibble (all zeroes)
+    nop                 side 0b010 [1]  ; Clock transition low to make the SD card write out the first actual data nibble
+read_loop:
+    in pins, 4          side 0b110 [0]  ; Read in the nibble and transition the clock high (stall high)
+    jmp X--, read_loop  side 0b010 [1]  ; 
+
+% c-sdk {
+
+static inline pio_sm_config pio_rd_data_w_clock_ultra_high_speed_program_config(uint offset, uint d0_pin, uint clk_pin, float clk_div) {
+  pio_sm_config c = rd_data_w_clock_ultra_high_speed_program_get_default_config(offset);
+  sm_config_set_sideset_pins(&c, clk_pin - 2);
+  sm_config_set_in_pins(&c, d0_pin);
+  sm_config_set_jmp_pin(&c, d0_pin);
+  sm_config_set_in_shift(&c, false, true, 32);
+  sm_config_set_out_shift(&c, false, true, 32);
+  sm_config_set_clkdiv(&c, clk_div);
+  return c;
+}
+%}
+
+; Program which writes data and provides its own clock signal
+; Register X must be set properly, see calling code for details
+; Register Y must be set to the number of CRC bits to receive (8/32)
+.program sdio_tx_w_clock
+.side_set 3
+tx_loop:
+    out PINS, 4             side 0b011 [2]      ; Write nibble value and transition clock low
+    jmp X-- tx_loop         side 0b111 [1]      ; Transition clock high, and check if more data needs to be sent
+crc_wait:
+    set pindirs, 0          side 0b010 [2]      ; Set input mode to receive CRC token, without changing clock phase |
+    jmp PIN crc_wait        side 0b110 [2]      ; Wait for the CRC response to start (begins with a zero)           | clock 1
+crc_get:
+    in pins, 1              side 0b110 [3]      ; Input the first bit of CRC response
+    jmp Y-- crc_get         side 0b010 [3]      ; Read the CRC bits
+bsy_wait:
+    jmp PIN done            side 0b110 [3]      ; The branch is taken if the GPIO is HIGH
+    jmp bsy_wait            side 0b010 [3]      ; Clock until no longer BSY
+done:
+.wrap_target
+    push iffull noblock     side 0b010         ; Unconditional, just push the response token -- must stall with clock low
+.wrap
+
+% c-sdk {
+static inline pio_sm_config pio_sdio_tx_w_clock_program_config(uint offset, uint data_pin, uint clk_pin, float clk_div) {
+    pio_sm_config c = sdio_tx_w_clock_program_get_default_config(offset);
+    sm_config_set_sideset_pins(&c, clk_pin - 2);
+    sm_config_set_out_pins(&c, data_pin, 4);
+    sm_config_set_in_pins(&c, data_pin);
+    sm_config_set_set_pins(&c, data_pin, 4);
+    sm_config_set_in_shift(&c, false, false, 8);
+    sm_config_set_out_shift(&c, false, true, 32);
+    sm_config_set_jmp_pin(&c, data_pin);
+    sm_config_set_clkdiv(&c, clk_div);
+    return c;
+}
+%}
+
+
+; Clock program for DDR ideas
+; Ideally we have 6 or less clocks per cycle
+; One SM shifts out the nibble and then sets the clock, followed by a pause
+; The other SM shifts out the nibble and sets the clock, followed by a pause
+; This allows only two SM programs 
+
+; Data transmission program, DDR ODD bits (write when clock low, shifts in when clock high)
+; X register likely needs setting to 1064
+; Blocks are 512 bytes.  512 * 8 = 4096
+; 4096 / 4 (nibbles) = 1024 transfers
+; 16 + 16 is because there are now two CRC16 tokens per data line
+; 8 for start clocks
+; Thus 1024 + 16 + 16 + 8 = 1064
+;
+; Register Y must be set to the number of CRC bits to receive (16/64)
+.program sdio_ddr50_odd_tx_w_clock
+    wait 0 GPIO 10
+tx_loop:
+    out PINS, 4             [1]      ; Write when clock low, then one cycle of delay
+    jmp X-- tx_loop         [3]      ; Clock transitions high, then 3 cycles until write again
+    ; NOTE TODO: The above instruction could potentially do an opt side set 1
+    ; And corresponding EVEN program could do an op side set zero
+    ; This would remove the need for a program which runs the clock
+crc_wait:
+    set pindirs, 0          [2]      ; Set input mode to receive CRC token, without changing clock phase |
+    jmp PIN crc_wait        [2]      ; Wait for the CRC response to start (begins with a zero)           | clock 1
+crc_get:
+    in pins, 1              [4]      ; Input the first bit of CRC response
+    jmp Y-- crc_get         [4]      ; Read the CRC bits
+bsy_wait:
+    jmp PIN done            [4]      ; The branch is taken if the GPIO is HIGH
+    jmp bsy_wait            [4]      ; Clock until no longer BSY
+done:
+.wrap_target
+    push iffull noblock              ; Unconditional, just push the response token -- must stall with clock low
+.wrap
+
+% c-sdk {
+static inline pio_sm_config pio_sdio_ddr50_odd_tx_w_clock_program_config(uint offset, uint data_pin, uint clk_pin, float clk_div) {
+    pio_sm_config c = sdio_ddr50_odd_tx_w_clock_program_get_default_config(offset);
+    sm_config_set_sideset_pins(&c, clk_pin - 2);
+    sm_config_set_out_pins(&c, data_pin, 4);
+    sm_config_set_in_pins(&c, data_pin);
+    sm_config_set_set_pins(&c, data_pin, 4);
+    sm_config_set_in_shift(&c, false, false, 8);
+    sm_config_set_out_shift(&c, false, true, 32);
+    sm_config_set_jmp_pin(&c, data_pin);
+    sm_config_set_clkdiv(&c, clk_div);
+    return c;
+}
+%}
+
+; Data transmission program, DDR EVEN bits (write when clock low, shifts in when clock high)
+;
+.program sdio_ddr50_even_tx_w_clock
+    wait 1 GPIO 10
+tx_loop:
+    out PINS, 4             [1]      ; Write when clock high, then one cycle of delay
+    jmp X-- tx_loop         [3]      ; Clock transitions high, then 3 cycles until write again
+crc_wait:
+    set pindirs, 0          [2]      ; Set input mode to receive CRC token, without changing clock phase |
+    jmp PIN crc_wait        [2]      ; Wait for the CRC response to start (begins with a zero)           | clock 1
+crc_get:
+    in pins, 1              [4]      ; Input the first bit of CRC response
+    jmp Y-- crc_get         [4]      ; Read the CRC bits
+bsy_wait:
+    jmp PIN done            [4]      ; The branch is taken if the GPIO is HIGH
+    jmp bsy_wait            [4]      ; Clock until no longer BSY
+done:
+.wrap_target
+    push iffull noblock              ; Unconditional, just push the response token -- must stall with clock low
+.wrap
+
+% c-sdk {
+static inline pio_sm_config pio_sdio_ddr50_even_tx_w_clock_program_config(uint offset, uint data_pin, uint clk_pin, float clk_div) {
+    pio_sm_config c = sdio_ddr50_even_tx_w_clock_program_get_default_config(offset);
+    sm_config_set_sideset_pins(&c, clk_pin - 2);
+    sm_config_set_out_pins(&c, data_pin, 4);
+    sm_config_set_in_pins(&c, data_pin);
+    sm_config_set_set_pins(&c, data_pin, 4);
+    sm_config_set_in_shift(&c, false, false, 8);
+    sm_config_set_out_shift(&c, false, true, 32);
+    sm_config_set_jmp_pin(&c, data_pin);
+    sm_config_set_clkdiv(&c, clk_div);
+    return c;
+}
+%}
+
+

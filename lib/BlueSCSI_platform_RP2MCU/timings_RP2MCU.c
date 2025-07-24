@@ -281,7 +281,7 @@ static bluescsi_timings_t  predefined_timings[]  = {
     },
     // predefined_timings[4] - 250000000
     {
-        .clk_hz = 250000000,
+        .clk_hz = 252000000,
 
         .pll =
         {

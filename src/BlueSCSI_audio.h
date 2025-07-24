@@ -69,7 +69,7 @@ enum audio_status_code {
  */
 bool audio_is_playing(uint8_t id);
 
-#if defined(ENABLE_AUDIO_OUTPUT) && !defined(BLUESCSI_BLASTER)
+#if defined(ENABLE_AUDIO_OUTPUT) && !defined(BLUESCSI_ULTRA)
 /**
  * Begins audio playback for a file.
  *
@@ -82,7 +82,7 @@ bool audio_is_playing(uint8_t id);
  */
 bool audio_play(uint8_t owner, image_config_t* img, uint64_t start, uint64_t end, bool swap);
 
-#elif defined(ENABLE_AUDIO_OUTPUT_I2S) && defined(BLUESCSI_BLASTER)
+#elif defined(ENABLE_AUDIO_OUTPUT_I2S) && defined(BLUESCSI_ULTRA)
 /**
  * Begins audio playback for a file.
  *
@@ -184,7 +184,7 @@ void audio_set_channel(uint8_t id, uint16_t chn);
 */
 uint64_t audio_get_file_position();
 
-#ifdef BLUESCSI_BLASTER
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
 /**
  * Gets the LBA position in the audio image
  * 

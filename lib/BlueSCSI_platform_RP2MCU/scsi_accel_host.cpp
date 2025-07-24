@@ -64,10 +64,10 @@ static void scsi_accel_host_config_gpio()
     }
     else if (g_scsi_host_state == SCSIHOST_READ)
     {
-        // 100000010000000000111111111
-        // ACK    REQ        PDB
+        // 10001000000000000111111111
+        // ACK REQ          PDB
         //
-        pio_sm_set_pins(SCSI_PIO, SCSI_SM, 0x40801FF);
+        pio_sm_set_pins(SCSI_PIO, SCSI_SM, 0x22001FF);
         pio_sm_set_consecutive_pindirs(SCSI_PIO, SCSI_SM, 0, 9, false);  // DBP Input
         pio_sm_set_consecutive_pindirs(SCSI_PIO, SCSI_SM, SCSI_IN_REQ, 1, false);  // REQ Input
         pio_sm_set_consecutive_pindirs(SCSI_PIO, SCSI_SM, SCSI_OUT_ACK, 1, true);  // ACK Output
@@ -171,12 +171,13 @@ uint32_t scsi_accel_host_read(uint8_t *buf, uint32_t count, int *parityError, vo
     // This doesn't detect if there is even number of parity errors in block.
     uint8_t byte0 = ~(paritycheck & 0xFF);
     uint8_t byte1 = ~(paritycheck >> 16);
+#ifndef BLUESCSI_ULTRA_WIDE  // TODO port the 16 bit code
     if (paritycheck != ((g_scsi_parity_lookup[byte1] << 16) | g_scsi_parity_lookup[byte0]))
     {
         logmsg("Parity error in scsi_accel_host_read(): ", paritycheck);
         *parityError = 1;
     }
-
+#endif
     g_scsi_host_state = SCSIHOST_IDLE;
     SCSI_RELEASE_DATA_REQ();
     scsi_accel_host_config_gpio();

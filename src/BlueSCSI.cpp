@@ -706,6 +706,35 @@ void readSCSIDeviceConfig()
 /*********************************/
 /* Main SCSI handling loop       */
 /*********************************/
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE) 
+static void print_autoconfig_result(uint8_t result) {
+  // TODO establish defines for these
+  if(result & SDIO_AC_STANDARD_MODE) {
+    logmsg("Standard Mode");
+  }
+  if(result & SDIO_AC_HIGH_SPEED) {
+    logmsg("High Speed Waveform");
+  }
+  if(result & SDIO_AC_ULTRA_SPEED) {
+    logmsg("Ultra High Speed");
+  }
+  if(result & SDIO_AC_LOW_VOLTAGE) {
+    logmsg("Low Voltage Mode");
+  }
+  if(result & SDIO_AC_LV_HIGH_SPEED) {
+    logmsg("Low Voltage, High Speed Waveform");
+  }
+  if(result & SDIO_AC_LV_ULTRA_SPEED) {
+    logmsg("Low Voltage, Ultra High Speed Waveform");
+  }
+  if(result & SDIO_AC_LV_HS_MODE_D) {
+    logmsg("Low Voltage, High Speed, Power Mode D");
+  }
+  if(result & SDIO_AC_LV_US_MODE_D) {
+    logmsg("Low Voltage, Ultra High Speed Waveform, Power Mode D");
+  }
+}
+#endif
 
 static bool mountSDCard()
 {
@@ -716,12 +745,50 @@ static bool mountSDCard()
   g_logfile.close();
   scsiDiskCloseSDCardImages();
 
+  uint8_t sdio_config_flags = 0;
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE) 
+  SdioCard card_interface;
+  uint8_t autoconfig_result = sd_comms_autoconfig(&card_interface, scsiDev.data);
+  logmsg("SD Config Result: ", autoconfig_result);
+  if (g_log_debug) {
+    print_autoconfig_result(autoconfig_result);
+  }
+  /*
+  Decision tree for autoconfig results:
+  * Prefer 1.8v over standard mode
+  * 1.8v and high speed mode preferred
+  * Regular 1.8v mode if that didn't work
+  * If no 1.8v support, then pick the fastest standard voltage mode
+  */
+  if (autoconfig_result & 0b10000000) {
+    sdio_config_flags = (DMA_SDIO | SDIO_1_8 | SDIO_US | SDIO_M_D | SDIO_FIN);
+    logmsg("SDIO 1.8v Ultra Speed, Mode D");
+  } else if (autoconfig_result & 0b1000000) {
+    sdio_config_flags = (DMA_SDIO | SDIO_1_8 | SDIO_US | SDIO_FIN);
+    logmsg("SDIO 1.8v Ultra Speed");
+  } else if (autoconfig_result & 0b1000) {
+    sdio_config_flags = (DMA_SDIO | SDIO_1_8 | SDIO_HS | SDIO_M_D | SDIO_FIN);
+    logmsg("SDIO 1.8v High Speed, Mode D");
+  } else if (autoconfig_result & 0b100000)  {
+    sdio_config_flags = (DMA_SDIO | SDIO_1_8 | SDIO_HS | SDIO_FIN);
+    logmsg("SDIO 1.8v High Speed");
+  } else if (autoconfig_result & 0b10000) {
+    sdio_config_flags = (DMA_SDIO | SDIO_1_8 | SDIO_FIN);
+    logmsg("SDIO 1.8v");
+  } else if (autoconfig_result & 0b10) {
+    sdio_config_flags = (DMA_SDIO | SDIO_HS);
+    logmsg("SDIO High Speed");
+  } else {
+    logmsg("SDIO Standard Speed");
+  }
+#endif
+
   // Check for the common case, FAT filesystem as first partition
-  if (SD.begin(SD_CONFIG))
+  if (SD.begin(SdioConfig(sdio_config_flags)))
   {
 #if defined(HAS_SDIO_CLASS) && HAS_SDIO_CLASS
     int speed = ((SdioCard*)SD.card())->kHzSdClk();
-    if (speed > 0)
+    if (speed > 0)  // kHzSdClk() is literally set to zero in the code.  Not sure what's up with that.
     {
       logmsg("SD card communication speed: ",
         (int)((speed + 500) / 1000), " MHz, ",
@@ -734,12 +801,15 @@ static bool mountSDCard()
   }
 
   // Do we have any kind of card?
-  if (!SD.card() || SD.sdErrorCode() != 0)
+  if (!SD.card() || SD.sdErrorCode() != 0) {
+    logmsg("SD Error Code: ", SD.sdErrorCode());
     return false;
+  }
 
   // Try to mount the whole card as FAT (without partition table)
-  if (static_cast<FsVolume*>(&SD)->begin(SD.card(), true, 0))
+  if (static_cast<FsVolume*>(&SD)->begin(SD.card(), true, 0)) {
     return true;
+  }
 
   // Failed to mount FAT filesystem, but card can still be accessed as raw image
   return true;
@@ -1073,7 +1143,7 @@ static void bluescsi_setup_sd_card(bool wait_for_card = true)
         logmsg("No SD card detected, please check SD card slot to make sure it is in correctly");
       }
     }
-    dbgmsg("SD card init failed, sdErrorCode: ", (int)SD.sdErrorCode(),
+    logmsg("SD card init failed, sdErrorCode: ", (int)SD.sdErrorCode(),
            " sdErrorData: ", (int)SD.sdErrorData());
 
     if (romDriveCheckPresent())
@@ -1235,8 +1305,9 @@ extern "C" void bluescsi_setup(void)
   logmsg("Initialization complete!");
   // There is an issue with using the PicoW LED during SCSI activity.
   // Trn it off and rely on the LED pins on the BlueSCSI.
-  if (platform_network_supported())
+  if (platform_network_supported()) {
     platform_disable_led();
+  }
 }
 
 extern "C" void bluescsi_main_loop(void)

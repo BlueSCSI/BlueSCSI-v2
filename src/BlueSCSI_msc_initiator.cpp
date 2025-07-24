@@ -150,8 +150,9 @@ static void scan_targets()
 
 bool setup_msc_initiator()
 {
-    if (rp2040.isPicoW())
+    if (rp2040.isPicoW()) {
         platform_disable_led();
+    }
     logmsg("SCSI Initiator: activating USB MSC mode");
     g_msc_initiator = true;
 

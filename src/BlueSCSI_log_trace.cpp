@@ -24,6 +24,7 @@
 
 #include "BlueSCSI_log_trace.h"
 #include "BlueSCSI_log.h"
+#include "BlueSCSI_settings.h"
 #include <scsi2sd.h>
 
 extern "C" {
@@ -254,7 +255,7 @@ void scsiLogPhaseChange(int new_phase)
                 logmsg("SCSI ID ", (int)scsiDev.target->targetId,
                     " negotiated synchronous mode ", mbyte_per_s, " MB/s ",
                     "(period 4x", syncper, " ns, offset ", syncoff, " bytes)");
-                if (!logged_oc_info) {
+                if (!logged_oc_info && (g_scsi_settings.getSystem()->speedGrade < 5)) {
                     logmsg("INFO: You may get a boost from overclocking as your system supports synchronous SCSI speeds. https://bluescsi.com/docs/Ultra-SCSI-Fast20-OverClock");
                     logged_oc_info = true;
                 }

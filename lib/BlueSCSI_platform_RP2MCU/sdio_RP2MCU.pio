@@ -1,27 +1,6 @@
-; This file is originally part of ZuluSCSI adopted for BlueSCSI
+; Copyright (c) 2011-2025 Bill Greiman
+; This file is part of the SdFat library for SD memory cards.
 ;
-; ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
-; Copyright (c) 2011-2024 Bill Greiman
-; Copyright (c) 2024-025 Tech by Androda, LLC
-;
-; ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
-;
-; https://www.gnu.org/licenses/gpl-3.0.html
-; ----
-; This program is free software: you can redistribute it and/or modify
-; it under the terms of the GNU General Public License as published by
-; the Free Software Foundation, either version 3 of the License, or
-; (at your option) any later version. 
-;
-; This program is distributed in the hope that it will be useful,
-; but WITHOUT ANY WARRANTY; without even the implied warranty of
-; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-; GNU General Public License for more details. 
-;
-; You should have received a copy of the GNU General Public License
-; along with this program.  If not, see <https://www.gnu.org/licenses/>.
-;
-; Portions from Bill Greiman use the MIT License:
 ; MIT License
 ;
 ; Permission is hereby granted, free of charge, to any person obtaining a
@@ -41,33 +20,33 @@
 ; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 ; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 ; DEALINGS IN THE SOFTWARE.
-
-; The RP2040 official work-in-progress code at
-; https://github.com/raspberrypi/pico-extras/tree/master/src/rp2_common/pico_sd_card
-; may be useful reference, but this is independent implementation.
 ;
-; For official SDIO specifications, refer to:
-; https://www.sdcard.org/downloads/pls/
-; "SDIO Physical Layer Simplified Specification Version 8.00"
-
-; Clock settings
-; For 3.3V communication the available speeds are:
-; - Default speed: max. 25 MHz clock
-; - High speed:    max. 50 MHz clock
+; Online assembler used to produce PioSdioCard.pio.h
+; https://wokwi.com/tools/pioasm
 ;
-; From the default RP2040 clock speed of 125 MHz, the closest dividers
-; are 3 for 41.7 MHz and 5 for 25 MHz. The CPU can apply further divider
-; through state machine registers for the initial handshake.
+; --------------------------
 ;
-; Because data is written on the falling edge and read on the rising
-; edge, it is preferrable to have a long 0 state and short 1 state.
-;.define CLKDIV 3
-; all Dummy values, to be recoded by C pico-sdk functions
-.define CLKDIV 5
-.define D0 (((CLKDIV + 1) /2) - 1)
-.define D1 ((CLKDIV/2) - 1)
-.define SDIO_CLK_GPIO 10
-.define public SDIO_IRQ 7
+; This file is based on PioSdioCard.pio from Bill Greiman's SdFat library,
+; which is available here under MIT license: https://github.com/greiman/SdFat
+; Copyright (c) 2024-2025 Tech by Androda LLC
+; 
+; Changes from Tech by Androda, LLC are licensed under the GPL version 3 or any later version.
+; Original work by Bill Greiman uses the MIT License (shown above).
+;
+; https://www.gnu.org/licenses/gpl-3.0.html
+; ----
+; This program is free software: you can redistribute it and/or modify
+; it under the terms of the GNU General Public License as published by
+; the Free Software Foundation, either version 3 of the License, or
+; (at your option) any later version. 
+;
+; This program is distributed in the hope that it will be useful,
+; but WITHOUT ANY WARRANTY; without even the implied warranty of
+; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+; GNU General Public License for more details. 
+;
+; You should have received a copy of the GNU General Public License
+; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ; State Machine 0 is for the Command / Response
 ; This State Machine will stall with clock low after sending a command and receiving the response
@@ -138,19 +117,9 @@ static inline pio_sm_config pio_rd_data_w_clock_program_config(uint offset, uint
 }
 %}
 
-; Data transmission program
-;
-; Before running this program, pindirs should be set as output
-; and register X should be initialized with the number of nibbles
-; to send minus 1 (typically 8 + 1024 + 16 + 1 - 1 = 1048)
-;
+; Program which writes data and provides its own clock signal
+; Register X must be set properly, see calling code for details
 ; Register Y must be set to the number of CRC bits to receive (8/32)
-;
-; Words written to TX FIFO must be:
-; - Word 0: start token 0xFFFFFFF0
-; - Word 1-128: transmitted data (512 bytes)
-; - Word 129-130: CRC checksum
-; - Word 131: end token 0xFFFFFFFF
 .program sdio_tx_w_clock
 .side_set 1 opt
 tx_loop:
@@ -184,7 +153,5 @@ static inline pio_sm_config pio_sdio_tx_w_clock_program_config(uint offset, uint
     return c;
 }
 %}
-
-
 
 

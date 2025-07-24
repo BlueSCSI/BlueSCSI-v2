@@ -55,10 +55,17 @@ void scsiHostPhyReset(void)
     SCSI_ENABLE_INITIATOR();
 
     scsi_accel_host_init();
-
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+    SCSI_OUT(RST, 0);  // Inverted RST output logic
+#else
     SCSI_OUT(RST, 1);
+#endif
     delay(2);
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+    SCSI_OUT(RST, 1);  // Inverted RST output logic
+#else
     SCSI_OUT(RST, 0);
+#endif
     delay(250);
     g_scsiHostPhyReset = false;
 }
@@ -115,10 +122,16 @@ bool scsiHostPhySelect(int target_id, uint8_t initiator_id)
         return false;
     }
 
-    // We need to assert OUT_BSY to enable IO buffer U105 to read status signals.
     SCSI_RELEASE_DATA_REQ();
-    // SCSI_OUT(BSY, 1);
     SCSI_OUT(SEL, 0);
+
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+    boolean success = platform_enable_initiator_signals();
+    if (!success) {
+        logmsg("------ ERROR: Failed To Enable Initiator Signals");
+        return false;
+    }
+#endif
     SCSI_ENABLE_INITIATOR();
     return true;
 }
@@ -143,8 +156,7 @@ int scsiHostPhyGetPhase()
 
     if (phase == 0 && absolute_time_diff_us(last_online_time, get_absolute_time()) > 100)
     {
-        // BlueSCSI doesn't need to assert OUT_BSY to check whether the bus is in use
-        // SCSI_OUT(BSY, 0);
+
         delayMicroseconds(1);
 
         if (!SCSI_IN(BSY))
@@ -153,8 +165,6 @@ int scsiHostPhyGetPhase()
             return BUS_FREE;
         }
 
-        // Still online, re-enable OUT_BSY to enable IO buffers
-        // SCSI_OUT(BSY, 1);
         last_online_time = get_absolute_time();
     }
     else if (phase != 0)
@@ -332,7 +342,9 @@ void scsiHostWaitBusFree()
         {
             // Target is expecting something more
             // Transfer dummy bytes
+#if  !(defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE))
              SCSI_OUT(BSY, 1);
+#endif
              sleep_us(1);
 
              while (SCSI_IN(REQ))
@@ -342,7 +354,9 @@ void scsiHostWaitBusFree()
                 sleep_us(1);
              }
 
+#if !(defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE))
              SCSI_OUT(BSY, 0);
+#endif
              sleep_us(1);
         }
 
@@ -367,6 +381,13 @@ void scsiHostPhyRelease()
 {
     scsiLogInitiatorPhaseChange(BUS_FREE);
     SCSI_RELEASE_OUTPUTS();
+
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+    bool success = platform_disable_initiator_signals();
+    if (!success) {
+        logmsg("------ ERROR: Failed To Disable Initiator Signals");
+    }
+#endif
 }
 
 void setInitiatorModeParityCheck(const bool checkParity) {

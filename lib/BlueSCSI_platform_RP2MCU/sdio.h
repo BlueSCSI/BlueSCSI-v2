@@ -29,6 +29,7 @@
 #if defined(SD_USE_SDIO) && !defined(SD_USE_RP2350_SDIO)
 
 #include <stdint.h>
+#include <SdCard/SdCardInfo.h>
 
 enum sdio_status_t {
     SDIO_OK = 0,
@@ -44,6 +45,10 @@ enum sdio_status_t {
 
 #define SDIO_BLOCK_SIZE 512
 #define SDIO_WORDS_PER_BLOCK 128
+
+extern bool g_record_sdio_errors;
+
+extern cid_t g_sdio_cid;
 
 // Execute a command that has 48-bit reply (response types R1, R6, R7)
 // If response is NULL, does not wait for reply.
@@ -80,6 +85,6 @@ sdio_status_t receive_status_register(uint8_t* sds);
 void cycleSdClock();
 
 // (Re)initialize the SDIO interface
-void rp2040_sdio_init(int clock_divider = 1);
+void rp2040_sdio_init(float clock_divider = 1, uint8_t speed_mode = 0);
 
 #endif

@@ -38,9 +38,12 @@
 #elif defined(BLUESCSI_V2)
 // BS2 hardware variant, using Raspberry Pico board on a carrier PCB
 #include "BlueSCSI_platform_gpio_v2.h"
-#elif defined(BLUESCSI_BLASTER)
-// RP2350B variant, using mcu chip directly
-#include "BlueSCSI_platform_gpio_Blaster.h"
+#elif defined(BLUESCSI_ULTRA)
+// RP2350B variant
+#include "BlueSCSI_platform_gpio_ultra.h"
+#elif defined(BLUESCSI_ULTRA_WIDE)
+// RP2350B Wide variant
+#include "BlueSCSI_platform_gpio_ultra_wide.h"
 #else
 // Normal RP2040 variant, using RP2040 chip directly
 #include "BlueSCSI_platform_gpio_RP2040.h"
@@ -87,6 +90,9 @@ void platform_init();
 
 // Setup SD GPIO
 void platform_setup_sd();
+
+// GPIO helper method
+void gpio_conf(uint gpio, gpio_function_t fn, bool pullup, bool pulldown, bool output, bool initial_state, bool fast_slew);
 
 // Initialization for main application, not used for bootloader
 void platform_late_init();
@@ -137,6 +143,37 @@ void platform_poll();
 uint8_t platform_get_buttons();
 
 uint32_t platform_sys_clock_in_hz();
+
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+// Onboard IO Expander Methods
+
+// Reads current IO expander state
+bool read_from_8574(uint8_t* state);
+
+// True if the debug DIP switch is in the ON position
+bool is_debug_enabled();
+
+// Writes to the IO expander
+bool write_to_8574(uint8_t dataToWrite);
+
+bool platform_enable_initiator_signals();
+
+bool platform_disable_initiator_signals();
+
+// Switches the SD card to 3.3v mode
+// Returns false if any part of the operation fails
+bool platform_switch_SD_3_3v();
+
+// Switches the SD card into 1.8v mode
+// Returns false if there was any error along the way
+bool platform_switch_SD_1_8v();
+
+// Turns off power to the SD card, and then turns it back on
+bool platform_power_cycle_sd_card();
+
+// Cycles through SD card communication modes to determine which are functional
+uint8_t sd_comms_autoconfig(void* sdio_card_ptr, uint8_t* data_buffer);
+#endif
 
 // Return whether device supports reclocking the MCU
 inline bool platform_reclock_supported(){return true;}

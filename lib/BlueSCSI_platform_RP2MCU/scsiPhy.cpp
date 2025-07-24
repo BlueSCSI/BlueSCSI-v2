@@ -104,7 +104,7 @@ extern "C" bool scsiStatusSEL()
         // Releasing happens with bus release.
         g_scsi_ctrl_bsy = 0;
 
-#ifdef BLUESCSI_V2
+#if !(defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE))
         SCSI_OUT(CD, 0);
         SCSI_OUT(MSG, 0);
         SCSI_ENABLE_CONTROL_OUT();
@@ -147,6 +147,7 @@ static void scsi_rst_assert_interrupt()
 
 static void scsiPhyIRQ(uint gpio, uint32_t events)
 {
+    // dbgmsg("irq:", (uint32_t)gpio);
     if (gpio == SCSI_IN_BSY || gpio == SCSI_IN_SEL)
     {
         // Note BSY / SEL interrupts only when we are not driving OUT_BSY low ourselves.
@@ -160,7 +161,12 @@ static void scsiPhyIRQ(uint gpio, uint32_t events)
             scsi_bsy_deassert_interrupt();
         }
     }
+
+#if (defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE))
+    else if (gpio == SCSI_IN_RST)
+#else
     else if (gpio == SCSI_IN_RST && ((~sio_hw->gpio_oe) & (1 << SCSI_OUT_SEL)))
+#endif
     {
         scsi_rst_assert_interrupt();
     }

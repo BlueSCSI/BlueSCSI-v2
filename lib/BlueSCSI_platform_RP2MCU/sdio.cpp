@@ -42,7 +42,12 @@
 #include <BlueSCSI_log.h>
 #include "timings_RP2MCU.h"
 
-# include "sdio_RP2MCU.pio.h"
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE) 
+#define ULTRA_SDIO
+#include "sdio_RP2_Ultra.pio.h"
+#else
+#include "sdio_RP2MCU.pio.h"
+#endif
 
 #define SDIO_PIO pio1
 #define SDIO_CMD_SM 0
@@ -84,6 +89,8 @@ static struct {
     uint32_t end_token_buf[3]; // CRC and end token for write block
     sdio_status_t wr_status;
     uint32_t card_response;
+
+    uint8_t speed_mode;
     
     // Variables for block reads
     // This is used to perform DMA into data buffers and checksum buffers separately.
@@ -187,8 +194,14 @@ uint64_t sdio_crc16_4bit_checksum(uint32_t *data, uint32_t num_words)
  * Clock Runner
  *******************************************************/
 void cycleSdClock() {
+#ifdef ULTRA_SDIO
+    sio_hw->gpio_set = (1 << SDIO_CLK);
+    asm volatile ("nop \n nop \n nop \n nop");
+    sio_hw->gpio_clr = (1 << SDIO_CLK);
+#else
     pio_sm_exec(SDIO_PIO, SDIO_CMD_SM, pio_encode_nop() | pio_encode_sideset_opt(1, 1) | pio_encode_delay(1));
     pio_sm_exec(SDIO_PIO, SDIO_CMD_SM, pio_encode_nop() | pio_encode_sideset_opt(1, 0) | pio_encode_delay(1));
+#endif
 }
 
 /*******************************************************
@@ -200,8 +213,27 @@ sdio_status_t receive_status_register(uint8_t* sds) {
 waitagain:
     while (dma_channel_is_busy(SDIO_DMA_CHB) || dma_channel_is_busy(SDIO_DMA_CH))
     {
-        if ((uint32_t)(millis() - g_sdio.transfer_start_time) > 2)
+        // SD Spec says CMD6 transaction timeout is 100ms
+        // ACMD13 is likely similar
+        if ((uint32_t)(millis() - g_sdio.transfer_start_time) > 100)
         {
+
+            // debug indicate
+            // sio_hw->gpio_hi_set = 0b11000000;
+            // Log debug information
+            if (g_record_sdio_errors) {
+                logmsg("Timeout: receive_status_register, ",
+                    "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_DATA_SM) - (int)g_sdio.pio_data_rx_offset,
+                    " M: ", (int)g_sdio.speed_mode,
+                    " RXF: ", (int)pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_DATA_SM),
+                    " TXF: ", (int)pio_sm_get_tx_fifo_level(SDIO_PIO, SDIO_DATA_SM),
+                    " PADOE: ", (uint32_t)SDIO_PIO->dbg_padoe,
+                    " PADOUT: ", (uint32_t)SDIO_PIO->dbg_padout,
+                    " PINCTRL: ", (uint32_t)SDIO_PIO->sm[SDIO_DATA_SM].pinctrl
+                );
+            }
+            // debug de-indicate
+            // sio_hw->gpio_hi_clr = 0b11000000;
             // Reset the state machine program
             dma_channel_abort(SDIO_DMA_CHB);
             pio_sm_set_enabled(SDIO_PIO, SDIO_CMD_SM, false);
@@ -232,6 +264,20 @@ static void sdio_send_command(uint8_t command, uint32_t arg, uint8_t response_bi
 
     // Reinitialize the CMD SM
     pio_sm_init(SDIO_PIO, SDIO_CMD_SM, g_sdio.pio_cmd_rsp_clk_offset, &g_sdio.pio_cfg_cmd_rsp);
+#ifdef ULTRA_SDIO
+    pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_CMD_SM, SDIO_DAT_DIR, 3, true);
+#endif
+#ifdef BLUESCSI_ULTRA
+    pio_sm_set_pins(SDIO_PIO, SDIO_CMD_SM, 0x3EC00);
+#elif defined(BLUESCSI_ULTRA_WIDE)
+    pio_sm_set_pins(SDIO_PIO, SDIO_CMD_SM, 0x7D80000);
+#endif
+#ifdef ULTRA_SDIO
+    pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_CMD_SM, SDIO_CMD, 5, true);
+    pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_CMD_SM, SDIO_D0, 4, true);
+    // Pin direction: output, initial state should be high
+    pio_sm_exec(SDIO_PIO, SDIO_CMD_SM, pio_encode_set(pio_pindirs, 1));
+#else  // Standard BlueSCSI
     pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_CMD_SM, SDIO_CLK, 1, true);
     pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_CMD_SM, SDIO_CMD, 1, true);
     pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_CMD_SM, SDIO_D0, 4, false);
@@ -239,7 +285,7 @@ static void sdio_send_command(uint8_t command, uint32_t arg, uint8_t response_bi
     // Pin direction: output, initial state should be high
     pio_sm_exec(SDIO_PIO, SDIO_CMD_SM, pio_encode_set(pio_pins, 1));
     pio_sm_exec(SDIO_PIO, SDIO_CMD_SM, pio_encode_set(pio_pindirs, 1));
-
+#endif
     // Write the number of tx / rx bits to the SM
     *txFifo = 55;  // Write 56 bits total
     pio_sm_exec(SDIO_PIO, SDIO_CMD_SM, pio_encode_out(pio_x, 8));
@@ -295,11 +341,29 @@ sdio_status_t rp2040_sdio_command_R1(uint8_t command, uint32_t arg, uint32_t *re
         {
             if ((uint32_t)(millis() - start) > 2)
             {
-                if (command != 8) {
+                if (g_record_sdio_errors && command != 8) {
+#ifdef BLUESCSI_ULTRA
+                    logmsg("Timeout: rp2040_sdio_command_R1(", (int)command, "), ",
+                        "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_CMD_SM) - (int)g_sdio.pio_cmd_rsp_clk_offset,
+                        " RXF: ", (int)pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_CMD_SM),
+                        " TXF: ", (int)pio_sm_get_tx_fifo_level(SDIO_PIO, SDIO_CMD_SM),
+                        " PADOE: ", (uint32_t)SDIO_PIO->dbg_padoe,
+                        " PADOUT: ", (uint32_t)SDIO_PIO->dbg_padout,
+                        " M: ", g_sdio.speed_mode
+                    );
+                    // logmsg("GPIOI:",sio_hw->gpio_in, " GPIIH:",sio_hw->gpio_hi_in);
+                    // logmsg("GPIOL:",sio_hw->gpio_out, " GPIOH:",sio_hw->gpio_hi_out);
+                    // logmsg("GPIOE:",sio_hw->gpio_oe, " GPOEH:",sio_hw->gpio_hi_oe);
+                    // Debug indicate
+                    // sio_hw->gpio_hi_set = 0b01100000;
+                    // asm volatile ("nop \n nop");
+                    // sio_hw->gpio_hi_clr = 0b01100000;
+#else
                     logmsg("Timeout waiting for response in rp2040_sdio_command_R1(", (int)command, "), ",
                         "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_CMD_SM) - (int)g_sdio.pio_cmd_rsp_clk_offset,
                         " RXF: ", (int)pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_CMD_SM),
                         " TXF: ", (int)pio_sm_get_tx_fifo_level(SDIO_PIO, SDIO_CMD_SM));
+#endif
                 }
 
                 // Reset the state machine program
@@ -312,7 +376,9 @@ sdio_status_t rp2040_sdio_command_R1(uint8_t command, uint32_t arg, uint32_t *re
         // Must bswap due to 8 bit segmentation
         resp[0] = __builtin_bswap32(resp[0]);
         resp[1] = __builtin_bswap32(resp[1]) >> 16;
-        // dbgmsg("SDIO R1 response: ", resp0, " ", resp1);
+        // if (g_log_debug && g_record_sdio_errors) {
+        //     logmsg("SDIO R1 response: ", (uint32_t)resp[0], " ", (uint32_t)resp[1]);
+        // }
 
         // Calculate response checksum
         uint8_t crc = 0;
@@ -325,15 +391,25 @@ sdio_status_t rp2040_sdio_command_R1(uint8_t command, uint32_t arg, uint32_t *re
         uint8_t actual_crc = ((resp[1] >> 0) & 0xFE);
         if (crc != actual_crc)
         {
-            dbgmsg("rp2040_sdio_command_R1(", (int)command, "): CRC error, calculated ", crc, " packet has ", actual_crc);
-            dbgmsg("resp[0]:", resp[0], "resp[1]:", resp[1]);
+            if (g_record_sdio_errors) {
+                logmsg("rp2040_sdio_command_R1(", (int)command, "): CRC error, calculated ", crc, " packet has ", actual_crc);
+                logmsg("resp[0]:", resp[0], "resp[1]:", resp[1]);
+            }
+            dma_channel_abort(SDIO_DMA_CHB);
+            pio_sm_set_enabled(SDIO_PIO, SDIO_CMD_SM, false);  // Turn off the CMD SM, there was an error
+            pio_sm_clear_fifos(SDIO_PIO, SDIO_CMD_SM);
             return SDIO_ERR_RESPONSE_CRC;
         }
 
         uint8_t response_cmd = ((resp[0] >> 24) & 0xFF);
         if (response_cmd != command && command != 41)
         {
-            dbgmsg("rp2040_sdio_command_R1(", (int)command, "): received reply for ", (int)response_cmd);
+            if (g_record_sdio_errors) {
+                logmsg("rp2040_sdio_command_R1(", (int)command, "): received reply for ", (int)response_cmd);
+            }
+            dma_channel_abort(SDIO_DMA_CHB);
+            pio_sm_set_enabled(SDIO_PIO, SDIO_CMD_SM, false);  // Turn off the CMD SM, there was an error
+            pio_sm_clear_fifos(SDIO_PIO, SDIO_CMD_SM);
             return SDIO_ERR_RESPONSE_CODE;
         }
 
@@ -347,11 +423,21 @@ sdio_status_t rp2040_sdio_command_R1(uint8_t command, uint32_t arg, uint32_t *re
         while (!(SDIO_PIO->fdebug & tx_stall_flag)) {
             if ((uint32_t)(millis() - start) > 2)
             {
-                if (command != 8) {
+                if (g_record_sdio_errors && command != 8) {
+#ifdef ULTRA_SDIO
+                    logmsg("Timeout: CMD TX: rp2040_sdio_command_R1(", (int)command, "), ",
+                        "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_CMD_SM) - (int)g_sdio.pio_cmd_rsp_clk_offset,
+                        " RXF: ", (int)pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_CMD_SM),
+                        " TXF: ", (int)pio_sm_get_tx_fifo_level(SDIO_PIO, SDIO_CMD_SM),
+                        " PADOE: ", (uint32_t)SDIO_PIO->dbg_padoe,
+                        " PADOUT: ", (uint32_t)SDIO_PIO->dbg_padout
+                    );
+#else
                     logmsg("Timeout waiting for CMD TX in rp2040_sdio_command_R1(", (int)command, "), ",
                         "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_CMD_SM) - (int)g_sdio.pio_cmd_rsp_clk_offset,
                         " RXF: ", (int)pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_CMD_SM),
                         " TXF: ", (int)pio_sm_get_tx_fifo_level(SDIO_PIO, SDIO_CMD_SM));
+#endif
                 }
 
                 // Reset the state machine program
@@ -385,7 +471,7 @@ sdio_status_t rp2040_sdio_command_R2(uint8_t command, uint32_t arg, uint8_t resp
     {
         if ((uint32_t)(millis() - start) > 2)
         {
-            dbgmsg("Timeout waiting for response in rp2040_sdio_command_R2(", (int)command, "), ",
+            dbgmsg("Timeout : rp2040_sdio_command_R2(", (int)command, "), ",
                   "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_CMD_SM) - (int)g_sdio.pio_cmd_rsp_clk_offset,
                   " RXF: ", (int)pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_CMD_SM),
                   " TXF: ", (int)pio_sm_get_tx_fifo_level(SDIO_PIO, SDIO_CMD_SM));
@@ -437,14 +523,18 @@ sdio_status_t rp2040_sdio_command_R2(uint8_t command, uint32_t arg, uint8_t resp
     uint8_t actual_crc = response[15] & 0xFE;
     if (crc != actual_crc)
     {
-        dbgmsg("rp2040_sdio_command_R2(", (int)command, "): CRC error, calculated ", crc, " packet has ", actual_crc);
+        if (g_record_sdio_errors) {
+            logmsg("rp2040_sdio_command_R2(", (int)command, "): CRC error, calculated ", crc, " packet has ", actual_crc);
+        }
         return SDIO_ERR_RESPONSE_CRC;
     }
 
     uint8_t response_cmd = ((response_buf[0] >> 24) & 0xFF);
     if (response_cmd != 0x3F)
     {
-        dbgmsg("rp2040_sdio_command_R2(", (int)command, "): Expected reply code 0x3F");
+        if (g_record_sdio_errors) {
+            dbgmsg("rp2040_sdio_command_R2(", (int)command, "): Expected reply code 0x3F");
+        }
         return SDIO_ERR_RESPONSE_CODE;
     }
 
@@ -470,7 +560,7 @@ sdio_status_t rp2040_sdio_command_R3(uint8_t command, uint32_t arg, uint32_t *re
     {
         if ((uint32_t)(millis() - start) > 2)
         {
-            dbgmsg("Timeout waiting for response in rp2040_sdio_command_R3(", (int)command, "), ",
+            dbgmsg("Timeout: rp2040_sdio_command_R3(", (int)command, "), ",
                   "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_CMD_SM) - (int)g_sdio.pio_cmd_rsp_clk_offset,
                   " RXF: ", (int)pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_CMD_SM),
                   " TXF: ", (int)pio_sm_get_tx_fifo_level(SDIO_PIO, SDIO_CMD_SM));
@@ -547,8 +637,18 @@ sdio_status_t rp2040_sdio_rx_start(uint8_t *buffer, uint32_t num_blocks, uint32_
 
     // Initialize PIO state machine
     pio_sm_init(SDIO_PIO, SDIO_DATA_SM, g_sdio.pio_data_rx_offset, &g_sdio.pio_cfg_data_rx);
+#ifdef BLUESCSI_ULTRA
+    pio_sm_set_pins(SDIO_PIO, SDIO_CMD_SM, 0x3E800);  // dat dir in, cmd dir out, clk low, cmd high
+#elif defined(BLUESCSI_ULTRA_WIDE)
+    pio_sm_set_pins(SDIO_PIO, SDIO_CMD_SM, 0x7D00000);  // dat dir in, cmd dir out, clk low, cmd high
+#endif
+#ifdef ULTRA_SDIO
+    pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_DATA_SM, SDIO_DAT_DIR, 4, true);
+    pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_DATA_SM, SDIO_D0, 4, false);
+#else  // Standard BlueSCSI
     pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_DATA_SM, SDIO_CLK, 1, true);
     pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_DATA_SM, SDIO_D0, 4, false);
+#endif
 
     // Write number of nibbles to receive to Y register
     pio_sm_put(SDIO_PIO, SDIO_DATA_SM, block_size * 2 + 16 - 1);
@@ -557,6 +657,13 @@ sdio_status_t rp2040_sdio_rx_start(uint8_t *buffer, uint32_t num_blocks, uint32_
     // Enable RX FIFO join because we don't need the TX FIFO during transfer.
     // This gives more leeway for the DMA block switching
     SDIO_PIO->sm[SDIO_DATA_SM].shiftctrl |= PIO_SM0_SHIFTCTRL_FJOIN_RX_BITS;
+
+    // Ensure pins are set to PIO control
+#ifdef BLUESCSI_ULTRA
+    gpio_set_function_masked(0x3FC00, GPIO_FUNC_PIO1);
+#elif defined(BLUESCSI_ULTRA_WIDE)
+    gpio_set_function_masked(0x7F80000, GPIO_FUNC_PIO1);
+#endif
 
     // Start PIO and DMA
     dma_channel_start(SDIO_DMA_CHB);
@@ -583,10 +690,12 @@ static void sdio_verify_rx_checksums(uint32_t maxcount)
         if (checksum != expected)
         {
             g_sdio.checksum_errors++;
-            if (g_sdio.checksum_errors == 1)
+            if (g_record_sdio_errors && g_sdio.checksum_errors == 1)
             {
-                logmsg("SDIO checksum error in reception: block ", blockidx,
-                      " calculated ", checksum, " expected ", expected);
+                // debug indicate
+                // sio_hw->gpio_hi_set = 0b10000000;
+                logmsg("SDIO check error rcv: blk ", blockidx, " calc ", checksum, " expect ", expected);
+                // sio_hw->gpio_hi_clr = 0b10000000;
             }
         }
     }
@@ -629,10 +738,12 @@ sdio_status_t rp2040_sdio_rx_poll(uint32_t *bytes_complete)
         // Verify all remaining checksums.
         sdio_verify_rx_checksums(g_sdio.total_blocks);
 
-        if (g_sdio.checksum_errors == 0)
+        if (g_sdio.checksum_errors == 0) {
             return SDIO_OK;
-        else
+        }
+        else {
             return SDIO_ERR_DATA_CRC;
+        }
     }
     else if ((uint32_t)(millis() - g_sdio.transfer_start_time) > 1000)
     {
@@ -660,9 +771,19 @@ static void sdio_start_next_block_tx()
     pio_sm_init(SDIO_PIO, SDIO_CMD_SM, g_sdio.pio_data_tx_offset, &g_sdio.pio_cfg_data_tx);
 
     // Re-set the pin direction things here
+#ifdef BLUESCSI_ULTRA
+    pio_sm_set_pins(SDIO_PIO, SDIO_CMD_SM, 0x3EC00);
+#elif defined(BLUESCSI_ULTRA_WIDE)
+    pio_sm_set_pins(SDIO_PIO, SDIO_CMD_SM, 0x7D80000);
+#endif
+#ifdef ULTRA_SDIO
+    pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_CMD_SM, SDIO_CLK - 2, 3, true);
+    pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_CMD_SM, SDIO_D0, 4, true);
+#else  // Standard BlueSCSI
     pio_sm_set_pins(SDIO_PIO, SDIO_CMD_SM, 0xF);
     pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_CMD_SM, SDIO_CLK, 1, true);
     pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_CMD_SM, SDIO_D0, 4, true);
+#endif
 
     // Configure DMA to send the data block payload (512 bytes)
     dma_channel_config dmacfg = dma_channel_get_default_config(SDIO_DMA_CH);
@@ -748,28 +869,64 @@ sdio_status_t rp2040_sdio_tx_start(const uint8_t *buffer, uint32_t num_blocks)
 
 sdio_status_t check_sdio_write_response(uint32_t card_response)
 {
+#ifdef ULTRA_SDIO
+    uint8_t wr_status = card_response & 0xF8;
+#else
     uint8_t wr_status = card_response & 0x1F;
-    //  5 = 0b0101 = data accepted  (11100101)
-    // 11 = 0b1011 = CRC error      (11101011)
-    // 13 = 0b1101 = Write Error    (11101101)
+#endif
+    // 0 | 3 status bits | 1 
+    // 0b00101 = data accepted
+    // 0b01011 = CRC error
+    // 0b01101 = Write Error
 
+#ifdef ULTRA_SDIO
+    if (wr_status == 0x28 ||
+        (wr_status == 0x50 && g_sdio_cid.mid == 0x41))  // Kensington card behavior is different
+#else
     if (wr_status == 0b101)
+#endif
     {
         return SDIO_OK;
     }
+#ifdef ULTRA_SDIO
+    else if (wr_status == 0x58)
+#else
     else if (wr_status == 0b1011)
+#endif
     {
-        logmsg("SDIO card reports write CRC error, status ", card_response);
+        if (g_record_sdio_errors) {
+            logmsg("SDIO card reports write CRC error, S: ", card_response, " M: ", (uint8_t)g_sdio.speed_mode);
+        }
+        // Debug Indicate
+        // sio_hw->gpio_hi_set = 0b00100000;
+        // asm volatile ("nop \n nop");
+        // sio_hw->gpio_hi_clr = 0b11100000;
         return SDIO_ERR_WRITE_CRC;    
     }
+#ifdef ULTRA_SDIO
+    else if (wr_status == 0x30 || wr_status ==  0x68)
+#else
     else if (wr_status == 0b1101)
+#endif
     {
-        logmsg("SDIO card reports write failure, status ", card_response);
+        if (g_record_sdio_errors) {
+            logmsg("SDIO card reports write failure, S: ", card_response, " M: ", (uint8_t)g_sdio.speed_mode);
+        }
+        // Debug Indicate
+        // sio_hw->gpio_hi_set = 0b00100000;
+        // asm volatile ("nop \n nop");
+        // sio_hw->gpio_hi_clr = 0b11100000;
         return SDIO_ERR_WRITE_FAIL;    
     }
     else
     {
-        logmsg("SDIO card reports unknown write status ", card_response);
+        if (g_record_sdio_errors) {
+            logmsg("SDIO card reports unknown write S: ", card_response, " M: ", (uint8_t)g_sdio.speed_mode);
+        }
+        // Debug Indicate
+        // sio_hw->gpio_hi_set = 0b00100000;
+        // asm volatile ("nop \n nop");
+        // sio_hw->gpio_hi_clr = 0b11100000;
         return SDIO_ERR_WRITE_FAIL;    
     }
 }
@@ -884,7 +1041,15 @@ sdio_status_t rp2040_sdio_stop()
     return SDIO_OK;
 }
 
-void rp2040_sdio_init(int clock_divider)
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+#define SDIO_PULLS_UP true
+#define SDIO_PULLS_DOWN false
+#else
+#define SDIO_PULLS_UP true
+#define SDIO_PULLS_DOWN false
+#endif
+
+void rp2040_sdio_init(float clock_divider, uint8_t speed_mode)
 {
     #ifdef SDIO_GPIO_BASE_HIGH
         pio_set_gpio_base(SDIO_PIO, 16);
@@ -912,26 +1077,64 @@ void rp2040_sdio_init(int clock_divider)
     pio_clear_instruction_memory(SDIO_PIO);
     
     // Set pull resistors for all SD data lines
-    gpio_set_pulls(SDIO_CLK, true, false);
-    gpio_set_pulls(SDIO_CMD, true, false);
-    gpio_set_pulls(SDIO_D0, true, false);
-    gpio_set_pulls(SDIO_D1, true, false);
-    gpio_set_pulls(SDIO_D2, true, false);
-    gpio_set_pulls(SDIO_D3, true, false);
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+    gpio_set_pulls(SDIO_DAT_DIR,    SDIO_PULLS_UP, SDIO_PULLS_DOWN);
+    gpio_set_pulls(SDIO_CMD_DIR,    SDIO_PULLS_UP, SDIO_PULLS_DOWN);
+#endif
+    gpio_set_pulls(SDIO_CLK,        SDIO_PULLS_UP, SDIO_PULLS_DOWN);
+    gpio_set_pulls(SDIO_CMD,        SDIO_PULLS_UP, SDIO_PULLS_DOWN);
+    gpio_set_pulls(SDIO_D0,         SDIO_PULLS_UP, SDIO_PULLS_DOWN);
+    gpio_set_pulls(SDIO_D1,         SDIO_PULLS_UP, SDIO_PULLS_DOWN);
+    gpio_set_pulls(SDIO_D2,         SDIO_PULLS_UP, SDIO_PULLS_DOWN);
+    gpio_set_pulls(SDIO_D3,         SDIO_PULLS_UP, SDIO_PULLS_DOWN);
+
+#ifdef ULTRA_SDIO
+    gpio_set_drive_strength(SDIO_CLK, GPIO_DRIVE_STRENGTH_2MA);
+    gpio_set_drive_strength(SDIO_CMD, GPIO_DRIVE_STRENGTH_2MA);
+    gpio_set_drive_strength(SDIO_D0, GPIO_DRIVE_STRENGTH_2MA);
+    gpio_set_drive_strength(SDIO_D1, GPIO_DRIVE_STRENGTH_2MA);
+    gpio_set_drive_strength(SDIO_D2, GPIO_DRIVE_STRENGTH_2MA);
+    gpio_set_drive_strength(SDIO_D3, GPIO_DRIVE_STRENGTH_2MA);
+#endif
 
     // Command state machine
     g_sdio.pio_cmd_rsp_clk_offset = pio_add_program(SDIO_PIO, &cmd_rsp_program);
     g_sdio.pio_cfg_cmd_rsp = pio_cmd_rsp_program_config(g_sdio.pio_cmd_rsp_clk_offset, SDIO_CMD, SDIO_CLK, clock_divider, 0);
 
     pio_sm_init(SDIO_PIO, SDIO_CMD_SM, g_sdio.pio_cmd_rsp_clk_offset, &g_sdio.pio_cfg_cmd_rsp);
+#ifdef BLUESCSI_ULTRA
+    pio_sm_set_pins(SDIO_PIO, SDIO_CMD_SM, 0x3EC00);
+#elif defined(BLUESCSI_ULTRA_WIDE)
+    pio_sm_set_pins(SDIO_PIO, SDIO_CMD_SM, 0x7D80000);
+#endif
+#ifdef ULTRA_SDIO
+    pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_CMD_SM, SDIO_DAT_DIR, 3, true);
+    pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_CMD_SM, SDIO_CMD, 1, true);
+    pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_CMD_SM, SDIO_D0, 4, false);
+#else  // Standard BlueSCSI
     pio_sm_set_pins(SDIO_PIO, SDIO_CMD_SM, 1);
     pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_CMD_SM, SDIO_CLK, 1, true);
     pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_CMD_SM, SDIO_CMD, 1, true);
     pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_CMD_SM, SDIO_D0, 4, false);
-
+#endif
     // Data reception program
+    g_sdio.speed_mode = speed_mode;
+
+#ifdef ULTRA_SDIO
+    if (speed_mode == 0) {
+        g_sdio.pio_data_rx_offset = pio_add_program(SDIO_PIO, &rd_data_w_clock_default_program);
+        g_sdio.pio_cfg_data_rx = pio_rd_data_w_clock_default_program_config(g_sdio.pio_data_rx_offset, SDIO_D0, SDIO_CLK, clock_divider);
+    } else if (speed_mode == 1) {
+        g_sdio.pio_data_rx_offset = pio_add_program(SDIO_PIO, &rd_data_w_clock_high_speed_program);
+        g_sdio.pio_cfg_data_rx = pio_rd_data_w_clock_high_speed_program_config(g_sdio.pio_data_rx_offset, SDIO_D0, SDIO_CLK, clock_divider);
+    } else if (speed_mode == 2) {
+        g_sdio.pio_data_rx_offset = pio_add_program(SDIO_PIO, &rd_data_w_clock_ultra_high_speed_program);
+        g_sdio.pio_cfg_data_rx = pio_rd_data_w_clock_ultra_high_speed_program_config(g_sdio.pio_data_rx_offset, SDIO_D0, SDIO_CLK, clock_divider);
+    }
+#else
     g_sdio.pio_data_rx_offset = pio_add_program(SDIO_PIO, &rd_data_w_clock_program);
     g_sdio.pio_cfg_data_rx = pio_rd_data_w_clock_program_config(g_sdio.pio_data_rx_offset, SDIO_D0, SDIO_CLK, clock_divider);
+#endif
 
     // Data transmission program
     g_sdio.pio_data_tx_offset = pio_add_program(SDIO_PIO, &sdio_tx_w_clock_program);
@@ -945,13 +1148,20 @@ void rp2040_sdio_init(int clock_divider)
                                  | (1 << (SDIO_D0 - SDIO_BASE_OFFSET)) | (1 << (SDIO_D1 - SDIO_BASE_OFFSET)) 
                                  | (1 << (SDIO_D2 - SDIO_BASE_OFFSET)) | (1 << (SDIO_D3 - SDIO_BASE_OFFSET));
 
-    // Redirect GPIOs to PIO
+    // Ensure pins are set to PIO control
+#ifdef BLUESCSI_ULTRA
+    gpio_set_function_masked(0x3FC00, GPIO_FUNC_PIO1);
+#elif defined(BLUESCSI_ULTRA_WIDE)
+    gpio_set_function_masked(0x7F80000, GPIO_FUNC_PIO1);
+#endif
+#ifndef ULTRA_SDIO
     gpio_set_function(SDIO_CMD, GPIO_FUNC_PIO1);
     gpio_set_function(SDIO_CLK, GPIO_FUNC_PIO1);
     gpio_set_function(SDIO_D0, GPIO_FUNC_PIO1);
     gpio_set_function(SDIO_D1, GPIO_FUNC_PIO1);
     gpio_set_function(SDIO_D2, GPIO_FUNC_PIO1);
     gpio_set_function(SDIO_D3, GPIO_FUNC_PIO1);
+#endif
 
     // Set up IRQ handler when DMA completes.
     irq_set_exclusive_handler(DMA_IRQ_1, rp2040_sdio_tx_irq);
@@ -968,4 +1178,8 @@ void rp2040_sdio_init(int clock_divider)
 #endif
 }
 
+#endif
+
+#ifdef ULTRA_SDIO
+#undef ULTRA_SDIO
 #endif

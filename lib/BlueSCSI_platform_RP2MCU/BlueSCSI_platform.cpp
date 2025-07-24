@@ -48,6 +48,13 @@ extern "C" {
 #include <BlueSCSI_settings.h>
 #include <minIni.h>
 
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+#include <hardware/i2c.h>
+#define SDIO_PULLS false
+#else
+#define SDIO_PULLS true
+#endif
+
 #ifdef SD_USE_RP2350_SDIO
 #include <sdio_rp2350.h>
 #else
@@ -57,6 +64,12 @@ extern "C" {
 #ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
 # include <SerialUSB.h>
 # include <class/cdc/cdc_device.h>
+#endif
+
+#ifndef U8574_DEBUG
+bool u8574_debug = false;
+#else
+bool u8574_debug = true;
 #endif
 
 #include <pico/multicore.h>
@@ -103,15 +116,17 @@ static void platform_write_led_picow(bool state);
 static void platform_write_led_noop(bool state) {}
 static led_write_func_t g_led_write_func = platform_write_led_noop;
 
-#if !defined(PICO_RP2040) && !defined(BLUESCSI_NETWORK)
-    bool __isPicoW;
+#if !defined(PICO_CYW43_SUPPORTED)
+extern bool __isPicoW;
+#else
+static bool rm2_installed = false;
 #endif
 /***************/
 /* GPIO init   */
 /***************/
 
 // Helper function to configure whole GPIO in one line
-static void gpio_conf(uint gpio, gpio_function_t fn, bool pullup, bool pulldown, bool output, bool initial_state, bool fast_slew)
+void gpio_conf(uint gpio, gpio_function_t fn, bool pullup, bool pulldown, bool output, bool initial_state, bool fast_slew)
 {
     gpio_put(gpio, initial_state);
     gpio_set_dir(gpio, output);
@@ -124,7 +139,31 @@ static void gpio_conf(uint gpio, gpio_function_t fn, bool pullup, bool pulldown,
     }
 }
 
-#ifndef PICO_RP2040
+
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+static void CheckPicoW() {
+    /*
+    TODO, make RM2 system work
+    #define GPIO_RM2_ON   40
+    #define GPIO_RM2_DATA 41
+    #define GPIO_RM2_CS   42
+    #define GPIO_RM2_CLK  44
+    GPIO 43 is the indicator for whether an RM2 module is installed.
+    The RM2 module will pull GPIO 43 high via a 4.7k resistor.
+    Set this pin to write mode, write a low
+    Wait a few microseconds
+    Set this pin to read mode, get the value
+    If true, RM2 installed
+    If false, no RM2
+    
+    */
+   // GPIO_RM2_DET
+
+
+    //__isPicoW = false;
+}
+#else
+# ifndef PICO_RP2040
     /**
      * This is a workaround until arduino framework can be updated to handle all 4 variations of
      * Pico1/1w/2/2w. In testing this works on all for BlueSCSI.
@@ -152,6 +191,244 @@ static void CheckPicoW() {
 #endif
 }
 #endif
+#endif
+
+
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+
+#define I2C_PORT i2c1
+#define KEY_I2C_ADDR 0x20
+
+bool read_from_8574(uint8_t* state) {
+    int status = i2c_read_blocking(I2C_PORT, KEY_I2C_ADDR, state, 1, false);
+    if (u8574_debug) {
+        logmsg("8574:R:,", *state, ":S:", status);
+    }
+    return status == 1;
+}
+
+bool is_debug_enabled() {
+    uint8_t state;
+    bool success = read_from_8574(&state);
+    if (!success) {
+        return false;
+    }
+    return (~state) & (1 << 3);
+}
+
+bool is_initiator_mode_enabled() {
+    uint8_t state;
+    bool success = read_from_8574(&state);
+    if (!success) {
+        return false;
+    }
+    return (~state) & (1 << 6);
+}
+
+bool is_initiator_USB_mode_enabled() {
+    uint8_t state;
+    bool success = read_from_8574(&state);
+    if (!success) {
+        return false;
+    }
+    return (~state) & (1 << 7);
+}
+
+/*
+8 bit data value
+Port Expander Bit [7:0]
+Bit 0: SD Card Power On, high is ON and low is OFF
+Bit 1: SD Card Power 3.3v / 1.8v switch, high is 3.3v and low is 1.8v
+Bit 2: Low Level Enables Initiator Mode Output Signal
+Bit 3: Input, Debug Mode
+Bit 4: Expander A
+Bit 5: Expander B
+Bit 6, Input, Initiator Mode
+Bit 7: Input, Inituator USB Mode
+*/
+// When calling this method, you must provide the exact data to write.
+// Read from the 8574 first, change only the bits that need changing, and then call this method.
+bool write_to_8574(uint8_t dataToWrite) {
+    // 0, 1, 2 are definite outputs
+    // 4, 5 are expander external
+    // 3, 6, 7 are inputs
+    uint8_t cmd = dataToWrite;
+    if (u8574_debug) {
+        logmsg("W:", cmd);
+    }
+    int result;
+    // result = read_from_8574();
+    // logmsg("CheckResult:", result);
+    result = i2c_write_blocking(I2C_PORT, KEY_I2C_ADDR, &cmd, 1, false);
+    if (result != 1) {
+        return false;
+    }
+    return true;
+}
+
+bool platform_enable_initiator_signals() {
+    uint8_t current_state = 0;
+    bool success = read_from_8574(&current_state);
+    if (success) {
+        current_state = current_state & 0b11111011;
+        success = write_to_8574(current_state);
+    }
+    return success;
+}
+
+bool platform_disable_initiator_signals() {
+    uint8_t current_state = 0;
+    bool success = read_from_8574(&current_state);
+    if (success) {
+        current_state = current_state | 0b00000100;
+        success = write_to_8574(current_state);
+    }
+    return success;
+}
+
+bool platform_switch_SD_3_3v() {
+    // Read current 8574 state
+    bool operation_success;
+    uint8_t u8574_state;
+    uint8_t u8574_write;
+    for (int i = 0; i < 4; i++) {
+        // Retry loop, just in case
+        operation_success = read_from_8574(&u8574_state);
+        if (operation_success) {
+            break;
+        }
+    }
+    if (!operation_success) {
+        //dbgmsg("8574 State Read Fail, Abort");
+        return false;
+    }
+    // Change 1.8v bit to 1 (3.3v mode)
+    u8574_write = (((uint8_t)u8574_state) | 0b10);
+
+    // Write 8574
+    if (write_to_8574(u8574_write)) {
+        operation_success = read_from_8574(&u8574_state);
+        if (u8574_state & 0b10) {
+            return true;
+        } else {
+            return false;
+        }
+    } else {
+        //dbgmsg("Write to 8574 failed");
+        return false;
+    }
+}
+
+bool platform_switch_SD_1_8v() {
+    // Read current 8574 state
+    bool operation_success;
+    uint8_t u8574_state;
+    uint8_t u8574_write;
+
+    for (int i = 0; i < 4; i++) {
+        // Retry loop, just in case
+        operation_success = read_from_8574(&u8574_state);
+        if (operation_success) {
+            //logmsg("8574 State Read On Loop: ", i);
+            break;
+        }
+    }
+    if (u8574_state < 0) {
+        //dbgmsg("8574 State Read Fail, Abort");
+        return false;
+    }
+    // Change 1.8v bit to 0
+    u8574_write = ((uint8_t)u8574_state) & 0b11111101;
+
+    // Write 8574
+    if (write_to_8574(u8574_write)) {
+        operation_success = read_from_8574(&u8574_state);
+        if ((~u8574_state) & 0b10) {
+            return true;
+        } else {
+            return false;
+        }
+    } else {
+        //dbgmsg("Write to 8574 failed");
+        return false;
+    }
+}
+
+bool platform_power_cycle_sd_card() {
+    // Read current 8574 state
+    bool operation_success;
+    uint8_t u8574_state;
+    uint8_t u8574_write;
+
+    for (int i = 0; i < 4; i++) {
+        // Retry loop, just in case
+        operation_success = read_from_8574(&u8574_state);
+        if (operation_success) {
+            // logmsg("8574 State Read On Loop: ", i);
+            break;
+        }
+    }
+
+    if (u8574_state < 0) {
+        //dbgmsg("8574 State Read Fail, Abort");
+        return false;
+    }
+
+    // SDIO Pin Setup
+    //        pin           function       pup    pdown  out   state  fast
+    gpio_conf(SDIO_DAT_DIR, GPIO_FUNC_SIO, false, false, true, true,  true);
+    gpio_conf(SDIO_CMD_DIR, GPIO_FUNC_SIO, false, false, true, true,  true);
+    gpio_conf(SDIO_CLK,     GPIO_FUNC_SIO, true,  false, true, false, true);
+    gpio_conf(SDIO_CMD,     GPIO_FUNC_SIO, true,  false, true, false, true);
+    gpio_conf(SDIO_D0,      GPIO_FUNC_SIO, true,  false, true, false, true);
+    gpio_conf(SDIO_D1,      GPIO_FUNC_SIO, true,  false, true, false, true);
+    gpio_conf(SDIO_D2,      GPIO_FUNC_SIO, true,  false, true, false, true);
+    gpio_conf(SDIO_D3,      GPIO_FUNC_SIO, true,  false, true, false, true);
+
+    // Set 1.8v bit to 1 (meaning 3.3v mode), and set SD card power bit to 0 (off)
+    u8574_write = ((((uint8_t)u8574_state) & 0b11111110) | 0b10);
+
+    // Write 8574
+    if (write_to_8574(u8574_write)) {
+        operation_success = read_from_8574(&u8574_state);
+    } else {
+        //dbgmsg("Write to 8574 failed");
+        return false;
+    }
+
+    // Wait just a moment to let the SD power rail droop to 0
+    busy_wait_us_32(50000);
+
+    // Turn power back on
+    // Set 1.8v bit to 1, and set SD card power bit to 1 (on)
+    u8574_write = ((uint8_t)u8574_state) | 0b11;
+
+    // Write 8574
+    operation_success = write_to_8574(u8574_write);
+
+    // Wait just a moment to let the SD power rail recover
+    busy_wait_us_32(30000);
+
+    // Resume SDIO function on interface pins
+    //        pin       function        pup    pdown  out   state  fast
+    gpio_conf(SDIO_CLK, GPIO_FUNC_PIO1, true,  false, true, false, true);
+    gpio_conf(SDIO_CMD, GPIO_FUNC_PIO1, true,  false, true, false, true);
+    gpio_conf(SDIO_D0,  GPIO_FUNC_PIO1, true,  false, true, false, true);
+    gpio_conf(SDIO_D1,  GPIO_FUNC_PIO1, true,  false, true, false, true);
+    gpio_conf(SDIO_D2,  GPIO_FUNC_PIO1, true,  false, true, false, true);
+    gpio_conf(SDIO_D3,  GPIO_FUNC_PIO1, true,  false, true, false, true);
+
+    if (operation_success) {
+        operation_success = read_from_8574(&u8574_state);
+        return true;
+    } else {
+        //dbgmsg("Write to 8574 failed");
+        return false;
+    }
+
+}
+
+#endif  // BLUESCSI_ULTRA
 
 static void reclock() {
     // ensure UART is fully drained before we mess up its clock
@@ -299,12 +576,10 @@ static pin_setup_state_t read_setup_ack_pin()
 #endif
 static bool is2023a = false;
 bool checkIs2023a() {
-#ifdef BLUESCSI_MCU_RP23XX
-    // Force out low for RP2350 errata
-    gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_SIO, false, false, true,  false, true);
-    gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_SIO, false, false, true,  false, true);
-    delay(10);
-#endif
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+    // BlueSCSI Ultra models don't have a "previous version" yet
+    return true;
+#else
     gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_I2C, false, false, false,  false, true);
     gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_I2C, false, false, false,  false, true);
 
@@ -345,18 +620,19 @@ bool checkIs2023a() {
     gpio_conf(SCSI_OUT_SEL,   GPIO_FUNC_SIO, false,false, true,  true, true);
 
     return is2023a;
+#endif
 }
 
 void platform_setup_sd() {
     // SD card pins
     // Card is used in SDIO mode for main program, and in SPI mode for crash handler & bootloader.
     //        pin             function       pup   pdown  out    state fast
-    gpio_conf(SD_SPI_SCK,     GPIO_FUNC_SPI, true, false, true,  true, true);
-    gpio_conf(SD_SPI_MOSI,    GPIO_FUNC_SPI, true, false, true,  true, true);
-    gpio_conf(SD_SPI_MISO,    GPIO_FUNC_SPI, true, false, false, true, true);
-    gpio_conf(SD_SPI_CS,      GPIO_FUNC_SIO, true, false, true,  true, true);
-    gpio_conf(SDIO_D1,        GPIO_FUNC_SIO, true, false, false, true, true);
-    gpio_conf(SDIO_D2,        GPIO_FUNC_SIO, true, false, false, true, true);
+    // gpio_conf(SD_SPI_SCK,     GPIO_FUNC_SPI, true, false, true,  true, true);
+    // gpio_conf(SD_SPI_MOSI,    GPIO_FUNC_SPI, true, false, true,  true, true);
+    // gpio_conf(SD_SPI_MISO,    GPIO_FUNC_SPI, true, false, false, true, true);
+    // gpio_conf(SD_SPI_CS,      GPIO_FUNC_SIO, true, false, true,  true, true);
+    // gpio_conf(SDIO_D1,        GPIO_FUNC_SIO, true, false, false, true, true);
+    // gpio_conf(SDIO_D2,        GPIO_FUNC_SIO, true, false, false, true, true);
 }
 
 #ifdef BLUESCSI_MCU_RP23XX
@@ -382,6 +658,13 @@ void platform_init()
 #ifndef PICO_RP2040
     CheckPicoW(); // Override default Wi-Fi check for the Pico2 line.
 #endif
+
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+    i2c_init(i2c1, 100000);
+    // Check debug flag
+    // g_log_debug = is_debug_enabled();
+    
+#endif
     // Make sure second core is stopped
     multicore_reset_core1();
 
@@ -391,59 +674,23 @@ void platform_init()
     /* First configure the pins that affect external buffer directions.
      * RP2040 defaults to pulldowns, while these pins have external pull-ups.
      */
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+    gpio_conf(SCSI_DATA_DIR,  GPIO_FUNC_SIO, false,false, true,  false, true);
+    gpio_conf(SCSI_OUT_RST,   GPIO_FUNC_SIO, false,false, false,  true, true);
+    gpio_conf(SCSI_OUT_BSY,   GPIO_FUNC_SIO, false,false, true,  true, true);
+
+    // Set up debug pins (I2S on production hardware)
+    //        pin        function       pup    pdown  out    state fast
+    gpio_conf(I2S_SCK,   GPIO_FUNC_SIO, false, false, true,  false, true);
+    gpio_conf(I2S_WS,    GPIO_FUNC_SIO, false, false, true,  false, true);
+    gpio_conf(I2S_DOUT,  GPIO_FUNC_SIO, false, false, true,  false, true);
+#else
     //        pin             function       pup   pdown  out    state fast
     gpio_conf(SCSI_DATA_DIR,  GPIO_FUNC_SIO, false,false, true,  true, true);
     gpio_conf(SCSI_OUT_RST,   GPIO_FUNC_SIO, false,false, true,  true, true);
     gpio_conf(SCSI_OUT_BSY,   GPIO_FUNC_SIO, false,false, true,  true, true);
-
-    /* Check dip switch settings */
-#ifdef HAS_DIP_SWITCHES
-    gpio_conf(DIP_INITIATOR,  GPIO_FUNC_SIO, false, false, false, false, false);
-    gpio_conf(DIP_DBGLOG,     GPIO_FUNC_SIO, false, false, false, false, false);
-    gpio_conf(DIP_TERM,       GPIO_FUNC_SIO, false, false, false, false, false);
-    delay(10); // 10 ms delay to let pull-ups do their work
-    bool working_dip = true;
-    bool dbglog = false;
-    bool termination = false;
-# if defined(BLUESCSI_PICO) || defined(BLUESCSI_PICO_2)
-    // Initiator dip setting works on all rev 2023b, 2023c, and newer rev Pico boards
-    g_scsi_initiator = !gpio_get(DIP_INITIATOR);
-
-    working_dip = SETUP_UNDETERMINED != read_setup_ack_pin();
-    if (working_dip)
-    {
-        dbglog = !gpio_get(DIP_DBGLOG);
-        termination = !gpio_get(DIP_TERM);
-
-    }
-# elif defined(BLUESCSI_V2_0)
-    pin_setup_state_t dip_state = read_setup_ack_pin();
-    if (dip_state == SETUP_UNDETERMINED)
-    {
-        // This path is used for the few early RP2040 boards assembled with
-        // Diodes Incorporated 74LVT245B, which has higher bus hold
-        // current.
-        working_dip = false;
-        g_scsi_initiator = !gpio_get(DIP_INITIATOR); // Read fallback value
-    }
-    else
-    {
-        g_scsi_initiator = (SETUP_TRUE == dip_state);
-        termination = !gpio_get(DIP_TERM);
-    }
-
-    // dbglog DIP switch works in any case, as it does not have bus hold.
-    dbglog = !gpio_get(DIP_DBGLOG);
-    g_log_debug = dbglog;
-# else
-    g_scsi_initiator = !gpio_get(DIP_INITIATOR);
-    termination = !gpio_get(DIP_TERM);
-    dbglog = !gpio_get(DIP_DBGLOG);
-    g_log_debug = dbglog;
-# endif
-#else
+#endif
     delay(10);
-#endif // HAS_DIP_SWITCHES
 
 #ifndef DISABLE_SWO
     /* Initialize logging to SWO pin (UART0) */
@@ -460,36 +707,9 @@ void platform_init()
     }
 #endif
 
-#ifdef HAS_DIP_SWITCHES
-    if (working_dip)
-    {
-        logmsg("DIP switch settings: debug log ", (int)dbglog, ", termination ", (int)termination);
-        g_log_debug = dbglog;
-
-        if (termination)
-        {
-            logmsg("SCSI termination is enabled");
-        }
-        else
-        {
-            logmsg("NOTE: SCSI termination is disabled");
-        }
-    }
-    else
-    {
-        logmsg("SCSI termination is determined by the DIP switch labeled \"TERM\"");
-
-#if defined(BLUESCSI_PICO) || defined(BLUESCSI_PICO_2)
-        logmsg("Debug logging can only be enabled via INI file \"DEBUG=1\" under [SCSI] in bluescsi.ini");
-        logmsg("-- DEBUG DIP switch setting is ignored on BlueSCSI Pico FS Rev. 2023b and 2023c boards");
-        g_log_debug = false;
-#endif
-
-    }
-#else
+// debug log general flag
     g_log_debug = false;
     //logmsg ("SCSI termination is handled by a hardware jumper");
-#endif  // HAS_DIP_SWITCHES
 
         // logmsg("===========================================================");
         // logmsg(" Powered by Raspberry Pi");
@@ -511,15 +731,16 @@ void platform_init()
 #endif
 
     // LED pin
-    if (!rp2040.isPicoW())
-        gpio_conf(LED_PIN,    GPIO_FUNC_SIO, false,false, true,  false, false);
+    if (!rp2040.isPicoW()) {
+        gpio_conf(LED_PIN,    GPIO_FUNC_SIO, false, false, true, false, false);
+    }
 
 
 #ifdef GPIO_I2C_SDA
     // I2C pins
     //        pin             function       pup   pdown  out    state fast
-    // gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_I2C, true,false, false,  true, true);
-    // gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_I2C, true,false, false,  true, true);
+    gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_I2C, true,false, false,  true, true);
+    gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_I2C, true,false, false,  true, true);
 #endif  // GPIO_I2C_SDA
 
 #ifdef GPIO_USB_POWER
@@ -585,22 +806,22 @@ void platform_late_init()
         // SCSI control outputs
         //        pin             function       pup   pdown  out    state fast
         gpio_conf(SCSI_OUT_IO,    GPIO_FUNC_SIO, false,false, true,  true, true);
-        gpio_conf(SCSI_OUT_MSG,   GPIO_FUNC_SIO, false,false, true,  true, true);
+        gpio_conf(SCSI_OUT_MSG,   GPIO_FUNC_SIO, false,false, false,  true, true);
 
         // REQ pin is switched between PIO and SIO, pull-up makes sure no glitches
         gpio_conf(SCSI_OUT_REQ,   GPIO_FUNC_SIO, true ,false, true,  true, true);
 
         // Shared pins are changed to input / output depending on communication phase
-        gpio_conf(SCSI_IN_SEL,    GPIO_FUNC_SIO, true, false, false, true, true);
+        gpio_conf(SCSI_IN_SEL,    GPIO_FUNC_SIO, false, false, false, true, true);
         if (SCSI_OUT_CD != SCSI_IN_SEL)
         {
             gpio_conf(SCSI_OUT_CD,    GPIO_FUNC_SIO, false,false, true,  true, true);
         }
 
-        gpio_conf(SCSI_IN_BSY,    GPIO_FUNC_SIO, true, false, false, true, true);
+        gpio_conf(SCSI_IN_BSY,    GPIO_FUNC_SIO, false, false, false, true, true);
         if (SCSI_OUT_MSG != SCSI_IN_BSY)
         {
-            gpio_conf(SCSI_OUT_MSG,    GPIO_FUNC_SIO, false,false, true,  true, true);
+            gpio_conf(SCSI_OUT_MSG,    GPIO_FUNC_SIO, false, false, true,  true, true);
         }
 
         // SCSI control inputs
@@ -609,10 +830,8 @@ void platform_late_init()
         gpio_conf(SCSI_IN_ATN,    GPIO_FUNC_SIO, true, false, false, true, false);
         gpio_conf(SCSI_IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
 
-#if defined(BLUESCSI_WIDE)
-    logmsg("Wide board runs at base speed of ",(int) platform_sys_clock_in_hz(), "Hz");
-#elif defined(BLUESCSI_BLASTER)
-    logmsg("Reclock Blaster based boards to standardized speed");
+#if defined(BLUESCSI_ULTRA_WIDE) || defined (BLUESCSI_ULTRA)
+    logmsg("Clocking to standard I2S-compatible base speed");
     platform_reclock(SPEED_GRADE_BASE_155MHZ);
 #elif defined(BLUESCSI_PICO_2)
     logmsg("Reclock Pico 2/2W based boards to standardized speed");
@@ -637,11 +856,24 @@ void platform_late_init()
     rm2_pins[CYW43_PIN_INDEX_WL_CS] = GPIO_RM2_CS;
     assert(PICO_OK == cyw43_set_pins_wl(rm2_pins));
 
-        // The iface check turns on the LED on the RM2 early in the init process
-    // Should tell the user that the RM2 is working
-    if(platform_network_iface_check())
+    // TODO: Do we need this reclock before checking for RM2?
+    if (platform_reclock(SPEED_GRADE_WIFI_RM2))
     {
-        logmsg("RM2 found");
+        // The iface check turns on the LED on the RM2 early in the init process
+        // Should tell the user that the RM2 is working
+        if(platform_network_iface_check())
+        {
+            logmsg("RM2 found");
+        }
+        else
+        {
+# ifdef BLUESCSI_ULTRA
+            logmsg("RM2 not found, upclocking");
+            platform_reclock(SPEED_GRADE_AUDIO_I2S);
+# else
+            logmsg("RM2 not found");
+# endif
+        }
     }
     else
     {
@@ -652,8 +884,9 @@ void platform_late_init()
 // This should turn on the LED for Pico 1/2 W devices early in the init process
 // It should help indicate to the user that interface is working and the board is ready for DaynaPORT
 #if  defined(BLUESCSI_NETWORK) && ! defined(BLUESCSI_RM2)
-    if (platform_network_supported())
+    if (platform_network_supported()) {
         platform_network_iface_check();
+    }
 #endif
 
     }
@@ -674,16 +907,18 @@ void platform_late_init()
 
 // Act as SCSI initiator
 void platform_initiator_gpio_setup() {
-    //        pin                   function       pup   pdown  out    state fast
-    gpio_conf(SCSI_IN_IO,     GPIO_FUNC_SIO, true ,false, false, true, false);
-    gpio_conf(SCSI_IN_MSG,    GPIO_FUNC_SIO, true ,false, false, true, false);
-    gpio_conf(SCSI_IN_CD,     GPIO_FUNC_SIO, true ,false, false, true, false);
-    gpio_conf(SCSI_IN_REQ,    GPIO_FUNC_SIO, true ,false, false, true, false);
-    gpio_conf(SCSI_IN_BSY,    GPIO_FUNC_SIO, true, false, false, true, false);
-    gpio_conf(SCSI_IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
-    gpio_conf(SCSI_OUT_SEL,   GPIO_FUNC_SIO, false,false, true,  true, true);
-    gpio_conf(SCSI_OUT_ACK,   GPIO_FUNC_SIO, true,false, true,  true, true);
-    //gpio_conf(SCSI_OUT_ATN,   GPIO_FUNC_SIO, false,false, true,  true, true);  // ATN output is unused
+    //        pin             function       pup    pdown  out    state fast
+    gpio_conf(SCSI_IN_IO,     GPIO_FUNC_SIO, false, false, false, true, false);
+    gpio_conf(SCSI_IN_MSG,    GPIO_FUNC_SIO, false, false, false, true, false);
+    gpio_conf(SCSI_IN_CD,     GPIO_FUNC_SIO, false, false, false, true, false);
+    gpio_conf(SCSI_IN_REQ,    GPIO_FUNC_SIO, false, false, false, true, false);
+    gpio_conf(SCSI_IN_BSY,    GPIO_FUNC_SIO, false, false, false, true, false);
+    gpio_conf(SCSI_IN_RST,    GPIO_FUNC_SIO, true,  false, false, true, false);
+    gpio_conf(SCSI_OUT_SEL,   GPIO_FUNC_SIO, false, false, true,  true, true);
+    gpio_conf(SCSI_OUT_ACK,   GPIO_FUNC_SIO, true,  false, true,  true, true);
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+    gpio_conf(SCSI_OUT_ATN,   GPIO_FUNC_SIO, false,false, true,  true, true);  // ATN output is unused on standard BlueSCSI
+#endif
 }
 
 bool platform_supports_initiator_mode() {
@@ -692,7 +927,7 @@ bool platform_supports_initiator_mode() {
 
 void platform_post_sd_card_init()
 {
-#if defined(ENABLE_AUDIO_OUTPUT) && !defined(BLUESCSI_BLASTER)
+#if defined(ENABLE_AUDIO_OUTPUT) && !defined(BLUESCSI_ULTRA)
         // one-time control setup for DMA channels and second core
         audio_setup();
 #endif // ENABLE_AUDIO_OUTPUT
@@ -1007,7 +1242,7 @@ static void adc_poll()
         adc_init();
         adc_set_temp_sensor_enabled(true);
         adc_set_clkdiv(65535); // Lowest samplerate, about 2 kHz
-#ifdef BLUESCSI_BLASTER
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
         adc_select_input(8);
 #else
         adc_select_input(4);
@@ -1207,6 +1442,9 @@ void platform_disable_i2c() {
 
 uint8_t platform_get_buttons()
 {
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+    return 0;  // No physical buttons here, intended to be used with front panel board
+#else
     uint8_t buttons = 0;
 
 #if defined(ENABLE_AUDIO_OUTPUT_SPDIF)
@@ -1241,12 +1479,18 @@ uint8_t platform_get_buttons()
 
     last_state = buttons;
     return debounced_state;
+#endif
 }
+
 
 bool platform_has_phy_eject_button()
 {
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+    return false;  // No physical buttons, intended to be used with front panel board
+#else
     // 2023a and later boards have i2c buttons
     return !is2023a || (is2023a && disable_i2c);
+#endif
 }
 
 /************************************/
@@ -1318,6 +1562,8 @@ bool platform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count
 
 #endif // PLATFORM_HAS_ROM_DRIVE
 
+#ifndef RP2MCU_USE_CPU_PARITY
+
 /**********************************************/
 /* Mapping from data bytes to GPIO BOP values */
 /**********************************************/
@@ -1329,7 +1575,7 @@ bool platform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count
  */
 
 #define PARITY(n) ((1 ^ (n) ^ ((n)>>1) ^ ((n)>>2) ^ ((n)>>3) ^ ((n)>>4) ^ ((n)>>5) ^ ((n)>>6) ^ ((n)>>7)) & 1)
-#ifdef BLUESCSI_BLASTER
+#ifdef BLUESCSI_ULTRA
 # define X(n) (\
     ((n & 0x01) ? 0 : (1 << 0)) | \
     ((n & 0x02) ? 0 : (1 << 1)) | \
@@ -1423,6 +1669,8 @@ const uint16_t g_scsi_parity_check_lookup[512] __attribute__((aligned(1024), sec
 };
 
 #undef X
+
+#endif
 
 } /* extern "C" */
 

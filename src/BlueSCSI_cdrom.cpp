@@ -1370,7 +1370,7 @@ void cdromGetAudioPlaybackStatus(uint8_t *status, uint32_t *current_lba, bool cu
             *status = (uint8_t) audio_get_status_code(target);
         }
     }
-# ifdef BLUESCSI_BLASTER
+# ifdef BLUESCSI_ULTRA
     *current_lba = audio_get_lba_position();
 # else
     *current_lba = audio_get_file_position() / 2352;
@@ -1406,7 +1406,7 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
     }
 #endif
 
-#if defined(ENABLE_AUDIO_OUTPUT) && !defined(ZULUSCSI_BLASTER)
+#if defined(ENABLE_AUDIO_OUTPUT) && !defined(BLUESCSI_ULTRA)
     dbgmsg("------ CD-ROM Play Audio request at ", lba, " for ", length, " sectors");
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     uint8_t target_id = img.scsiId & 7;
@@ -1479,7 +1479,7 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
         scsiDev.target->sense.asc = 0x6400; // ILLEGAL MODE FOR THIS TRACK
         scsiDev.phase = STATUS;
     }
-#elif defined(ENABLE_AUDIO_OUTPUT_I2S) && defined(BLUESCSI_BLASTER)
+#elif defined(ENABLE_AUDIO_OUTPUT_I2S) && (defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE))
     dbgmsg("------ CD-ROM Play Audio request at ", (int)lba, " for ", (int)length, " sectors");
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     uint8_t target_id = img.scsiId & 7;
@@ -1520,7 +1520,7 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
 static void doPlayAudioTrackIndex(uint8_t start_track, uint8_t start_index, uint8_t end_track, uint8_t end_index)
 {
 #if defined(ENABLE_AUDIO_OUTPUT)
-# if defined(BLUESCSI_BLASTER)
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
     dbgmsg("------ CD-ROM Play Audio request at track:index ", (int)start_track, ":", (int)start_index, " until ", (int)end_track, ":", (int)end_index);
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     uint8_t target_id = img.scsiId & 7;
