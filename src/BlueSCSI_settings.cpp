@@ -2,7 +2,7 @@
  * This file is originally part of ZuluSCSI adopted for BlueSCSI
  *
  * ZuluSCSI™ - Copyright (c) 2023-2025 Rabbit Hole Computing™
- * Copyright (c) 2023 Eric Helgeson
+ * Copyright (c) 2023-2025 Eric Helgeson
  * 
  * This file is licensed under the GPL version 3 or any later version.  
  * 
@@ -372,6 +372,10 @@ scsi_system_settings_t *BlueSCSISettings::initSystem(const char *presetName)
         cfgSys.enableSelLatch = true;
         cfgSys.enableSCSI2 = false;
         cfgSys.selectionDelay = 0;
+        if (g_log_debug) {
+            g_log_debug = false;
+            logmsg("Debug can not be enabled on the MacPlus preset.");
+        }
     }
     else if (strequals(systemPresetName[SYS_PRESET_MPC3000], presetName))
     {
