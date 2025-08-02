@@ -121,7 +121,7 @@ bool platform_sense_msc() {
   }
 #endif
 
-  logmsg("Waiting for USB enumeration to enter Card Reader mode.");
+  dbgmsg("Waiting for USB enumeration to enter Card Reader mode.");
 
   // wait for up to a second to be enumerated
   uint32_t start = millis();
@@ -131,8 +131,8 @@ bool platform_sense_msc() {
   {
     if ((uint32_t)(millis() - start) > usb_timeout)
     {
-      logmsg("Waiting for USB enumeration timed out after ", usb_timeout, "ms.");
-      logmsg("-- Try increasing 'USBMassStorageWaitPeriod' in the ", CONFIGFILE);
+      dbgmsg("Waiting for USB enumeration timed out after ", usb_timeout, "ms.");
+      dbgmsg("-- Try increasing 'USBMassStorageWaitPeriod' in the ", CONFIGFILE);
       timed_out = true;
       break;
     } 
