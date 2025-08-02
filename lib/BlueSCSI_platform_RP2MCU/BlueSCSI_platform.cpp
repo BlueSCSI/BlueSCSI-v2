@@ -103,8 +103,8 @@ static void platform_write_led_picow(bool state);
 static void platform_write_led_noop(bool state) {}
 static led_write_func_t g_led_write_func = platform_write_led_noop;
 
-#if !defined(PICO_CYW43_SUPPORTED)
-extern bool __isPicoW;
+#if !defined(PICO_RP2040) && !defined(BLUESCSI_NETWORK)
+    bool __isPicoW;
 #endif
 /***************/
 /* GPIO init   */
@@ -124,7 +124,7 @@ static void gpio_conf(uint gpio, gpio_function_t fn, bool pullup, bool pulldown,
     }
 }
 
-# ifndef PICO_RP2040
+#ifndef PICO_RP2040
     /**
      * This is a workaround until arduino framework can be updated to handle all 4 variations of
      * Pico1/1w/2/2w. In testing this works on all for BlueSCSI.
@@ -132,6 +132,9 @@ static void gpio_conf(uint gpio, gpio_function_t fn, bool pullup, bool pulldown,
      */
 static void CheckPicoW() {
     extern bool __isPicoW;
+#ifndef BLUESCSI_NETWORK
+    __isPicoW = false;
+#else
     adc_init();
     auto dir = gpio_get_dir(CYW43_PIN_WL_CLOCK);
     auto fnc = gpio_get_function(CYW43_PIN_WL_CLOCK);
@@ -146,6 +149,7 @@ static void CheckPicoW() {
     } else {
         __isPicoW = false;
     }
+#endif
 }
 #endif
 
