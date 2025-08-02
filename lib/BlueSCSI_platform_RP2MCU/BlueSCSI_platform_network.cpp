@@ -365,4 +365,6 @@ void cyw43_cb_tcpip_set_link_up(cyw43_t *self, int itf)
 }
 
 }
+#else
+bool platform_network_supported() { return false; }
 #endif // BLUESCSI_NETWORK

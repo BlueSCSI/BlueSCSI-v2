@@ -44,5 +44,6 @@ void platform_network_deinit();
 # ifdef __cplusplus
 }
 # endif
-
+#else
+bool platform_network_supported();
 #endif // BLUESCSI_NETWORK
