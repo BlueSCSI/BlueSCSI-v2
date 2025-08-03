@@ -830,7 +830,8 @@ static void reinitSCSI()
     findHDDImages();
 
     // Error if there are 0 image files
-    if (!scsiDiskCheckAnyImagesConfigured())
+    if (!scsiDiskCheckAnyImagesConfigured() &&
+        !ini_getbool("SCSI", "InitiatorMode", false, CONFIGFILE))
     {
   #ifdef RAW_FALLBACK_ENABLE
       logmsg("No images found, enabling RAW fallback partition");
