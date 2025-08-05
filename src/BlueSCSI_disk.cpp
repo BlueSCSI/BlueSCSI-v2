@@ -665,6 +665,7 @@ bool scsiDiskFilenameValid(const char* name)
         const char *ignore_exts[] = {
             ".rom_loaded", ".cue", ".txt", ".rtf", ".md", ".nfo", ".pdf", ".doc", 
 	    ".ini", ".mid", ".midi", ".aiff", ".mp3", ".m4a",
+            ".ori", // Kiosk mode original images
             NULL
         };
         const char *archive_exts[] = {

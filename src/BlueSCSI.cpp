@@ -1013,6 +1013,10 @@ static bool poll_sd_card()
   return SD.card()->readOCR(&ocr);
 #endif
 }
+
+// Forward declaration for kiosk restore function
+static void kiosk_restore_images();
+
 #define NUM_EJECT_BUTTONS 2
 static void init_eject_button()
 {
@@ -1140,6 +1144,7 @@ static void bluescsi_setup_sd_card(bool wait_for_card = true)
       delay(boot_delay_ms);
     }
     platform_post_sd_card_init();
+    kiosk_restore_images();
     reinitSCSI();
 
     boot_delay_ms = cfg->initPostDelay;
@@ -1319,5 +1324,212 @@ extern "C" void bluescsi_main_loop(void)
         platform_poll();
       }
     } while (!g_sdcard_present && !g_romdrive_active && !is_initiator);
+  }
+}
+
+// Kiosk mode: Read data with proper error handling (sometimes SD card read fails with timeout on large buffers)
+// It also handles resetting the seek position in case of read errors
+static size_t kiosk_read(FsFile& file, uint64_t current_pos, uint8_t* buffer, size_t to_read)
+{
+  size_t total_read = 0;
+  int err_count = 0;
+  size_t max_read = to_read; // maximum read size, whole block before retrying
+
+  while (total_read < to_read)
+  {
+    size_t read_requested = to_read - total_read;
+    read_requested = std::min(max_read, read_requested);
+
+    int bytes_read_int = file.read(buffer + total_read, read_requested);
+
+    if (bytes_read_int==-1)
+    {
+      file.seekSet(current_pos + total_read); // This should not be necessary, but it seems that there is a issue in the SD library that causes the file position to not be set correctly after a read failure in a multi-bloc read.
+
+      bytes_read_int = 0; // Normalize error to 0
+    }
+
+    if (bytes_read_int!=read_requested)
+    {
+      logmsg("Kiosk restore: ERROR - Read failed - retrying" );
+      delay(100);
+      max_read = 512;
+      if (err_count++ >= 10)
+      {
+        logmsg("Kiosk restore: ERROR - Too many read failures, giving up");
+        break;
+      }
+    }
+
+    total_read += bytes_read_int;
+  }
+
+  if (err_count > 0)
+    logmsg("Kiosk restore: Read completed with ", err_count, " errors");
+
+  return total_read;
+}
+
+// Kiosk mode: Restore image files from .ori backups for museum installations
+static void kiosk_restore_images()
+{
+  logmsg("Kiosk 0.3 restore: Checking for .ori backup files to restore");
+
+  FsFile root = SD.open("/");
+  if (!root)
+  {
+    logmsg("Kiosk restore: Failed to open root directory");
+    return;
+  }
+
+  FsFile original;
+  char ori_name[MAX_FILE_PATH + 1];
+  char tgt_name[MAX_FILE_PATH + 1];
+  int restored_count = 0;
+
+  // Scan for .ori files
+  while (original.openNext(&root, O_RDONLY))
+  {
+    if (original.isFile() && original.getName(ori_name, sizeof(ori_name)))
+    {
+      // Check if this is a .ori file
+      size_t len = strlen(ori_name);
+      if (len > 4 && strcasecmp(ori_name + len - 4, ".ori") == 0)
+      {
+        // Generate target filename by removing .ori extension
+        strncpy(tgt_name, ori_name, len - 4); // Remove .ori
+        tgt_name[len - 4] = '\0';
+
+        // Get .ori file size
+        uint64_t ori_size = original.size();
+        logmsg("Kiosk restore: Found ", ori_name, " (", (int)(ori_size >> 20), " MB)");
+
+        bool target_valid = false;
+
+        // Check if target file already exists with correct size
+        FsFile target = SD.open(tgt_name, O_RDONLY);
+        if (target.isOpen())
+        {
+          uint64_t target_size = target.size();
+          target.close();
+
+          if (target_size == ori_size)
+          {
+            target_valid = true;
+          }
+          else
+          {
+            SD.remove(tgt_name); // Will recreate with the correct size
+          }
+        }
+
+        // Create target file if it doesn't exist or size mismatch
+        // (with the hope it could be created as contiguous)
+        if (!target_valid)
+        {
+          logmsg("Kiosk restore: Creating target file ", tgt_name, " with size ", (int)(ori_size >> 20), " MB");
+          target = SD.open(tgt_name, O_WRONLY | O_CREAT | O_TRUNC);
+          if (target.isOpen())
+          {
+            if (target.preAllocate(ori_size))
+            {
+              logmsg("Kiosk restore: Successfully preallocated ", tgt_name);
+            }
+            else
+            {
+              logmsg("Kiosk restore: Warning - Could not preallocate ", tgt_name, ", continuing anyway");
+            }
+            target.close();
+          }
+          else
+          {
+            logmsg("Kiosk restore: ERROR - Failed to create target file ", tgt_name);
+            original.close();
+            continue;
+          }
+        }
+
+        // Copy .ori to image file
+        logmsg("Kiosk restore: Copying ", ori_name, " to ", tgt_name, "...");
+        uint32_t copy_start_time = millis();
+
+        target = SD.open(tgt_name, O_WRONLY);
+        if (!target.isOpen())
+        {
+          logmsg("Kiosk restore: ERROR - Failed to create ", tgt_name);
+          original.close();
+          continue;
+        }
+
+        // Use the shared SCSI buffer for copying
+        size_t BUFFER_SIZE = sizeof(scsiDev.data);
+        uint8_t *buffer = scsiDev.data;
+
+        uint64_t bytes_copied = 0;
+        uint32_t last_progress_mb = 0;
+        bool copy_success = true;
+
+        original.rewind();
+        while (bytes_copied < ori_size && copy_success)
+        {
+          size_t to_read = ori_size - bytes_copied;
+          to_read = to_read > BUFFER_SIZE ? BUFFER_SIZE : to_read;
+
+          size_t bytes_read = kiosk_read(original, bytes_copied, buffer, to_read);
+
+          if (bytes_read != to_read)
+          {
+            logmsg("Kiosk restore: ERROR - Read failed at offset ", (int)bytes_copied, " (", (int)to_read, " bytes requested, ", (int)bytes_read, " bytes read)");
+            copy_success = false;
+            break;
+          }
+
+          size_t bytes_written = target.write(buffer, bytes_read);
+          if (bytes_written != bytes_read)
+          {
+            logmsg("Kiosk restore: ERROR - Write failed at offset ", (int)bytes_copied, " (", (int)bytes_read, " bytes requested, ", (int)bytes_written, " bytes written)");
+            copy_success = false;
+            break;
+          }
+
+          bytes_copied += bytes_read;
+
+          // Progress indicator every 10MB with LED state toggle
+          uint32_t progress_mb = (uint32_t)(bytes_copied >> 20);
+          if (progress_mb >= last_progress_mb + 10)
+          {
+            logmsg("Kiosk restore: Progress ", (int)progress_mb, " MB / ", (int)(ori_size >> 20), " MB");
+            last_progress_mb = progress_mb;
+          }
+
+          // Set LED based on current state with pattern [ON, OFF, ON, OFF, OFF]
+          int led_state = progress_mb % 5;
+          platform_write_led(led_state == 0 || led_state == 2);
+        }
+
+        target.close();
+        LED_OFF();
+
+        uint32_t copy_time_ms = millis() - copy_start_time;
+        int copy_speed_kbps = copy_time_ms > 0 ? (int)((ori_size / 1024) / (copy_time_ms / 1000.0)) : 0;
+
+        if (copy_success && bytes_copied == ori_size)
+        {
+          logmsg("Kiosk restore: Successfully restored ", tgt_name, " (", (int)(ori_size >> 20), " MB) in ", (int)copy_time_ms, " ms, ", copy_speed_kbps, " kB/s");
+          restored_count++;
+        }
+        else
+        {
+          logmsg("Kiosk restore: ERROR - Failed to restore ", tgt_name, " after ", (int)copy_time_ms, " ms");
+        }
+      }
+    }
+    original.close();
+  }
+  root.close();
+
+  if (restored_count > 0)
+  {
+    logmsg("Kiosk restore: Completed - restored ", restored_count, " disk image(s)");
   }
 }
