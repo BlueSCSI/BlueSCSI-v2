@@ -1389,8 +1389,6 @@ static size_t kiosk_read(FsFile& file, uint64_t current_pos, uint8_t* buffer, si
 // Kiosk mode: Restore image files from .ori backups for museum installations
 static void kiosk_restore_images()
 {
-  logmsg("Kiosk 0.3 restore: Checking for .ori backup files to restore");
-
   FsFile root = SD.open("/");
   if (!root)
   {
