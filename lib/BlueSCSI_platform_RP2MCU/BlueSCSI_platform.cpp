@@ -359,6 +359,24 @@ void platform_setup_sd() {
     gpio_conf(SDIO_D2,        GPIO_FUNC_SIO, true, false, false, true, true);
 }
 
+#ifdef BLUESCSI_MCU_RP23XX
+static void __no_inline_not_in_flash_func(set_flash_clock)()
+{
+    // Ensure that high performance 4-bit flash mode is used for code fetches.
+    // This is normally the default but if coming through rom_chain_image() the
+    // flash may be in 1-bit mode after flash_do_cmd() call.
+    // See https://github.com/raspberrypi/pico-bootrom-rp2350/issues/10
+    //
+    // Flash clock divider 3 gives 50 MHz clock for 150 MHz, and 83 for 250 MHz.
+    // The W25Q16JV maximum is 133 MHz.
+    //
+    // In practice most of the code is in cache or RAM, so the performance effect
+    // of higher clocks is not huge.
+    rom_flash_exit_xip();
+    rom_flash_select_xip_read_mode(BOOTROM_XIP_MODE_EBH_QUAD, 3);
+}
+#endif
+
 void platform_init()
 {
 #ifndef PICO_RP2040
@@ -487,6 +505,11 @@ void platform_init()
     g_flash_chip_size = (1 << response_jedec[3]);
     logmsg("Flash chip size: ", (int)(g_flash_chip_size / 1024), " kB");
     platform_setup_sd();
+
+#ifdef BLUESCSI_MCU_RP23XX
+    set_flash_clock();
+#endif
+
     // LED pin
     if (!rp2040.isPicoW())
         gpio_conf(LED_PIN,    GPIO_FUNC_SIO, false,false, true,  false, false);
