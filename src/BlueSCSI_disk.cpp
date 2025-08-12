@@ -2045,7 +2045,8 @@ void scsiDiskStartRead(uint32_t lba, uint32_t blocks)
         }
 #endif
 
-        if (!img.file.seek((uint64_t)(transfer.lba + transfer.currentBlock) * bytesPerSector))
+        if (transfer.currentBlock < transfer.blocks &&
+            !img.file.seek((uint64_t)(transfer.lba + transfer.currentBlock) * bytesPerSector))
         {
             logmsg("Seek to ", transfer.lba, " failed for SCSI ID", (int)scsiDev.target->targetId);
             scsiDev.status = CHECK_CONDITION;
