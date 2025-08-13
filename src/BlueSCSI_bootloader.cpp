@@ -24,7 +24,6 @@
 #include <BlueSCSI_platform.h>
 #include "BlueSCSI_config.h"
 #include "BlueSCSI_log.h"
-#include <string.h>
 #include <SdFat.h>
 
 #ifdef PLATFORM_BOOTLOADER_SIZE
@@ -74,13 +73,13 @@ bool program_firmware(FsFile &file)
 
     if (filesize > PLATFORM_FLASH_TOTAL_SIZE)
     {
-        logmsg("Firmware too large: ", (int)filesize, " flash size ", (int)PLATFORM_FLASH_TOTAL_SIZE);
+        // logmsg("Firmware too large: ", (int)filesize, " flash size ", (int)PLATFORM_FLASH_TOTAL_SIZE);
         return false;
     }
 
     if (!file.seek(PLATFORM_BOOTLOADER_SIZE))
     {
-        logmsg("Seek failed");
+        // logmsg("Seek failed");
         return false;
     }
 
@@ -93,13 +92,13 @@ bool program_firmware(FsFile &file)
         
         if (file.read(buffer, PLATFORM_FLASH_PAGE_SIZE) <= 0)
         {
-            logmsg("Firmware file read failed on page ", i);
+            // logmsg("Firmware file read failed on page ", i);
             return false;
         }
 
         if (!platform_rewrite_flash_page(PLATFORM_BOOTLOADER_SIZE + i * PLATFORM_FLASH_PAGE_SIZE, buffer))
         {
-            logmsg("Flash programming failed on page ", i);
+            // logmsg("Flash programming failed on page ", i);
             return false;
         }
     }
@@ -147,7 +146,7 @@ int bootloader_main(void)
     platform_init();
     g_log_debug = true;
 
-    logmsg("Bootloader version: " __DATE__ " " __TIME__ " " PLATFORM_NAME);
+    // logmsg("Bootloader version: " __DATE__ " " __TIME__ " " PLATFORM_NAME);
 
     if (mountSDCard() || mountSDCard())
     {
@@ -157,16 +156,16 @@ int bootloader_main(void)
         {
             if (program_firmware(fwfile))
             {
-                logmsg("Firmware update successful!");
+                // logmsg("Firmware update successful!");
                 fwfile.close();
                 if (!SD.remove(name))
                 {
-                    logmsg("Failed to remove firmware file");
+                    // logmsg("Failed to remove firmware file");
                 }
             }
             else
             {
-                logmsg("Firmware update failed!");
+                // logmsg("Firmware update failed!");
                 platform_emergency_log_save();
             }
             
@@ -174,10 +173,10 @@ int bootloader_main(void)
     }
     else
     {
-        logmsg("Bootloader SD card init failed");
+        // logmsg("Bootloader SD card init failed");
     }
 
-    logmsg("Bootloader continuing to main firmware");
+    // logmsg("Bootloader continuing to main firmware");
     platform_boot_to_main_firmware();
 
     return 0;
