@@ -74,7 +74,7 @@ bootloader_bin = env.ElfToBin(
 def print_bootloader_size(source, target, env):
     bootloader_bin_path = str(target[0].get_abspath())
     size = os.path.getsize(bootloader_bin_path)
-    max_size = 135168  # 132k
+    max_size = 131072  # 128k
     percentage = (size / max_size) * 100
     print(f"Bootloader binary size: {size} / {max_size} bytes ({percentage:.2f}%)")
 
