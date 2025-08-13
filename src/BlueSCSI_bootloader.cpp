@@ -36,6 +36,7 @@ bool find_firmware_image(FsFile &file, char name[MAX_FILE_PATH + 1])
     FsFile root;
     root.open("/");
 
+    bool found = false;
     while (file.openNext(&root, O_READ))
     {
         if (file.isDir()) continue;
@@ -44,20 +45,19 @@ bool find_firmware_image(FsFile &file, char name[MAX_FILE_PATH + 1])
         const char* board_name = PLATFORM_PID;
 
         if (namelen >= sizeof(FIRMWARE_PREFIX) + 3 &&
+            strncasecmp(name + namelen - 3, "bin", 3) == 0 &&
             strncasecmp(name, FIRMWARE_PREFIX, sizeof(FIRMWARE_PREFIX) - 1) == 0 &&
-            strstr(name, board_name) != NULL &&
-            strncasecmp(name + namelen - 3, "bin", 3) == 0)
+            strstr(name, board_name) != NULL)
         {
-            root.close();
-            logmsg("Found firmware file: ", name);
-            return true;
+            found = true;
+            break; // Exit loop, keeping the file open for the caller
         }
 
-        file.close();
+        file.close(); // Close file if it's not a match
     }
 
-    root.close();
-    return false;
+    root.close(); // Single close point for the root directory
+    return found;
 }
 
 #ifndef PLATFORM_FLASH_SECTOR_ERASE
@@ -143,7 +143,7 @@ static bool mountSDCard()
 extern "C"
 int bootloader_main(void)
 {
-    platform_init();
+    platform_setup_sd();
     g_log_debug = true;
 
     // logmsg("Bootloader version: " __DATE__ " " __TIME__ " " PLATFORM_NAME);

@@ -85,6 +85,9 @@ static inline void delay_100ns()
 // Initialize SD card and GPIO configuration
 void platform_init();
 
+// Setup SD GPIO
+void platform_setup_sd();
+
 // Initialization for main application, not used for bootloader
 void platform_late_init();
 

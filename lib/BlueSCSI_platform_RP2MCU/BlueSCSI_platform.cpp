@@ -347,6 +347,18 @@ bool checkIs2023a() {
     return is2023a;
 }
 
+void platform_setup_sd() {
+    // SD card pins
+    // Card is used in SDIO mode for main program, and in SPI mode for crash handler & bootloader.
+    //        pin             function       pup   pdown  out    state fast
+    gpio_conf(SD_SPI_SCK,     GPIO_FUNC_SPI, true, false, true,  true, true);
+    gpio_conf(SD_SPI_MOSI,    GPIO_FUNC_SPI, true, false, true,  true, true);
+    gpio_conf(SD_SPI_MISO,    GPIO_FUNC_SPI, true, false, false, true, true);
+    gpio_conf(SD_SPI_CS,      GPIO_FUNC_SIO, true, false, true,  true, true);
+    gpio_conf(SDIO_D1,        GPIO_FUNC_SIO, true, false, false, true, true);
+    gpio_conf(SDIO_D2,        GPIO_FUNC_SIO, true, false, false, true, true);
+}
+
 void platform_init()
 {
 #ifndef PICO_RP2040
@@ -474,17 +486,7 @@ void platform_init()
     restore_interrupts(saved_irq);
     g_flash_chip_size = (1 << response_jedec[3]);
     logmsg("Flash chip size: ", (int)(g_flash_chip_size / 1024), " kB");
-
-    // SD card pins
-    // Card is used in SDIO mode for main program, and in SPI mode for crash handler & bootloader.
-    //        pin             function       pup   pdown  out    state fast
-    gpio_conf(SD_SPI_SCK,     GPIO_FUNC_SPI, true, false, true,  true, true);
-    gpio_conf(SD_SPI_MOSI,    GPIO_FUNC_SPI, true, false, true,  true, true);
-    gpio_conf(SD_SPI_MISO,    GPIO_FUNC_SPI, true, false, false, true, true);
-    gpio_conf(SD_SPI_CS,      GPIO_FUNC_SIO, true, false, true,  true, true);
-    gpio_conf(SDIO_D1,        GPIO_FUNC_SIO, true, false, false, true, true);
-    gpio_conf(SDIO_D2,        GPIO_FUNC_SIO, true, false, false, true, true);
-
+    platform_setup_sd();
     // LED pin
     if (!rp2040.isPicoW())
         gpio_conf(LED_PIN,    GPIO_FUNC_SIO, false,false, true,  false, false);
@@ -507,8 +509,8 @@ void platform_init()
     gpio_conf(GPIO_USB_POWER, GPIO_FUNC_SIO, false, false, false,  false, false);
 #endif
     checkIs2023a();
-
 }
+
 void platform_enable_initiator_mode()
 {
     g_scsi_initiator = true;

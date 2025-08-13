@@ -1,6 +1,6 @@
 /*
  *  BlueSCSI v2
- *  Copyright (c) 2023 Eric Helgeson, Androda, and contributors.
+ *  Copyright (c) 2023-2025 Eric Helgeson, Androda, and contributors.
  *
  *  This project is based on ZuluSCSI, BlueSCSI v1, and SCSI2SD:
  *
@@ -880,7 +880,7 @@ static void check_for_unused_update_files()
     if (!file.isDir())
     {
       size_t filename_len = file.getName(filename, sizeof(filename));
-      if (strncasecmp(filename, "bluescsi", sizeof("bluescsi" - 1)) == 0 &&
+      if (strncasecmp(filename, "bluescsi", sizeof("bluescsi") - 1) == 0 &&
           strncasecmp(filename + filename_len - 4, ".bin", 4) == 0)
       {
         bin_files_found = true;
@@ -1095,10 +1095,9 @@ static void bluescsi_setup_sd_card(bool wait_for_card = true)
       logmsg("Continuing without SD card");
     }
   }
-  check_for_unused_update_files();
-  firmware_update();
-
-
+  // We only have 2 boards, we don't use this Zip file parsing.
+  //check_for_unused_update_files();
+  //firmware_update();
 
   if (g_sdcard_present)
   {
