@@ -86,13 +86,15 @@ bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_
     // Avoid any mbed timer interrupts triggering during the flashing.
     uint32_t saved_irq = save_and_disable_interrupts();
 
+#ifndef ZULUSCSI_MCU_RP23XX
     // For some reason any code executed after flashing crashes
-    // unless we disable the XIP cache.
+    // unless we disable the XIP cache on RP2040.
     // Not sure why this happens, as flash_range_program() is flushing
     // the cache correctly.
     // The cache is now enabled from bootloader start until it starts
     // flashing, and again after reset to main firmware.
     xip_ctrl_hw->ctrl = 0;
+#endif
 
     flash_range_erase(offset, PLATFORM_FLASH_PAGE_SIZE);
     flash_range_program(offset, buffer, PLATFORM_FLASH_PAGE_SIZE);
