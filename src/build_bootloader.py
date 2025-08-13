@@ -1,4 +1,7 @@
+# This file is originally part of ZuluSCSI adapted for BlueSCSI
+#
 # ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
+# Eric Helgeson - Copyright 2025
 #
 # ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
 #
@@ -34,14 +37,21 @@ bootloader_main = env2.Object(
     ["BlueSCSI_main.cpp"]
 )
 
+# BlueSCSI_msc_initiator, BlueSCSI_msc g_msc_initiator
+# BlueSCSI_log_trace, ImageBackingStore -> ROMDrive -^ links to initiator
+
+excluded_files = ['BlueSCSI_main', 'BlueSCSI_Toolbox', 'BlueSCSI_cdrom', 'BlueSCSI_disk',
+                  'BlueSCSI_tape', 'BlueSCSI_platform_msc', 'QuirksCheck', 'BlueSCSI_blink', 'BlueSCSI_mode']
+
 # Include all other dependencies except BlueSCSI_main.cpp
 dep_objs = []
 for nodelist in env["PIOBUILDFILES"]:
     for node in nodelist:
         filename = str(node.rfile())
-        if 'BlueSCSI_main' not in filename:
+        if not any(excluded_file in filename for excluded_file in excluded_files):
             dep_objs.append(node)
-# print("Bootloader dependencies: ", type(dep_objs), str([str(f.rfile()) for f in dep_objs]))
+print("== Bootloader dependencies:\n|--",
+      "\n|-- ".join([str(f.path) for f in dep_objs]))
 
 # Use different linker script for bootloader
 if env2.GetProjectOption("ldscript_bootloader"):
@@ -60,6 +70,15 @@ bootloader_bin = env.ElfToBin(
     os.path.join("$BUILD_DIR", "bootloader.bin"),
     bootloader_elf
 )
+
+def print_bootloader_size(source, target, env):
+    bootloader_bin_path = str(target[0].get_abspath())
+    size = os.path.getsize(bootloader_bin_path)
+    max_size = 135168  # 132k
+    percentage = (size / max_size) * 100
+    print(f"Bootloader binary size: {size} / {max_size} bytes ({percentage:.2f}%)")
+
+env.AddPostAction(bootloader_bin, print_bootloader_size)
 
 # Convert back to .o to facilitate linking
 def escape_cpp(path):
