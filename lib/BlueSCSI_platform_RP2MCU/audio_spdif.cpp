@@ -347,7 +347,7 @@ void audio_dma_irq() {
 }
 
 bool audio_is_active() {
-    return audio_owner != 0xFF;
+    return audio_owner != 0xFF && g_scsi_settings.getSystem()->enableCDAudio;
 }
 
 bool audio_is_playing(uint8_t id) {
@@ -355,6 +355,20 @@ bool audio_is_playing(uint8_t id) {
 }
 
 void audio_setup() {
+    if (!g_scsi_settings.getSystem()->enableCDAudio)
+        return;
+    logmsg("BlueSCSI CD Audio Enabled - Connect DAC to BlueSCSI or use SPDIF on I2C SCL pin");
+    gpio_put(GPIO_EXP_AUDIO, true);
+    gpio_set_dir(GPIO_EXP_AUDIO, false);
+    gpio_set_pulls(GPIO_EXP_AUDIO, true, false);
+    gpio_set_function(GPIO_EXP_AUDIO, GPIO_FUNC_SPI);
+    gpio_set_slew_rate(GPIO_EXP_AUDIO, GPIO_SLEW_RATE_FAST);
+
+    gpio_put(GPIO_EXP_SPARE, true);
+    gpio_set_dir(GPIO_EXP_SPARE, false);
+    gpio_set_pulls(GPIO_EXP_SPARE, true, false);
+    gpio_set_function(GPIO_EXP_SPARE, GPIO_FUNC_SIO);
+
     // setup SPI to blast S/PDIF data over the TX pin
     spi_set_baudrate(AUDIO_SPI, 5644800); // will be slightly wrong, ~0.03% slow
     hw_write_masked(&spi_get_hw(AUDIO_SPI)->cr0,
@@ -371,7 +385,7 @@ void audio_setup() {
 }
 
 void audio_poll() {
-    if (!audio_is_active()) return;
+    if (!audio_is_active() || !g_scsi_settings.getSystem()->enableCDAudio) return;
     if (audio_paused) return;
     if (fleft == 0 && sbufst_a == STALE && sbufst_b == STALE) {
         // out of data and ready to stop

@@ -514,19 +514,13 @@ void platform_init()
     if (!rp2040.isPicoW())
         gpio_conf(LED_PIN,    GPIO_FUNC_SIO, false,false, true,  false, false);
 
-#ifndef ENABLE_AUDIO_OUTPUT_SPDIF
+
 #ifdef GPIO_I2C_SDA
     // I2C pins
     //        pin             function       pup   pdown  out    state fast
     // gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_I2C, true,false, false,  true, true);
     // gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_I2C, true,false, false,  true, true);
 #endif  // GPIO_I2C_SDA
-#else
-    //        pin             function       pup   pdown  out    state fast
-    gpio_conf(GPIO_EXP_AUDIO, GPIO_FUNC_SPI, true,false, false,  true, true);
-    gpio_conf(GPIO_EXP_SPARE, GPIO_FUNC_SIO, true,false, false,  true, false);
-    // configuration of corresponding SPI unit occurs in audio_setup()
-#endif  // ENABLE_AUDIO_OUTPUT_SPDIF
 
 #ifdef GPIO_USB_POWER
     gpio_conf(GPIO_USB_POWER, GPIO_FUNC_SIO, false, false, false,  false, false);
@@ -615,7 +609,25 @@ void platform_late_init()
         gpio_conf(SCSI_IN_ATN,    GPIO_FUNC_SIO, true, false, false, true, false);
         gpio_conf(SCSI_IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
 
-#ifdef BLUESCSI_RM2
+#if defined(BLUESCSI_WIDE)
+    logmsg("Wide board runs at base speed of ",(int) platform_sys_clock_in_hz(), "Hz");
+#elif defined(BLUESCSI_BLASTER)
+    logmsg("Reclock Blaster based boards to standardized speed");
+    platform_reclock(SPEED_GRADE_BASE_155MHZ);
+#elif defined(BLUESCSI_PICO_2)
+    logmsg("Reclock Pico 2/2W based boards to standardized speed");
+    platform_reclock(SPEED_GRADE_BASE_155MHZ);
+#elif defined(BLUESCSI_MCU_RP20XX)
+    logmsg("Reclock RP2040 & Pico 1/1W based boards to standardized speed");
+    platform_reclock(SPEED_GRADE_BASE_203MHZ);
+#endif
+
+#ifdef ENABLE_AUDIO_OUTPUT_I2S
+    logmsg("BlueSCSI CD Audio enabled - requires DAC");
+    audio_setup();
+#endif
+
+#ifdef BlSCSI_RM2
     uint rm2_pins[CYW43_PIN_INDEX_WL_COUNT] = {0};
     rm2_pins[CYW43_PIN_INDEX_WL_REG_ON] = GPIO_RM2_ON;
     rm2_pins[CYW43_PIN_INDEX_WL_DATA_OUT] = GPIO_RM2_DATA;
@@ -624,45 +636,18 @@ void platform_late_init()
     rm2_pins[CYW43_PIN_INDEX_WL_CLOCK] = GPIO_RM2_CLK;
     rm2_pins[CYW43_PIN_INDEX_WL_CS] = GPIO_RM2_CS;
     assert(PICO_OK == cyw43_set_pins_wl(rm2_pins));
-    if (platform_reclock(SPEED_GRADE_WIFI_RM2))
-    {
+
         // The iface check turns on the LED on the RM2 early in the init process
-        // Should tell the user that the RM2 is working
-        if(platform_network_iface_check())
-        {
-            logmsg("RM2 found");
-        }
-        else
-        {
-# ifdef BLUESCSI_BLASTER
-            logmsg("RM2 not found, upclocking");
-            platform_reclock(SPEED_GRADE_AUDIO_I2S);
-# else
-            logmsg("RM2 not found");
-# endif
-        }
+    // Should tell the user that the RM2 is working
+    if(platform_network_iface_check())
+    {
+        logmsg("RM2 found");
     }
     else
     {
-        logmsg("WiFi RM2 timings not found");
+        logmsg("RM2 not found");
     }
-#elif defined(ENABLE_AUDIO_OUTPUT_I2S)
-    logmsg("I2S audio to expansion header enabled");
-    if (!platform_reclock(SPEED_GRADE_AUDIO_I2S))
-    {
-        logmsg("Audio output timings not found");
-    }
-#elif defined(ENABLE_AUDIO_OUTPUT_SPDIF)
-    logmsg("S/PDIF audio to expansion header enabled");
-    if (platform_reclock(SPEED_GRADE_AUDIO_SPDIF))
-    {
-        logmsg("Reclocked for Audio Ouput at ", (int) platform_sys_clock_in_hz(), "Hz");
-    }
-    else
-    {
-        logmsg("Audio Output timings not found");
-    }
-#endif // ENABLE_AUDIO_OUTPUT_SPDIF
+#endif
 
 // This should turn on the LED for Pico 1/2 W devices early in the init process
 // It should help indicate to the user that interface is working and the board is ready for DaynaPORT
@@ -671,11 +656,6 @@ void platform_late_init()
         platform_network_iface_check();
 #endif
 
-
-#ifdef ENABLE_AUDIO_OUTPUT
-        // one-time control setup for DMA channels and second core
-        audio_setup();
-#endif // ENABLE_AUDIO_OUTPUT_SPDIF
     }
     else
     {
@@ -709,7 +689,14 @@ void platform_initiator_gpio_setup() {
 bool platform_supports_initiator_mode() {
     return g_supports_initiator;
 }
-void platform_post_sd_card_init() {}
+
+void platform_post_sd_card_init()
+{
+#if defined(ENABLE_AUDIO_OUTPUT) && !defined(BLUESCSI_BLASTER)
+        // one-time control setup for DMA channels and second core
+        audio_setup();
+#endif // ENABLE_AUDIO_OUTPUT
+}
 
 bool platform_is_initiator_mode_enabled()
 {

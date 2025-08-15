@@ -343,7 +343,7 @@ static bluescsi_timings_t  predefined_timings[]  = {
             .audio_clocked = false,
         }
     },
-    // predefined_timings[5] - 155250000 - Default clocks for Blaster I2S Audio
+    // predefined_timings[5] - 155250000 - Default clock for RP235X with external RM2
     {
         .clk_hz = 155250000,
 
@@ -607,14 +607,78 @@ static bluescsi_timings_t  predefined_timings[]  = {
             .audio_clocked = true,
         }
     },
-    
+    // predefined_timings[9] - 203200000 - Base clock for RP2040, compatible with I2S and SPDIF over SPI
+    {
+        .clk_hz = 203200000,
+
+        .pll =
+        {
+            .refdiv = 3,
+            .vco_freq = 1016000000,
+            .post_div1 = 5,
+            .post_div2 = 1
+        },
+
+        .scsi =
+        {
+            .req_delay = 12,
+            .clk_period_ps = 4921
+        },
+
+        .scsi_20 =
+        {
+            .delay0 = 2 - 1,
+            .delay1 = 5 - 1,
+            .total_period_adjust = 0,
+            .rdelay1 = 7 - 1,
+            .rtotal_period_adjust = 1,
+            .max_sync = 12,
+
+        },
+
+        .scsi_10 =
+        {
+            .delay0 = 5 - 1,
+            .delay1 = 9 - 1,
+            .total_period_adjust = 0,
+            .rdelay1 = 9 - 1,
+            .rtotal_period_adjust = 0,
+            .max_sync = 25,
+
+        },
+
+        .scsi_5 =
+        {
+            .delay0 = 5 - 1,
+            .delay1 = 10 - 1,
+            .total_period_adjust = 0,
+            .rdelay1 = 10 - 1,
+            .rtotal_period_adjust = 0,
+            .max_sync = 50,
+            .clkdiv = 2,
+        },
+
+        .sdio =
+        {
+            .clk_div_1mhz = 30,
+            .clk_div_pio = 5,
+            .delay0 = 4 - 1, // subtract one for the instruction delay
+            .delay1 = 1 - 1  // clk_div_pio - delay0 and subtract one for the instruction delay
+        },
+
+        .audio =
+        {
+            // Divider for 44.1KHz to the nearest integer with a sys clk divided by 2 x 16-bit samples with the pio clock running 2x I2S clock
+            // 200.4Mhz / 16 / 2 / 2 / 44.1KHz = 71.003 ~= 71
+            .clk_div_pio = 72,
+            .audio_clocked = true,
+        }
+    },
+
+
 };
 
-#ifdef ENABLE_AUDIO_OUTPUT_SPDIF
-bluescsi_timings_t *g_bluescsi_timings = &predefined_timings[2];
-#elif defined(ENABLE_AUDIO_OUTPUT_I2S)
-bluescsi_timings_t *g_bluescsi_timings = &predefined_timings[7];
-#elif defined(BLUESCSI_MCU_RP23XX)
+#ifdef BLUESCSI_MCU_RP23XX
 bluescsi_timings_t *g_bluescsi_timings = &predefined_timings[3];
 #elif defined(BLUESCSI_PICO)
 bluescsi_timings_t *g_bluescsi_timings = &predefined_timings[1];
@@ -641,20 +705,24 @@ bool set_timings(bluescsi_speed_grade_t speed_grade)
         timings_index = 5;
         break;
     case SPEED_GRADE_AUDIO_SPDIF:
-        timings_index = 2;
+        timings_index = 9;
         break;
-    case SPEED_GRADE_200MHZ:
     case SPEED_GRADE_AUDIO_I2S:
-        timings_index = 7;
+        timings_index = 5;
         break;
     case SPEED_GRADE_WIFI_RM2:
+        timings_index = 3;
+        break;
+    case SPEED_GRADE_BASE_203MHZ:
+        timings_index = 9;
+        break;
+    case SPEED_GRADE_BASE_155MHZ:
         timings_index = 5;
 #elif defined(BLUESCSI_MCU_RP23XX)
     case SPEED_GRADE_MAX:
     case SPEED_GRADE_A:
         timings_index = 4;
         break;
-    case SPEED_GRADE_200MHZ:
     case SPEED_GRADE_B:
         timings_index = 7;
         break;
@@ -662,13 +730,19 @@ bool set_timings(bluescsi_speed_grade_t speed_grade)
         timings_index  = 6;
         break;
     case SPEED_GRADE_AUDIO_SPDIF:
-        timings_index = 2;
+        timings_index = 9;
         break;
     case SPEED_GRADE_AUDIO_I2S:
+        timings_index  =9;
+        break;
+    case SPEED_GRADE_BASE_203MHZ:
+        timings_index = 9;
+        break;
+    case SPEED_GRADE_BASE_155MHZ:
         timings_index = 5;
         break;
 #else
-case SPEED_GRADE_MAX:
+    case SPEED_GRADE_MAX:
     case SPEED_GRADE_A:
         timings_index = 4;
         break;
@@ -679,13 +753,17 @@ case SPEED_GRADE_MAX:
         timings_index  = 1;
         break;
     case SPEED_GRADE_AUDIO_SPDIF:
-        timings_index = 2;
+        timings_index = 9;
         break;
     case SPEED_GRADE_AUDIO_I2S:
+        timings_index = 9;
+        break;
+    case SPEED_GRADE_BASE_203MHZ:
+        timings_index = 9;
+        break;
+    case SPEED_GRADE_BASE_155MHZ:
         timings_index = 5;
         break;
-    case SPEED_GRADE_200MHZ:
-        timings_index = 7;
 #endif
         default:
             break;
