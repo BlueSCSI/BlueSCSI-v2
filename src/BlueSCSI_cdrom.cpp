@@ -1382,7 +1382,30 @@ void cdromGetAudioPlaybackStatus(uint8_t *status, uint32_t *current_lba, bool cu
 
 static void doPlayAudio(uint32_t lba, uint32_t length)
 {
-#if defined(ENABLE_AUDIO_OUTPUT) && !defined(BLUESCSI_BLASTER)
+#ifdef ENABLE_AUDIO_OUTPUT
+    if (!g_scsi_settings.getSystem()->enableCDAudio)
+    {
+        dbgmsg("---- Audio disabled in ", CONFIGFILE);
+#else
+    {
+        dbgmsg("---- Target does not support audio playback");
+#endif
+        // per SCSI-2, targets not supporting audio respond to zero-length
+        // PLAY AUDIO commands with ILLEGAL REQUEST; this seems to be a check
+        // performed by at least some audio playback software
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.target->sense.asc = 0x0000; // NO ADDITIONAL SENSE INFORMATION
+        scsiDev.phase = STATUS;
+        return;
+// Just balancing curly braces for IDE like vscode
+#ifdef ENABLE_AUDIO_OUTPUT
+    }
+#else
+    }
+#endif
+
+#if defined(ENABLE_AUDIO_OUTPUT) && !defined(ZULUSCSI_BLASTER)
     dbgmsg("------ CD-ROM Play Audio request at ", lba, " for ", length, " sectors");
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     uint8_t target_id = img.scsiId & 7;
@@ -1490,15 +1513,6 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
         scsiDev.target->sense.asc = 0x6400; // ILLEGAL MODE FOR THIS TRACK
         scsiDev.phase = STATUS;
     }
-#else
-    dbgmsg("---- Target does not support audio playback");
-    // per SCSI-2, targets not supporting audio respond to zero-length
-    // PLAY AUDIO commands with ILLEGAL REQUEST; this seems to be a check
-    // performed by at least some audio playback software
-    scsiDev.status = CHECK_CONDITION;
-    scsiDev.target->sense.code = ILLEGAL_REQUEST;
-    scsiDev.target->sense.asc = 0x0000; // NO ADDITIONAL SENSE INFORMATION
-    scsiDev.phase = STATUS;
 #endif
 }
 
