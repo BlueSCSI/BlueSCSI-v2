@@ -2430,7 +2430,7 @@ int scsiDiskCommand()
             scsiDev.cdb[8];
 
         scsiDev.data[0] = 0;
-        scsiDev.data[1] = scsiDev.cdb[1];
+        scsiDev.data[1] = scsiDev.cdb[2];
         scsiDev.data[2] = 0;
         scsiDev.data[3] = 0;
         scsiDev.dataLen = 4;
