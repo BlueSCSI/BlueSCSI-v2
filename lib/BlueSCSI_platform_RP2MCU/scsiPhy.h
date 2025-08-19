@@ -75,6 +75,7 @@ uint8_t scsiReadByte(void);
 // Depending on platform support the start() function may block.
 // The start function can be called multiple times, it may internally
 // either combine transfers or block until previous transfer completes.
+// After final read, call scsiFinishRead() with data = NULL.
 void scsiStartWrite(const uint8_t* data, uint32_t count);
 void scsiFinishWrite();
 void scsiStartRead(uint8_t* data, uint32_t count, int *parityError);

@@ -461,7 +461,7 @@ extern "C" void scsiRead(uint8_t* data, uint32_t count, int* parityError)
     if (!(scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY)) { parityError = NULL; }
 
     scsiStartRead(data, count, parityError);
-    scsiFinishRead(data, count, parityError);
+    scsiFinishRead(NULL, 0, parityError);
 }
 
 extern "C" void scsiStartRead(uint8_t* data, uint32_t count, int *parityError)
