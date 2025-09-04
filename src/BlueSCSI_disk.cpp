@@ -1852,6 +1852,17 @@ void diskDataOut()
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     uint32_t blockcount = (transfer.blocks - transfer.currentBlock);
     uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+
+    // If we are using non-power-of-two sector size, wrapping around
+    // the buffer edge doesn't work out. Instead limit the transfer
+    // to a smaller section and re-enter diskDataOut().
+    uint32_t blocksPerBuffer = sizeof(scsiDev.data) / bytesPerSector;
+    if (blockcount > blocksPerBuffer &&
+        blocksPerBuffer * bytesPerSector != sizeof(scsiDev.data))
+    {
+        blockcount = blocksPerBuffer;
+    }
+
     g_disk_transfer.buffer = scsiDev.data;
     g_disk_transfer.bytes_scsi = blockcount * bytesPerSector;
     g_disk_transfer.bytes_sd = 0;
