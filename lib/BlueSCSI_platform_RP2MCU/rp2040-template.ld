@@ -70,15 +70,24 @@ SECTIONS
         *(.eh_frame*)
         . = ALIGN(4);
 
-        /* Put only non-timecritical code in flash
-         * This includes e.g. floating point math routines.
+        /* The rules below aim to put non-performance-critical code in flash.
+         * The functions that are *not* listed below will go to .data in RAM.
+         *
+         * RP2040 has 16 kB of cache for the flash, so functions that are large
+         * and rarely used can be put in flash, even if they are important for
+         * performance when they are in use. By having most of the constantly
+         * executing code in RAM already, there is less contention for cache space.
          */
+/*
         .pio/build/$project_name/src/BlueSCSI_initiator.cpp.o(.text .text*)
         .pio/build/$project_name/src/BlueSCSI_msc_initiator.cpp.o(.text .text*)
         .pio/build/$project_name/src/BlueSCSI_log.cpp.o(.text .text*)
         .pio/build/$project_name/src/BlueSCSI_log_trace.cpp.o(.text .text*)
         .pio/build/$project_name/src/BlueSCSI_settings.cpp.o(.text .text*)
         .pio/build/$project_name/src/QuirksCheck.cpp.o(.text .text*)
+
+*/  
+	/* Standard library floating point etc. functions */
         *libm*:(.text .text*)
         *libc*:(.text .text*)
         *libgcc*:*df*(.text .text*)
@@ -91,8 +100,133 @@ SECTIONS
         *nosys*:(.text .text*)
         *libc*:*printf*(.text .text*)
         *libc*:*toa*(.text .text*)
+
+        /* Libraries that are not performance-critical */
         *libminIni.a:(.text .text*)
         *libCUEParser.a:(.text .text*)
+
+        /* C++ constructors and destructors */
+        *(.text*_ZN*C1*)
+        *(.text*_ZN*C2*)
+        *(.text*_ZN*D1*)
+        *(.text*_ZN*D2*)
+
+        /* Initialization functions go to flash */
+        *(.text*platform_init*)
+        *(.text*platform_late_init*)
+        *(.text*platform_enter_msc*)
+        *(.text*zuluscsi_setup*)
+        *(.text*audio_setup*)
+        *(.text*init_logfile*)
+        *(.text*find_chs_capacity*)
+        *(.text*irq_remove_handler*)
+        *(.text*irq_add_shared_handler*)
+        *(.text*image_config_t*clear*)
+        *(.text*reinitSCSI*)
+        *(.text*print_sd_info*)
+        *(.text*kiosk_restore_images*)
+        *(.text*scsi_accel_rp2040_init*)
+        *(.text*rp2040_sdio_init*)
+        *(.text*PIOProgram*prepare*)
+        *(.text*createImage*)
+        *(.text*s2s_configInit*)
+        *(.text*SdioCard*begin*)
+        *(.text*mountSDCard*)
+        *(.text*set_timings_from_file*)
+        *(.text*scsiInit*)
+
+        /* Logging code
+         * Small parts of this will be executed in normal, non-debug mode,
+         * but those can go to cache.
+         */
+        *ZuluSCSI_log.cpp.o(.text .text*)
+        *ZuluSCSI_log_trace.cpp.o(.text .text*)
+
+        /* ROM drive setup and FW upgrade that is done only during init */
+        *(.text*romDriveClear*)
+        *(.text*romDriveCheckPresent*)
+        *(.text*zipparser*)
+        *(.text*firmware_update*)
+
+        /* BlueSCSI_disk functions that are only used during init */
+        *BlueSCSI_settings.cpp.o(.text .text*)
+        *QuirksCheck.cpp.o(.text .text*)
+        *(.text*scsiDiskFilenameValid*)
+        *(.text*scsiDiskOpenHDDImage*)
+        *(.text*scsiDiskGetNextImageName*)
+        *(.text*scsiDiskProgramRomDrive*)
+        *(.text*scsiDiskLoadConfig*)
+        *(.text*scsiDiskActivateRomDrive*)
+        *(.text*scsiDiskSetImageConfig*)
+        *(.text*ImageBackingStore*open*)
+        *(.text*ImageBackingStore*ImageBackingStore*)
+        *(.text*findHDDImages*)
+        *(.text*scsiDiskCloseSDCardImages*)
+        *(.text*extractFileName*)
+        *(.text*setNameFromImage*)
+        *(.text*getBlockSize*)
+
+        /* SCSI commands that don't require high performance */
+        *(.text*scsiToolboxCommand*)
+        *(.text*scsi*Diagnostic*)
+        *(.text*Inquiry*)
+        *(.text*modeSelect*)
+        *(.text*modeSense*)
+        *(.text*doModeSelect*)
+        *(.text*doModeSense*)
+        *(.text*scsiModeCommand*)
+        *(.text*doPerformEject*)
+
+        /* CDROM/Tape/Vendor commands. Most of these are non-performance-critical, and
+         * the important parts will fit in cache when in use. */
+        *(.text*scsiTapeCommand*)
+        *(.text*scsiCDRomCommand*)
+        *(.text*scsiMOCommand*)
+        *(.text*doReadCD*)
+        *(.text*doReadTOC*)
+        *(.text*doReadHeader*)
+        *(.text*doPlayAudio*)
+        *(.text*audio_play*)
+        *(.text*doReadSubchannel*)
+        *(.text*doGetConfiguration*)
+        *(.text*cdromPerformEject*)
+        *(.text*CueSheet*)
+        *(.text*switchNextImage*)
+        *(.text*findNextImageAfter*)
+        *(.text*DiscInfo*)
+        *(.text*TrackInfo*)
+        *(.text*doCountFiles*)
+        *(.text*doReadFullTOC*)
+        *(.text*scsiVendorCommand*)
+        *(.text*onListFiles*)
+
+        /* SCSI Initiator mode code. These will fit in cache when in use. */
+        *BlueSCSI_initiator.cpp.o(.text .text*)
+        *BlueSCSI_msc_initiator.cpp.o(.text .text*)
+        *scsi_accel_host*(.text .text*)
+        *scsiHostPhy*(.text .text*)
+
+        /* Filesystem functions that are not performance-critical.
+         * Mostly used during initialization only. */
+        *(.text*File*open*)
+        *(.text*File*init*)
+        *(.text*File*remove*)
+        *(.text*File*truncate*)
+        *(.text*File*sync*)
+        *(.text*File*mkdir*)
+        *(.text*File*bitmap*)
+        *(.text*File*Name*)
+        *(.text*File*SFN*)
+        *(.text*File*LFN*)
+        *(.text*File*addCluster*)
+        *(.text*Volume*attrib*)
+        *(.text*Volume*begin*)
+
+        /* USB functions that only run in specific modes.
+           These will fit in cache when they are in use (USB connected). */
+        *libpico*:*(.text*msc*)
+        *libpico*:*(.text*hidd*)
+        *(.text*tud_msc*)
 
         /* RP2040 breakpoints in RAM code don't always work very well
          * because the boot routine tends to overwrite them.

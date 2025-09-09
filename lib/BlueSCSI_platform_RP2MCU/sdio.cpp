@@ -108,6 +108,7 @@ void rp2040_sdio_dma_irq();
 //    uint8_t crc = 0;
 //    crc = crc7_table[crc ^ byte];
 //    .. repeat for every byte ..
+__attribute__((section(".time_critical.crc7_table")))
 static const uint8_t crc7_table[256] = {
 	0x00, 0x12, 0x24, 0x36, 0x48, 0x5a, 0x6c, 0x7e,
     0x90, 0x82, 0xb4, 0xa6, 0xd8, 0xca, 0xfc, 0xee,
