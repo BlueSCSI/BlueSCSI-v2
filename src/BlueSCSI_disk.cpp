@@ -1426,6 +1426,7 @@ void s2s_configInit(S2S_BoardCfg* config)
     ini_gets("SCSI", "WiFiSSID", "", tmp, sizeof(tmp), CONFIGFILE);
     if (tmp[0]) memcpy(config->wifiSSID, tmp, sizeof(config->wifiSSID));
 
+
     memset(tmp, 0, sizeof(tmp));
     ini_gets("SCSI", "WiFiPassword", "", tmp, sizeof(tmp), CONFIGFILE);
     if (tmp[0]) memcpy(config->wifiPassword, tmp, sizeof(config->wifiPassword));

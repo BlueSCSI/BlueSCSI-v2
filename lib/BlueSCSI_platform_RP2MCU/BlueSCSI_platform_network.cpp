@@ -142,11 +142,7 @@ bool platform_network_wifi_join(char *ssid, char *password)
 		ret = cyw43_arch_wifi_connect_async(ssid, password, CYW43_AUTH_WPA2_MIXED_PSK);
 	}
 
-	if (ret != 0)
-	{
-		logmsg("Wi-Fi connection failed: ", ret);
-	}
-	else
+	if (ret == 0)
 	{
 		// Short single blink at start of connection sequence
 		PICO_W_LED_OFF();
@@ -155,17 +151,42 @@ bool platform_network_wifi_join(char *ssid, char *password)
 		delay(PICO_W_SHORT_BLINK_DELAY);
 		PICO_W_LED_OFF();
 	}
-	
+	else
+	{
+		logmsg("Error occurred starting the Wi-Fi interface to SSID ", ssid);
+	}
 	return (ret == 0);
 }
 
 void platform_network_poll()
 {
+	static int last_network_status = CYW43_LINK_DOWN;
 	if (!network_in_use)
 		return;
-
+	int status = cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA);
+	char * ssid = scsiDev.boardCfg.wifiSSID;
+	if ((last_network_status != status) && (status == CYW43_LINK_BADAUTH || status == CYW43_LINK_NONET || status == CYW43_LINK_FAIL || status == CYW43_LINK_NOIP))
+	{
+		switch (status)
+		{
+			case CYW43_LINK_NOIP:
+				logmsg("WiFi connected to ", ssid, " but was not assigned in an IP");
+				break;
+			case CYW43_LINK_BADAUTH:
+				logmsg("Wi-Fi authentication failure connecting to \"", ssid, "\", please check the setting \"WiFiPassword\" in ", CONFIGFILE);
+				break;
+			case CYW43_LINK_NONET:
+				logmsg("Wi-Fi SSID ", ssid, " not found, possible of out range or down");
+				break;
+			case CYW43_LINK_FAIL:
+				logmsg("WiFi connection to ", ssid, " failed");
+				break;
+		}
+		last_network_status = status;
+	}
 	scsiNetworkPurge();
 	cyw43_arch_poll();
+
 }
 
 int platform_network_send(uint8_t *buf, size_t len)
