@@ -1206,7 +1206,8 @@ bool cdromValidateCueSheet(image_config_t &img)
 
         if (trackinfo->track_mode != CUETrack_AUDIO &&
             trackinfo->track_mode != CUETrack_MODE1_2048 &&
-            trackinfo->track_mode != CUETrack_MODE1_2352)
+            trackinfo->track_mode != CUETrack_MODE1_2352 &&
+            trackinfo->track_mode != CUETrack_MODE2_2352)
         {
             logmsg("---- Warning: track ", trackinfo->track_number, " has unsupported mode ", (int)trackinfo->track_mode);
         }
@@ -1800,6 +1801,11 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
     {
         // Transfer whole 2352 byte data sector with ECC to host
         sector_length = AUDIO_CD_SECTOR_LEN;
+    }
+    else if (trackinfo.track_mode == CUETrack_MODE2_2352 && main_channel == 0x10)
+    {
+        skip_begin = 24;
+        sector_length = 2048;
     }
     else
     {
