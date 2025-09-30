@@ -58,7 +58,7 @@ if env2.GetProjectOption("ldscript_bootloader"):
     env2.Replace(LDSCRIPT_PATH = env2.GetProjectOption("ldscript_bootloader"))
     env2['LINKFLAGS'] = [a for a in env2['LINKFLAGS'] if not a.startswith('-T') and not a.endswith('.ld')]
     env2.Append(LINKFLAGS="-T" + env2.GetProjectOption("ldscript_bootloader"))
-
+    env2.Append(LINKFLAGS="-Wl,-Map=\"" + os.path.join("$BUILD_DIR", "bootloader.map") + "\"")
 # Build bootloader.elf
 bootloader_elf = env2.Program(
     os.path.join("$BUILD_DIR", "bootloader.elf"),
