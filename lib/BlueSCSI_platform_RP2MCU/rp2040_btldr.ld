@@ -44,7 +44,38 @@ SECTIONS
         __flash_binary_start = .;
     } > FLASH
 
+    /* Discard code that is not used in bootloader mode to
+    * reduce the flash usage.
+    */
+    /DISCARD/ : {
+
+        *scanf*(*)
+        *strtod*(*)
+        *libipv4.a:*(*)
+        *liblwip*.a:*(*)
+        *libBlueSCSI_audio_RP2MCU.a:*(*)
+        *libAdafruit*.a:*(*)
+        *libWire.a:*(*)
+        *libSPI.a:*(*)
+        *libBlueSCSI_platform_RP2MCU.a:BlueSCSI_platform_network.cpp.o*(*)
+        *libFrameworkArduino.a:cyw43_wrappers.cpp.o*(*)
+
+        /* gt */
+        *BlueSCSI_tape.cpp.o*(*)
+        *BlueSCSI_mode.cpp.o*(*)
+        *BlueSCSI_blink.cpp.o*(*)
+        *BlueSCSI_buffer_control.cpp.o*(*)
+        *uiDiskUtils.cpp.o*(*)
+        *SDNavigator.cpp.o*(*)
+    }
+
     .text : {
+        cyw43_digitalWrite = 0;
+        cyw43_digitalRead = 0;
+        cyw43_pinMode = 0;
+        init_cyw43_wifi = bootloader_main;
+        platform_poll = 0;
+
         __logical_binary_start = .;
         KEEP (*(.btldr_vectors))
         KEEP (*(.binary_info_header))
