@@ -489,7 +489,17 @@ bool findHDDImages()
         }
 
         // skip file if the name indicates it is not a valid image container
-        if (!is_romdrive && !scsiDiskFilenameValid(name)) continue;
+        if (!is_romdrive && !scsiDiskFilenameValid(name))
+        {
+#ifdef BLUESCSI_NETWORK
+          if (is_ne)
+            logmsg("-- WARNING: File '", name, "' has an invalid extension.");
+          else
+            continue;
+#else
+          continue;
+#endif
+        }
 
         // Defaults for Hard Disks
         int id  = 1; // 0 and 3 are common in Macs for physical HD and CD, so avoid them.
