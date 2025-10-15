@@ -34,7 +34,8 @@ void scsi_accel_log_state();
 // Setting syncOffset = 0 enables asynchronous SCSI.
 // Setting syncOffset > 0 enables synchronous SCSI.
 // Returns false if busy, caller should issue bus reset to recover.
-bool scsi_accel_rp2040_setSyncMode(int syncOffset, int syncPeriod);
+// Setting wide enables 16-bit bus mode.
+bool scsi_accel_rp2040_setSyncMode(int syncOffset, int syncPeriod, bool wide);
 
 // Queue a request to write data from the buffer to SCSI bus.
 // This function typically returns immediately and the request will complete in background.
@@ -66,4 +67,3 @@ bool scsi_accel_rp2040_isReadFinished(const uint8_t* data);
 // If resetFlag is non-zero, aborts read immediately.
 // If a parity error has been noticed in any buffer since starting the read, parityError is set to 1.
 void scsi_accel_rp2040_finishRead(const uint8_t *data, uint32_t count, int *parityError, volatile int *resetFlag);
-

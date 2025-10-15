@@ -1106,9 +1106,16 @@ static void process_MessageOut()
 
 		if (extmsg[0] == 3 && msgLen == 2) // Wide Data Request
 		{
-			// Negotiate down to 8bit
+			uint8_t width = extmsg[1]; // Transfer width exponent, 0: 8-bit, 1: 16-bit, 2: 32-bit
+			if (width > scsiDev.boardCfg.busWidth)
+			{
+				width = scsiDev.boardCfg.busWidth;
+			}
+			scsiDev.target->busWidth = width;
+
+			// Reply with the width we support
 			scsiEnterPhase(MESSAGE_IN);
-			static const uint8_t WDTR[] = {0x01, 0x02, 0x03, 0x00};
+			uint8_t WDTR[] = {0x01, 0x02, 0x03, width};
 			scsiWrite(WDTR, sizeof(WDTR));
 
 			// SDTR becomes invalidated.

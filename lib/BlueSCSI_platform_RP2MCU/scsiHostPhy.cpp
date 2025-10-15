@@ -32,6 +32,7 @@ extern "C" {
 }
 
 volatile int g_scsiHostPhyReset;
+int g_scsiHostBusWidth;
 bool perform_parity_checking = true;
 
 #ifndef PLATFORM_HAS_INITIATOR_MODE
@@ -74,8 +75,8 @@ void scsiHostPhyReset(void)
 // Returns true if the target answers to selection request.
 bool scsiHostPhySelect(int target_id, uint8_t initiator_id)
 {
-    SCSI_ENABLE_INITIATOR();
-    SCSI_RELEASE_OUTPUTS();
+    // Command phase always happens in 8-bit mode
+    scsiHostSetBusWidth(0);
 
     // We can't write individual data bus bits, so use a bit modified
     // arbitration scheme. We always yield to any other initiator on
@@ -190,6 +191,20 @@ bool scsiHostRequestWaiting()
     return SCSI_IN(REQ);
 }
 
+void scsiHostPhySetATN(bool atn)
+{
+    SCSI_OUT(ATN, atn);
+}
+
+void scsiHostSetBusWidth(int busWidth)
+{
+#ifdef BLUESCSI_ULTRA_WIDE
+    g_scsiHostBusWidth = busWidth;
+#else
+    assert(busWidth == 0);
+#endif
+}
+
 // Blocking data transfer
 #define SCSIHOST_WAIT_ACTIVE(pin) \
   if (!SCSI_IN(pin)) { \
@@ -271,7 +286,7 @@ uint32_t scsiHostRead(uint8_t *data, uint32_t count)
     if ((count & 1) == 0 && ((uint32_t)data & 1) == 0)
     {
         // Even number of bytes, use accelerated routine
-        count = scsi_accel_host_read(data, count, &parityError, &g_scsiHostPhyReset);
+        count = scsi_accel_host_read(data, count, &parityError, g_scsiHostBusWidth, &g_scsiHostPhyReset);
     }
     else
     {

@@ -58,5 +58,11 @@ void scsiHostWaitBusFree();
 // Release all bus signals
 void scsiHostPhyRelease();
 
+// Set the bus width for SCSI transfers (0 = 8-bit, 1 = 16-bit)
+void scsiHostSetBusWidth(int busWidth);
+
+// Set the ATN (attention) signal state
+void scsiHostPhySetATN(bool state);
+
 // Set whether to perform parity checking on SCSI transfers.
 void setInitiatorModeParityCheck(bool checkParity);

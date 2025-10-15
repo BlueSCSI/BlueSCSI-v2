@@ -86,7 +86,7 @@ static void scsi_accel_host_config_gpio()
     }
 }
 
-uint32_t scsi_accel_host_read(uint8_t *buf, uint32_t count, int *parityError, volatile int *resetFlag)
+uint32_t scsi_accel_host_read(uint8_t *buf, uint32_t count, int *parityError, int busWidth, volatile int *resetFlag)
 {
     // Currently this method just reads from the PIO RX fifo directly in software loop.
     // The SD card access is parallelized using DMA, so there is limited benefit from using DMA here.
@@ -101,12 +101,21 @@ uint32_t scsi_accel_host_read(uint8_t *buf, uint32_t count, int *parityError, vo
 
     // Set the number of bytes to read, must be divisible by 2.
     assert((count & 1) == 0);
-    pio_sm_put(SCSI_PIO, SCSI_SM, count - 1);
+    if (busWidth == 0)
+    {
+        // 8-bit bus
+        pio_sm_put(SCSI_PIO, SCSI_SM, count - 1);
+    }
+    else
+    {
+        // 16-bit bus
+        pio_sm_put(SCSI_PIO, SCSI_SM, count / 2 - 1);
+    }
 
     // Read results from PIO RX FIFO
     uint8_t *dst = buf;
     uint8_t *end = buf + count;
-    uint32_t paritycheck = 0;
+    uint32_t paritycheck = 0xFFFFFFFF;
     uint32_t prev_rx_time = millis();
     while (dst < end)
     {
@@ -156,28 +165,60 @@ uint32_t scsi_accel_host_read(uint8_t *buf, uint32_t count, int *parityError, vo
             }
         }
 
-        while (available > 0)
+        if (busWidth == 0)
         {
-            available--;
-            uint32_t word = pio_sm_get(SCSI_PIO, SCSI_SM);
-            paritycheck ^= word;
-            word = ~word;
-            *dst++ = word & 0xFF;
-            *dst++ = word >> 16;
+            // 8-bit bus
+            // For normal BlueSCSI, there are two bytes per PIO word.
+            // For wide BlueSCSI, there is one byte per PIO word.
+
+            while (available > 0)
+            {
+                available--;
+                uint32_t word = pio_sm_get(SCSI_PIO, SCSI_SM);
+                paritycheck ^= word;
+                word = ~word;
+
+#ifdef BLUESCSI_ULTRA_WIDE
+                *dst++ = word & 0xFF;
+#else
+                *dst++ = word & 0xFF;
+                *dst++ = word >> 16;
+#endif
+            }
+        }
+        else
+        {
+            // 16-bit bus
+            while (available > 0)
+            {
+                available--;
+                uint32_t word = pio_sm_get(SCSI_PIO, SCSI_SM);
+                paritycheck ^= word;
+                word = ~word;
+
+                *dst++ = word & 0xFF;
+                *dst++ = (word >> 8) & 0xFF;
+            }
         }
     }
 
+#ifdef BLUESCSI_ULTRA_WIDE
+    bool parity_ok;
+    if (busWidth == 0)
+        parity_ok = scsi_check_parity(paritycheck);
+    else
+        parity_ok = scsi_check_parity_16bit(paritycheck);
+#else
+    bool parity_ok = scsi_check_parity(paritycheck & 0xFFFF) && scsi_check_parity(paritycheck >> 16);
+#endif
+
     // Check parity errors in whole block
     // This doesn't detect if there is even number of parity errors in block.
-    uint8_t byte0 = ~(paritycheck & 0xFF);
-    uint8_t byte1 = ~(paritycheck >> 16);
-#ifndef BLUESCSI_ULTRA_WIDE  // TODO port the 16 bit code
-    if (paritycheck != ((g_scsi_parity_lookup[byte1] << 16) | g_scsi_parity_lookup[byte0]))
+    if (!parity_ok)
     {
         logmsg("Parity error in scsi_accel_host_read(): ", paritycheck);
         *parityError = 1;
     }
-#endif
     g_scsi_host_state = SCSIHOST_IDLE;
     SCSI_RELEASE_DATA_REQ();
     scsi_accel_host_config_gpio();

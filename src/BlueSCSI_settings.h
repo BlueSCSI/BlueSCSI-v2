@@ -99,6 +99,7 @@ typedef struct __attribute__((__packed__)) scsi_system_settings_t
 
     uint8_t speedGrade; // memory allocation for bluescsi_speed_grade_t enum
 
+    uint8_t maxBusWidth;
 } scsi_system_settings_t;
 
 // This struct should only have new setting added to the end

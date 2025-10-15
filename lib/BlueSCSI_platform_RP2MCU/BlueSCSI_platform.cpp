@@ -76,8 +76,10 @@ bool u8574_debug = true;
 
 // Definitions of Global PIN definitions that may change depending on hardware rev
 uint32_t SCSI_ACCEL_PINMASK = SCSI_ACCEL_SETPINS;
+#ifndef BLUESCSI_ULTRA_WIDE
 uint8_t SCSI_OUT_REQ = SCSI_OUT_REQ_CURRENT;
 uint8_t SCSI_OUT_SEL = SCSI_OUT_SEL_CURRENT;
+#endif
 
 #ifdef BLUESCSI_NETWORK
 extern "C" {
@@ -136,6 +138,10 @@ void gpio_conf(uint gpio, gpio_function_t fn, bool pullup, bool pulldown, bool o
     if (fast_slew)
     {
         pads_bank0_hw->io[gpio] |= PADS_BANK0_GPIO0_SLEWFAST_BITS;
+
+#ifdef FAST_IO_DRIVE_STRENGTH
+        gpio_set_drive_strength(gpio, FAST_IO_DRIVE_STRENGTH);
+#endif
     }
 }
 
@@ -574,6 +580,16 @@ static pin_setup_state_t read_setup_ack_pin()
     return SETUP_UNDETERMINED;
 }
 #endif
+
+// Allows execution on Core1 via function pointers. Each function can take
+// no parameters and should return nothing, operating via side-effects only.
+static void core1_handler() {
+    while (1) {
+        void (*function)() = (void (*)()) multicore_fifo_pop_blocking();
+        (*function)();
+    }
+}
+
 static bool is2023a = false;
 bool checkIs2023a() {
 #if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
@@ -606,10 +622,13 @@ bool checkIs2023a() {
         gpio_conf(BUTTON_SW1_PRE202309a,    GPIO_FUNC_SIO, true, false, false, false, false);
         gpio_conf(BUTTON_SW2_PRE202309a,    GPIO_FUNC_SIO, true, false, false, false, false);
 
+#ifndef BLUESCSI_ULTRA_WIDE
         // Reset REQ to the appropriate pin for older hardware
+        // Wide board doesn't have pre-2023 hardware variations
         SCSI_OUT_REQ = SCSI_OUT_REQ_PRE09A;
         SCSI_ACCEL_PINMASK = SCSI_ACCEL_SETPINS_PRE09A;
         SCSI_OUT_SEL = SCSI_OUT_SEL_PRE09A;
+#endif
 
         // Initialize logging to SWO pin (UART0)
         gpio_conf(SWO_PIN,        GPIO_FUNC_UART,false,false, true,  false, true);
@@ -746,6 +765,11 @@ void platform_init()
 #ifdef GPIO_USB_POWER
     gpio_conf(GPIO_USB_POWER, GPIO_FUNC_SIO, false, false, false,  false, false);
 #endif
+
+#ifdef GPIO_EJECT_BTN
+    gpio_conf(GPIO_EJECT_BTN, GPIO_FUNC_SIO, false,false, false,  false, false);
+#endif
+
     checkIs2023a();
 }
 
@@ -798,6 +822,21 @@ void platform_late_init()
     gpio_conf(SCSI_IO_DB6,    GPIO_FUNC_SIO, true, false, false, true, true);
     gpio_conf(SCSI_IO_DB7,    GPIO_FUNC_SIO, true, false, false, true, true);
     gpio_conf(SCSI_IO_DBP,    GPIO_FUNC_SIO, true, false, false, true, true);
+
+#ifdef SCSI_IO_DB8
+    gpio_conf(SCSI_IO_DB8,    GPIO_FUNC_SIO, true, false, false, true, true);
+    gpio_conf(SCSI_IO_DB9,    GPIO_FUNC_SIO, true, false, false, true, true);
+    gpio_conf(SCSI_IO_DB10,   GPIO_FUNC_SIO, true, false, false, true, true);
+    gpio_conf(SCSI_IO_DB11,   GPIO_FUNC_SIO, true, false, false, true, true);
+    gpio_conf(SCSI_IO_DB12,   GPIO_FUNC_SIO, true, false, false, true, true);
+    gpio_conf(SCSI_IO_DB13,   GPIO_FUNC_SIO, true, false, false, true, true);
+    gpio_conf(SCSI_IO_DB14,   GPIO_FUNC_SIO, true, false, false, true, true);
+    gpio_conf(SCSI_IO_DB15,   GPIO_FUNC_SIO, true, false, false, true, true);
+    gpio_conf(SCSI_IO_DBP1,   GPIO_FUNC_SIO, true, false, false, true, true);
+#endif
+
+    dbgmsg("Starting Core1 dispatcher");
+    multicore_launch_core1(core1_handler);
 
     if (!g_scsi_initiator)
     {
@@ -1450,6 +1489,11 @@ uint8_t platform_get_buttons()
 #if defined(ENABLE_AUDIO_OUTPUT_SPDIF)
     // pulled to VCC via resistor, sinking when pressed
     if (!gpio_get(GPIO_EXP_SPARE)) buttons |= 1;
+#elif defined(GPIO_EJECT_BTN)
+    // EJECT_BTN = 1, SDA = button 2, SCL = button 4
+    if (!gpio_get(GPIO_EJECT_BTN)) buttons |= 1;
+    if (!gpio_get(GPIO_I2C_SDA))   buttons |= 2;
+    if (!gpio_get(GPIO_I2C_SCL))   buttons |= 4;
 #elif defined(GPIO_I2C_SDA)
     // SDA = button 1, SCL = button 2
     // if (!gpio_get(GPIO_I2C_SDA)) buttons |= 1;
@@ -1562,7 +1606,13 @@ bool platform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count
 
 #endif // PLATFORM_HAS_ROM_DRIVE
 
-#ifndef RP2MCU_USE_CPU_PARITY
+
+#ifdef RP2MCU_USE_CPU_PARITY
+// Dummy parity lookup tables for Wide board
+// These are declared in the header but should never be accessed
+const uint32_t g_scsi_parity_lookup[256] = {0};
+const uint32_t g_scsi_parity_check_lookup[256] = {0};
+#else
 
 /**********************************************/
 /* Mapping from data bytes to GPIO BOP values */

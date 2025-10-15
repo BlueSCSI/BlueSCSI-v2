@@ -74,3 +74,12 @@ bool scsiTestUnitReady(int target_id);
 class FsFile;
 bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t sectorcount, uint32_t sectorsize,
                                  FsFile &file);
+
+// Execute MESSAGE OUT/MESSAGE IN phases
+int scsiInitiatorMessage(int target_id, const uint8_t *msgOut, size_t msgOutLen, uint8_t *msgIn, size_t msgInBufSize, size_t *msgInLen, uint32_t timeout = 30000);
+
+// Reset bus configuration to 8-bit async mode
+bool scsiInitiatorResetBusConfig(int target_id);
+
+// Negotiate bus width with target
+bool scsiInitiatorSetBusWidth(int target_id, int busWidth);

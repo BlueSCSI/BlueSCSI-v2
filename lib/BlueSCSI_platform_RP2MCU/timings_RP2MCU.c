@@ -71,6 +71,7 @@ static bluescsi_timings_t  predefined_timings[]  = {
             .rdelay1 = 15 - 1,
             .rtotal_period_adjust = 0,
             .max_sync = 50,
+            .clkdiv = 2,
         },
 
         .sdio =
@@ -133,6 +134,7 @@ static bluescsi_timings_t  predefined_timings[]  = {
             .rdelay1 = 15 - 1,
             .rtotal_period_adjust = 0,
             .max_sync = 50,
+            .clkdiv = 2,
         },
 
         .sdio =
@@ -195,6 +197,7 @@ static bluescsi_timings_t  predefined_timings[]  = {
             .rdelay1 = 15 - 1,
             .rtotal_period_adjust = 0,
             .max_sync = 50,
+            .clkdiv = 2,
         },
 
         .sdio =

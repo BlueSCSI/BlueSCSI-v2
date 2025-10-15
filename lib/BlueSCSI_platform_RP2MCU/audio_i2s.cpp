@@ -350,15 +350,6 @@ static bool setup_playback(uint8_t id, uint32_t start, uint32_t length, bool con
     return true;
 }
 
-// Allows execution on Core1 via function pointers. Each function can take
-// no parameters and should return nothing, operating via side-effects only.
-static void core1_handler() {
-    while (1) {
-        void (*function)() = (void (*)()) multicore_fifo_pop_blocking();
-        (*function)();
-    }
-}
-
 /* ------------------------------------------------------------------------ */
 /* ---------- VISIBLE FUNCTIONS ------------------------------------------- */
 /* ------------------------------------------------------------------------ */
@@ -420,9 +411,6 @@ void audio_setup() {
     irq_set_exclusive_handler(I2S_DMA_IRQ_NUM, audio_dma_irq);
     irq_set_enabled(I2S_DMA_IRQ_NUM, true);
     irq_clear(I2S_DMA_IRQ_NUM);
-
-    logmsg("Starting Core1 for audio");
-    multicore_launch_core1(core1_handler);
 }
 
 

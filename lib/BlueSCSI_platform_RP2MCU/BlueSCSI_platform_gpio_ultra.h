@@ -56,7 +56,7 @@ extern uint8_t SCSI_OUT_SEL;
 
 #define SCSI_ACCEL_SETPINS 0x4001FF
 #define SCSI_ACCEL_SETPINS_PRE09A 0x4001FF
-extern uint32_t SCSI_ACCEL_PINMASK;
+//extern uint32_t SCSI_ACCEL_PINMASK;
 
 // SCSI input status signals
 #define SCSI_IN_SEL  23

@@ -59,6 +59,13 @@ extern "C" {
 /* These are used in debug output and default SCSI strings */
 extern const char *g_platform_name;
 
+/* Global PIN definitions that may change depending on hardware rev */
+extern uint32_t SCSI_ACCEL_PINMASK;
+#ifndef BLUESCSI_ULTRA_WIDE
+extern uint8_t SCSI_OUT_REQ;
+extern uint8_t SCSI_OUT_SEL;
+#endif
+
 // NOTE: The driver supports synchronous speeds higher than 10MB/s, but this
 // has not been tested due to lack of fast enough SCSI adapter.
 // #define PLATFORM_MAX_SCSI_SPEED S2S_CFG_SPEED_SYNC_20
@@ -214,10 +221,29 @@ bool platform_read_romdrive(uint8_t *dest, uint32_t start, uint32_t count);
 bool platform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count);
 #endif
 
+#ifndef RP2MCU_USE_CPU_PARITY
+
 // Parity lookup tables for write and read from SCSI bus.
 // These are used by macros below and the code in scsi_accel_rp2040.cpp
 extern const uint16_t g_scsi_parity_lookup[256];
 extern const uint16_t g_scsi_parity_check_lookup[512];
+
+// Generate parity for bytes. This is only used for slow control & command transfers.
+// Returns the GPIO value without SCSI_IO_SHIFT.
+static inline uint32_t scsi_generate_parity(uint8_t w)
+{
+    return g_scsi_parity_lookup[w];
+}
+
+// Check parity of a byte.
+// Argument is the return value from SCSI_IN_DATA().
+// Return true if parity is valid.
+static inline bool scsi_check_parity(uint32_t w)
+{
+    return g_scsi_parity_check_lookup[(w ^ 0x1FF) & 0x1FF] & 0x100;
+}
+
+#endif
 
 // Returns true if the board has a physical eject button 
 bool platform_has_phy_eject_button();

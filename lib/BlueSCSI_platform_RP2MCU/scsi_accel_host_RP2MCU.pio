@@ -19,7 +19,7 @@
 
 
 ; RP2040 PIO program for accelerating SCSI initiator / host function
-; Run "pioasm scsi_accel_host.pio scsi_accel_host.pio.h" to regenerate the C header from this.
+; Run "pioasm scsi_accel_host_RP2MCU.pio scsi_accel_host_RP2MCU.pio.h" to regenerate the C header from this.
 ; GPIO mapping:
 ; - 0-7: DB0-DB7
 ; -   8: DBP
@@ -42,5 +42,22 @@ start:
     wait 0 gpio REQ             side 1  ; Wait for REQ low
     in pins, 9                  side 0  ; Assert ACK, read GPIO
     in null, 7                  side 0  ; Padding bits
+    wait 1 gpio REQ             side 0  ; Wait for REQ high
+    jmp x-- start               side 1  ; Deassert ACK, decrement byte count and jump to start
+
+
+; Read from SCSI bus using asynchronous handshake in wide bus mode.
+; Data is returned as 32-bit words that contain the 16 data bits + 2 parity bits.
+; Number of words to receive minus 1 should be written to TX fifo.
+.program scsi_host_async_read_wide
+    .side_set 1
+
+    pull block                  side 1  ; Get number of bytes to receive
+    mov x, osr                  side 1  ; Store to counter X
+
+start:
+    wait 0 gpio REQ             side 1  ; Wait for REQ low
+    in pins, 18                 side 0  ; Assert ACK, read GPIO
+    in null, 14                 side 0  ; Padding bits
     wait 1 gpio REQ             side 0  ; Wait for REQ high
     jmp x-- start               side 1  ; Deassert ACK, decrement byte count and jump to start

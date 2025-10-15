@@ -265,6 +265,15 @@ uint32_t s2s_getStandardInquiry(
 		sizeof(cfg->prodId) +
 		sizeof(cfg->revision);
 
+	if (scsiDev.boardCfg.busWidth == 2)
+	{
+		out[7] |= 0x60;
+	}
+	else if (scsiDev.boardCfg.busWidth == 1)
+	{
+		out[7] |= 0x20;
+	}
+
 	if(cfg->deviceType == S2S_CFG_ZIP100)
 	{
 		memcpy(&out[size], IomegaVendorInquiry, sizeof(IomegaVendorInquiry));
@@ -316,4 +325,3 @@ uint8_t getDeviceTypeQualifier()
 		return 0;
 	}
 }
-

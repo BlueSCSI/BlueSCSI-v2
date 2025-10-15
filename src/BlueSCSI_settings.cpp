@@ -328,6 +328,12 @@ scsi_system_settings_t *BlueSCSISettings::initSystem(const char *presetName)
 
     cfgSys.speedGrade = bluescsi_speed_grade_t::SPEED_GRADE_DEFAULT;
 
+#ifdef PLATFORM_MAX_BUS_WIDTH
+    cfgSys.maxBusWidth = PLATFORM_MAX_BUS_WIDTH;
+#else
+    cfgSys.maxBusWidth = 0;
+#endif
+
     // setting set for all or specific devices
     cfgDev.deviceType = S2S_CFG_NOT_SET;
     cfgDev.deviceTypeModifier = 0;
@@ -470,6 +476,8 @@ scsi_system_settings_t *BlueSCSISettings::initSystem(const char *presetName)
             logmsg("Speed grade setting ignored, reclocking the MCU is not supported by this device");
         }
     }
+
+    cfgSys.maxBusWidth = ini_getl("SCSI", "MaxBusWidth", cfgSys.maxBusWidth, CONFIGFILE);
 
     return &cfgSys;
 }

@@ -182,7 +182,9 @@ extern "C" void scsiPhyReset(void)
     g_scsi_phase = BUS_FREE;
 
 
+#ifndef RP2MCU_DISABLE_SCSI_ACCEL
     scsi_accel_rp2040_init();
+#endif
 
     // Enable BSY, RST and SEL interrupts
     // Note: RP2040 library currently supports only one callback,
@@ -199,6 +201,11 @@ extern "C" void scsiPhyReset(void)
 /************************/
 /* SCSI bus phase logic */
 /************************/
+
+static bool useWideMode()
+{
+    return (scsiDev.target->busWidth == 1) && (g_scsi_phase == DATA_IN || g_scsi_phase == DATA_OUT);
+}
 
 extern "C" void scsiEnterPhase(int phase)
 {
@@ -230,15 +237,16 @@ extern "C" uint32_t scsiEnterPhaseImmediate(int phase)
         g_scsi_phase = (SCSI_PHASE)phase;
         scsiLogPhaseChange(phase);
 
+#ifndef RP2MCU_DISABLE_SCSI_ACCEL
         // Select between synchronous vs. asynchronous SCSI writes
         bool syncstatus = false;
         if (scsiDev.target->syncOffset > 0 && (g_scsi_phase == DATA_IN || g_scsi_phase == DATA_OUT))
         {
-            syncstatus = scsi_accel_rp2040_setSyncMode(scsiDev.target->syncOffset, scsiDev.target->syncPeriod);
+            syncstatus = scsi_accel_rp2040_setSyncMode(scsiDev.target->syncOffset, scsiDev.target->syncPeriod, useWideMode());
         }
         else
         {
-            syncstatus = scsi_accel_rp2040_setSyncMode(0, 0);
+            syncstatus = scsi_accel_rp2040_setSyncMode(0, 0, useWideMode());
         }
 
         if (!syncstatus)
@@ -247,6 +255,7 @@ extern "C" uint32_t scsiEnterPhaseImmediate(int phase)
             scsiDev.resetFlag = 1;
             return 0;
         }
+#endif
 
         if (phase < 0)
         {
@@ -331,9 +340,9 @@ void scsiEnterBusFree(void)
     } \
   }
 
-// Write one byte to SCSI host using the handshake mechanism
+// Write one byte or halfword to SCSI host using the handshake mechanism
 // This is suitable for both asynchronous and synchronous communication.
-static inline void scsiWriteOneByte(uint8_t value)
+static inline void scsiWriteOneByte(uint16_t value)
 {
     SCSI_OUT_DATA(value);
     delay_100ns(); // DB setup time before REQ
@@ -359,25 +368,54 @@ extern "C" void scsiWrite(const uint8_t* data, uint32_t count)
 extern "C" void scsiStartWrite(const uint8_t* data, uint32_t count)
 {
     scsiLogDataIn(data, count);
+#ifdef RP2MCU_DISABLE_SCSI_ACCEL
+    if (useWideMode())
+    {
+        // 16-bit bus width
+        uint32_t i = 0;
+        while (i < count)
+        {
+            uint16_t w = data[i++];
+            if (i < count) w |= (uint16_t)data[i++] << 8;
+            scsiWriteOneByte(w);
+        }
+    }
+    else
+    {
+        // 8-bit bus width
+        for (uint32_t i = 0; i < count; i++)
+        {
+            scsiWriteOneByte(data[i]);
+        }
+    }
+#else
     scsi_accel_rp2040_startWrite(data, count, &scsiDev.resetFlag);
+#endif
 }
 
 extern "C" bool scsiIsWriteFinished(const uint8_t *data)
 {
+#ifdef RP2MCU_DISABLE_SCSI_ACCEL
+    return true;
+#else
     return scsi_accel_rp2040_isWriteFinished(data);
+#endif
 }
 
 extern "C" void scsiFinishWrite()
 {
+#ifdef RP2MCU_DISABLE_SCSI_ACCEL
+#else
     scsi_accel_rp2040_finishWrite(&scsiDev.resetFlag);
+#endif
 }
 
 /*********************/
 /* Receive from host */
 /*********************/
 
-// Read one byte from SCSI host using the handshake mechanism.
-static inline uint8_t scsiReadOneByte(int* parityError)
+// Read one byte or halfword from SCSI host using the handshake mechanism.
+static inline uint16_t scsiReadOneByte(int* parityError)
 {
     SCSI_OUT(REQ, 1);
     SCSI_WAIT_ACTIVE(ACK);
@@ -414,17 +452,46 @@ extern "C" void scsiRead(uint8_t* data, uint32_t count, int* parityError)
 extern "C" void scsiStartRead(uint8_t* data, uint32_t count, int *parityError)
 {
     if (!(scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY)) { parityError = NULL; }
+#ifdef RP2MCU_DISABLE_SCSI_ACCEL
+    if (useWideMode())
+    {
+        // 16-bit bus width
+        uint32_t i = 0;
+        while (i < count)
+        {
+            uint16_t r = scsiReadOneByte(parityError);
+            data[i++] = r & 0xFF;
+            if (i < count) data[i++] = r >> 8;
+        }
+    }
+    else
+    {
+        // 8-bit bus width
+        for (uint32_t i = 0; i < count; i++)
+        {
+            data[i] = scsiReadOneByte(parityError);
+        }
+    }
+#else
     scsi_accel_rp2040_startRead(data, count, parityError, &scsiDev.resetFlag);
+#endif
 }
 
 extern "C" void scsiFinishRead(uint8_t* data, uint32_t count, int *parityError)
 {
     if (!(scsiDev.boardCfg.flags & S2S_CFG_ENABLE_PARITY)) { parityError = NULL; }
+#ifdef RP2MCU_DISABLE_SCSI_ACCEL
+#else
     scsi_accel_rp2040_finishRead(data, count, parityError, &scsiDev.resetFlag);
+#endif
     scsiLogDataOut(data, count);
 }
 
 extern "C" bool scsiIsReadFinished(const uint8_t *data)
 {
+#ifdef RP2MCU_DISABLE_SCSI_ACCEL
+    return true;
+#else
     return scsi_accel_rp2040_isReadFinished(data);
+#endif
 }
