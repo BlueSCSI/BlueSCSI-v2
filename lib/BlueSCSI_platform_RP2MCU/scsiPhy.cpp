@@ -272,13 +272,28 @@ extern "C" uint32_t scsiEnterPhaseImmediate(int phase)
             // To avoid unnecessary delays, precalculate an XOR mask and then apply it
             // simultaneously to all three signals.
             uint32_t gpio_new = 0;
+#ifdef BLUESCSI_ULTRA_WIDE
+            uint32_t gpio_hi_new = 0;
+            if (!(phase & __scsiphase_msg)) { gpio_hi_new |= (1 << (SCSI_OUT_MSG - 32)); }
+#else
             if (!(phase & __scsiphase_msg)) { gpio_new |= (1 << SCSI_OUT_MSG); }
+#endif
             if (!(phase & __scsiphase_cd)) { gpio_new |= (1 << SCSI_OUT_CD); }
             if (!(phase & __scsiphase_io)) { gpio_new |= (1 << SCSI_OUT_IO); }
 
+#ifdef BLUESCSI_ULTRA_WIDE
+            uint32_t mask = (1 << SCSI_OUT_CD) | (1 << SCSI_OUT_IO);
+            uint32_t gpio_xor = (sio_hw->gpio_out ^ gpio_new) & mask;
+            uint32_t hi_mask = (1 << (SCSI_OUT_MSG - 32));
+            uint32_t gpio_hi_xor = (sio_hw->gpio_hi_out ^ gpio_hi_new) & hi_mask;
+
+            sio_hw->gpio_togl = gpio_xor;
+            sio_hw->gpio_hi_togl = gpio_hi_xor;
+#else
             uint32_t mask = (1 << SCSI_OUT_MSG) | (1 << SCSI_OUT_CD) | (1 << SCSI_OUT_IO);
             uint32_t gpio_xor = (sio_hw->gpio_out ^ gpio_new) & mask;
             sio_hw->gpio_togl = gpio_xor;
+#endif
             SCSI_ENABLE_CONTROL_OUT();
 
             int delayNs = 400; // Bus settle delay

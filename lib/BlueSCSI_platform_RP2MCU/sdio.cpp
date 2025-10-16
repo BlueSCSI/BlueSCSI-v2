@@ -218,8 +218,10 @@ waitagain:
         if ((uint32_t)(millis() - g_sdio.transfer_start_time) > 100)
         {
 
+#ifdef SDIO_DEBUG
             // debug indicate
-            // sio_hw->gpio_hi_set = 0b11000000;
+            sio_hw->gpio_hi_set = 0b11000000;
+#endif
             // Log debug information
             if (g_record_sdio_errors) {
                 logmsg("Timeout: receive_status_register, ",
@@ -232,8 +234,10 @@ waitagain:
                     " PINCTRL: ", (uint32_t)SDIO_PIO->sm[SDIO_DATA_SM].pinctrl
                 );
             }
+#ifdef SDIO_DEBUG
             // debug de-indicate
-            // sio_hw->gpio_hi_clr = 0b11000000;
+            sio_hw->gpio_hi_clr = 0b11000000;
+#endif
             // Reset the state machine program
             dma_channel_abort(SDIO_DMA_CHB);
             pio_sm_set_enabled(SDIO_PIO, SDIO_CMD_SM, false);
@@ -354,10 +358,13 @@ sdio_status_t rp2040_sdio_command_R1(uint8_t command, uint32_t arg, uint32_t *re
                     // logmsg("GPIOI:",sio_hw->gpio_in, " GPIIH:",sio_hw->gpio_hi_in);
                     // logmsg("GPIOL:",sio_hw->gpio_out, " GPIOH:",sio_hw->gpio_hi_out);
                     // logmsg("GPIOE:",sio_hw->gpio_oe, " GPOEH:",sio_hw->gpio_hi_oe);
+
+#ifdef SDIO_DEBUG
                     // Debug indicate
-                    // sio_hw->gpio_hi_set = 0b01100000;
-                    // asm volatile ("nop \n nop");
-                    // sio_hw->gpio_hi_clr = 0b01100000;
+                    sio_hw->gpio_hi_set = 0b01100000;
+                    asm volatile ("nop \n nop");
+                    sio_hw->gpio_hi_clr = 0b01100000;
+#endif
 #else
                     logmsg("Timeout waiting for response in rp2040_sdio_command_R1(", (int)command, "), ",
                         "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_CMD_SM) - (int)g_sdio.pio_cmd_rsp_clk_offset,
@@ -692,10 +699,15 @@ static void sdio_verify_rx_checksums(uint32_t maxcount)
             g_sdio.checksum_errors++;
             if (g_record_sdio_errors && g_sdio.checksum_errors == 1)
             {
+#ifdef SDIO_DEBUG
                 // debug indicate
-                // sio_hw->gpio_hi_set = 0b10000000;
+                sio_hw->gpio_hi_set = 0b10000000;
+#endif
                 logmsg("SDIO check error rcv: blk ", blockidx, " calc ", checksum, " expect ", expected);
-                // sio_hw->gpio_hi_clr = 0b10000000;
+
+#ifdef SDIO_DEBUG
+                sio_hw->gpio_hi_clr = 0b10000000;
+#endif
             }
         }
     }
@@ -897,10 +909,13 @@ sdio_status_t check_sdio_write_response(uint32_t card_response)
         if (g_record_sdio_errors) {
             logmsg("SDIO card reports write CRC error, S: ", card_response, " M: ", (uint8_t)g_sdio.speed_mode);
         }
+
+#ifdef SDIO_DEBUG
         // Debug Indicate
-        // sio_hw->gpio_hi_set = 0b00100000;
-        // asm volatile ("nop \n nop");
-        // sio_hw->gpio_hi_clr = 0b11100000;
+        sio_hw->gpio_hi_set = 0b00100000;
+        asm volatile ("nop \n nop");
+        sio_hw->gpio_hi_clr = 0b11100000;
+#endif
         return SDIO_ERR_WRITE_CRC;    
     }
 #ifdef ULTRA_SDIO
@@ -912,10 +927,13 @@ sdio_status_t check_sdio_write_response(uint32_t card_response)
         if (g_record_sdio_errors) {
             logmsg("SDIO card reports write failure, S: ", card_response, " M: ", (uint8_t)g_sdio.speed_mode);
         }
+
+#ifdef SDIO_DEBUG
         // Debug Indicate
-        // sio_hw->gpio_hi_set = 0b00100000;
-        // asm volatile ("nop \n nop");
-        // sio_hw->gpio_hi_clr = 0b11100000;
+        sio_hw->gpio_hi_set = 0b00100000;
+        asm volatile ("nop \n nop");
+        sio_hw->gpio_hi_clr = 0b11100000;
+#endif
         return SDIO_ERR_WRITE_FAIL;    
     }
     else
@@ -923,10 +941,13 @@ sdio_status_t check_sdio_write_response(uint32_t card_response)
         if (g_record_sdio_errors) {
             logmsg("SDIO card reports unknown write S: ", card_response, " M: ", (uint8_t)g_sdio.speed_mode);
         }
+
+#ifdef SDIO_DEBUG
         // Debug Indicate
-        // sio_hw->gpio_hi_set = 0b00100000;
-        // asm volatile ("nop \n nop");
-        // sio_hw->gpio_hi_clr = 0b11100000;
+        sio_hw->gpio_hi_set = 0b00100000;
+        asm volatile ("nop \n nop");
+        sio_hw->gpio_hi_clr = 0b11100000;
+#endif
         return SDIO_ERR_WRITE_FAIL;    
     }
 }

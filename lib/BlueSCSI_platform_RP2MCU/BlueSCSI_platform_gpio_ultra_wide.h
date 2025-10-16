@@ -113,11 +113,6 @@
 #define SDIO_LOG  0b100000
 #define SDIO_FIN  0b10000000
 
-// TODO: Doesn't exist on this version
-// SW1/SW2 buttons on pre-202309a hardware
-#define BUTTON_SW1_PRE202309a SCSI_IN_ATN
-#define BUTTON_SW2_PRE202309a SCSI_IN_ACK
-
 #ifndef ENABLE_AUDIO_OUTPUT_SPDIF
     // IO expander I2C
     #define GPIO_I2C_SDA 42
@@ -130,14 +125,11 @@
     #define AUDIO_DMA_IRQ_NUM DMA_IRQ_2
 #endif
 
-#define I2S_SCK 37
-#define I2S_WS 38
-#define I2S_DOUT 39
 #ifdef ENABLE_AUDIO_OUTPUT_I2S
     #define GPIO_I2S_BCLK 37
     #define GPIO_I2S_WS   38
     #define GPIO_I2S_DOUT 39
-    #define I2S_DMA_IRQ_NUM DMA_IRQ_0
+    #define I2S_DMA_IRQ_NUM DMA_IRQ_2
 #endif
 
 #define SCSI_DMA_IRQ_IDX 3
@@ -147,7 +139,7 @@
 #define SWO_PIN 40
 
 // Ejection button
-#define GPIO_EJECT_BTN 44
+// #define GPIO_EJECT_BTN 44
 
 // Parity generation lookup table would be too large for 16-bit bus.
 // Instead use CPU-based generation, which is fast enough on RP2350
@@ -243,8 +235,8 @@ static inline bool scsi_check_parity_16bit(uint32_t w)
 
 // Enable driving of shared control pins
 #define SCSI_ENABLE_CONTROL_OUT() \
-    (sio_hw->gpio_oe_set = (1 << SCSI_OUT_CD) | \
-                           (1 << SCSI_OUT_MSG))
+    sio_hw->gpio_oe_set = (1 << SCSI_OUT_CD), \
+    sio_hw->gpio_hi_oe_set = (1 << (SCSI_OUT_MSG - 32))
 
 // Set SCSI data bus to output
 #define SCSI_ENABLE_DATA_OUT() \

@@ -76,7 +76,7 @@ bool u8574_debug = true;
 
 // Definitions of Global PIN definitions that may change depending on hardware rev
 uint32_t SCSI_ACCEL_PINMASK = SCSI_ACCEL_SETPINS;
-#ifndef BLUESCSI_ULTRA_WIDE
+#if !(defined(BLUESCSI_ULTRA_WIDE) || defined(BLUESCSI_ULTRA))
 uint8_t SCSI_OUT_REQ = SCSI_OUT_REQ_CURRENT;
 uint8_t SCSI_OUT_SEL = SCSI_OUT_SEL_CURRENT;
 #endif
@@ -594,6 +594,7 @@ static bool is2023a = false;
 bool checkIs2023a() {
 #if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
     // BlueSCSI Ultra models don't have a "previous version" yet
+    g_supports_initiator = true;
     return true;
 #else
     gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_I2C, false, false, false,  false, true);
@@ -697,12 +698,13 @@ void platform_init()
     gpio_conf(SCSI_DATA_DIR,  GPIO_FUNC_SIO, false,false, true,  false, true);
     gpio_conf(SCSI_OUT_RST,   GPIO_FUNC_SIO, false,false, false,  true, true);
     gpio_conf(SCSI_OUT_BSY,   GPIO_FUNC_SIO, false,false, true,  true, true);
-
+#ifdef SDIO_DEBUG
     // Set up debug pins (I2S on production hardware)
     //        pin        function       pup    pdown  out    state fast
-    gpio_conf(I2S_SCK,   GPIO_FUNC_SIO, false, false, true,  false, true);
-    gpio_conf(I2S_WS,    GPIO_FUNC_SIO, false, false, true,  false, true);
-    gpio_conf(I2S_DOUT,  GPIO_FUNC_SIO, false, false, true,  false, true);
+    gpio_conf(GPIO_I2S_BCLK,   GPIO_FUNC_SIO, false, false, true,  false, true);
+    gpio_conf(GPIO_I2S_WS,    GPIO_FUNC_SIO, false, false, true,  false, true);
+    gpio_conf(GPIO_I2S_DOUT,  GPIO_FUNC_SIO, false, false, true,  false, true);
+#endif
 #else
     //        pin             function       pup   pdown  out    state fast
     gpio_conf(SCSI_DATA_DIR,  GPIO_FUNC_SIO, false,false, true,  true, true);
@@ -720,7 +722,7 @@ void platform_init()
     logmsg("Platform: ", g_platform_name, " (", PLATFORM_PID, rp2040.isPicoW() ? "/W" : "", ")");
     logmsg("FW Version: ", g_log_firmwareversion);
 
-#if PICO_CYW43_SUPPORTED && !defined(BLUESCSI_NETWORK)
+#if (PICO_CYW43_SUPPORTED && !defined(BLUESCSI_NETWORK)) || defined(BLUESCSI_ULTRA)
     if (cyw43_arch_init()) {
         logmsg("CYW43 driver init failed");
     }
@@ -1067,6 +1069,8 @@ void show_hardfault(uint32_t *sp)
 {
     uint32_t pc = sp[6];
     uint32_t lr = sp[5];
+
+    busy_wait_ms(10000);
 
     logmsg("--------------");
     logmsg("CRASH!");
@@ -1481,9 +1485,6 @@ void platform_disable_i2c() {
 
 uint8_t platform_get_buttons()
 {
-#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
-    return 0;  // No physical buttons here, intended to be used with front panel board
-#else
     uint8_t buttons = 0;
 
 #if defined(ENABLE_AUDIO_OUTPUT_SPDIF)
@@ -1500,6 +1501,8 @@ uint8_t platform_get_buttons()
     // if (!gpio_get(GPIO_I2C_SCL)) buttons |= 2;
 #endif // defined(ENABLE_AUDIO_OUTPUT_SPDIF)
 
+
+#if !(defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE))
     if (!is2023a) { // Pre-2023a boards have buttons on GPIO pins labeled SW1 and SW2
         if (!gpio_get(BUTTON_SW1_PRE202309a)) buttons |= 1;
         if (!gpio_get(BUTTON_SW2_PRE202309a)) buttons |= 2;
@@ -1508,6 +1511,7 @@ uint8_t platform_get_buttons()
         if (!gpio_get(GPIO_I2C_SCL)) buttons |= 1;
         if (!gpio_get(GPIO_I2C_SDA)) buttons |= 2;
     }
+#endif
 
     static uint8_t debounced_state = 0;
     static uint8_t last_state = 0;
@@ -1523,7 +1527,6 @@ uint8_t platform_get_buttons()
 
     last_state = buttons;
     return debounced_state;
-#endif
 }
 
 

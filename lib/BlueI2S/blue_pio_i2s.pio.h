@@ -52,8 +52,10 @@ static inline void pio_i2s_out_program_init(PIO pio, uint sm, uint offset, uint 
     sm_config_set_out_shift(&sm_config, false, true, (bits <= 16) ? 2 * bits : bits);
     sm_config_set_fifo_join(&sm_config, PIO_FIFO_JOIN_TX);
     pio_sm_init(pio, sm, offset, &sm_config);
-    uint pin_mask = (1u << data_pin) | (3u << clock_pin_base);
-    pio_sm_set_pindirs_with_mask(pio, sm, pin_mask, pin_mask);
+    // uint pin_mask = (1u << data_pin) | (3u << clock_pin_base);
+    //  pio_sm_set_pindirs_with_mask(pio, sm, pin_mask, pin_mask);
+    pio_sm_set_consecutive_pindirs(pio, sm, data_pin, 1, true);
+    pio_sm_set_consecutive_pindirs(pio, sm, clock_pin_base, 2, true);
     pio_sm_set_pins(pio, sm, 0); // clear pins
     pio_sm_exec(pio, sm, pio_encode_set(pio_y, bits - 2));
 }

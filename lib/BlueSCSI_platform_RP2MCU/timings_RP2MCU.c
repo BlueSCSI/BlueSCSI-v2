@@ -371,8 +371,7 @@ static bluescsi_timings_t  predefined_timings[]  = {
             .total_period_adjust = 0,
             .rdelay1 = 5 - 1,
             .rtotal_period_adjust = 0,
-            .max_sync = 12,
-
+            .max_sync = 14,
         },
 
         .scsi_10 =

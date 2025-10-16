@@ -708,7 +708,6 @@ void readSCSIDeviceConfig()
 /*********************************/
 #if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE) 
 static void print_autoconfig_result(uint8_t result) {
-  // TODO establish defines for these
   if(result & SDIO_AC_STANDARD_MODE) {
     logmsg("Standard Mode");
   }
@@ -760,7 +759,7 @@ static bool mountSDCard()
   * Regular 1.8v mode if that didn't work
   * If no 1.8v support, then pick the fastest standard voltage mode
   */
-  if (autoconfig_result & 0b10000000) {
+  if ((autoconfig_result & 0b10000000)) {
     sdio_config_flags = (DMA_SDIO | SDIO_1_8 | SDIO_US | SDIO_M_D | SDIO_FIN);
     logmsg("SDIO 1.8v Ultra Speed, Mode D");
   } else if (autoconfig_result & 0b1000000) {
@@ -824,6 +823,15 @@ static void reinitSCSI()
   }
 #else
   g_log_debug = ini_getbool("SCSI", "Debug", false, CONFIGFILE);
+
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+  // If debug is already configured via SD card, leave it on
+  // Otherwise check the hardware switch and enable if set
+  if (!g_log_debug) {
+    g_log_debug = is_debug_enabled();
+  }
+#endif
+
 #endif
   if (g_log_debug)
   {
@@ -1240,7 +1248,15 @@ static void bluescsi_setup_sd_card(bool wait_for_card = true)
     }
   }
 #ifdef PLATFORM_HAS_INITIATOR_MODE
-  if (ini_getbool("SCSI", "InitiatorMode", false, CONFIGFILE))
+  bool initiator_mode = ini_getbool("SCSI", "InitiatorMode", false, CONFIGFILE);
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+  // If Initiator Mode is already configured via SD card, leave it on
+  // Otherwise check the hardware switch and enable if set
+  if (!initiator_mode) {
+    initiator_mode = is_initiator_mode_enabled();
+  }
+#endif
+  if (initiator_mode)
   {
     if (platform_supports_initiator_mode()) {
       logmsg("SCSI Initiator Mode");
@@ -1305,9 +1321,11 @@ extern "C" void bluescsi_setup(void)
   logmsg("Initialization complete!");
   // There is an issue with using the PicoW LED during SCSI activity.
   // Trn it off and rely on the LED pins on the BlueSCSI.
+#ifdef BLUESCSI_NETWORK
   if (platform_network_supported()) {
     platform_disable_led();
   }
+  #endif
 }
 
 extern "C" void bluescsi_main_loop(void)

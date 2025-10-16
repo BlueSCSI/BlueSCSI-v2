@@ -452,7 +452,27 @@ bool SdioCard::begin(SdioConfig sdioConfig)
                 gpio_conf(SDIO_D2,      GPIO_FUNC_SIO, true,  false, false, false, false);
                 gpio_conf(SDIO_D3,      GPIO_FUNC_SIO, true,  false, false, false, false);
 
-                // TODO: This is where the DAT3:0 check goes?
+                // Check expected signal levels
+                uint32_t gpio_state;
+                for (int i = 0; i < 5; i++) {
+#ifdef BLUESCSI_ULTRA_WIDE
+                    gpio_state = sio_hw->gpio_in & 0x7C00000;
+#else
+                    gpio_state = sio_hw->gpio_in & 0x3E000;
+#endif
+                    if (gpio_state) {
+                        delay(1);
+                        cmd_success = false;
+                    } else {
+                        cmd_success = true;
+                        break;
+                    }
+                }
+                if (!cmd_success && g_record_sdio_errors) {
+                    logmsg("1.8v Switch: GPIO State Check Fail");
+                    continue;
+                }
+
                 cmd_success = platform_switch_SD_1_8v();
 
                 if (cmd_success) {  // Switched power to 1.8v
@@ -460,35 +480,14 @@ bool SdioCard::begin(SdioConfig sdioConfig)
                     // Wait at least that long, and a little longer is fine
                     delay(6);
 
-                    // Check that all relevant are now pulled low, give it a few loops to settle
-                    // CMD, DAT[3:0] can be checked
-                    uint32_t gpio_state;
-                    for (int i = 0; i < 5; i++) {
-#ifdef BLUESCSI_ULTRA_WIDE
-                        gpio_state = sio_hw->gpio_in & 0x7C00000;
-#else
-                        gpio_state = sio_hw->gpio_in & 0x3E000;
-#endif
-                        if (gpio_state) {
-                            delay(1);
-                        } else {
-                            break;
-                        }
-                    }
-                    if (gpio_state) {
-                        // Requires a full card power cycle to recover from this
-                        if (g_record_sdio_errors) {
-                            logmsg("GPIO Did Not Settle After 1.8v Negotiation, ", gpio_state);
-                        }
-                        continue;
-                    }
-
-                    bool cmd_detected = false;
-                    bool dat_detected = false;
+                    bool cmd_detected;
+                    bool dat_detected;
                     bool transition_complete = false;
-                    absolute_time_t wait_until = delayed_by_ms(get_absolute_time(), 2);
+                    absolute_time_t wait_until = delayed_by_ms(get_absolute_time(), 3);
                     uint32_t gpio_state_2;
                     do {
+                        cmd_detected = false;
+                        dat_detected = false;
                         gpio_put(SDIO_CLK, true);
                         // delayMicroseconds(10);
 #ifdef BLUESCSI_ULTRA_WIDE
@@ -499,11 +498,11 @@ bool SdioCard::begin(SdioConfig sdioConfig)
                         gpio_state_2 = sio_hw->gpio_in & 0x3C000;
 #endif
                         // CMD should immediately be pulled high by the card
-                        if (!cmd_detected && gpio_state) {
+                        if (gpio_state) {
                             cmd_detected = true;
                         }
                         // Also detect whether the DAT lines are pulled high
-                        if (!dat_detected && gpio_state_2) {
+                        if (gpio_state_2) {
                             dat_detected = true;
                         }
 #ifdef BLUESCSI_ULTRA_WIDE
@@ -511,7 +510,6 @@ bool SdioCard::begin(SdioConfig sdioConfig)
 #else
                         if ((dat_detected && cmd_detected) && (sio_hw->gpio_in & 0x3E000)) {
 #endif
-                            // GPIO have to fall back to 0 before moving on
                             transition_complete = true;
                             break;
                         }
@@ -647,12 +645,15 @@ bool SdioCard::begin(SdioConfig sdioConfig)
             }
             continue;
         }
-        // if (ultra_high_speed) {
-        //     // Debug indicate
-        //     sio_hw->gpio_hi_set = 0b01000000;
-        //     asm volatile ("nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \nnop \n nop \n nop \n nop \n nop \n nop");
-        //     sio_hw->gpio_hi_clr = 0b01000000;
-        // }
+
+#ifdef SDIO_DEBUG
+        if (ultra_high_speed) {
+            // Debug indicate
+            sio_hw->gpio_hi_set = 0b01000000;
+            asm volatile ("nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \nnop \n nop \n nop \n nop \n nop \n nop");
+            sio_hw->gpio_hi_clr = 0b01000000;
+        }
+#endif
         // Increase to standard clock rate
         rp2040_sdio_init(1, current_sdio_speed_mode);
         current_sdio_clock_divisor = 1;
@@ -797,10 +798,13 @@ bool SdioCard::stopTransmission(bool blocking)
     {
         return false;
     }
+
+#ifdef SDIO_DEBUG
     // Debug indicate
-    // sio_hw->gpio_hi_set = 0b01000000;
-    // asm volatile ("nop \n nop");
-    // sio_hw->gpio_hi_clr = 0b01000000;
+    sio_hw->gpio_hi_set = 0b01000000;
+    asm volatile ("nop \n nop");
+    sio_hw->gpio_hi_clr = 0b01000000;
+#endif
 
     if (!blocking)
     {
@@ -973,10 +977,13 @@ bool SdioCard::writeSectors(uint32_t sector, const uint8_t* src, size_t n)
     {
         return false;
     }
+
+#ifdef SDIO_DEBUG
         // Debug indicate
-        // sio_hw->gpio_hi_set = 0b10100000;
-        // asm volatile ("nop \n nop");
-        // sio_hw->gpio_hi_clr = 0b10100000;
+        sio_hw->gpio_hi_set = 0b10100000;
+        asm volatile ("nop \n nop");
+        sio_hw->gpio_hi_clr = 0b10100000;
+#endif
     do {
         uint32_t bytes_done;
         g_sdio_error = rp2040_sdio_tx_poll(&bytes_done);
@@ -1091,10 +1098,12 @@ bool SdioCard::readSectors(uint32_t sector, uint8_t* dst, size_t n)
     if (g_sdio_error != SDIO_OK)
     {
         if (g_record_sdio_errors) {
+#ifdef SDIO_DEBUG
             // Debug indicate
-            // sio_hw->gpio_hi_set = 0b11100000;
-            // asm volatile ("nop \n nop");
-            // sio_hw->gpio_hi_clr = 0b11100000;
+            sio_hw->gpio_hi_set = 0b11100000;
+            asm volatile ("nop \n nop");
+            sio_hw->gpio_hi_clr = 0b11100000;
+#endif
             logmsg("SdioCard::readSectors(", sector, ",...,", (int)n, ") failed: ", (int)g_sdio_error);
         }
         stopTransmission(true);

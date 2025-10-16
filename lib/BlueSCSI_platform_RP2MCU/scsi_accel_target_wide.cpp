@@ -1023,7 +1023,7 @@ void scsi_accel_rp2040_finishRead(const uint8_t *data, uint32_t count, int *pari
 /*******************************************************/
 /* Write SCSI PIO program timings and ACK pin          */
 /*******************************************************/
-static void zulu_pio_remove_program(PIO pio, const pio_program_t *program, uint loaded_offset, bool &removed)
+static void pio_remove_program(PIO pio, const pio_program_t *program, uint loaded_offset, bool &removed)
 {
     if (!removed)
     {
@@ -1034,7 +1034,7 @@ static void zulu_pio_remove_program(PIO pio, const pio_program_t *program, uint 
 
 static int pio_add_scsi_accel_async_write_program()
 {
-    zulu_pio_remove_program(SCSI_DMA_PIO,
+    pio_remove_program(SCSI_DMA_PIO,
         &scsi_accel_async_write_program,
         g_scsi_dma.pio_offset_async_write,
         g_scsi_dma.pio_removed_async_write);
@@ -1050,7 +1050,7 @@ static int pio_add_scsi_accel_async_write_program()
         sizeof(scsi_accel_async_write_program_instructions));
 
     // out pins, 18         side 1  [0]   <-- Set data preset time
-    uint8_t delay = g_blueSCSI_timings->scsi.req_delay - 2;
+    uint8_t delay = g_bluescsi_timings->scsi.req_delay - 2;
     assert( delay <= 0xF);
     rewrote_instructions[0] |= pio_encode_delay(delay);
     // wait 1 gpio ACK      side 1      ; Wait for ACK to be inactive
@@ -1064,7 +1064,7 @@ static int pio_add_scsi_accel_async_write_program()
 
 static int pio_add_scsi_accel_read_program()
 {
-    zulu_pio_remove_program(SCSI_DMA_PIO,
+    pio_remove_program(SCSI_DMA_PIO,
         &scsi_accel_read_program,
         g_scsi_dma.pio_offset_read,
         g_scsi_dma.pio_removed_read);
@@ -1091,7 +1091,7 @@ static int pio_add_scsi_accel_read_program()
 
 static int pio_add_scsi_sync_write_pacer_program()
 {
-    zulu_pio_remove_program(SCSI_DMA_PIO,
+    pio_remove_program(SCSI_DMA_PIO,
         &scsi_sync_write_pacer_program,
         g_scsi_dma.pio_offset_sync_write_pacer,
         g_scsi_dma.pio_removed_sync_write_pacer);
@@ -1298,11 +1298,11 @@ void scsi_accel_rp2040_init()
         pio_sm_unclaim(SCSI_DMA_PIO, SCSI_SYNC_SM);
 
         // Remove all SCSI programs
-        zulu_pio_remove_program(SCSI_DMA_PIO, &scsi_accel_async_write_program, g_scsi_dma.pio_offset_async_write, g_scsi_dma.pio_removed_async_write);
-        zulu_pio_remove_program(SCSI_DMA_PIO, &scsi_sync_write_pacer_program, g_scsi_dma.pio_offset_sync_write_pacer, g_scsi_dma.pio_removed_sync_write_pacer);
-        zulu_pio_remove_program(SCSI_DMA_PIO, &scsi_accel_read_program, g_scsi_dma.pio_offset_read, g_scsi_dma.pio_removed_read);
-        zulu_pio_remove_program(SCSI_DMA_PIO, &scsi_sync_read_pacer_program, g_scsi_dma.pio_offset_sync_read_pacer, g_scsi_dma.pio_removed_sync_read_pacer);
-        zulu_pio_remove_program(SCSI_DMA_PIO, &scsi_sync_write_program, g_scsi_dma.pio_offset_sync_write, g_scsi_dma.pio_removed_sync_write);
+        pio_remove_program(SCSI_DMA_PIO, &scsi_accel_async_write_program, g_scsi_dma.pio_offset_async_write, g_scsi_dma.pio_removed_async_write);
+        pio_remove_program(SCSI_DMA_PIO, &scsi_sync_write_pacer_program, g_scsi_dma.pio_offset_sync_write_pacer, g_scsi_dma.pio_removed_sync_write_pacer);
+        pio_remove_program(SCSI_DMA_PIO, &scsi_accel_read_program, g_scsi_dma.pio_offset_read, g_scsi_dma.pio_removed_read);
+        pio_remove_program(SCSI_DMA_PIO, &scsi_sync_read_pacer_program, g_scsi_dma.pio_offset_sync_read_pacer, g_scsi_dma.pio_removed_sync_read_pacer);
+        pio_remove_program(SCSI_DMA_PIO, &scsi_sync_write_program, g_scsi_dma.pio_offset_sync_write, g_scsi_dma.pio_removed_sync_write);
 
         // Un-claim all SCSI DMA channels
         dma_channel_unclaim(SCSI_DMA_CH_A);
@@ -1470,10 +1470,10 @@ bool scsi_accel_rp2040_setSyncMode(int syncOffset, int syncPeriod, bool wide)
             // rdelay1: req assert period
             int rdelay1;
 
-            uint32_t up_rounder = g_blueSCSI_timings->scsi.clk_period_ps / 2 + 1;
+            uint32_t up_rounder = g_bluescsi_timings->scsi.clk_period_ps / 2 + 1;
             uint32_t delay_in_ps = (syncPeriod * 4) * 1000;
             // This is the period in clock cycles rounded up
-            int totalPeriod = (delay_in_ps + up_rounder) / g_blueSCSI_timings->scsi.clk_period_ps;
+            int totalPeriod = (delay_in_ps + up_rounder) / g_bluescsi_timings->scsi.clk_period_ps;
             int rtotalPeriod = totalPeriod;
             int clkdiv = 0;
             if (syncPeriod < 25)
@@ -1481,42 +1481,42 @@ bool scsi_accel_rp2040_setSyncMode(int syncOffset, int syncPeriod, bool wide)
                 // Fast-20 SCSI timing: 15 ns assertion period
                 // The hardware rise and fall time require some extra delay,
                 // These delays are in addition to the 1 cycle that the PIO takes to execute the instruction
-                totalPeriod += g_blueSCSI_timings->scsi_20.total_period_adjust;
-                delay0 = g_blueSCSI_timings->scsi_20.delay0; //Data setup time, should be min 11.5ns according to the spec for FAST-20
-                delay1 = g_blueSCSI_timings->scsi_20.delay1; //pulse width, should be min 15ns according to the spec for FAST-20
+                totalPeriod += g_bluescsi_timings->scsi_20.total_period_adjust;
+                delay0 = g_bluescsi_timings->scsi_20.delay0; //Data setup time, should be min 11.5ns according to the spec for FAST-20
+                delay1 = g_bluescsi_timings->scsi_20.delay1; //pulse width, should be min 15ns according to the spec for FAST-20
                 delay2 = totalPeriod - delay0 - delay1 - 3;  //Data hold time, should be min 16.5ns according to the spec for FAST-20
                 if (delay2 < 0) delay2 = 0;
                 if (delay2 > 15) delay2 = 15;
-                rdelay1 = g_blueSCSI_timings->scsi_20.rdelay1;
-                rtotalPeriod += g_blueSCSI_timings->scsi_20.rtotal_period_adjust;
+                rdelay1 = g_bluescsi_timings->scsi_20.rdelay1;
+                rtotalPeriod += g_bluescsi_timings->scsi_20.rtotal_period_adjust;
             }
             else if (syncPeriod < 50 )
             {
                 // Fast-10 SCSI timing: 30 ns assertion period, 25 ns skew delay
                 // The hardware rise and fall time require some extra delay,
-                totalPeriod += g_blueSCSI_timings->scsi_10.total_period_adjust;
-                delay0 = g_blueSCSI_timings->scsi_10.delay0; // 4;
-                delay1 = g_blueSCSI_timings->scsi_10.delay1; // 6;
+                totalPeriod += g_bluescsi_timings->scsi_10.total_period_adjust;
+                delay0 = g_bluescsi_timings->scsi_10.delay0; // 4;
+                delay1 = g_bluescsi_timings->scsi_10.delay1; // 6;
                 delay2 = totalPeriod - delay0 - delay1 - 3;
                 if (delay2 < 0) delay2 = 0;
                 if (delay2 > 15) delay2 = 15;
-                rdelay1 = g_blueSCSI_timings->scsi_10.rdelay1;
-                rtotalPeriod += g_blueSCSI_timings->scsi_10.rtotal_period_adjust;
+                rdelay1 = g_bluescsi_timings->scsi_10.rdelay1;
+                rtotalPeriod += g_bluescsi_timings->scsi_10.rtotal_period_adjust;
             }
             else
             {
                 // Slow SCSI timing: 90 ns assertion period, 55 ns skew delay
                 // Delay2 must be at least 2 to keep negation period well above the 90 ns minimum
-                clkdiv = g_blueSCSI_timings->scsi_5.clkdiv;
+                clkdiv = g_bluescsi_timings->scsi_5.clkdiv;
                 if (clkdiv > 0) { totalPeriod /= clkdiv; rtotalPeriod /= clkdiv; }
-                totalPeriod += g_blueSCSI_timings->scsi_5.total_period_adjust;
-                delay0 = g_blueSCSI_timings->scsi_5.delay0;
-                delay1 = g_blueSCSI_timings->scsi_5.delay1;
+                totalPeriod += g_bluescsi_timings->scsi_5.total_period_adjust;
+                delay0 = g_bluescsi_timings->scsi_5.delay0;
+                delay1 = g_bluescsi_timings->scsi_5.delay1;
                 delay2 = totalPeriod - delay0 - delay1 - 3;
                 if (delay2 < 2) delay2 = 2;
                 if (delay2 > 15) delay2 = 15;
-                rdelay1 = g_blueSCSI_timings->scsi_5.rdelay1;
-                rtotalPeriod += g_blueSCSI_timings->scsi_5.rtotal_period_adjust;
+                rdelay1 = g_bluescsi_timings->scsi_5.rdelay1;
+                rtotalPeriod += g_bluescsi_timings->scsi_5.rtotal_period_adjust;
             }
 
             // Patch the delay values into the instructions in scsi_sync_write.

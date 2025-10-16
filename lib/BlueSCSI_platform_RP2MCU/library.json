@@ -9,6 +9,6 @@
     "platforms": "*",
     "dependencies":
     {
-        "CUEParser": "https://github.com/BlueSCSI/CUEParser#v2025.02.25"
+        "CUEParser": "https://github.com/BlueSCSI/CUEParser#8c765596f1f8771c1b66d3063d13e33b0efab896"
     }
 }

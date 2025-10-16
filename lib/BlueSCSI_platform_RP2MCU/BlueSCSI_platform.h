@@ -61,7 +61,7 @@ extern const char *g_platform_name;
 
 /* Global PIN definitions that may change depending on hardware rev */
 extern uint32_t SCSI_ACCEL_PINMASK;
-#ifndef BLUESCSI_ULTRA_WIDE
+#if !(defined(BLUESCSI_ULTRA_WIDE) || defined(BLUESCSI_ULTRA))
 extern uint8_t SCSI_OUT_REQ;
 extern uint8_t SCSI_OUT_SEL;
 #endif
@@ -160,6 +160,12 @@ bool read_from_8574(uint8_t* state);
 // True if the debug DIP switch is in the ON position
 bool is_debug_enabled();
 
+// True if the Initiator Mode DIP switch is in the ON position
+bool is_initiator_mode_enabled();
+
+// True if the USB Initiator DIP switch is in the ON position
+bool is_initiator_USB_mode_enabled();
+
 // Writes to the IO expander
 bool write_to_8574(uint8_t dataToWrite);
 
@@ -200,7 +206,7 @@ void platform_set_sd_callback(sd_callback_t func, const uint8_t *buffer);
 
 // Reprogram firmware in main program area.
 #ifndef RP2040_DISABLE_BOOTLOADER
-#define PLATFORM_BOOTLOADER_SIZE (128 * 1024)
+#define PLATFORM_BOOTLOADER_SIZE (256 * 1024)
 #define PLATFORM_FLASH_TOTAL_SIZE (1024 * 1024)
 #define PLATFORM_FLASH_PAGE_SIZE 4096
 bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_PAGE_SIZE]);

@@ -22,8 +22,14 @@
 
 
 // i2s PIO settings
+
+#if defined(BLUESCSI_ULTRA) || defined (BLUESCSI_ULTRA_WIDE)
 #define I2S_PIO_HW pio2_hw
+#define I2S_PIO_SM 1
+#else
+#define I2S_PIO_HW pio0_hw
 #define I2S_PIO_SM 0
+#endif
 
 // audio subsystem DMA channels
 #define SOUND_DMA_CHA 10

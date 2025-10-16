@@ -28,7 +28,7 @@
 
  MEMORY
 {
-    FLASH(rx) : ORIGIN = 0x10000000, LENGTH = 256k
+    FLASH(rx) : ORIGIN = 0x10000000, LENGTH = 176k
     PSRAM(rwx) : ORIGIN = 0x11000000, LENGTH = 0
     RAM(rwx) : ORIGIN = 0x20000000, LENGTH = 512k
     SCRATCH_X(rwx) : ORIGIN = 0x20080000, LENGTH = 4k
@@ -45,41 +45,7 @@ SECTIONS
         __flash_binary_start = .;
     } > FLASH
 
-    /* Discard code that is not used in bootloader mode to
-    * reduce the flash usage.
-    */
-    /DISCARD/ : {
-
-        *scanf*(*)
-        *strtod*(*)
-        *libipv4.a:*(*)
-        *liblwip*.a:*(*)
-        *libBlueSCSI_audio_RP2MCU.a:*(*)
-        *libAdafruit*.a:*(*)
-        *libWire.a:*(*)
-        *libSPI.a:*(*)
-        *libBlueSCSI_UI_RP2MCU.a:*(*)
-        *libBlueSCSI_platform_RP2MCU.a:BlueSCSI_platform_network.cpp.o*(*)
-        *libFrameworkArduino.a:cyw43_wrappers.cpp.o*(*)
-
-        /* gt */
-        *BlueSCSI_tape.cpp.o*(*)
-        *BlueSCSI_mode.cpp.o*(*)
-        *BlueSCSI_blink.cpp.o*(*)
-        *BlueSCSI_buffer_control.cpp.o*(*)
-        *uiDiskUtils.cpp.o*(*)
-        *SDNavigator.cpp.o*(*)
-    }
-
     .text : {
-        cyw43_digitalWrite = 0;
-        cyw43_digitalRead = 0;
-        cyw43_pinMode = 0;
-        init_cyw43_wifi = bootloader_main;
-        setPendingImageLoad = 0;
-        platform_poll = 0;
-
-
         __logical_binary_start = .;
         KEEP (*(.btldr_vectors))
         KEEP (*(.binary_info_header))

@@ -69,7 +69,7 @@ enum audio_status_code {
  */
 bool audio_is_playing(uint8_t id);
 
-#if defined(ENABLE_AUDIO_OUTPUT) && !defined(BLUESCSI_ULTRA)
+#if defined(ENABLE_AUDIO_OUTPUT) && defined(ENABLE_AUDIO_OUTPUT_SPDIF)
 /**
  * Begins audio playback for a file.
  *
@@ -82,7 +82,7 @@ bool audio_is_playing(uint8_t id);
  */
 bool audio_play(uint8_t owner, image_config_t* img, uint64_t start, uint64_t end, bool swap);
 
-#elif defined(ENABLE_AUDIO_OUTPUT_I2S) && defined(BLUESCSI_ULTRA)
+#elif defined(ENABLE_AUDIO_OUTPUT_I2S) && (defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE))
 /**
  * Begins audio playback for a file.
  *

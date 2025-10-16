@@ -101,7 +101,13 @@
 #define DEFAULT_BLOCKSIZE_OPTICAL 2048
 
 // Default SCSI drive information when Apple quirks are enabled
+#if defined(BLUESCSI_ULTRA_WIDE)
+#define APPLE_DRIVEINFO_FIXED     {"QUANTUM",  "BlueSCSI UltraW",      PLATFORM_REVISION, "1.0"}
+#elif defined (BLUESCSI_ULTRA)
+#define APPLE_DRIVEINFO_FIXED     {"QUANTUM",  "BlueSCSI Ultra",      PLATFORM_REVISION, "1.0"}
+#else
 #define APPLE_DRIVEINFO_FIXED     {"QUANTUM",  "BlueSCSI Pico",      PLATFORM_REVISION, "1.0"}
+#endif
 #define APPLE_DRIVEINFO_REMOVABLE {"IOMEGA",   "BETA230",           PLATFORM_REVISION, "2.02"}
 #define APPLE_DRIVEINFO_OPTICAL   {"BlueSCSI", "CD-ROM CDU-55S",   "1.9a", ""}
 #define APPLE_DRIVEINFO_FLOPPY    {"IOMEGA",   "Io20S         *F", "PP33", ""}

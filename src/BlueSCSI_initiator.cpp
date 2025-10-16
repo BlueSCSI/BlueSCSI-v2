@@ -232,7 +232,15 @@ void scsiInitiatorMainLoop()
     }
     else
     {
-        if (!g_sdcard_present || ini_getbool("SCSI", "InitiatorMSC", false, CONFIGFILE))
+        bool initiator_msc_mode = ini_getbool("SCSI", "InitiatorMSC", false, CONFIGFILE);
+#if defined(BLUESCS_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+        // If MSC mode is turned on in INI, do it
+        // If not, check hardware switch and go with that setting
+        if (!initiator_msc_mode) {
+            initiator_msc_mode = is_initiator_USB_mode_enabled();
+        }
+#endif
+        if (!g_sdcard_present || initiator_msc_mode)
         {
             // This delay allows the USB serial console to connect immediately to the host
             // It also decreases the delay in callback processing of MSC commands

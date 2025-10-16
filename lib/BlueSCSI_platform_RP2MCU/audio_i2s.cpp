@@ -411,6 +411,27 @@ void audio_setup() {
     irq_set_exclusive_handler(I2S_DMA_IRQ_NUM, audio_dma_irq);
     irq_set_enabled(I2S_DMA_IRQ_NUM, true);
     irq_clear(I2S_DMA_IRQ_NUM);
+
+    // Dump PIO state
+    /*
+    logmsg("------------ PIO2 Debug:");
+    logmsg("CTRL: ", I2S_PIO_HW->ctrl);
+    logmsg("FSTAT: ", I2S_PIO_HW->fstat);
+    logmsg("FDEBUG: ", I2S_PIO_HW->fdebug);
+    logmsg("PADOUT: ", I2S_PIO_HW->dbg_padout);
+    logmsg("PADOE: ", I2S_PIO_HW->dbg_padoe);
+    logmsg("SM EXECCTRL: ", I2S_PIO_HW->sm[I2S_PIO_SM].execctrl);
+    logmsg("SM PINCTRL: ", I2S_PIO_HW->sm[I2S_PIO_SM].pinctrl);
+    logmsg("SM ADDR: ", I2S_PIO_HW->sm[I2S_PIO_SM].addr);
+    logmsg("SM INSTR: ", I2S_PIO_HW->sm[I2S_PIO_SM].instr);
+    logmsg("------------ GPIO Debug:");
+    logmsg("I2S CLK CTRL: ", io_bank0_hw->io[GPIO_I2S_BCLK].ctrl);
+    logmsg("I2S CLK STAT: ", io_bank0_hw->io[GPIO_I2S_BCLK].status);
+    logmsg("I2S WS CTRL: ", io_bank0_hw->io[GPIO_I2S_WS].ctrl);
+    logmsg("I2S WS STAT: ", io_bank0_hw->io[GPIO_I2S_WS].status);
+    logmsg("I2S DAT CTRL: ", io_bank0_hw->io[GPIO_I2S_DOUT].ctrl);
+    logmsg("I2S DAT STAT: ", io_bank0_hw->io[GPIO_I2S_DOUT].status);
+    */
 }
 
 

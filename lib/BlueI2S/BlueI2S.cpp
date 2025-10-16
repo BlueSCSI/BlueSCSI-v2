@@ -29,10 +29,17 @@ I2S::I2S() {
     _div_int = 48;
     _div_frac = 0;
     _bps = 16;
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+    _pio = pio2_hw;
+    _sm = 1;
+    _pinBCLK = 37;
+    _pinDOUT = 39;
+#else
     _pio = pio0_hw;
     _sm = 1;
     _pinBCLK = 26;
     _pinDOUT = 28;
+#endif
 }
 
 I2S::~I2S() {
@@ -40,7 +47,11 @@ I2S::~I2S() {
 }
 
 bool I2S::setBCLK(pin_size_t pin) {
+#if defined(BLUESCSI_ULTRA) || defined (BLUESCSI_ULTRA_WIDE)
+    if (_running) {
+#else
     if (_running || (pin > 28)) {
+#endif
         return false;
     }
     _pinBCLK = pin;
@@ -48,7 +59,11 @@ bool I2S::setBCLK(pin_size_t pin) {
 }
 
 bool I2S::setDATA(pin_size_t pin) {
+#if defined(BLUESCSI_ULTRA) || defined (BLUESCSI_ULTRA_WIDE)
+    if (_running) {
+#else
     if (_running || (pin > 29)) {
+#endif
         return false;
     }
     _pinDOUT = pin;
@@ -86,6 +101,9 @@ bool I2S::begin(PIO pio, uint sm) {
     _running = true;
     int off = 0;
     pio_sm_claim(_pio, _sm);
+#ifdef BLUESCSI_ULTRA_WIDE
+    pio->gpiobase = 16;
+#endif
     off = pio_add_program(_pio, &pio_i2s_out_program);
     pio_i2s_out_program_init(_pio, _sm, off, _pinDOUT, _pinBCLK, _bps);
     pio_sm_set_clkdiv_int_frac(_pio, _sm, _div_int, _div_frac);

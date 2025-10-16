@@ -47,12 +47,8 @@
 #define SCSI_OUT_MSG  25
 #define SCSI_OUT_RST  29
 #define SCSI_OUT_BSY  27
-#define SCSI_OUT_REQ_CURRENT  22
-#define SCSI_OUT_REQ_PRE09A   22
-extern uint8_t SCSI_OUT_REQ;
-#define SCSI_OUT_SEL_CURRENT  24
-#define SCSI_OUT_SEL_PRE09A   24
-extern uint8_t SCSI_OUT_SEL;
+#define SCSI_OUT_REQ  22
+#define SCSI_OUT_SEL  24
 
 #define SCSI_ACCEL_SETPINS 0x4001FF
 #define SCSI_ACCEL_SETPINS_PRE09A 0x4001FF
@@ -99,17 +95,12 @@ extern uint8_t SCSI_OUT_SEL;
 #define GPIO_I2C_SDA 18
 #define GPIO_I2C_SCL 19
 
-// I2S
-#define I2S_SCK 37
-#define I2S_WS 38
-#define I2S_DOUT 39
-
 // SW1/SW2 buttons on pre-202309a hardware
 #define BUTTON_SW1_PRE202309a SCSI_IN_ATN
 #define BUTTON_SW2_PRE202309a SCSI_IN_ACK
 
 // Other pins
-#define SWO_PIN 44  // UART0
+#define SWO_PIN 31  // UART0
 
 // Status line outputs for initiator mode
 #define SCSI_OUT_ACK  26
@@ -124,8 +115,21 @@ extern uint8_t SCSI_OUT_SEL;
 #define GPIO_RM2_ON   40
 #define GPIO_RM2_DATA 41
 #define GPIO_RM2_CS   42
-#define GPIO_RM2_DET  43
-#define GPIO_RM2_CLK  44
+#define GPIO_RM2_CLK  43
+
+// Audio GPIO defines
+#ifdef ENABLE_AUDIO_OUTPUT_SPDIF
+#define AUDIO_SPI      spi0
+#define GPIO_EXP_SPARE 38
+#define GPIO_EXP_AUDIO 39
+#endif
+
+#ifdef ENABLE_AUDIO_OUTPUT_I2S
+#define GPIO_I2S_BCLK   37
+#define GPIO_I2S_WS     38
+#define GPIO_I2S_DOUT   39
+#define I2S_DMA_IRQ_NUM DMA_IRQ_2
+#endif
 
 // Below are GPIO access definitions that are used from scsiPhy.cpp.
 

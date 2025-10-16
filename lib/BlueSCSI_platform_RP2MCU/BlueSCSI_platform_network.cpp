@@ -45,10 +45,10 @@ static bool network_in_use = false;
 bool platform_network_supported()
 {
 	/* from cores/rp2040/RP2040Support.h */
-#if !defined(PICO_CYW43_SUPPORTED)
-	return false;
-#elif defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+#if defined(BLUESCSI_ULTRA)
 	return true;
+#elif !defined(PICO_CYW43_SUPPORTED) || defined(BLUESCSI_ULTRA_WIDE)
+	return false;
 #else
 	extern bool __isPicoW;
 	return __isPicoW;
