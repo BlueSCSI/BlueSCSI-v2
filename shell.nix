@@ -44,6 +44,7 @@ let
       cmake
       nodejs
       git
+      git-filter-repo
       gh
       picotool
     ];
