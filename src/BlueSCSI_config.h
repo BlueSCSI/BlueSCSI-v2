@@ -29,9 +29,9 @@
 #include <BlueSCSI_platform_config.h>
 
 // Use variables for version number
-#define FW_VER_NUM      "2025.08.03"
+#define FW_VER_NUM      "2025.10.27"
 // rel or dev only.
-#define FW_VER_SUFFIX   "dev"
+#define FW_VER_SUFFIX   "rel"
 
 #define DEF_STRINGFY(DEF) STRINGFY(DEF)
 #define STRINGFY(STR) #STR
