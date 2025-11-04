@@ -241,16 +241,48 @@ extern "C" void tud_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8],
                         uint8_t product_id[16], uint8_t product_rev[4]) {
 
   MSCScopedLock lock;
-  if (g_msc_initiator) return init_msc_inquiry_cb(lun, vendor_id, product_id, product_rev);
+  if (g_msc_initiator) {
+    init_msc_inquiry_cb(lun, vendor_id, product_id, product_rev);
+
+    // Build a temporary inquiry structure to get the device type
+    uint8_t temp_inquiry[36];
+    uint32_t result = init_msc_inquiry2_cb(lun, temp_inquiry, sizeof(temp_inquiry));
+
+    if (result > 0) {
+      uint8_t device_type = temp_inquiry[0] & 0x1F;
+      uint8_t is_removable = temp_inquiry[1] & 0x80;
+
+      // The inquiry response buffer starts 8 bytes before vendor_id
+      // vendor_id is at offset 8 in scsi_inquiry_resp_t
+      uint8_t *inquiry_resp = vendor_id - 8;
+
+      // Safely modify the device type fields
+      inquiry_resp[0] = (inquiry_resp[0] & 0xE0) | (device_type & 0x1F);
+      inquiry_resp[1] = (inquiry_resp[1] & 0x7F) | is_removable;
+    }
+    return;
+  }
 
   const char vid[] = "BlueSCSI";
-  const char pid[] = PLATFORM_PID; 
+  const char pid[] = PLATFORM_PID;
   const char rev[] = PLATFORM_REVISION;
 
   memcpy(vendor_id, vid, tu_min32(strlen(vid), 8));
   memcpy(product_id, pid, tu_min32(strlen(pid), 16));
   memcpy(product_rev, rev, tu_min32(strlen(rev), 4));
 }
+
+// TODO: When PicoSDK/Arduino-Pico are updated to include TinyUSB 0.19.0+ we can just use this instead of manually manipulating the buffer.
+// extern "C" __attribute__((used)) uint32_t tud_msc_inquiry2_cb(uint8_t lun, scsi_inquiry_resp_t *inquiry_resp, uint32_t bufsize) {
+//   MSCScopedLock lock;
+//   logmsg("tud_msc_inquiry2_cb (v2): LUN=", (int)lun, " initiator_mode=", g_msc_initiator ? "YES" : "NO");
+//
+//   if (g_msc_initiator) {
+//     uint32_t result = init_msc_inquiry2_cb(lun, inquiry_resp, bufsize);
+//     return result;
+//   }
+//   return 0;
+// }
 
 // max LUN supported
 // we only have the one SD card

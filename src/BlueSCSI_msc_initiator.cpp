@@ -4,6 +4,7 @@
  * should be usable with other USB libraries.
  *
  * ZuluSCSI™ - Copyright (c) 2023-2025 Rabbit Hole Computing™
+ * Eric Helgeson - Copyright (c) 2025 BlueSCSI
  *
  * This file is licensed under the GPL version 3 or any later version. 
  * It is derived from cdrom.c in SCSI2SD V6
@@ -33,6 +34,7 @@
 #include <scsi.h>
 #include <BlueSCSI_platform.h>
 #include <minIni.h>
+
 #include "SdFat.h"
 
 bool g_msc_initiator;
@@ -43,6 +45,7 @@ bool setup_msc_initiator() { return false; }
 void poll_msc_initiator() {}
 
 void init_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8], uint8_t product_id[16], uint8_t product_rev[4]) {}
+uint32_t init_msc_inquiry2_cb(uint8_t lun, void *inquiry_resp, uint32_t bufsize) { return 0; }
 uint8_t init_msc_get_maxlun_cb(void) { return 0; }
 bool init_msc_is_writable_cb (uint8_t lun) { return false; }
 bool init_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, bool load_eject) { return false; }
@@ -61,6 +64,7 @@ static struct {
     uint32_t sectorsize;
     uint32_t sectorcount;
     bool use_read10; // Always use read10/write10 commands for this target
+    uint8_t device_type; // SCSI peripheral device type from INQUIRY byte 0
 } g_msc_initiator_targets[NUM_SCSIID];
 static int g_msc_initiator_target_count;
 
@@ -113,27 +117,39 @@ static void scan_targets()
             char product_id[17] = {0};
             memcpy(vendor_id, &inquiry_data[8], 8);
             memcpy(product_id, &inquiry_data[16], 16);
+            uint8_t device_type = inquiry_data[0] & 0x1f;
 
             if (inquiryok)
             {
+                const char *type_name = (device_type == SCSI_DEVICE_TYPE_CD) ? "CD-ROM" :
+                                       (device_type == SCSI_DEVICE_TYPE_DIRECT_ACCESS) ? "DISK" : "OTHER";
+
                 if (readcapok)
                 {
                     logmsg("Found SCSI drive with ID ", target_id, ": ", vendor_id, " ", product_id,
                         " capacity ", (int)(((uint64_t)sectorcount * sectorsize) / 1024 / 1024), " MB");
+                    logmsg("   Device Type: ", device_type, " (", type_name, ")");
+                    logmsg("   Will be mapped to USB LUN ", found_count);
+
                     g_msc_initiator_targets[found_count].target_id = target_id;
                     g_msc_initiator_targets[found_count].sectorcount = sectorcount;
                     g_msc_initiator_targets[found_count].sectorsize = sectorsize;
                     g_msc_initiator_targets[found_count].use_read10 = scsiInitiatorTestSupportsRead10(target_id, sectorsize);
+                    g_msc_initiator_targets[found_count].device_type = device_type;
                     found_count++;
                 }
                 else
                 {
                     logmsg("Found SCSI drive with ID ", target_id, ": ", vendor_id, " ", product_id,
                            " but failed to read capacity. Assuming SCSI-1 drive up to 1 GB.");
+                    logmsg("   Device Type: ", device_type, " (", type_name, ")");
+                    logmsg("   Will be mapped to USB LUN ", found_count);
+
                     g_msc_initiator_targets[found_count].target_id = target_id;
                     g_msc_initiator_targets[found_count].sectorcount = 2097152;
                     g_msc_initiator_targets[found_count].sectorsize = 512;
                     g_msc_initiator_targets[found_count].use_read10 = false;
+                    g_msc_initiator_targets[found_count].device_type = device_type;
                     found_count++;
                 }
             }
@@ -279,8 +295,67 @@ void init_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8], uint8_t product_id[1
     memcpy(vendor_id, &response[8], 8);
     memcpy(product_id, &response[16], 16);
     memcpy(product_rev, &response[32], 4);
+    LED_OFF();
+}
+
+// V2 INQUIRY callback that allows setting device type for optical drives
+uint32_t init_msc_inquiry2_cb(uint8_t lun, void *inquiry_resp, uint32_t bufsize)
+{
+    // Cast to access the inquiry response structure
+    // We use a local struct definition to avoid including TinyUSB headers
+    struct {
+        uint8_t peripheral_device_type     : 5;
+        uint8_t peripheral_qualifier       : 3;
+        uint8_t reserved1                  : 7;
+        uint8_t is_removable               : 1;
+        uint8_t version;
+        uint8_t response_data_format       : 4;
+        uint8_t hierarchical_support       : 1;
+        uint8_t normal_aca                 : 1;
+        uint8_t reserved2                  : 2;
+        uint8_t additional_length;
+        uint8_t flags1;
+        uint8_t flags2;
+        uint8_t flags3;
+        uint8_t vendor_id[8];
+        uint8_t product_id[16];
+        uint8_t product_rev[4];
+    } *inq_resp = (decltype(inq_resp))inquiry_resp;
+
+    if (g_msc_initiator_target_count == 0 || lun >= g_msc_initiator_target_count)
+    {
+        return 0;
+    }
+
+    LED_ON();
+    g_msc_initiator_state.status_reqcount++;
+
+    int target = get_target(lun);
+    uint8_t response[36] = {0};
+    bool status = scsiInquiry(target, response);
+    if (!status)
+    {
+        logmsg("SCSI Inquiry2 to target ", target, " failed");
+        LED_OFF();
+        return 0;
+    }
+
+    // Copy the original inquiry response, then override specific fields.
+    memcpy(inquiry_resp, response, 36);
+
+    // uint8_t original_device_type = response[0] & 0x1f;
+    uint8_t stored_device_type = g_msc_initiator_targets[lun].device_type;
+
+    inq_resp->peripheral_device_type = stored_device_type;
+    inq_resp->is_removable = (stored_device_type == SCSI_DEVICE_TYPE_CD) ? 1 : 0;
+
+    char vendor_id[9] = {0};
+    char product_id[17] = {0};
+    memcpy(vendor_id, &response[8], 8);
+    memcpy(product_id, &response[16], 16);
 
     LED_OFF();
+    return 36; // Return standard INQUIRY response length
 }
 
 uint8_t init_msc_get_maxlun_cb(void)
@@ -325,21 +400,21 @@ bool init_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, bo
     g_msc_initiator_state.status_reqcount++;
 
     int target = get_target(lun);
-    uint8_t command[6] = {0x1B, 0x1, 0, 0, 0, 0};
+    uint8_t command[6] = {0x1B, 0x0, 0, 0, 0, 0};
     uint8_t response[4] = {0};
-    
     if (start)
     {
         command[4] |= 1; // Start
         command[1] = 0;  // Immediate
     }
 
-    if (load_eject)
+    if (load_eject && g_msc_initiator_targets[lun].device_type == SCSI_DEVICE_TYPE_CD)
     {
+        logmsg("Ejecting");
         command[4] |= 2;
     }
 
-    command[4] |= power_condition << 4;
+    command[4] |= static_cast<uint8_t>((power_condition & 0x0F) << 4);
 
     int status = scsiInitiatorRunCommand(target,
                                          command, sizeof(command),

@@ -33,6 +33,7 @@ bool setup_msc_initiator();
 void poll_msc_initiator();
 
 void init_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8], uint8_t product_id[16], uint8_t product_rev[4]);
+uint32_t init_msc_inquiry2_cb(uint8_t lun, void *inquiry_resp, uint32_t bufsize);
 uint8_t init_msc_get_maxlun_cb(void);
 bool init_msc_is_writable_cb (uint8_t lun);
 bool init_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, bool load_eject);
