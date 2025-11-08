@@ -93,6 +93,7 @@ extern uint32_t SCSI_ACCEL_PINMASK;
 
 // Other pins
 #define SWO_PIN 16
+#define GPIO_USB_POWER 24
 
 // Status line outputs for initiator mode
 #define SCSI_OUT_ACK  26
