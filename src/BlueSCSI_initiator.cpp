@@ -881,8 +881,15 @@ bool scsiTestUnitReady(int target_id)
             }
             else if (sense_key == NOT_READY)
             {
-                dbgmsg("Target ", target_id, " reports NOT_READY, running STARTSTOPUNIT");
-                scsiStartStopUnit(target_id, true);
+#ifdef PLATFORM_MASS_STORAGE
+                // For MSC initiator mode, don't automatically send START_STOP_UNIT
+                // Removable media (Zip, MO, etc.) can eject if START is sent during loading
+                if (!g_msc_initiator)
+#endif
+                {
+                    dbgmsg("Target ", target_id, " reports NOT_READY, running STARTSTOPUNIT");
+                    scsiStartStopUnit(target_id, true);
+                }
             }
         }
         else

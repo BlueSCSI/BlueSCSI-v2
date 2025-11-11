@@ -64,7 +64,8 @@ static struct {
     uint32_t sectorsize;
     uint32_t sectorcount;
     bool use_read10; // Always use read10/write10 commands for this target
-    uint8_t device_type; // SCSI peripheral device type from INQUIRY byte 0
+    uint8_t device_type; // SCSI peripheral device type from INQUIRY byte 0 (bits 0-4)
+    bool is_removable;   // RMB bit from INQUIRY byte 1 (bit 7)
 } g_msc_initiator_targets[NUM_SCSIID];
 static int g_msc_initiator_target_count;
 
@@ -107,23 +108,25 @@ static void scan_targets()
         {
             uint32_t sectorcount, sectorsize;
 
-            bool inquiryok =
-                scsiStartStopUnit(target_id, true) &&
-                scsiInquiry(target_id, inquiry_data);
-            bool readcapok =
-                scsiInitiatorReadCapacity(target_id, &sectorcount, &sectorsize);
+            // Note: We don't send START_STOP_UNIT here anymore. For MSC initiator mode,
+            // START_STOP_UNIT is disabled in scsiTestUnitReady() to prevent interfering
+            // with removable media loading. The USB host sends START_STOP via callback.
+            bool inquiryok = scsiInquiry(target_id, inquiry_data);
+            bool readcapok = scsiInitiatorReadCapacity(target_id, &sectorcount, &sectorsize);
 
             char vendor_id[9] = {0};
             char product_id[17] = {0};
             memcpy(vendor_id, &inquiry_data[8], 8);
             memcpy(product_id, &inquiry_data[16], 16);
             uint8_t device_type = inquiry_data[0] & 0x1f;
+            bool is_removable = (inquiry_data[1] & 0x80) != 0;  // RMB bit from INQUIRY byte 1
 
             if (inquiryok)
             {
                 const char *type_name = (device_type == SCSI_DEVICE_TYPE_CD) ? "CD-ROM" :
-                                       (device_type == SCSI_DEVICE_TYPE_DIRECT_ACCESS) ? "DISK" : "OTHER";
-
+                                                        (device_type == SCSI_DEVICE_TYPE_MO) ? "MO" :
+                                                        (device_type == SCSI_DEVICE_TYPE_DIRECT_ACCESS) ?
+                                                        (is_removable ? "REMOVABLE" : "DISK") : "OTHER";
                 if (readcapok)
                 {
                     logmsg("Found SCSI drive with ID ", target_id, ": ", vendor_id, " ", product_id,
@@ -136,6 +139,7 @@ static void scan_targets()
                     g_msc_initiator_targets[found_count].sectorsize = sectorsize;
                     g_msc_initiator_targets[found_count].use_read10 = scsiInitiatorTestSupportsRead10(target_id, sectorsize);
                     g_msc_initiator_targets[found_count].device_type = device_type;
+                    g_msc_initiator_targets[found_count].is_removable = is_removable;
                     found_count++;
                 }
                 else
@@ -150,6 +154,7 @@ static void scan_targets()
                     g_msc_initiator_targets[found_count].sectorsize = 512;
                     g_msc_initiator_targets[found_count].use_read10 = false;
                     g_msc_initiator_targets[found_count].device_type = device_type;
+                    g_msc_initiator_targets[found_count].is_removable = is_removable;
                     found_count++;
                 }
             }
@@ -269,6 +274,22 @@ static int get_target(uint8_t lun)
     }
 }
 
+// Helper function to determine if a device should be treated as removable for USB MSC
+static bool is_removable_device(uint8_t lun)
+{
+    if (lun >= g_msc_initiator_target_count)
+        return false;
+
+    uint8_t dtype = g_msc_initiator_targets[lun].device_type;
+    bool rmb = g_msc_initiator_targets[lun].is_removable;
+
+    // CD-ROM and MO are always removable
+    // Direct Access devices are removable if RMB bit is set (Zip, removable disks, etc.)
+    return (dtype == SCSI_DEVICE_TYPE_CD) ||
+           (dtype == SCSI_DEVICE_TYPE_MO) ||
+           (dtype == SCSI_DEVICE_TYPE_DIRECT_ACCESS && rmb);
+}
+
 void init_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8], uint8_t product_id[16], uint8_t product_rev[4])
 {
     dbgmsg("-- MSC Inquiry");
@@ -343,11 +364,15 @@ uint32_t init_msc_inquiry2_cb(uint8_t lun, void *inquiry_resp, uint32_t bufsize)
     // Copy the original inquiry response, then override specific fields.
     memcpy(inquiry_resp, response, 36);
 
-    // uint8_t original_device_type = response[0] & 0x1f;
     uint8_t stored_device_type = g_msc_initiator_targets[lun].device_type;
 
+    // Set device type from stored value
     inq_resp->peripheral_device_type = stored_device_type;
-    inq_resp->is_removable = (stored_device_type == SCSI_DEVICE_TYPE_CD) ? 1 : 0;
+
+    // Set removable bit based on device type:
+    // - CD-ROM (0x05) and MO (0x07) are always removable
+    // - Direct Access (0x00) uses the RMB bit from SCSI device (Zip, removable disks)
+    inq_resp->is_removable = is_removable_device(lun) ? 1 : 0;
 
     char vendor_id[9] = {0};
     char product_id[17] = {0};
@@ -400,18 +425,24 @@ bool init_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, bo
     g_msc_initiator_state.status_reqcount++;
 
     int target = get_target(lun);
-    uint8_t command[6] = {0x1B, 0x0, 0, 0, 0, 0};
+    uint8_t command[6] = {0x1B, 0x00, 0, 0, 0, 0};
     uint8_t response[4] = {0};
+
     if (start)
     {
-        command[4] |= 1; // Start
-        command[1] = 0;  // Immediate
+        command[4] |= 1; // Start bit
     }
 
-    if (load_eject && g_msc_initiator_targets[lun].device_type == SCSI_DEVICE_TYPE_CD)
+    // Set LoEj bit for removable devices when ejecting
+    if (load_eject && !start && is_removable_device(lun))
     {
-        logmsg("Ejecting");
+        logmsg("Ejecting removable media");
         command[4] |= 2;
+    }
+    else if (load_eject && start && is_removable_device(lun))
+    {
+        logmsg("Loading removable media");
+        command[4] |= 3;  // Both Start and LoEj bits
     }
 
     command[4] |= static_cast<uint8_t>((power_condition & 0x0F) << 4);
@@ -451,18 +482,34 @@ void init_msc_capacity_cb(uint8_t lun, uint32_t *block_count, uint16_t *block_si
     dbgmsg("-- MSC Get Capacity");
     g_msc_initiator_state.status_reqcount++;
 
-    if (g_msc_initiator_target_count == 0)
+    if (g_msc_initiator_target_count == 0 || lun >= g_msc_initiator_target_count)
     {
         *block_count = 0;
         *block_size = 0;
         return;
     }
 
+    // Try to read current capacity from device
     uint32_t sectorcount = 0;
     uint32_t sectorsize = 0;
-    scsiInitiatorReadCapacity(get_target(lun), &sectorcount, &sectorsize);
-    *block_count = sectorcount;
-    *block_size = sectorsize;
+    bool success = scsiInitiatorReadCapacity(get_target(lun), &sectorcount, &sectorsize);
+
+    if (success && sectorcount > 0)
+    {
+        // Update stored capacity with current values
+        g_msc_initiator_targets[lun].sectorcount = sectorcount;
+        g_msc_initiator_targets[lun].sectorsize = sectorsize;
+        *block_count = sectorcount;
+        *block_size = sectorsize;
+    }
+    else
+    {
+        // READ CAPACITY failed (media not ready) - return stored values from scan
+        // For removable media, this prevents USB host from seeing 0 capacity during media loading
+        *block_count = g_msc_initiator_targets[lun].sectorcount;
+        *block_size = g_msc_initiator_targets[lun].sectorsize;
+        dbgmsg("Using stored capacity: ", *block_count, " x ", *block_size);
+    }
 }
 
 int32_t init_msc_scsi_cb(uint8_t lun, const uint8_t scsi_cmd[16], void *buffer, uint16_t bufsize)
