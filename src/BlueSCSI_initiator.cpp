@@ -54,6 +54,8 @@ static struct
 
     uint8_t initiator_id;
 
+
+
     // Is imaging a drive in progress, or are we scanning?
     bool imaging;
     bool audioMode;
@@ -283,7 +285,15 @@ void scsiInitiatorMainLoop()
                 g_initiator_state.sectorcount = g_initiator_state.sectorcount_all = 0;
             }
 
-            const char *filename_format = "HD00_imaged.hda";
+            #define FILE_NAME_MAX_SIZE 32
+
+            char Buffer[FILE_NAME_MAX_SIZE] = {0};
+
+            ini_gets("SCSI", "File1", "HD00_imaged.hda", Buffer, FILE_NAME_MAX_SIZE, "bluescsi.ini");
+            bool customNameSystem = strcmp(Buffer, "HD00_imaged.hda") == 0;
+
+            char * filename_format = "HD00_imaged.hda";
+
             if (inquiryok)
             {
                 g_initiator_state.deviceType = inquiry_data[0] & 0x1F;
@@ -297,7 +307,6 @@ void scsiInitiatorMainLoop()
                     log("Unhandled device type: ", g_initiator_state.deviceType, ". Handling it as Direct Access Device.");
                 }
             }
-
             if (g_initiator_state.sectorcount > 0)
             {
                 char filename[32] = {0};
@@ -305,6 +314,7 @@ void scsiInitiatorMainLoop()
 
                 strncpy(filename, filename_format, sizeof(filename) - 1);
                 filename[2] += g_initiator_state.target_id;
+
 
                 uint64_t sd_card_free_bytes = (uint64_t)SD.vol()->freeClusterCount() * SD.vol()->bytesPerCluster();
                 if (sd_card_free_bytes < total_bytes)
@@ -335,9 +345,30 @@ void scsiInitiatorMainLoop()
                     scsiRewind(g_initiator_state.target_id);
                 }
 
-                while (SD.exists(filename))
-                {
-                    filename[3] = lun++ + '0';
+
+                if(customNameSystem){
+
+                    char * CustomFileVariable = "File1";
+                    char customFilename[32] = {0};
+                    ini_gets("SCSI", CustomFileVariable, "[EMPTY]", customFilename, 32, "bluescsi.ini");
+
+                    while(SD.exists(customFilename)){
+                        CustomFileVariable[4]++;//Next File Variable
+                        ini_gets("SCSI", CustomFileVariable, "[EMPTY]", customFilename, 32, "bluescsi.ini");
+                        if(strcmp(customFilename, "[EMPTY]") == 0){
+                            customNameSystem = false;
+                            break;
+                        }
+                    }
+                    if(customNameSystem){
+                        strcpy(filename, customFilename);
+                    }
+                }
+                if(!customNameSystem){//DO NOT REPLACE with else!, can be entered when running out of custom variables
+                    while (SD.exists(filename))
+                    {
+                        filename[3] = lun++ + '0';
+                    }
                 }
                 if (lun != 0)
                 {
