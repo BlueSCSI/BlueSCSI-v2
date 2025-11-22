@@ -290,6 +290,20 @@ static bool is_removable_device(uint8_t lun)
            (dtype == SCSI_DEVICE_TYPE_DIRECT_ACCESS && rmb);
 }
 
+// Detect MMC commands that need special handling for CD-ROM
+static bool is_mmc_command(uint8_t opcode)
+{
+    switch (opcode)
+    {
+        case 0x43: // READ TOC
+        case 0x46: // GET CONFIGURATION
+        case 0x4A: // GET EVENT STATUS NOTIFICATION
+            return true;
+        default:
+            return false;
+    }
+}
+
 void init_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8], uint8_t product_id[16], uint8_t product_rev[4])
 {
     dbgmsg("-- MSC Inquiry");
@@ -512,6 +526,74 @@ void init_msc_capacity_cb(uint8_t lun, uint32_t *block_count, uint16_t *block_si
     }
 }
 
+// Handle MMC commands for CD-ROM devices that may not fully support MMC
+static int32_t handle_mmc_command(uint8_t lun, const uint8_t scsi_cmd[16], void *buffer, uint16_t bufsize)
+{
+    int target = get_target(lun);
+    uint8_t opcode = scsi_cmd[0];
+
+    dbgmsg("-- Handling MMC command 0x", (int)opcode);
+
+    switch (opcode)
+    {
+        case 0x43: // READ TOC
+        {
+            // Map MMC READ TOC to SCSI-2 format 0
+            // MMC uses byte 2 bits 0-3 for format, SCSI-2 only supports format 0
+            uint8_t modified_cmd[10];
+            memcpy(modified_cmd, scsi_cmd, 10);
+            modified_cmd[2] &= 0xF0; // Clear format bits, forcing format 0
+
+            dbgmsg("-- READ TOC: mapping to SCSI-2 format 0");
+            int status = scsiInitiatorRunCommand(target, modified_cmd, 10,
+                                                NULL, 0,
+                                                (const uint8_t*)buffer, bufsize);
+            return status;
+        }
+
+        case 0x46: // GET CONFIGURATION
+        {
+            // Return minimal stub: 8-byte header with no features
+            dbgmsg("-- GET CONFIGURATION: returning stub");
+            if (bufsize >= 8)
+            {
+                uint8_t *resp = (uint8_t*)buffer;
+                memset(resp, 0, 8);
+                resp[0] = 0x00; resp[1] = 0x00; resp[2] = 0x00; resp[3] = 0x04; // Data length = 4
+                resp[4] = 0x00; resp[5] = 0x00; // Reserved
+                resp[6] = 0x00; resp[7] = 0x08; // Current profile = CD-ROM
+                return 8;
+            }
+            return 0;
+        }
+
+        case 0x4A: // GET EVENT STATUS NOTIFICATION
+        {
+            // Return "no event" stub: 4 bytes
+            dbgmsg("-- GET EVENT STATUS: returning no event");
+            if (bufsize >= 4)
+            {
+                uint8_t *resp = (uint8_t*)buffer;
+                memset(resp, 0, 4);
+                resp[0] = 0x00; resp[1] = 0x02; // Event header length = 2
+                resp[2] = 0x00; // No events
+                resp[3] = 0x00; // Supported event classes
+                return 4;
+            }
+            return 0;
+        }
+
+        default:
+            // Unknown MMC command - pass through
+            dbgmsg("-- Unknown MMC command, passing through");
+            static const uint8_t CmdGroupBytes[8] = {6, 10, 10, 6, 16, 12, 6, 6};
+            int cmdlen = CmdGroupBytes[scsi_cmd[0] >> 5];
+            return scsiInitiatorRunCommand(target, scsi_cmd, cmdlen,
+                                          NULL, 0,
+                                          (const uint8_t*)buffer, bufsize);
+    }
+}
+
 int32_t init_msc_scsi_cb(uint8_t lun, const uint8_t scsi_cmd[16], void *buffer, uint16_t bufsize)
 {
     if (g_msc_initiator_target_count == 0)
@@ -523,9 +605,18 @@ int32_t init_msc_scsi_cb(uint8_t lun, const uint8_t scsi_cmd[16], void *buffer, 
     LED_ON();
     g_msc_initiator_state.status_reqcount++;
 
+    // Intercept MMC commands for CD-ROM devices
+    uint8_t device_type = g_msc_initiator_targets[lun].device_type;
+    if (device_type == SCSI_DEVICE_TYPE_CD && is_mmc_command(scsi_cmd[0]))
+    {
+        int status = handle_mmc_command(lun, scsi_cmd, buffer, bufsize);
+        LED_OFF();
+        return status;
+    }
+
     // NOTE: the TinyUSB API around free-form commands is not very good,
     // this function could need improvement.
-    
+
     // Figure out command length
     static const uint8_t CmdGroupBytes[8] = {6, 10, 10, 6, 16, 12, 6, 6}; // From SCSI2SD
     int cmdlen = CmdGroupBytes[scsi_cmd[0] >> 5];
