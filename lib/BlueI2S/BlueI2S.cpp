@@ -101,7 +101,7 @@ bool I2S::begin(PIO pio, uint sm) {
     _running = true;
     int off = 0;
     pio_sm_claim(_pio, _sm);
-#ifdef BLUESCSI_ULTRA_WIDE
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
     pio->gpiobase = 16;
 #endif
     off = pio_add_program(_pio, &pio_i2s_out_program);

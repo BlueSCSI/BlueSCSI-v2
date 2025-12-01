@@ -887,7 +887,7 @@ void platform_late_init()
     audio_setup();
 #endif
 
-#ifdef BlSCSI_RM2
+#ifdef BLUESCSI_RM2
     uint rm2_pins[CYW43_PIN_INDEX_WL_COUNT] = {0};
     rm2_pins[CYW43_PIN_INDEX_WL_REG_ON] = GPIO_RM2_ON;
     rm2_pins[CYW43_PIN_INDEX_WL_DATA_OUT] = GPIO_RM2_DATA;

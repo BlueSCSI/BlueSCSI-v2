@@ -48,6 +48,8 @@ static char g_cuesheet[4096];
 // True is using the same filenames for the bin/cue, false if using a directory with multiple bin/wav files
 static bool single_bin_file = false;
 // DMA configuration info
+static int dma_channel_a = 9999;
+static int dma_channel_b = 9999;
 static dma_channel_config snd_dma_a_cfg;
 static dma_channel_config snd_dma_b_cfg;
 
@@ -357,25 +359,25 @@ extern "C"
 {
 void audio_dma_irq() {
     // Using dma irq raw register access, because the 2.1.0 pico-sdk function seem to cause issues
-    if (dma_hw->intr & (1 << SOUND_DMA_CHA)) {
-        dma_hw->ints2 = (1 << SOUND_DMA_CHA);
+    if (dma_hw->intr & (1 << dma_channel_a)) {
+        dma_hw->ints2 = (1 << dma_channel_a);
         sbufst_a = STALE;
         if (audio_stopping) {
-            channel_config_set_chain_to(&snd_dma_a_cfg, SOUND_DMA_CHA);
+            channel_config_set_chain_to(&snd_dma_a_cfg, dma_channel_a);
         }
-        dma_channel_configure(SOUND_DMA_CHA,
+        dma_channel_configure(dma_channel_a,
                 &snd_dma_a_cfg,
                 i2s.getPioFIFOAddr(),
                 output_buf_a,
                 out_len_a / 4,
                 false);
-    } else if (dma_hw->intr & (1 << SOUND_DMA_CHB)) {
-        dma_hw->ints2 = (1 <<  SOUND_DMA_CHB);
+    } else if (dma_hw->intr & (1 << dma_channel_b)) {
+        dma_hw->ints2 = (1 <<  dma_channel_b);
         sbufst_b = STALE;
         if (audio_stopping) {
-            channel_config_set_chain_to(&snd_dma_b_cfg, SOUND_DMA_CHB);
+            channel_config_set_chain_to(&snd_dma_b_cfg, dma_channel_b);
         }
-        dma_channel_configure(SOUND_DMA_CHB,
+        dma_channel_configure(dma_channel_b,
                 &snd_dma_b_cfg,
                 i2s.getPioFIFOAddr(),
                 output_buf_b,
@@ -405,8 +407,18 @@ void audio_setup() {
     i2s.setBitsPerSample(16);
     i2s.setDivider(g_bluescsi_timings->audio.clk_div_pio, 0);
     i2s.begin(I2S_PIO_HW, I2S_PIO_SM);
-    dma_channel_claim(SOUND_DMA_CHA);
-	dma_channel_claim(SOUND_DMA_CHB);
+
+    // Clear channel claims, if this method was already called once before
+    if (dma_channel_a < NUM_DMA_CHANNELS) {
+        dma_channel_unclaim(dma_channel_a);
+    }
+    if (dma_channel_b < NUM_DMA_CHANNELS) {
+        dma_channel_unclaim(dma_channel_b);
+    }
+
+    dma_channel_a = dma_claim_unused_channel(true);
+    dma_channel_b = dma_claim_unused_channel(true);
+    dbgmsg("Claimed Audio DMA Channels: ", dma_channel_a, " , ", dma_channel_b);
 
     irq_set_exclusive_handler(I2S_DMA_IRQ_NUM, audio_dma_irq);
     irq_set_enabled(I2S_DMA_IRQ_NUM, true);
@@ -753,30 +765,30 @@ bool audio_play(uint8_t owner, image_config_t* img, uint32_t start, uint32_t len
     }
     // setup the two DMA units to hand-off to each other
     // to maintain a stable bitstream these need to run without interruption
-	snd_dma_a_cfg = dma_channel_get_default_config(SOUND_DMA_CHA);
+	snd_dma_a_cfg = dma_channel_get_default_config(dma_channel_a);
 	channel_config_set_transfer_data_size(&snd_dma_a_cfg, DMA_SIZE_32);
 	channel_config_set_dreq(&snd_dma_a_cfg, i2s.getPioDreq());
 	channel_config_set_read_increment(&snd_dma_a_cfg, true);
-	channel_config_set_chain_to(&snd_dma_a_cfg, SOUND_DMA_CHB);
+	channel_config_set_chain_to(&snd_dma_a_cfg, dma_channel_b);
     channel_config_set_high_priority(&snd_dma_a_cfg, true);
-	dma_channel_configure(SOUND_DMA_CHA, &snd_dma_a_cfg, i2s.getPioFIFOAddr(),
+	dma_channel_configure(dma_channel_a, &snd_dma_a_cfg, i2s.getPioFIFOAddr(),
 			output_buf_a, AUDIO_OUT_BUFFER_SIZE, false);
-    hw_set_bits(&dma_hw->inte2, 1 << SOUND_DMA_CHA );
-    // dma_irqn_set_channel_enabled(I2S_DMA_IRQ_NUM, SOUND_DMA_CHA, true);
-    // dma_channel_set_irq0_enabled(SOUND_DMA_CHA, true);
-	snd_dma_b_cfg = dma_channel_get_default_config(SOUND_DMA_CHB);
+    hw_set_bits(&dma_hw->inte2, 1 << dma_channel_a );
+    // dma_irqn_set_channel_enabled(I2S_DMA_IRQ_NUM, dma_channel_a, true);
+    // dma_channel_set_irq0_enabled(dma_channel_a, true);
+	snd_dma_b_cfg = dma_channel_get_default_config(dma_channel_b);
 	channel_config_set_transfer_data_size(&snd_dma_b_cfg, DMA_SIZE_32);
 	channel_config_set_dreq(&snd_dma_b_cfg, i2s.getPioDreq());
 	channel_config_set_read_increment(&snd_dma_b_cfg, true);
-	channel_config_set_chain_to(&snd_dma_b_cfg, SOUND_DMA_CHA);
+	channel_config_set_chain_to(&snd_dma_b_cfg, dma_channel_a);
     channel_config_set_high_priority(&snd_dma_b_cfg, true);
-	dma_channel_configure(SOUND_DMA_CHB, &snd_dma_b_cfg, i2s.getPioFIFOAddr(),
+	dma_channel_configure(dma_channel_b, &snd_dma_b_cfg, i2s.getPioFIFOAddr(),
 			output_buf_b, AUDIO_OUT_BUFFER_SIZE, false);
-    hw_set_bits(&dma_hw->inte2, 1 << SOUND_DMA_CHB );
-    // dma_irqn_set_channel_enabled(I2S_DMA_IRQ_NUM, SOUND_DMA_CHB, true);
-    // dma_channel_set_irq0_enabled(SOUND_DMA_CHB, true);
+    hw_set_bits(&dma_hw->inte2, 1 << dma_channel_b );
+    // dma_irqn_set_channel_enabled(I2S_DMA_IRQ_NUM, dma_channel_b, true);
+    // dma_channel_set_irq0_enabled(dma_channel_b, true);
     // ready to go
-    dma_channel_start(SOUND_DMA_CHA);
+    dma_channel_start(dma_channel_a);
     return true;
 }
 
@@ -805,15 +817,15 @@ void audio_stop(uint8_t id) {
     // then indicate that the streams should no longer chain to one another
     // and wait for them to shut down naturally
     audio_stopping = true;
-    while (dma_channel_is_busy(SOUND_DMA_CHA)) tight_loop_contents();
-    while (dma_channel_is_busy(SOUND_DMA_CHB)) tight_loop_contents();
+    while (dma_channel_is_busy(dma_channel_a)) tight_loop_contents();
+    while (dma_channel_is_busy(dma_channel_b)) tight_loop_contents();
     // \todo check if I2S pio is done
     // The way to check is the I2S pio is done would be to check
     // if the fifo is empty and the PIO's program counter is at the first instruction
     // while (spi_is_busy(AUDIO_SPI)) tight_loop_contents();
     audio_stopping = false;
-    dma_channel_abort(SOUND_DMA_CHA);
-    dma_channel_abort(SOUND_DMA_CHB);
+    dma_channel_abort(dma_channel_a);
+    dma_channel_abort(dma_channel_b);
     // idle the subsystem
     audio_last_status[id] = ASC_COMPLETED;
     audio_paused = false;
