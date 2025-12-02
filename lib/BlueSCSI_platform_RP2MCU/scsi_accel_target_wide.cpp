@@ -60,8 +60,8 @@
 #  define SCSI_DMA_CH_A 6
 #  define SCSI_DMA_CH_B 7
 #else
-#  define SCSI_DMA_CH_A 0
-#  define SCSI_DMA_CH_B 1
+#  define SCSI_DMA_CH_A 10
+#  define SCSI_DMA_CH_B 11
 #endif
 
 // This buffer stores GPIO words ready for transmission, or that have been received.
