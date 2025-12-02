@@ -565,7 +565,7 @@ static bluescsi_timings_t  predefined_timings[]  = {
 
         .scsi_20 =
         {
-            .delay0 = 3 - 1,
+            .delay0 = 4 - 1,
             .delay1 = 7 - 1,
             .total_period_adjust = 1,
             .rdelay1 = 7 - 1,
