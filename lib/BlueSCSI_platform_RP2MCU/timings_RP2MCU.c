@@ -366,10 +366,10 @@ static bluescsi_timings_t  predefined_timings[]  = {
 
         .scsi_20 =
         {
-            .delay0 = 2 - 1,
-            .delay1 = 5 - 1,
+            .delay0 = 3 - 1,
+            .delay1 = 6 - 1,
             .total_period_adjust = 0,
-            .rdelay1 = 5 - 1,
+            .rdelay1 = 6 - 1,
             .rtotal_period_adjust = 0,
             .max_sync = 14,
         },
@@ -681,7 +681,7 @@ static bluescsi_timings_t  predefined_timings[]  = {
 };
 
 #ifdef BLUESCSI_MCU_RP23XX
-bluescsi_timings_t *g_bluescsi_timings = &predefined_timings[3];
+bluescsi_timings_t *g_bluescsi_timings = &predefined_timings[5];
 #elif defined(BLUESCSI_PICO)
 bluescsi_timings_t *g_bluescsi_timings = &predefined_timings[1];
 #else
@@ -714,6 +714,12 @@ bool set_timings(bluescsi_speed_grade_t speed_grade)
         break;
     case SPEED_GRADE_WIFI_RM2:
         timings_index = 3;
+        break;
+    case SPEED_GRADE_BASE_203MHZ:
+        timings_index = 9;
+        break;
+    case SPEED_GRADE_BASE_155MHZ:
+        timings_index = 5;
         break;
     case SPEED_GRADE_BASE_203MHZ:
         timings_index = 9;
