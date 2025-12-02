@@ -94,8 +94,10 @@ uint I2S::getPioDreq() {
 }
 
 bool I2S::begin(PIO pio, uint sm) {
-    if (_running)
+    if (_running) {
+        pio_sm_set_clkdiv_int_frac(_pio, _sm, _div_int, _div_frac);
         return true;
+    }
     _pio = pio;
     _sm = sm;
     _running = true;

@@ -758,11 +758,12 @@ static bool mountSDCard()
   * 1.8v and high speed mode preferred
   * Regular 1.8v mode if that didn't work
   * If no 1.8v support, then pick the fastest standard voltage mode
+  * Don't even try the fastest comms mode unless RP2350 clock speed is high enough
   */
-  if ((autoconfig_result & 0b10000000)) {
+  if ((autoconfig_result & 0b10000000) && ((platform_sys_clock_in_hz() / MHZ) > 240)) {
     sdio_config_flags = (DMA_SDIO | SDIO_1_8 | SDIO_US | SDIO_M_D | SDIO_FIN);
     logmsg("SDIO 1.8v Ultra Speed, Mode D");
-  } else if (autoconfig_result & 0b1000000) {
+  } else if ((autoconfig_result & 0b1000000) && ((platform_sys_clock_in_hz() / MHZ) > 240)) {
     sdio_config_flags = (DMA_SDIO | SDIO_1_8 | SDIO_US | SDIO_FIN);
     logmsg("SDIO 1.8v Ultra Speed");
   } else if (autoconfig_result & 0b1000) {

@@ -498,7 +498,7 @@ static bluescsi_timings_t  predefined_timings[]  = {
 
         .scsi_20 =
         {
-            .delay0 = 2 - 1,
+            .delay0 = 3 - 1,
             .delay1 = 5 - 1,
             .total_period_adjust = 0,
             .rdelay1 = 7 - 1,
@@ -604,7 +604,7 @@ static bluescsi_timings_t  predefined_timings[]  = {
         .audio =
         {
             // Divider for 44.1KHz to the nearest integer with a sys clk divided by 2 x 16-bit samples with the pio clock running 2x I2S clock
-            // 200.4Mhz / 16 / 2 / 2 / 44.1KHz = 71.003 ~= 71
+            // 251.2MHz / 16 / 2 / 2 / 44.1KHz = 89.0022 ~= 89
             .clk_div_pio = 89,
             .audio_clocked = true,
         }
@@ -701,10 +701,10 @@ bool set_timings(bluescsi_speed_grade_t speed_grade)
         timings_index = 8;
         break;
     case SPEED_GRADE_B:
-        timings_index = 6;
+        timings_index = 7;
         break;
     case SPEED_GRADE_C:
-        timings_index = 5;
+        timings_index = 6;
         break;
     case SPEED_GRADE_AUDIO_SPDIF:
         timings_index = 9;
