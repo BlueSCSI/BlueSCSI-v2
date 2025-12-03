@@ -721,11 +721,6 @@ bool set_timings(bluescsi_speed_grade_t speed_grade)
     case SPEED_GRADE_BASE_155MHZ:
         timings_index = 5;
         break;
-    case SPEED_GRADE_BASE_203MHZ:
-        timings_index = 9;
-        break;
-    case SPEED_GRADE_BASE_155MHZ:
-        timings_index = 5;
 #elif defined(BLUESCSI_MCU_RP23XX)
     case SPEED_GRADE_MAX:
     case SPEED_GRADE_A:

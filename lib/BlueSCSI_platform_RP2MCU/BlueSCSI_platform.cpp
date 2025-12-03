@@ -968,7 +968,7 @@ bool platform_supports_initiator_mode() {
 
 void platform_post_sd_card_init()
 {
-#if defined(ENABLE_AUDIO_OUTPUT) && !defined(BLUESCSI_ULTRA)
+#if defined(ENABLE_AUDIO_OUTPUT)
         // one-time control setup for DMA channels and second core
         audio_setup();
 #endif // ENABLE_AUDIO_OUTPUT
