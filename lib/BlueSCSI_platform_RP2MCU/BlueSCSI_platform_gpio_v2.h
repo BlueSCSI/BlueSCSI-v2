@@ -49,14 +49,11 @@
 #define SCSI_OUT_BSY  27
 #define SCSI_OUT_REQ_CURRENT  19
 #define SCSI_OUT_REQ_PRE09A  17
-extern uint8_t SCSI_OUT_REQ;
 #define SCSI_OUT_SEL_CURRENT  21
 #define SCSI_OUT_SEL_PRE09A  19
-extern uint8_t SCSI_OUT_SEL;
 
 #define SCSI_ACCEL_SETPINS 0x801FF
 #define SCSI_ACCEL_SETPINS_PRE09A 0x201FF
-extern uint32_t SCSI_ACCEL_PINMASK;
 
 // SCSI input status signals
 #define SCSI_IN_SEL  18
