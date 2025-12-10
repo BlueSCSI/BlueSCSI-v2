@@ -44,8 +44,8 @@ SECTIONS
     .text.bootloader : ALIGN(16) SUBALIGN(16)
     {
         KEEP(*(.text.btldr*))
-        . = ALIGN(131072);
-        CHECK_BOOTLOADER_SIZE = 1 / (. <= 131072);
+        . = ALIGN(262144);
+        CHECK_BOOTLOADER_SIZE = 1 / (. <= 262144);
     } > FLASH
 
     .text : {

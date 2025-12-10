@@ -394,7 +394,7 @@ int scsiNetworkCommand()
 				}
 				if (netsize + 2 > size)
 				{
-					LOGMSG_F("WARNING: wifi_network_list is bigger than requested dataLen, truncating");
+					LOGMSG_F("WARNING: wifi_network_list is bigger than requested dataLen, truncating", 0);
 					netsize = size - 2;
 					netsize -= (netsize % (sizeof(struct wifi_network_entry)));
 				}

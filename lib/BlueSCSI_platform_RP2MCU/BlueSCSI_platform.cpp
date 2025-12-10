@@ -1070,8 +1070,6 @@ void show_hardfault(uint32_t *sp)
     uint32_t pc = sp[6];
     uint32_t lr = sp[5];
 
-    busy_wait_ms(10000);
-
     logmsg("--------------");
     logmsg("CRASH!");
     logmsg("Platform: ", g_platform_name);
