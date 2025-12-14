@@ -616,7 +616,7 @@ void platform_late_init()
     platform_reclock(SPEED_GRADE_BASE_155MHZ);
 #elif defined(BLUESCSI_PICO_2)
     logmsg("Reclock Pico 2/2W based boards to standardized speed");
-    platform_reclock(SPEED_GRADE_BASE_155MHZ);
+    platform_reclock(SPEED_GRADE_BASE_203MHZ);
 #elif defined(BLUESCSI_MCU_RP20XX)
     logmsg("Reclock RP2040 & Pico 1/1W based boards to standardized speed");
     platform_reclock(SPEED_GRADE_BASE_203MHZ);
