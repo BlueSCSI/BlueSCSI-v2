@@ -338,6 +338,10 @@ scsi_system_settings_t *BlueSCSISettings::initSystem(const char *presetName)
     cfgSys.maxBusWidth = 0;
 #endif
 
+    cfgSys.phaseChangeDelayUs = 0;
+    cfgSys.dataPhaseDelayUs = 0;
+    cfgSys.busFreeDelayUs = 0;
+
     // setting set for all or specific devices
     cfgDev.deviceType = S2S_CFG_NOT_SET;
     cfgDev.deviceTypeModifier = 0;
@@ -466,7 +470,11 @@ scsi_system_settings_t *BlueSCSISettings::initSystem(const char *presetName)
     cfgSys.usbMassStoragePresentImages = ini_getbool("SCSI", "USBMassStoragePresentImages", cfgSys.usbMassStoragePresentImages, CONFIGFILE);
 
     cfgSys.invertStatusLed = ini_getbool("SCSI", "InvertStatusLED", cfgSys.invertStatusLed, CONFIGFILE);
-    
+
+    cfgSys.phaseChangeDelayUs = ini_getl("SCSI", "PhaseChangeDelay", cfgSys.phaseChangeDelayUs, CONFIGFILE);
+    cfgSys.dataPhaseDelayUs = ini_getl("SCSI", "DataPhaseDelay", cfgSys.dataPhaseDelayUs, CONFIGFILE);
+    cfgSys.busFreeDelayUs = ini_getl("SCSI", "BusFreeDelay", cfgSys.busFreeDelayUs, CONFIGFILE);
+
     char tmp[32];
     ini_gets("SCSI", "SpeedGrade", "", tmp, sizeof(tmp), CONFIGFILE);
     if (tmp[0] != '\0')

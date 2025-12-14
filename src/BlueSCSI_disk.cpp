@@ -49,6 +49,7 @@ extern "C" {
 #include <scsi2sd_time.h>
 #include <sd.h>
 #include <mode.h>
+#include <scsi.h>
 }
 
 #ifndef PLATFORM_MAX_SCSI_SPEED
@@ -1363,6 +1364,21 @@ void s2s_configInit(S2S_BoardCfg* config)
     else
     {
         logmsg("-- EnableSCSI2 = No");
+    }
+
+    // Set timing delay overrides
+    g_scsi_busFreeDelayUs = sysCfg->busFreeDelayUs;
+    if (sysCfg->phaseChangeDelayUs > 0)
+    {
+        logmsg("-- PhaseChangeDelay = ", (int)sysCfg->phaseChangeDelayUs, " us");
+    }
+    if (sysCfg->dataPhaseDelayUs > 0)
+    {
+        logmsg("-- DataPhaseDelay = ", (int)sysCfg->dataPhaseDelayUs, " us");
+    }
+    if (sysCfg->busFreeDelayUs > 0)
+    {
+        logmsg("-- BusFreeDelay = ", (int)sysCfg->busFreeDelayUs, " us");
     }
 
     if (sysCfg->enableSelLatch)
