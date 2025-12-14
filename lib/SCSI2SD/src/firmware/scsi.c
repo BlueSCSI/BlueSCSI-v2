@@ -41,6 +41,9 @@
 // Global SCSI device state.
 ScsiDevice scsiDev S2S_DMA_ALIGN;
 
+// Bus free delay override (microseconds). 0 = use compatMode default.
+uint8_t g_scsi_busFreeDelayUs = 0;
+
 static void enter_SelectionPhase(void);
 static void process_SelectionPhase(void);
 static void enter_MessageIn(uint8_t message);
@@ -54,11 +57,17 @@ static void doReserveRelease(void);
 
 void enter_BusFree()
 {
+	// Bus free delay - configurable for legacy device compatibility
 	// This delay probably isn't needed for most SCSI hosts, but it won't
 	// hurt either. It's possible some of the samplers needed this delay.
-	if (scsiDev.compatMode < COMPAT_SCSI2)
+	uint8_t busFreeDelay = g_scsi_busFreeDelayUs;
+	if (busFreeDelay == 0 && scsiDev.compatMode < COMPAT_SCSI2)
 	{
-		s2s_delay_us(2);
+		busFreeDelay = 2; // Legacy default (samplers)
+	}
+	if (busFreeDelay > 0)
+	{
+		s2s_delay_us(busFreeDelay);
 	}
 
 #if 0

@@ -192,6 +192,9 @@ typedef enum
 
 extern ScsiDevice scsiDev;
 
+// Bus free delay override (microseconds). 0 = use compatMode default.
+extern uint8_t g_scsi_busFreeDelayUs;
+
 void process_Status(void);
 int process_MessageIn(int releaseBusFree);
 void enter_BusFree(void);

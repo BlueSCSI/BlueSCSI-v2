@@ -29,6 +29,7 @@
 #include "BlueSCSI_log.h"
 #include "BlueSCSI_log_trace.h"
 #include "BlueSCSI_config.h"
+#include "BlueSCSI_settings.h"
 #include "scsi_accel_target.h"
 #include "hardware/structs/iobank0.h"
 
@@ -212,12 +213,20 @@ extern "C" uint32_t scsiEnterPhaseImmediate(int phase)
         // Phase changes are not allowed while REQ or ACK is asserted.
         while (likely(!scsiDev.resetFlag) && SCSI_IN(ACK)) {}
 
-        if (scsiDev.compatMode < COMPAT_SCSI2 && (phase == DATA_IN || phase == DATA_OUT))
+        // Data phase entry delay - configurable for legacy device compatibility
         {
-            // Akai S1000/S3000 seems to need extra delay before changing to data phase
-            // after a command. The code in BlueSCSI_disk.cpp tries to do this while waiting
-            // for SD card, to avoid any extra latency.
-            s2s_delay_ns(400000);
+            uint16_t dataPhaseDelay = g_scsi_settings.getSystem()->dataPhaseDelayUs;
+            if (dataPhaseDelay == 0 && scsiDev.compatMode < COMPAT_SCSI2)
+            {
+                dataPhaseDelay = 400; // Legacy default (Akai S1000/S3000)
+            }
+            if (dataPhaseDelay > 0 && (phase == DATA_IN || phase == DATA_OUT))
+            {
+                // Akai S1000/S3000 seems to need extra delay before changing to data phase
+                // after a command. The code in BlueSCSI_disk.cpp tries to do this while waiting
+                // for SD card, to avoid any extra latency.
+                s2s_delay_ns(dataPhaseDelay * 1000);
+            }
         }
 
         int oldphase = g_scsi_phase;
@@ -272,10 +281,14 @@ extern "C" uint32_t scsiEnterPhaseImmediate(int phase)
                 delayNs += 400; // Data release delay
             }
 
-            if (scsiDev.compatMode < COMPAT_SCSI2)
+            // Phase change delay - configurable for legacy device compatibility
             {
-                // EMU EMAX needs 100uS ! 10uS is not enough.
-                delayNs += 100000;
+                uint16_t phaseDelay = g_scsi_settings.getSystem()->phaseChangeDelayUs;
+                if (phaseDelay == 0 && scsiDev.compatMode < COMPAT_SCSI2)
+                {
+                    phaseDelay = 100; // Legacy default (EMU EMAX needs 100uS)
+                }
+                delayNs += phaseDelay * 1000;
             }
 
             return delayNs;

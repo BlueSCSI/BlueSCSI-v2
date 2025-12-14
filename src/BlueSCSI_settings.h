@@ -99,6 +99,13 @@ typedef struct __attribute__((__packed__)) scsi_system_settings_t
 
     uint8_t speedGrade; // memory allocation for bluescsi_speed_grade_t enum
 
+    // Individual timing overrides (microseconds)
+    // 0 = use default behavior based on compatMode
+    // >0 = force this delay regardless of compatMode
+    uint16_t phaseChangeDelayUs;  // Phase change delay (EMU EMAX needs 100)
+    uint16_t dataPhaseDelayUs;    // Data phase entry delay (Akai S1000/S3000 needs 400)
+    uint8_t busFreeDelayUs;       // Bus free delay (samplers need 2)
+
 } scsi_system_settings_t;
 
 // This struct should only have new setting added to the end
