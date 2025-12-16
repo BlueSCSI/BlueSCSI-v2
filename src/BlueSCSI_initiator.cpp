@@ -385,6 +385,13 @@ void scsiInitiatorMainLoop()
                     g_initiator_state.max_sector_per_transfer = 256;
                 }
 
+                // Limit sectors per transfer based on buffer size
+                uint32_t max_by_buffer = sizeof(scsiDev.data) / g_initiator_state.sectorsize;
+                if (max_by_buffer < g_initiator_state.max_sector_per_transfer)
+                {
+                    g_initiator_state.max_sector_per_transfer = max_by_buffer;
+                }
+
                 int ini_type = scsiTypeToIniType(g_initiator_state.device_type, g_initiator_state.removable);
                 logmsg("SCSI Version ", (int) g_initiator_state.ansi_version);
                 logmsg("[SCSI", g_initiator_state.target_id,"]");
@@ -1184,9 +1191,24 @@ static void scsiInitiatorWriteDataToSd(FsFile &file, bool use_callback)
     uint32_t len = g_initiator_transfer.bytes_scsi_done - g_initiator_transfer.bytes_sd;
     if (start + len > bufsize) len = bufsize - start;
 
-    // Try to do writes in multiple of 512 bytes
-    // This allows better performance for SD card access.
-    if (len >= 512) len &= ~511;
+    // Try to do writes in multiples that align to both SCSI sectors and SD card sectors.
+    // SD cards use 512-byte sectors, so writes should be 512-byte aligned for performance.
+    // LCM(512, 520) = 33280 bytes = 64 SCSI sectors = 65 SD sectors.
+    uint32_t bytesPerSector = g_initiator_transfer.bytes_per_sector;
+    // Calculate GCD of bytesPerSector and 512 using binary GCD
+    uint32_t a = bytesPerSector, b = 512;
+    while (b != 0) { uint32_t t = b; b = a % b; a = t; }
+    uint32_t gcd = a;
+    uint32_t lcm_alignment = (bytesPerSector / gcd) * 512;
+    if (len >= lcm_alignment)
+    {
+        len -= len % lcm_alignment;
+    }
+    else if (len >= bytesPerSector)
+    {
+        // Not enough for LCM alignment, but write complete sectors
+        len -= len % bytesPerSector;
+    }
 
     // Start writing to SD card and simultaneously reading more from SCSI bus
     uint8_t *buf = &scsiDev.data[start];
