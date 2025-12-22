@@ -316,7 +316,11 @@ scsi_system_settings_t *BlueSCSISettings::initSystem(const char *presetName)
     cfgSys.enableParity = true;
     cfgSys.useFATAllocSize = false;
 #ifdef BLUESCSI_MCU_RP20XX
+#if !defined(ENABLE_AUDIO_OUTPUT_SPDIF)
     cfgSys.enableCDAudio = false;
+#else
+    cfgSys.enableCDAudio = true;
+#endif
 #else
     cfgSys.enableCDAudio = true;
 #endif

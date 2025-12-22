@@ -42,7 +42,9 @@ extern "C" {
 #include <class/msc/msc_device.h>
 
 #include <pico/mutex.h>
+#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
 extern mutex_t __usb_mutex;
+#endif
 
 #if CFG_TUD_MSC_EP_BUFSIZE < SD_SECTOR_SIZE
   #error "CFG_TUD_MSC_EP_BUFSIZE is too small! It needs to be at least 512 (SD_SECTOR_SIZE)"
@@ -69,6 +71,7 @@ static struct {
 
 void platform_msc_lock_set(bool block)
 {
+#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
   if (block)
   {
     if (g_msc_lock)
@@ -96,6 +99,7 @@ void platform_msc_lock_set(bool block)
       mutex_exit(&__usb_mutex);
     }
   }
+#endif
 }
 
 bool platform_msc_lock_get()

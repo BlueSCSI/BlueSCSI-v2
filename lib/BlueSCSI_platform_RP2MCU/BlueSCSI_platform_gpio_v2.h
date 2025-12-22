@@ -84,6 +84,13 @@
 #define GPIO_I2C_SDA 16
 #define GPIO_I2C_SCL 17
 
+// For SPDIF audio
+#define GPIO_EXP_SPARE GPIO_I2C_SDA
+// #define AUDIO_DMA_IRQ_NUM DMA_IRQ_0
+// #ifdef BLUESCSI_MCU_RP23XX
+// #define AUDIO_DMA_IRQ_NUM DMA_IRQ_2
+// #endif
+
 // SW1/SW2 buttons on pre-202309a hardware
 #define BUTTON_SW1_PRE202309a SCSI_IN_ATN
 #define BUTTON_SW2_PRE202309a SCSI_IN_ACK

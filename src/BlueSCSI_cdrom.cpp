@@ -1406,7 +1406,7 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
     }
 #endif
 
-#if defined(ENABLE_AUDIO_OUTPUT) && !(defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE))
+#if defined(ENABLE_AUDIO_OUTPUT) && !(defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)) || defined(ENABLE_AUDIO_OUTPUT_SPDIF)
     dbgmsg("------ CD-ROM Play Audio request at ", lba, " for ", length, " sectors");
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     uint8_t target_id = img.scsiId & 7;

@@ -608,22 +608,28 @@ bool checkIs2023a() {
     g_supports_initiator = true;
     return true;
 #else
+
+#if !defined(ENABLE_AUDIO_OUTPUT_SPDIF)
     gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_I2C, false, false, false,  false, true);
     gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_I2C, false, false, false,  false, true);
-
     is2023a = gpio_get(GPIO_I2C_SCL) && gpio_get(GPIO_I2C_SDA);
-
     if (is2023a) {
         logmsg("I2C Supported");
+#else
+    is2023a = true;  // SPDIF builds are only compatible with Pico/Pico2 hardware versions 2023.09a and later
+    if (is2023a) {
+        logmsg("SPDIF Mode Enabled - I2C Disabled");
+#endif
         g_supports_initiator = true;
+#if !defined(ENABLE_AUDIO_OUTPUT_SPDIF)
         gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_I2C, true, false, false,  true, true);
         gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_I2C, true, false, false,  true, true);
-
         // Use Pico SDK methods
         gpio_set_function(GPIO_I2C_SCL, GPIO_FUNC_I2C);
         gpio_set_function(GPIO_I2C_SDA, GPIO_FUNC_I2C);
         // gpio_pull_up(GPIO_I2C_SCL);  // TODO necessary?
         // gpio_pull_up(GPIO_I2C_SDA);
+#endif
     } else {
         dbgmsg("I2C not supported on this rev of hardware");
         /* Check option switch settings */
@@ -634,13 +640,10 @@ bool checkIs2023a() {
         gpio_conf(BUTTON_SW1_PRE202309a,    GPIO_FUNC_SIO, true, false, false, false, false);
         gpio_conf(BUTTON_SW2_PRE202309a,    GPIO_FUNC_SIO, true, false, false, false, false);
 
-#ifndef BLUESCSI_ULTRA_WIDE
         // Reset REQ to the appropriate pin for older hardware
-        // Wide board doesn't have pre-2023 hardware variations
         SCSI_OUT_REQ = SCSI_OUT_REQ_PRE09A;
         SCSI_ACCEL_PINMASK = SCSI_ACCEL_SETPINS_PRE09A;
         SCSI_OUT_SEL = SCSI_OUT_SEL_PRE09A;
-#endif
 
         // Initialize logging to SWO pin (UART0)
         gpio_conf(SWO_PIN,        GPIO_FUNC_UART,false,false, true,  false, true);
@@ -885,12 +888,20 @@ void platform_late_init()
 #if defined(BLUESCSI_ULTRA_WIDE) || defined (BLUESCSI_ULTRA)
     logmsg("Clocking to standard I2S-compatible base speed");
     platform_reclock(SPEED_GRADE_BASE_155MHZ);
-#elif defined(BLUESCSI_PICO_2)
+#elif defined(BLUESCSI_MCU_RP23XX)
     logmsg("Reclock Pico 2/2W based boards to standardized speed");
+#if defined(ENABLE_AUDIO_OUTPUT_SPDIF)
+    platform_reclock(SPEED_GRADE_AUDIO_SPDIF);
+#else
     platform_reclock(SPEED_GRADE_BASE_155MHZ);
+#endif
 #elif defined(BLUESCSI_MCU_RP20XX)
     logmsg("Reclock RP2040 & Pico 1/1W based boards to standardized speed");
+#if defined(ENABLE_AUDIO_OUTPUT_SPDIF)
+    platform_reclock(SPEED_GRADE_AUDIO_SPDIF);
+#else
     platform_reclock(SPEED_GRADE_BASE_203MHZ);
+#endif
 #endif
 
 #ifdef ENABLE_AUDIO_OUTPUT_I2S
@@ -909,7 +920,7 @@ void platform_late_init()
     assert(PICO_OK == cyw43_set_pins_wl(rm2_pins));
 
     // TODO: Do we need this reclock before checking for RM2?
-    if (platform_reclock(SPEED_GRADE_WIFI_RM2))
+    if (platform_reclock(SPEED_GRADE_BASE_155MHZ))
     {
         // The iface check turns on the LED on the RM2 early in the init process
         // Should tell the user that the RM2 is working
@@ -1379,8 +1390,9 @@ static void watchdog_callback(unsigned alarm_num)
             logmsg("GPIO states: out ", sio_hw->gpio_out, " oe ", sio_hw->gpio_oe, " in ", sio_hw->gpio_in);
             logmsg("scsiDev.cdb: ", bytearray(scsiDev.cdb, 12));
             logmsg("scsiDev.phase: ", (int)scsiDev.phase);
+            // logmsg("oREQ Pin:", SCSI_OUT_REQ);
+            // logmsg("oSEL Pin:", SCSI_OUT_SEL);
             scsi_accel_log_state();
-
 
             uint32_t msp;
             asm volatile ("MRS %0, msp" : "=r" (msp) );

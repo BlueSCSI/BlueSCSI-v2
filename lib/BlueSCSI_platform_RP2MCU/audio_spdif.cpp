@@ -1,5 +1,6 @@
 /** 
  * Copyright (C) 2023 saybur
+ * Copyright (C) 2025 Tech by Androda, LLC
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,6 +29,8 @@
 #include "BlueSCSI_config.h"
 #include "BlueSCSI_log.h"
 #include "BlueSCSI_platform.h"
+#include "shift.pio.h"
+#include "timings_RP2MCU.h"
 
 extern SdFs SD;
 
@@ -157,6 +160,11 @@ static volatile bool audio_stopping = false;
 static uint16_t sfcnt = 0; // sub-frame count; 2 per frame, 192 frames/block
 static uint8_t invert = 0; // biphase encode help: set if last wire bit was '1'
 
+// PIO Audio
+#define SPDIF_PIO_UNIT pio1
+static uint32_t spdif_pio_sm = 2;
+static bool already_claimed = false;
+static bool audio_setup_failed = false;
 /*
  * Translates 16-bit stereo sound samples to biphase wire patterns for the
  * SPI peripheral. Produces 8 patterns (128 bits, or 1 S/PDIF frame) per pair
@@ -318,7 +326,7 @@ void audio_dma_irq() {
         }
         dma_channel_configure(SOUND_DMA_CHA,
                 &snd_dma_a_cfg,
-                &(spi_get_hw(AUDIO_SPI)->dr),
+                &SPDIF_PIO_UNIT->txf[spdif_pio_sm],
                 &wire_buf_a,
                 WIRE_BUFFER_SIZE,
                 false);
@@ -330,7 +338,7 @@ void audio_dma_irq() {
         }
         dma_channel_configure(SOUND_DMA_CHB,
                 &snd_dma_b_cfg,
-                &(spi_get_hw(AUDIO_SPI)->dr),
+                &SPDIF_PIO_UNIT->txf[spdif_pio_sm],
                 &wire_buf_b,
                 WIRE_BUFFER_SIZE,
                 false);
@@ -346,33 +354,61 @@ bool audio_is_playing(uint8_t id) {
 }
 
 void audio_setup() {
-    if (!g_scsi_settings.getSystem()->enableCDAudio)
+    if (!g_scsi_settings.getSystem()->enableCDAudio) {
+        audio_setup_failed = true;
         return;
+    }
+    if (g_bluescsi_timings->clk_hz != 203200000) {
+        logmsg("!!! WARNING !!!");
+        logmsg("SPDIF Audio Output Only Works at 203MHz CPU Speed setting.  CPU speed mismatch, SPDIF setup failed.");
+        audio_setup_failed = true;
+        return;
+    }
+#ifdef BLUESCSI_MCU_RP20XX
+    logmsg("BlueSCSI CD Audio Enabled - Use SPDIF on I2C SCL pin");
+#else
     logmsg("BlueSCSI CD Audio Enabled - Connect DAC to BlueSCSI or use SPDIF on I2C SCL pin");
-    gpio_put(GPIO_EXP_AUDIO, true);
-    gpio_set_dir(GPIO_EXP_AUDIO, false);
-    gpio_set_pulls(GPIO_EXP_AUDIO, true, false);
-    gpio_set_function(GPIO_EXP_AUDIO, GPIO_FUNC_SPI);
-    gpio_set_slew_rate(GPIO_EXP_AUDIO, GPIO_SLEW_RATE_FAST);
+#endif
+
+    // Calculate clock divider, rounding up as necessary
+    double clkdiv = ((double)(g_bluescsi_timings->clk_hz) / (double)(5644800));
+
+    // Initialize the PIO unit and program
+    if (pio_sm_is_claimed(SPDIF_PIO_UNIT, spdif_pio_sm) && already_claimed) {
+        // Another setup call, because this does happen twice in certain circumstances
+        // There's nothing to set up if it's already been done
+        // However, always set the divisor because this is called after final clock shift
+        pio_sm_set_clkdiv(SPDIF_PIO_UNIT, spdif_pio_sm, clkdiv);
+        return;
+    } else if (pio_sm_is_claimed(SPDIF_PIO_UNIT, spdif_pio_sm)) {
+        // Try claiming a different SM
+        spdif_pio_sm++;
+    }
+    if (pio_sm_is_claimed(SPDIF_PIO_UNIT, spdif_pio_sm)) {
+        // Can't find a free SM, fail
+        logmsg("Unable to claim PIO SM for Audio Output");
+        audio_setup_failed = true;
+        return;
+    } else {
+        pio_sm_claim(SPDIF_PIO_UNIT, spdif_pio_sm);
+        int prog_offset = pio_add_program(SPDIF_PIO_UNIT, &shift_program);
+        shift_program_init(SPDIF_PIO_UNIT, spdif_pio_sm, prog_offset, GPIO_I2C_SCL);
+        // Set clock divider
+        pio_sm_set_clkdiv(SPDIF_PIO_UNIT, spdif_pio_sm, clkdiv);
+        already_claimed = true;
+    }
 
     gpio_put(GPIO_EXP_SPARE, true);
     gpio_set_dir(GPIO_EXP_SPARE, false);
     gpio_set_pulls(GPIO_EXP_SPARE, true, false);
     gpio_set_function(GPIO_EXP_SPARE, GPIO_FUNC_SIO);
 
-    // setup SPI to blast S/PDIF data over the TX pin
-    spi_set_baudrate(AUDIO_SPI, 5644800); // will be slightly wrong, ~0.03% slow
-    hw_write_masked(&spi_get_hw(AUDIO_SPI)->cr0,
-            0x1F, // TI mode with 16 bits
-            SPI_SSPCR0_DSS_BITS | SPI_SSPCR0_FRF_BITS);
-    spi_get_hw(AUDIO_SPI)->dmacr = SPI_SSPDMACR_TXDMAE_BITS;
-    hw_set_bits(&spi_get_hw(AUDIO_SPI)->cr1, SPI_SSPCR1_SSE_BITS);
-
     dma_channel_claim(SOUND_DMA_CHA);
 	dma_channel_claim(SOUND_DMA_CHB);
 
 #ifdef AUDIO_DMA_IRQ_NUM
     irq_set_exclusive_handler(AUDIO_DMA_IRQ_NUM, audio_dma_irq);
+    //irq_add_shared_handler(AUDIO_DMA_IRQ_NUM, audio_dma_irq, 0xFF);
     irq_set_enabled(AUDIO_DMA_IRQ_NUM, true);
     irq_clear(AUDIO_DMA_IRQ_NUM);
 # if AUDIO_DMA_IRQ_NUM != DMA_IRQ_0
@@ -382,7 +418,7 @@ void audio_setup() {
 }
 
 void audio_poll() {
-    if (!audio_is_active() || !g_scsi_settings.getSystem()->enableCDAudio) return;
+    if (!audio_is_active() || !g_scsi_settings.getSystem()->enableCDAudio || audio_setup_failed) return;
     if (audio_paused) return;
     if (fleft == 0 && sbufst_a == STALE && sbufst_b == STALE) {
         // out of data and ready to stop
@@ -512,21 +548,22 @@ bool audio_play(uint8_t owner, image_config_t* img, uint64_t start, uint64_t end
     // to maintain a stable bitstream these need to run without interruption
 	snd_dma_a_cfg = dma_channel_get_default_config(SOUND_DMA_CHA);
 	channel_config_set_transfer_data_size(&snd_dma_a_cfg, DMA_SIZE_16);
-	channel_config_set_dreq(&snd_dma_a_cfg, spi_get_dreq(AUDIO_SPI, true));
+	channel_config_set_dreq(&snd_dma_a_cfg, pio_get_dreq(SPDIF_PIO_UNIT, spdif_pio_sm, true));
 	channel_config_set_read_increment(&snd_dma_a_cfg, true);
 	channel_config_set_chain_to(&snd_dma_a_cfg, SOUND_DMA_CHB);
     // version of pico-sdk lacks channel_config_set_high_priority()
     snd_dma_a_cfg.ctrl |= DMA_CH0_CTRL_TRIG_HIGH_PRIORITY_BITS;
-	dma_channel_configure(SOUND_DMA_CHA, &snd_dma_a_cfg, &(spi_get_hw(AUDIO_SPI)->dr),
+	dma_channel_configure(SOUND_DMA_CHA, &snd_dma_a_cfg, &SPDIF_PIO_UNIT->txf[spdif_pio_sm],
 			&wire_buf_a, WIRE_BUFFER_SIZE, false);
     dma_channel_set_irq0_enabled(SOUND_DMA_CHA, true);
+
 	snd_dma_b_cfg = dma_channel_get_default_config(SOUND_DMA_CHB);
 	channel_config_set_transfer_data_size(&snd_dma_b_cfg, DMA_SIZE_16);
-	channel_config_set_dreq(&snd_dma_b_cfg, spi_get_dreq(AUDIO_SPI, true));
+	channel_config_set_dreq(&snd_dma_b_cfg, pio_get_dreq(SPDIF_PIO_UNIT, spdif_pio_sm, true));
 	channel_config_set_read_increment(&snd_dma_b_cfg, true);
 	channel_config_set_chain_to(&snd_dma_b_cfg, SOUND_DMA_CHA);
     snd_dma_b_cfg.ctrl |= DMA_CH0_CTRL_TRIG_HIGH_PRIORITY_BITS;
-	dma_channel_configure(SOUND_DMA_CHB, &snd_dma_b_cfg, &(spi_get_hw(AUDIO_SPI)->dr),
+	dma_channel_configure(SOUND_DMA_CHB, &snd_dma_b_cfg, &SPDIF_PIO_UNIT->txf[spdif_pio_sm],
 			&wire_buf_b, WIRE_BUFFER_SIZE, false);
     dma_channel_set_irq0_enabled(SOUND_DMA_CHB, true);
 
@@ -563,7 +600,7 @@ void audio_stop(uint8_t id) {
     audio_stopping = true;
     while (dma_channel_is_busy(SOUND_DMA_CHA)) tight_loop_contents();
     while (dma_channel_is_busy(SOUND_DMA_CHB)) tight_loop_contents();
-    while (spi_is_busy(AUDIO_SPI)) tight_loop_contents();
+    while (!pio_sm_is_tx_fifo_empty(SPDIF_PIO_UNIT, spdif_pio_sm)) tight_loop_contents();
     audio_stopping = false;
 
     // idle the subsystem

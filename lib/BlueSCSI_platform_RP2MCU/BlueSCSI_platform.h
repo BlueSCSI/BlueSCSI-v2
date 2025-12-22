@@ -38,7 +38,7 @@
 // BlueSCSI Pico 2 carrier board variant
 #include "BlueSCSI_platform_gpio_Pico_2.h"
 #elif defined(BLUESCSI_V2)
-// BS2 hardware variant, using Raspberry Pico board on a carrier PCB
+// BlueSCSI hardware, using Raspberry Pico board on a carrier PCB
 #include "BlueSCSI_platform_gpio_v2.h"
 #elif defined(BLUESCSI_ULTRA)
 // RP2350B variant
@@ -47,8 +47,8 @@
 // RP2350B Wide variant
 #include "BlueSCSI_platform_gpio_ultra_wide.h"
 #else
-// Normal RP2040 variant, using RP2040 chip directly
-#include "BlueSCSI_platform_gpio_RP2040.h"
+// BlueSCSI hardware, using Raspberry Pico board on a carrier PCB
+#include "BlueSCSI_platform_gpio_v2.h"
 #endif
 
 #include "scsiHostPhy.h"
