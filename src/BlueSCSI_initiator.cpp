@@ -391,6 +391,10 @@ void scsiInitiatorMainLoop()
 
                 log("Starting to copy drive data to ", filename);
                 g_initiator_state.imaging = true;
+                g_initiator_state.interpolationLeft = 0;
+                g_initiator_state.interpolationRight = 0;
+                g_initiator_state.interpolationBoth = 0;
+
             }
         }
     }
