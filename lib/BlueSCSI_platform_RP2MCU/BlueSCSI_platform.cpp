@@ -81,6 +81,11 @@ uint8_t SCSI_OUT_REQ = SCSI_OUT_REQ_CURRENT;
 uint8_t SCSI_OUT_SEL = SCSI_OUT_SEL_CURRENT;
 #endif
 
+#if defined(BLUESCSI_ULTRA_WIDE)
+bool g_is_sca_model = false;
+uint8_t sca_flag_bits = 0xFF;
+#endif
+
 #ifdef BLUESCSI_NETWORK
 extern "C" {
 #  include <pico/cyw43_arch.h>
@@ -214,10 +219,58 @@ static void CheckPicoW() {
 #if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
 
 #define I2C_PORT i2c1
-#define KEY_I2C_ADDR 0x20
+#define ULTRA_I2C_ADDR 0x20
+#define SCA_I2C_ADDR 0x22           // For SCA production model
+
+#define SCA_I2C_ADDR_PROTO 0x21     // For SCA prototype
+#define SCA_CMD_INPUT 0x00          // Read operations only, reflects current input logic level of the pin
+#define SCA_CMD_OUTPUT 0x01         // Bits sent here control the output data values
+#define SCA_CMD_CONFIG 0x02         // Bits sent here, 1 indicate input, 0 is output
+static bool is_sca_proto = false;
+
+bool check_is_sca_model() {
+    uint8_t response = 0;
+    // Call for production model address
+    int status = i2c_read_timeout_us(I2C_PORT, SCA_I2C_ADDR, &response, 1, false, 25000);
+    if (status > 0) {
+        return true;
+    } else {
+        // Check for the prototype address
+        byte cmd[1] = {SCA_CMD_INPUT};
+        status = i2c_write_timeout_us(I2C_PORT, SCA_I2C_ADDR_PROTO, cmd, 1, true, 25000);
+        if (status > 0) {
+            status = i2c_read_timeout_us(I2C_PORT, SCA_I2C_ADDR_PROTO, &response, 1, false, 25000);
+            is_sca_proto = true;
+        }
+        return status > 0;
+    }
+}
+
+uint8_t read_sca_flag_bits() {
+    uint8_t sca_flags = 0;
+    int status;
+    if (is_sca_proto) {
+        uint8_t cmd = SCA_CMD_INPUT;
+        status = i2c_write_timeout_us(I2C_PORT, SCA_I2C_ADDR_PROTO, &cmd, 1, true, 25000);
+        if (status > 0) {
+            status = i2c_read_timeout_us(I2C_PORT, SCA_I2C_ADDR_PROTO, &sca_flags, 1, false, 25000);
+            if (u8574_debug && status < 0) {
+                logmsg("Failed to read SCA flag bits, phase 2: ", status);
+            }
+        } else {
+            if (u8574_debug) {
+                logmsg("Failed to read SCA flag bits, phase 1: ", status);
+            }
+        }
+    } else {
+        status = i2c_read_timeout_us(I2C_PORT, SCA_I2C_ADDR, &sca_flags, 1, false, 25000);
+    }
+
+    return sca_flags;
+}
 
 bool read_from_8574(uint8_t* state) {
-    int status = i2c_read_blocking(I2C_PORT, KEY_I2C_ADDR, state, 1, false);
+    int status = i2c_read_blocking(I2C_PORT, ULTRA_I2C_ADDR, state, 1, false);
     if (u8574_debug) {
         logmsg("8574:R:,", *state, ":S:", status);
     }
@@ -276,7 +329,7 @@ bool write_to_8574(uint8_t dataToWrite) {
     int result;
     // result = read_from_8574();
     // logmsg("CheckResult:", result);
-    result = i2c_write_blocking(I2C_PORT, KEY_I2C_ADDR, &cmd, 1, false);
+    result = i2c_write_blocking(I2C_PORT, ULTRA_I2C_ADDR, &cmd, 1, false);
     if (result != 1) {
         return false;
     }
@@ -695,9 +748,6 @@ void platform_init()
 
 #if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
     i2c_init(i2c1, 100000);
-    // Check debug flag
-    // g_log_debug = is_debug_enabled();
-    
 #endif
     // Make sure second core is stopped
     multicore_reset_core1();
@@ -777,6 +827,15 @@ void platform_init()
     gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_I2C, true,false, false,  true, true);
     gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_I2C, true,false, false,  true, true);
 #endif  // GPIO_I2C_SDA
+
+#if defined(BLUESCSI_ULTRA_WIDE)
+    // Check whether this is the SCA model
+    if (check_is_sca_model()) {
+        sca_flag_bits = read_sca_flag_bits();
+        g_is_sca_model = true;
+        logmsg("SCA Model Detected, SCSI ID: ", (int)~((sca_flag_bits & 0xF) | 0xF0));
+    }
+#endif
 
 #ifdef GPIO_USB_POWER
     gpio_conf(GPIO_USB_POWER, GPIO_FUNC_SIO, false, false, false,  false, false);

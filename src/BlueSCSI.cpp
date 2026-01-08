@@ -462,6 +462,33 @@ bool findHDDImages()
           name[MAX_FILE_PATH] = '\0';
         }
       }
+
+      if (g_is_sca_model) {
+        // Special filename for dynamic ID SCA drive
+        if(strcasecmp(name, SCA_HD_DYNAMIC) == 0)
+        {
+          uint8_t sca_scsi_id = ~((sca_flag_bits & 0xF) | 0xF0);
+
+            // TODO: Should the SCA dynamic ID image always take precedence?
+
+          g_scsi_settings.getDevice(sca_scsi_id)->blockSize = DEFAULT_BLOCKSIZE;
+          logmsg("== Setting Up Dynamic SCA80 Drive On ID:", (int)sca_scsi_id, " LUN:", (int)0);
+          // Add the directory name to get the full file path
+          char fullname[MAX_FILE_PATH * 2 + 2] = {0};
+          strncpy(fullname, imgdir, MAX_FILE_PATH);
+          if (fullname[strlen(fullname) - 1] != '/') strcat(fullname, "/");
+          strcat(fullname, name);
+
+          // Initialize the image
+          int blk = getBlockSize(name, sca_scsi_id);
+          g_scsi_settings.initDevice(sca_scsi_id & 0xF, S2S_CFG_FIXED);
+
+          imageReady = scsiDiskOpenHDDImage(sca_scsi_id, fullname, 0, blk, S2S_CFG_FIXED, true);
+          if (!imageReady) {
+            logmsg("---- Error - unable to initialize dynamic SCA image");
+          }
+        }
+      }
       bool use_prefix = false;
       bool is_hd = (tolower(name[0]) == 'h' && tolower(name[1]) == 'd');
       bool is_cd = (tolower(name[0]) == 'c' && tolower(name[1]) == 'd');
@@ -914,7 +941,14 @@ static void reinitSCSI()
     {
   #ifdef RAW_FALLBACK_ENABLE
       logmsg("No images found, enabling RAW fallback partition");
-      g_scsi_settings.initDevice(RAW_FALLBACK_SCSI_ID, S2S_CFG_FIXED);
+      uint8_t fallback_id = RAW_FALLBACK_SCSI_ID;
+#if defined(BLUESCSI_ULTRA_WIDE)
+      // In raw mode, use the SCA dynamic SCSI ID as fallback
+      if (g_is_sca_model) {
+        fallback_id = ~((sca_flag_bits & 0xF) | 0xF0);
+      }
+#endif
+      g_scsi_settings.initDevice(fallback_id, S2S_CFG_FIXED);
       scsiDiskOpenHDDImage(RAW_FALLBACK_SCSI_ID, "RAW:0:0xFFFFFFFF", 0,
                           RAW_FALLBACK_BLOCKSIZE);
   #else
@@ -1296,7 +1330,6 @@ extern "C" void bluescsi_setup(void)
 #endif
 
   bluescsi_setup_sd_card(!is_initiator);
-
 #ifdef PLATFORM_MASS_STORAGE
   static bool check_mass_storage = true;
   if (check_mass_storage && !is_initiator)

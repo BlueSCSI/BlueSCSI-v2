@@ -226,8 +226,11 @@ static inline bool scsi_check_parity_16bit(uint32_t w)
 
 // Set pin directions for initiator vs. target mode
 #define SCSI_ENABLE_INITIATOR() \
-    sio_hw->gpio_oe_set = (1 << SCSI_OUT_ACK), \
-    sio_hw->gpio_hi_oe_set = (1 << (SCSI_OUT_ATN - 32)), \
+    (sio_hw->gpio_oe_set = (1 << SCSI_OUT_ACK)), \
+    (sio_hw->gpio_hi_oe_set = (1 << (SCSI_OUT_ATN - 32)) | (1 << (SCSI_OUT_SEL - 32))), \
+    (sio_hw->gpio_oe_clr = (1 << SCSI_IN_IO) | \
+                           (1 << SCSI_IN_CD) | \
+                           (1 << SCSI_IN_REQ)), \
     (sio_hw->gpio_oe_clr = (1 << SCSI_IN_IO) | \
                            (1 << SCSI_IN_CD) | \
                            (1 << SCSI_IN_REQ)), \

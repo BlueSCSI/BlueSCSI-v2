@@ -48,6 +48,9 @@
 // Prefix for command file to create new image (case-insensitive)
 #define CREATEFILE "create"
 
+// Case sensitive name for the dynamic SCA drive image
+#define SCA_HD_DYNAMIC "SCA_HD.hda"
+
 // Log buffer size in bytes, must be a power of 2
 #ifndef LOGBUFSIZE
 #define LOGBUFSIZE 16384

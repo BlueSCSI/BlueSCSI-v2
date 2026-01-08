@@ -183,6 +183,11 @@ uint8_t platform_get_buttons();
 
 uint32_t platform_sys_clock_in_hz();
 
+#if defined(BLUESCSI_ULTRA_WIDE)
+extern bool g_is_sca_model;
+extern uint8_t sca_flag_bits;
+#endif
+
 #if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
 // Onboard IO Expander Methods
 
