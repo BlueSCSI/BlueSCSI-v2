@@ -71,16 +71,22 @@ static struct
     uint32_t interpolationRight;
     uint32_t interpolationBoth;
 
-    bool frameMetaDataTimeIncluded;
-    uint8_t frameMetaDataTimeHour;
-    uint8_t frameMetaDataTimeMinutes;
-    uint8_t frameMetaDataTimeSeconds;
-    uint8_t frameMetaDataTimeIndex;
+    uint8_t fMDAbsTimeHour;
+    uint8_t fMDAbsTimeMin;
+    uint8_t fMDAbsTimeSec;
+    uint8_t fMDAbsTimeFrame;
 
-    bool frameMetaDataDateIncluded;
-    uint8_t frameMetaDataDateYear;
-    uint8_t frameMetaDataDateMonth;
-    uint8_t frameMetaDataDateDay;
+    uint8_t fMDPrgTimeHour;
+    uint8_t fMDPrgTimeMin;
+    uint8_t fMDPrgTimeSec;
+    uint8_t fMDPrgTimeFrame;
+
+    uint8_t fMDDateTimeYear;
+    uint8_t fMDDateTimeMonth;
+    uint8_t fMDDateTimeDay;
+    uint8_t fMDDateTimeHour;
+    uint8_t fMDDateTimeMin;
+    uint8_t fMDDateTimeSec;
 
     uint32_t goodFrames;
     uint32_t allFrames;
@@ -135,17 +141,22 @@ void scsiInitiatorInit()
     g_initiator_state.ejectWhenDone = false;
 
     // Audio mode frame data for dt
-    g_initiator_state.frameMetaDataDateIncluded = 0;
-    g_initiator_state.frameMetaDataDateYear = 0;
-    g_initiator_state.frameMetaDataDateMonth = 0;
-    g_initiator_state.frameMetaDataDateDay = 0;
-    g_initiator_state.frameMetaDataTimeIncluded = 0;
-    g_initiator_state.frameMetaDataTimeHour = 0;
-    g_initiator_state.frameMetaDataTimeMinutes = 0;
-    g_initiator_state.frameMetaDataTimeSeconds = 0;
-    g_initiator_state.frameMetaDataTimeIndex = 0;
+    g_initiator_state.fMDAbsTimeHour = 0;
+    g_initiator_state.fMDAbsTimeMin = 0;
+    g_initiator_state.fMDAbsTimeSec = 0;
+    g_initiator_state.fMDAbsTimeFrame = 0;
+    g_initiator_state.fMDPrgTimeHour = 0;
+    g_initiator_state.fMDPrgTimeMin = 0;
+    g_initiator_state.fMDPrgTimeSec = 0;
+    g_initiator_state.fMDPrgTimeFrame = 0;
+    g_initiator_state.fMDDateTimeYear = 0;
+    g_initiator_state.fMDDateTimeMonth = 0;
+    g_initiator_state.fMDDateTimeDay = 0;
+    g_initiator_state.fMDDateTimeHour = 0;
+    g_initiator_state.fMDDateTimeMin = 0;
+    g_initiator_state.fMDDateTimeSec = 0;
     g_initiator_state.nullFrames = 0;
-    g_initiator_state.nullFramesMax = ini_getl("SCSI", "InitiatorMaxNullTrys", 10, CONFIGFILE);
+    g_initiator_state.nullFramesMax = ini_getl("SCSI", "InitiatorMaxNullTrys", 300, CONFIGFILE);
 }
 
 // Update progress bar LED during transfers
@@ -492,13 +503,15 @@ void scsiInitiatorMainLoop()
             int speed_kbps = numtoread * g_initiator_state.sectorsize / (millis() - time_start);
             if (g_initiator_state.audioMode)
             {
-                log_f("SCSI read succeeded %02d/%02d/%04d %02d:%02d:%02d-Frame: %02d, sectors done: %d speed %d kB/s, [left: %d, right: %d, both: %d]",
-                      g_initiator_state.frameMetaDataDateMonth, g_initiator_state.frameMetaDataDateDay, g_initiator_state.frameMetaDataDateYear + 1970,
-                      g_initiator_state.frameMetaDataTimeHour, g_initiator_state.frameMetaDataTimeMinutes, g_initiator_state.frameMetaDataTimeSeconds, g_initiator_state.frameMetaDataTimeIndex,
-                      g_initiator_state.sectors_done, speed_kbps,
-                      g_initiator_state.interpolationLeft,
-                      g_initiator_state.interpolationRight,
-                      g_initiator_state.interpolationBoth);
+                log_f("SCSI read succeeded ABS: %02d:%02d:%02d:%02d PRG: %02d:%02d:%02d:%02d DT: %02d/%02d/%04d %02d:%02d:%02d, sectors done: %d speed %d kB/s, [left: %d, right: %d, both: %d]",
+                    g_initiator_state.fMDAbsTimeHour, g_initiator_state.fMDAbsTimeMin, g_initiator_state.fMDAbsTimeSec, g_initiator_state.fMDAbsTimeFrame,
+                    g_initiator_state.fMDPrgTimeHour, g_initiator_state.fMDPrgTimeMin, g_initiator_state.fMDAbsTimeSec, g_initiator_state.fMDPrgTimeFrame,
+                    g_initiator_state.fMDDateTimeMonth, g_initiator_state.fMDDateTimeDay, g_initiator_state.fMDDateTimeYear + 2000,
+                    g_initiator_state.fMDDateTimeHour, g_initiator_state.fMDDateTimeMin, g_initiator_state.fMDDateTimeSec,
+                    g_initiator_state.sectors_done, speed_kbps,
+                    g_initiator_state.interpolationLeft,
+                    g_initiator_state.interpolationRight,
+                    g_initiator_state.interpolationBoth);
             }
             else
                 log_f("SCSI read succeeded, sectors done: %d / %d speed %d kB/s - %.2f%%",
@@ -857,7 +870,7 @@ static void scsiInitiatorWriteDataToSd(FsFile &file, bool use_callback)
 
 uint8_t HexToDec(uint8_t hex)
 {
-    return 10 * ((hex & 0xF0) >> 4) + hex & 0x0F;
+    return (10 * ((hex & 0xF0) >> 4)) + (hex & 0x0F);
 }
 
 bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t sectorcount, uint32_t sectorsize,
@@ -983,35 +996,42 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
         // TODO: Rerecord a frame if we record an interpolation flag
         if (g_initiator_state.audioMode)
         {
-            g_initiator_state.frameMetaDataTimeIncluded = scsiDev.data[0x168B] & 0xF0;
-            g_initiator_state.frameMetaDataTimeHour = HexToDec(scsiDev.data[0x168B]);
-            g_initiator_state.frameMetaDataTimeMinutes = HexToDec(scsiDev.data[0x168C]);
-            g_initiator_state.frameMetaDataTimeSeconds = HexToDec(scsiDev.data[0x168D]);
-            g_initiator_state.frameMetaDataTimeIndex = HexToDec(scsiDev.data[0x168E]);
+            //This line dumps the metadata to the log file.
+            //for(int i = 5760; i < 5822; i++)log("MetaData at index: %d is %X", i, scsiDev.data[i]);
 
-            g_initiator_state.frameMetaDataDateIncluded = scsiDev.data[0x1698] & 0xF0;
-            g_initiator_state.frameMetaDataDateYear = HexToDec(scsiDev.data[0x1699]);
-            g_initiator_state.frameMetaDataDateMonth = HexToDec(scsiDev.data[0x169A]);
-            g_initiator_state.frameMetaDataDateDay = HexToDec(scsiDev.data[0x169B]);
+            g_initiator_state.fMDAbsTimeHour = HexToDec(scsiDev.data[0x168B]);
+            g_initiator_state.fMDAbsTimeMin = HexToDec(scsiDev.data[0x168C]);
+            g_initiator_state.fMDAbsTimeSec = HexToDec(scsiDev.data[0x168D]);
+            g_initiator_state.fMDAbsTimeFrame = HexToDec(scsiDev.data[0x168E]);
+            g_initiator_state.fMDPrgTimeHour = HexToDec(scsiDev.data[0x1683]);
+            g_initiator_state.fMDPrgTimeMin = HexToDec(scsiDev.data[0x1684]);
+            g_initiator_state.fMDPrgTimeSec = HexToDec(scsiDev.data[0x1685]);
+            g_initiator_state.fMDPrgTimeFrame = HexToDec(scsiDev.data[0x1686]);
+            g_initiator_state.fMDDateTimeYear = HexToDec(scsiDev.data[0x16A1]);
+            g_initiator_state.fMDDateTimeMonth = HexToDec(scsiDev.data[0x16A2]);
+            g_initiator_state.fMDDateTimeDay = HexToDec(scsiDev.data[0x16A3]);
+            g_initiator_state.fMDDateTimeHour = HexToDec(scsiDev.data[0x16A4]);
+            g_initiator_state.fMDDateTimeMin = HexToDec(scsiDev.data[0x16A5]);
+            g_initiator_state.fMDDateTimeSec = HexToDec(scsiDev.data[0x16A6]);
             // g_initiator_state.frameMetaDataDateHour = HexToDec(scsiDev.data[0x169C]);
             // g_initiator_state.frameMetaDataDateMinutes = HexToDec(scsiDev.data[0x169D]);
             // g_initiator_state.frameMetaDataDateSeconds = HexToDec(scsiDev.data[0x169E]);
 
-            if (scsiDev.data[0x16BB] & 0b00000010)
+            if ((scsiDev.data[0x16BB] & 0x40))
             {
                 g_initiator_state.interpolationLeft++;
             }
-            if (scsiDev.data[0x16BB] & 0b00000001)
+            if ((scsiDev.data[0x16BB] & 0x20))
             {
                 g_initiator_state.interpolationRight++;
             }
 
-            if (scsiDev.data[0x16BB] & 0b00000001 && scsiDev.data[0x16BB] & 0b00000010)
+            if ((scsiDev.data[0x16BB] & 0x40) && (scsiDev.data[0x16BB] & 0x20))
             {
                 g_initiator_state.interpolationBoth++;
             }
 
-            if (!(scsiDev.data[0x16BB] & 0b00000001 || scsiDev.data[0x16BB] & 0b00000010))
+            if (!(scsiDev.data[0x16BB] & 0x40) && !(scsiDev.data[0x16BB] & 0x20))
             {
                 g_initiator_state.goodFrames++;
             }
@@ -1019,14 +1039,10 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
             g_initiator_state.allFrames++;
 
             bool NullFrame = true;
-            for (int i = 0x1680; i < 0x17BC; i++)
-            {
-                if (scsiDev.data[i])
-                {
-                    NullFrame = false;
-                    break;
-                }
-            }
+            
+            //All times must be zero for null frames
+            if(g_initiator_state.fMDAbsTimeHour || g_initiator_state.fMDAbsTimeMin || g_initiator_state.fMDAbsTimeSec || g_initiator_state.fMDPrgTimeHour || g_initiator_state.fMDPrgTimeMin || g_initiator_state.fMDPrgTimeSec|| g_initiator_state.fMDDateTimeHour)NullFrame = false;
+            
             if (NullFrame && g_initiator_state.nullFramesMax > 0)
             {
                 if (!g_initiator_state.nullFrames)
