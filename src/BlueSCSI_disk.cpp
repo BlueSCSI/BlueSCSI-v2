@@ -443,10 +443,6 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
                 dbgmsg("---- Image file is contiguous, SD card sectors ", (int)sector_begin, " to ", (int)sector_end);
             }
         }
-        else
-        {
-            logmsg("---- WARNING: ", filename, " is fragmented, see https://github.com/BlueSCSI/BlueSCSI-v2/wiki/Image-File-Fragmentation");
-        }
 
         S2S_CFG_TYPE setting_type = (S2S_CFG_TYPE) g_scsi_settings.getDevice(target_idx)->deviceType;
         if ( setting_type != S2S_CFG_NOT_SET)
@@ -2140,7 +2136,27 @@ static void start_dataInTransfer(uint8_t *buffer, uint32_t count)
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     platform_set_sd_callback(&diskDataIn_callback, buffer);
 
-    if (img.file.read(buffer, count) != count)
+    // Use direct sector I/O when fastseek is enabled (for fragmented files)
+    // Contiguous files already use raw SD access, bypassing this path
+    bool read_ok = false;
+    if (img.file.isFastSeekEnabled())
+    {
+        // Convert byte position/count to sector units (>> 9 is / 512)
+        uint32_t fileSector = img.file.position() >> 9;
+        uint32_t sectorCount = count >> 9;
+        uint32_t sectorsRead = img.file.readSectorsDirect(fileSector, buffer, sectorCount);
+        read_ok = (sectorsRead == sectorCount);
+        if (read_ok)
+        {
+            // readSectorsDirect does NOT advance file position - do it manually
+            img.file.seek(img.file.position() + count);
+        }
+    }
+    else
+    {
+        read_ok = (img.file.read(buffer, count) == count);
+    }
+    if (!read_ok)
     {
         logmsg("SD card read failed: ", SD.sdErrorCode());
         scsiDev.status = CHECK_CONDITION;

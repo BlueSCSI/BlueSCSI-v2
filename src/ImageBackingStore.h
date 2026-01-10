@@ -107,6 +107,16 @@ public:
     // Result is only valid for regular files, not raw or flash access
     uint64_t position();
 
+    // Fastseek support - for optimized random access
+    // Returns true if fastseek is enabled on underlying file
+    bool isFastSeekEnabled();
+
+    // Direct sector read using fastseek - bypasses filesystem cache
+    // fileSector is in 512-byte SD sectors from start of file
+    // sectorCount is number of 512-byte sectors to read
+    // Returns number of sectors actually read
+    uint32_t readSectorsDirect(uint32_t fileSector, uint8_t* dst, uint32_t sectorCount);
+
     size_t getFilename(char* buf, size_t buflen);
 
     // Change image if the image is a folder (used for .cue with multiple .bin)

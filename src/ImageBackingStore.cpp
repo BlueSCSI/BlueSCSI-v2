@@ -136,6 +136,16 @@ bool ImageBackingStore::_internal_open(const char *filename)
         return false;
     }
 
+    // Enable fastseek for optimized seek operations (O(fragments) instead of O(clusters))
+    if (m_fsfile.enableFastSeek())
+    {
+        uint16_t frags = m_fsfile.fragmentCount();
+        if (frags > 1)
+        {
+            logmsg("---- INFO: Image file is fragmented (", (int)frags, " fragments), FastSeek enabled for best performance.");
+        }
+    }
+
     uint32_t sectorcount = m_fsfile.dataLength() / SD_SECTOR_SIZE;
     uint32_t begin = 0, end = 0;
     if (m_fsfile.contiguousRange(&begin, &end) && end >= begin + sectorcount - 1)
@@ -385,6 +395,28 @@ uint64_t ImageBackingStore::position()
     {
         return 0;
     }
+}
+
+bool ImageBackingStore::isFastSeekEnabled()
+{
+    // Only relevant for non-contiguous files using SdFat
+    // Contiguous files already have optimized raw sector access
+    if (!m_iscontiguous && !m_isrom && !m_israw && m_fsfile.isOpen())
+    {
+        return m_fsfile.isFastSeekEnabled();
+    }
+    return false;
+}
+
+uint32_t ImageBackingStore::readSectorsDirect(uint32_t fileSector, uint8_t* dst, uint32_t sectorCount)
+{
+    // Only for non-contiguous files with fastseek enabled
+    // Contiguous files already use the faster m_blockdev->readSectors() path
+    if (!m_iscontiguous && !m_isrom && !m_israw && m_fsfile.isOpen() && m_fsfile.isFastSeekEnabled())
+    {
+        return m_fsfile.readSectorsDirect(fileSector, dst, sectorCount);
+    }
+    return 0;
 }
 
 size_t ImageBackingStore::getFilename(char* buf, size_t buflen)

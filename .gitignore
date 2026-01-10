@@ -5,3 +5,4 @@
 dist/
 utils/venv/
 local-scratch/
+__pycache__/
