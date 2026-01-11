@@ -270,7 +270,7 @@ uint8_t read_sca_flag_bits() {
 }
 
 bool read_from_8574(uint8_t* state) {
-    int status = i2c_read_blocking(I2C_PORT, ULTRA_I2C_ADDR, state, 1, false);
+    int status = i2c_read_timeout_us(I2C_PORT, ULTRA_I2C_ADDR, state, 1, false, 25000);
     if (u8574_debug) {
         logmsg("8574:R:,", *state, ":S:", status);
     }
@@ -329,7 +329,7 @@ bool write_to_8574(uint8_t dataToWrite) {
     int result;
     // result = read_from_8574();
     // logmsg("CheckResult:", result);
-    result = i2c_write_blocking(I2C_PORT, ULTRA_I2C_ADDR, &cmd, 1, false);
+    result = i2c_write_timeout_us(I2C_PORT, ULTRA_I2C_ADDR, &cmd, 1, false, 25000);
     if (result != 1) {
         return false;
     }
@@ -711,6 +711,9 @@ bool checkIs2023a() {
 }
 
 void platform_setup_sd() {
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE) 
+    i2c_init(i2c1, 100000);
+#endif
     // SD card pins
     // Card is used in SDIO mode for main program, and in SPI mode for crash handler & bootloader.
     //        pin             function       pup   pdown  out    state fast

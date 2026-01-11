@@ -346,7 +346,7 @@ sdio_status_t rp2040_sdio_command_R1(uint8_t command, uint32_t arg, uint32_t *re
             if ((uint32_t)(platform_millis() - start) > 2)
             {
                 if (g_record_sdio_errors && command != 8) {
-#ifdef BLUESCSI_ULTRA
+#ifdef ULTRA_SDIO
                     logmsg("Timeout: rp2040_sdio_command_R1(", (int)command, "), ",
                         "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_CMD_SM) - (int)g_sdio.pio_cmd_rsp_clk_offset,
                         " RXF: ", (int)pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_CMD_SM),
