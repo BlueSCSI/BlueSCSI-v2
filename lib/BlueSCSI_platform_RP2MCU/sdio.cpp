@@ -215,7 +215,7 @@ waitagain:
     {
         // SD Spec says CMD6 transaction timeout is 100ms
         // ACMD13 is likely similar
-        if ((uint32_t)(millis() - g_sdio.transfer_start_time) > 100)
+        if ((uint32_t)(platform_millis() - g_sdio.transfer_start_time) > 100)
         {
 
 #ifdef SDIO_DEBUG
@@ -337,13 +337,13 @@ sdio_status_t rp2040_sdio_command_R1(uint8_t command, uint32_t arg, uint32_t *re
 
     sdio_send_command(command, arg, response ? 48 : 0);
 
-    uint32_t start = millis();
+    uint32_t start = platform_millis();
     if (response)
     {
         // Wait for DMA channel to receive response
         while (dma_channel_is_busy(SDIO_DMA_CHB))
         {
-            if ((uint32_t)(millis() - start) > 2)
+            if ((uint32_t)(platform_millis() - start) > 2)
             {
                 if (g_record_sdio_errors && command != 8) {
 #ifdef BLUESCSI_ULTRA
@@ -428,7 +428,7 @@ sdio_status_t rp2040_sdio_command_R1(uint8_t command, uint32_t arg, uint32_t *re
         SDIO_PIO->fdebug = tx_stall_flag;
         // Wait for the stall
         while (!(SDIO_PIO->fdebug & tx_stall_flag)) {
-            if ((uint32_t)(millis() - start) > 2)
+            if ((uint32_t)(platform_millis() - start) > 2)
             {
                 if (g_record_sdio_errors && command != 8) {
 #ifdef ULTRA_SDIO
@@ -473,10 +473,10 @@ sdio_status_t rp2040_sdio_command_R2(uint8_t command, uint32_t arg, uint8_t resp
 
     sdio_send_command(command, arg, 136);
 
-    uint32_t start = millis();
+    uint32_t start = platform_millis();
     while (dma_channel_is_busy(SDIO_DMA_CHB))
     {
-        if ((uint32_t)(millis() - start) > 2)
+        if ((uint32_t)(platform_millis() - start) > 2)
         {
             dbgmsg("Timeout : rp2040_sdio_command_R2(", (int)command, "), ",
                   "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_CMD_SM) - (int)g_sdio.pio_cmd_rsp_clk_offset,
@@ -562,10 +562,10 @@ sdio_status_t rp2040_sdio_command_R3(uint8_t command, uint32_t arg, uint32_t *re
     sdio_send_command(command, arg, 48);
 
     // Wait for response
-    uint32_t start = millis();
+    uint32_t start = platform_millis();
     while (dma_channel_is_busy(SDIO_DMA_CHB))
     {
-        if ((uint32_t)(millis() - start) > 2)
+        if ((uint32_t)(platform_millis() - start) > 2)
         {
             dbgmsg("Timeout: rp2040_sdio_command_R3(", (int)command, "), ",
                   "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_CMD_SM) - (int)g_sdio.pio_cmd_rsp_clk_offset,
@@ -603,7 +603,7 @@ sdio_status_t rp2040_sdio_rx_start(uint8_t *buffer, uint32_t num_blocks, uint32_
     assert(((uint32_t)buffer & 3) == 0 && num_blocks <= SDIO_MAX_BLOCKS);
 
     g_sdio.transfer_state = SDIO_RX;
-    g_sdio.transfer_start_time = millis();
+    g_sdio.transfer_start_time = platform_millis();
     g_sdio.data_buf = (uint32_t*)buffer;
     g_sdio.blocks_done = 0;
     g_sdio.total_blocks = num_blocks;
@@ -757,7 +757,7 @@ sdio_status_t rp2040_sdio_rx_poll(uint32_t *bytes_complete)
             return SDIO_ERR_DATA_CRC;
         }
     }
-    else if ((uint32_t)(millis() - g_sdio.transfer_start_time) > 1000)
+    else if ((uint32_t)(platform_millis() - g_sdio.transfer_start_time) > 1000)
     {
         dbgmsg("rp2040_sdio_rx_poll() timeout, "
             "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_DATA_SM) - (int)g_sdio.pio_data_rx_offset,
@@ -857,7 +857,7 @@ sdio_status_t rp2040_sdio_tx_start(const uint8_t *buffer, uint32_t num_blocks)
     assert(((uint32_t)buffer & 3) == 0 && num_blocks <= SDIO_MAX_BLOCKS);
 
     g_sdio.transfer_state = SDIO_TX;
-    g_sdio.transfer_start_time = millis();
+    g_sdio.transfer_start_time = platform_millis();
     g_sdio.data_buf = (uint32_t*)buffer;
     g_sdio.blocks_done = 0;
     g_sdio.total_blocks = num_blocks;
@@ -1036,7 +1036,7 @@ sdio_status_t rp2040_sdio_tx_poll(uint32_t *bytes_complete)
         rp2040_sdio_stop();
         return g_sdio.wr_status;
     }
-    else if ((uint32_t)(millis() - g_sdio.transfer_start_time) > 1000)
+    else if ((uint32_t)(platform_millis() - g_sdio.transfer_start_time) > 1000)
     {
         dbgmsg("rp2040_sdio_tx_poll() timeout, "
             "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_CMD_SM) - (int)g_sdio.pio_data_tx_offset,

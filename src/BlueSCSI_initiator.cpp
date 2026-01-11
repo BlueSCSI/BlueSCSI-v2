@@ -161,7 +161,7 @@ static void scsiInitiatorUpdateLed()
 {
     // Update status indicator, the led blinks every 5 seconds and is on the longer the more data has been transferred
     const int period = 256;
-    int phase = (millis() % period);
+    int phase = (platform_millis() % period);
     int duty = (int64_t)g_initiator_state.sectors_done * period / g_initiator_state.sectorcount;
 
     // Minimum and maximum time to verify that the blink is visible
@@ -180,11 +180,11 @@ static void scsiInitiatorUpdateLed()
 
 void delay_with_poll(uint32_t ms)
 {
-    uint32_t start = millis();
-    while ((uint32_t)(millis() - start) < ms)
+    uint32_t start = platform_millis();
+    while ((uint32_t)(platform_millis() - start) < ms)
     {
         platform_poll();
-        delay(1);
+        platform_delay_ms(1);
     }
 }
 
@@ -247,7 +247,7 @@ void scsiInitiatorMainLoop()
             int32_t msc_init_delay = ini_getl("SCSI", "InitiatorMSCInitDelay", MSC_INIT_DELAY, CONFIGFILE);
             if (msc_init_delay != MSC_INIT_DELAY)
                 logmsg("Initiator init delay set in ", CONFIGFILE ," to ", (int)msc_init_delay, " milliseconds");
-            delay(msc_init_delay);
+            platform_delay_ms(msc_init_delay);
 
             logmsg("Entering USB MSC initiator mode");
             platform_enter_msc();
@@ -578,7 +578,7 @@ void scsiInitiatorMainLoop()
         if (g_initiator_state.sectors_done < g_initiator_state.failposition)
             numtoread = 1;
 
-        uint32_t time_start = millis();
+        uint32_t time_start = platform_millis();
         bool status = scsiInitiatorReadDataToFile(g_initiator_state.target_id,
             g_initiator_state.sectors_done, numtoread, g_initiator_state.sectorsize,
             g_initiator_state.target_file);
@@ -619,7 +619,7 @@ void scsiInitiatorMainLoop()
             g_initiator_state.sectors_done += numtoread;
             g_initiator_state.target_file.flush();
 
-            int speed_kbps = numtoread * g_initiator_state.sectorsize / (millis() - time_start);
+            int speed_kbps = numtoread * g_initiator_state.sectorsize / (platform_millis() - time_start);
             logmsg("SCSI read succeeded, sectors done: ",
                   (int)g_initiator_state.sectors_done, " / ", (int)g_initiator_state.sectorcount,
                   " speed ", speed_kbps, " kB/s - ", 
@@ -650,11 +650,11 @@ int scsiInitiatorRunCommand(int target_id,
 
     SCSI_PHASE phase;
     int status = -1;
-    uint32_t start = millis();
+    uint32_t start = platform_millis();
     while ((phase = (SCSI_PHASE)scsiHostPhyGetPhase()) != BUS_FREE)
     {
         // If explicit timeout is specified, prevent watchdog from triggering too early.
-        if ((uint32_t)(millis() - start) < timeout)
+        if ((uint32_t)(platform_millis() - start) < timeout)
         {
             platform_reset_watchdog();
         }
@@ -858,7 +858,7 @@ bool scsiStartStopUnit(int target_id, bool start)
             dbgmsg("--- Device reports NOT_READY, running STOP to attempt restart");
             // Some devices will only leave NOT_READY state after they have been
             // commanded to stop state first.
-            delay(1000);
+            platform_delay_ms(1000);
             uint8_t cmd_stop[6] = {0x1B, 0x1, 0, 0, 0, 0};
             scsiInitiatorRunCommand(target_id,
                                     cmd_stop, sizeof(cmd_stop),
@@ -951,11 +951,11 @@ int scsiInitiatorMessage(int target_id,
 
     SCSI_PHASE phase;
     int status = -1;
-    uint32_t start = millis();
+    uint32_t start = platform_millis();
     while ((phase = (SCSI_PHASE)scsiHostPhyGetPhase()) != BUS_FREE)
     {
         // If explicit timeout is specified, prevent watchdog from triggering too early.
-        if ((uint32_t)(millis() - start) < timeout)
+        if ((uint32_t)(platform_millis() - start) < timeout)
         {
             platform_reset_watchdog();
         }

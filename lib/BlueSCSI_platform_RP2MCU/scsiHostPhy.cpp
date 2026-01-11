@@ -61,13 +61,13 @@ void scsiHostPhyReset(void)
 #else
     SCSI_OUT(RST, 1);
 #endif
-    delay(2);
+    platform_delay_ms(2);
 #if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
     SCSI_OUT(RST, 1);  // Inverted RST output logic
 #else
     SCSI_OUT(RST, 0);
 #endif
-    delay(250);
+    platform_delay_ms(250);
     g_scsiHostPhyReset = false;
 }
 
@@ -86,7 +86,7 @@ bool scsiHostPhySelect(int target_id, uint8_t initiator_id)
     SCSI_OUT(BSY, 1);
     for (int wait = 0; wait < 10; wait++)
     {
-        delayMicroseconds(1);
+        platform_delay_us(1);
 
         if (SCSI_IN_DATA() != 0)
         {
@@ -101,15 +101,15 @@ bool scsiHostPhySelect(int target_id, uint8_t initiator_id)
     scsiLogInitiatorPhaseChange(SELECTION);
     dbgmsg("------ SELECTING ", target_id, " with initiator ID ", (int)initiator_id);
     SCSI_OUT(SEL, 1);
-    delayMicroseconds(5);
+    platform_delay_us(5);
     SCSI_OUT_DATA((1 << target_id) | (1 << initiator_id));
-    delayMicroseconds(5);
+    platform_delay_us(5);
     SCSI_OUT(BSY, 0);
 
     // Wait for target to respond
     for (int wait = 0; wait < 2500; wait++)
     {
-        delayMicroseconds(100);
+        platform_delay_us(100);
         if (SCSI_IN(BSY))
         {
             break;
@@ -158,7 +158,7 @@ int scsiHostPhyGetPhase()
     if (phase == 0 && absolute_time_diff_us(last_online_time, get_absolute_time()) > 100)
     {
 
-        delayMicroseconds(1);
+        platform_delay_us(1);
 
         if (!SCSI_IN(BSY))
         {
@@ -292,8 +292,8 @@ uint32_t scsiHostRead(uint8_t *data, uint32_t count)
     {
         for (uint32_t i = 0; i < count; i++)
         {
-            uint32_t start = millis();
-            while (!SCSI_IN(REQ) && (millis() - start) < 10000)
+            uint32_t start = platform_millis();
+            while (!SCSI_IN(REQ) && (platform_millis() - start) < 10000)
             {
                 // Wait for REQ asserted
             }
@@ -347,7 +347,7 @@ void scsiHostWaitBusFree()
     // Wait for the target to release BSY signal.
     // If the target is expecting more data, transfer dummy bytes.
     // This happens for some reason with READ6 command on IBM H3171-S2.
-    uint32_t start = millis();
+    uint32_t start = platform_millis();
     int extra_bytes = 0;
     while (SCSI_IN(BSY))
     {
@@ -375,7 +375,7 @@ void scsiHostWaitBusFree()
              sleep_us(1);
         }
 
-        if ((uint32_t)(millis() - start) > 10000)
+        if ((uint32_t)(platform_millis() - start) > 10000)
         {
             logmsg("Target is holding BSY for unexpectedly long, running reset.");
             scsiHostPhyReset();

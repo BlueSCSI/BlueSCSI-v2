@@ -61,8 +61,8 @@ void bluescsi_msc_loop() {
   while(platform_run_msc()) {
     platform_reset_watchdog(); // also sends log to USB serial
 
-    if ((uint32_t)(millis() - sd_card_check_time) > 5000) {
-      sd_card_check_time = millis();
+    if ((uint32_t)(platform_millis() - sd_card_check_time) > 5000) {
+      sd_card_check_time = platform_millis();
       uint32_t ocr;
       if (!SD.card()->readOCR(&ocr)) {
         if (!SD.card()->readOCR(&ocr)) {
@@ -76,12 +76,12 @@ void bluescsi_msc_loop() {
     switch (MSC_LEDMode) {
       case LED_BLINK_FAST:
         LED_OFF();
-        delay(30);
+        platform_delay_ms(30);
         break;
       case LED_BLINK_SLOW:
-        delay(30);
+        platform_delay_ms(30);
         LED_OFF();
-        delay(100);
+        platform_delay_ms(100);
         syncCounter = 1;
         break;
       default:
@@ -95,7 +95,7 @@ void bluescsi_msc_loop() {
     // LED always on in card reader mode
     MSC_LEDMode = LED_SOLIDON;
 	  LED_ON(); 
-    delay(30);
+    platform_delay_ms(30);
   }
 
   // turn the LED off to indicate exiting MSC
@@ -107,7 +107,7 @@ void bluescsi_msc_loop() {
   SD.card()->syncDevice();
 
   // leave the LED off for a moment, before any blinks from the main firmware occur
-  delay(1000);
+  platform_delay_ms(1000);
 }
 
 #endif

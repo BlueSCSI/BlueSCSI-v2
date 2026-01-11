@@ -29,8 +29,8 @@
 #include <stdint.h>
 #include "BlueSCSI_platform.h"
 
-#define s2s_getTime_ms() millis()
-#define s2s_elapsedTime_ms(since) ((uint32_t)(millis() - (since)))
-#define s2s_delay_ms(x) delay_ns(x * 1000000)
-#define s2s_delay_us(x) delay_ns(x * 1000)
+#define s2s_getTime_ms() platform_millis()
+#define s2s_elapsedTime_ms(since) ((uint32_t)(platform_millis() - (since)))
+#define s2s_delay_ms(x) platform_delay_ms(x)
+#define s2s_delay_us(x) platform_delay_us(x)
 #define s2s_delay_ns(x) delay_ns(x)

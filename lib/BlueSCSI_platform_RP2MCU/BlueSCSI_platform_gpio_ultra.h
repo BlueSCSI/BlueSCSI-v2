@@ -193,7 +193,7 @@
                        (1 << SCSI_OUT_BSY) | \
                        (1 << SCSI_OUT_REQ) | \
                        (1 << SCSI_OUT_SEL), \
-                       delay(1), \
+                       platform_delay_ms(1), \
     sio_hw->gpio_oe_clr = (1 << SCSI_OUT_CD) | \
                           (1 << SCSI_OUT_MSG)
 

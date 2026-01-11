@@ -160,7 +160,7 @@ void log_raw(bytearray array)
 
 void logmsg_start()
 {
-    log_raw("[", (int)millis(), "ms] ");
+    log_raw("[", (int)platform_millis(), "ms] ");
 }
 
 void logmsg_end()
@@ -181,7 +181,7 @@ bool dbgmsg_start()
             return false;
         }
 
-        log_raw("[", (int)millis(), "ms] DBG ");
+        log_raw("[", (int)platform_millis(), "ms] DBG ");
 
         return true;
     }

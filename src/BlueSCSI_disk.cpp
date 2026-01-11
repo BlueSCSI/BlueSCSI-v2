@@ -2118,10 +2118,10 @@ static void start_dataInTransfer(uint8_t *buffer, uint32_t count)
     g_disk_transfer.bytes_sd = count;
 
     // Verify that previous write using this buffer has finished
-    uint32_t start = millis();
+    uint32_t start = platform_millis();
     while (!scsiIsWriteFinished(buffer + count - 1) && !scsiDev.resetFlag)
     {
-        if ((uint32_t)(millis() - start) > 5000)
+        if ((uint32_t)(platform_millis() - start) > 5000)
         {
             logmsg("start_dataInTransfer() timeout waiting for previous to finish");
             scsiDev.resetFlag = 1;

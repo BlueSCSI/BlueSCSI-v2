@@ -52,7 +52,7 @@ static void doSeek(uint32_t lba)
     }
     else
     {
-        delay(10);
+        platform_delay_ms(10);
         img.tape_pos = lba;
 
         scsiDev.status = GOOD;

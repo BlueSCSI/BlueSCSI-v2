@@ -97,13 +97,13 @@ void save_logfile(bool always = false)
   {
     // When debug is off, save log at most every LOG_SAVE_INTERVAL_MS
     // When debug is on, save after every SCSI command.
-    if (always || g_log_debug || (LOG_SAVE_INTERVAL_MS > 0 && (uint32_t)(millis() - prev_log_save) > LOG_SAVE_INTERVAL_MS))
+    if (always || g_log_debug || (LOG_SAVE_INTERVAL_MS > 0 && (uint32_t)(platform_millis() - prev_log_save) > LOG_SAVE_INTERVAL_MS))
     {
       g_logfile.write(log_get_buffer(&prev_log_pos));
       g_logfile.flush();
 
       prev_log_len = loglen;
-      prev_log_save = millis();
+      prev_log_save = platform_millis();
     }
   }
 }
@@ -328,12 +328,12 @@ bool createImage(const char *cmd_filename, char imgname[MAX_FILE_PATH + 1])
   }
 
   // Write zeros to fill the file
-  uint32_t start = millis();
+  uint32_t start = platform_millis();
   memset(scsiDev.data, 0, sizeof(scsiDev.data));
   uint64_t remain = size;
   while (remain > 0)
   {
-    if (millis() & 128) { LED_ON(); } else { LED_OFF(); }
+    if (platform_millis() & 128) { LED_ON(); } else { LED_OFF(); }
     platform_reset_watchdog();
 
     size_t to_write = sizeof(scsiDev.data);
@@ -350,7 +350,7 @@ bool createImage(const char *cmd_filename, char imgname[MAX_FILE_PATH + 1])
   }
 
   file.close();
-  uint32_t time = millis() - start;
+  uint32_t time = platform_millis() - start;
   int kb_per_s = size / time;
   logmsg("---- Image creation successful, write speed ", kb_per_s, " kB/s, removing '", cmd_filename, "'");
   SD.remove(cmd_filename);
@@ -1225,7 +1225,7 @@ static void bluescsi_setup_sd_card(bool wait_for_card = true)
     if (boot_delay_ms > 0)
     {
       logmsg("Pre SCSI init boot delay in millis: ", boot_delay_ms);
-      delay(boot_delay_ms);
+      platform_delay_ms(boot_delay_ms);
     }
     platform_post_sd_card_init();
     kiosk_restore_images();
@@ -1235,7 +1235,7 @@ static void bluescsi_setup_sd_card(bool wait_for_card = true)
     if (boot_delay_ms > 0)
     {
       logmsg("Post SCSI init boot delay in millis: ", boot_delay_ms);
-      delay(boot_delay_ms);
+      platform_delay_ms(boot_delay_ms);
     }
 
   }
@@ -1367,10 +1367,10 @@ extern "C" void bluescsi_main_loop(void)
     // SCSI requests, so normally we only want to save during a phase where
     // the host is waiting for us. But for debugging issues where no requests
     // come through or a request hangs, it's useful to force saving of log.
-    if (scsiDev.phase == STATUS || (g_log_debug && (uint32_t)(millis() - last_request_time) > 2000))
+    if (scsiDev.phase == STATUS || (g_log_debug && (uint32_t)(platform_millis() - last_request_time) > 2000))
     {
       save_logfile();
-      last_request_time = millis();
+      last_request_time = platform_millis();
     }
   }
 
@@ -1378,9 +1378,9 @@ extern "C" void bluescsi_main_loop(void)
   {
     // Check SD card status for hotplug
     if (scsiDev.phase == BUS_FREE &&
-        (uint32_t)(millis() - sd_card_check_time) > SDCARD_POLL_INTERVAL)
+        (uint32_t)(platform_millis() - sd_card_check_time) > SDCARD_POLL_INTERVAL)
     {
-      sd_card_check_time = millis();
+      sd_card_check_time = platform_millis();
       if (!poll_sd_card())
       {
         if (!poll_sd_card())
@@ -1392,10 +1392,10 @@ extern "C" void bluescsi_main_loop(void)
     }
   }
 
-  if (!g_sdcard_present && (uint32_t)(millis() - sd_card_check_time) > SDCARD_POLL_INTERVAL
+  if (!g_sdcard_present && (uint32_t)(platform_millis() - sd_card_check_time) > SDCARD_POLL_INTERVAL
       && !g_msc_initiator)
   {
-    sd_card_check_time = millis();
+    sd_card_check_time = platform_millis();
 
     // Try to remount SD card
     do
@@ -1448,7 +1448,7 @@ static size_t kiosk_read(FsFile& file, uint64_t current_pos, uint8_t* buffer, si
     if (bytes_read_int!=read_requested)
     {
       logmsg("Kiosk restore: ERROR - Read failed - retrying" );
-      delay(100);
+      platform_delay_ms(100);
       max_read = 512;
       if (err_count++ >= 10)
       {
@@ -1545,7 +1545,7 @@ static void kiosk_restore_images()
 
         // Copy .ori to image file
         logmsg("Kiosk restore: Copying ", ori_name, " to ", tgt_name, "...");
-        uint32_t copy_start_time = millis();
+        uint32_t copy_start_time = platform_millis();
 
         target = SD.open(tgt_name, O_WRONLY);
         if (!target.isOpen())
@@ -1604,7 +1604,7 @@ static void kiosk_restore_images()
         target.close();
         LED_OFF();
 
-        uint32_t copy_time_ms = millis() - copy_start_time;
+        uint32_t copy_time_ms = platform_millis() - copy_start_time;
         int copy_speed_kbps = copy_time_ms > 0 ? (int)((ori_size / 1024) / (copy_time_ms / 1000.0)) : 0;
 
         if (copy_success && bytes_copied == ori_size)

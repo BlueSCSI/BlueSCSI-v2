@@ -15,6 +15,7 @@
  */
 #ifdef BLUESCSI_NETWORK
 #include <Arduino.h>
+#include "BlueSCSI_platform.h"
 #include "BlueSCSI_platform_network.h"
 #include "BlueSCSI_log.h"
 #include "BlueSCSI_config.h"
@@ -67,7 +68,7 @@ int platform_network_init(char *mac)
 	// long signal blink at network initialization
 	PICO_W_LED_OFF();
 	PICO_W_LED_ON();
-	delay(PICO_W_LONG_BLINK_DELAY);
+	platform_delay_ms(PICO_W_LONG_BLINK_DELAY);
 	PICO_W_LED_OFF();
 
 	logmsg(" ");
@@ -146,9 +147,9 @@ bool platform_network_wifi_join(char *ssid, char *password)
 	{
 		// Short single blink at start of connection sequence
 		PICO_W_LED_OFF();
-		delay(PICO_W_SHORT_BLINK_DELAY);
+		platform_delay_ms(PICO_W_SHORT_BLINK_DELAY);
 		PICO_W_LED_ON();
-		delay(PICO_W_SHORT_BLINK_DELAY);
+		platform_delay_ms(PICO_W_SHORT_BLINK_DELAY);
 		PICO_W_LED_OFF();
 	}
 	else
@@ -377,9 +378,9 @@ void cyw43_cb_tcpip_set_link_up(cyw43_t *self, int itf)
 		PICO_W_LED_OFF();
 		for (uint8_t i = 0; i < 3; i++)
 		{
-			delay(PICO_W_SHORT_BLINK_DELAY);
+			platform_delay_ms(PICO_W_SHORT_BLINK_DELAY);
 			PICO_W_LED_ON();
-			delay(PICO_W_SHORT_BLINK_DELAY);
+			platform_delay_ms(PICO_W_SHORT_BLINK_DELAY);
 			PICO_W_LED_OFF();
 		}
 	}

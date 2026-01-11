@@ -408,7 +408,7 @@ bool SdioCard::begin(SdioConfig sdioConfig)
         }
 
         // Send ACMD41 to begin card initialization and wait for it to complete
-        uint32_t start = millis();
+        uint32_t start = platform_millis();
         do {
             if (!checkReturnOk(rp2040_sdio_command_R1(CMD55, 0, &reply)) || // APP_CMD
 #ifdef ULTRA_SDIO
@@ -422,7 +422,7 @@ bool SdioCard::begin(SdioConfig sdioConfig)
                 break;
             }
 
-            if ((uint32_t)(millis() - start) > 1000)
+            if ((uint32_t)(platform_millis() - start) > 1000)
             {
                 logmsg("SDIO card initialization timeout");
                 step_success = false;
@@ -461,7 +461,7 @@ bool SdioCard::begin(SdioConfig sdioConfig)
                     gpio_state = sio_hw->gpio_in & 0x3E000;
 #endif
                     if (gpio_state) {
-                        delay(1);
+                        platform_delay_ms(1);
                         cmd_success = false;
                     } else {
                         cmd_success = true;
@@ -478,7 +478,7 @@ bool SdioCard::begin(SdioConfig sdioConfig)
                 if (cmd_success) {  // Switched power to 1.8v
                     // It takes a minimum of 5ms for the card to switch to 1.8v
                     // Wait at least that long, and a little longer is fine
-                    delay(6);
+                    platform_delay_ms(6);
 
                     bool cmd_detected;
                     bool dat_detected;
@@ -822,8 +822,8 @@ bool SdioCard::stopTransmission(bool blocking)
         gpio_set_function(SDIO_CLK, GPIO_FUNC_SIO);
 #endif
 
-        uint32_t start = millis();
-        while ((uint32_t)(millis() - start) < 5000 && isBusy())
+        uint32_t start = platform_millis();
+        while ((uint32_t)(platform_millis() - start) < 5000 && isBusy())
         {
             cycleSdClock();
             if (m_stream_callback)

@@ -47,20 +47,20 @@ bool blink_poll()
     {
         is_blinking = false;
     }
-    else if (blink_count == 1 && ((uint32_t)(millis() - blink_start)) > blink_end_delay )
+    else if (blink_count == 1 && ((uint32_t)(platform_millis() - blink_start)) > blink_end_delay )
     {
         LED_OFF_OVERRIDE();
         blink_count = 0;
         is_blinking = false;
     }
-    else if (blink_count > 1 && ((uint32_t)(millis() - blink_start)) > blink_delay)
+    else if (blink_count > 1 && ((uint32_t)(platform_millis() - blink_start)) > blink_delay)
     {
         if (1 & blink_count)
             LED_ON_OVERRIDE();
         else
             LED_OFF_OVERRIDE();
         blink_count--;
-        blink_start = millis();
+        blink_start = platform_millis();
     }
 
     if (!is_blinking)
@@ -78,7 +78,7 @@ void blinkStatus(uint32_t times, uint32_t delay, uint32_t end_delay)
 {
     if (!blink_poll() && blink_count == 0)
     {
-        blink_start = millis();
+        blink_start = platform_millis();
         blink_count = 2 * times + 1;
         blink_delay = delay / 2;
         blink_end_delay =  end_delay;

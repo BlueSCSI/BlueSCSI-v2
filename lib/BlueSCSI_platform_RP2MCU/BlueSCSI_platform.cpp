@@ -555,14 +555,14 @@ static pin_setup_state_t read_setup_ack_pin()
     //        pin             function       pup   pdown   out    state  fast
     gpio_conf(SCSI_IN_ACK,  GPIO_FUNC_SIO, false, false, true,  true,  false);
     gpio_conf(SCSI_IN_ACK,  GPIO_FUNC_SIO, false, true,  false, true,  false);
-    delay(1);
+    platform_delay_ms(1);
     bool ack_state1 = gpio_get(SCSI_IN_ACK);
 
     // Strong output low, then pullup
     //        pin             function       pup   pdown   out    state  fast
     gpio_conf(SCSI_IN_ACK,  GPIO_FUNC_SIO, false, false, true,  false, false);
     gpio_conf(SCSI_IN_ACK,  GPIO_FUNC_SIO, true,  false, false, false, false);
-    delay(1);
+    platform_delay_ms(1);
     bool ack_state2 = gpio_get(SCSI_IN_ACK);
 
     if (ack_state1 == ack_state2)
@@ -619,7 +619,7 @@ bool checkIs2023a() {
         // Option switches: S1 is iATN, S2 is iACK
         // gpio_conf(BUTTON_SW1_PRE202309a,    GPIO_FUNC_SIO, true, false, false, false, false);
         // gpio_conf(BUTTON_SW1_PRE202309a,    GPIO_FUNC_SIO, false, false, false, false, false);
-        // delay(10); /// Settle time
+        // platform_delay_ms(10); /// Settle time
         gpio_conf(BUTTON_SW1_PRE202309a,    GPIO_FUNC_SIO, true, false, false, false, false);
         gpio_conf(BUTTON_SW2_PRE202309a,    GPIO_FUNC_SIO, true, false, false, false, false);
 
@@ -711,7 +711,7 @@ void platform_init()
     gpio_conf(SCSI_OUT_RST,   GPIO_FUNC_SIO, false,false, true,  true, true);
     gpio_conf(SCSI_OUT_BSY,   GPIO_FUNC_SIO, false,false, true,  true, true);
 #endif
-    delay(10);
+    platform_delay_ms(10);
 
 #ifndef DISABLE_SWO
     /* Initialize logging to SWO pin (UART0) */
@@ -1143,10 +1143,10 @@ static bool usb_serial_connected()
     if (platform_msc_lock_get()) return connected; // Avoid re-entrant USB events
 #endif
 
-    if (last_check_time == 0 || (uint32_t)(millis() - last_check_time) > 50)
+    if (last_check_time == 0 || (uint32_t)(platform_millis() - last_check_time) > 50)
     {
         connected = bool(Serial);
-        last_check_time = millis();
+        last_check_time = platform_millis();
     }
 
     return connected;
@@ -1516,10 +1516,10 @@ uint8_t platform_get_buttons()
     static uint32_t last_debounce_time = 0;
 
     if (buttons != last_state) {
-        last_debounce_time = millis();
+        last_debounce_time = platform_millis();
     }
 
-    if ((millis() - last_debounce_time) > 50) { // 50ms debounce
+    if ((platform_millis() - last_debounce_time) > 50) { // 50ms debounce
         debounced_state = buttons;
     }
 

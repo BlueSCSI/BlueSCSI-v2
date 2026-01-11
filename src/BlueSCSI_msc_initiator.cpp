@@ -182,7 +182,7 @@ bool setup_msc_initiator()
 
 void poll_msc_initiator()
 {
-    uint32_t time_now = millis();
+    uint32_t time_now = platform_millis();
     uint32_t time_since_scan = time_now - g_msc_initiator_state.last_scan_time;
     if (g_msc_initiator_target_count == 0 && time_since_scan > 5000)
     {

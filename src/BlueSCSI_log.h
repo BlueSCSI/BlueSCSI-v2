@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <scsiPhy.h>
+#include <hardware/timer.h>
 
 // Get total number of bytes that have been written to log
 uint32_t log_get_buffer_len();
@@ -88,8 +89,6 @@ void logmsg_end();
 bool dbgmsg_start();
 void dbgmsg_end();
 
-extern "C" unsigned long millis();
-
 // Variadic template for printing multiple items
 template<typename T, typename T2, typename... Rest>
 inline void log_raw(T first, T2 second, Rest... rest)
@@ -104,7 +103,7 @@ template<typename... Params>
 inline void logmsg(Params... params)
 {
     if (g_log_debug)
-        log_raw("[", (int)millis(), "ms] ");
+        log_raw("[", (int)(time_us_32() / 1000), "ms] ");
     log_raw(params...);
     logmsg_end();
 }

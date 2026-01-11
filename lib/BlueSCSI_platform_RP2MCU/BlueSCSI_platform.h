@@ -25,6 +25,8 @@
 
 #include <stdint.h>
 #include <Arduino.h>
+#include <hardware/timer.h>
+#include <pico/time.h>
 #include "BlueSCSI_config.h"
 #include "BlueSCSI_platform_network.h"
 #include <BlueSCSI_settings.h>
@@ -80,10 +82,27 @@ void platform_emergency_log_save();
 unsigned long millis(void);
 void delay(unsigned long ms);
 
+// Native Pico SDK timing - replaces Arduino functions
+// Uses 32-bit microseconds (same approach as Arduino-pico) for efficiency on Cortex-M0+/M33
+static inline uint32_t platform_millis()
+{
+    return time_us_32() / 1000;
+}
+
+static inline void platform_delay_ms(uint32_t ms)
+{
+    sleep_ms(ms);
+}
+
+static inline void platform_delay_us(uint32_t us)
+{
+    sleep_us(us);
+}
+
 // Short delays, can be called from interrupt mode
 static inline void delay_ns(unsigned long ns)
 {
-    delayMicroseconds((ns + 999) / 1000);
+    platform_delay_us((ns + 999) / 1000);
 }
 
 // Approximate fast delay

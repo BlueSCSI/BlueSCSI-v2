@@ -1864,10 +1864,10 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
         // Verify that previous write using this buffer has finished
         uint8_t *buf = ((idx & 1) ? buf1 : buf0);
         uint8_t *bufstart = buf;
-        uint32_t start = millis();
+        uint32_t start = platform_millis();
         while (!scsiIsWriteFinished(buf + result_length - 1) && !scsiDev.resetFlag)
         {
-            if ((uint32_t)(millis() - start) > 5000)
+            if ((uint32_t)(platform_millis() - start) > 5000)
             {
                 logmsg("doReadCD() timeout waiting for previous to finish");
                 scsiDev.resetFlag = 1;

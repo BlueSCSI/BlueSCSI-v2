@@ -116,7 +116,7 @@ uint32_t scsi_accel_host_read(uint8_t *buf, uint32_t count, int *parityError, in
     uint8_t *dst = buf;
     uint8_t *end = buf + count;
     uint32_t paritycheck = 0xFFFFFFFF;
-    uint32_t prev_rx_time = millis();
+    uint32_t prev_rx_time = platform_millis();
     while (dst < end)
     {
         uint32_t available = pio_sm_get_rx_fifo_level(SCSI_PIO, SCSI_SM);
@@ -131,7 +131,7 @@ uint32_t scsi_accel_host_read(uint8_t *buf, uint32_t count, int *parityError, in
                 dbgmsg("scsi_accel_host_read: Aborting due to reset request");
                 abort = true;
             }
-            else if ((millis() - prev_rx_time) > 10000)
+            else if ((platform_millis() - prev_rx_time) > 10000)
             {
                 dbgmsg("scsi_accel_host_read: Aborting due to timeout");
                 abort = true;
@@ -147,7 +147,7 @@ uint32_t scsi_accel_host_read(uint8_t *buf, uint32_t count, int *parityError, in
                 while (debounce > 0 && (!SCSI_IN(IO) || SCSI_IN(CD) != cd_start || SCSI_IN(MSG) != msg_start))
                 {
                     debounce--;
-                    delayMicroseconds(100);
+                    platform_delay_us(100);
                 }
 
                 if (debounce == 0)

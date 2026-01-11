@@ -124,22 +124,22 @@ bool platform_sense_msc() {
   dbgmsg("Waiting for USB enumeration to enter Card Reader mode.");
 
   // wait for up to a second to be enumerated
-  uint32_t start = millis();
+  uint32_t start = platform_millis();
   bool timed_out = false;
   uint16_t usb_timeout =  g_scsi_settings.getSystem()->usbMassStorageWaitPeriod;
   while (!tud_connected())
   {
-    if ((uint32_t)(millis() - start) > usb_timeout)
+    if ((uint32_t)(platform_millis() - start) > usb_timeout)
     {
       dbgmsg("Waiting for USB enumeration timed out after ", usb_timeout, "ms.");
       dbgmsg("-- Try increasing 'USBMassStorageWaitPeriod' in the ", CONFIGFILE);
       timed_out = true;
       break;
     } 
-    delay(100);
+    platform_delay_ms(100);
   }
   if (!timed_out)
-    dbgmsg("USB enumeration took ", (int)((uint32_t)(millis() - start)), "ms");
+    dbgmsg("USB enumeration took ", (int)((uint32_t)(platform_millis() - start)), "ms");
   // tud_connected returns True if just got out of Bus Reset and received the very first data from host
   // https://github.com/hathach/tinyusb/blob/master/src/device/usbd.h#L63
   return tud_connected();
@@ -220,7 +220,7 @@ void platform_enter_msc() {
     // update it.
     g_MSC.lun_count_prev_response = 0;
     tud_disconnect();
-    delay(250);
+    platform_delay_ms(250);
     tud_connect();
   }
 }

@@ -432,10 +432,10 @@ static void scsi_accel_rp2040_stopWrite(volatile int *resetFlag)
 {
     // Wait for TX fifo to be empty and ACK to go high
     // For synchronous writes wait for all ACKs to be received also
-    uint32_t start = millis();
+    uint32_t start = platform_millis();
     while (!scsi_accel_rp2040_isWriteDone() && !*resetFlag)
     {
-        if ((uint32_t)(millis() - start) > 5000)
+        if ((uint32_t)(platform_millis() - start) > 5000)
         {
             logmsg("scsi_accel_rp2040_stopWrite() timeout");
             scsi_accel_log_state();
@@ -459,10 +459,10 @@ static void scsi_accel_rp2040_stopWrite(volatile int *resetFlag)
 
 void scsi_accel_rp2040_finishWrite(volatile int *resetFlag)
 {
-    uint32_t start = millis();
+    uint32_t start = platform_millis();
     while (g_scsi_dma_state != SCSIDMA_IDLE && !*resetFlag)
     {
-        if ((uint32_t)(millis() - start) > 5000)
+        if ((uint32_t)(platform_millis() - start) > 5000)
         {
             logmsg("scsi_accel_rp2040_finishWrite() timeout");
             scsi_accel_log_state();
@@ -749,11 +749,11 @@ static void scsi_accel_rp2040_stopRead()
 
 void scsi_accel_rp2040_finishRead(const uint8_t *data, uint32_t count, int *parityError, volatile int *resetFlag)
 {
-    uint32_t start = millis();
+    uint32_t start = platform_millis();
     const uint8_t *query_addr = (data ? (data + count - 1) : NULL);
     while (!scsi_accel_rp2040_isReadFinished(query_addr) && !*resetFlag)
     {
-        if ((uint32_t)(millis() - start) > 5000)
+        if ((uint32_t)(platform_millis() - start) > 5000)
         {
             logmsg("scsi_accel_rp2040_finishRead timeout");
             scsi_accel_log_state();
