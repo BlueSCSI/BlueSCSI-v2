@@ -67,7 +67,7 @@ static void scsi_accel_host_config_gpio()
         // 10001000000000000111111111
         // ACK REQ          PDB
         //
-        pio_sm_set_pins(SCSI_PIO, SCSI_SM, 0x22001FF);
+        pio_sm_set_pins(SCSI_PIO, SCSI_SM, SCSI_IO_DATA_MASK | 1 << SCSI_IN_REQ | 1 << SCSI_OUT_ACK);
         pio_sm_set_consecutive_pindirs(SCSI_PIO, SCSI_SM, 0, 9, false);  // DBP Input
         pio_sm_set_consecutive_pindirs(SCSI_PIO, SCSI_SM, SCSI_IN_REQ, 1, false);  // REQ Input
         pio_sm_set_consecutive_pindirs(SCSI_PIO, SCSI_SM, SCSI_OUT_ACK, 1, true);  // ACK Output
@@ -81,7 +81,7 @@ static void scsi_accel_host_config_gpio()
         iobank0_hw->io[SCSI_IO_DB6].ctrl  = GPIO_FUNC_SIO;
         iobank0_hw->io[SCSI_IO_DB7].ctrl  = GPIO_FUNC_SIO;
         iobank0_hw->io[SCSI_IO_DBP].ctrl  = GPIO_FUNC_SIO;
-        // iobank0_hw->io[SCSI_IN_REQ].ctrl  = GPIO_FUNC_SIO;
+        iobank0_hw->io[SCSI_IN_REQ].ctrl  = GPIO_FUNC_SIO;
         iobank0_hw->io[SCSI_OUT_ACK].ctrl = GPIO_FUNC_PIO0;
     }
 }
@@ -237,7 +237,11 @@ void scsi_accel_host_init()
     pio_clear_instruction_memory(SCSI_PIO);
 
     // Asynchronous / synchronous SCSI read
+#if defined (BLUESCSI_ULTRA_WIDE)
+    g_scsi_host.pio_offset_async_read = pio_add_program(SCSI_PIO, &scsi_host_async_read_wide_program);
+#else
     g_scsi_host.pio_offset_async_read = pio_add_program(SCSI_PIO, &scsi_host_async_read_program);
+#endif
     //    wait 0 gpio REQ             side 1  ; Wait for REQ low
     uint16_t instr = pio_encode_wait_gpio(false, SCSI_IN_REQ) | pio_encode_sideset(1, 1);
     SCSI_PIO->instr_mem[g_scsi_host.pio_offset_async_read + 2] = instr;

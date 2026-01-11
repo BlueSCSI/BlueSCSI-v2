@@ -236,12 +236,12 @@ static inline void scsiHostWriteOneByte(uint8_t value)
 static inline uint8_t scsiHostReadOneByte(int* parityError)
 {
     SCSIHOST_WAIT_ACTIVE(REQ);
-    uint16_t r = SCSI_IN_DATA();
+    uint32_t r = SCSI_IN_DATA();
     SCSI_OUT(ACK, 1);
     SCSIHOST_WAIT_INACTIVE(REQ);
     SCSI_OUT(ACK, 0);
 
-    if (parityError && r != (g_scsi_parity_lookup[r & 0xFF] ^ (SCSI_IO_DATA_MASK >> SCSI_IO_SHIFT)))
+    if (parityError && !scsi_check_parity(r))
     {
         logmsg("Parity error in scsiReadOneByte(): ", (uint32_t)r);
         *parityError = 1;
@@ -249,6 +249,37 @@ static inline uint8_t scsiHostReadOneByte(int* parityError)
 
     return (uint8_t)r;
 }
+
+#ifdef BLUESCSI_ULTRA_WIDE
+static inline void scsiHostWriteOneWord(uint16_t value)
+{
+    SCSIHOST_WAIT_ACTIVE(REQ);
+    SCSI_OUT_DATA(value);
+    delay_100ns(); // DB setup time before ACK
+    SCSI_OUT(ACK, 1);
+    SCSIHOST_WAIT_INACTIVE(REQ);
+    SCSI_RELEASE_DATA_REQ();
+    SCSI_OUT(ACK, 0);
+}
+
+// Read one byte from SCSI target using the handshake mechanism.
+static inline uint16_t scsiHostReadOneWord(int* parityError)
+{
+    SCSIHOST_WAIT_ACTIVE(REQ);
+    uint32_t r = SCSI_IN_DATA();
+    SCSI_OUT(ACK, 1);
+    SCSIHOST_WAIT_INACTIVE(REQ);
+    SCSI_OUT(ACK, 0);
+
+    if (parityError && !scsi_check_parity_16bit(r))
+    {
+        logmsg("Parity error in scsiHostReadOneWord(): ", (uint32_t)r);
+        *parityError = 1;
+    }
+
+    return (uint16_t)r;
+}
+#endif
 
 uint32_t scsiHostWrite(const uint8_t *data, uint32_t count)
 {
@@ -268,8 +299,23 @@ uint32_t scsiHostWrite(const uint8_t *data, uint32_t count)
                 return i;
             }
         }
-
-        scsiHostWriteOneByte(data[i]);
+        if (g_scsiHostBusWidth == 0)
+        {
+            scsiHostWriteOneByte(data[i]);
+        }
+#ifdef BLUESCSI_ULTRA_WIDE
+        else if (g_scsiHostBusWidth == 1)
+        {
+            uint16_t word = data[i++];
+            if (i < count) word |= (uint16_t)data[i] << 8;
+            scsiHostWriteOneWord(word);
+        }
+#endif
+        else
+        {
+            logmsg("Invalid bus width ", g_scsiHostBusWidth);
+            return 0;
+        }
     }
 
     return count;
@@ -315,7 +361,23 @@ uint32_t scsiHostRead(uint8_t *data, uint32_t count)
                 break;
             }
 
-            data[i] = scsiHostReadOneByte(&parityError);
+            if (g_scsiHostBusWidth == 0)
+            {
+                data[i] = scsiHostReadOneByte(&parityError);
+            }
+#ifdef BLUESCSI_ULTRA_WIDE
+            else if (g_scsiHostBusWidth == 1)
+            {
+                uint16_t word = scsiHostReadOneWord(&parityError);
+                data[i++] = word & 0xFF;
+                if (i < count) data[i] = word >> 8;
+            }
+#endif
+            else
+            {
+                logmsg("Invalid bus width ", g_scsiHostBusWidth);
+                return 0;
+            }
         }
     }
 
