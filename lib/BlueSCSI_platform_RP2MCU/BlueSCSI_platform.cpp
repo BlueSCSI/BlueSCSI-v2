@@ -102,6 +102,12 @@ extern "C" {
 
 extern bool g_rawdrive_active;
 
+#if !defined(PICO_CYW43_SUPPORTED)
+// Define __isPicoW for non-CYW43 builds (always false)
+// Must be outside extern "C" to match header's C++ linkage declaration
+bool __isPicoW = false;
+#endif
+
 extern "C" {
 #include "timings_RP2MCU.h"
 const char *g_platform_name = PLATFORM_NAME;
@@ -118,11 +124,16 @@ static void platform_write_led_picow(bool state);
 static void platform_write_led_noop(bool state) {}
 static led_write_func_t g_led_write_func = platform_write_led_noop;
 
-#if !defined(PICO_CYW43_SUPPORTED)
-extern bool __isPicoW;
-#else
+#if defined(PICO_CYW43_SUPPORTED)
 static bool rm2_installed = false;
 #endif
+
+// Runtime detection wrapper - reads __isPicoW which is set by CheckPicoW()
+bool platform_is_pico_w(void)
+{
+    return __isPicoW;
+}
+
 /***************/
 /* GPIO init   */
 /***************/
@@ -719,7 +730,7 @@ void platform_init()
     // uart_init(uart0, 1000000);
     // g_uart_initialized = true;
 #endif // DISABLE_SWO
-    logmsg("Platform: ", g_platform_name, " (", PLATFORM_PID, rp2040.isPicoW() ? "/W" : "", ")");
+    logmsg("Platform: ", g_platform_name, " (", PLATFORM_PID, platform_is_pico_w() ? "/W" : "", ")");
     logmsg("FW Version: ", g_log_firmwareversion);
 
 #if (PICO_CYW43_SUPPORTED && !defined(BLUESCSI_NETWORK)) || defined(BLUESCSI_ULTRA)
@@ -752,7 +763,7 @@ void platform_init()
 #endif
 
     // LED pin
-    if (!rp2040.isPicoW()) {
+    if (!platform_is_pico_w()) {
         gpio_conf(LED_PIN,    GPIO_FUNC_SIO, false, false, true, false, false);
     }
 
@@ -785,7 +796,7 @@ void platform_enable_initiator_mode()
 void platform_late_init()
 {
 #if PICO_CYW43_SUPPORTED
-    if (rp2040.isPicoW()) {
+    if (platform_is_pico_w()) {
         g_led_write_func = platform_write_led_picow;
     } else
 #endif
@@ -1016,7 +1027,7 @@ static void platform_write_led_gpio(bool state)
 
 void platform_disable_led(void)
 {
-    if (!rp2040.isPicoW()) {
+    if (!platform_is_pico_w()) {
         //        pin      function       pup   pdown  out    state fast
         gpio_conf(LED_PIN, GPIO_FUNC_SIO, false,false, false, false, false);
     }

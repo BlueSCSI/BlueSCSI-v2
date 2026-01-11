@@ -146,6 +146,19 @@ uint8_t platform_no_sd_card_on_init_error_code();
 // Query whether initiator mode is enabled on targets with PLATFORM_HAS_INITIATOR_MODE
 bool platform_is_initiator_mode_enabled();
 
+// Runtime detection of Pico W vs regular Pico
+// Uses __isPicoW set by CheckPicoW() during platform_init()
+// Note: For CYW43 builds, __isPicoW is provided by Arduino-pico with C++ linkage
+// For non-CYW43 builds, we define it ourselves in BlueSCSI_platform.cpp
+#ifdef __cplusplus
+}  // Close extern "C" temporarily
+#if !defined(PICO_CYW43_SUPPORTED)
+extern bool __isPicoW;
+#endif
+extern "C" {
+#endif
+bool platform_is_pico_w(void);
+
 void platform_initiator_gpio_setup();
 bool platform_supports_initiator_mode();
 void platform_enable_initiator_mode();

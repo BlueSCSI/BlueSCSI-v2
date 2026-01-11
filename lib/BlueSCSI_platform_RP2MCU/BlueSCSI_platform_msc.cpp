@@ -25,6 +25,12 @@
 #include <device/usbd.h>
 #include <hardware/gpio.h>
 
+#if PICO_CYW43_SUPPORTED
+extern "C" {
+#  include "pico/cyw43_arch.h"
+}
+#endif
+
 #include "BlueSCSI_platform.h"
 #include "BlueSCSI_disk.h"
 #include "BlueSCSI_log.h"
@@ -41,8 +47,6 @@ extern mutex_t __usb_mutex;
 #if CFG_TUD_MSC_EP_BUFSIZE < SD_SECTOR_SIZE
   #error "CFG_TUD_MSC_EP_BUFSIZE is too small! It needs to be at least 512 (SD_SECTOR_SIZE)"
 #endif
-
-#define DIGITAL_PIN_CYW43_OFFSET 64
 
 // external global SD variable
 extern SdFs SD;
@@ -109,14 +113,13 @@ public:
 bool platform_sense_msc() {
 #if defined(BLUESCSI_PICO) || defined(BLUESCSI_PICO_2) || defined(BLUESCSI_V2)
   // check if we're USB powered, if not, exit immediately
-  // pin on the wireless module, see https://github.com/earlephilhower/arduino-pico/discussions/835
-  // Update: from the above discussion the offset 32 has been changed to 64 to access CYW43 GPIO pins
-  // since the addition of the RP2350 chips, now stored in the DIGITAL_PIN_CYW43_OFFSET define
-  if (rp2040.isPicoW() && !digitalRead(DIGITAL_PIN_CYW43_OFFSET + 2)) {
+  // CYW43 GPIO 2 is VBUS on Pico W, GPIO 24 is VBUS on regular Pico
+#if PICO_CYW43_SUPPORTED
+  if (platform_is_pico_w() && !cyw43_arch_gpio_get(2)) {
     return false;
   }
-
-  if (!rp2040.isPicoW() && !digitalRead(24)) {
+#endif
+  if (!platform_is_pico_w() && !gpio_get(24)) {
     return false;
   }
 #endif
