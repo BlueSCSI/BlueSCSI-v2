@@ -62,7 +62,7 @@ extern "C" {
 #endif
 
 #ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
-# include <SerialUSB.h>
+# include <tusb.h>
 # include <class/cdc/cdc_device.h>
 #endif
 
@@ -952,7 +952,7 @@ void platform_late_init()
     }
 
 #ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
-    Serial.begin();
+    tusb_init();
 #endif
     scsi_accel_rp2040_init();
 }
@@ -1156,7 +1156,7 @@ static bool usb_serial_connected()
 
     if (last_check_time == 0 || (uint32_t)(platform_millis() - last_check_time) > 50)
     {
-        connected = bool(Serial);
+        connected = tud_cdc_connected();
         last_check_time = platform_millis();
     }
 
@@ -1183,7 +1183,7 @@ static void usb_log_poll()
     if (platform_msc_lock_get()) return; // Avoid re-entrant USB events
 #endif
 
-    if (Serial.availableForWrite())
+    if (tud_cdc_write_available() > 0)
     {
         // Retrieve pointer to log start and determine number of bytes available.
         uint32_t available = 0;
@@ -1195,8 +1195,8 @@ static void usb_log_poll()
 
         // Update log position by the actual number of bytes sent
         // If USB CDC buffer is full, this may be 0
-        uint32_t actual = 0;
-        actual = Serial.write(data, len);
+        uint32_t actual = tud_cdc_write(data, len);
+        tud_cdc_write_flush();
         logpos -= available - actual;
     }
 
@@ -1219,10 +1219,10 @@ static void usb_input_poll()
     static bool basic_reboot_keyed = false;
     static bool uf2_reboot_keyed = false;
     volatile uint32_t* scratch0 = (uint32_t *)(WATCHDOG_BASE + WATCHDOG_SCRATCH0_OFFSET);
-    int32_t available = Serial.available();
+    uint32_t available = tud_cdc_available();
     if(available > 0)
     {
-        int32_t read = Serial.read();
+        int32_t read = tud_cdc_read_char();
         switch((char) read)
         {
             case 'R':
