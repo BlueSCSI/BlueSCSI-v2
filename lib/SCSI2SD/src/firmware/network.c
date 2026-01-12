@@ -106,7 +106,9 @@ uint32_t crc32(const void *buf, size_t size)
 
 	crc = ~0U;
 	while (size--)
+	{
 		crc = crc32_tab[(crc ^ *p++) & 0xFF] ^ (crc >> 8);
+	}
 	return crc ^ ~0U;
 }
 
@@ -245,7 +247,8 @@ int scsiNetworkCommand()
 	case 0x09:
 		// read mac address and stats
 		memcpy(scsiDev.data, scsiDev.boardCfg.wifiMACAddress, sizeof(scsiDev.boardCfg.wifiMACAddress));
-		memset(scsiDev.data + sizeof(scsiDev.boardCfg.wifiMACAddress), 0, sizeof(scsiDev.data) - sizeof(scsiDev.boardCfg.wifiMACAddress));
+		memset(scsiDev.data + sizeof(scsiDev.boardCfg.wifiMACAddress), 0,
+			sizeof(scsiDev.data) - sizeof(scsiDev.boardCfg.wifiMACAddress));
 
 		// three 32-bit counters expected to follow, just return zero for all
 		scsiDev.dataLen = 18;
@@ -316,7 +319,6 @@ int scsiNetworkCommand()
 		// toggle interface
 		if (scsiDev.cdb[5] & 0x80)
 		{
-
 			DBGMSG_F("%s: enable interface", __func__);
 			scsiNetworkEnabled = true;
 			memset(&scsiNetworkInboundQueue, 0, sizeof(scsiNetworkInboundQueue));
