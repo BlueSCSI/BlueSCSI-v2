@@ -626,10 +626,10 @@ static void process_Command()
 		((cfg->deviceType == S2S_CFG_SEQUENTIAL) && scsiTapeCommand()) ||
 		((cfg->deviceType == S2S_CFG_MO) && scsiMOCommand())
 #ifdef BLUESCSI_NETWORK
-               || ((cfg->deviceType == S2S_CFG_NETWORK && scsiNetworkCommand()))
+        || ((cfg->deviceType == S2S_CFG_NETWORK && scsiNetworkCommand()))
 #endif
 #ifdef BLUESCSI_TLS
-	       || ((cfg->deviceType == S2S_CFG_TLS && scsiTLSCommand()))
+	    || ((cfg->deviceType == S2S_CFG_TLS && scsiTLSCommand()))
 #endif
         )
 	{
