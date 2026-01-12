@@ -59,7 +59,6 @@ struct __attribute__((packed)) wifi_join_request {
 
 int scsiNetworkCommand(void);
 int scsiNetworkEnqueue(const uint8_t *buf, size_t len);
-int scsiNetworkPurge(void);
 
 #ifdef __cplusplus
 }

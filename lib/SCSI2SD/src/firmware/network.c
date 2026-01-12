@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 joshua stein <jcs@jcs.org>
+ * Copyright (c) 2023-2026 joshua stein <jcs@jcs.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -31,25 +31,8 @@ extern int platform_network_send(uint8_t *buf, size_t len);
 #define SCSI_NETWORK_WIFI_CMD_INFO			0x04
 #define SCSI_NETWORK_WIFI_CMD_JOIN			0x05
 
-// Patches to make the DaynaPORT (or whats left of it) work on the Amiga - RobSmithDev
-#define SCSI_NETWORK_WIFI_CMD_ALTREAD       0x08   // gvpscsi.device on AMIGA doesnt like the standard version
-#define SCSI_NETWORK_WIFI_CMD_GETMACADDRESS 0x09   // gvpscsi.device on AMIGA doesnt like the standard version
-
-#define AMIGASCSI_PATCH_24BYTE_BLOCKSIZE 	0xA8   // In this mode, data written is rounded up to the nearest 24-byte boundary
-#define AMIGASCSI_PATCH_SINGLEWRITE_ONLY 	0xA9   // In this mode, data written is always ONLY as one single write command
-
-// No longer static so they can be shared with AmigaWIFI
 bool scsiNetworkEnabled = false;
 struct scsiNetworkPacketQueue scsiNetworkInboundQueue;
-
-struct scsiNetworkPacket
-{
-	uint8_t packet[NETWORK_PACKET_MAX_SIZE];
-	uint16_t size;
-	bool full;
-};
-
-static struct scsiNetworkPacket scsiNetworkOutbound;
 
 struct __attribute__((packed)) wifi_network_entry wifi_network_list[WIFI_NETWORK_LIST_ENTRY_COUNT] = { 0 };
 
@@ -114,21 +97,12 @@ uint32_t crc32(const void *buf, size_t size)
 
 int scsiNetworkCommand()
 {
-	int handled = 1;
-	int off = 0;
-	int parityError = 0;
-	long psize;
-	uint32_t size = scsiDev.cdb[4] + (scsiDev.cdb[3] << 8);
+	int parityError, done, idx, total;
+	long len;
+	uint32_t size = (scsiDev.cdb[3] << 8) + scsiDev.cdb[4];
 	uint8_t command = scsiDev.cdb[0];
-	uint8_t cont = (scsiDev.cdb[5] == 0x80);
 
 	DBGMSG_F("------ in scsiNetworkCommand with command 0x%02x (size %d)", command, size);
-
-	// Rather than duplicating code, this just diverts a 'fake' read request to make the gvpscsi.device happy on the Amiga
-	if ((scsiDev.cdb[0] == SCSI_NETWORK_WIFI_CMD) && (scsiDev.cdb[1] == SCSI_NETWORK_WIFI_CMD_ALTREAD)) {
-		// Redirect the command as a READ.
-		command = 0x08;
-	}
 
 	switch (command) {
 	case 0x08:
@@ -140,85 +114,15 @@ int scsiNetworkCommand()
 			break;
 		}
 
+		// if we have nothing to send, just return early
 		if (scsiNetworkInboundQueue.readIndex == scsiNetworkInboundQueue.writeIndex)
 		{
-			// nothing available
-			memset(scsiDev.data, 0, 6);
-			scsiDev.dataLen = 6;
-		}
-		else
-		{
-			psize = scsiNetworkInboundQueue.sizes[scsiNetworkInboundQueue.readIndex];
-
-			// pad smaller packets
-			if (psize < 64)
-			{
-				psize = 64;
-			}
-			else if (psize + 6 > size)
-			{
-				LOGMSG_F("%s: packet size too big (%d)", __func__, psize);
-				psize = size - 6;
-			}
-
-			DBGMSG_F("%s: sending packet[%d] to host of size %zu + 6", __func__, scsiNetworkInboundQueue.readIndex, psize);
-
-			scsiDev.dataLen = psize + 6; // 2-byte length + 4-byte flag + packet
-			memcpy(scsiDev.data + 6, scsiNetworkInboundQueue.packets[scsiNetworkInboundQueue.readIndex], psize);
-			scsiDev.data[0] = (psize >> 8) & 0xff;
-			scsiDev.data[1] = psize & 0xff;
-
-			if (scsiNetworkInboundQueue.readIndex == NETWORK_PACKET_QUEUE_SIZE - 1)
-				scsiNetworkInboundQueue.readIndex = 0;
-			else
-				scsiNetworkInboundQueue.readIndex++;
-
-			// flags
+			scsiDev.data[0] = 0;
+			scsiDev.data[1] = 0;
 			scsiDev.data[2] = 0;
 			scsiDev.data[3] = 0;
 			scsiDev.data[4] = 0;
-			// more data to read?
-			scsiDev.data[5] = (scsiNetworkInboundQueue.readIndex == scsiNetworkInboundQueue.writeIndex ? 0 : 0x10);
-
-			DBGMSG_BUF(scsiDev.data, scsiDev.dataLen);
-		}
-		// Patches around the weirdness on the Amiga SCSI devices
-		if ((scsiDev.cdb[0] == SCSI_NETWORK_WIFI_CMD) && (scsiDev.cdb[1] == SCSI_NETWORK_WIFI_CMD_ALTREAD)) {
-			scsiDev.data[2] = scsiDev.cdb[2];	// for me really
-			int extra = 0;
-			if (scsiDev.cdb[2] == AMIGASCSI_PATCH_24BYTE_BLOCKSIZE) {
-				if (scsiDev.dataLen<90) scsiDev.dataLen = 90;
-				int missing = (scsiDev.dataLen-90) % 24;
-				if (missing) {
-					scsiDev.dataLen += 24 - missing;
-					if (scsiDev.dataLen>NETWORK_PACKET_MAX_SIZE) {
-						extra = scsiDev.dataLen - NETWORK_PACKET_MAX_SIZE;
-						scsiDev.dataLen = NETWORK_PACKET_MAX_SIZE;
-					}
-				}
-				scsiEnterPhase(DATA_IN);
-				scsiWrite(scsiDev.data, scsiDev.dataLen);
-				while (!scsiIsWriteFinished(NULL))
-				{
-					platform_poll();
-				}
-				scsiFinishWrite();
-			} else {
-				extra = scsiDev.dataLen;     // F9 means send in ONE transaction
-				if (extra) scsiEnterPhase(DATA_IN);
-			}
-
-			if (extra) {
-				// Just write the extra data to make the padding work for such a large packet
-				scsiWrite(scsiDev.data, extra);
-				while (!scsiIsWriteFinished(NULL))
-				{
-					platform_poll();
-				}
-				scsiFinishWrite();
-			}
-		} else {
-			// DaynaPort driver needs a delay between reading the initial packet size and the data so manually do two transfers
+			scsiDev.data[5] = 0;
 			scsiEnterPhase(DATA_IN);
 			scsiWrite(scsiDev.data, 6);
 			while (!scsiIsWriteFinished(NULL))
@@ -226,17 +130,65 @@ int scsiNetworkCommand()
 				platform_poll();
 			}
 			scsiFinishWrite();
+			scsiDev.status = GOOD;
+			scsiDev.phase = STATUS;
+			break;
+		}
 
-			if (scsiDev.dataLen > 6)
+		scsiEnterPhase(DATA_IN);
+
+		for (done = 0, total = 0; !done; )
+		{
+			idx = scsiNetworkInboundQueue.readIndex;
+			len = scsiNetworkInboundQueue.sizes[idx];
+			total += len;
+
+			if (scsiNetworkInboundQueue.readIndex == NETWORK_PACKET_QUEUE_SIZE - 1)
 			{
-				s2s_delay_us(80);
+				scsiNetworkInboundQueue.readIndex = 0;
+			}
+			else
+			{
+				scsiNetworkInboundQueue.readIndex++;
+			}
 
-				scsiWrite(scsiDev.data + 6, scsiDev.dataLen - 6);
-				while (!scsiIsWriteFinished(NULL))
-				{
-					platform_poll();
-				}
-				scsiFinishWrite();
+			done = (scsiNetworkInboundQueue.readIndex == scsiNetworkInboundQueue.writeIndex);
+
+			// there's no hard limit since each packet is processed separately, but we shouldn't tie up
+			// the SCSI bus for a long time
+			if (!done && total >= (1524 * 2))
+			{
+				done = 1;
+			}
+
+			scsiDev.data[0] = (len >> 8) & 0xff;
+			scsiDev.data[1] = len & 0xff;
+			scsiDev.data[2] = 0;
+			scsiDev.data[3] = 0;
+			scsiDev.data[4] = 0;
+			scsiDev.data[5] = (done ? 0 : 0x10);
+
+			scsiWrite(scsiDev.data, 6);
+			while (!scsiIsWriteFinished(NULL))
+			{
+				platform_poll();
+			}
+			scsiFinishWrite();
+
+			// DaynaPort Mac driver needs a short delay after reading size and flags
+			sleep_us(75);
+
+			scsiWrite(scsiNetworkInboundQueue.packets[idx], len);
+			while (!scsiIsWriteFinished(NULL))
+			{
+				platform_poll();
+			}
+			scsiFinishWrite();
+
+			if (!done)
+			{
+				// DaynaPort Mac driver needs a delay between packets
+				sleep_us(300);
 			}
 		}
 
@@ -257,37 +209,54 @@ int scsiNetworkCommand()
 
 	case 0x0a:
 		// write(6)
-		off = 0;
-		if (cont)
-		{
-			size += 8;
-		}
-
-		memset(scsiDev.data, 0, sizeof(scsiDev.data));
-
 		scsiEnterPhase(DATA_OUT);
-		parityError = 0;
-		scsiRead(scsiDev.data, size, &parityError);
 
-		if (parityError)
+		for (;;)
 		{
-			DBGMSG_F("------ %s: read packet from host of size %zu - %d (parity error raised: %d)", __func__, size, (cont ? 4 : 0), parityError);
-		}
-		else
-		{
-			DBGMSG_F("------ %s: read packet from host of size %zu - %d", __func__, size, (cont ? 4 : 0));
-		}
-		DBGMSG_BUF(scsiDev.data, size);
+			if (scsiDev.cdb[5] == 0x0)
+			{
+				// no preamble, single packet
+				len = size;
+				DBGMSG_F("no-preamble write, size %ld (cdb %02x %02x %02x %02x %02x %02x)", len,
+					scsiDev.cdb[0], scsiDev.cdb[1], scsiDev.cdb[2], scsiDev.cdb[3], scsiDev.cdb[4], scsiDev.cdb[5]);
+			}
+			else
+			{
+				// read size of this packet
+				scsiRead(scsiDev.data, 4, &parityError);
+				if (parityError)
+				{
+					DBGMSG_F("%s: read of size from host had parity error %d", __func__, parityError);
+				}
 
-		if (cont)
-		{
-			size = (scsiDev.data[0] << 8) | scsiDev.data[1];
-			off = 4;
-		}
+				len = (scsiDev.data[0] << 8) + scsiDev.data[1];
+				if (len == 0)
+				{
+					// final packet was read in previous iteration
+					break;
+				}
+			}
 
-		memcpy(&scsiNetworkOutbound.packet, scsiDev.data + off, size);
-		scsiNetworkOutbound.size = size;
-		scsiNetworkOutbound.full = true;
+			if (len > NETWORK_PACKET_MAX_SIZE)
+			{
+				DBGMSG_F("%s: attempt to write(6) packet of size %zu", __func__, len);
+				len = NETWORK_PACKET_MAX_SIZE;
+			}
+
+			scsiRead(scsiDev.data, len, &parityError);
+			if (parityError)
+			{
+				DBGMSG_F("%s: read from host of size %zu had parity error %d", __func__, size, parityError);
+			}
+
+			platform_network_send(scsiDev.data, len);      
+
+			if (scsiDev.cdb[5] == 0x0)
+			{
+				// single-packet mode
+				break;
+			}
+		}
 
 		scsiDev.status = GOOD;
 		scsiDev.phase = STATUS;
@@ -322,7 +291,6 @@ int scsiNetworkCommand()
 			DBGMSG_F("%s: enable interface", __func__);
 			scsiNetworkEnabled = true;
 			memset(&scsiNetworkInboundQueue, 0, sizeof(scsiNetworkInboundQueue));
-			memset(&scsiNetworkOutbound, 0, sizeof(scsiNetworkOutbound));
 		}
 		else
 		{
@@ -394,8 +362,6 @@ int scsiNetworkCommand()
 			}
 
 			if (nets) {
-				// th-otto
-				// https://github.com/BlueSCSI/BlueSCSI-v2/commit/26ee114f2542f822850b88ed5999efd79cb60350
 				unsigned int netsize = sizeof(struct wifi_network_entry) * nets;
 				if (netsize + 2 > sizeof(scsiDev.data))
 				{
@@ -471,22 +437,11 @@ int scsiNetworkCommand()
 			scsiDev.phase = STATUS;
 			break;
 		}
-
-		case SCSI_NETWORK_WIFI_CMD_GETMACADDRESS:
-			// Update for the gvpscsi.device on the Amiga as it doesn't like 0x09 command being called! - NOTE this only sends 6 bytes back
-			memcpy(scsiDev.data, scsiDev.boardCfg.wifiMACAddress, sizeof(scsiDev.boardCfg.wifiMACAddress));
-			memset(scsiDev.data + sizeof(scsiDev.boardCfg.wifiMACAddress), 0, sizeof(scsiDev.data) - sizeof(scsiDev.boardCfg.wifiMACAddress));
-
-			scsiDev.dataLen = 6;
-			scsiDev.phase = DATA_IN;
 		}
 		break;
-
-	default:
-		handled = 0;
 	}
 
-	return handled;
+	return 1;
 }
 
 int scsiNetworkEnqueue(const uint8_t *buf, size_t len)
@@ -501,7 +456,14 @@ int scsiNetworkEnqueue(const uint8_t *buf, size_t len)
 	}
 
 	memcpy(scsiNetworkInboundQueue.packets[scsiNetworkInboundQueue.writeIndex], buf, len);
-	uint32_t crc = crc32(buf, len);
+
+	if (len < 60) {
+		// packets the host reads have to be at least 64 bytes, so pad before we CRC and add to queue
+		memset(scsiNetworkInboundQueue.packets[scsiNetworkInboundQueue.writeIndex] + len, 0, 60 - len);
+		len += (60 - len);
+	}
+
+	uint32_t crc = crc32(scsiNetworkInboundQueue.packets[scsiNetworkInboundQueue.writeIndex], len);
 	scsiNetworkInboundQueue.packets[scsiNetworkInboundQueue.writeIndex][len] = crc & 0xff;
 	scsiNetworkInboundQueue.packets[scsiNetworkInboundQueue.writeIndex][len + 1] = (crc >> 8) & 0xff;
 	scsiNetworkInboundQueue.packets[scsiNetworkInboundQueue.writeIndex][len + 2] = (crc >> 16) & 0xff;
@@ -522,20 +484,4 @@ int scsiNetworkEnqueue(const uint8_t *buf, size_t len)
 	return 1;
 }
 
-int scsiNetworkPurge(void)
-{
-	int sent = 0;
-
-	if (!scsiNetworkEnabled)
-		return 0;
-
-	if (scsiNetworkOutbound.full)
-	{
-		platform_network_send(scsiNetworkOutbound.packet, scsiNetworkOutbound.size);
-		scsiNetworkOutbound.full = false;
-		sent++;
-	}
-
-	return sent;
-}
 #endif // BLUESCSI_NETWORK
