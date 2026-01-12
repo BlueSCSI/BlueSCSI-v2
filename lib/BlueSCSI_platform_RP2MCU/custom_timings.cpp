@@ -91,6 +91,11 @@ bool CustomTimings::set_timings_from_file()
     // scsi
     g_bluescsi_timings->scsi.clk_period_ps = ini_getl(scsi_section, "clk_period_ps", g_bluescsi_timings->scsi.clk_period_ps, CUSTOM_TIMINGS_FILE);
     g_bluescsi_timings->scsi.req_delay = ini_getl(scsi_section, "req_delay_cc", g_bluescsi_timings->scsi.req_delay, CUSTOM_TIMINGS_FILE);
+    // Auto-calculate: 100ns * clk_hz / 1e9 = clk_hz / 10000000
+    uint8_t default_cycles = (g_bluescsi_timings->clk_hz + 5000000) / 10000000;  // rounded
+    if (default_cycles < 1) default_cycles = 1;
+    g_bluescsi_timings->scsi.delay_100ns_cycles =
+        ini_getl(scsi_section, "delay_100ns_cycles", default_cycles, CUSTOM_TIMINGS_FILE);
 
     // scsi 20
     g_bluescsi_timings->scsi_20.delay0 = ini_getl(scsi_20_section, "delay0_cc", g_bluescsi_timings->scsi_20.delay0, CUSTOM_TIMINGS_FILE);

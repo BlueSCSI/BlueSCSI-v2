@@ -40,7 +40,8 @@ static bluescsi_timings_t  predefined_timings[]  = {
         .scsi =
         {
             .req_delay = 7,
-            .clk_period_ps = 8000
+            .clk_period_ps = 8000,
+            .delay_100ns_cycles = 13
         },
 
         .scsi_20 =
@@ -103,7 +104,8 @@ static bluescsi_timings_t  predefined_timings[]  = {
         .scsi =
         {
             .req_delay = 7,
-            .clk_period_ps = 7519
+            .clk_period_ps = 7519,
+            .delay_100ns_cycles = 14
         },
 
         .scsi_20 =
@@ -166,7 +168,8 @@ static bluescsi_timings_t  predefined_timings[]  = {
         .scsi =
         {
             .req_delay = 7,
-            .clk_period_ps = 7384
+            .clk_period_ps = 7384,
+            .delay_100ns_cycles = 14
         },
 
         .scsi_20 =
@@ -232,7 +235,8 @@ static bluescsi_timings_t  predefined_timings[]  = {
         .scsi =
         {
             .req_delay = 9,
-            .clk_period_ps = 6667
+            .clk_period_ps = 6667,
+            .delay_100ns_cycles = 15
         },
 
         .scsi_20 =
@@ -298,6 +302,7 @@ static bluescsi_timings_t  predefined_timings[]  = {
         {
             .req_delay = 14,
             .clk_period_ps = 4000,
+            .delay_100ns_cycles = 26
         },
 
         .scsi_20 =
@@ -361,7 +366,8 @@ static bluescsi_timings_t  predefined_timings[]  = {
         .scsi =
         {
             .req_delay = 10,
-            .clk_period_ps = 6441
+            .clk_period_ps = 6441,
+            .delay_100ns_cycles = 16
         },
 
         .scsi_20 =
@@ -428,7 +434,8 @@ static bluescsi_timings_t  predefined_timings[]  = {
         .scsi =
         {
             .req_delay = 10,
-            .clk_period_ps = 5714
+            .clk_period_ps = 5714,
+            .delay_100ns_cycles = 18
         },
 
         .scsi_20 =
@@ -493,7 +500,8 @@ static bluescsi_timings_t  predefined_timings[]  = {
         .scsi =
         {
             .req_delay = 12,
-            .clk_period_ps = 4990
+            .clk_period_ps = 4990,
+            .delay_100ns_cycles = 20
         },
 
         .scsi_20 =
@@ -561,6 +569,7 @@ static bluescsi_timings_t  predefined_timings[]  = {
         {
             .req_delay = 14,
             .clk_period_ps = 3981,
+            .delay_100ns_cycles = 26
         },
 
         .scsi_20 =
@@ -624,7 +633,8 @@ static bluescsi_timings_t  predefined_timings[]  = {
         .scsi =
         {
             .req_delay = 12,
-            .clk_period_ps = 4921
+            .clk_period_ps = 4921,
+            .delay_100ns_cycles = 21
         },
 
         .scsi_20 =

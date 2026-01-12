@@ -53,6 +53,8 @@ typedef struct
         uint8_t req_delay;
         // Period of the system clock in pico seconds
         uint32_t clk_period_ps;
+        // Cycles for ~100ns delay (use with busy_wait_at_least_cycles)
+        uint8_t delay_100ns_cycles;
     } scsi;
 
     // delayX: Writing to SCSI bus signaling delays

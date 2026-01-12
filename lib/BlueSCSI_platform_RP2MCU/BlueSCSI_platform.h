@@ -27,9 +27,11 @@
 #include <Arduino.h>
 #include <hardware/timer.h>
 #include <pico/time.h>
+#include <pico/platform.h>
 #include "BlueSCSI_config.h"
 #include "BlueSCSI_platform_network.h"
 #include <BlueSCSI_settings.h>
+#include "timings_RP2MCU.h"
 
 #ifdef BLUESCSI_PICO
 // BlueSCSI Pico carrier board variant
@@ -105,10 +107,11 @@ static inline void delay_ns(unsigned long ns)
     platform_delay_us((ns + 999) / 1000);
 }
 
-// Approximate fast delay
+// ~100ns delay, calibrated to current clock speed
+// Uses pico-sdk's cycle-accurate busy wait (handles M0+/M33 differences)
 static inline void delay_100ns()
 {
-    asm volatile ("nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop");
+    busy_wait_at_least_cycles(g_bluescsi_timings->scsi.delay_100ns_cycles);
 }
 
 // Initialize SD card and GPIO configuration
