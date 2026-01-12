@@ -77,7 +77,7 @@
 #define SCSI_OUT_ATN  35
 
 // Status line inputs for initiator mode
-#define SCSI_IN_IO    28
+#define SCSI_IN_IO    30
 #define SCSI_IN_CD    31
 #define SCSI_IN_MSG   33
 #define SCSI_IN_REQ   27
