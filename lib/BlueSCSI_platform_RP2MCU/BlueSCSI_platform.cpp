@@ -789,7 +789,9 @@ void platform_init()
     logmsg("Platform: ", g_platform_name, " (", PLATFORM_PID, platform_is_pico_w() ? "/W" : "", ")");
     logmsg("FW Version: ", g_log_firmwareversion);
 
-#if (PICO_CYW43_SUPPORTED && !defined(BLUESCSI_NETWORK)) || defined(BLUESCSI_ULTRA)
+#if (PICO_CYW43_SUPPORTED && !defined(BLUESCSI_NETWORK))
+    // Initialize CYW43 for Pico W boards without network support (for LED control)
+    // Note: Ultra uses RM2 module with different pins, configured later in platform_late_init()
     if (cyw43_arch_init()) {
         logmsg("CYW43 driver init failed");
     }
@@ -972,6 +974,7 @@ void platform_late_init()
 #endif
 
 #ifdef BLUESCSI_RM2
+    // Configure RM2 WiFi module pins BEFORE initializing CYW43 driver
     uint rm2_pins[CYW43_PIN_INDEX_WL_COUNT] = {0};
     rm2_pins[CYW43_PIN_INDEX_WL_REG_ON] = GPIO_RM2_ON;
     rm2_pins[CYW43_PIN_INDEX_WL_DATA_OUT] = GPIO_RM2_DATA;
@@ -980,6 +983,10 @@ void platform_late_init()
     rm2_pins[CYW43_PIN_INDEX_WL_CLOCK] = GPIO_RM2_CLK;
     rm2_pins[CYW43_PIN_INDEX_WL_CS] = GPIO_RM2_CS;
     assert(PICO_OK == cyw43_set_pins_wl(rm2_pins));
+
+    if (cyw43_arch_init()) {
+        logmsg("CYW43/RM2 driver init failed");
+    }
 
     // TODO: Do we need this reclock before checking for RM2?
     if (platform_reclock(SPEED_GRADE_BASE_155MHZ))

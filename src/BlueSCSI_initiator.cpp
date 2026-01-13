@@ -233,7 +233,7 @@ void scsiInitiatorMainLoop()
     else
     {
         bool initiator_msc_mode = ini_getbool("SCSI", "InitiatorMSC", false, CONFIGFILE);
-#if defined(BLUESCS_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
         // If MSC mode is turned on in INI, do it
         // If not, check hardware switch and go with that setting
         if (!initiator_msc_mode) {
