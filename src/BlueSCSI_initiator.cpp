@@ -1118,6 +1118,7 @@ static struct {
     uint32_t bytes_scsi_done; // Number of bytes that have been transferred on SCSI side
 
     uint32_t bytes_per_sector;
+    uint8_t target_id;
     bool all_ok;
 } g_initiator_transfer;
 
@@ -1170,15 +1171,18 @@ static void initiatorReadSDCallback(uint32_t bytes_complete)
             len -= len % bytesPerSector;
         }
 
-        if (len == 0)
+        if (len == 0) {
             return;
+        }
 
+        scsiHostSetBusWidth(g_initiator_state.targetBusWidth[g_initiator_transfer.target_id]);
         // dbgmsg("SCSI read ", (int)start, " + ", (int)len, ", sd ready cnt ", (int)sd_ready_cnt, " ", (int)bytes_complete, ", scsi done ", (int)g_initiator_transfer.bytes_scsi_done);
         if (scsiHostRead(&scsiDev.data[start], len) != len)
         {
             logmsg("Read failed at byte ", (int)g_initiator_transfer.bytes_scsi_done);
             g_initiator_transfer.all_ok = false;
         }
+        scsiHostSetBusWidth(0);
         g_initiator_transfer.bytes_scsi_done += len;
     }
 }
@@ -1189,7 +1193,9 @@ static void scsiInitiatorWriteDataToSd(FsFile &file, bool use_callback)
     uint32_t bufsize = sizeof(scsiDev.data);
     uint32_t start = g_initiator_transfer.bytes_sd % bufsize;
     uint32_t len = g_initiator_transfer.bytes_scsi_done - g_initiator_transfer.bytes_sd;
-    if (start + len > bufsize) len = bufsize - start;
+    if (start + len > bufsize) {
+        len = bufsize - start;
+    }
 
     // Try to do writes in multiples that align to both SCSI sectors and SD card sectors.
     // SD cards use 512-byte sectors, so writes should be 512-byte aligned for performance.
@@ -1287,6 +1293,7 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
     g_initiator_transfer.bytes_sd_scheduled = 0;
     g_initiator_transfer.bytes_scsi_done = 0;
     g_initiator_transfer.all_ok = true;
+    g_initiator_transfer.target_id = target_id;
 
     while (true)
     {

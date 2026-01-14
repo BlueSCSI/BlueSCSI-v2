@@ -109,7 +109,7 @@ uint32_t scsi_accel_host_read(uint8_t *buf, uint32_t count, int *parityError, in
     else
     {
         // 16-bit bus
-        pio_sm_put(SCSI_PIO, SCSI_SM, count / 2 - 1);
+        pio_sm_put(SCSI_PIO, SCSI_SM, (count / 2) - 1);
     }
 
     // Read results from PIO RX FIFO

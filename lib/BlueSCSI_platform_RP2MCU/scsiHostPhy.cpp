@@ -78,6 +78,17 @@ bool scsiHostPhySelect(int target_id, uint8_t initiator_id)
     // Command phase always happens in 8-bit mode
     scsiHostSetBusWidth(0);
 
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+    // Ensure ATN and ACK are output mode, with ACK high
+    SCSI_ENABLE_INITIATOR();
+    SCSI_OUT(ACK, 0);
+    boolean success = platform_enable_initiator_signals();
+    if (!success) {
+        logmsg("------ ERROR: Failed To Enable Initiator Signals");
+        return false;
+    }
+#endif
+
     // We can't write individual data bus bits, so use a bit modified
     // arbitration scheme. We always yield to any other initiator on
     // the bus.
@@ -106,6 +117,13 @@ bool scsiHostPhySelect(int target_id, uint8_t initiator_id)
     platform_delay_us(5);
     SCSI_OUT(BSY, 0);
 
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+    success = platform_disable_initiator_signals();
+    if (!success) {
+        logmsg("------ ERROR: Failed To Disable Initiator Signals");
+        return false;
+    }
+#endif
     // Wait for target to respond
     for (int wait = 0; wait < 2500; wait++)
     {
@@ -123,16 +141,17 @@ bool scsiHostPhySelect(int target_id, uint8_t initiator_id)
         return false;
     }
 
-    SCSI_RELEASE_DATA_REQ();
-    SCSI_OUT(SEL, 0);
-
 #if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
-    boolean success = platform_enable_initiator_signals();
+    success = platform_enable_initiator_signals();
     if (!success) {
         logmsg("------ ERROR: Failed To Enable Initiator Signals");
         return false;
     }
 #endif
+
+    SCSI_RELEASE_DATA_REQ();
+    SCSI_OUT(SEL, 0);
+
     SCSI_ENABLE_INITIATOR();
     return true;
 }
