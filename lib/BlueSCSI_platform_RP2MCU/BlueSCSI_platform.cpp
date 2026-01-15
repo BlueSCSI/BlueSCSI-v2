@@ -43,6 +43,7 @@ extern "C" {
 #include <hardware/structs/xip_ctrl.h>
 #include <hardware/structs/usb.h>
 #include <hardware/sync.h>
+#include <hardware/vreg.h>
 #include "scsi_accel_target.h"
 #include "custom_timings.h"
 #include <BlueSCSI_settings.h>
@@ -534,6 +535,11 @@ static void reclock() {
     // ensure UART is fully drained before we mess up its clock
     if (uart_is_enabled(uart0))
         uart_tx_wait_blocking(uart0);
+
+    // Set voltage regulator for high clock speeds (200+ MHz requires 1.15V)
+    if (g_bluescsi_timings->clk_hz >= 200000000)
+        vreg_set_voltage(VREG_VOLTAGE_1_15);
+
     // switch clk_sys and clk_peri to pll_usb
     // see code in 2.15.6.1 of the datasheet for useful comments
     clock_configure(clk_sys,
