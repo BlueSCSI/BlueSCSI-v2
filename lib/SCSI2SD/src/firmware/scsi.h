@@ -206,6 +206,14 @@ void scsiPoll(void);
 void scsiDisconnect(void);
 int scsiReconnect(void);
 
+// REQUEST SENSE command handler - formats sense data based on quirks
+// Supports XEBEC (4-byte), OMTI (4/12-byte), and standard SCSI-1/2 formats
+void s2s_scsiRequestSense(void);
+
+// RESERVE/RELEASE command handler (0x16/0x17)
+// Handles extent reservation, third-party reservation, and CONFLICT status
+void s2s_doReserveRelease(void);
+
 
 // Utility macros, consistent with the Linux Kernel code.
 #define likely(x)       __builtin_expect(!!(x), 1)

@@ -53,7 +53,7 @@ static void process_DataIn(void);
 static void process_DataOut(void);
 static void process_Command(void);
 
-static void doReserveRelease(void);
+/* doReserveRelease is now public for unit testing - declared in scsi.h */
 
 void enter_BusFree()
 {
@@ -236,6 +236,190 @@ static void enter_DataIn(int len)
 {
 	scsiDev.dataLen = len;
 	scsiDev.phase = DATA_IN;
+}
+
+// REQUEST SENSE command handler (0x03)
+// Formats sense data based on quirks:
+//   - XEBEC: 4-byte non-standard format with sense code translation
+//   - OMTI: 4-byte (disk) or 12-byte (tape) non-standard format
+//   - Standard: SCSI-1/2 format (up to 18 bytes) with EWSD quirk handling
+void s2s_scsiRequestSense(void)
+{
+	const S2S_TargetCfg* cfg = scsiDev.target->cfg;
+	uint32_t allocLength = scsiDev.cdb[4];
+
+	if (cfg->quirks == S2S_CFG_QUIRKS_XEBEC)
+	{
+		// Completely non-standard 4-byte format
+		allocLength = 4;
+
+		switch (scsiDev.target->sense.code)
+		{
+			case NO_SENSE:
+				scsiDev.data[0] = 0;
+				break;
+			case MEDIUM_ERROR:
+				switch (scsiDev.target->sense.asc)
+				{
+					case NO_SEEK_COMPLETE:
+						scsiDev.data[0] = 0x15; // Seek Error
+						break;
+					case WRITE_ERROR_AUTO_REALLOCATION_FAILED:
+						scsiDev.data[0] = 0x03; // Write fault
+						break;
+					default:
+					case UNRECOVERED_READ_ERROR:
+						scsiDev.data[0] = 0x11; // Uncorrectable read error
+						break;
+				}
+				break;
+			case ILLEGAL_REQUEST:
+				switch (scsiDev.target->sense.asc)
+				{
+					case LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE:
+						scsiDev.data[0] = 0x14; // Target sector not found
+						break;
+					case WRITE_PROTECTED:
+						scsiDev.data[0] = 0x03; // Write fault
+						break;
+					default:
+						scsiDev.data[0] = 0x20; // Invalid command
+						break;
+				}
+				break;
+			case NOT_READY:
+				switch (scsiDev.target->sense.asc)
+				{
+					default:
+					case MEDIUM_NOT_PRESENT:
+						scsiDev.data[0] = 0x04; // Drive not ready
+						break;
+					case LOGICAL_UNIT_NOT_READY_INITIALIZING_COMMAND_REQUIRED:
+						scsiDev.data[0] = 0x1A; // Format Error
+						break;
+				}
+				break;
+			default:
+				scsiDev.data[0] = 0x11;  // Uncorrectable data error
+				break;
+		}
+
+		scsiDev.data[1] = (scsiDev.cdb[1] & 0x20) | ((transfer.lba >> 16) & 0x1F);
+		scsiDev.data[2] = transfer.lba >> 8;
+		scsiDev.data[3] = transfer.lba;
+	}
+	else if (cfg->quirks == S2S_CFG_QUIRKS_OMTI)
+	{
+		// The response is completely non-standard.
+		if (likely(allocLength > 12))
+			allocLength = 12;
+		else if (unlikely(allocLength < 4))
+			allocLength = 4;
+		if (cfg->deviceType != S2S_CFG_SEQUENTIAL)
+			allocLength = 4;
+		memset(scsiDev.data, 0, allocLength);
+		if (scsiDev.target->sense.code == NO_SENSE)
+		{
+			// Nothing to report.
+		}
+		else if (scsiDev.target->sense.code == UNIT_ATTENTION &&
+			cfg->deviceType == S2S_CFG_SEQUENTIAL)
+		{
+			scsiDev.data[0] = 0x10; // Tape exception
+		}
+		else if (scsiDev.target->sense.code == ILLEGAL_REQUEST)
+		{
+			if (scsiDev.target->sense.asc == LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE)
+			{
+				if (cfg->deviceType == S2S_CFG_SEQUENTIAL)
+					scsiDev.data[0] = 0x10; // Tape exception
+				else
+					scsiDev.data[0] = 0x21; // Illegal Parameters
+			}
+			else if (scsiDev.target->sense.asc == INVALID_COMMAND_OPERATION_CODE)
+			{
+				scsiDev.data[0] = 0x20; // Invalid Command
+			}
+		}
+		else if (scsiDev.target->sense.code == NOT_READY)
+		{
+			scsiDev.data[0] = 0x04; // Drive not ready
+		}
+		else if (scsiDev.target->sense.code == BLANK_CHECK)
+		{
+			scsiDev.data[0] = 0x10; // Tape exception
+		}
+		else
+		{
+			scsiDev.data[0] = 0x11; // Uncorrectable data error
+		}
+		scsiDev.data[1] = (scsiDev.cdb[1] & 0x60) | ((transfer.lba >> 16) & 0x1F);
+		scsiDev.data[2] = transfer.lba >> 8;
+		scsiDev.data[3] = transfer.lba;
+		if (cfg->deviceType == S2S_CFG_SEQUENTIAL)
+		{
+			// For the tape drive there are 8 extra sense bytes.
+			if (scsiDev.target->sense.code == BLANK_CHECK)
+				scsiDev.data[11] = 0x88; // End of data recorded on the tape
+			else if (scsiDev.target->sense.code == UNIT_ATTENTION)
+				scsiDev.data[5] = 0x81; // Power On Reset occurred
+			else if (scsiDev.target->sense.code == ILLEGAL_REQUEST &&
+				 scsiDev.target->sense.asc == LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE)
+				scsiDev.data[4] = 0x81; // File Mark detected
+		}
+	}
+	else
+	{
+		// Standard SCSI-1/SCSI-2 format
+		// As specified by the SASI and SCSI1 standard.
+		// Newer initiators won't be specifying 0 anyway.
+		if (allocLength == 0) allocLength = 4;
+
+		// If we receive a stand-alone REQUEST SENSE to a bad LUN we still need to respond
+		// with LUN not supported. SCSI-2 Spec 7.5.3.
+		if (scsiDev.lun && scsiDev.lastStatus != CHECK_CONDITION)
+		{
+			scsiDev.target->sense.code = ILLEGAL_REQUEST;
+			scsiDev.target->sense.asc = LOGICAL_UNIT_NOT_SUPPORTED;
+			transfer.lba = 0;
+		}
+
+		memset(scsiDev.data, 0, 256); // Max possible alloc length
+		scsiDev.data[0] = 0xF0;
+		scsiDev.data[2] = scsiDev.target->sense.code & 0x0F;
+		if (cfg->deviceType == S2S_CFG_SEQUENTIAL)
+		{
+			scsiDev.data[2] |= scsiDev.target->sense.filemark ? 1 << 7 : 0;
+			scsiDev.data[2] |= scsiDev.target->sense.eom ? 1 << 6 : 0;
+			scsiDev.data[3] = scsiDev.target->sense.info >> 24;
+			scsiDev.data[4] = scsiDev.target->sense.info >> 16;
+			scsiDev.data[5] = scsiDev.target->sense.info >> 8;
+			scsiDev.data[6] = scsiDev.target->sense.info;
+		}
+		else
+		{
+			scsiDev.data[3] = transfer.lba >> 24;
+			scsiDev.data[4] = transfer.lba >> 16;
+			scsiDev.data[5] = transfer.lba >> 8;
+			scsiDev.data[6] = transfer.lba;
+		}
+		// Additional bytes if there are errors to report
+		scsiDev.data[7] = 10; // additional length
+		scsiDev.data[12] = scsiDev.target->sense.asc >> 8;
+		scsiDev.data[13] = scsiDev.target->sense.asc;
+		if ((cfg->quirks == S2S_CFG_QUIRKS_EWSD))
+		{
+			/* EWSD seems not to want something behind additional length. (8 + 0x0e = 22) */
+			allocLength=22;
+			scsiDev.data[7] = 0x0e;
+		}
+	}
+
+	// Silently truncate results. SCSI-2 spec 8.2.14.
+	enter_DataIn(allocLength);
+
+	// This is a good time to clear out old sense information.
+	memset(&scsiDev.target->sense, 0, sizeof(ScsiSense));
 }
 
 static void process_DataIn()
@@ -436,179 +620,7 @@ static void process_Command()
 	else if (command == 0x03)
 	{
 		// REQUEST SENSE
-		uint32_t allocLength = scsiDev.cdb[4];
-
-		if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_XEBEC)
-		{
-			// Completely non-standard
-			allocLength = 4;
-
-			switch (scsiDev.target->sense.code)
-			{
-				case NO_SENSE:
-					scsiDev.data[0] = 0;
-					break;
-				case MEDIUM_ERROR:
-					switch (scsiDev.target->sense.asc)
-					{
-						case NO_SEEK_COMPLETE:
-							scsiDev.data[0] = 0x15; // Seek Error
-							break;
-						case WRITE_ERROR_AUTO_REALLOCATION_FAILED:
-							scsiDev.data[0] = 0x03; // Write fault
-							break;
-						default:
-						case UNRECOVERED_READ_ERROR:
-							scsiDev.data[0] = 0x11; // Uncorrectable read error
-							break;
-					}
-					break;
-				case ILLEGAL_REQUEST:
-					switch (scsiDev.target->sense.asc)
-					{
-						case LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE:
-							scsiDev.data[0] = 0x14; // Target sector not found
-							break;
-						case WRITE_PROTECTED:
-							scsiDev.data[0] = 0x03; // Write fault
-							break;
-						default:
-							scsiDev.data[0] = 0x20; // Invalid command
-							break;
-					}
-					break;
-				case NOT_READY:
-					switch (scsiDev.target->sense.asc)
-					{
-						default:
-						case MEDIUM_NOT_PRESENT:
-							scsiDev.data[0] = 0x04; // Drive not ready
-							break;
-						case LOGICAL_UNIT_NOT_READY_INITIALIZING_COMMAND_REQUIRED:
-							scsiDev.data[0] = 0x1A; // Format Error
-							break;
-					}
-					break;
-				default:
-					scsiDev.data[0] = 0x11;  // Uncorrectable data error
-					break;
-			}
-
-			scsiDev.data[1] = (scsiDev.cdb[1] & 0x20) | ((transfer.lba >> 16) & 0x1F);
-			scsiDev.data[2] = transfer.lba >> 8;
-			scsiDev.data[3] = transfer.lba;
-		}
-		else if (cfg->quirks == S2S_CFG_QUIRKS_OMTI)
-		{
-			// The response is completely non-standard.
-			if (likely(allocLength > 12))
-				allocLength = 12;
-			else if (unlikely(allocLength < 4))
-				allocLength = 4;
-			if (cfg->deviceType != S2S_CFG_SEQUENTIAL)
-				allocLength = 4;
-			memset(scsiDev.data, 0, allocLength);
-			if (scsiDev.target->sense.code == NO_SENSE)
-			{
-				// Nothing to report.
-			}
-			else if (scsiDev.target->sense.code == UNIT_ATTENTION &&
-				cfg->deviceType == S2S_CFG_SEQUENTIAL)
-			{
-				scsiDev.data[0] = 0x10; // Tape exception
-			}
-			else if (scsiDev.target->sense.code == ILLEGAL_REQUEST)
-			{
-				if (scsiDev.target->sense.asc == LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE)
-				{
-					if (cfg->deviceType == S2S_CFG_SEQUENTIAL)
-						scsiDev.data[0] = 0x10; // Tape exception
-					else
-						scsiDev.data[0] = 0x21; // Illegal Parameters
-				}
-				else if (scsiDev.target->sense.asc == INVALID_COMMAND_OPERATION_CODE)
-				{
-					scsiDev.data[0] = 0x20; // Invalid Command
-				}
-			}
-			else if (scsiDev.target->sense.code == NOT_READY)
-			{
-				scsiDev.data[0] = 0x04; // Drive not ready
-			}
-			else if (scsiDev.target->sense.code == BLANK_CHECK)
-			{
-				scsiDev.data[0] = 0x10; // Tape exception
-			}
-			else
-			{
-				scsiDev.data[0] = 0x11; // Uncorrectable data error
-			}
-			scsiDev.data[1] = (scsiDev.cdb[1] & 0x60) | ((transfer.lba >> 16) & 0x1F);
-			scsiDev.data[2] = transfer.lba >> 8;
-			scsiDev.data[3] = transfer.lba;
-			if (cfg->deviceType == S2S_CFG_SEQUENTIAL)
-			{
-				// For the tape drive there are 8 extra sense bytes.
-				if (scsiDev.target->sense.code == BLANK_CHECK)
-					scsiDev.data[11] = 0x88; // End of data recorded on the tape
-				else if (scsiDev.target->sense.code == UNIT_ATTENTION)
-					scsiDev.data[5] = 0x81; // Power On Reset occurred
-				else if (scsiDev.target->sense.code == ILLEGAL_REQUEST &&
-					 scsiDev.target->sense.asc == LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE)
-					scsiDev.data[4] = 0x81; // File Mark detected
-			}
-		}
-		else
-		{
-			// As specified by the SASI and SCSI1 standard.
-			// Newer initiators won't be specifying 0 anyway.
-			if (allocLength == 0) allocLength = 4;
-
-			// If we receive a stand-alone REQUEST SENSE to a bad LUN we still need to respond
-			// with LUN not supported. SCSI-2 Spec 7.5.3.
-			if (scsiDev.lun && scsiDev.lastStatus != CHECK_CONDITION)
-			{
-				scsiDev.target->sense.code = ILLEGAL_REQUEST;
-				scsiDev.target->sense.asc = LOGICAL_UNIT_NOT_SUPPORTED;
-				transfer.lba = 0;
-			}
-
-			memset(scsiDev.data, 0, 256); // Max possible alloc length
-			scsiDev.data[0] = 0xF0;
-			scsiDev.data[2] = scsiDev.target->sense.code & 0x0F;
-			if (cfg->deviceType == S2S_CFG_SEQUENTIAL)
-			{
-				scsiDev.data[2] |= scsiDev.target->sense.filemark ? 1 << 7 : 0;
-				scsiDev.data[2] |= scsiDev.target->sense.eom ? 1 << 6 : 0;
-				scsiDev.data[3] = scsiDev.target->sense.info >> 24;
-				scsiDev.data[4] = scsiDev.target->sense.info >> 16;
-				scsiDev.data[5] = scsiDev.target->sense.info >> 8;
-				scsiDev.data[6] = scsiDev.target->sense.info;
-			}
-			else
-			{
-				scsiDev.data[3] = transfer.lba >> 24;
-				scsiDev.data[4] = transfer.lba >> 16;
-				scsiDev.data[5] = transfer.lba >> 8;
-				scsiDev.data[6] = transfer.lba;
-			}
-			// Additional bytes if there are errors to report
-			scsiDev.data[7] = 10; // additional length
-			scsiDev.data[12] = scsiDev.target->sense.asc >> 8;
-			scsiDev.data[13] = scsiDev.target->sense.asc;
-			if ((scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_EWSD))
-			{
-				/* EWSD seems not to want something behind additional length. (8 + 0x0e = 22) */
-				allocLength=22;
-				scsiDev.data[7] = 0x0e;
-			}
-		}
-
-		// Silently truncate results. SCSI-2 spec 8.2.14.
-		enter_DataIn(allocLength);
-
-		// This is a good time to clear out old sense information.
-		memset(&scsiDev.target->sense, 0, sizeof(ScsiSense));
+		s2s_scsiRequestSense();
 	}
 	// Some old SCSI drivers do NOT properly support
 	// unitAttention. eg. the Mac Plus would trigger a SCSI reset
@@ -641,7 +653,7 @@ static void process_Command()
 	}
 	else if (command == 0x17 || command == 0x16)
 	{
-		doReserveRelease();
+		s2s_doReserveRelease();
 	}
 	else if ((scsiDev.target->reservedId >= 0) &&
 		(scsiDev.target->reservedId != scsiDev.initiatorId))
@@ -721,7 +733,7 @@ static void process_Command()
 
 }
 
-static void doReserveRelease()
+void s2s_doReserveRelease()
 {
 	int extentReservation = scsiDev.cdb[1] & 1;
 	int thirdPty = scsiDev.cdb[1] & 0x10;
