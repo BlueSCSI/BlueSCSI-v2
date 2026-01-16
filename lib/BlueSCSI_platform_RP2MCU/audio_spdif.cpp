@@ -355,12 +355,15 @@ bool audio_is_playing(uint8_t id) {
 
 void audio_setup() {
     if (!g_scsi_settings.getSystem()->enableCDAudio) {
+        logmsg("Audio setup skipped, this build does not support CD Audio");
         audio_setup_failed = true;
         return;
     }
     if (g_bluescsi_timings->clk_hz != 203200000) {
-        logmsg("!!! WARNING !!!");
-        logmsg("SPDIF Audio Output Only Works at 203MHz CPU Speed setting.  CPU speed mismatch, SPDIF setup failed.");
+        logmsg("!!! SPDIF CONFIGURATION MISMATCH !!!");
+        logmsg("SPDIF Audio output only works at 203MHz CPU speed setting");
+        logmsg("For SPDIF Audio to work, remove the SpeedGrade setting from BlueSCSI.ini");
+        logmsg("SPDIF Audio Output setup failed");
         audio_setup_failed = true;
         return;
     }
@@ -475,6 +478,10 @@ void audio_poll() {
 bool audio_play(uint8_t owner, image_config_t* img, uint64_t start, uint64_t end, bool swap) {
     // stop any existing playback first
     if (audio_is_active()) audio_stop(audio_owner);
+    // Don't try to play audio if setup failed
+    if (audio_setup_failed) {
+        return true;
+    }
 
     // dbgmsg("Request to play ('", file, "':", start, ":", end, ")");
 
@@ -587,6 +594,10 @@ bool audio_set_paused(uint8_t id, bool paused) {
 }
 
 void audio_stop(uint8_t id) {
+    // If setup failed, playback also failed, no need to stop
+    if (audio_setup_failed) {
+        return;
+    }
     if (audio_owner != (id & 7)) return;
 
     // to help mute external hardware, send a bunch of '0' samples prior to
