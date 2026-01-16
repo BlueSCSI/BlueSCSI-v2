@@ -6,3 +6,6 @@ dist/
 utils/venv/
 local-scratch/
 __pycache__/
+test/build/
+test/test_report.txt
+test/test_report.json
