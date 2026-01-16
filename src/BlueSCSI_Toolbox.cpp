@@ -141,7 +141,7 @@ static void onListFiles(const char * dir_name, bool isCD = false) {
         for(int i = 0; i < MAX_MAC_PATH + 1 ; i++) {
             file_entry[i + 2] = name[i];   // bytes 2 - 34
         }
-        file_entry[35] = 0; //(size >> 32) & 0xff;
+        file_entry[35] = (size >> 32) & 0xff;
         file_entry[36] = (size >> 24) & 0xff;
         file_entry[37] = (size >> 16) & 0xff;
         file_entry[38] = (size >> 8) & 0xff;
@@ -316,6 +316,7 @@ static void onSendFile10(void)
         scsiDev.target->sense.code = ILLEGAL_REQUEST;
         //SCSI_ASC_INVALID_FIELD_IN_CDB
         scsiDev.phase = STATUS;
+        return;
     }
 
     // Number of bytes sent this request, 1..512.
@@ -332,6 +333,8 @@ static void onSendFile10(void)
         gFile.close();
         scsiDev.status = CHECK_CONDITION;
         scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.phase = STATUS;
+        return;
     }
 
     scsiEnterPhase(DATA_OUT);
@@ -344,6 +347,8 @@ static void onSendFile10(void)
         gFile.close();
         scsiDev.status = CHECK_CONDITION;
         scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.phase = STATUS;
+        return;
     }
     //scsiDev.phase = STATUS;
 }
