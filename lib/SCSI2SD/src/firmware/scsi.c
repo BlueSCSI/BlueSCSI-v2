@@ -44,11 +44,20 @@ ScsiDevice scsiDev S2S_DMA_ALIGN;
 // Bus free delay override (microseconds). 0 = use compatMode default.
 uint8_t g_scsi_busFreeDelayUs = 0;
 
+// Allow static functions to be tested when UNIT_TEST is defined
+// In production builds, STATIC_TESTABLE expands to static (internal linkage)
+// In test builds, STATIC_TESTABLE expands to nothing (external linkage)
+#ifdef UNIT_TEST
+#define STATIC_TESTABLE
+#else
+#define STATIC_TESTABLE static
+#endif
+
 static void enter_SelectionPhase(void);
 static void process_SelectionPhase(void);
-static void enter_MessageIn(uint8_t message);
-static void enter_Status(uint8_t status);
-static void enter_DataIn(int len);
+STATIC_TESTABLE void enter_MessageIn(uint8_t message);
+STATIC_TESTABLE void enter_Status(uint8_t status);
+STATIC_TESTABLE void enter_DataIn(int len);
 static void process_DataIn(void);
 static void process_DataOut(void);
 static void process_Command(void);
@@ -91,7 +100,7 @@ void enter_BusFree()
 	scsiDev.selFlag = 0;
 }
 
-static void enter_MessageIn(uint8_t message)
+STATIC_TESTABLE void enter_MessageIn(uint8_t message)
 {
 	scsiDev.msgIn = message;
 	scsiDev.phase = MESSAGE_IN;
@@ -139,7 +148,7 @@ static void messageReject()
 	scsiWriteByte(MSG_REJECT);
 }
 
-static void enter_Status(uint8_t status)
+STATIC_TESTABLE void enter_Status(uint8_t status)
 {
 	scsiDev.status = status;
 	scsiDev.phase = STATUS;
@@ -232,7 +241,7 @@ void process_Status()
 	enter_MessageIn(message);
 }
 
-static void enter_DataIn(int len)
+STATIC_TESTABLE void enter_DataIn(int len)
 {
 	scsiDev.dataLen = len;
 	scsiDev.phase = DATA_IN;

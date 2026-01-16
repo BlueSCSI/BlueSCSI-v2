@@ -220,4 +220,13 @@ void s2s_doReserveRelease(void);
 #define unlikely(x)     __builtin_expect(!!(x), 0)
 //#define likely(x)       (x)
 //#define unlikely(x)     (x)
+
+// Unit test support - expose internal functions when UNIT_TEST is defined
+// These functions are normally static in scsi.c but need external linkage for testing
+#ifdef UNIT_TEST
+void enter_MessageIn(uint8_t message);
+void enter_Status(uint8_t status);
+void enter_DataIn(int len);
+#endif
+
 #endif

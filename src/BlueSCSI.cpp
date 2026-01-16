@@ -64,6 +64,13 @@
 #include "BlueSCSI_blink.h"
 #include "ROMDrive.h"
 
+/* UNIT_TEST guard: expose static functions for testing */
+#ifdef UNIT_TEST
+#define STATIC_TESTABLE
+#else
+#define STATIC_TESTABLE static
+#endif
+
 SdFs SD;
 FsFile g_logfile;
 bool g_rawdrive_active;
@@ -764,7 +771,7 @@ static void print_autoconfig_result(uint8_t result) {
 }
 #endif
 
-static bool mountSDCard()
+STATIC_TESTABLE bool mountSDCard()
 {
   // Prepare for mounting new SD card by closing all old files.
   // When switching between FAT and exFAT cards the pointers
@@ -844,7 +851,7 @@ static bool mountSDCard()
   return true;
 }
 
-static void reinitSCSI()
+STATIC_TESTABLE void reinitSCSI()
 {
 #if defined(BLUESCSI_HARDWARE_CONFIG)
   if (!g_hw_config.is_active() && ini_getbool("SCSI", "Debug", 0, CONFIGFILE))
@@ -1138,7 +1145,7 @@ static bool poll_sd_card()
 static void kiosk_restore_images();
 
 #define NUM_EJECT_BUTTONS 2
-static void init_eject_button()
+STATIC_TESTABLE void init_eject_button()
 {
   if (platform_has_phy_eject_button() && !g_scsi_settings.isEjectButtonSet())
   {
@@ -1169,7 +1176,7 @@ static void init_eject_button()
 
 // Place all the setup code that requires the SD card to be initialized here
 // Which is pretty much everything after platform_init and and platform_late_init
-static void bluescsi_setup_sd_card(bool wait_for_card = true)
+STATIC_TESTABLE void bluescsi_setup_sd_card(bool wait_for_card = true)
 {
   g_sdcard_present = mountSDCard();
 

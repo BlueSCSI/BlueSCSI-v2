@@ -1284,8 +1284,20 @@ uint8_t diskEjectButtonUpdate(bool immediate)
     }
 }
 
+/* Test hook for network device detection */
+#ifdef INIT_TEST
+bool g_test_network_devices_configured = false;
+#endif
+
 bool scsiDiskCheckAnyNetworkDevicesConfigured()
 {
+#ifdef INIT_TEST
+    /* Allow tests to override network device detection */
+    if (g_test_network_devices_configured)
+    {
+        return true;
+    }
+#endif
     for (int i = 0; i < S2S_MAX_TARGETS; i++)
     {
         if (g_DiskImages[i].file.isOpen() && (g_DiskImages[i].scsiId & S2S_CFG_TARGET_ENABLED) && g_DiskImages[i].deviceType == S2S_CFG_NETWORK)
