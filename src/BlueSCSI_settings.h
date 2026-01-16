@@ -21,7 +21,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
-#pragma once
+#ifndef BLUESCSI_SETTINGS_H
+#define BLUESCSI_SETTINGS_H
 
 // must be in the same order as speed_grade_strings[]  in BlueSCSI_settings.cpp
 typedef enum
@@ -208,3 +209,5 @@ protected:
 
 extern BlueSCSISettings g_scsi_settings;
 #endif // __cplusplus
+
+#endif /* BLUESCSI_SETTINGS_H */

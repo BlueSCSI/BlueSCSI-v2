@@ -25,7 +25,8 @@
 // Compile-time configuration parameters.
 // Other settings can be set by ini file at runtime.
 
-#pragma once
+#ifndef BLUESCSI_CONFIG_H
+#define BLUESCSI_CONFIG_H
 #include <BlueSCSI_platform_config.h>
 
 // Use variables for version number
@@ -146,3 +147,4 @@
 // Settings for rebooting
 #define REBOOT_INTO_MASS_STORAGE_MAGIC_NUM 0x5eeded
 
+#endif /* BLUESCSI_CONFIG_H */

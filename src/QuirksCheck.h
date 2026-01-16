@@ -23,7 +23,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
 
-#pragma once
+#ifndef QUIRKSCHECK_H
+#define QUIRKSCHECK_H
+
 #include "BlueSCSI_disk.h"
 
 void quirksCheck(image_config_t *img);
@@ -34,3 +36,5 @@ void quirksCheck(image_config_t *img);
 #define MACINTOSH_BLOCK_SIZE 512
 #define MACINTOSH_SCSI_DRIVER_MAX_SIZE 64 * MACINTOSH_BLOCK_SIZE // 32768
 #define LIDO_SIG_OFFSET 24
+
+#endif /* QUIRKSCHECK_H */

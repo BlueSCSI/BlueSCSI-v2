@@ -4,7 +4,8 @@
 // - bin/cue support for support of multiple tracks
 // - on the fly image switching
 
-#pragma once
+#ifndef BLUESCSI_CDROM_H
+#define BLUESCSI_CDROM_H
 
 #include "BlueSCSI_disk.h"
 
@@ -32,3 +33,5 @@ bool cdromValidateCueSheet(image_config_t &img);
 // boolean flag is true if just basic mechanism status (playback true/false)
 // is desired, or false if historical audio status codes should be returned
 void cdromGetAudioPlaybackStatus(uint8_t *status, uint32_t *current_lba, bool current_only);
+
+#endif /* BLUESCSI_CDROM_H */

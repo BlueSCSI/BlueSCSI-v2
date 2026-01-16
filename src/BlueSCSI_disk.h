@@ -27,7 +27,8 @@
 // SCSI disk access routines
 // Implements both SCSI2SD V6 disk.h functions and some extra.
 
-#pragma once
+#ifndef BLUESCSI_DISK_H
+#define BLUESCSI_DISK_H
 
 #include <stdint.h>
 #include <scsi2sd.h>
@@ -186,3 +187,5 @@ bool scsiDiskCheckAnyNetworkDevicesConfigured();
 
 // Switch to next Drive image if multiple have been configured
 bool switchNextImage(image_config_t &img, const char* next_filename = nullptr);
+
+#endif /* BLUESCSI_DISK_H */

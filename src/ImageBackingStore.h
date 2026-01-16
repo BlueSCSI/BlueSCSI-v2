@@ -28,7 +28,8 @@
  * - Microcontroller flash ROM drive
  */
 
-#pragma once
+#ifndef IMAGEBACKINGSTORE_H
+#define IMAGEBACKINGSTORE_H
 #include <stdint.h>
 #include <unistd.h>
 #include <SdFat.h>
@@ -140,3 +141,5 @@ protected:
 
     bool _internal_open(const char *filename);
 };
+
+#endif /* IMAGEBACKINGSTORE_H */

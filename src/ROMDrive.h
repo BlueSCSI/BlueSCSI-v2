@@ -2,7 +2,8 @@
  * Can store a small disk image.
  */
 
-#pragma once
+#ifndef ROMDRIVE_H
+#define ROMDRIVE_H
 #include <stdint.h>
 #include <unistd.h>
 #include <scsi2sd.h>
@@ -30,3 +31,5 @@ bool romDriveProgram(const char *filename, int scsi_id, int blocksize, S2S_CFG_T
 
 // Read data from rom drive main data area
 bool romDriveRead(uint8_t *buf, uint32_t start, uint32_t count);
+
+#endif /* ROMDRIVE_H */

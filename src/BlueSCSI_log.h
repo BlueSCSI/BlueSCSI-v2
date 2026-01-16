@@ -23,7 +23,8 @@
 
 // Helpers for log messages.
 
-#pragma once
+#ifndef BLUESCSI_LOG_H
+#define BLUESCSI_LOG_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -139,4 +140,6 @@ void dbgmsg_f(const char *format, ...);
 #ifdef __cplusplus
 }
 #endif
-#endif
+#endif /* NETWORK_DEBUG_LOGGING */
+
+#endif /* BLUESCSI_LOG_H */

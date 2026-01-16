@@ -18,6 +18,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
+#ifndef BLUESCSI_BLINK_H
+#define BLUESCSI_BLINK_H
+
 #include <stdint.h>
 
 #define BLINK_STATUS_OK 1
@@ -28,3 +31,5 @@
 bool blink_poll();
 void blink_cancel();
 void blinkStatus(uint32_t times, uint32_t delay = 500, uint32_t end_delay = 1250);
+
+#endif /* BLUESCSI_BLINK_H */
