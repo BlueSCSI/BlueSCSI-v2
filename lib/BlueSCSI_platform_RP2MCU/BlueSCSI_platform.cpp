@@ -79,6 +79,7 @@ uint32_t SCSI_ACCEL_PINMASK = SCSI_ACCEL_SETPINS;
 #if !(defined(BLUESCSI_ULTRA_WIDE) || defined(BLUESCSI_ULTRA))
 uint8_t SCSI_OUT_REQ = SCSI_OUT_REQ_CURRENT;
 uint8_t SCSI_OUT_SEL = SCSI_OUT_SEL_CURRENT;
+uint8_t SPDIF_OUTPUT_PIN = GPIO_I2C_SCL;
 #endif
 
 #if defined(BLUESCSI_ULTRA_WIDE)
@@ -662,19 +663,15 @@ bool checkIs2023a() {
     return true;
 #else
 
-#if !defined(ENABLE_AUDIO_OUTPUT_SPDIF)
     gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_I2C, false, false, false,  false, true);
     gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_I2C, false, false, false,  false, true);
     is2023a = gpio_get(GPIO_I2C_SCL) && gpio_get(GPIO_I2C_SDA);
     if (is2023a) {
-        logmsg("I2C Supported");
-#else
-    is2023a = true;  // SPDIF builds are only compatible with Pico/Pico2 hardware versions 2023.09a and later
-    if (is2023a) {
-        logmsg("SPDIF Mode Enabled - I2C Disabled");
-#endif
         g_supports_initiator = true;
-#if !defined(ENABLE_AUDIO_OUTPUT_SPDIF)
+#if defined(ENABLE_AUDIO_OUTPUT_SPDIF)
+        logmsg("SPDIF Mode Enabled - I2C Disabled");
+#else
+        logmsg("I2C Supported");
         gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_I2C, true, false, false,  true, true);
         gpio_conf(GPIO_I2C_SDA,   GPIO_FUNC_I2C, true, false, false,  true, true);
         // Use Pico SDK methods
@@ -698,10 +695,15 @@ bool checkIs2023a() {
         SCSI_ACCEL_PINMASK = SCSI_ACCEL_SETPINS_PRE09A;
         SCSI_OUT_SEL = SCSI_OUT_SEL_PRE09A;
 
+#if defined(ENABLE_AUDIO_OUTPUT_SPDIF)
+        SPDIF_OUTPUT_PIN = SWO_PIN;
+        gpio_conf(SWO_PIN, GPIO_FUNC_SIO, false, false, true,true, true);
+#else
         // Initialize logging to SWO pin (UART0)
         gpio_conf(SWO_PIN,        GPIO_FUNC_UART,false,false, true,  false, true);
         uart_init(uart0, 115200);
         g_uart_initialized = true;
+#endif
     }
 
     gpio_conf(SCSI_OUT_SEL,   GPIO_FUNC_SIO, false,false, true,  true, true);
@@ -826,7 +828,7 @@ void platform_init()
     }
 
 
-#ifdef GPIO_I2C_SDA
+#if (defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)) && defined(GPIO_I2C_SDA)
     // I2C pins
     //        pin             function       pup   pdown  out    state fast
     gpio_conf(GPIO_I2C_SCL,   GPIO_FUNC_I2C, true,false, false,  true, true);
@@ -838,7 +840,7 @@ void platform_init()
     if (check_is_sca_model()) {
         sca_flag_bits = read_sca_flag_bits();
         g_is_sca_model = true;
-        logmsg("SCA Model Detected, SCSI ID: ", (int)~((sca_flag_bits & 0xF) | 0xF0));
+        logmsg("SCA Model Detected, Assigned SCSI ID: ", (int)~((sca_flag_bits & 0xF) | 0xFFFFFFF0));
     }
 #endif
 

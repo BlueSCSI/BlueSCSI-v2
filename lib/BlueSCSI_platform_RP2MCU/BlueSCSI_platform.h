@@ -68,6 +68,7 @@ extern uint32_t SCSI_ACCEL_PINMASK;
 #if !(defined(BLUESCSI_ULTRA_WIDE) || defined(BLUESCSI_ULTRA))
 extern uint8_t SCSI_OUT_REQ;
 extern uint8_t SCSI_OUT_SEL;
+extern uint8_t SPDIF_OUTPUT_PIN;
 #endif
 
 // NOTE: The driver supports synchronous speeds higher than 10MB/s, but this

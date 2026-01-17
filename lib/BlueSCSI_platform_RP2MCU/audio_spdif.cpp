@@ -395,16 +395,18 @@ void audio_setup() {
     } else {
         pio_sm_claim(SPDIF_PIO_UNIT, spdif_pio_sm);
         int prog_offset = pio_add_program(SPDIF_PIO_UNIT, &shift_program);
-        shift_program_init(SPDIF_PIO_UNIT, spdif_pio_sm, prog_offset, GPIO_I2C_SCL);
+        shift_program_init(SPDIF_PIO_UNIT, spdif_pio_sm, prog_offset, SPDIF_OUTPUT_PIN);
         // Set clock divider
         pio_sm_set_clkdiv(SPDIF_PIO_UNIT, spdif_pio_sm, clkdiv);
         already_claimed = true;
     }
 
-    gpio_put(GPIO_EXP_SPARE, true);
-    gpio_set_dir(GPIO_EXP_SPARE, false);
-    gpio_set_pulls(GPIO_EXP_SPARE, true, false);
-    gpio_set_function(GPIO_EXP_SPARE, GPIO_FUNC_SIO);
+    if (SPDIF_OUTPUT_PIN != GPIO_EXP_SPARE) {
+        gpio_put(GPIO_EXP_SPARE, true);
+        gpio_set_dir(GPIO_EXP_SPARE, false);
+        gpio_set_pulls(GPIO_EXP_SPARE, true, false);
+        gpio_set_function(GPIO_EXP_SPARE, GPIO_FUNC_SIO);
+    }
 
     dma_channel_claim(SOUND_DMA_CHA);
 	dma_channel_claim(SOUND_DMA_CHB);
