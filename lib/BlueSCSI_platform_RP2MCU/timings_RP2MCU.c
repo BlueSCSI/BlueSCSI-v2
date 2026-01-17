@@ -639,7 +639,7 @@ static bluescsi_timings_t  predefined_timings[]  = {
 
         .scsi_20 =
         {
-            .delay0 = 2 - 1,
+            .delay0 = 3 - 1,  // 3 cycles = 14.76ns, meets SCSI-2 min 11.5ns setup time
             .delay1 = 5 - 1,
             .total_period_adjust = 0,
             .rdelay1 = 7 - 1,
