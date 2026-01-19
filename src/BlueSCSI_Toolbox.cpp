@@ -404,11 +404,9 @@ static void onSendFile10(void)
     uint16_t bytes_sent = ((uint16_t)scsiDev.cdb[1] << 8)  | scsiDev.cdb[2];
     // 512 byte offset of where to put these bytes.
     uint32_t offset     = ((uint32_t)scsiDev.cdb[3] << 16) | ((uint32_t)scsiDev.cdb[4] << 8) | scsiDev.cdb[5];
-    const uint16_t BUFSIZE   = 512;
-    uint8_t buf[BUFSIZE];
 
     // Do not allow buffer overrun
-    if (bytes_sent > BUFSIZE)
+    if (bytes_sent > sizeof(scsiDev.data))
     {
         dbgmsg("TOOLBOX SEND FILE 10 ILLEGAL DATA SIZE");
         gFile.close();
@@ -419,9 +417,9 @@ static void onSendFile10(void)
     }
 
     scsiEnterPhase(DATA_OUT);
-    scsiRead(buf, bytes_sent, NULL);
+    scsiRead(scsiDev.data, bytes_sent, NULL);
     gFile.seekCur(offset * 512);
-    gFile.write(buf, bytes_sent);
+    gFile.write(scsiDev.data, bytes_sent);
     if(gFile.getWriteError())
     {
         gFile.clearWriteError();
