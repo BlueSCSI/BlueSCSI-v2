@@ -227,6 +227,66 @@ static void onListDevices()
     scsiDev.phase = DATA_IN;
 }
 
+// Returns API version and capability flags
+static void onGetCapabilities()
+{
+    memset(scsiDev.data, 0, 8);
+    scsiDev.data[0] = TOOLBOX_API_VERSION;
+    scsiDev.data[1] = TOOLBOX_CAP_LARGE_TRANSFERS | TOOLBOX_CAP_SEND_FILE_32K;
+    // bytes 2-7 reserved
+    scsiDev.dataLen = 8;
+    scsiDev.phase = DATA_IN;
+}
+
+// Handle 0xD9 metadata command with subcommands
+// CDB[1] = subcommand
+// CDB[8] = allocation length (0 = 8 for backward compatibility)
+static void onMetadataCommand()
+{
+    uint8_t subcommand = scsiDev.cdb[1];
+    uint8_t alloc_len = scsiDev.cdb[8];
+
+    // Treat 0 as 8 for backward compatibility with older clients
+    if (alloc_len == 0)
+    {
+        alloc_len = 8;
+    }
+
+    // Currently max response is 8 bytes
+    if (alloc_len > 8)
+    {
+        dbgmsg("TOOLBOX_METADATA: allocation length ", alloc_len, " exceeds maximum 8");
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.phase = STATUS;
+        return;
+    }
+
+    switch (subcommand)
+    {
+        case TOOLBOX_SUBCMD_LIST_DEVICES:
+            dbgmsg("TOOLBOX_METADATA: LIST_DEVICES");
+            onListDevices();
+            // Truncate to requested allocation length
+            if (scsiDev.dataLen > alloc_len)
+                scsiDev.dataLen = alloc_len;
+            break;
+        case TOOLBOX_SUBCMD_GET_CAPABILITIES:
+            dbgmsg("TOOLBOX_METADATA: GET_CAPABILITIES");
+            onGetCapabilities();
+            // Truncate to requested allocation length
+            if (scsiDev.dataLen > alloc_len)
+                scsiDev.dataLen = alloc_len;
+            break;
+        default:
+            dbgmsg("TOOLBOX_METADATA: Unknown subcommand ", subcommand);
+            scsiDev.status = CHECK_CONDITION;
+            scsiDev.target->sense.code = ILLEGAL_REQUEST;
+            scsiDev.phase = STATUS;
+            break;
+    }
+}
+
 static void onSetNextCD(const char * img_dir)
 {
     char name[MAX_FILE_PATH] = {0};
@@ -252,6 +312,10 @@ void onGetFile10(char * dir_name) {
 
     if (offset == 0) // first time, open the file.
     {
+        // Safety: ensure gFile is closed from any previous operation
+        if (gFile.isOpen()) {
+            gFile.close();
+        }
         gFile = get_file_from_index(index, dir_name);
         if(!gFile.isDirectory() && !gFile.isReadable())
         {
@@ -454,10 +518,10 @@ extern "C" int scsiToolboxCommand()
         snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, static_cast<int>(img.scsiId) & S2S_CFG_TARGET_ID_BITS);
         onSetNextCD(img_dir);
     }
-    else if(unlikely(command == BLUESCSI_TOOLBOX_LIST_DEVICES))
+    else if(unlikely(command == BLUESCSI_TOOLBOX_METADATA))
     {
-        dbgmsg("BLUESCSI_TOOLBOX_LIST_DEVICES");
-        onListDevices();
+        dbgmsg("BLUESCSI_TOOLBOX_METADATA");
+        onMetadataCommand();
     }
     else if (unlikely(command == BLUESCSI_TOOLBOX_COUNT_CDS))
     {

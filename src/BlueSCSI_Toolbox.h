@@ -34,6 +34,18 @@
 #define BLUESCSI_TOOLBOX_TOGGLE_DEBUG   0xD6
 #define BLUESCSI_TOOLBOX_LIST_CDS       0xD7
 #define BLUESCSI_TOOLBOX_SET_NEXT_CD    0xD8
-#define BLUESCSI_TOOLBOX_LIST_DEVICES   0xD9
+#define BLUESCSI_TOOLBOX_METADATA       0xD9
+#define BLUESCSI_TOOLBOX_LIST_DEVICES   0xD9  // Legacy alias for METADATA
 #define BLUESCSI_TOOLBOX_COUNT_CDS      0xDA
 #define OPEN_RETRO_SCSI_TOO_MANY_FILES 0x0001
+
+// 0xD9 Metadata subcommands (CDB[1])
+#define TOOLBOX_SUBCMD_LIST_DEVICES     0x00
+#define TOOLBOX_SUBCMD_GET_CAPABILITIES 0x01
+
+// Capability flags for TOOLBOX_SUBCMD_GET_CAPABILITIES
+#define TOOLBOX_CAP_LARGE_TRANSFERS     0x01  // Supports transfers larger than 512 bytes
+#define TOOLBOX_CAP_SEND_FILE_32K       0x02  // Supports 32KB send file chunks
+
+// Current Toolbox API version
+#define TOOLBOX_API_VERSION             0
