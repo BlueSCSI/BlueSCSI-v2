@@ -246,6 +246,10 @@ void onGetFile10(char * dir_name) {
 
     uint32_t offset = ((uint32_t)scsiDev.cdb[2] << 24) | ((uint32_t)scsiDev.cdb[3] << 16) | ((uint32_t)scsiDev.cdb[4] << 8) | scsiDev.cdb[5];
 
+    // CDB byte 6: number of 4K blocks to transfer (0 = 1 for backward compatibility)
+    uint8_t block_count = scsiDev.cdb[6];
+    if (block_count == 0) block_count = 1;
+
     if (offset == 0) // first time, open the file.
     {
         gFile = get_file_from_index(index, dir_name);
@@ -260,10 +264,23 @@ void onGetFile10(char * dir_name) {
     }
 
     uint32_t file_total = gFile.size();
-    memset(scsiDev.data, 0, 4096);
-    gFile.seekSet(offset * 4096);
-    int bytes_read = gFile.read(scsiDev.data, 4096);
-    if(offset * 4096 >= file_total) // transfer done, close.
+    uint32_t byte_offset = offset * 4096;
+    uint32_t bytes_requested = (uint32_t)block_count * 4096;
+
+    // Cap to remaining file size
+    if (byte_offset + bytes_requested > file_total) {
+        bytes_requested = (byte_offset < file_total) ? (file_total - byte_offset) : 0;
+    }
+
+    // Cap to buffer size
+    if (bytes_requested > sizeof(scsiDev.data)) {
+        bytes_requested = sizeof(scsiDev.data);
+    }
+
+    memset(scsiDev.data, 0, bytes_requested);
+    gFile.seekSet(byte_offset);
+    int bytes_read = gFile.read(scsiDev.data, bytes_requested);
+    if(byte_offset + bytes_read >= file_total) // transfer done, close.
     {
         gFile.close();
     }
