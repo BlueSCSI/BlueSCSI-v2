@@ -45,7 +45,7 @@
 
 // Capability flags for TOOLBOX_SUBCMD_GET_CAPABILITIES
 #define TOOLBOX_CAP_LARGE_TRANSFERS     0x01  // Supports transfers larger than 512 bytes
-#define TOOLBOX_CAP_SEND_FILE_32K       0x02  // Supports 32KB send file chunks
+#define TOOLBOX_CAP_LARGE_SEND          0x02  // Supports large (32KB) send file chunks
 
 // Current Toolbox API version
 #define TOOLBOX_API_VERSION             0

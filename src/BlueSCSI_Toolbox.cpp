@@ -232,7 +232,7 @@ static void onGetCapabilities()
 {
     memset(scsiDev.data, 0, 8);
     scsiDev.data[0] = TOOLBOX_API_VERSION;
-    scsiDev.data[1] = TOOLBOX_CAP_LARGE_TRANSFERS | TOOLBOX_CAP_SEND_FILE_32K;
+    scsiDev.data[1] = TOOLBOX_CAP_LARGE_TRANSFERS | TOOLBOX_CAP_LARGE_SEND;
     // bytes 2-7 reserved
     scsiDev.dataLen = 8;
     scsiDev.phase = DATA_IN;
@@ -400,8 +400,19 @@ static void onSendFile10(void)
         return;
     }
 
-    // Number of bytes sent this request, 1..512.
-    uint16_t bytes_sent = ((uint16_t)scsiDev.cdb[1] << 8)  | scsiDev.cdb[2];
+    // CDB[6] = block count for new block-based encoding (0 = use legacy CDB[1-2])
+    uint8_t block_count = scsiDev.cdb[6];
+    uint16_t bytes_sent;
+    if (block_count > 0)
+    {
+        // New block-based encoding: transfer size = CDB[6] × 512 bytes
+        bytes_sent = (uint16_t)block_count * 512;
+    }
+    else
+    {
+        // Legacy encoding: Number of bytes sent this request, 1..65535
+        bytes_sent = ((uint16_t)scsiDev.cdb[1] << 8) | scsiDev.cdb[2];
+    }
     // 512 byte offset of where to put these bytes.
     uint32_t offset     = ((uint32_t)scsiDev.cdb[3] << 16) | ((uint32_t)scsiDev.cdb[4] << 8) | scsiDev.cdb[5];
 
