@@ -107,6 +107,7 @@ static struct {
 
     // Negotiated bus width for targets
     int targetBusWidth[NUM_SCSIID];
+    uint32_t start_sector[NUM_SCSIID];
 
     FsFile target_file;
 } g_initiator_state;
@@ -149,6 +150,22 @@ void scsiInitiatorInit()
     g_initiator_state.eject_when_done = false;
     memset(g_initiator_state.removable_count, 0, sizeof(g_initiator_state.removable_count));
 
+    // Initiator start sector override
+    char section[6] = "SCSI0";
+    char* end = NULL;
+    char size_buffer[64];
+    uint8_t string_len;
+    uint32_t sector_start;
+    for (int i = 0; i < NUM_SCSIID; i++) {
+        section[4] = '0' + i;
+        string_len = ini_gets(section, "InitiatorStartSector", "", size_buffer, sizeof(size_buffer), CONFIGFILE);
+        if (string_len > 0) {
+            sector_start = strtoul(size_buffer, &end, 10);
+            g_initiator_state.start_sector[i] = sector_start;
+        } else {
+            g_initiator_state.start_sector[i] = 0;
+        }
+    }
 }
 
 int scsiInitiatorGetOwnID()
@@ -540,6 +557,13 @@ void scsiInitiatorMainLoop()
 
                 logmsg("Starting to copy drive data to ", filename);
                 g_initiator_state.imaging = true;
+
+                // Initiator start sector override
+                if (g_initiator_state.start_sector[g_initiator_state.target_id] != 0) {
+                    g_initiator_state.sectors_done = g_initiator_state.start_sector[g_initiator_state.target_id];
+                    logmsg("Using Alternate Start Sector ", g_initiator_state.start_sector[g_initiator_state.target_id],
+                        " For SCSI ID ", g_initiator_state.target_id);
+                }
             }
         }
     }
