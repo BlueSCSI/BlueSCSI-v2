@@ -496,19 +496,45 @@ static void process_DataOut()
 	}
 }
 
-static const uint8_t CmdGroupBytes[] = {
-	6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
-	10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,
-	10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,
-	10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,
-	10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,
-	10,10,10,10,10,10,10,10,10,10,10,10,10,16,16,16,16,16,16,16,16,
-	16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,
-	16,16,16,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,
-	12,12,12,12,12,12,12,12,12,12,12,12,12,12,10,10,10,10,10,10,10,
-	10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,
-	10,10,10,10,10,10,10,10,10,10,10,10,10,10
+// CDB length by command byte (256 entries for direct lookup after Atari ICD shift)
+// Based on SCSI standard command groups, with group 6/7 vendor commands using 6-byte CDBs
+// Note: scsiVendorCommandSetLen() overrides specific commands (Toolbox 0xD0-0xDA -> 10 bytes)
+static const uint8_t CmdGroupBytes[256] = {
+	// Group 0: 0x00-0x1F (6-byte CDBs)
+	6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,  // 0x00-0x0F
+	6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,  // 0x10-0x1F
+	// Group 1: 0x20-0x3F (10-byte CDBs)
+	10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10, // 0x20-0x2F
+	10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10, // 0x30-0x3F
+	// Group 2: 0x40-0x5F (10-byte CDBs)
+	10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10, // 0x40-0x4F
+	10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10, // 0x50-0x5F
+	// Group 3: 0x60-0x7F (reserved, use 10-byte)
+	10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10, // 0x60-0x6F
+	10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10, // 0x70-0x7F
+	// Group 4: 0x80-0x9F (16-byte CDBs)
+	16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16, // 0x80-0x8F
+	16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16, // 0x90-0x9F
+	// Group 5: 0xA0-0xBF (12-byte CDBs)
+	12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12, // 0xA0-0xAF
+	12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12, // 0xB0-0xBF
+	// Group 6: 0xC0-0xDF (6-byte CDBs, vendor specific - includes OMTI-5204, Toolbox)
+	6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,  // 0xC0-0xCF
+	6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,  // 0xD0-0xDF
+	// Group 7: 0xE0-0xFF (6-byte CDBs, vendor specific - includes Xebec)
+	6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,  // 0xE0-0xEF
+	6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6   // 0xF0-0xFF
 };
+
+#ifdef UNIT_TEST
+/* Test accessor for CDB length lookup - verifies SCSI standard compliance */
+uint8_t scsiGetCdbGroupBytes(uint8_t cmd) {
+	return CmdGroupBytes[cmd];
+}
+size_t scsiGetCdbGroupBytesSize(void) {
+	return sizeof(CmdGroupBytes);
+}
+#endif
 
 static void process_Command()
 {
