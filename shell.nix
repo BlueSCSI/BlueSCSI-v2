@@ -76,8 +76,8 @@ pkgs.mkShell {
   buildInputs = [ fhs ];
 
   shellHook = ''
-    # Only run if in an interactive shell
-    if [ -t 1 ]; then
+    # Only run if in an interactive shell and not already in FHS
+    if [ -t 1 ] && [ -z "$BLUESCSI_FHS_ACTIVATED" ]; then
       echo "Entering FHS environment..."
       exec bluescsi-fhs
     fi
