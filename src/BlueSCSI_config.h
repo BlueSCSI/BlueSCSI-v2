@@ -59,6 +59,7 @@
 #define DRIVEINFO_MAGOPT    {"BlueSCSI", "MO_DRIVE",  PLATFORM_REVISION, ""}
 #define DRIVEINFO_NETWORK   {"Dayna",    "SCSI/Link", "2.0f", ""}
 #define DRIVEINFO_TAPE      {"BlueSCSI", "TAPE",      PLATFORM_REVISION, ""}
+#define DRIVEINFO_AMIGAWIFI {"AmigaNET", "SCSI/Link", "1.0f", ""}
 
 // Default SCSI drive information when Apple quirks are enabled
 #define APPLE_DRIVEINFO_FIXED     {"QUANTUM",  "BlueSCSI Pico",   "1.0",  ""}

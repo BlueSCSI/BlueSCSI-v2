@@ -268,13 +268,14 @@ static void setDefaultDriveInfo(int target_idx)
     static const char *driveinfo_magopt[4]    = DRIVEINFO_MAGOPT;
     static const char *driveinfo_network[4]   = DRIVEINFO_NETWORK;
     static const char *driveinfo_tape[4]      = DRIVEINFO_TAPE;
+    static const char *driveinfo_amigawifi[4]   = DRIVEINFO_AMIGAWIFI;
 
     static const char *apl_driveinfo_fixed[4]     = APPLE_DRIVEINFO_FIXED;
     static const char *apl_driveinfo_removable[4] = APPLE_DRIVEINFO_REMOVABLE;
     static const char *apl_driveinfo_optical[4]   = APPLE_DRIVEINFO_OPTICAL;
     static const char *apl_driveinfo_floppy[4]    = APPLE_DRIVEINFO_FLOPPY;
     static const char *apl_driveinfo_magopt[4]    = APPLE_DRIVEINFO_MAGOPT;
-    static const char *apl_driveinfo_network[4]   = APPLE_DRIVEINFO_NETWORK;
+    static const char *apl_driveinfo_network[4]   = APPLE_DRIVEINFO_NETWORK;    
     static const char *apl_driveinfo_tape[4]      = APPLE_DRIVEINFO_TAPE;
 
     static const char *iomega_driveinfo_removeable[4] = IOMEGA_DRIVEINFO_ZIP100;
@@ -291,9 +292,10 @@ static void setDefaultDriveInfo(int target_idx)
             case S2S_CFG_OPTICAL:       driveinfo = apl_driveinfo_optical; break;
             case S2S_CFG_FLOPPY_14MB:   driveinfo = apl_driveinfo_floppy; break;
             case S2S_CFG_MO:            driveinfo = apl_driveinfo_magopt; break;
-            case S2S_CFG_NETWORK:       driveinfo = apl_driveinfo_network; break;
+            case S2S_CFG_NETWORK:       driveinfo = apl_driveinfo_network; break;            
             case S2S_CFG_SEQUENTIAL:    driveinfo = apl_driveinfo_tape; break;
             case S2S_CFG_ZIP100:        driveinfo = iomega_driveinfo_removeable; break;
+            case S2S_CFG_AMIGAWIFI:     driveinfo = driveinfo_amigawifi; break; // just incase
             default:                    driveinfo = apl_driveinfo_fixed; break;
         }
     }
@@ -308,6 +310,7 @@ static void setDefaultDriveInfo(int target_idx)
             case S2S_CFG_FLOPPY_14MB:   driveinfo = driveinfo_floppy; break;
             case S2S_CFG_MO:            driveinfo = driveinfo_magopt; break;
             case S2S_CFG_NETWORK:       driveinfo = driveinfo_network; break;
+            case S2S_CFG_AMIGAWIFI:     driveinfo = driveinfo_amigawifi; break;
             case S2S_CFG_SEQUENTIAL:    driveinfo = driveinfo_tape; break;
             case S2S_CFG_ZIP100:        driveinfo = iomega_driveinfo_removeable; break;
             default:                    driveinfo = driveinfo_fixed; break;
@@ -381,7 +384,7 @@ bool scsiDiskOpenHDDImage(const char *filename, int scsi_id, int scsi_lun, int b
         img.scsiId = scsi_id | S2S_CFG_TARGET_ENABLED;
         img.sdSectorStart = 0;
 
-        if (type != S2S_CFG_NETWORK)
+        if ((type != S2S_CFG_NETWORK) && (type != S2S_CFG_AMIGAWIFI))
         {
             if (img.scsiSectors == 0)
             {
@@ -426,6 +429,17 @@ bool scsiDiskOpenHDDImage(const char *filename, int scsi_id, int scsi_lun, int b
             }
             log("---- Configuring as network based on image name");
             img.deviceType = S2S_CFG_NETWORK;
+        }
+        else if (type == S2S_CFG_AMIGAWIFI)
+        {
+            if (!platform_network_supported())
+            {
+                log("---- Error: network not supported on this device, ignoring ", filename);
+                img.file.close();
+                return false;
+            }
+            log("---- Configuring as network based on image name");
+            img.deviceType = S2S_CFG_AMIGAWIFI;
         }
         else if (type == S2S_CFG_REMOVEABLE)
         {
@@ -1013,7 +1027,7 @@ bool scsiDiskCheckAnyNetworkDevicesConfigured()
 {
     for (int i = 0; i < S2S_MAX_TARGETS; i++)
     {
-        if (g_DiskImages[i].file.isOpen() && (g_DiskImages[i].scsiId & S2S_CFG_TARGET_ENABLED) && g_DiskImages[i].deviceType == S2S_CFG_NETWORK)
+        if (g_DiskImages[i].file.isOpen() && (g_DiskImages[i].scsiId & S2S_CFG_TARGET_ENABLED) && (g_DiskImages[i].deviceType == S2S_CFG_NETWORK || g_DiskImages[i].deviceType == S2S_CFG_AMIGAWIFI))
         {
             return true;
         }
@@ -1316,7 +1330,7 @@ static void doReadCapacity()
     uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
     uint32_t capacity;
 
-    if (unlikely(scsiDev.target->cfg->deviceType == S2S_CFG_NETWORK))
+    if (unlikely(scsiDev.target->cfg->deviceType == S2S_CFG_NETWORK) || unlikely(scsiDev.target->cfg->deviceType == S2S_CFG_AMIGAWIFI))
     {
         capacity = 1;
     }

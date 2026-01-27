@@ -188,6 +188,7 @@ const char * typeToChar(int deviceType)
   case S2S_CFG_MO:
     return "MO";
   case S2S_CFG_NETWORK:
+  case S2S_CFG_AMIGAWIFI:
     return "Network";
   case S2S_CFG_SEQUENTIAL:
     return "Tape";
@@ -287,6 +288,7 @@ bool findHDDImages()
       bool is_re = (tolower(name[0]) == 'r' && tolower(name[1]) == 'e');
       bool is_tp = (tolower(name[0]) == 't' && tolower(name[1]) == 'p');
       bool is_zp = (tolower(name[0]) == 'z' && tolower(name[1]) == 'p');
+      bool is_am = (tolower(name[0]) == 'a' && tolower(name[1]) == 'm');
 
       if(strcasecmp(name, "CLEAR_ROM") == 0)
       {
@@ -294,7 +296,7 @@ bool findHDDImages()
         continue;
       }
 
-      if (is_hd || is_cd || is_fd || is_mo || is_ne || is_re || is_tp || is_zp)
+      if (is_hd || is_cd || is_fd || is_mo || is_ne || is_re || is_tp || is_zp || is_am)
       {
         // Check if the image should be loaded to microcontroller flash ROM drive
         bool is_romdrive = false;
@@ -359,7 +361,7 @@ bool findHDDImages()
           continue;
         }
 
-        if (is_ne && !platform_network_supported())
+        if ((is_ne || is_am) && !platform_network_supported())
         {
           log("-- Ignoring ", fullname, ", networking is not supported on this hardware");
           continue;
@@ -372,6 +374,7 @@ bool findHDDImages()
         if (is_fd) type = S2S_CFG_FLOPPY_14MB;
         if (is_mo) type = S2S_CFG_MO;
         if (is_ne) type = S2S_CFG_NETWORK;
+        if (is_am) type = S2S_CFG_AMIGAWIFI;
         if (is_re) type = S2S_CFG_REMOVEABLE;
         if (is_tp) type = S2S_CFG_SEQUENTIAL;
         if (is_zp) type = S2S_CFG_ZIP100;
@@ -428,7 +431,7 @@ bool findHDDImages()
     {
       int capacity_kB = ((uint64_t)cfg->scsiSectors * cfg->bytesPerSector) / 1024;
 
-      if (cfg->deviceType == S2S_CFG_NETWORK)
+      if (cfg->deviceType == S2S_CFG_NETWORK || cfg->deviceType == S2S_CFG_AMIGAWIFI)
       {
         log("* ID: ", (int)(cfg->scsiId & S2S_CFG_TARGET_ID_BITS),
               ", Type: ", typeToChar((int)cfg->deviceType),
