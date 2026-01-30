@@ -972,7 +972,7 @@ STATIC_TESTABLE void reinitSCSI()
   scsiInit();
 
 #ifdef BLUESCSI_NETWORK
-  if (scsiDiskCheckAnyNetworkDevicesConfigured() && platform_network_supported()) {
+  if (platform_network_supported()) {
     if (scsiDiskCheckAnyNetworkDevicesConfigured())
     {
       platform_network_init(scsiDev.boardCfg.wifiMACAddress);
@@ -983,7 +983,7 @@ STATIC_TESTABLE void reinitSCSI()
     }
     else
     {
-      if (platform_network_supported() && scsiDev.boardCfg.wifiSSID[0] != '\0')
+      if (scsiDev.boardCfg.wifiSSID[0] != '\0')
       {
         logmsg("Wi-Fi SSID specified as \"", scsiDev.boardCfg.wifiSSID, "\", but no SCSI ID assigned to a network device");
         logmsg("Please create an empty file \"NEx.hda\", where x is the SCSI ID of the network device, on the SD card");
