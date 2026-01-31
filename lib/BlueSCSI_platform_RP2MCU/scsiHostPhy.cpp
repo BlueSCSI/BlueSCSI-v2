@@ -438,9 +438,6 @@ void scsiHostWaitBusFree()
         {
             // Target is expecting something more
             // Transfer dummy bytes
-#if  !(defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE))
-             SCSI_OUT(BSY, 1);
-#endif
              sleep_us(1);
 
              while (SCSI_IN(REQ))
@@ -450,9 +447,6 @@ void scsiHostWaitBusFree()
                 sleep_us(1);
              }
 
-#if !(defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE))
-             SCSI_OUT(BSY, 0);
-#endif
              sleep_us(1);
         }
 
