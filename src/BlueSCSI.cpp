@@ -1283,6 +1283,14 @@ static void bluescsi_setup_sd_card(bool wait_for_card = true)
     {
       platform_disable_led();
     }
+#ifdef BLUESCSI_ULTRA_WIDE
+    if (g_is_sca_model) {
+        if (ini_getbool("SCSI", "SCAModelLEDEnable", false, CONFIGFILE)) {
+            logmsg("Enabling SCA LED Output");
+            platform_use_sca_led();
+        }
+    }
+#endif
   }
 #ifdef PLATFORM_HAS_INITIATOR_MODE
   bool initiator_mode = ini_getbool("SCSI", "InitiatorMode", false, CONFIGFILE);

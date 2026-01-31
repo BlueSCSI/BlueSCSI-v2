@@ -144,6 +144,11 @@ void platform_write_led_override(bool state);
 // Disable the status LED
 void platform_disable_led(void);
 
+#ifdef BLUESCSI_ULTRA_WIDE
+// Use SCA LED for output (this is slow)
+void platform_use_sca_led(void);
+#endif
+
 // Specific error code tied to the MCU when the SD card is not detected
 uint8_t platform_no_sd_card_on_init_error_code();
 

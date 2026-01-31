@@ -127,6 +127,9 @@ static void usb_log_poll();
 typedef void (*led_write_func_t)(bool state);
 static void platform_write_led_gpio(bool state);
 static void platform_write_led_picow(bool state);
+#ifdef BLUESCSI_ULTRA_WIDE
+static void platform_write_led_sca(bool state);
+#endif
 static void platform_write_led_noop(bool state) {}
 static led_write_func_t g_led_write_func = platform_write_led_noop;
 
@@ -268,6 +271,32 @@ uint8_t read_sca_flag_bits() {
     }
 
     return sca_flags;
+}
+
+bool write_sca_bits(uint8_t flags) {
+    int status;
+    if (is_sca_proto) {
+        uint8_t cmd[2] = {SCA_CMD_OUTPUT, flags};
+        status = i2c_write_timeout_us(I2C_PORT, SCA_I2C_ADDR_PROTO, cmd, 2, true, 25000);
+        if (status < 0 || status < 2) {
+            return false;
+        }
+    } else {
+        status = i2c_write_timeout_us(I2C_PORT, SCA_I2C_ADDR, &flags, 1, false, 25000);
+    }
+    return true;
+}
+
+void set_sca_led_on() {
+    uint8_t flag_bits = read_sca_flag_bits();
+    flag_bits = flag_bits & 0xEF;
+    write_sca_bits(flag_bits);
+}
+
+void set_sca_led_off() {
+    uint8_t flag_bits = read_sca_flag_bits();
+    flag_bits = flag_bits | 0x10;
+    write_sca_bits(flag_bits);
 }
 
 bool read_from_8574(uint8_t* state) {
@@ -1107,6 +1136,17 @@ static void platform_write_led_gpio(bool state)
     gpio_put(LED_PIN, state);
 }
 
+#ifdef BLUESCSI_ULTRA_WIDE
+void platform_write_led_sca(bool state)
+{
+    if (state) {
+        set_sca_led_on();
+    } else {
+        set_sca_led_off();
+    }
+}
+#endif
+
 void platform_disable_led(void)
 {
     if (!platform_is_pico_w()) {
@@ -1116,6 +1156,13 @@ void platform_disable_led(void)
     g_led_write_func = platform_write_led_noop;
     logmsg("Disabling status LED");
 }
+
+#ifdef BLUESCSI_ULTRA_WIDE
+void platform_use_sca_led(void)
+{
+    g_led_write_func = platform_write_led_sca;
+}
+#endif
 
 uint8_t platform_no_sd_card_on_init_error_code()
 {
