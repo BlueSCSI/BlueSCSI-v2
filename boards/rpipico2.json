@@ -32,7 +32,7 @@
     "frameworks": [
         "arduino"
     ],
-    "name": "BlueSCSI Pico 2",
+    "name": "Pico 2",
     "upload": {
         "psram_length": 0,
         "maximum_ram_size": 524288,

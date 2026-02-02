@@ -4,7 +4,7 @@
             "earlephilhower": {
                 "boot2_source": "boot2_w25q080_2_padded_checksum.S",
                 "usb_vid": "0x2E8A",
-                "usb_pid": "0xF00A"
+                "usb_pid": "0x000A"
             }
         },
         "core": "earlephilhower",
@@ -18,7 +18,7 @@
             ],
             [
                 "0x2E8A",
-                "0xF00A"
+                "0x000A"
             ]
         ],
         "mcu": "rp2040",
@@ -32,7 +32,7 @@
     "frameworks": [
         "arduino"
     ],
-    "name": "BlueSCSI Pico DaynaPORT",
+    "name": "Pico",
     "upload": {
         "maximum_ram_size": 262144,
         "maximum_size": 2097152,
