@@ -507,7 +507,7 @@ static void getTrackFromLBA(image_config_t &img, uint32_t lba, CUETrackInfo *res
     }
     else if (img.cdrom_binfile_index == img.cdrom_trackinfo.file_index &&
              lba >= img.cdrom_trackinfo.track_start &&
-             lba < img.cdrom_trackinfo.data_start + img.file.size() / img.cdrom_trackinfo.sector_length)
+             lba < img.cdrom_trackinfo.data_start + (img.file.size() - img.cdrom_trackinfo.file_offset) / img.cdrom_trackinfo.sector_length)
     {
         // Same track as previous time
         *result = img.cdrom_trackinfo;
@@ -2535,3 +2535,22 @@ extern "C" int scsiCDRomCommand()
 
     return commandHandled;
 }
+
+#ifdef UNIT_TEST
+/*
+ * Test accessor for multi-bin CUE track boundary calculation.
+ *
+ * When caching track info for multi-bin CUE files, we need to correctly
+ * calculate the track's end LBA. This accounts for file_offset (pregap data
+ * stored at the start of the bin file before the actual track data).
+ *
+ * Returns the LBA where the track ends (exclusive), i.e., the first LBA
+ * that belongs to the next track.
+ */
+uint32_t cdromTestCalcTrackEndLBA(uint32_t data_start, uint64_t file_size,
+                                   uint64_t file_offset, uint32_t sector_length)
+{
+    // This matches the calculation in getTrackFromLBA's cache check
+    return data_start + (file_size - file_offset) / sector_length;
+}
+#endif
