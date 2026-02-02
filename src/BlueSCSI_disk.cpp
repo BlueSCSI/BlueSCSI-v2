@@ -103,6 +103,23 @@ bool scsiIsReadFinished(const uint8_t *data)
 #endif
 
 /************************************************/
+/* Helper function for extension checking       */
+/************************************************/
+
+// Check if filename ends with given extension (case-insensitive)
+// Extension should include the dot, e.g. ".cue"
+static bool hasExtension(const char *filename, const char *ext)
+{
+    size_t flen = strlen(filename);
+    size_t elen = strlen(ext);
+    return flen > elen && strncasecmp(filename + flen - elen, ext, elen) == 0;
+}
+
+#ifdef UNIT_TEST
+bool testHasExtension(const char *filename, const char *ext) { return hasExtension(filename, ext); }
+#endif
+
+/************************************************/
 /* ROM drive support (in microcontroller flash) */
 /************************************************/
 
@@ -411,7 +428,56 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
     img.bin_container.close();
     img.cdrom_binfile_index = -1;
     scsiDiskSetImageConfig(target_idx);
-    img.file = ImageBackingStore(filename, blocksize);
+
+    // Check if this is a .cue file being opened directly for optical devices
+    // Handle it before ImageBackingStore which would treat it as a binary image
+    bool is_cue_file = (type == S2S_CFG_OPTICAL && hasExtension(filename, ".cue"));
+
+    if (is_cue_file)
+    {
+        // Open .cue file for parsing
+        img.cuesheetfile = SD.open(filename, O_RDONLY);
+        if (!img.cuesheetfile.isOpen())
+        {
+            logmsg("---- Failed to open CUE sheet: ", filename);
+            return false;
+        }
+
+        logmsg("---- Opened CD-ROM CUE sheet directly: ", filename);
+
+        // Get parent directory path for multi-bin file lookups
+        char parentdir[MAX_FILE_PATH + 1] = {0};
+        strncpy(parentdir, filename, sizeof(parentdir) - 1);
+        char *lastslash = strrchr(parentdir, '/');
+        if (lastslash)
+        {
+            *lastslash = '\0';  // Truncate to parent directory
+        }
+        else
+        {
+            strcpy(parentdir, "/");  // Root directory
+        }
+
+        // Open parent directory as folder for multi-bin file selection
+        img.file = ImageBackingStore(parentdir, blocksize);
+        img.bin_container.open(parentdir);
+
+        // Validate the cue sheet now (before device type setup)
+        // We need to set deviceType temporarily for validation
+        img.deviceType = S2S_CFG_OPTICAL;
+        if (!cdromValidateCueSheet(img))
+        {
+            logmsg("---- Failed to parse cue sheet");
+            img.cuesheetfile.close();
+            img.bin_container.close();
+            img.file.close();
+            return false;
+        }
+    }
+    else
+    {
+        img.file = ImageBackingStore(filename, blocksize);
+    }
 
     if (img.file.isOpen())
     {
@@ -539,8 +605,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
             logmsg("---- Read prefetch disabled");
         }
 
-        if (img.deviceType == S2S_CFG_OPTICAL &&
-            strncasecmp(filename + strlen(filename) - 4, ".bin", 4) == 0)
+        if (img.deviceType == S2S_CFG_OPTICAL && hasExtension(filename, ".bin"))
         {
             // Check for .cue sheet with single .bin file
             char cuesheetname[MAX_FILE_PATH + 1] = {0};
@@ -570,7 +635,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
                 logmsg("---- No CUE sheet found at ", cuesheetname, ", using as plain binary image");
             }
         }
-        else if (img.deviceType == S2S_CFG_OPTICAL && img.file.isFolder())
+        else if (img.deviceType == S2S_CFG_OPTICAL && img.file.isFolder() && !img.cuesheetfile.isOpen())
         {
             // The folder should contain .cue sheet and one or several .bin files
             char foldername[MAX_FILE_PATH + 1] = {0};
@@ -582,7 +647,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
             while (!valid && img.cuesheetfile.openNext(&folder, O_RDONLY))
             {
                 img.cuesheetfile.getName(cuesheetname, sizeof(cuesheetname));
-                if (strncasecmp(cuesheetname + strlen(cuesheetname) - 4, ".cue", 4) == 0)
+                if (hasExtension(cuesheetname, ".cue"))
                 {
                     valid = cdromValidateCueSheet(img);
                 }
@@ -705,8 +770,7 @@ bool scsiDiskFolderContainsCueSheet(FsFile *dir)
     char filename[MAX_FILE_PATH + 1];
     while (file.openNext(dir, O_RDONLY))
     {
-        if (file.getName(filename, sizeof(filename)) &&
-            (strncasecmp(filename + strlen(filename) - 4, ".cue", 4) == 0))
+        if (file.getName(filename, sizeof(filename)) && hasExtension(filename, ".cue"))
         {
             return true;
         }
@@ -903,6 +967,15 @@ int findNextImageAfter(image_config_t &img,
         return strlen(candidate_name);
     }
 
+    // For optical devices, check if directory contains .cue files
+    // If so, skip .bin files (they're referenced by the .cue files)
+    bool dir_has_cue = (img.deviceType == S2S_CFG_OPTICAL) && scsiDiskFolderContainsCueSheet(&dir);
+    if (dir_has_cue)
+    {
+        dbgmsg("-- Directory '", dirname, "' contains .cue file(s), will select .cue instead of .bin");
+    }
+    dir.rewind();
+
     while (file.openNext(&dir, O_RDONLY))
     {
         if (file.isDir() && !scsiDiskFolderContainsCueSheet(&file)) continue;
@@ -911,7 +984,27 @@ int findNextImageAfter(image_config_t &img,
             logmsg("Image directory '", dirname, "' had invalid file");
             continue;
         }
-        if (!scsiDiskFilenameValid(nextname)) continue;
+        // For optical devices with .cue files present:
+        // - Allow .cue files (normally ignored by scsiDiskFilenameValid)
+        // - Skip .bin files (they're referenced by the .cue)
+        if (dir_has_cue && !file.isDir())
+        {
+            if (hasExtension(nextname, ".bin"))
+            {
+                dbgmsg("-- Skipping .bin file (cue present): ", nextname);
+                continue;
+            }
+            if (hasExtension(nextname, ".cue"))
+            {
+                dbgmsg("-- Allowing .cue file: ", nextname);
+                // .cue files bypass scsiDiskFilenameValid check
+            }
+            else if (!scsiDiskFilenameValid(nextname))
+            {
+                continue;
+            }
+        }
+        else if (!scsiDiskFilenameValid(nextname)) continue;
         if (file.isHidden()) {
             logmsg("Image '", dirname, "/", nextname, "' is hidden, skipping file");
             continue;
