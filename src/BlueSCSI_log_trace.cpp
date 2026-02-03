@@ -241,31 +241,26 @@ void scsiLogPhaseChange(int new_phase)
         g_InByteCount = g_OutByteCount = 0;
         g_DataChecksum = 0;
 
+        // Log only when negotiating a faster sync mode:
+        // - async to sync (0 -> positive), OR
+        // - slower sync to faster sync (higher period -> lower period)
         if (old_phase >= 0 &&
             scsiDev.target != NULL &&
             old_scsi_id == scsiDev.target->targetId &&
-            old_sync_period != scsiDev.target->syncPeriod)
+            scsiDev.target->syncPeriod > 0 &&
+            (old_sync_period == 0 || scsiDev.target->syncPeriod < old_sync_period))
         {
-            // Add a log message when negotiated synchronous speed changes.
+            // Add a log message when negotiated synchronous speed increases.
             int syncper = scsiDev.target->syncPeriod;
             int syncoff = scsiDev.target->syncOffset;
 
-            if (syncper > 0)
-            {
-                int mbyte_per_s = (1000 + syncper * 2) / (syncper * 4) * (1 << scsiDev.target->busWidth);
-                logmsg("SCSI ID ", (int)scsiDev.target->targetId,
-                    " negotiated synchronous mode ", mbyte_per_s, " MB/s ",
-                    "(period 4x", syncper, " ns, offset ", syncoff, " bytes)");
-                if (!logged_oc_info && (g_scsi_settings.getSystem()->speedGrade < 5)) {
-                    logmsg("INFO: You may get a boost from overclocking as your system supports synchronous SCSI speeds. https://bluescsi.com/docs/Ultra-SCSI-Fast20-OverClock");
-                    logged_oc_info = true;
-                }
-            }
-            else
-            {
-                logmsg("SCSI ID ", (int)scsiDev.target->targetId,
-                    " negotiated asynchronous mode ",
-                    "(period 4x", syncper, " ns, offset ", syncoff, " bytes)");
+            int mbyte_per_s = (1000 + syncper * 2) / (syncper * 4) * (1 << scsiDev.target->busWidth);
+            logmsg("SCSI ID ", (int)scsiDev.target->targetId,
+                " negotiated synchronous mode ", mbyte_per_s, " MB/s ",
+                "(period 4x", syncper, " ns, offset ", syncoff, " bytes)");
+            if (!logged_oc_info && (g_scsi_settings.getSystem()->speedGrade == SPEED_GRADE_DEFAULT)) {
+                logmsg("INFO: You may get a boost from overclocking as your system supports synchronous SCSI speeds. https://bluescsi.com/docs/Ultra-SCSI-Fast20-OverClock");
+                logged_oc_info = true;
             }
         }
 
