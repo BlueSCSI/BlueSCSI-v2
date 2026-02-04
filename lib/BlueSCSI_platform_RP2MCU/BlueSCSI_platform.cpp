@@ -609,6 +609,9 @@ void platform_late_init()
         gpio_conf(SCSI_IN_ATN,    GPIO_FUNC_SIO, true, false, false, true, false);
         gpio_conf(SCSI_IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
 
+        // Turn off SEL output
+        gpio_conf(SCSI_OUT_SEL, GPIO_FUNC_SIO, false, false, false, false, false);
+
 #if defined(BLUESCSI_WIDE)
     logmsg("Wide board runs at base speed of ",(int) platform_sys_clock_in_hz(), "Hz");
 #elif defined(BLUESCSI_BLASTER)
