@@ -741,7 +741,7 @@ bool checkIs2023a() {
 #endif
     }
 
-    gpio_conf(SCSI_OUT_SEL,   GPIO_FUNC_SIO, false,false, true,  true, true);
+    gpio_conf(SCSI_OUT_SEL,   GPIO_FUNC_SIO, true, false, true,  true, true);
 
     return is2023a;
 #endif
@@ -985,6 +985,9 @@ void platform_late_init()
         gpio_conf(SCSI_IN_ACK,    GPIO_FUNC_SIO, true, false, false, true, false);
         gpio_conf(SCSI_IN_ATN,    GPIO_FUNC_SIO, true, false, false, true, false);
         gpio_conf(SCSI_IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
+
+        // Turn off SEL output
+        gpio_conf(SCSI_OUT_SEL, GPIO_FUNC_SIO, true, false, false, true, false);
 
 #if defined(BLUESCSI_ULTRA_WIDE) || defined (BLUESCSI_ULTRA)
     logmsg("Clocking to standard I2S-compatible base speed");
