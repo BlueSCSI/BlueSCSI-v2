@@ -342,7 +342,7 @@ bool checkIs2023a() {
         g_uart_initialized = true;
     }
 
-    gpio_conf(SCSI_OUT_SEL,   GPIO_FUNC_SIO, false,false, true,  true, true);
+    gpio_conf(SCSI_OUT_SEL,   GPIO_FUNC_SIO, true, false, true,  true, true);
 
     return is2023a;
 }
@@ -610,7 +610,7 @@ void platform_late_init()
         gpio_conf(SCSI_IN_RST,    GPIO_FUNC_SIO, true, false, false, true, false);
 
         // Turn off SEL output
-        gpio_conf(SCSI_OUT_SEL, GPIO_FUNC_SIO, false, false, false, false, false);
+        gpio_conf(SCSI_OUT_SEL, GPIO_FUNC_SIO, true, false, false, true, false);
 
 #if defined(BLUESCSI_WIDE)
     logmsg("Wide board runs at base speed of ",(int) platform_sys_clock_in_hz(), "Hz");
