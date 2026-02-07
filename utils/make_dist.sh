@@ -31,7 +31,9 @@ for file in .pio/build/*/firmware.bin .pio/build/*/firmware.elf .pio/build/*/fir
 do
     BUILD_ENV=$(echo "$file" | cut -d'/' -f3)
 
-    if [[ "$BUILD_ENV" == *"Pico_2"* ]]; then
+    if [[ "$BUILD_ENV" == *"Ultra"* ]]; then
+        BOARD="Ultra"
+    elif [[ "$BUILD_ENV" == *"Pico_2"* ]]; then
         BOARD="Pico2"
     elif [[ "$BUILD_ENV" == *"Pico"* ]]; then
         BOARD="Pico1"
@@ -43,6 +45,10 @@ do
     VARIANT=""
     if [[ "$BUILD_ENV" == *"DaynaPORT"* ]]; then
         VARIANT="_DaynaPORT"
+    elif [[ "$BUILD_ENV" == *"Audio_SPDIF"* ]]; then
+        VARIANT="_Audio_SPDIF"
+    elif [[ "$BUILD_ENV" == *"Wide"* ]]; then
+        VARIANT="_Wide"
     fi
 
     EXT="${file##*.}"
@@ -62,9 +68,7 @@ rm "$OUT_DIR/"*.elf
 # Create universal UF2 by combining the Pico1 and Pico2 UF2 files;
 cat "$OUT_DIR/BlueSCSI_Pico1_DaynaPORT_${DATE}_${VERSION}.uf2" \
     "$OUT_DIR/BlueSCSI_Pico2_DaynaPORT_${DATE}_${VERSION}.uf2" > "$OUT_DIR/BlueSCSI_Universal_${DATE}_${VERSION}.uf2"
-# Remove unused UF2 files
-#rm "$OUT_DIR/BlueSCSI_Pico1_${DATE}_${VERSION}.uf2"
-#rm "$OUT_DIR/BlueSCSI_Pico2_${DATE}_${VERSION}.uf2"
+# Remove Pico DaynaPORT UF2s (they're combined into the Universal UF2 above)
 rm "$OUT_DIR/BlueSCSI_Pico1_DaynaPORT_${DATE}_${VERSION}.uf2"
 rm "$OUT_DIR/BlueSCSI_Pico2_DaynaPORT_${DATE}_${VERSION}.uf2"
 

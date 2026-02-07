@@ -35,7 +35,7 @@ jobs:
       - name: Build firmware
         run: |
           cd BlueSCSI
-          pio run -v -e BlueSCSI_Pico_DaynaPORT -e BlueSCSI_Pico_2_DaynaPORT
+          pio run -v
 
       - name: Rename firmware files
         run: |
