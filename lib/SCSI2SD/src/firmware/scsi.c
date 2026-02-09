@@ -707,6 +707,7 @@ static void process_Command()
 	else if (((cfg->deviceType == S2S_CFG_OPTICAL) && scsiCDRomCommand()) ||
 		((cfg->deviceType == S2S_CFG_SEQUENTIAL) && scsiTapeCommand()) ||
 #ifdef BLUESCSI_NETWORK
+		((cfg->deviceType == S2S_CFG_AMIGAWIFI && amigaWifiCommand())) ||
 		((cfg->deviceType == S2S_CFG_NETWORK && scsiNetworkCommand())) ||
 #endif // BLUESCSI_NETWORK
 		((cfg->deviceType == S2S_CFG_MO) && scsiMOCommand()))
