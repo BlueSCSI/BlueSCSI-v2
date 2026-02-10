@@ -18,7 +18,6 @@
 #define NETWORK_H
 #ifdef BLUESCSI_NETWORK
 #include <sys/types.h>
-#include "AmigaWIFI/AmigaWIFI.h"
 
 #ifdef __cplusplus
 extern "C" {
