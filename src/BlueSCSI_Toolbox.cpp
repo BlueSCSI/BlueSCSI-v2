@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2023 Eric Helgeson
+ * Copyright (C) 2023-2026 Eric Helgeson
  *
  * This file is part of BlueSCSI
  *
@@ -113,7 +113,7 @@ static void onListFiles(const char * dir_name, bool isCD = false) {
     uint8_t file_entry[ENTRY_SIZE] = {0};
 
     if (!dir.open(dir_name)) {
-        if (!SD.mkdir(dir_name) || !dir.open(dir_name)) {
+        if (!isCD && (!SD.mkdir(dir_name) || !dir.open(dir_name))) {
             logmsg("ERROR: Could not open or create BlueSCSI Toolbox shared dir: ", dir_name);
         }
     }
