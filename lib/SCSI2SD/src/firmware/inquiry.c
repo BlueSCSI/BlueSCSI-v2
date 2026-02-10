@@ -221,6 +221,7 @@ void s2s_scsiInquiry()
 			break;
 
 		case S2S_CFG_NETWORK:
+		case S2S_CFG_AMIGAWIFI:
 			scsiDev.data[2] = 0x01;  // Page code.
 			break;
 		
@@ -316,6 +317,7 @@ uint8_t getDeviceTypeQualifier()
 		break;
 
 	case S2S_CFG_NETWORK:
+	case S2S_CFG_AMIGAWIFI:
 		// processor device
 		return 0x03;
 		break;

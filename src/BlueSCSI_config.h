@@ -96,6 +96,7 @@
 #define DRIVEINFO_MAGOPT    {"BLUESCSI", "MO_DRIVE",  PLATFORM_REVISION, ""}
 #define DRIVEINFO_NETWORK   {"Dayna",    "SCSI/Link",       "2.0f", ""}
 #define DRIVEINFO_TAPE      {"BLUESCSI", "TAPE",      PLATFORM_REVISION, ""}
+#define DRIVEINFO_AMIGAWIFI {"AmigaNET", "SCSI/Link", "1.0f", ""}
 
 // Default block size
 #define DEFAULT_BLOCKSIZE 512

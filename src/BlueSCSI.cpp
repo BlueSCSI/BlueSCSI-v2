@@ -195,6 +195,7 @@ static const char * typeToChar(int deviceType)
     case S2S_CFG_MO:
       return "MO";
     case S2S_CFG_NETWORK:
+    case S2S_CFG_AMIGAWIFI:
       return "Network";
     case S2S_CFG_SEQUENTIAL:
       return "Tape";
@@ -508,11 +509,12 @@ bool findHDDImages()
       bool is_zp = (tolower(name[0]) == 'z' && tolower(name[1]) == 'p');
 #ifdef BLUESCSI_NETWORK
       bool is_ne = (tolower(name[0]) == 'n' && tolower(name[1]) == 'e');
+      bool is_am = (tolower(name[0]) == 'a' && tolower(name[1]) == 'm');
 #endif // BLUESCSI_NETWORK
 
       if (is_hd || is_cd || is_fd || is_mo || is_re || is_tp || is_zp
 #ifdef BLUESCSI_NETWORK
-        || is_ne
+        || is_ne || is_am
 #endif // BLUESCSI_NETWORK
       )
       {
@@ -577,7 +579,7 @@ bool findHDDImages()
         int blk = getBlockSize(name, id);
 
 #ifdef BLUESCSI_NETWORK
-        if (is_ne && !platform_network_supported())
+        if ((is_ne || is_am) && !platform_network_supported())
         {
           logmsg("-- Ignoring ", fullname, ", networking is not supported on this hardware");
           continue;
@@ -591,6 +593,7 @@ bool findHDDImages()
         if (is_mo) type = S2S_CFG_MO;
 #ifdef BLUESCSI_NETWORK
         if (is_ne) type = S2S_CFG_NETWORK;
+        if (is_am) type = S2S_CFG_AMIGAWIFI;
 #endif // BLUESCSI_NETWORK
         if (is_re) type = S2S_CFG_REMOVABLE;
         if (is_tp) type = S2S_CFG_SEQUENTIAL;
@@ -649,7 +652,7 @@ bool findHDDImages()
     {
       int capacity_kB = ((uint64_t)cfg->scsiSectors * cfg->bytesPerSector) / 1024;
 
-      if (cfg->deviceType == S2S_CFG_NETWORK)
+      if (cfg->deviceType == S2S_CFG_NETWORK || cfg->deviceType == S2S_CFG_AMIGAWIFI)
       {
         logmsg("ID: ", (int)(cfg->scsiId & S2S_CFG_TARGET_ID_BITS),
               ", Type: ", typeToChar((int)cfg->deviceType));

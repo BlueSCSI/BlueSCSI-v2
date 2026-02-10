@@ -24,13 +24,23 @@
 
 extern int platform_network_send(uint8_t *buf, size_t len);
 
-static bool scsiNetworkEnabled = false;
-struct scsiNetworkPacketQueue {
-	uint8_t packets[NETWORK_PACKET_QUEUE_SIZE][NETWORK_PACKET_MAX_SIZE];
-	uint16_t sizes[NETWORK_PACKET_QUEUE_SIZE];
-	uint8_t writeIndex;
-	uint8_t readIndex;
-};
+#define SCSI_NETWORK_WIFI_CMD				0x1c	// cdb opcode
+#define SCSI_NETWORK_WIFI_CMD_SCAN			0x01	// cdb[2]
+#define SCSI_NETWORK_WIFI_CMD_COMPLETE		0x02
+#define SCSI_NETWORK_WIFI_CMD_SCAN_RESULTS	0x03
+#define SCSI_NETWORK_WIFI_CMD_INFO			0x04
+#define SCSI_NETWORK_WIFI_CMD_JOIN			0x05
+
+// Patches to make the DaynaPORT (or whats left of it) work on the Amiga - RobSmithDev
+#define SCSI_NETWORK_WIFI_CMD_ALTREAD       0x08   // gvpscsi.device on AMIGA doesnt like the standard version
+#define SCSI_NETWORK_WIFI_CMD_GETMACADDRESS 0x09   // gvpscsi.device on AMIGA doesnt like the standard version
+
+#define AMIGASCSI_PATCH_24BYTE_BLOCKSIZE 	0xA8   // In this mode, data written is rounded up to the nearest 24-byte boundary
+#define AMIGASCSI_PATCH_SINGLEWRITE_ONLY 	0xA9   // In this mode, data written is always ONLY as one single write command
+
+// No longer static so they can be shared with AmigaWIFI
+bool scsiNetworkEnabled = false;
+struct scsiNetworkPacketQueue scsiNetworkInboundQueue;
 
 struct scsiNetworkPacket
 {
@@ -39,7 +49,6 @@ struct scsiNetworkPacket
 	bool full;
 };
 
-static struct scsiNetworkPacketQueue scsiNetworkInboundQueue;
 static struct scsiNetworkPacket scsiNetworkOutbound;
 
 struct __attribute__((packed)) wifi_network_entry wifi_network_list[WIFI_NETWORK_LIST_ENTRY_COUNT] = { 0 };
