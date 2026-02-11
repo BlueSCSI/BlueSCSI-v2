@@ -12,3 +12,4 @@ test/test_report.json
 .direnv/
 .envrc
 build/
+test/
