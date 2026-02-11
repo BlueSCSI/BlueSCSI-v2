@@ -1,7 +1,7 @@
 /** 
  * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
  * Copyright (c) 2023 joshua stein <jcs@jcs.org>
- * Copyright (c) 2024 Eric Helgeson <erichelgeson@gmail.com>
+ * Copyright (c) 2024-2026 Eric Helgeson <erichelgeson@gmail.com>
  * 
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  * 
@@ -49,6 +49,9 @@ extern const char *g_log_firmwareversion;
 
 // Log string
 void log_raw(const char *str);
+
+// Log fixed-length string directly to log buffer
+void log_raw(const char *str, size_t len);
 
 // Log byte as hex
 void log_raw(uint8_t value);

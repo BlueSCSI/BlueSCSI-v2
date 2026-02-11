@@ -1,7 +1,7 @@
 /** 
  * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
  * Copyright (c) 2023 joshua stein <jcs@jcs.org>
- * Copyright (c) 2024 Eric Helgeson <erichelgeson@gmail.com>
+ * Copyright (c) 2024-2026 Eric Helgeson <erichelgeson@gmail.com>
  * 
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  * 
@@ -63,6 +63,24 @@ void log_raw(const char *str)
     g_logbuffer[g_logpos & LOGBUFMASK] = '\0';
 
     platform_log(str);
+}
+
+// Log fixed-length string directly to log buffer
+void log_raw(const char *str, size_t len)
+{
+    if (g_log_magic != 0xAA55AA55)
+    {
+        g_log_magic = 0xAA55AA55;
+        g_logpos = 0;
+    }
+
+    for (size_t i = 0; i < len; i++)
+    {
+        g_logbuffer[g_logpos & LOGBUFMASK] = str[i];
+        g_logpos++;
+    }
+
+    g_logbuffer[g_logpos & LOGBUFMASK] = '\0';
 }
 
 // Log byte as hex
