@@ -433,7 +433,7 @@ int scsiNetworkCommand()
 			scsiRead((uint8_t *)&req, sizeof(req), &parityError);
 			DBGMSG_F("%s: read join request from host:", __func__);
 			DBGMSG_BUF(scsiDev.data, size);
-			platform_network_wifi_join(req.ssid, req.key);
+			platform_network_wifi_join(req.ssid, req.key, false);
 
 			scsiDev.status = GOOD;
 			scsiDev.phase = STATUS;

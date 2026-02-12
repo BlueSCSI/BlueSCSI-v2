@@ -980,7 +980,7 @@ STATIC_TESTABLE void reinitSCSI()
     {
       platform_network_init(scsiDev.boardCfg.wifiMACAddress);
       if (scsiDev.boardCfg.wifiSSID[0] != '\0')
-        platform_network_wifi_join(scsiDev.boardCfg.wifiSSID, scsiDev.boardCfg.wifiPassword);
+        platform_network_wifi_join(scsiDev.boardCfg.wifiSSID, scsiDev.boardCfg.wifiPassword, false);
       else
         logmsg("No Wi-Fi SSID or Password found. Use the BlueSCSI Wi-Fi DA to configure the network.");
     }
