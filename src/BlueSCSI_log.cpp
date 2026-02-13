@@ -37,21 +37,11 @@ uint8_t g_scsi_log_mask = 0xFF;
 // This memory buffer can be read by debugger and is also saved to log.txt
 #define LOGBUFMASK (LOGBUFSIZE - 1)
 
-// The log buffer is in special uninitialized RAM section so that it is not reset
-// when soft rebooting or jumping from bootloader.
-uint32_t g_log_magic;
-char g_logbuffer[LOGBUFSIZE + 1];
-uint32_t g_logpos;
+static char g_logbuffer[LOGBUFSIZE + 1];
+static uint32_t g_logpos;
 
 void log_raw(const char *str)
 {
-    // Keep log from reboot / bootloader if magic matches expected value
-    if (g_log_magic != 0xAA55AA55)
-    {
-        g_log_magic = 0xAA55AA55;
-        g_logpos = 0;
-    }
-
     const char *p = str;
     while (*p)
     {
