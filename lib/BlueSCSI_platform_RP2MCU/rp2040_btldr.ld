@@ -51,16 +51,18 @@ SECTIONS
 
         *scanf*(*)
         *strtod*(*)
-        *libipv4.a:*(*)
-        *liblwip*.a:*(*)
-        *libBlueSCSI_audio_RP2MCU.a:*(*)
-        *libAdafruit*.a:*(*)
-        *libWire.a:*(*)
-        *libSPI.a:*(*)
-        *libBlueSCSI_platform_RP2MCU.a:BlueSCSI_platform_network.cpp.o*(*)
-        *libFrameworkArduino.a:cyw43_wrappers.cpp.o*(*)
 
-        /* gt */
+        /* Audio code not needed in bootloader */
+        *audio_i2s*(.text .text* .rodata .rodata*)
+        *audio_spdif*(.text .text* .rodata .rodata*)
+        *BlueI2S*(.text .text* .rodata .rodata*)
+
+        /* Network code not needed in bootloader */
+        *BlueSCSI_platform_network*(.text .text* .rodata .rodata*)
+        *cyw43*(.text .text* .rodata .rodata*)
+        *lwip*(.text .text* .rodata .rodata*)
+
+        /* Features not needed in bootloader */
         *BlueSCSI_tape.cpp.o*(*)
         *BlueSCSI_mode.cpp.o*(*)
         *BlueSCSI_blink.cpp.o*(*)
@@ -195,7 +197,7 @@ SECTIONS
     {
         __end__ = .;
         PROVIDE(end = .);
-        *(.heap*)
+        KEEP(*(.heap*))
         . = ORIGIN(RAM) + LENGTH(RAM) - 0x400;
         __HeapLimit = .;
     } > RAM
@@ -205,7 +207,7 @@ SECTIONS
     } > SCRATCH_X
     .stack_dummy (COPY):
     {
-        *(.stack*)
+        KEEP(*(.stack*))
     } > RAM
     .flash_end : {
         __flash_binary_end = .;

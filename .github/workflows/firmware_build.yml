@@ -16,26 +16,24 @@ jobs:
         with:
           path: BlueSCSI
           fetch-depth: "0"
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/pip
-            ~/.platformio/.cache
-          key: ${{ runner.os }}-pio
 
-      - uses: actions/setup-python@v5
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
         with:
-          python-version: '3.12'
+          extra_nix_config: |
+            experimental-features = nix-command flakes
 
-      - name: Install platformio
-        run: |
-          pip install --upgrade platformio
-          pio system info
+      - name: Cache Nix store
+        uses: cachix/cachix-action@v16
+        with:
+          name: bluescsi
+          skipPush: true
+        continue-on-error: true
 
       - name: Build firmware
         run: |
           cd BlueSCSI
-          pio run -v
+          nix develop --command ./build.sh
 
       - name: Rename firmware files
         run: |
@@ -74,4 +72,3 @@ jobs:
           if [ $status -ne 0 ]; then
             gh release upload --repo ${GITHUB_REPOSITORY} $RELEASE BlueSCSI/dist/*
           fi
-

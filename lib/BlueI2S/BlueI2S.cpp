@@ -18,7 +18,7 @@
     License along with this library; if not, write to the Free Software
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
-#include <Arduino.h>
+#include <stdint.h>
 #include "BlueI2S.h"
 #include "blue_pio_i2s.pio.h"
 #include <pico/stdlib.h>

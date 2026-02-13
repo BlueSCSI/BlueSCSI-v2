@@ -33,10 +33,8 @@
 #include <hardware/structs/scb.h>
 #include <hardware/sync.h>
 
-#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
-#include <SerialUSB.h>
+#include <tusb.h>
 #include <class/cdc/cdc_device.h>
-#endif
 
 
 /*****************************************/

@@ -27,15 +27,18 @@ mkdir -p $OUT_DIR || exit 1
 DATE=$(date +%Y-%m-%d)
 VERSION=$(git rev-parse --short HEAD)
 
-for file in .pio/build/*/firmware.bin .pio/build/*/firmware.elf .pio/build/*/firmware.uf2
+for file in build/*/BlueSCSI_*.bin build/*/BlueSCSI_*.elf build/*/BlueSCSI_*.uf2
 do
-    BUILD_ENV=$(echo "$file" | cut -d'/' -f3)
+    [ -e "$file" ] || continue
+    BASENAME=$(basename "$file")
+    # Extract target name from BlueSCSI_<target>.<ext>
+    TARGET=$(echo "$BASENAME" | sed 's/^BlueSCSI_//; s/\.[^.]*$//')
 
-    if [[ "$BUILD_ENV" == *"Ultra"* ]]; then
+    if [[ "$TARGET" == *"Ultra"* ]]; then
         BOARD="Ultra"
-    elif [[ "$BUILD_ENV" == *"Pico_2"* ]]; then
+    elif [[ "$TARGET" == *"Pico_2"* ]]; then
         BOARD="Pico2"
-    elif [[ "$BUILD_ENV" == *"Pico"* ]]; then
+    elif [[ "$TARGET" == *"Pico"* ]]; then
         BOARD="Pico1"
     else
         echo "Warning: Could not determine board for $file"
@@ -43,11 +46,11 @@ do
     fi
 
     VARIANT=""
-    if [[ "$BUILD_ENV" == *"DaynaPORT"* ]]; then
+    if [[ "$TARGET" == *"DaynaPORT"* ]]; then
         VARIANT="_DaynaPORT"
-    elif [[ "$BUILD_ENV" == *"Audio_SPDIF"* ]]; then
+    elif [[ "$TARGET" == *"Audio_SPDIF"* ]]; then
         VARIANT="_Audio_SPDIF"
-    elif [[ "$BUILD_ENV" == *"Wide"* ]]; then
+    elif [[ "$TARGET" == *"Wide"* ]]; then
         VARIANT="_Wide"
     fi
 

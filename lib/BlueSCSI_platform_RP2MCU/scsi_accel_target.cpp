@@ -49,6 +49,7 @@
 #endif // ENABLE_AUDIO_OUTPUT_SPDIF
 
 #include "scsi_accel_target_RP2MCU.pio.h"
+#include <cstring>
 
 // SCSI bus write acceleration uses up to 3 PIO state machines:
 // SM0: Convert data bytes to lookup addresses to add parity

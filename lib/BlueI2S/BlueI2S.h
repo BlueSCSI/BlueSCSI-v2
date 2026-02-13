@@ -20,6 +20,16 @@
 */
 
 #pragma once
+#include <stdint.h>
+#include <hardware/pio.h>
+
+// Arduino compatibility types
+#ifndef pin_size_t
+typedef uint8_t pin_size_t;
+#endif
+
+// Forward declaration (unused but needed for class definition)
+class PIOProgram;
 
 class I2S {
 public:

@@ -82,7 +82,7 @@ bool scsiHostPhySelect(int target_id, uint8_t initiator_id)
     // Ensure ATN and ACK are output mode, with ACK high
     SCSI_ENABLE_INITIATOR();
     SCSI_OUT(ACK, 0);
-    boolean success = platform_enable_initiator_signals();
+    bool success = platform_enable_initiator_signals();
     if (!success) {
         logmsg("------ ERROR: Failed To Enable Initiator Signals");
         return false;

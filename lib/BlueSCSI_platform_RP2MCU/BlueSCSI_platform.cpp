@@ -44,6 +44,9 @@ extern "C" {
 #include <hardware/structs/usb.h>
 #include <hardware/sync.h>
 #include <hardware/vreg.h>
+#include <hardware/watchdog.h>
+#include <hardware/structs/watchdog.h>
+#include <pico/bootrom.h>
 #include "scsi_accel_target.h"
 #include "custom_timings.h"
 #include <BlueSCSI_settings.h>
@@ -62,10 +65,15 @@ extern "C" {
 #include <sdio.h>
 #endif
 
-#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
-# include <tusb.h>
-# include <class/cdc/cdc_device.h>
+#include <tusb.h>
+#include <class/cdc/cdc_device.h>
+
+#include <pico/mutex.h>
+#ifndef BLUESCSI_BOOTLOADER_MAIN
+#include <bsp/board_api.h>
 #endif
+
+mutex_t __usb_mutex;
 
 #ifndef U8574_DEBUG
 bool u8574_debug = false;
@@ -109,11 +117,8 @@ extern "C" {
 
 extern bool g_rawdrive_active;
 
-#if !defined(PICO_CYW43_SUPPORTED)
-// Define __isPicoW for non-CYW43 builds (always false)
-// Must be outside extern "C" to match header's C++ linkage declaration
+// Always define __isPicoW ourselves (no longer provided by Arduino-pico)
 bool __isPicoW = false;
-#endif
 
 extern "C" {
 #include "timings_RP2MCU.h"
@@ -190,11 +195,10 @@ static void CheckPicoW() {
     //__isPicoW = false;
 }
 #else
-# ifndef PICO_RP2040
     /**
-     * This is a workaround until arduino framework can be updated to handle all 4 variations of
-     * Pico1/1w/2/2w. In testing this works on all for BlueSCSI.
-     * Tracking here https://github.com/earlephilhower/arduino-pico/issues/2671
+     * Runtime Pico W detection via ADC on CYW43 clock pin.
+     * Works on both RP2040 and RP2350.
+     * In PlatformIO, the Arduino framework handled this; in CMake builds we do it ourselves.
      */
 static void CheckPicoW() {
     extern bool __isPicoW;
@@ -218,7 +222,6 @@ static void CheckPicoW() {
 #endif
 }
 #endif
-#endif
 
 
 #if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
@@ -241,7 +244,7 @@ bool check_is_sca_model() {
         return true;
     } else {
         // Check for the prototype address
-        byte cmd[1] = {SCA_CMD_INPUT};
+        uint8_t cmd[1] = {SCA_CMD_INPUT};
         status = i2c_write_timeout_us(I2C_PORT, SCA_I2C_ADDR_PROTO, cmd, 1, true, 25000);
         if (status > 0) {
             status = i2c_read_timeout_us(I2C_PORT, SCA_I2C_ADDR_PROTO, &response, 1, false, 25000);
@@ -783,9 +786,13 @@ static void __no_inline_not_in_flash_func(set_flash_clock)()
 
 void platform_init()
 {
-#ifndef PICO_RP2040
-    CheckPicoW(); // Override default Wi-Fi check for the Pico2 line.
+    mutex_init(&__usb_mutex);
+#ifndef BLUESCSI_BOOTLOADER_MAIN
+    board_init();
+    tusb_init();
 #endif
+
+    CheckPicoW();
 
 #if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
     i2c_init(i2c1, 100000);
@@ -827,10 +834,11 @@ void platform_init()
     logmsg("Platform: ", g_platform_name, " (", PLATFORM_PID, platform_is_pico_w() ? "/W" : "", ")");
     logmsg("FW Version: ", g_log_firmwareversion);
 
-#if (PICO_CYW43_SUPPORTED && !defined(BLUESCSI_NETWORK))
-    // Initialize CYW43 for Pico W boards without network support (for LED control)
-    // Note: Ultra uses RM2 module with different pins, configured later in platform_late_init()
-    if (cyw43_arch_init()) {
+#if (PICO_CYW43_SUPPORTED && !defined(BLUESCSI_RM2) && !defined(BLUESCSI_BOOTLOADER_MAIN))
+    // Initialize CYW43 for Pico W boards (LED control, VBUS detection).
+    // RM2 boards configure custom CYW43 pins in platform_late_init() instead.
+    // Network code reinitializes CYW43 later in platform_network_init().
+    if (platform_is_pico_w() && cyw43_arch_init()) {
         logmsg("CYW43 driver init failed");
     }
 #endif
@@ -1072,9 +1080,6 @@ void platform_late_init()
 #endif  // PLATFORM_HAS_INITIATOR_MODE
     }
 
-#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
-    tusb_init();
-#endif
     scsi_accel_rp2040_init();
 }
 
@@ -1135,7 +1140,7 @@ void platform_write_led_override(bool state)
 
 static void platform_write_led_picow(bool state)
 {
-#if PICO_CYW43_SUPPORTED
+#if PICO_CYW43_SUPPORTED && !defined(BLUESCSI_BOOTLOADER_MAIN)
     // CYW43_WL_GPIO_LED_PIN: 0 but we dont want to pull in the cyw43 driver/header/etc
     cyw43_arch_gpio_put(0, state);
 #endif
@@ -1282,10 +1287,6 @@ void isr_hardfault(void)
 
 static bool usb_serial_connected()
 {
-#ifdef PIO_FRAMEWORK_ARDUINO_NO_USB
-    return false;
-#endif
-
     static bool connected;
     static uint32_t last_check_time;
 
@@ -1313,7 +1314,6 @@ static bool usb_serial_connected()
 // but does not unnecessarily delay normal execution.
 static void usb_log_poll()
 {
-#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
     static uint32_t logpos = 0;
 
     if (!usb_serial_connected()) return;
@@ -1338,15 +1338,11 @@ static void usb_log_poll()
         tud_cdc_write_flush();
         logpos -= available - actual;
     }
-
-#endif // PIO_FRAMEWORK_ARDUINO_NO_USB
 }
 
 // Grab input from USB Serial terminal
 static void usb_input_poll()
 {
-#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
-
     if (!usb_serial_connected()) return;
 
 #ifdef PLATFORM_MASS_STORAGE
@@ -1416,7 +1412,6 @@ static void usb_input_poll()
                 mass_storage_reboot_keyed =basic_reboot_keyed = uf2_reboot_keyed = false;
         }
     }
-#endif // PIO_FRAMEWORK_ARDUINO_NO_USB
 }
 // Use ADC to implement supply voltage monitoring for the +3.0V rail.
 // This works by sampling the temperature sensor channel, which has
@@ -1602,13 +1597,25 @@ void platform_reset_watchdog()
 
     // USB log is polled here also to make sure any log messages in fault states
     // get passed to USB.
+    tud_task();
     usb_log_poll();
+}
+
+// Delay while still servicing USB (for MSC mode where platform_delay_ms blocks USB)
+void platform_delay_ms_with_usb(uint32_t ms)
+{
+    uint32_t start = time_us_32();
+    while ((time_us_32() - start) < (ms * 1000))
+    {
+        tud_task();
+    }
 }
 
 // Poll function that is called every few milliseconds.
 // Can be left empty or used for platform-specific processing.
 void platform_poll()
 {
+    tud_task();
     usb_input_poll();
     usb_log_poll();
     adc_poll();

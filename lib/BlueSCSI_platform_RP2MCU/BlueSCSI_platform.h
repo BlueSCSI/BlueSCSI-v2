@@ -24,7 +24,8 @@
 #pragma once
 
 #include <stdint.h>
-#include <Arduino.h>
+#include <stdbool.h>
+#include <pico/stdlib.h>
 #include <hardware/timer.h>
 #include <pico/time.h>
 #include <pico/platform.h>
@@ -80,12 +81,7 @@ extern uint8_t SPDIF_OUTPUT_PIN;
 void platform_log(const char *s);
 void platform_emergency_log_save();
 
-// Timing and delay functions.
-// Arduino platform already provides these
-unsigned long millis(void);
-void delay(unsigned long ms);
-
-// Native Pico SDK timing - replaces Arduino functions
+// Native Pico SDK timing
 // Uses 32-bit microseconds (same approach as Arduino-pico) for efficiency on Cortex-M0+/M33
 static inline uint32_t platform_millis()
 {
@@ -157,13 +153,9 @@ bool platform_is_initiator_mode_enabled();
 
 // Runtime detection of Pico W vs regular Pico
 // Uses __isPicoW set by CheckPicoW() during platform_init()
-// Note: For CYW43 builds, __isPicoW is provided by Arduino-pico with C++ linkage
-// For non-CYW43 builds, we define it ourselves in BlueSCSI_platform.cpp
 #ifdef __cplusplus
 }  // Close extern "C" temporarily
-#if !defined(PICO_CYW43_SUPPORTED)
 extern bool __isPicoW;
-#endif
 extern "C" {
 #endif
 bool platform_is_pico_w(void);
@@ -173,6 +165,9 @@ bool platform_supports_initiator_mode();
 void platform_enable_initiator_mode();
 // Setup soft watchdog if supported
 void platform_reset_watchdog();
+
+// Delay while still servicing USB (for MSC mode)
+void platform_delay_ms_with_usb(uint32_t ms);
 
 // Reset MCU
 void platform_reset_mcu();

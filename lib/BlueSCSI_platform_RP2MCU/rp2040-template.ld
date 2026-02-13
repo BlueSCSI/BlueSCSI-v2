@@ -78,18 +78,17 @@ SECTIONS
          * performance when they are in use. By having most of the constantly
          * executing code in RAM already, there is less contention for cache space.
          */
-/*
-        .pio/build/$project_name/src/BlueSCSI_initiator.cpp.o(.text .text*)
-        .pio/build/$project_name/src/BlueSCSI_msc_initiator.cpp.o(.text .text*)
-        .pio/build/$project_name/src/BlueSCSI_log.cpp.o(.text .text*)
-        .pio/build/$project_name/src/BlueSCSI_log_trace.cpp.o(.text .text*)
-        .pio/build/$project_name/src/BlueSCSI_settings.cpp.o(.text .text*)
-        .pio/build/$project_name/src/QuirksCheck.cpp.o(.text .text*)
-
-*/  
+        /* Non-performance-critical application code goes to flash */
+        *BlueSCSI_initiator*(.text .text*)
+        *BlueSCSI_msc_initiator*(.text .text*)
+        *BlueSCSI_log.cpp*(.text .text*)
+        *BlueSCSI_log_trace*(.text .text*)
+        *BlueSCSI_settings*(.text .text*)
+        *QuirksCheck*(.text .text*)  
 	/* Standard library floating point etc. functions */
         *libm*:(.text .text*)
         *libc*:(.text .text*)
+        *libg*:(.text .text*)
         *libgcc*:*df*(.text .text*)
         *USB*(.text .text*)
         *SPI*(.text .text*)
@@ -102,8 +101,17 @@ SECTIONS
         *libc*:*toa*(.text .text*)
 
         /* Libraries that are not performance-critical */
-        *libminIni.a:(.text .text*)
-        *libCUEParser.a:(.text .text*)
+        *minIni*(.text .text*)
+        *CUEParser*(.text .text*)
+
+        /* TinyUSB (not matched by *USB* in CMake builds) */
+        *tusb*(.text .text*)
+        *tinyusb*(.text .text*)
+
+        /* WiFi/network driver code goes to flash */
+        *cyw43*(.text .text*)
+        *cybt*(.text .text*)
+        *AmigaWIFI*(.text .text*)
 
         /* C++ constructors and destructors */
         *(.text*_ZN*C1*)
@@ -206,8 +214,11 @@ SECTIONS
         *scsi_accel_host*(.text .text*)
         *scsiHostPhy*(.text .text*)
 
-        /* Filesystem functions that are not performance-critical.
-         * Mostly used during initialization only. */
+        /* SdFat filesystem functions that are not performance-critical.
+         * Only init/management functions go to flash. The hot-path
+         * (read/write/seekSet) stays in RAM to match PIO behavior.
+         * RP2040 has only a 16KB XIP cache — cache contention during
+         * SCSI transfers could cause timeouts. */
         *(.text*File*open*)
         *(.text*File*init*)
         *(.text*File*remove*)
@@ -221,6 +232,7 @@ SECTIONS
         *(.text*File*addCluster*)
         *(.text*Volume*attrib*)
         *(.text*Volume*begin*)
+        *(.text*partitionTable*)
 
         /* USB functions that only run in specific modes.
            These will fit in cache when they are in use (USB connected). */
@@ -336,7 +348,7 @@ SECTIONS
     {
         __end__ = .;
         PROVIDE(end = .);
-        *(.heap*)
+        KEEP(*(.heap*))
         . = ORIGIN(RAM) + LENGTH(RAM) - 0x400;
         __HeapLimit = .;
     } > RAM
@@ -346,7 +358,7 @@ SECTIONS
     } > SCRATCH_X
     .stack_dummy (COPY):
     {
-        *(.stack*)
+        KEEP(*(.stack*))
     } > RAM
     .flash_end : {
         __flash_binary_end = .;

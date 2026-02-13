@@ -28,15 +28,15 @@
 ;                           +----- WCLK
 ;                           |+---- BCLK
     mov x, y         side 0b01
-left:
+left_ch:
     out pins, 1      side 0b00
-    jmp x--, left    side 0b01
+    jmp x--, left_ch side 0b01
     out pins, 1      side 0b10 ; Last bit of left has WCLK change per I2S spec
 
     mov x, y         side 0b11
-right:
+right_ch:
     out pins, 1      side 0b10
-    jmp x--, right   side 0b11
+    jmp x--, right_ch side 0b11
     out pins, 1      side 0b00 ; Last bit of right also has WCLK change
     ; Loop back to beginning...
 

@@ -14,7 +14,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #ifdef BLUESCSI_NETWORK
-#include <Arduino.h>
 #include "BlueSCSI_platform.h"
 #include "BlueSCSI_platform_network.h"
 #include "BlueSCSI_log.h"

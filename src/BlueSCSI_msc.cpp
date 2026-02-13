@@ -76,17 +76,17 @@ void bluescsi_msc_loop() {
     switch (MSC_LEDMode) {
       case LED_BLINK_FAST:
         LED_OFF();
-        platform_delay_ms(30);
+        platform_delay_ms_with_usb(5);
         break;
       case LED_BLINK_SLOW:
-        platform_delay_ms(30);
+        platform_delay_ms_with_usb(5);
         LED_OFF();
-        platform_delay_ms(100);
+        platform_delay_ms_with_usb(20);
         syncCounter = 1;
         break;
       default:
         // sync sd card ~ 500ms after writes stop
-        if (syncCounter && (++syncCounter > 8)) {
+        if (syncCounter && (++syncCounter > 50)) {
           syncCounter = 0;
           SD.card()->syncDevice();
         }
@@ -94,8 +94,8 @@ void bluescsi_msc_loop() {
 
     // LED always on in card reader mode
     MSC_LEDMode = LED_SOLIDON;
-	  LED_ON(); 
-    platform_delay_ms(30);
+	  LED_ON();
+    platform_delay_ms_with_usb(5);
   }
 
   // turn the LED off to indicate exiting MSC

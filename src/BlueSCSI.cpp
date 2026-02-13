@@ -49,6 +49,10 @@
 #include <minIni.h>
 #include <minIni_cache.h>
 #include <string.h>
+
+#ifndef MHZ
+#define MHZ 1000000UL
+#endif
 #include <strings.h>
 #include <ctype.h>
 #include <zip_parser.h>
