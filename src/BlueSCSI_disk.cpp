@@ -40,6 +40,7 @@
 #include "ROMDrive.h"
 #include "QuirksCheck.h"
 #include <minIni.h>
+#include "minIni_cache.h"
 #include <string.h>
 #include <strings.h>
 #include <assert.h>
@@ -1413,6 +1414,15 @@ bool scsiDiskCheckAnyNetworkDevicesConfigured()
 }
 
 
+// Log raw INI file contents for easier troubleshooting (issue #324).
+void log_ini_contents()
+{
+    uint32_t ini_len = 0;
+    const char* ini_data = ini_get_cache_ptr(&ini_len);
+    if (ini_data && ini_len > 0)
+        log_raw(ini_data, (size_t)ini_len);
+}
+
 /*******************************/
 /* Config handling for SCSI2SD */
 /*******************************/
@@ -1426,6 +1436,8 @@ void s2s_configInit(S2S_BoardCfg* config)
     if (SD.exists(CONFIGFILE))
     {
         logmsg("Reading configuration from " CONFIGFILE);
+
+        log_ini_contents();
     }
     else if (SD.exists(CONFIGFILE ".txt") || SD.exists(CONFIGFILE ".rtf"))
     {
