@@ -471,7 +471,7 @@ bool findHDDImages()
         }
       }
 
-#if defined(BLUESCSI_ULTRAWIDE)
+#if defined(BLUESCSI_ULTRA_WIDE)
       if (g_is_sca_model) {
         // Special filename for dynamic ID SCA drive
         if(strcasecmp(name, SCA_HD_DYNAMIC) == 0)
