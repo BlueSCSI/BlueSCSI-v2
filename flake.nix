@@ -17,9 +17,9 @@
           pico-sdk = pkgs.fetchFromGitHub {
             owner = "bluescsi";
             repo = "pico-sdk-internal";
-            rev = "v2.2.0-smaller-cyw43-spi-pio-rel";
+            rev = "v2.2.0-UltraSupport-rel1";
             fetchSubmodules = true;
-            hash = "sha256-RrJ1IIipggajM6MX+VXMILwfGdHt4o6Rj+utRxWE+mY=";
+            hash = "sha256-jd8wUbjcN1/c2DgVMWXJvS45w6GjUqDFoFu9kTeU4Fg=";
           };
 
           pico-extras = pkgs.fetchFromGitHub {
@@ -33,7 +33,7 @@
         {
           default = pkgs.mkShell {
             packages = with pkgs; [
-              gcc-arm-embedded
+              gcc-arm-embedded-14
               cmake
               python3
               picotool

@@ -28,6 +28,9 @@ endif()
 
 message(STATUS "Using PICO_SDK_PATH: ${PICO_SDK_PATH}")
 
+# Custom board headers for Ultra/Ultra_Wide (RP2350B with 48 GPIOs)
+set(PICO_BOARD_HEADER_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/boards/include)
+
 # Pull in Pico SDK (must be before project())
 include(${PICO_SDK_PATH}/pico_sdk_init.cmake)
 
@@ -60,8 +63,8 @@ pico_sdk_init()
 #   cmake .. -DPICO_BOARD=pico2 -DBLUESCSI_TARGET=Pico_2
 #   cmake .. -DPICO_BOARD=pico2_w -DBLUESCSI_TARGET=Pico_2_DaynaPORT
 #   cmake .. -DPICO_BOARD=pico2_w -DBLUESCSI_TARGET=Pico_2_Audio_SPDIF
-#   cmake .. -DPICO_BOARD=pico2_w -DBLUESCSI_TARGET=Ultra
-#   cmake .. -DPICO_BOARD=pico2 -DBLUESCSI_TARGET=Ultra_Wide
+#   cmake .. -DPICO_BOARD=bluescsi_ultra -DBLUESCSI_TARGET=Ultra
+#   cmake .. -DPICO_BOARD=bluescsi_ultra_wide -DBLUESCSI_TARGET=Ultra_Wide
 # =============================================================================
 
 set(BLUESCSI_TARGET "Pico" CACHE STRING "BlueSCSI target variant to build")
@@ -226,8 +229,8 @@ set(CXX_ONLY_FLAGS
     -Wno-overloaded-virtual
 )
 
-# All targets use -O2 to match PlatformIO behavior.
-list(APPEND COMMON_FLAGS -O2)
+# Use -Os to match PlatformIO precompiled SDK library optimization.
+list(APPEND COMMON_FLAGS -Os)
 
 # =============================================================================
 # Main firmware executable
@@ -383,7 +386,6 @@ elseif(BLUESCSI_TARGET STREQUAL "Ultra")
     target_compile_definitions(BlueSCSI PRIVATE
         BLUESCSI_ULTRA
         BLUESCSI_MCU_RP23XX
-        PICO_RP2350A=0
         ENABLE_AUDIO_OUTPUT
         ENABLE_AUDIO_OUTPUT_I2S
         BLUESCSI_NETWORK
@@ -401,7 +403,6 @@ elseif(BLUESCSI_TARGET STREQUAL "Ultra_Wide")
     target_compile_definitions(BlueSCSI PRIVATE
         BLUESCSI_ULTRA_WIDE
         BLUESCSI_MCU_RP23XX
-        PICO_RP2350A=0
         ENABLE_AUDIO_OUTPUT
         ENABLE_AUDIO_OUTPUT_I2S
         RP2MCU_USE_CPU_PARITY

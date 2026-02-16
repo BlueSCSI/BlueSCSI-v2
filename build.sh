@@ -28,8 +28,8 @@ declare -A TARGETS=(
     [Pico_Audio_SPDIF]=pico_w
     [Pico_2_DaynaPORT]=pico2_w
     [Pico_2_Audio_SPDIF]=pico2_w
-    [Ultra]=pico2_w
-    [Ultra_Wide]=pico2
+    [Ultra]=bluescsi_ultra
+    [Ultra_Wide]=bluescsi_ultra_wide
 )
 
 # Non-default targets (build only when explicitly requested)
