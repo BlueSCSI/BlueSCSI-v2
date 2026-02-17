@@ -155,8 +155,8 @@ int scsiNetworkCommand()
 			done = (scsiNetworkInboundQueue.readIndex == scsiNetworkInboundQueue.writeIndex);
 
 			// there's no hard limit since each packet is processed separately, but we shouldn't tie up
-			// the SCSI bus for a long time
-			if (!done && total >= (1524 * 2))
+			// the SCSI bus for a long time, so stop after ~2 max-sized packets
+			if (!done && total >= (DAYNAPORT_SCSI_PACKET_MAX * 2))
 			{
 				done = 1;
 			}
@@ -175,7 +175,8 @@ int scsiNetworkCommand()
 			}
 			scsiFinishWrite();
 
-			// DaynaPort Mac driver needs a short delay after reading size and flags
+			// DaynaPort Mac driver needs a short delay after reading size and flags.
+			// Timing matches real DaynaPORT SCSI/Link-3 behavior observed on a SCSI bus analyzer.
 			sleep_us(75);
 
 			scsiWrite(scsiNetworkInboundQueue.packets[idx], len);
@@ -187,7 +188,8 @@ int scsiNetworkCommand()
 
 			if (!done)
 			{
-				// DaynaPort Mac driver needs a delay between packets
+				// DaynaPort Mac driver needs a delay between packets.
+				// Timing matches real DaynaPORT SCSI/Link-3 behavior observed on a SCSI bus analyzer.
 				sleep_us(300);
 			}
 		}
