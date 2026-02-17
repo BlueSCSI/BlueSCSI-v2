@@ -19,6 +19,7 @@
 //	along with SCSI2SD.  If not, see <http://www.gnu.org/licenses/>.
 
 
+#include <string.h>
 #include "scsi.h"
 #include "scsiPhy.h"
 #include "config.h"
@@ -35,8 +36,9 @@
 #include "tape.h"
 #include "mo.h"
 #include "vendor.h"
-#include <string.h>
 #include "bluescsi_toolbox.h"
+#include "AmigaWIFI/AmigaWIFI.h"
+
 
 // Global SCSI device state.
 ScsiDevice scsiDev S2S_DMA_ALIGN;
