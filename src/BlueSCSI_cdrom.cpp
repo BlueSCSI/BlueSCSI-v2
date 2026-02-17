@@ -271,8 +271,9 @@ static uint32_t getLeadOutLBA(const CUETrackInfo* lasttrack)
     if (lasttrack != nullptr && lasttrack->track_number != 0)
     {
         image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-        uint32_t lastTrackBlocks = (img.file.size() - lasttrack->file_offset)
-                / lasttrack->sector_length;
+        uint64_t sz = img.file.size();
+        uint32_t lastTrackBlocks = (sz > lasttrack->file_offset)
+                ? (sz - lasttrack->file_offset) / lasttrack->sector_length : 0;
         return lasttrack->data_start + lastTrackBlocks;
     }
     else
@@ -507,7 +508,8 @@ static void getTrackFromLBA(image_config_t &img, uint32_t lba, CUETrackInfo *res
     }
     else if (img.cdrom_binfile_index == img.cdrom_trackinfo.file_index &&
              lba >= img.cdrom_trackinfo.track_start &&
-             lba < img.cdrom_trackinfo.data_start + (img.file.size() - img.cdrom_trackinfo.file_offset) / img.cdrom_trackinfo.sector_length)
+             lba < img.cdrom_trackinfo.data_start + (img.file.size() > img.cdrom_trackinfo.file_offset
+                ? (img.file.size() - img.cdrom_trackinfo.file_offset) / img.cdrom_trackinfo.sector_length : 0))
     {
         // Same track as previous time
         *result = img.cdrom_trackinfo;
@@ -1220,6 +1222,15 @@ bool cdromValidateCueSheet(image_config_t &img)
         // Check that the bin file is available
         if (!cdromSelectBinFileForTrack(img, trackinfo))
         {
+            return false;
+        }
+
+        // Verify that the bin file is large enough for the track's offset
+        if (trackinfo->file_offset > 0 && img.file.size() < trackinfo->file_offset)
+        {
+            logmsg("---- CUE track ", trackinfo->track_number,
+                   " offset exceeds bin file size (",
+                   (int)(img.file.size() / 1048576), " MB)");
             return false;
         }
 
@@ -2551,6 +2562,7 @@ uint32_t cdromTestCalcTrackEndLBA(uint32_t data_start, uint64_t file_size,
                                    uint64_t file_offset, uint32_t sector_length)
 {
     // This matches the calculation in getTrackFromLBA's cache check
-    return data_start + (file_size - file_offset) / sector_length;
+    return data_start + (file_size > file_offset
+        ? (file_size - file_offset) / sector_length : 0);
 }
 #endif
