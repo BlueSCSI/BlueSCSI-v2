@@ -69,6 +69,9 @@ bool scsiInitiatorReadCapacity(int target_id, uint32_t *sectorcount, uint32_t *s
 // From BlueSCSI.cpp
 extern bool g_sdcard_present;
 
+// Forward declarations
+static void parseAudioFrameMetadata(uint8_t *data, uint32_t frame_size);
+
 /*************************************
  * High level initiator mode logic   *
  *************************************/
@@ -85,6 +88,10 @@ static struct {
     // Is imaging a drive in progress, or are we scanning?
     bool imaging;
 
+    // Audio mode for DAT tape drives
+    bool audio_mode;
+    uint16_t null_frames_max;  // Max consecutive null frames before stopping (can be up to 65535)
+
     // Information about currently selected drive
     int target_id;
     uint32_t sectorsize;
@@ -95,6 +102,34 @@ static struct {
     uint32_t bad_sector_count;
     uint8_t ansi_version;
     uint8_t device_type;
+
+    // Audio mode frame metadata (for DAT tapes)
+    uint32_t interpolation_left;
+    uint32_t interpolation_right;
+    uint32_t interpolation_both;
+    uint32_t good_frames;
+    uint32_t all_frames;
+    uint8_t null_frames;
+
+    // DAT frame metadata - absolute time
+    uint8_t frame_abs_time_hour;
+    uint8_t frame_abs_time_min;
+    uint8_t frame_abs_time_sec;
+    uint8_t frame_abs_time_frame;
+
+    // DAT frame metadata - program time
+    uint8_t frame_prg_time_hour;
+    uint8_t frame_prg_time_min;
+    uint8_t frame_prg_time_sec;
+    uint8_t frame_prg_time_frame;
+
+    // DAT frame metadata - date/time
+    uint8_t frame_datetime_year;
+    uint8_t frame_datetime_month;
+    uint8_t frame_datetime_day;
+    uint8_t frame_datetime_hour;
+    uint8_t frame_datetime_min;
+    uint8_t frame_datetime_sec;
 
     // Retry information for sector reads.
     // If a large read fails, retry is done sector-by-sector.
@@ -132,6 +167,10 @@ void scsiInitiatorInit()
     g_initiator_state.max_retry_count = ini_getl("SCSI", "InitiatorMaxRetry", 5, CONFIGFILE);
     g_initiator_state.use_read10 = ini_getbool("SCSI", "InitiatorUseRead10", false, CONFIGFILE);
 
+    // Audio mode configuration for DAT tape drives
+    g_initiator_state.audio_mode = ini_getbool("SCSI", "AudioMode", false, CONFIGFILE);
+    g_initiator_state.null_frames_max = ini_getl("SCSI", "InitiatorMaxNullFrames", 300, CONFIGFILE);
+
     // treat initiator id as already imaged drive so it gets skipped
     g_initiator_state.drives_imaged = 1 << g_initiator_state.initiator_id;
 
@@ -166,6 +205,28 @@ void scsiInitiatorInit()
             g_initiator_state.start_sector[i] = 0;
         }
     }
+
+    // Audio mode frame metadata initialization
+    g_initiator_state.interpolation_left = 0;
+    g_initiator_state.interpolation_right = 0;
+    g_initiator_state.interpolation_both = 0;
+    g_initiator_state.good_frames = 0;
+    g_initiator_state.all_frames = 0;
+    g_initiator_state.null_frames = 0;
+    g_initiator_state.frame_abs_time_hour = 0;
+    g_initiator_state.frame_abs_time_min = 0;
+    g_initiator_state.frame_abs_time_sec = 0;
+    g_initiator_state.frame_abs_time_frame = 0;
+    g_initiator_state.frame_prg_time_hour = 0;
+    g_initiator_state.frame_prg_time_min = 0;
+    g_initiator_state.frame_prg_time_sec = 0;
+    g_initiator_state.frame_prg_time_frame = 0;
+    g_initiator_state.frame_datetime_year = 0;
+    g_initiator_state.frame_datetime_month = 0;
+    g_initiator_state.frame_datetime_day = 0;
+    g_initiator_state.frame_datetime_hour = 0;
+    g_initiator_state.frame_datetime_min = 0;
+    g_initiator_state.frame_datetime_sec = 0;
 }
 
 int scsiInitiatorGetOwnID()
@@ -327,10 +388,23 @@ void scsiInitiatorMainLoop()
             }
 #endif
 
-            bool readcapok = startstopok &&
-                scsiInitiatorReadCapacity(g_initiator_state.target_id,
-                                          &g_initiator_state.sectorcount,
-                                          &g_initiator_state.sectorsize);
+            bool readcapok = false;
+
+            // For audio mode (DAT tapes), skip read capacity and use configured frame size
+            if (g_initiator_state.audio_mode)
+            {
+                readcapok = startstopok;
+                g_initiator_state.sectorsize = ini_getl("SCSI", "AudioFrameSize", 5822, CONFIGFILE);
+                g_initiator_state.sectorcount = 1000000;  // Unknown length, will detect end of data
+                logmsg("Audio mode enabled, frame size: ", (int)g_initiator_state.sectorsize);
+            }
+            else
+            {
+                readcapok = startstopok &&
+                    scsiInitiatorReadCapacity(g_initiator_state.target_id,
+                                              &g_initiator_state.sectorcount,
+                                              &g_initiator_state.sectorsize);
+            }
             dbgmsg("read capacity: ", readcapok ? "OK" : "FAILED");
 
             bool inquiryok = startstopok &&
@@ -556,6 +630,39 @@ void scsiInitiatorMainLoop()
                 }
 
                 logmsg("Starting to copy drive data to ", filename);
+
+                // Initialize audio mode if enabled
+                if (g_initiator_state.audio_mode)
+                {
+                    // Reset audio mode statistics
+                    g_initiator_state.interpolation_left = 0;
+                    g_initiator_state.interpolation_right = 0;
+                    g_initiator_state.interpolation_both = 0;
+                    g_initiator_state.good_frames = 0;
+                    g_initiator_state.all_frames = 0;
+                    g_initiator_state.null_frames = 0;
+
+                    // Set tape to audio mode and rewind
+                    if (scsiSetMode(SCSI_MODE_AUDIO, g_initiator_state.target_id) != 0)
+                    {
+                        logmsg("Failed to set audio mode");
+                    }
+
+                    int current_mode = -1;
+                    scsiGetMode(&current_mode, g_initiator_state.target_id);
+                    if (current_mode == SCSI_MODE_AUDIO)
+                        logmsg("Drive is in AUDIO mode");
+                    else if (current_mode == SCSI_MODE_DATA)
+                        logmsg("Drive is in DATA mode");
+
+                    uint32_t position;
+                    scsiReadPosition(&position, g_initiator_state.target_id);
+                    logmsg("Starting position: ", (int)position);
+
+                    scsiRewind(g_initiator_state.target_id);
+                    g_initiator_state.max_sector_per_transfer = 1;  // Read one frame at a time
+                }
+
                 g_initiator_state.imaging = true;
 
                 // Initiator start sector override
@@ -585,6 +692,22 @@ void scsiInitiatorMainLoop()
             if(g_initiator_state.bad_sector_count != 0)
             {
                 logmsg("NOTE: There were ",  (int) g_initiator_state.bad_sector_count, " bad sectors that could not be read off this drive.");
+            }
+
+            // Report audio mode statistics
+            if (g_initiator_state.audio_mode)
+            {
+                if (g_initiator_state.interpolation_left > 0)
+                    logmsg("Audio: ", (int)g_initiator_state.interpolation_left, " left channel interpolations");
+                if (g_initiator_state.interpolation_right > 0)
+                    logmsg("Audio: ", (int)g_initiator_state.interpolation_right, " right channel interpolations");
+                if (g_initiator_state.interpolation_both > 0)
+                    logmsg("Audio: ", (int)g_initiator_state.interpolation_both, " both channel interpolations");
+                logmsg("Audio: ", (int)g_initiator_state.good_frames, " good frames / ",
+                       (int)g_initiator_state.all_frames, " total frames");
+
+                // Truncate file to actual data written
+                g_initiator_state.target_file.truncate();
             }
 
             if (!g_initiator_state.eject_when_done)
@@ -651,10 +774,28 @@ void scsiInitiatorMainLoop()
             g_initiator_state.target_file.flush();
 
             int speed_kbps = numtoread * g_initiator_state.sectorsize / (platform_millis() - time_start);
-            logmsg("SCSI read succeeded, sectors done: ",
-                  (int)g_initiator_state.sectors_done, " / ", (int)g_initiator_state.sectorcount,
-                  " speed ", speed_kbps, " kB/s - ", 
-                  (int)(100 * (int64_t)g_initiator_state.sectors_done / g_initiator_state.sectorcount), "%");
+            if (g_initiator_state.audio_mode)
+            {
+                // Audio mode: show timestamp and interpolation info
+                logmsg("Audio frame ", (int)g_initiator_state.sectors_done,
+                       " ABS: ", (int)g_initiator_state.frame_abs_time_hour, ":",
+                       (int)g_initiator_state.frame_abs_time_min, ":",
+                       (int)g_initiator_state.frame_abs_time_sec, ":",
+                       (int)g_initiator_state.frame_abs_time_frame,
+                       " PRG: ", (int)g_initiator_state.frame_prg_time_hour, ":",
+                       (int)g_initiator_state.frame_prg_time_min, ":",
+                       (int)g_initiator_state.frame_prg_time_sec,
+                       " interp[L:", (int)g_initiator_state.interpolation_left,
+                       " R:", (int)g_initiator_state.interpolation_right,
+                       " B:", (int)g_initiator_state.interpolation_both, "]");
+            }
+            else
+            {
+                logmsg("SCSI read succeeded, sectors done: ",
+                      (int)g_initiator_state.sectors_done, " / ", (int)g_initiator_state.sectorcount,
+                      " speed ", speed_kbps, " kB/s - ",
+                      (int)(100 * (int64_t)g_initiator_state.sectors_done / g_initiator_state.sectorcount), "%");
+            }
         }
     }
 }
@@ -1264,10 +1405,25 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
 {
     int status = -1;
 
+    if (g_initiator_state.audio_mode)
+    {
+        // Audio mode for tape drives: READ command specifies byte count, not LBA/sector
+        // The transfer length is in bytes for sequential access devices
+        uint32_t byte_count = sectorsize;
+        uint8_t command[6] = {0x08,
+            0x00,
+            (uint8_t)(byte_count >> 16),
+            (uint8_t)(byte_count >> 8),
+            (uint8_t)(byte_count),
+            0x00
+        };
+
+        // Start executing command, return in data phase
+        status = scsiInitiatorRunCommand(target_id, command, sizeof(command), NULL, 0, NULL, 0, true);
+    }
     // Read6 command supports 21 bit LBA - max of 0x1FFFFF
     // ref: https://www.seagate.com/files/staticfiles/support/docs/manual/Interface%20manuals/100293068j.pdf pg 134
-    bool fits_read6 = (start_sector < 0x1FFFFF && sectorcount <= 256);
-    if (!g_initiator_state.use_read10 && fits_read6)
+    else if (!g_initiator_state.use_read10 && (start_sector < 0x1FFFFF && sectorcount <= 256))
     {
         // Use READ6 command for compatibility with old SCSI1 drives
         // Note that even with SCSI1 drives we have no choice but to use READ10 if the drive
@@ -1301,10 +1457,25 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
 
     if (status != 0)
     {
-        uint8_t sense_key;
-        scsiRequestSense(target_id, &sense_key);
+        uint8_t sense_key, asc, ascq;
+        scsiRequestSense(target_id, &sense_key, &asc, &ascq);
+
+        // In audio mode, check for end of data condition
+        if (g_initiator_state.audio_mode && sense_key == 0x08 && asc == 0x00 && ascq == 0x05)
+        {
+            // Blank check / End of data detected - this is normal for tape end
+            logmsg("End of data detected on tape");
+            g_initiator_state.sectorcount = g_initiator_state.sectors_done;
+            g_initiator_state.sectorcount_all = g_initiator_state.sectors_done;
+            scsiHostPhyRelease();
+            return true;
+        }
 
         scsiLogInitiatorCommandFailure("scsiInitiatorReadDataToFile command phase", target_id, status, sense_key);
+        if (g_initiator_state.audio_mode)
+        {
+            scsiLogSenseError(sense_key, asc, ascq);
+        }
         scsiHostPhyRelease();
         return false;
     }
@@ -1354,6 +1525,11 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
         logmsg("SCSI read from sector ", (int)start_sector, " was incomplete: expected ",
              (int)g_initiator_transfer.bytes_scsi, " got ", (int)g_initiator_transfer.bytes_sd, " bytes");
         g_initiator_transfer.all_ok = false;
+    }
+    else if (g_initiator_state.audio_mode)
+    {
+        // Parse DAT audio frame metadata for timestamp and interpolation info
+        parseAudioFrameMetadata(scsiDev.data, sectorsize);
     }
 
     while ((phase = (SCSI_PHASE)scsiHostPhyGetPhase()) != BUS_FREE)
@@ -1418,5 +1594,395 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
     }
 }
 
+// ============================================================
+// Tape drive / DAT audio mode functions
+// ============================================================
+
+// Helper to convert BCD to decimal
+static uint8_t bcdToDec(uint8_t bcd)
+{
+    return (10 * ((bcd & 0xF0) >> 4)) + (bcd & 0x0F);
+}
+
+#ifdef UNIT_TEST
+// Test accessor for bcdToDec
+uint8_t test_bcdToDec(uint8_t bcd)
+{
+    return bcdToDec(bcd);
+}
+#endif
+
+// Log detailed SCSI sense error information
+void scsiLogSenseError(uint8_t sense_key, uint8_t asc, uint8_t ascq)
+{
+    const char *sense_key_str = "Unknown";
+    switch (sense_key)
+    {
+        case 0x0: sense_key_str = "No Sense"; break;
+        case 0x1: sense_key_str = "Recovered Error"; break;
+        case 0x2: sense_key_str = "Not Ready"; break;
+        case 0x3: sense_key_str = "Medium Error"; break;
+        case 0x4: sense_key_str = "Hardware Error"; break;
+        case 0x5: sense_key_str = "Illegal Request"; break;
+        case 0x6: sense_key_str = "Unit Attention"; break;
+        case 0x7: sense_key_str = "Data Protect"; break;
+        case 0x8: sense_key_str = "Blank Check"; break;
+        case 0x9: sense_key_str = "Vendor-Specific"; break;
+        case 0xA: sense_key_str = "Copy Aborted"; break;
+        case 0xB: sense_key_str = "Aborted Command"; break;
+        case 0xD: sense_key_str = "Volume Overflow"; break;
+        case 0xE: sense_key_str = "Miscompare"; break;
+    }
+
+    uint16_t sense_code = ((uint16_t)asc << 8) | ascq;
+    const char *code_str = "Unknown code";
+
+    // Common sense codes
+    switch (sense_code)
+    {
+        case 0x0000: code_str = "No additional sense information"; break;
+        case 0x0001: code_str = "Filemark detected"; break;
+        case 0x0002: code_str = "End of partition/medium detected"; break;
+        case 0x0003: code_str = "Setmark detected"; break;
+        case 0x0004: code_str = "Beginning of partition/medium detected"; break;
+        case 0x0005: code_str = "End of data detected"; break;
+        case 0x0006: code_str = "I/O process termination"; break;
+        case 0x0400: code_str = "LU not ready, cause not reportable"; break;
+        case 0x0401: code_str = "LU not ready, becoming ready"; break;
+        case 0x0402: code_str = "LU not ready, init command required"; break;
+        case 0x0403: code_str = "LU not ready, manual intervention required"; break;
+        case 0x1100: code_str = "Unrecovered read error"; break;
+        case 0x1400: code_str = "Recorded entity not found"; break;
+        case 0x2000: code_str = "Invalid command operation code"; break;
+        case 0x2100: code_str = "LBA out of range"; break;
+        case 0x2400: code_str = "Invalid field in CDB"; break;
+        case 0x2500: code_str = "LU not supported"; break;
+        case 0x2600: code_str = "Invalid field in parameter list"; break;
+        case 0x2800: code_str = "Not ready to ready transition"; break;
+        case 0x2900: code_str = "Power on, reset or bus device reset"; break;
+        case 0x3000: code_str = "Incompatible medium installed"; break;
+        case 0x3001: code_str = "Cannot read medium, unknown format"; break;
+        case 0x3A00: code_str = "Medium not present"; break;
+        case 0x3B00: code_str = "Sequential positioning error"; break;
+        case 0x3B01: code_str = "Tape position error at beginning of medium"; break;
+        case 0x3B02: code_str = "Tape position error at end of medium"; break;
+        case 0x3B08: code_str = "Reposition error"; break;
+        case 0x3B09: code_str = "Read past end of medium"; break;
+        case 0x3B0A: code_str = "Read past beginning of medium"; break;
+        case 0x3B0F: code_str = "End of medium reached"; break;
+    }
+
+    logmsg("SCSI Error - Sense: ", sense_key_str, " (", (int)sense_key,
+           "), Code: ", code_str, " (", (int)asc, "/", (int)ascq, ")");
+}
+
+// Set the tape drive mode (SCSI_MODE_DATA or SCSI_MODE_AUDIO)
+int scsiSetMode(int mode, int target_id)
+{
+    // Mode Select command for DAT drives
+    // This sets the density code in the block descriptor
+    uint8_t mode_data[12] = {
+        0x00, 0x00, 0x10, 0x08,  // Header
+        0x00, 0x00, 0x00, 0x00,  // Block descriptor
+        0x00, 0x00, 0x00, 0x02
+    };
+
+    uint8_t command[6] = {0x15, 0x00, 0x00, 0x00, 12, 0x00};
+
+    if (mode != SCSI_MODE_DATA && mode != SCSI_MODE_AUDIO)
+        return -1;
+
+    // Set density code based on mode
+    if (mode == SCSI_MODE_DATA)
+        mode_data[4] = 0x13;  // DDS data mode
+    else
+        mode_data[4] = 0x80;  // Audio mode
+
+    int status = scsiInitiatorRunCommand(target_id,
+                                         command, sizeof(command),
+                                         NULL, 0,
+                                         mode_data, sizeof(mode_data));
+
+    if (status == 0)
+    {
+        logmsg("Tape mode set to ", (mode == SCSI_MODE_AUDIO) ? "AUDIO" : "DATA");
+    }
+    else
+    {
+        uint8_t sense_key, asc, ascq;
+        scsiRequestSense(target_id, &sense_key, &asc, &ascq);
+        logmsg("Set mode failed on target ", target_id);
+        scsiLogSenseError(sense_key, asc, ascq);
+        return 1;
+    }
+    return 0;
+}
+
+// Get the current tape drive mode
+int scsiGetMode(int *mode, int target_id)
+{
+    uint8_t sense_data[12] = {0};
+    uint8_t command[6] = {0x1A, 0x00, 0x00, 0x00, 12, 0x00};  // Mode Sense
+
+    *mode = -1;
+    int status = scsiInitiatorRunCommand(target_id,
+                                         command, sizeof(command),
+                                         sense_data, sizeof(sense_data),
+                                         NULL, 0);
+
+    if (status == 0)
+    {
+        // Check density code in block descriptor
+        if (sense_data[4] == 0x80)
+        {
+            *mode = SCSI_MODE_AUDIO;
+            return 0;
+        }
+        else if (sense_data[4] == 0x13)
+        {
+            *mode = SCSI_MODE_DATA;
+            return 0;
+        }
+    }
+    else
+    {
+        uint8_t sense_key, asc, ascq;
+        scsiRequestSense(target_id, &sense_key, &asc, &ascq);
+        logmsg("Get mode failed on target ", target_id);
+        scsiLogSenseError(sense_key, asc, ascq);
+    }
+    return -1;
+}
+
+// Rewind the tape to beginning
+int scsiRewind(int target_id)
+{
+    uint8_t command[6] = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+    int status = scsiInitiatorRunCommand(target_id,
+                                         command, sizeof(command),
+                                         NULL, 0,
+                                         NULL, 0,
+                                         false, 120000);  // Long timeout for rewind
+
+    if (status != 0)
+    {
+        uint8_t sense_key, asc, ascq;
+        scsiRequestSense(target_id, &sense_key, &asc, &ascq);
+        logmsg("Rewind failed on target ", target_id);
+        scsiLogSenseError(sense_key, asc, ascq);
+        return status;
+    }
+    logmsg("Tape rewound successfully");
+    return 0;
+}
+
+// Read the current tape position
+int scsiReadPosition(uint32_t *position, int target_id)
+{
+    uint8_t command[10] = {0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    uint8_t buffer[20] = {0};
+
+    int status = scsiInitiatorRunCommand(target_id,
+                                         command, sizeof(command),
+                                         buffer, sizeof(buffer),
+                                         NULL, 0);
+
+    if (status == 0)
+    {
+        *position = ((uint32_t)buffer[4] << 24) |
+                    ((uint32_t)buffer[5] << 16) |
+                    ((uint32_t)buffer[6] << 8) |
+                    (uint32_t)buffer[7];
+    }
+    else
+    {
+        *position = 0;
+    }
+    return status;
+}
+
+// Seek to a specific position on the tape
+int scsiLocate(uint32_t position, int target_id)
+{
+    uint8_t command[10] = {
+        0x2B, 0x00, 0x00,
+        (uint8_t)(position >> 24),
+        (uint8_t)(position >> 16),
+        (uint8_t)(position >> 8),
+        (uint8_t)(position),
+        0x00, 0x00, 0x00
+    };
+
+    int status = scsiInitiatorRunCommand(target_id,
+                                         command, sizeof(command),
+                                         NULL, 0,
+                                         NULL, 0,
+                                         false, 120000);  // Long timeout for seek
+
+    if (status != 0)
+    {
+        uint8_t sense_key, asc, ascq;
+        scsiRequestSense(target_id, &sense_key, &asc, &ascq);
+        logmsg("Locate failed on target ", target_id);
+        scsiLogSenseError(sense_key, asc, ascq);
+    }
+    return status;
+}
+
+// Get block size limits for the tape drive
+int scsiGetBlockLimits(uint32_t *max_block_size, int target_id)
+{
+    uint8_t command[6] = {0x05, 0x00, 0x00, 0x00, 0x00, 0x00};
+    uint8_t buffer[6] = {0};
+
+    int status = scsiInitiatorRunCommand(target_id,
+                                         command, sizeof(command),
+                                         buffer, sizeof(buffer),
+                                         NULL, 0);
+
+    if (status == 0)
+    {
+        *max_block_size = ((uint32_t)buffer[1] << 16) |
+                          ((uint32_t)buffer[2] << 8) |
+                          (uint32_t)buffer[3];
+        logmsg("Block limits: max ", (int)*max_block_size);
+    }
+    else
+    {
+        uint8_t sense_key, asc, ascq;
+        scsiRequestSense(target_id, &sense_key, &asc, &ascq);
+        scsiLogSenseError(sense_key, asc, ascq);
+        *max_block_size = 0;
+    }
+    return status;
+}
+
+#ifdef UNIT_TEST
+// Test accessors for audio mode state
+uint32_t test_get_interpolation_left() { return g_initiator_state.interpolation_left; }
+uint32_t test_get_interpolation_right() { return g_initiator_state.interpolation_right; }
+uint32_t test_get_interpolation_both() { return g_initiator_state.interpolation_both; }
+uint32_t test_get_good_frames() { return g_initiator_state.good_frames; }
+uint32_t test_get_all_frames() { return g_initiator_state.all_frames; }
+uint8_t test_get_null_frames() { return g_initiator_state.null_frames; }
+uint16_t test_get_null_frames_max() { return g_initiator_state.null_frames_max; }
+uint32_t test_get_sectorcount() { return g_initiator_state.sectorcount; }
+uint32_t test_get_sectors_done() { return g_initiator_state.sectors_done; }
+bool test_get_audio_mode() { return g_initiator_state.audio_mode; }
+uint32_t test_get_sectorsize() { return g_initiator_state.sectorsize; }
+
+// Test accessors for frame metadata
+uint8_t test_get_abs_time_hour() { return g_initiator_state.frame_abs_time_hour; }
+uint8_t test_get_abs_time_min() { return g_initiator_state.frame_abs_time_min; }
+uint8_t test_get_abs_time_sec() { return g_initiator_state.frame_abs_time_sec; }
+uint8_t test_get_abs_time_frame() { return g_initiator_state.frame_abs_time_frame; }
+uint8_t test_get_prg_time_hour() { return g_initiator_state.frame_prg_time_hour; }
+uint8_t test_get_prg_time_min() { return g_initiator_state.frame_prg_time_min; }
+uint8_t test_get_prg_time_sec() { return g_initiator_state.frame_prg_time_sec; }
+uint8_t test_get_prg_time_frame() { return g_initiator_state.frame_prg_time_frame; }
+uint8_t test_get_datetime_year() { return g_initiator_state.frame_datetime_year; }
+uint8_t test_get_datetime_month() { return g_initiator_state.frame_datetime_month; }
+uint8_t test_get_datetime_day() { return g_initiator_state.frame_datetime_day; }
+uint8_t test_get_datetime_hour() { return g_initiator_state.frame_datetime_hour; }
+uint8_t test_get_datetime_min() { return g_initiator_state.frame_datetime_min; }
+uint8_t test_get_datetime_sec() { return g_initiator_state.frame_datetime_sec; }
+
+// Test setters for audio mode state (for test setup)
+void test_set_null_frames_max(uint16_t val) { g_initiator_state.null_frames_max = val; }
+void test_set_sectors_done(uint32_t val) { g_initiator_state.sectors_done = val; }
+void test_set_audio_mode(bool val) { g_initiator_state.audio_mode = val; }
+void test_set_sectorsize(uint32_t val) { g_initiator_state.sectorsize = val; }
+void test_set_sectorcount(uint32_t val) { g_initiator_state.sectorcount = val; }
+void test_set_use_read10(bool val) { g_initiator_state.use_read10 = val; }
+void test_reset_audio_state() {
+    g_initiator_state.interpolation_left = 0;
+    g_initiator_state.interpolation_right = 0;
+    g_initiator_state.interpolation_both = 0;
+    g_initiator_state.good_frames = 0;
+    g_initiator_state.all_frames = 0;
+    g_initiator_state.null_frames = 0;
+    g_initiator_state.sectorcount = 1000000;
+    g_initiator_state.sectors_done = 0;
+}
+#endif
+
+// Parse DAT audio frame metadata from the read buffer
+// Frame format follows DAT (Digital Audio Tape) subcode specifications
+static void parseAudioFrameMetadata(uint8_t *data, uint32_t frame_size)
+{
+    if (frame_size < 0x16BC)
+        return;
+
+    // Extract timestamps from DAT subcode area
+    // These offsets are specific to DAT audio frame format
+    g_initiator_state.frame_abs_time_hour = bcdToDec(data[0x168B]);
+    g_initiator_state.frame_abs_time_min = bcdToDec(data[0x168C]);
+    g_initiator_state.frame_abs_time_sec = bcdToDec(data[0x168D]);
+    g_initiator_state.frame_abs_time_frame = bcdToDec(data[0x168E]);
+
+    g_initiator_state.frame_prg_time_hour = bcdToDec(data[0x1683]);
+    g_initiator_state.frame_prg_time_min = bcdToDec(data[0x1684]);
+    g_initiator_state.frame_prg_time_sec = bcdToDec(data[0x1685]);
+    g_initiator_state.frame_prg_time_frame = bcdToDec(data[0x1686]);
+
+    g_initiator_state.frame_datetime_year = bcdToDec(data[0x16A1]);
+    g_initiator_state.frame_datetime_month = bcdToDec(data[0x16A2]);
+    g_initiator_state.frame_datetime_day = bcdToDec(data[0x16A3]);
+    g_initiator_state.frame_datetime_hour = bcdToDec(data[0x16A4]);
+    g_initiator_state.frame_datetime_min = bcdToDec(data[0x16A5]);
+    g_initiator_state.frame_datetime_sec = bcdToDec(data[0x16A6]);
+
+    // Check interpolation flags (indicate data recovery was needed)
+    uint8_t interp_flags = data[0x16BB];
+    if (interp_flags & 0x40)
+        g_initiator_state.interpolation_left++;
+    if (interp_flags & 0x20)
+        g_initiator_state.interpolation_right++;
+    if ((interp_flags & 0x60) == 0x60)
+        g_initiator_state.interpolation_both++;
+    if ((interp_flags & 0x60) == 0x00)
+        g_initiator_state.good_frames++;
+
+    g_initiator_state.all_frames++;
+
+    // Check for null frame (all time codes are zero)
+    bool is_null_frame =
+        (g_initiator_state.frame_abs_time_hour == 0) &&
+        (g_initiator_state.frame_abs_time_min == 0) &&
+        (g_initiator_state.frame_abs_time_sec == 0) &&
+        (g_initiator_state.frame_prg_time_hour == 0) &&
+        (g_initiator_state.frame_prg_time_min == 0) &&
+        (g_initiator_state.frame_prg_time_sec == 0) &&
+        (g_initiator_state.frame_datetime_hour == 0);
+
+    if (is_null_frame && g_initiator_state.null_frames_max > 0)
+    {
+        if (g_initiator_state.null_frames == 0)
+            logmsg("Start of null frames detected");
+        g_initiator_state.null_frames++;
+
+        if (g_initiator_state.null_frames >= g_initiator_state.null_frames_max)
+        {
+            logmsg("Consecutive null frame maximum reached, ending capture");
+            g_initiator_state.sectorcount = g_initiator_state.sectors_done;
+            g_initiator_state.sectorcount_all = g_initiator_state.sectors_done;
+        }
+    }
+    else
+    {
+        if (g_initiator_state.null_frames > 0)
+            logmsg("End of null frames");
+        g_initiator_state.null_frames = 0;
+    }
+}
+
+#ifdef UNIT_TEST
+// Test accessor for parseAudioFrameMetadata
+void test_parseAudioFrameMetadata(uint8_t *data, uint32_t frame_size)
+{
+    parseAudioFrameMetadata(data, frame_size);
+}
+#endif
 
 #endif

@@ -29,6 +29,11 @@
 #define SCSI_DEVICE_TYPE_CD 0x5
 #define SCSI_DEVICE_TYPE_MO 0x7
 #define SCSI_DEVICE_TYPE_DIRECT_ACCESS 0x0
+#define SCSI_DEVICE_TYPE_SEQUENTIAL 0x1
+
+// Mode settings for tape drives (DAT audio mode)
+#define SCSI_MODE_DATA 0
+#define SCSI_MODE_AUDIO 1
 
 #define INITIATOR_IMAGE_SKIP_IF_EXISTS 0
 #define INITIATOR_IMAGE_INCREMENT_IF_EXISTS 1
@@ -83,3 +88,28 @@ bool scsiInitiatorResetBusConfig(int target_id);
 
 // Negotiate bus width with target
 bool scsiInitiatorSetBusWidth(int target_id, int busWidth);
+
+// ============================================================
+// Tape drive / DAT audio mode functions (for sequential devices)
+// ============================================================
+
+// Log detailed SCSI error information based on sense key and ASC/ASCQ
+void scsiLogSenseError(uint8_t sense_key, uint8_t asc, uint8_t ascq);
+
+// Set the tape drive mode (SCSI_MODE_DATA or SCSI_MODE_AUDIO)
+int scsiSetMode(int mode, int target_id);
+
+// Get the current tape drive mode
+int scsiGetMode(int *mode, int target_id);
+
+// Rewind the tape to beginning
+int scsiRewind(int target_id);
+
+// Read the current tape position
+int scsiReadPosition(uint32_t *position, int target_id);
+
+// Seek to a specific position on the tape
+int scsiLocate(uint32_t position, int target_id);
+
+// Get block size limits for the tape drive
+int scsiGetBlockLimits(uint32_t *max_block_size, int target_id);
