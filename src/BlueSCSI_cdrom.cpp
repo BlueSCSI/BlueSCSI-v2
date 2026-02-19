@@ -1191,6 +1191,42 @@ void doGetConfiguration(uint8_t rt, uint16_t startFeature, uint16_t allocationLe
 /* CUE sheet check at image load time   */
 /****************************************/
 
+// Check if a CUE FILE reference matches a BIN filename.
+// Strips extensions and compares stems case-insensitively.
+// Allows BlueSCSI prefix pattern: e.g., "castles.bin" matches "CD3_castles.bin"
+// because the BIN stem ends with "_castles" matching the CUE stem "castles".
+static bool cdromCueFilenameMatchesBin(const char *cue_ref, const char *bin_name)
+{
+    // Strip directory path from CUE reference (e.g., "Audio/track.bin" -> "track.bin")
+    const char *cue_slash = strrchr(cue_ref, '/');
+    const char *cue_bslash = strrchr(cue_ref, '\\');
+    if (cue_bslash && (!cue_slash || cue_bslash > cue_slash))
+        cue_slash = cue_bslash;
+    if (cue_slash)
+        cue_ref = cue_slash + 1;
+
+    const char *cue_dot = strrchr(cue_ref, '.');
+    size_t cue_stem_len = cue_dot ? (size_t)(cue_dot - cue_ref) : strlen(cue_ref);
+    const char *bin_dot = strrchr(bin_name, '.');
+    size_t bin_stem_len = bin_dot ? (size_t)(bin_dot - bin_name) : strlen(bin_name);
+
+    if (cue_stem_len == 0)
+        return false;
+
+    // Exact stem match (case-insensitive)
+    if (bin_stem_len == cue_stem_len &&
+        strncasecmp(bin_name, cue_ref, cue_stem_len) == 0)
+        return true;
+
+    // BIN stem ends with "_" + CUE stem (BlueSCSI prefix pattern)
+    if (bin_stem_len > cue_stem_len + 1 &&
+        bin_name[bin_stem_len - cue_stem_len - 1] == '_' &&
+        strncasecmp(bin_name + bin_stem_len - cue_stem_len, cue_ref, cue_stem_len) == 0)
+        return true;
+
+    return false;
+}
+
 bool cdromValidateCueSheet(image_config_t &img)
 {
     CUEParser parser;
@@ -1241,6 +1277,31 @@ bool cdromValidateCueSheet(image_config_t &img)
     {
         logmsg("---- Opened cue sheet but no valid tracks found");
         return false;
+    }
+
+    // For single-BIN images (not folder), verify CUE FILE reference
+    // matches the actual BIN filename. Users commonly rename files with
+    // a BlueSCSI prefix (e.g., castles.bin -> CD3_castles.bin) so we
+    // check if the CUE reference is a suffix match after '_'.
+    if (!img.file.isFolder() && trackcount > 0)
+    {
+        char bin_name[MAX_FILE_PATH + 1] = {0};
+        img.file.getFilename(bin_name, sizeof(bin_name));
+
+        CUEParser check_parser;
+        if (loadCueSheet(img, check_parser))
+        {
+            const CUETrackInfo *first = check_parser.next_track(0);
+            if (first && first->filename[0] != '\0')
+            {
+                if (!cdromCueFilenameMatchesBin(first->filename, bin_name))
+                {
+                    logmsg("---- CUE references '", first->filename,
+                           "' but image file is '", bin_name, "'");
+                    return false;
+                }
+            }
+        }
     }
 
     logmsg("---- Cue sheet loaded with ", (int)trackcount, " tracks");
@@ -2548,6 +2609,11 @@ extern "C" int scsiCDRomCommand()
 }
 
 #ifdef UNIT_TEST
+bool cdromTestCueFilenameMatchesBin(const char *cue_ref, const char *bin_name)
+{
+    return cdromCueFilenameMatchesBin(cue_ref, bin_name);
+}
+
 /*
  * Test accessor for multi-bin CUE track boundary calculation.
  *
