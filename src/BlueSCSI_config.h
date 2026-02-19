@@ -61,6 +61,12 @@
 // How often to check for SD card presence
 #define SDCARD_POLL_INTERVAL 5000
 
+// How often to attempt WiFi reconnection after link loss (ms)
+#define WIFI_RECONNECT_INTERVAL 10000
+
+// Maximum number of WiFi reconnection attempts before giving up
+#define WIFI_RECONNECT_MAX_ATTEMPTS 5
+
 // Watchdog timeout
 // Watchdog will first issue a bus reset and if that does not help, crashdump.
 #define WATCHDOG_BUS_RESET_TIMEOUT 15000

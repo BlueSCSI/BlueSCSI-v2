@@ -29,6 +29,10 @@ extern "C" {
 
 #define NETWORK_PACKET_MAX_SIZE     1520
 
+// Max single packet on the SCSI bus: Ethernet frame (14-byte header + 1500 MTU + 4-byte FCS)
+// plus 6-byte DaynaPort SCSI packet header
+#define DAYNAPORT_SCSI_PACKET_MAX   1524
+
 struct scsiNetworkPacketQueue {
 	uint8_t packets[NETWORK_PACKET_QUEUE_SIZE][NETWORK_PACKET_MAX_SIZE];
 	uint16_t sizes[NETWORK_PACKET_QUEUE_SIZE];
