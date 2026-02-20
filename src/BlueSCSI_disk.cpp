@@ -242,7 +242,11 @@ uint32_t image_config_t::get_capacity_lba()
             {
                 last_track = *track;
             }
-            return last_track.track_number == 0 ? 0 : last_track.data_start + (bin_container.size() - last_track.file_offset) / last_track.sector_length;
+            if (last_track.track_number == 0) return 0;
+            uint64_t sz = bin_container.size();
+            uint32_t usable = (sz > last_track.file_offset)
+                ? (sz - last_track.file_offset) / last_track.sector_length : 0;
+            return last_track.data_start + usable;
         }
     }
     else
@@ -672,6 +676,8 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
             {
                 logmsg("No valid .cue sheet found in folder '", foldername, "'");
                 img.cuesheetfile.close();
+                img.file.close();
+                return false;
             }
         }
         else if (img.deviceType == S2S_CFG_SEQUENTIAL && img.file.isFolder())
