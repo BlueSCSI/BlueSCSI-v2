@@ -292,6 +292,119 @@ static void readIniSCSIDeviceSetting(scsi_device_settings_t &cfg, const char *se
 
 }
 
+// Log a fixed-width char field (not null-terminated) as a null-terminated string
+static void logFixedField(const char *prefix, const char *field, size_t fieldsize)
+{
+    char buf[32];
+    size_t len = fieldsize < sizeof(buf) - 1 ? fieldsize : sizeof(buf) - 1;
+    memcpy(buf, field, len);
+    buf[len] = '\0';
+    // Trim trailing spaces
+    while (len > 0 && buf[len - 1] == ' ') buf[--len] = '\0';
+    if (len > 0)
+        logmsg(prefix, buf);
+}
+
+// Compare system settings and log fields that differ from defaults
+static void logNonDefaultSystemSettings(const scsi_system_settings_t &defaults, const scsi_system_settings_t &current)
+{
+    if (current.quirks != defaults.quirks)
+        logmsg("-- Quirks = ", (int)current.quirks);
+    if (current.selectionDelay != defaults.selectionDelay)
+        logmsg("-- SelectionDelay = ", (int)current.selectionDelay);
+    if (current.maxSyncSpeed != defaults.maxSyncSpeed)
+        logmsg("-- MaxSyncSpeed = ", (int)current.maxSyncSpeed);
+    if (current.phyMode != defaults.phyMode)
+        logmsg("-- PhyMode = ", (int)current.phyMode);
+    if (current.initPreDelay != defaults.initPreDelay)
+        logmsg("-- InitPreDelay = ", (int)current.initPreDelay);
+    if (current.initPostDelay != defaults.initPostDelay)
+        logmsg("-- InitPostDelay = ", (int)current.initPostDelay);
+    if (current.enableUnitAttention != defaults.enableUnitAttention)
+        logmsg("-- EnableUnitAttention = ", current.enableUnitAttention ? "Yes" : "No");
+    if (current.enableSCSI2 != defaults.enableSCSI2)
+        logmsg("-- EnableSCSI2 = ", current.enableSCSI2 ? "Yes" : "No");
+    if (current.enableSelLatch != defaults.enableSelLatch)
+        logmsg("-- EnableSelLatch = ", current.enableSelLatch ? "Yes" : "No");
+    if (current.mapLunsToIDs != defaults.mapLunsToIDs)
+        logmsg("-- MapLunsToIDs = ", current.mapLunsToIDs ? "Yes" : "No");
+    if (current.enableParity != defaults.enableParity)
+        logmsg("-- EnableParity = ", current.enableParity ? "Yes" : "No");
+    if (current.useFATAllocSize != defaults.useFATAllocSize)
+        logmsg("-- UseFATAllocSize = ", current.useFATAllocSize ? "Yes" : "No");
+    if (current.enableCDAudio != defaults.enableCDAudio)
+        logmsg("-- EnableCDAudio = ", current.enableCDAudio ? "Yes" : "No");
+    if (current.maxVolume != defaults.maxVolume)
+        logmsg("-- MaxVolume = ", (int)current.maxVolume);
+    if (current.enableUSBMassStorage != defaults.enableUSBMassStorage)
+        logmsg("-- EnableUSBMassStorage = ", current.enableUSBMassStorage ? "Yes" : "No");
+    if (current.usbMassStorageWaitPeriod != defaults.usbMassStorageWaitPeriod)
+        logmsg("-- USBMassStorageWaitPeriod = ", (int)current.usbMassStorageWaitPeriod);
+    if (current.usbMassStoragePresentImages != defaults.usbMassStoragePresentImages)
+        logmsg("-- USBMassStoragePresentImages = ", current.usbMassStoragePresentImages ? "Yes" : "No");
+    if (current.invertStatusLed != defaults.invertStatusLed)
+        logmsg("-- InvertStatusLED = ", current.invertStatusLed ? "Yes" : "No");
+    if (current.speedGrade != defaults.speedGrade)
+        logmsg("-- SpeedGrade = ", speed_grade_strings[current.speedGrade]);
+    if (current.maxBusWidth != defaults.maxBusWidth)
+        logmsg("-- MaxBusWidth = ", (int)current.maxBusWidth);
+    if (current.phaseChangeDelayUs != defaults.phaseChangeDelayUs)
+        logmsg("-- PhaseChangeDelay = ", (int)current.phaseChangeDelayUs, " us");
+    if (current.dataPhaseDelayUs != defaults.dataPhaseDelayUs)
+        logmsg("-- DataPhaseDelay = ", (int)current.dataPhaseDelayUs, " us");
+    if (current.busFreeDelayUs != defaults.busFreeDelayUs)
+        logmsg("-- BusFreeDelay = ", (int)current.busFreeDelayUs, " us");
+}
+
+// Compare device settings and log fields that differ from defaults.
+// If scsiId >= 0, prints a [SCSIn] header before the first diff.
+static void logNonDefaultDeviceSettings(int scsiId, const scsi_device_settings_t &defaults, const scsi_device_settings_t &current)
+{
+    bool header_printed = false;
+    auto printHeader = [&]() {
+        if (!header_printed && scsiId >= 0)
+        {
+            logmsg("[SCSI", scsiId, "]");
+            header_printed = true;
+        }
+    };
+
+    #define LOG_DEV_INT(field, name) \
+        if (current.field != defaults.field) { printHeader(); logmsg("-- " name " = ", (int)current.field); }
+    #define LOG_DEV_BOOL(field, name) \
+        if (current.field != defaults.field) { printHeader(); logmsg("-- " name " = ", current.field ? "Yes" : "No"); }
+    #define LOG_DEV_FIELD(field, name) \
+        if (memcmp(current.field, defaults.field, sizeof(current.field)) != 0) { printHeader(); logFixedField("-- " name " = ", current.field, sizeof(current.field)); }
+
+    LOG_DEV_INT(deviceType, "Type");
+    LOG_DEV_INT(deviceTypeModifier, "TypeModifier");
+    LOG_DEV_INT(sectorsPerTrack, "SectorsPerTrack");
+    LOG_DEV_INT(headsPerCylinder, "HeadsPerCylinder");
+    LOG_DEV_INT(prefetchBytes, "PrefetchBytes");
+    LOG_DEV_INT(ejectButton, "EjectButton");
+    LOG_DEV_INT(ejectBlinkTimes, "EjectBlinkTimes");
+    LOG_DEV_INT(ejectBlinkPeriod, "EjectBlinkPeriod");
+    LOG_DEV_INT(vol, "CDAVolume");
+    LOG_DEV_BOOL(nameFromImage, "NameFromImage");
+    LOG_DEV_BOOL(rightAlignStrings, "RightAlignStrings");
+    LOG_DEV_BOOL(reinsertOnInquiry, "ReinsertCDOnInquiry");
+    LOG_DEV_BOOL(reinsertAfterEject, "ReinsertAfterEject");
+    LOG_DEV_BOOL(startEjected, "StartEjected");
+    LOG_DEV_BOOL(disableMacSanityCheck, "DisableMacSanityCheck");
+    LOG_DEV_INT(sectorSDBegin, "SectorSDBegin");
+    LOG_DEV_INT(sectorSDEnd, "SectorSDEnd");
+    LOG_DEV_INT(vendorExtensions, "VendorExtensions");
+    LOG_DEV_INT(blockSize, "BlockSize");
+    LOG_DEV_FIELD(vendor, "Vendor");
+    LOG_DEV_FIELD(prodId, "Product");
+    LOG_DEV_FIELD(revision, "Version");
+    LOG_DEV_FIELD(serial, "Serial");
+
+    #undef LOG_DEV_INT
+    #undef LOG_DEV_BOOL
+    #undef LOG_DEV_FIELD
+}
+
 scsi_system_settings_t *BlueSCSISettings::initSystem(const char *presetName)
 {
     scsi_system_settings_t &cfgSys = m_sys;
@@ -448,6 +561,10 @@ scsi_system_settings_t *BlueSCSISettings::initSystem(const char *presetName)
     memset(cfgDev.revision, 0, sizeof(cfgDev.revision));
     memset(cfgDev.serial, 0, sizeof(cfgDev.serial));
 
+    // Snapshot defaults before INI reads for diff logging
+    scsi_system_settings_t sysSnapshot = cfgSys;
+    scsi_device_settings_t devSnapshot = cfgDev;
+
     // Read default setting overrides from ini file for each SCSI device
     readIniSCSIDeviceSetting(cfgDev, "SCSI");
 
@@ -494,6 +611,10 @@ scsi_system_settings_t *BlueSCSISettings::initSystem(const char *presetName)
 
     cfgSys.maxBusWidth = ini_getl("SCSI", "MaxBusWidth", cfgSys.maxBusWidth, CONFIGFILE);
 
+    // Log settings that differ from post-preset defaults
+    logNonDefaultSystemSettings(sysSnapshot, cfgSys);
+    logNonDefaultDeviceSettings(-1, devSnapshot, cfgDev);
+
     return &cfgSys;
 }
 
@@ -523,7 +644,13 @@ scsi_device_settings_t* BlueSCSISettings::initDevice(uint8_t scsiId, S2S_CFG_TYP
     // Write default configuration from system setting initialization
     memcpy(&cfg, &m_dev[SCSI_SETTINGS_SYS_IDX], sizeof(cfg));
     setDefaultDriveInfo(scsiId, presetName, type);
+
+    // Snapshot after defaults are set, before per-device INI overrides
+    scsi_device_settings_t devSnapshot = cfg;
     readIniSCSIDeviceSetting(cfg, section);
+
+    // Log per-device INI overrides (before formatDriveInfoField modifies strings)
+    logNonDefaultDeviceSettings(scsiId, devSnapshot, cfg);
 
     if (cfg.serial[0] == '\0')
     {
