@@ -185,13 +185,3 @@ void ini_write(char *buffer, INI_FILETYPE *fp) {
     fp->write(buffer);
     invalidate_ini_cache(); // for next open
 }
-
-
-const char* ini_get_cache_ptr(uint32_t* out_len) {
-    if (g_ini_cache.valid) {
-        if (out_len) *out_len = g_ini_cache.filelen;
-        return g_ini_cache.cachedata;
-    }
-    if (out_len) *out_len = 0;
-    return nullptr;
-}

@@ -875,6 +875,7 @@ STATIC_TESTABLE void reinitSCSI()
 #endif
   if (g_log_debug)
   {
+    logmsg("-- Debug = Yes");
     g_scsi_log_mask = ini_getl("SCSI", "DebugLogMask", 0xFF, CONFIGFILE) & 0xFF;
     if (g_scsi_log_mask == 0)
     {
@@ -1291,6 +1292,7 @@ STATIC_TESTABLE void bluescsi_setup_sd_card(bool wait_for_card = true)
     init_logfile();
     if (ini_getbool("SCSI", "DisableStatusLED", false, CONFIGFILE))
     {
+      logmsg("-- DisableStatusLED = Yes");
       platform_disable_led();
     }
 #ifdef BLUESCSI_ULTRA_WIDE
