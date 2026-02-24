@@ -202,6 +202,7 @@ SECTIONS
 
         /* SCSI Initiator mode code. These will fit in cache when in use. */
         *BlueSCSI_initiator.cpp.o(.text .text*)
+        *BlueSCSI_vhd.cpp.o(.text .text*)
         *BlueSCSI_msc_initiator.cpp.o(.text .text*)
         *scsi_accel_host*(.text .text*)
         *scsiHostPhy*(.text .text*)
