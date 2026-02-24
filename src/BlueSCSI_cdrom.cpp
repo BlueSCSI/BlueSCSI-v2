@@ -271,8 +271,9 @@ static uint32_t getLeadOutLBA(const CUETrackInfo* lasttrack)
     if (lasttrack != nullptr && lasttrack->track_number != 0)
     {
         image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-        uint32_t lastTrackBlocks = (img.file.size() - lasttrack->file_offset)
-                / lasttrack->sector_length;
+        uint64_t sz = img.file.size();
+        uint32_t lastTrackBlocks = (sz > lasttrack->file_offset)
+                ? (sz - lasttrack->file_offset) / lasttrack->sector_length : 0;
         return lasttrack->data_start + lastTrackBlocks;
     }
     else
@@ -507,7 +508,8 @@ static void getTrackFromLBA(image_config_t &img, uint32_t lba, CUETrackInfo *res
     }
     else if (img.cdrom_binfile_index == img.cdrom_trackinfo.file_index &&
              lba >= img.cdrom_trackinfo.track_start &&
-             lba < img.cdrom_trackinfo.data_start + (img.file.size() - img.cdrom_trackinfo.file_offset) / img.cdrom_trackinfo.sector_length)
+             lba < img.cdrom_trackinfo.data_start + (img.file.size() > img.cdrom_trackinfo.file_offset
+                ? (img.file.size() - img.cdrom_trackinfo.file_offset) / img.cdrom_trackinfo.sector_length : 0))
     {
         // Same track as previous time
         *result = img.cdrom_trackinfo;
@@ -1189,6 +1191,42 @@ void doGetConfiguration(uint8_t rt, uint16_t startFeature, uint16_t allocationLe
 /* CUE sheet check at image load time   */
 /****************************************/
 
+// Check if a CUE FILE reference matches a BIN filename.
+// Strips extensions and compares stems case-insensitively.
+// Allows BlueSCSI prefix pattern: e.g., "castles.bin" matches "CD3_castles.bin"
+// because the BIN stem ends with "_castles" matching the CUE stem "castles".
+static bool cdromCueFilenameMatchesBin(const char *cue_ref, const char *bin_name)
+{
+    // Strip directory path from CUE reference (e.g., "Audio/track.bin" -> "track.bin")
+    const char *cue_slash = strrchr(cue_ref, '/');
+    const char *cue_bslash = strrchr(cue_ref, '\\');
+    if (cue_bslash && (!cue_slash || cue_bslash > cue_slash))
+        cue_slash = cue_bslash;
+    if (cue_slash)
+        cue_ref = cue_slash + 1;
+
+    const char *cue_dot = strrchr(cue_ref, '.');
+    size_t cue_stem_len = cue_dot ? (size_t)(cue_dot - cue_ref) : strlen(cue_ref);
+    const char *bin_dot = strrchr(bin_name, '.');
+    size_t bin_stem_len = bin_dot ? (size_t)(bin_dot - bin_name) : strlen(bin_name);
+
+    if (cue_stem_len == 0)
+        return false;
+
+    // Exact stem match (case-insensitive)
+    if (bin_stem_len == cue_stem_len &&
+        strncasecmp(bin_name, cue_ref, cue_stem_len) == 0)
+        return true;
+
+    // BIN stem ends with "_" + CUE stem (BlueSCSI prefix pattern)
+    if (bin_stem_len > cue_stem_len + 1 &&
+        bin_name[bin_stem_len - cue_stem_len - 1] == '_' &&
+        strncasecmp(bin_name + bin_stem_len - cue_stem_len, cue_ref, cue_stem_len) == 0)
+        return true;
+
+    return false;
+}
+
 bool cdromValidateCueSheet(image_config_t &img)
 {
     CUEParser parser;
@@ -1223,6 +1261,15 @@ bool cdromValidateCueSheet(image_config_t &img)
             return false;
         }
 
+        // Verify that the bin file is large enough for the track's offset
+        if (trackinfo->file_offset > 0 && img.file.size() < trackinfo->file_offset)
+        {
+            logmsg("---- CUE track ", trackinfo->track_number,
+                   " offset exceeds bin file size (",
+                   (int)(img.file.size() / 1048576), " MB)");
+            return false;
+        }
+
         prev_capacity = img.file.size();
     }
 
@@ -1230,6 +1277,31 @@ bool cdromValidateCueSheet(image_config_t &img)
     {
         logmsg("---- Opened cue sheet but no valid tracks found");
         return false;
+    }
+
+    // For single-BIN images (not folder), verify CUE FILE reference
+    // matches the actual BIN filename. Users commonly rename files with
+    // a BlueSCSI prefix (e.g., castles.bin -> CD3_castles.bin) so we
+    // check if the CUE reference is a suffix match after '_'.
+    if (!img.file.isFolder() && trackcount > 0)
+    {
+        char bin_name[MAX_FILE_PATH + 1] = {0};
+        img.file.getFilename(bin_name, sizeof(bin_name));
+
+        CUEParser check_parser;
+        if (loadCueSheet(img, check_parser))
+        {
+            const CUETrackInfo *first = check_parser.next_track(0);
+            if (first && first->filename[0] != '\0')
+            {
+                if (!cdromCueFilenameMatchesBin(first->filename, bin_name))
+                {
+                    logmsg("---- CUE references '", first->filename,
+                           "' but image file is '", bin_name, "'");
+                    return false;
+                }
+            }
+        }
     }
 
     logmsg("---- Cue sheet loaded with ", (int)trackcount, " tracks");
@@ -2537,6 +2609,11 @@ extern "C" int scsiCDRomCommand()
 }
 
 #ifdef UNIT_TEST
+bool cdromTestCueFilenameMatchesBin(const char *cue_ref, const char *bin_name)
+{
+    return cdromCueFilenameMatchesBin(cue_ref, bin_name);
+}
+
 /*
  * Test accessor for multi-bin CUE track boundary calculation.
  *
@@ -2551,6 +2628,7 @@ uint32_t cdromTestCalcTrackEndLBA(uint32_t data_start, uint64_t file_size,
                                    uint64_t file_offset, uint32_t sector_length)
 {
     // This matches the calculation in getTrackFromLBA's cache check
-    return data_start + (file_size - file_offset) / sector_length;
+    return data_start + (file_size > file_offset
+        ? (file_size - file_offset) / sector_length : 0);
 }
 #endif
