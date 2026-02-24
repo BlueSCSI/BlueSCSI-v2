@@ -1460,79 +1460,32 @@ void s2s_configInit(S2S_BoardCfg* config)
     else if (maxSyncSpeed < 20 && config->scsiSpeed > S2S_CFG_SPEED_SYNC_10)
         config->scsiSpeed = S2S_CFG_SPEED_SYNC_10;
 
-    dbgmsg("-- SelectionDelay = ", (int)config->selectionDelay);
-
     if (sysCfg->enableUnitAttention)
-    {
-        logmsg("-- EnableUnitAttention = Yes");
         config->flags |= S2S_CFG_ENABLE_UNIT_ATTENTION;
-    }
-    else
-    {
-        dbgmsg("-- EnableUnitAttention = No");
-    }
 
     if (sysCfg->enableSCSI2)
-    {
-        dbgmsg("-- EnableSCSI2 = Yes");
         config->flags |= S2S_CFG_ENABLE_SCSI2;
-    }
-    else
-    {
-        logmsg("-- EnableSCSI2 = No");
-    }
 
-    // Set timing delay overrides
     g_scsi_busFreeDelayUs = sysCfg->busFreeDelayUs;
-    if (sysCfg->phaseChangeDelayUs > 0)
-    {
-        logmsg("-- PhaseChangeDelay = ", (int)sysCfg->phaseChangeDelayUs, " us");
-    }
-    if (sysCfg->dataPhaseDelayUs > 0)
-    {
-        logmsg("-- DataPhaseDelay = ", (int)sysCfg->dataPhaseDelayUs, " us");
-    }
-    if (sysCfg->busFreeDelayUs > 0)
-    {
-        logmsg("-- BusFreeDelay = ", (int)sysCfg->busFreeDelayUs, " us");
-    }
 
     if (sysCfg->enableSelLatch)
-    {
-        logmsg("-- EnableSelLatch = Yes");
         config->flags |= S2S_CFG_ENABLE_SEL_LATCH;
-    }
-    else
-    {
-        dbgmsg("-- EnableSelLatch = No");
-    }
 
     if (sysCfg->mapLunsToIDs)
-    {
-        logmsg("-- MapLunsToIDs = Yes");
         config->flags |= S2S_CFG_MAP_LUNS_TO_IDS;
-    }
-    else
-    {
-        dbgmsg("-- MapLunsToIDs = No");
-    }
 
 #ifdef PLATFORM_HAS_PARITY_CHECK
     if (sysCfg->enableParity)
-    {
-        dbgmsg("-- EnableParity = Yes");
         config->flags |= S2S_CFG_ENABLE_PARITY;
-    }
-    else
-    {
-        logmsg("-- EnableParity = No");
-    }
 #endif
 
 #if defined(PLATFORM_MAX_BUS_WIDTH) && PLATFORM_MAX_BUS_WIDTH > 0
     uint8_t busWidth = sysCfg->maxBusWidth;
-    if (busWidth > PLATFORM_MAX_BUS_WIDTH) busWidth = PLATFORM_MAX_BUS_WIDTH;
-    logmsg("-- Bus width = ", (int)busWidth, " (", (int)(8 << busWidth), " bits)");
+    if (busWidth > PLATFORM_MAX_BUS_WIDTH)
+    {
+        busWidth = PLATFORM_MAX_BUS_WIDTH;
+        logmsg("-- Bus width clamped to ", (int)busWidth, " (", (int)(8 << busWidth), " bits)");
+    }
     config->busWidth = busWidth;
 #endif
 
@@ -1553,19 +1506,26 @@ void s2s_configInit(S2S_BoardCfg* config)
         }
         else
         {
-            logmsg("Invalid MAC address format: \"", tmp, "\"");
+            logmsg("Invalid WiFiMACAddress format");
             memset(config->wifiMACAddress, 0, sizeof(config->wifiMACAddress));
         }
     }
 
     memset(tmp, 0, sizeof(tmp));
     ini_gets("SCSI", "WiFiSSID", "", tmp, sizeof(tmp), CONFIGFILE);
-    if (tmp[0]) memcpy(config->wifiSSID, tmp, sizeof(config->wifiSSID));
-
+    if (tmp[0])
+    {
+        memcpy(config->wifiSSID, tmp, sizeof(config->wifiSSID));
+        logmsg("-- WiFiSSID = ", tmp);
+    }
 
     memset(tmp, 0, sizeof(tmp));
     ini_gets("SCSI", "WiFiPassword", "", tmp, sizeof(tmp), CONFIGFILE);
-    if (tmp[0]) memcpy(config->wifiPassword, tmp, sizeof(config->wifiPassword));
+    if (tmp[0])
+    {
+        memcpy(config->wifiPassword, tmp, sizeof(config->wifiPassword));
+        logmsg("-- WiFiPassword = [set]");
+    }
 
 }
 
