@@ -177,14 +177,23 @@ int scsiHostPhyGetPhase()
     if (phase == 0 && absolute_time_diff_us(last_online_time, get_absolute_time()) > 100)
     {
 
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+        platform_disable_initiator_signals();
+        platform_delay_us(20);
+#else
         platform_delay_us(1);
-
+#endif
         if (!SCSI_IN(BSY))
         {
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+            platform_enable_initiator_signals();
+#endif
             scsiLogInitiatorPhaseChange(BUS_FREE);
             return BUS_FREE;
         }
-
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+        platform_enable_initiator_signals();
+#endif
         last_online_time = get_absolute_time();
     }
     else if (phase != 0)
