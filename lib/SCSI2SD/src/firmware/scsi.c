@@ -1287,11 +1287,15 @@ static void process_MessageOut()
 
 void scsiPoll(void)
 {
-	if (resetUntil != 0 && resetUntil > s2s_getTime_ms())
-	{
-		return;
+	if (resetUntil != 0) {
+		if (SCSI_IN(RST)) {
+			resetUntil = s2s_getTime_ms() + 2;
+		}
+		if (resetUntil > s2s_getTime_ms()) {
+			return;
+		}
+		resetUntil = 0;
 	}
-	resetUntil = 0;
 
 	if (unlikely(scsiDev.resetFlag))
 	{
