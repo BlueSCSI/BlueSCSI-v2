@@ -687,8 +687,15 @@ static pin_setup_state_t read_setup_ack_pin()
 // Allows execution on Core1 via function pointers. Each function can take
 // no parameters and should return nothing, operating via side-effects only.
 mutex g_core1_mutex;
+extern uint32_t __StackOneBottom;
 __attribute__((section(".time_critical.core1_handler")))
 static void core1_handler() {
+#ifdef BLUESCSI_MCU_RP23XX
+    // Set stack overflow protection for core1
+    // +32 bytes headroom for exception entry frame
+    uint32_t core1_limit = (uint32_t)&__StackOneBottom + 32;
+    asm volatile("msr MSPLIM, %0" : : "r"(core1_limit) : "memory");
+#endif
     while (1) {
         void (*function)() = (void (*)()) multicore_fifo_pop_blocking();
 
@@ -789,8 +796,17 @@ static void __no_inline_not_in_flash_func(set_flash_clock)()
 }
 #endif
 
+extern uint32_t __StackBottom;
+
 void platform_init()
 {
+#ifdef BLUESCSI_MCU_RP23XX
+    // Set stack overflow protection for core0
+    // +32 bytes headroom for exception entry frame
+    uint32_t core0_limit = (uint32_t)&__StackBottom + 32;
+    asm volatile("msr MSPLIM, %0" : : "r"(core0_limit) : "memory");
+#endif
+
     mutex_init(&__usb_mutex);
 #ifndef BLUESCSI_BOOTLOADER_MAIN
     board_init();
@@ -1245,6 +1261,25 @@ void show_hardfault(uint32_t *sp)
     logmsg("R2: ", sp[2]);
     logmsg("R3: ", sp[3]);
 
+#ifdef BLUESCSI_MCU_RP23XX
+    // Log fault status registers for better crash diagnostics on Cortex-M33
+    volatile uint32_t *cfsr = (volatile uint32_t *)0xE000ED28;
+    volatile uint32_t *hfsr = (volatile uint32_t *)0xE000ED2C;
+    volatile uint32_t *mmfar = (volatile uint32_t *)0xE000ED34;
+    volatile uint32_t *bfar = (volatile uint32_t *)0xE000ED38;
+    logmsg("CFSR: ", *cfsr);
+    logmsg("HFSR: ", *hfsr);
+    if (*cfsr & 0x00000080) logmsg("MMFAR: ", *mmfar); // MMARVALID
+    if (*cfsr & 0x00008000) logmsg("BFAR: ", *bfar);   // BFARVALID
+    if (*cfsr & 0x00100000) logmsg("=> Stack overflow detected (STKOF)");
+    if (*cfsr & 0x00020000) logmsg("=> Invalid state (INVSTATE)");
+    if (*cfsr & 0x00010000) logmsg("=> Undefined instruction (UNDEFINSTR)");
+    if (*cfsr & 0x00000400) logmsg("=> Imprecise bus fault (IMPRECISERR)");
+    if (*cfsr & 0x00000200) logmsg("=> Precise bus fault (PRECISERR)");
+    if (*cfsr & 0x00000002) logmsg("=> Data access violation (DACCVIOL)");
+    if (*cfsr & 0x00000001) logmsg("=> Instruction access violation (IACCVIOL)");
+#endif
+
     uint32_t *p = (uint32_t*)((uint32_t)sp & ~3);
 
     for (int i = 0; i < 8; i++)
@@ -1281,9 +1316,18 @@ void show_hardfault(uint32_t *sp)
 __attribute__((naked, interrupt))
 void isr_hardfault(void)
 {
+#ifdef BLUESCSI_MCU_RP23XX
+    // Save current MSP for diagnostics, then reset stack so crash handler
+    // can run even after a stack overflow.
+    asm("mrs r0, msp\n"
+        "ldr r1, =__StackTop\n"
+        "msr msp, r1\n"
+        "bl show_hardfault": : : "r0", "r1");
+#else
     // Copies stack pointer into first argument
     asm("mrs r0, msp\n"
         "bl show_hardfault": : : "r0");
+#endif
 }
 
 
