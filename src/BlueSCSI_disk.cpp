@@ -2651,6 +2651,9 @@ void scsiDiskReset()
     g_scsi_prefetch.sector = 0;
 #endif
 
+#ifdef ENABLE_AUDIO_OUTPUT
+    audio_stop();
+#endif
     // Reinsert any ejected CD-ROMs on BUS RESET and restart from first image
     for (int i = 0; i < S2S_MAX_TARGETS; ++i)
     {
