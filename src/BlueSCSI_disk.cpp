@@ -725,6 +725,11 @@ static void checkDiskGeometryDivisible(image_config_t &img)
 {
     if (!img.geometrywarningprinted)
     {
+        // Don't warn for images larger than 8 GB — their C/H/S geometry
+        // can't fit into classic number limits anyway.
+        if (img.scsiSectors > (uint32_t)(8ULL * 1024 * 1024 * 1024 / img.bytesPerSector))
+            return;
+
         uint32_t sectorsPerHeadTrack = img.sectorsPerTrack * img.headsPerCylinder;
         if (img.scsiSectors % sectorsPerHeadTrack != 0)
         {
