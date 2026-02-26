@@ -24,13 +24,6 @@
 
 extern int platform_network_send(uint8_t *buf, size_t len);
 
-#define SCSI_NETWORK_WIFI_CMD				0x1c	// cdb opcode
-#define SCSI_NETWORK_WIFI_CMD_SCAN			0x01	// cdb[2]
-#define SCSI_NETWORK_WIFI_CMD_COMPLETE		0x02
-#define SCSI_NETWORK_WIFI_CMD_SCAN_RESULTS	0x03
-#define SCSI_NETWORK_WIFI_CMD_INFO			0x04
-#define SCSI_NETWORK_WIFI_CMD_JOIN			0x05
-
 bool scsiNetworkEnabled = false;
 struct scsiNetworkPacketQueue scsiNetworkInboundQueue;
 
@@ -93,6 +86,129 @@ uint32_t crc32(const void *buf, size_t size)
 		crc = crc32_tab[(crc ^ *p++) & 0xFF] ^ (crc >> 8);
 	}
 	return crc ^ ~0U;
+}
+
+void scsiNetworkWifiScan(void)
+{
+	// initiate wi-fi scan
+	scsiDev.dataLen = 1;
+	int ret = platform_network_wifi_start_scan();
+	scsiDev.data[0] = (ret < 0 ? ret : 1);
+	scsiDev.phase = DATA_IN;
+}
+
+void scsiNetworkWifiComplete(void)
+{
+	// check for wi-fi scan completion
+	scsiDev.dataLen = 1;
+	scsiDev.data[0] = (platform_network_wifi_scan_finished() ? 1 : 0);
+	scsiDev.phase = DATA_IN;
+}
+
+void scsiNetworkWifiScanResults(uint32_t size)
+{
+	// return wi-fi scan results
+	if (!platform_network_wifi_scan_finished())
+	{
+		scsiDev.target->sense.code = ILLEGAL_REQUEST;
+		scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+		scsiDev.status = CHECK_CONDITION;
+		scsiDev.phase = STATUS;
+		return;
+	}
+
+	if (unlikely(size < 2))
+	{
+		scsiDev.target->sense.code = ILLEGAL_REQUEST;
+		scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+		scsiDev.status = CHECK_CONDITION;
+		scsiDev.phase = STATUS;
+		return;
+	}
+
+	int nets = 0;
+	for (int i = 0; i < WIFI_NETWORK_LIST_ENTRY_COUNT; i++)
+	{
+		if (wifi_network_list[i].ssid[0] == '\0')
+			break;
+		nets++;
+	}
+
+	if (nets) {
+		unsigned int netsize = sizeof(struct wifi_network_entry) * nets;
+		if (netsize + 2 > sizeof(scsiDev.data))
+		{
+			LOGMSG_F("WARNING: wifi_network_list is bigger than scsiDev.data, truncating", 0);
+			netsize = sizeof(scsiDev.data) - 2;
+			netsize -= (netsize % (sizeof(struct wifi_network_entry)));
+		}
+		if (netsize + 2 > size)
+		{
+			LOGMSG_F("WARNING: wifi_network_list is bigger than requested dataLen, truncating", 0);
+			netsize = size - 2;
+			netsize -= (netsize % (sizeof(struct wifi_network_entry)));
+		}
+		scsiDev.data[0] = (netsize >> 8) & 0xff;
+		scsiDev.data[1] = netsize & 0xff;
+		memcpy(scsiDev.data + 2, wifi_network_list, netsize);
+		scsiDev.dataLen = netsize + 2;
+	}
+	else
+	{
+		scsiDev.data[0] = 0;
+		scsiDev.data[1] = 0;
+		scsiDev.dataLen = 2;
+	}
+
+	scsiDev.phase = DATA_IN;
+}
+
+void scsiNetworkWifiInfo(void)
+{
+	// return current wi-fi information
+	struct wifi_network_entry wifi_cur = { 0 };
+	int entrysize = sizeof(wifi_cur);
+
+	char *ssid = platform_network_wifi_ssid();
+	if (ssid != NULL)
+		strlcpy(wifi_cur.ssid, ssid, sizeof(wifi_cur.ssid));
+
+	char *bssid = platform_network_wifi_bssid();
+	if (bssid != NULL)
+		memcpy(wifi_cur.bssid, bssid, sizeof(wifi_cur.bssid));
+
+	wifi_cur.rssi = platform_network_wifi_rssi();
+
+	wifi_cur.channel = platform_network_wifi_channel();
+
+	scsiDev.data[0] = (entrysize >> 8) & 0xff;
+	scsiDev.data[1] = entrysize & 0xff;
+	memcpy(scsiDev.data + 2, (char *)&wifi_cur, entrysize);
+	scsiDev.dataLen = entrysize + 2;
+	scsiDev.phase = DATA_IN;
+}
+
+void scsiNetworkWifiJoin(uint32_t size)
+{
+	// set current wi-fi network
+	struct wifi_join_request req = { 0 };
+
+	if (size != sizeof(req)) {
+		LOGMSG_F("wifi_join_request bad size (%zu != %zu), ignoring", size, sizeof(req));
+		scsiDev.status = CHECK_CONDITION;
+		scsiDev.phase = STATUS;
+		return;
+	}
+
+	int parityError = 0;
+	scsiEnterPhase(DATA_OUT);
+	scsiRead((uint8_t *)&req, sizeof(req), &parityError);
+	DBGMSG_F("%s: read join request from host:", __func__);
+	DBGMSG_BUF(scsiDev.data, size);
+	platform_network_wifi_join(req.ssid, req.key, false);
+
+	scsiDev.status = GOOD;
+	scsiDev.phase = STATUS;
 }
 
 int scsiNetworkCommand()
@@ -321,124 +437,20 @@ int scsiNetworkCommand()
 
 		switch (scsiDev.cdb[1]) {
 		case SCSI_NETWORK_WIFI_CMD_SCAN:
-			// initiate wi-fi scan
-			scsiDev.dataLen = 1;
-			int ret = platform_network_wifi_start_scan();
-			scsiDev.data[0] = (ret < 0 ? ret : 1);
-			scsiDev.phase = DATA_IN;
+			scsiNetworkWifiScan();
 			break;
-
 		case SCSI_NETWORK_WIFI_CMD_COMPLETE:
-			// check for wi-fi scan completion
-			scsiDev.dataLen = 1;
-			scsiDev.data[0] = (platform_network_wifi_scan_finished() ? 1 : 0);
-			scsiDev.phase = DATA_IN;
+			scsiNetworkWifiComplete();
 			break;
-
 		case SCSI_NETWORK_WIFI_CMD_SCAN_RESULTS:
-			// return wi-fi scan results
-			if (!platform_network_wifi_scan_finished())
-			{
-				scsiDev.target->sense.code = ILLEGAL_REQUEST;
-				scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
-				scsiDev.status = CHECK_CONDITION;
-				scsiDev.phase = STATUS;
-				break;
-			}
-
-			if (unlikely(size < 2))
-			{
-				scsiDev.target->sense.code = ILLEGAL_REQUEST;
-				scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
-				scsiDev.status = CHECK_CONDITION;
-				scsiDev.phase = STATUS;
-				break;
-			}
-
-			int nets = 0;
-			for (int i = 0; i < WIFI_NETWORK_LIST_ENTRY_COUNT; i++)
-			{
-				if (wifi_network_list[i].ssid[0] == '\0')
-					break;
-				nets++;
-			}
-
-			if (nets) {
-				unsigned int netsize = sizeof(struct wifi_network_entry) * nets;
-				if (netsize + 2 > sizeof(scsiDev.data))
-				{
-					LOGMSG_F("WARNING: wifi_network_list is bigger than scsiDev.data, truncating", 0);
-					netsize = sizeof(scsiDev.data) - 2;
-					netsize -= (netsize % (sizeof(struct wifi_network_entry)));
-				}
-				if (netsize + 2 > size)
-				{
-					LOGMSG_F("WARNING: wifi_network_list is bigger than requested dataLen, truncating", 0);
-					netsize = size - 2;
-					netsize -= (netsize % (sizeof(struct wifi_network_entry)));
-				}
-				scsiDev.data[0] = (netsize >> 8) & 0xff;
-				scsiDev.data[1] = netsize & 0xff;
-				memcpy(scsiDev.data + 2, wifi_network_list, netsize);
-				scsiDev.dataLen = netsize + 2;
-			}
-			else
-			{
-				scsiDev.data[0] = 0;
-				scsiDev.data[1] = 0;
-				scsiDev.dataLen = 2;
-			}
-
-			scsiDev.phase = DATA_IN;
+			scsiNetworkWifiScanResults(size);
 			break;
-
-		case SCSI_NETWORK_WIFI_CMD_INFO: {
-			// return current wi-fi information
-			struct wifi_network_entry wifi_cur = { 0 };
-			int size = sizeof(wifi_cur);
-
-			char *ssid = platform_network_wifi_ssid();
-			if (ssid != NULL)
-				strlcpy(wifi_cur.ssid, ssid, sizeof(wifi_cur.ssid));
-
-			char *bssid = platform_network_wifi_bssid();
-			if (bssid != NULL)
-				memcpy(wifi_cur.bssid, bssid, sizeof(wifi_cur.bssid));
-
-			wifi_cur.rssi = platform_network_wifi_rssi();
-
-			wifi_cur.channel = platform_network_wifi_channel();
-
-			scsiDev.data[0] = (size >> 8) & 0xff;
-			scsiDev.data[1] = size & 0xff;
-			memcpy(scsiDev.data + 2, (char *)&wifi_cur, size);
-			scsiDev.dataLen = size + 2;
-			scsiDev.phase = DATA_IN;
+		case SCSI_NETWORK_WIFI_CMD_INFO:
+			scsiNetworkWifiInfo();
 			break;
-		}
-
-		case SCSI_NETWORK_WIFI_CMD_JOIN: {
-			// set current wi-fi network
-			struct wifi_join_request req = { 0 };
-
-			if (size != sizeof(req)) {
-				LOGMSG_F("wifi_join_request bad size (%zu != %zu), ignoring", size, sizeof(req));
-				scsiDev.status = CHECK_CONDITION;
-				scsiDev.phase = STATUS;
-				break;
-			}
-
-			scsiEnterPhase(DATA_OUT);
-			parityError = 0;
-			scsiRead((uint8_t *)&req, sizeof(req), &parityError);
-			DBGMSG_F("%s: read join request from host:", __func__);
-			DBGMSG_BUF(scsiDev.data, size);
-			platform_network_wifi_join(req.ssid, req.key, false);
-
-			scsiDev.status = GOOD;
-			scsiDev.phase = STATUS;
+		case SCSI_NETWORK_WIFI_CMD_JOIN:
+			scsiNetworkWifiJoin(size);
 			break;
-		}
 		}
 		break;
 	}
