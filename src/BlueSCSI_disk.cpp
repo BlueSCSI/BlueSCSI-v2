@@ -261,9 +261,10 @@ void scsiDiskCloseSDCardImages()
         if (!g_DiskImages[i].file.isRom())
         {
             g_DiskImages[i].file.close();
+            g_DiskImages[i].image_directory = false;
+            g_DiskImages[i].bin_container.close();
+            g_DiskImages[i].cuesheetfile.close();
         }
-
-        g_DiskImages[i].cuesheetfile.close();
     }
 }
 
