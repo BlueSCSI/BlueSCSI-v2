@@ -93,6 +93,8 @@ struct image_config_t: public S2S_TargetCfg
     // the bin file for the cue sheet, the directory for multi bin files, or closed if neither
     FsFile bin_container;
 
+    inline bool is_multi_bin_cue() {return bin_container.isOpen() && bin_container.isDir();}
+
     // Right-align vendor / product type strings
     // Standard SCSI uses left alignment
     int rightAlignStrings;

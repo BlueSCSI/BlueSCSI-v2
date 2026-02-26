@@ -1086,6 +1086,17 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
     char nextname[MAX_FILE_PATH];
     int nextlen;
 
+    char currentname[MAX_FILE_PATH];
+    // Test to see if we have a multi bin/cue file in a directory. Use the directory name instead
+    if (img.is_multi_bin_cue())
+    {
+        img.bin_container.getName(currentname, sizeof(currentname));
+    }
+    else
+    {
+        strcpy(currentname, img.current_image);
+    }
+
     if (img.image_directory)
     {
         // image directory was found during startup
@@ -1130,7 +1141,7 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
         }
 
         // find the next filename
-        nextlen = findNextImageAfter(img, dirname, img.current_image, nextname, sizeof(nextname));
+        nextlen = findNextImageAfter(img, dirname, currentname, nextname, sizeof(nextname));
 
         if (nextlen == 0)
         {
@@ -1153,10 +1164,10 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
     }
     else if (img.use_prefix)
     {
-        nextlen = findNextImageAfter(img, "/", img.current_image, nextname, sizeof(nextname));
+        nextlen = findNextImageAfter(img, "/", currentname, nextname, sizeof(nextname));
         if (nextlen == 0)
         {
-            logmsg("Next file with the same prefix as ", img.current_image," not found for ID", target_idx);
+            logmsg("Next file with the same prefix as ", currentname," not found for ID", target_idx);
         }
         else if (buflen < nextlen + 1)
         {
