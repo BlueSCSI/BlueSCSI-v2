@@ -1472,6 +1472,8 @@ static void adc_poll()
     static bool initialized = false;
     static bool adc_initial_logged = false;
     static int lowest_vdd_seen = PLATFORM_VDD_WARNING_LIMIT_mV;
+    static uint32_t pending_warn_time = 0;
+    static int pending_warn_mV = 0;
 
     if (!initialized)
     {
@@ -1513,12 +1515,14 @@ static void adc_poll()
     const int limit = (700 * 4096) / PLATFORM_VDD_WARNING_LIMIT_mV;
     if (adc_value_max > limit)
     {
-        // Warn once, and then again if we detect even a lower drop.
+        // Record the lowest voltage seen, but defer the warning.
+        // This avoids spurious messages during power-off and duplicates
+        // during brief voltage dips. Each new low restarts the delay.
         int vdd_mV = (700 * 4096) / adc_value_max;
-        if (vdd_mV < lowest_vdd_seen)
+        if (vdd_mV < lowest_vdd_seen - 50)
         {
-            logmsg("WARNING: Detected supply voltage drop to ", vdd_mV, "mV. Verify power supply is adequate.");
-            lowest_vdd_seen = vdd_mV - 50; // Small hysteresis to avoid excessive warnings
+            pending_warn_time = platform_millis();
+            pending_warn_mV = vdd_mV;
         }
     }
     else if (!adc_initial_logged && adc_value_max != 0)
@@ -1526,6 +1530,14 @@ static void adc_poll()
             adc_initial_logged = true;
             int vdd_mV = (700 * 4096) / adc_value_max;
             logmsg("INFO: Pico Voltage: ", (vdd_mV / 1000.0), "V.");
+    }
+
+    // Log the pending Vdd warning after the delay has elapsed
+    if (pending_warn_time != 0 && (uint32_t)(platform_millis() - pending_warn_time) >= PLATFORM_VDD_WARNING_DELAY_ms)
+    {
+        logmsg("WARNING: Detected supply voltage drop to ", pending_warn_mV, "mV. Verify power supply is adequate.");
+        lowest_vdd_seen = pending_warn_mV;
+        pending_warn_time = 0;
     }
 #endif // PLATFORM_VDD_WARNING_LIMIT_mV > 0
 }
