@@ -1171,33 +1171,35 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
     }
     else
     {
-        img.image_index++;
-        if (img.image_index > IMAGE_INDEX_MAX || img.image_index < 0)
+        while (1)
         {
-            img.image_index = 0;
-        }
+            img.image_index++;
+            if (img.image_index > IMAGE_INDEX_MAX || img.image_index < 0)
+            {
+                img.image_index = 0;
+            }
 
-        char key[5] = "IMG0";
-        key[3] = '0' + img.image_index;
+            char key[5] = "IMG0";
+            key[3] = '0' + img.image_index;
 
-        int ret = ini_gets(section, key, "", buf, buflen, CONFIGFILE);
-        if (buf[0] != '\0')
-        {
-            img.deviceType = g_scsi_settings.getDevice(target_idx)->deviceType;
-            return ret;
-        }
-        else if (img.image_index > 0)
-        {
-            // there may be more than one image but we've ran out of new ones
-            // wrap back to the first image
-            img.image_index = -1;
-            return scsiDiskGetNextImageName(img, buf, buflen);
-        }
-        else
-        {
-
-            img.image_index = -1;
-            return 0;
+            int ret = ini_gets(section, key, "", buf, buflen, CONFIGFILE);
+            if (buf[0] != '\0')
+            {
+                img.deviceType = g_scsi_settings.getDevice(target_idx)->deviceType;
+                return ret;
+            }
+            else if (img.image_index > 0)
+            {
+                // there may be more than one image but we've ran out of new ones
+                // wrap back to the first image
+                img.image_index = -1;
+                // Rerun loop
+            }
+            else
+            {
+                img.image_index = -1;
+                return 0;
+            }
         }
     }
 }
