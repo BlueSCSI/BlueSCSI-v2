@@ -686,10 +686,15 @@ static pin_setup_state_t read_setup_ack_pin()
 
 // Allows execution on Core1 via function pointers. Each function can take
 // no parameters and should return nothing, operating via side-effects only.
+mutex g_core1_mutex;
+__attribute__((section(".time_critical.core1_handler")))
 static void core1_handler() {
     while (1) {
         void (*function)() = (void (*)()) multicore_fifo_pop_blocking();
+
+        mutex_enter_blocking(&g_core1_mutex);
         (*function)();
+        mutex_exit(&g_core1_mutex);
     }
 }
 
@@ -962,6 +967,7 @@ void platform_late_init()
 #endif
 
     dbgmsg("Starting Core1 dispatcher");
+    mutex_init(&g_core1_mutex);
     multicore_launch_core1(core1_handler);
 
     if (!g_scsi_initiator)
@@ -1756,10 +1762,20 @@ bool platform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count
     assert(start < platform_get_romdrive_maxsize());
     assert((count % PLATFORM_ROMDRIVE_PAGE_SIZE) == 0);
 
+    // XIP is disabled during flashing so interrupts and
+    // core1 handlers must be blocked.
+    mutex_enter_blocking(&g_core1_mutex);
     uint32_t saved_irq = save_and_disable_interrupts();
+
     flash_range_erase(start + ROMDRIVE_OFFSET, count);
     flash_range_program(start + ROMDRIVE_OFFSET, data, count);
+
+#ifdef BLUESCSI_MCU_RP23XX
+    set_flash_clock();
+#endif
+
     restore_interrupts(saved_irq);
+    mutex_exit(&g_core1_mutex);
     return true;
 }
 
