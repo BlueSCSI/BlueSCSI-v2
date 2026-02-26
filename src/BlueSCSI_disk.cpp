@@ -643,6 +643,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
                     // If bin container is a directory close the file
                     if (img.bin_container.isDir())
                         img.bin_container.close();
+                    memset(&img.cdrom_trackinfo, 0, sizeof(img.cdrom_trackinfo));
                 }
             }
             else
@@ -671,6 +672,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
             if (valid)
             {
                 img.bin_container.open(foldername);
+                memset(&img.cdrom_trackinfo, 0, sizeof(img.cdrom_trackinfo));
             }
             else
             {
@@ -1800,7 +1802,7 @@ static void doSeek(uint32_t lba)
             {
                 // Uses audio play with a length of 0. CD audio won't actually play,
                 // but Read Subchannel will report the proper LBA location 
-                if (!audio_play(scsiDev.target->targetId, &img, lba, 0, false))
+                if (!img.bin_container.isOpen() || !audio_play(scsiDev.target->targetId, &img, lba, 0, false))
                     dbgmsg("Failed to seek to audio track lba position ", (int) lba);
             }
 #endif
