@@ -104,13 +104,11 @@ SECTIONS
         *minIni*(.text .text*)
         *CUEParser*(.text .text*)
 
-        /* TinyUSB (not matched by *USB* in CMake builds) */
-        *tusb*(.text .text*)
-        *tinyusb*(.text .text*)
-
-        /* WiFi/network driver code goes to flash */
-        *cyw43*(.text .text*)
-        *cybt*(.text .text*)
+        /* CYW43/TinyUSB stay in RAM (not listed here) because WiFi and
+         * USB operations interleave with SCSI transfers on DaynaPORT.
+         * The low-level SPI bus driver (cyw43_bus_pio_spi.c) is already
+         * caught by the *spi* pattern above and goes to FLASH.
+         * Only AmigaWIFI command parsing (init-time only) goes to FLASH. */
         *AmigaWIFI*(.text .text*)
 
         /* C++ constructors and destructors */
@@ -216,9 +214,10 @@ SECTIONS
 
         /* SdFat filesystem functions that are not performance-critical.
          * Only init/management functions go to flash. The hot-path
-         * (read/write/seekSet) stays in RAM to match PIO behavior.
-         * RP2040 has only a 16KB XIP cache — cache contention during
-         * SCSI transfers could cause timeouts. */
+         * (read/write/seekSet/readSectorsDirect/sectorMapLookup/buildSectorMap
+         * and FAT lookup helpers fatGet/dirSeek/dirCache/cacheDirEntry/readDirCache)
+         * stays in RAM to avoid XIP cache contention during SCSI transfers.
+         * RP2040 has only a 16KB XIP cache. */
         *(.text*File*open*)
         *(.text*File*init*)
         *(.text*File*remove*)
@@ -229,10 +228,39 @@ SECTIONS
         *(.text*File*Name*)
         *(.text*File*SFN*)
         *(.text*File*LFN*)
-        *(.text*File*addCluster*)
+        *(.text*File*Cluster*)
+        *(.text*File*rename*)
+        *(.text*File*Allocate*)
+        *(.text*File*contiguous*)
+        *(.text*File*fgets*)
+        *(.text*File*fgetpos*)
+        *(.text*File*peek*)
+        *(.text*File*close*)
+        *(.text*File*enableFast*)
+        *(.text*File*freeSector*)
+        *(.text*File*firstSector*)
+        *(.text*File*getLfnChar*)
+        *(.text*File*lfnChecksum*)
+        *(.text*File*makeUnique*)
+        *(.text*File*copy*)
+        /* Partition/Volume/Cache management — not in the SCSI hot path */
+        *(.text*Partition*init*)
+        *(.text*Partition*alloc*)
+        *(.text*Partition*free*)
+        *(.text*Partition*bitmap*)
+        *(.text*Partition*fatPut*)
+        *(.text*Partition*chainSize*)
+        *(.text*Partition*rootLength*)
         *(.text*Volume*attrib*)
         *(.text*Volume*begin*)
+        *(.text*Volume*chdir*)
+        *(.text*Volume*open*)
+        *(.text*BaseFile*close*)
+        *(.text*BaseFile*copy*)
+        *(.text*BaseFile*move*)
+        *(.text*BaseFile*operator*)
         *(.text*partitionTable*)
+        *(.text*FsCache*Safe*)
 
         /* USB functions that only run in specific modes.
            These will fit in cache when they are in use (USB connected). */

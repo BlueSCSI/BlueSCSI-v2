@@ -227,6 +227,12 @@ set(COMMON_FLAGS
 # C++-only warning flags (avoid "not valid for C" warnings)
 set(CXX_ONLY_FLAGS
     -Wno-overloaded-virtual
+    # Disable thread-safe statics guards. RP2040/RP2350 are bare-metal without
+    # pthreads, so the guards provide no safety. More importantly, GCC 14's
+    # libstdc++ guard.o references __cxa_throw/__cxa_allocate_exception which
+    # pulls in the entire C++ exception handling chain (~25 KB demangler +
+    # ~6.5 KB unwind) despite -fno-exceptions being set for compilation.
+    -fno-threadsafe-statics
 )
 
 # Use -Os to match PlatformIO precompiled SDK library optimization.
