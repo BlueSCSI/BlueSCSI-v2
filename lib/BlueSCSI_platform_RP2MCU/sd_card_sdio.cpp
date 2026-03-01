@@ -837,7 +837,7 @@ bool SdioCard::stopTransmission(bool blocking)
             if (g_record_sdio_errors) {
                 logmsg("SdioCard::stopTransmission() timeout");
 #ifdef ULTRA_SDIO
-                logmsg("M: ", (int)current_sdio_speed_mode, ", DIV: ", current_sdio_clock_divisor);
+                logmsg("M: ", (int)current_sdio_speed_mode, ", DIV: ", (int)current_sdio_clock_divisor);
                 logmsg("GPIO: ", (uint32_t)sio_hw->gpio_in, ", OE: ", (uint32_t)sio_hw->gpio_oe, ", S: ", (uint32_t)sio_hw->gpio_out);
 #endif
             }

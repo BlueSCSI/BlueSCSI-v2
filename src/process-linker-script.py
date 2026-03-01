@@ -25,7 +25,8 @@ linker_file = env.subst('$BUILD_DIR') + '/rp_linker.ld'
 def process_template(source, target, env):
     values = {
         'program_size': env.GetProjectOption('program_flash_allocation'),
-        'project_name': env.subst('$PIOENV')
+        'project_name': env.subst('$PIOENV'),
+        'bootloader_size': env.GetProjectOption('bootloader_flash_allocation', '131072')
         }
     with open(template_file, 'r') as t:
         src = Template(t.read())

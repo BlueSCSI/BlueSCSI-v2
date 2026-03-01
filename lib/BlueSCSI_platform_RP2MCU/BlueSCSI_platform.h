@@ -252,7 +252,7 @@ void platform_set_sd_callback(sd_callback_t func, const uint8_t *buffer);
 
 // Reprogram firmware in main program area.
 #ifndef RP2040_DISABLE_BOOTLOADER
-#define PLATFORM_BOOTLOADER_SIZE (256 * 1024)
+#define PLATFORM_BOOTLOADER_SIZE (128 * 1024)
 #define PLATFORM_FLASH_TOTAL_SIZE (1024 * 1024)
 #define PLATFORM_FLASH_PAGE_SIZE 4096
 bool platform_rewrite_flash_page(uint32_t offset, uint8_t buffer[PLATFORM_FLASH_PAGE_SIZE]);
