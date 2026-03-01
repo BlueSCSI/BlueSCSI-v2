@@ -444,13 +444,16 @@ target_compile_definitions(BlueSCSI PRIVATE
     ROMDRIVE_OFFSET=${PROGRAM_FLASH_ALLOCATION}
 )
 
-# Generate processed linker script (substitute $program_size)
+# Generate processed linker script (substitute $program_size and $bootloader_size)
 get_target_property(OUTPUT_NAME BlueSCSI OUTPUT_NAME)
 set(GENERATED_LINKER "${CMAKE_CURRENT_BINARY_DIR}/${OUTPUT_NAME}_linker.ld")
+set(BOOTLOADER_FLASH_ALLOCATION 131072)
 
 file(READ ${LINKER_TEMPLATE} LINKER_CONTENT)
 string(REPLACE "\$program_size" "${PROGRAM_FLASH_ALLOCATION}" LINKER_CONTENT "${LINKER_CONTENT}")
 string(REPLACE "\${program_size}" "${PROGRAM_FLASH_ALLOCATION}" LINKER_CONTENT "${LINKER_CONTENT}")
+string(REPLACE "\$bootloader_size" "${BOOTLOADER_FLASH_ALLOCATION}" LINKER_CONTENT "${LINKER_CONTENT}")
+string(REPLACE "\${bootloader_size}" "${BOOTLOADER_FLASH_ALLOCATION}" LINKER_CONTENT "${LINKER_CONTENT}")
 file(WRITE ${GENERATED_LINKER} "${LINKER_CONTENT}")
 
 message(STATUS "Generated linker script: ${GENERATED_LINKER}")
