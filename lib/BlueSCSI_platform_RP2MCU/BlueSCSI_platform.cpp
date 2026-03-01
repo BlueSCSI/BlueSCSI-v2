@@ -748,18 +748,19 @@ bool checkIs2023a() {
 }
 
 void platform_setup_sd() {
-#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE) 
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
     i2c_init(i2c1, 100000);
-#endif
+#else
     // SD card pins
     // Card is used in SDIO mode for main program, and in SPI mode for crash handler & bootloader.
     //        pin             function       pup   pdown  out    state fast
-    // gpio_conf(SD_SPI_SCK,     GPIO_FUNC_SPI, true, false, true,  true, true);
-    // gpio_conf(SD_SPI_MOSI,    GPIO_FUNC_SPI, true, false, true,  true, true);
-    // gpio_conf(SD_SPI_MISO,    GPIO_FUNC_SPI, true, false, false, true, true);
-    // gpio_conf(SD_SPI_CS,      GPIO_FUNC_SIO, true, false, true,  true, true);
-    // gpio_conf(SDIO_D1,        GPIO_FUNC_SIO, true, false, false, true, true);
-    // gpio_conf(SDIO_D2,        GPIO_FUNC_SIO, true, false, false, true, true);
+    gpio_conf(SD_SPI_SCK,     GPIO_FUNC_SPI, true, false, true,  true, true);
+    gpio_conf(SD_SPI_MOSI,    GPIO_FUNC_SPI, true, false, true,  true, true);
+    gpio_conf(SD_SPI_MISO,    GPIO_FUNC_SPI, true, false, false, true, true);
+    gpio_conf(SD_SPI_CS,      GPIO_FUNC_SIO, true, false, true,  true, true);
+    gpio_conf(SDIO_D1,        GPIO_FUNC_SIO, true, false, false, true, true);
+    gpio_conf(SDIO_D2,        GPIO_FUNC_SIO, true, false, false, true, true);
+#endif
 }
 
 #ifdef BLUESCSI_MCU_RP23XX

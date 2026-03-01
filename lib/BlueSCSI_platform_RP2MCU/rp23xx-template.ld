@@ -52,12 +52,12 @@ SECTIONS
        cold boot.
     */
 
-    /* If BlueSCSI SD card bootloader is included, it goes in first 256 kB */
+    /* If BlueSCSI SD card bootloader is included, it goes here */
     .text.bootloader : ALIGN(16) SUBALIGN(16)
     {
         KEEP(*(.text.btldr*))
-        . = ALIGN(262144);
-        CHECK_BOOTLOADER_SIZE = 1 / (. <= 262144);
+        . = ALIGN($bootloader_size);
+        CHECK_BOOTLOADER_SIZE = 1 / (. <= $bootloader_size);
     } > FLASH
 
     .text : {
