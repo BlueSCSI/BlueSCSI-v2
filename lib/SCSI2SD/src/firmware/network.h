@@ -60,8 +60,22 @@ struct __attribute__((packed)) wifi_join_request {
 	uint8_t _padding;
 };
 
+#define SCSI_NETWORK_WIFI_CMD				0x1c	// cdb opcode
+#define SCSI_NETWORK_WIFI_CMD_SCAN			0x01	// cdb[1]
+#define SCSI_NETWORK_WIFI_CMD_COMPLETE		0x02
+#define SCSI_NETWORK_WIFI_CMD_SCAN_RESULTS	0x03
+#define SCSI_NETWORK_WIFI_CMD_INFO			0x04
+#define SCSI_NETWORK_WIFI_CMD_JOIN			0x05
+
 int scsiNetworkCommand(void);
 int scsiNetworkEnqueue(const uint8_t *buf, size_t len);
+
+// Shared WiFi subcommand handlers (used by both DaynaPort and AmigaWIFI)
+void scsiNetworkWifiScan(void);
+void scsiNetworkWifiComplete(void);
+void scsiNetworkWifiScanResults(uint32_t size);
+void scsiNetworkWifiInfo(void);
+void scsiNetworkWifiJoin(uint32_t size);
 
 #ifdef __cplusplus
 }
