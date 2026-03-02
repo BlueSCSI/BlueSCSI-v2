@@ -145,6 +145,12 @@ if [ ${#FAILED[@]} -gt 0 ]; then
     exit 1
 fi
 
+# --- create universal firmware zip package ---
+echo -e "${BOLD_CYAN}========================================${RESET}"
+echo -e "${BOLD_CYAN}Creating firmware zip package${RESET}"
+"${SCRIPT_DIR}/utils/create_firmware_zip.sh" "${BUILD_ROOT}" "${OUTPUT_DIR}"
+echo ""
+
 # --- memory usage comparison against latest release ---
 echo -e "${BOLD_CYAN}========================================${RESET}"
 python3 "${SCRIPT_DIR}/utils/compare_elf.py" --from-release "${BUILD_ROOT}"

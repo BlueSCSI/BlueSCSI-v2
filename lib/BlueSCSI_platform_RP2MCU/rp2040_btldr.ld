@@ -33,7 +33,8 @@
      * which comes as part of the main firmware.elf and is never overwritten.
      */
     FLASH(rx) : ORIGIN = 0x10000100, LENGTH = 256k-256
-    RAM(rwx) : ORIGIN = 0x20000000, LENGTH = 256k  /* Leave space for pico-debug */
+    RAM(rwx) : ORIGIN = 0x20000000, LENGTH = 256k - 2k  /* Last 2K for shared log */
+    SHARED_LOG(rw) : ORIGIN = 0x2003F800, LENGTH = 2k
     SCRATCH_X(rwx) : ORIGIN = 0x20040000, LENGTH = 4k
     SCRATCH_Y(rwx) : ORIGIN = 0x20041000, LENGTH = 4k
 }
@@ -185,6 +186,9 @@ SECTIONS
         __scratch_y_end__ = .;
     } > SCRATCH_Y AT > FLASH
     __scratch_y_source__ = LOADADDR(.scratch_y);
+    .shared_log (NOLOAD) : {
+        *(.shared_log)
+    } > SHARED_LOG
     .bss : {
         . = ALIGN(4);
         __bss_start__ = .;

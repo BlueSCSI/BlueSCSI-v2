@@ -89,6 +89,26 @@ Default targets (built by `./build.sh`): all except `Pico` and `Pico_2`.
 | `BlueSCSI_<target>.uf2` | Flashable firmware (drag to RP2040/RP2350 USB bootloader) |
 | `BlueSCSI_<target>.elf` | Firmware with debug symbols |
 | `BlueSCSI_bootloader.elf` | Bootloader (embedded automatically into main firmware) |
+| `BlueSCSI_v<version>_<hash>.zip` | Universal firmware zip for SD card update |
+
+## Firmware Update Methods
+
+### Method 1: SD Card Update (Recommended)
+
+1. Build all targets with `./build.sh` — this produces `build/output/BlueSCSI_v*.zip`
+2. Copy the zip file to the root of the BlueSCSI SD card
+3. Power cycle the BlueSCSI — the bootloader extracts the correct .bin for your hardware and flashes it automatically
+4. The zip file is deleted from the SD card after a successful update
+
+The zip contains firmware for all targets. The bootloader automatically selects the correct one.
+
+### Method 2: UF2 via USB Bootloader
+
+1. Hold the BOOTSEL button and plug in USB (or double-tap reset)
+2. Drag the appropriate `BlueSCSI_<target>.uf2` file to the USB drive that appears
+3. The device reboots with new firmware
+
+Note: On Windows, the USB drive may eject early and show an error — this is a known RP2040/RP2350 USB limitation and the update still succeeds.
 
 ## Debugging
 

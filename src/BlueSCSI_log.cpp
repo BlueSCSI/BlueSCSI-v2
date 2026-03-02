@@ -242,6 +242,69 @@ const char *log_get_buffer(uint32_t *startpos, uint32_t *available)
 }
 
 
+// Fixed-length string logging
+void log_raw(const char *str, size_t len)
+{
+    for (size_t i = 0; i < len; i++)
+    {
+        g_logbuffer[g_logpos & LOGBUFMASK] = str[i];
+        g_logpos++;
+    }
+    g_logbuffer[g_logpos & LOGBUFMASK] = '\0';
+
+    // Platform log expects null-terminated string, so we need a temp copy
+    // For efficiency, just call platform_log with the original if it's already null-terminated
+    // Otherwise we skip platform_log for the raw version (bootloader replay doesn't need UART echo)
+}
+
+// Shared log region placed in NOLOAD section that survives soft reset
+__attribute__((section(".shared_log"))) static shared_log_t g_shared_log;
+
+void log_save_to_shared()
+{
+    const size_t buf_size = sizeof(g_shared_log.buffer);
+
+    if (g_logpos == 0)
+    {
+        g_shared_log.magic = 0;
+        return;
+    }
+
+    // Copy most recent log data into shared region
+    uint32_t available = (g_logpos > LOGBUFSIZE) ? LOGBUFSIZE : g_logpos;
+    uint32_t to_copy = (available > buf_size) ? buf_size : available;
+    uint32_t start = g_logpos - to_copy;
+
+    for (uint32_t i = 0; i < to_copy; i++)
+    {
+        g_shared_log.buffer[i] = g_logbuffer[(start + i) & LOGBUFMASK];
+    }
+
+    g_shared_log.pos = to_copy;
+    g_shared_log.magic = SHARED_LOG_MAGIC;
+}
+
+void log_restore_from_shared()
+{
+    if (g_shared_log.magic != SHARED_LOG_MAGIC)
+        return;
+
+    // Clear magic immediately to prevent double-replay
+    g_shared_log.magic = 0;
+
+    uint32_t len = g_shared_log.pos;
+    if (len > sizeof(g_shared_log.buffer))
+        len = sizeof(g_shared_log.buffer);
+
+    if (len == 0)
+        return;
+
+    // Replay bootloader log into firmware's log buffer
+    log_raw("=== Bootloader Log ===\r\n");
+    log_raw(g_shared_log.buffer, len);
+    log_raw("=== End Bootloader Log ===\r\n");
+}
+
 #ifdef NETWORK_DEBUG_LOGGING
 // TODO write directly global log buffer to save some memory
 static char shared_log_buf[1500 * 3];

@@ -25,7 +25,8 @@ MEMORY
 {
     FLASH(rx) : ORIGIN = 0x10000000, LENGTH = $program_size
     PSRAM(rwx) : ORIGIN = 0x11000000, LENGTH = 0
-    RAM(rwx) : ORIGIN = 0x20000000, LENGTH = 512k  /* Leave space for pico-debug */
+    RAM(rwx) : ORIGIN = 0x20000000, LENGTH = 512k - 2k  /* Last 2K for shared log */
+    SHARED_LOG(rw) : ORIGIN = 0x2007F800, LENGTH = 2k
     SCRATCH_X(rwx) : ORIGIN = 0x20080000, LENGTH = 4k
     SCRATCH_Y(rwx) : ORIGIN = 0x20081000, LENGTH = 4k
 }
@@ -232,6 +233,10 @@ SECTIONS
 
     /* __etext is (for backwards compatibility) the name of the .data init source pointer (...) */
     __etext = LOADADDR(.data);
+
+    .shared_log (NOLOAD) : {
+        *(.shared_log)
+    } > SHARED_LOG
 
     .tbss (NOLOAD) : {
         . = ALIGN(4);

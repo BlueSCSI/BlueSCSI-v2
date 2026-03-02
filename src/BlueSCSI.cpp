@@ -133,6 +133,10 @@ void init_logfile()
   static bool first_open_after_boot = true;
 
   bool truncate = first_open_after_boot;
+  if (truncate)
+  {
+    SD.rename(LOGFILE, "lastlog.txt");
+  }
   int flags = O_WRONLY | O_CREAT | (truncate ? O_TRUNC : O_APPEND);
   g_logfile = SD.open(LOGFILE, flags);
   if (!g_logfile.isOpen())
@@ -1033,7 +1037,8 @@ static void check_for_unused_update_files()
 // Update firmware by unzipping the firmware package
 static void firmware_update()
 {
-  const char firmware_prefix[] = FIRMWARE_PREFIX;
+  const char package_prefix[] = FIRMWARE_PACKAGE_PREFIX;
+  const char zip_ext[] = ".zip";
   FsFile root = SD.open("/");
   FsFile file;
   char name[MAX_FILE_PATH + 1];
@@ -1048,10 +1053,11 @@ static void firmware_update()
     if (file.isDir())
       continue;
 
-    file.getName(name, sizeof(name));
-    if (strlen(name) + 1 < sizeof(firmware_prefix))
+    int namelen = file.getName(name, sizeof(name));
+    if (namelen < (int)(sizeof(package_prefix) - 1 + sizeof(zip_ext) - 1))
       continue;
-    if ( strncasecmp(firmware_prefix, name, sizeof(firmware_prefix) -1) == 0)
+    if (strncasecmp(package_prefix, name, sizeof(package_prefix) - 1) == 0 &&
+        strncasecmp(name + namelen - 4, zip_ext, 4) == 0)
     {
       break;
     }
@@ -1234,9 +1240,10 @@ STATIC_TESTABLE void bluescsi_setup_sd_card(bool wait_for_card = true)
       logmsg("Continuing without SD card");
     }
   }
-  // We only have 2 boards, we don't use this Zip file parsing.
-  //check_for_unused_update_files();
-  //firmware_update();
+  if (g_sdcard_present)
+  {
+    firmware_update();
+  }
 
   if (g_sdcard_present)
   {
@@ -1348,6 +1355,7 @@ STATIC_TESTABLE void bluescsi_setup_sd_card(bool wait_for_card = true)
 extern "C" void bluescsi_setup(void)
 {
   platform_init();
+  log_restore_from_shared();
   platform_late_init();
 
   bool is_initiator = false;
