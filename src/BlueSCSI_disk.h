@@ -82,6 +82,7 @@ struct image_config_t: public S2S_TargetCfg
 
     // Previously accessed CD-ROM track, cached for performance
     CUETrackInfo cdrom_trackinfo;
+    uint32_t cdrom_track_end_lba;
 
     // Loaded .bin file index for .cue/.bin with multiple files
     // Matches trackinfo.file_index

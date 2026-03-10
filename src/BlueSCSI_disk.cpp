@@ -432,6 +432,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
     img.cuesheetfile.close();
     img.bin_container.close();
     img.cdrom_binfile_index = -1;
+    img.cdrom_track_end_lba = 0;
     scsiDiskSetImageConfig(target_idx);
 
     // Check if this is a .cue file being opened directly for optical devices
@@ -2467,12 +2468,10 @@ int scsiDiskCommand()
         if (unlikely(blocks == 0)) blocks = 256;
         scsiDiskStartWrite(lba, blocks);
     }
-    else if (likely(command == 0x2A) || // WRITE(10)
-        unlikely(command == 0x2E)) // WRITE AND VERIFY
+    else if (likely(command == 0x2A))
     {
+        // WRITE(10)
         // Ignore all cache control bits - we don't support a memory cache.
-        // Don't bother verifying either. The SD card likely stores ECC
-        // along with each flash row.
 
         uint32_t lba =
             (((uint32_t) scsiDev.cdb[2]) << 24) +
@@ -2484,6 +2483,15 @@ int scsiDiskCommand()
             scsiDev.cdb[8];
 
         scsiDiskStartWrite(lba, blocks);
+    }
+    else if (unlikely(command == 0x2E))
+    {
+        // WRITE AND VERIFY
+        // Do not claim success unless verify semantics are actually implemented.
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.target->sense.asc = INVALID_COMMAND_OPERATION_CODE;
+        scsiDev.phase = STATUS;
     }
     else if (unlikely(command == 0x04))
     {

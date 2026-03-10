@@ -496,7 +496,8 @@ static bool cdromSelectBinFileForTrack(image_config_t &img, const CUETrackInfo *
 
 // Fetch track info based on LBA
 // Returns with the requested track already selected for bin file
-static void getTrackFromLBA(image_config_t &img, uint32_t lba, CUETrackInfo *result, CUEParser *parser = nullptr)
+static void getTrackFromLBA(image_config_t &img, uint32_t lba, CUETrackInfo *result,
+    uint32_t *track_end_lba = nullptr, CUEParser *parser = nullptr)
 {
     if (!img.cuesheetfile.isOpen())
     {
@@ -505,14 +506,21 @@ static void getTrackFromLBA(image_config_t &img, uint32_t lba, CUETrackInfo *res
         result->track_mode = CUETrack_MODE1_2048;
         result->sector_length = 2048;
         result->track_number = 1;
+        if (track_end_lba)
+        {
+            *track_end_lba = img.file.size() / result->sector_length;
+        }
     }
     else if (img.cdrom_binfile_index == img.cdrom_trackinfo.file_index &&
              lba >= img.cdrom_trackinfo.track_start &&
-             lba < img.cdrom_trackinfo.data_start + (img.file.size() > img.cdrom_trackinfo.file_offset
-                ? (img.file.size() - img.cdrom_trackinfo.file_offset) / img.cdrom_trackinfo.sector_length : 0))
+             lba < img.cdrom_track_end_lba)
     {
         // Same track as previous time
         *result = img.cdrom_trackinfo;
+        if (track_end_lba)
+        {
+            *track_end_lba = img.cdrom_track_end_lba;
+        }
     }
     else
     {
@@ -530,14 +538,18 @@ static void getTrackFromLBA(image_config_t &img, uint32_t lba, CUETrackInfo *res
 
         const CUETrackInfo *tmptrack;
         uint64_t prev_capacity = 0;
+        uint32_t next_track_start = 0;
+        bool found_track = false;
         while ((tmptrack = parser->next_track(prev_capacity)) != NULL)
         {
             if (tmptrack->track_start <= lba)
             {
                 *result = *tmptrack;
+                found_track = true;
             }
             else
             {
+                next_track_start = tmptrack->track_start;
                 break;
             }
 
@@ -545,7 +557,27 @@ static void getTrackFromLBA(image_config_t &img, uint32_t lba, CUETrackInfo *res
             prev_capacity = img.file.size();
         }
 
-        img.cdrom_trackinfo = *result;
+        if (track_end_lba)
+        {
+            if (!found_track)
+            {
+                *track_end_lba = 0;
+            }
+            else if (next_track_start != 0)
+            {
+                *track_end_lba = next_track_start;
+            }
+            else
+            {
+                *track_end_lba = getLeadOutLBA(result);
+            }
+        }
+
+        if (found_track)
+        {
+            img.cdrom_trackinfo = *result;
+            img.cdrom_track_end_lba = track_end_lba ? *track_end_lba : getLeadOutLBA(result);
+        }
     }
 }
 
@@ -842,7 +874,7 @@ void doReadHeader(bool MSF, uint32_t lba, uint16_t allocationLength)
         // Track mode (audio / data)
         if (trackinfo.track_mode == CUETrack_AUDIO)
         {
-            scsiDev.data[0] = 0;
+            mode = 0;
         }
     }
 
@@ -1727,7 +1759,8 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
     // Search the track with the requested LBA
     // Supplies dummy data if no cue sheet is active.
     CUETrackInfo trackinfo = {};
-    getTrackFromLBA(img, lba, &trackinfo);
+    uint32_t track_end_lba = 0;
+    getTrackFromLBA(img, lba, &trackinfo, &track_end_lba);
 
     // Figure out the data offset in the file
     int64_t offset;
@@ -1773,6 +1806,11 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
 
     // Ensure read is not out of range of the image
     uint32_t total_length = length;
+    if (track_end_lba > lba && length > track_end_lba - lba)
+    {
+        dbgmsg("------ Splitting read request at track boundary");
+        length = track_end_lba - lba;
+    }
     uint64_t readend = offset + trackinfo.sector_length * length;
     if (offset < 0 && -offset > trackinfo.unstored_pregap_length * trackinfo.sector_length)
     {
@@ -1924,6 +1962,16 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
     uint32_t result_length = sector_length + (field_q_subchannel ? 16 : 0) + (add_fake_headers ? 304 : 0);
     uint8_t *buf0 = scsiDev.data;
     uint8_t *buf1 = scsiDev.data + result_length;
+    auto failRead = [&](const char *operation, uint32_t failed_lba)
+    {
+        logmsg("CD-ROM ", operation, " failed at LBA ", (int)failed_lba,
+            " on SCSI ID ", (int)(img.scsiId & S2S_CFG_TARGET_ID_BITS));
+        scsiFinishWrite();
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = MEDIUM_ERROR;
+        scsiDev.target->sense.asc = 0x1106; // CIRC UNRECOVERED ERROR
+        scsiDev.phase = STATUS;
+    };
 
     // Format the sectors for transfer
     for (uint32_t idx = 0; idx < length; idx++)
@@ -1931,7 +1979,11 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
         platform_poll();
         diskEjectButtonUpdate(false);
 
-        img.file.seek(offset + idx * trackinfo.sector_length + skip_begin);
+        if (!img.file.seek(offset + idx * trackinfo.sector_length + skip_begin))
+        {
+            failRead("seek", lba + idx);
+            return;
+        }
 
         // Verify that previous write using this buffer has finished
         uint8_t *buf = ((idx & 1) ? buf1 : buf0);
@@ -1953,11 +2005,15 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
             if (sector_length > 0)
             {
                 // User data
-                img.file.read(buf, sector_length);
+                if (img.file.read(buf, sector_length) != sector_length)
+                {
+                    failRead("read", lba + idx);
+                    return;
+                }
                 buf += sector_length;
             }
         }
-        else 
+        else
         {
             if (add_fake_headers)
             {
@@ -1978,7 +2034,11 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
             if (sector_length > 0)
             {
                 // User data
-                img.file.read(buf, sector_length);
+                if (img.file.read(buf, sector_length) != sector_length)
+                {
+                    failRead("read", lba + idx);
+                    return;
+                }
                 buf += sector_length;
             }
 
@@ -2020,8 +2080,8 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
 
     if (length != total_length)
     {
-        // This read request was split across multiple .bin files
-        // Tail recurse to read the next track.
+        // This read request was split across a track boundary or image file end.
+        // Tail recurse to read the next track segment.
         doReadCD(lba + length, total_length - length, sector_type, main_channel, sub_channel, data_only);
         return;
     }
@@ -2277,7 +2337,11 @@ extern "C" int scsiCDRomCommand()
     {
         // CD-ROM Read Header
         bool MSF = (scsiDev.cdb[1] & 0x02);
-        uint32_t lba = 0; // IGNORED for now
+        uint32_t lba =
+            (((uint32_t) scsiDev.cdb[2]) << 24) +
+            (((uint32_t) scsiDev.cdb[3]) << 16) +
+            (((uint32_t) scsiDev.cdb[4]) << 8) +
+            scsiDev.cdb[5];
         uint16_t allocationLength =
             (((uint32_t) scsiDev.cdb[7]) << 8) +
             scsiDev.cdb[8];
