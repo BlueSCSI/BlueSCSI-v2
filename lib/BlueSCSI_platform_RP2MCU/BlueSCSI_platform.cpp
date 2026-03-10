@@ -821,6 +821,10 @@ void platform_init()
     // Make sure second core is stopped
     multicore_reset_core1();
 
+    // Keep negotiated sync limits aligned with the currently selected timing set
+    // even when no explicit reclocking profile is applied.
+    update_sync_period_limits();
+
     pio_clear_instruction_memory(pio0);
     pio_clear_instruction_memory(pio1);
 

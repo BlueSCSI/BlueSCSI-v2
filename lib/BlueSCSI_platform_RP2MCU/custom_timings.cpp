@@ -130,5 +130,19 @@ bool CustomTimings::set_timings_from_file()
     // audio
     g_bluescsi_timings->audio.clk_div_pio = ini_getl(audio_section, "clk_div_pio", g_bluescsi_timings->audio.clk_div_pio, CUSTOM_TIMINGS_FILE);
     g_bluescsi_timings->audio.audio_clocked = ini_getbool(audio_section, "clk_for_audio", g_bluescsi_timings->audio.audio_clocked, CUSTOM_TIMINGS_FILE);
+
+    update_sync_period_limits();
+
+    if (g_force_sync > 0)
+    {
+        uint8_t adjusted = calculate_sync_period_limit(g_bluescsi_timings, g_force_sync);
+        if (adjusted != g_force_sync)
+        {
+            logmsg("Adjusting forced sync period from ", (int)g_force_sync, " to ",
+                (int)adjusted, " to match DATA OUT timing floor");
+            g_force_sync = adjusted;
+        }
+    }
+
     return true;
 }
