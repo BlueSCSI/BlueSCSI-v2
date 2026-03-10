@@ -12,11 +12,11 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 **/
 
 #include "custom_timings.h"
@@ -29,6 +29,21 @@ extern SdFs SD;
 extern "C"
 {
     #include <timings.h>
+}
+
+static bool readIniIntRange(const char *section, const char *key, int32_t current,
+    int32_t min_value, int32_t max_value, int32_t *out)
+{
+    int32_t value = ini_getl(section, key, current, CUSTOM_TIMINGS_FILE);
+    if (value < min_value || value > max_value)
+    {
+        logmsg("Invalid value for [", section, "] ", key, " in ", CUSTOM_TIMINGS_FILE,
+            ": ", (int)value, " (expected ", (int)min_value, "..", (int)max_value, ")");
+        return false;
+    }
+
+    *out = value;
+    return true;
 }
 
 bool CustomTimings::use_custom_timings()
@@ -47,91 +62,156 @@ bool CustomTimings::set_timings_from_file()
     const char sdio_section[] = "sdio";
     const char audio_section[] = "audio";
 
-    // pll
-    int32_t vco = ini_getl(pll_section, "vco_freq_hz", g_bluescsi_timings->pll.vco_freq, CUSTOM_TIMINGS_FILE);
-    int32_t post_div1 = ini_getl(pll_section, "pd1", g_bluescsi_timings->pll.post_div1, CUSTOM_TIMINGS_FILE);
-    int32_t post_div2 = ini_getl(pll_section, "pd2", g_bluescsi_timings->pll.post_div2, CUSTOM_TIMINGS_FILE);
-
-    if (vco > 0 && post_div1 > 0 && post_div2 > 0)
-    {
-        if (vco / post_div1 / post_div2 > 252000000)
-        {
-            logmsg("Reclocking over 252MHz with the PLL settings is not allowed using ", CUSTOM_TIMINGS_FILE);
-            return false;
-        }
-    }
-    else
-    {
-        logmsg("Reclocking failed because 0 or negative PLL settings values");
-        return false;
-    }
-
-    g_bluescsi_timings->pll.vco_freq = vco;
-    g_bluescsi_timings->pll.post_div1 = post_div1;
-    g_bluescsi_timings->pll.post_div2 = post_div2;
-    g_bluescsi_timings->pll.refdiv =  ini_getl(pll_section, "refdiv", g_bluescsi_timings->pll.refdiv, CUSTOM_TIMINGS_FILE);
-
     char speed_grade_str[10];
     ini_gets(settings_section, "extends_speed_grade", "Default", speed_grade_str, sizeof(speed_grade_str), CUSTOM_TIMINGS_FILE);
     bluescsi_speed_grade_t speed_grade =  g_scsi_settings.stringToSpeedGrade(speed_grade_str, sizeof(speed_grade_str));
     set_timings(speed_grade);
 
-    int32_t number_setting = ini_getl(settings_section, "boot_with_sync_value", 0, CUSTOM_TIMINGS_FILE);
+    bluescsi_timings_t candidate = *g_bluescsi_timings;
+    uint8_t force_sync = g_force_sync;
+    uint8_t force_offset = g_force_offset;
+
+    int32_t number_setting = 0;
+    if (!readIniIntRange(settings_section, "boot_with_sync_value", 0, 0, 255, &number_setting))
+    {
+        return false;
+    }
 
     if (number_setting > 0)
     {
-        g_force_sync = number_setting;
-        number_setting = ini_getl(settings_section, "boot_with_offset_value", 15, CUSTOM_TIMINGS_FILE);
-        g_force_offset = number_setting > 15 ? 15 : number_setting;
-        logmsg("Forcing sync of ", (int) g_force_sync, " and offset of ", (int) g_force_offset);
+        force_sync = number_setting;
+        if (!readIniIntRange(settings_section, "boot_with_offset_value", 15, 0, 15, &number_setting))
+        {
+            return false;
+        }
+        force_offset = number_setting;
     }
-    g_bluescsi_timings->clk_hz = ini_getl(settings_section, "clk_hz", g_bluescsi_timings->clk_hz, CUSTOM_TIMINGS_FILE);
+    if (!readIniIntRange(settings_section, "clk_hz", candidate.clk_hz, 1, 252000000, &number_setting))
+    {
+        return false;
+    }
+    candidate.clk_hz = number_setting;
+    if (!readIniIntRange(pll_section, "refdiv", candidate.pll.refdiv, 1, 63, &number_setting))
+    {
+        return false;
+    }
+    candidate.pll.refdiv = number_setting;
+    if (!readIniIntRange(pll_section, "vco_freq_hz", candidate.pll.vco_freq, 1, 2000000000, &number_setting))
+    {
+        return false;
+    }
+    candidate.pll.vco_freq = number_setting;
+    if (!readIniIntRange(pll_section, "pd1", candidate.pll.post_div1, 1, 7, &number_setting))
+    {
+        return false;
+    }
+    candidate.pll.post_div1 = number_setting;
+    if (!readIniIntRange(pll_section, "pd2", candidate.pll.post_div2, 1, 7, &number_setting))
+    {
+        return false;
+    }
+    candidate.pll.post_div2 = number_setting;
+    uint32_t pll_output_hz = candidate.pll.vco_freq / candidate.pll.post_div1 / candidate.pll.post_div2;
+    if (pll_output_hz > 252000000)
+    {
+        logmsg("Reclocking over 252MHz with the PLL settings is not allowed using ", CUSTOM_TIMINGS_FILE);
+        return false;
+    }
+    if (pll_output_hz != (uint32_t)candidate.clk_hz)
+    {
+        logmsg("PLL output clock ", (int)pll_output_hz, "Hz does not match clk_hz ",
+            (int)candidate.clk_hz, "Hz in ", CUSTOM_TIMINGS_FILE);
+        return false;
+    }
 
 
     // scsi
-    g_bluescsi_timings->scsi.clk_period_ps = ini_getl(scsi_section, "clk_period_ps", g_bluescsi_timings->scsi.clk_period_ps, CUSTOM_TIMINGS_FILE);
-    g_bluescsi_timings->scsi.req_delay = ini_getl(scsi_section, "req_delay_cc", g_bluescsi_timings->scsi.req_delay, CUSTOM_TIMINGS_FILE);
-    // Auto-calculate: 100ns * clk_hz / 1e9 = clk_hz / 10000000
-    uint8_t default_cycles = (g_bluescsi_timings->clk_hz + 5000000) / 10000000;  // rounded
-    if (default_cycles < 1) default_cycles = 1;
-    g_bluescsi_timings->scsi.delay_100ns_cycles =
-        ini_getl(scsi_section, "delay_100ns_cycles", default_cycles, CUSTOM_TIMINGS_FILE);
+    if (!readIniIntRange(scsi_section, "clk_period_ps", candidate.scsi.clk_period_ps, 1, 1000000, &number_setting))
+    {
+        return false;
+    }
+    candidate.scsi.clk_period_ps = number_setting;
+    if (!readIniIntRange(scsi_section, "req_delay_cc", candidate.scsi.req_delay, 2, 31, &number_setting))
+    {
+        return false;
+    }
+    candidate.scsi.req_delay = number_setting;
+
+    // delay_100ns_cycles: auto-calculate default from clk_hz, allow INI override
+    uint8_t default_100ns_cycles = (candidate.clk_hz + 5000000) / 10000000;  // rounded
+    if (default_100ns_cycles < 1) default_100ns_cycles = 1;
+    if (!readIniIntRange(scsi_section, "delay_100ns_cycles", default_100ns_cycles, 1, 255, &number_setting))
+    {
+        return false;
+    }
+    candidate.scsi.delay_100ns_cycles = number_setting;
 
     // scsi 20
-    g_bluescsi_timings->scsi_20.delay0 = ini_getl(scsi_20_section, "delay0_cc", g_bluescsi_timings->scsi_20.delay0, CUSTOM_TIMINGS_FILE);
-    g_bluescsi_timings->scsi_20.delay1 = ini_getl(scsi_20_section, "delay1_cc", g_bluescsi_timings->scsi_20.delay1, CUSTOM_TIMINGS_FILE);
-    g_bluescsi_timings->scsi_20.total_period_adjust = ini_getl(scsi_20_section, "total_period_adjust_cc", g_bluescsi_timings->scsi_20.total_period_adjust, CUSTOM_TIMINGS_FILE);
-    g_bluescsi_timings->scsi_20.max_sync = ini_getl(scsi_20_section, "max_sync", g_bluescsi_timings->scsi_20.max_sync, CUSTOM_TIMINGS_FILE);
-    g_bluescsi_timings->scsi_20.rdelay1 = ini_getl(scsi_20_section, "read_delay1_cc", g_bluescsi_timings->scsi_20.rdelay1, CUSTOM_TIMINGS_FILE);
-    g_bluescsi_timings->scsi_20.rtotal_period_adjust = ini_getl(scsi_20_section, "read_total_period_adjust_cc", g_bluescsi_timings->scsi_20.rtotal_period_adjust, CUSTOM_TIMINGS_FILE);
+    if (!readIniIntRange(scsi_20_section, "delay0_cc", candidate.scsi_20.delay0, 0, 31, &number_setting)) return false;
+    candidate.scsi_20.delay0 = number_setting;
+    if (!readIniIntRange(scsi_20_section, "delay1_cc", candidate.scsi_20.delay1, 0, 31, &number_setting)) return false;
+    candidate.scsi_20.delay1 = number_setting;
+    if (!readIniIntRange(scsi_20_section, "total_period_adjust_cc", candidate.scsi_20.total_period_adjust, -128, 127, &number_setting)) return false;
+    candidate.scsi_20.total_period_adjust = number_setting;
+    if (!readIniIntRange(scsi_20_section, "max_sync", candidate.scsi_20.max_sync, 1, 255, &number_setting)) return false;
+    candidate.scsi_20.max_sync = number_setting;
+    if (!readIniIntRange(scsi_20_section, "read_delay1_cc", candidate.scsi_20.rdelay1, 0, 31, &number_setting)) return false;
+    candidate.scsi_20.rdelay1 = number_setting;
+    if (!readIniIntRange(scsi_20_section, "read_total_period_adjust_cc", candidate.scsi_20.rtotal_period_adjust, -128, 127, &number_setting)) return false;
+    candidate.scsi_20.rtotal_period_adjust = number_setting;
 
     // scsi 10
-    g_bluescsi_timings->scsi_10.delay0 = ini_getl(scsi_10_section, "delay0_cc", g_bluescsi_timings->scsi_10.delay0, CUSTOM_TIMINGS_FILE);
-    g_bluescsi_timings->scsi_10.delay1 = ini_getl(scsi_10_section, "delay1_cc", g_bluescsi_timings->scsi_10.delay1, CUSTOM_TIMINGS_FILE);
-    g_bluescsi_timings->scsi_10.total_period_adjust = ini_getl(scsi_10_section, "total_period_adjust_cc", g_bluescsi_timings->scsi_10.total_period_adjust, CUSTOM_TIMINGS_FILE);
-    g_bluescsi_timings->scsi_10.max_sync = ini_getl(scsi_10_section, "max_sync", g_bluescsi_timings->scsi_10.max_sync, CUSTOM_TIMINGS_FILE);
-    g_bluescsi_timings->scsi_10.rdelay1 = ini_getl(scsi_10_section, "read_delay1_cc", g_bluescsi_timings->scsi_10.rdelay1, CUSTOM_TIMINGS_FILE);
-    g_bluescsi_timings->scsi_10.rtotal_period_adjust = ini_getl(scsi_10_section, "read_total_period_adjust_cc", g_bluescsi_timings->scsi_10.rtotal_period_adjust, CUSTOM_TIMINGS_FILE);
+    if (!readIniIntRange(scsi_10_section, "delay0_cc", candidate.scsi_10.delay0, 0, 31, &number_setting)) return false;
+    candidate.scsi_10.delay0 = number_setting;
+    if (!readIniIntRange(scsi_10_section, "delay1_cc", candidate.scsi_10.delay1, 0, 31, &number_setting)) return false;
+    candidate.scsi_10.delay1 = number_setting;
+    if (!readIniIntRange(scsi_10_section, "total_period_adjust_cc", candidate.scsi_10.total_period_adjust, -128, 127, &number_setting)) return false;
+    candidate.scsi_10.total_period_adjust = number_setting;
+    if (!readIniIntRange(scsi_10_section, "max_sync", candidate.scsi_10.max_sync, 1, 255, &number_setting)) return false;
+    candidate.scsi_10.max_sync = number_setting;
+    if (!readIniIntRange(scsi_10_section, "read_delay1_cc", candidate.scsi_10.rdelay1, 0, 31, &number_setting)) return false;
+    candidate.scsi_10.rdelay1 = number_setting;
+    if (!readIniIntRange(scsi_10_section, "read_total_period_adjust_cc", candidate.scsi_10.rtotal_period_adjust, -128, 127, &number_setting)) return false;
+    candidate.scsi_10.rtotal_period_adjust = number_setting;
 
     // scsi 5
-    g_bluescsi_timings->scsi_5.delay0 = ini_getl(scsi_5_section, "delay0_cc", g_bluescsi_timings->scsi_5.delay0, CUSTOM_TIMINGS_FILE);
-    g_bluescsi_timings->scsi_5.delay1 = ini_getl(scsi_5_section, "delay1_cc", g_bluescsi_timings->scsi_5.delay1, CUSTOM_TIMINGS_FILE);
-    g_bluescsi_timings->scsi_5.total_period_adjust = ini_getl(scsi_5_section, "total_period_adjust_cc", g_bluescsi_timings->scsi_5.total_period_adjust, CUSTOM_TIMINGS_FILE);
-    g_bluescsi_timings->scsi_5.max_sync = ini_getl(scsi_5_section, "max_sync", g_bluescsi_timings->scsi_5.max_sync, CUSTOM_TIMINGS_FILE);
-    g_bluescsi_timings->scsi_5.rdelay1 = ini_getl(scsi_5_section, "read_delay1_cc", g_bluescsi_timings->scsi_5.rdelay1, CUSTOM_TIMINGS_FILE);
-    g_bluescsi_timings->scsi_5.rtotal_period_adjust = ini_getl(scsi_5_section, "read_total_period_adjust_cc", g_bluescsi_timings->scsi_5.rtotal_period_adjust, CUSTOM_TIMINGS_FILE);
+    if (!readIniIntRange(scsi_5_section, "delay0_cc", candidate.scsi_5.delay0, 0, 31, &number_setting)) return false;
+    candidate.scsi_5.delay0 = number_setting;
+    if (!readIniIntRange(scsi_5_section, "delay1_cc", candidate.scsi_5.delay1, 0, 31, &number_setting)) return false;
+    candidate.scsi_5.delay1 = number_setting;
+    if (!readIniIntRange(scsi_5_section, "total_period_adjust_cc", candidate.scsi_5.total_period_adjust, -128, 127, &number_setting)) return false;
+    candidate.scsi_5.total_period_adjust = number_setting;
+    if (!readIniIntRange(scsi_5_section, "max_sync", candidate.scsi_5.max_sync, 1, 255, &number_setting)) return false;
+    candidate.scsi_5.max_sync = number_setting;
+    if (!readIniIntRange(scsi_5_section, "read_delay1_cc", candidate.scsi_5.rdelay1, 0, 31, &number_setting)) return false;
+    candidate.scsi_5.rdelay1 = number_setting;
+    if (!readIniIntRange(scsi_5_section, "read_total_period_adjust_cc", candidate.scsi_5.rtotal_period_adjust, -128, 127, &number_setting)) return false;
+    candidate.scsi_5.rtotal_period_adjust = number_setting;
 
     // sdio
-    g_bluescsi_timings->sdio.clk_div_pio = ini_getl(sdio_section, "clk_div_pio", g_bluescsi_timings->sdio.clk_div_pio, CUSTOM_TIMINGS_FILE);
-    g_bluescsi_timings->sdio.clk_div_1mhz = ini_getl(sdio_section, "clk_div_1mhz", g_bluescsi_timings->sdio.clk_div_1mhz, CUSTOM_TIMINGS_FILE);
-    g_bluescsi_timings->sdio.delay0 = ini_getl(sdio_section, "delay0", g_bluescsi_timings->sdio.delay0, CUSTOM_TIMINGS_FILE);
-    g_bluescsi_timings->sdio.delay1 = ini_getl(sdio_section, "delay1", g_bluescsi_timings->sdio.delay1, CUSTOM_TIMINGS_FILE);
+    if (!readIniIntRange(sdio_section, "clk_div_pio", candidate.sdio.clk_div_pio, 1, 255, &number_setting)) return false;
+    candidate.sdio.clk_div_pio = number_setting;
+    if (!readIniIntRange(sdio_section, "clk_div_1mhz", candidate.sdio.clk_div_1mhz, 1, 255, &number_setting)) return false;
+    candidate.sdio.clk_div_1mhz = number_setting;
+    if (!readIniIntRange(sdio_section, "delay0", candidate.sdio.delay0, 0, 255, &number_setting)) return false;
+    candidate.sdio.delay0 = number_setting;
+    if (!readIniIntRange(sdio_section, "delay1", candidate.sdio.delay1, 0, 255, &number_setting)) return false;
+    candidate.sdio.delay1 = number_setting;
 
     // audio
-    g_bluescsi_timings->audio.clk_div_pio = ini_getl(audio_section, "clk_div_pio", g_bluescsi_timings->audio.clk_div_pio, CUSTOM_TIMINGS_FILE);
-    g_bluescsi_timings->audio.audio_clocked = ini_getbool(audio_section, "clk_for_audio", g_bluescsi_timings->audio.audio_clocked, CUSTOM_TIMINGS_FILE);
+    if (!readIniIntRange(audio_section, "clk_div_pio", candidate.audio.clk_div_pio, 1, 255, &number_setting))
+    {
+        return false;
+    }
+    candidate.audio.clk_div_pio = number_setting;
+    candidate.audio.audio_clocked = ini_getbool(audio_section, "clk_for_audio", candidate.audio.audio_clocked, CUSTOM_TIMINGS_FILE);
 
-    update_sync_period_limits();
+    *g_bluescsi_timings = candidate;
+    g_force_sync = force_sync;
+    g_force_offset = force_offset;
+    g_max_sync_20_period = g_bluescsi_timings->scsi_20.max_sync;
+    g_max_sync_10_period = g_bluescsi_timings->scsi_10.max_sync;
+    g_max_sync_5_period = g_bluescsi_timings->scsi_5.max_sync;
 
     if (g_force_sync > 0)
     {
@@ -142,6 +222,7 @@ bool CustomTimings::set_timings_from_file()
                 (int)adjusted, " to match DATA OUT timing floor");
             g_force_sync = adjusted;
         }
+        logmsg("Forcing sync of ", (int) g_force_sync, " and offset of ", (int) g_force_offset);
     }
 
     return true;
