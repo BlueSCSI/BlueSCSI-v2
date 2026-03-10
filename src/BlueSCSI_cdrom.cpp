@@ -1962,6 +1962,7 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
     uint32_t result_length = sector_length + (field_q_subchannel ? 16 : 0) + (add_fake_headers ? 304 : 0);
     uint8_t *buf0 = scsiDev.data;
     uint8_t *buf1 = scsiDev.data + result_length;
+    bool sequential_file_read = sector_length > 0 && skip_begin == 0;
     auto failRead = [&](const char *operation, uint32_t failed_lba)
     {
         logmsg("CD-ROM ", operation, " failed at LBA ", (int)failed_lba,
@@ -1973,13 +1974,20 @@ static void doReadCD(uint32_t lba, uint32_t length, uint8_t sector_type,
         scsiDev.phase = STATUS;
     };
 
+    if (sequential_file_read && !img.file.seek(offset))
+    {
+        failRead("seek", lba);
+        return;
+    }
+
     // Format the sectors for transfer
     for (uint32_t idx = 0; idx < length; idx++)
     {
         platform_poll();
         diskEjectButtonUpdate(false);
 
-        if (!img.file.seek(offset + idx * trackinfo.sector_length + skip_begin))
+        if (!sequential_file_read && sector_length > 0 &&
+            !img.file.seek(offset + idx * trackinfo.sector_length + skip_begin))
         {
             failRead("seek", lba + idx);
             return;
