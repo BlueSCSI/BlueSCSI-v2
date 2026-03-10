@@ -501,7 +501,7 @@ static bluescsi_timings_t  predefined_timings[]  = {
         {
             .req_delay = 12,
             .clk_period_ps = 4990,
-            .delay_100ns_cycles = 20
+            .delay_100ns_cycles = 21
         },
 
         .scsi_20 =

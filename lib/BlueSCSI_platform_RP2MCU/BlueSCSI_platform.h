@@ -101,7 +101,17 @@ static inline void platform_delay_us(uint32_t us)
 // Short delays, can be called from interrupt mode
 static inline void delay_ns(unsigned long ns)
 {
-    platform_delay_us((ns + 999) / 1000);
+    if (ns >= 1000)
+    {
+        platform_delay_us((ns + 999) / 1000);
+        return;
+    }
+    uint32_t clk_hz = g_bluescsi_timings->clk_hz;
+    uint32_t cycles = ((uint64_t)clk_hz * ns + 999999999ULL) / 1000000000ULL;
+    if (cycles > 0)
+    {
+        busy_wait_at_least_cycles(cycles);
+    }
 }
 
 // ~100ns delay, calibrated to current clock speed
