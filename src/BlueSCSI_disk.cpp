@@ -2237,11 +2237,11 @@ static void start_dataInTransfer(uint8_t *buffer, uint32_t count)
     // Use direct sector I/O when fastseek is enabled (for fragmented files)
     // Contiguous files already use raw SD access, bypassing this path
     bool read_ok = false;
-    if (img.file.isFastSeekEnabled())
+    uint32_t sectorCount = count >> 9;
+    if (img.file.isFastSeekEnabled() && sectorCount > 0)
     {
         // Convert byte position/count to sector units (>> 9 is / 512)
         uint32_t fileSector = img.file.position() >> 9;
-        uint32_t sectorCount = count >> 9;
         uint32_t sectorsRead = img.file.readSectorsDirect(fileSector, buffer, sectorCount);
         read_ok = (sectorsRead == sectorCount);
         if (read_ok)
@@ -2660,8 +2660,145 @@ void scsiDiskReset()
     }
 }
 
+/*************************/
+/* Format functions     */
+/*************************/
+
+// Format entire drive with specified pattern (default 0x6C)
+bool scsiDiskFormatUnit(uint8_t pattern)
+{
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+    uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+    uint32_t capacity = img.file.size() / bytesPerSector;
+    
+    if (!img.file.isWritable())
+    {
+        logmsg("WARNING: Cannot format read-only drive ID ", (int)(img.scsiId & S2S_CFG_TARGET_ID_BITS));
+        return false;
+    }
+    
+    // Create format buffer filled with pattern
+    uint8_t *formatBuffer = (uint8_t*)malloc(bytesPerSector);
+    if (!formatBuffer)
+    {
+        logmsg("ERROR: Cannot allocate format buffer");
+        return false;
+    }
+    
+    memset(formatBuffer, pattern, bytesPerSector);
+    
+    DBGMSG_F("Xebec Format Unit: formatting %d sectors with pattern 0x%02X", (int)capacity, pattern);
+    
+    // Seek to beginning of file
+    if (!img.file.seek(0))
+    {
+        logmsg("ERROR: Cannot seek to start of drive for format");
+        free(formatBuffer);
+        return false;
+    }
+    
+    bool success = true;
+    
+    // Write pattern to every sector
+    for (uint32_t lba = 0; lba < capacity && success; lba++)
+    {
+        if (img.file.write(formatBuffer, bytesPerSector) != bytesPerSector)
+        {
+            logmsg("ERROR: Format write failed at sector ", (int)lba);
+            success = false;
+        }
+        
+        // Reset watchdog periodically for large drives
+        if ((lba & 0xFF) == 0)
+        {
+            platform_reset_watchdog();
+        }
+    }
+    
+    // Flush changes to SD card
+    if (success)
+    {
+        img.file.flush();
+        logmsg("Xebec Format Unit completed successfully: ", (int)capacity, " sectors");
+    }
+    
+    free(formatBuffer);
+    return success;
+}
+
+// Format range of sectors with specified pattern (default 0x6C)
+bool scsiDiskFormatRange(uint32_t startLBA, uint32_t numBlocks, uint8_t pattern)
+{
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+    uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+    uint32_t capacity = img.file.size() / bytesPerSector;
+    
+    if (!img.file.isWritable())
+    {
+        logmsg("WARNING: Cannot format read-only drive ID ", (int)(img.scsiId & S2S_CFG_TARGET_ID_BITS));
+        return false;
+    }
+    
+    // Validate LBA range
+    if (startLBA >= capacity || (startLBA + numBlocks) > capacity)
+    {
+        logmsg("WARNING: Format range out of bounds: start=", (int)startLBA, " blocks=", (int)numBlocks, " capacity=", (int)capacity);
+        return false;
+    }
+    
+    // Create format buffer filled with pattern
+    uint8_t *formatBuffer = (uint8_t*)malloc(bytesPerSector);
+    if (!formatBuffer)
+    {
+        logmsg("ERROR: Cannot allocate format buffer");
+        return false;
+    }
+    
+    memset(formatBuffer, pattern, bytesPerSector);
+    
+    DBGMSG_F("Xebec Format Range: LBA %d + %d blocks with pattern 0x%02X", 
+             (int)startLBA, (int)numBlocks, pattern);
+    
+    // Seek to start of range
+    if (!img.file.seek((uint64_t)startLBA * bytesPerSector))
+    {
+        logmsg("ERROR: Cannot seek to LBA ", (int)startLBA, " for format");
+        free(formatBuffer);
+        return false;
+    }
+    
+    bool success = true;
+    
+    // Write pattern to specified range of sectors
+    for (uint32_t block = 0; block < numBlocks && success; block++)
+    {
+        if (img.file.write(formatBuffer, bytesPerSector) != bytesPerSector)
+        {
+            logmsg("ERROR: Format write failed at LBA ", (int)(startLBA + block));
+            success = false;
+        }
+        
+        // Reset watchdog periodically for large ranges
+        if ((block & 0xFF) == 0)
+        {
+            platform_reset_watchdog();
+        }
+    }
+    
+    // Flush changes to SD card
+    if (success)
+    {
+        img.file.flush();
+        logmsg("Xebec Format Range completed: LBA ", (int)startLBA, " + ", (int)numBlocks, " blocks");
+    }
+    
+    free(formatBuffer);
+    return success;
+}
+
 extern "C"
 void scsiDiskInit()
 {
     scsiDiskReset();
 }
+ 
