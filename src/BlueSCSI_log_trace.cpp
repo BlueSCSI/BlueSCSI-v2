@@ -47,7 +47,7 @@ static const char *getCommandName(uint8_t cmd)
         case 0x03: return "RequestSense";
         case 0x04: return "FormatUnit";
         case 0x05: return "ReadBlockLimits";
-        case 0x06: return "IomegaVendorCommand";
+        case 0x06: return "IomegaVendorCommand/Xebec format track";
         case 0x08: return "Read6";
         case 0x0A: return "Write6";
         case 0x0B: return "Seek6";
@@ -228,7 +228,7 @@ void scsiLogPhaseChange(int new_phase)
             dbgmsg("---- Total IN: ", g_InByteCount, " OUT: ", g_OutByteCount, " CHECKSUM: ", (int)g_DataChecksum);
         }
         // log Xebec vendor command
-        if (old_phase == DATA_OUT && scsiDev.cdb[0] == 0x0C && g_OutByteCount == 8)
+        if (old_phase == DATA_OUT && scsiDev.cdb[0] == 0x0C && scsiDev.dataLen >= 8)
         {
             int cylinders = ((uint16_t)scsiDev.data[0] << 8) + scsiDev.data[1];
             int heads = scsiDev.data[2];
