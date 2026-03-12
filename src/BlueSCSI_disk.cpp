@@ -2237,11 +2237,11 @@ static void start_dataInTransfer(uint8_t *buffer, uint32_t count)
     // Use direct sector I/O when fastseek is enabled (for fragmented files)
     // Contiguous files already use raw SD access, bypassing this path
     bool read_ok = false;
-    if (img.file.isFastSeekEnabled())
+    uint32_t sectorCount = count >> 9;
+    if (img.file.isFastSeekEnabled() && sectorCount > 0)
     {
         // Convert byte position/count to sector units (>> 9 is / 512)
         uint32_t fileSector = img.file.position() >> 9;
-        uint32_t sectorCount = count >> 9;
         uint32_t sectorsRead = img.file.readSectorsDirect(fileSector, buffer, sectorCount);
         read_ok = (sectorsRead == sectorCount);
         if (read_ok)
