@@ -2237,17 +2237,32 @@ static void start_dataInTransfer(uint8_t *buffer, uint32_t count)
     // Use direct sector I/O when fastseek is enabled (for fragmented files)
     // Contiguous files already use raw SD access, bypassing this path
     bool read_ok = false;
-    if (img.file.isFastSeekEnabled())
+    uint32_t sectorCount = count >> 9;
+    uint64_t filePos = img.file.position();
+    bool posAligned = ((uint32_t)filePos % SD_SECTOR_SIZE) == 0;
+    if (img.file.isFastSeekEnabled() && sectorCount > 0 && posAligned)
     {
         // Convert byte position/count to sector units (>> 9 is / 512)
-        uint32_t fileSector = img.file.position() >> 9;
-        uint32_t sectorCount = count >> 9;
+        uint32_t fileSector = (uint32_t)filePos >> 9;
         uint32_t sectorsRead = img.file.readSectorsDirect(fileSector, buffer, sectorCount);
         read_ok = (sectorsRead == sectorCount);
         if (read_ok)
         {
-            // readSectorsDirect does NOT advance file position - do it manually
-            img.file.seek(img.file.position() + count);
+            uint32_t fullBytes = sectorCount * 512;
+            uint32_t remaining = count - fullBytes;
+            if (remaining > 0)
+            {
+                // Partial SD sector at end (e.g. odd number of 256-byte SCSI sectors)
+                // readSectorsDirect does NOT advance position, so seek past full sectors
+                // then use filesystem read for the remainder
+                img.file.seek(filePos + fullBytes);
+                read_ok = ((uint32_t)img.file.read(buffer + fullBytes, remaining) == remaining);
+            }
+            else
+            {
+                // readSectorsDirect does NOT advance file position - do it manually
+                img.file.seek(filePos + count);
+            }
         }
     }
     else
