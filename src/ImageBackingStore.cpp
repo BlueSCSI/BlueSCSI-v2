@@ -303,6 +303,13 @@ ssize_t ImageBackingStore::read(void* buf, size_t count)
     uint32_t sectorcount = count / SD_SECTOR_SIZE;
     if (m_iscontiguous && (uint64_t)sectorcount * SD_SECTOR_SIZE != count)
     {
+        // Keep FsFile and raw-sector cursor in sync before changing access mode.
+        uint64_t pos = (uint64_t)(m_cursector - m_bgnsector) * SD_SECTOR_SIZE;
+        if (!m_israw && m_fsfile.isOpen() && !m_fsfile.seek(pos))
+        {
+            logmsg("---- Failed to sync FsFile position during contiguous read fallback");
+            return -1;
+        }
         dbgmsg("---- Unaligned access to image, falling back to SdFat access mode");
         m_iscontiguous = false;
     }
