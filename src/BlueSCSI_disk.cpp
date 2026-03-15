@@ -646,6 +646,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
                     if (img.bin_container.isDir())
                         img.bin_container.close();
                     memset(&img.cdrom_trackinfo, 0, sizeof(img.cdrom_trackinfo));
+                    img.cdrom_track_end_lba = 0;
                 }
             }
             else
@@ -675,6 +676,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
             {
                 img.bin_container.open(foldername);
                 memset(&img.cdrom_trackinfo, 0, sizeof(img.cdrom_trackinfo));
+                img.cdrom_track_end_lba = 0;
             }
             else
             {
