@@ -1,44 +1,75 @@
 # Building BlueSCSI Firmware
 
-## Prerequisites
+## Option 1: Nix Development Shell (Recommended)
 
-Enter the Nix development shell, which provides the Pico SDK, GCC ARM toolchain, and CMake:
+The Nix flake provides the exact toolchain, Pico SDK, and dependencies used for official builds.
+
+### Prerequisites
+
+- [Nix](https://nixos.org/download/) with [flakes enabled](https://nixos.wiki/wiki/Flakes)
+
+### Enter the Shell
 
 ```bash
 nix develop
 ```
 
-This sets `PICO_SDK_PATH` and `PICO_EXTRAS_PATH` automatically.
+This sets `PICO_SDK_PATH`, `PICO_EXTRAS_PATH`, and provides GCC ARM 14, CMake, and picotool automatically.
 
 If you use [direnv](https://direnv.net/), the environment loads automatically when you `cd` into the project (run `direnv allow` once).
 
-> **Note:** Requires [Nix flakes](https://nixos.wiki/wiki/Flakes) to be enabled.
-
-## Build All Targets
+### Build
 
 ```bash
-./build.sh
+./build.sh              # all default targets
+./build.sh Ultra        # specific target
+./build.sh clean        # remove all build artifacts
+./build.sh clean Ultra  # clean specific target
 ```
 
-Builds all 6 default targets and copies UF2 files to `build/output/`.
+## Option 2: Manual CMake Setup
 
-Build specific targets:
+### Prerequisites
+
+- **GCC ARM Embedded 14.x** — [arm-gnu-toolchain-14.x](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads) (`arm-none-eabi-gcc` must be on your PATH)
+- **CMake 3.20+**
+- **Python 3**
+- **Git**
+
+### Clone the Pico SDK
+
+BlueSCSI uses a forked Pico SDK with Ultra hardware support. Clone it with submodules:
 
 ```bash
-./build.sh Ultra Pico_DaynaPORT
+git clone --recurse-submodules https://github.com/bluescsi/pico-sdk-internal.git -b v2.2.0-UltraSupport-rel1
+git clone --recurse-submodules https://github.com/raspberrypi/pico-extras.git -b sdk-2.2.0
 ```
 
-## Build a Single Target
+Set the environment variables:
 
-Each target needs its own build directory under `build/`. Configure once, then build:
+```bash
+export PICO_SDK_PATH=/path/to/pico-sdk-internal
+export PICO_EXTRAS_PATH=/path/to/pico-extras
+```
+
+### Build with build.sh
+
+With the environment variables set, `build.sh` works the same as the Nix setup:
+
+```bash
+./build.sh              # all default targets
+./build.sh Ultra        # specific target
+```
+
+### Build a Single Target Manually
+
+Each target needs its own build directory. Configure once, then build:
 
 ```bash
 mkdir -p build/Ultra && cd build/Ultra
-cmake ../.. -DPICO_BOARD=pico2_w -DBLUESCSI_TARGET=Ultra -DCMAKE_BUILD_TYPE=Release
+cmake ../.. -DPICO_BOARD=bluescsi_ultra -DBLUESCSI_TARGET=Ultra -DCMAKE_BUILD_TYPE=Release
 cmake --build . --parallel
 ```
-
-The UF2 file is written to the build directory (e.g. `build/Ultra/BlueSCSI_Ultra.uf2`).
 
 After the initial configure, subsequent builds only need:
 
@@ -53,20 +84,6 @@ cmake ../..    # re-run from build dir
 cmake --build . --parallel
 ```
 
-## Clean
-
-Remove all build artifacts:
-
-```bash
-./build.sh clean
-```
-
-Clean specific targets:
-
-```bash
-./build.sh clean Ultra Pico_DaynaPORT
-```
-
 ## Available Targets
 
 | BLUESCSI_TARGET | PICO_BOARD | Description |
@@ -77,10 +94,12 @@ Clean specific targets:
 | `Pico_2` | `pico2` | RP2350, no WiFi |
 | `Pico_2_DaynaPORT` | `pico2_w` | RP2350 + WiFi/DaynaPORT |
 | `Pico_2_Audio_SPDIF` | `pico2_w` | RP2350 + WiFi + SPDIF audio |
-| `Ultra` | `pico2_w` | RP2350B + I2S audio + WiFi |
-| `Ultra_Wide` | `pico2` | RP2350B + I2S audio + Wide SCSI |
+| `Ultra` | `bluescsi_ultra` | RP2350B + I2S audio + WiFi |
+| `Ultra_Wide` | `bluescsi_ultra_wide` | RP2350B + I2S audio + Wide SCSI |
 
 Default targets (built by `./build.sh`): all except `Pico` and `Pico_2`.
+
+> **Note:** `build.sh` maps target names to the correct `PICO_BOARD` automatically. When building manually with cmake, use the PICO_BOARD values from the table above.
 
 ## Build Artifacts
 
