@@ -1054,6 +1054,11 @@ static void firmware_update()
       continue;
 
     int namelen = file.getName(name, sizeof(name));
+    // Match well-known Toolbox upload name (e.g. "BlueSCSI_update.zip")
+    if (strcasecmp(name, FIRMWARE_UPLOAD_NAME) == 0)
+    {
+      break;
+    }
     if (namelen < (int)(sizeof(package_prefix) - 1 + sizeof(zip_ext) - 1))
       continue;
     if (strncasecmp(package_prefix, name, sizeof(package_prefix) - 1) == 0 &&

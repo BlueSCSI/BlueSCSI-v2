@@ -37,7 +37,7 @@ OUT_DIR=./dist
 mkdir -p "$OUT_DIR"
 
 DATE=$(date +%Y-%m-%d)
-VERSION=$(git rev-parse --short HEAD)
+VERSION=$(git rev-parse --short=7 HEAD)
 
 # --- Copy firmware zip (for SD card update) ---
 # build.sh already creates this via utils/create_firmware_zip.sh
