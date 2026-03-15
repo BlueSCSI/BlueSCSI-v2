@@ -47,6 +47,7 @@
             };
 
             shellHook = ''
+              unset SOURCE_DATE_EPOCH
               echo -e "\e[1;34mBlueSCSI development environment activated.\e[0m"
               echo -e "\e[1;32mPICO_SDK_PATH\e[0m: \e[1;33m$PICO_SDK_PATH\e[0m"
               echo -e "\e[1;32mPICO_EXTRAS_PATH\e[0m: \e[1;33m$PICO_EXTRAS_PATH\e[0m"
