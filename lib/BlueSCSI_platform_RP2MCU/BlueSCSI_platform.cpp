@@ -69,11 +69,34 @@ extern "C" {
 #include <class/cdc/cdc_device.h>
 
 #include <pico/mutex.h>
+#include <pico/time.h>
 #ifndef BLUESCSI_BOOTLOADER_MAIN
 #include <bsp/board_api.h>
 #endif
 
 mutex_t __usb_mutex;
+
+// Background USB task — mirrors the Arduino-Pico core's approach of running
+// tud_task() from a repeating timer alarm so that USB enumeration and CDC
+// communication proceed even when the main loop hasn't started yet.
+#ifndef BLUESCSI_BOOTLOADER_MAIN
+static int __usb_task_irq;
+
+static void __usb_irq()
+{
+    if (mutex_try_enter(&__usb_mutex, NULL))
+    {
+        tud_task();
+        mutex_exit(&__usb_mutex);
+    }
+}
+
+static int64_t __usb_timer_task(__unused alarm_id_t id, __unused void *user_data)
+{
+    irq_set_pending(__usb_task_irq);
+    return 1000; // repeat every 1ms
+}
+#endif
 
 #ifndef U8574_DEBUG
 bool u8574_debug = false;
@@ -810,6 +833,12 @@ void platform_init()
 #ifndef BLUESCSI_BOOTLOADER_MAIN
     board_init();
     tusb_init();
+
+    // Start background USB task timer so enumeration proceeds during setup
+    __usb_task_irq = user_irq_claim_unused(true);
+    irq_set_exclusive_handler(__usb_task_irq, __usb_irq);
+    irq_set_enabled(__usb_task_irq, true);
+    add_alarm_in_us(1000, __usb_timer_task, NULL, true);
 #endif
 
     CheckPicoW();
@@ -1662,7 +1691,11 @@ void platform_reset_watchdog()
 
     // USB log is polled here also to make sure any log messages in fault states
     // get passed to USB.
-    tud_task();
+    if (mutex_try_enter(&__usb_mutex, NULL))
+    {
+        tud_task();
+        mutex_exit(&__usb_mutex);
+    }
     usb_log_poll();
 }
 
@@ -1672,7 +1705,11 @@ void platform_delay_ms_with_usb(uint32_t ms)
     uint32_t start = time_us_32();
     while ((time_us_32() - start) < (ms * 1000))
     {
-        tud_task();
+        if (mutex_try_enter(&__usb_mutex, NULL))
+        {
+            tud_task();
+            mutex_exit(&__usb_mutex);
+        }
     }
 }
 
@@ -1680,7 +1717,11 @@ void platform_delay_ms_with_usb(uint32_t ms)
 // Can be left empty or used for platform-specific processing.
 void platform_poll()
 {
-    tud_task();
+    if (mutex_try_enter(&__usb_mutex, NULL))
+    {
+        tud_task();
+        mutex_exit(&__usb_mutex);
+    }
     usb_input_poll();
     usb_log_poll();
     adc_poll();
