@@ -557,26 +557,25 @@ static void getTrackFromLBA(image_config_t &img, uint32_t lba, CUETrackInfo *res
             prev_capacity = img.file.size();
         }
 
-        if (track_end_lba)
+        uint32_t track_end_lba_val = 0;
+        if (found_track)
         {
-            if (!found_track)
+            if (next_track_start != 0)
             {
-                *track_end_lba = 0;
-            }
-            else if (next_track_start != 0)
-            {
-                *track_end_lba = next_track_start;
+                track_end_lba_val = next_track_start;
             }
             else
             {
-                *track_end_lba = getLeadOutLBA(result);
+                track_end_lba_val = getLeadOutLBA(result);
             }
+
+            img.cdrom_trackinfo = *result;
+            img.cdrom_track_end_lba = track_end_lba_val;
         }
 
-        if (found_track)
+        if (track_end_lba)
         {
-            img.cdrom_trackinfo = *result;
-            img.cdrom_track_end_lba = track_end_lba ? *track_end_lba : getLeadOutLBA(result);
+            *track_end_lba = track_end_lba_val;
         }
     }
 }
