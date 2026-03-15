@@ -138,8 +138,8 @@ void log_save_to_shared();
 // Restore bootloader log from shared log region into firmware log buffer
 void log_restore_from_shared();
 
-// Log a fixed-length string
-void log_raw(const char *str, size_t len);
+// Log a fixed-length buffer (not null-terminated)
+void log_raw_len(const char *str, size_t len);
 
 #ifdef NETWORK_DEBUG_LOGGING
 #ifdef __cplusplus

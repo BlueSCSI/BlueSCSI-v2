@@ -242,8 +242,8 @@ const char *log_get_buffer(uint32_t *startpos, uint32_t *available)
 }
 
 
-// Fixed-length string logging
-void log_raw(const char *str, size_t len)
+// Fixed-length buffer logging (not null-terminated)
+void log_raw_len(const char *str, size_t len)
 {
     for (size_t i = 0; i < len; i++)
     {
@@ -301,7 +301,7 @@ void log_restore_from_shared()
 
     // Replay bootloader log into firmware's log buffer
     log_raw("=== Bootloader Log ===\r\n");
-    log_raw(g_shared_log.buffer, len);
+    log_raw_len(g_shared_log.buffer, len);
     log_raw("=== End Bootloader Log ===\r\n");
 }
 
