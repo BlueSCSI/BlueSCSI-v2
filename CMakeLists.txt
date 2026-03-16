@@ -481,11 +481,11 @@ endif()
 # RP2350 SCRATCH_Y is 4KB but the SDK default stack is only 2KB (0x800).
 # The image-opening call chain (scsiDiskOpenHDDImage + SdFat + SDIO) uses ~1.5KB
 # alone, and RP2350's hardware MSPLIM catches the overflow that RP2040 silently
-# ignores. Use all 4KB of SCRATCH_Y for core 0's stack since nothing else is there.
-# Keep core 1's stack at default — SCRATCH_X has other data.
+# ignores. Increase to 3KB — not 4KB because Audio SPDIF targets place ~768 bytes
+# of lookup tables in .scratch_y. Keep core 1's stack at default in SCRATCH_X.
 if(PICO_PLATFORM STREQUAL "rp2350-arm-s")
     target_compile_definitions(BlueSCSI PRIVATE
-        PICO_STACK_SIZE=0x1000
+        PICO_STACK_SIZE=0xC00
         PICO_CORE1_STACK_SIZE=0x800
     )
 endif()
