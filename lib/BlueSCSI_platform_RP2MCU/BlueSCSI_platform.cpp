@@ -79,7 +79,9 @@ mutex_t __usb_mutex;
 // Background USB task — mirrors the Arduino-Pico core's approach of running
 // tud_task() from a repeating timer alarm so that USB enumeration and CDC
 // communication proceed even when the main loop hasn't started yet.
-#ifndef BLUESCSI_BOOTLOADER_MAIN
+// Only needed on RP2040 — RP2350 USB works without it, and the ISR nesting
+// pushes the 2KB stack over the limit during deep SD card call chains.
+#if !defined(BLUESCSI_BOOTLOADER_MAIN) && defined(BLUESCSI_MCU_RP20XX)
 static int __usb_task_irq;
 
 static void __usb_irq()
@@ -834,11 +836,14 @@ void platform_init()
     board_init();
     tusb_init();
 
-    // Start background USB task timer so enumeration proceeds during setup
+#ifdef BLUESCSI_MCU_RP20XX
+    // Start background USB task timer so enumeration proceeds during setup.
+    // Only needed on RP2040 — see comment at __usb_timer_task definition.
     __usb_task_irq = user_irq_claim_unused(true);
     irq_set_exclusive_handler(__usb_task_irq, __usb_irq);
     irq_set_enabled(__usb_task_irq, true);
     add_alarm_in_us(1000, __usb_timer_task, NULL, true);
+#endif
 #endif
 
     CheckPicoW();
