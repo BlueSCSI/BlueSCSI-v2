@@ -471,6 +471,9 @@ target_link_options(BlueSCSI PRIVATE
     -Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/${OUTPUT_NAME}.map
 )
 
+# Generate .su files for stack usage analysis (used by utils/check_stack_usage.py)
+target_compile_options(BlueSCSI PRIVATE -fstack-usage)
+
 # RP2040 RAM is too tight for CRT0 spacers (they add ~1KB to .stack/.heap sections).
 # The linker scripts use KEEP() to satisfy SDK >2.1.1 checks, but we disable the
 # actual spacer allocation on RP2040 to stay within the 264KB RAM budget.

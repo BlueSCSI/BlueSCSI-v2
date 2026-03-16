@@ -154,3 +154,9 @@ echo ""
 # --- memory usage comparison against latest release ---
 echo -e "${BOLD_CYAN}========================================${RESET}"
 python3 "${SCRIPT_DIR}/utils/compare_elf.py" --from-release "${BUILD_ROOT}"
+
+# --- stack usage analysis ---
+echo ""
+echo -e "${BOLD_CYAN}========================================${RESET}"
+echo -e "${BOLD_CYAN}Stack usage analysis${RESET}"
+python3 "${SCRIPT_DIR}/utils/check_stack_usage.py" "${BUILD_ROOT}"
