@@ -23,21 +23,13 @@
 #include <stdint.h>
 #include <hardware/pio.h>
 
-// Arduino compatibility types
-#ifndef pin_size_t
-typedef uint8_t pin_size_t;
-#endif
-
-// Forward declaration (unused but needed for class definition)
-class PIOProgram;
-
 class I2S {
 public:
     I2S();
     virtual ~I2S();
 
-    bool setBCLK(pin_size_t pin);
-    bool setDATA(pin_size_t pin);
+    bool setBCLK(uint8_t pin);
+    bool setDATA(uint8_t pin);
     bool setBitsPerSample(int bps);
 
     bool setDivider(uint16_t div_int, uint8_t div_frac);
@@ -48,14 +40,13 @@ public:
     void end();
 
 private:
-    pin_size_t _pinBCLK;
-    pin_size_t _pinDOUT;
+    uint8_t _pinBCLK;
+    uint8_t _pinDOUT;
     uint16_t _div_int;
     uint8_t _div_frac;
     int _bps;
     bool _running;
 
-    PIOProgram *_i2s;
     PIO _pio;
     int _sm;
 };

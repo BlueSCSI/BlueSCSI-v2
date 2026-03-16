@@ -46,7 +46,7 @@ I2S::~I2S() {
     end();
 }
 
-bool I2S::setBCLK(pin_size_t pin) {
+bool I2S::setBCLK(uint8_t pin) {
 #if defined(BLUESCSI_ULTRA) || defined (BLUESCSI_ULTRA_WIDE)
     if (_running) {
 #else
@@ -58,7 +58,7 @@ bool I2S::setBCLK(pin_size_t pin) {
     return true;
 }
 
-bool I2S::setDATA(pin_size_t pin) {
+bool I2S::setDATA(uint8_t pin) {
 #if defined(BLUESCSI_ULTRA) || defined (BLUESCSI_ULTRA_WIDE)
     if (_running) {
 #else
