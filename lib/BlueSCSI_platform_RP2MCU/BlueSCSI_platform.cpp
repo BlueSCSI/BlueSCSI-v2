@@ -1731,6 +1731,12 @@ void platform_poll()
     usb_log_poll();
     adc_poll();
 
+#if PICO_CYW43_SUPPORTED && !defined(BLUESCSI_BOOTLOADER_MAIN)
+    if (platform_is_pico_w()) {
+        cyw43_arch_poll();
+    }
+#endif
+
 #if defined(ENABLE_AUDIO_OUTPUT_SPDIF) || defined(ENABLE_AUDIO_OUTPUT_I2S)
     audio_poll();
 #endif // ENABLE_AUDIO_OUTPUT_SPDIF

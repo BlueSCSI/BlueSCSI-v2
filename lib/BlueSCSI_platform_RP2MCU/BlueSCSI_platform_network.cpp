@@ -396,6 +396,13 @@ int platform_network_wifi_channel()
 	return channel;
 }
 
+// Provide cyw43_tcpip_link_status (not available without lwIP).
+// Required by cyw43_arch_wifi_connect_timeout_ms.
+int cyw43_tcpip_link_status(cyw43_t *self, int itf)
+{
+	return cyw43_wifi_link_status(self, itf);
+}
+
 // these override weakly-defined functions in pico-sdk
 
 void cyw43_cb_process_ethernet(void *cb_data, int itf, size_t len, const uint8_t *buf)
