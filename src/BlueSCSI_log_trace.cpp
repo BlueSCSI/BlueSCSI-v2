@@ -266,7 +266,7 @@ void scsiLogPhaseChange(int new_phase)
             logmsg("SCSI ID ", (int)scsiDev.target->targetId,
                 " negotiated synchronous mode ", mbyte_per_s, " MB/s ",
                 "(period 4x", syncper, " ns, offset ", syncoff, " bytes)");
-            if (!logged_oc_info && (g_scsi_settings.getSystem()->speedGrade == SPEED_GRADE_DEFAULT)) {
+            if (!logged_oc_info && mbyte_per_s >= 10 && (g_scsi_settings.getSystem()->speedGrade == SPEED_GRADE_DEFAULT)) {
                 logmsg("INFO: You may get a boost from overclocking as your system supports synchronous SCSI speeds. https://bluescsi.com/docs/Ultra-SCSI-Fast20-OverClock");
                 logged_oc_info = true;
             }
