@@ -17,9 +17,9 @@
           pico-sdk = pkgs.fetchFromGitHub {
             owner = "bluescsi";
             repo = "pico-sdk-internal";
-            rev = "v2.2.0-UltraSupport-rel1";
+            rev = "v2.2.0-UltraSupport-rel2";
             fetchSubmodules = true;
-            hash = "sha256-jd8wUbjcN1/c2DgVMWXJvS45w6GjUqDFoFu9kTeU4Fg=";
+            hash = "sha256-Rx+MyFQSHJuIAjClaNXGXt+vhcl0aPP5XGZkzMxLkro=";
           };
 
           pico-extras = pkgs.fetchFromGitHub {
