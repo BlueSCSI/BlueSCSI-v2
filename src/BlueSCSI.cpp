@@ -67,6 +67,9 @@
 #include "BlueSCSI_msc.h"
 #include "BlueSCSI_blink.h"
 #include "ROMDrive.h"
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+#include "BlueSCSI_vendor_inquiry.h"
+#endif
 
 /* UNIT_TEST guard: expose static functions for testing */
 #ifdef UNIT_TEST
@@ -403,6 +406,10 @@ bool findHDDImages()
   char imgdir[MAX_FILE_PATH];
   ini_gets("SCSI", "Dir", "/", imgdir, sizeof(imgdir), CONFIGFILE);
   int dirindex = 0;
+
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+  parseCustomInquiryData();
+#endif
 
   logmsg("=== Finding images in ", imgdir, " ===");
   FsFile root;

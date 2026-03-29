@@ -1,6 +1,7 @@
 //	Copyright (C) 2014 Michael McMaster <michael@codesrc.com>
 //	Copyright (c) 2023 joshua stein <jcs@jcs.org>
 //	Copyright (c) 2023 Andrea Ottaviani <andrea.ottaviani.69@gmail.com>
+//	Copyright (c) 2025-2026 Kevin Moonlight <me@yyzkevin.com>
 //	Copyright (c) 2024-2025 Rabbit Hole Computing™
 //
 //	This file is part of SCSI2SD.
@@ -377,6 +378,46 @@ void s2s_scsiRequestSense(void)
 			else if (scsiDev.target->sense.code == ILLEGAL_REQUEST &&
 				 scsiDev.target->sense.asc == LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE)
 				scsiDev.data[4] = 0x81; // File Mark detected
+		}
+	}
+	else if (cfg->quirks == S2S_CFG_QUIRKS_AS400)
+	{
+		// AS/400 REQUEST SENSE format (SCSI-2 fixed format, response code 0x70)
+		if (allocLength == 0) allocLength = 4;
+
+		if (scsiDev.lun && scsiDev.lastStatus != CHECK_CONDITION)
+		{
+			scsiDev.target->sense.code = ILLEGAL_REQUEST;
+			scsiDev.target->sense.asc = LOGICAL_UNIT_NOT_SUPPORTED;
+			transfer.lba = 0;
+		}
+
+		memset(scsiDev.data, 0, 256);
+		scsiDev.data[0] = 0x70; // Current errors
+		scsiDev.data[2] = scsiDev.target->sense.code & 0x0F;
+
+		// LBA as valid information field
+		scsiDev.data[3] = transfer.lba >> 24;
+		scsiDev.data[4] = transfer.lba >> 16;
+		scsiDev.data[5] = transfer.lba >> 8;
+		scsiDev.data[6] = transfer.lba;
+
+		scsiDev.data[7] = 0x18; // Additional sense length
+		scsiDev.data[12] = scsiDev.target->sense.asc >> 8;
+		scsiDev.data[13] = scsiDev.target->sense.asc;
+
+		// AS/400-specific additional sense bytes
+		if (scsiDev.target->sense.code == NOT_READY &&
+			scsiDev.target->sense.asc == LOGICAL_UNIT_NOT_READY_INITIALIZING_COMMAND_REQUIRED)
+		{
+			scsiDev.data[20] = 1;
+			scsiDev.data[21] = 1;
+		}
+		if (scsiDev.target->sense.code == UNIT_ATTENTION &&
+			scsiDev.target->sense.asc == POWER_ON_RESET)
+		{
+			scsiDev.data[20] = 1;
+			scsiDev.data[21] = 0x41;
 		}
 	}
 	else
@@ -850,8 +891,17 @@ static void scsiReset()
 		}
 		scsiDev.target->reservedId = -1;
 		scsiDev.target->reserverId = -1;
-		scsiDev.target->sense.code = NO_SENSE;
-		scsiDev.target->sense.asc = NO_ADDITIONAL_SENSE_INFORMATION;
+		if (scsiDev.target->cfg && scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_AS400)
+		{
+			// AS/400 expects UNIT ATTENTION with POWER ON RESET after bus reset
+			scsiDev.target->sense.code = UNIT_ATTENTION;
+			scsiDev.target->sense.asc = POWER_ON_RESET;
+		}
+		else
+		{
+			scsiDev.target->sense.code = NO_SENSE;
+			scsiDev.target->sense.asc = NO_ADDITIONAL_SENSE_INFORMATION;
+		}
 	}
 	scsiDev.target = NULL;
 
@@ -1473,11 +1523,22 @@ void scsiInit()
 
 		scsiDev.targets[i].tapeMarkCount = 0;
 
-		// Always "start" the device. Many systems (eg. Apple System 7)
-		// won't respond properly to
-		// LOGICAL_UNIT_NOT_READY_INITIALIZING_COMMAND_REQUIRED sense
-		// code
-		scsiDev.targets[i].started = 1;
+		if (cfg && (cfg->quirks == S2S_CFG_QUIRKS_AS400))
+		{
+			// AS/400 expects devices to report "not ready" until explicitly started,
+			// and to report UNIT ATTENTION / POWER ON RESET on first sense query
+			scsiDev.targets[i].started = 0;
+			scsiDev.targets[i].sense.code = UNIT_ATTENTION;
+			scsiDev.targets[i].sense.asc = POWER_ON_RESET;
+		}
+		else
+		{
+			// Always "start" the device. Many systems (eg. Apple System 7)
+			// won't respond properly to
+			// LOGICAL_UNIT_NOT_READY_INITIALIZING_COMMAND_REQUIRED sense
+			// code
+			scsiDev.targets[i].started = 1;
+		}
 	}
 	firstInit = 0;
 }

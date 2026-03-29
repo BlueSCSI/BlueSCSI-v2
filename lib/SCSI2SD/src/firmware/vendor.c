@@ -1,5 +1,6 @@
 //	Copyright (C) 2016 Michael McMaster <michael@codesrc.com>
 //	Copyright (C) 2024 Jokker <jokker@gmail.com>
+//	Copyright (c) 2025-2026 Kevin Moonlight <me@yyzkevin.com>
 //
 //	This file is part of SCSI2SD.
 //
@@ -186,6 +187,14 @@ void scsiVendorCommandSetLen(uint8_t command, uint8_t* command_length)
 		// Conflicts with Apple CD-ROM audio over SCSI bus and Plextor CD-ROM D8 extension
 		// Will override those commands if enabled
 		if (0xD0 <= command && command <= 0xDA)
+		{
+			*command_length = 10;
+		}
+	}
+	else if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_AS400)
+	{
+		// AS/400 Skip Read(10) and Skip Write(10) are 10-byte vendor commands
+		if (command == 0xE8 || command == 0xEA)
 		{
 			*command_length = 10;
 		}

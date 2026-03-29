@@ -2,6 +2,7 @@
  * SCSI2SD V6 - Copyright (C) 2013 Michael McMaster <michael@codesrc.com>
  * Portions Copyright (C) 2014 Doug Brown <doug@downtowndougbrown.com>
  * Copyright (C) 2023 Eric Helgeson
+ * Copyright (C) 2025-2026 Kevin Moonlight <me@yyzkevin.com>
  * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
  *
  * This file is licensed under the GPL version 3 or any later version. 
@@ -39,6 +40,9 @@
 #include "ImageBackingStore.h"
 #include "ROMDrive.h"
 #include "QuirksCheck.h"
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+#include "BlueSCSI_disk_as400.h"
+#endif
 #include <minIni.h>
 #include <string.h>
 #include <strings.h>
@@ -1817,8 +1821,13 @@ int doTestUnitReady()
     {
         ready = 0;
         scsiDev.status = CHECK_CONDITION;
-        scsiDev.target->sense.code = NOT_READY;
-        scsiDev.target->sense.asc = LOGICAL_UNIT_NOT_READY_INITIALIZING_COMMAND_REQUIRED;
+        // AS/400: preserve pending sense (e.g. UNIT ATTENTION / POWER ON RESET)
+        // so the host sees it before we overwrite with NOT_READY
+        if (scsiDev.target->sense.code == NO_SENSE)
+        {
+            scsiDev.target->sense.code = NOT_READY;
+            scsiDev.target->sense.asc = LOGICAL_UNIT_NOT_READY_INITIALIZING_COMMAND_REQUIRED;
+        }
         scsiDev.phase = STATUS;
     }
     else if (img.ejected)
@@ -1908,6 +1917,16 @@ static struct {
     uint32_t bytes_sd; // Number of bytes that have been scheduled for transfer on SD card side
     uint32_t bytes_scsi; // Number of bytes that have been scheduled for transfer on SCSI side
 
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+    uint32_t writesame_count;
+    uint8_t  skip_mask[256];
+    uint16_t skip_mask_length;
+    uint32_t skip_lba;
+    uint16_t skip_blocks;
+    uint32_t skip_position;
+    uint8_t  skip_direction; // 0=none, 0xE8=SkipRead, 0xEA=SkipWrite
+#endif
+
     uint32_t bytes_scsi_started;
     uint32_t sd_transfer_start;
     int parityError;
@@ -1917,6 +1936,25 @@ static struct {
     bool verify;
     bool write_and_verify;
 } g_disk_data_out;
+
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+// Advance through the skip mask and return the next run.
+// Positive = sectors to transfer, negative = sectors to skip, 0 = finished.
+static int16_t as400_skip_next(int max)
+{
+    if (g_disk_transfer.skip_position >= (uint32_t)(g_disk_transfer.skip_mask_length * 8))
+        return 0;
+
+    int16_t x = as400_skip_contiguous_bits(
+        g_disk_transfer.skip_mask,
+        g_disk_transfer.skip_mask_length,
+        g_disk_transfer.skip_position);
+
+    if (x > max) x = max;
+    g_disk_transfer.skip_position += abs(x);
+    return x;
+}
+#endif
 
 #ifdef PREFETCH_BUFFER_SIZE
 static struct {
@@ -1933,6 +1971,23 @@ static struct {
 
 void scsiDiskStartWrite(uint32_t lba, uint32_t blocks)
 {
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+    // Validate pending skip-write state matches this write command
+    if (g_disk_transfer.skip_direction == 0xEA)
+    {
+        if (lba != g_disk_transfer.skip_lba || blocks != g_disk_transfer.skip_blocks)
+        {
+            logmsg("Skip Write LBA/block mismatch");
+            scsiDev.status = CHECK_CONDITION;
+            scsiDev.target->sense.code = ILLEGAL_REQUEST;
+            scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+            scsiDev.phase = STATUS;
+            g_disk_transfer.skip_direction = 0;
+            return;
+        }
+    }
+#endif
+
     if (unlikely(scsiDev.target->cfg->deviceType == S2S_CFG_FLOPPY_14MB)) {
         // Floppies are supposed to be slow. Some systems can't handle a floppy
         // without an access time
@@ -2528,6 +2583,76 @@ void diskDataOut()
             g_disk_transfer.sd_transfer_start = start;
             // dbgmsg("SD write ", (int)start, " + ", (int)len, " ", bytearray(buf, len));
             platform_set_sd_callback(&diskDataOut_callback, buf);
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+            if (g_disk_transfer.writesame_count)
+            {
+                // Write Same: replicate received block across disk
+                uint32_t blocks_per_buffer = sizeof(scsiDev.data) / bytesPerSector;
+                if (blocks_per_buffer > g_disk_transfer.writesame_count)
+                    blocks_per_buffer = g_disk_transfer.writesame_count;
+
+                for (uint32_t i = 1; i < blocks_per_buffer; i++)
+                    memcpy(scsiDev.data + (i * bytesPerSector), buf, bytesPerSector);
+
+                uint32_t blocks_written = 0;
+                while (blocks_written < g_disk_transfer.writesame_count)
+                {
+                    uint32_t blocks_to_write = blocks_per_buffer;
+                    if ((blocks_written + blocks_to_write) > g_disk_transfer.writesame_count)
+                        blocks_to_write = g_disk_transfer.writesame_count - blocks_written;
+
+                    uint32_t bytes_to_write = blocks_to_write * bytesPerSector;
+                    if (img.file.write(scsiDev.data, bytes_to_write) != bytes_to_write)
+                    {
+                        logmsg("SD card write failed during Write Same: ", SD.sdErrorCode());
+                        scsiDev.status = CHECK_CONDITION;
+                        scsiDev.target->sense.code = MEDIUM_ERROR;
+                        scsiDev.target->sense.asc = WRITE_ERROR_AUTO_REALLOCATION_FAILED;
+                        scsiDev.phase = STATUS;
+                        break;
+                    }
+                    blocks_written += blocks_to_write;
+                    platform_reset_watchdog();
+                }
+                g_disk_transfer.writesame_count = 0;
+            }
+            else if (g_disk_transfer.skip_direction == 0xEA)
+            {
+                // Skip Write: selectively write sectors based on skip mask
+                uint32_t aligned_len = len - (len % bytesPerSector);
+                int sectors_remaining = aligned_len / bytesPerSector;
+                uint8_t *ptr = buf;
+
+                while (sectors_remaining > 0)
+                {
+                    int16_t run = as400_skip_next(sectors_remaining);
+                    if (run < 0)
+                    {
+                        img.file.seek(img.file.position() + (abs(run) * bytesPerSector));
+                    }
+                    else if (run > 0)
+                    {
+                        uint32_t write_bytes = run * bytesPerSector;
+                        if (img.file.write(ptr, write_bytes) != write_bytes)
+                        {
+                            logmsg("SD card write failed during Skip Write: ", SD.sdErrorCode());
+                            scsiDev.status = CHECK_CONDITION;
+                            scsiDev.target->sense.code = MEDIUM_ERROR;
+                            scsiDev.target->sense.asc = WRITE_ERROR_AUTO_REALLOCATION_FAILED;
+                            scsiDev.phase = STATUS;
+                            break;
+                        }
+                        sectors_remaining -= run;
+                        ptr += write_bytes;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+            }
+            else
+#endif
             if (img.file.write(buf, len) != len)
             {
                 logmsg("SD card write failed: ", SD.sdErrorCode());
@@ -2549,6 +2674,10 @@ void diskDataOut()
 
     // Release SCSI bus
     scsiFinishRead(NULL, 0, &g_disk_transfer.parityError);
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+    if (g_disk_transfer.skip_direction)
+        g_disk_transfer.skip_direction = 0;
+#endif
 
     transfer.currentBlock += blockcount;
     scsiDev.dataPtr = scsiDev.dataLen = 0;
@@ -2704,6 +2833,51 @@ static void start_dataInTransfer(uint8_t *buffer, uint32_t count)
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     platform_set_sd_callback(&diskDataIn_callback, buffer);
 
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+    if (g_disk_transfer.skip_direction == 0xE8)
+    {
+        // Skip Read: selectively read sectors based on skip mask
+        uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+        int sectors_remaining = count / bytesPerSector;
+        uint8_t *ptr = buffer;
+        bool read_ok = true;
+
+        while (sectors_remaining > 0)
+        {
+            int16_t run = as400_skip_next(sectors_remaining);
+            if (run < 0)
+            {
+                img.file.seek(img.file.position() + (abs(run) * bytesPerSector));
+            }
+            else if (run > 0)
+            {
+                uint32_t read_bytes = run * bytesPerSector;
+                if (img.file.read(ptr, read_bytes) != (int)read_bytes)
+                {
+                    read_ok = false;
+                    break;
+                }
+                sectors_remaining -= run;
+                ptr += read_bytes;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        if (!read_ok)
+        {
+            logmsg("SD card read failed during Skip Read: ", SD.sdErrorCode());
+            scsiDev.status = CHECK_CONDITION;
+            scsiDev.target->sense.code = MEDIUM_ERROR;
+            scsiDev.target->sense.asc = UNRECOVERED_READ_ERROR;
+            scsiDev.phase = STATUS;
+        }
+    }
+    else
+#endif
+    {
     // Use direct sector I/O when fastseek is enabled (for fragmented files)
     // Contiguous files already use raw SD access, bypassing this path
     bool read_ok = false;
@@ -2732,6 +2906,7 @@ static void start_dataInTransfer(uint8_t *buffer, uint32_t count)
         scsiDev.target->sense.asc = UNRECOVERED_READ_ERROR;
         scsiDev.phase = STATUS;
     }
+    } // end normal read path (non-skip)
 
     diskDataIn_callback(count);
     platform_set_sd_callback(NULL, NULL);
@@ -2833,8 +3008,78 @@ static void diskDataIn()
         }
 
         scsiFinishWrite();
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+        if (g_disk_transfer.skip_direction)
+            g_disk_transfer.skip_direction = 0;
+#endif
     }
 }
+
+
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+// AS/400 Write Same(10) entry point
+static void scsiDiskStartWriteSame(uint32_t lba, uint32_t blocks)
+{
+    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
+    uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+    uint32_t capacity = img.file.size() / bytesPerSector;
+
+    dbgmsg("------ Write Same ", (int)blocks, "x", (int)bytesPerSector, " starting at ", (int)lba);
+
+    if (unlikely(((uint64_t)lba) + blocks > capacity))
+    {
+        logmsg("WARNING: Write Same at sector ", (int)lba, "+", (int)blocks,
+               ", exceeding image size ", (int)capacity, " sectors");
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.target->sense.asc = LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
+        scsiDev.phase = STATUS;
+        return;
+    }
+
+    if (blocks == 0)
+        g_disk_transfer.writesame_count = capacity - lba;
+    else
+        g_disk_transfer.writesame_count = blocks;
+
+    // Read exactly one block from the host, then replicate it
+    scsiDiskStartWrite(lba, 1);
+}
+
+// AS/400 Skip Read/Write entry point
+static void scsiDiskSkip(uint32_t lba, uint32_t blocks, uint8_t mask_length, uint8_t skip_direction)
+{
+    g_disk_transfer.skip_lba = lba;
+    g_disk_transfer.skip_blocks = blocks;
+    g_disk_transfer.skip_mask_length = mask_length;
+
+    scsiEnterPhase(DATA_OUT);
+    scsiRead(g_disk_transfer.skip_mask, g_disk_transfer.skip_mask_length, NULL);
+
+    if (as400_skip_total_true_bits(g_disk_transfer.skip_mask, g_disk_transfer.skip_mask_length) != (int)blocks)
+    {
+        logmsg("Skip mask bit count mismatch: expected ", (int)blocks,
+               " set bits in ", (int)mask_length, " byte mask");
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+        scsiDev.phase = STATUS;
+        g_disk_transfer.skip_direction = 0;
+    }
+    else
+    {
+        g_disk_transfer.skip_direction = skip_direction;
+        g_disk_transfer.skip_position = 0;
+
+        // Support optional linked command (CDB byte 9 bit 0)
+        if (scsiDev.cdb[9] & 1)
+        {
+            scsiDev.msgIn = MSG_LINKED_COMMAND_COMPLETE;
+            scsiDev.phase = MESSAGE_IN;
+        }
+    }
+}
+#endif
 
 
 /********************/
@@ -2852,6 +3097,30 @@ int scsiDiskCommand()
     g_disk_data_out.write_and_verify = false;
 
     uint8_t command = scsiDev.cdb[0];
+
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+    // AS/400 skip command validation: if a skip is pending, only allow
+    // the expected follow-up read/write command
+    if (g_disk_transfer.skip_direction)
+    {
+        bool allowed = false;
+        if (g_disk_transfer.skip_direction == 0xE8 && (command == 0x08 || command == 0x28))
+            allowed = true;
+        if (g_disk_transfer.skip_direction == 0xEA && (command == 0x0A || command == 0x2A))
+            allowed = true;
+
+        if (!allowed)
+        {
+            g_disk_transfer.skip_direction = 0;
+            scsiDev.status = CHECK_CONDITION;
+            scsiDev.target->sense.code = ILLEGAL_REQUEST;
+            scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+            scsiDev.phase = STATUS;
+            return 0;
+        }
+    }
+#endif
+
     if (unlikely(command == 0x1B))
     {
         // START STOP UNIT
@@ -2873,6 +3142,17 @@ int scsiDiskCommand()
         }
         else if (start)
         {
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+            if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_AS400)
+            {
+                // AS/400 expects drive spin-up time before reporting ready
+                for (int i = 0; i < 13; i++)
+                {
+                    platform_reset_watchdog();
+                    s2s_delay_ms(1000);
+                }
+            }
+#endif
             scsiDev.target->started = 1;
         }
         else
@@ -3252,6 +3532,34 @@ int scsiDiskCommand()
         commandHandled = scsiModeCommand();
         blockDev.state &= ~DISK_WP;
     }
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+    else if (unlikely(command == 0x41))
+    {
+        // WRITE SAME(10)
+        uint32_t lba =
+            (((uint32_t) scsiDev.cdb[2]) << 24) +
+            (((uint32_t) scsiDev.cdb[3]) << 16) +
+            (((uint32_t) scsiDev.cdb[4]) << 8) +
+            scsiDev.cdb[5];
+        uint32_t blocks =
+            (((uint32_t) scsiDev.cdb[7]) << 8) +
+            scsiDev.cdb[8];
+        scsiDiskStartWriteSame(lba, blocks);
+    }
+    else if (unlikely(command == 0xEA) || unlikely(command == 0xE8))
+    {
+        // 0xEA = Skip Write(10), 0xE8 = Skip Read(10) (AS/400 vendor commands)
+        uint32_t lba =
+            (((uint32_t) scsiDev.cdb[2]) << 24) +
+            (((uint32_t) scsiDev.cdb[3]) << 16) +
+            (((uint32_t) scsiDev.cdb[4]) << 8) +
+            scsiDev.cdb[5];
+        uint32_t blocks =
+            (((uint32_t) scsiDev.cdb[7]) << 8) +
+            scsiDev.cdb[8];
+        scsiDiskSkip(lba, blocks, scsiDev.cdb[6], command);
+    }
+#endif
     else
     {
         commandHandled = 0;

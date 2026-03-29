@@ -3,7 +3,8 @@
  *
  * ZuluSCSI™ - Copyright (c) 2023-2025 Rabbit Hole Computing™
  * Copyright (c) 2023-2025 Eric Helgeson
- * 
+ * Copyright (c) 2025-2026 Kevin Moonlight <me@yyzkevin.com>
+ *
  * This file is licensed under the GPL version 3 or any later version.  
  * 
  * https://www.gnu.org/licenses/gpl-3.0.html
@@ -36,7 +37,11 @@
 // SCSI system and device settings
 BlueSCSISettings g_scsi_settings;
 
-const char *systemPresetName[] = {"", "Mac", "MacPlus", "MPC3000", "MegaSTE", "X68000", "X68000-SCSI", "X68000-SASI", "NeXT", "Generic"};
+const char *systemPresetName[] = {"", "Mac", "MacPlus", "MPC3000", "MegaSTE", "X68000", "X68000-SCSI", "X68000-SASI", "NeXT", "Generic",
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+    "AS400",
+#endif
+};
 const char *devicePresetName[] = {"", "ST32430N"};
 
 // must be in the same order as bluescsi_speed_grade_t in BlueSCSI_settings.h
@@ -551,6 +556,15 @@ scsi_system_settings_t *BlueSCSISettings::initSystem(const char *presetName)
         m_sysPreset = SYS_PRESET_GENERIC;
         cfgSys.quirks = S2S_CFG_QUIRKS_NONE;
     }
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+    else if (strequals(systemPresetName[SYS_PRESET_AS400], presetName))
+    {
+        m_sysPreset = SYS_PRESET_AS400;
+        cfgSys.quirks = S2S_CFG_QUIRKS_AS400;
+        cfgSys.enableUnitAttention = true;
+        cfgSys.enableSCSI2 = true;
+    }
+#endif
     else
     {
         m_sysPreset = SYS_PRESET_NONE;

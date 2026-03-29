@@ -86,6 +86,8 @@ set(COMMON_SOURCES
     src/BlueSCSI.cpp
     src/BlueSCSI_settings.cpp
     src/BlueSCSI_disk.cpp
+    src/BlueSCSI_disk_as400.cpp
+    src/BlueSCSI_vendor_inquiry.cpp
     src/BlueSCSI_cdrom.cpp
     src/BlueSCSI_tape.cpp
     src/BlueSCSI_log.cpp

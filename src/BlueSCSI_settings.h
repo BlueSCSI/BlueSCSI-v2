@@ -63,6 +63,9 @@ typedef enum
     SYS_PRESET_X68000_SASI,
     SYS_PRESET_NeXT,
     SYS_PRESET_GENERIC,
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+    SYS_PRESET_AS400,
+#endif
 } scsi_system_preset_t;
 
 typedef enum
