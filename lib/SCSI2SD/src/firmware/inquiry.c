@@ -2,6 +2,7 @@
 //	Copyright (C) 2019 Landon Rodgers  <g.landon.rodgers@gmail.com>
 //	Copyright (c) 2023 joshua stein <jcs@jcs.org>
 //	Copyright (c) 2024 Eric Helgeson <erichelgeson@gmail.com>
+//	Copyright (c) 2025-2026 Kevin Moonlight <me@yyzkevin.com>
 //
 //	This file is part of SCSI2SD.
 //
@@ -25,6 +26,9 @@
 #include "config.h"
 #include "inquiry.h"
 #include "BlueSCSI_config.h"
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+#include "BlueSCSI_vendor_inquiry.h"
+#endif
 
 #include <string.h>
 
@@ -122,15 +126,38 @@ void s2s_scsiInquiry()
 		else
 		{
 			const S2S_TargetCfg* config = scsiDev.target->cfg;
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+			uint16_t customLen = 0;
+			if (getCustomSPD(config->scsiId, scsiDev.data, &customLen))
+			{
+				scsiDev.dataLen = customLen;
+			}
+			else
+#endif
+			{
 			scsiDev.dataLen =
 				s2s_getStandardInquiry(
 					config,
 					scsiDev.data,
 					sizeof(scsiDev.data));
+			}
 			scsiDev.phase = DATA_IN;
 		}
 	}
-	else if (pageCode == 0x00)
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+	else
+	{
+		// Check for custom VPD page data from INI configuration
+		uint8_t customVpdLen = 0;
+		if (getCustomVPD(scsiDev.target->cfg->scsiId, pageCode, scsiDev.data, &customVpdLen))
+		{
+			scsiDev.dataLen = customVpdLen;
+			scsiDev.phase = DATA_IN;
+		}
+		else
+		// Fall through to standard VPD handling if no custom data
+#endif
+	if (pageCode == 0x00)
 	{
 		memcpy(scsiDev.data, SupportedVitalPages, sizeof(SupportedVitalPages));
 		scsiDev.dataLen = sizeof(SupportedVitalPages);
@@ -170,6 +197,9 @@ void s2s_scsiInquiry()
 		scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
 		scsiDev.phase = STATUS;
 	}
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+	} // close custom VPD else block
+#endif
 
 
 	if (scsiDev.phase == DATA_IN)
