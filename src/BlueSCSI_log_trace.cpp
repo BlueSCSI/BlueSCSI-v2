@@ -122,7 +122,9 @@ static const char *getCommandName(uint8_t cmd)
         case 0xD9: return "Vendor 0xD9 Command (Toolbox list devices/Apple)";
         case 0xDA: return "Vendor 0xDA Command (Toolbox count CDs)";
         case 0xE0: return "Xebec RAM Diagnostic";
-        case 0xE4: return "Xebec Drive Diagnostic";              
+        case 0xE4: return "Xebec Drive Diagnostic";
+        case 0xE8: return "SkipRead10";
+        case 0xEA: return "SkipWrite10";
         default:   return "Unknown";
     }
 }
