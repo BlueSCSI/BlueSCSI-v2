@@ -35,6 +35,7 @@ If you use [direnv](https://direnv.net/), the environment loads automatically wh
 - **CMake 3.20+**
 - **Python 3**
 - **Git**
+- **Zip**
 
 ### Clone the Pico SDK
 
