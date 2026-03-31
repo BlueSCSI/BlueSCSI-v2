@@ -725,9 +725,9 @@ static uint32_t effective_sync_period_ps(const bluescsi_timings_t *timings, uint
 #ifdef RP2MCU_SCSI_ACCEL_WIDE
     // Wide target path does not use the narrow DMA read-pacer floor.
 #elif defined(BLUESCSI_MCU_RP23XX)
-    if (rtotalPeriod < 14) rtotalPeriod = 14;
+    if (rtotalPeriod < 13) rtotalPeriod = 13;
 #else
-    if (rtotalPeriod < 18) rtotalPeriod = 18;
+    if (rtotalPeriod < 15) rtotalPeriod = 15;
 #endif
 
     return (uint32_t)rtotalPeriod * (uint32_t)clkdiv * timings->scsi.clk_period_ps;
