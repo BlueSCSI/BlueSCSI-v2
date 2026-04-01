@@ -1035,6 +1035,7 @@ static void check_for_unused_update_files()
 }
 
 // Update firmware by unzipping the firmware package
+__attribute__((optimize("Os")))
 static void firmware_update()
 {
   const char package_prefix[] = FIRMWARE_PACKAGE_PREFIX;

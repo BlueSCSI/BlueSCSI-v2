@@ -236,8 +236,10 @@ set(CXX_ONLY_FLAGS
     -fno-threadsafe-statics
 )
 
-# Use -Os to match PlatformIO precompiled SDK library optimization.
-list(APPEND COMMON_FLAGS -Os)
+# Use -O2 to match PlatformIO application optimization level.
+# SDK libraries are built with -Os but our code benefits from -O2's
+# more aggressive inlining and loop optimization on the SCSI hot path.
+list(APPEND COMMON_FLAGS -O2)
 
 # =============================================================================
 # Main firmware executable
