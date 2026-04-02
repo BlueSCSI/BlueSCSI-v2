@@ -323,8 +323,9 @@ extern "C" int scsiTapeCommand()
         scsiDev.data[1] = (blocklen >> 16) & 0xFF; // Maximum block length (MSB)
         scsiDev.data[2] = (blocklen >>  8) & 0xFF;
         scsiDev.data[3] = (blocklen >>  0) & 0xFF; // Maximum block length (LSB)
+        // SCSI-2 Section 10.2.4: Bytes 4-5 = minimum block length (16-bit big-endian)
         scsiDev.data[4] = (blocklen >>  8) & 0xFF; // Minimum block length (MSB)
-        scsiDev.data[5] = (blocklen >>  8) & 0xFF; // Minimum block length (MSB)
+        scsiDev.data[5] = (blocklen >>  0) & 0xFF; // Minimum block length (LSB)
         scsiDev.dataLen = 6;
         scsiDev.phase = DATA_IN;
     }
@@ -338,13 +339,13 @@ extern "C" int scsiTapeCommand()
     else if (command == 0x11)
     {
         // SPACE
-        // Set the tape position forward to a specified offset.
+        // SCSI-2 Section 10.2.11: Count is a 24-bit two's complement value
+        // in CDB bytes 2-4. Byte 5 is the control byte.
         uint8_t code = scsiDev.cdb[1] & 7;
         uint32_t count =
-            (((uint32_t) scsiDev.cdb[2]) << 24) +
-            (((uint32_t) scsiDev.cdb[3]) << 16) +
-            (((uint32_t) scsiDev.cdb[4]) << 8) +
-            scsiDev.cdb[5];
+            (((uint32_t) scsiDev.cdb[2]) << 16) |
+            (((uint32_t) scsiDev.cdb[3]) << 8) |
+            scsiDev.cdb[4];
         if (code == 0)
         {
             // Blocks.
