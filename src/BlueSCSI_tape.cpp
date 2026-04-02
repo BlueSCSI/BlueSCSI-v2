@@ -207,9 +207,12 @@ extern "C" int scsiTapeCommand()
         {
             blocks_to_read = 1;
 
-            bool underlength = (length > blocklen);
-            bool overlength = (length < blocklen);
-            if (overlength || (underlength && !supress_invalid_length))
+            // SCSI-2 Section 10.2.4: variable-block length checking
+            // Underlength: block is larger than host's requested length.
+            // Error unless SILI (Suppress Incorrect Length Indicator) is set.
+            // Overlength (host wants more than block has) is not an error.
+            bool underlength = (length < blocklen);
+            if (underlength && !supress_invalid_length)
             {
                 dbgmsg("------ Host requested variable block max ", (int)length, " bytes, blocksize is ", (int)blocklen);
                 scsiDev.status = CHECK_CONDITION;
