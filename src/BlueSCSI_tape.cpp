@@ -343,24 +343,34 @@ extern "C" int scsiTapeCommand()
     {
         // SPACE
         // SCSI-2 Section 10.2.11: Count is a 24-bit two's complement value
-        // in CDB bytes 2-4. Byte 5 is the control byte.
+        // in CDB bytes 2-4. Byte 5 is the control byte. Negative values
+        // mean space in the reverse direction. The count is relative to
+        // the current position.
         uint8_t code = scsiDev.cdb[1] & 7;
-        uint32_t count =
+        uint32_t raw_count =
             (((uint32_t) scsiDev.cdb[2]) << 16) |
             (((uint32_t) scsiDev.cdb[3]) << 8) |
             scsiDev.cdb[4];
+        // Sign-extend from 24-bit two's complement
+        int32_t count = (raw_count & 0x800000) ? (int32_t)(raw_count | 0xFF000000) : (int32_t)raw_count;
         if (code == 0)
         {
             // Blocks.
             uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
             uint32_t capacity = img.file.size() / bytesPerSector;
+            int32_t new_pos = (int32_t)img.tape_pos + count;
 
-            if (count < capacity)
+            if (new_pos >= 0 && (uint32_t)new_pos < capacity)
             {
-                img.tape_pos = count;
+                img.tape_pos = (uint32_t)new_pos;
             }
             else
             {
+                // Clamp to valid range before reporting error
+                if (new_pos < 0)
+                    img.tape_pos = 0;
+                else
+                    img.tape_pos = capacity;
                 scsiDev.status = CHECK_CONDITION;
                 scsiDev.target->sense.code = BLANK_CHECK;
                 scsiDev.target->sense.asc = 0; // END-OF-DATA DETECTED
