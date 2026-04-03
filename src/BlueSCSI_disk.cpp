@@ -915,7 +915,7 @@ static void doCloseTray(image_config_t &img)
 {
     if (img.ejected)
     {
-        uint8_t target = img.scsiId & S2S_CFG_TARGET_ID_BITS;
+        uint8_t target = img.getTargetId();
         dbgmsg("------ Device close tray on ID ", (int)target);
         img.ejected = false;
 
@@ -932,7 +932,7 @@ static void doCloseTray(image_config_t &img)
 // This is really press eject button for close and open.
 static void doPerformEject(image_config_t &img)
 {
-    const uint8_t target = img.scsiId & S2S_CFG_TARGET_ID_BITS;
+    const uint8_t target = img.getTargetId();
     // Now that we have a request from a button or an explicit start SCSI command to close the drive,
     g_scsi_settings.getDevice(target)->startEjected = false;
 
@@ -957,7 +957,7 @@ int findNextImageAfter(image_config_t &img,
     FsFile dir;
     if (dirname[0] == '\0')
     {
-        logmsg("Image directory name invalid for ID", (img.scsiId & S2S_CFG_TARGET_ID_BITS));
+        logmsg("Image directory name invalid for ID", (int)img.getTargetId());
         return 0;
     }
     if (!dir.open(dirname))
@@ -981,7 +981,7 @@ int findNextImageAfter(image_config_t &img,
     char first_name[MAX_FILE_PATH] = {'\0'};
     char candidate_name[MAX_FILE_PATH] = {'\0'};
     FsFile file;
-    const uint8_t target = img.scsiId & S2S_CFG_TARGET_ID_BITS;
+    const uint8_t target = img.getTargetId();
     char section[6] = "SCSI0";
     section[4] = '0' + target;
 
@@ -1083,7 +1083,7 @@ int findNextImageAfter(image_config_t &img,
 
 int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
 {
-    int target_idx = img.scsiId & S2S_CFG_TARGET_ID_BITS;
+    int target_idx = img.getTargetId();
 
     char section[6] = "SCSI0";
     section[4] = '0' + target_idx;
@@ -1280,7 +1280,7 @@ void setEjectButton(uint8_t idx, int8_t eject_button)
 bool switchNextImage(image_config_t &img, const char* next_filename)
 {
     // Check if we have a next image to load, so that drive is closed next time the host asks.
-    int target_idx = img.scsiId & S2S_CFG_TARGET_ID_BITS;
+    int target_idx = img.getTargetId();
     char filename[MAX_FILE_PATH];
     if (next_filename == nullptr)
     {
@@ -1335,7 +1335,7 @@ bool scsiDiskCheckAnyImagesConfigured()
 {
     for (int i = 0; i < S2S_MAX_TARGETS; i++)
     {
-        if (g_DiskImages[i].file.isOpen() && (g_DiskImages[i].scsiId & S2S_CFG_TARGET_ENABLED))
+        if (g_DiskImages[i].file.isOpen() && g_DiskImages[i].isTargetEnabled())
         {
             return true;
         }
@@ -1434,7 +1434,7 @@ bool scsiDiskCheckAnyNetworkDevicesConfigured()
 #endif
     for (int i = 0; i < S2S_MAX_TARGETS; i++)
     {
-        if (g_DiskImages[i].file.isOpen() && (g_DiskImages[i].scsiId & S2S_CFG_TARGET_ENABLED) && (g_DiskImages[i].deviceType == S2S_CFG_NETWORK || g_DiskImages[i].deviceType == S2S_CFG_AMIGAWIFI))
+        if (g_DiskImages[i].file.isOpen() && g_DiskImages[i].isTargetEnabled() && (g_DiskImages[i].deviceType == S2S_CFG_NETWORK || g_DiskImages[i].deviceType == S2S_CFG_AMIGAWIFI))
         {
             return true;
         }
@@ -1595,8 +1595,8 @@ const S2S_TargetCfg* s2s_getConfigById(int scsiId)
     for (i = 0; i < S2S_MAX_TARGETS; ++i)
     {
         const S2S_TargetCfg* tgt = s2s_getConfigByIndex(i);
-        if ((tgt->scsiId & S2S_CFG_TARGET_ID_BITS) == scsiId &&
-            (tgt->scsiId & S2S_CFG_TARGET_ENABLED))
+        if (s2s_getTargetId(tgt) == scsiId &&
+            s2s_isTargetEnabled(tgt))
         {
             return tgt;
         }
@@ -1950,7 +1950,7 @@ void scsiDiskStartWrite(uint32_t lba, uint32_t blocks)
         unlikely(!img.file.isWritable()))
 
     {
-        logmsg("WARNING: Host attempted write to read-only drive ID ", (int)(img.scsiId & S2S_CFG_TARGET_ID_BITS));
+        logmsg("WARNING: Host attempted write to read-only drive ID ", (int)img.getTargetId());
         scsiDev.status = CHECK_CONDITION;
         scsiDev.target->sense.code = ILLEGAL_REQUEST;
         scsiDev.target->sense.asc = WRITE_PROTECTED;
@@ -2078,7 +2078,7 @@ static void scsiDiskStartWriteAndVerify(uint32_t lba, uint32_t blocks)
         unlikely(scsiDev.target->cfg->deviceType == S2S_CFG_OPTICAL) ||
         unlikely(!img.file.isWritable()))
     {
-        logmsg("WARNING: Host attempted WRITE AND VERIFY to read-only drive ID ", (int)(img.scsiId & S2S_CFG_TARGET_ID_BITS));
+        logmsg("WARNING: Host attempted WRITE AND VERIFY to read-only drive ID ", (int)img.getTargetId());
         scsiDev.status = CHECK_CONDITION;
         scsiDev.target->sense.code = ILLEGAL_REQUEST;
         scsiDev.target->sense.asc = WRITE_PROTECTED;
@@ -2602,7 +2602,7 @@ void scsiDiskStartRead(uint32_t lba, uint32_t blocks)
 
 #ifdef PREFETCH_BUFFER_SIZE
         uint32_t sectors_in_prefetch = g_scsi_prefetch.bytes / bytesPerSector;
-        if (img.scsiId == g_scsi_prefetch.scsiId &&
+        if (img.getTargetId() == g_scsi_prefetch.scsiId &&
             transfer.lba >= g_scsi_prefetch.sector &&
             transfer.lba < g_scsi_prefetch.sector + sectors_in_prefetch)
         {
@@ -2787,7 +2787,7 @@ static void diskDataIn()
         uint32_t img_sector_count = img.file.size() / bytesPerSector;
         g_scsi_prefetch.sector = transfer.lba + transfer.blocks;
         g_scsi_prefetch.bytes = 0;
-        g_scsi_prefetch.scsiId = scsiDev.target->cfg->scsiId;
+        g_scsi_prefetch.scsiId = s2s_getTargetId(scsiDev.target->cfg);
 
         if (g_scsi_prefetch.sector + prefetch_sectors > img_sector_count)
         {

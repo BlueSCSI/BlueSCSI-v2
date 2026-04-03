@@ -245,7 +245,7 @@ static void onListDevices()
     for (int i = 0; i < NUM_SCSIID; i++)
     {
         const S2S_TargetCfg* cfg = s2s_getConfigById(i);
-        if (cfg && (cfg->scsiId & S2S_CFG_TARGET_ENABLED))
+        if (cfg && s2s_isTargetEnabled(cfg))
         {
             scsiDev.data[i] = static_cast<int>(cfg->deviceType); // 2 == cd
         }
@@ -585,14 +585,14 @@ extern "C" int scsiToolboxCommand()
     {
         char img_dir[4];
         dbgmsg("BLUESCSI_TOOLBOX_LIST_CDS");
-        snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, static_cast<int>(img.scsiId) & S2S_CFG_TARGET_ID_BITS);
+        snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, (int)img.getTargetId());
         onListFiles(img_dir, true);
     }
     else if(unlikely(command == BLUESCSI_TOOLBOX_SET_NEXT_CD))
     {
         char img_dir[4];
         dbgmsg("BLUESCSI_TOOLBOX_SET_NEXT_CD");
-        snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, static_cast<int>(img.scsiId) & S2S_CFG_TARGET_ID_BITS);
+        snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, (int)img.getTargetId());
         onSetNextCD(img_dir);
     }
     else if(unlikely(command == BLUESCSI_TOOLBOX_METADATA))
@@ -604,7 +604,7 @@ extern "C" int scsiToolboxCommand()
     {
         char img_dir[4];
         dbgmsg("BLUESCSI_TOOLBOX_COUNT_CDS");
-        snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, static_cast<int>(img.scsiId) & S2S_CFG_TARGET_ID_BITS);
+        snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, (int)img.getTargetId());
         doCountFiles(img_dir, true);
     }
     else

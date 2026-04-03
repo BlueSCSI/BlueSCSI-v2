@@ -48,6 +48,9 @@ struct image_config_t: public S2S_TargetCfg
 {
     image_config_t() {};
 
+    uint8_t getTargetId() const { return scsiId & S2S_CFG_TARGET_ID_BITS; }
+    bool isTargetEnabled() const { return (scsiId & S2S_CFG_TARGET_ENABLED) != 0; }
+
     ImageBackingStore file;
 
     // For CD-ROM drive ejection

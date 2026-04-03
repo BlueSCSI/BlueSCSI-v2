@@ -656,18 +656,18 @@ bool findHDDImages()
   {
     const S2S_TargetCfg* cfg = s2s_getConfigByIndex(i);
 
-    if (cfg && (cfg->scsiId & S2S_CFG_TARGET_ENABLED))
+    if (cfg && s2s_isTargetEnabled(cfg))
     {
       int capacity_kB = ((uint64_t)cfg->scsiSectors * cfg->bytesPerSector) / 1024;
 
       if (cfg->deviceType == S2S_CFG_NETWORK || cfg->deviceType == S2S_CFG_AMIGAWIFI)
       {
-        logmsg("ID: ", (int)(cfg->scsiId & S2S_CFG_TARGET_ID_BITS),
+        logmsg("ID: ", (int)s2s_getTargetId(cfg),
               ", Type: ", typeToChar((int)cfg->deviceType));
       }
       else
       {
-        logmsg("ID: ", (int)(cfg->scsiId & S2S_CFG_TARGET_ID_BITS),
+        logmsg("ID: ", (int)s2s_getTargetId(cfg),
               ", BlockSize: ", (int)cfg->bytesPerSector,
               ", Type: ", typeToChar((int)cfg->deviceType),
               ", Quirks: ", quirksToChar((int)cfg->quirks),
@@ -681,7 +681,7 @@ bool findHDDImages()
   for (uint8_t id = 0; id < S2S_MAX_TARGETS; id++)
   {
     const S2S_TargetCfg* cfg = s2s_getConfigByIndex(id);
-    if (cfg  && (cfg->scsiId & S2S_CFG_TARGET_ENABLED ))
+    if (cfg && s2s_isTargetEnabled(cfg))
     {
        if (typeIsRemovable((S2S_CFG_TYPE)cfg->deviceType))
         {

@@ -85,7 +85,7 @@ static bool isValidMacintoshImage(image_config_t *img)
 static void macQuirksSanityCheck(image_config_t *img)
 {
 
-    if(g_scsi_settings.getDevice(img->scsiId & S2S_CFG_TARGET_ID_BITS)->disableMacSanityCheck)
+    if(g_scsi_settings.getDevice(img->getTargetId())->disableMacSanityCheck)
     {
         dbgmsg("---- Skipping Mac sanity check due to DisableMacSanityCheck");
         return;
@@ -97,7 +97,7 @@ static void macQuirksSanityCheck(image_config_t *img)
     }
     
     // Macintosh hosts reserve ID 7, so warn the user this configuration won't work
-    if((img->scsiId & S2S_CFG_TARGET_ID_BITS) == S2S_CFG_TARGET_ID_BITS)
+    if(img->getTargetId() == S2S_CFG_TARGET_ID_BITS)
     {
         logmsg("---- WARNING: Quirks set to Apple so can not use SCSI ID 7!");
     }
