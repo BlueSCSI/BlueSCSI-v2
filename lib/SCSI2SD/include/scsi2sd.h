@@ -141,6 +141,14 @@ typedef struct __attribute__((packed))
 	uint8_t reserved[60]; // Pad out to 128 bytes for main section.
 } S2S_TargetCfg;
 
+static inline uint8_t s2s_getTargetId(const S2S_TargetCfg *cfg) {
+	return cfg->scsiId & S2S_CFG_TARGET_ID_BITS;
+}
+
+static inline int s2s_isTargetEnabled(const S2S_TargetCfg *cfg) {
+	return (cfg->scsiId & S2S_CFG_TARGET_ENABLED) != 0;
+}
+
 typedef struct __attribute__((packed))
 {
 	char magic[4]; // 'BCFG'

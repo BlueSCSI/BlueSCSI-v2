@@ -220,11 +220,13 @@ void BlueSCSISettings::setDefaultDriveInfo(uint8_t scsiId, const char *presetNam
     }
 
     // If the scsi string has not been set system wide use default scsi string
-    if (!cfgDefault.vendor[0] && driveinfo[0][0])
+    // and do not set Network scsi strings to system wide ini settings
+    bool is_network = (type == S2S_CFG_NETWORK || type == S2S_CFG_AMIGAWIFI);
+    if ((!cfgDefault.vendor[0] || is_network) && driveinfo[0][0])
         strncpy(cfgDev.vendor, driveinfo[0], sizeof(cfgDev.vendor));
-    if (!cfgDefault.prodId[0] && driveinfo[1][0])
+    if ((!cfgDefault.prodId[0] || is_network) && driveinfo[1][0])
         strncpy(cfgDev.prodId, driveinfo[1], sizeof(cfgDev.prodId));
-    if (!cfgDefault.revision[0] && driveinfo[2][0])
+    if ((!cfgDefault.revision[0] || is_network) && driveinfo[2][0])
         strncpy(cfgDev.revision, driveinfo[2], sizeof(cfgDev.revision));
     if (!cfgDefault.serial[0] && driveinfo[3][0])
         strncpy(cfgDev.serial, driveinfo[3], sizeof(cfgDev.serial));

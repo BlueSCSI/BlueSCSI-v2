@@ -207,9 +207,12 @@ extern "C" int scsiTapeCommand()
         {
             blocks_to_read = 1;
 
-            bool underlength = (length > blocklen);
-            bool overlength = (length < blocklen);
-            if (overlength || (underlength && !supress_invalid_length))
+            // SCSI-2 Section 10.2.4: variable-block length checking
+            // Underlength: block is larger than host's requested length.
+            // Error unless SILI (Suppress Incorrect Length Indicator) is set.
+            // Overlength (host wants more than block has) is not an error.
+            bool underlength = (length < blocklen);
+            if (underlength && !supress_invalid_length)
             {
                 dbgmsg("------ Host requested variable block max ", (int)length, " bytes, blocksize is ", (int)blocklen);
                 scsiDev.status = CHECK_CONDITION;
@@ -323,8 +326,9 @@ extern "C" int scsiTapeCommand()
         scsiDev.data[1] = (blocklen >> 16) & 0xFF; // Maximum block length (MSB)
         scsiDev.data[2] = (blocklen >>  8) & 0xFF;
         scsiDev.data[3] = (blocklen >>  0) & 0xFF; // Maximum block length (LSB)
+        // SCSI-2 Section 10.2.4: Bytes 4-5 = minimum block length (16-bit big-endian)
         scsiDev.data[4] = (blocklen >>  8) & 0xFF; // Minimum block length (MSB)
-        scsiDev.data[5] = (blocklen >>  8) & 0xFF; // Minimum block length (MSB)
+        scsiDev.data[5] = (blocklen >>  0) & 0xFF; // Minimum block length (LSB)
         scsiDev.dataLen = 6;
         scsiDev.phase = DATA_IN;
     }
@@ -338,25 +342,35 @@ extern "C" int scsiTapeCommand()
     else if (command == 0x11)
     {
         // SPACE
-        // Set the tape position forward to a specified offset.
+        // SCSI-2 Section 10.2.11: Count is a 24-bit two's complement value
+        // in CDB bytes 2-4. Byte 5 is the control byte. Negative values
+        // mean space in the reverse direction. The count is relative to
+        // the current position.
         uint8_t code = scsiDev.cdb[1] & 7;
-        uint32_t count =
-            (((uint32_t) scsiDev.cdb[2]) << 24) +
-            (((uint32_t) scsiDev.cdb[3]) << 16) +
-            (((uint32_t) scsiDev.cdb[4]) << 8) +
-            scsiDev.cdb[5];
+        uint32_t raw_count =
+            (((uint32_t) scsiDev.cdb[2]) << 16) |
+            (((uint32_t) scsiDev.cdb[3]) << 8) |
+            scsiDev.cdb[4];
+        // Sign-extend from 24-bit two's complement
+        int32_t count = (raw_count & 0x800000) ? (int32_t)(raw_count | 0xFF000000) : (int32_t)raw_count;
         if (code == 0)
         {
             // Blocks.
             uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
             uint32_t capacity = img.file.size() / bytesPerSector;
+            int32_t new_pos = (int32_t)img.tape_pos + count;
 
-            if (count < capacity)
+            if (new_pos >= 0 && (uint32_t)new_pos < capacity)
             {
-                img.tape_pos = count;
+                img.tape_pos = (uint32_t)new_pos;
             }
             else
             {
+                // Clamp to valid range before reporting error
+                if (new_pos < 0)
+                    img.tape_pos = 0;
+                else
+                    img.tape_pos = capacity;
                 scsiDev.status = CHECK_CONDITION;
                 scsiDev.target->sense.code = BLANK_CHECK;
                 scsiDev.target->sense.asc = 0; // END-OF-DATA DETECTED

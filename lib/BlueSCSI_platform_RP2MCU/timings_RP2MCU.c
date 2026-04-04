@@ -501,7 +501,7 @@ static bluescsi_timings_t  predefined_timings[]  = {
         {
             .req_delay = 12,
             .clk_period_ps = 4990,
-            .delay_100ns_cycles = 20
+            .delay_100ns_cycles = 21
         },
 
         .scsi_20 =
@@ -698,6 +698,61 @@ bluescsi_timings_t *g_bluescsi_timings = &predefined_timings[1];
 bluescsi_timings_t *g_bluescsi_timings = &predefined_timings[0];
 #endif
 
+static uint32_t effective_sync_period_ps(const bluescsi_timings_t *timings, uint8_t sync_period)
+{
+    uint32_t delay_in_ps = (uint32_t)sync_period * 4000U;
+    uint32_t up_rounder = timings->scsi.clk_period_ps / 2 + 1;
+    int totalPeriod = (delay_in_ps + up_rounder) / timings->scsi.clk_period_ps;
+    int rtotalPeriod = totalPeriod;
+    int clkdiv = 1;
+
+    if (sync_period < 25)
+    {
+        rtotalPeriod += timings->scsi_20.rtotal_period_adjust;
+    }
+    else if (sync_period < 50)
+    {
+        rtotalPeriod += timings->scsi_10.rtotal_period_adjust;
+    }
+    else
+    {
+        clkdiv = timings->scsi_5.clkdiv > 0 ? timings->scsi_5.clkdiv : 1;
+        totalPeriod /= clkdiv;
+        rtotalPeriod /= clkdiv;
+        rtotalPeriod += timings->scsi_5.rtotal_period_adjust;
+    }
+
+#ifdef RP2MCU_SCSI_ACCEL_WIDE
+    // Wide target path does not use the narrow DMA read-pacer floor.
+#elif defined(BLUESCSI_MCU_RP23XX)
+    if (rtotalPeriod < 13) rtotalPeriod = 13;
+#else
+    if (rtotalPeriod < 15) rtotalPeriod = 15;
+#endif
+
+    return (uint32_t)rtotalPeriod * (uint32_t)clkdiv * timings->scsi.clk_period_ps;
+}
+
+uint8_t calculate_sync_period_limit(const bluescsi_timings_t *timings, uint8_t requested_min_period)
+{
+    uint16_t sync_period = requested_min_period;
+    while (sync_period <= UINT8_MAX)
+    {
+        if (effective_sync_period_ps(timings, sync_period) <= (uint32_t)sync_period * 4000U)
+        {
+            return sync_period;
+        }
+        sync_period++;
+    }
+    return UINT8_MAX;
+}
+
+void update_sync_period_limits(void)
+{
+    g_max_sync_20_period = calculate_sync_period_limit(g_bluescsi_timings, g_bluescsi_timings->scsi_20.max_sync);
+    g_max_sync_10_period = calculate_sync_period_limit(g_bluescsi_timings, g_bluescsi_timings->scsi_10.max_sync);
+    g_max_sync_5_period = calculate_sync_period_limit(g_bluescsi_timings, g_bluescsi_timings->scsi_5.max_sync);
+}
 
 bool set_timings(bluescsi_speed_grade_t speed_grade)
 {
@@ -784,9 +839,7 @@ bool set_timings(bluescsi_speed_grade_t speed_grade)
     if (speed_grade != SPEED_GRADE_DEFAULT && speed_grade != SPEED_GRADE_CUSTOM)
     {
         memcpy(g_bluescsi_timings, &predefined_timings[timings_index], sizeof(*g_bluescsi_timings));
-        g_max_sync_10_period = g_bluescsi_timings->scsi_10.max_sync;
-        g_max_sync_20_period = g_bluescsi_timings->scsi_20.max_sync;
-        g_max_sync_5_period = g_bluescsi_timings->scsi_5.max_sync;
+        update_sync_period_limits();
         return true;
     }
     return false;

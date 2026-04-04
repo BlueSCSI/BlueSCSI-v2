@@ -43,6 +43,35 @@ extern "C" int8_t scsiToolboxEnabled()
 }
 
 
+static int getToolBoxSharedDir(char * dir_name);
+
+static char g_toolbox_dir_override[MAX_FILE_PATH];
+
+static void getEffectiveDir(char *dir_name)
+{
+    if (g_toolbox_dir_override[0] != '\0')
+    {
+        strncpy(dir_name, g_toolbox_dir_override, MAX_FILE_PATH - 1);
+        dir_name[MAX_FILE_PATH - 1] = '\0';
+    }
+    else
+    {
+        getToolBoxSharedDir(dir_name);
+    }
+}
+
+#ifdef UNIT_TEST
+char* toolbox_get_dir_override(void)
+{
+    return g_toolbox_dir_override;
+}
+
+void toolbox_get_effective_dir(char *dir_name)
+{
+    getEffectiveDir(dir_name);
+}
+#endif
+
 static bool toolboxFilenameValid(const char* name, const bool isCD = false)
 {
     if(strlen(name) == 0)
@@ -67,7 +96,15 @@ static void doCountFiles(const char * dir_name, bool isCD = false)
     FsFile dir;
     FsFile file;
     char name[MAX_FILE_PATH] = {0};
-    dir.open(dir_name);
+    if (!dir.open(dir_name)) {
+        if (!isCD && (!SD.mkdir(dir_name) || !dir.open(dir_name))) {
+            logmsg("ERROR: Could not open or create BlueSCSI Toolbox shared dir: ", dir_name);
+            scsiDev.status = CHECK_CONDITION;
+            scsiDev.target->sense.code = ILLEGAL_REQUEST;
+            scsiDev.phase = STATUS;
+            return;
+        }
+    }
     dir.rewindDirectory();
     uint8_t file_count = 0;
     while (file.openNext(&dir, O_RDONLY))
@@ -117,6 +154,10 @@ static void onListFiles(const char * dir_name, bool isCD = false) {
     if (!dir.open(dir_name)) {
         if (!isCD && (!SD.mkdir(dir_name) || !dir.open(dir_name))) {
             logmsg("ERROR: Could not open or create BlueSCSI Toolbox shared dir: ", dir_name);
+            scsiDev.status = CHECK_CONDITION;
+            scsiDev.target->sense.code = ILLEGAL_REQUEST;
+            scsiDev.phase = STATUS;
+            return;
         }
     }
     dir.rewindDirectory();
@@ -216,7 +257,7 @@ static void onListDevices()
     for (int i = 0; i < NUM_SCSIID; i++)
     {
         const S2S_TargetCfg* cfg = s2s_getConfigById(i);
-        if (cfg && (cfg->scsiId & S2S_CFG_TARGET_ENABLED))
+        if (cfg && s2s_isTargetEnabled(cfg))
         {
             scsiDev.data[i] = static_cast<int>(cfg->deviceType); // 2 == cd
         }
@@ -234,10 +275,58 @@ static void onGetCapabilities()
 {
     memset(scsiDev.data, 0, 8);
     scsiDev.data[0] = TOOLBOX_API_VERSION;
-    scsiDev.data[1] = TOOLBOX_CAP_LARGE_TRANSFERS | TOOLBOX_CAP_LARGE_SEND;
+    scsiDev.data[1] = TOOLBOX_CAP_LARGE_TRANSFERS | TOOLBOX_CAP_LARGE_SEND | TOOLBOX_CAP_SET_WORKING_DIR;
     // bytes 2-7 reserved
     scsiDev.dataLen = 8;
     scsiDev.phase = DATA_IN;
+}
+
+// Set the working directory for file operations
+static void onSetWorkingDir()
+{
+    uint8_t path_len = scsiDev.cdb[8];
+    if (path_len > 64) path_len = 64;
+
+    char path[65] = {0};
+    scsiEnterPhase(DATA_OUT);
+    scsiRead(reinterpret_cast<uint8_t*>(path), path_len, NULL);
+    path[path_len] = '\0';
+
+    if (path[0] == '\0')
+    {
+        // Empty string: reset to default
+        g_toolbox_dir_override[0] = '\0';
+        dbgmsg("TOOLBOX SET_WORKING_DIR: reset to default");
+    }
+    else
+    {
+        strncpy(g_toolbox_dir_override, path, MAX_FILE_PATH - 1);
+        g_toolbox_dir_override[MAX_FILE_PATH - 1] = '\0';
+        dbgmsg("TOOLBOX SET_WORKING_DIR: '", g_toolbox_dir_override, "'");
+    }
+
+    scsiDev.phase = STATUS;
+}
+
+// Get the current working directory for file operations
+static void onGetWorkingDir()
+{
+    char dir_name[MAX_FILE_PATH] = {0};
+    getEffectiveDir(dir_name);
+
+    uint8_t alloc_len = scsiDev.cdb[8];
+    if (alloc_len == 0) alloc_len = MAX_FILE_PATH;
+    if (alloc_len > MAX_FILE_PATH) alloc_len = MAX_FILE_PATH;
+
+    size_t path_len = strlen(dir_name) + 1; // include null terminator
+    if (path_len > alloc_len) path_len = alloc_len;
+
+    memset(scsiDev.data, 0, alloc_len);
+    memcpy(scsiDev.data, dir_name, path_len);
+    scsiDev.dataLen = alloc_len;
+    scsiDev.phase = DATA_IN;
+
+    dbgmsg("TOOLBOX GET_WORKING_DIR: '", dir_name, "'");
 }
 
 // Handle 0xD9 metadata command with subcommands
@@ -246,6 +335,22 @@ static void onGetCapabilities()
 static void onMetadataCommand()
 {
     uint8_t subcommand = scsiDev.cdb[1];
+
+    // SET_WORKING_DIR uses CDB[8] as data length, not allocation length
+    if (subcommand == TOOLBOX_SUBCMD_SET_WORKING_DIR)
+    {
+        dbgmsg("TOOLBOX_METADATA: SET_WORKING_DIR");
+        onSetWorkingDir();
+        return;
+    }
+
+    if (subcommand == TOOLBOX_SUBCMD_GET_WORKING_DIR)
+    {
+        dbgmsg("TOOLBOX_METADATA: GET_WORKING_DIR");
+        onGetWorkingDir();
+        return;
+    }
+
     uint8_t alloc_len = scsiDev.cdb[8];
 
     // Treat 0 as 8 for backward compatibility with older clients
@@ -366,12 +471,23 @@ static void onSendFilePrep(char * dir_name)
     file_name[32] = '\0';
 
     dbgmsg("TOOLBOX OPEN FILE FOR WRITE: '", file_name, "'");
-    SD.chdir(dir_name);
+    if (!SD.chdir(dir_name))
+    {
+        if (!SD.mkdir(dir_name) || !SD.chdir(dir_name))
+        {
+            logmsg("ERROR: Could not open or create BlueSCSI Toolbox shared dir: ", dir_name);
+            scsiDev.status = CHECK_CONDITION;
+            scsiDev.target->sense.code = ILLEGAL_REQUEST;
+            scsiDev.phase = STATUS;
+            return;
+        }
+    }
     gFile.open(file_name, FILE_WRITE);
     SD.chdir("/");
     if(gFile.isOpen() && gFile.isWritable())
     {
         gFile.rewind();
+        gFile.truncate();
         gFile.sync();
         // do i need to manually set phase to status here?
         return;
@@ -476,28 +592,28 @@ extern "C" int scsiToolboxCommand()
     {
         char img_dir[MAX_FILE_PATH];
         dbgmsg("BLUESCSI_TOOLBOX_COUNT_FILES");
-        getToolBoxSharedDir(img_dir);
+        getEffectiveDir(img_dir);
         doCountFiles(img_dir);
     }
     else if (unlikely(command == BLUESCSI_TOOLBOX_LIST_FILES))
     {
         char img_dir[MAX_FILE_PATH];
         dbgmsg("BLUESCSI_TOOLBOX_LIST_FILES");
-        getToolBoxSharedDir(img_dir);
+        getEffectiveDir(img_dir);
         onListFiles(img_dir);
     }
     else if (unlikely(command == BLUESCSI_TOOLBOX_GET_FILE))
     {
         char img_dir[MAX_FILE_PATH];
         dbgmsg("BLUESCSI_TOOLBOX_GET_FILE");
-        getToolBoxSharedDir(img_dir);
+        getEffectiveDir(img_dir);
         onGetFile10(img_dir);
     }
     else if (unlikely(command == BLUESCSI_TOOLBOX_SEND_FILE_PREP))
     {
         char img_dir[MAX_FILE_PATH];
         dbgmsg("BLUESCSI_TOOLBOX_SEND_FILE_PREP");
-        getToolBoxSharedDir(img_dir);
+        getEffectiveDir(img_dir);
         onSendFilePrep(img_dir);
     }
     else if (unlikely(command == BLUESCSI_TOOLBOX_SEND_FILE_10))
@@ -519,14 +635,14 @@ extern "C" int scsiToolboxCommand()
     {
         char img_dir[4];
         dbgmsg("BLUESCSI_TOOLBOX_LIST_CDS");
-        snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, static_cast<int>(img.scsiId) & S2S_CFG_TARGET_ID_BITS);
+        snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, (int)img.getTargetId());
         onListFiles(img_dir, true);
     }
     else if(unlikely(command == BLUESCSI_TOOLBOX_SET_NEXT_CD))
     {
         char img_dir[4];
         dbgmsg("BLUESCSI_TOOLBOX_SET_NEXT_CD");
-        snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, static_cast<int>(img.scsiId) & S2S_CFG_TARGET_ID_BITS);
+        snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, (int)img.getTargetId());
         onSetNextCD(img_dir);
     }
     else if(unlikely(command == BLUESCSI_TOOLBOX_METADATA))
@@ -538,7 +654,7 @@ extern "C" int scsiToolboxCommand()
     {
         char img_dir[4];
         dbgmsg("BLUESCSI_TOOLBOX_COUNT_CDS");
-        snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, static_cast<int>(img.scsiId) & S2S_CFG_TARGET_ID_BITS);
+        snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, (int)img.getTargetId());
         doCountFiles(img_dir, true);
     }
     else

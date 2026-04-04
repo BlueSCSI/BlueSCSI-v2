@@ -137,6 +137,13 @@ typedef struct
 
 extern  bluescsi_timings_t *g_bluescsi_timings;
 
+// Return the fastest sync period this timing set can honestly advertise
+// without the DATA OUT read pacer stretching beyond the negotiated period.
+uint8_t calculate_sync_period_limit(const bluescsi_timings_t *timings, uint8_t requested_min_period);
+
+// Refresh g_max_sync_* from the current timing set after applying runtime constraints.
+void update_sync_period_limits(void);
+
 // Sets timings to the speed_grade, returns false on SPEED_GRADE_DEFAULT and SPEED_GRADE_CUSTOM
 bool set_timings(bluescsi_speed_grade_t speed_grade);
 

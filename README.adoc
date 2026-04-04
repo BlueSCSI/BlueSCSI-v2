@@ -1,7 +1,9 @@
 # BlueSCSI
 :toc: macro
 
-BlueSCSI is hardware that reproduces SCSI devices (hard disks, optical, etc) with an Pico 2040 dev board.
+BlueSCSI is hardware that reproduces SCSI devices (hard disks, optical, etc) powered by the Raspberry Pi RP2040/RP2350.
+
+This repository contains code for both BlueSCSI v2 and BlueSCSI Ultra/Ultra Wide.
 
 image::docs/buynow.png[link=https://scsi.blue, 150]
 image::docs/discordbanner.png[link=https://discord.gg/GKcvtgU7P9, 150]

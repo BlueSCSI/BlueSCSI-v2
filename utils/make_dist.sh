@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# BlueSCSI - Copyright (c) 2025 Eric Helgeson
+# BlueSCSI - Copyright (c) 2025-2026 Eric Helgeson
 #
 # BlueSCSI file is licensed under the GPL version 3 or any later version.
 #
@@ -19,63 +19,75 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+# Prepares dist/ directory for GitHub release from CMake build output.
+#
+# Produces:
+#   BlueSCSI_v<ver>_<hash>.zip              - Universal firmware zip for SD card update
+#   BlueSCSI_V2_DaynaPORT_<date>_<hash>.uf2 - Combined Pico+Pico2 DaynaPORT UF2
+#   BlueSCSI_V2_Audio_SPDIF_<date>_<hash>.uf2 - Combined Pico+Pico2 Audio SPDIF UF2
+#   BlueSCSI_Ultra_<date>_<hash>.uf2        - Ultra UF2
+#   BlueSCSI_Ultra_Wide_<date>_<hash>.uf2   - Ultra Wide UF2
+#   dev-BlueSCSI_<date>_<hash>.zip          - All ELF+UF2 files for developers
+
+set -euo pipefail
+
 SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
 cd "$SCRIPT_DIR/.." || exit 1
 OUT_DIR=./dist
-mkdir -p $OUT_DIR || exit 1
+mkdir -p "$OUT_DIR"
 
 DATE=$(date +%Y-%m-%d)
-VERSION=$(git rev-parse --short HEAD)
+VERSION=$(git rev-parse --short=7 HEAD)
 
-for file in .pio/build/*/firmware.bin .pio/build/*/firmware.elf .pio/build/*/firmware.uf2
-do
-    BUILD_ENV=$(echo "$file" | cut -d'/' -f3)
-
-    if [[ "$BUILD_ENV" == *"Ultra"* ]]; then
-        BOARD="Ultra"
-    elif [[ "$BUILD_ENV" == *"Pico_2"* ]]; then
-        BOARD="Pico2"
-    elif [[ "$BUILD_ENV" == *"Pico"* ]]; then
-        BOARD="Pico1"
-    else
-        echo "Warning: Could not determine board for $file"
-        continue
-    fi
-
-    VARIANT=""
-    if [[ "$BUILD_ENV" == *"DaynaPORT"* ]]; then
-        VARIANT="_DaynaPORT"
-    elif [[ "$BUILD_ENV" == *"Audio_SPDIF"* ]]; then
-        VARIANT="_Audio_SPDIF"
-    elif [[ "$BUILD_ENV" == *"Wide"* ]]; then
-        VARIANT="_Wide"
-    fi
-
-    EXT="${file##*.}"
-
-    RENAME="BlueSCSI_${BOARD}${VARIANT}_${DATE}_${VERSION}.${EXT}"
-
-    echo "$file to $OUT_DIR/$RENAME"
-    cp "$file" "$OUT_DIR/$RENAME"
+# --- Copy firmware zip (for SD card update) ---
+# build.sh already creates this via utils/create_firmware_zip.sh
+for zip in build/output/BlueSCSI_v*.zip; do
+    [ -e "$zip" ] || continue
+    cp "$zip" "$OUT_DIR/"
+    echo "Firmware zip: $(basename "$zip")"
 done
-set -e
-set -x
+
+# --- Copy and rename UF2 and ELF files per target ---
+# Only look in build/<target>/ dirs, skip build/output/
+for dir in build/*/; do
+    [ -d "$dir" ] || continue
+    TARGET=$(basename "$dir")
+    [ "$TARGET" = "output" ] && continue
+
+    for file in "${dir}"BlueSCSI_"${TARGET}".uf2 "${dir}"BlueSCSI_"${TARGET}".elf; do
+        [ -e "$file" ] || continue
+        EXT="${file##*.}"
+        RENAME="BlueSCSI_${TARGET}_${DATE}_${VERSION}.${EXT}"
+        echo "$file -> $OUT_DIR/$RENAME"
+        cp "$file" "$OUT_DIR/$RENAME"
+    done
+done
+
 ls -1 "$OUT_DIR"
 
-# Zip up elf/uf2 files for each board variant
+# --- Dev archive: ELF + UF2 for debugging ---
 zip -j "$OUT_DIR/dev-BlueSCSI_${DATE}_${VERSION}.zip" "$OUT_DIR"/*.elf "$OUT_DIR"/*.uf2
 rm "$OUT_DIR/"*.elf
-# Create universal UF2 by combining the Pico1 and Pico2 UF2 files;
-cat "$OUT_DIR/BlueSCSI_Pico1_DaynaPORT_${DATE}_${VERSION}.uf2" \
-    "$OUT_DIR/BlueSCSI_Pico2_DaynaPORT_${DATE}_${VERSION}.uf2" > "$OUT_DIR/BlueSCSI_Universal_${DATE}_${VERSION}.uf2"
-# Remove Pico DaynaPORT UF2s (they're combined into the Universal UF2 above)
-rm "$OUT_DIR/BlueSCSI_Pico1_DaynaPORT_${DATE}_${VERSION}.uf2"
-rm "$OUT_DIR/BlueSCSI_Pico2_DaynaPORT_${DATE}_${VERSION}.uf2"
 
-# Rename bins for SD Card update.
-mv "$OUT_DIR/BlueSCSI_Pico1_DaynaPORT_${DATE}_${VERSION}.bin" "$OUT_DIR/BlueSCSI_Pico1_${DATE}_${VERSION}.bin"
-mv "$OUT_DIR/BlueSCSI_Pico2_DaynaPORT_${DATE}_${VERSION}.bin" "$OUT_DIR/BlueSCSI_Pico2_${DATE}_${VERSION}.bin"
+# --- Combined V2 UF2s: merge Pico + Pico 2 variants for the BlueSCSI V2 board ---
+# UF2 format allows combining RP2040 and RP2350 images — the bootrom ignores
+# blocks for the wrong chip, so one file works on either.
+combine_v2_uf2() {
+    local variant="$1"
+    local pico1="$OUT_DIR/BlueSCSI_Pico_${variant}_${DATE}_${VERSION}.uf2"
+    local pico2="$OUT_DIR/BlueSCSI_Pico_2_${variant}_${DATE}_${VERSION}.uf2"
+    local combined="$OUT_DIR/BlueSCSI_V2_${variant}_${DATE}_${VERSION}.uf2"
 
-# Make a zip file with all the pico1 and pico2 files together by variant such as DaynaPORT
-#zip -j "dist/BlueSCSI-Universal-DaynaPORT-${DATE}-${VERSION}.zip" dist/BlueSCSI-Pico*-DaynaPORT-${DATE}-${VERSION}.*
-#find dist/ -maxdepth 1 -type f -name "BlueSCSI-Pico*-${DATE}-${VERSION}.*" ! -name "*-DaynaPORT-*" -print0 | xargs -0 zip -j "dist/BlueSCSI-Universal-${DATE}-${VERSION}.zip"
+    if [ -f "$pico1" ] && [ -f "$pico2" ]; then
+        cat "$pico1" "$pico2" > "$combined"
+        rm "$pico1" "$pico2"
+        echo "Created $combined"
+    fi
+}
+
+combine_v2_uf2 "DaynaPORT"
+combine_v2_uf2 "Audio_SPDIF"
+
+echo ""
+echo "Distribution files:"
+ls -1 "$OUT_DIR"

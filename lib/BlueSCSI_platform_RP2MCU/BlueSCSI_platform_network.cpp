@@ -14,7 +14,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #ifdef BLUESCSI_NETWORK
-#include <Arduino.h>
 #include "BlueSCSI_platform.h"
 #include "BlueSCSI_platform_network.h"
 #include "BlueSCSI_log.h"
@@ -395,6 +394,13 @@ int platform_network_wifi_channel()
 
     cyw43_ioctl(&cyw43_state, CYW43_IOCTL_GET_CHANNEL, sizeof(channel), (uint8_t *)&channel, CYW43_ITF_STA);
 	return channel;
+}
+
+// Provide cyw43_tcpip_link_status (not available without lwIP).
+// Required by cyw43_arch_wifi_connect_timeout_ms.
+int cyw43_tcpip_link_status(cyw43_t *self, int itf)
+{
+	return cyw43_wifi_link_status(self, itf);
 }
 
 // these override weakly-defined functions in pico-sdk

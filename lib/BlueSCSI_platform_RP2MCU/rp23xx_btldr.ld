@@ -30,7 +30,8 @@
 {
     FLASH(rx) : ORIGIN = 0x10000000, LENGTH = 256k
     PSRAM(rwx) : ORIGIN = 0x11000000, LENGTH = 0
-    RAM(rwx) : ORIGIN = 0x20000000, LENGTH = 512k
+    RAM(rwx) : ORIGIN = 0x20000000, LENGTH = 512k - 2k  /* Last 2K for shared log */
+    SHARED_LOG(rw) : ORIGIN = 0x2007F800, LENGTH = 2k
     SCRATCH_X(rwx) : ORIGIN = 0x20080000, LENGTH = 4k
     SCRATCH_Y(rwx) : ORIGIN = 0x20081000, LENGTH = 4k
 }
@@ -52,17 +53,18 @@ SECTIONS
 
         *scanf*(*)
         *strtod*(*)
-        *libipv4.a:*(*)
-        *liblwip*.a:*(*)
-        *libBlueSCSI_audio_RP2MCU.a:*(*)
-        *libAdafruit*.a:*(*)
-        *libWire.a:*(*)
-        *libSPI.a:*(*)
-        *libBlueSCSI_UI_RP2MCU.a:*(*)
-        *libBlueSCSI_platform_RP2MCU.a:BlueSCSI_platform_network.cpp.o*(*)
-        *libFrameworkArduino.a:cyw43_wrappers.cpp.o*(*)
 
-        /* gt */
+        /* Audio code not needed in bootloader */
+        *audio_i2s*(.text .text* .rodata .rodata*)
+        *audio_spdif*(.text .text* .rodata .rodata*)
+        *BlueI2S*(.text .text* .rodata .rodata*)
+
+        /* Network code not needed in bootloader */
+        *BlueSCSI_platform_network*(.text .text* .rodata .rodata*)
+        *cyw43*(.text .text* .rodata .rodata*)
+        *lwip*(.text .text* .rodata .rodata*)
+
+        /* Features not needed in bootloader */
         *BlueSCSI_tape.cpp.o*(*)
         *BlueSCSI_mode.cpp.o*(*)
         *BlueSCSI_blink.cpp.o*(*)
@@ -226,6 +228,10 @@ SECTIONS
 
     /* __etext is (for backwards compatibility) the name of the .data init source pointer (...) */
     __etext = LOADADDR(.data);
+
+    .shared_log (NOLOAD) : {
+        *(.shared_log)
+    } > SHARED_LOG
 
     .tbss (NOLOAD) : {
         . = ALIGN(4);

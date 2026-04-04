@@ -22,7 +22,8 @@
 MEMORY
 {
     FLASH(rx) : ORIGIN = 0x10000000, LENGTH = $program_size
-    RAM(rwx) : ORIGIN = 0x20000000, LENGTH = 256k  /* Leave space for pico-debug */
+    RAM(rwx) : ORIGIN = 0x20000000, LENGTH = 256k - 2k  /* Leave space for pico-debug; last 2K for shared log */
+    SHARED_LOG(rw) : ORIGIN = 0x2003F800, LENGTH = 2k
     SCRATCH_X(rwx) : ORIGIN = 0x20040000, LENGTH = 4k
     SCRATCH_Y(rwx) : ORIGIN = 0x20041000, LENGTH = 4k
 }
@@ -78,18 +79,17 @@ SECTIONS
          * performance when they are in use. By having most of the constantly
          * executing code in RAM already, there is less contention for cache space.
          */
-/*
-        .pio/build/$project_name/src/BlueSCSI_initiator.cpp.o(.text .text*)
-        .pio/build/$project_name/src/BlueSCSI_msc_initiator.cpp.o(.text .text*)
-        .pio/build/$project_name/src/BlueSCSI_log.cpp.o(.text .text*)
-        .pio/build/$project_name/src/BlueSCSI_log_trace.cpp.o(.text .text*)
-        .pio/build/$project_name/src/BlueSCSI_settings.cpp.o(.text .text*)
-        .pio/build/$project_name/src/QuirksCheck.cpp.o(.text .text*)
-
-*/  
+        /* Non-performance-critical application code goes to flash */
+        *BlueSCSI_initiator*(.text .text*)
+        *BlueSCSI_msc_initiator*(.text .text*)
+        *BlueSCSI_log.cpp*(.text .text*)
+        *BlueSCSI_log_trace*(.text .text*)
+        *BlueSCSI_settings*(.text .text*)
+        *QuirksCheck*(.text .text*)  
 	/* Standard library floating point etc. functions */
         *libm*:(.text .text*)
         *libc*:(.text .text*)
+        *libg*:(.text .text*)
         *libgcc*:*df*(.text .text*)
         *USB*(.text .text*)
         *SPI*(.text .text*)
@@ -102,8 +102,15 @@ SECTIONS
         *libc*:*toa*(.text .text*)
 
         /* Libraries that are not performance-critical */
-        *libminIni.a:(.text .text*)
-        *libCUEParser.a:(.text .text*)
+        *minIni*(.text .text*)
+        *CUEParser*(.text .text*)
+
+        /* CYW43/TinyUSB stay in RAM (not listed here) because WiFi and
+         * USB operations interleave with SCSI transfers on DaynaPORT.
+         * The low-level SPI bus driver (cyw43_bus_pio_spi.c) is already
+         * caught by the *spi* pattern above and goes to FLASH.
+         * Only AmigaWIFI command parsing (init-time only) goes to FLASH. */
+        *AmigaWIFI*(.text .text*)
 
         /* C++ constructors and destructors */
         *(.text*_ZN*C1*)
@@ -206,8 +213,12 @@ SECTIONS
         *scsi_accel_host*(.text .text*)
         *scsiHostPhy*(.text .text*)
 
-        /* Filesystem functions that are not performance-critical.
-         * Mostly used during initialization only. */
+        /* SdFat filesystem functions that are not performance-critical.
+         * Only init/management functions go to flash. The hot-path
+         * (read/write/seekSet/readSectorsDirect/sectorMapLookup/buildSectorMap
+         * and FAT lookup helpers fatGet/dirSeek/dirCache/cacheDirEntry/readDirCache)
+         * stays in RAM to avoid XIP cache contention during SCSI transfers.
+         * RP2040 has only a 16KB XIP cache. */
         *(.text*File*open*)
         *(.text*File*init*)
         *(.text*File*remove*)
@@ -218,9 +229,39 @@ SECTIONS
         *(.text*File*Name*)
         *(.text*File*SFN*)
         *(.text*File*LFN*)
-        *(.text*File*addCluster*)
+        *(.text*File*Cluster*)
+        *(.text*File*rename*)
+        *(.text*File*Allocate*)
+        *(.text*File*contiguous*)
+        *(.text*File*fgets*)
+        *(.text*File*fgetpos*)
+        *(.text*File*peek*)
+        *(.text*File*close*)
+        *(.text*File*enableFast*)
+        *(.text*File*freeSector*)
+        *(.text*File*firstSector*)
+        *(.text*File*getLfnChar*)
+        *(.text*File*lfnChecksum*)
+        *(.text*File*makeUnique*)
+        *(.text*File*copy*)
+        /* Partition/Volume/Cache management — not in the SCSI hot path */
+        *(.text*Partition*init*)
+        *(.text*Partition*alloc*)
+        *(.text*Partition*free*)
+        *(.text*Partition*bitmap*)
+        *(.text*Partition*fatPut*)
+        *(.text*Partition*chainSize*)
+        *(.text*Partition*rootLength*)
         *(.text*Volume*attrib*)
         *(.text*Volume*begin*)
+        *(.text*Volume*chdir*)
+        *(.text*Volume*open*)
+        *(.text*BaseFile*close*)
+        *(.text*BaseFile*copy*)
+        *(.text*BaseFile*move*)
+        *(.text*BaseFile*operator*)
+        *(.text*partitionTable*)
+        *(.text*FsCache*Safe*)
 
         /* USB functions that only run in specific modes.
            These will fit in cache when they are in use (USB connected). */
@@ -324,6 +365,9 @@ SECTIONS
         __scratch_y_end__ = .;
     } > SCRATCH_Y AT > FLASH
     __scratch_y_source__ = LOADADDR(.scratch_y);
+    .shared_log (NOLOAD) : {
+        *(.shared_log)
+    } > SHARED_LOG
     .bss : {
         . = ALIGN(4);
         __bss_start__ = .;
@@ -336,7 +380,7 @@ SECTIONS
     {
         __end__ = .;
         PROVIDE(end = .);
-        *(.heap*)
+        KEEP(*(.heap*))
         . = ORIGIN(RAM) + LENGTH(RAM) - 0x400;
         __HeapLimit = .;
     } > RAM
@@ -346,7 +390,7 @@ SECTIONS
     } > SCRATCH_X
     .stack_dummy (COPY):
     {
-        *(.stack*)
+        KEEP(*(.stack*))
     } > RAM
     .flash_end : {
         __flash_binary_end = .;

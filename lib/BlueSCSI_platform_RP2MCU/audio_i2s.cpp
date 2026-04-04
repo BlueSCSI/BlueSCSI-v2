@@ -87,15 +87,15 @@ static uint32_t gap_read = 0;
 static CUETrackInfo current_track = {0};
 
 // historical playback status information
-static audio_status_code audio_last_status[8] = {ASC_NO_STATUS, ASC_NO_STATUS, ASC_NO_STATUS, ASC_NO_STATUS,
+static audio_status_code audio_last_status[S2S_MAX_TARGETS] = {ASC_NO_STATUS, ASC_NO_STATUS, ASC_NO_STATUS, ASC_NO_STATUS,
                                                  ASC_NO_STATUS, ASC_NO_STATUS, ASC_NO_STATUS, ASC_NO_STATUS};
 // volume information for targets
-static volatile uint16_t volumes[8] = {
+static volatile uint16_t volumes[S2S_MAX_TARGETS] = {
     DEFAULT_VOLUME_LEVEL_2CH, DEFAULT_VOLUME_LEVEL_2CH, DEFAULT_VOLUME_LEVEL_2CH, DEFAULT_VOLUME_LEVEL_2CH,
     DEFAULT_VOLUME_LEVEL_2CH, DEFAULT_VOLUME_LEVEL_2CH, DEFAULT_VOLUME_LEVEL_2CH, DEFAULT_VOLUME_LEVEL_2CH
 };
 
-static volatile uint16_t channel[8] = {
+static volatile uint16_t channel[S2S_MAX_TARGETS] = {
     AUDIO_CHANNEL_ENABLE_MASK, AUDIO_CHANNEL_ENABLE_MASK, AUDIO_CHANNEL_ENABLE_MASK, AUDIO_CHANNEL_ENABLE_MASK,
     AUDIO_CHANNEL_ENABLE_MASK, AUDIO_CHANNEL_ENABLE_MASK, AUDIO_CHANNEL_ENABLE_MASK, AUDIO_CHANNEL_ENABLE_MASK
 };
@@ -392,7 +392,7 @@ bool audio_is_active() {
 
 bool audio_is_playing(uint8_t id) {
 //    return audio_playing;
-    return audio_owner == (id & 7) && audio_playing;
+    return audio_owner == (id & S2S_CFG_TARGET_ID_BITS) && audio_playing;
 }
 
 void audio_setup() {
@@ -683,7 +683,7 @@ bool audio_play(uint8_t owner, image_config_t* img, uint32_t start, uint32_t len
     // interrupted later due to hardware limitations
     // stop any existing playback first
      if (!audio_idle)
-        audio_stop(audio_owner);
+        audio_stop();
 
     if(!img->cuesheetfile && img->cuesheetfile.isOpen())
     {
@@ -708,7 +708,8 @@ bool audio_play(uint8_t owner, image_config_t* img, uint32_t start, uint32_t len
     else
         return false;
 
-    if (&img->cuesheetfile != cuesheet_file)
+    // read in cue sheet file on first read or a different SCSI device was playing
+    if (&img->cuesheetfile != cuesheet_file || owner != audio_owner)
     {
         cuesheet_file = &img->cuesheetfile;
         cuesheet_file->seek(0);
@@ -808,7 +809,7 @@ bool audio_set_paused(uint8_t id, bool paused) {
 }
 
 void audio_stop(uint8_t id) {
-    if (audio_idle || (id & 7) != audio_owner) return;
+    if (id != 0xFF && (audio_idle || (id & S2S_CFG_TARGET_ID_BITS) != audio_owner)) return;
 
     memset(&current_track, 0, sizeof(current_track));
     memset(output_buf_a, 0, sizeof(output_buf_a));
@@ -827,7 +828,7 @@ void audio_stop(uint8_t id) {
     dma_channel_abort(dma_channel_a);
     dma_channel_abort(dma_channel_b);
     // idle the subsystem
-    audio_last_status[id] = ASC_COMPLETED;
+    audio_last_status[audio_owner] = ASC_COMPLETED;
     audio_paused = false;
     audio_playing = false;
     audio_idle = true;

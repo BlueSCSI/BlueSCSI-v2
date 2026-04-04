@@ -25,7 +25,8 @@ MEMORY
 {
     FLASH(rx) : ORIGIN = 0x10000000, LENGTH = $program_size
     PSRAM(rwx) : ORIGIN = 0x11000000, LENGTH = 0
-    RAM(rwx) : ORIGIN = 0x20000000, LENGTH = 512k  /* Leave space for pico-debug */
+    RAM(rwx) : ORIGIN = 0x20000000, LENGTH = 512k - 2k  /* Last 2K for shared log */
+    SHARED_LOG(rw) : ORIGIN = 0x2007F800, LENGTH = 2k
     SCRATCH_X(rwx) : ORIGIN = 0x20080000, LENGTH = 4k
     SCRATCH_Y(rwx) : ORIGIN = 0x20081000, LENGTH = 4k
 }
@@ -76,7 +77,7 @@ SECTIONS
 
 /* =============================================================== */
     /* Exclude as much code from flash as possible as the RP2350 series has twice as much SRAM */
-        *(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *libm.a: *libBlueIDE_platform_RPMCU.a:  *libSdFat.a: *libSCSI2SD.a: *CUEParser.a: *minIni.a: *.cpp.o) .text*)
+        *(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *libm.a: *SCSI2SD* *sdfat* *minIni* *CUEParser* *.cpp.o) .text*)
 
     /* ---------------------------------------------------------
     Uncomment the EXCLUDE_FILE line below and comment the EXCLUDE_FILE line above for debug to work properly,
@@ -152,7 +153,7 @@ SECTIONS
     .rodata : {
         /* Exclude as many constants as possible from flash as corresponding to the code that has been removed from flash
             to keep the MCU from having to hit flash while it is executing in SRAM */
-        *(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *libm.a:  *libBlueIDE_platform_RPMCU.a:  *libSdFat.a: *libSCSI2SD.a: *CUEParser.a: *minIni.a: *.cpp.o) .rodata*)
+        *(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *libm.a: *SCSI2SD* *sdfat* *minIni* *CUEParser* *.cpp.o) .rodata*)
 /* Uncomment below and comment above lines for debugging */
         /* *(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *libm.a:) .rodata*) */
 
@@ -233,6 +234,10 @@ SECTIONS
     /* __etext is (for backwards compatibility) the name of the .data init source pointer (...) */
     __etext = LOADADDR(.data);
 
+    .shared_log (NOLOAD) : {
+        *(.shared_log)
+    } > SHARED_LOG
+
     .tbss (NOLOAD) : {
         . = ALIGN(4);
         __bss_start__ = .;
@@ -284,7 +289,7 @@ SECTIONS
     } > SCRATCH_Y AT > FLASH
     __scratch_y_source__ = LOADADDR(.scratch_y);
 
-    /* .stack*_dummy section doesn't contains any symbols. It is only
+    /* .stack*_dummy section doesn't contain any symbols. It is only
      * used for linker to calculate size of stack sections, and assign
      * values to stack symbols later
      *

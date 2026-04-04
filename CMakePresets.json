@@ -1,0 +1,127 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Unix Makefiles",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "Pico",
+      "displayName": "Pico (RP2040)",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/Pico",
+      "cacheVariables": {
+        "PICO_BOARD": "pico",
+        "BLUESCSI_TARGET": "Pico"
+      }
+    },
+    {
+      "name": "Pico_DaynaPORT",
+      "displayName": "Pico DaynaPORT (RP2040 WiFi)",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/Pico_DaynaPORT",
+      "cacheVariables": {
+        "PICO_BOARD": "pico_w",
+        "BLUESCSI_TARGET": "Pico_DaynaPORT"
+      }
+    },
+    {
+      "name": "Pico_Audio_SPDIF",
+      "displayName": "Pico Audio SPDIF (RP2040 WiFi + SPDIF)",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/Pico_Audio_SPDIF",
+      "cacheVariables": {
+        "PICO_BOARD": "pico_w",
+        "BLUESCSI_TARGET": "Pico_Audio_SPDIF"
+      }
+    },
+    {
+      "name": "Pico_2",
+      "displayName": "Pico 2 (RP2350)",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/Pico_2",
+      "cacheVariables": {
+        "PICO_BOARD": "pico2",
+        "BLUESCSI_TARGET": "Pico_2"
+      }
+    },
+    {
+      "name": "Pico_2_DaynaPORT",
+      "displayName": "Pico 2 DaynaPORT (RP2350 WiFi)",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/Pico_2_DaynaPORT",
+      "cacheVariables": {
+        "PICO_BOARD": "pico2_w",
+        "BLUESCSI_TARGET": "Pico_2_DaynaPORT"
+      }
+    },
+    {
+      "name": "Pico_2_Audio_SPDIF",
+      "displayName": "Pico 2 Audio SPDIF (RP2350 WiFi + SPDIF)",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/Pico_2_Audio_SPDIF",
+      "cacheVariables": {
+        "PICO_BOARD": "pico2_w",
+        "BLUESCSI_TARGET": "Pico_2_Audio_SPDIF"
+      }
+    },
+    {
+      "name": "Ultra",
+      "displayName": "Ultra (RP2350B)",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/Ultra",
+      "cacheVariables": {
+        "PICO_BOARD": "bluescsi_ultra",
+        "BLUESCSI_TARGET": "Ultra"
+      }
+    },
+    {
+      "name": "Ultra_Wide",
+      "displayName": "Ultra Wide (RP2350B Wide SCSI)",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/Ultra_Wide",
+      "cacheVariables": {
+        "PICO_BOARD": "bluescsi_ultra_wide",
+        "BLUESCSI_TARGET": "Ultra_Wide"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "Pico",
+      "configurePreset": "Pico"
+    },
+    {
+      "name": "Pico_DaynaPORT",
+      "configurePreset": "Pico_DaynaPORT"
+    },
+    {
+      "name": "Pico_Audio_SPDIF",
+      "configurePreset": "Pico_Audio_SPDIF"
+    },
+    {
+      "name": "Pico_2",
+      "configurePreset": "Pico_2"
+    },
+    {
+      "name": "Pico_2_DaynaPORT",
+      "configurePreset": "Pico_2_DaynaPORT"
+    },
+    {
+      "name": "Pico_2_Audio_SPDIF",
+      "configurePreset": "Pico_2_Audio_SPDIF"
+    },
+    {
+      "name": "Ultra",
+      "configurePreset": "Ultra"
+    },
+    {
+      "name": "Ultra_Wide",
+      "configurePreset": "Ultra_Wide"
+    }
+  ]
+}

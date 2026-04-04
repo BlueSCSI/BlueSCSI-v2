@@ -120,6 +120,27 @@ inline void dbgmsg(Params... params)
     }
 }
 
+// Shared log for preserving bootloader logs across reset
+#ifndef SHARED_LOG_SIZE
+#define SHARED_LOG_SIZE 2048
+#endif
+#define SHARED_LOG_MAGIC 0xAA55AA55
+
+struct shared_log_t {
+    uint32_t magic;
+    uint32_t pos;
+    char buffer[SHARED_LOG_SIZE - 8];
+};
+
+// Save current log buffer contents to shared log region (survives reset)
+void log_save_to_shared();
+
+// Restore bootloader log from shared log region into firmware log buffer
+void log_restore_from_shared();
+
+// Log a fixed-length buffer (not null-terminated)
+void log_raw_len(const char *str, size_t len);
+
 #ifdef NETWORK_DEBUG_LOGGING
 #ifdef __cplusplus
 extern "C" {

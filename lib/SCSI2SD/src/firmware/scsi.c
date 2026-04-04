@@ -1429,9 +1429,9 @@ void scsiInit()
 	for (i = 0; i < S2S_MAX_TARGETS; ++i)
 	{
 		const S2S_TargetCfg* cfg = s2s_getConfigByIndex(i);
-		if (cfg && (cfg->scsiId & S2S_CFG_TARGET_ENABLED))
+		if (cfg && s2s_isTargetEnabled(cfg))
 		{
-			scsiDev.targets[i].targetId = cfg->scsiId & S2S_CFG_TARGET_ID_BITS;
+			scsiDev.targets[i].targetId = s2s_getTargetId(cfg);
 			scsiDev.targets[i].cfg = cfg;
 
 			scsiDev.targets[i].liveCfg.bytesPerSector = cfg->bytesPerSector;

@@ -10,6 +10,5 @@ test/build/
 test/test_report.txt
 test/test_report.json
 .direnv/
-.envrc
 build/
 test/

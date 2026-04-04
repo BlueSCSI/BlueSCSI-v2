@@ -9,7 +9,7 @@ on:
 jobs:
   analyze_crashlog:
     name: Analyze crash log
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     if: |
       (github.event_name == 'issue_comment' && (
         contains(github.event.comment.body, 'CRASH') ||
@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: Install tools
         run: |

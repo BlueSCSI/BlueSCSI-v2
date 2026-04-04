@@ -33,7 +33,8 @@
      * which comes as part of the main firmware.elf and is never overwritten.
      */
     FLASH(rx) : ORIGIN = 0x10000100, LENGTH = 256k-256
-    RAM(rwx) : ORIGIN = 0x20000000, LENGTH = 256k  /* Leave space for pico-debug */
+    RAM(rwx) : ORIGIN = 0x20000000, LENGTH = 256k - 2k  /* Last 2K for shared log */
+    SHARED_LOG(rw) : ORIGIN = 0x2003F800, LENGTH = 2k
     SCRATCH_X(rwx) : ORIGIN = 0x20040000, LENGTH = 4k
     SCRATCH_Y(rwx) : ORIGIN = 0x20041000, LENGTH = 4k
 }
@@ -51,16 +52,18 @@ SECTIONS
 
         *scanf*(*)
         *strtod*(*)
-        *libipv4.a:*(*)
-        *liblwip*.a:*(*)
-        *libBlueSCSI_audio_RP2MCU.a:*(*)
-        *libAdafruit*.a:*(*)
-        *libWire.a:*(*)
-        *libSPI.a:*(*)
-        *libBlueSCSI_platform_RP2MCU.a:BlueSCSI_platform_network.cpp.o*(*)
-        *libFrameworkArduino.a:cyw43_wrappers.cpp.o*(*)
 
-        /* gt */
+        /* Audio code not needed in bootloader */
+        *audio_i2s*(.text .text* .rodata .rodata*)
+        *audio_spdif*(.text .text* .rodata .rodata*)
+        *BlueI2S*(.text .text* .rodata .rodata*)
+
+        /* Network code not needed in bootloader */
+        *BlueSCSI_platform_network*(.text .text* .rodata .rodata*)
+        *cyw43*(.text .text* .rodata .rodata*)
+        *lwip*(.text .text* .rodata .rodata*)
+
+        /* Features not needed in bootloader */
         *BlueSCSI_tape.cpp.o*(*)
         *BlueSCSI_mode.cpp.o*(*)
         *BlueSCSI_blink.cpp.o*(*)
@@ -183,6 +186,9 @@ SECTIONS
         __scratch_y_end__ = .;
     } > SCRATCH_Y AT > FLASH
     __scratch_y_source__ = LOADADDR(.scratch_y);
+    .shared_log (NOLOAD) : {
+        *(.shared_log)
+    } > SHARED_LOG
     .bss : {
         . = ALIGN(4);
         __bss_start__ = .;
@@ -195,7 +201,7 @@ SECTIONS
     {
         __end__ = .;
         PROVIDE(end = .);
-        *(.heap*)
+        KEEP(*(.heap*))
         . = ORIGIN(RAM) + LENGTH(RAM) - 0x400;
         __HeapLimit = .;
     } > RAM
@@ -205,7 +211,7 @@ SECTIONS
     } > SCRATCH_X
     .stack_dummy (COPY):
     {
-        *(.stack*)
+        KEEP(*(.stack*))
     } > RAM
     .flash_end : {
         __flash_binary_end = .;

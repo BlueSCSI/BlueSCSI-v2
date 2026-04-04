@@ -41,6 +41,7 @@
 */
 
 #include "scsi_accel_target_RP2350_wide.pio.h"
+#include <cstring>
 
 // SCSI bus write acceleration uses 2 PIO state machines:
 // SM1: Write data to SCSI bus
@@ -195,41 +196,44 @@ static uint32_t *scsi_generate_parity_8bit(uint8_t *src, uint32_t count, uint32_
     // The routine has 26 instructions per 8 input bytes
     // From measurements this takes approx 14 µs per 512 bytes at 150 MHz
     // This gives 1.2 clock cycles per instruction, and throughput of 34 MB/s.
+    uint32_t w1, p1, w2, p2, t1, t2;
     asm(R"(
         1:
-            ldr r0, [%0], #4        // Load first source word (4 bytes)
-            subs %1, %1, #8         // count -= 8
-            eor r1, r0, r0, lsr #4  //      Start calculating parity for first source word
-            bmi 2f                  // End of data (count < 0)
-            eor r1, r1, r1, lsr #2  //      First word parity
-            ldr r2, [%0], #4        // Load second source word
-            eor r1, r1, r1, lsr #1  //      First word parity
-            eor r3, r2, r2, lsr #4  //          Second word parity
-            pkhbt r5, r0, r1, lsl #16 //    Data from bottom of r0, parity from bottom of r1, dest0 => r5
-            eor r3, r3, r3, lsr #2  //          Second word parity
-            str r5, [%2], #4        //      Store dest[0]
-            lsr r5, r5, #8          //      Second byte and its parity to r5
-            eor r3, r3, r3, lsr #1  //          Second word parity
-            str r5, [%2], #4        //      Store dest[1]
-            pkhtb r5, r1, r0, asr #16 //    Data from top of r0, parity from top of r1, dest2 => r5
-            str r5, [%2], #4        //      Store dest[2]
-            lsr r5, r5, #8          //      Fourth byte and its parity to r5
-            pkhbt r4, r2, r3, lsl #16 //        Data from bottom of r2, parity from bottom of r3, dest4 => r4
-            str r5, [%2], #4        //      Store dest[3]
-            lsr r5, r4, #8          //          Second byte and its parity to r5
-            str r4, [%2], #4        //      Store dest[4]
-            pkhtb r4, r3, r2, asr #16 //    Data from top of r2, parity from top of r3, dest6 => r4
-            str r5, [%2], #4        //      Store dest[5]
-            lsr r5, r4, #8          //          Fourth byte and its parity to r5
-            str r4, [%2], #4        //      Store dest[6]
-            str r5, [%2], #4        //      Store dest[7]
-            b 1b                    // Continue loop
+            ldr %[w1], [%[src]], #4         // Load first source word (4 bytes)
+            subs %[cnt], %[cnt], #8         // count -= 8
+            eor %[p1], %[w1], %[w1], lsr #4 //     Start calculating parity for first source word
+            bmi 2f                          // End of data (count < 0)
+            eor %[p1], %[p1], %[p1], lsr #2 //     First word parity
+            ldr %[w2], [%[src]], #4         // Load second source word
+            eor %[p1], %[p1], %[p1], lsr #1 //     First word parity
+            eor %[p2], %[w2], %[w2], lsr #4 //         Second word parity
+            pkhbt %[t2], %[w1], %[p1], lsl #16 //  Data from bottom of w1, parity from bottom of p1 => t2
+            eor %[p2], %[p2], %[p2], lsr #2 //         Second word parity
+            str %[t2], [%[dst]], #4         //      Store dest[0]
+            lsr %[t2], %[t2], #8            //      Second byte and its parity to t2
+            eor %[p2], %[p2], %[p2], lsr #1 //         Second word parity
+            str %[t2], [%[dst]], #4         //      Store dest[1]
+            pkhtb %[t2], %[p1], %[w1], asr #16 //  Data from top of w1, parity from top of p1 => t2
+            str %[t2], [%[dst]], #4         //      Store dest[2]
+            lsr %[t2], %[t2], #8            //      Fourth byte and its parity to t2
+            pkhbt %[t1], %[w2], %[p2], lsl #16 //      Data from bottom of w2, parity from bottom of p2 => t1
+            str %[t2], [%[dst]], #4         //      Store dest[3]
+            lsr %[t2], %[t1], #8            //          Second byte and its parity to t2
+            str %[t1], [%[dst]], #4         //      Store dest[4]
+            pkhtb %[t1], %[p2], %[w2], asr #16 //  Data from top of w2, parity from top of p2 => t1
+            str %[t2], [%[dst]], #4         //      Store dest[5]
+            lsr %[t2], %[t1], #8            //          Fourth byte and its parity to t2
+            str %[t1], [%[dst]], #4         //      Store dest[6]
+            str %[t2], [%[dst]], #4         //      Store dest[7]
+            b 1b                            // Continue loop
 
         2:
-            sub %0, %0, #4      // Fix up src pointer at end of loop
-            add %1, %1, #8      // Fix up count back to >= 0
-    )" : "+r"(src), "+r"(count), "+r"(dest)
-       : : "r0", "r1", "r2", "r3", "r4", "r5", "r6", "memory");
+            sub %[src], %[src], #4          // Fix up src pointer at end of loop
+            add %[cnt], %[cnt], #8          // Fix up count back to >= 0
+    )" : [src] "+r"(src), [cnt] "+r"(count), [dst] "+r"(dest),
+         [w1] "=&r"(w1), [p1] "=&r"(p1), [w2] "=&r"(w2),
+         [p2] "=&r"(p2), [t1] "=&r"(t1), [t2] "=&r"(t2)
+       : : "memory");
 
 
     // Usually we have a multiple of 8 bytes
@@ -275,42 +279,49 @@ static uint32_t *scsi_generate_parity_16bit(uint8_t *src, uint32_t count, uint32
     // It handles parity for 8 bytes at a time, producing 4 output words.
     // It is hand-optimized equivalent of the "while (count >= 4)" loop below.
     // Interleaving the two words eliminates result use latency.
-    // The routine has 20 instructions per 8 input bytes
+    // The routine has 22 instructions per 8 input bytes (stm/ldm replaced with
+    // individual str/ldr for GCC-allocated register compatibility).
     // From measurements this takes approx 23 µs per 1024 bytes at 150 MHz
     // This gives 1.2 clock cycles per instruction, and throughput of 44 MB/s.
+    uint32_t w1, p1, w2, p2, k, t1, t2;
     asm(R"(
-            ldm %[src]!, {r0, r2}    // Load source words
-            subs %[cnt], %[cnt], #7  // Make sure count goes <= 0 when there is less than 8 left
-            mov r4, #0x02040000      // Load multiplication constant for bit shuffling
-            ble 2f                   // Skip loop if count is too low
+            ldr %[w1], [%[src]], #4         // Load source word 1
+            ldr %[w2], [%[src]], #4         // Load source word 2
+            subs %[cnt], %[cnt], #7         // Make sure count goes <= 0 when there is less than 8 left
+            mov %[k], #0x02040000           // Load multiplication constant for bit shuffling
+            ble 2f                          // Skip loop if count is too low
 
         1:
-            eor r1, r0, r0, lsl #4  //      Start calculating parity for first source word
-            eor r3, r2, r2, lsl #4  //          Second word parity
-            eor r1, r1, r1, lsl #2  //      First word parity
-            eor r3, r3, r3, lsl #2  //          Second word parity
-            eor r1, r1, r1, lsl #1  //      First word parity
-            and r1, r1, #0x80808080 //      First word parity bit masking (w5 => r1)
-            umull r5, r1, r4, r1    //      Bit shuffle (w6 => r1), r5 dummy
-            eor r3, r3, r3, lsl #1  //          Second word parity
-            pkhbt r5, r0, r1, lsl #16 //    Data from bottom of r0, parity from bottom of r1, dest0 => r5
-            pkhtb r6, r1, r0, asr #16 //    Data from top of r0, parity from top of r1, dest1 => r6
-            and r3, r3, #0x80808080 //          Second word parity bit masking (w5 => r3)
-            stm %[dst]!, {r5, r6}   //      Store 1st, 2nd output word
-            umull r6, r3, r4, r3    //          Bit shuffle (w6 => r3), r6 dummy
-            ldr r0, [%[src]], #4      // Load next source word 1
-            pkhbt r5, r2, r3, lsl #16 //        Data from bottom of r2, parity from bottom of r3, dest2 => r5
-            pkhtb r6, r3, r2, asr #16 //        Data from top of r2, parity from top of r3, dest3 => r6
-            ldr r2, [%[src]], #4      // Load next source word 2
-            subs %[cnt], %[cnt], #8   // count -= 8
-            stm %[dst]!, {r5, r6}     //        Store 3rd, 4th output word
-            bgt 1b                    // Continue loop while count > 0
+            eor %[p1], %[w1], %[w1], lsl #4 //     Start calculating parity for first source word
+            eor %[p2], %[w2], %[w2], lsl #4 //         Second word parity
+            eor %[p1], %[p1], %[p1], lsl #2 //     First word parity
+            eor %[p2], %[p2], %[p2], lsl #2 //         Second word parity
+            eor %[p1], %[p1], %[p1], lsl #1 //     First word parity
+            and %[p1], %[p1], #0x80808080    //     First word parity bit masking
+            umull %[t1], %[p1], %[k], %[p1]  //    Bit shuffle, t1 dummy
+            eor %[p2], %[p2], %[p2], lsl #1 //         Second word parity
+            pkhbt %[t1], %[w1], %[p1], lsl #16 //  Data from bottom of w1, parity from bottom of p1 => t1
+            pkhtb %[t2], %[p1], %[w1], asr #16 //  Data from top of w1, parity from top of p1 => t2
+            and %[p2], %[p2], #0x80808080    //         Second word parity bit masking
+            str %[t1], [%[dst]], #4          //     Store 1st output word
+            str %[t2], [%[dst]], #4          //     Store 2nd output word
+            umull %[t2], %[p2], %[k], %[p2]  //        Bit shuffle, t2 dummy
+            ldr %[w1], [%[src]], #4          // Load next source word 1
+            pkhbt %[t1], %[w2], %[p2], lsl #16 //      Data from bottom of w2, parity from bottom of p2 => t1
+            pkhtb %[t2], %[p2], %[w2], asr #16 //      Data from top of w2, parity from top of p2 => t2
+            ldr %[w2], [%[src]], #4          // Load next source word 2
+            subs %[cnt], %[cnt], #8          // count -= 8
+            str %[t1], [%[dst]], #4          //         Store 3rd output word
+            str %[t2], [%[dst]], #4          //         Store 4th output word
+            bgt 1b                           // Continue loop while count > 0
 
         2:
-            add %[cnt], %[cnt], #7      // Fix up count at end of loop
-            sub %[src], %[src], #8      // Fix up src (we already loaded 2 words)
-    )" : [src] "+r"(src), [cnt] "+r"(count), [dst] "+r"(dest)
-       : : "r0", "r1", "r2", "r3", "r4", "r5", "r6", "memory");
+            add %[cnt], %[cnt], #7           // Fix up count at end of loop
+            sub %[src], %[src], #8           // Fix up src (we already loaded 2 words)
+    )" : [src] "+r"(src), [cnt] "+r"(count), [dst] "+r"(dest),
+         [w1] "=&r"(w1), [p1] "=&r"(p1), [w2] "=&r"(w2),
+         [p2] "=&r"(p2), [k] "=&r"(k), [t1] "=&r"(t1), [t2] "=&r"(t2)
+       : : "memory");
 
     // Usually we have a multiple of 8 bytes
     if (__builtin_expect(count > 0, 0))

@@ -42,9 +42,7 @@ extern "C" {
 #include <class/msc/msc_device.h>
 
 #include <pico/mutex.h>
-#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
 extern mutex_t __usb_mutex;
-#endif
 
 #if CFG_TUD_MSC_EP_BUFSIZE < SD_SECTOR_SIZE
   #error "CFG_TUD_MSC_EP_BUFSIZE is too small! It needs to be at least 512 (SD_SECTOR_SIZE)"
@@ -71,7 +69,6 @@ static struct {
 
 void platform_msc_lock_set(bool block)
 {
-#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
   if (block)
   {
     if (g_msc_lock)
@@ -79,7 +76,7 @@ void platform_msc_lock_set(bool block)
       logmsg("Re-entrant MSC lock!");
       assert(false);
     }
-    
+
     g_msc_usb_mutex_held = mutex_try_enter(&__usb_mutex, NULL); // Blocks USB IRQ if not already blocked
     g_msc_lock = true; // Blocks platform USB polling
   }
@@ -99,7 +96,6 @@ void platform_msc_lock_set(bool block)
       mutex_exit(&__usb_mutex);
     }
   }
-#endif
 }
 
 bool platform_msc_lock_get()
@@ -143,7 +139,7 @@ bool platform_sense_msc() {
       timed_out = true;
       break;
     } 
-    platform_delay_ms(100);
+    platform_delay_ms_with_usb(100);
   }
   if (!timed_out)
     dbgmsg("USB enumeration took ", (int)((uint32_t)(platform_millis() - start)), "ms");
@@ -227,7 +223,7 @@ void platform_enter_msc() {
     // update it.
     g_MSC.lun_count_prev_response = 0;
     tud_disconnect();
-    platform_delay_ms(250);
+    platform_delay_ms_with_usb(250);
     tud_connect();
   }
 }

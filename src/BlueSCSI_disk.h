@@ -48,6 +48,9 @@ struct image_config_t: public S2S_TargetCfg
 {
     image_config_t() {};
 
+    uint8_t getTargetId() const { return scsiId & S2S_CFG_TARGET_ID_BITS; }
+    bool isTargetEnabled() const { return (scsiId & S2S_CFG_TARGET_ENABLED) != 0; }
+
     ImageBackingStore file;
 
     // For CD-ROM drive ejection
@@ -82,6 +85,7 @@ struct image_config_t: public S2S_TargetCfg
 
     // Previously accessed CD-ROM track, cached for performance
     CUETrackInfo cdrom_trackinfo;
+    uint32_t cdrom_track_end_lba;
 
     // Loaded .bin file index for .cue/.bin with multiple files
     // Matches trackinfo.file_index
@@ -92,6 +96,8 @@ struct image_config_t: public S2S_TargetCfg
 
     // the bin file for the cue sheet, the directory for multi bin files, or closed if neither
     FsFile bin_container;
+
+    inline bool is_multi_bin_cue() {return bin_container.isOpen() && bin_container.isDir();}
 
     // Right-align vendor / product type strings
     // Standard SCSI uses left alignment

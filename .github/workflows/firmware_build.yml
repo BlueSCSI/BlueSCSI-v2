@@ -2,6 +2,8 @@ name: Build BlueSCSI firmware
 
 on:
   push:
+    branches: [main]
+    tags: ['*']
   pull_request:
   workflow_dispatch:
 
@@ -12,30 +14,28 @@ jobs:
 
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: BlueSCSI
           fetch-depth: "0"
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/pip
-            ~/.platformio/.cache
-          key: ${{ runner.os }}-pio
 
-      - uses: actions/setup-python@v5
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
         with:
-          python-version: '3.12'
+          extra_nix_config: |
+            experimental-features = nix-command flakes
 
-      - name: Install platformio
-        run: |
-          pip install --upgrade platformio
-          pio system info
+      - name: Cache Nix store
+        uses: cachix/cachix-action@v17
+        with:
+          name: bluescsi
+          skipPush: true
+        continue-on-error: true
 
       - name: Build firmware
         run: |
           cd BlueSCSI
-          pio run -v
+          nix develop --command ./build.sh
 
       - name: Rename firmware files
         run: |
@@ -43,7 +43,7 @@ jobs:
           utils/make_dist.sh
 
       - name: Upload binaries into build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           path: BlueSCSI/dist/*
           name: BlueSCSI binaries
@@ -72,6 +72,5 @@ jobs:
           status=$?
           set -e
           if [ $status -ne 0 ]; then
-            gh release upload --repo ${GITHUB_REPOSITORY} $RELEASE BlueSCSI/dist/*
+            gh release upload --repo ${GITHUB_REPOSITORY} --clobber $RELEASE BlueSCSI/dist/*
           fi
-

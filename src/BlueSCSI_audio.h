@@ -124,9 +124,9 @@ bool audio_set_paused(uint8_t id, bool pause);
 /**
  * Stops audio playback.
  *
- * \param id     The SCSI ID to stop audio playback on.
+ * \param id     The SCSI ID to stop audio playback on. If id == 0xFF stop audio on all devices
  */
-void audio_stop(uint8_t id);
+void audio_stop(uint8_t id = 0xFF);
 
 /**
  * Provides SCSI 'audio status code' for the given target. Depending on the

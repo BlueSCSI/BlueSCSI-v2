@@ -44,6 +44,9 @@ extern "C" {
 #include <hardware/structs/usb.h>
 #include <hardware/sync.h>
 #include <hardware/vreg.h>
+#include <hardware/watchdog.h>
+#include <hardware/structs/watchdog.h>
+#include <pico/bootrom.h>
 #include "scsi_accel_target.h"
 #include "custom_timings.h"
 #include <BlueSCSI_settings.h>
@@ -62,9 +65,39 @@ extern "C" {
 #include <sdio.h>
 #endif
 
-#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
-# include <tusb.h>
-# include <class/cdc/cdc_device.h>
+#include <tusb.h>
+#include <class/cdc/cdc_device.h>
+
+#include <pico/mutex.h>
+#include <pico/time.h>
+#ifndef BLUESCSI_BOOTLOADER_MAIN
+#include <bsp/board_api.h>
+#endif
+
+mutex_t __usb_mutex;
+
+// Background USB task — mirrors the Arduino-Pico core's approach of running
+// tud_task() from a repeating timer alarm so that USB enumeration and CDC
+// communication proceed even when the main loop hasn't started yet.
+// Only needed on RP2040 — RP2350 USB works without it, and the ISR nesting
+// pushes the 2KB stack over the limit during deep SD card call chains.
+#if !defined(BLUESCSI_BOOTLOADER_MAIN) && defined(BLUESCSI_MCU_RP20XX)
+static int __usb_task_irq;
+
+static void __usb_irq()
+{
+    if (mutex_try_enter(&__usb_mutex, NULL))
+    {
+        tud_task();
+        mutex_exit(&__usb_mutex);
+    }
+}
+
+static int64_t __usb_timer_task(__unused alarm_id_t id, __unused void *user_data)
+{
+    irq_set_pending(__usb_task_irq);
+    return 1000; // repeat every 1ms
+}
 #endif
 
 #ifndef U8574_DEBUG
@@ -109,11 +142,8 @@ extern "C" {
 
 extern bool g_rawdrive_active;
 
-#if !defined(PICO_CYW43_SUPPORTED)
-// Define __isPicoW for non-CYW43 builds (always false)
-// Must be outside extern "C" to match header's C++ linkage declaration
+// Always define __isPicoW ourselves (no longer provided by Arduino-pico)
 bool __isPicoW = false;
-#endif
 
 extern "C" {
 #include "timings_RP2MCU.h"
@@ -190,11 +220,10 @@ static void CheckPicoW() {
     //__isPicoW = false;
 }
 #else
-# ifndef PICO_RP2040
     /**
-     * This is a workaround until arduino framework can be updated to handle all 4 variations of
-     * Pico1/1w/2/2w. In testing this works on all for BlueSCSI.
-     * Tracking here https://github.com/earlephilhower/arduino-pico/issues/2671
+     * Runtime Pico W detection via ADC on CYW43 clock pin.
+     * Works on both RP2040 and RP2350.
+     * In PlatformIO, the Arduino framework handled this; in CMake builds we do it ourselves.
      */
 static void CheckPicoW() {
     extern bool __isPicoW;
@@ -218,7 +247,6 @@ static void CheckPicoW() {
 #endif
 }
 #endif
-#endif
 
 
 #if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
@@ -241,7 +269,7 @@ bool check_is_sca_model() {
         return true;
     } else {
         // Check for the prototype address
-        byte cmd[1] = {SCA_CMD_INPUT};
+        uint8_t cmd[1] = {SCA_CMD_INPUT};
         status = i2c_write_timeout_us(I2C_PORT, SCA_I2C_ADDR_PROTO, cmd, 1, true, 25000);
         if (status > 0) {
             status = i2c_read_timeout_us(I2C_PORT, SCA_I2C_ADDR_PROTO, &response, 1, false, 25000);
@@ -592,8 +620,7 @@ bool platform_reclock(bluescsi_speed_grade_t speed_grade)
             {
 
                 logmsg("Using custom timings found in \"", CUSTOM_TIMINGS_FILE, "\" for reclocking");
-                ct.set_timings_from_file();
-                do_reclock = true;
+                do_reclock = ct.set_timings_from_file();
             }
             else
             {
@@ -683,10 +710,22 @@ static pin_setup_state_t read_setup_ack_pin()
 
 // Allows execution on Core1 via function pointers. Each function can take
 // no parameters and should return nothing, operating via side-effects only.
+mutex g_core1_mutex;
+extern uint32_t __StackOneBottom;
+__attribute__((section(".time_critical.core1_handler")))
 static void core1_handler() {
+#ifdef BLUESCSI_MCU_RP23XX
+    // Set stack overflow protection for core1
+    // +32 bytes headroom for exception entry frame
+    uint32_t core1_limit = (uint32_t)&__StackOneBottom + 32;
+    asm volatile("msr MSPLIM, %0" : : "r"(core1_limit) : "memory");
+#endif
     while (1) {
         void (*function)() = (void (*)()) multicore_fifo_pop_blocking();
+
+        mutex_enter_blocking(&g_core1_mutex);
         (*function)();
+        mutex_exit(&g_core1_mutex);
     }
 }
 
@@ -781,17 +820,43 @@ static void __no_inline_not_in_flash_func(set_flash_clock)()
 }
 #endif
 
+extern uint32_t __StackBottom;
+
 void platform_init()
 {
-#ifndef PICO_RP2040
-    CheckPicoW(); // Override default Wi-Fi check for the Pico2 line.
+#ifdef BLUESCSI_MCU_RP23XX
+    // Set stack overflow protection for core0
+    // +32 bytes headroom for exception entry frame
+    uint32_t core0_limit = (uint32_t)&__StackBottom + 32;
+    asm volatile("msr MSPLIM, %0" : : "r"(core0_limit) : "memory");
 #endif
+
+    mutex_init(&__usb_mutex);
+#ifndef BLUESCSI_BOOTLOADER_MAIN
+    board_init();
+    tusb_init();
+
+#ifdef BLUESCSI_MCU_RP20XX
+    // Start background USB task timer so enumeration proceeds during setup.
+    // Only needed on RP2040 — see comment at __usb_timer_task definition.
+    __usb_task_irq = user_irq_claim_unused(true);
+    irq_set_exclusive_handler(__usb_task_irq, __usb_irq);
+    irq_set_enabled(__usb_task_irq, true);
+    add_alarm_in_us(1000, __usb_timer_task, NULL, true);
+#endif
+#endif
+
+    CheckPicoW();
 
 #if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
     i2c_init(i2c1, 100000);
 #endif
     // Make sure second core is stopped
     multicore_reset_core1();
+
+    // Keep negotiated sync limits aligned with the currently selected timing set
+    // even when no explicit reclocking profile is applied.
+    update_sync_period_limits();
 
     pio_clear_instruction_memory(pio0);
     pio_clear_instruction_memory(pio1);
@@ -827,10 +892,11 @@ void platform_init()
     logmsg("Platform: ", g_platform_name, " (", PLATFORM_PID, platform_is_pico_w() ? "/W" : "", ")");
     logmsg("FW Version: ", g_log_firmwareversion);
 
-#if (PICO_CYW43_SUPPORTED && !defined(BLUESCSI_NETWORK))
-    // Initialize CYW43 for Pico W boards without network support (for LED control)
-    // Note: Ultra uses RM2 module with different pins, configured later in platform_late_init()
-    if (cyw43_arch_init()) {
+#if (PICO_CYW43_SUPPORTED && !defined(BLUESCSI_RM2) && !defined(BLUESCSI_BOOTLOADER_MAIN))
+    // Initialize CYW43 for Pico W boards (LED control, VBUS detection).
+    // RM2 boards configure custom CYW43 pins in platform_late_init() instead.
+    // Network code reinitializes CYW43 later in platform_network_init().
+    if (platform_is_pico_w() && cyw43_arch_init()) {
         logmsg("CYW43 driver init failed");
     }
 #endif
@@ -954,6 +1020,7 @@ void platform_late_init()
 #endif
 
     dbgmsg("Starting Core1 dispatcher");
+    mutex_init(&g_core1_mutex);
     multicore_launch_core1(core1_handler);
 
     if (!g_scsi_initiator)
@@ -1072,9 +1139,6 @@ void platform_late_init()
 #endif  // PLATFORM_HAS_INITIATOR_MODE
     }
 
-#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
-    tusb_init();
-#endif
     scsi_accel_rp2040_init();
 }
 
@@ -1135,7 +1199,7 @@ void platform_write_led_override(bool state)
 
 static void platform_write_led_picow(bool state)
 {
-#if PICO_CYW43_SUPPORTED
+#if PICO_CYW43_SUPPORTED && !defined(BLUESCSI_BOOTLOADER_MAIN)
     // CYW43_WL_GPIO_LED_PIN: 0 but we dont want to pull in the cyw43 driver/header/etc
     cyw43_arch_gpio_put(0, state);
 #endif
@@ -1234,6 +1298,25 @@ void show_hardfault(uint32_t *sp)
     logmsg("R2: ", sp[2]);
     logmsg("R3: ", sp[3]);
 
+#ifdef BLUESCSI_MCU_RP23XX
+    // Log fault status registers for better crash diagnostics on Cortex-M33
+    volatile uint32_t *cfsr = (volatile uint32_t *)0xE000ED28;
+    volatile uint32_t *hfsr = (volatile uint32_t *)0xE000ED2C;
+    volatile uint32_t *mmfar = (volatile uint32_t *)0xE000ED34;
+    volatile uint32_t *bfar = (volatile uint32_t *)0xE000ED38;
+    logmsg("CFSR: ", *cfsr);
+    logmsg("HFSR: ", *hfsr);
+    if (*cfsr & 0x00000080) logmsg("MMFAR: ", *mmfar); // MMARVALID
+    if (*cfsr & 0x00008000) logmsg("BFAR: ", *bfar);   // BFARVALID
+    if (*cfsr & 0x00100000) logmsg("=> Stack overflow detected (STKOF)");
+    if (*cfsr & 0x00020000) logmsg("=> Invalid state (INVSTATE)");
+    if (*cfsr & 0x00010000) logmsg("=> Undefined instruction (UNDEFINSTR)");
+    if (*cfsr & 0x00000400) logmsg("=> Imprecise bus fault (IMPRECISERR)");
+    if (*cfsr & 0x00000200) logmsg("=> Precise bus fault (PRECISERR)");
+    if (*cfsr & 0x00000002) logmsg("=> Data access violation (DACCVIOL)");
+    if (*cfsr & 0x00000001) logmsg("=> Instruction access violation (IACCVIOL)");
+#endif
+
     uint32_t *p = (uint32_t*)((uint32_t)sp & ~3);
 
     for (int i = 0; i < 8; i++)
@@ -1270,9 +1353,18 @@ void show_hardfault(uint32_t *sp)
 __attribute__((naked, interrupt))
 void isr_hardfault(void)
 {
+#ifdef BLUESCSI_MCU_RP23XX
+    // Save current MSP for diagnostics, then reset stack so crash handler
+    // can run even after a stack overflow.
+    asm("mrs r0, msp\n"
+        "ldr r1, =__StackTop\n"
+        "msr msp, r1\n"
+        "bl show_hardfault": : : "r0", "r1");
+#else
     // Copies stack pointer into first argument
     asm("mrs r0, msp\n"
         "bl show_hardfault": : : "r0");
+#endif
 }
 
 
@@ -1282,10 +1374,6 @@ void isr_hardfault(void)
 
 static bool usb_serial_connected()
 {
-#ifdef PIO_FRAMEWORK_ARDUINO_NO_USB
-    return false;
-#endif
-
     static bool connected;
     static uint32_t last_check_time;
 
@@ -1313,7 +1401,6 @@ static bool usb_serial_connected()
 // but does not unnecessarily delay normal execution.
 static void usb_log_poll()
 {
-#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
     static uint32_t logpos = 0;
 
     if (!usb_serial_connected()) return;
@@ -1338,15 +1425,11 @@ static void usb_log_poll()
         tud_cdc_write_flush();
         logpos -= available - actual;
     }
-
-#endif // PIO_FRAMEWORK_ARDUINO_NO_USB
 }
 
 // Grab input from USB Serial terminal
 static void usb_input_poll()
 {
-#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
-
     if (!usb_serial_connected()) return;
 
 #ifdef PLATFORM_MASS_STORAGE
@@ -1416,7 +1499,6 @@ static void usb_input_poll()
                 mass_storage_reboot_keyed =basic_reboot_keyed = uf2_reboot_keyed = false;
         }
     }
-#endif // PIO_FRAMEWORK_ARDUINO_NO_USB
 }
 // Use ADC to implement supply voltage monitoring for the +3.0V rail.
 // This works by sampling the temperature sensor channel, which has
@@ -1427,6 +1509,8 @@ static void adc_poll()
     static bool initialized = false;
     static bool adc_initial_logged = false;
     static int lowest_vdd_seen = PLATFORM_VDD_WARNING_LIMIT_mV;
+    static uint32_t pending_warn_time = 0;
+    static int pending_warn_mV = 0;
 
     if (!initialized)
     {
@@ -1468,12 +1552,14 @@ static void adc_poll()
     const int limit = (700 * 4096) / PLATFORM_VDD_WARNING_LIMIT_mV;
     if (adc_value_max > limit)
     {
-        // Warn once, and then again if we detect even a lower drop.
+        // Record the lowest voltage seen, but defer the warning.
+        // This avoids spurious messages during power-off and duplicates
+        // during brief voltage dips. Each new low restarts the delay.
         int vdd_mV = (700 * 4096) / adc_value_max;
-        if (vdd_mV < lowest_vdd_seen)
+        if (vdd_mV < lowest_vdd_seen - 50)
         {
-            logmsg("WARNING: Detected supply voltage drop to ", vdd_mV, "mV. Verify power supply is adequate.");
-            lowest_vdd_seen = vdd_mV - 50; // Small hysteresis to avoid excessive warnings
+            pending_warn_time = platform_millis();
+            pending_warn_mV = vdd_mV;
         }
     }
     else if (!adc_initial_logged && adc_value_max != 0)
@@ -1481,6 +1567,14 @@ static void adc_poll()
             adc_initial_logged = true;
             int vdd_mV = (700 * 4096) / adc_value_max;
             logmsg("INFO: Pico Voltage: ", (vdd_mV / 1000.0), "V.");
+    }
+
+    // Log the pending Vdd warning after the delay has elapsed
+    if (pending_warn_time != 0 && (uint32_t)(platform_millis() - pending_warn_time) >= PLATFORM_VDD_WARNING_DELAY_ms)
+    {
+        logmsg("WARNING: Detected supply voltage drop to ", pending_warn_mV, "mV. Verify power supply is adequate.");
+        lowest_vdd_seen = pending_warn_mV;
+        pending_warn_time = 0;
     }
 #endif // PLATFORM_VDD_WARNING_LIMIT_mV > 0
 }
@@ -1602,16 +1696,46 @@ void platform_reset_watchdog()
 
     // USB log is polled here also to make sure any log messages in fault states
     // get passed to USB.
+    if (mutex_try_enter(&__usb_mutex, NULL))
+    {
+        tud_task();
+        mutex_exit(&__usb_mutex);
+    }
     usb_log_poll();
+}
+
+// Delay while still servicing USB (for MSC mode where platform_delay_ms blocks USB)
+void platform_delay_ms_with_usb(uint32_t ms)
+{
+    uint32_t start = time_us_32();
+    while ((time_us_32() - start) < (ms * 1000))
+    {
+        if (mutex_try_enter(&__usb_mutex, NULL))
+        {
+            tud_task();
+            mutex_exit(&__usb_mutex);
+        }
+    }
 }
 
 // Poll function that is called every few milliseconds.
 // Can be left empty or used for platform-specific processing.
 void platform_poll()
 {
+    if (mutex_try_enter(&__usb_mutex, NULL))
+    {
+        tud_task();
+        mutex_exit(&__usb_mutex);
+    }
     usb_input_poll();
     usb_log_poll();
     adc_poll();
+
+#if PICO_CYW43_SUPPORTED && !defined(BLUESCSI_BOOTLOADER_MAIN)
+    if (platform_is_pico_w()) {
+        cyw43_arch_poll();
+    }
+#endif
 
 #if defined(ENABLE_AUDIO_OUTPUT_SPDIF) || defined(ENABLE_AUDIO_OUTPUT_I2S)
     audio_poll();
@@ -1749,10 +1873,20 @@ bool platform_write_romdrive(const uint8_t *data, uint32_t start, uint32_t count
     assert(start < platform_get_romdrive_maxsize());
     assert((count % PLATFORM_ROMDRIVE_PAGE_SIZE) == 0);
 
+    // XIP is disabled during flashing so interrupts and
+    // core1 handlers must be blocked.
+    mutex_enter_blocking(&g_core1_mutex);
     uint32_t saved_irq = save_and_disable_interrupts();
+
     flash_range_erase(start + ROMDRIVE_OFFSET, count);
     flash_range_program(start + ROMDRIVE_OFFSET, data, count);
+
+#ifdef BLUESCSI_MCU_RP23XX
+    set_flash_clock();
+#endif
+
     restore_interrupts(saved_irq);
+    mutex_exit(&g_core1_mutex);
     return true;
 }
 

@@ -222,7 +222,15 @@ int scsiNetworkCommand()
 
 	switch (command) {
 	case 0x08:
+	{
 		// read(6)
+		// CDB[5] bit 6 indicates transfer mode from the host driver:
+		//   0x80 (bit 6 clear) = polled mode (old SCSI Manager, VM present) -> single packet
+		//   0xC0 (bit 6 set)   = blind mode (new SCSI Manager, no VM) -> multi-packet OK
+		// When bit 6 is clear, we send only one packet per READ(6) to minimize SCSI bus
+		// hold time, allowing the VM pager to access the bus between transactions.
+		int multiPacket = (scsiDev.cdb[5] & 0x40) != 0;
+
 		if (unlikely(size == 1))
 		{
 			scsiDev.status = CHECK_CONDITION;
@@ -257,7 +265,7 @@ int scsiNetworkCommand()
 		{
 			idx = scsiNetworkInboundQueue.readIndex;
 			len = scsiNetworkInboundQueue.sizes[idx];
-			total += len;
+			total += len + 6;  // packet data + 6-byte header
 
 			if (scsiNetworkInboundQueue.readIndex == NETWORK_PACKET_QUEUE_SIZE - 1)
 			{
@@ -270,9 +278,21 @@ int scsiNetworkCommand()
 
 			done = (scsiNetworkInboundQueue.readIndex == scsiNetworkInboundQueue.writeIndex);
 
-			// there's no hard limit since each packet is processed separately, but we shouldn't tie up
-			// the SCSI bus for a long time, so stop after ~2 max-sized packets
-			if (!done && total >= (DAYNAPORT_SCSI_PACKET_MAX * 2))
+			// In polled mode (bit 6 clear), only send one packet per READ(6)
+			// to avoid holding the SCSI bus while the VM pager needs it.
+			if (!done && !multiPacket)
+			{
+				done = 1;
+			}
+
+			// Don't exceed the transfer size requested by the host
+			if (!done && total + DAYNAPORT_SCSI_PACKET_MAX + 6 > size)
+			{
+				done = 1;
+			}
+
+			// Don't tie up the SCSI bus too long even in multi-packet mode
+			if (!done && total >= (DAYNAPORT_SCSI_PACKET_MAX + 6) * 2)
 			{
 				done = 1;
 			}
@@ -313,6 +333,7 @@ int scsiNetworkCommand()
 		scsiDev.status = GOOD;
 		scsiDev.phase = STATUS;
 		break;
+	}
 
 	case 0x09:
 		// read mac address and stats
