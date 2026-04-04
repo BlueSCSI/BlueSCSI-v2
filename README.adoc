@@ -5,8 +5,8 @@ BlueSCSI is hardware that reproduces SCSI devices (hard disks, optical, etc) pow
 
 This repository contains code for both BlueSCSI v2 and BlueSCSI Ultra/Ultra Wide.
 
-image::docs/buynow.png[link=https://scsi.blue, 150]
-image::docs/discordbanner.png[link=https://discord.gg/GKcvtgU7P9, 150]
+image::docs/buynow.png[Buy Now,link=https://scsi.blue,width=150]
+image::docs/discordbanner.png[Join our Discord,link=https://discord.gg/GKcvtgU7P9,width=150]
 
 Join us in #bluescsi on https://discord.gg/GKcvtgU7P9[Discord] or open an issue on this repo.
 
