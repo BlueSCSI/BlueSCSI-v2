@@ -25,6 +25,8 @@
 
 #include "BlueSCSI_log.h"
 #include "BlueSCSI_config.h"
+#include "BlueSCSI_settings.h"
+#include "BlueSCSI_disk_as400.h"
 #include <minIni.h>
 #include <string.h>
 #include <stdlib.h>
@@ -64,6 +66,77 @@ static int parseHexString(const char *str, uint8_t *buf, int maxlen)
         while (*ptr == ' ' || *ptr == ',') ptr++;
     }
     return count;
+}
+
+// Check if a custom VPD page already exists for a given SCSI ID and page code
+static bool hasCustomVPD(uint8_t scsiId, uint8_t pageCode)
+{
+    for (int i = 0; i < g_custom_vpd_count; i++)
+    {
+        if (g_custom_vpd[i].scsiId == scsiId && g_custom_vpd[i].pageCode == pageCode)
+            return true;
+    }
+    return false;
+}
+
+// Inject the generated serial number into a VPD page at the given offset
+static void injectSerial(uint8_t *data, int offset, uint8_t scsiId)
+{
+    uint8_t serial[8];
+    as400_get_serial_8(scsiId, serial);
+    memcpy(data + offset, serial, 8);
+}
+
+// Populate default AS/400 inquiry and VPD data for all SCSI IDs.
+// Only fills in data that wasn't already provided via INI.
+static void loadAS400Defaults(void)
+{
+    logmsg("Loading default AS/400 inquiry data");
+
+    for (int id = 0; id < 8; id++)
+    {
+        // Default standard inquiry (SPD) with serial injected
+        if (g_custom_spd[id].length == 0)
+        {
+            size_t len = as400_default_inquiry_len;
+            if (len > MAX_SPD_SIZE) len = MAX_SPD_SIZE;
+            memcpy(g_custom_spd[id].data, as400_default_inquiry, len);
+            // Inject serial at offset 38 (matches ZuluSCSI behavior)
+            if (len >= 46)
+                injectSerial(g_custom_spd[id].data, 38, id);
+            g_custom_spd[id].length = len;
+        }
+
+        // Default VPD pages
+        for (size_t p = 0; p < as400_default_vpd_page_count && g_custom_vpd_count < MAX_CUSTOM_VPD_ENTRIES; p++)
+        {
+            uint8_t pageLen = as400_default_vpd_pages[p][0]; // first byte is length
+            if (pageLen < 2) continue;
+            uint8_t pageCode = as400_default_vpd_pages[p][2]; // page code at offset 2 in data
+
+            if (hasCustomVPD(id, pageCode))
+                continue; // INI override takes precedence
+
+            int idx = g_custom_vpd_count;
+            g_custom_vpd[idx].scsiId = id;
+            g_custom_vpd[idx].pageCode = pageCode;
+            g_custom_vpd[idx].length = pageLen;
+            if (pageLen > MAX_VPD_DATA_SIZE) g_custom_vpd[idx].length = MAX_VPD_DATA_SIZE;
+            memcpy(g_custom_vpd[idx].data, &as400_default_vpd_pages[p][1], g_custom_vpd[idx].length);
+
+            // Inject serial into pages that contain it
+            if (pageCode == 0x80 && g_custom_vpd[idx].length >= 20)
+                injectSerial(g_custom_vpd[idx].data, 12, id); // offset 12 in page data
+            else if (pageCode == 0x82 && g_custom_vpd[idx].length >= 24)
+                injectSerial(g_custom_vpd[idx].data, 16, id);
+            else if (pageCode == 0x83 && g_custom_vpd[idx].length >= 42)
+                injectSerial(g_custom_vpd[idx].data, 34, id);
+            else if (pageCode == 0xD1 && g_custom_vpd[idx].length >= 78)
+                injectSerial(g_custom_vpd[idx].data, 70, id);
+
+            g_custom_vpd_count++;
+        }
+    }
 }
 
 void parseCustomInquiryData(void)
@@ -107,6 +180,12 @@ void parseCustomInquiryData(void)
                 logmsg("Custom SPD for SCSI ID ", id, ": ", (int)g_custom_spd[id].length, " bytes");
             }
         }
+    }
+
+    // Load AS/400 defaults for any IDs that don't have INI overrides
+    if (g_scsi_settings.getSystemPreset() == SYS_PRESET_AS400)
+    {
+        loadAS400Defaults();
     }
 }
 

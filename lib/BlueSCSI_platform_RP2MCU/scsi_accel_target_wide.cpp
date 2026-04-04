@@ -870,6 +870,11 @@ void scsi_accel_rp2040_startRead(uint8_t *data, uint32_t count, int *parityError
     // Any write requests should be matched with a stopWrite()
     assert(g_scsi_dma_state != SCSIDMA_WRITE && g_scsi_dma_state != SCSIDMA_WRITE_DONE);
 
+    // Wide SCSI transfers 16 bits at a time. If the byte count is odd,
+    // round up to force the final 16-bit read so the last byte is captured.
+    if (g_scsi_dma.wide && (count & 1))
+        count++;
+
     uint32_t saved_irq = spin_lock_blocking(g_scsi_dma.spin_lock);
     if (g_scsi_dma_state == SCSIDMA_READ)
     {

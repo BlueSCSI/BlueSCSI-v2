@@ -24,6 +24,9 @@
 #include "inquiry.h"
 #include "BlueSCSI_mode.h"
 #include "bluescsi_toolbox.h"
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+#include "BlueSCSI_disk_as400.h"
+#endif
 
 #include <string.h>
 
@@ -284,6 +287,20 @@ static void pageIn(int pc, int dataIdx, const uint8_t* pageData, int pageLen)
 static void doModeSense(
 	int sixByteCmd, int dbd, int pc, int pageCode, int allocLength)
 {
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+	// AS/400 requires specific mode page values from a real IBM drive
+	if (sixByteCmd && pageCode == 0x3F &&
+		scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_AS400 &&
+		scsiDev.target->cfg->deviceType == S2S_CFG_FIXED)
+	{
+		scsiDev.dataLen = (as400_mode_sense_all_pages_len > (size_t)allocLength)
+			? allocLength : as400_mode_sense_all_pages_len;
+		memcpy(scsiDev.data, as400_mode_sense_all_pages, scsiDev.dataLen);
+		scsiDev.phase = DATA_IN;
+		return;
+	}
+#endif
+
 	////////////// Mode Parameter Header
 	////////////////////////////////////
 

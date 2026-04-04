@@ -37,5 +37,37 @@ int as400_skip_total_true_bits(const uint8_t *mask, size_t masklen);
 // Bits are numbered MSB-first within each byte.
 int as400_skip_contiguous_bits(const uint8_t *data, size_t byte_len, size_t bit_start);
 
+// MODE SENSE all-pages response captured from a real IBM AS/400 drive
+extern const uint8_t as400_mode_sense_all_pages[];
+extern const size_t as400_mode_sense_all_pages_len;
+
+// LOG SENSE page data
+extern const uint8_t as400_log_sense_page_00[];
+extern const size_t as400_log_sense_page_00_len;
+extern const uint16_t as400_log_sense_page_30_page_length;
+extern const uint8_t  as400_log_sense_page_30_page_list_length;
+extern const uint16_t as400_log_sense_page_31_page_length;
+
+// I/O counters (currently always zero, could be wired up)
+extern uint32_t as400_read_ops;
+extern uint32_t as400_write_ops;
+
+// Default inquiry data from a real IBM AS/400 drive
+extern const uint8_t as400_default_inquiry[];
+extern const size_t as400_default_inquiry_len;
+
+// Default VPD pages: each row is [length, data...]
+extern const uint8_t as400_default_vpd_pages[][255];
+extern const size_t as400_default_vpd_page_count;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+// Generate an 8-byte serial number from the MCU unique ID and SCSI ID
+void as400_get_serial_8(uint8_t scsi_id, uint8_t *serial_buf);
+#ifdef __cplusplus
+}
+#endif
+
 #endif // BLUESCSI_ULTRA || BLUESCSI_ULTRA_WIDE
 #endif // BLUESCSI_DISK_AS400_H
