@@ -96,7 +96,15 @@ static void doCountFiles(const char * dir_name, bool isCD = false)
     FsFile dir;
     FsFile file;
     char name[MAX_FILE_PATH] = {0};
-    dir.open(dir_name);
+    if (!dir.open(dir_name)) {
+        if (!isCD && (!SD.mkdir(dir_name) || !dir.open(dir_name))) {
+            logmsg("ERROR: Could not open or create BlueSCSI Toolbox shared dir: ", dir_name);
+            scsiDev.status = CHECK_CONDITION;
+            scsiDev.target->sense.code = ILLEGAL_REQUEST;
+            scsiDev.phase = STATUS;
+            return;
+        }
+    }
     dir.rewindDirectory();
     uint8_t file_count = 0;
     while (file.openNext(&dir, O_RDONLY))
@@ -146,6 +154,10 @@ static void onListFiles(const char * dir_name, bool isCD = false) {
     if (!dir.open(dir_name)) {
         if (!isCD && (!SD.mkdir(dir_name) || !dir.open(dir_name))) {
             logmsg("ERROR: Could not open or create BlueSCSI Toolbox shared dir: ", dir_name);
+            scsiDev.status = CHECK_CONDITION;
+            scsiDev.target->sense.code = ILLEGAL_REQUEST;
+            scsiDev.phase = STATUS;
+            return;
         }
     }
     dir.rewindDirectory();
@@ -431,7 +443,17 @@ static void onSendFilePrep(char * dir_name)
     file_name[32] = '\0';
 
     dbgmsg("TOOLBOX OPEN FILE FOR WRITE: '", file_name, "'");
-    SD.chdir(dir_name);
+    if (!SD.chdir(dir_name))
+    {
+        if (!SD.mkdir(dir_name) || !SD.chdir(dir_name))
+        {
+            logmsg("ERROR: Could not open or create BlueSCSI Toolbox shared dir: ", dir_name);
+            scsiDev.status = CHECK_CONDITION;
+            scsiDev.target->sense.code = ILLEGAL_REQUEST;
+            scsiDev.phase = STATUS;
+            return;
+        }
+    }
     gFile.open(file_name, FILE_WRITE);
     SD.chdir("/");
     if(gFile.isOpen() && gFile.isWritable())
