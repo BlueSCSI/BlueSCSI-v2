@@ -275,14 +275,14 @@ static void onGetCapabilities()
 {
     memset(scsiDev.data, 0, 8);
     scsiDev.data[0] = TOOLBOX_API_VERSION;
-    scsiDev.data[1] = TOOLBOX_CAP_LARGE_TRANSFERS | TOOLBOX_CAP_LARGE_SEND | TOOLBOX_CAP_SET_UPLOAD_DIR;
+    scsiDev.data[1] = TOOLBOX_CAP_LARGE_TRANSFERS | TOOLBOX_CAP_LARGE_SEND | TOOLBOX_CAP_SET_WORKING_DIR;
     // bytes 2-7 reserved
     scsiDev.dataLen = 8;
     scsiDev.phase = DATA_IN;
 }
 
 // Set the working directory for file operations
-static void onSetUploadDir()
+static void onSetWorkingDir()
 {
     uint8_t path_len = scsiDev.cdb[8];
     if (path_len > 64) path_len = 64;
@@ -296,16 +296,37 @@ static void onSetUploadDir()
     {
         // Empty string: reset to default
         g_toolbox_dir_override[0] = '\0';
-        dbgmsg("TOOLBOX SET_UPLOAD_DIR: reset to default");
+        dbgmsg("TOOLBOX SET_WORKING_DIR: reset to default");
     }
     else
     {
         strncpy(g_toolbox_dir_override, path, MAX_FILE_PATH - 1);
         g_toolbox_dir_override[MAX_FILE_PATH - 1] = '\0';
-        dbgmsg("TOOLBOX SET_UPLOAD_DIR: '", g_toolbox_dir_override, "'");
+        dbgmsg("TOOLBOX SET_WORKING_DIR: '", g_toolbox_dir_override, "'");
     }
 
     scsiDev.phase = STATUS;
+}
+
+// Get the current working directory for file operations
+static void onGetWorkingDir()
+{
+    char dir_name[MAX_FILE_PATH] = {0};
+    getEffectiveDir(dir_name);
+
+    uint8_t alloc_len = scsiDev.cdb[8];
+    if (alloc_len == 0) alloc_len = MAX_FILE_PATH;
+    if (alloc_len > MAX_FILE_PATH) alloc_len = MAX_FILE_PATH;
+
+    size_t path_len = strlen(dir_name) + 1; // include null terminator
+    if (path_len > alloc_len) path_len = alloc_len;
+
+    memset(scsiDev.data, 0, alloc_len);
+    memcpy(scsiDev.data, dir_name, path_len);
+    scsiDev.dataLen = alloc_len;
+    scsiDev.phase = DATA_IN;
+
+    dbgmsg("TOOLBOX GET_WORKING_DIR: '", dir_name, "'");
 }
 
 // Handle 0xD9 metadata command with subcommands
@@ -315,11 +336,18 @@ static void onMetadataCommand()
 {
     uint8_t subcommand = scsiDev.cdb[1];
 
-    // SET_UPLOAD_DIR uses CDB[8] as data length, not allocation length
-    if (subcommand == TOOLBOX_SUBCMD_SET_UPLOAD_DIR)
+    // SET_WORKING_DIR uses CDB[8] as data length, not allocation length
+    if (subcommand == TOOLBOX_SUBCMD_SET_WORKING_DIR)
     {
-        dbgmsg("TOOLBOX_METADATA: SET_UPLOAD_DIR");
-        onSetUploadDir();
+        dbgmsg("TOOLBOX_METADATA: SET_WORKING_DIR");
+        onSetWorkingDir();
+        return;
+    }
+
+    if (subcommand == TOOLBOX_SUBCMD_GET_WORKING_DIR)
+    {
+        dbgmsg("TOOLBOX_METADATA: GET_WORKING_DIR");
+        onGetWorkingDir();
         return;
     }
 

@@ -42,12 +42,13 @@
 // 0xD9 Metadata subcommands (CDB[1])
 #define TOOLBOX_SUBCMD_LIST_DEVICES     0x00
 #define TOOLBOX_SUBCMD_GET_CAPABILITIES 0x01
-#define TOOLBOX_SUBCMD_SET_UPLOAD_DIR   0x02
+#define TOOLBOX_SUBCMD_SET_WORKING_DIR   0x02
+#define TOOLBOX_SUBCMD_GET_WORKING_DIR   0x03
 
 // Capability flags for TOOLBOX_SUBCMD_GET_CAPABILITIES
 #define TOOLBOX_CAP_LARGE_TRANSFERS     0x01  // Supports transfers larger than 512 bytes
 #define TOOLBOX_CAP_LARGE_SEND          0x02  // Supports large (32KB) send file chunks
-#define TOOLBOX_CAP_SET_UPLOAD_DIR      0x04  // Supports SET_UPLOAD_DIR subcommand
+#define TOOLBOX_CAP_SET_WORKING_DIR     0x04  // Supports SET_WORKING_DIR subcommand
 
 // Current Toolbox API version
 #define TOOLBOX_API_VERSION             0
