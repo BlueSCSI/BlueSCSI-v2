@@ -37,6 +37,22 @@ jobs:
           cd BlueSCSI
           nix develop --command ./build.sh
 
+      - name: Generate size report
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd BlueSCSI
+          nix develop --command python3 utils/compare_elf.py --from-release build/ --markdown -o size-report.md
+
+      - name: Post size comment on PR
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: bluescsi-size-report
+          path: BlueSCSI/size-report.md
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Rename firmware files
         run: |
           cd BlueSCSI

@@ -39,6 +39,9 @@ Modes:
     Check current build against baseline:
         ./compare_elf.py --check <dir_or_elf> --baseline baseline.json
 
+    Markdown report for GitHub PR comments:
+        ./compare_elf.py --from-release <dir_or_elf> --markdown [-o report.md]
+
 Examples:
     # Compare build against latest release (run automatically by build.sh)
     ./utils/compare_elf.py --from-release build/
@@ -824,15 +827,129 @@ def print_symbol_moves_compact(pairs, show_all=False):
     return truncated
 
 
+def generate_markdown_report(pairs, tag):
+    """Generate a GitHub-flavored markdown size report for PR comments."""
+    lines = []
+    lines.append("## BlueSCSI Memory Report")
+    lines.append(f"Compared against release `{tag}`")
+    lines.append("")
+
+    # Collect all data first to determine which regions are used
+    all_regions = ("FLASH", "RAM", "SCRATCH_X", "SCRATCH_Y")
+    target_data = []
+    used_regions = set()
+
+    for target, old_elf, new_elf in pairs:
+        old_sections = parse_sections(old_elf)
+        new_sections = parse_sections(new_elf)
+        is_rp2350 = detect_rp2350(old_sections) or detect_rp2350(new_sections)
+        old_usage = compute_region_usage(old_sections, is_rp2350)
+        new_usage = compute_region_usage(new_sections, is_rp2350)
+        for r in all_regions:
+            if new_usage.get(r, 0) > 0:
+                used_regions.add(r)
+        target_data.append((target, old_usage, new_usage, is_rp2350))
+
+    # Build header dynamically based on which regions are used
+    regions = [r for r in all_regions if r in used_regions]
+
+    lines.append("### Memory Usage")
+    lines.append("")
+    header = "| Target |"
+    align = "|:-------|"
+    for r in regions:
+        header += f" {r} |"
+        align += " ------:|"
+    lines.append(header)
+    lines.append(align)
+
+    for target, old_usage, new_usage, is_rp2350 in target_data:
+        row = f"| {target} |"
+        for region in regions:
+            old_val = old_usage.get(region, 0)
+            new_val = new_usage.get(region, 0)
+            cap = region_capacity(region, is_rp2350)
+            pct = new_val / cap * 100 if cap > 0 else 0
+            delta = new_val - old_val
+
+            if new_val == 0:
+                cell = "\u2014"
+            elif abs(delta) < REGION_CHANGE_THRESHOLD:
+                cell = f"{format_size(new_val)} [{pct:.0f}%]"
+            else:
+                sign = "+" if delta > 0 else ""
+                cell = f"{format_size(new_val)} ({sign}{format_size(delta)}) [{pct:.0f}%]"
+
+            row += f" {cell} |"
+        lines.append(row)
+
+    # Symbol moves
+    any_moves = False
+    move_lines = []
+    for target, old_elf, new_elf in pairs:
+        old_sections = parse_sections(old_elf)
+        new_sections = parse_sections(new_elf)
+        is_rp2350 = detect_rp2350(old_sections) or detect_rp2350(new_sections)
+        flash_to_ram, ram_to_flash = find_symbol_moves(old_elf, new_elf, is_rp2350)
+        if not flash_to_ram and not ram_to_flash:
+            continue
+        any_moves = True
+
+        if flash_to_ram:
+            total = sum(s for _, s in flash_to_ram)
+            move_lines.append(f"<details><summary>{target}: {len(flash_to_ram)} symbols moved FLASH \u2192 RAM (+{format_size(total)})</summary>")
+            move_lines.append("")
+            move_lines.append("| Symbol | Size |")
+            move_lines.append("|:-------|-----:|")
+            for name, size in flash_to_ram[:30]:
+                move_lines.append(f"| `{name}` | {format_size(size)} |")
+            if len(flash_to_ram) > 30:
+                move_lines.append(f"| *... and {len(flash_to_ram) - 30} more* | |")
+            move_lines.append("")
+            move_lines.append("</details>")
+            move_lines.append("")
+
+        if ram_to_flash:
+            total = sum(s for _, s in ram_to_flash)
+            move_lines.append(f"<details><summary>{target}: {len(ram_to_flash)} symbols moved RAM \u2192 FLASH (-{format_size(total)} RAM)</summary>")
+            move_lines.append("")
+            move_lines.append("| Symbol | Size |")
+            move_lines.append("|:-------|-----:|")
+            for name, size in ram_to_flash[:30]:
+                move_lines.append(f"| `{name}` | {format_size(size)} |")
+            if len(ram_to_flash) > 30:
+                move_lines.append(f"| *... and {len(ram_to_flash) - 30} more* | |")
+            move_lines.append("")
+            move_lines.append("</details>")
+            move_lines.append("")
+
+    if any_moves:
+        lines.append("")
+        lines.append("### Symbol Region Changes")
+        lines.append("")
+        lines.extend(move_lines)
+    else:
+        lines.append("")
+        lines.append("*No symbols moved between FLASH and RAM.*")
+
+    return "\n".join(lines) + "\n"
+
+
 def cmd_from_release(args):
     """Compare current build against the latest GitHub release."""
     import tempfile
 
     check_tools()
 
-    positional = [a for a in args if not a.startswith("--")]
+    positional = [a for a in args if not a.startswith("-")]
     path = positional[0] if positional else "."
     show_all = "--symbols" in args
+    markdown = "--markdown" in args
+    out_file = None
+    if "-o" in args:
+        idx = args.index("-o")
+        if idx + 1 < len(args):
+            out_file = args[idx + 1]
 
     new_elfs = find_elfs(path)
     if not new_elfs:
@@ -843,6 +960,14 @@ def cmd_from_release(args):
         result = download_release_elfs(tmpdir)
         if not result:
             # Fall back to summary-only mode
+            if markdown:
+                report = "## BlueSCSI Memory Report\n\n*Could not download release for comparison.*\n"
+                if out_file:
+                    with open(out_file, "w") as f:
+                        f.write(report)
+                else:
+                    print(report)
+                return
             print("\nMemory usage:")
             cmd_summary([path])
             return
@@ -852,8 +977,9 @@ def cmd_from_release(args):
         old_elfs = find_elfs(elf_dir)
         if not old_elfs:
             print("  Warning: no ELFs found in release zip, showing summary only", file=sys.stderr)
-            print("\nMemory usage:")
-            cmd_summary([path])
+            if not markdown:
+                print("\nMemory usage:")
+                cmd_summary([path])
             return
 
         pairs = []
@@ -863,8 +989,19 @@ def cmd_from_release(args):
 
         if not pairs:
             print("  Warning: no matching targets found, showing summary only", file=sys.stderr)
-            print("\nMemory usage:")
-            cmd_summary([path])
+            if not markdown:
+                print("\nMemory usage:")
+                cmd_summary([path])
+            return
+
+        if markdown:
+            report = generate_markdown_report(pairs, tag)
+            if out_file:
+                with open(out_file, "w") as f:
+                    f.write(report)
+                print(f"  Markdown report written to {out_file}")
+            else:
+                print(report)
             return
 
         print(f"  {BOLD_CYAN}Memory usage vs release {tag}:{RESET}")
