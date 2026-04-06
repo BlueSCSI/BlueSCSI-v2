@@ -1,7 +1,7 @@
 /**
  * This file is originally part of ZuluSCSI adopted for BlueSCSI
  *
- * BlueSCSI - Copyright (c) 2024 Eric Helgeson, Androda
+ * BlueSCSI - Copyright (c) 2024-2026 Eric Helgeson, Androda
  * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
  *
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
@@ -33,6 +33,7 @@
 #include "BlueSCSI_initiator.h"
 #include "BlueSCSI_msc_initiator.h"
 #include "BlueSCSI_msc.h"
+#include "BlueSCSI_vhd.h"
 #include <BlueSCSI_platform.h>
 #include <minIni.h>
 #include "SdFat.h"
@@ -106,6 +107,9 @@ static struct {
 
     uint32_t removable_count[8];
 
+    // VHD output format (opt-in via InitiatorVHD=1)
+    bool use_vhd_format;
+
     // Negotiated bus width for targets
     int targetBusWidth[NUM_SCSIID];
     uint32_t start_sector[NUM_SCSIID];
@@ -132,6 +136,7 @@ void scsiInitiatorInit()
     }
     g_initiator_state.max_retry_count = ini_getl("SCSI", "InitiatorMaxRetry", 5, CONFIGFILE);
     g_initiator_state.use_read10 = ini_getbool("SCSI", "InitiatorUseRead10", false, CONFIGFILE);
+    g_initiator_state.use_vhd_format = ini_getbool("SCSI", "InitiatorVHD", false, CONFIGFILE);
 
     // treat initiator id as already imaged drive so it gets skipped
     g_initiator_state.drives_imaged = 1 << g_initiator_state.initiator_id;
@@ -243,6 +248,14 @@ static int scsiTypeToIniType(int scsi_type, bool removable)
             break;
     }
     return ini_type;
+}
+
+// Check if VHD output should be used for the current target
+static bool initiatorShouldWriteVhd()
+{
+    return g_initiator_state.use_vhd_format &&
+           g_initiator_state.device_type == SCSI_DEVICE_TYPE_DIRECT_ACCESS &&
+           !g_initiator_state.removable;
 }
 
 // High level logic of the initiator mode
@@ -449,6 +462,12 @@ void scsiInitiatorMainLoop()
                     strncpy(filename_base, "RM00_imaged", sizeof(filename_base));
                     filename_extension = ".img";
                 }
+
+                if (initiatorShouldWriteVhd())
+                {
+                    filename_extension = ".vhd";
+                    logmsg("VHD output enabled for SCSI ID ", g_initiator_state.target_id);
+                }
             }
 
             if (g_initiator_state.eject_when_done && g_initiator_state.removable_count[g_initiator_state.target_id] == 0)
@@ -539,8 +558,9 @@ void scsiInitiatorMainLoop()
                     return;
                 }
 
+                uint64_t vhd_overhead = initiatorShouldWriteVhd() ? VHD_FOOTER_SIZE : 0;
                 uint64_t sd_card_free_bytes = (uint64_t)SD.vol()->freeClusterCount() * SD.vol()->bytesPerCluster();
-                if (sd_card_free_bytes < total_bytes)
+                if (sd_card_free_bytes < total_bytes + vhd_overhead)
                 {
                     logmsg("SD Card only has ", (int)(sd_card_free_bytes / (1024 * 1024)),
                            " MiB - not enough free space to image SCSI ID ", g_initiator_state.target_id);
@@ -560,7 +580,8 @@ void scsiInitiatorMainLoop()
                     // Only preallocate on exFAT, on FAT32 preallocating can result in false garbage data in the
                     // file if write is interrupted.
                     logmsg("Preallocating image file");
-                    g_initiator_state.target_file.preAllocate((uint64_t)g_initiator_state.sectorcount * g_initiator_state.sectorsize);
+                    g_initiator_state.target_file.preAllocate(
+                        (uint64_t)g_initiator_state.sectorcount * g_initiator_state.sectorsize + vhd_overhead);
                 }
 
                 logmsg("Starting to copy drive data to ", filename);
@@ -599,6 +620,25 @@ void scsiInitiatorMainLoop()
             {
                 logmsg("Marking SCSI ID, ", g_initiator_state.target_id, ", as imaged, wont ask it again.");
                 g_initiator_state.drives_imaged |= (1 << g_initiator_state.target_id);
+            }
+
+            // Write VHD footer if enabled for this target
+            if (initiatorShouldWriteVhd())
+            {
+                uint64_t raw_bytes = (uint64_t)g_initiator_state.sectorcount * g_initiator_state.sectorsize;
+                uint8_t vhd_footer[VHD_FOOTER_SIZE];
+                // Use 0 for timestamp — embedded device has no RTC epoch reference
+                vhd_build_fixed_footer(vhd_footer, raw_bytes,
+                                       g_initiator_state.sectorcount, 0,
+                                       g_initiator_state.target_id);
+                if (g_initiator_state.target_file.write(vhd_footer, VHD_FOOTER_SIZE) == VHD_FOOTER_SIZE)
+                {
+                    logmsg("VHD footer written successfully");
+                }
+                else
+                {
+                    logmsg("WARNING: Failed to write VHD footer");
+                }
             }
 
             g_initiator_state.imaging = false;
@@ -1426,5 +1466,15 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
     }
 }
 
+#ifdef UNIT_TEST
+/* Test accessors for initiator state */
+bool test_initiator_get_use_vhd_format() {
+    return g_initiator_state.use_vhd_format;
+}
+
+bool test_initiator_should_write_vhd() {
+    return initiatorShouldWriteVhd();
+}
+#endif
 
 #endif

@@ -93,6 +93,7 @@ set(COMMON_SOURCES
     src/BlueSCSI_blink.cpp
     src/BlueSCSI_mode.cpp
     src/BlueSCSI_initiator.cpp
+    src/BlueSCSI_vhd.cpp
     src/BlueSCSI_msc.cpp
     src/BlueSCSI_msc_initiator.cpp
     src/BlueSCSI_Toolbox.cpp
@@ -513,6 +514,7 @@ set(BOOTLOADER_SOURCES
     src/BlueSCSI_log.cpp
     src/BlueSCSI_log_trace.cpp
     src/BlueSCSI_initiator.cpp
+    src/BlueSCSI_vhd.cpp
     src/BlueSCSI_msc.cpp
     src/BlueSCSI_msc_initiator.cpp
     src/ImageBackingStore.cpp
