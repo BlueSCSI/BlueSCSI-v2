@@ -24,6 +24,7 @@
 #include <hardware/irq.h>
 #include <hardware/spi.h>
 #include <pico/multicore.h>
+#include <CUEParser.h>
 #include "audio_spdif.h"
 #include "BlueSCSI_audio.h"
 #include "BlueSCSI_config.h"
@@ -139,6 +140,28 @@ static volatile bool audio_paused = false;
 static ImageBackingStore* audio_file;
 static uint64_t fpos;
 static uint32_t fleft;
+
+// Cached fields from the current track's CUETrackInfo. Only the three
+// numeric fields needed by audio_lba_from_offset() / audio_offset_from_lba()
+// are kept, so we don't waste ~260 bytes of .bss on the unused filename[].
+// Cleared on audio_stop() — sector_length == 0 signals "no track cached"
+// and triggers the legacy fallback path in the math helper.
+static struct {
+    uint64_t file_offset;
+    uint32_t data_start;
+    uint32_t sector_length;
+} current_track_pos = {};
+
+// Rebuild a minimal CUETrackInfo from the cached fields so the header-only
+// math helpers can be called without keeping a full CUETrackInfo in .bss.
+static inline CUETrackInfo trackinfo_from_cache()
+{
+    CUETrackInfo t = {};
+    t.file_offset = current_track_pos.file_offset;
+    t.data_start = current_track_pos.data_start;
+    t.sector_length = current_track_pos.sector_length;
+    return t;
+}
 
 // historical playback status information
 static audio_status_code audio_last_status[S2S_MAX_TARGETS] = {ASC_NO_STATUS, ASC_NO_STATUS, ASC_NO_STATUS, ASC_NO_STATUS,
@@ -477,15 +500,30 @@ void audio_poll() {
     }
 }
 
-bool audio_play(uint8_t owner, image_config_t* img, uint64_t start, uint64_t end, bool swap) {
-    // stop any existing playback first
+bool audio_play(uint8_t owner, image_config_t* img, const CUETrackInfo *trackinfo,
+                uint32_t lba, uint32_t length, bool swap) {
+    // stop any existing playback first (also clears current_track)
     if (audio_is_active()) audio_stop();
     // Don't try to play audio if setup failed
     if (audio_setup_failed) {
         return true;
     }
 
-    // dbgmsg("Request to play ('", file, "':", start, ":", end, ")");
+    // SPDIF cannot resolve an LBA to a BIN byte offset without the cue
+    // sheet metadata — bail if the caller didn't provide it.
+    if (trackinfo == nullptr || trackinfo->sector_length == 0) {
+        logmsg("SPDIF audio_play called without trackinfo");
+        return false;
+    }
+
+    // Cache the fields audio_get_lba_position() / future seeks will need.
+    current_track_pos.file_offset = trackinfo->file_offset;
+    current_track_pos.data_start = trackinfo->data_start;
+    current_track_pos.sector_length = trackinfo->sector_length;
+
+    // Convert caller's (lba, length) to BIN byte offsets.
+    uint64_t start = audio_offset_from_lba(*trackinfo, lba);
+    uint64_t end = start + (uint64_t)length * trackinfo->sector_length;
 
     // verify audio file is present and inputs are (somewhat) sane
     if (owner == 0xFF) {
@@ -620,6 +658,10 @@ void audio_stop(uint8_t id) {
     audio_last_status[audio_owner] = ASC_COMPLETED;
     audio_paused = false;
     audio_owner = 0xFF;
+
+    // Drop cached track metadata so subsequent READ SUB-CHANNEL / seek
+    // queries fall back to the legacy path instead of reading stale state.
+    current_track_pos = {};
 }
 
 audio_status_code audio_get_status_code(uint8_t id) {
@@ -651,9 +693,30 @@ uint64_t audio_get_file_position()
     return fpos;
 }
 
-void audio_set_file_position(uint8_t id, uint32_t lba)
+uint32_t audio_get_lba_position()
 {
-    fpos = 2352 * (uint64_t)lba;
+    CUETrackInfo t = trackinfo_from_cache();
+    return audio_lba_from_offset(t, fpos);
+}
 
+void audio_set_file_position(uint8_t id, const CUETrackInfo *trackinfo, uint32_t lba)
+{
+    (void)id;
+    // Seek path for zero-length PLAY AUDIO and SEEK commands. The caller
+    // supplies a trackinfo because SPDIF has no internal cue parser.
+    if (trackinfo == nullptr || trackinfo->sector_length == 0)
+    {
+        // Fallback matches legacy behaviour; only safe for a trivial
+        // single-track BIN starting at LBA 0. Clear any prior cache so
+        // subsequent audio_get_lba_position() calls don't mix stale track
+        // metadata with the freshly-set fpos.
+        current_track_pos = {};
+        fpos = 2352 * (uint64_t)lba;
+        return;
+    }
+    current_track_pos.file_offset = trackinfo->file_offset;
+    current_track_pos.data_start = trackinfo->data_start;
+    current_track_pos.sector_length = trackinfo->sector_length;
+    fpos = audio_offset_from_lba(*trackinfo, lba);
 }
 #endif // ENABLE_AUDIO_OUTPUT_SPDIF

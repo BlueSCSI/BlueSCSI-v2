@@ -34,4 +34,10 @@ bool cdromValidateCueSheet(image_config_t &img);
 // is desired, or false if historical audio status codes should be returned
 void cdromGetAudioPlaybackStatus(uint8_t *status, uint32_t *current_lba, bool current_only);
 
+// Update the audio playback position without starting playback. Used by
+// the SEEK command path on optical devices so READ SUB-CHANNEL reports
+// the right LBA. Walks the cue sheet if present so backends without their
+// own cue parser (SPDIF) can translate absolute LBA to a BIN byte offset.
+void cdromSeekAudio(image_config_t &img, uint32_t lba);
+
 #endif /* BLUESCSI_CDROM_H */

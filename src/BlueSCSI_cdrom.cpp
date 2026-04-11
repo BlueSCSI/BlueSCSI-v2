@@ -1460,6 +1460,23 @@ static void doGetEventStatusNotification(bool immed)
 /* CD-ROM audio playback              */
 /**************************************/
 
+void cdromSeekAudio(image_config_t &img, uint32_t lba)
+{
+#ifdef ENABLE_AUDIO_OUTPUT
+    CUETrackInfo trackinfo = {};
+    const CUETrackInfo *trackinfo_ptr = nullptr;
+    if (img.cuesheetfile.isOpen())
+    {
+        getTrackFromLBA(img, lba, &trackinfo);
+        trackinfo_ptr = &trackinfo;
+    }
+    audio_set_file_position(img.getTargetId(), trackinfo_ptr, lba);
+#else
+    (void)img;
+    (void)lba;
+#endif
+}
+
 void cdromGetAudioPlaybackStatus(uint8_t *status, uint32_t *current_lba, bool current_only)
 {
     
@@ -1473,11 +1490,7 @@ void cdromGetAudioPlaybackStatus(uint8_t *status, uint32_t *current_lba, bool cu
             *status = (uint8_t) audio_get_status_code(target);
         }
     }
-#if defined(ENABLE_AUDIO_OUTPUT_I2S) && (defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE))
     *current_lba = audio_get_lba_position();
-#else
-    *current_lba = audio_get_file_position() / 2352;
-#endif
 #else
     if (status) *status = 0; // audio status code for 'unsupported/invalid' and not-playing indicator
 #endif
@@ -1509,108 +1522,61 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
     }
 #endif
 
-#if defined(ENABLE_AUDIO_OUTPUT) && !(defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)) || defined(ENABLE_AUDIO_OUTPUT_SPDIF)
-    dbgmsg("------ CD-ROM Play Audio request at ", lba, " for ", length, " sectors");
+#ifdef ENABLE_AUDIO_OUTPUT
+    dbgmsg("------ CD-ROM Play Audio request at ", (int)lba, " for ", (int)length, " sectors");
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     uint8_t target_id = img.getTargetId();
 
+    // Resolve "play from current position" BEFORE audio_stop() drops the
+    // cached track state in the SPDIF backend. Otherwise the subsequent
+    // lookup would run against an empty cache and return garbage.
+    if (lba == 0xFFFFFFFF)
+    {
+        lba = audio_get_lba_position();
+    }
+
     // Per Annex C terminate playback immediately if already in progress on
-    // the current target. Non-current targets may also get their audio
-    // interrupted later due to hardware limitations
-    audio_stop(img.getTargetId());
+    // the current target.
+    audio_stop(target_id);
 
-    // if transfer length is zero no audio playback happens.
-    // don't treat as an error per SCSI-2; handle via short-circuit
+    // Look up the cue sheet entry for the resolved LBA. A valid trackinfo
+    // is required for the SPDIF backend (which has no internal cue parser)
+    // and is informational for I2S (which walks g_cue_parser on its own).
+    CUETrackInfo trackinfo = {};
+    const CUETrackInfo *trackinfo_ptr = nullptr;
+    if (img.cuesheetfile.isOpen())
+    {
+        getTrackFromLBA(img, lba, &trackinfo);
+        trackinfo_ptr = &trackinfo;
+    }
 
+    // Zero-length PLAY AUDIO is a seek-only request per SCSI-2. Update the
+    // position without actually starting playback and return success.
     if (length == 0)
     {
-        audio_set_file_position(target_id, lba);
+        audio_set_file_position(target_id, trackinfo_ptr, lba);
         scsiDev.status = 0;
         scsiDev.phase = STATUS;
         return;
     }
 
-    // if actual playback is requested perform steps to verify prior to playback
-    if (img.cuesheetfile.isOpen())
+    if (trackinfo_ptr && trackinfo.track_mode != CUETrack_AUDIO)
     {
-        CUETrackInfo trackinfo = {};
-        getTrackFromLBA(img, lba, &trackinfo);
-
-        if (lba == 0xFFFFFFFF)
-        {
-            // request to start playback from 'current position'
-            lba = audio_get_file_position() / AUDIO_CD_SECTOR_LEN;
-        }
-
-        uint64_t offset = trackinfo.file_offset
-                + trackinfo.sector_length * ((int64_t)lba - trackinfo.data_start);
-        dbgmsg("------ Play audio CD: ", (int)length, " sectors starting at ", (int)lba,
-           ", track number ", trackinfo.track_number, ", data offset in file ", (int)offset);
-
-        if (trackinfo.track_mode != CUETrack_AUDIO)
-        {
-            dbgmsg("---- Host tried audio playback on track type ", (int)trackinfo.track_mode);
-            scsiDev.status = CHECK_CONDITION;
-            scsiDev.target->sense.code = ILLEGAL_REQUEST;
-            scsiDev.target->sense.asc = 0x6400; // ILLEGAL MODE FOR THIS TRACK
-            scsiDev.phase = STATUS;
-            return;
-        }
-
-        // playback request appears to be sane, so perform it
-        // see earlier note for context on the block length below
-        if (!audio_play(target_id, &img, offset,
-                offset + length * trackinfo.sector_length, false))
-        {
-            // Underlying data/media error? Fake a disk scratch, which should
-            // be a condition most CD-DA players are expecting
-            scsiDev.status = CHECK_CONDITION;
-            scsiDev.target->sense.code = MEDIUM_ERROR;
-            scsiDev.target->sense.asc = 0x1106; // CIRC UNRECOVERED ERROR
-            scsiDev.phase = STATUS;
-            return;
-        }
-        scsiDev.status = 0;
-        scsiDev.phase = STATUS;
-    }
-    else
-    {
-        // virtual drive supports audio, just not with this disk image
-        dbgmsg("---- Request to play audio on non-audio image");
+        dbgmsg("---- Host tried audio playback on track type ", (int)trackinfo.track_mode);
         scsiDev.status = CHECK_CONDITION;
         scsiDev.target->sense.code = ILLEGAL_REQUEST;
         scsiDev.target->sense.asc = 0x6400; // ILLEGAL MODE FOR THIS TRACK
         scsiDev.phase = STATUS;
+        return;
     }
-#elif defined(ENABLE_AUDIO_OUTPUT_I2S) && (defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE))
-    dbgmsg("------ CD-ROM Play Audio request at ", (int)lba, " for ", (int)length, " sectors");
-    image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-    uint8_t target_id = img.getTargetId();
 
-    // if transfer length is zero no audio playback happens.
-    // don't treat as an error per SCSI-2; handle via short-circuit
-
-    if (lba == 0xFFFFFFFF)
-    {
-        // request to start playback from 'current position'
-        lba = audio_get_lba_position();
-    }
-    if (audio_play(target_id, &img, lba, length , false))
+    if (audio_play(target_id, &img, trackinfo_ptr, lba, length, false))
     {
         scsiDev.status = 0;
         scsiDev.phase = STATUS;
     }
     else
     {
-        // // Underlying data/media error? Fake a disk scratch, which should
-        // // be a condition most CD-DA players are expecting
-        // scsiDev.status = CHECK_CONDITION;
-        // scsiDev.target->sense.code = MEDIUM_ERROR;
-        // scsiDev.target->sense.asc = 0x1106; // CIRC UNRECOVERED ERROR
-        // scsiDev.phase = STATUS;
-        // return;
-        
-        // virtual drive supports audio, just not with this disk image
         dbgmsg("---- Request to play audio on non-audio image");
         scsiDev.status = CHECK_CONDITION;
         scsiDev.target->sense.code = ILLEGAL_REQUEST;

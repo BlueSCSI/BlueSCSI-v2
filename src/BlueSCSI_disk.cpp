@@ -1885,9 +1885,11 @@ static void doSeek(uint32_t lba)
 #ifdef ENABLE_AUDIO_OUTPUT
             if (scsiDev.target->cfg->deviceType == S2S_CFG_OPTICAL)
             {
-                // Uses audio play with a length of 0. CD audio won't actually play,
-                // but Read Subchannel will report the proper LBA location 
-                if (!img.bin_container.isOpen() || !audio_play(scsiDev.target->targetId, &img, lba, 0, false))
+                // Update audio playback position so READ SUB-CHANNEL
+                // reports the correct LBA after a SEEK command.
+                if (img.bin_container.isOpen())
+                    cdromSeekAudio(img, lba);
+                else
                     dbgmsg("Failed to seek to audio track lba position ", (int) lba);
             }
 #endif
