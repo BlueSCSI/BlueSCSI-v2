@@ -1543,7 +1543,7 @@ static void doPlayAudio(uint32_t lba, uint32_t length)
         }
 
         uint64_t offset = trackinfo.file_offset
-                + trackinfo.sector_length * (lba - trackinfo.track_start);
+                + trackinfo.sector_length * ((int64_t)lba - trackinfo.data_start);
         dbgmsg("------ Play audio CD: ", (int)length, " sectors starting at ", (int)lba,
            ", track number ", trackinfo.track_number, ", data offset in file ", (int)offset);
 
@@ -2701,5 +2701,19 @@ uint32_t cdromTestCalcTrackEndLBA(uint32_t data_start, uint64_t file_size,
     // This matches the calculation in getTrackFromLBA's cache check
     return data_start + (file_size > file_offset
         ? (file_size - file_offset) / sector_length : 0);
+}
+
+/*
+ * Test accessor for SPDIF PLAY AUDIO file offset calculation.
+ *
+ * Given a CUETrackInfo and an LBA, compute the byte offset in the BIN file
+ * where audio data should be read from. This must use data_start (not
+ * track_start) because file_offset corresponds to the INDEX 01 position.
+ */
+uint64_t cdromTestCalcAudioOffset(const CUETrackInfo *trackinfo, uint32_t lba)
+{
+    // This matches the calculation in doPlayAudio (SPDIF path)
+    return trackinfo->file_offset
+        + trackinfo->sector_length * ((int64_t)lba - trackinfo->data_start);
 }
 #endif
