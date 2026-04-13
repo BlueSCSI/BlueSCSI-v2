@@ -752,7 +752,19 @@ int scsiModeCommand()
 		// SCSI1 standard: (CCS X3T9.2/86-52)
 		// "An Allocation Length of zero indicates that no MODE SENSE data shall
 		// be transferred. This condition shall not be considered as an error."
-		doModeSense(1, dbd, pc, pageCode, allocLength);
+		// SCSI-2 sections 8.2.10/8.2.11: CDB byte 3 is Reserved.
+		// SPC-3+ redefines it as SUBPAGE CODE. Reject non-zero.
+		if (scsiDev.cdb[3] != 0)
+		{
+			scsiDev.status = CHECK_CONDITION;
+			scsiDev.target->sense.code = ILLEGAL_REQUEST;
+			scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+			scsiDev.phase = STATUS;
+		}
+		else
+		{
+			doModeSense(1, dbd, pc, pageCode, allocLength);
+		}
 	}
 	else if (command == 0x5A)
 	{
@@ -763,7 +775,17 @@ int scsiModeCommand()
 		int allocLength =
 			(((uint16_t) scsiDev.cdb[7]) << 8) +
 			scsiDev.cdb[8];
-		doModeSense(0, dbd, pc, pageCode, allocLength);
+		if (scsiDev.cdb[3] != 0)
+		{
+			scsiDev.status = CHECK_CONDITION;
+			scsiDev.target->sense.code = ILLEGAL_REQUEST;
+			scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+			scsiDev.phase = STATUS;
+		}
+		else
+		{
+			doModeSense(0, dbd, pc, pageCode, allocLength);
+		}
 	}
 	else if (command == 0x15)
 	{
