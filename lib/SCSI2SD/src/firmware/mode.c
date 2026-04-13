@@ -235,6 +235,20 @@ static const uint8_t VerifyErrorRecoveryPage[] =
 0x00, 0x00  // Verify recovery time limit (MSB, LSB)
 };
 
+// SCSI-2 section 9.3.3.5, Table 167
+static const uint8_t NotchPage[] =
+{
+0x0C, // Page code
+0x16, // Page length
+0x00, 0x00, // ND=0 (not notched), LP=0
+0x00, 0x00, // Maximum number of notches
+0x00, 0x00, // Active notch
+0x00, 0x00, 0x00, 0x00, // Starting boundary
+0x00, 0x00, 0x00, 0x00, // Ending boundary
+0x00, 0x00, 0x00, 0x00, // Pages notched (MSB)
+0x00, 0x00, 0x00, 0x00  // Pages notched (LSB)
+};
+
 static const uint8_t SequentialDeviceConfigPage[] =
 {
 0x10, // page code
@@ -552,6 +566,16 @@ static void doModeSense(
 		pageFound = 1;
 		pageIn(pc, idx, ControlModePage, sizeof(ControlModePage));
 		idx += sizeof(ControlModePage);
+	}
+
+	if ((scsiDev.compatMode >= COMPAT_SCSI2) &&
+		(pageCode == 0x0C || pageCode == 0x3F) &&
+		(scsiDev.target->cfg->deviceType != S2S_CFG_OPTICAL) &&
+		(scsiDev.target->cfg->deviceType != S2S_CFG_SEQUENTIAL))
+	{
+		pageFound = 1;
+		pageIn(pc, idx, NotchPage, sizeof(NotchPage));
+		idx += sizeof(NotchPage);
 	}
 
 	idx += modeSenseCDDevicePage(pc, idx, pageCode, &pageFound);
