@@ -8,6 +8,11 @@ The Nix flake provides the exact toolchain, Pico SDK, and dependencies used for 
 
 - [Nix](https://nixos.org/download/) with [flakes enabled](https://nixos.wiki/wiki/Flakes)
 
+> **Tip:** If you get an error about experimental features, add this to `~/.config/nix/nix.conf`:
+> ```
+> experimental-features = nix-command flakes
+> ```
+
 ### Enter the Shell
 
 ```bash
@@ -31,6 +36,7 @@ If you use [direnv](https://direnv.net/), the environment loads automatically wh
 
 ### Prerequisites
 
+- **Bash 4.0+** — required by `build.sh` for associative arrays. macOS ships Bash 3.2; install a newer version with `brew install bash`.
 - **GCC ARM Embedded 14.x** — [arm-gnu-toolchain-14.x](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads) (`arm-none-eabi-gcc` must be on your PATH)
 - **CMake 3.20+**
 - **Python 3**
@@ -42,7 +48,7 @@ If you use [direnv](https://direnv.net/), the environment loads automatically wh
 BlueSCSI uses a forked Pico SDK with Ultra hardware support. Clone it with submodules:
 
 ```bash
-git clone --recurse-submodules https://github.com/bluescsi/pico-sdk-internal.git -b v2.2.0-UltraSupport-rel1
+git clone --recurse-submodules https://github.com/bluescsi/pico-sdk-internal.git -b v2.2.0-UltraSupport-rel2
 git clone --recurse-submodules https://github.com/raspberrypi/pico-extras.git -b sdk-2.2.0
 ```
 
