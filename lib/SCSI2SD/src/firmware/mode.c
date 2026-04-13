@@ -223,6 +223,18 @@ static const uint8_t ControlModePage[] =
 0x00, 0x00 // AEN holdoff period.
 };
 
+// SCSI-2 section 9.3.3.8, Table 173
+static const uint8_t VerifyErrorRecoveryPage[] =
+{
+0x07, // Page code
+0x0A, // Page length
+0x00, // EER=0, PER=0, DTE=0, DCR=0
+0x01, // Verify retry count
+0x00, // Verify correction span
+0x00, 0x00, 0x00, 0x00, 0x00, // Reserved (bytes 5-9)
+0x00, 0x00  // Verify recovery time limit (MSB, LSB)
+};
+
 static const uint8_t SequentialDeviceConfigPage[] =
 {
 0x10, // page code
@@ -517,6 +529,14 @@ static void doModeSense(
 	// we have more data to send than the allocation length provided.
 	// (ie. Try not to output any more pages below this comment)
 
+
+	if ((scsiDev.compatMode >= COMPAT_SCSI2) &&
+		(pageCode == 0x07 || pageCode == 0x3F))
+	{
+		pageFound = 1;
+		pageIn(pc, idx, VerifyErrorRecoveryPage, sizeof(VerifyErrorRecoveryPage));
+		idx += sizeof(VerifyErrorRecoveryPage);
+	}
 
 	if ((scsiDev.compatMode >= COMPAT_SCSI2) &&
 		(pageCode == 0x08 || pageCode == 0x3F))
