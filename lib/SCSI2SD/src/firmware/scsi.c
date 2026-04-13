@@ -396,10 +396,11 @@ void s2s_scsiRequestSense(void)
 		}
 
 		memset(scsiDev.data, 0, 256); // Max possible alloc length
-		scsiDev.data[0] = 0xF0;
+		scsiDev.data[0] = 0x70; // error code, Valid=0 by default
 		scsiDev.data[2] = scsiDev.target->sense.code & 0x0F;
 		if (cfg->deviceType == S2S_CFG_SEQUENTIAL)
 		{
+			scsiDev.data[0] = 0xF0; // Valid=1, tape always has meaningful info
 			scsiDev.data[2] |= scsiDev.target->sense.filemark ? 1 << 7 : 0;
 			scsiDev.data[2] |= scsiDev.target->sense.eom ? 1 << 6 : 0;
 			scsiDev.data[3] = scsiDev.target->sense.info >> 24;
@@ -407,8 +408,12 @@ void s2s_scsiRequestSense(void)
 			scsiDev.data[5] = scsiDev.target->sense.info >> 8;
 			scsiDev.data[6] = scsiDev.target->sense.info;
 		}
-		else
+		else if (scsiDev.target->sense.code == MEDIUM_ERROR
+			|| scsiDev.target->sense.code == HARDWARE_ERROR
+			|| scsiDev.target->sense.code == ABORTED_COMMAND)
 		{
+			// Valid=1 + LBA only for block-related errors
+			scsiDev.data[0] = 0xF0;
 			scsiDev.data[3] = transfer.lba >> 24;
 			scsiDev.data[4] = transfer.lba >> 16;
 			scsiDev.data[5] = transfer.lba >> 8;
