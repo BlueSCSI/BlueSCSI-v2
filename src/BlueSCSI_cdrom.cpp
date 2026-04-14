@@ -648,6 +648,12 @@ static void doReadTOC(bool MSF, uint8_t track, uint16_t allocationLength)
         return doReadTOCSimple(MSF, track, allocationLength);
     }
 
+    // Stop audio before iterating tracks — cdromSelectBinFileForTrack()
+    // switches the file handle that SPDIF playback may be reading from.
+#ifdef ENABLE_AUDIO_OUTPUT
+    audio_stop();
+#endif
+
     // Format track info
     uint8_t *trackdata = &scsiDev.data[4];
     int trackcount = 0;
@@ -786,6 +792,12 @@ static void doReadFullTOC(uint8_t session, uint16_t allocationLength, bool useBC
         scsiDev.phase = STATUS;
         return;
     }
+
+    // Stop audio before iterating tracks — cdromSelectBinFileForTrack()
+    // switches the file handle that SPDIF playback may be reading from.
+#ifdef ENABLE_AUDIO_OUTPUT
+    audio_stop();
+#endif
 
     // Take the beginning of the hardcoded TOC as base
     uint32_t len = 4 + 11 * 3; // Header, A0, A1, A2
@@ -950,6 +962,12 @@ void doReadTrackInformation(bool track, uint32_t lba, uint16_t allocationLength)
         // No CUE sheet, use hardcoded data
         return doReadTrackInformationSimple(track, lba, allocationLength);
     }
+
+    // Stop audio before iterating tracks — cdromSelectBinFileForTrack()
+    // switches the file handle that SPDIF playback may be reading from.
+#ifdef ENABLE_AUDIO_OUTPUT
+    audio_stop();
+#endif
 
     // Take the hardcoded header as base
     uint32_t len = sizeof(TrackInformation);
