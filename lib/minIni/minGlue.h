@@ -1,4 +1,6 @@
 /*  Glue functions for the minIni library to the cache functions in minIni_cache.cpp */
+#ifndef MINGLUE_H
+#define MINGLUE_H
 
 #include <SdFat.h>
 
@@ -17,3 +19,4 @@ void ini_write(char *buffer, INI_FILETYPE *fp);
 // void ini_remove(const char *filename);
 #define INI_OPENREWRITE
 bool ini_openrewrite(const char *filename, INI_FILETYPE *fp);
+#endif /* MINGLUE_H */
