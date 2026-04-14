@@ -673,10 +673,14 @@ bool  audio_play_track_index(uint8_t owner,      image_config_t* img,
         end_lba += last_file_size_lba;
     }
 
-    return audio_play(owner, img, start_lba, end_lba - start_lba, false);
+    return audio_play(owner, img, nullptr, start_lba, end_lba - start_lba, false);
 }
 
-bool audio_play(uint8_t owner, image_config_t* img, uint32_t start, uint32_t length, bool swap) {
+bool audio_play(uint8_t owner, image_config_t* img, const CUETrackInfo *trackinfo,
+                uint32_t start, uint32_t length, bool swap) {
+    // trackinfo is informational on I2S — the backend walks its own g_cue_parser
+    // in setup_playback() and ignores the caller-supplied track.
+    (void)trackinfo;
     dbgmsg("------ Audio playback lba start ", (int) start, ", length ", (int)(length));
     // Per Annex C terminate playback immediately if already in progress on
     // the current target. Non-current targets may also get their audio
@@ -903,8 +907,10 @@ uint64_t audio_get_file_position()
     return fpos;
 }
 
-void audio_set_file_position(uint8_t id, uint32_t lba)
+void audio_set_file_position(uint8_t id, const CUETrackInfo *trackinfo, uint32_t lba)
 {
+    // I2S uses its internal g_cue_parser to resolve LBA; trackinfo is ignored.
+    (void)trackinfo;
     setup_playback(id, lba, 0, false);
 }
 

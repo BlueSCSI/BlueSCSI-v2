@@ -108,7 +108,7 @@ ImageBackingStore::ImageBackingStore(const char *filename, uint32_t scsi_block_s
     }
 }
 
-bool ImageBackingStore::_internal_open(const char *filename)
+bool ImageBackingStore::_internal_open(const char *filename, bool doFastSeek)
 {
     m_isreadonly_attr = !!(FS_ATTRIB_READ_ONLY & SD.attrib(filename));
     oflag_t open_flag = O_RDWR;
@@ -137,7 +137,7 @@ bool ImageBackingStore::_internal_open(const char *filename)
     }
 
     // Enable fastseek for optimized seek operations (O(fragments) instead of O(clusters))
-    if (m_fsfile.enableFastSeek())
+    if (doFastSeek && m_fsfile.enableFastSeek())
     {
         uint16_t frags = m_fsfile.fragmentCount();
         if (frags > 1)
@@ -439,7 +439,10 @@ bool ImageBackingStore::selectImageFile(const char *filename)
         logmsg("Attempted selectImageFile() but image is not a folder");
         return false;
     }
-    return _internal_open(filename);
+    // Skip FastSeek — selectImageFile is used for iterating multi-BIN tracks
+    // to query metadata (size). Allocating sector maps here exhausts heap on
+    // RAM-constrained targets like Pico_Audio_SPDIF (issue #353).
+    return _internal_open(filename, /*doFastSeek=*/false);
 }
 
 size_t ImageBackingStore::getFoldername(char* buf, size_t buflen)

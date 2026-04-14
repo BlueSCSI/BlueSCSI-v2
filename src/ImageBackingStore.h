@@ -139,7 +139,7 @@ protected:
     bool m_isfolder;
     char m_foldername[MAX_FILE_PATH + 1];
 
-    bool _internal_open(const char *filename);
+    bool _internal_open(const char *filename, bool doFastSeek = true);
 };
 
 #endif /* IMAGEBACKINGSTORE_H */

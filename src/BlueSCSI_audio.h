@@ -22,7 +22,9 @@
 #pragma once
 
 #include <stdint.h>
+#include <CUEParser.h>
 #include "BlueSCSI_disk.h"
+#include "BlueSCSI_audio_math.h"
 
 /*
  * Starting volume level for audio output, with 0 being muted and 255 being
@@ -69,32 +71,27 @@ enum audio_status_code {
  */
 bool audio_is_playing(uint8_t id);
 
-#if defined(ENABLE_AUDIO_OUTPUT) && defined(ENABLE_AUDIO_OUTPUT_SPDIF)
+#ifdef ENABLE_AUDIO_OUTPUT
 /**
  * Begins audio playback for a file.
  *
- * \param owner  The SCSI ID that initiated this playback operation.
- * \param img    Pointer to the image containing PCM samples to play.
- * \param start  Byte offset within file where playback will begin, inclusive.
- * \param end    Byte offset within file where playback will end, exclusive.
- * \param swap   If false, little-endian sample order, otherwise big-endian.
- * \return       True if successful, false otherwise.
+ * \param owner     The SCSI ID that initiated this playback operation.
+ * \param img       Pointer to the image container that can load PCM samples.
+ * \param trackinfo Track metadata for the track the host wants to play.
+ *                  SPDIF uses it to compute byte offsets and cache it for
+ *                  subsequent READ SUB-CHANNEL / seek lookups. I2S may
+ *                  ignore it and walk its own cue parser.
+ * \param lba       Absolute CD LBA where playback should begin.
+ * \param length    Length of the play in CD sectors. Zero means "seek to
+ *                  lba but don't actually start audio output" — used by
+ *                  the SEEK command path to update position reporting.
+ * \param swap      If false, little-endian sample order, otherwise big-endian.
+ * \return          True if successful, false otherwise.
  */
-bool audio_play(uint8_t owner, image_config_t* img, uint64_t start, uint64_t end, bool swap);
+bool audio_play(uint8_t owner, image_config_t* img, const CUETrackInfo *trackinfo,
+                uint32_t lba, uint32_t length, bool swap);
 
-#elif defined(ENABLE_AUDIO_OUTPUT_I2S) && (defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE))
-/**
- * Begins audio playback for a file.
- *
- * \param owner  The SCSI ID that initiated this playback operation.
- * \param img    Pointer to the image container that can load PCM samples to play.
- * \param start  LBA offset within file where playback will begin, inclusive.
- * \param length LBA length of play .
- * \param swap   If false, little-endian sample order, otherwise big-endian.
- * \return       True if successful, false otherwise.
- */
-bool audio_play(uint8_t owner, image_config_t* img, uint32_t start, uint32_t length, bool swap);
-
+#if defined(ENABLE_AUDIO_OUTPUT_I2S) && (defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE))
 /**
  * Begins audio playback for a file using the track and index.
  *
@@ -109,6 +106,7 @@ bool audio_play(uint8_t owner, image_config_t* img, uint32_t start, uint32_t len
 
 bool audio_play_track_index(uint8_t owner, image_config_t* img, uint8_t start_track, uint8_t start_index, uint8_t end_track, uint8_t end_index);
 #endif
+#endif // ENABLE_AUDIO_OUTPUT
 
 
 /**
@@ -179,22 +177,30 @@ void audio_set_channel(uint8_t id, uint16_t chn);
 
 /**
  * Gets the byte position in the audio image
- * 
+ *
  * \return byte position in the audio image
 */
 uint64_t audio_get_file_position();
 
-#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
 /**
- * Gets the LBA position in the audio image
- * 
- * \return LBA position in the audio image
-*/
+ * Gets the absolute CD LBA currently being played.
+ *
+ * Accounts for the current track's file_offset, data_start and any unstored
+ * PREGAP so multi-track BINs and per-track BINs both report correct CD
+ * addresses in READ SUB-CHANNEL responses.
+ *
+ * \return absolute CD LBA, or a best-effort value if no track is cached
+ */
 uint32_t audio_get_lba_position();
-#endif
 
 /**
- * Sets the playback position in the audio image via the lba
- * 
+ * Sets the playback position without actually playing audio. Used by the
+ * zero-length PLAY AUDIO seek path and by SEEK commands on optical devices.
+ *
+ * \param id        SCSI ID.
+ * \param trackinfo Track metadata for the target LBA. Required for SPDIF to
+ *                  translate LBA to a BIN byte offset; may be null on
+ *                  backends that walk their own cue parser.
+ * \param lba       Absolute CD LBA to seek to.
 */
-void audio_set_file_position(uint8_t id, uint32_t lba);
+void audio_set_file_position(uint8_t id, const CUETrackInfo *trackinfo, uint32_t lba);
