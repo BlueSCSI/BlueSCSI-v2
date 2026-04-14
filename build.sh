@@ -18,6 +18,17 @@
 
 set -euo pipefail
 
+# Require Bash 4+ for associative arrays
+if [ "${BASH_VERSINFO[0]}" -lt 4 ]; then
+    echo "Error: build.sh requires Bash 4.0 or later (you have ${BASH_VERSION})."
+    echo ""
+    echo "macOS ships Bash 3.2 due to GPL v3 licensing. To fix:"
+    echo "  brew install bash"
+    echo "Then re-run with:  /opt/homebrew/bin/bash build.sh"
+    echo "Or add /opt/homebrew/bin/bash to /etc/shells and update your PATH."
+    exit 1
+fi
+
 # Build BlueSCSI firmware targets
 # Usage: ./build.sh [target...]       Build specified (or all default) targets
 #        ./build.sh clean [target...]  Remove build artifacts
