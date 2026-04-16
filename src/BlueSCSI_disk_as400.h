@@ -49,6 +49,17 @@ extern const size_t as400_default_inquiry_len;
 extern const uint8_t as400_default_vpd_pages[][255];
 extern const size_t as400_default_vpd_page_count;
 
+// LOG SENSE page data
+extern const uint8_t as400_log_sense_page_00[];
+extern const size_t as400_log_sense_page_00_len;
+extern const uint16_t as400_log_sense_page_30_page_length;
+extern const uint8_t  as400_log_sense_page_30_page_list_length;
+extern const uint16_t as400_log_sense_page_31_page_length;
+
+// I/O counters (currently always zero, could be wired up)
+extern uint32_t as400_read_ops;
+extern uint32_t as400_write_ops;
+
 #ifdef __cplusplus
 extern "C" {
 #endif

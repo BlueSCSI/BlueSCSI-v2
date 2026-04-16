@@ -3576,6 +3576,59 @@ int scsiDiskCommand()
             scsiDev.cdb[8];
         scsiDiskSkip(lba, blocks, scsiDev.cdb[6], command);
     }
+    else if (unlikely(command == 0x4D) &&
+             scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_AS400)
+    {
+        // LOG SENSE - required for AS/400 diagnostics
+        uint8_t page_code = scsiDev.cdb[2] & 0x3F;
+
+        if (page_code == 0x00)
+        {
+            memcpy(scsiDev.data, as400_log_sense_page_00, as400_log_sense_page_00_len);
+            scsiDev.dataLen = as400_log_sense_page_00_len;
+            scsiDev.phase = DATA_IN;
+        }
+        else if (page_code == 0x30)
+        {
+            // Device I/O statistics
+            scsiDev.dataLen = as400_log_sense_page_30_page_length + 4;
+            memset(scsiDev.data, 0, scsiDev.dataLen);
+            scsiDev.data[0] = page_code;
+            scsiDev.data[2] = as400_log_sense_page_30_page_length >> 8;
+            scsiDev.data[3] = as400_log_sense_page_30_page_length & 0xFF;
+            scsiDev.data[7] = as400_log_sense_page_30_page_list_length;
+            scsiDev.data[52] = as400_read_ops >> 24;
+            scsiDev.data[53] = (as400_read_ops >> 16) & 0xFF;
+            scsiDev.data[54] = (as400_read_ops >> 8) & 0xFF;
+            scsiDev.data[55] = as400_read_ops & 0xFF;
+            scsiDev.data[56] = as400_write_ops >> 24;
+            scsiDev.data[57] = (as400_write_ops >> 16) & 0xFF;
+            scsiDev.data[58] = (as400_write_ops >> 8) & 0xFF;
+            scsiDev.data[59] = as400_write_ops & 0xFF;
+            scsiDev.phase = DATA_IN;
+        }
+        else if (page_code == 0x31)
+        {
+            // Device information with serial number
+            uint8_t as400_serial[8];
+            as400_get_serial_8(scsiDev.target->targetId & S2S_CFG_TARGET_ID_BITS, as400_serial);
+
+            scsiDev.dataLen = as400_log_sense_page_31_page_length + 4;
+            memset(scsiDev.data, 0, scsiDev.dataLen);
+            scsiDev.data[0] = page_code;
+            scsiDev.data[2] = as400_log_sense_page_31_page_length >> 8;
+            scsiDev.data[3] = as400_log_sense_page_31_page_length & 0xFF;
+            memcpy(&scsiDev.data[124], as400_serial, sizeof(as400_serial));
+            scsiDev.phase = DATA_IN;
+        }
+        else
+        {
+            scsiDev.status = CHECK_CONDITION;
+            scsiDev.target->sense.code = ILLEGAL_REQUEST;
+            scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+            scsiDev.phase = STATUS;
+        }
+    }
 #endif
     else
     {

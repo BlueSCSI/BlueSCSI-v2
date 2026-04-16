@@ -104,6 +104,21 @@ const uint8_t as400_mode_sense_all_pages[] =
 
 const size_t as400_mode_sense_all_pages_len = sizeof(as400_mode_sense_all_pages);
 
+// LOG SENSE supported pages list (page 0x00)
+const uint8_t as400_log_sense_page_00[] =
+{
+    0x00, 0x00, 0x00, 0x03, 0x00, 0x30, 0x31
+};
+
+const size_t as400_log_sense_page_00_len = sizeof(as400_log_sense_page_00);
+
+const uint16_t as400_log_sense_page_30_page_length = 80;
+const uint8_t  as400_log_sense_page_30_page_list_length = 76;
+const uint16_t as400_log_sense_page_31_page_length = 192;
+
+uint32_t as400_read_ops = 0;
+uint32_t as400_write_ops = 0;
+
 // Default standard inquiry data from a real IBM AS/400 drive (164 bytes)
 const uint8_t as400_default_inquiry[] =
 {

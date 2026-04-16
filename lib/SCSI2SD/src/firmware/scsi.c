@@ -833,10 +833,18 @@ void s2s_doReserveRelease()
 
 	if (extentReservation)
 	{
-		// Not supported.
-		scsiDev.target->sense.code = ILLEGAL_REQUEST;
-		scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
-		enter_Status(CHECK_CONDITION);
+		if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_AS400)
+		{
+			// AS/400 sends extent reservations; accept them silently.
+			enter_Status(GOOD);
+		}
+		else
+		{
+			// Not supported.
+			scsiDev.target->sense.code = ILLEGAL_REQUEST;
+			scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+			enter_Status(CHECK_CONDITION);
+		}
 	}
 	else if (command == 0x17) // release
 	{
