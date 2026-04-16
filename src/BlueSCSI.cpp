@@ -278,6 +278,10 @@ static const char * quirksToChar(int quirks)
       return "X68000";
     case S2S_CFG_QUIRKS_PC98_55:
       return "PC-9801-55";
+    case S2S_CFG_QUIRKS_EWSD:
+      return "EWSD";
+    case S2S_CFG_QUIRKS_AS400:
+      return "AS400";
     case S2S_CFG_QUIRKS_NONE:
       return "None";
     default:
