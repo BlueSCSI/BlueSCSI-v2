@@ -273,6 +273,10 @@ static const char * quirksToChar(int quirks)
       return "XEBEC";
     case S2S_CFG_QUIRKS_X68000:
       return "X68000";
+    case S2S_CFG_QUIRKS_EWSD:
+      return "EWSD";
+    case S2S_CFG_QUIRKS_AS400:
+      return "AS400";
     case S2S_CFG_QUIRKS_NONE:
       return "None";
     default:
