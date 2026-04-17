@@ -1954,7 +1954,9 @@ void scsiDiskStartWrite(uint32_t lba, uint32_t blocks)
     {
         logmsg("WARNING: Host attempted write to read-only drive ID ", (int)img.getTargetId());
         scsiDev.status = CHECK_CONDITION;
-        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        // SCSI-2 §9.1.12: WRITE PROTECTED (ASC 0x2700) pairs with sense key
+        // DATA PROTECT (0x07), not ILLEGAL REQUEST.
+        scsiDev.target->sense.code = DATA_PROTECT;
         scsiDev.target->sense.asc = WRITE_PROTECTED;
         scsiDev.phase = STATUS;
     }
@@ -2082,7 +2084,8 @@ static void scsiDiskStartWriteAndVerify(uint32_t lba, uint32_t blocks)
     {
         logmsg("WARNING: Host attempted WRITE AND VERIFY to read-only drive ID ", (int)img.getTargetId());
         scsiDev.status = CHECK_CONDITION;
-        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        // SCSI-2 §9.1.12: WRITE PROTECTED pairs with sense key DATA PROTECT.
+        scsiDev.target->sense.code = DATA_PROTECT;
         scsiDev.target->sense.asc = WRITE_PROTECTED;
         scsiDev.phase = STATUS;
     }
