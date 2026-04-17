@@ -39,6 +39,7 @@
 #include "ImageBackingStore.h"
 #include "ROMDrive.h"
 #include "QuirksCheck.h"
+#include "BlueSCSI_vhd.h"
 #include <minIni.h>
 #include <string.h>
 #include <strings.h>
@@ -438,6 +439,48 @@ static void autoConfigGeometry(image_config_t &img)
         );
 }
 
+// Read and validate a VHD footer from an already-open ImageBackingStore.
+// Returns true and populates info on VHD_PARSE_OK; returns false on any error
+// (caller should close the file and reject the image).
+static bool tryLoadVhdFooter(ImageBackingStore &file, const char *filename,
+                             vhd_footer_info_t *info)
+{
+    uint64_t filesize = file.size();
+    if (filesize < VHD_FOOTER_SIZE)
+    {
+        logmsg("---- VHD file too small (", (int)filesize, " bytes), ignoring: ", filename);
+        return false;
+    }
+
+    uint8_t footer[VHD_FOOTER_SIZE];
+    if (!file.seek(filesize - VHD_FOOTER_SIZE) ||
+        file.read(footer, VHD_FOOTER_SIZE) != (ssize_t)VHD_FOOTER_SIZE)
+    {
+        logmsg("---- Failed to read VHD footer from ", filename);
+        return false;
+    }
+
+    int rc = vhd_parse_fixed_footer(footer, VHD_FOOTER_SIZE, info);
+    if (rc != VHD_PARSE_OK)
+    {
+        const char *reason = "unknown error";
+        switch (rc) {
+            case VHD_PARSE_ERR_COOKIE:       reason = "missing conectix cookie"; break;
+            case VHD_PARSE_ERR_VERSION:      reason = "unsupported format version"; break;
+            case VHD_PARSE_ERR_CHECKSUM:     reason = "footer checksum mismatch"; break;
+            case VHD_PARSE_ERR_TYPE_DYNAMIC: reason = "Dynamic VHD not supported (fixed only)"; break;
+            case VHD_PARSE_ERR_TYPE_DIFF:    reason = "Differencing VHD not supported (fixed only)"; break;
+            case VHD_PARSE_ERR_TYPE_UNKNOWN: reason = "unknown VHD disk type"; break;
+            case VHD_PARSE_ERR_SIZE:         reason = "invalid current size"; break;
+        }
+        logmsg("---- Invalid VHD: ", filename, " (", reason, ")");
+        return false;
+    }
+
+    file.seek(0);
+    return true;
+}
+
 bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, int blocksize, S2S_CFG_TYPE type, bool use_prefix)
 {
     image_config_t &img = g_DiskImages[target_idx];
@@ -497,10 +540,49 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
         img.file = ImageBackingStore(filename, blocksize);
     }
 
+    // VHD detection: parse footer before computing capacity/geometry.
+    // .vhd is restricted to disk images — on other device types we reject it.
+    bool is_vhd = hasExtension(filename, ".vhd");
+    vhd_footer_info_t vhd_info;
+    bool vhd_ok = false;
+    if (is_vhd && img.file.isOpen())
+    {
+        S2S_CFG_TYPE effective_type = (S2S_CFG_TYPE) g_scsi_settings.getDevice(target_idx)->deviceType;
+        if (effective_type == S2S_CFG_NOT_SET) effective_type = type;
+        if (effective_type != S2S_CFG_FIXED)
+        {
+            logmsg("---- Rejecting .vhd on non-HD device type ", (int)effective_type,
+                   " for ", filename, " (VHD is disk-only)");
+            img.file.close();
+            return false;
+        }
+        if (blocksize != 512)
+        {
+            logmsg("---- Rejecting .vhd ", filename, " with blocksize ",
+                   (int)blocksize, " (VHD spec mandates 512-byte sectors)");
+            img.file.close();
+            return false;
+        }
+        if (!tryLoadVhdFooter(img.file, filename, &vhd_info))
+        {
+            img.file.close();
+            return false;
+        }
+        vhd_ok = true;
+        logmsg("---- VHD creator '", vhd_info.creator_app,
+               "' os '", vhd_info.creator_os,
+               "' size ", (int)(vhd_info.current_size >> 20), " MiB CHS ",
+               (int)vhd_info.cylinders, "/",
+               (int)vhd_info.heads, "/",
+               (int)vhd_info.sectors_per_track);
+    }
+
     if (img.file.isOpen())
     {
         img.bytesPerSector = blocksize;
-        img.scsiSectors = img.file.size() / blocksize;
+        img.scsiSectors = vhd_ok
+            ? (uint32_t)(vhd_info.current_size / blocksize)
+            : (uint32_t)(img.file.size() / blocksize);
         img.scsiId = target_idx | S2S_CFG_TARGET_ENABLED;
         img.sdSectorStart = 0;
 
@@ -539,6 +621,23 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
         {
             logmsg("---- Configuring as disk drive");
             img.deviceType = S2S_CFG_FIXED;
+
+            if (vhd_ok)
+            {
+                // CHS from footer — only if INI didn't override. scsiDiskSetImageConfig
+                // already copied INI values into img.*Track / *Cylinder; if those are
+                // zero, INI left them unset and we can use the footer's geometry.
+                if (img.sectorsPerTrack == 0 && img.headsPerCylinder == 0
+                    && vhd_info.sectors_per_track > 0 && vhd_info.heads > 0)
+                {
+                    img.sectorsPerTrack  = vhd_info.sectors_per_track;
+                    img.headsPerCylinder = vhd_info.heads;
+                    dbgmsg("---- VHD CHS applied: SPT=", (int)img.sectorsPerTrack,
+                           " H=", (int)img.headsPerCylinder);
+                }
+                // UUID -> serial, unconditionally overriding INI. Serial follows the file.
+                vhd_uuid_to_serial(vhd_info.uuid, img.serial);
+            }
         }
         else if (type == S2S_CFG_OPTICAL)
         {
