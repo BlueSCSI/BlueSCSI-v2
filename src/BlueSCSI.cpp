@@ -165,6 +165,35 @@ static const char * fatTypeToChar(int fatType)
   }
 }
 
+// Community-observed MID->manufacturer mappings. Not authoritative — the SD
+// Association registry is member-only and some MIDs are reused by different
+// vendors or spoofed on counterfeit cards. Returns nullptr for unknown MIDs.
+static const char *lookup_sd_manufacturer(uint8_t mid)
+{
+  switch (mid)
+  {
+    case 0x01: return "Panasonic";
+    case 0x02: return "Kioxia/Toshiba";
+    case 0x03: return "SanDisk";
+    case 0x09: return "ATP";
+    case 0x1B: return "Samsung";
+    case 0x1D: return "ADATA";
+    case 0x27: return "Phison";
+    case 0x28: return "Lexar";
+    case 0x30: return "SanDisk";
+    case 0x31: return "Silicon Power";
+    case 0x33: return "Toshiba";
+    case 0x41: return "Kingston";
+    case 0x6F: return "STMicroelectronics";
+    case 0x74: return "Transcend";
+    case 0x76: return "Patriot";
+    case 0x82: return "Sony";
+    case 0x9C: return "Angelbird";
+    case 0xAD: return "Lexar/Raspberry Pi";
+    default:   return nullptr;
+  }
+}
+
 void print_sd_info()
 {
   logmsg(" ");
@@ -178,7 +207,18 @@ void print_sd_info()
   if(SD.card()->readCID(&sd_cid))
   {
     char sdname[6] = {sd_cid.pnm[0], sd_cid.pnm[1], sd_cid.pnm[2], sd_cid.pnm[3], sd_cid.pnm[4], 0};
-    logmsg("SD Name: ", sdname, ", MID: ", (uint8_t)sd_cid.mid, ", OID: ", (uint8_t)sd_cid.oid[0], " ", (uint8_t)sd_cid.oid[1]);
+    uint8_t oid0 = (uint8_t)sd_cid.oid[0];
+    uint8_t oid1 = (uint8_t)sd_cid.oid[1];
+    const char *mfr = lookup_sd_manufacturer((uint8_t)sd_cid.mid);
+    char oidbuf[24];
+    if (isprint(oid0) && isprint(oid1))
+      snprintf(oidbuf, sizeof(oidbuf), "\"%c%c\" (0x%02X 0x%02X)", oid0, oid1, oid0, oid1);
+    else
+      snprintf(oidbuf, sizeof(oidbuf), "0x%02X 0x%02X", oid0, oid1);
+    if (mfr)
+      logmsg("SD Name: ", sdname, ", MID: ", (uint8_t)sd_cid.mid, " (", mfr, "), OID: ", oidbuf);
+    else
+      logmsg("SD Name: ", sdname, ", MID: ", (uint8_t)sd_cid.mid, ", OID: ", oidbuf);
     dbgmsg("SD Date: ", (int)sd_cid.mdtMonth(), "/", sd_cid.mdtYear());
     dbgmsg("SD Serial: ", sd_cid.psn());
   }
