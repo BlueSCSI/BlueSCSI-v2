@@ -95,6 +95,14 @@ static void loadAS400Defaults(void)
 
     for (int id = 0; id < 8; id++)
     {
+        // AS/400 inquiry data describes a fixed hard disk. Applying it to a
+        // CDROM, tape, ZIP, MO, or other removable device would cause the host
+        // to see a fixed drive instead — skip non-fixed device types.
+        if (g_scsi_settings.getDevice(id)->deviceType != S2S_CFG_FIXED)
+        {
+            continue;
+        }
+
         // Default standard inquiry (SPD) with serial injected
         if (g_custom_spd[id].length == 0)
         {
