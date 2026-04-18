@@ -1,4 +1,5 @@
 .pio
+.run
 .vscode
 .DS_Store
 .idea
