@@ -207,19 +207,28 @@ extern "C" int scsiTapeCommand()
         {
             blocks_to_read = 1;
 
-            // SCSI-2 Section 10.2.4: variable-block length checking
-            // Underlength: block is larger than host's requested length.
-            // Error unless SILI (Suppress Incorrect Length Indicator) is set.
-            // Overlength (host wants more than block has) is not an error.
-            bool underlength = (length < blocklen);
-            if (underlength && !supress_invalid_length)
+            // SCSI-2 §10.2.4: a transfer length of zero is not an error —
+            // no data is transferred and position is unchanged.
+            if (length == 0)
             {
-                dbgmsg("------ Host requested variable block max ", (int)length, " bytes, blocksize is ", (int)blocklen);
-                scsiDev.status = CHECK_CONDITION;
-                scsiDev.target->sense.code = ILLEGAL_REQUEST;
-                scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
-                scsiDev.phase = STATUS;
-                return 1;
+                blocks_to_read = 0;
+            }
+            else
+            {
+                // SCSI-2 Section 10.2.4: variable-block length checking
+                // Underlength: block is larger than host's requested length.
+                // Error unless SILI (Suppress Incorrect Length Indicator) is set.
+                // Overlength (host wants more than block has) is not an error.
+                bool underlength = (length < blocklen);
+                if (underlength && !supress_invalid_length)
+                {
+                    dbgmsg("------ Host requested variable block max ", (int)length, " bytes, blocksize is ", (int)blocklen);
+                    scsiDev.status = CHECK_CONDITION;
+                    scsiDev.target->sense.code = ILLEGAL_REQUEST;
+                    scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+                    scsiDev.phase = STATUS;
+                    return 1;
+                }
             }
         }
 
@@ -252,7 +261,12 @@ extern "C" int scsiTapeCommand()
         {
             blocks_to_write = 1;
 
-            if (length != blocklen)
+            // SCSI-2 §10.2.14: transfer length of zero is not an error.
+            if (length == 0)
+            {
+                blocks_to_write = 0;
+            }
+            else if (length != blocklen)
             {
                 dbgmsg("------ Host requested variable block ", (int)length, " bytes, blocksize is ", (int)blocklen);
                 scsiDev.status = CHECK_CONDITION;
