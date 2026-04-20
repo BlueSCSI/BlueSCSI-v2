@@ -2709,10 +2709,14 @@ static void start_dataInTransfer(uint8_t *buffer, uint32_t count)
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     platform_set_sd_callback(&diskDataIn_callback, buffer);
 
-    // Use direct sector I/O when fastseek is enabled (for fragmented files)
-    // Contiguous files already use raw SD access, bypassing this path
+    // Use direct sector I/O when fastseek is enabled (for fragmented files).
+    // Contiguous files already use raw SD access, bypassing this path.
+    // Direct reads go sector-by-sector at 512 bytes, so they only apply when
+    // the image uses a 512-byte SCSI block size — 256-byte images would hit
+    // unaligned positions/counts and silently corrupt the buffer.
     bool read_ok = false;
-    if (img.file.isFastSeekEnabled())
+    uint32_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+    if (img.file.isFastSeekEnabled() && bytesPerSector == SD_SECTOR_SIZE)
     {
         // Convert byte position/count to sector units (>> 9 is / 512)
         uint32_t fileSector = img.file.position() >> 9;
