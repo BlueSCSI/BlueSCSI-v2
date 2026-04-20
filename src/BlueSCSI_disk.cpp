@@ -2855,10 +2855,16 @@ static void start_dataInTransfer(uint8_t *buffer, uint32_t count)
     image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
     platform_set_sd_callback(&diskDataIn_callback, buffer);
 
-    // Use direct sector I/O when fastseek is enabled (for fragmented files)
-    // Contiguous files already use raw SD access, bypassing this path
+    // Use direct sector I/O when fastseek is enabled (for fragmented files).
+    // Contiguous files already use raw SD access, bypassing this path.
+    // Direct reads address the card in whole 512-byte SD sectors, so both the
+    // position and the length must be sector aligned. 512-byte and larger
+    // block sizes (CD-ROM 2048 etc.) always are; 256-byte images usually are
+    // not, and truncating them here silently corrupts the transfer.
     bool read_ok = false;
-    if (img.file.isFastSeekEnabled())
+    bool sector_aligned = ((img.file.position() % SD_SECTOR_SIZE) == 0) &&
+                          ((count % SD_SECTOR_SIZE) == 0);
+    if (img.file.isFastSeekEnabled() && sector_aligned)
     {
         // Convert byte position/count to sector units (>> 9 is / 512)
         uint32_t fileSector = img.file.position() >> 9;
@@ -2896,6 +2902,11 @@ static void start_dataInTransfer(uint8_t *buffer, uint32_t count)
     // a large transfer compared to its transfer speed.
     platform_reset_watchdog();
 }
+
+#ifdef UNIT_TEST
+/* Test accessor - exercises the SD read path selection in start_dataInTransfer() */
+void testStartDataInTransfer(uint8_t *buffer, uint32_t count) { start_dataInTransfer(buffer, count); }
+#endif
 
 static void diskDataIn()
 {
