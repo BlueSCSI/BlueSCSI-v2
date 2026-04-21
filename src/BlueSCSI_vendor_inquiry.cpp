@@ -61,6 +61,43 @@ static struct {
     uint8_t data[AS400_DISK_SERIAL_LEN];
 } g_as400_serial_override[8];
 
+// Per-SCSI-ID override for the 7-byte IBM FRU part number stamped in
+// VPD page 0x01. Supplied via the AS400_DiskPartNumber key in [SCSI<n>]
+// sections. The page holds the FRU twice: once in ASCII at byte 5 and
+// once in IBM CP037 EBCDIC at byte 29. Both slots are populated
+// together when an override is set.
+#define AS400_DISK_PART_LEN 7
+static struct {
+    uint8_t length;
+    uint8_t ascii[AS400_DISK_PART_LEN];
+    uint8_t ebcdic[AS400_DISK_PART_LEN];
+} g_as400_part_override[8];
+
+// Map the subset of ASCII actually used in IBM DASD FRU strings
+// ([0-9 A-Z ]) to IBM CP037 EBCDIC. Unsupported characters fall through
+// to EBCDIC space (0x40). CP037 places the digits and letters in
+// discontiguous ranges — pulling in a full 256-byte table would add
+// rodata for no benefit given the constrained input alphabet.
+static uint8_t asciiToEbcdic(char c)
+{
+    if (c >= '0' && c <= '9') return (uint8_t)(0xF0 + (c - '0'));
+    if (c >= 'A' && c <= 'I') return (uint8_t)(0xC1 + (c - 'A'));
+    if (c >= 'J' && c <= 'R') return (uint8_t)(0xD1 + (c - 'J'));
+    if (c >= 'S' && c <= 'Z') return (uint8_t)(0xE2 + (c - 'S'));
+    return 0x40; // EBCDIC space
+}
+
+// Write the FRU override (if set) into both the ASCII slot at
+// asciiOffset and the EBCDIC slot at ebcdicOffset of a VPD page buffer.
+// Does nothing when no override was configured for this SCSI ID.
+static void injectPartNumber(uint8_t *data, int asciiOffset, int ebcdicOffset, uint8_t scsiId)
+{
+    uint8_t id = scsiId & 7;
+    if (g_as400_part_override[id].length != AS400_DISK_PART_LEN) return;
+    memcpy(data + asciiOffset, g_as400_part_override[id].ascii, AS400_DISK_PART_LEN);
+    memcpy(data + ebcdicOffset, g_as400_part_override[id].ebcdic, AS400_DISK_PART_LEN);
+}
+
 // Parse space/comma-separated hex values from a string into a byte buffer.
 // Returns number of bytes parsed.
 static int parseHexString(const char *str, uint8_t *buf, int maxlen)
@@ -163,6 +200,12 @@ static void loadAS400Defaults(void)
             else if (pageCode == 0xD1 && g_custom_vpd[idx].length >= 78)
                 injectSerial(g_custom_vpd[idx].data, 70, id);
 
+            // Inject IBM FRU part number into VPD 0x01 (ASCII at offset 5,
+            // EBCDIC at offset 29). Page must be long enough to hold both
+            // 7-byte slots.
+            if (pageCode == 0x01 && g_custom_vpd[idx].length >= 36)
+                injectPartNumber(g_custom_vpd[idx].data, 5, 29, id);
+
             g_custom_vpd_count++;
         }
     }
@@ -177,6 +220,7 @@ void parseCustomInquiryData(void)
     g_custom_vpd_count = 0;
     memset(g_custom_spd, 0, sizeof(g_custom_spd));
     memset(g_as400_serial_override, 0, sizeof(g_as400_serial_override));
+    memset(g_as400_part_override, 0, sizeof(g_as400_part_override));
 
     for (int id = 0; id < 8; id++)
     {
@@ -224,6 +268,29 @@ void parseCustomInquiryData(void)
                 memcpy(g_as400_serial_override[id].data, tmp, slen);
                 g_as400_serial_override[id].length = AS400_DISK_SERIAL_LEN;
                 logmsg("Custom AS/400 serial for SCSI ID ", id, ": \"", tmp, "\"");
+            }
+        }
+
+        // Parse AS/400 disk part-number override: AS400_DiskPartNumber=<up
+        // to 7 chars>. Uppercased, space-padded, mapped to both ASCII and
+        // IBM CP037 EBCDIC for the two-slot VPD 0x01 layout.
+        if (ini_gets(section, "AS400_DiskPartNumber", "", tmp, sizeof(tmp), CONFIGFILE))
+        {
+            size_t slen = strlen(tmp);
+            if (slen > 0)
+            {
+                memset(g_as400_part_override[id].ascii, ' ', AS400_DISK_PART_LEN);
+                memset(g_as400_part_override[id].ebcdic, 0x40, AS400_DISK_PART_LEN); // EBCDIC space
+                if (slen > AS400_DISK_PART_LEN) slen = AS400_DISK_PART_LEN;
+                for (size_t i = 0; i < slen; i++)
+                {
+                    char c = tmp[i];
+                    if (c >= 'a' && c <= 'z') c = (char)(c - 'a' + 'A');
+                    g_as400_part_override[id].ascii[i] = (uint8_t)c;
+                    g_as400_part_override[id].ebcdic[i] = asciiToEbcdic(c);
+                }
+                g_as400_part_override[id].length = AS400_DISK_PART_LEN;
+                logmsg("Custom AS/400 disk part number for SCSI ID ", id, ": \"", tmp, "\"");
             }
         }
     }
