@@ -150,6 +150,14 @@ static inline int s2s_isTargetEnabled(const S2S_TargetCfg *cfg) {
 	return (cfg->scsiId & S2S_CFG_TARGET_ENABLED) != 0;
 }
 
+/* AS/400 quirk applies to fixed disks only. Non-FIXED device types with
+   the quirk flag set (e.g. a CD-ROM that inherited the bit from a system
+   preset) must fall through to standard SCSI handling. */
+static inline int s2s_isAS400FixedTarget(const S2S_TargetCfg *cfg) {
+	return cfg->quirks == S2S_CFG_QUIRKS_AS400 &&
+		cfg->deviceType == S2S_CFG_FIXED;
+}
+
 typedef struct __attribute__((packed))
 {
 	char magic[4]; // 'BCFG'

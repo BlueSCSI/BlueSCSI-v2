@@ -380,7 +380,7 @@ void s2s_scsiRequestSense(void)
 				scsiDev.data[4] = 0x81; // File Mark detected
 		}
 	}
-	else if (cfg->quirks == S2S_CFG_QUIRKS_AS400)
+	else if (s2s_isAS400FixedTarget(cfg))
 	{
 		// AS/400 REQUEST SENSE format (SCSI-2 fixed format, response code 0x70)
 		if (allocLength == 0) allocLength = 4;
@@ -833,7 +833,7 @@ void s2s_doReserveRelease()
 
 	if (extentReservation)
 	{
-		if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_AS400)
+		if (s2s_isAS400FixedTarget(scsiDev.target->cfg))
 		{
 			// AS/400 sends extent reservations; accept them silently.
 			enter_Status(GOOD);
@@ -904,7 +904,7 @@ static void scsiReset()
 		}
 		scsiDev.target->reservedId = -1;
 		scsiDev.target->reserverId = -1;
-		if (scsiDev.target->cfg && scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_AS400)
+		if (scsiDev.target->cfg && s2s_isAS400FixedTarget(scsiDev.target->cfg))
 		{
 			// AS/400 expects UNIT ATTENTION with POWER ON RESET after bus reset
 			scsiDev.target->sense.code = UNIT_ATTENTION;
@@ -1536,7 +1536,7 @@ void scsiInit()
 
 		scsiDev.targets[i].tapeMarkCount = 0;
 
-		if (cfg && (cfg->quirks == S2S_CFG_QUIRKS_AS400))
+		if (cfg && s2s_isAS400FixedTarget(cfg))
 		{
 			// AS/400 expects devices to report "not ready" until explicitly started,
 			// and to report UNIT ATTENTION / POWER ON RESET on first sense query

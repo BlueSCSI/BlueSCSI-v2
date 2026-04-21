@@ -316,8 +316,7 @@ static void doModeSense(
 #if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
 	// AS/400 requires specific mode page values from a real IBM drive
 	if (sixByteCmd && pageCode == 0x3F &&
-		scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_AS400 &&
-		scsiDev.target->cfg->deviceType == S2S_CFG_FIXED)
+		s2s_isAS400FixedTarget(scsiDev.target->cfg))
 	{
 		scsiDev.dataLen = (as400_mode_sense_all_pages_len > (size_t)allocLength)
 			? allocLength : as400_mode_sense_all_pages_len;

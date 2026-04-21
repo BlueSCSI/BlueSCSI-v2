@@ -219,7 +219,7 @@ void s2s_scsiInquiry()
 		// AS/400: Real IBM ESS drives return exact-length responses without
 		// zero-padding beyond the actual data.
 		if (scsiDev.dataLen < allocationLength &&
-			scsiDev.target->cfg->quirks != S2S_CFG_QUIRKS_AS400)
+			!s2s_isAS400FixedTarget(scsiDev.target->cfg))
 		{
 			memset(
 				&scsiDev.data[scsiDev.dataLen],
@@ -228,7 +228,7 @@ void s2s_scsiInquiry()
 		}
 		// Spec 8.2.5 requires us to simply truncate the response if it's
 		// too big.
-		if (scsiDev.target->cfg->quirks != S2S_CFG_QUIRKS_AS400)
+		if (!s2s_isAS400FixedTarget(scsiDev.target->cfg))
 			scsiDev.dataLen = allocationLength;
 		else if (scsiDev.dataLen > allocationLength)
 			scsiDev.dataLen = allocationLength;
