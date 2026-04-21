@@ -50,6 +50,17 @@ static struct {
     uint8_t data[MAX_SPD_SIZE];
 } g_custom_spd[8];
 
+// Per-SCSI-ID override for the 8-byte AS/400 serial, supplied via the
+// AS400_DiskSerial key in [SCSI<n>] sections. When length == 8,
+// injectSerial() uses this value instead of the SD CID / MCU-derived default.
+// Values shorter than 8 characters are right-padded with ASCII spaces;
+// longer values are truncated to 8.
+#define AS400_DISK_SERIAL_LEN 8
+static struct {
+    uint8_t length;
+    uint8_t data[AS400_DISK_SERIAL_LEN];
+} g_as400_serial_override[8];
+
 // Parse space/comma-separated hex values from a string into a byte buffer.
 // Returns number of bytes parsed.
 static int parseHexString(const char *str, uint8_t *buf, int maxlen)
@@ -79,12 +90,22 @@ static bool hasCustomVPD(uint8_t scsiId, uint8_t pageCode)
     return false;
 }
 
-// Inject the generated serial number into a VPD page at the given offset
+// Inject the generated serial number into a VPD page at the given offset.
+// If AS400_DiskSerial was set for this SCSI ID, use that; otherwise fall
+// back to the SD CID / MCU-derived default.
 static void injectSerial(uint8_t *data, int offset, uint8_t scsiId)
 {
-    uint8_t serial[8];
-    as400_get_serial_8(scsiId, serial);
-    memcpy(data + offset, serial, 8);
+    uint8_t serial[AS400_DISK_SERIAL_LEN];
+    uint8_t id = scsiId & 7;
+    if (g_as400_serial_override[id].length == AS400_DISK_SERIAL_LEN)
+    {
+        memcpy(serial, g_as400_serial_override[id].data, AS400_DISK_SERIAL_LEN);
+    }
+    else
+    {
+        as400_get_serial_8(scsiId, serial);
+    }
+    memcpy(data + offset, serial, AS400_DISK_SERIAL_LEN);
 }
 
 // Populate default AS/400 inquiry and VPD data for all SCSI IDs.
@@ -155,6 +176,7 @@ void parseCustomInquiryData(void)
 
     g_custom_vpd_count = 0;
     memset(g_custom_spd, 0, sizeof(g_custom_spd));
+    memset(g_as400_serial_override, 0, sizeof(g_as400_serial_override));
 
     for (int id = 0; id < 8; id++)
     {
@@ -186,6 +208,22 @@ void parseCustomInquiryData(void)
             if (g_custom_spd[id].length > 0)
             {
                 logmsg("Custom SPD for SCSI ID ", id, ": ", (int)g_custom_spd[id].length, " bytes");
+            }
+        }
+
+        // Parse AS/400 disk-serial override: AS400_DiskSerial=<up to 8 chars>
+        // Shorter values are right-padded with ASCII spaces; longer values
+        // are truncated to 8 characters.
+        if (ini_gets(section, "AS400_DiskSerial", "", tmp, sizeof(tmp), CONFIGFILE))
+        {
+            size_t slen = strlen(tmp);
+            if (slen > 0)
+            {
+                memset(g_as400_serial_override[id].data, ' ', AS400_DISK_SERIAL_LEN);
+                if (slen > AS400_DISK_SERIAL_LEN) slen = AS400_DISK_SERIAL_LEN;
+                memcpy(g_as400_serial_override[id].data, tmp, slen);
+                g_as400_serial_override[id].length = AS400_DISK_SERIAL_LEN;
+                logmsg("Custom AS/400 serial for SCSI ID ", id, ": \"", tmp, "\"");
             }
         }
     }
