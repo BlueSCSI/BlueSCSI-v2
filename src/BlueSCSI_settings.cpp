@@ -222,6 +222,15 @@ void BlueSCSISettings::setDefaultDriveInfo(uint8_t scsiId, const char *presetNam
                 default:                    driveinfo = driveinfo_fixed; break;
             }
         }
+
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+        // AS/400 CD-ROM identity for iSeries IPL media
+        if (cfgSys.quirks == S2S_CFG_QUIRKS_AS400 && cfgDev.deviceType == S2S_CFG_OPTICAL)
+        {
+            static const char * const as400_driveinfo_optical[4] = AS400_DRIVEINFO_OPTICAL;
+            driveinfo = as400_driveinfo_optical;
+        }
+#endif
     }
 
     // If the scsi string has not been set system wide use default scsi string

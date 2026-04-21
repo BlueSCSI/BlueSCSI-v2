@@ -132,6 +132,12 @@
 #define IOMEGA_DRIVEINFO_ZIP250     {"IOMEGA", "ZIP 250", "42.S", ""}
 #define IOMEGA_DRIVEINFO_JAZ        {"iomega", "jaz", "", ""}
 
+// Default SCSI drive information for an AS/400 (iSeries) CD-ROM used as
+// IPL media. Strings captured from an AS/400e-series test machine and may
+// not be accurate for other iSeries models — users can override with the
+// existing Vendor= / Product= INI keys per target.
+#define AS400_DRIVEINFO_OPTICAL     {"IBM",    "CDRM00203", PLATFORM_REVISION, ""}
+
 // Default delay for SCSI phases.
 // Can be adjusted in ini file
 #define DEFAULT_SCSI_DELAY_US 10
