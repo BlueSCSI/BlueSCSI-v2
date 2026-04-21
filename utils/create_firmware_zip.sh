@@ -67,8 +67,39 @@ if [ "${BIN_COUNT}" -eq 0 ]; then
     exit 1
 fi
 
+# Included in the zip so users who accidentally extract it understand why the
+# raw .bin files inside are not meant to be flashed by hand.
+README_NAME="DONT EXTRACT - PLACE ZIP ON SD.txt"
+cat > "${TMPDIR}/${README_NAME}" <<'EOF'
+BlueSCSI Firmware Update Package
+================================
+
+Do NOT extract this ZIP file.
+
+This .zip is a firmware updater package for BlueSCSI. To install it:
+
+  1. Copy the ENTIRE .zip file (not its contents) to the root of your
+     SD card
+  2. Insert the SD card into your BlueSCSI and power it on
+  3. The firmware auto-detects the file, extracts the correct image
+     for your specific board, flashes it, and reboots
+  4. The .zip is deleted from the SD card after a successful update
+
+If you extracted this archive by mistake, no harm done -- just re-download
+the original .zip from the release page and drop it on your SD card.
+
+The .bin files inside this archive are raw firmware images intended only
+for the on-device updater. They cannot be flashed with drag-and-drop or
+UF2 tools.
+
+For the full update guide, including USB/UF2 flashing and troubleshooting,
+see:
+
+  https://github.com/BlueSCSI/BlueSCSI-v2/wiki/Updating-Firmware
+EOF
+
 # Create zip with store-only compression (firmware can't decompress deflate)
 mkdir -p "${OUTPUT_DIR}"
-(cd "${TMPDIR}" && zip -0 "${OUTPUT_DIR}/${ZIP_NAME}" *.bin)
+(cd "${TMPDIR}" && zip -0 "${OUTPUT_DIR}/${ZIP_NAME}" *.bin "${README_NAME}")
 
 echo "Created ${OUTPUT_DIR}/${ZIP_NAME} with ${BIN_COUNT} firmware images"

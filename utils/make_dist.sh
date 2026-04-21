@@ -66,8 +66,43 @@ done
 ls -1 "$OUT_DIR"
 
 # --- Dev archive: ELF + UF2 for debugging ---
-zip -j "$OUT_DIR/dev-BlueSCSI_${DATE}_${VERSION}.zip" "$OUT_DIR"/*.elf "$OUT_DIR"/*.uf2
+# README explains what this archive is for so end users who grabbed it by
+# mistake know to fetch the SD-card .zip or a UF2 instead.
+DEV_README="$OUT_DIR/DEVELOPER BUILD ARTIFACTS.txt"
+cat > "$DEV_README" <<'EOF'
+BlueSCSI Developer Build Artifacts
+==================================
+
+This ZIP contains developer and debugging artifacts for a BlueSCSI
+release:
+
+  - *.elf   Firmware with debug symbols (GDB, addr2line, crash analysis)
+  - *.uf2   Flashable firmware images (one per build target)
+
+If you're a regular BlueSCSI user, you do NOT need this file. Use one
+of these from the release page instead:
+
+  BlueSCSI_v<version>_<hash>.zip  SD card updater (recommended)
+  BlueSCSI_V2_DaynaPORT_*.uf2     USB/BOOTSEL flashing, V2 boards
+  BlueSCSI_V2_Audio_SPDIF_*.uf2   USB/BOOTSEL flashing, V2 SPDIF
+  BlueSCSI_Ultra_*.uf2            USB/BOOTSEL flashing, Ultra
+  BlueSCSI_Ultra_Wide_*.uf2       USB/BOOTSEL flashing, Ultra Wide
+
+End-user update guide:
+
+  https://github.com/BlueSCSI/BlueSCSI-v2/wiki/Updating-Firmware
+
+Typical uses for this developer archive:
+
+  - Post-mortem crash analysis (addr2line / utils/analyze_crashlog.sh
+    against the exact release)
+  - Binary comparisons between releases
+  - GDB debugging with a CMSIS-DAP probe
+EOF
+
+zip -j "$OUT_DIR/dev-BlueSCSI_${DATE}_${VERSION}.zip" "$OUT_DIR"/*.elf "$OUT_DIR"/*.uf2 "$DEV_README"
 rm "$OUT_DIR/"*.elf
+rm "$DEV_README"
 
 # --- Combined V2 UF2s: merge Pico + Pico 2 variants for the BlueSCSI V2 board ---
 # UF2 format allows combining RP2040 and RP2350 images — the bootrom ignores
