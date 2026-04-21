@@ -191,7 +191,7 @@ void scsiVendorCommandSetLen(uint8_t command, uint8_t* command_length)
 			*command_length = 10;
 		}
 	}
-	else if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_AS400)
+	else if (s2s_isAS400FixedTarget(scsiDev.target->cfg))
 	{
 		// AS/400 Skip Read(10) and Skip Write(10) are 10-byte vendor commands
 		if (command == 0xE8 || command == 0xEA)
