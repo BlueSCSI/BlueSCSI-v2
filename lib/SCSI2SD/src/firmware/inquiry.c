@@ -144,9 +144,9 @@ void s2s_scsiInquiry()
 			scsiDev.phase = DATA_IN;
 		}
 	}
-#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
 	else
 	{
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
 		// Check for custom VPD page data from INI configuration
 		uint8_t customVpdLen = 0;
 		if (getCustomVPD(scsiDev.target->cfg->scsiId, pageCode, scsiDev.data, &customVpdLen))
@@ -197,9 +197,7 @@ void s2s_scsiInquiry()
 		scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
 		scsiDev.phase = STATUS;
 	}
-#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
-	} // close custom VPD else block
-#endif
+	} // close EVPD=1 else block
 
 
 	if (scsiDev.phase == DATA_IN)
