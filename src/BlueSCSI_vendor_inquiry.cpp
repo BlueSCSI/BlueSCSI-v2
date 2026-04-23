@@ -87,15 +87,19 @@ static uint8_t asciiToEbcdic(char c)
     return 0x40; // EBCDIC space
 }
 
-// Write the FRU override (if set) into both the ASCII slot at
-// asciiOffset and the EBCDIC slot at ebcdicOffset of a VPD page buffer.
-// Does nothing when no override was configured for this SCSI ID.
+// Write the FRU override (if set) into the ASCII slot at asciiOffset and,
+// when ebcdicOffset >= 0, into the EBCDIC slot at ebcdicOffset of the
+// given buffer. Pass a negative ebcdicOffset when the target buffer has
+// no EBCDIC slot (e.g. the standard INQUIRY response, which only carries
+// an ASCII copy of the FRU). Does nothing when no override was configured
+// for this SCSI ID.
 static void injectPartNumber(uint8_t *data, int asciiOffset, int ebcdicOffset, uint8_t scsiId)
 {
     uint8_t id = scsiId & 7;
     if (g_as400_part_override[id].length != AS400_DISK_PART_LEN) return;
     memcpy(data + asciiOffset, g_as400_part_override[id].ascii, AS400_DISK_PART_LEN);
-    memcpy(data + ebcdicOffset, g_as400_part_override[id].ebcdic, AS400_DISK_PART_LEN);
+    if (ebcdicOffset >= 0)
+        memcpy(data + ebcdicOffset, g_as400_part_override[id].ebcdic, AS400_DISK_PART_LEN);
 }
 
 // Parse space/comma-separated hex values from a string into a byte buffer.
@@ -161,15 +165,20 @@ static void loadAS400Defaults(void)
             continue;
         }
 
-        // Default standard inquiry (SPD) with serial injected
+        // Default standard inquiry (SPD) with serial and part number
+        // injected. The SPD carries only an ASCII copy of the 7-char IBM
+        // disk part number at offsets 114-120 — there is no EBCDIC slot
+        // here, unlike VPD page 0x01.
         if (g_custom_spd[id].length == 0)
         {
             size_t len = as400_default_inquiry_len;
             if (len > MAX_SPD_SIZE) len = MAX_SPD_SIZE;
             memcpy(g_custom_spd[id].data, as400_default_inquiry, len);
-            // Inject serial at offset 38 (matches ZuluSCSI behavior)
+            // Inject serial at offset 38
             if (len >= 46)
                 injectSerial(g_custom_spd[id].data, 38, id);
+            if (len >= 121)
+                injectPartNumber(g_custom_spd[id].data, 114, -1, id);
             g_custom_spd[id].length = len;
         }
 
