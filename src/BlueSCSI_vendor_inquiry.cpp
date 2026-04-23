@@ -51,7 +51,7 @@ static struct {
 } g_custom_spd[8];
 
 // Per-SCSI-ID override for the 8-byte AS/400 serial, supplied via the
-// AS400_DiskSerial key in [SCSI<n>] sections. When length == 8,
+// AS400_DiskSerialNumber key in [SCSI<n>] sections. When length == 8,
 // injectSerial() uses this value instead of the SD CID / MCU-derived default.
 // Values shorter than 8 characters are right-padded with ASCII spaces;
 // longer values are truncated to 8.
@@ -132,7 +132,7 @@ static bool hasCustomVPD(uint8_t scsiId, uint8_t pageCode)
 }
 
 // Inject the generated serial number into a VPD page at the given offset.
-// If AS400_DiskSerial was set for this SCSI ID, use that; otherwise fall
+// If AS400_DiskSerialNumber was set for this SCSI ID, use that; otherwise fall
 // back to the SD CID / MCU-derived default.
 static void injectSerial(uint8_t *data, int offset, uint8_t scsiId)
 {
@@ -264,10 +264,10 @@ void parseCustomInquiryData(void)
             }
         }
 
-        // Parse AS/400 disk-serial override: AS400_DiskSerial=<up to 8 chars>
+        // Parse AS/400 disk-serial override: AS400_DiskSerialNumber=<up to 8 chars>
         // Shorter values are right-padded with ASCII spaces; longer values
         // are truncated to 8 characters.
-        if (ini_gets(section, "AS400_DiskSerial", "", tmp, sizeof(tmp), CONFIGFILE))
+        if (ini_gets(section, "AS400_DiskSerialNumber", "", tmp, sizeof(tmp), CONFIGFILE))
         {
             size_t slen = strlen(tmp);
             if (slen > 0)
