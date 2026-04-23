@@ -104,6 +104,7 @@ static const char *getCommandName(uint8_t cmd)
         case 0xB9: return "ReadCDMSF";
         case 0x55: return "ModeSelect10";
         case 0x5A: return "ModeSense10";
+        case 0xA0: return "ReportLUNs";
         case 0xA8: return "Read12";
         case 0xAA: return "Write12";
         case 0xAC: return "Erase12";

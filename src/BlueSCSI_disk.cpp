@@ -3542,6 +3542,38 @@ int scsiDiskCommand()
 
         scsiDev.phase = DATA_IN;
     }
+    else if (command == 0xA0)
+    {
+        // REPORT LUNS - AS/400 issues this against hard-disk targets. Response
+        // cloned from a real IBM drive: one LUN, all bytes zero except the
+        // LUN-list length byte. The IBM ESS document marks the Select Report
+        // field as reserved, so any non-zero value is rejected with Invalid
+        // Field in CDB. Likewise a short allocation length that can't even
+        // hold the 16-byte header is rejected. Handled before the
+        // non-writable short-circuit below so ROM drives still respond.
+        uint8_t select_report = scsiDev.cdb[2];
+        uint32_t allocationLength =
+            (((uint32_t) scsiDev.cdb[6]) << 24) +
+            (((uint32_t) scsiDev.cdb[7]) << 16) +
+            (((uint32_t) scsiDev.cdb[8]) << 8) +
+            scsiDev.cdb[9];
+        if (select_report != 0x00 || allocationLength < 16)
+        {
+            if (select_report != 0x00)
+                dbgmsg("---- Report LUNs select_report ", select_report, " not supported");
+            scsiDev.status = CHECK_CONDITION;
+            scsiDev.target->sense.code = ILLEGAL_REQUEST;
+            scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+            scsiDev.phase = STATUS;
+        }
+        else
+        {
+            memset(scsiDev.data, 0, 16);
+            scsiDev.data[3] = 0x08; // LUN list length = 8 bytes (one LUN entry)
+            scsiDev.dataLen = 16;
+            scsiDev.phase = DATA_IN;
+        }
+    }
     else if (!img.file.isWritable())
     {
         // Special handling for ROM drive to make SCSI2SD code report it as read-only
