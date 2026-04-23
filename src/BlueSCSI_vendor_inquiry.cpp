@@ -276,7 +276,7 @@ void parseCustomInquiryData(void)
                 if (slen > AS400_DISK_SERIAL_LEN) slen = AS400_DISK_SERIAL_LEN;
                 memcpy(g_as400_serial_override[id].data, tmp, slen);
                 g_as400_serial_override[id].length = AS400_DISK_SERIAL_LEN;
-                logmsg("Custom AS/400 serial for SCSI ID ", id, ": \"", tmp, "\"");
+                logmsg("---- Custom AS/400 serial for SCSI ID ", (int) id, ": \"", tmp, "\"");
             }
         }
 
@@ -299,7 +299,7 @@ void parseCustomInquiryData(void)
                     g_as400_part_override[id].ebcdic[i] = asciiToEbcdic(c);
                 }
                 g_as400_part_override[id].length = AS400_DISK_PART_LEN;
-                logmsg("Custom AS/400 disk part number for SCSI ID ", id, ": \"", tmp, "\"");
+                logmsg("---- Custom AS/400 disk part number for SCSI ID ", (int) id, ": \"", tmp, "\"");
             }
         }
     }
