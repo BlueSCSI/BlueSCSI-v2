@@ -3099,6 +3099,41 @@ static void scsiDiskSkip(uint32_t lba, uint32_t blocks, uint8_t mask_length, uin
 #endif
 
 
+// REPORT LUNS (0xA0): AS/400 issues this against hard-disk targets during
+// discovery. Response cloned from a real IBM drive: one LUN, all bytes zero
+// except the LUN-list length at data[3] (= 0x08 for one 8-byte LUN entry).
+// The IBM ESS document marks the Select Report field as reserved; a non-zero
+// value or a short allocation length is rejected with Invalid Field in CDB.
+// Exposed via extern "C" so process_Command() in scsi.c can dispatch it
+// alongside INQUIRY and REQUEST SENSE — all three must complete even when
+// the target has pending sense.
+extern "C"
+void scsiDiskReportLUNs(void)
+{
+    uint8_t select_report = scsiDev.cdb[2];
+    uint32_t allocationLength =
+        (((uint32_t) scsiDev.cdb[6]) << 24) +
+        (((uint32_t) scsiDev.cdb[7]) << 16) +
+        (((uint32_t) scsiDev.cdb[8]) << 8) +
+        scsiDev.cdb[9];
+    if (select_report != 0x00 || allocationLength < 16)
+    {
+        if (select_report != 0x00)
+            dbgmsg("---- Report LUNs select_report ", select_report, " not supported");
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+        scsiDev.phase = STATUS;
+    }
+    else
+    {
+        memset(scsiDev.data, 0, 16);
+        scsiDev.data[3] = 0x08; // LUN list length = 8 bytes (one LUN entry)
+        scsiDev.dataLen = 16;
+        scsiDev.phase = DATA_IN;
+    }
+}
+
 /********************/
 /* Command dispatch */
 /********************/
@@ -3544,35 +3579,11 @@ int scsiDiskCommand()
     }
     else if (command == 0xA0)
     {
-        // REPORT LUNS - AS/400 issues this against hard-disk targets. Response
-        // cloned from a real IBM drive: one LUN, all bytes zero except the
-        // LUN-list length byte. The IBM ESS document marks the Select Report
-        // field as reserved, so any non-zero value is rejected with Invalid
-        // Field in CDB. Likewise a short allocation length that can't even
-        // hold the 16-byte header is rejected. Handled before the
-        // non-writable short-circuit below so ROM drives still respond.
-        uint8_t select_report = scsiDev.cdb[2];
-        uint32_t allocationLength =
-            (((uint32_t) scsiDev.cdb[6]) << 24) +
-            (((uint32_t) scsiDev.cdb[7]) << 16) +
-            (((uint32_t) scsiDev.cdb[8]) << 8) +
-            scsiDev.cdb[9];
-        if (select_report != 0x00 || allocationLength < 16)
-        {
-            if (select_report != 0x00)
-                dbgmsg("---- Report LUNs select_report ", select_report, " not supported");
-            scsiDev.status = CHECK_CONDITION;
-            scsiDev.target->sense.code = ILLEGAL_REQUEST;
-            scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
-            scsiDev.phase = STATUS;
-        }
-        else
-        {
-            memset(scsiDev.data, 0, 16);
-            scsiDev.data[3] = 0x08; // LUN list length = 8 bytes (one LUN entry)
-            scsiDev.dataLen = 16;
-            scsiDev.phase = DATA_IN;
-        }
+        // REPORT LUNS — primary dispatch is in process_Command() above the
+        // CHECK_CONDITION gate so it completes even with pending sense.
+        // This branch remains so the per-target command path still handles
+        // 0xA0 when reached via code paths that bypass process_Command().
+        scsiDiskReportLUNs();
     }
     else if (!img.file.isWritable())
     {

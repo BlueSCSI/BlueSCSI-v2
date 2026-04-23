@@ -705,6 +705,15 @@ static void process_Command()
 		// REQUEST SENSE
 		s2s_scsiRequestSense();
 	}
+	else if (command == 0xA0)
+	{
+		// REPORT LUNS — like INQUIRY and REQUEST SENSE, this must complete
+		// even when the target has pending sense information. Handling it
+		// here (before the CHECK_CONDITION gate below) matches AS/400 host
+		// expectations; otherwise a pending unit attention would suppress
+		// the reply and the host would treat the target as absent.
+		scsiDiskReportLUNs();
+	}
 	// Some old SCSI drivers do NOT properly support
 	// unitAttention. eg. the Mac Plus would trigger a SCSI reset
 	// on receiving the unit attention response on boot, thus
