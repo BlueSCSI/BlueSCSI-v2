@@ -630,13 +630,6 @@ bool findHDDImages()
           continue;
         }
 
-        // set the default block size now that we know the device type
-        if (g_scsi_settings.getDevice(id)->blockSize == 0)
-        {
-          g_scsi_settings.getDevice(id)->blockSize = is_cd ?  DEFAULT_BLOCKSIZE_OPTICAL : DEFAULT_BLOCKSIZE;
-        }
-        int blk = getBlockSize(name, id);
-
 #ifdef BLUESCSI_NETWORK
         if ((is_ne || is_am) && !platform_network_supported())
         {
@@ -658,7 +651,20 @@ bool findHDDImages()
         if (is_tp) type = S2S_CFG_SEQUENTIAL;
         if (is_zp) type = S2S_CFG_ZIP100;
 
+        // initDevice() must run before the default-blockSize assignment so
+        // AS/400 device presets (which set blockSize to 520 / 522 inside
+        // deviceInitAS400() / setDefaultDriveInfo()) are respected. Before
+        // this reorder, initDevice() ran after the default 512 / 2048 was
+        // already written into g_scsi_settings, overwriting the preset.
         g_scsi_settings.initDevice(id & 7, type);
+
+        // set the default block size now that we know the device type
+        if (g_scsi_settings.getDevice(id)->blockSize == 0)
+        {
+          g_scsi_settings.getDevice(id)->blockSize = is_cd ?  DEFAULT_BLOCKSIZE_OPTICAL : DEFAULT_BLOCKSIZE;
+        }
+        int blk = getBlockSize(name, id);
+
         // Open the image file
         if (id < NUM_SCSIID && is_romdrive)
         {
