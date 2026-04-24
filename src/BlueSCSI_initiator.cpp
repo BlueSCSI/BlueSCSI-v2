@@ -37,6 +37,7 @@
 #include <BlueSCSI_platform.h>
 #include <minIni.h>
 #include "SdFat.h"
+#include "BlueSCSI_disk.h"
 
 #include <scsi2sd.h>
 extern "C" {
@@ -226,30 +227,6 @@ void delay_with_poll(uint32_t ms)
     }
 }
 
-static int scsiTypeToIniType(int scsi_type, bool removable)
-{
-    int ini_type = -1;
-    switch (scsi_type)
-    {
-        case SCSI_DEVICE_TYPE_DIRECT_ACCESS:
-            ini_type = removable ? S2S_CFG_REMOVABLE : S2S_CFG_FIXED;
-            break;
-        case SCSI_DEVICE_TYPE_SEQUENTIAL:
-            ini_type = S2S_CFG_SEQUENTIAL;
-            break;
-        case SCSI_DEVICE_TYPE_CD:
-            ini_type = S2S_CFG_OPTICAL;
-            break;
-        case SCSI_DEVICE_TYPE_MO:
-            ini_type = S2S_CFG_MO;
-            break;
-        default:
-            ini_type = -1;
-            break;
-    }
-    return ini_type;
-}
-
 // Check if VHD output should be used for the current target
 static bool initiatorShouldWriteVhd()
 {
@@ -303,7 +280,7 @@ void scsiInitiatorMainLoop()
     if (!g_initiator_state.imaging)
     {
         // Scan for SCSI drives one at a time
-        g_initiator_state.target_id = (g_initiator_state.target_id + 1) % 8;
+        g_initiator_state.target_id = (g_initiator_state.target_id + 1) % S2S_MAX_TARGETS;
         g_initiator_state.sectorsize = 0;
         g_initiator_state.sectorcount = 0;
         g_initiator_state.sectors_done = 0;
@@ -503,7 +480,7 @@ void scsiInitiatorMainLoop()
             if (g_initiator_state.sectorcount > 0)
             {
                 char filename[32] = {0};
-                filename_base[2] += g_initiator_state.target_id;
+                filename_base[2] = scsiEncodeID(g_initiator_state.target_id);
                 if (g_initiator_state.eject_when_done)
                 {
                     auto removable_count = g_initiator_state.removable_count[g_initiator_state.target_id];

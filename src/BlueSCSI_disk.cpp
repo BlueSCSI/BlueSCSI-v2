@@ -119,6 +119,18 @@ static bool hasExtension(const char *filename, const char *ext)
 bool testHasExtension(const char *filename, const char *ext) { return hasExtension(filename, ext); }
 #endif
 
+// Encode a SCSI ID (0..15) as a single filename character: '0'..'9' or 'A'..'F'.
+// Wide-bus image filenames (HD00_imaged, CD00_imaged, etc.) place the target
+// ID in one character; for IDs >= 10 we need hex rather than overflowing past '9'.
+char scsiEncodeID(uint8_t scsi_id)
+{
+    if (scsi_id <= 9)
+        return '0' + scsi_id;
+    if (scsi_id >= 0xA && scsi_id <= 0xF)
+        return 'A' + (scsi_id - 0xA);
+    return '\0';
+}
+
 /************************************************/
 /* ROM drive support (in microcontroller flash) */
 /************************************************/
