@@ -303,6 +303,15 @@ ssize_t ImageBackingStore::read(void* buf, size_t count)
     uint32_t sectorcount = count / SD_SECTOR_SIZE;
     if (m_iscontiguous && (uint64_t)sectorcount * SD_SECTOR_SIZE != count)
     {
+        // While contiguous, m_fsfile's position was never advanced — sync it
+        // from the raw cursor before the SdFat path takes over, otherwise the
+        // fallback read lands at file offset 0.
+        uint64_t pos = (uint64_t)(m_cursector - m_bgnsector) * SD_SECTOR_SIZE;
+        if (!m_israw && m_fsfile.isOpen() && !m_fsfile.seek(pos))
+        {
+            logmsg("---- Failed to sync FsFile position during contiguous read fallback");
+            return -1;
+        }
         dbgmsg("---- Unaligned access to image, falling back to SdFat access mode");
         m_iscontiguous = false;
     }
@@ -345,6 +354,14 @@ ssize_t ImageBackingStore::write(const void* buf, size_t count)
     uint32_t sectorcount = count / SD_SECTOR_SIZE;
     if (m_iscontiguous && (uint64_t)sectorcount * SD_SECTOR_SIZE != count)
     {
+        // Mirror of read(): sync FsFile position from the raw cursor before
+        // handing off to SdFat, or the fallback write lands at offset 0.
+        uint64_t pos = (uint64_t)(m_cursector - m_bgnsector) * SD_SECTOR_SIZE;
+        if (!m_israw && m_fsfile.isOpen() && !m_fsfile.seek(pos))
+        {
+            logmsg("---- Failed to sync FsFile position during contiguous write fallback");
+            return -1;
+        }
         dbgmsg("---- Unaligned access to image, falling back to SdFat access mode");
         m_iscontiguous = false;
     }
