@@ -2,6 +2,7 @@
 //	Copyright (c) 2023 joshua stein <jcs@jcs.org>
 //	Copyright (c) 2023 Andrea Ottaviani <andrea.ottaviani.69@gmail.com>
 //	Copyright (c) 2024-2025 Rabbit Hole Computing™
+//	Copyright (c) 2026 Eric Helgeson
 //
 //	This file is part of SCSI2SD.
 //
@@ -33,6 +34,7 @@
 #include "bsp.h"
 #include "cdrom.h"
 #include "network.h"
+#include "printer.h"
 #include "tape.h"
 #include "mo.h"
 #include "vendor.h"
@@ -717,6 +719,7 @@ static void process_Command()
 		((cfg->deviceType == S2S_CFG_AMIGAWIFI && amigaWifiCommand())) ||
 		((cfg->deviceType == S2S_CFG_NETWORK && scsiNetworkCommand())) ||
 #endif // BLUESCSI_NETWORK
+		((cfg->deviceType == S2S_CFG_PRINTER) && scsiPrinterCommand()) ||
 		((cfg->deviceType == S2S_CFG_MO) && scsiMOCommand()))
 	{
 		// Already handled.

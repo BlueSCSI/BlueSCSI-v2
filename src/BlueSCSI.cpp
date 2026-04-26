@@ -251,6 +251,8 @@ static const char * typeToChar(int deviceType)
       return "Removable";
     case S2S_CFG_ZIP100:
       return "ZIP100";
+    case S2S_CFG_PRINTER:
+      return "Printer";
     default:
       return "Unknown";
   }
@@ -494,7 +496,7 @@ bool findHDDImages()
     }
 
     char name[MAX_FILE_PATH+1];
-    if(!file.isDir() || scsiDiskFolderContainsCueSheet(&file) || scsiDiskFolderIsTapeFolder(&file)) {
+    if(!file.isDir() || scsiDiskFolderContainsCueSheet(&file) || scsiDiskFolderIsTapeFolder(&file) || scsiDiskFolderIsPrinterFolder(&file)) {
       file.getName(name, MAX_FILE_PATH+1);
       file.close();
 
@@ -555,12 +557,13 @@ bool findHDDImages()
       bool is_re = (tolower(name[0]) == 'r' && tolower(name[1]) == 'e');
       bool is_tp = (tolower(name[0]) == 't' && tolower(name[1]) == 'p');
       bool is_zp = (tolower(name[0]) == 'z' && tolower(name[1]) == 'p');
+      bool is_pr = (tolower(name[0]) == 'p' && tolower(name[1]) == 'r');
 #ifdef BLUESCSI_NETWORK
       bool is_ne = (tolower(name[0]) == 'n' && tolower(name[1]) == 'e');
       bool is_am = (tolower(name[0]) == 'a' && tolower(name[1]) == 'm');
 #endif // BLUESCSI_NETWORK
 
-      if (is_hd || is_cd || is_fd || is_mo || is_re || is_tp || is_zp
+      if (is_hd || is_cd || is_fd || is_mo || is_re || is_tp || is_zp || is_pr
 #ifdef BLUESCSI_NETWORK
         || is_ne || is_am
 #endif // BLUESCSI_NETWORK
@@ -646,6 +649,7 @@ bool findHDDImages()
         if (is_re) type = S2S_CFG_REMOVABLE;
         if (is_tp) type = S2S_CFG_SEQUENTIAL;
         if (is_zp) type = S2S_CFG_ZIP100;
+        if (is_pr) type = S2S_CFG_PRINTER;
 
         g_scsi_settings.initDevice(id & 7, type);
         // Open the image file
@@ -700,7 +704,8 @@ bool findHDDImages()
     {
       int capacity_kB = ((uint64_t)cfg->scsiSectors * cfg->bytesPerSector) / 1024;
 
-      if (cfg->deviceType == S2S_CFG_NETWORK || cfg->deviceType == S2S_CFG_AMIGAWIFI)
+      if (cfg->deviceType == S2S_CFG_NETWORK || cfg->deviceType == S2S_CFG_AMIGAWIFI ||
+          cfg->deviceType == S2S_CFG_PRINTER)
       {
         logmsg("ID: ", (int)s2s_getTargetId(cfg),
               ", Type: ", typeToChar((int)cfg->deviceType));
