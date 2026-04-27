@@ -109,4 +109,5 @@ void quirksCheck(image_config_t *img)
     {
         macQuirksSanityCheck(img);
     }
+    scsiSetReleaseDelay(img->quirks == S2S_CFG_QUIRKS_XEBEC);
 }

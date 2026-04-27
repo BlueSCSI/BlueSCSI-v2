@@ -61,6 +61,19 @@ static SCSI_PHASE g_scsi_phase;
 volatile uint8_t g_scsi_sts_selection;
 volatile uint8_t g_scsi_ctrl_bsy;
 
+/*****************************/
+/* SCSI release delay control */
+/*****************************/
+
+static void scsi_release_delay_standard(void) { platform_delay_ms(1); }
+static void scsi_release_delay_xebec(void)    { delay_ns(200); }
+void (*g_scsi_release_delay_fn)(void) = scsi_release_delay_standard;
+
+extern "C" void scsiSetReleaseDelay(bool xebec)
+{
+    g_scsi_release_delay_fn = xebec ? scsi_release_delay_xebec : scsi_release_delay_standard;
+}
+
 void scsi_bsy_deassert_interrupt()
 {
     if (SCSI_IN(SEL) && !SCSI_IN(BSY))
@@ -314,9 +327,13 @@ extern "C" uint32_t scsiEnterPhaseImmediate(int phase)
             // Phase change delay - configurable for legacy device compatibility
             {
                 uint16_t phaseDelay = g_scsi_settings.getSystem()->phaseChangeDelayUs;
-                if (phaseDelay == 0 && scsiDev.compatMode < COMPAT_SCSI2)
+                if (phaseDelay == 0 && scsiDev.compatMode < COMPAT_SCSI2 )
                 {
-                    phaseDelay = 100; // Legacy default (EMU EMAX needs 100uS)
+                    if (scsiDev.target && scsiDev.target->cfg && 
+                        scsiDev.target->cfg->quirks != S2S_CFG_QUIRKS_XEBEC)
+                    {
+                        phaseDelay = 100; // Legacy default (EMU EMAX needs 100uS)
+                    }
                 }
                 delayNs += phaseDelay * 1000;
             }

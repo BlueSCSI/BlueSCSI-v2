@@ -171,7 +171,7 @@
                        (1 << SCSI_OUT_BSY) | \
                        (1 << SCSI_OUT_REQ) | \
                        (1 << SCSI_OUT_SEL), \
-                       platform_delay_ms(1), \
+                       g_scsi_release_delay_fn(), \
     sio_hw->gpio_oe_clr = (1 << SCSI_OUT_CD) | \
                           (1 << SCSI_OUT_MSG)
 

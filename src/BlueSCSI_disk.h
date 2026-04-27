@@ -194,4 +194,18 @@ bool scsiDiskCheckAnyNetworkDevicesConfigured();
 // Switch to next Drive image if multiple have been configured
 bool switchNextImage(image_config_t &img, const char* next_filename = nullptr);
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// Format functions for Xebec controllers (C linkage for vendor.c)
+// Format entire drive with 0x6C pattern
+bool scsiDiskFormatUnit(uint8_t pattern);
+
+// Format range of sectors with 0x6C pattern  
+bool scsiDiskFormatRange(uint32_t startLBA, uint32_t numBlocks, uint8_t pattern);
+
+#ifdef __cplusplus
+}
+#endif
 #endif /* BLUESCSI_DISK_H */

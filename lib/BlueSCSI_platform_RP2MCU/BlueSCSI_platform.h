@@ -64,6 +64,10 @@ extern "C" {
 /* These are used in debug output and default SCSI strings */
 extern const char *g_platform_name;
 
+// Global SCSI release delay - points to platform_delay_ms(1) or delay_ns(200)
+// based on Xebec quirk; set once via scsiSetReleaseDelay() at image load time.
+extern void (*g_scsi_release_delay_fn)(void);
+
 /* Global PIN definitions that may change depending on hardware rev */
 extern uint32_t SCSI_ACCEL_PINMASK;
 #if !(defined(BLUESCSI_ULTRA_WIDE) || defined(BLUESCSI_ULTRA))

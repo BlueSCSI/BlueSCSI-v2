@@ -74,7 +74,12 @@ void enter_BusFree()
 	uint8_t busFreeDelay = g_scsi_busFreeDelayUs;
 	if (busFreeDelay == 0 && scsiDev.compatMode < COMPAT_SCSI2)
 	{
-		busFreeDelay = 2; // Legacy default (samplers)
+		if (!(scsiDev.target && scsiDev.target->cfg && 
+		    scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_XEBEC))
+		{
+			busFreeDelay = 2; // Legacy default (samplers)
+		}
+		
 	}
 	if (busFreeDelay > 0)
 	{
@@ -95,7 +100,11 @@ void enter_BusFree()
 	// Wait for the initiator to cease driving signals
 	// Bus settle delay + bus clear delay = 1200ns
 	// Just waiting the clear delay is sufficient.
-	s2s_delay_ns(800);
+	if (!(scsiDev.target && scsiDev.target->cfg && 
+		scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_XEBEC))
+	{
+		s2s_delay_ns(800);
+	}
 
 	s2s_ledOff();
 	scsiDev.phase = BUS_FREE;
@@ -214,14 +223,33 @@ void process_Status()
 		// 00 d 000 err 0
 		// d == disk number
 		// ERR = 1 if error.
+		uint8_t xebec_status;
 		if (scsiDev.status == GOOD)
 		{
-			scsiWriteByte(scsiDev.cdb[1] & 0x20);
+			xebec_status = scsiDev.cdb[1] & 0x20;
 		}
 		else
 		{
-			scsiWriteByte((scsiDev.cdb[1] & 0x20) | 0x2);
+			xebec_status = (scsiDev.cdb[1] & 0x20) | 0x2;
 		}
+		if (scsiDev.lun >= 1 && scsiDev.lun <= 3)
+		{
+			// Set the appropriate drive bits based on LUN
+			// LUN 1 = bit 5 (0x20), LUN 2 = bit 6 (0x40), LUN 3 = both (0x60)
+			switch (scsiDev.lun)
+			{
+				case 1:
+					xebec_status |= 0x20;
+					break;
+				case 2:
+					xebec_status |= 0x40;
+					break;
+				case 3:
+					xebec_status |= 0x60;
+					break;
+			}
+ 		}
+		scsiWriteByte(xebec_status);
 		s2s_delay_us(10); // Seems to need a delay before changing phase bits.
 	}
 	else if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_OMTI)
@@ -689,9 +717,24 @@ static void process_Command()
 	}
 	else if (scsiDev.lun && (command < 0xD0))
 	{
-		scsiDev.target->sense.code = ILLEGAL_REQUEST;
-		scsiDev.target->sense.asc = LOGICAL_UNIT_NOT_SUPPORTED;
+		// For Xebec controllers, allow basic commands to LUNs 1-3 but report drive not ready
+		// instead of rejecting the LUN entirely
+		if (scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_XEBEC && scsiDev.lun >= 1 && scsiDev.lun <= 3)
+		{
+			// Xebec hosts probe LUNs 1-3 to see if additional drives exist
+			// Since we only have LUN 0 configured, report LUNs 1-3 as not ready
+			DBGMSG_F("SCSI: Xebec LUN %d command 0x%02X - reporting drive not ready", scsiDev.lun, command);
+			scsiDev.target->sense.code = NOT_READY;
+			scsiDev.target->sense.asc = MEDIUM_NOT_PRESENT;
+		}
+		else
+		{
+			scsiDev.target->sense.code = ILLEGAL_REQUEST;
+			scsiDev.target->sense.asc = LOGICAL_UNIT_NOT_SUPPORTED;
+			
+		}
 		enter_Status(CHECK_CONDITION);
+		return;
 	}
 	else if (command == 0x17 || command == 0x16)
 	{
@@ -742,6 +785,14 @@ static void process_Command()
 	else if (command == 0x3C)
 	{
 		scsiReadBuffer();
+	}
+	else if (command == 0xE4 && 
+	         scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_XEBEC)
+	{
+		// 0xE4 is drive diagnostic
+		DBGMSG_F("Xebec 0xE4 Drive Diagnostic - direct handling");
+		// No data transfer needed, go directly to STATUS
+		enter_Status(GOOD);
 	}
 	else if (scsiModeCommand())
 	{

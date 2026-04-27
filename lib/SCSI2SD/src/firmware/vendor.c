@@ -22,6 +22,9 @@
 #include "bluescsi_toolbox.h"
 #include <string.h>
 
+// External format functions from BlueSCSI_disk.cpp
+extern bool scsiDiskFormatUnit(uint8_t pattern);
+extern bool scsiDiskFormatRange(uint32_t startLBA, uint32_t numBlocks, uint8_t pattern);
 // Callback after the DATA OUT phase is complete.
 static void doAssignDiskParameters(void)
 {
@@ -39,7 +42,40 @@ static void doXebecInitializeDriveCharacteristics()
 {
 	if (scsiDev.status == GOOD)
 	{
-		scsiDev.phase = STATUS;
+		if (scsiDev.dataLen >= 8)
+		{
+			int cylinders = ((uint16_t)scsiDev.data[0] << 8) + scsiDev.data[1];
+			int heads = scsiDev.data[2];
+			int reducedWrite = ((uint16_t)scsiDev.data[3] << 8) + scsiDev.data[4];
+			int writePrecomp = ((uint16_t)scsiDev.data[5] << 8) + scsiDev.data[6];
+			int eccBurst = scsiDev.data[7];
+			
+			// Enhanced Xebec parameter validation
+			if (cylinders > 0 && cylinders <= 65535 && heads > 0 && heads <= 255)
+			{
+				// Store parameters in device configuration if needed
+				// This mimics what a real Xebec controller would do
+				DBGMSG_F("Xebec Initialize Drive Characteristics: cylinders=%d heads=%d reducedWrite=%d writePrecomp=%d eccBurst=%d", 
+				        cylinders, heads, reducedWrite, writePrecomp, eccBurst);
+				        
+				// Acknowledge successful parameter reception
+				scsiDev.status = GOOD;
+			}
+			else
+			{
+				// Invalid parameters - reject command
+				scsiDev.status = CHECK_CONDITION;
+				scsiDev.target->sense.code = ILLEGAL_REQUEST;
+				scsiDev.target->sense.asc = INVALID_FIELD_IN_PARAMETER_LIST;
+			}
+		}
+		else
+		{
+			// Insufficient data received
+			scsiDev.status = CHECK_CONDITION;
+			scsiDev.target->sense.code = ILLEGAL_REQUEST;
+			scsiDev.target->sense.asc = PARAMETER_LIST_LENGTH_ERROR;
+		}scsiDev.phase = STATUS;
 	}
 }
 
@@ -156,6 +192,67 @@ int scsiVendorCommand()
 		scsiDev.phase = DATA_OUT;
 		scsiDev.postDataOutHook = doWriteBuffer;
 	}
+	else if (command == 0x04 &&
+		scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_XEBEC)
+	{
+		// XEBEC Format Unit (4)
+		// Format entire drive with 0x6C pattern
+		DBGMSG_F("Xebec Format Unit - starting full drive format with 0x6C pattern");
+		
+		if (scsiDiskFormatUnit(0x6C))
+		{
+			DBGMSG_F("Xebec Format Unit completed successfully");
+			scsiDev.status = GOOD;
+		}
+		else
+		{
+			DBGMSG_F("Xebec Format Unit failed");
+			scsiDev.status = CHECK_CONDITION;
+			scsiDev.target->sense.code = MEDIUM_ERROR;
+			scsiDev.target->sense.asc = WRITE_ERROR_AUTO_REALLOCATION_FAILED;
+		}
+		scsiDev.phase = STATUS;
+	}
+	else if (command == 0x06 &&
+		scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_XEBEC)
+	{
+		commandHandled = 1;
+		// XEBEC Format Track (6) 
+		// Format specific track using CHS addressing with 0x6C pattern
+		// CDB format: [0]=0x06, [1]=LUN, [2]=CYADR_H, [3]=CYADR_L, [4]=INTERLEAVE (5 LSB) + 000 (3 MSB), [5]=STEP_OPTION (3 LSB) + control (5 MSB)
+		// Logical Address = (CYADR * HDCYL + HDADR) * SETRK + SEADR
+		uint16_t cylinder = (((uint16_t)scsiDev.cdb[2]) << 8) | ((uint16_t)scsiDev.cdb[3]);
+		uint8_t interleave = scsiDev.cdb[4] & 0x1F; // Extract 5 LSB bits for interleave
+		uint8_t stepOption = scsiDev.cdb[5] & 0x07; // Extract 3 LSB bits for step option
+		
+		// For Xebec Format Track, format all heads on the specified cylinder
+		// Get drive geometry
+		uint32_t headsPerCylinder = scsiDev.target->cfg->headsPerCylinder;
+		uint32_t sectorsPerTrack = scsiDev.target->cfg->sectorsPerTrack;
+		
+		// Calculate starting logical address for this cylinder
+		// Logical Address = (CYADR * HDCYL + HDADR) * SETRK + SEADR
+		// Format all tracks on this cylinder (all heads)
+		uint32_t startLBA = ((uint32_t)cylinder * headsPerCylinder) * sectorsPerTrack;
+		uint32_t blocks = headsPerCylinder * sectorsPerTrack; // Format entire cylinder
+		
+		DBGMSG_F("Xebec Format Track - CYL=%d INTERLEAVE=%d STEP=%d, LBA=%d + %d blocks with 0x6C pattern", 
+		         (int)cylinder, (int)interleave, (int)stepOption, (int)startLBA, (int)blocks);
+		
+		if (scsiDiskFormatRange(startLBA, blocks, 0x6C))
+		{
+			DBGMSG_F("Xebec Format Track completed successfully");
+			scsiDev.status = GOOD;
+		}
+		else
+		{
+			DBGMSG_F("Xebec Format Track failed");
+			scsiDev.status = CHECK_CONDITION;
+			scsiDev.target->sense.code = MEDIUM_ERROR;
+			scsiDev.target->sense.asc = WRITE_ERROR_AUTO_REALLOCATION_FAILED;
+		}
+		scsiDev.phase = STATUS;
+	}
 	else if (command == 0xE0 && 
 		scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_XEBEC)
 	{
@@ -167,9 +264,20 @@ int scsiVendorCommand()
 	else if (command == 0xE4 && 
 		scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_XEBEC)
 	{
-	  // Drive Diagnostic
-	  // XEBEC S1410 controller
-	  // Stub, return success
+		// Drive Diagnostic
+		// XEBEC S1410 controller
+		// Stub, return success
+		DBGMSG_F("Xebec Drive Diagnostic - completing immediately (diagnostic passed)");
+		
+		// Debug: show current state
+		DBGMSG_F("Before: dataLen=%d dataPtr=%d phase=%d", (int)scsiDev.dataLen, (int)scsiDev.dataPtr, (int)scsiDev.phase);
+		
+		// For successful diagnostic, complete immediately with no data transfer
+		// Reset all data transfer state
+		scsiDev.dataLen = 0;
+		scsiDev.dataPtr = 0;
+		scsiDev.savedDataPtr = 0;
+	
 	}   	
 	else
 	{
