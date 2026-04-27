@@ -285,6 +285,17 @@ static void onGetCapabilities()
 static void onSetWorkingDir()
 {
     uint8_t path_len = scsiDev.cdb[8];
+
+    // Parameter list length of zero: no data to transfer, no state change.
+    // Matches SCSI-2 convention used by MODE SELECT. Clients that want to
+    // reset the override must send a 1-byte NUL path explicitly.
+    if (path_len == 0)
+    {
+        dbgmsg("TOOLBOX SET_WORKING_DIR: zero-length, no change");
+        scsiDev.phase = STATUS;
+        return;
+    }
+
     if (path_len > 64) path_len = 64;
 
     char path[65] = {0};
@@ -294,7 +305,7 @@ static void onSetWorkingDir()
 
     if (path[0] == '\0')
     {
-        // Empty string: reset to default
+        // Empty C string reset to default
         g_toolbox_dir_override[0] = '\0';
         dbgmsg("TOOLBOX SET_WORKING_DIR: reset to default");
     }
