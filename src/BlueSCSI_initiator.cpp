@@ -227,6 +227,31 @@ void delay_with_poll(uint32_t ms)
     }
 }
 
+// Map a SCSI peripheral device type to a human-readable name.
+// Returns nullptr for unsupported (non-block) types — the initiator skips
+// those rather than attempting to clone them.
+static const char *initiatorPeripheralTypeName(uint8_t device_type, bool removable)
+{
+    switch (device_type)
+    {
+        case SCSI_DEVICE_TYPE_DIRECT_ACCESS:  return removable ? "Removable " : "Disk";
+        case SCSI_DEVICE_TYPE_SEQUENTIAL:     return "Sequential (Tape)";
+        case SCSI_DEVICE_TYPE_WRITE_ONCE:     return "Write Once";
+        case SCSI_DEVICE_TYPE_CD:             return "Optical (CD/DVD)";
+        case SCSI_DEVICE_TYPE_MO:             return "Optical Memory (Magneto-optical)";
+        case SCSI_DEVICE_TYPE_MEDIA_CHANGER:  return "Media Changer";
+        case SCSI_DEVICE_TYPE_DISK_ARRAY:     return "Disk Array";
+        default:                              return nullptr;
+    }
+}
+
+#ifdef UNIT_TEST
+extern "C" const char *initiatorTestPeripheralTypeName(uint8_t device_type, bool removable)
+{
+    return initiatorPeripheralTypeName(device_type, removable);
+}
+#endif
+
 // Check if VHD output should be used for the current target
 static bool initiatorShouldWriteVhd()
 {
@@ -413,35 +438,15 @@ void scsiInitiatorMainLoop()
                 logmsg("  Product = \"", product,"\"");
                 logmsg("  Version = \"", revision,"\"");
 
-                // Device type pass list
-                switch (g_initiator_state.device_type)
+                const char *typeName = initiatorPeripheralTypeName(
+                    g_initiator_state.device_type, g_initiator_state.removable);
+                if (typeName == nullptr)
                 {
-                    case SCSI_DEVICE_TYPE_DIRECT_ACCESS:
-                        logmsg("  SCSI Device Type = ", g_initiator_state.removable ? "Removable ": "Disk");
-                        break;
-                    case SCSI_DEVICE_TYPE_SEQUENTIAL:
-                        logmsg("  SCSI Device Type = ", "Sequential (Tape)");
-                        break;
-                    case SCSI_DEVICE_TYPE_WRITE_ONCE:
-                        logmsg("  SCSI Device Type = ", "Write Once");
-                        break;
-                    case SCSI_DEVICE_TYPE_CD:
-                        logmsg("  SCSI Device Type = ", "Optical (CD/DVD)");
-                        break;
-                    case SCSI_DEVICE_TYPE_MO:
-                        logmsg("  SCSI Device Type = ", "Optical Memory (Magneto-optical)");
-                        break;
-                    case SCSI_DEVICE_TYPE_MEDIA_CHANGER:
-                        logmsg("  SCSI Device Type = ", "Media Changer");
-                        break;
-                    case SCSI_DEVICE_TYPE_DISK_ARRAY:
-                        logmsg("  SCSI Device Type = ", "Disk Array");
-                        break;
-                    default:
-                        logmsg("  SCSI Peripheral device type id ", g_initiator_state.device_type, " unsupported. Skipping this device");
-                        g_initiator_state.drives_imaged |= 1 << g_initiator_state.target_id;
-                        return;
+                    logmsg("  SCSI Peripheral device type id ", g_initiator_state.device_type, " unsupported. Skipping this device");
+                    g_initiator_state.drives_imaged |= 1 << g_initiator_state.target_id;
+                    return;
                 }
+                logmsg("  SCSI Device Type = ", typeName);
 
                 if (g_initiator_state.device_type == SCSI_DEVICE_TYPE_CD)
                 {
