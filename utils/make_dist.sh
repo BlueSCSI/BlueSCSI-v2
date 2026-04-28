@@ -23,7 +23,7 @@
 #
 # Produces:
 #   BlueSCSI_v<ver>_<hash>.zip              - Universal firmware zip for SD card update
-#   BlueSCSI_V2_DaynaPORT_<date>_<hash>.uf2 - Combined Pico+Pico2 DaynaPORT UF2
+#   BlueSCSI_V2_Universal_<date>_<hash>.uf2 - Combined Pico+Pico2 DaynaPORT UF2
 #   BlueSCSI_V2_Audio_SPDIF_<date>_<hash>.uf2 - Combined Pico+Pico2 Audio SPDIF UF2
 #   BlueSCSI_Ultra_<date>_<hash>.uf2        - Ultra UF2
 #   BlueSCSI_Ultra_Wide_<date>_<hash>.uf2   - Ultra Wide UF2
@@ -83,7 +83,7 @@ If you're a regular BlueSCSI user, you do NOT need this file. Use one
 of these from the release page instead:
 
   BlueSCSI_v<version>_<hash>.zip  SD card updater (recommended)
-  BlueSCSI_V2_DaynaPORT_*.uf2     USB/BOOTSEL flashing, V2 boards
+  BlueSCSI_V2_Universal_*.uf2     USB/BOOTSEL flashing, V2 DaynaPORT
   BlueSCSI_V2_Audio_SPDIF_*.uf2   USB/BOOTSEL flashing, V2 SPDIF
   BlueSCSI_Ultra_*.uf2            USB/BOOTSEL flashing, Ultra
   BlueSCSI_Ultra_Wide_*.uf2       USB/BOOTSEL flashing, Ultra Wide
@@ -109,9 +109,10 @@ rm "$DEV_README"
 # blocks for the wrong chip, so one file works on either.
 combine_v2_uf2() {
     local variant="$1"
+    local out_basename="${2:-BlueSCSI_V2_${variant}}"
     local pico1="$OUT_DIR/BlueSCSI_Pico_${variant}_${DATE}_${VERSION}.uf2"
     local pico2="$OUT_DIR/BlueSCSI_Pico_2_${variant}_${DATE}_${VERSION}.uf2"
-    local combined="$OUT_DIR/BlueSCSI_V2_${variant}_${DATE}_${VERSION}.uf2"
+    local combined="$OUT_DIR/${out_basename}_${DATE}_${VERSION}.uf2"
 
     if [ -f "$pico1" ] && [ -f "$pico2" ]; then
         cat "$pico1" "$pico2" > "$combined"
@@ -120,7 +121,7 @@ combine_v2_uf2() {
     fi
 }
 
-combine_v2_uf2 "DaynaPORT"
+combine_v2_uf2 "DaynaPORT" "BlueSCSI_V2_Universal"
 combine_v2_uf2 "Audio_SPDIF"
 
 echo ""
