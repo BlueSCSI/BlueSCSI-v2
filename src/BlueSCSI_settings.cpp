@@ -129,6 +129,7 @@ void BlueSCSISettings::setDefaultDriveInfo(uint8_t scsiId, const char *presetNam
     static const char * const driveinfo_network[4]   = DRIVEINFO_NETWORK;
     static const char * const driveinfo_tape[4]      = DRIVEINFO_TAPE;
     static const char * const driveinfo_amigawifi[4] = DRIVEINFO_AMIGAWIFI;
+    static const char * const driveinfo_printer[4]   = DRIVEINFO_PRINTER;
 
     static const char * const apl_driveinfo_fixed[4]     = APPLE_DRIVEINFO_FIXED;
     static const char * const apl_driveinfo_removable[4] = APPLE_DRIVEINFO_REMOVABLE;
@@ -137,6 +138,7 @@ void BlueSCSISettings::setDefaultDriveInfo(uint8_t scsiId, const char *presetNam
     static const char * const apl_driveinfo_magopt[4]    = APPLE_DRIVEINFO_MAGOPT;
     static const char * const apl_driveinfo_network[4]   = APPLE_DRIVEINFO_NETWORK;
     static const char * const apl_driveinfo_tape[4]      = APPLE_DRIVEINFO_TAPE;
+    static const char * const apl_driveinfo_printer[4]   = APPLE_DRIVEINFO_PRINTER;
 
     static const char * const iomega_driveinfo_removeable[4] = IOMEGA_DRIVEINFO_ZIP100;
     
@@ -197,6 +199,7 @@ void BlueSCSISettings::setDefaultDriveInfo(uint8_t scsiId, const char *presetNam
                 case S2S_CFG_SEQUENTIAL:    driveinfo = apl_driveinfo_tape; break;
                 case S2S_CFG_ZIP100:        driveinfo = iomega_driveinfo_removeable; break;
                 case S2S_CFG_AMIGAWIFI:     driveinfo = driveinfo_amigawifi; break;
+                case S2S_CFG_PRINTER:       driveinfo = apl_driveinfo_printer; break;
                 default:                    driveinfo = apl_driveinfo_fixed; break;
             }
         }
@@ -214,6 +217,7 @@ void BlueSCSISettings::setDefaultDriveInfo(uint8_t scsiId, const char *presetNam
                 case S2S_CFG_AMIGAWIFI:     driveinfo = driveinfo_amigawifi; break;
                 case S2S_CFG_SEQUENTIAL:    driveinfo = driveinfo_tape; break;
                 case S2S_CFG_ZIP100:        driveinfo = iomega_driveinfo_removeable; break;
+                case S2S_CFG_PRINTER:       driveinfo = driveinfo_printer; break;
                 default:                    driveinfo = driveinfo_fixed; break;
             }
         }
