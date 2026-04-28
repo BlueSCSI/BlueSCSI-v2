@@ -28,8 +28,13 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <scsi2sd.h>
 #include <scsiPhy.h>
 #include <hardware/timer.h>
+
+// Default log mask has one bit per SCSI target; width tracks S2S_MAX_TARGETS
+// so DebugLogMask works on both narrow (S2S_MAX_TARGETS=8) and wide builds.
+#define BLUESCSI_DEFAULT_LOG_MASK ((1UL << S2S_MAX_TARGETS) - 1UL)
 
 // Get total number of bytes that have been written to log
 uint32_t log_get_buffer_len();
@@ -42,7 +47,7 @@ const char *log_get_buffer(uint32_t *startpos, uint32_t *available = nullptr);
 // Whether to enable debug messages
 extern "C" bool g_log_debug;
 extern "C" bool g_log_ignore_busy_free;
-extern "C" uint8_t g_scsi_log_mask;
+extern "C" uint32_t g_scsi_log_mask;
 
 // Firmware version string
 extern const char *g_log_firmwareversion;

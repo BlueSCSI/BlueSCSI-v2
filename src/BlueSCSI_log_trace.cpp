@@ -332,7 +332,7 @@ void scsiLogDataOut(const uint8_t *buf, uint32_t length)
 {
     if (buf == scsiDev.cdb || g_LogInitiatorCommand)
     {
-        dbgmsg("---- COMMAND: ", getCommandName(buf[0]));
+        dbgmsg("---- COMMAND: ", buf[0], " (", getCommandName(buf[0]), ")");
     }
     
     if (g_LogData)

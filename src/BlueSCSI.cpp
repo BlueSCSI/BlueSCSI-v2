@@ -924,14 +924,14 @@ STATIC_TESTABLE void reinitSCSI()
   if (g_log_debug)
   {
     logmsg("-- Debug = Yes");
-    g_scsi_log_mask = ini_getl("SCSI", "DebugLogMask", 0xFF, CONFIGFILE) & 0xFF;
+    g_scsi_log_mask = ini_getl("SCSI", "DebugLogMask", BLUESCSI_DEFAULT_LOG_MASK, CONFIGFILE) & BLUESCSI_DEFAULT_LOG_MASK;
     if (g_scsi_log_mask == 0)
     {
       dbgmsg("DebugLogMask set to 0x00, this will silence all debug messages when a SCSI ID has been selected");
     }
-    else if (g_scsi_log_mask != 0xFF)
+    else if (g_scsi_log_mask != BLUESCSI_DEFAULT_LOG_MASK)
     {
-      dbgmsg("DebugLogMask set to ", (uint8_t) g_scsi_log_mask, " only SCSI ID's matching the bit mask will be logged");
+      dbgmsg("DebugLogMask set to ", g_scsi_log_mask, " only SCSI ID's matching the bit mask will be logged");
     }
 
     g_log_ignore_busy_free = ini_getbool("SCSI", "DebugIgnoreBusyFree", 0, CONFIGFILE);
