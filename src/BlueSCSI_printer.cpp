@@ -337,6 +337,44 @@ void printerHandlePayloadReceived()
     scsiDev.status = GOOD;
 }
 
+// SETUP (0x06) completion hook. Logs a human-readable paper name on a
+// full-page setup (x_off == y_off == 0) using the LaserWriter IISC Service
+// Manual printable-area table, then defers to the generic record/spool
+// path. Per-region setups (non-zero offsets) are spooled silently.
+void printerHandleSetupReceived()
+{
+    int target_id = scsiDev.target->targetId;
+    scsiDev.postDataOutHook = NULL;
+
+    if (scsiDev.dataLen >= 8)
+    {
+        uint16_t y_off = ((uint16_t)scsiDev.data[0] << 8) | scsiDev.data[1];
+        uint16_t x_off = ((uint16_t)scsiDev.data[2] << 8) | scsiDev.data[3];
+        uint16_t w     = ((uint16_t)scsiDev.data[4] << 8) | scsiDev.data[5];
+        uint16_t h     = ((uint16_t)scsiDev.data[6] << 8) | scsiDev.data[7];
+
+        if (x_off == 0 && y_off == 0)
+        {
+            // Printable-area dimensions from the LaserWriter IISC Service
+            // Manual. These are NOT full-paper sizes (host-side renderers
+            // pick paper independently); they're what the driver sends.
+            const char *paper = "Custom";
+            if      (w == 2400 && h == 3175) paper = "US Letter (8.0\"x10.6\")";
+            else if (w == 2000 && h == 3750) paper = "US Legal (6.72\"x12.5\")";
+            else if (w == 2400 && h == 3375) paper = "A4 (8.0\"x11.27\")";
+            else if (w == 2000 && h == 2825) paper = "B5 (6.67\"x9.43\")";
+            else if (w == 1136 && h == 2725) paper = "#10 Envelope (3.84\"x9.1\")";
+
+            logmsg("PRINTER: page setup ", (int)w, "x", (int)h,
+                   " printable area: ", paper);
+        }
+    }
+
+    printerRecord(target_id, scsiDev.data, scsiDev.dataLen);
+    scsiDev.phase = STATUS;
+    scsiDev.status = GOOD;
+}
+
 void printerStartDataOut(uint32_t len)
 {
     scsiDev.dataLen = len;
@@ -392,6 +430,8 @@ extern "C" int scsiPrinterCommand(void)
             // SETUP — page setup. cdb[4] is parameter list length (8).
             // Always opens a spool file. If no bands follow within
             // PRINTER_ABANDON_MS, the orphan is reaped on the next command.
+            // Use a SETUP-specific completion hook so we can log the
+            // recognised paper size on a full-page setup.
             uint32_t len = scsiDev.cdb[4];
             if (len == 0)
             {
@@ -401,7 +441,10 @@ extern "C" int scsiPrinterCommand(void)
             }
             else
             {
-                printerStartDataOut(len);
+                scsiDev.dataLen = len;
+                scsiDev.dataPtr = 0;
+                scsiDev.phase = DATA_OUT;
+                scsiDev.postDataOutHook = printerHandleSetupReceived;
             }
             return 1;
         }
