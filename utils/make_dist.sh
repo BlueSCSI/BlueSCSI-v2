@@ -36,7 +36,7 @@ cd "$SCRIPT_DIR/.." || exit 1
 OUT_DIR=./dist
 mkdir -p "$OUT_DIR"
 
-DATE=$(date +%Y-%m-%d)
+DATE=$(TZ=America/Chicago date +%Y-%m-%d)
 VERSION=$(git rev-parse --short=7 HEAD)
 
 # --- Copy firmware zip (for SD card update) ---
