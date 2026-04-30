@@ -2883,6 +2883,17 @@ static void start_dataInTransfer(uint8_t *buffer, uint32_t count)
             }
         }
 
+        // The skip mask must cover every sector the host expects. If the
+        // loop exits with sectors unfilled, those bytes in `buffer` are
+        // stale from the previous transfer — shipping them to the host
+        // would silently corrupt the read. Fail the command instead.
+        if (read_ok && sectors_remaining > 0)
+        {
+            logmsg("Skip Read mask exhausted with ", (int)sectors_remaining,
+                   " sectors unfilled");
+            read_ok = false;
+        }
+
         if (!read_ok)
         {
             logmsg("SD card read failed during Skip Read: ", SD.sdErrorCode());
@@ -3064,11 +3075,30 @@ static void scsiDiskStartWriteSame(uint32_t lba, uint32_t blocks)
 }
 
 // AS/400 Skip Read/Write entry point
+//
+// Per IBM ESS SCSI Command Reference SC26-7297-01 §"Skip Read"/"Skip Write"
+// (opcodes X'E8' / X'EA', pages 66-67):
+//   - Mask Length=0 specifies a mask length of 256.
+//   - Transfer Length=0 specifies that no data is to be transferred. This
+//     is not an error.
+//   - Maximum transfer length is 256 blocks; larger values return Check
+//     Condition / Illegal Request - Invalid Field in CDB.
 static void scsiDiskSkip(uint32_t lba, uint32_t blocks, uint8_t mask_length, uint8_t skip_direction)
 {
+    if (blocks > 256)
+    {
+        logmsg("Skip command rejected: transfer length ", (int)blocks, " > 256");
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
+        scsiDev.phase = STATUS;
+        g_disk_transfer.skip_direction = 0;
+        return;
+    }
+
     g_disk_transfer.skip_lba = lba;
     g_disk_transfer.skip_blocks = blocks;
-    g_disk_transfer.skip_mask_length = mask_length;
+    g_disk_transfer.skip_mask_length = (mask_length > 0) ? mask_length : 256;
 
     scsiEnterPhase(DATA_OUT);
     scsiRead(g_disk_transfer.skip_mask, g_disk_transfer.skip_mask_length, NULL);
