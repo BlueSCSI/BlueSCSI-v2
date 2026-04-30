@@ -2603,13 +2603,19 @@ void diskDataOut()
 #if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
             if (g_disk_transfer.writesame_count)
             {
-                // Write Same: replicate received block across disk
-                uint32_t blocks_per_buffer = sizeof(scsiDev.data) / bytesPerSector;
+                // Write Same: replicate received block across disk.
+                // Prefill the SCSI buffer with copies of the sector so that we
+                // can issue larger SD card transfers. Make sure SD card sector
+                // boundaries are aligned to a word boundary.
+                int offset = img.file.position() % SD_SECTOR_SIZE;
+                uint8_t *writesame_buf = scsiDev.data + offset;
+                uint32_t blocks_per_buffer = (sizeof(scsiDev.data) - offset) / bytesPerSector;
+                blocks_per_buffer -= blocks_per_buffer % 4;
                 if (blocks_per_buffer > g_disk_transfer.writesame_count)
                     blocks_per_buffer = g_disk_transfer.writesame_count;
 
-                for (uint32_t i = 1; i < blocks_per_buffer; i++)
-                    memcpy(scsiDev.data + (i * bytesPerSector), buf, bytesPerSector);
+                for (uint32_t i = 0; i < blocks_per_buffer; i++)
+                    memmove(writesame_buf + (i * bytesPerSector), buf, bytesPerSector);
 
                 uint32_t blocks_written = 0;
                 while (blocks_written < g_disk_transfer.writesame_count)
@@ -2619,7 +2625,7 @@ void diskDataOut()
                         blocks_to_write = g_disk_transfer.writesame_count - blocks_written;
 
                     uint32_t bytes_to_write = blocks_to_write * bytesPerSector;
-                    if (img.file.write(scsiDev.data, bytes_to_write) != bytes_to_write)
+                    if (img.file.write(writesame_buf, bytes_to_write) != bytes_to_write)
                     {
                         logmsg("SD card write failed during Write Same: ", SD.sdErrorCode());
                         scsiDev.status = CHECK_CONDITION;
