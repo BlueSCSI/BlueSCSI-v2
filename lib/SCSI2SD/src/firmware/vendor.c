@@ -182,19 +182,23 @@ int scsiVendorCommand()
 
 void scsiVendorCommandSetLen(uint8_t command, uint8_t* command_length)
 {
+	// Each branch handles a disjoint opcode range; they are independent
+	// rather than else-if'd so a target can have multiple feature sets
+	// active (e.g. AS/400 quirk with toolbox enabled).
+	if (s2s_isAS400FixedTarget(scsiDev.target->cfg))
+	{
+		// AS/400 Skip Read(10) and Skip Write(10) are 10-byte vendor commands
+		if (command == 0xE8 || command == 0xEA)
+		{
+			*command_length = 10;
+		}
+	}
+
 	if (scsiToolboxEnabled())
 	{
 		// Conflicts with Apple CD-ROM audio over SCSI bus and Plextor CD-ROM D8 extension
 		// Will override those commands if enabled
 		if (0xD0 <= command && command <= 0xDA)
-		{
-			*command_length = 10;
-		}
-	}
-	else if (s2s_isAS400FixedTarget(scsiDev.target->cfg))
-	{
-		// AS/400 Skip Read(10) and Skip Write(10) are 10-byte vendor commands
-		if (command == 0xE8 || command == 0xEA)
 		{
 			*command_length = 10;
 		}
