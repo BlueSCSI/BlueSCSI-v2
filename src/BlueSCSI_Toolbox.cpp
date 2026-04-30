@@ -38,8 +38,11 @@ extern "C" int8_t scsiToolboxEnabled()
         // AS/400 systems issue vendor commands the toolbox path doesn't
         // expect; default toolbox off under the AS400 preset so users
         // don't have to know to disable it. Still overridable in INI.
-        int default_enabled =
-            (g_scsi_settings.getSystemPreset() == SYS_PRESET_AS400) ? 0 : 1;
+        int default_enabled = 1;
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+        if (g_scsi_settings.getSystemPreset() == SYS_PRESET_AS400)
+            default_enabled = 0;
+#endif
         enabled = ini_getbool("SCSI", "EnableToolbox", default_enabled, CONFIGFILE);
         if (!enabled)
             logmsg("-- EnableToolbox = No");
