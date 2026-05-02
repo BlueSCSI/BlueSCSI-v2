@@ -33,8 +33,13 @@
 
 // Storage for custom VPD pages: up to 16 entries across all SCSI IDs
 // Each entry: [0]=scsiId, [1]=pageCode, [2]=length, [3..]=data
+//
+// MAX_VPD_DATA_SIZE is 255 -- the maximum representable in the `length`
+// field below (uint8_t). The largest AS/400 disk-profile capture in tree
+// today is XCPR036 page 0xC3 at 250 bytes; pages 0xD1 / 0xD2 are 244 B.
+// Going to 255 leaves a few bytes of headroom without widening `length`.
 #define MAX_CUSTOM_VPD_ENTRIES 16
-#define MAX_VPD_DATA_SIZE 128
+#define MAX_VPD_DATA_SIZE 255
 static struct {
     uint8_t scsiId;
     uint8_t pageCode;
@@ -44,7 +49,10 @@ static struct {
 static int g_custom_vpd_count = 0;
 
 // Storage for custom standard inquiry data per SCSI ID
-#define MAX_SPD_SIZE 128
+//
+// MAX_SPD_SIZE is sized to fit the AS/400 standard INQUIRY captures
+// (DGVS09U and XCPR036 are both 164 bytes) with headroom.
+#define MAX_SPD_SIZE 192
 static struct {
     uint8_t length;
     uint8_t data[MAX_SPD_SIZE];
