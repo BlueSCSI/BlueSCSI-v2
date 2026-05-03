@@ -1218,11 +1218,28 @@ static void process_MessageOut()
 	}
 	else if (scsiDev.msgOut >= 0x20 && scsiDev.msgOut <= 0x2F)
 	{
-		// Two byte message. We don't support these. read and discard.
-		scsiReadByte();
+		// Two byte message. Read the parameter byte either way so we stay in
+		// sync with the initiator regardless of whether we accept the message.
+		uint8_t param = scsiReadByte();
+		(void)param;
 
 		if (scsiDev.msgOut == 0x23) {
 			// Ignore Wide Residue. We're only 8 bit anyway.
+		} else if (scsiDev.msgOut == MSG_SIMPLE_QUEUE_TAG ||
+		           scsiDev.msgOut == MSG_HEAD_OF_QUEUE_TAG ||
+		           scsiDev.msgOut == MSG_ORDERED_QUEUE_TAG) {
+			// Tagged command queueing. SCSI2SD is non-disconnecting today
+			// (scsiDisconnect() / scsiReconnect() further down in this file
+			// are commented out), so the SPC-3 §6.5 tag-echo path -- which
+			// the spec only specifies at RESELECTION immediately following a
+			// disconnect -- is unreachable. Accepting the tag here without
+			// rejecting the message is sufficient for compliant initiators
+			// (notably AS/400 9406-class IOAs that issue every command
+			// tagged once CmdQue=1 is advertised in std INQUIRY). The tag
+			// value is intentionally discarded; if this firmware ever gains
+			// disconnect support, store it on the TargetState here and echo
+			// `MSG_SIMPLE_QUEUE_TAG + tag` in the MESSAGE_IN that follows
+			// the RESELECTION phase.
 		} else {
 			messageReject();
 		}
