@@ -37,6 +37,7 @@
               cmake
               python3
               picotool
+              pioasm
               git
               gh
               zip
