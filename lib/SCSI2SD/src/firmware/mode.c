@@ -402,6 +402,14 @@ static void doModeSense(
 		}
 	}
 
+	// The PC-9801-55 SCSI-1 controller, and its derivatives will
+	// ask for all pages (0x3F), expecting only those pages back:
+	// 0x01 - Read-write error recovery page
+	// 0x03 - Format device page
+	// 0x04 - Rigid disk geometry page
+	// This quirk is expected to be used with SCSI-1 mode only
+	uint8_t oldNecHddMode = scsiDev.target->cfg->quirks == S2S_CFG_QUIRKS_PC98_55;
+
 	////////////// Block Descriptor
 	////////////////////////////////////
 	if (!dbd)
@@ -410,9 +418,15 @@ static void doModeSense(
 		// Number of blocks
 		// Zero == all remaining blocks shall have the medium
 		// characteristics specified.
-		scsiDev.data[idx++] = 0;
-		scsiDev.data[idx++] = 0;
-		scsiDev.data[idx++] = 0;
+		uint32_t blocks = 0;
+		if (oldNecHddMode)
+		{
+			// NEC PC-9801-55 needs explicit block count
+			blocks = scsiDev.target->cfg->scsiSectors;
+		}
+		scsiDev.data[idx++] = (blocks >> 16) & 0xFF;
+		scsiDev.data[idx++] = (blocks >> 8) & 0xFF;
+		scsiDev.data[idx++] = blocks & 0xFF;
 
 		scsiDev.data[idx++] = 0; // reserved
 
@@ -440,7 +454,7 @@ static void doModeSense(
 		}
 	}
 
-	if (pageCode == 0x02 || pageCode == 0x3F)
+	if (!oldNecHddMode && (pageCode == 0x02 || pageCode == 0x3F))
 	{
 		pageFound = 1;
 		if ((scsiDev.compatMode >= COMPAT_SCSI2))
@@ -462,6 +476,16 @@ static void doModeSense(
 		pageIn(pc, idx, FormatDevicePage, sizeof(FormatDevicePage));
 		if (pc != 0x01)
 		{
+			if (oldNecHddMode)
+			{
+				// This mimics ArdSCSino-stm32 behavior,
+				// setting "Tracks per zone" to heads per cylinder value
+				// If left as 0, PC-9801FA doesn't detect the drive properly
+				scsiDev.data[idx+2] = 0x00;
+				scsiDev.data[idx+3] = scsiDev.target->cfg->headsPerCylinder;
+				// Interleave field
+				scsiDev.data[idx+15] = 0x00;
+			}
 			uint16_t sectorsPerTrack = scsiDev.target->cfg->sectorsPerTrack;
 			scsiDev.data[idx+10] = sectorsPerTrack >> 8;
 			scsiDev.data[idx+11] = sectorsPerTrack & 0xFF;
@@ -627,7 +651,7 @@ static void doModeSense(
 	}
 
 	// SCSI 2 standard says page 0 is always last.
-	if (pageCode == 0x00 || pageCode == 0x3F)
+	if (!oldNecHddMode && (pageCode == 0x00 || pageCode == 0x3F))
 	{
 		pageFound = 1;
 		pageIn(pc, idx, OperatingPage, sizeof(OperatingPage));
