@@ -36,7 +36,7 @@
 // SCSI system and device settings
 BlueSCSISettings g_scsi_settings;
 
-const char *systemPresetName[] = {"", "Mac", "MacPlus", "MPC3000", "MegaSTE", "X68000", "X68000-SCSI", "X68000-SASI", "NeXT", "Generic"};
+const char *systemPresetName[] = {"", "Mac", "MacPlus", "MPC3000", "MegaSTE", "X68000", "X68000-SCSI", "X68000-SASI", "NeXT", "PC-9801-55", "Generic"};
 const char *devicePresetName[] = {"", "ST32430N"};
 
 // must be in the same order as bluescsi_speed_grade_t in BlueSCSI_settings.h
@@ -539,6 +539,14 @@ scsi_system_settings_t *BlueSCSISettings::initSystem(const char *presetName)
         cfgSys.enableParity = false;
         cfgSys.maxSyncSpeed = 5;
     }
+    else if (strequals(systemPresetName[SYS_PRESET_PC_9801_55], presetName))
+    {
+        m_sysPreset = SYS_PRESET_PC_9801_55;
+        cfgSys.quirks = S2S_CFG_QUIRKS_PC98_55;
+        cfgSys.enableSCSI2 = false;
+        cfgDev.sectorsPerTrack = 25;
+        cfgDev.headsPerCylinder = 8;
+    }
     else if (strequals(systemPresetName[SYS_PRESET_NeXT], presetName))
     {
         m_sysPreset = SYS_PRESET_NeXT;
@@ -558,7 +566,16 @@ scsi_system_settings_t *BlueSCSISettings::initSystem(const char *presetName)
     }
 
     // Clear SCSI device strings
-    memset(cfgDev.vendor, 0, sizeof(cfgDev.vendor));
+    if (m_sysPreset == SYS_PRESET_PC_9801_55)
+    {
+        // Controller requires that Vendor starts with "NEC"
+        const char *necVendor = "NECBLUE";
+        strncpy(cfgDev.vendor, necVendor, sizeof(cfgDev.vendor));
+    }
+    else
+    {
+        memset(cfgDev.vendor, 0, sizeof(cfgDev.vendor));
+    }
     memset(cfgDev.prodId, 0, sizeof(cfgDev.prodId));
     memset(cfgDev.revision, 0, sizeof(cfgDev.revision));
     memset(cfgDev.serial, 0, sizeof(cfgDev.serial));
