@@ -504,7 +504,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
         img.scsiId = target_idx | S2S_CFG_TARGET_ENABLED;
         img.sdSectorStart = 0;
 
-        if (img.scsiSectors == 0 && type != S2S_CFG_NETWORK && type != S2S_CFG_AMIGAWIFI && !img.file.isFolder())
+        if (img.scsiSectors == 0 && type != S2S_CFG_NETWORK && type != S2S_CFG_AMIGAWIFI && type != S2S_CFG_PRINTER && !img.file.isFolder())
         {
             logmsg("---- Error: image file ", filename, " is empty");
             img.file.close();
@@ -607,8 +607,29 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
                 logmsg("---- Zip 100 disk (", (int)img.file.size(), " bytes) is not exactly ", ZIP100_DISK_SIZE, " bytes, may not work correctly");
             }
         }
+        else if (type == S2S_CFG_PRINTER)
+        {
+            logmsg("---- Configuring as printer (LaserWriter IISC)");
+            img.deviceType = S2S_CFG_PRINTER;
+            // The PR<id>/ folder doubles as the spool target. If the user
+            // registered the device with a placeholder file, create the
+            // folder for them so they have a clear place to look for prints.
+            char dirpath[16];
+            snprintf(dirpath, sizeof(dirpath), "/PR%d", target_idx);
+            if (!SD.exists(dirpath))
+            {
+                if (SD.mkdir(dirpath))
+                {
+                    logmsg("---- Created printer spool folder ", dirpath);
+                }
+                else
+                {
+                    logmsg("---- WARNING: failed to create printer spool folder ", dirpath);
+                }
+            }
+        }
 
-        if (type != S2S_CFG_OPTICAL && type != S2S_CFG_NETWORK && type != S2S_CFG_AMIGAWIFI)
+        if (type != S2S_CFG_OPTICAL && type != S2S_CFG_NETWORK && type != S2S_CFG_AMIGAWIFI && type != S2S_CFG_PRINTER)
         {
             autoConfigGeometry(img);
         }
@@ -825,7 +846,21 @@ bool scsiDiskFolderIsTapeFolder(FsFile *dir)
     dir->getName(filename, sizeof(filename));
     // string starts with 'tp', the 3rd character is a SCSI ID, and it has more 3 charters
     // e.g. "tp0 - tape 01"
-    if (strlen(filename) > 3 && strncasecmp("tp", filename, 2) == 0 
+    if (strlen(filename) > 3 && strncasecmp("tp", filename, 2) == 0
+        && filename[2] >= '0' && filename[2] - '0' < NUM_SCSIID)
+    {
+        return true;
+    }
+    return false;
+}
+
+bool scsiDiskFolderIsPrinterFolder(FsFile *dir)
+{
+    // A PR<N>/ directory (e.g. "PR4") both registers the printer and acts
+    // as the spool target. The 3rd character must be a valid SCSI ID digit.
+    char filename[MAX_FILE_PATH + 1];
+    dir->getName(filename, sizeof(filename));
+    if (strlen(filename) >= 3 && strncasecmp("pr", filename, 2) == 0
         && filename[2] >= '0' && filename[2] - '0' < NUM_SCSIID)
     {
         return true;

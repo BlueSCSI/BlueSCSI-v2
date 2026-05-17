@@ -154,6 +154,11 @@ bool scsiDiskFolderContainsCueSheet(FsFile *dir);
 // Checks if the directory name is for multi tagged tapes
 bool scsiDiskFolderIsTapeFolder(FsFile *dir);
 
+// Checks if the directory name matches the PR<N>/ printer convention
+// (e.g. "PR4"). Such a folder both registers a SCSI printer and serves
+// as the spool target for captured print jobs.
+bool scsiDiskFolderIsPrinterFolder(FsFile *dir);
+
 // Clear the ROM drive header from flash
 bool scsiDiskClearRomDrive();
 // Program ROM drive and rename image file

@@ -3,6 +3,7 @@
  *
  * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
  * Portions copyright (c) 2023 joshua stein <jcs@jcs.org>
+ * Copyright (c) 2026 Eric Helgeson
  *
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version.
  *
@@ -105,6 +106,7 @@
 #define DRIVEINFO_NETWORK   {"Dayna",    "SCSI/Link",       "2.0f", ""}
 #define DRIVEINFO_TAPE      {"BLUESCSI", "TAPE",      PLATFORM_REVISION, ""}
 #define DRIVEINFO_AMIGAWIFI {"AmigaNET", "SCSI/Link", "1.0f", ""}
+#define DRIVEINFO_PRINTER   {"APPLE",    "PERSONAL LASER", "1.00", ""}
 
 // Default block size
 #define DEFAULT_BLOCKSIZE 512
@@ -126,6 +128,7 @@
 #define APPLE_DRIVEINFO_MAGOPT    {"MOST",     "RMD-5200",          PLATFORM_REVISION, "1.0"}
 #define APPLE_DRIVEINFO_NETWORK   {"Dayna",    "SCSI/Link",       "2.0f", ""}
 #define APPLE_DRIVEINFO_TAPE      {"BlueSCSI", "APPLE_TAPE",        PLATFORM_REVISION, ""}
+#define APPLE_DRIVEINFO_PRINTER   {"APPLE",    "PERSONAL LASER",    "1.00", ""}
 
 // Default Iomega ZIP drive information
 #define IOMEGA_DRIVEINFO_ZIP100     {"IOMEGA", "ZIP 100", "D.13", ""}

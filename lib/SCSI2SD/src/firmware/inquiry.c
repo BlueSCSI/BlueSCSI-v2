@@ -224,7 +224,14 @@ void s2s_scsiInquiry()
 		case S2S_CFG_AMIGAWIFI:
 			scsiDev.data[2] = 0x01;  // Page code.
 			break;
-		
+
+		case S2S_CFG_PRINTER:
+			// Apple LaserWriter IISC reports pre-SCSI-2 (ANSI version 0,
+			// response format SCSI-1 CCS).
+			scsiDev.data[2] = 0x00;
+			scsiDev.data[3] = 0x00;
+			break;
+
 		default:
 			// Accept defaults for a fixed disk.
 			break;
@@ -282,8 +289,21 @@ uint32_t s2s_getStandardInquiry(
 		out[7] = 0x00; // Disable sync and linked commands
 		out[4] = 0x75; // 117 length
 	}
+	if(cfg->deviceType == S2S_CFG_PRINTER)
+	{
+		// Apple LaserWriter IISC trailing vendor-specific bytes (firmware/ROM
+		// rev). The driver only checks the first 36 bytes, but TattleTech and
+		// other diagnostics may read these.
+		static const uint8_t LaserWriterVendor[] =
+			{0x00, 0x00, 0x00, 0xFE, 0x20, 0x27, 0x20, 0xFF};
+		if (size + sizeof(LaserWriterVendor) <= maxlen)
+		{
+			memcpy(&out[size], LaserWriterVendor, sizeof(LaserWriterVendor));
+			size += sizeof(LaserWriterVendor);
+		}
+	}
 	// Iomega already has a vendor inquiry
-	if(cfg->deviceType != S2S_CFG_NETWORK && cfg->deviceType != S2S_CFG_ZIP100) {
+	else if(cfg->deviceType != S2S_CFG_NETWORK && cfg->deviceType != S2S_CFG_ZIP100) {
 		memcpy(&out[size], INQUIRY_NAME, sizeof(INQUIRY_NAME) - 1);
 		size += sizeof(INQUIRY_NAME) - 1;
 		out[size++] = TOOLBOX_API;
@@ -320,6 +340,11 @@ uint8_t getDeviceTypeQualifier()
 	case S2S_CFG_AMIGAWIFI:
 		// processor device
 		return 0x03;
+		break;
+
+	case S2S_CFG_PRINTER:
+		// printer device
+		return 0x02;
 		break;
 
 	default:
