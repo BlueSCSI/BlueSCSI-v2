@@ -252,12 +252,16 @@ extern "C" const char *initiatorTestPeripheralTypeName(uint8_t device_type, bool
 }
 #endif
 
-// Check if VHD output should be used for the current target
+// Check if VHD output should be used for the current target.
+// VHD spec mandates 512-byte logical sectors — refuse otherwise (the footer's
+// geometry algorithm divides by 512 and would produce a file that no VHD
+// consumer accepts).
 static bool initiatorShouldWriteVhd()
 {
     return g_initiator_state.use_vhd_format &&
            g_initiator_state.device_type == SCSI_DEVICE_TYPE_DIRECT_ACCESS &&
-           !g_initiator_state.removable;
+           !g_initiator_state.removable &&
+           g_initiator_state.sectorsize == 512;
 }
 
 // High level logic of the initiator mode
@@ -474,6 +478,17 @@ void scsiInitiatorMainLoop()
                 {
                     filename_extension = ".vhd";
                     logmsg("VHD output enabled for SCSI ID ", g_initiator_state.target_id);
+                }
+                else if (g_initiator_state.use_vhd_format
+                      && g_initiator_state.device_type == SCSI_DEVICE_TYPE_DIRECT_ACCESS
+                      && !g_initiator_state.removable
+                      && g_initiator_state.sectorsize != 512)
+                {
+                    // User asked for VHD but drive has non-512 sectors. VHD spec
+                    // mandates 512; fall back to raw .hda so imaging still completes.
+                    logmsg("WARNING: VHD requested but drive uses ",
+                           (int)g_initiator_state.sectorsize,
+                           "-byte sectors (VHD requires 512). Writing raw .hda instead.");
                 }
             }
 
