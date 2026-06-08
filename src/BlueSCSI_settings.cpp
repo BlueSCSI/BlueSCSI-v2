@@ -350,6 +350,8 @@ static void logNonDefaultSystemSettings(const scsi_system_settings_t &defaults, 
         logmsg("-- USBMassStoragePresentImages = ", current.usbMassStoragePresentImages ? "Yes" : "No");
     if (current.invertStatusLed != defaults.invertStatusLed)
         logmsg("-- InvertStatusLED = ", current.invertStatusLed ? "Yes" : "No");
+    if (current.enableFrontPanel != defaults.enableFrontPanel)
+        logmsg("-- EnableFrontPanel = ", current.enableFrontPanel ? "Yes" : "No");
     if (current.speedGrade != defaults.speedGrade)
         logmsg("-- SpeedGrade = ", speed_grade_strings[current.speedGrade]);
     if (current.maxBusWidth != defaults.maxBusWidth)
@@ -451,6 +453,7 @@ scsi_system_settings_t *BlueSCSISettings::initSystem(const char *presetName)
     cfgSys.usbMassStorageWaitPeriod = 1000;
     cfgSys.usbMassStoragePresentImages = false;
     cfgSys.invertStatusLed = false;
+    cfgSys.enableFrontPanel = false;
 
     cfgSys.speedGrade = bluescsi_speed_grade_t::SPEED_GRADE_DEFAULT;
 
@@ -596,6 +599,8 @@ scsi_system_settings_t *BlueSCSISettings::initSystem(const char *presetName)
     cfgSys.usbMassStoragePresentImages = ini_getbool("SCSI", "USBMassStoragePresentImages", cfgSys.usbMassStoragePresentImages, CONFIGFILE);
 
     cfgSys.invertStatusLed = ini_getbool("SCSI", "InvertStatusLED", cfgSys.invertStatusLed, CONFIGFILE);
+
+    cfgSys.enableFrontPanel = ini_getbool("SCSI", "EnableFrontPanel", cfgSys.enableFrontPanel, CONFIGFILE);
 
     cfgSys.phaseChangeDelayUs = ini_getl("SCSI", "PhaseChangeDelay", cfgSys.phaseChangeDelayUs, CONFIGFILE);
     cfgSys.dataPhaseDelayUs = ini_getl("SCSI", "DataPhaseDelay", cfgSys.dataPhaseDelayUs, CONFIGFILE);

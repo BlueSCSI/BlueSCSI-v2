@@ -107,6 +107,10 @@ typedef struct __attribute__((__packed__)) scsi_system_settings_t
     uint16_t phaseChangeDelayUs;  // Phase change delay (EMU EMAX needs 100)
     uint16_t dataPhaseDelayUs;    // Data phase entry delay (Akai S1000/S3000 needs 400)
     uint8_t busFreeDelayUs;       // Bus free delay
+
+    // v2: run the I2C front-panel slave on GPIO16/17 (mutually exclusive with
+    // DisableI2C simple-buttons / SPDIF on those pins).
+    bool enableFrontPanel;
 } scsi_system_settings_t;
 
 // This struct should only have new setting added to the end

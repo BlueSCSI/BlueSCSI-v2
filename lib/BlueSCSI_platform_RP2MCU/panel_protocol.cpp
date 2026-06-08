@@ -24,17 +24,17 @@
 #include "panel_protocol.h"
 #include "panel_protocol_defs.h"
 #include "panel_protocol_defs_initiator.h"
-#include "panel_spi.h"
+#include "panel_transport.h"
 #include <BlueSCSI_platform.h>
 #include <BlueSCSI_log.h>
 #include <BlueSCSI_config.h>
 
-#ifdef ENABLE_PANEL_SPI
+#if defined(ENABLE_PANEL_SPI) || defined(ENABLE_PANEL_I2C)
 
 #include <string.h>
 #include <stdio.h>
 #include <SdFat.h>
-#include <pico/sha256.h>
+#include "panel_sha256.h"   // pico_sha256 on RP2350, software SHA-256 on RP2040 (v2)
 #include <hardware/sync.h>
 
 // Include BlueSCSI headers for image access
@@ -643,7 +643,7 @@ static size_t handle_get_playback_status(uint16_t device_index, uint8_t* respons
 // ============================================================================
 
 static void handle_get_loaded_image_status_async(uint16_t device_index) {
-    uint8_t* buf = panel_spi_get_tx_buffer();
+    uint8_t* buf = panel_transport_get_tx_buffer();
     loaded_image_status_t* status = (loaded_image_status_t*)buf;
     memset(status, 0, sizeof(loaded_image_status_t));
 
@@ -673,11 +673,11 @@ static void handle_get_loaded_image_status_async(uint16_t device_index) {
         status->device_type = PANEL_DEVICE_TYPE_SCSI;
     }
 
-    panel_spi_set_async_result(buf, sizeof(loaded_image_status_t));
+    panel_transport_set_async_result(buf, sizeof(loaded_image_status_t));
 }
 
 static void handle_get_device_list_async(void) {
-    uint8_t* buf = panel_spi_get_tx_buffer();
+    uint8_t* buf = panel_transport_get_tx_buffer();
     device_list_response_t* list = (device_list_response_t*)buf;
 
     memset(list, 0, sizeof(device_list_response_t));
@@ -688,7 +688,7 @@ static void handle_get_device_list_async(void) {
         PANEL_DEVLIST_MODE(list) = PANEL_MODE_INITIATOR;
         list->device_count = 0;
         logmsg("Panel: Device list: initiator mode active");
-        panel_spi_set_async_result(buf, sizeof(device_list_response_t));
+        panel_transport_set_async_result(buf, sizeof(device_list_response_t));
         return;
     }
     PANEL_DEVLIST_MODE(list) = PANEL_MODE_TARGET;
@@ -740,11 +740,11 @@ static void handle_get_device_list_async(void) {
 
     list->device_count = count;
     logmsg("Panel: Device list: ", (int)count, " devices");
-    panel_spi_set_async_result(buf, offset);
+    panel_transport_set_async_result(buf, offset);
 }
 
 static void handle_get_initiator_status_async(void) {
-    uint8_t* buf = panel_spi_get_tx_buffer();
+    uint8_t* buf = panel_transport_get_tx_buffer();
     initiator_status_response_t* resp = (initiator_status_response_t*)buf;
 
     memset(resp, 0, sizeof(initiator_status_response_t));
@@ -786,11 +786,11 @@ static void handle_get_initiator_status_async(void) {
     resp->targets_imaged = targets_imaged;
 
     dbgmsg("Panel: Initiator status: phase=", (int)phase, " targets=", (int)targets_found);
-    panel_spi_set_async_result(buf, offset);
+    panel_transport_set_async_result(buf, offset);
 }
 
 static void handle_get_dir_entry_count_async(void) {
-    uint8_t* buf = panel_spi_get_tx_buffer();
+    uint8_t* buf = panel_transport_get_tx_buffer();
 
     // Scan directory if not already done
     if (!g_dir.scanned) {
@@ -803,11 +803,11 @@ static void handle_get_dir_entry_count_async(void) {
     buf[1] = (count >> 16) & 0xFF;
     buf[2] = (count >> 8) & 0xFF;
     buf[3] = count & 0xFF;
-    panel_spi_set_async_result(buf, sizeof(uint32_t));
+    panel_transport_set_async_result(buf, sizeof(uint32_t));
 }
 
 static void handle_get_entry_info_async(uint16_t index) {
-    uint8_t* buf = panel_spi_get_tx_buffer();
+    uint8_t* buf = panel_transport_get_tx_buffer();
     dir_entry_info_t* info = (dir_entry_info_t*)buf;
     memset(info, 0, sizeof(dir_entry_info_t));
 
@@ -824,18 +824,18 @@ static void handle_get_entry_info_async(uint16_t index) {
         info->entry_type = PANEL_ENTRY_TYPE_FILE;
     }
 
-    panel_spi_set_async_result(buf, sizeof(dir_entry_info_t));
+    panel_transport_set_async_result(buf, sizeof(dir_entry_info_t));
 }
 
 static void handle_get_current_path_async(void) {
-    uint8_t* buf = panel_spi_get_tx_buffer();
+    uint8_t* buf = panel_transport_get_tx_buffer();
     size_t len = strlen(g_dir.current_path) + 1;
     strncpy((char*)buf, g_dir.current_path, PANEL_PROTOCOL_MAX_PAYLOAD - 1);
-    panel_spi_set_async_result(buf, len);
+    panel_transport_set_async_result(buf, len);
 }
 
 static void handle_select_entry_async(uint16_t device_index, int16_t entry_index) {
-    uint8_t* buf = panel_spi_get_tx_buffer();
+    uint8_t* buf = panel_transport_get_tx_buffer();
 
     // Scan directory if not already done
     if (!g_dir.scanned) {
@@ -846,13 +846,13 @@ static void handle_select_entry_async(uint16_t device_index, int16_t entry_index
     if (entry_index == -1) {
         g_dir.change_dir("..");
         buf[0] = 0;  // Success
-        panel_spi_set_async_result(buf, 1);
+        panel_transport_set_async_result(buf, 1);
         return;
     }
 
     if ((uint16_t)entry_index >= g_dir.entry_count) {
         buf[0] = 1;  // Error: invalid index
-        panel_spi_set_async_result(buf, 1);
+        panel_transport_set_async_result(buf, 1);
         return;
     }
 
@@ -865,7 +865,7 @@ static void handle_select_entry_async(uint16_t device_index, int16_t entry_index
         } else {
             buf[0] = 2;  // Error: failed to change directory
         }
-        panel_spi_set_async_result(buf, 1);
+        panel_transport_set_async_result(buf, 1);
     } else {
         // Select image file - build full path
         char full_path[192];
@@ -880,7 +880,7 @@ static void handle_select_entry_async(uint16_t device_index, int16_t entry_index
         if (!img) {
             logmsg("Panel: Invalid device index ", (int)device_index);
             buf[0] = 3;  // Error: invalid device index
-            panel_spi_set_async_result(buf, 1);
+            panel_transport_set_async_result(buf, 1);
             return;
         }
 
@@ -903,7 +903,7 @@ static void handle_select_entry_async(uint16_t device_index, int16_t entry_index
             buf[0] = 4;  // Error: failed to load image
             logmsg("Panel: Failed to load image");
         }
-        panel_spi_set_async_result(buf, 1);
+        panel_transport_set_async_result(buf, 1);
     }
 }
 
@@ -1071,24 +1071,24 @@ static void handle_check_firmware_async(void) {
         logmsg("Panel: No firmware at ", PANEL_FW_PATH);
     }
 
-    uint8_t* buf = panel_spi_get_tx_buffer();
+    uint8_t* buf = panel_transport_get_tx_buffer();
     memcpy(buf, &g_async.fw_info, sizeof(panel_firmware_info_t));
-    panel_spi_set_async_result(buf, sizeof(panel_firmware_info_t));
+    panel_transport_set_async_result(buf, sizeof(panel_firmware_info_t));
 }
 
 static void handle_start_firmware_read_async(uint32_t offset) {
-    uint8_t* buf = panel_spi_get_tx_buffer();
+    uint8_t* buf = panel_transport_get_tx_buffer();
 
     if (!g_async.fw_file.isOpen()) {
         if (!g_async.fw_file.open(PANEL_FW_PATH, O_RDONLY)) {
-            panel_spi_set_async_error();
+            panel_transport_set_async_error();
             return;
         }
         g_async.fw_size = g_async.fw_file.fileSize();
     }
 
     if (!g_async.fw_file.seek(offset)) {
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
         return;
     }
 
@@ -1098,15 +1098,15 @@ static void handle_start_firmware_read_async(uint32_t offset) {
 
     ssize_t bytes_read = g_async.fw_file.read(buf, to_read);
     if (bytes_read < 0) {
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
         return;
     }
 
-    panel_spi_set_async_result(buf, bytes_read);
+    panel_transport_set_async_result(buf, bytes_read);
 }
 
 static void handle_get_host_fw_status_async(void) {
-    uint8_t* buf = panel_spi_get_tx_buffer();
+    uint8_t* buf = panel_transport_get_tx_buffer();
     rp2350_fw_status_t* status = (rp2350_fw_status_t*)buf;
 
     memset(status, 0, sizeof(rp2350_fw_status_t));
@@ -1116,20 +1116,20 @@ static void handle_get_host_fw_status_async(void) {
     status->update_progress = 0;
     status->last_update_result = 0;
 
-    panel_spi_set_async_result(buf, sizeof(rp2350_fw_status_t));
+    panel_transport_set_async_result(buf, sizeof(rp2350_fw_status_t));
 }
 
 static void handle_eject_image_async(uint16_t device_index) {
     image_config_t* img = get_device_by_index(device_index);
     if (!img) {
         logmsg("Panel: Invalid device index for eject ", (int)device_index);
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
         return;
     }
 
     if (!device_is_ejectable(img)) {
         logmsg("Panel: Device ", (int)device_index, " is not ejectable");
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
         return;
     }
 
@@ -1144,10 +1144,10 @@ static void handle_eject_image_async(uint16_t device_index) {
             img->ejected = true;
             switchNextImage(*img, nullptr);
         }
-        panel_spi_set_async_result(nullptr, 0);
+        panel_transport_set_async_result(nullptr, 0);
     } else {
         logmsg("Panel: No image loaded on SCSI ID ", (int)device_index);
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
     }
 }
 
@@ -1155,13 +1155,13 @@ static void handle_select_next_image_async(uint16_t device_index) {
     image_config_t* img = get_device_by_index(device_index);
     if (!img) {
         logmsg("Panel: Invalid device index for next image ", (int)device_index);
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
         return;
     }
 
     if (!img->image_directory) {
         logmsg("Panel: Device ", (int)device_index, " not in image_directory mode");
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
         return;
     }
 
@@ -1170,10 +1170,10 @@ static void handle_select_next_image_async(uint16_t device_index) {
     // prefer_cue=false so optical drives cycle by .bin (Toolbox-style).
     if (switchNextImage(*img, nullptr, false)) {
         logmsg("Panel: Switched to next image successfully");
-        panel_spi_set_async_result(nullptr, 0);
+        panel_transport_set_async_result(nullptr, 0);
     } else {
         logmsg("Panel: Failed to switch to next image");
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
     }
 }
 
@@ -1181,20 +1181,20 @@ static void handle_select_prev_image_async(uint16_t device_index) {
     image_config_t* img = get_device_by_index(device_index);
     if (!img) {
         logmsg("Panel: Invalid device index for prev image ", (int)device_index);
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
         return;
     }
 
     if (!img->image_directory) {
         logmsg("Panel: Device ", (int)device_index, " not in image_directory mode");
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
         return;
     }
 
     char prev_filename[MAX_FILE_PATH];
     if (!panel_find_prev_image(*img, prev_filename, sizeof(prev_filename))) {
         logmsg("Panel: No images found for prev on SCSI ID ", (int)device_index);
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
         return;
     }
 
@@ -1203,17 +1203,17 @@ static void handle_select_prev_image_async(uint16_t device_index) {
 
     if (switchNextImage(*img, prev_filename)) {
         logmsg("Panel: Switched to prev image successfully");
-        panel_spi_set_async_result(nullptr, 0);
+        panel_transport_set_async_result(nullptr, 0);
     } else {
         logmsg("Panel: Failed to switch to prev image");
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
     }
 }
 
 static void handle_select_image_by_name_async(const uint8_t* payload, size_t payload_size) {
     if (!payload || payload_size == 0) {
         logmsg("Panel: SELECT_IMAGE_BY_NAME with empty payload");
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
         return;
     }
 
@@ -1224,13 +1224,13 @@ static void handle_select_image_by_name_async(const uint8_t* payload, size_t pay
     size_t name_len = strnlen(filename, payload_size);
     if (name_len >= payload_size) {
         logmsg("Panel: SELECT_IMAGE_BY_NAME filename not null-terminated");
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
         return;
     }
 
     if (panel_path_has_traversal(filename)) {
         logmsg("Panel: SELECT_IMAGE_BY_NAME rejected path traversal: ", filename);
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
         return;
     }
 
@@ -1247,7 +1247,7 @@ static void handle_select_image_by_name_async(const uint8_t* payload, size_t pay
 
     if (!img) {
         logmsg("Panel: No configured SCSI device for SELECT_IMAGE_BY_NAME");
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
         return;
     }
 
@@ -1262,10 +1262,10 @@ static void handle_select_image_by_name_async(const uint8_t* payload, size_t pay
             cdromCloseTray(*img);
         }
         logmsg("Panel: Image loaded by name successfully");
-        panel_spi_set_async_result(nullptr, 0);
+        panel_transport_set_async_result(nullptr, 0);
     } else {
         logmsg("Panel: Failed to load image by name");
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
     }
 }
 
@@ -1274,14 +1274,14 @@ static void handle_select_image_by_name_async(const uint8_t* payload, size_t pay
 // ============================================================================
 
 static void handle_start_file_download_async(const uint8_t* payload, size_t payload_size) {
-    uint8_t* buf = panel_spi_get_tx_buffer();
+    uint8_t* buf = panel_transport_get_tx_buffer();
     panel_file_download_start_result_t* result = (panel_file_download_start_result_t*)buf;
     memset(result, 0, sizeof(panel_file_download_start_result_t));
 
     if (!payload || payload_size == 0) {
         logmsg("Panel: START_FILE_DOWNLOAD with empty payload");
         result->result_code = PANEL_DOWNLOAD_ERROR_NOT_FOUND;
-        panel_spi_set_async_result(buf, sizeof(panel_file_download_start_result_t));
+        panel_transport_set_async_result(buf, sizeof(panel_file_download_start_result_t));
         return;
     }
 
@@ -1291,14 +1291,14 @@ static void handle_start_file_download_async(const uint8_t* payload, size_t payl
     if (name_len >= payload_size) {
         logmsg("Panel: START_FILE_DOWNLOAD filename not null-terminated");
         result->result_code = PANEL_DOWNLOAD_ERROR_NOT_FOUND;
-        panel_spi_set_async_result(buf, sizeof(panel_file_download_start_result_t));
+        panel_transport_set_async_result(buf, sizeof(panel_file_download_start_result_t));
         return;
     }
 
     if (panel_path_has_traversal(filename)) {
         logmsg("Panel: START_FILE_DOWNLOAD rejected path traversal: ", filename);
         result->result_code = PANEL_DOWNLOAD_ERROR_NOT_FOUND;
-        panel_spi_set_async_result(buf, sizeof(panel_file_download_start_result_t));
+        panel_transport_set_async_result(buf, sizeof(panel_file_download_start_result_t));
         return;
     }
 
@@ -1308,7 +1308,7 @@ static void handle_start_file_download_async(const uint8_t* payload, size_t payl
     if (!g_download.download_file.open(filename, O_RDONLY)) {
         logmsg("Panel: Failed to open download file: ", filename);
         result->result_code = PANEL_DOWNLOAD_ERROR_NOT_FOUND;
-        panel_spi_set_async_result(buf, sizeof(panel_file_download_start_result_t));
+        panel_transport_set_async_result(buf, sizeof(panel_file_download_start_result_t));
         return;
     }
 
@@ -1319,28 +1319,28 @@ static void handle_start_file_download_async(const uint8_t* payload, size_t payl
     result->file_size = g_download.file_size;
 
     logmsg("Panel: File download started: ", filename, " (", (int)g_download.file_size, " bytes)");
-    panel_spi_set_async_result(buf, sizeof(panel_file_download_start_result_t));
+    panel_transport_set_async_result(buf, sizeof(panel_file_download_start_result_t));
 }
 
 static void handle_read_file_chunk_async(uint32_t chunk_index) {
-    uint8_t* buf = panel_spi_get_tx_buffer();
+    uint8_t* buf = panel_transport_get_tx_buffer();
 
     if (!g_download.download_active || !g_download.download_file.isOpen()) {
         logmsg("Panel: READ_FILE_CHUNK with no active download");
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
         return;
     }
 
     uint64_t offset = (uint64_t)chunk_index * PANEL_FILE_CHUNK_SIZE;
     if (offset >= g_download.file_size) {
         logmsg("Panel: READ_FILE_CHUNK offset beyond file end");
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
         return;
     }
 
     if (!g_download.download_file.seek(offset)) {
         logmsg("Panel: Failed to seek in download file");
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
         return;
     }
 
@@ -1351,12 +1351,12 @@ static void handle_read_file_chunk_async(uint32_t chunk_index) {
     ssize_t bytes_read = g_download.download_file.read(buf, to_read);
     if (bytes_read < 0) {
         logmsg("Panel: Failed to read download chunk");
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
         return;
     }
 
     dbgmsg("Panel: Download chunk ", (int)chunk_index, ": ", (int)bytes_read, " bytes");
-    panel_spi_set_async_result(buf, bytes_read);
+    panel_transport_set_async_result(buf, bytes_read);
 }
 
 // ============================================================================
@@ -1366,7 +1366,7 @@ static void handle_read_file_chunk_async(uint32_t chunk_index) {
 static void handle_start_file_upload_async(const uint8_t* payload, size_t payload_size) {
     if (payload_size < sizeof(panel_file_upload_start_t)) {
         logmsg("Panel: Invalid upload start payload size");
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
         return;
     }
 
@@ -1377,7 +1377,7 @@ static void handle_start_file_upload_async(const uint8_t* payload, size_t payloa
         upload_start->filename_len >= sizeof(g_upload.filename) ||
         payload_size < sizeof(panel_file_upload_start_t) + upload_start->filename_len) {
         logmsg("Panel: Invalid filename length");
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
         return;
     }
 
@@ -1390,7 +1390,7 @@ static void handle_start_file_upload_async(const uint8_t* payload, size_t payloa
 
     if (panel_path_has_traversal(g_upload.filename)) {
         logmsg("Panel: START_FILE_UPLOAD rejected path traversal: ", g_upload.filename);
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
         return;
     }
 
@@ -1404,7 +1404,7 @@ static void handle_start_file_upload_async(const uint8_t* payload, size_t payloa
         if (!uploads_dir.open("/shared", O_RDONLY)) {
             if (!SD.mkdir("/shared")) {
                 logmsg("Panel: Failed to create shared directory");
-                panel_spi_set_async_error();
+                panel_transport_set_async_error();
                 return;
             }
         } else {
@@ -1416,7 +1416,7 @@ static void handle_start_file_upload_async(const uint8_t* payload, size_t payloa
     platform_reset_watchdog();
     if (!g_upload.upload_file.open(full_path, O_CREAT | O_WRITE | O_TRUNC)) {
         logmsg("Panel: Failed to create upload file: ", full_path);
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
         return;
     }
 
@@ -1433,7 +1433,7 @@ static void handle_start_file_upload_async(const uint8_t* payload, size_t payloa
     g_upload.bytes_written = 0;
 
     logmsg("Panel: File upload started: ", full_path, " (", (int)g_upload.total_size, " bytes)");
-    panel_spi_set_async_result(nullptr, 0);
+    panel_transport_set_async_result(nullptr, 0);
 }
 
 static void handle_write_file_chunk_async(uint16_t expected_crc16,
@@ -1441,20 +1441,20 @@ static void handle_write_file_chunk_async(uint16_t expected_crc16,
                                           const uint8_t* payload, size_t payload_size) {
     if (!g_upload.upload_active) {
         logmsg("Panel: Chunk write failed - no active upload");
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
         return;
     }
 
     if (payload_size == 0 || payload_size > PANEL_FILE_CHUNK_SIZE) {
         logmsg("Panel: Invalid chunk size: ", (int)payload_size);
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
         return;
     }
 
     if (expected_crc16 != computed_crc16) {
         logmsg("Panel: Chunk CRC mismatch expected=", (int)expected_crc16,
                " computed=", (int)computed_crc16, " size=", (int)payload_size);
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
         return;
     }
 
@@ -1462,7 +1462,7 @@ static void handle_write_file_chunk_async(uint16_t expected_crc16,
     size_t bytes_written = g_upload.upload_file.write(payload, payload_size);
     if (bytes_written != payload_size) {
         logmsg("Panel: Failed to write chunk: ", (int)bytes_written, "/", (int)payload_size);
-        panel_spi_set_async_error();
+        panel_transport_set_async_error();
         return;
     }
 
@@ -1477,11 +1477,11 @@ static void handle_write_file_chunk_async(uint16_t expected_crc16,
     dbgmsg("Panel: Chunk written: ", (int)bytes_written, " bytes (total: ",
            (int)g_upload.bytes_written, "/", (int)g_upload.total_size, ")");
 
-    panel_spi_set_async_result(nullptr, 0);
+    panel_transport_set_async_result(nullptr, 0);
 }
 
 static void handle_finish_file_upload_async(void) {
-    uint8_t* buf = panel_spi_get_tx_buffer();
+    uint8_t* buf = panel_transport_get_tx_buffer();
     uint8_t result_code = PANEL_UPLOAD_OK;
 
     if (!g_upload.upload_active) {
@@ -1527,7 +1527,7 @@ static void handle_finish_file_upload_async(void) {
     buf[0] = result_code;
     memcpy(&buf[1], g_upload.calculated_hash.bytes, 32);
 
-    panel_spi_set_async_result(buf, 33);
+    panel_transport_set_async_result(buf, 33);
 }
 
 // True if `path` is a file currently open as an image on any target, so the
@@ -1566,7 +1566,7 @@ static bool panel_path_is_loaded(const char* path) {
 // Delete a file from the SD card. Payload is a null-terminated path. Returns a
 // single PANEL_DELETE_* result byte.
 static void handle_delete_file_async(const uint8_t* payload, size_t payload_size) {
-    uint8_t* buf = panel_spi_get_tx_buffer();
+    uint8_t* buf = panel_transport_get_tx_buffer();
     uint8_t result = PANEL_DELETE_OK;
 
     if (!payload || payload_size == 0) {
@@ -1597,13 +1597,13 @@ static void handle_delete_file_async(const uint8_t* payload, size_t payload_size
     }
 
     buf[0] = result;
-    panel_spi_set_async_result(buf, 1);
+    panel_transport_set_async_result(buf, 1);
 }
 
 // Rename a file on the SD card. Payload is two back-to-back null-terminated
 // strings: oldpath\0newpath\0. Returns a single PANEL_RENAME_* result byte.
 static void handle_rename_file_async(const uint8_t* payload, size_t payload_size) {
-    uint8_t* buf = panel_spi_get_tx_buffer();
+    uint8_t* buf = panel_transport_get_tx_buffer();
     uint8_t result = PANEL_RENAME_OK;
 
     if (!payload || payload_size == 0) {
@@ -1645,13 +1645,13 @@ static void handle_rename_file_async(const uint8_t* payload, size_t payload_size
     }
 
     buf[0] = result;
-    panel_spi_set_async_result(buf, 1);
+    panel_transport_set_async_result(buf, 1);
 }
 
 // Create an empty file (touch). Payload is a null-terminated path. Returns a
 // single PANEL_TOUCH_* result byte.
 static void handle_touch_file_async(const uint8_t* payload, size_t payload_size) {
-    uint8_t* buf = panel_spi_get_tx_buffer();
+    uint8_t* buf = panel_transport_get_tx_buffer();
     uint8_t result = PANEL_TOUCH_OK;
 
     if (!payload || payload_size == 0) {
@@ -1683,13 +1683,13 @@ static void handle_touch_file_async(const uint8_t* payload, size_t payload_size)
     }
 
     buf[0] = result;
-    panel_spi_set_async_result(buf, 1);
+    panel_transport_set_async_result(buf, 1);
 }
 
 // Create a directory. Payload is a null-terminated path. Returns a single
 // PANEL_MKDIR_* result byte.
 static void handle_mkdir_async(const uint8_t* payload, size_t payload_size) {
-    uint8_t* buf = panel_spi_get_tx_buffer();
+    uint8_t* buf = panel_transport_get_tx_buffer();
     uint8_t result = PANEL_MKDIR_OK;
 
     if (!payload || payload_size == 0) {
@@ -1717,7 +1717,7 @@ static void handle_mkdir_async(const uint8_t* payload, size_t payload_size) {
     }
 
     buf[0] = result;
-    panel_spi_set_async_result(buf, 1);
+    panel_transport_set_async_result(buf, 1);
 }
 
 static void handle_reset(void) {
@@ -1880,7 +1880,7 @@ void panel_protocol_handle_write(uint8_t cmd, uint16_t arg,
 
         case PANEL_CMD_START_RP2350_UPDATE:
             logmsg("Panel: Firmware update requested, rebooting...");
-            panel_spi_set_async_result(nullptr, 0);
+            panel_transport_set_async_result(nullptr, 0);
             platform_reset_mcu();
             break;
 
@@ -1938,7 +1938,7 @@ void panel_protocol_handle_write(uint8_t cmd, uint16_t arg,
         default:
             logmsg("Panel: Unknown write cmd ", cmd);
             if (PANEL_CMD_IS_ASYNC(cmd)) {
-                panel_spi_set_async_error();
+                panel_transport_set_async_error();
             }
             break;
     }
@@ -1949,4 +1949,4 @@ void panel_protocol_poll(void) {
     // Future: could add background processing here
 }
 
-#endif // ENABLE_PANEL_SPI
+#endif // ENABLE_PANEL_SPI || ENABLE_PANEL_I2C
