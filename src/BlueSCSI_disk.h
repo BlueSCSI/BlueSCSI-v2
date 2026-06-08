@@ -174,13 +174,19 @@ bool scsiDiskCheckAnyImagesConfigured();
 // Finds filename with the lowest lexical order _after_ the given filename in
 // the given folder. If there is no file after the given one, or if there is
 // no current file, this will return the lowest filename encountered.
-int findNextImageAfter(image_config_t &img, const char* dirname, const char* filename, char* nextname, size_t nextname_len, bool ignore_prefix = false);
+// prefer_cue (optical only): when true, a folder containing a .cue lists the
+// .cue and hides the .bin files it references. When false, cycle by the
+// underlying image files (.bin) instead - used by the front panel so its
+// eject/next stays in a single-bin, non-multi-bin-cue state where cycling is
+// stable (loading a .cue directly makes is_multi_bin_cue() true and wedges the
+// next-image iterator on the same disc).
+int findNextImageAfter(image_config_t &img, const char* dirname, const char* filename, char* nextname, size_t nextname_len, bool ignore_prefix = false, bool prefer_cue = true);
 
 // Gets the next image filename for the target, if configured for multiple
 // images. As a side effect this advances image tracking to the next image.
 // Returns the length of the new image filename, or 0 if the target is not
-// configured for multiple images.
-int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen);
+// configured for multiple images. See findNextImageAfter() for prefer_cue.
+int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen, bool prefer_cue = true);
 
 // Get pointer to extended image configuration based on target idx
 image_config_t &scsiDiskGetImageConfig(int target_idx);
@@ -196,8 +202,10 @@ void scsiDiskStartWrite(uint32_t lba, uint32_t blocks);
 bool scsiDiskCheckAnyNetworkDevicesConfigured();
 
 
-// Switch to next Drive image if multiple have been configured
-bool switchNextImage(image_config_t &img, const char* next_filename = nullptr);
+// Switch to next Drive image if multiple have been configured.
+// See findNextImageAfter() for prefer_cue (only consulted when next_filename
+// is null, i.e. the next image is chosen by the cyclic iterator).
+bool switchNextImage(image_config_t &img, const char* next_filename = nullptr, bool prefer_cue = true);
 
 // Encode a SCSI ID (0..15) as a single filename character: '0'..'9' or 'A'..'F'.
 // Returns '\0' for out-of-range inputs.

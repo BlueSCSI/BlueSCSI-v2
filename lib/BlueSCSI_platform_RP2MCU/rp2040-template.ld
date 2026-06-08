@@ -220,6 +220,10 @@ SECTIONS
         *scsi_accel_host*(.text .text*)
         *scsiHostPhy*(.text .text*)
 
+        /* Front panel SPI (not performance-critical) */
+        *panel_spi.cpp.o(.text .text*)
+        *panel_protocol.cpp.o(.text .text*)
+
         /* SdFat filesystem functions that are not performance-critical.
          * Only init/management functions go to flash. The hot-path
          * (read/write/seekSet/readSectorsDirect/sectorMapLookup/buildSectorMap

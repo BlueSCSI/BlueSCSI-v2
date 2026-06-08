@@ -49,6 +49,9 @@ extern "C" {
 #include <pico/bootrom.h>
 #include "scsi_accel_target.h"
 #include "custom_timings.h"
+#ifdef ENABLE_PANEL_SPI
+#include "panel_spi.h"
+#endif
 #include <BlueSCSI_settings.h>
 #include <minIni.h>
 
@@ -1168,6 +1171,11 @@ void platform_post_sd_card_init()
         // one-time control setup for DMA channels and second core
         audio_setup();
 #endif // ENABLE_AUDIO_OUTPUT
+
+#ifdef ENABLE_PANEL_SPI
+    // Initialize front panel SPI interface after SD card is ready
+    panel_spi_init();
+#endif // ENABLE_PANEL_SPI
 }
 
 bool platform_is_initiator_mode_enabled()
@@ -1735,6 +1743,10 @@ void platform_poll()
     if (platform_is_pico_w()) {
         cyw43_arch_poll();
     }
+#endif
+
+#ifdef ENABLE_PANEL_SPI
+    panel_spi_poll();
 #endif
 
 #if defined(ENABLE_AUDIO_OUTPUT_SPDIF) || defined(ENABLE_AUDIO_OUTPUT_I2S)

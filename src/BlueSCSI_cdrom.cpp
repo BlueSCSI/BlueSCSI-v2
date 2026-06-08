@@ -1385,7 +1385,7 @@ void cdromCloseTray(image_config_t &img)
 
 // Eject CDROM tray if closed, close if open
 // Switch image on ejection.
-void cdromPerformEject(image_config_t &img)
+void cdromPerformEject(image_config_t &img, bool prefer_cue)
 {
     uint8_t target = img.getTargetId();
 #if ENABLE_AUDIO_OUTPUT
@@ -1399,7 +1399,7 @@ void cdromPerformEject(image_config_t &img)
         dbgmsg("------ CDROM open tray on ID ", (int)target);
         img.ejected = true;
         img.cdrom_events = 3; // Media removal
-        switchNextImage(img); // Switch media for next time
+        switchNextImage(img, nullptr, prefer_cue); // Switch media for next time
     }
     else
     {

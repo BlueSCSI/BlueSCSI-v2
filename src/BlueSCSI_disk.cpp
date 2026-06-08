@@ -999,7 +999,7 @@ static void doPerformEject(image_config_t &img)
 
 int findNextImageAfter(image_config_t &img,
         const char* dirname, const char* filename,
-        char* nextname, size_t nextname_len, bool ignore_prefix)
+        char* nextname, size_t nextname_len, bool ignore_prefix, bool prefer_cue)
 {
     FsFile dir;
     if (dirname[0] == '\0')
@@ -1043,8 +1043,9 @@ int findNextImageAfter(image_config_t &img,
     }
 
     // For optical devices, check if directory contains .cue files
-    // If so, skip .bin files (they're referenced by the .cue files)
-    bool dir_has_cue = (img.deviceType == S2S_CFG_OPTICAL) && scsiDiskFolderContainsCueSheet(&dir);
+    // If so, skip .bin files (they're referenced by the .cue files).
+    // prefer_cue=false (front panel) cycles by .bin instead - see header.
+    bool dir_has_cue = prefer_cue && (img.deviceType == S2S_CFG_OPTICAL) && scsiDiskFolderContainsCueSheet(&dir);
     if (dir_has_cue)
     {
         dbgmsg("-- Directory '", dirname, "' contains .cue file(s), will select .cue instead of .bin");
@@ -1128,7 +1129,7 @@ int findNextImageAfter(image_config_t &img,
     }
 }
 
-int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
+int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen, bool prefer_cue)
 {
     int target_idx = img.getTargetId();
 
@@ -1197,7 +1198,7 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
         }
 
         // find the next filename
-        nextlen = findNextImageAfter(img, dirname, currentname, nextname, sizeof(nextname));
+        nextlen = findNextImageAfter(img, dirname, currentname, nextname, sizeof(nextname), false, prefer_cue);
 
         if (nextlen == 0)
         {
@@ -1220,7 +1221,7 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
     }
     else if (img.use_prefix)
     {
-        nextlen = findNextImageAfter(img, "/", currentname, nextname, sizeof(nextname));
+        nextlen = findNextImageAfter(img, "/", currentname, nextname, sizeof(nextname), false, prefer_cue);
         if (nextlen == 0)
         {
             logmsg("Next file with the same prefix as ", currentname," not found for ID", target_idx);
@@ -1324,14 +1325,14 @@ void setEjectButton(uint8_t idx, int8_t eject_button)
 }
 
 // Check if we have multiple drive images to cycle when drive is ejected.
-bool switchNextImage(image_config_t &img, const char* next_filename)
+bool switchNextImage(image_config_t &img, const char* next_filename, bool prefer_cue)
 {
     // Check if we have a next image to load, so that drive is closed next time the host asks.
     int target_idx = img.getTargetId();
     char filename[MAX_FILE_PATH];
     if (next_filename == nullptr)
     {
-        scsiDiskGetNextImageName(img, filename, sizeof(filename));
+        scsiDiskGetNextImageName(img, filename, sizeof(filename), prefer_cue);
     }
     else
     {
