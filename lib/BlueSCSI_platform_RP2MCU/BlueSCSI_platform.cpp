@@ -54,6 +54,9 @@ extern "C" {
 #ifdef ENABLE_PANEL_SPI
 #include "panel_spi.h"
 #endif
+#ifdef ENABLE_PANEL_I2C
+#include "panel_i2c.h"
+#endif
 #include <BlueSCSI_settings.h>
 #include <minIni.h>
 
@@ -1197,6 +1200,13 @@ void platform_post_sd_card_init()
     // Initialize front panel SPI interface after SD card is ready
     panel_spi_init();
 #endif // ENABLE_PANEL_SPI
+#ifdef ENABLE_PANEL_I2C
+    // Initialize front panel I2C slave (v2) only when enabled in the INI; it
+    // claims GPIO16/17 exclusively (no buttons / SPDIF on those pins).
+    if (g_scsi_settings.getSystem()->enableFrontPanel) {
+        panel_i2c_init();
+    }
+#endif // ENABLE_PANEL_I2C
 }
 
 bool platform_is_initiator_mode_enabled()
@@ -1778,6 +1788,9 @@ void platform_poll()
 
 #ifdef ENABLE_PANEL_SPI
     panel_spi_poll();
+#endif
+#ifdef ENABLE_PANEL_I2C
+    panel_i2c_poll();   // no-op until panel_i2c_init() runs (front panel enabled)
 #endif
 
 #if defined(ENABLE_AUDIO_OUTPUT_SPDIF) || defined(ENABLE_AUDIO_OUTPUT_I2S)

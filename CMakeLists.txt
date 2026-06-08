@@ -137,10 +137,13 @@ set(AUDIO_SPDIF_SOURCES
     lib/BlueSCSI_platform_RP2MCU/audio_spdif.cpp
 )
 
-# Front panel SPI sources
+# Front panel sources (SPI slave for Ultra/Ultra Wide, I2C slave for v2;
+# panel_spi.cpp / panel_i2c.cpp self-gate on ENABLE_PANEL_SPI / ENABLE_PANEL_I2C).
 set(PANEL_SOURCES
     lib/BlueSCSI_platform_RP2MCU/panel_spi.cpp
+    lib/BlueSCSI_platform_RP2MCU/panel_i2c.cpp
     lib/BlueSCSI_platform_RP2MCU/panel_protocol.cpp
+    lib/BlueSCSI_platform_RP2MCU/panel_sha256_sw.cpp
 )
 
 # SCSI2SD library sources
@@ -324,10 +327,13 @@ target_compile_definitions(BlueSCSI PRIVATE BUILD_ENV=BlueSCSI_${BLUESCSI_TARGET
 
 if(BLUESCSI_TARGET STREQUAL "Pico")
     # BlueSCSI Pico (RP2040)
+    target_sources(BlueSCSI PRIVATE ${PANEL_SOURCES})
     target_compile_definitions(BlueSCSI PRIVATE
         BLUESCSI_V2
         BLUESCSI_MCU_RP20XX
+        ENABLE_PANEL_I2C
     )
+    target_link_libraries(BlueSCSI PRIVATE pico_i2c_slave)
     set_target_properties(BlueSCSI PROPERTIES OUTPUT_NAME "BlueSCSI_Pico")
 
 elseif(BLUESCSI_TARGET STREQUAL "Pico_DaynaPORT")
@@ -363,10 +369,15 @@ elseif(BLUESCSI_TARGET STREQUAL "Pico_Audio_SPDIF")
 
 elseif(BLUESCSI_TARGET STREQUAL "Pico_2")
     # BlueSCSI Pico 2 (RP2350)
+    target_sources(BlueSCSI PRIVATE ${PANEL_SOURCES})
     target_compile_definitions(BlueSCSI PRIVATE
         BLUESCSI_V2
         BLUESCSI_MCU_RP23XX
+        ENABLE_PANEL_I2C
     )
+    # pico_i2c_slave: panel transport; pico_sha256: hardware SHA for the panel
+    # firmware-relay path (RP2350 uses the HW block, like Ultra).
+    target_link_libraries(BlueSCSI PRIVATE pico_i2c_slave pico_sha256)
     set_target_properties(BlueSCSI PROPERTIES OUTPUT_NAME "BlueSCSI_Pico_2")
 
 elseif(BLUESCSI_TARGET STREQUAL "Pico_2_DaynaPORT")
