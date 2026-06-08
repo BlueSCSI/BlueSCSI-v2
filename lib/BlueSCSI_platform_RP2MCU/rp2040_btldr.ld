@@ -58,6 +58,10 @@ SECTIONS
         *audio_spdif*(.text .text* .rodata .rodata*)
         *BlueI2S*(.text .text* .rodata .rodata*)
 
+        /* Front panel code not needed in bootloader */
+        *panel_spi*(.text .text* .rodata .rodata*)
+        *panel_protocol*(.text .text* .rodata .rodata*)
+
         /* Network code not needed in bootloader */
         *BlueSCSI_platform_network*(.text .text* .rodata .rodata*)
         *cyw43*(.text .text* .rodata .rodata*)

@@ -137,6 +137,12 @@ set(AUDIO_SPDIF_SOURCES
     lib/BlueSCSI_platform_RP2MCU/audio_spdif.cpp
 )
 
+# Front panel SPI sources
+set(PANEL_SOURCES
+    lib/BlueSCSI_platform_RP2MCU/panel_spi.cpp
+    lib/BlueSCSI_platform_RP2MCU/panel_protocol.cpp
+)
+
 # SCSI2SD library sources
 set(SCSI2SD_SOURCES
     lib/SCSI2SD/src/firmware/scsi.c
@@ -396,35 +402,38 @@ elseif(BLUESCSI_TARGET STREQUAL "Pico_2_Audio_SPDIF")
     set_target_properties(BlueSCSI PROPERTIES OUTPUT_NAME "BlueSCSI_Pico_2_Audio_SPDIF")
 
 elseif(BLUESCSI_TARGET STREQUAL "Ultra")
-    # BlueSCSI Ultra (RP2350B with I2S audio + network)
-    target_sources(BlueSCSI PRIVATE ${NETWORK_SOURCES} ${AUDIO_I2S_SOURCES})
+    # BlueSCSI Ultra (RP2350B with I2S audio + network + front panel)
+    target_sources(BlueSCSI PRIVATE ${NETWORK_SOURCES} ${AUDIO_I2S_SOURCES} ${PANEL_SOURCES})
     target_compile_definitions(BlueSCSI PRIVATE
         BLUESCSI_ULTRA
         BLUESCSI_MCU_RP23XX
         ENABLE_AUDIO_OUTPUT
         ENABLE_AUDIO_OUTPUT_I2S
+        ENABLE_PANEL_SPI
         BLUESCSI_NETWORK
         BLUESCSI_DAYNAPORT
         BLUESCSI_RM2
         CYW43_PIO_CLOCK_DIV_DYNAMIC=1
         LOGBUFSIZE=65536
     )
-    target_link_libraries(BlueSCSI PRIVATE pico_cyw43_arch_poll pico_async_context_poll)
+    target_link_libraries(BlueSCSI PRIVATE pico_cyw43_arch_poll pico_async_context_poll pico_sha256)
     set_target_properties(BlueSCSI PROPERTIES OUTPUT_NAME "BlueSCSI_Ultra")
 
 elseif(BLUESCSI_TARGET STREQUAL "Ultra_Wide")
-    # BlueSCSI Ultra Wide (RP2350B with wide SCSI + I2S audio)
-    target_sources(BlueSCSI PRIVATE ${AUDIO_I2S_SOURCES})
+    # BlueSCSI Ultra Wide (RP2350B with wide SCSI + I2S audio + front panel)
+    target_sources(BlueSCSI PRIVATE ${AUDIO_I2S_SOURCES} ${PANEL_SOURCES})
     target_compile_definitions(BlueSCSI PRIVATE
         BLUESCSI_ULTRA_WIDE
         BLUESCSI_MCU_RP23XX
         ENABLE_AUDIO_OUTPUT
         ENABLE_AUDIO_OUTPUT_I2S
+        ENABLE_PANEL_SPI
         RP2MCU_USE_CPU_PARITY
         RP2MCU_SCSI_ACCEL_WIDE
         CYW43_PIO_CLOCK_DIV_DYNAMIC=1
         LOGBUFSIZE=32768
     )
+    target_link_libraries(BlueSCSI PRIVATE pico_sha256)
     set_target_properties(BlueSCSI PROPERTIES OUTPUT_NAME "BlueSCSI_Ultra_Wide")
 
 else()

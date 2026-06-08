@@ -96,3 +96,17 @@ bool scsiInitiatorResetBusConfig(int target_id);
 
 // Negotiate bus width with target
 bool scsiInitiatorSetBusWidth(int target_id, int busWidth);
+
+// Returns true when the initiator is actively using the SCSI bus.
+// Panel SPI should defer async command processing while this is true.
+bool scsiInitiatorBusBusy();
+
+// Panel status reporting functions
+bool scsiInitiatorIsActive();
+void scsiInitiatorGetStatus(uint8_t *phase, uint8_t *current_target, uint8_t *initiator_id, uint8_t *drives_mask);
+bool scsiInitiatorGetTargetInfo(int scsi_id, uint8_t *status, uint8_t *device_type,
+                                uint8_t *ansi_version, uint32_t *sectorcount,
+                                uint32_t *sectorsize, uint32_t *sectors_done,
+                                uint32_t *bad_sector_count, char *vendor,
+                                char *product, uint8_t *sense_key,
+                                uint8_t *asc, uint8_t *ascq);
