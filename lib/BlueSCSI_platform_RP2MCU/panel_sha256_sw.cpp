@@ -28,7 +28,8 @@
 
 #include "panel_sha256.h"
 
-#if !defined(BLUESCSI_MCU_RP23XX)
+// Compiled only where panel_sha256.h selects the software path (RP2040).
+#if defined(BLUESCSI_MCU_RP20XX)
 
 #include <string.h>
 
@@ -131,4 +132,4 @@ extern "C" void pico_sha256_cleanup(pico_sha256_state_t *ctx) {
     (void)ctx;  // nothing to release in the software path
 }
 
-#endif // !BLUESCSI_MCU_RP23XX
+#endif // BLUESCSI_MCU_RP20XX
