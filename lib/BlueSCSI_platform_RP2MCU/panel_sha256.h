@@ -27,12 +27,7 @@
 
 #pragma once
 
-#if defined(BLUESCSI_MCU_RP23XX)
-
-// RP2350: use the hardware SHA-256 accelerator via the pico-sdk.
-#include <pico/sha256.h>
-
-#else
+#if defined(BLUESCSI_MCU_RP20XX)
 
 // RP2040: software SHA-256 with a pico_sha256-compatible front end.
 #include <stdint.h>
@@ -71,4 +66,9 @@ void pico_sha256_cleanup(pico_sha256_state_t *state);
 }
 #endif
 
-#endif // BLUESCSI_MCU_RP23XX
+#else
+
+// RP2350 (and host unit tests, which stub it): hardware SHA-256 via the pico-sdk.
+#include <pico/sha256.h>
+
+#endif // BLUESCSI_MCU_RP20XX
