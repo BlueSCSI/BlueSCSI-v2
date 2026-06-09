@@ -151,14 +151,6 @@ static uint16_t panel_i2c_crc16(const uint8_t* data, size_t len) {
     return crc;
 }
 
-// True when the SCSI target bus is active or a host selection is latched but not
-// yet serviced. Panel write commands run multi-ms SD I/O in the main loop and
-// block scsiPoll() while doing so, so defer them until the bus is genuinely idle
-// (mirrors panel_spi.cpp).
-static inline bool panel_scsi_bus_busy(void) {
-    return scsiDev.phase != BUS_FREE || scsiDev.selFlag;
-}
-
 // ============================================================================
 // I2C slave event handler (runs in the I2C ISR)
 // ============================================================================

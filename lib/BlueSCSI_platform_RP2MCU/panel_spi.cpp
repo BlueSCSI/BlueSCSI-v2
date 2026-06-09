@@ -107,16 +107,6 @@ static bool setup_payload_dma(size_t size, uint8_t *rx_buf, uint8_t *tx_buf);
 static void setup_status_dma(void);
 static void dma_irq_handler(void);
 
-// True when the SCSI target bus is active OR a host selection is latched but
-// not yet serviced. Panel write commands run their (potentially multi-ms) SD
-// I/O in the main loop and block scsiPoll() while doing so, so we defer them
-// until the bus is genuinely idle — not just during DATA phases. This narrows
-// the window in which a panel SD operation can delay a host selection or
-// command. (DATA_IN/DATA_OUT are a subset of phase != BUS_FREE.)
-static inline bool panel_scsi_bus_busy(void) {
-    return scsiDev.phase != BUS_FREE || scsiDev.selFlag;
-}
-
 bool panel_spi_init(void) {
     if (g_panel.initialized) {
         return true;
