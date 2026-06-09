@@ -327,13 +327,10 @@ target_compile_definitions(BlueSCSI PRIVATE BUILD_ENV=BlueSCSI_${BLUESCSI_TARGET
 
 if(BLUESCSI_TARGET STREQUAL "Pico")
     # BlueSCSI Pico (RP2040)
-    target_sources(BlueSCSI PRIVATE ${PANEL_SOURCES})
     target_compile_definitions(BlueSCSI PRIVATE
         BLUESCSI_V2
         BLUESCSI_MCU_RP20XX
-        ENABLE_PANEL_I2C
     )
-    target_link_libraries(BlueSCSI PRIVATE pico_i2c_slave)
     set_target_properties(BlueSCSI PROPERTIES OUTPUT_NAME "BlueSCSI_Pico")
 
 elseif(BLUESCSI_TARGET STREQUAL "Pico_DaynaPORT")
@@ -369,15 +366,10 @@ elseif(BLUESCSI_TARGET STREQUAL "Pico_Audio_SPDIF")
 
 elseif(BLUESCSI_TARGET STREQUAL "Pico_2")
     # BlueSCSI Pico 2 (RP2350)
-    target_sources(BlueSCSI PRIVATE ${PANEL_SOURCES})
     target_compile_definitions(BlueSCSI PRIVATE
         BLUESCSI_V2
         BLUESCSI_MCU_RP23XX
-        ENABLE_PANEL_I2C
     )
-    # pico_i2c_slave: panel transport; pico_sha256: hardware SHA for the panel
-    # firmware-relay path (RP2350 uses the HW block, like Ultra).
-    target_link_libraries(BlueSCSI PRIVATE pico_i2c_slave pico_sha256)
     set_target_properties(BlueSCSI PROPERTIES OUTPUT_NAME "BlueSCSI_Pico_2")
 
 elseif(BLUESCSI_TARGET STREQUAL "Pico_2_DaynaPORT")
@@ -449,6 +441,27 @@ elseif(BLUESCSI_TARGET STREQUAL "Ultra_Wide")
 
 else()
     message(FATAL_ERROR "Unknown BLUESCSI_TARGET: ${BLUESCSI_TARGET}")
+endif()
+
+# Front panel is available as a runtime option (the [SCSI] EnableFrontPanel ini
+# key, default off) on the BlueSCSI v2 profiles that have the SRAM for it:
+# Pico (RP2040 base) and all three RP2350 profiles (Pico_2 / _DaynaPORT /
+# _Audio_SPDIF). The panel needs ~16 KB of private static buffers (full-size, so
+# the async I2C ISR never shares memory with a live SCSI transfer); on RP2040 +
+# WiFi the CYW43 stack leaves too little SRAM, so Pico_DaynaPORT and
+# Pico_Audio_SPDIF are excluded. (Pico_Audio_SPDIF also routes SPDIF out on
+# GPIO17 = the panel's SCL, so they couldn't coexist there anyway.)
+# Ultra/Ultra Wide use the SPI panel (ENABLE_PANEL_SPI) instead.
+if(BLUESCSI_TARGET MATCHES "^Pico"
+   AND NOT BLUESCSI_TARGET STREQUAL "Pico_DaynaPORT"
+   AND NOT BLUESCSI_TARGET STREQUAL "Pico_Audio_SPDIF")
+    target_sources(BlueSCSI PRIVATE ${PANEL_SOURCES})
+    target_compile_definitions(BlueSCSI PRIVATE ENABLE_PANEL_I2C)
+    target_link_libraries(BlueSCSI PRIVATE pico_i2c_slave)
+    if(BLUESCSI_TARGET MATCHES "^Pico_2")
+        # RP2350 uses the hardware SHA-256 block for the firmware-relay hash path.
+        target_link_libraries(BlueSCSI PRIVATE pico_sha256)
+    endif()
 endif()
 
 # =============================================================================
