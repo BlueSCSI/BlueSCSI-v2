@@ -66,9 +66,6 @@ void panel_i2c_set_async_result(const uint8_t* data, size_t size);
 /** Signal that an async operation completed with error. */
 void panel_i2c_set_async_error(void);
 
-/** @return the RX payload buffer protocol handlers read incoming data from. */
-uint8_t* panel_i2c_get_rx_buffer(void);
-
 /** @return the TX payload buffer protocol handlers stage async results into. */
 uint8_t* panel_i2c_get_tx_buffer(void);
 

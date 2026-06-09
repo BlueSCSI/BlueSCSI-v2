@@ -60,7 +60,7 @@ extern "C" {
 #define PANEL_I2C_SDA    GPIO_I2C_SDA   // GPIO16 on v2
 #define PANEL_I2C_SCL    GPIO_I2C_SCL   // GPIO17 on v2
 #define PANEL_I2C_ADDR   0x50           // matches the ESP32 master (HOST_DEVICE_ADDR)
-#define PANEL_I2C_BAUD   400000         // 400 kHz
+#define PANEL_I2C_BAUD   1000000        // 1 MHz (fast-mode-plus); master drives the clock
 
 // Size of the dedicated synchronous-read response buffer. Must hold the largest
 // IRQ-context read response (panel_playback_status_t = 76 bytes); 128 leaves
@@ -97,10 +97,8 @@ static struct {
     volatile bool serve_result_next;   // a READY status will be followed by a result read
 
     // Buffers
-    uint8_t rx_payload[PANEL_PROTOCOL_MAX_PAYLOAD] __attribute__((aligned(4)));
     uint8_t tx_payload[PANEL_PROTOCOL_MAX_PAYLOAD] __attribute__((aligned(4)));
     uint8_t sync_response[PANEL_SYNC_RESPONSE_SIZE] __attribute__((aligned(4)));
-    uint8_t rx_discard[PANEL_PROTOCOL_MAX_PAYLOAD] __attribute__((aligned(4)));
     panel_status_response_t status_response;
 
     // Async operation state (same model as the SPI slave)
@@ -245,12 +243,15 @@ static void panel_i2c_handler(i2c_inst_t* i2c, i2c_slave_event_t event) {
                     memcpy(&g_panel.cur_header, g_panel.rx_header_bytes,
                            sizeof(g_panel.cur_header));
                     g_panel.payload_idx = 0;
+                    // Only write commands carry a payload after the header; for
+                    // read commands the master sends no further bytes, so drop
+                    // anything unexpected (NULL dest) instead of buffering it.
                     g_panel.payload_dest = PANEL_CMD_IS_WRITE(g_panel.cur_header.command)
-                                           ? g_deferred_write.payload : g_panel.rx_discard;
+                                           ? g_deferred_write.payload : NULL;
                 }
             } else {
                 // Post-header payload byte (write commands only in practice).
-                if (g_panel.payload_idx < PANEL_PROTOCOL_MAX_PAYLOAD) {
+                if (g_panel.payload_dest && g_panel.payload_idx < PANEL_PROTOCOL_MAX_PAYLOAD) {
                     g_panel.payload_dest[g_panel.payload_idx] = b;
                 }
                 g_panel.payload_idx++;
@@ -456,10 +457,6 @@ void panel_i2c_set_async_result(const uint8_t* data, size_t size) {
 void panel_i2c_set_async_error(void) {
     g_panel.async_response_size = 0;
     g_panel.async_state = PANEL_ASYNC_ERROR;
-}
-
-uint8_t* panel_i2c_get_rx_buffer(void) {
-    return g_panel.rx_payload;
 }
 
 uint8_t* panel_i2c_get_tx_buffer(void) {

@@ -31,13 +31,11 @@
 #if defined(ENABLE_PANEL_I2C)
 #include "panel_i2c.h"
 #define panel_transport_get_tx_buffer    panel_i2c_get_tx_buffer
-#define panel_transport_get_rx_buffer    panel_i2c_get_rx_buffer
 #define panel_transport_set_async_result panel_i2c_set_async_result
 #define panel_transport_set_async_error  panel_i2c_set_async_error
 #elif defined(ENABLE_PANEL_SPI)
 #include "panel_spi.h"
 #define panel_transport_get_tx_buffer    panel_spi_get_tx_buffer
-#define panel_transport_get_rx_buffer    panel_spi_get_rx_buffer
 #define panel_transport_set_async_result panel_spi_set_async_result
 #define panel_transport_set_async_error  panel_spi_set_async_error
 #endif
