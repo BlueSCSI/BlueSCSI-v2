@@ -388,7 +388,7 @@ void panel_spi_poll(void) {
     if (!g_panel.first_transaction_logged) {
         g_panel.first_transaction_logged = true;
         logmsg("Panel SPI: First transaction received - front panel connected");
-        logmsg("Panel SPI: cmd=", cmd, " (", panel_cmd_name(cmd), ") arg=", (int)arg, " payload=", (int)payload_size);
+        dbgmsg("Panel SPI: cmd=", cmd, " (", panel_cmd_name(cmd), ") arg=", (int)arg, " payload=", (int)payload_size);
         g_panel.last_log_time = platform_millis();
     }
 
@@ -396,7 +396,7 @@ void panel_spi_poll(void) {
     // events the IRQ recorded since logmsg is not safe in IRQ context.
     uint32_t now = platform_millis();
     if (now - g_panel.last_log_time >= 10000) {
-        logmsg("Panel SPI: ", g_panel.transaction_count, " transactions processed");
+        dbgmsg("Panel SPI: ", g_panel.transaction_count, " transactions processed");
         g_panel.last_log_time = now;
     }
     panel_protocol_drain_irq_log();

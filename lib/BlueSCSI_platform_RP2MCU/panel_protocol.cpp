@@ -687,7 +687,7 @@ static void handle_get_device_list_async(void) {
     if (scsiInitiatorIsActive()) {
         PANEL_DEVLIST_MODE(list) = PANEL_MODE_INITIATOR;
         list->device_count = 0;
-        logmsg("Panel: Device list: initiator mode active");
+        dbgmsg("Panel: Device list: initiator mode active");
         panel_transport_set_async_result(buf, sizeof(device_list_response_t));
         return;
     }
@@ -739,7 +739,7 @@ static void handle_get_device_list_async(void) {
     }
 
     list->device_count = count;
-    logmsg("Panel: Device list: ", (int)count, " devices");
+    dbgmsg("Panel: Device list: ", (int)count, " devices");
     panel_transport_set_async_result(buf, offset);
 }
 
