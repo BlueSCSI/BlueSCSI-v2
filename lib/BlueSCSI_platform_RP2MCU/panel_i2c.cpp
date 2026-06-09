@@ -389,7 +389,7 @@ void panel_i2c_poll(void) {
         uint32_t now_hb = platform_millis();
         if (now_hb - g_panel.last_log_time >= 3000) {
             g_panel.last_log_time = now_hb;
-            logmsg("Panel I2C: rx=", (int)g_panel.ev_receive, " req=", (int)g_panel.ev_request,
+            dbgmsg("Panel I2C: rx=", (int)g_panel.ev_receive, " req=", (int)g_panel.ev_request,
                    " fin=", (int)g_panel.ev_finish, " lastcmd=0x", (int)g_panel.last_cmd,
                    " async=", (int)g_panel.async_state);
         }
