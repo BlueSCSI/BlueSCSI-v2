@@ -41,12 +41,22 @@
 #include "BlueSCSI_disk.h"
 #include "BlueSCSI_cdrom.h"
 #include "BlueSCSI_initiator.h"
+#include <scsi.h>
 
 // External SD card
 extern SdFs SD;
 
 // External disk images array
 extern image_config_t g_DiskImages[S2S_MAX_TARGETS];
+
+// True when the SCSI target bus is active OR a host selection is latched but
+// not yet serviced. Panel write commands run their (potentially multi-ms) SD
+// I/O in the main loop and block scsiPoll() while doing so, so the transports
+// defer them until the bus is genuinely idle — not just during DATA phases.
+// (DATA_IN/DATA_OUT are a subset of phase != BUS_FREE.)
+bool panel_scsi_bus_busy(void) {
+    return scsiDev.phase != BUS_FREE || scsiDev.selFlag;
+}
 
 // Panel firmware path on SD card
 static const char* PANEL_FW_PATH = "/firmware/frontpanel.bin";

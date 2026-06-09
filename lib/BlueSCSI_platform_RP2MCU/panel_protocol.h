@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -81,6 +82,13 @@ void panel_protocol_refresh_device_snapshot(void);
  * and emitted by the main loop here, since logmsg is not IRQ-safe.
  */
 void panel_protocol_drain_irq_log(void);
+
+/**
+ * True when the SCSI target bus is active or a host selection is latched but
+ * not yet serviced. Transports defer panel write commands (multi-ms SD I/O in
+ * the main loop) until this returns false.
+ */
+bool panel_scsi_bus_busy(void);
 
 #ifdef __cplusplus
 }
