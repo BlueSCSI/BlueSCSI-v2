@@ -1771,9 +1771,6 @@ void platform_reset_mcu()
 {
     watchdog_reboot(0, 0, 2000);
 }
-bool platform_has_i2c() {
-    return is2023a;
-}
 bool disable_i2c = false;
 void platform_disable_i2c() {
     gpio_conf(GPIO_I2C_SCL, GPIO_FUNC_SIO, true, false, false, false, false);
