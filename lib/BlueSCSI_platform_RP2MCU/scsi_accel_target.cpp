@@ -38,6 +38,7 @@
 #include "BlueSCSI_log.h"
 #include "scsi_accel_target.h"
 #include "timings_RP2MCU.h"
+#include <scsi.h>
 #include <hardware/pio.h>
 #include <hardware/dma.h>
 #include <hardware/irq.h>
@@ -758,6 +759,13 @@ void scsi_accel_rp2040_finishRead(const uint8_t *data, uint32_t count, int *pari
         if ((uint32_t)(platform_millis() - start) > 5000)
         {
             logmsg("scsi_accel_rp2040_finishRead timeout");
+            // Which command's data-out died: essential for distinguishing a
+            // phantom selection (garbage CDB at power-on) from a real host
+            // transfer the receive path lost. The timeout escalates to a
+            // bus reset, which kills whatever the host was doing.
+            logmsg("-- CDB ", bytearray(scsiDev.cdb, 12),
+                   " phase ", (int)scsiDev.phase,
+                   " expecting ", (int)count, " bytes from host");
             scsi_accel_log_state();
             *resetFlag = 1;
             break;
@@ -773,7 +781,11 @@ void scsi_accel_rp2040_finishRead(const uint8_t *data, uint32_t count, int *pari
     // Check if any parity errors have been detected during the transfer so far
     if (parityError != NULL && (SCSI_DMA_PIO->irq & 1))
     {
-        dbgmsg("scsi_accel_rp2040_finishRead(", bytearray(data, count), ") detected parity error");
+        // Corrupted host->target data is written to media faithfully and
+        // fails the host's verify pass with nothing else logged - parity is
+        // the only tap on this path, so it must be visible without Debug.
+        logmsg("SCSI parity error during host->target transfer of ", (int)count,
+               " bytes, CDB ", bytearray(scsiDev.cdb, 12));
         *parityError = true;
     }
 }
