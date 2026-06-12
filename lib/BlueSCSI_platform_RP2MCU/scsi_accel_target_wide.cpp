@@ -521,6 +521,7 @@ void scsi_accel_rp2040_startWrite(const uint8_t* data, uint32_t count, volatile 
             pio_sm_init(SCSI_DMA_PIO, SCSI_DATA_SM, g_scsi_dma.pio_offset_async_write, &g_scsi_dma.pio_cfg_async_write);
             scsidma_config_gpio();
 
+            __dmb(); // see start_dma_read(): config writes must land before enable
             pio_sm_set_enabled(SCSI_DMA_PIO, SCSI_DATA_SM, true);
         }
         else
@@ -560,6 +561,7 @@ void scsi_accel_rp2040_startWrite(const uint8_t* data, uint32_t count, volatile 
             );
 
             // Enable state machines
+            __dmb(); // see start_dma_read(): config writes must land before enable
             pio_sm_set_enabled(SCSI_DMA_PIO, SCSI_SYNC_SM, true);
             pio_sm_set_enabled(SCSI_DMA_PIO, SCSI_DATA_SM, true);
         }
@@ -853,6 +855,13 @@ static bool start_dma_read()
         words_to_rx,
         true
     );
+
+    // Cortex-M33 buffers device writes: without a real data memory barrier
+    // the PIO/DMA register setup above can still be in flight when the
+    // state machines start, and the first words of a transfer go wrong or
+    // missing (same mechanism as the RM2/CYW43 PIO bring-up failure -
+    // pico-sdk's __compiler_memory_barrier() is not a hardware DMB).
+    __dmb();
 
     // Ready to start the data and parity check state machines
     pio_sm_set_enabled(SCSI_DMA_PIO, SCSI_DATA_SM, true);
