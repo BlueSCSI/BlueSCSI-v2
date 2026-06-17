@@ -415,17 +415,8 @@ static bool get_first_image_info(loaded_image_status_t* status) {
         if (img.file.isOpen()) {
             status->image_loaded = 1;
             status->device_type = PANEL_DEVICE_TYPE_SCSI;
-
-            // Get filename
             img.file.getFilename(status->image_name, sizeof(status->image_name));
-
-            // Get directory path
-            if (img.current_image[0] != '\0') {
-                strncpy(status->directory_path, "/", sizeof(status->directory_path) - 1);
-            } else {
-                strncpy(status->directory_path, "/", sizeof(status->directory_path) - 1);
-            }
-
+            strncpy(status->directory_path, "/", sizeof(status->directory_path) - 1);
             return true;
         }
     }
