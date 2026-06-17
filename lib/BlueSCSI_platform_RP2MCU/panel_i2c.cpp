@@ -111,17 +111,6 @@ static struct {
 
     // Logging
     bool first_transaction_logged;
-    uint32_t transaction_count;
-    uint32_t last_log_time;
-
-    // Diagnostics: raw I2C event counters incremented in the ISR and drained by
-    // panel_i2c_poll(). These reveal whether the master is even addressing us
-    // (any RECEIVE/REQUEST means our address was ACKed) and how far we get.
-    volatile uint32_t ev_receive;
-    volatile uint32_t ev_request;
-    volatile uint32_t ev_finish;
-    volatile uint8_t  last_cmd;
-    bool first_event_logged;
 } g_panel;
 
 // Stable shadow for a received write command, handed from the ISR to the main
@@ -225,7 +214,6 @@ static void panel_i2c_process_write_txn(void) {
 static void panel_i2c_handler(i2c_inst_t* i2c, i2c_slave_event_t event) {
     switch (event) {
         case I2C_SLAVE_RECEIVE: {
-            g_panel.ev_receive++;
             uint8_t b = i2c_read_byte_raw(i2c);
             if (g_panel.rx_count < PANEL_PROTOCOL_HEADER_SIZE) {
                 g_panel.rx_header_bytes[g_panel.rx_count] = b;
@@ -252,7 +240,6 @@ static void panel_i2c_handler(i2c_inst_t* i2c, i2c_slave_event_t event) {
         }
 
         case I2C_SLAVE_REQUEST: {
-            g_panel.ev_request++;
             // Master is reading. Serve staged bytes, pad with zero past the end.
             uint8_t b = (g_panel.tx_idx < g_panel.tx_len) ? g_panel.tx_src[g_panel.tx_idx] : 0x00;
             if (g_panel.tx_idx < g_panel.tx_len) {
@@ -263,12 +250,8 @@ static void panel_i2c_handler(i2c_inst_t* i2c, i2c_slave_event_t event) {
         }
 
         case I2C_SLAVE_FINISH: {
-            g_panel.ev_finish++;
             if (g_panel.rx_count > 0) {
                 // This was a write/header transaction.
-                if (g_panel.rx_count >= PANEL_PROTOCOL_HEADER_SIZE) {
-                    g_panel.last_cmd = g_panel.cur_header.command;
-                }
                 panel_i2c_process_write_txn();
                 g_panel.rx_count = 0;
                 g_panel.payload_idx = 0;
@@ -368,25 +351,6 @@ void panel_i2c_poll(void) {
     // read handlers never touch img->file (which switchNextImage reassigns).
     panel_protocol_refresh_device_snapshot();
 
-    // --- Diagnostics: report how far the link gets (drains ISR counters). ---
-    // The first RECEIVE/REQUEST means our slave address (0x50) was ACKed, i.e.
-    // the master physically reached us. No events => wiring / address / pins.
-    if (!g_panel.first_event_logged &&
-        (g_panel.ev_receive || g_panel.ev_request || g_panel.ev_finish)) {
-        g_panel.first_event_logged = true;
-        logmsg("Panel I2C: first bus activity - address ACKed (rx=", (int)g_panel.ev_receive,
-               " req=", (int)g_panel.ev_request, " fin=", (int)g_panel.ev_finish, ")");
-    }
-    {
-        uint32_t now_hb = platform_millis();
-        if (now_hb - g_panel.last_log_time >= 3000) {
-            g_panel.last_log_time = now_hb;
-            dbgmsg("Panel I2C: rx=", (int)g_panel.ev_receive, " req=", (int)g_panel.ev_request,
-                   " fin=", (int)g_panel.ev_finish, " lastcmd=0x", (int)g_panel.last_cmd,
-                   " async=", (int)g_panel.async_state);
-        }
-    }
-
     // During initiator SCSI bus operations, suspend the I2C IRQ; resume cleanly
     // when the bus is free.
     if (scsiInitiatorBusBusy()) {
@@ -420,7 +384,6 @@ void panel_i2c_poll(void) {
 
     g_deferred_write.ready = false;
 
-    g_panel.transaction_count++;
     if (!g_panel.first_transaction_logged) {
         g_panel.first_transaction_logged = true;
         logmsg("Panel I2C: first write command dispatched (cmd=0x", (int)g_deferred_write.command,
