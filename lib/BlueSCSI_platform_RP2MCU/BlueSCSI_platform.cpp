@@ -1,5 +1,6 @@
 /**
  * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
+ * Copyright (c) 2025-2026 Eric Helgeson <eric@bluescsi.com>
  *
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version.
  *
@@ -841,6 +842,10 @@ void platform_init()
     // Only needed on RP2040 — see comment at __usb_timer_task definition.
     __usb_task_irq = user_irq_claim_unused(true);
     irq_set_exclusive_handler(__usb_task_irq, __usb_irq);
+    // Run tud_task() at the lowest IRQ priority so the SCSI-critical IRQs
+    // (DMA_IRQ_0 buffer-swap, selection-detect GPIO) — which sit at the
+    // default priority - always preempt an in-progress tud_task(). tud_task()
+    irq_set_priority(__usb_task_irq, PICO_LOWEST_IRQ_PRIORITY);
     irq_set_enabled(__usb_task_irq, true);
     add_alarm_in_us(1000, __usb_timer_task, NULL, true);
 #endif
