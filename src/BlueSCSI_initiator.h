@@ -71,6 +71,9 @@ bool scsiInitiatorTestSupportsRead10(int target_id, uint32_t sectorsize);
 // Execute READ CAPACITY command
 bool scsiInitiatorReadCapacity(int target_id, uint32_t *sectorcount, uint32_t *sectorsize);
 
+// Execute READ BLOCK LIMITS command to access the size of sequencial device frames
+bool scsiInitiatorSequencialReadBlockLimits(int target_id, uint32_t *maxblocksize, uint32_t *minblocksize, bool *fixedsize);
+
 // Execute REQUEST SENSE command to get more information about error status
 bool scsiRequestSense(int target_id, uint8_t *sense_key, uint8_t *sense_asc = nullptr, uint8_t *sense_ascq = nullptr);
 

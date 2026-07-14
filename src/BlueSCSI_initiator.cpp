@@ -364,55 +364,10 @@ void scsiInitiatorMainLoop()
             }
 #endif
 
-            bool readcapok = startstopok &&
-                scsiInitiatorReadCapacity(g_initiator_state.target_id,
-                                          &g_initiator_state.sectorcount,
-                                          &g_initiator_state.sectorsize);
-            dbgmsg("read capacity: ", readcapok ? "OK" : "FAILED");
-
+            //Run inquiry First
             bool inquiryok = startstopok &&
                 scsiInquiry(g_initiator_state.target_id, inquiry_data);
             dbgmsg("inquiry: ", inquiryok ? "OK" : "FAILED");
-
-            LED_OFF();
-
-            uint64_t total_bytes = 0;
-            if (readcapok)
-            {
-                logmsg("SCSI ID ", g_initiator_state.target_id,
-                    " capacity ", (int)g_initiator_state.sectorcount,
-                    " sectors x ", (int)g_initiator_state.sectorsize, " bytes");
-
-                g_initiator_state.sectorcount_all = g_initiator_state.sectorcount;
-
-                total_bytes = (uint64_t)g_initiator_state.sectorcount * g_initiator_state.sectorsize;
-                logmsg("Drive total size is ", (int)(total_bytes / (1024 * 1024)), " MiB");
-                if (total_bytes >= 0xFFFFFFFF && SD.fatType() != FAT_TYPE_EXFAT)
-                {
-                    // Note: the FAT32 limit is 4 GiB - 1 byte
-                    logmsg("Target SCSI ID ", g_initiator_state.target_id, " image size is equal or larger than 4 GiB.");
-                    logmsg("This is larger than the max filesize supported by SD card's filesystem");
-                    logmsg("Please reformat the SD card with exFAT format to image this target");
-                    g_initiator_state.drives_imaged |= 1 << g_initiator_state.target_id;
-                    return;
-                }
-            }
-            else if (startstopok)
-            {
-                logmsg("SCSI ID ", g_initiator_state.target_id, " responds but ReadCapacity command failed");
-                logmsg("Possibly SCSI-1 drive? Attempting to read up to 1 GB.");
-                g_initiator_state.sectorsize = 512;
-                g_initiator_state.sectorcount = g_initiator_state.sectorcount_all = 2097152;
-                g_initiator_state.max_sector_per_transfer = 128;
-            }
-            else
-            {
-#ifndef BLUESCSI_NETWORK
-                dbgmsg("Failed to connect to SCSI ID ", g_initiator_state.target_id);
-#endif
-                g_initiator_state.sectorsize = 0;
-                g_initiator_state.sectorcount = g_initiator_state.sectorcount_all = 0;
-            }
 
             char filename_base[12];
             strncpy(filename_base, "HD00_imaged", sizeof(filename_base));
@@ -431,20 +386,6 @@ void scsiInitiatorMainLoop()
                 product[16]=0;
                 memcpy(revision, &inquiry_data[32], 4);
                 revision[4]=0;
-
-                g_initiator_state.use_read10 = scsiInitiatorTestSupportsRead10(g_initiator_state.target_id, g_initiator_state.sectorsize);
-                if(!g_initiator_state.use_read10)
-                {
-                    // READ6 command can transfer up to 256 sectors
-                    g_initiator_state.max_sector_per_transfer = 256;
-                }
-
-                // Limit sectors per transfer based on buffer size
-                uint32_t max_by_buffer = sizeof(scsiDev.data) / g_initiator_state.sectorsize;
-                if (max_by_buffer < g_initiator_state.max_sector_per_transfer)
-                {
-                    g_initiator_state.max_sector_per_transfer = max_by_buffer;
-                }
 
                 logmsg("SCSI Version ", (int) g_initiator_state.ansi_version);
                 logmsg("[SCSI", g_initiator_state.target_id,"]");
@@ -495,12 +436,94 @@ void scsiInitiatorMainLoop()
                 }
             }
 
+            uint64_t total_bytes = 0;
+
+            if(g_initiator_state.device_type != SCSI_DEVICE_TYPE_SEQUENTIAL){//ReadCapacity is not a valid SEQUENCIAL command
+
+                bool readcapok = startstopok &&
+                    scsiInitiatorReadCapacity(g_initiator_state.target_id,
+                                              &g_initiator_state.sectorcount,
+                                              &g_initiator_state.sectorsize);
+                dbgmsg("read capacity: ", readcapok ? "OK" : "FAILED");
+
+                LED_OFF();
+
+                if (readcapok)
+                {
+                    logmsg("SCSI ID ", g_initiator_state.target_id,
+                        " capacity ", (int)g_initiator_state.sectorcount,
+                        " sectors x ", (int)g_initiator_state.sectorsize, " bytes");
+
+                    g_initiator_state.sectorcount_all = g_initiator_state.sectorcount;
+
+                    total_bytes = (uint64_t)g_initiator_state.sectorcount * g_initiator_state.sectorsize;
+                    logmsg("Drive total size is ", (int)(total_bytes / (1024 * 1024)), " MiB");
+                    if (total_bytes >= 0xFFFFFFFF && SD.fatType() != FAT_TYPE_EXFAT)
+                    {
+                        // Note: the FAT32 limit is 4 GiB - 1 byte
+                        logmsg("Target SCSI ID ", g_initiator_state.target_id, " image size is equal or larger than 4 GiB.");
+                        logmsg("This is larger than the max filesize supported by SD card's filesystem");
+                        logmsg("Please reformat the SD card with exFAT format to image this target");
+                        g_initiator_state.drives_imaged |= 1 << g_initiator_state.target_id;
+                        return;
+                    }
+                }
+                else if (startstopok)
+                {
+                    logmsg("SCSI ID ", g_initiator_state.target_id, " responds but ReadCapacity command failed");
+                    logmsg("Possibly SCSI-1 drive? Attempting to read up to 1 GB.");
+                    g_initiator_state.sectorsize = 512;
+                    g_initiator_state.sectorcount = g_initiator_state.sectorcount_all = 2097152;
+                    g_initiator_state.max_sector_per_transfer = 128;
+                }
+                else
+                {
+#ifndef BLUESCSI_NETWORK
+                    dbgmsg("Failed to connect to SCSI ID ", g_initiator_state.target_id);
+#endif
+                    g_initiator_state.sectorsize = 0;
+                    g_initiator_state.sectorcount = g_initiator_state.sectorcount_all = 0;
+                }
+            }else{
+
+                bool readblockcapok = scsiInitiatorSequencialReadBlockLimits(g_initiator_state.target_id,
+                    &g_initiator_state.maxblocksize,
+                    &g_initiator_state.minblocksize, 
+                    &g_initiator_state.fixed_blocksize);
+
+                if(readblockcapok){
+                    if(g_initiator_state.fixed_blocksize)
+                        logmsg("SCSI ID ", g_initiator_state.target_id,
+                        " fixed block size ", g_initiator_state.minblocksize);
+                    else
+                        logmsg("SCSI ID ", g_initiator_state.target_id,
+                        " varible block size ", g_initiator_state.minblocksize,
+                         " - ", g_initiator_state.maxblocksize);
+                }
+            }
+            
+            if(inquiryok){
+                g_initiator_state.use_read10 = scsiInitiatorTestSupportsRead10(g_initiator_state.target_id, g_initiator_state.sectorsize);
+                if(!g_initiator_state.use_read10)
+                {
+                    // READ6 command can transfer up to 256 sectors
+                    g_initiator_state.max_sector_per_transfer = 256;
+                }
+
+                // Limit sectors per transfer based on buffer size
+                uint32_t max_by_buffer = sizeof(scsiDev.data) / g_initiator_state.sectorsize;
+                if (max_by_buffer < g_initiator_state.max_sector_per_transfer)
+                {
+                    g_initiator_state.max_sector_per_transfer = max_by_buffer;
+                }
+            }
+
             if (g_initiator_state.eject_when_done && g_initiator_state.removable_count[g_initiator_state.target_id] == 0)
             {
                 g_initiator_state.removable_count[g_initiator_state.target_id] = 1;
             }
 
-            if (g_initiator_state.sectorcount > 0)
+            if (g_initiator_state.sectorcount > 0 || g_initiator_state.maxblocksize != 0)
             {
                 char filename[32] = {0};
                 filename_base[2] = scsiEncodeID(g_initiator_state.target_id);
@@ -600,7 +623,7 @@ void scsiInitiatorMainLoop()
                     return;
                 }
 
-                if (SD.fatType() == FAT_TYPE_EXFAT)
+                if (SD.fatType() == FAT_TYPE_EXFAT && g_initiator_state.device_type != SCSI_DEVICE_TYPE_SEQUENTIAL)
                 {
                     // Only preallocate on exFAT, on FAT32 preallocating can result in false garbage data in the
                     // file if write is interrupted.
@@ -617,6 +640,12 @@ void scsiInitiatorMainLoop()
                     g_initiator_state.sectors_done = g_initiator_state.start_sector[g_initiator_state.target_id];
                     logmsg("Using Alternate Start Sector ", g_initiator_state.start_sector[g_initiator_state.target_id],
                         " For SCSI ID ", g_initiator_state.target_id);
+                }
+
+                if(g_initiator_state.device_type == SCSI_DEVICE_TYPE_SEQUENTIAL){
+                    uint8_t density_code = ini_getl("SCSI", "Density", 0x80, CONFIGFILE);
+                    scsiInitiatorSequencialSetDensityCode(0x80, g_initiator_state.target_id);
+                    logmsg("Density code ", density_code);
                 }
             }
         }
