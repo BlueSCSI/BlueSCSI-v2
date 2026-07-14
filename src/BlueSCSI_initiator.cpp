@@ -608,7 +608,7 @@ void scsiInitiatorMainLoop()
 
                 uint64_t vhd_overhead = initiatorShouldWriteVhd() ? VHD_FOOTER_SIZE : 0;
                 uint64_t sd_card_free_bytes = (uint64_t)SD.vol()->freeClusterCount() * SD.vol()->bytesPerCluster();
-                if (sd_card_free_bytes < total_bytes + vhd_overhead)
+                if (sd_card_free_bytes < total_bytes + vhd_overhead)//Does not work for sequencial devices, they cannot READ CAPACITY
                 {
                     logmsg("SD Card only has ", (int)(sd_card_free_bytes / (1024 * 1024)),
                            " MiB - not enough free space to image SCSI ID ", g_initiator_state.target_id);
@@ -625,8 +625,10 @@ void scsiInitiatorMainLoop()
 
                 if (SD.fatType() == FAT_TYPE_EXFAT && g_initiator_state.device_type != SCSI_DEVICE_TYPE_SEQUENTIAL)
                 {
+                    FsFile f;
                     // Only preallocate on exFAT, on FAT32 preallocating can result in false garbage data in the
                     // file if write is interrupted.
+                    // Dont preallocate with Sequencial Devices, they do not know their own size
                     logmsg("Preallocating image file");
                     g_initiator_state.target_file.preAllocate(
                         (uint64_t)g_initiator_state.sectorcount * g_initiator_state.sectorsize + vhd_overhead);
@@ -652,14 +654,19 @@ void scsiInitiatorMainLoop()
     }
     else
     {
+        bool finished_imaging = false;
+        if (g_initiator_state.device_type != SCSI_DEVICE_TYPE_SEQUENTIAL 
+            && g_initiator_state.sectors_done >= g_initiator_state.sectorcount) finished_imaging = true;
+        if (g_initiator_state.device_type == SCSI_DEVICE_TYPE_SEQUENTIAL
+            && g_initiator_state.encountered_end_of_medium) finished_imaging = true;
         // Copy sectors from SCSI drive to file
-        if (g_initiator_state.sectors_done >= g_initiator_state.sectorcount)
+        if (finished_imaging)
         {
             scsiStartStopUnit(g_initiator_state.target_id, false);
             logmsg("Finished imaging drive with id ", g_initiator_state.target_id);
             LED_OFF();
 
-            if (g_initiator_state.sectorcount != g_initiator_state.sectorcount_all)
+            if (g_initiator_state.sectorcount != g_initiator_state.sectorcount_all && g_initiator_state.device_type != SCSI_DEVICE_TYPE_SEQUENTIAL)
             {
                 logmsg("NOTE: Image size was limited to first 4 GiB due to SD card filesystem limit");
                 logmsg("Please reformat the SD card with exFAT format to image this drive fully");
@@ -700,63 +707,88 @@ void scsiInitiatorMainLoop()
             return;
         }
 
-        scsiInitiatorUpdateLed();
+        scsiInitiatorUpdateLed();//This doesnt make sense in Sequential mode, we dont know the length of the medium
 
-        // How many sectors to read in one batch?
-        int numtoread = g_initiator_state.sectorcount - g_initiator_state.sectors_done;
-        if (numtoread > g_initiator_state.max_sector_per_transfer)
-            numtoread = g_initiator_state.max_sector_per_transfer;
+        if(g_initiator_state.device_type == SCSI_DEVICE_TYPE_SEQUENTIAL){
 
-        // Retry sector-by-sector after failure
-        if (g_initiator_state.sectors_done < g_initiator_state.failposition)
-            numtoread = 1;
+            uint32_t bytes_to_transfer = 5822;
+            uint32_t time_start = platform_millis();
+            bool status = scsiInitiatorReadDataToFile(g_initiator_state.target_id,
+                0, 1, bytes_to_transfer,
+                g_initiator_state.target_file);
 
-        uint32_t time_start = platform_millis();
-        bool status = scsiInitiatorReadDataToFile(g_initiator_state.target_id,
-            g_initiator_state.sectors_done, numtoread, g_initiator_state.sectorsize,
-            g_initiator_state.target_file);
+            if(!status){
 
-        if (!status)
-        {
-            logmsg("Failed to transfer ", numtoread, " sectors starting at ", (int)g_initiator_state.sectors_done);
+                logmsg("Failed to transfer ", bytes_to_transfer, " bytes at ", (int)g_initiator_state.sectors_done);
+                //Retrying is difficult and inefficent in sequencial mode
+                g_initiator_state.bad_sector_count++;
+            }else{
 
-            if (g_initiator_state.retrycount < g_initiator_state.max_retry_count)
+                g_initiator_state.sectors_done += bytes_to_transfer;
+                g_initiator_state.target_file.flush();
+                int speed_kbps = bytes_to_transfer / (platform_millis() - time_start);
+                logmsg("SCSI read succeeded, read ",
+                    (int)g_initiator_state.sectors_done, " bytes",
+                    " speed ", speed_kbps, " kB/s");
+            }
+
+        }else{
+            // How many sectors to read in one batch?
+            int numtoread = g_initiator_state.sectorcount - g_initiator_state.sectors_done;
+            if (numtoread > g_initiator_state.max_sector_per_transfer)
+                numtoread = g_initiator_state.max_sector_per_transfer;
+
+            // Retry sector-by-sector after failure
+            if (g_initiator_state.sectors_done < g_initiator_state.failposition)
+                numtoread = 1;
+
+            uint32_t time_start = platform_millis();
+            bool status = scsiInitiatorReadDataToFile(g_initiator_state.target_id,
+                g_initiator_state.sectors_done, numtoread, g_initiator_state.sectorsize,
+                g_initiator_state.target_file);
+
+            if (!status)
             {
-                logmsg("Retrying.. ", g_initiator_state.retrycount + 1, "/", (int) g_initiator_state.max_retry_count);
-                delay_with_poll(200);
-                // This reset causes some drives to hang and seems to have no effect if left off.
-                // scsiHostPhyReset();
-                delay_with_poll(200);
+                logmsg("Failed to transfer ", numtoread, " sectors starting at ", (int)g_initiator_state.sectors_done);
 
-                g_initiator_state.retrycount++;
-                g_initiator_state.target_file.seek((uint64_t)g_initiator_state.sectors_done * g_initiator_state.sectorsize);
-
-                if (g_initiator_state.retrycount > 1 && numtoread > 1)
+                if (g_initiator_state.retrycount < g_initiator_state.max_retry_count)
                 {
-                    logmsg("Multiple failures, retrying sector-by-sector");
-                    g_initiator_state.failposition = g_initiator_state.sectors_done + numtoread;
+                    logmsg("Retrying.. ", g_initiator_state.retrycount + 1, "/", (int) g_initiator_state.max_retry_count);
+                    delay_with_poll(200);
+                    // This reset causes some drives to hang and seems to have no effect if left off.
+                    // scsiHostPhyReset();
+                    delay_with_poll(200);
+
+                    g_initiator_state.retrycount++;
+                    g_initiator_state.target_file.seek((uint64_t)g_initiator_state.sectors_done * g_initiator_state.sectorsize);
+
+                    if (g_initiator_state.retrycount > 1 && numtoread > 1)
+                    {
+                        logmsg("Multiple failures, retrying sector-by-sector");
+                        g_initiator_state.failposition = g_initiator_state.sectors_done + numtoread;
+                    }
+                }
+                else
+                {
+                    logmsg("Retry limit exceeded, skipping one sector");
+                    g_initiator_state.retrycount = 0;
+                    g_initiator_state.sectors_done++;
+                    g_initiator_state.bad_sector_count++;
+                    g_initiator_state.target_file.seek((uint64_t)g_initiator_state.sectors_done * g_initiator_state.sectorsize);
                 }
             }
             else
             {
-                logmsg("Retry limit exceeded, skipping one sector");
                 g_initiator_state.retrycount = 0;
-                g_initiator_state.sectors_done++;
-                g_initiator_state.bad_sector_count++;
-                g_initiator_state.target_file.seek((uint64_t)g_initiator_state.sectors_done * g_initiator_state.sectorsize);
-            }
-        }
-        else
-        {
-            g_initiator_state.retrycount = 0;
-            g_initiator_state.sectors_done += numtoread;
-            g_initiator_state.target_file.flush();
+                g_initiator_state.sectors_done += numtoread;
+                g_initiator_state.target_file.flush();
 
-            int speed_kbps = numtoread * g_initiator_state.sectorsize / (platform_millis() - time_start);
-            logmsg("SCSI read succeeded, sectors done: ",
-                  (int)g_initiator_state.sectors_done, " / ", (int)g_initiator_state.sectorcount,
-                  " speed ", speed_kbps, " kB/s - ", 
-                  (int)(100 * (int64_t)g_initiator_state.sectors_done / g_initiator_state.sectorcount), "%");
+                int speed_kbps = numtoread * g_initiator_state.sectorsize / (platform_millis() - time_start);
+                logmsg("SCSI read succeeded, sectors done: ",
+                    (int)g_initiator_state.sectors_done, " / ", (int)g_initiator_state.sectorcount,
+                    " speed ", speed_kbps, " kB/s - ", 
+                    (int)(100 * (int64_t)g_initiator_state.sectors_done / g_initiator_state.sectorcount), "%");
+            }
         }
     }
 }
@@ -1403,7 +1435,32 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
     // Read6 command supports 21 bit LBA - max of 0x1FFFFF
     // ref: https://www.seagate.com/files/staticfiles/support/docs/manual/Interface%20manuals/100293068j.pdf pg 134
     bool fits_read6 = (start_sector < 0x1FFFFF && sectorcount <= 256);
-    if (!g_initiator_state.use_read10 && fits_read6)
+    
+    if (g_initiator_state.device_type == SCSI_DEVICE_TYPE_SEQUENTIAL){
+
+        uint32_t bytes_to_read = sectorsize * sectorcount;
+
+        uint8_t command[6] = {0x08,
+            0x00,
+            (uint8_t)(bytes_to_read >> 16),
+            (uint8_t)(bytes_to_read >> 8),
+            (uint8_t)(bytes_to_read),
+            0x00
+        };
+
+        if(g_initiator_state.fixed_blocksize){
+            command[1] += 1;//Set FIXED bit
+            //TODO
+            //With FIXED blocks it will transfer multiple blocks of the same size,
+            //so transfer length is the number of blocks, as opposed to bytes
+            //However the block size must be set in the mode parameters block descriptor, causeing this to fail
+            dbgmsg("Error: Fixed block size is not yet supported!");
+            return false;
+        }
+
+        status = scsiInitiatorRunCommand(target_id, command, sizeof(command), NULL, 0, NULL, 0, true);
+    }
+    else if (!g_initiator_state.use_read10 && fits_read6)
     {
         // Use READ6 command for compatibility with old SCSI1 drives
         // Note that even with SCSI1 drives we have no choice but to use READ10 if the drive
@@ -1438,11 +1495,30 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
     if (status != 0)
     {
         uint8_t sense_key;
-        scsiRequestSense(target_id, &sense_key);
+        uint8_t sense_asc;
+        uint8_t sense_ascq;
+        bool filemark;
+        bool end_of_medium;//Doesnt quite work
 
-        scsiLogInitiatorCommandFailure("scsiInitiatorReadDataToFile command phase", target_id, status, sense_key);
-        scsiHostPhyRelease();
-        return false;
+        scsiRequestSense(target_id, &sense_key, &sense_asc, &sense_ascq, &filemark, &end_of_medium);
+
+        if(status == 2 && sense_key == 0x08 && g_initiator_state.device_type == SCSI_DEVICE_TYPE_SEQUENTIAL){//BLANK CHECK!!! either we are done, or we started with the tape in the drive
+            if(g_initiator_state.sectors_done){//Data present we done now!
+                g_initiator_state.encountered_end_of_medium = true;
+                return true;
+            }else{
+                logmsg("Reload Tape!");
+                return false;
+            }
+        }
+        else if(g_initiator_state.device_type != SCSI_DEVICE_TYPE_SEQUENTIAL || !end_of_medium){
+            logmsg("Filemark Present: ", filemark, " EOM: ", end_of_medium);
+            scsiLogInitiatorCommandFailure("scsiInitiatorReadDataToFile command phase", target_id, status, sense_key);
+            scsiHostPhyRelease();
+                scsiInitiatorSequencialSpace(1, 0, target_id);
+            return false;
+        }
+        
     }
 
     SCSI_PHASE phase;
