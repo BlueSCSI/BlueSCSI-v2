@@ -931,8 +931,40 @@ bool scsiInitiatorReadCapacity(int target_id, uint32_t *sectorcount, uint32_t *s
     }
 }
 
+bool scsiInitiatorSequencialReadBlockLimits(int target_id, uint32_t *maxblocksize, uint32_t *minblocksize, bool *fixedsize)
+{
+    uint8_t command[6] = {0x05, 0, 0, 0, 0, 0};
+    uint8_t response[6] = {0};
+    int status = scsiInitiatorRunCommand(target_id,
+                                         command, sizeof(command),
+                                         response, sizeof(response),
+                                         NULL, 0);
+
+    if (status == 0)
+    {
+        *maxblocksize = ((uint32_t)response[1] << 16)
+                    | ((uint32_t)response[2] <<  8)
+                    | ((uint32_t)response[3] <<  0);
+
+        *minblocksize = ((uint32_t)response[4] << 8)
+                    | ((uint32_t)response[5] << 0);
+
+
+        *fixedsize = *maxblocksize == *minblocksize;
+        
+        return true;
+    }
+    else 
+    {
+        uint8_t sense_key;
+        scsiRequestSense(target_id, &sense_key);
+        scsiLogInitiatorCommandFailure("READ BLOCK LIMIT", target_id, status, sense_key);
+        return false;
+    }
+}
+
 // Execute REQUEST SENSE command to get more information about error status
-bool scsiRequestSense(int target_id, uint8_t *sense_key, uint8_t *sense_asc, uint8_t *sense_ascq)
+bool scsiRequestSense(int target_id, uint8_t *sense_key, uint8_t *sense_asc, uint8_t *sense_ascq, bool *filemark, bool *EOM)
 {
     uint8_t command[6] = {0x03, 0, 0, 0, 18, 0};
     uint8_t response[18] = {0};
@@ -946,6 +978,8 @@ bool scsiRequestSense(int target_id, uint8_t *sense_key, uint8_t *sense_asc, uin
         " sense_key ", (int)(response[2] & 0xF),
         " asc ", response[12], " ascq ", response[13]);
 
+    if (filemark) *filemark = response[2] & (1 << 7);
+    if (EOM) *EOM = response[2] & (1 << 6);
     if (sense_key) *sense_key = response[2] & 0xF;
     if (sense_asc) *sense_asc = response[12];
     if (sense_ascq) *sense_ascq = response[13];
@@ -1518,6 +1552,68 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
     {
         return status == 0;
     }
+}
+
+bool scsiInitiatorSequencialRewind(int target_id){
+    platform_poll();
+    uint8_t command[6] = {0x01, 0, 0, 0, 0, 0};
+    int status = scsiInitiatorRunCommand(target_id,
+                                         command, sizeof(command),
+                                         NULL, 0,
+                                         NULL, 0);
+    platform_poll();
+    return status == 0;
+}
+
+bool scsiInitiatorSequencialSetDensityCode(uint8_t code, int target_id)
+{
+    // Mode Select command for DAT drives
+    // This sets the density code in the block descriptor
+    uint8_t mode_data[12] = {
+        0x00, 0x00, 0x10, 0x08,  // Header
+        code, 0x00, 0x00, 0x00,  // Block descriptor
+        0x00, 0x00, 0x00, 0x02
+    };
+
+    uint8_t command[6] = {0x15, 0x00, 0x00, 0x00, 12, 0x00};
+
+    int status = scsiInitiatorRunCommand(target_id,
+                                         command, sizeof(command),
+                                         NULL, 0,
+                                         mode_data, sizeof(mode_data));
+
+    if (status == 0)
+    {
+        logmsg("Density code set to ", code);
+    }
+    else
+    {
+        uint8_t sense_key, asc, ascq;
+        scsiRequestSense(target_id, &sense_key, &asc, &ascq);
+        scsiLogInitiatorCommandFailure("scsiInitiatorSequencialSetDensityCode", target_id, status, sense_key);
+        return false;
+    }
+    return true;
+}
+
+bool scsiInitiatorSequencialSpace(uint32_t count, uint8_t type, int target_id){
+    uint8_t command[6] = {0x11,
+         type & 0x07, 
+         (uint8_t)(count >> 16),
+         (uint8_t)(count >> 8),
+         (uint8_t)(count),
+         0x00};
+    int status = scsiInitiatorRunCommand(target_id,
+                                         command, sizeof(command),
+                                         NULL, 0,
+                                         NULL, 0);
+    if(status){
+        uint8_t sense_key, asc, ascq;
+        scsiRequestSense(target_id, &sense_key, &asc, &ascq);
+        scsiLogInitiatorCommandFailure("scsiInitiatorSequencialSpace", target_id, status, sense_key);
+        return false;
+    }
+    return true;
 }
 
 #ifdef UNIT_TEST

@@ -75,7 +75,7 @@ bool scsiInitiatorReadCapacity(int target_id, uint32_t *sectorcount, uint32_t *s
 bool scsiInitiatorSequencialReadBlockLimits(int target_id, uint32_t *maxblocksize, uint32_t *minblocksize, bool *fixedsize);
 
 // Execute REQUEST SENSE command to get more information about error status
-bool scsiRequestSense(int target_id, uint8_t *sense_key, uint8_t *sense_asc = nullptr, uint8_t *sense_ascq = nullptr);
+bool scsiRequestSense(int target_id, uint8_t *sense_key, uint8_t *sense_asc = nullptr, uint8_t *sense_ascq = nullptr, bool *filemark = nullptr, bool *EOM = nullptr);
 
 // Execute UNIT START STOP command to load/unload media
 bool scsiStartStopUnit(int target_id, bool start);
@@ -99,3 +99,11 @@ bool scsiInitiatorResetBusConfig(int target_id);
 
 // Negotiate bus width with target
 bool scsiInitiatorSetBusWidth(int target_id, int busWidth);
+
+// Rewind Sequencial Devices to the beginning
+bool scsiInitiatorSequencialRewind(int target_id);
+
+// Set the density code
+bool scsiInitiatorSequencialSetDensityCode(uint8_t code, int target_id);
+
+bool scsiInitiatorSequencialSpace(uint32_t count, uint8_t type, int target_id);
