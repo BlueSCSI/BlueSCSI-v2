@@ -99,6 +99,12 @@ static struct {
     uint8_t ansi_version;
     uint8_t device_type;
 
+    // Sequencial Mode Information
+    bool fixed_blocksize;
+    uint32_t maxblocksize;
+    uint32_t minblocksize;
+    bool encountered_end_of_medium;
+
     // Retry information for sector reads.
     // If a large read fails, retry is done sector-by-sector.
     int retrycount;
@@ -153,6 +159,10 @@ void scsiInitiatorInit()
     g_initiator_state.ansi_version = 0;
     g_initiator_state.bad_sector_count = 0;
     g_initiator_state.device_type = SCSI_DEVICE_TYPE_DIRECT_ACCESS;
+    g_initiator_state.fixed_blocksize = false;
+    g_initiator_state.minblocksize = 0;
+    g_initiator_state.maxblocksize = 0;
+        g_initiator_state.encountered_end_of_medium = false;
     g_initiator_state.removable = false;
     g_initiator_state.eject_when_done = false;
     memset(g_initiator_state.removable_count, 0, sizeof(g_initiator_state.removable_count));
@@ -315,6 +325,10 @@ void scsiInitiatorMainLoop()
         g_initiator_state.ansi_version = 0;
         g_initiator_state.bad_sector_count = 0;
         g_initiator_state.device_type = SCSI_DEVICE_TYPE_DIRECT_ACCESS;
+        g_initiator_state.fixed_blocksize = false;
+        g_initiator_state.minblocksize = 0;
+        g_initiator_state.maxblocksize = 0;
+        g_initiator_state.encountered_end_of_medium = false;
         g_initiator_state.removable = false;
         g_initiator_state.eject_when_done = false;
         g_initiator_state.use_read10 = false;
@@ -457,6 +471,10 @@ void scsiInitiatorMainLoop()
                 {
                     strncpy(filename_base, "MO00_imaged", sizeof(filename_base));
                     filename_extension = ".img";
+                }
+                else if (g_initiator_state.device_type == SCSI_DEVICE_TYPE_SEQUENTIAL){
+                    strncpy(filename_base, "TP00_imaged", sizeof(filename_base));
+                    filename_extension = ".dat";
                 }
                 else if (g_initiator_state.device_type != SCSI_DEVICE_TYPE_DIRECT_ACCESS)
                 {
