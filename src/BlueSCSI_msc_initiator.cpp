@@ -68,8 +68,9 @@ static int g_msc_initiator_target_count;
 // so without read-ahead every host read costs a full SCSI command round trip.
 #define MSC_PREFETCH_SECTORS 32
 
-// Reads to serve without prefetching after a prefetch fails, so that a bad
-// sector inside the read-ahead window does not stall every following read.
+// Extra reads to serve without prefetching after a prefetch fails, on top of the
+// failed window itself. The bad sector can be anywhere in the window, so the host
+// has to walk the whole window before read-ahead is worth re-arming.
 #define MSC_PREFETCH_BACKOFF_READS 64
 
 // Prefetch next sectors in main loop while USB is transferring previous one.
@@ -245,13 +246,14 @@ void poll_msc_initiator()
         }
         else
         {
-            // The failure may be a bad sector anywhere in the window, so fall back
-            // to serving reads directly for a while rather than retrying the whole
-            // read-ahead on every request.
+            // The failure may be a bad sector anywhere in the window, so serve reads
+            // directly until the host has walked past the whole window. Backing off
+            // less than the window re-arms into the same bad sector and fails again.
             logmsg("Prefetch of sector ", g_msc_initiator_state.prefetch_lba, " + ",
                    (int)g_msc_initiator_state.prefetch_sectorcount, " failed: status ", status);
+            g_msc_initiator_state.prefetch_backoff = g_msc_initiator_state.prefetch_sectorcount
+                                                   + MSC_PREFETCH_BACKOFF_READS;
             g_msc_initiator_state.prefetch_sectorcount = 0;
-            g_msc_initiator_state.prefetch_backoff = MSC_PREFETCH_BACKOFF_READS;
         }
 
         LED_OFF();
