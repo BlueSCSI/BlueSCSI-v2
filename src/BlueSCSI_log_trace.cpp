@@ -154,7 +154,7 @@ static void printNewPhase(int phase, bool initiator = false)
             if (initiator)
                 dbgmsg("---- SELECTION");
             else
-                dbgmsg("---- SELECTION: ", (int)(*SCSI_STS_SELECTED & 7));
+                dbgmsg("---- SELECTION: ", (int)(*SCSI_STS_SELECTED & S2S_CFG_TARGET_ID_BITS));
             break;
         
         case RESELECTION:

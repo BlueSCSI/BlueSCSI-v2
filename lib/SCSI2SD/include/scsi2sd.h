@@ -42,12 +42,18 @@ extern "C" {
 
 #include "stdint.h"
 
+// Wide SCSI addresses 16 target IDs (0-15), narrow addresses 8 (0-7).
+// Array dimensions, loop bounds and ID masks all derive from this constant.
+#if defined(BLUESCSI_ULTRA_WIDE)
+#define S2S_MAX_TARGETS 16
+#else
 #define S2S_MAX_TARGETS 8
+#endif
 #define S2S_CFG_SIZE (S2S_MAX_TARGETS * sizeof(S2S_TargetCfg) + sizeof(S2S_BoardCfg))
 
 typedef enum
 {
-	S2S_CFG_TARGET_ID_BITS = 0x07,
+	S2S_CFG_TARGET_ID_BITS = S2S_MAX_TARGETS - 1,
 	S2S_CFG_TARGET_ENABLED = 0x80
 } S2S_CFG_TARGET_FLAGS;
 

@@ -587,9 +587,11 @@ bool findHDDImages()
         // Parse SCSI device ID
         int file_name_length = strlen(name);
         if(file_name_length > 2) { // HD[N]
-          int tmp_id = name[HDIMG_ID_POS] - '0';
+          // Single ID character: '0'-'9', or 'A'-'F' for IDs 10-15 on wide
+          // (HD10 keeps meaning ID 1, LUN 0; ID 10 is HD_A/HDA0-style).
+          int tmp_id = scsiDecodeID(name[HDIMG_ID_POS]);
 
-          if(tmp_id > -1 && tmp_id < 8)
+          if(tmp_id > -1 && tmp_id < NUM_SCSIID)
           {
             id = tmp_id; // If valid id, set it, else use default
             use_prefix = true;
@@ -651,7 +653,7 @@ bool findHDDImages()
         if (is_zp) type = S2S_CFG_ZIP100;
         if (is_pr) type = S2S_CFG_PRINTER;
 
-        g_scsi_settings.initDevice(id & 7, type);
+        g_scsi_settings.initDevice(id & (NUM_SCSIID - 1), type);
         // Open the image file
         if (id < NUM_SCSIID && is_romdrive)
         {
@@ -1015,7 +1017,7 @@ STATIC_TESTABLE void reinitSCSI()
       }
 #endif
       g_scsi_settings.initDevice(fallback_id, S2S_CFG_FIXED);
-      scsiDiskOpenHDDImage(RAW_FALLBACK_SCSI_ID, "RAW:0:0xFFFFFFFF", 0,
+      scsiDiskOpenHDDImage(fallback_id, "RAW:0:0xFFFFFFFF", 0,
                           RAW_FALLBACK_BLOCKSIZE);
   #else
       logmsg("No valid image files found!");

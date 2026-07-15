@@ -274,7 +274,11 @@ bool check_is_sca_model() {
         status = i2c_write_timeout_us(I2C_PORT, SCA_I2C_ADDR_PROTO, cmd, 1, true, 25000);
         if (status > 0) {
             status = i2c_read_timeout_us(I2C_PORT, SCA_I2C_ADDR_PROTO, &response, 1, false, 25000);
-            is_sca_proto = true;
+            // Only latch the prototype path once the chip actually responds,
+            // so a failed probe doesn't leave later reads addressing it.
+            if (status > 0) {
+                is_sca_proto = true;
+            }
         }
         return status > 0;
     }
