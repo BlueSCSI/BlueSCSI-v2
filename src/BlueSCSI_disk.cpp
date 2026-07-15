@@ -2126,6 +2126,10 @@ static struct {
     uint8_t buffer[PREFETCH_BUFFER_SIZE];
     uint32_t sector;
     uint32_t bytes;
+    // Block size the cache was filled under. MODE SELECT can change
+    // liveCfg.bytesPerSector at runtime; cached bytes must not be
+    // re-sliced with a different sector size.
+    uint32_t bytesPerSector;
     uint8_t scsiId;
 } g_scsi_prefetch;
 #endif
@@ -2146,6 +2150,8 @@ void testPrefetchSeed(uint32_t sector, uint32_t bytes, uint8_t scsiId)
     g_scsi_prefetch.sector = sector;
     g_scsi_prefetch.bytes = bytes;
     g_scsi_prefetch.scsiId = scsiId;
+    /* Seed as if filled under the current live block size */
+    g_scsi_prefetch.bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
 #endif
 }
 
@@ -2869,6 +2875,7 @@ void scsiDiskStartRead(uint32_t lba, uint32_t blocks)
 #ifdef PREFETCH_BUFFER_SIZE
         uint32_t sectors_in_prefetch = g_scsi_prefetch.bytes / bytesPerSector;
         if (img.getTargetId() == g_scsi_prefetch.scsiId &&
+            g_scsi_prefetch.bytesPerSector == bytesPerSector &&
             transfer.lba >= g_scsi_prefetch.sector &&
             transfer.lba < g_scsi_prefetch.sector + sectors_in_prefetch)
         {
@@ -3064,6 +3071,7 @@ static void diskDataIn()
         uint32_t img_sector_count = img.file.size() / bytesPerSector;
         g_scsi_prefetch.sector = transfer.lba + transfer.blocks;
         g_scsi_prefetch.bytes = 0;
+        g_scsi_prefetch.bytesPerSector = bytesPerSector;
         g_scsi_prefetch.scsiId = s2s_getTargetId(scsiDev.target->cfg);
 
         if (g_scsi_prefetch.sector + prefetch_sectors > img_sector_count)
