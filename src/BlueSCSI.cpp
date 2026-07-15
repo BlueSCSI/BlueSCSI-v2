@@ -262,6 +262,8 @@ static const char * quirksToChar(int quirks)
 {
   switch (quirks)
   {
+    case S2S_CFG_QUIRKS_PC98_55:
+      return "PC-9801-55";
     case S2S_CFG_QUIRKS_APPLE:
       return "Apple";
     case S2S_CFG_QUIRKS_OMTI:
