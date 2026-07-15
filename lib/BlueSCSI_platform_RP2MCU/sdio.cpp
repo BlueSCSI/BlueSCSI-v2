@@ -1,6 +1,7 @@
 /** 
  * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
  * Copyright (c) 2024 Tech by Androda, LLC
+ * Copyright (c) 2026 Eric Helgeson <eric@bluescsi.com>
  *  
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  * 
@@ -1070,6 +1071,29 @@ sdio_status_t rp2040_sdio_stop()
 #define SDIO_PULLS_DOWN false
 #endif
 
+// Track the PIO programs this driver has loaded so that re-init can remove
+// exactly what it added. SDIO_PIO instruction memory is shared with other
+// subsystems (CYW43 WiFi SPI on Pico W, SPDIF audio on Ultra) 
+static struct {
+    const pio_program_t *cmd_rsp;
+    const pio_program_t *data_rx;
+    const pio_program_t *data_tx;
+    uint32_t cmd_rsp_offset;
+    uint32_t data_rx_offset;
+    uint32_t data_tx_offset;
+} g_sdio_loaded_programs;
+
+static void sdio_remove_loaded_programs()
+{
+    if (g_sdio_loaded_programs.cmd_rsp)
+        pio_remove_program(SDIO_PIO, g_sdio_loaded_programs.cmd_rsp, g_sdio_loaded_programs.cmd_rsp_offset);
+    if (g_sdio_loaded_programs.data_rx)
+        pio_remove_program(SDIO_PIO, g_sdio_loaded_programs.data_rx, g_sdio_loaded_programs.data_rx_offset);
+    if (g_sdio_loaded_programs.data_tx)
+        pio_remove_program(SDIO_PIO, g_sdio_loaded_programs.data_tx, g_sdio_loaded_programs.data_tx_offset);
+    memset(&g_sdio_loaded_programs, 0, sizeof(g_sdio_loaded_programs));
+}
+
 void rp2040_sdio_init(float clock_divider, uint8_t speed_mode)
 {
     #ifdef SDIO_GPIO_BASE_HIGH
@@ -1094,8 +1118,8 @@ void rp2040_sdio_init(float clock_divider, uint8_t speed_mode)
     pio_sm_set_enabled(SDIO_PIO, SDIO_CMD_SM, false);
     pio_sm_set_enabled(SDIO_PIO, SDIO_DATA_SM, false);
 
-    // Load PIO programs
-    pio_clear_instruction_memory(SDIO_PIO);
+    // Unload only the programs we loaded on a previous init 
+    sdio_remove_loaded_programs();
     
     // Set pull resistors for all SD data lines
 #if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
@@ -1120,6 +1144,8 @@ void rp2040_sdio_init(float clock_divider, uint8_t speed_mode)
 
     // Command state machine
     g_sdio.pio_cmd_rsp_clk_offset = pio_add_program(SDIO_PIO, &cmd_rsp_program);
+    g_sdio_loaded_programs.cmd_rsp = &cmd_rsp_program;
+    g_sdio_loaded_programs.cmd_rsp_offset = g_sdio.pio_cmd_rsp_clk_offset;
     g_sdio.pio_cfg_cmd_rsp = pio_cmd_rsp_program_config(g_sdio.pio_cmd_rsp_clk_offset, SDIO_CMD, SDIO_CLK, clock_divider, 0);
 
     pio_sm_init(SDIO_PIO, SDIO_CMD_SM, g_sdio.pio_cmd_rsp_clk_offset, &g_sdio.pio_cfg_cmd_rsp);
@@ -1145,20 +1171,27 @@ void rp2040_sdio_init(float clock_divider, uint8_t speed_mode)
     if (speed_mode == 0) {
         g_sdio.pio_data_rx_offset = pio_add_program(SDIO_PIO, &rd_data_w_clock_default_program);
         g_sdio.pio_cfg_data_rx = pio_rd_data_w_clock_default_program_config(g_sdio.pio_data_rx_offset, SDIO_D0, SDIO_CLK, clock_divider);
+        g_sdio_loaded_programs.data_rx = &rd_data_w_clock_default_program;
     } else if (speed_mode == 1) {
         g_sdio.pio_data_rx_offset = pio_add_program(SDIO_PIO, &rd_data_w_clock_high_speed_program);
         g_sdio.pio_cfg_data_rx = pio_rd_data_w_clock_high_speed_program_config(g_sdio.pio_data_rx_offset, SDIO_D0, SDIO_CLK, clock_divider);
+        g_sdio_loaded_programs.data_rx = &rd_data_w_clock_high_speed_program;
     } else if (speed_mode == 2) {
         g_sdio.pio_data_rx_offset = pio_add_program(SDIO_PIO, &rd_data_w_clock_ultra_high_speed_program);
         g_sdio.pio_cfg_data_rx = pio_rd_data_w_clock_ultra_high_speed_program_config(g_sdio.pio_data_rx_offset, SDIO_D0, SDIO_CLK, clock_divider);
+        g_sdio_loaded_programs.data_rx = &rd_data_w_clock_ultra_high_speed_program;
     }
 #else
     g_sdio.pio_data_rx_offset = pio_add_program(SDIO_PIO, &rd_data_w_clock_program);
     g_sdio.pio_cfg_data_rx = pio_rd_data_w_clock_program_config(g_sdio.pio_data_rx_offset, SDIO_D0, SDIO_CLK, clock_divider);
+    g_sdio_loaded_programs.data_rx = &rd_data_w_clock_program;
 #endif
+    g_sdio_loaded_programs.data_rx_offset = g_sdio.pio_data_rx_offset;
 
     // Data transmission program
     g_sdio.pio_data_tx_offset = pio_add_program(SDIO_PIO, &sdio_tx_w_clock_program);
+    g_sdio_loaded_programs.data_tx = &sdio_tx_w_clock_program;
+    g_sdio_loaded_programs.data_tx_offset = g_sdio.pio_data_tx_offset;
     g_sdio.pio_cfg_data_tx = pio_sdio_tx_w_clock_program_config(g_sdio.pio_data_tx_offset, SDIO_D0, SDIO_CLK, clock_divider);
 
     // Disable SDIO pins input synchronizer.
