@@ -42,6 +42,11 @@ static const char defaultMAC[] = { 0x00, 0x80, 0x19, 0xc0, 0xff, 0xee };
 
 static bool network_in_use = false;
 
+// Whether the WiFi interface answered the boot-time check in
+// platform_network_iface_check(). The RM2 module is optional on Ultra,
+// so this stays false until the module is actually detected.
+static bool network_iface_present = false;
+
 // WiFi reconnection state (file-static so wifi_join can reset on credential change)
 static uint32_t wifi_reconnect_time = 0;
 static uint32_t wifi_reconnect_interval = WIFI_RECONNECT_INTERVAL;
@@ -51,7 +56,7 @@ bool platform_network_supported()
 {
 	/* from cores/rp2040/RP2040Support.h */
 #if defined(BLUESCSI_ULTRA)
-	return true;
+	return network_iface_present;
 #elif !defined(PICO_CYW43_SUPPORTED) || defined(BLUESCSI_ULTRA_WIDE)
 	return false;
 #else
@@ -244,7 +249,8 @@ bool platform_network_iface_check()
 {
 	cyw43_deinit(&cyw43_state);
 	cyw43_init(&cyw43_state);
-	return 0 == cyw43_gpio_set(&cyw43_state, PICO_W_GPIO_LED_PIN, 1);
+	network_iface_present = (0 == cyw43_gpio_set(&cyw43_state, PICO_W_GPIO_LED_PIN, 1));
+	return network_iface_present;
 }
 
 void platform_network_deinit()

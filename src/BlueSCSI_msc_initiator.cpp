@@ -64,7 +64,16 @@ static struct {
 } g_msc_initiator_targets[NUM_SCSIID];
 static int g_msc_initiator_target_count;
 
-// Prefetch next sector in main loop while USB is transferring previous one.
+// Sectors to read ahead of the host. The USB endpoint buffer is only one sector,
+// so without read-ahead every host read costs a full SCSI command round trip.
+#define MSC_PREFETCH_SECTORS 32
+
+// Extra reads to serve without prefetching after a prefetch fails, on top of the
+// failed window itself. The bad sector can be anywhere in the window, so the host
+// has to walk the whole window before read-ahead is worth re-arming.
+#define MSC_PREFETCH_BACKOFF_READS 64
+
+// Prefetch next sectors in main loop while USB is transferring previous one.
 static struct {
     uint8_t *prefetch_buffer; // Buffer to use for storing the data
     uint32_t prefetch_bufsize;
@@ -72,6 +81,8 @@ static struct {
     int prefetch_target_id; // Target to read from
     size_t prefetch_sectorcount; // Number of sectors to fetch
     size_t prefetch_sectorsize;
+    uint32_t prefetch_depth; // Sectors to read ahead of the host
+    uint32_t prefetch_backoff; // Reads left to skip after a failed prefetch
     bool prefetch_use_read10;
     bool prefetch_done; // True after prefetch is complete
 
@@ -161,6 +172,9 @@ bool setup_msc_initiator()
         // We can use the device mode buffer for prefetching data in initiator mode
         g_msc_initiator_state.prefetch_buffer = scsiDev.data;
         g_msc_initiator_state.prefetch_bufsize = sizeof(scsiDev.data);
+        g_msc_initiator_state.prefetch_depth = ini_getl("SCSI", "InitiatorMSCPrefetchSectors",
+                                                        MSC_PREFETCH_SECTORS, CONFIGFILE);
+        logmsg("--- Initiator prefetch: ", (int)g_msc_initiator_state.prefetch_depth, " sectors read-ahead");
     }
 
     g_msc_initiator_state.status_interval = ini_getl("SCSI", "InitiatorMSCStatusInterval", 5000, CONFIGFILE);
@@ -232,7 +246,13 @@ void poll_msc_initiator()
         }
         else
         {
-            logmsg("Prefetch of sector ", g_msc_initiator_state.prefetch_lba, " failed: status ", status);
+            // The failure may be a bad sector anywhere in the window, so serve reads
+            // directly until the host has walked past the whole window. Backing off
+            // less than the window re-arms into the same bad sector and fails again.
+            logmsg("Prefetch of sector ", g_msc_initiator_state.prefetch_lba, " + ",
+                   (int)g_msc_initiator_state.prefetch_sectorcount, " failed: status ", status);
+            g_msc_initiator_state.prefetch_backoff = g_msc_initiator_state.prefetch_sectorcount
+                                                   + MSC_PREFETCH_BACKOFF_READS;
             g_msc_initiator_state.prefetch_sectorcount = 0;
         }
 
@@ -483,7 +503,10 @@ int32_t init_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buf
         return 0;
     }
 
-    if (g_msc_initiator_state.prefetch_done)
+    // Prefetch buffer is shared by all targets, so it is only valid for the
+    // target it was filled from.
+    if (g_msc_initiator_state.prefetch_done &&
+        g_msc_initiator_state.prefetch_target_id == target_id)
     {
         int32_t offset = (int32_t)lba - (int32_t)g_msc_initiator_state.prefetch_lba;
         uint8_t *dest = (uint8_t*)buffer;
@@ -534,21 +557,37 @@ int32_t init_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buf
         }
     }
 
-    if (lba + total_sectorcount <= g_msc_initiator_targets[lun].sectorcount)
-    {
-        int prefetch_sectorcount = total_sectorcount;
-        if (prefetch_sectorcount * sectorsize > g_msc_initiator_state.prefetch_bufsize)
-        {
-            prefetch_sectorcount = g_msc_initiator_state.prefetch_bufsize / sectorsize;
-        }
+    // Keep the current prefetch while it still covers the sectors the host is
+    // walking towards, so a read-ahead window is fetched once and then served
+    // from RAM instead of being discarded and re-read on every request.
+    uint32_t disk_sectorcount = g_msc_initiator_targets[lun].sectorcount;
+    bool covered = g_msc_initiator_state.prefetch_done
+                && g_msc_initiator_state.prefetch_target_id == target_id
+                && lba >= g_msc_initiator_state.prefetch_lba
+                && lba < g_msc_initiator_state.prefetch_lba + g_msc_initiator_state.prefetch_sectorcount;
 
-        // Request prefetch of the next block while USB transfers the previous one
-        g_msc_initiator_state.prefetch_lba = lba;
-        g_msc_initiator_state.prefetch_target_id = target_id;
-        g_msc_initiator_state.prefetch_sectorcount = total_sectorcount;
-        g_msc_initiator_state.prefetch_sectorsize = sectorsize;
-        g_msc_initiator_state.prefetch_use_read10 = use_read10;
-        g_msc_initiator_state.prefetch_done = false;
+    if (g_msc_initiator_state.prefetch_backoff > 0)
+    {
+        g_msc_initiator_state.prefetch_backoff--;
+    }
+    else if (!covered && lba < disk_sectorcount)
+    {
+        uint32_t depth = g_msc_initiator_state.prefetch_depth;
+        uint32_t max_by_buffer = g_msc_initiator_state.prefetch_bufsize / sectorsize;
+        uint32_t max_by_disk = disk_sectorcount - lba;
+        if (depth > max_by_buffer) depth = max_by_buffer;
+        if (depth > max_by_disk) depth = max_by_disk;
+
+        if (depth > 0)
+        {
+            // Request prefetch of the next block while USB transfers the previous one
+            g_msc_initiator_state.prefetch_lba = lba;
+            g_msc_initiator_state.prefetch_target_id = target_id;
+            g_msc_initiator_state.prefetch_sectorcount = depth;
+            g_msc_initiator_state.prefetch_sectorsize = sectorsize;
+            g_msc_initiator_state.prefetch_use_read10 = use_read10;
+            g_msc_initiator_state.prefetch_done = false;
+        }
     }
 
     return total_sectorcount * sectorsize;
