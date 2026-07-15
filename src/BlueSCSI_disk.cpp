@@ -2127,6 +2127,36 @@ static struct {
 } g_scsi_prefetch;
 #endif
 
+#ifdef UNIT_TEST
+/* Test accessors for prefetch cache state */
+void testPrefetchSeed(uint32_t sector, uint32_t bytes, uint8_t scsiId)
+{
+#ifdef PREFETCH_BUFFER_SIZE
+    g_scsi_prefetch.sector = sector;
+    g_scsi_prefetch.bytes = bytes;
+    g_scsi_prefetch.scsiId = scsiId;
+#endif
+}
+
+uint32_t testPrefetchBytes(void)
+{
+#ifdef PREFETCH_BUFFER_SIZE
+    return g_scsi_prefetch.bytes;
+#else
+    return 0;
+#endif
+}
+
+uint32_t testPrefetchSector(void)
+{
+#ifdef PREFETCH_BUFFER_SIZE
+    return g_scsi_prefetch.sector;
+#else
+    return 0;
+#endif
+}
+#endif
+
 /*****************/
 /* Write command */
 /*****************/
