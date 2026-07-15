@@ -40,6 +40,24 @@ static void write_be64(uint8_t *p, uint64_t val) {
     write_be32(p + 4, (uint32_t)(val));
 }
 
+/* Read a big-endian uint16 from buffer */
+static uint16_t read_be16(const uint8_t *p) {
+    return ((uint16_t)p[0] << 8) | p[1];
+}
+
+/* Read a big-endian uint32 from buffer */
+static uint32_t read_be32(const uint8_t *p) {
+    return ((uint32_t)p[0] << 24)
+         | ((uint32_t)p[1] << 16)
+         | ((uint32_t)p[2] << 8)
+         |  (uint32_t)p[3];
+}
+
+/* Read a big-endian uint64 from buffer */
+static uint64_t read_be64(const uint8_t *p) {
+    return ((uint64_t)read_be32(p) << 32) | (uint64_t)read_be32(p + 4);
+}
+
 uint32_t vhd_compute_checksum(const uint8_t *footer, size_t len)
 {
     uint32_t sum = 0;
@@ -204,4 +222,52 @@ void vhd_build_fixed_footer(uint8_t *footer, uint64_t total_bytes,
     /* Now compute and store checksum */
     uint32_t checksum = vhd_compute_checksum(footer, VHD_FOOTER_SIZE);
     write_be32(&footer[64], checksum);
+}
+
+int vhd_parse_fixed_footer(const uint8_t *footer, size_t len,
+                           vhd_footer_info_t *out)
+{
+    if (len != VHD_FOOTER_SIZE) return VHD_PARSE_ERR_COOKIE;
+    if (memcmp(footer, "conectix", 8) != 0) return VHD_PARSE_ERR_COOKIE;
+    if (read_be32(&footer[12]) != 0x00010000) return VHD_PARSE_ERR_VERSION;
+
+    /* Verify checksum: zero the 4 checksum bytes on a scratch copy, recompute, compare. */
+    uint8_t scratch[VHD_FOOTER_SIZE];
+    memcpy(scratch, footer, VHD_FOOTER_SIZE);
+    uint32_t stored = read_be32(&scratch[64]);
+    memset(&scratch[64], 0, 4);
+    uint32_t calc = vhd_compute_checksum(scratch, VHD_FOOTER_SIZE);
+    if (stored != calc) return VHD_PARSE_ERR_CHECKSUM;
+
+    uint32_t disk_type = read_be32(&footer[60]);
+    if (disk_type == VHD_DISK_TYPE_DYNAMIC)       return VHD_PARSE_ERR_TYPE_DYNAMIC;
+    if (disk_type == VHD_DISK_TYPE_DIFFERENCING)  return VHD_PARSE_ERR_TYPE_DIFF;
+    if (disk_type != VHD_DISK_TYPE_FIXED)         return VHD_PARSE_ERR_TYPE_UNKNOWN;
+
+    uint64_t cur = read_be64(&footer[48]);
+    /* Sanity: > 0 and < 4 TiB (defensive against corrupted size fields) */
+    if (cur == 0 || cur > (1ULL << 42))           return VHD_PARSE_ERR_SIZE;
+
+    out->current_size      = cur;
+    out->original_size     = read_be64(&footer[40]);
+    out->timestamp         = read_be32(&footer[24]);
+    memcpy(out->creator_app, &footer[28], 4); out->creator_app[4] = 0;
+    out->creator_version   = read_be32(&footer[32]);
+    memcpy(out->creator_os,  &footer[36], 4); out->creator_os[4]  = 0;
+    out->cylinders         = read_be16(&footer[56]);
+    out->heads             = footer[58];
+    out->sectors_per_track = footer[59];
+    out->disk_type         = disk_type;
+    memcpy(out->uuid, &footer[68], 16);
+    out->saved_state       = footer[84];
+    return VHD_PARSE_OK;
+}
+
+void vhd_uuid_to_serial(const uint8_t *uuid, char *serial)
+{
+    static const char hex[] = "0123456789abcdef";
+    for (int i = 0; i < 8; i++) {
+        serial[i * 2]     = hex[(uuid[i] >> 4) & 0xF];
+        serial[i * 2 + 1] = hex[ uuid[i]       & 0xF];
+    }
 }
