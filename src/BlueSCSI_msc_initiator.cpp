@@ -548,7 +548,7 @@ int32_t init_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buf
         // Request prefetch of the next block while USB transfers the previous one
         g_msc_initiator_state.prefetch_lba = lba;
         g_msc_initiator_state.prefetch_target_id = target_id;
-        g_msc_initiator_state.prefetch_sectorcount = total_sectorcount;
+        g_msc_initiator_state.prefetch_sectorcount = prefetch_sectorcount;
         g_msc_initiator_state.prefetch_sectorsize = sectorsize;
         g_msc_initiator_state.prefetch_use_read10 = use_read10;
         g_msc_initiator_state.prefetch_done = false;
