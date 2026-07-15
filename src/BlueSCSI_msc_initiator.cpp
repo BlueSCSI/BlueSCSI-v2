@@ -483,7 +483,10 @@ int32_t init_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buf
         return 0;
     }
 
-    if (g_msc_initiator_state.prefetch_done)
+    // Prefetch buffer is shared by all targets, so it is only valid for the
+    // target it was filled from.
+    if (g_msc_initiator_state.prefetch_done &&
+        g_msc_initiator_state.prefetch_target_id == target_id)
     {
         int32_t offset = (int32_t)lba - (int32_t)g_msc_initiator_state.prefetch_lba;
         uint8_t *dest = (uint8_t*)buffer;
