@@ -3,6 +3,7 @@
  *
  * ZuluSCSI™ - Copyright (c) 2023-2025 Rabbit Hole Computing™
  * Copyright (c) 2023 Kars de Jong
+ * Copyright (c) 2026 Eric Helgeson <eric@bluescsi.com>
  *
  * This file is licensed under the GPL version 3 or any later version. 
  * It is derived from cdrom.c in SCSI2SD V6
@@ -80,6 +81,7 @@ static void doTapeRead(uint32_t blocks)
         filename_len = findNextImageAfter(img, dir_name, current_filename, next_filename, sizeof(next_filename), true);
         if (filename_len > 0 && img.file.selectImageFile(next_filename))
         {
+            scsiDiskPrefetchInvalidate();
             if (img.tape_mark_index > 0)
             {
                 img.tape_mark_block_offset += capacity_lba;

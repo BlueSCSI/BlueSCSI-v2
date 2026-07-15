@@ -1469,6 +1469,9 @@ void setEjectButton(uint8_t idx, int8_t eject_button)
 // Check if we have multiple drive images to cycle when drive is ejected.
 bool switchNextImage(image_config_t &img, const char* next_filename)
 {
+    // A new image on the same target ID would otherwise serve the old image's sectors.
+    scsiDiskPrefetchInvalidate();
+
     // Check if we have a next image to load, so that drive is closed next time the host asks.
     int target_idx = img.getTargetId();
     char filename[MAX_FILE_PATH];
@@ -2127,6 +2130,14 @@ static struct {
 } g_scsi_prefetch;
 #endif
 
+void scsiDiskPrefetchInvalidate()
+{
+#ifdef PREFETCH_BUFFER_SIZE
+    g_scsi_prefetch.bytes = 0;
+    g_scsi_prefetch.sector = 0;
+#endif
+}
+
 #ifdef UNIT_TEST
 /* Test accessors for prefetch cache state */
 void testPrefetchSeed(uint32_t sector, uint32_t bytes, uint8_t scsiId)
@@ -2208,11 +2219,7 @@ void scsiDiskStartWrite(uint32_t lba, uint32_t blocks)
         scsiDev.dataLen = 0;
         scsiDev.dataPtr = 0;
 
-#ifdef PREFETCH_BUFFER_SIZE
-        // Invalidate prefetch buffer
-        g_scsi_prefetch.bytes = 0;
-        g_scsi_prefetch.sector = 0;
-#endif
+        scsiDiskPrefetchInvalidate();
 
         image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
         if (!img.file.seek((uint64_t)transfer.lba * bytesPerSector))
@@ -2365,10 +2372,7 @@ static void scsiDiskStartWriteAndVerify(uint32_t lba, uint32_t blocks)
         g_disk_data_out.verify = false;
         g_disk_data_out.write_and_verify = true;
 
-#ifdef PREFETCH_BUFFER_SIZE
-        g_scsi_prefetch.bytes = 0;
-        g_scsi_prefetch.sector = 0;
-#endif
+        scsiDiskPrefetchInvalidate();
 
         if (!img.file.seek((uint64_t)transfer.lba * bytesPerSector))
         {
@@ -3599,10 +3603,7 @@ void scsiDiskReset()
     g_disk_data_out.verify = false;
     g_disk_data_out.write_and_verify = false;
 
-#ifdef PREFETCH_BUFFER_SIZE
-    g_scsi_prefetch.bytes = 0;
-    g_scsi_prefetch.sector = 0;
-#endif
+    scsiDiskPrefetchInvalidate();
 
 #ifdef ENABLE_AUDIO_OUTPUT
     audio_stop();

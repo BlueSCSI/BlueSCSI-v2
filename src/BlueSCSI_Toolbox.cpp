@@ -497,6 +497,8 @@ static void onSendFilePrep(char * dir_name)
     SD.chdir("/");
     if(gFile.isOpen() && gFile.isWritable())
     {
+        // The upload may overwrite a file that is mounted as a SCSI image
+        scsiDiskPrefetchInvalidate();
         gFile.rewind();
         gFile.truncate();
         gFile.sync();
@@ -515,6 +517,7 @@ static void onSendFileEnd(void)
 {
     gFile.sync();
     gFile.close();
+    scsiDiskPrefetchInvalidate();
     scsiDev.phase = STATUS;
 }
 
