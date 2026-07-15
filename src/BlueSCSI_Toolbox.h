@@ -23,7 +23,7 @@
 #define ENTRY_SIZE 40
 #define MAX_FILE_LISTING_FILES 100
 
-#define CD_IMG_DIR "CD%d"
+#define CD_IMG_DIR "CD%c"  // ID char via scsiEncodeID: '0'-'9','A'-'F'
 
 #define BLUESCSI_TOOLBOX_COUNT_FILES    0xD2
 #define BLUESCSI_TOOLBOX_LIST_FILES     0xD0

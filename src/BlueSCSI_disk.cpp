@@ -932,31 +932,31 @@ static void scsiDiskSetConfig(int target_idx)
     else
     {
         strcpy(tmp, "HD0");
-        tmp[2] += target_idx;
+        tmp[2] = scsiEncodeID(target_idx);
         scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_FIXED, "disk");
 
         strcpy(tmp, "CD0");
-        tmp[2] += target_idx;
+        tmp[2] = scsiEncodeID(target_idx);
         scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_OPTICAL, "optical");
 
         strcpy(tmp, "RE0");
-        tmp[2] += target_idx;
+        tmp[2] = scsiEncodeID(target_idx);
         scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_REMOVABLE, "removable");
 
         strcpy(tmp, "MO0");
-        tmp[2] += target_idx;
+        tmp[2] = scsiEncodeID(target_idx);
         scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_MO, "magneto-optical");
 
         strcpy(tmp, "TP0");
-        tmp[2] += target_idx;
+        tmp[2] = scsiEncodeID(target_idx);
         scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_SEQUENTIAL, "tape");
 
         strcpy(tmp, "FD0");
-        tmp[2] += target_idx;
+        tmp[2] = scsiEncodeID(target_idx);
         scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_FLOPPY_14MB, "floppy");
 
         strcpy(tmp, "ZP0");
-        tmp[2] += target_idx;
+        tmp[2] = scsiEncodeID(target_idx);
         scsiDiskCheckDir(tmp, target_idx, &img, S2S_CFG_ZIP100, "Iomega Zip 100");
 
     }
@@ -1211,7 +1211,7 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
                     dbgmsg("No matching device type for default directory found");
                     return 0;
             }
-            dirname[2] += target_idx;
+            dirname[2] = scsiEncodeID(target_idx);
             if (!SD.exists(dirname))
             {
                 dbgmsg("Default image directory, ", dirname, " does not exist");
