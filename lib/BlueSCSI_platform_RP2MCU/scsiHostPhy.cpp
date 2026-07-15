@@ -241,7 +241,7 @@ int scsiHostPhyGetPhase()
         misread_count++;
         if (misread_count <= 20 || (misread_count % 100) == 0)
         {
-            logmsg("Initiator phase misread #", (int)misread_count,
+            dbgmsg("Initiator phase misread #", (int)misread_count,
                    ": first ", phase, " REQ ", (int)req_in,
                    ", confirm ", phase_confirm, " REQ ", (int)req_confirm);
         }
