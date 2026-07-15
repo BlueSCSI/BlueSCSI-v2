@@ -45,13 +45,15 @@ jobs:
           cd BlueSCSI
           nix develop --command python3 utils/compare_elf.py --from-release build/ --markdown -o size-report.md
 
-      - name: Post size comment on PR
+      # Pull requests from forks only get a read-only GITHUB_TOKEN, so this job
+      # cannot post the comment itself. size_comment.yml picks the report up.
+      - name: Upload size report
         if: github.event_name == 'pull_request'
-        uses: marocchino/sticky-pull-request-comment@v3
+        uses: actions/upload-artifact@v7
         with:
-          header: bluescsi-size-report
+          name: size-report
           path: BlueSCSI/size-report.md
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          if-no-files-found: error
 
       - name: Rename firmware files
         run: |
