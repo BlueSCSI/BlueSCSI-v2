@@ -2139,9 +2139,14 @@ static struct {
 static uint32_t prefetchSectorCount(int prefetchbytes, uint32_t bytesPerSector,
                                     uint32_t start_sector, uint32_t img_sector_count)
 {
+    if (prefetchbytes < 0) prefetchbytes = 0;
     if (prefetchbytes > PREFETCH_BUFFER_SIZE) prefetchbytes = PREFETCH_BUFFER_SIZE;
     uint32_t prefetch_sectors = prefetchbytes / bytesPerSector;
 
+    if (start_sector >= img_sector_count)
+    {
+        return 0;
+    }
     if (start_sector + prefetch_sectors > img_sector_count)
     {
         // Don't try to read past image end.
