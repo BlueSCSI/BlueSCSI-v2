@@ -204,6 +204,9 @@ bool switchNextImage(image_config_t &img, const char* next_filename = nullptr);
 // file uploads over the SD card, etc).
 void scsiDiskPrefetchInvalidate();
 
+// True while a RAW: image is open. SD card log files are not written then.
+bool scsiDiskRawDriveActive();
+
 // Encode a SCSI ID (0..15) as a single filename character: '0'..'9' or 'A'..'F'.
 // Returns '\0' for out-of-range inputs.
 char scsiEncodeID(uint8_t scsi_id);

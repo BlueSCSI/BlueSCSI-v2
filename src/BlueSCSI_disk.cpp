@@ -44,6 +44,7 @@
 #include <minIni.h>
 #include <string.h>
 #include <strings.h>
+#include <ctype.h>
 #include <assert.h>
 #include <SdFat.h>
 
@@ -221,6 +222,18 @@ extern SdFs SD;
 SdDevice sdDev = {2, 256 * 1024 * 1024 * 2}; /* For SCSI2SD */
 
 image_config_t g_DiskImages[S2S_MAX_TARGETS];
+
+bool scsiDiskRawDriveActive()
+{
+    for (int i = 0; i < S2S_MAX_TARGETS; i++)
+    {
+        if (g_DiskImages[i].file.isRaw() && g_DiskImages[i].file.isOpen())
+        {
+            return true;
+        }
+    }
+    return false;
+}
 
 void scsiDiskResetImages()
 {
@@ -1440,18 +1453,33 @@ void scsiDiskLoadConfig(int target_idx)
 
 uint32_t getBlockSize(char *filename, uint8_t scsi_id)
 {
-    // Parse block size (HD00_NNNN)
+    // A block size above half of scsiDev.data stalls DATA_IN: diskDataIn gets
+    // zero blocks per buffer half and never makes progress.
+    const uint32_t max_block_size = sizeof(scsiDev.data) / 2;
+
+    // Parse block size (HD00_NNNN): a power of two with no letter or digit after it
     uint32_t block_size = g_scsi_settings.getDevice(scsi_id)->blockSize;
-    const char *blksizestr = strchr(filename, '_');
+    const char *name = strrchr(filename, '/');
+    const char *blksizestr = strchr(name ? name : filename, '_');
     if (blksizestr)
     {
-        int blktmp = strtoul(blksizestr + 1, NULL, 10);
-        if (8 <= blktmp && blktmp <= 64 * 1024)
+        char *end;
+        uint32_t blktmp = strtoul(blksizestr + 1, &end, 10);
+        if (MIN_SECTOR_SIZE <= blktmp && blktmp <= max_block_size
+            && (blktmp & (blktmp - 1)) == 0 && !isalnum((unsigned char)*end))
         {
             block_size = blktmp;
             dbgmsg("-- Using block size, ",(int) block_size," from filename: ", filename);
         }
     }
+
+    if (block_size < MIN_SECTOR_SIZE || block_size > max_block_size)
+    {
+        logmsg("---- WARNING: Configured block size ", (int)block_size,
+               " is out of supported range, using ", (int)DEFAULT_BLOCKSIZE);
+        block_size = DEFAULT_BLOCKSIZE;
+    }
+
     return block_size;
 }
 

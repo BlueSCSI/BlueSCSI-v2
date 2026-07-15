@@ -33,13 +33,10 @@
 #include <string.h>
 #include <assert.h>
 
-extern bool g_rawdrive_active;
-
 ImageBackingStore::ImageBackingStore()
 {
     m_iscontiguous = false;
     m_israw = false;
-    g_rawdrive_active = m_israw;
     m_isrom = false;
     m_isreadonly_attr = false;
     m_blockdev = nullptr;
@@ -70,7 +67,6 @@ ImageBackingStore::ImageBackingStore(const char *filename, uint32_t scsi_block_s
 
         m_iscontiguous = true;
         m_israw = true;
-        g_rawdrive_active = m_israw;
         m_blockdev = SD.card();
 
         uint32_t sectorCount = SD.card()->sectorCount();
@@ -82,7 +78,13 @@ ImageBackingStore::ImageBackingStore(const char *filename, uint32_t scsi_block_s
     }
     else if (strncasecmp(filename, "ROM:", 4) == 0)
     {
-        if (!romDriveCheckPresent(&m_romhdr))
+        // ROM mode I/O works in whole 512-byte units
+        if (scsi_block_size == 0 || (scsi_block_size % SD_SECTOR_SIZE) != 0)
+        {
+            logmsg("SCSI block size ", (int)scsi_block_size, " is not supported for ROM drives (must be divisible by 512 bytes)");
+            m_romhdr.imagesize = 0;
+        }
+        else if (!romDriveCheckPresent(&m_romhdr))
         {
             m_romhdr.imagesize = 0;
         }
@@ -121,9 +123,14 @@ bool ImageBackingStore::_internal_open(const char *filename, bool doFastSeek)
     if (m_isfolder)
     {
         char fullpath[MAX_FILE_PATH * 2];
-        strncpy(fullpath, m_foldername, sizeof(fullpath) - strlen(fullpath));
-        strncat(fullpath, "/", sizeof(fullpath) - strlen(fullpath));
-        strncat(fullpath, filename, sizeof(fullpath) - strlen(fullpath));
+        size_t dirlen = strlen(m_foldername);
+        if (dirlen + 1 + strlen(filename) >= sizeof(fullpath))
+        {
+            return false;
+        }
+        memcpy(fullpath, m_foldername, dirlen);
+        fullpath[dirlen] = '/';
+        strcpy(fullpath + dirlen + 1, filename);
         m_fsfile = SD.open(fullpath, open_flag);
     }
     else

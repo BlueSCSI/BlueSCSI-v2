@@ -78,7 +78,6 @@
 
 SdFs SD;
 FsFile g_logfile;
-bool g_rawdrive_active;
 static bool g_romdrive_active;
 bool g_sdcard_present;
 
@@ -135,8 +134,10 @@ void init_logfile()
     return;
 #endif
 
-  if (g_rawdrive_active)
+#ifndef BLUESCSI_BOOTLOADER_MAIN
+  if (scsiDiskRawDriveActive())
     return;
+#endif
 
   static bool first_open_after_boot = true;
 
