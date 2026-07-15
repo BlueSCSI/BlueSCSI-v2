@@ -953,7 +953,7 @@ static void process_SelectionPhase()
 	TargetState* target = NULL;
 	for (tgtIndex = 0; tgtIndex < S2S_MAX_TARGETS; ++tgtIndex)
 	{
-		if (scsiDev.targets[tgtIndex].targetId == (selStatus & 7))
+		if (scsiDev.targets[tgtIndex].targetId == (selStatus & S2S_CFG_TARGET_ID_BITS))
 		{
 			target = &scsiDev.targets[tgtIndex];
 			break;
@@ -1002,7 +1002,9 @@ static void process_SelectionPhase()
 		// Save our initiator now that we're no longer in a time-critical
 		// section.
 		// SCSI1/SASI initiators may not set their own ID.
-		scsiDev.initiatorId = (selStatus >> 3) & 0x7;
+		// With 16 targets the 4-bit target ID overlaps the bits used here,
+		// and the RP2 PHY never captures the initiator ID anyway.
+		scsiDev.initiatorId = (S2S_MAX_TARGETS > 8) ? 0 : ((selStatus >> 3) & 0x7);
 
 		// Wait until the end of the selection phase.
 		uint32_t selTimerBegin = s2s_getTime_ms();

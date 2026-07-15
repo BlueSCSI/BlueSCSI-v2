@@ -106,7 +106,7 @@ static struct {
     bool eject_when_done;
     bool removable;
 
-    uint32_t removable_count[8];
+    uint32_t removable_count[NUM_SCSIID];
 
     // VHD output format (opt-in via InitiatorVHD=1)
     bool use_vhd_format;
@@ -166,13 +166,13 @@ void scsiInitiatorInit()
 #endif
 
     // Initiator start sector override
-    char section[6] = "SCSI0";
+    char section[8];
     char* end = NULL;
     char size_buffer[64];
     uint8_t string_len;
     uint32_t sector_start;
     for (int i = 0; i < NUM_SCSIID; i++) {
-        section[4] = '0' + i;
+        snprintf(section, sizeof(section), "SCSI%d", i);
         string_len = ini_gets(section, "InitiatorStartSector", "", size_buffer, sizeof(size_buffer), CONFIGFILE);
         if (string_len > 0) {
             sector_start = strtoul(size_buffer, &end, 10);
