@@ -2132,6 +2132,24 @@ static struct {
     uint32_t bytesPerSector;
     uint8_t scsiId;
 } g_scsi_prefetch;
+
+// Number of sectors to prefetch after a read ending at start_sector.
+// Clamps the user-configurable prefetch size (bluescsi.ini PrefetchBytes,
+// which can hold any long) to the prefetch buffer and to the image end.
+static uint32_t prefetchSectorCount(int prefetchbytes, uint32_t bytesPerSector,
+                                    uint32_t start_sector, uint32_t img_sector_count)
+{
+    if (prefetchbytes > PREFETCH_BUFFER_SIZE) prefetchbytes = PREFETCH_BUFFER_SIZE;
+    uint32_t prefetch_sectors = prefetchbytes / bytesPerSector;
+
+    if (start_sector + prefetch_sectors > img_sector_count)
+    {
+        // Don't try to read past image end.
+        prefetch_sectors = img_sector_count - start_sector;
+    }
+
+    return prefetch_sectors;
+}
 #endif
 
 void scsiDiskPrefetchInvalidate()
@@ -2168,6 +2186,16 @@ uint32_t testPrefetchSector(void)
 {
 #ifdef PREFETCH_BUFFER_SIZE
     return g_scsi_prefetch.sector;
+#else
+    return 0;
+#endif
+}
+
+uint32_t testPrefetchSectorCount(int prefetchbytes, uint32_t bytesPerSector,
+                                 uint32_t start_sector, uint32_t img_sector_count)
+{
+#ifdef PREFETCH_BUFFER_SIZE
+    return prefetchSectorCount(prefetchbytes, bytesPerSector, start_sector, img_sector_count);
 #else
     return 0;
 #endif
@@ -3065,20 +3093,14 @@ static void diskDataIn()
 
 #ifdef PREFETCH_BUFFER_SIZE
         image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-        int prefetchbytes = img.prefetchbytes;
-        if (prefetchbytes > PREFETCH_BUFFER_SIZE) prefetchbytes = PREFETCH_BUFFER_SIZE;
-        uint32_t prefetch_sectors = prefetchbytes / bytesPerSector;
         uint32_t img_sector_count = img.file.size() / bytesPerSector;
         g_scsi_prefetch.sector = transfer.lba + transfer.blocks;
         g_scsi_prefetch.bytes = 0;
         g_scsi_prefetch.bytesPerSector = bytesPerSector;
         g_scsi_prefetch.scsiId = s2s_getTargetId(scsiDev.target->cfg);
 
-        if (g_scsi_prefetch.sector + prefetch_sectors > img_sector_count)
-        {
-            // Don't try to read past image end.
-            prefetch_sectors = img_sector_count - g_scsi_prefetch.sector;
-        }
+        uint32_t prefetch_sectors = prefetchSectorCount(img.prefetchbytes, bytesPerSector,
+                                                        g_scsi_prefetch.sector, img_sector_count);
 
         while (!scsiIsWriteFinished(NULL) && prefetch_sectors > 0 && !scsiDev.resetFlag)
         {
