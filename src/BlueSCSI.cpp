@@ -1017,7 +1017,7 @@ STATIC_TESTABLE void reinitSCSI()
       }
 #endif
       g_scsi_settings.initDevice(fallback_id, S2S_CFG_FIXED);
-      scsiDiskOpenHDDImage(RAW_FALLBACK_SCSI_ID, "RAW:0:0xFFFFFFFF", 0,
+      scsiDiskOpenHDDImage(fallback_id, "RAW:0:0xFFFFFFFF", 0,
                           RAW_FALLBACK_BLOCKSIZE);
   #else
       logmsg("No valid image files found!");
