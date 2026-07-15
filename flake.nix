@@ -17,23 +17,43 @@
           pico-sdk = pkgs.fetchFromGitHub {
             owner = "bluescsi";
             repo = "pico-sdk-internal";
-            rev = "v2.2.0-UltraSupport-rel2";
+            rev = "4458968e999258eb527a883ffbc4f184a90a8261"; # v2.3.0-bluescsi
             fetchSubmodules = true;
-            hash = "sha256-Rx+MyFQSHJuIAjClaNXGXt+vhcl0aPP5XGZkzMxLkro=";
+            hash = "sha256-SexHT0NOhnMSaKPDgudOxl1UciGQPLni+dDJpgRVJcg=";
           };
 
           pico-extras = pkgs.fetchFromGitHub {
             owner = "raspberrypi";
             repo = "pico-extras";
-            rev = "sdk-2.2.0";
+            rev = "sdk-2.3.0";
             fetchSubmodules = true;
-            hash = "sha256-AfMycI+CMl76OERyRN8xQer7erh0wxpJnD4fu/Sl18c=";
+            hash = "sha256-CkxLqfe8uqzz8H8mlY5UQbXJczydGpEyuUyRN/UhoUU=";
           };
+
+          # tmp till merge in nixpkgs
+          picotool = pkgs.picotool.overrideAttrs (old: {
+            version = "2.3.0";
+            src = pkgs.fetchFromGitHub {
+              owner = "raspberrypi";
+              repo = "picotool";
+              rev = "2.3.0";
+              hash = "sha256-w9kVCdwevEjc12NNZWztehp6SSgsd9ehSaxqc9sg4O4=";
+            };
+            # Our SDK fetch includes the mbedtls submodule, so nixpkgs'
+            # mbedtls source substitution is unnecessary.
+            postPatch = "";
+            cmakeFlags = [ "-DPICO_SDK_PATH=${pico-sdk}" ];
+          });
+
+          pioasm = pkgs.pioasm.overrideAttrs (old: {
+            version = "2.3.0";
+            src = pico-sdk;
+          });
         in
         {
           default = pkgs.mkShell {
             packages = with pkgs; [
-              gcc-arm-embedded-14
+              gcc-arm-embedded-15
               cmake
               python3
               picotool

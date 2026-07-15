@@ -48,8 +48,8 @@ If you use [direnv](https://direnv.net/), the environment loads automatically wh
 BlueSCSI uses a forked Pico SDK with Ultra hardware support. Clone it with submodules:
 
 ```bash
-git clone --recurse-submodules https://github.com/bluescsi/pico-sdk-internal.git -b v2.2.0-UltraSupport-rel2
-git clone --recurse-submodules https://github.com/raspberrypi/pico-extras.git -b sdk-2.2.0
+git clone --recurse-submodules https://github.com/bluescsi/pico-sdk-internal.git -b v2.3.0-bluescsi
+git clone --recurse-submodules https://github.com/raspberrypi/pico-extras.git -b sdk-2.3.0
 ```
 
 Set the environment variables:
