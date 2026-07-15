@@ -2,7 +2,7 @@
  * This file is originally part of ZuluSCSI adopted for BlueSCSI
  *
  * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
- * Copyright (C) 2023 Eric Helgeson
+ * Copyright (c) 2023-2026 Eric Helgeson <eric@bluescsi.com>
  *
  * This file is licensed under the GPL version 3 or any later version. 
  *

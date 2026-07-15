@@ -3,6 +3,7 @@
  * Copyright (C) 2014 Doug Brown <doug@downtowndougbrown.com
  * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
  * Copyright (c) 2023 joshua stein <jcs@jcs.org>
+ * Copyright (c) 2023-2026 Eric Helgeson <eric@bluescsi.com>
  * 
  * It is derived from disk.h in SCSI2SD V6.
  * 

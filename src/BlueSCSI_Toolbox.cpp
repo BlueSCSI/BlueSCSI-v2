@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2023-2026 Eric Helgeson
+ * Copyright (c) 2023-2026 Eric Helgeson <eric@bluescsi.com>
  *
  * This file is part of BlueSCSI
  *
