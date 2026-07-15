@@ -67,14 +67,15 @@ void scsi_bsy_deassert_interrupt()
     {
         g_scsi_phase = BUS_BUSY;
 
-        // Check if any of the targets we simulate is selected
-        uint8_t sel_bits = SCSI_IN_DATA();
+        // Check if any of the targets we simulate is selected.
+        // On a wide bus IDs 8-15 are asserted on DB8-15, so keep all 16 bits.
+        uint16_t sel_bits = SCSI_IN_DATA();
         int sel_id = -1;
         for (int i = 0; i < S2S_MAX_TARGETS; i++)
         {
-            if (scsiDev.targets[i].targetId <= 7 && scsiDev.targets[i].cfg)
+            if (scsiDev.targets[i].targetId < S2S_MAX_TARGETS && scsiDev.targets[i].cfg)
             {
-                if (sel_bits & (1 << scsiDev.targets[i].targetId))
+                if (sel_bits & (1u << scsiDev.targets[i].targetId))
                 {
                     sel_id = scsiDev.targets[i].targetId;
                     break;

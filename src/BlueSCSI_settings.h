@@ -47,9 +47,9 @@ typedef enum
 #include <scsi2sd.h>
 
 
-// Index 8 is the system defaults
-// Index 0-7 represent device settings
-#define SCSI_SETTINGS_SYS_IDX 8
+// The last m_dev slot holds the system defaults, the slots below it the
+// per-device settings (0-7, or 0-15 on wide).
+#define SCSI_SETTINGS_SYS_IDX S2S_MAX_TARGETS
 
 typedef enum
 {
