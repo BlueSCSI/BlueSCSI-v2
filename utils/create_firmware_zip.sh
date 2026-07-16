@@ -20,10 +20,17 @@
 # The zip contains one .bin per target, named:
 #   BlueSCSI_<target>_<date>_<hash>.bin
 #
+# If front panel firmware binaries are present in PANEL_BIN_DIR (default:
+# <project>/panel-fw, populated by CI from the open-retro-storage-frontpanel
+# releases), they are included under their original names so the on-device
+# updater can extract the right one to the SD card:
+#   bluescsi-v2-frontpanel.bin     (V2 boards, I2C panel)
+#   bluescsi-ultra-frontpanel.bin  (Ultra / Ultra Wide, SPI panel)
+#
 # The zip itself is named:
 #   BlueSCSI_v<version>_<hash>.zip
 #
-# Usage: utils/create_firmware_zip.sh <build_root> <output_dir>
+# Usage: [PANEL_BIN_DIR=<dir>] utils/create_firmware_zip.sh <build_root> <output_dir>
 
 set -euo pipefail
 
@@ -67,6 +74,28 @@ if [ "${BIN_COUNT}" -eq 0 ]; then
     exit 1
 fi
 
+# Include front panel firmware binaries if present (see header comment).
+PANEL_BIN_DIR="${PANEL_BIN_DIR:-${PROJECT_DIR}/panel-fw}"
+PANEL_BINS=(bluescsi-v2-frontpanel.bin bluescsi-ultra-frontpanel.bin)
+PANEL_COUNT=0
+for panel_bin in "${PANEL_BINS[@]}"; do
+    panel_path="${PANEL_BIN_DIR}/${panel_bin}"
+    [ -f "${panel_path}" ] || continue
+    # ESP32 app images start with magic byte 0xE9; anything else is a
+    # truncated or bogus download and must not ship.
+    magic=$(head -c1 "${panel_path}" | od -An -tx1 | tr -d ' ')
+    if [ "${magic}" != "e9" ]; then
+        echo "ERROR: ${panel_path} has bad magic 0x${magic} (expected 0xe9)" >&2
+        exit 1
+    fi
+    cp "${panel_path}" "${TMPDIR}/${panel_bin}"
+    echo "  Added: ${panel_bin} (front panel firmware)"
+    PANEL_COUNT=$((PANEL_COUNT + 1))
+done
+if [ "${PANEL_COUNT}" -eq 0 ]; then
+    echo "Note: no front panel firmware in ${PANEL_BIN_DIR}; zip will not carry a panel update"
+fi
+
 # Included in the zip so users who accidentally extract it understand why the
 # raw .bin files inside are not meant to be flashed by hand.
 README_NAME="DONT EXTRACT - PLACE ZIP ON SD.txt"
@@ -91,6 +120,10 @@ the original .zip from the release page and drop it on your SD card.
 The .bin files inside this archive are raw firmware images intended only
 for the on-device updater. They cannot be flashed with drag-and-drop or
 UF2 tools.
+
+If a front panel is connected, the updater also extracts the matching
+front panel firmware (bluescsi-*-frontpanel.bin) to /firmware/ on the SD
+card; the panel then updates itself automatically.
 
 For the full update guide, including USB/UF2 flashing and troubleshooting,
 see:

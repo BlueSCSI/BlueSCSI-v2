@@ -13,3 +13,4 @@ test/test_report.json
 .direnv/
 build/
 test/
+panel-fw/
