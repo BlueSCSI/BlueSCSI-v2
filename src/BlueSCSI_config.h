@@ -3,7 +3,7 @@
  *
  * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
  * Portions copyright (c) 2023 joshua stein <jcs@jcs.org>
- * Copyright (c) 2026 Eric Helgeson
+ * Copyright (c) 2026 Eric Helgeson <eric@bluescsi.com>
  *
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version.
  *
@@ -43,6 +43,15 @@
 #define BLUE_FW_VERSION FW_VER_NUM "-" FW_VER_SUFFIX
 #define INQUIRY_NAME  PLATFORM_NAME "v" FW_VER_NUM
 #define TOOLBOX_API 0
+
+// Front panel firmware: extracted from the update package to the SD card,
+// where the panel protocol serves it to the panel for self-update.
+#define PANEL_FIRMWARE_DIR      "/firmware"
+#define PANEL_FIRMWARE_PATH     PANEL_FIRMWARE_DIR "/frontpanel.bin"
+#define PANEL_FIRMWARE_TMP_PATH PANEL_FIRMWARE_DIR "/frontpanel.tmp"
+// In-zip names match the open-retro-storage-frontpanel release asset names
+#define PANEL_FIRMWARE_ZIP_NAME_V2    "bluescsi-v2-frontpanel.bin"
+#define PANEL_FIRMWARE_ZIP_NAME_ULTRA "bluescsi-ultra-frontpanel.bin"
 
 // Configuration and log file paths
 #define CONFIGFILE  "bluescsi.ini"

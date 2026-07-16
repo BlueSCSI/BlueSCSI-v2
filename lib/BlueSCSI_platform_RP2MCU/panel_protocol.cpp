@@ -58,8 +58,9 @@ bool panel_scsi_bus_busy(void) {
     return scsiDev.phase != BUS_FREE || scsiDev.selFlag;
 }
 
-// Panel firmware path on SD card
-static const char* PANEL_FW_PATH = "/firmware/frontpanel.bin";
+// Panel firmware path on SD card (populated by the zip updater in
+// firmware_update(); may also be placed there manually)
+static const char* PANEL_FW_PATH = PANEL_FIRMWARE_PATH;
 
 // Maximum cached directory entries. Sized to fit the Ultra (RP2350) RAM
 // budget: each entry is ~65 bytes, so this cache dominates panel RAM. 128
