@@ -1033,7 +1033,10 @@ static void handle_check_firmware_async(void) {
         g_async.fw_size = g_async.fw_info.size;
         g_async.fw_offset = 0;
 
-        // Parse version string from ESP32 binary header (esp_app_desc_t at offset 0x30)
+        // Parse version string from ESP32 binary header (esp_app_desc_t at
+        // offset 0x30). Packed as 0xMMmmppPP to match the panel: the low byte
+        // is 0xFF for a final release, or N for a "-preN" prerelease so it
+        // sorts below the matching final.
         g_async.fw_info.version = 0;
         if (g_async.fw_file.seekSet(ESP32_VERSION_OFFSET)) {
             char ver_str[ESP32_VERSION_MAX_LEN];
@@ -1044,14 +1047,23 @@ static void handle_check_firmware_async(void) {
                 ver_str[ESP32_VERSION_MAX_LEN - 1] = '\0';
                 const char* p = ver_str;
                 if (*p == 'v' || *p == 'V') p++;
-                uint32_t maj = 0, min = 0, pat = 0;
+                uint32_t maj = 0, min = 0, pat = 0, pre = 0xFF;
                 while (*p >= '0' && *p <= '9') { maj = maj * 10 + (*p - '0'); p++; }
                 if (*p == '.') p++;
                 while (*p >= '0' && *p <= '9') { min = min * 10 + (*p - '0'); p++; }
                 if (*p == '.') p++;
                 while (*p >= '0' && *p <= '9') { pat = pat * 10 + (*p - '0'); p++; }
+                if (strncmp(p, "-pre", 4) == 0) {
+                    p += 4;
+                    uint32_t num = 0;
+                    bool have_num = false;
+                    while (*p >= '0' && *p <= '9') { num = num * 10 + (*p - '0'); p++; have_num = true; }
+                    if (have_num && num <= 254) {
+                        pre = num;
+                    }
+                }
                 if (maj <= 255 && min <= 255 && pat <= 255) {
-                    g_async.fw_info.version = (maj << 16) | (min << 8) | pat;
+                    g_async.fw_info.version = (maj << 24) | (min << 16) | (pat << 8) | pre;
                 }
             }
             g_async.fw_file.seekSet(0);
