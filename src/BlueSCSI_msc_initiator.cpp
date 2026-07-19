@@ -62,6 +62,8 @@ static struct {
     uint32_t sectorsize;
     uint32_t sectorcount;
     bool use_read10; // Always use read10/write10 commands for this target
+    uint8_t device_type; // Peripheral device type from INQUIRY byte 0
+    bool is_removable;   // RMB bit from INQUIRY byte 1
 } g_msc_initiator_targets[NUM_SCSIID];
 static int g_msc_initiator_target_count;
 
@@ -133,12 +135,22 @@ static void scan_targets()
             char product_id[17] = {0};
             memcpy(vendor_id, &inquiry_data[8], 8);
             memcpy(product_id, &inquiry_data[16], 16);
+            uint8_t device_type = inquiry_data[0] & 0x1F;
+            bool is_removable = (inquiry_data[1] & 0x80) != 0;
 
             if (inquiryok)
             {
+                const char *type_name = (device_type == SCSI_DEVICE_TYPE_CD) ? "CD-ROM" :
+                                        (device_type == SCSI_DEVICE_TYPE_MO) ? "MO" :
+                                        (device_type == SCSI_DEVICE_TYPE_DIRECT_ACCESS) ?
+                                        (is_removable ? "REMOVABLE" : "DISK") : "OTHER";
+                g_msc_initiator_targets[found_count].device_type = device_type;
+                g_msc_initiator_targets[found_count].is_removable = is_removable;
+
                 if (readcapok)
                 {
                     logmsg("Found SCSI drive with ID ", target_id, ": ", vendor_id, " ", product_id,
+                        " (", type_name, ")",
                         " capacity ", (int)(((uint64_t)sectorcount * sectorsize) / 1024 / 1024), " MB");
                     g_msc_initiator_targets[found_count].target_id = target_id;
                     g_msc_initiator_targets[found_count].sectorcount = sectorcount;
@@ -149,6 +161,7 @@ static void scan_targets()
                 else
                 {
                     logmsg("Found SCSI drive with ID ", target_id, ": ", vendor_id, " ", product_id,
+                           " (", type_name, ")",
                            " but failed to read capacity. Assuming SCSI-1 drive up to 1 GB.");
                     g_msc_initiator_targets[found_count].target_id = target_id;
                     g_msc_initiator_targets[found_count].sectorcount = 2097152;
@@ -290,6 +303,21 @@ static int get_target(uint8_t lun)
     }
 }
 
+// Whether the host should be allowed to eject media in this device
+static bool is_removable_device(uint8_t lun)
+{
+    if (lun >= g_msc_initiator_target_count)
+        return false;
+
+    uint8_t dtype = g_msc_initiator_targets[lun].device_type;
+
+    // CD-ROM and MO are always removable; direct access devices are
+    // removable when the RMB bit is set (Zip, removable disks)
+    return (dtype == SCSI_DEVICE_TYPE_CD) ||
+           (dtype == SCSI_DEVICE_TYPE_MO) ||
+           (dtype == SCSI_DEVICE_TYPE_DIRECT_ACCESS && g_msc_initiator_targets[lun].is_removable);
+}
+
 void init_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8], uint8_t product_id[16], uint8_t product_rev[4])
 {
     dbgmsg("-- MSC Inquiry");
@@ -362,21 +390,22 @@ bool init_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, bo
     g_msc_initiator_state.status_reqcount++;
 
     int target = get_target(lun);
-    uint8_t command[6] = {0x1B, 0x1, 0, 0, 0, 0};
+    uint8_t command[6] = {0x1B, 0x00, 0, 0, 0, 0};
     uint8_t response[4] = {0};
-    
+
     if (start)
     {
         command[4] |= 1; // Start
-        command[1] = 0;  // Immediate
     }
 
-    if (load_eject)
+    // LoEj moves media, so only removable devices get it
+    if (load_eject && is_removable_device(lun))
     {
+        logmsg(start ? "Loading removable media" : "Ejecting removable media");
         command[4] |= 2;
     }
 
-    command[4] |= power_condition << 4;
+    command[4] |= static_cast<uint8_t>((power_condition & 0x0F) << 4);
 
     int status = scsiInitiatorRunCommand(target,
                                          command, sizeof(command),
