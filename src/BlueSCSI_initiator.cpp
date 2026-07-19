@@ -1015,8 +1015,17 @@ bool scsiTestUnitReady(int target_id)
             }
             else if (sense_key == NOT_READY)
             {
-                dbgmsg("Target ", target_id, " reports NOT_READY, running STARTSTOPUNIT");
-                scsiStartStopUnit(target_id, true);
+#ifdef PLATFORM_MASS_STORAGE
+                // In USB MSC mode the host drives START STOP UNIT through its
+                // own callback. Sending START (and the STOP retry inside
+                // scsiStartStopUnit) while removable media (Zip, MO) is being
+                // inserted can eject it or stall the load.
+                if (!g_msc_initiator)
+#endif
+                {
+                    dbgmsg("Target ", target_id, " reports NOT_READY, running STARTSTOPUNIT");
+                    scsiStartStopUnit(target_id, true);
+                }
             }
         }
         else
