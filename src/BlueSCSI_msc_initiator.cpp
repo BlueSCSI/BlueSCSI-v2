@@ -121,61 +121,63 @@ static void scan_targets()
     {
         if (target_id == initiator_id) continue;
 
-        if (scsiTestUnitReady(target_id))
+        // INQUIRY answers with or without media in the drive, so it detects
+        // the device itself. An empty removable drive (MO, Zip, CD) registers
+        // here and reports "medium not present" to the USB host until a
+        // cartridge is loaded, like any USB card reader.
+        // No START STOP UNIT here: starting or stopping media is the USB
+        // host's decision (via its own callback), and sending it during a
+        // removable-media load can disturb the drive.
+        bool inquiryok = scsiInquiry(target_id, inquiry_data);
+        if (!inquiryok) continue;
+
+        char vendor_id[9] = {0};
+        char product_id[17] = {0};
+        memcpy(vendor_id, &inquiry_data[8], 8);
+        memcpy(product_id, &inquiry_data[16], 16);
+        uint8_t device_type = inquiry_data[0] & 0x1F;
+        bool is_removable = (inquiry_data[1] & 0x80) != 0;
+        const char *type_name = (device_type == SCSI_DEVICE_TYPE_CD) ? "CD-ROM" :
+                                (device_type == SCSI_DEVICE_TYPE_MO) ? "MO" :
+                                (device_type == SCSI_DEVICE_TYPE_DIRECT_ACCESS) ?
+                                (is_removable ? "REMOVABLE" : "DISK") : "OTHER";
+        g_msc_initiator_targets[found_count].target_id = target_id;
+        g_msc_initiator_targets[found_count].device_type = device_type;
+        g_msc_initiator_targets[found_count].is_removable = is_removable;
+
+        bool ready = scsiTestUnitReady(target_id);
+        uint32_t sectorcount = 0, sectorsize = 0;
+        bool readcapok = ready &&
+            scsiInitiatorReadCapacity(target_id, &sectorcount, &sectorsize);
+
+        if (readcapok)
         {
-            uint32_t sectorcount, sectorsize;
-
-            // No START STOP UNIT here: starting or stopping media is the USB
-            // host's decision (via its own callback), and sending it during a
-            // removable-media load can disturb the drive
-            bool inquiryok = scsiInquiry(target_id, inquiry_data);
-            bool readcapok =
-                scsiInitiatorReadCapacity(target_id, &sectorcount, &sectorsize);
-
-            char vendor_id[9] = {0};
-            char product_id[17] = {0};
-            memcpy(vendor_id, &inquiry_data[8], 8);
-            memcpy(product_id, &inquiry_data[16], 16);
-            uint8_t device_type = inquiry_data[0] & 0x1F;
-            bool is_removable = (inquiry_data[1] & 0x80) != 0;
-
-            if (inquiryok)
-            {
-                const char *type_name = (device_type == SCSI_DEVICE_TYPE_CD) ? "CD-ROM" :
-                                        (device_type == SCSI_DEVICE_TYPE_MO) ? "MO" :
-                                        (device_type == SCSI_DEVICE_TYPE_DIRECT_ACCESS) ?
-                                        (is_removable ? "REMOVABLE" : "DISK") : "OTHER";
-                g_msc_initiator_targets[found_count].device_type = device_type;
-                g_msc_initiator_targets[found_count].is_removable = is_removable;
-
-                if (readcapok)
-                {
-                    logmsg("Found SCSI drive with ID ", target_id, ": ", vendor_id, " ", product_id,
-                        " (", type_name, ")",
-                        " capacity ", (int)(((uint64_t)sectorcount * sectorsize) / 1024 / 1024), " MB");
-                    g_msc_initiator_targets[found_count].target_id = target_id;
-                    g_msc_initiator_targets[found_count].sectorcount = sectorcount;
-                    g_msc_initiator_targets[found_count].sectorsize = sectorsize;
-                    g_msc_initiator_targets[found_count].use_read10 = scsiInitiatorTestSupportsRead10(target_id, sectorsize);
-                    found_count++;
-                }
-                else
-                {
-                    logmsg("Found SCSI drive with ID ", target_id, ": ", vendor_id, " ", product_id,
-                           " (", type_name, ")",
-                           " but failed to read capacity. Assuming SCSI-1 drive up to 1 GB.");
-                    g_msc_initiator_targets[found_count].target_id = target_id;
-                    g_msc_initiator_targets[found_count].sectorcount = 2097152;
-                    g_msc_initiator_targets[found_count].sectorsize = 512;
-                    g_msc_initiator_targets[found_count].use_read10 = false;
-                    found_count++;
-                }
-            }
-            else
-            {
-                logmsg("Detected SCSI device with ID ", target_id, ", but failed to get inquiry response, skipping");
-            }
+            logmsg("Found SCSI drive with ID ", target_id, ": ", vendor_id, " ", product_id,
+                " (", type_name, ")",
+                " capacity ", (int)(((uint64_t)sectorcount * sectorsize) / 1024 / 1024), " MB");
+            g_msc_initiator_targets[found_count].sectorcount = sectorcount;
+            g_msc_initiator_targets[found_count].sectorsize = sectorsize;
+            g_msc_initiator_targets[found_count].use_read10 = scsiInitiatorTestSupportsRead10(target_id, sectorsize);
         }
+        else if (ready)
+        {
+            logmsg("Found SCSI drive with ID ", target_id, ": ", vendor_id, " ", product_id,
+                   " (", type_name, ")",
+                   " but failed to read capacity. Assuming SCSI-1 drive up to 1 GB.");
+            g_msc_initiator_targets[found_count].sectorcount = 2097152;
+            g_msc_initiator_targets[found_count].sectorsize = 512;
+            g_msc_initiator_targets[found_count].use_read10 = false;
+        }
+        else
+        {
+            // Capacity gets probed again by the host once media is loaded
+            logmsg("Found SCSI drive with ID ", target_id, ": ", vendor_id, " ", product_id,
+                   " (", type_name, ") - no media present");
+            g_msc_initiator_targets[found_count].sectorcount = 0;
+            g_msc_initiator_targets[found_count].sectorsize = 0;
+            g_msc_initiator_targets[found_count].use_read10 = true;
+        }
+        found_count++;
     }
 
     // USB MSC requests can start processing after we set this
@@ -658,9 +660,11 @@ int32_t init_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buf
     uint32_t orig_lba = lba;
 
     // Prefetch buffer is shared by all targets, so it is only valid for the
-    // target it was filled from.
+    // target it was filled from - and only at the sector size it was read
+    // with, which can change when removable media is swapped.
     if (g_msc_initiator_state.prefetch_done &&
-        g_msc_initiator_state.prefetch_target_id == target_id)
+        g_msc_initiator_state.prefetch_target_id == target_id &&
+        g_msc_initiator_state.prefetch_sectorsize == (size_t)sectorsize)
     {
         int32_t offset = (int32_t)lba - (int32_t)g_msc_initiator_state.prefetch_lba;
         uint8_t *dest = (uint8_t*)buffer;
@@ -717,6 +721,7 @@ int32_t init_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buf
     uint32_t disk_sectorcount = g_msc_initiator_targets[lun].sectorcount;
     bool covered = g_msc_initiator_state.prefetch_done
                 && g_msc_initiator_state.prefetch_target_id == target_id
+                && g_msc_initiator_state.prefetch_sectorsize == (size_t)sectorsize
                 && lba >= g_msc_initiator_state.prefetch_lba
                 && lba < g_msc_initiator_state.prefetch_lba + g_msc_initiator_state.prefetch_sectorcount;
 
