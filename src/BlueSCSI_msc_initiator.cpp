@@ -125,9 +125,10 @@ static void scan_targets()
         {
             uint32_t sectorcount, sectorsize;
 
-            bool inquiryok =
-                scsiStartStopUnit(target_id, true) &&
-                scsiInquiry(target_id, inquiry_data);
+            // No START STOP UNIT here: starting or stopping media is the USB
+            // host's decision (via its own callback), and sending it during a
+            // removable-media load can disturb the drive
+            bool inquiryok = scsiInquiry(target_id, inquiry_data);
             bool readcapok =
                 scsiInitiatorReadCapacity(target_id, &sectorcount, &sectorsize);
 
