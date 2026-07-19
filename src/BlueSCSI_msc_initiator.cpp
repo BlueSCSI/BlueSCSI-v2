@@ -413,7 +413,7 @@ void init_msc_capacity_cb(uint8_t lun, uint32_t *block_count, uint16_t *block_si
     dbgmsg("-- MSC Get Capacity");
     g_msc_initiator_state.status_reqcount++;
 
-    if (g_msc_initiator_target_count == 0)
+    if (g_msc_initiator_target_count == 0 || lun >= g_msc_initiator_target_count)
     {
         *block_count = 0;
         *block_size = 0;
@@ -422,9 +422,24 @@ void init_msc_capacity_cb(uint8_t lun, uint32_t *block_count, uint16_t *block_si
 
     uint32_t sectorcount = 0;
     uint32_t sectorsize = 0;
-    scsiInitiatorReadCapacity(get_target(lun), &sectorcount, &sectorsize);
-    *block_count = sectorcount;
-    *block_size = sectorsize;
+    bool success = scsiInitiatorReadCapacity(get_target(lun), &sectorcount, &sectorsize);
+
+    if (success && sectorcount > 0)
+    {
+        // Remember the current capacity so it survives a not-ready phase
+        g_msc_initiator_targets[lun].sectorcount = sectorcount;
+        g_msc_initiator_targets[lun].sectorsize = sectorsize;
+        *block_count = sectorcount;
+        *block_size = sectorsize;
+    }
+    else
+    {
+        // READ CAPACITY fails while removable media is loading; returning the
+        // stored capacity keeps the host from flapping the device to 0 blocks
+        *block_count = g_msc_initiator_targets[lun].sectorcount;
+        *block_size = g_msc_initiator_targets[lun].sectorsize;
+        dbgmsg("---- Using stored capacity: ", (int)*block_count, " x ", (int)*block_size);
+    }
 }
 
 int32_t init_msc_scsi_cb(uint8_t lun, const uint8_t scsi_cmd[16], void *buffer, uint16_t bufsize)
