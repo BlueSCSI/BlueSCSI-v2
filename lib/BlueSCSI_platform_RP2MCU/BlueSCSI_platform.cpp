@@ -1206,6 +1206,14 @@ void platform_post_sd_card_init()
     if (g_scsi_settings.getSystem()->enableFrontPanel) {
         panel_i2c_init();
     }
+#elif !defined(ENABLE_PANEL_SPI)
+    // No panel support in this build (RP2040 network/SPDIF: the panel's
+    // buffers don't fit alongside CYW43, and SPDIF out shares the panel's SCL
+    // pin). Say so instead of silently ignoring the setting.
+    if (g_scsi_settings.getSystem()->enableFrontPanel) {
+        logmsg("EnableFrontPanel is set, but this firmware has no front panel support");
+        logmsg("-- the front panel needs the Pico (non-network) build, or any Pico 2 board");
+    }
 #endif // ENABLE_PANEL_I2C
 }
 
