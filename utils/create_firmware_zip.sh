@@ -20,12 +20,12 @@
 # The zip contains one .bin per target, named:
 #   BlueSCSI_<target>_<date>_<hash>.bin
 #
-# If front panel firmware binaries are present in PANEL_BIN_DIR (default:
+# If the front panel firmware binary is present in PANEL_BIN_DIR (default:
 # <project>/panel-fw, populated by CI from the open-retro-storage-frontpanel
-# releases), they are included under their original names so the on-device
-# updater can extract the right one to the SD card:
-#   bluescsi-v2-frontpanel.bin     (V2 boards, I2C panel)
-#   bluescsi-ultra-frontpanel.bin  (Ultra / Ultra Wide, SPI panel)
+# releases), it is included under its original name so the on-device updater
+# can extract it to the SD card:
+#   bluescsi-frontpanel.bin  (one image for V2 and Ultra / Ultra Wide;
+#                             the panel auto-detects I2C vs SPI)
 #
 # The zip itself is named:
 #   BlueSCSI_v<version>_<hash>.zip
@@ -76,7 +76,7 @@ fi
 
 # Include front panel firmware binaries if present (see header comment).
 PANEL_BIN_DIR="${PANEL_BIN_DIR:-${PROJECT_DIR}/panel-fw}"
-PANEL_BINS=(bluescsi-v2-frontpanel.bin bluescsi-ultra-frontpanel.bin)
+PANEL_BINS=(bluescsi-frontpanel.bin)
 PANEL_COUNT=0
 for panel_bin in "${PANEL_BINS[@]}"; do
     panel_path="${PANEL_BIN_DIR}/${panel_bin}"

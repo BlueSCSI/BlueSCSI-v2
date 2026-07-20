@@ -49,9 +49,10 @@
 #define PANEL_FIRMWARE_DIR      "/firmware"
 #define PANEL_FIRMWARE_PATH     PANEL_FIRMWARE_DIR "/frontpanel.bin"
 #define PANEL_FIRMWARE_TMP_PATH PANEL_FIRMWARE_DIR "/frontpanel.tmp"
-// In-zip names match the open-retro-storage-frontpanel release asset names
-#define PANEL_FIRMWARE_ZIP_NAME_V2    "bluescsi-v2-frontpanel.bin"
-#define PANEL_FIRMWARE_ZIP_NAME_ULTRA "bluescsi-ultra-frontpanel.bin"
+// In-zip name matches the open-retro-storage-frontpanel release asset name.
+// One image covers v2 (I2C) and Ultra/Ultra Wide (SPI); the panel detects the
+// transport at runtime.
+#define PANEL_FIRMWARE_ZIP_NAME "bluescsi-frontpanel.bin"
 
 // Configuration and log file paths
 #define CONFIGFILE  "bluescsi.ini"

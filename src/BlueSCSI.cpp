@@ -1192,17 +1192,13 @@ STATIC_TESTABLE bool firmware_update_extract(FsFile &zip, const char *name_prefi
 }
 
 #if defined(ENABLE_PANEL_I2C) || defined(ENABLE_PANEL_SPI)
-// Extract this board's front panel firmware from the update package to the
+// Extract the front panel firmware from the update package to the
 // SD card. The panel protocol serves it to the panel, which compares
 // SHA-256 and decides for itself whether to reflash.
 __attribute__((optimize("Os")))
 STATIC_TESTABLE void firmware_update_panel(FsFile &zip)
 {
-#ifdef ENABLE_PANEL_I2C
-  const char *panel_name = PANEL_FIRMWARE_ZIP_NAME_V2;
-#else
-  const char *panel_name = PANEL_FIRMWARE_ZIP_NAME_ULTRA;
-#endif
+  const char *panel_name = PANEL_FIRMWARE_ZIP_NAME;
   size_t name_len = strlen(panel_name);
 
   SD.mkdir(PANEL_FIRMWARE_DIR); // returns false when it already exists

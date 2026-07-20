@@ -50,7 +50,7 @@ jobs:
           PANEL_TAG=$(cat utils/frontpanel_version.txt)
           mkdir -p panel-fw
           gh release download "$PANEL_TAG" --repo polpo/open-retro-storage-frontpanel \
-            -p 'bluescsi-v2-frontpanel.bin' -p 'bluescsi-ultra-frontpanel.bin' -D panel-fw
+            -p 'bluescsi-frontpanel.bin' -D panel-fw
           ls -la panel-fw/
 
       - name: Build firmware
