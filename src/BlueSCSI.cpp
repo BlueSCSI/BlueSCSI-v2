@@ -1235,7 +1235,9 @@ STATIC_TESTABLE void firmware_update()
   const char zip_ext[] = ".zip";
   FsFile root = SD.open("/");
   FsFile file;
-  char name[MAX_FILE_PATH + 1];
+  // Sized for firmware package names rather than MAX_FILE_PATH: a root entry
+  // that doesn't fit can't be a firmware zip, and getName() skips it
+  char name[72];
   while (1)
   {
     if (!file.openNext(&root, O_RDONLY))
