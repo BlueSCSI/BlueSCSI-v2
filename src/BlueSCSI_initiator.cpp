@@ -106,7 +106,9 @@ extern bool g_sdcard_present;
 // Not in the SCSI_MESSAGE enum in scsi.h
 #define MSG_NO_OPERATION 0x08
 
-// Per-target summary persisted across scans (for panel reporting)
+// Per-target summary persisted across scans (for panel reporting).
+// Only compiled in when a panel interface exists to consume it.
+#if defined(ENABLE_PANEL_I2C) || defined(ENABLE_PANEL_SPI)
 struct initiator_target_summary_t {
     uint8_t  status;         // 0=not found, 1=found, 2=imaging, 3=done, 4=error
     uint8_t  device_type;    // SCSI device type (0=HD, 5=CD, 7=MO)
@@ -121,6 +123,7 @@ struct initiator_target_summary_t {
     char     vendor[9];      // null-terminated
     char     product[17];    // null-terminated
 };
+#endif
 
 static struct {
     // Bitmap of all drives that have been imaged
@@ -170,13 +173,72 @@ static struct {
     int targetBusWidth[NUM_SCSIID];
     uint32_t start_sector[NUM_SCSIID];
 
+#if defined(ENABLE_PANEL_I2C) || defined(ENABLE_PANEL_SPI)
     // Per-target summary for panel status reporting
     initiator_target_summary_t target_summary[NUM_SCSIID];
+#endif
 
     FsFile target_file;
 } g_initiator_state;
 
 extern SdFs SD;
+
+// Mirror initiator progress into the per-target summary for panel status
+// reporting. Compiled to no-ops when no panel interface is enabled, which
+// also lets the linker drop the target_summary storage on non-panel builds.
+#if defined(ENABLE_PANEL_I2C) || defined(ENABLE_PANEL_SPI)
+static void initiatorSummaryClear()
+{
+    memset(g_initiator_state.target_summary, 0, sizeof(g_initiator_state.target_summary));
+}
+
+static void initiatorSummaryTargetFound(int target_id, const char *vendor, const char *product)
+{
+    initiator_target_summary_t &ts = g_initiator_state.target_summary[target_id];
+    ts.status = 1; // found
+    ts.device_type = g_initiator_state.device_type;
+    ts.ansi_version = g_initiator_state.ansi_version;
+    ts.sectorcount = g_initiator_state.sectorcount;
+    ts.sectorsize = g_initiator_state.sectorsize;
+    ts.sectors_done = 0;
+    ts.bad_sector_count = 0;
+    // Clear any sense codes from a previous scan of this ID so a
+    // freshly-found (e.g. removable) target doesn't report stale
+    // error codes to the panel.
+    ts.sense_key = 0;
+    ts.asc = 0;
+    ts.ascq = 0;
+    memcpy(ts.vendor, vendor, 9);
+    memcpy(ts.product, product, 17);
+}
+
+static void initiatorSummarySetStatus(int target_id, uint8_t status)
+{
+    g_initiator_state.target_summary[target_id].status = status;
+}
+
+static void initiatorSummaryUpdateProgress(int target_id)
+{
+    initiator_target_summary_t &ts = g_initiator_state.target_summary[target_id];
+    ts.sectors_done = g_initiator_state.sectors_done;
+    ts.bad_sector_count = g_initiator_state.bad_sector_count;
+}
+
+static void initiatorSummarySetSense(int target_id, uint8_t sense_key, uint8_t asc, uint8_t ascq)
+{
+    if (target_id < 0 || target_id >= NUM_SCSIID) return;
+    initiator_target_summary_t &ts = g_initiator_state.target_summary[target_id];
+    ts.sense_key = sense_key;
+    ts.asc = asc;
+    ts.ascq = ascq;
+}
+#else
+static inline void initiatorSummaryClear() {}
+static inline void initiatorSummaryTargetFound(int, const char *, const char *) {}
+static inline void initiatorSummarySetStatus(int, uint8_t) {}
+static inline void initiatorSummaryUpdateProgress(int) {}
+static inline void initiatorSummarySetSense(int, uint8_t, uint8_t, uint8_t) {}
+#endif
 
 // Initialization of initiator mode
 void scsiInitiatorInit()
@@ -198,7 +260,7 @@ void scsiInitiatorInit()
     g_initiator_state.use_identify = ini_getbool("SCSI", "InitiatorIdentify", true, CONFIGFILE);
     g_initiator_state.use_vhd_format = ini_getbool("SCSI", "InitiatorVHD", false, CONFIGFILE);
     g_initiator_state.all_done = false;
-    memset(g_initiator_state.target_summary, 0, sizeof(g_initiator_state.target_summary));
+    initiatorSummaryClear();
 
     // treat initiator id as already imaged drive so it gets skipped
     g_initiator_state.drives_imaged = 1 << g_initiator_state.initiator_id;
@@ -499,23 +561,7 @@ void scsiInitiatorMainLoop()
                 revision[4]=0;
 
                 // Save to target summary for panel reporting
-                int tid = g_initiator_state.target_id;
-                initiator_target_summary_t &ts = g_initiator_state.target_summary[tid];
-                ts.status = 1; // found
-                ts.device_type = g_initiator_state.device_type;
-                ts.ansi_version = g_initiator_state.ansi_version;
-                ts.sectorcount = g_initiator_state.sectorcount;
-                ts.sectorsize = g_initiator_state.sectorsize;
-                ts.sectors_done = 0;
-                ts.bad_sector_count = 0;
-                // Clear any sense codes from a previous scan of this ID so a
-                // freshly-found (e.g. removable) target doesn't report stale
-                // error codes to the panel.
-                ts.sense_key = 0;
-                ts.asc = 0;
-                ts.ascq = 0;
-                memcpy(ts.vendor, vendor, 9);
-                memcpy(ts.product, product, 17);
+                initiatorSummaryTargetFound(g_initiator_state.target_id, vendor, product);
 
                 g_initiator_state.use_read10 = scsiInitiatorTestSupportsRead10(g_initiator_state.target_id, g_initiator_state.sectorsize);
                 if(!g_initiator_state.use_read10)
@@ -703,7 +749,7 @@ void scsiInitiatorMainLoop()
 
                 logmsg("Starting to copy drive data to ", filename);
                 g_initiator_state.imaging = true;
-                g_initiator_state.target_summary[g_initiator_state.target_id].status = 2; // imaging
+                initiatorSummarySetStatus(g_initiator_state.target_id, 2); // imaging
 
                 // Initiator start sector override
                 if (g_initiator_state.start_sector[g_initiator_state.target_id] != 0) {
@@ -763,12 +809,8 @@ void scsiInitiatorMainLoop()
             g_initiator_state.target_file.close();
 
             // Update target summary on completion
-            {
-                initiator_target_summary_t &ts = g_initiator_state.target_summary[g_initiator_state.target_id];
-                ts.status = 3; // done
-                ts.sectors_done = g_initiator_state.sectors_done;
-                ts.bad_sector_count = g_initiator_state.bad_sector_count;
-            }
+            initiatorSummarySetStatus(g_initiator_state.target_id, 3); // done
+            initiatorSummaryUpdateProgress(g_initiator_state.target_id);
             return;
         }
 
@@ -815,7 +857,7 @@ void scsiInitiatorMainLoop()
                 g_initiator_state.retrycount = 0;
                 g_initiator_state.sectors_done++;
                 g_initiator_state.bad_sector_count++;
-                g_initiator_state.target_summary[g_initiator_state.target_id].bad_sector_count = g_initiator_state.bad_sector_count;
+                initiatorSummaryUpdateProgress(g_initiator_state.target_id);
                 g_initiator_state.target_file.seek((uint64_t)g_initiator_state.sectors_done * g_initiator_state.sectorsize);
             }
         }
@@ -826,7 +868,7 @@ void scsiInitiatorMainLoop()
             g_initiator_state.target_file.flush();
 
             // Update target summary progress
-            g_initiator_state.target_summary[g_initiator_state.target_id].sectors_done = g_initiator_state.sectors_done;
+            initiatorSummaryUpdateProgress(g_initiator_state.target_id);
 
             int speed_kbps = numtoread * g_initiator_state.sectorsize / (platform_millis() - time_start);
             logmsg("SCSI read succeeded, sectors done: ",
@@ -840,6 +882,8 @@ void scsiInitiatorMainLoop()
 /*************************************
  * Panel status accessor functions   *
  *************************************/
+
+#if defined(ENABLE_PANEL_I2C) || defined(ENABLE_PANEL_SPI)
 
 bool scsiInitiatorIsActive()
 {
@@ -901,6 +945,8 @@ bool scsiInitiatorGetTargetInfo(int scsi_id, uint8_t *status, uint8_t *device_ty
 
     return true;
 }
+
+#endif // ENABLE_PANEL_I2C || ENABLE_PANEL_SPI
 
 /*************************************
  * Low level command implementations *
@@ -1677,12 +1723,7 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
         scsiRequestSense(target_id, &sense_key, &sense_asc, &sense_ascq);
 
         // Save sense codes to target summary for panel reporting
-        if (target_id >= 0 && target_id < NUM_SCSIID)
-        {
-            g_initiator_state.target_summary[target_id].sense_key = sense_key;
-            g_initiator_state.target_summary[target_id].asc = sense_asc;
-            g_initiator_state.target_summary[target_id].ascq = sense_ascq;
-        }
+        initiatorSummarySetSense(target_id, sense_key, sense_asc, sense_ascq);
 
         if (sense_key == RECOVERED_ERROR)
         {
