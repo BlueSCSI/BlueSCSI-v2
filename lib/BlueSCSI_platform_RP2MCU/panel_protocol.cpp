@@ -1,5 +1,5 @@
 /**
- * BlueSCSI - Copyright (c) 2026 Eric Helgeson
+ * BlueSCSI - Copyright (c) 2026 Eric Helgeson <eric@bluescsi.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -241,8 +241,14 @@ static struct DirState {
 
         // Scan directory entries
         while (entry.openNext(&dir, O_RDONLY) && entry_count < MAX_DIR_ENTRIES) {
-            char name[64];
-            entry.getName(name, sizeof(name));
+            char name[MAX_FILE_PATH];
+            // The wire entry carries at most 63 chars; a longer name would be
+            // selected by a truncated path, so skip what can't round-trip
+            if (!entry.getName(name, sizeof(name)) ||
+                strlen(name) >= sizeof(entries[0].name)) {
+                entry.close();
+                continue;
+            }
 
             // Skip hidden files (starting with .)
             if (name[0] == '.') {

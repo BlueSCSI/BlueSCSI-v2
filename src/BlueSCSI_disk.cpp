@@ -44,6 +44,7 @@
 #include <string.h>
 #include <strings.h>
 #include <assert.h>
+#include <new>
 #include <SdFat.h>
 
 extern "C" {
@@ -231,8 +232,10 @@ void scsiDiskResetImages()
 
 void image_config_t::clear()
 {
-    static const image_config_t empty; // Statically zero-initialized
-    *this = empty;
+    // Re-run the default constructor in place; a static blank instance for
+    // "*this = empty" would keep a whole image_config_t of RAM just for this
+    this->~image_config_t();
+    new (this) image_config_t();
 }
 
 uint32_t image_config_t::get_capacity_lba()
@@ -1280,6 +1283,9 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen, bool
     // sanity check: is provided buffer is long enough to store a filename?
     assert(buflen >= MAX_FILE_PATH);
 
+    // callers check buf on a zero return; never hand back stale/uninitialized data
+    buf[0] = '\0';
+
     // find the next filename
     char nextname[MAX_FILE_PATH];
     int nextlen;
@@ -1340,28 +1346,46 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen, bool
                 return 0;
             }
         }
+        // ini_gets() returned 0 when the directory was derived from the
+        // device type above; the concatenation below needs the real length
+        dirlen = strlen(dirname);
 
-        // find the next filename
-        nextlen = findNextImageAfter(img, dirname, currentname, nextname, sizeof(nextname), false, prefer_cue);
+        // find the next filename that fits the caller's buffer; entries too
+        // long are skipped so they can't wedge the cycle
+        char first_skipped[MAX_FILE_PATH] = {'\0'};
+        while (true)
+        {
+            nextlen = findNextImageAfter(img, dirname, currentname, nextname, sizeof(nextname), false, prefer_cue);
 
-        if (nextlen == 0)
-        {
-            logmsg("Image directory was empty for ID", target_idx);
-            return 0;
+            if (nextlen == 0)
+            {
+                logmsg("Image directory was empty for ID", target_idx);
+                return 0;
+            }
+            if (buflen >= (size_t)(nextlen + dirlen + 2))
+            {
+                break;
+            }
+
+            logmsg("Image name '", dirname, "/", nextname, "' exceeds ", (int)(buflen - dirlen - 2), " characters, skipping");
+            if (first_skipped[0] == '\0')
+            {
+                strncpy(first_skipped, nextname, sizeof(first_skipped) - 1);
+            }
+            else if (strcasecmp(nextname, first_skipped) == 0)
+            {
+                // wrapped all the way around without finding a usable name
+                return 0;
+            }
+            strncpy(currentname, nextname, sizeof(currentname) - 1);
+            currentname[sizeof(currentname) - 1] = '\0';
         }
-        else if (buflen < nextlen + dirlen + 2)
-        {
-            logmsg("Directory '", dirname, "' and file '", nextname, "' exceed allowed length");
-            return 0;
-        }
-        else
-        {
-            // construct a return value
-            strncpy(buf, dirname, buflen);
-            if (buf[strlen(buf) - 1] != '/') strcat(buf, "/");
-            strcat(buf, nextname);
-            return dirlen + nextlen;
-        }
+
+        // construct a return value
+        strncpy(buf, dirname, buflen);
+        if (buf[strlen(buf) - 1] != '/') strcat(buf, "/");
+        strcat(buf, nextname);
+        return dirlen + nextlen;
     }
     else if (img.use_prefix)
     {
@@ -1480,7 +1504,8 @@ bool switchNextImage(image_config_t &img, const char* next_filename, bool prefer
     }
     else
     {
-        strncpy(filename, next_filename, MAX_FILE_PATH);
+        strncpy(filename, next_filename, sizeof(filename) - 1);
+        filename[sizeof(filename) - 1] = '\0';
     }
 
 #ifdef ENABLE_AUDIO_OUTPUT

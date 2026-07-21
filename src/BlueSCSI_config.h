@@ -89,7 +89,7 @@
 #define HDIMG_ID_POS  2                 // Position to embed ID number
 #define HDIMG_LUN_POS 3                 // Position to embed LUN numbers
 #define HDIMG_BLK_POS 5                 // Position to embed block size numbers
-#define MAX_FILE_PATH 64                // Maximum file name length
+#define MAX_FILE_PATH 128               // Maximum file name length
 
 // Image definition options
 #define IMAGE_INDEX_MAX 9               // Maximum number of 'IMG0' style statements parsed

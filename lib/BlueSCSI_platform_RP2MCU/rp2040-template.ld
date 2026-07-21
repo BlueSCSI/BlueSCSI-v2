@@ -185,6 +185,9 @@ SECTIONS
         *(.text*platform_network_wifi_join*)
         *(.text*wifi_security_name*)
         *(.text*wifi_security_auth*)
+        /* Cold diagnostics-only dump of the accelerator state (timeout and
+         * crash paths, which already run flash-resident logmsg) */
+        *(.text*scsi_accel_log_state*)
 
         /* SCSI commands that don't require high performance */
         *(.text*scsiToolboxCommand*)
