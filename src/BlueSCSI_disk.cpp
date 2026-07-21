@@ -507,6 +507,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
     image_config_t &img = g_DiskImages[target_idx];
     img.cuesheetfile.close();
     img.bin_container.close();
+    img.cue_loaded_directly = false;
     img.cdrom_binfile_index = -1;
     img.cdrom_track_end_lba = 0;
     scsiDiskSetImageConfig(target_idx);
@@ -531,18 +532,23 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
         char parentdir[MAX_FILE_PATH + 1] = {0};
         strncpy(parentdir, filename, sizeof(parentdir) - 1);
         char *lastslash = strrchr(parentdir, '/');
-        if (lastslash)
+        if (lastslash && lastslash != parentdir)
         {
             *lastslash = '\0';  // Truncate to parent directory
         }
         else
         {
-            strcpy(parentdir, "/");  // Root directory
+            // No slash, or a leading slash only ("/disc.cue"): parent is root
+            strcpy(parentdir, "/");
         }
 
-        // Open parent directory as folder for multi-bin file selection
+        // Open parent directory as folder for multi-bin file selection.
+        // This is only for resolving the cue's .bin tracks - the image still
+        // cycles by its own .cue filename, not by the directory (see
+        // cue_loaded_directly in BlueSCSI_disk.h).
         img.file = ImageBackingStore(parentdir, blocksize);
         img.bin_container.open(parentdir);
+        img.cue_loaded_directly = true;
 
         // Validate the cue sheet now (before device type setup)
         // We need to set deviceType temporarily for validation
@@ -553,6 +559,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
             img.cuesheetfile.close();
             img.bin_container.close();
             img.file.close();
+            img.cue_loaded_directly = false;
             return false;
         }
     }
@@ -868,6 +875,18 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
 
         img.use_prefix = use_prefix;
         img.file.getFilename(img.current_image, sizeof(img.current_image));
+        if (img.cue_loaded_directly)
+        {
+            // img.file points at the cue's parent directory, so getFilename()
+            // stored the directory name. The cycling identity of this image is
+            // the .cue file itself: keep its basename as the iteration cursor
+            // so scsiDiskGetNextImageName() advances among the sibling .cue
+            // files instead of restarting from the directory name every time.
+            const char *cue_basename = strrchr(filename, '/');
+            cue_basename = cue_basename ? cue_basename + 1 : filename;
+            strncpy(img.current_image, cue_basename, sizeof(img.current_image) - 1);
+            img.current_image[sizeof(img.current_image) - 1] = '\0';
+        }
         return true;
     }
     else
@@ -1166,7 +1185,7 @@ int findNextImageAfter(image_config_t &img,
 
     // For optical devices, check if directory contains .cue files
     // If so, skip .bin files (they're referenced by the .cue files).
-    // prefer_cue=false (front panel) cycles by .bin instead - see header.
+    // prefer_cue=false cycles by the underlying .bin files instead - see header.
     bool dir_has_cue = prefer_cue && (img.deviceType == S2S_CFG_OPTICAL) && scsiDiskFolderContainsCueSheet(&dir);
     if (dir_has_cue)
     {
@@ -1266,8 +1285,11 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen, bool
     int nextlen;
 
     char currentname[MAX_FILE_PATH];
-    // Test to see if we have a multi bin/cue file in a directory. Use the directory name instead
-    if (img.is_multi_bin_cue())
+    // A folder-image (folder holding a cue + bins) cycles at the parent level
+    // by its directory name. A directly-loaded loose .cue also has a directory
+    // as bin_container (the cue's parent, for track resolution) but cycles by
+    // its own filename, which scsiDiskOpenHDDImage() kept in current_image.
+    if (img.is_multi_bin_cue() && !img.cue_loaded_directly)
     {
         img.bin_container.getName(currentname, sizeof(currentname));
     }

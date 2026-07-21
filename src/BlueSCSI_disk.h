@@ -63,6 +63,14 @@ struct image_config_t: public S2S_TargetCfg
     // default option of '0' disables this functionality
     uint8_t ejectButton;
 
+    // True when a loose .cue file was loaded directly (not a folder-image).
+    // bin_container is then the cue's parent directory so its .bin tracks can
+    // be resolved, but the image's cycling identity is the .cue file itself
+    // (kept in current_image), not the directory. Lives in this byte-sized
+    // field cluster so it fits existing struct padding (the RP2040 SPDIF
+    // target is at its RAM limit).
+    bool cue_loaded_directly;
+
     // For tape drive emulation
     uint32_t tape_pos; // current position in blocks
     uint32_t tape_mark_index; // a direct relationship to the file in a multi image file tape 
@@ -174,12 +182,11 @@ bool scsiDiskCheckAnyImagesConfigured();
 // Finds filename with the lowest lexical order _after_ the given filename in
 // the given folder. If there is no file after the given one, or if there is
 // no current file, this will return the lowest filename encountered.
-// prefer_cue (optical only): when true, a folder containing a .cue lists the
-// .cue and hides the .bin files it references. When false, cycle by the
-// underlying image files (.bin) instead - used by the front panel so its
-// eject/next stays in a single-bin, non-multi-bin-cue state where cycling is
-// stable (loading a .cue directly makes is_multi_bin_cue() true and wedges the
-// next-image iterator on the same disc).
+// prefer_cue (optical only): when true (the default, used by all cycling
+// callers), a folder containing a .cue lists the .cue and hides the .bin
+// files it references. When false, cycle by the underlying image files
+// (.bin) instead. A directory with no cue sheet always cycles by the image
+// files, so plain data-.bin discs keep working either way.
 int findNextImageAfter(image_config_t &img, const char* dirname, const char* filename, char* nextname, size_t nextname_len, bool ignore_prefix = false, bool prefer_cue = true);
 
 // Gets the next image filename for the target, if configured for multiple

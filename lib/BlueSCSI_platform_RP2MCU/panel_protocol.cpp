@@ -113,6 +113,22 @@ static bool device_is_ejectable(image_config_t* img) {
                    img->deviceType == S2S_CFG_REMOVABLE);
 }
 
+// Name of the image loaded on a target, for panel display. A directly-loaded
+// .cue keeps its filename in current_image while img.file points at the cue's
+// parent directory, so getFilename() alone would show the directory name.
+// MAIN LOOP ONLY - getFilename() races switchNextImage() in the IRQ.
+static size_t panel_loaded_image_name(image_config_t& img, char* buf, size_t buflen) {
+    if (img.cue_loaded_directly) {
+        strncpy(buf, img.current_image, buflen - 1);
+        buf[buflen - 1] = '\0';
+        return strlen(buf);
+    }
+    size_t n = img.file.getFilename(buf, buflen);
+    if (n >= buflen) n = buflen - 1;
+    buf[n] = '\0';
+    return n;
+}
+
 // Snapshot of per-device status, refreshed from the MAIN LOOP and read by the
 // IRQ-context read handlers (GET_DEVICE_STATUS / GET_PLAYBACK_STATUS).
 //
@@ -154,8 +170,7 @@ void panel_protocol_refresh_device_snapshot(void) {
         // the interval, and immediately whenever a device transitions to loaded.
         if (loaded && (refresh_names || !g_device_snapshot[i].loaded)) {
             char name[sizeof(g_device_snapshot[i].image_name)];
-            size_t n = img.file.getFilename(name, sizeof(name));
-            name[n < sizeof(name) ? n : sizeof(name) - 1] = '\0';
+            panel_loaded_image_name(img, name, sizeof(name));
             memcpy((void *)g_device_snapshot[i].image_name, name, sizeof(name));
         } else if (!loaded) {
             g_device_snapshot[i].image_name[0] = '\0';
@@ -210,6 +225,13 @@ static struct DirState {
             return false;
         }
 
+        // Cue-first browsing: when the directory holds a cue sheet, list the
+        // .cue entries and hide the .bin files they reference (matching
+        // findNextImageAfter()). A directory without any cue sheet keeps its
+        // .bin files visible so plain data-.bin CDs remain loadable.
+        bool dir_has_cue = scsiDiskFolderContainsCueSheet(&dir);
+        dir.rewind();
+
         // Add parent directory entry if not at root
         if (strcmp(current_path, "/") != 0) {
             strncpy(entries[entry_count].name, "..", sizeof(entries[0].name) - 1);
@@ -234,11 +256,11 @@ static struct DirState {
                 entries[entry_count].name[sizeof(entries[0].name) - 1] = '\0';
                 entries[entry_count].entry_type = PANEL_ENTRY_TYPE_DIRECTORY;
                 entry_count++;
-            } else if (panel_has_extension(name, ".cue")) {
-                // Hide .cue sheets: the panel loads a CD by its .bin, which
-                // auto-pairs the sidecar .cue on load. Loading the .cue directly
-                // flips the device into is_multi_bin_cue() mode, which wedges the
-                // eject/next iterator on the same disc (see findNextImageAfter()).
+            } else if (dir_has_cue && panel_has_extension(name, ".bin")) {
+                // A cue sheet in this directory references the .bin files:
+                // hide them so the disc is selected by its .cue. Loading one
+                // .bin of a multi-bin disc would present a broken disc, and
+                // the firmware cycles cue-first anyway (see BlueSCSI_disk.h).
                 entry.close();
                 continue;
             } else {
@@ -306,6 +328,13 @@ static struct DirState {
         return true;
     }
 } g_dir;
+
+#ifdef UNIT_TEST
+/* Test accessor - reset the directory browser to the root (panel_dir_test) */
+void panel_protocol_test_reset_dir(void) {
+    g_dir.reset();
+}
+#endif
 
 // Async operation state
 static struct AsyncState {
@@ -416,7 +445,7 @@ static bool get_first_image_info(loaded_image_status_t* status) {
         if (img.file.isOpen()) {
             status->image_loaded = 1;
             status->device_type = PANEL_DEVICE_TYPE_SCSI;
-            img.file.getFilename(status->image_name, sizeof(status->image_name));
+            panel_loaded_image_name(img, status->image_name, sizeof(status->image_name));
             strncpy(status->directory_path, "/", sizeof(status->directory_path) - 1);
             return true;
         }
@@ -467,7 +496,7 @@ static uint16_t panel_count_target_images(image_config_t &img) {
     uint16_t count = 0;
 
     for (int guard = 0; guard <= MAX_DIR_ENTRIES; guard++) {
-        if (!scsiDiskGetNextImageName(img, filename, sizeof(filename), false)) {
+        if (!scsiDiskGetNextImageName(img, filename, sizeof(filename), true)) {
             break;  // no images for this target
         }
         if (first_filename[0] == '\0') {
@@ -504,7 +533,7 @@ static bool panel_find_prev_image(image_config_t &img, char *out, size_t outlen)
     bool found = false;
 
     for (int guard = 0; guard <= MAX_DIR_ENTRIES; guard++) {
-        if (!scsiDiskGetNextImageName(img, filename, sizeof(filename), false)) {
+        if (!scsiDiskGetNextImageName(img, filename, sizeof(filename), true)) {
             break;  // no images
         }
         if (first_filename[0] == '\0') {
@@ -653,7 +682,7 @@ static void handle_get_loaded_image_status_async(uint16_t device_index) {
     if (img && img->file.isOpen()) {
         status->image_loaded = 1;
         status->device_type = PANEL_DEVICE_TYPE_SCSI;
-        img->file.getFilename(status->image_name, sizeof(status->image_name));
+        panel_loaded_image_name(*img, status->image_name, sizeof(status->image_name));
         strncpy(status->directory_path, "/", sizeof(status->directory_path) - 1);
 
         status->image_index = (img->image_index >= 0) ? img->image_index : 0;
@@ -715,7 +744,7 @@ static void handle_get_device_list_async(void) {
             // tray-open state so the panel/web can prompt to load or close.
             dev->device_status = (img.deviceType == S2S_CFG_OPTICAL && img.ejected)
                                  ? PANEL_DEVICE_STATUS_TRAY_OPEN : PANEL_DEVICE_STATUS_LOADED;
-            img.file.getFilename(dev->image_name, sizeof(dev->image_name));
+            panel_loaded_image_name(img, dev->image_name, sizeof(dev->image_name));
         } else {
             dev->device_status = PANEL_DEVICE_STATUS_NO_IMAGE;
         }
@@ -1150,10 +1179,10 @@ static void handle_eject_image_async(uint16_t device_index) {
     if (img->file.isOpen()) {
         logmsg("Panel: Ejecting image from SCSI ID ", (int)device_index);
         if (img->deviceType == S2S_CFG_OPTICAL) {
-            // prefer_cue=false: cycle to the next .bin (like the Toolbox), not the
-            // .cue, so the device stays out of is_multi_bin_cue mode and the next
-            // eject can actually advance to a different disc.
-            cdromPerformEject(*img, false);
+            // Cue-first: eject advances to the next .cue when the directory
+            // has cue sheets (a directly-loaded .cue cycles by its own
+            // filename - see cue_loaded_directly in BlueSCSI_disk.h).
+            cdromPerformEject(*img, true);
         } else {
             img->ejected = true;
             switchNextImage(*img, nullptr);
@@ -1181,8 +1210,8 @@ static void handle_select_next_image_async(uint16_t device_index) {
 
     logmsg("Panel: Selecting next image for SCSI ID ", (int)device_index);
 
-    // prefer_cue=false so optical drives cycle by .bin (Toolbox-style).
-    if (switchNextImage(*img, nullptr, false)) {
+    // Cue-first: optical drives cycle by .cue when the directory has cue sheets.
+    if (switchNextImage(*img, nullptr, true)) {
         logmsg("Panel: Switched to next image successfully");
         panel_transport_set_async_result(nullptr, 0);
     } else {
@@ -1563,6 +1592,14 @@ static bool panel_path_is_loaded(const char* path) {
     for (int id = 0; id < S2S_MAX_TARGETS; id++) {
         image_config_t& img = scsiDiskGetImageConfig(id);
         if (!img.file.isOpen()) continue;
+
+        // A directly-loaded .cue keeps its filename in current_image while
+        // img.file is the parent directory; match the cue's basename too so
+        // the loaded cue sheet can't be deleted out from under the host.
+        if (img.cue_loaded_directly &&
+            strcasecmp(panel_path_basename(img.current_image), target_name) == 0) {
+            return true;
+        }
 
         uint32_t bgn = 0, end = 0;
         if (target_sector != 0 && img.file.contiguousRange(&bgn, &end) && bgn != 0) {
