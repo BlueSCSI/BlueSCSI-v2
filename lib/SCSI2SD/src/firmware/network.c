@@ -490,6 +490,17 @@ int scsiNetworkEnqueue(const uint8_t *buf, size_t len)
 		return 0;
 	}
 
+	// Full ring: drop this packet. Advancing writeIndex onto readIndex
+	// would make a full queue look empty (readIndex==writeIndex), losing
+	// everything already queued.
+	uint8_t nextWriteIndex = (scsiNetworkInboundQueue.writeIndex == NETWORK_PACKET_QUEUE_SIZE - 1)
+		? 0 : scsiNetworkInboundQueue.writeIndex + 1;
+	if (nextWriteIndex == scsiNetworkInboundQueue.readIndex)
+	{
+		DBGMSG_F("%s: ring full, dropping incoming packet", __func__);
+		return 0;
+	}
+
 	memcpy(scsiNetworkInboundQueue.packets[scsiNetworkInboundQueue.writeIndex], buf, len);
 
 	if (len < 60) {
@@ -506,15 +517,7 @@ int scsiNetworkEnqueue(const uint8_t *buf, size_t len)
 
 	scsiNetworkInboundQueue.sizes[scsiNetworkInboundQueue.writeIndex] = len + 4;
 
-	if (scsiNetworkInboundQueue.writeIndex == NETWORK_PACKET_QUEUE_SIZE - 1)
-		scsiNetworkInboundQueue.writeIndex = 0;
-	else
-		scsiNetworkInboundQueue.writeIndex++;
-
-	if (scsiNetworkInboundQueue.writeIndex == scsiNetworkInboundQueue.readIndex)
-	{
-		DBGMSG_F("%s: dropping packets in ring, write index caught up to read index", __func__);
-	}
+	scsiNetworkInboundQueue.writeIndex = nextWriteIndex;
 
 	return 1;
 }
