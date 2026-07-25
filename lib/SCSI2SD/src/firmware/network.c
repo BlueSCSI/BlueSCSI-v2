@@ -213,7 +213,7 @@ void scsiNetworkWifiJoin(uint32_t size)
 
 int scsiNetworkCommand()
 {
-	int parityError, done, idx, total;
+	int parityError, done, idx;
 	long len;
 	uint32_t size = (scsiDev.cdb[3] << 8) + scsiDev.cdb[4];
 	uint8_t command = scsiDev.cdb[0];
@@ -223,22 +223,30 @@ int scsiNetworkCommand()
 	switch (command) {
 	case 0x08:
 	{
-		// read(6)
-		// CDB[5] bit 6 indicates transfer mode from the host driver:
-		//   0x80 (bit 6 clear) = polled mode (old SCSI Manager, VM present) -> single packet
-		//   0xC0 (bit 6 set)   = blind mode (new SCSI Manager, no VM) -> multi-packet OK
-		// When bit 6 is clear, we send only one packet per READ(6) to minimize SCSI bus
-		// hold time, allowing the VM pager to access the bus between transactions.
+		// read(6) - a stream of [len_hi len_lo 0 0 0 flags | payload] records.
+		// Semantics match the Dayna SCSI/Link SL003 device ROM; hex addresses
+		// cite v2.0. CDB[5] bit 6 selects the mode (ROM 0x0f3b): clear=polled
+		// (one record, 0x0d77), set=blind (record loop, 0x0d5c).
 		int multiPacket = (scsiDev.cdb[5] & 0x40) != 0;
+		int maxRecords = DAYNAPORT_MAX_PACKETS_PER_READ;	// blind only; see network.h
+		int records = 0;
+
+		// Per-record payload budget = allocation length minus the 6-byte header
+		// (applied per record, not cumulatively: ROM 0x0cf2, 0x0e8a).
+		int allowance = (int)size - 6;
+
+		// Polled read offset into the packet from CDB[1..2] (ROM 0x0e05).
+		uint32_t offset = multiPacket ? 0 : (((uint32_t)scsiDev.cdb[1] << 8) + scsiDev.cdb[2]);
 
 		if (unlikely(size == 1))
 		{
+			// Not in the device protocol; kept for hosts that probe with len 1.
 			scsiDev.status = CHECK_CONDITION;
 			scsiDev.phase = STATUS;
 			break;
 		}
 
-		// if we have nothing to send, just return early
+		// Empty queue: one all-zero record (ROM 0x0f4c).
 		if (scsiNetworkInboundQueue.readIndex == scsiNetworkInboundQueue.writeIndex)
 		{
 			scsiDev.data[0] = 0;
@@ -261,48 +269,27 @@ int scsiNetworkCommand()
 
 		scsiEnterPhase(DATA_IN);
 
-		for (done = 0, total = 0; !done; )
+		for (done = 0; !done; )
 		{
+			int sendLen, dequeue;
+			uint8_t nextRead;
+			int morePending;
+
 			idx = scsiNetworkInboundQueue.readIndex;
 			len = scsiNetworkInboundQueue.sizes[idx];
-			total += len + 6;  // packet data + 6-byte header
 
-			if (scsiNetworkInboundQueue.readIndex == NETWORK_PACKET_QUEUE_SIZE - 1)
-			{
-				scsiNetworkInboundQueue.readIndex = 0;
-			}
-			else
-			{
-				scsiNetworkInboundQueue.readIndex++;
-			}
+			nextRead = (idx == NETWORK_PACKET_QUEUE_SIZE - 1) ? 0 : idx + 1;
+			morePending = (nextRead != scsiNetworkInboundQueue.writeIndex);
+			records++;
 
-			done = (scsiNetworkInboundQueue.readIndex == scsiNetworkInboundQueue.writeIndex);
-
-			// In polled mode (bit 6 clear), only send one packet per READ(6)
-			// to avoid holding the SCSI bus while the VM pager needs it.
-			if (!done && !multiPacket)
-			{
-				done = 1;
-			}
-
-			// Don't exceed the transfer size requested by the host
-			if (!done && total + DAYNAPORT_SCSI_PACKET_MAX + 6 > size)
-			{
-				done = 1;
-			}
-
-			// Don't tie up the SCSI bus too long even in multi-packet mode
-			if (!done && total >= (DAYNAPORT_SCSI_PACKET_MAX + 6) * 2)
-			{
-				done = 1;
-			}
-
+			// Header carries the full queued packet length even on a partial
+			// read (ROM 0x0d85); flag 0x10 = more pending (ROM 0x0ca6, 0x0df2).
 			scsiDev.data[0] = (len >> 8) & 0xff;
 			scsiDev.data[1] = len & 0xff;
 			scsiDev.data[2] = 0;
 			scsiDev.data[3] = 0;
 			scsiDev.data[4] = 0;
-			scsiDev.data[5] = (done ? 0 : 0x10);
+			scsiDev.data[5] = morePending ? 0x10 : 0;
 
 			scsiWrite(scsiDev.data, 6);
 			while (!scsiIsWriteFinished(NULL))
@@ -311,22 +298,91 @@ int scsiNetworkCommand()
 			}
 			scsiFinishWrite();
 
-			// DaynaPort Mac driver needs a short delay after reading size and flags.
-			// Timing matches real DaynaPORT SCSI/Link-3 behavior observed on a SCSI bus analyzer.
-			sleep_us(75);
-
-			scsiWrite(scsiNetworkInboundQueue.packets[idx], len);
-			while (!scsiIsWriteFinished(NULL))
+			if (multiPacket)
 			{
-				platform_poll();
+				// Blind: send up to the budget, always consume (ROM 0x0d46).
+				sendLen = (allowance > 0) ? ((len < allowance) ? len : allowance) : 0;
+				dequeue = 1;
 			}
-			scsiFinishWrite();
-
-			if (!done)
+			else if (allowance <= 0)
 			{
-				// DaynaPort Mac driver needs a delay between packets.
-				// Timing matches real DaynaPORT SCSI/Link-3 behavior observed on a SCSI bus analyzer.
-				sleep_us(300);
+				// Polled header-only peek: no payload, stays queued (ROM 0x0ea0).
+				sendLen = 0;
+				dequeue = 0;
+			}
+			else
+			{
+				int remaining = (int)len - (int)offset;
+				if (remaining < 0)
+				{
+					remaining = 0;
+				}
+				if (allowance > remaining)
+				{
+					// Read reaches packet end: consume it (ROM 0x0ecf).
+					sendLen = remaining;
+					dequeue = 1;
+				}
+				else
+				{
+					// Partial read: consume only if CDB[5] != 0, else the host
+					// re-reads the rest at an offset (ROM 0x0ed8).
+					sendLen = allowance;
+					dequeue = (scsiDev.cdb[5] != 0);
+				}
+			}
+
+			if (sendLen > 0)
+			{
+				// Header/payload gap matching real SCSI/Link-3 bus-analyzer
+				// timing (e7d9629). No delay exists in the ROM: this reproduces
+				// emergent ~6 MHz Z180 DMA overhead, not a documented constant.
+				sleep_us(75);
+
+				scsiWrite(scsiNetworkInboundQueue.packets[idx] + offset, sendLen);
+				while (!scsiIsWriteFinished(NULL))
+				{
+					platform_poll();
+				}
+				scsiFinishWrite();
+			}
+
+			// Dequeue only after the payload has left the bus, as the device
+			// frees its NIC buffer post-DMA (ROM 0x0d4c, 0x0f17): the
+			// platform_poll() above can enqueue concurrently, so releasing
+			// earlier would let a burst overwrite a slot mid-transfer.
+			if (dequeue)
+			{
+				scsiNetworkInboundQueue.readIndex = nextRead;
+			}
+
+			// Batch only plain blind reads (offset 0, whole packet consumed).
+			// Polled is always one record with no terminator (ROM 0x0d77);
+			// field-tested, the Mac polled driver stalls on batched records.
+			// Peeks, offset/partial reads, and a drained queue also end here
+			// (drained ends a blind batch with no terminator, ROM 0x0cb0).
+			if (!multiPacket || !dequeue || offset != 0 || sendLen != len || !morePending)
+			{
+				done = 1;
+			}
+			else if (records >= maxRecords
+				|| (long)scsiNetworkInboundQueue.sizes[scsiNetworkInboundQueue.readIndex] > (long)allowance)
+			{
+				// Cap hit, or next packet exceeds the budget (truncating a
+				// mid-batch record would corrupt the stream): terminate with
+				// a zero-length record, host re-reads (ROM 0x0c1c).
+				memset(scsiDev.data, 0, 6);
+				scsiWrite(scsiDev.data, 6);
+				while (!scsiIsWriteFinished(NULL))
+				{
+					platform_poll();
+				}
+				scsiFinishWrite();
+				done = 1;
+			}
+			else
+			{
+				sleep_us(300);	// inter-record gap, same basis as above
 			}
 		}
 

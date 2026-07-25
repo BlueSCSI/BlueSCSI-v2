@@ -33,6 +33,17 @@ extern "C" {
 // plus 6-byte DaynaPort SCSI packet header
 #define DAYNAPORT_SCSI_PACKET_MAX   1524
 
+// Max records returned by one blind-mode multi-record READ(6). Polled mode
+// (cdb[5] bit 6 clear) is always exactly one record, like the real device
+// (SL003 ROM 0x0d77): field testing shows the Mac polled driver stalls on
+// anything else. The real device's own history says blind batches need
+// bounding: its v1.3 firmware loops unbounded (the NIC ring refills from
+// the wire during the transfer, so sustained traffic can extend a batch
+// indefinitely) and v2.0 added a 200-record cap (ROM 0x0d5c). A long batch
+// holds the SCSI bus and delays the host's own outbound WRITE(6) traffic,
+// TCP ACKs among it. 16 bounds the hold to ~24 KB / ~25 ms at 1 MB/s.
+#define DAYNAPORT_MAX_PACKETS_PER_READ         16	// blind mode (cdb[5] bit 6)
+
 struct scsiNetworkPacketQueue {
 	uint8_t packets[NETWORK_PACKET_QUEUE_SIZE][NETWORK_PACKET_MAX_SIZE];
 	uint16_t sizes[NETWORK_PACKET_QUEUE_SIZE];
