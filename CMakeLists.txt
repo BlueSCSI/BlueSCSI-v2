@@ -374,6 +374,9 @@ elseif(BLUESCSI_TARGET STREQUAL "Pico_2_DaynaPORT")
         BLUESCSI_DAYNAPORT
         PICO_CYW43_SUPPORTED=1
         CYW43_PIO_CLOCK_DIV_DYNAMIC=1
+        # RP2350 has RAM headroom for a deeper inbound ring (~1.5 KB/slot);
+        # a deeper ring absorbs wifi bursts between host READ(6) polls.
+        NETWORK_PACKET_QUEUE_SIZE=48
     )
     target_link_libraries(BlueSCSI PRIVATE pico_cyw43_arch_poll pico_async_context_poll)
     set_target_properties(BlueSCSI PROPERTIES OUTPUT_NAME "BlueSCSI_Pico_2_DaynaPORT")
