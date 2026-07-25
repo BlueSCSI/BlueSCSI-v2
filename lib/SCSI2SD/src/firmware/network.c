@@ -403,12 +403,22 @@ int scsiNetworkCommand()
 		break;
 
 	case 0x0a:
-		// write(6)
+		// write(6) - CDB[5] bit 7 selects the format (ROM 0x1294): clear =
+		// one raw packet of cdb[3..4] bytes; set = a stream of [len_hi len_lo
+		// pad pad | payload] records ended by a zero-length header (cdb[3..4]
+		// ignored). The device rejects a nonzero CDB[1..2] (ROM 0x1281).
+		if (scsiDev.cdb[1] != 0 || scsiDev.cdb[2] != 0)
+		{
+			scsiDev.status = CHECK_CONDITION;
+			scsiDev.phase = STATUS;
+			break;
+		}
+
 		scsiEnterPhase(DATA_OUT);
 
 		for (;;)
 		{
-			if (scsiDev.cdb[5] == 0x0)
+			if (!(scsiDev.cdb[5] & 0x80))
 			{
 				// no preamble, single packet
 				len = size;
@@ -446,7 +456,7 @@ int scsiNetworkCommand()
 
 			platform_network_send(scsiDev.data, len);      
 
-			if (scsiDev.cdb[5] == 0x0)
+			if (!(scsiDev.cdb[5] & 0x80))
 			{
 				// single-packet mode
 				break;
