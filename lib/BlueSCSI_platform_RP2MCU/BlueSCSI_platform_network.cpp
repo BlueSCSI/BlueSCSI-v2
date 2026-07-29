@@ -40,6 +40,13 @@ extern "C" {
 // A default DaynaPort-compatible MAC
 static const char defaultMAC[] = { 0x00, 0x80, 0x19, 0xc0, 0xff, 0xee };
 
+// Applied from poll context on every link-up (a fresh association resets the
+// radio's power-save mode, and the cyw43 ioctl is not safe to call from
+// inside cyw43's own link-up callback).
+static volatile bool wifi_pm_setup_pending = false;
+
+extern "C" int ini_getbool(const char *section, const char *key, int defval, const char *filename);
+
 static bool network_in_use = false;
 
 // WiFi reconnection state (file-static so wifi_join can reset on credential change)
@@ -181,6 +188,32 @@ void platform_network_poll()
 	static int last_network_status = CYW43_LINK_DOWN;
 	if (!network_in_use)
 		return;
+	if (wifi_pm_setup_pending)
+	{
+		/* Read the ini once; retry the ioctl a bounded number of
+		 * times. */
+		static int pm_wanted = -1;
+		static int pm_attempts = 0;
+		if (pm_wanted < 0)
+			pm_wanted = ini_getbool("SCSI", "WiFiPowerSave", 0, CONFIGFILE);
+		// WiFiPowerSave (bluescsi.ini, [SCSI]): default 0/off disables the
+		// radio's power-save so unsolicited inbound frames (ping, incoming
+		// connections) are not delayed up to a beacon interval while it
+		// dozes. Set to 1 to keep the default power-save mode for lower
+		// power draw.
+		if (pm_wanted)
+		{
+			wifi_pm_setup_pending = false;
+		}
+		else
+		{
+			int pmret;
+
+			pmret = cyw43_wifi_pm(&cyw43_state, CYW43_NONE_PM);
+			if (pmret == 0 || ++pm_attempts >= 10)
+				wifi_pm_setup_pending = false;
+		}
+	}
 	int status = cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA);
 	char * ssid = scsiDev.boardCfg.wifiSSID;
 	if ((last_network_status != status) && (status == CYW43_LINK_BADAUTH || status == CYW43_LINK_NONET || status == CYW43_LINK_FAIL || status == CYW43_LINK_NOIP))
@@ -439,6 +472,10 @@ void cyw43_cb_tcpip_set_link_down(cyw43_t *self, int itf)
 
 void cyw43_cb_tcpip_set_link_up(cyw43_t *self, int itf)
 {
+	// Association resets the power-save mode; (re)apply the WiFiPowerSave
+	// setting from poll context.
+	wifi_pm_setup_pending = true;
+
 	char *ssid = platform_network_wifi_ssid();
 
 	if (ssid)
