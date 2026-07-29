@@ -103,7 +103,17 @@
 #define DRIVEINFO_OPTICAL   {"BLUESCSI", "CDROM",     PLATFORM_REVISION, ""}
 #define DRIVEINFO_FLOPPY    {"BLUESCSI", "FLOPPY",    PLATFORM_REVISION, ""}
 #define DRIVEINFO_MAGOPT    {"BLUESCSI", "MO_DRIVE",  PLATFORM_REVISION, ""}
-#define DRIVEINFO_NETWORK   {"Dayna",    "SCSI/Link",       "2.0f", ""}
+/*
+ * Revision "2.4f", not the real device's "2.0f": Apple's .ENET0 driver
+ * decides whether to mask interrupts for the whole of every SCSI poll by
+ * comparing INQUIRY byte 34 -- the THIRD character of this string --
+ * against '4' ("firmware 1.4 or later survives interrupts"). The check
+ * only looks at the minor digit, so the genuine "2.0f" reads as ancient
+ * and every poll runs at IPL 6: ticks are lost, TickCount-based rates
+ * read up to 2x high, and the machine is deaf during transfers. Byte 34
+ * = '4' keeps interrupts on, the path Dayna shipped for 1.4a.
+ */
+#define DRIVEINFO_NETWORK   {"Dayna",    "SCSI/Link",       "2.4f", ""}
 #define DRIVEINFO_TAPE      {"BLUESCSI", "TAPE",      PLATFORM_REVISION, ""}
 #define DRIVEINFO_AMIGAWIFI {"AmigaNET", "SCSI/Link", "1.0f", ""}
 #define DRIVEINFO_PRINTER   {"APPLE",    "PERSONAL LASER", "1.00", ""}
@@ -126,7 +136,7 @@
 #define APPLE_DRIVEINFO_OPTICAL   {"BlueSCSI", "CD-ROM CDU-55S",   "1.9a", ""}
 #define APPLE_DRIVEINFO_FLOPPY    {"IOMEGA",   "Io20S         *F", "PP33", ""}
 #define APPLE_DRIVEINFO_MAGOPT    {"MOST",     "RMD-5200",          PLATFORM_REVISION, "1.0"}
-#define APPLE_DRIVEINFO_NETWORK   {"Dayna",    "SCSI/Link",       "2.0f", ""}
+#define APPLE_DRIVEINFO_NETWORK   {"Dayna",    "SCSI/Link",       "2.4f", ""}
 #define APPLE_DRIVEINFO_TAPE      {"BlueSCSI", "APPLE_TAPE",        PLATFORM_REVISION, ""}
 #define APPLE_DRIVEINFO_PRINTER   {"APPLE",    "PERSONAL LASER",    "1.00", ""}
 
