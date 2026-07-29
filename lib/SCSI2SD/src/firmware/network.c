@@ -21,6 +21,7 @@
 #include "scsiPhy.h"
 #include "config.h"
 #include "network.h"
+#include "hardware/sync.h"
 
 bool scsiNetworkEnabled = false;
 uint32_t scsiNetworkMissed = 0;   /* frames dropped on a full ring */
@@ -285,6 +286,9 @@ int scsiNetworkEnqueue(const uint8_t *buf, size_t len)
 
 	scsiNetworkInboundQueue.sizes[scsiNetworkInboundQueue.writeIndex] = len + 4;
 
+	/* Publish last: this runs from an IRQ while a SCSI command reads the
+	 * ring, so packet and size must be visible before the index. */
+	__dmb();
 	scsiNetworkInboundQueue.writeIndex = nextWriteIndex;
 	return 1;
 }

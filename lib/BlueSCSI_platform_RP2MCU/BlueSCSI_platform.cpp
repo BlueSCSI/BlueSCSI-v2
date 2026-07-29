@@ -1738,7 +1738,11 @@ void platform_poll()
 
 #if PICO_CYW43_SUPPORTED && !defined(BLUESCSI_BOOTLOADER_MAIN)
     if (platform_is_pico_w()) {
+#if !PICO_CYW43_ARCH_THREADSAFE_BACKGROUND
+        /* Under the threadsafe-background arch the radio drives itself from
+         * an IRQ and there is no poll entry point to call. */
         cyw43_arch_poll();
+#endif
     }
 #endif
 

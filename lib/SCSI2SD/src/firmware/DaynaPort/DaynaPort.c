@@ -35,6 +35,7 @@
 #include "sl003_core.h"
 
 #include "BlueSCSI_platform_network.h"
+#include "hardware/sync.h"
 #include "log.h"
 
 extern long ini_getl(const char *section, const char *key, long defval,
@@ -156,7 +157,10 @@ static void depth_tally(uint16_t records)
  * first byte each direction moves.
  *
  * Do not poll the radio from emit: cyw43 work is a millisecond-scale SPI
- * conversation and would run with the initiator waiting mid-phase.
+ * conversation and would run with the initiator waiting mid-phase. The
+ * radio IRQ refills the ring instead (threadsafe-background arch), at no
+ * bus cost. That also means a batch is NOT bounded by ring depth; the
+ * bounds are the core's batch ceiling and the record cap.
  */
 struct bus_io {
 	bool in_data_in;
@@ -228,9 +232,16 @@ int scsiNetworkCommand(void)
 	if (scsiDev.cdb[0] == SCSI_NETWORK_WIFI_CMD)
 		return scsiNetworkWifiCommand();
 
-	/* Ring overflow drops feed the missed-packet counter. */
-	sl003_count_missed(&g_sl003, scsiNetworkMissed);
-	scsiNetworkMissed = 0;
+	/* Ring overflow drops feed the missed-packet counter. Read and clear
+	 * as one step: the producer increments from an IRQ, and a drop
+	 * landing between the two would be lost. */
+	{
+		uint32_t save = save_and_disable_interrupts();
+		uint32_t missed = scsiNetworkMissed;
+		scsiNetworkMissed = 0;
+		restore_interrupts(save);
+		sl003_count_missed(&g_sl003, missed);
+	}
 
 	r = sl003_handle(&g_sl003, scsiDev.cdb, &io);
 	scsiNetworkEnabled = sl003_enabled(&g_sl003);

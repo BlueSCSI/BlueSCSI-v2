@@ -40,14 +40,22 @@ extern "C" {
 // A default DaynaPort-compatible MAC
 static const char defaultMAC[] = { 0x00, 0x80, 0x19, 0xc0, 0xff, 0xee };
 
+/*
+ * cyw43 locking under the threadsafe-background arch (the driver also
+ * runs from a low-priority IRQ). Most cyw43_* entry points take the
+ * async-context lock themselves (CYW43_THREAD_ENTER in cyw43_ctrl.c).
+ * Three do not and read IRQ-written state, so thread-context calls to
+ * them are bracketed here: cyw43_wifi_link_status, cyw43_wifi_scan_active,
+ * cyw43_wifi_get_mac. The brackets compile away under the poll arch.
+ */
+static bool network_in_use = false;
+
 // Applied from poll context on every link-up (a fresh association resets the
 // radio's power-save mode, and the cyw43 ioctl is not safe to call from
 // inside cyw43's own link-up callback).
 static volatile bool wifi_pm_setup_pending = false;
 
 extern "C" int ini_getbool(const char *section, const char *key, int defval, const char *filename);
-
-static bool network_in_use = false;
 
 // WiFi reconnection state (file-static so wifi_join can reset on credential change)
 static uint32_t wifi_reconnect_time = 0;
@@ -116,7 +124,9 @@ int platform_network_init(char *mac)
 	memcpy(cyw43_state.mac, mac, sizeof(cyw43_state.mac));
 	cyw43_arch_enable_sta_mode();
 
+	cyw43_arch_lwip_begin();
 	cyw43_wifi_get_mac(&cyw43_state, CYW43_ITF_STA, read_mac);
+	cyw43_arch_lwip_end();
 	char mac_hex_string[4*6] = {0};
 	sprintf(mac_hex_string, "%02X:%02X:%02X:%02X:%02X:%02X", read_mac[0], read_mac[1], read_mac[2], read_mac[3], read_mac[4], read_mac[5]);
 	logmsg("Wi-Fi MAC: ", mac_hex_string);
@@ -132,7 +142,9 @@ void platform_network_add_multicast_address(uint8_t *mac)
 {
 	int ret;
 
-	if ((ret = cyw43_wifi_update_multicast_filter(&cyw43_state, mac, true)) != 0)
+	/* takes the async-context lock itself */
+	ret = cyw43_wifi_update_multicast_filter(&cyw43_state, mac, true);
+	if (ret != 0)
 		logmsg( __func__, ": cyw43_wifi_update_multicast_filter: ", ret);
 }
 
@@ -188,6 +200,7 @@ void platform_network_poll()
 	static int last_network_status = CYW43_LINK_DOWN;
 	if (!network_in_use)
 		return;
+
 	if (wifi_pm_setup_pending)
 	{
 		/* Read the ini once; retry the ioctl a bounded number of
@@ -200,7 +213,9 @@ void platform_network_poll()
 		// radio's power-save so unsolicited inbound frames (ping, incoming
 		// connections) are not delayed up to a beacon interval while it
 		// dozes. Set to 1 to keep the default power-save mode for lower
-		// power draw.
+		// power draw and slightly higher bulk throughput. When enabled the
+		// chip already defaults to power-save after association, so there is
+		// nothing to apply.
 		if (pm_wanted)
 		{
 			wifi_pm_setup_pending = false;
@@ -209,12 +224,16 @@ void platform_network_poll()
 		{
 			int pmret;
 
+			/* takes the async-context lock itself */
 			pmret = cyw43_wifi_pm(&cyw43_state, CYW43_NONE_PM);
 			if (pmret == 0 || ++pm_attempts >= 10)
 				wifi_pm_setup_pending = false;
 		}
 	}
+
+	cyw43_arch_lwip_begin();
 	int status = cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA);
+	cyw43_arch_lwip_end();
 	char * ssid = scsiDev.boardCfg.wifiSSID;
 	if ((last_network_status != status) && (status == CYW43_LINK_BADAUTH || status == CYW43_LINK_NONET || status == CYW43_LINK_FAIL || status == CYW43_LINK_NOIP))
 	{
@@ -261,7 +280,9 @@ void platform_network_poll()
 	}
 
 	last_network_status = status;
+#if !PICO_CYW43_ARCH_THREADSAFE_BACKGROUND
 	cyw43_arch_poll();
+#endif
 }
 
 int platform_network_send(uint8_t *buf, size_t len)
@@ -275,6 +296,7 @@ int platform_network_send(uint8_t *buf, size_t len)
 	uint32_t t0 = to_us_since_boot(get_absolute_time());
 #endif
 
+	/* cyw43_send_ethernet takes the async-context lock itself. */
 	ret = cyw43_send_ethernet(&cyw43_state, 0, len, buf, 0);
 	if (ret != 0)
 		logmsg("cyw43_send_ethernet failed: ", ret);
@@ -369,7 +391,12 @@ static int platform_network_wifi_scan_result(void *env, const cyw43_ev_scan_resu
 
 int platform_network_wifi_start_scan()
 {
-	if (cyw43_wifi_scan_active(&cyw43_state))
+	bool scanning;
+
+	cyw43_arch_lwip_begin();
+	scanning = cyw43_wifi_scan_active(&cyw43_state);
+	cyw43_arch_lwip_end();
+	if (scanning)
 		return -1;
 
 	cyw43_wifi_scan_options_t scan_options = { 0 };
@@ -379,7 +406,12 @@ int platform_network_wifi_start_scan()
 
 int platform_network_wifi_scan_finished()
 {
-	return !cyw43_wifi_scan_active(&cyw43_state);
+	bool scanning;
+
+	cyw43_arch_lwip_begin();
+	scanning = cyw43_wifi_scan_active(&cyw43_state);
+	cyw43_arch_lwip_end();
+	return !scanning;
 }
 
 void platform_network_wifi_dump_scan_list()
@@ -455,7 +487,14 @@ int platform_network_wifi_channel()
 // Required by cyw43_arch_wifi_connect_timeout_ms.
 int cyw43_tcpip_link_status(cyw43_t *self, int itf)
 {
-	return cyw43_wifi_link_status(self, itf);
+	int status;
+
+	/* cyw43_wifi_link_status does not lock; the async-context lock is
+	 * recursive, so bracketing is safe whether or not our caller holds it. */
+	cyw43_arch_lwip_begin();
+	status = cyw43_wifi_link_status(self, itf);
+	cyw43_arch_lwip_end();
+	return status;
 }
 
 // these override weakly-defined functions in pico-sdk

@@ -206,6 +206,14 @@ set(INCLUDE_DIRS
 option(BLUESCSI_NETWORK_DEBUG
        "Network debug logging and DaynaPORT batch-depth instrumentation" OFF)
 
+# Which cyw43_arch variant this build uses. The poll arch has to be selected
+# by a define here; the threadsafe-background arch brings its own define with
+# the library and must NOT also see the poll one -- with both defined the SDK
+# compiles both arch implementations and they collide at link.
+if(NOT BLUESCSI_TARGET STREQUAL "Pico_2_DaynaPORT")
+    set(CYW43_ARCH_POLL_DEFINE PICO_CYW43_ARCH_POLL=1)
+endif()
+
 # Common compile definitions (from platformio.ini)
 set(COMMON_DEFINES
     PICO_FLASH_SPI_CLKDIV=2
@@ -222,7 +230,7 @@ set(COMMON_DEFINES
     RECLOCKING_SUPPORTED
     PLATFORM_HAS_INITIATOR_MODE
     DISABLE_SWO
-    PICO_CYW43_ARCH_POLL=1
+    ${CYW43_ARCH_POLL_DEFINE}
     CYW43_PIN_WL_DYNAMIC=1
     CYW43_LWIP=0
     CYW43_USE_OTP_MAC=0
@@ -386,7 +394,12 @@ elseif(BLUESCSI_TARGET STREQUAL "Pico_2_DaynaPORT")
         # a deeper ring absorbs wifi bursts between host READ(6) polls.
         NETWORK_PACKET_QUEUE_SIZE=48
     )
-    target_link_libraries(BlueSCSI PRIVATE pico_cyw43_arch_poll pico_async_context_poll)
+    # Threadsafe background rather than poll: the radio runs from a
+    # low-priority IRQ, so frames reach the receive ring during a SCSI
+    # transaction. Under the poll arch nothing services the radio while a
+    # transaction runs (scsiWrite blocks), capping a blind batch at
+    # whatever was queued when it started. Other targets remain on poll.
+    target_link_libraries(BlueSCSI PRIVATE pico_cyw43_arch_threadsafe_background pico_async_context_threadsafe_background)
     if(BLUESCSI_NETWORK_DEBUG)
         target_compile_definitions(BlueSCSI PRIVATE NETWORK_DEBUG_LOGGING)
     endif()
