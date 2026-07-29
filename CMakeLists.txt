@@ -144,6 +144,8 @@ set(SCSI2SD_SOURCES
     lib/SCSI2SD/src/firmware/mode.c
     lib/SCSI2SD/src/firmware/diagnostic.c
     lib/SCSI2SD/src/firmware/network.c
+    lib/SCSI2SD/src/firmware/DaynaPort/DaynaPort.c
+    lib/SCSI2SD/src/firmware/DaynaPort/sl003_core.c
     lib/SCSI2SD/src/firmware/vendor.c
     lib/SCSI2SD/src/firmware/geometry.c
     lib/SCSI2SD/src/firmware/mo.c
@@ -197,6 +199,12 @@ set(INCLUDE_DIRS
     lib/ZipParser
     lib/BlueI2S
 )
+
+# Diagnostics, off by default: network debug logging plus the DaynaPORT
+# batch-depth histogram. Configure with -DBLUESCSI_NETWORK_DEBUG=ON to get
+# them; they write to log.txt and cost time on the SCSI path.
+option(BLUESCSI_NETWORK_DEBUG
+       "Network debug logging and DaynaPORT batch-depth instrumentation" OFF)
 
 # Common compile definitions (from platformio.ini)
 set(COMMON_DEFINES
@@ -374,8 +382,14 @@ elseif(BLUESCSI_TARGET STREQUAL "Pico_2_DaynaPORT")
         BLUESCSI_DAYNAPORT
         PICO_CYW43_SUPPORTED=1
         CYW43_PIO_CLOCK_DIV_DYNAMIC=1
+        # RP2350 has RAM headroom for a deeper inbound ring (~1.5 KB/slot);
+        # a deeper ring absorbs wifi bursts between host READ(6) polls.
+        NETWORK_PACKET_QUEUE_SIZE=48
     )
     target_link_libraries(BlueSCSI PRIVATE pico_cyw43_arch_poll pico_async_context_poll)
+    if(BLUESCSI_NETWORK_DEBUG)
+        target_compile_definitions(BlueSCSI PRIVATE NETWORK_DEBUG_LOGGING)
+    endif()
     set_target_properties(BlueSCSI PROPERTIES OUTPUT_NAME "BlueSCSI_Pico_2_DaynaPORT")
 
 elseif(BLUESCSI_TARGET STREQUAL "Pico_2_Audio_SPDIF")

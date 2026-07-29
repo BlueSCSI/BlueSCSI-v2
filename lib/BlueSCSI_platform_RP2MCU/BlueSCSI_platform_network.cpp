@@ -233,10 +233,32 @@ void platform_network_poll()
 
 int platform_network_send(uint8_t *buf, size_t len)
 {
-	int ret = cyw43_send_ethernet(&cyw43_state, 0, len, buf, 0);
+	int ret;
+#ifdef NETWORK_DEBUG_LOGGING
+	/* Diagnostics: time the radio send. cyw43_send_ethernet can block on
+	 * the async-context lock against the receive IRQ; the report makes
+	 * that visible from log.txt for any host. */
+	static uint32_t snd_n, snd_us_total, snd_us_max;
+	uint32_t t0 = to_us_since_boot(get_absolute_time());
+#endif
+
+	ret = cyw43_send_ethernet(&cyw43_state, 0, len, buf, 0);
 	if (ret != 0)
 		logmsg("cyw43_send_ethernet failed: ", ret);
 
+#ifdef NETWORK_DEBUG_LOGGING
+	{
+		uint32_t d = to_us_since_boot(get_absolute_time()) - t0;
+		snd_us_total += d;
+		if (d > snd_us_max) snd_us_max = d;
+		if (++snd_n % 64 == 0) {
+			LOGMSG_F("SL003 radio send over %lu frames: mean %lu us, max %lu us",
+			         (unsigned long)snd_n,
+			         (unsigned long)(snd_us_total / snd_n),
+			         (unsigned long)snd_us_max);
+		}
+	}
+#endif
 	return ret;
 }
 

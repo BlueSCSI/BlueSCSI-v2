@@ -67,7 +67,17 @@ struct __attribute__((packed)) wifi_join_request {
 #define SCSI_NETWORK_WIFI_CMD_INFO			0x04
 #define SCSI_NETWORK_WIFI_CMD_JOIN			0x05
 
-int scsiNetworkCommand(void);
+/* Shared receive ring: the radio fills it, either network personality
+ * reads it. */
+extern bool scsiNetworkEnabled;
+extern struct scsiNetworkPacketQueue scsiNetworkInboundQueue;
+
+int scsiNetworkCommand(void);        /* DaynaPort/DaynaPort.c */
+int scsiNetworkWifiCommand(void);    /* shared WiFi configuration */
+extern uint32_t scsiNetworkMissed;
+
+/* INQUIRY byte 36, delivered by inquiry.c's generic path. */
+uint8_t scsiNetworkInquiryStatus(void);
 int scsiNetworkEnqueue(const uint8_t *buf, size_t len);
 
 // Shared WiFi subcommand handlers (used by both DaynaPort and AmigaWIFI)

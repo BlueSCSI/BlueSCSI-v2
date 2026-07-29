@@ -24,6 +24,9 @@
 #include "scsi.h"
 #include "config.h"
 #include "inquiry.h"
+#ifdef BLUESCSI_NETWORK
+#include "network.h"
+#endif
 #include "BlueSCSI_config.h"
 
 #include <string.h>
@@ -302,8 +305,22 @@ uint32_t s2s_getStandardInquiry(
 			size += sizeof(LaserWriterVendor);
 		}
 	}
+	/* The DaynaPORT answers 37 bytes: byte 36 is live status, 0x80 =
+	 * enabled, 0x40 = mode set (ROM 0x1500, 0x150e). Appended here
+	 * because scsi.c answers INQUIRY before any personality runs. */
+	else if (cfg->deviceType == S2S_CFG_NETWORK) {
+#ifdef BLUESCSI_NETWORK
+		if (size < maxlen)
+		{
+			out[size++] = scsiNetworkInquiryStatus();
+			// keep the additional-length byte in step, for two-step
+			// INQUIRY (read 5, re-issue with 4 + 1 + out[4])
+			out[4] = (uint8_t)(size - 5);
+		}
+#endif
+	}
 	// Iomega already has a vendor inquiry
-	else if(cfg->deviceType != S2S_CFG_NETWORK && cfg->deviceType != S2S_CFG_ZIP100) {
+	else if(cfg->deviceType != S2S_CFG_ZIP100) {
 		memcpy(&out[size], INQUIRY_NAME, sizeof(INQUIRY_NAME) - 1);
 		size += sizeof(INQUIRY_NAME) - 1;
 		out[size++] = TOOLBOX_API;
