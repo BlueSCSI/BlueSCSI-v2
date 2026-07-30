@@ -366,7 +366,11 @@ elseif(BLUESCSI_TARGET STREQUAL "Pico_Audio_SPDIF")
         CYW43_PIO_CLOCK_DIV_DYNAMIC=1
         ENABLE_AUDIO_OUTPUT
         ENABLE_AUDIO_OUTPUT_SPDIF
-        NETWORK_PACKET_QUEUE_SIZE=12
+        # Two slots fewer than the other RP2040 network targets: this
+        # linker script keeps network code in RAM (XIP-cache avoidance)
+        # and the SL003 core is larger than the handler it replaced, so
+        # the ring gives back the difference. ~1.5 KB per slot.
+        NETWORK_PACKET_QUEUE_SIZE=10
     )
     target_link_libraries(BlueSCSI PRIVATE pico_cyw43_arch_poll pico_async_context_poll)
     set_target_properties(BlueSCSI PROPERTIES OUTPUT_NAME "BlueSCSI_Pico_Audio_SPDIF")
