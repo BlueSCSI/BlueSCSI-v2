@@ -24,11 +24,12 @@
 #include "sl003_core.h"
 
 void sl003_init(sl003_t *s, const uint8_t mac[6],
-                struct scsiNetworkPacketQueue *ring)
+                struct scsiNetworkPacketQueue *ring, uint8_t *wbuf)
 {
     memset(s, 0, sizeof *s);
     memcpy(s->mac, mac, 6);
     s->rx = ring;
+    s->wbuf = wbuf;
     s->gap_header_us = SL003_GAP_AFTER_HEADER_US;
     s->gap_record_us = SL003_GAP_AFTER_RECORD_US;
 }

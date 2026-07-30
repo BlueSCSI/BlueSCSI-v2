@@ -84,14 +84,17 @@ typedef struct sl003 {
     /* What the last READ emitted -- the batch depth, for instrumentation. */
     uint16_t  records_sent;
 
-    /* DATA OUT landing area. CDB[3..4] is sixteen untrusted bits and fetch
-     * fills exactly the count we ask for, so every requested length is
-     * clamped to this buffer. */
-    uint8_t   wbuf[SL003_PKT_MAX + 8];
+    /* DATA OUT landing area, at least SL003_PKT_MAX + 8 bytes, supplied
+     * by the caller (the firmware passes scsiDev.data rather than
+     * spending 1.5 KB of static RAM; the RP2040 targets have none to
+     * spare). CDB[3..4] is sixteen untrusted bits and fetch fills
+     * exactly the count we ask for, so every requested length is
+     * clamped to SL003_PKT_MAX. */
+    uint8_t  *wbuf;
 } sl003_t;
 
 void     sl003_init(sl003_t *s, const uint8_t mac[6],
-                    struct scsiNetworkPacketQueue *ring);
+                    struct scsiNetworkPacketQueue *ring, uint8_t *wbuf);
 
 /*
  * Inter-record pacing, default 75/300 us as observed from the real
