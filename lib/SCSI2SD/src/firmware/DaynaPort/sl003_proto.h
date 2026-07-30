@@ -36,6 +36,13 @@
 
 /* CDB[5] selectors */
 #define SL003_READ_BLIND_BIT        0x40  /* clear = polled (0x0f3b)      */
+/* BlueSCSI extension, paired with SL003_INQ_BATCH_BOUNDED below: bound
+ * this blind batch to the allocation length. The ROM tests only bit 6
+ * here and ignores the rest of the control byte, so a real device
+ * treats the command as a plain blind read -- which is why a host must
+ * see the INQUIRY capability bit before relying on this one. Without
+ * the bit the batch streams unbounded, exactly as the ROM does. */
+#define SL003_READ_BOUNDED_BIT      0x20
 #define SL003_WRITE_STREAM_BIT      0x80  /* clear = one raw packet       */
 #define SL003_ENABLE_BIT            0x80  /* 0x0e: set = enable           */
 #define SL003_SETMODE_MODE_BIT      0x80  /* 0x0c: mode byte in CDB[4]    */
@@ -75,6 +82,19 @@
 /* INQUIRY byte 36 status bits (0x1500, 0x150e) */
 #define SL003_INQ_ENABLED           0x80
 #define SL003_INQ_MODE_SET          0x40
+
+/* BlueSCSI extension, not in the ROM: this emulation honors
+ * SL003_READ_BOUNDED_BIT on blind READs, bounding the batch to the
+ * allocation length. The real ROM builds byte 36 from the two bits above
+ * only (1.3 at 0x1448, 2.0 at 0x1500: XOR A, then OR 0x80 / OR 0x40), so
+ * this bit is never set by real hardware, and pre-SL003 BlueSCSI
+ * firmware answers a 36-byte INQUIRY with no byte 36 at all. Bit 0
+ * rather than the next free high bit on purpose: Dayna allocated this
+ * byte top-down, so the bottom is the position least likely to collide
+ * with any firmware revision that was never dumped. Hosts that need the
+ * bound (fixed-length initiators such as Atari SCSIDRV) probe this bit
+ * and fall back to polled reads without it. */
+#define SL003_INQ_BATCH_BOUNDED     0x01
 
 #define SL003_SENSE_ILLEGAL_REQUEST  5
 

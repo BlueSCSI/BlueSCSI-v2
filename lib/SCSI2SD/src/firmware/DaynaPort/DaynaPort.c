@@ -99,7 +99,8 @@ uint8_t scsiNetworkInquiryStatus(void)
 {
 	ensure_init();
 	return (uint8_t)((sl003_enabled(&g_sl003) ? SL003_INQ_ENABLED : 0) |
-	                 (sl003_mode_set(&g_sl003) ? SL003_INQ_MODE_SET : 0));
+	                 (sl003_mode_set(&g_sl003) ? SL003_INQ_MODE_SET : 0) |
+	                 SL003_INQ_BATCH_BOUNDED);
 }
 
 /*

@@ -163,7 +163,8 @@ static void read_polled(sl003_t *s, const uint8_t cdb[6], uint16_t alloc,
 /* READ(6), blind: a stream of records (0x0bfc-0x0d6a).                */
 /* ------------------------------------------------------------------ */
 
-static void read_blind(sl003_t *s, uint16_t alloc, const sl003_io *io)
+static void read_blind(sl003_t *s, const uint8_t cdb[6], uint16_t alloc,
+                       const sl003_io *io)
 {
     uint8_t  hdr[SL003_RECORD_HDR_LEN];
     uint32_t batch_bytes = 0;
@@ -172,13 +173,14 @@ static void read_blind(sl003_t *s, uint16_t alloc, const sl003_io *io)
     /*
      * Batch bound. The ROM has none: the record cap is its only limit and
      * the allocation clips each record, not the total (0x0cb7-0x0cf2).
-     * An allocation of two or more maximum records is taken as the host's
-     * buffer size and bounds the whole batch; ALLOC 1524 (all known Mac
-     * drivers) streams unbounded as the ROM does. Fixed-length initiators
-     * with no residual reporting (Atari SCSI_In) need the bound.
+     * Bounded only when the host asks for it with SL003_READ_BOUNDED_BIT;
+     * hosts learn the bit is honored from the INQUIRY capability bit.
+     * Without the bit every allocation streams unbounded, exactly as the
+     * ROM does. Fixed-length initiators with no residual reporting
+     * (Atari SCSI_In) must set the bit.
      */
     limit = 0;
-    if (alloc >= 2 * SL003_MAX_RECORD)
+    if (cdb[5] & SL003_READ_BOUNDED_BIT)
         limit = alloc;
 
     for (;;) {
@@ -219,9 +221,10 @@ static void read_blind(sl003_t *s, uint16_t alloc, const sl003_io *io)
              ? (uint16_t)(alloc - SL003_RECORD_HDR_LEN) : 0;
         send = len < cap ? len : cap;
 
-        /* Counts the whole record, not the clipped payload. Clipping and
-         * a limit cannot coexist (clip needs alloc < 1 record, the limit
-         * needs >= 2), and overstating is the safe direction anyway. */
+        /* Counts the whole record, not the clipped payload. With the
+         * bounded bit and an allocation under one record both clip and
+         * limit apply; overstating the spent budget is the safe
+         * direction (the batch stops sooner, never later). */
         batch_bytes += (uint32_t)len + SL003_RECORD_HDR_LEN;
 
         /* Read live from the queue, so a frame arriving mid-batch is seen
@@ -410,7 +413,7 @@ sl003_result sl003_handle(sl003_t *s, const uint8_t cdb[6],
     case SL003_CMD_READ:
         s->records_sent = 0;
         if (cdb[5] & SL003_READ_BLIND_BIT)
-            read_blind(s, alloc, io);
+            read_blind(s, cdb, alloc, io);
         else
             read_polled(s, cdb, alloc, io);
         return SL003_OK;
