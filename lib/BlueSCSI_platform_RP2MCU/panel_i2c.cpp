@@ -173,7 +173,10 @@ static void panel_i2c_prepare_read(void) {
     size_t cap = (want <= PANEL_SYNC_RESPONSE_SIZE) ? PANEL_SYNC_RESPONSE_SIZE : PANEL_PROTOCOL_MAX_PAYLOAD;
     panel_protocol_handle_read(cmd, g_panel.cur_header.argument, buf, cap);
     g_panel.tx_src = buf;
-    g_panel.tx_len = want;
+    // Clamp to the staging buffer: payload_size is master-supplied and can name
+    // up to 64KB, which the REQUEST handler would happily serve off the end of
+    // SRAM from inside the ISR. Past the staged length it pads with zero.
+    g_panel.tx_len = (want <= cap) ? want : (uint16_t)cap;
     g_panel.tx_idx = 0;
     g_panel.tx_purpose = TX_SYNC;
 }
@@ -190,6 +193,17 @@ static void panel_i2c_process_write_txn(void) {
 
     if (PANEL_CMD_IS_READ(cmd)) {
         panel_i2c_prepare_read();
+        return;
+    }
+
+    // A write already staged and waiting for the SCSI bus owns the payload
+    // buffer — it is the live receive destination, not a snapshot. Accepting a
+    // second write (an ESP32 retransmit after a POLL_OP_READY timeout, or the
+    // next chunk) would overwrite those bytes while the first command's
+    // metadata is still queued, and the main loop would then commit chunk B's
+    // data under chunk A's length and CRC. Drop the newcomer instead; the panel
+    // retries.
+    if (g_deferred_write.ready) {
         return;
     }
 
@@ -231,10 +245,13 @@ static void panel_i2c_handler(i2c_inst_t* i2c, i2c_slave_event_t event) {
                 }
             } else {
                 // Post-header payload byte (write commands only in practice).
+                // Saturate rather than count past the buffer: payload_idx is the
+                // length handed to the main loop, so letting it run past the end
+                // would CRC and strnlen() beyond g_deferred_write.payload.
                 if (g_panel.payload_dest && g_panel.payload_idx < PANEL_PROTOCOL_MAX_PAYLOAD) {
                     g_panel.payload_dest[g_panel.payload_idx] = b;
+                    g_panel.payload_idx++;
                 }
-                g_panel.payload_idx++;
             }
             break;
         }
@@ -347,10 +364,6 @@ void panel_i2c_poll(void) {
         return;
     }
 
-    // Refresh the device-status snapshot from the main loop so the IRQ-context
-    // read handlers never touch img->file (which switchNextImage reassigns).
-    panel_protocol_refresh_device_snapshot();
-
     // During initiator SCSI bus operations, suspend the I2C IRQ; resume cleanly
     // when the bus is free.
     if (scsiInitiatorBusBusy()) {
@@ -371,6 +384,15 @@ void panel_i2c_poll(void) {
         }
         g_panel.irq_suspended = false;
         irq_set_enabled(PANEL_I2C_IRQ, true);
+    }
+
+    // Refresh the device-status snapshot from the main loop so the IRQ-context
+    // read handlers never touch img->file (which switchNextImage reassigns).
+    // Only while the bus is idle: platform_poll() is called from inside the SCSI
+    // transfer loops, and the periodic name refresh calls getName(), which can
+    // miss the FAT cache and block on an SD read mid-transfer.
+    if (!panel_scsi_bus_busy()) {
+        panel_protocol_refresh_device_snapshot();
     }
 
     if (!g_deferred_write.ready) {
