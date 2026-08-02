@@ -61,7 +61,9 @@ SECTIONS
 
         /* Front panel code not needed in bootloader */
         *panel_spi*(.text .text* .rodata .rodata*)
+        *panel_i2c*(.text .text* .rodata .rodata*)
         *panel_protocol*(.text .text* .rodata .rodata*)
+        *panel_sha256*(.text .text* .rodata .rodata*)
 
         /* Network code not needed in bootloader */
         *BlueSCSI_platform_network*(.text .text* .rodata .rodata*)

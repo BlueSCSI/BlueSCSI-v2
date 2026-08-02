@@ -79,7 +79,9 @@ SECTIONS
     /* Exclude as much code from flash as possible as the RP2350 series has twice as much SRAM */
         /* Front panel code goes in flash (not hot-path) */
         *panel_spi.cpp.o(.text .text*)
+        *panel_i2c.cpp.o(.text .text*)
         *panel_protocol.cpp.o(.text .text*)
+        *panel_sha256_sw.cpp.o(.text .text*)
         *(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *libm.a: *SCSI2SD* *sdfat* *minIni* *CUEParser* *.cpp.o) .text*)
 
     /* ---------------------------------------------------------
@@ -158,7 +160,9 @@ SECTIONS
             to keep the MCU from having to hit flash while it is executing in SRAM */
         /* Front panel constants in flash */
         *panel_spi.cpp.o(.rodata .rodata*)
+        *panel_i2c.cpp.o(.rodata .rodata*)
         *panel_protocol.cpp.o(.rodata .rodata*)
+        *panel_sha256_sw.cpp.o(.rodata .rodata*)
         *(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *libm.a: *SCSI2SD* *sdfat* *minIni* *CUEParser* *.cpp.o) .rodata*)
 /* Uncomment below and comment above lines for debugging */
         /* *(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *libm.a:) .rodata*) */
