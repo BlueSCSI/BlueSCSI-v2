@@ -287,10 +287,6 @@ void panel_spi_poll(void) {
         return;
     }
 
-    // Refresh the device-status snapshot from the main loop so the IRQ-context
-    // read handlers never touch img->file (which switchNextImage reassigns).
-    panel_protocol_refresh_device_snapshot();
-
     // During initiator SCSI bus operations, suspend the DMA IRQ.
     // Resume cleanly when the bus is free.
     if (scsiInitiatorBusBusy()) {
@@ -326,6 +322,15 @@ void panel_spi_poll(void) {
         setup_header_dma();
         g_panel.irq_suspended = false;
         irq_set_enabled(PANEL_DMA_IRQ_NUM, true);
+    }
+
+    // Refresh the device-status snapshot from the main loop so the IRQ-context
+    // read handlers never touch img->file (which switchNextImage reassigns).
+    // Only while the bus is idle: platform_poll() is called from inside the SCSI
+    // transfer loops, and the periodic name refresh calls getName(), which can
+    // miss the FAT cache and block on an SD read mid-transfer.
+    if (!panel_scsi_bus_busy()) {
+        panel_protocol_refresh_device_snapshot();
     }
 
     // Process deferred write only when the SCSI bus is genuinely idle
