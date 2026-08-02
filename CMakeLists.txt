@@ -523,17 +523,21 @@ if(PICO_PLATFORM STREQUAL "rp2040")
     target_compile_definitions(BlueSCSI PRIVATE PICO_CRT0_ALLOCATE_SPACERS=0)
 endif()
 
-# RP2350 SCRATCH_Y is 4KB but the SDK default stack is only 2KB (0x800).
-# The image-opening call chain (scsiDiskOpenHDDImage + SdFat + SDIO) uses ~1.5KB
-# alone, and RP2350's hardware MSPLIM catches the overflow that RP2040 silently
-# ignores. Increase to 3KB — not 4KB because Audio SPDIF targets place ~768 bytes
-# of lookup tables in .scratch_y. Keep core 1's stack at default in SCRATCH_X.
-if(PICO_PLATFORM STREQUAL "rp2350-arm-s")
-    target_compile_definitions(BlueSCSI PRIVATE
-        PICO_STACK_SIZE=0xC00
-        PICO_CORE1_STACK_SIZE=0x800
-    )
-endif()
+# The SDK default stack is only 2KB (0x800), and the image-opening call chain
+# (switchNextImage -> scsiDiskOpenHDDImage -> cdromValidateCueSheet, plus SdFat
+# and CUEParser below them) measures ~1.7KB on its own — reachable from a plain
+# host-driven eject, with no front panel involved. RP2350's hardware MSPLIM
+# faults on overflow; RP2040 silently corrupts .bss instead, so it needs the
+# headroom at least as much. Increase to 3KB on both — not 4KB because Audio
+# SPDIF targets place ~768 bytes of lookup tables in .scratch_y. Keep core 1's
+# stack at default in SCRATCH_X.
+# Core 1's stack must stay pinned at the 2KB default: it lives in SCRATCH_X, and
+# PICO_CORE1_STACK_SIZE otherwise inherits PICO_STACK_SIZE, which overflows
+# SCRATCH_X on the Audio SPDIF and DaynaPORT targets.
+target_compile_definitions(BlueSCSI PRIVATE
+    PICO_STACK_SIZE=0xC00
+    PICO_CORE1_STACK_SIZE=0x800
+)
 
 # =============================================================================
 # Bootloader Build
