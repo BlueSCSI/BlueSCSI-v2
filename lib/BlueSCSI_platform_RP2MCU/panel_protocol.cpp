@@ -151,6 +151,14 @@ static volatile panel_device_snapshot_t g_device_snapshot[S2S_MAX_TARGETS];
 // (present/loaded/device_type stay exact every call). A device that newly
 // loads is refreshed immediately regardless, so inserts show without lag.
 #define PANEL_SNAPSHOT_NAME_REFRESH_MS 250
+
+// How long an upload may sit with no START/chunk activity before the firmware
+// reclaims its SHA-256 lock and file handle. Generous: a slow SD card plus a
+// retrying panel must never trip it mid-transfer.
+#define PANEL_UPLOAD_IDLE_TIMEOUT_MS   60000
+
+// Defined with the upload state below; called from the periodic snapshot hook.
+static void panel_upload_reclaim_if_idle(uint32_t now);
 static uint32_t g_snapshot_name_refresh_ms = 0;
 
 // Refresh the device snapshot. MUST be called only from the main loop — it
@@ -159,6 +167,8 @@ static uint32_t g_snapshot_name_refresh_ms = 0;
 // so the reads here are consistent.
 void panel_protocol_refresh_device_snapshot(void) {
     uint32_t now = millis();
+
+    panel_upload_reclaim_if_idle(now);
     bool refresh_names = (now - g_snapshot_name_refresh_ms) >= PANEL_SNAPSHOT_NAME_REFRESH_MS;
 
     for (int i = 0; i < S2S_MAX_TARGETS; i++) {
@@ -376,6 +386,7 @@ static struct FileUploadState {
     uint16_t last_chunk_crc16;
     sha256_result_t calculated_hash;
     pico_sha256_state_t* sha256_ctx;
+    uint32_t last_activity_ms;
 
     void reset() {
         if (upload_file.isOpen()) {
@@ -387,6 +398,7 @@ static struct FileUploadState {
         bytes_written = 0;
         upload_active = false;
         last_chunk_crc16 = 0;
+        last_activity_ms = 0;
         memset(&calculated_hash, 0, sizeof(calculated_hash));
         if (sha256_ctx) {
             pico_sha256_cleanup(sha256_ctx);
@@ -395,6 +407,18 @@ static struct FileUploadState {
         }
     }
 } g_upload;
+
+// An upload that is started and never finished (panel unplugged, ESP32 reset
+// mid-transfer) holds the SHA-256 hardware lock and an open file handle
+// forever. Every later CHECK_FIRMWARE then fails pico_sha256_try_start and
+// returns an all-zero hash, so the panel can never self-update again.
+static void panel_upload_reclaim_if_idle(uint32_t now) {
+    if (g_upload.upload_active &&
+        (now - g_upload.last_activity_ms) >= PANEL_UPLOAD_IDLE_TIMEOUT_MS) {
+        logmsg("Panel: Abandoned file upload timed out, releasing SHA-256 and file handle");
+        g_upload.reset();
+    }
+}
 
 // File download state
 static struct FileDownloadState {
@@ -489,7 +513,7 @@ static const char* panel_path_basename(const char* p) {
 }
 
 // Count the images available for this target, bounded to a single cycle.
-static uint16_t panel_count_target_images(image_config_t &img) {
+static __attribute__((noinline)) uint16_t panel_count_target_images(image_config_t &img) {
     char saved_current_image[sizeof(img.current_image)];
     strncpy(saved_current_image, img.current_image, sizeof(saved_current_image));
     saved_current_image[sizeof(saved_current_image) - 1] = '\0';
@@ -523,7 +547,7 @@ static uint16_t panel_count_target_images(image_config_t &img) {
 // Find the image immediately before img.current_image in its ring, writing the
 // selectable name into out. Returns false if the target has no images. Walks
 // one full cycle and restores the iterator state it perturbs.
-static bool panel_find_prev_image(image_config_t &img, char *out, size_t outlen) {
+static __attribute__((noinline)) bool panel_find_prev_image(image_config_t &img, char *out, size_t outlen) {
     char saved_current_image[sizeof(img.current_image)];
     strncpy(saved_current_image, img.current_image, sizeof(saved_current_image));
     saved_current_image[sizeof(saved_current_image) - 1] = '\0';
@@ -679,7 +703,7 @@ static size_t handle_get_playback_status(uint16_t device_index, uint8_t* respons
 // Write/Async command handlers
 // ============================================================================
 
-static void handle_get_loaded_image_status_async(uint16_t device_index) {
+static __attribute__((noinline)) void handle_get_loaded_image_status_async(uint16_t device_index) {
     uint8_t* buf = panel_transport_get_tx_buffer();
     loaded_image_status_t* status = (loaded_image_status_t*)buf;
     memset(status, 0, sizeof(loaded_image_status_t));
@@ -713,7 +737,7 @@ static void handle_get_loaded_image_status_async(uint16_t device_index) {
     panel_transport_set_async_result(buf, sizeof(loaded_image_status_t));
 }
 
-static void handle_get_device_list_async(void) {
+static __attribute__((noinline)) void handle_get_device_list_async(void) {
     uint8_t* buf = panel_transport_get_tx_buffer();
     device_list_response_t* list = (device_list_response_t*)buf;
 
@@ -780,7 +804,7 @@ static void handle_get_device_list_async(void) {
     panel_transport_set_async_result(buf, offset);
 }
 
-static void handle_get_initiator_status_async(void) {
+static __attribute__((noinline)) void handle_get_initiator_status_async(void) {
     uint8_t* buf = panel_transport_get_tx_buffer();
     initiator_status_response_t* resp = (initiator_status_response_t*)buf;
 
@@ -826,7 +850,7 @@ static void handle_get_initiator_status_async(void) {
     panel_transport_set_async_result(buf, offset);
 }
 
-static void handle_get_dir_entry_count_async(void) {
+static __attribute__((noinline)) void handle_get_dir_entry_count_async(void) {
     uint8_t* buf = panel_transport_get_tx_buffer();
 
     // Scan directory if not already done
@@ -843,7 +867,7 @@ static void handle_get_dir_entry_count_async(void) {
     panel_transport_set_async_result(buf, sizeof(uint32_t));
 }
 
-static void handle_get_entry_info_async(uint16_t index) {
+static __attribute__((noinline)) void handle_get_entry_info_async(uint16_t index) {
     uint8_t* buf = panel_transport_get_tx_buffer();
     dir_entry_info_t* info = (dir_entry_info_t*)buf;
     memset(info, 0, sizeof(dir_entry_info_t));
@@ -864,14 +888,14 @@ static void handle_get_entry_info_async(uint16_t index) {
     panel_transport_set_async_result(buf, sizeof(dir_entry_info_t));
 }
 
-static void handle_get_current_path_async(void) {
+static __attribute__((noinline)) void handle_get_current_path_async(void) {
     uint8_t* buf = panel_transport_get_tx_buffer();
     size_t len = strlen(g_dir.current_path) + 1;
     strncpy((char*)buf, g_dir.current_path, PANEL_PROTOCOL_MAX_PAYLOAD - 1);
     panel_transport_set_async_result(buf, len);
 }
 
-static void handle_select_entry_async(uint16_t device_index, int16_t entry_index) {
+static __attribute__((noinline)) void handle_select_entry_async(uint16_t device_index, int16_t entry_index) {
     uint8_t* buf = panel_transport_get_tx_buffer();
 
     // Scan directory if not already done
@@ -1055,7 +1079,7 @@ extern "C" {
 }
 #endif
 
-static void handle_check_firmware_async(void) {
+static __attribute__((noinline)) void handle_check_firmware_async(void) {
     memset(&g_async.fw_info, 0, sizeof(g_async.fw_info));
 
     if (g_async.fw_file.isOpen()) {
@@ -1125,7 +1149,7 @@ static void handle_check_firmware_async(void) {
     panel_transport_set_async_result(buf, sizeof(panel_firmware_info_t));
 }
 
-static void handle_start_firmware_read_async(uint32_t offset) {
+static __attribute__((noinline)) void handle_start_firmware_read_async(uint32_t offset) {
     uint8_t* buf = panel_transport_get_tx_buffer();
 
     if (!g_async.fw_file.isOpen()) {
@@ -1136,7 +1160,10 @@ static void handle_start_firmware_read_async(uint32_t offset) {
         g_async.fw_size = g_async.fw_file.fileSize();
     }
 
-    if (!g_async.fw_file.seek(offset)) {
+    // offset is panel-supplied: past EOF it would underflow `remaining` to ~4GB
+    // and hand a huge to_read to read(). Only SdFat rejecting the seek stops
+    // that today, which is a guarantee this code should not be relying on.
+    if (offset > g_async.fw_size || !g_async.fw_file.seek(offset)) {
         panel_transport_set_async_error();
         return;
     }
@@ -1154,7 +1181,7 @@ static void handle_start_firmware_read_async(uint32_t offset) {
     panel_transport_set_async_result(buf, bytes_read);
 }
 
-static void handle_get_host_fw_status_async(void) {
+static __attribute__((noinline)) void handle_get_host_fw_status_async(void) {
     uint8_t* buf = panel_transport_get_tx_buffer();
     rp2350_fw_status_t* status = (rp2350_fw_status_t*)buf;
 
@@ -1168,7 +1195,7 @@ static void handle_get_host_fw_status_async(void) {
     panel_transport_set_async_result(buf, sizeof(rp2350_fw_status_t));
 }
 
-static void handle_eject_image_async(uint16_t device_index) {
+static __attribute__((noinline)) void handle_eject_image_async(uint16_t device_index) {
     image_config_t* img = get_device_by_index(device_index);
     if (!img) {
         logmsg("Panel: Invalid device index for eject ", (int)device_index);
@@ -1200,7 +1227,7 @@ static void handle_eject_image_async(uint16_t device_index) {
     }
 }
 
-static void handle_select_next_image_async(uint16_t device_index) {
+static __attribute__((noinline)) void handle_select_next_image_async(uint16_t device_index) {
     image_config_t* img = get_device_by_index(device_index);
     if (!img) {
         logmsg("Panel: Invalid device index for next image ", (int)device_index);
@@ -1226,7 +1253,7 @@ static void handle_select_next_image_async(uint16_t device_index) {
     }
 }
 
-static void handle_select_prev_image_async(uint16_t device_index) {
+static __attribute__((noinline)) void handle_select_prev_image_async(uint16_t device_index) {
     image_config_t* img = get_device_by_index(device_index);
     if (!img) {
         logmsg("Panel: Invalid device index for prev image ", (int)device_index);
@@ -1259,7 +1286,7 @@ static void handle_select_prev_image_async(uint16_t device_index) {
     }
 }
 
-static void handle_select_image_by_name_async(const uint8_t* payload, size_t payload_size) {
+static __attribute__((noinline)) void handle_select_image_by_name_async(const uint8_t* payload, size_t payload_size) {
     if (!payload || payload_size == 0) {
         logmsg("Panel: SELECT_IMAGE_BY_NAME with empty payload");
         panel_transport_set_async_error();
@@ -1322,7 +1349,7 @@ static void handle_select_image_by_name_async(const uint8_t* payload, size_t pay
 // File download handlers
 // ============================================================================
 
-static void handle_start_file_download_async(const uint8_t* payload, size_t payload_size) {
+static __attribute__((noinline)) void handle_start_file_download_async(const uint8_t* payload, size_t payload_size) {
     uint8_t* buf = panel_transport_get_tx_buffer();
     panel_file_download_start_result_t* result = (panel_file_download_start_result_t*)buf;
     memset(result, 0, sizeof(panel_file_download_start_result_t));
@@ -1371,7 +1398,7 @@ static void handle_start_file_download_async(const uint8_t* payload, size_t payl
     panel_transport_set_async_result(buf, sizeof(panel_file_download_start_result_t));
 }
 
-static void handle_read_file_chunk_async(uint32_t chunk_index) {
+static __attribute__((noinline)) void handle_read_file_chunk_async(uint32_t chunk_index) {
     uint8_t* buf = panel_transport_get_tx_buffer();
 
     if (!g_download.download_active || !g_download.download_file.isOpen()) {
@@ -1412,7 +1439,11 @@ static void handle_read_file_chunk_async(uint32_t chunk_index) {
 // File upload handlers
 // ============================================================================
 
-static void handle_start_file_upload_async(const uint8_t* payload, size_t payload_size) {
+// Defined below with the file-management handlers; needed here so an upload
+// cannot truncate an image the host has mounted.
+static bool panel_path_is_loaded(const char* path);
+
+static __attribute__((noinline)) void handle_start_file_upload_async(const uint8_t* payload, size_t payload_size) {
     if (payload_size < sizeof(panel_file_upload_start_t)) {
         logmsg("Panel: Invalid upload start payload size");
         panel_transport_set_async_error();
@@ -1462,6 +1493,14 @@ static void handle_start_file_upload_async(const uint8_t* payload, size_t payloa
         snprintf(full_path, sizeof(full_path), "/shared/%s", g_upload.filename);
     }
 
+    // An absolute upload path can name a live image, and O_TRUNC would zero it
+    // under the running SCSI target. DELETE and RENAME already refuse this.
+    if (panel_path_is_loaded(full_path)) {
+        logmsg("Panel: START_FILE_UPLOAD refused - file is loaded: ", full_path);
+        panel_transport_set_async_error();
+        return;
+    }
+
     platform_reset_watchdog();
     if (!g_upload.upload_file.open(full_path, O_CREAT | O_WRITE | O_TRUNC)) {
         logmsg("Panel: Failed to create upload file: ", full_path);
@@ -1480,12 +1519,13 @@ static void handle_start_file_upload_async(const uint8_t* payload, size_t payloa
 
     g_upload.upload_active = true;
     g_upload.bytes_written = 0;
+    g_upload.last_activity_ms = millis();
 
     logmsg("Panel: File upload started: ", full_path, " (", (int)g_upload.total_size, " bytes)");
     panel_transport_set_async_result(nullptr, 0);
 }
 
-static void handle_write_file_chunk_async(uint16_t expected_crc16,
+static __attribute__((noinline)) void handle_write_file_chunk_async(uint16_t expected_crc16,
                                           uint16_t computed_crc16,
                                           const uint8_t* payload, size_t payload_size) {
     if (!g_upload.upload_active) {
@@ -1516,6 +1556,7 @@ static void handle_write_file_chunk_async(uint16_t expected_crc16,
     }
 
     g_upload.bytes_written += bytes_written;
+    g_upload.last_activity_ms = millis();
 
     if (g_upload.sha256_ctx) {
         pico_sha256_update(g_upload.sha256_ctx, payload, payload_size);
@@ -1529,7 +1570,7 @@ static void handle_write_file_chunk_async(uint16_t expected_crc16,
     panel_transport_set_async_result(nullptr, 0);
 }
 
-static void handle_finish_file_upload_async(void) {
+static __attribute__((noinline)) void handle_finish_file_upload_async(void) {
     uint8_t* buf = panel_transport_get_tx_buffer();
     uint8_t result_code = PANEL_UPLOAD_OK;
 
@@ -1594,6 +1635,26 @@ static bool panel_path_is_loaded(const char* path) {
     if (target.isOpen()) target.close();
 
     const char* target_name = panel_path_basename(path);
+    char name[MAX_FILE_PATH];
+
+    // The panel's own long-lived handles are invisible to g_DiskImages:
+    // g_async.fw_file stays open after CHECK_FIRMWARE until the next one, and an
+    // in-flight upload/download holds one too. Removing or renaming the file
+    // under them frees clusters SdFat still references, so a later read lands on
+    // reallocated sectors.
+    FsFile* const panel_held[] = { &g_async.fw_file, &g_upload.upload_file,
+                                   &g_download.download_file };
+    for (FsFile* held : panel_held) {
+        if (!held->isOpen()) continue;
+        uint32_t hbgn = 0, hend = 0;
+        if (target_sector != 0 && held->contiguousRange(&hbgn, &hend) && hbgn != 0) {
+            if (hbgn == target_sector) return true;
+        } else {
+            name[0] = '\0';
+            held->getName(name, sizeof(name));
+            if (name[0] && strcasecmp(panel_path_basename(name), target_name) == 0) return true;
+        }
+    }
 
     for (int id = 0; id < S2S_MAX_TARGETS; id++) {
         image_config_t& img = scsiDiskGetImageConfig(id);
@@ -1611,7 +1672,6 @@ static bool panel_path_is_loaded(const char* path) {
         if (target_sector != 0 && img.file.contiguousRange(&bgn, &end) && bgn != 0) {
             if (bgn == target_sector) return true;
         } else {
-            char name[MAX_FILE_PATH];
             name[0] = '\0';
             img.file.getFilename(name, sizeof(name));
             if (strcasecmp(panel_path_basename(name), target_name) == 0) return true;
@@ -1622,7 +1682,7 @@ static bool panel_path_is_loaded(const char* path) {
 
 // Delete a file from the SD card. Payload is a null-terminated path. Returns a
 // single PANEL_DELETE_* result byte.
-static void handle_delete_file_async(const uint8_t* payload, size_t payload_size) {
+static __attribute__((noinline)) void handle_delete_file_async(const uint8_t* payload, size_t payload_size) {
     uint8_t* buf = panel_transport_get_tx_buffer();
     uint8_t result = PANEL_DELETE_OK;
 
@@ -1659,7 +1719,7 @@ static void handle_delete_file_async(const uint8_t* payload, size_t payload_size
 
 // Rename a file on the SD card. Payload is two back-to-back null-terminated
 // strings: oldpath\0newpath\0. Returns a single PANEL_RENAME_* result byte.
-static void handle_rename_file_async(const uint8_t* payload, size_t payload_size) {
+static __attribute__((noinline)) void handle_rename_file_async(const uint8_t* payload, size_t payload_size) {
     uint8_t* buf = panel_transport_get_tx_buffer();
     uint8_t result = PANEL_RENAME_OK;
 
@@ -1707,7 +1767,7 @@ static void handle_rename_file_async(const uint8_t* payload, size_t payload_size
 
 // Create an empty file (touch). Payload is a null-terminated path. Returns a
 // single PANEL_TOUCH_* result byte.
-static void handle_touch_file_async(const uint8_t* payload, size_t payload_size) {
+static __attribute__((noinline)) void handle_touch_file_async(const uint8_t* payload, size_t payload_size) {
     uint8_t* buf = panel_transport_get_tx_buffer();
     uint8_t result = PANEL_TOUCH_OK;
 
@@ -1745,7 +1805,7 @@ static void handle_touch_file_async(const uint8_t* payload, size_t payload_size)
 
 // Create a directory. Payload is a null-terminated path. Returns a single
 // PANEL_MKDIR_* result byte.
-static void handle_mkdir_async(const uint8_t* payload, size_t payload_size) {
+static __attribute__((noinline)) void handle_mkdir_async(const uint8_t* payload, size_t payload_size) {
     uint8_t* buf = panel_transport_get_tx_buffer();
     uint8_t result = PANEL_MKDIR_OK;
 
