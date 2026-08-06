@@ -221,6 +221,16 @@ static void CheckPicoW() {
     //__isPicoW = false;
 }
 #else
+/* The detection pin is the CYW43 clock line (GPIO29 / ADC3) on a W board and the
+ * VSYS/3 divider on a non-W Pico. CYW43_PIN_WL_CLOCK only exists when the CYW43
+ * driver is part of the build, so fall back to the same pin number by hand -
+ * reading an ADC needs no driver. */
+#ifdef CYW43_PIN_WL_CLOCK
+#define PICOW_DETECT_PIN CYW43_PIN_WL_CLOCK
+#else
+#define PICOW_DETECT_PIN 29u
+#endif
+
     /**
      * Runtime Pico W detection via ADC on CYW43 clock pin.
      * Works on both RP2040 and RP2350.
@@ -228,24 +238,25 @@ static void CheckPicoW() {
      */
 static void CheckPicoW() {
     extern bool __isPicoW;
-#ifndef BLUESCSI_NETWORK
-    __isPicoW = false;
-#else
+    /* Detection must run in EVERY build, not just BLUESCSI_NETWORK ones. Pico W
+     * hardware is routinely flashed with non-network firmware, and a build that
+     * wrongly assumes non-W then treats GPIO24 as VBUS in platform_sense_msc().
+     * On a W that pin belongs to the CYW43, reads low, and USB mass storage mode
+     * is refused - silently, because that check returns before the first dbgmsg.
+     * The ADC probe below needs no CYW43 driver, so there is no reason to gate
+     * it; it is the same probe the network builds have always used. */
+    const uint detect_pin = PICOW_DETECT_PIN;
     adc_init();
-    auto dir = gpio_get_dir(CYW43_PIN_WL_CLOCK);
-    auto fnc = gpio_get_function(CYW43_PIN_WL_CLOCK);
-    adc_gpio_init(CYW43_PIN_WL_CLOCK);
-    adc_select_input(3);
-    auto adc29 = adc_read();
-    gpio_set_function(CYW43_PIN_WL_CLOCK, fnc);
-    gpio_set_dir(CYW43_PIN_WL_CLOCK, dir);
-    dbgmsg("CheckPicoW adc29: %d", adc29);
-    if (adc29 < 200) {
-        __isPicoW = true; // PicoW || Pico2W
-    } else {
-        __isPicoW = false;
-    }
-#endif
+    auto dir = gpio_get_dir(detect_pin);
+    auto fnc = gpio_get_function(detect_pin);
+    adc_gpio_init(detect_pin);
+    adc_select_input(detect_pin - 26); // ADC0..3 are GPIO26..29
+    auto adc_raw = adc_read();
+    gpio_set_function(detect_pin, fnc);
+    gpio_set_dir(detect_pin, dir);
+    // dbgmsg concatenates its arguments, it is not printf - no format specifiers.
+    dbgmsg("CheckPicoW adc", (int)detect_pin, ": ", (int)adc_raw);
+    __isPicoW = (adc_raw < 200); // PicoW || Pico2W hold the line low
 }
 #endif
 
