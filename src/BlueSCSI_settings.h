@@ -62,6 +62,7 @@ typedef enum
     SYS_PRESET_X68000_SCSI,
     SYS_PRESET_X68000_SASI,
     SYS_PRESET_NeXT,
+    SYS_PRESET_PC_9801_55,
     SYS_PRESET_GENERIC,
 } scsi_system_preset_t;
 
