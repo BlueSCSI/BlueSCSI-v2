@@ -24,12 +24,14 @@
 #include "sl003_core.h"
 
 void sl003_init(sl003_t *s, const uint8_t mac[6],
-                struct scsiNetworkPacketQueue *ring, uint8_t *wbuf)
+                struct scsiNetworkPacketQueue *ring,
+                uint8_t *wbuf, uint32_t wbuf_len)
 {
     memset(s, 0, sizeof *s);
     memcpy(s->mac, mac, 6);
     s->rx = ring;
     s->wbuf = wbuf;
+    s->wbuf_len = wbuf_len;
     s->gap_header_us = SL003_GAP_AFTER_HEADER_US;
     s->gap_record_us = SL003_GAP_AFTER_RECORD_US;
 }
@@ -134,29 +136,50 @@ static void read_polled(sl003_t *s, const uint8_t cdb[6], uint16_t alloc,
     send = (uint16_t)(len - off);
     if (send > cap) send = cap;
 
-    build_record_header(s, hdr, len,
-                        rx_next_index(s) != s->rx->writeIndex, len < 60);
-    if (!io->emit(io->ctx, hdr, SL003_RECORD_HDR_LEN))
-        return;                         /* bus gone; the packet stays queued */
-
     /*
      * An allocation too small to carry payload is a pure peek: the host
-     * sees the header and the packet stays queued, whatever CDB[5] says.
+     * sees the header alone and the packet stays queued, whatever
+     * CDB[5] says.
      */
-    if (alloc <= SL003_RECORD_HDR_LEN)
+    if (alloc <= SL003_RECORD_HDR_LEN) {
+        build_record_header(s, hdr, len,
+                            rx_next_index(s) != s->rx->writeIndex, len < 60);
+        io->emit(io->ctx, hdr, SL003_RECORD_HDR_LEN);
         return;
-
-    io->gap(io->ctx, s->gap_header_us);
-
-    if (send) {
-        if (!io->emit(io->ctx, s->rx->packets[s->rx->readIndex] + off, send))
-            return;                     /* bus gone mid-payload: keep it */
     }
 
-    /* Dequeue iff this read finished the packet, or the host asked for the
-     * remainder to be dropped (CDB[5] != 0). emit has returned, so the
-     * slot is no longer being transmitted from and may go back. */
-    if ((uint16_t)(off + send) >= len || cdb[5] != 0)
+    if (cdb[5] & SL003_READ_SEAMLESS_BIT) {
+        /* Host opted in: header and payload staged into wbuf and sent
+         * as ONE emit (see read_blind: seam pauses trigger a host-side
+         * injection bug). wbuf is the caller's data-phase scratch and
+         * is idle here, READ having no DATA OUT. */
+        build_record_header(s, s->wbuf, len,
+                            rx_next_index(s) != s->rx->writeIndex, len < 60);
+        memcpy(s->wbuf + SL003_RECORD_HDR_LEN,
+               s->rx->packets[s->rx->readIndex] + off, send);
+        if (!io->emit(io->ctx, s->wbuf,
+                      (uint16_t)(SL003_RECORD_HDR_LEN + send)))
+            return;                     /* bus gone: keep the packet */
+    } else {
+        build_record_header(s, hdr, len,
+                            rx_next_index(s) != s->rx->writeIndex, len < 60);
+        if (!io->emit(io->ctx, hdr, SL003_RECORD_HDR_LEN))
+            return;                     /* bus gone; the packet stays queued */
+        io->gap(io->ctx, s->gap_header_us);
+        if (send) {
+            if (!io->emit(io->ctx,
+                          s->rx->packets[s->rx->readIndex] + off, send))
+                return;                 /* bus gone mid-payload: keep it */
+        }
+    }
+
+    /* Dequeue iff this read finished the packet, or the host asked for
+     * the remainder to be dropped (any ROM-defined CDB[5] bit set; the
+     * seamless bit is an emission request, not a drop request, and
+     * must not count). emit has returned, so the slot is no longer
+     * being transmitted from and may go back. */
+    if ((uint16_t)(off + send) >= len
+     || (cdb[5] & (uint8_t)~SL003_READ_SEAMLESS_BIT) != 0)
         s->rx->readIndex = rx_next_index(s);
 }
 
@@ -164,12 +187,37 @@ static void read_polled(sl003_t *s, const uint8_t cdb[6], uint16_t alloc,
 /* READ(6), blind: a stream of records (0x0bfc-0x0d6a).                */
 /* ------------------------------------------------------------------ */
 
+/*
+ * Seamless staging. The host's promise for a blind transfer is a data
+ * phase with no REQ pause anywhere in it, and one emit per record does
+ * not keep it: the pause BETWEEN records is a stall too, and the
+ * Quadra-era SCSI Manager 4.3 SIM fabricates two bytes at any stall the
+ * host did not declare. So a seamless batch accumulates whole and goes
+ * out as ONE transfer, never split: a batch that would outgrow the
+ * staging area ends early instead, which blind mode permits the device
+ * anywhere, and the remaining records lead the next command.
+ */
+static bool stage_flush(sl003_t *s, const sl003_io *io, uint32_t *staged)
+{
+    uint32_t n = *staged;
+
+    *staged = 0;
+    if (n == 0)
+        return true;
+    return io->emit(io->ctx, s->wbuf, (uint16_t)n);
+}
+
 static void read_blind(sl003_t *s, const uint8_t cdb[6], uint16_t alloc,
                        const sl003_io *io)
 {
     uint8_t  hdr[SL003_RECORD_HDR_LEN];
-    uint32_t batch_bytes = 0;
-    uint16_t limit;
+    uint32_t sent = 0;                  /* bytes actually emitted so far */
+    uint32_t staged = 0;
+    bool     seamless = (cdb[5] & SL003_READ_SEAMLESS_BIT) != 0;
+    /* One transfer is one emit, and emit counts in 16 bits. */
+    uint32_t stage_cap = s->wbuf_len > 0xFFFF ? 0xFFFF : s->wbuf_len;
+    uint16_t cap;
+    bool     bounded;
 
     /*
      * Batch bound. The ROM has none: the record cap is its only limit and
@@ -180,88 +228,169 @@ static void read_blind(sl003_t *s, const uint8_t cdb[6], uint16_t alloc,
      * ROM does. Fixed-length initiators with no residual reporting
      * (Atari SCSI_In) must set the bit.
      */
-    limit = 0;
-    if (cdb[5] & SL003_READ_BOUNDED_BIT)
-        limit = alloc;
+    bounded = (cdb[5] & SL003_READ_BOUNDED_BIT) != 0;
+
+    /* A bounded batch never exceeds alloc, so with no room for even one
+     * header there is nothing that can be said. */
+    if (bounded && alloc < SL003_RECORD_HDR_LEN)
+        return;
+
+    /*
+     * Per-record clip, the ROM's: the allocation bounds one record, and
+     * the batch bound below is what keeps the total inside it. Taking
+     * the terminator's reserve off this as well would clip a full-size
+     * record while its header still declared the full length, and the
+     * host's walk would run off the end of it.
+     */
+    cap = alloc > SL003_RECORD_HDR_LEN
+        ? (uint16_t)(alloc - SL003_RECORD_HDR_LEN) : 0;
 
     for (;;) {
-        uint16_t len, cap, send;
+        uint16_t len, send;
         bool more;
 
         if (s->records_sent >= SL003_BLIND_RECORD_CAP) {
+            if (bounded)
+                goto term;
             /* Cap reached while more is pending: close the batch with a
              * zero-length record so the host knows to read again (0x0c1c). */
-            build_record_header(s, hdr, 0, false, false);
-            io->emit(io->ctx, hdr, SL003_RECORD_HDR_LEN);
-            return;
+            goto close_empty;
         }
 
         if (sl003_rx_count(s) == 0) {
             /* Nothing left. If we already sent a record its flag said so
-             * and the host has stopped; only an empty batch owes a reply. */
+             * and the host has stopped; only an empty batch owes a reply.
+             * Identical in bounded mode: a drained queue ends the batch
+             * the ROM way, no terminator. */
             if (s->records_sent > 0)
-                return;
-            build_record_header(s, hdr, 0, false, false);
-            io->emit(io->ctx, hdr, SL003_RECORD_HDR_LEN);
-            return;
+                goto done;
+            goto close_empty;
         }
 
         len = s->rx->sizes[s->rx->readIndex];
 
         /*
-         * Tested BEFORE adding the record; testing after would overrun
-         * the host's transfer by up to one record. Redundant with the
-         * more-flag suppression below, kept as a backstop. Never applies
-         * to the first record: the per-record clip fits it.
+         * The batch bound, tested BEFORE adding the record: testing
+         * after would overrun the host's transfer by up to one record.
+         * Only whole records join a bounded batch, so the full length
+         * is tested, not the clipped one, and one header is reserved
+         * so the closing terminator always fits behind the records it
+         * closes. Never applies to the first record, which the
+         * per-record clip already fits; only there can the reserve go
+         * unmet, when that record fills the whole allocation.
          */
-        if (limit && s->records_sent > 0
-         && batch_bytes + len + SL003_RECORD_HDR_LEN > limit)
-            return;
+        if (bounded && s->records_sent > 0
+         && sent + 2 * SL003_RECORD_HDR_LEN + len > alloc)
+            goto term;
 
-        cap  = alloc > SL003_RECORD_HDR_LEN
-             ? (uint16_t)(alloc - SL003_RECORD_HDR_LEN) : 0;
         send = len < cap ? len : cap;
-
-        /* Counts the whole record, not the clipped payload. With the
-         * bounded bit and an allocation under one record both clip and
-         * limit apply; overstating the spent budget is the safe
-         * direction (the batch stops sooner, never later). */
-        batch_bytes += (uint32_t)len + SL003_RECORD_HDR_LEN;
 
         /* Read live from the queue, so a frame arriving mid-batch is seen
          * (0x0ca6). */
         more = rx_next_index(s) != s->rx->writeIndex;
 
-        /* The flag is a promise of another record in THIS batch, so check
-         * the record actually queued next; its length is fixed and the
-         * producer can only append behind it. */
-        if (more && limit) {
-            uint16_t nlen = s->rx->sizes[rx_next_index(s)];
-            if (batch_bytes + nlen + SL003_RECORD_HDR_LEN > limit)
-                more = false;
-        }
+        if (seamless) {
+            /* Append to the batch; it leaves as one transfer, ALWAYS:
+             * a flush mid-batch would be the very stall the bit asks
+             * to remove. A record that will not fit the staging area
+             * (with the closing record's reserve) ends the batch
+             * instead -- blind mode lets the device end a batch
+             * anywhere, and the record leads the next one. Bounded
+             * batches end with their depth-carrying terminator. */
+            uint32_t need = (uint32_t)SL003_RECORD_HDR_LEN + send;
 
-        build_record_header(s, hdr, len, more, len < 60);
-        if (!io->emit(io->ctx, hdr, SL003_RECORD_HDR_LEN))
-            return;
-        io->gap(io->ctx, s->gap_header_us);
-
-        if (send) {
-            if (!io->emit(io->ctx,
-                          s->rx->packets[s->rx->readIndex], send)) {
-                s->rx->readIndex = rx_next_index(s);   /* spent either way */
-                return;
+            if (s->records_sent > 0
+             && staged + need + SL003_RECORD_HDR_LEN > stage_cap) {
+                if (bounded)
+                    goto term;
+                goto close_empty;
             }
-            io->gap(io->ctx, s->gap_record_us);
+            if (need > stage_cap) {
+                /* Caller under the documented wbuf minimum. Clip the
+                 * first record rather than overflow; the header still
+                 * declares the full length, as the ROM's own alloc
+                 * clip does. */
+                send = stage_cap > SL003_RECORD_HDR_LEN
+                     ? (uint16_t)(stage_cap - SL003_RECORD_HDR_LEN) : 0;
+                need = (uint32_t)SL003_RECORD_HDR_LEN + send;
+            }
+            build_record_header(s, s->wbuf + staged, len, more, len < 60);
+            memcpy(s->wbuf + staged + SL003_RECORD_HDR_LEN,
+                   s->rx->packets[s->rx->readIndex], send);
+            staged += need;
+        } else {
+            /* Classic timing: split emit with the ROM's gaps, which
+             * software-timed hosts (Plus, SE/30) calibrated their
+             * blind loops against. */
+            build_record_header(s, hdr, len, more, len < 60);
+            if (!io->emit(io->ctx, hdr, SL003_RECORD_HDR_LEN))
+                return;
+            io->gap(io->ctx, s->gap_header_us);
+            if (send) {
+                if (!io->emit(io->ctx,
+                              s->rx->packets[s->rx->readIndex], send)) {
+                    s->rx->readIndex = rx_next_index(s);
+                    return;
+                }
+                io->gap(io->ctx, s->gap_record_us);
+            }
+            /* Contiguous-emission hosts are hardware-handshaked and
+             * get no pacing gaps at all: one gap configuration then
+             * serves every machine on a shared card. */
         }
 
-        /* emit has returned; the slot may go back to the producer. */
+        /* The slot may go back to the producer: emit has returned, or
+         * in a staged batch the bytes are copied out of it. */
         s->rx->readIndex = rx_next_index(s);
         s->records_sent++;
+        sent += (uint32_t)SL003_RECORD_HDR_LEN + send;
 
         if (!more)
-            return;
+            goto done;
     }
+
+term:
+    /* Budget reached with records still queued: end the batch the way
+     * the ROM ends one at its record cap -- the last record kept its
+     * truthful more-flag, and this zero-length terminator says the
+     * batch ends anyway. Byte 2 reports the queue depth (records,
+     * clamped to 255) for adaptive pacing; hosts that ignore it see
+     * ROM behavior exactly. */
+    {
+        uint16_t q = sl003_rx_count(s);
+
+        build_record_header(s, hdr, 0, q > 0, false);
+        hdr[2] = q > 255 ? 255 : (uint8_t)q;
+        goto close;
+    }
+
+close_empty:
+    build_record_header(s, hdr, 0, false, false);
+
+close:
+    /* Reached only when a first record filled the whole allocation:
+     * the allocation comes first, and the batch ends on that record's
+     * more-flag with just the depth hint lost. Every later record was
+     * admitted with the terminator's reserve, so its room is
+     * guaranteed. */
+    if (bounded && sent + SL003_RECORD_HDR_LEN > alloc)
+        goto done;
+
+    /* The closing record rides out with the batch it ends: appended
+     * when there is room, otherwise after a flush. */
+    if (seamless) {
+        if (staged + SL003_RECORD_HDR_LEN > stage_cap
+         && !stage_flush(s, io, &staged))
+            return;
+        memcpy(s->wbuf + staged, hdr, SL003_RECORD_HDR_LEN);
+        staged += SL003_RECORD_HDR_LEN;
+    } else {
+        io->emit(io->ctx, hdr, SL003_RECORD_HDR_LEN);
+    }
+
+done:
+    if (seamless)
+        stage_flush(s, io, &staged);
 }
 
 /* ------------------------------------------------------------------ */

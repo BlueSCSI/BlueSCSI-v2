@@ -50,11 +50,13 @@ static bool    g_ready;
 static void ensure_init(void)
 {
 	if (!g_ready) {
-		/* scsiDev.data is the DATA OUT landing area, as it was for the
+		/* scsiDev.data is the data-phase scratch, as it was for the
 		 * pre-rewrite handler; it is far larger than SL003_PKT_MAX and
-		 * idle whenever the core fetches. */
+		 * idle whenever the core fetches. Its full size is offered so a
+		 * seamless batch goes out as one transfer at any allocation. */
 		sl003_init(&g_sl003, (const uint8_t *)scsiDev.boardCfg.wifiMACAddress,
-		           &scsiNetworkInboundQueue, scsiDev.data);
+		           &scsiNetworkInboundQueue,
+		           scsiDev.data, sizeof scsiDev.data);
 		/* DaynaPortGapHeaderUs / DaynaPortGapRecordUs ([SCSI] in
 		 * bluescsi.ini): inter-record pacing. Defaults match the real
 		 * device; software-timed blind hosts (SE/30, Plus) need them,
@@ -103,7 +105,7 @@ uint8_t scsiNetworkInquiryStatus(void)
 	ensure_init();
 	return (uint8_t)((sl003_enabled(&g_sl003) ? SL003_INQ_ENABLED : 0) |
 	                 (sl003_mode_set(&g_sl003) ? SL003_INQ_MODE_SET : 0) |
-	                 SL003_INQ_BATCH_BOUNDED);
+	                 SL003_INQ_BATCH_BOUNDED | SL003_INQ_SEAMLESS);
 }
 
 /*

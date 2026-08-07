@@ -95,6 +95,23 @@
  * bound (fixed-length initiators such as Atari SCSIDRV) probe this bit
  * and fall back to polled reads without it. */
 #define SL003_INQ_BATCH_BOUNDED     0x01
+/* Seamless emission honored. Advertised separately from the bounded
+ * bit so a host never has to infer one capability from the other: a
+ * device could honor the bound yet ignore the seamless request, and a
+ * SCSI Manager 4.3 host that assumed otherwise would corrupt (see the
+ * seamless bit below). Gate the CDB bit on this one. */
+#define SL003_INQ_SEAMLESS          0x02
+
+/* READ CDB[5] bit 0x10: emit the whole answer as one transfer, with no
+ * pause inside it and none between records either. Requested by
+ * hardware-handshaked hosts whose SIM fabricates a word when the
+ * device pauses REQ mid data phase
+ * (Quadra-era SCSI Manager 4.3, measured on an LC475). Without the
+ * bit the classic two-emit timing with the ROM's header and record
+ * gaps is preserved for software-timed hosts (Plus, SE/30). Real
+ * ROMs ignore unknown CDB[5] bits, same precedent as the bounded
+ * bit. */
+#define SL003_READ_SEAMLESS_BIT       0x10
 
 #define SL003_SENSE_ILLEGAL_REQUEST  5
 
