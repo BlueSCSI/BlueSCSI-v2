@@ -3,6 +3,7 @@
 //  Copyright (C) 2019 Landon Rodgers <g.landon.rodgers@gmail.com>
 //	Copyright (c) 2024-2025 Rabbit Hole Computing™
 //	Copyright (C) 2024 jokker <jokker@gmail.com>
+//	Copyright (c) 2026 Eric Helgeson <eric@bluescsi.com>
 //	This file is part of SCSI2SD.
 //
 //	SCSI2SD is free software: you can redistribute it and/or modify
@@ -716,6 +717,13 @@ static void doModeSelect(void)
 
 		int idx;
 		int blockDescLen;
+
+		// SCSI2 8.2.8: the command shall be terminated with CHECK CONDITION
+		// if the parameter list length truncates the mode parameter header,
+		// the block descriptor(s), or a mode page.
+		int headerLen = (scsiDev.cdb[0] == 0x55) ? 8 : 4;
+		if (scsiDev.dataLen < headerLen) goto badLength;
+
 		if (scsiDev.cdb[0] == 0x55)
 		{
 			blockDescLen =
@@ -727,6 +735,9 @@ static void doModeSelect(void)
 			blockDescLen = scsiDev.data[3];
 			idx = 4;
 		}
+
+		// The header check above guarantees dataLen >= idx.
+		if (blockDescLen > scsiDev.dataLen - idx) goto badLength;
 
 		// The unwritten rule.  Blocksizes are normally set using the
 		// block descriptor value, not by changing page 0x03.
@@ -761,8 +772,9 @@ static void doModeSelect(void)
 			int pageCode = scsiDev.data[idx] & 0x3F;
 			if (pageCode == 0) goto out;
 
+			if (idx + 2 > scsiDev.dataLen) goto badLength;
 			int pageLen = scsiDev.data[idx + 1];
-			if (idx + 2 + pageLen > scsiDev.dataLen) goto bad;
+			if (idx + 2 + pageLen > scsiDev.dataLen) goto badLength;
 
 			switch (pageCode)
 			{
@@ -804,6 +816,15 @@ static void doModeSelect(void)
 	}
 
 	goto out;
+
+// SCSI2 8.2.8 separates a parameter list that is too short for what it
+// describes (1Ah) from one whose contents are unsupported (26h).
+badLength:
+	scsiDev.status = CHECK_CONDITION;
+	scsiDev.target->sense.code = ILLEGAL_REQUEST;
+	scsiDev.target->sense.asc = PARAMETER_LIST_LENGTH_ERROR;
+	goto out;
+
 bad:
 	scsiDev.status = CHECK_CONDITION;
 	scsiDev.target->sense.code = ILLEGAL_REQUEST;
