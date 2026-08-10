@@ -1,6 +1,6 @@
 /*
  *  BlueSCSI v2
- *  Copyright (c) 2023-2025 Eric Helgeson, Androda, and contributors.
+ *  Copyright (c) 2023-2026 Eric Helgeson, Androda, and contributors.
  *
  *  This project is based on ZuluSCSI, BlueSCSI v1, and SCSI2SD:
  *
@@ -1315,6 +1315,26 @@ STATIC_TESTABLE void bluescsi_setup_sd_card(bool wait_for_card = true)
 
 #ifdef RECLOCKING_SUPPORTED
     bluescsi_speed_grade_t speed_grade = (bluescsi_speed_grade_t) g_scsi_settings.getSystem()->speedGrade;
+#if defined(BLUESCSI_ULTRA) && defined(BLUESCSI_NETWORK)
+    // The RM2 is reached over a PIO SPI bus whose divider is a compile-time
+    // constant sized for the stock clock, so the bus speed scales with clk_sys.
+    // Past the WifiRM2 grade the module stops answering, and it fails silently:
+    // cyw43_wifi_on() fails inside cyw43_wifi_set_up(), which returns void, so
+    // the interface is left down and every later scan/join returns -4 with
+    // nothing logged. Measured on an Ultra: the RM2 answers at 150MHz and is
+    // dead at 251MHz (TurboMax). When an RM2 is actually installed its clock wins
+    // over the configured grade - platform_network_supported() is only true
+    // here once the module answered the boot-time probe.
+    if (platform_network_supported() && speed_grade != SPEED_GRADE_WIFI_RM2)
+    {
+      logmsg("RM2 detected: overriding SpeedGrade \"", g_scsi_settings.getSpeedGradeString(),
+             "\" with \"WifiRM2\" - the RM2 does not respond at higher clocks");
+      // Update the setting itself, not just the local, so the reclock log below
+      // and every other reader report the grade actually in force.
+      speed_grade = SPEED_GRADE_WIFI_RM2;
+      g_scsi_settings.getSystem()->speedGrade = SPEED_GRADE_WIFI_RM2;
+    }
+#endif
     if (speed_grade != bluescsi_speed_grade_t::SPEED_GRADE_DEFAULT)
     { 
       logmsg("Speed grade set to ", g_scsi_settings.getSpeedGradeString(), " reclocking system");
