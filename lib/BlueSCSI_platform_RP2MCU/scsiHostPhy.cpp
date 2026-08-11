@@ -1,5 +1,6 @@
 /** 
  * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
+ * Copyright (c) 2025-2026 Eric Helgeson <eric@bluescsi.com>
  * 
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  * 
@@ -156,10 +157,28 @@ bool scsiHostPhySelect(int target_id, uint8_t initiator_id)
     return true;
 }
 
+// Sample REQ and the phase control lines
+static inline int scsiHostSamplePhase(bool *req_in)
+{
+    int phase = 0;
+    *req_in = SCSI_IN(REQ);
+    if (SCSI_IN(CD)) phase |= __scsiphase_cd;
+    if (SCSI_IN(IO)) phase |= __scsiphase_io;
+    if (SCSI_IN(MSG)) phase |= __scsiphase_msg;
+    return phase;
+}
+
+// MSG asserted without C/D is not a phase any target drives.
+static inline bool scsiHostPhaseValid(int phase)
+{
+    return phase != __scsiphase_msg && phase != (__scsiphase_msg | __scsiphase_io);
+}
+
 // Read the current communication phase as signaled by the target
 int scsiHostPhyGetPhase()
 {
     static absolute_time_t last_online_time;
+    static uint32_t misread_count;
 
     if (g_scsiHostPhyReset)
     {
@@ -168,13 +187,11 @@ int scsiHostPhyGetPhase()
         return BUS_FREE;
     }
 
-    int phase = 0;
-    bool req_in = SCSI_IN(REQ);
-    if (SCSI_IN(CD)) phase |= __scsiphase_cd;
-    if (SCSI_IN(IO)) phase |= __scsiphase_io;
-    if (SCSI_IN(MSG)) phase |= __scsiphase_msg;
+    bool req_in;
+    int phase = scsiHostSamplePhase(&req_in);
 
-    if (phase == 0 && absolute_time_diff_us(last_online_time, get_absolute_time()) > 100)
+    if (phase == 0 && !req_in &&
+        absolute_time_diff_us(last_online_time, get_absolute_time()) > 100)
     {
 
 #if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
@@ -195,6 +212,10 @@ int scsiHostPhyGetPhase()
         platform_enable_initiator_signals();
 #endif
         last_online_time = get_absolute_time();
+        // On Ultra the check above re-routes the control signals through the
+        // IO expander, so the samples from the top of this call are stale.
+        // Report busy and let the caller poll again for a fresh sample.
+        return BUS_BUSY;
     }
     else if (phase != 0)
     {
@@ -207,11 +228,28 @@ int scsiHostPhyGetPhase()
         // This filters out any spurious changes on control signals.
         return BUS_BUSY;
     }
-    else
+
+    // Acting on a single sample here has proven unsafe: transients around
+    // the initiator-signal switching can read as a phantom DATA_OUT (all
+    // control lines clear) or an invalid phase, aborting the command.
+    // Confirm with a second sample before reporting a phase.
+    platform_delay_us(1);
+    bool req_confirm;
+    int phase_confirm = scsiHostSamplePhase(&req_confirm);
+    if (phase_confirm != phase || !req_confirm || !scsiHostPhaseValid(phase))
     {
-        scsiLogInitiatorPhaseChange(phase);
-        return phase;
+        misread_count++;
+        if (misread_count <= 20 || (misread_count % 100) == 0)
+        {
+            dbgmsg("Initiator phase misread #", (int)misread_count,
+                   ": first ", phase, " REQ ", (int)req_in,
+                   ", confirm ", phase_confirm, " REQ ", (int)req_confirm);
+        }
+        return BUS_BUSY;
     }
+
+    scsiLogInitiatorPhaseChange(phase);
+    return phase;
 }
 
 bool scsiHostRequestWaiting()

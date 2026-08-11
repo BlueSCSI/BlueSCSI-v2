@@ -4,6 +4,7 @@
  * should be usable with other USB libraries.
  *
  * ZuluSCSI™ - Copyright (c) 2023-2025 Rabbit Hole Computing™
+ * Copyright (c) 2026 Eric Helgeson <eric@bluescsi.com>
  *
  * This file is licensed under the GPL version 3 or any later version. 
  * It is derived from cdrom.c in SCSI2SD V6
@@ -61,10 +62,21 @@ static struct {
     uint32_t sectorsize;
     uint32_t sectorcount;
     bool use_read10; // Always use read10/write10 commands for this target
+    uint8_t device_type; // Peripheral device type from INQUIRY byte 0
+    bool is_removable;   // RMB bit from INQUIRY byte 1
 } g_msc_initiator_targets[NUM_SCSIID];
 static int g_msc_initiator_target_count;
 
-// Prefetch next sector in main loop while USB is transferring previous one.
+// Sectors to read ahead of the host. The USB endpoint buffer is only one sector,
+// so without read-ahead every host read costs a full SCSI command round trip.
+#define MSC_PREFETCH_SECTORS 32
+
+// Extra reads to serve without prefetching after a prefetch fails, on top of the
+// failed window itself. The bad sector can be anywhere in the window, so the host
+// has to walk the whole window before read-ahead is worth re-arming.
+#define MSC_PREFETCH_BACKOFF_READS 64
+
+// Prefetch next sectors in main loop while USB is transferring previous one.
 static struct {
     uint8_t *prefetch_buffer; // Buffer to use for storing the data
     uint32_t prefetch_bufsize;
@@ -72,8 +84,17 @@ static struct {
     int prefetch_target_id; // Target to read from
     size_t prefetch_sectorcount; // Number of sectors to fetch
     size_t prefetch_sectorsize;
+    uint32_t prefetch_depth; // Sectors to read ahead of the host
+    uint32_t prefetch_backoff; // Reads left to skip after a failed prefetch
     bool prefetch_use_read10;
     bool prefetch_done; // True after prefetch is complete
+
+    // Write staging for targets whose sector is larger than the USB chunk:
+    // chunks accumulate in the prefetch buffer until a full sector is ready.
+    uint32_t stage_lba;
+    uint32_t stage_bytes;
+    int stage_target_id;
+    bool stage_active;
 
     bool readonly; // Disable writing to any drives
 
@@ -88,6 +109,7 @@ static struct {
 } g_msc_initiator_state;
 
 static int do_read6_or_10(int target_id, uint32_t start_sector, uint32_t sectorcount, uint32_t sectorsize, void *buffer, bool use_read10);
+static int do_write6_or_10(int target_id, uint32_t start_sector, uint32_t sectorcount, uint32_t sectorsize, const uint8_t *buffer, bool use_write10);
 
 static void scan_targets()
 {
@@ -99,49 +121,63 @@ static void scan_targets()
     {
         if (target_id == initiator_id) continue;
 
-        if (scsiTestUnitReady(target_id))
+        // INQUIRY answers with or without media in the drive, so it detects
+        // the device itself. An empty removable drive (MO, Zip, CD) registers
+        // here and reports "medium not present" to the USB host until a
+        // cartridge is loaded, like any USB card reader.
+        // No START STOP UNIT here: starting or stopping media is the USB
+        // host's decision (via its own callback), and sending it during a
+        // removable-media load can disturb the drive.
+        bool inquiryok = scsiInquiry(target_id, inquiry_data);
+        if (!inquiryok) continue;
+
+        char vendor_id[9] = {0};
+        char product_id[17] = {0};
+        memcpy(vendor_id, &inquiry_data[8], 8);
+        memcpy(product_id, &inquiry_data[16], 16);
+        uint8_t device_type = inquiry_data[0] & 0x1F;
+        bool is_removable = (inquiry_data[1] & 0x80) != 0;
+        const char *type_name = (device_type == SCSI_DEVICE_TYPE_CD) ? "CD-ROM" :
+                                (device_type == SCSI_DEVICE_TYPE_MO) ? "MO" :
+                                (device_type == SCSI_DEVICE_TYPE_DIRECT_ACCESS) ?
+                                (is_removable ? "REMOVABLE" : "DISK") : "OTHER";
+        g_msc_initiator_targets[found_count].target_id = target_id;
+        g_msc_initiator_targets[found_count].device_type = device_type;
+        g_msc_initiator_targets[found_count].is_removable = is_removable;
+
+        bool ready = scsiTestUnitReady(target_id);
+        uint32_t sectorcount = 0, sectorsize = 0;
+        bool readcapok = ready &&
+            scsiInitiatorReadCapacity(target_id, &sectorcount, &sectorsize);
+
+        if (readcapok)
         {
-            uint32_t sectorcount, sectorsize;
-
-            bool inquiryok =
-                scsiStartStopUnit(target_id, true) &&
-                scsiInquiry(target_id, inquiry_data);
-            bool readcapok =
-                scsiInitiatorReadCapacity(target_id, &sectorcount, &sectorsize);
-
-            char vendor_id[9] = {0};
-            char product_id[17] = {0};
-            memcpy(vendor_id, &inquiry_data[8], 8);
-            memcpy(product_id, &inquiry_data[16], 16);
-
-            if (inquiryok)
-            {
-                if (readcapok)
-                {
-                    logmsg("Found SCSI drive with ID ", target_id, ": ", vendor_id, " ", product_id,
-                        " capacity ", (int)(((uint64_t)sectorcount * sectorsize) / 1024 / 1024), " MB");
-                    g_msc_initiator_targets[found_count].target_id = target_id;
-                    g_msc_initiator_targets[found_count].sectorcount = sectorcount;
-                    g_msc_initiator_targets[found_count].sectorsize = sectorsize;
-                    g_msc_initiator_targets[found_count].use_read10 = scsiInitiatorTestSupportsRead10(target_id, sectorsize);
-                    found_count++;
-                }
-                else
-                {
-                    logmsg("Found SCSI drive with ID ", target_id, ": ", vendor_id, " ", product_id,
-                           " but failed to read capacity. Assuming SCSI-1 drive up to 1 GB.");
-                    g_msc_initiator_targets[found_count].target_id = target_id;
-                    g_msc_initiator_targets[found_count].sectorcount = 2097152;
-                    g_msc_initiator_targets[found_count].sectorsize = 512;
-                    g_msc_initiator_targets[found_count].use_read10 = false;
-                    found_count++;
-                }
-            }
-            else
-            {
-                logmsg("Detected SCSI device with ID ", target_id, ", but failed to get inquiry response, skipping");
-            }
+            logmsg("Found SCSI drive with ID ", target_id, ": ", vendor_id, " ", product_id,
+                " (", type_name, ")",
+                " capacity ", (int)(((uint64_t)sectorcount * sectorsize) / 1024 / 1024), " MB");
+            g_msc_initiator_targets[found_count].sectorcount = sectorcount;
+            g_msc_initiator_targets[found_count].sectorsize = sectorsize;
+            g_msc_initiator_targets[found_count].use_read10 = scsiInitiatorTestSupportsRead10(target_id, sectorsize);
         }
+        else if (ready)
+        {
+            logmsg("Found SCSI drive with ID ", target_id, ": ", vendor_id, " ", product_id,
+                   " (", type_name, ")",
+                   " but failed to read capacity. Assuming SCSI-1 drive up to 1 GB.");
+            g_msc_initiator_targets[found_count].sectorcount = 2097152;
+            g_msc_initiator_targets[found_count].sectorsize = 512;
+            g_msc_initiator_targets[found_count].use_read10 = false;
+        }
+        else
+        {
+            // Capacity gets probed again by the host once media is loaded
+            logmsg("Found SCSI drive with ID ", target_id, ": ", vendor_id, " ", product_id,
+                   " (", type_name, ") - no media present");
+            g_msc_initiator_targets[found_count].sectorcount = 0;
+            g_msc_initiator_targets[found_count].sectorsize = 0;
+            g_msc_initiator_targets[found_count].use_read10 = true;
+        }
+        found_count++;
     }
 
     // USB MSC requests can start processing after we set this
@@ -156,11 +192,21 @@ bool setup_msc_initiator()
     logmsg("SCSI Initiator: activating USB MSC mode");
     g_msc_initiator = true;
 
+    // We can use the device mode buffer for prefetching data in initiator mode.
+    // The buffer is needed even with read-ahead disabled: sectors larger than
+    // the USB endpoint buffer are bounced through it one chunk at a time.
+    g_msc_initiator_state.prefetch_buffer = scsiDev.data;
+    g_msc_initiator_state.prefetch_bufsize = sizeof(scsiDev.data);
+
     if (!ini_getbool("SCSI", "InitiatorMSCDisablePrefetch", false, CONFIGFILE))
     {
-        // We can use the device mode buffer for prefetching data in initiator mode
-        g_msc_initiator_state.prefetch_buffer = scsiDev.data;
-        g_msc_initiator_state.prefetch_bufsize = sizeof(scsiDev.data);
+        g_msc_initiator_state.prefetch_depth = ini_getl("SCSI", "InitiatorMSCPrefetchSectors",
+                                                        MSC_PREFETCH_SECTORS, CONFIGFILE);
+        logmsg("--- Initiator prefetch: ", (int)g_msc_initiator_state.prefetch_depth, " sectors read-ahead");
+    }
+    else
+    {
+        g_msc_initiator_state.prefetch_depth = 0;
     }
 
     g_msc_initiator_state.status_interval = ini_getl("SCSI", "InitiatorMSCStatusInterval", 5000, CONFIGFILE);
@@ -232,7 +278,13 @@ void poll_msc_initiator()
         }
         else
         {
-            logmsg("Prefetch of sector ", g_msc_initiator_state.prefetch_lba, " failed: status ", status);
+            // The failure may be a bad sector anywhere in the window, so serve reads
+            // directly until the host has walked past the whole window. Backing off
+            // less than the window re-arms into the same bad sector and fails again.
+            logmsg("Prefetch of sector ", g_msc_initiator_state.prefetch_lba, " + ",
+                   (int)g_msc_initiator_state.prefetch_sectorcount, " failed: status ", status);
+            g_msc_initiator_state.prefetch_backoff = g_msc_initiator_state.prefetch_sectorcount
+                                                   + MSC_PREFETCH_BACKOFF_READS;
             g_msc_initiator_state.prefetch_sectorcount = 0;
         }
 
@@ -252,6 +304,21 @@ static int get_target(uint8_t lun)
     {
         return g_msc_initiator_targets[lun].target_id;
     }
+}
+
+// Whether the host should be allowed to eject media in this device
+static bool is_removable_device(uint8_t lun)
+{
+    if (lun >= g_msc_initiator_target_count)
+        return false;
+
+    uint8_t dtype = g_msc_initiator_targets[lun].device_type;
+
+    // CD-ROM and MO are always removable; direct access devices are
+    // removable when the RMB bit is set (Zip, removable disks)
+    return (dtype == SCSI_DEVICE_TYPE_CD) ||
+           (dtype == SCSI_DEVICE_TYPE_MO) ||
+           (dtype == SCSI_DEVICE_TYPE_DIRECT_ACCESS && g_msc_initiator_targets[lun].is_removable);
 }
 
 void init_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8], uint8_t product_id[16], uint8_t product_rev[4])
@@ -326,21 +393,22 @@ bool init_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, bo
     g_msc_initiator_state.status_reqcount++;
 
     int target = get_target(lun);
-    uint8_t command[6] = {0x1B, 0x1, 0, 0, 0, 0};
+    uint8_t command[6] = {0x1B, 0x00, 0, 0, 0, 0};
     uint8_t response[4] = {0};
-    
+
     if (start)
     {
         command[4] |= 1; // Start
-        command[1] = 0;  // Immediate
     }
 
-    if (load_eject)
+    // LoEj moves media, so only removable devices get it
+    if (load_eject && is_removable_device(lun))
     {
+        logmsg(start ? "Loading removable media" : "Ejecting removable media");
         command[4] |= 2;
     }
 
-    command[4] |= power_condition << 4;
+    command[4] |= static_cast<uint8_t>((power_condition & 0x0F) << 4);
 
     int status = scsiInitiatorRunCommand(target,
                                          command, sizeof(command),
@@ -377,7 +445,7 @@ void init_msc_capacity_cb(uint8_t lun, uint32_t *block_count, uint16_t *block_si
     dbgmsg("-- MSC Get Capacity");
     g_msc_initiator_state.status_reqcount++;
 
-    if (g_msc_initiator_target_count == 0)
+    if (g_msc_initiator_target_count == 0 || lun >= g_msc_initiator_target_count)
     {
         *block_count = 0;
         *block_size = 0;
@@ -386,9 +454,24 @@ void init_msc_capacity_cb(uint8_t lun, uint32_t *block_count, uint16_t *block_si
 
     uint32_t sectorcount = 0;
     uint32_t sectorsize = 0;
-    scsiInitiatorReadCapacity(get_target(lun), &sectorcount, &sectorsize);
-    *block_count = sectorcount;
-    *block_size = sectorsize;
+    bool success = scsiInitiatorReadCapacity(get_target(lun), &sectorcount, &sectorsize);
+
+    if (success && sectorcount > 0)
+    {
+        // Remember the current capacity so it survives a not-ready phase
+        g_msc_initiator_targets[lun].sectorcount = sectorcount;
+        g_msc_initiator_targets[lun].sectorsize = sectorsize;
+        *block_count = sectorcount;
+        *block_size = sectorsize;
+    }
+    else
+    {
+        // READ CAPACITY fails while removable media is loading; returning the
+        // stored capacity keeps the host from flapping the device to 0 blocks
+        *block_count = g_msc_initiator_targets[lun].sectorcount;
+        *block_size = g_msc_initiator_targets[lun].sectorsize;
+        dbgmsg("---- Using stored capacity: ", (int)*block_count, " x ", (int)*block_size);
+    }
 }
 
 int32_t init_msc_scsi_cb(uint8_t lun, const uint8_t scsi_cmd[16], void *buffer, uint16_t bufsize)
@@ -460,11 +543,110 @@ static int do_read6_or_10(int target_id, uint32_t start_sector, uint32_t sectorc
     return status;
 }
 
+// Serve a host read chunk smaller than one device sector, e.g. 2048-byte
+// MO media behind a 512-byte USB endpoint buffer. TinyUSB chunks such
+// transfers and passes the byte offset inside the current sector; the
+// sector is read into the prefetch buffer once and handed out chunk by
+// chunk. Must not return 0: TinyUSB treats that as "retry" and re-invokes
+// the callback in a loop that starves the watchdog.
+static int32_t init_msc_read_partial(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t *buffer, uint32_t bufsize)
+{
+    int target_id = get_target(lun);
+    uint32_t sectorsize = g_msc_initiator_targets[lun].sectorsize;
+    uint32_t disk_sectorcount = g_msc_initiator_targets[lun].sectorcount;
+    bool use_read10 = g_msc_initiator_targets[lun].use_read10;
+
+    if (g_msc_initiator_state.prefetch_bufsize < sectorsize || lba >= disk_sectorcount)
+    {
+        logmsg("USB read of ", (int)bufsize, " bytes at LBA ", (int)lba, " offset ", (int)offset,
+               " failed: sector size ", (int)sectorsize, " unsupported");
+        return -1;
+    }
+
+    bool covered = g_msc_initiator_state.prefetch_done
+                && g_msc_initiator_state.prefetch_target_id == target_id
+                && g_msc_initiator_state.prefetch_sectorsize == sectorsize
+                && lba >= g_msc_initiator_state.prefetch_lba
+                && lba < g_msc_initiator_state.prefetch_lba + g_msc_initiator_state.prefetch_sectorcount;
+
+    if (!covered)
+    {
+        LED_ON();
+        uint32_t depth = g_msc_initiator_state.prefetch_depth;
+        uint32_t max_by_buffer = g_msc_initiator_state.prefetch_bufsize / sectorsize;
+        uint32_t max_by_disk = disk_sectorcount - lba;
+        if (depth < 1) depth = 1;
+        if (depth > max_by_buffer) depth = max_by_buffer;
+        if (depth > max_by_disk) depth = max_by_disk;
+
+        dbgmsg("USB Read command ", (int)lba, " offset ", (int)offset, ", reading ",
+               (int)depth, "x", (int)sectorsize, " into bounce buffer");
+        int status = do_read6_or_10(target_id, lba, depth, sectorsize,
+                                    g_msc_initiator_state.prefetch_buffer, use_read10);
+        if (status != 0 && depth > 1)
+        {
+            // A bad sector later in the window should not fail this chunk
+            uint8_t sense_key;
+            scsiRequestSense(target_id, &sense_key);
+            depth = 1;
+            status = do_read6_or_10(target_id, lba, depth, sectorsize,
+                                    g_msc_initiator_state.prefetch_buffer, use_read10);
+        }
+        LED_OFF();
+
+        if (status != 0)
+        {
+            uint8_t sense_key;
+            scsiRequestSense(target_id, &sense_key);
+            if (sense_key == RECOVERED_ERROR)
+            {
+                dbgmsg("SCSI Initiator read: RECOVERED_ERROR at ", (int)lba);
+            }
+            else
+            {
+                scsiLogInitiatorCommandFailure("SCSI Initiator read", target_id, status, sense_key);
+                g_msc_initiator_state.prefetch_sectorcount = 0;
+                g_msc_initiator_state.prefetch_done = false;
+                return -1;
+            }
+        }
+
+        g_msc_initiator_state.prefetch_lba = lba;
+        g_msc_initiator_state.prefetch_target_id = target_id;
+        g_msc_initiator_state.prefetch_sectorcount = depth;
+        g_msc_initiator_state.prefetch_sectorsize = sectorsize;
+        g_msc_initiator_state.prefetch_use_read10 = use_read10;
+        g_msc_initiator_state.prefetch_done = true;
+    }
+
+    uint32_t len = sectorsize - offset;
+    if (len > bufsize) len = bufsize;
+    memcpy(buffer, g_msc_initiator_state.prefetch_buffer
+                   + (lba - g_msc_initiator_state.prefetch_lba) * sectorsize + offset, len);
+
+    if (offset == 0)
+    {
+        g_msc_initiator_state.status_reqcount++;
+    }
+    g_msc_initiator_state.status_bytecount += len;
+    return len;
+}
+
 int32_t init_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buffer, uint32_t bufsize)
 {
     if (g_msc_initiator_target_count == 0)
     {
         return -1;
+    }
+
+    if (g_msc_initiator_targets[lun].sectorsize == 0)
+    {
+        return -1;
+    }
+
+    if (offset != 0 || bufsize < g_msc_initiator_targets[lun].sectorsize)
+    {
+        return init_msc_read_partial(lun, lba, offset, (uint8_t*)buffer, bufsize);
     }
 
     LED_ON();
@@ -477,13 +659,12 @@ int32_t init_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buf
     uint32_t total_sectorcount = sectorcount;
     uint32_t orig_lba = lba;
 
-    if (sectorcount == 0)
-    {
-        // Not enough buffer left for a full sector
-        return 0;
-    }
-
-    if (g_msc_initiator_state.prefetch_done)
+    // Prefetch buffer is shared by all targets, so it is only valid for the
+    // target it was filled from - and only at the sector size it was read
+    // with, which can change when removable media is swapped.
+    if (g_msc_initiator_state.prefetch_done &&
+        g_msc_initiator_state.prefetch_target_id == target_id &&
+        g_msc_initiator_state.prefetch_sectorsize == (size_t)sectorsize)
     {
         int32_t offset = (int32_t)lba - (int32_t)g_msc_initiator_state.prefetch_lba;
         uint8_t *dest = (uint8_t*)buffer;
@@ -534,58 +715,50 @@ int32_t init_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buf
         }
     }
 
-    if (lba + total_sectorcount <= g_msc_initiator_targets[lun].sectorcount)
-    {
-        int prefetch_sectorcount = total_sectorcount;
-        if (prefetch_sectorcount * sectorsize > g_msc_initiator_state.prefetch_bufsize)
-        {
-            prefetch_sectorcount = g_msc_initiator_state.prefetch_bufsize / sectorsize;
-        }
+    // Keep the current prefetch while it still covers the sectors the host is
+    // walking towards, so a read-ahead window is fetched once and then served
+    // from RAM instead of being discarded and re-read on every request.
+    uint32_t disk_sectorcount = g_msc_initiator_targets[lun].sectorcount;
+    bool covered = g_msc_initiator_state.prefetch_done
+                && g_msc_initiator_state.prefetch_target_id == target_id
+                && g_msc_initiator_state.prefetch_sectorsize == (size_t)sectorsize
+                && lba >= g_msc_initiator_state.prefetch_lba
+                && lba < g_msc_initiator_state.prefetch_lba + g_msc_initiator_state.prefetch_sectorcount;
 
-        // Request prefetch of the next block while USB transfers the previous one
-        g_msc_initiator_state.prefetch_lba = lba;
-        g_msc_initiator_state.prefetch_target_id = target_id;
-        g_msc_initiator_state.prefetch_sectorcount = total_sectorcount;
-        g_msc_initiator_state.prefetch_sectorsize = sectorsize;
-        g_msc_initiator_state.prefetch_use_read10 = use_read10;
-        g_msc_initiator_state.prefetch_done = false;
+    if (g_msc_initiator_state.prefetch_backoff > 0)
+    {
+        g_msc_initiator_state.prefetch_backoff--;
+    }
+    else if (!covered && lba < disk_sectorcount)
+    {
+        uint32_t depth = g_msc_initiator_state.prefetch_depth;
+        uint32_t max_by_buffer = g_msc_initiator_state.prefetch_bufsize / sectorsize;
+        uint32_t max_by_disk = disk_sectorcount - lba;
+        if (depth > max_by_buffer) depth = max_by_buffer;
+        if (depth > max_by_disk) depth = max_by_disk;
+
+        if (depth > 0)
+        {
+            // Request prefetch of the next block while USB transfers the previous one
+            g_msc_initiator_state.prefetch_lba = lba;
+            g_msc_initiator_state.prefetch_target_id = target_id;
+            g_msc_initiator_state.prefetch_sectorcount = depth;
+            g_msc_initiator_state.prefetch_sectorsize = sectorsize;
+            g_msc_initiator_state.prefetch_use_read10 = use_read10;
+            g_msc_initiator_state.prefetch_done = false;
+        }
     }
 
     return total_sectorcount * sectorsize;
 }
 
-int32_t init_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t *buffer, uint32_t bufsize)
+static int do_write6_or_10(int target_id, uint32_t start_sector, uint32_t sectorcount, uint32_t sectorsize, const uint8_t *buffer, bool use_write10)
 {
-    if (g_msc_initiator_target_count == 0)
-    {
-        return -1;
-    }
-
-    if (g_msc_initiator_state.readonly)
-    {
-        logmsg("--- Refusing host write request, InitiatorMSCReadOnly is set.");
-        return -1;
-    }
-
-    int status = -1;
-
-    int target_id = get_target(lun);
-    int sectorsize = g_msc_initiator_targets[lun].sectorsize;
-    bool use_read10 = g_msc_initiator_targets[lun].use_read10;
-    uint32_t start_sector = lba;
-    uint32_t sectorcount = bufsize / sectorsize;
-
-    if (sectorcount == 0)
-    {
-        // Not a complete sector
-        return 0;
-    }
-
-    LED_ON();
+    int status;
 
     // Write6 command supports 21 bit LBA - max of 0x1FFFFF
     bool fits_write6 = (start_sector < 0x1FFFFF && sectorcount <= 256);
-    if (!use_read10 && fits_write6)
+    if (!use_write10 && fits_write6)
     {
         // Use WRITE6 command for compatibility with old SCSI1 drives
         uint8_t command[6] = {0x0A,
@@ -596,7 +769,7 @@ int32_t init_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t 
             0x00
         };
 
-        status = scsiInitiatorRunCommand(target_id, command, sizeof(command), NULL, 0, buffer, bufsize);
+        status = scsiInitiatorRunCommand(target_id, command, sizeof(command), NULL, 0, buffer, sectorcount * sectorsize);
     }
     else
     {
@@ -609,15 +782,15 @@ int32_t init_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t 
             0x00
         };
 
-        status = scsiInitiatorRunCommand(target_id, command, sizeof(command), NULL, 0, buffer, bufsize);
+        status = scsiInitiatorRunCommand(target_id, command, sizeof(command), NULL, 0, buffer, sectorcount * sectorsize);
     }
 
-    g_msc_initiator_state.prefetch_sectorcount = 0; // Invalidate prefetch cache
+    return status;
+}
 
-    g_msc_initiator_state.status_reqcount++;
-    g_msc_initiator_state.status_bytecount += sectorcount * sectorsize;
-    LED_OFF();
-
+// Check write status and decide whether the operation counts as failed.
+static int32_t check_write_status(int target_id, int status, uint32_t start_sector)
+{
     if (status != 0)
     {
         uint8_t sense_key;
@@ -638,12 +811,127 @@ int32_t init_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t 
         }
     }
 
+    return 0;
+}
+
+// Accept a host write chunk smaller than one device sector. Chunks are
+// staged in the prefetch buffer and the sector is written out once the
+// last chunk arrives. Must not return 0 for the same reason as reads:
+// TinyUSB retries a zero return forever.
+static int32_t init_msc_write_partial(uint8_t lun, uint32_t lba, uint32_t offset, const uint8_t *buffer, uint32_t bufsize)
+{
+    int target_id = get_target(lun);
+    uint32_t sectorsize = g_msc_initiator_targets[lun].sectorsize;
+    bool use_read10 = g_msc_initiator_targets[lun].use_read10;
+    uint8_t *stage = g_msc_initiator_state.prefetch_buffer;
+
+    if (g_msc_initiator_state.prefetch_bufsize < sectorsize)
+    {
+        logmsg("USB write of ", (int)bufsize, " bytes at LBA ", (int)lba,
+               " failed: sector size ", (int)sectorsize, " unsupported");
+        return -1;
+    }
+
+    if (offset == 0)
+    {
+        // Staging reuses the prefetch buffer, so drop any cached read data
+        g_msc_initiator_state.prefetch_sectorcount = 0;
+        g_msc_initiator_state.prefetch_done = false;
+        g_msc_initiator_state.stage_active = true;
+        g_msc_initiator_state.stage_lba = lba;
+        g_msc_initiator_state.stage_target_id = target_id;
+        g_msc_initiator_state.stage_bytes = 0;
+    }
+    else if (!g_msc_initiator_state.stage_active ||
+             g_msc_initiator_state.stage_lba != lba ||
+             g_msc_initiator_state.stage_target_id != target_id ||
+             g_msc_initiator_state.stage_bytes != offset)
+    {
+        logmsg("USB write chunk out of sequence at LBA ", (int)lba, " offset ", (int)offset);
+        g_msc_initiator_state.stage_active = false;
+        return -1;
+    }
+
+    uint32_t len = sectorsize - offset;
+    if (len > bufsize) len = bufsize;
+    memcpy(stage + offset, buffer, len);
+    g_msc_initiator_state.stage_bytes += len;
+
+    if (g_msc_initiator_state.stage_bytes < sectorsize)
+    {
+        // More chunks needed before the sector can be written out
+        return len;
+    }
+
+    g_msc_initiator_state.stage_active = false;
+
+    LED_ON();
+    int status = do_write6_or_10(target_id, lba, 1, sectorsize, stage, use_read10);
+    LED_OFF();
+
+    if (check_write_status(target_id, status, lba) != 0)
+    {
+        return -1;
+    }
+
+    g_msc_initiator_state.status_reqcount++;
+    g_msc_initiator_state.status_bytecount += sectorsize;
+    return len;
+}
+
+int32_t init_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t *buffer, uint32_t bufsize)
+{
+    if (g_msc_initiator_target_count == 0)
+    {
+        return -1;
+    }
+
+    if (g_msc_initiator_state.readonly)
+    {
+        logmsg("--- Refusing host write request, InitiatorMSCReadOnly is set.");
+        return -1;
+    }
+
+    if (g_msc_initiator_targets[lun].sectorsize == 0)
+    {
+        return -1;
+    }
+
+    if (offset != 0 || bufsize < g_msc_initiator_targets[lun].sectorsize)
+    {
+        return init_msc_write_partial(lun, lba, offset, buffer, bufsize);
+    }
+
+    int target_id = get_target(lun);
+    int sectorsize = g_msc_initiator_targets[lun].sectorsize;
+    bool use_read10 = g_msc_initiator_targets[lun].use_read10;
+    uint32_t start_sector = lba;
+    uint32_t sectorcount = bufsize / sectorsize;
+
+    LED_ON();
+
+    int status = do_write6_or_10(target_id, start_sector, sectorcount, sectorsize, buffer, use_read10);
+
+    g_msc_initiator_state.prefetch_sectorcount = 0; // Invalidate prefetch cache
+    g_msc_initiator_state.prefetch_done = false;
+    g_msc_initiator_state.stage_active = false;
+
+    g_msc_initiator_state.status_reqcount++;
+    g_msc_initiator_state.status_bytecount += sectorcount * sectorsize;
+    LED_OFF();
+
+    if (check_write_status(target_id, status, start_sector) != 0)
+    {
+        return -1;
+    }
+
     return sectorcount * sectorsize;
 }
 
 void init_msc_write10_complete_cb(uint8_t lun)
 {
     (void)lun;
+    g_msc_initiator_state.stage_active = false;
 }
 
 
