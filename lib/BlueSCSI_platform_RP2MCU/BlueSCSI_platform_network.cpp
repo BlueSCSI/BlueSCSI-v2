@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2023 joshua stein <jcs@jcs.org>
+ * Copyright (c) 2026 Eric Helgeson <eric@bluescsi.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -18,6 +19,7 @@
 #include "BlueSCSI_platform_network.h"
 #include "BlueSCSI_log.h"
 #include "BlueSCSI_config.h"
+#include "BlueSCSI_settings.h"
 #include <scsi.h>
 #include <network.h>
 
@@ -51,6 +53,35 @@ static bool network_iface_present = false;
 static uint32_t wifi_reconnect_time = 0;
 static uint32_t wifi_reconnect_interval = WIFI_RECONNECT_INTERVAL;
 static int wifi_reconnect_attempts = 0;
+
+// How long to wait for an association to finish before reporting it stalled.
+#define WIFI_JOIN_STALL_TIMEOUT 30000
+
+// Start of the most recent join attempt, or 0 once the link is up.
+static uint32_t wifi_join_time = 0;
+static bool wifi_join_stall_reported = false;
+
+static const char *wifi_security_name(uint8_t security)
+{
+	switch (security)
+	{
+		case WIFI_SECURITY_WPA2_AES:  return "WPA2 AES PSK";
+		case WIFI_SECURITY_WPA3:      return "WPA3 SAE";
+		case WIFI_SECURITY_WPA3_WPA2: return "WPA3/WPA2 SAE";
+		default:                      return "WPA/WPA2 PSK";
+	}
+}
+
+static uint32_t wifi_security_auth(uint8_t security)
+{
+	switch (security)
+	{
+		case WIFI_SECURITY_WPA2_AES:  return CYW43_AUTH_WPA2_AES_PSK;
+		case WIFI_SECURITY_WPA3:      return CYW43_AUTH_WPA3_SAE_AES_PSK;
+		case WIFI_SECURITY_WPA3_WPA2: return CYW43_AUTH_WPA3_WPA2_AES_PSK;
+		default:                      return CYW43_AUTH_WPA2_MIXED_PSK;
+	}
+}
 
 bool platform_network_supported()
 {
@@ -157,13 +188,18 @@ bool platform_network_wifi_join(char *ssid, char *password, bool reconnect)
 	}
 	else
 	{
+		uint8_t security = scsiDev.boardCfg.wifiSecurity;
+
 		if (!reconnect)
-			logmsg("Connecting to Wi-Fi SSID \"", ssid, "\" with WPA/WPA2 PSK");
-		ret = cyw43_arch_wifi_connect_async(ssid, password, CYW43_AUTH_WPA2_MIXED_PSK);
+			logmsg("Connecting to Wi-Fi SSID \"", ssid, "\" with ", wifi_security_name(security));
+		ret = cyw43_arch_wifi_connect_async(ssid, password, wifi_security_auth(security));
 	}
 
 	if (ret == 0)
 	{
+		wifi_join_time = platform_millis();
+		wifi_join_stall_reported = false;
+
 		if (!reconnect)
 		{
 			// Short single blink at start of connection sequence
@@ -196,7 +232,8 @@ void platform_network_poll()
 				logmsg("Wi-Fi connected to ", ssid, " but was not assigned an IP");
 				break;
 			case CYW43_LINK_BADAUTH:
-				logmsg("Wi-Fi authentication failure connecting to \"", ssid, "\", please check the setting \"WiFiPassword\" in ", CONFIGFILE);
+				logmsg("Wi-Fi authentication failure connecting to \"", ssid, "\", please check the settings \"WiFiPassword\" and \"WiFiSecurity\" (currently ",
+					wifi_security_name(scsiDev.boardCfg.wifiSecurity), ") in ", CONFIGFILE);
 				break;
 			case CYW43_LINK_NONET:
 				logmsg("Wi-Fi SSID ", ssid, " not found, possible out of range or down");
@@ -206,6 +243,17 @@ void platform_network_poll()
 				break;
 		}
 		wifi_reconnect_time = platform_millis();
+	}
+
+	// An association that never completes sits at CYW43_LINK_JOIN forever
+	if (!wifi_join_stall_reported
+		&& wifi_join_time != 0
+		&& status == CYW43_LINK_JOIN
+		&& (uint32_t)(platform_millis() - wifi_join_time) > WIFI_JOIN_STALL_TIMEOUT)
+	{
+		wifi_join_stall_reported = true;
+		logmsg("Wi-Fi association to \"", ssid, "\" has not completed after 30 seconds, if it does not connect check that \"WiFiSecurity\" (currently ",
+			wifi_security_name(scsiDev.boardCfg.wifiSecurity), ") in ", CONFIGFILE, " matches the access point");
 	}
 
 	// Reset reconnect state when link comes back up
@@ -424,6 +472,10 @@ void cyw43_cb_tcpip_set_link_down(cyw43_t *self, int itf)
 void cyw43_cb_tcpip_set_link_up(cyw43_t *self, int itf)
 {
 	char *ssid = platform_network_wifi_ssid();
+
+	// The link is genuinely up, so stop watching for a stalled association.
+	wifi_join_time = 0;
+	wifi_join_stall_reported = false;
 
 	if (ssid)
 	{
