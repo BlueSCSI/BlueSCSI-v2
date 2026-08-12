@@ -135,6 +135,7 @@ void init_logfile()
   bool truncate = first_open_after_boot;
   if (truncate)
   {
+    SD.remove("lastlog.txt");
     SD.rename(LOGFILE, "lastlog.txt");
   }
   int flags = O_WRONLY | O_CREAT | (truncate ? O_TRUNC : O_APPEND);
