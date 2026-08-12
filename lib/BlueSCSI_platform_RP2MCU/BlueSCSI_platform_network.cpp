@@ -444,7 +444,12 @@ char * platform_network_wifi_bssid()
 
 	memset(bssid, 0, sizeof(bssid));
 
-	/* TODO */
+	int ret = cyw43_wifi_get_bssid(&cyw43_state, (uint8_t *)bssid);
+	if (ret)
+	{
+		dbgmsg("Failed getting Wi-Fi BSSID: ", ret);
+		return NULL;
+	}
 
 	return bssid;
 }
