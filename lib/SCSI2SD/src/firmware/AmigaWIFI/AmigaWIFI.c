@@ -307,7 +307,7 @@ int amigaWifiCommand()
 		break;
 
 
-	// custom wifi commands all using the same opcode, with a sub-command in cdb[2] - same as the standard daynaport ones
+	// custom wifi commands all using the same opcode, with a sub-command in cdb[1] - same as the standard daynaport ones
 	case SCSI_CMD_WIFI: {
 		size = scsiDev.cdb[4] + (scsiDev.cdb[3] << 8);
 
