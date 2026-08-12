@@ -1,6 +1,7 @@
 /**
  * Copyright (C) 2023 saybur
  * Copyright (C) 2024-2025 Rabbit Hole Computing™
+ * Copyright (c) 2026 Eric Helgeson <eric@bluescsi.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -180,6 +181,15 @@ static bool setup_playback(uint8_t id, uint32_t start, uint32_t length, bool con
     CUETrackInfo track_info = {0};
     uint32_t start_of_next_track = 0;
     int file_index = -1;
+
+    // No cue parser exists until a cue sheet is loaded; plain .iso images never
+    // load one. Win98 probes CD drives with zero-length PLAY AUDIO, which lands
+    // here through the seek path before any playback has created the parser.
+    if (g_cue_parser == nullptr)
+    {
+        dbgmsg("------ Audio setup - no cue sheet loaded, nothing to do");
+        return false;
+    }
 
     g_cue_parser->restart();
 
