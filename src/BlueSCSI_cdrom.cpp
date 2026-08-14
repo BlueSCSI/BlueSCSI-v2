@@ -6,6 +6,7 @@
  *
  * SCSI2SD V6 - Copyright (C) 2014 Michael McMaster <michael@codesrc.com>
  * ZuluSCSI™ - Copyright (c) 2023-2025 Rabbit Hole Computing™
+ * Copyright (c) 2026 Eric Helgeson <eric@bluescsi.com>
  *
  * This file is licensed under the GPL version 3 or any later version. 
  * It is derived from cdrom.c in SCSI2SD V6
@@ -28,6 +29,7 @@
 
 
 #include <string.h>
+#include <ctype.h>
 #include "BlueSCSI_cdrom.h"
 #include "BlueSCSI_log.h"
 #include "BlueSCSI_config.h"
@@ -1243,7 +1245,7 @@ void doGetConfiguration(uint8_t rt, uint16_t startFeature, uint16_t allocationLe
 // Check if a CUE FILE reference matches a BIN filename.
 // Strips extensions and compares stems case-insensitively.
 // Allows BlueSCSI prefix pattern: e.g., "castles.bin" matches "CD3_castles.bin"
-// because the BIN stem ends with "_castles" matching the CUE stem "castles".
+// or "CD3 castles.bin" — any non-alphanumeric separator between prefix and stem.
 static bool cdromCueFilenameMatchesBin(const char *cue_ref, const char *bin_name)
 {
     // Strip directory path from CUE reference (e.g., "Audio/track.bin" -> "track.bin")
@@ -1267,11 +1269,14 @@ static bool cdromCueFilenameMatchesBin(const char *cue_ref, const char *bin_name
         strncasecmp(bin_name, cue_ref, cue_stem_len) == 0)
         return true;
 
-    // BIN stem ends with "_" + CUE stem (BlueSCSI prefix pattern)
+    // BIN stem ends with separator + CUE stem (BlueSCSI prefix pattern)
     if (bin_stem_len > cue_stem_len + 1 &&
-        bin_name[bin_stem_len - cue_stem_len - 1] == '_' &&
+        !isalnum((unsigned char)bin_name[bin_stem_len - cue_stem_len - 1]) &&
         strncasecmp(bin_name + bin_stem_len - cue_stem_len, cue_ref, cue_stem_len) == 0)
+    {
+        logmsg("---- CUE references '", cue_ref, "', matched renamed bin '", bin_name, "'");
         return true;
+    }
 
     return false;
 }
