@@ -452,9 +452,9 @@ int scsiNetworkCommand()
 		// set mode (ignored)
 		break;
 
-	// custom wifi commands all using the same opcode, with a sub-command in cdb[2]
+	// custom wifi commands all using the same opcode, with a sub-command in cdb[1]
 	case SCSI_NETWORK_WIFI_CMD:
-		DBGMSG_F("------ in scsiNetworkCommand with wi-fi command 0x%02x (size %d)", scsiDev.cdb[2], size);
+		DBGMSG_F("------ in scsiNetworkCommand with wi-fi command 0x%02x (size %d)", scsiDev.cdb[1], size);
 
 		switch (scsiDev.cdb[1]) {
 		case SCSI_NETWORK_WIFI_CMD_SCAN:

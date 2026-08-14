@@ -1,7 +1,7 @@
 /**
  * SCSI2SD V6 - Copyright (C) 2013 Michael McMaster <michael@codesrc.com>
  * Portions Copyright (C) 2014 Doug Brown <doug@downtowndougbrown.com>
- * Copyright (C) 2023 Eric Helgeson
+ * Copyright (c) 2023-2026 Eric Helgeson <eric@bluescsi.com>
  * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
  *
  * This file is licensed under the GPL version 3 or any later version. 
@@ -1701,6 +1701,14 @@ void s2s_configInit(S2S_BoardCfg* config)
     {
         memcpy(config->wifiPassword, tmp, sizeof(config->wifiPassword));
         logmsg("-- WiFiPassword = [set]");
+    }
+
+    memset(tmp, 0, sizeof(tmp));
+    ini_gets("SCSI", "WiFiSecurity", "", tmp, sizeof(tmp), CONFIGFILE);
+    if (tmp[0])
+    {
+        config->wifiSecurity = g_scsi_settings.stringToWifiSecurity(tmp);
+        logmsg("-- WiFiSecurity = ", tmp);
     }
 
 }

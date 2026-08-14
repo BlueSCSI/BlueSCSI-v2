@@ -175,6 +175,12 @@ SECTIONS
         *(.text*setNameFromImage*)
         *(.text*getBlockSize*)
 
+        /* Wi-Fi association, only used during init and reconnect. Keeps the
+         * packet path (platform_network_send/receive) in RAM. */
+        *(.text*platform_network_wifi_join*)
+        *(.text*wifi_security_name*)
+        *(.text*wifi_security_auth*)
+
         /* SCSI commands that don't require high performance */
         *(.text*scsiToolboxCommand*)
         *(.text*scsi*Diagnostic*)

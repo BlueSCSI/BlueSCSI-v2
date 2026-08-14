@@ -2,7 +2,7 @@
  * This file is originally part of ZuluSCSI adopted for BlueSCSI
  *
  * ZuluSCSI™ - Copyright (c) 2023-2025 Rabbit Hole Computing™
- * Copyright (c) 2023-2025 Eric Helgeson
+ * Copyright (c) 2023-2026 Eric Helgeson <eric@bluescsi.com>
  * 
  * This file is licensed under the GPL version 3 or any later version.  
  * 
@@ -51,6 +51,15 @@ const char * const speed_grade_strings[] =
     "B",
     "C",
     "WifiRM2"
+};
+
+// must be in the same order as bluescsi_wifi_security_t in BlueSCSI_settings.h
+const char * const wifi_security_strings[] =
+{
+    "WPA2",
+    "WPA2AES",
+    "WPA3",
+    "WPA3WPA2"
 };
 
 // Helper function for case-insensitive string compare
@@ -757,6 +766,20 @@ bluescsi_speed_grade_t BlueSCSISettings::stringToSpeedGrade(const char *speed_gr
     }
 
     return grade;
+}
+
+bluescsi_wifi_security_t BlueSCSISettings::stringToWifiSecurity(const char *wifi_security_target)
+{
+    for (uint8_t i = 0; i < sizeof(wifi_security_strings)/sizeof(wifi_security_strings[0]); i++)
+    {
+        if (strequals(wifi_security_target, wifi_security_strings[i]))
+        {
+            return (bluescsi_wifi_security_t)i;
+        }
+    }
+
+    logmsg("Setting \"", wifi_security_target, "\" does not match any known Wi-Fi security mode, using WPA2");
+    return WIFI_SECURITY_WPA2;
 }
 
 const char *BlueSCSISettings::getSpeedGradeString()
