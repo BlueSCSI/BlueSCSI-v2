@@ -75,6 +75,9 @@ extern bool g_sdcard_present;
  * High level initiator mode logic   *
  *************************************/
 
+// Not in the SCSI_MESSAGE enum in scsi.h
+#define MSG_NO_OPERATION 0x08
+
 static struct {
     // Bitmap of all drives that have been imaged
     uint32_t drives_imaged;
@@ -84,6 +87,7 @@ static struct {
     uint8_t max_retry_count;
     bool use_read10; // Always use read10 commands
     bool msc_mode;   // USB MSC initiator mode (from config or hardware switch)
+    bool use_identify; // Select with ATN and send IDENTIFY before each command
 
     // Is imaging a drive in progress, or are we scanning?
     bool imaging;
@@ -137,6 +141,7 @@ void scsiInitiatorInit()
     }
     g_initiator_state.max_retry_count = ini_getl("SCSI", "InitiatorMaxRetry", 5, CONFIGFILE);
     g_initiator_state.use_read10 = ini_getbool("SCSI", "InitiatorUseRead10", false, CONFIGFILE);
+    g_initiator_state.use_identify = ini_getbool("SCSI", "InitiatorIdentify", true, CONFIGFILE);
     g_initiator_state.use_vhd_format = ini_getbool("SCSI", "InitiatorVHD", false, CONFIGFILE);
 
     // treat initiator id as already imaged drive so it gets skipped
@@ -739,9 +744,20 @@ int scsiInitiatorRunCommand(int target_id,
                             const uint8_t *bufOut, size_t bufOutLen,
                             bool returnDataPhase, uint32_t timeout)
 {
+    // SCSI-3 targets take the LUN from the IDENTIFY message and reject
+    // anything selected without one (ILLEGAL REQUEST / LUN NOT SUPPORTED).
+    // The target only offers MESSAGE_OUT if we select with ATN asserted.
+    bool send_identify = g_initiator_state.use_identify;
+    bool identify_sent = false;
+
+    if (send_identify)
+    {
+        scsiHostPhySetATN(true);
+    }
 
     if (!scsiHostPhySelect(target_id, g_initiator_state.initiator_id))
     {
+        scsiHostPhySetATN(false);
 #ifndef BLUESCSI_NETWORK
         dbgmsg("------ Target ", target_id, " did not respond");
 #endif
@@ -774,11 +790,23 @@ int scsiInitiatorRunCommand(int target_id,
         }
         else if (phase == MESSAGE_OUT)
         {
-            uint8_t identify_msg = 0x80;
-            scsiHostWrite(&identify_msg, 1);
+            // Negate ATN before the byte is acknowledged, otherwise the target
+            // keeps asking for more messages.
+            scsiHostPhySetATN(false);
+
+            // IDENTIFY, LUN 0, no disconnect privilege. A target that asks
+            // again gets NO OPERATION rather than a second IDENTIFY.
+            uint8_t msg = identify_sent ? MSG_NO_OPERATION : 0x80;
+            identify_sent = true;
+            scsiHostWrite(&msg, 1);
         }
         else if (phase == COMMAND)
         {
+            if (send_identify && !identify_sent)
+            {
+                // Target went straight to COMMAND, it does not use messages
+                scsiHostPhySetATN(false);
+            }
             scsiHostWrite(command, cmdLen);
         }
         else if (phase == DATA_IN)
@@ -832,6 +860,7 @@ int scsiInitiatorRunCommand(int target_id,
         }
     }
 
+    scsiHostPhySetATN(false);
     scsiHostWaitBusFree();
 
     return status;
