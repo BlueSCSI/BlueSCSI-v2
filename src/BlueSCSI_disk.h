@@ -202,5 +202,7 @@ bool switchNextImage(image_config_t &img, const char* next_filename = nullptr);
 // Encode a SCSI ID (0..15) as a single filename character: '0'..'9' or 'A'..'F'.
 // Returns '\0' for out-of-range inputs.
 char scsiEncodeID(uint8_t scsi_id);
+// Decode a filename ID character ('0'-'9'/'A'-'F') to 0..15, or -1.
+int scsiDecodeID(char c);
 
 #endif /* BLUESCSI_DISK_H */

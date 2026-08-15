@@ -644,16 +644,16 @@ extern "C" int scsiToolboxCommand()
     }
     else if(unlikely(command == BLUESCSI_TOOLBOX_LIST_CDS))
     {
-        char img_dir[4];
+        char img_dir[4]; // "CDF" + NUL
         dbgmsg("BLUESCSI_TOOLBOX_LIST_CDS");
-        snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, (int)img.getTargetId());
+        snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, scsiEncodeID(img.getTargetId()));
         onListFiles(img_dir, true);
     }
     else if(unlikely(command == BLUESCSI_TOOLBOX_SET_NEXT_CD))
     {
-        char img_dir[4];
+        char img_dir[4]; // "CDF" + NUL
         dbgmsg("BLUESCSI_TOOLBOX_SET_NEXT_CD");
-        snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, (int)img.getTargetId());
+        snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, scsiEncodeID(img.getTargetId()));
         onSetNextCD(img_dir);
     }
     else if(unlikely(command == BLUESCSI_TOOLBOX_METADATA))
@@ -663,9 +663,9 @@ extern "C" int scsiToolboxCommand()
     }
     else if (unlikely(command == BLUESCSI_TOOLBOX_COUNT_CDS))
     {
-        char img_dir[4];
+        char img_dir[4]; // "CDF" + NUL
         dbgmsg("BLUESCSI_TOOLBOX_COUNT_CDS");
-        snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, (int)img.getTargetId());
+        snprintf(img_dir, sizeof(img_dir), CD_IMG_DIR, scsiEncodeID(img.getTargetId()));
         doCountFiles(img_dir, true);
     }
     else
