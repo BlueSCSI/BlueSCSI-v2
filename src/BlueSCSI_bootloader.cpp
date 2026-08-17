@@ -1,5 +1,6 @@
-/** 
+/**
  * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
+ * Copyright (c) 2025-2026 Eric Helgeson <eric@bluescsi.com>
  * 
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  * 
@@ -25,6 +26,7 @@
 #include "BlueSCSI_config.h"
 #include "BlueSCSI_log.h"
 #include <SdFat.h>
+#include <string.h>
 
 #ifdef PLATFORM_BOOTLOADER_SIZE
 
@@ -62,6 +64,14 @@ bool find_firmware_image(FsFile &file, char name[MAX_FILE_PATH + 1])
 bool program_firmware(FsFile &file)
 {
     uint32_t filesize = file.size();
+
+    if (filesize <= PLATFORM_BOOTLOADER_SIZE)
+    {
+        logmsg("Firmware file too small: ", (int)filesize, " bytes, minimum ",
+               (int)PLATFORM_BOOTLOADER_SIZE);
+        return false;
+    }
+
     uint32_t fwsize = filesize - PLATFORM_BOOTLOADER_SIZE;
     uint32_t num_pages = (fwsize + PLATFORM_FLASH_PAGE_SIZE - 1) / PLATFORM_FLASH_PAGE_SIZE;
 
@@ -88,10 +98,22 @@ bool program_firmware(FsFile &file)
         else
             LED_OFF();
 
-        if (file.read(buffer, PLATFORM_FLASH_PAGE_SIZE) <= 0)
+        int bytes_read = file.read(buffer, PLATFORM_FLASH_PAGE_SIZE);
+        if (bytes_read <= 0)
         {
             logmsg("Firmware file read failed on page ", i);
             return false;
+        }
+
+        if (bytes_read < (int)PLATFORM_FLASH_PAGE_SIZE)
+        {
+            // Only the final page may be short, elsewhere the tail is stale
+            if (i != (int)num_pages - 1)
+            {
+                logmsg("Short read on page ", i, ", got bytes: ", bytes_read);
+                return false;
+            }
+            memset(buffer + bytes_read, 0xFF, PLATFORM_FLASH_PAGE_SIZE - bytes_read);
         }
 
         if (!platform_rewrite_flash_page(PLATFORM_BOOTLOADER_SIZE + i * PLATFORM_FLASH_PAGE_SIZE, buffer))
@@ -119,6 +141,28 @@ bool program_firmware(FsFile &file)
 }
 
 #endif // PLATFORM_FLASH_SECTOR_ERASE
+
+// Keep a rejected image, but out of the way so the next boot does not retry it
+static void move_bad_firmware_aside(const char *name)
+{
+    char badname[MAX_FILE_PATH + 5];
+    size_t namelen = strlen(name);
+    if (namelen > MAX_FILE_PATH) return;
+
+    memcpy(badname, name, namelen);
+    memcpy(badname + namelen, ".bad", sizeof(".bad"));
+
+    SD.remove(badname); // rename() will not overwrite an existing file
+    if (SD.rename(name, badname))
+    {
+        logmsg("Renamed rejected firmware to ", badname);
+    }
+    else if (SD.remove(name))
+    {
+        logmsg("Removed rejected firmware ", name);
+    }
+    logmsg("Copy the firmware .zip to the SD card again to retry the update");
+}
 
 static bool mountSDCard()
 {
@@ -166,6 +210,8 @@ int bootloader_main(void)
             else
             {
                 logmsg("Firmware update failed!");
+                fwfile.close();
+                move_bad_firmware_aside(name);
                 platform_emergency_log_save();
             }
         }

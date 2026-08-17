@@ -1,5 +1,6 @@
 /**
  * ZuluSCSI™ - Copyright (c) 2024-2025 Rabbit Hole Computing™
+ * Copyright (c) 2026 Eric Helgeson <eric@bluescsi.com>
  *
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  *
@@ -46,6 +47,8 @@ namespace zipparser
             int32_t Parse(uint8_t const *buf, const size_t size);
             bool FoundMatch();
             inline uint32_t GetCompressedSize() {return compressed_data_size;}
+            // Valid once Parse() has finished the local file header
+            inline uint32_t GetCrc() {return crc;}
 
         protected:
             bool filename_match;
