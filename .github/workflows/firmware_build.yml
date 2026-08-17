@@ -91,7 +91,7 @@ jobs:
           else
             RELEASE_FLAGS="--prerelease"
           fi
-          gh release create --repo ${GITHUB_REPOSITORY} -t "$RELEASE" $RELEASE_FLAGS "$RELEASE" BlueSCSI/dist/*
+          gh release create --repo ${GITHUB_REPOSITORY} --draft -t "$RELEASE" $RELEASE_FLAGS "$RELEASE" BlueSCSI/dist/*
           status=$?
           set -e
           if [ $status -ne 0 ]; then
