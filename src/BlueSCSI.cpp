@@ -135,6 +135,7 @@ void init_logfile()
   bool truncate = first_open_after_boot;
   if (truncate)
   {
+    SD.remove("lastlog.txt");
     SD.rename(LOGFILE, "lastlog.txt");
   }
   int flags = O_WRONLY | O_CREAT | (truncate ? O_TRUNC : O_APPEND);
@@ -1083,6 +1084,65 @@ static void check_for_unused_update_files()
   }
 }
 
+// CRC32 nibble table, PKZIP polynomial
+static const uint32_t g_crc32_nibbles[16] = {
+  0x00000000, 0x1DB71064, 0x3B6E20C8, 0x26D930AC,
+  0x76DC4190, 0x6B6B51F4, 0x4DB26158, 0x5005713C,
+  0xEDB88320, 0xF00F9344, 0xD6D6A3E8, 0xCB61B38C,
+  0x9B64C2B0, 0x86D3D2D4, 0xA00AE278, 0xBDBDF21C
+};
+
+__attribute__((optimize("Os")))
+static uint32_t crc32_update(uint32_t crc, const uint8_t *data, size_t len)
+{
+  for (size_t i = 0; i < len; i++)
+  {
+    crc ^= data[i];
+    crc = (crc >> 4) ^ g_crc32_nibbles[crc & 0x0F];
+    crc = (crc >> 4) ^ g_crc32_nibbles[crc & 0x0F];
+  }
+  return crc;
+}
+
+// Checks the extracted image against the size and CRC32 from the zip header.
+// Takes an already open file to keep firmware_update()'s stack frame down.
+__attribute__((optimize("Os"), noinline))
+static bool verify_extracted_firmware(FsFile &check, uint32_t expected_size,
+                                      uint32_t expected_crc, uint8_t *buf, size_t bufsize)
+{
+  if (check.fileSize() != expected_size)
+  {
+    logmsg("Extracted firmware is ", (int)check.fileSize(), " bytes on the card");
+    logmsg("Firmware package says ", (int)expected_size, " bytes");
+    return false;
+  }
+
+  uint32_t crc = 0xFFFFFFFF;
+  uint32_t total = 0;
+  int bytes_read;
+  while ((bytes_read = check.read(buf, bufsize)) > 0)
+  {
+    crc = crc32_update(crc, buf, bytes_read);
+    total += bytes_read;
+  }
+  crc ^= 0xFFFFFFFF;
+
+  if (total != expected_size)
+  {
+    logmsg("Could only read back ", (int)total, " bytes of the extracted firmware");
+    return false;
+  }
+
+  if (crc != expected_crc)
+  {
+    logmsg("Firmware CRC on the card: ", crc);
+    logmsg("Firmware CRC in the package: ", expected_crc);
+    return false;
+  }
+
+  return true;
+}
+
 // Update firmware by unzipping the firmware package
 __attribute__((optimize("Os")))
 static void firmware_update()
@@ -1129,19 +1189,20 @@ static void firmware_update()
   while ((bytes_read = file.read(buf, sizeof(buf))) > 0)
   {
     parsed_length = parser.Parse(buf, bytes_read);
-    if (parsed_length == sizeof(buf))
+    // bytes_read, not sizeof(buf): a short read would break both seeks below
+    if (parsed_length == bytes_read)
        continue;
     if (parsed_length >= 0)
     {
       if (!parser.FoundMatch())
       {
         parser.Reset();
-        file.seekSet(file.position() - (sizeof(buf) - parsed_length) + parser.GetCompressedSize());
+        file.seekSet(file.position() - (bytes_read - parsed_length) + parser.GetCompressedSize());
       }
       else
       {
         // seek to start of data in matching file
-        file.seekSet(file.position() - (sizeof(buf) - parsed_length));
+        file.seekSet(file.position() - (bytes_read - parsed_length));
         break;
       }
     }
@@ -1160,29 +1221,71 @@ static void firmware_update()
 
     logmsg("Unzipping matching firmware with prefix: ", FIRMWARE_NAME_PREFIX);
     FsFile target_firmware;
-    char firmware_name[64] = {0};
+    char firmware_name[sizeof(FIRMWARE_NAME_PREFIX) + 4] = {0};
     memcpy(firmware_name, FIRMWARE_NAME_PREFIX, sizeof(FIRMWARE_NAME_PREFIX) - 1);
     memcpy(firmware_name + sizeof(FIRMWARE_NAME_PREFIX) - 1, ".bin", sizeof(".bin"));
-    target_firmware.open(&root, firmware_name, O_BINARY | O_WRONLY | O_CREAT | O_TRUNC);
-    uint32_t position = 0;
-    while ((bytes_read = file.read(buf, sizeof(buf))) > 0)
+
+    const uint32_t expected_size = parser.GetCompressedSize();
+    const uint32_t expected_crc = parser.GetCrc();
+    bool extracted = false;
+
+    if (!target_firmware.open(&root, firmware_name, O_BINARY | O_WRONLY | O_CREAT | O_TRUNC))
     {
-      if (bytes_read > parser.GetCompressedSize() - position)
-        bytes_read =  parser.GetCompressedSize() - position;
-      target_firmware.write(buf, bytes_read);
-      position += bytes_read;
-      if (position >= parser.GetCompressedSize())
+      logmsg("Could not create the firmware image on the SD card");
+    }
+    else
+    {
+      uint32_t position = 0;
+      bool write_ok = true;
+      while (position < expected_size && (bytes_read = file.read(buf, sizeof(buf))) > 0)
       {
-        break;
+        if ((uint32_t)bytes_read > expected_size - position)
+          bytes_read = expected_size - position;
+
+        if (target_firmware.write(buf, bytes_read) != (size_t)bytes_read)
+        {
+          logmsg("SD card write failed at offset ", (int)position, " while extracting firmware");
+          write_ok = false;
+          break;
+        }
+        position += bytes_read;
+      }
+
+      if (write_ok && target_firmware.getWriteError())
+      {
+        logmsg("SD card reported a write error while extracting firmware");
+        write_ok = false;
+      }
+      target_firmware.close();
+
+      if (write_ok && position != expected_size)
+      {
+        logmsg("Firmware package ended early at byte ", (int)position, ", it is truncated");
+        write_ok = false;
+      }
+
+      if (write_ok)
+      {
+        // A write that never reached the card looks fine from the write side
+        if (!target_firmware.open(&root, firmware_name, O_BINARY | O_RDONLY))
+        {
+          logmsg("Could not reopen the extracted firmware to verify it");
+        }
+        else
+        {
+          extracted = verify_extracted_firmware(target_firmware, expected_size,
+                                                expected_crc, buf, sizeof(buf));
+          target_firmware.close();
+        }
       }
     }
-    // zip file has a central directory at the end of the file,
-    // so the compressed data should never hit the end of the file
-    // so bytes read should always be greater than 0 for a valid datastream
-    if (bytes_read > 0)
+
+    file.close();
+
+    if (extracted)
     {
-      target_firmware.close();
-      file.close();
+      // Drop the package only once the image verifies, so a bad
+      // extraction can still be retried
       root.remove(name);
       root.close();
       logmsg("Update extracted from package, rebooting MCU");
@@ -1190,14 +1293,20 @@ static void firmware_update()
     }
     else
     {
-      target_firmware.close();
-      logmsg("Error reading firmware package file");
       root.remove(firmware_name);
+      logmsg("Firmware update failed, keeping the package - power cycle to retry");
+      root.close();
     }
+    return;
   }
   file.close();
   root.close();
 }
+
+#ifdef UNIT_TEST
+// Test accessor - firmware_update() is static
+void bluescsi_test_firmware_update() { firmware_update(); }
+#endif
 
 // Checks if SD card is still present
 static bool poll_sd_card()
