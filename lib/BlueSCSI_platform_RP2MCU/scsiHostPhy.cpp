@@ -475,9 +475,11 @@ void scsiHostWaitBusFree()
     // Wait for the target to release BSY signal.
     // If the target is expecting more data, transfer dummy bytes.
     // This happens for some reason with READ6 command on IBM H3171-S2.
+    // A dead target holds BSY and REQ forever, so both loops need the deadline
+    // and the watchdog reset request or the drain below never returns.
     uint32_t start = platform_millis();
     int extra_bytes = 0;
-    while (SCSI_IN(BSY))
+    while (SCSI_IN(BSY) && !g_scsiHostPhyReset)
     {
         platform_poll();
 
@@ -487,7 +489,8 @@ void scsiHostWaitBusFree()
             // Transfer dummy bytes
              sleep_us(1);
 
-             while (SCSI_IN(REQ))
+             while (SCSI_IN(REQ) && !g_scsiHostPhyReset &&
+                    (uint32_t)(platform_millis() - start) <= 10000)
              {
                 scsiHostReadOneByte(nullptr);
                 extra_bytes++;
