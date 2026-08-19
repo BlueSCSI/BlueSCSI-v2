@@ -83,6 +83,11 @@ static uint32_t wifi_security_auth(uint8_t security)
 	}
 }
 
+// Whether the current association was made with a passphrase. The CYW43 driver
+// has no getter for the auth mode of a live association, so remember what was
+// asked for at join time.
+static bool wifi_join_secured = false;
+
 bool platform_network_supported()
 {
 	/* from cores/rp2040/RP2040Support.h */
@@ -179,6 +184,8 @@ bool platform_network_wifi_join(char *ssid, char *password, bool reconnect)
 		wifi_reconnect_interval = WIFI_RECONNECT_INTERVAL;
 		wifi_reconnect_time = platform_millis();
 	}
+
+	wifi_join_secured = (password != NULL && password[0] != 0);
 
 	if (password == NULL || password[0] == 0)
 	{
@@ -437,9 +444,26 @@ char * platform_network_wifi_bssid()
 
 	memset(bssid, 0, sizeof(bssid));
 
-	/* TODO */
+	int ret = cyw43_wifi_get_bssid(&cyw43_state, (uint8_t *)bssid);
+	if (ret)
+	{
+		dbgmsg("Failed getting Wi-Fi BSSID: ", ret);
+		return NULL;
+	}
 
 	return bssid;
+}
+
+uint8_t platform_network_wifi_flags()
+{
+	if (!wifi_join_secured)
+		return 0;
+
+	// Only claim authentication for an association that actually happened
+	if (cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA) < CYW43_LINK_JOIN)
+		return 0;
+
+	return WIFI_NETWORK_FLAG_AUTH;
 }
 
 int platform_network_wifi_channel()
