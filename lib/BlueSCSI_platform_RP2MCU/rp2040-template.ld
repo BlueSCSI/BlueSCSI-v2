@@ -196,6 +196,10 @@ SECTIONS
         *(.text*doModeSense*)
         *(.text*scsiModeCommand*)
         *(.text*doPerformEject*)
+        /* Once-per-error / once-per-scan commands, never in the data path */
+        *(.text*RequestSense*)
+        *(.text*ReportLUNs*)
+        *(.text*ReserveRelease*)
 
         /* CDROM/Tape/Vendor commands. Most of these are non-performance-critical, and
          * the important parts will fit in cache when in use. */
