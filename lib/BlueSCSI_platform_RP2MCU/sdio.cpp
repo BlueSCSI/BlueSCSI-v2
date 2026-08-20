@@ -35,6 +35,7 @@
 #if defined(SD_USE_SDIO) && !defined(SD_USE_RP2350_SDIO)
 
 #include "sdio.h"
+#include "sdio_write_response.h"
 #include <hardware/pio.h>
 #include <hardware/dma.h>
 //#include <hardware/gpio.h>
@@ -883,74 +884,48 @@ sdio_status_t rp2040_sdio_tx_start(const uint8_t *buffer, uint32_t num_blocks)
 sdio_status_t check_sdio_write_response(uint32_t card_response)
 {
 #ifdef ULTRA_SDIO
-    uint8_t wr_status = card_response & 0xF8;
+    sdio_write_response_t resp = sdio_classify_write_response_ultra(card_response);
+
+    if (resp == SDIO_WR_UNKNOWN &&
+        (card_response & 0xF8) == 0x50 && g_sdio_cid.mid == 0x41)  // Kensington card behavior is different
+    {
+        resp = SDIO_WR_ACCEPTED;
+    }
 #else
     uint8_t wr_status = card_response & 0x1F;
-#endif
-    // 0 | 3 status bits | 1 
+    // 0 | 3 status bits | 1
     // 0b00101 = data accepted
     // 0b01011 = CRC error
     // 0b01101 = Write Error
-
-#ifdef ULTRA_SDIO
-    if (wr_status == 0x28 ||
-        (wr_status == 0x50 && g_sdio_cid.mid == 0x41))  // Kensington card behavior is different
-#else
-    if (wr_status == 0b101)
+    sdio_write_response_t resp = SDIO_WR_UNKNOWN;
+    if (wr_status == 0b101)          resp = SDIO_WR_ACCEPTED;
+    else if (wr_status == 0b1011)    resp = SDIO_WR_CRC_ERROR;
+    else if (wr_status == 0b1101)    resp = SDIO_WR_WRITE_ERROR;
 #endif
+
+    if (resp == SDIO_WR_ACCEPTED)
     {
         return SDIO_OK;
     }
-#ifdef ULTRA_SDIO
-    else if (wr_status == 0x58)
-#else
-    else if (wr_status == 0b1011)
-#endif
+
+    if (g_record_sdio_errors)
     {
-        if (g_record_sdio_errors) {
+        if (resp == SDIO_WR_CRC_ERROR)
             logmsg("SDIO card reports write CRC error, S: ", card_response, " M: ", (uint8_t)g_sdio.speed_mode);
-        }
-
-#ifdef SDIO_DEBUG
-        // Debug Indicate
-        sio_hw->gpio_hi_set = 0b00100000;
-        asm volatile ("nop \n nop");
-        sio_hw->gpio_hi_clr = 0b11100000;
-#endif
-        return SDIO_ERR_WRITE_CRC;    
-    }
-#ifdef ULTRA_SDIO
-    else if (wr_status == 0x30 || wr_status ==  0x68)
-#else
-    else if (wr_status == 0b1101)
-#endif
-    {
-        if (g_record_sdio_errors) {
+        else if (resp == SDIO_WR_WRITE_ERROR)
             logmsg("SDIO card reports write failure, S: ", card_response, " M: ", (uint8_t)g_sdio.speed_mode);
-        }
-
-#ifdef SDIO_DEBUG
-        // Debug Indicate
-        sio_hw->gpio_hi_set = 0b00100000;
-        asm volatile ("nop \n nop");
-        sio_hw->gpio_hi_clr = 0b11100000;
-#endif
-        return SDIO_ERR_WRITE_FAIL;    
-    }
-    else
-    {
-        if (g_record_sdio_errors) {
+        else
             logmsg("SDIO card reports unknown write S: ", card_response, " M: ", (uint8_t)g_sdio.speed_mode);
-        }
+    }
 
 #ifdef SDIO_DEBUG
-        // Debug Indicate
-        sio_hw->gpio_hi_set = 0b00100000;
-        asm volatile ("nop \n nop");
-        sio_hw->gpio_hi_clr = 0b11100000;
+    // Debug Indicate
+    sio_hw->gpio_hi_set = 0b00100000;
+    asm volatile ("nop \n nop");
+    sio_hw->gpio_hi_clr = 0b11100000;
 #endif
-        return SDIO_ERR_WRITE_FAIL;    
-    }
+
+    return (resp == SDIO_WR_CRC_ERROR) ? SDIO_ERR_WRITE_CRC : SDIO_ERR_WRITE_FAIL;
 }
 
 // When a block finishes, this IRQ handler starts the next one
