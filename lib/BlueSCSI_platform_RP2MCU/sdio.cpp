@@ -885,12 +885,6 @@ sdio_status_t check_sdio_write_response(uint32_t card_response)
 {
 #ifdef ULTRA_SDIO
     sdio_write_response_t resp = sdio_classify_write_response_ultra(card_response);
-
-    if (resp == SDIO_WR_UNKNOWN &&
-        (card_response & 0xF8) == 0x50 && g_sdio_cid.mid == 0x41)  // Kensington card behavior is different
-    {
-        resp = SDIO_WR_ACCEPTED;
-    }
 #else
     uint8_t wr_status = card_response & 0x1F;
     // 0 | 3 status bits | 1
