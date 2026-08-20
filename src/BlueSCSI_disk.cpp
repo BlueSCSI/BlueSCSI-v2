@@ -3346,6 +3346,20 @@ static void scsiDiskSkip(uint32_t lba, uint32_t blocks, uint8_t mask_length, uin
         g_disk_transfer.skip_direction = skip_direction;
         g_disk_transfer.skip_position = 0;
 
+#ifdef PREFETCH_BUFFER_SIZE
+        if (skip_direction == 0xE8)
+        {
+            // A Skip Read gathers its sectors per the mask, which skips and
+            // reorders relative to a straight LBA run. scsiDiskStartRead()
+            // consults the prefetch cache unconditionally, and that cache
+            // holds sectors from a prior ordinary contiguous read, so the
+            // linked Read10 that follows would be served contiguous data and
+            // silently bypass the mask. Invalidate it here.
+            g_scsi_prefetch.bytes = 0;
+            g_scsi_prefetch.sector = 0;
+        }
+#endif
+
         // Support optional linked command (CDB byte 9 bit 0)
         if (scsiDev.cdb[9] & 1)
         {
