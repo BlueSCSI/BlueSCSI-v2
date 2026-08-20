@@ -2739,6 +2739,22 @@ void diskDataOut()
             }
         }
 
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
+        // A Skip Write walks the mask sector by sector, so it can only commit
+        // whole sectors. len is sized from SD buffer availability and the
+        // PLATFORM_OPTIMAL_*_SD_WRITE_SIZE constants, which are 512-byte
+        // granular and know nothing of bytesPerSector, so on 520/522 byte
+        // AS/400 sectors it is essentially never a sector multiple. Round it
+        // down here, before it is used for anything, so scsiFinishRead(), the
+        // write below and the bytes_sd credit all agree on the same amount.
+        // The remainder stays in the SCSI buffer and is picked up once the
+        // next chunk completes the sector.
+        if (g_disk_transfer.skip_direction == 0xEA)
+        {
+            len -= len % bytesPerSector;
+        }
+#endif
+
         if (len == 0)
         {
             // Nothing ready to transfer, check if we can read more from SCSI bus
@@ -2806,10 +2822,12 @@ void diskDataOut()
             }
             else if (g_disk_transfer.skip_direction == 0xEA)
             {
-                // Skip Write: selectively write sectors based on skip mask
-                uint32_t aligned_len = len - (len % bytesPerSector);
-                int sectors_remaining = aligned_len / bytesPerSector;
+                // Skip Write: selectively write sectors based on skip mask.
+                // len was rounded to a whole number of sectors above, so every
+                // byte received in this chunk is consumed here.
+                int sectors_remaining = len / bytesPerSector;
                 uint8_t *ptr = buf;
+                bool write_ok = true;
 
                 while (sectors_remaining > 0)
                 {
@@ -2824,10 +2842,7 @@ void diskDataOut()
                         if (img.file.write(ptr, write_bytes) != write_bytes)
                         {
                             logmsg("SD card write failed during Skip Write: ", SD.sdErrorCode());
-                            scsiDev.status = CHECK_CONDITION;
-                            scsiDev.target->sense.code = MEDIUM_ERROR;
-                            scsiDev.target->sense.asc = WRITE_ERROR_AUTO_REALLOCATION_FAILED;
-                            scsiDev.phase = STATUS;
+                            write_ok = false;
                             break;
                         }
                         sectors_remaining -= run;
@@ -2837,6 +2852,25 @@ void diskDataOut()
                     {
                         break;
                     }
+                }
+
+                // The mask must cover every sector in this chunk. Exiting with
+                // sectors unfilled means it ran out early, so fail the command
+                // instead of silently dropping them. Matches the guard the
+                // Skip Read side already has.
+                if (write_ok && sectors_remaining > 0)
+                {
+                    logmsg("Skip Write mask exhausted with ", (int)sectors_remaining,
+                           " sectors unfilled");
+                    write_ok = false;
+                }
+
+                if (!write_ok)
+                {
+                    scsiDev.status = CHECK_CONDITION;
+                    scsiDev.target->sense.code = MEDIUM_ERROR;
+                    scsiDev.target->sense.asc = WRITE_ERROR_AUTO_REALLOCATION_FAILED;
+                    scsiDev.phase = STATUS;
                 }
             }
             else
@@ -2862,12 +2896,24 @@ void diskDataOut()
 
     // Release SCSI bus
     scsiFinishRead(NULL, 0, &g_disk_transfer.parityError);
+    transfer.currentBlock += blockcount;
 #if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE)
-    if (g_disk_transfer.skip_direction)
+    // A Skip Write larger than one SD write buffer spans several diskDataOut()
+    // calls: skip commands allow up to 256 blocks, but blockcount is capped to
+    // sizeof(scsiDev.data)/bytesPerSector (~125 at 522 bytes) whenever the
+    // sector size does not divide the buffer evenly. skip_direction,
+    // skip_position and skip_mask must survive until the whole command is
+    // done, or the next call falls through to a plain contiguous write for the
+    // remainder and ignores the mask entirely. Clear only once the command has
+    // finished, failed, or been reset.
+    if (g_disk_transfer.skip_direction &&
+        (transfer.currentBlock == transfer.blocks ||
+         scsiDev.phase != DATA_OUT || scsiDev.resetFlag))
+    {
         g_disk_transfer.skip_direction = 0;
+    }
 #endif
 
-    transfer.currentBlock += blockcount;
     scsiDev.dataPtr = scsiDev.dataLen = 0;
 
     if (transfer.currentBlock == transfer.blocks)
