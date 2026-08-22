@@ -46,6 +46,7 @@ extern "C" {
 #include <hardware/sync.h>
 #include <hardware/vreg.h>
 #include <hardware/watchdog.h>
+#include <hardware/structs/scb.h>
 #include <hardware/structs/watchdog.h>
 #include <pico/bootrom.h>
 #include "scsi_accel_target.h"
@@ -1502,9 +1503,19 @@ static void usb_input_poll()
                 break;
             case 'Y':
             case 'y':
-                if (basic_reboot_keyed || mass_storage_reboot_keyed)
+                if (mass_storage_reboot_keyed)
                 {
-                    logmsg("Rebooting", mass_storage_reboot_keyed ? " into mass storage": "");
+                    logmsg("Rebooting into mass storage");
+                    // A watchdog reset drops the supply on some boards (Ultra Wide
+                    // reports HAD_POR afterwards), wiping the scratch0 magic.
+                    // SYSRESETREQ keeps the watchdog block powered so it survives.
+                    platform_delay_ms_with_usb(200);
+                    scb_hw->aircr = 0x05FA0004;
+                    while (1);
+                }
+                else if (basic_reboot_keyed)
+                {
+                    logmsg("Rebooting");
                     watchdog_reboot(0, 0, 2000);
                 } else if (uf2_reboot_keyed) {
                     rom_reset_usb_boot(0, 0);
