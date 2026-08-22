@@ -28,6 +28,7 @@
 // It is derived from disk.c in SCSI2SD V6.
 
 #include "BlueSCSI_disk.h"
+#include "floppy.h"
 #include "BlueSCSI_log.h"
 #include "BlueSCSI_config.h"
 #include "BlueSCSI_settings.h"
@@ -400,6 +401,28 @@ static bool find_chs_capacity(uint64_t lba, uint16_t max_cylinders, uint8_t min_
     return found_chs;
 }
 
+// Match a floppy image against the standard formats by size so the geometry
+// and MODE SENSE page 05h describe the disk that is actually mounted.
+static bool find_floppy_geometry(image_config_t &img, uint16_t &c, uint8_t &h, uint8_t &s)
+{
+    if (img.deviceType != S2S_CFG_FLOPPY_14MB)
+        return false;
+
+    const S2S_FloppyFormat *format = s2s_floppyFormat(img.scsiSectors, img.bytesPerSector);
+    if (!format)
+    {
+        logmsg("---- WARNING: ", (int)img.scsiSectors, " x ", (int)img.bytesPerSector,
+               " byte blocks is not a standard floppy size, using a derived geometry");
+        return false;
+    }
+
+    logmsg("---- Floppy format: ", format->name);
+    c = format->cylinders;
+    h = format->heads;
+    s = format->sectorsPerTrack;
+    return true;
+}
+
 static void autoConfigGeometry(image_config_t &img)
 {
     const char *method = "INI config";
@@ -410,12 +433,10 @@ static void autoConfigGeometry(image_config_t &img)
         uint8_t sect = 63;
         bool found_chs = false;
 
-        if (img.deviceType == S2S_CFG_FLOPPY_14MB && img.scsiSectors <= 2880)
+        if (find_floppy_geometry(img, cyl, head, sect))
         {
-            method = "device type floppy";
-            sect = 18;
-            head = 80;
             found_chs = true;
+            method = "floppy format";
         }
         else if (img.scsiSectors <= 1032192)
         {

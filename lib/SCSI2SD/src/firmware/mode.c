@@ -23,6 +23,7 @@
 #include "mode.h"
 #include "disk.h"
 #include "inquiry.h"
+#include "floppy.h"
 #include "BlueSCSI_mode.h"
 #include "bluescsi_toolbox.h"
 
@@ -146,13 +147,13 @@ static const uint8_t FlexibleDiskDriveGeometry[] =
 {
 0x05, // Page code
 0x1E, // Page length
-0x01, 0xF4, // Transfer Rate (500kbits)
-0x01, // heads
-18, // sectors per track
-0x20,0x00, // bytes per sector
-0x00, 80, // Cylinders
-0x00, 0x80, // Write-precomp
-0x00, 0x80, // reduced current,
+0x00, 0x00, // Transfer Rate
+0x00, // heads
+0x00, // sectors per track
+0x00, 0x00, // bytes per sector
+0x00, 0x00, // Cylinders
+0x00, 0x00, // Write-precomp (set to the cylinder count = disabled)
+0x00, 0x00, // reduced current (set to the cylinder count = disabled)
 0x00, 0x00, // Drive step rate
 0x00, // pulse width
 0x00, 0x00, // Head settle delay
@@ -308,6 +309,47 @@ static void pageIn(int pc, int dataIdx, const uint8_t* pageData, int pageLen)
 	}
 }
 
+typedef struct
+{
+	uint16_t transferRate;
+	uint16_t cylinders;
+	uint16_t bytesPerSector;
+	uint8_t heads;
+	uint8_t sectorsPerTrack;
+	uint8_t mediumType;
+} FloppyGeometry;
+
+// Describe the mounted image rather than a fixed 1.44MB disk. The configured
+// geometry wins so an explicit INI SectorsPerTrack/HeadsPerCylinder still
+// applies; the size match only supplies the transfer rate and medium type.
+static void getFloppyGeometry(FloppyGeometry* geo)
+{
+	uint16_t bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+	uint32_t blocks = scsiDev.target->cfg->scsiSectors;
+	const S2S_FloppyFormat* format = s2s_floppyFormat(blocks, bytesPerSector);
+
+	geo->bytesPerSector = bytesPerSector;
+	geo->heads = scsiDev.target->cfg->headsPerCylinder;
+	geo->sectorsPerTrack = scsiDev.target->cfg->sectorsPerTrack;
+
+	if (format)
+	{
+		geo->transferRate = format->transferRate;
+		geo->mediumType = format->mediumType;
+		if (geo->heads == 0) geo->heads = format->heads;
+		if (geo->sectorsPerTrack == 0) geo->sectorsPerTrack = format->sectorsPerTrack;
+	}
+	else
+	{
+		geo->transferRate = 0x01F4;
+		geo->mediumType = s2s_floppyMediumType(geo->heads);
+	}
+
+	uint32_t track = (uint32_t)geo->heads * geo->sectorsPerTrack;
+	uint32_t cylinders = track ? (blocks / track) : 0;
+	geo->cylinders = (cylinders > 0xFFFF) ? 0xFFFF : (uint16_t)cylinders;
+}
+
 static void doModeSense(
 	int sixByteCmd, int dbd, int pc, int pageCode, int allocLength)
 {
@@ -317,6 +359,12 @@ static void doModeSense(
 	// Skip the Mode Data Length, we set that last.
 	int idx = 1;
 	if (!sixByteCmd) ++idx;
+
+	FloppyGeometry floppyGeo = {0};
+	if (scsiDev.target->cfg->deviceType == S2S_CFG_FLOPPY_14MB)
+	{
+		getFloppyGeometry(&floppyGeo);
+	}
 
 	uint8_t mediumType = 0;
 	uint8_t deviceSpecificParam = 0;
@@ -334,7 +382,7 @@ static void doModeSense(
 		break;
 
 	case S2S_CFG_FLOPPY_14MB:
-		mediumType = 0x1E; // 90mm/3.5"
+		mediumType = floppyGeo.mediumType;
 		deviceSpecificParam =
 			(blockDev.state & DISK_WP) ? 0x80 : 0;
 		density = 0; // reserved for direct access
@@ -571,6 +619,21 @@ static void doModeSense(
 	{
 		pageFound = 1;
 		pageIn(pc, idx, FlexibleDiskDriveGeometry, sizeof(FlexibleDiskDriveGeometry));
+
+		if (pc != 0x01)
+		{
+			scsiDev.data[idx+2] = floppyGeo.transferRate >> 8;
+			scsiDev.data[idx+3] = floppyGeo.transferRate & 0xFF;
+			scsiDev.data[idx+4] = floppyGeo.heads;
+			scsiDev.data[idx+5] = floppyGeo.sectorsPerTrack;
+			scsiDev.data[idx+6] = floppyGeo.bytesPerSector >> 8;
+			scsiDev.data[idx+7] = floppyGeo.bytesPerSector & 0xFF;
+			scsiDev.data[idx+8] = floppyGeo.cylinders >> 8;
+			scsiDev.data[idx+9] = floppyGeo.cylinders & 0xFF;
+			memcpy(&scsiDev.data[idx+10], &scsiDev.data[idx+8], 2);
+			memcpy(&scsiDev.data[idx+12], &scsiDev.data[idx+8], 2);
+		}
+
 		idx += sizeof(FlexibleDiskDriveGeometry);
 	}
 
