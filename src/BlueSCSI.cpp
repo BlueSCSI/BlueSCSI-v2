@@ -899,7 +899,6 @@ STATIC_TESTABLE bool mountSDCard()
 
   // Do we have any kind of card?
   if (!SD.card() || SD.sdErrorCode() != 0) {
-    logmsg("SD Error Code: ", SD.sdErrorCode());
     return false;
   }
 
@@ -1453,6 +1452,11 @@ STATIC_TESTABLE void bluescsi_setup_sd_card(bool wait_for_card = true)
       {
         logmsg("======== Reinitializing BlueSCSI after reclock ========");
         g_sdcard_present = mountSDCard();
+        if (!g_sdcard_present)
+        {
+          logmsg("SD card init failed after reclock, sdErrorCode: ", (int)SD.sdErrorCode(),
+                 " sdErrorData: ", (int)SD.sdErrorData());
+        }
       }
     }
     else
