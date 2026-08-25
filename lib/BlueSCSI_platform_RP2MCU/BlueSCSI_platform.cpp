@@ -1479,7 +1479,6 @@ static void usb_input_poll()
                 mass_storage_reboot_keyed = true;
                 basic_reboot_keyed = uf2_reboot_keyed = false;
                 logmsg("Boot into mass storage requested, press 'y' to engage or any key to clear");
-                *scratch0 = REBOOT_INTO_MASS_STORAGE_MAGIC_NUM;
                 break;
             case 'B':
             case 'b':
@@ -1509,7 +1508,18 @@ static void usb_input_poll()
                     // A watchdog reset drops the supply on some boards (Ultra Wide
                     // reports HAD_POR afterwards), wiping the scratch0 magic.
                     // SYSRESETREQ keeps the watchdog block powered so it survives.
-                    platform_delay_ms_with_usb(200);
+                    // Arm only once confirmed. Setting it on 'm' outlived
+                    // "Cleared reboot setting" and any later reset booted into
+                    // mass storage.
+                    *scratch0 = REBOOT_INTO_MASS_STORAGE_MAGIC_NUM;
+                    // platform_delay_ms_with_usb() only runs tud_task(); usb_log_poll()
+                    // is what moves the log into the CDC FIFO, so pump both or the
+                    // message above never reaches the console before the reset.
+                    for (int i = 0; i < 20; i++)
+                    {
+                        usb_log_poll();
+                        platform_delay_ms_with_usb(10);
+                    }
                     scb_hw->aircr = 0x05FA0004;
                     while (1);
                 }
