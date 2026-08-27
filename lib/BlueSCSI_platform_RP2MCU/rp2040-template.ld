@@ -162,6 +162,7 @@ SECTIONS
 
         /* Only reached after an SD transfer has already failed */
         *(.text*diskWriteErrorSense*)
+        *(.text*sdio_log_data_timeout*)
         *(.text*platform_sd_error_is_medium_defect*)
 
         /* BlueSCSI_disk functions that are only used during init */
