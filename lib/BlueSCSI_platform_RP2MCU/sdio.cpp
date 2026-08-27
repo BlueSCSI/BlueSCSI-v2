@@ -761,12 +761,18 @@ sdio_status_t rp2040_sdio_rx_poll(uint32_t *bytes_complete)
     }
     else if ((uint32_t)(platform_millis() - g_sdio.transfer_start_time) > 1000)
     {
-        dbgmsg("rp2040_sdio_rx_poll() timeout, "
-            "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_DATA_SM) - (int)g_sdio.pio_data_rx_offset,
-            " RXF: ", (int)pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_DATA_SM),
-            " TXF: ", (int)pio_sm_get_tx_fifo_level(SDIO_PIO, SDIO_DATA_SM),
-            " DMA CNT: ", dma_hw->ch[SDIO_DMA_CH].al2_transfer_count,
-            " BD: ", g_sdio.blocks_done);
+        // Visible by default: a data timeout is rare, and BD/TB/ST are what
+        // separate a card that stalled from a transfer that never advanced.
+        if (g_record_sdio_errors) {
+            logmsg("rp2040_sdio_rx_poll() timeout, "
+                "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_DATA_SM) - (int)g_sdio.pio_data_rx_offset,
+                " RXF: ", (int)pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_DATA_SM),
+                " TXF: ", (int)pio_sm_get_tx_fifo_level(SDIO_PIO, SDIO_DATA_SM),
+                " DMA CNT: ", dma_hw->ch[SDIO_DMA_CH].al2_transfer_count,
+                " BD: ", g_sdio.blocks_done,
+                " TB: ", g_sdio.total_blocks,
+                " ST: ", (int)g_sdio.transfer_state);
+        }
         rp2040_sdio_stop();
         return SDIO_ERR_DATA_TIMEOUT;
     }
@@ -1008,11 +1014,18 @@ sdio_status_t rp2040_sdio_tx_poll(uint32_t *bytes_complete)
     }
     else if ((uint32_t)(platform_millis() - g_sdio.transfer_start_time) > 1000)
     {
-        dbgmsg("rp2040_sdio_tx_poll() timeout, "
-            "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_CMD_SM) - (int)g_sdio.pio_data_tx_offset,
-            " RXF: ", (int)pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_CMD_SM),
-            " TXF: ", (int)pio_sm_get_tx_fifo_level(SDIO_PIO, SDIO_CMD_SM),
-            " DMA CNT: ", dma_hw->ch[SDIO_DMA_CH].al2_transfer_count);
+        // ST 3 (SDIO_TX_WAIT_IDLE) means the data left and the card is still
+        // busy; ST 2 (SDIO_TX) means the block itself never finished.
+        if (g_record_sdio_errors) {
+            logmsg("rp2040_sdio_tx_poll() timeout, "
+                "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_CMD_SM) - (int)g_sdio.pio_data_tx_offset,
+                " RXF: ", (int)pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_CMD_SM),
+                " TXF: ", (int)pio_sm_get_tx_fifo_level(SDIO_PIO, SDIO_CMD_SM),
+                " DMA CNT: ", dma_hw->ch[SDIO_DMA_CH].al2_transfer_count,
+                " BD: ", g_sdio.blocks_done,
+                " TB: ", g_sdio.total_blocks,
+                " ST: ", (int)g_sdio.transfer_state);
+        }
 
         rp2040_sdio_stop();
         return SDIO_ERR_DATA_TIMEOUT;
