@@ -2183,6 +2183,27 @@ static void diskSpecialDataOutStop()
     scsiDev.dataLen = 0;
 }
 
+// Pick the sense for a failed SD write. Only a card that refused the data is a
+// medium defect; 0x0C02 tells the host the sector is dead and unreallocatable,
+// so it retires the block instead of retrying. A transfer that timed out or
+// failed CRC has damaged nothing and belongs under ABORTED COMMAND, which hosts
+// do retry.
+void diskWriteErrorSense(uint8_t sd_error, uint8_t *sense_key, uint16_t *asc)
+{
+    if (platform_sd_error_is_medium_defect(sd_error))
+    {
+        *sense_key = MEDIUM_ERROR;
+        *asc = WRITE_ERROR_AUTO_REALLOCATION_FAILED;
+    }
+    else
+    {
+        *sense_key = ABORTED_COMMAND;
+        *asc = (sd_error == SD_ERROR_DATA_TIMEOUT)
+                   ? LOGICAL_UNIT_COMMUNICATION_TIMEOUT
+                   : LOGICAL_UNIT_COMMUNICATION_FAILURE;
+    }
+}
+
 static void diskSpecialDataOutError(uint8_t sense_code, uint16_t asc)
 {
     diskSpecialDataOutStop();
@@ -2504,9 +2525,13 @@ static void diskWriteVerifyDataOut()
 
     if (img.file.write(writeBuffer, chunkBytes) != chunkBytes)
     {
+        uint8_t sd_error = SD.card()->errorCode();
+        uint8_t sense_key;
+        uint16_t asc;
+        diskWriteErrorSense(sd_error, &sense_key, &asc);
         logmsg("SD card write failed during WRITE AND VERIFY at sector ", (int)chunkLba,
-              " SCSI ID", (int)scsiDev.target->targetId, " error ", SD.sdErrorCode());
-        diskSpecialDataOutError(MEDIUM_ERROR, WRITE_ERROR_AUTO_REALLOCATION_FAILED);
+              " SCSI ID", (int)scsiDev.target->targetId, " error ", (int)sd_error);
+        diskSpecialDataOutError(sense_key, asc);
         return;
     }
 
@@ -2522,7 +2547,7 @@ static void diskWriteVerifyDataOut()
     if (img.file.read(verifyBuffer, chunkBytes) != chunkBytes)
     {
         logmsg("SD card read failed during WRITE AND VERIFY at sector ", (int)chunkLba,
-              " SCSI ID", (int)scsiDev.target->targetId, " error ", SD.sdErrorCode());
+              " SCSI ID", (int)scsiDev.target->targetId, " error ", (int)SD.card()->errorCode());
         diskSpecialDataOutError(MEDIUM_ERROR, UNRECOVERED_READ_ERROR);
         return;
     }
@@ -2712,10 +2737,14 @@ void diskDataOut()
             platform_set_sd_callback(&diskDataOut_callback, buf);
             if (img.file.write(buf, len) != len)
             {
-                logmsg("SD card write failed: ", SD.sdErrorCode());
+                uint8_t sd_error = SD.card()->errorCode();
+                uint8_t sense_key;
+                uint16_t asc;
+                diskWriteErrorSense(sd_error, &sense_key, &asc);
+                logmsg("SD card write failed: ", (int)sd_error);
                 scsiDev.status = CHECK_CONDITION;
-                scsiDev.target->sense.code = MEDIUM_ERROR;
-                scsiDev.target->sense.asc = WRITE_ERROR_AUTO_REALLOCATION_FAILED;
+                scsiDev.target->sense.code = sense_key;
+                scsiDev.target->sense.asc = asc;
                 scsiDev.phase = STATUS;
             }
             platform_set_sd_callback(NULL, NULL);

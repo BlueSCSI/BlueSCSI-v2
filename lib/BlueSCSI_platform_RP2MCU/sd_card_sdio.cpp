@@ -713,6 +713,17 @@ uint32_t SdioCard::errorLine() const
     return g_sdio_error_line;
 }
 
+static_assert(SD_ERROR_DATA_TIMEOUT == SDIO_ERR_DATA_TIMEOUT,
+              "SD_ERROR_DATA_TIMEOUT must mirror sdio_status_t");
+
+bool platform_sd_error_is_medium_defect(uint8_t sd_error)
+{
+    // SDIO_ERR_WRITE_FAIL is the card answering "I could not store this".
+    // Timeouts and CRC errors are the transfer failing, and the data on the
+    // card is untouched.
+    return sd_error == SDIO_ERR_WRITE_FAIL;
+}
+
 bool SdioCard::isBusy() 
 {
 #if SDIO_D0 > 31
