@@ -82,6 +82,17 @@ SECTIONS
         *panel_i2c.cpp.o(.text .text*)
         *panel_protocol.cpp.o(.text .text*)
         *panel_sha256_sw.cpp.o(.text .text*)
+        /* Startup and SD-hotplug paths. None run per-command, and each one
+         * already waits on the SD card, so flash latency is lost in the I/O.
+         * Kept in flash to leave the heap for lwip on network builds. */
+        *(.text*logNonDefaultDeviceSettings*)
+        *(.text*initSystem*)
+        *(.text*findHDDImages*)
+        *(.text*bluescsi_setup_sd_card*)
+        *(.text*mountSDCard*)
+        *(.text*print_sd_info*)
+        *(.text*s2s_configInit*)
+        *(.text*kiosk_restore_images*)
         *(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *libm.a: *SCSI2SD* *sdfat* *minIni* *CUEParser* *.cpp.o) .text*)
 
     /* ---------------------------------------------------------
