@@ -152,13 +152,14 @@ static volatile panel_device_snapshot_t g_device_snapshot[S2S_MAX_TARGETS];
 // loads is refreshed immediately regardless, so inserts show without lag.
 #define PANEL_SNAPSHOT_NAME_REFRESH_MS 250
 
-// How long an upload may sit with no START/chunk activity before the firmware
-// reclaims its SHA-256 lock and file handle. Generous: a slow SD card plus a
-// retrying panel must never trip it mid-transfer.
-#define PANEL_UPLOAD_IDLE_TIMEOUT_MS   60000
+// How long a transfer may sit with no START/chunk activity before the firmware
+// reclaims its file handle (and, for uploads, the SHA-256 lock). Generous: a
+// slow SD card plus a retrying panel must never trip it mid-transfer.
+#define PANEL_TRANSFER_IDLE_TIMEOUT_MS 60000
 
-// Defined with the upload state below; called from the periodic snapshot hook.
+// Defined with the transfer state below; called from the periodic snapshot hook.
 static void panel_upload_reclaim_if_idle(uint32_t now);
+static void panel_download_reclaim_if_idle(uint32_t now);
 static uint32_t g_snapshot_name_refresh_ms = 0;
 
 // Refresh the device snapshot. MUST be called only from the main loop — it
@@ -169,6 +170,7 @@ void panel_protocol_refresh_device_snapshot(void) {
     uint32_t now = millis();
 
     panel_upload_reclaim_if_idle(now);
+    panel_download_reclaim_if_idle(now);
     bool refresh_names = (now - g_snapshot_name_refresh_ms) >= PANEL_SNAPSHOT_NAME_REFRESH_MS;
 
     for (int i = 0; i < S2S_MAX_TARGETS; i++) {
@@ -414,7 +416,7 @@ static struct FileUploadState {
 // returns an all-zero hash, so the panel can never self-update again.
 static void panel_upload_reclaim_if_idle(uint32_t now) {
     if (g_upload.upload_active &&
-        (now - g_upload.last_activity_ms) >= PANEL_UPLOAD_IDLE_TIMEOUT_MS) {
+        (now - g_upload.last_activity_ms) >= PANEL_TRANSFER_IDLE_TIMEOUT_MS) {
         logmsg("Panel: Abandoned file upload timed out, releasing SHA-256 and file handle");
         g_upload.reset();
     }
@@ -425,6 +427,7 @@ static struct FileDownloadState {
     FsFile download_file;
     uint32_t file_size;
     bool download_active;
+    uint32_t last_activity_ms;
 
     void reset() {
         if (download_file.isOpen()) {
@@ -432,8 +435,21 @@ static struct FileDownloadState {
         }
         file_size = 0;
         download_active = false;
+        last_activity_ms = 0;
     }
 } g_download;
+
+// A download holds its file handle open after the last chunk: nothing in the
+// protocol marks the end, so only the next START_FILE_DOWNLOAD used to close
+// it. Until then panel_path_is_loaded() reports the file as in use and the
+// panel cannot delete or rename it.
+static void panel_download_reclaim_if_idle(uint32_t now) {
+    if (g_download.download_active &&
+        (now - g_download.last_activity_ms) >= PANEL_TRANSFER_IDLE_TIMEOUT_MS) {
+        logmsg("Panel: Idle file download timed out, releasing file handle");
+        g_download.reset();
+    }
+}
 
 // ============================================================================
 // Helper functions
@@ -1390,6 +1406,7 @@ static __attribute__((noinline)) void handle_start_file_download_async(const uin
 
     g_download.file_size = g_download.download_file.fileSize();
     g_download.download_active = true;
+    g_download.last_activity_ms = millis();
 
     result->result_code = PANEL_DOWNLOAD_OK;
     result->file_size = g_download.file_size;
@@ -1431,8 +1448,16 @@ static __attribute__((noinline)) void handle_read_file_chunk_async(uint32_t chun
         return;
     }
 
+    g_download.last_activity_ms = millis();
     dbgmsg("Panel: Download chunk ", (int)chunk_index, ": ", (int)bytes_read, " bytes");
     panel_transport_set_async_result(buf, bytes_read);
+
+    // Last chunk. The panel sends no end-of-download command, it just stops
+    // asking, so release here or the file stays open and undeletable until the
+    // next download. A panel that re-reads after this restarts the download.
+    if (offset + (uint64_t)bytes_read >= g_download.file_size) {
+        g_download.reset();
+    }
 }
 
 // ============================================================================
