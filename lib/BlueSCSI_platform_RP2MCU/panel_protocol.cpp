@@ -352,6 +352,12 @@ static struct DirState {
 void panel_protocol_test_reset_dir(void) {
     g_dir.reset();
 }
+
+/* Test accessor - is the cached listing still considered valid? Every command
+ * that changes a directory's contents must clear this (panel_dir_test) */
+bool panel_protocol_test_dir_scanned(void) {
+    return g_dir.scanned;
+}
 #endif
 
 // Async operation state
@@ -1629,6 +1635,9 @@ static __attribute__((noinline)) void handle_finish_file_upload_async(void) {
         } else {
             logmsg("Panel: Upload completed: ", g_upload.filename,
                    " (", (int)g_upload.bytes_written, " bytes)");
+            // The new file is in whatever directory the browser is showing, so
+            // drop the cached listing like the other mutating handlers do.
+            g_dir.scanned = false;
         }
     }
 
