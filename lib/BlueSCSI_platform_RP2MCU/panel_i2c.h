@@ -40,7 +40,7 @@ extern "C" {
 #endif
 
 /**
- * Initialize the panel I2C slave interface (i2c0 @ 0x50, 400 kHz on the v2
+ * Initialize the panel I2C slave interface (i2c0 @ 0x50, 1 MHz on the v2
  * GPIO16/17 pins). Call only when the front panel is enabled in the INI;
  * it claims those pins exclusively (no buttons / SPDIF on them).
  *

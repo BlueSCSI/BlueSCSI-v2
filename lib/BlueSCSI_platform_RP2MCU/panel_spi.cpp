@@ -245,17 +245,12 @@ static const char* panel_cmd_name(uint8_t cmd) {
     }
 }
 
-// Stable shadow for the most recently received write payload.
-// The DMA IRQ copies rx_payload + the sniffer CRC into here as soon as a
-// write payload completes, before signalling the main loop. This shadow
-// is what the main loop reads from for both the immediate-dispatch and
-// deferred (SCSI-busy) paths, so the next ESP32 transaction overwriting
-// rx_payload cannot corrupt an in-flight write.
-//
-// Per protocol: write commands carrying payload are async. ESP32 must see
-// READY via POLL_OP_READY before sending another write. POLL_OP_READY
-// transfers only touch rx_header + status_response, not rx_payload, so
-// this shadow stays intact across the polling window.
+// Receive buffer for the most recently received write payload, read by the
+// main loop on both the immediate-dispatch and deferred (SCSI-busy) paths.
+// The write-phase RX DMA targets .payload directly, so there is no memcpy;
+// the IRQ only samples the sniffer CRC into .crc16. Being the live DMA
+// destination this is not a snapshot: only the protocol's POLL_OP_READY rule
+// keeps the next transaction from overwriting a queued or in-flight write.
 //
 // `pending` flips on when SCSI bus is busy and we have to wait to dispatch.
 static struct {
@@ -403,10 +398,8 @@ void panel_spi_poll(void) {
     // Read commands are fully handled in IRQ (response prepared and DMA started)
     // POLL_OP_READY is fully handled in IRQ
     if (PANEL_CMD_IS_WRITE(cmd)) {
-        // ISR has already snapshotted the payload + CRC into g_deferred_write
-        // before signalling dma_complete, so this read is race-free even if
-        // the ESP32 sends another transaction while the handler is running.
-        // (Protocol guarantees no back-to-back async writes without polling.)
+        // Reads the live DMA buffer; safe only because the protocol forbids
+        // back-to-back async writes without an intervening poll.
         panel_spi_dispatch_write(cmd, arg,
                                  g_deferred_write.payload,
                                  payload_size,

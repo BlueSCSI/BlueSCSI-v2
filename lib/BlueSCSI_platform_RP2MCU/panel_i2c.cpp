@@ -113,12 +113,11 @@ static struct {
     bool first_transaction_logged;
 } g_panel;
 
-// Stable shadow for a received write command, handed from the ISR to the main
-// loop. The ISR receives the payload directly into .payload (no IRQ memcpy) and
-// flips .ready; the main loop dispatches it once the SCSI bus is idle. Protocol
-// guarantees no back-to-back writes without an intervening POLL_OP_READY, and
-// POLL_OP_READY/read transactions never touch this buffer, so it stays intact
-// across the polling window.
+// Receive buffer for a write command, handed from the ISR to the main loop.
+// The ISR lands the payload straight in .payload and flips .ready; the main
+// loop dispatches once the SCSI bus is idle. This is the live receive
+// destination, not a snapshot: only the protocol's POLL_OP_READY rule keeps a
+// second write from overwriting a queued or in-flight one.
 static struct {
     volatile bool ready;
     uint8_t command;
@@ -196,13 +195,9 @@ static void panel_i2c_process_write_txn(void) {
         return;
     }
 
-    // A write already staged and waiting for the SCSI bus owns the payload
-    // buffer — it is the live receive destination, not a snapshot. Accepting a
-    // second write (an ESP32 retransmit after a POLL_OP_READY timeout, or the
-    // next chunk) would overwrite those bytes while the first command's
-    // metadata is still queued, and the main loop would then commit chunk B's
-    // data under chunk A's length and CRC. Drop the newcomer instead; the panel
-    // retries.
+    // A write is already staged. Drop this one so the queued command keeps its
+    // own length and CRC. Its payload bytes were already overwritten during
+    // RECEIVE, so this does not make them safe.
     if (g_deferred_write.ready) {
         return;
     }
@@ -404,6 +399,8 @@ void panel_i2c_poll(void) {
         return;
     }
 
+    // Cleared before dispatch, so the ISR can accept a new write while the
+    // payload below is still in use. Protocol keeps the panel out of it.
     g_deferred_write.ready = false;
 
     if (!g_panel.first_transaction_logged) {

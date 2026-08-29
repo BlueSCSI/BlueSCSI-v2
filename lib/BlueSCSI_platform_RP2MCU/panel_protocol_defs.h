@@ -247,15 +247,24 @@ typedef struct __attribute__((packed)) {
     uint8_t reserved[3];     // Padding for alignment
 } dir_entry_info_t;
 
-// Device type codes
+// Device type codes (loaded_image_status_t.device_type)
 #define PANEL_DEVICE_TYPE_ATAPI  0x00  // CD-ROM drive
 #define PANEL_DEVICE_TYPE_IDE    0x01  // Hard disk drive
 #define PANEL_DEVICE_TYPE_SCSI   0x02  // SCSI device (BlueSCSI)
 
+// Device category codes (device_summary_t.device_type), numbered to match
+// values from BlueSCSI's img.deviceType
+#define PANEL_DEV_CATEGORY_FIXED     0x00
+#define PANEL_DEV_CATEGORY_REMOVABLE 0x01
+#define PANEL_DEV_CATEGORY_OPTICAL   0x02
+#define PANEL_DEV_CATEGORY_FLOPPY    0x03
+#define PANEL_DEV_CATEGORY_MO        0x04
+#define PANEL_DEV_CATEGORY_ZIP       0x07
+
 // Device summary (68 bytes)
 typedef struct __attribute__((packed)) {
     uint16_t device_index;
-    uint8_t  device_type;       // PANEL_DEVICE_TYPE_*
+    uint8_t  device_type;       // PANEL_DEV_CATEGORY_* (matches S2S_CFG_TYPE)
     uint8_t  device_status;     // PANEL_DEVICE_STATUS_*
     char     device_label[32];  // e.g. "SCSI ID 3", "CD-ROM"
     char     image_name[32];    // Current image name or empty
