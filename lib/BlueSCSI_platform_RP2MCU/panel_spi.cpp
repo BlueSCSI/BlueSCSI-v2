@@ -64,6 +64,7 @@ static struct {
 
     volatile panel_phase_t phase;
     volatile bool dma_complete;
+    bool drop_payload;       // current payload sunk to rx_payload, discard it
 
     // Header buffers
     panel_protocol_header_t rx_header;
@@ -255,6 +256,7 @@ static const char* panel_cmd_name(uint8_t cmd) {
 // `pending` flips on when SCSI bus is busy and we have to wait to dispatch.
 static struct {
     bool pending;
+    volatile bool busy;      // payload buffer owned until dispatch completes
     uint8_t command;
     uint16_t argument;
     uint16_t payload_size;
@@ -313,6 +315,7 @@ void panel_spi_poll(void) {
 
         // 5. Reset state and start fresh
         g_panel.dma_complete = false;
+        g_panel.drop_payload = false;
         g_panel.phase = PHASE_HEADER;
         setup_header_dma();
         g_panel.irq_suspended = false;
@@ -341,6 +344,7 @@ void panel_spi_poll(void) {
                                  g_deferred_write.payload,
                                  g_deferred_write.payload_size,
                                  g_deferred_write.crc16);
+        g_deferred_write.busy = false;
         return;
     }
 
@@ -404,6 +408,7 @@ void panel_spi_poll(void) {
                                  g_deferred_write.payload,
                                  payload_size,
                                  g_deferred_write.crc16);
+        g_deferred_write.busy = false;
     }
     // Read commands: response already prepared and sent in IRQ
 }
@@ -565,15 +570,21 @@ static void dma_irq_handler(void) {
                     }
                 } else {
                     // Write command with payload - receive it directly into the
-                    // shadow buffer the main loop reads from. No memcpy needed
-                    // when payload completes; protocol guarantees no back-to-back
-                    // writes without a POLL_OP_READY in between.
+                    // buffer the main loop reads from, so no memcpy is needed
+                    // when the payload completes. If that buffer still holds a
+                    // write the main loop has not finished with, land this one
+                    // in the rx_payload sink and drop it at completion; the
+                    // panel retries.
                     g_panel.phase = PHASE_PAYLOAD;
-                    // Write phase: master sends data (RX -> deferred shadow);
-                    // our TX bytes are ignored by the master, so tx_payload is
-                    // fine as the (unused) TX source. On a bad payload_size,
-                    // recover to header rather than wedging.
-                    if (!setup_payload_dma(payload_size, g_deferred_write.payload, g_panel.tx_payload)) {
+                    g_panel.drop_payload = g_deferred_write.busy;
+                    uint8_t* dest = g_panel.drop_payload ? g_panel.rx_payload
+                                                         : g_deferred_write.payload;
+                    // Write phase: master sends data (RX -> dest); our TX bytes
+                    // are ignored by the master, so tx_payload is fine as the
+                    // (unused) TX source. On a bad payload_size, recover to
+                    // header rather than wedging.
+                    if (!setup_payload_dma(payload_size, dest, g_panel.tx_payload)) {
+                        g_panel.drop_payload = false;
                         g_panel.phase = PHASE_HEADER;
                         setup_header_dma();
                     }
@@ -628,7 +639,11 @@ static void dma_irq_handler(void) {
 
             // Signal main loop to process the transaction
             // (for write commands with payload, or read commands that need handling)
-            if (PANEL_CMD_IS_WRITE(cmd)) {
+            if (PANEL_CMD_IS_WRITE(cmd) && g_panel.drop_payload) {
+                // Sunk into rx_payload because a write was still in flight.
+                // Drop it rather than signalling the main loop.
+                g_panel.drop_payload = false;
+            } else if (PANEL_CMD_IS_WRITE(cmd)) {
                 // Set PROCESSING immediately so ESP32 polls see command was received
                 // (matches PicoIDE pattern: ISR acknowledges, main loop executes)
                 if (PANEL_CMD_IS_ASYNC(cmd)) {
@@ -651,6 +666,10 @@ static void dma_irq_handler(void) {
                     g_deferred_write.crc16 = 0;
                 }
 
+                // Owns the payload buffer until the main loop finishes dispatch.
+                if (g_panel.rx_header.payload_size > 0) {
+                    g_deferred_write.busy = true;
+                }
                 g_panel.dma_complete = true;  // Main loop processes write payload
             }
 

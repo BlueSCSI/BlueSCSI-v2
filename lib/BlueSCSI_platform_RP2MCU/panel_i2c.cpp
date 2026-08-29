@@ -235,8 +235,12 @@ static void panel_i2c_handler(i2c_inst_t* i2c, i2c_slave_event_t event) {
                     // Only write commands carry a payload after the header; for
                     // read commands the master sends no further bytes, so drop
                     // anything unexpected (NULL dest) instead of buffering it.
-                    g_panel.payload_dest = PANEL_CMD_IS_WRITE(g_panel.cur_header.command)
-                                           ? g_deferred_write.payload : NULL;
+                    // Also drop when the buffer still holds a write the main
+                    // loop has not finished with, so a retransmit cannot
+                    // overwrite it. process_write_txn drops the command too.
+                    bool own = PANEL_CMD_IS_WRITE(g_panel.cur_header.command)
+                               && !g_deferred_write.ready;
+                    g_panel.payload_dest = own ? g_deferred_write.payload : NULL;
                 }
             } else {
                 // Post-header payload byte (write commands only in practice).
@@ -399,10 +403,6 @@ void panel_i2c_poll(void) {
         return;
     }
 
-    // Cleared before dispatch, so the ISR can accept a new write while the
-    // payload below is still in use. Protocol keeps the panel out of it.
-    g_deferred_write.ready = false;
-
     if (!g_panel.first_transaction_logged) {
         g_panel.first_transaction_logged = true;
         logmsg("Panel I2C: first write command dispatched (cmd=0x", (int)g_deferred_write.command,
@@ -411,6 +411,10 @@ void panel_i2c_poll(void) {
     panel_protocol_drain_irq_log();
 
     panel_i2c_dispatch_write();
+
+    // Released only now. Holding it across dispatch keeps the ISR off the
+    // payload while the handler reads it and runs its SD I/O.
+    g_deferred_write.ready = false;
 }
 
 bool panel_i2c_is_initialized(void) {
