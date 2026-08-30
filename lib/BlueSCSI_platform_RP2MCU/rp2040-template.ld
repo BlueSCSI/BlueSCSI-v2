@@ -188,6 +188,10 @@ SECTIONS
         /* Cold diagnostics-only dump of the accelerator state (timeout and
          * crash paths, which already run flash-resident logmsg) */
         *(.text*scsi_accel_log_state*)
+        /* VERIFY is rare and never back to back with a transfer. */
+        *(.text*scsiDiskHandleVerify*)
+        /* Wi-Fi bring-up, once at boot. The packet path stays in RAM. */
+        *(.text*platform_network_init*)
 
         /* SCSI commands that don't require high performance */
         *(.text*scsiToolboxCommand*)
