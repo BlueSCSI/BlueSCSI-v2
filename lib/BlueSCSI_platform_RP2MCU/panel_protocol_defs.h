@@ -240,11 +240,15 @@ typedef struct __attribute__((packed)) {
 #define PANEL_ENTRY_TYPE_DIRECTORY  0x00  // Subdirectory (navigate into it)
 #define PANEL_ENTRY_TYPE_FILE       0x01  // Image file (load it)
 
+// Entry flags for directory listings (dir_entry_info_t.flags)
+#define PANEL_ENTRY_FLAG_NOT_LOADABLE 0x01  // List it, but refuse to load it
+
 // Directory entry information structure (68 bytes)
 typedef struct __attribute__((packed)) {
     char name[64];           // Filename or directory name (null-terminated)
     uint8_t entry_type;      // PANEL_ENTRY_TYPE_*
-    uint8_t reserved[3];     // Padding for alignment
+    uint8_t flags;           // PANEL_ENTRY_FLAG_*
+    uint8_t reserved[2];     // Padding for alignment
 } dir_entry_info_t;
 
 // Device type codes (loaded_image_status_t.device_type)

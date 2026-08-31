@@ -216,6 +216,17 @@ void panel_protocol_refresh_device_snapshot(void) {
     }
 }
 
+// The firmware's own files live on the same card as the images. List them so
+// the web file manager can still download a log or fetch the ini, but flag
+// them so neither browser offers to load one as a disc image.
+static bool panel_is_firmware_file(const char* name) {
+    static const char* const names[] = { CONFIGFILE, LOGFILE, LASTLOGFILE, CRASHFILE };
+    for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); i++) {
+        if (strcasecmp(name, names[i]) == 0) return true;
+    }
+    return false;
+}
+
 // Directory browsing state
 static struct DirState {
     char current_path[128] = "/";
@@ -226,6 +237,7 @@ static struct DirState {
     struct CachedEntry {
         char name[64];
         uint8_t entry_type;
+        uint8_t flags;          // PANEL_ENTRY_FLAG_*
     } entries[MAX_DIR_ENTRIES];
 
     void reset() {
@@ -263,6 +275,7 @@ static struct DirState {
         if (strcmp(current_path, "/") != 0) {
             strncpy(entries[entry_count].name, "..", sizeof(entries[0].name) - 1);
             entries[entry_count].entry_type = PANEL_ENTRY_TYPE_DIRECTORY;
+            entries[entry_count].flags = 0;
             entry_count++;
         }
 
@@ -288,6 +301,7 @@ static struct DirState {
                 strncpy(entries[entry_count].name, name, sizeof(entries[0].name) - 1);
                 entries[entry_count].name[sizeof(entries[0].name) - 1] = '\0';
                 entries[entry_count].entry_type = PANEL_ENTRY_TYPE_DIRECTORY;
+                entries[entry_count].flags = 0;
                 entry_count++;
             } else if (dir_has_cue && panel_has_extension(name, ".bin")) {
                 // A cue sheet in this directory references the .bin files:
@@ -303,6 +317,8 @@ static struct DirState {
                 strncpy(entries[entry_count].name, name, sizeof(entries[0].name) - 1);
                 entries[entry_count].name[sizeof(entries[0].name) - 1] = '\0';
                 entries[entry_count].entry_type = PANEL_ENTRY_TYPE_FILE;
+                entries[entry_count].flags = panel_is_firmware_file(name)
+                                            ? PANEL_ENTRY_FLAG_NOT_LOADABLE : 0;
                 entry_count++;
             }
 
@@ -917,6 +933,7 @@ static __attribute__((noinline)) void handle_get_entry_info_async(uint16_t index
     if (index < g_dir.entry_count) {
         strncpy(info->name, g_dir.entries[index].name, sizeof(info->name) - 1);
         info->entry_type = g_dir.entries[index].entry_type;
+        info->flags = g_dir.entries[index].flags;
     } else {
         strncpy(info->name, "(invalid index)", sizeof(info->name) - 1);
         info->entry_type = PANEL_ENTRY_TYPE_FILE;
@@ -964,6 +981,11 @@ static __attribute__((noinline)) void handle_select_entry_async(uint16_t device_
             buf[0] = 2;  // Error: failed to change directory
         }
         panel_transport_set_async_result(buf, 1);
+    } else if (entry.flags & PANEL_ENTRY_FLAG_NOT_LOADABLE) {
+        logmsg("Panel: ", entry.name, " is not a disc image");
+        buf[0] = 5;  // Error: not loadable
+        panel_transport_set_async_result(buf, 1);
+        return;
     } else {
         // Select image file - build full path
         char full_path[192];
@@ -1344,6 +1366,12 @@ static __attribute__((noinline)) void handle_select_image_by_name_async(const ui
 
     if (panel_path_has_traversal(filename)) {
         logmsg("Panel: SELECT_IMAGE_BY_NAME rejected path traversal: ", filename);
+        panel_transport_set_async_error();
+        return;
+    }
+
+    if (panel_is_firmware_file(panel_path_basename(filename))) {
+        logmsg("Panel: SELECT_IMAGE_BY_NAME rejected ", filename, ": not a disc image");
         panel_transport_set_async_error();
         return;
     }

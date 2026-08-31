@@ -57,6 +57,7 @@
 // Configuration and log file paths
 #define CONFIGFILE  "bluescsi.ini"
 #define LOGFILE     "log.txt"
+#define LASTLOGFILE "lastlog.txt"
 #define CRASHFILE   "err.txt"
 
 // Prefix for command file to create new image (case-insensitive)
