@@ -727,6 +727,7 @@ static size_t handle_get_playback_status(uint16_t device_index, uint8_t* respons
     // an answer to. GET_DEVICE_LIST carries this too, but it is async and an
     // imaging board does not reach the main loop to complete it, so the panel
     // would never learn it is talking to an initiator.
+    status->protocol_version = PANEL_PROTOCOL_VERSION;
     status->operating_mode = scsiInitiatorIsActive() ? PANEL_MODE_INITIATOR
                                                      : PANEL_MODE_TARGET;
 
@@ -737,14 +738,16 @@ static size_t handle_get_playback_status(uint16_t device_index, uint8_t* respons
         // Optical tray open (disc ejected): the next disc is already loaded but
         // presented as ejected until the tray is closed. Flag it so the panel can
         // tell the user to load a disc or close the tray.
-        status->tray_open = (device_type_is_ejectable(g_device_snapshot[device_index].device_type) &&
-                             g_device_snapshot[device_index].ejected) ? 1 : 0;
+        if (device_type_is_ejectable(g_device_snapshot[device_index].device_type) &&
+            g_device_snapshot[device_index].ejected) {
+            status->flags |= PANEL_PB_TRAY_OPEN;
+        }
     }
 
     if (device_index < S2S_MAX_TARGETS &&
         g_device_snapshot[device_index].present &&
         g_device_snapshot[device_index].loaded) {
-        status->disc_inserted = 1;
+        status->flags |= PANEL_PB_DISC_INSERTED;
         status->disc_type = (g_device_snapshot[device_index].device_type == S2S_CFG_OPTICAL)
                             ? PANEL_DISC_TYPE_DATA : PANEL_DISC_TYPE_HDD;
         status->device_status = g_device_snapshot[device_index].ejected
@@ -757,6 +760,54 @@ static size_t handle_get_playback_status(uint16_t device_index, uint8_t* respons
     }
 
     return sizeof(panel_playback_status_t);
+}
+
+// Synchronous counterpart to handle_get_initiator_status_async(). Everything
+// here reads g_initiator_state - no bus access, no blocking - so it is safe in
+// IRQ context, which is exactly what makes it answerable while imaging.
+static size_t handle_get_initiator_summary(uint8_t* response, size_t max_size) {
+    if (max_size < sizeof(panel_initiator_summary_t)) {
+        return 0;
+    }
+
+    panel_initiator_summary_t* sum = (panel_initiator_summary_t*)response;
+    memset(sum, 0, sizeof(panel_initiator_summary_t));
+    sum->alive_magic = PANEL_ALIVE_MAGIC;
+    sum->protocol_version = PANEL_PROTOCOL_VERSION;
+    sum->current_target = 0xFF;
+
+    if (!scsiInitiatorIsActive()) {
+        sum->operating_mode = PANEL_MODE_TARGET;
+        return sizeof(panel_initiator_summary_t);
+    }
+    sum->operating_mode = PANEL_MODE_INITIATOR;
+
+    uint8_t phase, current_target, initiator_id, drives_mask;
+    uint16_t speed_kbps;
+    scsiInitiatorGetStatus(&phase, &current_target, &initiator_id, &drives_mask,
+                           &speed_kbps, NULL, 0);
+    sum->phase = phase;
+    sum->current_target = current_target;
+    sum->speed_kbps = speed_kbps;
+
+    for (int id = 0; id < NUM_SCSIID; id++) {
+        uint8_t tstatus = 0;
+        uint32_t sectorcount = 0, sectors_done = 0;
+        if (!scsiInitiatorGetTargetInfo(id, &tstatus, NULL, NULL, &sectorcount,
+                                        NULL, &sectors_done, NULL, NULL, NULL,
+                                        NULL, NULL, NULL, NULL)) {
+            continue;
+        }
+        sum->targets_found++;
+        if (tstatus == PANEL_INITIATOR_TARGET_DONE) {
+            sum->targets_imaged++;
+        }
+        if (id == current_target && sectorcount > 0) {
+            sum->progress = (uint8_t)(100ULL * sectors_done / sectorcount);
+        }
+    }
+
+    return sizeof(panel_initiator_summary_t);
 }
 
 // ============================================================================
@@ -1978,6 +2029,9 @@ size_t panel_protocol_handle_read(uint8_t cmd, uint16_t arg,
 
         case PANEL_CMD_GET_FIRMWARE_INFO:
             return handle_get_firmware_info(response, max_size);
+
+        case PANEL_CMD_GET_INITIATOR_SUMMARY:
+            return handle_get_initiator_summary(response, max_size);
 
         case PANEL_CMD_GET_COMMAND_STATUS:
             return handle_get_command_status(response, max_size);

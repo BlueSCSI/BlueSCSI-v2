@@ -36,6 +36,28 @@
 #define PANEL_MODE_INITIATOR   0x01
 #define PANEL_DEVLIST_MODE(list) ((list)->reserved[0])
 
+// Answer to PANEL_CMD_GET_INITIATOR_SUMMARY: everything the imaging screen
+// draws on every frame, and nothing else.
+//
+// This is a synchronous read served from the main board's ISR. That is the
+// whole point of it existing alongside PANEL_CMD_GET_INITIATOR_STATUS: the
+// latter is async, so the main loop completes it, and a board that is imaging
+// is busy driving the SCSI bus and does not get there. The per-target detail
+// is worth waiting for and tolerates being stale; the progress of the run is
+// not and does not.
+typedef struct __attribute__((packed)) {
+    uint8_t  alive_magic;      // PANEL_ALIVE_MAGIC, as in the playback status
+    uint8_t  protocol_version; // PANEL_PROTOCOL_VERSION
+    uint8_t  operating_mode;   // PANEL_MODE_*, so the panel can see a mode change
+                               // without going back to the playback status
+    uint8_t  phase;            // PANEL_INITIATOR_PHASE_*
+    uint8_t  current_target;   // SCSI ID being worked on, 0xFF when none
+    uint8_t  progress;         // 0-100, percent of the current target
+    uint8_t  targets_found;
+    uint8_t  targets_imaged;
+    uint16_t speed_kbps;
+} panel_initiator_summary_t;
+
 static_assert(offsetof(device_list_response_t, reserved) == 2,
               "device_list mode byte offset drifted from the shared header");
 

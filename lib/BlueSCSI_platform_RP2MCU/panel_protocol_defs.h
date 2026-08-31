@@ -28,6 +28,10 @@
 // Protocol constants
 #define PANEL_PROTOCOL_HEADER_SIZE     5
 #define PANEL_PROTOCOL_MAX_PAYLOAD     4096
+// Bumped whenever a shared struct changes shape. Reported in every status
+// poll so a mismatched panel and main board can say so instead of quietly
+// reading each other's fields at the wrong offsets.
+#define PANEL_PROTOCOL_VERSION         1
 
 // Liveness magic: a live main board running this protocol stamps
 // PANEL_ALIVE_MAGIC into panel_playback_status_t.alive_magic on every reply. A
@@ -75,6 +79,7 @@
 #define PANEL_CMD_GET_FIRMWARE_INFO    0x84  // Get firmware info after CHECK_FIRMWARE (45 bytes)
 #define PANEL_CMD_GET_PLAYBACK_STATUS  0x85  // Get current playback status (panel_playback_status_t)
 #define PANEL_CMD_GET_COMMAND_STATUS   0x86  // Get detailed async command status (panel_command_status_t)
+#define PANEL_CMD_GET_INITIATOR_SUMMARY 0x87  // Initiator progress summary (panel_initiator_summary_t)
 
 // Status codes for POLL_STATUS
 #define PANEL_STATUS_OK                0x00  // System OK
@@ -220,25 +225,32 @@ typedef struct __attribute__((packed)) {
 #define PANEL_AUDIO_STATUS_NONE               0x15
 
 // Playback status structure (76 bytes)
+// panel_playback_status_t.flags. Three one-bit states that were a byte each.
+#define PANEL_PB_DISC_INSERTED  0x01  // A disc/image is loaded
+#define PANEL_PB_PLAYING        0x02  // Audio is playing
+#define PANEL_PB_TRAY_OPEN      0x04  // Ejected, awaiting load or close
+#define PANEL_PB_FLAGS_KNOWN    0x07  // Bits defined so far; anything else is garbage
+
+// Target-mode status, polled constantly by the panel. Answered straight from
+// the main board's ISR, so it arrives whatever the board is doing - which is
+// why the three fields that are not about a target live here too: they are
+// panel-protocol metadata (is this board alive, what does it speak, which mode
+// is it in), and the mode is what tells the panel which status to ask for next.
+// An initiator's own state is PANEL_CMD_GET_INITIATOR_SUMMARY, not this.
 typedef struct __attribute__((packed)) {
-    uint8_t disc_inserted;    // 1 if disc loaded, 0 if not
-    uint8_t disc_type;        // PANEL_DISC_TYPE_*
-    uint8_t is_playing;       // 1 if currently playing audio, 0 if not
-    uint8_t audio_status;     // PANEL_AUDIO_STATUS_*
-    uint8_t current_track;    // Current track number (1-99)
-    uint8_t track_position_m; // Track position: minutes
-    uint8_t track_position_s; // Track position: seconds
-    uint8_t track_position_f; // Track position: frames
-    char disc_name[64];       // Current disc name (null-terminated)
-    uint8_t device_status;    // PANEL_DEVICE_STATUS_*
-    uint8_t alive_magic;      // PANEL_ALIVE_MAGIC when written by a live main board
-    uint8_t tray_open;        // 1 if optical tray open (disc ejected), awaiting load/close
-    // PANEL_MODE_* (panel_protocol_defs_initiator.h). This poll is a synchronous
-    // read served straight from the main board's ISR, so it answers even while
-    // the board is saturated driving the SCSI bus. GET_DEVICE_LIST carries the
-    // same value but is async, and an imaging board never reaches the main loop
-    // to complete it - so the mode has to arrive here to be seen at all.
-    uint8_t operating_mode;
+    uint8_t  alive_magic;      // PANEL_ALIVE_MAGIC. First so a reader built against
+                               // a different layout still finds it.
+    uint8_t  protocol_version; // PANEL_PROTOCOL_VERSION the board was built with
+    uint8_t  flags;            // PANEL_PB_*
+    uint8_t  disc_type;        // PANEL_DISC_TYPE_*
+    uint8_t  audio_status;     // PANEL_AUDIO_STATUS_*
+    uint8_t  device_status;    // PANEL_DEVICE_STATUS_*
+    uint8_t  operating_mode;   // PANEL_MODE_* (panel_protocol_defs_initiator.h)
+    uint8_t  current_track;    // Current track number (1-99)
+    uint8_t  track_position_m; // Track position: minutes
+    uint8_t  track_position_s; // Track position: seconds
+    uint8_t  track_position_f; // Track position: frames
+    char     disc_name[64];      // Current disc name (null-terminated)
 } panel_playback_status_t;
 
 // Entry type for directory listings
