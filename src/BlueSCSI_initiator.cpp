@@ -38,6 +38,7 @@
 #include <minIni.h>
 #include "SdFat.h"
 #include "BlueSCSI_disk.h"
+#include "BlueSCSI_blink.h"
 // Only defines and POD structs; the PANEL_INITIATOR_SKIP_* codes are named at
 // every skip site whether or not a panel is built in.
 #include "panel_protocol_defs_initiator.h"
@@ -389,6 +390,10 @@ void delay_with_poll(uint32_t ms)
     while ((uint32_t)(platform_millis() - start) < ms)
     {
         platform_poll();
+        // platform_write_led() drops every write while a blink is running, and
+        // only blink_poll() ends one. Without this an initiator step that
+        // outlasts a blink latches the LED until the main loop comes back.
+        blink_poll();
         platform_delay_ms(1);
     }
 }
