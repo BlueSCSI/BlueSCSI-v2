@@ -94,7 +94,6 @@ static struct {
     panel_protocol_header_t saved_header;
 
     // IRQ suspend state — disabled during initiator SCSI bus operations
-    bool irq_suspended;
 
     // Transaction tracking for non-debug logging
     bool first_transaction_logged;
@@ -284,43 +283,16 @@ void panel_spi_poll(void) {
         return;
     }
 
-    // During initiator SCSI bus operations, suspend the DMA IRQ.
-    // Resume cleanly when the bus is free.
-    if (scsiInitiatorBusBusy()) {
-        if (!g_panel.irq_suspended) {
-            irq_set_enabled(PANEL_DMA_IRQ_NUM, false);
-            g_panel.irq_suspended = true;
-        }
-        return;
-    }
-
-    if (g_panel.irq_suspended) {
-        // SCSI bus now free — cleanly resume SPI.
-        // 1. Abort stale DMA
-        dma_channel_abort(g_panel.dma_rx_channel);
-        dma_channel_abort(g_panel.dma_tx_channel);
-
-        // 2. Wait for CS high (ESP32 not mid-transaction)
-        for (int i = 0; i < 200 && !gpio_get(PANEL_SPI_CS); i++) {
-            busy_wait_us_32(1);
-        }
-
-        // 3. Drain SPI RX FIFO — stale bytes from partial transactions
-        while (spi_is_readable(g_panel.spi)) {
-            (void)spi_get_hw(g_panel.spi)->dr;
-        }
-
-        // 4. Clear pending DMA IRQ
-        dma_irqn_acknowledge_channel(PANEL_DMA_IRQ_IDX, g_panel.dma_rx_channel);
-
-        // 5. Reset state and start fresh
-        g_panel.dma_complete = false;
-        g_panel.drop_payload = false;
-        g_panel.phase = PHASE_HEADER;
-        setup_header_dma();
-        g_panel.irq_suspended = false;
-        irq_set_enabled(PANEL_DMA_IRQ_NUM, true);
-    }
+    // The panel ISR is deliberately left running while the initiator holds the
+    // bus. It used to be suspended here, out of caution rather than in response
+    // to a measured problem: on Ultra the panel owns DMA_IRQ_3 and its own
+    // channels, and scsi_accel_host.cpp uses no DMA and no interrupts at all,
+    // so the two never contend. Target mode has always coexisted with it.
+    //
+    // Suspending it made the panel and web UI dead for the whole of an imaging
+    // run - the ESP32 could not complete a single transaction between commands,
+    // so it could not even discover the board was imaging. Measured cost of
+    // leaving it enabled: about 1% of imaging throughput, no bus errors.
 
     // Refresh the device-status snapshot from the main loop so the IRQ-context
     // read handlers never touch img->file (which switchNextImage reassigns).
