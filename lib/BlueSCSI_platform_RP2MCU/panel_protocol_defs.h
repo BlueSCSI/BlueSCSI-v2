@@ -233,7 +233,12 @@ typedef struct __attribute__((packed)) {
     uint8_t device_status;    // PANEL_DEVICE_STATUS_*
     uint8_t alive_magic;      // PANEL_ALIVE_MAGIC when written by a live main board
     uint8_t tray_open;        // 1 if optical tray open (disc ejected), awaiting load/close
-    uint8_t reserved[1];      // Reserved for future use
+    // PANEL_MODE_* (panel_protocol_defs_initiator.h). This poll is a synchronous
+    // read served straight from the main board's ISR, so it answers even while
+    // the board is saturated driving the SCSI bus. GET_DEVICE_LIST carries the
+    // same value but is async, and an imaging board never reaches the main loop
+    // to complete it - so the mode has to arrive here to be seen at all.
+    uint8_t operating_mode;
 } panel_playback_status_t;
 
 // Entry type for directory listings

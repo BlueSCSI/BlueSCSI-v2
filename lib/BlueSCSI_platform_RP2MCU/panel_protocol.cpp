@@ -723,6 +723,13 @@ static size_t handle_get_playback_status(uint16_t device_index, uint8_t* respons
     // dead/disconnected bus (which reads back uniformly 0x00 or 0xFF).
     status->alive_magic = PANEL_ALIVE_MAGIC;
 
+    // Tell the panel which mode we are in on the one command it can always get
+    // an answer to. GET_DEVICE_LIST carries this too, but it is async and an
+    // imaging board does not reach the main loop to complete it, so the panel
+    // would never learn it is talking to an initiator.
+    status->operating_mode = scsiInitiatorIsActive() ? PANEL_MODE_INITIATOR
+                                                     : PANEL_MODE_TARGET;
+
     // IRQ context: read the main-loop snapshot, never img->file (see
     // panel_protocol_refresh_device_snapshot). The snapshot also caches the
     // filename so we can return it here without calling getFilename() in IRQ.
