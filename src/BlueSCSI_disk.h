@@ -135,6 +135,10 @@ private:
 // Returns a mask of the buttons that registered an 'eject' action.
 uint8_t diskEjectButtonUpdate(bool immediate);
 
+// Toggle a non-optical removable device between ejected and loaded, the same
+// way the physical eject button does. Optical drives use cdromPerformEject().
+void diskPerformEject(image_config_t &img);
+
 // Reset all image configuration to empty reset state, close all images.
 void scsiDiskResetImages();
 

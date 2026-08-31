@@ -107,10 +107,25 @@ static image_config_t* get_device_by_index(uint16_t index) {
     return nullptr;
 }
 
-// Check if device is ejectable (optical or removable)
+// The device types the physical eject button handles - see diskEjectAction() in
+// BlueSCSI_disk.cpp. The panel menu and the web UI build their eject
+// affordances from the same set, so all three agree on what can be ejected.
+static bool device_type_is_ejectable(uint8_t device_type) {
+    switch (device_type) {
+        case S2S_CFG_OPTICAL:
+        case S2S_CFG_REMOVABLE:
+        case S2S_CFG_ZIP100:
+        case S2S_CFG_FLOPPY_14MB:
+        case S2S_CFG_MO:
+        case S2S_CFG_SEQUENTIAL:
+            return true;
+        default:
+            return false;
+    }
+}
+
 static bool device_is_ejectable(image_config_t* img) {
-    return img && (img->deviceType == S2S_CFG_OPTICAL ||
-                   img->deviceType == S2S_CFG_REMOVABLE);
+    return img && device_type_is_ejectable(img->deviceType);
 }
 
 // Name of the image loaded on a target, for panel display. A directly-loaded
@@ -699,7 +714,7 @@ static size_t handle_get_playback_status(uint16_t device_index, uint8_t* respons
         // Optical tray open (disc ejected): the next disc is already loaded but
         // presented as ejected until the tray is closed. Flag it so the panel can
         // tell the user to load a disc or close the tray.
-        status->tray_open = (g_device_snapshot[device_index].device_type == S2S_CFG_OPTICAL &&
+        status->tray_open = (device_type_is_ejectable(g_device_snapshot[device_index].device_type) &&
                              g_device_snapshot[device_index].ejected) ? 1 : 0;
     }
 
@@ -794,7 +809,7 @@ static __attribute__((noinline)) void handle_get_device_list_async(void) {
         if (img.file.isOpen()) {
             // An ejected optical drive still has the next disc open; report the
             // tray-open state so the panel/web can prompt to load or close.
-            dev->device_status = (img.deviceType == S2S_CFG_OPTICAL && img.ejected)
+            dev->device_status = (device_is_ejectable(&img) && img.ejected)
                                  ? PANEL_DEVICE_STATUS_TRAY_OPEN : PANEL_DEVICE_STATUS_LOADED;
             panel_loaded_image_name(img, dev->image_name, sizeof(dev->image_name));
         } else {
@@ -1239,8 +1254,9 @@ static __attribute__((noinline)) void handle_eject_image_async(uint16_t device_i
             // filename - see cue_loaded_directly in BlueSCSI_disk.h).
             cdromPerformEject(*img, true);
         } else {
-            img->ejected = true;
-            switchNextImage(*img, nullptr);
+            // Toggles: a second press closes the tray again, matching the
+            // physical eject button and the web UI's Eject/Close pair.
+            diskPerformEject(*img);
         }
         panel_transport_set_async_result(nullptr, 0);
     } else {

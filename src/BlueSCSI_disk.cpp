@@ -1121,7 +1121,7 @@ static void doCloseTray(image_config_t &img)
  
 // Eject and switch image
 // This is really press eject button for close and open.
-static void doPerformEject(image_config_t &img)
+void diskPerformEject(image_config_t &img)
 {
     const uint8_t target = img.getTargetId();
     // Now that we have a request from a button or an explicit start SCSI command to close the drive,
@@ -1589,7 +1589,7 @@ static void diskEjectAction(uint8_t buttonId)
             {
                 found = true;
                 logmsg("Eject button ", (int)buttonId, " pressed, passing to SCSI ID: ", (int)i);
-                doPerformEject(img);
+                diskPerformEject(img);
             }
         }
     }
@@ -3109,7 +3109,7 @@ int scsiDiskCommand()
             else
             {
                 // Eject and switch image
-                doPerformEject(img);
+                diskPerformEject(img);
             }
         }
         else if (start)
