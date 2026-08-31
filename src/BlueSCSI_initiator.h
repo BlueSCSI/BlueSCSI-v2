@@ -103,10 +103,12 @@ bool scsiInitiatorBusBusy();
 
 // Panel status reporting functions
 bool scsiInitiatorIsActive();
-void scsiInitiatorGetStatus(uint8_t *phase, uint8_t *current_target, uint8_t *initiator_id, uint8_t *drives_mask);
+void scsiInitiatorGetStatus(uint8_t *phase, uint8_t *current_target, uint8_t *initiator_id,
+                            uint8_t *drives_mask, uint16_t *speed_kbps, char *filename,
+                            size_t filename_size);
 bool scsiInitiatorGetTargetInfo(int scsi_id, uint8_t *status, uint8_t *device_type,
                                 uint8_t *ansi_version, uint32_t *sectorcount,
                                 uint32_t *sectorsize, uint32_t *sectors_done,
                                 uint32_t *bad_sector_count, char *vendor,
                                 char *product, uint8_t *sense_key,
-                                uint8_t *asc, uint8_t *ascq);
+                                uint8_t *asc, uint8_t *ascq, uint8_t *skip_reason);

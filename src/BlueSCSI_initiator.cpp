@@ -38,6 +38,9 @@
 #include <minIni.h>
 #include "SdFat.h"
 #include "BlueSCSI_disk.h"
+// Only defines and POD structs; the PANEL_INITIATOR_SKIP_* codes are named at
+// every skip site whether or not a panel is built in.
+#include "panel_protocol_defs_initiator.h"
 
 #include <scsi2sd.h>
 extern "C" {
@@ -76,12 +79,16 @@ bool scsiInitiatorBusBusy()
     return false;
 }
 
-void scsiInitiatorGetStatus(uint8_t *phase, uint8_t *current_target, uint8_t *initiator_id, uint8_t *drives_mask)
+void scsiInitiatorGetStatus(uint8_t *phase, uint8_t *current_target, uint8_t *initiator_id,
+                            uint8_t *drives_mask, uint16_t *speed_kbps, char *filename,
+                            size_t filename_size)
 {
     if (phase) *phase = 0;
     if (current_target) *current_target = 0xFF;
     if (initiator_id) *initiator_id = 7;
     if (drives_mask) *drives_mask = 0;
+    if (speed_kbps) *speed_kbps = 0;
+    if (filename && filename_size > 0) filename[0] = '\0';
 }
 
 bool scsiInitiatorGetTargetInfo(int scsi_id, uint8_t *status, uint8_t *device_type,
@@ -89,7 +96,7 @@ bool scsiInitiatorGetTargetInfo(int scsi_id, uint8_t *status, uint8_t *device_ty
                                 uint32_t *sectorsize, uint32_t *sectors_done,
                                 uint32_t *bad_sector_count, char *vendor,
                                 char *product, uint8_t *sense_key,
-                                uint8_t *asc, uint8_t *ascq)
+                                uint8_t *asc, uint8_t *ascq, uint8_t *skip_reason)
 {
     return false;
 }
@@ -116,6 +123,7 @@ struct initiator_target_summary_t {
     uint8_t  sense_key;
     uint8_t  asc;
     uint8_t  ascq;
+    uint8_t  skip_reason;    // PANEL_INITIATOR_SKIP_*, fits the existing pad
     uint32_t sectorcount;
     uint32_t sectorsize;
     uint32_t sectors_done;
@@ -176,6 +184,11 @@ static struct {
 #if defined(ENABLE_PANEL_I2C) || defined(ENABLE_PANEL_SPI)
     // Per-target summary for panel status reporting
     initiator_target_summary_t target_summary[NUM_SCSIID];
+
+    // The image being written now, and the last measured read speed. Only one
+    // target images at a time, so these are not per-target.
+    char current_filename[32];
+    uint16_t speed_kbps;
 #endif
 
     FsFile target_file;
@@ -208,6 +221,7 @@ static void initiatorSummaryTargetFound(int target_id, const char *vendor, const
     ts.sense_key = 0;
     ts.asc = 0;
     ts.ascq = 0;
+    ts.skip_reason = 0;
     memcpy(ts.vendor, vendor, 9);
     memcpy(ts.product, product, 17);
 }
@@ -232,12 +246,40 @@ static void initiatorSummarySetSense(int target_id, uint8_t sense_key, uint8_t a
     ts.asc = asc;
     ts.ascq = ascq;
 }
+
+static void initiatorSummarySetSkipped(int target_id, uint8_t reason)
+{
+    if (target_id < 0 || target_id >= NUM_SCSIID) return;
+    initiator_target_summary_t &ts = g_initiator_state.target_summary[target_id];
+    ts.status = 4; // error
+    ts.skip_reason = reason;
+}
+
+static void initiatorSummarySetFilename(const char *filename)
+{
+    if (!filename)
+    {
+        g_initiator_state.current_filename[0] = '\0';
+        return;
+    }
+    strncpy(g_initiator_state.current_filename, filename,
+            sizeof(g_initiator_state.current_filename) - 1);
+    g_initiator_state.current_filename[sizeof(g_initiator_state.current_filename) - 1] = '\0';
+}
+
+static void initiatorSummarySetSpeed(uint16_t speed_kbps)
+{
+    g_initiator_state.speed_kbps = speed_kbps;
+}
 #else
 static inline void initiatorSummaryClear() {}
 static inline void initiatorSummaryTargetFound(int, const char *, const char *) {}
 static inline void initiatorSummarySetStatus(int, uint8_t) {}
 static inline void initiatorSummaryUpdateProgress(int) {}
 static inline void initiatorSummarySetSense(int, uint8_t, uint8_t, uint8_t) {}
+static inline void initiatorSummarySetSkipped(int, uint8_t) {}
+static inline void initiatorSummarySetFilename(const char *) {}
+static inline void initiatorSummarySetSpeed(uint16_t) {}
 #endif
 
 // Initialization of initiator mode
@@ -523,6 +565,12 @@ void scsiInitiatorMainLoop()
                     logmsg("Target SCSI ID ", g_initiator_state.target_id, " image size is equal or larger than 4 GiB.");
                     logmsg("This is larger than the max filesize supported by SD card's filesystem");
                     logmsg("Please reformat the SD card with exFAT format to image this target");
+                    // Reached before INQUIRY is parsed, so the panel would not
+                    // otherwise know this ID exists. Record the capacity we do
+                    // have, with an empty vendor/product.
+                    initiatorSummaryTargetFound(g_initiator_state.target_id, "\0\0\0\0\0\0\0\0\0",
+                                                "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0");
+                    initiatorSummarySetSkipped(g_initiator_state.target_id, PANEL_INITIATOR_SKIP_TOO_LARGE_FAT32);
                     g_initiator_state.drives_imaged |= 1 << g_initiator_state.target_id;
                     return;
                 }
@@ -588,6 +636,7 @@ void scsiInitiatorMainLoop()
                 if (typeName == nullptr)
                 {
                     logmsg("  SCSI Peripheral device type id ", g_initiator_state.device_type, " unsupported. Skipping this device");
+                    initiatorSummarySetSkipped(g_initiator_state.target_id, PANEL_INITIATOR_SKIP_UNSUPPORTED);
                     g_initiator_state.drives_imaged |= 1 << g_initiator_state.target_id;
                     return;
                 }
@@ -662,6 +711,7 @@ void scsiInitiatorMainLoop()
                     if (SD.exists(filename))
                     {
                         logmsg("File, ", filename, ", already exists, InitiatorImageHandling set to stop if file exists.");
+                        initiatorSummarySetSkipped(g_initiator_state.target_id, PANEL_INITIATOR_SKIP_FILE_EXISTS);
                         g_initiator_state.drives_imaged |= (1 << g_initiator_state.target_id);
                         return;
                     }
@@ -680,6 +730,7 @@ void scsiInitiatorMainLoop()
                         else if(i >= 1000)
                         {
                             logmsg("Max images created from SCSI ID ", g_initiator_state.target_id, ", skipping image creation");
+                            initiatorSummarySetSkipped(g_initiator_state.target_id, PANEL_INITIATOR_SKIP_TOO_MANY);
                             g_initiator_state.drives_imaged |= (1 << g_initiator_state.target_id);
                             return;
                         }
@@ -727,6 +778,7 @@ void scsiInitiatorMainLoop()
                 {
                     logmsg("SD Card only has ", (int)(sd_card_free_bytes / (1024 * 1024)),
                            " MiB - not enough free space to image SCSI ID ", g_initiator_state.target_id);
+                    initiatorSummarySetSkipped(g_initiator_state.target_id, PANEL_INITIATOR_SKIP_NO_SPACE);
                     g_initiator_state.drives_imaged |= 1 << g_initiator_state.target_id;
                     return;
                 }
@@ -750,6 +802,8 @@ void scsiInitiatorMainLoop()
                 logmsg("Starting to copy drive data to ", filename);
                 g_initiator_state.imaging = true;
                 initiatorSummarySetStatus(g_initiator_state.target_id, 2); // imaging
+                initiatorSummarySetFilename(filename);
+                initiatorSummarySetSpeed(0);
 
                 // Initiator start sector override
                 if (g_initiator_state.start_sector[g_initiator_state.target_id] != 0) {
@@ -768,6 +822,8 @@ void scsiInitiatorMainLoop()
             scsiStartStopUnit(g_initiator_state.target_id, false);
             logmsg("Finished imaging drive with id ", g_initiator_state.target_id);
             LED_OFF();
+            initiatorSummarySetFilename(nullptr);
+            initiatorSummarySetSpeed(0);
 
             if (g_initiator_state.sectorcount != g_initiator_state.sectorcount_all)
             {
@@ -870,7 +926,10 @@ void scsiInitiatorMainLoop()
             // Update target summary progress
             initiatorSummaryUpdateProgress(g_initiator_state.target_id);
 
-            int speed_kbps = numtoread * g_initiator_state.sectorsize / (platform_millis() - time_start);
+            // A one-sector retry batch can finish inside a single millisecond tick
+            uint32_t elapsed = platform_millis() - time_start;
+            int speed_kbps = elapsed ? (int)(numtoread * g_initiator_state.sectorsize / elapsed) : 0;
+            if (speed_kbps > 0) initiatorSummarySetSpeed((speed_kbps > 0xFFFF) ? 0xFFFF : (uint16_t)speed_kbps);
             logmsg("SCSI read succeeded, sectors done: ",
                   (int)g_initiator_state.sectors_done, " / ", (int)g_initiator_state.sectorcount,
                   " speed ", speed_kbps, " kB/s - ", 
@@ -896,10 +955,18 @@ bool scsiInitiatorBusBusy()
     return g_initiator_state.scsi_bus_active;
 }
 
-void scsiInitiatorGetStatus(uint8_t *phase, uint8_t *current_target, uint8_t *initiator_id, uint8_t *drives_mask)
+void scsiInitiatorGetStatus(uint8_t *phase, uint8_t *current_target, uint8_t *initiator_id,
+                            uint8_t *drives_mask, uint16_t *speed_kbps, char *filename,
+                            size_t filename_size)
 {
     if (initiator_id) *initiator_id = g_initiator_state.initiator_id;
     if (drives_mask)  *drives_mask = (uint8_t)(g_initiator_state.drives_imaged & 0xFF);
+    if (speed_kbps)   *speed_kbps = g_initiator_state.speed_kbps;
+    if (filename && filename_size > 0)
+    {
+        strncpy(filename, g_initiator_state.current_filename, filename_size - 1);
+        filename[filename_size - 1] = '\0';
+    }
 
     if (g_initiator_state.all_done)
     {
@@ -923,7 +990,7 @@ bool scsiInitiatorGetTargetInfo(int scsi_id, uint8_t *status, uint8_t *device_ty
                                 uint32_t *sectorsize, uint32_t *sectors_done,
                                 uint32_t *bad_sector_count, char *vendor,
                                 char *product, uint8_t *sense_key,
-                                uint8_t *asc, uint8_t *ascq)
+                                uint8_t *asc, uint8_t *ascq, uint8_t *skip_reason)
 {
     if (scsi_id < 0 || scsi_id >= NUM_SCSIID) return false;
 
@@ -942,6 +1009,7 @@ bool scsiInitiatorGetTargetInfo(int scsi_id, uint8_t *status, uint8_t *device_ty
     if (sense_key)        *sense_key = ts.sense_key;
     if (asc)              *asc = ts.asc;
     if (ascq)             *ascq = ts.ascq;
+    if (skip_reason)      *skip_reason = ts.skip_reason;
 
     return true;
 }

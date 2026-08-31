@@ -48,6 +48,15 @@ static_assert(offsetof(device_list_response_t, reserved) == 2,
 #define PANEL_INITIATOR_TARGET_DONE      0x03
 #define PANEL_INITIATOR_TARGET_ERROR     0x04
 
+// Why a target was skipped (initiator_target_info_t.skip_reason). Only
+// meaningful when status is PANEL_INITIATOR_TARGET_ERROR.
+#define PANEL_INITIATOR_SKIP_NONE            0x00
+#define PANEL_INITIATOR_SKIP_TOO_LARGE_FAT32 0x01  // >= 4 GiB, card is not exFAT
+#define PANEL_INITIATOR_SKIP_UNSUPPORTED     0x02  // not a block device
+#define PANEL_INITIATOR_SKIP_FILE_EXISTS     0x03  // InitiatorImageHandling = skip
+#define PANEL_INITIATOR_SKIP_TOO_MANY        0x04  // ran out of -NNN suffixes
+#define PANEL_INITIATOR_SKIP_NO_SPACE        0x05  // SD card full
+
 // Per-target info reported during initiator mode (50 bytes)
 typedef struct __attribute__((packed)) {
     uint8_t  scsi_id;
@@ -63,10 +72,12 @@ typedef struct __attribute__((packed)) {
     uint8_t  sense_key;
     uint8_t  asc;
     uint8_t  ascq;
-    uint8_t  reserved;
+    uint8_t  skip_reason;        // PANEL_INITIATOR_SKIP_*
 } initiator_target_info_t;       // 50 bytes
 
-// Initiator status response (variable length: header + targets[])
+// Initiator status response (variable length: 42 byte header + targets[]).
+// current_filename and speed_kbps describe the target being imaged now, so
+// they live in the header rather than being repeated for all eight targets.
 typedef struct __attribute__((packed)) {
     uint8_t  phase;              // PANEL_INITIATOR_PHASE_*
     uint8_t  current_target_id;  // 0-7, or 0xFF if none
@@ -74,6 +85,13 @@ typedef struct __attribute__((packed)) {
     uint8_t  targets_found;
     uint8_t  targets_imaged;
     uint8_t  drives_imaged_mask; // bitmask of IDs that have been imaged
+    uint16_t speed_kbps;         // last measured read speed, 0 when not imaging
+    char     current_filename[32]; // image being written, empty when not imaging
     uint8_t  reserved[2];
     initiator_target_info_t targets[];  // variable-length array
 } initiator_status_response_t;
+
+static_assert(sizeof(initiator_status_response_t) == 42,
+              "initiator status header size drifted from the panel's copy");
+static_assert(sizeof(initiator_target_info_t) == 50,
+              "initiator target info size drifted from the panel's copy");

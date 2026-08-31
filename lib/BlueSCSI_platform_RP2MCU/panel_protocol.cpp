@@ -761,6 +761,17 @@ static __attribute__((noinline)) void handle_get_loaded_image_status_async(uint1
     loaded_image_status_t* status = (loaded_image_status_t*)buf;
     memset(status, 0, sizeof(loaded_image_status_t));
 
+    if (scsiInitiatorIsActive()) {
+        // Nothing is emulated while imaging. Without this the device-0 fallback
+        // below reports the first image on the card as "loaded", which lights up
+        // the web UI's prev/next buttons and blocks renames on a file that is
+        // not in use.
+        status->image_loaded = 0;
+        status->device_type = PANEL_DEVICE_TYPE_SCSI;
+        panel_transport_set_async_result(buf, sizeof(loaded_image_status_t));
+        return;
+    }
+
     image_config_t* img = get_device_by_index(device_index);
     if (img && img->file.isOpen()) {
         status->image_loaded = 1;
@@ -864,19 +875,24 @@ static __attribute__((noinline)) void handle_get_initiator_status_async(void) {
     memset(resp, 0, sizeof(initiator_status_response_t));
 
     uint8_t phase, current_target, initiator_id, drives_mask;
-    scsiInitiatorGetStatus(&phase, &current_target, &initiator_id, &drives_mask);
+    uint16_t speed_kbps;
+    scsiInitiatorGetStatus(&phase, &current_target, &initiator_id, &drives_mask,
+                           &speed_kbps, resp->current_filename,
+                           sizeof(resp->current_filename));
 
     resp->phase = phase;
     resp->current_target_id = current_target;
     resp->initiator_id = initiator_id;
     resp->drives_imaged_mask = drives_mask;
+    resp->speed_kbps = speed_kbps;
 
     // Populate per-target info
     size_t offset = sizeof(initiator_status_response_t);
     uint8_t targets_found = 0;
     uint8_t targets_imaged = 0;
 
-    for (int id = 0; id < 8; id++) {
+    // NUM_SCSIID is 16 on a wide bus; a hardcoded 8 would report half the bus
+    for (int id = 0; id < NUM_SCSIID; id++) {
         if (id == initiator_id) continue;
 
         initiator_target_info_t* ti = (initiator_target_info_t*)(buf + offset);
@@ -886,7 +902,8 @@ static __attribute__((noinline)) void handle_get_initiator_status_async(void) {
         if (!scsiInitiatorGetTargetInfo(id, &ti->status, &ti->device_type, &ti->ansi_version,
                                          &ti->sectorcount, &ti->sectorsize, &ti->sectors_done,
                                          &ti->bad_sector_count, ti->vendor, ti->product,
-                                         &ti->sense_key, &ti->asc, &ti->ascq)) {
+                                         &ti->sense_key, &ti->asc, &ti->ascq,
+                                         &ti->skip_reason)) {
             continue;
         }
 
