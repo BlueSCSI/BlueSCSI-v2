@@ -56,6 +56,15 @@ typedef struct __attribute__((packed)) {
     uint8_t  targets_found;
     uint8_t  targets_imaged;
     uint16_t speed_kbps;
+    // Identity and size of the target being worked on. Static once scanned, but
+    // carried here because the async per-target table is the thing an imaging
+    // board cannot deliver - and "Imaging SCSI ID 5" with nothing else is not
+    // much of an answer to "what is it doing".
+    uint8_t  device_type;      // SCSI peripheral type of the current target
+    uint32_t sectorcount;
+    uint32_t sectorsize;
+    char     vendor[9];        // null-terminated
+    char     product[17];      // null-terminated
 } panel_initiator_summary_t;
 
 static_assert(offsetof(device_list_response_t, reserved) == 2,

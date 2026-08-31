@@ -802,8 +802,16 @@ static size_t handle_get_initiator_summary(uint8_t* response, size_t max_size) {
         if (tstatus == PANEL_INITIATOR_TARGET_DONE) {
             sum->targets_imaged++;
         }
-        if (id == current_target && sectorcount > 0) {
-            sum->progress = (uint8_t)(100ULL * sectors_done / sectorcount);
+        if (id == current_target) {
+            if (sectorcount > 0) {
+                sum->progress = (uint8_t)(100ULL * sectors_done / sectorcount);
+            }
+            scsiInitiatorGetTargetInfo(id, NULL, &sum->device_type, NULL,
+                                       &sum->sectorcount, &sum->sectorsize, NULL,
+                                       NULL, sum->vendor, sum->product,
+                                       NULL, NULL, NULL, NULL);
+            sum->vendor[sizeof(sum->vendor) - 1] = '\0';
+            sum->product[sizeof(sum->product) - 1] = '\0';
         }
     }
 
