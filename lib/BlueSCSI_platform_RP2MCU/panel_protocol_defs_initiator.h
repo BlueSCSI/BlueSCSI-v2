@@ -17,8 +17,13 @@
 
 #pragma once
 
+// Shared verbatim with the front panel firmware at
+// open-retro-storage-frontpanel/sw-frontpanel/main/panel_protocol_defs_initiator.h
+// Keep the two byte-identical; the panel compiles this as C11.
+
 #include "panel_protocol_defs.h"
 #include <stddef.h>   // offsetof
+#include <assert.h>   // static_assert, when compiled as C11
 
 // Get initiator mode status (async, returns initiator_status_response_t).
 // The shared header reserves command 0x59 for this BlueSCSI-only command.
