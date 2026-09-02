@@ -34,19 +34,9 @@ jobs:
 
       - name: Download front panel firmware
         env:
-          GH_TOKEN: ${{ secrets.FRONTPANEL_GH_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           cd BlueSCSI
-          if [ -z "$GH_TOKEN" ]; then
-            case "$GITHUB_REF" in
-              refs/tags/*|refs/heads/main)
-                echo "FRONTPANEL_GH_TOKEN missing on release build" >&2
-                exit 1 ;;
-              *)
-                echo "No panel token (fork/PR build) - building without front panel firmware"
-                exit 0 ;;
-            esac
-          fi
           PANEL_TAG=$(cat utils/frontpanel_version.txt)
           mkdir -p panel-fw
           gh release download "$PANEL_TAG" --repo polpo/open-retro-storage-frontpanel \
