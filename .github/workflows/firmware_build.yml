@@ -90,21 +90,56 @@ jobs:
           gh api repos/${GITHUB_REPOSITORY}/releases/tags/latest | jq -r '.assets[] | [.url] | @tsv' | xargs -n 1 gh api -X DELETE || true
           gh release upload --repo ${GITHUB_REPOSITORY} --clobber latest *
 
-      - name: Upload to newly created release
+      - name: Upload to tagged release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: ${{ startsWith(github.ref, 'refs/tags/') && github.repository == 'BlueSCSI/BlueSCSI-v2' }}
         run: |
-          set +e
-          RELEASE=$(basename ${{github.ref}})
+          RELEASE="${GITHUB_REF#refs/tags/}"
           if [[ "$RELEASE" =~ ^v[0-9]{4}\.[0-9]{2}\.[0-9]{2}$ ]]; then
-            RELEASE_FLAGS="--latest"
+            # Dated release: land as a draft so the changelog can be written
+            # before it is published.
+            DATED=1
+            CREATE_FLAGS="--draft --latest"
           else
-            RELEASE_FLAGS="--prerelease"
+            # Beta or test tag: publish it, and let a re-push of the same tag
+            # update that release rather than adding another one.
+            DATED=0
+            CREATE_FLAGS="--prerelease"
           fi
-          gh release create --repo ${GITHUB_REPOSITORY} --draft -t "$RELEASE" $RELEASE_FLAGS "$RELEASE" BlueSCSI/dist/*
-          status=$?
-          set -e
-          if [ $status -ne 0 ]; then
-            gh release upload --repo ${GITHUB_REPOSITORY} --clobber "$RELEASE" BlueSCSI/dist/*
+
+          # A draft release is not attached to its tag, so `gh release create`
+          # succeeds on a tag that already has a release and leaves a second,
+          # untagged one behind - which is what users then never see. Look the
+          # tag up first and replace the assets on the release it already has.
+          ID=$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
+                 --jq "[.[] | select(.tag_name == \"$RELEASE\")] | sort_by(.draft) | .[0].id // empty")
+
+          if [ -z "$ID" ]; then
+            gh release create "$RELEASE" --repo "${GITHUB_REPOSITORY}" -t "$RELEASE" \
+              $CREATE_FLAGS BlueSCSI/dist/*
+            exit 0
           fi
+
+          echo "Updating release $ID for tag $RELEASE"
+          if [ "$DATED" = "0" ]; then
+            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/releases/${ID}" \
+              -F draft=false -F prerelease=true >/dev/null
+          fi
+
+          # Asset names carry the build date and sha, so --clobber alone would
+          # leave the previous build sitting next to the new one.
+          gh api "repos/${GITHUB_REPOSITORY}/releases/${ID}" --jq '.assets[].url' \
+            | xargs -r -n 1 gh api -X DELETE
+
+          # Upload by release id: a draft cannot be addressed by tag.
+          UPLOAD=$(gh api "repos/${GITHUB_REPOSITORY}/releases/${ID}" --jq '.upload_url' | sed 's/{.*}//')
+          for f in BlueSCSI/dist/*; do
+            name=$(basename "$f")
+            curl -sSf -X POST "${UPLOAD}?name=$(printf '%s' "$name" | jq -sRr @uri)" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Content-Type: application/octet-stream" \
+              --data-binary @"$f" >/dev/null
+            echo "uploaded $name"
+          done
