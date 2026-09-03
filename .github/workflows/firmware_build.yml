@@ -12,6 +12,11 @@ jobs:
     name: Build firmware on Ubuntu
     runs-on: ubuntu-latest
 
+    # A pull request build checks out the merge commit, so stamp artifacts with
+    # the PR head sha - the one a reporter can actually look up.
+    env:
+      DIST_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
     steps:
       - name: Check out code from GitHub
         uses: actions/checkout@v6

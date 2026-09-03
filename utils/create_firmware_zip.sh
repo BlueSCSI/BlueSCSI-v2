@@ -42,7 +42,10 @@ OUTPUT_DIR="${2:?Usage: $0 <build_root> <output_dir>}"
 
 # Extract version from BlueSCSI_config.h
 FW_VER=$(grep 'FW_VER_NUM' "${PROJECT_DIR}/src/BlueSCSI_config.h" | head -1 | sed 's/.*"\(.*\)".*/\1/')
-SHORT_HASH=$(git -C "${PROJECT_DIR}" rev-parse --short=7 HEAD 2>/dev/null || echo "unknown")
+# DIST_SHA overrides the built sha on CI pull request builds - see make_dist.sh.
+SHORT_HASH="${DIST_SHA:-}"
+SHORT_HASH="${SHORT_HASH:0:7}"
+SHORT_HASH="${SHORT_HASH:-$(git -C "${PROJECT_DIR}" rev-parse --short=7 HEAD 2>/dev/null || echo "unknown")}"
 DATE=$(TZ=America/Chicago date +%Y-%m-%d)
 
 ZIP_NAME="BlueSCSI_v${FW_VER}_${SHORT_HASH}.zip"
