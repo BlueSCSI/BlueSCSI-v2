@@ -19,8 +19,9 @@ extern "C" int scsiCDRomCommand(void);
 void cdromCloseTray(image_config_t &img);
 
 // Eject CDROM tray if closed, close if open
-// Switch image on ejection.
-void cdromPerformEject(image_config_t &img);
+// Switch image on ejection. prefer_cue is forwarded to switchNextImage()
+// (see findNextImageAfter()); the front panel passes false to cycle by .bin.
+void cdromPerformEject(image_config_t &img, bool prefer_cue = true);
 
 // Reinsert ejected CD-ROM and restart from first image
 void cdromReinsertFirstImage(image_config_t &img);

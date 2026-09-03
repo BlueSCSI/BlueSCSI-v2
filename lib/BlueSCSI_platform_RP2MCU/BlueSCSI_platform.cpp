@@ -51,6 +51,12 @@ extern "C" {
 #include <pico/bootrom.h>
 #include "scsi_accel_target.h"
 #include "custom_timings.h"
+#ifdef ENABLE_PANEL_SPI
+#include "panel_spi.h"
+#endif
+#ifdef ENABLE_PANEL_I2C
+#include "panel_i2c.h"
+#endif
 #include <BlueSCSI_settings.h>
 #include <minIni.h>
 
@@ -1189,6 +1195,26 @@ void platform_post_sd_card_init()
         // one-time control setup for DMA channels and second core
         audio_setup();
 #endif // ENABLE_AUDIO_OUTPUT
+
+#ifdef ENABLE_PANEL_SPI
+    // Initialize front panel SPI interface after SD card is ready
+    panel_spi_init();
+#endif // ENABLE_PANEL_SPI
+#ifdef ENABLE_PANEL_I2C
+    // Initialize front panel I2C slave (v2) only when enabled in the INI; it
+    // claims GPIO16/17 exclusively (no buttons / SPDIF on those pins).
+    if (g_scsi_settings.getSystem()->enableFrontPanel) {
+        panel_i2c_init();
+    }
+#elif !defined(ENABLE_PANEL_SPI)
+    // No panel support in this build (RP2040 network/SPDIF: the panel's
+    // buffers don't fit alongside CYW43, and SPDIF out shares the panel's SCL
+    // pin). Say so instead of silently ignoring the setting.
+    if (g_scsi_settings.getSystem()->enableFrontPanel) {
+        logmsg("EnableFrontPanel is set, but this firmware has no front panel support");
+        logmsg("-- the front panel needs the Pico (non-network) build, or any Pico 2 board");
+    }
+#endif // ENABLE_PANEL_I2C
 }
 
 bool platform_is_initiator_mode_enabled()
@@ -1768,6 +1794,13 @@ void platform_poll()
     }
 #endif
 
+#ifdef ENABLE_PANEL_SPI
+    panel_spi_poll();
+#endif
+#ifdef ENABLE_PANEL_I2C
+    panel_i2c_poll();   // no-op until panel_i2c_init() runs (front panel enabled)
+#endif
+
 #if defined(ENABLE_AUDIO_OUTPUT_SPDIF) || defined(ENABLE_AUDIO_OUTPUT_I2S)
     audio_poll();
 #endif // ENABLE_AUDIO_OUTPUT_SPDIF
@@ -1776,9 +1809,6 @@ void platform_poll()
 void platform_reset_mcu()
 {
     watchdog_reboot(0, 0, 2000);
-}
-bool platform_has_i2c() {
-    return is2023a;
 }
 bool disable_i2c = false;
 void platform_disable_i2c() {

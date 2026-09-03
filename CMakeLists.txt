@@ -137,6 +137,15 @@ set(AUDIO_SPDIF_SOURCES
     lib/BlueSCSI_platform_RP2MCU/audio_spdif.cpp
 )
 
+# Front panel sources (SPI slave for Ultra/Ultra Wide, I2C slave for v2;
+# panel_spi.cpp / panel_i2c.cpp self-gate on ENABLE_PANEL_SPI / ENABLE_PANEL_I2C).
+set(PANEL_SOURCES
+    lib/BlueSCSI_platform_RP2MCU/panel_spi.cpp
+    lib/BlueSCSI_platform_RP2MCU/panel_i2c.cpp
+    lib/BlueSCSI_platform_RP2MCU/panel_protocol.cpp
+    lib/BlueSCSI_platform_RP2MCU/panel_sha256_sw.cpp
+)
+
 # SCSI2SD library sources
 set(SCSI2SD_SOURCES
     lib/SCSI2SD/src/firmware/scsi.c
@@ -396,39 +405,63 @@ elseif(BLUESCSI_TARGET STREQUAL "Pico_2_Audio_SPDIF")
     set_target_properties(BlueSCSI PROPERTIES OUTPUT_NAME "BlueSCSI_Pico_2_Audio_SPDIF")
 
 elseif(BLUESCSI_TARGET STREQUAL "Ultra")
-    # BlueSCSI Ultra (RP2350B with I2S audio + network)
-    target_sources(BlueSCSI PRIVATE ${NETWORK_SOURCES} ${AUDIO_I2S_SOURCES})
+    # BlueSCSI Ultra (RP2350B with I2S audio + network + front panel)
+    target_sources(BlueSCSI PRIVATE ${NETWORK_SOURCES} ${AUDIO_I2S_SOURCES} ${PANEL_SOURCES})
     target_compile_definitions(BlueSCSI PRIVATE
         BLUESCSI_ULTRA
         BLUESCSI_MCU_RP23XX
         ENABLE_AUDIO_OUTPUT
         ENABLE_AUDIO_OUTPUT_I2S
+        ENABLE_PANEL_SPI
         BLUESCSI_NETWORK
         BLUESCSI_DAYNAPORT
         BLUESCSI_RM2
         CYW43_PIO_CLOCK_DIV_DYNAMIC=1
         LOGBUFSIZE=65536
     )
-    target_link_libraries(BlueSCSI PRIVATE pico_cyw43_arch_poll pico_async_context_poll)
+    target_link_libraries(BlueSCSI PRIVATE pico_cyw43_arch_poll pico_async_context_poll pico_sha256)
     set_target_properties(BlueSCSI PROPERTIES OUTPUT_NAME "BlueSCSI_Ultra")
 
 elseif(BLUESCSI_TARGET STREQUAL "Ultra_Wide")
-    # BlueSCSI Ultra Wide (RP2350B with wide SCSI + I2S audio)
-    target_sources(BlueSCSI PRIVATE ${AUDIO_I2S_SOURCES})
+    # BlueSCSI Ultra Wide (RP2350B with wide SCSI + I2S audio + front panel)
+    target_sources(BlueSCSI PRIVATE ${AUDIO_I2S_SOURCES} ${PANEL_SOURCES})
     target_compile_definitions(BlueSCSI PRIVATE
         BLUESCSI_ULTRA_WIDE
         BLUESCSI_MCU_RP23XX
         ENABLE_AUDIO_OUTPUT
         ENABLE_AUDIO_OUTPUT_I2S
+        ENABLE_PANEL_SPI
         RP2MCU_USE_CPU_PARITY
         RP2MCU_SCSI_ACCEL_WIDE
         CYW43_PIO_CLOCK_DIV_DYNAMIC=1
         LOGBUFSIZE=32768
     )
+    target_link_libraries(BlueSCSI PRIVATE pico_sha256)
     set_target_properties(BlueSCSI PROPERTIES OUTPUT_NAME "BlueSCSI_Ultra_Wide")
 
 else()
     message(FATAL_ERROR "Unknown BLUESCSI_TARGET: ${BLUESCSI_TARGET}")
+endif()
+
+# Front panel is available as a runtime option (the [SCSI] EnableFrontPanel ini
+# key, default off) on the BlueSCSI v2 profiles that have the SRAM for it:
+# Pico (RP2040 base) and all three RP2350 profiles (Pico_2 / _DaynaPORT /
+# _Audio_SPDIF). The panel needs ~16 KB of private static buffers (full-size, so
+# the async I2C ISR never shares memory with a live SCSI transfer); on RP2040 +
+# WiFi the CYW43 stack leaves too little SRAM, so Pico_DaynaPORT and
+# Pico_Audio_SPDIF are excluded. (Pico_Audio_SPDIF also routes SPDIF out on
+# GPIO17 = the panel's SCL, so they couldn't coexist there anyway.)
+# Ultra/Ultra Wide use the SPI panel (ENABLE_PANEL_SPI) instead.
+if(BLUESCSI_TARGET MATCHES "^Pico"
+   AND NOT BLUESCSI_TARGET STREQUAL "Pico_DaynaPORT"
+   AND NOT BLUESCSI_TARGET STREQUAL "Pico_Audio_SPDIF")
+    target_sources(BlueSCSI PRIVATE ${PANEL_SOURCES})
+    target_compile_definitions(BlueSCSI PRIVATE ENABLE_PANEL_I2C)
+    target_link_libraries(BlueSCSI PRIVATE pico_i2c_slave)
+    if(BLUESCSI_TARGET MATCHES "^Pico_2")
+        # RP2350 uses the hardware SHA-256 block for the firmware-relay hash path.
+        target_link_libraries(BlueSCSI PRIVATE pico_sha256)
+    endif()
 endif()
 
 # =============================================================================
@@ -490,17 +523,21 @@ if(PICO_PLATFORM STREQUAL "rp2040")
     target_compile_definitions(BlueSCSI PRIVATE PICO_CRT0_ALLOCATE_SPACERS=0)
 endif()
 
-# RP2350 SCRATCH_Y is 4KB but the SDK default stack is only 2KB (0x800).
-# The image-opening call chain (scsiDiskOpenHDDImage + SdFat + SDIO) uses ~1.5KB
-# alone, and RP2350's hardware MSPLIM catches the overflow that RP2040 silently
-# ignores. Increase to 3KB — not 4KB because Audio SPDIF targets place ~768 bytes
-# of lookup tables in .scratch_y. Keep core 1's stack at default in SCRATCH_X.
-if(PICO_PLATFORM STREQUAL "rp2350-arm-s")
-    target_compile_definitions(BlueSCSI PRIVATE
-        PICO_STACK_SIZE=0xC00
-        PICO_CORE1_STACK_SIZE=0x800
-    )
-endif()
+# The SDK default stack is only 2KB (0x800), and the image-opening call chain
+# (switchNextImage -> scsiDiskOpenHDDImage -> cdromValidateCueSheet, plus SdFat
+# and CUEParser below them) measures ~1.7KB on its own — reachable from a plain
+# host-driven eject, with no front panel involved. RP2350's hardware MSPLIM
+# faults on overflow; RP2040 silently corrupts .bss instead, so it needs the
+# headroom at least as much. Increase to 3KB on both — not 4KB because Audio
+# SPDIF targets place ~768 bytes of lookup tables in .scratch_y. Keep core 1's
+# stack at default in SCRATCH_X.
+# Core 1's stack must stay pinned at the 2KB default: it lives in SCRATCH_X, and
+# PICO_CORE1_STACK_SIZE otherwise inherits PICO_STACK_SIZE, which overflows
+# SCRATCH_X on the Audio SPDIF and DaynaPORT targets.
+target_compile_definitions(BlueSCSI PRIVATE
+    PICO_STACK_SIZE=0xC00
+    PICO_CORE1_STACK_SIZE=0x800
+)
 
 # =============================================================================
 # Bootloader Build

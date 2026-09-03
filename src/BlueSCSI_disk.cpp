@@ -44,6 +44,7 @@
 #include <string.h>
 #include <strings.h>
 #include <assert.h>
+#include <new>
 #include <SdFat.h>
 
 extern "C" {
@@ -231,8 +232,10 @@ void scsiDiskResetImages()
 
 void image_config_t::clear()
 {
-    static const image_config_t empty; // Statically zero-initialized
-    *this = empty;
+    // Re-run the default constructor in place; a static blank instance for
+    // "*this = empty" would keep a whole image_config_t of RAM just for this
+    this->~image_config_t();
+    new (this) image_config_t();
 }
 
 uint32_t image_config_t::get_capacity_lba()
@@ -507,6 +510,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
     image_config_t &img = g_DiskImages[target_idx];
     img.cuesheetfile.close();
     img.bin_container.close();
+    img.cue_loaded_directly = false;
     img.cdrom_binfile_index = -1;
     img.cdrom_track_end_lba = 0;
     scsiDiskSetImageConfig(target_idx);
@@ -531,18 +535,23 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
         char parentdir[MAX_FILE_PATH + 1] = {0};
         strncpy(parentdir, filename, sizeof(parentdir) - 1);
         char *lastslash = strrchr(parentdir, '/');
-        if (lastslash)
+        if (lastslash && lastslash != parentdir)
         {
             *lastslash = '\0';  // Truncate to parent directory
         }
         else
         {
-            strcpy(parentdir, "/");  // Root directory
+            // No slash, or a leading slash only ("/disc.cue"): parent is root
+            strcpy(parentdir, "/");
         }
 
-        // Open parent directory as folder for multi-bin file selection
+        // Open parent directory as folder for multi-bin file selection.
+        // This is only for resolving the cue's .bin tracks - the image still
+        // cycles by its own .cue filename, not by the directory (see
+        // cue_loaded_directly in BlueSCSI_disk.h).
         img.file = ImageBackingStore(parentdir, blocksize);
         img.bin_container.open(parentdir);
+        img.cue_loaded_directly = true;
 
         // Validate the cue sheet now (before device type setup)
         // We need to set deviceType temporarily for validation
@@ -553,6 +562,7 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
             img.cuesheetfile.close();
             img.bin_container.close();
             img.file.close();
+            img.cue_loaded_directly = false;
             return false;
         }
     }
@@ -868,6 +878,18 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
 
         img.use_prefix = use_prefix;
         img.file.getFilename(img.current_image, sizeof(img.current_image));
+        if (img.cue_loaded_directly)
+        {
+            // img.file points at the cue's parent directory, so getFilename()
+            // stored the directory name. The cycling identity of this image is
+            // the .cue file itself: keep its basename as the iteration cursor
+            // so scsiDiskGetNextImageName() advances among the sibling .cue
+            // files instead of restarting from the directory name every time.
+            const char *cue_basename = strrchr(filename, '/');
+            cue_basename = cue_basename ? cue_basename + 1 : filename;
+            strncpy(img.current_image, cue_basename, sizeof(img.current_image) - 1);
+            img.current_image[sizeof(img.current_image) - 1] = '\0';
+        }
         return true;
     }
     else
@@ -1099,7 +1121,7 @@ static void doCloseTray(image_config_t &img)
  
 // Eject and switch image
 // This is really press eject button for close and open.
-static void doPerformEject(image_config_t &img)
+void diskPerformEject(image_config_t &img)
 {
     const uint8_t target = img.getTargetId();
     // Now that we have a request from a button or an explicit start SCSI command to close the drive,
@@ -1121,7 +1143,7 @@ static void doPerformEject(image_config_t &img)
 
 int findNextImageAfter(image_config_t &img,
         const char* dirname, const char* filename,
-        char* nextname, size_t nextname_len, bool ignore_prefix)
+        char* nextname, size_t nextname_len, bool ignore_prefix, bool prefer_cue)
 {
     FsFile dir;
     if (dirname[0] == '\0')
@@ -1165,8 +1187,9 @@ int findNextImageAfter(image_config_t &img,
     }
 
     // For optical devices, check if directory contains .cue files
-    // If so, skip .bin files (they're referenced by the .cue files)
-    bool dir_has_cue = (img.deviceType == S2S_CFG_OPTICAL) && scsiDiskFolderContainsCueSheet(&dir);
+    // If so, skip .bin files (they're referenced by the .cue files).
+    // prefer_cue=false cycles by the underlying .bin files instead - see header.
+    bool dir_has_cue = prefer_cue && (img.deviceType == S2S_CFG_OPTICAL) && scsiDiskFolderContainsCueSheet(&dir);
     if (dir_has_cue)
     {
         dbgmsg("-- Directory '", dirname, "' contains .cue file(s), will select .cue instead of .bin");
@@ -1250,7 +1273,7 @@ int findNextImageAfter(image_config_t &img,
     }
 }
 
-int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
+int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen, bool prefer_cue)
 {
     int target_idx = img.getTargetId();
 
@@ -1260,13 +1283,19 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
     // sanity check: is provided buffer is long enough to store a filename?
     assert(buflen >= MAX_FILE_PATH);
 
+    // callers check buf on a zero return; never hand back stale/uninitialized data
+    buf[0] = '\0';
+
     // find the next filename
     char nextname[MAX_FILE_PATH];
     int nextlen;
 
     char currentname[MAX_FILE_PATH];
-    // Test to see if we have a multi bin/cue file in a directory. Use the directory name instead
-    if (img.is_multi_bin_cue())
+    // A folder-image (folder holding a cue + bins) cycles at the parent level
+    // by its directory name. A directly-loaded loose .cue also has a directory
+    // as bin_container (the cue's parent, for track resolution) but cycles by
+    // its own filename, which scsiDiskOpenHDDImage() kept in current_image.
+    if (img.is_multi_bin_cue() && !img.cue_loaded_directly)
     {
         img.bin_container.getName(currentname, sizeof(currentname));
     }
@@ -1317,32 +1346,50 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen)
                 return 0;
             }
         }
+        // ini_gets() returned 0 when the directory was derived from the
+        // device type above; the concatenation below needs the real length
+        dirlen = strlen(dirname);
 
-        // find the next filename
-        nextlen = findNextImageAfter(img, dirname, currentname, nextname, sizeof(nextname));
+        // find the next filename that fits the caller's buffer; entries too
+        // long are skipped so they can't wedge the cycle
+        char first_skipped[MAX_FILE_PATH] = {'\0'};
+        while (true)
+        {
+            nextlen = findNextImageAfter(img, dirname, currentname, nextname, sizeof(nextname), false, prefer_cue);
 
-        if (nextlen == 0)
-        {
-            logmsg("Image directory was empty for ID", target_idx);
-            return 0;
+            if (nextlen == 0)
+            {
+                logmsg("Image directory was empty for ID", target_idx);
+                return 0;
+            }
+            if (buflen >= (size_t)(nextlen + dirlen + 2))
+            {
+                break;
+            }
+
+            logmsg("Image name '", dirname, "/", nextname, "' exceeds ", (int)(buflen - dirlen - 2), " characters, skipping");
+            if (first_skipped[0] == '\0')
+            {
+                strncpy(first_skipped, nextname, sizeof(first_skipped) - 1);
+            }
+            else if (strcasecmp(nextname, first_skipped) == 0)
+            {
+                // wrapped all the way around without finding a usable name
+                return 0;
+            }
+            strncpy(currentname, nextname, sizeof(currentname) - 1);
+            currentname[sizeof(currentname) - 1] = '\0';
         }
-        else if (buflen < nextlen + dirlen + 2)
-        {
-            logmsg("Directory '", dirname, "' and file '", nextname, "' exceed allowed length");
-            return 0;
-        }
-        else
-        {
-            // construct a return value
-            strncpy(buf, dirname, buflen);
-            if (buf[strlen(buf) - 1] != '/') strcat(buf, "/");
-            strcat(buf, nextname);
-            return dirlen + nextlen;
-        }
+
+        // construct a return value
+        strncpy(buf, dirname, buflen);
+        if (buf[strlen(buf) - 1] != '/') strcat(buf, "/");
+        strcat(buf, nextname);
+        return dirlen + nextlen;
     }
     else if (img.use_prefix)
     {
-        nextlen = findNextImageAfter(img, "/", currentname, nextname, sizeof(nextname));
+        nextlen = findNextImageAfter(img, "/", currentname, nextname, sizeof(nextname), false, prefer_cue);
         if (nextlen == 0)
         {
             logmsg("Next file with the same prefix as ", currentname," not found for ID", target_idx);
@@ -1446,18 +1493,19 @@ void setEjectButton(uint8_t idx, int8_t eject_button)
 }
 
 // Check if we have multiple drive images to cycle when drive is ejected.
-bool switchNextImage(image_config_t &img, const char* next_filename)
+bool switchNextImage(image_config_t &img, const char* next_filename, bool prefer_cue)
 {
     // Check if we have a next image to load, so that drive is closed next time the host asks.
     int target_idx = img.getTargetId();
     char filename[MAX_FILE_PATH];
     if (next_filename == nullptr)
     {
-        scsiDiskGetNextImageName(img, filename, sizeof(filename));
+        scsiDiskGetNextImageName(img, filename, sizeof(filename), prefer_cue);
     }
     else
     {
-        strncpy(filename, next_filename, MAX_FILE_PATH);
+        strncpy(filename, next_filename, sizeof(filename) - 1);
+        filename[sizeof(filename) - 1] = '\0';
     }
 
 #ifdef ENABLE_AUDIO_OUTPUT
@@ -1541,7 +1589,7 @@ static void diskEjectAction(uint8_t buttonId)
             {
                 found = true;
                 logmsg("Eject button ", (int)buttonId, " pressed, passing to SCSI ID: ", (int)i);
-                doPerformEject(img);
+                diskPerformEject(img);
             }
         }
     }
@@ -3061,7 +3109,7 @@ int scsiDiskCommand()
             else
             {
                 // Eject and switch image
-                doPerformEject(img);
+                diskPerformEject(img);
             }
         }
         else if (start)

@@ -185,6 +185,13 @@ SECTIONS
         *(.text*platform_network_wifi_join*)
         *(.text*wifi_security_name*)
         *(.text*wifi_security_auth*)
+        /* Cold diagnostics-only dump of the accelerator state (timeout and
+         * crash paths, which already run flash-resident logmsg) */
+        *(.text*scsi_accel_log_state*)
+        /* VERIFY is rare and never back to back with a transfer. */
+        *(.text*scsiDiskHandleVerify*)
+        /* Wi-Fi bring-up, once at boot. The packet path stays in RAM. */
+        *(.text*platform_network_init*)
 
         /* SCSI commands that don't require high performance */
         *(.text*scsiToolboxCommand*)
@@ -230,6 +237,14 @@ SECTIONS
         *BlueSCSI_msc_initiator.cpp.o(.text .text*)
         *scsi_accel_host*(.text .text*)
         *scsiHostPhy*(.text .text*)
+
+        /* Front panel (not performance-critical). panel_i2c is the transport
+         * that actually builds on RP2040 (ENABLE_PANEL_I2C), so leaving it out
+         * of this list put the only live panel transport in RAM. */
+        *panel_spi.cpp.o(.text .text*)
+        *panel_i2c.cpp.o(.text .text*)
+        *panel_protocol.cpp.o(.text .text*)
+        *panel_sha256_sw.cpp.o(.text .text*)
 
         /* SdFat filesystem functions that are not performance-critical.
          * Only init/management functions go to flash. The hot-path

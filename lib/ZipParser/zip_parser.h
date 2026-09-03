@@ -62,6 +62,11 @@ namespace zipparser
             parsing_target target;
             size_t position;
             uint32_t crc;
+            // Per-instance parse state (was function-local static in Parse(),
+            // which leaked state across Parser instances)
+            bool matching;
+            bool central_dir;
+            bool local_file_header;
 
     };
 }

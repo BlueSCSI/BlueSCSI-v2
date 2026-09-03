@@ -135,8 +135,8 @@ void init_logfile()
   bool truncate = first_open_after_boot;
   if (truncate)
   {
-    SD.remove("lastlog.txt");
-    SD.rename(LOGFILE, "lastlog.txt");
+    SD.remove(LASTLOGFILE);
+    SD.rename(LOGFILE, LASTLOGFILE);
   }
   int flags = O_WRONLY | O_CREAT | (truncate ? O_TRUNC : O_APPEND);
   g_logfile = SD.open(LOGFILE, flags);
@@ -1142,15 +1142,102 @@ static bool verify_extracted_firmware(FsFile &check, uint32_t expected_size,
   return true;
 }
 
+// Scan the zip from the start for a stored entry whose filename begins with
+// name_prefix and is exactly total_name_len characters, then stream its bytes
+// into dest. Returns false when no entry matched or the copy came up short.
+__attribute__((optimize("Os")))
+STATIC_TESTABLE bool firmware_update_extract(FsFile &zip, const char *name_prefix,
+                                             size_t prefix_len, size_t total_name_len,
+                                             FsFile &dest)
+{
+  zipparser::Parser parser = zipparser::Parser(name_prefix, prefix_len, total_name_len);
+  uint8_t buf[512];
+  int32_t parsed_length;
+  int bytes_read = 0;
+  if (!zip.seekSet(0))
+    return false;
+  while ((bytes_read = zip.read(buf, sizeof(buf))) > 0)
+  {
+    parsed_length = parser.Parse(buf, bytes_read);
+    if (parsed_length == bytes_read)
+      continue;
+    if (parsed_length < 0)
+      return false; // central directory reached or parse error: no match
+    if (parser.FoundMatch())
+    {
+      // seek to start of data in matching file
+      zip.seekSet(zip.position() - (bytes_read - parsed_length));
+      break;
+    }
+    parser.Reset();
+    zip.seekSet(zip.position() - (bytes_read - parsed_length) + parser.GetCompressedSize());
+  }
+
+  if (!parser.FoundMatch())
+    return false;
+
+  uint32_t remaining = parser.GetCompressedSize();
+  while (remaining > 0 && (bytes_read = zip.read(buf, sizeof(buf))) > 0)
+  {
+    uint32_t chunk = bytes_read;
+    if (chunk > remaining)
+      chunk = remaining;
+    if (dest.write(buf, chunk) != chunk)
+      return false;
+    remaining -= chunk;
+  }
+  // Stored data is always followed by the next local header or the central
+  // directory, so a valid zip can never end exactly at the entry payload.
+  return remaining == 0;
+}
+
+#if defined(ENABLE_PANEL_I2C) || defined(ENABLE_PANEL_SPI)
+// Extract the front panel firmware from the update package to the
+// SD card. The panel protocol serves it to the panel, which compares
+// SHA-256 and decides for itself whether to reflash.
+__attribute__((optimize("Os")))
+STATIC_TESTABLE void firmware_update_panel(FsFile &zip)
+{
+  const char *panel_name = PANEL_FIRMWARE_ZIP_NAME;
+  size_t name_len = strlen(panel_name);
+
+  SD.mkdir(PANEL_FIRMWARE_DIR); // returns false when it already exists
+
+  FsFile dest;
+  if (!dest.open(PANEL_FIRMWARE_TMP_PATH, O_BINARY | O_WRONLY | O_CREAT | O_TRUNC))
+  {
+    logmsg("Failed to open ", PANEL_FIRMWARE_TMP_PATH, " for front panel firmware");
+    return;
+  }
+  // Write to a temp file and rename so a failed extraction can never leave
+  // a torn frontpanel.bin for the panel to hash.
+  bool extracted = firmware_update_extract(zip, panel_name, name_len, name_len, dest);
+  dest.close();
+  if (!extracted)
+  {
+    SD.remove(PANEL_FIRMWARE_TMP_PATH);
+    logmsg("No front panel firmware (", panel_name, ") in package");
+    return;
+  }
+  SD.remove(PANEL_FIRMWARE_PATH); // rename fails if the destination exists
+  if (SD.rename(PANEL_FIRMWARE_TMP_PATH, PANEL_FIRMWARE_PATH))
+    logmsg("Extracted front panel firmware to ", PANEL_FIRMWARE_PATH);
+  else
+    logmsg("Failed to move front panel firmware to ", PANEL_FIRMWARE_PATH);
+}
+#endif
+
 // Update firmware by unzipping the firmware package
 __attribute__((optimize("Os")))
-static void firmware_update()
+STATIC_TESTABLE void firmware_update()
 {
   const char package_prefix[] = FIRMWARE_PACKAGE_PREFIX;
   const char zip_ext[] = ".zip";
   FsFile root = SD.open("/");
   FsFile file;
-  char name[MAX_FILE_PATH + 1];
+  // Sized for firmware package names rather than MAX_FILE_PATH: a root entry
+  // that doesn't fit can't be a firmware zip, and getName() skips it
+  char name[72];
   while (1)
   {
     if (!file.openNext(&root, O_RDONLY))
@@ -1178,6 +1265,18 @@ static void firmware_update()
   }
 
   logmsg("Found firmware package ", name);
+
+#if defined(ENABLE_PANEL_I2C) || defined(ENABLE_PANEL_SPI)
+  // Panel firmware first: the MCU update below ends in a reboot. If the
+  // package has no MCU image for this board the zip stays on the card and
+  // this rewrites the panel file each boot; the panel's SHA cache makes
+  // that a no-op beyond one hash.
+  firmware_update_panel(file);
+  // firmware_update_extract() leaves the position where it stopped; the scan
+  // below reads from the current offset.
+  file.seekSet(0);
+#endif
+
   // example fixed length at the end of the filename
   const uint32_t postfix_filename_length = sizeof("_2025-02-21_e4be9ed.bin") - 1;
   const uint32_t target_filename_length = sizeof(FIRMWARE_NAME_PREFIX) - 1 + postfix_filename_length;
