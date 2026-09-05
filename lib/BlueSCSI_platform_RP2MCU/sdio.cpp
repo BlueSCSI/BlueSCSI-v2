@@ -35,6 +35,7 @@
 #if defined(SD_USE_SDIO) && !defined(SD_USE_RP2350_SDIO)
 
 #include "sdio.h"
+#include "sdio_timeout.h"
 #include "sdio_write_response.h"
 #include <hardware/pio.h>
 #include <hardware/dma.h>
@@ -86,8 +87,8 @@ static struct {
     pio_sm_config pio_cfg_data_tx;
 
     sdio_transfer_state_t transfer_state;
-    uint32_t transfer_start_time;   // restarted on every completed block
-    uint32_t burst_start_time;      // start of the whole multi-block transfer
+    volatile uint32_t transfer_start_time;   // restarted on every completed block, from the DMA IRQ
+    volatile uint32_t burst_start_time;      // start of the whole multi-block transfer
     uint32_t *data_buf;
     uint32_t blocks_done; // Number of blocks transferred so far
     uint32_t total_blocks; // Total number of blocks to transfer
@@ -225,7 +226,7 @@ waitagain:
     {
         // SD Spec says CMD6 transaction timeout is 100ms
         // ACMD13 is likely similar
-        if ((uint32_t)(platform_millis() - g_sdio.transfer_start_time) > 100)
+        if (sdio_deadline_passed(&g_sdio.transfer_start_time, platform_millis, 100))
         {
 
 #ifdef SDIO_DEBUG
@@ -792,8 +793,8 @@ sdio_status_t rp2040_sdio_rx_poll(uint32_t *bytes_complete)
             return SDIO_ERR_DATA_CRC;
         }
     }
-    else if ((uint32_t)(platform_millis() - g_sdio.transfer_start_time) > SDIO_BLOCK_TIMEOUT_MS ||
-             (uint32_t)(platform_millis() - g_sdio.burst_start_time) > SDIO_BURST_TIMEOUT_MS)
+    else if (sdio_deadline_passed(&g_sdio.transfer_start_time, platform_millis, SDIO_BLOCK_TIMEOUT_MS) ||
+             sdio_deadline_passed(&g_sdio.burst_start_time, platform_millis, SDIO_BURST_TIMEOUT_MS))
     {
         sdio_log_data_timeout("rp2040_sdio_rx_poll()", SDIO_DATA_SM, g_sdio.pio_data_rx_offset);
         rp2040_sdio_stop();
@@ -1036,8 +1037,8 @@ sdio_status_t rp2040_sdio_tx_poll(uint32_t *bytes_complete)
         rp2040_sdio_stop();
         return g_sdio.wr_status;
     }
-    else if ((uint32_t)(platform_millis() - g_sdio.transfer_start_time) > SDIO_BLOCK_TIMEOUT_MS ||
-             (uint32_t)(platform_millis() - g_sdio.burst_start_time) > SDIO_BURST_TIMEOUT_MS)
+    else if (sdio_deadline_passed(&g_sdio.transfer_start_time, platform_millis, SDIO_BLOCK_TIMEOUT_MS) ||
+             sdio_deadline_passed(&g_sdio.burst_start_time, platform_millis, SDIO_BURST_TIMEOUT_MS))
     {
         sdio_log_data_timeout("rp2040_sdio_tx_poll()", SDIO_CMD_SM, g_sdio.pio_data_tx_offset);
 
