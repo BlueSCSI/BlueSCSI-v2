@@ -208,7 +208,17 @@ void scsiNetworkWifiJoin(uint32_t size)
 	scsiRead((uint8_t *)&req, sizeof(req), &parityError);
 	DBGMSG_F("%s: read join request from host:", __func__);
 	DBGMSG_BUF(scsiDev.data, size);
-	platform_network_wifi_join(req.ssid, req.key, false);
+
+	// The wire fields are not terminated when the host fills them completely,
+	// which a 64 character hex PSK does.
+	char ssid[sizeof(req.ssid) + 1];
+	char key[sizeof(req.key) + 1];
+	memcpy(ssid, req.ssid, sizeof(req.ssid));
+	ssid[sizeof(req.ssid)] = '\0';
+	memcpy(key, req.key, sizeof(req.key));
+	key[sizeof(req.key)] = '\0';
+
+	platform_network_wifi_join(ssid, key, false);
 
 	scsiDev.status = GOOD;
 	scsiDev.phase = STATUS;
