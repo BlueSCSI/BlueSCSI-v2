@@ -38,6 +38,7 @@
 #include "BlueSCSI_blink.h"
 #include <CUEParser.h>
 #include <assert.h>
+#include <new>
 #include <minIni.h>
 #ifdef ENABLE_AUDIO_OUTPUT
 #include "BlueSCSI_audio.h"
@@ -624,11 +625,12 @@ static bool loadCueSheet(image_config_t &img, CUEParser &parser)
         return false;
     }
 
-    // Use second half of scsiDev.data as the buffer for cue sheet text
+    // Use second half of scsiDev.data as the buffer for cue sheet text,
+    // leaving room for the terminator.
     size_t halfbufsize = sizeof(scsiDev.data) / 2;
     char *cuebuf = (char*)&scsiDev.data[halfbufsize];
     img.cuesheetfile.seek(0);
-    int len = img.cuesheetfile.read(cuebuf, halfbufsize);
+    int len = img.cuesheetfile.read(cuebuf, halfbufsize - 1);
 
     if (len <= 0)
     {
@@ -636,7 +638,11 @@ static bool loadCueSheet(image_config_t &img, CUEParser &parser)
     }
 
     cuebuf[len] = '\0';
-    parser = CUEParser(cuebuf);
+
+    // Construct in place. Assigning a temporary costs a second CUEParser
+    // (>300 bytes) on a stack that is already deep at image load time.
+    parser.~CUEParser();
+    new (&parser) CUEParser(cuebuf);
     return true;
 }
 
@@ -1342,18 +1348,17 @@ bool cdromValidateCueSheet(image_config_t &img)
         char bin_name[MAX_FILE_PATH + 1] = {0};
         img.file.getFilename(bin_name, sizeof(bin_name));
 
-        CUEParser check_parser;
-        if (loadCueSheet(img, check_parser))
+        // Reuse the parser above. A second one costs another 300+ bytes on a
+        // stack that is already deep here, and the cue text is still in place.
+        parser.restart();
+        const CUETrackInfo *first = parser.next_track(0);
+        if (first && first->filename[0] != '\0')
         {
-            const CUETrackInfo *first = check_parser.next_track(0);
-            if (first && first->filename[0] != '\0')
+            if (!cdromCueFilenameMatchesBin(first->filename, bin_name))
             {
-                if (!cdromCueFilenameMatchesBin(first->filename, bin_name))
-                {
-                    logmsg("---- CUE references '", first->filename,
-                           "' but image file is '", bin_name, "'");
-                    return false;
-                }
+                logmsg("---- CUE references '", first->filename,
+                       "' but image file is '", bin_name, "'");
+                return false;
             }
         }
     }
