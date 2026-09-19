@@ -1,6 +1,7 @@
 /** 
  * Copyright (C) 2023 saybur
  * Copyright (C) 2025 Tech by Androda, LLC
+ * Copyright (c) 2026 Eric Helgeson <eric@bluescsi.com>
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -188,6 +189,21 @@ static uint8_t invert = 0; // biphase encode help: set if last wire bit was '1'
 static uint32_t spdif_pio_sm = 2;
 static bool already_claimed = false;
 static bool audio_setup_failed = false;
+// Volume byte each sample is multiplied by, 255 being full scale. The two
+// output port levels are averaged, then scaled by MaxVolume so DACs that clip
+// near full scale can be given headroom from bluescsi.ini.
+static inline uint8_t spdif_volume_level(uint16_t wvol, uint8_t max_volume)
+{
+    uint8_t avg = ((wvol >> 8) + (wvol & 0xFF)) >> 1;
+    return (uint16_t)avg * max_volume / 100;
+}
+
+// Scale a sample into the 24-bit S/PDIF audio field.
+static inline uint32_t spdif_scale_sample(int32_t rsamp, uint8_t vol)
+{
+    return ((uint32_t)(rsamp * vol)) & 0xFFFFF0;
+}
+
 /*
  * Translates 16-bit stereo sound samples to biphase wire patterns for the
  * SPI peripheral. Produces 8 patterns (128 bits, or 1 S/PDIF frame) per pair
@@ -200,10 +216,7 @@ static bool audio_setup_failed = false;
  */
 static void snd_encode(uint8_t* samples, uint16_t* wire_patterns, uint16_t len, uint8_t swap) {
     uint16_t wvol = volumes[audio_owner & S2S_CFG_TARGET_ID_BITS];
-    uint8_t lvol = ((wvol >> 8) + (wvol & 0xFF)) >> 1; // average of both values
-    // limit maximum volume; with my DACs I've had persistent issues
-    // with signal clipping when sending data in the highest bit position
-    lvol = lvol >> 2;
+    uint8_t lvol = spdif_volume_level(wvol, g_scsi_settings.getSystem()->maxVolume);
     uint8_t rvol = lvol;
     // enable or disable based on the channel information for both output
     // ports, where the high byte and mask control the right channel, and
@@ -223,15 +236,9 @@ static void snd_encode(uint8_t* samples, uint16_t* wire_patterns, uint16_t len, 
             } else {
                 rsamp = (int16_t)(samples[i] + (samples[i + 1] << 8));
             }
-            // linear scale to requested audio value
-            if (i & 2) {
-                rsamp *= rvol;
-            } else {
-                rsamp *= lvol;
-            }
             // use 20 bits of value only, which allows ignoring the lowest 8
             // bits during biphase conversion (after including sample shift)
-            sample = ((uint32_t)rsamp) & 0xFFFFF0;
+            sample = spdif_scale_sample(rsamp, (i & 2) ? rvol : lvol);
 
             // determine parity, simplified to one lookup via XOR
             parity = ((sample >> 16) ^ (sample >> 8)) ^ sample;
@@ -719,4 +726,16 @@ void audio_set_file_position(uint8_t id, const CUETrackInfo *trackinfo, uint32_t
     current_track_pos.sector_length = trackinfo->sector_length;
     fpos = audio_offset_from_lba(*trackinfo, lba);
 }
+#ifdef UNIT_TEST
+/* Test accessors */
+extern "C" uint8_t spdif_test_volume_level(uint16_t wvol, uint8_t max_volume)
+{
+    return spdif_volume_level(wvol, max_volume);
+}
+extern "C" uint32_t spdif_test_scale_sample(int16_t sample, uint8_t vol)
+{
+    return spdif_scale_sample(sample, vol);
+}
+#endif
+
 #endif // ENABLE_AUDIO_OUTPUT_SPDIF
