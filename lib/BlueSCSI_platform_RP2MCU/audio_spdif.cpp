@@ -185,8 +185,14 @@ static uint16_t sfcnt = 0; // sub-frame count; 2 per frame, 192 frames/block
 static uint8_t invert = 0; // biphase encode help: set if last wire bit was '1'
 
 // PIO Audio
+#ifdef BLUESCSI_MCU_RP20XX
+// PIO1 is full on a Pico W: SDIO 26 + CYW43 6 instructions
+#define SPDIF_PIO_UNIT pio0
+static uint32_t spdif_pio_sm = 0;
+#else
 #define SPDIF_PIO_UNIT pio1
 static uint32_t spdif_pio_sm = 2;
+#endif
 static bool already_claimed = false;
 static bool audio_setup_failed = false;
 // Volume byte each sample is multiplied by, 255 being full scale. The two
@@ -425,6 +431,11 @@ void audio_setup() {
     } else {
         pio_sm_claim(SPDIF_PIO_UNIT, spdif_pio_sm);
         int prog_offset = pio_add_program(SPDIF_PIO_UNIT, &shift_program);
+        if (prog_offset < 0) {
+            logmsg("No PIO instruction memory left for Audio Output");
+            audio_setup_failed = true;
+            return;
+        }
         shift_program_init(SPDIF_PIO_UNIT, spdif_pio_sm, prog_offset, SPDIF_OUTPUT_PIN);
         // Set clock divider
         pio_sm_set_clkdiv(SPDIF_PIO_UNIT, spdif_pio_sm, clkdiv);
