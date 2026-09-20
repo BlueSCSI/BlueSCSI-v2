@@ -135,6 +135,17 @@ static uint8_t sbufswap = 0;
 static uint16_t wire_buf_a[WIRE_BUFFER_SIZE];
 static uint16_t wire_buf_b[WIRE_BUFFER_SIZE];
 
+// Glitch diagnostics. A wire buffer is re-armed by the DMA IRQ the moment its
+// channel completes, and core1 has until the chain comes back around to refill
+// it. If it has not, the DMA replays the previous chunk and the output glitches
+// without anything else noticing.
+static volatile bool wbuf_a_encoded = false;
+static volatile bool wbuf_b_encoded = false;
+static volatile uint32_t snd_chunks = 0;      // wire buffers played
+static volatile uint32_t snd_late = 0;        // replayed, core1 was not done
+static volatile uint32_t snd_silent = 0;      // sample buffer was not READY
+static uint32_t snd_report_time = 0;
+
 // tracking for audio playback
 static uint8_t audio_owner; // SCSI ID or 0xFF when idle
 static volatile bool audio_paused = false;
@@ -305,6 +316,7 @@ static void snd_process_a() {
             }
         } else {
             snd_encode(NULL, wire_buf_a, SAMPLE_CHUNK_SIZE, sbufswap);
+            snd_silent++;
         }
     } else {
         if (sbufst_b == READY) {
@@ -317,8 +329,10 @@ static void snd_process_a() {
             }
         } else {
             snd_encode(NULL, wire_buf_a, SAMPLE_CHUNK_SIZE, sbufswap);
+            snd_silent++;
         }
     }
+    wbuf_a_encoded = true;
 }
 static void snd_process_b() {
     // clone of above for the other wire buffer
@@ -333,6 +347,7 @@ static void snd_process_b() {
             }
         } else {
             snd_encode(NULL, wire_buf_b, SAMPLE_CHUNK_SIZE, sbufswap);
+            snd_silent++;
         }
     } else {
         if (sbufst_b == READY) {
@@ -345,8 +360,10 @@ static void snd_process_b() {
             }
         } else {
             snd_encode(NULL, wire_buf_b, SAMPLE_CHUNK_SIZE, sbufswap);
+            snd_silent++;
         }
     }
+    wbuf_b_encoded = true;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -356,6 +373,10 @@ static void snd_process_b() {
 void audio_dma_irq() {
     if (dma_hw->intr & (1 << SOUND_DMA_CHA)) {
         dma_hw->ints0 = (1 << SOUND_DMA_CHA);
+        // B starts now; it is a replay if core1 never refilled it
+        snd_chunks++;
+        if (!wbuf_b_encoded) snd_late++;
+        wbuf_a_encoded = false;
         multicore_fifo_push_blocking((uintptr_t) &snd_process_a);
         if (audio_stopping) {
             channel_config_set_chain_to(&snd_dma_a_cfg, SOUND_DMA_CHA);
@@ -463,9 +484,21 @@ void audio_setup() {
 #endif
 }
 
+// Report the glitch counters while a track plays. snd_late means the DMA
+// replayed a wire buffer because core1 had not refilled it; snd_silent means
+// the sample buffer was not ready and a chunk of silence went out instead.
+static void audio_report_glitches()
+{
+    uint32_t now = platform_millis();
+    if (now - snd_report_time < 5000) return;
+    snd_report_time = now;
+    logmsg("Audio chunks ", (int)snd_chunks, " late ", (int)snd_late, " silent ", (int)snd_silent);
+}
+
 void audio_poll() {
     if (!audio_is_active() || !g_scsi_settings.getSystem()->enableCDAudio || audio_setup_failed) return;
     if (audio_paused) return;
+    audio_report_glitches();
     if (fleft == 0 && sbufst_a == STALE && sbufst_b == STALE) {
         // out of data and ready to stop
         audio_stop(audio_owner);
@@ -608,6 +641,12 @@ bool audio_play(uint8_t owner, image_config_t* img, const CUETrackInfo *trackinf
     }
     sfcnt = 0;
     invert = 0;
+    snd_chunks = 0;
+    snd_late = 0;
+    snd_silent = 0;
+    snd_report_time = platform_millis();
+    wbuf_a_encoded = false;
+    wbuf_b_encoded = false;
 
     // setup the two DMA units to hand-off to each other
     // to maintain a stable bitstream these need to run without interruption
@@ -671,6 +710,8 @@ void audio_stop(uint8_t id) {
     while (dma_channel_is_busy(SOUND_DMA_CHB)) tight_loop_contents();
     while (!pio_sm_is_tx_fifo_empty(SPDIF_PIO_UNIT, spdif_pio_sm)) tight_loop_contents();
     audio_stopping = false;
+
+    logmsg("Audio stopped: chunks ", (int)snd_chunks, " late ", (int)snd_late, " silent ", (int)snd_silent);
 
     // idle the subsystem
     audio_last_status[audio_owner] = ASC_COMPLETED;
