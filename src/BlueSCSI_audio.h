@@ -1,5 +1,6 @@
 /** 
  * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
+ * Copyright (c) 2026 Eric Helgeson <eric@bluescsi.com>
  * 
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  * 
@@ -72,6 +73,11 @@ enum audio_status_code {
 bool audio_is_playing(uint8_t id);
 
 #ifdef ENABLE_AUDIO_OUTPUT
+/**
+ * True while any target is streaming audio. Implemented by the platform backend.
+ */
+bool audio_is_active();
+
 /**
  * Begins audio playback for a file.
  *
