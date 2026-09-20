@@ -21,6 +21,7 @@
 
 #include <SdFat.h>
 #include <stdbool.h>
+#include <string.h>
 #include <hardware/dma.h>
 #include <hardware/irq.h>
 #include <hardware/spi.h>
@@ -145,6 +146,11 @@ static volatile uint32_t snd_chunks = 0;      // wire buffers played
 static volatile uint32_t snd_late = 0;        // replayed, core1 was not done
 static volatile uint32_t snd_silent = 0;      // sample buffer was not READY
 static volatile uint32_t snd_stall = 0;       // PIO ran its TX FIFO dry, bit clock stopped
+static volatile uint32_t snd_zero = 0;        // refill from the image was all zeros
+static volatile uint32_t snd_sum = 0;         // samples encoded were not the samples read
+static volatile uint32_t snd_irq = 0;         // DMA IRQ ran after its channel was chained to again
+static uint32_t sbuf_sum_a, sbuf_sum_b;       // byte sums taken by core0 at refill
+static uint32_t snd_run_sum = 0;              // byte sum core1 builds up as it encodes
 static uint32_t snd_report_time = 0;
 
 // tracking for audio playback
@@ -304,72 +310,67 @@ static void snd_encode(uint8_t* samples, uint16_t* wire_patterns, uint16_t len, 
     }
 }
 
-// functions for passing to Core1
-static void snd_process_a() {
-    if (sbufsel == A) {
-        if (sbufst_a == READY) {
-            snd_encode(sample_buf_a + sbufpos, wire_buf_a, SAMPLE_CHUNK_SIZE, sbufswap);
-            sbufpos += SAMPLE_CHUNK_SIZE;
-            if (sbufpos >= AUDIO_BUFFER_SIZE) {
-                sbufsel = B;
-                sbufpos = 0;
-                sbufst_a = STALE;
-            }
-        } else {
-            snd_encode(NULL, wire_buf_a, SAMPLE_CHUNK_SIZE, sbufswap);
-            snd_silent++;
+static uint32_t snd_byte_sum(const uint8_t* buf, uint32_t len) {
+    uint32_t sum = 0;
+    for (uint32_t i = 0; i < len; i++) sum += buf[i];
+    return sum;
+}
+
+// core0: record what a refill put in a sample buffer, before it is marked READY
+static void snd_note_fill(bufselect which) {
+    uint32_t sum = snd_byte_sum((which == A) ? sample_buf_a : sample_buf_b, AUDIO_BUFFER_SIZE);
+    if (sum == 0) snd_zero++;
+    ((which == A) ? sbuf_sum_a : sbuf_sum_b) = sum;
+}
+
+// Encode the next chunk of the current sample buffer into a wire buffer
+static void snd_process(uint16_t* wire_buf) {
+    volatile bufstate* st = (sbufsel == A) ? &sbufst_a : &sbufst_b;
+    if (*st == READY) {
+        uint8_t* samples = ((sbufsel == A) ? sample_buf_a : sample_buf_b) + sbufpos;
+        snd_encode(samples, wire_buf, SAMPLE_CHUNK_SIZE, sbufswap);
+        snd_run_sum += snd_byte_sum(samples, SAMPLE_CHUNK_SIZE);
+        sbufpos += SAMPLE_CHUNK_SIZE;
+        if (sbufpos >= AUDIO_BUFFER_SIZE) {
+            if (snd_run_sum != ((sbufsel == A) ? sbuf_sum_a : sbuf_sum_b)) snd_sum++;
+            snd_run_sum = 0;
+            sbufsel = (sbufsel == A) ? B : A;
+            sbufpos = 0;
+            *st = STALE;
         }
     } else {
-        if (sbufst_b == READY) {
-            snd_encode(sample_buf_b + sbufpos, wire_buf_a, SAMPLE_CHUNK_SIZE, sbufswap);
-            sbufpos += SAMPLE_CHUNK_SIZE;
-            if (sbufpos >= AUDIO_BUFFER_SIZE) {
-                sbufsel = A;
-                sbufpos = 0;
-                sbufst_b = STALE;
-            }
-        } else {
-            snd_encode(NULL, wire_buf_a, SAMPLE_CHUNK_SIZE, sbufswap);
-            snd_silent++;
-        }
+        snd_encode(NULL, wire_buf, SAMPLE_CHUNK_SIZE, sbufswap);
+        snd_silent++;
     }
+}
+
+// functions for passing to Core1
+static void snd_process_a() {
+    snd_process(wire_buf_a);
     wbuf_a_encoded = true;
 }
 static void snd_process_b() {
-    // clone of above for the other wire buffer
-    if (sbufsel == A) {
-        if (sbufst_a == READY) {
-            snd_encode(sample_buf_a + sbufpos, wire_buf_b, SAMPLE_CHUNK_SIZE, sbufswap);
-            sbufpos += SAMPLE_CHUNK_SIZE;
-            if (sbufpos >= AUDIO_BUFFER_SIZE) {
-                sbufsel = B;
-                sbufpos = 0;
-                sbufst_a = STALE;
-            }
-        } else {
-            snd_encode(NULL, wire_buf_b, SAMPLE_CHUNK_SIZE, sbufswap);
-            snd_silent++;
-        }
-    } else {
-        if (sbufst_b == READY) {
-            snd_encode(sample_buf_b + sbufpos, wire_buf_b, SAMPLE_CHUNK_SIZE, sbufswap);
-            sbufpos += SAMPLE_CHUNK_SIZE;
-            if (sbufpos >= AUDIO_BUFFER_SIZE) {
-                sbufsel = A;
-                sbufpos = 0;
-                sbufst_b = STALE;
-            }
-        } else {
-            snd_encode(NULL, wire_buf_b, SAMPLE_CHUNK_SIZE, sbufswap);
-            snd_silent++;
-        }
-    }
+    snd_process(wire_buf_b);
     wbuf_b_encoded = true;
 }
 
 /* ------------------------------------------------------------------------ */
 /* ---------- VISIBLE FUNCTIONS ------------------------------------------- */
 /* ------------------------------------------------------------------------ */
+
+static void snd_reset_counters() {
+    snd_chunks = 0;
+    snd_late = 0;
+    snd_silent = 0;
+    snd_stall = 0;
+    snd_zero = 0;
+    snd_sum = 0;
+    snd_irq = 0;
+    snd_run_sum = 0;
+    snd_report_time = platform_millis();
+    wbuf_a_encoded = false;
+    wbuf_b_encoded = false;
+}
 
 // FDEBUG.TXSTALL is sticky: set when the SM wanted a word and the FIFO was empty
 static inline void snd_check_stall() {
@@ -386,6 +387,7 @@ void audio_dma_irq() {
         // B starts now; it is a replay if core1 never refilled it
         snd_chunks++;
         if (!wbuf_b_encoded) snd_late++;
+        if (dma_channel_is_busy(SOUND_DMA_CHA)) snd_irq++;
         snd_check_stall();
         wbuf_a_encoded = false;
         multicore_fifo_push_blocking((uintptr_t) &snd_process_a);
@@ -400,7 +402,11 @@ void audio_dma_irq() {
                 false);
     } else if (dma_hw->intr & (1 << SOUND_DMA_CHB)) {
         dma_hw->ints0 = (1 << SOUND_DMA_CHB);
+        snd_chunks++;
+        if (!wbuf_a_encoded) snd_late++;
+        if (dma_channel_is_busy(SOUND_DMA_CHB)) snd_irq++;
         snd_check_stall();
+        wbuf_b_encoded = false;
         multicore_fifo_push_blocking((uintptr_t) &snd_process_b);
         if (audio_stopping) {
             channel_config_set_chain_to(&snd_dma_b_cfg, SOUND_DMA_CHB);
@@ -504,7 +510,7 @@ static void audio_report_glitches()
     uint32_t now = platform_millis();
     if (now - snd_report_time < 5000) return;
     snd_report_time = now;
-    logmsg("Audio chunks ", (int)snd_chunks, " late ", (int)snd_late, " silent ", (int)snd_silent, " stall ", (int)snd_stall);
+    logmsg("Audio chunks ", (int)snd_chunks, " late ", (int)snd_late, " silent ", (int)snd_silent, " stall ", (int)snd_stall, " zero ", (int)snd_zero, " sum ", (int)snd_sum, " irq ", (int)snd_irq);
 }
 
 void audio_poll() {
@@ -557,8 +563,10 @@ void audio_poll() {
     fleft -= toRead;
 
     if (sbufst_a == FILLING) {
+        snd_note_fill(A);
         sbufst_a = READY;
     } else if (sbufst_b == FILLING) {
+        snd_note_fill(B);
         sbufst_b = READY;
     }
 }
@@ -653,13 +661,9 @@ bool audio_play(uint8_t owner, image_config_t* img, const CUETrackInfo *trackinf
     }
     sfcnt = 0;
     invert = 0;
-    snd_chunks = 0;
-    snd_late = 0;
-    snd_silent = 0;
-    snd_stall = 0;
-    snd_report_time = platform_millis();
-    wbuf_a_encoded = false;
-    wbuf_b_encoded = false;
+    snd_reset_counters();
+    snd_note_fill(A);
+    snd_note_fill(B);
 
     // setup the two DMA units to hand-off to each other
     // to maintain a stable bitstream these need to run without interruption
@@ -726,7 +730,7 @@ void audio_stop(uint8_t id) {
     while (!pio_sm_is_tx_fifo_empty(SPDIF_PIO_UNIT, spdif_pio_sm)) tight_loop_contents();
     audio_stopping = false;
 
-    logmsg("Audio stopped: chunks ", (int)snd_chunks, " late ", (int)snd_late, " silent ", (int)snd_silent, " stall ", (int)snd_stall);
+    logmsg("Audio stopped: chunks ", (int)snd_chunks, " late ", (int)snd_late, " silent ", (int)snd_silent, " stall ", (int)snd_stall, " zero ", (int)snd_zero, " sum ", (int)snd_sum, " irq ", (int)snd_irq);
 
     // idle the subsystem
     audio_last_status[audio_owner] = ASC_COMPLETED;
@@ -795,6 +799,34 @@ void audio_set_file_position(uint8_t id, const CUETrackInfo *trackinfo, uint32_t
 }
 #ifdef UNIT_TEST
 /* Test accessors */
+struct spdif_test_counters_t { uint32_t chunks, late, silent, stall, zero, sum, irq; };
+extern "C" spdif_test_counters_t spdif_test_counters(void)
+{
+    return { snd_chunks, snd_late, snd_silent, snd_stall, snd_zero, snd_sum, snd_irq };
+}
+extern "C" void spdif_test_start(void)
+{
+    audio_owner = 3;
+    sbufsel = A;
+    sbufpos = 0;
+    sbufst_a = STALE;
+    sbufst_b = STALE;
+    snd_reset_counters();
+}
+extern "C" uint8_t *spdif_test_sample_buf(int buf)
+{
+    return buf ? sample_buf_b : sample_buf_a;
+}
+extern "C" void spdif_test_fill(int buf, const uint8_t *data)
+{
+    memcpy(spdif_test_sample_buf(buf), data, AUDIO_BUFFER_SIZE);
+    snd_note_fill(buf ? B : A);
+    (buf ? sbufst_b : sbufst_a) = READY;
+}
+extern "C" void spdif_test_process(int wire)
+{
+    if (wire) snd_process_b(); else snd_process_a();
+}
 extern "C" uint8_t spdif_test_volume_level(uint16_t wvol, uint8_t max_volume)
 {
     return spdif_volume_level(wvol, max_volume);
