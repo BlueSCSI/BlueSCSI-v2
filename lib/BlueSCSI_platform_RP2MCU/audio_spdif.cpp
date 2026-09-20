@@ -144,6 +144,7 @@ static volatile bool wbuf_b_encoded = false;
 static volatile uint32_t snd_chunks = 0;      // wire buffers played
 static volatile uint32_t snd_late = 0;        // replayed, core1 was not done
 static volatile uint32_t snd_silent = 0;      // sample buffer was not READY
+static volatile uint32_t snd_stall = 0;       // PIO ran its TX FIFO dry, bit clock stopped
 static uint32_t snd_report_time = 0;
 
 // tracking for audio playback
@@ -370,12 +371,22 @@ static void snd_process_b() {
 /* ---------- VISIBLE FUNCTIONS ------------------------------------------- */
 /* ------------------------------------------------------------------------ */
 
+// FDEBUG.TXSTALL is sticky: set when the SM wanted a word and the FIFO was empty
+static inline void snd_check_stall() {
+    uint32_t mask = 1u << (PIO_FDEBUG_TXSTALL_LSB + spdif_pio_sm);
+    if (SPDIF_PIO_UNIT->fdebug & mask) {
+        SPDIF_PIO_UNIT->fdebug = mask;
+        snd_stall++;
+    }
+}
+
 void audio_dma_irq() {
     if (dma_hw->intr & (1 << SOUND_DMA_CHA)) {
         dma_hw->ints0 = (1 << SOUND_DMA_CHA);
         // B starts now; it is a replay if core1 never refilled it
         snd_chunks++;
         if (!wbuf_b_encoded) snd_late++;
+        snd_check_stall();
         wbuf_a_encoded = false;
         multicore_fifo_push_blocking((uintptr_t) &snd_process_a);
         if (audio_stopping) {
@@ -389,6 +400,7 @@ void audio_dma_irq() {
                 false);
     } else if (dma_hw->intr & (1 << SOUND_DMA_CHB)) {
         dma_hw->ints0 = (1 << SOUND_DMA_CHB);
+        snd_check_stall();
         multicore_fifo_push_blocking((uintptr_t) &snd_process_b);
         if (audio_stopping) {
             channel_config_set_chain_to(&snd_dma_b_cfg, SOUND_DMA_CHB);
@@ -492,7 +504,7 @@ static void audio_report_glitches()
     uint32_t now = platform_millis();
     if (now - snd_report_time < 5000) return;
     snd_report_time = now;
-    logmsg("Audio chunks ", (int)snd_chunks, " late ", (int)snd_late, " silent ", (int)snd_silent);
+    logmsg("Audio chunks ", (int)snd_chunks, " late ", (int)snd_late, " silent ", (int)snd_silent, " stall ", (int)snd_stall);
 }
 
 void audio_poll() {
@@ -644,6 +656,7 @@ bool audio_play(uint8_t owner, image_config_t* img, const CUETrackInfo *trackinf
     snd_chunks = 0;
     snd_late = 0;
     snd_silent = 0;
+    snd_stall = 0;
     snd_report_time = platform_millis();
     wbuf_a_encoded = false;
     wbuf_b_encoded = false;
@@ -673,6 +686,8 @@ bool audio_play(uint8_t owner, image_config_t* img, const CUETrackInfo *trackinf
 
     // ready to go
     dma_channel_start(SOUND_DMA_CHA);
+    // the idle SM was stalled on an empty FIFO until now
+    SPDIF_PIO_UNIT->fdebug = 1u << (PIO_FDEBUG_TXSTALL_LSB + spdif_pio_sm);
     return true;
 }
 
@@ -711,7 +726,7 @@ void audio_stop(uint8_t id) {
     while (!pio_sm_is_tx_fifo_empty(SPDIF_PIO_UNIT, spdif_pio_sm)) tight_loop_contents();
     audio_stopping = false;
 
-    logmsg("Audio stopped: chunks ", (int)snd_chunks, " late ", (int)snd_late, " silent ", (int)snd_silent);
+    logmsg("Audio stopped: chunks ", (int)snd_chunks, " late ", (int)snd_late, " silent ", (int)snd_silent, " stall ", (int)snd_stall);
 
     // idle the subsystem
     audio_last_status[audio_owner] = ASC_COMPLETED;
