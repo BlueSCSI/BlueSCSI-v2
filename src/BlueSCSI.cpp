@@ -62,6 +62,7 @@
 #include "BlueSCSI_log_trace.h"
 #include "BlueSCSI_settings.h"
 #include "BlueSCSI_disk.h"
+#include "BlueSCSI_audio.h"
 #include "BlueSCSI_initiator.h"
 #include "BlueSCSI_msc_initiator.h"
 #include "BlueSCSI_msc.h"
@@ -108,7 +109,14 @@ void save_logfile(bool always = false)
   {
     // When debug is off, save log at most every LOG_SAVE_INTERVAL_MS
     // When debug is on, save after every SCSI command.
-    if (always || g_log_debug || (LOG_SAVE_INTERVAL_MS > 0 && (uint32_t)(platform_millis() - prev_log_save) > LOG_SAVE_INTERVAL_MS))
+    bool every_command = g_log_debug;
+#ifdef ENABLE_AUDIO_OUTPUT
+    // An SD write can stall for 100-500 ms and CD audio buffers 46 ms,
+    // so batch the saves while a track plays.
+    if (audio_is_active()) every_command = false;
+#endif
+    bool buffer_filling = (loglen - prev_log_pos) > LOGBUFSIZE / 2;
+    if (always || every_command || buffer_filling || (LOG_SAVE_INTERVAL_MS > 0 && (uint32_t)(platform_millis() - prev_log_save) > LOG_SAVE_INTERVAL_MS))
     {
       g_logfile.write(log_get_buffer(&prev_log_pos));
       g_logfile.flush();
