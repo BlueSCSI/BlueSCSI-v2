@@ -155,7 +155,34 @@ bool ImageBackingStore::_internal_open(const char *filename, bool doFastSeek)
 
     uint32_t sectorcount = m_fsfile.dataLength() / SD_SECTOR_SIZE;
     uint32_t begin = 0, end = 0;
-    if (m_fsfile.contiguousRange(&begin, &end) && end >= begin + sectorcount - 1)
+
+    bool contiguous = m_fsfile.contiguousRange(&begin, &end) && end >= begin + sectorcount - 1;
+
+    // Past the exFAT valid data length SdFat returns zeros, while raw access
+    // sees whatever the card holds and raw writes do not advance the valid
+    // length. Mark the whole file valid so host writes are visible on a PC.
+    // The unwritten sectors keep whatever the card held.
+    uint64_t valid = m_fsfile.validLength();
+    bool sparse = valid < m_fsfile.dataLength();
+    if (sparse && m_fsfile.isWritable())
+    {
+        logmsg("---- Image file is sparse, ", (int)((m_fsfile.dataLength() - valid) >> 20), " of ",
+               (int)(m_fsfile.dataLength() >> 20), " MB unwritten");
+        if (m_fsfile.setValidLength(m_fsfile.dataLength()))
+        {
+            sparse = !m_fsfile.sync();
+            if (sparse)
+            {
+                m_fsfile.setValidLength(valid);
+            }
+        }
+    }
+    if (sparse)
+    {
+        logmsg("---- Image file could not be marked fully written, unwritten areas read as zeros");
+    }
+
+    if (contiguous && !sparse)
     {
         // Convert to raw mapping, this avoids some unnecessary
         // access overhead in SdFat library.

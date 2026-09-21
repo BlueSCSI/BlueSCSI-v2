@@ -158,7 +158,7 @@ include(FetchContent)
 FetchContent_Declare(
     SdFat
     GIT_REPOSITORY https://github.com/BlueSCSI/SdFat.git
-    GIT_TAG bluescsi-fastseek
+    GIT_TAG b059851b787a5f2b194f518655f183f98542e56a # tag bluescsi-valid-length
     SOURCE_SUBDIR _none
 )
 FetchContent_MakeAvailable(SdFat)
