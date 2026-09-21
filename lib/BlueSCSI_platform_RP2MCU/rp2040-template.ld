@@ -210,6 +210,7 @@ SECTIONS
         *(.text*audio_play*)
         *(.text*audio_stop*)
         *(.text*audio_report_glitches*)
+        *(.text*pio_sm_set_pins*)
         *(.text*audio_set_paused*)
         *(.text*audio_get_status_code*)
         *(.text*audio_get_volume*)
