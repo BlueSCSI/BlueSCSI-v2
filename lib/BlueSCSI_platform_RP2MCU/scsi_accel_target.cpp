@@ -947,7 +947,8 @@ static void scsidma_config_gpio()
     else if (g_scsi_dma_state == SCSIDMA_WRITE)
     {
         // Make sure the initial state of all pins is high and output
-        pio_sm_set_pins(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_ACCEL_PINMASK);
+        // Masked: a plain pio_sm_set_pins() writes every pin of the PIO block
+        pio_sm_set_pins_with_mask(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_ACCEL_PINMASK, SCSI_ACCEL_PINMASK);
         pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_IO_DB0, 9, true);
         pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_OUT_REQ, 1, true);
 
@@ -968,16 +969,14 @@ static void scsidma_config_gpio()
         {
             // Asynchronous read
             // Data bus as input, REQ pin as output
-            pio_sm_set_pins(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_IO_DATA_MASK | (1 << SCSI_OUT_REQ));
-            pio_sm_set_pins(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_ACCEL_PINMASK);
+            pio_sm_set_pins_with_mask(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_ACCEL_PINMASK, SCSI_ACCEL_PINMASK);
             pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_IO_DB0, 9, false);
             pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_OUT_REQ, 1, true);
         }
         else
         {
             // Synchronous read, REQ pin is written by SYNC_SM
-            pio_sm_set_pins(SCSI_DMA_PIO, SCSI_SYNC_SM, SCSI_IO_DATA_MASK | (1 << SCSI_OUT_REQ));
-            pio_sm_set_pins(SCSI_DMA_PIO, SCSI_SYNC_SM, SCSI_ACCEL_PINMASK);
+            pio_sm_set_pins_with_mask(SCSI_DMA_PIO, SCSI_SYNC_SM, SCSI_ACCEL_PINMASK, SCSI_ACCEL_PINMASK);
             pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_IO_DB0, 9, false);
             pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_SYNC_SM, SCSI_OUT_REQ, 1, true);
         }
