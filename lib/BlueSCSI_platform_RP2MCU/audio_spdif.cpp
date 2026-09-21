@@ -148,7 +148,10 @@ static volatile uint32_t snd_silent = 0;      // sample buffer was not READY
 static volatile uint32_t snd_stall = 0;       // PIO ran its TX FIFO dry, bit clock stopped
 static volatile uint32_t snd_zero = 0;        // refill from the image was all zeros
 static volatile uint32_t snd_sum = 0;         // samples encoded were not the samples read
-static volatile uint32_t snd_irq = 0;         // DMA IRQ ran after its channel was chained to again
+static volatile uint32_t snd_irq = 0;         // same buffer completed twice running, an IRQ was missed
+static uint8_t snd_last_done = 0xFF;          // wire buffer the last IRQ handled
+static uint8_t snd_stop_irqs = 0;
+static volatile uint32_t snd_over = 0;        // a word was written to a full PIO TX FIFO and lost
 static uint32_t sbuf_sum_a, sbuf_sum_b;       // byte sums taken by core0 at refill
 static uint32_t snd_run_sum = 0;              // byte sum core1 builds up as it encodes
 static uint32_t snd_report_time = 0;
@@ -371,6 +374,9 @@ static void snd_reset_counters() {
     snd_zero = 0;
     snd_sum = 0;
     snd_irq = 0;
+    snd_over = 0;
+    snd_last_done = 0xFF;
+    snd_stop_irqs = 0;
     snd_run_sum = 0;
     snd_report_time = platform_millis();
     wbuf_a_encoded = false;
@@ -384,44 +390,77 @@ static inline void snd_check_stall() {
         SPDIF_PIO_UNIT->fdebug = mask;
         snd_stall++;
     }
+    // FDEBUG.TXOVER is sticky too
+    mask = 1u << (PIO_FDEBUG_TXOVER_LSB + spdif_pio_sm);
+    if (SPDIF_PIO_UNIT->fdebug & mask) {
+        SPDIF_PIO_UNIT->fdebug = mask;
+        snd_over++;
+    }
+}
+
+// One DMA channel paced by the PIO plays both wire buffers. When it finishes a
+// buffer it chains to an unpaced control channel, which loads the other buffer's
+// address into its read register and restarts it. Two channels paced by the same
+// PIO DREQ and chained to each other lose a word at the handoff when the bus is
+// busy: both answer one request and the FIFO overflows (FDEBUG.TXOVER).
+static uint32_t snd_next_wire_buf[2] __attribute__((aligned(8)));
+
+static void snd_dma_setup() {
+    snd_next_wire_buf[0] = (uintptr_t) wire_buf_b;
+    snd_next_wire_buf[1] = (uintptr_t) wire_buf_a;
+
+    snd_dma_a_cfg = dma_channel_get_default_config(SOUND_DMA_CHA);
+    channel_config_set_transfer_data_size(&snd_dma_a_cfg, DMA_SIZE_16);
+    channel_config_set_dreq(&snd_dma_a_cfg, pio_get_dreq(SPDIF_PIO_UNIT, spdif_pio_sm, true));
+    channel_config_set_read_increment(&snd_dma_a_cfg, true);
+    channel_config_set_chain_to(&snd_dma_a_cfg, SOUND_DMA_CHB);
+    // version of pico-sdk lacks channel_config_set_high_priority()
+    snd_dma_a_cfg.ctrl |= DMA_CH0_CTRL_TRIG_HIGH_PRIORITY_BITS;
+    dma_channel_configure(SOUND_DMA_CHA, &snd_dma_a_cfg, &SPDIF_PIO_UNIT->txf[spdif_pio_sm],
+            &wire_buf_a, WIRE_BUFFER_SIZE, false);
+    dma_channel_set_irq0_enabled(SOUND_DMA_CHA, true);
+
+    // control channel: one word per trigger, read address wraps over the two entries
+    snd_dma_b_cfg = dma_channel_get_default_config(SOUND_DMA_CHB);
+    channel_config_set_transfer_data_size(&snd_dma_b_cfg, DMA_SIZE_32);
+    channel_config_set_dreq(&snd_dma_b_cfg, DREQ_FORCE);
+    channel_config_set_read_increment(&snd_dma_b_cfg, true);
+    channel_config_set_write_increment(&snd_dma_b_cfg, false);
+    channel_config_set_ring(&snd_dma_b_cfg, false, 3);
+    channel_config_set_chain_to(&snd_dma_b_cfg, SOUND_DMA_CHB);
+    snd_dma_b_cfg.ctrl |= DMA_CH0_CTRL_TRIG_HIGH_PRIORITY_BITS;
+    dma_channel_configure(SOUND_DMA_CHB, &snd_dma_b_cfg, &dma_hw->ch[SOUND_DMA_CHA].al3_read_addr_trig,
+            snd_next_wire_buf, 1, false);
+    dma_channel_set_irq0_enabled(SOUND_DMA_CHB, false);
 }
 
 void audio_dma_irq() {
-    if (dma_hw->intr & (1 << SOUND_DMA_CHA)) {
-        dma_hw->ints0 = (1 << SOUND_DMA_CHA);
-        // B starts now; it is a replay if core1 never refilled it
-        snd_chunks++;
-        if (!wbuf_b_encoded) snd_late++;
-        if (dma_channel_is_busy(SOUND_DMA_CHA)) snd_irq++;
-        snd_check_stall();
+    if (!(dma_hw->intr & (1 << SOUND_DMA_CHA))) return;
+    dma_hw->ints0 = (1 << SOUND_DMA_CHA);
+
+    // a buffer finished and the control channel already restarted us on the other one
+    bool playing_b = (uintptr_t) dma_hw->ch[SOUND_DMA_CHA].read_addr - (uintptr_t) wire_buf_b < sizeof(wire_buf_b);
+    uint8_t done = playing_b ? 0 : 1;
+    snd_chunks++;
+    // the one now playing is a replay if core1 never refilled it
+    if (!(playing_b ? wbuf_b_encoded : wbuf_a_encoded)) snd_late++;
+    if (done == snd_last_done) snd_irq++;
+    snd_last_done = done;
+    snd_check_stall();
+
+    if (done == 0) {
         wbuf_a_encoded = false;
         multicore_fifo_push_blocking((uintptr_t) &snd_process_a);
-        if (audio_stopping) {
-            channel_config_set_chain_to(&snd_dma_a_cfg, SOUND_DMA_CHA);
-        }
-        dma_channel_configure(SOUND_DMA_CHA,
-                &snd_dma_a_cfg,
-                &SPDIF_PIO_UNIT->txf[spdif_pio_sm],
-                &wire_buf_a,
-                WIRE_BUFFER_SIZE,
-                false);
-    } else if (dma_hw->intr & (1 << SOUND_DMA_CHB)) {
-        dma_hw->ints0 = (1 << SOUND_DMA_CHB);
-        snd_chunks++;
-        if (!wbuf_a_encoded) snd_late++;
-        if (dma_channel_is_busy(SOUND_DMA_CHB)) snd_irq++;
-        snd_check_stall();
+    } else {
         wbuf_b_encoded = false;
         multicore_fifo_push_blocking((uintptr_t) &snd_process_b);
-        if (audio_stopping) {
-            channel_config_set_chain_to(&snd_dma_b_cfg, SOUND_DMA_CHB);
-        }
-        dma_channel_configure(SOUND_DMA_CHB,
-                &snd_dma_b_cfg,
-                &SPDIF_PIO_UNIT->txf[spdif_pio_sm],
-                &wire_buf_b,
-                WIRE_BUFFER_SIZE,
-                false);
+    }
+
+    // the buffer now playing was encoded before the stop, the next one is silence:
+    // let that out too, then stop chaining so the channel halts at its end
+    if (audio_stopping && ++snd_stop_irqs >= 2) {
+        hw_write_masked(&dma_hw->ch[SOUND_DMA_CHA].al1_ctrl,
+                SOUND_DMA_CHA << DMA_CH0_CTRL_TRIG_CHAIN_TO_LSB, DMA_CH0_CTRL_TRIG_CHAIN_TO_BITS);
     }
 }
 
@@ -515,7 +554,7 @@ static void audio_report_glitches()
     uint32_t now = platform_millis();
     if (now - snd_report_time < 5000) return;
     snd_report_time = now;
-    logmsg("Audio chunks ", (int)snd_chunks, " late ", (int)snd_late, " silent ", (int)snd_silent, " stall ", (int)snd_stall, " zero ", (int)snd_zero, " sum ", (int)snd_sum, " irq ", (int)snd_irq);
+    logmsg("Audio chunks ", (int)snd_chunks, " late ", (int)snd_late, " silent ", (int)snd_silent, " stall ", (int)snd_stall, " zero ", (int)snd_zero, " sum ", (int)snd_sum, " irq ", (int)snd_irq, " over ", (int)snd_over);
 }
 
 void audio_poll() {
@@ -670,33 +709,12 @@ bool audio_play(uint8_t owner, image_config_t* img, const CUETrackInfo *trackinf
     snd_note_fill(A);
     snd_note_fill(B);
 
-    // setup the two DMA units to hand-off to each other
-    // to maintain a stable bitstream these need to run without interruption
-	snd_dma_a_cfg = dma_channel_get_default_config(SOUND_DMA_CHA);
-	channel_config_set_transfer_data_size(&snd_dma_a_cfg, DMA_SIZE_16);
-	channel_config_set_dreq(&snd_dma_a_cfg, pio_get_dreq(SPDIF_PIO_UNIT, spdif_pio_sm, true));
-	channel_config_set_read_increment(&snd_dma_a_cfg, true);
-	channel_config_set_chain_to(&snd_dma_a_cfg, SOUND_DMA_CHB);
-    // version of pico-sdk lacks channel_config_set_high_priority()
-    snd_dma_a_cfg.ctrl |= DMA_CH0_CTRL_TRIG_HIGH_PRIORITY_BITS;
-	dma_channel_configure(SOUND_DMA_CHA, &snd_dma_a_cfg, &SPDIF_PIO_UNIT->txf[spdif_pio_sm],
-			&wire_buf_a, WIRE_BUFFER_SIZE, false);
-    dma_channel_set_irq0_enabled(SOUND_DMA_CHA, true);
-
-	snd_dma_b_cfg = dma_channel_get_default_config(SOUND_DMA_CHB);
-	channel_config_set_transfer_data_size(&snd_dma_b_cfg, DMA_SIZE_16);
-	channel_config_set_dreq(&snd_dma_b_cfg, pio_get_dreq(SPDIF_PIO_UNIT, spdif_pio_sm, true));
-	channel_config_set_read_increment(&snd_dma_b_cfg, true);
-	channel_config_set_chain_to(&snd_dma_b_cfg, SOUND_DMA_CHA);
-    snd_dma_b_cfg.ctrl |= DMA_CH0_CTRL_TRIG_HIGH_PRIORITY_BITS;
-	dma_channel_configure(SOUND_DMA_CHB, &snd_dma_b_cfg, &SPDIF_PIO_UNIT->txf[spdif_pio_sm],
-			&wire_buf_b, WIRE_BUFFER_SIZE, false);
-    dma_channel_set_irq0_enabled(SOUND_DMA_CHB, true);
+    snd_dma_setup();
 
     // ready to go
     dma_channel_start(SOUND_DMA_CHA);
     // the idle SM was stalled on an empty FIFO until now
-    SPDIF_PIO_UNIT->fdebug = 1u << (PIO_FDEBUG_TXSTALL_LSB + spdif_pio_sm);
+    SPDIF_PIO_UNIT->fdebug = (1u << (PIO_FDEBUG_TXSTALL_LSB + spdif_pio_sm)) | (1u << (PIO_FDEBUG_TXOVER_LSB + spdif_pio_sm));
     return true;
 }
 
@@ -729,13 +747,14 @@ void audio_stop(uint8_t id) {
 
     // then indicate that the streams should no longer chain to one another
     // and wait for them to shut down naturally
+    snd_stop_irqs = 0;
     audio_stopping = true;
     while (dma_channel_is_busy(SOUND_DMA_CHA)) tight_loop_contents();
     while (dma_channel_is_busy(SOUND_DMA_CHB)) tight_loop_contents();
     while (!pio_sm_is_tx_fifo_empty(SPDIF_PIO_UNIT, spdif_pio_sm)) tight_loop_contents();
     audio_stopping = false;
 
-    logmsg("Audio stopped: chunks ", (int)snd_chunks, " late ", (int)snd_late, " silent ", (int)snd_silent, " stall ", (int)snd_stall, " zero ", (int)snd_zero, " sum ", (int)snd_sum, " irq ", (int)snd_irq);
+    logmsg("Audio stopped: chunks ", (int)snd_chunks, " late ", (int)snd_late, " silent ", (int)snd_silent, " stall ", (int)snd_stall, " zero ", (int)snd_zero, " sum ", (int)snd_sum, " irq ", (int)snd_irq, " over ", (int)snd_over);
 
     // idle the subsystem
     audio_last_status[audio_owner] = ASC_COMPLETED;
@@ -827,6 +846,18 @@ extern "C" void spdif_test_fill(int buf, const uint8_t *data)
     memcpy(spdif_test_sample_buf(buf), data, AUDIO_BUFFER_SIZE);
     snd_note_fill(buf ? B : A);
     (buf ? sbufst_b : sbufst_a) = READY;
+}
+extern "C" const void *spdif_test_wire_buf(int wire)
+{
+    return wire ? wire_buf_b : wire_buf_a;
+}
+extern "C" void spdif_test_dma_setup(void)
+{
+    snd_dma_setup();
+}
+extern "C" void spdif_test_set_stopping(bool stopping)
+{
+    audio_stopping = stopping;
 }
 extern "C" void spdif_test_process(int wire)
 {
