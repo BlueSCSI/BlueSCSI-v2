@@ -793,7 +793,6 @@ static void sdio_start_next_block_tx()
     pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_CMD_SM, SDIO_CLK - 2, 3, true);
     pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_CMD_SM, SDIO_D0, 4, true);
 #else  // Standard BlueSCSI
-    pio_sm_set_pins(SDIO_PIO, SDIO_CMD_SM, 0xF);
     pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_CMD_SM, SDIO_CLK, 1, true);
     pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_CMD_SM, SDIO_D0, 4, true);
 #endif
