@@ -184,15 +184,20 @@ static volatile bool audio_stopping = false;
 static uint16_t sfcnt = 0; // sub-frame count; 2 per frame, 192 frames/block
 static uint8_t invert = 0; // biphase encode help: set if last wire bit was '1'
 
-// PIO Audio
-#ifdef BLUESCSI_MCU_RP20XX
-// PIO1 is full on a Pico W: SDIO 26 + CYW43 6 instructions
-#define SPDIF_PIO_UNIT pio0
-static uint32_t spdif_pio_sm = 0;
-#else
-#define SPDIF_PIO_UNIT pio1
-static uint32_t spdif_pio_sm = 2;
+// PIO Audio. Build-time overridable, like CYW43_SPI_PIO_INSTANCE in the SDK fork.
+// RP2350 has PIO2 to itself apart from CYW43. RP2040 has no free block:
+// PIO1 is full on a Pico W (SDIO 26 + CYW43 6), so it shares PIO0 with SCSI.
+#ifndef SPDIF_PIO_INSTANCE
+# ifdef BLUESCSI_MCU_RP20XX
+#  define SPDIF_PIO_INSTANCE pio0
+#  define SPDIF_PIO_SM 0
+# else
+#  define SPDIF_PIO_INSTANCE pio2
+#  define SPDIF_PIO_SM 1
+# endif
 #endif
+#define SPDIF_PIO_UNIT SPDIF_PIO_INSTANCE
+static uint32_t spdif_pio_sm = SPDIF_PIO_SM;
 static bool already_claimed = false;
 static bool audio_setup_failed = false;
 // Volume byte each sample is multiplied by, 255 being full scale. The two
