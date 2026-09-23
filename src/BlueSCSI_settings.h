@@ -155,6 +155,12 @@ typedef struct __attribute__((__packed__)) scsi_device_settings_t
     uint32_t vendorExtensions;
 
     uint32_t blockSize;
+
+    // Maximum tape length in megabytes for tape devices, 0 for unlimited
+    uint32_t tapeCapacityMB;
+
+    // Density code a tape device reports until the host selects one
+    uint8_t tapeDensity;
 } scsi_device_settings_t;
 
 

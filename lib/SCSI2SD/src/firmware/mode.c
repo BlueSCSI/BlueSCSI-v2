@@ -21,6 +21,7 @@
 
 #include "scsi.h"
 #include "mode.h"
+#include "tape.h"
 #include "disk.h"
 #include "inquiry.h"
 #include "BlueSCSI_mode.h"
@@ -358,8 +359,9 @@ static void doModeSense(
 	case S2S_CFG_SEQUENTIAL:
 		mediumType = 0; // reserved
 		deviceSpecificParam =
-			(blockDev.state & DISK_WP) ? 0x80 : 0;
-		density = 0x13; // DAT Data Storage, X3B5/88-185A 
+			((blockDev.state & DISK_WP) ? 0x80 : 0) |
+			scsiDev.target->liveCfg.tapeBufferedMode;
+		density = scsiTapeDensityCode();
 		break;
 
 	case S2S_CFG_MO:
@@ -738,6 +740,18 @@ static void doModeSelect(void)
 
 		// The header check above guarantees dataLen >= idx.
 		if (blockDescLen > scsiDev.dataLen - idx) goto badLength;
+
+		if (scsiDev.target->cfg->deviceType == S2S_CFG_SEQUENTIAL)
+		{
+			// A tape drive reports the buffered mode and the density the
+			// host selected back in MODE SENSE.
+			int devSpecificIdx = (scsiDev.cdb[0] == 0x55) ? 3 : 2;
+			scsiDev.target->liveCfg.tapeBufferedMode = scsiDev.data[devSpecificIdx] & 0x70;
+			if (blockDescLen >= 8)
+			{
+				scsiDev.target->liveCfg.tapeDensity = scsiDev.data[idx];
+			}
+		}
 
 		// The unwritten rule.  Blocksizes are normally set using the
 		// block descriptor value, not by changing page 0x03.

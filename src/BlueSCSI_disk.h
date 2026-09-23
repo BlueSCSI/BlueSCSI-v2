@@ -69,6 +69,8 @@ struct image_config_t: public S2S_TargetCfg
     uint32_t tape_mark_count; // the number of marks
     uint32_t tape_mark_block_offset; // Sum of the the previous image file sizes at the current mark
     bool     tape_load_next_file;
+    uint32_t tape_capacity_mb; // maximum tape length in megabytes from configuration, 0 for unlimited
+    uint8_t tape_density; // density code reported for the medium when the host has not selected one
     // True if there is a subdirectory of images for this target
     bool image_directory;
 
@@ -184,6 +186,10 @@ int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen);
 
 // Get pointer to extended image configuration based on target idx
 image_config_t &scsiDiskGetImageConfig(int target_idx);
+
+// Drop the read prefetch buffer after an image file changed outside the
+// SCSI write path
+void scsiDiskInvalidatePrefetch();
 
 // Start data transfer from disk image to SCSI bus
 // Can be called by device type specific command implementations (such as READ CD)

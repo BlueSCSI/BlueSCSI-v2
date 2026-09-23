@@ -271,6 +271,8 @@ static void readIniSCSIDeviceSetting(scsi_device_settings_t &cfg, const char *se
     cfg.vendorExtensions = ini_getl(section, "VendorExtensions", cfg.vendorExtensions, CONFIGFILE);
 
     cfg.blockSize = ini_getl(section, "BlockSize", cfg.blockSize, CONFIGFILE);
+    cfg.tapeCapacityMB = ini_getl(section, "TapeCapacityMB", cfg.tapeCapacityMB, CONFIGFILE);
+    cfg.tapeDensity = ini_getl(section, "TapeDensity", cfg.tapeDensity, CONFIGFILE);
 
     char tmp[32];
     ini_gets(section, "Vendor", "", tmp, sizeof(tmp), CONFIGFILE);
@@ -410,6 +412,8 @@ static void logNonDefaultDeviceSettings(int scsiId, const scsi_device_settings_t
     LOG_DEV_INT(sectorSDEnd, "SectorSDEnd");
     LOG_DEV_INT(vendorExtensions, "VendorExtensions");
     LOG_DEV_INT(blockSize, "BlockSize");
+    LOG_DEV_INT(tapeCapacityMB, "TapeCapacityMB");
+    LOG_DEV_INT(tapeDensity, "TapeDensity");
     LOG_DEV_FIELD(vendor, "Vendor");
     LOG_DEV_FIELD(prodId, "Product");
     LOG_DEV_FIELD(revision, "Version");
@@ -479,6 +483,7 @@ scsi_system_settings_t *BlueSCSISettings::initSystem(const char *presetName)
     cfgDev.sectorsPerTrack = 0;
     cfgDev.headsPerCylinder = 0;
     cfgDev.prefetchBytes = PREFETCH_BUFFER_SIZE;
+    cfgDev.tapeDensity = 0x13; // DAT Data Storage, X3B5/88-185A
     cfgDev.ejectButton = 0;
     cfgDev.ejectBlinkTimes = 20;
     cfgDev.ejectBlinkPeriod = 50;

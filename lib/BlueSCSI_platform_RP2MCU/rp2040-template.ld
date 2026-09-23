@@ -172,7 +172,10 @@ SECTIONS
         *(.text*scsiDiskLoadConfig*)
         *(.text*scsiDiskActivateRomDrive*)
         *(.text*scsiDiskSetImageConfig*)
+        *(.text*scsiDiskCheckDir*)
+        *(.text*scsiDiskCheckAnyNetworkDevicesConfigured*)
         *(.text*ImageBackingStore*open*)
+        *(.text*ImageBackingStore*truncate*)
         *(.text*ImageBackingStore*ImageBackingStore*)
         *(.text*findHDDImages*)
         *(.text*scsiDiskCloseSDCardImages*)
@@ -199,7 +202,7 @@ SECTIONS
 
         /* CDROM/Tape/Vendor commands. Most of these are non-performance-critical, and
          * the important parts will fit in cache when in use. */
-        *(.text*scsiTapeCommand*)
+        *BlueSCSI_tape.cpp.o(.text .text*)
         *(.text*scsiCDRomCommand*)
         *(.text*scsiMOCommand*)
         *BlueSCSI_printer.cpp.o(.text .text*)
