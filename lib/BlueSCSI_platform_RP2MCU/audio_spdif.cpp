@@ -600,8 +600,16 @@ void audio_poll() {
             logmsg("Audio error, unable to seek to ", fpos, ", ID:", audio_owner);
         }
     }
-    if (audio_file->read(audiobuf, toRead) != toRead) {
-        logmsg("Audio sample data underrun");
+    // One read of the whole buffer becomes a multi-block SD read whenever the
+    // buffer is word aligned, and the DAC board mutes on those (#438).
+    for (uint16_t done = 0; done < toRead; ) {
+        uint16_t n = toRead - done;
+        if (n > SD_SECTOR_SIZE) n = SD_SECTOR_SIZE;
+        if (audio_file->read(audiobuf + done, n) != n) {
+            logmsg("Audio sample data underrun");
+            break;
+        }
+        done += n;
     }
     fpos += toRead;
     fleft -= toRead;
@@ -836,6 +844,17 @@ extern "C" void spdif_test_start(void)
     sbufst_a = STALE;
     sbufst_b = STALE;
     snd_reset_counters();
+}
+extern "C" void spdif_test_begin_refill(ImageBackingStore *file, uint64_t pos, uint32_t len)
+{
+    audio_owner = 3;
+    audio_paused = false;
+    audio_setup_failed = false;
+    audio_file = file;
+    fpos = pos;
+    fleft = len;
+    sbufst_a = STALE;
+    sbufst_b = STALE;
 }
 extern "C" uint8_t *spdif_test_sample_buf(int buf)
 {
