@@ -136,25 +136,7 @@ static uint8_t sbufswap = 0;
 static uint16_t wire_buf_a[WIRE_BUFFER_SIZE];
 static uint16_t wire_buf_b[WIRE_BUFFER_SIZE];
 
-// Glitch diagnostics. A wire buffer is re-armed by the DMA IRQ the moment its
-// channel completes, and core1 has until the chain comes back around to refill
-// it. If it has not, the DMA replays the previous chunk and the output glitches
-// without anything else noticing.
-static volatile bool wbuf_a_encoded = false;
-static volatile bool wbuf_b_encoded = false;
-static volatile uint32_t snd_chunks = 0;      // wire buffers played
-static volatile uint32_t snd_late = 0;        // replayed, core1 was not done
-static volatile uint32_t snd_silent = 0;      // sample buffer was not READY
-static volatile uint32_t snd_stall = 0;       // PIO ran its TX FIFO dry, bit clock stopped
-static volatile uint32_t snd_zero = 0;        // refill from the image was all zeros
-static volatile uint32_t snd_sum = 0;         // samples encoded were not the samples read
-static volatile uint32_t snd_irq = 0;         // same buffer completed twice running, an IRQ was missed
-static uint8_t snd_last_done = 0xFF;          // wire buffer the last IRQ handled
-static uint8_t snd_stop_irqs = 0;
-static volatile uint32_t snd_over = 0;        // a word was written to a full PIO TX FIFO and lost
-static uint32_t sbuf_sum_a, sbuf_sum_b;       // byte sums taken by core0 at refill
-static uint32_t snd_run_sum = 0;              // byte sum core1 builds up as it encodes
-static uint32_t snd_report_time = 0;
+static uint8_t snd_stop_irqs = 0; // DMA IRQs seen since audio_stop() began
 
 // tracking for audio playback
 static uint8_t audio_owner; // SCSI ID or 0xFF when idle
@@ -318,85 +300,34 @@ static void snd_encode(uint8_t* samples, uint16_t* wire_patterns, uint16_t len, 
     }
 }
 
-static uint32_t snd_byte_sum(const uint8_t* buf, uint32_t len) {
-    uint32_t sum = 0;
-    for (uint32_t i = 0; i < len; i++) sum += buf[i];
-    return sum;
-}
-
-// core0: record what a refill put in a sample buffer, before it is marked READY
-static void snd_note_fill(bufselect which) {
-    uint32_t sum = snd_byte_sum((which == A) ? sample_buf_a : sample_buf_b, AUDIO_BUFFER_SIZE);
-    if (sum == 0) snd_zero++;
-    ((which == A) ? sbuf_sum_a : sbuf_sum_b) = sum;
-}
-
 // Encode the next chunk of the current sample buffer into a wire buffer
 static void snd_process(uint16_t* wire_buf) {
     volatile bufstate* st = (sbufsel == A) ? &sbufst_a : &sbufst_b;
     if (*st == READY) {
         uint8_t* samples = ((sbufsel == A) ? sample_buf_a : sample_buf_b) + sbufpos;
         snd_encode(samples, wire_buf, SAMPLE_CHUNK_SIZE, sbufswap);
-        snd_run_sum += snd_byte_sum(samples, SAMPLE_CHUNK_SIZE);
         sbufpos += SAMPLE_CHUNK_SIZE;
         if (sbufpos >= AUDIO_BUFFER_SIZE) {
-            if (snd_run_sum != ((sbufsel == A) ? sbuf_sum_a : sbuf_sum_b)) snd_sum++;
-            snd_run_sum = 0;
             sbufsel = (sbufsel == A) ? B : A;
             sbufpos = 0;
             *st = STALE;
         }
     } else {
         snd_encode(NULL, wire_buf, SAMPLE_CHUNK_SIZE, sbufswap);
-        snd_silent++;
     }
 }
 
 // functions for passing to Core1
 static void snd_process_a() {
     snd_process(wire_buf_a);
-    wbuf_a_encoded = true;
 }
 static void snd_process_b() {
     snd_process(wire_buf_b);
-    wbuf_b_encoded = true;
 }
 
 /* ------------------------------------------------------------------------ */
 /* ---------- VISIBLE FUNCTIONS ------------------------------------------- */
 /* ------------------------------------------------------------------------ */
-
-static void snd_reset_counters() {
-    snd_chunks = 0;
-    snd_late = 0;
-    snd_silent = 0;
-    snd_stall = 0;
-    snd_zero = 0;
-    snd_sum = 0;
-    snd_irq = 0;
-    snd_over = 0;
-    snd_last_done = 0xFF;
-    snd_stop_irqs = 0;
-    snd_run_sum = 0;
-    snd_report_time = platform_millis();
-    wbuf_a_encoded = false;
-    wbuf_b_encoded = false;
-}
-
-// FDEBUG.TXSTALL is sticky: set when the SM wanted a word and the FIFO was empty
-static inline void snd_check_stall() {
-    uint32_t mask = 1u << (PIO_FDEBUG_TXSTALL_LSB + spdif_pio_sm);
-    if (SPDIF_PIO_UNIT->fdebug & mask) {
-        SPDIF_PIO_UNIT->fdebug = mask;
-        snd_stall++;
-    }
-    // FDEBUG.TXOVER is sticky too
-    mask = 1u << (PIO_FDEBUG_TXOVER_LSB + spdif_pio_sm);
-    if (SPDIF_PIO_UNIT->fdebug & mask) {
-        SPDIF_PIO_UNIT->fdebug = mask;
-        snd_over++;
-    }
-}
 
 // One DMA channel paced by the PIO plays both wire buffers. When it finishes a
 // buffer it chains to an unpaced control channel, which loads the other buffer's
@@ -440,19 +371,9 @@ void audio_dma_irq() {
 
     // a buffer finished and the control channel already restarted us on the other one
     bool playing_b = (uintptr_t) dma_hw->ch[SOUND_DMA_CHA].read_addr - (uintptr_t) wire_buf_b < sizeof(wire_buf_b);
-    uint8_t done = playing_b ? 0 : 1;
-    snd_chunks++;
-    // the one now playing is a replay if core1 never refilled it
-    if (!(playing_b ? wbuf_b_encoded : wbuf_a_encoded)) snd_late++;
-    if (done == snd_last_done) snd_irq++;
-    snd_last_done = done;
-    snd_check_stall();
-
-    if (done == 0) {
-        wbuf_a_encoded = false;
+    if (playing_b) {
         multicore_fifo_push_blocking((uintptr_t) &snd_process_a);
     } else {
-        wbuf_b_encoded = false;
         multicore_fifo_push_blocking((uintptr_t) &snd_process_b);
     }
 
@@ -546,21 +467,9 @@ void audio_setup() {
 #endif
 }
 
-// Report the glitch counters while a track plays. snd_late means the DMA
-// replayed a wire buffer because core1 had not refilled it; snd_silent means
-// the sample buffer was not ready and a chunk of silence went out instead.
-static void audio_report_glitches()
-{
-    uint32_t now = platform_millis();
-    if (now - snd_report_time < 5000) return;
-    snd_report_time = now;
-    logmsg("Audio chunks ", (int)snd_chunks, " late ", (int)snd_late, " silent ", (int)snd_silent, " stall ", (int)snd_stall, " zero ", (int)snd_zero, " sum ", (int)snd_sum, " irq ", (int)snd_irq, " over ", (int)snd_over);
-}
-
 void audio_poll() {
     if (!audio_is_active() || !g_scsi_settings.getSystem()->enableCDAudio || audio_setup_failed) return;
     if (audio_paused) return;
-    audio_report_glitches();
     if (fleft == 0 && sbufst_a == STALE && sbufst_b == STALE) {
         // out of data and ready to stop
         audio_stop(audio_owner);
@@ -615,10 +524,8 @@ void audio_poll() {
     fleft -= toRead;
 
     if (sbufst_a == FILLING) {
-        snd_note_fill(A);
         sbufst_a = READY;
     } else if (sbufst_b == FILLING) {
-        snd_note_fill(B);
         sbufst_b = READY;
     }
 }
@@ -713,16 +620,12 @@ bool audio_play(uint8_t owner, image_config_t* img, const CUETrackInfo *trackinf
     }
     sfcnt = 0;
     invert = 0;
-    snd_reset_counters();
-    snd_note_fill(A);
-    snd_note_fill(B);
+    snd_stop_irqs = 0;
 
     snd_dma_setup();
 
     // ready to go
     dma_channel_start(SOUND_DMA_CHA);
-    // the idle SM was stalled on an empty FIFO until now
-    SPDIF_PIO_UNIT->fdebug = (1u << (PIO_FDEBUG_TXSTALL_LSB + spdif_pio_sm)) | (1u << (PIO_FDEBUG_TXOVER_LSB + spdif_pio_sm));
     return true;
 }
 
@@ -761,8 +664,6 @@ void audio_stop(uint8_t id) {
     while (dma_channel_is_busy(SOUND_DMA_CHB)) tight_loop_contents();
     while (!pio_sm_is_tx_fifo_empty(SPDIF_PIO_UNIT, spdif_pio_sm)) tight_loop_contents();
     audio_stopping = false;
-
-    logmsg("Audio stopped: chunks ", (int)snd_chunks, " late ", (int)snd_late, " silent ", (int)snd_silent, " stall ", (int)snd_stall, " zero ", (int)snd_zero, " sum ", (int)snd_sum, " irq ", (int)snd_irq, " over ", (int)snd_over);
 
     // idle the subsystem
     audio_last_status[audio_owner] = ASC_COMPLETED;
@@ -831,11 +732,6 @@ void audio_set_file_position(uint8_t id, const CUETrackInfo *trackinfo, uint32_t
 }
 #ifdef UNIT_TEST
 /* Test accessors */
-struct spdif_test_counters_t { uint32_t chunks, late, silent, stall, zero, sum, irq; };
-extern "C" spdif_test_counters_t spdif_test_counters(void)
-{
-    return { snd_chunks, snd_late, snd_silent, snd_stall, snd_zero, snd_sum, snd_irq };
-}
 extern "C" void spdif_test_start(void)
 {
     audio_owner = 3;
@@ -843,7 +739,7 @@ extern "C" void spdif_test_start(void)
     sbufpos = 0;
     sbufst_a = STALE;
     sbufst_b = STALE;
-    snd_reset_counters();
+    snd_stop_irqs = 0;
 }
 extern "C" void spdif_test_begin_refill(ImageBackingStore *file, uint64_t pos, uint32_t len)
 {
@@ -863,7 +759,6 @@ extern "C" uint8_t *spdif_test_sample_buf(int buf)
 extern "C" void spdif_test_fill(int buf, const uint8_t *data)
 {
     memcpy(spdif_test_sample_buf(buf), data, AUDIO_BUFFER_SIZE);
-    snd_note_fill(buf ? B : A);
     (buf ? sbufst_b : sbufst_a) = READY;
 }
 extern "C" const void *spdif_test_wire_buf(int wire)
