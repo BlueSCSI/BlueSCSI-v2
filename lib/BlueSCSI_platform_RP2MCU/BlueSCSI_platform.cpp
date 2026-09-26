@@ -176,6 +176,43 @@ bool platform_is_pico_w(void)
     return __isPicoW;
 }
 
+// The Pico, Pico W, Pico 2 and Pico 2 W modules regulate 3.3 V with an RT6150.
+// Its PS pin selects PFM mode (the default, efficient at light load, more ripple)
+// or PWM mode. The S/PDIF DAC board runs from that rail and its receiver PLL
+// drops out on the PFM ripple whenever the SD card draws a burst (#438).
+static bool g_smps_pwm_wanted = false;
+
+bool platform_set_smps_pwm(bool on)
+{
+#if defined(BLUESCSI_ULTRA) || defined(BLUESCSI_ULTRA_WIDE) || defined(BLUESCSI_RM2)
+    (void)on;
+    return false;
+#else
+    g_smps_pwm_wanted = on;
+    if (platform_is_pico_w())
+    {
+#if PICO_CYW43_SUPPORTED
+        // On a Pico W the pin belongs to the CYW43, so the chip must stay powered
+        // and any code that reinitialises it has to call platform_smps_pwm_restore()
+        cyw43_arch_gpio_put(CYW43_WL_GPIO_SMPS_PIN, on);
+        return true;
+#else
+        return false;
+#endif
+    }
+    // Pico and Pico 2 without wireless: the pin is GPIO 23, unused by the v2 pin map
+    gpio_init(23);
+    gpio_set_dir(23, GPIO_OUT);
+    gpio_put(23, on);
+    return true;
+#endif
+}
+
+bool platform_smps_pwm_restore(void)
+{
+    return g_smps_pwm_wanted && platform_set_smps_pwm(true);
+}
+
 /***************/
 /* GPIO init   */
 /***************/

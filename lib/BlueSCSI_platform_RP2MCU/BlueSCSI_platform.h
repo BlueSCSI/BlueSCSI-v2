@@ -1,5 +1,6 @@
 /**
  * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
+ * Copyright (c) 2026 Eric Helgeson <eric@bluescsi.com>
  *
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version.
  *
@@ -169,6 +170,12 @@ extern bool __isPicoW;
 extern "C" {
 #endif
 bool platform_is_pico_w(void);
+
+// Put the Pico module's RT6150 regulator in PWM mode (true) or PFM mode (false).
+// Returns false on boards without that pin.
+bool platform_set_smps_pwm(bool on);
+// Re-apply a requested PWM mode after the CYW43 was reinitialised. Returns true if it did.
+bool platform_smps_pwm_restore(void);
 
 void platform_initiator_gpio_setup();
 bool platform_supports_initiator_mode();
