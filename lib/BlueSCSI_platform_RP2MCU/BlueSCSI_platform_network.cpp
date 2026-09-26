@@ -159,6 +159,7 @@ int platform_network_init(char *mac)
 
 	network_in_use = true;
 
+	platform_smps_pwm_restore();
 	return 0;
 }
 
@@ -312,6 +313,9 @@ void platform_network_deinit()
 {
 	cyw43_init(&cyw43_state);
 	cyw43_gpio_set(&cyw43_state, PICO_W_GPIO_LED_PIN, 0);
+	// CD audio holds the regulator in PWM mode through WL_GPIO1: keep the chip up
+	if (platform_smps_pwm_restore())
+		return;
 	cyw43_deinit(&cyw43_state);
 }
 
