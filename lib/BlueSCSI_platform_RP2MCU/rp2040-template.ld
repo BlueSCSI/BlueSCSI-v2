@@ -208,6 +208,7 @@ SECTIONS
         *(.text*doReadHeader*)
         *(.text*doPlayAudio*)
         *(.text*audio_play*)
+        *(.text*pio_sm_set_pins*)
         *(.text*audio_get_lba_position*)
         *(.text*audio_set_file_position*)
         *(.text*cdromSeekAudio*)

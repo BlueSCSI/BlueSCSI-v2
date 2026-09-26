@@ -1,6 +1,7 @@
 /** 
  * Copyright (C) 2023 saybur
  * Copyright (C) 2025 Tech by Androda, LLC
+ * Copyright (c) 2026 Eric Helgeson <eric@bluescsi.com>
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,6 +21,7 @@
 
 #include <SdFat.h>
 #include <stdbool.h>
+#include <string.h>
 #include <hardware/dma.h>
 #include <hardware/irq.h>
 #include <hardware/spi.h>
@@ -134,6 +136,8 @@ static uint8_t sbufswap = 0;
 static uint16_t wire_buf_a[WIRE_BUFFER_SIZE];
 static uint16_t wire_buf_b[WIRE_BUFFER_SIZE];
 
+static uint8_t snd_stop_irqs = 0; // DMA IRQs seen since audio_stop() began
+
 // tracking for audio playback
 static uint8_t audio_owner; // SCSI ID or 0xFF when idle
 static volatile bool audio_paused = false;
@@ -183,11 +187,37 @@ static volatile bool audio_stopping = false;
 static uint16_t sfcnt = 0; // sub-frame count; 2 per frame, 192 frames/block
 static uint8_t invert = 0; // biphase encode help: set if last wire bit was '1'
 
-// PIO Audio
-#define SPDIF_PIO_UNIT pio1
-static uint32_t spdif_pio_sm = 2;
+// PIO Audio. Build-time overridable, like CYW43_SPI_PIO_INSTANCE in the SDK fork.
+// RP2350 has PIO2 to itself apart from CYW43. RP2040 has no free block:
+// PIO1 is full on a Pico W (SDIO 26 + CYW43 6), so it shares PIO0 with SCSI.
+#ifndef SPDIF_PIO_INSTANCE
+# ifdef BLUESCSI_MCU_RP20XX
+#  define SPDIF_PIO_INSTANCE pio0
+#  define SPDIF_PIO_SM 0
+# else
+#  define SPDIF_PIO_INSTANCE pio2
+#  define SPDIF_PIO_SM 1
+# endif
+#endif
+#define SPDIF_PIO_UNIT SPDIF_PIO_INSTANCE
+static uint32_t spdif_pio_sm = SPDIF_PIO_SM;
 static bool already_claimed = false;
 static bool audio_setup_failed = false;
+// Volume byte each sample is multiplied by, 255 being full scale. The two
+// output port levels are averaged, then scaled by MaxVolume so DACs that clip
+// near full scale can be given headroom from bluescsi.ini.
+static inline uint8_t spdif_volume_level(uint16_t wvol, uint8_t max_volume)
+{
+    uint8_t avg = ((wvol >> 8) + (wvol & 0xFF)) >> 1;
+    return (uint16_t)avg * max_volume / 100;
+}
+
+// Scale a sample into the 24-bit S/PDIF audio field.
+static inline uint32_t spdif_scale_sample(int32_t rsamp, uint8_t vol)
+{
+    return ((uint32_t)(rsamp * vol)) & 0xFFFFF0;
+}
+
 /*
  * Translates 16-bit stereo sound samples to biphase wire patterns for the
  * SPI peripheral. Produces 8 patterns (128 bits, or 1 S/PDIF frame) per pair
@@ -200,10 +230,7 @@ static bool audio_setup_failed = false;
  */
 static void snd_encode(uint8_t* samples, uint16_t* wire_patterns, uint16_t len, uint8_t swap) {
     uint16_t wvol = volumes[audio_owner & S2S_CFG_TARGET_ID_BITS];
-    uint8_t lvol = ((wvol >> 8) + (wvol & 0xFF)) >> 1; // average of both values
-    // limit maximum volume; with my DACs I've had persistent issues
-    // with signal clipping when sending data in the highest bit position
-    lvol = lvol >> 2;
+    uint8_t lvol = spdif_volume_level(wvol, g_scsi_settings.getSystem()->maxVolume);
     uint8_t rvol = lvol;
     // enable or disable based on the channel information for both output
     // ports, where the high byte and mask control the right channel, and
@@ -223,15 +250,9 @@ static void snd_encode(uint8_t* samples, uint16_t* wire_patterns, uint16_t len, 
             } else {
                 rsamp = (int16_t)(samples[i] + (samples[i + 1] << 8));
             }
-            // linear scale to requested audio value
-            if (i & 2) {
-                rsamp *= rvol;
-            } else {
-                rsamp *= lvol;
-            }
             // use 20 bits of value only, which allows ignoring the lowest 8
             // bits during biphase conversion (after including sample shift)
-            sample = ((uint32_t)rsamp) & 0xFFFFF0;
+            sample = spdif_scale_sample(rsamp, (i & 2) ? rvol : lvol);
 
             // determine parity, simplified to one lookup via XOR
             parity = ((sample >> 16) ^ (sample >> 8)) ^ sample;
@@ -279,92 +300,88 @@ static void snd_encode(uint8_t* samples, uint16_t* wire_patterns, uint16_t len, 
     }
 }
 
-// functions for passing to Core1
-static void snd_process_a() {
-    if (sbufsel == A) {
-        if (sbufst_a == READY) {
-            snd_encode(sample_buf_a + sbufpos, wire_buf_a, SAMPLE_CHUNK_SIZE, sbufswap);
-            sbufpos += SAMPLE_CHUNK_SIZE;
-            if (sbufpos >= AUDIO_BUFFER_SIZE) {
-                sbufsel = B;
-                sbufpos = 0;
-                sbufst_a = STALE;
-            }
-        } else {
-            snd_encode(NULL, wire_buf_a, SAMPLE_CHUNK_SIZE, sbufswap);
+// Encode the next chunk of the current sample buffer into a wire buffer
+static void snd_process(uint16_t* wire_buf) {
+    volatile bufstate* st = (sbufsel == A) ? &sbufst_a : &sbufst_b;
+    if (*st == READY) {
+        uint8_t* samples = ((sbufsel == A) ? sample_buf_a : sample_buf_b) + sbufpos;
+        snd_encode(samples, wire_buf, SAMPLE_CHUNK_SIZE, sbufswap);
+        sbufpos += SAMPLE_CHUNK_SIZE;
+        if (sbufpos >= AUDIO_BUFFER_SIZE) {
+            sbufsel = (sbufsel == A) ? B : A;
+            sbufpos = 0;
+            *st = STALE;
         }
     } else {
-        if (sbufst_b == READY) {
-            snd_encode(sample_buf_b + sbufpos, wire_buf_a, SAMPLE_CHUNK_SIZE, sbufswap);
-            sbufpos += SAMPLE_CHUNK_SIZE;
-            if (sbufpos >= AUDIO_BUFFER_SIZE) {
-                sbufsel = A;
-                sbufpos = 0;
-                sbufst_b = STALE;
-            }
-        } else {
-            snd_encode(NULL, wire_buf_a, SAMPLE_CHUNK_SIZE, sbufswap);
-        }
+        snd_encode(NULL, wire_buf, SAMPLE_CHUNK_SIZE, sbufswap);
     }
 }
+
+// functions for passing to Core1
+static void snd_process_a() {
+    snd_process(wire_buf_a);
+}
 static void snd_process_b() {
-    // clone of above for the other wire buffer
-    if (sbufsel == A) {
-        if (sbufst_a == READY) {
-            snd_encode(sample_buf_a + sbufpos, wire_buf_b, SAMPLE_CHUNK_SIZE, sbufswap);
-            sbufpos += SAMPLE_CHUNK_SIZE;
-            if (sbufpos >= AUDIO_BUFFER_SIZE) {
-                sbufsel = B;
-                sbufpos = 0;
-                sbufst_a = STALE;
-            }
-        } else {
-            snd_encode(NULL, wire_buf_b, SAMPLE_CHUNK_SIZE, sbufswap);
-        }
-    } else {
-        if (sbufst_b == READY) {
-            snd_encode(sample_buf_b + sbufpos, wire_buf_b, SAMPLE_CHUNK_SIZE, sbufswap);
-            sbufpos += SAMPLE_CHUNK_SIZE;
-            if (sbufpos >= AUDIO_BUFFER_SIZE) {
-                sbufsel = A;
-                sbufpos = 0;
-                sbufst_b = STALE;
-            }
-        } else {
-            snd_encode(NULL, wire_buf_b, SAMPLE_CHUNK_SIZE, sbufswap);
-        }
-    }
+    snd_process(wire_buf_b);
 }
 
 /* ------------------------------------------------------------------------ */
 /* ---------- VISIBLE FUNCTIONS ------------------------------------------- */
 /* ------------------------------------------------------------------------ */
 
+// One DMA channel paced by the PIO plays both wire buffers. When it finishes a
+// buffer it chains to an unpaced control channel, which loads the other buffer's
+// address into its read register and restarts it. Two channels paced by the same
+// PIO DREQ and chained to each other lose a word at the handoff when the bus is
+// busy: both answer one request and the FIFO overflows (FDEBUG.TXOVER).
+static uint32_t snd_next_wire_buf[2] __attribute__((aligned(8)));
+
+static void snd_dma_setup() {
+    snd_next_wire_buf[0] = (uintptr_t) wire_buf_b;
+    snd_next_wire_buf[1] = (uintptr_t) wire_buf_a;
+
+    snd_dma_a_cfg = dma_channel_get_default_config(SOUND_DMA_CHA);
+    channel_config_set_transfer_data_size(&snd_dma_a_cfg, DMA_SIZE_16);
+    channel_config_set_dreq(&snd_dma_a_cfg, pio_get_dreq(SPDIF_PIO_UNIT, spdif_pio_sm, true));
+    channel_config_set_read_increment(&snd_dma_a_cfg, true);
+    channel_config_set_chain_to(&snd_dma_a_cfg, SOUND_DMA_CHB);
+    // version of pico-sdk lacks channel_config_set_high_priority()
+    snd_dma_a_cfg.ctrl |= DMA_CH0_CTRL_TRIG_HIGH_PRIORITY_BITS;
+    dma_channel_configure(SOUND_DMA_CHA, &snd_dma_a_cfg, &SPDIF_PIO_UNIT->txf[spdif_pio_sm],
+            &wire_buf_a, WIRE_BUFFER_SIZE, false);
+    dma_channel_set_irq0_enabled(SOUND_DMA_CHA, true);
+
+    // control channel: one word per trigger, read address wraps over the two entries
+    snd_dma_b_cfg = dma_channel_get_default_config(SOUND_DMA_CHB);
+    channel_config_set_transfer_data_size(&snd_dma_b_cfg, DMA_SIZE_32);
+    channel_config_set_dreq(&snd_dma_b_cfg, DREQ_FORCE);
+    channel_config_set_read_increment(&snd_dma_b_cfg, true);
+    channel_config_set_write_increment(&snd_dma_b_cfg, false);
+    channel_config_set_ring(&snd_dma_b_cfg, false, 3);
+    channel_config_set_chain_to(&snd_dma_b_cfg, SOUND_DMA_CHB);
+    snd_dma_b_cfg.ctrl |= DMA_CH0_CTRL_TRIG_HIGH_PRIORITY_BITS;
+    dma_channel_configure(SOUND_DMA_CHB, &snd_dma_b_cfg, &dma_hw->ch[SOUND_DMA_CHA].al3_read_addr_trig,
+            snd_next_wire_buf, 1, false);
+    dma_channel_set_irq0_enabled(SOUND_DMA_CHB, false);
+}
+
 void audio_dma_irq() {
-    if (dma_hw->intr & (1 << SOUND_DMA_CHA)) {
-        dma_hw->ints0 = (1 << SOUND_DMA_CHA);
+    if (!(dma_hw->intr & (1 << SOUND_DMA_CHA))) return;
+    dma_hw->ints0 = (1 << SOUND_DMA_CHA);
+
+    // a buffer finished and the control channel already restarted us on the other one
+    bool playing_b = (uintptr_t) dma_hw->ch[SOUND_DMA_CHA].read_addr - (uintptr_t) wire_buf_b < sizeof(wire_buf_b);
+    if (playing_b) {
         multicore_fifo_push_blocking((uintptr_t) &snd_process_a);
-        if (audio_stopping) {
-            channel_config_set_chain_to(&snd_dma_a_cfg, SOUND_DMA_CHA);
-        }
-        dma_channel_configure(SOUND_DMA_CHA,
-                &snd_dma_a_cfg,
-                &SPDIF_PIO_UNIT->txf[spdif_pio_sm],
-                &wire_buf_a,
-                WIRE_BUFFER_SIZE,
-                false);
-    } else if (dma_hw->intr & (1 << SOUND_DMA_CHB)) {
-        dma_hw->ints0 = (1 << SOUND_DMA_CHB);
+    } else {
         multicore_fifo_push_blocking((uintptr_t) &snd_process_b);
-        if (audio_stopping) {
-            channel_config_set_chain_to(&snd_dma_b_cfg, SOUND_DMA_CHB);
-        }
-        dma_channel_configure(SOUND_DMA_CHB,
-                &snd_dma_b_cfg,
-                &SPDIF_PIO_UNIT->txf[spdif_pio_sm],
-                &wire_buf_b,
-                WIRE_BUFFER_SIZE,
-                false);
+    }
+
+    // the buffer now playing was encoded before the stop, the next one is silence:
+    // let that out too, then stop chaining so the channel halts at its end
+    if (audio_stopping && ++snd_stop_irqs >= 2) {
+        hw_write_masked(&dma_hw->ch[SOUND_DMA_CHA].al1_ctrl,
+                SOUND_DMA_CHA << DMA_CH0_CTRL_TRIG_CHAIN_TO_LSB, DMA_CH0_CTRL_TRIG_CHAIN_TO_BITS);
     }
 }
 
@@ -396,6 +413,10 @@ void audio_setup() {
     logmsg("BlueSCSI CD Audio Enabled - Connect DAC to BlueSCSI or use SPDIF on I2C SCL pin");
 #endif
 
+    if (platform_set_smps_pwm(true)) {
+        logmsg("Regulator set to PWM mode for CD audio");
+    }
+
     // Calculate clock divider, rounding up as necessary
     double clkdiv = ((double)(g_bluescsi_timings->clk_hz) / (double)(5644800));
 
@@ -418,6 +439,11 @@ void audio_setup() {
     } else {
         pio_sm_claim(SPDIF_PIO_UNIT, spdif_pio_sm);
         int prog_offset = pio_add_program(SPDIF_PIO_UNIT, &shift_program);
+        if (prog_offset < 0) {
+            logmsg("No PIO instruction memory left for Audio Output");
+            audio_setup_failed = true;
+            return;
+        }
         shift_program_init(SPDIF_PIO_UNIT, spdif_pio_sm, prog_offset, SPDIF_OUTPUT_PIN);
         // Set clock divider
         pio_sm_set_clkdiv(SPDIF_PIO_UNIT, spdif_pio_sm, clkdiv);
@@ -590,29 +616,9 @@ bool audio_play(uint8_t owner, image_config_t* img, const CUETrackInfo *trackinf
     }
     sfcnt = 0;
     invert = 0;
+    snd_stop_irqs = 0;
 
-    // setup the two DMA units to hand-off to each other
-    // to maintain a stable bitstream these need to run without interruption
-	snd_dma_a_cfg = dma_channel_get_default_config(SOUND_DMA_CHA);
-	channel_config_set_transfer_data_size(&snd_dma_a_cfg, DMA_SIZE_16);
-	channel_config_set_dreq(&snd_dma_a_cfg, pio_get_dreq(SPDIF_PIO_UNIT, spdif_pio_sm, true));
-	channel_config_set_read_increment(&snd_dma_a_cfg, true);
-	channel_config_set_chain_to(&snd_dma_a_cfg, SOUND_DMA_CHB);
-    // version of pico-sdk lacks channel_config_set_high_priority()
-    snd_dma_a_cfg.ctrl |= DMA_CH0_CTRL_TRIG_HIGH_PRIORITY_BITS;
-	dma_channel_configure(SOUND_DMA_CHA, &snd_dma_a_cfg, &SPDIF_PIO_UNIT->txf[spdif_pio_sm],
-			&wire_buf_a, WIRE_BUFFER_SIZE, false);
-    dma_channel_set_irq0_enabled(SOUND_DMA_CHA, true);
-
-	snd_dma_b_cfg = dma_channel_get_default_config(SOUND_DMA_CHB);
-	channel_config_set_transfer_data_size(&snd_dma_b_cfg, DMA_SIZE_16);
-	channel_config_set_dreq(&snd_dma_b_cfg, pio_get_dreq(SPDIF_PIO_UNIT, spdif_pio_sm, true));
-	channel_config_set_read_increment(&snd_dma_b_cfg, true);
-	channel_config_set_chain_to(&snd_dma_b_cfg, SOUND_DMA_CHA);
-    snd_dma_b_cfg.ctrl |= DMA_CH0_CTRL_TRIG_HIGH_PRIORITY_BITS;
-	dma_channel_configure(SOUND_DMA_CHB, &snd_dma_b_cfg, &SPDIF_PIO_UNIT->txf[spdif_pio_sm],
-			&wire_buf_b, WIRE_BUFFER_SIZE, false);
-    dma_channel_set_irq0_enabled(SOUND_DMA_CHB, true);
+    snd_dma_setup();
 
     // ready to go
     dma_channel_start(SOUND_DMA_CHA);
@@ -648,6 +654,7 @@ void audio_stop(uint8_t id) {
 
     // then indicate that the streams should no longer chain to one another
     // and wait for them to shut down naturally
+    snd_stop_irqs = 0;
     audio_stopping = true;
     while (dma_channel_is_busy(SOUND_DMA_CHA)) tight_loop_contents();
     while (dma_channel_is_busy(SOUND_DMA_CHB)) tight_loop_contents();
@@ -719,4 +726,50 @@ void audio_set_file_position(uint8_t id, const CUETrackInfo *trackinfo, uint32_t
     current_track_pos.sector_length = trackinfo->sector_length;
     fpos = audio_offset_from_lba(*trackinfo, lba);
 }
+#ifdef UNIT_TEST
+/* Test accessors */
+extern "C" void spdif_test_start(void)
+{
+    audio_owner = 3;
+    sbufsel = A;
+    sbufpos = 0;
+    sbufst_a = STALE;
+    sbufst_b = STALE;
+    snd_stop_irqs = 0;
+}
+extern "C" uint8_t *spdif_test_sample_buf(int buf)
+{
+    return buf ? sample_buf_b : sample_buf_a;
+}
+extern "C" void spdif_test_fill(int buf, const uint8_t *data)
+{
+    memcpy(spdif_test_sample_buf(buf), data, AUDIO_BUFFER_SIZE);
+    (buf ? sbufst_b : sbufst_a) = READY;
+}
+extern "C" const void *spdif_test_wire_buf(int wire)
+{
+    return wire ? wire_buf_b : wire_buf_a;
+}
+extern "C" void spdif_test_dma_setup(void)
+{
+    snd_dma_setup();
+}
+extern "C" void spdif_test_set_stopping(bool stopping)
+{
+    audio_stopping = stopping;
+}
+extern "C" void spdif_test_process(int wire)
+{
+    if (wire) snd_process_b(); else snd_process_a();
+}
+extern "C" uint8_t spdif_test_volume_level(uint16_t wvol, uint8_t max_volume)
+{
+    return spdif_volume_level(wvol, max_volume);
+}
+extern "C" uint32_t spdif_test_scale_sample(int16_t sample, uint8_t vol)
+{
+    return spdif_scale_sample(sample, vol);
+}
+#endif
+
 #endif // ENABLE_AUDIO_OUTPUT_SPDIF
