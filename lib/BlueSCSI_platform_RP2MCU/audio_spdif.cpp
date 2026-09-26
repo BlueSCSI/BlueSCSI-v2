@@ -211,6 +211,7 @@ static uint8_t spdif_max_volume = 100;
 static inline uint8_t spdif_volume_level(uint16_t wvol, uint8_t max_volume)
 {
     uint8_t avg = ((wvol >> 8) + (wvol & 0xFF)) >> 1;
+    if (max_volume > 100) max_volume = 100;
     return (uint16_t)avg * max_volume / 100;
 }
 
