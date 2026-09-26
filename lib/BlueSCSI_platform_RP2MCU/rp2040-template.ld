@@ -184,6 +184,8 @@ SECTIONS
         *(.text*extractFileName*)
         *(.text*setNameFromImage*)
         *(.text*getBlockSize*)
+        *(.text*s2s_floppy*)
+        *(.text*find_floppy_geometry*)
 
         /* Wi-Fi association, only used during init and reconnect. Keeps the
          * packet path (platform_network_send/receive) in RAM. */

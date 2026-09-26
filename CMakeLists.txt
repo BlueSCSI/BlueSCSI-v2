@@ -146,6 +146,7 @@ set(SCSI2SD_SOURCES
     lib/SCSI2SD/src/firmware/network.c
     lib/SCSI2SD/src/firmware/vendor.c
     lib/SCSI2SD/src/firmware/geometry.c
+    lib/SCSI2SD/src/firmware/floppy.c
     lib/SCSI2SD/src/firmware/mo.c
     lib/SCSI2SD/src/firmware/AmigaWIFI/AmigaWIFI.c
 )

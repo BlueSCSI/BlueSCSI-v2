@@ -240,7 +240,7 @@ static const char * typeToChar(int deviceType)
     case S2S_CFG_FIXED:
       return "Fixed";
     case S2S_CFG_FLOPPY_14MB:
-      return "Floppy1.4MB";
+      return "Floppy";
     case S2S_CFG_MO:
       return "MO";
     case S2S_CFG_NETWORK:
