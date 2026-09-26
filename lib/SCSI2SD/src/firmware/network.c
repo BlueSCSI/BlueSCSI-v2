@@ -207,7 +207,7 @@ void scsiNetworkWifiJoin(uint32_t size)
 	scsiEnterPhase(DATA_OUT);
 	scsiRead((uint8_t *)&req, sizeof(req), &parityError);
 	DBGMSG_F("%s: read join request from host:", __func__);
-	DBGMSG_BUF(scsiDev.data, size);
+	DBGMSG_BUF((uint8_t *)req.ssid, sizeof(req.ssid));
 
 	// The wire fields are not terminated when the host fills them completely,
 	// which a 64 character hex PSK does.
@@ -217,6 +217,14 @@ void scsiNetworkWifiJoin(uint32_t size)
 	ssid[sizeof(req.ssid)] = '\0';
 	memcpy(key, req.key, sizeof(req.key));
 	key[sizeof(req.key)] = '\0';
+
+	if (strlen(ssid) >= sizeof(scsiDev.boardCfg.wifiSSID))
+	{
+		LOGMSG_F("wifi_join_request SSID is longer than %zu characters, ignoring", sizeof(scsiDev.boardCfg.wifiSSID) - 1);
+		scsiDev.status = CHECK_CONDITION;
+		scsiDev.phase = STATUS;
+		return;
+	}
 
 	platform_network_wifi_join(ssid, key, false);
 
