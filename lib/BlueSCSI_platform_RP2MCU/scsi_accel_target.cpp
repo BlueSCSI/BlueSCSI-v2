@@ -56,7 +56,7 @@
 // SM0: Convert data bytes to lookup addresses to add parity
 // SM1: Write data to SCSI bus
 // SM2: For synchronous mode only, count ACK pulses
-#ifdef BLUESCSI_NETWORK
+#if defined(BLUESCSI_NETWORK) || defined(ENABLE_AUDIO_OUTPUT_SPDIF)
 #  define SCSI_DMA_PIO pio0
 #  define SCSI_PARITY_SM 1
 #  define SCSI_DATA_SM 2
@@ -66,7 +66,7 @@
 #  define SCSI_PARITY_SM 0
 #  define SCSI_DATA_SM 1
 #  define SCSI_SYNC_SM 2
-#endif // BLUESCSI_NETWORK
+#endif
 
 
 // SCSI bus write acceleration uses 3 or 4 DMA channels (data flow A->B->C->D):
