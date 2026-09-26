@@ -104,6 +104,11 @@ public:
     // Flush any pending changes to filesystem
     void flush();
 
+    // Set the length of the image file in bytes and leave the position at
+    // its end, so that following writes extend the file. Only regular files
+    // on the SD card can change size.
+    bool truncate(uint64_t length);
+
     // Gets current position for following read/write operations
     // Result is only valid for regular files, not raw or flash access
     uint64_t position();

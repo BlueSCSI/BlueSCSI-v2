@@ -359,6 +359,8 @@ static void scsiDiskSetImageConfig(uint8_t target_idx)
     img.reinsert_after_eject = devCfg->reinsertAfterEject;
     img.ejectButton = devCfg->ejectButton;
     img.vendorExtensions = devCfg->vendorExtensions;
+    img.tape_capacity_mb = devCfg->tapeCapacityMB;
+    img.tape_density = devCfg->tapeDensity;
 
 #ifdef ENABLE_AUDIO_OUTPUT
     uint16_t vol = devCfg->vol;
@@ -607,7 +609,9 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
         img.scsiId = target_idx | S2S_CFG_TARGET_ENABLED;
         img.sdSectorStart = 0;
 
-        if (img.scsiSectors == 0 && type != S2S_CFG_NETWORK && type != S2S_CFG_AMIGAWIFI && type != S2S_CFG_PRINTER && !img.file.isFolder())
+        // A tape image grows as the host writes it, so an empty file is a blank tape.
+        if (img.scsiSectors == 0 && type != S2S_CFG_NETWORK && type != S2S_CFG_AMIGAWIFI && type != S2S_CFG_PRINTER
+            && type != S2S_CFG_SEQUENTIAL && !img.file.isFolder())
         {
             logmsg("---- Error: image file ", filename, " is empty");
             img.file.close();
@@ -859,9 +863,17 @@ bool scsiDiskOpenHDDImage(int target_idx, const char *filename, int scsi_lun, in
             }
             if (!valid)
             {
-                // if there are no valid image files, create one
-                file.open(&img.bin_container, TAPE_DEFAULT_NAME, O_CREAT);
+                // An empty folder is a blank tape with one empty tape file.
+                if (file.open(&img.bin_container, TAPE_DEFAULT_NAME, O_RDWR | O_CREAT))
+                {
                 file.close();
+                    img.tape_mark_count = 1;
+                    logmsg("---- Created blank tape file ", TAPE_DEFAULT_NAME, " in empty tape folder");
+                }
+                else
+                {
+                    logmsg("---- Failed to create blank tape file ", TAPE_DEFAULT_NAME, " in empty tape folder");
+                }
             }
 
         }
@@ -1175,7 +1187,10 @@ int findNextImageAfter(image_config_t &img,
 
     while (file.openNext(&dir, O_RDONLY))
     {
-        if (file.isDir() && !scsiDiskFolderContainsCueSheet(&file)) continue;
+        // A folder is an image when it holds a cue sheet, or when it sits in
+        // a tape image directory as a folder tape with one file per tape file.
+        bool folder_tape = img.deviceType == S2S_CFG_SEQUENTIAL && strcmp(dirname, "/") != 0;
+        if (file.isDir() && !folder_tape && !scsiDiskFolderContainsCueSheet(&file)) continue;
         if (!file.getName(nextname, MAX_FILE_PATH))
         {
             logmsg("Image directory '", dirname, "' had invalid file");
@@ -2110,6 +2125,14 @@ static struct {
 /* Write command */
 /*****************/
 
+void scsiDiskInvalidatePrefetch()
+{
+#ifdef PREFETCH_BUFFER_SIZE
+    g_scsi_prefetch.bytes = 0;
+    g_scsi_prefetch.sector = 0;
+#endif
+}
+
 void scsiDiskStartWrite(uint32_t lba, uint32_t blocks)
 {
     if (unlikely(scsiDev.target->cfg->deviceType == S2S_CFG_FLOPPY_14MB)) {
@@ -2124,6 +2147,13 @@ void scsiDiskStartWrite(uint32_t lba, uint32_t blocks)
 
     dbgmsg("------ Write ", (int)blocks, "x", (int)bytesPerSector, " starting at ", (int)lba);
 
+    // A tape image file grows from its end: the tape code truncates the file
+    // at the write position first, so a write starting at the end of the
+    // file is in range and extends it.
+    bool out_of_range = (scsiDev.target->cfg->deviceType == S2S_CFG_SEQUENTIAL)
+        ? (lba > capacity)
+        : (((uint64_t) lba) + blocks > capacity);
+
     if (unlikely(blockDev.state & DISK_WP) ||
         unlikely(scsiDev.target->cfg->deviceType == S2S_CFG_OPTICAL) ||
         unlikely(!img.file.isWritable()))
@@ -2137,7 +2167,7 @@ void scsiDiskStartWrite(uint32_t lba, uint32_t blocks)
         scsiDev.target->sense.asc = WRITE_PROTECTED;
         scsiDev.phase = STATUS;
     }
-    else if (unlikely(((uint64_t) lba) + blocks > capacity))
+    else if (unlikely(out_of_range))
     {
         logmsg("WARNING: Host attempted write at sector ", (int)lba, "+", (int)blocks,
               ", exceeding image size ", (int)capacity, " sectors (",

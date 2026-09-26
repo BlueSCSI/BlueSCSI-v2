@@ -89,6 +89,8 @@ typedef enum
 typedef struct
 {
 	uint16_t bytesPerSector;
+	uint8_t tapeDensity;      // Density code from the block descriptor, 0 for the configured default
+	uint8_t tapeBufferedMode; // Buffered mode bits (6..4) of the mode parameter header
 } LiveCfg;
 
 typedef struct
