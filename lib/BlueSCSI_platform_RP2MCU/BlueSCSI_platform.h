@@ -158,6 +158,15 @@ void platform_use_sca_led(void);
 // Specific error code tied to the MCU when the SD card is not detected
 uint8_t platform_no_sd_card_on_init_error_code();
 
+// True only if the given SdCard::errorCode() means the card itself refused to
+// store the data. Everything else is a transfer that did not complete, which
+// the host should retry rather than treat as a bad sector.
+bool platform_sd_error_is_medium_defect(uint8_t sd_error);
+
+// SdCard::errorCode() value for a transfer that ran out of time. Mirrors
+// SDIO_ERR_DATA_TIMEOUT; sd_card_sdio.cpp static_asserts the two agree.
+#define SD_ERROR_DATA_TIMEOUT 5
+
 // Query whether initiator mode is enabled on targets with PLATFORM_HAS_INITIATOR_MODE
 bool platform_is_initiator_mode_enabled();
 

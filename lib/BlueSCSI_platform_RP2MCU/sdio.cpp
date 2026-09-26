@@ -35,6 +35,7 @@
 #if defined(SD_USE_SDIO) && !defined(SD_USE_RP2350_SDIO)
 
 #include "sdio.h"
+#include "sdio_write_response.h"
 #include <hardware/pio.h>
 #include <hardware/dma.h>
 //#include <hardware/gpio.h>
@@ -67,6 +68,13 @@
 // Maximum number of 512 byte blocks to transfer in one request
 #define SDIO_MAX_BLOCKS 256
 
+// The SD spec lets a card hold DAT0 busy up to 250ms per block after a write,
+// so a deadline that covers a whole multi-block burst fails legitimate cards:
+// a 64 block burst is entitled to 16s and used to get 1s in total. Time each
+// block separately, and cap the burst only to keep the 15s watchdog clear.
+#define SDIO_BLOCK_TIMEOUT_MS 1000
+#define SDIO_BURST_TIMEOUT_MS 4000
+
 enum sdio_transfer_state_t { SDIO_IDLE, SDIO_RX, SDIO_TX, SDIO_TX_WAIT_IDLE};
 
 static struct {
@@ -78,7 +86,8 @@ static struct {
     pio_sm_config pio_cfg_data_tx;
 
     sdio_transfer_state_t transfer_state;
-    uint32_t transfer_start_time;
+    uint32_t transfer_start_time;   // restarted on every completed block
+    uint32_t burst_start_time;      // start of the whole multi-block transfer
     uint32_t *data_buf;
     uint32_t blocks_done; // Number of blocks transferred so far
     uint32_t total_blocks; // Total number of blocks to transfer
@@ -605,6 +614,7 @@ sdio_status_t rp2040_sdio_rx_start(uint8_t *buffer, uint32_t num_blocks, uint32_
 
     g_sdio.transfer_state = SDIO_RX;
     g_sdio.transfer_start_time = platform_millis();
+    g_sdio.burst_start_time = g_sdio.transfer_start_time;
     g_sdio.data_buf = (uint32_t*)buffer;
     g_sdio.blocks_done = 0;
     g_sdio.total_blocks = num_blocks;
@@ -714,6 +724,24 @@ static void sdio_verify_rx_checksums(uint32_t maxcount)
     }
 }
 
+// Reports a stalled transfer. Kept out of line so the argument marshalling does
+// not sit in RAM alongside the poll functions on RP2040.
+static void __attribute__((noinline)) sdio_log_data_timeout(const char *which, uint sm, uint32_t pc_offset)
+{
+    if (!g_record_sdio_errors) return;
+
+    // ST 3 (SDIO_TX_WAIT_IDLE) means the data left and the card is still busy;
+    // ST 2 (SDIO_TX) or 1 (SDIO_RX) means the block itself never finished.
+    logmsg(which, " timeout, "
+        "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, sm) - (int)pc_offset,
+        " RXF: ", (int)pio_sm_get_rx_fifo_level(SDIO_PIO, sm),
+        " TXF: ", (int)pio_sm_get_tx_fifo_level(SDIO_PIO, sm),
+        " DMA CNT: ", dma_hw->ch[SDIO_DMA_CH].al2_transfer_count,
+        " BD: ", g_sdio.blocks_done,
+        " TB: ", g_sdio.total_blocks,
+        " ST: ", (int)g_sdio.transfer_state);
+}
+
 sdio_status_t rp2040_sdio_rx_poll(uint32_t *bytes_complete)
 {
     // Was everything done when the previous rx_poll() finished?
@@ -732,7 +760,13 @@ sdio_status_t rp2040_sdio_rx_poll(uint32_t *bytes_complete)
 
         // Compute how many complete 512 byte SDIO blocks have been transferred
         // When transfer ends, dma_ctrl_block_count == g_sdio.total_blocks * 2 + 1
-        g_sdio.blocks_done = (dma_ctrl_block_count - 1) / 2;
+        uint32_t blocks_done = (dma_ctrl_block_count - 1) / 2;
+        if (blocks_done != g_sdio.blocks_done)
+        {
+            // Progress: this block is not the one that is stuck.
+            g_sdio.transfer_start_time = platform_millis();
+            g_sdio.blocks_done = blocks_done;
+        }
 
         // NOTE: When all blocks are done, rx_poll() still returns SDIO_BUSY once.
         // This provides a chance to start the SCSI transfer before the last checksums
@@ -758,14 +792,10 @@ sdio_status_t rp2040_sdio_rx_poll(uint32_t *bytes_complete)
             return SDIO_ERR_DATA_CRC;
         }
     }
-    else if ((uint32_t)(platform_millis() - g_sdio.transfer_start_time) > 1000)
+    else if ((uint32_t)(platform_millis() - g_sdio.transfer_start_time) > SDIO_BLOCK_TIMEOUT_MS ||
+             (uint32_t)(platform_millis() - g_sdio.burst_start_time) > SDIO_BURST_TIMEOUT_MS)
     {
-        dbgmsg("rp2040_sdio_rx_poll() timeout, "
-            "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_DATA_SM) - (int)g_sdio.pio_data_rx_offset,
-            " RXF: ", (int)pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_DATA_SM),
-            " TXF: ", (int)pio_sm_get_tx_fifo_level(SDIO_PIO, SDIO_DATA_SM),
-            " DMA CNT: ", dma_hw->ch[SDIO_DMA_CH].al2_transfer_count,
-            " BD: ", g_sdio.blocks_done);
+        sdio_log_data_timeout("rp2040_sdio_rx_poll()", SDIO_DATA_SM, g_sdio.pio_data_rx_offset);
         rp2040_sdio_stop();
         return SDIO_ERR_DATA_TIMEOUT;
     }
@@ -859,6 +889,7 @@ sdio_status_t rp2040_sdio_tx_start(const uint8_t *buffer, uint32_t num_blocks)
 
     g_sdio.transfer_state = SDIO_TX;
     g_sdio.transfer_start_time = platform_millis();
+    g_sdio.burst_start_time = g_sdio.transfer_start_time;
     g_sdio.data_buf = (uint32_t*)buffer;
     g_sdio.blocks_done = 0;
     g_sdio.total_blocks = num_blocks;
@@ -883,74 +914,42 @@ sdio_status_t rp2040_sdio_tx_start(const uint8_t *buffer, uint32_t num_blocks)
 sdio_status_t check_sdio_write_response(uint32_t card_response)
 {
 #ifdef ULTRA_SDIO
-    uint8_t wr_status = card_response & 0xF8;
+    sdio_write_response_t resp = sdio_classify_write_response_ultra(card_response);
 #else
     uint8_t wr_status = card_response & 0x1F;
-#endif
-    // 0 | 3 status bits | 1 
+    // 0 | 3 status bits | 1
     // 0b00101 = data accepted
     // 0b01011 = CRC error
     // 0b01101 = Write Error
-
-#ifdef ULTRA_SDIO
-    if (wr_status == 0x28 ||
-        (wr_status == 0x50 && g_sdio_cid.mid == 0x41))  // Kensington card behavior is different
-#else
-    if (wr_status == 0b101)
+    sdio_write_response_t resp = SDIO_WR_UNKNOWN;
+    if (wr_status == 0b101)          resp = SDIO_WR_ACCEPTED;
+    else if (wr_status == 0b1011)    resp = SDIO_WR_CRC_ERROR;
+    else if (wr_status == 0b1101)    resp = SDIO_WR_WRITE_ERROR;
 #endif
+
+    if (resp == SDIO_WR_ACCEPTED)
     {
         return SDIO_OK;
     }
-#ifdef ULTRA_SDIO
-    else if (wr_status == 0x58)
-#else
-    else if (wr_status == 0b1011)
-#endif
+
+    if (g_record_sdio_errors)
     {
-        if (g_record_sdio_errors) {
+        if (resp == SDIO_WR_CRC_ERROR)
             logmsg("SDIO card reports write CRC error, S: ", card_response, " M: ", (uint8_t)g_sdio.speed_mode);
-        }
-
-#ifdef SDIO_DEBUG
-        // Debug Indicate
-        sio_hw->gpio_hi_set = 0b00100000;
-        asm volatile ("nop \n nop");
-        sio_hw->gpio_hi_clr = 0b11100000;
-#endif
-        return SDIO_ERR_WRITE_CRC;    
-    }
-#ifdef ULTRA_SDIO
-    else if (wr_status == 0x30 || wr_status ==  0x68)
-#else
-    else if (wr_status == 0b1101)
-#endif
-    {
-        if (g_record_sdio_errors) {
+        else if (resp == SDIO_WR_WRITE_ERROR)
             logmsg("SDIO card reports write failure, S: ", card_response, " M: ", (uint8_t)g_sdio.speed_mode);
-        }
-
-#ifdef SDIO_DEBUG
-        // Debug Indicate
-        sio_hw->gpio_hi_set = 0b00100000;
-        asm volatile ("nop \n nop");
-        sio_hw->gpio_hi_clr = 0b11100000;
-#endif
-        return SDIO_ERR_WRITE_FAIL;    
-    }
-    else
-    {
-        if (g_record_sdio_errors) {
+        else
             logmsg("SDIO card reports unknown write S: ", card_response, " M: ", (uint8_t)g_sdio.speed_mode);
-        }
+    }
 
 #ifdef SDIO_DEBUG
-        // Debug Indicate
-        sio_hw->gpio_hi_set = 0b00100000;
-        asm volatile ("nop \n nop");
-        sio_hw->gpio_hi_clr = 0b11100000;
+    // Debug Indicate
+    sio_hw->gpio_hi_set = 0b00100000;
+    asm volatile ("nop \n nop");
+    sio_hw->gpio_hi_clr = 0b11100000;
 #endif
-        return SDIO_ERR_WRITE_FAIL;    
-    }
+
+    return (resp == SDIO_WR_CRC_ERROR) ? SDIO_ERR_WRITE_CRC : SDIO_ERR_WRITE_FAIL;
 }
 
 // When a block finishes, this IRQ handler starts the next one
@@ -997,6 +996,7 @@ static void rp2040_sdio_tx_irq()
             }
 
             g_sdio.blocks_done++;
+            g_sdio.transfer_start_time = platform_millis();
             if (g_sdio.blocks_done < g_sdio.total_blocks)
             {
                 sdio_start_next_block_tx();
@@ -1037,13 +1037,10 @@ sdio_status_t rp2040_sdio_tx_poll(uint32_t *bytes_complete)
         rp2040_sdio_stop();
         return g_sdio.wr_status;
     }
-    else if ((uint32_t)(platform_millis() - g_sdio.transfer_start_time) > 1000)
+    else if ((uint32_t)(platform_millis() - g_sdio.transfer_start_time) > SDIO_BLOCK_TIMEOUT_MS ||
+             (uint32_t)(platform_millis() - g_sdio.burst_start_time) > SDIO_BURST_TIMEOUT_MS)
     {
-        dbgmsg("rp2040_sdio_tx_poll() timeout, "
-            "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_CMD_SM) - (int)g_sdio.pio_data_tx_offset,
-            " RXF: ", (int)pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_CMD_SM),
-            " TXF: ", (int)pio_sm_get_tx_fifo_level(SDIO_PIO, SDIO_CMD_SM),
-            " DMA CNT: ", dma_hw->ch[SDIO_DMA_CH].al2_transfer_count);
+        sdio_log_data_timeout("rp2040_sdio_tx_poll()", SDIO_CMD_SM, g_sdio.pio_data_tx_offset);
 
         rp2040_sdio_stop();
         return SDIO_ERR_DATA_TIMEOUT;

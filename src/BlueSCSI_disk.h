@@ -205,4 +205,8 @@ char scsiEncodeID(uint8_t scsi_id);
 // Decode a filename ID character ('0'-'9'/'A'-'F') to 0..15, or -1.
 int scsiDecodeID(char c);
 
+
+// Maps an SdCard::errorCode() to the sense a failed write should report.
+void diskWriteErrorSense(uint8_t sd_error, uint8_t *sense_key, uint16_t *asc);
+
 #endif /* BLUESCSI_DISK_H */
