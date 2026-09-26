@@ -1640,10 +1640,7 @@ bool scsiDiskCheckAnyNetworkDevicesConfigured()
 extern "C"
 void s2s_configInit(S2S_BoardCfg* config)
 {
-    char tmp[64];
-    // Wi-Fi credentials are longer than the other settings: a WPA2 PSK may be
-    // given as the 64 character hex key instead of a passphrase.
-    char wifitmp[72];
+    char tmp[72];
     logmsg("");
     logmsg("=== Global Config ===");
     if (SD.exists(CONFIGFILE))
@@ -1734,25 +1731,27 @@ void s2s_configInit(S2S_BoardCfg* config)
         }
     }
 
-    memset(wifitmp, 0, sizeof(wifitmp));
-    ini_gets("SCSI", "WiFiSSID", "", wifitmp, sizeof(wifitmp), CONFIGFILE);
-    if (wifitmp[0])
+    memset(tmp, 0, sizeof(tmp));
+    ini_gets("SCSI", "WiFiSSID", "", tmp, sizeof(tmp), CONFIGFILE);
+    if (strlen(tmp) >= sizeof(config->wifiSSID))
     {
-        strncpy(config->wifiSSID, wifitmp, sizeof(config->wifiSSID) - 1);
-        config->wifiSSID[sizeof(config->wifiSSID) - 1] = '\0';
-        if (strlen(wifitmp) >= sizeof(config->wifiSSID))
-            logmsg("WARNING: WiFiSSID is longer than ", (int)(sizeof(config->wifiSSID) - 1), " characters, truncated");
-        logmsg("-- WiFiSSID = ", config->wifiSSID);
+        logmsg("ERROR: WiFiSSID is longer than ", (int)(sizeof(config->wifiSSID) - 1), " characters, ignored");
+    }
+    else if (tmp[0])
+    {
+        strcpy(config->wifiSSID, tmp);
+        logmsg("-- WiFiSSID = ", tmp);
     }
 
-    memset(wifitmp, 0, sizeof(wifitmp));
-    ini_gets("SCSI", "WiFiPassword", "", wifitmp, sizeof(wifitmp), CONFIGFILE);
-    if (wifitmp[0])
+    memset(tmp, 0, sizeof(tmp));
+    ini_gets("SCSI", "WiFiPassword", "", tmp, sizeof(tmp), CONFIGFILE);
+    if (strlen(tmp) >= sizeof(config->wifiPassword))
     {
-        strncpy(config->wifiPassword, wifitmp, sizeof(config->wifiPassword) - 1);
-        config->wifiPassword[sizeof(config->wifiPassword) - 1] = '\0';
-        if (strlen(wifitmp) >= sizeof(config->wifiPassword))
-            logmsg("WARNING: WiFiPassword is longer than ", (int)(sizeof(config->wifiPassword) - 1), " characters, truncated");
+        logmsg("ERROR: WiFiPassword is longer than ", (int)(sizeof(config->wifiPassword) - 1), " characters, ignored");
+    }
+    else if (tmp[0])
+    {
+        strcpy(config->wifiPassword, tmp);
         logmsg("-- WiFiPassword = [set]");
     }
 
