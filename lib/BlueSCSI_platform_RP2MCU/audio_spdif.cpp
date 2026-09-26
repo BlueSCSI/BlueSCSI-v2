@@ -203,6 +203,8 @@ static uint8_t invert = 0; // biphase encode help: set if last wire bit was '1'
 static uint32_t spdif_pio_sm = SPDIF_PIO_SM;
 static bool already_claimed = false;
 static bool audio_setup_failed = false;
+// Read on core0 in audio_play(), getSystem() is in flash on RP2040
+static uint8_t spdif_max_volume = 100;
 // Volume byte each sample is multiplied by, 255 being full scale. The two
 // output port levels are averaged, then scaled by MaxVolume so DACs that clip
 // near full scale can be given headroom from bluescsi.ini.
@@ -230,7 +232,7 @@ static inline uint32_t spdif_scale_sample(int32_t rsamp, uint8_t vol)
  */
 static void snd_encode(uint8_t* samples, uint16_t* wire_patterns, uint16_t len, uint8_t swap) {
     uint16_t wvol = volumes[audio_owner & S2S_CFG_TARGET_ID_BITS];
-    uint8_t lvol = spdif_volume_level(wvol, g_scsi_settings.getSystem()->maxVolume);
+    uint8_t lvol = spdif_volume_level(wvol, spdif_max_volume);
     uint8_t rvol = lvol;
     // enable or disable based on the channel information for both output
     // ports, where the high byte and mask control the right channel, and
@@ -542,6 +544,8 @@ bool audio_play(uint8_t owner, image_config_t* img, const CUETrackInfo *trackinf
         return false;
     }
 
+    spdif_max_volume = g_scsi_settings.getSystem()->maxVolume;
+
     // Cache the fields audio_get_lba_position() / future seeks will need.
     current_track_pos.file_offset = trackinfo->file_offset;
     current_track_pos.data_start = trackinfo->data_start;
@@ -765,6 +769,10 @@ extern "C" void spdif_test_process(int wire)
 extern "C" uint8_t spdif_test_volume_level(uint16_t wvol, uint8_t max_volume)
 {
     return spdif_volume_level(wvol, max_volume);
+}
+extern "C" uint8_t spdif_test_max_volume(void)
+{
+    return spdif_max_volume;
 }
 extern "C" uint32_t spdif_test_scale_sample(int16_t sample, uint8_t vol)
 {
