@@ -110,26 +110,29 @@ ImageBackingStore::ImageBackingStore(const char *filename, uint32_t scsi_block_s
 
 bool ImageBackingStore::_internal_open(const char *filename, bool doFastSeek)
 {
-    m_isreadonly_attr = !!(FS_ATTRIB_READ_ONLY & SD.attrib(filename));
+    // A file inside an image folder is addressed by its full path.
+    char fullpath[MAX_FILE_PATH * 2];
+    if (m_isfolder)
+    {
+        snprintf(fullpath, sizeof(fullpath), "%s/%s", m_foldername, filename);
+    }
+    else
+    {
+        strncpy(fullpath, filename, sizeof(fullpath));
+        fullpath[sizeof(fullpath) - 1] = '\0';
+    }
+
+    // attrib() returns -1 for a missing path, so only a real attribute value counts.
+    int attrib = SD.attrib(fullpath);
+    m_isreadonly_attr = attrib >= 0 && (attrib & FS_ATTRIB_READ_ONLY);
     oflag_t open_flag = O_RDWR;
-    if (m_isreadonly_attr && !m_isfolder)
+    if (m_isreadonly_attr)
     {
         open_flag = O_RDONLY;
         logmsg("---- Image file is read-only, writes disabled");
     }
 
-    if (m_isfolder)
-    {
-        char fullpath[MAX_FILE_PATH * 2];
-        strncpy(fullpath, m_foldername, sizeof(fullpath) - strlen(fullpath));
-        strncat(fullpath, "/", sizeof(fullpath) - strlen(fullpath));
-        strncat(fullpath, filename, sizeof(fullpath) - strlen(fullpath));
         m_fsfile = SD.open(fullpath, open_flag);
-    }
-    else
-    {
-        m_fsfile = SD.open(filename, open_flag);
-    }
 
     if (!m_fsfile.isOpen())
     {
@@ -392,6 +395,26 @@ ssize_t ImageBackingStore::write(const void* buf, size_t count)
     {
         return m_fsfile.write(buf, count);
     }
+}
+
+bool ImageBackingStore::truncate(uint64_t length)
+{
+    if (m_isrom || m_israw || m_isreadonly_attr || !m_fsfile.isOpen())
+    {
+        return false;
+    }
+
+    // The raw sector mapping and the fastseek sector map describe the file's
+    // extent at open time, so once the length changes all access goes
+    // through SdFat.
+    m_iscontiguous = false;
+    m_fsfile.disableFastSeek();
+
+    if (length == m_fsfile.fileSize())
+    {
+        return m_fsfile.seekSet(length);
+    }
+    return m_fsfile.truncate(length);
 }
 
 void ImageBackingStore::flush()

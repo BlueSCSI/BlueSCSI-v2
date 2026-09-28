@@ -17,6 +17,12 @@
 #ifndef TAPE_H
 #define TAPE_H
 
+#include <stdint.h>
+
 int scsiTapeCommand(void);
+
+// Density code a tape drive reports in MODE SENSE: the one the host
+// selected with MODE SELECT, else the configured default
+uint8_t scsiTapeDensityCode(void);
 
 #endif

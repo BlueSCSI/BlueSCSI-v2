@@ -60,6 +60,7 @@ static const char *getCommandName(uint8_t cmd)
         case 0x15: return "ModeSelect6";
         case 0x16: return "Reserve";
         case 0x17: return "Release";
+        case 0x18: return "Copy";
         case 0x19: return "Erase";
         case 0x1A: return "ModeSense";
         case 0x1B: return "StartStopUnit";
@@ -77,6 +78,7 @@ static const char *getCommandName(uint8_t cmd)
         case 0x35: return "SynchronizeCache";
         case 0x36: return "LockUnlockCache";
         case 0x37: return "ReadDefectData";
+        case 0x3A: return "CopyAndVerify";
         case 0x3B: return "WriteBuffer";
         case 0x3C: return "ReadBuffer";
         case 0x42: return "CDROM Read SubChannel";
@@ -198,8 +200,10 @@ static void printNewPhase(int phase, bool initiator = false)
             if (!initiator && scsiDev.target->syncOffset > 0)
                 dbgmsg("---- DATA_OUT, syncOffset ", (int)scsiDev.target->syncOffset,
                                     " syncPeriod ", (int)scsiDev.target->syncPeriod);
-            // log Xebec vendor commands data
-            else if (scsiDev.cdb[0] == 0x0C || scsiDev.cdb[0] == 0x0F)
+            // log Xebec vendor commands data, MODE SELECT and COPY parameter lists
+            else if (scsiDev.cdb[0] == 0x0C || scsiDev.cdb[0] == 0x0F ||
+                     scsiDev.cdb[0] == 0x15 || scsiDev.cdb[0] == 0x55 ||
+                     scsiDev.cdb[0] == 0x18 || scsiDev.cdb[0] == 0x3A)
                 g_LogData = true;
             else
                 dbgmsg("---- DATA_OUT");
