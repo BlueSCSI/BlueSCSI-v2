@@ -3,7 +3,7 @@
  *
  * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
  * Portions copyright (c) 2023 joshua stein <jcs@jcs.org>
- * Copyright (c) 2026 Eric Helgeson
+ * Copyright (c) 2026 Eric Helgeson <eric@bluescsi.com>
  *
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version.
  *
@@ -44,9 +44,20 @@
 #define INQUIRY_NAME  PLATFORM_NAME "v" FW_VER_NUM
 #define TOOLBOX_API 0
 
+// Front panel firmware: extracted from the update package to the SD card,
+// where the panel protocol serves it to the panel for self-update.
+#define PANEL_FIRMWARE_DIR      "/firmware"
+#define PANEL_FIRMWARE_PATH     PANEL_FIRMWARE_DIR "/frontpanel.bin"
+#define PANEL_FIRMWARE_TMP_PATH PANEL_FIRMWARE_DIR "/frontpanel.tmp"
+// In-zip name matches the open-retro-storage-frontpanel release asset name.
+// One image covers v2 (I2C) and Ultra/Ultra Wide (SPI); the panel detects the
+// transport at runtime.
+#define PANEL_FIRMWARE_ZIP_NAME "bluescsi-frontpanel.bin"
+
 // Configuration and log file paths
 #define CONFIGFILE  "bluescsi.ini"
 #define LOGFILE     "log.txt"
+#define LASTLOGFILE "lastlog.txt"
 #define CRASHFILE   "err.txt"
 
 // Prefix for command file to create new image (case-insensitive)
@@ -79,7 +90,7 @@
 #define HDIMG_ID_POS  2                 // Position to embed ID number
 #define HDIMG_LUN_POS 3                 // Position to embed LUN numbers
 #define HDIMG_BLK_POS 5                 // Position to embed block size numbers
-#define MAX_FILE_PATH 64                // Maximum file name length
+#define MAX_FILE_PATH 128               // Maximum file name length
 
 // Image definition options
 #define IMAGE_INDEX_MAX 9               // Maximum number of 'IMG0' style statements parsed

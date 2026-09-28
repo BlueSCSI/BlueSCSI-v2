@@ -20,10 +20,17 @@
 # The zip contains one .bin per target, named:
 #   BlueSCSI_<target>_<date>_<hash>.bin
 #
+# If the front panel firmware binary is present in PANEL_BIN_DIR (default:
+# <project>/panel-fw, populated by CI from the open-retro-storage-frontpanel
+# releases), it is included under its original name so the on-device updater
+# can extract it to the SD card:
+#   bluescsi-frontpanel.bin  (one image for V2 and Ultra / Ultra Wide;
+#                             the panel auto-detects I2C vs SPI)
+#
 # The zip itself is named:
 #   BlueSCSI_v<version>_<hash>.zip
 #
-# Usage: utils/create_firmware_zip.sh <build_root> <output_dir>
+# Usage: [PANEL_BIN_DIR=<dir>] utils/create_firmware_zip.sh <build_root> <output_dir>
 
 set -euo pipefail
 
@@ -35,7 +42,10 @@ OUTPUT_DIR="${2:?Usage: $0 <build_root> <output_dir>}"
 
 # Extract version from BlueSCSI_config.h
 FW_VER=$(grep 'FW_VER_NUM' "${PROJECT_DIR}/src/BlueSCSI_config.h" | head -1 | sed 's/.*"\(.*\)".*/\1/')
-SHORT_HASH=$(git -C "${PROJECT_DIR}" rev-parse --short=7 HEAD 2>/dev/null || echo "unknown")
+# DIST_SHA overrides the built sha on CI pull request builds - see make_dist.sh.
+SHORT_HASH="${DIST_SHA:-}"
+SHORT_HASH="${SHORT_HASH:0:7}"
+SHORT_HASH="${SHORT_HASH:-$(git -C "${PROJECT_DIR}" rev-parse --short=7 HEAD 2>/dev/null || echo "unknown")}"
 DATE=$(TZ=America/Chicago date +%Y-%m-%d)
 
 ZIP_NAME="BlueSCSI_v${FW_VER}_${SHORT_HASH}.zip"
@@ -67,6 +77,28 @@ if [ "${BIN_COUNT}" -eq 0 ]; then
     exit 1
 fi
 
+# Include front panel firmware binaries if present (see header comment).
+PANEL_BIN_DIR="${PANEL_BIN_DIR:-${PROJECT_DIR}/panel-fw}"
+PANEL_BINS=(bluescsi-frontpanel.bin)
+PANEL_COUNT=0
+for panel_bin in "${PANEL_BINS[@]}"; do
+    panel_path="${PANEL_BIN_DIR}/${panel_bin}"
+    [ -f "${panel_path}" ] || continue
+    # ESP32 app images start with magic byte 0xE9; anything else is a
+    # truncated or bogus download and must not ship.
+    magic=$(head -c1 "${panel_path}" | od -An -tx1 | tr -d ' ')
+    if [ "${magic}" != "e9" ]; then
+        echo "ERROR: ${panel_path} has bad magic 0x${magic} (expected 0xe9)" >&2
+        exit 1
+    fi
+    cp "${panel_path}" "${TMPDIR}/${panel_bin}"
+    echo "  Added: ${panel_bin} (front panel firmware)"
+    PANEL_COUNT=$((PANEL_COUNT + 1))
+done
+if [ "${PANEL_COUNT}" -eq 0 ]; then
+    echo "Note: no front panel firmware in ${PANEL_BIN_DIR}; zip will not carry a panel update"
+fi
+
 # Included in the zip so users who accidentally extract it understand why the
 # raw .bin files inside are not meant to be flashed by hand.
 README_NAME="DONT EXTRACT - PLACE ZIP ON SD.txt"
@@ -91,6 +123,10 @@ the original .zip from the release page and drop it on your SD card.
 The .bin files inside this archive are raw firmware images intended only
 for the on-device updater. They cannot be flashed with drag-and-drop or
 UF2 tools.
+
+If a front panel is connected, the updater also extracts the matching
+front panel firmware (bluescsi-*-frontpanel.bin) to /firmware/ on the SD
+card; the panel then updates itself automatically.
 
 For the full update guide, including USB/UF2 flashing and troubleshooting,
 see:

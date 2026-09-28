@@ -38,6 +38,10 @@
 #include <minIni.h>
 #include "SdFat.h"
 #include "BlueSCSI_disk.h"
+#include "BlueSCSI_blink.h"
+// Only defines and POD structs; the PANEL_INITIATOR_SKIP_* codes are named at
+// every skip site whether or not a panel is built in.
+#include "panel_protocol_defs_initiator.h"
 
 #include <scsi2sd.h>
 extern "C" {
@@ -66,6 +70,38 @@ bool scsiInitiatorReadCapacity(int target_id, uint32_t *sectorcount, uint32_t *s
     return false;
 }
 
+bool scsiInitiatorIsActive()
+{
+    return false;
+}
+
+bool scsiInitiatorBusBusy()
+{
+    return false;
+}
+
+void scsiInitiatorGetStatus(uint8_t *phase, uint8_t *current_target, uint8_t *initiator_id,
+                            uint8_t *drives_mask, uint16_t *speed_kbps, char *filename,
+                            size_t filename_size)
+{
+    if (phase) *phase = 0;
+    if (current_target) *current_target = 0xFF;
+    if (initiator_id) *initiator_id = 7;
+    if (drives_mask) *drives_mask = 0;
+    if (speed_kbps) *speed_kbps = 0;
+    if (filename && filename_size > 0) filename[0] = '\0';
+}
+
+bool scsiInitiatorGetTargetInfo(int scsi_id, uint8_t *status, uint8_t *device_type,
+                                uint8_t *ansi_version, uint32_t *sectorcount,
+                                uint32_t *sectorsize, uint32_t *sectors_done,
+                                uint32_t *bad_sector_count, char *vendor,
+                                char *product, uint8_t *sense_key,
+                                uint8_t *asc, uint8_t *ascq, uint8_t *skip_reason)
+{
+    return false;
+}
+
 #else
 
 // From BlueSCSI.cpp
@@ -77,6 +113,26 @@ extern bool g_sdcard_present;
 
 // Not in the SCSI_MESSAGE enum in scsi.h
 #define MSG_NO_OPERATION 0x08
+
+// Per-target summary persisted across scans (for panel reporting).
+// Only compiled in when a panel interface exists to consume it.
+#if defined(ENABLE_PANEL_I2C) || defined(ENABLE_PANEL_SPI)
+struct initiator_target_summary_t {
+    uint8_t  status;         // 0=not found, 1=found, 2=imaging, 3=done, 4=error
+    uint8_t  device_type;    // SCSI device type (0=HD, 5=CD, 7=MO)
+    uint8_t  ansi_version;
+    uint8_t  sense_key;
+    uint8_t  asc;
+    uint8_t  ascq;
+    uint8_t  skip_reason;    // PANEL_INITIATOR_SKIP_*, fits the existing pad
+    uint32_t sectorcount;
+    uint32_t sectorsize;
+    uint32_t sectors_done;
+    uint32_t bad_sector_count;
+    char     vendor[9];      // null-terminated
+    char     product[17];    // null-terminated
+};
+#endif
 
 static struct {
     // Bitmap of all drives that have been imaged
@@ -91,6 +147,13 @@ static struct {
 
     // Is imaging a drive in progress, or are we scanning?
     bool imaging;
+
+    // True when SCSI bus is actively in use (selection through bus free).
+    // Panel SPI defers async commands while this is set.
+    volatile bool scsi_bus_active;
+
+    // Overall phase for panel reporting
+    bool all_done;  // true when all IDs have been scanned/imaged
 
     // Information about currently selected drive
     int target_id;
@@ -119,10 +182,106 @@ static struct {
     int targetBusWidth[NUM_SCSIID];
     uint32_t start_sector[NUM_SCSIID];
 
+#if defined(ENABLE_PANEL_I2C) || defined(ENABLE_PANEL_SPI)
+    // Per-target summary for panel status reporting
+    initiator_target_summary_t target_summary[NUM_SCSIID];
+
+    // The image being written now, and the last measured read speed. Only one
+    // target images at a time, so these are not per-target.
+    char current_filename[32];
+    uint16_t speed_kbps;
+#endif
+
     FsFile target_file;
 } g_initiator_state;
 
 extern SdFs SD;
+
+// Mirror initiator progress into the per-target summary for panel status
+// reporting. Compiled to no-ops when no panel interface is enabled, which
+// also lets the linker drop the target_summary storage on non-panel builds.
+#if defined(ENABLE_PANEL_I2C) || defined(ENABLE_PANEL_SPI)
+static void initiatorSummaryClear()
+{
+    memset(g_initiator_state.target_summary, 0, sizeof(g_initiator_state.target_summary));
+}
+
+static void initiatorSummaryTargetFound(int target_id, const char *vendor, const char *product)
+{
+    initiator_target_summary_t &ts = g_initiator_state.target_summary[target_id];
+    ts.status = 1; // found
+    ts.device_type = g_initiator_state.device_type;
+    ts.ansi_version = g_initiator_state.ansi_version;
+    ts.sectorcount = g_initiator_state.sectorcount;
+    ts.sectorsize = g_initiator_state.sectorsize;
+    ts.sectors_done = 0;
+    ts.bad_sector_count = 0;
+    // Clear any sense codes from a previous scan of this ID so a
+    // freshly-found (e.g. removable) target doesn't report stale
+    // error codes to the panel.
+    ts.sense_key = 0;
+    ts.asc = 0;
+    ts.ascq = 0;
+    ts.skip_reason = 0;
+    memcpy(ts.vendor, vendor, 9);
+    memcpy(ts.product, product, 17);
+}
+
+static void initiatorSummarySetStatus(int target_id, uint8_t status)
+{
+    g_initiator_state.target_summary[target_id].status = status;
+}
+
+static void initiatorSummaryUpdateProgress(int target_id)
+{
+    initiator_target_summary_t &ts = g_initiator_state.target_summary[target_id];
+    ts.sectors_done = g_initiator_state.sectors_done;
+    ts.bad_sector_count = g_initiator_state.bad_sector_count;
+}
+
+static void initiatorSummarySetSense(int target_id, uint8_t sense_key, uint8_t asc, uint8_t ascq)
+{
+    if (target_id < 0 || target_id >= NUM_SCSIID) return;
+    initiator_target_summary_t &ts = g_initiator_state.target_summary[target_id];
+    ts.sense_key = sense_key;
+    ts.asc = asc;
+    ts.ascq = ascq;
+}
+
+static void initiatorSummarySetSkipped(int target_id, uint8_t reason)
+{
+    if (target_id < 0 || target_id >= NUM_SCSIID) return;
+    initiator_target_summary_t &ts = g_initiator_state.target_summary[target_id];
+    ts.status = 4; // error
+    ts.skip_reason = reason;
+}
+
+static void initiatorSummarySetFilename(const char *filename)
+{
+    if (!filename)
+    {
+        g_initiator_state.current_filename[0] = '\0';
+        return;
+    }
+    strncpy(g_initiator_state.current_filename, filename,
+            sizeof(g_initiator_state.current_filename) - 1);
+    g_initiator_state.current_filename[sizeof(g_initiator_state.current_filename) - 1] = '\0';
+}
+
+static void initiatorSummarySetSpeed(uint16_t speed_kbps)
+{
+    g_initiator_state.speed_kbps = speed_kbps;
+}
+#else
+static inline void initiatorSummaryClear() {}
+static inline void initiatorSummaryTargetFound(int, const char *, const char *) {}
+static inline void initiatorSummarySetStatus(int, uint8_t) {}
+static inline void initiatorSummaryUpdateProgress(int) {}
+static inline void initiatorSummarySetSense(int, uint8_t, uint8_t, uint8_t) {}
+static inline void initiatorSummarySetSkipped(int, uint8_t) {}
+static inline void initiatorSummarySetFilename(const char *) {}
+static inline void initiatorSummarySetSpeed(uint16_t) {}
+#endif
 
 // Initialization of initiator mode
 void scsiInitiatorInit()
@@ -143,10 +302,13 @@ void scsiInitiatorInit()
     g_initiator_state.use_read10 = ini_getbool("SCSI", "InitiatorUseRead10", false, CONFIGFILE);
     g_initiator_state.use_identify = ini_getbool("SCSI", "InitiatorIdentify", true, CONFIGFILE);
     g_initiator_state.use_vhd_format = ini_getbool("SCSI", "InitiatorVHD", false, CONFIGFILE);
+    g_initiator_state.all_done = false;
+    initiatorSummaryClear();
 
     // treat initiator id as already imaged drive so it gets skipped
     g_initiator_state.drives_imaged = 1 << g_initiator_state.initiator_id;
 
+    g_initiator_state.scsi_bus_active = false;
     g_initiator_state.imaging = false;
     g_initiator_state.target_id = -1;
     g_initiator_state.sectorsize = 0;
@@ -228,6 +390,10 @@ void delay_with_poll(uint32_t ms)
     while ((uint32_t)(platform_millis() - start) < ms)
     {
         platform_poll();
+        // platform_write_led() drops every write while a blink is running, and
+        // only blink_poll() ends one. Without this an initiator step that
+        // outlasts a blink latches the LED until the main loop comes back.
+        blink_poll();
         platform_delay_ms(1);
     }
 }
@@ -313,6 +479,22 @@ void scsiInitiatorMainLoop()
 
     if (!g_initiator_state.imaging)
     {
+        // Check if all drives have been scanned/imaged. This only latches when
+        // every non-initiator ID has been imaged (an empty ID or an
+        // eject_when_done drive never sets its bit, so the scan keeps running);
+        // when it does latch, imaging is genuinely complete and there is no
+        // point re-probing imaged IDs forever. Log the transition once so the
+        // terminal state isn't silent.
+        if ((g_initiator_state.drives_imaged & 0xFF) == 0xFF)
+        {
+            if (!g_initiator_state.all_done)
+            {
+                logmsg("Initiator: all SCSI IDs imaged - imaging complete");
+            }
+            g_initiator_state.all_done = true;
+            return;
+        }
+
         // Scan for SCSI drives one at a time
         g_initiator_state.target_id = (g_initiator_state.target_id + 1) % S2S_MAX_TARGETS;
         g_initiator_state.sectorsize = 0;
@@ -388,6 +570,12 @@ void scsiInitiatorMainLoop()
                     logmsg("Target SCSI ID ", g_initiator_state.target_id, " image size is equal or larger than 4 GiB.");
                     logmsg("This is larger than the max filesize supported by SD card's filesystem");
                     logmsg("Please reformat the SD card with exFAT format to image this target");
+                    // Reached before INQUIRY is parsed, so the panel would not
+                    // otherwise know this ID exists. Record the capacity we do
+                    // have, with an empty vendor/product.
+                    initiatorSummaryTargetFound(g_initiator_state.target_id, "\0\0\0\0\0\0\0\0\0",
+                                                "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0");
+                    initiatorSummarySetSkipped(g_initiator_state.target_id, PANEL_INITIATOR_SKIP_TOO_LARGE_FAT32);
                     g_initiator_state.drives_imaged |= 1 << g_initiator_state.target_id;
                     return;
                 }
@@ -425,6 +613,9 @@ void scsiInitiatorMainLoop()
                 memcpy(revision, &inquiry_data[32], 4);
                 revision[4]=0;
 
+                // Save to target summary for panel reporting
+                initiatorSummaryTargetFound(g_initiator_state.target_id, vendor, product);
+
                 g_initiator_state.use_read10 = scsiInitiatorTestSupportsRead10(g_initiator_state.target_id, g_initiator_state.sectorsize);
                 if(!g_initiator_state.use_read10)
                 {
@@ -450,6 +641,7 @@ void scsiInitiatorMainLoop()
                 if (typeName == nullptr)
                 {
                     logmsg("  SCSI Peripheral device type id ", g_initiator_state.device_type, " unsupported. Skipping this device");
+                    initiatorSummarySetSkipped(g_initiator_state.target_id, PANEL_INITIATOR_SKIP_UNSUPPORTED);
                     g_initiator_state.drives_imaged |= 1 << g_initiator_state.target_id;
                     return;
                 }
@@ -524,6 +716,7 @@ void scsiInitiatorMainLoop()
                     if (SD.exists(filename))
                     {
                         logmsg("File, ", filename, ", already exists, InitiatorImageHandling set to stop if file exists.");
+                        initiatorSummarySetSkipped(g_initiator_state.target_id, PANEL_INITIATOR_SKIP_FILE_EXISTS);
                         g_initiator_state.drives_imaged |= (1 << g_initiator_state.target_id);
                         return;
                     }
@@ -542,6 +735,7 @@ void scsiInitiatorMainLoop()
                         else if(i >= 1000)
                         {
                             logmsg("Max images created from SCSI ID ", g_initiator_state.target_id, ", skipping image creation");
+                            initiatorSummarySetSkipped(g_initiator_state.target_id, PANEL_INITIATOR_SKIP_TOO_MANY);
                             g_initiator_state.drives_imaged |= (1 << g_initiator_state.target_id);
                             return;
                         }
@@ -589,6 +783,7 @@ void scsiInitiatorMainLoop()
                 {
                     logmsg("SD Card only has ", (int)(sd_card_free_bytes / (1024 * 1024)),
                            " MiB - not enough free space to image SCSI ID ", g_initiator_state.target_id);
+                    initiatorSummarySetSkipped(g_initiator_state.target_id, PANEL_INITIATOR_SKIP_NO_SPACE);
                     g_initiator_state.drives_imaged |= 1 << g_initiator_state.target_id;
                     return;
                 }
@@ -611,6 +806,9 @@ void scsiInitiatorMainLoop()
 
                 logmsg("Starting to copy drive data to ", filename);
                 g_initiator_state.imaging = true;
+                initiatorSummarySetStatus(g_initiator_state.target_id, 2); // imaging
+                initiatorSummarySetFilename(filename);
+                initiatorSummarySetSpeed(0);
 
                 // Initiator start sector override
                 if (g_initiator_state.start_sector[g_initiator_state.target_id] != 0) {
@@ -629,6 +827,8 @@ void scsiInitiatorMainLoop()
             scsiStartStopUnit(g_initiator_state.target_id, false);
             logmsg("Finished imaging drive with id ", g_initiator_state.target_id);
             LED_OFF();
+            initiatorSummarySetFilename(nullptr);
+            initiatorSummarySetSpeed(0);
 
             if (g_initiator_state.sectorcount != g_initiator_state.sectorcount_all)
             {
@@ -668,6 +868,10 @@ void scsiInitiatorMainLoop()
 
             g_initiator_state.imaging = false;
             g_initiator_state.target_file.close();
+
+            // Update target summary on completion
+            initiatorSummarySetStatus(g_initiator_state.target_id, 3); // done
+            initiatorSummaryUpdateProgress(g_initiator_state.target_id);
             return;
         }
 
@@ -714,6 +918,7 @@ void scsiInitiatorMainLoop()
                 g_initiator_state.retrycount = 0;
                 g_initiator_state.sectors_done++;
                 g_initiator_state.bad_sector_count++;
+                initiatorSummaryUpdateProgress(g_initiator_state.target_id);
                 g_initiator_state.target_file.seek((uint64_t)g_initiator_state.sectors_done * g_initiator_state.sectorsize);
             }
         }
@@ -723,7 +928,13 @@ void scsiInitiatorMainLoop()
             g_initiator_state.sectors_done += numtoread;
             g_initiator_state.target_file.flush();
 
-            int speed_kbps = numtoread * g_initiator_state.sectorsize / (platform_millis() - time_start);
+            // Update target summary progress
+            initiatorSummaryUpdateProgress(g_initiator_state.target_id);
+
+            // A one-sector retry batch can finish inside a single millisecond tick
+            uint32_t elapsed = platform_millis() - time_start;
+            int speed_kbps = elapsed ? (int)(numtoread * g_initiator_state.sectorsize / elapsed) : 0;
+            if (speed_kbps > 0) initiatorSummarySetSpeed((speed_kbps > 0xFFFF) ? 0xFFFF : (uint16_t)speed_kbps);
             logmsg("SCSI read succeeded, sectors done: ",
                   (int)g_initiator_state.sectors_done, " / ", (int)g_initiator_state.sectorcount,
                   " speed ", speed_kbps, " kB/s - ", 
@@ -731,6 +942,84 @@ void scsiInitiatorMainLoop()
         }
     }
 }
+
+/*************************************
+ * Panel status accessor functions   *
+ *************************************/
+
+#if defined(ENABLE_PANEL_I2C) || defined(ENABLE_PANEL_SPI)
+
+bool scsiInitiatorIsActive()
+{
+    // PLATFORM_HAS_INITIATOR_MODE is compile-time; actual mode is runtime-gated.
+    return platform_is_initiator_mode_enabled();
+}
+
+bool scsiInitiatorBusBusy()
+{
+    return g_initiator_state.scsi_bus_active;
+}
+
+void scsiInitiatorGetStatus(uint8_t *phase, uint8_t *current_target, uint8_t *initiator_id,
+                            uint8_t *drives_mask, uint16_t *speed_kbps, char *filename,
+                            size_t filename_size)
+{
+    if (initiator_id) *initiator_id = g_initiator_state.initiator_id;
+    if (drives_mask)  *drives_mask = (uint8_t)(g_initiator_state.drives_imaged & 0xFF);
+    if (speed_kbps)   *speed_kbps = g_initiator_state.speed_kbps;
+    if (filename && filename_size > 0)
+    {
+        strncpy(filename, g_initiator_state.current_filename, filename_size - 1);
+        filename[filename_size - 1] = '\0';
+    }
+
+    if (g_initiator_state.all_done)
+    {
+        if (phase) *phase = 3; // PANEL_INITIATOR_PHASE_COMPLETE
+        if (current_target) *current_target = 0xFF;
+    }
+    else if (g_initiator_state.imaging)
+    {
+        if (phase) *phase = 2; // PANEL_INITIATOR_PHASE_IMAGING
+        if (current_target) *current_target = (uint8_t)g_initiator_state.target_id;
+    }
+    else
+    {
+        if (phase) *phase = 1; // PANEL_INITIATOR_PHASE_SCANNING
+        if (current_target) *current_target = (uint8_t)g_initiator_state.target_id;
+    }
+}
+
+bool scsiInitiatorGetTargetInfo(int scsi_id, uint8_t *status, uint8_t *device_type,
+                                uint8_t *ansi_version, uint32_t *sectorcount,
+                                uint32_t *sectorsize, uint32_t *sectors_done,
+                                uint32_t *bad_sector_count, char *vendor,
+                                char *product, uint8_t *sense_key,
+                                uint8_t *asc, uint8_t *ascq, uint8_t *skip_reason)
+{
+    if (scsi_id < 0 || scsi_id >= NUM_SCSIID) return false;
+
+    const initiator_target_summary_t &ts = g_initiator_state.target_summary[scsi_id];
+    if (ts.status == 0) return false; // not found
+
+    if (status)           *status = ts.status;
+    if (device_type)      *device_type = ts.device_type;
+    if (ansi_version)     *ansi_version = ts.ansi_version;
+    if (sectorcount)      *sectorcount = ts.sectorcount;
+    if (sectorsize)       *sectorsize = ts.sectorsize;
+    if (sectors_done)     *sectors_done = ts.sectors_done;
+    if (bad_sector_count) *bad_sector_count = ts.bad_sector_count;
+    if (vendor)           memcpy(vendor, ts.vendor, 9);
+    if (product)          memcpy(product, ts.product, 17);
+    if (sense_key)        *sense_key = ts.sense_key;
+    if (asc)              *asc = ts.asc;
+    if (ascq)             *ascq = ts.ascq;
+    if (skip_reason)      *skip_reason = ts.skip_reason;
+
+    return true;
+}
+
+#endif // ENABLE_PANEL_I2C || ENABLE_PANEL_SPI
 
 /*************************************
  * Low level command implementations *
@@ -753,11 +1042,15 @@ int scsiInitiatorRunCommand(int target_id,
         scsiHostPhySetATN(true);
     }
 
+    g_initiator_state.scsi_bus_active = true;
+    platform_poll();  // Suspend panel SPI IRQ before SCSI bus operations
+
     if (!scsiHostPhySelect(target_id, g_initiator_state.initiator_id))
     {
         scsiHostPhySetATN(false);
         dbgmsg("------ Target ", target_id, " did not respond");
         scsiHostPhyRelease();
+        g_initiator_state.scsi_bus_active = false;
         return -1;
     }
 
@@ -856,6 +1149,8 @@ int scsiInitiatorRunCommand(int target_id,
 
     scsiHostPhySetATN(false);
     scsiHostWaitBusFree();
+    g_initiator_state.scsi_bus_active = false;
+    platform_poll();  // Process any deferred panel commands while bus is idle
 
     return status;
 }
@@ -1487,6 +1782,8 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
     }
 
     scsiHostWaitBusFree();
+    g_initiator_state.scsi_bus_active = false;
+    platform_poll();  // Process any deferred panel commands while bus is idle
 
     if (!g_initiator_transfer.all_ok)
     {
@@ -1495,8 +1792,11 @@ bool scsiInitiatorReadDataToFile(int target_id, uint32_t start_sector, uint32_t 
     }
     else if (status == 2)
     {
-        uint8_t sense_key;
-        scsiRequestSense(target_id, &sense_key);
+        uint8_t sense_key, sense_asc = 0, sense_ascq = 0;
+        scsiRequestSense(target_id, &sense_key, &sense_asc, &sense_ascq);
+
+        // Save sense codes to target summary for panel reporting
+        initiatorSummarySetSense(target_id, sense_key, sense_asc, sense_ascq);
 
         if (sense_key == RECOVERED_ERROR)
         {

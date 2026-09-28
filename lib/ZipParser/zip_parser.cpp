@@ -1,5 +1,6 @@
 /**
  * ZuluSCSI™ - Copyright (c) 2024-2025 Rabbit Hole Computing™
+ * Copyright (c) 2026 Eric Helgeson <eric@bluescsi.com>
  *
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  *
@@ -45,6 +46,9 @@ namespace zipparser
         position = 0;
         filename_match = false;
         crc = 0;
+        matching = true;
+        central_dir = false;
+        local_file_header = false;
     }
 
     void Parser::SetMatchingFilename(char const *filename, const size_t length, const size_t target_total_length)
@@ -65,9 +69,6 @@ namespace zipparser
         if (filename_len == 0)
             return PARSE_ERROR;
 
-        static bool matching = true;
-        static bool central_dir = false;
-        static bool local_file_header = false;
         for (size_t idx = 0; idx < size; idx++)
         {
             switch (target)
@@ -121,7 +122,7 @@ namespace zipparser
                     if (++position == 1)
                     {
                         // Currently only uncompresseed files in the zip package are supported
-                        if (!buf[idx] == ZIP_PARSER_METHOD_UNCOMPRESSED_BYTE)
+                        if (buf[idx] != ZIP_PARSER_METHOD_UNCOMPRESSED_BYTE)
                         {
                             return PARSE_UNSUPPORTED_COMPRESSION;
                         }
