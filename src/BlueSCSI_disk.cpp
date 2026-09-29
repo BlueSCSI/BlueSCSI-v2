@@ -43,6 +43,8 @@
 #include "BlueSCSI_vhd.h"
 #include <minIni.h>
 #include <string.h>
+#include <stdlib.h>
+#include <new>
 #include <strings.h>
 #include <assert.h>
 #include <SdFat.h>
@@ -228,12 +230,18 @@ void scsiDiskResetImages()
     {
         g_DiskImages[i].clear();
     }
+    g_rawdrive_active = false;
 }
 
 void image_config_t::clear()
 {
-    static const image_config_t empty; // Statically zero-initialized
-    *this = empty;
+    // Copy-assigning from a static zeroed template costs 1KB of RAM, and
+    // placement-new of the whole object gets elided. Zero it, then reconstruct
+    // the FsFile members because memset wipes their vtable pointers.
+    memset(static_cast<void*>(this), 0, sizeof(*this));
+    new (&file) ImageBackingStore();
+    new (&cuesheetfile) FsFile();
+    new (&bin_container) FsFile();
 }
 
 uint32_t image_config_t::get_capacity_lba()
@@ -1637,6 +1645,29 @@ bool scsiDiskCheckAnyNetworkDevicesConfigured()
 /* Config handling for SCSI2SD */
 /*******************************/
 
+// Accepts what sscanf("%x:%x:%x:%x:%x:%x") did, without linking scanf
+static bool parseWifiMacAddress(const char *str, uint8_t mac[6])
+{
+    const char *p = str;
+    for (int i = 0; i < 6; i++)
+    {
+        char *end;
+        unsigned long v = strtoul(p, &end, 16);
+        if (end == p) return false;
+        if (i < 5 && *end != ':') return false;
+        mac[i] = (uint8_t)v;
+        p = end + 1;
+    }
+    return true;
+}
+
+#ifdef UNIT_TEST
+bool testParseWifiMacAddress(const char *str, uint8_t mac[6])
+{
+    return parseWifiMacAddress(str, mac);
+}
+#endif
+
 extern "C"
 void s2s_configInit(S2S_BoardCfg* config)
 {
@@ -1713,18 +1744,7 @@ void s2s_configInit(S2S_BoardCfg* config)
     ini_gets("SCSI", "WiFiMACAddress", "", tmp, sizeof(tmp), CONFIGFILE);
     if (tmp[0])
     {
-        // convert from "01:23:45:67:89" to { 0x01, 0x23, 0x45, 0x67, 0x89 }
-        int mac[6];
-        if (sscanf(tmp, "%x:%x:%x:%x:%x:%x", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]) == 6)
-        {
-            config->wifiMACAddress[0] = mac[0];
-            config->wifiMACAddress[1] = mac[1];
-            config->wifiMACAddress[2] = mac[2];
-            config->wifiMACAddress[3] = mac[3];
-            config->wifiMACAddress[4] = mac[4];
-            config->wifiMACAddress[5] = mac[5];
-        }
-        else
+        if (!parseWifiMacAddress(tmp, (uint8_t*)config->wifiMACAddress))
         {
             logmsg("Invalid WiFiMACAddress format");
             memset(config->wifiMACAddress, 0, sizeof(config->wifiMACAddress));

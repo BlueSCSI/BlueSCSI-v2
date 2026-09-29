@@ -1,5 +1,5 @@
 /**
- * Portions - Copyright (C) 2023 Eric Helgeson
+ * Portions - Copyright (c) 2023-2026 Eric Helgeson <eric@bluescsi.com>
  * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
  *
  * This file is licensed under the GPL version 3 or any later version. 
@@ -42,6 +42,7 @@ extern "C" {
 
 // SD card sector size is always 512 bytes
 extern SdFs SD;
+extern bool g_rawdrive_active;
 #define SD_SECTOR_SIZE 512
 
 // This class wraps SdFat library FsFile to allow access
