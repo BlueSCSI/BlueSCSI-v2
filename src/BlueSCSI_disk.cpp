@@ -44,6 +44,7 @@
 #include <minIni.h>
 #include <string.h>
 #include <stdlib.h>
+#include <new>
 #include <strings.h>
 #include <assert.h>
 #include <SdFat.h>
@@ -234,8 +235,13 @@ void scsiDiskResetImages()
 
 void image_config_t::clear()
 {
-    static const image_config_t empty; // Statically zero-initialized
-    *this = empty;
+    // Copy-assigning from a static zeroed template costs 1KB of RAM, and
+    // placement-new of the whole object gets elided. Zero it, then reconstruct
+    // the FsFile members because memset wipes their vtable pointers.
+    memset(static_cast<void*>(this), 0, sizeof(*this));
+    new (&file) ImageBackingStore();
+    new (&cuesheetfile) FsFile();
+    new (&bin_container) FsFile();
 }
 
 uint32_t image_config_t::get_capacity_lba()
