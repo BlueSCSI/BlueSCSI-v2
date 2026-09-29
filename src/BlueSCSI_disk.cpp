@@ -229,6 +229,7 @@ void scsiDiskResetImages()
     {
         g_DiskImages[i].clear();
     }
+    g_rawdrive_active = false;
 }
 
 void image_config_t::clear()
