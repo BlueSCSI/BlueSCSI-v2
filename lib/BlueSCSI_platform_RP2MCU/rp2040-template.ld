@@ -1,5 +1,6 @@
 /** 
  * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
+ * Copyright (c) 2026 Eric Helgeson <eric@bluescsi.com>
  * 
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  * 
@@ -215,6 +216,7 @@ SECTIONS
         *(.text*doReadHeader*)
         *(.text*doPlayAudio*)
         *(.text*audio_play*)
+        *(.text.pio_sm_set_pins)
         *(.text*audio_get_lba_position*)
         *(.text*audio_set_file_position*)
         *(.text*cdromSeekAudio*)

@@ -1,5 +1,6 @@
 /**
  * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
+ * Copyright (c) 2026 Eric Helgeson <eric@bluescsi.com>
  *
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version.
  *
@@ -1230,6 +1231,9 @@ static void scsidma_set_data_gpio_func(uint32_t func, bool invert_data, bool wid
     }
 }
 
+// Masked: a plain pio_sm_set_pins() writes every pin of the PIO block
+#define SCSI_WIDE_PINMASK (SCSI_IO_DATA_MASK | (1 << SCSI_OUT_REQ))
+
 // Select GPIO from PIO peripheral or from software controlled SIO
 static void scsidma_config_gpio()
 {
@@ -1241,7 +1245,7 @@ static void scsidma_config_gpio()
     else if (g_scsi_dma_state == SCSIDMA_WRITE)
     {
         // Make sure the initial state of all pins is high and output
-        pio_sm_set_pins(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_IO_DATA_MASK | (1 << SCSI_OUT_REQ));
+        pio_sm_set_pins_with_mask(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_WIDE_PINMASK, SCSI_WIDE_PINMASK);
         pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_IO_DB0, 16, true);
         pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_IO_DBP, 1, true);
         pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_IO_DBP1, 1, true);
@@ -1256,7 +1260,7 @@ static void scsidma_config_gpio()
         {
             // Asynchronous read
             // Data bus as input, REQ pin as output
-            pio_sm_set_pins(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_IO_DATA_MASK | (1 << SCSI_OUT_REQ));
+            pio_sm_set_pins_with_mask(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_WIDE_PINMASK, SCSI_WIDE_PINMASK);
             pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_IO_DB0, 16, false);
             pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_IO_DBP,  1, false);
             pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_IO_DBP1, 1, false);
@@ -1265,7 +1269,7 @@ static void scsidma_config_gpio()
         else
         {
             // Synchronous read, REQ pin is written by SYNC_SM
-            pio_sm_set_pins(SCSI_DMA_PIO, SCSI_SYNC_SM, SCSI_IO_DATA_MASK | (1 << SCSI_OUT_REQ));
+            pio_sm_set_pins_with_mask(SCSI_DMA_PIO, SCSI_SYNC_SM, SCSI_WIDE_PINMASK, SCSI_WIDE_PINMASK);
             pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_IO_DB0, 16, false);
             pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_IO_DBP,  1, false);
             pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_IO_DBP1, 1, false);

@@ -56,7 +56,7 @@
 // SM0: Convert data bytes to lookup addresses to add parity
 // SM1: Write data to SCSI bus
 // SM2: For synchronous mode only, count ACK pulses
-#ifdef BLUESCSI_NETWORK
+#if defined(BLUESCSI_NETWORK) || defined(ENABLE_AUDIO_OUTPUT_SPDIF)
 #  define SCSI_DMA_PIO pio0
 #  define SCSI_PARITY_SM 1
 #  define SCSI_DATA_SM 2
@@ -66,7 +66,7 @@
 #  define SCSI_PARITY_SM 0
 #  define SCSI_DATA_SM 1
 #  define SCSI_SYNC_SM 2
-#endif // BLUESCSI_NETWORK
+#endif
 
 
 // SCSI bus write acceleration uses 3 or 4 DMA channels (data flow A->B->C->D):
@@ -947,7 +947,8 @@ static void scsidma_config_gpio()
     else if (g_scsi_dma_state == SCSIDMA_WRITE)
     {
         // Make sure the initial state of all pins is high and output
-        pio_sm_set_pins(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_ACCEL_PINMASK);
+        // Masked: a plain pio_sm_set_pins() writes every pin of the PIO block
+        pio_sm_set_pins_with_mask(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_ACCEL_PINMASK, SCSI_ACCEL_PINMASK);
         pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_IO_DB0, 9, true);
         pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_OUT_REQ, 1, true);
 
@@ -968,16 +969,14 @@ static void scsidma_config_gpio()
         {
             // Asynchronous read
             // Data bus as input, REQ pin as output
-            pio_sm_set_pins(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_IO_DATA_MASK | (1 << SCSI_OUT_REQ));
-            pio_sm_set_pins(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_ACCEL_PINMASK);
+            pio_sm_set_pins_with_mask(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_ACCEL_PINMASK, SCSI_ACCEL_PINMASK);
             pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_IO_DB0, 9, false);
             pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_OUT_REQ, 1, true);
         }
         else
         {
             // Synchronous read, REQ pin is written by SYNC_SM
-            pio_sm_set_pins(SCSI_DMA_PIO, SCSI_SYNC_SM, SCSI_IO_DATA_MASK | (1 << SCSI_OUT_REQ));
-            pio_sm_set_pins(SCSI_DMA_PIO, SCSI_SYNC_SM, SCSI_ACCEL_PINMASK);
+            pio_sm_set_pins_with_mask(SCSI_DMA_PIO, SCSI_SYNC_SM, SCSI_ACCEL_PINMASK, SCSI_ACCEL_PINMASK);
             pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_DATA_SM, SCSI_IO_DB0, 9, false);
             pio_sm_set_consecutive_pindirs(SCSI_DMA_PIO, SCSI_SYNC_SM, SCSI_OUT_REQ, 1, true);
         }
