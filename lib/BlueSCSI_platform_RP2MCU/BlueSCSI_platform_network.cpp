@@ -199,7 +199,11 @@ bool platform_network_wifi_join(char *ssid, char *password, bool reconnect)
 		uint8_t security = scsiDev.boardCfg.wifiSecurity;
 
 		if (!reconnect)
+		{
 			logmsg("Connecting to Wi-Fi SSID \"", ssid, "\" with ", wifi_security_name(security));
+			if (strlen(password) == 64 && (security == WIFI_SECURITY_WPA3 || security == WIFI_SECURITY_WPA3_WPA2))
+				logmsg("WARNING: a 64 character WiFiPassword is a WPA2 key and does not work with WPA3");
+		}
 		ret = cyw43_arch_wifi_connect_async(ssid, password, wifi_security_auth(security));
 	}
 
