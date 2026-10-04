@@ -666,9 +666,7 @@ void audio_stop(uint8_t id) {
     // and wait for them to shut down naturally
     snd_stop_irqs = 0;
     audio_stopping = true;
-    while (dma_channel_is_busy(SOUND_DMA_CHA)) tight_loop_contents();
-    while (dma_channel_is_busy(SOUND_DMA_CHB)) tight_loop_contents();
-    while (!pio_sm_is_tx_fifo_empty(SPDIF_PIO_UNIT, spdif_pio_sm)) tight_loop_contents();
+    while (dma_channel_is_busy(SOUND_DMA_CHA) || !pio_sm_is_tx_fifo_empty(SPDIF_PIO_UNIT, spdif_pio_sm)) tight_loop_contents();
     audio_stopping = false;
 
     // idle the subsystem
