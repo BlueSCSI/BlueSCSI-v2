@@ -37,7 +37,12 @@ OUT_DIR=./dist
 mkdir -p "$OUT_DIR"
 
 DATE=$(TZ=America/Chicago date +%Y-%m-%d)
-VERSION=$(git rev-parse --short=7 HEAD)
+# On a pull request CI builds the merge commit, whose sha exists on no branch.
+# DIST_SHA lets the workflow stamp the PR head instead, so a filename a user
+# reports can be looked up. Unset locally, where HEAD is what was built.
+VERSION="${DIST_SHA:-}"
+VERSION="${VERSION:0:7}"
+VERSION="${VERSION:-$(git rev-parse --short=7 HEAD)}"
 
 # --- Copy firmware zip (for SD card update) ---
 # build.sh already creates this via utils/create_firmware_zip.sh

@@ -200,3 +200,14 @@
 // Read SCSI data bus
 #define SCSI_IN_DATA() \
     (~sio_hw->gpio_in & SCSI_IO_DATA_MASK) >> SCSI_IO_SHIFT
+
+// Front panel SPI interface (SPI0 on expansion header)
+#ifdef ENABLE_PANEL_SPI
+    #define PANEL_SPI         spi0
+    #define PANEL_SPI_RX      32
+    #define PANEL_SPI_CS      33
+    #define PANEL_SPI_SCK     34
+    #define PANEL_SPI_TX      35
+    #define PANEL_DMA_IRQ_IDX 3
+    #define PANEL_DMA_IRQ_NUM DMA_IRQ_3
+#endif

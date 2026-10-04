@@ -278,4 +278,13 @@ static inline bool scsi_check_parity_16bit(uint32_t w)
 #define SCSI_IN_DATA() \
     (~sio_hw->gpio_in & SCSI_IO_DATA_MASK) >> SCSI_IO_SHIFT
 
-
+// Front panel SPI interface (SPI1 on GPIO 44-47)
+#ifdef ENABLE_PANEL_SPI
+    #define PANEL_SPI         spi1
+    #define PANEL_SPI_RX      44
+    #define PANEL_SPI_CS      41
+    #define PANEL_SPI_SCK     46
+    #define PANEL_SPI_TX      47
+    #define PANEL_DMA_IRQ_IDX 0
+    #define PANEL_DMA_IRQ_NUM DMA_IRQ_0
+#endif

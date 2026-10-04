@@ -63,6 +63,14 @@ struct image_config_t: public S2S_TargetCfg
     // default option of '0' disables this functionality
     uint8_t ejectButton;
 
+    // True when a loose .cue file was loaded directly (not a folder-image).
+    // bin_container is then the cue's parent directory so its .bin tracks can
+    // be resolved, but the image's cycling identity is the .cue file itself
+    // (kept in current_image), not the directory. Lives in this byte-sized
+    // field cluster so it fits existing struct padding (the RP2040 SPDIF
+    // target is at its RAM limit).
+    bool cue_loaded_directly;
+
     // For tape drive emulation
     uint32_t tape_pos; // current position in blocks
     uint32_t tape_mark_index; // a direct relationship to the file in a multi image file tape 
@@ -127,6 +135,10 @@ private:
 // Returns a mask of the buttons that registered an 'eject' action.
 uint8_t diskEjectButtonUpdate(bool immediate);
 
+// Toggle a non-optical removable device between ejected and loaded, the same
+// way the physical eject button does. Optical drives use cdromPerformEject().
+void diskPerformEject(image_config_t &img);
+
 // Reset all image configuration to empty reset state, close all images.
 void scsiDiskResetImages();
 
@@ -174,13 +186,18 @@ bool scsiDiskCheckAnyImagesConfigured();
 // Finds filename with the lowest lexical order _after_ the given filename in
 // the given folder. If there is no file after the given one, or if there is
 // no current file, this will return the lowest filename encountered.
-int findNextImageAfter(image_config_t &img, const char* dirname, const char* filename, char* nextname, size_t nextname_len, bool ignore_prefix = false);
+// prefer_cue (optical only): when true (the default, used by all cycling
+// callers), a folder containing a .cue lists the .cue and hides the .bin
+// files it references. When false, cycle by the underlying image files
+// (.bin) instead. A directory with no cue sheet always cycles by the image
+// files, so plain data-.bin discs keep working either way.
+int findNextImageAfter(image_config_t &img, const char* dirname, const char* filename, char* nextname, size_t nextname_len, bool ignore_prefix = false, bool prefer_cue = true);
 
 // Gets the next image filename for the target, if configured for multiple
 // images. As a side effect this advances image tracking to the next image.
 // Returns the length of the new image filename, or 0 if the target is not
-// configured for multiple images.
-int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen);
+// configured for multiple images. See findNextImageAfter() for prefer_cue.
+int scsiDiskGetNextImageName(image_config_t &img, char *buf, size_t buflen, bool prefer_cue = true);
 
 // Get pointer to extended image configuration based on target idx
 image_config_t &scsiDiskGetImageConfig(int target_idx);
@@ -196,8 +213,10 @@ void scsiDiskStartWrite(uint32_t lba, uint32_t blocks);
 bool scsiDiskCheckAnyNetworkDevicesConfigured();
 
 
-// Switch to next Drive image if multiple have been configured
-bool switchNextImage(image_config_t &img, const char* next_filename = nullptr);
+// Switch to next Drive image if multiple have been configured.
+// See findNextImageAfter() for prefer_cue (only consulted when next_filename
+// is null, i.e. the next image is chosen by the cyclic iterator).
+bool switchNextImage(image_config_t &img, const char* next_filename = nullptr, bool prefer_cue = true);
 
 // Encode a SCSI ID (0..15) as a single filename character: '0'..'9' or 'A'..'F'.
 // Returns '\0' for out-of-range inputs.
