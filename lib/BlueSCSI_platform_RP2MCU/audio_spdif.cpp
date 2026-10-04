@@ -421,10 +421,6 @@ void audio_setup() {
     logmsg("BlueSCSI CD Audio Enabled - Connect DAC to BlueSCSI or use SPDIF on I2C SCL pin");
 #endif
 
-    if (platform_set_smps_pwm(true)) {
-        logmsg("Regulator set to PWM mode for CD audio");
-    }
-
     // Calculate clock divider, rounding up as necessary
     double clkdiv = ((double)(g_bluescsi_timings->clk_hz) / (double)(5644800));
 
@@ -456,6 +452,10 @@ void audio_setup() {
         // Set clock divider
         pio_sm_set_clkdiv(SPDIF_PIO_UNIT, spdif_pio_sm, clkdiv);
         already_claimed = true;
+    }
+
+    if (platform_set_smps_pwm(true)) {
+        logmsg("Regulator set to PWM mode for CD audio");
     }
 
     if (SPDIF_OUTPUT_PIN != GPIO_EXP_SPARE) {
