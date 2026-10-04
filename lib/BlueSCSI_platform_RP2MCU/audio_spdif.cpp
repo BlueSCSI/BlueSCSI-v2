@@ -402,6 +402,11 @@ bool audio_is_playing(uint8_t id) {
 }
 
 void audio_setup() {
+    if (platform_is_initiator_mode_enabled()) {
+        // the SCSI host code owns the state machine, see audio_setup_release()
+        audio_setup_failed = true;
+        return;
+    }
     if (!g_scsi_settings.getSystem()->enableCDAudio) {
         logmsg("Audio setup skipped, this build does not support CD Audio");
         audio_setup_failed = true;
@@ -477,6 +482,24 @@ void audio_setup() {
 #  error Legacy code does not currently support irq != 0
 # endif
 #endif
+}
+
+// Initiator mode: the SCSI host code takes over PIO0 on RP2040. Put the state
+// machine and the output pin back as a build without audio has them.
+void audio_setup_release() {
+    audio_stop();
+    if (already_claimed) {
+        pio_sm_config c = pio_get_default_sm_config();
+        sm_config_set_set_pins(&c, 0, 5); // PINCTRL reset value
+        pio_sm_init(SPDIF_PIO_UNIT, spdif_pio_sm, 0, &c);
+        gpio_put(SPDIF_OUTPUT_PIN, true);
+        gpio_set_dir(SPDIF_OUTPUT_PIN, false);
+        gpio_set_pulls(SPDIF_OUTPUT_PIN, true, false);
+        gpio_set_function(SPDIF_OUTPUT_PIN, GPIO_FUNC_I2C);
+        platform_set_smps_pwm(false);
+        already_claimed = false;
+    }
+    audio_setup_failed = true;
 }
 
 void audio_poll() {

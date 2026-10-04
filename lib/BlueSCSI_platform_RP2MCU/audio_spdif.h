@@ -1,5 +1,6 @@
 /** 
  * Copyright (C) 2023 saybur
+ * Copyright (c) 2026 Eric Helgeson <eric@bluescsi.com>
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -54,6 +55,12 @@ bool audio_is_active();
  * of platform_late_init().
  */
 void audio_setup();
+
+/**
+ * Hands the PIO state machine and the output pin back when initiator mode is
+ * enabled. Audio stays off afterwards.
+ */
+void audio_setup_release();
 
 /**
  * Called from platform_poll() to fill sample buffer(s) if needed.

@@ -1202,6 +1202,9 @@ void platform_late_init()
 
 // Act as SCSI initiator
 void platform_initiator_gpio_setup() {
+#ifdef ENABLE_AUDIO_OUTPUT_SPDIF
+    audio_setup_release();
+#endif
     //        pin             function       pup    pdown  out    state fast
     gpio_conf(SCSI_IN_IO,     GPIO_FUNC_SIO, false, false, false, true, false);
     gpio_conf(SCSI_IN_MSG,    GPIO_FUNC_SIO, false, false, false, true, false);
