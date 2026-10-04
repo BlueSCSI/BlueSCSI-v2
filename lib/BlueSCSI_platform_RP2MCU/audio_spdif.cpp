@@ -397,6 +397,10 @@ bool audio_is_active() {
     return audio_owner != 0xFF && g_scsi_settings.getSystem()->enableCDAudio;
 }
 
+bool audio_is_paused() {
+    return audio_paused;
+}
+
 bool audio_is_playing(uint8_t id) {
     return audio_owner == (id & S2S_CFG_TARGET_ID_BITS);
 }

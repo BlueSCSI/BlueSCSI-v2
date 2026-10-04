@@ -79,6 +79,11 @@ bool audio_is_playing(uint8_t id);
 bool audio_is_active();
 
 /**
+ * True while the active track is paused. Implemented by the platform backend.
+ */
+bool audio_is_paused();
+
+/**
  * Begins audio playback for a file.
  *
  * \param owner     The SCSI ID that initiated this playback operation.
