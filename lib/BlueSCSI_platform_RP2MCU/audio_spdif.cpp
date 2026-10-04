@@ -193,9 +193,14 @@ static uint8_t invert = 0; // biphase encode help: set if last wire bit was '1'
 #ifndef SPDIF_PIO_INSTANCE
 # ifdef BLUESCSI_MCU_RP20XX
 #  define SPDIF_PIO_INSTANCE pio0
-#  define SPDIF_PIO_SM 0
 # else
 #  define SPDIF_PIO_INSTANCE pio2
+# endif
+#endif
+#ifndef SPDIF_PIO_SM
+# ifdef BLUESCSI_MCU_RP20XX
+#  define SPDIF_PIO_SM 0
+# else
 #  define SPDIF_PIO_SM 1
 # endif
 #endif
