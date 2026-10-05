@@ -139,7 +139,7 @@ static uint16_t wire_buf_b[WIRE_BUFFER_SIZE];
 static uint8_t snd_stop_irqs = 0; // DMA IRQs seen since audio_stop() began
 
 // tracking for audio playback
-static uint8_t audio_owner; // SCSI ID or 0xFF when idle
+static uint8_t audio_owner = 0xFF; // SCSI ID or 0xFF when idle
 static volatile bool audio_paused = false;
 static ImageBackingStore* audio_file;
 static uint64_t fpos;
@@ -681,6 +681,7 @@ void audio_stop(uint8_t id) {
     if (audio_setup_failed) {
         return;
     }
+    if (audio_owner == 0xFF) return;
     if (id != 0xFF && audio_owner != (id & S2S_CFG_TARGET_ID_BITS)) return;
 
     // to help mute external hardware, send a bunch of '0' samples prior to
