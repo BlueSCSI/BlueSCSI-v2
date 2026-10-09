@@ -88,6 +88,9 @@ public:
     // Return image size in bytes
     uint64_t size();
 
+    // First cluster of the image file, 0 for RAW and ROM images
+    uint32_t firstCluster() { return m_fsfile.firstCluster(); }
+
     // Check if the image sector range is contiguous, and the image is on
     // SD card, return the sector numbers.
     bool contiguousRange(uint32_t* bgnSector, uint32_t* endSector);

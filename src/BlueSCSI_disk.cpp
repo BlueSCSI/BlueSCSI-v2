@@ -235,11 +235,18 @@ bool scsiDiskRawDriveActive()
     return false;
 }
 
-bool scsiDiskImageMounted(const char *name)
+bool scsiDiskFileInUse(FsFile &file)
 {
+    uint32_t cluster = file.firstCluster();
+    if (cluster == 0)
+    {
+        return false;
+    }
     for (int i = 0; i < S2S_MAX_TARGETS; i++)
     {
-        if (g_DiskImages[i].file.isOpen() && strcasecmp(g_DiskImages[i].current_image, name) == 0)
+        image_config_t &img = g_DiskImages[i];
+        if ((img.file.isOpen() && img.file.firstCluster() == cluster)
+            || (img.cuesheetfile.isOpen() && img.cuesheetfile.firstCluster() == cluster))
         {
             return true;
         }
