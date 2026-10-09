@@ -112,6 +112,7 @@ ImageBackingStore::ImageBackingStore(const char *filename, uint32_t scsi_block_s
 
 bool ImageBackingStore::_internal_open(const char *filename, bool doFastSeek)
 {
+    m_iscontiguous = false;
     m_isreadonly_attr = !!(FS_ATTRIB_READ_ONLY & SD.attrib(filename));
     oflag_t open_flag = O_RDWR;
     if (m_isreadonly_attr && !m_isfolder)
