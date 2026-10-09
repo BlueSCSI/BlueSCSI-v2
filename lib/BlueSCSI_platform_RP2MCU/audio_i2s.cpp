@@ -400,6 +400,10 @@ bool audio_is_active() {
     return !audio_idle;
 }
 
+bool audio_is_paused() {
+    return audio_paused;
+}
+
 bool audio_is_playing(uint8_t id) {
 //    return audio_playing;
     return audio_owner == (id & S2S_CFG_TARGET_ID_BITS) && audio_playing;
@@ -823,7 +827,8 @@ bool audio_set_paused(uint8_t id, bool paused) {
 }
 
 void audio_stop(uint8_t id) {
-    if (id != 0xFF && (audio_idle || (id & S2S_CFG_TARGET_ID_BITS) != audio_owner)) return;
+    if (audio_idle) return;
+    if (id != 0xFF && (id & S2S_CFG_TARGET_ID_BITS) != audio_owner) return;
 
     memset(&current_track, 0, sizeof(current_track));
     memset(output_buf_a, 0, sizeof(output_buf_a));
@@ -924,5 +929,14 @@ void audio_set_file_position(uint8_t id, const CUETrackInfo *trackinfo, uint32_t
     setup_playback(id, lba, 0, false);
 }
 
+#ifdef UNIT_TEST
+/* Test accessor */
+extern "C" void i2s_test_start(uint8_t owner)
+{
+    audio_owner = owner;
+    audio_playing = true;
+    audio_idle = false;
+}
+#endif
 
 #endif // ENABLE_AUDIO_OUTPUT_SPDIF

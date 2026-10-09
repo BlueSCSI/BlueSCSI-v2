@@ -80,7 +80,7 @@
 // B: Lookup from g_scsi_parity_check_lookup and copy to scsi_read_parity PIO
 // C: Addresses from scsi_accel_read PIO to lookup DMA READ_ADDR register
 // D: From pacer to data state machine to trigger transfers
-#ifdef BLUESCSI_NETWORK
+#if defined(BLUESCSI_NETWORK) || defined(ENABLE_AUDIO_OUTPUT_SPDIF)
 #  define SCSI_DMA_CH_A 6
 #  define SCSI_DMA_CH_B 7
 #  define SCSI_DMA_CH_C 8
@@ -90,6 +90,11 @@
 #  define SCSI_DMA_CH_B 1
 #  define SCSI_DMA_CH_C 2
 #  define SCSI_DMA_CH_D 3
+#endif
+
+#ifdef ENABLE_AUDIO_OUTPUT_SPDIF
+#define SCSI_DMA_USES(ch) ((ch) == SCSI_DMA_CH_A || (ch) == SCSI_DMA_CH_B || (ch) == SCSI_DMA_CH_C || (ch) == SCSI_DMA_CH_D)
+static_assert(!SCSI_DMA_USES(SOUND_DMA_CHA) && !SCSI_DMA_USES(SOUND_DMA_CHB), "SCSI and S/PDIF audio share a DMA channel");
 #endif
 
 static struct {

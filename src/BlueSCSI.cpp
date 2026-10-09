@@ -112,8 +112,8 @@ void save_logfile(bool always = false)
     bool every_command = g_log_debug;
 #ifdef ENABLE_AUDIO_OUTPUT
     // An SD write can stall for 100-500 ms and CD audio buffers 46 ms,
-    // so batch the saves while a track plays.
-    if (audio_is_active()) every_command = false;
+    // so batch the saves while a track plays. A paused track reads nothing.
+    if (audio_is_active() && !audio_is_paused()) every_command = false;
 #endif
     bool buffer_filling = (loglen - prev_log_pos) > LOGBUFSIZE / 2;
     if (always || every_command || buffer_filling || (LOG_SAVE_INTERVAL_MS > 0 && (uint32_t)(platform_millis() - prev_log_save) > LOG_SAVE_INTERVAL_MS))

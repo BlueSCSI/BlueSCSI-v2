@@ -139,7 +139,7 @@ static uint16_t wire_buf_b[WIRE_BUFFER_SIZE];
 static uint8_t snd_stop_irqs = 0; // DMA IRQs seen since audio_stop() began
 
 // tracking for audio playback
-static uint8_t audio_owner; // SCSI ID or 0xFF when idle
+static uint8_t audio_owner = 0xFF; // SCSI ID or 0xFF when idle
 static volatile bool audio_paused = false;
 static ImageBackingStore* audio_file;
 static uint64_t fpos;
@@ -193,9 +193,14 @@ static uint8_t invert = 0; // biphase encode help: set if last wire bit was '1'
 #ifndef SPDIF_PIO_INSTANCE
 # ifdef BLUESCSI_MCU_RP20XX
 #  define SPDIF_PIO_INSTANCE pio0
-#  define SPDIF_PIO_SM 0
 # else
 #  define SPDIF_PIO_INSTANCE pio2
+# endif
+#endif
+#ifndef SPDIF_PIO_SM
+# ifdef BLUESCSI_MCU_RP20XX
+#  define SPDIF_PIO_SM 0
+# else
 #  define SPDIF_PIO_SM 1
 # endif
 #endif
@@ -392,11 +397,20 @@ bool audio_is_active() {
     return audio_owner != 0xFF && g_scsi_settings.getSystem()->enableCDAudio;
 }
 
+bool audio_is_paused() {
+    return audio_paused;
+}
+
 bool audio_is_playing(uint8_t id) {
     return audio_owner == (id & S2S_CFG_TARGET_ID_BITS);
 }
 
 void audio_setup() {
+    if (platform_is_initiator_mode_enabled()) {
+        // the SCSI host code owns the state machine, see audio_setup_release()
+        audio_setup_failed = true;
+        return;
+    }
     if (!g_scsi_settings.getSystem()->enableCDAudio) {
         logmsg("Audio setup skipped, this build does not support CD Audio");
         audio_setup_failed = true;
@@ -415,10 +429,6 @@ void audio_setup() {
 #else
     logmsg("BlueSCSI CD Audio Enabled - Connect DAC to BlueSCSI or use SPDIF on I2C SCL pin");
 #endif
-
-    if (platform_set_smps_pwm(true)) {
-        logmsg("Regulator set to PWM mode for CD audio");
-    }
 
     // Calculate clock divider, rounding up as necessary
     double clkdiv = ((double)(g_bluescsi_timings->clk_hz) / (double)(5644800));
@@ -453,6 +463,10 @@ void audio_setup() {
         already_claimed = true;
     }
 
+    if (platform_set_smps_pwm(true)) {
+        logmsg("Regulator set to PWM mode for CD audio");
+    }
+
     if (SPDIF_OUTPUT_PIN != GPIO_EXP_SPARE) {
         gpio_put(GPIO_EXP_SPARE, true);
         gpio_set_dir(GPIO_EXP_SPARE, false);
@@ -472,6 +486,24 @@ void audio_setup() {
 #  error Legacy code does not currently support irq != 0
 # endif
 #endif
+}
+
+// Initiator mode: the SCSI host code takes over PIO0 on RP2040. Put the state
+// machine and the output pin back as a build without audio has them.
+void audio_setup_release() {
+    audio_stop();
+    if (already_claimed) {
+        pio_sm_config c = pio_get_default_sm_config();
+        sm_config_set_set_pins(&c, 0, 5); // PINCTRL reset value
+        pio_sm_init(SPDIF_PIO_UNIT, spdif_pio_sm, 0, &c);
+        gpio_put(SPDIF_OUTPUT_PIN, true);
+        gpio_set_dir(SPDIF_OUTPUT_PIN, false);
+        gpio_set_pulls(SPDIF_OUTPUT_PIN, true, false);
+        gpio_set_function(SPDIF_OUTPUT_PIN, GPIO_FUNC_I2C);
+        platform_set_smps_pwm(false);
+        already_claimed = false;
+    }
+    audio_setup_failed = true;
 }
 
 void audio_poll() {
@@ -649,6 +681,7 @@ void audio_stop(uint8_t id) {
     if (audio_setup_failed) {
         return;
     }
+    if (audio_owner == 0xFF) return;
     if (id != 0xFF && audio_owner != (id & S2S_CFG_TARGET_ID_BITS)) return;
 
     // to help mute external hardware, send a bunch of '0' samples prior to
@@ -661,9 +694,7 @@ void audio_stop(uint8_t id) {
     // and wait for them to shut down naturally
     snd_stop_irqs = 0;
     audio_stopping = true;
-    while (dma_channel_is_busy(SOUND_DMA_CHA)) tight_loop_contents();
-    while (dma_channel_is_busy(SOUND_DMA_CHB)) tight_loop_contents();
-    while (!pio_sm_is_tx_fifo_empty(SPDIF_PIO_UNIT, spdif_pio_sm)) tight_loop_contents();
+    while (dma_channel_is_busy(SOUND_DMA_CHA) || !pio_sm_is_tx_fifo_empty(SPDIF_PIO_UNIT, spdif_pio_sm)) tight_loop_contents();
     audio_stopping = false;
 
     // idle the subsystem
