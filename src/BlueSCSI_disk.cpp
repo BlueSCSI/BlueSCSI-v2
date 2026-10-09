@@ -1472,12 +1472,14 @@ uint32_t getBlockSize(char *filename, uint8_t scsi_id)
     const uint32_t max_block_size = sizeof(scsiDev.data) / 2;
 
     // Parse block size (HD00_NNNN): a power of two with no letter or digit after it
+    bool optical = scsi_id < S2S_MAX_TARGETS && g_DiskImages[scsi_id].deviceType == S2S_CFG_OPTICAL;
+    uint32_t default_size = optical ? DEFAULT_BLOCKSIZE_OPTICAL : DEFAULT_BLOCKSIZE;
+
+    // Not configured, use the default for the device type
     uint32_t block_size = g_scsi_settings.getDevice(scsi_id)->blockSize;
     if (block_size == 0)
     {
-        // Not configured, use the default for the device type
-        bool optical = scsi_id < S2S_MAX_TARGETS && g_DiskImages[scsi_id].deviceType == S2S_CFG_OPTICAL;
-        block_size = optical ? DEFAULT_BLOCKSIZE_OPTICAL : DEFAULT_BLOCKSIZE;
+        block_size = default_size;
     }
     const char *name = strrchr(filename, '/');
     const char *blksizestr = strchr(name ? name : filename, '_');
@@ -1496,8 +1498,8 @@ uint32_t getBlockSize(char *filename, uint8_t scsi_id)
     if (block_size < MIN_SECTOR_SIZE || block_size > max_block_size)
     {
         logmsg("---- WARNING: Configured block size ", (int)block_size,
-               " is out of supported range, using ", (int)DEFAULT_BLOCKSIZE);
-        block_size = DEFAULT_BLOCKSIZE;
+               " is out of supported range, using ", (int)default_size);
+        block_size = default_size;
     }
 
     return block_size;
