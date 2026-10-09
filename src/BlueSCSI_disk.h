@@ -208,6 +208,9 @@ void scsiDiskPrefetchInvalidate();
 // True while a RAW: image is open. SD card log files are not written then.
 bool scsiDiskRawDriveActive();
 
+// True if an open image has this file name
+bool scsiDiskImageMounted(const char *name);
+
 // Encode a SCSI ID (0..15) as a single filename character: '0'..'9' or 'A'..'F'.
 // Returns '\0' for out-of-range inputs.
 char scsiEncodeID(uint8_t scsi_id);

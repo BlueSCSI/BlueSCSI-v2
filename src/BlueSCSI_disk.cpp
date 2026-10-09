@@ -235,6 +235,18 @@ bool scsiDiskRawDriveActive()
     return false;
 }
 
+bool scsiDiskImageMounted(const char *name)
+{
+    for (int i = 0; i < S2S_MAX_TARGETS; i++)
+    {
+        if (g_DiskImages[i].file.isOpen() && strcasecmp(g_DiskImages[i].current_image, name) == 0)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 void scsiDiskResetImages()
 {
     for (int i = 0; i < S2S_MAX_TARGETS; i++)

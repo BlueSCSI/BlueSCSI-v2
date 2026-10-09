@@ -482,6 +482,14 @@ static void onSendFilePrep(char * dir_name)
     file_name[32] = '\0';
 
     dbgmsg("TOOLBOX OPEN FILE FOR WRITE: '", file_name, "'");
+    if (scsiDiskImageMounted(file_name))
+    {
+        logmsg("ERROR: BlueSCSI Toolbox upload refused, '", file_name, "' is in use as a SCSI image");
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.phase = STATUS;
+        return;
+    }
     if (!SD.chdir(dir_name))
     {
         if (!SD.mkdir(dir_name) || !SD.chdir(dir_name))
