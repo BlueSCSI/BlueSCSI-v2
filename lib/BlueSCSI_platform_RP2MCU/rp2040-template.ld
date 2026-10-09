@@ -184,6 +184,8 @@ SECTIONS
         *(.text*extractFileName*)
         *(.text*setNameFromImage*)
         *(.text*getBlockSize*)
+        *(.text*platform_heap_free*)
+        *(.text*platform_stack_*)
         *(.text*s2s_floppy*)
         *(.text*find_floppy_geometry*)
 
@@ -502,7 +504,8 @@ SECTIONS
         __end__ = .;
         PROVIDE(end = .);
         KEEP(*(.heap*))
-        . = ORIGIN(RAM) + LENGTH(RAM) - 0x400;
+        /* The heap ends where the core0 stack begins, see __StackLimit */
+        . = ORIGIN(RAM) + LENGTH(RAM) - 0xC00;
         __HeapLimit = .;
     } > RAM
     .stack1_dummy (COPY):
@@ -517,7 +520,9 @@ SECTIONS
         __flash_binary_end = .;
     } > FLASH
     __StackTop = ORIGIN(RAM) + LENGTH(RAM);
-    __StackLimit = __StackTop - 0x400;
+    /* Core0 stack, 3 KB. The heap ends here (_sbrk). With less the stack
+       runs into live heap blocks. */
+    __StackLimit = __StackTop - 0xC00;
     __StackOneTop = ORIGIN(SCRATCH_X) + LENGTH(SCRATCH_X);
     __StackOneBottom = __StackOneTop - SIZEOF(.stack1_dummy);
     __StackBottom = __StackTop - SIZEOF(.stack_dummy);
