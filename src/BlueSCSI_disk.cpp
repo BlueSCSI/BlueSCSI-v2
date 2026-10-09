@@ -1640,7 +1640,7 @@ bool scsiDiskCheckAnyNetworkDevicesConfigured()
 extern "C"
 void s2s_configInit(S2S_BoardCfg* config)
 {
-    char tmp[64];
+    char tmp[72];
     logmsg("");
     logmsg("=== Global Config ===");
     if (SD.exists(CONFIGFILE))
@@ -1733,17 +1733,26 @@ void s2s_configInit(S2S_BoardCfg* config)
 
     memset(tmp, 0, sizeof(tmp));
     ini_gets("SCSI", "WiFiSSID", "", tmp, sizeof(tmp), CONFIGFILE);
-    if (tmp[0])
+    if (strlen(tmp) >= sizeof(config->wifiSSID))
     {
-        memcpy(config->wifiSSID, tmp, sizeof(config->wifiSSID));
+        logmsg("ERROR: WiFiSSID is longer than ", (int)(sizeof(config->wifiSSID) - 1), " characters, ignored");
+    }
+    else if (tmp[0])
+    {
+        strcpy(config->wifiSSID, tmp);
         logmsg("-- WiFiSSID = ", tmp);
     }
 
     memset(tmp, 0, sizeof(tmp));
     ini_gets("SCSI", "WiFiPassword", "", tmp, sizeof(tmp), CONFIGFILE);
-    if (tmp[0])
+    if (strlen(tmp) >= sizeof(config->wifiPassword))
     {
-        memcpy(config->wifiPassword, tmp, sizeof(config->wifiPassword));
+        logmsg("ERROR: WiFiPassword is longer than ", (int)(sizeof(config->wifiPassword) - 1), " characters, not joining Wi-Fi");
+        config->wifiSSID[0] = '\0';
+    }
+    else if (tmp[0])
+    {
+        strcpy(config->wifiPassword, tmp);
         logmsg("-- WiFiPassword = [set]");
     }
 
