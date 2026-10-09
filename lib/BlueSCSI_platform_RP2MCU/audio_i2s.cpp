@@ -827,7 +827,8 @@ bool audio_set_paused(uint8_t id, bool paused) {
 }
 
 void audio_stop(uint8_t id) {
-    if (id != 0xFF && (audio_idle || (id & S2S_CFG_TARGET_ID_BITS) != audio_owner)) return;
+    if (audio_idle) return;
+    if (id != 0xFF && (id & S2S_CFG_TARGET_ID_BITS) != audio_owner) return;
 
     memset(&current_track, 0, sizeof(current_track));
     memset(output_buf_a, 0, sizeof(output_buf_a));
