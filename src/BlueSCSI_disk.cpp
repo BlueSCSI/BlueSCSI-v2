@@ -1452,11 +1452,6 @@ void scsiDiskLoadConfig(int target_idx)
     img.image_index = IMAGE_INDEX_MAX;
     if (scsiDiskGetNextImageName(img, filename, sizeof(filename)))
     {
-        // set the default block size now that we know the device type
-        if (g_scsi_settings.getDevice(target_idx)->blockSize == 0)
-        {
-          g_scsi_settings.getDevice(target_idx)->blockSize = img.deviceType == S2S_CFG_OPTICAL ?  DEFAULT_BLOCKSIZE_OPTICAL : DEFAULT_BLOCKSIZE;
-        }
         logmsg("== Opening '", filename, "' for ID ", target_idx);
         int blocksize = getBlockSize(filename, target_idx);
         scsiDiskOpenHDDImage(target_idx, filename, 0, blocksize, (S2S_CFG_TYPE) img.deviceType, img.use_prefix);
@@ -1471,6 +1466,12 @@ uint32_t getBlockSize(char *filename, uint8_t scsi_id)
 
     // Parse block size (HD00_NNNN): a power of two with no letter or digit after it
     uint32_t block_size = g_scsi_settings.getDevice(scsi_id)->blockSize;
+    if (block_size == 0)
+    {
+        // Not configured, use the default for the device type
+        bool optical = scsi_id < S2S_MAX_TARGETS && g_DiskImages[scsi_id].deviceType == S2S_CFG_OPTICAL;
+        block_size = optical ? DEFAULT_BLOCKSIZE_OPTICAL : DEFAULT_BLOCKSIZE;
+    }
     const char *name = strrchr(filename, '/');
     const char *blksizestr = strchr(name ? name : filename, '_');
     if (blksizestr)
