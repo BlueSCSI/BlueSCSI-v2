@@ -1519,9 +1519,14 @@ bool switchNextImage(image_config_t &img, const char* next_filename)
     {
         scsiDiskGetNextImageName(img, filename, sizeof(filename));
     }
+    else if (strlen(next_filename) >= sizeof(filename))
+    {
+        logmsg("Image path is too long: ", next_filename);
+        return false;
+    }
     else
     {
-        strncpy(filename, next_filename, MAX_FILE_PATH);
+        strcpy(filename, next_filename);
     }
 
 #ifdef ENABLE_AUDIO_OUTPUT
