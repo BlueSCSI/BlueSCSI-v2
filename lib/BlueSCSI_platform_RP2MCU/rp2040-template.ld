@@ -185,6 +185,8 @@ SECTIONS
         *(.text*extractFileName*)
         *(.text*setNameFromImage*)
         *(.text*getBlockSize*)
+        *(.text*scsiDiskRawDriveActive*)
+        *(.text*scsiDiskFileInUse*)
         *(.text*s2s_floppy*)
         *(.text*find_floppy_geometry*)
 

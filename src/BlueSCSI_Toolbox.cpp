@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2023-2026 Eric Helgeson
+ * Copyright (c) 2023-2026 Eric Helgeson <eric@bluescsi.com>
  *
  * This file is part of BlueSCSI
  *
@@ -415,7 +415,12 @@ static void onSetNextCD(const char * img_dir)
     next_cd.getName(name, sizeof(name));
     next_cd.close();
     snprintf(full_path, (MAX_FILE_PATH * 2), "%s/%s", img_dir, name);
-    switchNextImage(img, full_path);
+    if (!switchNextImage(img, full_path))
+    {
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.phase = STATUS;
+    }
 }
 
 FsFile gFile; // global so we can keep it open while transferring.
@@ -495,6 +500,15 @@ static void onSendFilePrep(char * dir_name)
     }
     gFile.open(file_name, FILE_WRITE);
     SD.chdir("/");
+    if (scsiDiskFileInUse(gFile))
+    {
+        gFile.close();
+        logmsg("ERROR: BlueSCSI Toolbox upload refused, '", file_name, "' is in use as a SCSI image");
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.phase = STATUS;
+        return;
+    }
     if(gFile.isOpen() && gFile.isWritable())
     {
         gFile.rewind();
@@ -515,6 +529,7 @@ static void onSendFileEnd(void)
 {
     gFile.sync();
     gFile.close();
+    scsiDiskPrefetchInvalidate();
     scsiDev.phase = STATUS;
 }
 

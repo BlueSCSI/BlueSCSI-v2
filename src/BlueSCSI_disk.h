@@ -3,6 +3,7 @@
  * Copyright (C) 2014 Doug Brown <doug@downtowndougbrown.com
  * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
  * Copyright (c) 2023 joshua stein <jcs@jcs.org>
+ * Copyright (c) 2023-2026 Eric Helgeson <eric@bluescsi.com>
  * 
  * It is derived from disk.h in SCSI2SD V6.
  * 
@@ -198,6 +199,17 @@ bool scsiDiskCheckAnyNetworkDevicesConfigured();
 
 // Switch to next Drive image if multiple have been configured
 bool switchNextImage(image_config_t &img, const char* next_filename = nullptr);
+
+// Invalidate the read prefetch cache. Must be called whenever image contents
+// or image identity change outside the normal WRITE path (media switch,
+// file uploads over the SD card, etc).
+void scsiDiskPrefetchInvalidate();
+
+// True while a RAW: image is open. SD card log files are not written then.
+bool scsiDiskRawDriveActive();
+
+// True if this file is open as an image or as the cue sheet of one
+bool scsiDiskFileInUse(FsFile &file);
 
 // Encode a SCSI ID (0..15) as a single filename character: '0'..'9' or 'A'..'F'.
 // Returns '\0' for out-of-range inputs.

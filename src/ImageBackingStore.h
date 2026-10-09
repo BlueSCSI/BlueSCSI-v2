@@ -1,5 +1,5 @@
 /**
- * Portions - Copyright (C) 2023 Eric Helgeson
+ * Copyright (c) 2023-2026 Eric Helgeson <eric@bluescsi.com>
  * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
  *
  * This file is licensed under the GPL version 3 or any later version. 
@@ -87,6 +87,9 @@ public:
 
     // Return image size in bytes
     uint64_t size();
+
+    // First cluster of the image file, 0 for RAW and ROM images
+    uint32_t firstCluster() { return m_fsfile.firstCluster(); }
 
     // Check if the image sector range is contiguous, and the image is on
     // SD card, return the sector numbers.

@@ -1,6 +1,6 @@
 /**
  * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
- * Function romDriveClear() Copyright (c) 2023 Eric Helgeson
+ * Copyright (c) 2023-2026 Eric Helgeson <eric@bluescsi.com>
  *
  * This file is licensed under the GPL version 3 or any later version. 
  * It is derived from disk.c in SCSI2SD V6

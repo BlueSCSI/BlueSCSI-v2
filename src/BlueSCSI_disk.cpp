@@ -44,6 +44,7 @@
 #include <minIni.h>
 #include <string.h>
 #include <strings.h>
+#include <ctype.h>
 #include <assert.h>
 #include <SdFat.h>
 
@@ -221,6 +222,37 @@ extern SdFs SD;
 SdDevice sdDev = {2, 256 * 1024 * 1024 * 2}; /* For SCSI2SD */
 
 image_config_t g_DiskImages[S2S_MAX_TARGETS];
+
+bool scsiDiskRawDriveActive()
+{
+    for (int i = 0; i < S2S_MAX_TARGETS; i++)
+    {
+        if (g_DiskImages[i].file.isRaw() && g_DiskImages[i].file.isOpen())
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool scsiDiskFileInUse(FsFile &file)
+{
+    uint32_t cluster = file.firstCluster();
+    if (cluster == 0)
+    {
+        return false;
+    }
+    for (int i = 0; i < S2S_MAX_TARGETS; i++)
+    {
+        image_config_t &img = g_DiskImages[i];
+        if ((img.file.isOpen() && img.file.firstCluster() == cluster)
+            || (img.cuesheetfile.isOpen() && img.cuesheetfile.firstCluster() == cluster))
+        {
+            return true;
+        }
+    }
+    return false;
+}
 
 void scsiDiskResetImages()
 {
@@ -1427,11 +1459,6 @@ void scsiDiskLoadConfig(int target_idx)
     img.image_index = IMAGE_INDEX_MAX;
     if (scsiDiskGetNextImageName(img, filename, sizeof(filename)))
     {
-        // set the default block size now that we know the device type
-        if (g_scsi_settings.getDevice(target_idx)->blockSize == 0)
-        {
-          g_scsi_settings.getDevice(target_idx)->blockSize = img.deviceType == S2S_CFG_OPTICAL ?  DEFAULT_BLOCKSIZE_OPTICAL : DEFAULT_BLOCKSIZE;
-        }
         logmsg("== Opening '", filename, "' for ID ", target_idx);
         int blocksize = getBlockSize(filename, target_idx);
         scsiDiskOpenHDDImage(target_idx, filename, 0, blocksize, (S2S_CFG_TYPE) img.deviceType, img.use_prefix);
@@ -1440,18 +1467,41 @@ void scsiDiskLoadConfig(int target_idx)
 
 uint32_t getBlockSize(char *filename, uint8_t scsi_id)
 {
-    // Parse block size (HD00_NNNN)
+    // A block size above half of scsiDev.data stalls DATA_IN: diskDataIn gets
+    // zero blocks per buffer half and never makes progress.
+    const uint32_t max_block_size = sizeof(scsiDev.data) / 2;
+
+    // Parse block size (HD00_NNNN): a power of two with no letter or digit after it
+    bool optical = scsi_id < S2S_MAX_TARGETS && g_DiskImages[scsi_id].deviceType == S2S_CFG_OPTICAL;
+    uint32_t default_size = optical ? DEFAULT_BLOCKSIZE_OPTICAL : DEFAULT_BLOCKSIZE;
+
+    // Not configured, use the default for the device type
     uint32_t block_size = g_scsi_settings.getDevice(scsi_id)->blockSize;
-    const char *blksizestr = strchr(filename, '_');
+    if (block_size == 0)
+    {
+        block_size = default_size;
+    }
+    const char *name = strrchr(filename, '/');
+    const char *blksizestr = strchr(name ? name : filename, '_');
     if (blksizestr)
     {
-        int blktmp = strtoul(blksizestr + 1, NULL, 10);
-        if (8 <= blktmp && blktmp <= 64 * 1024)
+        char *end;
+        uint32_t blktmp = strtoul(blksizestr + 1, &end, 10);
+        if (MIN_SECTOR_SIZE <= blktmp && blktmp <= max_block_size
+            && (blktmp & (blktmp - 1)) == 0 && !isalnum((unsigned char)*end))
         {
             block_size = blktmp;
             dbgmsg("-- Using block size, ",(int) block_size," from filename: ", filename);
         }
     }
+
+    if (block_size < MIN_SECTOR_SIZE || block_size > max_block_size)
+    {
+        logmsg("---- WARNING: Configured block size ", (int)block_size,
+               " is out of supported range, using ", (int)default_size);
+        block_size = default_size;
+    }
+
     return block_size;
 }
 
@@ -1469,6 +1519,9 @@ void setEjectButton(uint8_t idx, int8_t eject_button)
 // Check if we have multiple drive images to cycle when drive is ejected.
 bool switchNextImage(image_config_t &img, const char* next_filename)
 {
+    // A new image on the same target ID would otherwise serve the old image's sectors.
+    scsiDiskPrefetchInvalidate();
+
     // Check if we have a next image to load, so that drive is closed next time the host asks.
     int target_idx = img.getTargetId();
     char filename[MAX_FILE_PATH];
@@ -1476,9 +1529,14 @@ bool switchNextImage(image_config_t &img, const char* next_filename)
     {
         scsiDiskGetNextImageName(img, filename, sizeof(filename));
     }
+    else if (strlen(next_filename) >= sizeof(filename))
+    {
+        logmsg("Image path is too long: ", next_filename);
+        return false;
+    }
     else
     {
-        strncpy(filename, next_filename, MAX_FILE_PATH);
+        strcpy(filename, next_filename);
     }
 
 #ifdef ENABLE_AUDIO_OUTPUT
@@ -2123,8 +2181,85 @@ static struct {
     uint8_t buffer[PREFETCH_BUFFER_SIZE];
     uint32_t sector;
     uint32_t bytes;
+    // Block size the cache was filled under. MODE SELECT can change
+    // liveCfg.bytesPerSector at runtime; cached bytes must not be
+    // re-sliced with a different sector size.
+    uint32_t bytesPerSector;
     uint8_t scsiId;
 } g_scsi_prefetch;
+
+// Number of sectors to prefetch after a read ending at start_sector.
+// Clamps the user-configurable prefetch size (bluescsi.ini PrefetchBytes,
+// which can hold any long) to the prefetch buffer and to the image end.
+static uint32_t prefetchSectorCount(int prefetchbytes, uint32_t bytesPerSector,
+                                    uint32_t start_sector, uint32_t img_sector_count)
+{
+    if (prefetchbytes < 0) prefetchbytes = 0;
+    if (prefetchbytes > PREFETCH_BUFFER_SIZE) prefetchbytes = PREFETCH_BUFFER_SIZE;
+    uint32_t prefetch_sectors = prefetchbytes / bytesPerSector;
+
+    if (start_sector >= img_sector_count)
+    {
+        return 0;
+    }
+    if (start_sector + prefetch_sectors > img_sector_count)
+    {
+        // Don't try to read past image end.
+        prefetch_sectors = img_sector_count - start_sector;
+    }
+
+    return prefetch_sectors;
+}
+#endif
+
+void scsiDiskPrefetchInvalidate()
+{
+#ifdef PREFETCH_BUFFER_SIZE
+    g_scsi_prefetch.bytes = 0;
+    g_scsi_prefetch.sector = 0;
+#endif
+}
+
+#ifdef UNIT_TEST
+/* Test accessors for prefetch cache state */
+void testPrefetchSeed(uint32_t sector, uint32_t bytes, uint8_t scsiId)
+{
+#ifdef PREFETCH_BUFFER_SIZE
+    g_scsi_prefetch.sector = sector;
+    g_scsi_prefetch.bytes = bytes;
+    g_scsi_prefetch.scsiId = scsiId;
+    /* Seed as if filled under the current live block size */
+    g_scsi_prefetch.bytesPerSector = scsiDev.target->liveCfg.bytesPerSector;
+#endif
+}
+
+uint32_t testPrefetchBytes(void)
+{
+#ifdef PREFETCH_BUFFER_SIZE
+    return g_scsi_prefetch.bytes;
+#else
+    return 0;
+#endif
+}
+
+uint32_t testPrefetchSector(void)
+{
+#ifdef PREFETCH_BUFFER_SIZE
+    return g_scsi_prefetch.sector;
+#else
+    return 0;
+#endif
+}
+
+uint32_t testPrefetchSectorCount(int prefetchbytes, uint32_t bytesPerSector,
+                                 uint32_t start_sector, uint32_t img_sector_count)
+{
+#ifdef PREFETCH_BUFFER_SIZE
+    return prefetchSectorCount(prefetchbytes, bytesPerSector, start_sector, img_sector_count);
+#else
+    return 0;
+#endif
+}
 #endif
 
 /*****************/
@@ -2178,11 +2313,7 @@ void scsiDiskStartWrite(uint32_t lba, uint32_t blocks)
         scsiDev.dataLen = 0;
         scsiDev.dataPtr = 0;
 
-#ifdef PREFETCH_BUFFER_SIZE
-        // Invalidate prefetch buffer
-        g_scsi_prefetch.bytes = 0;
-        g_scsi_prefetch.sector = 0;
-#endif
+        scsiDiskPrefetchInvalidate();
 
         image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
         if (!img.file.seek((uint64_t)transfer.lba * bytesPerSector))
@@ -2335,10 +2466,7 @@ static void scsiDiskStartWriteAndVerify(uint32_t lba, uint32_t blocks)
         g_disk_data_out.verify = false;
         g_disk_data_out.write_and_verify = true;
 
-#ifdef PREFETCH_BUFFER_SIZE
-        g_scsi_prefetch.bytes = 0;
-        g_scsi_prefetch.sector = 0;
-#endif
+        scsiDiskPrefetchInvalidate();
 
         if (!img.file.seek((uint64_t)transfer.lba * bytesPerSector))
         {
@@ -2835,6 +2963,7 @@ void scsiDiskStartRead(uint32_t lba, uint32_t blocks)
 #ifdef PREFETCH_BUFFER_SIZE
         uint32_t sectors_in_prefetch = g_scsi_prefetch.bytes / bytesPerSector;
         if (img.getTargetId() == g_scsi_prefetch.scsiId &&
+            g_scsi_prefetch.bytesPerSector == bytesPerSector &&
             transfer.lba >= g_scsi_prefetch.sector &&
             transfer.lba < g_scsi_prefetch.sector + sectors_in_prefetch)
         {
@@ -3024,19 +3153,14 @@ static void diskDataIn()
 
 #ifdef PREFETCH_BUFFER_SIZE
         image_config_t &img = *(image_config_t*)scsiDev.target->cfg;
-        int prefetchbytes = img.prefetchbytes;
-        if (prefetchbytes > PREFETCH_BUFFER_SIZE) prefetchbytes = PREFETCH_BUFFER_SIZE;
-        uint32_t prefetch_sectors = prefetchbytes / bytesPerSector;
         uint32_t img_sector_count = img.file.size() / bytesPerSector;
         g_scsi_prefetch.sector = transfer.lba + transfer.blocks;
         g_scsi_prefetch.bytes = 0;
+        g_scsi_prefetch.bytesPerSector = bytesPerSector;
         g_scsi_prefetch.scsiId = s2s_getTargetId(scsiDev.target->cfg);
 
-        if (g_scsi_prefetch.sector + prefetch_sectors > img_sector_count)
-        {
-            // Don't try to read past image end.
-            prefetch_sectors = img_sector_count - g_scsi_prefetch.sector;
-        }
+        uint32_t prefetch_sectors = prefetchSectorCount(img.prefetchbytes, bytesPerSector,
+                                                        g_scsi_prefetch.sector, img_sector_count);
 
         while (!scsiIsWriteFinished(NULL) && prefetch_sectors > 0 && !scsiDev.resetFlag)
         {
@@ -3569,10 +3693,7 @@ void scsiDiskReset()
     g_disk_data_out.verify = false;
     g_disk_data_out.write_and_verify = false;
 
-#ifdef PREFETCH_BUFFER_SIZE
-    g_scsi_prefetch.bytes = 0;
-    g_scsi_prefetch.sector = 0;
-#endif
+    scsiDiskPrefetchInvalidate();
 
 #ifdef ENABLE_AUDIO_OUTPUT
     audio_stop();

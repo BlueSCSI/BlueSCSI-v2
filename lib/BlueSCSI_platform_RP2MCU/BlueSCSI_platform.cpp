@@ -142,7 +142,7 @@ extern "C" {
 #  include "audio_i2s.h"
 #endif // ENABLE_AUDIO_OUTPUT_SPDIF
 
-extern bool g_rawdrive_active;
+bool scsiDiskRawDriveActive();
 
 // Always define __isPicoW ourselves (no longer provided by Arduino-pico)
 bool __isPicoW = false;
@@ -1310,8 +1310,10 @@ extern uint32_t __StackTop;
 
 void platform_emergency_log_save()
 {
-    if (g_rawdrive_active)
+#ifndef BLUESCSI_BOOTLOADER_MAIN
+    if (scsiDiskRawDriveActive())
         return;
+#endif
     platform_set_sd_callback(NULL, NULL);
     SD.begin(SD_CONFIG_CRASH);
     FsFile crashfile = SD.open(CRASHFILE, O_WRONLY | O_CREAT | O_TRUNC);

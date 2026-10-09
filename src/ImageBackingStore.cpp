@@ -2,7 +2,7 @@
  * This file is originally part of ZuluSCSI adopted for BlueSCSI
  *
  * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
- * Copyright (C) 2023 Eric Helgeson
+ * Copyright (c) 2023-2026 Eric Helgeson <eric@bluescsi.com>
  *
  * This file is licensed under the GPL version 3 or any later version. 
  *
@@ -33,13 +33,10 @@
 #include <string.h>
 #include <assert.h>
 
-extern bool g_rawdrive_active;
-
 ImageBackingStore::ImageBackingStore()
 {
     m_iscontiguous = false;
     m_israw = false;
-    g_rawdrive_active = m_israw;
     m_isrom = false;
     m_isreadonly_attr = false;
     m_blockdev = nullptr;
@@ -70,7 +67,6 @@ ImageBackingStore::ImageBackingStore(const char *filename, uint32_t scsi_block_s
 
         m_iscontiguous = true;
         m_israw = true;
-        g_rawdrive_active = m_israw;
         m_blockdev = SD.card();
 
         uint32_t sectorCount = SD.card()->sectorCount();
@@ -82,7 +78,13 @@ ImageBackingStore::ImageBackingStore(const char *filename, uint32_t scsi_block_s
     }
     else if (strncasecmp(filename, "ROM:", 4) == 0)
     {
-        if (!romDriveCheckPresent(&m_romhdr))
+        // ROM mode I/O works in whole 512-byte units
+        if (scsi_block_size == 0 || (scsi_block_size % SD_SECTOR_SIZE) != 0)
+        {
+            logmsg("SCSI block size ", (int)scsi_block_size, " is not supported for ROM drives (must be divisible by 512 bytes)");
+            m_romhdr.imagesize = 0;
+        }
+        else if (!romDriveCheckPresent(&m_romhdr))
         {
             m_romhdr.imagesize = 0;
         }
@@ -110,6 +112,7 @@ ImageBackingStore::ImageBackingStore(const char *filename, uint32_t scsi_block_s
 
 bool ImageBackingStore::_internal_open(const char *filename, bool doFastSeek)
 {
+    m_iscontiguous = false;
     m_isreadonly_attr = !!(FS_ATTRIB_READ_ONLY & SD.attrib(filename));
     oflag_t open_flag = O_RDWR;
     if (m_isreadonly_attr && !m_isfolder)
@@ -121,9 +124,14 @@ bool ImageBackingStore::_internal_open(const char *filename, bool doFastSeek)
     if (m_isfolder)
     {
         char fullpath[MAX_FILE_PATH * 2];
-        strncpy(fullpath, m_foldername, sizeof(fullpath) - strlen(fullpath));
-        strncat(fullpath, "/", sizeof(fullpath) - strlen(fullpath));
-        strncat(fullpath, filename, sizeof(fullpath) - strlen(fullpath));
+        size_t dirlen = strlen(m_foldername);
+        if (dirlen + 1 + strlen(filename) >= sizeof(fullpath))
+        {
+            return false;
+        }
+        memcpy(fullpath, m_foldername, dirlen);
+        fullpath[dirlen] = '/';
+        strcpy(fullpath + dirlen + 1, filename);
         m_fsfile = SD.open(fullpath, open_flag);
     }
     else
@@ -148,7 +156,34 @@ bool ImageBackingStore::_internal_open(const char *filename, bool doFastSeek)
 
     uint32_t sectorcount = m_fsfile.dataLength() / SD_SECTOR_SIZE;
     uint32_t begin = 0, end = 0;
-    if (m_fsfile.contiguousRange(&begin, &end) && end >= begin + sectorcount - 1)
+
+    bool contiguous = m_fsfile.contiguousRange(&begin, &end) && end >= begin + sectorcount - 1;
+
+    // Past the exFAT valid data length SdFat returns zeros, while raw access
+    // sees whatever the card holds and raw writes do not advance the valid
+    // length. Mark the whole file valid so host writes are visible on a PC.
+    // The unwritten sectors keep whatever the card held.
+    uint64_t valid = m_fsfile.validLength();
+    bool sparse = valid < m_fsfile.dataLength();
+    if (sparse && m_fsfile.isWritable())
+    {
+        logmsg("---- Image file is sparse, ", (int)((m_fsfile.dataLength() - valid) >> 20), " of ",
+               (int)(m_fsfile.dataLength() >> 20), " MB unwritten");
+        if (m_fsfile.setValidLength(m_fsfile.dataLength()))
+        {
+            sparse = !m_fsfile.sync();
+            if (sparse)
+            {
+                m_fsfile.setValidLength(valid);
+            }
+        }
+    }
+    if (sparse)
+    {
+        logmsg("---- Image file could not be marked fully written, unwritten areas read as zeros");
+    }
+
+    if (contiguous && !sparse)
     {
         // Convert to raw mapping, this avoids some unnecessary
         // access overhead in SdFat library.
