@@ -204,6 +204,12 @@ void platform_poll();
 // This function should return without significantly delay.
 uint8_t platform_get_buttons();
 
+// Bytes malloc can still hand out
+uint32_t platform_heap_free();
+
+// Bytes of the core0 stack that were never used since boot
+uint32_t platform_stack_unused();
+
 uint32_t platform_sys_clock_in_hz();
 
 #if defined(BLUESCSI_ULTRA_WIDE)
