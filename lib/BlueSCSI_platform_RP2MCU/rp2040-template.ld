@@ -505,7 +505,7 @@ SECTIONS
         PROVIDE(end = .);
         KEEP(*(.heap*))
         /* The heap ends where the core0 stack begins, see __StackLimit */
-        . = ORIGIN(RAM) + LENGTH(RAM) - 0xC00;
+        . = ORIGIN(RAM) + LENGTH(RAM) - 0x1000;
         __HeapLimit = .;
     } > RAM
     .stack1_dummy (COPY):
@@ -520,9 +520,9 @@ SECTIONS
         __flash_binary_end = .;
     } > FLASH
     __StackTop = ORIGIN(RAM) + LENGTH(RAM);
-    /* Core0 stack, 3 KB. The heap ends here (_sbrk). With less the stack
+    /* Core0 stack, 4 KB. The heap ends here (_sbrk). With less the stack
        runs into live heap blocks. */
-    __StackLimit = __StackTop - 0xC00;
+    __StackLimit = __StackTop - 0x1000;
     __StackOneTop = ORIGIN(SCRATCH_X) + LENGTH(SCRATCH_X);
     __StackOneBottom = __StackOneTop - SIZEOF(.stack1_dummy);
     __StackBottom = __StackTop - SIZEOF(.stack_dummy);
