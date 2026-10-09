@@ -92,7 +92,6 @@ SECTIONS
         *libc*:(.text .text*)
         *libg*:(.text .text*)
         *libgcc*:*df*(.text .text*)
-        *USB*(.text .text*)
         *SPI*(.text .text*)
         *Spi*(.text .text*)
         *spi*(.text .text*)
@@ -185,6 +184,8 @@ SECTIONS
         *(.text*extractFileName*)
         *(.text*setNameFromImage*)
         *(.text*getBlockSize*)
+        *(.text*platform_heap_free*)
+        *(.text*platform_stack_*)
         *(.text*s2s_floppy*)
         *(.text*find_floppy_geometry*)
 
@@ -292,9 +293,105 @@ SECTIONS
 
         /* USB functions that only run in specific modes.
            These will fit in cache when they are in use (USB connected). */
-        *libpico*:*(.text*msc*)
-        *libpico*:*(.text*hidd*)
         *(.text*tud_msc*)
+
+        /* Cold code: init, rare SCSI commands, MSC mode. Only code that no
+         * SCSI command or main-loop pass reaches every time. A whole-file rule
+         * (*foo.c.o) also moves any function added to that file later, so keep
+         * hot code out of those files. An exact SDK name that gets renamed
+         * falls back to RAM silently; compare_elf.py --symbols shows it. */
+        /* Toolbox handlers. scsiToolboxEnabled() runs on every command and is
+         * extern "C" (.text.scsi*), so only the C++ sections (.text._Z*) go to
+         * flash. scsiToolboxCommand() is placed by the rule above, as on main. */
+        *BlueSCSI_Toolbox.cpp.o(.text._Z*)
+        /* MSC mode. platform_msc_lock_get is __not_in_flash_func: every
+         * platform_poll() calls it. */
+        *BlueSCSI_platform_msc.cpp.o(.text .text*)
+        *msc_device.c.o(.text .text*)
+        *BlueSCSI_msc.cpp.o(.text .text*)
+        *timings_RP2MCU.c.o(.text .text*)
+        *custom_timings.cpp.o(.text .text*)
+        *geometry.c.o(.text .text*)
+        *diagnostic.c.o(.text .text*)
+        *(.text.checkIs2023a)
+        *(.text._ZL17init_eject_buttonv*)
+        *(.text.platform_setup_sd)
+        *(.text.platform_post_sd_card_init)
+        *(.text.platform_disable_i2c)
+        *(.text.platform_disable_led)
+        *(.text.platform_get_romdrive_maxsize)
+        *BlueSCSI_disk.cpp.o(.text._ZL16scsiDiskCheckDir*)
+        *BlueSCSI_disk.cpp.o(.text._Z19scsiDiskResetImagesv)
+        *BlueSCSI_disk.cpp.o(.text._Z32scsiDiskCheckAnyImagesConfiguredv)
+        *BlueSCSI_disk.cpp.o(.text._Z40scsiDiskCheckAnyNetworkDevicesConfiguredv)
+        *BlueSCSI_disk.cpp.o(.text._ZL6doSeekm)
+        *BlueSCSI_disk.cpp.o(.text._ZL18doFormatUnitHeaderv)
+        *BlueSCSI_disk.cpp.o(.text._ZL25doFormatUnitPatternHeaderv)
+        *BlueSCSI_disk.cpp.o(.text._ZL20scsiDiskHandleVerify*)
+        /* per command on tape and CD only, never per block */
+        *BlueSCSI_disk.cpp.o(.text._ZN14image_config_t16get_capacity_lbaEv)
+        *(.text.s2s_doReserveRelease)
+        *BlueSCSI_cdrom.cpp.o(.text._Z23cdromReinsertFirstImage*)
+        *BlueSCSI_cdrom.cpp.o(.text._Z14cdromCloseTray*)
+        *BlueSCSI_cdrom.cpp.o(.text._ZL17doReadSessionInfo*)
+        *BlueSCSI_cdrom.cpp.o(.text._ZL10LBA2MSFBCD*)
+        *BlueSCSI_cdrom.cpp.o(.text._ZL11doStopAudiov)
+        *(.text._Z20scsi_accel_log_statev)
+        *(.text.platform_network_init)
+        /* static constructors; the _ZN*C1* rules above do not see these */
+        *(.text.startup._*)
+
+        /* pico-sdk boot-time setup and USB enumeration. Clock, PLL and
+         * multicore code stays in RAM because platform_reclock() runs it. */
+        *runtime_init.c.o(.text .text*)
+        *(.text.runtime_init_default_alarm_pool)
+        *(.text.runtime_init_mutex)
+        *(.text.__aeabi_float_init)
+        *(.text.__aeabi_double_init)
+        *(.text.pio_clear_instruction_memory)
+        *(.text.pio_sm_claim)
+        *(.text.pio_sm_unclaim)
+        *(.text.hardware_alarm_claim)
+        *(.text.timer_hardware_alarm_claim)
+        *(.text.spin_lock_claim_unused)
+        *(.text.hw_claim_clear)
+        *(.text.hw_claim_lock)
+        *(.text.hw_claim_or_assert)
+        *(.text.hw_claim_unlock)
+        *(.text.hw_claim_unused_from_range)
+        *(.text.dma_channel_claim)
+        *(.text.dma_claim_unused_channel)
+        *(.text.dma_channel_unclaim)
+        *(.text.irq_set_exclusive_handler)
+        *(.text.irq_add_tail_to_free_list)
+        *(.text.user_irq_claim)
+        *(.text.user_irq_claim_unused)
+        *(.text.gpio_init)
+        *(.text.gpio_init_mask)
+        *(.text.gpio_set_input_hysteresis_enabled)
+        *(.text.gpio_add_raw_irq_handler_with_order_priority_masked)
+        *(.text.gpio_remove_raw_irq_handler_masked)
+        *(.text.gpio_set_irq_callback)
+        *uart.c.o(.text .text*)
+        *bootrom.c.o(.text .text*)
+        *(.text.pio_add_program)
+        *(.text.pio_add_program_at_offset)
+        *(.text.add_program_at_offset)
+        *(.text.pio_can_add_program)
+        *(.text.pio_can_add_program_at_offset)
+        *(.text.find_offset_for_program*)
+        *(.text.pio_remove_program)
+        *(.text.pio_remove_program_and_unclaim_sm)
+        *(.text.tud_rhport_init)
+        *(.text.tusb_rhport_init)
+        *(.text.usbd_open_edpt_pair)
+        *(.text.configuration_reset)
+        *(.text.usbd_edpt_open)
+        *(.text.tu_edpt_validate)
+        *(.text.tu_edpt_bind_driver)
+        /* pico_stdio is only reached from panic(); pico_malloc wrappers from operator new */
+        *stdio.c.o(.text .text*)
+        *malloc.c.o(.text .text*)
 
         /* RP2040 breakpoints in RAM code don't always work very well
          * because the boot routine tends to overwrite them.
@@ -408,7 +505,8 @@ SECTIONS
         __end__ = .;
         PROVIDE(end = .);
         KEEP(*(.heap*))
-        . = ORIGIN(RAM) + LENGTH(RAM) - 0x400;
+        /* The heap ends where the core0 stack begins, see __StackLimit */
+        . = ORIGIN(RAM) + LENGTH(RAM) - 0xC00;
         __HeapLimit = .;
     } > RAM
     .stack1_dummy (COPY):
@@ -423,7 +521,9 @@ SECTIONS
         __flash_binary_end = .;
     } > FLASH
     __StackTop = ORIGIN(RAM) + LENGTH(RAM);
-    __StackLimit = __StackTop - 0x400;
+    /* Core0 stack, 3 KB. The heap ends here (_sbrk). With less the stack
+       runs into live heap blocks. */
+    __StackLimit = __StackTop - 0xC00;
     __StackOneTop = ORIGIN(SCRATCH_X) + LENGTH(SCRATCH_X);
     __StackOneBottom = __StackOneTop - SIZEOF(.stack1_dummy);
     __StackBottom = __StackTop - SIZEOF(.stack_dummy);

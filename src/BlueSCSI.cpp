@@ -1582,6 +1582,7 @@ extern "C" void bluescsi_setup(void)
   }
 #endif
   logmsg("Clock set to: ", static_cast<int>(platform_sys_clock_in_hz() / 1000000), "MHz");
+  if (g_log_debug) dbgmsg("Heap free: ", (int)platform_heap_free(), " bytes, core0 stack never used: ", (int)platform_stack_unused(), " bytes");
   logmsg("Initialization complete!");
   // There is an issue with using the PicoW LED during SCSI activity.
   // Trn it off and rely on the LED pins on the BlueSCSI.

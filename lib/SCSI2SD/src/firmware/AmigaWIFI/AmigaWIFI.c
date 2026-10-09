@@ -1,6 +1,7 @@
 /*
  * AmigaWIFI Module, based on the work by joshua stein <jcs@jcs.org> Copyright (c) 2023 
  * Copyright (C) 2026 RobSmithDev
+ * Copyright (c) 2026 Eric Helgeson <eric@bluescsi.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -74,7 +75,7 @@ int amigaWifiCommand()
 			size = scsiDev.cdb[4] + (scsiDev.cdb[3] << 8);
 
 			if (unlikely(size < NETWORK_PACKET_MAX_SIZE)) {
-				DBGMSG_F("%s: SCSI_CMD_READ Data too small %ld", __func__, size);
+				DBGMSG_F("%s: SCSI_CMD_READ Data too small %u", __func__, (unsigned)size);
 				scsiDev.target->sense.code = ILLEGAL_REQUEST;
 				scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
 				scsiDev.status = CHECK_CONDITION;
@@ -129,10 +130,10 @@ int amigaWifiCommand()
 					psize = scsiNetworkInboundQueue.sizes[scsiNetworkInboundQueue.readIndex];
 					if (psize < 64) psize = 64;
 					else if (psize + 6 > size) {
-						LOGMSG_F("%s: packet size too big (%d)", __func__, psize);
+						LOGMSG_F("%s: packet size too big (%ld)", __func__, psize);
 						psize = size - 6;
 					}
-					DBGMSG_F("%s: sending packet[%d] to host of size %zu + 6", __func__, scsiNetworkInboundQueue.readIndex, psize);
+					DBGMSG_F("%s: sending packet[%d] to host of size %ld + 6", __func__, scsiNetworkInboundQueue.readIndex, psize);
 					scsiDev.dataLen = psize + 6; // 2-byte length + 4-byte flag + packet
 					memcpy(scsiDev.data + 6, scsiNetworkInboundQueue.packets[scsiNetworkInboundQueue.readIndex], psize);
 					scsiDev.data[0] = (psize >> 8) & 0xff;
@@ -209,7 +210,7 @@ int amigaWifiCommand()
 		size = scsiDev.cdb[4] + (scsiDev.cdb[3] << 8);
 		if (scsiDev.cdb[2] & AMIGASCSI_BATCHMODE) {
 			if (unlikely(size < 4)) {
-				DBGMSG_F("%s: SCSI_CMD_WRITE Data too small %ld", __func__, size);
+				DBGMSG_F("%s: SCSI_CMD_WRITE Data too small %u", __func__, (unsigned)size);
 				scsiDev.target->sense.code = ILLEGAL_REQUEST;
 				scsiDev.target->sense.asc = INVALID_FIELD_IN_CDB;
 				scsiDev.status = CHECK_CONDITION;
@@ -222,10 +223,10 @@ int amigaWifiCommand()
 			parityError = 0;
 			scsiRead(scsiDev.data, size, &parityError);
 			if (parityError) {
-				DBGMSG_F("%s: read packets block from host of size %zu (parity error %d)", __func__, size, parityError);
+				DBGMSG_F("%s: read packets block from host of size %u (parity error %d)", __func__, (unsigned)size, parityError);
 			}
 			else {
-				DBGMSG_F("------ %s: read packets block from host of size %zu", __func__, size);
+				DBGMSG_F("------ %s: read packets block from host of size %u", __func__, (unsigned)size);
 			}
 
 			// How many packets?
@@ -236,7 +237,7 @@ int amigaWifiCommand()
 			for (uint16_t packet=0; packet<numPackets; packet++) {
 				// Enough room left?
 				if (size<2) {
-					DBGMSG_F("------ More packets sent than data allowed", __func__);
+					DBGMSG_F("------ %s: More packets sent than data allowed", __func__);
 					break;
 				}
 
@@ -249,7 +250,7 @@ int amigaWifiCommand()
 					platform_network_send(bufferPosition, packetSize);	
 					bufferPosition += packetSize;
 				} else {
-					DBGMSG_F("------ Packet size %d larger than remaining buffer %d", __func__, packetSize, size);
+					DBGMSG_F("------ %s: Packet size %d larger than remaining buffer %u", __func__, packetSize, (unsigned)size);
 					break;
 				}
 			}
@@ -260,8 +261,8 @@ int amigaWifiCommand()
 			scsiEnterPhase(DATA_OUT);
 			parityError = 0;
 			scsiRead(scsiDev.data, size, &parityError);
-			if (parityError) { DBGMSG_F("%s: read packet from host of size %zu (parity error %d)", __func__, size, parityError); }
-				else DBGMSG_F("------ %s: read packet from host of size %zu", __func__, size);
+			if (parityError) { DBGMSG_F("%s: read packet from host of size %u (parity error %d)", __func__, (unsigned)size, parityError); }
+				else DBGMSG_F("------ %s: read packet from host of size %u", __func__, (unsigned)size);
 			platform_network_send(scsiDev.data, size);	
 			scsiDev.status = GOOD;
 			scsiDev.phase = STATUS;
@@ -311,7 +312,7 @@ int amigaWifiCommand()
 	case SCSI_CMD_WIFI: {
 		size = scsiDev.cdb[4] + (scsiDev.cdb[3] << 8);
 
-		DBGMSG_F("in amigaWifiNetworkCommand with wi-fi command 0x%02x (size %d)", scsiDev.cdb[1], size);
+		DBGMSG_F("in amigaWifiNetworkCommand with wi-fi command 0x%02x (size %u)", scsiDev.cdb[1], (unsigned)size);
 		switch (scsiDev.cdb[1]) {
 			case SCSI_NETWORK_WIFI_CMD_SCAN:
 				scsiNetworkWifiScan();

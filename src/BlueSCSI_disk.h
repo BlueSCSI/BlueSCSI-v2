@@ -3,6 +3,7 @@
  * Copyright (C) 2014 Doug Brown <doug@downtowndougbrown.com
  * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
  * Copyright (c) 2023 joshua stein <jcs@jcs.org>
+ * Copyright (c) 2026 Eric Helgeson <eric@bluescsi.com>
  * 
  * It is derived from disk.h in SCSI2SD V6.
  * 
@@ -46,7 +47,7 @@ extern "C" {
 // Extended configuration stored alongside the normal SCSI2SD target information
 struct image_config_t: public S2S_TargetCfg
 {
-    image_config_t() {};
+    image_config_t() = default;
 
     uint8_t getTargetId() const { return scsiId & S2S_CFG_TARGET_ID_BITS; }
     bool isTargetEnabled() const { return (scsiId & S2S_CFG_TARGET_ENABLED) != 0; }

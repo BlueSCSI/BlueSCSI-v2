@@ -2,7 +2,7 @@
  * This file is originally part of ZuluSCSI adopted for BlueSCSI
  *
  * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
- * Copyright (C) 2023 Eric Helgeson
+ * Copyright (c) 2023-2026 Eric Helgeson <eric@bluescsi.com>
  *
  * This file is licensed under the GPL version 3 or any later version. 
  *
@@ -33,13 +33,10 @@
 #include <string.h>
 #include <assert.h>
 
-extern bool g_rawdrive_active;
-
 ImageBackingStore::ImageBackingStore()
 {
     m_iscontiguous = false;
     m_israw = false;
-    g_rawdrive_active = m_israw;
     m_isrom = false;
     m_isreadonly_attr = false;
     m_blockdev = nullptr;
@@ -134,6 +131,13 @@ bool ImageBackingStore::_internal_open(const char *filename, bool doFastSeek)
     if (!m_fsfile.isOpen())
     {
         return false;
+    }
+
+    // The FastSeek map is heap memory, up to about 3 KB while it is built
+    if (doFastSeek && platform_heap_free() < 4096)
+    {
+        logmsg("---- Not enough memory for FastSeek, this image will seek slowly");
+        doFastSeek = false;
     }
 
     // Enable fastseek for optimized seek operations (O(fragments) instead of O(clusters))
