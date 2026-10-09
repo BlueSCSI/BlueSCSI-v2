@@ -1,5 +1,6 @@
 /**
  * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
+ * Copyright (c) 2026 Eric Helgeson <eric@bluescsi.com>
  *
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version.
  *
@@ -203,6 +204,12 @@ void platform_poll();
 // Debouncing logic is left up to the specific implementation.
 // This function should return without significantly delay.
 uint8_t platform_get_buttons();
+
+// Bytes malloc can still hand out
+uint32_t platform_heap_free();
+
+// Bytes of the core0 stack that were never used since boot
+uint32_t platform_stack_unused();
 
 uint32_t platform_sys_clock_in_hz();
 

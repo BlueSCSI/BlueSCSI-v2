@@ -133,6 +133,13 @@ bool ImageBackingStore::_internal_open(const char *filename, bool doFastSeek)
         return false;
     }
 
+    // The FastSeek map is heap memory, up to about 3 KB while it is built
+    if (doFastSeek && platform_heap_free() < 4096)
+    {
+        logmsg("---- Not enough memory for FastSeek, this image will seek slowly");
+        doFastSeek = false;
+    }
+
     // Enable fastseek for optimized seek operations (O(fragments) instead of O(clusters))
     if (doFastSeek && m_fsfile.enableFastSeek())
     {
