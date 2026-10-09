@@ -415,7 +415,12 @@ static void onSetNextCD(const char * img_dir)
     next_cd.getName(name, sizeof(name));
     next_cd.close();
     snprintf(full_path, (MAX_FILE_PATH * 2), "%s/%s", img_dir, name);
-    switchNextImage(img, full_path);
+    if (!switchNextImage(img, full_path))
+    {
+        scsiDev.status = CHECK_CONDITION;
+        scsiDev.target->sense.code = ILLEGAL_REQUEST;
+        scsiDev.phase = STATUS;
+    }
 }
 
 FsFile gFile; // global so we can keep it open while transferring.
@@ -506,8 +511,6 @@ static void onSendFilePrep(char * dir_name)
     }
     if(gFile.isOpen() && gFile.isWritable())
     {
-        // The upload may overwrite a file that is mounted as a SCSI image
-        scsiDiskPrefetchInvalidate();
         gFile.rewind();
         gFile.truncate();
         gFile.sync();
