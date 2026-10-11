@@ -1,5 +1,6 @@
 /**
  * Copyright (c) 2023-2024 zigzagjoe
+ * Copyright (c) 2026 Eric Helgeson <eric@bluescsi.com>
  * 
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  * 
@@ -98,7 +99,7 @@ void platform_msc_lock_set(bool block)
   }
 }
 
-bool platform_msc_lock_get()
+bool __not_in_flash_func(platform_msc_lock_get)()
 {
   return g_msc_lock;
 }

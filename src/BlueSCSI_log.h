@@ -1,7 +1,7 @@
 /** 
  * ZuluSCSI™ - Copyright (c) 2022-2025 Rabbit Hole Computing™
  * Copyright (c) 2023 joshua stein <jcs@jcs.org>
- * Copyright (c) 2024 Eric Helgeson <erichelgeson@gmail.com>
+ * Copyright (c) 2024-2026 Eric Helgeson <eric@bluescsi.com>
  * 
  * ZuluSCSI™ firmware is licensed under the GPL version 3 or any later version. 
  * 
@@ -157,10 +157,10 @@ void logmsg_buf(const unsigned char *buf, unsigned long size);
 void dbgmsg_buf(const unsigned char *buf, unsigned long size);
 
 // Log formatted string
-void logmsg_f(const char *format, ...);
+void logmsg_f(const char *format, ...) __attribute__((format(printf, 1, 2)));
 
 // Log formatted string
-void dbgmsg_f(const char *format, ...);
+void dbgmsg_f(const char *format, ...) __attribute__((format(printf, 1, 2)));
 
 
 #ifdef __cplusplus

@@ -239,9 +239,8 @@ set(CXX_ONLY_FLAGS
     -fno-threadsafe-statics
 )
 
-# Use -O2 to match PlatformIO application optimization level.
-# SDK libraries are built with -Os but our code benefits from -O2's
-# more aggressive inlining and loop optimization on the SCSI hot path.
+# Use -O2 to match PlatformIO application optimization level. This overrides
+# CMake's Release -O3 for every object in the target, pico-sdk sources included.
 list(APPEND COMMON_FLAGS -O2)
 
 # =============================================================================
@@ -298,6 +297,9 @@ pico_enable_stdio_uart(BlueSCSI 0)
 # Saves ~4.5KB RAM on RP2040 by avoiding float-capable printf in RAM.
 # PlatformIO builds also use newlib printf.
 pico_set_printf_implementation(BlueSCSI compiler)
+# Default alarm pool: the 1ms USB timer, sleep_until() and the RP2040 USB
+# enumeration fix are the only users (3 concurrent worst case).
+target_compile_definitions(BlueSCSI PRIVATE PICO_TIME_DEFAULT_ALARM_POOL_MAX_TIMERS=8)
 
 # Generate PIO headers from .pio files
 pico_generate_pio_header(BlueSCSI ${CMAKE_CURRENT_SOURCE_DIR}/lib/BlueSCSI_platform_RP2MCU/scsi_accel_target_RP2MCU.pio)

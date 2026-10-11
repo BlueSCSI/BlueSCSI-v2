@@ -33,6 +33,8 @@ extern "C" {
 #include <sdio.h>
 #include <scsi.h>
 #include <assert.h>
+#include <malloc.h>
+#include <unistd.h>
 #include <hardware/gpio.h>
 #include <hardware/pio.h>
 #include <hardware/uart.h>
@@ -875,9 +877,47 @@ static void __no_inline_not_in_flash_func(set_flash_clock)()
 #endif
 
 extern uint32_t __StackBottom;
+extern char __StackLimit;
+
+#define STACK_PAINT 0x5AC3BEEF
+
+// Lowest word of the core0 stack
+static uint32_t *stack_floor()
+{
+#ifdef BLUESCSI_MCU_RP23XX
+    return &__StackBottom;
+#else
+    return (uint32_t *)&__StackLimit;
+#endif
+}
+
+static void platform_stack_paint()
+{
+    uint32_t *sp = (uint32_t *)__builtin_frame_address(0) - 16;
+    for (uint32_t *p = stack_floor(); p < sp; p++)
+    {
+        *p = STACK_PAINT;
+    }
+}
+
+uint32_t platform_stack_unused()
+{
+    uint32_t *p = stack_floor();
+    while (*p == STACK_PAINT)
+    {
+        p++;
+    }
+    return (uint32_t)((char *)p - (char *)stack_floor());
+}
+
+uint32_t platform_heap_free()
+{
+    return (uint32_t)(&__StackLimit - (char *)sbrk(0)) + mallinfo().fordblks;
+}
 
 void platform_init()
 {
+    platform_stack_paint();
 #ifdef BLUESCSI_MCU_RP23XX
     // Set stack overflow protection for core0
     // +32 bytes headroom for exception entry frame

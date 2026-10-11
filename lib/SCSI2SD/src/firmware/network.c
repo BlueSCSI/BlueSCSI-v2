@@ -139,13 +139,13 @@ void scsiNetworkWifiScanResults(uint32_t size)
 		unsigned int netsize = sizeof(struct wifi_network_entry) * nets;
 		if (netsize + 2 > sizeof(scsiDev.data))
 		{
-			LOGMSG_F("WARNING: wifi_network_list is bigger than scsiDev.data, truncating", 0);
+			LOGMSG_F("WARNING: wifi_network_list is bigger than scsiDev.data, truncating");
 			netsize = sizeof(scsiDev.data) - 2;
 			netsize -= (netsize % (sizeof(struct wifi_network_entry)));
 		}
 		if (netsize + 2 > size)
 		{
-			LOGMSG_F("WARNING: wifi_network_list is bigger than requested dataLen, truncating", 0);
+			LOGMSG_F("WARNING: wifi_network_list is bigger than requested dataLen, truncating");
 			netsize = size - 2;
 			netsize -= (netsize % (sizeof(struct wifi_network_entry)));
 		}
@@ -197,7 +197,7 @@ void scsiNetworkWifiJoin(uint32_t size)
 	struct wifi_join_request req = { 0 };
 
 	if (size != sizeof(req)) {
-		LOGMSG_F("wifi_join_request bad size (%zu != %zu), ignoring", size, sizeof(req));
+		LOGMSG_F("wifi_join_request bad size (%u != %u), ignoring", (unsigned)size, (unsigned)sizeof(req));
 		scsiDev.status = CHECK_CONDITION;
 		scsiDev.phase = STATUS;
 		return;
@@ -221,7 +221,7 @@ int scsiNetworkCommand()
 	uint32_t size = (scsiDev.cdb[3] << 8) + scsiDev.cdb[4];
 	uint8_t command = scsiDev.cdb[0];
 
-	DBGMSG_F("------ in scsiNetworkCommand with command 0x%02x (size %d)", command, size);
+	DBGMSG_F("------ in scsiNetworkCommand with command 0x%02x (size %u)", command, (unsigned)size);
 
 	switch (command) {
 	case 0x08:
@@ -381,14 +381,14 @@ int scsiNetworkCommand()
 
 			if (len > NETWORK_PACKET_MAX_SIZE)
 			{
-				DBGMSG_F("%s: attempt to write(6) packet of size %zu", __func__, len);
+				DBGMSG_F("%s: attempt to write(6) packet of size %ld", __func__, len);
 				len = NETWORK_PACKET_MAX_SIZE;
 			}
 
 			scsiRead(scsiDev.data, len, &parityError);
 			if (parityError)
 			{
-				DBGMSG_F("%s: read from host of size %zu had parity error %d", __func__, size, parityError);
+				DBGMSG_F("%s: read from host of size %ld had parity error %d", __func__, len, parityError);
 			}
 
 			platform_network_send(scsiDev.data, len);      
@@ -457,7 +457,7 @@ int scsiNetworkCommand()
 
 	// custom wifi commands all using the same opcode, with a sub-command in cdb[1]
 	case SCSI_NETWORK_WIFI_CMD:
-		DBGMSG_F("------ in scsiNetworkCommand with wi-fi command 0x%02x (size %d)", scsiDev.cdb[1], size);
+		DBGMSG_F("------ in scsiNetworkCommand with wi-fi command 0x%02x (size %u)", scsiDev.cdb[1], (unsigned)size);
 
 		switch (scsiDev.cdb[1]) {
 		case SCSI_NETWORK_WIFI_CMD_SCAN:
