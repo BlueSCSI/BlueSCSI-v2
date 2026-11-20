@@ -113,6 +113,10 @@ SECTIONS
          * Only AmigaWIFI command parsing (init-time only) goes to FLASH. */
         *AmigaWIFI*(.text .text*)
 
+        /* SSH OS's crypto (lib/SSHOS) is asked for a few times a second at
+         * most: FLASH, to leave RAM alone. */
+        *SSHOS*(.text .text*)
+
         /* C++ constructors and destructors */
         *(.text*_ZN*C1*)
         *(.text*_ZN*C2*)

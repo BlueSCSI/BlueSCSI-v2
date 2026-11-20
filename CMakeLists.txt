@@ -149,6 +149,12 @@ set(SCSI2SD_SOURCES
     lib/SCSI2SD/src/firmware/floppy.c
     lib/SCSI2SD/src/firmware/mo.c
     lib/SCSI2SD/src/firmware/AmigaWIFI/AmigaWIFI.c
+    # SSH OS: the sums and packets of SSH for a Macintosh (see lib/SSHOS)
+    lib/SSHOS/sshos_crypto.c
+    lib/SSHOS/w_x25519.c
+    lib/SSHOS/w_ed25519.c
+    lib/SSHOS/w_sha512.c
+    lib/SSHOS/w_poly1305.c
 )
 
 # External dependencies fetched from GitHub
