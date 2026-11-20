@@ -22,6 +22,7 @@
 #include "scsiPhy.h"
 #include "config.h"
 #include "network.h"
+#include "../../../SSHOS/sshos_crypto.h"
 
 extern int platform_network_send(uint8_t *buf, size_t len);
 
@@ -213,6 +214,12 @@ void scsiNetworkWifiJoin(uint32_t size)
 	scsiDev.status = GOOD;
 	scsiDev.phase = STATUS;
 }
+
+// SSH OS: the answer to its last request waits in scsiDev.data to be read.
+// How long it is, and a check sum, in case another command used the buffer
+// in between: then the answer is gone and SSH OS is told so.
+static uint32_t sshosAnswerLen;
+static uint32_t sshosAnswerCrc;
 
 int scsiNetworkCommand()
 {
@@ -453,6 +460,47 @@ int scsiNetworkCommand()
 
 	case 0x80:
 		// set mode (ignored)
+		break;
+
+	// SSH OS (github.com/naruse/SSH-OS): the slow sums of an SSH log-in and the
+	// packets of a session, done here for a Macintosh whose 68000 would take
+	// a quarter of a minute over each sum. One opcode, the request in cdb[1];
+	// see lib/SSHOS/sshos_crypto.c. The work is done in scsiDev.data, where
+	// the request arrived, and the tables it needs go in that buffer's far
+	// half: there is no other memory to spare.
+	case SSHOS_CRYPTO_CMD:
+		if (scsiDev.cdb[1] == SSHOS_HELLO)
+		{
+			scsiDev.dataLen = sshos_crypto_hello(scsiDev.data);
+			scsiDev.phase = DATA_IN;
+		}
+		else if (scsiDev.cdb[1] == SSHOS_RESULT)
+		{
+			if (sshosAnswerLen == 0 || crc32(scsiDev.data, sshosAnswerLen) != sshosAnswerCrc)
+			{
+				scsiDev.data[0] = 0;	// nothing to give: refused
+				sshosAnswerLen = 1;
+			}
+			scsiDev.dataLen = sshosAnswerLen < size ? sshosAnswerLen : size;
+			sshosAnswerLen = 0;
+			scsiDev.phase = DATA_IN;
+		}
+		else if (size == 0 || size > SSHOS_CRYPTO_MAX)
+		{
+			scsiDev.status = CHECK_CONDITION;
+			scsiDev.phase = STATUS;
+		}
+		else
+		{
+			parityError = 0;
+			scsiEnterPhase(DATA_OUT);
+			scsiRead(scsiDev.data, size, &parityError);
+			sshos_scratch = scsiDev.data + sizeof(scsiDev.data) / 2;
+			sshosAnswerLen = sshos_crypto_job(scsiDev.cdb[1], scsiDev.data, size, SSHOS_CRYPTO_MAX);
+			sshosAnswerCrc = crc32(scsiDev.data, sshosAnswerLen);
+			scsiDev.status = GOOD;
+			scsiDev.phase = STATUS;
+		}
 		break;
 
 	// custom wifi commands all using the same opcode, with a sub-command in cdb[1]
